@@ -11,8 +11,519 @@
 #include <vector>
 #include <iosfwd>
 
+extern std::queue<Source::Name> file_queue;
+
+static void ValidateStatementSyntax(AST::Node *node) {
+  if (node->is<AST::CommaList>()) {
+    ErrorLog::CommaListStatement(node->as<AST::CommaList>().span);
+    node->limit_to(AST::StageRange::NoEmitIR());
+  }
+}
+
+namespace Language {
+extern size_t precedence(Operator op);
+} // namespace Language
+
+static base::owned_ptr<AST::Node>
+OneBracedStatement(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  auto stmts  = base::make_owned<AST::Statements>();
+  stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  stmts->statements.push_back(std::move(nodes[1]));
+  ValidateStatementSyntax(stmts->statements.back().get());
+  return stmts;
+}
+
+static base::owned_ptr<AST::Node>
+EmptyBraces(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  auto stmts  = base::make_owned<AST::Statements>();
+  stmts->span = TextSpan(nodes[0]->span, nodes[1]->span);
+  return stmts;
+}
+
+static base::owned_ptr<AST::Node>
+BracedStatementsSameLineEnd(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  auto stmts  = base::move<AST::Statements>(nodes[1]);
+  stmts->span = TextSpan(nodes[0]->span, nodes[3]->span);
+  if (nodes[2]->is<AST::Statements>()) {
+    for (auto &stmt : nodes[2]->as<AST::Statements>().statements) {
+      stmts->statements.push_back(std::move(stmt));
+      ValidateStatementSyntax(stmts->statements.back().get());
+    }
+  } else {
+    stmts->statements.push_back(std::move(nodes[2]));
+    ValidateStatementSyntax(stmts->statements.back().get());
+  }
+  return stmts;
+}
+
 namespace AST {
-struct Node;
+static void
+CheckForLoopDeclaration(base::owned_ptr<Expression> maybe_decl,
+                        std::vector<base::owned_ptr<InDecl>> *iters) {
+  if (!maybe_decl->is<InDecl>()) {
+    ErrorLog::NonInDeclInForLoop(maybe_decl->span);
+  } else {
+    iters->push_back(base::move<InDecl>(maybe_decl));
+  }
+}
+
+// Input guarantees:
+// [for] [expression] [braced_statements]
+//
+// Internal checks:
+// [expression] is either an in-declaration or a list of in-declarations
+static base::owned_ptr<Node>
+BuildFor(std::vector<base::owned_ptr<Node>> nodes) {
+  auto for_stmt        = base::make_owned<For>();
+  for_stmt->span       = TextSpan(nodes[0]->span, nodes[2]->span);
+  for_stmt->statements = base::move<Statements>(nodes[2]);
+
+  auto iter = &nodes[1]->as<Expression>();
+  if (iter->is<CommaList>()) {
+    auto iter_list = &iter->as<CommaList>();
+    for_stmt->iterators.reserve(iter_list->exprs.size());
+
+    for (auto &expr : iter_list->exprs) {
+      CheckForLoopDeclaration(std::move(expr), &for_stmt->iterators);
+    }
+  } else {
+    CheckForLoopDeclaration(base::move<Expression>(nodes[1]),
+                            &for_stmt->iterators);
+  }
+
+  auto stmts  = base::make_owned<Statements>();
+  stmts->span = for_stmt->span;
+  stmts->statements.push_back(std::move(for_stmt));
+  return stmts;
+}
+
+// Input guarantees:
+// [unop] [expression]
+//
+// Internal checks:
+// Operand cannot be a declaration.
+// Operand cannot be an assignment of any kind.
+static base::owned_ptr<Node>
+BuildLeftUnop(std::vector<base::owned_ptr<Node>> nodes) {
+  const std::string &tk = nodes[0]->as<TokenNode>().token;
+
+  auto unop     = base::make_owned<Unop>();
+  unop->operand = base::move<Expression>(nodes[1]);
+  unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
+
+  bool check_id = false;
+  if (tk == "require") {
+    if (unop->operand->is<Terminal>()) {
+      file_queue.push(Source::Name(
+          std::move(std::get<std::string>(unop->operand->value.value))));
+    } else {
+      ErrorLog::InvalidRequirement(unop->operand->span);
+    }
+
+    unop->op = Language::Operator::Require;
+
+  } else {
+    const static std::unordered_map<std::string,
+                                    std::pair<Language::Operator, bool>>
+        UnopMap = {{"return", {Language::Operator::Return, false}},
+                   {"break", {Language::Operator::Break, true}},
+                   {"continue", {Language::Operator::Continue, true}},
+                   {"restart", {Language::Operator::Restart, true}},
+                   {"repeat", {Language::Operator::Repeat, true}},
+                   {"free", {Language::Operator::Free, false}},
+                   {"generate", {Language::Operator::Generate, false}},
+                   {"print", {Language::Operator::Print, false}},
+                   {"needs", {Language::Operator::Needs, false}},
+                   {"ensure", {Language::Operator::Ensure, false}},
+                   {"*", {Language::Operator::Mul, false}},
+                   {"&", {Language::Operator::And, false}},
+                   {"-", {Language::Operator::Sub, false}},
+                   {"!", {Language::Operator::Not, false}},
+                   {"@", {Language::Operator::At, false}},
+                   {"$", {Language::Operator::Eval, false}}};
+    auto iter   = UnopMap.find(tk);
+    ASSERT(iter != UnopMap.end(),
+           std::string("Failed to match token: \"") + tk + "\"");
+    std::tie(unop->op, check_id) = iter->second;
+  }
+
+  unop->precedence = Language::precedence(unop->op);
+
+  if (check_id) {
+    if (!unop->operand->is<Identifier>()) {
+      // TODO clean up error message
+      ErrorLog::NonIdJumpOperand(unop->operand->span);
+    }
+  } else {
+    if (unop->operand->is<Declaration>()) {
+      // TODO clean up this error message
+      ErrorLog::InvalidDecl(unop->operand->span);
+    }
+  }
+  return unop;
+}
+
+// Input guarantees
+// [expr] [chainop] [expr]
+//
+// Internal checks: None
+static base::owned_ptr<Node>
+BuildChainOp(std::vector<base::owned_ptr<Node>> nodes) {
+  auto op      = nodes[1]->as<TokenNode>().op;
+  auto op_prec = Language::precedence(op);
+  base::owned_ptr<ChainOp> chain;
+
+  // Add to a chain so long as the precedence levels match. The only thing at
+  // that precedence level should be the operators which can be chained.
+  if (nodes[0]->is<ChainOp>() &&
+      nodes[0]->as<ChainOp>().precedence == op_prec) {
+
+    chain = base::move<ChainOp>(nodes[0]);
+
+  } else {
+    chain       = base::make_owned<ChainOp>();
+    chain->span = TextSpan(nodes[0]->span, nodes[2]->span);
+
+    chain->exprs.push_back(base::move<Expression>(nodes[0]));
+    chain->precedence = op_prec;
+  }
+
+  chain->ops.push_back(op);
+  chain->exprs.push_back(base::move<Expression>(nodes[2]));
+
+  return chain;
+}
+
+static base::owned_ptr<Node>
+BuildCommaList(std::vector<base::owned_ptr<Node>> nodes) {
+  base::owned_ptr<CommaList> comma_list;
+
+  if (nodes[0]->is<CommaList>()) {
+    comma_list = base::move<CommaList>(nodes[0]);
+  } else {
+    comma_list       = base::make_owned<CommaList>();
+    comma_list->span = TextSpan(nodes[0]->span, nodes[2]->span);
+    comma_list->exprs.push_back(base::move<Expression>(nodes[0]));
+  }
+
+  comma_list->exprs.push_back(base::move<Expression>(nodes[2]));
+  comma_list->span.finish = comma_list->exprs.back()->span.finish;
+
+  return comma_list;
+}
+
+// Input guarantees
+// [expr] [dot] [expr]
+//
+// Internal checks:
+// LHS is not a declaration
+// RHS is an identifier
+base::owned_ptr<Node> BuildAccess(std::vector<base::owned_ptr<Node>> nodes) {
+  auto access     = base::make_owned<Access>();
+  access->span    = TextSpan(nodes[0]->span, nodes[2]->span);
+  access->operand = base::move<Expression>(nodes[0]);
+
+  if (access->operand->is<Declaration>()) {
+    ErrorLog::LHSDecl(access->operand->span);
+  }
+
+  if (!nodes[2]->is<Identifier>()) {
+    ErrorLog::RHSNonIdInAccess(nodes[2]->span);
+  } else {
+    access->member_name = std::move(nodes[2]->as<Identifier>().token);
+  }
+  return access;
+}
+
+// Input guarantees
+// [expr] [l_paren] [expr] [r_paren]
+//
+// Internal checks:
+// LHS is not a declaration
+// RHS is not a declaration
+base::owned_ptr<Node> BuildCall(std::vector<base::owned_ptr<Node>> nodes) {
+  auto call  = base::make_owned<Call>();
+  call->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  call->fn_  = base::move<Expression>(nodes[0]);
+
+  if (nodes[2]->is<CommaList>()) {
+    bool seen_named = false;
+    for (auto &expr : nodes[2]->as<CommaList>().exprs) {
+      if (expr->is<Binop>() &&
+          expr->as<Binop>().op == Language::Operator::Assign) {
+        seen_named = true;
+        call->named_.emplace_back(
+            std::move(expr->as<Binop>().lhs->as<Identifier>().token),
+            std::move(expr->as<Binop>().rhs));
+      } else {
+        if (seen_named) { ErrorLog::LogGeneric(TextSpan(), "TODO"); }
+        call->pos_.push_back(std::move(expr));
+      }
+    }
+  } else {
+    if (nodes[2]->is<Binop>() &&
+        nodes[2]->as<Binop>().op == Language::Operator::Assign) {
+      call->named_.emplace_back(
+          std::move(nodes[2]->as<Binop>().lhs->as<Identifier>().token),
+          std::move(nodes[2]->as<Binop>().rhs));
+    } else {
+      call->pos_.push_back(base::move<Expression>(nodes[2]));
+    }
+  }
+  call->precedence = Language::precedence(Language::Operator::Call);
+
+  if (call->fn_->is<Declaration>()) { ErrorLog::LHSDecl(call->fn_->span); }
+  return call;
+}
+
+// Input guarantees
+// [expr] [l_bracket] [expr] [r_bracket]
+//
+// Internal checks:
+// LHS is not a declaration
+// RHS is not a declaration
+static base::owned_ptr<Node>
+BuildIndexOperator(std::vector<base::owned_ptr<Node>> nodes) {
+  auto binop        = base::make_owned<Binop>();
+  binop->span       = TextSpan(nodes[0]->span, nodes[2]->span);
+  binop->lhs        = base::move<Expression>(nodes[0]);
+  binop->rhs        = base::move<Expression>(nodes[2]);
+  binop->op         = Language::Operator::Index;
+  binop->precedence = Language::precedence(binop->op);
+
+  if (binop->lhs->is<Declaration>()) { ErrorLog::LHSDecl(binop->lhs->span); }
+
+  if (binop->rhs->is<Declaration>()) {
+    // TODO Tick is no longer a thing
+    ErrorLog::RHSNonTickDecl(binop->rhs->span);
+  }
+
+  return binop;
+}
+
+// Input guarantee:
+// [expression] [l_bracket] [r_bracket]
+//
+// Internal checks: None
+static base::owned_ptr<Node>
+BuildEmptyArray(std::vector<base::owned_ptr<Node>> nodes) {
+  auto array_lit  = base::make_owned<ArrayLiteral>();
+  array_lit->span = TextSpan(nodes[0]->span, nodes[1]->span);
+  return array_lit;
+}
+
+// Input guarantee:
+// [expression] [dots]
+//
+// Internal checks: None
+static base::owned_ptr<Node>
+BuildDots(std::vector<base::owned_ptr<Node>> nodes) {
+  auto unop        = base::make_owned<Unop>();
+  unop->operand    = base::move<Expression>(nodes[0]);
+  unop->span       = TextSpan(nodes[0]->span, nodes[1]->span);
+  unop->op         = nodes[1]->as<TokenNode>().op;
+  unop->precedence = Language::precedence(unop->op);
+  return unop;
+}
+
+static base::owned_ptr<Node>
+BuildArrayLiteral(std::vector<base::owned_ptr<Node>> nodes) {
+  auto array_lit  = base::make_owned<ArrayLiteral>();
+  array_lit->span = nodes[0]->span;
+
+  if (nodes[1]->is<CommaList>()) {
+    array_lit->elems = std::move(nodes[1]->as<CommaList>().exprs);
+  } else {
+    array_lit->elems.push_back(base::move<Expression>(nodes[1]));
+  }
+
+  return array_lit;
+}
+
+static base::owned_ptr<Node>
+BuildArrayType(std::vector<base::owned_ptr<Node>> nodes) {
+  if (nodes[1]->is<CommaList>()) {
+    auto *length_chain = &nodes[1]->as<CommaList>();
+    int i              = static_cast<int>(length_chain->exprs.size() - 1);
+    auto prev          = base::move<Expression>(nodes[3]);
+
+    while (i >= 0) {
+      auto array_type       = base::make_owned<ArrayType>();
+      array_type->span      = length_chain->exprs[i]->span;
+      array_type->length    = std::move(length_chain->exprs[i]);
+      array_type->data_type = std::move(prev);
+      prev                  = std::move(array_type);
+      i -= 1;
+    }
+    return prev;
+
+  } else {
+    auto array_type       = base::make_owned<ArrayType>();
+    array_type->span      = nodes[0]->span;
+    array_type->length    = base::move<Expression>(nodes[1]);
+    array_type->data_type = base::move<Expression>(nodes[3]);
+
+    return array_type;
+  }
+}
+
+static base::owned_ptr<Node>
+BuildInDecl(std::vector<base::owned_ptr<Node>> nodes) {
+  ASSERT(nodes[1]->as<TokenNode>().op == Language::Operator::In, "");
+  auto in_decl              = base::make_owned<InDecl>();
+  in_decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
+  in_decl->identifier       = base::move<Identifier>(nodes[0]);
+  in_decl->identifier->decl = in_decl.get();
+  in_decl->container        = base::move<Expression>(nodes[2]);
+  in_decl->precedence       = Language::precedence(Language::Operator::In);
+  return in_decl;
+}
+
+static base::owned_ptr<Node>
+BuildDeclaration(std::vector<base::owned_ptr<Node>> nodes, bool is_const) {
+  auto op                = nodes[1]->as<TokenNode>().op;
+  auto decl              = base::make_owned<Declaration>(is_const);
+  decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
+  decl->precedence       = Language::precedence(op);
+  decl->identifier       = base::move<Identifier>(nodes[0]);
+  decl->identifier->decl = decl.get();
+
+  if (op == Language::Operator::Colon ||
+      op == Language::Operator::DoubleColon) {
+    decl->type_expr = base::move<Expression>(nodes[2]);
+  } else {
+    decl->init_val = base::move<Expression>(nodes[2]);
+  }
+
+  return decl;
+}
+
+static base::owned_ptr<Node>
+BuildFunctionLiteral(std::vector<base::owned_ptr<Node>> nodes) {
+  auto fn_lit        = base::make_owned<FunctionLiteral>();
+  fn_lit->span       = TextSpan(nodes[0]->span, nodes[1]->span);
+  fn_lit->statements = base::move<Statements>(nodes[1]);
+
+  auto *binop              = &nodes[0]->as<Binop>();
+  fn_lit->return_type_expr = base::move<Expression>(binop->rhs);
+
+  if (binop->lhs->is<Declaration>()) {
+    fn_lit->inputs.push_back(base::move<Declaration>(binop->lhs));
+    fn_lit->inputs.back()->arg_val = fn_lit.get();
+
+  } else if (binop->lhs->is<CommaList>()) {
+    auto *decls = &binop->lhs->as<CommaList>();
+    fn_lit->inputs.reserve(decls->exprs.size());
+
+    for (auto &expr : decls->exprs) {
+      fn_lit->inputs.push_back(base::move<Declaration>(expr));
+      fn_lit->inputs.back()->arg_val = fn_lit.get();
+    }
+  }
+
+  if (fn_lit->return_type_expr->is<Declaration>()) {
+    fn_lit->return_type_expr->as<Declaration>().arg_val = fn_lit.get();
+  }
+
+  return fn_lit;
+}
+
+static base::owned_ptr<Node>
+BuildOneStatement(std::vector<base::owned_ptr<Node>> nodes) {
+  auto stmts  = base::make_owned<Statements>();
+  stmts->span = nodes[0]->span;
+  stmts->statements.push_back(std::move(nodes[0]));
+  ValidateStatementSyntax(stmts->statements.back().get());
+  return stmts;
+}
+
+static base::owned_ptr<Node>
+BuildMoreStatements(std::vector<base::owned_ptr<Node>> nodes) {
+  auto stmts = base::move<Statements>(nodes[0]);
+  stmts->statements.push_back(std::move(nodes[1]));
+  ValidateStatementSyntax(stmts->statements.back().get());
+  return stmts;
+}
+
+static base::owned_ptr<Node>
+BuildJump(std::vector<base::owned_ptr<Node>> nodes) {
+  const static std::unordered_map<std::string, Jump::JumpType> JumpTypeMap = {
+      {"break", Jump::JumpType::Break},
+      {"continue", Jump::JumpType::Continue},
+      {"return", Jump::JumpType::Return},
+      {"repeat", Jump::JumpType::Repeat},
+      {"restart", Jump::JumpType::Restart}};
+  auto iter = JumpTypeMap.find(nodes[0]->as<TokenNode>().token);
+  ASSERT(iter != JumpTypeMap.end(), "");
+
+  auto stmts  = base::make_owned<Statements>();
+  stmts->span = nodes[0]->span;
+  stmts->statements.push_back(
+      base::make_owned<Jump>(nodes[0]->span, iter->second));
+  return stmts;
+}
+
+static base::owned_ptr<Node>
+BuildScopeNode(base::owned_ptr<Expression> scope_name,
+               base::owned_ptr<Expression> arg_expr,
+               base::owned_ptr<Statements> stmt_node) {
+  auto scope_node        = base::make_owned<ScopeNode>();
+  scope_node->span       = TextSpan(scope_name->span, stmt_node->span);
+  scope_node->scope_expr = std::move(scope_name);
+  scope_node->expr       = std::move(arg_expr);
+  scope_node->stmts      = std::move(stmt_node);
+  return scope_node;
+}
+
+static base::owned_ptr<Node>
+BuildScopeNode(std::vector<base::owned_ptr<Node>> nodes) {
+  return BuildScopeNode(base::move<Expression>(nodes[0]),
+                        base::move<Expression>(nodes[1]),
+                        base::move<Statements>(nodes[2]));
+}
+
+static base::owned_ptr<Node>
+BuildVoidScopeNode(std::vector<base::owned_ptr<Node>> nodes) {
+  return BuildScopeNode(base::move<Expression>(nodes[0]), nullptr,
+                        base::move<Statements>(nodes[1]));
+}
+
+static base::owned_ptr<Node>
+BuildCodeBlockFromStatements(std::vector<base::owned_ptr<Node>> nodes) {
+  auto block = base::make_owned<CodeBlock>();
+  // TODO block->value
+  block->span  = TextSpan(nodes[0]->span, nodes[2]->span);
+  block->stmts = base::move<Statements>(nodes[1]);
+  return block;
+}
+
+static base::owned_ptr<Node> BuildCodeBlockFromStatementsSameLineEnd(
+    std::vector<base::owned_ptr<Node>> nodes) {
+  auto block = base::make_owned<CodeBlock>();
+  // TODO block->value
+  block->span = TextSpan(nodes[0]->span, nodes[3]->span);
+  block->stmts =
+      base::move<Statements>(BracedStatementsSameLineEnd(std::move(nodes)));
+  return block;
+}
+
+static base::owned_ptr<Node>
+BuildCodeBlockFromOneStatement(std::vector<base::owned_ptr<Node>> nodes) {
+  auto block = base::make_owned<CodeBlock>();
+  // TODO block->value
+  block->span  = TextSpan(nodes[0]->span, nodes[2]->span);
+  block->stmts = base::move<Statements>(OneBracedStatement(std::move(nodes)));
+  return block;
+}
+
+static base::owned_ptr<Node>
+BuildEmptyCodeBlock(std::vector<base::owned_ptr<Node>> nodes) {
+  auto block = base::make_owned<CodeBlock>();
+  // TODO block->value
+  block->span  = TextSpan(nodes[0]->span, nodes[1]->span);
+  block->stmts = base::move<Statements>(EmptyBraces(std::move(nodes)));
+  return block;
+}
 } // namespace AST
 
 namespace Language {
@@ -101,22 +612,22 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
     if (iter != chain_ops.end()) {
       nodes[1]->as<AST::TokenNode>().op = iter->second;
       return (iter->second == Language::Operator::Comma)
-                 ? AST::CommaList::Build(std::move(nodes))
-                 : AST::ChainOp::Build(std::move(nodes));
+                 ? AST::BuildCommaList(std::move(nodes))
+                 : AST::BuildChainOp(std::move(nodes));
     }
   }
 
   if (tk == ".") {
-    return AST::Access::Build(std::move(nodes));
+    return AST::BuildAccess(std::move(nodes));
 
   } else if (tk == ":" || tk == ":=") {
-    return AST::Declaration::Build(std::move(nodes), /* const = */ false);
+    return AST::BuildDeclaration(std::move(nodes), /* const = */ false);
 
   } else if (tk == "::" || tk == "::=") {
-    return AST::Declaration::Build(std::move(nodes), /* const = */ true);
+    return AST::BuildDeclaration(std::move(nodes), /* const = */ true);
 
   } else if (tk == "in") {
-    return AST::InDecl::Build(std::move(nodes));
+    return AST::BuildInDecl(std::move(nodes));
   }
 
   if (tk == "=") {
@@ -145,11 +656,11 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
     }
   }
 
-  if (tk == "(") { // TODO these should just generate Call::Build directly.
-    return AST::Call::Build(std::move(nodes));
+  if (tk == "(") { // TODO these should just generate BuildCall directly.
+    return AST::BuildCall(std::move(nodes));
   } else if (tk == "'") {
     std::swap(nodes[0], nodes[2]);
-    return AST::Call::Build(std::move(nodes));
+    return AST::BuildCall(std::move(nodes));
   }
 
   auto binop  = base::make_owned<AST::Binop>();
@@ -182,7 +693,7 @@ BuildKWExprBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
   const std::string &tk = nodes[0]->as<AST::TokenNode>().token;
 
   if (tk == "for") {
-    return AST::For::Build(std::move(nodes));
+    return AST::BuildFor(std::move(nodes));
 
   } else if (tk == "struct") {
     // Parmaetric struct
@@ -339,13 +850,6 @@ BuildEmptyParen(std::vector<base::owned_ptr<AST::Node>> nodes) {
   return call;
 }
 
-extern base::owned_ptr<AST::Node>
-OneBracedStatement(std::vector<base::owned_ptr<AST::Node>> nodes);
-extern base::owned_ptr<AST::Node>
-EmptyBraces(std::vector<base::owned_ptr<AST::Node>> nodes);
-extern base::owned_ptr<AST::Node>
-BracedStatementsSameLineEnd(std::vector<base::owned_ptr<AST::Node>> nodes);
-
 template <size_t N>
 static base::owned_ptr<AST::Node>
 drop_all_but(std::vector<base::owned_ptr<AST::Node>> nodes) {
@@ -408,6 +912,7 @@ NonBinopBothReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
   return base::make_owned<AST::Identifier>(nodes[1]->span, "invalid_node");
 }
 } // namespace ErrMsg
+
 namespace Language {
 static constexpr u64 OP_B = op_b | comma | dots | colon | eq;
 static constexpr u64 EXPR = expr | fn_expr;
@@ -432,13 +937,12 @@ auto Rules = std::array{
          ErrMsg::BothReserved<1, 0, 2>),
     Rule(expr, {EXPR, op_l, RESERVED}, ErrMsg::NonBinopReserved<1, 2>),
     Rule(expr, {RESERVED, op_l, RESERVED}, ErrMsg::NonBinopBothReserved),
-    Rule(expr, {EXPR, l_paren, EXPR, r_paren}, AST::Call::Build),
+    Rule(expr, {EXPR, l_paren, EXPR, r_paren}, AST::BuildCall),
     Rule(expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
-    Rule(expr, {EXPR, l_bracket, EXPR, r_bracket},
-         AST::Binop::BuildIndexOperator),
-    Rule(expr, {l_bracket, r_bracket}, AST::ArrayLiteral::BuildEmpty),
+    Rule(expr, {EXPR, l_bracket, EXPR, r_bracket}, AST::BuildIndexOperator),
+    Rule(expr, {l_bracket, r_bracket}, AST::BuildEmptyArray),
     Rule(expr, {l_bracket, EXPR, semicolon, EXPR, r_bracket},
-         AST::ArrayType::build),
+         AST::BuildArrayType),
     Rule(expr, {l_bracket, EXPR, semicolon, RESERVED, r_bracket},
          ErrMsg::Reserved<0, 3>),
     Rule(expr, {l_bracket, RESERVED, semicolon, EXPR, r_bracket},
@@ -467,13 +971,13 @@ auto Rules = std::array{
     Rule(braced_stmts, {l_brace, (expr | fn_expr), r_brace},
          OneBracedStatement),
     Rule(expr, {l_double_brace, stmts, stmts | expr | fn_expr, r_double_brace},
-         AST::CodeBlock::BuildFromStatementsSameLineEnd),
+         AST::BuildCodeBlockFromStatementsSameLineEnd),
     Rule(expr, {l_double_brace, stmts, r_double_brace},
-         AST::CodeBlock::BuildFromStatements),
-    Rule(expr, {l_double_brace, r_double_brace}, AST::CodeBlock::BuildEmpty),
+         AST::BuildCodeBlockFromStatements),
+    Rule(expr, {l_double_brace, r_double_brace}, AST::BuildEmptyCodeBlock),
     Rule(expr, {l_double_brace, (expr | fn_expr), r_double_brace},
-         AST::CodeBlock::BuildFromOneStatement),
-    Rule(expr, {fn_expr, braced_stmts}, AST::FunctionLiteral::build),
+         AST::BuildCodeBlockFromOneStatement),
+    Rule(expr, {fn_expr, braced_stmts}, AST::BuildFunctionLiteral),
 
     // Call and index operator with reserved words. We can't put reserved words
     // in the first slot because that might conflict with a real use case. For
@@ -481,22 +985,21 @@ auto Rules = std::array{
     Rule(expr, {EXPR, l_paren, RESERVED, r_paren}, ErrMsg::Reserved<0, 2>),
     Rule(expr, {EXPR, l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<0, 2>),
 
-    Rule(expr, {(op_l | op_bl | op_lt), EXPR}, AST::Unop::BuildLeft),
+    Rule(expr, {(op_l | op_bl | op_lt), EXPR}, AST::BuildLeftUnop),
     Rule(expr, {RESERVED, (OP_B | op_bl), EXPR}, ErrMsg::Reserved<1, 0>),
-    Rule(expr, {EXPR, dots}, AST::Unop::BuildDots),
+    Rule(expr, {EXPR, dots}, AST::BuildDots),
     Rule(expr, {l_paren | l_ref, EXPR, r_paren}, Parenthesize),
-    Rule(expr, {l_bracket, EXPR, r_bracket}, AST::ArrayLiteral::build),
+    Rule(expr, {l_bracket, EXPR, r_bracket}, AST::BuildArrayLiteral),
     Rule(expr, {l_paren, RESERVED, r_paren}, ErrMsg::Reserved<1, 1>),
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
     Rule(stmts, {stmts, (expr | fn_expr | stmts), newline},
-         AST::Statements::build_more),
+         AST::BuildMoreStatements),
     Rule(expr, {(kw_block | kw_struct), braced_stmts}, BuildKWBlock),
 
     Rule(expr, {RESERVED, dots}, ErrMsg::Reserved<1, 0>),
     Rule(expr, {(op_l | op_bl | op_lt), RESERVED}, ErrMsg::Reserved<0, 1>),
     Rule(expr, {RESERVED, op_l, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
-    Rule(stmts, {(expr | fn_expr), (newline | eof)},
-         AST::Statements::build_one),
+    Rule(stmts, {(expr | fn_expr), (newline | eof)}, AST::BuildOneStatement),
     Rule(comma, {comma, newline}, drop_all_but<0>),
     Rule(l_paren, {l_paren, newline}, drop_all_but<0>),
     Rule(l_bracket, {l_bracket, newline}, drop_all_but<0>),
@@ -507,10 +1010,9 @@ auto Rules = std::array{
     Rule(expr, {kw_struct, EXPR, braced_stmts}, BuildKWExprBlock),
 
     Rule(expr, {EXPR, op_l, EXPR}, ErrMsg::NonBinop),
-    Rule(stmts, {op_lt}, AST::Jump::build),
-    Rule(expr, {EXPR, EXPR, braced_stmts}, AST::ScopeNode::Build),
-
-    Rule(expr, {EXPR, braced_stmts}, AST::ScopeNode::BuildVoid),
+    Rule(stmts, {op_lt}, AST::BuildJump),
+    Rule(expr, {EXPR, EXPR, braced_stmts}, AST::BuildScopeNode),
+    Rule(expr, {EXPR, braced_stmts}, AST::BuildVoidScopeNode),
 };
 } // namespace Language
 
@@ -775,7 +1277,6 @@ base::owned_ptr<AST::Statements> File::Parse() {
 }
 
 extern Timer timer;
-extern std::queue<Source::Name> file_queue;
 std::unordered_map<Source::Name, File *> source_map;
 std::vector<base::owned_ptr<AST::Statements>> ParseAllFiles() {
   std::vector<base::owned_ptr<AST::Statements>> stmts;
