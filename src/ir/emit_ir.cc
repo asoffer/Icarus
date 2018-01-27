@@ -237,6 +237,12 @@ IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
 IR::Val AST::Terminal::EmitIR(IR::Cmd::Kind) { return value; }
 
 IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
+  if (decl->const_) {
+    decl->addr = (decl->init_val) ? Evaluate(decl->init_val.get())
+                                  : decl->type->EmitInitialValue();
+    return decl->addr;
+  }
+
   if (decl->scope_ == GlobalScope) { decl->EmitIR(kind); }
 
   if (auto *ret = std::get_if<IR::ReturnValue>(&decl->addr.value);
@@ -249,7 +255,7 @@ IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
         type);
   }
 
-  if (decl->const_ || decl->arg_val) {
+  if (decl->arg_val) {
     return decl->addr;
   } else if (decl->is<InDecl>()) {
     if (auto &in_decl = decl->as<InDecl>();
@@ -897,6 +903,12 @@ IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind kind) {
 
       for (auto scope : fn_scope->innards_) {
         scope->ForEachDeclHere([kind, scope](Declaration *decl) {
+          if (decl->const_) {
+            // Compute these values lazily in Identifier::EmitIR, because
+            // otherwise we would have to figure out a valid ordering.
+            return;
+          }
+
           // TODO arg_val seems to go along with in_decl a lot. Is there some
           // reason for this that *should* be abstracted?
           if (decl->arg_val || decl->is<InDecl>()) { return; }
