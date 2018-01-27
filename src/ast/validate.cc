@@ -512,6 +512,13 @@ void Identifier::Validate() {
     decl = potential_decls[0];
   }
 
+  if (!decl->const_ && (span.start.line_num < decl->span.start.line_num ||
+                        (span.start.line_num == decl->span.start.line_num &&
+                         span.start.offset < decl->span.start.offset))) {
+    ErrorLog::DeclOutOfOrder(decl, this);
+    limit_to(StageRange::NoEmitIR());
+  }
+
   type   = decl->type;
   lvalue = decl->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
 
@@ -1269,6 +1276,7 @@ void Unop::Validate() {
   case Operator::Pass: type = operand->type; break;
   default: UNREACHABLE(*this);
   }
+  limit_to(operand);
 }
 
 void Access::Validate() {
