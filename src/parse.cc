@@ -252,22 +252,22 @@ base::owned_ptr<Node> BuildCall(std::vector<base::owned_ptr<Node>> nodes) {
       if (expr->is<Binop>() &&
           expr->as<Binop>().op == Language::Operator::Assign) {
         seen_named = true;
-        call->named_.emplace_back(
+        call->args_.named_.emplace(
             std::move(expr->as<Binop>().lhs->as<Identifier>().token),
             std::move(expr->as<Binop>().rhs));
       } else {
         if (seen_named) { ErrorLog::LogGeneric(TextSpan(), "TODO"); }
-        call->pos_.push_back(std::move(expr));
+        call->args_.pos_.push_back(std::move(expr));
       }
     }
   } else {
     if (nodes[2]->is<Binop>() &&
         nodes[2]->as<Binop>().op == Language::Operator::Assign) {
-      call->named_.emplace_back(
+      call->args_.named_.emplace(
           std::move(nodes[2]->as<Binop>().lhs->as<Identifier>().token),
           std::move(nodes[2]->as<Binop>().rhs));
     } else {
-      call->pos_.push_back(base::move<Expression>(nodes[2]));
+      call->args_.pos_.push_back(base::move<Expression>(nodes[2]));
     }
   }
   call->precedence = Language::precedence(Language::Operator::Call);

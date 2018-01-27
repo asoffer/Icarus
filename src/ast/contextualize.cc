@@ -23,8 +23,10 @@ void InDecl::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 }
 
 void Call::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  for (auto &pos : pos_) { pos->SaveReferences(scope, args); }
-  for (auto & [ name, expr ] : named_) { expr->SaveReferences(scope, args); }
+  for (auto &pos : args_.pos_) { pos->SaveReferences(scope, args); }
+  for (auto & [ name, expr ] : args_.named_) {
+    expr->SaveReferences(scope, args);
+  }
 }
 
 void Statements::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {

@@ -36,6 +36,12 @@ static constexpr int ThisStage() { return 1; }
   } while (false)
 
 namespace AST {
+struct ArgumentMetaData {
+  Type *type;
+  std::string name;
+  bool has_default;
+};
+
 // TODO: This algorithm is sufficiently complicated you should combine it with
 // proof of correctness and good explanation of what it does.
 static bool
@@ -230,15 +236,6 @@ static bool Inferrable(Type *t) {
   return true;
 }
 
-std::string CallArgTypes::to_string() const {
-  std::string result;
-  for (Type *t : pos_) { result += (!t ? "null" : t->to_string()) + ", "; }
-  for (const auto &[key, val] : named_) {
-    result += key + ": " + (!val ? "null" : val->to_string()) + ", ";
-  }
-  return result;
-}
-
 // We already know there can be at most one match (multiple matches would have
 // been caught by shadowing), so we just return a pointer to it if it exists,
 // and null otherwise.
@@ -272,12 +269,12 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
       Binding binding{fn_expr, std::vector(fn->args_.size(),
                                            std::pair<Type *, Expression *>(
                                                nullptr, nullptr))};
-      for (size_t i = 0; i < pos_.size(); ++i) {
-        binding.exprs_[i] = std::pair(nullptr, pos_[i].get());
+      for (size_t i = 0; i < args_.pos_.size(); ++i) {
+        binding.exprs_[i] = std::pair(nullptr, args_.pos_[i].get());
       }
 
       // Match the named arguments
-      for (const auto &name_and_expr : named_) {
+      for (const auto &name_and_expr : args_.named_) {
         auto iter = index_lookup.find(name_and_expr.first);
         if (iter == index_lookup.end()) {
           // Missing named argument so passing on to the next option. Perhaps it
@@ -290,12 +287,12 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
         }
       }
 
-      CallArgTypes call_arg_types;
-      call_arg_types.pos_.resize(pos_.size(), nullptr);
+      FnArgs<Type *> call_arg_types;
+      call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
       // TODO Do flat_map for real
       for (const auto & [ key, val ] : index_lookup) {
-        if (val < pos_.size()) { continue; }
-        call_arg_types.named_.emplace_back(key, nullptr);
+        if (val < args_.pos_.size()) { continue; }
+        call_arg_types.named_.emplace(key, nullptr);
       }
 
       for (size_t i = 0; i < binding.exprs_.size(); ++i) {
@@ -334,39 +331,14 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
   return std::move(table);
 }
 
-void DispatchTable::insert(CallArgTypes call_arg_types, Binding binding) {
+void DispatchTable::insert(FnArgs<Type *> call_arg_types, Binding binding) {
   u64 expanded_size = 1;
-  for (Type *pos : call_arg_types.pos_) {
-    if (pos->is<Variant>()) { expanded_size *= pos->as<Variant>().size(); }
-  }
-  for (const auto &named : call_arg_types.named_) {
-    if (named.second->is<Variant>()) {
-      expanded_size *= named.second->as<Variant>().size();
-    }
-  }
+  call_arg_types.Apply([&expanded_size](Type *t) {
+    if (t->is<Variant>()) { expanded_size *= t->as<Variant>().size(); }
+  });
 
   total_size_ += expanded_size;
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
-}
-
-bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
-  if (lhs.pos_.size() != rhs.pos_.size()) {
-    return lhs.pos_.size() < rhs.pos_.size();
-  }
-  if (lhs.named_.size() != rhs.named_.size()) {
-    return lhs.named_.size() < rhs.named_.size();
-  }
-  if (lhs.pos_ < rhs.pos_) { return true; }
-  if (lhs.pos_ > rhs.pos_) { return false; }
-
-  auto l_iter = lhs.named_.begin();
-  auto r_iter = rhs.named_.begin();
-  while (l_iter != lhs.named_.end() && *l_iter == *r_iter) {
-    ++l_iter;
-    ++r_iter;
-  }
-  if (l_iter == lhs.named_.end()) { return false; }
-  return *l_iter < *r_iter;
 }
 
 Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
@@ -802,16 +774,11 @@ void Call::Validate() {
   STARTING_CHECK;
 
   bool all_const = true;
-  for (auto &pos : pos_) {
-    pos->Validate();
-    if (pos->type == Err) { type = Err; }
-    all_const &= pos->lvalue == Assign::Const;
-  }
-  for (auto & [ name, val ] : named_) {
-    val->Validate();
-    if (val->type == Err) { type = Err; }
-    all_const &= val->lvalue == Assign::Const;
-  }
+  args_.Apply([&all_const, this](auto &arg) {
+    arg->Validate();
+    if (arg->type == Err) { this->type = Err; }
+    all_const &= arg->lvalue == Assign::Const;
+  });
 
   lvalue = all_const ? Assign::Const : Assign::RVal;
   if (type == Err) {
@@ -868,14 +835,11 @@ void Call::Validate() {
   }
 
   u64 expanded_size = 1;
-  for (const auto &arg : pos_) {
-    if (!arg->type->is<Variant>()) { continue; }
-    expanded_size *= arg->type->as<Variant>().size();
-  }
-  for (const auto &arg : named_) {
-    if (!arg.second->type->is<Variant>()) { continue; }
-    expanded_size *= arg.second->type->as<Variant>().size();
-  }
+  args_.Apply([&expanded_size](auto &arg) {
+    if (arg->type->template is<Variant>()) {
+      expanded_size *= arg->type->template as<Variant>().size();
+    }
+  });
 
   if (dispatch_table_.total_size_ != expanded_size) {
     LOG << "Failed to find a match for everything. ("

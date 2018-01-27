@@ -133,8 +133,7 @@ void Call::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;
   fn_->assign_scope(scope);
-  for (auto &num : pos_) { num->assign_scope(scope); }
-  for (auto & [ key, val ] : named_) { val->assign_scope(scope); }
+  args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
 }
 
 void ScopeNode::assign_scope(Scope *scope) {

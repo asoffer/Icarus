@@ -22,8 +22,8 @@ std::string ArrayLiteral::to_string(size_t n) const {
 std::string Call::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<Call " << TYPE_OR("") << ">\n" << fn_->to_string(n + 1);
-  for (const auto &pos : pos_) { ss << pos->to_string(n + 1); }
-  for (const auto &[key, val] : named_) {
+  for (const auto &pos : args_.pos_) { ss << pos->to_string(n + 1); }
+  for (const auto & [ key, val ] : args_.named_) {
     ss << tabs(n + 1) << key << " =>\n" << val->to_string(n + 2);
   }
   return ss.str();

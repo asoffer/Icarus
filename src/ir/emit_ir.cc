@@ -128,17 +128,16 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   auto landing_block = IR::Func::Current->AddBlock();
 
   std::unordered_map<Expression *, IR::Val *> expr_map;
-  std::vector<IR::Val> pos_vals;
-  pos_vals.reserve(pos_.size());
-  for (auto &expr : pos_) {
-    pos_vals.push_back(expr->type->is_big() ? PtrCallFix(expr->EmitIR(kind))
+  FnArgs<IR::Val> fn_args;
+  fn_args.pos_.reserve(args_.pos_.size());
+  for (auto &expr : args_.pos_) {
+    fn_args.pos_.push_back(expr->type->is_big() ? PtrCallFix(expr->EmitIR(kind))
                                             : expr->EmitIR(kind));
-    expr_map[expr.get()] = &pos_vals.back(); // Safe because of reserve.
+    expr_map[expr.get()] = &fn_args.pos_.back(); // Safe because of reserve.
   }
 
-  std::unordered_map<std::string, IR::Val> named_vals;
-  for (auto & [ name, expr ] : named_) {
-    auto[iter, success] = named_vals.emplace(
+  for (auto & [ name, expr ] : args_.named_) {
+    auto[iter, success] = fn_args.named_.emplace(
         name, expr->type->is_big() ? PtrCallFix(expr->EmitIR(kind))
                                    : expr->EmitIR(kind));
     expr_map[expr.get()] = &iter->second;
@@ -152,18 +151,18 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     auto next_binding = IR::Func::Current->AddBlock();
     // Generate code that attempts to match the types on each argument (only
     // check the ones at the call-site that could be variants).
-    for (size_t i = 0; i < pos_.size(); ++i) {
-      if (!pos_[i]->type->is<Variant>()) { continue; }
+    for (size_t i = 0; i < args_.pos_.size(); ++i) {
+      if (!args_.pos_[i]->type->is<Variant>()) { continue; }
       IR::Block::Current = IR::EarlyExitOn<false>(
-          next_binding, VariantMatch(pos_vals[i], call_arg_type.pos_[i]));
+          next_binding, VariantMatch(fn_args.pos_[i], call_arg_type.pos_[i]));
     }
 
-    for (auto & [ name, expr ] : named_) {
+    for (auto & [ name, expr ] : args_.named_) {
       auto iter = call_arg_type.find(name);
       if (iter == call_arg_type.named_.end()) { continue; }
       if (!expr->type->is<Variant>()) { continue; }
       IR::Block::Current = IR::EarlyExitOn<false>(
-          next_binding, VariantMatch(named_vals[iter->first], iter->second));
+          next_binding, VariantMatch(fn_args.named_[iter->first], iter->second));
     }
 
     // After the last check, if you pass, you should dispatch

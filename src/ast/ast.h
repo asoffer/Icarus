@@ -16,6 +16,7 @@
 #include "../scope.h"
 #include "../type/type.h"
 #include "dispatch.h"
+#include "fn_args.h"
 #include "operators.h"
 
 enum class Assign : char { Unset, Const, LVal, RVal };
@@ -45,7 +46,7 @@ struct StageRange {
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
-  virtual void Validate() override;                                        \
+  virtual void Validate() override;                                            \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -57,7 +58,7 @@ struct StageRange {
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
-  virtual void Validate() override;                                        \
+  virtual void Validate() override;                                            \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -74,7 +75,7 @@ struct Node : public base::Cast<Node> {
   virtual void
   contextualize(const Node *correspondant,
                 const std::unordered_map<const Expression *, IR::Val> &) = 0;
-  virtual Node *Clone() const = 0;
+  virtual Node *Clone() const                                            = 0;
 
   std::string to_string() const { return to_string(0); }
 
@@ -102,9 +103,9 @@ struct Node : public base::Cast<Node> {
 struct Expression : public Node {
   Expression(const TextSpan &span = TextSpan()) : Node(span) {}
   virtual ~Expression(){};
-  virtual std::string to_string(size_t n) const = 0;
-  virtual void assign_scope(Scope *scope)       = 0;
-  virtual void Validate()                   = 0;
+  virtual std::string to_string(size_t n) const                         = 0;
+  virtual void assign_scope(Scope *scope)                               = 0;
+  virtual void Validate()                                               = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   std::string to_string() const { return to_string(0); }
 
@@ -220,21 +221,12 @@ struct Call : public Expression {
   IR::Val EmitIR(IR::Cmd::Kind) override;
 
   base::owned_ptr<Expression> fn_;
-  std::vector<base::owned_ptr<Expression>> pos_;
-
-  // TODO implement flat map for real
-  std::vector<std::pair<std::string, base::owned_ptr<Expression>>> named_;
+  FnArgs<base::owned_ptr<Expression>> args_;
 
   // Filled in after type verification
   DispatchTable dispatch_table_;
   std::optional<DispatchTable>
   ComputeDispatchTable(std::vector<Expression *> fn_options);
-};
-
-struct ArgumentMetaData {
-  Type *type;
-  std::string name;
-  bool has_default;
 };
 
 struct Declaration : public Expression {
@@ -402,9 +394,7 @@ struct FunctionLiteral : public Expression {
   base::owned_ptr<Statements> statements;
 
   IR::Func *ir_func = nullptr;
-
   std::unordered_set<Declaration *> captures;
-
   std::unordered_map<Type *, Declaration *> cache;
 };
 
