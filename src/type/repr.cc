@@ -45,7 +45,6 @@ void Primitive::EmitRepr(IR::Val val) {
 
   case PrimType::Bool:
   case PrimType::Int:
-  case PrimType::Uint:
   case PrimType::Real:
   case PrimType::Type:
   case PrimType::String:
@@ -91,13 +90,13 @@ void Array::EmitRepr(IR::Val val) {
       IR::Print(IR::Val::Char('['));
 
       auto length_var = fixed_length
-                            ? IR::Val::Uint(len)
+                            ? IR::Val::Int(static_cast<i32>(len))
                             : IR::Load(IR::ArrayLength(repr_func->Argument(0)));
-      IR::CondJump(IR::Eq(length_var, IR::Val::Uint(0)), exit_block,
+      IR::CondJump(IR::Eq(length_var, IR::Val::Int(0)), exit_block,
                    init_block);
 
       IR::Block::Current = init_block;
-      auto ptr           = IR::Index(repr_func->Argument(0), IR::Val::Uint(0));
+      auto ptr           = IR::Index(repr_func->Argument(0), IR::Val::Int(0));
       auto end_ptr       = IR::PtrIncr(ptr, length_var);
 
       auto loop_phi  = repr_func->AddBlock();
@@ -110,7 +109,7 @@ void Array::EmitRepr(IR::Val val) {
       IR::Block::Current = loop_phi;
       auto phi           = IR::Phi(Ptr(data_type));
       auto phi_reg       = IR::Func::Current->Command(phi).reg();
-      auto elem_ptr      = IR::PtrIncr(phi_reg, IR::Val::Uint(1));
+      auto elem_ptr      = IR::PtrIncr(phi_reg, IR::Val::Int(1));
       IR::CondJump(IR::Eq(elem_ptr, end_ptr), exit_block, loop_body);
 
       IR::Block::Current = loop_body;

@@ -23,11 +23,11 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
       IR::Block::Current = fn->entry();
 
       auto lhs_len = lhs_type->fixed_length
-                         ? IR::Val::Uint(lhs_type->len)
+                         ? IR::Val::Int(static_cast<i32>(lhs_type->len))
                          : IR::Load(IR::ArrayLength(fn->Argument(0)));
 
       auto rhs_len = rhs_type->fixed_length
-                         ? IR::Val::Uint(rhs_type->len)
+                         ? IR::Val::Int(static_cast<i32>(rhs_type->len))
                          : IR::Load(IR::ArrayLength(fn->Argument(1)));
 
       auto len_cmp = IR::Eq(lhs_len, rhs_len);
@@ -50,8 +50,8 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
       IR::ReturnJump();
 
       IR::Block::Current = equal_len_block;
-      auto lhs_start     = IR::Index(fn->Argument(0), IR::Val::Uint(0));
-      auto rhs_start     = IR::Index(fn->Argument(1), IR::Val::Uint(0));
+      auto lhs_start     = IR::Index(fn->Argument(0), IR::Val::Int(0));
+      auto rhs_start     = IR::Index(fn->Argument(1), IR::Val::Int(0));
       auto lhs_end       = IR::PtrIncr(lhs_start, lhs_len);
       IR::UncondJump(phi_block);
 
@@ -68,8 +68,8 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
                    incr_block, false_block);
 
       IR::Block::Current = incr_block;
-      auto lhs_incr      = IR::PtrIncr(lhs_phi_reg, IR::Val::Uint(1));
-      auto rhs_incr      = IR::PtrIncr(rhs_phi_reg, IR::Val::Uint(1));
+      auto lhs_incr      = IR::PtrIncr(lhs_phi_reg, IR::Val::Int(1));
+      auto rhs_incr      = IR::PtrIncr(rhs_phi_reg, IR::Val::Int(1));
       IR::UncondJump(phi_block);
 
       fn->SetArgs(lhs_phi, {IR::Val::Block(equal_len_block), lhs_start,

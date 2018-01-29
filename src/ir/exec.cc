@@ -194,26 +194,12 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     if (resolved[1].type == Int) {
       if (std::get<Type*>(resolved[0].value) == Int) {
         return resolved[1];
-      } else if (std::get<Type*>(resolved[0].value) == Uint) {
-        return IR::Val::Uint(
-            static_cast<u64>(std::get<i32>(resolved[1].value)));
       } else if (std::get<Type *>(resolved[0].value) == Real) {
         return IR::Val::Real(
             static_cast<double>(std::get<i32>(resolved[1].value)));
       } else {
         call_stack.top().fn_->dump();
         NOT_YET("(", resolved[0], ", ", resolved[1], ")");
-      }
-    } else if (resolved[1].type == Uint) {
-      if (std::get<Type *>(resolved[0].value) == Uint) {
-        return resolved[1];
-      } else if (std::get<Type*>(resolved[0].value) == Int) {
-        return IR::Val::Uint(static_cast<i32>(std::get<u64>(resolved[1].value)));
-      } else if (std::get<Type*>(resolved[0].value) == Real) {
-        return IR::Val::Real(
-            static_cast<double>(std::get<u64>(resolved[1].value)));
-      } else {
-        NOT_YET();
       }
     } else if (Type *ptr_type = std::get<Type *>(resolved[0].value);
                ptr_type->is<Pointer>() && resolved[1].type->is<Pointer>()) {
@@ -326,7 +312,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       LOAD_FROM_HEAP(Bool, Bool, bool);
       LOAD_FROM_HEAP(Char, Char, char);
       LOAD_FROM_HEAP(Int, Int, i32);
-      LOAD_FROM_HEAP(Uint, Uint, u64);
       LOAD_FROM_HEAP(Real, Real, double);
       LOAD_FROM_HEAP(Code, CodeBlock, base::owned_ptr<AST::CodeBlock>);
       LOAD_FROM_HEAP(Type_, Type, ::Type *);
@@ -349,7 +334,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       LOAD_FROM_STACK(Bool, Bool, bool);
       LOAD_FROM_STACK(Char, Char, char);
       LOAD_FROM_STACK(Int, Int, i32);
-      LOAD_FROM_STACK(Uint, Uint, u64);
       LOAD_FROM_STACK(Real, Real, double);
       LOAD_FROM_STACK(Code, CodeBlock, base::owned_ptr<AST::CodeBlock>);
       LOAD_FROM_STACK(Type_, Type, ::Type *);
@@ -392,8 +376,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         stack_.Store(std::get<char>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type == Int) {
         stack_.Store(std::get<i32>(resolved[0].value), addr.as_stack);
-      } else if (resolved[0].type == Uint) {
-        stack_.Store(std::get<u64>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type == Real) {
         stack_.Store(std::get<double>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type->is<Pointer>()) {
@@ -418,8 +400,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         *static_cast<char *>(addr.as_heap) = std::get<char>(resolved[0].value);
       } else if (resolved[0].type == Int) {
         *static_cast<i32 *>(addr.as_heap) = std::get<i32>(resolved[0].value);
-      } else if (resolved[0].type == Uint) {
-        *static_cast<u64 *>(addr.as_heap) = std::get<u64>(resolved[0].value);
       } else if (resolved[0].type == Real) {
         *static_cast<double *>(addr.as_heap) =
             std::get<double>(resolved[0].value);
@@ -544,7 +524,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     free(std::get<Addr>(resolved[0].value).as_heap);
     return Val::None();
   case Op::ArrayLength:
-    return IR::Val::Addr(std::get<Addr>(resolved[0].value), Uint);
+    return IR::Val::Addr(std::get<Addr>(resolved[0].value), Int);
   case Op::ArrayData:
     switch (std::get<Addr>(resolved[0].value).kind) {
     case Addr::Kind::Null: UNREACHABLE();
@@ -552,14 +532,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Addr::Kind::Stack:
       return IR::Val::StackAddr(
           std::get<Addr>(resolved[0].value).as_stack +
-              Architecture::InterprettingMachine().bytes(Uint),
+              Architecture::InterprettingMachine().bytes(Int),
           cmd.type->as<Pointer>().pointee);
 
     case Addr::Kind::Heap:
       return IR::Val::HeapAddr(
           static_cast<void *>(
               static_cast<u8 *>(std::get<Addr>(resolved[0].value).as_heap) +
-              Architecture::InterprettingMachine().bytes(Uint)),
+              Architecture::InterprettingMachine().bytes(Int)),
           cmd.type->as<Pointer>().pointee);
     }
     break;

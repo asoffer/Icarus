@@ -30,9 +30,9 @@ void Array::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
       auto val           = fn->Argument(0);
       auto var           = fn->Argument(1);
       IR::Val len        = from_array_type->fixed_length
-                        ? IR::Val::Uint(from_array_type->len)
+                        ? IR::Val::Int(static_cast<i32>(from_array_type->len))
                         : IR::Load(IR::ArrayLength(val));
-      IR::Val from_ptr     = IR::Index(val, IR::Val::Uint(0));
+      IR::Val from_ptr     = IR::Index(val, IR::Val::Int(0));
       IR::Val from_end_ptr = IR::PtrIncr(from_ptr, len);
 
       if (!fixed_length) {
@@ -45,7 +45,7 @@ void Array::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
         IR::Store(ptr, IR::ArrayData(var));
       }
 
-      IR::Val to_ptr = IR::Index(var, IR::Val::Uint(0));
+      IR::Val to_ptr = IR::Index(var, IR::Val::Int(0));
 
       auto exit_block = IR::Func::Current->AddBlock();
       auto init_block = IR::Block::Current;
@@ -70,11 +70,11 @@ void Array::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
       IR::Func::Current->SetArgs(
           from_phi, {IR::Val::Block(init_block), from_ptr,
                      IR::Val::Block(IR::Block::Current),
-                     IR::PtrIncr(from_phi_reg, IR::Val::Uint(1ul))});
+                     IR::PtrIncr(from_phi_reg, IR::Val::Int(1ul))});
       IR::Func::Current->SetArgs(to_phi,
                                  {IR::Val::Block(init_block), to_ptr,
                                   IR::Val::Block(IR::Block::Current),
-                                  IR::PtrIncr(to_phi_reg, IR::Val::Uint(1ul))});
+                                  IR::PtrIncr(to_phi_reg, IR::Val::Int(1ul))});
 
       IR::Block::Current = exit_block;
       IR::ReturnJump();

@@ -19,8 +19,8 @@ void Variant::EmitInit(IR::Val) {
 
 void Array::EmitInit(IR::Val id_val) {
   if (!fixed_length) {
-    IR::Store(IR::Val::Uint(0), IR::ArrayLength(id_val));
-    IR::Store(IR::Malloc(data_type, IR::Val::Uint(0)), IR::ArrayData(id_val));
+    IR::Store(IR::Val::Int(0), IR::ArrayLength(id_val));
+    IR::Store(IR::Malloc(data_type, IR::Val::Int(0)), IR::ArrayData(id_val));
     return;
   }
 
@@ -39,8 +39,8 @@ void Array::EmitInit(IR::Val id_val) {
       auto loop_body  = IR::Func::Current->AddBlock();
       auto exit_block = IR::Func::Current->AddBlock();
 
-      auto ptr        = IR::Index(init_func->Argument(0), IR::Val::Uint(0));
-      auto length_var = IR::Val::Uint(len);
+      auto ptr        = IR::Index(init_func->Argument(0), IR::Val::Int(0));
+      auto length_var = IR::Val::Int(static_cast<i32>(len));
       auto end_ptr    = IR::PtrIncr(ptr, length_var);
       IR::UncondJump(loop_phi);
 
@@ -51,7 +51,7 @@ void Array::EmitInit(IR::Val id_val) {
 
       IR::Block::Current = loop_body;
       data_type->EmitInit(phi_reg);
-      auto incr = IR::PtrIncr(phi_reg, IR::Val::Uint(1));
+      auto incr = IR::PtrIncr(phi_reg, IR::Val::Int(1));
       IR::UncondJump(loop_phi);
 
       IR::Block::Current = exit_block;
@@ -134,7 +134,7 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
       auto exit_block    = IR::Func::Current->AddBlock();
 
       auto from_len = from_type->fixed_length
-                          ? IR::Val::Uint(from_type->len)
+                          ? IR::Val::Int(static_cast<i32>(from_type->len))
                           : IR::Load(IR::ArrayLength(from_arg));
 
       if (!to_type->fixed_length) {
@@ -147,8 +147,8 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
                   IR::ArrayData(to_arg));
       }
 
-      auto from_start = IR::Index(from_arg, IR::Val::Uint(0));
-      auto to_start   = IR::Index(to_arg, IR::Val::Uint(0));
+      auto from_start = IR::Index(from_arg, IR::Val::Int(0));
+      auto to_start   = IR::Index(to_arg, IR::Val::Int(0));
       auto from_end   = IR::PtrIncr(from_start, from_len);
       IR::UncondJump(phi_block);
 
@@ -162,8 +162,8 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
       IR::Block::Current = body_block;
       InitFn(from_type->data_type, to_type->data_type, PtrCallFix(from_phi_reg),
              to_phi_reg);
-      auto from_incr = IR::PtrIncr(from_phi_reg, IR::Val::Uint(1));
-      auto to_incr   = IR::PtrIncr(to_phi_reg, IR::Val::Uint(1));
+      auto from_incr = IR::PtrIncr(from_phi_reg, IR::Val::Int(1));
+      auto to_incr   = IR::PtrIncr(to_phi_reg, IR::Val::Int(1));
       IR::UncondJump(phi_block);
 
       fn->SetArgs(from_phi, {IR::Val::Block(fn->entry()), from_start,
@@ -223,8 +223,8 @@ void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
       IR::Store(IR::Load(IR::ArrayData(from_val)), IR::ArrayData(to_var));
       // TODO if this move is to be destructive, this assignment to array
       // length is not necessary.
-      IR::Store(IR::Val::Uint(0), IR::ArrayLength(from_val));
-      IR::Store(IR::Malloc(from_array_type->data_type, IR::Val::Uint(0)),
+      IR::Store(IR::Val::Int(0), IR::ArrayLength(from_val));
+      IR::Store(IR::Malloc(from_array_type->data_type, IR::Val::Int(0)),
                 IR::ArrayData(from_val));
     }
   } else if (to_type->is<Struct>()) {

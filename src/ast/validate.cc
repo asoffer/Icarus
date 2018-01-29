@@ -381,9 +381,7 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
       return false;
     }
 
-    if (lhs_type == Int || lhs_type == Uint || lhs_type == Real) {
-      return true;
-    }
+    if (lhs_type == Int || lhs_type == Real) { return true; }
 
     if (lhs_type == Code || lhs_type == Void) { return false; }
     // TODO NullPtr, String types?
@@ -565,7 +563,7 @@ void Binop::Validate() {
   case Operator::Index: {
     type = Err;
     if (lhs->type == String) {
-      if (rhs->type == Int || rhs->type == Uint) {
+      if (rhs->type == Int) {
         type = Char;
         break;
       } else {
@@ -588,7 +586,7 @@ void Binop::Validate() {
       type = lhs->type->as<Array>().data_type;
 
       // TODO allow slice indexing
-      if (rhs->type == Int || rhs->type == Uint) { break; }
+      if (rhs->type == Int) { break; }
       ErrorLog::NonIntegralArrayIndex(span, rhs->type);
       limit_to(StageRange::NoEmitIR());
       return;
@@ -597,9 +595,6 @@ void Binop::Validate() {
   case Operator::Dots: {
     if (lhs->type == Int && rhs->type == Int) {
       type = Range(Int);
-
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      type = Range(Uint);
 
     } else if (lhs->type == Char && rhs->type == Char) {
       type = Range(Char);
@@ -656,7 +651,6 @@ void Binop::Validate() {
 #define CASE(OpName, op_name, symbol, ret_type)                                \
   case Operator::OpName: {                                                     \
     if ((lhs->type == Int && rhs->type == Int) ||                              \
-        (lhs->type == Uint && rhs->type == Uint) ||                            \
         (lhs->type == Real && rhs->type == Real) ||                            \
         (lhs->type == Code && rhs->type == Code)) {                            \
       /* TODO Code should only be valid for Add, not Sub, etc */               \
@@ -713,7 +707,6 @@ void Binop::Validate() {
   // Mul is done separately because of the function composition
   case Operator::Mul: {
     if ((lhs->type == Int && rhs->type == Int) ||
-        (lhs->type == Uint && rhs->type == Uint) ||
         (lhs->type == Real && rhs->type == Real)) {
       type = lhs->type;
 
@@ -1165,13 +1158,7 @@ void Unop::Validate() {
     }
   } break;
   case Operator::Sub: {
-    if (operand->type == Uint) {
-      ErrorLog::UnopTypeFail("Attempting to negate an unsigned integer (uint).",
-                             this);
-      type = Int;
-      limit_to(StageRange::NoEmitIR());
-
-    } else if (operand->type == Int || operand->type == Real) {
+    if (operand->type == Int || operand->type == Real) {
       type = operand->type;
 
     } else if (operand->type->is<Struct>()) {
@@ -1202,8 +1189,7 @@ void Unop::Validate() {
     }
   } break;
   case Operator::Dots: {
-    if (operand->type == Uint || operand->type == Int ||
-        operand->type == Char) {
+    if (operand->type == Int || operand->type == Char) {
       type = Range(operand->type);
     } else {
       ErrorLog::InvalidRangeType(span, type);
@@ -1255,7 +1241,7 @@ void Access::Validate() {
   auto base_type = DereferenceAll(operand->type);
   if (base_type->is<Array>()) {
     if (member_name == "size") {
-      type = Uint;
+      type = Int;
     } else {
       ErrorLog::MissingMember(span, member_name, base_type);
       type = Err;
@@ -1436,8 +1422,7 @@ void ArrayType::Validate() {
     lvalue = Assign::RVal;
   }
 
-  // TODO change this to just uint
-  if (length->type != Int && length->type != Uint) {
+  if (length->type != Int) {
     ErrorLog::ArrayIndexType(span);
     limit_to(StageRange::NoEmitIR());
   }

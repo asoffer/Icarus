@@ -41,7 +41,7 @@ IR::Val ErrorFunc() {
 
 IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
-    auto fn = new IR::Func(Func(Uint, Char), {{"", nullptr}});
+    auto fn = new IR::Func(Func(Int, Char), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
@@ -55,7 +55,7 @@ IR::Val AsciiFunc() {
 
 IR::Val OrdFunc() {
   static IR::Func *ord_func_ = []() {
-    auto fn = new IR::Func(Func(Char, Uint), {{"", nullptr}});
+    auto fn = new IR::Func(Func(Char, Int), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));
@@ -272,7 +272,7 @@ IR::Val AST::ArrayLiteral::EmitIR(IR::Cmd::Kind kind) {
   auto array_val  = IR::Alloca(type);
   auto *data_type = type->as<Array>().data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
-    auto elem_i = IR::Index(array_val, IR::Val::Uint(i));
+    auto elem_i = IR::Index(array_val, IR::Val::Int(static_cast<i32>(i)));
     Type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(kind), elem_i);
   }
   return array_val;
@@ -304,7 +304,7 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
         }
       } else if (decl->container->type->is<Array>()) {
         init_vals.push_back(
-            IR::Index(decl->container->EmitLVal(kind), IR::Val::Uint(0)));
+            IR::Index(decl->container->EmitLVal(kind), IR::Val::Int(0)));
 
       } else if (decl->container->type == Type_) {
         // TODO this conditional check on the line above is wrong
@@ -356,15 +356,13 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
       auto phi_reg = IR::Func::Current->Command(iter).reg();
       if (phi_reg.type == Int) {
         incr_vals.push_back(IR::Add(phi_reg, IR::Val::Int(1)));
-      } else if (phi_reg.type == Uint) {
-        incr_vals.push_back(IR::Add(phi_reg, IR::Val::Uint(1)));
       } else if (phi_reg.type == Char) {
         incr_vals.push_back(IR::Add(phi_reg, IR::Val::Char(1)));
       } else if (phi_reg.type->is<Enum>()) {
         incr_vals.push_back(
             IR::Add(phi_reg, IR::Val::Enum(&phi_reg.type->as<Enum>(), 1)));
       } else if (phi_reg.type->is<Pointer>()) {
-        incr_vals.push_back(IR::PtrIncr(phi_reg, IR::Val::Uint(1)));
+        incr_vals.push_back(IR::PtrIncr(phi_reg, IR::Val::Int(1)));
       } else {
         NOT_YET();
       }
@@ -400,8 +398,9 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
         }
       } else if (decl->container->type->is<Array>()) {
         auto *array_type = &decl->container->type->as<Array>();
-        cmp = IR::Ne(reg, IR::Index(decl->container->EmitLVal(kind),
-                                    IR::Val::Uint(array_type->len)));
+        cmp              = IR::Ne(
+            reg, IR::Index(decl->container->EmitLVal(kind),
+                           IR::Val::Int(static_cast<i32>(array_type->len))));
       } else if (decl->container->type == Type_) {
         IR::Val container_val = Evaluate(decl->container.get());
         if (::Type *t = std::get<::Type *>(container_val.value);

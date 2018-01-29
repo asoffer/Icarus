@@ -12,8 +12,8 @@ struct SliceType;
 struct Scope_Type;
 struct Variant;
 
-extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Uint,
-    *Void, *NullPtr, *String, *EmptyArray;
+extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Void,
+    *NullPtr, *String, *EmptyArray;
 struct Scope;
 
 #include "../ast/ast.h"

@@ -46,7 +46,8 @@ Val Field(Val v, size_t n) {
   ASSERT_TYPE(Pointer, v.type);
   Type *result_type =
       Ptr(v.type->as<Pointer>().pointee->as<Struct>().field_type AT(n));
-  Cmd cmd(result_type, Op::Field, std::vector{std::move(v), Val::Uint(n)});
+  Cmd cmd(result_type, Op::Field,
+          std::vector{std::move(v), Val::Int(static_cast<i32>(n))});
   auto reg = cmd.reg();
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
   return reg;
@@ -74,13 +75,13 @@ Val Field(Val v, size_t n) {
   return cmd.reg()
 
 Val Malloc(Type *t, Val v) {
-  ASSERT_EQ(v.type, ::Uint);
+  ASSERT_EQ(v.type, ::Int);
   MAKE_AND_RETURN(Ptr(t), Op::Malloc);
 }
 
 Val Extend(Val v) {
   if (char *c = std::get_if<char>(&v.value)) {
-    return Val::Uint(static_cast<u64>(*c));
+    return Val::Int(static_cast<i32>(*c));
   }
   MAKE_AND_RETURN(Char, Op::Extend);
 }
@@ -133,7 +134,7 @@ Val ArrayLength(Val v) {
   ASSERT_TYPE(::Array, ptee);
   ASSERT(!ptee->as<::Array>().fixed_length,
          "Pointee type is " + ptee->to_string());
-  MAKE_AND_RETURN(Ptr(Uint), Op::ArrayLength);
+  MAKE_AND_RETURN(Ptr(Int), Op::ArrayLength);
 }
 
 Val ArrayData(Val v) {
@@ -161,7 +162,7 @@ void Store(Val v1, Val v2) {
 
 Val PtrIncr(Val v1, Val v2) {
   ASSERT_TYPE(Pointer, v1.type);
-  ASSERT_EQ(v2.type, ::Uint);
+  ASSERT_EQ(v2.type, ::Int);
   MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
 
@@ -211,7 +212,6 @@ Val And(Val v1, Val v2) {
 
 Val Add(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::plus<i32>{}, Int);
-  CONSTANT_PROPOGATION(u64, std::plus<u64>{}, Uint);
   CONSTANT_PROPOGATION(double, std::plus<double>{}, Real);
   CONSTANT_PROPOGATION(char, std::plus<char>{}, Char);
 
@@ -236,7 +236,6 @@ Val Add(Val v1, Val v2) {
 
 Val Sub(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::minus<i32>{}, Int);
-  CONSTANT_PROPOGATION(u64, std::minus<u64>{}, Uint);
   CONSTANT_PROPOGATION(double, std::minus<double>{}, Real);
   CONSTANT_PROPOGATION(char, std::minus<char>{}, Char);
   MAKE_AND_RETURN2(v1.type, Op::Sub);
@@ -244,21 +243,18 @@ Val Sub(Val v1, Val v2) {
 
 Val Mul(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::multiplies<i32>{}, Int);
-  CONSTANT_PROPOGATION(u64, std::multiplies<u64>{}, Uint);
   CONSTANT_PROPOGATION(double, std::multiplies<double>{}, Real);
   MAKE_AND_RETURN2(v1.type, Op::Mul);
 }
 
 Val Div(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::divides<i32>{}, Int);
-  CONSTANT_PROPOGATION(u64, std::divides<u64>{}, Uint);
   CONSTANT_PROPOGATION(double, std::divides<double>{}, Real);
   MAKE_AND_RETURN2(v1.type, Op::Div);
 }
 
 Val Mod(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::modulus<i32>{}, Int);
-  CONSTANT_PROPOGATION(u64, std::modulus<u64>{}, Uint);
   CONSTANT_PROPOGATION(double, std::fmod, Real);
   MAKE_AND_RETURN2(v1.type, Op::Mod);
 }
@@ -275,7 +271,7 @@ Val Variant(std::vector<Val> args) {
 }
 
 Val Array(Val v1, Val v2) {
-  ASSERT(v1.type == nullptr || v1.type == Uint || v1.type == Int, "");
+  ASSERT(v1.type == nullptr || v1.type == Int, "");
   ASSERT_EQ(v2.type, Type_);
 
   if (Type **t = std::get_if<Type *>(&v2.value)) {
@@ -288,13 +284,12 @@ Val Array(Val v1, Val v2) {
     if (v1 == Val::None()) { return Val::Type(::Arr(*t)); }
   }
 
-  // TODO decide if Int vs Uint is allowed
   MAKE_AND_RETURN2(Type_, Op::Array);
 }
 
 Val Index(Val v1, Val v2) {
   ASSERT_TYPE(Pointer, v1.type);
-  ASSERT_EQ(v2.type, ::Uint);
+  ASSERT_EQ(v2.type, ::Int);
   auto *array_type = &v1.type->as<Pointer>().pointee->as<::Array>();
   IR::Val ptr = array_type->fixed_length ? v1 : Load(ArrayData(v1));
   ptr.type    = Ptr(array_type->data_type);

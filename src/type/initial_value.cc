@@ -16,7 +16,6 @@ IR::Val Primitive::EmitInitialValue() const {
   case PrimType::Char: return IR::Val::Char('\0');
   case PrimType::Int: return IR::Val::Int(0l);
   case PrimType::Real: return IR::Val::Real(0.0);
-  case PrimType::Uint: return IR::Val::Uint(0ul);
   case PrimType::String: return IR::Val::StrLit("");
   default: UNREACHABLE();
   }

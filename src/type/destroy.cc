@@ -28,9 +28,9 @@ void Array::EmitDestroy(IR::Val id_val) {
       auto loop_body  = IR::Func::Current->AddBlock();
       auto exit_block = IR::Func::Current->AddBlock();
 
-      IR::Val ptr = IR::Index(arg, IR::Val::Uint(0));
+      IR::Val ptr = IR::Index(arg, IR::Val::Int(0));
       auto end_ptr =
-          IR::PtrIncr(ptr, fixed_length ? IR::Val::Uint(len)
+          IR::PtrIncr(ptr, fixed_length ? IR::Val::Int(static_cast<i32>(len))
                                         : IR::Load(IR::ArrayLength(arg)));
       IR::UncondJump(loop_phi);
 
@@ -45,7 +45,7 @@ void Array::EmitDestroy(IR::Val id_val) {
 
       destroy_func->SetArgs(phi, {IR::Val::Block(destroy_func->entry()), ptr,
                                   IR::Val::Block(loop_body),
-                                  IR::PtrIncr(phi_reg, IR::Val::Uint(1))});
+                                  IR::PtrIncr(phi_reg, IR::Val::Int(1))});
 
       IR::Block::Current = exit_block;
       if (!fixed_length) { IR::Free(IR::Load(IR::ArrayData(arg))); }

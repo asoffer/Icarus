@@ -5,7 +5,7 @@
 IR::Val Architecture::ComputeArrayLength(const IR::Val &len,
                                          const Type *t) const {
   auto space_in_array = MoveForwardToAlignment(t, bytes(t));
-  return IR::Mul(len, IR::Val::Uint(space_in_array));
+  return IR::Mul(len, IR::Val::Int(static_cast<i32>(space_in_array)));
 }
 
 size_t Architecture::alignment(const Type *t) const {
@@ -18,7 +18,6 @@ size_t Architecture::alignment(const Type *t) const {
     case PrimType::Bool:
     case PrimType::Char: return 1;
     case PrimType::Int:
-    case PrimType::Uint:
     case PrimType::Real:
     case PrimType::Type:
     case PrimType::NullPtr:
@@ -67,7 +66,6 @@ size_t Architecture::bytes(const Type *t) const {
     case PrimType::Bool:
     case PrimType::Char: return 1;
     case PrimType::Int:
-    case PrimType::Uint:
     case PrimType::Real:
     case PrimType::Type:
     case PrimType::NullPtr:

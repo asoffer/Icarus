@@ -13,7 +13,7 @@ struct Enum;
 struct Type;
 struct Pointer;
 
-extern Type *Bool, *Char, *Real, *Int, *Uint, *Type_, *Void, *String;
+extern Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String;
 
 namespace AST {
 struct CodeBlock;
@@ -91,7 +91,6 @@ struct Val {
   static Val Char(char c) { return Val(::Char, c); }
   static Val Real(double r) { return Val(::Real, r); }
   static Val Int(i32 n) { return Val(::Int, n); }
-  static Val Uint(u64 n) { return Val(::Uint, n); }
   static Val Enum(const ::Enum *enum_type, size_t integral_val);
   static Val Type(::Type *t) { return Val(::Type_, t); }
   static Val CodeBlock(base::owned_ptr<AST::CodeBlock> block);
