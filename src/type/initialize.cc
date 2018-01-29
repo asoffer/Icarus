@@ -30,7 +30,7 @@ void Array::EmitInit(IR::Val id_val) {
     IR::Func::All.push_back(
         std::make_unique<IR::Func>(Func(Ptr(this), Void), std::move(args)));
     init_func       = IR::Func::All.back().get();
-    init_func->name = "init." + Mangle(this);
+    init_func->name = "init(" + this->to_string() + ")";
 
     CURRENT_FUNC(init_func) {
       IR::Block::Current = init_func->entry();
@@ -79,7 +79,7 @@ void Struct::EmitInit(IR::Val id_val) {
         std::make_unique<IR::Func>(Func(Ptr(this), Void), std::move(args)));
 
     init_func       = IR::Func::All.back().get();
-    init_func->name = "init." + Mangle(this);
+    init_func->name = "init(" + this->to_string() + ")";
 
     CURRENT_FUNC(init_func) {
       IR::Block::Current = init_func->entry();

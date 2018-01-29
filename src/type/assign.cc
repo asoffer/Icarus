@@ -21,8 +21,9 @@ void Array::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}});
     IR::Func::All.push_back(std::move(assign_func));
-    assign_func->name = "assign." + Mangle(from_type) + Mangle(this);
-    fn                = assign_func.get();
+    assign_func->name =
+        "assign(" + from_type->to_string() + ", " + this->to_string() + ")";
+    fn = assign_func.get();
 
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
@@ -108,7 +109,8 @@ void Struct::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}}));
     assign_func       = IR::Func::All.back().get();
-    assign_func->name = "assign." + Mangle(this);
+    assign_func->name =
+        "assign(" + from_type->to_string() + ", " + this->to_string() + ")";
 
     CURRENT_FUNC(assign_func) {
       IR::Block::Current = assign_func->entry();

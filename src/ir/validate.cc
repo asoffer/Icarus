@@ -43,7 +43,8 @@ struct PropDB {
     for (size_t i = 0; i < entry_block.cmds_.size(); ++i) {
       const auto& cmd = entry_block.cmds_[i];
       if (cmd.type == nullptr || cmd.type == Void) { continue; }
-      MarkReferencesStale(entry_block, CmdIndex{0, static_cast<i32>(i)});
+      MarkReferencesStale(entry_block,
+                          CmdIndex{BlockIndex{0}, static_cast<i32>(i)});
     }
   }
 
@@ -128,8 +129,9 @@ struct PropDB {
     // TODO clean up stales still referencing this blocks.
     auto &reach_set = views_[&view].incoming_[&to];
     reach_set.erase(&from);
-    CmdIndex last_cmd_index{static_cast<i32>(&to - fn_->blocks_.data()),
-                            static_cast<i32>(to.cmds_.size() - 1)};
+    CmdIndex last_cmd_index{
+        BlockIndex{static_cast<i32>(&to - fn_->blocks_.data())},
+        static_cast<i32>(to.cmds_.size() - 1)};
     const auto &last_cmd = to.cmds_.back();
     if (reach_set.empty()) {
       views_[&view].unreachable_.insert(&to);
@@ -292,8 +294,9 @@ PropDB PropDB::Make(const Func *fn, std::vector<PropertySet> args,
   auto &view              = db.views_[&entry_block];
   for (i32 i = 0; i < static_cast<i32>(args.size()); ++i) {
     view.props_[Register(i)] = std::move(args[i]);
-    db.MarkReferencesStale(entry_block,
-                           CmdIndex{0, i - static_cast<i32>(args.size())});
+    db.MarkReferencesStale(
+        entry_block,
+        CmdIndex{BlockIndex{0}, i - static_cast<i32>(args.size())});
   }
 
   for (i32 i = 0; i < static_cast<i32>(fn->blocks_.size()); ++i) {

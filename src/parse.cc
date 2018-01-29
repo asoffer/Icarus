@@ -224,7 +224,7 @@ base::owned_ptr<Node> BuildAccess(std::vector<base::owned_ptr<Node>> nodes) {
   access->operand = base::move<Expression>(nodes[0]);
 
   if (access->operand->is<Declaration>()) {
-    ErrorLog::LHSDecl(access->operand->span);
+    ErrorLog::DeclNotAllowed(access->operand->span);
   }
 
   if (!nodes[2]->is<Identifier>()) {
@@ -272,7 +272,9 @@ base::owned_ptr<Node> BuildCall(std::vector<base::owned_ptr<Node>> nodes) {
   }
   call->precedence = Language::precedence(Language::Operator::Call);
 
-  if (call->fn_->is<Declaration>()) { ErrorLog::LHSDecl(call->fn_->span); }
+  if (call->fn_->is<Declaration>()) {
+    ErrorLog::DeclNotAllowed(call->fn_->span);
+  }
   return call;
 }
 
@@ -291,11 +293,12 @@ BuildIndexOperator(std::vector<base::owned_ptr<Node>> nodes) {
   binop->op         = Language::Operator::Index;
   binop->precedence = Language::precedence(binop->op);
 
-  if (binop->lhs->is<Declaration>()) { ErrorLog::LHSDecl(binop->lhs->span); }
+  if (binop->lhs->is<Declaration>()) {
+    ErrorLog::DeclNotAllowed(binop->lhs->span);
+  }
 
   if (binop->rhs->is<Declaration>()) {
-    // TODO Tick is no longer a thing
-    ErrorLog::RHSNonTickDecl(binop->rhs->span);
+    ErrorLog::DeclNotAllowed(binop->rhs->span);
   }
 
   return binop;
@@ -490,8 +493,7 @@ BuildVoidScopeNode(std::vector<base::owned_ptr<Node>> nodes) {
 
 static base::owned_ptr<Node>
 BuildCodeBlockFromStatements(std::vector<base::owned_ptr<Node>> nodes) {
-  auto block = base::make_owned<CodeBlock>();
-  // TODO block->value
+  auto block   = base::make_owned<CodeBlock>();
   block->span  = TextSpan(nodes[0]->span, nodes[2]->span);
   block->stmts = base::move<Statements>(nodes[1]);
   return block;
@@ -499,8 +501,7 @@ BuildCodeBlockFromStatements(std::vector<base::owned_ptr<Node>> nodes) {
 
 static base::owned_ptr<Node> BuildCodeBlockFromStatementsSameLineEnd(
     std::vector<base::owned_ptr<Node>> nodes) {
-  auto block = base::make_owned<CodeBlock>();
-  // TODO block->value
+  auto block  = base::make_owned<CodeBlock>();
   block->span = TextSpan(nodes[0]->span, nodes[3]->span);
   block->stmts =
       base::move<Statements>(BracedStatementsSameLineEnd(std::move(nodes)));
@@ -509,8 +510,7 @@ static base::owned_ptr<Node> BuildCodeBlockFromStatementsSameLineEnd(
 
 static base::owned_ptr<Node>
 BuildCodeBlockFromOneStatement(std::vector<base::owned_ptr<Node>> nodes) {
-  auto block = base::make_owned<CodeBlock>();
-  // TODO block->value
+  auto block   = base::make_owned<CodeBlock>();
   block->span  = TextSpan(nodes[0]->span, nodes[2]->span);
   block->stmts = base::move<Statements>(OneBracedStatement(std::move(nodes)));
   return block;
@@ -518,8 +518,7 @@ BuildCodeBlockFromOneStatement(std::vector<base::owned_ptr<Node>> nodes) {
 
 static base::owned_ptr<Node>
 BuildEmptyCodeBlock(std::vector<base::owned_ptr<Node>> nodes) {
-  auto block = base::make_owned<CodeBlock>();
-  // TODO block->value
+  auto block   = base::make_owned<CodeBlock>();
   block->span  = TextSpan(nodes[0]->span, nodes[1]->span);
   block->stmts = base::move<Statements>(EmptyBraces(std::move(nodes)));
   return block;

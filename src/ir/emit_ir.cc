@@ -897,7 +897,7 @@ IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind kind) {
       // TODO multiple return types
       if (return_type_expr->is<Declaration>()) {
         return_type_expr->as<Declaration>().addr =
-            IR::Val::Ret(0, return_type_expr->type);
+            IR::Val::Ret(IR::ReturnValue{0}, return_type_expr->type);
       }
 
       for (auto scope : fn_scope->innards_) {

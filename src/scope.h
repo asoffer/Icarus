@@ -91,7 +91,6 @@ struct ExecScope : public Scope {
   ~ExecScope() override {}
 
   ExecScope *Clone() const override { return new ExecScope(*this); }
-  // TODO Enter()
   void Enter() const;
   void Exit() const;
 

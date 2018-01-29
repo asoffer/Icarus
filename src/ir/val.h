@@ -25,6 +25,7 @@ namespace IR {
 DEFINE_STRONG_INT(BlockIndex, i32, -1);
 DEFINE_STRONG_INT(ReturnValue, i32, -1);
 DEFINE_STRONG_INT(EnumVal, size_t, 0);
+DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
 
 struct CmdIndex {
   BlockIndex block;
@@ -55,15 +56,13 @@ bool operator==(Addr lhs, Addr rhs);
 inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 
 struct Func;
-struct Register;
 } // namespace IR
 
 DEFINE_STRONG_HASH(IR::ReturnValue);
 DEFINE_STRONG_HASH(IR::BlockIndex);
+DEFINE_STRONG_HASH(IR::Register);
 
 namespace std {
-template <> struct hash<IR::Register>;
-
 template <> struct hash<IR::CmdIndex> {
   size_t operator()(const IR::CmdIndex &cmd_index) const noexcept {
     u64 num = (static_cast<u64>(static_cast<u32>(cmd_index.block.value)) << 32);
@@ -74,52 +73,6 @@ template <> struct hash<IR::CmdIndex> {
 } // namespace std
 
 namespace IR {
-struct Register {
-public:
-  Register() = default;
-  constexpr explicit Register(i32 n) : value_(n) {}
-  bool is_void() { return value_ < 0; }
-  bool is_arg(const Func &fn) const;
-
-  friend std::ostream &operator<<(std::ostream &os, Register reg);
-  friend std::hash<Register>;
-  friend bool operator==(Register, Register);
-  friend bool operator<(Register, Register);
-  friend struct ExecContext; // TODO This isn't really needed
-  std::string to_string() const { return "r." + std::to_string(value_); }
-
-private:
-  i32 value_ = std::numeric_limits<i32>::lowest();
-};
-} // namespace IR
-
-namespace std {
-template <> struct hash<IR::Register> {
-  size_t operator()(const IR::Register &reg) const noexcept {
-    return hash<i32>()(reg.value_);
-  }
-};
-} // namespace std
-
-namespace IR {
-inline bool operator==(Register lhs, Register rhs) {
-  return lhs.value_ == rhs.value_;
-}
-
-inline bool operator<(Register lhs, Register rhs) {
-  return lhs.value_ < rhs.value_;
-}
-
-inline bool operator>(Register lhs, Register rhs) { return rhs < lhs; }
-inline bool operator<=(Register lhs, Register rhs) { return !(rhs < lhs); }
-inline bool operator>=(Register lhs, Register rhs) { return !(lhs < rhs); }
-inline bool operator!=(Register lhs, Register rhs) { return !(lhs == rhs); }
-
-inline std::ostream& operator<<(std::ostream& os, ::IR::Register reg) {
-  return os << reg.value_;
-}
-
-
 struct Val {
   ::Type *type = nullptr;
   std::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32, u64,

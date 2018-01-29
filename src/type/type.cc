@@ -42,11 +42,11 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
       IR::CondJump(len_cmp, equal_len_block, false_block);
 
       IR::Block::Current = true_block;
-      IR::SetReturn(0, IR::Val::Bool(true));
+      IR::SetReturn(IR::ReturnValue{0}, IR::Val::Bool(true));
       IR::ReturnJump();
 
       IR::Block::Current = false_block;
-      IR::SetReturn(0, IR::Val::Bool(false));
+      IR::SetReturn(IR::ReturnValue{0}, IR::Val::Bool(false));
       IR::ReturnJump();
 
       IR::Block::Current = equal_len_block;
@@ -82,8 +82,6 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
   return IR::Call(IR::Val::Func(iter->second), {lhs_ir, rhs_ir}, {});
 }
 
-// TODO mess around to see the performance characteristics. Maybe a flat map is
-// better?
 template <typename Key, typename Val>
 using TypeContainer = std::unordered_map<Key, Val>;
 

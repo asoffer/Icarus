@@ -18,7 +18,8 @@ Func::Func(::Function *fn_type,
   blocks_.push_back(std::move(Block(this)));
   i32 num_args = static_cast<i32>(args_.size());
   for (i32 i = 0; i < num_args; ++i) {
-    reg_map_[Register(static_cast<i32>(i))] = CmdIndex{0, i - num_args};
+    reg_map_[Register(static_cast<i32>(i))] =
+        CmdIndex{BlockIndex{0}, i - num_args};
   }
 }
 

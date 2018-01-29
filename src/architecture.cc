@@ -42,8 +42,7 @@ size_t Architecture::alignment(const Type *t) const {
   } else if (t->is<Function>()) {
     return  ptr_align_;
   } else if (t->is<Enum>()) {
-    // TODO
-    return 8;
+    return 8; // TODO
   } else if (t->is<Scope_Type>()) {
     return 1;
   } else if (t->is<Variant>()) {
@@ -80,15 +79,9 @@ size_t Architecture::bytes(const Type *t) const {
   } else if (t->is<Array>()) {
     auto *array_type = &t->as<const Array>();
     if (array_type->fixed_length) {
-      // TODO previously there was an issue where we needed to force arrays to
-      // have at least one byte. This is maybe not true anymore? At the time, it
-      // was because we indexed allocations by their stack location. So if an
-      // array took no space it would be indexed identically to the element that
-      // preceded it. This is likely no longer an issue but requires further thought.
-      auto size = array_type->len *
-                  MoveForwardToAlignment(array_type->data_type,
-                                         bytes(array_type->data_type));
-      return size ? size : 1;
+      return array_type->len *
+             MoveForwardToAlignment(array_type->data_type,
+                                    bytes(array_type->data_type));
     } else {
       return 2 * ptr_bytes_;
     }
@@ -105,8 +98,7 @@ size_t Architecture::bytes(const Type *t) const {
   } else if (t->is<Function>()) {
     return 2 * ptr_bytes_;
   } else if (t->is<Enum>()) {
-    // TODO
-    return 8;
+    return 8; // TODO
   } else if (t->is<Scope_Type>()) {
     return 0;
   } else if (t->is<Variant>()) {

@@ -51,7 +51,7 @@ std::string Val::to_string() const {
   return std::visit(
       base::overloaded{
           [this](Register reg) -> std::string {
-            return this->type->to_string() + " " + reg.to_string();
+            return this->type->to_string() + " r." + std::to_string(reg);
           },
           [this](ReturnValue ret) -> std::string {
             return this->type->to_string() + " ret." +
@@ -117,11 +117,6 @@ bool operator==(Addr lhs, Addr rhs) {
   }
   UNREACHABLE();
 }
-
-bool Register::is_arg(const Func &fn) const {
-  return value_ >= 0 && value_ < static_cast<decltype(value_)>(fn.args_.size());
-}
-
 } // namespace IR
 
 IR::Val PtrCallFix(IR::Val v) {

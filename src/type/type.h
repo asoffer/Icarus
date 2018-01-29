@@ -246,11 +246,6 @@ inline std::ostream &operator<<(std::ostream &os, const Type &t) {
 #undef BASIC_METHODS
 #undef ENDING
 
-// TODO this is not the right API for mangling.
-std::string Mangle(const Type *t, bool prefix = true);
-std::string Mangle(const Function *f, AST::Expression *expr,
-                   Scope *starting_scope = nullptr);
-
 Pointer *Ptr(Type *t);
 Array *Arr(Type *t);
 Array *Arr(Type *t, size_t len);

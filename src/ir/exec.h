@@ -75,12 +75,12 @@ struct ExecContext {
 
 
   Val reg(Register r) const {
-    ASSERT_GE(r.value_, 0);
-    return call_stack.top().regs_[static_cast<u32>(r.value_)];
+    ASSERT_GE(r.value, 0);
+    return call_stack.top().regs_[static_cast<u32>(r.value)];
   }
   Val &reg(Register r) {
-    ASSERT_GE(r.value_, 0);
-    return call_stack.top().regs_[static_cast<u32>(r.value_)];
+    ASSERT_GE(r.value, 0);
+    return call_stack.top().regs_[static_cast<u32>(r.value)];
   }
 
   Stack stack_;

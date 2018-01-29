@@ -63,8 +63,6 @@ struct Func {
   std::vector<Block> blocks_;
 
   // Indices for blocks that end in a return statement.
-  // TODO: Alternatively we could just iterate over all blocks and look at the
-  // last entry. Figure out which makes more sense.
   std::unordered_set<BlockIndex> return_blocks_;
 
   // TODO we can probably come up with a way to more closely tie Register and

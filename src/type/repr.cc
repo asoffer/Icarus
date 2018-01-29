@@ -14,7 +14,7 @@ void Primitive::EmitRepr(IR::Val val) {
 
       CURRENT_FUNC(repr_func) {
         IR::Block::Current = repr_func->entry();
-        repr_func->name    = "repr." + Mangle(this);
+        repr_func->name    = "repr(" + this->to_string() + ")";
 
         IR::Print(IR::Val::Char('`'));
 
@@ -80,7 +80,7 @@ void Array::EmitRepr(IR::Val val) {
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}}));
     repr_func       = IR::Func::All.back().get();
-    repr_func->name = "repr." + Mangle(this);
+    repr_func->name = "repr(" + this->to_string() + ")";
 
     CURRENT_FUNC(repr_func) {
       IR::Block::Current = repr_func->entry();
@@ -139,7 +139,7 @@ void Struct::EmitRepr(IR::Val val) {
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}}));
     repr_func       = IR::Func::All.back().get();
-    repr_func->name = "repr." + Mangle(this);
+    repr_func->name = "repr(" + this->to_string() + ")";
 
     CURRENT_FUNC(repr_func) {
       IR::Block::Current = repr_func->entry();

@@ -95,11 +95,14 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
 
 void ExecScope::Enter() const {
   ForEachDeclHere(+[](AST::Declaration *decl) {
+    if (decl->const_) { return; }
     if (!decl->is<AST::InDecl>()) { decl->EmitIR(IR::Cmd::Kind::Exec); }
   });
 }
 
 void ExecScope::Exit() const {
-  ForEachDeclHere(
-      +[](AST::Declaration *decl) { decl->type->EmitDestroy(decl->addr); });
+  ForEachDeclHere(+[](AST::Declaration *decl) {
+    if (decl->const_) { return; }
+    decl->type->EmitDestroy(decl->addr);
+  });
 }

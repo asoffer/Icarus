@@ -18,7 +18,7 @@ void Array::EmitDestroy(IR::Val id_val) {
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}}));
     destroy_func       = IR::Func::All.back().get();
-    destroy_func->name = "destroy." + Mangle(this);
+    destroy_func->name = "destroy(" + this->to_string() + ")";
 
     CURRENT_FUNC(destroy_func) {
       IR::Block::Current = destroy_func->entry();
@@ -62,7 +62,7 @@ void Struct::EmitDestroy(IR::Val id_val) {
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}}));
     destroy_func       = IR::Func::All.back().get();
-    destroy_func->name = "destroy." + Mangle(this);
+    destroy_func->name = "destroy(" + this->to_string() + ")";
 
     CURRENT_FUNC(destroy_func) {
       IR::Block::Current = destroy_func->entry();

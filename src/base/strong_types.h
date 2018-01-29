@@ -9,7 +9,7 @@
 #define DEFINE_STRONG_INT(type_name, base_type, default_value)                 \
   struct type_name                                                             \
       : public base::StrongIndex<type_name, base_type, default_value> {        \
-    type_name(base_type val = default_value)                                   \
+    constexpr explicit type_name(base_type val = default_value)                \
         : ::base::StrongIndex<type_name, base_type, default_value>(val) {}     \
   };                                                                           \
   inline std::ostream &operator<<(std::ostream &os, type_name val) {           \
@@ -80,7 +80,7 @@ inline bool operator!=(const StrongString<StringType> &lhs,
 
 template <typename IndexType, typename BaseType, BaseType DefaultValue>
 struct StrongIndex {
-  explicit StrongIndex(BaseType val = DefaultValue) : value(val) {}
+  constexpr explicit StrongIndex(BaseType val = DefaultValue) : value(val) {}
   bool is_default() const { return value == DefaultValue; }
 
   BaseType value;
