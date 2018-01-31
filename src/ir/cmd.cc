@@ -87,7 +87,7 @@ Val Extend(Val v) {
 }
 
 Val Trunc(Val v) {
-  if (u64 *n = std::get_if<u64>(&v.value)) {
+  if (i32 *n = std::get_if<i32>(&v.value)) {
     return Val::Char(static_cast<char>(*n));
   }
   MAKE_AND_RETURN(Char, Op::Trunc);
@@ -275,7 +275,7 @@ Val Array(Val v1, Val v2) {
   ASSERT_EQ(v2.type, Type_);
 
   if (Type **t = std::get_if<Type *>(&v2.value)) {
-    if (u64 *m = std::get_if<u64>(&v1.value)) {
+    if (i32 *m = std::get_if<i32>(&v1.value)) {
       return Val::Type(::Arr(*t, *m));
     }
     if (i32 *n = std::get_if<i32>(&v1.value)) {
@@ -298,7 +298,6 @@ Val Index(Val v1, Val v2) {
 
 Val Lt(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::less<i32>{}, Bool);
-  CONSTANT_PROPOGATION(u64, std::less<u64>{}, Bool);
   CONSTANT_PROPOGATION(double, std::less<double>{}, Bool);
   CONSTANT_PROPOGATION(EnumVal,
                        [](EnumVal lhs, EnumVal rhs) {
@@ -311,7 +310,6 @@ Val Lt(Val v1, Val v2) {
 
 Val Le(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::less_equal<i32>{}, Bool);
-  CONSTANT_PROPOGATION(u64, std::less_equal<u64>{}, Bool);
   CONSTANT_PROPOGATION(double, std::less_equal<double>{}, Bool);
   CONSTANT_PROPOGATION(EnumVal,
                        [](EnumVal lhs, EnumVal rhs) {
@@ -323,7 +321,6 @@ Val Le(Val v1, Val v2) {
 
 Val Gt(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::greater<i32>{}, Bool);
-  CONSTANT_PROPOGATION(u64, std::greater<u64>{}, Bool);
   CONSTANT_PROPOGATION(double, std::greater<double>{}, Bool);
   CONSTANT_PROPOGATION(EnumVal,
                        [](EnumVal lhs, EnumVal rhs) {
@@ -336,7 +333,6 @@ Val Gt(Val v1, Val v2) {
 
 Val Ge(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::greater_equal<i32>{}, Bool);
-  CONSTANT_PROPOGATION(u64, std::greater_equal<u64>{}, Bool);
   CONSTANT_PROPOGATION(double, std::greater_equal<double>{}, Bool);
   CONSTANT_PROPOGATION(EnumVal,
                        [](EnumVal lhs, EnumVal rhs) {
@@ -352,7 +348,6 @@ Val Eq(Val v1, Val v2) {
 
   CONSTANT_PROPOGATION(char, std::equal_to<char>{}, Bool);
   CONSTANT_PROPOGATION(i32, std::equal_to<i32>{}, Bool);
-  CONSTANT_PROPOGATION(u64, std::equal_to<u64>{}, Bool);
   CONSTANT_PROPOGATION(double, std::equal_to<double>{}, Bool);
   CONSTANT_PROPOGATION(Type *, std::equal_to<Type *>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
@@ -368,7 +363,6 @@ Val Ne(Val v1, Val v2) {
 
   CONSTANT_PROPOGATION(char, std::not_equal_to<char>{}, Bool);
   CONSTANT_PROPOGATION(i32, std::not_equal_to<i32>{}, Bool);
-  CONSTANT_PROPOGATION(u64, std::not_equal_to<u64>{}, Bool);
   CONSTANT_PROPOGATION(double, std::not_equal_to<double>{}, Bool);
   CONSTANT_PROPOGATION(Type *, std::not_equal_to<Type *>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::not_equal_to<Addr>{}, Bool);

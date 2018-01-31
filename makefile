@@ -29,11 +29,6 @@ $(TARGET): $(OBJECTS)
 	@$(COMPILER) $(LINK_FLAGS) $(OBJECTS) -o $@
 	@echo Done.
 
-rebuild:
-	@make clean
-	@make header
-	@make unity
-
 clean:
 	@rm -f $(TARGET) $(OBJECTS)
 

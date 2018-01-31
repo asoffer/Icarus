@@ -7,7 +7,7 @@
 // TODO catch functions that don't return along all paths.
 // TODO Join/Meet for EmptyArray <-> [0; T] (explicitly empty)? Why!?
 
-extern IR::Val Evaluate(AST::Expression *expr);
+std::vector<IR::Val> Evaluate(AST::Expression *expr);
 
 static constexpr int ThisStage() { return 1; }
 
@@ -127,7 +127,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
   // information.
   // TODO check const-decl or not.
 
-  auto *fn1 = std::get<IR::Func *>(Evaluate(decl1->init_val.get()).value);
+  auto *fn1 = std::get<IR::Func *>(Evaluate(decl1->init_val.get())[0].value);
   std::vector<ArgumentMetaData> metadata1;
   metadata1.reserve(fn1->args_.size());
   for (size_t i = 0; i < fn1->args_.size(); ++i) {
@@ -137,7 +137,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
                          /* has_default = */ fn1->args_[i].second != nullptr});
   }
 
-  auto *fn2 = std::get<IR::Func *>(Evaluate(decl2->init_val.get()).value);
+  auto *fn2 = std::get<IR::Func *>(Evaluate(decl2->init_val.get())[0].value);
   std::vector<ArgumentMetaData> metadata2;
   metadata2.reserve(fn2->args_.size());
   for (size_t i = 0; i < fn2->args_.size(); ++i) {
@@ -247,7 +247,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
     if (fn_option->type->is<Function>()) {
       auto fn_val = Evaluate(fn_option->is<Declaration>()
                                  ? fn_option->as<Declaration>().init_val.get()
-                                 : fn_option)
+                                 : fn_option)[0]
                         .value;
 
       auto **fn_ptr = std::get_if<IR::Func *>(&fn_val);
@@ -289,7 +289,6 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
 
       FnArgs<Type *> call_arg_types;
       call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
-      // TODO Do flat_map for real
       for (const auto & [ key, val ] : index_lookup) {
         if (val < args_.pos_.size()) { continue; }
         call_arg_types.named_.emplace(key, nullptr);
@@ -314,7 +313,6 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
           if (i < call_arg_types.pos_.size()) {
             call_arg_types.pos_[i] = match;
           } else { // Matched a named argument
-            // TODO implement flat_map for real
             auto iter = call_arg_types.find(fn->args_[i].first);
             ASSERT(iter != call_arg_types.named_.end(), "");
             iter->second = match;
@@ -348,7 +346,7 @@ Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
     return Err;
   }
 
-  Type *t = std::get<Type *>(Evaluate(this).value);
+  Type *t = std::get<Type *>(Evaluate(this)[0].value);
 
   if (t == Void) {
     ErrorLog::DeclaredVoidType(span, id_tok);
@@ -1055,7 +1053,7 @@ void InDecl::Validate() {
     type = container->type->as<RangeType>().end_type;
 
   } else if (container->type == Type_) {
-    auto t = std::get<Type *>(Evaluate(container.get()).value);
+    auto t = std::get<Type *>(Evaluate(container.get())[0].value);
     if (t->is<Enum>()) { type = t; }
 
   } else {
@@ -1248,7 +1246,7 @@ void Access::Validate() {
       limit_to(StageRange::Nothing());
     }
   } else if (base_type == Type_) {
-    Type *evaled_type = std::get<Type *>(Evaluate(operand.get()).value);
+    Type *evaled_type = std::get<Type *>(Evaluate(operand.get())[0].value);
     if (evaled_type->is<Enum>()) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on
@@ -1513,7 +1511,7 @@ void FunctionLiteral::Validate() {
   }
 
   // TODO should named return types be required?
-  auto ret_type_val = Evaluate([&]() {
+  auto rets = Evaluate([&]() {
     if (!return_type_expr->is<Declaration>()) { return return_type_expr.get(); }
 
     auto *decl_return = &return_type_expr->as<Declaration>();
@@ -1522,11 +1520,13 @@ void FunctionLiteral::Validate() {
     return decl_return->type_expr.get();
   }());
 
-  if (ret_type_val == IR::Val::None()) {
+  if (rets.empty()) {
     type = Err;
     limit_to(StageRange::Nothing());
     return;
   }
+
+  auto& ret_type_val = rets[0];
 
   // TODO must this really be undeclared?
   if (ret_type_val == IR::Val::None() /* TODO Error() */) {

@@ -64,8 +64,8 @@ std::string Val::to_string() const {
           },
           [](double d) -> std::string { return std::to_string(d) + "_r"; },
           [](i32 n) -> std::string { return std::to_string(n); },
-          [](u64 n) -> std::string { return std::to_string(n) + "_u"; },
           [this](EnumVal e) -> std::string {
+            // TODO this is wrong now that we have enum flags
             return e.value >= this->type->as<::Enum>().members_.size()
                        ? this->type->as<::Enum>().to_string() + ":END"
                        : this->type->as<::Enum>().members_ AT(e.value);

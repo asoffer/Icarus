@@ -5,7 +5,7 @@
 #include "../type/type.h"
 
 static constexpr int ThisStage() { return 3; }
-extern IR::Val Evaluate(AST::Expression *expr);
+std::vector<IR::Val> Evaluate(AST::Expression *expr);
 extern std::vector<IR::Val> global_vals;
 
 struct Scope;
@@ -81,8 +81,7 @@ IR::Val AST::Access::EmitLVal(IR::Cmd::Kind kind) {
   return IR::Field(val, struct_type->field_name_to_num AT(member_name));
 }
 
-// TODO better name
-static IR::Val VariantMatch(const IR::Val &needle, Type *haystack) {
+static IR::Val EmitVariantMatch(const IR::Val &needle, Type *haystack) {
   auto runtime_type = IR::Load(IR::VariantType(needle));
 
   if (haystack->is<Variant>()) {
@@ -154,7 +153,8 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     for (size_t i = 0; i < args_.pos_.size(); ++i) {
       if (!args_.pos_[i]->type->is<Variant>()) { continue; }
       IR::Block::Current = IR::EarlyExitOn<false>(
-          next_binding, VariantMatch(fn_args.pos_[i], call_arg_type.pos_[i]));
+          next_binding,
+          EmitVariantMatch(fn_args.pos_[i], call_arg_type.pos_[i]));
     }
 
     for (auto & [ name, expr ] : args_.named_) {
@@ -162,7 +162,8 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
       if (iter == call_arg_type.named_.end()) { continue; }
       if (!expr->type->is<Variant>()) { continue; }
       IR::Block::Current = IR::EarlyExitOn<false>(
-          next_binding, VariantMatch(fn_args.named_[iter->first], iter->second));
+          next_binding,
+          EmitVariantMatch(fn_args.named_[iter->first], iter->second));
     }
 
     // After the last check, if you pass, you should dispatch
@@ -237,7 +238,7 @@ IR::Val AST::Terminal::EmitIR(IR::Cmd::Kind) { return value; }
 
 IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
   if (decl->const_) {
-    decl->addr = (decl->init_val) ? Evaluate(decl->init_val.get())
+    decl->addr = (decl->init_val) ? Evaluate(decl->init_val.get())[0]
                                   : decl->type->EmitInitialValue();
     return decl->addr;
   }
@@ -308,7 +309,7 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
 
       } else if (decl->container->type == Type_) {
         // TODO this conditional check on the line above is wrong
-        IR::Val container_val = Evaluate(decl->container.get());
+        IR::Val container_val = Evaluate(decl->container.get())[0];
         if (::Type *t = std::get<::Type *>(container_val.value);
             t->is<Enum>()) {
           init_vals.push_back(t->as<Enum>().EmitInitialValue());
@@ -328,7 +329,7 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
     IR::Block::Current = phi;
     for (auto &decl : iterators) {
       if (decl->container->type == Type_) {
-        IR::Val container_val = Evaluate(decl->container.get());
+        IR::Val container_val = Evaluate(decl->container.get())[0];
         if (::Type *t = std::get<::Type *>(container_val.value);
             t->is<Enum>()) {
           phis.push_back(IR::Phi(&t->as<Enum>()));
@@ -402,7 +403,7 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
             reg, IR::Index(decl->container->EmitLVal(kind),
                            IR::Val::Int(static_cast<i32>(array_type->len))));
       } else if (decl->container->type == Type_) {
-        IR::Val container_val = Evaluate(decl->container.get());
+        IR::Val container_val = Evaluate(decl->container.get())[0];
         if (::Type *t = std::get<::Type *>(container_val.value);
             t->is<Enum>()) {
           cmp = IR::Le(reg, IR::Val::Enum(&t->as<Enum>(),
@@ -473,7 +474,7 @@ IR::Val AST::ScopeLiteral::EmitIR(IR::Cmd::Kind) {
 }
 
 IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
-  IR::Val scope_expr_val = Evaluate(scope_expr.get());
+  IR::Val scope_expr_val = Evaluate(scope_expr.get())[0];
   ASSERT_TYPE(Scope_Type, scope_expr_val.type);
 
   auto enter_fn = std::get<AST::ScopeLiteral *>(scope_expr_val.value)
@@ -507,7 +508,7 @@ IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
     if (IsCustomInitialized()) {
-      addr = Evaluate(init_val.get());
+      addr = Evaluate(init_val.get())[0];
     } else if (IsDefaultInitialized()) {
       // TODO if EmitInitialValue requires generating code, that would be bad.
       addr = type->EmitInitialValue();
@@ -521,7 +522,7 @@ IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
       global_vals.back().type = type;
       addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
     } else if (IsCustomInitialized()) {
-      global_vals.push_back(Evaluate(init_val.get()));
+      global_vals.push_back(Evaluate(init_val.get())[0]);
       addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
 
     } else if (IsDefaultInitialized()) {
@@ -584,11 +585,14 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
     return IR::Val::None();
   } break;
   case Language::Operator::And: return operand->EmitLVal(kind);
-  case Language::Operator::Eval:
+  case Language::Operator::Eval: {
     // TODO what if there's an error during evaluation?
-    return Evaluate(operand.get());
+    // TODO what about ``a, b = $FnWithMultipleReturnValues()``
+    auto results = Evaluate(operand.get());
+    return results.empty() ? IR::Val::None() : results[0];
+  }
   case Language::Operator::Generate: {
-    auto val = Evaluate(operand.get());
+    auto val = Evaluate(operand.get())[0];
     ASSERT_EQ(val.type, Code);
     auto block = std::get<base::owned_ptr<AST::CodeBlock>>(val.value);
     // TODO you forced kind to be exec by doing EmitIR with DoStages.
@@ -889,7 +893,6 @@ IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind kind) {
       for (size_t i = 0; i < inputs.size(); ++i) {
         auto &arg = inputs[i];
         ASSERT_EQ(arg->addr, IR::Val::None());
-        // TODO This whole loop can be done on construction!
         arg->addr = IR::Func::Current->Argument(static_cast<i32>(i));
       }
 

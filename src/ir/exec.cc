@@ -12,12 +12,6 @@
 #include "func.h"
 
 std::vector<IR::Val> global_vals;
-struct Scope;
-extern Scope *GlobalScope;
-
-namespace Language {
-extern size_t precedence(Operator op);
-} // namespace Language
 
 std::unique_ptr<IR::Func>
 ExprFn(AST::Expression *expr, Type *input,
@@ -30,8 +24,6 @@ ExprFn(AST::Expression *expr, Type *input,
     IR::Block::Current = fn->entry();
     // Leave space for allocas that will come later (added to the entry
     // block).
-
-    // TODO iterate up the scope chain and call alloca appropriately.
 
     auto start_block   = IR::Func::Current->AddBlock();
     IR::Block::Current = start_block;
@@ -62,40 +54,38 @@ static std::unique_ptr<IR::Func> AssignmentFunction(Type *from, Type *to) {
   return assign_func;
 }
 
-void ReplEval(AST::Expression *expr) {
-  auto fn = base::make_owned<IR::Func>(
-      Func(Void, Void),
-      std::vector<std::pair<std::string, AST::Expression *>>{});
-  CURRENT_FUNC(fn.get()) {
-    IR::Block::Current = fn->entry();
-    auto expr_val      = expr->EmitIR(IR::Cmd::Kind::Exec);
-    if (ErrorLog::NumErrors() != 0) {
-      ErrorLog::Dump();
-      return;
+namespace IR {
+static std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
+                                ExecContext *ctx, bool *were_errors) {
+  if (were_errors != nullptr) {
+    int num_errors = 0;
+    std::queue<Func *> validation_queue;
+    validation_queue.push(fn);
+    while (!validation_queue.empty()) {
+      auto fn = std::move(validation_queue.front());
+      validation_queue.pop();
+      num_errors += fn->ValidateCalls(&validation_queue);
     }
-
-    if (expr->type != Void) { expr->type->EmitRepr(expr_val); }
-    IR::ReturnJump();
+    if (num_errors > 0) {
+      *were_errors = true;
+      return {};
+    }
   }
 
-  IR::ExecContext ctx;
-  bool were_errors;
-  fn->Execute({}, &ctx, &were_errors);
+  ctx->call_stack.emplace(fn, arguments);
+
+  while (true) {
+    auto block_index = ctx->ExecuteBlock();
+    if (block_index.is_default()) {
+      auto rets = std::move(ctx->call_stack.top().rets_);
+      ctx->call_stack.pop();
+      return rets;
+    } else {
+      ctx->call_stack.top().MoveTo(block_index);
+    }
+  }
 }
 
-IR::Val Evaluate(AST::Expression *expr) {
-  std::vector<IR::Val> results;
-  IR::ExecContext context;
-  bool were_errors;
-  results = ExprFn(expr, Void)->Execute({}, &context, &were_errors);
-  // TODO wire through errors. Currently we just return IR::Val::None() if there
-  // were errors
-
-  // TODO multiple outputs?
-  return results.empty() ? IR::Val::None() : results[0];
-}
-
-namespace IR {
 ExecContext::ExecContext() : stack_(50u) {}
 
 Block &ExecContext::current_block() {
@@ -222,20 +212,21 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Gt: return Gt(resolved[0], resolved[1]);
   case Op::SetReturn: {
     const auto &rets = call_stack.top().rets_;
-    // TODO: Use ir_type here?
     if (call_stack.top().fn_->type_->output.size() == 1 &&
         !call_stack.top().fn_->type_->output[0]->is_big()) {
       call_stack.top().rets_ AT(0) = resolved[1];
     } else {
-      AssignmentFunction(resolved[0].type->is<Pointer>()
-                             ? resolved[0].type->as<Pointer>().pointee
-                             : resolved[0].type,
-                         rets[std::get<ReturnValue>(resolved[0].value).value]
-                             .type->as<Pointer>()
-                             .pointee)
-          ->Execute({resolved[1],
-                     rets[std::get<ReturnValue>(resolved[0].value).value]},
-                    this, nullptr);
+      auto fn = AssignmentFunction(
+          resolved[0].type->is<Pointer>()
+              ? resolved[0].type->as<Pointer>().pointee
+              : resolved[0].type,
+          rets[std::get<ReturnValue>(resolved[0].value).value]
+              .type->as<Pointer>()
+              .pointee);
+      Execute(
+          fn.get(),
+          {resolved[1], rets[std::get<ReturnValue>(resolved[0].value).value]},
+          this, nullptr);
     }
     return IR::Val::None();
   }
@@ -247,17 +238,18 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     // There's no need to do validation here, because by virtue of executing
     // this function, we know we've already validated all functions that could
     // be called.
-    auto results = fn->Execute(resolved, this, nullptr);
-    // TODO multiple returns?
+
+    // If there were multiple return values, they would be passed as out-params
+    // in the IR.
+    auto results = Execute(fn, resolved, this, nullptr);
     return results.empty() ? IR::Val::None() : results[0];
   } break;
   case Op::Print:
     std::visit(
         base::overloaded{
-            [](i32 n) { std::cerr << n; }, //
-            [](u64 n) { std::cerr << n; },
+            [](i32 n) { std::cerr << n; },
             [](bool b) { std::cerr << (b ? "true" : "false"); },
-            [](char c) { std::cerr << c; }, //
+            [](char c) { std::cerr << c; },
             [](double d) { std::cerr << d; },
             [](Type *t) { std::cerr << t->to_string(); },
             [](const base::owned_ptr<AST::CodeBlock> &cb) {
@@ -272,15 +264,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                 size_t val = e.value;
                 std::vector<std::string> vals;
                 const auto &members = resolved[0].type->as<Enum>().members_;
-                size_t i = 0;
-                size_t pow = 1;
+                size_t i            = 0;
+                size_t pow          = 1;
                 while (pow <= val) {
                   if (val & pow) { vals.push_back(members[i]); }
                   ++i;
                   pow <<= 1;
                 }
                 if (vals.empty()) {
-                  // TODO print something smart.
                   std::cerr << "(empty)";
                 } else {
                   auto iter = vals.begin();
@@ -433,14 +424,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     switch (std::get<Addr>(resolved[0].value).kind) {
     case Addr::Kind::Stack: {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          std::get<u64>(resolved[1].value), cmd.type->as<Pointer>().pointee);
+          std::get<i32>(resolved[1].value), cmd.type->as<Pointer>().pointee);
       return Val::StackAddr(std::get<Addr>(resolved[0].value).as_stack +
                                 bytes_fwd,
                             cmd.type->as<Pointer>().pointee);
     }
     case Addr::Kind::Heap: {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          std::get<u64>(resolved[1].value), cmd.type->as<Pointer>().pointee);
+          std::get<i32>(resolved[1].value), cmd.type->as<Pointer>().pointee);
       return Val::HeapAddr(
           static_cast<void *>(
               static_cast<char *>(std::get<Addr>(resolved[0].value).as_heap) +
@@ -455,8 +446,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Field: {
     auto *struct_type = &resolved[0].type->as<Pointer>().pointee->as<Struct>();
     // This can probably be precomputed.
-    u64 offset = 0;
-    for (u64 i = 0; i < std::get<u64>(resolved[1].value); ++i) {
+    size_t offset = 0;
+    for (i32 i = 0; i < std::get<i32>(resolved[1].value); ++i) {
       auto field_type = struct_type->field_type AT(i);
 
       offset = Architecture::InterprettingMachine().bytes(field_type) +
@@ -518,7 +509,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Nop: return Val::None();
   case Op::Malloc:
     ASSERT_TYPE(Pointer, cmd.type);
-    return IR::Val::HeapAddr(malloc(std::get<u64>(resolved[0].value)),
+    return IR::Val::HeapAddr(malloc(std::get<i32>(resolved[0].value)),
                              cmd.type->as<Pointer>().pointee);
   case Op::Free:
     free(std::get<Addr>(resolved[0].value).as_heap);
@@ -550,35 +541,34 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   }
   UNREACHABLE();
 }
-
-std::vector<Val> Func::Execute(const std::vector<Val> &arguments,
-                               ExecContext *ctx, bool *were_errors) {
-  if (were_errors != nullptr) {
-    int num_errors = 0;
-    std::queue<Func *> validation_queue;
-    validation_queue.push(this);
-    while (!validation_queue.empty()) {
-      auto fn = std::move(validation_queue.front());
-      validation_queue.pop();
-      num_errors += fn->ValidateCalls(&validation_queue);
-    }
-    if (num_errors > 0) {
-      *were_errors = true;
-      return {};
-    }
-  }
-
-  ctx->call_stack.emplace(this, arguments);
-
-  while (true) {
-    auto block_index = ctx->ExecuteBlock();
-    if (block_index.is_default()) {
-      auto rets = std::move(ctx->call_stack.top().rets_);
-      ctx->call_stack.pop();
-      return rets;
-    } else {
-      ctx->call_stack.top().MoveTo(block_index);
-    }
-  }
-}
 } // namespace IR
+
+void ReplEval(AST::Expression *expr) {
+  auto fn = base::make_owned<IR::Func>(
+      Func(Void, Void),
+      std::vector<std::pair<std::string, AST::Expression *>>{});
+  CURRENT_FUNC(fn.get()) {
+    IR::Block::Current = fn->entry();
+    auto expr_val      = expr->EmitIR(IR::Cmd::Kind::Exec);
+    if (ErrorLog::NumErrors() != 0) {
+      ErrorLog::Dump();
+      return;
+    }
+
+    if (expr->type != Void) { expr->type->EmitRepr(expr_val); }
+    IR::ReturnJump();
+  }
+
+  IR::ExecContext ctx;
+  bool were_errors;
+  Execute(fn.get(), {}, &ctx, &were_errors);
+}
+
+std::vector<IR::Val> Evaluate(AST::Expression *expr) {
+  IR::ExecContext context;
+  // TODO wire through errors. Currently we just return IR::Val::None() if there
+  // were errors
+  auto fn = ExprFn(expr, Void);
+  bool were_errors;
+  return Execute(fn.get(), {}, &context, &were_errors);
+}

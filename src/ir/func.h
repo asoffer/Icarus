@@ -48,9 +48,6 @@ struct Func {
 
   BlockIndex entry() const { return BlockIndex(0); }
 
-  std::vector<Val> Execute(const std::vector<Val> &args, ExecContext *ctx,
-                           bool *were_errors);
-
   // Is this needed? Or can it be determined from the containing FunctionLiteral
   // object?
   ::Function *const type_   = nullptr;

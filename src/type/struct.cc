@@ -3,7 +3,7 @@
 #include "../ast/ast.h"
 #include "../ir/func.h"
 
-extern IR::Val Evaluate(AST::Expression *expr);
+std::vector<IR::Val> Evaluate(AST::Expression *expr);
 
 void Struct::CompleteDefinition() {
   if (completed_) { return; }
@@ -18,7 +18,8 @@ void Struct::CompleteDefinition() {
           decls[i]->type_expr->type == Void) {
         decl_type = Err;
       } else {
-        decl_type = std::get<Type *>(Evaluate(decls[i]->type_expr.get()).value);
+        decl_type =
+            std::get<Type *>(Evaluate(decls[i]->type_expr.get())[0].value);
       }
     } else {
       decl_type = decls[i]->init_val->type;
