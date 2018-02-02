@@ -53,7 +53,6 @@ void MissingMember(const TextSpan &span, const std::string &member_name,
                    const Type *t);
 void NotAType(const TextSpan &span, const std::string &id_tok);
 void DeclaredVoidType(const TextSpan &span, const std::string &id_tok);
-void DeclaredParametricType(const TextSpan &span, const std::string &id_tok);
 void UnknownParserError(const Source::Name &source_name,
                         const std::vector<TextSpan> &lines);
 void InvalidReturnType(const TextSpan &span, Type *given, Type *correct);

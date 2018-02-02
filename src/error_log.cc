@@ -453,14 +453,6 @@ void DeclaredVoidType(const TextSpan &span, const std::string &id_tok) {
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
-void DeclaredParametricType(const TextSpan &span, const std::string &id_tok) {
-  ++num_errs_;
-  std::string msg_head =
-      "In declaration of `" + id_tok +
-      "`, the declared type is parametric and has no parameters provided.";
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
 void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_span) {
   ++num_errs_;
   if (decl_span.start.line_num == val_span.start.line_num) {

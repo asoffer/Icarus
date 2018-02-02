@@ -124,8 +124,8 @@ struct Expression : public Node {
   //
   // VerifyTypeForDeclaration verifies that the expresison represents a type and
   // returns the type it represents (or Error if the type is invalid). An
-  // expression could be invalid if it doesn't represent a type or it represnts
-  // void or parametric struct.
+  // expression could be invalid if it doesn't represent a type or it represents
+  // void.
   Type *VerifyTypeForDeclaration(const std::string &id_tok);
 
   // VerifyValueForDeclaration verifies that the expression's type can be used
@@ -247,9 +247,8 @@ struct Declaration : public Expression {
 
   bool const_ = false;
 
-  // If it's an argument or return value, this points to the
-  // function/parametric-struct for which it's an argument. Otherwise this field
-  // is null.
+  // If it's an argument or return value, this points to the function for which
+  // it's an argument. Otherwise this field is null.
   // TODO rename this now that it no longer is just for function arguments
   Expression *arg_val = nullptr;
 
