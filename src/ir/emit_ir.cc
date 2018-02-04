@@ -874,13 +874,25 @@ finish:
 IR::Func *AST::FunctionLiteral::Materialize(
     const AST::FnArgs<base::owned_ptr<Expression>> &args) {
   std::map<Declaration *, IR::Val> bound_constants;
-  for (const auto &input : inputs) {
-    if (!input->const_) { continue; }
-    // TODO what if it isn't a named argument.
-    auto iter = args.named_.find(input->identifier->token);
-    if (iter == args.named_.end()) { return nullptr; }
-    bound_constants.emplace(input.get(), Evaluate(iter->second.get())[0]);
+  size_t i = 0;
+  for (; i < args.pos_.size(); ++i) {
+    if (!inputs[i]->const_) { continue; }
+    bound_constants.emplace(inputs[i].get(), Evaluate(args.pos_[i].get())[0]);
   }
+
+  for (; i < inputs.size(); ++i) {
+    if (!inputs[i]->const_) { continue; }
+    auto iter = args.named_.find(inputs[i]->identifier->token);
+    if (iter == args.named_.end()) {
+      if (inputs[i]->init_val == nullptr) { return nullptr; }
+      bound_constants.emplace(inputs[i].get(),
+                              Evaluate(inputs[i]->init_val.get())[0]);
+    } else {
+      bound_constants.emplace(inputs[i].get(), Evaluate(iter->second.get())[0]);
+    }
+  }
+
+  LOG << bound_constants;
 
   // TODO validation? what if args are positional and not named?
 

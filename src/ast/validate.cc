@@ -151,7 +151,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
 }
 
 static Type *DereferenceAll(Type *t) {
-  while (t->is<Pointer>()) { t = static_cast<Pointer *>(t)->pointee; }
+  while (t->is<Pointer>()) { t = t->as<Pointer>().pointee; }
   return t;
 }
 
@@ -236,6 +236,31 @@ static bool Inferrable(Type *t) {
   return true;
 }
 
+std::optional<Binding> Binding::MakeUntyped(
+    Expression *fn_expr, IR::Func *fn,
+    const FnArgs<base::owned_ptr<Expression>> &args,
+    const std::unordered_map<std::string, size_t> &index_lookup) {
+  Binding result(fn_expr, fn);
+  for (size_t i = 0; i < args.pos_.size(); ++i) {
+    result.exprs_[i] = std::pair(nullptr, args.pos_[i].get());
+  }
+
+  // Match the named arguments
+  for (const auto & [ name, expr ] : args.named_) {
+    // TODO emit an error explaining why we couldn't use this one if there was
+    // a missing named argument.
+    auto iter = index_lookup.find(name);
+    if (iter == index_lookup.end()) { return std::nullopt; }
+    result.exprs_[iter->second] = std::pair(nullptr, expr.get());
+  }
+  return result;
+}
+
+Binding::Binding(Expression *fn_expr, IR::Func *fn)
+    : fn_expr_(fn_expr), fn_(fn),
+      exprs_(fn->args_.size(),
+             std::pair<Type *, Expression *>(nullptr, nullptr)) {}
+
 // We already know there can be at most one match (multiple matches would have
 // been caught by shadowing), so we just return a pointer to it if it exists,
 // and null otherwise.
@@ -250,79 +275,54 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
 
     auto **fn_ptr = std::get_if<FunctionLiteral *>(&fn_val);
     if (fn_ptr == nullptr) { return std::nullopt; }
-    IR::Func *fn = (**fn_ptr).Materialize(args_);
-    if (fn == nullptr) { return std::nullopt; }
 
     // Compute name -> argument number map.
     // TODO this should be done when the function is generated instead of
     // ad-hoc
     std::unordered_map<std::string, size_t> index_lookup;
-    for (size_t i = 0; i < fn->args_.size(); ++i) {
-      index_lookup[fn->args_[i].first] = i;
+    for (size_t i = 0; i < (**fn_ptr).inputs.size(); ++i) {
+      index_lookup[(**fn_ptr).inputs[i]->identifier->token] = i;
     }
 
-    // Match the ordered unnamed arguments
-    auto *fn_expr = fn_option->is<Declaration>()
-                        ? fn_option->as<Declaration>().identifier.get()
-                        : fn_option;
-    Binding binding{
-        fn_expr, fn,
-        std::vector(fn->args_.size(),
-                    std::pair<Type *, Expression *>(nullptr, nullptr))};
-    for (size_t i = 0; i < args_.pos_.size(); ++i) {
-      binding.exprs_[i] = std::pair(nullptr, args_.pos_[i].get());
+    // TODO materialization shouldn't happen until much later (like, once the
+    // binding has been completely verified).
+    IR::Func *fn = (**fn_ptr).Materialize(args_);
+    if (fn == nullptr) { return std::nullopt; }
+
+    auto maybe_binding = Binding::MakeUntyped(*fn_ptr, fn, args_, index_lookup);
+    if (!maybe_binding) { continue; }
+    auto binding = std::move(maybe_binding.value());
+
+    FnArgs<Type *> call_arg_types;
+    call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
+    for (const auto & [ key, val ] : index_lookup) {
+      if (val < args_.pos_.size()) { continue; }
+      call_arg_types.named_.emplace(key, nullptr);
     }
 
-    // Match the named arguments
-    for (const auto &name_and_expr : args_.named_) {
-      auto iter = index_lookup.find(name_and_expr.first);
-      if (iter == index_lookup.end()) {
-        // Missing named argument so passing on to the next option. Perhaps it
-        // would be useful to generate error messages explaining why you passed
-        // on each option.
-        goto next_option;
+    const auto &fn_opt_input = fn_option->type->as<Function>().input;
+    for (size_t i = 0; i < binding.exprs_.size(); ++i) {
+      if (binding.defaulted(i)) {
+        if ((**fn_ptr).inputs[i]->IsDefaultInitialized()) { goto next_option; }
+        binding.exprs_[i].first = fn_opt_input[i];
       } else {
-        binding.exprs_[iter->second] =
-            std::pair(nullptr, name_and_expr.second.get());
-      }
-    }
+        Type *match =
+            Type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
+        if (match == nullptr) { goto next_option; }
+        binding.exprs_[i].first = fn_opt_input[i];
 
-    {
-      FnArgs<Type *> call_arg_types;
-      call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
-      for (const auto & [ key, val ] : index_lookup) {
-        if (val < args_.pos_.size()) { continue; }
-        call_arg_types.named_.emplace(key, nullptr);
-      }
-
-      for (size_t i = 0; i < binding.exprs_.size(); ++i) {
-        if (binding.defaulted(i)) {
-          if (!fn->has_default(i)) {
-            goto next_option;
-          } else {
-            binding.exprs_[i].first = fn_option->type->as<Function>().input[i];
-          }
+        if (i < call_arg_types.pos_.size()) {
+          call_arg_types.pos_[i] = match;
         } else {
-          Type *match = Type::Meet(binding.exprs_[i].second->type,
-                                   fn_option->type->as<Function>().input[i]);
-          if (match == nullptr) {
-            goto next_option;
-          } else {
-            binding.exprs_[i].first = fn_option->type->as<Function>().input[i];
-          }
-
-          if (i < call_arg_types.pos_.size()) {
-            call_arg_types.pos_[i] = match;
-          } else { // Matched a named argument
-            auto iter = call_arg_types.find(fn->args_[i].first);
-            ASSERT(iter != call_arg_types.named_.end(), "");
-            iter->second = match;
-          }
+          auto iter =
+              call_arg_types.find((**fn_ptr).inputs[i]->identifier->token);
+          ASSERT(iter != call_arg_types.named_.end(), "");
+          iter->second = match;
         }
       }
-
-      table.insert(std::move(call_arg_types), std::move(binding));
     }
+
+    table.insert(std::move(call_arg_types), std::move(binding));
   next_option:;
   }
   return std::move(table);

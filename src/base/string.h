@@ -40,6 +40,14 @@ auto stringify(dispatch_rank<6>, const Container &t)
   return ss.str();
 }
 
+template <typename Pair>
+auto stringify(dispatch_rank<6>, const Pair &p)
+    -> decltype(std::enable_if_t<std::is_same_v<
+                    Pair, std::pair<decltype(p.first), decltype(p.second)>>>(),
+                std::string()) {
+  return "(" + stringify(p.first) + ", " + stringify(p.second) + ")";
+}
+
 template <typename T>
 auto stringify(dispatch_rank<5>, const T &t)
     -> decltype((std::string)std::declval<T>(), std::string()) {
