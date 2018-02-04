@@ -13,8 +13,9 @@ extern Scope *GlobalScope;
 
 // If the expression is a CommaList, apply the function to each expr. Otherwise
 // call it on the expression itself.
-void ForEachExpr(AST::Expression *expr,
-                 const std::function<void(size_t, AST::Expression *)> &fn) {
+static void
+ForEachExpr(AST::Expression *expr,
+            const std::function<void(size_t, AST::Expression *)> &fn) {
   if (expr->is<AST::CommaList>()) {
     const auto &exprs = expr->as<AST::CommaList>().exprs;
     for (size_t i = 0; i < exprs.size(); ++i) { fn(i, exprs[i].get()); }
@@ -167,7 +168,9 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     }
 
     // After the last check, if you pass, you should dispatch
-    auto fn_to_call = binding.fn_expr_->EmitIR(kind);
+    ASSERT(binding.fn_ != nullptr, "");
+    auto fn_to_call = IR::Val::Func(binding.fn_);
+
     std::vector<IR::Val> args;
     args.resize(binding.exprs_.size());
     for (size_t i = 0; i < args.size(); ++i) {
@@ -198,6 +201,7 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
         ret_val = IR::Call(fn_to_call, std::move(args), {});
       }
     }
+
     results.push_back(IR::Val::Block(IR::Block::Current));
     results.push_back(ret_val);
 
@@ -237,11 +241,7 @@ IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
 IR::Val AST::Terminal::EmitIR(IR::Cmd::Kind) { return value; }
 
 IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
-  if (decl->const_) {
-    decl->addr = (decl->init_val) ? Evaluate(decl->init_val.get())[0]
-                                  : decl->type->EmitInitialValue();
-    return decl->addr;
-  }
+  if (decl->const_) { return decl->addr; }
 
   if (decl->scope_ == GlobalScope) { decl->EmitIR(kind); }
 
@@ -557,7 +557,7 @@ IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
     }
   }
 
-  return IR::Val::None();
+  return addr;
 }
 
 IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
@@ -859,12 +859,33 @@ IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
 IR::Val AST::CommaList::EmitIR(IR::Cmd::Kind) { UNREACHABLE(this); }
 IR::Val AST::CommaList::EmitLVal(IR::Cmd::Kind) { NOT_YET(); }
 
-
-IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind) {
   AST::DoStages<1, 2>(statements.get(), fn_scope.get());
-  if (statements->stage_range_.high < ThisStage()) { return IR::Val::None(); }
+  for (const auto &input : inputs) {
+    if (!input->const_) { goto finish; }
+  }
 
-  if (!ir_func) {
+  Materialize(FnArgs<base::owned_ptr<Expression>>{});
+
+finish:
+  return IR::Val::FnLit(this);
+}
+
+IR::Func *AST::FunctionLiteral::Materialize(
+    const AST::FnArgs<base::owned_ptr<Expression>> &args) {
+  std::map<Declaration *, IR::Val> bound_constants;
+  for (const auto &input : inputs) {
+    if (!input->const_) { continue; }
+    // TODO what if it isn't a named argument.
+    auto iter = args.named_.find(input->identifier->token);
+    if (iter == args.named_.end()) { return nullptr; }
+    bound_constants.emplace(input.get(), Evaluate(iter->second.get())[0]);
+  }
+
+  // TODO validation? what if args are positional and not named?
+
+  auto *&ir_func = ir_fns_[bound_constants];
+  if (ir_func == nullptr) {
     std::vector<std::pair<std::string, AST::Expression *>> args;
     args.reserve(inputs.size());
     for (const auto &input : inputs) {
@@ -890,10 +911,15 @@ IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind kind) {
       auto start_block   = IR::Func::Current->AddBlock();
       IR::Block::Current = start_block;
 
+      // TODO arguments should be renumbered to not waste space on const values
       for (size_t i = 0; i < inputs.size(); ++i) {
-        auto &arg = inputs[i];
-        ASSERT_EQ(arg->addr, IR::Val::None());
-        arg->addr = IR::Func::Current->Argument(static_cast<i32>(i));
+        // TODO positional arguments
+        if (inputs[i]->const_) {
+          auto iter = bound_constants.find(inputs[i].get());
+          if (iter != bound_constants.end()) { inputs[i]->addr = iter->second; }
+          continue;
+        }
+        inputs[i]->addr = IR::Func::Current->Argument(static_cast<i32>(i));
       }
 
       // TODO multiple return types
@@ -903,7 +929,7 @@ IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind kind) {
       }
 
       for (auto scope : fn_scope->innards_) {
-        scope->ForEachDeclHere([kind, scope](Declaration *decl) {
+        scope->ForEachDeclHere([](Declaration *decl) {
           if (decl->const_) {
             // Compute these values lazily in Identifier::EmitIR, because
             // otherwise we would have to figure out a valid ordering.
@@ -918,7 +944,7 @@ IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind kind) {
         });
       }
 
-      statements->EmitIR(kind);
+      statements->EmitIR(IR::Cmd::Kind::Exec);
       IR::ReturnJump();
 
       IR::Block::Current = ir_func->entry();
@@ -926,7 +952,7 @@ IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind kind) {
     }
   }
 
-  return IR::Val::Func(ir_func);
+  return ir_func;
 }
 
 IR::Val AST::Statements::EmitIR(IR::Cmd::Kind kind) {

@@ -1,6 +1,7 @@
 #ifndef ICARUS_AST_AST_H
 #define ICARUS_AST_AST_H
 
+#include <map>
 #include <algorithm>
 #include <memory>
 #include <optional>
@@ -375,6 +376,25 @@ struct Case : public Expression {
       key_vals;
 };
 
+struct DependentArgumentOrdering {
+  bool operator()(const std::map<Declaration *, IR::Val> &lhs,
+                  const std::map<Declaration *, IR::Val> &rhs) const {
+    if (lhs.size() < rhs.size()) { return true; }
+    if (lhs.size() > rhs.size()) { return false; }
+    auto lhs_iter = lhs.begin();
+    auto rhs_iter = rhs.begin();
+    while (lhs_iter != lhs.end()) {
+      ASSERT_EQ(lhs_iter->first, rhs_iter->first);
+      if (lhs_iter->second.value < rhs_iter->second.value) { return true; }
+      if (lhs_iter->second.value > rhs_iter->second.value) { return false; }
+      ++lhs_iter;
+      ++rhs_iter;
+    }
+
+    return false;
+  }
+};
+
 struct FunctionLiteral : public Expression {
   FunctionLiteral() {}
   EXPR_FNS(FunctionLiteral);
@@ -384,6 +404,8 @@ struct FunctionLiteral : public Expression {
   BuildNoLiner(std::vector<base::owned_ptr<AST::Node>> nodes);
   FunctionLiteral *Clone() const override;
 
+  IR::Func *Materialize(const FnArgs<base::owned_ptr<Expression>> &args);
+
   virtual IR::Val EmitIR(IR::Cmd::Kind);
 
   base::owned_ptr<FnScope> fn_scope;
@@ -392,9 +414,10 @@ struct FunctionLiteral : public Expression {
   std::vector<base::owned_ptr<Declaration>> inputs;
   base::owned_ptr<Statements> statements;
 
-  IR::Func *ir_func = nullptr;
+  std::map<std::map<Declaration *, IR::Val>, IR::Func *,
+           DependentArgumentOrdering>
+      ir_fns_;
   std::unordered_set<Declaration *> captures;
-  std::unordered_map<Type *, Declaration *> cache;
 };
 
 struct For : public Node {

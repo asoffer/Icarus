@@ -15,14 +15,6 @@ Timer timer;
 struct Scope;
 extern Scope *GlobalScope;
 
-#define CHECK_FOR_ERRORS                                                       \
-  do {                                                                         \
-    if (ErrorLog::NumErrors() != 0) {                                          \
-      ErrorLog::Dump();                                                        \
-      return -1;                                                               \
-    }                                                                          \
-  } while (false)
-
 extern void ReplEval(AST::Expression *expr);
 
 extern std::vector<base::owned_ptr<AST::Statements>> ParseAllFiles();
@@ -33,7 +25,10 @@ base::owned_ptr<AST::Statements> global_statements;
 int GenerateCode() {
   auto stmts_by_file = ParseAllFiles();
 
-  CHECK_FOR_ERRORS;
+  if (ErrorLog::NumErrors() != 0) {
+    ErrorLog::Dump();
+    return -1;
+  }
 
   RUN(timer, "AST Setup") {
     global_statements = AST::Statements::Merge(std::move(stmts_by_file));

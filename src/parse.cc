@@ -21,7 +21,16 @@ static void ValidateStatementSyntax(AST::Node *node) {
 }
 
 namespace Language {
-extern size_t precedence(Operator op);
+size_t precedence(Operator op) {
+  switch (op) {
+#define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
+  case Operator::name:                                                         \
+    return (((prec) << 2) + (assoc));
+#include "config/operator.conf"
+#undef OPERATOR_MACRO
+  default: UNREACHABLE();
+  }
+}
 } // namespace Language
 
 static base::owned_ptr<AST::Node>
@@ -524,19 +533,6 @@ BuildEmptyCodeBlock(std::vector<base::owned_ptr<Node>> nodes) {
   return block;
 }
 } // namespace AST
-
-namespace Language {
-size_t precedence(Operator op) {
-  switch (op) {
-#define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
-  case Operator::name:                                                         \
-    return (((prec) << 2) + (assoc));
-#include "config/operator.conf"
-#undef OPERATOR_MACRO
-  default: UNREACHABLE();
-  }
-}
-} // namespace Language
 
 class Rule {
 public:

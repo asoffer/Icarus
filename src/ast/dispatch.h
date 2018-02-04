@@ -14,7 +14,8 @@ struct Expression;
 struct Binding {
   bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
 
-  Expression *fn_expr_;
+  Expression *fn_expr_ = nullptr;
+  IR::Func *fn_        = nullptr;
   std::vector<std::pair<Type *, Expression *>> exprs_;
 };
 

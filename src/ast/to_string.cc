@@ -143,8 +143,11 @@ std::string InDecl::to_string(size_t n) const {
 
 std::string Declaration::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<Declaration " << (IsInferred() ? "(:=)" : "(:)")
-     << TYPE_OR("") << ">\n" << identifier->to_string(n + 1);
+  ss << tabs(n) << "<Declaration "
+     << (const_ ? (IsInferred() ? "(::=)" : "(::)")
+                : (IsInferred() ? "(:=)" : "(:)"))
+     << TYPE_OR("") << ">\n"
+     << identifier->to_string(n + 1);
 
   if (type_expr) { ss << type_expr->to_string(n + 1); }
   if (init_val) { ss << init_val->to_string(n + 1); }

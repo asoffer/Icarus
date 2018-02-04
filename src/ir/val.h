@@ -19,6 +19,7 @@ namespace AST {
 struct CodeBlock;
 struct Expression;
 struct ScopeLiteral;
+struct FunctionLiteral;
 } // namespace AST
 
 namespace IR {
@@ -54,6 +55,22 @@ struct Addr {
 
 bool operator==(Addr lhs, Addr rhs);
 inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
+inline bool operator<(Addr lhs, Addr rhs) {
+  u8 lhs_kind = static_cast<u8>(lhs.kind);
+  u8 rhs_kind = static_cast<u8>(rhs.kind);
+  if (lhs_kind < rhs_kind) { return true; }
+  if (lhs_kind > rhs_kind) { return false; }
+  switch (lhs.kind) {
+  case Addr::Kind::Null: return false;
+  case Addr::Kind::Global: return lhs.as_global < rhs.as_global;
+  case Addr::Kind::Stack: return lhs.as_stack < rhs.as_stack;
+  case Addr::Kind::Heap: return lhs.as_heap < rhs.as_heap;
+  }
+  UNREACHABLE();
+}
+inline bool operator<=(Addr lhs, Addr rhs) { return !(rhs < lhs); }
+inline bool operator>(Addr lhs, Addr rhs) { return rhs < lhs; }
+inline bool operator>=(Addr lhs, Addr rhs) { return !(lhs < rhs); }
 
 struct Func;
 } // namespace IR
@@ -76,9 +93,9 @@ namespace IR {
 struct Val {
   ::Type *type = nullptr;
   std::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32,
-               EnumVal, ::Type *, ::IR::Func *, AST::ScopeLiteral *,
-               base::owned_ptr<AST::CodeBlock>, AST::Expression *, BlockIndex,
-               std::string>
+               EnumVal, ::Type *, AST::FunctionLiteral *, ::IR::Func *,
+               AST::ScopeLiteral *, base::owned_ptr<AST::CodeBlock>,
+               AST::Expression *, BlockIndex, std::string>
       value{false};
 
   static Val Reg(Register r, ::Type *t) { return Val(t, r); }
@@ -95,6 +112,7 @@ struct Val {
   static Val Type(::Type *t) { return Val(::Type_, t); }
   static Val CodeBlock(base::owned_ptr<AST::CodeBlock> block);
   static Val Func(::IR::Func *fn);
+  static Val FnLit(AST::FunctionLiteral *fn);
   static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Void() { return Val(::Void, false); }
   static Val Null(::Type *t);

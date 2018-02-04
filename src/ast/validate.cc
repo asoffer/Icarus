@@ -243,50 +243,51 @@ std::optional<DispatchTable>
 Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
   DispatchTable table;
   for (Expression *fn_option : fn_options) {
+    ASSERT_TYPE(Function, fn_option->type);
+
     // TODO expression is constant?
-    if (fn_option->type->is<Function>()) {
-      auto fn_val = Evaluate(fn_option->is<Declaration>()
-                                 ? fn_option->as<Declaration>().init_val.get()
-                                 : fn_option)[0]
-                        .value;
+    auto fn_val = Evaluate(fn_option)[0].value;
 
-      auto **fn_ptr = std::get_if<IR::Func *>(&fn_val);
-      if (fn_ptr == nullptr) { return std::nullopt; }
-      auto *fn = *fn_ptr;
+    auto **fn_ptr = std::get_if<FunctionLiteral *>(&fn_val);
+    if (fn_ptr == nullptr) { return std::nullopt; }
+    IR::Func *fn = (**fn_ptr).Materialize(args_);
+    if (fn == nullptr) { return std::nullopt; }
 
-      // Compute name -> argument number map.
-      // TODO this should be done when the function is generated instead of
-      // ad-hoc
-      std::unordered_map<std::string, size_t> index_lookup;
-      for (size_t i = 0; i < fn->args_.size(); ++i) {
-        index_lookup[fn->args_[i].first] = i;
+    // Compute name -> argument number map.
+    // TODO this should be done when the function is generated instead of
+    // ad-hoc
+    std::unordered_map<std::string, size_t> index_lookup;
+    for (size_t i = 0; i < fn->args_.size(); ++i) {
+      index_lookup[fn->args_[i].first] = i;
+    }
+
+    // Match the ordered unnamed arguments
+    auto *fn_expr = fn_option->is<Declaration>()
+                        ? fn_option->as<Declaration>().identifier.get()
+                        : fn_option;
+    Binding binding{
+        fn_expr, fn,
+        std::vector(fn->args_.size(),
+                    std::pair<Type *, Expression *>(nullptr, nullptr))};
+    for (size_t i = 0; i < args_.pos_.size(); ++i) {
+      binding.exprs_[i] = std::pair(nullptr, args_.pos_[i].get());
+    }
+
+    // Match the named arguments
+    for (const auto &name_and_expr : args_.named_) {
+      auto iter = index_lookup.find(name_and_expr.first);
+      if (iter == index_lookup.end()) {
+        // Missing named argument so passing on to the next option. Perhaps it
+        // would be useful to generate error messages explaining why you passed
+        // on each option.
+        goto next_option;
+      } else {
+        binding.exprs_[iter->second] =
+            std::pair(nullptr, name_and_expr.second.get());
       }
+    }
 
-      // Match the ordered unnamed arguments
-      auto *fn_expr = fn_option->is<Declaration>()
-                          ? fn_option->as<Declaration>().identifier.get()
-                          : fn_option;
-      Binding binding{fn_expr, std::vector(fn->args_.size(),
-                                           std::pair<Type *, Expression *>(
-                                               nullptr, nullptr))};
-      for (size_t i = 0; i < args_.pos_.size(); ++i) {
-        binding.exprs_[i] = std::pair(nullptr, args_.pos_[i].get());
-      }
-
-      // Match the named arguments
-      for (const auto &name_and_expr : args_.named_) {
-        auto iter = index_lookup.find(name_and_expr.first);
-        if (iter == index_lookup.end()) {
-          // Missing named argument so passing on to the next option. Perhaps it
-          // would be useful to generate error messages explaining why you
-          // passed on each option.
-          goto next_option;
-        } else {
-          binding.exprs_[iter->second] =
-              std::pair(nullptr, name_and_expr.second.get());
-        }
-      }
-
+    {
       FnArgs<Type *> call_arg_types;
       call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
       for (const auto & [ key, val ] : index_lookup) {
@@ -304,7 +305,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
         } else {
           Type *match = Type::Meet(binding.exprs_[i].second->type,
                                    fn_option->type->as<Function>().input[i]);
-         if (match == nullptr) {
+          if (match == nullptr) {
             goto next_option;
           } else {
             binding.exprs_[i].first = fn_option->type->as<Function>().input[i];
@@ -321,8 +322,6 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
       }
 
       table.insert(std::move(call_arg_types), std::move(binding));
-    } else {
-      // TODO type casts can be called like functions.
     }
   next_option:;
   }

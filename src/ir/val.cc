@@ -43,6 +43,7 @@ Val Val::Enum(const ::Enum *enum_type, size_t integral_val) {
   return Val(const_cast<::Enum *>(enum_type), EnumVal{integral_val});
 }
 
+Val Val::FnLit(AST::FunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::Func(::IR::Func *fn) { return Val(fn->ir_type, fn); }
 Val Val::Null(::Type *t) { return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0}); }
 Val Val::NullPtr() { return Val(::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
@@ -89,10 +90,13 @@ std::string Val::to_string() const {
           [](BlockIndex b) -> std::string {
             return "block #" + std::to_string(b);
           },
+
           [](const std::string &s) -> std::string {
             return "string \"" + s + "\"";
           },
-      },
+          [](AST::FunctionLiteral *fn) -> std::string {
+            return fn->to_string();
+          }},
       value);
 }
 

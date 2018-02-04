@@ -283,6 +283,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             [](IR::Func *f) {
               std::cerr << "{" << f->type_->to_string() << "}";
             },
+            [](AST::FunctionLiteral *f) {
+              std::cerr << "{" << f->type->to_string() << "}";
+            },
             [&resolved](auto) { NOT_YET(resolved[0].type); },
         },
         resolved[0].value);

@@ -103,6 +103,24 @@ inline bool operator<(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
                       StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
   return lhs.value < rhs.value;
 }
+
+template <typename IndexType, typename BaseType, BaseType DefaultValue>
+inline bool operator<=(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
+                      StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
+  return !(rhs < lhs);
+}
+
+template <typename IndexType, typename BaseType, BaseType DefaultValue>
+inline bool operator>(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
+                      StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
+  return rhs < lhs;
+}
+
+template <typename IndexType, typename BaseType, BaseType DefaultValue>
+inline bool operator>=(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
+                       StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
+  return !(lhs < rhs);
+}
 } // namespace base
 
 namespace std {
