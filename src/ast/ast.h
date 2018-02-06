@@ -1,8 +1,8 @@
 #ifndef ICARUS_AST_AST_H
 #define ICARUS_AST_AST_H
 
-#include <map>
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <optional>
 #include <unordered_map>
@@ -36,6 +36,8 @@ struct StageRange {
   static constexpr int NoEmitIR() { return 2; }
 };
 
+struct BoundConstants;
+
 #define STAGE_CHECK                                                            \
   do {                                                                         \
     if (stage_range_.high < ThisStage()) { return; }                           \
@@ -47,7 +49,7 @@ struct StageRange {
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
-  virtual void Validate() override;                                            \
+  virtual void Validate(const BoundConstants &bound_constants) override;       \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -59,7 +61,7 @@ struct StageRange {
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
-  virtual void Validate() override;                                            \
+  virtual void Validate(const BoundConstants &bound_constants) override;       \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -69,9 +71,9 @@ struct StageRange {
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
   virtual void assign_scope(Scope *) {}
-  virtual void Validate() = 0;
+  virtual void Validate(const BoundConstants &bound_constants) = 0;
 
-  virtual IR::Val EmitIR(IR::Cmd::Kind) { NOT_YET(); }
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &) { NOT_YET(); }
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   virtual void
   contextualize(const Node *correspondant,
@@ -106,7 +108,7 @@ struct Expression : public Node {
   virtual ~Expression(){};
   virtual std::string to_string(size_t n) const                         = 0;
   virtual void assign_scope(Scope *scope)                               = 0;
-  virtual void Validate()                                               = 0;
+  virtual void Validate(const BoundConstants &bound_constants)          = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   std::string to_string() const { return to_string(0); }
 
@@ -116,8 +118,12 @@ struct Expression : public Node {
   contextualize(const Node *correspondant,
                 const std::unordered_map<const Expression *, IR::Val> &) = 0;
 
-  virtual IR::Val EmitIR(IR::Cmd::Kind) { NOT_YET(*this); }
-  virtual IR::Val EmitLVal(IR::Cmd::Kind) { NOT_YET(*this); }
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &) {
+    NOT_YET(*this);
+  }
+  virtual IR::Val EmitLVal(IR::Cmd::Kind, const BoundConstants &) {
+    NOT_YET(*this);
+  }
 
   // Use these two functions to verify that an identifier can be declared using
   // these expressions. We pass in a string representing the identifier being
@@ -148,13 +154,15 @@ struct TokenNode : public Node {
 
   void SaveReferences(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
   TokenNode *Clone() const override;
-  virtual void Validate() {}
+  virtual void Validate(const BoundConstants &) {}
 
   virtual void
   contextualize(const Node *correspondant,
                 const std::unordered_map<const Expression *, IR::Val> &);
 
-  virtual IR::Val EmitIR(IR::Cmd::Kind) { UNREACHABLE(); }
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &) {
+    UNREACHABLE();
+  }
 
   virtual ~TokenNode() {}
 
@@ -171,7 +179,7 @@ struct Terminal : public Expression {
 
   Terminal *Clone() const override;
 
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
 };
 
 struct Identifier : public Terminal {
@@ -179,8 +187,8 @@ struct Identifier : public Terminal {
   EXPR_FNS(Identifier);
   Identifier(const TextSpan &span, const std::string &token_string);
   Identifier *Clone() const override;
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
-  virtual IR::Val EmitLVal(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
+  virtual IR::Val EmitLVal(IR::Cmd::Kind, const BoundConstants &);
 
   std::string token;
   Declaration *decl = nullptr;
@@ -192,16 +200,20 @@ struct Hole : public Terminal {
   Hole(const TextSpan &span) : Terminal(span, IR::Val::None()) {}
   Hole *Clone() const override;
 
-  IR::Val EmitIR(IR::Cmd::Kind) override { return IR::Val::None(); }
-  IR::Val EmitLVal(IR::Cmd::Kind) override { return IR::Val::None(); }
+  IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &) override {
+    return IR::Val::None();
+  }
+  IR::Val EmitLVal(IR::Cmd::Kind, const BoundConstants &) override {
+    return IR::Val::None();
+  }
 };
 
 struct Binop : public Expression {
   EXPR_FNS(Binop);
 
   Binop *Clone() const override;
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
-  virtual IR::Val EmitLVal(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
+  virtual IR::Val EmitLVal(IR::Cmd::Kind, const BoundConstants &);
 
   bool is_assignment() const {
     return op == Language::Operator::Assign || op == Language::Operator::OrEq ||
@@ -219,7 +231,7 @@ struct Call : public Expression {
   EXPR_FNS(Call);
   Call *Clone() const override;
 
-  IR::Val EmitIR(IR::Cmd::Kind) override;
+  IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &) override;
 
   base::owned_ptr<Expression> fn_;
   FnArgs<base::owned_ptr<Expression>> args_;
@@ -235,7 +247,7 @@ struct Declaration : public Expression {
   Declaration(bool is_const = false) : const_(is_const) {}
 
   Declaration *Clone() const override;
-  IR::Val EmitIR(IR::Cmd::Kind) override;
+  IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &) override;
 
   base::owned_ptr<Identifier> identifier;
   base::owned_ptr<Expression> type_expr;
@@ -272,7 +284,7 @@ struct InDecl : public Declaration {
 struct Statements : public Node {
   VIRTUAL_METHODS_FOR_NODES;
   Statements *Clone() const override;
-  IR::Val EmitIR(IR::Cmd::Kind) override;
+  IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &) override;
 
   inline size_t size() { return statements.size(); }
 
@@ -305,13 +317,13 @@ struct CodeBlock : public Expression {
   std::string error_message; // To be used if stmts == nullptr
 
   CodeBlock *Clone() const override;
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
 };
 
 struct Unop : public Expression {
   EXPR_FNS(Unop);
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
-  virtual IR::Val EmitLVal(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
+  virtual IR::Val EmitLVal(IR::Cmd::Kind, const BoundConstants &);
 
   Unop *Clone() const override;
   base::owned_ptr<Expression> operand;
@@ -320,8 +332,8 @@ struct Unop : public Expression {
 
 struct Access : public Expression {
   EXPR_FNS(Access);
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
-  virtual IR::Val EmitLVal(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
+  virtual IR::Val EmitLVal(IR::Cmd::Kind, const BoundConstants &);
 
   Access *Clone() const override;
   std::string member_name;
@@ -330,7 +342,7 @@ struct Access : public Expression {
 
 struct ChainOp : public Expression {
   EXPR_FNS(ChainOp);
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
 
   ChainOp *Clone() const override;
   std::vector<Language::Operator> ops;
@@ -342,8 +354,8 @@ struct CommaList : public Expression {
   EXPR_FNS(CommaList);
 
   CommaList *Clone() const override;
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
-  virtual IR::Val EmitLVal(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
+  virtual IR::Val EmitLVal(IR::Cmd::Kind, const BoundConstants &);
 
   std::vector<base::owned_ptr<Expression>> exprs;
 };
@@ -352,14 +364,14 @@ struct ArrayLiteral : public Expression {
   EXPR_FNS(ArrayLiteral);
   ArrayLiteral *Clone() const override;
 
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
 
   std::vector<base::owned_ptr<Expression>> elems;
 };
 
 struct ArrayType : public Expression {
   EXPR_FNS(ArrayType);
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
   ArrayType *Clone() const override;
 
   base::owned_ptr<Expression> length;
@@ -368,7 +380,7 @@ struct ArrayType : public Expression {
 
 struct Case : public Expression {
   EXPR_FNS(Case);
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
   Case *Clone() const override;
 
   std::vector<
@@ -376,14 +388,30 @@ struct Case : public Expression {
       key_vals;
 };
 
-struct DependentArgumentOrdering {
-  bool operator()(const std::map<Declaration *, IR::Val> &lhs,
-                  const std::map<Declaration *, IR::Val> &rhs) const {
-    if (lhs.size() < rhs.size()) { return true; }
-    if (lhs.size() > rhs.size()) { return false; }
-    auto lhs_iter = lhs.begin();
-    auto rhs_iter = rhs.begin();
-    while (lhs_iter != lhs.end()) {
+struct BoundConstants {
+  static std::optional<BoundConstants>
+  Make(const std::vector<base::owned_ptr<Declaration>> &inputs,
+       const AST::FnArgs<base::owned_ptr<Expression>> &args);
+
+  std::optional<IR::Val> operator()(Declaration *decl) const {
+    auto iter = vals_.find(decl);
+    if (iter == vals_.end()) { return std::nullopt; }
+    return std::move(iter->second);
+  }
+
+  std::map<Declaration *, IR::Val> vals_;
+};
+} // namespace AST
+
+namespace std {
+template <> struct less<AST::BoundConstants> {
+  bool operator()(const AST::BoundConstants &lhs,
+                  const AST::BoundConstants &rhs) const {
+    if (lhs.vals_.size() < rhs.vals_.size()) { return true; }
+    if (lhs.vals_.size() > rhs.vals_.size()) { return false; }
+    auto lhs_iter = lhs.vals_.begin();
+    auto rhs_iter = rhs.vals_.begin();
+    while (lhs_iter != lhs.vals_.end()) {
       ASSERT_EQ(lhs_iter->first, rhs_iter->first);
       if (lhs_iter->second.value < rhs_iter->second.value) { return true; }
       if (lhs_iter->second.value > rhs_iter->second.value) { return false; }
@@ -394,7 +422,9 @@ struct DependentArgumentOrdering {
     return false;
   }
 };
+} // namespace std
 
+namespace AST {
 struct FunctionLiteral : public Expression {
   FunctionLiteral() {}
   EXPR_FNS(FunctionLiteral);
@@ -406,7 +436,7 @@ struct FunctionLiteral : public Expression {
 
   IR::Func *Materialize(const FnArgs<base::owned_ptr<Expression>> &args);
 
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
 
   base::owned_ptr<FnScope> fn_scope;
   base::owned_ptr<Expression> return_type_expr;
@@ -414,9 +444,7 @@ struct FunctionLiteral : public Expression {
   std::vector<base::owned_ptr<Declaration>> inputs;
   base::owned_ptr<Statements> statements;
 
-  std::map<std::map<Declaration *, IR::Val>, IR::Func *,
-           DependentArgumentOrdering>
-      ir_fns_;
+  std::map<BoundConstants, IR::Func *> ir_fns_;
   std::unordered_set<Declaration *> captures;
 };
 
@@ -425,7 +453,7 @@ struct For : public Node {
   virtual ~For() {}
   For *Clone() const override;
 
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
 
   std::vector<base::owned_ptr<InDecl>> iterators;
   base::owned_ptr<Statements> statements;
@@ -449,7 +477,7 @@ struct ScopeNode : public Expression {
   EXPR_FNS(ScopeNode);
   ScopeNode *Clone() const override;
 
-  virtual IR::Val EmitIR(IR::Cmd::Kind);
+  virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
 
   // If the scope takes an argument, 'expr' is it. Otherwise 'expr' is null
   base::owned_ptr<Expression> expr;
@@ -463,7 +491,7 @@ struct ScopeLiteral : public Expression {
   EXPR_FNS(ScopeLiteral);
   ScopeLiteral *Clone() const override;
 
-  IR::Val EmitIR(IR::Cmd::Kind) override;
+  IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &) override;
 
   base::owned_ptr<Declaration> enter_fn;
   base::owned_ptr<Declaration> exit_fn;
@@ -471,33 +499,42 @@ struct ScopeLiteral : public Expression {
   ScopeLiteral(const TextSpan &span);
 };
 
-template <int N> decltype(auto) DoStage(Node *node, Scope *scope);
-template <> inline decltype(auto) DoStage<0>(Node *node, Scope *scope) {
+template <int N>
+decltype(auto) DoStage(Node *node, Scope *scope, const BoundConstants &);
+template <>
+inline decltype(auto) DoStage<0>(Node *node, Scope *scope,
+                                 const BoundConstants &) {
   node->assign_scope(scope);
 }
-template <> inline decltype(auto) DoStage<1>(Node *node, Scope *) {
-  node->Validate();
+template <>
+inline decltype(auto) DoStage<1>(Node *node, Scope *,
+                                 const BoundConstants &bound_constants) {
+  node->Validate(bound_constants);
 }
-template <> inline decltype(auto) DoStage<2>(Node *, Scope *) {
-  // TODO get rid of this empty thing
-}
-template <> inline decltype(auto) DoStage<3>(Node *node, Scope *) {
-  return node->EmitIR(IR::Cmd::Kind::Exec);
+
+template <>
+inline decltype(auto) DoStage<2>(Node *node, Scope *,
+                                 const BoundConstants &bound_constants) {
+  return node->EmitIR(IR::Cmd::Kind::Exec, bound_constants);
 }
 
 template <int Low, int High> struct ApplyStageRange {
-  decltype(auto) operator()(Node *node, Scope *scope) const {
-    DoStage<Low>(node, scope);
-    return ApplyStageRange<Low + 1, High>{}(node, scope);
+  decltype(auto) operator()(Node *node, Scope *scope,
+                            const BoundConstants &bound_constants) const {
+    DoStage<Low>(node, scope, bound_constants);
+    return ApplyStageRange<Low + 1, High>{}(node, scope, bound_constants);
   }
 };
 template <int N> struct ApplyStageRange<N, N> {
-  decltype(auto) operator()(Node *node, Scope *scope) const {
-    return DoStage<N>(node, scope);
+  decltype(auto) operator()(Node *node, Scope *scope,
+                            const BoundConstants &bound_constants) const {
+    return DoStage<N>(node, scope, bound_constants);
   }
 };
-template <int Low, int High> decltype(auto) DoStages(Node *node, Scope *scope) {
-  return ApplyStageRange<Low, High>{}(node, scope);
+template <int Low, int High>
+decltype(auto) DoStages(Node *node, Scope *scope,
+                        const BoundConstants &bound_constants) {
+  return ApplyStageRange<Low, High>{}(node, scope, bound_constants);
 }
 } // namespace AST
 

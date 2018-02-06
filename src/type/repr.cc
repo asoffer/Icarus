@@ -131,7 +131,7 @@ void Array::EmitRepr(IR::Val val) {
 }
 
 void Struct::EmitRepr(IR::Val val) {
-  CompleteDefinition();
+  CompleteDefinition(AST::BoundConstants{});
   if (!repr_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func(Ptr(this), Void),

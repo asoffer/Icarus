@@ -5,12 +5,12 @@
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
 
-void Struct::CompleteDefinition() {
+void Struct::CompleteDefinition(const AST::BoundConstants& bound_constants) {
   if (completed_) { return; }
   if (!field_num_to_name.empty()) { return; }
 
   for (size_t i = 0; i < decls.size(); ++i) {
-    decls[i]->Validate();
+    decls[i]->Validate(bound_constants);
 
     Type *decl_type;
     if (decls[i]->type_expr) {

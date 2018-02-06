@@ -70,7 +70,7 @@ void Pointer::EmitInit(IR::Val id_val) {
 }
 
 void Struct::EmitInit(IR::Val id_val) {
-  CompleteDefinition();
+  CompleteDefinition(AST::BoundConstants{});
 
   if (!init_func) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
@@ -91,7 +91,9 @@ void Struct::EmitInit(IR::Val id_val) {
           EmitCopyInit(
               /* from_type = */ init_values[i]->type,
               /*   to_type = */ field_type[i],
-              /*  from_val = */ init_values[i]->EmitIR(IR::Cmd::Kind::Exec),
+              /*  from_val = */
+              init_values[i]->EmitIR(IR::Cmd::Kind::Exec,
+                                     AST::BoundConstants{}),
               /*    to_var = */ IR::Field(init_func->Argument(0), i));
         } else {
           field_type[i]->EmitInit(IR::Field(init_func->Argument(0), i));

@@ -27,7 +27,8 @@ ExprFn(AST::Expression *expr, Type *input,
 
     auto start_block   = IR::Func::Current->AddBlock();
     IR::Block::Current = start_block;
-    auto result = expr->EmitIR(kind);
+    // TODO bound constants
+    auto result = expr->EmitIR(kind, AST::BoundConstants{});
 
     if (expr->type != Void) {
       IR::SetReturn(IR::ReturnValue{0}, std::move(result));
@@ -552,7 +553,7 @@ void ReplEval(AST::Expression *expr) {
       std::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
-    auto expr_val      = expr->EmitIR(IR::Cmd::Kind::Exec);
+    auto expr_val = expr->EmitIR(IR::Cmd::Kind::Exec, AST::BoundConstants{});
     if (ErrorLog::NumErrors() != 0) {
       ErrorLog::Dump();
       return;

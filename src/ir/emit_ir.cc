@@ -68,8 +68,9 @@ IR::Val OrdFunc() {
   return IR::Val::Func(ord_func_);
 }
 
-IR::Val AST::Access::EmitLVal(IR::Cmd::Kind kind) {
-  auto val = operand->EmitLVal(kind);
+IR::Val AST::Access::EmitLVal(IR::Cmd::Kind kind,
+                              const AST::BoundConstants &bound_constants) {
+  auto val = operand->EmitLVal(kind, bound_constants);
   while (val.type->is<Pointer>() &&
          !val.type->as<Pointer>().pointee->is_big()) {
     val = IR::Load(val);
@@ -97,8 +98,8 @@ static IR::Val EmitVariantMatch(const IR::Val &needle, Type *haystack) {
       phi_args.push_back(IR::Val::Block(IR::Block::Current));
       phi_args.push_back(IR::Val::Bool(true));
 
-      IR::Block::Current =
-          IR::EarlyExitOn<true>(landing, IR::Eq(IR::Val::Type(v), runtime_type));
+      IR::Block::Current = IR::EarlyExitOn<true>(
+          landing, IR::Eq(IR::Val::Type(v), runtime_type));
     }
 
     phi_args.push_back(IR::Val::Block(IR::Block::Current));
@@ -117,7 +118,8 @@ static IR::Val EmitVariantMatch(const IR::Val &needle, Type *haystack) {
   }
 }
 
-IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind,
+                          const AST::BoundConstants &bound_constants) {
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching
   // insanity.
@@ -131,15 +133,17 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   FnArgs<IR::Val> fn_args;
   fn_args.pos_.reserve(args_.pos_.size());
   for (auto &expr : args_.pos_) {
-    fn_args.pos_.push_back(expr->type->is_big() ? PtrCallFix(expr->EmitIR(kind))
-                                            : expr->EmitIR(kind));
+    fn_args.pos_.push_back(expr->type->is_big()
+                               ? PtrCallFix(expr->EmitIR(kind, bound_constants))
+                               : expr->EmitIR(kind, bound_constants));
     expr_map[expr.get()] = &fn_args.pos_.back(); // Safe because of reserve.
   }
 
   for (auto & [ name, expr ] : args_.named_) {
     auto[iter, success] = fn_args.named_.emplace(
-        name, expr->type->is_big() ? PtrCallFix(expr->EmitIR(kind))
-                                   : expr->EmitIR(kind));
+        name, expr->type->is_big()
+                  ? PtrCallFix(expr->EmitIR(kind, bound_constants))
+                  : expr->EmitIR(kind, bound_constants));
     expr_map[expr.get()] = &iter->second;
   }
 
@@ -179,8 +183,8 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
         ASSERT_NE(bound_type, nullptr);
         auto default_expr =
             std::get<IR::Func *>(fn_to_call.value)->args_[i].second;
-        args[i] = bound_type->PrepareArgument(default_expr->type,
-                                              default_expr->EmitIR(kind));
+        args[i] = bound_type->PrepareArgument(
+            default_expr->type, default_expr->EmitIR(kind, bound_constants));
       } else {
         args[i] = bound_type->PrepareArgument(expr->type, *expr_map[expr]);
       }
@@ -229,21 +233,25 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   }
 }
 
-IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind,
+                            const AST::BoundConstants &bound_constants) {
   if (type->is<Enum>()) {
     return type->as<Enum>().EmitLiteral(member_name);
   } else {
-    return PtrCallFix(EmitLVal(kind));
+    return PtrCallFix(EmitLVal(kind, bound_constants));
   }
   return IR::Val::None();
 }
 
-IR::Val AST::Terminal::EmitIR(IR::Cmd::Kind) { return value; }
+IR::Val AST::Terminal::EmitIR(IR::Cmd::Kind, const AST::BoundConstants &) {
+  return value;
+}
 
-IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind,
+                                const AST::BoundConstants &bound_constants) {
   if (decl->const_) { return decl->addr; }
 
-  if (decl->scope_ == GlobalScope) { decl->EmitIR(kind); }
+  if (decl->scope_ == GlobalScope) { decl->EmitIR(kind, bound_constants); }
 
   if (auto *ret = std::get_if<IR::ReturnValue>(&decl->addr.value);
       ret && kind == IR::Cmd::Kind::PostCondition) {
@@ -260,26 +268,29 @@ IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
   } else if (decl->is<InDecl>()) {
     if (auto &in_decl = decl->as<InDecl>();
         in_decl.container->type->is<Array>()) {
-      return PtrCallFix(EmitLVal(kind));
+      return PtrCallFix(EmitLVal(kind, bound_constants));
     } else {
       return decl->addr;
     }
   } else {
-    return PtrCallFix(EmitLVal(kind));
+    return PtrCallFix(EmitLVal(kind, bound_constants));
   }
 }
 
-IR::Val AST::ArrayLiteral::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::ArrayLiteral::EmitIR(IR::Cmd::Kind kind,
+                                  const AST::BoundConstants &bound_constants) {
   auto array_val  = IR::Alloca(type);
   auto *data_type = type->as<Array>().data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
     auto elem_i = IR::Index(array_val, IR::Val::Int(static_cast<i32>(i)));
-    Type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(kind), elem_i);
+    Type::EmitMoveInit(data_type, data_type,
+                       elems[i]->EmitIR(kind, bound_constants), elem_i);
   }
   return array_val;
 }
 
-IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::For::EmitIR(IR::Cmd::Kind kind,
+                         const AST::BoundConstants &bound_constants) {
   auto init       = IR::Func::Current->AddBlock();
   auto incr       = IR::Func::Current->AddBlock();
   auto phi        = IR::Func::Current->AddBlock();
@@ -296,16 +307,17 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
     for (auto &decl : iterators) {
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
-          init_vals.push_back(decl->container->as<Binop>().lhs->EmitIR(kind));
-        } else if (decl->container->is<Unop>()) {
           init_vals.push_back(
-              decl->container->as<Unop>().operand->EmitIR(kind));
+              decl->container->as<Binop>().lhs->EmitIR(kind, bound_constants));
+        } else if (decl->container->is<Unop>()) {
+          init_vals.push_back(decl->container->as<Unop>().operand->EmitIR(
+              kind, bound_constants));
         } else {
           NOT_YET();
         }
       } else if (decl->container->type->is<Array>()) {
         init_vals.push_back(
-            IR::Index(decl->container->EmitLVal(kind), IR::Val::Int(0)));
+            IR::Index(decl->container->EmitLVal(kind, bound_constants), IR::Val::Int(0)));
 
       } else if (decl->container->type == Type_) {
         // TODO this conditional check on the line above is wrong
@@ -388,7 +400,8 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
       IR::Val cmp;
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
-          auto rhs_val = decl->container->as<Binop>().rhs->EmitIR(kind);
+          auto rhs_val =
+              decl->container->as<Binop>().rhs->EmitIR(kind, bound_constants);
           cmp = IR::Le(reg, rhs_val);
         } else if (decl->container->is<Unop>()) {
           // TODO we should optimize this here rather then generate suboptimal
@@ -400,7 +413,7 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
       } else if (decl->container->type->is<Array>()) {
         auto *array_type = &decl->container->type->as<Array>();
         cmp              = IR::Ne(
-            reg, IR::Index(decl->container->EmitLVal(kind),
+            reg, IR::Index(decl->container->EmitLVal(kind, bound_constants),
                            IR::Val::Int(static_cast<i32>(array_type->len))));
       } else if (decl->container->type == Type_) {
         IR::Val container_val = Evaluate(decl->container.get())[0];
@@ -425,7 +438,7 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
     IR::Block::Current = body_entry;
 
     for_scope->Enter();
-    statements->EmitIR(kind);
+    statements->EmitIR(kind, bound_constants);
     for_scope->Exit();
 
     IR::UncondJump(incr);
@@ -435,7 +448,8 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
   return IR::Val::None();
 }
 
-IR::Val AST::Case::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::Case::EmitIR(IR::Cmd::Kind kind,
+                          const AST::BoundConstants &bound_constants) {
   auto land = IR::Func::Current->AddBlock();
 
   ASSERT(!key_vals.empty(), "");
@@ -445,11 +459,11 @@ IR::Val AST::Case::EmitIR(IR::Cmd::Kind kind) {
     auto compute = IR::Func::Current->AddBlock();
     auto next    = IR::Func::Current->AddBlock();
 
-    auto val = key_vals[i].first->EmitIR(kind);
+    auto val = key_vals[i].first->EmitIR(kind, bound_constants);
     IR::CondJump(val, compute, next);
 
     IR::Block::Current = compute;
-    auto result = key_vals[i].second->EmitIR(kind);
+    auto result        = key_vals[i].second->EmitIR(kind, bound_constants);
     phi_args.push_back(IR::Val::Block(IR::Block::Current));
     phi_args.push_back(result);
     IR::UncondJump(land);
@@ -458,7 +472,7 @@ IR::Val AST::Case::EmitIR(IR::Cmd::Kind kind) {
   }
 
   // Last entry
-  auto result = key_vals.back().second->EmitIR(kind);
+  auto result = key_vals.back().second->EmitIR(kind, bound_constants);
   phi_args.push_back(IR::Val::Block(IR::Block::Current));
   phi_args.push_back(result);
   IR::UncondJump(land);
@@ -469,24 +483,26 @@ IR::Val AST::Case::EmitIR(IR::Cmd::Kind kind) {
   return IR::Func::Current->Command(phi).reg();
 }
 
-IR::Val AST::ScopeLiteral::EmitIR(IR::Cmd::Kind) {
+IR::Val AST::ScopeLiteral::EmitIR(IR::Cmd::Kind, const AST::BoundConstants &) {
   return IR::Val::Scope(this);
 }
 
-IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind,
+                               const AST::BoundConstants &bound_constants) {
   IR::Val scope_expr_val = Evaluate(scope_expr.get())[0];
   ASSERT_TYPE(Scope_Type, scope_expr_val.type);
 
   auto enter_fn = std::get<AST::ScopeLiteral *>(scope_expr_val.value)
-                      ->enter_fn->init_val->EmitIR(kind);
+                      ->enter_fn->init_val->EmitIR(kind, bound_constants);
   ASSERT_NE(enter_fn, IR::Val::None());
   auto exit_fn = std::get<AST::ScopeLiteral *>(scope_expr_val.value)
-                     ->exit_fn->init_val->EmitIR(kind);
+                     ->exit_fn->init_val->EmitIR(kind, bound_constants);
   ASSERT_NE(exit_fn, IR::Val::None());
 
   auto call_enter_result =
-      IR::Call(enter_fn, expr ? std::vector<IR::Val>{expr->EmitIR(kind)}
-                              : std::vector<IR::Val>{},
+      IR::Call(enter_fn,
+               expr ? std::vector<IR::Val>{expr->EmitIR(kind, bound_constants)}
+                    : std::vector<IR::Val>{},
                {});
   auto land_block  = IR::Func::Current->AddBlock();
   auto enter_block = IR::Func::Current->AddBlock();
@@ -494,7 +510,7 @@ IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
   IR::CondJump(call_enter_result, enter_block, land_block);
 
   IR::Block::Current = enter_block;
-  stmts->EmitIR(kind);
+  stmts->EmitIR(kind, bound_constants);
 
   auto call_exit_result = IR::Call(exit_fn, {}, {});
   IR::CondJump(call_exit_result, enter_block, land_block);
@@ -503,7 +519,8 @@ IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
   return IR::Val::None();
 }
 
-IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind,
+                                 const AST::BoundConstants &bound_constants) {
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
@@ -548,9 +565,11 @@ IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
     if (IsUninitialized()) { return IR::Val::None(); }
     if (IsCustomInitialized()) {
       if (init_val->lvalue == Assign::RVal) {
-        Type::EmitMoveInit(init_val->type, type, init_val->EmitIR(kind), addr);
+        Type::EmitMoveInit(init_val->type, type,
+                           init_val->EmitIR(kind, bound_constants), addr);
       } else {
-        Type::EmitCopyInit(init_val->type, type, init_val->EmitIR(kind), addr);
+        Type::EmitCopyInit(init_val->type, type,
+                           init_val->EmitIR(kind, bound_constants), addr);
       }
     } else {
       type->EmitInit(addr);
@@ -560,31 +579,35 @@ IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
   return addr;
 }
 
-IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind,
+                          const AST::BoundConstants &bound_constants) {
   switch (op) {
   case Language::Operator::Not:
   case Language::Operator::Sub: {
-    return IR::Neg(operand->EmitIR(kind));
+    return IR::Neg(operand->EmitIR(kind, bound_constants));
   } break;
   case Language::Operator::Return: {
-    ForEachExpr(operand.get(), [kind](size_t i, AST::Expression *expr) {
-      IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)}, expr->EmitIR(kind));
+    ForEachExpr(operand.get(), [&bound_constants, kind](size_t i,
+                                                        AST::Expression *expr) {
+      IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)},
+                    expr->EmitIR(kind, bound_constants));
     });
     IR::ReturnJump();
     return IR::Val::None();
   }
   case Language::Operator::Print: {
-    ForEachExpr(operand.get(), [kind](size_t, AST::Expression *expr) {
-      if (expr->type->is<Primitive>() || expr->type->is<Pointer>()) {
-        IR::Print(expr->EmitIR(kind));
-      } else {
-        expr->type->EmitRepr(expr->EmitIR(kind));
-      }
-    });
+    ForEachExpr(
+        operand.get(), [&bound_constants, kind](size_t, AST::Expression *expr) {
+          if (expr->type->is<Primitive>() || expr->type->is<Pointer>()) {
+            IR::Print(expr->EmitIR(kind, bound_constants));
+          } else {
+            expr->type->EmitRepr(expr->EmitIR(kind, bound_constants));
+          }
+        });
 
     return IR::Val::None();
   } break;
-  case Language::Operator::And: return operand->EmitLVal(kind);
+  case Language::Operator::And: return operand->EmitLVal(kind, bound_constants);
   case Language::Operator::Eval: {
     // TODO what if there's an error during evaluation?
     // TODO what about ``a, b = $FnWithMultipleReturnValues()``
@@ -596,10 +619,12 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
     ASSERT_EQ(val.type, Code);
     auto block = std::get<base::owned_ptr<AST::CodeBlock>>(val.value);
     // TODO you forced kind to be exec by doing EmitIR with DoStages.
-    return AST::DoStages<0, 3>(block->stmts.get(), scope_);
+    return AST::DoStages<0, 2>(block->stmts.get(), scope_, bound_constants);
   } break;
-  case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(kind));
-  case Language::Operator::At: return PtrCallFix(operand->EmitIR(kind));
+  case Language::Operator::Mul:
+    return IR::Ptr(operand->EmitIR(kind, bound_constants));
+  case Language::Operator::At:
+    return PtrCallFix(operand->EmitIR(kind, bound_constants));
   case Language::Operator::Needs: {
     // TODO validate requirements are well-formed?
     IR::Func::Current->preconditions_.push_back(operand.get());
@@ -610,17 +635,18 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
     IR::Func::Current->postconditions_.push_back(operand.get());
     return IR::Val::None();
   } break;
-  case Language::Operator::Pass: return operand->EmitIR(kind);
+  case Language::Operator::Pass: return operand->EmitIR(kind, bound_constants);
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
 
-IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind,
+                           const AST::BoundConstants &bound_constants) {
   switch (op) {
 #define CASE(op_name)                                                          \
   case Language::Operator::op_name: {                                          \
-    auto lhs_ir = lhs->EmitIR(kind);                                           \
-    auto rhs_ir = rhs->EmitIR(kind);                                           \
+    auto lhs_ir = lhs->EmitIR(kind, bound_constants);                          \
+    auto rhs_ir = rhs->EmitIR(kind, bound_constants);                          \
     return IR::op_name(lhs_ir, rhs_ir);                                        \
   } break
     CASE(Add);
@@ -632,25 +658,25 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
 #undef CASE
   case Language::Operator::Cast: {
     ASSERT(!rhs->is<AST::CommaList>(), "");
-    auto lhs_ir = lhs->EmitIR(kind);
-    auto rhs_ir = rhs->EmitIR(kind);
+    auto lhs_ir = lhs->EmitIR(kind, bound_constants);
+    auto rhs_ir = rhs->EmitIR(kind, bound_constants);
     return IR::Cast(lhs_ir, rhs_ir);
   } break;
   case Language::Operator::Assign: {
     std::vector<Type *> lhs_types, rhs_types;
     std::vector<IR::Val> rhs_vals;
-    ForEachExpr(rhs.get(),
-                [&rhs_vals, &rhs_types, kind](size_t, AST::Expression *expr) {
-                  rhs_vals.push_back(expr->EmitIR(kind));
-                  rhs_types.push_back(expr->type);
-                });
+    ForEachExpr(rhs.get(), [&bound_constants, &rhs_vals, &rhs_types,
+                            kind](size_t, AST::Expression *expr) {
+      rhs_vals.push_back(expr->EmitIR(kind, bound_constants));
+      rhs_types.push_back(expr->type);
+    });
 
     std::vector<IR::Val> lhs_lvals;
-    ForEachExpr(lhs.get(),
-                [&lhs_lvals, &lhs_types, kind](size_t, AST::Expression *expr) {
-                  lhs_lvals.push_back(expr->EmitLVal(kind));
-                  lhs_types.push_back(expr->type);
-                });
+    ForEachExpr(lhs.get(), [&bound_constants, &lhs_lvals, &lhs_types,
+                            kind](size_t, AST::Expression *expr) {
+      lhs_lvals.push_back(expr->EmitLVal(kind, bound_constants));
+      lhs_types.push_back(expr->type);
+    });
 
     ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
     for (size_t i = 0; i < lhs_lvals.size(); ++i) {
@@ -661,19 +687,20 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
   } break;
   case Language::Operator::OrEq: {
     if (type->is<Enum>()) {
-      auto lhs_lval = lhs->EmitLVal(kind);
-      IR::Store(IR::Or(IR::Load(lhs_lval), rhs->EmitIR(kind)), lhs_lval);
+      auto lhs_lval = lhs->EmitLVal(kind, bound_constants);
+      IR::Store(IR::Or(IR::Load(lhs_lval), rhs->EmitIR(kind, bound_constants)),
+                lhs_lval);
       return IR::Val::None();
     }
     auto land_block = IR::Func::Current->AddBlock();
     auto more_block = IR::Func::Current->AddBlock();
 
-    auto lhs_val       = lhs->EmitIR(kind);
+    auto lhs_val       = lhs->EmitIR(kind, bound_constants);
     auto lhs_end_block = IR::Block::Current;
     IR::CondJump(lhs_val, land_block, more_block);
 
     IR::Block::Current = more_block;
-    auto rhs_val       = rhs->EmitIR(kind);
+    auto rhs_val       = rhs->EmitIR(kind, bound_constants);
     auto rhs_end_block = IR::Block::Current;
     IR::UncondJump(land_block);
 
@@ -687,20 +714,21 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
   } break;
   case Language::Operator::AndEq: {
     if (type->is<Enum>()) {
-      auto lhs_lval = lhs->EmitLVal(kind);
-      IR::Store(IR::And(IR::Load(lhs_lval), rhs->EmitIR(kind)), lhs_lval);
+      auto lhs_lval = lhs->EmitLVal(kind, bound_constants);
+      IR::Store(IR::And(IR::Load(lhs_lval), rhs->EmitIR(kind, bound_constants)),
+                lhs_lval);
       return IR::Val::None();
     }
 
     auto land_block = IR::Func::Current->AddBlock();
     auto more_block = IR::Func::Current->AddBlock();
 
-    auto lhs_val       = lhs->EmitIR(kind);
+    auto lhs_val       = lhs->EmitIR(kind, bound_constants);
     auto lhs_end_block = IR::Block::Current;
     IR::CondJump(lhs_val, more_block, land_block);
 
     IR::Block::Current = more_block;
-    auto rhs_val       = rhs->EmitIR(kind);
+    auto rhs_val       = rhs->EmitIR(kind, bound_constants);
     auto rhs_end_block = IR::Block::Current;
     IR::UncondJump(land_block);
 
@@ -714,8 +742,8 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
   } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \
   case Language::Operator::op_name##Eq: {                                      \
-    auto lhs_lval = lhs->EmitLVal(kind);                                       \
-    auto rhs_ir   = rhs->EmitIR(kind);                                         \
+    auto lhs_lval = lhs->EmitLVal(kind, bound_constants);                                       \
+    auto rhs_ir   = rhs->EmitIR(kind, bound_constants);                        \
     IR::Store(IR::op_name(PtrCallFix(lhs_lval), rhs_ir), lhs_lval);            \
     return IR::Val::None();                                                    \
   } break
@@ -726,13 +754,15 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
     CASE_ASSIGN_EQ(Div);
     CASE_ASSIGN_EQ(Mod);
 #undef CASE_ASSIGN_EQ
-  case Language::Operator::Index: return PtrCallFix(EmitLVal(kind));
+  case Language::Operator::Index: return PtrCallFix(EmitLVal(kind, bound_constants));
   default: UNREACHABLE(*this);
   }
 }
 
-IR::Val AST::ArrayType::EmitIR(IR::Cmd::Kind kind) {
-  return IR::Array(length->EmitIR(kind), data_type->EmitIR(kind));
+IR::Val AST::ArrayType::EmitIR(IR::Cmd::Kind kind,
+                               const AST::BoundConstants &bound_constants) {
+  return IR::Array(length->EmitIR(kind, bound_constants),
+                   data_type->EmitIR(kind, bound_constants));
 }
 
 static IR::Val EmitChainOpPair(Type *lhs_type, const IR::Val &lhs_ir,
@@ -752,33 +782,34 @@ static IR::Val EmitChainOpPair(Type *lhs_type, const IR::Val &lhs_ir,
     case Language::Operator::Ge: return IR::Ge(lhs_ir, rhs_ir);
     case Language::Operator::Gt:
       return IR::Gt(lhs_ir, rhs_ir);
-    // TODO case Language::Operator::And: cmp = lhs_ir; break;
+      // TODO case Language::Operator::And: cmp = lhs_ir; break;
 
     default: UNREACHABLE();
     }
   }
 }
 
-IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
+IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind,
+                             const AST::BoundConstants &bound_constants) {
   if (ops[0] == Language::Operator::Xor) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(kind);
+    auto val  = (*iter)->EmitIR(kind, bound_constants);
     while (++iter != exprs.end()) {
-      val = IR::Xor(std::move(val), (*iter)->EmitIR(kind));
+      val = IR::Xor(std::move(val), (*iter)->EmitIR(kind, bound_constants));
     }
     return val;
   } else if (ops[0] == Language::Operator::Or && type->is<Enum>()) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(kind);
+    auto val  = (*iter)->EmitIR(kind, bound_constants);
     while (++iter != exprs.end()) {
-      val = IR::Or(std::move(val), (*iter)->EmitIR(kind));
+      val = IR::Or(std::move(val), (*iter)->EmitIR(kind, bound_constants));
     }
     return val;
   } else if (ops[0] == Language::Operator::And && type->is<Enum>()) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(kind);
+    auto val  = (*iter)->EmitIR(kind, bound_constants);
     while (++iter != exprs.end()) {
-      val = IR::And(std::move(val), (*iter)->EmitIR(kind));
+      val = IR::And(std::move(val), (*iter)->EmitIR(kind, bound_constants));
     }
     return val;
   } else if (ops[0] == Language::Operator::Or && type == Type_) {
@@ -786,7 +817,9 @@ IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
     // overload | to take my own stuff and have it return a type?
     std::vector<IR::Val> args;
     args.reserve(exprs.size());
-    for (const auto &expr : exprs) { args.push_back(expr->EmitIR(kind)); }
+    for (const auto &expr : exprs) {
+      args.push_back(expr->EmitIR(kind, bound_constants));
+    }
     return IR::Variant(std::move(args));
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
@@ -795,7 +828,7 @@ IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
     phi_args.reserve(2 * exprs.size());
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
-      auto val = exprs[i]->EmitIR(kind);
+      auto val = exprs[i]->EmitIR(kind, bound_constants);
 
       auto next_block = IR::Func::Current->AddBlock();
       IR::CondJump(val, is_or ? land_block : next_block,
@@ -807,7 +840,7 @@ IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
     }
 
     phi_args.push_back(IR::Val::Block(IR::Block::Current));
-    phi_args.push_back(exprs.back()->EmitIR(kind));
+    phi_args.push_back(exprs.back()->EmitIR(kind, bound_constants));
     IR::UncondJump(land_block);
 
     IR::Block::Current = land_block;
@@ -817,17 +850,17 @@ IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
 
   } else {
     if (ops.size() == 1) {
-      auto lhs_ir = exprs[0]->EmitIR(kind);
-      auto rhs_ir = exprs[1]->EmitIR(kind);
+      auto lhs_ir = exprs[0]->EmitIR(kind, bound_constants);
+      auto rhs_ir = exprs[1]->EmitIR(kind, bound_constants);
       return EmitChainOpPair(exprs[0]->type, lhs_ir, ops[0], exprs[1]->type,
                              rhs_ir);
 
     } else {
       std::vector<IR::Val> phi_args;
-      auto lhs_ir     = exprs.front()->EmitIR(kind);
+      auto lhs_ir     = exprs.front()->EmitIR(kind, bound_constants);
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
-        auto rhs_ir = exprs[i + 1]->EmitIR(kind);
+        auto rhs_ir = exprs[i + 1]->EmitIR(kind, bound_constants);
         IR::Val cmp = EmitChainOpPair(exprs[i]->type, lhs_ir, ops[i],
                                       exprs[i + 1]->type, rhs_ir);
 
@@ -840,7 +873,7 @@ IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
       }
 
       // Once more for the last element, but don't do a conditional jump.
-      auto rhs_ir = exprs.back()->EmitIR(kind);
+      auto rhs_ir = exprs.back()->EmitIR(kind, bound_constants);
       auto last_cmp =
           EmitChainOpPair(exprs[exprs.size() - 2]->type, lhs_ir, ops.back(),
                           exprs[exprs.size() - 1]->type, rhs_ir);
@@ -856,11 +889,18 @@ IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
   }
 }
 
-IR::Val AST::CommaList::EmitIR(IR::Cmd::Kind) { UNREACHABLE(this); }
-IR::Val AST::CommaList::EmitLVal(IR::Cmd::Kind) { NOT_YET(); }
+IR::Val AST::CommaList::EmitIR(IR::Cmd::Kind, const AST::BoundConstants &) {
+  UNREACHABLE(this);
+}
+IR::Val AST::CommaList::EmitLVal(IR::Cmd::Kind, const AST::BoundConstants &) {
+  NOT_YET();
+}
 
-IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind) {
-  AST::DoStages<1, 2>(statements.get(), fn_scope.get());
+IR::Val
+AST::FunctionLiteral::EmitIR(IR::Cmd::Kind,
+                             const AST::BoundConstants &bound_constants) {
+  // TODO bound constants?
+  statements->Validate(bound_constants);
   for (const auto &input : inputs) {
     if (!input->const_) { goto finish; }
   }
@@ -871,31 +911,37 @@ finish:
   return IR::Val::FnLit(this);
 }
 
-IR::Func *AST::FunctionLiteral::Materialize(
+std::optional<AST::BoundConstants> AST::BoundConstants::Make(
+    const std::vector<base::owned_ptr<Declaration>> &inputs,
     const AST::FnArgs<base::owned_ptr<Expression>> &args) {
-  std::map<Declaration *, IR::Val> bound_constants;
+  BoundConstants result;
   size_t i = 0;
   for (; i < args.pos_.size(); ++i) {
     if (!inputs[i]->const_) { continue; }
-    bound_constants.emplace(inputs[i].get(), Evaluate(args.pos_[i].get())[0]);
+    result.vals_.emplace(inputs[i].get(), Evaluate(args.pos_[i].get())[0]);
   }
 
   for (; i < inputs.size(); ++i) {
     if (!inputs[i]->const_) { continue; }
     auto iter = args.named_.find(inputs[i]->identifier->token);
     if (iter == args.named_.end()) {
-      if (inputs[i]->init_val == nullptr) { return nullptr; }
-      bound_constants.emplace(inputs[i].get(),
-                              Evaluate(inputs[i]->init_val.get())[0]);
+      if (inputs[i]->init_val == nullptr) { return std::nullopt; }
+      result.vals_.emplace(inputs[i].get(),
+                           Evaluate(inputs[i]->init_val.get())[0]);
     } else {
-      bound_constants.emplace(inputs[i].get(), Evaluate(iter->second.get())[0]);
+      result.vals_.emplace(inputs[i].get(), Evaluate(iter->second.get())[0]);
     }
   }
+  return std::move(result);
+}
 
-  LOG << bound_constants;
+IR::Func *AST::FunctionLiteral::Materialize(
+    const AST::FnArgs<base::owned_ptr<Expression>> &args) {
+  auto maybe_bc = AST::BoundConstants::Make(inputs, args);
+  if (!maybe_bc.has_value()) { return nullptr; }
+  auto bound_constants = std::move(maybe_bc).value();
 
   // TODO validation? what if args are positional and not named?
-
   auto *&ir_func = ir_fns_[bound_constants];
   if (ir_func == nullptr) {
     std::vector<std::pair<std::string, AST::Expression *>> args;
@@ -927,8 +973,10 @@ IR::Func *AST::FunctionLiteral::Materialize(
       for (size_t i = 0; i < inputs.size(); ++i) {
         // TODO positional arguments
         if (inputs[i]->const_) {
-          auto iter = bound_constants.find(inputs[i].get());
-          if (iter != bound_constants.end()) { inputs[i]->addr = iter->second; }
+          auto iter = bound_constants.vals_.find(inputs[i].get());
+          if (iter != bound_constants.vals_.end()) {
+            inputs[i]->addr = iter->second;
+          }
           continue;
         }
         inputs[i]->addr = IR::Func::Current->Argument(static_cast<i32>(i));
@@ -956,7 +1004,7 @@ IR::Func *AST::FunctionLiteral::Materialize(
         });
       }
 
-      statements->EmitIR(IR::Cmd::Kind::Exec);
+      statements->EmitIR(IR::Cmd::Kind::Exec, bound_constants);
       IR::ReturnJump();
 
       IR::Block::Current = ir_func->entry();
@@ -967,38 +1015,43 @@ IR::Func *AST::FunctionLiteral::Materialize(
   return ir_func;
 }
 
-IR::Val AST::Statements::EmitIR(IR::Cmd::Kind kind) {
-  for (auto &stmt : statements) { stmt->EmitIR(kind); }
+IR::Val AST::Statements::EmitIR(IR::Cmd::Kind kind,
+                                const AST::BoundConstants &bound_constants) {
+  for (auto &stmt : statements) { stmt->EmitIR(kind, bound_constants); }
   return IR::Val::None();
 }
 
-IR::Val AST::CodeBlock::EmitIR(IR::Cmd::Kind) {
+IR::Val AST::CodeBlock::EmitIR(IR::Cmd::Kind, const AST::BoundConstants &) {
   std::vector<IR::Val> args;
   auto result = base::own(this->Clone());
   result->stmts->SaveReferences(scope_, &args);
   return IR::Contextualize(std::move(result), std::move(args));
 }
 
-IR::Val AST::Identifier::EmitLVal(IR::Cmd::Kind kind) {
+IR::Val AST::Identifier::EmitLVal(IR::Cmd::Kind kind,
+                                  const AST::BoundConstants &bound_constants) {
   ASSERT_NE(decl, nullptr);
-  if (decl->addr == IR::Val::None()) { decl->EmitIR(kind); }
+  if (decl->addr == IR::Val::None()) { decl->EmitIR(kind, bound_constants); }
   // TODO kind???
 
   return decl->addr;
 }
 
-IR::Val AST::Unop::EmitLVal(IR::Cmd::Kind kind) {
+IR::Val AST::Unop::EmitLVal(IR::Cmd::Kind kind,
+                            const AST::BoundConstants &bound_constants) {
   switch (op) {
-  case Language::Operator::At: return operand->EmitIR(kind);
+  case Language::Operator::At: return operand->EmitIR(kind, bound_constants);
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
 
-IR::Val AST::Binop::EmitLVal(IR::Cmd::Kind kind) {
+IR::Val AST::Binop::EmitLVal(IR::Cmd::Kind kind,
+                             const AST::BoundConstants &bound_constants) {
   switch (op) {
   case Language::Operator::Index:
     if (lhs->type->is<::Array>()) {
-      return IR::Index(lhs->EmitLVal(kind), rhs->EmitIR(kind));
+      return IR::Index(lhs->EmitLVal(kind, bound_constants),
+                       rhs->EmitIR(kind, bound_constants));
     }
     [[fallthrough]];
   default: UNREACHABLE("Operator is ", static_cast<int>(op));

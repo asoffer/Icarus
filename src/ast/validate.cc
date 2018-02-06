@@ -26,7 +26,7 @@ static constexpr int ThisStage() { return 1; }
 
 #define VALIDATE_AND_RETURN_ON_ERROR(expr)                                     \
   do {                                                                         \
-    expr->Validate();                                                          \
+    expr->Validate(bound_constants);                                           \
     if (expr->type == Err) {                                                   \
       type = Err;                                                              \
       /* TODO Maybe this should be Nothing() */                                \
@@ -457,12 +457,13 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
   return false;
 }
 
-void Terminal::Validate() {
+void Terminal::Validate(const BoundConstants &) {
   STAGE_CHECK;
   lvalue = Assign::Const;
 }
 
-void Identifier::Validate() {
+void Identifier::Validate(const BoundConstants &) {
+  // TODO use bound constants
   STAGE_CHECK;
   STARTING_CHECK;
 
@@ -508,17 +509,17 @@ void Identifier::Validate() {
   }
 }
 
-void Hole::Validate() {
+void Hole::Validate(const BoundConstants &) {
   STAGE_CHECK;
   lvalue = Assign::Const;
 }
 
-void Binop::Validate() {
+void Binop::Validate(const BoundConstants &bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
 
-  lhs->Validate();
-  rhs->Validate();
+  lhs->Validate(bound_constants);
+  rhs->Validate(bound_constants);
   if (lhs->type == Err || rhs->type == Err) {
     type = Err;
     limit_to(lhs);
@@ -657,12 +658,13 @@ void Binop::Validate() {
       std::vector<Declaration *> matched_op_name;                              \
                                                                                \
       /* TODO this linear search is probably not ideal.   */                   \
-      scope_->ForEachDecl([&matched_op_name](Declaration *decl) {              \
-        if (decl->identifier->token == "__" op_name "__") {                    \
-          decl->Validate();                                                    \
-          matched_op_name.push_back(decl);                                     \
-        }                                                                      \
-      });                                                                      \
+      scope_->ForEachDecl(                                                     \
+          [&bound_constants, &matched_op_name](Declaration *decl) {            \
+            if (decl->identifier->token == "__" op_name "__") {                \
+              decl->Validate(bound_constants);                                 \
+              matched_op_name.push_back(decl);                                 \
+            }                                                                  \
+          });                                                                  \
                                                                                \
       Declaration *correct_decl = nullptr;                                     \
       for (auto &decl : matched_op_name) {                                     \
@@ -759,13 +761,13 @@ void Binop::Validate() {
   }
 }
 
-void Call::Validate() {
+void Call::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
 
   bool all_const = true;
-  args_.Apply([&all_const, this](auto &arg) {
-    arg->Validate();
+  args_.Apply([&bound_constants, &all_const, this](auto &arg) {
+    arg->Validate(bound_constants);
     if (arg->type == Err) { this->type = Err; }
     all_const &= arg->lvalue == Assign::Const;
   });
@@ -801,7 +803,7 @@ void Call::Validate() {
       auto iter = scope_ptr->decls_.find(token);
       if (iter == scope_ptr->decls_.end()) { continue; }
       for (const auto &decl : iter->second) {
-        decl->Validate();
+        decl->Validate(bound_constants);
         if (decl->type == Err) {
           limit_to(decl->stage_range_.high);
           return;
@@ -810,7 +812,7 @@ void Call::Validate() {
       }
     }
   } else {
-    fn_->Validate();
+    fn_->Validate(bound_constants);
     fn_options.push_back(fn_.get());
   }
 
@@ -859,17 +861,17 @@ void Call::Validate() {
 
 // TODO Declaration is responsible for the type verification of it's identifier?
 // TODO rewrite/simplify
-void Declaration::Validate() {
+void Declaration::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
 
   if (type_expr) {
-    type_expr->Validate();
+    type_expr->Validate(bound_constants);
     if (type_expr->type == Err) { type = Err; }
     limit_to(type_expr);
   }
   if (init_val) {
-    init_val->Validate();
+    init_val->Validate(bound_constants);
     if (init_val->type == Err) {
       type = Err;
     } else {
@@ -952,7 +954,7 @@ void Declaration::Validate() {
     UNREACHABLE();
   }
 
-  identifier->Validate();
+  identifier->Validate(bound_constants);
   limit_to(identifier);
 
   if (type == Err) {
@@ -961,7 +963,9 @@ void Declaration::Validate() {
   }
 
   // TODO is this the right time to complete the struct definition?
-  if (type->is<Struct>()) { type->as<Struct>().CompleteDefinition(); }
+  if (type->is<Struct>()) {
+    type->as<Struct>().CompleteDefinition(bound_constants);
+  }
 
   if (type == Type_ && IsInferred()) {
     // TODO Declaring a type must be a compile-time constant? No... what if I'm
@@ -992,7 +996,7 @@ void Declaration::Validate() {
       // Pick one arbitrary but consistent ordering of the pair to check because
       // at each Declaration verification, we look both up and down the scope
       // tree.
-      decl->Validate();
+      decl->Validate(bound_constants);
       if (Shadow(this, decl)) {
         failed_shadowing = true;
         ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1006,7 +1010,7 @@ void Declaration::Validate() {
         // Pick one arbitrary but consistent ordering of the pair to check
         // because at each Declaration verification, we look both up and down
         // the scope tree.
-        decl->Validate();
+        decl->Validate(bound_constants);
         if (Shadow(this, decl)) {
           failed_shadowing = true;
           ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1026,10 +1030,10 @@ void Declaration::Validate() {
   }
 }
 
-void InDecl::Validate() {
+void InDecl::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
-  container->Validate();
+  container->Validate(bound_constants);
   limit_to(container);
 
   lvalue = Assign::RVal;
@@ -1062,23 +1066,23 @@ void InDecl::Validate() {
   }
 
   identifier->type = type;
-  identifier->Validate();
+  identifier->Validate(bound_constants);
 }
 
-void Statements::Validate() {
+void Statements::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   for (auto &stmt : statements) {
-    stmt->Validate();
+    stmt->Validate(bound_constants);
     limit_to(stmt);
   }
 }
 
-void CodeBlock::Validate() {
+void CodeBlock::Validate(const BoundConstants& ) {
   STAGE_CHECK;
   type = Code;
 }
 
-void Unop::Validate() {
+void Unop::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
   VALIDATE_AND_RETURN_ON_ERROR(operand);
@@ -1163,7 +1167,7 @@ void Unop::Validate() {
         auto id_ptr = scope_ptr->IdHereOrNull("__neg__");
         if (!id_ptr) { continue; }
 
-        id_ptr->Validate();
+        id_ptr->Validate(bound_constants);
       }
 
       auto t = scope_->FunctionTypeReferencedOrNull("__neg__",
@@ -1226,7 +1230,7 @@ void Unop::Validate() {
   limit_to(operand);
 }
 
-void Access::Validate() {
+void Access::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
   VALIDATE_AND_RETURN_ON_ERROR(operand);
@@ -1259,7 +1263,7 @@ void Access::Validate() {
     }
   } else if (base_type->is<Struct>()) {
     auto struct_type = static_cast<Struct *>(base_type);
-    struct_type->CompleteDefinition();
+    struct_type->CompleteDefinition(bound_constants);
 
     auto member_type = struct_type->field(member_name);
     if (member_type != nullptr) {
@@ -1278,14 +1282,14 @@ void Access::Validate() {
 
 }
 
-void ChainOp::Validate() {
+void ChainOp::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
   bool found_err = false;
 
   lvalue = Assign::Const;
   for (auto &expr : exprs) {
-    expr->Validate();
+    expr->Validate(bound_constants);
     limit_to(expr);
     if (expr->type == Err) { found_err = true; }
     if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
@@ -1335,12 +1339,12 @@ void ChainOp::Validate() {
   }
 }
 
-void CommaList::Validate() {
+void CommaList::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
   lvalue = Assign::Const;
   for (auto &expr : exprs) {
-    expr->Validate();
+    expr->Validate(bound_constants);
     limit_to(expr);
     if (expr->type == Err) { type = Err; }
     if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
@@ -1367,7 +1371,7 @@ void CommaList::Validate() {
   type = all_types ? Type_ : Tup(type_vec);
 }
 
-void ArrayLiteral::Validate() {
+void ArrayLiteral::Validate(const BoundConstants&bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
 
@@ -1378,7 +1382,7 @@ void ArrayLiteral::Validate() {
   }
 
   for (auto &elem : elems) {
-    elem->Validate();
+    elem->Validate(bound_constants);
     limit_to(elem);
     if (elem->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
@@ -1402,14 +1406,14 @@ void ArrayLiteral::Validate() {
   }
 }
 
-void ArrayType::Validate() {
+void ArrayType::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
   lvalue = Assign::Const;
 
-  length->Validate();
+  length->Validate(bound_constants);
   limit_to(length);
-  data_type->Validate();
+  data_type->Validate(bound_constants);
   limit_to(data_type);
 
   type = Type_;
@@ -1425,12 +1429,12 @@ void ArrayType::Validate() {
   }
 }
 
-void Case::Validate() {
+void Case::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
   for (auto & [ key, val ] : key_vals) {
-    key->Validate();
-    val->Validate();
+    key->Validate(bound_constants);
+    val->Validate(bound_constants);
     limit_to(key);
     limit_to(val);
 
@@ -1495,12 +1499,12 @@ void Case::Validate() {
   }
 }
 
-void FunctionLiteral::Validate() {
+void FunctionLiteral::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
 
   lvalue = Assign::Const;
-  return_type_expr->Validate();
+  return_type_expr->Validate(bound_constants);
   limit_to(return_type_expr);
 
   if (ErrorLog::num_errs_ > 0) {
@@ -1543,7 +1547,7 @@ void FunctionLiteral::Validate() {
     return;
   }
 
-  for (auto &input : inputs) { input->Validate(); }
+  for (auto &input : inputs) { input->Validate(bound_constants); }
 
   // TODO poison on input Err?
 
@@ -1557,17 +1561,17 @@ void FunctionLiteral::Validate() {
   type = Func(input_type_vec, ret_type);
 }
 
-void For::Validate() {
+void For::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
   for (auto &iter : iterators) {
-    iter->Validate();
+    iter->Validate(bound_constants);
     limit_to(iter);
   }
-  statements->Validate();
+  statements->Validate(bound_constants);
   limit_to(statements);
 }
 
-void Jump::Validate() {
+void Jump::Validate(const BoundConstants &) {
   STAGE_CHECK;
   // TODO made this slightly wrong
   auto scope_ptr = scope_;
@@ -1583,19 +1587,19 @@ void Jump::Validate() {
   limit_to(StageRange::NoEmitIR());
 }
 
-void ScopeNode::Validate() {
+void ScopeNode::Validate(const BoundConstants &bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
 
   lvalue = Assign::RVal;
 
-  scope_expr->Validate();
+  scope_expr->Validate(bound_constants);
   limit_to(scope_expr);
   if (expr != nullptr) {
-    expr->Validate();
+    expr->Validate(bound_constants);
     limit_to(expr);
   }
-  stmts->Validate();
+  stmts->Validate(bound_constants);
   limit_to(stmts);
 
   if (!scope_expr->type->is<Scope_Type>()) {
@@ -1609,7 +1613,7 @@ void ScopeNode::Validate() {
   type = Void; // TODO can this evaluate to anything?
 }
 
-void ScopeLiteral::Validate() {
+void ScopeLiteral::Validate(const BoundConstants &bound_constants) {
   STAGE_CHECK;
   STARTING_CHECK;
   lvalue = Assign::Const;

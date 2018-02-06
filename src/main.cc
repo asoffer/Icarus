@@ -35,10 +35,12 @@ int GenerateCode() {
   }
 
   RUN(timer, "Verify and Emit") {
-    AST::DoStages<0, 2>(global_statements.get(), GlobalScope);
+    AST::DoStages<0, 1>(global_statements.get(), GlobalScope,
+                        AST::BoundConstants{});
     for (auto &stmt : global_statements->statements) {
       if (!stmt->is<AST::Declaration>()) { continue; }
-      stmt->as<AST::Declaration>().EmitIR(IR::Cmd::Kind::Exec);
+      stmt->as<AST::Declaration>().EmitIR(IR::Cmd::Kind::Exec,
+                                          AST::BoundConstants{});
     }
   }
 
@@ -66,11 +68,11 @@ int RunRepl() {
     for (auto &stmt : stmts->statements) {
       if (stmt->is<AST::Declaration>()) {
         auto *decl = &stmt->as<AST::Declaration>();
-        AST::DoStages<0, 3>(decl, GlobalScope);
+        AST::DoStages<0, 2>(decl, GlobalScope, AST::BoundConstants{});
 
       } else if (stmt->is<AST::Expression>()) {
         auto *expr = &stmt->as<AST::Expression>();
-        AST::DoStages<0, 0>(expr, GlobalScope);
+        expr->assign_scope(GlobalScope);
         ReplEval(expr);
         fprintf(stderr, "\n");
       } else {

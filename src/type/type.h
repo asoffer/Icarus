@@ -30,6 +30,7 @@ namespace AST {
 struct Declaration;
 struct Expression;
 struct Identifier;
+struct BoundConstants;
 } // namespace AST
 
 #define ENDING = 0
@@ -175,7 +176,7 @@ struct Struct : public Type {
 
   size_t field_num(const std::string &name) const;
 
-  void CompleteDefinition();
+  void CompleteDefinition(const AST::BoundConstants& bound_constants);
 
   virtual bool needs_destroy() const {
     for (Type *t : field_type) {
