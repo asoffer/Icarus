@@ -7,10 +7,11 @@
 // TODO catch functions that don't return along all paths.
 // TODO Join/Meet for EmptyArray <-> [0; T] (explicitly empty)? Why!?
 
-std::vector<IR::Val> Evaluate(AST::Expression *expr);
-
 static constexpr int ThisStage() { return 1; }
 
+std::vector<IR::Val> Evaluate(AST::Expression *expr);
+std::vector<IR::Val> Evaluate(AST::Expression *expr,
+                              const AST::BoundConstants &bound_constants);
 
 #define STARTING_CHECK                                                         \
   do {                                                                         \
@@ -343,14 +344,16 @@ void DispatchTable::insert(FnArgs<Type *> call_arg_types, Binding binding) {
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
 }
 
-Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
+Type *
+Expression::VerifyTypeForDeclaration(const std::string &id_tok,
+                                     const BoundConstants &bound_constants) {
   ASSERT_NE(type, nullptr);
   if (type != Type_) {
     ErrorLog::NotAType(span, id_tok);
     return Err;
   }
 
-  Type *t = std::get<Type *>(Evaluate(this)[0].value);
+  Type *t = std::get<Type *>(Evaluate(this, bound_constants)[0].value);
 
   if (t == Void) {
     ErrorLog::DeclaredVoidType(span, id_tok);
@@ -926,7 +929,8 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
   // an error is thrown by the compiler.
 
   if (IsDefaultInitialized()) {
-    type = type_expr->VerifyTypeForDeclaration(identifier->token);
+    type =
+        type_expr->VerifyTypeForDeclaration(identifier->token, bound_constants);
   } else if (IsInferred()) {
     type = init_val->VerifyValueForDeclaration(identifier->token);
 
@@ -942,7 +946,8 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
     }
 
   } else if (IsCustomInitialized()) {
-    type               = type_expr->VerifyTypeForDeclaration(identifier->token);
+    type =
+        type_expr->VerifyTypeForDeclaration(identifier->token, bound_constants);
     auto init_val_type = init_val->VerifyValueForDeclaration(identifier->token);
 
     if (type == Err) {
@@ -964,7 +969,10 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
       limit_to(StageRange::NoEmitIR());
     }
 
-    type           = type_expr->VerifyTypeForDeclaration(identifier->token);
+    LOG << bound_constants.vals_.size();
+
+    type =
+        type_expr->VerifyTypeForDeclaration(identifier->token, bound_constants);
     init_val->type = type;
 
   } else {
@@ -1538,7 +1546,7 @@ void FunctionLiteral::Validate(const BoundConstants& bound_constants) {
     if (decl_return->IsInferred()) { NOT_YET(); }
 
     return decl_return->type_expr.get();
-  }());
+  }(), bound_constants);
 
   if (rets.empty()) {
     type = Err;

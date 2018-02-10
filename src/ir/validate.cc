@@ -8,11 +8,6 @@ namespace debug {
 extern bool no_validation;
 } // namespace debug
 
-std::unique_ptr<IR::Func>
-ExprFn(AST::Expression *expr, Type *input,
-       const std::vector<std::pair<std::string, AST::Expression *>> args,
-       IR::Cmd::Kind kind);
-
 namespace IR {
 namespace property {
 struct PropView {

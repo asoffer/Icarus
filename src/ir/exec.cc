@@ -15,6 +15,7 @@ std::vector<IR::Val> global_vals;
 
 std::unique_ptr<IR::Func>
 ExprFn(AST::Expression *expr, Type *input,
+       const AST::BoundConstants &bound_constants = AST::BoundConstants{},
        const std::vector<std::pair<std::string, AST::Expression *>> args = {},
        IR::Cmd::Kind kind = IR::Cmd::Kind::Exec) {
   auto fn = std::make_unique<IR::Func>(::Func(input, expr->type), args);
@@ -27,8 +28,7 @@ ExprFn(AST::Expression *expr, Type *input,
 
     auto start_block   = IR::Func::Current->AddBlock();
     IR::Block::Current = start_block;
-    // TODO bound constants
-    auto result = expr->EmitIR(kind, AST::BoundConstants{});
+    auto result = expr->EmitIR(kind, bound_constants);
 
     if (expr->type != Void) {
       IR::SetReturn(IR::ReturnValue{0}, std::move(result));
@@ -573,6 +573,15 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr) {
   // TODO wire through errors. Currently we just return IR::Val::None() if there
   // were errors
   auto fn = ExprFn(expr, Void);
+  bool were_errors;
+  return Execute(fn.get(), {}, &context, &were_errors);
+}
+std::vector<IR::Val> Evaluate(AST::Expression *expr,
+                              const AST::BoundConstants &bound_constants) {
+  IR::ExecContext context;
+  // TODO wire through errors. Currently we just return IR::Val::None() if there
+  // were errors
+  auto fn = ExprFn(expr, Void, bound_constants);
   bool were_errors;
   return Execute(fn.get(), {}, &context, &were_errors);
 }

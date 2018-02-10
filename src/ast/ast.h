@@ -137,7 +137,8 @@ struct Expression : public Node {
   // returns the type it represents (or Error if the type is invalid). An
   // expression could be invalid if it doesn't represent a type or it represents
   // void.
-  Type *VerifyTypeForDeclaration(const std::string &id_tok);
+  Type *VerifyTypeForDeclaration(const std::string &id_tok,
+                                 const BoundConstants &bound_constants);
 
   // VerifyValueForDeclaration verifies that the expression's type can be used
   // for a declaration. In practice, it is typically used on initial values for
