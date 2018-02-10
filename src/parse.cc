@@ -412,32 +412,41 @@ BuildDeclaration(std::vector<base::owned_ptr<Node>> nodes, bool is_const) {
 
 static base::owned_ptr<Node>
 BuildFunctionLiteral(std::vector<base::owned_ptr<Node>> nodes) {
-  auto fn_lit        = base::make_owned<FunctionLiteral>();
-  fn_lit->span       = TextSpan(nodes[0]->span, nodes[1]->span);
-  fn_lit->statements = base::move<Statements>(nodes[1]);
-
-  auto *binop              = &nodes[0]->as<Binop>();
-  fn_lit->return_type_expr = base::move<Expression>(binop->rhs);
-
+  auto *binop = &nodes[0]->as<Binop>();
+  std::vector<base::owned_ptr<Declaration>> inputs;
+  bool generic = false;
   if (binop->lhs->is<Declaration>()) {
-    fn_lit->inputs.push_back(base::move<Declaration>(binop->lhs));
-    fn_lit->inputs.back()->arg_val = fn_lit.get();
+    inputs.push_back(base::move<Declaration>(binop->lhs));
+    generic |= inputs.back()->const_;
 
   } else if (binop->lhs->is<CommaList>()) {
     auto *decls = &binop->lhs->as<CommaList>();
-    fn_lit->inputs.reserve(decls->exprs.size());
+    inputs.reserve(decls->exprs.size());
 
     for (auto &expr : decls->exprs) {
-      fn_lit->inputs.push_back(base::move<Declaration>(expr));
-      fn_lit->inputs.back()->arg_val = fn_lit.get();
+      inputs.push_back(base::move<Declaration>(expr));
+      generic |= inputs.back()->const_;
     }
   }
 
+  FunctionLiteral *fn_lit =
+      generic ? new GenericFunctionLiteral : new FunctionLiteral;
+  for (auto &input : inputs) { input->arg_val = fn_lit; }
+
+  fn_lit->inputs           = std::move(inputs);
+  fn_lit->span             = TextSpan(nodes[0]->span, nodes[1]->span);
+  fn_lit->statements       = base::move<Statements>(nodes[1]);
+  fn_lit->return_type_expr = base::move<Expression>(binop->rhs);
   if (fn_lit->return_type_expr->is<Declaration>()) {
-    fn_lit->return_type_expr->as<Declaration>().arg_val = fn_lit.get();
+    fn_lit->return_type_expr->as<Declaration>().arg_val = fn_lit;
   }
 
-  return fn_lit;
+  size_t i = 0;
+  for (const auto &input : fn_lit->inputs) {
+    fn_lit->lookup_[input->identifier->token] = i++;
+  }
+
+  return base::own(fn_lit);
 }
 
 static base::owned_ptr<Node>

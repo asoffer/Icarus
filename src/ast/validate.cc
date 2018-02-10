@@ -237,10 +237,9 @@ static bool Inferrable(Type *t) {
 }
 
 std::optional<Binding> Binding::MakeUntyped(
-    Expression *fn_expr, IR::Func *fn,
-    const FnArgs<base::owned_ptr<Expression>> &args,
+    AST::Expression *fn_expr, const FnArgs<base::owned_ptr<Expression>> &args,
     const std::unordered_map<std::string, size_t> &index_lookup) {
-  Binding result(fn_expr, fn);
+  Binding result(fn_expr);
   for (size_t i = 0; i < args.pos_.size(); ++i) {
     result.exprs_[i] = std::pair(nullptr, args.pos_[i].get());
   }
@@ -256,9 +255,9 @@ std::optional<Binding> Binding::MakeUntyped(
   return result;
 }
 
-Binding::Binding(Expression *fn_expr, IR::Func *fn)
-    : fn_expr_(fn_expr), fn_(fn),
-      exprs_(fn->args_.size(),
+Binding::Binding(AST::Expression *fn_expr)
+    : fn_expr_(fn_expr),
+      exprs_(fn_expr_->type->as<Function>().input.size(),
              std::pair<Type *, Expression *>(nullptr, nullptr)) {}
 
 // We already know there can be at most one match (multiple matches would have
@@ -273,29 +272,26 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
     // TODO expression is constant?
     auto fn_val = Evaluate(fn_option)[0].value;
 
-    auto **fn_ptr = std::get_if<FunctionLiteral *>(&fn_val);
-    if (fn_ptr == nullptr) { return std::nullopt; }
-
-    // Compute name -> argument number map.
-    // TODO this should be done when the function is generated instead of
-    // ad-hoc
-    std::unordered_map<std::string, size_t> index_lookup;
-    for (size_t i = 0; i < (**fn_ptr).inputs.size(); ++i) {
-      index_lookup[(**fn_ptr).inputs[i]->identifier->token] = i;
+    FunctionLiteral *fn_lit = nullptr;
+    if (auto **gen_fn_ptr = std::get_if<GenericFunctionLiteral *>(&fn_val)) {
+      // TODO Shouldn't materialize until after binding has been completely
+      // verified.
+      fn_lit = *gen_fn_ptr;
+    } else if (auto **fn_ptr = std::get_if<FunctionLiteral *>(&fn_val)) {
+      fn_lit = *fn_ptr;
+    } else {
+      LOG << "WTF?"; // TODO what's going on here?
+      LOG << fn_option;
+      return std::nullopt;
     }
 
-    // TODO materialization shouldn't happen until much later (like, once the
-    // binding has been completely verified).
-    IR::Func *fn = (**fn_ptr).Materialize(args_);
-    if (fn == nullptr) { return std::nullopt; }
-
-    auto maybe_binding = Binding::MakeUntyped(*fn_ptr, fn, args_, index_lookup);
+    auto maybe_binding = Binding::MakeUntyped(fn_lit, args_, fn_lit->lookup_);
     if (!maybe_binding) { continue; }
-    auto binding = std::move(maybe_binding.value());
+    auto binding = std::move(maybe_binding).value();
 
     FnArgs<Type *> call_arg_types;
     call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
-    for (const auto & [ key, val ] : index_lookup) {
+    for (const auto & [ key, val ] : fn_lit->lookup_) {
       if (val < args_.pos_.size()) { continue; }
       call_arg_types.named_.emplace(key, nullptr);
     }
@@ -303,7 +299,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
     const auto &fn_opt_input = fn_option->type->as<Function>().input;
     for (size_t i = 0; i < binding.exprs_.size(); ++i) {
       if (binding.defaulted(i)) {
-        if ((**fn_ptr).inputs[i]->IsDefaultInitialized()) { goto next_option; }
+        if (fn_lit->inputs[i]->IsDefaultInitialized()) { goto next_option; }
         binding.exprs_[i].first = fn_opt_input[i];
       } else {
         Type *match =
@@ -315,17 +311,26 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
           call_arg_types.pos_[i] = match;
         } else {
           auto iter =
-              call_arg_types.find((**fn_ptr).inputs[i]->identifier->token);
+              call_arg_types.find(fn_lit->inputs[i]->identifier->token);
           ASSERT(iter != call_arg_types.named_.end(), "");
           iter->second = match;
         }
       }
     }
 
+    if (fn_lit->is<GenericFunctionLiteral>()) {
+      binding.fn_expr_ =
+          fn_lit->as<GenericFunctionLiteral>().Materialize(args_);
+    }
     table.insert(std::move(call_arg_types), std::move(binding));
   next_option:;
   }
   return std::move(table);
+}
+
+void GenericFunctionLiteral::Validate(const BoundConstants &bound_constants) {
+  // TODO is this right?
+  FunctionLiteral::Validate(bound_constants);
 }
 
 void DispatchTable::insert(FnArgs<Type *> call_arg_types, Binding binding) {
@@ -462,13 +467,14 @@ void Terminal::Validate(const BoundConstants &) {
   lvalue = Assign::Const;
 }
 
-void Identifier::Validate(const BoundConstants &) {
+void Identifier::Validate(const BoundConstants &bound_constants) {
   // TODO use bound constants
   STAGE_CHECK;
   STARTING_CHECK;
 
   if (decl == nullptr) {
     auto potential_decls = scope_->AllDeclsWithId(token);
+
     if (potential_decls.size() != 1) {
       (potential_decls.size() == 0 ? LogError::UndeclaredIdentifier
                                    : LogError::AmbiguousIdentifier)(this);
@@ -477,6 +483,17 @@ void Identifier::Validate(const BoundConstants &) {
       return;
     }
 
+    if (potential_decls[0]->const_ && potential_decls[0]->arg_val != nullptr &&
+        potential_decls[0]->arg_val->is<GenericFunctionLiteral>()) {
+      if (auto val = bound_constants(potential_decls[0]->identifier->token)) {
+        potential_decls[0]->arg_val = scope_->ContainingFnScope()->fn_lit;
+      } else {
+        LogError::UndeclaredIdentifier(this);
+        type = Err;
+        limit_to(StageRange::Nothing());
+        return;
+      }
+    }
     decl = potential_decls[0];
   }
 

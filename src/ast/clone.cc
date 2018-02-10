@@ -23,6 +23,9 @@ Case *Case::Clone() const { return new Case(*this); }
 FunctionLiteral *FunctionLiteral::Clone() const {
   return new FunctionLiteral(*this);
 }
+GenericFunctionLiteral *GenericFunctionLiteral::Clone() const {
+  return new GenericFunctionLiteral(*this);
+}
 For *For::Clone() const { return new For(*this); }
 Jump *Jump::Clone() const { return new Jump(*this); }
 ScopeNode *ScopeNode::Clone() const { return new ScopeNode(*this); }

@@ -172,8 +172,14 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind,
     }
 
     // After the last check, if you pass, you should dispatch
-    ASSERT(binding.fn_ != nullptr, "");
-    auto fn_to_call = IR::Val::Func(binding.fn_);
+    IR::Func *fn_to_call = std::visit(
+        base::overloaded{[](IR::Func *fn) { return fn; },
+                         [](AST::FunctionLiteral *fn) { return fn->ir_func_; },
+                         [](auto &&) -> IR::Func * {
+                           UNREACHABLE();
+                           return nullptr;
+                         }},
+        binding.fn_expr_->EmitIR(kind, bound_constants).value);
 
     std::vector<IR::Val> args;
     args.resize(binding.exprs_.size());
@@ -181,28 +187,27 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind,
       auto[bound_type, expr] = binding.exprs_[i];
       if (expr == nullptr) {
         ASSERT_NE(bound_type, nullptr);
-        auto default_expr =
-            std::get<IR::Func *>(fn_to_call.value)->args_[i].second;
-        args[i] = bound_type->PrepareArgument(
+        auto default_expr = fn_to_call->args_[i].second;
+        args[i]           = bound_type->PrepareArgument(
             default_expr->type, default_expr->EmitIR(kind, bound_constants));
       } else {
         args[i] = bound_type->PrepareArgument(expr->type, *expr_map[expr]);
       }
     }
 
-    Type *output_type_for_this_binding =
-        Tup(std::get<IR::Func *>(fn_to_call.value)->type_->output);
+    Type *output_type_for_this_binding = Tup(fn_to_call->type_->output);
     IR::Val ret_val;
     if (output_type_for_this_binding->is_big()) {
       ret_val = IR::Alloca(type);
-      IR::Call(fn_to_call, std::move(args), {ret_val});
+      IR::Call(IR::Val::Func(fn_to_call), std::move(args), {ret_val});
     } else {
       if (type->is_big()) {
         ret_val = IR::Alloca(type);
-        type->EmitAssign(output_type_for_this_binding,
-                         IR::Call(fn_to_call, std::move(args), {}), ret_val);
+        type->EmitAssign(
+            output_type_for_this_binding,
+            IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}), ret_val);
       } else {
-        ret_val = IR::Call(fn_to_call, std::move(args), {});
+        ret_val = IR::Call(IR::Val::Func(fn_to_call), std::move(args), {});
       }
     }
 
@@ -249,8 +254,12 @@ IR::Val AST::Terminal::EmitIR(IR::Cmd::Kind, const AST::BoundConstants &) {
 
 IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind,
                                 const AST::BoundConstants &bound_constants) {
-  if (decl->const_) { return decl->addr; }
+  if (decl->const_) {
+    if (auto val = bound_constants(decl->identifier->token)) { return *val; }
+    return decl->addr;
+  }
 
+  // TODO this global scope thing is probably wrong.
   if (decl->scope_ == GlobalScope) { decl->EmitIR(kind, bound_constants); }
 
   if (auto *ret = std::get_if<IR::ReturnValue>(&decl->addr.value);
@@ -896,54 +905,18 @@ IR::Val AST::CommaList::EmitLVal(IR::Cmd::Kind, const AST::BoundConstants &) {
   NOT_YET();
 }
 
+IR::Val AST::GenericFunctionLiteral::EmitIR(IR::Cmd::Kind,
+                                            const AST::BoundConstants &) {
+  return IR::Val::GenFnLit(this);
+}
+
 IR::Val
 AST::FunctionLiteral::EmitIR(IR::Cmd::Kind,
                              const AST::BoundConstants &bound_constants) {
   // TODO bound constants?
   statements->Validate(bound_constants);
-  for (const auto &input : inputs) {
-    if (!input->const_) { goto finish; }
-  }
 
-  Materialize(FnArgs<base::owned_ptr<Expression>>{});
-
-finish:
-  return IR::Val::FnLit(this);
-}
-
-std::optional<AST::BoundConstants> AST::BoundConstants::Make(
-    const std::vector<base::owned_ptr<Declaration>> &inputs,
-    const AST::FnArgs<base::owned_ptr<Expression>> &args) {
-  BoundConstants result;
-  size_t i = 0;
-  for (; i < args.pos_.size(); ++i) {
-    if (!inputs[i]->const_) { continue; }
-    result.vals_.emplace(inputs[i].get(), Evaluate(args.pos_[i].get())[0]);
-  }
-
-  for (; i < inputs.size(); ++i) {
-    if (!inputs[i]->const_) { continue; }
-    auto iter = args.named_.find(inputs[i]->identifier->token);
-    if (iter == args.named_.end()) {
-      if (inputs[i]->init_val == nullptr) { return std::nullopt; }
-      result.vals_.emplace(inputs[i].get(),
-                           Evaluate(inputs[i]->init_val.get())[0]);
-    } else {
-      result.vals_.emplace(inputs[i].get(), Evaluate(iter->second.get())[0]);
-    }
-  }
-  return std::move(result);
-}
-
-IR::Func *AST::FunctionLiteral::Materialize(
-    const AST::FnArgs<base::owned_ptr<Expression>> &args) {
-  auto maybe_bc = AST::BoundConstants::Make(inputs, args);
-  if (!maybe_bc.has_value()) { return nullptr; }
-  auto bound_constants = std::move(maybe_bc).value();
-
-  // TODO validation? what if args are positional and not named?
-  auto *&ir_func = ir_fns_[bound_constants];
-  if (ir_func == nullptr) {
+  if (ir_func_ == nullptr) {
     std::vector<std::pair<std::string, AST::Expression *>> args;
     args.reserve(inputs.size());
     for (const auto &input : inputs) {
@@ -960,10 +933,10 @@ IR::Func *AST::FunctionLiteral::Materialize(
 
     IR::Func::All.push_back(
         std::make_unique<IR::Func>(fn_type, std::move(args)));
-    ir_func = IR::Func::All.back().get();
+    ir_func_ = IR::Func::All.back().get();
 
-    CURRENT_FUNC(ir_func) {
-      IR::Block::Current = ir_func->entry();
+    CURRENT_FUNC(ir_func_) {
+      IR::Block::Current = ir_func_->entry();
       // Leave space for allocas that will come later (added to the entry
       // block).
       auto start_block   = IR::Func::Current->AddBlock();
@@ -973,9 +946,9 @@ IR::Func *AST::FunctionLiteral::Materialize(
       for (size_t i = 0; i < inputs.size(); ++i) {
         // TODO positional arguments
         if (inputs[i]->const_) {
-          auto iter = bound_constants.vals_.find(inputs[i].get());
+          auto iter = bound_constants.vals_.find(inputs[i]->identifier->token);
           if (iter != bound_constants.vals_.end()) {
-            inputs[i]->addr = iter->second;
+            inputs[i]->addr = std::move(iter->second);
           }
           continue;
         }
@@ -1007,12 +980,58 @@ IR::Func *AST::FunctionLiteral::Materialize(
       statements->EmitIR(IR::Cmd::Kind::Exec, bound_constants);
       IR::ReturnJump();
 
-      IR::Block::Current = ir_func->entry();
+      IR::Block::Current = ir_func_->entry();
       IR::UncondJump(start_block);
     }
   }
 
-  return ir_func;
+  return IR::Val::FnLit(this);
+}
+
+std::optional<AST::BoundConstants> AST::BoundConstants::Make(
+    const std::vector<base::owned_ptr<Declaration>> &inputs,
+    const AST::FnArgs<base::owned_ptr<Expression>> &args) {
+  BoundConstants result;
+  size_t i = 0;
+  for (; i < args.pos_.size(); ++i) {
+    if (!inputs[i]->const_) { continue; }
+    result.vals_.emplace(inputs[i]->identifier->token,
+                         Evaluate(args.pos_[i].get())[0]);
+  }
+
+  for (; i < inputs.size(); ++i) {
+    if (!inputs[i]->const_) { continue; }
+    auto iter = args.named_.find(inputs[i]->identifier->token);
+    if (iter == args.named_.end()) {
+      if (inputs[i]->init_val == nullptr) { return std::nullopt; }
+      result.vals_.emplace(inputs[i]->identifier->token,
+                           Evaluate(inputs[i]->init_val.get())[0]);
+    } else {
+      result.vals_.emplace(inputs[i]->identifier->token,
+                           Evaluate(iter->second.get())[0]);
+    }
+  }
+  return std::move(result);
+}
+
+AST::FunctionLiteral *AST::GenericFunctionLiteral::Materialize(
+    const AST::FnArgs<base::owned_ptr<Expression>> &args) {
+  auto maybe_bc = AST::BoundConstants::Make(inputs, args);
+  if (!maybe_bc.has_value()) { return nullptr; }
+  auto bound_constants = std::move(maybe_bc).value();
+
+  auto[iter, success] = fns_.emplace(bound_constants, FunctionLiteral{});
+  if (success) {
+    auto &func            = iter->second;
+    func.fn_scope         = fn_scope;
+    func.return_type_expr = return_type_expr;
+    func.inputs           = inputs;
+    func.statements       = statements;
+    func.ClearIdDecls();
+    // TODO clone captures
+    AST::DoStages<0, 2>(&func, scope_, bound_constants);
+  }
+  return &iter->second;
 }
 
 IR::Val AST::Statements::EmitIR(IR::Cmd::Kind kind,

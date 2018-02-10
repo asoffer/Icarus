@@ -44,6 +44,7 @@ Val Val::Enum(const ::Enum *enum_type, size_t integral_val) {
 }
 
 Val Val::FnLit(AST::FunctionLiteral *fn) { return Val(fn->type, fn); }
+Val Val::GenFnLit(AST::GenericFunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::Func(::IR::Func *fn) { return Val(fn->ir_type, fn); }
 Val Val::Null(::Type *t) { return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0}); }
 Val Val::NullPtr() { return Val(::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
@@ -73,6 +74,8 @@ std::string Val::to_string() const {
           },
           [](::Type *t) -> std::string { return t->to_string(); },
           [](IR::Func *f) -> std::string {
+            ASSERT_NE(f, nullptr);
+            ASSERT_NE(f->type_, nullptr);
             return "fn." +
                    (f->name == ""
                         ? std::to_string(reinterpret_cast<uintptr_t>(f)) + "-" +

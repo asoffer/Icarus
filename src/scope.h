@@ -110,6 +110,7 @@ struct FnScope : public ExecScope {
 inline FnScope *Scope::ContainingFnScope() {
   Scope *scope = this;
   while (scope && !scope->is<FnScope>()) { scope = scope->parent; }
+  // static_cast rather than ->as<FnScope> because it could be null.
   return static_cast<FnScope *>(scope);
 }
 #endif // ICARUS_SCOPE_H

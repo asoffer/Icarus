@@ -49,6 +49,7 @@ struct BoundConstants;
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
+  virtual void ClearIdDecls() override;                                        \
   virtual void Validate(const BoundConstants &bound_constants) override;       \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
@@ -61,6 +62,7 @@ struct BoundConstants;
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
+  virtual void ClearIdDecls() override;                                        \
   virtual void Validate(const BoundConstants &bound_constants) override;       \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
@@ -71,6 +73,7 @@ struct BoundConstants;
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
   virtual void assign_scope(Scope *) {}
+  virtual void ClearIdDecls() {}
   virtual void Validate(const BoundConstants &bound_constants) = 0;
 
   virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &) { NOT_YET(); }
@@ -108,6 +111,7 @@ struct Expression : public Node {
   virtual ~Expression(){};
   virtual std::string to_string(size_t n) const                         = 0;
   virtual void assign_scope(Scope *scope)                               = 0;
+  virtual void ClearIdDecls()                                           = 0;
   virtual void Validate(const BoundConstants &bound_constants)          = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   std::string to_string() const { return to_string(0); }
@@ -146,7 +150,8 @@ struct Expression : public Node {
   size_t precedence = std::numeric_limits<size_t>::max();
   Assign lvalue     = Assign::Unset;
   Type *type        = nullptr;
-  IR::Val value     = IR::Val::None();
+  IR::Val value =
+      IR::Val::None(); // TODO this looks like a bad idea. delete it?
 };
 
 struct TokenNode : public Node {
@@ -393,13 +398,13 @@ struct BoundConstants {
   Make(const std::vector<base::owned_ptr<Declaration>> &inputs,
        const AST::FnArgs<base::owned_ptr<Expression>> &args);
 
-  std::optional<IR::Val> operator()(Declaration *decl) const {
-    auto iter = vals_.find(decl);
+  std::optional<IR::Val> operator()(const std::string& id) const {
+    auto iter = vals_.find(id);
     if (iter == vals_.end()) { return std::nullopt; }
-    return std::move(iter->second);
+    return iter->second;
   }
 
-  std::map<Declaration *, IR::Val> vals_;
+  std::unordered_map<std::string, IR::Val> vals_;
 };
 } // namespace AST
 
@@ -428,13 +433,7 @@ namespace AST {
 struct FunctionLiteral : public Expression {
   FunctionLiteral() {}
   EXPR_FNS(FunctionLiteral);
-  static base::owned_ptr<Node>
-  BuildOneLiner(std::vector<base::owned_ptr<AST::Node>> nodes);
-  static base::owned_ptr<Node>
-  BuildNoLiner(std::vector<base::owned_ptr<AST::Node>> nodes);
   FunctionLiteral *Clone() const override;
-
-  IR::Func *Materialize(const FnArgs<base::owned_ptr<Expression>> &args);
 
   virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
 
@@ -444,8 +443,24 @@ struct FunctionLiteral : public Expression {
   std::vector<base::owned_ptr<Declaration>> inputs;
   base::owned_ptr<Statements> statements;
 
-  std::map<BoundConstants, IR::Func *> ir_fns_;
+  // Maps the string name of the declared argument to it's index:
+  // Example: (a: int, b: char, c: string) -> int
+  //           a => 0, b => 1, c => 2
+  std::unordered_map<std::string, size_t> lookup_;
+
   std::unordered_set<Declaration *> captures;
+  IR::Func *ir_func_ = nullptr;
+};
+
+struct GenericFunctionLiteral : public FunctionLiteral {
+  GenericFunctionLiteral() {}
+  EXPR_FNS(GenericFunctionLiteral);
+  GenericFunctionLiteral *Clone() const override;
+  IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &) override;
+
+  FunctionLiteral *Materialize(const FnArgs<base::owned_ptr<Expression>> &args);
+
+  std::map<BoundConstants, FunctionLiteral> fns_;
 };
 
 struct For : public Node {

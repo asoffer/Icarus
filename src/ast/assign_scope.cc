@@ -107,6 +107,10 @@ void Statements::assign_scope(Scope *scope) {
   for (auto &stmt : statements) { stmt->assign_scope(scope); }
 }
 
+void GenericFunctionLiteral::assign_scope(Scope *scope) {
+  FunctionLiteral::assign_scope(scope);
+}
+
 void FunctionLiteral::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;

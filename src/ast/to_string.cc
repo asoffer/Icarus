@@ -190,6 +190,18 @@ std::string FunctionLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
+
+std::string GenericFunctionLiteral::to_string(size_t n) const {
+  std::stringstream ss;
+  ss << tabs(n) << "<GenericFunctionLiteral " << TYPE_OR("") << ">\n";
+  ss << tabs(n + 1) << "Inputs\n";
+  for (const auto &input : inputs) { ss << input->to_string(n + 2); }
+  ss << tabs(n + 1) << "Outputs\n";
+  ss << return_type_expr->to_string(n + 1) << tabs(n + 1) << "Body:\n"
+     << statements->to_string(n + 2);
+  return ss.str();
+}
+
 std::string Jump::to_string(size_t n) const {
   switch (jump_type) {
   case JumpType::Restart: return tabs(n) + "<Restart>\n";
