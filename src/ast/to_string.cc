@@ -3,6 +3,10 @@
 
 #define TYPE_OR(other) (type ? type->to_string() : (other))
 
+namespace Language {
+size_t precedence(Operator op);
+} // Language
+
 namespace AST {
 static std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
@@ -93,10 +97,14 @@ std::string Access::to_string(size_t n) const {
 std::string Binop::to_string(size_t n) const {
   std::stringstream ss;
   if (op == Language::Operator::Index) {
-    ss << tabs(n) << rhs->to_string(n) << "[" << rhs->to_string(n) << "]";
+    ss << tabs(n) << lhs->to_string(n) << "[" << rhs->to_string(n) << "]";
     return ss.str();
   }
-  ss << tabs(n) << "(" << lhs->to_string(n);
+  if (lhs->precedence < Language::precedence(op) || lhs->is<Declaration>()) {
+    ss << tabs(n) << "(" << lhs->to_string(n) << ")";
+  } else {
+    ss << tabs(n) << lhs->to_string(n);
+  }
   switch (op) {
   case Language::Operator::Cast: ss << "Cast"; break;
   case Language::Operator::Arrow: ss << " -> "; break;
@@ -118,7 +126,12 @@ std::string Binop::to_string(size_t n) const {
   case Language::Operator::ModEq: ss << " %= "; break;
   default: UNREACHABLE();
   }
-  ss << rhs->to_string(n) << ")";
+  if (rhs->precedence < Language::precedence(op) || rhs->is<Declaration>()) {
+    ss << tabs(n) << "(" << rhs->to_string(n) << ")";
+  } else {
+    ss << tabs(n) << rhs->to_string(n);
+  }
+
   return ss.str();
 }
 
