@@ -13,223 +13,248 @@ std::string TokenNode::to_string(size_t n) const {
 }
 
 std::string ArrayLiteral::to_string(size_t n) const {
-  std::string output = tabs(n) + "<ArrayLiteral " + TYPE_OR("") + " >\n ";
-  for (const auto &el : elems) { output += el->to_string(n + 1); }
-
-  return output;
+  std::stringstream ss;
+  ss << "[";
+  auto iter = elems.begin();
+  ss << (*iter)->to_string(n);
+  ++iter;
+  while (iter != elems.end()) {
+    ss << ", " << (*iter)->to_string(n);
+    ++iter;
+  }
+  ss << "]";
+  return ss.str();
 }
 
 std::string Call::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<Call " << TYPE_OR("") << ">\n" << fn_->to_string(n + 1);
-  for (const auto &pos : args_.pos_) { ss << pos->to_string(n + 1); }
-  for (const auto & [ key, val ] : args_.named_) {
-    ss << tabs(n + 1) << key << " =>\n" << val->to_string(n + 2);
+  ss << fn_->to_string(n) << "(";
+  bool seen_one = false;
+  for (const auto &pos : args_.pos_) {
+    ss << (seen_one ? ", " : "") << pos->to_string(n);
+    seen_one = true;
   }
+  for (const auto & [ key, val ] : args_.named_) {
+    ss << (seen_one ? ", " : "") << key << " = " << val->to_string(n) << ", ";
+    seen_one = true;
+  }
+  ss << ")";
   return ss.str();
 }
 
 std::string For::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<For>\n";
-  for (auto& iter : iterators) { ss << iter->to_string(n + 1); }
-  ss << statements->to_string(n + 1);
+  ss << "for ";
+  auto iter = iterators.begin();
+  ss << (*iter)->to_string(n);
+  ++iter;
+  while (iter != iterators.end()) {
+    ss << ", " << (*iter)->to_string(n);
+    ++iter;
+  }
+  ss << " {\n" << statements->to_string(n + 1) << tabs(n) << "}";
   return ss.str();
 }
 
 std::string Unop::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<Unop " << TYPE_OR("") << ": ";
   switch (op) {
-  case Language::Operator::Return: ss << "Return"; break;
-  case Language::Operator::Break: ss << "Break"; break;
-  case Language::Operator::Continue: ss << "Continue"; break;
-  case Language::Operator::Repeat: ss << "Repeat"; break;
-  case Language::Operator::Restart: ss << "Restart"; break;
-  case Language::Operator::Print: ss << "Print"; break;
-  case Language::Operator::Free: ss << "Free"; break;
-  case Language::Operator::Mul: ss << "Mul"; break;
-  case Language::Operator::And: ss << "And"; break;
-  case Language::Operator::Sub: ss << "Sub"; break;
-  case Language::Operator::Generate: ss << "Generate"; break;
-  case Language::Operator::Not: ss << "Not"; break;
-  case Language::Operator::At: ss << "At"; break;
-  case Language::Operator::Eval: ss << "Eval"; break;
-  case Language::Operator::Dots: ss << "Dots"; break;
-  case Language::Operator::Require: ss << "Require"; break;
-  case Language::Operator::Ref: ss << "Ref"; break;
-  case Language::Operator::Needs: ss << "Needs"; break;
-  case Language::Operator::Ensure: ss << "Ensure"; break;
+  case Language::Operator::Return: ss << "return "; break;
+  case Language::Operator::Break: ss << "break "; break;
+  case Language::Operator::Continue: ss << "continue "; break;
+  case Language::Operator::Repeat: ss << "repeat "; break;
+  case Language::Operator::Restart: ss << "restart "; break;
+  case Language::Operator::Print: ss << "print "; break;
+  case Language::Operator::Free: ss << "free "; break;
+  case Language::Operator::Mul: ss << "*"; break;
+  case Language::Operator::And: ss << "&"; break;
+  case Language::Operator::Sub: ss << "-"; break;
+  case Language::Operator::Generate: ss << "generate "; break;
+  case Language::Operator::Not: ss << "!"; break;
+  case Language::Operator::At: ss << "@"; break;
+  case Language::Operator::Eval: ss << "$"; break;
+  case Language::Operator::Dots: ss << ".."; break; // TODO
+  case Language::Operator::Require: ss << "require "; break;
+  case Language::Operator::Ref: ss << "\\"; break;
+  case Language::Operator::Needs: ss << "needs "; break;
+  case Language::Operator::Ensure: ss << "ensure "; break;
   case Language::Operator::Pass: ss << "Pass"; break;
   default: { UNREACHABLE(); }
   }
-  
-  ss << ">\n" << operand->to_string(n + 1);
+
+  ss << operand->to_string(n);
   return ss.str();
 }
 
 std::string Access::to_string(size_t n) const {
-  return tabs(n) + "<Access " + member_name + " " + TYPE_OR("") + ">\n" +
-         operand->to_string(n + 1);
+  return operand->to_string(n) + "." + member_name;
 }
 
 std::string Binop::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n);
-  if (is_assignment()) {
-    ss << "<Assignment " << TYPE_OR("");
-
-  } else {
-    ss << "<Binop " << TYPE_OR("") << ": ";
-    switch (op) {
-    case Language::Operator::Cast: ss << "Cast"; break;
-    case Language::Operator::Arrow: ss << "->"; break;
-    case Language::Operator::Or: ss << "Or"; break;
-    case Language::Operator::Xor: ss << "Xor"; break;
-    case Language::Operator::And: ss << "And"; break;
-    case Language::Operator::Add: ss << "Add"; break;
-    case Language::Operator::Sub: ss << "Sub"; break;
-    case Language::Operator::Mul: ss << "Mul"; break;
-    case Language::Operator::Div: ss << "Div"; break;
-    case Language::Operator::Mod: ss << "Mod"; break;
-    case Language::Operator::Index: ss << "Index"; break;
-    case Language::Operator::Dots: ss << "Dots"; break;
-    case Language::Operator::In: ss << "In"; break;
-    case Language::Operator::Rocket: ss << "Rocket"; break;
-    default: UNREACHABLE();
-    }
+  if (op == Language::Operator::Index) {
+    ss << tabs(n) << rhs->to_string(n) << "[" << rhs->to_string(n) << "]";
+    return ss.str();
   }
-  ss << ">\n"
-     << lhs->to_string(n + 1)
-     << (rhs ? rhs->to_string(n + 1) : tabs(n + 1) + "0x0\n");
+  ss << tabs(n) << "(" << lhs->to_string(n);
+  switch (op) {
+  case Language::Operator::Cast: ss << "Cast"; break;
+  case Language::Operator::Arrow: ss << " -> "; break;
+  case Language::Operator::Add: ss << " + "; break;
+  case Language::Operator::Sub: ss << " - "; break;
+  case Language::Operator::Mul: ss << " * "; break;
+  case Language::Operator::Div: ss << " / "; break;
+  case Language::Operator::Mod: ss << " % "; break;
+  case Language::Operator::Dots: ss << " .. "; break;
+  case Language::Operator::Rocket: ss << "  =>  "; break;
+  case Language::Operator::Assign: ss << ""; break;
+  case Language::Operator::OrEq: ss << " |= "; break;
+  case Language::Operator::XorEq: ss << " ^= "; break;
+  case Language::Operator::AndEq: ss << " &= "; break;
+  case Language::Operator::AddEq: ss << " += "; break;
+  case Language::Operator::SubEq: ss << " -= "; break;
+  case Language::Operator::MulEq: ss << " *= "; break;
+  case Language::Operator::DivEq: ss << " /= "; break;
+  case Language::Operator::ModEq: ss << " %= "; break;
+  default: UNREACHABLE();
+  }
+  ss << rhs->to_string(n) << ")";
   return ss.str();
 }
 
 std::string ArrayType::to_string(size_t n) const {
   ASSERT(length, "");
-  std::string output = tabs(n) + "<ArrayType>\n";
-  return output + length->to_string(n + 1) + data_type->to_string(n + 1);
+  std::stringstream ss;
+  ss << "[" << length->to_string(n) << "; " << data_type->to_string(n) << "]";
+  return ss.str();
 }
 
 std::string ChainOp::to_string(size_t n) const {
-  std::string output = tabs(n) + "<Chain: " + TYPE_OR("") + ">\n";
-  for (auto& expr : exprs) { output += expr->to_string(n + 1); }
-  return output;
+  std::stringstream ss;
+  ss << "(";
+  for (size_t i = 0; i < ops.size(); ++i) {
+    ss << exprs[i]->to_string(n);
+    switch (ops[i]) {
+    case Language::Operator::Or: ss << " | "; break;
+    case Language::Operator::Xor: ss << " ^ "; break;
+    case Language::Operator::And: ss << " & "; break;
+    case Language::Operator::Lt: ss << " < "; break;
+    case Language::Operator::Le: ss << " <= "; break;
+    case Language::Operator::Eq: ss << " == "; break;
+    case Language::Operator::Ne: ss << " != "; break;
+    case Language::Operator::Ge: ss << " >= "; break;
+    case Language::Operator::Gt: ss << " > "; break;
+    default: UNREACHABLE();
+    }
+  }
+  ss << exprs.back() << ")";
+  return ss.str();
 }
 
 std::string CommaList::to_string(size_t n) const {
-  std::string output = tabs(n) + "<CommaList: " + TYPE_OR("") + ">\n";
-  for (auto& expr : exprs) { output += expr->to_string(n + 1); }
-  return output;
-}
-
-std::string Terminal::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<Terminal " << TYPE_OR("") << ": " << value.to_string()
-     << ">\n";
+  auto iter = exprs.begin();
+  ss << (*iter)->to_string(n);
+  ++iter;
+  while (iter != exprs.end()) {
+    ss << ", " << (*iter)->to_string(n);
+    ++iter;
+  }
   return ss.str();
 }
 
-std::string Identifier::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << tabs(n) << "<Identifier " << TYPE_OR("") << ": \"" << token << "\">\n";
-  return ss.str();
-}
+std::string Terminal::to_string(size_t) const { return value.to_string(); }
+std::string Identifier::to_string(size_t) const { return token; }
 
 std::string InDecl::to_string(size_t n) const {
-  return tabs(n) + "<" + TYPE_OR("") + " " + identifier->token + " in>\n" +
-         container->to_string(n + 1);
+  return identifier->token + " in " + container->to_string(n);
 }
 
 std::string Declaration::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<Declaration "
-     << (const_ ? (IsInferred() ? "(::=)" : "(::)")
-                : (IsInferred() ? "(:=)" : "(:)"))
-     << TYPE_OR("") << ">\n"
-     << identifier->to_string(n + 1);
+  ss << identifier->to_string(n);
+  if (type_expr) {
+    ss << (const_ ? " :: " : ": ") << type_expr->to_string(n);
+    if (init_val) { ss << " = " << init_val->to_string(n); }
+  } else {
+    if (init_val) {
+      ss << (const_ ? " ::= " : " := ") << init_val->to_string(n);
+    }
+  }
 
-  if (type_expr) { ss << type_expr->to_string(n + 1); }
-  if (init_val) { ss << init_val->to_string(n + 1); }
   return ss.str();
 }
 
 std::string Case::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<Case>\n";
-  auto indent = tabs(n + 1);
-
-  size_t counter      = 0;
-  size_t num_key_vals = key_vals.size();
+  ss << "case {\n";
   for (const auto & [ key, val ] : key_vals) {
-    ++counter;
-    ss << indent << "[=> " << std::to_string(counter) << " of "
-       << std::to_string(num_key_vals) << "]\n"
-       << key->to_string(n + 1) << val->to_string(n + 1);
+    ss << tabs(n + 1) << key->to_string(n + 1) << "  =>  "
+       << val->to_string(n + 1) << "\n";
   }
+
   return ss.str();
 }
 
 std::string Statements::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<Statements>\n";
-
-  for (const auto &exprs : statements) { ss << exprs->to_string(n + 1); }
-
+  for (const auto &exprs : statements) {
+    ss << tabs(n) << exprs->to_string(n) << "\n";
+  }
   return ss.str();
 }
 
 std::string FunctionLiteral::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<FunctionLiteral " << TYPE_OR("") << ">\n";
-  ss << tabs(n + 1) << "Inputs\n";
-  for (const auto &input : inputs) { ss << input->to_string(n + 2); }
-  ss << tabs(n + 1) << "Outputs\n";
-  ss << return_type_expr->to_string(n + 1) << tabs(n + 1) << "Body:\n"
-     << statements->to_string(n + 2);
+  if (inputs.empty()) {
+    ss << "void";
+  } else {
+    auto iter = inputs.begin();
+    ss << "(" << (*iter)->to_string(n);
+    ++iter;
+    while (iter != inputs.end()) {
+      ss << ", " << (*iter)->to_string(n);
+      ++iter;
+    }
+    ss << ")";
+  }
+  ss << " -> " << return_type_expr->to_string(n + 1) << " {\n"
+     << statements->to_string(n + 1) << tabs(n) << "}";
   return ss.str();
 }
-
 
 std::string GenericFunctionLiteral::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << tabs(n) << "<GenericFunctionLiteral " << TYPE_OR("") << ">\n";
-  ss << tabs(n + 1) << "Inputs\n";
-  for (const auto &input : inputs) { ss << input->to_string(n + 2); }
-  ss << tabs(n + 1) << "Outputs\n";
-  ss << return_type_expr->to_string(n + 1) << tabs(n + 1) << "Body:\n"
-     << statements->to_string(n + 2);
-  return ss.str();
+  return FunctionLiteral::to_string(n);
 }
 
-std::string Jump::to_string(size_t n) const {
+std::string Jump::to_string(size_t) const {
   switch (jump_type) {
-  case JumpType::Restart: return tabs(n) + "<Restart>\n";
-  case JumpType::Continue: return tabs(n) + "<Continue>\n";
-  case JumpType::Repeat: return tabs(n) + "<Repeat>\n";
-  case JumpType::Break: return tabs(n) + "<Break>\n";
-  case JumpType::Return: return tabs(n) + "<Return>\n";
+  case JumpType::Restart: return "restart";
+  case JumpType::Continue: return "continue";
+  case JumpType::Repeat: return "repeat";
+  case JumpType::Break: return "break";
+  case JumpType::Return: return "return";
   default: UNREACHABLE();
   }
 }
 
 std::string ScopeNode::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<ScopeNode>\n";
-  ss << scope_expr->to_string(n + 1);
-  if (expr) { ss << expr->to_string(n + 1); }
-  ss << tabs(n + 1) << "Statements:\n";
-  ss << stmts->to_string(n + 2);
+  ss << scope_expr->to_string(n);
+  if (expr) { ss << " " << expr->to_string(n); }
+  ss << " {\n" << stmts->to_string(n) << tabs(n) << "}";
   return ss.str();
 }
 
-std::string CodeBlock::to_string(size_t n) const { return tabs(n) + "<...>\n"; }
-std::string Hole::to_string(size_t n) const { return tabs(n) + "<-->\n"; }
+std::string CodeBlock::to_string(size_t) const { return "{{...}}"; }
+std::string Hole::to_string(size_t) const { return "--"; }
 
 std::string ScopeLiteral::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<ScopeLiteral " << TYPE_OR("") << ">\n"
-     << enter_fn->to_string(n + 2) << exit_fn->to_string(n + 2);
+  ss << "scope {\n"
+     << tabs(n + 1) << enter_fn->to_string(n + 1) << "\n"
+     << tabs(n + 1) << exit_fn->to_string(n + 1) << "\n"
+     << tabs(n) << "}";
   return ss.str();
 }
 } // namespace AST

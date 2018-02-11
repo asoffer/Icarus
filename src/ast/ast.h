@@ -221,14 +221,6 @@ struct Binop : public Expression {
   virtual IR::Val EmitIR(IR::Cmd::Kind, const BoundConstants &);
   virtual IR::Val EmitLVal(IR::Cmd::Kind, const BoundConstants &);
 
-  bool is_assignment() const {
-    return op == Language::Operator::Assign || op == Language::Operator::OrEq ||
-           op == Language::Operator::XorEq || op == Language::Operator::AndEq ||
-           op == Language::Operator::AddEq || op == Language::Operator::SubEq ||
-           op == Language::Operator::MulEq || op == Language::Operator::DivEq ||
-           op == Language::Operator::ModEq;
-  }
-
   Language::Operator op;
   base::owned_ptr<Expression> lhs, rhs;
 };

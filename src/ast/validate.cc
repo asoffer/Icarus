@@ -548,7 +548,12 @@ void Binop::Validate(const BoundConstants &bound_constants) {
   }
 
   using Language::Operator;
-  if (is_assignment() && lhs->lvalue != Assign::LVal) {
+  if (lhs->lvalue != Assign::LVal &&
+      (op == Operator::Assign || op == Operator::OrEq ||
+       op == Operator::XorEq || op == Operator::AndEq ||
+       op == Operator::AddEq || op == Operator::SubEq ||
+       op == Operator::MulEq || op == Operator::DivEq ||
+       op == Operator::ModEq)) {
     ErrorLog::InvalidAssignment(span, lhs->lvalue);
     limit_to(StageRange::Nothing());
 
