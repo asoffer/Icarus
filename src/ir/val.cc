@@ -7,7 +7,7 @@
 #include "func.h"
 
 namespace IR {
-Val Val::CodeBlock(base::owned_ptr<AST::CodeBlock> block) {
+Val Val::CodeBlock(AST::CodeBlock block) {
   return Val(::Code, std::move(block));
 }
 
@@ -86,9 +86,7 @@ std::string Val::to_string() const {
             return "scope(" + std::to_string(reinterpret_cast<uintptr_t>(s)) +
                    ")";
           },
-          [](const base::owned_ptr<AST::CodeBlock> &) -> std::string {
-            return "<...>";
-          },
+          [](const AST::CodeBlock &) -> std::string { return "<...>"; },
           [](AST::Expression *) -> std::string { return "<expr>"; },
           [](BlockIndex b) -> std::string {
             return "block #" + std::to_string(b);

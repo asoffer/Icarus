@@ -113,9 +113,7 @@ Val Alloca(Type *t) {
   return cmd.reg();
 }
 
-Val Contextualize(base::owned_ptr<AST::CodeBlock> code,
-                  std::vector<IR::Val> v) {
-  ASSERT_NE(code, nullptr);
+Val Contextualize(AST::CodeBlock code, std::vector<IR::Val> v) {
   v.push_back(IR::Val::CodeBlock(std::move(code)));
   MAKE_AND_RETURN(::Code, Op::Contextualize);
 }
@@ -215,13 +213,14 @@ Val Add(Val v1, Val v2) {
   CONSTANT_PROPOGATION(double, std::plus<double>{}, Real);
   CONSTANT_PROPOGATION(char, std::plus<char>{}, Char);
 
-  if (base::owned_ptr<AST::CodeBlock> *cb1 =
-          std::get_if<base::owned_ptr<AST::CodeBlock>>(&v1.value),
-      *cb2 = std::get_if<base::owned_ptr<AST::CodeBlock>>(&v2.value);
+  if (auto *cb1 = std::get_if<AST::CodeBlock>(&v1.value),
+      *cb2      = std::get_if<AST::CodeBlock>(&v2.value);
       cb1 != nullptr && cb2 != nullptr) {
-    auto block   = base::make_owned<AST::CodeBlock>();
-    block->stmts = AST::Statements::Merge(
-        std::vector{std::move((*cb1)->stmts), std::move((*cb2)->stmts)});
+    AST::CodeBlock block;
+    // TODO is this std::get<Statements> call safe?
+    block.content_ = AST::Statements::Merge(
+        std::vector{std::get<AST::Statements>(std::move(*cb1).content_),
+                    std::get<AST::Statements>(std::move(*cb2).content_)});
     return Val::CodeBlock(std::move(block));
   }
 

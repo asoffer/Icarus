@@ -74,7 +74,7 @@ void Case::ClearIdDecls() {
 
 void Statements::ClearIdDecls() {
   stage_range_ = StageRange{};
-  for (auto &stmt : statements) { stmt->ClearIdDecls(); }
+  for (auto &stmt : content_) { stmt->ClearIdDecls(); }
 }
 
 void GenericFunctionLiteral::ClearIdDecls() {

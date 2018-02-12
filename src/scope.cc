@@ -98,9 +98,7 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
 void ExecScope::Enter() const {
   ForEachDeclHere(+[](AST::Declaration *decl) {
     if (decl->const_) { return; }
-    if (!decl->is<AST::InDecl>()) {
-      decl->EmitIR(IR::Cmd::Kind::Exec, AST::BoundConstants{});
-    }
+    if (!decl->is<AST::InDecl>()) { decl->EmitIR(AST::BoundConstants{}); }
   });
 }
 

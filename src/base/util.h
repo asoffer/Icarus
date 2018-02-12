@@ -16,13 +16,26 @@ template <typename Base> struct Cast {
            nullptr;
   }
 
-  template <typename T> T &as() {
+  template <typename T> T &as() & {
     static_assert(std::is_base_of_v<Base, T>,
                   "Calling as<...> but there is no inheritance relationship. "
                   "Result is vacuously false.");
     return const_cast<T &>(
         static_cast<const std::remove_reference_t<decltype(*this)> *>(this)
             ->template as<const T>());
+  }
+
+  template <typename T> T &&as() && {
+    static_assert(std::is_base_of_v<Base, T>,
+                  "Calling as<...> but there is no inheritance relationship. "
+                  "Result is vacuously false.");
+#ifdef DEBUG
+    auto *result = dynamic_cast<T *>(reinterpret_cast<Base *>(this));
+    ASSERT(result, "Failed to convert");
+    return std::move(*result);
+#else
+    return std::move(*reinterpret_cast<T *>(this));
+#endif
   }
 
   template <typename T> const T &as() const {

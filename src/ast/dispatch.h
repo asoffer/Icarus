@@ -18,7 +18,7 @@ struct Expression;
 struct Binding {
   static std::optional<Binding>
   MakeUntyped(Expression *fn_expr,
-              const FnArgs<base::owned_ptr<Expression>> &args,
+              const FnArgs<std::unique_ptr<Expression>> &args,
               const std::unordered_map<std::string, size_t> &index_lookup);
 
   bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }

@@ -104,7 +104,7 @@ void Case::assign_scope(Scope *scope) {
 void Statements::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;
-  for (auto &stmt : statements) { stmt->assign_scope(scope); }
+  for (auto &stmt : content_) { stmt->assign_scope(scope); }
 }
 
 void GenericFunctionLiteral::assign_scope(Scope *scope) {

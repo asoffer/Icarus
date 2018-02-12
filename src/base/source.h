@@ -7,7 +7,6 @@
 #include <memory>
 #include <optional>
 
-#include "owned_ptr.h"
 #include "strong_types.h"
 
 namespace AST {
@@ -20,7 +19,7 @@ struct Source {
 
   virtual ~Source() {}
   virtual std::optional<Line> NextLine() = 0;
-  virtual base::owned_ptr<AST::Statements> Parse() = 0;
+  virtual std::unique_ptr<AST::Statements> Parse() = 0;
 
   std::vector<Line> lines{1}; // Start with one blank line because line numbers
                               // are 1-indexed not 0-indexed.
@@ -42,7 +41,7 @@ struct Repl: public Source {
   Repl() : Source(Source::Name("")) {}
 
   std::optional<Source::Line> NextLine() final;
-  base::owned_ptr<AST::Statements> Parse() final;
+  std::unique_ptr<AST::Statements> Parse() final;
 
   bool first_entry = true;
 };
@@ -53,7 +52,7 @@ struct File : Source {
   ~File() final {}
 
   std::optional<Source::Line> NextLine() final;
-  base::owned_ptr<AST::Statements> Parse() final;
+  std::unique_ptr<AST::Statements> Parse() final;
 
   AST::Statements *ast = nullptr;
   std::ifstream ifs;

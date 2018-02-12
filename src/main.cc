@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "ast/ast.h"
+#include "ast/statements.h"
 #include "base/debug.h"
 #include "base/source.h"
 #include "error_log.h"
@@ -17,10 +18,10 @@ extern Scope *GlobalScope;
 
 extern void ReplEval(AST::Expression *expr);
 
-extern std::vector<base::owned_ptr<AST::Statements>> ParseAllFiles();
+std::vector<AST::Statements> ParseAllFiles();
 extern Timer timer;
 
-base::owned_ptr<AST::Statements> global_statements;
+AST::Statements global_statements;
 
 int GenerateCode() {
   auto stmts_by_file = ParseAllFiles();
@@ -35,12 +36,10 @@ int GenerateCode() {
   }
 
   RUN(timer, "Verify and Emit") {
-    AST::DoStages<0, 1>(global_statements.get(), GlobalScope,
-                        AST::BoundConstants{});
-    for (auto &stmt : global_statements->statements) {
+    AST::DoStages<0, 1>(&global_statements, GlobalScope, AST::BoundConstants{});
+    for (auto &stmt : global_statements.content_) {
       if (!stmt->is<AST::Declaration>()) { continue; }
-      stmt->as<AST::Declaration>().EmitIR(IR::Cmd::Kind::Exec,
-                                          AST::BoundConstants{});
+      stmt->as<AST::Declaration>().EmitIR(AST::BoundConstants{});
     }
   }
 
@@ -65,7 +64,7 @@ int RunRepl() {
   Repl repl;
   while (true) {
     auto stmts = repl.Parse();
-    for (auto &stmt : stmts->statements) {
+    for (auto &stmt : stmts->content_) {
       if (stmt->is<AST::Declaration>()) {
         auto *decl = &stmt->as<AST::Declaration>();
         AST::DoStages<0, 2>(decl, GlobalScope, AST::BoundConstants{});

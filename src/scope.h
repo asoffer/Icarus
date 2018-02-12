@@ -6,9 +6,7 @@
 #include <unordered_set>
 #include <unordered_map>
 
-#include "base/owned_ptr.h"
 #include "base/util.h"
-
 
 namespace IR {
 struct Val;
@@ -33,8 +31,8 @@ struct Scope : public base::Cast<Scope> {
   virtual ~Scope() {}
   virtual Scope *Clone() const = 0;
 
-  template <typename ScopeType> base::owned_ptr<ScopeType> add_child() {
-    return base::make_owned<ScopeType>(this);
+  template <typename ScopeType> std::unique_ptr<ScopeType> add_child() {
+    return std::make_unique<ScopeType>(this);
   }
 
   // Returns an identifier pointer if there is a declaration of this identifier

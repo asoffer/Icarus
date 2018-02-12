@@ -3,9 +3,10 @@
 
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <variant>
 
-#include "../base/owned_ptr.h"
+#include "../ast/codeblock.h"
 #include "../base/strong_types.h"
 #include "../base/types.h"
 
@@ -16,7 +17,6 @@ struct Pointer;
 extern Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String;
 
 namespace AST {
-struct CodeBlock;
 struct Expression;
 struct ScopeLiteral;
 struct GenericFunctionLiteral;
@@ -93,11 +93,41 @@ template <> struct hash<IR::CmdIndex> {
 namespace IR {
 struct Val {
   ::Type *type = nullptr;
+  static_assert(std::is_move_assignable_v<Register>);
+  static_assert(std::is_move_assignable_v<ReturnValue>);
+  static_assert(std::is_move_assignable_v<::IR::Addr>);
+  static_assert(std::is_move_assignable_v<EnumVal>);
+  static_assert(std::is_move_assignable_v<AST::CodeBlock>);
+  static_assert(std::is_move_assignable_v<BlockIndex>);
+  static_assert(std::is_move_assignable_v<std::string>);
+
+  static_assert(std::is_copy_assignable_v<Register>);
+  static_assert(std::is_copy_assignable_v<ReturnValue>);
+  static_assert(std::is_copy_assignable_v<::IR::Addr>);
+  static_assert(std::is_copy_assignable_v<EnumVal>);
+  static_assert(std::is_copy_assignable_v<AST::CodeBlock>);
+  static_assert(std::is_copy_assignable_v<BlockIndex>);
+  static_assert(std::is_copy_assignable_v<std::string>);
+
+  static_assert(std::is_move_constructible_v<Register>);
+  static_assert(std::is_move_constructible_v<ReturnValue>);
+  static_assert(std::is_move_constructible_v<::IR::Addr>);
+  static_assert(std::is_move_constructible_v<EnumVal>);
+  static_assert(std::is_move_constructible_v<AST::CodeBlock>);
+  static_assert(std::is_move_constructible_v<BlockIndex>);
+  static_assert(std::is_move_constructible_v<std::string>);
+
+  static_assert(std::is_copy_constructible_v<Register>);
+  static_assert(std::is_copy_constructible_v<ReturnValue>);
+  static_assert(std::is_copy_constructible_v<::IR::Addr>);
+  static_assert(std::is_copy_constructible_v<EnumVal>);
+  static_assert(std::is_copy_constructible_v<AST::CodeBlock>);
+  static_assert(std::is_copy_constructible_v<BlockIndex>);
+  static_assert(std::is_copy_constructible_v<std::string>);
   std::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32,
                EnumVal, ::Type *, AST::GenericFunctionLiteral *,
                AST::FunctionLiteral *, ::IR::Func *, AST::ScopeLiteral *,
-               base::owned_ptr<AST::CodeBlock>, AST::Expression *, BlockIndex,
-               std::string>
+               AST::CodeBlock, AST::Expression *, BlockIndex, std::string>
       value{false};
 
   static Val Reg(Register r, ::Type *t) { return Val(t, r); }
@@ -112,7 +142,7 @@ struct Val {
   static Val Int(i32 n) { return Val(::Int, n); }
   static Val Enum(const ::Enum *enum_type, size_t integral_val);
   static Val Type(::Type *t) { return Val(::Type_, t); }
-  static Val CodeBlock(base::owned_ptr<AST::CodeBlock> block);
+  static Val CodeBlock(AST::CodeBlock block);
   static Val Func(::IR::Func *fn); // TODO deprecate?
   static Val FnLit(AST::FunctionLiteral *fn);
   static Val GenFnLit(AST::GenericFunctionLiteral *fn);

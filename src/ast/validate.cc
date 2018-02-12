@@ -238,7 +238,7 @@ static bool Inferrable(Type *t) {
 }
 
 std::optional<Binding> Binding::MakeUntyped(
-    AST::Expression *fn_expr, const FnArgs<base::owned_ptr<Expression>> &args,
+    AST::Expression *fn_expr, const FnArgs<std::unique_ptr<Expression>> &args,
     const std::unordered_map<std::string, size_t> &index_lookup) {
   Binding result(fn_expr);
   for (size_t i = 0; i < args.pos_.size(); ++i) {
@@ -934,6 +934,7 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
   // an error is thrown by the compiler.
 
   if (IsDefaultInitialized()) {
+    ASSERT_NE(type_expr.get(), nullptr);
     type =
         type_expr->VerifyTypeForDeclaration(identifier->token, bound_constants);
   } else if (IsInferred()) {
@@ -1000,20 +1001,7 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
   if (type == Type_ && IsInferred()) {
     // TODO Declaring a type must be a compile-time constant? No... what if I'm
     // writing a function that modifies a type? Something here needs fixing.
-
-    if (init_val->is<Terminal>()) {
-      auto *t = std::get<Type *>(init_val->value.value);
-      // TODO mangle the name correctly (Where should this be done?)
-      if (t->is<Struct>()) {
-        t->as<Struct>().bound_name = identifier->token;
-      } else if (t->is<Enum>()) {
-        t->as<Enum>().bound_name = identifier->token;
-      } else if (t->is<Scope_Type>()) {
-        t->as<Scope_Type>().bound_name = identifier->token;
-      }
-    }
-
-    identifier->value = init_val->value;
+    NOT_YET();
   }
 
   // TODO Either guarantee that higher scopes have all declarations declared and
@@ -1101,7 +1089,7 @@ void InDecl::Validate(const BoundConstants& bound_constants) {
 
 void Statements::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;
-  for (auto &stmt : statements) {
+  for (auto &stmt : content_) {
     stmt->Validate(bound_constants);
     limit_to(stmt);
   }

@@ -18,6 +18,16 @@ template <typename T> struct FnArgs {
     return iter;
   }
 
+  FnArgs<T> *Clone() {
+    auto *result = new FnArgs<T>;
+    result.pos_.reserve(pos_.size());
+    for (const auto &val : pos_) { result.pos_.emplace_back(val->Clone()); }
+    for (auto && [ key, val ] : named_) {
+      result.named_.emplace(key, T{val->Clone()});
+    }
+    return result;
+  }
+
   std::string to_string() const {
     std::string result;
     for (auto &&val : pos_) {
@@ -33,16 +43,8 @@ template <typename T> struct FnArgs {
     for (auto &&val : pos_) { fn(val); }
     for (auto && [ key, val ] : named_) { fn(val); }
   }
-  template <typename Fn>
-  auto Transform(Fn &&fn) -> FnArgs<decltype(fn(std::declval<T>()))> {
-    FnArgs<decltype(fn(std::declval<T>()))> result;
-    result.pos_.reserve(pos_.size());
-    for (auto &&val : pos_) { result.pos_.push_back(fn(val)); }
-    for (auto && [ key, val ] : named_) { result.named_.emplace(key, fn(val)); }
-  }
 
   std::vector<T> pos_;
-  // TODO implement flat map for real
   std::unordered_map<std::string, T> named_;
 };
 

@@ -22,11 +22,7 @@ TokenNode::TokenNode(const TextSpan &span, std::string str)
 Terminal::Terminal(const TextSpan &span, IR::Val val) : Expression(span) {
   type          = val.type;
   precedence    = Language::precedence(Language::Operator::NotAnOperator);
-  value         = val;
-}
-
-ScopeLiteral::ScopeLiteral(const TextSpan &span) : Expression(span) {
-  value = IR::Val::None(); // TODO Scope(this);
+  value         = std::move(val);
 }
 
 Jump::Jump(const TextSpan &span, JumpType jump_type)

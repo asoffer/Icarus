@@ -1,8 +1,8 @@
 #include "exec.h"
 
 #include <cstring>
-#include <memory>
 #include <iostream>
+#include <memory>
 
 #include "../architecture.h"
 #include "../ast/ast.h"
@@ -16,8 +16,7 @@ std::vector<IR::Val> global_vals;
 std::unique_ptr<IR::Func>
 ExprFn(AST::Expression *expr, Type *input,
        const AST::BoundConstants &bound_constants = AST::BoundConstants{},
-       const std::vector<std::pair<std::string, AST::Expression *>> args = {},
-       IR::Cmd::Kind kind = IR::Cmd::Kind::Exec) {
+       const std::vector<std::pair<std::string, AST::Expression *>> args = {}) {
   auto fn = std::make_unique<IR::Func>(::Func(input, expr->type), args);
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
@@ -28,7 +27,7 @@ ExprFn(AST::Expression *expr, Type *input,
 
     auto start_block   = IR::Func::Current->AddBlock();
     IR::Block::Current = start_block;
-    auto result = expr->EmitIR(kind, bound_constants);
+    auto result = expr->EmitIR( bound_constants);
 
     if (expr->type != Void) {
       IR::SetReturn(IR::ReturnValue{0}, std::move(result));
@@ -156,7 +155,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   for (const auto& arg : cmd.args) {
     if (auto *r = std::get_if<Register>(&arg.value)) {
       resolved.push_back(reg(*r));
-    } else if (std::get_if<base::owned_ptr<AST::CodeBlock>>(&arg.value)) {
+    } else if (std::get_if<AST::CodeBlock>(&arg.value)) {
       // Don't need to copy codeblocks.
       resolved.push_back(IR::Val::None());
     } else {
@@ -253,7 +252,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             [](char c) { std::cerr << c; },
             [](double d) { std::cerr << d; },
             [](Type *t) { std::cerr << t->to_string(); },
-            [](const base::owned_ptr<AST::CodeBlock> &cb) {
+            [](const std::unique_ptr<AST::CodeBlock> &cb) {
               std::cerr << cb->to_string();
             },
             [](const std::string &s) { std::cerr << s; },
@@ -308,7 +307,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       LOAD_FROM_HEAP(Char, Char, char);
       LOAD_FROM_HEAP(Int, Int, i32);
       LOAD_FROM_HEAP(Real, Real, double);
-      LOAD_FROM_HEAP(Code, CodeBlock, base::owned_ptr<AST::CodeBlock>);
+      LOAD_FROM_HEAP(Code, CodeBlock, AST::CodeBlock);
       LOAD_FROM_HEAP(Type_, Type, ::Type *);
       if (cmd.type->is<Pointer>()) {
         return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
@@ -330,7 +329,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       LOAD_FROM_STACK(Char, Char, char);
       LOAD_FROM_STACK(Int, Int, i32);
       LOAD_FROM_STACK(Real, Real, double);
-      LOAD_FROM_STACK(Code, CodeBlock, base::owned_ptr<AST::CodeBlock>);
+      LOAD_FROM_STACK(Code, CodeBlock, AST::CodeBlock);
       LOAD_FROM_STACK(Type_, Type, ::Type *);
       if (cmd.type->is<Pointer>()) {
         switch (addr.kind) {
@@ -380,9 +379,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type == Type_) {
         stack_.Store(std::get<::Type *>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type == Code) {
-        stack_.Store(
-            std::get<base::owned_ptr<AST::CodeBlock>>(resolved[0].value),
-            addr.as_stack);
+        stack_.Store(std::get<AST::CodeBlock>(resolved[0].value),
+                     addr.as_stack);
       } else {
         NOT_YET("Don't know how to store that: args = ", resolved);
       }
@@ -476,10 +474,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     }
 
     ASSERT_EQ(cmd.args.back().type, ::Code);
-    const auto &code_block =
-        std::get<base::owned_ptr<AST::CodeBlock>>(cmd.args.back().value);
-    auto copied_block = base::own(code_block->Clone());
-    copied_block->stmts->contextualize(code_block->stmts.get(), replacements);
+    const auto &code_block = std::get<AST::CodeBlock>(cmd.args.back().value);
+    auto copied_block      = code_block;
+    std::get<AST::Statements>(copied_block.content_)
+        .contextualize(&std::get<AST::Statements>(code_block.content_),
+                       replacements);
     return IR::Val::CodeBlock(std::move(copied_block));
   } break;
   case Op::VariantType:
@@ -548,12 +547,12 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 } // namespace IR
 
 void ReplEval(AST::Expression *expr) {
-  auto fn = base::make_owned<IR::Func>(
+  auto fn = std::make_unique<IR::Func>(
       Func(Void, Void),
       std::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
-    auto expr_val = expr->EmitIR(IR::Cmd::Kind::Exec, AST::BoundConstants{});
+    auto expr_val      = expr->EmitIR(AST::BoundConstants{});
     if (ErrorLog::NumErrors() != 0) {
       ErrorLog::Dump();
       return;

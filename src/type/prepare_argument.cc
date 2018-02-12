@@ -1,3 +1,4 @@
+#include "../ir/cmd.h"
 #include "type.h"
 
 extern IR::Val PtrCallFix(const IR::Val& v);

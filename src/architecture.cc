@@ -1,6 +1,6 @@
 #include "architecture.h"
 
-#include "ir/val.h"
+#include "ir/cmd.h"
 
 IR::Val Architecture::ComputeArrayLength(const IR::Val &len,
                                          const Type *t) const {

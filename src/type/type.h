@@ -26,6 +26,10 @@ struct Scope;
 #include <unordered_map>
 #include <vector>
 
+namespace IR {
+struct Func;
+} // namespace IR
+
 namespace AST {
 struct Declaration;
 struct Expression;

@@ -97,7 +97,20 @@ struct PropertySet {
   static PropertySet StrongMerge(const std::vector<const PropertySet *> &props);
   bool Implies(const PropertySet &props) const;
 
-  std::vector<base::owned_ptr<Property>> props_;
+  PropertySet() = default;
+  PropertySet(const PropertySet& prop_set) {
+    props_.reserve(prop_set.props_.size());
+    for (const auto &prop : prop_set.props_) {
+      props_.emplace_back(prop->Clone());
+    }
+  }
+
+  PropertySet &operator=(PropertySet prop_set) {
+    props_ = std::move(prop_set).props_;
+    return *this;
+  }
+
+  std::vector<std::unique_ptr<Property>> props_;
 };
 
 template <typename Number> struct Range : Property {
@@ -130,41 +143,41 @@ template <typename Number> struct Range : Property {
   Number max_ = std::numeric_limits<Number>::max();
 };
 
-inline base::owned_ptr<Property>
-operator+(const base::owned_ptr<Property> &lhs,
-          const base::owned_ptr<Property> &rhs) {
+inline std::unique_ptr<Property>
+operator+(const std::unique_ptr<Property> &lhs,
+          const std::unique_ptr<Property> &rhs) {
   ASSERT_TYPE(Range<i32>, lhs);
   ASSERT_TYPE(Range<i32>, rhs);
   auto lhs_int = lhs->as<Range<i32>>();
   auto rhs_int = rhs->as<Range<i32>>();
-  return base::make_owned<Range<i32>>(
+  return std::make_unique<Range<i32>>(
       SafeMath<i32>::Add(lhs_int.min_, rhs_int.min_),
       SafeMath<i32>::Add(lhs_int.max_, rhs_int.max_));
 }
 
-inline base::owned_ptr<Property>
-operator-(const base::owned_ptr<Property> &lhs,
-          const base::owned_ptr<Property> &rhs) {
+inline std::unique_ptr<Property>
+operator-(const std::unique_ptr<Property> &lhs,
+          const std::unique_ptr<Property> &rhs) {
   ASSERT_TYPE(Range<i32>, lhs);
   ASSERT_TYPE(Range<i32>, rhs);
   auto lhs_int = lhs->as<Range<i32>>();
   auto rhs_int = rhs->as<Range<i32>>();
-  return base::make_owned<Range<i32>>(
+  return std::make_unique<Range<i32>>(
       SafeMath<i32>::Sub(lhs_int.min_, rhs_int.max_),
       SafeMath<i32>::Sub(lhs_int.max_, rhs_int.min_));
 }
 
 template <typename Number>
-base::owned_ptr<Range<Number>> operator-(base::owned_ptr<Range<Number>> num) {
+std::unique_ptr<Range<Number>> operator-(std::unique_ptr<Range<Number>> num) {
   auto tmp  = num->min_;
   num->min_ = -num->max_;
   num->max_ = -tmp;
   return num;
 }
 
-inline base::owned_ptr<Property>
-operator*(const base::owned_ptr<Property> &lhs,
-          const base::owned_ptr<Property> &rhs) {
+inline std::unique_ptr<Property>
+operator*(const std::unique_ptr<Property> &lhs,
+          const std::unique_ptr<Property> &rhs) {
   ASSERT_TYPE(Range<i32>, lhs);
   ASSERT_TYPE(Range<i32>, rhs);
   auto lhs_int = lhs->as<Range<i32>>();
@@ -179,7 +192,7 @@ operator*(const base::owned_ptr<Property> &lhs,
     std::tie(new_min, new_max) =
         std::pair(std::min(new_min, val), std::max(new_max, val));
   }
-  return base::make_owned<Range<i32>>(new_min, new_max);
+  return std::make_unique<Range<i32>>(new_min, new_max);
 }
 
 struct BoolProperty : Property {
@@ -215,9 +228,9 @@ struct BoolProperty : Property {
   virtual void Neg() {
     switch (kind) {
     case Kind::Unknown: return;
-    case Kind::True: kind   = Kind::False; return;
-    case Kind::False: kind  = Kind::True; return;
-    case Kind::Reg: kind    = Kind::NegReg; return;
+    case Kind::True: kind = Kind::False; return;
+    case Kind::False: kind = Kind::True; return;
+    case Kind::Reg: kind = Kind::NegReg; return;
     case Kind::NegReg: kind = Kind::Reg; return;
     }
   }
@@ -226,15 +239,16 @@ struct BoolProperty : Property {
   enum class Kind : char { Unknown, True, False, Reg, NegReg } kind;
 };
 
-inline base::owned_ptr<Property>
-operator^(base::owned_ptr<Property> lhs, const base::owned_ptr<Property> &rhs) {
+/*
+inline std::unique_ptr<Property>
+operator^(std::unique_ptr<Property> lhs, const std::unique_ptr<Property> &rhs) {
   ASSERT_TYPE(BoolProperty, lhs);
   ASSERT_TYPE(BoolProperty, rhs);
   switch (lhs->as<BoolProperty>().kind) {
   case BoolProperty::Kind::Unknown: return lhs;
   case BoolProperty::Kind::True: {
     // TODO can do this more efficiently avoiding copies to/from stack/heap.
-    auto prop = base::make_owned<BoolProperty>(rhs->as<BoolProperty>());
+    auto prop = std::make_unique<BoolProperty>(rhs->as<BoolProperty>());
     prop->Neg();
     return prop;
   }
@@ -242,79 +256,80 @@ operator^(base::owned_ptr<Property> lhs, const base::owned_ptr<Property> &rhs) {
   case BoolProperty::Kind::Reg:
   case BoolProperty::Kind::NegReg: {
     // TODO Can we do better than this? Is it worth it?
-    return base::owned_ptr<BoolProperty>();
+    return std::unique_ptr<BoolProperty>();
   }
   }
   UNREACHABLE();
 }
 
-inline base::owned_ptr<Property>
-operator<(const base::owned_ptr<Property> &lhs,
-          const base::owned_ptr<Property> &rhs) {
+inline std::unique_ptr<Property>
+operator<(const std::unique_ptr<Property> &lhs,
+          const std::unique_ptr<Property> &rhs) {
   ASSERT_TYPE(Range<i32>, lhs);
   ASSERT_TYPE(Range<i32>, rhs);
   auto lhs_int = lhs->as<Range<i32>>();
   auto rhs_int = rhs->as<Range<i32>>();
 
   if (lhs_int.max_ < rhs_int.min_) {
-    return base::make_owned<BoolProperty>(true);
+    return std::make_unique<BoolProperty>(true);
   }
   if (rhs_int.max_ <= lhs_int.min_) {
-    return base::make_owned<BoolProperty>(false);
+    return std::make_unique<BoolProperty>(false);
   }
-  return base::make_owned<BoolProperty>();
+  return std::make_unique<BoolProperty>();
 }
 
-inline base::owned_ptr<Property>
-operator<=(const base::owned_ptr<Property> &lhs,
-           const base::owned_ptr<Property> &rhs) {
+inline std::unique_ptr<Property>
+operator<=(const std::unique_ptr<Property> &lhs,
+           const std::unique_ptr<Property> &rhs) {
   ASSERT_TYPE(Range<i32>, lhs);
   ASSERT_TYPE(Range<i32>, rhs);
   auto lhs_int = lhs->as<Range<i32>>();
   auto rhs_int = rhs->as<Range<i32>>();
 
   if (lhs_int.max_ <= rhs_int.min_) {
-    return base::make_owned<BoolProperty>(true);
+    return std::make_unique<BoolProperty>(true);
   }
   if (rhs_int.max_ < lhs_int.min_) {
-    return base::make_owned<BoolProperty>(false);
+    return std::make_unique<BoolProperty>(false);
   }
-  return base::make_owned<BoolProperty>();
+  return std::make_unique<BoolProperty>();
 }
 
-inline base::owned_ptr<Property>
-operator>(const base::owned_ptr<Property> &lhs,
-          const base::owned_ptr<Property> &rhs) {
+inline std::unique_ptr<Property>
+operator>(const std::unique_ptr<Property> &lhs,
+          const std::unique_ptr<Property> &rhs) {
   ASSERT_TYPE(Range<i32>, lhs);
   ASSERT_TYPE(Range<i32>, rhs);
   auto lhs_int = lhs->as<Range<i32>>();
   auto rhs_int = rhs->as<Range<i32>>();
 
   if (lhs_int.min_ > rhs_int.max_) {
-    return base::make_owned<BoolProperty>(true);
+    return std::make_unique<BoolProperty>(true);
   }
   if (rhs_int.min_ >= lhs_int.max_) {
-    return base::make_owned<BoolProperty>(false);
+    return std::make_unique<BoolProperty>(false);
   }
-  return base::make_owned<BoolProperty>();
+  return std::make_unique<BoolProperty>();
 }
 
-inline base::owned_ptr<Property>
-operator>=(const base::owned_ptr<Property> &lhs,
-           const base::owned_ptr<Property> &rhs) {
+inline std::unique_ptr<Property>
+operator>=(const std::unique_ptr<Property> &lhs,
+           const std::unique_ptr<Property> &rhs) {
   ASSERT_TYPE(Range<i32>, lhs);
   ASSERT_TYPE(Range<i32>, rhs);
   auto lhs_int = lhs->as<Range<i32>>();
   auto rhs_int = rhs->as<Range<i32>>();
 
   if (lhs_int.min_ >= rhs_int.max_) {
-    return base::make_owned<BoolProperty>(true);
+    return std::make_unique<BoolProperty>(true);
   }
   if (rhs_int.min_ > lhs_int.max_) {
-    return base::make_owned<BoolProperty>(false);
+    return std::make_unique<BoolProperty>(false);
   }
-  return base::make_owned<BoolProperty>();
+  return std::make_unique<BoolProperty>();
 }
+*/
 } // namespace property
 } // namespace IR
 

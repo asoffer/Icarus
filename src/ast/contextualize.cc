@@ -30,7 +30,7 @@ void Call::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 }
 
 void Statements::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  for (auto &stmt : statements) { stmt->SaveReferences(scope, args); }
+  for (auto &stmt : content_) { stmt->SaveReferences(scope, args); }
 }
 
 void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
@@ -131,9 +131,7 @@ void InDecl::contextualize(const Node *correspondant,
 
 void Statements::contextualize(const Node *correspondant,
                                const RefMap &replacements) {
-  for (size_t i = 0; i < statements.size(); ++i) {
-    CONTEXTUALIZE(statements[i]);
-  }
+  for (size_t i = 0; i < content_.size(); ++i) { CONTEXTUALIZE(content_[i]); }
 }
 
 void Unop::contextualize(const Node *correspondant,
@@ -141,7 +139,7 @@ void Unop::contextualize(const Node *correspondant,
   if (op == Language::Operator::Ref) {
     auto iter = replacements.find(&correspondant->as<Unop>());
     ASSERT(iter != replacements.end(), "");
-    auto terminal        = base::make_owned<Terminal>();
+    auto terminal        = std::make_unique<Terminal>();
     terminal->scope_     = scope_; // TODO Eh? Do I care?
     terminal->span       = span;
     terminal->precedence = precedence;

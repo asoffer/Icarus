@@ -92,8 +92,7 @@ void Struct::EmitInit(IR::Val id_val) {
               /* from_type = */ init_values[i]->type,
               /*   to_type = */ field_type[i],
               /*  from_val = */
-              init_values[i]->EmitIR(IR::Cmd::Kind::Exec,
-                                     AST::BoundConstants{}),
+              init_values[i]->EmitIR(AST::BoundConstants{}),
               /*    to_var = */ IR::Field(init_func->Argument(0), i));
         } else {
           field_type[i]->EmitInit(IR::Field(init_func->Argument(0), i));

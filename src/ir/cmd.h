@@ -79,8 +79,7 @@ Val Variant(std::vector<Val> vals);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);
-Val Contextualize(base::owned_ptr<AST::CodeBlock> code,
-                  std::vector<IR::Val> args);
+Val Contextualize(AST::CodeBlock code, std::vector<IR::Val> args);
 Val VariantType(IR::Val v1);
 Val VariantValue(Type *t, IR::Val);
 

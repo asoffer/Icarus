@@ -160,7 +160,7 @@ std::string ChainOp::to_string(size_t n) const {
     default: UNREACHABLE();
     }
   }
-  ss << exprs.back() << ")";
+  ss << exprs.back()->to_string(n) << ")";
   return ss.str();
 }
 
@@ -211,7 +211,7 @@ std::string Case::to_string(size_t n) const {
 
 std::string Statements::to_string(size_t n) const {
   std::stringstream ss;
-  for (const auto &exprs : statements) {
+  for (const auto &exprs : content_) {
     ss << tabs(n) << exprs->to_string(n) << "\n";
   }
   return ss.str();

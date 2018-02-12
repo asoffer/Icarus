@@ -165,19 +165,19 @@ struct PropDB {
 
   PropertySet Get(const Block &block, Val arg);
   /*
-  base::owned_ptr<Property> Get(const Block &block, Val arg) {
+  std::unique_ptr<Property> Get(const Block &block, Val arg) {
     return std::visit(
         base::overloaded{
-            [&block, this](Register r) -> base::owned_ptr<Property> {
+            [&block, this](Register r) -> std::unique_ptr<Property> {
               return this->Get(block, r);
             },
-            [](i32 n) -> base::owned_ptr<Property> {
-              return base::make_owned<Range<i32>>(n, n);
+            [](i32 n) -> std::unique_ptr<Property> {
+              return std::make_unique<Range<i32>>(n, n);
             },
-            [](bool b) -> base::owned_ptr<Property> {
-              return base::make_owned<BoolProperty>(b);
+            [](bool b) -> std::unique_ptr<Property> {
+              return std::make_unique<BoolProperty>(b);
             },
-            [&arg](auto) -> base::owned_ptr<Property> { NOT_YET(arg); },
+            [&arg](auto) -> std::unique_ptr<Property> { NOT_YET(arg); },
         },
         arg.value);
   }*/
@@ -369,7 +369,7 @@ int Func::ValidateCalls(std::queue<Func *> * /*validation_queue*/) const {
     }
     for (const auto &precondition : called_fn->preconditions_) {
       auto ir_fn = ExprFn(precondition, Tup(called_fn->type_->input),
-                          called_fn->args_, IR::Cmd::Kind::Exec);
+                          called_fn->args_);
       if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
         LOG << "Failed a precondition.";
         // TODO log error
