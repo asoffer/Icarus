@@ -93,37 +93,6 @@ template <> struct hash<IR::CmdIndex> {
 namespace IR {
 struct Val {
   ::Type *type = nullptr;
-  static_assert(std::is_move_assignable_v<Register>);
-  static_assert(std::is_move_assignable_v<ReturnValue>);
-  static_assert(std::is_move_assignable_v<::IR::Addr>);
-  static_assert(std::is_move_assignable_v<EnumVal>);
-  static_assert(std::is_move_assignable_v<AST::CodeBlock>);
-  static_assert(std::is_move_assignable_v<BlockIndex>);
-  static_assert(std::is_move_assignable_v<std::string>);
-
-  static_assert(std::is_copy_assignable_v<Register>);
-  static_assert(std::is_copy_assignable_v<ReturnValue>);
-  static_assert(std::is_copy_assignable_v<::IR::Addr>);
-  static_assert(std::is_copy_assignable_v<EnumVal>);
-  static_assert(std::is_copy_assignable_v<AST::CodeBlock>);
-  static_assert(std::is_copy_assignable_v<BlockIndex>);
-  static_assert(std::is_copy_assignable_v<std::string>);
-
-  static_assert(std::is_move_constructible_v<Register>);
-  static_assert(std::is_move_constructible_v<ReturnValue>);
-  static_assert(std::is_move_constructible_v<::IR::Addr>);
-  static_assert(std::is_move_constructible_v<EnumVal>);
-  static_assert(std::is_move_constructible_v<AST::CodeBlock>);
-  static_assert(std::is_move_constructible_v<BlockIndex>);
-  static_assert(std::is_move_constructible_v<std::string>);
-
-  static_assert(std::is_copy_constructible_v<Register>);
-  static_assert(std::is_copy_constructible_v<ReturnValue>);
-  static_assert(std::is_copy_constructible_v<::IR::Addr>);
-  static_assert(std::is_copy_constructible_v<EnumVal>);
-  static_assert(std::is_copy_constructible_v<AST::CodeBlock>);
-  static_assert(std::is_copy_constructible_v<BlockIndex>);
-  static_assert(std::is_copy_constructible_v<std::string>);
   std::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32,
                EnumVal, ::Type *, AST::GenericFunctionLiteral *,
                AST::FunctionLiteral *, ::IR::Func *, AST::ScopeLiteral *,

@@ -23,11 +23,12 @@ struct Binding {
 
   bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
 
+  Binding() = default;
   Expression *fn_expr_ = nullptr;
   std::vector<std::pair<Type *, Expression *>> exprs_;
 
 private:
-  Binding(Expression *fn_expr);
+  Binding(Expression *fn_expr, size_t n);
 };
 
 struct DispatchTable {

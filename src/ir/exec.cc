@@ -27,7 +27,7 @@ ExprFn(AST::Expression *expr, Type *input,
 
     auto start_block   = IR::Func::Current->AddBlock();
     IR::Block::Current = start_block;
-    auto result = expr->EmitIR( bound_constants);
+    auto result        = expr->EmitIR(bound_constants);
 
     if (expr->type != Void) {
       IR::SetReturn(IR::ReturnValue{0}, std::move(result));
@@ -252,9 +252,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             [](char c) { std::cerr << c; },
             [](double d) { std::cerr << d; },
             [](Type *t) { std::cerr << t->to_string(); },
-            [](const std::unique_ptr<AST::CodeBlock> &cb) {
-              std::cerr << cb->to_string();
-            },
+            [](const AST::CodeBlock &cb) { std::cerr << cb.to_string(); },
             [](const std::string &s) { std::cerr << s; },
             [](const Addr &a) { std::cerr << a.to_string(); },
             [&resolved](EnumVal e) {
@@ -575,6 +573,7 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr) {
   bool were_errors;
   return Execute(fn.get(), {}, &context, &were_errors);
 }
+
 std::vector<IR::Val> Evaluate(AST::Expression *expr,
                               const AST::BoundConstants &bound_constants) {
   IR::ExecContext context;

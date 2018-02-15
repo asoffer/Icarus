@@ -963,54 +963,6 @@ AST::FunctionLiteral::EmitIR(const AST::BoundConstants &bound_constants) {
   return IR::Val::FnLit(this);
 }
 
-std::optional<AST::BoundConstants> AST::BoundConstants::Make(
-    const std::vector<std::unique_ptr<Declaration>> &inputs,
-    const AST::FnArgs<std::unique_ptr<Expression>> &args) {
-  BoundConstants result;
-  size_t i = 0;
-  for (; i < args.pos_.size(); ++i) {
-    if (!inputs[i]->const_) { continue; }
-    result.vals_.emplace(inputs[i]->identifier->token,
-                         Evaluate(args.pos_[i].get())[0]);
-  }
-
-  for (; i < inputs.size(); ++i) {
-    if (!inputs[i]->const_) { continue; }
-    auto iter = args.named_.find(inputs[i]->identifier->token);
-    if (iter == args.named_.end()) {
-      if (inputs[i]->init_val == nullptr) { return std::nullopt; }
-      result.vals_.emplace(inputs[i]->identifier->token,
-                           Evaluate(inputs[i]->init_val.get())[0]);
-    } else {
-      result.vals_.emplace(inputs[i]->identifier->token,
-                           Evaluate(iter->second.get())[0]);
-    }
-  }
-  return std::move(result);
-}
-
-AST::FunctionLiteral *AST::GenericFunctionLiteral::Materialize(
-    const AST::FnArgs<std::unique_ptr<Expression>> &args) {
-  auto maybe_bc = AST::BoundConstants::Make(inputs, args);
-  if (!maybe_bc.has_value()) { return nullptr; }
-  AST::BoundConstants bound_constants = std::move(maybe_bc).value();
-
-  auto[iter, success] = fns_.emplace(bound_constants, FunctionLiteral{});
-  if (success) {
-    auto &func            = iter->second;
-    func.return_type_expr = base::wrap_unique(return_type_expr->Clone());
-    func.inputs.reserve(inputs.size());
-    for (const auto &input : inputs) {
-      func.inputs.emplace_back(input->Clone());
-    }
-    func.statements = base::wrap_unique(statements->Clone());
-    func.ClearIdDecls();
-    // TODO clone captures
-    AST::DoStages<0, 2>(&func, scope_, bound_constants);
-  }
-  return &iter->second;
-}
-
 IR::Val AST::Statements::EmitIR(const AST::BoundConstants &bound_constants) {
   for (auto &stmt : content_) { stmt->EmitIR(bound_constants); }
   return IR::Val::None();

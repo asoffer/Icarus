@@ -13,7 +13,7 @@ struct Scope_Type;
 struct Variant;
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Void,
-    *NullPtr, *String, *EmptyArray;
+    *NullPtr, *String, *EmptyArray, *Generic;
 struct Scope;
 
 #include "../ast/ast.h"

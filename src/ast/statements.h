@@ -9,7 +9,6 @@ namespace AST {
 struct Statements : public Node {
   VIRTUAL_METHODS_FOR_NODES;
   Statements *Clone() const override;
-  // TODO remove this copy.
   Statements(const Statements &statements) : Node(statements.span) {
     content_.reserve(statements.content_.size());
     for (const auto &stmt : statements.content_) {

@@ -69,7 +69,7 @@ struct Terminal : public Expression {
 };
 
 struct Identifier : public Expression {
-  Identifier() = delete;
+  Identifier() {}
   EXPR_FNS(Identifier);
   Identifier(const TextSpan &span, const std::string &token_string);
   Identifier *Clone() const override;
@@ -142,6 +142,9 @@ struct Declaration : public Expression {
   // TODO rename this now that it no longer is just for function arguments
   Expression *arg_val = nullptr;
 
+  // These functions are confusingly named. They look correct in normal
+  // declarations, but in function arguments, IsDefaultInitialized() is true iff
+  // there is no default value provided.
   inline bool IsInferred() const { return !type_expr; }
   inline bool IsDefaultInitialized() const { return !init_val; }
   inline bool IsCustomInitialized() const {
@@ -226,10 +229,6 @@ struct Case : public Expression {
 };
 
 struct BoundConstants {
-  static std::optional<BoundConstants>
-  Make(const std::vector<std::unique_ptr<Declaration>> &inputs,
-       const AST::FnArgs<std::unique_ptr<Expression>> &args);
-
   std::optional<IR::Val> operator()(const std::string &id) const {
     auto iter = vals_.find(id);
     if (iter == vals_.end()) { return std::nullopt; }
@@ -291,7 +290,16 @@ struct GenericFunctionLiteral : public FunctionLiteral {
   GenericFunctionLiteral *Clone() const override;
   IR::Val EmitIR(const BoundConstants &) override;
 
-  FunctionLiteral *Materialize(const FnArgs<std::unique_ptr<Expression>> &args);
+  // Attempts to match the call argument types to the dependent types here. If
+  // it can it materializes a function literal and returns a pointer to it.
+  // Otherwise, returns nullptr.
+  std::pair<FunctionLiteral *, Binding>
+  ComputeType(const FnArgs<std::unique_ptr<Expression>> &args);
+
+  // Holds an ordering of the indices of 'inputs' sorted in such a way that if a
+  // type depends on a value of another declaration, the dependent type occurs
+  // after the type it depends on.
+  std::vector<size_t> decl_order_;
 
   std::map<BoundConstants, FunctionLiteral> fns_;
 };

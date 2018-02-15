@@ -6,6 +6,7 @@ Binop *Binop::Clone() const {
   auto *result = new Binop;
   result->lhs  = base::wrap_unique(lhs->Clone());
   result->rhs  = base::wrap_unique(rhs->Clone());
+  result->op   = op;
   return result;
 }
 
@@ -133,9 +134,15 @@ ArrayLiteral *ArrayLiteral::Clone() const {
   return result;
 }
 
+Identifier *Identifier::Clone() const {
+  auto *result      = new Identifier;
+  result->token     = token;
+  Declaration *decl = nullptr;
+  return result;
+}
+
 TokenNode *TokenNode::Clone() const { return new TokenNode(*this); }
 Terminal *Terminal::Clone() const { return new Terminal(*this); }
-Identifier *Identifier::Clone() const { return new Identifier(*this); }
 Hole *Hole::Clone() const { return new Hole(*this); }
 Statements *Statements::Clone() const { return new Statements(*this); }
 CodeBlock *CodeBlock::Clone() const { return new CodeBlock(*this); }

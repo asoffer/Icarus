@@ -11,6 +11,7 @@ IR::Val Architecture::ComputeArrayLength(const IR::Val &len,
 size_t Architecture::alignment(const Type *t) const {
   if (t->is<Primitive>()) {
     switch (t->as<const Primitive>().type_) {
+    case PrimType::Generic:
     case PrimType::Err: NOT_YET();
     case PrimType::Unknown: UNREACHABLE();
     case PrimType::EmptyArray:
@@ -60,6 +61,7 @@ size_t Architecture::alignment(const Type *t) const {
 size_t Architecture::bytes(const Type *t) const {
   if (t->is<Primitive>()) {
     switch (t->as<const Primitive>().type_) {
+    case PrimType::Generic:
     case PrimType::Err: NOT_YET();
     case PrimType::Unknown: UNREACHABLE();
     case PrimType::EmptyArray:

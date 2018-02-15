@@ -240,7 +240,7 @@ static bool Inferrable(Type *t) {
 std::optional<Binding> Binding::MakeUntyped(
     AST::Expression *fn_expr, const FnArgs<std::unique_ptr<Expression>> &args,
     const std::unordered_map<std::string, size_t> &index_lookup) {
-  Binding result(fn_expr);
+  Binding result(fn_expr, index_lookup.size());
   for (size_t i = 0; i < args.pos_.size(); ++i) {
     result.exprs_[i] = std::pair(nullptr, args.pos_[i].get());
   }
@@ -256,10 +256,9 @@ std::optional<Binding> Binding::MakeUntyped(
   return result;
 }
 
-Binding::Binding(AST::Expression *fn_expr)
+Binding::Binding(AST::Expression *fn_expr, size_t n)
     : fn_expr_(fn_expr),
-      exprs_(fn_expr_->type->as<Function>().input.size(),
-             std::pair<Type *, Expression *>(nullptr, nullptr)) {}
+      exprs_(n, std::pair<Type *, Expression *>(nullptr, nullptr)) {}
 
 // We already know there can be at most one match (multiple matches would have
 // been caught by shadowing), so we just return a pointer to it if it exists,
@@ -268,70 +267,157 @@ std::optional<DispatchTable>
 Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
   DispatchTable table;
   for (Expression *fn_option : fn_options) {
-    ASSERT_TYPE(Function, fn_option->type);
-
     // TODO expression is constant?
     auto fn_val = Evaluate(fn_option)[0].value;
 
-    FunctionLiteral *fn_lit = nullptr;
-    if (auto **gen_fn_ptr = std::get_if<GenericFunctionLiteral *>(&fn_val)) {
-      // TODO Shouldn't materialize until after binding has been completely
-      // verified.
-      fn_lit = *gen_fn_ptr;
-    } else if (auto **fn_ptr = std::get_if<FunctionLiteral *>(&fn_val)) {
-      fn_lit = *fn_ptr;
-    } else {
-      LOG << "WTF?"; // TODO what's going on here?
-      LOG << fn_option;
-      return std::nullopt;
-    }
+    if (fn_option->type->is<Function>()) {
+      auto *fn_lit = std::get<FunctionLiteral *>(fn_val);
 
-    auto maybe_binding = Binding::MakeUntyped(fn_lit, args_, fn_lit->lookup_);
-    if (!maybe_binding) { continue; }
-    auto binding = std::move(maybe_binding).value();
+      auto maybe_binding = Binding::MakeUntyped(fn_lit, args_, fn_lit->lookup_);
+      if (!maybe_binding) { continue; }
+      auto binding = std::move(maybe_binding).value();
 
-    FnArgs<Type *> call_arg_types;
-    call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
-    for (const auto & [ key, val ] : fn_lit->lookup_) {
-      if (val < args_.pos_.size()) { continue; }
-      call_arg_types.named_.emplace(key, nullptr);
-    }
+      FnArgs<Type *> call_arg_types;
+      call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
+      for (const auto & [ key, val ] : fn_lit->lookup_) {
+        if (val < args_.pos_.size()) { continue; }
+        call_arg_types.named_.emplace(key, nullptr);
+      }
 
-    const auto &fn_opt_input = fn_option->type->as<Function>().input;
-    for (size_t i = 0; i < binding.exprs_.size(); ++i) {
-      if (binding.defaulted(i)) {
-        if (fn_lit->inputs[i]->IsDefaultInitialized()) { goto next_option; }
-        binding.exprs_[i].first = fn_opt_input[i];
-      } else {
-        Type *match =
-            Type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
-        if (match == nullptr) { goto next_option; }
-        binding.exprs_[i].first = fn_opt_input[i];
-
-        if (i < call_arg_types.pos_.size()) {
-          call_arg_types.pos_[i] = match;
+      const auto &fn_opt_input = fn_option->type->as<Function>().input;
+      for (size_t i = 0; i < binding.exprs_.size(); ++i) {
+        if (binding.defaulted(i)) {
+          if (fn_lit->inputs[i]->IsDefaultInitialized()) { goto next_option; }
+          binding.exprs_[i].first = fn_opt_input[i];
         } else {
-          auto iter =
-              call_arg_types.find(fn_lit->inputs[i]->identifier->token);
-          ASSERT(iter != call_arg_types.named_.end(), "");
-          iter->second = match;
+          Type *match =
+              Type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
+          if (match == nullptr) { goto next_option; }
+          binding.exprs_[i].first = fn_opt_input[i];
+
+          if (i < call_arg_types.pos_.size()) {
+            call_arg_types.pos_[i] = match;
+          } else {
+            auto iter =
+                call_arg_types.find(fn_lit->inputs[i]->identifier->token);
+            ASSERT(iter != call_arg_types.named_.end(), "");
+            iter->second = match;
+          }
         }
       }
-    }
 
-    if (fn_lit->is<GenericFunctionLiteral>()) {
-      binding.fn_expr_ =
-          fn_lit->as<GenericFunctionLiteral>().Materialize(args_);
+      table.insert(std::move(call_arg_types), std::move(binding));
+
+    } else if (fn_option->type == Generic) {
+      auto *gen_fn_lit = std::get<GenericFunctionLiteral *>(fn_val);
+      if (auto[fn_lit, binding] = gen_fn_lit->ComputeType(args_); fn_lit) {
+        // TODO this is copied almost exactly from above.
+        FnArgs<Type *> call_arg_types;
+        call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
+        for (const auto & [ key, val ] : fn_lit->lookup_) {
+          if (val < args_.pos_.size()) { continue; }
+          call_arg_types.named_.emplace(key, nullptr);
+        }
+
+        const auto &fn_opt_input = fn_lit->type->as<Function>().input;
+        for (size_t i = 0; i < binding.exprs_.size(); ++i) {
+          if (binding.defaulted(i)) {
+            if (fn_lit->inputs[i]->IsDefaultInitialized()) { goto next_option; }
+            binding.exprs_[i].first = fn_opt_input[i];
+          } else {
+            Type *match =
+                Type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
+            if (match == nullptr) { goto next_option; }
+            binding.exprs_[i].first = fn_opt_input[i];
+
+            if (i < call_arg_types.pos_.size()) {
+              call_arg_types.pos_[i] = match;
+            } else {
+              auto iter =
+                  call_arg_types.find(fn_lit->inputs[i]->identifier->token);
+              ASSERT(iter != call_arg_types.named_.end(), "");
+              iter->second = match;
+            }
+          }
+        }
+
+        table.insert(std::move(call_arg_types), std::move(binding));
+      } else {
+        goto next_option;
+      }
+    } else {
+      UNREACHABLE();
     }
-    table.insert(std::move(call_arg_types), std::move(binding));
   next_option:;
   }
   return std::move(table);
 }
 
-void GenericFunctionLiteral::Validate(const BoundConstants &bound_constants) {
-  // TODO is this right?
-  FunctionLiteral::Validate(bound_constants);
+std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
+    const FnArgs<std::unique_ptr<Expression>> &args) {
+  auto maybe_binding = Binding::MakeUntyped(this, args, lookup_);
+  if (!maybe_binding.has_value()) { return std::pair(nullptr, Binding{}); }
+  auto binding = std::move(maybe_binding).value();
+
+  BoundConstants bound_constants;
+  Expression *expr_to_eval = nullptr;
+
+  for (size_t i : decl_order_) {
+    inputs[i]->Validate(bound_constants);
+    if (inputs[i]->type == Err) { return std::pair(nullptr, Binding{}); }
+
+    if (binding.defaulted(i) && inputs[i]->IsDefaultInitialized()) {
+      // TODO maybe send back an explanation of why this didn't match. Or
+      // perhaps continue to get better diagnostics?
+      return std::pair(nullptr, Binding{});
+    } else {
+      if (inputs[i]->const_ &&
+          binding.exprs_[i].second->lvalue != Assign::Const) {
+        return std::pair(nullptr, Binding{});
+      }
+
+      Type *match = Type::Meet(binding.exprs_[i].second->type, inputs[i]->type);
+      if (match == nullptr) { return std::pair(nullptr, Binding{}); }
+    }
+
+    if (inputs[i]->const_) {
+      Expression *expr_to_eval =
+          binding.defaulted(i) ? inputs[i].get() : binding.exprs_[i].second;
+      bound_constants.vals_.emplace(inputs[i]->identifier->token,
+                                    Evaluate(expr_to_eval, bound_constants)[0]);
+    }
+
+    binding.exprs_[i].first = inputs[i]->type;
+  }
+
+  auto[iter, success] = fns_.emplace(bound_constants, FunctionLiteral{});
+  if (success) {
+    auto &func            = iter->second;
+    func.return_type_expr = base::wrap_unique(return_type_expr->Clone());
+    func.inputs.reserve(inputs.size());
+    for (const auto &input : inputs) {
+      func.inputs.emplace_back(input->Clone());
+      func.inputs.back()->arg_val = &func;
+    }
+    func.statements = base::wrap_unique(statements->Clone());
+    func.ClearIdDecls();
+    // TODO clone captures
+    DoStages<0, 2>(&func, scope_, bound_constants);
+  }
+
+  binding.fn_expr_ = &iter->second;
+  return std::pair(&iter->second, binding);
+}
+
+void GenericFunctionLiteral::Validate(
+    const BoundConstants & /* bound_constants */) {
+  STAGE_CHECK;
+  STARTING_CHECK;
+  lvalue = Assign::Const;
+  type   = Generic; // Doable at construction.
+  // TODO sort these correctly.
+  decl_order_.reserve(inputs.size());
+  for (size_t i = 0; i < inputs.size(); ++i) { decl_order_.push_back(i); }
 }
 
 void DispatchTable::insert(FnArgs<Type *> call_arg_types, Binding binding) {
@@ -471,7 +557,6 @@ void Terminal::Validate(const BoundConstants &) {
 }
 
 void Identifier::Validate(const BoundConstants &bound_constants) {
-  // TODO use bound constants
   STAGE_CHECK;
   STARTING_CHECK;
 
@@ -975,8 +1060,6 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
       limit_to(StageRange::NoEmitIR());
     }
 
-    LOG << bound_constants.vals_.size();
-
     type =
         type_expr->VerifyTypeForDeclaration(identifier->token, bound_constants);
     init_val->type = type;
@@ -1167,6 +1250,7 @@ void Unop::Validate(const BoundConstants& bound_constants) {
     type = Ptr(operand->type);
   } break;
   case Operator::Mul: {
+    limit_to(operand);
     if (operand->type != Type_) {
       ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + ": ");
@@ -1575,7 +1659,6 @@ void FunctionLiteral::Validate(const BoundConstants& bound_constants) {
   input_type_vec.reserve(inputs.size());
   for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
 
-  // TODO generics?
   type = Func(input_type_vec, ret_type);
 }
 

@@ -101,9 +101,9 @@ std::string Binop::to_string(size_t n) const {
     return ss.str();
   }
   if (lhs->precedence < Language::precedence(op) || lhs->is<Declaration>()) {
-    ss << tabs(n) << "(" << lhs->to_string(n) << ")";
+    ss << "(" << lhs->to_string(n) << ")";
   } else {
-    ss << tabs(n) << lhs->to_string(n);
+    ss << lhs->to_string(n);
   }
   switch (op) {
   case Language::Operator::Cast: ss << "Cast"; break;

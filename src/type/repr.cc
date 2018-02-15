@@ -48,15 +48,12 @@ void Primitive::EmitRepr(IR::Val val) {
   case PrimType::Real:
   case PrimType::Type:
   case PrimType::String:
-  case PrimType::Code: {
-    IR::Print(val);
-  } break;
+  case PrimType::Code: IR::Print(val); break;
   case PrimType::Void:
   case PrimType::NullPtr:
   case PrimType::EmptyArray:
-  case PrimType::Err: {
-    NOT_YET();
-  } break;
+  case PrimType::Generic:
+  case PrimType::Err: NOT_YET();
   case PrimType::Unknown: UNREACHABLE();
   }
 }
