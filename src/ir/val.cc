@@ -49,6 +49,22 @@ Val Val::Func(::IR::Func *fn) { return Val(fn->ir_type, fn); }
 Val Val::Null(::Type *t) { return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0}); }
 Val Val::NullPtr() { return Val(::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
 
+static std::string Escaped(const std::string& s) {
+  std::stringstream ss;
+  for (char c : s) {
+    switch (c) {
+    case '\a': ss << R"(\a)"; break;
+    case '\b': ss << R"(\b)"; break;
+    case '\n': ss << R"(\n)"; break;
+    case '\r': ss << R"(\r)"; break;
+    case '\t': ss << R"(\t)"; break;
+    case '\v': ss << R"(\r)"; break;
+    case '"': ss << R"(\")"; break;
+    default: ss << c; break;
+    }
+  }
+  return ss.str();
+}
 std::string Val::to_string() const {
   return std::visit(
       base::overloaded{
@@ -93,7 +109,7 @@ std::string Val::to_string() const {
           },
 
           [](const std::string &s) -> std::string {
-            return "string \"" + s + "\"";
+            return "string \"" + Escaped(s) + "\"";
           },
           [](AST::FunctionLiteral *fn) -> std::string {
             return fn->to_string();
