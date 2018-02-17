@@ -314,7 +314,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
         // TODO this is copied almost exactly from above.
         FnArgs<Type *> call_arg_types;
         call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
-        for (const auto & [ key, val ] : fn_lit->lookup_) {
+        for (const auto & [ key, val ] : gen_fn_lit->lookup_) {
           if (val < args_.pos_.size()) { continue; }
           call_arg_types.named_.emplace(key, nullptr);
         }
@@ -335,7 +335,8 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
             } else {
               auto iter =
                   call_arg_types.find(fn_lit->inputs[i]->identifier->token);
-              ASSERT(iter != call_arg_types.named_.end(), "");
+              ASSERT(iter != call_arg_types.named_.end(),
+                     "looking for " + fn_lit->inputs[i]->identifier->token);
               iter->second = match;
             }
           }
@@ -375,7 +376,10 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
         return std::pair(nullptr, Binding{});
       }
     } else {
-      NOT_YET();
+      // TODO must this type have been computed already? The line below might be
+      // superfluous.
+      inputs[i]->init_val->Validate(bound_constants);
+      input_type = inputs[i]->init_val->type;
     }
 
     if (input_type == Err) { return std::pair(nullptr, Binding{}); }
@@ -385,13 +389,18 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
       // perhaps continue to get better diagnostics?
       return std::pair(nullptr, Binding{});
     } else {
-      if (inputs[i]->const_ &&
+      if (inputs[i]->const_ && !binding.defaulted(i) &&
           binding.exprs_[i].second->lvalue != Assign::Const) {
         return std::pair(nullptr, Binding{});
       }
 
-      Type *match = Type::Meet(binding.exprs_[i].second->type, input_type);
-      if (match == nullptr) { return std::pair(nullptr, Binding{}); }
+      if (!binding.defaulted(i)) {
+        if (Type *match =
+                Type::Meet(binding.exprs_[i].second->type, input_type);
+            match == nullptr) {
+          return std::pair(nullptr, Binding{});
+        }
+      }
     }
 
     if (inputs[i]->const_) {
@@ -401,7 +410,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
                                     Evaluate(expr_to_eval, bound_constants)[0]);
     }
 
-    binding.exprs_[i].first = inputs[i]->type;
+    binding.exprs_[i].first = input_type;
   }
 
   auto[iter, success] = fns_.emplace(bound_constants, FunctionLiteral{});
@@ -1093,12 +1102,6 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
   // TODO is this the right time to complete the struct definition?
   if (type->is<Struct>()) {
     type->as<Struct>().CompleteDefinition(bound_constants);
-  }
-
-  if (type == Type_ && IsInferred()) {
-    // TODO Declaring a type must be a compile-time constant? No... what if I'm
-    // writing a function that modifies a type? Something here needs fixing.
-    NOT_YET();
   }
 
   // TODO Either guarantee that higher scopes have all declarations declared and

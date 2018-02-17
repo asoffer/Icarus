@@ -6,6 +6,8 @@
 
 static constexpr int ThisStage() { return 3; }
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
+std::vector<IR::Val> Evaluate(AST::Expression *expr,
+                              const AST::BoundConstants &bound_constants);
 extern std::vector<IR::Val> global_vals;
 
 struct Scope;
@@ -258,8 +260,14 @@ IR::Val AST::Identifier::EmitIR(const AST::BoundConstants &bound_constants) {
   }
 
   if (decl->const_) {
-    if (auto val = bound_constants(decl->identifier->token)) { return *val; }
-    return decl->addr;
+    if (auto val = bound_constants(token)) { return *val; }
+    if (decl->IsCustomInitialized()) {
+      return Evaluate(decl->init_val.get(), bound_constants) AT(0);
+
+    } else {
+      // TODO this may be wrong for types that require nontrivial construction.
+      return decl->type->EmitInitialValue();
+    }
   }
 
   // TODO this global scope thing is probably wrong.
@@ -607,7 +615,7 @@ IR::Val AST::Unop::EmitIR(const AST::BoundConstants &bound_constants) {
   case Language::Operator::Eval: {
     // TODO what if there's an error during evaluation?
     // TODO what about ``a, b = $FnWithMultipleReturnValues()``
-    auto results = Evaluate(operand.get());
+    auto results = Evaluate(operand.get(), bound_constants);
     return results.empty() ? IR::Val::None() : results[0];
   }
   case Language::Operator::Generate: {
