@@ -363,8 +363,22 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
   Expression *expr_to_eval = nullptr;
 
   for (size_t i : decl_order_) {
-    inputs[i]->Validate(bound_constants);
-    if (inputs[i]->type == Err) { return std::pair(nullptr, Binding{}); }
+    Type *input_type = nullptr;
+    if (inputs[i]->type_expr) {
+      if (auto type_result =
+              Evaluate(inputs[i]->type_expr.get(), bound_constants);
+          !type_result.empty() && type_result[0] != IR::Val::None()) {
+        input_type = std::get<Type *>(type_result[0].value);
+      } else {
+        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + ": ");
+        return std::pair(nullptr, Binding{});
+      }
+    } else {
+      NOT_YET();
+    }
+
+    if (input_type == Err) { return std::pair(nullptr, Binding{}); }
 
     if (binding.defaulted(i) && inputs[i]->IsDefaultInitialized()) {
       // TODO maybe send back an explanation of why this didn't match. Or
@@ -376,7 +390,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
         return std::pair(nullptr, Binding{});
       }
 
-      Type *match = Type::Meet(binding.exprs_[i].second->type, inputs[i]->type);
+      Type *match = Type::Meet(binding.exprs_[i].second->type, input_type);
       if (match == nullptr) { return std::pair(nullptr, Binding{}); }
     }
 

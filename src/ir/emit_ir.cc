@@ -252,6 +252,11 @@ IR::Val AST::Access::EmitIR(const AST::BoundConstants &bound_constants) {
 IR::Val AST::Terminal::EmitIR(const AST::BoundConstants &) { return value; }
 
 IR::Val AST::Identifier::EmitIR(const AST::BoundConstants &bound_constants) {
+  if (!decl) {
+    if (auto val = bound_constants(token)) { return *val; }
+    return IR::Val::None();
+  }
+
   if (decl->const_) {
     if (auto val = bound_constants(decl->identifier->token)) { return *val; }
     return decl->addr;
