@@ -901,8 +901,8 @@ IR::Val AST::GenericFunctionLiteral::EmitIR(const AST::BoundConstants &) {
 
 IR::Val
 AST::FunctionLiteral::EmitIR(const AST::BoundConstants &bound_constants) {
-  // TODO bound constants?
   statements->Validate(bound_constants);
+  if (type == Err) { return IR::Val::None(); }
 
   if (ir_func_ == nullptr) {
     std::vector<std::pair<std::string, AST::Expression *>> args;

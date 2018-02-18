@@ -116,7 +116,8 @@ CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
 }
 
 bool Shadow(Declaration *decl1, Declaration *decl2) {
-  if (!decl1->type->is<Function>() || !decl2->type->is<Function>()) {
+  if ((!decl1->type->is<Function>() && decl1->type != Generic) ||
+      (!decl2->type->is<Function>() && decl2->type != Generic)) {
     return true;
   }
 
@@ -128,25 +129,48 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
   // information.
   // TODO check const-decl or not.
 
-  auto *fn1 = std::get<IR::Func *>(Evaluate(decl1->init_val.get())[0].value);
-  std::vector<ArgumentMetaData> metadata1;
-  metadata1.reserve(fn1->args_.size());
-  for (size_t i = 0; i < fn1->args_.size(); ++i) {
-    metadata1.push_back(
-        ArgumentMetaData{/*        type = */ fn1->type_->input[i],
-                         /*        name = */ fn1->args_[i].first,
-                         /* has_default = */ fn1->args_[i].second != nullptr});
-  }
+  auto ExtractMetaData = [](auto &eval) -> std::vector<ArgumentMetaData> {
+    using eval_t = std::decay_t<decltype(eval)>;
+    std::vector<ArgumentMetaData> metadata;
 
-  auto *fn2 = std::get<IR::Func *>(Evaluate(decl2->init_val.get())[0].value);
-  std::vector<ArgumentMetaData> metadata2;
-  metadata2.reserve(fn2->args_.size());
-  for (size_t i = 0; i < fn2->args_.size(); ++i) {
-    metadata2.push_back(
-        ArgumentMetaData{/*        type = */ fn2->type_->input[i],
-                         /*        name = */ fn2->args_[i].first,
-                         /* has_default = */ fn2->args_[i].second != nullptr});
-  }
+    if constexpr (std::is_same_v<eval_t, IR::Func *>) {
+      metadata.reserve(eval->args_.size());
+      for (size_t i = 0; i < eval->args_.size(); ++i) {
+        metadata.push_back(ArgumentMetaData{
+            /*        type = */ eval->type_->input[i],
+            /*        name = */ eval->args_[i].first,
+            /* has_default = */ eval->args_[i].second != nullptr});
+      }
+      return metadata;
+
+    } else if constexpr (std::is_same_v<eval_t, FunctionLiteral *> ||
+                         std::is_same_v<eval_t, GenericFunctionLiteral *>) {
+      metadata.reserve(eval->inputs.size());
+      for (size_t i = 0; i < eval->inputs.size(); ++i) {
+        metadata.push_back(ArgumentMetaData{
+            /*        type = */ eval->inputs[i]->type,
+            /*        name = */ eval->inputs[i]->identifier->token,
+            /* has_default = */ !eval->inputs[i]->IsDefaultInitialized()});
+      }
+      // TODO Note the trickiness in names above. has_default if it isn't
+      // default initailized. This is because IsDefaultInitialized means for
+      // declarations that you do not have an "= something" part. It's just the
+      // "foo: bar" part. But for function arguments, we call the "= something"
+      // part the default.
+      return metadata;
+
+    } else {
+      UNREACHABLE();
+    }
+  };
+
+  auto val1 = Evaluate(decl1->init_val.get())[0];
+  if (val1.type == nullptr) { return false; }
+  auto metadata1 = std::visit(ExtractMetaData, val1.value);
+
+  auto val2 = Evaluate(decl2->init_val.get())[0];
+  if (val2.type == nullptr) { return false; }
+  auto metadata2 = std::visit(ExtractMetaData, val2.value);
 
   return CommonAmbiguousFunctionCall(metadata1, metadata2);
 }
@@ -267,9 +291,7 @@ std::optional<DispatchTable>
 Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
   DispatchTable table;
   for (Expression *fn_option : fn_options) {
-    // TODO expression is constant?
     auto fn_val = Evaluate(fn_option)[0].value;
-
     if (fn_option->type->is<Function>()) {
       auto *fn_lit = std::get<FunctionLiteral *>(fn_val);
 
@@ -346,6 +368,11 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
       } else {
         goto next_option;
       }
+    } else if (fn_option->type == Err) {
+      // If there's a type error, do I want to exit entirely or assume this one
+      // doesn't exist? and juts goto next_option?
+      return std::nullopt;
+
     } else {
       UNREACHABLE();
     }
