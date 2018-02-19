@@ -121,7 +121,7 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
   if (success) {
 
     std::vector<std::pair<std::string, AST::Expression *>> args = {
-        {"arg", nullptr}};
+        {"arg0", nullptr}, {"arg1", nullptr}};
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func({from_type, Ptr(to_type)}, Void), std::move(args)));
     auto *fn = iter->second = IR::Func::All.back().get();
