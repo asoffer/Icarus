@@ -11,7 +11,12 @@ IR::Val Primitive::EmitInitialValue() const {
   case PrimType::Void: UNREACHABLE();
   case PrimType::NullPtr: UNREACHABLE();
   case PrimType::EmptyArray: UNREACHABLE();
-  case PrimType::Code: UNREACHABLE();
+  case PrimType::Code: {
+    AST::CodeBlock block;
+    block.type     = Code;
+    block.content_ = AST::Statements{};
+    return IR::Val::CodeBlock(std::move(block));
+  }
   case PrimType::Bool: return IR::Val::Bool(false);
   case PrimType::Char: return IR::Val::Char('\0');
   case PrimType::Int: return IR::Val::Int(0l);

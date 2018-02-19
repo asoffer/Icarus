@@ -112,12 +112,8 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
 BlockIndex ExecContext::ExecuteBlock() {
   Val result;
   auto cmd_iter = current_block().cmds_.begin();
-  // for (const auto &cmd : current_block().cmds_) { cmd.dump(0); }
-  // LOG << "______________________";
   do {
-    // cmd_iter->dump(10);
     result = ExecuteCmd(*cmd_iter);
-    // LOG << result;
     if (cmd_iter->type != nullptr && cmd_iter->type != Void) {
       ASSERT_EQ(result.type, cmd_iter->type);
       this->reg(cmd_iter->result) = result;
@@ -159,9 +155,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   for (const auto& arg : cmd.args) {
     if (auto *r = std::get_if<Register>(&arg.value)) {
       resolved.push_back(reg(*r));
-    } else if (std::get_if<AST::CodeBlock>(&arg.value)) {
-      // Don't need to copy codeblocks.
-      resolved.push_back(IR::Val::None());
     } else {
       resolved.push_back(arg);
     }

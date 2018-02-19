@@ -217,8 +217,18 @@ void ScopeLiteral::contextualize(const Node *correspondant,
   CONTEXTUALIZE(exit_fn);
 }
 
-void Call::contextualize(const Node *, const RefMap &) {
-  NOT_YET();
+void Call::contextualize(const Node *correspondant,
+                         const RefMap &replacements) {
+  CONTEXTUALIZE(fn_);
+  for (size_t i = 0; i < args_.pos_.size(); ++i) {
+    CONTEXTUALIZE(args_.pos_[i]);
+  }
+  for (auto && [ name, expr ] : args_.named_) {
+    expr->contextualize(correspondant->as<std::decay_t<decltype(*this)>>()
+                            .args_.named_.find(name)
+                            ->second.get(),
+                        replacements);
+  }
 }
 #undef CONTEXTUALIZE
 } // namespace AST
