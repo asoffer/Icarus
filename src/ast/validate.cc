@@ -288,7 +288,8 @@ Binding::Binding(AST::Expression *fn_expr, size_t n)
 // been caught by shadowing), so we just return a pointer to it if it exists,
 // and null otherwise.
 std::optional<DispatchTable>
-Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
+Call::ComputeDispatchTable(std::vector<Expression *> fn_options,
+                           const BoundConstants &bound_constants) {
   DispatchTable table;
   for (Expression *fn_option : fn_options) {
     auto fn_val = Evaluate(fn_option)[0].value;
@@ -332,7 +333,9 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
 
     } else if (fn_option->type == Generic) {
       auto *gen_fn_lit = std::get<GenericFunctionLiteral *>(fn_val);
-      if (auto[fn_lit, binding] = gen_fn_lit->ComputeType(args_); fn_lit) {
+      if (auto[fn_lit, binding] =
+              gen_fn_lit->ComputeType(args_, bound_constants);
+          fn_lit) {
         // TODO this is copied almost exactly from above.
         FnArgs<Type *> call_arg_types;
         call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
@@ -382,19 +385,20 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
 }
 
 std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
-    const FnArgs<std::unique_ptr<Expression>> &args) {
+    const FnArgs<std::unique_ptr<Expression>> &args,
+    const BoundConstants &bound_constants) {
   auto maybe_binding = Binding::MakeUntyped(this, args, lookup_);
   if (!maybe_binding.has_value()) { return std::pair(nullptr, Binding{}); }
   auto binding = std::move(maybe_binding).value();
 
-  BoundConstants bound_constants;
+  BoundConstants new_bound_constants;
   Expression *expr_to_eval = nullptr;
 
   for (size_t i : decl_order_) {
     Type *input_type = nullptr;
     if (inputs[i]->type_expr) {
       if (auto type_result =
-              Evaluate(inputs[i]->type_expr.get(), bound_constants);
+              Evaluate(inputs[i]->type_expr.get(), new_bound_constants);
           !type_result.empty() && type_result[0] != IR::Val::None()) {
         input_type = std::get<Type *>(type_result[0].value);
       } else {
@@ -405,7 +409,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     } else {
       // TODO must this type have been computed already? The line below might be
       // superfluous.
-      inputs[i]->init_val->Validate(bound_constants);
+      inputs[i]->init_val->Validate(new_bound_constants);
       input_type = inputs[i]->init_val->type;
     }
 
@@ -431,16 +435,21 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     }
 
     if (inputs[i]->const_) {
-      Expression *expr_to_eval =
-          binding.defaulted(i) ? inputs[i].get() : binding.exprs_[i].second;
-      bound_constants.vals_.emplace(inputs[i]->identifier->token,
-                                    Evaluate(expr_to_eval, bound_constants)[0]);
+      if (binding.defaulted(i)) {
+        new_bound_constants.vals_.emplace(
+            inputs[i]->identifier->token,
+            Evaluate(inputs[i].get(), new_bound_constants)[0]);
+      } else {
+        new_bound_constants.vals_.emplace(
+            inputs[i]->identifier->token,
+            Evaluate(binding.exprs_[i].second, bound_constants)[0]);
+      }
     }
 
     binding.exprs_[i].first = input_type;
   }
 
-  auto[iter, success] = fns_.emplace(bound_constants, FunctionLiteral{});
+  auto[iter, success] = fns_.emplace(new_bound_constants, FunctionLiteral{});
   if (success) {
     auto &func            = iter->second;
     func.return_type_expr = base::wrap_unique(return_type_expr->Clone());
@@ -452,7 +461,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     func.statements = base::wrap_unique(statements->Clone());
     func.ClearIdDecls();
     // TODO clone captures
-    DoStages<0, 2>(&func, scope_, bound_constants);
+    DoStages<0, 2>(&func, scope_, new_bound_constants);
   }
 
   binding.fn_expr_ = &iter->second;
@@ -976,7 +985,8 @@ void Call::Validate(const BoundConstants& bound_constants) {
     fn_options.push_back(fn_.get());
   }
 
-  if (auto maybe_table = ComputeDispatchTable(std::move(fn_options))) {
+  if (auto maybe_table =
+          ComputeDispatchTable(std::move(fn_options), bound_constants)) {
     dispatch_table_ = std::move(maybe_table.value());
   } else {
     // Failure because we can't emit IR for the function so the error was

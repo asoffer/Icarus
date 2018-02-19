@@ -12,8 +12,20 @@ IR::Val Primitive::PrepareArgument(Type *from, const IR::Val& val) const {
   }
 }
 
-IR::Val Array::PrepareArgument(Type *from, const IR::Val&) const {
-  NOT_YET(this, from);
+IR::Val Array::PrepareArgument(Type *from, const IR::Val &val) const {
+  if (from->is<Variant>()) {
+    NOT_YET(this, from);
+  } else {
+    ASSERT_EQ(from, this);
+    if (fixed_length) {
+      // TODO Copy may be overkill. Think about value category.
+      auto arg = IR::Alloca(from);
+      from->EmitAssign(from, val, arg);
+      return arg;
+    } else {
+      NOT_YET();
+    }
+  }
 }
 
 IR::Val Pointer::PrepareArgument(Type *from, const IR::Val& val) const {

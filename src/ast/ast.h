@@ -117,7 +117,8 @@ struct Call : public Expression {
   // Filled in after type verification
   DispatchTable dispatch_table_;
   std::optional<DispatchTable>
-  ComputeDispatchTable(std::vector<Expression *> fn_options);
+  ComputeDispatchTable(std::vector<Expression *> fn_options,
+                       const BoundConstants &bound_constants);
 };
 
 struct Declaration : public Expression {
@@ -294,7 +295,8 @@ struct GenericFunctionLiteral : public FunctionLiteral {
   // it can it materializes a function literal and returns a pointer to it.
   // Otherwise, returns nullptr.
   std::pair<FunctionLiteral *, Binding>
-  ComputeType(const FnArgs<std::unique_ptr<Expression>> &args);
+  ComputeType(const FnArgs<std::unique_ptr<Expression>> &args,
+              const BoundConstants &bound_constants);
 
   // Holds an ordering of the indices of 'inputs' sorted in such a way that if a
   // type depends on a value of another declaration, the dependent type occurs

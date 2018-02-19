@@ -112,8 +112,12 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
 BlockIndex ExecContext::ExecuteBlock() {
   Val result;
   auto cmd_iter = current_block().cmds_.begin();
+  // for (const auto &cmd : current_block().cmds_) { cmd.dump(0); }
+  // LOG << "______________________";
   do {
+    // cmd_iter->dump(10);
     result = ExecuteCmd(*cmd_iter);
+    // LOG << result;
     if (cmd_iter->type != nullptr && cmd_iter->type != Void) {
       ASSERT_EQ(result.type, cmd_iter->type);
       this->reg(cmd_iter->result) = result;
