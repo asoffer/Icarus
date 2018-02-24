@@ -97,7 +97,7 @@ std::string Access::to_string(size_t n) const {
 std::string Binop::to_string(size_t n) const {
   std::stringstream ss;
   if (op == Language::Operator::Index) {
-    ss << tabs(n) << lhs->to_string(n) << "[" << rhs->to_string(n) << "]";
+    ss << lhs->to_string(n) << "[" << rhs->to_string(n) << "]";
     return ss.str();
   }
   if (lhs->precedence < Language::precedence(op) || lhs->is<Declaration>()) {
@@ -127,9 +127,9 @@ std::string Binop::to_string(size_t n) const {
   default: UNREACHABLE();
   }
   if (rhs->precedence < Language::precedence(op) || rhs->is<Declaration>()) {
-    ss << tabs(n) << "(" << rhs->to_string(n) << ")";
+    ss << "(" << rhs->to_string(n) << ")";
   } else {
-    ss << tabs(n) << rhs->to_string(n);
+    ss << rhs->to_string(n);
   }
 
   return ss.str();

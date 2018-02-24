@@ -1,5 +1,7 @@
 #include "func.h"
 
+#include <optional>
+
 #include "../ast/ast.h"
 #include "../error_log.h"
 #include "../type/type.h"
@@ -125,6 +127,7 @@ IR::Val AST::Expression::EmitLVal(const BoundConstants &) {
 }
 
 IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
+  ASSERT_GT(dispatch_table_.bindings_.size(), 0u);
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching
   // insanity.
@@ -132,7 +135,11 @@ IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
   // TODO an opmitimazion we can do is merging all the allocas for results into
   // a single variant buffer, because we know we need something that big anyway,
   // and their use cannot overlap.
-  auto landing_block = IR::Func::Current->AddBlock();
+
+  std::optional<IR::BlockIndex> landing_block;
+  if (dispatch_table_.bindings_.size() > 1) {
+    landing_block = IR::Func::Current->AddBlock();
+  }
 
   std::unordered_map<Expression *, IR::Val *> expr_map;
   FnArgs<IR::Val> fn_args;
@@ -154,7 +161,7 @@ IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
   std::vector<IR::Val> results;
   results.reserve(2 * dispatch_table_.bindings_.size());
 
-  // TODO deal with dispatching named arguments.
+  // TODO deal with dispatching named arguments. Maybe I already did this?
   for (const auto & [ call_arg_type, binding ] : dispatch_table_.bindings_) {
     auto next_binding = IR::Func::Current->AddBlock();
     // Generate code that attempts to match the types on each argument (only
@@ -218,7 +225,7 @@ IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
     results.push_back(IR::Val::Block(IR::Block::Current));
     results.push_back(ret_val);
 
-    IR::UncondJump(landing_block);
+    if (landing_block) { IR::UncondJump(*landing_block); }
 
     IR::Block::Current = next_binding;
   }
@@ -226,8 +233,10 @@ IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
   // TODO this very last block is not be reachable and should never be
   // generated.
 
-  IR::UncondJump(landing_block);
-  IR::Block::Current = landing_block;
+  if (landing_block) { 
+    IR::UncondJump(*landing_block);
+    IR::Block::Current = *landing_block;
+  }
 
   if (results.empty()) {
     return IR::Val::None();
