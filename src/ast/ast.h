@@ -17,7 +17,7 @@
 #include "dispatch.h"
 #include "expression.h"
 #include "fn_args.h"
-#include "operators.h"
+#include "../operators.h"
 
 namespace IR {
 struct Func;
@@ -110,6 +110,10 @@ struct Call : public Expression {
   Call *Clone() const override;
 
   IR::Val EmitIR(const BoundConstants &) override;
+
+  IR::Val EmitOneCallDispatch(
+      const std::unordered_map<Expression *, IR::Val *> &expr_map,
+      const Binding &binding, const AST::BoundConstants &bound_constants);
 
   std::unique_ptr<Expression> fn_;
   FnArgs<std::unique_ptr<Expression>> args_;

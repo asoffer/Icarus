@@ -1,6 +1,7 @@
 #include "func.h"
 
 #include <optional>
+#include <algorithm>
 
 #include "../ast/ast.h"
 #include "../error_log.h"
@@ -126,6 +127,79 @@ IR::Val AST::Expression::EmitLVal(const BoundConstants &) {
   UNREACHABLE(*this);
 }
 
+static IR::BlockIndex
+CallLookupTest(const AST::FnArgs<std::unique_ptr<AST::Expression>> &args,
+               const AST::FnArgs<IR::Val> &fn_args,
+               const AST::FnArgs<Type *> &call_arg_type) {
+  // Generate code that attempts to match the types on each argument (only
+  // check the ones at the call-site that could be variants).
+  auto next_binding = IR::Func::Current->AddBlock();
+  for (size_t i = 0; i < args.pos_.size(); ++i) {
+    if (!args.pos_[i]->type->is<Variant>()) { continue; }
+    IR::Block::Current = IR::EarlyExitOn<false>(
+        next_binding,
+        EmitVariantMatch(fn_args.pos_.at(i), call_arg_type.pos_[i]));
+  }
+
+  for (const auto & [ name, expr ] : args.named_) {
+    auto iter = call_arg_type.find(name);
+    if (iter == call_arg_type.named_.end()) { continue; }
+    if (!expr->type->is<Variant>()) { continue; }
+    IR::Block::Current = IR::EarlyExitOn<false>(
+        next_binding,
+        EmitVariantMatch(fn_args.named_.at(iter->first), iter->second));
+  }
+
+  return next_binding;
+}
+
+IR::Val AST::Call::EmitOneCallDispatch(
+    const std::unordered_map<Expression *, IR::Val *> &expr_map,
+    const Binding &binding, const AST::BoundConstants &bound_constants) {
+
+  // After the last check, if you pass, you should dispatch
+  IR::Func *fn_to_call = std::visit(
+      base::overloaded{[](IR::Func *fn) { return fn; },
+                       [](AST::FunctionLiteral *fn) { return fn->ir_func_; },
+                       [](auto &&) -> IR::Func * {
+                         UNREACHABLE();
+                         return nullptr;
+                       }},
+      binding.fn_expr_->EmitIR(bound_constants).value);
+
+  std::vector<IR::Val> args;
+  args.resize(binding.exprs_.size());
+  for (size_t i = 0; i < args.size(); ++i) {
+    auto[bound_type, expr] = binding.exprs_[i];
+    if (expr == nullptr) {
+      ASSERT_NE(bound_type, nullptr);
+      auto default_expr = fn_to_call->args_[i].second;
+      args[i]           = bound_type->PrepareArgument(
+          default_expr->type, default_expr->EmitIR(bound_constants));
+    } else {
+      args[i] = bound_type->PrepareArgument(expr->type, *expr_map.at(expr));
+    }
+  }
+
+  Type *output_type_for_this_binding = Tup(fn_to_call->type_->output);
+  IR::Val ret_val;
+  if (output_type_for_this_binding->is_big()) {
+    ret_val = IR::Alloca(type);
+    IR::Call(IR::Val::Func(fn_to_call), std::move(args), {ret_val});
+  } else {
+    if (type->is_big()) {
+      ret_val = IR::Alloca(type);
+      type->EmitAssign(output_type_for_this_binding,
+                       IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}),
+                       ret_val);
+    } else {
+      ret_val = IR::Call(IR::Val::Func(fn_to_call), std::move(args), {});
+    }
+  }
+
+  return ret_val;
+}
+
 IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
   ASSERT_GT(dispatch_table_.bindings_.size(), 0u);
   // Look at all the possible calls and generate the dispatching code
@@ -135,11 +209,6 @@ IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
   // TODO an opmitimazion we can do is merging all the allocas for results into
   // a single variant buffer, because we know we need something that big anyway,
   // and their use cannot overlap.
-
-  std::optional<IR::BlockIndex> landing_block;
-  if (dispatch_table_.bindings_.size() > 1) {
-    landing_block = IR::Func::Current->AddBlock();
-  }
 
   std::unordered_map<Expression *, IR::Val *> expr_map;
   FnArgs<IR::Val> fn_args;
@@ -158,85 +227,32 @@ IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
     expr_map[expr.get()] = &iter->second;
   }
 
+  if (dispatch_table_.bindings_.size() == 1) {
+    const auto & [ call_arg_type, binding ] =
+        *dispatch_table_.bindings_.begin();
+    return EmitOneCallDispatch(expr_map, binding, bound_constants);
+  }
+
   std::vector<IR::Val> results;
   results.reserve(2 * dispatch_table_.bindings_.size());
 
-  // TODO deal with dispatching named arguments. Maybe I already did this?
+  auto landing_block = IR::Func::Current->AddBlock();
+
   for (const auto & [ call_arg_type, binding ] : dispatch_table_.bindings_) {
-    auto next_binding = IR::Func::Current->AddBlock();
-    // Generate code that attempts to match the types on each argument (only
-    // check the ones at the call-site that could be variants).
-    for (size_t i = 0; i < args_.pos_.size(); ++i) {
-      if (!args_.pos_[i]->type->is<Variant>()) { continue; }
-      IR::Block::Current = IR::EarlyExitOn<false>(
-          next_binding,
-          EmitVariantMatch(fn_args.pos_[i], call_arg_type.pos_[i]));
-    }
-
-    for (auto & [ name, expr ] : args_.named_) {
-      auto iter = call_arg_type.find(name);
-      if (iter == call_arg_type.named_.end()) { continue; }
-      if (!expr->type->is<Variant>()) { continue; }
-      IR::Block::Current = IR::EarlyExitOn<false>(
-          next_binding,
-          EmitVariantMatch(fn_args.named_[iter->first], iter->second));
-    }
-
-    // After the last check, if you pass, you should dispatch
-    IR::Func *fn_to_call = std::visit(
-        base::overloaded{[](IR::Func *fn) { return fn; },
-                         [](AST::FunctionLiteral *fn) { return fn->ir_func_; },
-                         [](auto &&) -> IR::Func * {
-                           UNREACHABLE();
-                           return nullptr;
-                         }},
-        binding.fn_expr_->EmitIR(bound_constants).value);
-
-    std::vector<IR::Val> args;
-    args.resize(binding.exprs_.size());
-    for (size_t i = 0; i < args.size(); ++i) {
-      auto[bound_type, expr] = binding.exprs_[i];
-      if (expr == nullptr) {
-        ASSERT_NE(bound_type, nullptr);
-        auto default_expr = fn_to_call->args_[i].second;
-        args[i]           = bound_type->PrepareArgument(
-            default_expr->type, default_expr->EmitIR(bound_constants));
-      } else {
-        args[i] = bound_type->PrepareArgument(expr->type, *expr_map[expr]);
-      }
-    }
-
-    Type *output_type_for_this_binding = Tup(fn_to_call->type_->output);
-    IR::Val ret_val;
-    if (output_type_for_this_binding->is_big()) {
-      ret_val = IR::Alloca(type);
-      IR::Call(IR::Val::Func(fn_to_call), std::move(args), {ret_val});
-    } else {
-      if (type->is_big()) {
-        ret_val = IR::Alloca(type);
-        type->EmitAssign(
-            output_type_for_this_binding,
-            IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}), ret_val);
-      } else {
-        ret_val = IR::Call(IR::Val::Func(fn_to_call), std::move(args), {});
-      }
-    }
-
+    auto next_binding = CallLookupTest(args_, fn_args, call_arg_type);
+    auto result       = EmitOneCallDispatch(expr_map, binding, bound_constants);
     results.push_back(IR::Val::Block(IR::Block::Current));
-    results.push_back(ret_val);
+    results.push_back(std::move(result));
 
-    if (landing_block) { IR::UncondJump(*landing_block); }
-
+    IR::UncondJump(landing_block);
     IR::Block::Current = next_binding;
   }
 
   // TODO this very last block is not be reachable and should never be
   // generated.
 
-  if (landing_block) { 
-    IR::UncondJump(*landing_block);
-    IR::Block::Current = *landing_block;
-  }
+  IR::UncondJump(landing_block);
+  IR::Block::Current = landing_block;
 
   if (results.empty()) {
     return IR::Val::None();

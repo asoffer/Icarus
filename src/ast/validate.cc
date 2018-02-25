@@ -1234,6 +1234,7 @@ void Statements::Validate(const BoundConstants& bound_constants) {
 
 void CodeBlock::Validate(const BoundConstants& ) {
   STAGE_CHECK;
+  lvalue = Assign::Const;
   type = Code;
 }
 

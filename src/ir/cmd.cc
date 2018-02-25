@@ -476,18 +476,18 @@ void Cmd::dump(size_t indent) const {
 }
 
 void CondJump(Val cond, BlockIndex true_block, BlockIndex false_block) {
-  ASSERT(Func::Current, "");
+  ASSERT_NE(Func::Current, nullptr);
   Cmd cmd(nullptr, Op::CondJump,
           {cond, Val::Block(true_block), Val::Block(false_block)});
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 }
 void UncondJump(BlockIndex block) {
-  ASSERT(Func::Current, "");
+  ASSERT_NE(Func::Current, nullptr);
   Cmd cmd(nullptr, Op::UncondJump, {Val::Block(block)});
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 }
 void ReturnJump() {
-  ASSERT(Func::Current, "");
+  ASSERT_NE(Func::Current, nullptr);
   Cmd cmd(nullptr, Op::ReturnJump, {});
   Func::Current->return_blocks_.insert(Block::Current);
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
