@@ -6,19 +6,19 @@
 #include "expression.h"
 #include "statements.h"
 
+extern Type* Code;
+
 namespace AST {
 struct CodeBlock : public Expression {
   EXPR_FNS(CodeBlock);
-  CodeBlock()                      = default;
+  CodeBlock() {
+    lvalue = Assign::Const;
+    type   = Code;
+  }
   CodeBlock(const CodeBlock &)     = default;
   CodeBlock(CodeBlock &&) noexcept = default;
   CodeBlock &operator=(const CodeBlock &) = default;
   CodeBlock &operator=(CodeBlock &&) = default;
-
-  static_assert(std::is_copy_constructible_v<Statements>);
-  static_assert(std::is_copy_assignable_v<Statements>);
-  static_assert(std::is_move_constructible_v<Statements>);
-  static_assert(std::is_move_assignable_v<Statements>);
 
   std::variant<Statements, std::string> content_;
 
@@ -27,13 +27,39 @@ struct CodeBlock : public Expression {
 };
 
 inline bool operator==(const CodeBlock &lhs, const CodeBlock &rhs) {
-  // TODO do this for real.
-  return &lhs == &rhs;
+  if (auto* lhs_stmts = std::get_if<Statements>(&lhs.content_)) {
+    if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {
+      return std::get<Statements>(lhs.content_).content_ ==
+             std::get<Statements>(rhs.content_).content_;
+    } else {
+      return false;
+    }
+  } else {
+    if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {
+      return false;
+    } else {
+      return std::get<std::string>(lhs.content_) ==
+             std::get<std::string>(rhs.content_);
+    }
+  }
 }
 
 inline bool operator<(const CodeBlock &lhs, const CodeBlock &rhs) {
-  // TODO do this for real.
-  return &lhs < &rhs;
+  if (auto* lhs_stmts = std::get_if<Statements>(&lhs.content_)) {
+    if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {
+      return std::get<Statements>(lhs.content_).content_ <
+             std::get<Statements>(rhs.content_).content_;
+    } else {
+      return true;
+    }
+  } else {
+    if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {
+      return false;
+    } else {
+      return std::get<std::string>(lhs.content_) <
+             std::get<std::string>(rhs.content_);
+    }
+  }
 }
 
 inline bool operator>(const CodeBlock &lhs, const CodeBlock &rhs) {

@@ -1232,11 +1232,7 @@ void Statements::Validate(const BoundConstants& bound_constants) {
   }
 }
 
-void CodeBlock::Validate(const BoundConstants& ) {
-  STAGE_CHECK;
-  lvalue = Assign::Const;
-  type = Code;
-}
+void CodeBlock::Validate(const BoundConstants &) {}
 
 void Unop::Validate(const BoundConstants& bound_constants) {
   STAGE_CHECK;

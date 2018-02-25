@@ -320,10 +320,7 @@ void InvalidAddress(const TextSpan &span, Assign mode) {
   ++num_errs_;
   if (mode == Assign::Const) {
     DisplayErrorMessage(
-        "Attempting to take the address of an identifier marked as #const",
-        "Marking an identifier as #const means that it is a compile-time "
-        "constant. The value may not actually be associated with a storage "
-        "address. For this reason, it is illegal to take the address.",
+        "Attempting to take the address of an identifier marked as const", "",
         span, 1);
   } else if (mode == Assign::RVal) {
     DisplayErrorMessage(
@@ -337,11 +334,8 @@ void InvalidAddress(const TextSpan &span, Assign mode) {
 void InvalidAssignment(const TextSpan &span, Assign mode) {
   ++num_errs_;
   if (mode == Assign::Const) {
-    DisplayErrorMessage(
-        "Attempting to assign to an identifier marked as #const",
-        "Marking an identifier as #const means that it is a compile-time "
-        "constant and cannot be modified at run-time.",
-        span, 1);
+    DisplayErrorMessage("Attempting to assign to an identifier marked as const",
+                        "", span, 1);
   } else if (mode == Assign::RVal) {
     DisplayErrorMessage("Attempting to assign to a temporary expression.", "",
                         span, 1);

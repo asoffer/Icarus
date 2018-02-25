@@ -1012,6 +1012,7 @@ IR::Val AST::CodeBlock::EmitIR(const AST::BoundConstants &) {
   if (auto *stmts = std::get_if<AST::Statements>(&copy.content_)) {
     stmts->SaveReferences(scope_, &args);
   }
+  LOG << args;
   return IR::Contextualize(std::move(copy), std::move(args));
 }
 

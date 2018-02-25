@@ -134,7 +134,7 @@ IR::Val Stack::Push(Pointer *ptr) {
   if (size_ > capacity_) {
     auto old_capacity = capacity_;
     capacity_         = 2 * size_;
-    void *new_stack   = malloc(capacity_);
+    void *new_stack   = calloc(1, capacity_);
     memcpy(new_stack, stack_, old_capacity);
     free(stack_);
     stack_ = new_stack;
@@ -325,6 +325,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       LOAD_FROM_STACK(Int, Int, i32);
       LOAD_FROM_STACK(Real, Real, double);
       LOAD_FROM_STACK(Code, CodeBlock, AST::CodeBlock);
+      LOAD_FROM_STACK(String, StrLit, std::string);
       LOAD_FROM_STACK(Type_, Type, ::Type *);
       if (cmd.type->is<Pointer>()) {
         switch (addr.kind) {
@@ -376,6 +377,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type == Code) {
         stack_.Store(std::get<AST::CodeBlock>(resolved[0].value),
                      addr.as_stack);
+      } else if (resolved[0].type == String) {
+        stack_.Store(std::get<std::string>(resolved[0].value), addr.as_stack);
       } else {
         NOT_YET("Don't know how to store that: args = ", resolved);
       }

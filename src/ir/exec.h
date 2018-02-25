@@ -12,7 +12,7 @@ struct Func;
 
 struct Stack {
   Stack() = delete;
-  Stack(size_t cap) : capacity_(cap), stack_(malloc(capacity_)) {}
+  Stack(size_t cap) : capacity_(cap), stack_(calloc(1, capacity_)) {}
   Stack(const Stack &) = delete;
   Stack(Stack &&other) {
     free(stack_);
@@ -20,19 +20,39 @@ struct Stack {
     other.stack_    = nullptr;
     other.capacity_ = other.size_ = 0;
   }
-  ~Stack() { free(stack_); }
+  ~Stack() {
+    for (const auto &dtor : dtors_) { dtor(); }
+    free(stack_);
+  }
 
   template <typename T> T Load(size_t index) {
     ASSERT_EQ(index & (alignof(T) - 1), 0u); // Alignment error
-    return *reinterpret_cast<T *>(this->location(index));
+    if constexpr (std::is_trivially_default_constructible_v<T>) {
+      return *reinterpret_cast<T *>(this->location(index));
+    } else {
+      T *ptr = *reinterpret_cast<T **>(this->location(index));
+      if (ptr == nullptr) {
+        ptr = new T;
+        dtors_.emplace_back([this, index]() {
+          delete *reinterpret_cast<T **>(this->location(index));
+        });
+      }
+      return *ptr;
+    }
   }
 
   template <typename T> void Store(T val, size_t index) {
-    *reinterpret_cast<T *>(this->location(index)) = val;
+    if constexpr (std::is_trivially_default_constructible_v<T>) {
+      *reinterpret_cast<T *>(this->location(index)) = val;
+    } else {
+      delete *reinterpret_cast<T **>(this->location(index));
+      *reinterpret_cast<T **>(this->location(index)) = new T(val);
+    }
   }
 
   IR::Val Push(Pointer *ptr);
 
+  std::vector<std::function<void()>> dtors_;
   size_t capacity_ = 0;
   size_t size_     = 0;
   void *stack_     = nullptr;

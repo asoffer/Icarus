@@ -35,7 +35,8 @@ void Statements::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
-    auto val = DoStages<0, 2>(this, scope, /* TODO */ AST::BoundConstants{});
+    auto val =
+        DoStages<0, 2>(operand.get(), scope, /* TODO */ AST::BoundConstants{});
     args->push_back(val);
     args->push_back(IR::Val::Ref(this));
   } else {
