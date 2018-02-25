@@ -102,7 +102,7 @@ std::string Val::to_string() const {
             return "scope(" + std::to_string(reinterpret_cast<uintptr_t>(s)) +
                    ")";
           },
-          [](const AST::CodeBlock &) -> std::string { return "<...>"; },
+          [](const AST::CodeBlock &c) -> std::string { return c.to_string(); },
           [](AST::Expression *) -> std::string { return "<expr>"; },
           [](BlockIndex b) -> std::string {
             return "block #" + std::to_string(b);

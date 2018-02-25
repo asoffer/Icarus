@@ -82,7 +82,7 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::Ref: ss << "\\"; break;
   case Language::Operator::Needs: ss << "needs "; break;
   case Language::Operator::Ensure: ss << "ensure "; break;
-  case Language::Operator::Pass: ss << "Pass"; break;
+  case Language::Operator::Pass: break;
   default: { UNREACHABLE(); }
   }
 
@@ -210,10 +210,14 @@ std::string Case::to_string(size_t n) const {
 }
 
 std::string Statements::to_string(size_t n) const {
+  if (content_.empty()) { return ""; }
+  if (content_.size() == 1) { return tabs(n) + content_[0]->to_string(n); }
+
   std::stringstream ss;
-  for (const auto &exprs : content_) {
-    ss << tabs(n) << exprs->to_string(n) << "\n";
+  for (size_t i = 0; i < content_.size() - 1; ++i) {
+    ss << tabs(n) << content_[i]->to_string(n) << "\n";
   }
+  ss << tabs(n) << content_.back()->to_string(n);
   return ss.str();
 }
 
@@ -259,7 +263,17 @@ std::string ScopeNode::to_string(size_t n) const {
   return ss.str();
 }
 
-std::string CodeBlock::to_string(size_t) const { return "{{...}}"; }
+std::string CodeBlock::to_string(size_t n) const {
+  auto str = std::get<Statements>(content_).to_string(n + 1);
+
+  if (str.empty()) { return "{{}}"; }
+  if (str.find('\n') != std::string::npos) { return "{{\n" + str + "\n}}"; }
+
+  str[0] = '{';
+  str[1] = ' ';
+  return "{" + str + " }}";
+}
+
 std::string Hole::to_string(size_t) const { return "--"; }
 
 std::string ScopeLiteral::to_string(size_t n) const {

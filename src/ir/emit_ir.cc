@@ -185,10 +185,12 @@ IR::Val AST::Call::EmitOneCallDispatch(
   IR::Val ret_val;
   if (output_type_for_this_binding->is_big()) {
     ret_val = IR::Alloca(type);
+    type->EmitInit(ret_val);
     IR::Call(IR::Val::Func(fn_to_call), std::move(args), {ret_val});
   } else {
     if (type->is_big()) {
       ret_val = IR::Alloca(type);
+      type->EmitInit(ret_val);
       type->EmitAssign(output_type_for_this_binding,
                        IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}),
                        ret_val);
@@ -987,6 +989,7 @@ AST::FunctionLiteral::EmitIR(const AST::BoundConstants &bound_constants) {
           if (decl->arg_val || decl->is<InDecl>()) { return; }
           ASSERT_NE(decl->type, nullptr);
           decl->addr = IR::Alloca(decl->type);
+          decl->type->EmitInit(decl->addr);
         });
       }
 
@@ -1012,7 +1015,6 @@ IR::Val AST::CodeBlock::EmitIR(const AST::BoundConstants &) {
   if (auto *stmts = std::get_if<AST::Statements>(&copy.content_)) {
     stmts->SaveReferences(scope_, &args);
   }
-  LOG << args;
   return IR::Contextualize(std::move(copy), std::move(args));
 }
 
