@@ -16,15 +16,16 @@
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
   virtual void ClearIdDecls() override;                                        \
-  virtual void Validate(const BoundConstants &bound_constants) override;       \
+  virtual void Validate(Context *) override;                                   \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
       const Node *correspondant,                                               \
       const std::unordered_map<const Expression *, IR::Val> &) override
 
-struct Type;
+struct Context;
 struct Scope;
+struct Type;
 
 namespace IR {
 struct Val;
@@ -40,16 +41,15 @@ struct StageRange {
   static constexpr int NoEmitIR() { return 2; }
 };
 
-struct BoundConstants;
 struct Expression;
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
   virtual void assign_scope(Scope *) {}
   virtual void ClearIdDecls() {}
-  virtual void Validate(const BoundConstants &bound_constants) = 0;
+  virtual void Validate(Context *) = 0;
 
-  virtual IR::Val EmitIR(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   virtual void
   contextualize(const Node *correspondant,

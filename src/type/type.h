@@ -17,14 +17,16 @@ extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Void,
 struct Scope;
 
 #include "../ast/ast.h"
-#include "../base/util.h"
 #include "../base/debug.h"
 #include "../base/types.h"
+#include "../base/util.h"
 
 #include <iosfwd>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+struct Context;
 
 namespace IR {
 struct Func;
@@ -34,7 +36,6 @@ namespace AST {
 struct Declaration;
 struct Expression;
 struct Identifier;
-struct BoundConstants;
 } // namespace AST
 
 #define ENDING = 0
@@ -180,7 +181,7 @@ struct Struct : public Type {
 
   size_t field_num(const std::string &name) const;
 
-  void CompleteDefinition(const AST::BoundConstants& bound_constants);
+  void CompleteDefinition(Context* ctx);
 
   virtual bool needs_destroy() const {
     for (Type *t : field_type) {

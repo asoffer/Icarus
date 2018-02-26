@@ -3,13 +3,15 @@
 
 #include "node.h"
 
+struct Context;
+
 #define EXPR_FNS(name)                                                         \
   virtual ~name() {}                                                           \
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
   virtual void ClearIdDecls() override;                                        \
-  virtual void Validate(const BoundConstants &bound_constants) override;       \
+  virtual void Validate(Context *) override;                                   \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -25,7 +27,7 @@ struct Expression : public Node {
   virtual std::string to_string(size_t n) const                         = 0;
   virtual void assign_scope(Scope *scope)                               = 0;
   virtual void ClearIdDecls()                                           = 0;
-  virtual void Validate(const BoundConstants &bound_constants)          = 0;
+  virtual void Validate(Context *ctx)                                   = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   std::string to_string() const { return to_string(0); }
 
@@ -35,8 +37,8 @@ struct Expression : public Node {
   contextualize(const Node *correspondant,
                 const std::unordered_map<const Expression *, IR::Val> &) = 0;
 
-  virtual IR::Val EmitIR(const BoundConstants &);
-  virtual IR::Val EmitLVal(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
+  virtual IR::Val EmitLVal(Context *);
 
   // Use these two functions to verify that an identifier can be declared using
   // these expressions. We pass in a string representing the identifier being
@@ -46,8 +48,7 @@ struct Expression : public Node {
   // returns the type it represents (or Error if the type is invalid). An
   // expression could be invalid if it doesn't represent a type or it represents
   // void.
-  Type *VerifyTypeForDeclaration(const std::string &id_tok,
-                                 const BoundConstants &bound_constants);
+  Type *VerifyTypeForDeclaration(const std::string &id_tok, Context *ctx);
 
   // VerifyValueForDeclaration verifies that the expression's type can be used
   // for a declaration. In practice, it is typically used on initial values for
@@ -61,7 +62,8 @@ struct Expression : public Node {
   Assign lvalue     = Assign::Unset;
   Type *type        = nullptr;
   // TODO in the process of cleaning this up. Trying to delete this value.
-  // IR::Val value = IR::Val::None(); // TODO this looks like a bad idea. delete it?
+  // IR::Val value = IR::Val::None(); // TODO this looks like a bad idea. delete
+  // it?
 };
 } // namespace AST
 

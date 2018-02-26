@@ -1,16 +1,17 @@
 #include "type.h"
 
 #include "../ast/ast.h"
+#include "../context.h"
 #include "../ir/func.h"
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
 
-void Struct::CompleteDefinition(const AST::BoundConstants& bound_constants) {
+void Struct::CompleteDefinition(Context* ctx) {
   if (completed_) { return; }
   if (!field_num_to_name.empty()) { return; }
 
   for (size_t i = 0; i < decls.size(); ++i) {
-    decls[i]->Validate(bound_constants);
+    decls[i]->Validate(ctx);
 
     Type *decl_type;
     if (decls[i]->type_expr) {

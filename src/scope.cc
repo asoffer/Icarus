@@ -1,6 +1,7 @@
 #include "scope.h"
 
 #include "ast/ast.h"
+#include "context.h"
 #include "ir/func.h"
 #include "type/type.h"
 
@@ -53,7 +54,8 @@ Type *Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
       // the type of it's declaration.
       ASSERT(id_ptr->decl, "");
       // TODO bound constants?
-      id_ptr->decl->Validate(AST::BoundConstants{});
+      Context ctx;
+      id_ptr->decl->Validate(&ctx);
       ASSERT(id_ptr->type, "");
     }
 
@@ -81,7 +83,8 @@ std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
     if (iter == scope_ptr->decls_.end()) { continue; }
     for (const auto &decl : iter->second) {
       // TODO bound constants?
-      decl->Validate(AST::BoundConstants{});
+      Context ctx;
+      decl->Validate(&ctx);
       if (decl->type == Err) { continue; }
       matching_decls.push_back(decl);
     }
@@ -98,7 +101,10 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
 void ExecScope::Enter() const {
   ForEachDeclHere(+[](AST::Declaration *decl) {
     if (decl->const_) { return; }
-    if (!decl->is<AST::InDecl>()) { decl->EmitIR(AST::BoundConstants{}); }
+    if (!decl->is<AST::InDecl>()) { 
+    Context ctx;
+    decl->EmitIR(&ctx);
+    }
   });
 }
 

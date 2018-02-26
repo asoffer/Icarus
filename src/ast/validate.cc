@@ -1,5 +1,6 @@
 #include "ast.h"
 
+#include "../context.h"
 #include "../error_log.h"
 #include "../ir/func.h"
 #include "../type/type.h"
@@ -10,8 +11,7 @@
 static constexpr int ThisStage() { return 1; }
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
-std::vector<IR::Val> Evaluate(AST::Expression *expr,
-                              const AST::BoundConstants &bound_constants);
+std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 #define STARTING_CHECK                                                         \
   do {                                                                         \
@@ -27,7 +27,7 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr,
 
 #define VALIDATE_AND_RETURN_ON_ERROR(expr)                                     \
   do {                                                                         \
-    expr->Validate(bound_constants);                                           \
+    expr->Validate(ctx);                                                       \
     if (expr->type == Err) {                                                   \
       type = Err;                                                              \
       /* TODO Maybe this should be Nothing() */                                \
@@ -288,8 +288,7 @@ Binding::Binding(AST::Expression *fn_expr, size_t n)
 // been caught by shadowing), so we just return a pointer to it if it exists,
 // and null otherwise.
 std::optional<DispatchTable>
-Call::ComputeDispatchTable(std::vector<Expression *> fn_options,
-                           const BoundConstants &bound_constants) {
+Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
   DispatchTable table;
   for (Expression *fn_option : fn_options) {
     auto fn_val = Evaluate(fn_option)[0].value;
@@ -333,9 +332,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options,
 
     } else if (fn_option->type == Generic) {
       auto *gen_fn_lit = std::get<GenericFunctionLiteral *>(fn_val);
-      if (auto[fn_lit, binding] =
-              gen_fn_lit->ComputeType(args_, bound_constants);
-          fn_lit) {
+      if (auto[fn_lit, binding] = gen_fn_lit->ComputeType(args_, ctx); fn_lit) {
         // TODO this is copied almost exactly from above.
         FnArgs<Type *> call_arg_types;
         call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
@@ -385,20 +382,18 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options,
 }
 
 std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
-    const FnArgs<std::unique_ptr<Expression>> &args,
-    const BoundConstants &bound_constants) {
+    const FnArgs<std::unique_ptr<Expression>> &args, Context *ctx) {
   auto maybe_binding = Binding::MakeUntyped(this, args, lookup_);
   if (!maybe_binding.has_value()) { return std::pair(nullptr, Binding{}); }
   auto binding = std::move(maybe_binding).value();
 
-  BoundConstants new_bound_constants;
+  Context new_ctx;
   Expression *expr_to_eval = nullptr;
 
   for (size_t i : decl_order_) {
     Type *input_type = nullptr;
     if (inputs[i]->type_expr) {
-      if (auto type_result =
-              Evaluate(inputs[i]->type_expr.get(), new_bound_constants);
+      if (auto type_result = Evaluate(inputs[i]->type_expr.get(), &new_ctx);
           !type_result.empty() && type_result[0] != IR::Val::None()) {
         input_type = std::get<Type *>(type_result[0].value);
       } else {
@@ -409,7 +404,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     } else {
       // TODO must this type have been computed already? The line below might be
       // superfluous.
-      inputs[i]->init_val->Validate(new_bound_constants);
+      inputs[i]->init_val->Validate(&new_ctx);
       input_type = inputs[i]->init_val->type;
     }
 
@@ -436,20 +431,21 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
 
     if (inputs[i]->const_) {
       if (binding.defaulted(i)) {
-        new_bound_constants.vals_.emplace(
+        new_ctx.bound_constants_.emplace(
             inputs[i]->identifier->token,
-            Evaluate(inputs[i].get(), new_bound_constants)[0]);
+            Evaluate(inputs[i].get(), &new_ctx)[0]);
       } else {
-        new_bound_constants.vals_.emplace(
+        new_ctx.bound_constants_.emplace(
             inputs[i]->identifier->token,
-            Evaluate(binding.exprs_[i].second, bound_constants)[0]);
+            Evaluate(binding.exprs_[i].second, ctx)[0]);
       }
     }
 
     binding.exprs_[i].first = input_type;
   }
 
-  auto[iter, success] = fns_.emplace(new_bound_constants, FunctionLiteral{});
+  auto[iter, success] =
+      fns_.emplace(new_ctx.bound_constants_, FunctionLiteral{});
   if (success) {
     auto &func            = iter->second;
     func.return_type_expr = base::wrap_unique(return_type_expr->Clone());
@@ -461,15 +457,14 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     func.statements = base::wrap_unique(statements->Clone());
     func.ClearIdDecls();
     // TODO clone captures
-    DoStages<0, 2>(&func, scope_, new_bound_constants);
+    DoStages<0, 2>(&func, scope_, &new_ctx);
   }
 
   binding.fn_expr_ = &iter->second;
   return std::pair(&iter->second, binding);
 }
 
-void GenericFunctionLiteral::Validate(
-    const BoundConstants & /* bound_constants */) {
+void GenericFunctionLiteral::Validate(Context * /* ctx */) {
   STAGE_CHECK;
   STARTING_CHECK;
   lvalue = Assign::Const;
@@ -489,16 +484,15 @@ void DispatchTable::insert(FnArgs<Type *> call_arg_types, Binding binding) {
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
 }
 
-Type *
-Expression::VerifyTypeForDeclaration(const std::string &id_tok,
-                                     const BoundConstants &bound_constants) {
+Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok,
+                                           Context *ctx) {
   ASSERT_NE(type, nullptr);
   if (type != Type_) {
     ErrorLog::NotAType(span, id_tok);
     return Err;
   }
 
-  Type *t = std::get<Type *>(Evaluate(this, bound_constants)[0].value);
+  Type *t = std::get<Type *>(Evaluate(this, ctx)[0].value);
 
   if (t == Void) {
     ErrorLog::DeclaredVoidType(span, id_tok);
@@ -610,12 +604,12 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
   return false;
 }
 
-void Terminal::Validate(const BoundConstants &) {
+void Terminal::Validate(Context *) {
   STAGE_CHECK;
   lvalue = Assign::Const;
 }
 
-void Identifier::Validate(const BoundConstants &bound_constants) {
+void Identifier::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
 
@@ -623,8 +617,12 @@ void Identifier::Validate(const BoundConstants &bound_constants) {
     auto potential_decls = scope_->AllDeclsWithId(token);
 
     if (potential_decls.size() != 1) {
-      (potential_decls.size() == 0 ? LogError::UndeclaredIdentifier
-                                   : LogError::AmbiguousIdentifier)(this);
+      if (potential_decls.empty()) {
+        ctx->error_log_.UndeclaredIdentifier(this);
+      } else {
+        // TODO is this reachable? Or does shadowing cover this case?
+        ctx->error_log_.AmbiguousIdentifier(this);
+      }
       type = Err;
       limit_to(StageRange::Nothing());
       return;
@@ -632,10 +630,12 @@ void Identifier::Validate(const BoundConstants &bound_constants) {
 
     if (potential_decls[0]->const_ && potential_decls[0]->arg_val != nullptr &&
         potential_decls[0]->arg_val->is<GenericFunctionLiteral>()) {
-      if (auto val = bound_constants(potential_decls[0]->identifier->token)) {
+      if (auto iter =
+              ctx->bound_constants_.find(potential_decls[0]->identifier->token);
+          iter != ctx->bound_constants_.end()) {
         potential_decls[0]->arg_val = scope_->ContainingFnScope()->fn_lit;
       } else {
-        LogError::UndeclaredIdentifier(this);
+        ctx->error_log_.UndeclaredIdentifier(this);
         type = Err;
         limit_to(StageRange::Nothing());
         return;
@@ -647,7 +647,7 @@ void Identifier::Validate(const BoundConstants &bound_constants) {
   if (!decl->const_ && (span.start.line_num < decl->span.start.line_num ||
                         (span.start.line_num == decl->span.start.line_num &&
                          span.start.offset < decl->span.start.offset))) {
-    ErrorLog::DeclOutOfOrder(decl, this);
+    ctx->error_log_.DeclOutOfOrder(decl, this);
     limit_to(StageRange::NoEmitIR());
   }
 
@@ -665,7 +665,8 @@ void Identifier::Validate(const BoundConstants &bound_constants) {
       } else if (scope_ptr->is<ExecScope>()) {
         continue;
       } else {
-        LogError::ImplicitCapture(this);
+        ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + ": ");
         limit_to(StageRange::NoEmitIR());
         return;
       }
@@ -673,17 +674,17 @@ void Identifier::Validate(const BoundConstants &bound_constants) {
   }
 }
 
-void Hole::Validate(const BoundConstants &) {
+void Hole::Validate(Context *) {
   STAGE_CHECK;
   lvalue = Assign::Const;
 }
 
-void Binop::Validate(const BoundConstants &bound_constants) {
+void Binop::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
 
-  lhs->Validate(bound_constants);
-  rhs->Validate(bound_constants);
+  lhs->Validate(ctx);
+  rhs->Validate(ctx);
   if (lhs->type == Err || rhs->type == Err) {
     type = Err;
     limit_to(lhs);
@@ -827,13 +828,12 @@ void Binop::Validate(const BoundConstants &bound_constants) {
       std::vector<Declaration *> matched_op_name;                              \
                                                                                \
       /* TODO this linear search is probably not ideal.   */                   \
-      scope_->ForEachDecl(                                                     \
-          [&bound_constants, &matched_op_name](Declaration *decl) {            \
-            if (decl->identifier->token == "__" op_name "__") {                \
-              decl->Validate(bound_constants);                                 \
-              matched_op_name.push_back(decl);                                 \
-            }                                                                  \
-          });                                                                  \
+      scope_->ForEachDecl([&ctx, &matched_op_name](Declaration *decl) {        \
+        if (decl->identifier->token == "__" op_name "__") {                    \
+          decl->Validate(ctx);                                                 \
+          matched_op_name.push_back(decl);                                     \
+        }                                                                      \
+      });                                                                      \
                                                                                \
       Declaration *correct_decl = nullptr;                                     \
       for (auto &decl : matched_op_name) {                                     \
@@ -930,13 +930,13 @@ void Binop::Validate(const BoundConstants &bound_constants) {
   }
 }
 
-void Call::Validate(const BoundConstants& bound_constants) {
+void Call::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
 
   bool all_const = true;
-  args_.Apply([&bound_constants, &all_const, this](auto &arg) {
-    arg->Validate(bound_constants);
+  args_.Apply([&ctx, &all_const, this](auto &arg) {
+    arg->Validate(ctx);
     if (arg->type == Err) { this->type = Err; }
     all_const &= arg->lvalue == Assign::Const;
   });
@@ -972,7 +972,7 @@ void Call::Validate(const BoundConstants& bound_constants) {
       auto iter = scope_ptr->decls_.find(token);
       if (iter == scope_ptr->decls_.end()) { continue; }
       for (const auto &decl : iter->second) {
-        decl->Validate(bound_constants);
+        decl->Validate(ctx);
         if (decl->type == Err) {
           limit_to(decl->stage_range_.high);
           return;
@@ -981,12 +981,11 @@ void Call::Validate(const BoundConstants& bound_constants) {
       }
     }
   } else {
-    fn_->Validate(bound_constants);
+    fn_->Validate(ctx);
     fn_options.push_back(fn_.get());
   }
 
-  if (auto maybe_table =
-          ComputeDispatchTable(std::move(fn_options), bound_constants)) {
+  if (auto maybe_table = ComputeDispatchTable(std::move(fn_options), ctx)) {
     dispatch_table_ = std::move(maybe_table.value());
   } else {
     // Failure because we can't emit IR for the function so the error was
@@ -1031,17 +1030,19 @@ void Call::Validate(const BoundConstants& bound_constants) {
 
 // TODO Declaration is responsible for the type verification of it's identifier?
 // TODO rewrite/simplify
-void Declaration::Validate(const BoundConstants& bound_constants) {
+void Declaration::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
 
+  lvalue = const_ ? Assign::Const : Assign::RVal;
+
   if (type_expr) {
-    type_expr->Validate(bound_constants);
+    type_expr->Validate(ctx);
     if (type_expr->type == Err) { type = Err; }
     limit_to(type_expr);
   }
   if (init_val) {
-    init_val->Validate(bound_constants);
+    init_val->Validate(ctx);
     if (init_val->type == Err) {
       type = Err;
     } else {
@@ -1058,8 +1059,6 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
     type = type_expr ? type_expr->type : Err;
     return;
   }
-  lvalue = const_ ? Assign::Const : Assign::RVal;
-
 
   // There are eight cases for the form of a declaration.
   //   1a. I: T         or    1b. I :: T
@@ -1080,8 +1079,7 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
 
   if (IsDefaultInitialized()) {
     ASSERT_NE(type_expr.get(), nullptr);
-    type =
-        type_expr->VerifyTypeForDeclaration(identifier->token, bound_constants);
+    type = type_expr->VerifyTypeForDeclaration(identifier->token, ctx);
   } else if (IsInferred()) {
     type = init_val->VerifyValueForDeclaration(identifier->token);
 
@@ -1097,8 +1095,7 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
     }
 
   } else if (IsCustomInitialized()) {
-    type =
-        type_expr->VerifyTypeForDeclaration(identifier->token, bound_constants);
+    type = type_expr->VerifyTypeForDeclaration(identifier->token, ctx);
     auto init_val_type = init_val->VerifyValueForDeclaration(identifier->token);
 
     if (type == Err) {
@@ -1116,19 +1113,18 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
   } else if (IsUninitialized()) {
     if (const_) {
       ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
-                                          std::to_string(__LINE__) + ": ");
+                                           std::to_string(__LINE__) + ": ");
       limit_to(StageRange::NoEmitIR());
     }
 
-    type =
-        type_expr->VerifyTypeForDeclaration(identifier->token, bound_constants);
+    type = type_expr->VerifyTypeForDeclaration(identifier->token, ctx);
     init_val->type = type;
 
   } else {
     UNREACHABLE();
   }
 
-  identifier->Validate(bound_constants);
+  identifier->Validate(ctx);
   limit_to(identifier);
 
   if (type == Err) {
@@ -1137,9 +1133,7 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
   }
 
   // TODO is this the right time to complete the struct definition?
-  if (type->is<Struct>()) {
-    type->as<Struct>().CompleteDefinition(bound_constants);
-  }
+  if (type->is<Struct>()) { type->as<Struct>().CompleteDefinition(ctx); }
 
   // TODO Either guarantee that higher scopes have all declarations declared and
   // verified first, or check both in the upwards and downwards direction for
@@ -1151,7 +1145,7 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
       // Pick one arbitrary but consistent ordering of the pair to check because
       // at each Declaration verification, we look both up and down the scope
       // tree.
-      decl->Validate(bound_constants);
+      decl->Validate(ctx);
       if (Shadow(this, decl)) {
         failed_shadowing = true;
         ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1165,7 +1159,7 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
         // Pick one arbitrary but consistent ordering of the pair to check
         // because at each Declaration verification, we look both up and down
         // the scope tree.
-        decl->Validate(bound_constants);
+        decl->Validate(ctx);
         if (Shadow(this, decl)) {
           failed_shadowing = true;
           ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1185,10 +1179,10 @@ void Declaration::Validate(const BoundConstants& bound_constants) {
   }
 }
 
-void InDecl::Validate(const BoundConstants& bound_constants) {
+void InDecl::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
-  container->Validate(bound_constants);
+  container->Validate(ctx);
   limit_to(container);
 
   lvalue = Assign::RVal;
@@ -1221,20 +1215,20 @@ void InDecl::Validate(const BoundConstants& bound_constants) {
   }
 
   identifier->type = type;
-  identifier->Validate(bound_constants);
+  identifier->Validate(ctx);
 }
 
-void Statements::Validate(const BoundConstants& bound_constants) {
+void Statements::Validate(Context *ctx) {
   STAGE_CHECK;
   for (auto &stmt : content_) {
-    stmt->Validate(bound_constants);
+    stmt->Validate(ctx);
     limit_to(stmt);
   }
 }
 
-void CodeBlock::Validate(const BoundConstants &) {}
+void CodeBlock::Validate(Context *) {}
 
-void Unop::Validate(const BoundConstants& bound_constants) {
+void Unop::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
   VALIDATE_AND_RETURN_ON_ERROR(operand);
@@ -1320,7 +1314,7 @@ void Unop::Validate(const BoundConstants& bound_constants) {
         auto id_ptr = scope_ptr->IdHereOrNull("__neg__");
         if (!id_ptr) { continue; }
 
-        id_ptr->Validate(bound_constants);
+        id_ptr->Validate(ctx);
       }
 
       auto t = scope_->FunctionTypeReferencedOrNull("__neg__",
@@ -1366,14 +1360,14 @@ void Unop::Validate(const BoundConstants& bound_constants) {
   case Operator::Needs: {
     type = Void;
     if (operand->type != Bool) {
-      LogError::PreconditionNeedsBool(this);
+      ctx->error_log_.PreconditionNeedsBool(this);
       limit_to(StageRange::NoEmitIR());
     }
   } break;
   case Operator::Ensure: {
     type = Void;
     if (operand->type != Bool) {
-      LogError::EnsureNeedsBool(this);
+      ctx->error_log_.PostconditionNeedsBool(this);
       limit_to(StageRange::NoEmitIR());
     }
   } break;
@@ -1383,7 +1377,7 @@ void Unop::Validate(const BoundConstants& bound_constants) {
   limit_to(operand);
 }
 
-void Access::Validate(const BoundConstants& bound_constants) {
+void Access::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
   VALIDATE_AND_RETURN_ON_ERROR(operand);
@@ -1416,7 +1410,7 @@ void Access::Validate(const BoundConstants& bound_constants) {
     }
   } else if (base_type->is<Struct>()) {
     auto struct_type = static_cast<Struct *>(base_type);
-    struct_type->CompleteDefinition(bound_constants);
+    struct_type->CompleteDefinition(ctx);
 
     auto member_type = struct_type->field(member_name);
     if (member_type != nullptr) {
@@ -1432,17 +1426,16 @@ void Access::Validate(const BoundConstants& bound_constants) {
     type = Err;
     limit_to(StageRange::Nothing());
   }
-
 }
 
-void ChainOp::Validate(const BoundConstants& bound_constants) {
+void ChainOp::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
   bool found_err = false;
 
   lvalue = Assign::Const;
   for (auto &expr : exprs) {
-    expr->Validate(bound_constants);
+    expr->Validate(ctx);
     limit_to(expr);
     if (expr->type == Err) { found_err = true; }
     if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
@@ -1492,12 +1485,12 @@ void ChainOp::Validate(const BoundConstants& bound_constants) {
   }
 }
 
-void CommaList::Validate(const BoundConstants& bound_constants) {
+void CommaList::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
   lvalue = Assign::Const;
   for (auto &expr : exprs) {
-    expr->Validate(bound_constants);
+    expr->Validate(ctx);
     limit_to(expr);
     if (expr->type == Err) { type = Err; }
     if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
@@ -1524,7 +1517,7 @@ void CommaList::Validate(const BoundConstants& bound_constants) {
   type = all_types ? Type_ : Tup(type_vec);
 }
 
-void ArrayLiteral::Validate(const BoundConstants&bound_constants) {
+void ArrayLiteral::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
 
@@ -1535,7 +1528,7 @@ void ArrayLiteral::Validate(const BoundConstants&bound_constants) {
   }
 
   for (auto &elem : elems) {
-    elem->Validate(bound_constants);
+    elem->Validate(ctx);
     limit_to(elem);
     if (elem->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
@@ -1559,14 +1552,14 @@ void ArrayLiteral::Validate(const BoundConstants&bound_constants) {
   }
 }
 
-void ArrayType::Validate(const BoundConstants& bound_constants) {
+void ArrayType::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
   lvalue = Assign::Const;
 
-  length->Validate(bound_constants);
+  length->Validate(ctx);
   limit_to(length);
-  data_type->Validate(bound_constants);
+  data_type->Validate(ctx);
   limit_to(data_type);
 
   type = Type_;
@@ -1582,12 +1575,12 @@ void ArrayType::Validate(const BoundConstants& bound_constants) {
   }
 }
 
-void Case::Validate(const BoundConstants& bound_constants) {
+void Case::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
   for (auto & [ key, val ] : key_vals) {
-    key->Validate(bound_constants);
-    val->Validate(bound_constants);
+    key->Validate(ctx);
+    val->Validate(ctx);
     limit_to(key);
     limit_to(val);
 
@@ -1652,29 +1645,33 @@ void Case::Validate(const BoundConstants& bound_constants) {
   }
 }
 
-void FunctionLiteral::Validate(const BoundConstants& bound_constants) {
+void FunctionLiteral::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
 
   lvalue = Assign::Const;
-  return_type_expr->Validate(bound_constants);
+  return_type_expr->Validate(ctx);
   limit_to(return_type_expr);
 
-  if (ErrorLog::num_errs_ > 0) {
+  if (ctx->num_errors() > 0) {
     type = Err;
     limit_to(StageRange::Nothing());
     return;
   }
 
   // TODO should named return types be required?
-  auto rets = Evaluate([&]() {
-    if (!return_type_expr->is<Declaration>()) { return return_type_expr.get(); }
+  auto rets = Evaluate(
+      [&]() {
+        if (!return_type_expr->is<Declaration>()) {
+          return return_type_expr.get();
+        }
 
-    auto *decl_return = &return_type_expr->as<Declaration>();
-    if (decl_return->IsInferred()) { NOT_YET(); }
+        auto *decl_return = &return_type_expr->as<Declaration>();
+        if (decl_return->IsInferred()) { NOT_YET(); }
 
-    return decl_return->type_expr.get();
-  }(), bound_constants);
+        return decl_return->type_expr.get();
+      }(),
+      ctx);
 
   if (rets.empty()) {
     type = Err;
@@ -1682,7 +1679,7 @@ void FunctionLiteral::Validate(const BoundConstants& bound_constants) {
     return;
   }
 
-  auto& ret_type_val = rets[0];
+  auto &ret_type_val = rets[0];
 
   // TODO must this really be undeclared?
   if (ret_type_val == IR::Val::None() /* TODO Error() */) {
@@ -1700,7 +1697,7 @@ void FunctionLiteral::Validate(const BoundConstants& bound_constants) {
     return;
   }
 
-  for (auto &input : inputs) { input->Validate(bound_constants); }
+  for (auto &input : inputs) { input->Validate(ctx); }
 
   // TODO poison on input Err?
 
@@ -1713,17 +1710,17 @@ void FunctionLiteral::Validate(const BoundConstants& bound_constants) {
   type = Func(input_type_vec, ret_type);
 }
 
-void For::Validate(const BoundConstants& bound_constants) {
+void For::Validate(Context *ctx) {
   STAGE_CHECK;
   for (auto &iter : iterators) {
-    iter->Validate(bound_constants);
+    iter->Validate(ctx);
     limit_to(iter);
   }
-  statements->Validate(bound_constants);
+  statements->Validate(ctx);
   limit_to(statements);
 }
 
-void Jump::Validate(const BoundConstants &) {
+void Jump::Validate(Context *) {
   STAGE_CHECK;
   // TODO made this slightly wrong
   auto scope_ptr = scope_;
@@ -1739,19 +1736,19 @@ void Jump::Validate(const BoundConstants &) {
   limit_to(StageRange::NoEmitIR());
 }
 
-void ScopeNode::Validate(const BoundConstants &bound_constants) {
+void ScopeNode::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
 
   lvalue = Assign::RVal;
 
-  scope_expr->Validate(bound_constants);
+  scope_expr->Validate(ctx);
   limit_to(scope_expr);
   if (expr != nullptr) {
-    expr->Validate(bound_constants);
+    expr->Validate(ctx);
     limit_to(expr);
   }
-  stmts->Validate(bound_constants);
+  stmts->Validate(ctx);
   limit_to(stmts);
 
   if (!scope_expr->type->is<Scope_Type>()) {
@@ -1765,10 +1762,10 @@ void ScopeNode::Validate(const BoundConstants &bound_constants) {
   type = Void; // TODO can this evaluate to anything?
 }
 
-void ScopeLiteral::Validate(const BoundConstants &bound_constants) {
+void ScopeLiteral::Validate(Context *ctx) {
   STAGE_CHECK;
   STARTING_CHECK;
-  lvalue = Assign::Const;
+  lvalue                            = Assign::Const;
   bool cannot_proceed_due_to_errors = false;
   if (!enter_fn) {
     cannot_proceed_due_to_errors = true;

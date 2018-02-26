@@ -4,11 +4,12 @@
 #include <set>
 #include <string>
 #include <vector>
-
-struct Type;
+#include <unordered_map>
 
 #include "base/debug.h"
 #include "input/cursor.h"
+
+struct Type;
 
 namespace AST {
 struct Case;
@@ -19,18 +20,36 @@ struct Node;
 struct Unop;
 } // namespace AST
 
+namespace error {
+struct Log {
+  void UndeclaredIdentifier(AST::Identifier *id);
+  void AmbiguousIdentifier(AST::Identifier *id);
+  void PreconditionNeedsBool(AST::Expression *expr);
+  void PostconditionNeedsBool(AST::Expression *expr);
+  void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
+
+  size_t size() const {
+    return undeclared_ids_.size() + ambiguous_ids_.size() +
+           out_of_order_decls_.size() + errors_.size();
+  }
+  void Dump() const;
+
+  using Token = std::string;
+  std::unordered_map<Token, std::unordered_map<Source::Name, Cursor>>
+      undeclared_ids_, ambiguous_ids_;
+
+  std::unordered_map<AST::Declaration *, std::vector<AST::Identifier *>>
+      out_of_order_decls_;
+
+  std::vector<std::string> errors_;
+};
+} // namespace error
+
+// TODO everything below here is legacy and needs to be cleaned up
+
 #include "ast/ast.h"
 #include "type/type.h"
 #include "ir/property.h"
-
-namespace LogError {
-void UndeclaredIdentifier(AST::Identifier *id);
-void AmbiguousIdentifier(AST::Identifier *id);
-void ImplicitCapture(AST::Identifier *id);
-void PreconditionNeedsBool(AST::Expression *expr);
-void EnsureNeedsBool(AST::Expression *expr);
-void FailedPrecondition(const IR::property::Property &property);
-} // namespace LogError
 
 namespace ErrorLog {
 extern size_t num_errs_;
@@ -57,7 +76,6 @@ void UnknownParserError(const Source::Name &source_name,
                         const std::vector<TextSpan> &lines);
 void InvalidReturnType(const TextSpan &span, Type *given, Type *correct);
 void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_loc);
-void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
 
 void NullCharInSrc(const TextSpan &loc);
 void NonGraphicCharInSrc(const TextSpan &loc);

@@ -27,7 +27,7 @@ struct Statements : public Node {
     return *this;
   }
 
-  IR::Val EmitIR(const BoundConstants &) override;
+  IR::Val EmitIR(Context *) override;
 
   inline size_t size() const { return content_.size(); }
 

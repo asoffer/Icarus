@@ -1,6 +1,7 @@
 #include "type.h"
 
 #include "../architecture.h"
+#include "../context.h"
 #include "../ir/func.h"
 
 // TODO destructor for previously held value.
@@ -99,7 +100,8 @@ void Enum::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
 
 void Struct::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
   ASSERT_EQ(this, from_type);
-  CompleteDefinition(AST::BoundConstants{});
+  Context ctx;
+  CompleteDefinition(&ctx);
   if (!assign_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func({this, Ptr(this)}, Void),

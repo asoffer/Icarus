@@ -1,5 +1,6 @@
 #include "type.h"
 
+#include "../context.h"
 #include "../ir/func.h"
 
 void Primitive::EmitRepr(IR::Val val) {
@@ -128,7 +129,8 @@ void Array::EmitRepr(IR::Val val) {
 }
 
 void Struct::EmitRepr(IR::Val val) {
-  CompleteDefinition(AST::BoundConstants{});
+  Context ctx;
+  CompleteDefinition(&ctx);
   if (!repr_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func(Ptr(this), Void),

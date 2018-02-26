@@ -12,19 +12,21 @@
 #include "../base/debug.h"
 #include "../input/cursor.h"
 #include "../ir/val.h"
+#include "../operators.h"
 #include "../scope.h"
 #include "../type/type.h"
+#include "bound_constants.h"
 #include "dispatch.h"
 #include "expression.h"
 #include "fn_args.h"
-#include "../operators.h"
+
+struct Context;
 
 namespace IR {
 struct Func;
 } // namespace IR
 
 namespace AST {
-struct BoundConstants;
 struct Statements;
 
 #define STAGE_CHECK                                                            \
@@ -39,15 +41,13 @@ struct TokenNode : public Node {
 
   void SaveReferences(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
   TokenNode *Clone() const override;
-  virtual void Validate(const BoundConstants &) {}
+  virtual void Validate(Context *) {}
 
   virtual void
   contextualize(const Node *correspondant,
                 const std::unordered_map<const Expression *, IR::Val> &);
 
-  virtual IR::Val EmitIR(const BoundConstants &) {
-    UNREACHABLE();
-  }
+  virtual IR::Val EmitIR(Context *) { UNREACHABLE(); }
 
   virtual ~TokenNode() {}
 
@@ -64,7 +64,7 @@ struct Terminal : public Expression {
 
   Terminal *Clone() const override;
 
-  virtual IR::Val EmitIR(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
   IR::Val value = IR::Val::None();
 };
 
@@ -73,8 +73,8 @@ struct Identifier : public Expression {
   EXPR_FNS(Identifier);
   Identifier(const TextSpan &span, const std::string &token_string);
   Identifier *Clone() const override;
-  virtual IR::Val EmitIR(const BoundConstants &);
-  virtual IR::Val EmitLVal(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
+  virtual IR::Val EmitLVal(Context *);
 
   std::string token;
   Declaration *decl = nullptr;
@@ -86,20 +86,16 @@ struct Hole : public Terminal {
   Hole(const TextSpan &span) : Terminal(span, IR::Val::None()) {}
   Hole *Clone() const override;
 
-  IR::Val EmitIR(const BoundConstants &) override {
-    return IR::Val::None();
-  }
-  IR::Val EmitLVal(const BoundConstants &) override {
-    return IR::Val::None();
-  }
+  IR::Val EmitIR(Context *) override { return IR::Val::None(); }
+  IR::Val EmitLVal(Context *) override { return IR::Val::None(); }
 };
 
 struct Binop : public Expression {
   EXPR_FNS(Binop);
 
   Binop *Clone() const override;
-  virtual IR::Val EmitIR(const BoundConstants &);
-  virtual IR::Val EmitLVal(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
+  virtual IR::Val EmitLVal(Context *);
 
   Language::Operator op;
   std::unique_ptr<Expression> lhs, rhs;
@@ -109,11 +105,11 @@ struct Call : public Expression {
   EXPR_FNS(Call);
   Call *Clone() const override;
 
-  IR::Val EmitIR(const BoundConstants &) override;
+  IR::Val EmitIR(Context *) override;
 
   IR::Val EmitOneCallDispatch(
       const std::unordered_map<Expression *, IR::Val *> &expr_map,
-      const Binding &binding, const AST::BoundConstants &bound_constants);
+      const Binding &binding, Context *ctx);
 
   std::unique_ptr<Expression> fn_;
   FnArgs<std::unique_ptr<Expression>> args_;
@@ -121,8 +117,7 @@ struct Call : public Expression {
   // Filled in after type verification
   DispatchTable dispatch_table_;
   std::optional<DispatchTable>
-  ComputeDispatchTable(std::vector<Expression *> fn_options,
-                       const BoundConstants &bound_constants);
+  ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx);
 };
 
 struct Declaration : public Expression {
@@ -130,7 +125,7 @@ struct Declaration : public Expression {
   Declaration(bool is_const = false) : const_(is_const) {}
 
   Declaration *Clone() const override;
-  IR::Val EmitIR(const BoundConstants &) override;
+  IR::Val EmitIR(Context *) override;
 
   std::unique_ptr<Identifier> identifier;
   std::unique_ptr<Expression> type_expr, init_val;
@@ -168,8 +163,8 @@ struct InDecl : public Declaration {
 
 struct Unop : public Expression {
   EXPR_FNS(Unop);
-  virtual IR::Val EmitIR(const BoundConstants &);
-  virtual IR::Val EmitLVal(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
+  virtual IR::Val EmitLVal(Context *);
 
   Unop *Clone() const override;
   std::unique_ptr<Expression> operand;
@@ -178,8 +173,8 @@ struct Unop : public Expression {
 
 struct Access : public Expression {
   EXPR_FNS(Access);
-  virtual IR::Val EmitIR(const BoundConstants &);
-  virtual IR::Val EmitLVal(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
+  virtual IR::Val EmitLVal(Context *);
 
   Access *Clone() const override;
   std::string member_name;
@@ -188,7 +183,7 @@ struct Access : public Expression {
 
 struct ChainOp : public Expression {
   EXPR_FNS(ChainOp);
-  virtual IR::Val EmitIR(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
 
   ChainOp *Clone() const override;
   std::vector<Language::Operator> ops;
@@ -200,8 +195,8 @@ struct CommaList : public Expression {
   EXPR_FNS(CommaList);
 
   CommaList *Clone() const override;
-  virtual IR::Val EmitIR(const BoundConstants &);
-  virtual IR::Val EmitLVal(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
+  virtual IR::Val EmitLVal(Context *);
 
   std::vector<std::unique_ptr<Expression>> exprs;
 };
@@ -210,14 +205,14 @@ struct ArrayLiteral : public Expression {
   EXPR_FNS(ArrayLiteral);
   ArrayLiteral *Clone() const override;
 
-  virtual IR::Val EmitIR(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
 
   std::vector<std::unique_ptr<Expression>> elems;
 };
 
 struct ArrayType : public Expression {
   EXPR_FNS(ArrayType);
-  virtual IR::Val EmitIR(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
   ArrayType *Clone() const override;
 
   std::unique_ptr<Expression> length, data_type;
@@ -225,7 +220,7 @@ struct ArrayType : public Expression {
 
 struct Case : public Expression {
   EXPR_FNS(Case);
-  virtual IR::Val EmitIR(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
   Case *Clone() const override;
 
   std::vector<
@@ -233,46 +228,13 @@ struct Case : public Expression {
       key_vals;
 };
 
-struct BoundConstants {
-  std::optional<IR::Val> operator()(const std::string &id) const {
-    auto iter = vals_.find(id);
-    if (iter == vals_.end()) { return std::nullopt; }
-    return iter->second;
-  }
-
-  std::map<std::string, IR::Val> vals_;
-};
-} // namespace AST
-
-namespace std {
-template <> struct less<AST::BoundConstants> {
-  bool operator()(const AST::BoundConstants &lhs,
-                  const AST::BoundConstants &rhs) const {
-    if (lhs.vals_.size() < rhs.vals_.size()) { return true; }
-    if (lhs.vals_.size() > rhs.vals_.size()) { return false; }
-    auto lhs_iter = lhs.vals_.begin();
-    auto rhs_iter = rhs.vals_.begin();
-    while (lhs_iter != lhs.vals_.end()) {
-      ASSERT_EQ(lhs_iter->first, rhs_iter->first);
-      if (lhs_iter->second.value < rhs_iter->second.value) { return true; }
-      if (lhs_iter->second.value > rhs_iter->second.value) { return false; }
-      ++lhs_iter;
-      ++rhs_iter;
-    }
-
-    return false;
-  }
-};
-} // namespace std
-
-namespace AST {
 struct FunctionLiteral : public Expression {
   FunctionLiteral() {}
   EXPR_FNS(FunctionLiteral);
-  FunctionLiteral(FunctionLiteral&&) = default;
+  FunctionLiteral(FunctionLiteral &&) = default;
   FunctionLiteral *Clone() const override;
 
-  virtual IR::Val EmitIR(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
 
   std::unique_ptr<FnScope> fn_scope;
   std::unique_ptr<Expression> return_type_expr;
@@ -293,14 +255,13 @@ struct GenericFunctionLiteral : public FunctionLiteral {
   GenericFunctionLiteral() {}
   EXPR_FNS(GenericFunctionLiteral);
   GenericFunctionLiteral *Clone() const override;
-  IR::Val EmitIR(const BoundConstants &) override;
+  IR::Val EmitIR(Context *) override;
 
   // Attempts to match the call argument types to the dependent types here. If
   // it can it materializes a function literal and returns a pointer to it.
   // Otherwise, returns nullptr.
   std::pair<FunctionLiteral *, Binding>
-  ComputeType(const FnArgs<std::unique_ptr<Expression>> &args,
-              const BoundConstants &bound_constants);
+  ComputeType(const FnArgs<std::unique_ptr<Expression>> &args, Context *ctx);
 
   // Holds an ordering of the indices of 'inputs' sorted in such a way that if a
   // type depends on a value of another declaration, the dependent type occurs
@@ -315,7 +276,7 @@ struct For : public Node {
   virtual ~For() {}
   For *Clone() const override;
 
-  virtual IR::Val EmitIR(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
 
   std::vector<std::unique_ptr<InDecl>> iterators;
   std::unique_ptr<Statements> statements;
@@ -339,7 +300,7 @@ struct ScopeNode : public Expression {
   EXPR_FNS(ScopeNode);
   ScopeNode *Clone() const override;
 
-  virtual IR::Val EmitIR(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
 
   // If the scope takes an argument, 'expr' is it. Otherwise 'expr' is null
   std::unique_ptr<Expression> expr, scope_expr;
@@ -351,48 +312,41 @@ struct ScopeLiteral : public Expression {
   EXPR_FNS(ScopeLiteral);
   ScopeLiteral *Clone() const override;
 
-  IR::Val EmitIR(const BoundConstants &) override;
+  IR::Val EmitIR(Context *) override;
 
   std::unique_ptr<Declaration> enter_fn, exit_fn;
   std::unique_ptr<Scope> body_scope;
 };
 
-template <int N>
-decltype(auto) DoStage(Node *node, Scope *scope, const BoundConstants &);
+template <int N> decltype(auto) DoStage(Node *node, Scope *scope, Context *);
 template <>
-inline decltype(auto) DoStage<0>(Node *node, Scope *scope,
-                                 const BoundConstants &) {
+inline decltype(auto) DoStage<0>(Node *node, Scope *scope, Context *) {
   node->assign_scope(scope);
 }
 template <>
-inline decltype(auto) DoStage<1>(Node *node, Scope *,
-                                 const BoundConstants &bound_constants) {
-  node->Validate(bound_constants);
+inline decltype(auto) DoStage<1>(Node *node, Scope *, Context *ctx) {
+  node->Validate(ctx);
 }
 
 template <>
-inline decltype(auto) DoStage<2>(Node *node, Scope *,
-                                 const BoundConstants &bound_constants) {
-  return node->EmitIR(bound_constants);
+inline decltype(auto) DoStage<2>(Node *node, Scope *, Context *ctx) {
+  return node->EmitIR(ctx);
 }
 
 template <int Low, int High> struct ApplyStageRange {
-  decltype(auto) operator()(Node *node, Scope *scope,
-                            const BoundConstants &bound_constants) const {
-    DoStage<Low>(node, scope, bound_constants);
-    return ApplyStageRange<Low + 1, High>{}(node, scope, bound_constants);
+  decltype(auto) operator()(Node *node, Scope *scope, Context *ctx) const {
+    DoStage<Low>(node, scope, ctx);
+    return ApplyStageRange<Low + 1, High>{}(node, scope, ctx);
   }
 };
 template <int N> struct ApplyStageRange<N, N> {
-  decltype(auto) operator()(Node *node, Scope *scope,
-                            const BoundConstants &bound_constants) const {
-    return DoStage<N>(node, scope, bound_constants);
+  decltype(auto) operator()(Node *node, Scope *scope, Context *ctx) const {
+    return DoStage<N>(node, scope, ctx);
   }
 };
 template <int Low, int High>
-decltype(auto) DoStages(Node *node, Scope *scope,
-                        const BoundConstants &bound_constants) {
-  return ApplyStageRange<Low, High>{}(node, scope, bound_constants);
+decltype(auto) DoStages(Node *node, Scope *scope, Context *ctx) {
+  return ApplyStageRange<Low, High>{}(node, scope, ctx);
 }
 } // namespace AST
 

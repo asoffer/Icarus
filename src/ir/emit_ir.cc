@@ -1,16 +1,16 @@
 #include "func.h"
 
-#include <optional>
 #include <algorithm>
+#include <optional>
 
 #include "../ast/ast.h"
+#include "../context.h"
 #include "../error_log.h"
 #include "../type/type.h"
 
 static constexpr int ThisStage() { return 3; }
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
-std::vector<IR::Val> Evaluate(AST::Expression *expr,
-                              const AST::BoundConstants &bound_constants);
+std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 extern std::vector<IR::Val> global_vals;
 
 struct Scope;
@@ -72,8 +72,8 @@ IR::Val OrdFunc() {
   return IR::Val::Func(ord_func_);
 }
 
-IR::Val AST::Access::EmitLVal(const AST::BoundConstants &bound_constants) {
-  auto val = operand->EmitLVal(bound_constants);
+IR::Val AST::Access::EmitLVal(Context *ctx) {
+  auto val = operand->EmitLVal(ctx);
   while (val.type->is<Pointer>() &&
          !val.type->as<Pointer>().pointee->is_big()) {
     val = IR::Load(val);
@@ -121,11 +121,9 @@ static IR::Val EmitVariantMatch(const IR::Val &needle, Type *haystack) {
   }
 }
 
-IR::Val AST::Node::EmitIR(const BoundConstants &) { UNREACHABLE(*this); }
-IR::Val AST::Expression::EmitIR(const BoundConstants &) { UNREACHABLE(*this); }
-IR::Val AST::Expression::EmitLVal(const BoundConstants &) {
-  UNREACHABLE(*this);
-}
+IR::Val AST::Node::EmitIR(Context *) { UNREACHABLE(*this); }
+IR::Val AST::Expression::EmitIR(Context *) { UNREACHABLE(*this); }
+IR::Val AST::Expression::EmitLVal(Context *) { UNREACHABLE(*this); }
 
 static IR::BlockIndex
 CallLookupTest(const AST::FnArgs<std::unique_ptr<AST::Expression>> &args,
@@ -155,7 +153,7 @@ CallLookupTest(const AST::FnArgs<std::unique_ptr<AST::Expression>> &args,
 
 IR::Val AST::Call::EmitOneCallDispatch(
     const std::unordered_map<Expression *, IR::Val *> &expr_map,
-    const Binding &binding, const AST::BoundConstants &bound_constants) {
+    const Binding &binding, Context *ctx) {
 
   // After the last check, if you pass, you should dispatch
   IR::Func *fn_to_call = std::visit(
@@ -165,7 +163,7 @@ IR::Val AST::Call::EmitOneCallDispatch(
                          UNREACHABLE();
                          return nullptr;
                        }},
-      binding.fn_expr_->EmitIR(bound_constants).value);
+      binding.fn_expr_->EmitIR(ctx).value);
 
   std::vector<IR::Val> args;
   args.resize(binding.exprs_.size());
@@ -174,8 +172,8 @@ IR::Val AST::Call::EmitOneCallDispatch(
     if (expr == nullptr) {
       ASSERT_NE(bound_type, nullptr);
       auto default_expr = fn_to_call->args_[i].second;
-      args[i]           = bound_type->PrepareArgument(
-          default_expr->type, default_expr->EmitIR(bound_constants));
+      args[i]           = bound_type->PrepareArgument(default_expr->type,
+                                            default_expr->EmitIR(ctx));
     } else {
       args[i] = bound_type->PrepareArgument(expr->type, *expr_map.at(expr));
     }
@@ -202,7 +200,7 @@ IR::Val AST::Call::EmitOneCallDispatch(
   return ret_val;
 }
 
-IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::Call::EmitIR(Context *ctx) {
   ASSERT_GT(dispatch_table_.bindings_.size(), 0u);
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching
@@ -216,23 +214,22 @@ IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
   FnArgs<IR::Val> fn_args;
   fn_args.pos_.reserve(args_.pos_.size());
   for (auto &expr : args_.pos_) {
-    fn_args.pos_.push_back(expr->type->is_big()
-                               ? PtrCallFix(expr->EmitIR(bound_constants))
-                               : expr->EmitIR(bound_constants));
+    fn_args.pos_.push_back(expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
+                                                : expr->EmitIR(ctx));
     expr_map[expr.get()] = &fn_args.pos_.back(); // Safe because of reserve.
   }
 
   for (auto & [ name, expr ] : args_.named_) {
     auto[iter, success] = fn_args.named_.emplace(
-        name, expr->type->is_big() ? PtrCallFix(expr->EmitIR(bound_constants))
-                                   : expr->EmitIR(bound_constants));
+        name, expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
+                                   : expr->EmitIR(ctx));
     expr_map[expr.get()] = &iter->second;
   }
 
   if (dispatch_table_.bindings_.size() == 1) {
     const auto & [ call_arg_type, binding ] =
         *dispatch_table_.bindings_.begin();
-    return EmitOneCallDispatch(expr_map, binding, bound_constants);
+    return EmitOneCallDispatch(expr_map, binding, ctx);
   }
 
   std::vector<IR::Val> results;
@@ -242,7 +239,7 @@ IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
 
   for (const auto & [ call_arg_type, binding ] : dispatch_table_.bindings_) {
     auto next_binding = CallLookupTest(args_, fn_args, call_arg_type);
-    auto result       = EmitOneCallDispatch(expr_map, binding, bound_constants);
+    auto result       = EmitOneCallDispatch(expr_map, binding, ctx);
     results.push_back(IR::Val::Block(IR::Block::Current));
     results.push_back(std::move(result));
 
@@ -269,27 +266,31 @@ IR::Val AST::Call::EmitIR(const AST::BoundConstants &bound_constants) {
   }
 }
 
-IR::Val AST::Access::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::Access::EmitIR(Context *ctx) {
   if (type->is<Enum>()) {
     return type->as<Enum>().EmitLiteral(member_name);
   } else {
-    return PtrCallFix(EmitLVal(bound_constants));
+    return PtrCallFix(EmitLVal(ctx));
   }
   return IR::Val::None();
 }
 
-IR::Val AST::Terminal::EmitIR(const AST::BoundConstants &) { return value; }
+IR::Val AST::Terminal::EmitIR(Context *) { return value; }
 
-IR::Val AST::Identifier::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::Identifier::EmitIR(Context *ctx) {
   if (!decl) {
-    if (auto val = bound_constants(token)) { return *val; }
-    return IR::Val::None();
+    auto iter = ctx->bound_constants_.find(token);
+    return iter != ctx->bound_constants_.end() ? iter->second : IR::Val::None();
   }
 
   if (decl->const_) {
-    if (auto val = bound_constants(token)) { return *val; }
+    if (auto iter = ctx->bound_constants_.find(token);
+        iter != ctx->bound_constants_.end()) {
+      return iter->second;
+    }
+
     if (decl->IsCustomInitialized()) {
-      return Evaluate(decl->init_val.get(), bound_constants) AT(0);
+      return Evaluate(decl->init_val.get(), ctx) AT(0);
 
     } else {
       // TODO this may be wrong for types that require nontrivial construction.
@@ -298,34 +299,33 @@ IR::Val AST::Identifier::EmitIR(const AST::BoundConstants &bound_constants) {
   }
 
   // TODO this global scope thing is probably wrong.
-  if (decl->scope_ == GlobalScope) { decl->EmitIR(bound_constants); }
+  if (decl->scope_ == GlobalScope) { decl->EmitIR(ctx); }
 
   if (decl->arg_val) {
     return decl->addr;
   } else if (decl->is<InDecl>()) {
     if (auto &in_decl = decl->as<InDecl>();
         in_decl.container->type->is<Array>()) {
-      return PtrCallFix(EmitLVal(bound_constants));
+      return PtrCallFix(EmitLVal(ctx));
     } else {
       return decl->addr;
     }
   } else {
-    return PtrCallFix(EmitLVal(bound_constants));
+    return PtrCallFix(EmitLVal(ctx));
   }
 }
 
-IR::Val AST::ArrayLiteral::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::ArrayLiteral::EmitIR(Context *ctx) {
   auto array_val  = IR::Alloca(type);
   auto *data_type = type->as<Array>().data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
     auto elem_i = IR::Index(array_val, IR::Val::Int(static_cast<i32>(i)));
-    Type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(bound_constants),
-                       elem_i);
+    Type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(ctx), elem_i);
   }
   return array_val;
 }
 
-IR::Val AST::For::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::For::EmitIR(Context *ctx) {
   auto init       = IR::Func::Current->AddBlock();
   auto incr       = IR::Func::Current->AddBlock();
   auto phi        = IR::Func::Current->AddBlock();
@@ -342,17 +342,15 @@ IR::Val AST::For::EmitIR(const AST::BoundConstants &bound_constants) {
     for (auto &decl : iterators) {
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
-          init_vals.push_back(
-              decl->container->as<Binop>().lhs->EmitIR(bound_constants));
+          init_vals.push_back(decl->container->as<Binop>().lhs->EmitIR(ctx));
         } else if (decl->container->is<Unop>()) {
-          init_vals.push_back(
-              decl->container->as<Unop>().operand->EmitIR(bound_constants));
+          init_vals.push_back(decl->container->as<Unop>().operand->EmitIR(ctx));
         } else {
           NOT_YET();
         }
       } else if (decl->container->type->is<Array>()) {
-        init_vals.push_back(IR::Index(
-            decl->container->EmitLVal(bound_constants), IR::Val::Int(0)));
+        init_vals.push_back(
+            IR::Index(decl->container->EmitLVal(ctx), IR::Val::Int(0)));
 
       } else if (decl->container->type == Type_) {
         // TODO this conditional check on the line above is wrong
@@ -435,9 +433,8 @@ IR::Val AST::For::EmitIR(const AST::BoundConstants &bound_constants) {
       IR::Val cmp;
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
-          auto rhs_val =
-              decl->container->as<Binop>().rhs->EmitIR(bound_constants);
-          cmp = IR::Le(reg, rhs_val);
+          auto rhs_val = decl->container->as<Binop>().rhs->EmitIR(ctx);
+          cmp          = IR::Le(reg, rhs_val);
         } else if (decl->container->is<Unop>()) {
           // TODO we should optimize this here rather then generate suboptimal
           // code and trust optimizations later on.
@@ -448,7 +445,7 @@ IR::Val AST::For::EmitIR(const AST::BoundConstants &bound_constants) {
       } else if (decl->container->type->is<Array>()) {
         auto *array_type = &decl->container->type->as<Array>();
         cmp              = IR::Ne(
-            reg, IR::Index(decl->container->EmitLVal(bound_constants),
+            reg, IR::Index(decl->container->EmitLVal(ctx),
                            IR::Val::Int(static_cast<i32>(array_type->len))));
       } else if (decl->container->type == Type_) {
         IR::Val container_val = Evaluate(decl->container.get())[0];
@@ -473,7 +470,7 @@ IR::Val AST::For::EmitIR(const AST::BoundConstants &bound_constants) {
     IR::Block::Current = body_entry;
 
     for_scope->Enter();
-    statements->EmitIR(bound_constants);
+    statements->EmitIR(ctx);
     for_scope->Exit();
 
     IR::UncondJump(incr);
@@ -483,7 +480,7 @@ IR::Val AST::For::EmitIR(const AST::BoundConstants &bound_constants) {
   return IR::Val::None();
 }
 
-IR::Val AST::Case::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::Case::EmitIR(Context *ctx) {
   auto land = IR::Func::Current->AddBlock();
 
   ASSERT(!key_vals.empty(), "");
@@ -493,11 +490,11 @@ IR::Val AST::Case::EmitIR(const AST::BoundConstants &bound_constants) {
     auto compute = IR::Func::Current->AddBlock();
     auto next    = IR::Func::Current->AddBlock();
 
-    auto val = key_vals[i].first->EmitIR(bound_constants);
+    auto val = key_vals[i].first->EmitIR(ctx);
     IR::CondJump(val, compute, next);
 
     IR::Block::Current = compute;
-    auto result        = key_vals[i].second->EmitIR(bound_constants);
+    auto result        = key_vals[i].second->EmitIR(ctx);
     phi_args.push_back(IR::Val::Block(IR::Block::Current));
     phi_args.push_back(result);
     IR::UncondJump(land);
@@ -506,7 +503,7 @@ IR::Val AST::Case::EmitIR(const AST::BoundConstants &bound_constants) {
   }
 
   // Last entry
-  auto result = key_vals.back().second->EmitIR(bound_constants);
+  auto result = key_vals.back().second->EmitIR(ctx);
   phi_args.push_back(IR::Val::Block(IR::Block::Current));
   phi_args.push_back(result);
   IR::UncondJump(land);
@@ -517,33 +514,32 @@ IR::Val AST::Case::EmitIR(const AST::BoundConstants &bound_constants) {
   return IR::Func::Current->Command(phi).reg();
 }
 
-IR::Val AST::ScopeLiteral::EmitIR(const AST::BoundConstants &) {
+IR::Val AST::ScopeLiteral::EmitIR(Context *) {
   return IR::Val::Scope(this);
 }
 
-IR::Val AST::ScopeNode::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   IR::Val scope_expr_val = Evaluate(scope_expr.get())[0];
   ASSERT_TYPE(Scope_Type, scope_expr_val.type);
 
   auto enter_fn = std::get<AST::ScopeLiteral *>(scope_expr_val.value)
-                      ->enter_fn->init_val->EmitIR(bound_constants);
+                      ->enter_fn->init_val->EmitIR(ctx);
   ASSERT_NE(enter_fn, IR::Val::None());
   auto exit_fn = std::get<AST::ScopeLiteral *>(scope_expr_val.value)
-                     ->exit_fn->init_val->EmitIR(bound_constants);
+                     ->exit_fn->init_val->EmitIR(ctx);
   ASSERT_NE(exit_fn, IR::Val::None());
 
-  auto call_enter_result =
-      IR::Call(enter_fn,
-               expr ? std::vector<IR::Val>{expr->EmitIR(bound_constants)}
-                    : std::vector<IR::Val>{},
-               {});
+  auto call_enter_result = IR::Call(
+      enter_fn,
+      expr ? std::vector<IR::Val>{expr->EmitIR(ctx)} : std::vector<IR::Val>{},
+      {});
   auto land_block  = IR::Func::Current->AddBlock();
   auto enter_block = IR::Func::Current->AddBlock();
 
   IR::CondJump(call_enter_result, enter_block, land_block);
 
   IR::Block::Current = enter_block;
-  stmts->EmitIR(bound_constants);
+  stmts->EmitIR(ctx);
 
   auto call_exit_result = IR::Call(exit_fn, {}, {});
   IR::CondJump(call_exit_result, enter_block, land_block);
@@ -552,12 +548,14 @@ IR::Val AST::ScopeNode::EmitIR(const AST::BoundConstants &bound_constants) {
   return IR::Val::None();
 }
 
-IR::Val AST::Declaration::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::Declaration::EmitIR(Context *ctx) {
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
     if (IsCustomInitialized()) {
-      addr = Evaluate(init_val.get())[0];
+      auto eval = Evaluate(init_val.get(), ctx);
+      if (ctx->num_errors()) { return IR::Val::None(); }
+      addr = eval[0];
     } else if (IsDefaultInitialized()) {
       // TODO if EmitInitialValue requires generating code, that would be bad.
       addr = type->EmitInitialValue();
@@ -571,7 +569,9 @@ IR::Val AST::Declaration::EmitIR(const AST::BoundConstants &bound_constants) {
       global_vals.back().type = type;
       addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
     } else if (IsCustomInitialized()) {
-      global_vals.push_back(Evaluate(init_val.get())[0]);
+      auto eval = Evaluate(init_val.get(), ctx);
+      if (ctx->num_errors()) { return IR::Val::None(); }
+      global_vals.push_back(eval[0]);
       addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
 
     } else if (IsDefaultInitialized()) {
@@ -597,11 +597,9 @@ IR::Val AST::Declaration::EmitIR(const AST::BoundConstants &bound_constants) {
     if (IsUninitialized()) { return IR::Val::None(); }
     if (IsCustomInitialized()) {
       if (init_val->lvalue == Assign::RVal) {
-        Type::EmitMoveInit(init_val->type, type,
-                           init_val->EmitIR(bound_constants), addr);
+        Type::EmitMoveInit(init_val->type, type, init_val->EmitIR(ctx), addr);
       } else {
-        Type::EmitCopyInit(init_val->type, type,
-                           init_val->EmitIR(bound_constants), addr);
+        Type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx), addr);
       }
     } else {
       type->EmitInit(addr);
@@ -611,38 +609,35 @@ IR::Val AST::Declaration::EmitIR(const AST::BoundConstants &bound_constants) {
   return addr;
 }
 
-IR::Val AST::Unop::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::Unop::EmitIR(Context *ctx) {
   switch (op) {
   case Language::Operator::Not:
   case Language::Operator::Sub: {
-    return IR::Neg(operand->EmitIR(bound_constants));
+    return IR::Neg(operand->EmitIR(ctx));
   } break;
   case Language::Operator::Return: {
-    ForEachExpr(operand.get(),
-                [&bound_constants](size_t i, AST::Expression *expr) {
-                  IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)},
-                                expr->EmitIR(bound_constants));
-                });
+    ForEachExpr(operand.get(), [&ctx](size_t i, AST::Expression *expr) {
+      IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)}, expr->EmitIR(ctx));
+    });
     IR::ReturnJump();
     return IR::Val::None();
   }
   case Language::Operator::Print: {
-    ForEachExpr(
-        operand.get(), [&bound_constants](size_t, AST::Expression *expr) {
-          if (expr->type->is<Primitive>() || expr->type->is<Pointer>()) {
-            IR::Print(expr->EmitIR(bound_constants));
-          } else {
-            expr->type->EmitRepr(expr->EmitIR(bound_constants));
-          }
-        });
+    ForEachExpr(operand.get(), [&ctx](size_t, AST::Expression *expr) {
+      if (expr->type->is<Primitive>() || expr->type->is<Pointer>()) {
+        IR::Print(expr->EmitIR(ctx));
+      } else {
+        expr->type->EmitRepr(expr->EmitIR(ctx));
+      }
+    });
 
     return IR::Val::None();
   } break;
-  case Language::Operator::And: return operand->EmitLVal(bound_constants);
+  case Language::Operator::And: return operand->EmitLVal(ctx);
   case Language::Operator::Eval: {
     // TODO what if there's an error during evaluation?
     // TODO what about ``a, b = $FnWithMultipleReturnValues()``
-    auto results = Evaluate(operand.get(), bound_constants);
+    auto results = Evaluate(operand.get(), ctx);
     return results.empty() ? IR::Val::None() : results[0];
   }
   case Language::Operator::Generate: {
@@ -650,12 +645,10 @@ IR::Val AST::Unop::EmitIR(const AST::BoundConstants &bound_constants) {
     ASSERT_EQ(val.type, Code);
     auto block = std::get<AST::CodeBlock>(val.value);
     return AST::DoStages<0, 2>(&std::get<AST::Statements>(block.content_),
-                               scope_, bound_constants);
+                               scope_, ctx);
   } break;
-  case Language::Operator::Mul:
-    return IR::Ptr(operand->EmitIR(bound_constants));
-  case Language::Operator::At:
-    return PtrCallFix(operand->EmitIR(bound_constants));
+  case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(ctx));
+  case Language::Operator::At: return PtrCallFix(operand->EmitIR(ctx));
   case Language::Operator::Needs: {
     // TODO validate requirements are well-formed?
     IR::Func::Current->preconditions_.push_back(operand.get());
@@ -666,17 +659,17 @@ IR::Val AST::Unop::EmitIR(const AST::BoundConstants &bound_constants) {
     IR::Func::Current->postconditions_.push_back(operand.get());
     return IR::Val::None();
   } break;
-  case Language::Operator::Pass: return operand->EmitIR(bound_constants);
+  case Language::Operator::Pass: return operand->EmitIR(ctx);
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
 
-IR::Val AST::Binop::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::Binop::EmitIR(Context *ctx) {
   switch (op) {
 #define CASE(op_name)                                                          \
   case Language::Operator::op_name: {                                          \
-    auto lhs_ir = lhs->EmitIR(bound_constants);                                \
-    auto rhs_ir = rhs->EmitIR(bound_constants);                                \
+    auto lhs_ir = lhs->EmitIR(ctx);                                            \
+    auto rhs_ir = rhs->EmitIR(ctx);                                            \
     return IR::op_name(lhs_ir, rhs_ir);                                        \
   } break
     CASE(Add);
@@ -688,25 +681,25 @@ IR::Val AST::Binop::EmitIR(const AST::BoundConstants &bound_constants) {
 #undef CASE
   case Language::Operator::Cast: {
     ASSERT(!rhs->is<AST::CommaList>(), "");
-    auto lhs_ir = lhs->EmitIR(bound_constants);
-    auto rhs_ir = rhs->EmitIR(bound_constants);
+    auto lhs_ir = lhs->EmitIR(ctx);
+    auto rhs_ir = rhs->EmitIR(ctx);
     return IR::Cast(lhs_ir, rhs_ir);
   } break;
   case Language::Operator::Assign: {
     std::vector<Type *> lhs_types, rhs_types;
     std::vector<IR::Val> rhs_vals;
-    ForEachExpr(rhs.get(), [&bound_constants, &rhs_vals,
-                            &rhs_types](size_t, AST::Expression *expr) {
-      rhs_vals.push_back(expr->EmitIR(bound_constants));
-      rhs_types.push_back(expr->type);
-    });
+    ForEachExpr(rhs.get(),
+                [&ctx, &rhs_vals, &rhs_types](size_t, AST::Expression *expr) {
+                  rhs_vals.push_back(expr->EmitIR(ctx));
+                  rhs_types.push_back(expr->type);
+                });
 
     std::vector<IR::Val> lhs_lvals;
-    ForEachExpr(lhs.get(), [&bound_constants, &lhs_lvals,
-                            &lhs_types](size_t, AST::Expression *expr) {
-      lhs_lvals.push_back(expr->EmitLVal(bound_constants));
-      lhs_types.push_back(expr->type);
-    });
+    ForEachExpr(lhs.get(),
+                [&ctx, &lhs_lvals, &lhs_types](size_t, AST::Expression *expr) {
+                  lhs_lvals.push_back(expr->EmitLVal(ctx));
+                  lhs_types.push_back(expr->type);
+                });
 
     ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
     for (size_t i = 0; i < lhs_lvals.size(); ++i) {
@@ -717,20 +710,19 @@ IR::Val AST::Binop::EmitIR(const AST::BoundConstants &bound_constants) {
   } break;
   case Language::Operator::OrEq: {
     if (type->is<Enum>()) {
-      auto lhs_lval = lhs->EmitLVal(bound_constants);
-      IR::Store(IR::Or(IR::Load(lhs_lval), rhs->EmitIR(bound_constants)),
-                lhs_lval);
+      auto lhs_lval = lhs->EmitLVal(ctx);
+      IR::Store(IR::Or(IR::Load(lhs_lval), rhs->EmitIR(ctx)), lhs_lval);
       return IR::Val::None();
     }
     auto land_block = IR::Func::Current->AddBlock();
     auto more_block = IR::Func::Current->AddBlock();
 
-    auto lhs_val       = lhs->EmitIR(bound_constants);
+    auto lhs_val       = lhs->EmitIR(ctx);
     auto lhs_end_block = IR::Block::Current;
     IR::CondJump(lhs_val, land_block, more_block);
 
     IR::Block::Current = more_block;
-    auto rhs_val       = rhs->EmitIR(bound_constants);
+    auto rhs_val       = rhs->EmitIR(ctx);
     auto rhs_end_block = IR::Block::Current;
     IR::UncondJump(land_block);
 
@@ -744,21 +736,20 @@ IR::Val AST::Binop::EmitIR(const AST::BoundConstants &bound_constants) {
   } break;
   case Language::Operator::AndEq: {
     if (type->is<Enum>()) {
-      auto lhs_lval = lhs->EmitLVal(bound_constants);
-      IR::Store(IR::And(IR::Load(lhs_lval), rhs->EmitIR(bound_constants)),
-                lhs_lval);
+      auto lhs_lval = lhs->EmitLVal(ctx);
+      IR::Store(IR::And(IR::Load(lhs_lval), rhs->EmitIR(ctx)), lhs_lval);
       return IR::Val::None();
     }
 
     auto land_block = IR::Func::Current->AddBlock();
     auto more_block = IR::Func::Current->AddBlock();
 
-    auto lhs_val       = lhs->EmitIR(bound_constants);
+    auto lhs_val       = lhs->EmitIR(ctx);
     auto lhs_end_block = IR::Block::Current;
     IR::CondJump(lhs_val, more_block, land_block);
 
     IR::Block::Current = more_block;
-    auto rhs_val       = rhs->EmitIR(bound_constants);
+    auto rhs_val       = rhs->EmitIR(ctx);
     auto rhs_end_block = IR::Block::Current;
     IR::UncondJump(land_block);
 
@@ -772,8 +763,8 @@ IR::Val AST::Binop::EmitIR(const AST::BoundConstants &bound_constants) {
   } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \
   case Language::Operator::op_name##Eq: {                                      \
-    auto lhs_lval = lhs->EmitLVal(bound_constants);                            \
-    auto rhs_ir   = rhs->EmitIR(bound_constants);                              \
+    auto lhs_lval = lhs->EmitLVal(ctx);                                        \
+    auto rhs_ir   = rhs->EmitIR(ctx);                                          \
     IR::Store(IR::op_name(PtrCallFix(lhs_lval), rhs_ir), lhs_lval);            \
     return IR::Val::None();                                                    \
   } break
@@ -784,14 +775,13 @@ IR::Val AST::Binop::EmitIR(const AST::BoundConstants &bound_constants) {
     CASE_ASSIGN_EQ(Div);
     CASE_ASSIGN_EQ(Mod);
 #undef CASE_ASSIGN_EQ
-  case Language::Operator::Index: return PtrCallFix(EmitLVal(bound_constants));
+  case Language::Operator::Index: return PtrCallFix(EmitLVal(ctx));
   default: UNREACHABLE(*this);
   }
 }
 
-IR::Val AST::ArrayType::EmitIR(const AST::BoundConstants &bound_constants) {
-  return IR::Array(length->EmitIR(bound_constants),
-                   data_type->EmitIR(bound_constants));
+IR::Val AST::ArrayType::EmitIR(Context *ctx) {
+  return IR::Array(length->EmitIR(ctx), data_type->EmitIR(ctx));
 }
 
 static IR::Val EmitChainOpPair(Type *lhs_type, const IR::Val &lhs_ir,
@@ -818,26 +808,26 @@ static IR::Val EmitChainOpPair(Type *lhs_type, const IR::Val &lhs_ir,
   }
 }
 
-IR::Val AST::ChainOp::EmitIR(const AST::BoundConstants &bound_constants) {
+IR::Val AST::ChainOp::EmitIR(Context *ctx) {
   if (ops[0] == Language::Operator::Xor) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(bound_constants);
+    auto val  = (*iter)->EmitIR(ctx);
     while (++iter != exprs.end()) {
-      val = IR::Xor(std::move(val), (*iter)->EmitIR(bound_constants));
+      val = IR::Xor(std::move(val), (*iter)->EmitIR(ctx));
     }
     return val;
   } else if (ops[0] == Language::Operator::Or && type->is<Enum>()) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(bound_constants);
+    auto val  = (*iter)->EmitIR(ctx);
     while (++iter != exprs.end()) {
-      val = IR::Or(std::move(val), (*iter)->EmitIR(bound_constants));
+      val = IR::Or(std::move(val), (*iter)->EmitIR(ctx));
     }
     return val;
   } else if (ops[0] == Language::Operator::And && type->is<Enum>()) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(bound_constants);
+    auto val  = (*iter)->EmitIR(ctx);
     while (++iter != exprs.end()) {
-      val = IR::And(std::move(val), (*iter)->EmitIR(bound_constants));
+      val = IR::And(std::move(val), (*iter)->EmitIR(ctx));
     }
     return val;
   } else if (ops[0] == Language::Operator::Or && type == Type_) {
@@ -845,9 +835,7 @@ IR::Val AST::ChainOp::EmitIR(const AST::BoundConstants &bound_constants) {
     // overload | to take my own stuff and have it return a type?
     std::vector<IR::Val> args;
     args.reserve(exprs.size());
-    for (const auto &expr : exprs) {
-      args.push_back(expr->EmitIR(bound_constants));
-    }
+    for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)); }
     return IR::Variant(std::move(args));
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
@@ -856,7 +844,7 @@ IR::Val AST::ChainOp::EmitIR(const AST::BoundConstants &bound_constants) {
     phi_args.reserve(2 * exprs.size());
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
-      auto val = exprs[i]->EmitIR(bound_constants);
+      auto val = exprs[i]->EmitIR(ctx);
 
       auto next_block = IR::Func::Current->AddBlock();
       IR::CondJump(val, is_or ? land_block : next_block,
@@ -868,7 +856,7 @@ IR::Val AST::ChainOp::EmitIR(const AST::BoundConstants &bound_constants) {
     }
 
     phi_args.push_back(IR::Val::Block(IR::Block::Current));
-    phi_args.push_back(exprs.back()->EmitIR(bound_constants));
+    phi_args.push_back(exprs.back()->EmitIR(ctx));
     IR::UncondJump(land_block);
 
     IR::Block::Current = land_block;
@@ -878,17 +866,17 @@ IR::Val AST::ChainOp::EmitIR(const AST::BoundConstants &bound_constants) {
 
   } else {
     if (ops.size() == 1) {
-      auto lhs_ir = exprs[0]->EmitIR(bound_constants);
-      auto rhs_ir = exprs[1]->EmitIR(bound_constants);
+      auto lhs_ir = exprs[0]->EmitIR(ctx);
+      auto rhs_ir = exprs[1]->EmitIR(ctx);
       return EmitChainOpPair(exprs[0]->type, lhs_ir, ops[0], exprs[1]->type,
                              rhs_ir);
 
     } else {
       std::vector<IR::Val> phi_args;
-      auto lhs_ir     = exprs.front()->EmitIR(bound_constants);
+      auto lhs_ir     = exprs.front()->EmitIR(ctx);
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
-        auto rhs_ir = exprs[i + 1]->EmitIR(bound_constants);
+        auto rhs_ir = exprs[i + 1]->EmitIR(ctx);
         IR::Val cmp = EmitChainOpPair(exprs[i]->type, lhs_ir, ops[i],
                                       exprs[i + 1]->type, rhs_ir);
 
@@ -901,7 +889,7 @@ IR::Val AST::ChainOp::EmitIR(const AST::BoundConstants &bound_constants) {
       }
 
       // Once more for the last element, but don't do a conditional jump.
-      auto rhs_ir = exprs.back()->EmitIR(bound_constants);
+      auto rhs_ir = exprs.back()->EmitIR(ctx);
       auto last_cmp =
           EmitChainOpPair(exprs[exprs.size() - 2]->type, lhs_ir, ops.back(),
                           exprs[exprs.size() - 1]->type, rhs_ir);
@@ -917,18 +905,15 @@ IR::Val AST::ChainOp::EmitIR(const AST::BoundConstants &bound_constants) {
   }
 }
 
-IR::Val AST::CommaList::EmitIR(const AST::BoundConstants &) {
-  UNREACHABLE(this);
-}
-IR::Val AST::CommaList::EmitLVal(const AST::BoundConstants &) { NOT_YET(); }
+IR::Val AST::CommaList::EmitIR(Context *) { UNREACHABLE(this); }
+IR::Val AST::CommaList::EmitLVal(Context *) { NOT_YET(); }
 
-IR::Val AST::GenericFunctionLiteral::EmitIR(const AST::BoundConstants &) {
+IR::Val AST::GenericFunctionLiteral::EmitIR(Context *) {
   return IR::Val::GenFnLit(this);
 }
 
-IR::Val
-AST::FunctionLiteral::EmitIR(const AST::BoundConstants &bound_constants) {
-  statements->Validate(bound_constants);
+IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
+  statements->Validate(ctx);
   if (type == Err) { return IR::Val::None(); }
 
   if (ir_func_ == nullptr) {
@@ -961,8 +946,9 @@ AST::FunctionLiteral::EmitIR(const AST::BoundConstants &bound_constants) {
       for (size_t i = 0; i < inputs.size(); ++i) {
         // TODO positional arguments
         if (inputs[i]->const_) {
-          auto iter = bound_constants.vals_.find(inputs[i]->identifier->token);
-          if (iter != bound_constants.vals_.end()) {
+          if (auto iter =
+                  ctx->bound_constants_.find(inputs[i]->identifier->token);
+              iter != ctx->bound_constants_.end()) {
             inputs[i]->addr = std::move(iter->second);
           }
           continue;
@@ -993,7 +979,7 @@ AST::FunctionLiteral::EmitIR(const AST::BoundConstants &bound_constants) {
         });
       }
 
-      statements->EmitIR(bound_constants);
+      statements->EmitIR(ctx);
       IR::ReturnJump();
 
       IR::Block::Current = ir_func_->entry();
@@ -1004,12 +990,12 @@ AST::FunctionLiteral::EmitIR(const AST::BoundConstants &bound_constants) {
   return IR::Val::FnLit(this);
 }
 
-IR::Val AST::Statements::EmitIR(const AST::BoundConstants &bound_constants) {
-  for (auto &stmt : content_) { stmt->EmitIR(bound_constants); }
+IR::Val AST::Statements::EmitIR(Context *ctx) {
+  for (auto &stmt : content_) { stmt->EmitIR(ctx); }
   return IR::Val::None();
 }
 
-IR::Val AST::CodeBlock::EmitIR(const AST::BoundConstants &) {
+IR::Val AST::CodeBlock::EmitIR(Context *) {
   std::vector<IR::Val> args;
   auto copy = *this;
   if (auto *stmts = std::get_if<AST::Statements>(&copy.content_)) {
@@ -1018,25 +1004,24 @@ IR::Val AST::CodeBlock::EmitIR(const AST::BoundConstants &) {
   return IR::Contextualize(std::move(copy), std::move(args));
 }
 
-IR::Val AST::Identifier::EmitLVal(const AST::BoundConstants &bound_constants) {
+IR::Val AST::Identifier::EmitLVal(Context *ctx) {
   ASSERT_NE(decl, nullptr);
-  if (decl->addr == IR::Val::None()) { decl->EmitIR(bound_constants); }
+  if (decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
   return decl->addr;
 }
 
-IR::Val AST::Unop::EmitLVal(const AST::BoundConstants &bound_constants) {
+IR::Val AST::Unop::EmitLVal(Context *ctx) {
   switch (op) {
-  case Language::Operator::At: return operand->EmitIR(bound_constants);
+  case Language::Operator::At: return operand->EmitIR(ctx);
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
 
-IR::Val AST::Binop::EmitLVal(const AST::BoundConstants &bound_constants) {
+IR::Val AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {
   case Language::Operator::Index:
     if (lhs->type->is<::Array>()) {
-      return IR::Index(lhs->EmitLVal(bound_constants),
-                       rhs->EmitIR(bound_constants));
+      return IR::Index(lhs->EmitLVal(ctx), rhs->EmitIR(ctx));
     }
     [[fallthrough]];
   default: UNREACHABLE("Operator is ", static_cast<int>(op));

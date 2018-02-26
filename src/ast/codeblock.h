@@ -23,7 +23,7 @@ struct CodeBlock : public Expression {
   std::variant<Statements, std::string> content_;
 
   CodeBlock *Clone() const override;
-  virtual IR::Val EmitIR(const BoundConstants &);
+  virtual IR::Val EmitIR(Context *);
 };
 
 inline bool operator==(const CodeBlock &lhs, const CodeBlock &rhs) {

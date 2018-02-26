@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "context.h"
 
 namespace AST {
 void Terminal::SaveReferences(Scope *, std::vector<IR::Val> *) {}
@@ -35,8 +36,8 @@ void Statements::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
-    auto val =
-        DoStages<0, 2>(operand.get(), scope, /* TODO */ AST::BoundConstants{});
+    Context ctx;
+    auto val = DoStages<0, 2>(operand.get(), scope, &ctx);
     args->push_back(val);
     args->push_back(IR::Val::Ref(this));
   } else {

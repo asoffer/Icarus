@@ -2,6 +2,7 @@
 
 #include "../architecture.h"
 #include "../ast/ast.h"
+#include "../context.h"
 #include "../ir/func.h"
 
 void Primitive::EmitInit(IR::Val id_val) {
@@ -70,7 +71,8 @@ void Pointer::EmitInit(IR::Val id_val) {
 }
 
 void Struct::EmitInit(IR::Val id_val) {
-  CompleteDefinition(AST::BoundConstants{});
+  Context ctx;
+  CompleteDefinition(&ctx);
 
   if (!init_func) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
@@ -92,7 +94,7 @@ void Struct::EmitInit(IR::Val id_val) {
               /* from_type = */ init_values[i]->type,
               /*   to_type = */ field_type[i],
               /*  from_val = */
-              init_values[i]->EmitIR(AST::BoundConstants{}),
+              init_values[i]->EmitIR(&ctx),
               /*    to_var = */ IR::Field(init_func->Argument(0), i));
         } else {
           field_type[i]->EmitInit(IR::Field(init_func->Argument(0), i));

@@ -2,6 +2,7 @@
 #define ICARUS_IR_PROPERTY_H
 
 #include "../base/debug.h"
+#include "../base/util.h"
 
 namespace IR {
 // TODO make these unreachable rather than default to unsafe

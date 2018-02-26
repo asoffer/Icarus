@@ -10,12 +10,7 @@ extern std::unordered_map<Source::Name, File *> source_map;
 
 using LineNum    = size_t;
 using LineOffset = size_t;
-using Token      = std::string;
 
-using TokenToErrorMap = std::unordered_map<
-    Token,
-    std::unordered_map<Source::Name,
-                       std::unordered_map<LineNum, std::vector<LineOffset>>>>;
 using FileToLineNumMap = std::unordered_map<Source::Name, std::vector<LineNum>>;
 using DeclToErrorMap   = std::unordered_map<
     const AST::Declaration *,
@@ -24,7 +19,6 @@ using DeclToErrorMap   = std::unordered_map<
 using TextSpanToErrorMap =
     std::map<TextSpan, std::unordered_map<LineNum, std::vector<LineOffset>>>;
 
-static TokenToErrorMap undeclared_identifiers, ambiguous_identifiers;
 static DeclToErrorMap implicit_capture;
 static TextSpanToErrorMap case_errors;
 static FileToLineNumMap global_non_decl;
@@ -46,52 +40,6 @@ static inline std::string NumTimes(size_t n) {
   case 1: return "once";
   case 2: return "twice";
   default: return std::to_string(n) + " times";
-  }
-}
-
-static size_t
-CountUses(const std::unordered_map<
-          Source::Name, std::unordered_map<LineNum, std::vector<LineOffset>>>
-              &map) {
-  size_t num_uses = 0;
-  for (const auto & [ file, locs ] : map) {
-    for (const auto & [ line, offsets ] : locs) { num_uses += offsets.size(); }
-  }
-  return num_uses;
-}
-
-static void WriteMessage(const std::string &msg, const std::string &token,
-                         size_t num_uses) {
-  std::cerr << msg << " '" << token << '\'';
-  if (num_uses != 1) { std::cerr << " used " << NumTimes(num_uses); }
-  std::cerr << ".\n";
-}
-
-static void GatherAndDisplayIdentifierError(
-    const std::unordered_map<
-        Source::Name, std::unordered_map<LineNum, std::vector<LineOffset>>>
-        &map) {
-  for (const auto & [ file, locs ] : map) {
-    size_t max_line_num = 0;
-    for (const auto & [ line, offsets ] : locs) {
-      if (max_line_num < line) { max_line_num = line; }
-    }
-    // size_t line_num_width = NumDigits(max_line_num);
-
-    size_t num_uses_in_file = 0;
-    for (const auto & [ line, offsets ] : locs) {
-      num_uses_in_file += offsets.size();
-    }
-
-    std::cerr << "  Used " << NumTimes(num_uses_in_file) << " in '" << file
-              << "':\n";
-
-    for (const auto & [ line, offsets ] : locs) {
-      auto line_text = source_map AT(file)->lines AT(line);
-      // TODO alignment
-      std::cerr << line << "| " << line_text << '\n'
-                << std::string(line_text.size() + 1, '^');
-    }
   }
 }
 
@@ -139,21 +87,6 @@ static void GatherAndDisplayGlobalDeclErrors() {
 }
 
 void ErrorLog::Dump() {
-  for (const auto & [ key, val ] : undeclared_identifiers) {
-    WriteMessage("Undeclared identifier", key, CountUses(val));
-    GatherAndDisplayIdentifierError(val);
-  }
-  for (const auto & [ key, val ] : ambiguous_identifiers) {
-    WriteMessage("Ambiguous identifier", key, CountUses(val));
-    GatherAndDisplayIdentifierError(val);
-  }
-
-  for (const auto & [ key, val ] : implicit_capture) {
-    WriteMessage("Invalid capture of identifier", key->identifier->token,
-                 CountUses(val));
-    GatherAndDisplayIdentifierError(val);
-  }
-
   // TODO fix this repsonse regarding imports.
   GatherAndDisplayGlobalDeclErrors();
 
@@ -304,16 +237,6 @@ void NonIntegralArrayIndex(const TextSpan &span, const Type *index_type) {
   DisplayErrorMessage(
       msg_head.c_str(),
       "Arrays must be indexed by integral types (either int or uint)", span, 1);
-}
-
-void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id) {
-  std::string msg_head =
-      "Identifier '" + id->token + "' used before it was declared.";
-  std::string msg_foot = "Declaration can be found on line " +
-                         std::to_string(decl->span.start.line_num) + ".";
-  // TODO Provide file name as well.
-  ++num_errs_;
-  DisplayErrorMessage(msg_head.c_str(), msg_foot, id->span, id->token.size());
 }
 
 void InvalidAddress(const TextSpan &span, Assign mode) {
@@ -600,37 +523,46 @@ void CommaListStatement(const TextSpan &span) {
 }
 } // namespace ErrorLog
 
-namespace LogError {
-void UndeclaredIdentifier(AST::Identifier *id) {
-  undeclared_identifiers[id->token][id->span.source->name]
-                        [id->span.start.line_num]
-                            .push_back(id->span.start.offset);
+namespace error {
+void Log::UndeclaredIdentifier(AST::Identifier *id) {
+  undeclared_ids_[id->token].emplace(id->span.source->name, id->span.start);
 }
 
-void AmbiguousIdentifier(AST::Identifier *id) {
-  ambiguous_identifiers[id->token][id->span.source->name]
-                       [id->span.start.line_num]
-                           .push_back(id->span.start.offset);
+void Log::AmbiguousIdentifier(AST::Identifier *id) {
+  ambiguous_ids_[id->token].emplace(id->span.source->name, id->span.start);
 }
 
-void ImplicitCapture(AST::Identifier *id) {
-  implicit_capture[id->decl][id->span.source->name][id->span.start.line_num]
-      .push_back(id->span.start.offset);
+void Log::PostconditionNeedsBool(AST::Expression *expr) {
+  errors_.push_back(
+      "Function postcondition must be of type bool, but you provided "
+      "an expression of type " +
+      expr->type->to_string() + ".");
 }
 
-void FailedPrecondition(const IR::property::Property &) {
-  std::cerr << "Precondition failed.\n";
+void Log::PreconditionNeedsBool(AST::Expression *expr) {
+  errors_.push_back(
+      "Function precondition must be of type bool, but you provided "
+      "an expression of type " +
+      expr->type->to_string() + ".");
+}
+void Log::Dump() const {
+  for (const auto&[decl, ids] : out_of_order_decls_) {
+    std::cerr << "Declaration of '" << decl->identifier->token
+              << "' is used before it is defined (which is only allowed for "
+                 "constants).";
+
+    // TODO DisplayErrorMessage is not exactly what I want.
+    for (const auto & id : ids) {
+      DisplayErrorMessage("", "", id->span, id->token.size());
+    }
+  }
+
+  for (const auto &err : errors_) { std::cerr << err; }
+  LOG << "And " << (size() - errors_.size()) << " more errors.";
 }
 
-void EnsureNeedsBool(AST::Expression *expr) {
-  std::cerr << "Function postcondition must be of type bool, but you provided "
-               "an expression of type "
-            << expr->type->to_string() << ".\n";
+void Log::DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id) {
+  out_of_order_decls_[decl].push_back(id);
 }
 
-void PreconditionNeedsBool(AST::Expression *expr) {
-  std::cerr << "Function precondition must be of type bool, but you provided "
-               "an expression of type "
-            << expr->type->to_string() << ".\n";
-}
-} // namespace LogError
+} // namespace error

@@ -5,6 +5,7 @@
 #include "ast/statements.h"
 #include "base/debug.h"
 #include "base/source.h"
+#include "context.h"
 #include "error_log.h"
 #include "ir/func.h"
 #include "type/type.h"
@@ -36,10 +37,11 @@ int GenerateCode() {
   }
 
   RUN(timer, "Verify and Emit") {
-    AST::DoStages<0, 1>(&global_statements, GlobalScope, AST::BoundConstants{});
-    for (auto &stmt : global_statements.content_) {
-      if (!stmt->is<AST::Declaration>()) { continue; }
-      stmt->as<AST::Declaration>().EmitIR(AST::BoundConstants{});
+    Context ctx;
+    AST::DoStages<0, 2>(&global_statements, GlobalScope, &ctx);
+    if (ctx.num_errors() != 0) {
+      ctx.DumpErrors();
+      return 0;
     }
   }
 
@@ -66,9 +68,13 @@ int RunRepl() {
     auto stmts = repl.Parse();
     for (auto &stmt : stmts->content_) {
       if (stmt->is<AST::Declaration>()) {
+        Context ctx;
         auto *decl = &stmt->as<AST::Declaration>();
-        AST::DoStages<0, 2>(decl, GlobalScope, AST::BoundConstants{});
-
+        AST::DoStages<0, 2>(decl, GlobalScope, &ctx);
+        if (ctx.num_errors() != 0) {
+          ctx.DumpErrors();
+          return 0;
+        }
       } else if (stmt->is<AST::Expression>()) {
         auto *expr = &stmt->as<AST::Expression>();
         expr->assign_scope(GlobalScope);

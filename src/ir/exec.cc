@@ -7,6 +7,7 @@
 #include "../architecture.h"
 #include "../ast/ast.h"
 #include "../base/util.h"
+#include "../context.h"
 #include "../error_log.h"
 #include "../type/type.h"
 #include "func.h"
@@ -14,8 +15,7 @@
 std::vector<IR::Val> global_vals;
 
 std::unique_ptr<IR::Func>
-ExprFn(AST::Expression *expr, Type *input,
-       const AST::BoundConstants &bound_constants = AST::BoundConstants{},
+ExprFn(AST::Expression *expr, Type *input, Context *ctx = nullptr,
        const std::vector<std::pair<std::string, AST::Expression *>> args = {}) {
   auto fn = std::make_unique<IR::Func>(::Func(input, expr->type), args);
   CURRENT_FUNC(fn.get()) {
@@ -27,7 +27,14 @@ ExprFn(AST::Expression *expr, Type *input,
 
     auto start_block   = IR::Func::Current->AddBlock();
     IR::Block::Current = start_block;
-    auto result        = expr->EmitIR(bound_constants);
+
+    IR::Val result;
+    if (ctx) {
+      result = expr->EmitIR(ctx);
+    } else {
+      Context context;
+      result = expr->EmitIR(&context);
+    }
 
     if (expr->type != Void) {
       IR::SetReturn(IR::ReturnValue{0}, std::move(result));
@@ -550,7 +557,8 @@ void ReplEval(AST::Expression *expr) {
       std::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
-    auto expr_val      = expr->EmitIR(AST::BoundConstants{});
+    Context ctx;
+    auto expr_val      = expr->EmitIR(&ctx);
     if (ErrorLog::NumErrors() != 0) {
       ErrorLog::Dump();
       return;
@@ -566,20 +574,23 @@ void ReplEval(AST::Expression *expr) {
 }
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr) {
-  IR::ExecContext context;
+  IR::ExecContext exec_context;
   // TODO wire through errors. Currently we just return IR::Val::None() if there
   // were errors
   auto fn = ExprFn(expr, Void);
   bool were_errors;
-  return Execute(fn.get(), {}, &context, &were_errors);
+  return Execute(fn.get(), {}, &exec_context, &were_errors);
 }
 
-std::vector<IR::Val> Evaluate(AST::Expression *expr,
-                              const AST::BoundConstants &bound_constants) {
-  IR::ExecContext context;
+std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
+  IR::ExecContext exec_context;
   // TODO wire through errors. Currently we just return IR::Val::None() if there
   // were errors
-  auto fn = ExprFn(expr, Void, bound_constants);
-  bool were_errors;
-  return Execute(fn.get(), {}, &context, &were_errors);
+  auto fn = ExprFn(expr, Void, ctx);
+  if (ctx->num_errors() == 0) {
+    bool were_errors;
+    return Execute(fn.get(), {}, &exec_context, &were_errors);
+  } else {
+    return {};
+  }
 }
