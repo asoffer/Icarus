@@ -621,7 +621,8 @@ void Identifier::Validate(Context *ctx) {
         ctx->error_log_.UndeclaredIdentifier(this);
       } else {
         // TODO is this reachable? Or does shadowing cover this case?
-        ctx->error_log_.AmbiguousIdentifier(this);
+        ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + ": ");
       }
       type = Err;
       limit_to(StageRange::Nothing());
@@ -731,14 +732,12 @@ void Binop::Validate(Context *ctx) {
   case Operator::Index: {
     type = Err;
     if (lhs->type == String) {
-      if (rhs->type == Int) {
-        type = Char;
-        break;
-      } else {
+      if (rhs->type != Int) {
         ErrorLog::InvalidStringIndex(span, rhs->type);
         limit_to(StageRange::NoEmitIR());
-        return;
       }
+      type = Char; // Assuming it's a char, even if the index type was wrong.
+      return;
     } else if (!lhs->type->is<Array>()) {
       if (rhs->type->is<RangeType>()) {
         ErrorLog::SlicingNonArray(span, lhs->type);

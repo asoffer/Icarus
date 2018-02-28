@@ -2,13 +2,16 @@
 #define ICARUS_BASE_SOURCE_H
 
 #include <fstream>
-#include <string>
-#include <vector>
 #include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include "strong_types.h"
 
+namespace error {
+struct Log;
+}
 namespace AST {
 struct Statements;
 }
@@ -19,7 +22,7 @@ struct Source {
 
   virtual ~Source() {}
   virtual std::optional<Line> NextLine() = 0;
-  virtual std::unique_ptr<AST::Statements> Parse() = 0;
+  virtual std::unique_ptr<AST::Statements> Parse(error::Log *) = 0;
 
   std::vector<Line> lines{1}; // Start with one blank line because line numbers
                               // are 1-indexed not 0-indexed.
@@ -41,7 +44,7 @@ struct Repl: public Source {
   Repl() : Source(Source::Name("")) {}
 
   std::optional<Source::Line> NextLine() final;
-  std::unique_ptr<AST::Statements> Parse() final;
+  std::unique_ptr<AST::Statements> Parse(error::Log *) final;
 
   bool first_entry = true;
 };
@@ -52,7 +55,7 @@ struct File : Source {
   ~File() final {}
 
   std::optional<Source::Line> NextLine() final;
-  std::unique_ptr<AST::Statements> Parse() final;
+  std::unique_ptr<AST::Statements> Parse(error::Log*) final;
 
   AST::Statements *ast = nullptr;
   std::ifstream ifs;

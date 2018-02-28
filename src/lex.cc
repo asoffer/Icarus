@@ -725,7 +725,7 @@ NNT NextSlashInitiatedToken(SourceLocation &loc) {
 }
 } // namespace
 
-NNT NextToken(SourceLocation &loc) {
+NNT NextToken(SourceLocation &loc, error::Log *) {
 restart:
   // Delegate based on the next character in the file stream
   if (loc.source->seen_eof) {

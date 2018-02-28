@@ -5,6 +5,8 @@
 #include "nnt.h"
 #include "operators.h"
 #include "util/timer.h"
+
+#include <variant>
 #include <array>
 #include <cstdio>
 #include <iosfwd>
@@ -1025,7 +1027,7 @@ auto Rules = std::array{
 };
 } // namespace Language
 
-extern NNT NextToken(SourceLocation &loc); // Defined in Lexer.cpp
+NNT NextToken(SourceLocation &loc, error::Log *error_log);
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 std::ostream &operator<<(std::ostream &os, ShiftState s) {
@@ -1160,10 +1162,10 @@ static void Debug(ParseState *ps, SourceLocation *loc = nullptr) {
   fgetc(stdin);
 }
 
-static void Shift(ParseState *ps, SourceLocation *c) {
+static void Shift(ParseState *ps, SourceLocation *c, error::Log *error_log) {
   ps->node_type_stack_.push_back(ps->lookahead_.node_type);
   ps->node_stack_.push_back(base::wrap_unique(ps->lookahead_.node.release()));
-  ps->lookahead_ = NextToken(*c);
+  ps->lookahead_ = NextToken(*c, error_log);
   if (ps->lookahead_.node_type &
       (Language::l_paren | Language::l_bracket | Language::l_brace |
        Language::l_double_brace)) {
@@ -1212,20 +1214,20 @@ void CleanUpReduction(ParseState *state, SourceLocation *loc) {
   if (debug::parser) { Debug(state, loc); }
 }
 
-std::unique_ptr<AST::Statements> Repl::Parse() {
+std::unique_ptr<AST::Statements> Repl::Parse(error::Log *error_log) {
   first_entry = true; // Show '>> ' the first time.
 
   SourceLocation loc;
   loc.source = this;
 
   auto state = ParseState(loc);
-  Shift(&state, &loc);
+  Shift(&state, &loc, error_log);
 
   while (true) {
     auto shift_state = state.shift_state();
     switch (shift_state) {
     case ShiftState::NeedMore:
-      Shift(&state, &loc);
+      Shift(&state, &loc, error_log);
 
       if (debug::parser) { Debug(&state, &loc); }
       continue;
@@ -1233,24 +1235,24 @@ std::unique_ptr<AST::Statements> Repl::Parse() {
       CleanUpReduction(&state, &loc);
       return move_as<AST::Statements>(state.node_stack_.back());
     case ShiftState::MustReduce:
-      Reduce(&state) || (Shift(&state, &loc), true);
+      Reduce(&state) || (Shift(&state, &loc, error_log), true);
       if (debug::parser) { Debug(&state, &loc); }
     }
   }
 }
 
-std::unique_ptr<AST::Statements> File::Parse() {
+std::unique_ptr<AST::Statements> File::Parse(error::Log *error_log) {
   SourceLocation loc;
   loc.source = this;
 
   auto state = ParseState(loc);
-  Shift(&state, &loc);
+  Shift(&state, &loc, error_log);
 
   while (state.lookahead_.node_type != Language::eof) {
     ASSERT_EQ(state.node_type_stack_.size(), state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
     if (state.shift_state() == ShiftState::NeedMore || !Reduce(&state)) {
-      Shift(&state, &loc);
+      Shift(&state, &loc, error_log);
     }
 
     if (debug::parser) { Debug(&state); }
@@ -1287,8 +1289,9 @@ std::unique_ptr<AST::Statements> File::Parse() {
 
 extern Timer timer;
 std::unordered_map<Source::Name, File *> source_map;
-std::vector<AST::Statements> ParseAllFiles() {
+std::variant<std::vector<AST::Statements>, error::Log> ParseAllFiles() {
   std::vector<AST::Statements> stmts;
+  error::Log log;
   while (!file_queue.empty()) {
     auto file_name = std::move(file_queue.front());
     file_queue.pop();
@@ -1299,8 +1302,13 @@ std::vector<AST::Statements> ParseAllFiles() {
       auto source_file              = new File(std::move(file_name));
       source_map[source_file->name] = source_file;
       // TODO Parse() should return Statements, not a unique_ptr.
-      stmts.push_back(std::move(*source_file->Parse()));
+      stmts.push_back(std::move(*source_file->Parse(&log)));
     }
   }
-  return stmts;
+
+  if (log.size() > 0) {
+    return log;
+  } else {
+    return stmts;
+  }
 }

@@ -1,5 +1,6 @@
 #include "error_log.h"
 
+#include <iomanip>
 #include <iostream>
 
 #include "ast/ast.h"
@@ -103,6 +104,92 @@ static std::string LineToDisplay(size_t line_num, const Source::Line &line,
   ASSERT_GE(border_alignment, num_digits);
   return std::string(border_alignment - num_digits, ' ') +
          std::to_string(line_num) + "| " + line.to_string() + "\n";
+}
+
+namespace {
+// TODO templatize? and merge with texspan
+struct Interval {
+  size_t start = 0, past_end = 0;
+};
+
+struct IntervalSet {
+  void insert(const Interval &i) {
+    auto lower =
+        std::lower_bound(endpoints_.begin(), endpoints_.end(), i.start);
+    auto upper =
+        std::upper_bound(endpoints_.begin(), endpoints_.end(), i.past_end);
+
+    if (std::distance(lower, upper) == 0) {
+      std::vector entries = {i.start, i.past_end};
+      endpoints_.insert(lower, entries.begin(), entries.end());
+      return;
+    }
+
+    if (std::distance(endpoints_.begin(), lower) % 2 == 0) {
+      *lower = i.start;
+      ++lower;
+    }
+    if (std::distance(endpoints_.begin(), upper) % 2 == 0) {
+      --upper;
+      *upper = i.past_end;
+    }
+    endpoints_.erase(lower, upper);
+  }
+
+  std::vector<size_t> endpoints_;
+};
+
+using DisplayAttrs = const char *;
+} // namespace
+
+static void DisplaySource(
+    const Source &source, const IntervalSet line_intervals,
+    int border_alignment,
+    const std::vector<std::pair<const TextSpan *, DisplayAttrs>> &underlines) {
+  auto iter = underlines.begin();
+  for (size_t i = 0; i < line_intervals.endpoints_.size(); i += 2) {
+    size_t line_num = line_intervals.endpoints_[i];
+    size_t end_num  = line_intervals.endpoints_[i + 1];
+    while (line_num < end_num) {
+      const auto &line = source.lines AT(line_num);
+
+      // Find the next span starting on this or a later line.
+      iter = std::lower_bound(iter, underlines.end(), line_num,
+                              [](const auto &span_and_attrs, size_t n) {
+                                return span_and_attrs.first->start.line_num < n;
+                              });
+      std::cerr << "\033[97;1m" << std::right << std::setw(border_alignment)
+                << line_num;
+      if (iter != underlines.end() && line_num == iter->first->start.line_num) {
+        auto front = std::string_view(&line[0], iter->first->start.offset);
+        auto underlined_section = std::string_view(
+            &line[iter->first->start.offset],
+            iter->first->finish.offset - iter->first->start.offset);
+        auto back = std::string_view(&line[iter->first->finish.offset]);
+
+        std::cerr << "*| "
+                  << "\033[0m" << front << iter->second << underlined_section
+                  << "\033[0m" << back << "\n";
+      } else {
+        std::cerr << " | "
+                  << "\033[0m" << line << "\n";
+      }
+
+      ++line_num;
+    }
+
+    if (i + 2 != line_intervals.endpoints_.size()) {
+      if (end_num + 1 == line_intervals.endpoints_[i + 2]) {
+        std::cerr << "\033[97;1m" << std::right << std::setw(border_alignment)
+                  << line_num << " | "
+                  << "\033[0m" << source.lines AT(end_num) << "\n";
+      } else {
+      std::cerr << "\033[97;1m" << std::right << std::setw(border_alignment + 3)
+                << "  ..."
+                << "\033[0m\n";
+      }
+    }
+  }
 }
 
 static void DisplayErrorMessage(const char *msg_head,
@@ -525,11 +612,7 @@ void CommaListStatement(const TextSpan &span) {
 
 namespace error {
 void Log::UndeclaredIdentifier(AST::Identifier *id) {
-  undeclared_ids_[id->token].emplace(id->span.source->name, id->span.start);
-}
-
-void Log::AmbiguousIdentifier(AST::Identifier *id) {
-  ambiguous_ids_[id->token].emplace(id->span.source->name, id->span.start);
+  undeclared_ids_[id->token].push_back(id);
 }
 
 void Log::PostconditionNeedsBool(AST::Expression *expr) {
@@ -545,17 +628,50 @@ void Log::PreconditionNeedsBool(AST::Expression *expr) {
       "an expression of type " +
       expr->type->to_string() + ".");
 }
+
+static auto LinesToShow(const std::vector<AST::Identifier *> &ids)
+    -> decltype(auto) {
+  IntervalSet iset;
+  std::vector<std::pair<const TextSpan *, DisplayAttrs>> underlines;
+  for (const auto &id : ids) {
+    iset.insert(
+        Interval{id->span.start.line_num - 1, id->span.finish.line_num + 2});
+    underlines.emplace_back(&id->span, "\033[31;4m");
+  }
+
+  return std::pair(iset, underlines);
+}
+
 void Log::Dump() const {
   for (const auto&[decl, ids] : out_of_order_decls_) {
     std::cerr << "Declaration of '" << decl->identifier->token
               << "' is used before it is defined (which is only allowed for "
-                 "constants).";
+                 "constants).\n\n";
 
-    // TODO DisplayErrorMessage is not exactly what I want.
-    for (const auto & id : ids) {
-      DisplayErrorMessage("", "", id->span, id->token.size());
-    }
+    auto[iset, underlines] = LinesToShow(ids);
+    iset.insert(Interval{decl->span.start.line_num - 1,
+                         decl->span.finish.line_num + 2});
+    underlines.emplace_back(&decl->identifier->span, "\033[32;4m");
+
+    DisplaySource(*(*ids.begin())->span.source, iset,
+                  static_cast<int>(NumDigits(iset.endpoints_.back() - 1)) + 2,
+                  underlines);
+    std::cerr << "\n\n";
   }
+
+  for (const auto&[token, ids] : undeclared_ids_) {
+    std::cerr << "Use of undeclared identifier '" << token << "':\n";
+
+    auto[iset, underlines] = LinesToShow(ids);
+    DisplaySource(*(*ids.begin())->span.source, iset,
+                  static_cast<int>(NumDigits(iset.endpoints_.back() - 1)) + 2,
+                  underlines);
+    std::cerr << "\n\n";
+  }
+
+
+
+
 
   for (const auto &err : errors_) { std::cerr << err; }
   LOG << "And " << (size() - errors_.size()) << " more errors.";

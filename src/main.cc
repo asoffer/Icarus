@@ -19,18 +19,18 @@ extern Scope *GlobalScope;
 
 extern void ReplEval(AST::Expression *expr);
 
-std::vector<AST::Statements> ParseAllFiles();
+std::variant<std::vector<AST::Statements>, error::Log> ParseAllFiles();
 extern Timer timer;
 
 AST::Statements global_statements;
 
 int GenerateCode() {
-  auto stmts_by_file = ParseAllFiles();
-
-  if (ErrorLog::NumErrors() != 0) {
-    ErrorLog::Dump();
-    return -1;
+  auto result = ParseAllFiles();
+  if (auto* log = std::get_if<error::Log>(&result)) {
+    log->Dump();
+    return 0;
   }
+  auto &stmts_by_file = std::get<std::vector<AST::Statements>>(result);
 
   RUN(timer, "AST Setup") {
     global_statements = AST::Statements::Merge(std::move(stmts_by_file));
@@ -64,28 +64,35 @@ int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
   Repl repl;
-  while (true) {
-    auto stmts = repl.Parse();
-    for (auto &stmt : stmts->content_) {
-      if (stmt->is<AST::Declaration>()) {
-        Context ctx;
-        auto *decl = &stmt->as<AST::Declaration>();
-        AST::DoStages<0, 2>(decl, GlobalScope, &ctx);
-        if (ctx.num_errors() != 0) {
-          ctx.DumpErrors();
-          return 0;
-        }
-      } else if (stmt->is<AST::Expression>()) {
-        auto *expr = &stmt->as<AST::Expression>();
-        expr->assign_scope(GlobalScope);
-        ReplEval(expr);
-        fprintf(stderr, "\n");
-      } else {
-        NOT_YET(*stmt);
+
+repl_start : {
+  Context ctx;
+  auto stmts = repl.Parse(&ctx.error_log_);
+  if (ctx.num_errors() > 0) {
+    ctx.DumpErrors();
+    goto repl_start;
+  }
+
+  for (auto &stmt : stmts->content_) {
+    if (stmt->is<AST::Declaration>()) {
+      auto *decl = &stmt->as<AST::Declaration>();
+      AST::DoStages<0, 2>(decl, GlobalScope, &ctx);
+      if (ctx.num_errors() != 0) {
+        ctx.DumpErrors();
+        goto repl_start;
       }
+
+    } else if (stmt->is<AST::Expression>()) {
+      auto *expr = &stmt->as<AST::Expression>();
+      expr->assign_scope(GlobalScope);
+      ReplEval(expr);
+      fprintf(stderr, "\n");
+    } else {
+      NOT_YET(*stmt);
     }
   }
-  return 0;
+  goto repl_start;
+}
 }
 
 int main(int argc, char *argv[]) {

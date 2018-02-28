@@ -29,15 +29,14 @@ struct Log {
   void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
 
   size_t size() const {
-    return undeclared_ids_.size() + ambiguous_ids_.size() +
-           out_of_order_decls_.size() + errors_.size();
+    return undeclared_ids_.size() + out_of_order_decls_.size() + errors_.size();
   }
   void Dump() const;
 
+  // TODO per source file splitting? Can't do this until you figure out the
+  // module/multi-source-file story.
   using Token = std::string;
-  std::unordered_map<Token, std::unordered_map<Source::Name, Cursor>>
-      undeclared_ids_, ambiguous_ids_;
-
+  std::unordered_map<Token, std::vector<AST::Identifier *>> undeclared_ids_;
   std::unordered_map<AST::Declaration *, std::vector<AST::Identifier *>>
       out_of_order_decls_;
 
