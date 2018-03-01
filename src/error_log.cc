@@ -113,6 +113,11 @@ struct Interval {
 };
 
 struct IntervalSet {
+  IntervalSet() = default;
+  IntervalSet(std::initializer_list<Interval> intervals) {
+    for (const auto &interval : intervals) { insert(interval); }
+  }
+
   void insert(const Interval &i) {
     auto lower =
         std::lower_bound(endpoints_.begin(), endpoints_.end(), i.start);
@@ -142,10 +147,11 @@ struct IntervalSet {
 using DisplayAttrs = const char *;
 } // namespace
 
-static void DisplaySource(
-    const Source &source, const IntervalSet line_intervals,
-    int border_alignment,
-    const std::vector<std::pair<const TextSpan *, DisplayAttrs>> &underlines) {
+template <bool AsteriskNextToErrorLine>
+static void
+WriteSource(std::ostream &os, const Source &source,
+            const IntervalSet &line_intervals, int border_alignment,
+            const std::vector<std::pair<TextSpan, DisplayAttrs>> &underlines) {
   auto iter = underlines.begin();
   for (size_t i = 0; i < line_intervals.endpoints_.size(); i += 2) {
     size_t line_num = line_intervals.endpoints_[i];
@@ -156,23 +162,20 @@ static void DisplaySource(
       // Find the next span starting on this or a later line.
       iter = std::lower_bound(iter, underlines.end(), line_num,
                               [](const auto &span_and_attrs, size_t n) {
-                                return span_and_attrs.first->start.line_num < n;
+                                return span_and_attrs.first.start.line_num < n;
                               });
-      std::cerr << "\033[97;1m" << std::right << std::setw(border_alignment)
-                << line_num;
-      if (iter != underlines.end() && line_num == iter->first->start.line_num) {
-        auto front = std::string_view(&line[0], iter->first->start.offset);
+      os << "\033[97;1m" << std::right << std::setw(border_alignment)
+         << line_num;
+      if (iter != underlines.end() && line_num == iter->first.start.line_num) {
+        auto front = std::string_view(&line[0], iter->first.start.offset);
         auto underlined_section = std::string_view(
-            &line[iter->first->start.offset],
-            iter->first->finish.offset - iter->first->start.offset);
-        auto back = std::string_view(&line[iter->first->finish.offset]);
-
-        std::cerr << "*| "
-                  << "\033[0m" << front << iter->second << underlined_section
-                  << "\033[0m" << back << "\n";
+            &line[iter->first.start.offset],
+            iter->first.finish.offset - iter->first.start.offset);
+        auto back = std::string_view(&line[iter->first.finish.offset]);
+        os << (AsteriskNextToErrorLine ? "*| \033[0m" : " | \033[0m") << front
+           << iter->second << underlined_section << "\033[0m" << back << "\n";
       } else {
-        std::cerr << " | "
-                  << "\033[0m" << line << "\n";
+        os << " | \033[0m" << line << "\n";
       }
 
       ++line_num;
@@ -180,13 +183,12 @@ static void DisplaySource(
 
     if (i + 2 != line_intervals.endpoints_.size()) {
       if (end_num + 1 == line_intervals.endpoints_[i + 2]) {
-        std::cerr << "\033[97;1m" << std::right << std::setw(border_alignment)
-                  << line_num << " | "
-                  << "\033[0m" << source.lines AT(end_num) << "\n";
+        os << "\033[97;1m" << std::right << std::setw(border_alignment)
+           << line_num << " | "
+           << "\033[0m" << source.lines AT(end_num) << "\n";
       } else {
-      std::cerr << "\033[97;1m" << std::right << std::setw(border_alignment + 3)
-                << "  ..."
-                << "\033[0m\n";
+        os << "\033[97;1m" << std::right << std::setw(border_alignment + 3)
+           << "  ...\033[0m\n";
       }
     }
   }
@@ -244,13 +246,6 @@ void InvalidRangeType(const TextSpan &span, Type *t) {
                          t->to_string() + ".";
   DisplayErrorMessage("Attempting to create a range with an invalid type.",
                       msg_foot, span, t->to_string().size());
-}
-
-void TooManyDots(const TextSpan &span, size_t num_dots) {
-  const char *msg_head = "There are too many consecutive '.' characters. I am "
-                         "assuming you meant \"..\".";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, "", span, num_dots);
 }
 
 void ShadowingDeclaration(const AST::Declaration &decl1,
@@ -629,18 +624,63 @@ void Log::PreconditionNeedsBool(AST::Expression *expr) {
       expr->type->to_string() + ".");
 }
 
-static auto LinesToShow(const std::vector<AST::Identifier *> &ids)
-    -> decltype(auto) {
+static decltype(auto) LinesToShow(const std::vector<AST::Identifier *> &ids) {
   IntervalSet iset;
-  std::vector<std::pair<const TextSpan *, DisplayAttrs>> underlines;
+  std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
   for (const auto &id : ids) {
     iset.insert(
         Interval{id->span.start.line_num - 1, id->span.finish.line_num + 2});
-    underlines.emplace_back(&id->span, "\033[31;4m");
+    underlines.emplace_back(id->span, "\033[31;4m");
   }
 
   return std::pair(iset, underlines);
 }
+
+#define MAKE_LOG_ERROR(fn_name, msg)                                           \
+  void Log::fn_name(const TextSpan &span) {                                    \
+    std::stringstream ss;                                                      \
+    ss << msg "\n\n";                                                          \
+    WriteSource<false>(                                                        \
+        ss, *span.source,                                                      \
+        {Interval{span.start.line_num, span.finish.line_num + 1}},             \
+        static_cast<int>(NumDigits(span.finish.line_num)) + 2,                 \
+        {{span, "\033[31;4m"}});                                               \
+    ss << "\n\n";                                                              \
+    errors_.push_back(ss.str());                                               \
+  }
+
+// TODO Combine these if they're on the same line.
+// TODO if you stop calling it a string-literal, these error messages will have
+// to change too.
+MAKE_LOG_ERROR(InvalidEscapedCharacterInStringLiteral,
+               "Encountered an invalid escape sequence in string-literal.")
+MAKE_LOG_ERROR(RunawayStringLiteral, "Reached end of line before finding the "
+                                     "end of a string-literal. Did you forget "
+                                     "a quotation mark?")
+MAKE_LOG_ERROR(EscapedDoubleQuoteInCharacterLiteral,
+               "The double quotation mark character (\") does not need to be "
+               "esacped in a character-literal.")
+MAKE_LOG_ERROR(InvalidEscapedCharacterInCharacterLiteral,
+               "Encounterd an invalid escape sequence in character-literal. "
+               "The valid escape sequences in a character-literal are \\\\, "
+               "\\a, \\b, \\f, \\n, \\r, \\s, \\t, and \\v.")
+MAKE_LOG_ERROR(
+    RunawayCharacterLiteral,
+    "Encountered a backtick (`), but did not see a character literal.")
+MAKE_LOG_ERROR(SpaceInCharacterLiteral, "Encountered a backtick (`) followed "
+                                        "by a space character. Space character "
+                                        "literals are written as `\\s.")
+MAKE_LOG_ERROR(TabInCharacterLiteral, "Encountered a tab in your character-literal. Tab charcater literals are written as `\t.")
+
+// TODO lexing things like 1..2
+MAKE_LOG_ERROR(TooManyDots, "There are too many consecutive period (.) "
+                            "characters. Did you mean just \"..\"?")
+MAKE_LOG_ERROR(InvalidCharacterQuestionMark,
+               "Question marks (?) are not valid Icarus syntax.")
+MAKE_LOG_ERROR(InvalidCharacterTilde,
+               "Tildes (~) are not valid Icarus syntax.")
+#undef MAKE_LOG_ERROR
+
 
 void Log::Dump() const {
   for (const auto&[decl, ids] : out_of_order_decls_) {
@@ -651,11 +691,12 @@ void Log::Dump() const {
     auto[iset, underlines] = LinesToShow(ids);
     iset.insert(Interval{decl->span.start.line_num - 1,
                          decl->span.finish.line_num + 2});
-    underlines.emplace_back(&decl->identifier->span, "\033[32;4m");
+    underlines.emplace_back(decl->identifier->span, "\033[32;4m");
 
-    DisplaySource(*(*ids.begin())->span.source, iset,
-                  static_cast<int>(NumDigits(iset.endpoints_.back() - 1)) + 2,
-                  underlines);
+    WriteSource<true>(std::cerr, *(*ids.begin())->span.source, iset,
+                      static_cast<int>(NumDigits(iset.endpoints_.back() - 1)) +
+                          2,
+                      underlines);
     std::cerr << "\n\n";
   }
 
@@ -663,18 +704,14 @@ void Log::Dump() const {
     std::cerr << "Use of undeclared identifier '" << token << "':\n";
 
     auto[iset, underlines] = LinesToShow(ids);
-    DisplaySource(*(*ids.begin())->span.source, iset,
-                  static_cast<int>(NumDigits(iset.endpoints_.back() - 1)) + 2,
-                  underlines);
+    WriteSource<true>(std::cerr, *(*ids.begin())->span.source, iset,
+                      static_cast<int>(NumDigits(iset.endpoints_.back() - 1)) +
+                          2,
+                      underlines);
     std::cerr << "\n\n";
   }
 
-
-
-
-
   for (const auto &err : errors_) { std::cerr << err; }
-  LOG << "And " << (size() - errors_.size()) << " more errors.";
 }
 
 void Log::DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id) {

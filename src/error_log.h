@@ -27,6 +27,16 @@ struct Log {
   void PreconditionNeedsBool(AST::Expression *expr);
   void PostconditionNeedsBool(AST::Expression *expr);
   void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
+  void InvalidEscapedCharacterInStringLiteral(const TextSpan &span);
+  void RunawayStringLiteral(const TextSpan &span);
+  void EscapedDoubleQuoteInCharacterLiteral(const TextSpan &span);
+  void InvalidEscapedCharacterInCharacterLiteral(const TextSpan &span);
+  void RunawayCharacterLiteral(const TextSpan &span);
+  void SpaceInCharacterLiteral(const TextSpan &span);
+  void TabInCharacterLiteral(const TextSpan &span);
+  void TooManyDots(const TextSpan &span);
+  void InvalidCharacterQuestionMark(const TextSpan &span);
+  void InvalidCharacterTilde(const TextSpan &span);
 
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() + errors_.size();
@@ -59,7 +69,6 @@ void LogGeneric(const TextSpan &span, const std::string &msg);
 // TODO build a graph of declarations that shadow each other and show connected components together.
 void ShadowingDeclaration(const AST::Declaration &decl1,
                           const AST::Declaration &decl2);
-void TooManyDots(const TextSpan &span, size_t num_dots);
 void NonWhitespaceAfterNewlineEscape(const TextSpan &span, size_t dist);
 void RunawayMultilineComment();
 void UnopTypeFail(const std::string &msg, const AST::Unop *unop);

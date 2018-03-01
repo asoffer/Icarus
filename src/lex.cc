@@ -315,7 +315,7 @@ NNT NextZeroInitiatedNumber(SourceLocation &loc) {
   }
 }
 
-NNT NextStringLiteral(SourceLocation &loc) {
+NNT NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
 
@@ -342,18 +342,18 @@ NNT NextStringLiteral(SourceLocation &loc) {
     case 't': str_lit += '\t'; break;
     case 'v': str_lit += '\v'; break;
     default:
-      if (*loc == '\'') {
-        ErrorLog::EscapedSingleQuoteInStringLit(span);
-      } else {
-        ErrorLog::InvalidEscapeCharInStringLit(span);
-      }
+      TextSpan invalid = loc.ToSpan();
+      --invalid.start.offset;
+      ++invalid.finish.offset;
+      error_log->InvalidEscapedCharacterInStringLiteral(invalid);
       str_lit += *loc;
       break;
     }
   }
 
-  if (*loc == '\n') {
-    ErrorLog::RunawayStringLit(span);
+  if (*loc == '\n' || *loc == '\0') {
+    span.finish = loc.cursor;
+    error_log->RunawayStringLiteral(span);
   } else {
     loc.Increment();
   }
@@ -362,7 +362,7 @@ NNT NextStringLiteral(SourceLocation &loc) {
   return NNT::TerminalExpression(span, IR::Val::StrLit(str_lit));
 }
 
-NNT NextCharLiteral(SourceLocation &loc) {
+NNT NextCharLiteral(SourceLocation &loc, error::Log* error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
   span.finish = loc.cursor;
@@ -370,25 +370,26 @@ NNT NextCharLiteral(SourceLocation &loc) {
 
   switch (*loc) {
   case '\t':
-    ErrorLog::TabInCharLit(span);
+    error_log->TabInCharacterLiteral(span);
     result = '\t';
     break;
   case ' ':
-    // TODO error log
+    ++span.finish.offset;
+    error_log->SpaceInCharacterLiteral(span);
     result = '\0';
     break;
   case '\0':
     span.finish = loc.cursor;
-    ErrorLog::RunawayCharLit(span);
+    error_log->RunawayCharacterLiteral(span);
     return NNT::TerminalExpression(span, IR::Val::Char('\0'));
   case '\\': {
     loc.Increment();
     switch (*loc) {
     case '\"': {
       result = '"';
-      loc.Increment();
       span.finish = loc.cursor;
-      ErrorLog::EscapedDoubleQuoteInCharLit(span);
+      ++span.finish.offset;
+      error_log->EscapedDoubleQuoteInCharacterLiteral(span);
     } break;
     case '\\': result = '\\'; break;
     case 'a': result  = '\a'; break;
@@ -401,7 +402,8 @@ NNT NextCharLiteral(SourceLocation &loc) {
     case 'v': result  = '\v'; break;
     default:
       span.finish = loc.cursor;
-      ErrorLog::InvalidEscapeCharInCharLit(span);
+      ++span.finish.offset;
+      error_log->InvalidEscapedCharacterInCharacterLiteral(span);
       result = *loc;
     }
     break;
@@ -413,7 +415,7 @@ NNT NextCharLiteral(SourceLocation &loc) {
   return NNT::TerminalExpression(span, IR::Val::Char(result));
 }
 
-NNT NextOperator(SourceLocation &loc) {
+NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
   auto span = loc.ToSpan();
   switch (*loc) {
   case '@':
@@ -483,7 +485,7 @@ NNT NextOperator(SourceLocation &loc) {
       span.finish = loc.cursor;
       return NNT(span, ".", Language::op_b);
     } else {
-      if (num_dots > 2) { ErrorLog::TooManyDots(span, num_dots); }
+      if (num_dots > 2) { error_log->TooManyDots(span); }
       span.finish = loc.cursor;
       return NNT(span, "..", Language::dots);
     }
@@ -520,7 +522,6 @@ NNT NextOperator(SourceLocation &loc) {
         return NNT::Invalid();
       }
       [[fallthrough]];
-    // Intentionally falling through. Looking at a non-whitespace after a '\'
     default:
       span.finish = loc.cursor;
       ErrorLog::NonWhitespaceAfterNewlineEscape(span, dist);
@@ -667,12 +668,12 @@ NNT NextOperator(SourceLocation &loc) {
   case '?':
     loc.Increment();
     span.finish = loc.cursor;
-    ErrorLog::InvalidCharQuestionMark(span);
+    error_log->InvalidCharacterQuestionMark(span);
     return NNT::Invalid();
   case '~':
     loc.Increment();
     span.finish = loc.cursor;
-    ErrorLog::InvalidCharTilde(span);
+    error_log->InvalidCharacterTilde(span);
     return NNT::Invalid();
   case '\'':
     loc.Increment();
@@ -725,7 +726,7 @@ NNT NextSlashInitiatedToken(SourceLocation &loc) {
 }
 } // namespace
 
-NNT NextToken(SourceLocation &loc, error::Log *) {
+NNT NextToken(SourceLocation &loc, error::Log *error_log) {
 restart:
   // Delegate based on the next character in the file stream
   if (loc.source->seen_eof) {
@@ -739,8 +740,8 @@ restart:
   NNT nnt = NNT::Invalid();
   switch (*loc) {
   case '0': nnt = NextZeroInitiatedNumber(loc); break;
-  case '`': nnt = NextCharLiteral(loc); break;
-  case '"': nnt = NextStringLiteral(loc); break;
+  case '`': nnt = NextCharLiteral(loc, error_log); break;
+  case '"': nnt = NextStringLiteral(loc, error_log); break;
   case '/': nnt = NextSlashInitiatedToken(loc); break;
   case '\t':
   case ' ':
@@ -748,7 +749,7 @@ restart:
     goto restart; // Skip whitespace
   case '\n':
   case '\0': loc.Increment(); return NNT(loc.ToSpan(), "", Language::newline);
-  default: nnt = NextOperator(loc); break;
+  default: nnt = NextOperator(loc, error_log); break;
   }
   if (nnt == NNT::Invalid()) { goto restart; }
   return nnt;
