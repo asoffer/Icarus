@@ -1,10 +1,8 @@
-#ifndef ICARUS_INPUT_CURSOR_H
-#define ICARUS_INPUT_CURSOR_H
+#ifndef ICARUS_FRONTEND_TEXT_SPAN_H
+#define ICARUS_FRONTEND_TEXT_SPAN_H
 
 #include "../base/debug.h"
 #include "../base/source.h"
-
-#include <string>
 
 struct Cursor {
   u32 offset   = 0;
@@ -57,4 +55,4 @@ struct SourceLocation {
   Source *source = nullptr;
 };
 
-#endif // ICARUS_INPUT_CURSOR_H
+#endif // ICARUS_FRONTEND_TEXT_SPAN_H

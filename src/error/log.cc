@@ -13,8 +13,6 @@ using LineNum    = size_t;
 using FileToLineNumMap = std::unordered_map<Source::Name, std::vector<LineNum>>;
 static FileToLineNumMap global_non_decl;
 
-size_t ErrorLog::num_errs_ = 0;
-
 static inline size_t NumDigits(size_t n) {
   if (n == 0) { return 1; }
   size_t counter = 0;
@@ -23,67 +21,6 @@ static inline size_t NumDigits(size_t n) {
     ++counter;
   }
   return counter;
-}
-
-static inline std::string NumTimes(size_t n) {
-  switch (n) {
-  case 1: return "once";
-  case 2: return "twice";
-  default: return std::to_string(n) + " times";
-  }
-}
-
-static void GatherAndDisplayGlobalDeclErrors() {
-  if (global_non_decl.empty()) { return; }
-
-  size_t num_instances = 0;
-  for (const auto & [ key, val ] : global_non_decl) {
-    num_instances += val.size();
-  }
-
-  std::cerr << "Found " << num_instances << " non-declaration statement"
-            << (num_instances == 1 ? "" : "s")
-            << " at the top level. All top-level statements must either be "
-               "declarations, imports, or void compile-time evaluations.";
-
-  for (const auto & [ key, val ] : global_non_decl) {
-    std::cerr << "  Found " << val.size()
-              << (val.size() == 1 ? " instance in '" : " instances in '") << key
-              << "':\n";
-
-    int line_num_width   = (int)NumDigits(val.back());
-    size_t last_line_num = val.front();
-    for (auto line_num : val) {
-      // TODO alignment
-      if (line_num - last_line_num == 2) {
-        auto line = source_map AT(key)->lines AT(line_num - 1);
-        std::cerr << (line_num - 1) << "| " << line << '\n';
-      } else if (line_num - last_line_num == 3) {
-        auto line = source_map AT(key)->lines AT(line_num - 1);
-        std::cerr << (line_num - 1) << "| " << line << '\n';
-        line = source_map AT(key)->lines AT(line_num - 2);
-        std::cerr << (line_num - 2) << "| " << line << '\n';
-      } else if (line_num - last_line_num > 3) {
-        std::cerr << std::string(static_cast<size_t>(line_num_width) + 1, ' ')
-                  << "...|\n";
-      }
-
-      // TODO alignment
-      auto line = source_map AT(key)->lines AT(line_num);
-      std::cerr << ">" << line_num << "| " << line << '\n';
-      last_line_num = line_num;
-    }
-  }
-}
-
-void ErrorLog::Dump() {
-  // TODO fix this repsonse regarding imports.
-  GatherAndDisplayGlobalDeclErrors();
-
-  std::cerr << num_errs_ << " error";
-  if (num_errs_ != 1) { std::cerr << "s"; }
-
-  std::cerr << " found." << std::endl;
 }
 
 static std::string LineToDisplay(size_t line_num, const Source::Line &line,
@@ -139,7 +76,7 @@ using DisplayAttrs = const char *;
 template <bool AsteriskNextToErrorLine>
 static void
 WriteSource(std::ostream &os, const Source &source,
-            const IntervalSet &line_intervals, int border_alignment,
+            const IntervalSet &line_intervals, size_t border_alignment,
             const std::vector<std::pair<TextSpan, DisplayAttrs>> &underlines) {
   auto iter = underlines.begin();
   for (size_t i = 0; i < line_intervals.endpoints_.size(); i += 2) {
@@ -153,8 +90,8 @@ WriteSource(std::ostream &os, const Source &source,
                               [](const auto &span_and_attrs, size_t n) {
                                 return span_and_attrs.first.start.line_num < n;
                               });
-      os << "\033[97;1m" << std::right << std::setw(border_alignment)
-         << line_num;
+      os << "\033[97;1m" << std::right
+         << std::setw(static_cast<int>(border_alignment)) << line_num;
       // TODO handle multiple spans on a single line.
       // TODO Handle spans crossing multiple lines.
       if (iter != underlines.end() && line_num == iter->first.start.line_num) {
@@ -174,11 +111,12 @@ WriteSource(std::ostream &os, const Source &source,
 
     if (i + 2 != line_intervals.endpoints_.size()) {
       if (end_num + 1 == line_intervals.endpoints_[i + 2]) {
-        os << "\033[97;1m" << std::right << std::setw(border_alignment)
-           << line_num << " | "
+        os << "\033[97;1m" << std::right
+           << std::setw(static_cast<int>(border_alignment)) << line_num << " | "
            << "\033[0m" << source.lines AT(end_num) << "\n";
       } else {
-        os << "\033[97;1m" << std::right << std::setw(border_alignment + 3)
+        os << "\033[97;1m" << std::right
+           << std::setw(static_cast<int>(border_alignment) + 3)
            << "  ...\033[0m\n";
       }
     }
@@ -214,7 +152,6 @@ void NullCharInSrc(const TextSpan &span) {
             << span.start.line_num
             << ". I am ignoring it and moving on. Are you sure \""
             << span.source->name << "\" is a source file?\n\n";
-  ++num_errs_;
 }
 
 void NonGraphicCharInSrc(const TextSpan &span) {
@@ -222,16 +159,11 @@ void NonGraphicCharInSrc(const TextSpan &span) {
             << span.start.line_num
             << ". I am ignoring it and moving on. Are you sure \""
             << span.source->name << "\" is a source file?\n\n";
-  ++num_errs_;
 }
 
-void LogGeneric(const TextSpan &, const std::string &msg) {
-  ++num_errs_;
-  std::cerr << msg;
-}
+void LogGeneric(const TextSpan &, const std::string &msg) { std::cerr << msg; }
 
 void InvalidRangeType(const TextSpan &span, Type *t) {
-  ++num_errs_;
   std::string msg_foot = "Expected type: int, uint, or char\n"
                          "Given type: " +
                          t->to_string() + ".";
@@ -249,7 +181,6 @@ void ShadowingDeclaration(const AST::Declaration &decl1,
   auto line_num2 = decl2.span.start.line_num;
   auto align =
       std::max(size_t{4}, NumDigits(std::max(line_num1, line_num2)) + 2);
-  ++num_errs_;
   std::cerr << "Ambiguous declarations:\n\n"
             << LineToDisplay(line_num1, line1, align) << '\n'
             << LineToDisplay(line_num2, line2, align) << '\n';
@@ -259,11 +190,9 @@ void InvalidStringIndex(const TextSpan &span, Type *index_type) {
   std::string msg_head = "String indexed by an invalid type. Expected an int "
                          "or uint, but encountered a " +
                          index_type->to_string() + ".";
-  ++num_errs_;
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 void NotAType(AST::Expression *expr, Type *t) {
-  ++num_errs_;
   std::string msg_head =
       "Expression was expected to be a type, but instead it was a(n) " +
       t->to_string() + ".";
@@ -271,33 +200,19 @@ void NotAType(AST::Expression *expr, Type *t) {
 }
 
 void IndeterminantType(AST::Expression *expr) {
-  ++num_errs_;
   DisplayErrorMessage("Cannot determine the type of the expression:", "",
                       expr->span, 1);
-}
-
-void CyclicDependency(AST::Node *node) {
-  ++num_errs_;
-  DisplayErrorMessage("This expression's type is declared self-referentially.",
-                      "", node->span, 1);
-}
-
-void GlobalNonDecl(const TextSpan &span) {
-  ++num_errs_;
-  global_non_decl[span.source->name].push_back(span.start.line_num);
 }
 
 void NonIntegralArrayIndex(const TextSpan &span, const Type *index_type) {
   std::string msg_head = "Array is being indexed by an expression of type " +
                          index_type->to_string() + ".";
-  ++num_errs_;
   DisplayErrorMessage(
       msg_head.c_str(),
       "Arrays must be indexed by integral types (either int or uint)", span, 1);
 }
 
 void InvalidAddress(const TextSpan &span, Assign mode) {
-  ++num_errs_;
   if (mode == Assign::Const) {
     DisplayErrorMessage(
         "Attempting to take the address of an identifier marked as const", "",
@@ -312,7 +227,6 @@ void InvalidAddress(const TextSpan &span, Assign mode) {
 }
 
 void InvalidAssignment(const TextSpan &span, Assign mode) {
-  ++num_errs_;
   if (mode == Assign::Const) {
     DisplayErrorMessage("Attempting to assign to an identifier marked as const",
                         "", span, 1);
@@ -329,37 +243,31 @@ void CaseLHSBool(const TextSpan &, const TextSpan &span, const Type *t) {
                          "must have type bool. However, the expression has "
                          "type " +
                          t->to_string() + ".";
-  ++num_errs_;
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void MissingMember(const TextSpan &span, const std::string &member_name,
                    const Type *t) {
-  ++num_errs_;
   std::string msg_head = "Expressions of type `" + t->to_string() +
                          "` have no member named '" + member_name + "'.";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void IndexingNonArray(const TextSpan &span, const Type *t) {
-  ++num_errs_;
   DisplayErrorMessage("Cannot index into a non-array type.",
                       "Indexed type is a `" + t->to_string() + "`.", span, 1);
 }
 
 void UnopTypeFail(const std::string &msg, const AST::Unop *unop) {
-  ++num_errs_;
   DisplayErrorMessage(msg.c_str(), "", unop->span, 1);
 }
 
 void SlicingNonArray(const TextSpan &span, const Type *t) {
-  ++num_errs_;
   DisplayErrorMessage("Cannot slice a non-array type.",
                       "Sliced type is a `" + t->to_string() + "`.", span, 1);
 }
 
 void AssignmentArrayLength(const TextSpan &span, size_t len) {
-  ++num_errs_;
   std::string msg_head = "Invalid assignment. Array on right-hand side has "
                          "unknown length, but lhs is known to be of length " +
                          std::to_string(len) + ".";
@@ -369,7 +277,6 @@ void AssignmentArrayLength(const TextSpan &span, size_t len) {
 
 void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
                        const Type *lhs, const Type *rhs) {
-  ++num_errs_;
   std::string msg_head = "Already found a match for operator `" + op_symbol +
                          "` with types " + lhs->to_string() + " and " +
                          rhs->to_string() + ".";
@@ -380,7 +287,6 @@ void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
 
 void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
                      const Type *lhs, const Type *rhs) {
-  ++num_errs_;
   std::string msg_head = "No known operator overload for operator `" +
                          op_symbol + "` with types " + lhs->to_string() +
                          " and " + rhs->to_string() + ".";
@@ -389,7 +295,6 @@ void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
 }
 
 void InvalidRangeTypes(const TextSpan &span, const Type *lhs, const Type *rhs) {
-  ++num_errs_;
   std::string msg_head = "No range construction for types " + lhs->to_string() +
                          " .. " + rhs->to_string() + ".";
   // TODO underline length is incorrect?
@@ -398,7 +303,6 @@ void InvalidRangeTypes(const TextSpan &span, const Type *lhs, const Type *rhs) {
 
 void AssignmentTypeMismatch(const TextSpan &span, const Type *lhs,
                             const Type *rhs) {
-  ++num_errs_;
   std::string msg_head = "Invalid assignment. Left-hand side has type " +
                          lhs->to_string() + ", but right-hand side has type " +
                          rhs->to_string() + ".";
@@ -407,28 +311,24 @@ void AssignmentTypeMismatch(const TextSpan &span, const Type *lhs,
 }
 
 void InvalidCast(const TextSpan &span, const Type *from, const Type *to) {
-  ++num_errs_;
   std::string msg_head = "No valid cast from `" + from->to_string() + "` to `" +
                          to->to_string() + "`.";
   DisplayErrorMessage(msg_head.c_str(), "", span, 2);
 }
 
 void NotAType(const TextSpan &span, const std::string &id_tok) {
-  ++num_errs_;
   std::string msg_head = "In declaration of `" + id_tok +
                          "`, the declared type is not a actually a type.";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void DeclaredVoidType(const TextSpan &span, const std::string &id_tok) {
-  ++num_errs_;
   std::string msg_head =
       "Identifier `" + id_tok + "`is declared to have type `void`.";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void InitWithNull(const TextSpan &span, const Type *t, const Type *intended) {
-  ++num_errs_;
   std::string msg_head = "Cannot initialize an identifier of type " +
                          t->to_string() +
                          " with null. Did you mean to declare it as " +
@@ -437,14 +337,12 @@ void InitWithNull(const TextSpan &span, const Type *t, const Type *intended) {
 }
 
 void InvalidAssignDefinition(const TextSpan &span, const Type *t) {
-  ++num_errs_;
   std::string msg_head =
       "Cannot define assignment function for type " + t->to_string() + ".";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void InvalidScope(const TextSpan &span, const Type *t) {
-  ++num_errs_;
   std::string msg_head =
       "Object of type '" + t->to_string() + "' used as if it were a scope.";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
@@ -453,14 +351,12 @@ void InvalidScope(const TextSpan &span, const Type *t) {
 // TODO better error message for repeated enum name
 #define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \
   void fn_name(const TextSpan &span) {                                         \
-    ++num_errs_;                                                               \
     DisplayErrorMessage(msg_head, msg_foot, span, underline_length);           \
   }
 #include "../config/error.conf"
 #undef ERROR_MACRO
 
 void InvalidReturnType(const TextSpan &span, Type *given, Type *correct) {
-  ++num_errs_;
   std::string msg_head = "Invalid return type on line " +
                          std::to_string(span.start.line_num) + " in \"" +
                          span.source->name.c_str() + "\".";
@@ -474,7 +370,6 @@ void InvalidReturnType(const TextSpan &span, Type *given, Type *correct) {
 }
 
 void ChainTypeMismatch(const TextSpan &span, std::set<Type *> types) {
-  ++num_errs_;
   std::stringstream ss;
   ss << "Found the following types in the expression:\n";
   for (auto t : types) { ss << "  * " << t->to_string() << "\n"; }
@@ -483,7 +378,6 @@ void ChainTypeMismatch(const TextSpan &span, std::set<Type *> types) {
 }
 
 void UserDefinedError(const TextSpan &span, const std::string &msg) {
-  ++num_errs_;
   DisplayErrorMessage(msg.c_str(), "", span, 1);
 }
 
@@ -513,18 +407,15 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
 
     std::vector<TextSpan> locs;
     for (auto & [ key, val ] : case_ptr->key_vals) {
-      ++num_errs_;
       if (val->type == Err || val->type == correct) { continue; }
       locs.push_back(val->span);
     }
 
-    num_errs_ += locs.size();
     DisplayLines(locs);
     std::cerr << "Expected an expression of type " << correct->to_string()
               << ".\n\n";
 
   } else {
-    ++num_errs_;
     std::cerr << "Type mismatch in case-expression on line "
               << case_ptr->span.start.line_num << " in \""
               << case_ptr->span.source->name.to_string() << "\".\n";
@@ -532,7 +423,6 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
 }
 
 void UninferrableType(const TextSpan &span) {
-  ++num_errs_;
   DisplayErrorMessage("Expression cannot have it's type inferred", "", span, 1);
 }
 } // namespace ErrorLog
@@ -556,13 +446,14 @@ void Log::PreconditionNeedsBool(AST::Expression *expr) {
       expr->type->to_string() + ".");
 }
 
-static decltype(auto) LinesToShow(const std::vector<AST::Identifier *> &ids) {
+template <typename ExprContainer>
+static decltype(auto) LinesToShow(const ExprContainer &exprs) {
   IntervalSet iset;
   std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
-  for (const auto &id : ids) {
-    iset.insert(
-        Interval{id->span.start.line_num - 1, id->span.finish.line_num + 2});
-    underlines.emplace_back(id->span, "\033[31;4m");
+  for (const auto &expr : exprs) {
+    iset.insert(Interval{expr->span.start.line_num - 1,
+                         expr->span.finish.line_num + 2});
+    underlines.emplace_back(expr->span, "\033[31;4m");
   }
 
   return std::pair(iset, underlines);
@@ -575,8 +466,7 @@ static decltype(auto) LinesToShow(const std::vector<AST::Identifier *> &ids) {
     WriteSource<false>(                                                        \
         ss, *span.source,                                                      \
         {Interval{span.start.line_num, span.finish.line_num + 1}},             \
-        static_cast<int>(NumDigits(span.finish.line_num)) + 2,                 \
-        {{span, "\033[31;4m"}});                                               \
+        NumDigits(span.finish.line_num) + 2, {{span, "\033[31;4m"}});          \
     ss << "\n\n";                                                              \
     errors_.push_back(ss.str());                                               \
   }
@@ -596,7 +486,7 @@ void Log::DoubleDeclAssignment(const TextSpan &decl_span,
       ss, *decl_span.source,
       {Interval{decl_span.start.line_num, decl_span.finish.line_num + 1},
        Interval{val_span.start.line_num, val_span.finish.line_num + 1}},
-      static_cast<int>(NumDigits(val_span.finish.line_num)) + 2,
+      NumDigits(val_span.finish.line_num) + 2,
       {{decl_span, "\033[31;4m"}, {val_span, "\033[31;4m"}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -607,7 +497,7 @@ void Log::Reserved(const TextSpan &span, const std::string &token) {
   ss << "Identifier '" << token << "' is a reserved keyword.\n\n";
   WriteSource<false>(ss, *span.source,
                      {Interval{span.start.line_num, span.finish.line_num + 1}},
-                     static_cast<int>(NumDigits(span.finish.line_num)) + 2,
+                     NumDigits(span.finish.line_num) + 2,
                      {{span, "\033[31;4m"}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -618,7 +508,7 @@ void Log::NotBinary(const TextSpan &span, const std::string &token) {
   ss << "Operator '" << token << "' is not a binary operator.";
   WriteSource<false>(ss, *span.source,
                      {Interval{span.start.line_num, span.finish.line_num + 1}},
-                     static_cast<int>(NumDigits(span.finish.line_num)) + 2,
+                     NumDigits(span.finish.line_num) + 2,
                      {{span, "\033[31;4m"}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -643,7 +533,7 @@ void Log::PositionalArgumentFollowingNamed(
 
   WriteSource<false>(
       ss, *named_span.source, iset,
-      static_cast<int>(NumDigits(pos_spans.back().finish.line_num)) + 2,
+      NumDigits(pos_spans.back().finish.line_num) + 2,
       underlines);
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -660,12 +550,34 @@ void Log::UnknownParseError(const std::vector<TextSpan> &lines) {
   }
   WriteSource<true>(
       ss, *lines.front().source, iset,
-      static_cast<int>(NumDigits(lines.back().finish.line_num)) + 2, {{}});
+      NumDigits(lines.back().finish.line_num) + 2, {{}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
 
+std::vector<const AST::Expression *> *Log::CyclicDependency() {
+  cyc_dep_vecs_.push_back(
+      std::make_unique<std::vector<const AST::Expression *>>());
+  return cyc_dep_vecs_.back().get();
+}
+
 void Log::Dump() const {
+  for (const auto& cyc_dep_vec : cyc_dep_vecs_) {
+    std::cerr << "Found a cylcic dependency:\n\n";
+
+    // Filter out only the things worth showing.
+    std::vector<const AST::Expression *> exprs;
+    for (auto *expr : *cyc_dep_vec) {
+      if (expr->is<AST::Binop>()) {continue; }
+      exprs.push_back(expr);
+    }
+
+    auto[iset, underlines] = LinesToShow(exprs);
+    WriteSource<false>(std::cerr, *exprs.front()->span.source, iset,
+                       NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
+    std::cerr << "\n\n";
+  }
+
   for (const auto&[decl, ids] : out_of_order_decls_) {
     std::cerr << "Declaration of '" << decl->identifier->token
               << "' is used before it is defined (which is only allowed for "
@@ -676,10 +588,8 @@ void Log::Dump() const {
                          decl->span.finish.line_num + 2});
     underlines.emplace_back(decl->identifier->span, "\033[32;4m");
 
-    WriteSource<true>(std::cerr, *(*ids.begin())->span.source, iset,
-                      static_cast<int>(NumDigits(iset.endpoints_.back() - 1)) +
-                          2,
-                      underlines);
+    WriteSource<true>(std::cerr, *ids.front()->span.source, iset,
+                      NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
     std::cerr << "\n\n";
   }
 
@@ -687,10 +597,8 @@ void Log::Dump() const {
     std::cerr << "Use of undeclared identifier '" << token << "':\n";
 
     auto[iset, underlines] = LinesToShow(ids);
-    WriteSource<true>(std::cerr, *(*ids.begin())->span.source, iset,
-                      static_cast<int>(NumDigits(iset.endpoints_.back() - 1)) +
-                          2,
-                      underlines);
+    WriteSource<true>(std::cerr, *ids.front()->span.source, iset,
+                      NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
     std::cerr << "\n\n";
   }
 

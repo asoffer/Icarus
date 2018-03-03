@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "../base/debug.h"
-#include "../input/cursor.h"
+#include "../frontend/text_span.h"
 #include "../ir/val.h"
 #include "../operators.h"
 #include "../scope.h"
@@ -29,6 +29,7 @@ struct Func;
 namespace AST {
 struct Statements;
 
+// TODO this is hopefully no longer necessary.
 #define STAGE_CHECK                                                            \
   do {                                                                         \
     if (stage_range_.high < ThisStage()) { return; }                           \

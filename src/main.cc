@@ -34,11 +34,12 @@ int GenerateCode() {
 
   RUN(timer, "Verify and Emit") {
     Context ctx;
-    AST::DoStages<0, 2>(&global_statements, GlobalScope, &ctx);
+    AST::DoStages<0, 1>(&global_statements, GlobalScope, &ctx);
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
       return 0;
-    }
+   }
+     AST::DoStages<2, 2>(&global_statements, GlobalScope, &ctx);
   }
 
   RUN(timer, "Verify preconditions") {

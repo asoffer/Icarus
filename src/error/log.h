@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 #include "../base/debug.h"
-#include "../input/cursor.h"
+#include "../frontend/text_span.h"
 
 struct Type;
 
@@ -41,18 +41,24 @@ struct Log {
   void UnknownParseError(const std::vector<TextSpan> &span);
   void PositionalArgumentFollowingNamed(const std::vector<TextSpan> &pos_spans,
                                         const TextSpan &named_span);
+  std::vector<const AST::Expression *> *CyclicDependency();
 
   size_t size() const {
-    return undeclared_ids_.size() + out_of_order_decls_.size() + errors_.size();
+    return undeclared_ids_.size() + out_of_order_decls_.size() +
+           errors_.size() + cyc_dep_vecs_.size();
   }
   void Dump() const;
 
   // TODO per source file splitting? Can't do this until you figure out the
   // module/multi-source-file story.
   using Token = std::string;
-  std::unordered_map<Token, std::vector<AST::Identifier *>> undeclared_ids_;
+  std::unordered_map<Token, std::vector<AST::Identifier *>>
+      undeclared_ids_;
   std::unordered_map<AST::Declaration *, std::vector<AST::Identifier *>>
       out_of_order_decls_;
+
+  std::vector<std::unique_ptr<std::vector<const AST::Expression *>>>
+      cyc_dep_vecs_;
 
   std::vector<std::string> errors_;
 };
@@ -65,10 +71,6 @@ struct Log {
 #include "ir/property.h"
 
 namespace ErrorLog {
-extern size_t num_errs_;
-
-void Dump();
-inline size_t NumErrors() { return num_errs_; }
 void LogGeneric(const TextSpan &span, const std::string &msg);
 // TODO build a graph of declarations that shadow each other and show connected components together.
 void ShadowingDeclaration(const AST::Declaration &decl1,
@@ -91,7 +93,6 @@ void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_loc);
 
 void NullCharInSrc(const TextSpan &loc);
 void NonGraphicCharInSrc(const TextSpan &loc);
-void GlobalNonDecl(const TextSpan &loc);
 
 void NotBinary(const TextSpan &span, const std::string &token);
 void Reserved(const TextSpan &span, const std::string &token);
@@ -113,7 +114,6 @@ void ChainTypeMismatch(const TextSpan &span, std::set<Type *> types);
 
 void NotAType(AST::Expression *expr, Type *t);
 void IndeterminantType(AST::Expression *expr);
-void CyclicDependency(AST::Node *node);
 
 void InvalidRangeType(const TextSpan &span, Type *t);
 void InvalidStringIndex(const TextSpan &span, Type *index_type);

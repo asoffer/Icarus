@@ -8,6 +8,8 @@
 
 #include "base/util.h"
 
+struct Context;
+
 namespace IR {
 struct Val;
 } // namespace IR
@@ -53,8 +55,8 @@ struct Scope : public base::Cast<Scope> {
 
   AST::Declaration *DeclReferencedOrNull(const std::string &name,
                                          Type *declared_type);
-
-  std::vector<AST::Declaration *> AllDeclsWithId(const std::string &id);
+  std::pair<std::vector<AST::Declaration *>, std::vector<AST::Declaration *>>
+  AllDeclsWithId(const std::string &id, Context *ctx);
 
   template <typename Fn>
   void ForEachDeclHere(const Fn& fn) const {

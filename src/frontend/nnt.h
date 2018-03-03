@@ -2,14 +2,14 @@
 #define ICARUS_NNT
 
 #include <memory>
-#include "input/cursor.h"
+#include "text_span.h"
 
 namespace Language {
-constexpr size_t left_assoc  = 0;
-constexpr size_t right_assoc = 1;
-constexpr size_t non_assoc   = 2;
-constexpr size_t chain_assoc = 3;
-constexpr size_t assoc_mask  = 3;
+inline constexpr size_t left_assoc  = 0;
+inline constexpr size_t right_assoc = 1;
+inline constexpr size_t non_assoc   = 2;
+inline constexpr size_t chain_assoc = 3;
+inline constexpr size_t assoc_mask  = 3;
 
 // Associativity stored in the lowest two bits.
 size_t precedence(Operator op);

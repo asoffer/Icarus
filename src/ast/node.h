@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "../base/util.h"
-#include "../input/cursor.h"
+#include "../frontend/text_span.h"
 
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const override;                      \

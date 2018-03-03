@@ -559,8 +559,8 @@ void ReplEval(AST::Expression *expr) {
     IR::Block::Current = fn->entry();
     Context ctx;
     auto expr_val      = expr->EmitIR(&ctx);
-    if (ErrorLog::NumErrors() != 0) {
-      ErrorLog::Dump();
+    if (ctx.num_errors() != 0) {
+      ctx.DumpErrors();
       return;
     }
 

@@ -1,4 +1,4 @@
-#include "cursor.h"
+#include "text_span.h"
 #include "../base/debug.h"
 
 static void IncrementCursor(Source *source, Cursor *cursor) {

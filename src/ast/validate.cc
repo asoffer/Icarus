@@ -13,21 +13,40 @@ static constexpr int ThisStage() { return 1; }
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
+#define HANDLE_CYCLIC_DEPENDENCIES                                             \
+  do {                                                                         \
+    if (ctx->cyc_dep_vec_ != nullptr) {                                        \
+      if (this == ctx->cyc_dep_vec_->front()) {                                \
+        ctx->cyc_dep_vec_ = nullptr;                                           \
+      } else {                                                                 \
+        type = Err;                                                            \
+        ctx->cyc_dep_vec_->push_back(this);                                    \
+      }                                                                        \
+      limit_to(StageRange::Nothing());                                         \
+      return;                                                                  \
+    }                                                                          \
+  } while (false)
+
 #define STARTING_CHECK                                                         \
   do {                                                                         \
     ASSERT(scope_, "Need to first call assign_scope()");                       \
+    HANDLE_CYCLIC_DEPENDENCIES;                                                \
     if (type == Unknown) {                                                     \
-      ErrorLog::CyclicDependency(this);                                        \
+      ctx->cyc_dep_vec_ = ctx->error_log_.CyclicDependency();                  \
+      ctx->cyc_dep_vec_->push_back(this);                                      \
       type = Err;                                                              \
       limit_to(StageRange::Nothing());                                         \
+      return;                                                                  \
     }                                                                          \
     if (type != nullptr) { return; }                                           \
     type = Unknown;                                                            \
+    STAGE_CHECK;                                                               \
   } while (false)
 
 #define VALIDATE_AND_RETURN_ON_ERROR(expr)                                     \
   do {                                                                         \
     expr->Validate(ctx);                                                       \
+    HANDLE_CYCLIC_DEPENDENCIES;                                                \
     if (expr->type == Err) {                                                   \
       type = Err;                                                              \
       /* TODO Maybe this should be Nothing() */                                \
@@ -43,8 +62,8 @@ struct ArgumentMetaData {
   bool has_default;
 };
 
-// TODO: This algorithm is sufficiently complicated you should combine it with
-// proof of correctness and good explanation of what it does.
+// TODO: This algorithm is sufficiently complicated you should combine it
+// with proof of correctness and good explanation of what it does.
 static bool
 CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
                             const std::vector<ArgumentMetaData> &data2) {
@@ -63,8 +82,8 @@ CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
 
   std::vector<size_t> indices = {0};
   // One useful invariant here is that accumulating delta_fwd_matches always
-  // yields a non-negative integer. This is because any subtraction that occurs
-  // is always preceeded by an addition.
+  // yields a non-negative integer. This is because any subtraction that
+  // occurs is always preceeded by an addition.
   size_t accumulator = 0;
   for (size_t i = 0; i < delta_fwd_matches.size(); ++i) {
     if (data1[i].type != data2[i].type) { break; }
@@ -72,11 +91,12 @@ CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
     if (accumulator == 0) { indices.push_back(i + 1); }
   }
 
-  // TODO working backwards through indices should allow you to avoid having to
-  // copy index2 each time and redo the same work repeatedly.
+  // TODO working backwards through indices should allow you to avoid having
+  // to copy index2 each time and redo the same work repeatedly.
   for (auto index : indices) {
-    // Everything after this index would have to be named or defaulted. named
-    // values that match but with different types would have to be defaulted.
+    // Everything after this index would have to be named or defaulted.
+    // named values that match but with different types would have to be
+    // defaulted.
     auto index2_copy = index2;
     for (size_t i = index; i < data1.size(); ++i) {
       auto iter = index2_copy.find(data1[i].name);
@@ -93,7 +113,8 @@ CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
 
         // These two parameters can both be named explicitly. Remove it from
         // index2_copy so what we're left with are all those elements in the
-        // second function which haven't been named by anything in the first.
+        // second function which haven't been named by anything in the
+        // first.
         index2_copy.erase(iter);
       }
     }
@@ -154,9 +175,9 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
       }
       // TODO Note the trickiness in names above. has_default if it isn't
       // default initailized. This is because IsDefaultInitialized means for
-      // declarations that you do not have an "= something" part. It's just the
-      // "foo: bar" part. But for function arguments, we call the "= something"
-      // part the default.
+      // declarations that you do not have an "= something" part. It's just
+      // the "foo: bar" part. But for function arguments, we call the "=
+      // something" part the default.
       return metadata;
 
     } else {
@@ -228,8 +249,8 @@ static Type *TypeJoin(Type *lhs, Type *rhs) {
     vars.insert(vars.end(), rhs_types.begin(), rhs_types.end());
     return Var(std::move(vars));
   } else if (rhs->is<Variant>()) { // lhs is not a variant
-    // TODO faster lookups? maybe not represented as a vector. at least give a
-    // better interface.
+    // TODO faster lookups? maybe not represented as a vector. at least give
+    // a better interface.
     for (Type *v : rhs->as<Variant>().variants_) {
       if (lhs == v) { return rhs; }
     }
@@ -271,8 +292,8 @@ std::optional<Binding> Binding::MakeUntyped(
 
   // Match the named arguments
   for (const auto & [ name, expr ] : args.named_) {
-    // TODO emit an error explaining why we couldn't use this one if there was
-    // a missing named argument.
+    // TODO emit an error explaining why we couldn't use this one if there
+    // was a missing named argument.
     auto iter = index_lookup.find(name);
     if (iter == index_lookup.end()) { return std::nullopt; }
     result.exprs_[iter->second] = std::pair(nullptr, expr.get());
@@ -284,9 +305,9 @@ Binding::Binding(AST::Expression *fn_expr, size_t n)
     : fn_expr_(fn_expr),
       exprs_(n, std::pair<Type *, Expression *>(nullptr, nullptr)) {}
 
-// We already know there can be at most one match (multiple matches would have
-// been caught by shadowing), so we just return a pointer to it if it exists,
-// and null otherwise.
+// We already know there can be at most one match (multiple matches would
+// have been caught by shadowing), so we just return a pointer to it if it
+// exists, and null otherwise.
 std::optional<DispatchTable>
 Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
   DispatchTable table;
@@ -369,8 +390,8 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
         goto next_option;
       }
     } else if (fn_option->type == Err) {
-      // If there's a type error, do I want to exit entirely or assume this one
-      // doesn't exist? and juts goto next_option?
+      // If there's a type error, do I want to exit entirely or assume this
+      // one doesn't exist? and juts goto next_option?
       return std::nullopt;
 
     } else {
@@ -402,8 +423,8 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
         return std::pair(nullptr, Binding{});
       }
     } else {
-      // TODO must this type have been computed already? The line below might be
-      // superfluous.
+      // TODO must this type have been computed already? The line below
+      // might be superfluous.
       inputs[i]->init_val->Validate(&new_ctx);
       input_type = inputs[i]->init_val->type;
     }
@@ -464,8 +485,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
   return std::pair(&iter->second, binding);
 }
 
-void GenericFunctionLiteral::Validate(Context * /* ctx */) {
-  STAGE_CHECK;
+void GenericFunctionLiteral::Validate(Context *ctx) {
   STARTING_CHECK;
   lvalue = Assign::Const;
   type   = Generic; // Doable at construction.
@@ -558,10 +578,10 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
     }
   }
 
-  // TODO there are many errors that might occur here and we should export all
-  // of them. For instance, I might try to compare two arrays of differing fixed
-  // lengths with '<'. We should not exit early, but rather say that you can't
-  // use '<' and that the lengths are different.
+  // TODO there are many errors that might occur here and we should export
+  // all of them. For instance, I might try to compare two arrays of
+  // differing fixed lengths with '<'. We should not exit early, but rather
+  // say that you can't use '<' and that the lengths are different.
   if (lhs_type->is<Array>()) {
     if (rhs_type->is<Array>()) {
       if (op != Language::Operator::Eq && op != Language::Operator::Ne) {
@@ -589,8 +609,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
           return false;
         }
       } else {
-        return true; // If at least one array length is variable, we should be
-                     // allowed to compare them.
+        return true; // If at least one array length is variable, we should
+                     // be allowed to compare them.
       }
     } else {
       ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
@@ -610,15 +630,22 @@ void Terminal::Validate(Context *) {
 }
 
 void Identifier::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
 
   if (decl == nullptr) {
-    auto potential_decls = scope_->AllDeclsWithId(token);
+    auto[potential_decls, potential_error_decls] =
+        scope_->AllDeclsWithId(token, ctx);
 
     if (potential_decls.size() != 1) {
       if (potential_decls.empty()) {
-        ctx->error_log_.UndeclaredIdentifier(this);
+        switch (potential_error_decls.size()) {
+        case 0: ctx->error_log_.UndeclaredIdentifier(this); break;
+        case 1:
+          decl = potential_error_decls[0];
+          HANDLE_CYCLIC_DEPENDENCIES;
+          break;
+        default: NOT_YET();
+        }
       } else {
         // TODO is this reachable? Or does shadowing cover this case?
         ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
@@ -652,13 +679,16 @@ void Identifier::Validate(Context *ctx) {
     limit_to(StageRange::NoEmitIR());
   }
 
+  // No guarantee the declaration has been validated yet.
+  decl->Validate(ctx);
+  HANDLE_CYCLIC_DEPENDENCIES;
   type   = decl->type;
   lvalue = decl->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
 
   if (lvalue != Assign::Const) {
-    // For everything else we iterate from the scope of this identifier up to
-    // the scope in which it was declared checking that along the way that it's
-    // a block scope.
+    // For everything else we iterate from the scope of this identifier up
+    // to the scope in which it was declared checking that along the way
+    // that it's a block scope.
     for (auto scope_ptr = scope_; scope_ptr != decl->scope_;
          scope_ptr      = scope_ptr->parent) {
       if (scope_ptr->is<FnScope>()) {
@@ -681,11 +711,12 @@ void Hole::Validate(Context *) {
 }
 
 void Binop::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
 
   lhs->Validate(ctx);
+  HANDLE_CYCLIC_DEPENDENCIES;
   rhs->Validate(ctx);
+  HANDLE_CYCLIC_DEPENDENCIES;
   if (lhs->type == Err || rhs->type == Err) {
     type = Err;
     limit_to(lhs);
@@ -827,9 +858,10 @@ void Binop::Validate(Context *ctx) {
       std::vector<Declaration *> matched_op_name;                              \
                                                                                \
       /* TODO this linear search is probably not ideal.   */                   \
-      scope_->ForEachDecl([&ctx, &matched_op_name](Declaration *decl) {        \
+      scope_->ForEachDecl([this, &ctx, &matched_op_name](Declaration *decl) {  \
         if (decl->identifier->token == "__" op_name "__") {                    \
           decl->Validate(ctx);                                                 \
+          HANDLE_CYCLIC_DEPENDENCIES;                                          \
           matched_op_name.push_back(decl);                                     \
         }                                                                      \
       });                                                                      \
@@ -930,12 +962,12 @@ void Binop::Validate(Context *ctx) {
 }
 
 void Call::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
 
   bool all_const = true;
   args_.Apply([&ctx, &all_const, this](auto &arg) {
     arg->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
     if (arg->type == Err) { this->type = Err; }
     all_const &= arg->lvalue == Assign::Const;
   });
@@ -972,6 +1004,7 @@ void Call::Validate(Context *ctx) {
       if (iter == scope_ptr->decls_.end()) { continue; }
       for (const auto &decl : iter->second) {
         decl->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
         if (decl->type == Err) {
           limit_to(decl->stage_range_.high);
           return;
@@ -981,6 +1014,7 @@ void Call::Validate(Context *ctx) {
     }
   } else {
     fn_->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
     fn_options.push_back(fn_.get());
   }
 
@@ -1030,18 +1064,19 @@ void Call::Validate(Context *ctx) {
 // TODO Declaration is responsible for the type verification of it's identifier?
 // TODO rewrite/simplify
 void Declaration::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
 
   lvalue = const_ ? Assign::Const : Assign::RVal;
 
   if (type_expr) {
     type_expr->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
     if (type_expr->type == Err) { type = Err; }
     limit_to(type_expr);
   }
   if (init_val) {
     init_val->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
     if (init_val->type == Err) {
       type = Err;
     } else {
@@ -1124,6 +1159,7 @@ void Declaration::Validate(Context *ctx) {
   }
 
   identifier->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(identifier);
 
   if (type == Err) {
@@ -1138,13 +1174,15 @@ void Declaration::Validate(Context *ctx) {
   // verified first, or check both in the upwards and downwards direction for
   // shadowing.
   bool failed_shadowing = false;
-  for (auto *decl : scope_->AllDeclsWithId(identifier->token)) {
+  // TODO what about error decls?
+  for (auto *decl : scope_->AllDeclsWithId(identifier->token, ctx).first) {
     if (decl == this) { continue; }
     if (this < decl) {
       // Pick one arbitrary but consistent ordering of the pair to check because
       // at each Declaration verification, we look both up and down the scope
       // tree.
       decl->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
       if (Shadow(this, decl)) {
         failed_shadowing = true;
         ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1159,6 +1197,7 @@ void Declaration::Validate(Context *ctx) {
         // because at each Declaration verification, we look both up and down
         // the scope tree.
         decl->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
         if (Shadow(this, decl)) {
           failed_shadowing = true;
           ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1179,9 +1218,9 @@ void Declaration::Validate(Context *ctx) {
 }
 
 void InDecl::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
   container->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(container);
 
   lvalue = Assign::RVal;
@@ -1215,6 +1254,7 @@ void InDecl::Validate(Context *ctx) {
 
   identifier->type = type;
   identifier->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
 }
 
 void Statements::Validate(Context *ctx) {
@@ -1228,7 +1268,6 @@ void Statements::Validate(Context *ctx) {
 void CodeBlock::Validate(Context *) {}
 
 void Unop::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
   VALIDATE_AND_RETURN_ON_ERROR(operand);
 
@@ -1314,6 +1353,7 @@ void Unop::Validate(Context *ctx) {
         if (!id_ptr) { continue; }
 
         id_ptr->Validate(ctx);
+        HANDLE_CYCLIC_DEPENDENCIES;
       }
 
       auto t = scope_->FunctionTypeReferencedOrNull("__neg__",
@@ -1377,7 +1417,6 @@ void Unop::Validate(Context *ctx) {
 }
 
 void Access::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
   VALIDATE_AND_RETURN_ON_ERROR(operand);
   lvalue = (operand->type->is<Array>() &&
@@ -1428,13 +1467,13 @@ void Access::Validate(Context *ctx) {
 }
 
 void ChainOp::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
   bool found_err = false;
 
   lvalue = Assign::Const;
   for (auto &expr : exprs) {
     expr->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
     if (expr->type == Err) { found_err = true; }
     if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
@@ -1485,11 +1524,11 @@ void ChainOp::Validate(Context *ctx) {
 }
 
 void CommaList::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
   lvalue = Assign::Const;
   for (auto &expr : exprs) {
     expr->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
     if (expr->type == Err) { type = Err; }
     if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
@@ -1517,7 +1556,6 @@ void CommaList::Validate(Context *ctx) {
 }
 
 void ArrayLiteral::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
 
   lvalue = Assign::Const;
@@ -1528,6 +1566,7 @@ void ArrayLiteral::Validate(Context *ctx) {
 
   for (auto &elem : elems) {
     elem->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(elem);
     if (elem->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
@@ -1552,13 +1591,14 @@ void ArrayLiteral::Validate(Context *ctx) {
 }
 
 void ArrayType::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
   lvalue = Assign::Const;
 
   length->Validate(ctx);
+  HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(length);
   data_type->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(data_type);
 
   type = Type_;
@@ -1575,11 +1615,12 @@ void ArrayType::Validate(Context *ctx) {
 }
 
 void Case::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
   for (auto & [ key, val ] : key_vals) {
     key->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
     val->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(key);
     limit_to(val);
 
@@ -1645,11 +1686,11 @@ void Case::Validate(Context *ctx) {
 }
 
 void FunctionLiteral::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
 
   lvalue = Assign::Const;
   return_type_expr->Validate(ctx);
+HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(return_type_expr);
 
   if (ctx->num_errors() > 0) {
@@ -1696,7 +1737,9 @@ void FunctionLiteral::Validate(Context *ctx) {
     return;
   }
 
-  for (auto &input : inputs) { input->Validate(ctx); }
+  for (auto &input : inputs) { input->Validate(ctx); 
+  HANDLE_CYCLIC_DEPENDENCIES;
+  }
 
   // TODO poison on input Err?
 
@@ -1736,7 +1779,6 @@ void Jump::Validate(Context *) {
 }
 
 void ScopeNode::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
 
   lvalue = Assign::RVal;
@@ -1762,7 +1804,6 @@ void ScopeNode::Validate(Context *ctx) {
 }
 
 void ScopeLiteral::Validate(Context *ctx) {
-  STAGE_CHECK;
   STARTING_CHECK;
   lvalue                            = Assign::Const;
   bool cannot_proceed_due_to_errors = false;

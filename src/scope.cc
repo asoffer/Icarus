@@ -75,21 +75,20 @@ void Scope::InsertDecl(AST::Declaration *decl) {
   }
 }
 
-std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
-  std::vector<AST::Declaration *> matching_decls;
+std::pair<std::vector<AST::Declaration *>, std::vector<AST::Declaration *>>
+Scope::AllDeclsWithId(const std::string &id, Context *ctx) {
+  std::vector<AST::Declaration *> matching_decls, matching_error_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {
     auto iter = scope_ptr->decls_.find(id);
     if (iter == scope_ptr->decls_.end()) { continue; }
     for (const auto &decl : iter->second) {
-      // TODO bound constants?
-      Context ctx;
-      decl->Validate(&ctx);
-      if (decl->type == Err) { continue; }
-      matching_decls.push_back(decl);
+      decl->Validate(ctx);
+      (decl->type == Err ? matching_error_decls : matching_decls)
+          .push_back(decl);
     }
   }
-  return matching_decls;
+  return std::pair(std::move(matching_decls), std::move(matching_error_decls));
 }
 
 ExecScope::ExecScope(Scope *parent) : Scope(parent) {
