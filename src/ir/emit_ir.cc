@@ -5,7 +5,7 @@
 
 #include "../ast/ast.h"
 #include "../context.h"
-#include "../error_log.h"
+#include "../error/log.h"
 #include "../type/type.h"
 
 static constexpr int ThisStage() { return 3; }
@@ -18,8 +18,7 @@ extern Scope *GlobalScope;
 
 // If the expression is a CommaList, apply the function to each expr. Otherwise
 // call it on the expression itself.
-static void
-ForEachExpr(AST::Expression *expr,
+static void ForEachExpr(AST::Expression *expr,
             const std::function<void(size_t, AST::Expression *)> &fn) {
   if (expr->is<AST::CommaList>()) {
     const auto &exprs = expr->as<AST::CommaList>().exprs;

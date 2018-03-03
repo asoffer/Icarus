@@ -6,8 +6,8 @@
 #include <vector>
 #include <unordered_map>
 
-#include "base/debug.h"
-#include "input/cursor.h"
+#include "../base/debug.h"
+#include "../input/cursor.h"
 
 struct Type;
 
@@ -22,21 +22,25 @@ struct Unop;
 
 namespace error {
 struct Log {
+#define MAKE_LOG_ERROR(fn_name, msg)                                           \
+  void fn_name(const TextSpan& span);
+#include "errors.xmacro.h"
+#undef MAKE_LOG_ERROR
+
   void UndeclaredIdentifier(AST::Identifier *id);
   void AmbiguousIdentifier(AST::Identifier *id);
   void PreconditionNeedsBool(AST::Expression *expr);
   void PostconditionNeedsBool(AST::Expression *expr);
   void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
-  void InvalidEscapedCharacterInStringLiteral(const TextSpan &span);
-  void RunawayStringLiteral(const TextSpan &span);
-  void EscapedDoubleQuoteInCharacterLiteral(const TextSpan &span);
-  void InvalidEscapedCharacterInCharacterLiteral(const TextSpan &span);
-  void RunawayCharacterLiteral(const TextSpan &span);
-  void SpaceInCharacterLiteral(const TextSpan &span);
-  void TabInCharacterLiteral(const TextSpan &span);
-  void TooManyDots(const TextSpan &span);
-  void InvalidCharacterQuestionMark(const TextSpan &span);
-  void InvalidCharacterTilde(const TextSpan &span);
+
+  void RunawayMultilineComment();
+  void DoubleDeclAssignment(const TextSpan &decl_span,
+                            const TextSpan &val_span);
+  void Reserved(const TextSpan &span, const std::string &token);
+  void NotBinary(const TextSpan &span, const std::string &token);
+  void UnknownParseError(const std::vector<TextSpan> &span);
+  void PositionalArgumentFollowingNamed(const std::vector<TextSpan> &pos_spans,
+                                        const TextSpan &named_span);
 
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() + errors_.size();
@@ -121,7 +125,6 @@ void InvalidAssignDefinition(const TextSpan &span, const Type *t);
 void InvalidScope(const TextSpan &span, const Type *t);
 void UserDefinedError(const TextSpan &span, const std::string &msg);
 void UninferrableType(const TextSpan &span);
-void CommaListStatement(const TextSpan &span);
 
 #define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \
   void fn_name(const TextSpan &loc);

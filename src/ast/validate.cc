@@ -1,7 +1,7 @@
 #include "ast.h"
 
 #include "../context.h"
-#include "../error_log.h"
+#include "../error/log.h"
 #include "../ir/func.h"
 #include "../type/type.h"
 

@@ -1,6 +1,6 @@
 #include <queue>
 
-#include "../error_log.h"
+#include "../error/log.h"
 #include "func.h"
 #include "property.h"
 

@@ -6,7 +6,7 @@
 #include "base/debug.h"
 #include "base/source.h"
 #include "context.h"
-#include "error_log.h"
+#include "error/log.h"
 #include "ir/func.h"
 #include "type/type.h"
 #include "util/command_line_args.h"
@@ -19,18 +19,14 @@ extern Scope *GlobalScope;
 
 extern void ReplEval(AST::Expression *expr);
 
-std::variant<std::vector<AST::Statements>, error::Log> ParseAllFiles();
+std::vector<AST::Statements> ParseAllFiles();
 extern Timer timer;
 
 AST::Statements global_statements;
 
 int GenerateCode() {
-  auto result = ParseAllFiles();
-  if (auto* log = std::get_if<error::Log>(&result)) {
-    log->Dump();
-    return 0;
-  }
-  auto &stmts_by_file = std::get<std::vector<AST::Statements>>(result);
+  auto stmts_by_file = ParseAllFiles();
+  if (stmts_by_file.empty()) { return 0; }
 
   RUN(timer, "AST Setup") {
     global_statements = AST::Statements::Merge(std::move(stmts_by_file));

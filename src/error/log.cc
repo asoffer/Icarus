@@ -1,4 +1,4 @@
-#include "error_log.h"
+#include "log.h"
 
 #include <iomanip>
 #include <iostream>
@@ -10,18 +10,7 @@
 extern std::unordered_map<Source::Name, File *> source_map;
 
 using LineNum    = size_t;
-using LineOffset = size_t;
-
 using FileToLineNumMap = std::unordered_map<Source::Name, std::vector<LineNum>>;
-using DeclToErrorMap   = std::unordered_map<
-    const AST::Declaration *,
-    std::unordered_map<Source::Name,
-                       std::unordered_map<LineNum, std::vector<LineOffset>>>>;
-using TextSpanToErrorMap =
-    std::map<TextSpan, std::unordered_map<LineNum, std::vector<LineOffset>>>;
-
-static DeclToErrorMap implicit_capture;
-static TextSpanToErrorMap case_errors;
 static FileToLineNumMap global_non_decl;
 
 size_t ErrorLog::num_errs_ = 0;
@@ -166,6 +155,8 @@ WriteSource(std::ostream &os, const Source &source,
                               });
       os << "\033[97;1m" << std::right << std::setw(border_alignment)
          << line_num;
+      // TODO handle multiple spans on a single line.
+      // TODO Handle spans crossing multiple lines.
       if (iter != underlines.end() && line_num == iter->first.start.line_num) {
         auto front = std::string_view(&line[0], iter->first.start.offset);
         auto underlined_section = std::string_view(
@@ -262,22 +253,6 @@ void ShadowingDeclaration(const AST::Declaration &decl1,
   std::cerr << "Ambiguous declarations:\n\n"
             << LineToDisplay(line_num1, line1, align) << '\n'
             << LineToDisplay(line_num2, line2, align) << '\n';
-}
-
-void NonWhitespaceAfterNewlineEscape(const TextSpan &span, size_t dist) {
-  const char *msg_head =
-      "I found a non-whitespace character following a '\\' on the same line.";
-  const char *msg_foot = "Backslashes are used to ignore line-breaks and "
-                         "therefore must be followed by a newline (whitespace "
-                         "between the backslash and the newline is okay).";
-
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, msg_foot, span, dist);
-}
-
-void RunawayMultilineComment() {
-  std::cerr << "Finished reading file during multi-line comment.\n\n";
-  ++num_errs_;
 }
 
 void InvalidStringIndex(const TextSpan &span, Type *index_type) {
@@ -452,16 +427,6 @@ void DeclaredVoidType(const TextSpan &span, const std::string &id_tok) {
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
-void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_span) {
-  ++num_errs_;
-  if (decl_span.start.line_num == val_span.start.line_num) {
-    DisplayErrorMessage("Attempting to initialize an identifier that already "
-                        "has an initial value.",
-                        "", decl_span, 1);
-  } else {
-    NOT_YET();
-  }
-}
 void InitWithNull(const TextSpan &span, const Type *t, const Type *intended) {
   ++num_errs_;
   std::string msg_head = "Cannot initialize an identifier of type " +
@@ -485,25 +450,13 @@ void InvalidScope(const TextSpan &span, const Type *t) {
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
-void NotBinary(const TextSpan &span, const std::string &token) {
-  ++num_errs_;
-  std::string msg_head = "Operator '" + token + "' is not a binary operator.";
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
-void Reserved(const TextSpan &span, const std::string &token) {
-  ++num_errs_;
-  std::string msg_head = "Identifier '" + token + "' is a reserved keyword.";
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
 // TODO better error message for repeated enum name
 #define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \
   void fn_name(const TextSpan &span) {                                         \
     ++num_errs_;                                                               \
     DisplayErrorMessage(msg_head, msg_foot, span, underline_length);           \
   }
-#include "config/error.conf"
+#include "../config/error.conf"
 #undef ERROR_MACRO
 
 void InvalidReturnType(const TextSpan &span, Type *given, Type *correct) {
@@ -578,30 +531,9 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
   }
 }
 
-void UnknownParserError(const Source::Name &source_name,
-                        const std::vector<TextSpan> &lines) {
-  if (lines.empty()) {
-    std::cerr << "Parse errors found in \"" << source_name.to_string()
-              << "\". Sorry I can't be more specific.";
-    ++num_errs_;
-    return;
-  }
-
-  num_errs_ += lines.size();
-  std::cerr << "Parse errors found in \"" << source_name.to_string()
-            << "\" on the following lines:\n\n";
-  DisplayLines(lines);
-}
-
 void UninferrableType(const TextSpan &span) {
   ++num_errs_;
   DisplayErrorMessage("Expression cannot have it's type inferred", "", span, 1);
-}
-
-void CommaListStatement(const TextSpan &span) {
-  ++num_errs_;
-  DisplayErrorMessage("Comma-separated lists are not allowed as statements", "",
-                      span, span.finish.offset - span.start.offset);
 }
 } // namespace ErrorLog
 
@@ -648,39 +580,90 @@ static decltype(auto) LinesToShow(const std::vector<AST::Identifier *> &ids) {
     ss << "\n\n";                                                              \
     errors_.push_back(ss.str());                                               \
   }
-
-// TODO Combine these if they're on the same line.
-// TODO if you stop calling it a string-literal, these error messages will have
-// to change too.
-MAKE_LOG_ERROR(InvalidEscapedCharacterInStringLiteral,
-               "Encountered an invalid escape sequence in string-literal.")
-MAKE_LOG_ERROR(RunawayStringLiteral, "Reached end of line before finding the "
-                                     "end of a string-literal. Did you forget "
-                                     "a quotation mark?")
-MAKE_LOG_ERROR(EscapedDoubleQuoteInCharacterLiteral,
-               "The double quotation mark character (\") does not need to be "
-               "esacped in a character-literal.")
-MAKE_LOG_ERROR(InvalidEscapedCharacterInCharacterLiteral,
-               "Encounterd an invalid escape sequence in character-literal. "
-               "The valid escape sequences in a character-literal are \\\\, "
-               "\\a, \\b, \\f, \\n, \\r, \\s, \\t, and \\v.")
-MAKE_LOG_ERROR(
-    RunawayCharacterLiteral,
-    "Encountered a backtick (`), but did not see a character literal.")
-MAKE_LOG_ERROR(SpaceInCharacterLiteral, "Encountered a backtick (`) followed "
-                                        "by a space character. Space character "
-                                        "literals are written as `\\s.")
-MAKE_LOG_ERROR(TabInCharacterLiteral, "Encountered a tab in your character-literal. Tab charcater literals are written as `\t.")
-
-// TODO lexing things like 1..2
-MAKE_LOG_ERROR(TooManyDots, "There are too many consecutive period (.) "
-                            "characters. Did you mean just \"..\"?")
-MAKE_LOG_ERROR(InvalidCharacterQuestionMark,
-               "Question marks (?) are not valid Icarus syntax.")
-MAKE_LOG_ERROR(InvalidCharacterTilde,
-               "Tildes (~) are not valid Icarus syntax.")
+#include "errors.xmacro.h"
 #undef MAKE_LOG_ERROR
 
+void Log::RunawayMultilineComment() {
+  errors_.push_back("Finished reading file during multi-line comment.\n\n");
+}
+
+void Log::DoubleDeclAssignment(const TextSpan &decl_span,
+                               const TextSpan &val_span) {
+  std::stringstream ss;
+  ss << "Attempting to initialize an identifier that already has an initial "
+        "value. Did you mean `==` instead of `=`?\n\n";
+  WriteSource<false>(
+      ss, *decl_span.source,
+      {Interval{decl_span.start.line_num, decl_span.finish.line_num + 1},
+       Interval{val_span.start.line_num, val_span.finish.line_num + 1}},
+      static_cast<int>(NumDigits(val_span.finish.line_num)) + 2,
+      {{decl_span, "\033[31;4m"}, {val_span, "\033[31;4m"}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::Reserved(const TextSpan &span, const std::string &token) {
+  std::stringstream ss;
+  ss << "Identifier '" << token << "' is a reserved keyword.\n\n";
+  WriteSource<false>(ss, *span.source,
+                     {Interval{span.start.line_num, span.finish.line_num + 1}},
+                     static_cast<int>(NumDigits(span.finish.line_num)) + 2,
+                     {{span, "\033[31;4m"}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::NotBinary(const TextSpan &span, const std::string &token) {
+  std::stringstream ss;
+  ss << "Operator '" << token << "' is not a binary operator.";
+  WriteSource<false>(ss, *span.source,
+                     {Interval{span.start.line_num, span.finish.line_num + 1}},
+                     static_cast<int>(NumDigits(span.finish.line_num)) + 2,
+                     {{span, "\033[31;4m"}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::PositionalArgumentFollowingNamed(
+    const std::vector<TextSpan> &pos_spans, const TextSpan &named_span) {
+  std::stringstream ss;
+  ss << "Positional function arguments cannot follow a named argument.\n\n";
+  IntervalSet iset;
+
+  std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
+  // TODO do you also want to show the whole function call?
+  iset.insert(
+      Interval{named_span.start.line_num - 1, named_span.finish.line_num + 2});
+  underlines.emplace_back(named_span, "\033[32;4m");
+
+  for (const auto &span : pos_spans) {
+    iset.insert(Interval{span.start.line_num - 1, span.finish.line_num + 2});
+    underlines.emplace_back(span, "\033[31;4m");
+  }
+
+  WriteSource<false>(
+      ss, *named_span.source, iset,
+      static_cast<int>(NumDigits(pos_spans.back().finish.line_num)) + 2,
+      underlines);
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::UnknownParseError(const std::vector<TextSpan> &lines) {
+  // TODO thehre's something seriously wrong with this
+  std::stringstream ss;
+  ss << "Parse errors found in \"" << lines.front().source->name
+     << "\" on the following lines:\n\n";
+  IntervalSet iset;
+  for (const auto &span : lines) {
+    iset.insert(Interval{span.start.line_num - 1, span.finish.line_num + 2});
+  }
+  WriteSource<true>(
+      ss, *lines.front().source, iset,
+      static_cast<int>(NumDigits(lines.back().finish.line_num)) + 2, {{}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
 
 void Log::Dump() const {
   for (const auto&[decl, ids] : out_of_order_decls_) {

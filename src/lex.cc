@@ -2,7 +2,7 @@
 #include <cmath>
 
 #include "ast/ast.h"
-#include "error_log.h"
+#include "error/log.h"
 #include "nnt.h"
 #include "type/type.h"
 
@@ -10,6 +10,9 @@
   Type *GlobalName = new Primitive(PrimType::EnumName);
 #include "config/primitive.conf"
 #undef PRIMITIVE_MACRO
+
+// TODO audit every location where NNT::Invalid is returned to see if you need
+// to log an error.
 
 NNT::NNT(const TextSpan &span, const std::string &token, Language::NodeType nt)
     : node(std::make_unique<AST::TokenNode>(span, token)), node_type(nt) {}
@@ -524,7 +527,9 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
       [[fallthrough]];
     default:
       span.finish = loc.cursor;
-      ErrorLog::NonWhitespaceAfterNewlineEscape(span, dist);
+      ++span.finish.offset;
+      // TODO this often causes the parser to fail afterwards
+      error_log->NonWhitespaceAfterNewlineEscape(span);
       return NNT::Invalid();
     }
   } break;
@@ -562,7 +567,7 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
         return NNT(span, "*", Language::op_b);
       } else {
         span.finish = loc.cursor;
-        ErrorLog::NotInMultilineComment(span);
+        error_log->NotInMultilineComment(span);
         return NNT::Invalid();
       }
     } else if (*loc == '=') {
@@ -686,7 +691,7 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
   }
 }
 
-NNT NextSlashInitiatedToken(SourceLocation &loc) {
+NNT NextSlashInitiatedToken(SourceLocation &loc, error::Log* error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
   switch (*loc) {
@@ -701,7 +706,7 @@ NNT NextSlashInitiatedToken(SourceLocation &loc) {
     u64 comment_layer = 1;
     while (comment_layer != 0) {
       if (loc.source->seen_eof) {
-        ErrorLog::RunawayMultilineComment();
+        error_log->RunawayMultilineComment();
         span.finish = loc.cursor;
         return NNT(span, "", Language::eof);
 
@@ -742,7 +747,7 @@ restart:
   case '0': nnt = NextZeroInitiatedNumber(loc); break;
   case '`': nnt = NextCharLiteral(loc, error_log); break;
   case '"': nnt = NextStringLiteral(loc, error_log); break;
-  case '/': nnt = NextSlashInitiatedToken(loc); break;
+  case '/': nnt = NextSlashInitiatedToken(loc, error_log); break;
   case '\t':
   case ' ':
     loc.Increment();

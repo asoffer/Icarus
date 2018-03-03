@@ -8,7 +8,7 @@
 #include "../ast/ast.h"
 #include "../base/util.h"
 #include "../context.h"
-#include "../error_log.h"
+#include "../error/log.h"
 #include "../type/type.h"
 #include "func.h"
 

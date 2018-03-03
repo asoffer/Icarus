@@ -4,7 +4,7 @@
 #include <map>
 
 #include "ast/bound_constants.h"
-#include "error_log.h"
+#include "error/log.h"
 
 struct Context {
   size_t num_errors() { return error_log_.size(); }
