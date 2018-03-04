@@ -38,8 +38,8 @@ int GenerateCode() {
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
       return 0;
-   }
-     AST::DoStages<2, 2>(&global_statements, GlobalScope, &ctx);
+    }
+    AST::DoStage<2>(&global_statements, GlobalScope, &ctx);
   }
 
   RUN(timer, "Verify preconditions") {

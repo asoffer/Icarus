@@ -9,7 +9,7 @@
 
 extern std::unordered_map<Source::Name, File *> source_map;
 
-using LineNum    = size_t;
+using LineNum          = size_t;
 using FileToLineNumMap = std::unordered_map<Source::Name, std::vector<LineNum>>;
 static FileToLineNumMap global_non_decl;
 
@@ -70,10 +70,27 @@ struct IntervalSet {
   std::vector<size_t> endpoints_;
 };
 
-using DisplayAttrs = const char *;
+struct DisplayAttrs {
+  enum Color : char {
+    BLACK = '0',
+    RED,
+    GREEN,
+    YELLOW,
+    BLUE,
+    MAGENTA,
+    CYAN,
+    WHITE
+  } color;
+  enum Effect : char { NORMAL = '0', BOLD, FAINT, ITALIC, UNDERLINE } effect;
+};
+
+std::ostream& operator<<(std::ostream& os, const DisplayAttrs& attrs) {
+  return os << "\033[3" << static_cast<char>(attrs.color) << ';'
+            << static_cast<char>(attrs.effect) << 'm';
+}
+
 } // namespace
 
-template <bool AsteriskNextToErrorLine>
 static void
 WriteSource(std::ostream &os, const Source &source,
             const IntervalSet &line_intervals, size_t border_alignment,
@@ -85,26 +102,38 @@ WriteSource(std::ostream &os, const Source &source,
     while (line_num < end_num) {
       const auto &line = source.lines AT(line_num);
 
-      // Find the next span starting on this or a later line.
+      // Line number
+      os << "\033[97;1m" << std::right
+         << std::setw(static_cast<int>(border_alignment)) << line_num
+         << " | \033[0m";
+
+      std::string_view line_view(line.to_string().data(),
+                                 line.to_string().size());
       iter = std::lower_bound(iter, underlines.end(), line_num,
                               [](const auto &span_and_attrs, size_t n) {
                                 return span_and_attrs.first.start.line_num < n;
                               });
-      os << "\033[97;1m" << std::right
-         << std::setw(static_cast<int>(border_alignment)) << line_num;
-      // TODO handle multiple spans on a single line.
+
       // TODO Handle spans crossing multiple lines.
-      if (iter != underlines.end() && line_num == iter->first.start.line_num) {
-        auto front = std::string_view(&line[0], iter->first.start.offset);
-        auto underlined_section = std::string_view(
-            &line[iter->first.start.offset],
-            iter->first.finish.offset - iter->first.start.offset);
-        auto back = std::string_view(&line[iter->first.finish.offset]);
-        os << (AsteriskNextToErrorLine ? "*| \033[0m" : " | \033[0m") << front
-           << iter->second << underlined_section << "\033[0m" << back << "\n";
-      } else {
-        os << " | \033[0m" << line << "\n";
+      size_t prev_start_offset = 0;
+      while (iter != underlines.end() &&
+             iter->first.start.line_num == line_num) {
+        os << line_view.substr(prev_start_offset,
+                               iter->first.start.offset - prev_start_offset);
+
+        // TODO what if it goes for multiple lines.
+        ASSERT_EQ(iter->first.start.line_num, iter->first.finish.line_num);
+        ASSERT_LT(iter->first.start.offset, iter->first.finish.offset);
+        os << iter->second
+           << line_view.substr(iter->first.start.offset,
+                               iter->first.finish.offset -
+                                   iter->first.start.offset)
+           << "\033[0m";
+
+        prev_start_offset = iter->first.finish.offset;
+        ++iter;
       }
+      os << "\n";
 
       ++line_num;
     }
@@ -453,7 +482,8 @@ static decltype(auto) LinesToShow(const ExprContainer &exprs) {
   for (const auto &expr : exprs) {
     iset.insert(Interval{expr->span.start.line_num - 1,
                          expr->span.finish.line_num + 2});
-    underlines.emplace_back(expr->span, "\033[31;4m");
+    underlines.emplace_back(
+        expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE});
   }
 
   return std::pair(iset, underlines);
@@ -463,10 +493,11 @@ static decltype(auto) LinesToShow(const ExprContainer &exprs) {
   void Log::fn_name(const TextSpan &span) {                                    \
     std::stringstream ss;                                                      \
     ss << msg "\n\n";                                                          \
-    WriteSource<false>(                                                        \
+    WriteSource(                                                               \
         ss, *span.source,                                                      \
         {Interval{span.start.line_num, span.finish.line_num + 1}},             \
-        NumDigits(span.finish.line_num) + 2, {{span, "\033[31;4m"}});          \
+        NumDigits(span.finish.line_num) + 2,                                   \
+        {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});   \
     ss << "\n\n";                                                              \
     errors_.push_back(ss.str());                                               \
   }
@@ -482,12 +513,13 @@ void Log::DoubleDeclAssignment(const TextSpan &decl_span,
   std::stringstream ss;
   ss << "Attempting to initialize an identifier that already has an initial "
         "value. Did you mean `==` instead of `=`?\n\n";
-  WriteSource<false>(
+  WriteSource(
       ss, *decl_span.source,
       {Interval{decl_span.start.line_num, decl_span.finish.line_num + 1},
        Interval{val_span.start.line_num, val_span.finish.line_num + 1}},
       NumDigits(val_span.finish.line_num) + 2,
-      {{decl_span, "\033[31;4m"}, {val_span, "\033[31;4m"}});
+      {{decl_span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}},
+       {val_span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
@@ -495,10 +527,10 @@ void Log::DoubleDeclAssignment(const TextSpan &decl_span,
 void Log::Reserved(const TextSpan &span, const std::string &token) {
   std::stringstream ss;
   ss << "Identifier '" << token << "' is a reserved keyword.\n\n";
-  WriteSource<false>(ss, *span.source,
-                     {Interval{span.start.line_num, span.finish.line_num + 1}},
-                     NumDigits(span.finish.line_num) + 2,
-                     {{span, "\033[31;4m"}});
+  WriteSource(ss, *span.source,
+              {Interval{span.start.line_num, span.finish.line_num + 1}},
+              NumDigits(span.finish.line_num) + 2,
+              {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
@@ -506,10 +538,10 @@ void Log::Reserved(const TextSpan &span, const std::string &token) {
 void Log::NotBinary(const TextSpan &span, const std::string &token) {
   std::stringstream ss;
   ss << "Operator '" << token << "' is not a binary operator.";
-  WriteSource<false>(ss, *span.source,
-                     {Interval{span.start.line_num, span.finish.line_num + 1}},
-                     NumDigits(span.finish.line_num) + 2,
-                     {{span, "\033[31;4m"}});
+  WriteSource(ss, *span.source,
+              {Interval{span.start.line_num, span.finish.line_num + 1}},
+              NumDigits(span.finish.line_num) + 2,
+              {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
@@ -524,17 +556,17 @@ void Log::PositionalArgumentFollowingNamed(
   // TODO do you also want to show the whole function call?
   iset.insert(
       Interval{named_span.start.line_num - 1, named_span.finish.line_num + 2});
-  underlines.emplace_back(named_span, "\033[32;4m");
+  underlines.emplace_back(named_span, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
 
   for (const auto &span : pos_spans) {
     iset.insert(Interval{span.start.line_num - 1, span.finish.line_num + 2});
-    underlines.emplace_back(span, "\033[31;4m");
+    underlines.emplace_back(span, 
+        DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE}
+);
   }
 
-  WriteSource<false>(
-      ss, *named_span.source, iset,
-      NumDigits(pos_spans.back().finish.line_num) + 2,
-      underlines);
+  WriteSource(ss, *named_span.source, iset,
+              NumDigits(pos_spans.back().finish.line_num) + 2, underlines);
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
@@ -548,9 +580,8 @@ void Log::UnknownParseError(const std::vector<TextSpan> &lines) {
   for (const auto &span : lines) {
     iset.insert(Interval{span.start.line_num - 1, span.finish.line_num + 2});
   }
-  WriteSource<true>(
-      ss, *lines.front().source, iset,
-      NumDigits(lines.back().finish.line_num) + 2, {{}});
+  WriteSource(ss, *lines.front().source, iset,
+              NumDigits(lines.back().finish.line_num) + 2, {{}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
@@ -562,23 +593,67 @@ std::vector<const AST::Expression *> *Log::CyclicDependency() {
 }
 
 void Log::Dump() const {
-  for (const auto& cyc_dep_vec : cyc_dep_vecs_) {
-    std::cerr << "Found a cylcic dependency:\n\n";
+  for (const auto &cyc_dep_vec : cyc_dep_vecs_) {
+    // TODO make cyc_dep_vec just identifiers
+    std::cerr << "Found a cyclic dependency:\n\n";
 
     // Filter out only the things worth showing.
-    std::vector<const AST::Expression *> exprs;
+    std::vector<const AST::Identifier *> ids;
     for (auto *expr : *cyc_dep_vec) {
-      if (expr->is<AST::Binop>()) {continue; }
-      exprs.push_back(expr);
+      if (expr->is<AST::Identifier>()) {
+        ids.push_back(&expr->as<AST::Identifier>());
+      } else if (expr->is<AST::Declaration>()) {
+        ids.push_back(expr->as<AST::Declaration>().identifier.get());
+      }
+    }
+    std::sort(ids.begin(), ids.end(),
+              [](const AST::Expression *lhs, const AST::Expression *rhs) {
+                if (lhs->span.start.line_num < rhs->span.start.line_num) {
+                  return true;
+                }
+                if (lhs->span.start.line_num > rhs->span.start.line_num) {
+                  return false;
+                }
+                if (lhs->span.start.offset < rhs->span.start.offset) {
+                  return true;
+                }
+                if (lhs->span.start.offset > rhs->span.start.offset) {
+                  return false;
+                }
+                if (lhs->span.finish.line_num < rhs->span.finish.line_num) {
+                  return true;
+                }
+                if (lhs->span.finish.line_num > rhs->span.finish.line_num) {
+                  return false;
+                }
+                return lhs->span.finish.offset < rhs->span.finish.offset;
+              });
+
+    std::unordered_map<AST::Declaration *, size_t> decls;
+    for (const auto &id : ids) {
+      decls.emplace(id->as<AST::Identifier>().decl, decls.size());
     }
 
-    auto[iset, underlines] = LinesToShow(exprs);
-    WriteSource<false>(std::cerr, *exprs.front()->span.source, iset,
-                       NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
+    IntervalSet iset;
+    std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
+    for (const auto &id: ids) {
+      iset.insert(Interval{id->span.start.line_num - 1,
+                           id->span.finish.line_num + 2});
+      // TODO handle case where it's 1 mod 7 and so adjacent entries show up
+      // with the same color
+      underlines.emplace_back(
+          id->span, DisplayAttrs{static_cast<DisplayAttrs::Color>(
+                                     DisplayAttrs::RED +
+                                     static_cast<char>(decls.at(id->decl) % 7)),
+                                 DisplayAttrs::UNDERLINE});
+    }
+
+    WriteSource(std::cerr, *ids.front()->span.source, iset,
+                NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
     std::cerr << "\n\n";
   }
 
-  for (const auto&[decl, ids] : out_of_order_decls_) {
+  for (const auto & [ decl, ids ] : out_of_order_decls_) {
     std::cerr << "Declaration of '" << decl->identifier->token
               << "' is used before it is defined (which is only allowed for "
                  "constants).\n\n";
@@ -586,19 +661,21 @@ void Log::Dump() const {
     auto[iset, underlines] = LinesToShow(ids);
     iset.insert(Interval{decl->span.start.line_num - 1,
                          decl->span.finish.line_num + 2});
-    underlines.emplace_back(decl->identifier->span, "\033[32;4m");
+    underlines.emplace_back(
+        decl->identifier->span,
+        DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
 
-    WriteSource<true>(std::cerr, *ids.front()->span.source, iset,
-                      NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
+    WriteSource(std::cerr, *ids.front()->span.source, iset,
+                NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
     std::cerr << "\n\n";
   }
 
-  for (const auto&[token, ids] : undeclared_ids_) {
+  for (const auto & [ token, ids ] : undeclared_ids_) {
     std::cerr << "Use of undeclared identifier '" << token << "':\n";
 
     auto[iset, underlines] = LinesToShow(ids);
-    WriteSource<true>(std::cerr, *ids.front()->span.source, iset,
-                      NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
+    WriteSource(std::cerr, *ids.front()->span.source, iset,
+                NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
     std::cerr << "\n\n";
   }
 
