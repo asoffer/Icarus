@@ -66,3 +66,5 @@ MAKE_LOG_ERROR(
 // TODO better text here
 MAKE_LOG_ERROR(InferringHole,
                "Attempting to infer the type of an uninitialized value")
+MAKE_LOG_ERROR(UninitializedConstant,
+               "Attempting to define a constant with an uninitialized value.")

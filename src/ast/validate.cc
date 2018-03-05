@@ -1050,129 +1050,92 @@ HANDLE_CYCLIC_DEPENDENCIES;
   type = Var(std::move(out_types));
 }
 
-// TODO Declaration is responsible for the type verification of it's identifier?
-// TODO rewrite/simplify
 void Declaration::Validate(Context *ctx) {
   STARTING_CHECK;
 
   lvalue = const_ ? Assign::Const : Assign::RVal;
 
-  if (type_expr && init_val && !init_val->is<Hole>()) { // I: T = V
+  if (type_expr) {
     type_expr->Validate(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(type_expr);
-
-    init_val->Validate(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(init_val);
-
-    if (init_val && init_val->type != Err && !Inferrable(init_val->type)) {
-      ctx->error_log_.UninferrableType(init_val->span);
-      type = identifier->type = Err;
-      limit_to(StageRange::Nothing());
-      identifier->limit_to(StageRange::Nothing());
-    }
-
     if (type_expr->type != Type_) {
       ctx->error_log_.NotAType(type_expr.get());
       limit_to(StageRange::Nothing());
 
       type = Err;
-      identifier->stage_range_.low = ThisStage();
       identifier->limit_to(StageRange::Nothing());
-      init_val->type = Err;
-
     } else {
-      type = std::get<Type *>(Evaluate(type_expr.get(), ctx)[0].value);
-      identifier->stage_range_.low = ThisStage();
-      identifier->type             = type;
-
-      if (!CanCastImplicitly(init_val->type, type)) {
-        ctx->error_log_.AssignmentTypeMismatch(identifier.get(),
-                                               init_val.get());
-        limit_to(StageRange::Nothing());
+      auto results = Evaluate(type_expr.get(), ctx);
+      // TODO figure out if you need to generate an error here
+      if (results.size() == 1) {
+        type = identifier->type = std::get<Type *>(results[0].value);
+      } else {
+        type = identifier->type = Err;
       }
     }
 
-  } else if (type_expr && init_val && init_val->is<Hole>()) { // I: T = --
-    type_expr->Validate(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(type_expr);
+    identifier->stage_range_.low = ThisStage();
+    if (init_val) { init_val->type = type; }
+  }
 
-    if (type_expr->type != Type_) {
-      ctx->error_log_.NotAType(type_expr.get());
-      limit_to(StageRange::Nothing());
-
-      type = Err;
-      identifier->stage_range_.low = ThisStage();
-      identifier->limit_to(StageRange::Nothing());
-      init_val->type = Err;
-
-    } else {
-      type = std::get<Type *>(Evaluate(type_expr.get(), ctx)[0].value);
-      identifier->stage_range_.low = ThisStage();
-      identifier->type             = type;
-      init_val->type               = type;
-    }
-
-  } else if (type_expr && !init_val) { // I: T
-    type_expr->Validate(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(type_expr);
-
-    if (type_expr->type != Type_) {
-      ctx->error_log_.NotAType(type_expr.get());
-      limit_to(StageRange::Nothing());
-
-      type = Err;
-      identifier->stage_range_.low = ThisStage();
-      identifier->limit_to(StageRange::Nothing());
-    } else {
-      type = std::get<Type *>(Evaluate(type_expr.get(), ctx)[0].value);
-      identifier->stage_range_.low = ThisStage();
-      identifier->type             = type;
-    }
-
-  } else if (!type_expr && init_val && !init_val->is<Hole>()) { // I := V
+  if (init_val && !init_val->is<Hole>()) {
     init_val->Validate(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(init_val);
 
-    if (init_val->type == Err) {
-      type = identifier->type = Err;
-      limit_to(StageRange::Nothing());
-      identifier->limit_to(StageRange::Nothing());
+    if (init_val->type != Err) {
+      if (!Inferrable(init_val->type)) {
+        ctx->error_log_.UninferrableType(init_val->span);
+        type = identifier->type = Err;
+        limit_to(StageRange::Nothing());
+        identifier->limit_to(StageRange::Nothing());
 
-    } else if (!Inferrable(init_val->type)) {
-      ctx->error_log_.UninferrableType(init_val->span);
-      type = identifier->type = Err;
-      limit_to(StageRange::Nothing());
-      identifier->limit_to(StageRange::Nothing());
-
-    } else {
-      identifier->stage_range_.low = ThisStage();
-      type = identifier->type = init_val->type;
+      } else if (!type_expr) {
+        identifier->stage_range_.low = ThisStage();
+        type = identifier->type = init_val->type;
+      }
     }
-
-  } else if (!type_expr && init_val && init_val->is<Hole>()) { // I := --
-    ctx->error_log_.InferringHole(span);
-    type = init_val->type = identifier->type = Err;
-    limit_to(StageRange::Nothing());
-    init_val->limit_to(StageRange::Nothing());
-    identifier->limit_to(StageRange::Nothing());
-
-  } else if (!type_expr && !init_val) {
-    UNREACHABLE();
   }
 
-
-  /*
-  if (const_ && IsUninitialized()) {
-    ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
-                                         std::to_string(__LINE__) + ": ");
-    limit_to(StageRange::NoEmitIR());
+  if (type_expr && type_expr->type == Type_ && init_val &&
+      !init_val->is<Hole>()) {
+    if (!CanCastImplicitly(init_val->type, type)) {
+      ctx->error_log_.AssignmentTypeMismatch(identifier.get(), init_val.get());
+      limit_to(StageRange::Nothing());
+    }
   }
-*/
+
+  if (!type_expr) {
+    ASSERT_NE(init_val.get(), nullptr);
+    if (!init_val->is<Hole>()) { // I := V
+      if (init_val->type == Err) {
+        type = identifier->type = Err;
+        limit_to(StageRange::Nothing());
+        identifier->limit_to(StageRange::Nothing());
+      }
+
+    } else { // I := --
+      ctx->error_log_.InferringHole(span);
+      type = init_val->type = identifier->type = Err;
+      limit_to(StageRange::Nothing());
+      init_val->limit_to(StageRange::Nothing());
+      identifier->limit_to(StageRange::Nothing());
+    }
+  }
+
+  if (const_ && init_val) {
+    if (init_val->is<Hole>()) {
+      ctx->error_log_.UninitializedConstant(span);
+      limit_to(StageRange::Nothing());
+      return;
+    } else if (init_val->lvalue != Assign::Const) {
+     ctx->error_log_.NonConstantBindingToConstantDeclaration(span);
+     limit_to(StageRange::Nothing());
+     return;
+    }
+  }
+
   if (type == Err) {
     limit_to(StageRange::Nothing());
     return;

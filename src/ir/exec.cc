@@ -584,8 +584,7 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr) {
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
   IR::ExecContext exec_context;
-  // TODO wire through errors. Currently we just return IR::Val::None() if there
-  // were errors
+  // TODO wire through errors.
   auto fn = ExprFn(expr, Void, ctx);
   if (ctx->num_errors() == 0) {
     bool were_errors;
