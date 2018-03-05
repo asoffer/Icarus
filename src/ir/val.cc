@@ -76,7 +76,10 @@ std::string Val::to_string() const {
                    std::to_string(ret.value);
           },
           [](IR::Addr addr) -> std::string { return addr.to_string(); },
-          [](bool b) -> std::string { return b ? "true" : "false"; },
+          [this](bool b) -> std::string {
+            // Bool is used to represent -- if the type is missing.
+            return type ? (b ? "true" : "false") : "--";
+          },
           [](char c) -> std::string {
             return std::to_string(static_cast<i32>(c)) + "_c";
           },

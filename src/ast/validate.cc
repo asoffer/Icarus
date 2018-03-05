@@ -16,12 +16,25 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 #define HANDLE_CYCLIC_DEPENDENCIES                                             \
   do {                                                                         \
     if (ctx->cyc_dep_vec_ != nullptr) {                                        \
-      if (this == ctx->cyc_dep_vec_->front()) {                                \
-        ctx->cyc_dep_vec_ = nullptr;                                           \
-      } else {                                                                 \
-        type = Err;                                                            \
-        ctx->cyc_dep_vec_->push_back(this);                                    \
+      if constexpr (std::is_same_v<decltype(this), Identifier *>) {            \
+        auto *this_as_id = reinterpret_cast<Identifier *>(this);               \
+        if (!ctx->cyc_dep_vec_->empty() &&                                     \
+            this_as_id == ctx->cyc_dep_vec_->front()) {                        \
+          ctx->cyc_dep_vec_ = nullptr;                                         \
+        } else {                                                               \
+          ctx->cyc_dep_vec_->push_back(this_as_id);                            \
+        }                                                                      \
+      } else if constexpr (std::is_same_v<decltype(this), Declaration *>) {    \
+        auto *this_as_id =                                                     \
+            reinterpret_cast<Declaration *>(this)->identifier.get();           \
+        if (!ctx->cyc_dep_vec_->empty() &&                                     \
+            this_as_id == ctx->cyc_dep_vec_->front()) {                        \
+          ctx->cyc_dep_vec_ = nullptr;                                         \
+        } else {                                                               \
+          ctx->cyc_dep_vec_->push_back(this_as_id);                            \
+        }                                                                      \
       }                                                                        \
+      type = Err;                                                              \
       limit_to(StageRange::Nothing());                                         \
       return;                                                                  \
     }                                                                          \
@@ -30,13 +43,9 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 #define STARTING_CHECK                                                         \
   do {                                                                         \
     ASSERT(scope_, "Need to first call assign_scope()");                       \
-    HANDLE_CYCLIC_DEPENDENCIES;                                                \
     if (type == Unknown) {                                                     \
       ctx->cyc_dep_vec_ = ctx->error_log_.CyclicDependency();                  \
-      ctx->cyc_dep_vec_->push_back(this);                                      \
-      type = Err;                                                              \
-      limit_to(StageRange::Nothing());                                         \
-      return;                                                                  \
+      HANDLE_CYCLIC_DEPENDENCIES;                                              \
     }                                                                          \
     if (type != nullptr) { return; }                                           \
     type = Unknown;                                                            \
@@ -206,6 +215,9 @@ static Type *TypeJoin(Type *lhs, Type *rhs) {
   if (lhs == rhs) { return lhs; }
   if (lhs == Err) { return rhs; } // Ignore errors
   if (rhs == Err) { return lhs; } // Ignore errors
+  if (lhs->is<Primitive>() || rhs->is<Primitive>()) {
+    return lhs == rhs ? lhs : nullptr;
+  }
   if (lhs == NullPtr && rhs->is<Pointer>()) { return rhs; }
   if (rhs == NullPtr && lhs->is<Pointer>()) { return lhs; }
   if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
@@ -263,6 +275,7 @@ static bool CanCastImplicitly(Type *from, Type *to) {
   return TypeJoin(from, to) == to;
 }
 
+// TODO return a reason why this is not inferrable for better error messages.
 static bool Inferrable(Type *t) {
   if (t == NullPtr || t == EmptyArray) {
     return false;
@@ -312,7 +325,9 @@ std::optional<DispatchTable>
 Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
   DispatchTable table;
   for (Expression *fn_option : fn_options) {
-    auto fn_val = Evaluate(fn_option)[0].value;
+    auto vals    = Evaluate(fn_option, ctx);
+    if (vals.empty()) { continue; }
+    auto& fn_val = vals[0].value;
     if (fn_option->type->is<Function>()) {
       auto *fn_lit = std::get<FunctionLiteral *>(fn_val);
 
@@ -502,32 +517,6 @@ void DispatchTable::insert(FnArgs<Type *> call_arg_types, Binding binding) {
 
   total_size_ += expanded_size;
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
-}
-
-Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok,
-                                           Context *ctx) {
-  ASSERT_NE(type, nullptr);
-  if (type != Type_) {
-    ErrorLog::NotAType(span, id_tok);
-    return Err;
-  }
-
-  Type *t = std::get<Type *>(Evaluate(this, ctx)[0].value);
-
-  if (t == Void) {
-    ErrorLog::DeclaredVoidType(span, id_tok);
-    return Err;
-  }
-
-  return t;
-}
-
-Type *Expression::VerifyValueForDeclaration(const std::string &) {
-  if (type == Void) {
-    ErrorLog::VoidDeclaration(span);
-    return Err;
-  }
-  return type;
 }
 
 static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
@@ -1068,100 +1057,122 @@ void Declaration::Validate(Context *ctx) {
 
   lvalue = const_ ? Assign::Const : Assign::RVal;
 
-  if (type_expr) {
+  if (type_expr && init_val && !init_val->is<Hole>()) { // I: T = V
     type_expr->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
-    if (type_expr->type == Err) { type = Err; }
+    HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(type_expr);
-  }
-  if (init_val) {
+
     init_val->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
-    if (init_val->type == Err) {
+    HANDLE_CYCLIC_DEPENDENCIES;
+    limit_to(init_val);
+
+    if (init_val && init_val->type != Err && !Inferrable(init_val->type)) {
+      ctx->error_log_.UninferrableType(init_val->span);
+      type = identifier->type = Err;
+      limit_to(StageRange::Nothing());
+      identifier->limit_to(StageRange::Nothing());
+    }
+
+    if (type_expr->type != Type_) {
+      ctx->error_log_.NotAType(type_expr.get());
+      limit_to(StageRange::Nothing());
+
       type = Err;
+      identifier->stage_range_.low = ThisStage();
+      identifier->limit_to(StageRange::Nothing());
+      init_val->type = Err;
+
     } else {
-      if (init_val->lvalue != Assign::Const && const_) {
-        ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
-                                             std::to_string(__LINE__) + "\n");
+      type = std::get<Type *>(Evaluate(type_expr.get(), ctx)[0].value);
+      identifier->stage_range_.low = ThisStage();
+      identifier->type             = type;
+
+      if (!CanCastImplicitly(init_val->type, type)) {
+        ctx->error_log_.AssignmentTypeMismatch(identifier.get(),
+                                               init_val.get());
         limit_to(StageRange::Nothing());
-      } else {
-        limit_to(init_val);
       }
     }
-  }
-  if (type == Err) {
-    type = type_expr ? type_expr->type : Err;
-    return;
-  }
 
-  // There are eight cases for the form of a declaration.
-  //   1a. I: T         or    1b. I :: T
-  //   2a. I := V       or    2b. I ::= V
-  //   3a. I: T = V     or    3b. I :: T = V
-  //   4a. I: T = --    or    4b. I :: T = -- (illegal)
-  //
-  // Here 'I' stands for "identifier". This is the identifier being declared.
-  // 'T' stands for "type", the type of the identifier being declared.
-  // 'V' stands for "value", the initial value of the identifier being declared.
-  // The double-colon (b) cases are those where the values being declared must
-  // be known at compile-time. The single-colon (a) cases the values being
-  // declared need only be known at run-time. In case 4a and 4b, the --
-  // indicates that the value is not specified. The only valid operations to
-  // perform on such an identifier is to assign to it. This might be useful in
-  // 4a for optimzation purposes. In the case of 4b it is outright illegal and
-  // an error is thrown by the compiler.
+  } else if (type_expr && init_val && init_val->is<Hole>()) { // I: T = --
+    type_expr->Validate(ctx);
+    HANDLE_CYCLIC_DEPENDENCIES;
+    limit_to(type_expr);
 
-  if (IsDefaultInitialized()) {
-    ASSERT_NE(type_expr.get(), nullptr);
-    type = type_expr->VerifyTypeForDeclaration(identifier->token, ctx);
-  } else if (IsInferred()) {
-    type = init_val->VerifyValueForDeclaration(identifier->token);
-
-    if (!Inferrable(type)) {
-      // Some types are only present in the type-system to make handling easier
-      // for us, but really cannot be inferred. For example, almost dealing
-      // with 'null':
-      //   foo := [null, null]  // Not valid
-      //   foo: [2; &int] = [null, null] // Okay. Type explicitly stated.
-      ErrorLog::UninferrableType(span);
-      type = Err;
+    if (type_expr->type != Type_) {
+      ctx->error_log_.NotAType(type_expr.get());
       limit_to(StageRange::Nothing());
+
+      type = Err;
+      identifier->stage_range_.low = ThisStage();
+      identifier->limit_to(StageRange::Nothing());
+      init_val->type = Err;
+
+    } else {
+      type = std::get<Type *>(Evaluate(type_expr.get(), ctx)[0].value);
+      identifier->stage_range_.low = ThisStage();
+      identifier->type             = type;
+      init_val->type               = type;
     }
 
-  } else if (IsCustomInitialized()) {
-    type = type_expr->VerifyTypeForDeclaration(identifier->token, ctx);
-    auto init_val_type = init_val->VerifyValueForDeclaration(identifier->token);
+  } else if (type_expr && !init_val) { // I: T
+    type_expr->Validate(ctx);
+    HANDLE_CYCLIC_DEPENDENCIES;
+    limit_to(type_expr);
 
-    if (type == Err) {
-      type = init_val_type;
-    } else if (!CanCastImplicitly(init_val_type, type)) {
-      ErrorLog::AssignmentTypeMismatch(span, type, init_val_type);
+    if (type_expr->type != Type_) {
+      ctx->error_log_.NotAType(type_expr.get());
+      limit_to(StageRange::Nothing());
+
+      type = Err;
+      identifier->stage_range_.low = ThisStage();
+      identifier->limit_to(StageRange::Nothing());
+    } else {
+      type = std::get<Type *>(Evaluate(type_expr.get(), ctx)[0].value);
+      identifier->stage_range_.low = ThisStage();
+      identifier->type             = type;
     }
 
-    if (!type->is<Pointer>() && init_val_type == NullPtr) {
-      ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-      limit_to(StageRange::NoEmitIR());
+  } else if (!type_expr && init_val && !init_val->is<Hole>()) { // I := V
+    init_val->Validate(ctx);
+    HANDLE_CYCLIC_DEPENDENCIES;
+    limit_to(init_val);
+
+    if (init_val->type == Err) {
+      type = identifier->type = Err;
+      limit_to(StageRange::Nothing());
+      identifier->limit_to(StageRange::Nothing());
+
+    } else if (!Inferrable(init_val->type)) {
+      ctx->error_log_.UninferrableType(init_val->span);
+      type = identifier->type = Err;
+      limit_to(StageRange::Nothing());
+      identifier->limit_to(StageRange::Nothing());
+
+    } else {
+      identifier->stage_range_.low = ThisStage();
+      type = identifier->type = init_val->type;
     }
 
-  } else if (IsUninitialized()) {
-    if (const_) {
-      ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-      limit_to(StageRange::NoEmitIR());
-    }
+  } else if (!type_expr && init_val && init_val->is<Hole>()) { // I := --
+    ctx->error_log_.InferringHole(span);
+    type = init_val->type = identifier->type = Err;
+    limit_to(StageRange::Nothing());
+    init_val->limit_to(StageRange::Nothing());
+    identifier->limit_to(StageRange::Nothing());
 
-    type = type_expr->VerifyTypeForDeclaration(identifier->token, ctx);
-    init_val->type = type;
-
-  } else {
+  } else if (!type_expr && !init_val) {
     UNREACHABLE();
   }
 
-  identifier->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
-  limit_to(identifier);
 
+  /*
+  if (const_ && IsUninitialized()) {
+    ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                         std::to_string(__LINE__) + ": ");
+    limit_to(StageRange::NoEmitIR());
+  }
+*/
   if (type == Err) {
     limit_to(StageRange::Nothing());
     return;
@@ -1182,7 +1193,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
       // at each Declaration verification, we look both up and down the scope
       // tree.
       decl->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+      HANDLE_CYCLIC_DEPENDENCIES;
       if (Shadow(this, decl)) {
         failed_shadowing = true;
         ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1197,7 +1208,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
         // because at each Declaration verification, we look both up and down
         // the scope tree.
         decl->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+        HANDLE_CYCLIC_DEPENDENCIES;
         if (Shadow(this, decl)) {
           failed_shadowing = true;
           ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1727,7 +1738,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
     type = Err;
     limit_to(StageRange::Nothing());
   } else if (ret_type_val.type != Type_) {
-    ErrorLog::NotAType(return_type_expr.get(), return_type_expr->type);
+    ctx->error_log_.NotAType(return_type_expr.get());
     type = Err;
     limit_to(StageRange::Nothing());
     return;

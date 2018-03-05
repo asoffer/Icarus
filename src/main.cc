@@ -40,6 +40,10 @@ int GenerateCode() {
       return 0;
     }
     AST::DoStage<2>(&global_statements, GlobalScope, &ctx);
+    if (ctx.num_errors() != 0) {
+      ctx.DumpErrors();
+      return 0;
+    }
   }
 
   RUN(timer, "Verify preconditions") {

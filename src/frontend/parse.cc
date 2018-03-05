@@ -416,10 +416,11 @@ BuildInDecl(std::vector<std::unique_ptr<Node>> nodes) {
   return in_decl;
 }
 
+template <bool IsConst>
 static std::unique_ptr<Node>
-BuildDeclaration(std::vector<std::unique_ptr<Node>> nodes, bool is_const) {
+BuildDeclaration(std::vector<std::unique_ptr<Node>> nodes) {
   auto op                = nodes[1]->as<TokenNode>().op;
-  auto decl              = std::make_unique<Declaration>(is_const);
+  auto decl              = std::make_unique<Declaration>(IsConst);
   decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
   decl->precedence       = Language::precedence(op);
   decl->identifier       = move_as<Identifier>(nodes[0]);
@@ -662,10 +663,10 @@ BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>> nodes,
     return AST::BuildAccess(std::move(nodes), error_log);
 
   } else if (tk == ":" || tk == ":=") {
-    return AST::BuildDeclaration(std::move(nodes), /* const = */ false);
+    return AST::BuildDeclaration<false>(std::move(nodes));
 
   } else if (tk == "::" || tk == "::=") {
-    return AST::BuildDeclaration(std::move(nodes), /* const = */ true);
+    return AST::BuildDeclaration<true>(std::move(nodes));
 
   } else if (tk == "in") {
     return AST::BuildInDecl(std::move(nodes));

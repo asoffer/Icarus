@@ -913,6 +913,10 @@ IR::Val AST::GenericFunctionLiteral::EmitIR(Context *) {
 
 IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
   statements->Validate(ctx);
+  limit_to(statements);
+  stage_range_.low = ThisStage();
+  if (stage_range_.high < ThisStage()) { return IR::Val::None(); }
+
   if (type == Err) { return IR::Val::None(); }
 
   if (ir_func_ == nullptr) {

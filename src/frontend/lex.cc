@@ -645,7 +645,7 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
     } else if (*loc == '-') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT::TerminalExpression(span, IR::Val::None());
+      return NNT(std::make_unique<AST::Hole>(span), Language::expr);
 
     } else {
       span.finish = loc.cursor;

@@ -60,7 +60,7 @@ struct Node : public base::Cast<Node> {
 
   template <typename T> void limit_to(T &&t) {
     if constexpr (std::is_same_v<std::decay_t<T>, int>) {
-      stage_range_.high = t;
+      stage_range_.high = std::min(t, stage_range_.high);
     } else {
       stage_range_.high =
           std::min(stage_range_.high, std::forward<T>(t)->stage_range_.high);

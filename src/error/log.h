@@ -32,7 +32,8 @@ struct Log {
   void PreconditionNeedsBool(AST::Expression *expr);
   void PostconditionNeedsBool(AST::Expression *expr);
   void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
-
+  void AssignmentTypeMismatch(AST::Expression *lhs,
+                              AST::Expression *rhs);
   void RunawayMultilineComment();
   void DoubleDeclAssignment(const TextSpan &decl_span,
                             const TextSpan &val_span);
@@ -41,7 +42,9 @@ struct Log {
   void UnknownParseError(const std::vector<TextSpan> &span);
   void PositionalArgumentFollowingNamed(const std::vector<TextSpan> &pos_spans,
                                         const TextSpan &named_span);
-  std::vector<const AST::Expression *> *CyclicDependency();
+  void NotAType(AST::Expression *expr);
+
+  std::vector<AST::Identifier *> *CyclicDependency();
 
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() +
@@ -57,8 +60,7 @@ struct Log {
   std::unordered_map<AST::Declaration *, std::vector<AST::Identifier *>>
       out_of_order_decls_;
 
-  std::vector<std::unique_ptr<std::vector<const AST::Expression *>>>
-      cyc_dep_vecs_;
+  std::vector<std::unique_ptr<std::vector<AST::Identifier *>>> cyc_dep_vecs_;
 
   std::vector<std::string> errors_;
 };
@@ -85,7 +87,6 @@ void CaseLHSBool(const TextSpan &case_span, const TextSpan &span,
 void MissingMember(const TextSpan &span, const std::string &member_name,
                    const Type *t);
 void NotAType(const TextSpan &span, const std::string &id_tok);
-void DeclaredVoidType(const TextSpan &span, const std::string &id_tok);
 void UnknownParserError(const Source::Name &source_name,
                         const std::vector<TextSpan> &lines);
 void InvalidReturnType(const TextSpan &span, Type *given, Type *correct);
@@ -124,7 +125,6 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct = nullptr);
 void InvalidAssignDefinition(const TextSpan &span, const Type *t);
 void InvalidScope(const TextSpan &span, const Type *t);
 void UserDefinedError(const TextSpan &span, const std::string &msg);
-void UninferrableType(const TextSpan &span);
 
 #define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \
   void fn_name(const TextSpan &loc);

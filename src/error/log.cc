@@ -221,12 +221,6 @@ void InvalidStringIndex(const TextSpan &span, Type *index_type) {
                          index_type->to_string() + ".";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
-void NotAType(AST::Expression *expr, Type *t) {
-  std::string msg_head =
-      "Expression was expected to be a type, but instead it was a(n) " +
-      t->to_string() + ".";
-  DisplayErrorMessage(msg_head.c_str(), "", expr->span, 1);
-}
 
 void IndeterminantType(AST::Expression *expr) {
   DisplayErrorMessage("Cannot determine the type of the expression:", "",
@@ -330,15 +324,6 @@ void InvalidRangeTypes(const TextSpan &span, const Type *lhs, const Type *rhs) {
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
-void AssignmentTypeMismatch(const TextSpan &span, const Type *lhs,
-                            const Type *rhs) {
-  std::string msg_head = "Invalid assignment. Left-hand side has type " +
-                         lhs->to_string() + ", but right-hand side has type " +
-                         rhs->to_string() + ".";
-  // TODO underline isn't what it ought to be.
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
 void InvalidCast(const TextSpan &span, const Type *from, const Type *to) {
   std::string msg_head = "No valid cast from `" + from->to_string() + "` to `" +
                          to->to_string() + "`.";
@@ -348,12 +333,6 @@ void InvalidCast(const TextSpan &span, const Type *from, const Type *to) {
 void NotAType(const TextSpan &span, const std::string &id_tok) {
   std::string msg_head = "In declaration of `" + id_tok +
                          "`, the declared type is not a actually a type.";
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
-void DeclaredVoidType(const TextSpan &span, const std::string &id_tok) {
-  std::string msg_head =
-      "Identifier `" + id_tok + "`is declared to have type `void`.";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
@@ -450,10 +429,6 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
               << case_ptr->span.source->name.to_string() << "\".\n";
   }
 }
-
-void UninferrableType(const TextSpan &span) {
-  DisplayErrorMessage("Expression cannot have it's type inferred", "", span, 1);
-}
 } // namespace ErrorLog
 
 namespace error {
@@ -538,12 +513,43 @@ void Log::Reserved(const TextSpan &span, const std::string &token) {
 void Log::NotBinary(const TextSpan &span, const std::string &token) {
   std::stringstream ss;
   ss << "Operator '" << token << "' is not a binary operator.";
-  WriteSource(ss, *span.source,
-              {Interval{span.start.line_num, span.finish.line_num + 1}},
-              NumDigits(span.finish.line_num) + 2,
-              {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
+}
+
+void Log::NotAType(AST::Expression *expr) {
+  std::stringstream ss;
+  ss << "Expression was expected to be a type, but instead it was a(n) "
+     << expr->type->to_string() << ".";
+  WriteSource(
+      ss, *expr->span.source,
+      {Interval{expr->span.start.line_num, expr->span.finish.line_num + 1}},
+      NumDigits(expr->span.finish.line_num) + 2,
+      {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::AssignmentTypeMismatch(AST::Expression *lhs,
+                                AST::Expression *rhs) {
+   std::stringstream ss;
+   ss << "Invalid assignment. Left-hand side has type "
+      << lhs->type->to_string() << ", but right-hand side has type "
+      << rhs->type->to_string() << ".\n\n";
+   WriteSource(
+       ss, *lhs->span.source,
+       {Interval{lhs->span.start.line_num, lhs->span.finish.line_num + 1},
+        Interval{rhs->span.start.line_num, rhs->span.finish.line_num + 1}},
+       NumDigits(rhs->span.finish.line_num) + 2,
+       {{lhs->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}},
+        {rhs->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+   ss << "\n\n";
+   errors_.push_back(ss.str());
 }
 
 void Log::PositionalArgumentFollowingNamed(
@@ -586,28 +592,19 @@ void Log::UnknownParseError(const std::vector<TextSpan> &lines) {
   errors_.push_back(ss.str());
 }
 
-std::vector<const AST::Expression *> *Log::CyclicDependency() {
+std::vector<AST::Identifier *> *Log::CyclicDependency() {
   cyc_dep_vecs_.push_back(
-      std::make_unique<std::vector<const AST::Expression *>>());
+      std::make_unique<std::vector<AST::Identifier *>>());
   return cyc_dep_vecs_.back().get();
 }
 
 void Log::Dump() const {
-  for (const auto &cyc_dep_vec : cyc_dep_vecs_) {
+  for (auto &ids : cyc_dep_vecs_) {
     // TODO make cyc_dep_vec just identifiers
     std::cerr << "Found a cyclic dependency:\n\n";
 
-    // Filter out only the things worth showing.
-    std::vector<const AST::Identifier *> ids;
-    for (auto *expr : *cyc_dep_vec) {
-      if (expr->is<AST::Identifier>()) {
-        ids.push_back(&expr->as<AST::Identifier>());
-      } else if (expr->is<AST::Declaration>()) {
-        ids.push_back(expr->as<AST::Declaration>().identifier.get());
-      }
-    }
-    std::sort(ids.begin(), ids.end(),
-              [](const AST::Expression *lhs, const AST::Expression *rhs) {
+    std::sort(ids->begin(), ids->end(),
+              [](const AST::Identifier *lhs, const AST::Identifier *rhs) {
                 if (lhs->span.start.line_num < rhs->span.start.line_num) {
                   return true;
                 }
@@ -630,15 +627,15 @@ void Log::Dump() const {
               });
 
     std::unordered_map<AST::Declaration *, size_t> decls;
-    for (const auto &id : ids) {
+    for (const auto &id : *ids) {
       decls.emplace(id->as<AST::Identifier>().decl, decls.size());
     }
 
     IntervalSet iset;
     std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
-    for (const auto &id: ids) {
-      iset.insert(Interval{id->span.start.line_num - 1,
-                           id->span.finish.line_num + 2});
+    for (const auto &id : *ids) {
+      iset.insert(
+          Interval{id->span.start.line_num - 1, id->span.finish.line_num + 2});
       // TODO handle case where it's 1 mod 7 and so adjacent entries show up
       // with the same color
       underlines.emplace_back(
@@ -648,7 +645,7 @@ void Log::Dump() const {
                                  DisplayAttrs::UNDERLINE});
     }
 
-    WriteSource(std::cerr, *ids.front()->span.source, iset,
+    WriteSource(std::cerr, *ids->front()->span.source, iset,
                 NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
     std::cerr << "\n\n";
   }
