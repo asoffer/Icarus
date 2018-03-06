@@ -1,5 +1,7 @@
 #include "ast.h"
 
+#include <algorithm>
+
 #include "../context.h"
 #include "../error/log.h"
 #include "../ir/func.h"
@@ -326,7 +328,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
   DispatchTable table;
   for (Expression *fn_option : fn_options) {
     auto vals    = Evaluate(fn_option, ctx);
-    if (vals.empty()) { continue; }
+    if (vals.empty() || vals[0] == IR::Val::None()) { continue; }
     auto& fn_val = vals[0].value;
     if (fn_option->type->is<Function>()) {
       auto *fn_lit = std::get<FunctionLiteral *>(fn_val);
@@ -956,7 +958,7 @@ void Call::Validate(Context *ctx) {
   bool all_const = true;
   args_.Apply([&ctx, &all_const, this](auto &arg) {
     arg->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+    HANDLE_CYCLIC_DEPENDENCIES; // TODO audit macro in lambda
     if (arg->type == Err) { this->type = Err; }
     all_const &= arg->lvalue == Assign::Const;
   });
@@ -1144,40 +1146,41 @@ void Declaration::Validate(Context *ctx) {
   // TODO is this the right time to complete the struct definition?
   if (type->is<Struct>()) { type->as<Struct>().CompleteDefinition(ctx); }
 
-  // TODO Either guarantee that higher scopes have all declarations declared and
-  // verified first, or check both in the upwards and downwards direction for
-  // shadowing.
-  bool failed_shadowing = false;
-  // TODO what about error decls?
-  for (auto *decl : scope_->AllDeclsWithId(identifier->token, ctx).first) {
-    if (decl == this) { continue; }
-    if (this < decl) {
-      // Pick one arbitrary but consistent ordering of the pair to check because
-      // at each Declaration verification, we look both up and down the scope
-      // tree.
-      decl->Validate(ctx);
-      HANDLE_CYCLIC_DEPENDENCIES;
-      if (Shadow(this, decl)) {
-        failed_shadowing = true;
-        ErrorLog::ShadowingDeclaration(*this, *decl);
-      }
+  std::vector<Declaration*> decls_to_check;
+  {
+    auto[good_decls_to_check, error_decls_to_check] =
+        scope_->AllDeclsWithId(identifier->token, ctx);
+    size_t num_total = good_decls_to_check.size() + error_decls_to_check.size();
+    auto iter        = scope_->child_decls_.find(identifier->token);
+
+    bool has_children = (iter != scope_->child_decls_.end());
+    if (has_children) { num_total += iter->second.size(); }
+
+    decls_to_check.reserve(num_total);
+    decls_to_check.insert(decls_to_check.end(), good_decls_to_check.begin(),
+                          good_decls_to_check.end());
+    decls_to_check.insert(decls_to_check.end(), error_decls_to_check.begin(),
+                          error_decls_to_check.end());
+
+    if (has_children) {
+      decls_to_check.insert(decls_to_check.end(), iter->second.begin(),
+                            iter->second.end());
     }
   }
-  auto iter = scope_->child_decls_.find(identifier->token);
-  if (iter != scope_->child_decls_.end()) {
-    for (auto *decl : iter->second) {
-      if (this < decl) {
-        // Pick one arbitrary but consistent ordering of the pair to check
-        // because at each Declaration verification, we look both up and down
-        // the scope tree.
-        decl->Validate(ctx);
-        HANDLE_CYCLIC_DEPENDENCIES;
-        if (Shadow(this, decl)) {
-          failed_shadowing = true;
-          ErrorLog::ShadowingDeclaration(*this, *decl);
-        }
-      }
+  auto iter =
+      std::partition(decls_to_check.begin(), decls_to_check.end(),
+                     [this](AST::Declaration *decl) { return this >= decl; });
+  bool failed_shadowing = false;
+  while (iter != decls_to_check.end()) {
+    auto *decl = *iter;
+    decl->Validate(ctx);
+    HANDLE_CYCLIC_DEPENDENCIES;
+    if (Shadow(this, decl)) {
+      failed_shadowing = true;
+      ctx->error_log_.ShadowingDeclaration(*this, *decl);
+      limit_to(StageRange::NoEmitIR());
     }
+    ++iter;
   }
 
   if (failed_shadowing) {

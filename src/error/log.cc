@@ -200,21 +200,6 @@ void InvalidRangeType(const TextSpan &span, Type *t) {
                       msg_foot, span, t->to_string().size());
 }
 
-void ShadowingDeclaration(const AST::Declaration &decl1,
-                          const AST::Declaration &decl2) {
-  auto line1 = source_map AT(decl1.span.source->name)
-                   ->lines AT(decl1.span.start.line_num);
-  auto line2 = source_map AT(decl2.span.source->name)
-                   ->lines AT(decl2.span.start.line_num);
-  auto line_num1 = decl1.span.start.line_num;
-  auto line_num2 = decl2.span.start.line_num;
-  auto align =
-      std::max(size_t{4}, NumDigits(std::max(line_num1, line_num2)) + 2);
-  std::cerr << "Ambiguous declarations:\n\n"
-            << LineToDisplay(line_num1, line1, align) << '\n'
-            << LineToDisplay(line_num2, line2, align) << '\n';
-}
-
 void InvalidStringIndex(const TextSpan &span, Type *index_type) {
   std::string msg_head = "String indexed by an invalid type. Expected an int "
                          "or uint, but encountered a " +
@@ -597,6 +582,24 @@ std::vector<AST::Identifier *> *Log::CyclicDependency() {
       std::make_unique<std::vector<AST::Identifier *>>());
   return cyc_dep_vecs_.back().get();
 }
+
+void Log::ShadowingDeclaration(const AST::Declaration &decl1,
+                          const AST::Declaration &decl2) {
+  // TODO migrate away from old display.
+  auto line1 = source_map AT(decl1.span.source->name)
+                   ->lines AT(decl1.span.start.line_num);
+  auto line2 = source_map AT(decl2.span.source->name)
+                   ->lines AT(decl2.span.start.line_num);
+  auto line_num1 = decl1.span.start.line_num;
+  auto line_num2 = decl2.span.start.line_num;
+  auto align =
+      std::max(size_t{4}, NumDigits(std::max(line_num1, line_num2)) + 2);
+  std::cerr << "Ambiguous declarations:\n\n"
+            << LineToDisplay(line_num1, line1, align) << '\n'
+            << LineToDisplay(line_num2, line2, align) << '\n';
+}
+
+
 
 void Log::Dump() const {
   for (auto &ids : cyc_dep_vecs_) {

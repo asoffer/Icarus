@@ -59,9 +59,11 @@ MAKE_LOG_ERROR(DeclarationInAccess,
                "Declaration not allowed on left-hand side of dot (.) operator.")
 MAKE_LOG_ERROR(UninferrableType,
                "Unable to infer the type of the following expression:")
+
+// TODO point to the reason(s) why the init_val is non-const
 MAKE_LOG_ERROR(
     NonConstantBindingToConstantDeclaration,
-    "Attempting to declare a constant with a non-constant initial value.")
+    "Attempting to initialize a constant with a non-constant value.")
 
 // TODO better text here
 MAKE_LOG_ERROR(InferringHole,

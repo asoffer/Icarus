@@ -43,6 +43,8 @@ struct Log {
   void PositionalArgumentFollowingNamed(const std::vector<TextSpan> &pos_spans,
                                         const TextSpan &named_span);
   void NotAType(AST::Expression *expr);
+  void ShadowingDeclaration(const AST::Declaration &decl1,
+                            const AST::Declaration &decl2);
 
   std::vector<AST::Identifier *> *CyclicDependency();
 
