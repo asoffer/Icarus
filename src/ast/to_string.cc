@@ -264,6 +264,9 @@ std::string ScopeNode::to_string(size_t n) const {
 }
 
 std::string CodeBlock::to_string(size_t n) const {
+  if (auto* err = std::get_if<std::string>(&content_)) {
+    return "error(" + *err + ")";
+  }
   auto str = std::get<Statements>(content_).to_string(n + 1);
 
   if (str.empty()) { return "{{}}"; }

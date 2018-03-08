@@ -46,6 +46,9 @@ struct Log {
   void ShadowingDeclaration(const AST::Declaration &decl1,
                             const AST::Declaration &decl2);
 
+  // TODO include a source location/span/trace or whatever you decide to include.
+  void UserDefinedError(const std::string &err);
+
   std::vector<AST::Identifier *> *CyclicDependency();
 
   size_t size() const {

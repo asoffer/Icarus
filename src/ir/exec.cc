@@ -236,6 +236,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   }
   case Op::Extend: return Extend(resolved[0]);
   case Op::Trunc: return Trunc(resolved[0]);
+  case Op::Err:
+    return IR::Val::CodeBlock(
+        AST::CodeBlock(std::get<std::string>(resolved[0].value)));
   case Op::Call: {
     auto fn = std::get<IR::Func *>(resolved.back().value);
     resolved.pop_back();

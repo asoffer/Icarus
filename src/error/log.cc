@@ -563,7 +563,7 @@ void Log::PositionalArgumentFollowingNamed(
 }
 
 void Log::UnknownParseError(const std::vector<TextSpan> &lines) {
-  // TODO thehre's something seriously wrong with this
+  // TODO there's something seriously wrong with this
   std::stringstream ss;
   ss << "Parse errors found in \"" << lines.front().source->name
      << "\" on the following lines:\n\n";
@@ -599,7 +599,9 @@ void Log::ShadowingDeclaration(const AST::Declaration &decl1,
             << LineToDisplay(line_num2, line2, align) << '\n';
 }
 
-
+void Log::UserDefinedError(const std::string &err) {
+  errors_.push_back(err + "\n\n");
+}
 
 void Log::Dump() const {
   for (auto &ids : cyc_dep_vecs_) {

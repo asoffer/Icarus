@@ -93,6 +93,8 @@ Val Trunc(Val v) {
   MAKE_AND_RETURN(Char, Op::Trunc);
 }
 
+Val Err(Val v) { MAKE_AND_RETURN(::Code, Op::Err); }
+
 Val Neg(Val v) {
   if (bool *b = std::get_if<bool>(&v.value)) { return Val::Bool(!*b); }
   if (i32 *n = std::get_if<i32>(&v.value)) { return Val::Int(-*n); }
@@ -462,6 +464,7 @@ void Cmd::dump(size_t indent) const {
   case Op::Contextualize: std::cerr << "contextualize"; break;
   case Op::VariantType: std::cerr << "variant-type"; break;
   case Op::VariantValue: std::cerr << "variant-value"; break;
+  case Op::Err: std::cerr << "err"; break;
   }
 
   if (args.empty()) {

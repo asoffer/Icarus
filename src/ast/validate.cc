@@ -10,6 +10,10 @@
 // TODO catch functions that don't return along all paths.
 // TODO Join/Meet for EmptyArray <-> [0; T] (explicitly empty)? Why!?
 
+IR::Val ErrorFunc();
+IR::Val AsciiFunc();
+IR::Val OrdFunc();
+
 static constexpr int ThisStage() { return 1; }
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
@@ -496,6 +500,14 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     func.ClearIdDecls();
     // TODO clone captures
     DoStages<0, 2>(&func, scope_, &new_ctx);
+    if (new_ctx.num_errors() > 0) {
+      // TODO figure out the call stack of generic function requests and then
+      // print the relevant parts.
+      std::cerr << "While generating code for generic function:\n";
+      new_ctx.DumpErrors();
+      // TODO delete all the data held by iter->second
+      return std::pair(nullptr, Binding{});
+    }
   }
 
   binding.fn_expr_ = &iter->second;
@@ -973,7 +985,24 @@ void Call::Validate(Context *ctx) {
   // constants need special handling because they admit named arguments. These
   // concepts should be orthogonal.
   std::vector<Expression *> fn_options;
-  if (fn_->is<Identifier>()) {
+
+  if (fn_->is<Terminal>()) {
+    // Special case for error/ord/ascii
+    if (fn_->as<Terminal>().value == OrdFunc()) {
+      NOT_YET();
+    } else if (fn_->as<Terminal>().value == AsciiFunc()) {
+      NOT_YET();
+    } else if (fn_->as<Terminal>().value == ErrorFunc()) {
+      if (!args_.named_.empty()) {
+        NOT_YET();
+      } else if (args_.pos_.size() != 1) {
+        NOT_YET();
+      } else {
+        return;
+      }
+    }
+
+  } else if (fn_->is<Identifier>()) {
     const auto &token = fn_->as<Identifier>().token;
     for (auto *scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
       if (scope_ptr->shadowed_decls_.find(token) !=
@@ -1005,7 +1034,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
     }
   } else {
     fn_->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+    HANDLE_CYCLIC_DEPENDENCIES;
     fn_options.push_back(fn_.get());
   }
 

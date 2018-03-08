@@ -29,18 +29,18 @@ static void ForEachExpr(AST::Expression *expr,
 }
 
 IR::Val ErrorFunc() {
-  static IR::Func *ascii_func_ = []() {
+  static IR::Func *error_func_ = []() {
     auto fn = new IR::Func(Func(String, Code), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       // TODO
-      IR::SetReturn(IR::ReturnValue{0}, IR::Val::CodeBlock(AST::CodeBlock()));
+      IR::SetReturn(IR::ReturnValue{0}, IR::Err(fn->Argument(0)));
       IR::ReturnJump();
     }
     fn->name = "error";
     return fn;
   }();
-  return IR::Val::Func(ascii_func_);
+  return IR::Val::Func(error_func_);
 }
 
 IR::Val AsciiFunc() {
@@ -200,6 +200,10 @@ IR::Val AST::Call::EmitOneCallDispatch(
 }
 
 IR::Val AST::Call::EmitIR(Context *ctx) {
+  if (fn_->is<Terminal>()) {
+    return IR::Call(ErrorFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
+  }
+
   ASSERT_GT(dispatch_table_.bindings_.size(), 0u);
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching
@@ -643,6 +647,11 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
     auto val = Evaluate(operand.get())[0];
     ASSERT_EQ(val.type, Code);
     auto block = std::get<AST::CodeBlock>(val.value);
+    if (auto *err = std::get_if<std::string>(&block.content_)) {
+      ctx->error_log_.UserDefinedError(*err);
+      return IR::Val::None();
+    }
+
     return AST::DoStages<0, 2>(&std::get<AST::Statements>(block.content_),
                                scope_, ctx);
   } break;
