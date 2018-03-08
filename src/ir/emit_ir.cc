@@ -525,15 +525,16 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   IR::Val scope_expr_val = Evaluate(scope_expr.get())[0];
   ASSERT_TYPE(Scope_Type, scope_expr_val.type);
 
-  auto enter_fn = std::get<AST::ScopeLiteral *>(scope_expr_val.value)
-                      ->enter_fn->init_val->EmitIR(ctx);
-  ASSERT_NE(enter_fn, IR::Val::None());
-  auto exit_fn = std::get<AST::ScopeLiteral *>(scope_expr_val.value)
-                     ->exit_fn->init_val->EmitIR(ctx);
-  ASSERT_NE(exit_fn, IR::Val::None());
+  auto enter_fn =
+      std::get<ScopeLiteral *>(scope_expr_val.value)->enter_fn->init_val.get();
+  enter_fn->EmitIR(ctx);
+
+  auto exit_fn =
+      std::get<ScopeLiteral *>(scope_expr_val.value)->exit_fn->init_val.get();
+  exit_fn->EmitIR(ctx);
 
   auto call_enter_result = IR::Call(
-      enter_fn,
+      IR::Val::Func(enter_fn->as<FunctionLiteral>().ir_func_),
       expr ? std::vector<IR::Val>{expr->EmitIR(ctx)} : std::vector<IR::Val>{},
       {});
   auto land_block  = IR::Func::Current->AddBlock();
@@ -544,7 +545,8 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   IR::Block::Current = enter_block;
   stmts->EmitIR(ctx);
 
-  auto call_exit_result = IR::Call(exit_fn, {}, {});
+  auto call_exit_result =
+      IR::Call(IR::Val::Func(exit_fn->as<FunctionLiteral>().ir_func_), {}, {});
   IR::CondJump(call_exit_result, enter_block, land_block);
 
   IR::Block::Current = land_block;
