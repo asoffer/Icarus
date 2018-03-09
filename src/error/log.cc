@@ -133,7 +133,9 @@ WriteSource(std::ostream &os, const Source &source,
         prev_start_offset = iter->first.finish.offset;
         ++iter;
       }
-      os << "\n";
+      os << line_view.substr(prev_start_offset,
+                             line_view.size() - prev_start_offset)
+         << "\n";
 
       ++line_num;
     }
