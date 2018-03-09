@@ -63,7 +63,8 @@ static std::unique_ptr<IR::Func> AssignmentFunction(Type *from, Type *to) {
 
 namespace IR {
 static std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
-                                ExecContext *ctx, bool *were_errors) {
+                                ExecContext *ctx) {
+  /*
   if (were_errors != nullptr) {
     int num_errors = 0;
     std::queue<Func *> validation_queue;
@@ -77,7 +78,7 @@ static std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
       *were_errors = true;
       return {};
     }
-  }
+  }*/
 
   ctx->call_stack.emplace(fn, arguments);
 
@@ -230,7 +231,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       Execute(
           fn.get(),
           {resolved[1], rets[std::get<ReturnValue>(resolved[0].value).value]},
-          this, nullptr);
+          this);
     }
     return IR::Val::None();
   }
@@ -248,7 +249,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 
     // If there were multiple return values, they would be passed as out-params
     // in the IR.
-    auto results = Execute(fn, resolved, this, nullptr);
+    auto results = Execute(fn, resolved, this);
     return results.empty() ? IR::Val::None() : results[0];
   } break;
   case Op::Print:
@@ -572,8 +573,7 @@ void ReplEval(AST::Expression *expr) {
   }
 
   IR::ExecContext ctx;
-  bool were_errors;
-  Execute(fn.get(), {}, &ctx, &were_errors);
+  Execute(fn.get(), {}, &ctx);
 }
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr) {
@@ -581,8 +581,7 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr) {
   // TODO wire through errors. Currently we just return IR::Val::None() if there
   // were errors
   auto fn = ExprFn(expr, Void);
-  bool were_errors;
-  return Execute(fn.get(), {}, &exec_context, &were_errors);
+  return Execute(fn.get(), {}, &exec_context);
 }
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
@@ -590,8 +589,7 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
   // TODO wire through errors.
   auto fn = ExprFn(expr, Void, ctx);
   if (ctx->num_errors() == 0) {
-    bool were_errors;
-    return Execute(fn.get(), {}, &exec_context, &were_errors);
+    return Execute(fn.get(), {}, &exec_context);
   } else {
     return {};
   }

@@ -153,7 +153,6 @@ CallLookupTest(const AST::FnArgs<std::unique_ptr<AST::Expression>> &args,
 IR::Val AST::Call::EmitOneCallDispatch(
     const std::unordered_map<Expression *, IR::Val *> &expr_map,
     const Binding &binding, Context *ctx) {
-
   // After the last check, if you pass, you should dispatch
   IR::Func *fn_to_call = std::visit(
       base::overloaded{[](IR::Func *fn) { return fn; },
@@ -646,7 +645,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
     return results.empty() ? IR::Val::None() : results[0];
   }
   case Language::Operator::Generate: {
-    auto val = Evaluate(operand.get())[0];
+    auto val = Evaluate(operand.get(), ctx) AT(0);
     ASSERT_EQ(val.type, Code);
     auto block = std::get<AST::CodeBlock>(val.value);
     if (auto *err = std::get_if<std::string>(&block.content_)) {
