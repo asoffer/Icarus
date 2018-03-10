@@ -88,7 +88,8 @@ Val VariantValue(Type *t, IR::Val);
 Val Err(IR::Val v);
 Val CreateStruct();
 
-void InsertField(Val struct_type, std::string field_name, Val type);
+void InsertField(Val struct_type, std::string field_name, Val type,
+                 Val init_val);
 void SetReturn(ReturnValue n, Val v2);
 void Print(Val v);
 void Store(Val val, Val loc);

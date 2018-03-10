@@ -1047,12 +1047,21 @@ IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
     // TODO in initial value doesn't match type of field?
     // That should probably be handled elsewhere consistently with function
     // default args.
-    if (field->type_expr) {
-      auto field_type = field->type_expr->EmitIR(ctx);
-      IR::InsertField(new_struct, field->identifier->token, field_type);
-    } else {
-      NOT_YET();
+    IR::Val init_val = IR::Val::None();
+    if (field->init_val) {
+      AST::DoStages<0, 2>(field->init_val.get(), scope_, ctx);
+      init_val = field->init_val->EmitIR(ctx);
     }
+
+    IR::Val field_type;
+    if (field->type_expr) {
+      field_type = field->type_expr->EmitIR(ctx);
+    } else {
+      ASSERT_NE(nullptr, field->init_val.get());
+      field_type = IR::Val::Type(field->init_val->type);
+    }
+    IR::InsertField(new_struct, field->identifier->token, std::move(field_type),
+                    std::move(init_val));
   }
   return new_struct;
 }

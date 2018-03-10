@@ -461,9 +461,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::InsertField: {
     auto &struct_to_mod = std::get<Type *>(resolved[0].value)->as<Struct>();
 
-    struct_to_mod.fields_.push_back(
-        Struct::Field{std::string_view{}, std::get<Type *>(resolved[2].value),
-                      IR::Val::None()});
+    struct_to_mod.fields_.push_back(Struct::Field{
+        std::string_view{}, std::get<Type *>(resolved[2].value), resolved[3]});
 
     auto[iter, success] = struct_to_mod.field_indices_.emplace(
         std::get<std::string>(resolved[1].value),
