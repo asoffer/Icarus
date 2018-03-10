@@ -18,6 +18,13 @@ auto stringify(dispatch_rank<7>, const T &s)
   return s;
 }
 
+template <typename T>
+auto stringify(dispatch_rank<7>, const T &s)
+    -> decltype(std::enable_if_t<std::is_same_v<T, std::string_view>>(),
+                std::string()) {
+  return std::string(s);
+}
+
 template <typename Container>
 auto stringify(dispatch_rank<6>, const Container &t)
     -> decltype(std::declval<Container>().begin(),

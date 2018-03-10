@@ -196,6 +196,8 @@ private:
            *destroy_func = nullptr, *repr_func = nullptr;
 };
 
+bool operator==(const Struct &lhs, const Struct &rhs);
+
 struct Variant : public Type {
   TYPE_FNS(Variant);
   Variant(std::vector<Type *> variants) : variants_(std::move(variants)) {}
