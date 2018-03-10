@@ -108,4 +108,10 @@ void ScopeLiteral::ClearIdDecls() {
   if (enter_fn) { enter_fn->ClearIdDecls(); }
   if (exit_fn) { exit_fn->ClearIdDecls(); }
 }
+
+void StructLiteral::ClearIdDecls() {
+  stage_range_ = StageRange{};
+  for (auto& f : fields_) { f->ClearIdDecls(); }
+}
+
 } // namespace AST

@@ -454,16 +454,33 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     }
     UNREACHABLE("Invalid address kind: ",
                 static_cast<int>(std::get<Addr>(resolved[0].value).kind));
+  case Op::CreateStruct: {
+    Struct *new_struct = new Struct;
+    return IR::Val::Type(new_struct);
+  } break;
+  case Op::InsertField: {
+    auto &struct_to_mod = std::get<Type *>(resolved[0].value)->as<Struct>();
+
+    struct_to_mod.fields_.push_back(
+        Struct::Field{std::string_view{}, std::get<Type *>(resolved[2].value),
+                      IR::Val::None()});
+
+    auto[iter, success] = struct_to_mod.field_indices_.emplace(
+        std::get<std::string>(resolved[1].value),
+        struct_to_mod.fields_.size() - 1);
+    ASSERT(success, "");
+    struct_to_mod.fields_.back().name = std::string_view(&iter->first[0]);
+    return IR::Val::None();
+  } break;
   case Op::Field: {
     auto *struct_type = &resolved[0].type->as<Pointer>().pointee->as<Struct>();
     // This can probably be precomputed.
     size_t offset = 0;
     for (i32 i = 0; i < std::get<i32>(resolved[1].value); ++i) {
-      auto field_type = struct_type->field_type AT(i);
-
-      offset = Architecture::InterprettingMachine().bytes(field_type) +
-               Architecture::InterprettingMachine().MoveForwardToAlignment(
-                   field_type, offset);
+      auto field_type = struct_type->fields_ AT(i).type;
+      offset += Architecture::InterprettingMachine().bytes(field_type);
+      offset = Architecture::InterprettingMachine().MoveForwardToAlignment(
+          struct_type->fields_ AT(i + 1).type, offset);
     }
 
     if (std::get<Addr>(resolved[0].value).kind == Addr::Kind::Stack) {

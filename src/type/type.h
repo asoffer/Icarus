@@ -14,7 +14,6 @@ struct Variant;
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Void,
     *NullPtr, *String, *EmptyArray, *Generic;
-struct Scope;
 
 #include "../ast/ast.h"
 #include "../base/debug.h"
@@ -151,8 +150,6 @@ struct Function : public Type {
       : input(in), output(out) {}
 
   Function* ToIR() const;
-
-  // TODO needs destroy for captures?
   std::vector<Type *> input, output;
 };
 
@@ -172,43 +169,31 @@ struct Enum : public Type {
 };
 
 struct Struct : public Type {
-  TYPE_FNS(Struct);
+  virtual ~Struct() {}
+  BASIC_METHODS;
 
-  Struct(std::string name) : bound_name(std::move(name)) {}
+  struct Field {
+    std::string_view name;
+    Type *type = nullptr;
+    IR::Val init_val;
+  };
 
   // Return the type of a field, or a nullptr if it doesn't exist
-  Type *field(const std::string &name) const;
-
-  size_t field_num(const std::string &name) const;
-
-  void CompleteDefinition(Context* ctx);
+  const Field *field(const std::string &name) const;
 
   virtual bool needs_destroy() const {
-    for (Type *t : field_type) {
-      if (t->needs_destroy()) { return true; }
+    for (const auto &field : fields_) {
+      if (field.type->needs_destroy()) { return true; }
     }
     return false;
   }
 
-  Scope *type_scope = nullptr;
-  std::vector<AST::Declaration *> decls;
-
-  std::string bound_name;
-
-  void insert_field(const std::string &name, Type *ty,
-                    AST::Expression *init_val);
-
-  // Field database info
-  std::unordered_map<std::string, size_t> field_name_to_num;
-  std::vector<std::string> field_num_to_name;
-  std::vector<Type *> field_type;
-
-  std::vector<AST::Expression *> init_values;
+  std::vector<Field> fields_;
+  std::unordered_map<std::string, size_t> field_indices_;
 
 private:
   IR::Func *init_func = nullptr, *assign_func = nullptr,
            *destroy_func = nullptr, *repr_func = nullptr;
-  bool completed_ = false;
 };
 
 struct Variant : public Type {

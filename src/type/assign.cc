@@ -100,8 +100,6 @@ void Enum::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
 
 void Struct::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
   ASSERT_EQ(this, from_type);
-  Context ctx;
-  CompleteDefinition(&ctx);
   if (!assign_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func({this, Ptr(this)}, Void),
@@ -114,11 +112,10 @@ void Struct::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
       auto val           = assign_func->Argument(0);
       auto var           = assign_func->Argument(1);
 
-      for (size_t i = 0; i < field_type.size(); ++i) {
-        auto the_field_type = field_type AT(i);
+      for (size_t i = 0; i < fields_.size(); ++i) {
         // TODO is that the right scope?
-        the_field_type->EmitAssign(
-            the_field_type, PtrCallFix(IR::Field(val, i)), IR::Field(var, i));
+        fields_[i].type->EmitAssign(
+            fields_[i].type, PtrCallFix(IR::Field(val, i)), IR::Field(var, i));
       }
 
       IR::ReturnJump();

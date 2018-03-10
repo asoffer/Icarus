@@ -158,6 +158,14 @@ Identifier *Identifier::Clone() const {
   return result;
 }
 
+StructLiteral *StructLiteral::Clone() const {
+  auto *result = new StructLiteral;
+  result->span = span;
+  result->fields_.reserve(fields_.size());
+  for (const auto &f : fields_) { result->fields_.emplace_back(f->Clone()); }
+  return result;
+}
+
 TokenNode *TokenNode::Clone() const { return new TokenNode(*this); }
 Terminal *Terminal::Clone() const { return new Terminal(*this); }
 Hole *Hole::Clone() const { return new Hole(*this); }

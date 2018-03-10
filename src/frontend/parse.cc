@@ -779,21 +779,18 @@ BuildEnumLiteral(std::vector<std::unique_ptr<AST::Node>> nodes, bool is_enum,
 static std::unique_ptr<AST::Node>
 BuildStructLiteral(std::vector<std::unique_ptr<AST::Node>> nodes,
                    error::Log *error_log) {
-  static size_t anon_struct_counter = 0;
-
-  auto struct_type =
-      new Struct("__anon.struct" + std::to_string(anon_struct_counter++));
+  auto struct_lit  = std::make_unique<AST::StructLiteral>();
+  struct_lit->span = TextSpan(nodes.front()->span, nodes.back()->span);
   for (auto &stmt : nodes[1]->as<AST::Statements>().content_) {
     if (stmt->is<AST::Declaration>()) {
-      struct_type->decls.push_back(&stmt.release()->as<AST::Declaration>());
+      struct_lit->fields_.push_back(move_as<AST::Declaration>(stmt));
     } else {
       error_log->NonDeclarationInStructDeclaration(stmt->span);
       // TODO show the entire struct declaration and point to the problematic
       // lines.
     }
   }
-  return std::make_unique<AST::Terminal>(
-      TextSpan(nodes[0]->span, nodes[1]->span), IR::Val::Type(struct_type));
+  return struct_lit;
 }
 
 static std::unique_ptr<AST::Node>

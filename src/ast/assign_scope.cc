@@ -24,14 +24,6 @@ void Terminal::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;
   if (type != Type_) { return; }
-  if (std::get<Type *>(value.value)->is<Struct>()) {
-    auto *s = &std::get<Type *>(value.value)->as<Struct>();
-    if (!s->type_scope) {
-      // TODO make unique
-      s->type_scope = scope->add_child<DeclScope>().release();
-    }
-    for (auto d : s->decls) { d->assign_scope(s->type_scope); }
-  }
 }
 
 void ArrayType::assign_scope(Scope *scope) {
@@ -155,6 +147,13 @@ void ScopeLiteral::assign_scope(Scope *scope) {
   body_scope = scope->add_child<ExecScope>();
   if (enter_fn) { enter_fn->assign_scope(body_scope.get()); }
   if (exit_fn) { exit_fn->assign_scope(body_scope.get()); }
+}
+
+void StructLiteral::assign_scope(Scope *scope) {
+  STAGE_CHECK;
+  scope_     = scope;
+  type_scope = scope->add_child<DeclScope>();
+  for (auto &f : fields_) { f->assign_scope(type_scope.get()); }
 }
 
 void Hole::assign_scope(Scope *scope) {

@@ -45,7 +45,7 @@ Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
 Val Field(Val v, size_t n) {
   ASSERT_TYPE(Pointer, v.type);
   Type *result_type =
-      Ptr(v.type->as<Pointer>().pointee->as<Struct>().field_type AT(n));
+      Ptr(v.type->as<Pointer>().pointee->as<Struct>().fields_ AT(n).type);
   Cmd cmd(result_type, Op::Field,
           std::vector{std::move(v), Val::Int(static_cast<i32>(n))});
   auto reg = cmd.reg();
@@ -106,6 +106,21 @@ void Print(Val v) { MAKE_VOID(Op::Print); }
 void Free(Val v) {
   ASSERT_TYPE(Pointer, v.type);
   MAKE_VOID(Op::Free);
+}
+
+Val CreateStruct() {
+  ASSERT_NE(Func::Current, nullptr);
+  Cmd cmd(::Type_, Op::CreateStruct, {});
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  return cmd.reg();
+}
+
+void InsertField(Val struct_type, std::string field_name, Val type) {
+  ASSERT_NE(Func::Current, nullptr);
+  Cmd cmd(nullptr, Op::InsertField,
+          {std::move(struct_type), Val::StrLit(std::move(field_name)),
+           std::move(type)});
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 }
 
 Val Alloca(Type *t) {
@@ -445,6 +460,8 @@ void Cmd::dump(size_t indent) const {
   case Op::CondJump: std::cerr << "cond"; break;
   case Op::UncondJump: std::cerr << "uncond"; break;
   case Op::ReturnJump: std::cerr << "return"; break;
+  case Op::CreateStruct: std::cerr << "create-struct"; break;
+  case Op::InsertField: std::cerr << "insert-field"; break;
   case Op::Load: std::cerr << "load"; break;
   case Op::Store: std::cerr << "store"; break;
   case Op::Variant: std::cerr << "variant"; break;

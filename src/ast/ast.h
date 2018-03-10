@@ -124,6 +124,8 @@ struct Call : public Expression {
 struct Declaration : public Expression {
   EXPR_FNS(Declaration);
   Declaration(bool is_const = false) : const_(is_const) {}
+  Declaration(Declaration &&) = default;
+  Declaration &operator=(Declaration &&) = default;
 
   Declaration *Clone() const override;
   IR::Val EmitIR(Context *) override;
@@ -247,8 +249,6 @@ struct FunctionLiteral : public Expression {
   // Example: (a: int, b: char, c: string) -> int
   //           a => 0, b => 1, c => 2
   std::unordered_map<std::string, size_t> lookup_;
-
-  std::unordered_set<Declaration *> captures;
   IR::Func *ir_func_ = nullptr;
 };
 
@@ -317,6 +317,19 @@ struct ScopeLiteral : public Expression {
 
   std::unique_ptr<Declaration> enter_fn, exit_fn;
   std::unique_ptr<Scope> body_scope;
+};
+
+struct StructLiteral : public Expression {
+  EXPR_FNS(StructLiteral);
+  StructLiteral()                 = default;
+  StructLiteral(StructLiteral &&) = default;
+  StructLiteral &operator=(StructLiteral &&) = default;
+  StructLiteral *Clone() const override;
+
+  IR::Val EmitIR(Context*) override;
+
+  std::unique_ptr<DeclScope> type_scope;
+  std::vector<std::unique_ptr<Declaration>> fields_;
 };
 
 template <int N> decltype(auto) DoStage(Node *node, Scope *scope, Context *);

@@ -66,8 +66,8 @@ void Struct::EmitDestroy(IR::Val id_val) {
 
     CURRENT_FUNC(destroy_func) {
       IR::Block::Current = destroy_func->entry();
-      for (size_t i = 0; i < field_type.size(); ++i) {
-        field_type[i]->EmitDestroy(IR::Field(destroy_func->Argument(0), i));
+      for (size_t i = 0; i < fields_.size(); ++i) {
+        fields_[i].type->EmitDestroy(IR::Field(destroy_func->Argument(0), i));
       }
       IR::ReturnJump();
     }

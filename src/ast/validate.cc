@@ -498,7 +498,6 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     }
     func.statements = base::wrap_unique(statements->Clone());
     func.ClearIdDecls();
-    // TODO clone captures
     DoStages<0, 2>(&func, scope_, &new_ctx);
     if (new_ctx.num_errors() > 0) {
       // TODO figure out the call stack of generic function requests and then
@@ -687,25 +686,6 @@ void Identifier::Validate(Context *ctx) {
   HANDLE_CYCLIC_DEPENDENCIES;
   type   = decl->type;
   lvalue = decl->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
-
-  if (lvalue != Assign::Const) {
-    // For everything else we iterate from the scope of this identifier up
-    // to the scope in which it was declared checking that along the way
-    // that it's a block scope.
-    for (auto scope_ptr = scope_; scope_ptr != decl->scope_;
-         scope_ptr      = scope_ptr->parent) {
-      if (scope_ptr->is<FnScope>()) {
-        scope_ptr->as<FnScope>().fn_lit->captures.insert(decl);
-      } else if (scope_ptr->is<ExecScope>()) {
-        continue;
-      } else {
-        ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
-                                             std::to_string(__LINE__) + ": ");
-        limit_to(StageRange::NoEmitIR());
-        return;
-      }
-    }
-  }
 }
 
 void Hole::Validate(Context *) {
@@ -1172,9 +1152,6 @@ void Declaration::Validate(Context *ctx) {
     return;
   }
 
-  // TODO is this the right time to complete the struct definition?
-  if (type->is<Struct>()) { type->as<Struct>().CompleteDefinition(ctx); }
-
   std::vector<Declaration*> decls_to_check;
   {
     auto[good_decls_to_check, error_decls_to_check] =
@@ -1453,12 +1430,9 @@ void Access::Validate(Context *ctx) {
       }
     }
   } else if (base_type->is<Struct>()) {
-    auto struct_type = static_cast<Struct *>(base_type);
-    struct_type->CompleteDefinition(ctx);
-
-    auto member_type = struct_type->field(member_name);
-    if (member_type != nullptr) {
-      type = member_type;
+    const Struct::Field* member = base_type->as<Struct>().field(member_name);
+    if (member != nullptr) {
+      type = member->type;
 
     } else {
       ErrorLog::MissingMember(span, member_name, base_type);
@@ -1743,8 +1717,9 @@ HANDLE_CYCLIC_DEPENDENCIES;
     return;
   }
 
-  for (auto &input : inputs) { input->Validate(ctx); 
-  HANDLE_CYCLIC_DEPENDENCIES;
+  for (auto &input : inputs) {
+    input->Validate(ctx);
+    HANDLE_CYCLIC_DEPENDENCIES;
   }
 
   // TODO poison on input Err?
@@ -1849,6 +1824,15 @@ void ScopeLiteral::Validate(Context *ctx) {
     limit_to(StageRange::Nothing());
   } else {
     type = ScopeType(Tup(enter_fn->type->as<Function>().input));
+  }
+}
+
+void StructLiteral::Validate(Context *ctx) {
+  STARTING_CHECK;
+  lvalue = Assign::Const;
+  type   = Type_;
+  for (auto &field : fields_) {
+    if (field->type_expr) { field->type_expr->Validate(ctx); }
   }
 }
 } // namespace AST

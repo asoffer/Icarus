@@ -34,6 +34,10 @@ void Statements::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   for (auto &stmt : content_) { stmt->SaveReferences(scope, args); }
 }
 
+void StructLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+  for (auto &f: fields_) { f->SaveReferences(scope, args); }
+}
+
 void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
     Context ctx;
@@ -163,6 +167,11 @@ void Access::contextualize(const Node *correspondant,
 void ChainOp::contextualize(const Node *correspondant,
                             const RefMap &replacements) {
   for (size_t i = 0; i < exprs.size(); ++i) { CONTEXTUALIZE(exprs[i]); }
+}
+
+void StructLiteral::contextualize(const Node *correspondant,
+                            const RefMap &replacements) {
+  for (size_t i = 0; i < fields_.size(); ++i) { CONTEXTUALIZE(fields_[i]); }
 }
 
 void CommaList::contextualize(const Node *correspondant,

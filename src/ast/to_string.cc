@@ -287,4 +287,14 @@ std::string ScopeLiteral::to_string(size_t n) const {
      << tabs(n) << "}";
   return ss.str();
 }
+
+std::string StructLiteral::to_string(size_t n) const { 
+  std::stringstream ss;
+  ss << "struct {\n";
+  for (const auto &f : fields_) {
+    ss << tabs(n + 1) << f->to_string(n) << "\n";
+  }
+  ss << tabs(n) << "}";
+  return ss.str();
+}
 } // namespace AST

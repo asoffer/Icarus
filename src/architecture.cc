@@ -34,12 +34,9 @@ size_t Architecture::alignment(const Type *t) const {
                                     : ptr_align_;
   } else if (t->is<Struct>()) {
     auto *struct_type = const_cast<Struct *>(&t->as<const Struct>());
-    // TODO should there be no bound constants here???
-    Context ctx;
-    struct_type->CompleteDefinition(&ctx);
     size_t alignment_val = 1;
-    for (Type *ft : struct_type->field_type) {
-      alignment_val = std::max(alignment_val, this->alignment(ft));
+    for (const auto& field : struct_type->fields_) {
+      alignment_val = std::max(alignment_val, this->alignment(field.type));
     }
     return alignment_val;
   } else if (t->is<Function>()) {
@@ -90,13 +87,10 @@ size_t Architecture::bytes(const Type *t) const {
     }
   } else if (t->is<Struct>()) {
     auto *struct_type = const_cast<Struct *>(&t->as<const Struct>());
-    // TODO should there be no bound constants here???
-    Context ctx;
-    struct_type->CompleteDefinition(&ctx);
-    size_t num_bytes     = 0;
-    for (auto ft : struct_type->field_type) {
-      num_bytes += this->bytes(ft);
-      num_bytes = this->MoveForwardToAlignment(ft, num_bytes);
+    size_t num_bytes  = 0;
+    for (const auto &field : struct_type->fields_) {
+      num_bytes += this->bytes(field.type);
+      num_bytes = this->MoveForwardToAlignment(field.type, num_bytes);
     }
 
     return MoveForwardToAlignment(struct_type, num_bytes);

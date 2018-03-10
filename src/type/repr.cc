@@ -129,8 +129,6 @@ void Array::EmitRepr(IR::Val val) {
 }
 
 void Struct::EmitRepr(IR::Val val) {
-  Context ctx;
-  CompleteDefinition(&ctx);
   if (!repr_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func(Ptr(this), Void),
@@ -144,8 +142,9 @@ void Struct::EmitRepr(IR::Val val) {
 
       IR::Print(IR::Val::Char('{'));
       IR::Print(IR::Val::Char(' '));
-      for (size_t i = 0; i < field_type.size(); ++i) {
-        field_type AT(i)->EmitRepr(
+
+      for (size_t i = 0; i < fields_.size(); ++i) {
+        fields_[i].type->EmitRepr(
             PtrCallFix(IR::Field(repr_func->Argument(0), i)));
         IR::Print(IR::Val::Char(' '));
       }

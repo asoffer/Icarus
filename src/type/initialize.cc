@@ -71,9 +71,6 @@ void Pointer::EmitInit(IR::Val id_val) {
 }
 
 void Struct::EmitInit(IR::Val id_val) {
-  Context ctx;
-  CompleteDefinition(&ctx);
-
   if (!init_func) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg", nullptr}};
@@ -87,17 +84,15 @@ void Struct::EmitInit(IR::Val id_val) {
       IR::Block::Current = init_func->entry();
 
       // TODO init expressions? Do these need to be verfied too?
-      for (size_t i = 0; i < field_type.size(); ++i) {
-        if (init_values[i]) {
-          if (init_values[i]->is<AST::Hole>()) { continue; }
+      for (size_t i = 0; i < fields_.size(); ++i) {
+        if (fields_[i].init_val != IR::Val::None()) {
           EmitCopyInit(
-              /* from_type = */ init_values[i]->type,
-              /*   to_type = */ field_type[i],
-              /*  from_val = */
-              init_values[i]->EmitIR(&ctx),
+              /* from_type = */ fields_[i].type,
+              /*   to_type = */ fields_[i].type,
+              /*  from_val = */ fields_[i].init_val,
               /*    to_var = */ IR::Field(init_func->Argument(0), i));
         } else {
-          field_type[i]->EmitInit(IR::Field(init_func->Argument(0), i));
+          fields_[i].type->EmitInit(IR::Field(init_func->Argument(0), i));
         }
       }
 
@@ -194,8 +189,8 @@ static IR::Val StructInitializationWith(Struct *struct_type) {
     auto *fn = iter->second = IR::Func::All.back().get();
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
-      for (size_t i = 0; i < struct_type->field_type.size(); ++i) {
-        InitFn(struct_type->field_type[i], struct_type->field_type[i],
+      for (size_t i = 0; i < struct_type->fields_.size(); ++i) {
+        InitFn(struct_type->fields_[i].type, struct_type->fields_[i].type,
                PtrCallFix(IR::Field(fn->Argument(0), i)),
                IR::Field(fn->Argument(1), i));
       }

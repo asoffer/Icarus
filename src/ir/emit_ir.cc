@@ -82,7 +82,7 @@ IR::Val AST::Access::EmitLVal(Context *ctx) {
   ASSERT_TYPE(Struct, val.type->as<Pointer>().pointee);
 
   auto *struct_type = &val.type->as<Pointer>().pointee->as<Struct>();
-  return IR::Field(val, struct_type->field_name_to_num AT(member_name));
+  return IR::Field(val, struct_type->field_indices_.at(member_name));
 }
 
 static IR::Val EmitVariantMatch(const IR::Val &needle, Type *haystack) {
@@ -1040,3 +1040,20 @@ IR::Val AST::Binop::EmitLVal(Context *ctx) {
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
+
+IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
+  auto new_struct = IR::CreateStruct();
+  for (const auto &field : fields_) {
+    // TODO in initial value doesn't match type of field?
+    // That should probably be handled elsewhere consistently with function
+    // default args.
+    if (field->type_expr) {
+      auto field_type = field->type_expr->EmitIR(ctx);
+      IR::InsertField(new_struct, field->identifier->token, field_type);
+    } else {
+      NOT_YET();
+    }
+  }
+  return new_struct;
+}
+

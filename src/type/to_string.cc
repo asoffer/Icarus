@@ -25,9 +25,23 @@ char *Primitive::WriteTo(char *buf) const {
   }
 }
 
-size_t Struct::string_size() const { return bound_name.size(); }
-char* Struct::WriteTo(char *buf) const {
-  return std::strcpy(buf, bound_name.c_str()) + string_size();
+size_t Struct::string_size() const {
+  if (fields_.empty()) { return 11; }
+  size_t acc = 0;
+  for (const auto &field : fields_) { acc += field.type->string_size(); }
+  return acc + 2 * fields_.size() + 9;
+}
+char *Struct::WriteTo(char *buf) const {
+  buf = std::strcpy(buf, "struct { ") + 9;
+  auto iter = fields_.begin();
+  buf = iter->type->WriteTo(buf);
+  ++iter;
+  for (; iter != fields_.end(); ++iter) {
+    buf = std::strcpy(buf, ", ") + 2;
+    buf = iter->type->WriteTo(buf);
+  }
+  buf = std::strcpy(buf, " }") + 2;
+  return buf;
 }
 
 size_t Enum::string_size() const { return bound_name.size(); }
