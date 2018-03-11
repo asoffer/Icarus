@@ -46,12 +46,14 @@ struct Identifier;
 #define BASIC_METHODS                                                          \
   virtual char *WriteTo(char *buf) const ENDING;                               \
   virtual size_t string_size() const ENDING;                                   \
-  virtual void EmitAssign(Type *from_type, IR::Val from, IR::Val to) ENDING;   \
-  virtual void EmitInit(IR::Val id_val) ENDING;                                \
-  virtual void EmitDestroy(IR::Val id_val) ENDING;                             \
+  virtual void EmitAssign(const Type *from_type, IR::Val from, IR::Val to)     \
+      const ENDING;                                                            \
+  virtual void EmitInit(IR::Val id_val) const ENDING;                          \
+  virtual void EmitDestroy(IR::Val id_val) const ENDING;                       \
   virtual IR::Val EmitInitialValue() const ENDING;                             \
-  virtual IR::Val PrepareArgument(Type *t, const IR::Val &val) const ENDING;   \
-  virtual void EmitRepr(IR::Val id_val) ENDING
+  virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val)           \
+      const ENDING;                                                            \
+  virtual void EmitRepr(IR::Val id_val) const ENDING
 
 #define TYPE_FNS(name)                                                         \
   name() = delete;                                                             \
@@ -64,19 +66,19 @@ public:
   virtual ~Type() {}
   BASIC_METHODS;
 
-  static Type *Meet(Type *lhs, Type *rhs);
+  static const Type *Meet(const Type *lhs, const Type *rhs);
 
   std::string to_string() const {
     std::string result(string_size(), '\0');
-    char *end_buf = WriteTo(const_cast<char *>(result.data()));
+    char *end_buf = WriteTo(result.data());
     ASSERT_EQ(static_cast<size_t>(end_buf - result.data()), result.size());
     return result;
   }
 
-  static void EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
-                           IR::Val to_var);
-  static void EmitCopyInit(Type *from_type, Type *to_type, IR::Val from_val,
-                           IR::Val to_var);
+  static void EmitMoveInit(const Type *from_type, const Type *to_type,
+                           IR::Val from_val, IR::Val to_var);
+  static void EmitCopyInit(const Type *from_type, const Type *to_type,
+                           IR::Val from_val, IR::Val to_var);
 
   bool is_big() const { return is<Array>() || is<Struct>() || is<Variant>(); }
   virtual bool needs_destroy() const { return false; }
@@ -100,57 +102,59 @@ private:
   friend class Architecture;
   PrimType type_;
 
-  IR::Func *repr_func = nullptr;
+  mutable IR::Func *repr_func_ = nullptr;
 };
 
 struct Array : public Type {
   TYPE_FNS(Array);
-  Array(Type *t) : data_type(t), len(0), fixed_length(false) {}
-  Array(Type *t, size_t l) : data_type(t), len(l), fixed_length(true) {}
+  Array(const Type *t) : data_type(t), len(0), fixed_length(false) {}
+  Array(const Type *t, size_t l) : data_type(t), len(l), fixed_length(true) {}
 
-
-  static IR::Val Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
-                         IR::Val rhs_ir, bool equality);
+  static IR::Val Compare(const Array *lhs_type, IR::Val lhs_ir,
+                         const Array *rhs_type, IR::Val rhs_ir, bool equality);
 
   virtual bool needs_destroy() const {
     return !fixed_length || data_type->needs_destroy();
   }
 
-  IR::Func *init_func = nullptr, *repr_func = nullptr, *destroy_func = nullptr;
+  mutable IR::Func *repr_func_ = nullptr, *init_func_ = nullptr;
 
-  Type *data_type;
+  const Type *data_type;
   size_t len;
   bool fixed_length;
-  std::unordered_map<Array*, IR::Func*> assign_fns_;
+
+private:
+  mutable std::unordered_map<const Array *, IR::Func *> assign_fns_;
+  mutable IR::Func *destroy_func_ = nullptr;
 };
 
 struct Tuple : public Type {
   TYPE_FNS(Tuple);
-  Tuple(std::vector<Type *> entries) : entries(std::move(entries)) {}
+  Tuple(std::vector<const Type *> entries) : entries(std::move(entries)) {}
 
   virtual bool needs_destroy() const {
-    for (Type *t : entries) {
+    for (const Type *t : entries) {
       if (t->needs_destroy()) { return true; }
     }
     return false;
   }
 
-  std::vector<Type *> entries;
+  std::vector<const Type *> entries;
 };
 
 struct Pointer : public Type {
   TYPE_FNS(Pointer);
-  Pointer(Type *t) : pointee(t) {}
-  Type *pointee;
+  Pointer(const Type *t) : pointee(t) {}
+  const Type *pointee;
 };
 
 struct Function : public Type {
   TYPE_FNS(Function);
-  Function(std::vector<Type *> in, std::vector<Type *> out)
+  Function(std::vector<const Type *> in, std::vector<const Type *> out)
       : input(in), output(out) {}
 
-  Function* ToIR() const;
-  std::vector<Type *> input, output;
+  const Function* ToIR() const;
+  std::vector<const Type *> input, output;
 };
 
 struct Enum : public Type {
@@ -174,7 +178,7 @@ struct Struct : public Type {
 
   struct Field {
     std::string_view name;
-    Type *type = nullptr;
+    const Type *type = nullptr;
     IR::Val init_val;
   };
 
@@ -188,67 +192,48 @@ struct Struct : public Type {
     return false;
   }
 
-  const Struct *finalize();
+  const Type *finalize();
 
   std::vector<Field> fields_;
   std::unordered_map<std::string, size_t> field_indices_;
 
 private:
-  IR::Func *init_func = nullptr, *assign_func = nullptr,
-           *destroy_func = nullptr, *repr_func = nullptr;
+  mutable IR::Func *init_func_ = nullptr, *assign_func = nullptr,
+                   *destroy_func_ = nullptr, *repr_func_ = nullptr;
 };
-
-inline bool operator<(const ::Struct::Field &lhs, const ::Struct::Field &rhs) {
-  if (lhs.name < rhs.name) { return true; }
-  if (lhs.name > rhs.name) { return false; }
-  if (lhs.type < rhs.type) { return true; }
-  if (lhs.type > rhs.type) { return false; }
-  return false;
-
-  // TODO compare initial values
-  // return lhs.init_val < rhs.init_val;
-}
-
-namespace std {
-template <> struct less<::Struct> {
-  size_t operator()(const ::Struct &lhs, const ::Struct &rhs) {
-    return lhs.fields_ < rhs.fields_;
-  }
-};
-}
-
-bool operator==(const Struct &lhs, const Struct &rhs);
 
 struct Variant : public Type {
   TYPE_FNS(Variant);
-  Variant(std::vector<Type *> variants) : variants_(std::move(variants)) {}
+  Variant(std::vector<const Type *> variants)
+      : variants_(std::move(variants)) {}
   size_t size() const { return variants_.size(); }
 
-  std::vector<Type *> variants_;
-  IR::Func *repr_func = nullptr;
+  std::vector<const Type *> variants_;
+  private:
+  mutable IR::Func *repr_func_ = nullptr;
 };
 
 struct RangeType : public Type {
   TYPE_FNS(RangeType);
 
-  RangeType(Type *t) : end_type(t) {}
+  RangeType(const Type *t) : end_type(t) {}
 
-  Type *end_type;
+  const Type *end_type;
 };
 
 struct SliceType : public Type {
   TYPE_FNS(SliceType);
 
-  SliceType(Array *a) : array_type(a) {}
+  SliceType(const Array *a) : array_type(a) {}
 
-  Array *array_type;
+  const Array *array_type;
 };
 
 struct Scope_Type : public Type {
   TYPE_FNS(Scope_Type);
 
-  Scope_Type(Type *t) : type_(t) {}
-  Type *type_;
+  Scope_Type(const Type *t) : type_(t) {}
+  const Type *type_;
 
   std::string bound_name;
 };
@@ -261,18 +246,19 @@ inline std::ostream &operator<<(std::ostream &os, const Type &t) {
 #undef BASIC_METHODS
 #undef ENDING
 
-Pointer *Ptr(Type *t);
-Array *Arr(Type *t);
-Array *Arr(Type *t, size_t len);
-Type *Tup(std::vector<Type *> types);
-Function *Func(Type *in, Type *out);
-Function *Func(std::vector<Type *> in, Type *out);
-Function *Func(Type *in, std::vector<Type *> out);
-Function *Func(std::vector<Type *> in, std::vector<Type *> out);
-RangeType *Range(Type *t);
-SliceType *Slice(Array *a);
-Scope_Type *ScopeType(Type *t);
-Type *Var(std::vector<Type *> variants);
+const Pointer *Ptr(const Type *t);
+const Array *Arr(const Type *t);
+const Array *Arr(const Type *t, size_t len);
+const Type *Tup(std::vector<const Type *> types);
+const Function *Func(const Type *in, const Type *out);
+const Function *Func(std::vector<const Type *> in, const Type *out);
+const Function *Func(const Type *in, std::vector<Type *> out);
+const Function *Func(std::vector<const Type *> in,
+                     std::vector<const Type *> out);
+const RangeType *Range(const Type *t);
+const SliceType *Slice(const Array *a);
+const Scope_Type *ScopeType(const Type *t);
+const Type *Var(std::vector<const Type *> variants);
 
 IR::Val PtrCallFix(IR::Val v);
 

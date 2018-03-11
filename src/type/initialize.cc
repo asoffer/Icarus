@@ -5,42 +5,45 @@
 #include "../context.h"
 #include "../ir/func.h"
 
-void Primitive::EmitInit(IR::Val id_val) {
+void Primitive::EmitInit(IR::Val id_val) const {
   IR::Store(EmitInitialValue(), id_val);
 }
 
-void Enum::EmitInit(IR::Val id_val) { IR::Store(EmitInitialValue(), id_val); }
-void Function::EmitInit(IR::Val id_val) {
+void Enum::EmitInit(IR::Val id_val) const {
   IR::Store(EmitInitialValue(), id_val);
 }
 
-void Variant::EmitInit(IR::Val) {
+void Function::EmitInit(IR::Val id_val) const {
+  IR::Store(EmitInitialValue(), id_val);
+}
+
+void Variant::EmitInit(IR::Val) const {
   UNREACHABLE("Variants must be initialized.");
 }
 
-void Array::EmitInit(IR::Val id_val) {
+void Array::EmitInit(IR::Val id_val) const {
   if (!fixed_length) {
     IR::Store(IR::Val::Int(0), IR::ArrayLength(id_val));
     IR::Store(IR::Malloc(data_type, IR::Val::Int(0)), IR::ArrayData(id_val));
     return;
   }
 
-  if (!init_func) {
+  if (!init_func_) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg", nullptr}};
     IR::Func::All.push_back(
         std::make_unique<IR::Func>(Func(Ptr(this), Void), std::move(args)));
-    init_func       = IR::Func::All.back().get();
-    init_func->name = "init(" + this->to_string() + ")";
+    init_func_       = IR::Func::All.back().get();
+    init_func_->name = "init(" + this->to_string() + ")";
 
-    CURRENT_FUNC(init_func) {
-      IR::Block::Current = init_func->entry();
+    CURRENT_FUNC(init_func_) {
+      IR::Block::Current = init_func_->entry();
 
       auto loop_phi   = IR::Func::Current->AddBlock();
       auto loop_body  = IR::Func::Current->AddBlock();
       auto exit_block = IR::Func::Current->AddBlock();
 
-      auto ptr        = IR::Index(init_func->Argument(0), IR::Val::Int(0));
+      auto ptr        = IR::Index(init_func_->Argument(0), IR::Val::Int(0));
       auto length_var = IR::Val::Int(static_cast<i32>(len));
       auto end_ptr    = IR::PtrIncr(ptr, length_var);
       IR::UncondJump(loop_phi);
@@ -58,30 +61,30 @@ void Array::EmitInit(IR::Val id_val) {
       IR::Block::Current = exit_block;
       IR::ReturnJump();
 
-      IR::Func::Current->SetArgs(phi, {IR::Val::Block(init_func->entry()), ptr,
+      IR::Func::Current->SetArgs(phi, {IR::Val::Block(init_func_->entry()), ptr,
                                        IR::Val::Block(loop_body), incr});
     }
   }
 
-  IR::Call(IR::Val::Func(init_func), std::vector<IR::Val>{id_val}, {});
+  IR::Call(IR::Val::Func(init_func_), std::vector<IR::Val>{id_val}, {});
 }
 
-void Pointer::EmitInit(IR::Val id_val) {
+void Pointer::EmitInit(IR::Val id_val) const {
   IR::Store(EmitInitialValue(), id_val);
 }
 
-void Struct::EmitInit(IR::Val id_val) {
-  if (!init_func) {
+void Struct::EmitInit(IR::Val id_val) const {
+  if (!init_func_) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg", nullptr}};
     IR::Func::All.push_back(
         std::make_unique<IR::Func>(Func(Ptr(this), Void), std::move(args)));
 
-    init_func       = IR::Func::All.back().get();
-    init_func->name = "init(" + this->to_string() + ")";
+    init_func_       = IR::Func::All.back().get();
+    init_func_->name = "init(" + this->to_string() + ")";
 
-    CURRENT_FUNC(init_func) {
-      IR::Block::Current = init_func->entry();
+    CURRENT_FUNC(init_func_) {
+      IR::Block::Current = init_func_->entry();
 
       // TODO init expressions? Do these need to be verfied too?
       for (size_t i = 0; i < fields_.size(); ++i) {
@@ -90,9 +93,9 @@ void Struct::EmitInit(IR::Val id_val) {
               /* from_type = */ fields_[i].type,
               /*   to_type = */ fields_[i].type,
               /*  from_val = */ fields_[i].init_val,
-              /*    to_var = */ IR::Field(init_func->Argument(0), i));
+              /*    to_var = */ IR::Field(init_func_->Argument(0), i));
         } else {
-          fields_[i].type->EmitInit(IR::Field(init_func->Argument(0), i));
+          fields_[i].type->EmitInit(IR::Field(init_func_->Argument(0), i));
         }
       }
 
@@ -100,18 +103,20 @@ void Struct::EmitInit(IR::Val id_val) {
     }
   }
 
-  IR::Call(IR::Val::Func(init_func), {id_val}, {});
+  IR::Call(IR::Val::Func(init_func_), {id_val}, {});
 }
 
-void Tuple::EmitInit(IR::Val) { NOT_YET(); }
-void RangeType::EmitInit(IR::Val) { UNREACHABLE(); }
-void SliceType::EmitInit(IR::Val) { UNREACHABLE(); }
-void Scope_Type::EmitInit(IR::Val) { UNREACHABLE(); }
+void Tuple::EmitInit(IR::Val) const { NOT_YET(); }
+void RangeType::EmitInit(IR::Val) const { UNREACHABLE(); }
+void SliceType::EmitInit(IR::Val) const { UNREACHABLE(); }
+void Scope_Type::EmitInit(IR::Val) const { UNREACHABLE(); }
 
-using InitFnType = void (*)(Type *, Type *, IR::Val, IR::Val);
+using InitFnType = void (*)(const Type *, const Type *, IR::Val, IR::Val);
 template <InitFnType InitFn>
-static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
-  static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func *>>
+static IR::Val ArrayInitializationWith(const Array *from_type,
+                                       const Array *to_type) {
+  static std::unordered_map<const Array *,
+                            std::unordered_map<const Array *, IR::Func *>>
       init_fns;
 
   auto[iter, success] = init_fns[to_type].emplace(from_type, nullptr);
@@ -177,8 +182,8 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
 }
 
 template <InitFnType InitFn>
-static IR::Val StructInitializationWith(Struct *struct_type) {
-  static std::unordered_map<Struct *, IR::Func *> struct_init_fns;
+static IR::Val StructInitializationWith(const Struct *struct_type) {
+  static std::unordered_map<const Struct *, IR::Func *> struct_init_fns;
   auto[iter, success] = struct_init_fns.emplace(struct_type, nullptr);
 
   if (success) {
@@ -200,8 +205,8 @@ static IR::Val StructInitializationWith(Struct *struct_type) {
   return IR::Val::Func(iter->second);
 }
 
-void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
-                        IR::Val to_var) {
+void Type::EmitMoveInit(const Type *from_type, const Type *to_type,
+                        IR::Val from_val, IR::Val to_var) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() ||
       to_type->is<Pointer>()) {
     ASSERT_EQ(to_type, from_type);
@@ -246,8 +251,8 @@ void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
   }
 }
 
-void Type::EmitCopyInit(Type *from_type, Type *to_type, IR::Val from_val,
-                        IR::Val to_var) {
+void Type::EmitCopyInit(const Type *from_type, const Type *to_type,
+                        IR::Val from_val, IR::Val to_var) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() ||
       to_type->is<Pointer>()) {
     ASSERT_EQ(to_type, from_type);

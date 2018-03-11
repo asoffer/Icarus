@@ -4,12 +4,14 @@
 #include <map>
 
 // TODO better to hash pair of Array*
-static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func *>>
+static std::unordered_map<const Array *,
+                          std::unordered_map<const Array *, IR::Func *>>
     eq_funcs;
-static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func *>>
+static std::unordered_map<const Array *,
+                          std::unordered_map<const Array *, IR::Func *>>
     ne_funcs;
-IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
-                       IR::Val rhs_ir, bool equality) {
+IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
+                       const Array *rhs_type, IR::Val rhs_ir, bool equality) {
   auto &funcs = equality ? eq_funcs : ne_funcs;
 
   auto[iter, success] = funcs[lhs_type].emplace(rhs_type, nullptr);
@@ -85,59 +87,64 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
 template <typename Key, typename Val>
 using TypeContainer = std::unordered_map<Key, Val>;
 
-static TypeContainer<Type *, std::unordered_map<size_t, Array>> fixed_arrays_;
-Array *Arr(Type *t, size_t len) {
+static TypeContainer<const Type *, std::unordered_map<size_t, Array>>
+    fixed_arrays_;
+const Array *Arr(const Type *t, size_t len) {
   return &fixed_arrays_[t].emplace(len, Array(t, len)).first->second;
 }
-static TypeContainer<Type *, Array> arrays_;
-Array *Arr(Type *t) { return &arrays_.emplace(t, Array(t)).first->second; }
+static TypeContainer<const Type *, Array> arrays_;
+const Array *Arr(const Type *t) {
+  return &arrays_.emplace(t, Array(t)).first->second;
+}
 
-static std::map<std::vector<Type *>, Tuple> tuples_;
-Type *Tup(std::vector<Type *> types) {
+static std::map<std::vector<const Type *>, Tuple> tuples_;
+const Type *Tup(std::vector<const Type *> types) {
   if (types.empty()) { return Void; }
   if (types.size() == 1) { return types.front(); }
   return &tuples_.emplace(types, Tuple(types)).first->second;
 }
 
-static TypeContainer<Type *, Pointer> pointers_;
-Pointer *Ptr(Type *t) {
+static TypeContainer<const Type *, const Pointer> pointers_;
+const Pointer *Ptr(const Type *t) {
   return &pointers_.emplace(t, Pointer(t)).first->second;
 }
 
-static TypeContainer<Type *, TypeContainer<Type *, Function>> funcs_;
-Function *Func(Type *in, Type *out) {
+static TypeContainer<const Type *, TypeContainer<const Type *, Function>>
+    funcs_;
+const Function *Func(const Type *in, const Type *out) {
   return Func(std::vector{in}, std::vector{out});
 }
 
-Function *Func(std::vector<Type *> in, Type *out) {
+const Function *Func(std::vector<const Type *> in, const Type *out) {
   return Func(std::move(in), std::vector{out});
 }
-Function *Func(Type *in, std::vector<Type *> out) {
+const Function *Func(const Type *in, std::vector<const Type *> out) {
   return Func(std::vector{in}, std::move(out));
 }
-Function *Func(std::vector<Type *> in, std::vector<Type *> out) {
-  if (in == std::vector{Void}) { in = {}; }
-  if (out == std::vector{Void}) { out = {}; }
+const Function *Func(std::vector<const Type *> in,
+                     std::vector<const Type *> out) {
+  if (in == std::vector<const Type*>{Void}) { in = {}; }
+  if (out == std::vector<const Type*>{Void}) { out = {}; }
   return &funcs_[Tup(in)].emplace(Tup(out), Function(in, out)).first->second;
 }
 
-static TypeContainer<Type *, RangeType> ranges_;
-RangeType *Range(Type *t) {
+static TypeContainer<const Type *, const RangeType> ranges_;
+const RangeType *Range(const Type *t) {
   return &ranges_.emplace(t, RangeType(t)).first->second;
 }
 
-static TypeContainer<Array *, SliceType> slices_;
-SliceType *Slice(Array *a) {
+static TypeContainer<const Array *, const SliceType> slices_;
+const SliceType *Slice(const Array *a) {
   return &slices_.emplace(a, SliceType(a)).first->second;
 }
 
-static TypeContainer<Type *, Scope_Type> scopes_;
-Scope_Type *ScopeType(Type *t) {
+static TypeContainer<const Type *, const Scope_Type> scopes_;
+const Scope_Type *ScopeType(const Type *t) {
   return &scopes_.emplace(t, Scope_Type(t)).first->second;
 }
 
-static std::map<std::vector<Type *>, Variant> variants_;
-Type *Var(std::vector<Type *> variants) {
+static std::map<std::vector<const Type *>, Variant> variants_;
+const Type *Var(std::vector<const Type *> variants) {
   ASSERT_NE(variants.size(), 0u);
   if (variants.size() == 1) { return variants[0]; }
 
@@ -145,7 +152,7 @@ Type *Var(std::vector<Type *> variants) {
   size_t i   = 0;
   while (i < end) {
     if (variants[i]->is<Variant>()) {
-      Variant *var = &variants[i]->as<Variant>();
+      const Variant *var = &variants[i]->as<Variant>();
       variants[i]  = variants.back();
       variants.pop_back();
       variants.insert(variants.end(), var->variants_.begin(),
@@ -169,7 +176,7 @@ Type *Var(std::vector<Type *> variants) {
 
 // TODO optimize (early exists. don't check lhs->is<> && rhs->is<>. If they
 // don't match you can early exit.
-Type *Type::Meet(Type *lhs, Type *rhs) {
+const Type *Type::Meet(const Type *lhs, const Type *rhs) {
   if (lhs == rhs) { return lhs; }
   if (lhs == Err) { return rhs; } // Ignore errors
   if (rhs == Err) { return lhs; } // Ignore errors
@@ -182,7 +189,7 @@ Type *Type::Meet(Type *lhs, Type *rhs) {
                                          rhs->as<Pointer>().pointee))
                               : nullptr;
   } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    Type *result = nullptr;
+    const Type *result = nullptr;
     if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
       if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
       result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
@@ -204,9 +211,9 @@ Type *Type::Meet(Type *lhs, Type *rhs) {
         lhs->as<Tuple>().entries.size() != rhs->as<Tuple>().entries.size()) {
       return nullptr;
     }
-    std::vector<Type *> joined;
+    std::vector<const Type *> joined;
     for (size_t i = 0; i < lhs->as<Tuple>().entries.size(); ++i) {
-      if (Type *result =
+      if (const Type *result =
               Meet(lhs->as<Tuple>().entries[i], rhs->as<Tuple>().entries[i])) {
         joined.push_back(result);
       } else {
@@ -216,39 +223,39 @@ Type *Type::Meet(Type *lhs, Type *rhs) {
     return Tup(std::move(joined));
   } else if (lhs->is<Variant>()) {
     // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
-    std::vector<Type *> results;
+    std::vector<const Type *> results;
     if (rhs->is<Variant>()) {
-      for (Type *l_type : lhs->as<Variant>().variants_) {
-        for (Type *r_type : rhs->as<Variant>().variants_) {
-          Type *result = Meet(l_type, r_type);
+      for (const Type *l_type : lhs->as<Variant>().variants_) {
+        for (const Type *r_type : rhs->as<Variant>().variants_) {
+          const Type *result = Meet(l_type, r_type);
           if (result != nullptr) { results.push_back(result); }
         }
       }
     } else {
-      for (Type *t : lhs->as<Variant>().variants_) {
-        if (Type *result = Meet(t, rhs)) { results.push_back(result); }
+      for (const Type *t : lhs->as<Variant>().variants_) {
+        if (const Type *result = Meet(t, rhs)) { results.push_back(result); }
       }
     }
     return results.empty() ? nullptr : Var(std::move(results));
   } else if (rhs->is<Variant>()) { // lhs is not a variant
     // TODO faster lookups? maybe not represented as a vector. at least give a
     // better interface.
-    std::vector<Type *> results;
-    for (Type *t : rhs->as<Variant>().variants_) {
-      if (Type *result = Meet(t, lhs)) { results.push_back(result); }
+    std::vector<const Type *> results;
+    for (const Type *t : rhs->as<Variant>().variants_) {
+      if (const Type *result = Meet(t, lhs)) { results.push_back(result); }
     }
     return results.empty() ? nullptr : Var(std::move(results));
   }
   return nullptr;
 }
 
-Function *Function::ToIR() const {
-  std::vector<Type *> ins;
+const Function *Function::ToIR() const {
+  std::vector<const Type *> ins;
   ins.reserve(input.size());
-  for (Type *t : input) { ins.push_back(t->is_big() ? Ptr(t) : t); }
+  for (const Type *t : input) { ins.push_back(t->is_big() ? Ptr(t) : t); }
 
-  std::vector<Type *> outs;
+  std::vector<const Type *> outs;
   outs.reserve(output.size());
-  for (Type *t : output) { outs.push_back(t->is_big() ? Ptr(t) : t); }
+  for (const Type *t : output) { outs.push_back(t->is_big() ? Ptr(t) : t); }
   return Func(ins, outs);
 }

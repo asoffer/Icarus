@@ -194,7 +194,7 @@ void NonGraphicCharInSrc(const TextSpan &span) {
 
 void LogGeneric(const TextSpan &, const std::string &msg) { std::cerr << msg; }
 
-void InvalidRangeType(const TextSpan &span, Type *t) {
+void InvalidRangeType(const TextSpan &span, const Type *t) {
   std::string msg_foot = "Expected type: int, uint, or char\n"
                          "Given type: " +
                          t->to_string() + ".";
@@ -202,7 +202,7 @@ void InvalidRangeType(const TextSpan &span, Type *t) {
                       msg_foot, span, t->to_string().size());
 }
 
-void InvalidStringIndex(const TextSpan &span, Type *index_type) {
+void InvalidStringIndex(const TextSpan &span, const Type *index_type) {
   std::string msg_head = "String indexed by an invalid type. Expected an int "
                          "or uint, but encountered a " +
                          index_type->to_string() + ".";
@@ -351,7 +351,7 @@ void InvalidScope(const TextSpan &span, const Type *t) {
 #include "../config/error.conf"
 #undef ERROR_MACRO
 
-void InvalidReturnType(const TextSpan &span, Type *given, Type *correct) {
+void InvalidReturnType(const TextSpan &span, const Type *given, const Type *correct) {
   std::string msg_head = "Invalid return type on line " +
                          std::to_string(span.start.line_num) + " in \"" +
                          span.source->name.c_str() + "\".";
@@ -364,7 +364,7 @@ void InvalidReturnType(const TextSpan &span, Type *given, Type *correct) {
                           span.start.offset);
 }
 
-void ChainTypeMismatch(const TextSpan &span, std::set<Type *> types) {
+void ChainTypeMismatch(const TextSpan &span, std::set<const Type *> types) {
   std::stringstream ss;
   ss << "Found the following types in the expression:\n";
   for (auto t : types) { ss << "  * " << t->to_string() << "\n"; }
@@ -394,7 +394,7 @@ static void DisplayLines(const std::vector<TextSpan> &lines) {
   std::cerr << '\n';
 }
 
-void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
+void CaseTypeMismatch(AST::Case *case_ptr, const Type *correct) {
   if (correct) {
     std::cerr << "Type mismatch in case-expression on line "
               << case_ptr->span.start.line_num << " in \""

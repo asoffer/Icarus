@@ -33,9 +33,8 @@ size_t Architecture::alignment(const Type *t) const {
     return array_type->fixed_length ? this->alignment(array_type->data_type)
                                     : ptr_align_;
   } else if (t->is<Struct>()) {
-    auto *struct_type = const_cast<Struct *>(&t->as<const Struct>());
     size_t alignment_val = 1;
-    for (const auto& field : struct_type->fields_) {
+    for (const auto &field : t->as<Struct>().fields_) {
       alignment_val = std::max(alignment_val, this->alignment(field.type));
     }
     return alignment_val;
@@ -47,7 +46,7 @@ size_t Architecture::alignment(const Type *t) const {
     return 1;
   } else if (t->is<Variant>()) {
     size_t alignment_val = this->alignment(Type_);
-    for (Type* type : t->as<Variant>().variants_) {
+    for (const Type* type : t->as<Variant>().variants_) {
       alignment_val = std::max(alignment_val, this->alignment(type));
     }
     return alignment_val;
@@ -86,7 +85,7 @@ size_t Architecture::bytes(const Type *t) const {
       return 2 * ptr_bytes_;
     }
   } else if (t->is<Struct>()) {
-    auto *struct_type = const_cast<Struct *>(&t->as<const Struct>());
+    auto *struct_type = &t->as<Struct>();
     size_t num_bytes  = 0;
     for (const auto &field : struct_type->fields_) {
       num_bytes += this->bytes(field.type);
@@ -102,7 +101,7 @@ size_t Architecture::bytes(const Type *t) const {
     return 0;
   } else if (t->is<Variant>()) {
     size_t num_bytes = 0;
-    for (Type* type : t->as<Variant>().variants_) {
+    for (const Type* type : t->as<Variant>().variants_) {
       num_bytes = std::max(num_bytes, this->bytes(type));
     }
     return num_bytes + ptr_bytes_;

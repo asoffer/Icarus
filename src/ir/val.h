@@ -93,38 +93,39 @@ template <> struct hash<IR::CmdIndex> {
 
 namespace IR {
 struct Val {
-  ::Type *type = nullptr;
+  const ::Type *type = nullptr;
   std::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32,
-               EnumVal, ::Type *, AST::GenericFunctionLiteral *,
-               AST::FunctionLiteral *, ::IR::Func *, AST::ScopeLiteral *,
-               AST::CodeBlock, AST::Expression *, BlockIndex, std::string>
+               EnumVal, const ::Type *, ::Struct *,
+               AST::GenericFunctionLiteral *, AST::FunctionLiteral *,
+               ::IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
+               AST::Expression *, BlockIndex, std::string>
       value{false};
 
-  static Val Reg(Register r, ::Type *t) { return Val(t, r); }
-  static Val Ret(ReturnValue r, ::Type *t) { return Val(t, r); }
-  static Val Addr(Addr addr, ::Type *t);
-  static Val GlobalAddr(u64 addr, ::Type *t);
-  static Val HeapAddr(void *addr, ::Type *t);
-  static Val StackAddr(u64 addr, ::Type *t);
+  static Val Reg(Register r, const ::Type *t) { return Val(t, r); }
+  static Val Ret(ReturnValue r, const ::Type *t) { return Val(t, r); }
+  static Val Addr(Addr addr, const ::Type *t);
+  static Val GlobalAddr(u64 addr, const ::Type *t);
+  static Val HeapAddr(void *addr, const ::Type *t);
+  static Val StackAddr(u64 addr, const ::Type *t);
   static Val Bool(bool b) { return Val(::Bool, b); }
   static Val Char(char c) { return Val(::Char, c); }
   static Val Real(double r) { return Val(::Real, r); }
   static Val Int(i32 n) { return Val(::Int, n); }
   static Val Enum(const ::Enum *enum_type, size_t integral_val);
-  static Val Type(::Type *t) { return Val(::Type_, t); }
+  static Val Type(const ::Type *t) { return Val(::Type_, t); }
   static Val CodeBlock(AST::CodeBlock block);
   static Val Func(::IR::Func *fn); // TODO deprecate?
   static Val FnLit(AST::FunctionLiteral *fn);
   static Val GenFnLit(AST::GenericFunctionLiteral *fn);
   static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Void() { return Val(::Void, false); }
-  static Val Null(::Type *t);
+  static Val Null(const ::Type *t);
   static Val NullPtr();
   static Val StrLit(std::string str) { return Val(::String, std::move(str)); }
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);
-  static Val Struct() { return Val(); }
+  static Val Struct();
 
   std::string to_string() const;
 
@@ -137,7 +138,7 @@ struct Val {
 
 private:
   template <typename T>
-  Val(::Type *t, T &&val) : type(t), value(std::forward<T>(val)) {}
+  Val(const ::Type *t, T &&val) : type(t), value(std::forward<T>(val)) {}
 };
 
 inline bool operator==(const Val &lhs, const Val &rhs) {

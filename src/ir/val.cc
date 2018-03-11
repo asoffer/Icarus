@@ -11,23 +11,25 @@ Val Val::CodeBlock(AST::CodeBlock block) {
   return Val(::Code, std::move(block));
 }
 
-Val Val::Addr(IR::Addr addr, ::Type *t) { return Val(Ptr(t), addr); }
+Val Val::Struct() { return Val(::Type_, new ::Struct); }
 
-Val Val::StackAddr(u64 addr, ::Type *t) {
+Val Val::Addr(IR::Addr addr, const::Type *t) { return Val(Ptr(t), addr); }
+
+Val Val::StackAddr(u64 addr, const::Type *t) {
   IR::Addr a;
   a.kind     = Addr::Kind::Stack;
   a.as_stack = addr;
   return Val(Ptr(t), a);
 }
 
-Val Val::HeapAddr(void *addr, ::Type *t) {
+Val Val::HeapAddr(void *addr, const ::Type *t) {
   IR::Addr a;
   a.kind    = Addr::Kind::Heap;
   a.as_heap = addr;
   return Val(Ptr(t), a);
 }
 
-Val Val::GlobalAddr(u64 addr, ::Type *t) {
+Val Val::GlobalAddr(u64 addr, const ::Type *t) {
   IR::Addr a;
   a.kind      = Addr::Kind::Global;
   a.as_global = addr;
@@ -40,13 +42,15 @@ Val Val::Scope(AST::ScopeLiteral *scope_lit) {
   return Val(scope_lit->type, scope_lit);
 }
 Val Val::Enum(const ::Enum *enum_type, size_t integral_val) {
-  return Val(const_cast<::Enum *>(enum_type), EnumVal{integral_val});
+  return Val(enum_type, EnumVal{integral_val});
 }
 
 Val Val::FnLit(AST::FunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::GenFnLit(AST::GenericFunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::Func(::IR::Func *fn) { return Val(fn->ir_type, fn); }
-Val Val::Null(::Type *t) { return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0}); }
+Val Val::Null(const ::Type *t) {
+  return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0});
+}
 Val Val::NullPtr() { return Val(::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
 
 static std::string Escaped(const std::string& s) {
@@ -91,7 +95,7 @@ std::string Val::to_string() const {
                        ? this->type->as<::Enum>().to_string() + ":END"
                        : this->type->as<::Enum>().members_ AT(e.value);
           },
-          [](::Type *t) -> std::string { return t->to_string(); },
+          [](const ::Type *t) -> std::string { return t->to_string(); },
           [](IR::Func *f) -> std::string {
             ASSERT_NE(f, nullptr);
             ASSERT_NE(f->type_, nullptr);

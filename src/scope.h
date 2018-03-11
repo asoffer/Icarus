@@ -47,8 +47,9 @@ struct Scope : public base::Cast<Scope> {
   // identifier can be found.
   AST::Identifier *IdReferencedOrNull(const std::string &name);
 
-  Type *FunctionTypeReferencedOrNull(const std::string &fn_name,
-                                     std::vector<Type *> input_type);
+  const Type *
+  FunctionTypeReferencedOrNull(const std::string &fn_name,
+                               std::vector<const Type *> input_type);
 
   AST::Declaration *DeclHereOrNull(const std::string &name,
                                    Type *declared_type);

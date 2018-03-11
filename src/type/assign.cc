@@ -6,12 +6,13 @@
 
 // TODO destructor for previously held value.
 
-void Primitive::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+void Primitive::EmitAssign(const Type *from_type, IR::Val from,
+                           IR::Val to) const {
   ASSERT_EQ(this, from_type);
   IR::Store(from, to);
 }
 
-void Array::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
   ASSERT_TYPE(Array, from_type);
   auto *from_array_type = &from_type->as<Array>();
 
@@ -81,24 +82,26 @@ void Array::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
   IR::Call(IR::Val::Func(fn), {from, to}, {});
 }
 
-void Tuple::EmitAssign(Type *, IR::Val, IR::Val) { NOT_YET(); }
+void Tuple::EmitAssign(const Type *, IR::Val, IR::Val) const { NOT_YET(); }
 
-void Pointer::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+void Pointer::EmitAssign(const Type *from_type, IR::Val from,
+                         IR::Val to) const {
   ASSERT_EQ(this, from_type);
   IR::Store(from, to);
 }
 
-void Function::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+void Function::EmitAssign(const Type *from_type, IR::Val from,
+                          IR::Val to) const {
   ASSERT_EQ(this, from_type);
   IR::Store(from, to);
 }
 
-void Enum::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+void Enum::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
   ASSERT_EQ(this, from_type);
   IR::Store(from, to);
 }
 
-void Struct::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
   ASSERT_EQ(this, from_type);
   if (!assign_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
@@ -125,15 +128,16 @@ void Struct::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
   IR::Call(IR::Val::Func(assign_func), {from, to}, {});
 }
 
-void Variant::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+void Variant::EmitAssign(const Type *from_type, IR::Val from,
+                         IR::Val to) const {
   if (from_type->is<Variant>()) {
     // TODO find the best match for variant types. For instance, we allow
     // assignments like:
     // [3; int] | [4; bool] -> [--; int] | [--; bool]
     auto actual_type = IR::Load(IR::VariantType(from));
     auto landing     = IR::Func::Current->AddBlock();
-    for (Type *v : from_type->as<Variant>().variants_) {
-      auto next_block  = IR::Func::Current->AddBlock();
+    for (const Type *v : from_type->as<Variant>().variants_) {
+      auto next_block    = IR::Func::Current->AddBlock();
       IR::Block::Current = IR::EarlyExitOn<false>(
           next_block, IR::Eq(actual_type, IR::Val::Type(v)));
       IR::Store(IR::Val::Type(v), IR::VariantType(to));
@@ -147,16 +151,17 @@ void Variant::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
   } else {
     IR::Store(IR::Val::Type(from_type), IR::VariantType(to));
     // TODO Find the best match amongst the variants available.
-    Type *best_match = from_type;
+    const Type *best_match = from_type;
     best_match->EmitAssign(from_type, from, IR::VariantValue(best_match, to));
   }
 }
 
-void RangeType::EmitAssign(Type *, IR::Val, IR::Val) { NOT_YET(); }
+void RangeType::EmitAssign(const Type *, IR::Val, IR::Val) const { NOT_YET(); }
 
-void SliceType::EmitAssign(Type *, IR::Val, IR::Val) { NOT_YET(); }
+void SliceType::EmitAssign(const Type *, IR::Val, IR::Val) const { NOT_YET(); }
 
-void Scope_Type::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+void Scope_Type::EmitAssign(const Type *from_type, IR::Val from,
+                            IR::Val to) const {
   ASSERT_EQ(this, from_type);
   IR::Store(from, to);
 }

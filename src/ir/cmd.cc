@@ -31,7 +31,7 @@ static void RecordReferences(Func *fn, const CmdIndex &ci,
         cmd_arg.value);
   }
 }
-Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
+Cmd::Cmd(const Type *t, Op op, std::vector<Val> arg_vec)
     : args(std::move(arg_vec)), op_code_(op), type(t) {
   CmdIndex cmd_index{
       Block::Current,
@@ -44,7 +44,7 @@ Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
 
 Val Field(Val v, size_t n) {
   ASSERT_TYPE(Pointer, v.type);
-  Type *result_type =
+  const Type *result_type =
       Ptr(v.type->as<Pointer>().pointee->as<Struct>().fields_ AT(n).type);
   Cmd cmd(result_type, Op::Field,
           std::vector{std::move(v), Val::Int(static_cast<i32>(n))});
@@ -74,7 +74,7 @@ Val Field(Val v, size_t n) {
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));        \
   return cmd.reg()
 
-Val Malloc(Type *t, Val v) {
+Val Malloc(const Type *t, Val v) {
   ASSERT_EQ(v.type, ::Int);
   MAKE_AND_RETURN(Ptr(t), Op::Malloc);
 }
@@ -126,7 +126,7 @@ void InsertField(Val struct_type, std::string field_name, Val type,
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 }
 
-Val Alloca(Type *t) {
+Val Alloca(const Type *t) {
   ASSERT_NE(t, ::Void);
   Cmd cmd(Ptr(t), Op::Alloca, {});
   Func::Current->block(Func::Current->entry()).cmds_.push_back(std::move(cmd));
@@ -139,7 +139,9 @@ Val Contextualize(AST::CodeBlock code, std::vector<IR::Val> v) {
 }
 
 Val VariantType(Val v) { MAKE_AND_RETURN(Ptr(Type_), Op::VariantType); }
-Val VariantValue(Type *t, Val v) { MAKE_AND_RETURN(Ptr(t), Op::VariantValue); }
+Val VariantValue(const Type *t, Val v) {
+  MAKE_AND_RETURN(Ptr(t), Op::VariantValue);
+}
 
 Val Load(Val v) {
   ASSERT_TYPE(Pointer, v.type);
@@ -186,7 +188,9 @@ Val PtrIncr(Val v1, Val v2) {
 
 Val Ptr(Val v) {
   ASSERT_EQ(v.type, Type_);
-  if (Type **t = std::get_if<Type *>(&v.value)) { return Val::Type(::Ptr(*t)); }
+  if (const Type **t = std::get_if<const Type *>(&v.value)) {
+    return Val::Type(::Ptr(*t));
+  }
   MAKE_AND_RETURN(Type_, Op::Ptr);
 }
 
@@ -279,7 +283,7 @@ Val Mod(Val v1, Val v2) {
 }
 
 Val Arrow(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(Type *, ::Func, Type);
+  CONSTANT_PROPOGATION(const Type *, ::Func, Type);
   MAKE_AND_RETURN2(Type_, Op::Arrow);
 }
 
@@ -293,7 +297,7 @@ Val Array(Val v1, Val v2) {
   ASSERT(v1.type == nullptr || v1.type == Int, "");
   ASSERT_EQ(v2.type, Type_);
 
-  if (Type **t = std::get_if<Type *>(&v2.value)) {
+  if (const Type **t = std::get_if<const Type *>(&v2.value)) {
     if (i32 *m = std::get_if<i32>(&v1.value)) {
       return Val::Type(::Arr(*t, *m));
     }
@@ -368,7 +372,7 @@ Val Eq(Val v1, Val v2) {
   CONSTANT_PROPOGATION(char, std::equal_to<char>{}, Bool);
   CONSTANT_PROPOGATION(i32, std::equal_to<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::equal_to<double>{}, Bool);
-  CONSTANT_PROPOGATION(Type *,std::equal_to<Type*>{}, Bool);
+  CONSTANT_PROPOGATION(const Type *,std::equal_to<const Type*>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
   CONSTANT_PROPOGATION(
       EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value == rhs.value; },
@@ -383,7 +387,7 @@ Val Ne(Val v1, Val v2) {
   CONSTANT_PROPOGATION(char, std::not_equal_to<char>{}, Bool);
   CONSTANT_PROPOGATION(i32, std::not_equal_to<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::not_equal_to<double>{}, Bool);
-  CONSTANT_PROPOGATION(Type *, std::not_equal_to<Type *>{}, Bool);
+  CONSTANT_PROPOGATION(const Type *, std::not_equal_to<const Type *>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::not_equal_to<Addr>{}, Bool);
   CONSTANT_PROPOGATION(
       EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value != rhs.value; },
@@ -395,7 +399,7 @@ Val Ne(Val v1, Val v2) {
 Val Cast(Val v1, Val v2) {
   // v1 = result_type, v2 = val
   ASSERT_EQ(v1.type, Type_);
-  MAKE_AND_RETURN2(std::get<::Type *>(v1.value), Op::Cast);
+  MAKE_AND_RETURN2(std::get<const ::Type *>(v1.value), Op::Cast);
 }
 
 #undef MAKE_AND_RETURN2
@@ -403,7 +407,7 @@ Val Cast(Val v1, Val v2) {
 #undef MAKE_VOID2
 #undef MAKE_VOID
 
-CmdIndex Phi(Type *t) {
+CmdIndex Phi(const Type *t) {
   CmdIndex cmd_index{
       Block::Current,
       static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
@@ -428,9 +432,9 @@ Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
   // Long-term we should do this consistently even for small types, because for
   // multiple return values, we really could return them in multiple registers
   // rather than allocating stack space.
-  Type *output_type = Tup(fn.type->as<Function>().output)->is_big()
-                          ? Void
-                          : Tup(fn.type->as<Function>().output);
+  const Type *output_type = Tup(fn.type->as<Function>().output)->is_big()
+                                ? Void
+                                : Tup(fn.type->as<Function>().output);
   Cmd cmd(output_type, Op::Call, std::move(vals));
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();

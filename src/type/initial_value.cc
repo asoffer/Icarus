@@ -26,34 +26,28 @@ IR::Val Primitive::EmitInitialValue() const {
   }
 }
 
-// TODO ugly const_cast
-IR::Val Pointer::EmitInitialValue() const {
-  return IR::Val::Null(const_cast<Pointer *>(this));
-}
-
-IR::Val Function::EmitInitialValue() const {
-  return IR::Val::Func((IR::Func *)nullptr);
-}
+IR::Val Pointer::EmitInitialValue() const { return IR::Val::Null(this); }
+IR::Val Function::EmitInitialValue() const { return IR::Val::Func(nullptr); }
 
 IR::Val Array::EmitInitialValue() const {
   auto current_block   = IR::Block::Current;
   IR::Block::Current   = IR::Func::Current->entry();
-  auto temp_allocation = IR::Alloca(const_cast<Array *>(this));
+  auto temp_allocation = IR::Alloca(this);
   IR::Block::Current   = current_block;
 
   // TODO must remember to destroy
-  const_cast<Array *>(this)->EmitInit(temp_allocation);
+  EmitInit(temp_allocation);
   return temp_allocation;
 }
 
 IR::Val Struct::EmitInitialValue() const {
   auto current_block   = IR::Block::Current;
   IR::Block::Current   = IR::Func::Current->entry();
-  auto temp_allocation = IR::Alloca(const_cast<Struct *>(this));
+  auto temp_allocation = IR::Alloca(this);
   IR::Block::Current   = current_block;
 
   // TODO must remember to destroy
-  const_cast<Struct *>(this)->EmitInit(temp_allocation);
+  EmitInit(temp_allocation);
   return temp_allocation;
 }
 

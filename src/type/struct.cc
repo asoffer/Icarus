@@ -1,10 +1,25 @@
 #include "type.h"
 
-#include "../ast/ast.h"
-#include "../context.h"
-#include "../ir/func.h"
+#include <set>
 
-std::vector<IR::Val> Evaluate(AST::Expression *expr);
+static bool operator<(const Struct::Field &lhs, const Struct::Field &rhs) {
+  if (lhs.name < rhs.name) { return true; }
+  if (lhs.name > rhs.name) { return false; }
+  if (lhs.type < rhs.type) { return true; }
+  if (lhs.type > rhs.type) { return false; }
+  return false;
+
+  // TODO compare initial values
+  // return lhs.init_val < rhs.init_val;
+}
+
+namespace std {
+template <> struct less<Struct> {
+  size_t operator()(const Struct &lhs, const Struct &rhs) {
+    return lhs.fields_ < rhs.fields_;
+  }
+};
+} // namespace std
 
 static std::set<Struct> structs_;
 
@@ -14,7 +29,7 @@ const Struct::Field *Struct::field(const std::string &name) const {
   return &fields_[iter->second];
 }
 
-const Struct *Struct::finalize() {
+const Type *Struct::finalize() {
   const Struct *interned = &*structs_.insert(std::move(*this)).first;
   delete this;
   return interned;

@@ -42,8 +42,9 @@ AST::Identifier *Scope::IdReferencedOrNull(const std::string &name) {
   return nullptr;
 }
 
-Type *Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
-                                          std::vector<Type *> input_type) {
+const Type *
+Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
+                                    std::vector<const Type *> input_type) {
   for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
     auto id_ptr = scope_ptr->IdHereOrNull(fn_name);
     if (!id_ptr) { continue; }

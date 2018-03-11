@@ -39,12 +39,12 @@ struct Cmd {
   enum class Kind : char { Exec, PreCondition, PostCondition };
 
   Cmd() : op_code_(Op::Nop) {}
-  Cmd(Type *t, Op op, std::vector<Val> args);
+  Cmd(const Type *t, Op op, std::vector<Val> args);
   std::vector<Val> args;
   Op op_code_;
   Kind kind_ = Kind::Exec;
 
-  Type *type = nullptr;
+  const Type *type = nullptr;
   Register result;
 
   Val reg() const { return Val::Reg(result, type); }
@@ -76,16 +76,16 @@ Val Load(Val v);
 Val ArrayLength(Val v);
 Val ArrayData(Val v);
 Val PtrIncr(Val v1, Val v2);
-Val Malloc(Type *t, Val v);
+Val Malloc(const Type *t, Val v);
 Val Field(Val v, size_t n);
 Val Arrow(Val v1, Val v2);
 Val Variant(std::vector<Val> vals);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
-Val Alloca(Type *t);
+Val Alloca(const Type *t);
 Val Contextualize(AST::CodeBlock code, std::vector<Val> args);
 Val VariantType(Val v1);
-Val VariantValue(Type *t, Val);
+Val VariantValue(const Type *t, Val);
 Val Err(Val v);
 Val CreateStruct();
 Val FinalizeStruct(Val v);
@@ -100,7 +100,7 @@ void CondJump(Val cond, BlockIndex true_block, BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();
 
-CmdIndex Phi(Type *t);
+CmdIndex Phi(const Type *t);
 
 } // namespace IR
 #endif // ICARUS_IR_CMD_H

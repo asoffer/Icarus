@@ -94,7 +94,7 @@ void MissingMember(const TextSpan &span, const std::string &member_name,
 void NotAType(const TextSpan &span, const std::string &id_tok);
 void UnknownParserError(const Source::Name &source_name,
                         const std::vector<TextSpan> &lines);
-void InvalidReturnType(const TextSpan &span, Type *given, Type *correct);
+void InvalidReturnType(const TextSpan &span, const Type *given, const Type *correct);
 void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_loc);
 
 void NullCharInSrc(const TextSpan &loc);
@@ -116,17 +116,17 @@ void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
 
 void AssignmentArrayLength(const TextSpan &span, size_t len);
 void NonBinaryAssignment(const TextSpan &span, size_t len);
-void ChainTypeMismatch(const TextSpan &span, std::set<Type *> types);
+void ChainTypeMismatch(const TextSpan &span, std::set<const Type *> types);
 
-void NotAType(AST::Expression *expr, Type *t);
+void NotAType(AST::Expression *expr, const Type *t);
 void IndeterminantType(AST::Expression *expr);
 
-void InvalidRangeType(const TextSpan &span, Type *t);
-void InvalidStringIndex(const TextSpan &span, Type *index_type);
+void InvalidRangeType(const TextSpan &span, const Type *t);
+void InvalidStringIndex(const TextSpan &span, const Type *index_type);
 void NonIntegralArrayIndex(const TextSpan &span, const Type *index_type);
 void IndexingNonArray(const TextSpan &span, const Type *t);
 void SlicingNonArray(const TextSpan &span, const Type *t);
-void CaseTypeMismatch(AST::Case *case_ptr, Type *correct = nullptr);
+void CaseTypeMismatch(AST::Case *case_ptr, const Type *correct = nullptr);
 void InvalidAssignDefinition(const TextSpan &span, const Type *t);
 void InvalidScope(const TextSpan &span, const Type *t);
 void UserDefinedError(const TextSpan &span, const std::string &msg);

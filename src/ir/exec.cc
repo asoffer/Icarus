@@ -15,7 +15,7 @@
 std::vector<IR::Val> global_vals;
 
 std::unique_ptr<IR::Func>
-ExprFn(AST::Expression *expr, Type *input, Context *ctx = nullptr,
+ExprFn(AST::Expression *expr, const Type *input, Context *ctx = nullptr,
        const std::vector<std::pair<std::string, AST::Expression *>> args = {}) {
   auto fn = std::make_unique<IR::Func>(::Func(input, expr->type), args);
   CURRENT_FUNC(fn.get()) {
@@ -48,7 +48,8 @@ ExprFn(AST::Expression *expr, Type *input, Context *ctx = nullptr,
 }
 
 // TODO This is ugly and possibly wasteful.
-static std::unique_ptr<IR::Func> AssignmentFunction(Type *from, Type *to) {
+static std::unique_ptr<IR::Func> AssignmentFunction(const Type *from,
+                                                    const Type *to) {
   auto assign_func = std::make_unique<IR::Func>(
       Func({Ptr(from), Ptr(to)}, Void),
       std::vector<std::pair<std::string, AST::Expression *>>{{"from", nullptr},
@@ -132,7 +133,7 @@ BlockIndex ExecContext::ExecuteBlock() {
   return std::get<BlockIndex>(result.value);
 }
 
-IR::Val Stack::Push(Pointer *ptr) {
+IR::Val Stack::Push(const Pointer *ptr) {
   size_ = Architecture::InterprettingMachine().MoveForwardToAlignment(
       ptr->pointee, size_);
   auto addr = size_;
@@ -177,26 +178,26 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Mod: return Mod(resolved[0], resolved[1]);
   case Op::Arrow: return Arrow(resolved[0], resolved[1]);
   case Op::Variant: {
-    std::vector<Type *> types;
+    std::vector<const Type *> types;
     types.reserve(resolved.size());
     for (const auto &val : resolved) {
-      types.push_back(std::get<Type *>(val.value));
+      types.push_back(std::get<const Type *>(val.value));
     }
     return IR::Val::Type(Var(std::move(types)));
   }
   case Op::Array: return Array(resolved[0], resolved[1]);
   case Op::Cast:
     if (resolved[1].type == Int) {
-      if (std::get<Type*>(resolved[0].value) == Int) {
+      if (std::get<const Type *>(resolved[0].value) == Int) {
         return resolved[1];
-      } else if (std::get<Type *>(resolved[0].value) == Real) {
+      } else if (std::get<const Type *>(resolved[0].value) == Real) {
         return IR::Val::Real(
             static_cast<double>(std::get<i32>(resolved[1].value)));
       } else {
         call_stack.top().fn_->dump();
         NOT_YET("(", resolved[0], ", ", resolved[1], ")");
       }
-    } else if (Type *ptr_type = std::get<Type *>(resolved[0].value);
+    } else if (auto *ptr_type = std::get<const Type *>(resolved[0].value);
                ptr_type->is<Pointer>() && resolved[1].type->is<Pointer>()) {
       return Val::Addr(std::get<Addr>(resolved[1].value),
                        ptr_type->as<Pointer>().pointee);
@@ -259,7 +260,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             [](bool b) { std::cerr << (b ? "true" : "false"); },
             [](char c) { std::cerr << c; },
             [](double d) { std::cerr << d; },
-            [](Type *t) { std::cerr << t->to_string(); },
+            [](const Type *t) { std::cerr << t->to_string(); },
             [](const AST::CodeBlock &cb) { std::cerr << cb.to_string(); },
             [](const std::string &s) { std::cerr << s; },
             [](const Addr &a) { std::cerr << a.to_string(); },
@@ -314,7 +315,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       LOAD_FROM_HEAP(Int, Int, i32);
       LOAD_FROM_HEAP(Real, Real, double);
       LOAD_FROM_HEAP(Code, CodeBlock, AST::CodeBlock);
-      LOAD_FROM_HEAP(Type_, Type, ::Type *);
+      LOAD_FROM_HEAP(Type_, Type, const ::Type *);
       if (cmd.type->is<Pointer>()) {
         return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
                              cmd.type->as<Pointer>().pointee);
@@ -337,7 +338,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       LOAD_FROM_STACK(Real, Real, double);
       LOAD_FROM_STACK(Code, CodeBlock, AST::CodeBlock);
       LOAD_FROM_STACK(String, StrLit, std::string);
-      LOAD_FROM_STACK(Type_, Type, ::Type *);
+      LOAD_FROM_STACK(Type_, Type, const ::Type *);
       if (cmd.type->is<Pointer>()) {
         switch (addr.kind) {
         case Addr::Kind::Stack:
@@ -384,7 +385,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type->is<Enum>()) {
         stack_.Store(std::get<EnumVal>(resolved[0].value).value, addr.as_stack);
       } else if (resolved[0].type == Type_) {
-        stack_.Store(std::get<::Type *>(resolved[0].value), addr.as_stack);
+        stack_.Store(std::get<const ::Type *>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type == Code) {
         stack_.Store(std::get<AST::CodeBlock>(resolved[0].value),
                      addr.as_stack);
@@ -408,8 +409,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type->is<Pointer>()) {
         *static_cast<Addr *>(addr.as_heap) = std::get<Addr>(resolved[0].value);
       } else if (resolved[0].type == Type_) {
-        *static_cast<::Type **>(addr.as_heap) =
-            std::get<::Type *>(resolved[0].value);
+        *static_cast<const ::Type **>(addr.as_heap) =
+            std::get<const ::Type *>(resolved[0].value);
       } else if (resolved[0].type->is<Enum>()) {
         NOT_YET();
       } else if (resolved[0].type == Code) {
@@ -455,27 +456,25 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     UNREACHABLE("Invalid address kind: ",
                 static_cast<int>(std::get<Addr>(resolved[0].value).kind));
   case Op::CreateStruct: {
-    return IR::Val::Type(new Struct);
+    return IR::Val::Struct();
   } break;
   case Op::InsertField: {
-    auto &struct_to_mod = std::get<Type *>(resolved[0].value)->as<Struct>();
+    auto *struct_to_mod = std::get<Struct *>(resolved[0].value);
+    struct_to_mod->fields_.push_back(
+        Struct::Field{std::string_view{},
+                      std::get<const Type *>(resolved[2].value), resolved[3]});
 
-    struct_to_mod.fields_.push_back(Struct::Field{
-        std::string_view{}, std::get<Type *>(resolved[2].value), resolved[3]});
-
-    auto[iter, success] = struct_to_mod.field_indices_.emplace(
+    auto[iter, success] = struct_to_mod->field_indices_.emplace(
         std::get<std::string>(resolved[1].value),
-        struct_to_mod.fields_.size() - 1);
+        struct_to_mod->fields_.size() - 1);
+
     ASSERT(success, "");
-    struct_to_mod.fields_.back().name = std::string_view(&iter->first[0]);
+    struct_to_mod->fields_.back().name = std::string_view(&iter->first[0]);
+
     return IR::Val::None();
   } break;
   case Op::FinalizeStruct: {
-    // TODO this const_cast is really unsafe because the result is interned into
-    // a set. mutating really would cause UB. Convert everything to be
-    // const-correct.
-    return IR::Val::Type(const_cast<Struct *>(
-        std::get<Type *>(resolved[0].value)->as<Struct>().finalize()));
+    return IR::Val::Type(std::get<Struct *>(resolved[0].value)->finalize());
   } break;
   case Op::Field: {
     auto *struct_type = &resolved[0].type->as<Pointer>().pointee->as<Struct>();

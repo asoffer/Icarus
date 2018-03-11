@@ -60,7 +60,7 @@ struct Expression : public Node {
 
   size_t precedence = std::numeric_limits<size_t>::max();
   Assign lvalue     = Assign::Unset;
-  Type *type        = nullptr;
+  const Type *type  = nullptr;
   // TODO in the process of cleaning this up. Trying to delete this value.
   // IR::Val value = IR::Val::None(); // TODO this looks like a bad idea. delete
   // it?

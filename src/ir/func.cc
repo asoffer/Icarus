@@ -10,7 +10,7 @@ Val Func::Argument(u32 n) {
   return Val::Reg(Register(n), ir_type->input AT(n));
 }
 
-Func::Func(::Function *fn_type,
+Func::Func(const ::Function *fn_type,
            std::vector<std::pair<std::string, AST::Expression *>> args)
     : type_(fn_type), ir_type(fn_type->ToIR()), args_(std::move(args)),
       num_regs_(static_cast<i32>(fn_type->input.size())) {

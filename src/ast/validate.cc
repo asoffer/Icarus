@@ -72,7 +72,7 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 namespace AST {
 struct ArgumentMetaData {
-  Type *type;
+  const Type *type;
   std::string name;
   bool has_default;
 };
@@ -211,13 +211,13 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
   return CommonAmbiguousFunctionCall(metadata1, metadata2);
 }
 
-static Type *DereferenceAll(Type *t) {
+static const Type *DereferenceAll(const Type *t) {
   while (t->is<Pointer>()) { t = t->as<Pointer>().pointee; }
   return t;
 }
 
 // TODO move this and type-related functions below into type/type.cc?
-static Type *TypeJoin(Type *lhs, Type *rhs) {
+static const Type *TypeJoin(const Type *lhs, const Type *rhs) {
   if (lhs == rhs) { return lhs; }
   if (lhs == Err) { return rhs; } // Ignore errors
   if (rhs == Err) { return lhs; } // Ignore errors
@@ -229,7 +229,7 @@ static Type *TypeJoin(Type *lhs, Type *rhs) {
   if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
     return TypeJoin(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee);
   } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    Type *result = nullptr;
+    const Type *result = nullptr;
     if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
       if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
       result = TypeJoin(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
@@ -245,18 +245,18 @@ static Type *TypeJoin(Type *lhs, Type *rhs) {
              !rhs->as<Array>().fixed_length) {
     return rhs;
   } else if (lhs->is<Tuple>() && rhs->is<Tuple>()) {
-    Tuple *lhs_tup = &lhs->as<Tuple>();
-    Tuple *rhs_tup = &rhs->as<Tuple>();
+    const Tuple *lhs_tup = &lhs->as<Tuple>();
+    const Tuple *rhs_tup = &rhs->as<Tuple>();
     if (lhs_tup->entries.size() != rhs_tup->entries.size()) { return nullptr; }
-    std::vector<Type *> joined;
+    std::vector<const Type *> joined;
     for (size_t i = 0; i < lhs_tup->entries.size(); ++i) {
-      Type *result = TypeJoin(lhs_tup->entries[i], rhs_tup->entries[i]);
+      const Type *result = TypeJoin(lhs_tup->entries[i], rhs_tup->entries[i]);
       if (result == nullptr) { return nullptr; }
       joined.push_back(result);
     }
     return Tup(std::move(joined));
   } else if (lhs->is<Variant>()) {
-    std::vector<Type *> rhs_types;
+    std::vector<const Type *> rhs_types;
     if (rhs->is<Variant>()) {
       rhs_types = rhs->as<Variant>().variants_;
     } else {
@@ -269,7 +269,7 @@ static Type *TypeJoin(Type *lhs, Type *rhs) {
   } else if (rhs->is<Variant>()) { // lhs is not a variant
     // TODO faster lookups? maybe not represented as a vector. at least give
     // a better interface.
-    for (Type *v : rhs->as<Variant>().variants_) {
+    for (const Type *v : rhs->as<Variant>().variants_) {
       if (lhs == v) { return rhs; }
     }
     return nullptr;
@@ -277,12 +277,12 @@ static Type *TypeJoin(Type *lhs, Type *rhs) {
   UNREACHABLE();
 }
 
-static bool CanCastImplicitly(Type *from, Type *to) {
+static bool CanCastImplicitly(const Type *from, const Type *to) {
   return TypeJoin(from, to) == to;
 }
 
 // TODO return a reason why this is not inferrable for better error messages.
-static bool Inferrable(Type *t) {
+static bool Inferrable(const Type *t) {
   if (t == NullPtr || t == EmptyArray) {
     return false;
   } else if (t->is<Array>()) {
@@ -341,7 +341,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
       if (!maybe_binding) { continue; }
       auto binding = std::move(maybe_binding).value();
 
-      FnArgs<Type *> call_arg_types;
+      FnArgs<const Type *> call_arg_types;
       call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
       for (const auto & [ key, val ] : fn_lit->lookup_) {
         if (val < args_.pos_.size()) { continue; }
@@ -354,7 +354,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
           if (fn_lit->inputs[i]->IsDefaultInitialized()) { goto next_option; }
           binding.exprs_[i].first = fn_opt_input[i];
         } else {
-          Type *match =
+          const Type *match =
               Type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
           if (match == nullptr) { goto next_option; }
           binding.exprs_[i].first = fn_opt_input[i];
@@ -376,7 +376,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
       auto *gen_fn_lit = std::get<GenericFunctionLiteral *>(fn_val);
       if (auto[fn_lit, binding] = gen_fn_lit->ComputeType(args_, ctx); fn_lit) {
         // TODO this is copied almost exactly from above.
-        FnArgs<Type *> call_arg_types;
+        FnArgs<const Type *> call_arg_types;
         call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
         for (const auto & [ key, val ] : gen_fn_lit->lookup_) {
           if (val < args_.pos_.size()) { continue; }
@@ -389,7 +389,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
             if (fn_lit->inputs[i]->IsDefaultInitialized()) { goto next_option; }
             binding.exprs_[i].first = fn_opt_input[i];
           } else {
-            Type *match =
+            const Type *match =
                 Type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
             if (match == nullptr) { goto next_option; }
             binding.exprs_[i].first = fn_opt_input[i];
@@ -433,11 +433,11 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
   Expression *expr_to_eval = nullptr;
 
   for (size_t i : decl_order_) {
-    Type *input_type = nullptr;
+    const Type *input_type = nullptr;
     if (inputs[i]->type_expr) {
       if (auto type_result = Evaluate(inputs[i]->type_expr.get(), &new_ctx);
           !type_result.empty() && type_result[0] != IR::Val::None()) {
-        input_type = std::get<Type *>(type_result[0].value);
+        input_type = std::get<const Type *>(type_result[0].value);
       } else {
         ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
                                              std::to_string(__LINE__) + ": ");
@@ -463,7 +463,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
       }
 
       if (!binding.defaulted(i)) {
-        if (Type *match =
+        if (auto *match =
                 Type::Meet(binding.exprs_[i].second->type, input_type);
             match == nullptr) {
           return std::pair(nullptr, Binding{});
@@ -522,9 +522,9 @@ void GenericFunctionLiteral::Validate(Context *ctx) {
   for (size_t i = 0; i < inputs.size(); ++i) { decl_order_.push_back(i); }
 }
 
-void DispatchTable::insert(FnArgs<Type *> call_arg_types, Binding binding) {
+void DispatchTable::insert(FnArgs<const Type *> call_arg_types, Binding binding) {
   u64 expanded_size = 1;
-  call_arg_types.Apply([&expanded_size](Type *t) {
+  call_arg_types.Apply([&expanded_size](const Type *t) {
     if (t->is<Variant>()) { expanded_size *= t->as<Variant>().size(); }
   });
 
@@ -532,8 +532,8 @@ void DispatchTable::insert(FnArgs<Type *> call_arg_types, Binding binding) {
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
 }
 
-static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
-                                   Type *rhs_type) {
+static bool ValidateComparisonType(Language::Operator op, const Type *lhs_type,
+                                   const Type *rhs_type) {
   ASSERT(op == Language::Operator::Lt || op == Language::Operator::Le ||
              op == Language::Operator::Eq || op == Language::Operator::Ne ||
              op == Language::Operator::Ge || op == Language::Operator::Gt,
@@ -592,8 +592,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
         return false;
       }
 
-      Array *lhs_array = &lhs_type->as<Array>();
-      Array *rhs_array = &lhs_type->as<Array>();
+      auto *lhs_array = &lhs_type->as<Array>();
+      auto *rhs_array = &lhs_type->as<Array>();
 
       // TODO what if data types are equality comparable but not equal?
       if (lhs_array->data_type != rhs_array->data_type) {
@@ -1051,7 +1051,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
     fn_->type = Void;
   }
 
-  std::vector<Type *> out_types;
+  std::vector<const Type *> out_types;
   out_types.reserve(dispatch_table_.bindings_.size());
   for (const auto & [ key, val ] : dispatch_table_.bindings_) {
     auto &outs = val.fn_expr_->type->as<Function>().output;
@@ -1080,7 +1080,7 @@ void Declaration::Validate(Context *ctx) {
       auto results = Evaluate(type_expr.get(), ctx);
       // TODO figure out if you need to generate an error here
       if (results.size() == 1) {
-        type = identifier->type = std::get<Type *>(results[0].value);
+        type = identifier->type = std::get<const Type *>(results[0].value);
       } else {
         type = identifier->type = Err;
       }
@@ -1226,7 +1226,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
     type = container->type->as<RangeType>().end_type;
 
   } else if (container->type == Type_) {
-    auto t = std::get<Type *>(Evaluate(container.get())[0].value);
+    auto t = std::get<const Type *>(Evaluate(container.get())[0].value);
     if (t->is<Enum>()) { type = t; }
 
   } else {
@@ -1417,7 +1417,8 @@ void Access::Validate(Context *ctx) {
       limit_to(StageRange::Nothing());
     }
   } else if (base_type == Type_) {
-    Type *evaled_type = std::get<Type *>(Evaluate(operand.get())[0].value);
+    auto *evaled_type =
+        std::get<const Type *>(Evaluate(operand.get())[0].value);
     if (evaled_type->is<Enum>()) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on
@@ -1523,7 +1524,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
   // type itself rather than a tuple. This is a limitation in your support of
   // full tuples.
   bool all_types = true;
-  std::vector<Type *> type_vec(exprs.size(), nullptr);
+  std::vector<const Type *> type_vec(exprs.size(), nullptr);
 
   size_t position = 0;
   for (const auto &expr : exprs) {
@@ -1551,7 +1552,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
     if (elem->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
 
-  Type *joined = Err;
+  const Type *joined = Err;
   for (auto &elem : elems) {
     joined = TypeJoin(joined, elem->type);
     if (joined == nullptr) { break; }
@@ -1611,7 +1612,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
     }
   }
 
-  std::unordered_map<Type *, size_t> value_types;
+  std::unordered_map<const Type *, size_t> value_types;
 
   for (auto & [ key, val ] : key_vals) {
     if (key->type == Err) {
@@ -1641,7 +1642,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
 
     size_t max_size = 0;
     size_t min_size = key_vals.size();
-    Type *max_type  = nullptr;
+    const Type *max_type  = nullptr;
     for (const auto & [ key, val ] : value_types) {
       if (val > max_size) {
         max_size = val;
@@ -1711,7 +1712,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
     type = Err;
     limit_to(StageRange::Nothing());
     return;
-  } else if (std::get<Type *>(ret_type_val.value) == Err) {
+  } else if (std::get<const Type *>(ret_type_val.value) == Err) {
     type = Err;
     limit_to(StageRange::Nothing());
     return;
@@ -1724,9 +1725,9 @@ HANDLE_CYCLIC_DEPENDENCIES;
 
   // TODO poison on input Err?
 
-  Type *ret_type    = std::get<Type *>(ret_type_val.value);
+  auto *ret_type    = std::get<const Type *>(ret_type_val.value);
   size_t num_inputs = inputs.size();
-  std::vector<Type *> input_type_vec;
+  std::vector<const Type *> input_type_vec;
   input_type_vec.reserve(inputs.size());
   for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
 

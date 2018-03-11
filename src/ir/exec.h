@@ -50,7 +50,7 @@ struct Stack {
     }
   }
 
-  IR::Val Push(Pointer *ptr);
+  IR::Val Push(const Pointer *ptr);
 
   std::vector<std::function<void()>> dtors_;
   size_t capacity_ = 0;

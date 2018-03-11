@@ -26,12 +26,15 @@ char *Primitive::WriteTo(char *buf) const {
 }
 
 size_t Struct::string_size() const {
-  if (fields_.empty()) { return 11; }
   size_t acc = 0;
   for (const auto &field : fields_) { acc += field.type->string_size(); }
   return acc + 2 * fields_.size() + 9;
 }
 char *Struct::WriteTo(char *buf) const {
+  if (fields_.empty()) {
+    buf = std::strcpy(buf, "struct {}") + 9;
+    return buf;
+  }
   buf = std::strcpy(buf, "struct { ") + 9;
   auto iter = fields_.begin();
   buf = iter->type->WriteTo(buf);
@@ -81,7 +84,7 @@ static size_t NumDigits(size_t num) {
 size_t Array::string_size() const {
   size_t result = 1 + (fixed_length ? NumDigits(len) : 2);
 
-  Type *const *type_ptr_ptr = &data_type;
+  const Type *const *type_ptr_ptr = &data_type;
   while ((*type_ptr_ptr)->is<Array>()) {
     auto array_ptr = &(*type_ptr_ptr)->as<const Array>();
     result += 2 + ((array_ptr->fixed_length) ? NumDigits(array_ptr->len) : 2);
@@ -98,7 +101,7 @@ char *Array::WriteTo(char *buf) const {
     buf = std::strcpy(buf, "--") + 2;
   }
 
-  Type *const *type_ptr_ptr = &data_type;
+  const Type *const *type_ptr_ptr = &data_type;
   while ((*type_ptr_ptr)->is<Array>()) {
     auto array_ptr = &(*type_ptr_ptr)->as<const Array>();
 
@@ -119,8 +122,8 @@ char *Array::WriteTo(char *buf) const {
 
 size_t Function::string_size() const {
   size_t acc = 0;
-  for (Type *t : input) { acc += t->string_size(); }
-  for (Type *t : output) { acc += t->string_size(); }
+  for (const Type *t : input) { acc += t->string_size(); }
+  for (const Type *t : output) { acc += t->string_size(); }
   acc += 2 * (input.size() - 1) +       // space between inputs
          (input.size() == 1 ? 0 : 2) +  // Parens
          (input.empty() ? 4 : 0) +      // void
@@ -168,7 +171,7 @@ char *Function::WriteTo(char *buf) const {
 
 size_t Variant::string_size() const {
   size_t result = (variants_.size() - 1) * 3;
-  for (Type *v : variants_) {
+  for (const Type *v : variants_) {
     result += v->string_size() + (v->is<Struct>() || v->is<Primitive>() ||
                                           v->is<Enum>() || v->is<Pointer>() ||
                                           v->is<Function>() || v->is<Array>()
@@ -209,7 +212,7 @@ char *Variant::WriteTo(char *buf) const {
 
 size_t Tuple::string_size() const {
   size_t result = 2 * entries.size();
-  for (Type *entry : entries) { result += entry->string_size(); }
+  for (const Type *entry : entries) { result += entry->string_size(); }
   return result;
 }
 char *Tuple::WriteTo(char *buf) const {
