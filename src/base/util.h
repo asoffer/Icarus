@@ -6,29 +6,32 @@
 
 #include "debug.h"
 
+#define STATIC_ASSERT_RELATED(base, derived)                                   \
+  static_assert(                                                               \
+      std::is_base_of_v<std::remove_cv_t<base>, std::remove_cv_t<derived>> &&  \
+          std::is_convertible_v<std::remove_cv_t<derived> *,                   \
+                                std::remove_cv_t<base> *>,                     \
+      "Calling is<...> but there is no public inheritance relationship. "      \
+      "Result is vacuously false.")
+
 namespace base {
 template <typename Base> struct Cast {
   template <typename T> bool is() const {
-    static_assert(std::is_base_of_v<Base, T>,
-                  "Calling is<...> but there is no inheritance relationship. "
-                  "Result is vacuously false.");
+    STATIC_ASSERT_RELATED(Base, T);
     return dynamic_cast<const T *>(reinterpret_cast<const Base *>(this)) !=
            nullptr;
   }
 
   template <typename T> T &as() & {
-    static_assert(std::is_base_of_v<Base, T>,
-                  "Calling as<...> but there is no inheritance relationship. "
-                  "Result is vacuously false.");
+    STATIC_ASSERT_RELATED(Base, T);
     return const_cast<T &>(
         static_cast<const std::remove_reference_t<decltype(*this)> *>(this)
             ->template as<const T>());
   }
 
   template <typename T> T &&as() && {
-    static_assert(std::is_base_of_v<Base, T>,
-                  "Calling as<...> but there is no inheritance relationship. "
-                  "Result is vacuously false.");
+    STATIC_ASSERT_RELATED(Base, T);
+
 #ifdef DEBUG
     auto *result = dynamic_cast<T *>(reinterpret_cast<Base *>(this));
     ASSERT(result, "Failed to convert");
@@ -39,9 +42,8 @@ template <typename Base> struct Cast {
   }
 
   template <typename T> const T &as() const {
-    static_assert(std::is_base_of_v<Base, T>,
-                  "Calling as<...> but there is no inheritance relationship. "
-                  "Result is vacuously false.");
+    STATIC_ASSERT_RELATED(Base, T);
+
 #ifdef DEBUG
     auto *result =
         dynamic_cast<const T *>(reinterpret_cast<const Base *>(this));

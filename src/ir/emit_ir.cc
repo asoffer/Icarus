@@ -1063,6 +1063,6 @@ IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
     IR::InsertField(new_struct, field->identifier->token, std::move(field_type),
                     std::move(init_val));
   }
-  return new_struct;
+  return IR::FinalizeStruct(std::move(new_struct));
 }
 

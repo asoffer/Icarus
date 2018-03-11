@@ -13,6 +13,7 @@
 struct Enum;
 struct Type;
 struct Pointer;
+struct Struct;
 
 extern Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String;
 
@@ -123,6 +124,7 @@ struct Val {
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);
+  static Val Struct() { return Val(); }
 
   std::string to_string() const;
 

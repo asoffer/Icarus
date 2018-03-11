@@ -115,6 +115,8 @@ Val CreateStruct() {
   return cmd.reg();
 }
 
+IR::Val FinalizeStruct(Val v) { MAKE_AND_RETURN(::Type_, Op::FinalizeStruct); }
+
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val) {
   ASSERT_NE(Func::Current, nullptr);
@@ -366,18 +368,7 @@ Val Eq(Val v1, Val v2) {
   CONSTANT_PROPOGATION(char, std::equal_to<char>{}, Bool);
   CONSTANT_PROPOGATION(i32, std::equal_to<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::equal_to<double>{}, Bool);
-  CONSTANT_PROPOGATION(Type *,
-                       [](Type *lhs, Type *rhs) {
-                         if (!lhs->is<Struct>() || !rhs->is<Struct>()) {
-                           return lhs == rhs;
-                         }
-
-                         // TODO how much do we care about field ordering?
-                         auto &lhs_struct = lhs->as<Struct>();
-                         auto &rhs_struct = rhs->as<Struct>();
-                         return lhs_struct == rhs_struct;
-                       },
-                       Bool);
+  CONSTANT_PROPOGATION(Type *,std::equal_to<Type*>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
   CONSTANT_PROPOGATION(
       EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value == rhs.value; },
@@ -474,6 +465,7 @@ void Cmd::dump(size_t indent) const {
   case Op::ReturnJump: std::cerr << "return"; break;
   case Op::CreateStruct: std::cerr << "create-struct"; break;
   case Op::InsertField: std::cerr << "insert-field"; break;
+  case Op::FinalizeStruct: std::cerr << "finalize-struct"; break;
   case Op::Load: std::cerr << "load"; break;
   case Op::Store: std::cerr << "store"; break;
   case Op::Variant: std::cerr << "variant"; break;

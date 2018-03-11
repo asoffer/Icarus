@@ -188,6 +188,8 @@ struct Struct : public Type {
     return false;
   }
 
+  const Struct *finalize();
+
   std::vector<Field> fields_;
   std::unordered_map<std::string, size_t> field_indices_;
 
@@ -196,12 +198,32 @@ private:
            *destroy_func = nullptr, *repr_func = nullptr;
 };
 
+inline bool operator<(const ::Struct::Field &lhs, const ::Struct::Field &rhs) {
+  if (lhs.name < rhs.name) { return true; }
+  if (lhs.name > rhs.name) { return false; }
+  if (lhs.type < rhs.type) { return true; }
+  if (lhs.type > rhs.type) { return false; }
+  return false;
+
+  // TODO compare initial values
+  // return lhs.init_val < rhs.init_val;
+}
+
+namespace std {
+template <> struct less<::Struct> {
+  size_t operator()(const ::Struct &lhs, const ::Struct &rhs) {
+    return lhs.fields_ < rhs.fields_;
+  }
+};
+}
+
 bool operator==(const Struct &lhs, const Struct &rhs);
 
 struct Variant : public Type {
   TYPE_FNS(Variant);
   Variant(std::vector<Type *> variants) : variants_(std::move(variants)) {}
   size_t size() const { return variants_.size(); }
+
   std::vector<Type *> variants_;
   IR::Func *repr_func = nullptr;
 };

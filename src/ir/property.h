@@ -114,7 +114,7 @@ struct PropertySet {
   std::vector<std::unique_ptr<Property>> props_;
 };
 
-template <typename Number> struct Range : Property {
+template <typename Number> struct Range : public Property {
   Range() {}
   Range(Number min_val, Number max_val) : min_(min_val), max_(max_val) {}
   ~Range() override {}

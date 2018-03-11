@@ -26,7 +26,8 @@ enum class Op : char {
   UncondJump,
   ReturnJump,
   CreateStruct,
-  InsertField
+  InsertField,
+  FinalizeStruct
 };
 
 struct Cmd {
@@ -82,11 +83,12 @@ Val Variant(std::vector<Val> vals);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);
-Val Contextualize(AST::CodeBlock code, std::vector<IR::Val> args);
-Val VariantType(IR::Val v1);
-Val VariantValue(Type *t, IR::Val);
-Val Err(IR::Val v);
+Val Contextualize(AST::CodeBlock code, std::vector<Val> args);
+Val VariantType(Val v1);
+Val VariantValue(Type *t, Val);
+Val Err(Val v);
 Val CreateStruct();
+Val FinalizeStruct(Val v);
 
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val);

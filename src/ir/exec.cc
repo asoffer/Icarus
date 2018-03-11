@@ -455,8 +455,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     UNREACHABLE("Invalid address kind: ",
                 static_cast<int>(std::get<Addr>(resolved[0].value).kind));
   case Op::CreateStruct: {
-    Struct *new_struct = new Struct;
-    return IR::Val::Type(new_struct);
+    return IR::Val::Type(new Struct);
   } break;
   case Op::InsertField: {
     auto &struct_to_mod = std::get<Type *>(resolved[0].value)->as<Struct>();
@@ -470,6 +469,13 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     ASSERT(success, "");
     struct_to_mod.fields_.back().name = std::string_view(&iter->first[0]);
     return IR::Val::None();
+  } break;
+  case Op::FinalizeStruct: {
+    // TODO this const_cast is really unsafe because the result is interned into
+    // a set. mutating really would cause UB. Convert everything to be
+    // const-correct.
+    return IR::Val::Type(const_cast<Struct *>(
+        std::get<Type *>(resolved[0].value)->as<Struct>().finalize()));
   } break;
   case Op::Field: {
     auto *struct_type = &resolved[0].type->as<Pointer>().pointee->as<Struct>();
