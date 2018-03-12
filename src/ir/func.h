@@ -8,7 +8,9 @@
 
 #include "block.h"
 
+namespace type {
 struct Function;
+}
 struct ExecContext;
 
 namespace IR {
@@ -16,7 +18,7 @@ struct Func {
   static Func *Current;
   static std::vector<std::unique_ptr<Func>> All;
 
-  Func(const ::Function *fn_type,
+  Func(const type::Function *fn_type,
        std::vector<std::pair<std::string, AST::Expression *>> args);
 
   void dump() const;
@@ -50,8 +52,8 @@ struct Func {
 
   // Is this needed? Or can it be determined from the containing FunctionLiteral
   // object?
-  const ::Function *const type_ = nullptr;
-  const ::Function *const ir_type = nullptr;
+  const type::Function *const type_ = nullptr;
+  const type::Function *const ir_type = nullptr;
   std::vector<std::pair<std::string, AST::Expression *>> args_;
   bool has_default(size_t i) const { return args_[i].second != nullptr; }
   i32 num_regs_  = 0;

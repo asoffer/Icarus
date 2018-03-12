@@ -772,8 +772,8 @@ BuildEnumLiteral(std::vector<std::unique_ptr<AST::Node>> nodes, bool is_enum,
   return std::make_unique<AST::Terminal>(
       TextSpan(nodes[0]->span, nodes[1]->span),
       IR::Val::Type(
-          new Enum("__anon.enum" + std::to_string(anon_enum_counter++),
-                   std::move(members_vec), is_enum)));
+          new type::Enum("__anon.enum" + std::to_string(anon_enum_counter++),
+                         std::move(members_vec), is_enum)));
 }
 
 static std::unique_ptr<AST::Node>

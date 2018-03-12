@@ -23,7 +23,7 @@ void Identifier::assign_scope(Scope *scope) {
 void Terminal::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;
-  if (type != Type_) { return; }
+  if (type !=Type_) { return; }
 }
 
 void ArrayType::assign_scope(Scope *scope) {

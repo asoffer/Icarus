@@ -89,7 +89,7 @@ template <typename Number> struct Bound : Property {
   Bound()              = delete;
   Bound(Bound &&)      = default;
   Bound(const Bound &) = default;
-  Bound(Bound::Type type, Number num) : type_(type), num_(std::move(num)) {}
+  Bound(Boundtype::Type type, Number num) : type_(type), num_(std::move(num)) {}
 };
 */
 

@@ -9,7 +9,9 @@
 
 #include "fn_args.h"
 
+namespace type {
 struct Type;
+} // namespace type
 
 namespace AST {
 struct Expression;
@@ -25,7 +27,7 @@ struct Binding {
 
   Binding() = default;
   Expression *fn_expr_ = nullptr;
-  std::vector<std::pair<const Type *, Expression *>> exprs_;
+  std::vector<std::pair<const type::Type *, Expression *>> exprs_;
 
 private:
   Binding(Expression *fn_expr, size_t n);
@@ -37,9 +39,9 @@ struct DispatchTable {
   //   streaming manner?
   // * Add weights for PGO optimizations?
 
-  void insert(FnArgs<const Type *> call_arg_types, Binding binding);
+  void insert(FnArgs<const type::Type *> call_arg_types, Binding binding);
 
-  std::map<FnArgs<const Type *>, Binding> bindings_;
+  std::map<FnArgs<const type::Type *>, Binding> bindings_;
   size_t total_size_ = 0;
 };
 } // namespace AST

@@ -6,7 +6,7 @@
 #include "../ast/ast.h"
 #include "../context.h"
 #include "../error/log.h"
-#include "../type/type.h"
+#include "../type/all.h"
 
 static constexpr int ThisStage() { return 3; }
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
@@ -73,30 +73,32 @@ IR::Val OrdFunc() {
 
 IR::Val AST::Access::EmitLVal(Context *ctx) {
   auto val = operand->EmitLVal(ctx);
-  while (val.type->is<Pointer>() &&
-         !val.type->as<Pointer>().pointee->is_big()) {
+  while (val.type->is<type::Pointer>() &&
+         !val.type->as<type::Pointer>().pointee->is_big()) {
     val = IR::Load(val);
   }
 
-  ASSERT_TYPE(Pointer, val.type);
-  ASSERT_TYPE(Struct, val.type->as<Pointer>().pointee);
+  ASSERT_TYPE(type::Pointer, val.type);
+  ASSERT_TYPE(type::Struct, val.type->as<type::Pointer>().pointee);
 
-  auto *struct_type = &val.type->as<Pointer>().pointee->as<Struct>();
+  auto *struct_type =
+      &val.type->as<type::Pointer>().pointee->as<type::Struct>();
   return IR::Field(val, struct_type->field_indices_.at(member_name));
 }
 
-static IR::Val EmitVariantMatch(const IR::Val &needle, const Type *haystack) {
+static IR::Val EmitVariantMatch(const IR::Val &needle,
+                                const type::Type *haystack) {
   auto runtime_type = IR::Load(IR::VariantType(needle));
 
-  if (haystack->is<Variant>()) {
+  if (haystack->is<type::Variant>()) {
     // TODO I'm fairly confident this will work, but it's also overkill because
     // we may already know this type matches if one variant is a subset of the
     // other.
     auto landing = IR::Func::Current->AddBlock();
 
     std::vector<IR::Val> phi_args;
-    phi_args.reserve(2 * haystack->as<Variant>().size() + 2);
-    for (const Type *v : haystack->as<Variant>().variants_) {
+    phi_args.reserve(2 * haystack->as<type::Variant>().size() + 2);
+    for (const type::Type *v : haystack->as<type::Variant>().variants_) {
       phi_args.push_back(IR::Val::Block(IR::Block::Current));
       phi_args.push_back(IR::Val::Bool(true));
 
@@ -127,12 +129,12 @@ IR::Val AST::Expression::EmitLVal(Context *) { UNREACHABLE(*this); }
 static IR::BlockIndex
 CallLookupTest(const AST::FnArgs<std::unique_ptr<AST::Expression>> &args,
                const AST::FnArgs<IR::Val> &fn_args,
-               const AST::FnArgs<const Type *> &call_arg_type) {
+               const AST::FnArgs<const type::Type *> &call_arg_type) {
   // Generate code that attempts to match the types on each argument (only
   // check the ones at the call-site that could be variants).
   auto next_binding = IR::Func::Current->AddBlock();
   for (size_t i = 0; i < args.pos_.size(); ++i) {
-    if (!args.pos_[i]->type->is<Variant>()) { continue; }
+    if (!args.pos_[i]->type->is<type::Variant>()) { continue; }
     IR::Block::Current = IR::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(fn_args.pos_.at(i), call_arg_type.pos_[i]));
@@ -141,7 +143,7 @@ CallLookupTest(const AST::FnArgs<std::unique_ptr<AST::Expression>> &args,
   for (const auto & [ name, expr ] : args.named_) {
     auto iter = call_arg_type.find(name);
     if (iter == call_arg_type.named_.end()) { continue; }
-    if (!expr->type->is<Variant>()) { continue; }
+    if (!expr->type->is<type::Variant>()) { continue; }
     IR::Block::Current = IR::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(fn_args.named_.at(iter->first), iter->second));
@@ -177,7 +179,7 @@ IR::Val AST::Call::EmitOneCallDispatch(
     }
   }
 
-  const Type *output_type_for_this_binding = Tup(fn_to_call->type_->output);
+  const type::Type *output_type_for_this_binding = type::Tup(fn_to_call->type_->output);
   IR::Val ret_val;
   if (output_type_for_this_binding->is_big()) {
     ret_val = IR::Alloca(type);
@@ -269,8 +271,8 @@ IR::Val AST::Call::EmitIR(Context *ctx) {
 }
 
 IR::Val AST::Access::EmitIR(Context *ctx) {
-  if (type->is<Enum>()) {
-    return type->as<Enum>().EmitLiteral(member_name);
+  if (type->is<type::Enum>()) {
+    return type->as<type::Enum>().EmitLiteral(member_name);
   } else {
     return PtrCallFix(EmitLVal(ctx));
   }
@@ -307,7 +309,7 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
     return decl->addr;
   } else if (decl->is<InDecl>()) {
     if (auto &in_decl = decl->as<InDecl>();
-        in_decl.container->type->is<Array>()) {
+        in_decl.container->type->is<type::Array>()) {
       return PtrCallFix(EmitLVal(ctx));
     } else {
       return decl->addr;
@@ -319,10 +321,10 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
 
 IR::Val AST::ArrayLiteral::EmitIR(Context *ctx) {
   auto array_val  = IR::Alloca(type);
-  auto *data_type = type->as<Array>().data_type;
+  auto *data_type = type->as<type::Array>().data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
     auto elem_i = IR::Index(array_val, IR::Val::Int(static_cast<i32>(i)));
-    Type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(ctx), elem_i);
+   type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(ctx), elem_i);
   }
   return array_val;
 }
@@ -342,7 +344,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
   { // Init block
     IR::Block::Current = init;
     for (auto &decl : iterators) {
-      if (decl->container->type->is<RangeType>()) {
+      if (decl->container->type->is<type::Range>()) {
         if (decl->container->is<Binop>()) {
           init_vals.push_back(decl->container->as<Binop>().lhs->EmitIR(ctx));
         } else if (decl->container->is<Unop>()) {
@@ -350,16 +352,16 @@ IR::Val AST::For::EmitIR(Context *ctx) {
         } else {
           NOT_YET();
         }
-      } else if (decl->container->type->is<Array>()) {
+      } else if (decl->container->type->is<type::Array>()) {
         init_vals.push_back(
             IR::Index(decl->container->EmitLVal(ctx), IR::Val::Int(0)));
 
-      } else if (decl->container->type == Type_) {
+      } else if (decl->container->type ==Type_) {
         // TODO this conditional check on the line above is wrong
         IR::Val container_val = Evaluate(decl->container.get())[0];
-        if (const ::Type *t = std::get<const ::Type *>(container_val.value);
-            t->is<Enum>()) {
-          init_vals.push_back(t->as<Enum>().EmitInitialValue());
+        if (const type::Type *t = std::get<const type::Type *>(container_val.value);
+            t->is<type::Enum>()) {
+          init_vals.push_back(t->as<type::Enum>().EmitInitialValue());
         } else {
           NOT_YET();
         }
@@ -375,20 +377,20 @@ IR::Val AST::For::EmitIR(Context *ctx) {
   { // Phi block
     IR::Block::Current = phi;
     for (auto &decl : iterators) {
-      if (decl->container->type == Type_) {
+      if (decl->container->type ==Type_) {
         IR::Val container_val = Evaluate(decl->container.get())[0];
-        if (auto *t = std::get<const ::Type *>(container_val.value);
-            t->is<Enum>()) {
-          phis.push_back(IR::Phi(&t->as<Enum>()));
+        if (auto *t = std::get<const type::Type *>(container_val.value);
+            t->is<type::Enum>()) {
+          phis.push_back(IR::Phi(&t->as<type::Enum>()));
         } else {
           NOT_YET();
         }
-      } else if (decl->container->type->is<RangeType>()) {
+      } else if (decl->container->type->is<type::Range>()) {
         phis.push_back(
-            IR::Phi(decl->container->type->as<RangeType>().end_type));
-      } else if (decl->container->type->is<Array>()) {
+            IR::Phi(decl->container->type->as<type::Range>().end_type));
+      } else if (decl->container->type->is<type::Array>()) {
         phis.push_back(
-            IR::Phi(Ptr(decl->container->type->as<Array>().data_type)));
+            IR::Phi(Ptr(decl->container->type->as<type::Array>().data_type)));
       } else {
         NOT_YET(*decl->container->type);
       }
@@ -406,10 +408,10 @@ IR::Val AST::For::EmitIR(Context *ctx) {
         incr_vals.push_back(IR::Add(phi_reg, IR::Val::Int(1)));
       } else if (phi_reg.type == Char) {
         incr_vals.push_back(IR::Add(phi_reg, IR::Val::Char(1)));
-      } else if (phi_reg.type->is<Enum>()) {
+      } else if (phi_reg.type->is<type::Enum>()) {
         incr_vals.push_back(
-            IR::Add(phi_reg, IR::Val::Enum(&phi_reg.type->as<Enum>(), 1)));
-      } else if (phi_reg.type->is<Pointer>()) {
+            IR::Add(phi_reg, IR::Val::Enum(&phi_reg.type->as<type::Enum>(), 1)));
+      } else if (phi_reg.type->is<type::Pointer>()) {
         incr_vals.push_back(IR::PtrIncr(phi_reg, IR::Val::Int(1)));
       } else {
         NOT_YET();
@@ -433,7 +435,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
       auto reg   = IR::Func::Current->Command(phis[i]).reg();
       auto next  = IR::Func::Current->AddBlock();
       IR::Val cmp;
-      if (decl->container->type->is<RangeType>()) {
+      if (decl->container->type->is<type::Range>()) {
         if (decl->container->is<Binop>()) {
           auto rhs_val = decl->container->as<Binop>().rhs->EmitIR(ctx);
           cmp          = IR::Le(reg, rhs_val);
@@ -444,17 +446,17 @@ IR::Val AST::For::EmitIR(Context *ctx) {
         } else {
           NOT_YET();
         }
-      } else if (decl->container->type->is<Array>()) {
-        auto *array_type = &decl->container->type->as<Array>();
+      } else if (decl->container->type->is<type::Array>()) {
+        auto *array_type = &decl->container->type->as<type::Array>();
         cmp              = IR::Ne(
             reg, IR::Index(decl->container->EmitLVal(ctx),
                            IR::Val::Int(static_cast<i32>(array_type->len))));
-      } else if (decl->container->type == Type_) {
+      } else if (decl->container->type ==Type_) {
         IR::Val container_val = Evaluate(decl->container.get())[0];
-        if (auto *t = std::get<const ::Type *>(container_val.value);
-            t->is<Enum>()) {
-          cmp = IR::Le(reg, IR::Val::Enum(&t->as<Enum>(),
-                                          t->as<Enum>().members_.size() - 1));
+        if (auto *t = std::get<const type::Type *>(container_val.value);
+            t->is<type::Enum>()) {
+          cmp = IR::Le(reg, IR::Val::Enum(&t->as<type::Enum>(),
+                                          t->as<type::Enum>().members_.size() - 1));
         } else {
           NOT_YET();
         }
@@ -522,7 +524,7 @@ IR::Val AST::ScopeLiteral::EmitIR(Context *) {
 
 IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   IR::Val scope_expr_val = Evaluate(scope_expr.get())[0];
-  ASSERT_TYPE(Scope_Type, scope_expr_val.type);
+  ASSERT_TYPE(type::Scope, scope_expr_val.type);
 
   auto enter_fn =
       std::get<ScopeLiteral *>(scope_expr_val.value)->enter_fn->init_val.get();
@@ -601,9 +603,9 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
     if (IsUninitialized()) { return IR::Val::None(); }
     if (IsCustomInitialized()) {
       if (init_val->lvalue == Assign::RVal) {
-        Type::EmitMoveInit(init_val->type, type, init_val->EmitIR(ctx), addr);
+        type::EmitMoveInit(init_val->type, type, init_val->EmitIR(ctx), addr);
       } else {
-        Type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx), addr);
+        type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx), addr);
       }
     } else {
       type->EmitInit(addr);
@@ -628,7 +630,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
   }
   case Language::Operator::Print: {
     ForEachExpr(operand.get(), [&ctx](size_t, AST::Expression *expr) {
-      if (expr->type->is<Primitive>() || expr->type->is<Pointer>()) {
+      if (expr->type->is<type::Primitive>() || expr->type->is<type::Pointer>()) {
         IR::Print(expr->EmitIR(ctx));
       } else {
         expr->type->EmitRepr(expr->EmitIR(ctx));
@@ -695,7 +697,7 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
     return IR::Cast(lhs_ir, rhs_ir);
   } break;
   case Language::Operator::Assign: {
-    std::vector<const Type *> lhs_types, rhs_types;
+    std::vector<const type::Type *> lhs_types, rhs_types;
     std::vector<IR::Val> rhs_vals;
     ForEachExpr(rhs.get(),
                 [&ctx, &rhs_vals, &rhs_types](size_t, AST::Expression *expr) {
@@ -718,7 +720,7 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
     return IR::Val::None();
   } break;
   case Language::Operator::OrEq: {
-    if (type->is<Enum>()) {
+    if (type->is<type::Enum>()) {
       auto lhs_lval = lhs->EmitLVal(ctx);
       IR::Store(IR::Or(IR::Load(lhs_lval), rhs->EmitIR(ctx)), lhs_lval);
       return IR::Val::None();
@@ -744,7 +746,7 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
     return IR::Func::Current->Command(phi).reg();
   } break;
   case Language::Operator::AndEq: {
-    if (type->is<Enum>()) {
+    if (type->is<type::Enum>()) {
       auto lhs_lval = lhs->EmitLVal(ctx);
       IR::Store(IR::And(IR::Load(lhs_lval), rhs->EmitIR(ctx)), lhs_lval);
       return IR::Val::None();
@@ -793,13 +795,13 @@ IR::Val AST::ArrayType::EmitIR(Context *ctx) {
   return IR::Array(length->EmitIR(ctx), data_type->EmitIR(ctx));
 }
 
-static IR::Val EmitChainOpPair(const Type *lhs_type, const IR::Val &lhs_ir,
-                               Language::Operator op, const Type *rhs_type,
+static IR::Val EmitChainOpPair(const type::Type *lhs_type, const IR::Val &lhs_ir,
+                               Language::Operator op, const type::Type *rhs_type,
                                const IR::Val &rhs_ir) {
-  if (lhs_type->is<Array>() && rhs_type->is<Array>()) {
+  if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
     ASSERT(op == Language::Operator::Eq || op == Language::Operator::Ne, "");
-    return Array::Compare(&lhs_type->as<Array>(), lhs_ir,
-                          &rhs_type->as<Array>(), rhs_ir,
+    return type::Array::Compare(&lhs_type->as<type::Array>(), lhs_ir,
+                          &rhs_type->as<type::Array>(), rhs_ir,
                           op == Language::Operator::Eq);
   } else {
     switch (op) {
@@ -825,21 +827,21 @@ IR::Val AST::ChainOp::EmitIR(Context *ctx) {
       val = IR::Xor(std::move(val), (*iter)->EmitIR(ctx));
     }
     return val;
-  } else if (ops[0] == Language::Operator::Or && type->is<Enum>()) {
+  } else if (ops[0] == Language::Operator::Or && type->is<type::Enum>()) {
     auto iter = exprs.begin();
     auto val  = (*iter)->EmitIR(ctx);
     while (++iter != exprs.end()) {
       val = IR::Or(std::move(val), (*iter)->EmitIR(ctx));
     }
     return val;
-  } else if (ops[0] == Language::Operator::And && type->is<Enum>()) {
+  } else if (ops[0] == Language::Operator::And && type->is<type::Enum>()) {
     auto iter = exprs.begin();
     auto val  = (*iter)->EmitIR(ctx);
     while (++iter != exprs.end()) {
       val = IR::And(std::move(val), (*iter)->EmitIR(ctx));
     }
     return val;
-  } else if (ops[0] == Language::Operator::Or && type == Type_) {
+  } else if (ops[0] == Language::Operator::Or && type ==Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
     std::vector<IR::Val> args;
@@ -937,11 +939,12 @@ IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
                         input->as<Declaration>().init_val.get());
     }
 
-    std::vector<const Type *> input_types;
-    for (const Type *in : type->as<Function>().input) {
+    std::vector<const type::Type *> input_types;
+    for (const type::Type *in : type->as<type::Function>().input) {
       input_types.push_back(in->is_big() ? Ptr(in) : in);
     }
-    auto *fn_type = Func(std::move(input_types), type->as<Function>().output);
+    auto *fn_type =
+        type::Func(std::move(input_types), type->as<type::Function>().output);
 
     IR::Func::All.push_back(
         std::make_unique<IR::Func>(fn_type, std::move(args)));
@@ -1032,7 +1035,7 @@ IR::Val AST::Unop::EmitLVal(Context *ctx) {
 IR::Val AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {
   case Language::Operator::Index:
-    if (lhs->type->is<::Array>()) {
+    if (lhs->type->is<type::Array>()) {
       return IR::Index(lhs->EmitLVal(ctx), rhs->EmitIR(ctx));
     }
     [[fallthrough]];

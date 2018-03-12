@@ -194,7 +194,7 @@ void NonGraphicCharInSrc(const TextSpan &span) {
 
 void LogGeneric(const TextSpan &, const std::string &msg) { std::cerr << msg; }
 
-void InvalidRangeType(const TextSpan &span, const Type *t) {
+void InvalidRange(const TextSpan &span, const type::Type *t) {
   std::string msg_foot = "Expected type: int, uint, or char\n"
                          "Given type: " +
                          t->to_string() + ".";
@@ -202,7 +202,7 @@ void InvalidRangeType(const TextSpan &span, const Type *t) {
                       msg_foot, span, t->to_string().size());
 }
 
-void InvalidStringIndex(const TextSpan &span, const Type *index_type) {
+void InvalidStringIndex(const TextSpan &span, const type::Type *index_type) {
   std::string msg_head = "String indexed by an invalid type. Expected an int "
                          "or uint, but encountered a " +
                          index_type->to_string() + ".";
@@ -214,7 +214,7 @@ void IndeterminantType(AST::Expression *expr) {
                       expr->span, 1);
 }
 
-void NonIntegralArrayIndex(const TextSpan &span, const Type *index_type) {
+void NonIntegralArrayIndex(const TextSpan &span, const type::Type *index_type) {
   std::string msg_head = "Array is being indexed by an expression of type " +
                          index_type->to_string() + ".";
   DisplayErrorMessage(
@@ -248,7 +248,7 @@ void InvalidAssignment(const TextSpan &span, Assign mode) {
   }
 }
 
-void CaseLHSBool(const TextSpan &, const TextSpan &span, const Type *t) {
+void CaseLHSBool(const TextSpan &, const TextSpan &span, const type::Type *t) {
   std::string msg_head = "In a case statement, the lefthand-side of a case "
                          "must have type bool. However, the expression has "
                          "type " +
@@ -257,13 +257,13 @@ void CaseLHSBool(const TextSpan &, const TextSpan &span, const Type *t) {
 }
 
 void MissingMember(const TextSpan &span, const std::string &member_name,
-                   const Type *t) {
+                   const type::Type *t) {
   std::string msg_head = "Expressions of type `" + t->to_string() +
                          "` have no member named '" + member_name + "'.";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
-void IndexingNonArray(const TextSpan &span, const Type *t) {
+void IndexingNonArray(const TextSpan &span, const type::Type *t) {
   DisplayErrorMessage("Cannot index into a non-array type.",
                       "Indexed type is a `" + t->to_string() + "`.", span, 1);
 }
@@ -272,7 +272,7 @@ void UnopTypeFail(const std::string &msg, const AST::Unop *unop) {
   DisplayErrorMessage(msg.c_str(), "", unop->span, 1);
 }
 
-void SlicingNonArray(const TextSpan &span, const Type *t) {
+void SlicingNonArray(const TextSpan &span, const type::Type *t) {
   DisplayErrorMessage("Cannot slice a non-array type.",
                       "Sliced type is a `" + t->to_string() + "`.", span, 1);
 }
@@ -286,7 +286,7 @@ void AssignmentArrayLength(const TextSpan &span, size_t len) {
 }
 
 void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
-                       const Type *lhs, const Type *rhs) {
+                       const type::Type *lhs, const type::Type *rhs) {
   std::string msg_head = "Already found a match for operator `" + op_symbol +
                          "` with types " + lhs->to_string() + " and " +
                          rhs->to_string() + ".";
@@ -296,7 +296,7 @@ void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
 }
 
 void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
-                     const Type *lhs, const Type *rhs) {
+                     const type::Type *lhs, const type::Type *rhs) {
   std::string msg_head = "No known operator overload for operator `" +
                          op_symbol + "` with types " + lhs->to_string() +
                          " and " + rhs->to_string() + ".";
@@ -304,14 +304,14 @@ void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
-void InvalidRangeTypes(const TextSpan &span, const Type *lhs, const Type *rhs) {
+void InvalidRanges(const TextSpan &span, const type::Type *lhs, const type::Type *rhs) {
   std::string msg_head = "No range construction for types " + lhs->to_string() +
                          " .. " + rhs->to_string() + ".";
   // TODO underline length is incorrect?
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
-void InvalidCast(const TextSpan &span, const Type *from, const Type *to) {
+void InvalidCast(const TextSpan &span, const type::Type *from, const type::Type *to) {
   std::string msg_head = "No valid cast from `" + from->to_string() + "` to `" +
                          to->to_string() + "`.";
   DisplayErrorMessage(msg_head.c_str(), "", span, 2);
@@ -323,7 +323,7 @@ void NotAType(const TextSpan &span, const std::string &id_tok) {
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
-void InitWithNull(const TextSpan &span, const Type *t, const Type *intended) {
+void InitWithNull(const TextSpan &span, const type::Type *t, const type::Type *intended) {
   std::string msg_head = "Cannot initialize an identifier of type " +
                          t->to_string() +
                          " with null. Did you mean to declare it as " +
@@ -331,13 +331,13 @@ void InitWithNull(const TextSpan &span, const Type *t, const Type *intended) {
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
-void InvalidAssignDefinition(const TextSpan &span, const Type *t) {
+void InvalidAssignDefinition(const TextSpan &span, const type::Type *t) {
   std::string msg_head =
       "Cannot define assignment function for type " + t->to_string() + ".";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
-void InvalidScope(const TextSpan &span, const Type *t) {
+void InvalidScope(const TextSpan &span, const type::Type *t) {
   std::string msg_head =
       "Object of type '" + t->to_string() + "' used as if it were a scope.";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
@@ -351,7 +351,7 @@ void InvalidScope(const TextSpan &span, const Type *t) {
 #include "../config/error.conf"
 #undef ERROR_MACRO
 
-void InvalidReturnType(const TextSpan &span, const Type *given, const Type *correct) {
+void InvalidReturnType(const TextSpan &span, const type::Type *given, const type::Type *correct) {
   std::string msg_head = "Invalid return type on line " +
                          std::to_string(span.start.line_num) + " in \"" +
                          span.source->name.c_str() + "\".";
@@ -364,7 +364,7 @@ void InvalidReturnType(const TextSpan &span, const Type *given, const Type *corr
                           span.start.offset);
 }
 
-void ChainTypeMismatch(const TextSpan &span, std::set<const Type *> types) {
+void ChainTypeMismatch(const TextSpan &span, std::set<const type::Type *> types) {
   std::stringstream ss;
   ss << "Found the following types in the expression:\n";
   for (auto t : types) { ss << "  * " << t->to_string() << "\n"; }
@@ -394,7 +394,7 @@ static void DisplayLines(const std::vector<TextSpan> &lines) {
   std::cerr << '\n';
 }
 
-void CaseTypeMismatch(AST::Case *case_ptr, const Type *correct) {
+void CaseTypeMismatch(AST::Case *case_ptr, const type::Type *correct) {
   if (correct) {
     std::cerr << "Type mismatch in case-expression on line "
               << case_ptr->span.start.line_num << " in \""

@@ -9,7 +9,9 @@
 #include "../base/debug.h"
 #include "../frontend/text_span.h"
 
+namespace type {
 struct Type;
+} // namespace type
 
 namespace AST {
 struct Case;
@@ -74,7 +76,7 @@ struct Log {
 // TODO everything below here is legacy and needs to be cleaned up
 
 #include "ast/ast.h"
-#include "type/type.h"
+#include "../type/type.h"
 #include "ir/property.h"
 
 namespace ErrorLog {
@@ -88,13 +90,13 @@ void UnopTypeFail(const std::string &msg, const AST::Unop *unop);
 void InvalidAddress(const TextSpan &span, Assign mode);
 void InvalidAssignment(const TextSpan &span, Assign mode);
 void CaseLHSBool(const TextSpan &case_span, const TextSpan &span,
-                 const Type *t);
+                 const type::Type *t);
 void MissingMember(const TextSpan &span, const std::string &member_name,
-                   const Type *t);
+                   const type::Type *t);
 void NotAType(const TextSpan &span, const std::string &id_tok);
 void UnknownParserError(const Source::Name &source_name,
                         const std::vector<TextSpan> &lines);
-void InvalidReturnType(const TextSpan &span, const Type *given, const Type *correct);
+void InvalidReturnType(const TextSpan &span, const type::Type *given, const type::Type *correct);
 void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_loc);
 
 void NullCharInSrc(const TextSpan &loc);
@@ -103,32 +105,32 @@ void NonGraphicCharInSrc(const TextSpan &loc);
 void NotBinary(const TextSpan &span, const std::string &token);
 void Reserved(const TextSpan &span, const std::string &token);
 
-void InvalidCast(const TextSpan &span, const Type *from, const Type *to);
-void AssignmentTypeMismatch(const TextSpan &span, const Type *lhs,
-                            const Type *rhs);
-void InvalidRangeTypes(const TextSpan &span, const Type *lhs, const Type *rhs);
-void InitWithNull(const TextSpan &span, const Type *lhs, const Type *rhs);
+void InvalidCast(const TextSpan &span, const type::Type *from, const type::Type *to);
+void AssignmentTypeMismatch(const TextSpan &span, const type::Type *lhs,
+                            const type::Type *rhs);
+void InvalidRanges(const TextSpan &span, const type::Type *lhs, const type::Type *rhs);
+void InitWithNull(const TextSpan &span, const type::Type *lhs, const type::Type *rhs);
 
 void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
-                       const Type *lhs, const Type *rhs);
+                       const type::Type *lhs, const type::Type *rhs);
 void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
-                     const Type *lhs, const Type *rhs);
+                     const type::Type *lhs, const type::Type *rhs);
 
 void AssignmentArrayLength(const TextSpan &span, size_t len);
 void NonBinaryAssignment(const TextSpan &span, size_t len);
-void ChainTypeMismatch(const TextSpan &span, std::set<const Type *> types);
+void ChainTypeMismatch(const TextSpan &span, std::set<const type::Type *> types);
 
-void NotAType(AST::Expression *expr, const Type *t);
+void NotAType(AST::Expression *expr, const type::Type *t);
 void IndeterminantType(AST::Expression *expr);
 
-void InvalidRangeType(const TextSpan &span, const Type *t);
-void InvalidStringIndex(const TextSpan &span, const Type *index_type);
-void NonIntegralArrayIndex(const TextSpan &span, const Type *index_type);
-void IndexingNonArray(const TextSpan &span, const Type *t);
-void SlicingNonArray(const TextSpan &span, const Type *t);
-void CaseTypeMismatch(AST::Case *case_ptr, const Type *correct = nullptr);
-void InvalidAssignDefinition(const TextSpan &span, const Type *t);
-void InvalidScope(const TextSpan &span, const Type *t);
+void InvalidRange(const TextSpan &span, const type::Type *t);
+void InvalidStringIndex(const TextSpan &span, const type::Type *index_type);
+void NonIntegralArrayIndex(const TextSpan &span, const type::Type *index_type);
+void IndexingNonArray(const TextSpan &span, const type::Type *t);
+void SlicingNonArray(const TextSpan &span, const type::Type *t);
+void CaseTypeMismatch(AST::Case *case_ptr, const type::Type *correct = nullptr);
+void InvalidAssignDefinition(const TextSpan &span, const type::Type *t);
+void InvalidScope(const TextSpan &span, const type::Type *t);
 void UserDefinedError(const TextSpan &span, const std::string &msg);
 
 #define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \

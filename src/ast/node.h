@@ -25,7 +25,9 @@
 
 struct Context;
 struct Scope;
+namespace type {
 struct Type;
+} // namespace type
 
 namespace IR {
 struct Val;

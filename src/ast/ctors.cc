@@ -1,7 +1,5 @@
 #include "ast.h"
 
-#include "../type/type.h"
-
 namespace Language {
 extern size_t precedence(Operator op);
 } // namespace Language

@@ -10,12 +10,15 @@
 #include "../base/strong_types.h"
 #include "../base/types.h"
 
+namespace type {
 struct Enum;
-struct Type;
 struct Pointer;
 struct Struct;
+struct Type;
+} // namespace type
 
-extern Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String;
+
+extern type::Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String;
 
 namespace AST {
 struct Expression;
@@ -93,33 +96,33 @@ template <> struct hash<IR::CmdIndex> {
 
 namespace IR {
 struct Val {
-  const ::Type *type = nullptr;
+  const type::Type *type = nullptr;
   std::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32,
-               EnumVal, const ::Type *, ::Struct *,
+               EnumVal, const type::Type *, type::Struct *,
                AST::GenericFunctionLiteral *, AST::FunctionLiteral *,
                ::IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
                AST::Expression *, BlockIndex, std::string>
       value{false};
 
-  static Val Reg(Register r, const ::Type *t) { return Val(t, r); }
-  static Val Ret(ReturnValue r, const ::Type *t) { return Val(t, r); }
-  static Val Addr(Addr addr, const ::Type *t);
-  static Val GlobalAddr(u64 addr, const ::Type *t);
-  static Val HeapAddr(void *addr, const ::Type *t);
-  static Val StackAddr(u64 addr, const ::Type *t);
+  static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
+  static Val Ret(ReturnValue r, const type::Type *t) { return Val(t, r); }
+  static Val Addr(Addr addr, const type::Type *t);
+  static Val GlobalAddr(u64 addr, const type::Type *t);
+  static Val HeapAddr(void *addr, const type::Type *t);
+  static Val StackAddr(u64 addr, const type::Type *t);
   static Val Bool(bool b) { return Val(::Bool, b); }
   static Val Char(char c) { return Val(::Char, c); }
   static Val Real(double r) { return Val(::Real, r); }
   static Val Int(i32 n) { return Val(::Int, n); }
-  static Val Enum(const ::Enum *enum_type, size_t integral_val);
-  static Val Type(const ::Type *t) { return Val(::Type_, t); }
+  static Val Enum(const type::Enum *enum_type, size_t integral_val);
+  static Val Type(const type::Type *t) { return Val(::Type_, t); }
   static Val CodeBlock(AST::CodeBlock block);
   static Val Func(::IR::Func *fn); // TODO deprecate?
   static Val FnLit(AST::FunctionLiteral *fn);
   static Val GenFnLit(AST::GenericFunctionLiteral *fn);
   static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Void() { return Val(::Void, false); }
-  static Val Null(const ::Type *t);
+  static Val Null(const type::Type *t);
   static Val NullPtr();
   static Val StrLit(std::string str) { return Val(::String, std::move(str)); }
   static Val Ref(AST::Expression *expr);
@@ -138,7 +141,7 @@ struct Val {
 
 private:
   template <typename T>
-  Val(const ::Type *t, T &&val) : type(t), value(std::forward<T>(val)) {}
+  Val(const type::Type *t, T &&val) : type(t), value(std::forward<T>(val)) {}
 };
 
 inline bool operator==(const Val &lhs, const Val &rhs) {

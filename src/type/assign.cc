@@ -1,4 +1,4 @@
-#include "type.h"
+#include "all.h"
 
 #include "../architecture.h"
 #include "../context.h"
@@ -6,15 +6,10 @@
 
 // TODO destructor for previously held value.
 
-void Primitive::EmitAssign(const Type *from_type, IR::Val from,
-                           IR::Val to) const {
-  ASSERT_EQ(this, from_type);
-  IR::Store(from, to);
-}
-
-void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
-  ASSERT_TYPE(Array, from_type);
-  auto *from_array_type = &from_type->as<Array>();
+void type::Array::EmitAssign(const type::Type *from_type, IR::Val from,
+                       IR::Val to) const {
+  ASSERT_TYPE(type::Array, from_type);
+  auto *from_array_type = &from_type->as<type::Array>();
 
   auto *&fn = assign_fns_[from_array_type];
   if (fn == nullptr) {
@@ -82,16 +77,20 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
   IR::Call(IR::Val::Func(fn), {from, to}, {});
 }
 
-void Tuple::EmitAssign(const Type *, IR::Val, IR::Val) const { NOT_YET(); }
+void type::Tuple::EmitAssign(const type::Type *, IR::Val, IR::Val) const {
+  NOT_YET();
+}
 
-void Pointer::EmitAssign(const Type *from_type, IR::Val from,
-                         IR::Val to) const {
+void type::Pointer::EmitAssign(const type::Type *from_type, IR::Val from,
+                               IR::Val to) const {
   ASSERT_EQ(this, from_type);
   IR::Store(from, to);
 }
 
-void Function::EmitAssign(const Type *from_type, IR::Val from,
-                          IR::Val to) const {
+namespace type {
+void Range::EmitAssign(const Type *, IR::Val, IR::Val) const { NOT_YET(); }
+void Slice::EmitAssign(const Type *, IR::Val, IR::Val) const { NOT_YET(); }
+void Scope::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
   ASSERT_EQ(this, from_type);
   IR::Store(from, to);
 }
@@ -99,33 +98,6 @@ void Function::EmitAssign(const Type *from_type, IR::Val from,
 void Enum::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
   ASSERT_EQ(this, from_type);
   IR::Store(from, to);
-}
-
-void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
-  ASSERT_EQ(this, from_type);
-  if (!assign_func) {
-    IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func({this, Ptr(this)}, Void),
-        std::vector<std::pair<std::string, AST::Expression *>>{
-            {"from", nullptr}, {"to", nullptr}}));
-    assign_func = IR::Func::All.back().get();
-
-    CURRENT_FUNC(assign_func) {
-      IR::Block::Current = assign_func->entry();
-      auto val           = assign_func->Argument(0);
-      auto var           = assign_func->Argument(1);
-
-      for (size_t i = 0; i < fields_.size(); ++i) {
-        // TODO is that the right scope?
-        fields_[i].type->EmitAssign(
-            fields_[i].type, PtrCallFix(IR::Field(val, i)), IR::Field(var, i));
-      }
-
-      IR::ReturnJump();
-    }
-  }
-  ASSERT(assign_func, "");
-  IR::Call(IR::Val::Func(assign_func), {from, to}, {});
 }
 
 void Variant::EmitAssign(const Type *from_type, IR::Val from,
@@ -156,12 +128,42 @@ void Variant::EmitAssign(const Type *from_type, IR::Val from,
   }
 }
 
-void RangeType::EmitAssign(const Type *, IR::Val, IR::Val) const { NOT_YET(); }
+void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
+  ASSERT_EQ(this, from_type);
+  if (!assign_func) {
+    IR::Func::All.push_back(std::make_unique<IR::Func>(
+        Func({this, Ptr(this)}, Void),
+        std::vector<std::pair<std::string, AST::Expression *>>{
+            {"from", nullptr}, {"to", nullptr}}));
+    assign_func = IR::Func::All.back().get();
 
-void SliceType::EmitAssign(const Type *, IR::Val, IR::Val) const { NOT_YET(); }
+    CURRENT_FUNC(assign_func) {
+      IR::Block::Current = assign_func->entry();
+      auto val           = assign_func->Argument(0);
+      auto var           = assign_func->Argument(1);
 
-void Scope_Type::EmitAssign(const Type *from_type, IR::Val from,
-                            IR::Val to) const {
+      for (size_t i = 0; i < fields_.size(); ++i) {
+        // TODO is that the right scope?
+        fields_[i].type->EmitAssign(
+            fields_[i].type, PtrCallFix(IR::Field(val, i)), IR::Field(var, i));
+      }
+
+      IR::ReturnJump();
+    }
+  }
+  ASSERT(assign_func, "");
+  IR::Call(IR::Val::Func(assign_func), {from, to}, {});
+}
+
+void Function::EmitAssign(const Type *from_type, IR::Val from,
+                          IR::Val to) const {
   ASSERT_EQ(this, from_type);
   IR::Store(from, to);
 }
+void Primitive::EmitAssign(const Type *from_type, IR::Val from,
+                           IR::Val to) const {
+  ASSERT_EQ(this, from_type);
+  IR::Store(from, to);
+}
+
+} // namespace type

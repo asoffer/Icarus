@@ -1,7 +1,28 @@
-#include "type.h"
+#include "all.h"
 
 #include "../ast/ast.h"
 #include "../ir/func.h"
+
+IR::Val type::Array::EmitInitialValue() const {
+  auto current_block   = IR::Block::Current;
+  IR::Block::Current   = IR::Func::Current->entry();
+  auto temp_allocation = IR::Alloca(this);
+  IR::Block::Current   = current_block;
+
+  // TODO must remember to destroy
+  EmitInit(temp_allocation);
+  return temp_allocation;
+}
+
+IR::Val type::Tuple::EmitInitialValue() const { NOT_YET(); }
+
+namespace type {
+IR::Val Pointer::EmitInitialValue() const { return IR::Val::Null(this); }
+IR::Val Function::EmitInitialValue() const { return IR::Val::Func(nullptr); }
+IR::Val Range::EmitInitialValue() const { NOT_YET(); }
+IR::Val Slice::EmitInitialValue() const { NOT_YET(); }
+IR::Val Scope::EmitInitialValue() const { NOT_YET(); }
+IR::Val Variant::EmitInitialValue() const { NOT_YET(); }
 
 IR::Val Primitive::EmitInitialValue() const {
   switch (type_) {
@@ -26,19 +47,6 @@ IR::Val Primitive::EmitInitialValue() const {
   }
 }
 
-IR::Val Pointer::EmitInitialValue() const { return IR::Val::Null(this); }
-IR::Val Function::EmitInitialValue() const { return IR::Val::Func(nullptr); }
-
-IR::Val Array::EmitInitialValue() const {
-  auto current_block   = IR::Block::Current;
-  IR::Block::Current   = IR::Func::Current->entry();
-  auto temp_allocation = IR::Alloca(this);
-  IR::Block::Current   = current_block;
-
-  // TODO must remember to destroy
-  EmitInit(temp_allocation);
-  return temp_allocation;
-}
 
 IR::Val Struct::EmitInitialValue() const {
   auto current_block   = IR::Block::Current;
@@ -50,9 +58,4 @@ IR::Val Struct::EmitInitialValue() const {
   EmitInit(temp_allocation);
   return temp_allocation;
 }
-
-IR::Val Tuple::EmitInitialValue() const { NOT_YET(); }
-IR::Val RangeType::EmitInitialValue() const { NOT_YET(); }
-IR::Val SliceType::EmitInitialValue() const { NOT_YET(); }
-IR::Val Scope_Type::EmitInitialValue() const { NOT_YET(); }
-IR::Val Variant::EmitInitialValue() const { NOT_YET(); }
+} // namespace type

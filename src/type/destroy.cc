@@ -1,20 +1,16 @@
 #include "../ir/func.h"
-#include "type.h"
+#include "all.h"
 
-void Primitive::EmitDestroy(IR::Val) const {}
-void Pointer::EmitDestroy(IR::Val) const {}
-void Enum::EmitDestroy(IR::Val) const {}
-void Function::EmitDestroy(IR::Val) const {}
-void Variant::EmitDestroy(IR::Val) const { NOT_YET(); }
+void type::Primitive::EmitDestroy(IR::Val) const {}
 
-extern IR::Val PtrCallFix(Type *t, IR::Val v);
+extern IR::Val PtrCallFix(type::Type *t, IR::Val v);
 
-void Array::EmitDestroy(IR::Val id_val) const {
+void type::Array::EmitDestroy(IR::Val id_val) const {
   if (destroy_func_ == nullptr) {
     if (!needs_destroy()) { return; }
 
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func(Ptr(this), Void),
+        type::Func(type::Ptr(this), Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}}));
     destroy_func_       = IR::Func::All.back().get();
@@ -55,6 +51,17 @@ void Array::EmitDestroy(IR::Val id_val) const {
   IR::Call(IR::Val::Func(destroy_func_), {id_val}, {});
 }
 
+void type::Tuple::EmitDestroy(IR::Val) const { NOT_YET(); }
+
+namespace type {
+void Enum::EmitDestroy(IR::Val) const {}
+void Function::EmitDestroy(IR::Val) const {}
+void Pointer::EmitDestroy(IR::Val) const {}
+void Variant::EmitDestroy(IR::Val) const { NOT_YET(); }
+void Range::EmitDestroy(IR::Val) const { UNREACHABLE(); }
+void Slice::EmitDestroy(IR::Val) const { UNREACHABLE(); }
+void Scope::EmitDestroy(IR::Val) const { UNREACHABLE(); }
+
 void Struct::EmitDestroy(IR::Val id_val) const {
   if (destroy_func_ == nullptr) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
@@ -74,8 +81,4 @@ void Struct::EmitDestroy(IR::Val id_val) const {
   }
   IR::Call(IR::Val::Func(destroy_func_), {id_val}, {});
 }
-
-void Tuple::EmitDestroy(IR::Val) const { NOT_YET(); }
-void RangeType::EmitDestroy(IR::Val) const { UNREACHABLE(); }
-void SliceType::EmitDestroy(IR::Val) const { UNREACHABLE(); }
-void Scope_Type::EmitDestroy(IR::Val) const { UNREACHABLE(); }
+}

@@ -21,8 +21,11 @@ struct Identifier;
 struct FunctionLiteral;
 } // namespace AST
 
+namespace type {
 struct Type;
 struct Function;
+} // namespace type
+
 struct DeclScope;
 struct ExecScope;
 struct FnScope;
@@ -47,15 +50,15 @@ struct Scope : public base::Cast<Scope> {
   // identifier can be found.
   AST::Identifier *IdReferencedOrNull(const std::string &name);
 
-  const Type *
+  const type::Type *
   FunctionTypeReferencedOrNull(const std::string &fn_name,
-                               std::vector<const Type *> input_type);
+                               std::vector<const type::Type *> input_type);
 
   AST::Declaration *DeclHereOrNull(const std::string &name,
-                                   Type *declared_type);
+                                  type::Type *declared_type);
 
   AST::Declaration *DeclReferencedOrNull(const std::string &name,
-                                         Type *declared_type);
+                                        type::Type *declared_type);
   std::pair<std::vector<AST::Declaration *>, std::vector<AST::Declaration *>>
   AllDeclsWithId(const std::string &id, Context *ctx);
 
@@ -103,7 +106,7 @@ struct FnScope : public ExecScope {
   ~FnScope() final {}
 
   FnScope *Clone() const override { return new FnScope(*this); }
-  Function *fn_type            = nullptr;
+  type::Function *fn_type      = nullptr;
   AST::FunctionLiteral *fn_lit = nullptr;
   std::vector<ExecScope *> innards_{1, this};
 };

@@ -6,7 +6,7 @@
 #include "expression.h"
 #include "statements.h"
 
-extern Type* Code;
+extern type::Type* Code;
 
 namespace AST {
 struct CodeBlock : public Expression {

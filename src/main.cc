@@ -8,7 +8,6 @@
 #include "context.h"
 #include "error/log.h"
 #include "ir/func.h"
-#include "type/type.h"
 #include "util/command_line_args.h"
 #include "util/timer.h"
 

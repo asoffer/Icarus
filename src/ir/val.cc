@@ -3,7 +3,9 @@
 #include <sstream>
 
 #include "../ast/ast.h"
-#include "../type/type.h"
+#include "../type/enum.h"
+#include "../type/pointer.h"
+#include "../type/struct.h"
 #include "func.h"
 
 namespace IR {
@@ -11,25 +13,25 @@ Val Val::CodeBlock(AST::CodeBlock block) {
   return Val(::Code, std::move(block));
 }
 
-Val Val::Struct() { return Val(::Type_, new ::Struct); }
+Val Val::Struct() { return Val(Type_, new type::Struct); }
 
-Val Val::Addr(IR::Addr addr, const::Type *t) { return Val(Ptr(t), addr); }
+Val Val::Addr(IR::Addr addr, const type::Type *t) { return Val(Ptr(t), addr); }
 
-Val Val::StackAddr(u64 addr, const::Type *t) {
+Val Val::StackAddr(u64 addr, const type::Type *t) {
   IR::Addr a;
   a.kind     = Addr::Kind::Stack;
   a.as_stack = addr;
   return Val(Ptr(t), a);
 }
 
-Val Val::HeapAddr(void *addr, const ::Type *t) {
+Val Val::HeapAddr(void *addr, const type::Type *t) {
   IR::Addr a;
   a.kind    = Addr::Kind::Heap;
   a.as_heap = addr;
   return Val(Ptr(t), a);
 }
 
-Val Val::GlobalAddr(u64 addr, const ::Type *t) {
+Val Val::GlobalAddr(u64 addr, const type::Type *t) {
   IR::Addr a;
   a.kind      = Addr::Kind::Global;
   a.as_global = addr;
@@ -41,14 +43,14 @@ Val Val::Ref(AST::Expression *expr) { return Val(expr->type, expr); }
 Val Val::Scope(AST::ScopeLiteral *scope_lit) {
   return Val(scope_lit->type, scope_lit);
 }
-Val Val::Enum(const ::Enum *enum_type, size_t integral_val) {
+Val Val::Enum(const type::Enum *enum_type, size_t integral_val) {
   return Val(enum_type, EnumVal{integral_val});
 }
 
 Val Val::FnLit(AST::FunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::GenFnLit(AST::GenericFunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::Func(::IR::Func *fn) { return Val(fn->ir_type, fn); }
-Val Val::Null(const ::Type *t) {
+Val Val::Null(const type::Type *t) {
   return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0});
 }
 Val Val::NullPtr() { return Val(::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
@@ -91,11 +93,11 @@ std::string Val::to_string() const {
           [](i32 n) -> std::string { return std::to_string(n); },
           [this](EnumVal e) -> std::string {
             // TODO this is wrong now that we have enum flags
-            return e.value >= this->type->as<::Enum>().members_.size()
-                       ? this->type->as<::Enum>().to_string() + ":END"
-                       : this->type->as<::Enum>().members_ AT(e.value);
+            return e.value >= this->type->as<type::Enum>().members_.size()
+                       ? this->type->as<type::Enum>().to_string() + ":END"
+                       : this->type->as<type::Enum>().members_ AT(e.value);
           },
-          [](const ::Type *t) -> std::string { return t->to_string(); },
+          [](const type::Type *t) -> std::string { return t->to_string(); },
           [](IR::Func *f) -> std::string {
             ASSERT_NE(f, nullptr);
             ASSERT_NE(f->type_, nullptr);
@@ -148,7 +150,8 @@ bool operator==(Addr lhs, Addr rhs) {
 } // namespace IR
 
 IR::Val PtrCallFix(IR::Val v) {
-  return !v.type->is<Pointer>() || v.type->as<Pointer>().pointee->is_big()
+  return !v.type->is<type::Pointer>() ||
+                 v.type->as<type::Pointer>().pointee->is_big()
              ? v
              : IR::Load(v);
 }

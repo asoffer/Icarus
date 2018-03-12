@@ -3,7 +3,7 @@
 #include <cmath>
 #include <iostream>
 
-#include "../type/type.h"
+#include "../type/all.h"
 #include "func.h"
 #include "property.h"
 
@@ -31,7 +31,7 @@ static void RecordReferences(Func *fn, const CmdIndex &ci,
         cmd_arg.value);
   }
 }
-Cmd::Cmd(const Type *t, Op op, std::vector<Val> arg_vec)
+Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
     : args(std::move(arg_vec)), op_code_(op), type(t) {
   CmdIndex cmd_index{
       Block::Current,
@@ -43,9 +43,9 @@ Cmd::Cmd(const Type *t, Op op, std::vector<Val> arg_vec)
 }
 
 Val Field(Val v, size_t n) {
-  ASSERT_TYPE(Pointer, v.type);
-  const Type *result_type =
-      Ptr(v.type->as<Pointer>().pointee->as<Struct>().fields_ AT(n).type);
+  ASSERT_TYPE(type::Pointer, v.type);
+  const type::Type *result_type =
+      type::Ptr(v.type->as<type::Pointer>().pointee->as<type::Struct>().fields_ AT(n).type);
   Cmd cmd(result_type, Op::Field,
           std::vector{std::move(v), Val::Int(static_cast<i32>(n))});
   auto reg = cmd.reg();
@@ -74,9 +74,9 @@ Val Field(Val v, size_t n) {
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));        \
   return cmd.reg()
 
-Val Malloc(const Type *t, Val v) {
+Val Malloc(const type::Type *t, Val v) {
   ASSERT_EQ(v.type, ::Int);
-  MAKE_AND_RETURN(Ptr(t), Op::Malloc);
+  MAKE_AND_RETURN(type::Ptr(t), Op::Malloc);
 }
 
 Val Extend(Val v) {
@@ -104,18 +104,18 @@ Val Neg(Val v) {
 
 void Print(Val v) { MAKE_VOID(Op::Print); }
 void Free(Val v) {
-  ASSERT_TYPE(Pointer, v.type);
+  ASSERT_TYPE(type::Pointer, v.type);
   MAKE_VOID(Op::Free);
 }
 
 Val CreateStruct() {
   ASSERT_NE(Func::Current, nullptr);
-  Cmd cmd(::Type_, Op::CreateStruct, {});
+  Cmd cmd(Type_, Op::CreateStruct, {});
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();
 }
 
-IR::Val FinalizeStruct(Val v) { MAKE_AND_RETURN(::Type_, Op::FinalizeStruct); }
+IR::Val FinalizeStruct(Val v) { MAKE_AND_RETURN(Type_, Op::FinalizeStruct); }
 
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val) {
@@ -126,9 +126,9 @@ void InsertField(Val struct_type, std::string field_name, Val type,
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 }
 
-Val Alloca(const Type *t) {
+Val Alloca(const type::Type *t) {
   ASSERT_NE(t, ::Void);
-  Cmd cmd(Ptr(t), Op::Alloca, {});
+  Cmd cmd(type::Ptr(t), Op::Alloca, {});
   Func::Current->block(Func::Current->entry()).cmds_.push_back(std::move(cmd));
   return cmd.reg();
 }
@@ -138,32 +138,32 @@ Val Contextualize(AST::CodeBlock code, std::vector<IR::Val> v) {
   MAKE_AND_RETURN(::Code, Op::Contextualize);
 }
 
-Val VariantType(Val v) { MAKE_AND_RETURN(Ptr(Type_), Op::VariantType); }
-Val VariantValue(const Type *t, Val v) {
-  MAKE_AND_RETURN(Ptr(t), Op::VariantValue);
+Val VariantType(Val v) { MAKE_AND_RETURN(type::Ptr(Type_), Op::VariantType); }
+Val VariantValue(const type::Type *t, Val v) {
+  MAKE_AND_RETURN(type::Ptr(t), Op::VariantValue);
 }
 
 Val Load(Val v) {
-  ASSERT_TYPE(Pointer, v.type);
-  MAKE_AND_RETURN(v.type->as<Pointer>().pointee, Op::Load);
+  ASSERT_TYPE(type::Pointer, v.type);
+  MAKE_AND_RETURN(v.type->as<type::Pointer>().pointee, Op::Load);
 }
 
 Val ArrayLength(Val v) {
-  ASSERT_TYPE(Pointer, v.type);
-  auto *ptee = v.type->as<Pointer>().pointee;
-  ASSERT_TYPE(::Array, ptee);
-  ASSERT(!ptee->as<::Array>().fixed_length,
+  ASSERT_TYPE(type::Pointer, v.type);
+  auto *ptee = v.type->as<type::Pointer>().pointee;
+  ASSERT_TYPE(type::Array, ptee);
+  ASSERT(!ptee->as<type::Array>().fixed_length,
          "Pointee type is " + ptee->to_string());
-  MAKE_AND_RETURN(Ptr(Int), Op::ArrayLength);
+  MAKE_AND_RETURN(type::Ptr(Int), Op::ArrayLength);
 }
 
 Val ArrayData(Val v) {
-  ASSERT_TYPE(Pointer, v.type);
-  auto *ptee = v.type->as<Pointer>().pointee;
-  ASSERT_TYPE(::Array, ptee);
-  auto *array_type = &ptee->as<::Array>();
+  ASSERT_TYPE(type::Pointer, v.type);
+  auto *ptee = v.type->as<type::Pointer>().pointee;
+  ASSERT_TYPE(type::Array, ptee);
+  auto *array_type = &ptee->as<type::Array>();
   ASSERT(!array_type->fixed_length, "");
-  MAKE_AND_RETURN(Ptr(Ptr(array_type->data_type)), Op::ArrayData);
+  MAKE_AND_RETURN(type::Ptr(type::Ptr(array_type->data_type)), Op::ArrayData);
 }
 
 void SetReturn(ReturnValue r, Val v2) {
@@ -175,21 +175,21 @@ void Store(Val v1, Val v2) {
   if (auto *rv = std::get_if<ReturnValue>(&v2.value)) {
     SetReturn(*rv, v1);
   } else {
-    ASSERT_TYPE(Pointer, v2.type);
+    ASSERT_TYPE(type::Pointer, v2.type);
     MAKE_VOID2(Op::Store);
   }
 }
 
 Val PtrIncr(Val v1, Val v2) {
-  ASSERT_TYPE(Pointer, v1.type);
+  ASSERT_TYPE(type::Pointer, v1.type);
   ASSERT_EQ(v2.type, ::Int);
   MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
 
 Val Ptr(Val v) {
-  ASSERT_EQ(v.type, Type_);
-  if (const Type **t = std::get_if<const Type *>(&v.value)) {
-    return Val::Type(::Ptr(*t));
+  ASSERT_EQ(v.type,Type_);
+  if (const type::Type **t = std::get_if<const type::Type *>(&v.value)) {
+    return Val::Type(type::Ptr(*t));
   }
   MAKE_AND_RETURN(Type_, Op::Ptr);
 }
@@ -200,7 +200,7 @@ Val Xor(Val v1, Val v2) {
   if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
       *e2         = std::get_if<EnumVal>(&v2.value);
       e1 != nullptr && e2 != nullptr) {
-    return Val::Enum(&v1.type->as<Enum>(), e1->value ^ e2->value);
+    return Val::Enum(&v1.type->as<type::Enum>(), e1->value ^ e2->value);
   }
   MAKE_AND_RETURN2(v1.type, Op::Xor);
 }
@@ -209,7 +209,7 @@ Val Or(Val v1, Val v2) {
   if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
       *e2         = std::get_if<EnumVal>(&v2.value);
       e1 != nullptr && e2 != nullptr) {
-    return Val::Enum(&v1.type->as<Enum>(), e1->value | e2->value);
+    return Val::Enum(&v1.type->as<type::Enum>(), e1->value | e2->value);
   }
   MAKE_AND_RETURN2(v1.type, Op::Or);
 }
@@ -218,7 +218,7 @@ Val And(Val v1, Val v2) {
   if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
       *e2         = std::get_if<EnumVal>(&v2.value);
       e1 != nullptr && e2 != nullptr) {
-    return Val::Enum(&v1.type->as<Enum>(), e1->value & e2->value);
+    return Val::Enum(&v1.type->as<type::Enum>(), e1->value & e2->value);
   }
   MAKE_AND_RETURN2(v1.type, Op::And);
 }
@@ -251,7 +251,7 @@ Val Add(Val v1, Val v2) {
   if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
       *e2         = std::get_if<EnumVal>(&v2.value);
       e1 != nullptr && e2 != nullptr) {
-    return Val::Enum(&v1.type->as<Enum>(), e1->value + e2->value);
+    return Val::Enum(&v1.type->as<type::Enum>(), e1->value + e2->value);
   }
 
   MAKE_AND_RETURN2(v1.type, Op::Add);
@@ -283,7 +283,7 @@ Val Mod(Val v1, Val v2) {
 }
 
 Val Arrow(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(const Type *, ::Func, Type);
+  CONSTANT_PROPOGATION(const type::Type *, type::Func, Type);
   MAKE_AND_RETURN2(Type_, Op::Arrow);
 }
 
@@ -295,27 +295,27 @@ Val Variant(std::vector<Val> args) {
 
 Val Array(Val v1, Val v2) {
   ASSERT(v1.type == nullptr || v1.type == Int, "");
-  ASSERT_EQ(v2.type, Type_);
+  ASSERT_EQ(v2.type,Type_);
 
-  if (const Type **t = std::get_if<const Type *>(&v2.value)) {
+  if (const type::Type **t = std::get_if<const type::Type *>(&v2.value)) {
     if (i32 *m = std::get_if<i32>(&v1.value)) {
-      return Val::Type(::Arr(*t, *m));
+      return Val::Type(type::Arr(*t, *m));
     }
     if (i32 *n = std::get_if<i32>(&v1.value)) {
-      return Val::Type(::Arr(*t, *n));
+      return Val::Type(type::Arr(*t, *n));
     }
-    if (v1 == Val::None()) { return Val::Type(::Arr(*t)); }
+    if (v1 == Val::None()) { return Val::Type(type::Arr(*t)); }
   }
 
   MAKE_AND_RETURN2(Type_, Op::Array);
 }
 
 Val Index(Val v1, Val v2) {
-  ASSERT_TYPE(Pointer, v1.type);
+  ASSERT_TYPE(type::Pointer, v1.type);
   ASSERT_EQ(v2.type, ::Int);
-  auto *array_type = &v1.type->as<Pointer>().pointee->as<::Array>();
+  auto *array_type = &v1.type->as<type::Pointer>().pointee->as<type::Array>();
   IR::Val ptr = array_type->fixed_length ? v1 : Load(ArrayData(v1));
-  ptr.type    = Ptr(array_type->data_type);
+  ptr.type    = type::Ptr(array_type->data_type);
   return PtrIncr(ptr, v2);
 }
 
@@ -372,7 +372,7 @@ Val Eq(Val v1, Val v2) {
   CONSTANT_PROPOGATION(char, std::equal_to<char>{}, Bool);
   CONSTANT_PROPOGATION(i32, std::equal_to<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::equal_to<double>{}, Bool);
-  CONSTANT_PROPOGATION(const Type *,std::equal_to<const Type*>{}, Bool);
+  CONSTANT_PROPOGATION(const type::Type *,std::equal_to<const type::Type*>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
   CONSTANT_PROPOGATION(
       EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value == rhs.value; },
@@ -387,7 +387,7 @@ Val Ne(Val v1, Val v2) {
   CONSTANT_PROPOGATION(char, std::not_equal_to<char>{}, Bool);
   CONSTANT_PROPOGATION(i32, std::not_equal_to<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::not_equal_to<double>{}, Bool);
-  CONSTANT_PROPOGATION(const Type *, std::not_equal_to<const Type *>{}, Bool);
+  CONSTANT_PROPOGATION(const type::Type *, std::not_equal_to<const type::Type *>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::not_equal_to<Addr>{}, Bool);
   CONSTANT_PROPOGATION(
       EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value != rhs.value; },
@@ -398,8 +398,8 @@ Val Ne(Val v1, Val v2) {
 
 Val Cast(Val v1, Val v2) {
   // v1 = result_type, v2 = val
-  ASSERT_EQ(v1.type, Type_);
-  MAKE_AND_RETURN2(std::get<const ::Type *>(v1.value), Op::Cast);
+  ASSERT_EQ(v1.type,Type_);
+  MAKE_AND_RETURN2(std::get<const type::Type *>(v1.value), Op::Cast);
 }
 
 #undef MAKE_AND_RETURN2
@@ -407,7 +407,7 @@ Val Cast(Val v1, Val v2) {
 #undef MAKE_VOID2
 #undef MAKE_VOID
 
-CmdIndex Phi(const Type *t) {
+CmdIndex Phi(const type::Type *t) {
   CmdIndex cmd_index{
       Block::Current,
       static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
@@ -419,7 +419,7 @@ CmdIndex Phi(const Type *t) {
 }
 
 Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
-  ASSERT_TYPE(Function, fn.type);
+  ASSERT_TYPE(type::Function, fn.type);
   vals.insert(vals.end(), std::make_move_iterator(result_locs.begin()),
               std::make_move_iterator(result_locs.end()));
   vals.push_back(fn);
@@ -432,9 +432,10 @@ Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
   // Long-term we should do this consistently even for small types, because for
   // multiple return values, we really could return them in multiple registers
   // rather than allocating stack space.
-  const Type *output_type = Tup(fn.type->as<Function>().output)->is_big()
-                                ? Void
-                                : Tup(fn.type->as<Function>().output);
+  const type::Type *output_type =
+      type::Tup(fn.type->as<type::Function>().output)->is_big()
+          ? Void
+          : type::Tup(fn.type->as<type::Function>().output);
   Cmd cmd(output_type, Op::Call, std::move(vals));
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();
@@ -526,7 +527,7 @@ void Block::dump(size_t indent) const {
 }
 
 void Func::dump() const {
-  std::cerr << (name == "" ? "(anon)" : name) << ": " << *type_;
+  std::cerr << (name == "" ? "(anon)" : name) << ": " << type_->to_string();
   for (size_t i = 0; i < blocks_.size(); ++i) {
     std::cerr << "\n block #" << i << std::endl;
     blocks_[i].dump(2);

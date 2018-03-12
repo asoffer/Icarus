@@ -48,7 +48,7 @@ struct Expression : public Node {
   // returns the type it represents (or Error if the type is invalid). An
   // expression could be invalid if it doesn't represent a type or it represents
   // void.
-  Type *VerifyTypeForDeclaration(const std::string &id_tok, Context *ctx);
+ type::Type *VerifyTypeForDeclaration(const std::string &id_tok, Context *ctx);
 
   // VerifyValueForDeclaration verifies that the expression's type can be used
   // for a declaration. In practice, it is typically used on initial values for
@@ -56,11 +56,11 @@ struct Expression : public Node {
   // of bar is valid. This function has the same return characteristics as
   // VerifyTypeForDeclaration. Specifically, it returns the type or Error if the
   // type is invalid.
-  Type *VerifyValueForDeclaration(const std::string &id_tok);
+ type::Type *VerifyValueForDeclaration(const std::string &id_tok);
 
   size_t precedence = std::numeric_limits<size_t>::max();
   Assign lvalue     = Assign::Unset;
-  const Type *type  = nullptr;
+  const type::Type *type  = nullptr;
   // TODO in the process of cleaning this up. Trying to delete this value.
   // IR::Val value = IR::Val::None(); // TODO this looks like a bad idea. delete
   // it?

@@ -3,12 +3,12 @@
 #include "ast/ast.h"
 #include "context.h"
 #include "ir/func.h"
-#include "type/type.h"
+#include "type/function.h"
 
 DeclScope *GlobalScope = new DeclScope(nullptr);
 
 AST::Declaration *Scope::DeclHereOrNull(const std::string &name,
-                                        Type *declared_type) {
+                                       type::Type *declared_type) {
   auto iter = decls_.find(name);
   if (iter == decls_.end()) { return nullptr; }
   for (auto decl : iter->second) {
@@ -18,7 +18,7 @@ AST::Declaration *Scope::DeclHereOrNull(const std::string &name,
 }
 
 AST::Declaration *Scope::DeclReferencedOrNull(const std::string &name,
-                                              Type *declared_type) {
+                                             type::Type *declared_type) {
   for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
     auto ptr = scope_ptr->DeclHereOrNull(name, declared_type);
     if (ptr != nullptr) { return ptr; }
@@ -42,9 +42,9 @@ AST::Identifier *Scope::IdReferencedOrNull(const std::string &name) {
   return nullptr;
 }
 
-const Type *
+const type::Type *
 Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
-                                    std::vector<const Type *> input_type) {
+                                    std::vector<const type::Type *> input_type) {
   for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
     auto id_ptr = scope_ptr->IdHereOrNull(fn_name);
     if (!id_ptr) { continue; }
@@ -60,8 +60,8 @@ Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
       ASSERT(id_ptr->type, "");
     }
 
-    ASSERT_TYPE(Function, id_ptr->type);
-    if (id_ptr->type->as<Function>().input == input_type) {
+    ASSERT_TYPE(type::Function, id_ptr->type);
+    if (id_ptr->type->as<type::Function>().input == input_type) {
       return id_ptr->type;
     }
   }

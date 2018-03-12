@@ -1,14 +1,14 @@
-#include "type.h"
+#include "all.h"
 
 #include "../context.h"
 #include "../ir/func.h"
 
-void Primitive::EmitRepr(IR::Val val) const {
+void type::Primitive::EmitRepr(IR::Val val) const {
   switch (type_) {
-  case PrimType::Char: {
+  case type::PrimType::Char: {
     if (!repr_func_) {
       IR::Func::All.push_back(std::make_unique<IR::Func>(
-          Func(this, Void),
+          type::Func(this, Void),
           std::vector<std::pair<std::string, AST::Expression *>>{
               {"arg", nullptr}}));
       repr_func_ = IR::Func::All.back().get();
@@ -44,36 +44,25 @@ void Primitive::EmitRepr(IR::Val val) const {
     IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
   } break;
 
-  case PrimType::Bool:
-  case PrimType::Int:
-  case PrimType::Real:
-  case PrimType::Type:
-  case PrimType::String:
-  case PrimType::Code: IR::Print(val); break;
-  case PrimType::Void:
-  case PrimType::NullPtr:
-  case PrimType::EmptyArray:
-  case PrimType::Generic:
-  case PrimType::Err: NOT_YET();
-  case PrimType::Unknown: UNREACHABLE();
+  case type::PrimType::Bool:
+  case type::PrimType::Int:
+  case type::PrimType::Real:
+  case type::PrimType::Type:
+  case type::PrimType::String:
+  case type::PrimType::Code: IR::Print(val); break;
+  case type::PrimType::Void:
+  case type::PrimType::NullPtr:
+  case type::PrimType::EmptyArray:
+  case type::PrimType::Generic:
+  case type::PrimType::Err: NOT_YET();
+  case type::PrimType::Unknown: UNREACHABLE();
   }
 }
 
-void Function::EmitRepr(IR::Val) const {
-  IR::Print(IR::Val::Char('{'));
-  IR::Print(IR::Val::Type(this));
-  IR::Print(IR::Val::Char('}'));
-}
-
-void Enum::EmitRepr(IR::Val val) const { IR::Print(val); }
-
-// TODO print something friendlier
-void Pointer::EmitRepr(IR::Val val) const { IR::Print(val); }
-
-void Array::EmitRepr(IR::Val val) const {
+void type::Array::EmitRepr(IR::Val val) const {
   if (!repr_func_) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func(this, Void),
+        type::Func(this, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}}));
     repr_func_       = IR::Func::All.back().get();
@@ -128,6 +117,41 @@ void Array::EmitRepr(IR::Val val) const {
   IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
 }
 
+void type::Tuple::EmitRepr(IR::Val) const { NOT_YET(); }
+namespace type {
+// TODO print something friendlier
+void Pointer::EmitRepr(IR::Val val) const { IR::Print(val); }
+void Enum::EmitRepr(IR::Val val) const { IR::Print(val); }
+void Range::EmitRepr(IR::Val) const { NOT_YET(); }
+void Slice::EmitRepr(IR::Val) const { NOT_YET(); }
+void Scope::EmitRepr(IR::Val) const { NOT_YET(); }
+void Variant::EmitRepr(IR::Val id_val) const {
+  // TODO design and build a jump table?
+  // TODO repr_func_
+  // TODO remove these casts in favor of something easier to track properties on
+
+  auto landing = IR::Func::Current->AddBlock();
+  auto type    = IR::Load(IR::VariantType(id_val));
+  for (const Type *v : variants_) {
+    auto old_block   = IR::Block::Current;
+    auto found_block = IR::Func::Current->AddBlock();
+
+    IR::Block::Current = found_block;
+    v->EmitRepr(PtrCallFix(IR::VariantValue(v, id_val)));
+    IR::UncondJump(landing);
+
+    IR::Block::Current = old_block;
+    IR::Block::Current =
+        IR::EarlyExitOn<true>(found_block, IR::Eq(type, IR::Val::Type(v)));
+  }
+  IR::UncondJump(landing);
+  IR::Block::Current = landing;
+}
+void Function::EmitRepr(IR::Val) const {
+  IR::Print(IR::Val::Char('{'));
+  IR::Print(IR::Val::Type(this));
+  IR::Print(IR::Val::Char('}'));
+}
 void Struct::EmitRepr(IR::Val val) const {
   if (!repr_func_) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
@@ -155,29 +179,4 @@ void Struct::EmitRepr(IR::Val val) const {
   IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
 }
 
-void Tuple::EmitRepr(IR::Val) const { NOT_YET(); }
-void RangeType::EmitRepr(IR::Val) const { NOT_YET(); }
-void SliceType::EmitRepr(IR::Val) const { NOT_YET(); }
-void Scope_Type::EmitRepr(IR::Val)const  { NOT_YET(); }
-void Variant::EmitRepr(IR::Val id_val) const {
-  // TODO design and build a jump table?
-  // TODO repr_func_
-  // TODO remove these casts in favor of something easier to track properties on
-
-  auto landing     = IR::Func::Current->AddBlock();
-  auto type        = IR::Load(IR::VariantType(id_val));
-  for (const Type *v : variants_) {
-    auto old_block   = IR::Block::Current;
-    auto found_block = IR::Func::Current->AddBlock();
-
-    IR::Block::Current = found_block;
-    v->EmitRepr(PtrCallFix(IR::VariantValue(v, id_val)));
-    IR::UncondJump(landing);
-
-    IR::Block::Current = old_block;
-    IR::Block::Current =
-        IR::EarlyExitOn<true>(found_block, IR::Eq(type, IR::Val::Type(v)));
-  }
-  IR::UncondJump(landing);
-  IR::Block::Current = landing;
-}
+} // namespace type

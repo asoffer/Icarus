@@ -87,7 +87,7 @@ struct PropDB {
     // TODO you always know if it's SetReturn at compile-time so you should pull
     // these into two separate functions
     const auto &cmd = fn_->Command(cmd_index);
-    Type *type = (cmd.op_code_ == Op::SetReturn) ? cmd.args[1].type : cmd.type;
+   type::Type *type = (cmd.op_code_ == Op::SetReturn) ? cmd.args[1].type : cmd.type;
     const auto &incoming_set =
         views_[&block].incoming_[&fn_->block(cmd_index.block)];
 
@@ -104,7 +104,7 @@ struct PropDB {
 
   void Set(const Block &block, CmdIndex cmd_index, PropertySet new_prop_set) {
     const auto &cmd = fn_->Command(cmd_index);
-    Type *type  = (cmd.op_code_ == Op::SetReturn) ? cmd.args[1].type : cmd.type;
+   type::Type *type  = (cmd.op_code_ == Op::SetReturn) ? cmd.args[1].type : cmd.type;
     auto shadow = GetShadow(block, cmd_index);
     new_prop_set = PropertySet::StrongMerge(
         std::vector<const PropertySet *>{&new_prop_set, &shadow});
@@ -368,7 +368,7 @@ int Func::ValidateCalls(std::queue<Func *> * /*validation_queue*/) const {
       arg_props.push_back(prop_db.Get(*calling_block, cmd->args[i]));
     }
     for (const auto &precondition : called_fn->preconditions_) {
-      auto ir_fn = ExprFn(precondition, Tup(called_fn->type_->input),
+      auto ir_fn = ExprFn(precondition, type::Tup(called_fn->type_->input),
                           called_fn->args_);
       if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
         LOG << "Failed a precondition.";
@@ -379,7 +379,7 @@ int Func::ValidateCalls(std::queue<Func *> * /*validation_queue*/) const {
   }
 
   for (const auto &postcondition : postconditions_) {
-    std::vector<Type *> input_types = ir_type->input;
+    std::vector<type::Type *> input_types = ir_type->input;
     input_types.insert(input_types.end(), type_->output.begin(),
                        type_->output.end());
     i32 num_outs = static_cast<i32>(type_->output.size());
@@ -401,7 +401,7 @@ int Func::ValidateCalls(std::queue<Func *> * /*validation_queue*/) const {
           prop_db.views_[exit_block].ret_props_[ReturnValue(i)]);
     }
 
-    auto ir_fn = ExprFn(postcondition, Tup(input_types), args_,
+    auto ir_fn = ExprFn(postcondition, type::Tup(input_types), args_,
                         IR::Cmd::Kind::PostCondition);
     if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
       LOG << "Failed post condition";

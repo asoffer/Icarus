@@ -1,5 +1,6 @@
-#include "type.h"
+#include "enum.h"
 
+namespace type {
 Enum::Enum(const std::string &name, std::vector<std::string> members,
            bool is_enum)
     : bound_name(name), members_(std::move(members)), is_enum_(is_enum) {
@@ -23,3 +24,4 @@ IR::Val Enum::EmitInitialValue() const {
 IR::Val Enum::EmitLiteral(const std::string &member_name) const {
   return IR::Val::Enum(this, int_values AT(member_name));
 }
+} // namespace type
