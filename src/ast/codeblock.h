@@ -6,19 +6,12 @@
 #include "expression.h"
 #include "statements.h"
 
-extern type::Type* Code;
-
+extern type::Type *Code;
 namespace AST {
 struct CodeBlock : public Expression {
   EXPR_FNS(CodeBlock);
-  CodeBlock() {
-    lvalue = Assign::Const;
-    type   = Code;
-  }
-  CodeBlock(std::string s) : content_(std::move(s)) {
-    lvalue = Assign::RVal;
-    type = Code;
-  }
+  CodeBlock();
+  CodeBlock(std::string s);
 
   CodeBlock(const CodeBlock &)     = default;
   CodeBlock(CodeBlock &&) noexcept = default;

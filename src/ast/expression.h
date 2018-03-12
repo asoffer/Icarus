@@ -2,6 +2,7 @@
 #define ICARUS_AST_EXPRESSION_H
 
 #include "node.h"
+#include "../type/type.h"
 
 struct Context;
 

@@ -1,16 +1,17 @@
 #include "../ir/func.h"
 #include "all.h"
 
-void type::Primitive::EmitDestroy(IR::Val) const {}
+namespace type {
+void Primitive::EmitDestroy(IR::Val) const {}
 
-extern IR::Val PtrCallFix(type::Type *t, IR::Val v);
+extern IR::Val PtrCallFix(Type *t, IR::Val v);
 
-void type::Array::EmitDestroy(IR::Val id_val) const {
+void Array::EmitDestroy(IR::Val id_val) const {
   if (destroy_func_ == nullptr) {
     if (!needs_destroy()) { return; }
 
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        type::Func(type::Ptr(this), Void),
+        Func(Ptr(this), Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}}));
     destroy_func_       = IR::Func::All.back().get();
@@ -51,9 +52,8 @@ void type::Array::EmitDestroy(IR::Val id_val) const {
   IR::Call(IR::Val::Func(destroy_func_), {id_val}, {});
 }
 
-void type::Tuple::EmitDestroy(IR::Val) const { NOT_YET(); }
+void Tuple::EmitDestroy(IR::Val) const { NOT_YET(); }
 
-namespace type {
 void Enum::EmitDestroy(IR::Val) const {}
 void Function::EmitDestroy(IR::Val) const {}
 void Pointer::EmitDestroy(IR::Val) const {}

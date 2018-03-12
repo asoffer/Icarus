@@ -8,7 +8,7 @@
 #include "../type/all.h"
 
 // TODO catch functions that don't return along all paths.
-// TODO Join/Meet for EmptyArray <-> [0; T] (explicitly empty)? Why!?
+// TODO Join/Meet for type::EmptyArray <-> [0; T] (explicitly empty)? Why!?
 
 IR::Val ErrorFunc();
 IR::Val AsciiFunc();
@@ -40,7 +40,7 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
           ctx->cyc_dep_vec_->push_back(this_as_id);                            \
         }                                                                      \
       }                                                                        \
-      type = Err;                                                              \
+      type = type::Err;                                                        \
       limit_to(StageRange::Nothing());                                         \
       return;                                                                  \
     }                                                                          \
@@ -49,12 +49,12 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 #define STARTING_CHECK                                                         \
   do {                                                                         \
     ASSERT(scope_, "Need to first call assign_scope()");                       \
-    if (type == Unknown) {                                                     \
+    if (type == type::Unknown) {                                               \
       ctx->cyc_dep_vec_ = ctx->error_log_.CyclicDependency();                  \
       HANDLE_CYCLIC_DEPENDENCIES;                                              \
     }                                                                          \
     if (type != nullptr) { return; }                                           \
-    type = Unknown;                                                            \
+    type = type::Unknown;                                                      \
     STAGE_CHECK;                                                               \
   } while (false)
 
@@ -62,8 +62,8 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
   do {                                                                         \
     expr->Validate(ctx);                                                       \
     HANDLE_CYCLIC_DEPENDENCIES;                                                \
-    if (expr->type == Err) {                                                   \
-      type = Err;                                                              \
+    if (expr->type == type::Err) {                                             \
+      type = type::Err;                                                        \
       /* TODO Maybe this should be Nothing() */                                \
       limit_to(expr->stage_range_.high);                                       \
       return;                                                                  \
@@ -152,8 +152,8 @@ CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
 }
 
 bool Shadow(Declaration *decl1, Declaration *decl2) {
-  if ((!decl1->type->is<type::Function>() && decl1->type != Generic) ||
-      (!decl2->type->is<type::Function>() && decl2->type != Generic)) {
+  if ((!decl1->type->is<type::Function>() && decl1->type != type::Generic) ||
+      (!decl2->type->is<type::Function>() && decl2->type != type::Generic)) {
     return true;
   }
 
@@ -222,7 +222,7 @@ static bool CanCastImplicitly(const type::Type *from, const type::Type *to) {
 
 // TODO return a reason why this is not inferrable for better error messages.
 static bool Inferrable(const type::Type *t) {
-  if (t == NullPtr || t == EmptyArray) {
+  if (t == type::NullPtr || t == type::EmptyArray) {
     return false;
   } else if (t->is<type::Array>()) {
     return Inferrable(t->as<type::Array>().data_type);
@@ -270,9 +270,9 @@ std::optional<DispatchTable>
 Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
   DispatchTable table;
   for (Expression *fn_option : fn_options) {
-    auto vals    = Evaluate(fn_option, ctx);
+    auto vals = Evaluate(fn_option, ctx);
     if (vals.empty() || vals[0] == IR::Val::None()) { continue; }
-    auto& fn_val = vals[0].value;
+    auto &fn_val = vals[0].value;
     if (fn_option->type->is<type::Function>()) {
       auto *fn_lit = std::get<FunctionLiteral *>(fn_val);
 
@@ -294,7 +294,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
           binding.exprs_[i].first = fn_opt_input[i];
         } else {
           const type::Type *match =
-             type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
+              type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
           if (match == nullptr) { goto next_option; }
           binding.exprs_[i].first = fn_opt_input[i];
 
@@ -311,7 +311,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
 
       table.insert(std::move(call_arg_types), std::move(binding));
 
-    } else if (fn_option->type == Generic) {
+    } else if (fn_option->type == type::Generic) {
       auto *gen_fn_lit = std::get<GenericFunctionLiteral *>(fn_val);
       if (auto[fn_lit, binding] = gen_fn_lit->ComputeType(args_, ctx); fn_lit) {
         // TODO this is copied almost exactly from above.
@@ -329,7 +329,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
             binding.exprs_[i].first = fn_opt_input[i];
           } else {
             const type::Type *match =
-               type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
+                type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
             if (match == nullptr) { goto next_option; }
             binding.exprs_[i].first = fn_opt_input[i];
 
@@ -349,7 +349,7 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
       } else {
         goto next_option;
       }
-    } else if (fn_option->type == Err) {
+    } else if (fn_option->type == type::Err) {
       // If there's a type error, do I want to exit entirely or assume this
       // one doesn't exist? and juts goto next_option?
       return std::nullopt;
@@ -389,7 +389,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
       input_type = inputs[i]->init_val->type;
     }
 
-    if (input_type == Err) { return std::pair(nullptr, Binding{}); }
+    if (input_type == type::Err) { return std::pair(nullptr, Binding{}); }
 
     if (binding.defaulted(i) && inputs[i]->IsDefaultInitialized()) {
       // TODO maybe send back an explanation of why this didn't match. Or
@@ -403,7 +403,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
 
       if (!binding.defaulted(i)) {
         if (auto *match =
-               type::Meet(binding.exprs_[i].second->type, input_type);
+                type::Meet(binding.exprs_[i].second->type, input_type);
             match == nullptr) {
           return std::pair(nullptr, Binding{});
         }
@@ -455,13 +455,14 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
 void GenericFunctionLiteral::Validate(Context *ctx) {
   STARTING_CHECK;
   lvalue = Assign::Const;
-  type   = Generic; // Doable at construction.
+  type   = type::Generic; // Doable at construction.
   // TODO sort these correctly.
   decl_order_.reserve(inputs.size());
   for (size_t i = 0; i < inputs.size(); ++i) { decl_order_.push_back(i); }
 }
 
-void DispatchTable::insert(FnArgs<const type::Type *> call_arg_types, Binding binding) {
+void DispatchTable::insert(FnArgs<const type::Type *> call_arg_types,
+                           Binding binding) {
   u64 expanded_size = 1;
   call_arg_types.Apply([&expanded_size](const type::Type *t) {
     if (t->is<type::Variant>()) {
@@ -473,7 +474,8 @@ void DispatchTable::insert(FnArgs<const type::Type *> call_arg_types, Binding bi
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
 }
 
-static bool ValidateComparisonType(Language::Operator op, const type::Type *lhs_type,
+static bool ValidateComparisonType(Language::Operator op,
+                                   const type::Type *lhs_type,
                                    const type::Type *rhs_type) {
   ASSERT(op == Language::Operator::Lt || op == Language::Operator::Le ||
              op == Language::Operator::Eq || op == Language::Operator::Ne ||
@@ -488,12 +490,13 @@ static bool ValidateComparisonType(Language::Operator op, const type::Type *lhs_
       return false;
     }
 
-    if (lhs_type == Int || lhs_type == Real) { return true; }
+    if (lhs_type == type::Int || lhs_type == type::Real) { return true; }
 
-    if (lhs_type == Code || lhs_type == Void) { return false; }
-    // TODO NullPtr, String types?
+    if (lhs_type == type::Code || lhs_type == type::Void) { return false; }
+    // TODO type::NullPtr, type::String types?
 
-    if (lhs_type == Bool || lhs_type == Char || lhs_type ==Type_ ||
+    if (lhs_type == type::Bool || lhs_type == type::Char ||
+        lhs_type == type::Type_ ||
         (lhs_type->is<type::Enum>() && lhs_type->as<type::Enum>().is_enum_)) {
       if (op == Language::Operator::Eq || op == Language::Operator::Ne) {
         return true;
@@ -502,7 +505,8 @@ static bool ValidateComparisonType(Language::Operator op, const type::Type *lhs_
                                              std::to_string(__LINE__) + ": ");
         return false;
       }
-    } else if (lhs_type->is<type::Enum>() && !lhs_type->as<type::Enum>().is_enum_) {
+    } else if (lhs_type->is<type::Enum>() &&
+               !lhs_type->as<type::Enum>().is_enum_) {
       return true;
     }
   }
@@ -594,7 +598,7 @@ void Identifier::Validate(Context *ctx) {
         ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
                                              std::to_string(__LINE__) + ": ");
       }
-      type = Err;
+      type = type::Err;
       limit_to(StageRange::Nothing());
       return;
     }
@@ -607,7 +611,7 @@ void Identifier::Validate(Context *ctx) {
         potential_decls[0]->arg_val = scope_->ContainingFnScope()->fn_lit;
       } else {
         ctx->error_log_.UndeclaredIdentifier(this);
-        type = Err;
+        type = type::Err;
         limit_to(StageRange::Nothing());
         return;
       }
@@ -641,8 +645,8 @@ void Binop::Validate(Context *ctx) {
   HANDLE_CYCLIC_DEPENDENCIES;
   rhs->Validate(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
-  if (lhs->type == Err || rhs->type == Err) {
-    type = Err;
+  if (lhs->type == type::Err || rhs->type == type::Err) {
+    type = type::Err;
     limit_to(lhs);
     limit_to(rhs);
     return;
@@ -669,11 +673,11 @@ void Binop::Validate(Context *ctx) {
   // TODO if lhs is reserved?
   if (op == Operator::Assign) {
     if (CanCastImplicitly(rhs->type, lhs->type)) {
-      type = Void;
+      type = type::Void;
     } else {
       ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + ": ");
-      type = Err;
+      type = type::Err;
       limit_to(StageRange::NoEmitIR());
     }
     return;
@@ -685,13 +689,14 @@ void Binop::Validate(Context *ctx) {
     UNREACHABLE();
   } break;
   case Operator::Index: {
-    type = Err;
-    if (lhs->type == String) {
-      if (rhs->type != Int) {
+    type = type::Err;
+    if (lhs->type == type::String) {
+      if (rhs->type != type::Int) {
         ErrorLog::InvalidStringIndex(span, rhs->type);
         limit_to(StageRange::NoEmitIR());
       }
-      type = Char; // Assuming it's a char, even if the index type was wrong.
+      type =
+          type::Char; // Assuming it's a char, even if the index type was wrong.
       return;
     } else if (!lhs->type->is<type::Array>()) {
       if (rhs->type->is<type::Range>()) {
@@ -708,18 +713,18 @@ void Binop::Validate(Context *ctx) {
       type = lhs->type->as<type::Array>().data_type;
 
       // TODO allow slice indexing
-      if (rhs->type == Int) { break; }
+      if (rhs->type == type::Int) { break; }
       ErrorLog::NonIntegralArrayIndex(span, rhs->type);
       limit_to(StageRange::NoEmitIR());
       return;
     }
   } break;
   case Operator::Dots: {
-    if (lhs->type == Int && rhs->type == Int) {
-      type = type::Rng(Int);
+    if (lhs->type == type::Int && rhs->type == type::Int) {
+      type = type::Rng(type::Int);
 
-    } else if (lhs->type == Char && rhs->type == Char) {
-      type = type::Rng(Char);
+    } else if (lhs->type == type::Char && rhs->type == type::Char) {
+      type = type::Rng(type::Char);
 
     } else {
       ErrorLog::InvalidRanges(span, lhs->type, rhs->type);
@@ -728,13 +733,13 @@ void Binop::Validate(Context *ctx) {
     }
   } break;
   case Operator::XorEq: {
-    if (lhs->type == Bool && rhs->type == Bool) {
-      type = Bool;
+    if (lhs->type == type::Bool && rhs->type == type::Bool) {
+      type = type::Bool;
     } else if (lhs->type->is<type::Enum>() && rhs->type == lhs->type &&
                !lhs->type->as<type::Enum>().is_enum_) {
       type = lhs->type;
     } else {
-      type = Err;
+      type = type::Err;
       // TODO could be bool or enum.
       ErrorLog::XorEqNeedsBool(span);
       limit_to(StageRange::Nothing());
@@ -742,13 +747,13 @@ void Binop::Validate(Context *ctx) {
     }
   } break;
   case Operator::AndEq: {
-    if (lhs->type == Bool && rhs->type == Bool) {
-      type = Bool;
+    if (lhs->type == type::Bool && rhs->type == type::Bool) {
+      type = type::Bool;
     } else if (lhs->type->is<type::Enum>() && rhs->type == lhs->type &&
                !lhs->type->as<type::Enum>().is_enum_) {
       type = lhs->type;
     } else {
-      type = Err;
+      type = type::Err;
       // TODO could be bool or enum.
       ErrorLog::AndEqNeedsBool(span);
       limit_to(StageRange::Nothing());
@@ -756,13 +761,13 @@ void Binop::Validate(Context *ctx) {
     }
   } break;
   case Operator::OrEq: {
-    if (lhs->type == Bool && rhs->type == Bool) {
-      type = Bool;
+    if (lhs->type == type::Bool && rhs->type == type::Bool) {
+      type = type::Bool;
     } else if (lhs->type->is<type::Enum>() && rhs->type == lhs->type &&
                !lhs->type->as<type::Enum>().is_enum_) {
       type = lhs->type;
     } else {
-      type = Err;
+      type = type::Err;
       // TODO could be bool or enum.
       ErrorLog::OrEqNeedsBool(span);
       limit_to(StageRange::Nothing());
@@ -772,10 +777,10 @@ void Binop::Validate(Context *ctx) {
 
 #define CASE(OpName, op_name, symbol, ret_type)                                \
   case Operator::OpName: {                                                     \
-    if ((lhs->type == Int && rhs->type == Int) ||                              \
-        (lhs->type == Real && rhs->type == Real) ||                            \
-        (lhs->type == Code && rhs->type == Code)) {                            \
-      /* TODO Code should only be valid for Add, not Sub, etc */               \
+    if ((lhs->type == type::Int && rhs->type == type::Int) ||                  \
+        (lhs->type == type::Real && rhs->type == type::Real) ||                \
+        (lhs->type == type::Code && rhs->type == type::Code)) {                \
+      /* TODO type::Code should only be valid for Add, not Sub, etc */         \
       type = ret_type;                                                         \
     } else {                                                                   \
       /* Store a vector containing the valid matches */                        \
@@ -792,26 +797,26 @@ void Binop::Validate(Context *ctx) {
                                                                                \
       Declaration *correct_decl = nullptr;                                     \
       for (auto &decl : matched_op_name) {                                     \
-        if (!decl->type->is<type::Function>()) { continue; }                         \
-        auto *fn_type = &decl->type->as<type::Function>();                           \
+        if (!decl->type->is<type::Function>()) { continue; }                   \
+        auto *fn_type = &decl->type->as<type::Function>();                     \
         if (fn_type->input != std::vector{lhs->type, rhs->type}) { continue; } \
         /* If you get here, you've found a match. Hope there is only one       \
          * TODO if there is more than one, log them all and give a good        \
          * *error message. For now, we just fail */                            \
         if (correct_decl) {                                                    \
           ErrorLog::AlreadyFoundMatch(span, symbol, lhs->type, rhs->type);     \
-          type = Err;                                                          \
+          type = type::Err;                                                    \
         } else {                                                               \
           correct_decl = decl;                                                 \
         }                                                                      \
       }                                                                        \
       if (!correct_decl) {                                                     \
-        type = Err;                                                            \
+        type = type::Err;                                                      \
         ErrorLog::NoKnownOverload(span, symbol, lhs->type, rhs->type);         \
         limit_to(StageRange::Nothing());                                       \
         return;                                                                \
-      } else if (type != Err) {                                                \
-        type = type::Tup(correct_decl->type->as<type::Function>().output);                 \
+      } else if (type != type::Err) {                                          \
+        type = type::Tup(correct_decl->type->as<type::Function>().output);     \
       }                                                                        \
     }                                                                          \
   } break;
@@ -820,27 +825,28 @@ void Binop::Validate(Context *ctx) {
     CASE(Sub, "sub", "-", lhs->type);
     CASE(Div, "div", "/", lhs->type);
     CASE(Mod, "mod", "%", lhs->type);
-    CASE(AddEq, "add_eq", "+=", Void);
-    CASE(SubEq, "sub_eq", "-=", Void);
-    CASE(MulEq, "mul_eq", "*=", Void);
-    CASE(DivEq, "div_eq", "/=", Void);
-    CASE(ModEq, "mod_eq", "%=", Void);
+    CASE(AddEq, "add_eq", "+=", type::Void);
+    CASE(SubEq, "sub_eq", "-=", type::Void);
+    CASE(MulEq, "mul_eq", "*=", type::Void);
+    CASE(DivEq, "div_eq", "/=", type::Void);
+    CASE(ModEq, "mod_eq", "%=", type::Void);
 #undef CASE
 
   // Mul is done separately because of the function composition
   case Operator::Mul: {
-    if ((lhs->type == Int && rhs->type == Int) ||
-        (lhs->type == Real && rhs->type == Real)) {
+    if ((lhs->type == type::Int && rhs->type == type::Int) ||
+        (lhs->type == type::Real && rhs->type == type::Real)) {
       type = lhs->type;
 
-    } else if (lhs->type->is<type::Function>() && rhs->type->is<type::Function>()) {
+    } else if (lhs->type->is<type::Function>() &&
+               rhs->type->is<type::Function>()) {
       auto *lhs_fn = &lhs->type->as<type::Function>();
       auto *rhs_fn = &rhs->type->as<type::Function>();
       if (rhs_fn->output == lhs_fn->input) {
         type = Func(rhs_fn->input, lhs_fn->output);
 
       } else {
-        type = Err;
+        type = type::Err;
         ErrorLog::NonComposableFunctions(span);
         limit_to(StageRange::Nothing());
         return;
@@ -857,7 +863,7 @@ void Binop::Validate(Context *ctx) {
       if (fn_type) {
         type = type::Tup(fn_type->as<type::Function>().output);
       } else {
-        type = Err;
+        type = type::Err;
         ErrorLog::NoKnownOverload(span, "*", lhs->type, rhs->type);
         limit_to(StageRange::Nothing());
         return;
@@ -865,20 +871,20 @@ void Binop::Validate(Context *ctx) {
     }
   } break;
   case Operator::Arrow: {
-    if (lhs->type !=Type_) {
-      type = Err;
+    if (lhs->type != type::Type_) {
+      type = type::Err;
       ErrorLog::NonTypeFunctionInput(span);
       limit_to(StageRange::Nothing());
       return;
     }
-    if (rhs->type !=Type_) {
-      type = Err;
+    if (rhs->type != type::Type_) {
+      type = type::Err;
       ErrorLog::NonTypeFunctionOutput(span);
       limit_to(StageRange::Nothing());
       return;
     }
 
-    if (type != Err) { type =Type_; }
+    if (type != type::Err) { type = type::Type_; }
 
   } break;
   default: UNREACHABLE();
@@ -892,12 +898,12 @@ void Call::Validate(Context *ctx) {
   args_.Apply([&ctx, &all_const, this](auto &arg) {
     arg->Validate(ctx);
     HANDLE_CYCLIC_DEPENDENCIES; // TODO audit macro in lambda
-    if (arg->type == Err) { this->type = Err; }
+    if (arg->type == type::Err) { this->type = type::Err; }
     all_const &= arg->lvalue == Assign::Const;
   });
 
   lvalue = all_const ? Assign::Const : Assign::RVal;
-  if (type == Err) {
+  if (type == type::Err) {
     limit_to(StageRange::Nothing());
     return;
   }
@@ -936,7 +942,7 @@ void Call::Validate(Context *ctx) {
         // example, one call takes an A | B and the other takes a B | C, but
         // here we wish to validate a call for just a C, it's safe to do so
         // here.
-        type = Err;
+        type = type::Err;
         limit_to(StageRange::Nothing());
         return;
       }
@@ -945,8 +951,8 @@ void Call::Validate(Context *ctx) {
       if (iter == scope_ptr->decls_.end()) { continue; }
       for (const auto &decl : iter->second) {
         decl->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
-        if (decl->type == Err) {
+        HANDLE_CYCLIC_DEPENDENCIES;
+        if (decl->type == type::Err) {
           limit_to(decl->stage_range_.high);
           return;
         }
@@ -964,7 +970,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
   } else {
     // Failure because we can't emit IR for the function so the error was
     // previously logged.
-    type = Err;
+    type = type::Err;
     limit_to(StageRange::Nothing());
     return;
   }
@@ -979,17 +985,17 @@ HANDLE_CYCLIC_DEPENDENCIES;
   if (dispatch_table_.total_size_ != expanded_size) {
     LOG << "Failed to find a match for everything. ("
         << dispatch_table_.total_size_ << " vs " << expanded_size << ")";
-    type = fn_->type = Err;
+    type = fn_->type = type::Err;
     limit_to(StageRange::Nothing());
     return;
   }
 
   if (fn_->is<Identifier>()) {
     // fn_'s type should never be considered beacuse it could be one of many
-    // different things. 'Void' just indicates that it has been computed (i.e.,
-    // not 0x0 or Unknown) and that there was no error in doing so (i.e., not
-    // Err).
-    fn_->type = Void;
+    // different things. 'type::Void' just indicates that it has been computed
+    // (i.e., not 0x0 or type::Unknown) and that there was no error in doing so
+    // (i.e., not type::Err).
+    fn_->type = type::Void;
   }
 
   std::vector<const type::Type *> out_types;
@@ -997,7 +1003,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
   for (const auto & [ key, val ] : dispatch_table_.bindings_) {
     auto &outs = val.fn_expr_->type->as<type::Function>().output;
     ASSERT_LE(outs.size(), 1u);
-    out_types.push_back(outs.empty() ? Void : outs[0]);
+    out_types.push_back(outs.empty() ? type::Void : outs[0]);
   }
   type = type::Var(std::move(out_types));
 }
@@ -1011,19 +1017,20 @@ void Declaration::Validate(Context *ctx) {
     type_expr->Validate(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(type_expr);
-    if (type_expr->type !=Type_) {
+    if (type_expr->type != type::Type_) {
       ctx->error_log_.NotAType(type_expr.get());
       limit_to(StageRange::Nothing());
 
-      type = Err;
+      type = type::Err;
       identifier->limit_to(StageRange::Nothing());
     } else {
       auto results = Evaluate(type_expr.get(), ctx);
       // TODO figure out if you need to generate an error here
       if (results.size() == 1) {
-        type = identifier->type = std::get<const type::Type *>(results[0].value);
+        type = identifier->type =
+            std::get<const type::Type *>(results[0].value);
       } else {
-        type = identifier->type = Err;
+        type = identifier->type = type::Err;
       }
     }
 
@@ -1036,10 +1043,10 @@ void Declaration::Validate(Context *ctx) {
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(init_val);
 
-    if (init_val->type != Err) {
+    if (init_val->type != type::Err) {
       if (!Inferrable(init_val->type)) {
         ctx->error_log_.UninferrableType(init_val->span);
-        type = identifier->type = Err;
+        type = identifier->type = type::Err;
         limit_to(StageRange::Nothing());
         identifier->limit_to(StageRange::Nothing());
 
@@ -1050,7 +1057,7 @@ void Declaration::Validate(Context *ctx) {
     }
   }
 
-  if (type_expr && type_expr->type ==Type_ && init_val &&
+  if (type_expr && type_expr->type == type::Type_ && init_val &&
       !init_val->is<Hole>()) {
     if (!CanCastImplicitly(init_val->type, type)) {
       ctx->error_log_.AssignmentTypeMismatch(identifier.get(), init_val.get());
@@ -1061,15 +1068,15 @@ void Declaration::Validate(Context *ctx) {
   if (!type_expr) {
     ASSERT_NE(init_val.get(), nullptr);
     if (!init_val->is<Hole>()) { // I := V
-      if (init_val->type == Err) {
-        type = identifier->type = Err;
+      if (init_val->type == type::Err) {
+        type = identifier->type = type::Err;
         limit_to(StageRange::Nothing());
         identifier->limit_to(StageRange::Nothing());
       }
 
     } else { // I := --
       ctx->error_log_.InferringHole(span);
-      type = init_val->type = identifier->type = Err;
+      type = init_val->type = identifier->type = type::Err;
       limit_to(StageRange::Nothing());
       init_val->limit_to(StageRange::Nothing());
       identifier->limit_to(StageRange::Nothing());
@@ -1082,18 +1089,18 @@ void Declaration::Validate(Context *ctx) {
       limit_to(StageRange::Nothing());
       return;
     } else if (init_val->lvalue != Assign::Const) {
-     ctx->error_log_.NonConstantBindingToConstantDeclaration(span);
-     limit_to(StageRange::Nothing());
-     return;
+      ctx->error_log_.NonConstantBindingToConstantDeclaration(span);
+      limit_to(StageRange::Nothing());
+      return;
     }
   }
 
-  if (type == Err) {
+  if (type == type::Err) {
     limit_to(StageRange::Nothing());
     return;
   }
 
-  std::vector<Declaration*> decls_to_check;
+  std::vector<Declaration *> decls_to_check;
   {
     auto[good_decls_to_check, error_decls_to_check] =
         scope_->AllDeclsWithId(identifier->token, ctx);
@@ -1144,14 +1151,14 @@ void Declaration::Validate(Context *ctx) {
 void InDecl::Validate(Context *ctx) {
   STARTING_CHECK;
   container->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+  HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(container);
 
   lvalue = Assign::RVal;
 
-  if (container->type == Void) {
-    type             = Err;
-    identifier->type = Err;
+  if (container->type == type::Void) {
+    type             = type::Err;
+    identifier->type = type::Err;
     ErrorLog::TypeIteration(span);
     limit_to(StageRange::Nothing());
     return;
@@ -1166,19 +1173,19 @@ HANDLE_CYCLIC_DEPENDENCIES;
   } else if (container->type->is<type::Range>()) {
     type = container->type->as<type::Range>().end_type;
 
-  } else if (container->type ==Type_) {
+  } else if (container->type == type::Type_) {
     auto t = std::get<const type::Type *>(Evaluate(container.get())[0].value);
     if (t->is<type::Enum>()) { type = t; }
 
   } else {
     ErrorLog::IndeterminantType(span);
-    type = Err;
+    type = type::Err;
     limit_to(StageRange::Nothing());
   }
 
   identifier->type = type;
   identifier->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+  HANDLE_CYCLIC_DEPENDENCIES;
 }
 
 void Statements::Validate(Context *ctx) {
@@ -1203,8 +1210,8 @@ void Unop::Validate(Context *ctx) {
 
   switch (op) {
   case Operator::Eval: type = operand->type; break;
-  case Operator::Require: type = Void; break;
-  case Operator::Generate: type = Void; break;
+  case Operator::Require: type = type::Void; break;
+  case Operator::Generate: type = type::Void; break;
   case Operator::Free: {
     if (!operand->type->is<type::Pointer>()) {
       ErrorLog::UnopTypeFail("Attempting to free an object of type `" +
@@ -1212,23 +1219,23 @@ void Unop::Validate(Context *ctx) {
                              this);
       limit_to(StageRange::NoEmitIR());
     }
-    type = Void;
+    type = type::Void;
   } break;
   case Operator::Print: {
-    if (operand->type == Void) {
+    if (operand->type == type::Void) {
       ErrorLog::UnopTypeFail(
           "Attempting to print an expression with type `void`.", this);
       limit_to(StageRange::NoEmitIR());
     }
-    type = Void;
+    type = type::Void;
   } break;
   case Operator::Return: {
-    if (operand->type == Void) {
+    if (operand->type == type::Void) {
       ErrorLog::UnopTypeFail(
           "Attempting to return an expression which has type `void`.", this);
       limit_to(StageRange::NoEmitIR());
     }
-    type = Void;
+    type = type::Void;
   } break;
   case Operator::At: {
     lvalue = Assign::LVal;
@@ -1240,7 +1247,7 @@ void Unop::Validate(Context *ctx) {
           "Attempting to dereference an expression of type `" +
               operand->type->to_string() + "`.",
           this);
-      type = Err;
+      type = type::Err;
       limit_to(StageRange::Nothing());
     }
   } break;
@@ -1258,17 +1265,17 @@ void Unop::Validate(Context *ctx) {
   } break;
   case Operator::Mul: {
     limit_to(operand);
-    if (operand->type !=Type_) {
+    if (operand->type != type::Type_) {
       ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + ": ");
-      type = Err;
+      type = type::Err;
       limit_to(StageRange::Nothing());
     } else {
-      type =Type_;
+      type = type::Type_;
     }
   } break;
   case Operator::Sub: {
-    if (operand->type == Int || operand->type == Real) {
+    if (operand->type == type::Int || operand->type == type::Real) {
       type = operand->type;
 
     } else if (operand->type->is<type::Struct>()) {
@@ -1288,48 +1295,48 @@ void Unop::Validate(Context *ctx) {
         ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
                                    "` has no unary negation operator.",
                                this);
-        type = Err;
+        type = type::Err;
         limit_to(StageRange::Nothing());
       }
     } else {
       ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
                                  "` has no unary negation operator.",
                              this);
-      type = Err;
+      type = type::Err;
       limit_to(StageRange::Nothing());
     }
   } break;
   case Operator::Dots: {
-    if (operand->type == Int || operand->type == Char) {
+    if (operand->type == type::Int || operand->type == type::Char) {
       type = type::Rng(operand->type);
     } else {
       ErrorLog::InvalidRange(span, type);
-      type = Err;
+      type = type::Err;
       limit_to(StageRange::Nothing());
     }
   } break;
   case Operator::Not: {
-    if (operand->type == Bool) {
-      type = Bool;
+    if (operand->type == type::Bool) {
+      type = type::Bool;
     } else {
       ErrorLog::UnopTypeFail("Attempting to apply the logical negation "
                              "operator (!) to an expression of type `" +
                                  operand->type->to_string() + "`.",
                              this);
-      type = Err;
+      type = type::Err;
       limit_to(StageRange::Nothing());
     }
   } break;
   case Operator::Needs: {
-    type = Void;
-    if (operand->type != Bool) {
+    type = type::Void;
+    if (operand->type != type::Bool) {
       ctx->error_log_.PreconditionNeedsBool(this);
       limit_to(StageRange::NoEmitIR());
     }
   } break;
   case Operator::Ensure: {
-    type = Void;
-    if (operand->type != Bool) {
+    type = type::Void;
+    if (operand->type != type::Bool) {
       ctx->error_log_.PostconditionNeedsBool(this);
       limit_to(StageRange::NoEmitIR());
     }
@@ -1343,21 +1350,22 @@ void Unop::Validate(Context *ctx) {
 void Access::Validate(Context *ctx) {
   STARTING_CHECK;
   VALIDATE_AND_RETURN_ON_ERROR(operand);
-  lvalue = (operand->type->is<type::Array>() &&
-            operand->type->as<type::Array>().fixed_length && member_name == "size")
-               ? Assign::Const
-               : operand->lvalue;
+  lvalue =
+      (operand->type->is<type::Array>() &&
+       operand->type->as<type::Array>().fixed_length && member_name == "size")
+          ? Assign::Const
+          : operand->lvalue;
 
   auto base_type = DereferenceAll(operand->type);
   if (base_type->is<type::Array>()) {
     if (member_name == "size") {
-      type = Int;
+      type = type::Int;
     } else {
       ErrorLog::MissingMember(span, member_name, base_type);
-      type = Err;
+      type = type::Err;
       limit_to(StageRange::Nothing());
     }
-  } else if (base_type ==Type_) {
+  } else if (base_type == type::Type_) {
     auto *evaled_type =
         std::get<const type::Type *>(Evaluate(operand.get())[0].value);
     if (evaled_type->is<type::Enum>()) {
@@ -1378,12 +1386,13 @@ void Access::Validate(Context *ctx) {
 
     } else {
       ErrorLog::MissingMember(span, member_name, base_type);
-      type = Err;
+      type = type::Err;
       limit_to(StageRange::Nothing());
     }
-  } else if (base_type->is<type::Primitive>() || base_type->is<type::Function>()) {
+  } else if (base_type->is<type::Primitive>() ||
+             base_type->is<type::Function>()) {
     ErrorLog::MissingMember(span, member_name, base_type);
-    type = Err;
+    type = type::Err;
     limit_to(StageRange::Nothing());
   }
 }
@@ -1395,13 +1404,13 @@ void ChainOp::Validate(Context *ctx) {
   lvalue = Assign::Const;
   for (auto &expr : exprs) {
     expr->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+    HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
-    if (expr->type == Err) { found_err = true; }
+    if (expr->type == type::Err) { found_err = true; }
     if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
   if (found_err) {
-    type = Err;
+    type = type::Err;
     limit_to(StageRange::Nothing());
     return;
   }
@@ -1423,9 +1432,10 @@ HANDLE_CYCLIC_DEPENDENCIES;
 
     type = exprs[0]->type;
 
-    if (exprs[0]->type != Bool &&
-        !(exprs[0]->type ==Type_ && ops[0] == Language::Operator::Or) &&
-        (!exprs[0]->type->is<type::Enum>() || exprs[0]->type->as<type::Enum>().is_enum_)) {
+    if (exprs[0]->type != type::Bool &&
+        !(exprs[0]->type == type::Type_ && ops[0] == Language::Operator::Or) &&
+        (!exprs[0]->type->is<type::Enum>() ||
+         exprs[0]->type->as<type::Enum>().is_enum_)) {
       ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + ": ");
       if (failed) {
@@ -1437,11 +1447,11 @@ HANDLE_CYCLIC_DEPENDENCIES;
   } else {
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       if (!ValidateComparisonType(ops[i], exprs[i]->type, exprs[i + 1]->type)) {
-        type = Err; // Errors exported by ValidateComparisonType
+        type = type::Err; // Errors exported by ValidateComparisonType
       }
     }
-    if (type == Err) { limit_to(StageRange::Nothing()); }
-    type = Bool;
+    if (type == type::Err) { limit_to(StageRange::Nothing()); }
+    type = type::Bool;
   }
 }
 
@@ -1450,12 +1460,12 @@ void CommaList::Validate(Context *ctx) {
   lvalue = Assign::Const;
   for (auto &expr : exprs) {
     expr->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+    HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
-    if (expr->type == Err) { type = Err; }
+    if (expr->type == type::Err) { type = type::Err; }
     if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
-  if (type == Err) {
+  if (type == type::Err) {
     limit_to(StageRange::Nothing());
     return;
   }
@@ -1470,11 +1480,11 @@ HANDLE_CYCLIC_DEPENDENCIES;
   size_t position = 0;
   for (const auto &expr : exprs) {
     type_vec[position] = expr->type;
-    all_types &= (expr->type ==Type_);
+    all_types &= (expr->type == type::Type_);
     ++position;
   }
   // TODO got to have a better way to make tuple types i think
-  type = all_types ?Type_ : type::Tup(type_vec);
+  type = all_types ? type::Type_ : type::Tup(type_vec);
 }
 
 void ArrayLiteral::Validate(Context *ctx) {
@@ -1482,30 +1492,30 @@ void ArrayLiteral::Validate(Context *ctx) {
 
   lvalue = Assign::Const;
   if (elems.empty()) {
-    type = EmptyArray;
+    type = type::EmptyArray;
     return;
   }
 
   for (auto &elem : elems) {
     elem->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+    HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(elem);
     if (elem->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
 
-  const type::Type *joined = Err;
+  const type::Type *joined = type::Err;
   for (auto &elem : elems) {
     joined = type::Join(joined, elem->type);
     if (joined == nullptr) { break; }
   }
 
   if (joined == nullptr) {
-    //type::Types couldn't be joined. Emit an error
+    // type::Types couldn't be joined. Emit an error
     ErrorLog::InconsistentArrayType(span);
-    type = Err;
+    type = type::Err;
     limit_to(StageRange::Nothing());
-  } else if (joined == Err) {
-    type = Err; // There were no valid types anywhere in the array
+  } else if (joined == type::Err) {
+    type = type::Err; // There were no valid types anywhere in the array
     limit_to(StageRange::Nothing());
   } else {
     type = Arr(joined, elems.size());
@@ -1520,17 +1530,17 @@ void ArrayType::Validate(Context *ctx) {
   HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(length);
   data_type->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+  HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(data_type);
 
-  type =Type_;
+  type = type::Type_;
 
   if (length->is<Hole>()) { return; }
   if (length->lvalue != Assign::Const || data_type->lvalue != Assign::Const) {
     lvalue = Assign::RVal;
   }
 
-  if (length->type != Int) {
+  if (length->type != type::Int) {
     ErrorLog::ArrayIndexType(span);
     limit_to(StageRange::NoEmitIR());
   }
@@ -1540,9 +1550,9 @@ void Case::Validate(Context *ctx) {
   STARTING_CHECK;
   for (auto & [ key, val ] : key_vals) {
     key->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+    HANDLE_CYCLIC_DEPENDENCIES;
     val->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+    HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(key);
     limit_to(val);
 
@@ -1556,16 +1566,16 @@ HANDLE_CYCLIC_DEPENDENCIES;
   std::unordered_map<const type::Type *, size_t> value_types;
 
   for (auto & [ key, val ] : key_vals) {
-    if (key->type == Err) {
-      key->type = Bool;
+    if (key->type == type::Err) {
+      key->type = type::Bool;
 
-    } else if (key->type != Bool) {
+    } else if (key->type != type::Bool) {
       ErrorLog::CaseLHSBool(span, key->span, key->type);
-      key->type = Bool;
+      key->type = type::Bool;
     }
 
-    if (val->type == Err) {
-      type = Err;
+    if (val->type == type::Err) {
+      type = type::Err;
       limit_to(StageRange::Nothing());
       return;
     }
@@ -1581,9 +1591,9 @@ HANDLE_CYCLIC_DEPENDENCIES;
     //
     // NOTE: These numbers were chosen somewhat arbitrarily.
 
-    size_t max_size = 0;
-    size_t min_size = key_vals.size();
-    const type::Type *max_type  = nullptr;
+    size_t max_size            = 0;
+    size_t min_size            = key_vals.size();
+    const type::Type *max_type = nullptr;
     for (const auto & [ key, val ] : value_types) {
       if (val > max_size) {
         max_size = val;
@@ -1599,7 +1609,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
       type = max_type;
     } else {
       ErrorLog::CaseTypeMismatch(this);
-      type = Err;
+      type = type::Err;
       limit_to(StageRange::Nothing());
     }
   } else {
@@ -1612,11 +1622,11 @@ void FunctionLiteral::Validate(Context *ctx) {
 
   lvalue = Assign::Const;
   return_type_expr->Validate(ctx);
-HANDLE_CYCLIC_DEPENDENCIES;
+  HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(return_type_expr);
 
   if (ctx->num_errors() > 0) {
-    type = Err;
+    type = type::Err;
     limit_to(StageRange::Nothing());
     return;
   }
@@ -1636,7 +1646,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
       ctx);
 
   if (rets.empty()) {
-    type = Err;
+    type = type::Err;
     limit_to(StageRange::Nothing());
     return;
   }
@@ -1646,15 +1656,15 @@ HANDLE_CYCLIC_DEPENDENCIES;
   // TODO must this really be undeclared?
   if (ret_type_val == IR::Val::None() /* TODO Error() */) {
     ErrorLog::IndeterminantType(return_type_expr.get());
-    type = Err;
+    type = type::Err;
     limit_to(StageRange::Nothing());
-  } else if (ret_type_val.type !=Type_) {
+  } else if (ret_type_val.type != type::Type_) {
     ctx->error_log_.NotAType(return_type_expr.get());
-    type = Err;
+    type = type::Err;
     limit_to(StageRange::Nothing());
     return;
-  } else if (std::get<const type::Type *>(ret_type_val.value) == Err) {
-    type = Err;
+  } else if (std::get<const type::Type *>(ret_type_val.value) == type::Err) {
+    type = type::Err;
     limit_to(StageRange::Nothing());
     return;
   }
@@ -1664,7 +1674,7 @@ HANDLE_CYCLIC_DEPENDENCIES;
     HANDLE_CYCLIC_DEPENDENCIES;
   }
 
-  // TODO poison on input Err?
+  // TODO poison on input type::Err?
 
   auto *ret_type    = std::get<const type::Type *>(ret_type_val.value);
   size_t num_inputs = inputs.size();
@@ -1717,13 +1727,13 @@ void ScopeNode::Validate(Context *ctx) {
 
   if (!scope_expr->type->is<type::Scope>()) {
     ErrorLog::InvalidScope(scope_expr->span, scope_expr->type);
-    type = Err;
+    type = type::Err;
     limit_to(StageRange::Nothing());
     return;
   }
 
   // TODO verify it uses the fields correctly
-  type = Void; // TODO can this evaluate to anything?
+  type = type::Void; // TODO can this evaluate to anything?
 }
 
 void ScopeLiteral::Validate(Context *ctx) {
@@ -1772,7 +1782,7 @@ void ScopeLiteral::Validate(Context *ctx) {
 void StructLiteral::Validate(Context *ctx) {
   STARTING_CHECK;
   lvalue = Assign::Const;
-  type   =Type_;
+  type   = type::Type_;
   for (auto &field : fields_) {
     if (field->type_expr) { field->type_expr->Validate(ctx); }
   }

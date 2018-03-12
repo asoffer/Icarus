@@ -27,7 +27,7 @@ main := void -> void {
   x.input()
   print x, " squared is ", x * x, "\n"
 
-  print "Real number to square: "
+  print "type::Real number to square: "
   y: real
   y.input()
   print y, " squared is ", y * y, "\n"

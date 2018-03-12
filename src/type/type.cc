@@ -6,6 +6,11 @@
 #include <unordered_map>
 
 namespace type {
+#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
+  Type *GlobalName = new Primitive(PrimType::EnumName);
+#include "../type/primitive.xmacro.h"
+#undef PRIMITIVE_MACRO
+
 // TODO better to hash pair of Array*
 static std::unordered_map<const Array *,
                           std::unordered_map<const Array *, IR::Func *>>

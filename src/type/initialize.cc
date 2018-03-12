@@ -5,7 +5,8 @@
 #include "../context.h"
 #include "../ir/func.h"
 
-void type::Array::EmitInit(IR::Val id_val) const {
+namespace type {
+void Array::EmitInit(IR::Val id_val) const {
   if (!fixed_length) {
     IR::Store(IR::Val::Int(0), IR::ArrayLength(id_val));
     IR::Store(IR::Malloc(data_type, IR::Val::Int(0)), IR::ArrayData(id_val));
@@ -53,9 +54,8 @@ void type::Array::EmitInit(IR::Val id_val) const {
   IR::Call(IR::Val::Func(init_func_), std::vector<IR::Val>{id_val}, {});
 }
 
-void type::Tuple::EmitInit(IR::Val) const { NOT_YET(); }
+void Tuple::EmitInit(IR::Val) const { NOT_YET(); }
 
-namespace type {
 void Primitive::EmitInit(IR::Val id_val) const {
   IR::Store(EmitInitialValue(), id_val);
 }

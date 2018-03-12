@@ -36,4 +36,14 @@ Identifier::Identifier(const TextSpan &id_span,
   token      = token_string;
   precedence = Language::precedence(Language::Operator::NotAnOperator);
 }
+
+CodeBlock::CodeBlock() {
+  lvalue = Assign::Const;
+  type   = type::Code;
+}
+
+CodeBlock::CodeBlock(std::string s) : content_(std::move(s)) {
+  lvalue = Assign::RVal;
+  type   = type::Code;
+}
 } // namespace AST

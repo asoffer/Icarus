@@ -6,11 +6,6 @@
 #include "nnt.h"
 #include "type/primitive.h"
 
-#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
- type::Type *GlobalName = new type::Primitive(type::PrimType::EnumName);
-#include "type/primitive.xmacro.h"
-#undef PRIMITIVE_MACRO
-
 // TODO audit every location where NNT::Invalid is returned to see if you need
 // to log an error.
 
@@ -67,8 +62,8 @@ NNT NextWord(SourceLocation &loc) {
 
   static std::unordered_map<std::string, IR::Val> Reserved{
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
-  {#name, IR::Val::Type(GlobalName)},
-#include "type/primitive.xmacro.h"
+  {#name, IR::Val::Type(type::GlobalName)},
+#include "../type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
       {"true", IR::Val::Bool(true)}, {"false", IR::Val::Bool(false)},
       {"null", IR::Val::NullPtr()},  {"ord", OrdFunc()},

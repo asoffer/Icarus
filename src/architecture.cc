@@ -46,7 +46,7 @@ size_t Architecture::alignment(const type::Type *t) const {
   } else if (t->is<type::Scope>()) {
     return 1;
   } else if (t->is<type::Variant>()) {
-    size_t alignment_val = this->alignment(Type_);
+    size_t alignment_val = this->alignment(type::Type_);
     for (const type::Type* type : t->as<type::Variant>().variants_) {
       alignment_val = std::max(alignment_val, this->alignment(type));
     }

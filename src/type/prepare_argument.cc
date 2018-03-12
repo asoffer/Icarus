@@ -51,7 +51,7 @@ IR::Val Enum::PrepareArgument(const Type *from, const IR::Val &val) const {
 IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val) const {
   if (this == from) { return val; }
   auto arg = IR::Alloca(this);
-  Type_->EmitAssign(Type_, IR::Val::Type(from), IR::VariantType(arg));
+  type::Type_->EmitAssign(Type_, IR::Val::Type(from), IR::VariantType(arg));
   // TODO this isn't exactly right because 'from' might not be the appropriate
   // type here.
   from->EmitAssign(from, val, IR::VariantValue(from, arg));

@@ -15,10 +15,10 @@ struct Enum;
 struct Pointer;
 struct Struct;
 struct Type;
+
+extern Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String;
 } // namespace type
 
-
-extern type::Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String;
 
 namespace AST {
 struct Expression;
@@ -110,21 +110,21 @@ struct Val {
   static Val GlobalAddr(u64 addr, const type::Type *t);
   static Val HeapAddr(void *addr, const type::Type *t);
   static Val StackAddr(u64 addr, const type::Type *t);
-  static Val Bool(bool b) { return Val(::Bool, b); }
-  static Val Char(char c) { return Val(::Char, c); }
-  static Val Real(double r) { return Val(::Real, r); }
-  static Val Int(i32 n) { return Val(::Int, n); }
+  static Val Bool(bool b) { return Val(type::Bool, b); }
+  static Val Char(char c) { return Val(type::Char, c); }
+  static Val Real(double r) { return Val(type::Real, r); }
+  static Val Int(i32 n) { return Val(type::Int, n); }
   static Val Enum(const type::Enum *enum_type, size_t integral_val);
-  static Val Type(const type::Type *t) { return Val(::Type_, t); }
+  static Val Type(const type::Type *t) { return Val(type::Type_, t); }
   static Val CodeBlock(AST::CodeBlock block);
-  static Val Func(::IR::Func *fn); // TODO deprecate?
+  static Val Func(IR::Func *fn); // TODO deprecate?
   static Val FnLit(AST::FunctionLiteral *fn);
   static Val GenFnLit(AST::GenericFunctionLiteral *fn);
   static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
-  static Val Void() { return Val(::Void, false); }
+  static Val Void() { return Val(type::Void, false); }
   static Val Null(const type::Type *t);
   static Val NullPtr();
-  static Val StrLit(std::string str) { return Val(::String, std::move(str)); }
+  static Val StrLit(std::string str) { return Val(type::String, std::move(str)); }
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);

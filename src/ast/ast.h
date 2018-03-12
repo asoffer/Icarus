@@ -14,7 +14,6 @@
 #include "../ir/val.h"
 #include "../operators.h"
 #include "../scope.h"
-#include "../type/all.h"
 #include "bound_constants.h"
 #include "dispatch.h"
 #include "expression.h"

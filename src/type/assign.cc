@@ -6,10 +6,11 @@
 
 // TODO destructor for previously held value.
 
-void type::Array::EmitAssign(const type::Type *from_type, IR::Val from,
+namespace type {
+void Array::EmitAssign(const Type *from_type, IR::Val from,
                        IR::Val to) const {
-  ASSERT_TYPE(type::Array, from_type);
-  auto *from_array_type = &from_type->as<type::Array>();
+  ASSERT_TYPE(Array, from_type);
+  auto *from_array_type = &from_type->as<Array>();
 
   auto *&fn = assign_fns_[from_array_type];
   if (fn == nullptr) {
@@ -77,17 +78,16 @@ void type::Array::EmitAssign(const type::Type *from_type, IR::Val from,
   IR::Call(IR::Val::Func(fn), {from, to}, {});
 }
 
-void type::Tuple::EmitAssign(const type::Type *, IR::Val, IR::Val) const {
+void Tuple::EmitAssign(const Type *, IR::Val, IR::Val) const {
   NOT_YET();
 }
 
-void type::Pointer::EmitAssign(const type::Type *from_type, IR::Val from,
+void Pointer::EmitAssign(const Type *from_type, IR::Val from,
                                IR::Val to) const {
   ASSERT_EQ(this, from_type);
   IR::Store(from, to);
 }
 
-namespace type {
 void Range::EmitAssign(const Type *, IR::Val, IR::Val) const { NOT_YET(); }
 void Slice::EmitAssign(const Type *, IR::Val, IR::Val) const { NOT_YET(); }
 void Scope::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
@@ -132,7 +132,7 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to) const {
   ASSERT_EQ(this, from_type);
   if (!assign_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func({this, Ptr(this)}, Void),
+        Func({this, Ptr(this)}, type::Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}}));
     assign_func = IR::Func::All.back().get();

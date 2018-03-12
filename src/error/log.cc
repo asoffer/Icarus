@@ -8,6 +8,7 @@
 #include "type/type.h"
 
 extern std::unordered_map<Source::Name, File *> source_map;
+extern type::Type *Err;
 
 using LineNum          = size_t;
 using FileToLineNumMap = std::unordered_map<Source::Name, std::vector<LineNum>>;
@@ -402,7 +403,7 @@ void CaseTypeMismatch(AST::Case *case_ptr, const type::Type *correct) {
 
     std::vector<TextSpan> locs;
     for (auto & [ key, val ] : case_ptr->key_vals) {
-      if (val->type == Err || val->type == correct) { continue; }
+      if (val->type == type::Err || val->type == correct) { continue; }
       locs.push_back(val->span);
     }
 

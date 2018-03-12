@@ -1,7 +1,7 @@
-Int := wrapper(int)
+type::Int := wrapper(int)
 
 main := void -> void {
-  x: Int
+  x: type::Int
   x.value = 3
   y: wrapper(char)
   y.value = ascii(65u)
@@ -12,7 +12,7 @@ main := void -> void {
   print y.value
   print wrapper(char) == wrapper(int)
   print y.value
-  print wrapper(int) == Int
+  print wrapper(int) == type::Int
   print y.value
 }
 

@@ -1,3 +1,4 @@
+#include "../type/enum.h"
 #include "ast/ast.h"
 #include "base/debug.h"
 #include "base/types.h"

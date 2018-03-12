@@ -11,8 +11,6 @@ template <> struct less<type::Struct> {
 } // namespace std
 
 namespace type {
-extern const Type *Void;
-
 static bool operator<(const Struct::Field &lhs, const Struct::Field &rhs) {
   if (lhs.name < rhs.name) { return true; }
   if (lhs.name > rhs.name) { return false; }

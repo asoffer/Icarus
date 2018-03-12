@@ -3,12 +3,13 @@
 #include "../context.h"
 #include "../ir/func.h"
 
-void type::Primitive::EmitRepr(IR::Val val) const {
+namespace type {
+void Primitive::EmitRepr(IR::Val val) const {
   switch (type_) {
-  case type::PrimType::Char: {
+  case PrimType::Char: {
     if (!repr_func_) {
       IR::Func::All.push_back(std::make_unique<IR::Func>(
-          type::Func(this, Void),
+          Func(this, Void),
           std::vector<std::pair<std::string, AST::Expression *>>{
               {"arg", nullptr}}));
       repr_func_ = IR::Func::All.back().get();
@@ -44,25 +45,25 @@ void type::Primitive::EmitRepr(IR::Val val) const {
     IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
   } break;
 
-  case type::PrimType::Bool:
-  case type::PrimType::Int:
-  case type::PrimType::Real:
-  case type::PrimType::Type:
-  case type::PrimType::String:
-  case type::PrimType::Code: IR::Print(val); break;
-  case type::PrimType::Void:
-  case type::PrimType::NullPtr:
-  case type::PrimType::EmptyArray:
-  case type::PrimType::Generic:
-  case type::PrimType::Err: NOT_YET();
-  case type::PrimType::Unknown: UNREACHABLE();
+  case PrimType::Bool:
+  case PrimType::Int:
+  case PrimType::Real:
+  case PrimType::Type:
+  case PrimType::String:
+  case PrimType::Code: IR::Print(val); break;
+  case PrimType::Void:
+  case PrimType::NullPtr:
+  case PrimType::EmptyArray:
+  case PrimType::Generic:
+  case PrimType::Err: NOT_YET();
+  case PrimType::Unknown: UNREACHABLE();
   }
 }
 
-void type::Array::EmitRepr(IR::Val val) const {
+void Array::EmitRepr(IR::Val val) const {
   if (!repr_func_) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        type::Func(this, Void),
+        Func(this, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}}));
     repr_func_       = IR::Func::All.back().get();
@@ -117,8 +118,7 @@ void type::Array::EmitRepr(IR::Val val) const {
   IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
 }
 
-void type::Tuple::EmitRepr(IR::Val) const { NOT_YET(); }
-namespace type {
+void Tuple::EmitRepr(IR::Val) const { NOT_YET(); }
 // TODO print something friendlier
 void Pointer::EmitRepr(IR::Val val) const { IR::Print(val); }
 void Enum::EmitRepr(IR::Val val) const { IR::Print(val); }

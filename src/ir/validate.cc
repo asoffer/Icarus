@@ -37,7 +37,7 @@ struct PropDB {
     const auto& entry_block = fn_->blocks_[0];
     for (size_t i = 0; i < entry_block.cmds_.size(); ++i) {
       const auto& cmd = entry_block.cmds_[i];
-      if (cmd.type == nullptr || cmd.type == Void) { continue; }
+      if (cmd.type == nullptr || cmd.type == type::Void) { continue; }
       MarkReferencesStale(entry_block,
                           CmdIndex{BlockIndex{0}, static_cast<i32>(i)});
     }

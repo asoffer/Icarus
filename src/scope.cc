@@ -85,7 +85,7 @@ Scope::AllDeclsWithId(const std::string &id, Context *ctx) {
     if (iter == scope_ptr->decls_.end()) { continue; }
     for (const auto &decl : iter->second) {
       decl->Validate(ctx);
-      (decl->type == Err ? matching_error_decls : matching_decls)
+      (decl->type == type::Err ? matching_error_decls : matching_decls)
           .push_back(decl);
     }
   }

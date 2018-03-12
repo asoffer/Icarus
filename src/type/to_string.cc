@@ -3,10 +3,11 @@
 #include "../ast/ast.h"
 #include <cstring>
 
-size_t type::Primitive::string_size() const {
+namespace type {
+size_t Primitive::string_size() const {
   switch (type_) {
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
-  case type::PrimType::EnumName:                                                     \
+  case PrimType::EnumName:                                                     \
     return sizeof(#name) - 1;
 #include "primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
@@ -14,10 +15,10 @@ size_t type::Primitive::string_size() const {
   }
 }
 
-char *type::Primitive::WriteTo(char *buf) const {
+char *Primitive::WriteTo(char *buf) const {
   switch (type_) {
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
-  case type::PrimType::EnumName:                                                     \
+  case PrimType::EnumName:                                                     \
     return std::strcpy(buf, #name) + string_size();
 #include "primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
@@ -34,19 +35,19 @@ static size_t NumDigits(size_t num) {
   return num_digits;
 }
 
-size_t type::Array::string_size() const {
+size_t Array::string_size() const {
   size_t result = 1 + (fixed_length ? NumDigits(len) : 2);
 
-  const type::Type *const *type_ptr_ptr = &data_type;
-  while ((*type_ptr_ptr)->is<type::Array>()) {
-    auto array_ptr = &(*type_ptr_ptr)->as<const type::Array>();
+  const Type *const *type_ptr_ptr = &data_type;
+  while ((*type_ptr_ptr)->is<Array>()) {
+    auto array_ptr = &(*type_ptr_ptr)->as<const Array>();
     result += 2 + ((array_ptr->fixed_length) ? NumDigits(array_ptr->len) : 2);
     type_ptr_ptr = &array_ptr->data_type;
   }
   return result + 3 + (*type_ptr_ptr)->string_size();
 }
 
-char *type::Array::WriteTo(char *buf) const {
+char *Array::WriteTo(char *buf) const {
   buf = std::strcpy(buf, "[") + 1;
   if (fixed_length) {
     buf = std::strcpy(buf, std::to_string(len).c_str()) + NumDigits(len);
@@ -54,9 +55,9 @@ char *type::Array::WriteTo(char *buf) const {
     buf = std::strcpy(buf, "--") + 2;
   }
 
-  const type::Type *const *type_ptr_ptr = &data_type;
-  while ((*type_ptr_ptr)->is<type::Array>()) {
-    auto array_ptr = &(*type_ptr_ptr)->as<const type::Array>();
+  const Type *const *type_ptr_ptr = &data_type;
+  while ((*type_ptr_ptr)->is<Array>()) {
+    auto array_ptr = &(*type_ptr_ptr)->as<const Array>();
 
     if (array_ptr->fixed_length) {
       buf = std::strcpy(buf, ", ") + 2;
@@ -73,7 +74,6 @@ char *type::Array::WriteTo(char *buf) const {
   return buf;
 }
 
-namespace type {
 size_t Struct::string_size() const {
   size_t acc = 0;
   for (const auto &field : fields_) { acc += field.type->string_size(); }
@@ -103,7 +103,7 @@ char* Enum::WriteTo(char *buf) const {
 
 size_t Pointer::string_size() const {
   return ((pointee->is<Struct>() || pointee->is<Primitive>() ||
-           pointee->is<type::Enum>() || pointee->is<type::Array>() ||
+           pointee->is<Enum>() || pointee->is<Array>() ||
            pointee->is<Pointer>())
               ? 1
               : 3) +
@@ -111,7 +111,7 @@ size_t Pointer::string_size() const {
 }
 char* Pointer::WriteTo(char *buf) const {
   if (pointee->is<Struct>() || pointee->is<Primitive>() ||
-      pointee->is<type::Enum>() || pointee->is<type::Array>() || pointee->is<Pointer>()) {
+      pointee->is<Enum>() || pointee->is<Array>() || pointee->is<Pointer>()) {
     buf = std::strcpy(buf, "*") + 1;
     buf = pointee->WriteTo(buf);
   } else {
@@ -175,8 +175,8 @@ size_t Variant::string_size() const {
   for (const Type *v : variants_) {
     result +=
         v->string_size() + (v->is<Struct>() || v->is<Primitive>() ||
-                                    v->is<type::Enum>() || v->is<Pointer>() ||
-                                    v->is<Function>() || v->is<type::Array>()
+                                    v->is<Enum>() || v->is<Pointer>() ||
+                                    v->is<Function>() || v->is<Array>()
                                 ? 0
                                 : 2);
   }
@@ -187,8 +187,8 @@ char *Variant::WriteTo(char *buf) const {
   auto iter = variants_.begin();
 
   if ((*iter)->is<Struct>() || (*iter)->is<Primitive>() ||
-      (*iter)->is<type::Enum>() || (*iter)->is<Pointer>() ||
-      (*iter)->is<Function>() || (*iter)->is<type::Array>()) {
+      (*iter)->is<Enum>() || (*iter)->is<Pointer>() ||
+      (*iter)->is<Function>() || (*iter)->is<Array>()) {
     buf = (*iter)->WriteTo(buf);
   } else {
     buf = std::strcpy(buf, "(") + 1;
@@ -200,8 +200,8 @@ char *Variant::WriteTo(char *buf) const {
   for (; iter != variants_.end(); ++iter) {
     buf = std::strcpy(buf, " | ") + 3;
     if ((*iter)->is<Struct>() || (*iter)->is<Primitive>() ||
-        (*iter)->is<type::Enum>() || (*iter)->is<Pointer>() ||
-        (*iter)->is<Function>() || (*iter)->is<type::Array>()) {
+        (*iter)->is<Enum>() || (*iter)->is<Pointer>() ||
+        (*iter)->is<Function>() || (*iter)->is<Array>()) {
       buf = (*iter)->WriteTo(buf);
     } else {
       buf = std::strcpy(buf, "(") + 1;
@@ -211,14 +211,13 @@ char *Variant::WriteTo(char *buf) const {
   }
   return buf;
 }
-} // namespace type
 
-size_t type::Tuple::string_size() const {
+size_t Tuple::string_size() const {
   size_t result = 2 * entries.size();
   for (const Type *entry : entries) { result += entry->string_size(); }
   return result;
 }
-char *type::Tuple::WriteTo(char *buf) const {
+char *Tuple::WriteTo(char *buf) const {
   buf = std::strcpy(buf, "(") + 1;
   auto iter = entries.begin();
   buf = (*iter)->WriteTo(buf);
@@ -231,7 +230,6 @@ char *type::Tuple::WriteTo(char *buf) const {
   return buf;
 }
 
-namespace type {
 size_t Range::string_size() const { return 7 + end_type->string_size(); }
 char *Range::WriteTo(char *buf) const {
   buf = std::strcpy(buf, "Range(") + 6;

@@ -36,7 +36,7 @@ ExprFn(AST::Expression *expr, const type::Type *input, Context *ctx = nullptr,
       result = expr->EmitIR(&context);
     }
 
-    if (expr->type != Void) {
+    if (expr->type != type::Void) {
       IR::SetReturn(IR::ReturnValue{0}, std::move(result));
     }
     IR::ReturnJump();
@@ -51,7 +51,7 @@ ExprFn(AST::Expression *expr, const type::Type *input, Context *ctx = nullptr,
 static std::unique_ptr<IR::Func> AssignmentFunction(const type::Type *from,
                                                     const type::Type *to) {
   auto assign_func = std::make_unique<IR::Func>(
-      Func({Ptr(from), Ptr(to)}, Void),
+      Func({Ptr(from), Ptr(to)}, type::Void),
       std::vector<std::pair<std::string, AST::Expression *>>{{"from", nullptr},
                                                              {"to", nullptr}});
   CURRENT_FUNC(assign_func.get()) {
@@ -123,7 +123,7 @@ BlockIndex ExecContext::ExecuteBlock() {
   auto cmd_iter = current_block().cmds_.begin();
   do {
     result = ExecuteCmd(*cmd_iter);
-    if (cmd_iter->type != nullptr && cmd_iter->type != Void) {
+    if (cmd_iter->type != nullptr && cmd_iter->type != type::Void) {
       ASSERT_EQ(result.type, cmd_iter->type);
       this->reg(cmd_iter->result) = result;
     }
@@ -187,10 +187,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   }
   case Op::Array: return Array(resolved[0], resolved[1]);
   case Op::Cast:
-    if (resolved[1].type == Int) {
-      if (std::get<const type::Type *>(resolved[0].value) == Int) {
+    if (resolved[1].type == type::Int) {
+      if (std::get<const type::Type *>(resolved[0].value) == type::Int) {
         return resolved[1];
-      } else if (std::get<const type::Type *>(resolved[0].value) == Real) {
+      } else if (std::get<const type::Type *>(resolved[0].value) == type::Real) {
         return IR::Val::Real(
             static_cast<double>(std::get<i32>(resolved[1].value)));
       } else {
@@ -311,12 +311,12 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   if (cmd.type == lang_type) {                                                 \
     return IR::Val::ctor(*static_cast<cpp_type *>(addr.as_heap));              \
   }
-      LOAD_FROM_HEAP(Bool, Bool, bool);
-      LOAD_FROM_HEAP(Char, Char, char);
-      LOAD_FROM_HEAP(Int, Int, i32);
-      LOAD_FROM_HEAP(Real, Real, double);
-      LOAD_FROM_HEAP(Code, CodeBlock, AST::CodeBlock);
-      LOAD_FROM_HEAP(Type_, Type, const type::Type *);
+      LOAD_FROM_HEAP(type::Bool, Bool, bool);
+      LOAD_FROM_HEAP(type::Char, Char, char);
+      LOAD_FROM_HEAP(type::Int, Int, i32);
+      LOAD_FROM_HEAP(type::Real, Real, double);
+      LOAD_FROM_HEAP(type::Code, CodeBlock, AST::CodeBlock);
+      LOAD_FROM_HEAP(type::Type_, Type, const type::Type *);
       if (cmd.type->is<type::Pointer>()) {
         return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
                              cmd.type->as<type::Pointer>().pointee);
@@ -333,13 +333,13 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   if (cmd.type == lang_type) {                                                 \
     return IR::Val::ctor(stack_.Load<cpp_type>(addr.as_stack));                \
   }
-      LOAD_FROM_STACK(Bool, Bool, bool);
-      LOAD_FROM_STACK(Char, Char, char);
-      LOAD_FROM_STACK(Int, Int, i32);
-      LOAD_FROM_STACK(Real, Real, double);
-      LOAD_FROM_STACK(Code, CodeBlock, AST::CodeBlock);
-      LOAD_FROM_STACK(String, StrLit, std::string);
-      LOAD_FROM_STACK(Type_, Type, const type::Type *);
+      LOAD_FROM_STACK(type::Bool, Bool, bool);
+      LOAD_FROM_STACK(type::Char, Char, char);
+      LOAD_FROM_STACK(type::Int, Int, i32);
+      LOAD_FROM_STACK(type::Real, Real, double);
+      LOAD_FROM_STACK(type::Code, CodeBlock, AST::CodeBlock);
+      LOAD_FROM_STACK(type::String, StrLit, std::string);
+      LOAD_FROM_STACK(type::Type_, Type, const type::Type *);
       if (cmd.type->is<type::Pointer>()) {
         switch (addr.kind) {
         case Addr::Kind::Stack:
@@ -373,24 +373,24 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       global_vals[addr.as_global] = resolved[0];
       return IR::Val::None();
     case Addr::Kind::Stack:
-      if (resolved[0].type == Bool) {
+      if (resolved[0].type == type::Bool) {
         stack_.Store(std::get<bool>(resolved[0].value), addr.as_stack);
-      } else if (resolved[0].type == Char) {
+      } else if (resolved[0].type == type::Char) {
         stack_.Store(std::get<char>(resolved[0].value), addr.as_stack);
-      } else if (resolved[0].type == Int) {
+      } else if (resolved[0].type == type::Int) {
         stack_.Store(std::get<i32>(resolved[0].value), addr.as_stack);
-      } else if (resolved[0].type == Real) {
+      } else if (resolved[0].type == type::Real) {
         stack_.Store(std::get<double>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type->is<type::Pointer>()) {
         stack_.Store(std::get<Addr>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type->is<type::Enum>()) {
         stack_.Store(std::get<EnumVal>(resolved[0].value).value, addr.as_stack);
-      } else if (resolved[0].type ==Type_) {
+      } else if (resolved[0].type ==type::Type_) {
         stack_.Store(std::get<const type::Type *>(resolved[0].value), addr.as_stack);
-      } else if (resolved[0].type == Code) {
+      } else if (resolved[0].type == type::Code) {
         stack_.Store(std::get<AST::CodeBlock>(resolved[0].value),
                      addr.as_stack);
-      } else if (resolved[0].type == String) {
+      } else if (resolved[0].type == type::String) {
         stack_.Store(std::get<std::string>(resolved[0].value), addr.as_stack);
       } else {
         NOT_YET("Don't know how to store that: args = ", resolved);
@@ -398,23 +398,23 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 
       return IR::Val::None();
     case Addr::Kind::Heap:
-      if (resolved[0].type == Bool) {
+      if (resolved[0].type == type::Bool) {
         *static_cast<bool *>(addr.as_heap) = std::get<bool>(resolved[0].value);
-      } else if (resolved[0].type == Char) {
+      } else if (resolved[0].type == type::Char) {
         *static_cast<char *>(addr.as_heap) = std::get<char>(resolved[0].value);
-      } else if (resolved[0].type == Int) {
+      } else if (resolved[0].type == type::Int) {
         *static_cast<i32 *>(addr.as_heap) = std::get<i32>(resolved[0].value);
-      } else if (resolved[0].type == Real) {
+      } else if (resolved[0].type == type::Real) {
         *static_cast<double *>(addr.as_heap) =
             std::get<double>(resolved[0].value);
       } else if (resolved[0].type->is<type::Pointer>()) {
         *static_cast<Addr *>(addr.as_heap) = std::get<Addr>(resolved[0].value);
-      } else if (resolved[0].type ==Type_) {
+      } else if (resolved[0].type ==type::Type_) {
         *static_cast<const type::Type **>(addr.as_heap) =
             std::get<const type::Type *>(resolved[0].value);
       } else if (resolved[0].type->is<type::Enum>()) {
         NOT_YET();
-      } else if (resolved[0].type == Code) {
+      } else if (resolved[0].type == type::Code) {
         NOT_YET();
       } else {
         NOT_YET("Don't know how to store that: args = ", resolved);
@@ -506,7 +506,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           resolved[i];
     }
 
-    ASSERT_EQ(cmd.args.back().type, ::Code);
+    ASSERT_EQ(cmd.args.back().type, ::type::Code);
     const auto &code_block = std::get<AST::CodeBlock>(cmd.args.back().value);
     auto copied_block      = code_block;
     std::get<AST::Statements>(copied_block.content_)
@@ -515,11 +515,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     return IR::Val::CodeBlock(std::move(copied_block));
   } break;
   case Op::VariantType:
-    return Val::Addr(std::get<Addr>(resolved[0].value),Type_);
+    return Val::Addr(std::get<Addr>(resolved[0].value),type::Type_);
   case Op::VariantValue: {
-    auto bytes = Architecture::InterprettingMachine().bytes(Ptr(Type_));
+    auto bytes = Architecture::InterprettingMachine().bytes(Ptr(type::Type_));
     auto bytes_fwd =
-        Architecture::InterprettingMachine().MoveForwardToAlignment(Ptr(Type_),
+        Architecture::InterprettingMachine().MoveForwardToAlignment(Ptr(type::Type_),
                                                                     bytes);
     ASSERT(std::get_if<Addr>(&resolved[0].value) != nullptr,
            "resolved[0] = " + resolved[0].to_string());
@@ -551,7 +551,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     free(std::get<Addr>(resolved[0].value).as_heap);
     return Val::None();
   case Op::ArrayLength:
-    return IR::Val::Addr(std::get<Addr>(resolved[0].value), Int);
+    return IR::Val::Addr(std::get<Addr>(resolved[0].value), type::Int);
   case Op::ArrayData:
     switch (std::get<Addr>(resolved[0].value).kind) {
     case Addr::Kind::Null: UNREACHABLE();
@@ -559,14 +559,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Addr::Kind::Stack:
       return IR::Val::StackAddr(
           std::get<Addr>(resolved[0].value).as_stack +
-              Architecture::InterprettingMachine().bytes(Int),
+              Architecture::InterprettingMachine().bytes(type::Int),
           cmd.type->as<type::Pointer>().pointee);
 
     case Addr::Kind::Heap:
       return IR::Val::HeapAddr(
           static_cast<void *>(
               static_cast<u8 *>(std::get<Addr>(resolved[0].value).as_heap) +
-              Architecture::InterprettingMachine().bytes(Int)),
+              Architecture::InterprettingMachine().bytes(type::Int)),
           cmd.type->as<type::Pointer>().pointee);
     }
     break;
@@ -581,7 +581,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 
 void ReplEval(AST::Expression *expr) {
   auto fn = std::make_unique<IR::Func>(
-      Func(Void, Void),
+      type::Func(type::Void, type::Void),
       std::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
@@ -592,7 +592,7 @@ void ReplEval(AST::Expression *expr) {
       return;
     }
 
-    if (expr->type != Void) { expr->type->EmitRepr(expr_val); }
+    if (expr->type != type::Void) { expr->type->EmitRepr(expr_val); }
     IR::ReturnJump();
   }
 
@@ -604,14 +604,14 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr) {
   IR::ExecContext exec_context;
   // TODO wire through errors. Currently we just return IR::Val::None() if there
   // were errors
-  auto fn = ExprFn(expr, Void);
+  auto fn = ExprFn(expr, type::Void);
   return Execute(fn.get(), {}, &exec_context);
 }
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
   IR::ExecContext exec_context;
   // TODO wire through errors.
-  auto fn = ExprFn(expr, Void, ctx);
+  auto fn = ExprFn(expr, type::Void, ctx);
   if (ctx->num_errors() == 0) {
     return Execute(fn.get(), {}, &exec_context);
   } else {

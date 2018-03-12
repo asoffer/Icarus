@@ -3,7 +3,8 @@
 #include "../ast/ast.h"
 #include "../ir/func.h"
 
-IR::Val type::Array::EmitInitialValue() const {
+namespace type {
+IR::Val Array::EmitInitialValue() const {
   auto current_block   = IR::Block::Current;
   IR::Block::Current   = IR::Func::Current->entry();
   auto temp_allocation = IR::Alloca(this);
@@ -14,9 +15,8 @@ IR::Val type::Array::EmitInitialValue() const {
   return temp_allocation;
 }
 
-IR::Val type::Tuple::EmitInitialValue() const { NOT_YET(); }
+IR::Val Tuple::EmitInitialValue() const { NOT_YET(); }
 
-namespace type {
 IR::Val Pointer::EmitInitialValue() const { return IR::Val::Null(this); }
 IR::Val Function::EmitInitialValue() const { return IR::Val::Func(nullptr); }
 IR::Val Range::EmitInitialValue() const { NOT_YET(); }

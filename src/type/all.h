@@ -16,9 +16,6 @@ struct Variant;
 } // namespace type
 
 
-extern type::Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_,
-    *Void, *NullPtr, *String, *EmptyArray, *Generic;
-
 #include "../ast/ast.h"
 #include "../base/types.h"
 

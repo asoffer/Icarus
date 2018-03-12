@@ -30,7 +30,7 @@ static void ForEachExpr(AST::Expression *expr,
 
 IR::Val ErrorFunc() {
   static IR::Func *error_func_ = []() {
-    auto fn = new IR::Func(Func(String, Code), {{"", nullptr}});
+    auto fn = new IR::Func(Func(type::String, type::Code), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       // TODO
@@ -45,7 +45,7 @@ IR::Val ErrorFunc() {
 
 IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
-    auto fn = new IR::Func(Func(Int, Char), {{"", nullptr}});
+    auto fn = new IR::Func(Func(type::Int, type::Char), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
@@ -59,7 +59,7 @@ IR::Val AsciiFunc() {
 
 IR::Val OrdFunc() {
   static IR::Func *ord_func_ = []() {
-    auto fn = new IR::Func(Func(Char, Int), {{"", nullptr}});
+    auto fn = new IR::Func(Func(type::Char, type::Int), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));
@@ -111,7 +111,7 @@ static IR::Val EmitVariantMatch(const IR::Val &needle,
     IR::UncondJump(landing);
 
     IR::Block::Current = landing;
-    auto phi           = IR::Phi(Bool);
+    auto phi           = IR::Phi(type::Bool);
     IR::Func::Current->SetArgs(phi, std::move(phi_args));
 
     return IR::Func::Current->Command(phi).reg();
@@ -356,7 +356,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
         init_vals.push_back(
             IR::Index(decl->container->EmitLVal(ctx), IR::Val::Int(0)));
 
-      } else if (decl->container->type ==Type_) {
+      } else if (decl->container->type ==type::Type_) {
         // TODO this conditional check on the line above is wrong
         IR::Val container_val = Evaluate(decl->container.get())[0];
         if (const type::Type *t = std::get<const type::Type *>(container_val.value);
@@ -377,7 +377,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
   { // Phi block
     IR::Block::Current = phi;
     for (auto &decl : iterators) {
-      if (decl->container->type ==Type_) {
+      if (decl->container->type ==type::Type_) {
         IR::Val container_val = Evaluate(decl->container.get())[0];
         if (auto *t = std::get<const type::Type *>(container_val.value);
             t->is<type::Enum>()) {
@@ -404,9 +404,9 @@ IR::Val AST::For::EmitIR(Context *ctx) {
     IR::Block::Current = incr;
     for (auto iter : phis) {
       auto phi_reg = IR::Func::Current->Command(iter).reg();
-      if (phi_reg.type == Int) {
+      if (phi_reg.type == type::Int) {
         incr_vals.push_back(IR::Add(phi_reg, IR::Val::Int(1)));
-      } else if (phi_reg.type == Char) {
+      } else if (phi_reg.type == type::Char) {
         incr_vals.push_back(IR::Add(phi_reg, IR::Val::Char(1)));
       } else if (phi_reg.type->is<type::Enum>()) {
         incr_vals.push_back(
@@ -451,7 +451,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
         cmp              = IR::Ne(
             reg, IR::Index(decl->container->EmitLVal(ctx),
                            IR::Val::Int(static_cast<i32>(array_type->len))));
-      } else if (decl->container->type ==Type_) {
+      } else if (decl->container->type ==type::Type_) {
         IR::Val container_val = Evaluate(decl->container.get())[0];
         if (auto *t = std::get<const type::Type *>(container_val.value);
             t->is<type::Enum>()) {
@@ -648,7 +648,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
   }
   case Language::Operator::Generate: {
     auto val = Evaluate(operand.get(), ctx) AT(0);
-    ASSERT_EQ(val.type, Code);
+    ASSERT_EQ(val.type, type::Code);
     auto block = std::get<AST::CodeBlock>(val.value);
     if (auto *err = std::get_if<std::string>(&block.content_)) {
       ctx->error_log_.UserDefinedError(*err);
@@ -739,7 +739,7 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
 
     IR::Block::Current = land_block;
 
-    auto phi = IR::Phi(Bool);
+    auto phi = IR::Phi(type::Bool);
     IR::Func::Current->SetArgs(phi, {IR::Val::Block(lhs_end_block),
                                      IR::Val::Bool(true),
                                      IR::Val::Block(rhs_end_block), rhs_val});
@@ -766,7 +766,7 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
 
     IR::Block::Current = land_block;
 
-    auto phi = IR::Phi(Bool);
+    auto phi = IR::Phi(type::Bool);
     IR::Func::Current->SetArgs(phi, {IR::Val::Block(lhs_end_block),
                                      IR::Val::Bool(false),
                                      IR::Val::Block(rhs_end_block), rhs_val});
@@ -841,7 +841,7 @@ IR::Val AST::ChainOp::EmitIR(Context *ctx) {
       val = IR::And(std::move(val), (*iter)->EmitIR(ctx));
     }
     return val;
-  } else if (ops[0] == Language::Operator::Or && type ==Type_) {
+  } else if (ops[0] == Language::Operator::Or && type ==type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
     std::vector<IR::Val> args;
@@ -871,7 +871,7 @@ IR::Val AST::ChainOp::EmitIR(Context *ctx) {
     IR::UncondJump(land_block);
 
     IR::Block::Current = land_block;
-    auto phi           = IR::Phi(Bool);
+    auto phi           = IR::Phi(type::Bool);
     IR::Func::Current->SetArgs(phi, std::move(phi_args));
     return IR::Func::Current->Command(phi).reg();
 
@@ -909,7 +909,7 @@ IR::Val AST::ChainOp::EmitIR(Context *ctx) {
       IR::UncondJump(land_block);
 
       IR::Block::Current = land_block;
-      auto phi           = IR::Phi(Bool);
+      auto phi           = IR::Phi(type::Bool);
       IR::Func::Current->SetArgs(phi, std::move(phi_args));
       return IR::Func::Current->Command(phi).reg();
     }
@@ -929,7 +929,7 @@ IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
   stage_range_.low = ThisStage();
   if (stage_range_.high < ThisStage()) { return IR::Val::None(); }
 
-  if (type == Err) { return IR::Val::None(); }
+  if (type == type::Err) { return IR::Val::None(); }
 
   if (ir_func_ == nullptr) {
     std::vector<std::pair<std::string, AST::Expression *>> args;

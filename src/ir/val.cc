@@ -4,16 +4,19 @@
 
 #include "../ast/ast.h"
 #include "../type/enum.h"
+#include "../type/function.h"
 #include "../type/pointer.h"
 #include "../type/struct.h"
 #include "func.h"
 
+extern type::Type *NullPtr;
+
 namespace IR {
 Val Val::CodeBlock(AST::CodeBlock block) {
-  return Val(::Code, std::move(block));
+  return Val(type::Code, std::move(block));
 }
 
-Val Val::Struct() { return Val(Type_, new type::Struct); }
+Val Val::Struct() { return Val(type::Type_, new type::Struct); }
 
 Val Val::Addr(IR::Addr addr, const type::Type *t) { return Val(Ptr(t), addr); }
 
@@ -49,11 +52,11 @@ Val Val::Enum(const type::Enum *enum_type, size_t integral_val) {
 
 Val Val::FnLit(AST::FunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::GenFnLit(AST::GenericFunctionLiteral *fn) { return Val(fn->type, fn); }
-Val Val::Func(::IR::Func *fn) { return Val(fn->ir_type, fn); }
+Val Val::Func(IR::Func *fn) { return Val(fn->ir_type, fn); }
 Val Val::Null(const type::Type *t) {
   return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0});
 }
-Val Val::NullPtr() { return Val(::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
+Val Val::NullPtr() { return Val(type::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
 
 static std::string Escaped(const std::string& s) {
   std::stringstream ss;
@@ -83,7 +86,7 @@ std::string Val::to_string() const {
           },
           [](IR::Addr addr) -> std::string { return addr.to_string(); },
           [this](bool b) -> std::string {
-            // Bool is used to represent -- if the type is missing.
+            // type::Bool is used to represent -- if the type is missing.
             return type ? (b ? "true" : "false") : "--";
           },
           [](char c) -> std::string {

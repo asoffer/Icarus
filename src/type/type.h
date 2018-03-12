@@ -24,7 +24,7 @@
   virtual void EmitInit(IR::Val id_val) const ENDING;                          \
   virtual void EmitDestroy(IR::Val id_val) const ENDING;                       \
   virtual IR::Val EmitInitialValue() const ENDING;                             \
-  virtual IR::Val PrepareArgument(const type::Type *t, const IR::Val &val)     \
+  virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val)     \
       const ENDING;                                                            \
   virtual void EmitRepr(IR::Val id_val) const ENDING
 
@@ -54,6 +54,8 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
 void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
                   IR::Val to_var);
 
+extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Void,
+    *NullPtr, *String, *EmptyArray, *Generic;
 } // namespace type
 
 #undef ENDING

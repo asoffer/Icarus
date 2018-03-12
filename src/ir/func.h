@@ -102,6 +102,6 @@ struct FuncResetter {
 } // namespace internal 
 } // namespace IR
 
-#define CURRENT_FUNC(fn) if (::IR::internal::FuncResetter resetter(fn); true)
+#define CURRENT_FUNC(fn) if (IR::internal::FuncResetter resetter(fn); true)
 
 #endif // ICARUS_IR_FUNC_H

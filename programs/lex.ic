@@ -5,7 +5,7 @@ NodeType := enum {
   Identifier
   Number
   Unop
-  Unknown
+  type::Unknown
 }
 
 main := void -> void { 
@@ -17,7 +17,7 @@ main := void -> void {
     print case {
       c'IsAlphaOrUnderscore  =>  IdentifierFn(&f)
       c == `0                =>  ZeroInitiatedNumber(&f)
-      else                   =>  NodeType.Unknown
+      else                   =>  NodeType.type::Unknown
     }, `\n
     c = (&f)'Next
   }
@@ -39,7 +39,7 @@ ZeroInitiatedNumber := (f: &File) -> NodeType {
     c == `d    =>  f'DecimalNumber
     c == `x    =>  f'HexadecimalNumber
     c'IsDigit  =>  f'DecimalNumber
-    else       =>  NodeType.Unknown
+    else       =>  NodeType.type::Unknown
   }
 }
 
