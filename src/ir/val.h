@@ -97,10 +97,10 @@ template <> struct hash<IR::CmdIndex> {
 namespace IR {
 struct Val {
   const type::Type *type = nullptr;
-  std::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32,
+  std::variant<Register, ReturnValue,IR::Addr, bool, char, double, i32,
                EnumVal, const type::Type *, type::Struct *,
                AST::GenericFunctionLiteral *, AST::FunctionLiteral *,
-               ::IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
+              IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
                AST::Expression *, BlockIndex, std::string>
       value{false};
 

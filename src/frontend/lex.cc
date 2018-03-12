@@ -594,6 +594,12 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
       span.finish = loc.cursor;
       return NNT(span, ":=", Language::op_b);
 
+    } else if (*loc == '?') {
+      loc.Increment();
+      // TODO does this make more sense as a right unary operator?
+      span.finish = loc.cursor;
+      return NNT(span, ":?", Language::op_l);
+
     } else if (*loc == ':') {
       loc.Increment();
 

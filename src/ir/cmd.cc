@@ -75,7 +75,7 @@ Val Field(Val v, size_t n) {
   return cmd.reg()
 
 Val Malloc(const type::Type *t, Val v) {
-  ASSERT_EQ(v.type, ::type::Int);
+  ASSERT_EQ(v.type,type::Int);
   MAKE_AND_RETURN(type::Ptr(t), Op::Malloc);
 }
 
@@ -127,7 +127,7 @@ void InsertField(Val struct_type, std::string field_name, Val type,
 }
 
 Val Alloca(const type::Type *t) {
-  ASSERT_NE(t, ::type::Void);
+  ASSERT_NE(t,type::Void);
   Cmd cmd(type::Ptr(t), Op::Alloca, {});
   Func::Current->block(Func::Current->entry()).cmds_.push_back(std::move(cmd));
   return cmd.reg();
@@ -182,7 +182,7 @@ void Store(Val v1, Val v2) {
 
 Val PtrIncr(Val v1, Val v2) {
   ASSERT_TYPE(type::Pointer, v1.type);
-  ASSERT_EQ(v2.type, ::type::Int);
+  ASSERT_EQ(v2.type,type::Int);
   MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
 
@@ -312,7 +312,7 @@ Val Array(Val v1, Val v2) {
 
 Val Index(Val v1, Val v2) {
   ASSERT_TYPE(type::Pointer, v1.type);
-  ASSERT_EQ(v2.type, ::type::Int);
+  ASSERT_EQ(v2.type,type::Int);
   auto *array_type = &v1.type->as<type::Pointer>().pointee->as<type::Array>();
   IR::Val ptr = array_type->fixed_length ? v1 : Load(ArrayData(v1));
   ptr.type    = type::Ptr(array_type->data_type);

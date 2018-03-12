@@ -506,7 +506,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           resolved[i];
     }
 
-    ASSERT_EQ(cmd.args.back().type, ::type::Code);
+    ASSERT_EQ(cmd.args.back().type, type::Code);
     const auto &code_block = std::get<AST::CodeBlock>(cmd.args.back().value);
     auto copied_block      = code_block;
     std::get<AST::Statements>(copied_block.content_)

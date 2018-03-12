@@ -12,7 +12,7 @@ TokenNode::TokenNode(const TextSpan &span, std::string str)
     op = Language::Operator::name;                                             \
     return;                                                                    \
   }
-#include "config/operator.conf"
+#include "../frontend/operators.xmacro.h"
 #undef OPERATOR_MACRO
   op = Language::Operator::NotAnOperator;
 }

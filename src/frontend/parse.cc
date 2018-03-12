@@ -34,7 +34,7 @@ size_t precedence(Operator op) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
   case Operator::name:                                                         \
     return (((prec) << 2) + (assoc));
-#include "config/operator.conf"
+#include "operators.xmacro.h"
 #undef OPERATOR_MACRO
   default: UNREACHABLE();
   }
@@ -160,6 +160,7 @@ BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
                    {"-", {Language::Operator::Sub, false}},
                    {"!", {Language::Operator::Not, false}},
                    {"@", {Language::Operator::At, false}},
+                   {":?", {Language::Operator::TypeOf, false}},
                    {"$", {Language::Operator::Eval, false}}};
     auto iter   = UnopMap.find(tk);
     ASSERT(iter != UnopMap.end(),

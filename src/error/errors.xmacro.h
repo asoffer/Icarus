@@ -24,8 +24,9 @@ MAKE_LOG_ERROR(TabInCharacterLiteral, "Founda tab in your character-literal. "
 // TODO lexing things like 1..2 (as a range, but not 1...2 as 1..(.2))
 MAKE_LOG_ERROR(TooManyDots, "There are too many consecutive period (.) "
                             "characters. Did you mean just \"..\"?")
-MAKE_LOG_ERROR(InvalidCharacterQuestionMark,
-               "Question marks (?) are not valid Icarus syntax.")
+MAKE_LOG_ERROR(InvalidCharacterQuestionMark, "Question mark characters are not "
+                                             "valid syntax by themselves. Did "
+                                             "you mean \":?\"?")
 MAKE_LOG_ERROR(InvalidCharacterTilde, "Tildes (~) are not valid Icarus syntax.")
 MAKE_LOG_ERROR(
     NonWhitespaceAfterNewlineEscape,

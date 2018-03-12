@@ -1209,6 +1209,10 @@ void Unop::Validate(Context *ctx) {
   }
 
   switch (op) {
+  case Operator::TypeOf:
+    type   = type::Type_;
+    lvalue = Assign::Const;
+    break;
   case Operator::Eval: type = operand->type; break;
   case Operator::Require: type = type::Void; break;
   case Operator::Generate: type = type::Void; break;

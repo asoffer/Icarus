@@ -628,6 +628,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
     IR::ReturnJump();
     return IR::Val::None();
   }
+  case Language::Operator::TypeOf: return IR::Val::Type(operand->type);
   case Language::Operator::Print: {
     ForEachExpr(operand.get(), [&ctx](size_t, AST::Expression *expr) {
       if (expr->type->is<type::Primitive>() || expr->type->is<type::Pointer>()) {

@@ -4,7 +4,7 @@
 namespace Language {
 enum class Operator {
 #define OPERATOR_MACRO(name, symbol, prec, assoc) name,
-#include "config/operator.conf"
+#include "frontend/operators.xmacro.h"
 #undef OPERATOR_MACRO
 };
 } // namespace Language
