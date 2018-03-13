@@ -741,7 +741,7 @@ void Binop::Validate(Context *ctx) {
     } else {
       type = type::Err;
       // TODO could be bool or enum.
-      ErrorLog::XorEqNeedsBool(span);
+      ctx->error_log_.XorEqNeedsBool(span);
       limit_to(StageRange::Nothing());
       return;
     }
@@ -755,7 +755,7 @@ void Binop::Validate(Context *ctx) {
     } else {
       type = type::Err;
       // TODO could be bool or enum.
-      ErrorLog::AndEqNeedsBool(span);
+      ctx->error_log_.AndEqNeedsBool(span);
       limit_to(StageRange::Nothing());
       return;
     }
@@ -769,7 +769,7 @@ void Binop::Validate(Context *ctx) {
     } else {
       type = type::Err;
       // TODO could be bool or enum.
-      ErrorLog::OrEqNeedsBool(span);
+      ctx->error_log_.OrEqNeedsBool(span);
       limit_to(StageRange::Nothing());
       return;
     }
@@ -847,7 +847,7 @@ void Binop::Validate(Context *ctx) {
 
       } else {
         type = type::Err;
-        ErrorLog::NonComposableFunctions(span);
+        ctx->error_log_.NonComposableFunctions(span);
         limit_to(StageRange::Nothing());
         return;
       }
@@ -873,13 +873,13 @@ void Binop::Validate(Context *ctx) {
   case Operator::Arrow: {
     if (lhs->type != type::Type_) {
       type = type::Err;
-      ErrorLog::NonTypeFunctionInput(span);
+      ctx->error_log_.NonTypeFunctionInput(span);
       limit_to(StageRange::Nothing());
       return;
     }
     if (rhs->type != type::Type_) {
       type = type::Err;
-      ErrorLog::NonTypeFunctionOutput(span);
+      ctx->error_log_.NonTypeFunctionOutput(span);
       limit_to(StageRange::Nothing());
       return;
     }
@@ -1159,7 +1159,7 @@ void InDecl::Validate(Context *ctx) {
   if (container->type == type::Void) {
     type             = type::Err;
     identifier->type = type::Err;
-    ErrorLog::TypeIteration(span);
+    ctx->error_log_.TypeIteration(span);
     limit_to(StageRange::Nothing());
     return;
   }
@@ -1178,7 +1178,7 @@ void InDecl::Validate(Context *ctx) {
     if (t->is<type::Enum>()) { type = t; }
 
   } else {
-    ErrorLog::IndeterminantType(span);
+    ctx->error_log_.IndeterminantType(span);
     type = type::Err;
     limit_to(StageRange::Nothing());
   }
@@ -1515,7 +1515,7 @@ void ArrayLiteral::Validate(Context *ctx) {
 
   if (joined == nullptr) {
     // type::Types couldn't be joined. Emit an error
-    ErrorLog::InconsistentArrayType(span);
+    ctx->error_log_.InconsistentArrayType(span);
     type = type::Err;
     limit_to(StageRange::Nothing());
   } else if (joined == type::Err) {
@@ -1545,7 +1545,7 @@ void ArrayType::Validate(Context *ctx) {
   }
 
   if (length->type != type::Int) {
-    ErrorLog::ArrayIndexType(span);
+    ctx->error_log_.ArrayIndexType(span);
     limit_to(StageRange::NoEmitIR());
   }
 }
@@ -1659,7 +1659,7 @@ void FunctionLiteral::Validate(Context *ctx) {
 
   // TODO must this really be undeclared?
   if (ret_type_val == IR::Val::None() /* TODO Error() */) {
-    ErrorLog::IndeterminantType(return_type_expr.get());
+    ctx->error_log_.IndeterminantType(return_type_expr->span);
     type = type::Err;
     limit_to(StageRange::Nothing());
   } else if (ret_type_val.type != type::Type_) {
@@ -1699,7 +1699,7 @@ void For::Validate(Context *ctx) {
   limit_to(statements);
 }
 
-void Jump::Validate(Context *) {
+void Jump::Validate(Context *ctx) {
   STAGE_CHECK;
   // TODO made this slightly wrong
   auto scope_ptr = scope_;
@@ -1711,7 +1711,7 @@ void Jump::Validate(Context *) {
     }
     scope_ptr = exec_scope_ptr->parent;
   }
-  ErrorLog::JumpOutsideLoop(span);
+  ctx->error_log_.JumpOutsideLoop(span);
   limit_to(StageRange::NoEmitIR());
 }
 

@@ -71,3 +71,21 @@ MAKE_LOG_ERROR(InferringHole,
                "Attempting to infer the type of an uninitialized value")
 MAKE_LOG_ERROR(UninitializedConstant,
                "Attempting to define a constant with an uninitialized value.")
+MAKE_LOG_ERROR(NonComposableFunctions, "Functions cannot be composed.")
+
+// TODO better text here
+MAKE_LOG_ERROR(NonTypeFunctionInput, "From-type for a function must be a type.")
+
+// TODO better text here
+MAKE_LOG_ERROR(NonTypeFunctionOutput, "To-type for a function must be a type.")
+MAKE_LOG_ERROR(InconsistentArrayType,
+               "Type error: Array literal must have consistent type")
+MAKE_LOG_ERROR(ArrayIndexType, "Array length indexed by non-integral type")
+MAKE_LOG_ERROR(JumpOutsideLoop, "statement must be contained inside a loop.")
+MAKE_LOG_ERROR(TypeIteration, "Cannot iterate over a type")
+MAKE_LOG_ERROR(IndeterminantType, "Cannot determine type from in declaration.")
+MAKE_LOG_ERROR(XorEqNeedsBool,
+               "Operator '^=' must take arguments of type bool.")
+MAKE_LOG_ERROR(AndEqNeedsBool,
+               "Operator '&=' must take arguments of type bool.")
+MAKE_LOG_ERROR(OrEqNeedsBool, "Operator '|=' must take arguments of type bool.")
