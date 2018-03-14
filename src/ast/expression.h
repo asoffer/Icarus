@@ -59,7 +59,6 @@ struct Expression : public Node {
   // type is invalid.
  type::Type *VerifyValueForDeclaration(const std::string &id_tok);
 
-  size_t precedence = std::numeric_limits<size_t>::max();
   Assign lvalue     = Assign::Unset;
   const type::Type *type  = nullptr;
   // TODO in the process of cleaning this up. Trying to delete this value.

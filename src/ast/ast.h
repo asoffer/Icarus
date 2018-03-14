@@ -12,7 +12,7 @@
 #include "../base/debug.h"
 #include "../frontend/text_span.h"
 #include "../ir/val.h"
-#include "../operators.h"
+#include "../frontend/operators.h"
 #include "../scope.h"
 #include "bound_constants.h"
 #include "dispatch.h"
@@ -193,7 +193,7 @@ struct ChainOp : public Expression {
 };
 
 struct CommaList : public Expression {
-  CommaList();
+  CommaList() = default;
   EXPR_FNS(CommaList);
 
   CommaList *Clone() const override;

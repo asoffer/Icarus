@@ -1,9 +1,5 @@
 #include "ast.h"
 
-namespace Language {
-extern size_t precedence(Operator op);
-} // namespace Language
-
 namespace AST {
 TokenNode::TokenNode(const TextSpan &span, std::string str)
     : Node(span), token(std::move(str)) {
@@ -18,23 +14,17 @@ TokenNode::TokenNode(const TextSpan &span, std::string str)
 }
 
 Terminal::Terminal(const TextSpan &span, IR::Val val) : Expression(span) {
-  type          = val.type;
-  precedence    = Language::precedence(Language::Operator::NotAnOperator);
-  value         = std::move(val);
+  type  = val.type;
+  value = std::move(val);
 }
 
 Jump::Jump(const TextSpan &span, JumpType jump_type)
     : Node(span), jump_type(jump_type) {}
 
-CommaList::CommaList() {
-  precedence = Language::precedence(Language::Operator::Comma);
-}
-
 Identifier::Identifier(const TextSpan &id_span,
                        const std::string &token_string) {
-  span       = id_span;
-  token      = token_string;
-  precedence = Language::precedence(Language::Operator::NotAnOperator);
+  span  = id_span;
+  token = token_string;
 }
 
 CodeBlock::CodeBlock() {

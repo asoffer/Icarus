@@ -168,8 +168,6 @@ BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
     std::tie(unop->op, check_id) = iter->second;
   }
 
-  unop->precedence = Language::precedence(unop->op);
-
   if (check_id) {
     if (!unop->operand->is<Identifier>()) {
       // Support named jumps (only support named jumps?)
@@ -189,15 +187,12 @@ BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
 // Internal checks: None
 static std::unique_ptr<Node>
 BuildChainOp(std::vector<std::unique_ptr<Node>> nodes) {
-  auto op      = nodes[1]->as<TokenNode>().op;
-  auto op_prec = Language::precedence(op);
+  auto op = nodes[1]->as<TokenNode>().op;
   std::unique_ptr<ChainOp> chain;
 
   // Add to a chain so long as the precedence levels match. The only thing at
   // that precedence level should be the operators which can be chained.
-  if (nodes[0]->is<ChainOp>() &&
-      nodes[0]->as<ChainOp>().precedence == op_prec) {
-
+  if (nodes[0]->is<ChainOp>() && nodes[0]->as<ChainOp>().ops.front() == op) {
     chain = move_as<ChainOp>(nodes[0]);
 
   } else {
@@ -205,7 +200,6 @@ BuildChainOp(std::vector<std::unique_ptr<Node>> nodes) {
     chain->span = TextSpan(nodes[0]->span, nodes[2]->span);
 
     chain->exprs.push_back(move_as<Expression>(nodes[0]));
-    chain->precedence = op_prec;
   }
 
   chain->ops.push_back(op);
@@ -302,7 +296,6 @@ std::unique_ptr<Node> BuildCall(std::vector<std::unique_ptr<Node>> nodes,
       call->args_.pos_.push_back(move_as<Expression>(nodes[2]));
     }
   }
-  call->precedence = Language::precedence(Language::Operator::Call);
 
   if (call->fn_->is<Declaration>()) {
     error_log->CallingDeclaration(call->fn_->span);
@@ -324,7 +317,6 @@ BuildIndexOperator(std::vector<std::unique_ptr<Node>> nodes,
   binop->lhs        = move_as<Expression>(nodes[0]);
   binop->rhs        = move_as<Expression>(nodes[2]);
   binop->op         = Language::Operator::Index;
-  binop->precedence = Language::precedence(binop->op);
 
   if (binop->lhs->is<Declaration>()) {
     error_log->IndexingDeclaration(binop->lhs->span);
@@ -359,7 +351,6 @@ static std::unique_ptr<Node> BuildDots(std::vector<std::unique_ptr<Node>> nodes,
   unop->operand    = move_as<Expression>(nodes[0]);
   unop->span       = TextSpan(nodes[0]->span, nodes[1]->span);
   unop->op         = nodes[1]->as<TokenNode>().op;
-  unop->precedence = Language::precedence(unop->op);
   return unop;
 }
 
@@ -414,7 +405,6 @@ BuildInDecl(std::vector<std::unique_ptr<Node>> nodes) {
   in_decl->identifier       = move_as<Identifier>(nodes[0]);
   in_decl->identifier->decl = in_decl.get();
   in_decl->container        = move_as<Expression>(nodes[2]);
-  in_decl->precedence       = Language::precedence(Language::Operator::In);
   return in_decl;
 }
 
@@ -424,7 +414,6 @@ BuildDeclaration(std::vector<std::unique_ptr<Node>> nodes) {
   auto op                = nodes[1]->as<TokenNode>().op;
   auto decl              = std::make_unique<Declaration>(IsConst);
   decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
-  decl->precedence       = Language::precedence(op);
   decl->identifier       = move_as<Identifier>(nodes[0]);
   decl->identifier->decl = decl.get();
 
@@ -693,9 +682,7 @@ BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>> nodes,
 
       binop->lhs = move_as<AST::Expression>(nodes[0]);
       binop->rhs = move_as<AST::Expression>(nodes[2]);
-
-      binop->op         = Language::Operator::Assign;
-      binop->precedence = Language::precedence(binop->op);
+      binop->op  = Language::Operator::Assign;
       return binop;
     }
   }
@@ -727,7 +714,6 @@ BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>> nodes,
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }
 
-    binop->precedence = Language::precedence(binop->op);
     return binop;
   }
 }
@@ -867,8 +853,7 @@ BuildKWBlock(std::vector<std::unique_ptr<AST::Node>> nodes,
 static std::unique_ptr<AST::Node>
 Parenthesize(std::vector<std::unique_ptr<AST::Node>> nodes,
              error::Log *error_log) {
-  auto expr        = move_as<AST::Expression>(nodes[1]);
-  expr->precedence = Language::precedence(Language::Operator::NotAnOperator);
+  auto expr = move_as<AST::Expression>(nodes[1]);
   if (nodes[0]->as<AST::TokenNode>().token != "\\(") {
     return expr;
   } else {

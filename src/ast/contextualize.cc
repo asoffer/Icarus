@@ -145,15 +145,14 @@ void Unop::contextualize(const Node *correspondant,
   if (op == Language::Operator::Ref) {
     auto iter = replacements.find(&correspondant->as<Unop>());
     ASSERT(iter != replacements.end(), "");
-    auto terminal        = std::make_unique<Terminal>();
-    terminal->scope_     = scope_; // TODO Eh? Do I care?
-    terminal->span       = span;
-    terminal->precedence = precedence;
-    terminal->lvalue     = lvalue; // TODO????
-    terminal->type       = iter->second.type;
-    terminal->value      = iter->second;
-    operand              = std::move(terminal);
-    op                   = Language::Operator::Pass;
+    auto terminal    = std::make_unique<Terminal>();
+    terminal->scope_ = scope_; // TODO Eh? Do I care?
+    terminal->span   = span;
+    terminal->lvalue = lvalue; // TODO????
+    terminal->type   = iter->second.type;
+    terminal->value  = iter->second;
+    operand          = std::move(terminal);
+    op               = Language::Operator::Pass;
   } else {
     CONTEXTUALIZE(operand);
   }
