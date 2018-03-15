@@ -64,14 +64,6 @@ void CommaList::ClearIdDecls() {
   for (auto &expr : exprs) { expr->ClearIdDecls(); }
 }
 
-void Case::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto & [ key, val ] : key_vals) {
-    key->ClearIdDecls();
-    val->ClearIdDecls();
-  }
-}
-
 void Statements::ClearIdDecls() {
   stage_range_ = StageRange{};
   for (auto &stmt : content_) { stmt->ClearIdDecls(); }
@@ -85,7 +77,7 @@ void GenericFunctionLiteral::ClearIdDecls() {
 void FunctionLiteral::ClearIdDecls() {
   fn_scope = nullptr;
   stage_range_ = StageRange{};
-  return_type_expr->ClearIdDecls();
+  if (return_type_expr) { return_type_expr->ClearIdDecls(); }
   for (auto &in : inputs) { in->ClearIdDecls(); }
   statements->ClearIdDecls();
 }

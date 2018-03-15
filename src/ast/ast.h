@@ -220,16 +220,6 @@ struct ArrayType : public Expression {
   std::unique_ptr<Expression> length, data_type;
 };
 
-struct Case : public Expression {
-  EXPR_FNS(Case);
-  virtual IR::Val EmitIR(Context *);
-  Case *Clone() const override;
-
-  std::vector<
-      std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>>>
-      key_vals;
-};
-
 struct FunctionLiteral : public Expression {
   FunctionLiteral() {}
   EXPR_FNS(FunctionLiteral);

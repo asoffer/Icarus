@@ -73,7 +73,9 @@ ArrayType *ArrayType::Clone() const {
 FunctionLiteral *FunctionLiteral::Clone() const {
   auto *result             = new FunctionLiteral;
   result->span      = span;
-  result->return_type_expr = base::wrap_unique(return_type_expr->Clone());
+  if (return_type_expr) {
+    result->return_type_expr = base::wrap_unique(return_type_expr->Clone());
+  }
   result->statements       = base::wrap_unique(statements->Clone());
   result->lookup_          = lookup_;
   result->inputs.reserve(inputs.size());
@@ -111,17 +113,6 @@ ScopeLiteral *ScopeLiteral::Clone() const {
   result->span     = span;
   result->enter_fn = base::wrap_unique(enter_fn->Clone());
   result->exit_fn  = base::wrap_unique(exit_fn->Clone());
-  return result;
-}
-
-Case *Case::Clone() const {
-  auto *result = new Case;
-  result->span     = span;
-  result->key_vals.reserve(key_vals.size());
-  for (const auto & [ key, val ] : key_vals) {
-    result->key_vals.emplace_back(base::wrap_unique(key->Clone()),
-                                  base::wrap_unique(val->Clone()));
-  }
   return result;
 }
 

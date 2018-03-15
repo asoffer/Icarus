@@ -70,15 +70,8 @@ void ArrayType::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   data_type->SaveReferences(scope, args);
 }
 
-void Case::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  for (auto & [ key, val ] : key_vals) {
-    key->SaveReferences(scope, args);
-    val->SaveReferences(scope, args);
-  }
-}
-
 void FunctionLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  return_type_expr->SaveReferences(scope, args);
+  if (return_type_expr) { return_type_expr->SaveReferences(scope, args); }
   for (auto &input : inputs) { input->SaveReferences(scope, args); }
   statements->SaveReferences(fn_scope.get(), args);
 }
@@ -189,17 +182,9 @@ void ArrayType::contextualize(const Node *correspondant,
   CONTEXTUALIZE(data_type);
 }
 
-void Case::contextualize(const Node *correspondant,
-                         const RefMap &replacements) {
-  for (size_t i = 0; i < key_vals.size(); ++i) {
-    CONTEXTUALIZE(key_vals[i].first);
-    CONTEXTUALIZE(key_vals[i].second);
-  }
-}
-
 void FunctionLiteral::contextualize(const Node *correspondant,
                                     const RefMap &replacements) {
-  CONTEXTUALIZE(return_type_expr);
+  if (return_type_expr) { CONTEXTUALIZE(return_type_expr); }
   for (size_t i = 0; i < inputs.size(); ++i) { CONTEXTUALIZE(inputs[i]); }
   CONTEXTUALIZE(statements);
 }

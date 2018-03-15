@@ -107,7 +107,6 @@ std::string Binop::to_string(size_t n) const {
   case Language::Operator::Div: ss << " / "; break;
   case Language::Operator::Mod: ss << " % "; break;
   case Language::Operator::Dots: ss << " .. "; break;
-  case Language::Operator::Rocket: ss << "  =>  "; break;
   case Language::Operator::Assign: ss << ""; break;
   case Language::Operator::OrEq: ss << " |= "; break;
   case Language::Operator::XorEq: ss << " ^= "; break;
@@ -187,17 +186,6 @@ std::string Declaration::to_string(size_t n) const {
   return ss.str();
 }
 
-std::string Case::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << "case {\n";
-  for (const auto & [ key, val ] : key_vals) {
-    ss << tabs(n + 1) << key->to_string(n + 1) << "  =>  "
-       << val->to_string(n + 1) << "\n";
-  }
-
-  return ss.str();
-}
-
 std::string Statements::to_string(size_t n) const {
   if (content_.empty()) { return ""; }
   if (content_.size() == 1) { return tabs(n) + content_[0]->to_string(n); }
@@ -224,7 +212,8 @@ std::string FunctionLiteral::to_string(size_t n) const {
     }
     ss << ")";
   }
-  ss << " -> " << return_type_expr->to_string(n + 1) << " {\n"
+  ss << " -> " << (return_type_expr ? return_type_expr->to_string(n + 1) : "")
+     << " {\n"
      << statements->to_string(n + 1) << tabs(n) << "}";
   return ss.str();
 }

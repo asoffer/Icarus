@@ -84,15 +84,6 @@ void CommaList::assign_scope(Scope *scope) {
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
-void Case::assign_scope(Scope *scope) {
-  STAGE_CHECK;
-  scope_ = scope;
-  for (auto & [ key, val ] : key_vals) {
-    key->assign_scope(scope);
-    val->assign_scope(scope);
-  }
-}
-
 void Statements::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;
@@ -110,8 +101,7 @@ void FunctionLiteral::assign_scope(Scope *scope) {
     fn_scope         = scope->add_child<FnScope>();
     fn_scope->fn_lit = this;
   }
-
-  return_type_expr->assign_scope(fn_scope.get());
+  if (return_type_expr) { return_type_expr->assign_scope(fn_scope.get()); }
   for (auto &in : inputs) { in->assign_scope(fn_scope.get()); }
   statements->assign_scope(fn_scope.get());
 }

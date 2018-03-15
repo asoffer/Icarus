@@ -429,7 +429,9 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
       fns_.emplace(new_ctx.bound_constants_, FunctionLiteral{});
   if (success) {
     auto &func            = iter->second;
-    func.return_type_expr = base::wrap_unique(return_type_expr->Clone());
+    if (return_type_expr) {
+      func.return_type_expr = base::wrap_unique(return_type_expr->Clone());
+    }
     func.inputs.reserve(inputs.size());
     for (const auto &input : inputs) {
       func.inputs.emplace_back(input->Clone());
@@ -684,10 +686,6 @@ void Binop::Validate(Context *ctx) {
   }
 
   switch (op) {
-  case Operator::Rocket: {
-    // TODO rocket encountered outside case statement.
-    UNREACHABLE();
-  } break;
   case Operator::Index: {
     type = type::Err;
     if (lhs->type == type::String) {
@@ -1550,84 +1548,20 @@ void ArrayType::Validate(Context *ctx) {
   }
 }
 
-void Case::Validate(Context *ctx) {
-  STARTING_CHECK;
-  for (auto & [ key, val ] : key_vals) {
-    key->Validate(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    val->Validate(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(key);
-    limit_to(val);
-
-    // TODO do you want case-statements to be usable as lvalues? Currently they
-    // are not.
-    if (key->lvalue != Assign::Const || val->lvalue != Assign::Const) {
-      lvalue = Assign::RVal;
-    }
-  }
-
-  std::unordered_map<const type::Type *, size_t> value_types;
-
-  for (auto & [ key, val ] : key_vals) {
-    if (key->type == type::Err) {
-      key->type = type::Bool;
-
-    } else if (key->type != type::Bool) {
-      ErrorLog::CaseLHSBool(span, key->span, key->type);
-      key->type = type::Bool;
-    }
-
-    if (val->type == type::Err) {
-      type = type::Err;
-      limit_to(StageRange::Nothing());
-      return;
-    }
-    ++value_types[val->type];
-  }
-
-  if (value_types.size() != 1) {
-
-    // In order to give a message saying that a particular type is incorrect, we
-    // need either
-    // * 1/2 of them have the same type
-    // * 1/4 of them have the same type, and no other type hits > 1/8
-    //
-    // NOTE: These numbers were chosen somewhat arbitrarily.
-
-    size_t max_size            = 0;
-    size_t min_size            = key_vals.size();
-    const type::Type *max_type = nullptr;
-    for (const auto & [ key, val ] : value_types) {
-      if (val > max_size) {
-        max_size = val;
-        max_type = key;
-      }
-
-      if (val < min_size) { min_size = val; }
-    }
-
-    if (2 * max_size > key_vals.size() ||
-        (4 * max_size > key_vals.size() && 8 * min_size < key_vals.size())) {
-      ErrorLog::CaseTypeMismatch(this, max_type);
-      type = max_type;
-    } else {
-      ErrorLog::CaseTypeMismatch(this);
-      type = type::Err;
-      limit_to(StageRange::Nothing());
-    }
-  } else {
-    type = value_types.begin()->first;
-  }
-}
-
 void FunctionLiteral::Validate(Context *ctx) {
   STARTING_CHECK;
 
   lvalue = Assign::Const;
-  return_type_expr->Validate(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
-  limit_to(return_type_expr);
+  for (auto &input : inputs) {
+    input->Validate(ctx);
+    HANDLE_CYCLIC_DEPENDENCIES;
+  }
+
+  if (return_type_expr) {
+    return_type_expr->Validate(ctx);
+    HANDLE_CYCLIC_DEPENDENCIES;
+    limit_to(return_type_expr);
+  }
 
   if (ctx->num_errors() > 0) {
     type = type::Err;
@@ -1635,58 +1569,60 @@ void FunctionLiteral::Validate(Context *ctx) {
     return;
   }
 
-  // TODO should named return types be required?
-  auto rets = Evaluate(
-      [&]() {
-        if (!return_type_expr->is<Declaration>()) {
-          return return_type_expr.get();
-        }
-
-        auto *decl_return = &return_type_expr->as<Declaration>();
-        if (decl_return->IsInferred()) { NOT_YET(); }
-
-        return decl_return->type_expr.get();
-      }(),
-      ctx);
-
-  if (rets.empty()) {
-    type = type::Err;
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  auto &ret_type_val = rets[0];
-
-  // TODO must this really be undeclared?
-  if (ret_type_val == IR::Val::None() /* TODO Error() */) {
-    ctx->error_log_.IndeterminantType(return_type_expr->span);
-    type = type::Err;
-    limit_to(StageRange::Nothing());
-  } else if (ret_type_val.type != type::Type_) {
-    ctx->error_log_.NotAType(return_type_expr.get());
-    type = type::Err;
-    limit_to(StageRange::Nothing());
-    return;
-  } else if (std::get<const type::Type *>(ret_type_val.value) == type::Err) {
-    type = type::Err;
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  for (auto &input : inputs) {
-    input->Validate(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-  }
-
-  // TODO poison on input type::Err?
-
-  auto *ret_type    = std::get<const type::Type *>(ret_type_val.value);
-  size_t num_inputs = inputs.size();
   std::vector<const type::Type *> input_type_vec;
   input_type_vec.reserve(inputs.size());
   for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
 
-  type = Func(input_type_vec, ret_type);
+  if (return_type_expr) {
+    // TODO should named return types be required?
+    auto rets = Evaluate(
+        [&]() {
+          if (!return_type_expr->is<Declaration>()) {
+            return return_type_expr.get();
+          }
+
+          auto *decl_return = &return_type_expr->as<Declaration>();
+          if (decl_return->IsInferred()) { NOT_YET(); }
+
+          return decl_return->type_expr.get();
+        }(),
+        ctx);
+
+    if (rets.empty()) {
+      type = type::Err;
+      limit_to(StageRange::Nothing());
+    }
+
+    auto &ret_type_val = rets[0];
+
+    // TODO must this really be undeclared?
+    if (ret_type_val == IR::Val::None() /* TODO Error() */) {
+      ctx->error_log_.IndeterminantType(return_type_expr->span);
+      type = type::Err;
+      limit_to(StageRange::Nothing());
+    } else if (ret_type_val.type != type::Type_) {
+      ctx->error_log_.NotAType(return_type_expr.get());
+      type = type::Err;
+      limit_to(StageRange::Nothing());
+      return;
+    } else if (std::get<const type::Type *>(ret_type_val.value) == type::Err) {
+      type = type::Err;
+      limit_to(StageRange::Nothing());
+      return;
+    }
+
+    auto *ret_type    = std::get<const type::Type *>(ret_type_val.value);
+    type = Func(input_type_vec, ret_type);
+  }
+
+  statements->Validate(ctx);
+  HANDLE_CYCLIC_DEPENDENCIES;
+
+  if (!return_type_expr) { 
+    type = Func(input_type_vec, type::Int);
+    return_type_expr =
+        std::make_unique<Terminal>(TextSpan(), IR::Val::Type(type));
+  }
 }
 
 void For::Validate(Context *ctx) {

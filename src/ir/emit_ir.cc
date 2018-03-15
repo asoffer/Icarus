@@ -18,8 +18,8 @@ extern Scope *GlobalScope;
 
 // If the expression is a CommaList, apply the function to each expr. Otherwise
 // call it on the expression itself.
-static void ForEachExpr(AST::Expression *expr,
-            const std::function<void(size_t, AST::Expression *)> &fn) {
+void ForEachExpr(AST::Expression *expr,
+                 const std::function<void(size_t, AST::Expression *)> &fn) {
   if (expr->is<AST::CommaList>()) {
     const auto &exprs = expr->as<AST::CommaList>().exprs;
     for (size_t i = 0; i < exprs.size(); ++i) { fn(i, exprs[i].get()); }
@@ -484,43 +484,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
   return IR::Val::None();
 }
 
-IR::Val AST::Case::EmitIR(Context *ctx) {
-  auto land = IR::Func::Current->AddBlock();
-
-  ASSERT(!key_vals.empty(), "");
-  std::vector<IR::Val> phi_args;
-  phi_args.reserve(2 * key_vals.size());
-  for (size_t i = 0; i < key_vals.size() - 1; ++i) {
-    auto compute = IR::Func::Current->AddBlock();
-    auto next    = IR::Func::Current->AddBlock();
-
-    auto val = key_vals[i].first->EmitIR(ctx);
-    IR::CondJump(val, compute, next);
-
-    IR::Block::Current = compute;
-    auto result        = key_vals[i].second->EmitIR(ctx);
-    phi_args.push_back(IR::Val::Block(IR::Block::Current));
-    phi_args.push_back(result);
-    IR::UncondJump(land);
-
-    IR::Block::Current = next;
-  }
-
-  // Last entry
-  auto result = key_vals.back().second->EmitIR(ctx);
-  phi_args.push_back(IR::Val::Block(IR::Block::Current));
-  phi_args.push_back(result);
-  IR::UncondJump(land);
-
-  IR::Block::Current = land;
-  auto phi           = IR::Phi(type);
-  IR::Func::Current->SetArgs(phi, std::move(phi_args));
-  return IR::Func::Current->Command(phi).reg();
-}
-
-IR::Val AST::ScopeLiteral::EmitIR(Context *) {
-  return IR::Val::Scope(this);
-}
+IR::Val AST::ScopeLiteral::EmitIR(Context *) { return IR::Val::Scope(this); }
 
 IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   IR::Val scope_expr_val = Evaluate(scope_expr.get())[0];

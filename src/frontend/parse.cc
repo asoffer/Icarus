@@ -19,6 +19,9 @@ static std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
   return std::unique_ptr<To>(static_cast<To *>(val.release()));
 }
 
+void ForEachExpr(AST::Expression *expr,
+                 const std::function<void(size_t, AST::Expression *)> &fn);
+
 extern std::queue<Source::Name> file_queue;
 
 static void ValidateStatementSyntax(AST::Node *node, error::Log* error_log) {
@@ -427,25 +430,61 @@ BuildDeclaration(std::vector<std::unique_ptr<Node>> nodes) {
   return decl;
 }
 
-static std::unique_ptr<Node>
-BuildFunctionLiteral(std::vector<std::unique_ptr<Node>> nodes,
-                     error::Log *error_log) {
-  auto *binop = &nodes[0]->as<Binop>();
+static std::pair<bool, std::vector<std::unique_ptr<Declaration>>>
+ExtractInputs(std::unique_ptr<Expression> args) {
   std::vector<std::unique_ptr<Declaration>> inputs;
   bool generic = false;
-  if (binop->lhs->is<Declaration>()) {
-    inputs.push_back(move_as<Declaration>(binop->lhs));
+  if (args->is<Declaration>()) {
+    inputs.push_back(move_as<Declaration>(args));
     generic |= inputs.back()->const_;
 
-  } else if (binop->lhs->is<CommaList>()) {
-    auto *decls = &binop->lhs->as<CommaList>();
+  } else if (args->is<CommaList>()) {
+    auto *decls = &args->as<CommaList>();
     inputs.reserve(decls->exprs.size());
 
     for (auto &expr : decls->exprs) {
       inputs.push_back(move_as<Declaration>(expr));
       generic |= inputs.back()->const_;
     }
+  } else {
+    // TODO sometimes this is okay (like if you put 'void', but mostly it's not)
   }
+  return std::pair(generic, std::move(inputs));
+}
+
+// TODO deal with duplication between this and below
+static std::unique_ptr<Node>
+BuildShortFunctionLiteral(std::unique_ptr<Expression> args,
+                          std::unique_ptr<Expression> body,
+                          error::Log *error_log) {
+  auto span = TextSpan(args->span, body->span);
+  auto[generic, inputs] = ExtractInputs(std::move(args));
+
+  FunctionLiteral *fn_lit =
+      generic ? new GenericFunctionLiteral : new FunctionLiteral;
+  for (auto &input : inputs) { input->arg_val = fn_lit; }
+
+  fn_lit->inputs     = std::move(inputs);
+  fn_lit->span       = span;
+  auto ret           = std::make_unique<Unop>();
+  ret->op            = Language::Operator::Return;
+  ret->operand       = std::move(body);
+  fn_lit->statements = std::make_unique<Statements>();
+  fn_lit->statements->content_.push_back(std::move(ret));
+
+  size_t i = 0;
+  for (const auto &input : fn_lit->inputs) {
+    fn_lit->lookup_[input->identifier->token] = i++;
+  }
+
+  return base::wrap_unique(fn_lit);
+}
+
+static std::unique_ptr<Node>
+BuildFunctionLiteral(std::vector<std::unique_ptr<Node>> nodes,
+                     error::Log *error_log) {
+  auto *binop = &nodes[0]->as<Binop>();
+  auto[generic, inputs] = ExtractInputs(std::move(binop->lhs));
 
   FunctionLiteral *fn_lit =
       generic ? new GenericFunctionLiteral : new FunctionLiteral;
@@ -661,9 +700,13 @@ BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>> nodes,
 
   } else if (tk == "in") {
     return AST::BuildInDecl(std::move(nodes));
-  }
 
-  if (tk == "=") {
+  } else if (tk == "=>") {
+    return AST::BuildShortFunctionLiteral(move_as<AST::Expression>(nodes[0]),
+                                          move_as<AST::Expression>(nodes[2]),
+                                          error_log);
+
+  } else if (tk == "=") {
     if (nodes[0]->is<AST::Declaration>()) {
       if (nodes[0]->as<AST::Declaration>().IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
@@ -701,15 +744,15 @@ BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>> nodes,
   binop->rhs = move_as<AST::Expression>(nodes[2]);
 
   static const std::unordered_map<std::string, Language::Operator> symbols = {
-      {"=>", Language::Operator::Rocket}, {"", Language::Operator::Cast},
-      {"->", Language::Operator::Arrow},  {"|=", Language::Operator::OrEq},
-      {"&=", Language::Operator::AndEq},  {"^=", Language::Operator::XorEq},
-      {"+=", Language::Operator::AddEq},  {"-=", Language::Operator::SubEq},
-      {"*=", Language::Operator::MulEq},  {"/=", Language::Operator::DivEq},
-      {"%=", Language::Operator::ModEq},  {"..", Language::Operator::Dots},
-      {"+", Language::Operator::Add},     {"-", Language::Operator::Sub},
-      {"*", Language::Operator::Mul},     {"/", Language::Operator::Div},
-      {"%", Language::Operator::Mod},     {"[", Language::Operator::Index}};
+      {"", Language::Operator::Cast},    {"->", Language::Operator::Arrow},
+      {"|=", Language::Operator::OrEq},  {"&=", Language::Operator::AndEq},
+      {"^=", Language::Operator::XorEq}, {"+=", Language::Operator::AddEq},
+      {"-=", Language::Operator::SubEq}, {"*=", Language::Operator::MulEq},
+      {"/=", Language::Operator::DivEq}, {"%=", Language::Operator::ModEq},
+      {"..", Language::Operator::Dots},  {"+", Language::Operator::Add},
+      {"-", Language::Operator::Sub},    {"*", Language::Operator::Mul},
+      {"/", Language::Operator::Div},    {"%", Language::Operator::Mod},
+      {"[", Language::Operator::Index}};
   {
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }
@@ -811,33 +854,11 @@ BuildScopeLiteral(std::vector<std::unique_ptr<AST::Node>> nodes) {
 }
 
 static std::unique_ptr<AST::Node>
-BuildCase(std::vector<std::unique_ptr<AST::Node>> nodes) {
-  auto case_ptr  = std::make_unique<AST::Case>();
-  case_ptr->span = TextSpan(nodes[0]->span, nodes[1]->span);
-
-  for (auto &stmt : nodes[1]->as<AST::Statements>().content_) {
-    if (stmt->is<AST::Binop>() &&
-        stmt->as<AST::Binop>().op == Language::Operator::Rocket) {
-      auto *binop = &stmt->as<AST::Binop>();
-      // TODO check for 'else' and make sure it's the last one.
-      case_ptr->key_vals.emplace_back(std::move(binop->lhs),
-                                      std::move(binop->rhs));
-    } else {
-      NOT_YET();
-    }
-  }
-  return case_ptr;
-}
-
-static std::unique_ptr<AST::Node>
 BuildKWBlock(std::vector<std::unique_ptr<AST::Node>> nodes,
              error::Log *error_log) {
   const std::string &tk = nodes[0]->as<AST::TokenNode>().token;
 
-  if (tk == "case") {
-    return BuildCase(std::move(nodes));
-
-  } else if (bool is_enum = (tk == "enum"); is_enum || tk == "flags") {
+  if (bool is_enum = (tk == "enum"); is_enum || tk == "flags") {
     return BuildEnumLiteral(std::move(nodes), is_enum, error_log);
 
   } else if (tk == "struct") {
@@ -1015,7 +1036,7 @@ auto Rules = std::array{
 
     // Call and index operator with reserved words. We can't put reserved words
     // in the first slot because that might conflict with a real use case. For
-    // example, "if(a)".
+    // example, "for(a)".
     Rule(expr, {EXPR, l_paren, RESERVED, r_paren}, ErrMsg::Reserved<0, 2>),
     Rule(expr, {EXPR, l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<0, 2>),
 

@@ -230,14 +230,6 @@ void InvalidAssignment(const TextSpan &span, Assign mode) {
   }
 }
 
-void CaseLHSBool(const TextSpan &, const TextSpan &span, const type::Type *t) {
-  std::string msg_head = "In a case statement, the lefthand-side of a case "
-                         "must have type bool. However, the expression has "
-                         "type " +
-                         t->to_string() + ".";
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
 void MissingMember(const TextSpan &span, const std::string &member_name,
                    const type::Type *t) {
   std::string msg_head = "Expressions of type `" + t->to_string() +
@@ -289,47 +281,6 @@ void InvalidScope(const TextSpan &span, const type::Type *t) {
   std::string msg_head =
       "Object of type '" + t->to_string() + "' used as if it were a scope.";
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
-static void DisplayLines(const std::vector<TextSpan> &lines) {
-  size_t left_space     = NumDigits(lines.back().start.line_num) + 2;
-  std::string space_fmt = std::string(left_space - 3, ' ') + "...|\n";
-
-  size_t last_line_num = lines[0].start.line_num - 1;
-  for (auto span : lines) {
-    if (span.start.line_num != last_line_num + 1) {
-      std::cerr << space_fmt << '\n';
-    }
-    // TODO alignment
-    std::cerr << LineToDisplay(span.start.line_num,
-                               span.source->lines[span.start.line_num],
-                               left_space);
-    last_line_num = span.start.line_num;
-  }
-  std::cerr << '\n';
-}
-
-void CaseTypeMismatch(AST::Case *case_ptr, const type::Type *correct) {
-  if (correct) {
-    std::cerr << "Type mismatch in case-expression on line "
-              << case_ptr->span.start.line_num << " in \""
-              << case_ptr->span.source->name.to_string() << "\".\n";
-
-    std::vector<TextSpan> locs;
-    for (auto & [ key, val ] : case_ptr->key_vals) {
-      if (val->type == type::Err || val->type == correct) { continue; }
-      locs.push_back(val->span);
-    }
-
-    DisplayLines(locs);
-    std::cerr << "Expected an expression of type " << correct->to_string()
-              << ".\n\n";
-
-  } else {
-    std::cerr << "Type mismatch in case-expression on line "
-              << case_ptr->span.start.line_num << " in \""
-              << case_ptr->span.source->name.to_string() << "\".\n";
-  }
 }
 } // namespace ErrorLog
 

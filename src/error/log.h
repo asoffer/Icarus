@@ -14,7 +14,6 @@ struct Type;
 } // namespace type
 
 namespace AST {
-struct Case;
 struct Declaration;
 struct Expression;
 struct Identifier;
@@ -85,8 +84,6 @@ void LogGeneric(const TextSpan &span, const std::string &msg);
 void UnopTypeFail(const std::string &msg, const AST::Unop *unop);
 void InvalidAddress(const TextSpan &span, Assign mode);
 void InvalidAssignment(const TextSpan &span, Assign mode);
-void CaseLHSBool(const TextSpan &case_span, const TextSpan &span,
-                 const type::Type *t);
 void MissingMember(const TextSpan &span, const std::string &member_name,
                    const type::Type *t);
 
@@ -104,7 +101,6 @@ void InvalidStringIndex(const TextSpan &span, const type::Type *index_type);
 void NonIntegralArrayIndex(const TextSpan &span, const type::Type *index_type);
 void IndexingNonArray(const TextSpan &span, const type::Type *t);
 void SlicingNonArray(const TextSpan &span, const type::Type *t);
-void CaseTypeMismatch(AST::Case *case_ptr, const type::Type *correct = nullptr);
 void InvalidScope(const TextSpan &span, const type::Type *t);
 } // namespace ErrorLog
 
