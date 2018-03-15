@@ -1618,8 +1618,22 @@ void FunctionLiteral::Validate(Context *ctx) {
   statements->Validate(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
 
-  if (!return_type_expr) { 
-    type = Func(input_type_vec, type::Int);
+  std::unordered_set<const type::Type*> types;
+  statements->ExtractReturnTypes(&types);
+
+  // TODO actually join all types
+
+  if (!return_type_expr) {
+    // TODO all the empty, == 1 or > 1 logic should be handled by a joining
+    // function
+    if (types.empty()) {
+      type = Func(input_type_vec, type::Void);
+    } else if (types.size() == 1) {
+      type = Func(input_type_vec, *types.begin());
+    } else {
+    LOG << this;
+      NOT_YET();
+    }
     return_type_expr =
         std::make_unique<Terminal>(TextSpan(), IR::Val::Type(type));
   }

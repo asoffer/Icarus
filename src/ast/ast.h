@@ -42,6 +42,8 @@ struct TokenNode : public Node {
   void SaveReferences(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
   TokenNode *Clone() const override;
   virtual void Validate(Context *) {}
+  virtual void ExtractReturnTypes(
+      std::unordered_set<const type::Type *> *types) const override {}
 
   virtual void
   contextualize(const Node *correspondant,

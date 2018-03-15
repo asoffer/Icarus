@@ -37,7 +37,7 @@ void ArrayLiteral::ClearIdDecls() {
 void Binop::ClearIdDecls() {
   stage_range_ = StageRange{};
   lhs->ClearIdDecls();
-  if (rhs) { rhs->ClearIdDecls(); }
+  rhs->ClearIdDecls();
 }
 
 void InDecl::ClearIdDecls() {

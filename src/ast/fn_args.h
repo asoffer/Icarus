@@ -39,6 +39,7 @@ template <typename T> struct FnArgs {
     return result;
   }
 
+  // TODO const version (would be useful in extract_return_types.cc
   template <typename Fn> void Apply(Fn &&fn) {
     for (auto &&val : pos_) { fn(val); }
     for (auto && [ key, val ] : named_) { fn(val); }

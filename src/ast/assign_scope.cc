@@ -51,7 +51,7 @@ void Binop::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;
   lhs->assign_scope(scope);
-  if (rhs) { rhs->assign_scope(scope); }
+  rhs->assign_scope(scope);
 }
 
 void InDecl::assign_scope(Scope *scope) {
