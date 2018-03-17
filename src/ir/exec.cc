@@ -462,15 +462,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::InsertField: {
     auto *struct_to_mod = std::get<type::Struct *>(resolved[0].value);
     struct_to_mod->fields_.push_back(type::Struct::Field{
-        std::string_view{}, std::get<const type::Type *>(resolved[2].value),
-        resolved[3]});
+        std::get<std::string>(resolved[1].value),
+        std::get<const type::Type *>(resolved[2].value), resolved[3]});
 
     auto[iter, success] = struct_to_mod->field_indices_.emplace(
         std::get<std::string>(resolved[1].value),
         struct_to_mod->fields_.size() - 1);
 
     ASSERT(success, "");
-    struct_to_mod->fields_.back().name = std::string_view(&iter->first[0]);
 
     return IR::Val::None();
   } break;

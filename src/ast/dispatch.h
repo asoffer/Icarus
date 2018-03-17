@@ -19,8 +19,7 @@ struct Expression;
 // Represents a particular call resolution.
 struct Binding {
   static std::optional<Binding>
-  MakeUntyped(Expression *fn_expr,
-              const FnArgs<std::unique_ptr<Expression>> &args,
+  MakeUntyped(Expression *fn_expr, const FnArgs<Expression *> &args,
               const std::unordered_map<std::string, size_t> &index_lookup);
 
   bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }

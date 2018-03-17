@@ -45,20 +45,10 @@ struct Scope : public base::Cast<Scope> {
   // scopes.
   AST::Identifier *IdHereOrNull(const std::string &name) const;
 
-  // Returns the identifier pointer being referenced by this string name, going
-  // up the chaing of scopes as necessary. It returns nullptr if no such
-  // identifier can be found.
-  AST::Identifier *IdReferencedOrNull(const std::string &name);
-
   const type::Type *
   FunctionTypeReferencedOrNull(const std::string &fn_name,
                                std::vector<const type::Type *> input_type);
 
-  AST::Declaration *DeclHereOrNull(const std::string &name,
-                                  type::Type *declared_type);
-
-  AST::Declaration *DeclReferencedOrNull(const std::string &name,
-                                        type::Type *declared_type);
   std::pair<std::vector<AST::Declaration *>, std::vector<AST::Declaration *>>
   AllDeclsWithId(const std::string &id, Context *ctx);
 

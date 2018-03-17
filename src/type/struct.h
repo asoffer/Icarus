@@ -18,7 +18,8 @@ struct Struct : public Type {
   BASIC_METHODS;
 
   struct Field {
-    std::string_view name;
+    // TODO make a string_view but deal with trickiness of moving
+    std::string name;
     const Type *type = nullptr;
     IR::Val init_val;
   };

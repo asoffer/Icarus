@@ -3,9 +3,9 @@
 
 extern IR::Val PtrCallFix(const IR::Val &v);
 
-IR::Val type::Array::PrepareArgument(const type::Type *from,
-                               const IR::Val &val) const {
-  if (from->is<type::Variant>()) {
+namespace type {
+IR::Val Array::PrepareArgument(const Type *from, const IR::Val &val) const {
+  if (from->is<Variant>()) {
     NOT_YET(this, from);
   } else {
     ASSERT_EQ(from, this);
@@ -20,11 +20,9 @@ IR::Val type::Array::PrepareArgument(const type::Type *from,
   }
 }
 
-IR::Val type::Tuple::PrepareArgument(const type::Type *from, const IR::Val &) const {
+IR::Val Tuple::PrepareArgument(const Type *from, const IR::Val &) const {
   NOT_YET(this, from);
 }
-
-namespace type {
 IR::Val Primitive::PrepareArgument(const Type *from, const IR::Val &val) const {
   if (from->is<Variant>()) {
     return IR::Load(IR::VariantValue(this, val));

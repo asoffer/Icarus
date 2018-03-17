@@ -188,13 +188,11 @@ std::string Declaration::to_string(size_t n) const {
 
 std::string Statements::to_string(size_t n) const {
   if (content_.empty()) { return ""; }
-  if (content_.size() == 1) { return tabs(n) + content_[0]->to_string(n); }
 
   std::stringstream ss;
-  for (size_t i = 0; i < content_.size() - 1; ++i) {
-    ss << tabs(n) << content_[i]->to_string(n) << "\n";
+  for (const auto &stmt : content_) {
+    ss << tabs(n) << stmt->to_string(n) << "\n";
   }
-  ss << tabs(n) << content_.back()->to_string(n);
   return ss.str();
 }
 

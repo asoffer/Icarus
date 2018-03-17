@@ -92,12 +92,12 @@ inline void DumpStackTrace(int) {
   constexpr u32 max_frames = 20;
   fprintf(stderr, "stack trace:\n");
   void *addrlist[max_frames + 1];
-  u32 addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void *));
+  int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void *));
   if (addrlen == 0) {
     fprintf(stderr, "  \n");
   } else {
     char **symbollist = backtrace_symbols(addrlist, addrlen);
-    for (u32 i = 4; i < addrlen; i++) {
+    for (int i = 4; i < addrlen; i++) {
       std::string symbol = symbollist[i];
       auto start_iter    = symbol.find('(');
       auto end_iter      = symbol.find(')');

@@ -32,6 +32,7 @@ const Struct::Field *Struct::field(const std::string &name) const {
 
 const Type *Struct::finalize() {
   const Struct *interned = &*structs_.insert(std::move(*this)).first;
+
   delete this;
   return interned;
 }

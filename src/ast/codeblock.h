@@ -21,14 +21,13 @@ struct CodeBlock : public Expression {
   std::variant<Statements, std::string> content_;
 
   CodeBlock *Clone() const override;
-  virtual IR::Val EmitIR(Context *);
+  IR::Val EmitIR(Context *) override;
 };
 
 inline bool operator==(const CodeBlock &lhs, const CodeBlock &rhs) {
   if (auto* lhs_stmts = std::get_if<Statements>(&lhs.content_)) {
     if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {
-      return std::get<Statements>(lhs.content_).content_ ==
-             std::get<Statements>(rhs.content_).content_;
+      return lhs_stmts->content_ == rhs_stmts->content_;
     } else {
       return false;
     }
@@ -45,8 +44,7 @@ inline bool operator==(const CodeBlock &lhs, const CodeBlock &rhs) {
 inline bool operator<(const CodeBlock &lhs, const CodeBlock &rhs) {
   if (auto* lhs_stmts = std::get_if<Statements>(&lhs.content_)) {
     if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {
-      return std::get<Statements>(lhs.content_).content_ <
-             std::get<Statements>(rhs.content_).content_;
+      return lhs_stmts->content_ < rhs_stmts->content_;
     } else {
       return true;
     }

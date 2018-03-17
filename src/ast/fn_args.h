@@ -45,6 +45,18 @@ template <typename T> struct FnArgs {
     for (auto && [ key, val ] : named_) { fn(val); }
   }
 
+  template <typename Fn> auto Transform(Fn &&fn) const {
+    using out_t = decltype(fn(pos_[0]));
+    FnArgs<out_t> result;
+    result.pos_.reserve(pos_.size());
+    for (auto &&val : pos_) { result.pos_.push_back(fn(val)); }
+    for (auto && [ key, val ] : named_) {
+      result.named_.emplace(key, fn(val));
+    }
+    return result;
+  }
+
+
   std::vector<T> pos_;
   std::unordered_map<std::string, T> named_;
 };

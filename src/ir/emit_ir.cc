@@ -127,7 +127,7 @@ IR::Val AST::Expression::EmitIR(Context *) { UNREACHABLE(*this); }
 IR::Val AST::Expression::EmitLVal(Context *) { UNREACHABLE(*this); }
 
 static IR::BlockIndex
-CallLookupTest(const AST::FnArgs<std::unique_ptr<AST::Expression>> &args,
+CallLookupTest(const AST::FnArgs<AST::Expression *> &args,
                const AST::FnArgs<IR::Val> &fn_args,
                const AST::FnArgs<const type::Type *> &call_arg_type) {
   // Generate code that attempts to match the types on each argument (only
@@ -152,9 +152,9 @@ CallLookupTest(const AST::FnArgs<std::unique_ptr<AST::Expression>> &args,
   return next_binding;
 }
 
-IR::Val AST::Call::EmitOneCallDispatch(
-    const std::unordered_map<Expression *, IR::Val *> &expr_map,
-    const Binding &binding, Context *ctx) {
+static IR::Val EmitOneCallDispatch(const type::Type* ret_type,
+    const std::unordered_map<AST::Expression *, IR::Val *> &expr_map,
+    const AST::Binding &binding, Context *ctx) {
   // After the last check, if you pass, you should dispatch
   IR::Func *fn_to_call = std::visit(
       base::overloaded{[](IR::Func *fn) { return fn; },
@@ -179,19 +179,20 @@ IR::Val AST::Call::EmitOneCallDispatch(
     }
   }
 
-  const type::Type *output_type_for_this_binding = type::Tup(fn_to_call->type_->output);
+  const type::Type *output_type_for_this_binding =
+      type::Tup(fn_to_call->type_->output);
   IR::Val ret_val;
   if (output_type_for_this_binding->is_big()) {
-    ret_val = IR::Alloca(type);
-    type->EmitInit(ret_val);
+    ret_val = IR::Alloca(ret_type);
+    ret_type->EmitInit(ret_val);
     IR::Call(IR::Val::Func(fn_to_call), std::move(args), {ret_val});
   } else {
-    if (type->is_big()) {
-      ret_val = IR::Alloca(type);
-      type->EmitInit(ret_val);
-      type->EmitAssign(output_type_for_this_binding,
-                       IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}),
-                       ret_val);
+    if (ret_type->is_big()) {
+      ret_val = IR::Alloca(ret_type);
+      ret_type->EmitInit(ret_val);
+      ret_type->EmitAssign(
+          output_type_for_this_binding,
+          IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}), ret_val);
     } else {
       ret_val = IR::Call(IR::Val::Func(fn_to_call), std::move(args), {});
     }
@@ -200,50 +201,25 @@ IR::Val AST::Call::EmitOneCallDispatch(
   return ret_val;
 }
 
-IR::Val AST::Call::EmitIR(Context *ctx) {
-  if (fn_->is<Terminal>()) {
-    return IR::Call(ErrorFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
-  }
-
-  ASSERT_GT(dispatch_table_.bindings_.size(), 0u);
-  // Look at all the possible calls and generate the dispatching code
-  // TODO implement this with a lookup table instead of this branching
-  // insanity.
-
-  // TODO an opmitimazion we can do is merging all the allocas for results into
-  // a single variant buffer, because we know we need something that big anyway,
-  // and their use cannot overlap.
-
-  std::unordered_map<Expression *, IR::Val *> expr_map;
-  FnArgs<IR::Val> fn_args;
-  fn_args.pos_.reserve(args_.pos_.size());
-  for (auto &expr : args_.pos_) {
-    fn_args.pos_.push_back(expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
-                                                : expr->EmitIR(ctx));
-    expr_map[expr.get()] = &fn_args.pos_.back(); // Safe because of reserve.
-  }
-
-  for (auto & [ name, expr ] : args_.named_) {
-    auto[iter, success] = fn_args.named_.emplace(
-        name, expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
-                                   : expr->EmitIR(ctx));
-    expr_map[expr.get()] = &iter->second;
-  }
-
-  if (dispatch_table_.bindings_.size() == 1) {
-    const auto & [ call_arg_type, binding ] =
-        *dispatch_table_.bindings_.begin();
-    return EmitOneCallDispatch(expr_map, binding, ctx);
+static IR::Val EmitCallDispatch(
+    const AST::FnArgs<AST::Expression *> &args,
+    const AST::FnArgs<IR::Val> &fn_args,
+    const std::unordered_map<AST::Expression *, IR::Val *> &expr_map,
+    const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
+    Context *ctx) {
+  if (dispatch_table.bindings_.size() == 1) {
+    const auto & [ call_arg_type, binding ] = *dispatch_table.bindings_.begin();
+    return EmitOneCallDispatch(ret_type, expr_map, binding, ctx);
   }
 
   std::vector<IR::Val> results;
-  results.reserve(2 * dispatch_table_.bindings_.size());
+  results.reserve(2 * dispatch_table.bindings_.size());
 
   auto landing_block = IR::Func::Current->AddBlock();
 
-  for (const auto & [ call_arg_type, binding ] : dispatch_table_.bindings_) {
-    auto next_binding = CallLookupTest(args_, fn_args, call_arg_type);
-    auto result       = EmitOneCallDispatch(expr_map, binding, ctx);
+  for (const auto & [ call_arg_type, binding ] : dispatch_table.bindings_) {
+    auto next_binding = CallLookupTest(args, fn_args, call_arg_type);
+    auto result       = EmitOneCallDispatch(ret_type, expr_map, binding, ctx);
     results.push_back(IR::Val::Block(IR::Block::Current));
     results.push_back(std::move(result));
 
@@ -263,11 +239,48 @@ IR::Val AST::Call::EmitIR(Context *ctx) {
     if (results.size() == 2) {
       return results[1];
     } else {
-      auto phi = IR::Phi(type->is_big() ? Ptr(type) : type);
+      auto phi = IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
       IR::Func::Current->SetArgs(phi, std::move(results));
       return IR::Func::Current->Command(phi).reg();
     }
   }
+}
+
+IR::Val AST::Call::EmitIR(Context *ctx) {
+  if (fn_->is<Terminal>()) {
+    return IR::Call(ErrorFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
+  }
+
+  ASSERT_GT(dispatch_table_.bindings_.size(), 0u);
+  // Look at all the possible calls and generate the dispatching code
+  // TODO implement this with a lookup table instead of this branching
+  // insanity.
+
+  // TODO an opmitimazion we can do is merging all the allocas for results
+  // into a single variant buffer, because we know we need something that big
+  // anyway, and their use cannot overlap.
+
+  std::unordered_map<Expression *, IR::Val *> expr_map;
+  FnArgs<IR::Val> fn_args;
+  fn_args.pos_.reserve(args_.pos_.size());
+  for (auto &expr : args_.pos_) {
+    fn_args.pos_.push_back(expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
+                                                : expr->EmitIR(ctx));
+    expr_map[expr.get()] = &fn_args.pos_.back(); // Safe because of reserve.
+  }
+
+  for (auto & [ name, expr ] : args_.named_) {
+    auto[iter, success] = fn_args.named_.emplace(
+        name, expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
+                                   : expr->EmitIR(ctx));
+    expr_map[expr.get()] = &iter->second;
+  }
+
+  return EmitCallDispatch(
+      args_.Transform([](const std::unique_ptr<Expression> &arg) {
+        return const_cast<Expression *>(arg.get());
+      }),
+      fn_args, expr_map, dispatch_table_, type, ctx);
 }
 
 IR::Val AST::Access::EmitIR(Context *ctx) {
@@ -760,14 +773,42 @@ IR::Val AST::ArrayType::EmitIR(Context *ctx) {
   return IR::Array(length->EmitIR(ctx), data_type->EmitIR(ctx));
 }
 
-static IR::Val EmitChainOpPair(const type::Type *lhs_type, const IR::Val &lhs_ir,
-                               Language::Operator op, const type::Type *rhs_type,
-                               const IR::Val &rhs_ir) {
+static IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
+                               const IR::Val &lhs_ir, const IR::Val &rhs_ir,
+                               Context *ctx) {
+  const type::Type *lhs_type = chain_op->exprs[index]->type;
+  const type::Type *rhs_type = chain_op->exprs[index + 1]->type;
+  auto op                    = chain_op->ops[index];
+
   if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
     ASSERT(op == Language::Operator::Eq || op == Language::Operator::Ne, "");
     return type::Array::Compare(&lhs_type->as<type::Array>(), lhs_ir,
                           &rhs_type->as<type::Array>(), rhs_ir,
                           op == Language::Operator::Eq);
+  } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
+    std::unordered_map<AST::Expression *, IR::Val *> expr_map;
+    AST::FnArgs<IR::Val> fn_args;
+    fn_args.pos_.reserve(2);
+    {
+      auto *expr = chain_op->exprs[index].get();
+      fn_args.pos_.push_back(expr->type->is_big() ? PtrCallFix(lhs_ir)
+                                                  : lhs_ir);
+      expr_map[expr] = &fn_args.pos_.back(); // Safe because of reserve.
+    }
+    {
+      auto *expr = chain_op->exprs[index + 1].get();
+      fn_args.pos_.push_back(expr->type->is_big() ? PtrCallFix(rhs_ir)
+                                                  : rhs_ir);
+      expr_map[expr] = &fn_args.pos_.back(); // Safe because of reserve.
+    }
+
+    AST::FnArgs<AST::Expression *> args;
+    args.pos_.push_back(chain_op->exprs[index].get());
+    args.pos_.push_back(chain_op->exprs[index + 1].get());
+
+    return EmitCallDispatch(args, fn_args, expr_map,
+                            chain_op->dispatch_tables_[index], type::Bool, ctx);
+
   } else {
     switch (op) {
     case Language::Operator::Lt: return IR::Lt(lhs_ir, rhs_ir);
@@ -844,8 +885,8 @@ IR::Val AST::ChainOp::EmitIR(Context *ctx) {
     if (ops.size() == 1) {
       auto lhs_ir = exprs[0]->EmitIR(ctx);
       auto rhs_ir = exprs[1]->EmitIR(ctx);
-      return EmitChainOpPair(exprs[0]->type, lhs_ir, ops[0], exprs[1]->type,
-                             rhs_ir);
+      auto val = EmitChainOpPair(this, 0, lhs_ir, rhs_ir, ctx);
+      return val;
 
     } else {
       std::vector<IR::Val> phi_args;
@@ -853,8 +894,7 @@ IR::Val AST::ChainOp::EmitIR(Context *ctx) {
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
         auto rhs_ir = exprs[i + 1]->EmitIR(ctx);
-        IR::Val cmp = EmitChainOpPair(exprs[i]->type, lhs_ir, ops[i],
-                                      exprs[i + 1]->type, rhs_ir);
+        IR::Val cmp = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
 
         phi_args.push_back(IR::Val::Block(IR::Block::Current));
         phi_args.push_back(IR::Val::Bool(false));
@@ -867,8 +907,7 @@ IR::Val AST::ChainOp::EmitIR(Context *ctx) {
       // Once more for the last element, but don't do a conditional jump.
       auto rhs_ir = exprs.back()->EmitIR(ctx);
       auto last_cmp =
-          EmitChainOpPair(exprs[exprs.size() - 2]->type, lhs_ir, ops.back(),
-                          exprs[exprs.size() - 1]->type, rhs_ir);
+          EmitChainOpPair(this, exprs.size() - 2, lhs_ir, rhs_ir, ctx);
       phi_args.push_back(IR::Val::Block(IR::Block::Current));
       phi_args.push_back(last_cmp);
       IR::UncondJump(land_block);

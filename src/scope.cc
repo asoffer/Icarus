@@ -7,39 +7,12 @@
 
 DeclScope *GlobalScope = new DeclScope(nullptr);
 
-AST::Declaration *Scope::DeclHereOrNull(const std::string &name,
-                                       type::Type *declared_type) {
-  auto iter = decls_.find(name);
-  if (iter == decls_.end()) { return nullptr; }
-  for (auto decl : iter->second) {
-    if (decl->type == declared_type) { return decl; }
-  }
-  return nullptr;
-}
-
-AST::Declaration *Scope::DeclReferencedOrNull(const std::string &name,
-                                             type::Type *declared_type) {
-  for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
-    auto ptr = scope_ptr->DeclHereOrNull(name, declared_type);
-    if (ptr != nullptr) { return ptr; }
-  }
-  return nullptr;
-}
-
 // TODO this is dangerous
 AST::Identifier *Scope::IdHereOrNull(const std::string &name) const {
   auto iter = decls_.find(name);
   if (iter == decls_.end()) { return nullptr; }
   if (iter->second.empty()) { return nullptr; }
   return iter->second[0]->identifier.get();
-}
-
-AST::Identifier *Scope::IdReferencedOrNull(const std::string &name) {
-  for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
-    auto ptr = scope_ptr->IdHereOrNull(name);
-    if (ptr) { return ptr; }
-  }
-  return nullptr;
 }
 
 const type::Type *

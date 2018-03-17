@@ -10,9 +10,9 @@
 #include <vector>
 
 #include "../base/debug.h"
+#include "../frontend/operators.h"
 #include "../frontend/text_span.h"
 #include "../ir/val.h"
-#include "../frontend/operators.h"
 #include "../scope.h"
 #include "bound_constants.h"
 #include "dispatch.h"
@@ -109,17 +109,11 @@ struct Call : public Expression {
 
   IR::Val EmitIR(Context *) override;
 
-  IR::Val EmitOneCallDispatch(
-      const std::unordered_map<Expression *, IR::Val *> &expr_map,
-      const Binding &binding, Context *ctx);
-
   std::unique_ptr<Expression> fn_;
   FnArgs<std::unique_ptr<Expression>> args_;
 
   // Filled in after type verification
   DispatchTable dispatch_table_;
-  std::optional<DispatchTable>
-  ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx);
 };
 
 struct Declaration : public Expression {
@@ -192,6 +186,7 @@ struct ChainOp : public Expression {
   ChainOp *Clone() const override;
   std::vector<Language::Operator> ops;
   std::vector<std::unique_ptr<Expression>> exprs;
+  std::vector<DispatchTable> dispatch_tables_;
 };
 
 struct CommaList : public Expression {
@@ -253,7 +248,7 @@ struct GenericFunctionLiteral : public FunctionLiteral {
   // it can it materializes a function literal and returns a pointer to it.
   // Otherwise, returns nullptr.
   std::pair<FunctionLiteral *, Binding>
-  ComputeType(const FnArgs<std::unique_ptr<Expression>> &args, Context *ctx);
+  ComputeType(const FnArgs<Expression *> &args, Context *ctx);
 
   // Holds an ordering of the indices of 'inputs' sorted in such a way that if a
   // type depends on a value of another declaration, the dependent type occurs
@@ -317,7 +312,7 @@ struct StructLiteral : public Expression {
   StructLiteral &operator=(StructLiteral &&) = default;
   StructLiteral *Clone() const override;
 
-  IR::Val EmitIR(Context*) override;
+  IR::Val EmitIR(Context *) override;
 
   std::unique_ptr<DeclScope> type_scope;
   std::vector<std::unique_ptr<Declaration>> fields_;

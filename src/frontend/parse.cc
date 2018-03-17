@@ -206,6 +206,7 @@ BuildChainOp(std::vector<std::unique_ptr<Node>> nodes) {
   }
 
   chain->ops.push_back(op);
+  chain->dispatch_tables_.emplace_back();
   chain->exprs.push_back(move_as<Expression>(nodes[2]));
 
   return chain;
@@ -925,7 +926,7 @@ EmptyFile(std::vector<std::unique_ptr<AST::Node>> nodes,
 
 namespace ErrMsg {
 template <size_t RTN, size_t RES>
-std::unique_ptr<AST::Node>
+static std::unique_ptr<AST::Node>
 Reserved(std::vector<std::unique_ptr<AST::Node>> nodes, error::Log *error_log) {
   error_log->Reserved(nodes[RES]->span, nodes[RES]->as<AST::TokenNode>().token);
 
@@ -933,7 +934,7 @@ Reserved(std::vector<std::unique_ptr<AST::Node>> nodes, error::Log *error_log) {
 }
 
 template <size_t RTN, size_t RES1, size_t RES2>
-std::unique_ptr<AST::Node>
+static std::unique_ptr<AST::Node>
 BothReserved(std::vector<std::unique_ptr<AST::Node>> nodes,
              error::Log *error_log) {
   error_log->Reserved(nodes[RES1]->span,
@@ -943,14 +944,14 @@ BothReserved(std::vector<std::unique_ptr<AST::Node>> nodes,
   return std::make_unique<AST::Identifier>(nodes[RTN]->span, "invalid_node");
 }
 
-std::unique_ptr<AST::Node>
+static std::unique_ptr<AST::Node>
 NonBinop(std::vector<std::unique_ptr<AST::Node>> nodes, error::Log *error_log) {
   error_log->NotBinary(nodes[1]->span, nodes[1]->as<AST::TokenNode>().token);
   return std::make_unique<AST::Identifier>(nodes[1]->span, "invalid_node");
 }
 
 template <size_t RTN, size_t RES>
-std::unique_ptr<AST::Node>
+static std::unique_ptr<AST::Node>
 NonBinopReserved(std::vector<std::unique_ptr<AST::Node>> nodes,
                  error::Log *error_log) {
   error_log->NotBinary(nodes[1]->span, nodes[1]->as<AST::TokenNode>().token);
@@ -958,7 +959,7 @@ NonBinopReserved(std::vector<std::unique_ptr<AST::Node>> nodes,
   return std::make_unique<AST::Identifier>(nodes[RTN]->span, "invalid_node");
 }
 
-std::unique_ptr<AST::Node>
+static std::unique_ptr<AST::Node>
 NonBinopBothReserved(std::vector<std::unique_ptr<AST::Node>> nodes,
                      error::Log *error_log) {
   error_log->Reserved(nodes[0]->span, nodes[0]->as<AST::TokenNode>().token);
@@ -967,6 +968,14 @@ NonBinopBothReserved(std::vector<std::unique_ptr<AST::Node>> nodes,
   return std::make_unique<AST::Identifier>(nodes[1]->span, "invalid_node");
 }
 } // namespace ErrMsg
+
+static std::unique_ptr<AST::Node>
+BuildOperatorIdentifier(std::vector<std::unique_ptr<AST::Node>> nodes,
+                        error::Log *) {
+  auto span = nodes[1]->span;
+  return std::make_unique<AST::Identifier>(
+      span, move_as<AST::TokenNode>(nodes[1])->token);
+}
 
 namespace Language {
 static constexpr u64 OP_B = op_b | comma | dots | colon | eq;
@@ -994,6 +1003,8 @@ auto Rules = std::array{
     Rule(expr, {RESERVED, op_l, RESERVED}, ErrMsg::NonBinopBothReserved),
     Rule(expr, {EXPR, l_paren, EXPR, r_paren}, AST::BuildCall),
     Rule(expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
+    Rule(expr, {l_paren, op_l | op_b | eq | op_bl, r_paren},
+         BuildOperatorIdentifier),
     Rule(expr, {EXPR, l_bracket, EXPR, r_bracket}, AST::BuildIndexOperator),
     Rule(expr, {l_bracket, r_bracket}, AST::BuildEmptyArray),
     Rule(expr, {l_bracket, EXPR, semicolon, EXPR, r_bracket},

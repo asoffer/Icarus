@@ -24,11 +24,15 @@
   virtual void EmitInit(IR::Val id_val) const ENDING;                          \
   virtual void EmitDestroy(IR::Val id_val) const ENDING;                       \
   virtual IR::Val EmitInitialValue() const ENDING;                             \
-  virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val)     \
+  virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val)           \
       const ENDING;                                                            \
-  virtual void EmitRepr(IR::Val id_val) const ENDING
+  virtual void EmitRepr(IR::Val id_val) const ENDING;                          \
+  virtual Cmp Comparator() const ENDING
 
 namespace type {
+// Note: the order of these is meaningful and relied upon!
+enum class Cmp : u8 { None, Equality, Order };
+
 struct Type : public base::Cast<Type> {
 public:
   Type() {}

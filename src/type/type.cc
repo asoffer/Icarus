@@ -339,6 +339,7 @@ const Type *Meet(const Type *lhs, const Type *rhs) {
     }
     return results.empty() ? nullptr : Var(std::move(results));
   }
+
   return nullptr;
 }
 

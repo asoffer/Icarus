@@ -241,11 +241,11 @@ static bool Inferrable(const type::Type *t) {
 }
 
 std::optional<Binding> Binding::MakeUntyped(
-    AST::Expression *fn_expr, const FnArgs<std::unique_ptr<Expression>> &args,
+    AST::Expression *fn_expr, const FnArgs<Expression *> &args,
     const std::unordered_map<std::string, size_t> &index_lookup) {
   Binding result(fn_expr, index_lookup.size());
   for (size_t i = 0; i < args.pos_.size(); ++i) {
-    result.exprs_[i] = std::pair(nullptr, args.pos_[i].get());
+    result.exprs_[i] = std::pair(nullptr, args.pos_[i]);
   }
 
   // Match the named arguments
@@ -254,7 +254,7 @@ std::optional<Binding> Binding::MakeUntyped(
     // was a missing named argument.
     auto iter = index_lookup.find(name);
     if (iter == index_lookup.end()) { return std::nullopt; }
-    result.exprs_[iter->second] = std::pair(nullptr, expr.get());
+    result.exprs_[iter->second] = std::pair(nullptr, expr);
   }
   return result;
 }
@@ -263,11 +263,13 @@ Binding::Binding(AST::Expression *fn_expr, size_t n)
     : fn_expr_(fn_expr),
       exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
 
+
 // We already know there can be at most one match (multiple matches would
 // have been caught by shadowing), so we just return a pointer to it if it
 // exists, and null otherwise.
-std::optional<DispatchTable>
-Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
+static std::optional<DispatchTable>
+ComputeDispatchTable(const FnArgs<Expression *> &args,
+                     std::vector<Expression *> fn_options, Context *ctx) {
   DispatchTable table;
   for (Expression *fn_option : fn_options) {
     auto vals = Evaluate(fn_option, ctx);
@@ -276,14 +278,14 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
     if (fn_option->type->is<type::Function>()) {
       auto *fn_lit = std::get<FunctionLiteral *>(fn_val);
 
-      auto maybe_binding = Binding::MakeUntyped(fn_lit, args_, fn_lit->lookup_);
+      auto maybe_binding = Binding::MakeUntyped(fn_lit, args, fn_lit->lookup_);
       if (!maybe_binding) { continue; }
       auto binding = std::move(maybe_binding).value();
 
       FnArgs<const type::Type *> call_arg_types;
-      call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
+      call_arg_types.pos_.resize(args.pos_.size(), nullptr);
       for (const auto & [ key, val ] : fn_lit->lookup_) {
-        if (val < args_.pos_.size()) { continue; }
+        if (val < args.pos_.size()) { continue; }
         call_arg_types.named_.emplace(key, nullptr);
       }
 
@@ -313,12 +315,12 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
 
     } else if (fn_option->type == type::Generic) {
       auto *gen_fn_lit = std::get<GenericFunctionLiteral *>(fn_val);
-      if (auto[fn_lit, binding] = gen_fn_lit->ComputeType(args_, ctx); fn_lit) {
+      if (auto[fn_lit, binding] = gen_fn_lit->ComputeType(args, ctx); fn_lit) {
         // TODO this is copied almost exactly from above.
         FnArgs<const type::Type *> call_arg_types;
-        call_arg_types.pos_.resize(args_.pos_.size(), nullptr);
+        call_arg_types.pos_.resize(args.pos_.size(), nullptr);
         for (const auto & [ key, val ] : gen_fn_lit->lookup_) {
-          if (val < args_.pos_.size()) { continue; }
+          if (val < args.pos_.size()) { continue; }
           call_arg_types.named_.emplace(key, nullptr);
         }
 
@@ -362,8 +364,9 @@ Call::ComputeDispatchTable(std::vector<Expression *> fn_options, Context *ctx) {
   return std::move(table);
 }
 
-std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
-    const FnArgs<std::unique_ptr<Expression>> &args, Context *ctx) {
+std::pair<FunctionLiteral *, Binding>
+GenericFunctionLiteral::ComputeType(const FnArgs<Expression *> &args,
+                                    Context *ctx) {
   auto maybe_binding = Binding::MakeUntyped(this, args, lookup_);
   if (!maybe_binding.has_value()) { return std::pair(nullptr, Binding{}); }
   auto binding = std::move(maybe_binding).value();
@@ -474,103 +477,6 @@ void DispatchTable::insert(FnArgs<const type::Type *> call_arg_types,
 
   total_size_ += expanded_size;
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
-}
-
-static bool ValidateComparisonType(Language::Operator op,
-                                   const type::Type *lhs_type,
-                                   const type::Type *rhs_type) {
-  ASSERT(op == Language::Operator::Lt || op == Language::Operator::Le ||
-             op == Language::Operator::Eq || op == Language::Operator::Ne ||
-             op == Language::Operator::Ge || op == Language::Operator::Gt,
-         "Expecting a ChainOp operator type.");
-
-  if (lhs_type->is<type::Primitive>() || rhs_type->is<type::Primitive>() ||
-      lhs_type->is<type::Enum>() || rhs_type->is<type::Enum>()) {
-    if (lhs_type != rhs_type) {
-      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-      return false;
-    }
-
-    if (lhs_type == type::Int || lhs_type == type::Real) { return true; }
-
-    if (lhs_type == type::Code || lhs_type == type::Void) { return false; }
-    // TODO type::NullPtr, type::String types?
-
-    if (lhs_type == type::Bool || lhs_type == type::Char ||
-        lhs_type == type::Type_ ||
-        (lhs_type->is<type::Enum>() && lhs_type->as<type::Enum>().is_enum_)) {
-      if (op == Language::Operator::Eq || op == Language::Operator::Ne) {
-        return true;
-      } else {
-        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                             std::to_string(__LINE__) + ": ");
-        return false;
-      }
-    } else if (lhs_type->is<type::Enum>() &&
-               !lhs_type->as<type::Enum>().is_enum_) {
-      return true;
-    }
-  }
-
-  if (lhs_type->is<type::Pointer>()) {
-    if (lhs_type != rhs_type) {
-      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-      return false;
-    } else if (op != Language::Operator::Eq && op != Language::Operator::Ne) {
-      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-      return false;
-    } else {
-      return true;
-    }
-  }
-
-  // TODO there are many errors that might occur here and we should export
-  // all of them. For instance, I might try to compare two arrays of
-  // differing fixed lengths with '<'. We should not exit early, but rather
-  // say that you can't use '<' and that the lengths are different.
-  if (lhs_type->is<type::Array>()) {
-    if (rhs_type->is<type::Array>()) {
-      if (op != Language::Operator::Eq && op != Language::Operator::Ne) {
-        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                             std::to_string(__LINE__) + ": ");
-        return false;
-      }
-
-      auto *lhs_array = &lhs_type->as<type::Array>();
-      auto *rhs_array = &lhs_type->as<type::Array>();
-
-      // TODO what if data types are equality comparable but not equal?
-      if (lhs_array->data_type != rhs_array->data_type) {
-        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                             std::to_string(__LINE__) + ": ");
-        return false;
-      }
-
-      if (lhs_array->fixed_length && rhs_array->fixed_length) {
-        if (lhs_array->len == rhs_array->len) {
-          return true;
-        } else {
-          ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                               std::to_string(__LINE__) + ": ");
-          return false;
-        }
-      } else {
-        return true; // If at least one array length is variable, we should
-                     // be allowed to compare them.
-      }
-    } else {
-      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-      return false;
-    }
-  }
-
-  ErrorLog::LogGeneric(TextSpan(),
-                       "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-  return false;
 }
 
 void Terminal::Validate(Context *) {
@@ -889,6 +795,35 @@ void Binop::Validate(Context *ctx) {
   }
 }
 
+static std::vector<Expression *> FunctionOptions(const std::string &token,
+                                                 Scope *scope, Context *ctx) {
+  std::vector<Expression *> fn_options;
+  for (auto *scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
+    if (scope_ptr->shadowed_decls_.find(token) !=
+        scope_ptr->shadowed_decls_.end()) {
+      // The declaration of this identifier is shadowed so it will be
+      // difficult to give meaningful error messages. Bailing out.
+      // TODO Come up with a good way to give decent error messages anyway (at
+      // least in some circumstances. For instance, there may be overlap here,
+      // but it may not be relevant to the function call at hand. If, for
+      // example, one call takes an A | B and the other takes a B | C, but
+      // here we wish to validate a call for just a C, it's safe to do so
+      // here.
+      return {};
+    }
+
+    auto iter = scope_ptr->decls_.find(token);
+    if (iter == scope_ptr->decls_.end()) { continue; }
+    for (const auto &decl : iter->second) {
+      decl->Validate(ctx);
+      // TODO HANDLE_CYCLIC_DEPENDENCIES;
+      if (decl->type == type::Err) { return {}; }
+      fn_options.push_back(decl);
+    }
+  }
+  return fn_options;
+}
+
 void Call::Validate(Context *ctx) {
   STARTING_CHECK;
 
@@ -906,11 +841,6 @@ void Call::Validate(Context *ctx) {
     return;
   }
 
-  // Identifiers need special handling due to overloading. compile-time
-  // constants need special handling because they admit named arguments. These
-  // concepts should be orthogonal.
-  std::vector<Expression *> fn_options;
-
   if (fn_->is<Terminal>()) {
     // Special case for error/ord/ascii
     if (fn_->as<Terminal>().value == OrdFunc()) {
@@ -918,53 +848,34 @@ void Call::Validate(Context *ctx) {
     } else if (fn_->as<Terminal>().value == AsciiFunc()) {
       NOT_YET();
     } else if (fn_->as<Terminal>().value == ErrorFunc()) {
-      if (!args_.named_.empty()) {
-        NOT_YET();
-      } else if (args_.pos_.size() != 1) {
-        NOT_YET();
-      } else {
-        return;
-      }
+      NOT_YET();
+    } else {
+      UNREACHABLE();
     }
-
-  } else if (fn_->is<Identifier>()) {
-    const auto &token = fn_->as<Identifier>().token;
-    for (auto *scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-      if (scope_ptr->shadowed_decls_.find(token) !=
-          scope_ptr->shadowed_decls_.end()) {
-        // The declaration of this identifier is shadowed so it will be
-        // difficult to give meaningful error messages. Bailing out.
-        // TODO Come up with a good way to give decent error messages anyway (at
-        // least in some circumstances. For instance, there may be overlap here,
-        // but it may not be relevant to the function call at hand. If, for
-        // example, one call takes an A | B and the other takes a B | C, but
-        // here we wish to validate a call for just a C, it's safe to do so
-        // here.
-        type = type::Err;
-        limit_to(StageRange::Nothing());
-        return;
-      }
-
-      auto iter = scope_ptr->decls_.find(token);
-      if (iter == scope_ptr->decls_.end()) { continue; }
-      for (const auto &decl : iter->second) {
-        decl->Validate(ctx);
-        HANDLE_CYCLIC_DEPENDENCIES;
-        if (decl->type == type::Err) {
-          limit_to(decl->stage_range_.high);
-          return;
-        }
-        fn_options.push_back(decl);
-      }
-    }
-  } else {
+  }
+  std::vector<Expression *> fn_options;
+  if (!fn_->is<Identifier>()) {
     fn_->Validate(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     fn_options.push_back(fn_.get());
+  } else {
+    fn_options = FunctionOptions(fn_->as<Identifier>().token, scope_, ctx);
   }
 
-  if (auto maybe_table = ComputeDispatchTable(std::move(fn_options), ctx)) {
-    dispatch_table_ = std::move(maybe_table.value());
+  if (fn_options.empty()) {
+    type = type::Err;
+    limit_to(StageRange::Nothing());
+    return;
+  }
+
+  FnArgs<Expression *> args =
+      args_.Transform([](const std::unique_ptr<Expression> &arg) {
+        return const_cast<Expression *>(arg.get());
+      });
+
+  if (auto maybe_table =
+          ComputeDispatchTable(args, std::move(fn_options), ctx)) {
+    dispatch_table_ = std::move(maybe_table).value();
   } else {
     // Failure because we can't emit IR for the function so the error was
     // previously logged.
@@ -1421,8 +1332,10 @@ void ChainOp::Validate(Context *ctx) {
 
   // Safe to just check first because to be on the same chain they must all have
   // the same precedence, and ^, &, and | uniquely hold a given precedence.
-  if (ops[0] == Language::Operator::Or || ops[0] == Language::Operator::And ||
-      ops[0] == Language::Operator::Xor) {
+  switch (ops[0]) {
+  case Language::Operator::Or:
+  case Language::Operator::And:
+  case Language::Operator::Xor: {
     bool failed = false;
     for (const auto &expr : exprs) {
       if (expr->type != exprs[0]->type) {
@@ -1446,14 +1359,85 @@ void ChainOp::Validate(Context *ctx) {
       }
     }
 
-  } else {
+    return;
+  } break;
+  default: {
+    ASSERT_GE(exprs.size(), 2u);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
-      if (!ValidateComparisonType(ops[i], exprs[i]->type, exprs[i + 1]->type)) {
-        type = type::Err; // Errors exported by ValidateComparisonType
+      const type::Type *lhs_type = exprs[i]->type;
+      const type::Type *rhs_type = exprs[i + 1]->type;
+      if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
+        // TODO struct is wrong. generally user-defined (could be array of
+        // struct too, or perhaps a variant containing a struct?) need to
+        // figure out the details here.
+        const char *token = nullptr;
+        switch (ops[i]) {
+        case Language::Operator::Lt: token = "<"; break;
+        case Language::Operator::Le: token = "<="; break;
+        case Language::Operator::Eq: token = "=="; break;
+        case Language::Operator::Ne: token = "!="; break;
+        case Language::Operator::Ge: token = ">="; break;
+        case Language::Operator::Gt: token = ">"; break;
+        default: UNREACHABLE();
+        }
+
+        auto fn_options = FunctionOptions(token, scope_, ctx);
+        FnArgs<Expression *> args;
+        args.pos_.push_back(exprs[i].get());
+        args.pos_.push_back(exprs[i + 1].get());
+        if (auto maybe_table =
+                ComputeDispatchTable(args, std::move(fn_options), ctx)) {
+          dispatch_tables_[i] = std::move(maybe_table).value();
+          continue;
+       } else {
+         LOG << "FAIL!";
+         // Failure because we can't emit IR for the function so the error was
+         // previously logged.
+         type = type::Err;
+         continue;
+        }
+      } else {
+        if (lhs_type != rhs_type) {
+          NOT_YET(lhs_type, " ", rhs_type);
+        } else {
+          auto cmp = lhs_type->Comparator();
+
+          switch (ops[i]) {
+          case Language::Operator::Eq:
+          case Language::Operator::Ne: {
+            switch (lhs_type->Comparator()) {
+            case type::Cmp::Order:
+            case type::Cmp::Equality: continue;
+            case type::Cmp::None:
+              type = type::Err;
+              ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                                   std::to_string(__LINE__) +
+                                                   ": ");
+            }
+          } break;
+          case Language::Operator::Lt:
+          case Language::Operator::Le:
+          case Language::Operator::Ge:
+          case Language::Operator::Gt: {
+            switch (cmp) {
+            case type::Cmp::Order: continue;
+            case type::Cmp::Equality:
+            case type::Cmp::None:
+              type = type::Err;
+              ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                                   std::to_string(__LINE__) +
+                                                   ": ");
+            }
+          } break;
+          default: UNREACHABLE("Expecting a ChainOp operator type.");
+          }
+        }
       }
     }
+
     if (type == type::Err) { limit_to(StageRange::Nothing()); }
     type = type::Bool;
+  }
   }
 }
 
