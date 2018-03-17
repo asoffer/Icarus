@@ -45,6 +45,12 @@ template <typename T> struct FnArgs {
     for (auto && [ key, val ] : named_) { fn(val); }
   }
 
+  template <typename Fn> void Apply(Fn &&fn) const {
+    for (const auto &val : pos_) { fn(val); }
+    for (const auto & [ key, val ] : named_) { fn(val); }
+  }
+
+
   template <typename Fn> auto Transform(Fn &&fn) const {
     using out_t = decltype(fn(pos_[0]));
     FnArgs<out_t> result;

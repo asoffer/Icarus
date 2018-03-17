@@ -127,33 +127,32 @@ IR::Val AST::Expression::EmitIR(Context *) { UNREACHABLE(*this); }
 IR::Val AST::Expression::EmitLVal(Context *) { UNREACHABLE(*this); }
 
 static IR::BlockIndex
-CallLookupTest(const AST::FnArgs<AST::Expression *> &args,
-               const AST::FnArgs<IR::Val> &fn_args,
+CallLookupTest(const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
                const AST::FnArgs<const type::Type *> &call_arg_type) {
   // Generate code that attempts to match the types on each argument (only
   // check the ones at the call-site that could be variants).
   auto next_binding = IR::Func::Current->AddBlock();
   for (size_t i = 0; i < args.pos_.size(); ++i) {
-    if (!args.pos_[i]->type->is<type::Variant>()) { continue; }
+    if (!args.pos_[i].first->type->is<type::Variant>()) { continue; }
     IR::Block::Current = IR::EarlyExitOn<false>(
         next_binding,
-        EmitVariantMatch(fn_args.pos_.at(i), call_arg_type.pos_[i]));
+        EmitVariantMatch(args.pos_.at(i).second, call_arg_type.pos_[i]));
   }
 
-  for (const auto & [ name, expr ] : args.named_) {
+  for (const auto & [ name, expr_and_val] : args.named_) {
     auto iter = call_arg_type.find(name);
     if (iter == call_arg_type.named_.end()) { continue; }
-    if (!expr->type->is<type::Variant>()) { continue; }
+    if (!expr_and_val.first->type->is<type::Variant>()) { continue; }
     IR::Block::Current = IR::EarlyExitOn<false>(
         next_binding,
-        EmitVariantMatch(fn_args.named_.at(iter->first), iter->second));
+        EmitVariantMatch(args.named_.at(iter->first).second, iter->second));
   }
 
   return next_binding;
 }
 
 static IR::Val EmitOneCallDispatch(const type::Type* ret_type,
-    const std::unordered_map<AST::Expression *, IR::Val *> &expr_map,
+    const std::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
   // After the last check, if you pass, you should dispatch
   IR::Func *fn_to_call = std::visit(
@@ -202,11 +201,14 @@ static IR::Val EmitOneCallDispatch(const type::Type* ret_type,
 }
 
 static IR::Val EmitCallDispatch(
-    const AST::FnArgs<AST::Expression *> &args,
-    const AST::FnArgs<IR::Val> &fn_args,
-    const std::unordered_map<AST::Expression *, IR::Val *> &expr_map,
+    const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx) {
+  std::unordered_map<AST::Expression *, const IR::Val *> expr_map;
+  args.Apply([&expr_map](const std::pair<AST::Expression *, IR::Val> &arg) {
+    expr_map[arg.first] = &arg.second;
+  });
+
   if (dispatch_table.bindings_.size() == 1) {
     const auto & [ call_arg_type, binding ] = *dispatch_table.bindings_.begin();
     return EmitOneCallDispatch(ret_type, expr_map, binding, ctx);
@@ -218,7 +220,7 @@ static IR::Val EmitCallDispatch(
   auto landing_block = IR::Func::Current->AddBlock();
 
   for (const auto & [ call_arg_type, binding ] : dispatch_table.bindings_) {
-    auto next_binding = CallLookupTest(args, fn_args, call_arg_type);
+    auto next_binding = CallLookupTest(args, call_arg_type);
     auto result       = EmitOneCallDispatch(ret_type, expr_map, binding, ctx);
     results.push_back(IR::Val::Block(IR::Block::Current));
     results.push_back(std::move(result));
@@ -260,27 +262,13 @@ IR::Val AST::Call::EmitIR(Context *ctx) {
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
 
-  std::unordered_map<Expression *, IR::Val *> expr_map;
-  FnArgs<IR::Val> fn_args;
-  fn_args.pos_.reserve(args_.pos_.size());
-  for (auto &expr : args_.pos_) {
-    fn_args.pos_.push_back(expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
-                                                : expr->EmitIR(ctx));
-    expr_map[expr.get()] = &fn_args.pos_.back(); // Safe because of reserve.
-  }
-
-  for (auto & [ name, expr ] : args_.named_) {
-    auto[iter, success] = fn_args.named_.emplace(
-        name, expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
-                                   : expr->EmitIR(ctx));
-    expr_map[expr.get()] = &iter->second;
-  }
-
   return EmitCallDispatch(
-      args_.Transform([](const std::unique_ptr<Expression> &arg) {
-        return const_cast<Expression *>(arg.get());
+      args_.Transform([ctx](const std::unique_ptr<Expression> &expr) {
+        return std::pair(const_cast<Expression *>(expr.get()),
+                         expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
+                                              : expr->EmitIR(ctx));
       }),
-      fn_args, expr_map, dispatch_table_, type, ctx);
+      dispatch_table_, type, ctx);
 }
 
 IR::Val AST::Access::EmitIR(Context *ctx) {
@@ -786,28 +774,18 @@ static IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
                           &rhs_type->as<type::Array>(), rhs_ir,
                           op == Language::Operator::Eq);
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
-    std::unordered_map<AST::Expression *, IR::Val *> expr_map;
-    AST::FnArgs<IR::Val> fn_args;
-    fn_args.pos_.reserve(2);
-    {
-      auto *expr = chain_op->exprs[index].get();
-      fn_args.pos_.push_back(expr->type->is_big() ? PtrCallFix(lhs_ir)
-                                                  : lhs_ir);
-      expr_map[expr] = &fn_args.pos_.back(); // Safe because of reserve.
-    }
-    {
-      auto *expr = chain_op->exprs[index + 1].get();
-      fn_args.pos_.push_back(expr->type->is_big() ? PtrCallFix(rhs_ir)
-                                                  : rhs_ir);
-      expr_map[expr] = &fn_args.pos_.back(); // Safe because of reserve.
-    }
+    AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
+    args.pos_.reserve(2);
+    args.pos_.emplace_back(
+        chain_op->exprs[index].get(),
+        chain_op->exprs[index]->type->is_big() ? PtrCallFix(lhs_ir) : lhs_ir);
+    args.pos_.emplace_back(chain_op->exprs[index + 1].get(),
+                           chain_op->exprs[index + 1]->type->is_big()
+                               ? PtrCallFix(rhs_ir)
+                               : rhs_ir);
 
-    AST::FnArgs<AST::Expression *> args;
-    args.pos_.push_back(chain_op->exprs[index].get());
-    args.pos_.push_back(chain_op->exprs[index + 1].get());
-
-    return EmitCallDispatch(args, fn_args, expr_map,
-                            chain_op->dispatch_tables_[index], type::Bool, ctx);
+    return EmitCallDispatch(args, chain_op->dispatch_tables_[index], type::Bool,
+                            ctx);
 
   } else {
     switch (op) {
