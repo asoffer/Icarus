@@ -546,6 +546,35 @@ void Hole::Validate(Context *) {
   lvalue = Assign::Const;
 }
 
+static std::vector<Expression *> FunctionOptions(const std::string &token,
+                                                 Scope *scope, Context *ctx) {
+  std::vector<Expression *> fn_options;
+  for (auto *scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
+    if (scope_ptr->shadowed_decls_.find(token) !=
+        scope_ptr->shadowed_decls_.end()) {
+      // The declaration of this identifier is shadowed so it will be
+      // difficult to give meaningful error messages. Bailing out.
+      // TODO Come up with a good way to give decent error messages anyway (at
+      // least in some circumstances. For instance, there may be overlap here,
+      // but it may not be relevant to the function call at hand. If, for
+      // example, one call takes an A | B and the other takes a B | C, but
+      // here we wish to validate a call for just a C, it's safe to do so
+      // here.
+      return {};
+    }
+
+    auto iter = scope_ptr->decls_.find(token);
+    if (iter == scope_ptr->decls_.end()) { continue; }
+    for (const auto &decl : iter->second) {
+      decl->Validate(ctx);
+      // TODO HANDLE_CYCLIC_DEPENDENCIES;
+      if (decl->type == type::Err) { return {}; }
+      fn_options.push_back(decl);
+    }
+  }
+  return fn_options;
+}
+
 void Binop::Validate(Context *ctx) {
   STARTING_CHECK;
 
@@ -679,7 +708,7 @@ void Binop::Validate(Context *ctx) {
     }
   } break;
 
-#define CASE(OpName, op_name, symbol, ret_type)                                \
+#define CASE(OpName, symbol, ret_type)                                         \
   case Operator::OpName: {                                                     \
     if ((lhs->type == type::Int && rhs->type == type::Int) ||                  \
         (lhs->type == type::Real && rhs->type == type::Real) ||                \
@@ -687,53 +716,41 @@ void Binop::Validate(Context *ctx) {
       /* TODO type::Code should only be valid for Add, not Sub, etc */         \
       type = ret_type;                                                         \
     } else {                                                                   \
-      /* Store a vector containing the valid matches */                        \
-      std::vector<Declaration *> matched_op_name;                              \
-                                                                               \
-      /* TODO this linear search is probably not ideal.   */                   \
-      scope_->ForEachDecl([this, &ctx, &matched_op_name](Declaration *decl) {  \
-        if (decl->identifier->token == "__" op_name "__") {                    \
-          decl->Validate(ctx);                                                 \
-          HANDLE_CYCLIC_DEPENDENCIES;                                          \
-          matched_op_name.push_back(decl);                                     \
+      auto fn_options = FunctionOptions(symbol, scope_, ctx);                  \
+      FnArgs<Expression *> args;                                               \
+      args.pos_ = std::vector{lhs.get(), rhs.get()};                           \
+      if (auto maybe_table =                                                   \
+              ComputeDispatchTable(args, std::move(fn_options), ctx)) {        \
+        dispatch_table_ = std::move(maybe_table).value();                      \
+        /* TODO copied from Call::Validate. Merge these and consider doing the \
+         * same for ChainOp::Validate even though for now it must return bool? \
+         */                                                                    \
+        std::vector<const type::Type *> out_types;                             \
+        out_types.reserve(dispatch_table_.bindings_.size());                   \
+        for (const auto & [ key, val ] : dispatch_table_.bindings_) {          \
+          auto &outs = val.fn_expr_->type->as<type::Function>().output;        \
+          ASSERT_LE(outs.size(), 1u);                                          \
+          out_types.push_back(outs.empty() ? type::Void : outs[0]);            \
         }                                                                      \
-      });                                                                      \
-                                                                               \
-      Declaration *correct_decl = nullptr;                                     \
-      for (auto &decl : matched_op_name) {                                     \
-        if (!decl->type->is<type::Function>()) { continue; }                   \
-        auto *fn_type = &decl->type->as<type::Function>();                     \
-        if (fn_type->input != std::vector{lhs->type, rhs->type}) { continue; } \
-        /* If you get here, you've found a match. Hope there is only one       \
-         * TODO if there is more than one, log them all and give a good        \
-         * *error message. For now, we just fail */                            \
-        if (correct_decl) {                                                    \
-          ErrorLog::AlreadyFoundMatch(span, symbol, lhs->type, rhs->type);     \
-          type = type::Err;                                                    \
-        } else {                                                               \
-          correct_decl = decl;                                                 \
-        }                                                                      \
-      }                                                                        \
-      if (!correct_decl) {                                                     \
+        type = type::Var(std::move(out_types));                                \
+      } else {                                                                 \
+        LOG << "FAIL!";                                                        \
+        /* TODO do I need to log an error here? */                             \
         type = type::Err;                                                      \
-        ErrorLog::NoKnownOverload(span, symbol, lhs->type, rhs->type);         \
         limit_to(StageRange::Nothing());                                       \
-        return;                                                                \
-      } else if (type != type::Err) {                                          \
-        type = type::Tup(correct_decl->type->as<type::Function>().output);     \
       }                                                                        \
     }                                                                          \
   } break;
 
-    CASE(Add, "add", "+", lhs->type);
-    CASE(Sub, "sub", "-", lhs->type);
-    CASE(Div, "div", "/", lhs->type);
-    CASE(Mod, "mod", "%", lhs->type);
-    CASE(AddEq, "add_eq", "+=", type::Void);
-    CASE(SubEq, "sub_eq", "-=", type::Void);
-    CASE(MulEq, "mul_eq", "*=", type::Void);
-    CASE(DivEq, "div_eq", "/=", type::Void);
-    CASE(ModEq, "mod_eq", "%=", type::Void);
+    CASE(Add, "+", lhs->type);
+    CASE(Sub, "-", lhs->type);
+    CASE(Div, "/", lhs->type);
+    CASE(Mod, "%", lhs->type);
+    CASE(AddEq, "+=", type::Void);
+    CASE(SubEq, "-=", type::Void);
+    CASE(MulEq, "*=", type::Void);
+    CASE(DivEq, "/=", type::Void);
+    CASE(ModEq, "%=", type::Void);
 #undef CASE
 
   // Mul is done separately because of the function composition
@@ -757,20 +774,26 @@ void Binop::Validate(Context *ctx) {
       }
 
     } else {
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdHereOrNull("__mul__");
-        if (!id_ptr) { continue; }
-      }
-
-      auto fn_type = scope_->FunctionTypeReferencedOrNull(
-          "__mul__", {lhs->type, rhs->type});
-      if (fn_type) {
-        type = type::Tup(fn_type->as<type::Function>().output);
+      auto fn_options = FunctionOptions("*", scope_, ctx);
+      FnArgs<Expression *> args;
+      args.pos_ = std::vector{lhs.get(), rhs.get()};
+      if (auto maybe_table =
+              ComputeDispatchTable(args, std::move(fn_options), ctx)) {
+        dispatch_table_ = std::move(maybe_table).value();
+        // TODO copied from Call::Validate. Merge these and consider doing the
+        // same for ChainOp::Validate even though for now it must return bool?
+        std::vector<const type::Type *> out_types;
+        out_types.reserve(dispatch_table_.bindings_.size());
+        for (const auto & [ key, val ] : dispatch_table_.bindings_) {
+          auto &outs = val.fn_expr_->type->as<type::Function>().output;
+          ASSERT_LE(outs.size(), 1u);
+          out_types.push_back(outs.empty() ? type::Void : outs[0]);
+        }
+        type = type::Var(std::move(out_types));
       } else {
+        LOG << "FAIL!"; /* TODO do I need to log an error here? */
         type = type::Err;
-        ErrorLog::NoKnownOverload(span, "*", lhs->type, rhs->type);
         limit_to(StageRange::Nothing());
-        return;
       }
     }
   } break;
@@ -793,35 +816,6 @@ void Binop::Validate(Context *ctx) {
   } break;
   default: UNREACHABLE();
   }
-}
-
-static std::vector<Expression *> FunctionOptions(const std::string &token,
-                                                 Scope *scope, Context *ctx) {
-  std::vector<Expression *> fn_options;
-  for (auto *scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
-    if (scope_ptr->shadowed_decls_.find(token) !=
-        scope_ptr->shadowed_decls_.end()) {
-      // The declaration of this identifier is shadowed so it will be
-      // difficult to give meaningful error messages. Bailing out.
-      // TODO Come up with a good way to give decent error messages anyway (at
-      // least in some circumstances. For instance, there may be overlap here,
-      // but it may not be relevant to the function call at hand. If, for
-      // example, one call takes an A | B and the other takes a B | C, but
-      // here we wish to validate a call for just a C, it's safe to do so
-      // here.
-      return {};
-    }
-
-    auto iter = scope_ptr->decls_.find(token);
-    if (iter == scope_ptr->decls_.end()) { continue; }
-    for (const auto &decl : iter->second) {
-      decl->Validate(ctx);
-      // TODO HANDLE_CYCLIC_DEPENDENCIES;
-      if (decl->type == type::Err) { return {}; }
-      fn_options.push_back(decl);
-    }
-  }
-  return fn_options;
 }
 
 void Call::Validate(Context *ctx) {
@@ -1383,18 +1377,14 @@ void ChainOp::Validate(Context *ctx) {
 
         auto fn_options = FunctionOptions(token, scope_, ctx);
         FnArgs<Expression *> args;
-        args.pos_.push_back(exprs[i].get());
-        args.pos_.push_back(exprs[i + 1].get());
+        args.pos_ = std::vector{exprs[i].get(), exprs[i + 1].get()};
         if (auto maybe_table =
                 ComputeDispatchTable(args, std::move(fn_options), ctx)) {
           dispatch_tables_[i] = std::move(maybe_table).value();
-          continue;
        } else {
          LOG << "FAIL!";
-         // Failure because we can't emit IR for the function so the error was
-         // previously logged.
+         // TODO do I need to log an error here?
          type = type::Err;
-         continue;
         }
       } else {
         if (lhs_type != rhs_type) {

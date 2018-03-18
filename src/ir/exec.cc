@@ -267,13 +267,15 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             [](const Addr &a) { std::cerr << a.to_string(); },
             [&resolved](EnumVal e) {
               if (resolved[0].type->as<type::Enum>().is_enum_) {
-                std::cerr << resolved[0].type->as<type::Enum>().members_[e.value];
+                std::cerr
+                    << resolved[0].type->as<type::Enum>().members_[e.value];
               } else {
                 size_t val = e.value;
                 std::vector<std::string> vals;
-                const auto &members = resolved[0].type->as<type::Enum>().members_;
-                size_t i            = 0;
-                size_t pow          = 1;
+                const auto &members =
+                    resolved[0].type->as<type::Enum>().members_;
+                size_t i   = 0;
+                size_t pow = 1;
                 while (pow <= val) {
                   if (val & pow) { vals.push_back(members[i]); }
                   ++i;

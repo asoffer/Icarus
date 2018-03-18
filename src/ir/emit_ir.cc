@@ -642,6 +642,19 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
 }
 
 IR::Val AST::Binop::EmitIR(Context *ctx) {
+  if (lhs->type->is<type::Struct>() || rhs->type->is<type::Struct>()) {
+    // TODO struct is not exactly right. we really mean user-defined
+    AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
+    args.pos_.reserve(2);
+    args.pos_.emplace_back(lhs.get(), lhs->type->is_big()
+                                          ? PtrCallFix(lhs->EmitIR(ctx))
+                                          : lhs->EmitIR(ctx));
+    args.pos_.emplace_back(rhs.get(), rhs->type->is_big()
+                                          ? PtrCallFix(rhs->EmitIR(ctx))
+                                          : rhs->EmitIR(ctx));
+    return EmitCallDispatch(args, dispatch_table_, type, ctx);
+  }
+
   switch (op) {
 #define CASE(op_name)                                                          \
   case Language::Operator::op_name: {                                          \
