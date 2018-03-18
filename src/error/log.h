@@ -49,6 +49,8 @@ struct Log {
 
   // TODO include a source location/span/trace or whatever you decide to include.
   void UserDefinedError(const std::string &err);
+  void DereferencingNonPointer(const type::Type *type, const TextSpan &span);
+  void FreeingNonPointer(const type::Type *type, const TextSpan &span);
 
   std::vector<AST::Identifier *> *CyclicDependency();
 
@@ -74,28 +76,16 @@ struct Log {
 
 // TODO everything below here is legacy and needs to be cleaned up
 
-#include "ast/ast.h"
-#include "../type/type.h"
-#include "ir/property.h"
-
 namespace ErrorLog {
 void LogGeneric(const TextSpan &span, const std::string &msg);
-// TODO build a graph of declarations that shadow each other and show connected components together.
-void UnopTypeFail(const std::string &msg, const AST::Unop *unop);
-void InvalidAddress(const TextSpan &span, Assign mode);
-void InvalidAssignment(const TextSpan &span, Assign mode);
+// TODO build a graph of declarations that shadow each other and show connected
+// components together.
 void MissingMember(const TextSpan &span, const std::string &member_name,
                    const type::Type *t);
-
-void AssignmentTypeMismatch(const TextSpan &span, const type::Type *lhs,
-                            const type::Type *rhs);
-void InvalidRanges(const TextSpan &span, const type::Type *lhs, const type::Type *rhs);
-
+void InvalidRanges(const TextSpan &span, const type::Type *lhs,
+                   const type::Type *rhs);
 void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
                        const type::Type *lhs, const type::Type *rhs);
-void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
-                     const type::Type *lhs, const type::Type *rhs);
-
 void InvalidRange(const TextSpan &span, const type::Type *t);
 void InvalidStringIndex(const TextSpan &span, const type::Type *index_type);
 void NonIntegralArrayIndex(const TextSpan &span, const type::Type *index_type);

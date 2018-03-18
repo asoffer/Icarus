@@ -204,32 +204,6 @@ void NonIntegralArrayIndex(const TextSpan &span, const type::Type *index_type) {
       "Arrays must be indexed by integral types (either int or uint)", span, 1);
 }
 
-void InvalidAddress(const TextSpan &span, Assign mode) {
-  if (mode == Assign::Const) {
-    DisplayErrorMessage(
-        "Attempting to take the address of an identifier marked as const", "",
-        span, 1);
-  } else if (mode == Assign::RVal) {
-    DisplayErrorMessage(
-        "Attempting to take the address of a temporary expression.", "", span,
-        1);
-  } else {
-    UNREACHABLE();
-  }
-}
-
-void InvalidAssignment(const TextSpan &span, Assign mode) {
-  if (mode == Assign::Const) {
-    DisplayErrorMessage("Attempting to assign to an identifier marked as const",
-                        "", span, 1);
-  } else if (mode == Assign::RVal) {
-    DisplayErrorMessage("Attempting to assign to a temporary expression.", "",
-                        span, 1);
-  } else {
-    UNREACHABLE();
-  }
-}
-
 void MissingMember(const TextSpan &span, const std::string &member_name,
                    const type::Type *t) {
   std::string msg_head = "Expressions of type `" + t->to_string() +
@@ -240,10 +214,6 @@ void MissingMember(const TextSpan &span, const std::string &member_name,
 void IndexingNonArray(const TextSpan &span, const type::Type *t) {
   DisplayErrorMessage("Cannot index into a non-array type.",
                       "Indexed type is a `" + t->to_string() + "`.", span, 1);
-}
-
-void UnopTypeFail(const std::string &msg, const AST::Unop *unop) {
-  DisplayErrorMessage(msg.c_str(), "", unop->span, 1);
 }
 
 void SlicingNonArray(const TextSpan &span, const type::Type *t) {
@@ -257,15 +227,6 @@ void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
                          "` with types " + lhs->to_string() + " and " +
                          rhs->to_string() + ".";
 
-  // TODO underline length is incorrect?
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
-void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
-                     const type::Type *lhs, const type::Type *rhs) {
-  std::string msg_head = "No known operator overload for operator `" +
-                         op_symbol + "` with types " + lhs->to_string() +
-                         " and " + rhs->to_string() + ".";
   // TODO underline length is incorrect?
   DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
@@ -352,13 +313,42 @@ void Log::DoubleDeclAssignment(const TextSpan &decl_span,
   errors_.push_back(ss.str());
 }
 
+void Log::DereferencingNonPointer(const type::Type *type,
+                                  const TextSpan &span) {
+  std::stringstream ss;
+  ss << "Attempting to dereference an object of type `" << type->to_string()
+     << "` which is not a pointer.";
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::FreeingNonPointer(const type::Type *type,
+                                  const TextSpan &span) {
+  std::stringstream ss;
+  ss << "Attempting to free an object of type `" << type->to_string()
+     << "` which is not a pointer.";
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
 void Log::Reserved(const TextSpan &span, const std::string &token) {
   std::stringstream ss;
   ss << "Identifier '" << token << "' is a reserved keyword.\n\n";
-  WriteSource(ss, *span.source,
-              {Interval{span.start.line_num, span.finish.line_num + 1}},
-              NumDigits(span.finish.line_num) + 2,
-              {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }

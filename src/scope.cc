@@ -7,40 +7,6 @@
 
 DeclScope *GlobalScope = new DeclScope(nullptr);
 
-// TODO this is dangerous
-AST::Identifier *Scope::IdHereOrNull(const std::string &name) const {
-  auto iter = decls_.find(name);
-  if (iter == decls_.end()) { return nullptr; }
-  if (iter->second.empty()) { return nullptr; }
-  return iter->second[0]->identifier.get();
-}
-
-const type::Type *
-Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
-                                    std::vector<const type::Type *> input_type) {
-  for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
-    auto id_ptr = scope_ptr->IdHereOrNull(fn_name);
-    if (!id_ptr) { continue; }
-
-    if (!id_ptr->type) {
-      // NOTE: IdHereOrNull always returns the identifier bound to the
-      // declaration, so if the type isn't specified, we need to actually verify
-      // the type of it's declaration.
-      ASSERT(id_ptr->decl, "");
-      // TODO bound constants?
-      Context ctx;
-      id_ptr->decl->Validate(&ctx);
-      ASSERT(id_ptr->type, "");
-    }
-
-    ASSERT_TYPE(type::Function, id_ptr->type);
-    if (id_ptr->type->as<type::Function>().input == input_type) {
-      return id_ptr->type;
-    }
-  }
-  return nullptr;
-}
-
 void Scope::InsertDecl(AST::Declaration *decl) {
   decls_[decl->identifier->token].push_back(decl);
   if (parent == nullptr) { return; }

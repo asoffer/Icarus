@@ -40,15 +40,6 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this);
   }
 
-  // Returns an identifier pointer if there is a declaration of this identifier
-  // in this scope. Otherwise it returns nullptr. It does *not* look in parent
-  // scopes.
-  AST::Identifier *IdHereOrNull(const std::string &name) const;
-
-  const type::Type *
-  FunctionTypeReferencedOrNull(const std::string &fn_name,
-                               std::vector<const type::Type *> input_type);
-
   std::pair<std::vector<AST::Declaration *>, std::vector<AST::Declaration *>>
   AllDeclsWithId(const std::string &id, Context *ctx);
 
@@ -56,12 +47,6 @@ struct Scope : public base::Cast<Scope> {
   void ForEachDeclHere(const Fn& fn) const {
     for (const auto &[key, val] : decls_) {
       for (auto *decl : val) { fn(decl); }
-    }
-  }
-
-  template <typename Fn> void ForEachDecl(const Fn &fn) const {
-    for (auto *scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
-      ForEachDeclHere(fn);
     }
   }
 

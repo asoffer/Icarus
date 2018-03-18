@@ -575,6 +575,27 @@ static std::vector<Expression *> FunctionOptions(const std::string &token,
   return fn_options;
 }
 
+static const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
+                                          std::vector<Expression *> fn_options,
+                                          AST::DispatchTable *dispatch_table,
+                                          Context *ctx) {
+  if (auto maybe_table =
+          ComputeDispatchTable(args, std::move(fn_options), ctx)) {
+    *dispatch_table = std::move(maybe_table).value();
+    std::vector<const type::Type *> out_types;
+    out_types.reserve(dispatch_table->bindings_.size());
+    for (const auto & [ key, val ] : dispatch_table->bindings_) {
+      auto &outs = val.fn_expr_->type->as<type::Function>().output;
+      ASSERT_LE(outs.size(), 1u);
+      out_types.push_back(outs.empty() ? type::Void : outs[0]);
+    }
+    return type::Var(std::move(out_types));
+  } else {
+    LOG << "FAIL!"; /* TODO do I need to log an error here? */
+    return type::Err;
+  }
+}
+
 void Binop::Validate(Context *ctx) {
   STARTING_CHECK;
 
@@ -596,9 +617,17 @@ void Binop::Validate(Context *ctx) {
        op == Operator::AddEq || op == Operator::SubEq ||
        op == Operator::MulEq || op == Operator::DivEq ||
        op == Operator::ModEq)) {
-    ErrorLog::InvalidAssignment(span, lhs->lvalue);
+    switch (lhs->lvalue) {
+    case Assign::Unset: UNREACHABLE();
+    case Assign::Const:
+      ctx->error_log_.AssigningToConstant(span);
+      break;
+    case Assign::RVal:
+      ctx->error_log_.AssigningToTemporary(span);
+      break;
+    case Assign::LVal: UNREACHABLE();
+    }
     limit_to(StageRange::Nothing());
-
   } else if (op == Operator::Cast || op == Operator::Index) {
     lvalue = rhs->lvalue;
   } else if (lhs->lvalue == Assign::Const && rhs->lvalue == Assign::Const) {
@@ -628,8 +657,8 @@ void Binop::Validate(Context *ctx) {
         ErrorLog::InvalidStringIndex(span, rhs->type);
         limit_to(StageRange::NoEmitIR());
       }
-      type =
-          type::Char; // Assuming it's a char, even if the index type was wrong.
+      type = type::Char; // Assuming it's a char, even if the index type was
+                         // wrong.
       return;
     } else if (!lhs->type->is<type::Array>()) {
       if (rhs->type->is<type::Range>()) {
@@ -716,29 +745,11 @@ void Binop::Validate(Context *ctx) {
       /* TODO type::Code should only be valid for Add, not Sub, etc */         \
       type = ret_type;                                                         \
     } else {                                                                   \
-      auto fn_options = FunctionOptions(symbol, scope_, ctx);                  \
       FnArgs<Expression *> args;                                               \
       args.pos_ = std::vector{lhs.get(), rhs.get()};                           \
-      if (auto maybe_table =                                                   \
-              ComputeDispatchTable(args, std::move(fn_options), ctx)) {        \
-        dispatch_table_ = std::move(maybe_table).value();                      \
-        /* TODO copied from Call::Validate. Merge these and consider doing the \
-         * same for ChainOp::Validate even though for now it must return bool? \
-         */                                                                    \
-        std::vector<const type::Type *> out_types;                             \
-        out_types.reserve(dispatch_table_.bindings_.size());                   \
-        for (const auto & [ key, val ] : dispatch_table_.bindings_) {          \
-          auto &outs = val.fn_expr_->type->as<type::Function>().output;        \
-          ASSERT_LE(outs.size(), 1u);                                          \
-          out_types.push_back(outs.empty() ? type::Void : outs[0]);            \
-        }                                                                      \
-        type = type::Var(std::move(out_types));                                \
-      } else {                                                                 \
-        LOG << "FAIL!";                                                        \
-        /* TODO do I need to log an error here? */                             \
-        type = type::Err;                                                      \
-        limit_to(StageRange::Nothing());                                       \
-      }                                                                        \
+      type      = SetDispatchTable(args, FunctionOptions(symbol, scope_, ctx), \
+                              &dispatch_table_, ctx);                     \
+      if (type == type::Err) { limit_to(StageRange::Nothing()); }              \
     }                                                                          \
   } break;
 
@@ -774,27 +785,11 @@ void Binop::Validate(Context *ctx) {
       }
 
     } else {
-      auto fn_options = FunctionOptions("*", scope_, ctx);
       FnArgs<Expression *> args;
       args.pos_ = std::vector{lhs.get(), rhs.get()};
-      if (auto maybe_table =
-              ComputeDispatchTable(args, std::move(fn_options), ctx)) {
-        dispatch_table_ = std::move(maybe_table).value();
-        // TODO copied from Call::Validate. Merge these and consider doing the
-        // same for ChainOp::Validate even though for now it must return bool?
-        std::vector<const type::Type *> out_types;
-        out_types.reserve(dispatch_table_.bindings_.size());
-        for (const auto & [ key, val ] : dispatch_table_.bindings_) {
-          auto &outs = val.fn_expr_->type->as<type::Function>().output;
-          ASSERT_LE(outs.size(), 1u);
-          out_types.push_back(outs.empty() ? type::Void : outs[0]);
-        }
-        type = type::Var(std::move(out_types));
-      } else {
-        LOG << "FAIL!"; /* TODO do I need to log an error here? */
-        type = type::Err;
-        limit_to(StageRange::Nothing());
-      }
+      type      = SetDispatchTable(args, FunctionOptions("*", scope_, ctx),
+                              &dispatch_table_, ctx);
+      if (type == type::Err) { limit_to(StageRange::Nothing()); }
     }
   } break;
   case Operator::Arrow: {
@@ -867,16 +862,8 @@ void Call::Validate(Context *ctx) {
         return const_cast<Expression *>(arg.get());
       });
 
-  if (auto maybe_table =
-          ComputeDispatchTable(args, std::move(fn_options), ctx)) {
-    dispatch_table_ = std::move(maybe_table).value();
-  } else {
-    // Failure because we can't emit IR for the function so the error was
-    // previously logged.
-    type = type::Err;
-    limit_to(StageRange::Nothing());
-    return;
-  }
+  type = SetDispatchTable(args, std::move(fn_options), &dispatch_table_, ctx);
+  if (type == type::Err) { limit_to(StageRange::Nothing()); }
 
   u64 expanded_size = 1;
   args_.Apply([&expanded_size](auto &arg) {
@@ -1121,25 +1108,22 @@ void Unop::Validate(Context *ctx) {
   case Operator::Generate: type = type::Void; break;
   case Operator::Free: {
     if (!operand->type->is<type::Pointer>()) {
-      ErrorLog::UnopTypeFail("Attempting to free an object of type `" +
-                                 operand->type->to_string() + "`.",
-                             this);
+      ctx->error_log_.FreeingNonPointer(operand->type, span);
       limit_to(StageRange::NoEmitIR());
     }
     type = type::Void;
   } break;
   case Operator::Print: {
     if (operand->type == type::Void) {
-      ErrorLog::UnopTypeFail(
-          "Attempting to print an expression with type `void`.", this);
+      ctx->error_log_.PrintingVoid(span);
       limit_to(StageRange::NoEmitIR());
     }
     type = type::Void;
   } break;
   case Operator::Return: {
     if (operand->type == type::Void) {
-      ErrorLog::UnopTypeFail(
-          "Attempting to return an expression which has type `void`.", this);
+      // TODO this should probably be allowed (c.f., regular void)
+      ctx->error_log_.ReturningVoid(span);
       limit_to(StageRange::NoEmitIR());
     }
     type = type::Void;
@@ -1150,19 +1134,19 @@ void Unop::Validate(Context *ctx) {
       type = operand->type->as<type::Pointer>().pointee;
 
     } else {
-      ErrorLog::UnopTypeFail(
-          "Attempting to dereference an expression of type `" +
-              operand->type->to_string() + "`.",
-          this);
+      ctx->error_log_.DereferencingNonPointer(operand->type, span);
       type = type::Err;
       limit_to(StageRange::Nothing());
     }
   } break;
   case Operator::And: {
     switch (operand->lvalue) {
-    case Assign::Const: [[fallthrough]];
+    case Assign::Const:
+      ctx->error_log_.TakingAddressOfConstant(span);
+      lvalue = Assign::RVal;
+      break;
     case Assign::RVal:
-      ErrorLog::InvalidAddress(span, operand->lvalue);
+      ctx->error_log_.TakingAddressOfTemporary(span);
       lvalue = Assign::RVal;
       break;
     case Assign::LVal: break;
@@ -1186,27 +1170,11 @@ void Unop::Validate(Context *ctx) {
       type = operand->type;
 
     } else if (operand->type->is<type::Struct>()) {
-      auto fn_options = FunctionOptions("-", scope_, ctx);
       FnArgs<Expression *> args;
       args.pos_ = std::vector{operand.get()};
-      if (auto maybe_table =
-              ComputeDispatchTable(args, std::move(fn_options), ctx)) {
-        dispatch_table_ = std::move(maybe_table).value();
-        // TODO copied from Call::Validate. Merge these and consider doing the
-        // same for ChainOp::Validate even though for now it must return bool?
-        std::vector<const type::Type *> out_types;
-        out_types.reserve(dispatch_table_.bindings_.size());
-        for (const auto & [ key, val ] : dispatch_table_.bindings_) {
-          auto &outs = val.fn_expr_->type->as<type::Function>().output;
-          ASSERT_LE(outs.size(), 1u);
-          out_types.push_back(outs.empty() ? type::Void : outs[0]);
-        }
-        type = type::Var(std::move(out_types));
-      } else {
-        LOG << "FAIL!"; /* TODO do I need to log an error here? */
-        type = type::Err;
-        limit_to(StageRange::Nothing());
-      }
+      type      = SetDispatchTable(args, FunctionOptions("-", scope_, ctx),
+                              &dispatch_table_, ctx);
+      if (type == type::Err) { limit_to(StageRange::Nothing()); }
     }
   } break;
   case Operator::Dots: {
@@ -1222,33 +1190,15 @@ void Unop::Validate(Context *ctx) {
     if (operand->type == type::Bool) {
       type = type::Bool;
     } else if (operand->type->is<type::Struct>()) {
-      auto fn_options = FunctionOptions("!", scope_, ctx);
       FnArgs<Expression *> args;
       args.pos_ = std::vector{operand.get()};
-      if (auto maybe_table =
-              ComputeDispatchTable(args, std::move(fn_options), ctx)) {
-        dispatch_table_ = std::move(maybe_table).value();
-        // TODO copied from Call::Validate. Merge these and consider doing the
-        // same for ChainOp::Validate even though for now it must return bool?
-        std::vector<const type::Type *> out_types;
-        out_types.reserve(dispatch_table_.bindings_.size());
-        for (const auto & [ key, val ] : dispatch_table_.bindings_) {
-          auto &outs = val.fn_expr_->type->as<type::Function>().output;
-          ASSERT_LE(outs.size(), 1u);
-          out_types.push_back(outs.empty() ? type::Void : outs[0]);
-        }
-        type = type::Var(std::move(out_types));
-      } else {
-        LOG << "FAIL!"; /* TODO do I need to log an error here? */
-        type = type::Err;
-        limit_to(StageRange::Nothing());
-      }
-
+      type      = SetDispatchTable(args, FunctionOptions("!", scope_, ctx),
+                              &dispatch_table_, ctx);
+      if (type == type::Err) { limit_to(StageRange::Nothing()); }
     } else {
-      ErrorLog::UnopTypeFail("Attempting to apply the logical negation "
-                             "operator (!) to an expression of type `" +
-                                 operand->type->to_string() + "`.",
-                             this);
+      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
+
       type = type::Err;
       limit_to(StageRange::Nothing());
     }
@@ -1394,17 +1344,11 @@ void ChainOp::Validate(Context *ctx) {
         default: UNREACHABLE();
         }
 
-        auto fn_options = FunctionOptions(token, scope_, ctx);
         FnArgs<Expression *> args;
         args.pos_ = std::vector{exprs[i].get(), exprs[i + 1].get()};
-        if (auto maybe_table =
-                ComputeDispatchTable(args, std::move(fn_options), ctx)) {
-          dispatch_tables_[i] = std::move(maybe_table).value();
-       } else {
-         LOG << "FAIL!";
-         // TODO do I need to log an error here?
-         type = type::Err;
-        }
+        type      = SetDispatchTable(args, FunctionOptions(token, scope_, ctx),
+                                &dispatch_tables_[i], ctx);
+        if (type == type::Err) { limit_to(StageRange::Nothing()); }
       } else {
         if (lhs_type != rhs_type) {
           NOT_YET(lhs_type, " ", rhs_type);
