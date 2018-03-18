@@ -1186,31 +1186,27 @@ void Unop::Validate(Context *ctx) {
       type = operand->type;
 
     } else if (operand->type->is<type::Struct>()) {
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdHereOrNull("__neg__");
-        if (!id_ptr) { continue; }
-
-        id_ptr->Validate(ctx);
-        HANDLE_CYCLIC_DEPENDENCIES;
-      }
-
-      auto t = scope_->FunctionTypeReferencedOrNull("__neg__",
-                                                    std::vector{operand->type});
-      if (t) {
-        type = type::Tup(t->as<type::Function>().output);
+      auto fn_options = FunctionOptions("-", scope_, ctx);
+      FnArgs<Expression *> args;
+      args.pos_ = std::vector{operand.get()};
+      if (auto maybe_table =
+              ComputeDispatchTable(args, std::move(fn_options), ctx)) {
+        dispatch_table_ = std::move(maybe_table).value();
+        // TODO copied from Call::Validate. Merge these and consider doing the
+        // same for ChainOp::Validate even though for now it must return bool?
+        std::vector<const type::Type *> out_types;
+        out_types.reserve(dispatch_table_.bindings_.size());
+        for (const auto & [ key, val ] : dispatch_table_.bindings_) {
+          auto &outs = val.fn_expr_->type->as<type::Function>().output;
+          ASSERT_LE(outs.size(), 1u);
+          out_types.push_back(outs.empty() ? type::Void : outs[0]);
+        }
+        type = type::Var(std::move(out_types));
       } else {
-        ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
-                                   "` has no unary negation operator.",
-                               this);
+        LOG << "FAIL!"; /* TODO do I need to log an error here? */
         type = type::Err;
         limit_to(StageRange::Nothing());
       }
-    } else {
-      ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
-                                 "` has no unary negation operator.",
-                             this);
-      type = type::Err;
-      limit_to(StageRange::Nothing());
     }
   } break;
   case Operator::Dots: {
@@ -1225,6 +1221,29 @@ void Unop::Validate(Context *ctx) {
   case Operator::Not: {
     if (operand->type == type::Bool) {
       type = type::Bool;
+    } else if (operand->type->is<type::Struct>()) {
+      auto fn_options = FunctionOptions("!", scope_, ctx);
+      FnArgs<Expression *> args;
+      args.pos_ = std::vector{operand.get()};
+      if (auto maybe_table =
+              ComputeDispatchTable(args, std::move(fn_options), ctx)) {
+        dispatch_table_ = std::move(maybe_table).value();
+        // TODO copied from Call::Validate. Merge these and consider doing the
+        // same for ChainOp::Validate even though for now it must return bool?
+        std::vector<const type::Type *> out_types;
+        out_types.reserve(dispatch_table_.bindings_.size());
+        for (const auto & [ key, val ] : dispatch_table_.bindings_) {
+          auto &outs = val.fn_expr_->type->as<type::Function>().output;
+          ASSERT_LE(outs.size(), 1u);
+          out_types.push_back(outs.empty() ? type::Void : outs[0]);
+        }
+        type = type::Var(std::move(out_types));
+      } else {
+        LOG << "FAIL!"; /* TODO do I need to log an error here? */
+        type = type::Err;
+        limit_to(StageRange::Nothing());
+      }
+
     } else {
       ErrorLog::UnopTypeFail("Attempting to apply the logical negation "
                              "operator (!) to an expression of type `" +

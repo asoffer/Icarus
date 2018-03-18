@@ -183,12 +183,10 @@ static IR::Val EmitOneCallDispatch(const type::Type* ret_type,
   IR::Val ret_val;
   if (output_type_for_this_binding->is_big()) {
     ret_val = IR::Alloca(ret_type);
-    ret_type->EmitInit(ret_val);
     IR::Call(IR::Val::Func(fn_to_call), std::move(args), {ret_val});
   } else {
     if (ret_type->is_big()) {
       ret_val = IR::Alloca(ret_type);
-      ret_type->EmitInit(ret_val);
       ret_type->EmitAssign(
           output_type_for_this_binding,
           IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}), ret_val);
@@ -581,6 +579,15 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
 }
 
 IR::Val AST::Unop::EmitIR(Context *ctx) {
+  if (operand->type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
+    // TODO struct is not exactly right. we really mean user-defined
+    AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
+    args.pos_ = {std::pair(operand.get(), operand->type->is_big()
+                                              ? PtrCallFix(operand->EmitIR(ctx))
+                                              : operand->EmitIR(ctx))};
+    return EmitCallDispatch(args, dispatch_table_, type, ctx);
+  }
+
   switch (op) {
   case Language::Operator::Not:
   case Language::Operator::Sub: {
@@ -985,7 +992,6 @@ IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
           if (decl->arg_val || decl->is<InDecl>()) { return; }
           ASSERT_NE(decl->type, nullptr);
           decl->addr = IR::Alloca(decl->type);
-          decl->type->EmitInit(decl->addr);
         });
       }
 

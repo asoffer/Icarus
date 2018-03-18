@@ -516,12 +516,12 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     return IR::Val::CodeBlock(std::move(copied_block));
   } break;
   case Op::VariantType:
-    return Val::Addr(std::get<Addr>(resolved[0].value),type::Type_);
+    return Val::Addr(std::get<Addr>(resolved[0].value), type::Type_);
   case Op::VariantValue: {
     auto bytes = Architecture::InterprettingMachine().bytes(Ptr(type::Type_));
     auto bytes_fwd =
-        Architecture::InterprettingMachine().MoveForwardToAlignment(Ptr(type::Type_),
-                                                                    bytes);
+        Architecture::InterprettingMachine().MoveForwardToAlignment(
+            Ptr(type::Type_), bytes);
     ASSERT(std::get_if<Addr>(&resolved[0].value) != nullptr,
            "resolved[0] = " + resolved[0].to_string());
     switch (std::get<Addr>(resolved[0].value).kind) {

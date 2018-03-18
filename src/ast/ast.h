@@ -168,6 +168,7 @@ struct Unop : public Expression {
   Unop *Clone() const override;
   std::unique_ptr<Expression> operand;
   Language::Operator op;
+  DispatchTable dispatch_table_;
 };
 
 struct Access : public Expression {
