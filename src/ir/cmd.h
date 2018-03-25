@@ -16,7 +16,6 @@ enum class Op : char {
   Load, Store,
   ArrayLength, ArrayData, PtrIncr,
   Phi, Field, Call, Cast,
-  Nop,
   SetReturn, Arrow, Variant, Array, Ptr,
   Alloca,
   Contextualize,
@@ -38,7 +37,6 @@ struct Cmd {
   // it's not 'Exec'.
   enum class Kind : char { Exec, PreCondition, PostCondition };
 
-  Cmd() : op_code_(Op::Nop) {}
   Cmd(const type::Type *t, Op op, std::vector<Val> args);
   std::vector<Val> args;
   Op op_code_;

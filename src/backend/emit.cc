@@ -8,8 +8,9 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "type/all.h"
+#include "../architecture.h"
 
-// TODO remove dependence on printf
+// TODO remove dependence on printf, malloc, free
 //
 // TODO worry about concurrent access as well as modularity (global? per
 // module?)
@@ -45,7 +46,9 @@ static llvm::Value *EmitValue(
           [&](i32 n) -> llvm::Value * {
             return llvm::ConstantInt::get(ctx, llvm::APInt(32, n, true));
           },
-          [&](IR::EnumVal e) -> llvm::Value * { NOT_YET(); },
+          [&](IR::EnumVal e) -> llvm::Value * {
+            return llvm::ConstantInt::get(ctx, llvm::APInt(32, e.value, true));
+          },
           [&](const type::Type *t) -> llvm::Value * { NOT_YET(); },
           [&](IR::Func *f) -> llvm::Value * { NOT_YET(); },
           [&](AST::ScopeLiteral *s) -> llvm::Value * { NOT_YET(); },
@@ -121,16 +124,29 @@ static llvm::Value *EmitCmd(
       // TODO use EmitValue?
       return builder.CreateBr(
           llvm_blocks[std::get<IR::BlockIndex>(cmd.args[0].value).value]);
+    case IR::Op::CondJump:
+      return builder.CreateCondBr(
+          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+          llvm_blocks[std::get<IR::BlockIndex>(cmd.args[1].value).value],
+          llvm_blocks[std::get<IR::BlockIndex>(cmd.args[2].value).value]);
     case IR::Op::ReturnJump:
       return builder.CreateRetVoid();
     // TODO not always void
-    case IR::Op::Print:
+    case IR::Op::Trunc:
+      return builder.CreateTrunc(
+          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+          llvm::Type::getInt8Ty(ctx), "trunc");
+    case IR::Op::Extend:
+      return builder.CreateTrunc(
+          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+          llvm::Type::getInt32Ty(ctx), "ext");
+    case IR::Op::Print: {
+      auto *printf_fn = module->getOrInsertFunction(
+          "printf",
+          llvm::FunctionType::get(
+              llvm::Type::getInt32Ty(ctx),
+              llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0), true));
       for (const auto &arg : cmd.args) {
-        auto *printf_fn = module->getOrInsertFunction(
-            "printf",
-            llvm::FunctionType::get(
-                llvm::IntegerType::getInt32Ty(ctx),
-                llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0), true));
         if (arg.type == type::Bool) {
           NOT_YET();
 
@@ -153,87 +169,131 @@ static llvm::Value *EmitCmd(
           // TODO this is wrong because strings aren't char*
           return builder.CreateCall(
               printf_fn, {StringConstant(builder, "%s"),
-                          EmitValue(ctx, builder, arg, regs, llvm_blocks)},
-              "print");
-
+                          EmitValue(ctx, builder, arg, regs, llvm_blocks)});
         } else {
           LOG << arg.type;
           NOT_YET();
         }
       }
-      break;
+    } break;
+    case IR::Op::Malloc: {
+      // TODO cast from void*?
+      auto *malloc_fn = module->getOrInsertFunction(
+          "malloc",
+          llvm::FunctionType::get(llvm::Type::getVoidTy(ctx)->getPointerTo(0),
+                                  llvm::Type::getInt32Ty(ctx), false));
+      // TODO this is wrong for cross-compilation
+      auto target_architecture = Architecture::CompilingMachine();
+      return builder.CreateCall(
+          malloc_fn,
+          {llvm::ConstantInt::get(
+              ctx, llvm::APInt(64, target_architecture.bytes(
+                                       cmd.type->as<type::Pointer>().pointee),
+                               false))});
+    } break;
+    case IR::Op::Free: {
+      // TODO cast to void* first?
+      auto *free_fn = module->getOrInsertFunction(
+          "free", llvm::FunctionType::get(
+                      llvm::Type::getVoidTy(ctx),
+                      llvm::Type::getVoidTy(ctx)->getPointerTo(0), false));
+      return builder.CreateCall(
+          free_fn, {EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks)});
+    } break;
+    case IR::Op::Call: {
+      std::vector<llvm::Value *> values;
+      values.reserve(cmd.args.size());
+      for (const auto& arg : cmd.args) {
+        values.push_back(EmitValue(ctx, builder, arg, regs, llvm_blocks));
+      }
+      llvm::Value *fn = values.back();
+      values.pop_back();
+      return builder.CreateCall(fn, values);
+    } break;
     case IR::Op::Lt: {
       auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
       auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
-      if (cmd.type == type::Int) {
-        return builder.CreateICmpSLT(lhs, rhs);
-      } else if (cmd.type == type::Real) {
-        // TODO ordered vs unordered
-        return builder.CreateFCmpOLT(lhs, rhs);
-      } else {
-        NOT_YET();
-      }
+      // Correct for enum flags?
+      // TODO ordered vs unordered
+      return (cmd.type == type::Real) ? builder.CreateFCmpOLT(lhs, rhs)
+                                      : builder.CreateICmpSLT(lhs, rhs);
     }
     case IR::Op::Le: {
       auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
       auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
-      if (cmd.type == type::Int) {
-        return builder.CreateICmpSLE(lhs, rhs);
-      } else if (cmd.type == type::Real) {
-        // TODO ordered vs unordered
-        return builder.CreateFCmpOLE(lhs, rhs);
-      } else {
-        NOT_YET();
-      }
+      // Correct for enum flags?
+      // TODO ordered vs unordered
+      return (cmd.type == type::Real) ? builder.CreateFCmpOLE(lhs, rhs)
+                                      : builder.CreateICmpSLE(lhs, rhs);
     }
     case IR::Op::Eq: {
       auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
       auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
-      if (cmd.type == type::Int) {
+      if (cmd.type == type::Int || cmd.type == type::Char ||
+          cmd.type->is<type::Enum>()) {
         return builder.CreateICmpEQ(lhs, rhs);
       } else if (cmd.type == type::Real) {
         // TODO ordered vs unordered
         return builder.CreateFCmpOEQ(lhs, rhs);
       } else {
-        NOT_YET();
+        NOT_YET(cmd.type);
       }
     }
     case IR::Op::Ne: {
       auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
       auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
-      if (cmd.type == type::Int) {
+      if (cmd.type == type::Int || cmd.type == type::Char ||
+          cmd.type->is<type::Enum>()) {
         return builder.CreateICmpNE(lhs, rhs);
       } else if (cmd.type == type::Real) {
         // TODO ordered vs unordered
         return builder.CreateFCmpONE(lhs, rhs);
       } else {
-        NOT_YET();
+        NOT_YET(cmd.type);
       }
     }
     case IR::Op::Ge: {
       auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
       auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
-      if (cmd.type == type::Int) {
-        return builder.CreateICmpSGE(lhs, rhs);
-      } else if (cmd.type == type::Real) {
-        // TODO ordered vs unordered
-        return builder.CreateFCmpOGE(lhs, rhs);
-      } else {
-        NOT_YET();
-      }
+      // Correct for enum flags?
+      // TODO ordered vs unordered
+      return (cmd.type == type::Real) ? builder.CreateFCmpOGE(lhs, rhs)
+                                      : builder.CreateICmpSGE(lhs, rhs);
     }
     case IR::Op::Gt: {
       auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
       auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
-      if (cmd.type == type::Int) {
-        return builder.CreateICmpSGT(lhs, rhs);
-      } else if (cmd.type == type::Real) {
-        // TODO ordered vs unordered
-        return builder.CreateFCmpOGT(lhs, rhs);
-      } else {
-        NOT_YET();
-      }
+      // Correct for enum flags?
+      // TODO ordered vs unordered
+      return (cmd.type == type::Real) ? builder.CreateFCmpOGT(lhs, rhs)
+                                      : builder.CreateICmpSGT(lhs, rhs);
     }
+    case IR::Op::ArrayLength: {
+      // TODO use a struct gep on a generic array llvm struct type holding an
+      // int and a void*.
+      return builder.CreatePointerCast(
+          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+          llvm::Type::getInt32Ty(ctx)->getPointerTo(0));
+    } break;
+    case IR::Op::ArrayData: {
+      // TODO use a struct gep on a generic array llvm struct type holding an
+      // int and a void*. Then cast to actual type.
+      return builder.CreatePointerCast(
+          builder.CreateGEP(
+              builder.CreatePointerCast(
+                  EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+                  llvm::Type::getInt32Ty(ctx)->getPointerTo(0)),
+              llvm::ConstantInt::get(ctx, llvm::APInt(32, 1, false))),
+          cmd.type->llvm(ctx));
+    } break;
+    case IR::Op::Field:
+      return builder.CreateStructGEP(
+          cmd.args[0]
+              .type->as<type::Pointer>()
+              .pointee->as<type::Struct>()
+              .llvm(ctx),
+          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+          static_cast<u32>(std::get<i32>(cmd.args[1].value)));
     case IR::Op::CreateStruct: UNREACHABLE();
     case IR::Op::InsertField: UNREACHABLE();
     case IR::Op::FinalizeStruct: UNREACHABLE();
@@ -243,7 +303,7 @@ static llvm::Value *EmitCmd(
     case IR::Op::Ptr: UNREACHABLE();
     case IR::Op::Err: UNREACHABLE();
     case IR::Op::Contextualize: UNREACHABLE();
-    default: cmd.dump(0); NOT_YET();
+    // default: cmd.dump(0); NOT_YET();
   }
   UNREACHABLE();
 }

@@ -480,7 +480,6 @@ void Cmd::dump(size_t indent) const {
   case Op::Ptr: std::cerr << "ptr"; break;
   case Op::Phi: std::cerr << "phi"; break;
   case Op::Field: std::cerr << "field"; break;
-  case Op::Nop: std::cerr << "nop"; break;
   case Op::Call: std::cerr << "call"; break;
   case Op::Cast: std::cerr << "cast"; break;
   case Op::SetReturn: std::cerr << "set-ret"; break;

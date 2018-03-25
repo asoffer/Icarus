@@ -250,7 +250,6 @@ void PropDB::Compute() {
     case Op::Call:
       // TODO No post-conditions yet, so nothing to see here.
       continue;
-    case Op::Nop: break;
     case Op::SetReturn:
       NOT_YET(); // Set(*block, cmd_index, Get(*block, cmd.args[1])); break;
     case Op::CondJump: {

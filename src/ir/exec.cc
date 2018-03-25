@@ -543,7 +543,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     UNREACHABLE("Invalid address kind: ",
                 static_cast<int>(std::get<Addr>(resolved[0].value).kind));
   } break;
-  case Op::Nop: return Val::None();
   case Op::Malloc:
     ASSERT_TYPE(type::Pointer, cmd.type);
     return IR::Val::HeapAddr(malloc(std::get<i32>(resolved[0].value)),

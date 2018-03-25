@@ -1,8 +1,14 @@
 #ifndef ICARUS_ARCHITECTURE_H
 #define ICARUS_ARCHITECTURE_H
 
-#include "type/type.h"
 #include <cstddef>
+
+#include "base/types.h"
+#include "ir/val.h"
+
+namespace type {
+struct Type;
+} // namespace type
 
 namespace IR {
 struct Val;
@@ -25,6 +31,8 @@ struct Architecture {
     return len * static_cast<i32>(MoveForwardToAlignment(t, bytes(t)));
   }
 
+  // TODO pull Addr into it's own header so we can compute it's size and have
+  // this be constexpr without pulling in all of val.h
   static constexpr Architecture InterprettingMachine() {
     return Architecture{sizeof(IR::Addr), alignof(IR::Addr)};
   }
