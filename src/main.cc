@@ -9,11 +9,11 @@
 #include "context.h"
 #include "error/log.h"
 #include "ir/func.h"
-#include "util/command_line_args.h"
-#include "util/timer.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+#include "util/command_line_args.h"
+#include "util/timer.h"
 
 Timer timer;
 
@@ -61,13 +61,13 @@ int GenerateCode() {
     }
   }
 
-  llvm::LLVMContext llvm_context;
-  llvm::Module module("a module", llvm_context);
-  for (const auto &fn : IR::Func::All) {
-    backend::Emit(*fn, &module);
-  }
+  RUN(timer, "LLVM") {
+    llvm::LLVMContext llvm_context;
+    llvm::Module module("a module", llvm_context);
+    for (const auto &fn : IR::Func::All) { backend::Emit(*fn, &module); }
 
-  module.dump();
+    module.dump();
+  }
 
   return 0;
 }
@@ -114,9 +114,9 @@ int main(int argc, char *argv[]) {
 
   RUN(timer, "Argument parsing") {
     switch (ParseCLArguments(argc, argv)) {
-    case CLArgFlag::QuitSuccessfully: return 0;
-    case CLArgFlag::QuitWithFailure: return -1;
-    case CLArgFlag::Continue:;
+      case CLArgFlag::QuitSuccessfully: return 0;
+      case CLArgFlag::QuitWithFailure: return -1;
+      case CLArgFlag::Continue:;
     }
   }
 
