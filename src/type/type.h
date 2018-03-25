@@ -8,6 +8,11 @@
 
 #include "../ir/val.h"
 
+namespace llvm {
+class Type;
+class LLVMContext;
+} // namespace llvm
+
 #define TYPE_FNS(name)                                                         \
   name() = delete;                                                             \
   virtual ~name() {}                                                           \
@@ -27,7 +32,8 @@
   virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val)           \
       const ENDING;                                                            \
   virtual void EmitRepr(IR::Val id_val) const ENDING;                          \
-  virtual Cmp Comparator() const ENDING
+  virtual Cmp Comparator() const ENDING;                                       \
+  virtual llvm::Type *llvm(llvm::LLVMContext &) const ENDING
 
 namespace type {
 // Note: the order of these is meaningful and relied upon!
