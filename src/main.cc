@@ -3,6 +3,7 @@
 
 #include "ast/ast.h"
 #include "ast/statements.h"
+#include "backend/emit.h"
 #include "base/debug.h"
 #include "base/source.h"
 #include "context.h"
@@ -10,6 +11,9 @@
 #include "ir/func.h"
 #include "util/command_line_args.h"
 #include "util/timer.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
 
 Timer timer;
 
@@ -56,6 +60,14 @@ int GenerateCode() {
       num_errors += fn->ValidateCalls(&validation_queue);
     }
   }
+
+  llvm::LLVMContext llvm_context;
+  llvm::Module module("a module", llvm_context);
+  for (const auto &fn : IR::Func::All) {
+    backend::Emit(*fn, &module);
+  }
+
+  module.dump();
 
   return 0;
 }
