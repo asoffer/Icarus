@@ -84,8 +84,6 @@ void MissingMember(const TextSpan &span, const std::string &member_name,
                    const type::Type *t);
 void InvalidRanges(const TextSpan &span, const type::Type *lhs,
                    const type::Type *rhs);
-void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
-                       const type::Type *lhs, const type::Type *rhs);
 void InvalidRange(const TextSpan &span, const type::Type *t);
 void InvalidStringIndex(const TextSpan &span, const type::Type *index_type);
 void NonIntegralArrayIndex(const TextSpan &span, const type::Type *index_type);

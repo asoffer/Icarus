@@ -1,16 +1,21 @@
 #ifndef ICARUS_BACKEND_EMIT_H
 #define ICARUS_BACKEND_EMIT_H
 
+#include <vector>
+#include <memory>
+
 namespace llvm {
 class Module;
-} // namespace llvm
+}  // namespace llvm
 
 namespace IR {
 struct Func;
-} // namespace IR
+}  // namespace IR
 
 namespace backend {
-void Emit(const IR::Func &fn, llvm::Module *module);
-} // namespace backend
+void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
+             llvm::Module *module);
 
-#endif // ICARUS_BACKEND_EMIT_H
+}  // namespace backend
+
+#endif  // ICARUS_BACKEND_EMIT_H

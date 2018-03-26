@@ -4,11 +4,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../architecture.h"
 #include "ir/func.h"
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "type/all.h"
-#include "../architecture.h"
 
 // TODO remove dependence on printf, malloc, free
 //
@@ -49,8 +50,12 @@ static llvm::Value *EmitValue(
           [&](IR::EnumVal e) -> llvm::Value * {
             return llvm::ConstantInt::get(ctx, llvm::APInt(32, e.value, true));
           },
-          [&](const type::Type *t) -> llvm::Value * { NOT_YET(); },
-          [&](IR::Func *f) -> llvm::Value * { NOT_YET(); },
+          [&](const type::Type *t) -> llvm::Value * { 
+            // TODO this is probably a bad idea?
+            return llvm::ConstantInt::get(
+                ctx, llvm::APInt(64, reinterpret_cast<uintptr_t>(t), false));
+          },
+          [&](IR::Func *f) -> llvm::Value * { return f->llvm_fn_; },
           [&](AST::ScopeLiteral *s) -> llvm::Value * { NOT_YET(); },
           [&](const AST::CodeBlock &c) -> llvm::Value * { NOT_YET(); },
           [&](AST::Expression *e) -> llvm::Value * { NOT_YET(); },
@@ -268,14 +273,13 @@ static llvm::Value *EmitCmd(
       return (cmd.type == type::Real) ? builder.CreateFCmpOGT(lhs, rhs)
                                       : builder.CreateICmpSGT(lhs, rhs);
     }
-    case IR::Op::ArrayLength: {
+    case IR::Op::ArrayLength:
       // TODO use a struct gep on a generic array llvm struct type holding an
       // int and a void*.
       return builder.CreatePointerCast(
           EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
           llvm::Type::getInt32Ty(ctx)->getPointerTo(0));
-    } break;
-    case IR::Op::ArrayData: {
+    case IR::Op::ArrayData:
       // TODO use a struct gep on a generic array llvm struct type holding an
       // int and a void*. Then cast to actual type.
       return builder.CreatePointerCast(
@@ -285,6 +289,29 @@ static llvm::Value *EmitCmd(
                   llvm::Type::getInt32Ty(ctx)->getPointerTo(0)),
               llvm::ConstantInt::get(ctx, llvm::APInt(32, 1, false))),
           cmd.type->llvm(ctx));
+    case IR::Op::VariantType:
+      // TODO 64-bit int for type? Maybe more type-safety would be nice.
+      return builder.CreatePointerCast(
+          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+          llvm::Type::getInt64Ty(ctx)->getPointerTo(0));
+    case IR::Op::VariantValue:
+      // TODO use a struct gep on a generic array llvm struct type holding an
+      // int and a void*. Then cast to actual type.
+      return builder.CreatePointerCast(
+          builder.CreateGEP(
+              builder.CreatePointerCast(
+                  EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+                  llvm::Type::getInt64Ty(ctx)->getPointerTo(0)),
+              llvm::ConstantInt::get(ctx, llvm::APInt(64, 1, false))),
+          cmd.type->llvm(ctx));
+    case IR::Op::Phi: {
+      auto *phi = builder.CreatePHI(cmd.type->llvm(ctx), cmd.args.size() / 2);
+      for (size_t i = 0; i < cmd.args.size(); i += 2) {
+        phi->addIncoming(
+            EmitValue(ctx, builder, cmd.args[i], regs, llvm_blocks),
+            llvm_blocks[std::get<IR::BlockIndex>(cmd.args[i + 1].value).value]);
+      }
+      return phi;
     } break;
     case IR::Op::Field:
       return builder.CreateStructGEP(
@@ -294,6 +321,14 @@ static llvm::Value *EmitCmd(
               .llvm(ctx),
           EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
           static_cast<u32>(std::get<i32>(cmd.args[1].value)));
+    case IR::Op::PtrIncr:
+      return builder.CreateGEP(
+          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+          EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks));
+    case IR::Op::SetReturn: NOT_YET();
+    case IR::Op::Cast:
+      NOT_YET();  // TODO this isn't even usable yet, so perhaps we just want to
+                  // gut it?
     case IR::Op::CreateStruct: UNREACHABLE();
     case IR::Op::InsertField: UNREACHABLE();
     case IR::Op::FinalizeStruct: UNREACHABLE();
@@ -303,30 +338,33 @@ static llvm::Value *EmitCmd(
     case IR::Op::Ptr: UNREACHABLE();
     case IR::Op::Err: UNREACHABLE();
     case IR::Op::Contextualize: UNREACHABLE();
-    // default: cmd.dump(0); NOT_YET();
   }
   UNREACHABLE();
 }
 
-void Emit(const IR::Func &fn, llvm::Module *module) {
+void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
+             llvm::Module *module) {
   auto &ctx = module->getContext();
-  auto *llvm_fn = llvm::Function::Create(
-      llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {}, false),
-      llvm::Function::InternalLinkage, "f", module);
-
-  llvm::IRBuilder<> builder(ctx);
-
-  std::vector<llvm::BasicBlock *> llvm_blocks;
-  llvm_blocks.reserve(fn.blocks_.size());
-  for (const auto &block : fn.blocks_) {
-    llvm_blocks.push_back(llvm::BasicBlock::Create(ctx, "block", llvm_fn));
+  for (auto &fn : fns) {
+    fn->llvm_fn_ = llvm::Function::Create(
+        fn->type_->llvm_fn(ctx), llvm::Function::PrivateLinkage, "", module);
   }
 
-  std::unordered_map<IR::Register, llvm::Value *> regs;
-  for (size_t i = 0; i < fn.blocks_.size(); ++i) {
-    builder.SetInsertPoint(llvm_blocks[i]);
-    for (const auto &cmd : fn.blocks_[i].cmds_) {
-      regs[cmd.result] = EmitCmd(module, builder, cmd, regs, llvm_blocks);
+  llvm::IRBuilder<> builder(ctx);
+  for (auto &fn : fns) {
+    std::vector<llvm::BasicBlock *> llvm_blocks;
+    llvm_blocks.reserve(fn->blocks_.size());
+    for (const auto &block : fn->blocks_) {
+      llvm_blocks.push_back(
+          llvm::BasicBlock::Create(ctx, "block", fn->llvm_fn_));
+    }
+
+    std::unordered_map<IR::Register, llvm::Value *> regs;
+    for (size_t i = 0; i < fn->blocks_.size(); ++i) {
+      builder.SetInsertPoint(llvm_blocks[i]);
+      for (const auto &cmd : fn->blocks_[i].cmds_) {
+        regs[cmd.result] = EmitCmd(module, builder, cmd, regs, llvm_blocks);
+      }
     }
   }
 }

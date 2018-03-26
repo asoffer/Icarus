@@ -182,7 +182,7 @@ void Store(Val v1, Val v2) {
 
 Val PtrIncr(Val v1, Val v2) {
   ASSERT_TYPE(type::Pointer, v1.type);
-  ASSERT_EQ(v2.type,type::Int);
+  ASSERT_EQ(v2.type, type::Int);
   MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
 

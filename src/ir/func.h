@@ -8,9 +8,14 @@
 
 #include "block.h"
 
+namespace llvm {
+class Function;
+}  // namespace llvm
+
 namespace type {
 struct Function;
-}
+}  // namespace type
+
 struct ExecContext;
 
 namespace IR {
@@ -60,6 +65,7 @@ struct Func {
   i32 num_voids_ = 0;
   std::string name;
   std::vector<Block> blocks_;
+  llvm::Function *llvm_fn_ = nullptr;
 
   // Indices for blocks that end in a return statement.
   std::unordered_set<BlockIndex> return_blocks_;

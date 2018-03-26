@@ -20,6 +20,8 @@ Timer timer;
 struct Scope;
 extern Scope *GlobalScope;
 
+std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
+
 extern void ReplEval(AST::Expression *expr);
 
 std::vector<AST::Statements> ParseAllFiles();
@@ -35,8 +37,8 @@ int GenerateCode() {
     global_statements = AST::Statements::Merge(std::move(stmts_by_file));
   }
 
+  Context ctx;
   RUN(timer, "Verify and Emit") {
-    Context ctx;
     AST::DoStages<0, 1>(&global_statements, GlobalScope, &ctx);
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
@@ -61,14 +63,26 @@ int GenerateCode() {
     }
   }
 
+  llvm::LLVMContext llvm_context;
+  llvm::Module module("a module", llvm_context);
   RUN(timer, "LLVM") {
-    llvm::LLVMContext llvm_context;
-    llvm::Module module("a module", llvm_context);
-    for (const auto &fn : IR::Func::All) { backend::Emit(*fn, &module); }
-
-    module.dump();
+    backend::EmitAll(IR::Func::All, &module);
   }
 
+  // Tag main
+  for (const auto &stmt : global_statements.content_) {
+    if (!stmt->is<AST::Declaration>()) { continue; }
+    auto &decl = stmt->as<AST::Declaration>();
+    if (decl.identifier->token != "main") { continue; }
+    auto fn_lit = std::get<AST::FunctionLiteral *>(
+        Evaluate(decl.init_val.get(), &ctx)[0].value);
+    // TODO check more than one?
+
+    fn_lit->ir_func_->llvm_fn_->setName("main");
+    fn_lit->ir_func_->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  }
+
+  module.dump();
   return 0;
 }
 

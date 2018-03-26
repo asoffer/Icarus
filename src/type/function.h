@@ -3,11 +3,17 @@
 
 #include "type.h"
 
+namespace llvm {
+class FunctionType;
+}  // namespace llvm
+
 namespace type {
 struct Function : public Type {
   TYPE_FNS(Function);
   Function(std::vector<const Type *> in, std::vector<const Type *> out)
       : input(in), output(out) {}
+
+  llvm::FunctionType *llvm_fn(llvm::LLVMContext &ctx) const;
 
   const Function* ToIR() const;
   std::vector<const Type *> input, output;

@@ -221,16 +221,6 @@ void SlicingNonArray(const TextSpan &span, const type::Type *t) {
                       "Sliced type is a `" + t->to_string() + "`.", span, 1);
 }
 
-void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
-                       const type::Type *lhs, const type::Type *rhs) {
-  std::string msg_head = "Already found a match for operator `" + op_symbol +
-                         "` with types " + lhs->to_string() + " and " +
-                         rhs->to_string() + ".";
-
-  // TODO underline length is incorrect?
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
 void InvalidRanges(const TextSpan &span, const type::Type *lhs, const type::Type *rhs) {
   std::string msg_head = "No range construction for types " + lhs->to_string() +
                          " .. " + rhs->to_string() + ".";
