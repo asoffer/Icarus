@@ -497,16 +497,20 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
       std::get<ScopeLiteral *>(scope_expr_val.value)->exit_fn->init_val.get();
   exit_fn->EmitIR(ctx);
 
+  auto enter_block = IR::Func::Current->AddBlock();
+  IR::UncondJump(enter_block);
+  IR::Block::Current = enter_block;
+
   auto call_enter_result = IR::Call(
       IR::Val::Func(enter_fn->as<FunctionLiteral>().ir_func_),
       expr ? std::vector<IR::Val>{expr->EmitIR(ctx)} : std::vector<IR::Val>{},
       {});
-  auto land_block  = IR::Func::Current->AddBlock();
-  auto enter_block = IR::Func::Current->AddBlock();
+  auto land_block = IR::Func::Current->AddBlock();
+  auto body_start_block = IR::Func::Current->AddBlock();
 
-  IR::CondJump(call_enter_result, enter_block, land_block);
+  IR::CondJump(call_enter_result, body_start_block, land_block);
 
-  IR::Block::Current = enter_block;
+  IR::Block::Current = body_start_block;
   stmts->EmitIR(ctx);
 
   auto call_exit_result =
@@ -996,7 +1000,11 @@ IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
       }
 
       statements->EmitIR(ctx);
-      IR::ReturnJump();
+      if (fn_type->output.empty()) {
+        // TODO even this is wrong. Figure out the right jumping strategy
+        // between here and where you call SetReturn
+        IR::ReturnJump();
+      }
 
       IR::Block::Current = ir_func_->entry();
       IR::UncondJump(start_block);

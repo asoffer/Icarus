@@ -15,45 +15,66 @@
 //
 // TODO worry about concurrent access as well as modularity (global? per
 // module?)
-static llvm::Value *StringConstant(llvm::IRBuilder<> &builder,
+static llvm::Value *StringConstant(llvm::IRBuilder<> *builder,
                                    const std::string &str) {
   static std::unordered_map<std::string, llvm::Value *> global_strs;
   auto &result = global_strs[str];
-  if (!result) { result = builder.CreateGlobalStringPtr(str); }
+  if (!result) { result = builder->CreateGlobalStringPtr(str); }
   return result;
 }
 
 namespace backend {
-static llvm::Value *EmitValue(
-    llvm::LLVMContext &ctx, llvm::IRBuilder<> &builder, const IR::Val &val,
-    const std::unordered_map<IR::Register, llvm::Value *> &regs,
-    const std::vector<llvm::BasicBlock *> &llvm_blocks) {
+namespace {
+struct LlvmData {
+  llvm::Function *fn;
+  llvm::Module *module;
+  llvm::IRBuilder<> *builder;
+  std::unordered_map<IR::Register, llvm::Value *> regs;
+  std::vector<llvm::BasicBlock *> blocks;
+  std::vector<llvm::Value *> rets;
+};
+}  // namespace
+
+static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
+                              const IR::Val &val) {
   return std::visit(
       base::overloaded{
           [&](IR::Register reg) -> llvm::Value * {
+            if (static_cast<size_t>(reg.value) < num_args) {
+              auto arg_iter = llvm_data->fn->arg_begin();
+              for (size_t i = 0; i < static_cast<size_t>(reg.value); ++i) {
+                ++arg_iter;
+              }
+              return arg_iter;
+            }
+
             // TODO still need to be sure these are read in the correct order
-            return regs.at(reg);
+            return llvm_data->regs.at(reg);
           },
           [&](IR::ReturnValue ret) -> llvm::Value * { NOT_YET(); },
           [&](IR::Addr addr) -> llvm::Value * { NOT_YET(); },
           [&](bool b) -> llvm::Value * {
-            return llvm::ConstantInt::get(ctx,
+            return llvm::ConstantInt::get(llvm_data->module->getContext(),
                                           llvm::APInt(1, b ? 1 : 0, false));
           },
           [&](char c) -> llvm::Value * {
-            return llvm::ConstantInt::get(ctx, llvm::APInt(8, c, false));
+            return llvm::ConstantInt::get(llvm_data->module->getContext(),
+                                          llvm::APInt(8, c, false));
           },
           [&](double d) -> llvm::Value * { NOT_YET(); },
           [&](i32 n) -> llvm::Value * {
-            return llvm::ConstantInt::get(ctx, llvm::APInt(32, n, true));
+            return llvm::ConstantInt::get(llvm_data->module->getContext(),
+                                          llvm::APInt(32, n, true));
           },
           [&](IR::EnumVal e) -> llvm::Value * {
-            return llvm::ConstantInt::get(ctx, llvm::APInt(32, e.value, true));
+            return llvm::ConstantInt::get(llvm_data->module->getContext(),
+                                          llvm::APInt(32, e.value, true));
           },
-          [&](const type::Type *t) -> llvm::Value * { 
+          [&](const type::Type *t) -> llvm::Value * {
             // TODO this is probably a bad idea?
             return llvm::ConstantInt::get(
-                ctx, llvm::APInt(64, reinterpret_cast<uintptr_t>(t), false));
+                llvm_data->module->getContext(),
+                llvm::APInt(64, reinterpret_cast<uintptr_t>(t), false));
           },
           [&](IR::Func *f) -> llvm::Value * { return f->llvm_fn_; },
           [&](AST::ScopeLiteral *s) -> llvm::Value * { NOT_YET(); },
@@ -63,37 +84,35 @@ static llvm::Value *EmitValue(
           [&](const std::string &s) -> llvm::Value * {
             // TODO this is wrong because strings aren't char*, but maybe it's
             // okay and we can do promotion later?
-            return StringConstant(builder, s);
+            return StringConstant(llvm_data->builder, s);
           },
           [&](AST::FunctionLiteral *fn) -> llvm::Value * { NOT_YET(); }},
       val.value);
 }
 
-static llvm::Value *EmitCmd(
-    llvm::Module *module, llvm::IRBuilder<> &builder, const IR::Cmd &cmd,
-    const std::unordered_map<IR::Register, llvm::Value *> &regs,
-    const std::vector<llvm::BasicBlock *> &llvm_blocks) {
-  auto &ctx = module->getContext();
+static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
+                            const IR::Cmd &cmd) {
+  auto &ctx = llvm_data->module->getContext();
   switch (cmd.op_code_) {
     case IR::Op::Alloca:
-      return builder.CreateAlloca(
+      return llvm_data->builder->CreateAlloca(
           cmd.type->as<type::Pointer>().pointee->llvm(ctx));
     case IR::Op::Store:
-      return builder.CreateStore(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
-          EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks));
+      return llvm_data->builder->CreateStore(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
+          EmitValue(num_args, llvm_data, cmd.args[1]));
     case IR::Op::Load:
-      return builder.CreateLoad(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks));
-#define ARITHMETIC_CASE(op, llvm_float, llvm_int)                        \
-  case IR::Op::op: {                                                     \
-    auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks); \
-    auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks); \
-    if (cmd.type == type::Real) {                                        \
-      return builder.llvm_float(lhs, rhs);                               \
-    } else {                                                             \
-      return builder.llvm_int(lhs, rhs);                                 \
-    }                                                                    \
+      return llvm_data->builder->CreateLoad(
+          EmitValue(num_args, llvm_data, cmd.args[0]));
+#define ARITHMETIC_CASE(op, llvm_float, llvm_int)            \
+  case IR::Op::op: {                                         \
+    auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]); \
+    auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]); \
+    if (cmd.type == type::Real) {                            \
+      return llvm_data->builder->llvm_float(lhs, rhs);       \
+    } else {                                                 \
+      return llvm_data->builder->llvm_int(lhs, rhs);         \
+    }                                                        \
   } break
       ARITHMETIC_CASE(Add, CreateFAdd, CreateAdd);
       ARITHMETIC_CASE(Sub, CreateFSub, CreateSub);
@@ -101,52 +120,56 @@ static llvm::Value *EmitCmd(
       ARITHMETIC_CASE(Div, CreateFDiv, CreateSDiv);
 #undef ARITHMETIC_CASE
     case IR::Op::Mod:
-      return builder.CreateSRem(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
-          EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks));
+      return llvm_data->builder->CreateSRem(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
+          EmitValue(num_args, llvm_data, cmd.args[1]));
     // TODO support fmod, or stop supporting elsewhere
     case IR::Op::Neg:
       if (cmd.type == type::Bool) {
-        return builder.CreateNot(
-            EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks));
+        return llvm_data->builder->CreateNot(
+            EmitValue(num_args, llvm_data, cmd.args[0]));
       } else {
-        return builder.CreateNeg(
-            EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks));
+        return llvm_data->builder->CreateNeg(
+            EmitValue(num_args, llvm_data, cmd.args[0]));
       }
     case IR::Op::Or:
-      return builder.CreateOr(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
-          EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks));
+      return llvm_data->builder->CreateOr(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
+          EmitValue(num_args, llvm_data, cmd.args[1]));
     case IR::Op::And:
-      return builder.CreateAnd(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
-          EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks));
+      return llvm_data->builder->CreateAnd(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
+          EmitValue(num_args, llvm_data, cmd.args[1]));
     case IR::Op::Xor:
-      return builder.CreateXor(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
-          EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks));
+      return llvm_data->builder->CreateXor(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
+          EmitValue(num_args, llvm_data, cmd.args[1]));
     case IR::Op::UncondJump:
       // TODO use EmitValue?
-      return builder.CreateBr(
-          llvm_blocks[std::get<IR::BlockIndex>(cmd.args[0].value).value]);
+      return llvm_data->builder->CreateBr(
+          llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[0].value).value]);
     case IR::Op::CondJump:
-      return builder.CreateCondBr(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
-          llvm_blocks[std::get<IR::BlockIndex>(cmd.args[1].value).value],
-          llvm_blocks[std::get<IR::BlockIndex>(cmd.args[2].value).value]);
+      return llvm_data->builder->CreateCondBr(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
+          llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[1].value).value],
+          llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[2].value).value]);
     case IR::Op::ReturnJump:
-      return builder.CreateRetVoid();
-    // TODO not always void
+      if (num_args == 1) {
+        return llvm_data->builder->CreateRet(
+            llvm_data->builder->CreateLoad(llvm_data->rets[0]));
+      } else {
+        return llvm_data->builder->CreateRetVoid();
+      }
     case IR::Op::Trunc:
-      return builder.CreateTrunc(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+      return llvm_data->builder->CreateTrunc(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
           llvm::Type::getInt8Ty(ctx), "trunc");
     case IR::Op::Extend:
-      return builder.CreateTrunc(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+      return llvm_data->builder->CreateTrunc(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
           llvm::Type::getInt32Ty(ctx), "ext");
     case IR::Op::Print: {
-      auto *printf_fn = module->getOrInsertFunction(
+      auto *printf_fn = llvm_data->module->getOrInsertFunction(
           "printf",
           llvm::FunctionType::get(
               llvm::Type::getInt32Ty(ctx),
@@ -156,25 +179,25 @@ static llvm::Value *EmitCmd(
           NOT_YET();
 
         } else if (arg.type == type::Char) {
-          return builder.CreateCall(
-              printf_fn, {StringConstant(builder, "%c"),
-                          EmitValue(ctx, builder, arg, regs, llvm_blocks)},
+          return llvm_data->builder->CreateCall(
+              printf_fn, {StringConstant(llvm_data->builder, "%c"),
+                          EmitValue(num_args, llvm_data, arg)},
               "print");
         } else if (arg.type == type::Int) {
-          return builder.CreateCall(
-              printf_fn, {StringConstant(builder, "%d"),
-                          EmitValue(ctx, builder, arg, regs, llvm_blocks)},
+          return llvm_data->builder->CreateCall(
+              printf_fn, {StringConstant(llvm_data->builder, "%d"),
+                          EmitValue(num_args, llvm_data, arg)},
               "print");
         } else if (arg.type == type::Real) {
-          return builder.CreateCall(
-              printf_fn, {StringConstant(builder, "%f"),
-                          EmitValue(ctx, builder, arg, regs, llvm_blocks)},
+          return llvm_data->builder->CreateCall(
+              printf_fn, {StringConstant(llvm_data->builder, "%f"),
+                          EmitValue(num_args, llvm_data, arg)},
               "print");
         } else if (arg.type == type::String) {
           // TODO this is wrong because strings aren't char*
-          return builder.CreateCall(
-              printf_fn, {StringConstant(builder, "%s"),
-                          EmitValue(ctx, builder, arg, regs, llvm_blocks)});
+          return llvm_data->builder->CreateCall(
+              printf_fn, {StringConstant(llvm_data->builder, "%s"),
+                          EmitValue(num_args, llvm_data, arg)});
         } else {
           LOG << arg.type;
           NOT_YET();
@@ -183,13 +206,13 @@ static llvm::Value *EmitCmd(
     } break;
     case IR::Op::Malloc: {
       // TODO cast from void*?
-      auto *malloc_fn = module->getOrInsertFunction(
+      auto *malloc_fn = llvm_data->module->getOrInsertFunction(
           "malloc",
           llvm::FunctionType::get(llvm::Type::getVoidTy(ctx)->getPointerTo(0),
                                   llvm::Type::getInt32Ty(ctx), false));
       // TODO this is wrong for cross-compilation
       auto target_architecture = Architecture::CompilingMachine();
-      return builder.CreateCall(
+      return llvm_data->builder->CreateCall(
           malloc_fn,
           {llvm::ConstantInt::get(
               ctx, llvm::APInt(64, target_architecture.bytes(
@@ -198,134 +221,143 @@ static llvm::Value *EmitCmd(
     } break;
     case IR::Op::Free: {
       // TODO cast to void* first?
-      auto *free_fn = module->getOrInsertFunction(
+      auto *free_fn = llvm_data->module->getOrInsertFunction(
           "free", llvm::FunctionType::get(
                       llvm::Type::getVoidTy(ctx),
                       llvm::Type::getVoidTy(ctx)->getPointerTo(0), false));
-      return builder.CreateCall(
-          free_fn, {EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks)});
+      return llvm_data->builder->CreateCall(
+          free_fn, {EmitValue(num_args, llvm_data, cmd.args[0])});
     } break;
     case IR::Op::Call: {
       std::vector<llvm::Value *> values;
       values.reserve(cmd.args.size());
-      for (const auto& arg : cmd.args) {
-        values.push_back(EmitValue(ctx, builder, arg, regs, llvm_blocks));
+      for (const auto &arg : cmd.args) {
+        values.push_back(EmitValue(num_args, llvm_data, arg));
       }
       llvm::Value *fn = values.back();
       values.pop_back();
-      return builder.CreateCall(fn, values);
+      return llvm_data->builder->CreateCall(fn, values);
     } break;
     case IR::Op::Lt: {
-      auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
-      auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
+      auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
+      auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
       // TODO ordered vs unordered
-      return (cmd.type == type::Real) ? builder.CreateFCmpOLT(lhs, rhs)
-                                      : builder.CreateICmpSLT(lhs, rhs);
+      return (cmd.type == type::Real)
+                 ? llvm_data->builder->CreateFCmpOLT(lhs, rhs)
+                 : llvm_data->builder->CreateICmpSLT(lhs, rhs);
     }
     case IR::Op::Le: {
-      auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
-      auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
+      auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
+      auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
       // TODO ordered vs unordered
-      return (cmd.type == type::Real) ? builder.CreateFCmpOLE(lhs, rhs)
-                                      : builder.CreateICmpSLE(lhs, rhs);
+      return (cmd.type == type::Real)
+                 ? llvm_data->builder->CreateFCmpOLE(lhs, rhs)
+                 : llvm_data->builder->CreateICmpSLE(lhs, rhs);
     }
     case IR::Op::Eq: {
-      auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
-      auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
+      auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
+      auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       if (cmd.type == type::Int || cmd.type == type::Char ||
           cmd.type->is<type::Enum>()) {
-        return builder.CreateICmpEQ(lhs, rhs);
+        return llvm_data->builder->CreateICmpEQ(lhs, rhs);
       } else if (cmd.type == type::Real) {
         // TODO ordered vs unordered
-        return builder.CreateFCmpOEQ(lhs, rhs);
+        return llvm_data->builder->CreateFCmpOEQ(lhs, rhs);
       } else {
         NOT_YET(cmd.type);
       }
     }
     case IR::Op::Ne: {
-      auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
-      auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
+      auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
+      auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       if (cmd.type == type::Int || cmd.type == type::Char ||
           cmd.type->is<type::Enum>()) {
-        return builder.CreateICmpNE(lhs, rhs);
+        return llvm_data->builder->CreateICmpNE(lhs, rhs);
       } else if (cmd.type == type::Real) {
         // TODO ordered vs unordered
-        return builder.CreateFCmpONE(lhs, rhs);
+        return llvm_data->builder->CreateFCmpONE(lhs, rhs);
       } else {
         NOT_YET(cmd.type);
       }
     }
     case IR::Op::Ge: {
-      auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
-      auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
+      auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
+      auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
       // TODO ordered vs unordered
-      return (cmd.type == type::Real) ? builder.CreateFCmpOGE(lhs, rhs)
-                                      : builder.CreateICmpSGE(lhs, rhs);
+      return (cmd.type == type::Real)
+                 ? llvm_data->builder->CreateFCmpOGE(lhs, rhs)
+                 : llvm_data->builder->CreateICmpSGE(lhs, rhs);
     }
     case IR::Op::Gt: {
-      auto *lhs = EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks);
-      auto *rhs = EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks);
+      auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
+      auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
       // TODO ordered vs unordered
-      return (cmd.type == type::Real) ? builder.CreateFCmpOGT(lhs, rhs)
-                                      : builder.CreateICmpSGT(lhs, rhs);
+      return (cmd.type == type::Real)
+                 ? llvm_data->builder->CreateFCmpOGT(lhs, rhs)
+                 : llvm_data->builder->CreateICmpSGT(lhs, rhs);
     }
     case IR::Op::ArrayLength:
       // TODO use a struct gep on a generic array llvm struct type holding an
       // int and a void*.
-      return builder.CreatePointerCast(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+      return llvm_data->builder->CreatePointerCast(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
           llvm::Type::getInt32Ty(ctx)->getPointerTo(0));
     case IR::Op::ArrayData:
       // TODO use a struct gep on a generic array llvm struct type holding an
       // int and a void*. Then cast to actual type.
-      return builder.CreatePointerCast(
-          builder.CreateGEP(
-              builder.CreatePointerCast(
-                  EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+      return llvm_data->builder->CreatePointerCast(
+          llvm_data->builder->CreateGEP(
+              llvm_data->builder->CreatePointerCast(
+                  EmitValue(num_args, llvm_data, cmd.args[0]),
                   llvm::Type::getInt32Ty(ctx)->getPointerTo(0)),
               llvm::ConstantInt::get(ctx, llvm::APInt(32, 1, false))),
           cmd.type->llvm(ctx));
     case IR::Op::VariantType:
       // TODO 64-bit int for type? Maybe more type-safety would be nice.
-      return builder.CreatePointerCast(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+      return llvm_data->builder->CreatePointerCast(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
           llvm::Type::getInt64Ty(ctx)->getPointerTo(0));
     case IR::Op::VariantValue:
       // TODO use a struct gep on a generic array llvm struct type holding an
       // int and a void*. Then cast to actual type.
-      return builder.CreatePointerCast(
-          builder.CreateGEP(
-              builder.CreatePointerCast(
-                  EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+      return llvm_data->builder->CreatePointerCast(
+          llvm_data->builder->CreateGEP(
+              llvm_data->builder->CreatePointerCast(
+                  EmitValue(num_args, llvm_data, cmd.args[0]),
                   llvm::Type::getInt64Ty(ctx)->getPointerTo(0)),
               llvm::ConstantInt::get(ctx, llvm::APInt(64, 1, false))),
           cmd.type->llvm(ctx));
     case IR::Op::Phi: {
-      auto *phi = builder.CreatePHI(cmd.type->llvm(ctx), cmd.args.size() / 2);
+      auto *phi = llvm_data->builder->CreatePHI(cmd.type->llvm(ctx),
+                                                cmd.args.size() / 2);
       for (size_t i = 0; i < cmd.args.size(); i += 2) {
         phi->addIncoming(
-            EmitValue(ctx, builder, cmd.args[i], regs, llvm_blocks),
-            llvm_blocks[std::get<IR::BlockIndex>(cmd.args[i + 1].value).value]);
+            EmitValue(num_args, llvm_data, cmd.args[i]),
+            llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[i + 1].value)
+                                  .value]);
       }
       return phi;
     } break;
     case IR::Op::Field:
-      return builder.CreateStructGEP(
+      return llvm_data->builder->CreateStructGEP(
           cmd.args[0]
               .type->as<type::Pointer>()
               .pointee->as<type::Struct>()
               .llvm(ctx),
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
+          EmitValue(num_args, llvm_data, cmd.args[0]),
           static_cast<u32>(std::get<i32>(cmd.args[1].value)));
     case IR::Op::PtrIncr:
-      return builder.CreateGEP(
-          EmitValue(ctx, builder, cmd.args[0], regs, llvm_blocks),
-          EmitValue(ctx, builder, cmd.args[1], regs, llvm_blocks));
-    case IR::Op::SetReturn: NOT_YET();
+      return llvm_data->builder->CreateGEP(
+          EmitValue(num_args, llvm_data, cmd.args[0]),
+          EmitValue(num_args, llvm_data, cmd.args[1]));
+    case IR::Op::SetReturn:
+      return llvm_data->builder->CreateStore(
+          EmitValue(num_args, llvm_data, cmd.args[1]),
+          llvm_data->rets[std::get<IR::ReturnValue>(cmd.args[0].value).value]);
     case IR::Op::Cast:
       NOT_YET();  // TODO this isn't even usable yet, so perhaps we just want to
                   // gut it?
@@ -351,19 +383,30 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
   }
 
   llvm::IRBuilder<> builder(ctx);
+
   for (auto &fn : fns) {
-    std::vector<llvm::BasicBlock *> llvm_blocks;
-    llvm_blocks.reserve(fn->blocks_.size());
+    LlvmData llvm_data;
+    llvm_data.module = module;
+    llvm_data.builder = &builder;
+    llvm_data.fn = fn->llvm_fn_;
+
+    llvm_data.blocks.reserve(fn->blocks_.size());
     for (const auto &block : fn->blocks_) {
-      llvm_blocks.push_back(
+      llvm_data.blocks.push_back(
           llvm::BasicBlock::Create(ctx, "block", fn->llvm_fn_));
     }
 
-    std::unordered_map<IR::Register, llvm::Value *> regs;
+    builder.SetInsertPoint(llvm_data.blocks[0]);
+    llvm_data.rets.reserve(fn->type_->output.size());
+    for (auto t : fn->type_->output) {
+      llvm_data.rets.push_back(builder.CreateAlloca(t->llvm(ctx)));
+    }
+
     for (size_t i = 0; i < fn->blocks_.size(); ++i) {
-      builder.SetInsertPoint(llvm_blocks[i]);
+      builder.SetInsertPoint(llvm_data.blocks[i]);
       for (const auto &cmd : fn->blocks_[i].cmds_) {
-        regs[cmd.result] = EmitCmd(module, builder, cmd, regs, llvm_blocks);
+        llvm_data.regs[cmd.result] =
+            EmitCmd(fn->type_->output.size(), &llvm_data, cmd);
       }
     }
   }
