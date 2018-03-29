@@ -74,8 +74,9 @@ int GenerateCode() {
     if (!stmt->is<AST::Declaration>()) { continue; }
     auto &decl = stmt->as<AST::Declaration>();
     if (decl.identifier->token != "main") { continue; }
-    auto fn_lit = std::get<AST::FunctionLiteral *>(
-        Evaluate(decl.init_val.get(), &ctx)[0].value);
+    auto val = Evaluate(decl.init_val.get(), &ctx);
+    ASSERT_EQ(val.size(), 1u);
+    auto fn_lit = std::get<AST::FunctionLiteral *>(val[0].value);
     // TODO check more than one?
 
     fn_lit->ir_func_->llvm_fn_->setName("main");
