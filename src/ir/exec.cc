@@ -54,9 +54,12 @@ static std::unique_ptr<IR::Func> AssignmentFunction(const type::Type *from,
       Func({Ptr(from), Ptr(to)}, type::Void),
       std::vector<std::pair<std::string, AST::Expression *>>{{"from", nullptr},
                                                              {"to", nullptr}});
+  // TODO maybe we want to wire contexts through here? probably.
+  Context ctx; 
   CURRENT_FUNC(assign_func.get()) {
     IR::Block::Current = assign_func->entry();
-    to->EmitAssign(from, assign_func->Argument(0), assign_func->Argument(1));
+    to->EmitAssign(from, assign_func->Argument(0), assign_func->Argument(1),
+                   &ctx);
     IR::ReturnJump();
   }
   return assign_func;
@@ -592,7 +595,7 @@ void ReplEval(AST::Expression *expr) {
       return;
     }
 
-    if (expr->type != type::Void) { expr->type->EmitRepr(expr_val); }
+    if (expr->type != type::Void) { expr->type->EmitRepr(expr_val, &ctx); }
     IR::ReturnJump();
   }
 

@@ -1,10 +1,11 @@
 #ifndef ICARUS_CONTEXT_H
 #define ICARUS_CONTEXT_H
 
-#include <map>
+#include <vector>
 
 #include "ast/bound_constants.h"
 #include "error/log.h"
+#include "module.h"
 
 struct Context {
   size_t num_errors() { return error_log_.size(); }
@@ -12,6 +13,8 @@ struct Context {
 
   error::Log error_log_;
   AST::BoundConstants bound_constants_;
+
+  Module mod_;
 
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it

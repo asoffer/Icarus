@@ -1,9 +1,11 @@
-#include "../architecture.h"
-#include "../ir/func.h"
 #include "all.h"
 
 #include <map>
 #include <unordered_map>
+
+#include "../architecture.h"
+#include "../context.h"
+#include "../ir/func.h"
 
 namespace type {
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
@@ -20,16 +22,15 @@ static std::unordered_map<const Array *,
     ne_funcs;
 IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
                              const Array *rhs_type, IR::Val rhs_ir,
-                             bool equality) {
+                             bool equality, Context* ctx) {
   auto &funcs = equality ? eq_funcs : ne_funcs;
 
   auto[iter, success] = funcs[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"lhs", nullptr}, {"rhs", nullptr}};
-    IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool), std::move(args)));
-    auto *fn = iter->second = IR::Func::All.back().get();
+    auto *fn = ctx->mod_.AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool),
+                                 std::move(args));
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
 
@@ -94,11 +95,11 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
 }
 
 using InitFnType = void (*)(const Type *, const Type *, IR::Val,
-                            IR::Val);
+                            IR::Val, Context* ctx);
 
 template <InitFnType InitFn>
 static IR::Val ArrayInitializationWith(const Array *from_type,
-                                       const Array *to_type) {
+                                       const Array *to_type, Context* ctx) {
   static std::unordered_map<const Array *,
                             std::unordered_map<const Array *, IR::Func *>>
       init_fns;
@@ -108,9 +109,8 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
 
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
-    IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func({from_type, Ptr(to_type)}, Void), std::move(args)));
-    auto *fn = iter->second = IR::Func::All.back().get();
+    auto *fn = ctx->mod_.AddFunc(Func({from_type, Ptr(to_type)}, Void),
+                                 std::move(args));
 
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
@@ -148,7 +148,7 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
 
       IR::Block::Current = body_block;
       InitFn(from_type->data_type, to_type->data_type, PtrCallFix(from_phi_reg),
-             to_phi_reg);
+             to_phi_reg, ctx);
       auto from_incr = IR::PtrIncr(from_phi_reg, IR::Val::Int(1));
       auto to_incr   = IR::PtrIncr(to_phi_reg, IR::Val::Int(1));
       IR::UncondJump(phi_block);
@@ -166,22 +166,23 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
 }
 
 template <InitFnType InitFn>
-static IR::Val StructInitializationWith(const Struct *struct_type) {
+static IR::Val StructInitializationWith(const Struct *struct_type,
+                                        Context *ctx) {
   static std::unordered_map<const Struct *, IR::Func *> struct_init_fns;
   auto[iter, success] = struct_init_fns.emplace(struct_type, nullptr);
 
   if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
-    IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func({Ptr(struct_type), Ptr(struct_type)}, Void), std::move(args)));
-    auto *fn = iter->second = IR::Func::All.back().get();
+    auto *fn = iter->second = ctx->mod_.AddFunc(
+        Func({Ptr(struct_type), Ptr(struct_type)}, Void), std::move(args));
+
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       for (size_t i = 0; i < struct_type->fields_.size(); ++i) {
         InitFn(struct_type->fields_[i].type, struct_type->fields_[i].type,
                PtrCallFix(IR::Field(fn->Argument(0), i)),
-               IR::Field(fn->Argument(1), i));
+               IR::Field(fn->Argument(1), i), ctx);
       }
       IR::ReturnJump();
     }
@@ -190,20 +191,21 @@ static IR::Val StructInitializationWith(const Struct *struct_type) {
 }
 
 void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var) {
+                  IR::Val to_var, Context* ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() ||
       to_type->is<Pointer>()) {
     ASSERT_EQ(to_type, from_type);
     IR::Store(from_val, to_var);
   } else if (to_type->is<Array>()) {
     IR::Call(ArrayInitializationWith<EmitCopyInit>(&from_type->as<Array>(),
-                                                   &to_type->as<Array>()),
+                                                   &to_type->as<Array>(), ctx),
              {from_val, to_var}, {});
 
   } else if (to_type->is<Struct>()) {
     ASSERT_EQ(to_type, from_type);
-    IR::Call(StructInitializationWith<EmitCopyInit>(&to_type->as<Struct>()),
-             {from_val, to_var}, {});
+    IR::Call(
+        StructInitializationWith<EmitCopyInit>(&to_type->as<Struct>(), ctx),
+        {from_val, to_var}, {});
 
   } else if (to_type->is<Function>()) {
     NOT_YET();
@@ -211,7 +213,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     NOT_YET();
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
-    to_type->EmitAssign(from_type, from_val, to_var);
+    to_type->EmitAssign(from_type, from_val, to_var, ctx);
   } else if (to_type->is<Range>()) {
     NOT_YET();
   } else if (to_type->is<Slice>()) {
@@ -222,7 +224,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
 }
 
 void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var) {
+                  IR::Val to_var, Context *ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() ||
       to_type->is<Pointer>()) {
     ASSERT_EQ(to_type, from_type);
@@ -233,9 +235,9 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     auto *from_array_type = &from_type->as<Array>();
 
     if (to_array_type->fixed_length || from_array_type->fixed_length) {
-      IR::Call(
-          ArrayInitializationWith<EmitMoveInit>(from_array_type, to_array_type),
-          {from_val, to_var}, {});
+      IR::Call(ArrayInitializationWith<EmitMoveInit>(from_array_type,
+                                                     to_array_type, ctx),
+               {from_val, to_var}, {});
 
     } else {
       IR::Store(IR::Load(IR::ArrayLength(from_val)), IR::ArrayLength(to_var));
@@ -248,8 +250,9 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     }
   } else if (to_type->is<Struct>()) {
     ASSERT_EQ(to_type, from_type);
-    IR::Call(StructInitializationWith<EmitMoveInit>(&to_type->as<Struct>()),
-             {from_val, to_var}, {});
+    IR::Call(
+        StructInitializationWith<EmitMoveInit>(&to_type->as<Struct>(), ctx),
+        {from_val, to_var}, {});
 
   } else if (to_type->is<Function>()) {
     NOT_YET();
@@ -257,7 +260,7 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     NOT_YET();
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
-    to_type->EmitAssign(from_type, from_val, to_var);
+    to_type->EmitAssign(from_type, from_val, to_var, ctx);
   } else if (to_type->is<Range>()) {
     NOT_YET();
   } else if (to_type->is<Slice>()) {

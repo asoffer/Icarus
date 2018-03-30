@@ -24,14 +24,14 @@ class LLVMContext;
 #define BASIC_METHODS                                                          \
   virtual char *WriteTo(char *buf) const ENDING;                               \
   virtual size_t string_size() const ENDING;                                   \
-  virtual void EmitAssign(const Type *from_type, IR::Val from, IR::Val to)     \
-      const ENDING;                                                            \
-  virtual void EmitInit(IR::Val id_val) const ENDING;                          \
-  virtual void EmitDestroy(IR::Val id_val) const ENDING;                       \
-  virtual IR::Val EmitInitialValue() const ENDING;                             \
-  virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val)           \
-      const ENDING;                                                            \
-  virtual void EmitRepr(IR::Val id_val) const ENDING;                          \
+  virtual void EmitAssign(const Type *from_type, IR::Val from, IR::Val to,     \
+                          Context *ctx) const ENDING;                          \
+  virtual void EmitInit(IR::Val id_val, Context *ctx) const ENDING;            \
+  virtual void EmitDestroy(IR::Val id_val, Context *ctx) const ENDING;         \
+  virtual IR::Val EmitInitialValue(Context *ctx) const ENDING;                 \
+  virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val,           \
+                                  Context *ctx) const ENDING;                  \
+  virtual void EmitRepr(IR::Val id_val, Context *ctx) const ENDING;            \
   virtual Cmp Comparator() const ENDING;                                       \
   virtual llvm::Type *llvm(llvm::LLVMContext &) const ENDING
 
@@ -60,9 +60,9 @@ const Type *Meet(const Type *lhs, const Type *rhs);
 const Type *Join(const Type *lhs, const Type *rhs);
 
 void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var);
+                  IR::Val to_var, Context*ctx);
 void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var);
+                  IR::Val to_var, Context*ctx);
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Void,
     *NullPtr, *String, *EmptyArray, *Generic;

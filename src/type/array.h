@@ -3,6 +3,8 @@
 
 #include "type.h"
 
+struct Context;
+
 namespace type {
 struct Array : public Type {
   TYPE_FNS(Array);
@@ -11,7 +13,8 @@ struct Array : public Type {
       : data_type(t), len(l), fixed_length(true) {}
 
   static IR::Val Compare(const Array *lhs_type, IR::Val lhs_ir,
-                         const Array *rhs_type, IR::Val rhs_ir, bool equality);
+                         const Array *rhs_type, IR::Val rhs_ir, bool equality,
+                         Context *ctx);
 
   virtual bool needs_destroy() const {
     return !fixed_length || data_type->needs_destroy();

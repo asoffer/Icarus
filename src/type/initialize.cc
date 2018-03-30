@@ -6,7 +6,7 @@
 #include "../ir/func.h"
 
 namespace type {
-void Array::EmitInit(IR::Val id_val) const {
+void Array::EmitInit(IR::Val id_val, Context *ctx) const {
   if (!fixed_length) {
     IR::Store(IR::Val::Int(0), IR::ArrayLength(id_val));
     IR::Store(IR::Malloc(data_type, IR::Val::Int(0)), IR::ArrayData(id_val));
@@ -14,11 +14,10 @@ void Array::EmitInit(IR::Val id_val) const {
   }
 
   if (!init_func_) {
-    std::vector<std::pair<std::string, AST::Expression *>> args = {
-        {"arg", nullptr}};
-    IR::Func::All.push_back(
-        std::make_unique<IR::Func>(Func(Ptr(this), Void), std::move(args)));
-    init_func_       = IR::Func::All.back().get();
+    init_func_ = ctx->mod_.AddFunc(
+        Func(Ptr(this), Void),
+        std::vector<std::pair<std::string, AST::Expression *>>{
+            {"arg", nullptr}});
     init_func_->name = "init(" + this->to_string() + ")";
 
     CURRENT_FUNC(init_func_) {
@@ -39,7 +38,7 @@ void Array::EmitInit(IR::Val id_val) const {
       IR::CondJump(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
 
       IR::Block::Current = loop_body;
-      data_type->EmitInit(phi_reg);
+      data_type->EmitInit(phi_reg, ctx);
       auto incr = IR::PtrIncr(phi_reg, IR::Val::Int(1));
       IR::UncondJump(loop_phi);
 
@@ -54,41 +53,39 @@ void Array::EmitInit(IR::Val id_val) const {
   IR::Call(IR::Val::Func(init_func_), std::vector<IR::Val>{id_val}, {});
 }
 
-void Tuple::EmitInit(IR::Val) const { NOT_YET(); }
+void Tuple::EmitInit(IR::Val, Context *ctx) const { NOT_YET(); }
 
-void Primitive::EmitInit(IR::Val id_val) const {
-  IR::Store(EmitInitialValue(), id_val);
+void Primitive::EmitInit(IR::Val id_val, Context *ctx) const {
+  IR::Store(EmitInitialValue(ctx), id_val);
 }
 
-void Enum::EmitInit(IR::Val id_val) const {
-  IR::Store(EmitInitialValue(), id_val);
+void Enum::EmitInit(IR::Val id_val, Context *ctx) const {
+  IR::Store(EmitInitialValue(ctx), id_val);
 }
 
 
-void Variant::EmitInit(IR::Val) const {
+void Variant::EmitInit(IR::Val, Context *ctx) const {
   UNREACHABLE("Variants must be initialized.");
 }
 
-void Pointer::EmitInit(IR::Val id_val) const {
-  IR::Store(EmitInitialValue(), id_val);
+void Pointer::EmitInit(IR::Val id_val, Context *ctx) const {
+  IR::Store(EmitInitialValue(ctx), id_val);
 }
 
-void Function::EmitInit(IR::Val id_val) const {
-  IR::Store(EmitInitialValue(), id_val);
+void Function::EmitInit(IR::Val id_val, Context *ctx) const {
+  IR::Store(EmitInitialValue(ctx), id_val);
 }
 
-void Range::EmitInit(IR::Val) const { UNREACHABLE(); }
-void Slice::EmitInit(IR::Val) const { UNREACHABLE(); }
-void Scope::EmitInit(IR::Val) const { UNREACHABLE(); }
+void Range::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
+void Slice::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
+void Scope::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
 
-void Struct::EmitInit(IR::Val id_val) const {
+void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
   if (!init_func_) {
-    std::vector<std::pair<std::string, AST::Expression *>> args = {
-        {"arg", nullptr}};
-    IR::Func::All.push_back(
-        std::make_unique<IR::Func>(Func(Ptr(this), Void), std::move(args)));
-
-    init_func_       = IR::Func::All.back().get();
+    init_func_ = ctx->mod_.AddFunc(
+        Func(Ptr(this), Void),
+        std::vector<std::pair<std::string, AST::Expression *>>{
+            {"arg", nullptr}});
     init_func_->name = "init(" + this->to_string() + ")";
 
     CURRENT_FUNC(init_func_) {
@@ -101,9 +98,9 @@ void Struct::EmitInit(IR::Val id_val) const {
               /* from_type = */ fields_[i].type,
               /*   to_type = */ fields_[i].type,
               /*  from_val = */ fields_[i].init_val,
-              /*    to_var = */ IR::Field(init_func_->Argument(0), i));
+              /*    to_var = */ IR::Field(init_func_->Argument(0), i), ctx);
         } else {
-          fields_[i].type->EmitInit(IR::Field(init_func_->Argument(0), i));
+          fields_[i].type->EmitInit(IR::Field(init_func_->Argument(0), i), ctx);
         }
       }
 

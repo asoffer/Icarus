@@ -4,15 +4,14 @@
 #include "../ir/func.h"
 
 namespace type {
-void Primitive::EmitRepr(IR::Val val) const {
+void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
   switch (type_) {
   case PrimType::Char: {
     if (!repr_func_) {
-      IR::Func::All.push_back(std::make_unique<IR::Func>(
+      repr_func_ = ctx->mod_.AddFunc(
           Func(this, Void),
           std::vector<std::pair<std::string, AST::Expression *>>{
-              {"arg", nullptr}}));
-      repr_func_ = IR::Func::All.back().get();
+              {"arg", nullptr}});
 
       CURRENT_FUNC(repr_func_) {
         IR::Block::Current = repr_func_->entry();
@@ -60,13 +59,12 @@ void Primitive::EmitRepr(IR::Val val) const {
   }
 }
 
-void Array::EmitRepr(IR::Val val) const {
+void Array::EmitRepr(IR::Val val, Context *ctx) const {
   if (!repr_func_) {
-    IR::Func::All.push_back(std::make_unique<IR::Func>(
+    repr_func_ = ctx->mod_.AddFunc(
         Func(this, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
-            {"arg", nullptr}}));
-    repr_func_       = IR::Func::All.back().get();
+            {"arg", nullptr}});
     repr_func_->name = "repr(" + this->to_string() + ")";
 
     CURRENT_FUNC(repr_func_) {
@@ -90,7 +88,7 @@ void Array::EmitRepr(IR::Val val) const {
       auto loop_phi  = repr_func_->AddBlock();
       auto loop_body = repr_func_->AddBlock();
 
-      data_type->EmitRepr(PtrCallFix(ptr));
+      data_type->EmitRepr(PtrCallFix(ptr), ctx);
       IR::PtrIncr(ptr, length_var);
       IR::UncondJump(loop_phi);
 
@@ -103,7 +101,7 @@ void Array::EmitRepr(IR::Val val) const {
       IR::Block::Current = loop_body;
       IR::Print(IR::Val::Char(','));
       IR::Print(IR::Val::Char(' '));
-      data_type->EmitRepr(PtrCallFix(elem_ptr));
+      data_type->EmitRepr(PtrCallFix(elem_ptr), ctx);
       IR::UncondJump(loop_phi);
 
       IR::Func::Current->SetArgs(phi, {IR::Val::Block(init_block), ptr,
@@ -118,14 +116,14 @@ void Array::EmitRepr(IR::Val val) const {
   IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
 }
 
-void Tuple::EmitRepr(IR::Val) const { NOT_YET(); }
+void Tuple::EmitRepr(IR::Val, Context *ctx) const { NOT_YET(); }
 // TODO print something friendlier
-void Pointer::EmitRepr(IR::Val val) const { IR::Print(val); }
-void Enum::EmitRepr(IR::Val val) const { IR::Print(val); }
-void Range::EmitRepr(IR::Val) const { NOT_YET(); }
-void Slice::EmitRepr(IR::Val) const { NOT_YET(); }
-void Scope::EmitRepr(IR::Val) const { NOT_YET(); }
-void Variant::EmitRepr(IR::Val id_val) const {
+void Pointer::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(val); }
+void Enum::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(val); }
+void Range::EmitRepr(IR::Val, Context *ctx) const { NOT_YET(); }
+void Slice::EmitRepr(IR::Val, Context *ctx) const { NOT_YET(); }
+void Scope::EmitRepr(IR::Val, Context *ctx) const { NOT_YET(); }
+void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
   // TODO design and build a jump table?
   // TODO repr_func_
   // TODO remove these casts in favor of something easier to track properties on
@@ -137,7 +135,7 @@ void Variant::EmitRepr(IR::Val id_val) const {
     auto found_block = IR::Func::Current->AddBlock();
 
     IR::Block::Current = found_block;
-    v->EmitRepr(PtrCallFix(IR::VariantValue(v, id_val)));
+    v->EmitRepr(PtrCallFix(IR::VariantValue(v, id_val)),ctx);
     IR::UncondJump(landing);
 
     IR::Block::Current = old_block;
@@ -147,18 +145,17 @@ void Variant::EmitRepr(IR::Val id_val) const {
   IR::UncondJump(landing);
   IR::Block::Current = landing;
 }
-void Function::EmitRepr(IR::Val) const {
+void Function::EmitRepr(IR::Val, Context *ctx) const {
   IR::Print(IR::Val::Char('{'));
   IR::Print(IR::Val::Type(this));
   IR::Print(IR::Val::Char('}'));
 }
-void Struct::EmitRepr(IR::Val val) const {
+void Struct::EmitRepr(IR::Val val, Context *ctx) const {
   if (!repr_func_) {
-    IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func(Ptr(this), Void),
+    repr_func_ = ctx->mod_.AddFunc(
+        Func(this, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
-            {"arg", nullptr}}));
-    repr_func_       = IR::Func::All.back().get();
+            {"arg", nullptr}});
     repr_func_->name = "repr(" + this->to_string() + ")";
 
     CURRENT_FUNC(repr_func_) {
@@ -169,7 +166,7 @@ void Struct::EmitRepr(IR::Val val) const {
 
       for (size_t i = 0; i < fields_.size(); ++i) {
         fields_[i].type->EmitRepr(
-            PtrCallFix(IR::Field(repr_func_->Argument(0), i)));
+            PtrCallFix(IR::Field(repr_func_->Argument(0), i)), ctx);
         IR::Print(IR::Val::Char(' '));
       }
       IR::Print(IR::Val::Char('}'));

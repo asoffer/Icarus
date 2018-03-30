@@ -1,6 +1,8 @@
 #ifndef ICARUS_AST_BOUND_CONSTANTS_H
 #define ICARUS_AST_BOUND_CONSTANTS_H
 
+#include <map>
+
 #include "ir/val.h"
 
 namespace AST {

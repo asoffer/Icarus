@@ -70,8 +70,8 @@ struct ExecScope : public Scope {
   ~ExecScope() override {}
 
   ExecScope *Clone() const override { return new ExecScope(*this); }
-  void Enter() const;
-  void Exit() const;
+  void Enter(Context *ctx) const;
+  void Exit(Context *ctx) const;
 
   bool can_jump = false;
 };

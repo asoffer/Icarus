@@ -16,7 +16,7 @@ size_t Enum::IntValueOrFail(const std::string &str) const {
                                     : iter->second;
 }
 
-IR::Val Enum::EmitInitialValue() const {
+IR::Val Enum::EmitInitialValue(Context* ctx) const {
   // TODO enums don't have intial values. flags do
   return IR::Val::Enum(this, 0);
 }

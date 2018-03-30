@@ -11,7 +11,7 @@
 #include "ir/func.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
+#include "module.h"
 #include "util/command_line_args.h"
 #include "util/timer.h"
 
@@ -53,7 +53,7 @@ int GenerateCode() {
 
   RUN(timer, "Verify preconditions") {
     std::queue<IR::Func *> validation_queue;
-    for (const auto &fn : IR::Func::All) { validation_queue.push(fn.get()); }
+    for (const auto &fn : ctx.mod_.fns_) { validation_queue.push(fn.get()); }
 
     int num_errors = 0;
     while (!validation_queue.empty()) {
@@ -63,10 +63,8 @@ int GenerateCode() {
     }
   }
 
-  llvm::LLVMContext llvm_context;
-  llvm::Module module("a module", llvm_context);
   RUN(timer, "LLVM") {
-    backend::EmitAll(IR::Func::All, &module);
+    backend::EmitAll(ctx.mod_.fns_, &ctx.mod_.llvm_);
   }
 
   // Tag main
@@ -83,7 +81,7 @@ int GenerateCode() {
     fn_lit->ir_func_->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
   }
 
-  module.dump();
+  ctx.mod_.llvm_.dump();
   return 0;
 }
 

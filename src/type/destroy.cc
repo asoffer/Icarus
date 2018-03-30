@@ -1,20 +1,20 @@
 #include "../ir/func.h"
+
+#include "../context.h"
 #include "all.h"
 
 namespace type {
-void Primitive::EmitDestroy(IR::Val) const {}
+void Primitive::EmitDestroy(IR::Val, Context *ctx) const {}
 
 extern IR::Val PtrCallFix(Type *t, IR::Val v);
 
-void Array::EmitDestroy(IR::Val id_val) const {
+void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
   if (destroy_func_ == nullptr) {
     if (!needs_destroy()) { return; }
-
-    IR::Func::All.push_back(std::make_unique<IR::Func>(
+    destroy_func_ = ctx->mod_.AddFunc(
         Func(Ptr(this), Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
-            {"arg", nullptr}}));
-    destroy_func_       = IR::Func::All.back().get();
+            {"arg", nullptr}});
     destroy_func_->name = "destroy(" + this->to_string() + ")";
 
     CURRENT_FUNC(destroy_func_) {
@@ -37,7 +37,7 @@ void Array::EmitDestroy(IR::Val id_val) const {
       IR::CondJump(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
 
       IR::Block::Current = loop_body;
-      data_type->EmitDestroy(phi_reg);
+      data_type->EmitDestroy(phi_reg, ctx);
       IR::UncondJump(loop_phi);
 
       destroy_func_->SetArgs(phi, {IR::Val::Block(destroy_func_->entry()), ptr,
@@ -52,29 +52,29 @@ void Array::EmitDestroy(IR::Val id_val) const {
   IR::Call(IR::Val::Func(destroy_func_), {id_val}, {});
 }
 
-void Tuple::EmitDestroy(IR::Val) const { NOT_YET(); }
+void Tuple::EmitDestroy(IR::Val, Context *ctx) const { NOT_YET(); }
 
-void Enum::EmitDestroy(IR::Val) const {}
-void Function::EmitDestroy(IR::Val) const {}
-void Pointer::EmitDestroy(IR::Val) const {}
-void Variant::EmitDestroy(IR::Val) const { NOT_YET(); }
-void Range::EmitDestroy(IR::Val) const { UNREACHABLE(); }
-void Slice::EmitDestroy(IR::Val) const { UNREACHABLE(); }
-void Scope::EmitDestroy(IR::Val) const { UNREACHABLE(); }
+void Enum::EmitDestroy(IR::Val, Context *ctx) const {}
+void Function::EmitDestroy(IR::Val, Context *ctx) const {}
+void Pointer::EmitDestroy(IR::Val, Context *ctx) const {}
+void Variant::EmitDestroy(IR::Val, Context *ctx) const { NOT_YET(); }
+void Range::EmitDestroy(IR::Val, Context *ctx) const { UNREACHABLE(); }
+void Slice::EmitDestroy(IR::Val, Context *ctx) const { UNREACHABLE(); }
+void Scope::EmitDestroy(IR::Val, Context *ctx) const { UNREACHABLE(); }
 
-void Struct::EmitDestroy(IR::Val id_val) const {
+void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
   if (destroy_func_ == nullptr) {
-    IR::Func::All.push_back(std::make_unique<IR::Func>(
+    destroy_func_ = ctx->mod_.AddFunc(
         Func(Ptr(this), Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
-            {"arg", nullptr}}));
-    destroy_func_       = IR::Func::All.back().get();
+            {"arg", nullptr}});
     destroy_func_->name = "destroy(" + this->to_string() + ")";
 
     CURRENT_FUNC(destroy_func_) {
       IR::Block::Current = destroy_func_->entry();
       for (size_t i = 0; i < fields_.size(); ++i) {
-        fields_[i].type->EmitDestroy(IR::Field(destroy_func_->Argument(0), i));
+        fields_[i].type->EmitDestroy(IR::Field(destroy_func_->Argument(0), i),
+                                     ctx);
       }
       IR::ReturnJump();
     }

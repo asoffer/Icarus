@@ -5,7 +5,6 @@
 namespace IR {
 Func *Func::Current{nullptr};
 
-std::vector<std::unique_ptr<Func>> Func::All;
 Val Func::Argument(u32 n) {
   return Val::Reg(Register(n), ir_type->input AT(n));
 }

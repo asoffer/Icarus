@@ -37,19 +37,16 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
   if (containing_fn_scope) { containing_fn_scope->innards_.push_back(this); }
 }
 
-void ExecScope::Enter() const {
-  ForEachDeclHere(+[](AST::Declaration *decl) {
+void ExecScope::Enter(Context* ctx) const {
+  ForEachDeclHere([ctx](AST::Declaration *decl) {
     if (decl->const_) { return; }
-    if (!decl->is<AST::InDecl>()) { 
-    Context ctx;
-    decl->EmitIR(&ctx);
-    }
+    if (!decl->is<AST::InDecl>()) { decl->EmitIR(ctx); }
   });
 }
 
-void ExecScope::Exit() const {
-  ForEachDeclHere(+[](AST::Declaration *decl) {
+void ExecScope::Exit(Context *ctx) const {
+  ForEachDeclHere([ctx](AST::Declaration *decl) {
     if (decl->const_) { return; }
-    decl->type->EmitDestroy(decl->addr);
+    decl->type->EmitDestroy(decl->addr, ctx);
   });
 }
