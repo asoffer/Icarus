@@ -1,0 +1,9 @@
+if ::= scope {
+  enter ::= (cond: bool) -> bool { return cond }
+  exit ::= void -> bool { return false }
+}
+
+while ::= scope {
+  enter ::= (cond: bool) -> bool { return cond }
+  exit ::= void -> bool { return true}
+}

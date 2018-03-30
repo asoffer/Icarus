@@ -14,6 +14,7 @@ size_t Architecture::alignment(const type::Type *t) const {
   if (t->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
     case type::PrimType::Generic:
+    case type::PrimType::Module:
     case type::PrimType::Err: NOT_YET();
     case type::PrimType::Unknown: UNREACHABLE();
     case type::PrimType::EmptyArray:
@@ -61,6 +62,7 @@ size_t Architecture::bytes(const type::Type *t) const {
   if (t->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
     case type::PrimType::Generic:
+    case type::PrimType::Module:
     case type::PrimType::Err: NOT_YET();
     case type::PrimType::Unknown: UNREACHABLE();
     case type::PrimType::EmptyArray:

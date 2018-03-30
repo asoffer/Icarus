@@ -16,7 +16,7 @@ struct Pointer;
 struct Struct;
 struct Type;
 
-extern Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String;
+extern Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String, *Module;
 } // namespace type
 
 

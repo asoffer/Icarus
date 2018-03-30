@@ -657,6 +657,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
       return IR::Val::None();
     } break;
     case Language::Operator::Pass: return operand->EmitIR(ctx);
+    case Language::Operator::Require: return IR::Val::None(); // TODO
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }

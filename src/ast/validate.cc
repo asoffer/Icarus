@@ -1096,7 +1096,7 @@ void Unop::Validate(Context *ctx) {
       lvalue = Assign::Const;
       break;
     case Operator::Eval: type = operand->type; break;
-    case Operator::Require: type = type::Void; break;
+    case Operator::Require: type = type::Module; break;
     case Operator::Generate: type = type::Void; break;
     case Operator::Free: {
       if (!operand->type->is<type::Pointer>()) {

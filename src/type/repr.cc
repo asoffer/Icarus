@@ -54,6 +54,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
   case PrimType::NullPtr:
   case PrimType::EmptyArray:
   case PrimType::Generic:
+  case PrimType::Module:
   case PrimType::Err: NOT_YET();
   case PrimType::Unknown: UNREACHABLE();
   }

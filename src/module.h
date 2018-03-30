@@ -5,7 +5,10 @@
 #include <vector>
 #include <string>
 
-#include "llvm/IR/Module.h"
+namespace llvm {
+class Module;
+class LLVMContext;
+}  // namespace llvm
 
 namespace type {
 struct Function;
@@ -22,12 +25,13 @@ struct Expression;
 struct Module {
   Module();
   ~Module();
+  Module(Module&&);
 
   IR::Func* AddFunc(const type::Function* fn_type,
       std::vector<std::pair<std::string, AST::Expression *>> args);
 
-  llvm::LLVMContext llvm_ctx_;
-  llvm::Module llvm_;
+  std::unique_ptr<llvm::LLVMContext> llvm_ctx_;
+  std::unique_ptr<llvm::Module> llvm_;
   std::vector<std::unique_ptr<IR::Func>> fns_;
 };
 

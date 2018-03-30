@@ -18,7 +18,7 @@ enum class CLArgFlag { QuitSuccessfully, QuitWithFailure, Continue };
 
 FileType file_type = FileType::Bin;
 const char *output_file_name = "a.out";
-std::queue<Source::Name> file_queue;
+std::vector<Source::Name> files;
 
 static void
 ShowUsage(char *argv0) {
@@ -162,12 +162,12 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
 
       }
     } else {
-      file_queue.push(Source::Name(arg));
+      files.emplace_back(arg);
     }
   next_arg:;
   }
 
-  if (file_queue.empty() && !repl) {
+  if (files.empty() && !repl) {
     ShowUsage(argv[0]);
     return CLArgFlag::QuitWithFailure;
   }

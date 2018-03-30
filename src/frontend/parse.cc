@@ -1,3 +1,12 @@
+#include <array>
+#include <cstdio>
+#include <future>
+#include <iosfwd>
+#include <queue>
+#include <unordered_map>
+#include <vector>
+
+#include "../module.h"
 #include "../type/enum.h"
 #include "ast/ast.h"
 #include "base/debug.h"
@@ -7,13 +16,6 @@
 #include "operators.h"
 #include "util/timer.h"
 
-#include <array>
-#include <cstdio>
-#include <iosfwd>
-#include <queue>
-#include <variant>
-#include <vector>
-
 template <typename To, typename From>
 static std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
   return std::unique_ptr<To>(static_cast<To *>(val.release()));
@@ -22,14 +24,14 @@ static std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
 void ForEachExpr(AST::Expression *expr,
                  const std::function<void(size_t, AST::Expression *)> &fn);
 
-extern std::queue<Source::Name> file_queue;
-
 static void ValidateStatementSyntax(AST::Node *node, error::Log* error_log) {
   if (node->is<AST::CommaList>()) {
     error_log->CommaListStatement(node->as<AST::CommaList>().span);
     node->limit_to(AST::StageRange::NoEmitIR());
   }
 }
+
+void ScheduleParse(const Source::Name &src);
 
 namespace Language {
 size_t precedence(Operator op) {
@@ -137,8 +139,9 @@ BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
   bool check_id = false;
   if (tk == "require") {
     if (unop->operand->is<Terminal>()) {
-      file_queue.push(Source::Name(std::move(
+      ScheduleParse(Source::Name(std::move(
           std::get<std::string>(unop->operand->as<Terminal>().value.value))));
+
     } else {
       error_log->InvalidRequirement(unop->operand->span);
     }
@@ -1340,30 +1343,30 @@ std::unique_ptr<AST::Statements> File::Parse(error::Log *error_log) {
   return move_as<AST::Statements>(state.node_stack_.back());
 }
 
+std::unordered_map<Source::Name, std::future<AST::Statements>> modules;
+
 extern Timer timer;
+// TODO deprecate source_map
 std::unordered_map<Source::Name, File *> source_map;
-std::vector<AST::Statements> ParseAllFiles() {
-  std::vector<AST::Statements> stmts;
-  while (!file_queue.empty()) {
-    auto file_name = std::move(file_queue.front());
-    file_queue.pop();
-
-    if (source_map.find(file_name) != source_map.end()) { continue; }
-
-    RUN(timer, "Parsing a file") {
-      auto source_file              = new File(std::move(file_name));
-      source_map[source_file->name] = source_file;
-      // TODO Parse() should return Statements, not a unique_ptr.
-
-      error::Log log;
-      auto file_stmts = source_file->Parse(&log);
-      if (log.size() > 0) {
-        log.Dump();
-      } else {
-        stmts.push_back(std::move(*file_stmts));
-      }
-    }
-  }
-
-  return stmts;
+void ScheduleParse(const Source::Name &src) {
+  // TODO This is already racy. Lock when looking at the module.
+  auto iter = modules.find(src);
+  if (iter != modules.end()) { return; }
+  modules.emplace(src, std::async(std::launch::async, [src]() {
+                    RUN(timer, "Parsing a file") {
+                      auto *f = new File(src);
+                      source_map[src] = f;
+                      error::Log log;
+                      auto file_stmts = f->Parse(&log);
+                      if (log.size() > 0) {
+                        log.Dump();
+                        return AST::Statements{};
+                      } else {
+                        return std::move(*file_stmts);
+                      }
+                    }
+                    UNREACHABLE();
+                  }));
 }
+
+
