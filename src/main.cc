@@ -6,100 +6,113 @@
 #include "ast/statements.h"
 #include "backend/emit.h"
 #include "base/debug.h"
+#include "base/guarded.h"
 #include "base/source.h"
 #include "context.h"
 #include "error/log.h"
 #include "ir/func.h"
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
 #include "module.h"
 #include "util/command_line_args.h"
 #include "util/timer.h"
 
 Timer timer;
 
-struct Scope;
-extern Scope *GlobalScope;
-
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 extern void ReplEval(AST::Expression *expr);
 
-void ScheduleParse(const Source::Name &src);
 extern Timer timer;
-extern std::unordered_map<Source::Name, std::future<AST::Statements>> modules;
+extern base::guarded<
+    std::unordered_map<Source::Name, std::future<AST::Statements>>>
+    modules;
 
-AST::Statements global_statements;
+base::guarded<std::unordered_map<Source::Name, std::future<AST::Statements>>>
+    modules;
+// TODO deprecate source_map
+std::unordered_map<Source::Name, File *> source_map;
+void ScheduleModule(const Source::Name &src) {
+  auto handle = modules.lock();
+  auto iter = handle->find(src);
+  if (iter != handle->end()) { return; }
+  handle->emplace(src, std::async(std::launch::async, [src]() {
+                    auto *f = new File(src);
+                    source_map[src] = f;
+                    error::Log log;
+                    auto file_stmts = f->Parse(&log);
+                    if (log.size() > 0) {
+                      log.Dump();
+                      return AST::Statements{};
+                    }
+
+                    Context ctx;
+                    file_stmts->assign_scope(&ctx.mod_.global_);
+                    file_stmts->Validate(&ctx);
+                    if (ctx.num_errors() != 0) {
+                      ctx.DumpErrors();
+                      return AST::Statements{};
+                    }
+
+                    file_stmts->EmitIR(&ctx);
+                    if (ctx.num_errors() != 0) {
+                      ctx.DumpErrors();
+                      return AST::Statements{};
+                    }
+                    backend::EmitAll(ctx.mod_.fns_, ctx.mod_.llvm_.get());
+                    ctx.mod_.llvm_->dump();
+                    return std::move(*file_stmts);
+                  }));
+}
 
 int GenerateCode() {
-  for (const auto &src : files) {
-    ScheduleParse(src);
-  }
+  for (const auto &src : files) { ScheduleModule(src); }
 
-  // TODO This is hacky and probably racy.
-  size_t current_size = modules.size();
+  size_t current_size = 0;
   do {
-    current_size = modules.size();
-    for (auto & [ src, module ] : modules) { module.wait(); }
-  } while (current_size != modules.size());
+    std::vector<std::future<AST::Statements> *> future_ptrs;
+    {
+      auto handle = modules.lock();
+      current_size = handle->size();
+      for (auto & [ src, module ] : *handle) { future_ptrs.push_back(&module); }
+    }
+    for (auto *future : future_ptrs) { future->wait(); }
+  } while (current_size != modules.lock()->size());
 
-  std::vector<AST::Statements> stmts_by_file;
-  for (auto & [ src, module ] : modules) {
-    stmts_by_file.push_back(std::move(module.get()));
-  }
+  for (auto & [ src, module ] : *modules.lock()) { module.get(); }
 
-  RUN(timer, "AST Setup") {
-    global_statements = AST::Statements::Merge(std::move(stmts_by_file));
-  }
-
+  /*
   Context ctx;
-  RUN(timer, "Verify and Emit") {
-    AST::DoStages<0, 1>(&global_statements, GlobalScope, &ctx);
-    if (ctx.num_errors() != 0) {
-      ctx.DumpErrors();
-      return 0;
-    }
-    AST::DoStage<2>(&global_statements, GlobalScope, &ctx);
-    if (ctx.num_errors() != 0) {
-      ctx.DumpErrors();
-      return 0;
-    }
-    }
+  RUN(timer, "Verify preconditions") {
+    std::queue<IR::Func *> validation_queue;
+    for (const auto &fn : ctx.mod_.fns_) { validation_queue.push(fn.get()); }
 
-    RUN(timer, "Verify preconditions") {
-      std::queue<IR::Func *> validation_queue;
-      for (const auto &fn : ctx.mod_.fns_) { validation_queue.push(fn.get()); }
-
-      int num_errors = 0;
-      while (!validation_queue.empty()) {
-        auto fn = std::move(validation_queue.front());
-        validation_queue.pop();
-        num_errors += fn->ValidateCalls(&validation_queue);
-      }
+    int num_errors = 0;
+    while (!validation_queue.empty()) {
+      auto fn = std::move(validation_queue.front());
+      validation_queue.pop();
+      num_errors += fn->ValidateCalls(&validation_queue);
     }
+  }
+  */
 
-    RUN(timer, "LLVM") {
-      backend::EmitAll(ctx.mod_.fns_, ctx.mod_.llvm_.get());
-    }
+  // Tag main
+  /*
+  for (const auto &stmt : global_statements.content_) {
+    if (!stmt->is<AST::Declaration>()) { continue; }
+    auto &decl = stmt->as<AST::Declaration>();
+    if (decl.identifier->token != "main") { continue; }
+    auto val = Evaluate(decl.init_val.get(), &ctx);
+    ASSERT_EQ(val.size(), 1u);
+    auto fn_lit = std::get<AST::FunctionLiteral *>(val[0].value);
+    // TODO check more than one?
 
-    // Tag main
-    for (const auto &stmt : global_statements.content_) {
-      if (!stmt->is<AST::Declaration>()) { continue; }
-      auto &decl = stmt->as<AST::Declaration>();
-      if (decl.identifier->token != "main") { continue; }
-      auto val = Evaluate(decl.init_val.get(), &ctx);
-      ASSERT_EQ(val.size(), 1u);
-      auto fn_lit = std::get<AST::FunctionLiteral *>(val[0].value);
-      // TODO check more than one?
+    fn_lit->ir_func_->llvm_fn_->setName("main");
+    fn_lit->ir_func_->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  }*/
 
-      fn_lit->ir_func_->llvm_fn_->setName("main");
-      fn_lit->ir_func_->llvm_fn_->setLinkage(
-          llvm::GlobalValue::ExternalLinkage);
-    }
-
-    ctx.mod_.llvm_->dump();
-    return 0;
+  return 0;
 }
 
 int RunRepl() {
@@ -118,7 +131,9 @@ repl_start : {
   for (auto &stmt : stmts->content_) {
     if (stmt->is<AST::Declaration>()) {
       auto *decl = &stmt->as<AST::Declaration>();
-      AST::DoStages<0, 2>(decl, GlobalScope, &ctx);
+      decl->assign_scope(&ctx.mod_.global_);
+      decl->Validate(&ctx);
+      decl->EmitIR(&ctx);
       if (ctx.num_errors() != 0) {
         ctx.DumpErrors();
         goto repl_start;
@@ -126,7 +141,7 @@ repl_start : {
 
     } else if (stmt->is<AST::Expression>()) {
       auto *expr = &stmt->as<AST::Expression>();
-      expr->assign_scope(GlobalScope);
+      expr->assign_scope(&ctx.mod_.global_);
       ReplEval(expr);
       fprintf(stderr, "\n");
     } else {

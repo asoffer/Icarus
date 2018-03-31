@@ -319,37 +319,6 @@ struct StructLiteral : public Expression {
   std::unique_ptr<DeclScope> type_scope;
   std::vector<std::unique_ptr<Declaration>> fields_;
 };
-
-template <int N> decltype(auto) DoStage(Node *node, Scope *scope, Context *);
-template <>
-inline decltype(auto) DoStage<0>(Node *node, Scope *scope, Context *) {
-  node->assign_scope(scope);
-}
-template <>
-inline decltype(auto) DoStage<1>(Node *node, Scope *, Context *ctx) {
-  node->Validate(ctx);
-}
-
-template <>
-inline decltype(auto) DoStage<2>(Node *node, Scope *, Context *ctx) {
-  return node->EmitIR(ctx);
-}
-
-template <int Low, int High> struct ApplyStageRange {
-  decltype(auto) operator()(Node *node, Scope *scope, Context *ctx) const {
-    DoStage<Low>(node, scope, ctx);
-    return ApplyStageRange<Low + 1, High>{}(node, scope, ctx);
-  }
-};
-template <int N> struct ApplyStageRange<N, N> {
-  decltype(auto) operator()(Node *node, Scope *scope, Context *ctx) const {
-    return DoStage<N>(node, scope, ctx);
-  }
-};
-template <int Low, int High>
-decltype(auto) DoStages(Node *node, Scope *scope, Context *ctx) {
-  return ApplyStageRange<Low, High>{}(node, scope, ctx);
-}
 } // namespace AST
 
 #undef VIRTUAL_METHODS_FOR_NODES

@@ -5,8 +5,6 @@
 #include "ir/func.h"
 #include "type/function.h"
 
-DeclScope *GlobalScope = new DeclScope(nullptr);
-
 void Scope::InsertDecl(AST::Declaration *decl) {
   decls_[decl->identifier->token].push_back(decl);
   if (parent == nullptr) { return; }

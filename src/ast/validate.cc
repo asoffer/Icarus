@@ -14,6 +14,8 @@ IR::Val ErrorFunc();
 IR::Val AsciiFunc();
 IR::Val OrdFunc();
 
+void ScheduleModule(const Source::Name &src);
+
 static constexpr int ThisStage() { return 1; }
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
@@ -438,7 +440,11 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     }
     func.statements = base::wrap_unique(statements->Clone());
     func.ClearIdDecls();
-    DoStages<0, 2>(&func, scope_, &new_ctx);
+
+    func.assign_scope(scope_);
+    func.Validate(&new_ctx);
+    func.EmitIR(&new_ctx);
+    
     if (new_ctx.num_errors() > 0) {
       // TODO figure out the call stack of generic function requests and then
       // print the relevant parts.
@@ -1096,7 +1102,15 @@ void Unop::Validate(Context *ctx) {
       lvalue = Assign::Const;
       break;
     case Operator::Eval: type = operand->type; break;
-    case Operator::Require: type = type::Module; break;
+    case Operator::Require:
+      type = type::Module;
+      if (operand->type != type::String || operand->lvalue != Assign::Const) {
+        ctx->error_log_.InvalidRequirement(operand->span);
+      } else {
+        ScheduleModule(Source::Name{
+            std::get<std::string>(Evaluate(operand.get())[0].value)});
+      }
+      break;
     case Operator::Generate: type = type::Void; break;
     case Operator::Free: {
       if (!operand->type->is<type::Pointer>()) {
@@ -1257,6 +1271,11 @@ void Access::Validate(Context *ctx) {
       type = type::Err;
       limit_to(StageRange::Nothing());
     }
+  } else if (base_type == type::Module) {
+    // TODO
+    // auto module = std::get<Module>(Evaluate(operand.get(), ctx)[0]);
+    // type = module.GetType(member_name);
+
   } else if (base_type->is<type::Primitive>() ||
              base_type->is<type::Function>()) {
     ErrorLog::MissingMember(span, member_name, base_type);

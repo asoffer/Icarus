@@ -18,3 +18,8 @@ IR::Func* Module::AddFunc(
   fns_.push_back(std::make_unique<IR::Func>(fn_type, std::move(args)));
   return fns_.back().get();
 }
+
+const type::Type* Module::GetType(const std::string& name) const {
+  // TODO
+  return type::Err;
+}

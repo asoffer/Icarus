@@ -41,7 +41,10 @@ void StructLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
     Context ctx;
-    auto val = DoStages<0, 2>(operand.get(), scope, &ctx);
+    operand->assign_scope(scope);
+    operand->Validate(&ctx);
+    auto val = operand->EmitIR(&ctx);
+
     args->push_back(val);
     args->push_back(IR::Val::Ref(this));
   } else {

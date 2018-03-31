@@ -10,6 +10,7 @@
 #include "../type/enum.h"
 #include "ast/ast.h"
 #include "base/debug.h"
+#include "base/guarded.h"
 #include "base/types.h"
 #include "error/log.h"
 #include "nnt.h"
@@ -30,8 +31,6 @@ static void ValidateStatementSyntax(AST::Node *node, error::Log* error_log) {
     node->limit_to(AST::StageRange::NoEmitIR());
   }
 }
-
-void ScheduleParse(const Source::Name &src);
 
 namespace Language {
 size_t precedence(Operator op) {
@@ -137,42 +136,30 @@ BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
   bool check_id = false;
-  if (tk == "require") {
-    if (unop->operand->is<Terminal>()) {
-      ScheduleParse(Source::Name(std::move(
-          std::get<std::string>(unop->operand->as<Terminal>().value.value))));
-
-    } else {
-      error_log->InvalidRequirement(unop->operand->span);
-    }
-
-    unop->op = Language::Operator::Require;
-
-  } else {
-    const static std::unordered_map<std::string,
-                                    std::pair<Language::Operator, bool>>
-        UnopMap = {{"return", {Language::Operator::Return, false}},
-                   {"break", {Language::Operator::Break, true}},
-                   {"continue", {Language::Operator::Continue, true}},
-                   {"restart", {Language::Operator::Restart, true}},
-                   {"repeat", {Language::Operator::Repeat, true}},
-                   {"free", {Language::Operator::Free, false}},
-                   {"generate", {Language::Operator::Generate, false}},
-                   {"print", {Language::Operator::Print, false}},
-                   {"needs", {Language::Operator::Needs, false}},
-                   {"ensure", {Language::Operator::Ensure, false}},
-                   {"*", {Language::Operator::Mul, false}},
-                   {"&", {Language::Operator::And, false}},
-                   {"-", {Language::Operator::Sub, false}},
-                   {"!", {Language::Operator::Not, false}},
-                   {"@", {Language::Operator::At, false}},
-                   {":?", {Language::Operator::TypeOf, false}},
-                   {"$", {Language::Operator::Eval, false}}};
-    auto iter   = UnopMap.find(tk);
-    ASSERT(iter != UnopMap.end(),
-           std::string("Failed to match token: \"") + tk + "\"");
-    std::tie(unop->op, check_id) = iter->second;
-  }
+  const static std::unordered_map<std::string,
+                                  std::pair<Language::Operator, bool>>
+      UnopMap = {{"require", {Language::Operator::Require, false}},
+                 {"return", {Language::Operator::Return, false}},
+                 {"break", {Language::Operator::Break, true}},
+                 {"continue", {Language::Operator::Continue, true}},
+                 {"restart", {Language::Operator::Restart, true}},
+                 {"repeat", {Language::Operator::Repeat, true}},
+                 {"free", {Language::Operator::Free, false}},
+                 {"generate", {Language::Operator::Generate, false}},
+                 {"print", {Language::Operator::Print, false}},
+                 {"needs", {Language::Operator::Needs, false}},
+                 {"ensure", {Language::Operator::Ensure, false}},
+                 {"*", {Language::Operator::Mul, false}},
+                 {"&", {Language::Operator::And, false}},
+                 {"-", {Language::Operator::Sub, false}},
+                 {"!", {Language::Operator::Not, false}},
+                 {"@", {Language::Operator::At, false}},
+                 {":?", {Language::Operator::TypeOf, false}},
+                 {"$", {Language::Operator::Eval, false}}};
+  auto iter = UnopMap.find(tk);
+  ASSERT(iter != UnopMap.end(),
+         std::string("Failed to match token: \"") + tk + "\"");
+  std::tie(unop->op, check_id) = iter->second;
 
   if (check_id) {
     if (!unop->operand->is<Identifier>()) {
@@ -1342,31 +1329,3 @@ std::unique_ptr<AST::Statements> File::Parse(error::Log *error_log) {
 
   return move_as<AST::Statements>(state.node_stack_.back());
 }
-
-std::unordered_map<Source::Name, std::future<AST::Statements>> modules;
-
-extern Timer timer;
-// TODO deprecate source_map
-std::unordered_map<Source::Name, File *> source_map;
-void ScheduleParse(const Source::Name &src) {
-  // TODO This is already racy. Lock when looking at the module.
-  auto iter = modules.find(src);
-  if (iter != modules.end()) { return; }
-  modules.emplace(src, std::async(std::launch::async, [src]() {
-                    RUN(timer, "Parsing a file") {
-                      auto *f = new File(src);
-                      source_map[src] = f;
-                      error::Log log;
-                      auto file_stmts = f->Parse(&log);
-                      if (log.size() > 0) {
-                        log.Dump();
-                        return AST::Statements{};
-                      } else {
-                        return std::move(*file_stmts);
-                      }
-                    }
-                    UNREACHABLE();
-                  }));
-}
-
-

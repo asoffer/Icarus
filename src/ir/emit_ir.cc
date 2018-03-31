@@ -13,9 +13,6 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr);
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 extern std::vector<IR::Val> global_vals;
 
-struct Scope;
-extern Scope *GlobalScope;
-
 // If the expression is a CommaList, apply the function to each expr. Otherwise
 // call it on the expression itself.
 void ForEachExpr(AST::Expression *expr,
@@ -305,7 +302,7 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
   }
 
   // TODO this global scope thing is probably wrong.
-  if (decl->scope_ == GlobalScope) { decl->EmitIR(ctx); }
+  if (decl->scope_ == &ctx->mod_.global_) { decl->EmitIR(ctx); }
 
   if (decl->arg_val) {
     return decl->addr;
@@ -541,7 +538,7 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
     } else {
       UNREACHABLE();
     }
-  } else if (scope_ == GlobalScope) {
+  } else if (scope_ == &ctx->mod_.global_) {
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) {
       global_vals.emplace_back();
@@ -641,8 +638,11 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
         return IR::Val::None();
       }
 
-      return AST::DoStages<0, 2>(&std::get<AST::Statements>(block.content_),
-                                 scope_, ctx);
+      auto *stmts = &std::get<AST::Statements>(block.content_);
+      stmts->assign_scope(scope_);
+      stmts->Validate(ctx);
+      return stmts->EmitIR(ctx);
+
     } break;
     case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(ctx));
     case Language::Operator::At: return PtrCallFix(operand->EmitIR(ctx));
@@ -1068,7 +1068,8 @@ IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
     // default args.
     IR::Val init_val = IR::Val::None();
     if (field->init_val) {
-      AST::DoStages<0, 2>(field->init_val.get(), scope_, ctx);
+      field->init_val->assign_scope(scope_);
+      field->init_val->Validate(ctx);
       init_val = field->init_val->EmitIR(ctx);
     }
 
