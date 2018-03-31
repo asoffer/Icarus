@@ -3,9 +3,11 @@
 #include <cstring>
 #include <iostream>
 #include <memory>
+#include <future>
 
 #include "../architecture.h"
 #include "../ast/ast.h"
+#include "../base/guarded.h"
 #include "../base/util.h"
 #include "../context.h"
 #include "../error/log.h"
@@ -13,6 +15,10 @@
 #include "func.h"
 
 std::vector<IR::Val> global_vals;
+
+extern base::guarded<
+    std::unordered_map<Source::Name, std::shared_future<Module>>>
+    modules;
 
 std::unique_ptr<IR::Func>
 ExprFn(AST::Expression *expr, const type::Type *input, Context *ctx = nullptr,

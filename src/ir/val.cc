@@ -125,6 +125,10 @@ std::string Val::to_string() const {
           },
           [](AST::FunctionLiteral *fn) -> std::string {
             return fn->to_string();
+          },
+          [](const Module *module) -> std::string {
+            // TODO
+            return "module";
           }},
       value);
 }

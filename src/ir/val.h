@@ -10,6 +10,8 @@
 #include "../base/strong_types.h"
 #include "../base/types.h"
 
+struct Module;
+
 namespace type {
 struct Enum;
 struct Pointer;
@@ -97,11 +99,11 @@ template <> struct hash<IR::CmdIndex> {
 namespace IR {
 struct Val {
   const type::Type *type = nullptr;
-  std::variant<Register, ReturnValue,IR::Addr, bool, char, double, i32,
+  std::variant<Register, ReturnValue, IR::Addr, bool, char, double, i32,
                EnumVal, const type::Type *, type::Struct *,
                AST::GenericFunctionLiteral *, AST::FunctionLiteral *,
-              IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
-               AST::Expression *, BlockIndex, std::string>
+               IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
+               AST::Expression *, BlockIndex, std::string, const Module *>
       value{false};
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
@@ -122,6 +124,7 @@ struct Val {
   static Val GenFnLit(AST::GenericFunctionLiteral *fn);
   static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Void() { return Val(type::Void, false); }
+  static Val Mod(const Module *mod) { return Val(type::Module, mod); }
   static Val Null(const type::Type *t);
   static Val NullPtr();
   static Val StrLit(std::string str) { return Val(type::String, std::move(str)); }

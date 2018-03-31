@@ -26,7 +26,7 @@ enum class Op : char {
   ReturnJump,
   CreateStruct,
   InsertField,
-  FinalizeStruct
+  FinalizeStruct,
 };
 
 struct Cmd {

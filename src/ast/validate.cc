@@ -1107,6 +1107,8 @@ void Unop::Validate(Context *ctx) {
       if (operand->type != type::String || operand->lvalue != Assign::Const) {
         ctx->error_log_.InvalidRequirement(operand->span);
       } else {
+        // TODO it'd be nice to replace the string so we don't recompute it, but
+        // we also don't want to modify the AST if we're going to be printing it
         ScheduleModule(Source::Name{
             std::get<std::string>(Evaluate(operand.get())[0].value)});
       }
@@ -1272,9 +1274,15 @@ void Access::Validate(Context *ctx) {
       limit_to(StageRange::Nothing());
     }
   } else if (base_type == type::Module) {
-    // TODO
-    // auto module = std::get<Module>(Evaluate(operand.get(), ctx)[0]);
-    // type = module.GetType(member_name);
+    auto module =
+        std::get<const Module *>(Evaluate(operand.get(), ctx)[0].value);
+    type = module->GetType(member_name);
+    if (type == nullptr) {
+      ErrorLog::LogGeneric(
+          TextSpan(), "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
+      type = type::Err;
+      limit_to(StageRange::Nothing());
+    }
 
   } else if (base_type->is<type::Primitive>() ||
              base_type->is<type::Function>()) {

@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 
+#include "ast/statements.h"
 #include "scope.h"
 
 namespace llvm {
@@ -33,8 +34,13 @@ struct Module {
   IR::Func* AddFunc(const type::Function* fn_type,
       std::vector<std::pair<std::string, AST::Expression *>> args);
   const type::Type* GetType(const std::string& name) const;
+  AST::Declaration* GetDecl(const std::string& name) const;
 
   DeclScope global_{nullptr};
+
+  // TODO long-term this is not a good way to store these. We should probably
+  // extract the declarations determine which are public, etc.
+  AST::Statements statements_;
 
   std::unique_ptr<llvm::LLVMContext> llvm_ctx_;
   std::unique_ptr<llvm::Module> llvm_;

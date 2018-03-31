@@ -24,12 +24,7 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 extern void ReplEval(AST::Expression *expr);
 
-extern Timer timer;
-extern base::guarded<
-    std::unordered_map<Source::Name, std::future<AST::Statements>>>
-    modules;
-
-base::guarded<std::unordered_map<Source::Name, std::future<AST::Statements>>>
+base::guarded<std::unordered_map<Source::Name, std::shared_future<Module>>>
     modules;
 // TODO deprecate source_map
 std::unordered_map<Source::Name, File *> source_map;
@@ -37,33 +32,57 @@ void ScheduleModule(const Source::Name &src) {
   auto handle = modules.lock();
   auto iter = handle->find(src);
   if (iter != handle->end()) { return; }
-  handle->emplace(src, std::async(std::launch::async, [src]() {
-                    auto *f = new File(src);
-                    source_map[src] = f;
-                    error::Log log;
-                    auto file_stmts = f->Parse(&log);
-                    if (log.size() > 0) {
-                      log.Dump();
-                      return AST::Statements{};
-                    }
+  handle->emplace(src, std::shared_future<Module>(
+                           std::async(std::launch::async, [src]() {
+                             Module mod;
+                             auto *f = new File(src);
+                             source_map[src] = f;
+                             error::Log log;
+                             auto file_stmts = f->Parse(&log);
+                             if (log.size() > 0) {
+                               log.Dump();
+                               return mod;
+                             }
 
-                    Context ctx;
-                    file_stmts->assign_scope(&ctx.mod_.global_);
-                    file_stmts->Validate(&ctx);
-                    if (ctx.num_errors() != 0) {
-                      ctx.DumpErrors();
-                      return AST::Statements{};
-                    }
+                             Context ctx;
+                             file_stmts->assign_scope(&ctx.mod_.global_);
+                             file_stmts->Validate(&ctx);
+                             if (ctx.num_errors() != 0) {
+                               ctx.DumpErrors();
+                               return mod;
+                             }
 
-                    file_stmts->EmitIR(&ctx);
-                    if (ctx.num_errors() != 0) {
-                      ctx.DumpErrors();
-                      return AST::Statements{};
-                    }
-                    backend::EmitAll(ctx.mod_.fns_, ctx.mod_.llvm_.get());
-                    ctx.mod_.llvm_->dump();
-                    return std::move(*file_stmts);
-                  }));
+                             file_stmts->EmitIR(&ctx);
+                             if (ctx.num_errors() != 0) {
+                               ctx.DumpErrors();
+                               return mod;
+                             }
+
+                             mod.statements_ = std::move(*file_stmts);
+                             for (const auto &stmt : mod.statements_.content_) {
+                               if (!stmt->is<AST::Declaration>()) { continue; }
+                               auto &decl = stmt->as<AST::Declaration>();
+                               if (decl.identifier->token != "main") {
+                                 continue;
+                               }
+                               LOG << decl;
+                               auto val = Evaluate(decl.init_val.get(), &ctx);
+                               ASSERT_EQ(val.size(), 1u);
+                               auto fn_lit = std::get<AST::FunctionLiteral *>(
+                                   val[0].value);
+                               // TODO check more than one?
+
+                               fn_lit->ir_func_->llvm_fn_->setName("main");
+                               fn_lit->ir_func_->llvm_fn_->setLinkage(
+                                   llvm::GlobalValue::ExternalLinkage);
+                             }
+
+                             backend::EmitAll(ctx.mod_.fns_,
+                                              ctx.mod_.llvm_.get());
+
+                             ctx.mod_.llvm_->dump();
+                             return mod;
+                           })));
 }
 
 int GenerateCode() {
@@ -71,7 +90,7 @@ int GenerateCode() {
 
   size_t current_size = 0;
   do {
-    std::vector<std::future<AST::Statements> *> future_ptrs;
+    std::vector<std::shared_future<Module> *> future_ptrs;
     {
       auto handle = modules.lock();
       current_size = handle->size();
@@ -79,8 +98,6 @@ int GenerateCode() {
     }
     for (auto *future : future_ptrs) { future->wait(); }
   } while (current_size != modules.lock()->size());
-
-  for (auto & [ src, module ] : *modules.lock()) { module.get(); }
 
   /*
   Context ctx;
@@ -99,18 +116,7 @@ int GenerateCode() {
 
   // Tag main
   /*
-  for (const auto &stmt : global_statements.content_) {
-    if (!stmt->is<AST::Declaration>()) { continue; }
-    auto &decl = stmt->as<AST::Declaration>();
-    if (decl.identifier->token != "main") { continue; }
-    auto val = Evaluate(decl.init_val.get(), &ctx);
-    ASSERT_EQ(val.size(), 1u);
-    auto fn_lit = std::get<AST::FunctionLiteral *>(val[0].value);
-    // TODO check more than one?
-
-    fn_lit->ir_func_->llvm_fn_->setName("main");
-    fn_lit->ir_func_->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
-  }*/
+*/
 
   return 0;
 }

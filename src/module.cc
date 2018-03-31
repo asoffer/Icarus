@@ -1,5 +1,6 @@
 #include "module.h"
 
+#include "ast/ast.h"
 #include "ir/func.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -20,6 +21,17 @@ IR::Func* Module::AddFunc(
 }
 
 const type::Type* Module::GetType(const std::string& name) const {
-  // TODO
-  return type::Err;
+  auto* decl = GetDecl(name);
+  if (decl == nullptr) { return nullptr; }
+  return decl->type;
+}
+
+AST::Declaration* Module::GetDecl(const std::string& name) const {
+  for (const auto& stmt : statements_.content_) {
+    if (!stmt->is<AST::Declaration>()) { continue; }
+    const auto& id = stmt->as<AST::Declaration>().identifier->token;
+    if (id != name) { continue; }
+    return &stmt->as<AST::Declaration>();
+  }
+  return nullptr;
 }

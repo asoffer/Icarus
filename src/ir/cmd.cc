@@ -115,7 +115,9 @@ Val CreateStruct() {
   return cmd.reg();
 }
 
-IR::Val FinalizeStruct(Val v) { MAKE_AND_RETURN(type::Type_, Op::FinalizeStruct); }
+IR::Val FinalizeStruct(Val v) {
+  MAKE_AND_RETURN(type::Type_, Op::FinalizeStruct);
+}
 
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val) {

@@ -364,6 +364,7 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
     case IR::Op::CreateStruct: UNREACHABLE();
     case IR::Op::InsertField: UNREACHABLE();
     case IR::Op::FinalizeStruct: UNREACHABLE();
+    case IR::Op::LoadModule: UNREACHABLE();
     case IR::Op::Variant: UNREACHABLE();
     case IR::Op::Arrow: UNREACHABLE();
     case IR::Op::Array: UNREACHABLE();

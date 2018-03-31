@@ -1,12 +1,18 @@
 #include "func.h"
 
+#include <future>
 #include <algorithm>
 #include <optional>
 
 #include "../ast/ast.h"
+#include "../base/guarded.h"
 #include "../context.h"
 #include "../error/log.h"
 #include "../type/all.h"
+
+extern base::guarded<
+    std::unordered_map<Source::Name, std::shared_future<Module>>>
+    modules;
 
 static constexpr int ThisStage() { return 3; }
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
@@ -270,7 +276,11 @@ IR::Val AST::Call::EmitIR(Context *ctx) {
 }
 
 IR::Val AST::Access::EmitIR(Context *ctx) {
-  if (type->is<type::Enum>()) {
+  if (operand->type == type::Module) {
+    auto mod =
+        std::get<const Module *>(Evaluate(operand.get(), ctx) AT(0).value);
+    return mod->GetDecl(member_name)->EmitIR(ctx);
+  } else if (type->is<type::Enum>()) {
     return type->as<type::Enum>().EmitLiteral(member_name);
   } else {
     return PtrCallFix(EmitLVal(ctx));
@@ -657,7 +667,12 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
       return IR::Val::None();
     } break;
     case Language::Operator::Pass: return operand->EmitIR(ctx);
-    case Language::Operator::Require: return IR::Val::None(); // TODO
+    case Language::Operator::Require: {
+      auto mod = Evaluate(operand.get(), ctx) AT(0);
+      std::shared_future<Module> future_module =
+          modules.lock()->at(Source::Name{std::get<std::string>(mod.value)});
+      return IR::Val::Mod(&future_module.get());
+    }
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
