@@ -14,11 +14,10 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
   }
 
   if (!init_func_) {
-    init_func_ = ctx->mod_.AddFunc(
+    init_func_ = ctx->mod_->AddFunc(
         Func(Ptr(this), Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
-    init_func_->name = "init(" + this->to_string() + ")";
 
     CURRENT_FUNC(init_func_) {
       IR::Block::Current = init_func_->entry();
@@ -82,11 +81,10 @@ void Scope::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
 
 void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
   if (!init_func_) {
-    init_func_ = ctx->mod_.AddFunc(
+    init_func_ = ctx->mod_->AddFunc(
         Func(Ptr(this), Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
-    init_func_->name = "init(" + this->to_string() + ")";
 
     CURRENT_FUNC(init_func_) {
       IR::Block::Current = init_func_->entry();

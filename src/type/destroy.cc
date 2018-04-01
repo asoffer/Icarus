@@ -11,11 +11,10 @@ extern IR::Val PtrCallFix(Type *t, IR::Val v);
 void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
   if (destroy_func_ == nullptr) {
     if (!needs_destroy()) { return; }
-    destroy_func_ = ctx->mod_.AddFunc(
+    destroy_func_ = ctx->mod_->AddFunc(
         Func(Ptr(this), Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
-    destroy_func_->name = "destroy(" + this->to_string() + ")";
 
     CURRENT_FUNC(destroy_func_) {
       IR::Block::Current = destroy_func_->entry();
@@ -64,11 +63,10 @@ void Scope::EmitDestroy(IR::Val, Context *ctx) const { UNREACHABLE(); }
 
 void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
   if (destroy_func_ == nullptr) {
-    destroy_func_ = ctx->mod_.AddFunc(
+    destroy_func_ = ctx->mod_->AddFunc(
         Func(Ptr(this), Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
-    destroy_func_->name = "destroy(" + this->to_string() + ")";
 
     CURRENT_FUNC(destroy_func_) {
       IR::Block::Current = destroy_func_->entry();

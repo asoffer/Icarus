@@ -104,11 +104,7 @@ std::string Val::to_string() const {
           [](IR::Func *f) -> std::string {
             ASSERT_NE(f, nullptr);
             ASSERT_NE(f->type_, nullptr);
-            return "fn." +
-                   (f->name == ""
-                        ? std::to_string(reinterpret_cast<uintptr_t>(f)) + "-" +
-                              f->type_->to_string()
-                        : f->name);
+            return "fn." + f->name() + "-" + f->type_->to_string();
           },
           [](AST::ScopeLiteral *s) -> std::string {
             return "scope(" + std::to_string(reinterpret_cast<uintptr_t>(s)) +

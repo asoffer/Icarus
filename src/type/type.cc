@@ -29,7 +29,7 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
   if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"lhs", nullptr}, {"rhs", nullptr}};
-    auto *fn = ctx->mod_.AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool),
+    auto *fn = ctx->mod_->AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool),
                                  std::move(args));
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
@@ -109,7 +109,7 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
 
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
-    auto *fn = ctx->mod_.AddFunc(Func({from_type, Ptr(to_type)}, Void),
+    auto *fn = ctx->mod_->AddFunc(Func({from_type, Ptr(to_type)}, Void),
                                  std::move(args));
 
     CURRENT_FUNC(fn) {
@@ -174,7 +174,7 @@ static IR::Val StructInitializationWith(const Struct *struct_type,
   if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
-    auto *fn = iter->second = ctx->mod_.AddFunc(
+    auto *fn = iter->second = ctx->mod_->AddFunc(
         Func({Ptr(struct_type), Ptr(struct_type)}, Void), std::move(args));
 
     CURRENT_FUNC(fn) {

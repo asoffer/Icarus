@@ -528,7 +528,7 @@ void Block::dump(size_t indent) const {
 }
 
 void Func::dump() const {
-  std::cerr << (name == "" ? "(anon)" : name) << ": " << type_->to_string();
+  std::cerr << name() << ": " << type_->to_string();
   for (size_t i = 0; i < blocks_.size(); ++i) {
     std::cerr << "\n block #" << i << std::endl;
     blocks_[i].dump(2);

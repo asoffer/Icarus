@@ -10,9 +10,10 @@
 #include "../error/log.h"
 #include "../type/all.h"
 
-extern base::guarded<
-    std::unordered_map<Source::Name, std::shared_future<Module>>>
+extern base::guarded<std::unordered_map<
+    Source::Name, std::shared_future<std::unique_ptr<Module>>>>
     modules;
+
 
 static constexpr int ThisStage() { return 3; }
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
@@ -40,7 +41,6 @@ IR::Val ErrorFunc() {
       IR::SetReturn(IR::ReturnValue{0}, IR::Err(fn->Argument(0)));
       IR::ReturnJump();
     }
-    fn->name = "error";
     return fn;
   }();
   return IR::Val::Func(error_func_);
@@ -54,7 +54,6 @@ IR::Val AsciiFunc() {
       IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
       IR::ReturnJump();
     }
-    fn->name = "ascii";
     return fn;
   }();
   return IR::Val::Func(ascii_func_);
@@ -68,7 +67,6 @@ IR::Val OrdFunc() {
       IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));
       IR::ReturnJump();
     }
-    fn->name = "ord";
     return fn;
   }();
   return IR::Val::Func(ord_func_);
@@ -312,7 +310,7 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
   }
 
   // TODO this global scope thing is probably wrong.
-  if (decl->scope_ == &ctx->mod_.global_) { decl->EmitIR(ctx); }
+  if (decl->scope_ == ctx->mod_->global_.get()) { decl->EmitIR(ctx); }
 
   if (decl->arg_val) {
     return decl->addr;
@@ -496,7 +494,11 @@ IR::Val AST::For::EmitIR(Context *ctx) {
   return IR::Val::None();
 }
 
-IR::Val AST::ScopeLiteral::EmitIR(Context *) { return IR::Val::Scope(this); }
+IR::Val AST::ScopeLiteral::EmitIR(Context *ctx) {
+  enter_fn->init_val->EmitIR(ctx);
+  exit_fn->init_val->EmitIR(ctx);
+  return IR::Val::Scope(this);
+}
 
 IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   IR::Val scope_expr_val = Evaluate(scope_expr.get())[0];
@@ -548,7 +550,7 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
     } else {
       UNREACHABLE();
     }
-  } else if (scope_ == &ctx->mod_.global_) {
+  } else if (scope_ == ctx->mod_->global_.get()) {
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) {
       global_vals.emplace_back();
@@ -669,9 +671,9 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
     case Language::Operator::Pass: return operand->EmitIR(ctx);
     case Language::Operator::Require: {
       auto mod = Evaluate(operand.get(), ctx) AT(0);
-      std::shared_future<Module> future_module =
+      auto future_module =
           modules.lock()->at(Source::Name{std::get<std::string>(mod.value)});
-      return IR::Val::Mod(&future_module.get());
+      return IR::Val::Mod(future_module.get().get());
     }
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
@@ -976,8 +978,12 @@ IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
     }
     auto *fn_type =
         type::Func(std::move(input_types), type->as<type::Function>().output);
-
-    ir_func_ = ctx->mod_.AddFunc(fn_type, std::move(args));
+    // TODO could this be a data race if the future containing the module hasn't
+    // resolved yet? I don't think so
+    auto* s = scope_;
+    while (s->parent) { s = s->parent; }
+    ASSERT(s->is<DeclScope>(), "");
+    ir_func_ = s->as<DeclScope>().module_->AddFunc(fn_type, std::move(args));
 
     CURRENT_FUNC(ir_func_) {
       IR::Block::Current = ir_func_->entry();

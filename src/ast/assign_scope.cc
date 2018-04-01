@@ -134,7 +134,7 @@ void ScopeNode::assign_scope(Scope *scope) {
 void ScopeLiteral::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_     = scope;
-  body_scope = scope->add_child<ExecScope>();
+  body_scope = scope->add_child<DeclScope>();
   if (enter_fn) { enter_fn->assign_scope(body_scope.get()); }
   if (exit_fn) { exit_fn->assign_scope(body_scope.get()); }
 }

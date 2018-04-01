@@ -76,7 +76,11 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
                 llvm_data->module->getContext(),
                 llvm::APInt(64, reinterpret_cast<uintptr_t>(t), false));
           },
-          [&](IR::Func *f) -> llvm::Value * { return f->llvm_fn_; },
+          [&](IR::Func *f) -> llvm::Value * {
+            return llvm_data->module->getOrInsertFunction(
+                f->name(),
+                f->ir_type->llvm_fn(llvm_data->module->getContext()));
+          },
           [&](AST::ScopeLiteral *s) -> llvm::Value * { NOT_YET(); },
           [&](const AST::CodeBlock &c) -> llvm::Value * { NOT_YET(); },
           [&](AST::Expression *e) -> llvm::Value * { NOT_YET(); },
@@ -364,7 +368,6 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
     case IR::Op::CreateStruct: UNREACHABLE();
     case IR::Op::InsertField: UNREACHABLE();
     case IR::Op::FinalizeStruct: UNREACHABLE();
-    case IR::Op::LoadModule: UNREACHABLE();
     case IR::Op::Variant: UNREACHABLE();
     case IR::Op::Arrow: UNREACHABLE();
     case IR::Op::Array: UNREACHABLE();
@@ -378,11 +381,6 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
 void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
              llvm::Module *module) {
   auto &ctx = module->getContext();
-  for (auto &fn : fns) {
-    fn->llvm_fn_ = llvm::Function::Create(
-        fn->type_->llvm_fn(ctx), llvm::Function::PrivateLinkage, "", module);
-  }
-
   llvm::IRBuilder<> builder(ctx);
 
   for (auto &fn : fns) {

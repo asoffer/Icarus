@@ -24,7 +24,8 @@ std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 extern void ReplEval(AST::Expression *expr);
 
-base::guarded<std::unordered_map<Source::Name, std::shared_future<Module>>>
+base::guarded<std::unordered_map<Source::Name,
+                                 std::shared_future<std::unique_ptr<Module>>>>
     modules;
 // TODO deprecate source_map
 std::unordered_map<Source::Name, File *> source_map;
@@ -32,40 +33,42 @@ void ScheduleModule(const Source::Name &src) {
   auto handle = modules.lock();
   auto iter = handle->find(src);
   if (iter != handle->end()) { return; }
-  handle->emplace(src, std::shared_future<Module>(
+  handle->emplace(src, std::shared_future<std::unique_ptr<Module>>(
                            std::async(std::launch::async, [src]() {
-                             Module mod;
+                             Context ctx;
                              auto *f = new File(src);
                              source_map[src] = f;
                              error::Log log;
                              auto file_stmts = f->Parse(&log);
                              if (log.size() > 0) {
                                log.Dump();
-                               return mod;
+                               return std::move(ctx.mod_);
                              }
 
-                             Context ctx;
-                             file_stmts->assign_scope(&ctx.mod_.global_);
+                             file_stmts->assign_scope(ctx.mod_->global_.get());
                              file_stmts->Validate(&ctx);
                              if (ctx.num_errors() != 0) {
                                ctx.DumpErrors();
-                               return mod;
+                               return std::move(ctx.mod_);
                              }
 
                              file_stmts->EmitIR(&ctx);
                              if (ctx.num_errors() != 0) {
                                ctx.DumpErrors();
-                               return mod;
+                               return std::move(ctx.mod_);
                              }
 
-                             mod.statements_ = std::move(*file_stmts);
-                             for (const auto &stmt : mod.statements_.content_) {
+                             ctx.mod_->statements_ = std::move(*file_stmts);
+                             backend::EmitAll(ctx.mod_->fns_,
+                                              ctx.mod_->llvm_.get());
+
+                             for (const auto &stmt :
+                                  ctx.mod_->statements_.content_) {
                                if (!stmt->is<AST::Declaration>()) { continue; }
                                auto &decl = stmt->as<AST::Declaration>();
                                if (decl.identifier->token != "main") {
                                  continue;
                                }
-                               LOG << decl;
                                auto val = Evaluate(decl.init_val.get(), &ctx);
                                ASSERT_EQ(val.size(), 1u);
                                auto fn_lit = std::get<AST::FunctionLiteral *>(
@@ -77,11 +80,8 @@ void ScheduleModule(const Source::Name &src) {
                                    llvm::GlobalValue::ExternalLinkage);
                              }
 
-                             backend::EmitAll(ctx.mod_.fns_,
-                                              ctx.mod_.llvm_.get());
-
-                             ctx.mod_.llvm_->dump();
-                             return mod;
+                             ctx.mod_->llvm_->dump();
+                             return std::move(ctx.mod_);
                            })));
 }
 
@@ -90,7 +90,7 @@ int GenerateCode() {
 
   size_t current_size = 0;
   do {
-    std::vector<std::shared_future<Module> *> future_ptrs;
+    std::vector<std::shared_future<std::unique_ptr<Module>> *> future_ptrs;
     {
       auto handle = modules.lock();
       current_size = handle->size();
@@ -103,7 +103,7 @@ int GenerateCode() {
   Context ctx;
   RUN(timer, "Verify preconditions") {
     std::queue<IR::Func *> validation_queue;
-    for (const auto &fn : ctx.mod_.fns_) { validation_queue.push(fn.get()); }
+    for (const auto &fn : ctx.mod_->fns_) { validation_queue.push(fn.get()); }
 
     int num_errors = 0;
     while (!validation_queue.empty()) {
@@ -137,7 +137,7 @@ repl_start : {
   for (auto &stmt : stmts->content_) {
     if (stmt->is<AST::Declaration>()) {
       auto *decl = &stmt->as<AST::Declaration>();
-      decl->assign_scope(&ctx.mod_.global_);
+      decl->assign_scope(ctx.mod_->global_.get());
       decl->Validate(&ctx);
       decl->EmitIR(&ctx);
       if (ctx.num_errors() != 0) {
@@ -147,7 +147,7 @@ repl_start : {
 
     } else if (stmt->is<AST::Expression>()) {
       auto *expr = &stmt->as<AST::Expression>();
-      expr->assign_scope(&ctx.mod_.global_);
+      expr->assign_scope(ctx.mod_->global_.get());
       ReplEval(expr);
       fprintf(stderr, "\n");
     } else {

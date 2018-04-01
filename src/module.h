@@ -29,14 +29,14 @@ struct Expression;
 struct Module {
   Module();
   ~Module();
-  Module(Module&&);
+  Module(Module&&) = delete;
 
   IR::Func* AddFunc(const type::Function* fn_type,
       std::vector<std::pair<std::string, AST::Expression *>> args);
   const type::Type* GetType(const std::string& name) const;
   AST::Declaration* GetDecl(const std::string& name) const;
 
-  DeclScope global_{nullptr};
+  std::unique_ptr<DeclScope> global_;
 
   // TODO long-term this is not a good way to store these. We should probably
   // extract the declarations determine which are public, etc.

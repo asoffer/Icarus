@@ -9,6 +9,7 @@
 #include "base/util.h"
 
 struct Context;
+struct Module;
 
 namespace IR {
 struct Val;
@@ -63,6 +64,7 @@ struct DeclScope : public Scope {
   DeclScope(Scope *parent) : Scope(parent) {}
   ~DeclScope() override {}
   DeclScope *Clone() const override { return new DeclScope(*this); }
+  Module* module_; // Should be only on global scopes?
 };
 
 struct ExecScope : public Scope {

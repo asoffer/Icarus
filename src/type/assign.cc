@@ -13,7 +13,7 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to, Context*
 
   auto *&fn = assign_fns_[from_array_type];
   if (fn == nullptr) {
-    fn = ctx->mod_.AddFunc(
+    fn = ctx->mod_->AddFunc(
         Func({from_type, Ptr(this)}, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}});
@@ -136,7 +136,7 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                         Context *ctx) const {
   ASSERT_EQ(this, from_type);
   if (!assign_func) {
-    assign_func = ctx->mod_.AddFunc(
+    assign_func = ctx->mod_->AddFunc(
         Func({from_type, Ptr(this)}, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}});

@@ -8,14 +8,13 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
   switch (type_) {
   case PrimType::Char: {
     if (!repr_func_) {
-      repr_func_ = ctx->mod_.AddFunc(
+      repr_func_ = ctx->mod_->AddFunc(
           Func(this, Void),
           std::vector<std::pair<std::string, AST::Expression *>>{
               {"arg", nullptr}});
 
       CURRENT_FUNC(repr_func_) {
         IR::Block::Current = repr_func_->entry();
-        repr_func_->name    = "repr(" + this->to_string() + ")";
 
         IR::Print(IR::Val::Char('`'));
 
@@ -62,11 +61,10 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
 
 void Array::EmitRepr(IR::Val val, Context *ctx) const {
   if (!repr_func_) {
-    repr_func_ = ctx->mod_.AddFunc(
+    repr_func_ = ctx->mod_->AddFunc(
         Func(this, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
-    repr_func_->name = "repr(" + this->to_string() + ")";
 
     CURRENT_FUNC(repr_func_) {
       IR::Block::Current = repr_func_->entry();
@@ -153,11 +151,10 @@ void Function::EmitRepr(IR::Val, Context *ctx) const {
 }
 void Struct::EmitRepr(IR::Val val, Context *ctx) const {
   if (!repr_func_) {
-    repr_func_ = ctx->mod_.AddFunc(
+    repr_func_ = ctx->mod_->AddFunc(
         Func(this, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
-    repr_func_->name = "repr(" + this->to_string() + ")";
 
     CURRENT_FUNC(repr_func_) {
       IR::Block::Current = repr_func_->entry();

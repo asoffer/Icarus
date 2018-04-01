@@ -29,6 +29,10 @@ struct Func {
   void dump() const;
   Val Argument(u32 n);
 
+  const std::string name() const {
+    return std::to_string(reinterpret_cast<uintptr_t>(this));
+  }
+
   int ValidateCalls(std::queue<Func *> *validation_queue) const;
 
   const Block &block(BlockIndex index) const { return blocks_.at(index.value); }
@@ -63,7 +67,6 @@ struct Func {
   bool has_default(size_t i) const { return args_[i].second != nullptr; }
   i32 num_regs_  = 0;
   i32 num_voids_ = 0;
-  std::string name;
   std::vector<Block> blocks_;
   llvm::Function *llvm_fn_ = nullptr;
 
