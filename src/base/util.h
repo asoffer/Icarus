@@ -32,7 +32,7 @@ template <typename Base> struct Cast {
   template <typename T> T &&as() && {
     STATIC_ASSERT_RELATED(Base, T);
 
-#ifdef DEBUG
+#ifdef DBG
     auto *result = dynamic_cast<T *>(reinterpret_cast<Base *>(this));
     ASSERT(result, "Failed to convert");
     return std::move(*result);
@@ -44,7 +44,7 @@ template <typename Base> struct Cast {
   template <typename T> const T &as() const {
     STATIC_ASSERT_RELATED(Base, T);
 
-#ifdef DEBUG
+#ifdef DBG
     auto *result =
         dynamic_cast<const T *>(reinterpret_cast<const Base *>(this));
     ASSERT(result, "Failed to convert");

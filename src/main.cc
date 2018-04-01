@@ -1,5 +1,6 @@
-#include <future>
 #include <cstring>
+#include <future>
+#include <system_error>
 #include <vector>
 
 #include "ast/ast.h"
@@ -13,7 +14,14 @@
 #include "ir/func.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
 #include "module.h"
 #include "util/command_line_args.h"
 #include "util/timer.h"
@@ -80,7 +88,47 @@ void ScheduleModule(const Source::Name &src) {
                                    llvm::GlobalValue::ExternalLinkage);
                              }
 
-                             ctx.mod_->llvm_->dump();
+                             llvm ::InitializeAllTargetInfos();
+                             llvm ::InitializeAllTargets();
+                             llvm ::InitializeAllTargetMCs();
+                             llvm ::InitializeAllAsmParsers();
+                             llvm ::InitializeAllAsmPrinters();
+
+                             auto target_triple =
+                                 llvm::sys::getDefaultTargetTriple();
+                             ctx.mod_->llvm_->setTargetTriple(target_triple);
+                             std::string err;
+                             auto target = llvm::TargetRegistry::lookupTarget(
+                                 target_triple, err);
+                             if (target == nullptr) {
+                               std::cerr << err;
+                               return std::move(ctx.mod_);
+                             }
+
+                             auto target_machine = target->createTargetMachine(
+                                 target_triple, "generic", "",
+                                 llvm::TargetOptions{},
+                                 llvm::Optional<llvm::Reloc::Model>());
+                             ctx.mod_->llvm_->setDataLayout(
+                                 target_machine->createDataLayout());
+
+                             std::error_code err_code;
+                             llvm::raw_fd_ostream dest(
+                                 src.substr(0, src.size() - 2) + "o", err_code,
+                                 llvm::sys::fs::OpenFlags::F_None);
+                             if (err_code) {
+                               std::cerr << err_code.message();
+                             }
+
+                             llvm::legacy::PassManager pass;
+                             if (target_machine->addPassesToEmitFile(
+                                     pass, dest,
+                                     llvm::TargetMachine::CGFT_ObjectFile)) {
+                               std::cerr << "TheTargetMachine can't emit a "
+                                            "file of this type";
+                             }
+                             pass.run(*ctx.mod_->llvm_);
+                             dest.flush();
                              return std::move(ctx.mod_);
                            })));
 }
@@ -159,7 +207,7 @@ repl_start : {
 }
 
 int main(int argc, char *argv[]) {
-#ifdef DEBUG
+#ifdef DBG
   signal(SIGABRT, debug::DumpStackTrace);
 #endif
 

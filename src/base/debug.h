@@ -70,7 +70,7 @@ template <typename... Args> void LogArgs(Args &&... args) {
 }
 } // namespace debug
 
-#ifdef DEBUG
+#ifdef DBG
 #define AT(access) .at((access))
 #else
 #define AT(access) [(access)]
