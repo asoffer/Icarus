@@ -1,9 +1,14 @@
 if ::= scope {
-  enter ::= (cond: bool) -> bool { return cond }
-  exit ::= void -> bool { return false }
+  enter ::= (cond: bool) => cond
+  exit ::= void => false
+}
+
+forever ::= scope {
+  enter ::= (cond: bool) => true
+  exit ::= void => true
 }
 
 while ::= scope {
-  enter ::= (cond: bool) -> bool { return cond }
-  exit ::= void -> bool { return true }
+  enter ::= (cond: bool) => cond
+  exit ::= void => true
 }

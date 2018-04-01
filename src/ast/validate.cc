@@ -356,7 +356,7 @@ static std::optional<DispatchTable> ComputeDispatchTable(
       return std::nullopt;
 
     } else {
-      UNREACHABLE();
+      UNREACHABLE(fn_option);
     }
   next_option:;
   }

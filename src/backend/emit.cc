@@ -247,7 +247,7 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
       // TODO ordered vs unordered
-      return (cmd.type == type::Real)
+      return (cmd.args[0].type == type::Real)
                  ? llvm_data->builder->CreateFCmpOLT(lhs, rhs)
                  : llvm_data->builder->CreateICmpSLT(lhs, rhs);
     }
@@ -256,34 +256,34 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
       // TODO ordered vs unordered
-      return (cmd.type == type::Real)
+      return (cmd.args[0].type == type::Real)
                  ? llvm_data->builder->CreateFCmpOLE(lhs, rhs)
                  : llvm_data->builder->CreateICmpSLE(lhs, rhs);
     }
     case IR::Op::Eq: {
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
-      if (cmd.type == type::Int || cmd.type == type::Char ||
-          cmd.type->is<type::Enum>()) {
+      if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
+          cmd.args[0].type->is<type::Enum>()) {
         return llvm_data->builder->CreateICmpEQ(lhs, rhs);
-      } else if (cmd.type == type::Real) {
+      } else if (cmd.args[0].type == type::Real) {
         // TODO ordered vs unordered
         return llvm_data->builder->CreateFCmpOEQ(lhs, rhs);
       } else {
-        NOT_YET(cmd.type);
+        NOT_YET(cmd.args[0].type, " vs ", cmd.args[1].type);
       }
     }
     case IR::Op::Ne: {
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
-      if (cmd.type == type::Int || cmd.type == type::Char ||
-          cmd.type->is<type::Enum>()) {
+      if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
+          cmd.args[0].type->is<type::Enum>()) {
         return llvm_data->builder->CreateICmpNE(lhs, rhs);
-      } else if (cmd.type == type::Real) {
+      } else if (cmd.args[0].type == type::Real) {
         // TODO ordered vs unordered
         return llvm_data->builder->CreateFCmpONE(lhs, rhs);
       } else {
-        NOT_YET(cmd.type);
+        NOT_YET(cmd.args[0].type, " vs ", cmd.args[1].type);
       }
     }
     case IR::Op::Ge: {
@@ -291,7 +291,7 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
       // TODO ordered vs unordered
-      return (cmd.type == type::Real)
+      return (cmd.args[0].type == type::Real)
                  ? llvm_data->builder->CreateFCmpOGE(lhs, rhs)
                  : llvm_data->builder->CreateICmpSGE(lhs, rhs);
     }
@@ -300,7 +300,7 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
       // TODO ordered vs unordered
-      return (cmd.type == type::Real)
+      return (cmd.args[0].type == type::Real)
                  ? llvm_data->builder->CreateFCmpOGT(lhs, rhs)
                  : llvm_data->builder->CreateICmpSGT(lhs, rhs);
     }
