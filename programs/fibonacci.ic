@@ -1,8 +1,0 @@
-fib := (n : int) -> int {
-   return case {
-     n < 0 & n % 2 == 0  =>  fib(0 - n)
-     n < 0               =>  0 - fib(0 - n)
-     n < 2               =>  n
-     else                =>  fib(n - 1) + fib(n - 2)
-  }
-}

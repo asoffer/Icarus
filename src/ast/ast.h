@@ -18,6 +18,8 @@
 #include "dispatch.h"
 #include "expression.h"
 #include "fn_args.h"
+#include "import.h"
+#include "unop.h"
 
 struct Context;
 
@@ -158,17 +160,6 @@ struct InDecl : public Declaration {
   EXPR_FNS(InDecl);
   InDecl *Clone() const override;
   std::unique_ptr<Expression> container;
-};
-
-struct Unop : public Expression {
-  EXPR_FNS(Unop);
-  virtual IR::Val EmitIR(Context *);
-  virtual IR::Val EmitLVal(Context *);
-
-  Unop *Clone() const override;
-  std::unique_ptr<Expression> operand;
-  Language::Operator op;
-  DispatchTable dispatch_table_;
 };
 
 struct Access : public Expression {

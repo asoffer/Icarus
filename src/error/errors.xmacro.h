@@ -52,8 +52,8 @@ MAKE_LOG_ERROR(NonDeclarationInStructDeclaration,
 MAKE_LOG_ERROR(CommaListStatement,
                "Comma-separated lists are not allowed as statements")
 MAKE_LOG_ERROR(NonInDeclInForLoop, "Expected 'in' declaration in for-loop.")
-MAKE_LOG_ERROR(InvalidRequirement,
-               "Require statements must take a constant string as the name of "
+MAKE_LOG_ERROR(InvalidImport,
+               "Import statements must take a constant string as the name of "
                "the file to be imported.")
 MAKE_LOG_ERROR(RHSNonIdInAccess, "Right-hand side must be an identifier")
 MAKE_LOG_ERROR(DeclarationInAccess,

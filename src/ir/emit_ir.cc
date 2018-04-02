@@ -599,6 +599,11 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
   return addr;
 }
 
+IR::Val AST::Import::EmitIR(Context *ctx) {
+  ASSERT(cache_.has_value(), "");
+  return IR::Val::Mod(modules.lock()->at(*cache_).get().get());
+}
+
 IR::Val AST::Unop::EmitIR(Context *ctx) {
   if (operand->type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
     // TODO struct is not exactly right. we really mean user-defined
@@ -623,14 +628,15 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
     }
     case Language::Operator::TypeOf: return IR::Val::Type(operand->type);
     case Language::Operator::Print: {
-      ForEachExpr(operand.get(), [&ctx](size_t, AST::Expression *expr) {
-        if (expr->type->is<type::Primitive>() ||
-            expr->type->is<type::Pointer>()) {
-          IR::Print(expr->EmitIR(ctx));
-        } else {
-          expr->type->EmitRepr(expr->EmitIR(ctx), ctx);
-        }
-      });
+      ForEachExpr(
+          operand.get(), [&ctx](size_t, AST::Expression *expr) {
+            if (expr->type->is<type::Primitive>() ||
+                expr->type->is<type::Pointer>()) {
+              IR::Print(expr->EmitIR(ctx));
+            } else {
+              expr->type->EmitRepr(expr->EmitIR(ctx), ctx);
+            }
+          });
 
       return IR::Val::None();
     } break;
@@ -669,31 +675,25 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
       return IR::Val::None();
     } break;
     case Language::Operator::Pass: return operand->EmitIR(ctx);
-    case Language::Operator::Require: {
-      auto mod = Evaluate(operand.get(), ctx) AT(0);
-      auto future_module =
-          modules.lock()->at(Source::Name{std::get<std::string>(mod.value)});
-      return IR::Val::Mod(future_module.get().get());
-    }
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
-}
+    }
 
-IR::Val AST::Binop::EmitIR(Context *ctx) {
-  if (lhs->type->is<type::Struct>() || rhs->type->is<type::Struct>()) {
-    // TODO struct is not exactly right. we really mean user-defined
-    AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
-    args.pos_.reserve(2);
-    args.pos_.emplace_back(lhs.get(), lhs->type->is_big()
-                                          ? PtrCallFix(lhs->EmitIR(ctx))
-                                          : lhs->EmitIR(ctx));
-    args.pos_.emplace_back(rhs.get(), rhs->type->is_big()
-                                          ? PtrCallFix(rhs->EmitIR(ctx))
-                                          : rhs->EmitIR(ctx));
-    return EmitCallDispatch(args, dispatch_table_, type, ctx);
-  }
+    IR::Val AST::Binop::EmitIR(Context * ctx) {
+      if (lhs->type->is<type::Struct>() || rhs->type->is<type::Struct>()) {
+        // TODO struct is not exactly right. we really mean user-defined
+        AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
+        args.pos_.reserve(2);
+        args.pos_.emplace_back(lhs.get(), lhs->type->is_big()
+                                              ? PtrCallFix(lhs->EmitIR(ctx))
+                                              : lhs->EmitIR(ctx));
+        args.pos_.emplace_back(rhs.get(), rhs->type->is_big()
+                                              ? PtrCallFix(rhs->EmitIR(ctx))
+                                              : rhs->EmitIR(ctx));
+        return EmitCallDispatch(args, dispatch_table_, type, ctx);
+      }
 
-  switch (op) {
+      switch (op) {
 #define CASE(op_name)                                                          \
   case Language::Operator::op_name: {                                          \
     auto lhs_ir = lhs->EmitIR(ctx);                                            \
@@ -1064,11 +1064,11 @@ IR::Val AST::Identifier::EmitLVal(Context *ctx) {
 }
 
 IR::Val AST::Unop::EmitLVal(Context *ctx) {
-  switch (op) {
-    case Language::Operator::At: return operand->EmitIR(ctx);
-    default: UNREACHABLE("Operator is ", static_cast<int>(op));
-  }
+  ASSERT_EQ(static_cast<int>(op), static_cast<int>(Language::Operator::At));
+  return operand->EmitIR(ctx);
 }
+
+IR::Val AST::Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
 
 IR::Val AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {

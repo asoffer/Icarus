@@ -1,4 +1,4 @@
-main := void -> void {
+main ::= void -> void {
   for c in `a .. `z {
     print ord(c)
     print " => "

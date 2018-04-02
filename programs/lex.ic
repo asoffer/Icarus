@@ -1,6 +1,8 @@
 require "lib/prelude.ic"
 require "lib/file.ic"
 
+is_digit ::= (c: char) => (ord(`0) <= ord(c) <= ord(`9))
+
 NodeType := enum {
   Identifier
   Number

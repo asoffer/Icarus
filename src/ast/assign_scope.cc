@@ -9,6 +9,12 @@ void Unop::assign_scope(Scope *scope) {
   operand->assign_scope(scope);
 }
 
+void Import::assign_scope(Scope *scope) {
+  STAGE_CHECK;
+  scope_ = scope;
+  operand_->assign_scope(scope);
+}
+
 void Access::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;

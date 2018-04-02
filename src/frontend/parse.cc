@@ -137,6 +137,12 @@ static std::unique_ptr<Node>
 BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
   const std::string &tk = nodes[0]->as<TokenNode>().token;
 
+  if (tk == "import") {
+    auto import_node = std::make_unique<Import>(move_as<Expression>(nodes[1]));
+    import_node->span = TextSpan(nodes[0]->span, import_node->operand_->span);
+    return import_node;
+  }
+
   auto unop     = std::make_unique<Unop>();
   unop->operand = move_as<Expression>(nodes[1]);
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
@@ -144,7 +150,7 @@ BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
   bool check_id = false;
   const static std::unordered_map<std::string,
                                   std::pair<Language::Operator, bool>>
-      UnopMap = {{"require", {Language::Operator::Require, false}},
+      UnopMap = {{"import", {Language::Operator::Import, false}},
                  {"return", {Language::Operator::Return, false}},
                  {"break", {Language::Operator::Break, true}},
                  {"continue", {Language::Operator::Continue, true}},

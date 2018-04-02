@@ -14,7 +14,8 @@ foo ::= (x: bool, y: int) -> void {
   print "x is a bool equal to ", x, `\n,
         "y is an int equal to ", y, `\n
 }
-f ::= (xx: int) -> void {
+
+main ::= void -> void {
   x: bool | int = 999
   y: bool | int = true
 
@@ -34,4 +35,3 @@ f ::= (xx: int) -> void {
   y = 789
   foo(x, y)
 }
-main ::= void -> void { $f(3) }

@@ -988,6 +988,18 @@ void Declaration::Validate(Context *ctx) {
     return;
   }
 
+  if (identifier->is<Hole>()) {
+    if (type == type::Module) {
+      // TODO check shadowing against other modules?
+      // TODO what if no init val is provded? what if not constant?
+      ctx->mod_->embedded_modules_.push_back(
+          std::get<const Module *>(Evaluate(init_val.get(), ctx)[0].value));
+    } else {
+      NOT_YET(type);
+    }
+  }
+
+
   std::vector<Declaration *> decls_to_check;
   {
     auto[good_decls_to_check, error_decls_to_check] =
@@ -1062,7 +1074,8 @@ void InDecl::Validate(Context *ctx) {
     type = container->type->as<type::Range>().end_type;
 
   } else if (container->type == type::Type_) {
-    auto t = std::get<const type::Type *>(Evaluate(container.get())[0].value);
+    auto t =
+        std::get<const type::Type *>(Evaluate(container.get(), ctx)[0].value);
     if (t->is<type::Enum>()) { type = t; }
 
   } else {
@@ -1086,6 +1099,20 @@ void Statements::Validate(Context *ctx) {
 
 void CodeBlock::Validate(Context *) {}
 
+void Import::Validate(Context *ctx) {
+  VALIDATE_AND_RETURN_ON_ERROR(operand_);
+  lvalue = Assign::Const;
+  type = type::Module;
+  if (operand_->type != type::String || operand_->lvalue != Assign::Const) {
+    ctx->error_log_.InvalidImport(operand_->span);
+  } else {
+    cache_ =
+        Source::Name{std::get<std::string>(Evaluate(operand_.get())[0].value)};
+    ScheduleModule(*cache_);
+  }
+  limit_to(operand_);
+}
+
 void Unop::Validate(Context *ctx) {
   STARTING_CHECK;
   VALIDATE_AND_RETURN_ON_ERROR(operand);
@@ -1102,17 +1129,6 @@ void Unop::Validate(Context *ctx) {
       lvalue = Assign::Const;
       break;
     case Operator::Eval: type = operand->type; break;
-    case Operator::Require:
-      type = type::Module;
-      if (operand->type != type::String || operand->lvalue != Assign::Const) {
-        ctx->error_log_.InvalidRequirement(operand->span);
-      } else {
-        // TODO it'd be nice to replace the string so we don't recompute it, but
-        // we also don't want to modify the AST if we're going to be printing it
-        ScheduleModule(Source::Name{
-            std::get<std::string>(Evaluate(operand.get())[0].value)});
-      }
-      break;
     case Operator::Generate: type = type::Void; break;
     case Operator::Free: {
       if (!operand->type->is<type::Pointer>()) {

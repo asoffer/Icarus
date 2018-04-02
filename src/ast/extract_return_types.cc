@@ -7,6 +7,9 @@ void Unop::ExtractReturnTypes(
   if (op == Language::Operator::Return) { types->insert(operand->type); }
 }
 
+void Import::ExtractReturnTypes(
+    std::unordered_set<const type::Type *> *) const {}
+
 void Access::ExtractReturnTypes(
     std::unordered_set<const type::Type *> *types) const {
   operand->ExtractReturnTypes(types);

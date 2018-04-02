@@ -55,6 +55,10 @@ std::string For::to_string(size_t n) const {
   return ss.str();
 }
 
+std::string Import::to_string(size_t n) const {
+  return "import " + operand_->to_string(n);
+}
+
 std::string Unop::to_string(size_t n) const {
   std::stringstream ss;
   switch (op) {
@@ -73,7 +77,6 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::At: ss << "@"; break;
   case Language::Operator::Eval: ss << "$"; break;
   case Language::Operator::Dots: ss << ".."; break; // TODO
-  case Language::Operator::Require: ss << "require "; break;
   case Language::Operator::Ref: ss << "\\"; break;
   case Language::Operator::Needs: ss << "needs "; break;
   case Language::Operator::Ensure: ss << "ensure "; break;

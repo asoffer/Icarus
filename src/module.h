@@ -45,6 +45,7 @@ struct Module {
   std::unique_ptr<llvm::LLVMContext> llvm_ctx_;
   std::unique_ptr<llvm::Module> llvm_;
   std::vector<std::unique_ptr<IR::Func>> fns_;
+  std::vector<const Module*> embedded_modules_;
 };
 
 #endif // ICARUS_MODULE_H

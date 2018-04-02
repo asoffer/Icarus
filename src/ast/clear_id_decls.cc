@@ -5,6 +5,10 @@ void Unop::ClearIdDecls() {
   stage_range_ = StageRange{};
   operand->ClearIdDecls();
 }
+void Import::ClearIdDecls() {
+  stage_range_ = StageRange{};
+  operand_->ClearIdDecls();
+}
 void Access::ClearIdDecls() {
   stage_range_ = StageRange{};
   operand->ClearIdDecls();

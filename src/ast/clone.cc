@@ -54,6 +54,11 @@ Unop *Unop::Clone() const {
   return result;
 }
 
+Import *Import::Clone() const {
+  auto *result = new Import(base::wrap_unique(operand_->Clone()));
+  result->span = span;
+  return result;
+}
 Access *Access::Clone() const {
   auto *result        = new Access;
   result->span        = span;

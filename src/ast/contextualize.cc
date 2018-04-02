@@ -52,6 +52,10 @@ void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   }
 }
 
+void Import::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+  operand_->SaveReferences(scope, args);
+}
+
 void Access::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   operand->SaveReferences(scope, args);
 }
@@ -152,6 +156,11 @@ void Unop::contextualize(const Node *correspondant,
   } else {
     CONTEXTUALIZE(operand);
   }
+}
+
+void Import::contextualize(const Node *correspondant,
+                         const RefMap &replacements) {
+  CONTEXTUALIZE(operand_);
 }
 
 void Access::contextualize(const Node *correspondant,

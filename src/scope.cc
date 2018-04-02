@@ -26,6 +26,10 @@ Scope::AllDeclsWithId(const std::string &id, Context *ctx) {
           .push_back(decl);
     }
   }
+
+  for (const auto* mod : ctx->mod_->embedded_modules_) {
+    if (auto *decl = mod->GetDecl(id)) { matching_decls.push_back(decl); }
+  }
   return std::pair(std::move(matching_decls), std::move(matching_error_decls));
 }
 
