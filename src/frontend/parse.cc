@@ -13,8 +13,8 @@
 #include "base/guarded.h"
 #include "base/types.h"
 #include "error/log.h"
-#include "nnt.h"
 #include "operators.h"
+#include "tagged_node.h"
 #include "util/timer.h"
 
 template <typename To, typename From>
@@ -33,17 +33,23 @@ static void ValidateStatementSyntax(AST::Node *node, error::Log* error_log) {
 }
 
 namespace Language {
-size_t precedence(Operator op) {
+constexpr size_t left_assoc  = 0;
+constexpr size_t right_assoc = 1;
+constexpr size_t non_assoc   = 2;
+constexpr size_t chain_assoc = 3;
+constexpr size_t assoc_mask  = 3;
+
+constexpr size_t precedence(Operator op) {
   switch (op) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
   case Operator::name:                                                         \
     return (((prec) << 2) + (assoc));
 #include "operators.xmacro.h"
 #undef OPERATOR_MACRO
-  default: UNREACHABLE();
   }
+  __builtin_unreachable();
 }
-} // namespace Language
+}  // namespace Language
 
 static std::unique_ptr<AST::Node>
 OneBracedStatement(std::vector<std::unique_ptr<AST::Node>> nodes,
@@ -550,8 +556,8 @@ static std::unique_ptr<Node>
 BuildScopeNode(std::vector<std::unique_ptr<Node>> nodes,
                error::Log *error_log) {
   return BuildScopeNode(move_as<Expression>(nodes[0]),
-                        move_as<Expression>(nodes[1]),
-                        move_as<Statements>(nodes[2]));
+                        move_as<Expression>(nodes[2]),
+                        move_as<Statements>(nodes[4]));
 }
 
 static std::unique_ptr<Node>
@@ -607,22 +613,22 @@ public:
   using fnptr = std::unique_ptr<AST::Node> (*)(
       std::vector<std::unique_ptr<AST::Node>>, error::Log *error_log);
 
-  Rule(Language::NodeType output, const OptVec &input, fnptr fn)
+  Rule(frontend::Tag output, const OptVec &input, fnptr fn)
       : output_(output), input_(input), fn_(fn) {}
 
   size_t size() const { return input_.size(); }
 
-  bool match(const std::vector<Language::NodeType> &node_type_stack) const {
+  bool match(const std::vector<frontend::Tag> &tag_stack) const {
     // The stack needs to be long enough to match.
-    if (input_.size() > node_type_stack.size()) return false;
+    if (input_.size() > tag_stack.size()) return false;
 
-    size_t stack_index = node_type_stack.size() - 1;
+    size_t stack_index = tag_stack.size() - 1;
     size_t rule_index  = input_.size() - 1;
 
     // Iterate through backwards and exit as soon as you see a node whose
     // type does not match the rule.
     for (size_t i = 0; i < input_.size(); ++i, --rule_index, --stack_index) {
-      if ((input_[rule_index] & node_type_stack[stack_index]) == 0) {
+      if ((input_[rule_index] & tag_stack[stack_index]) == 0) {
         return false;
       }
     }
@@ -632,7 +638,7 @@ public:
   }
 
   void apply(std::vector<std::unique_ptr<AST::Node>> *node_stack,
-             std::vector<Language::NodeType> *node_type_stack,
+             std::vector<frontend::Tag> *tag_stack,
              error::Log *error_log) const {
     // Make a vector for the rule function to take as input. It will begin with
     // size() shared_ptrs.
@@ -642,15 +648,15 @@ public:
          ++i) {
       nodes_to_reduce.push_back(std::move((*node_stack)[i]));
     }
-    node_type_stack->resize(node_stack->size() - this->size());
+    tag_stack->resize(node_stack->size() - this->size());
     node_stack->resize(node_stack->size() - this->size());
 
     node_stack->push_back(fn_(std::move(nodes_to_reduce), error_log));
-    node_type_stack->push_back(output_);
+    tag_stack->push_back(output_);
   }
 
 private:
-  Language::NodeType output_;
+  frontend::Tag output_;
   OptVec input_;
   fnptr fn_;
 };
@@ -953,7 +959,7 @@ BuildOperatorIdentifier(std::vector<std::unique_ptr<AST::Node>> nodes,
       span, move_as<AST::TokenNode>(nodes[1])->token);
 }
 
-namespace Language {
+namespace frontend {
 static constexpr u64 OP_B = op_b | comma | dots | colon | eq;
 static constexpr u64 EXPR = expr | fn_expr;
 // Used in error productions only!
@@ -1052,25 +1058,27 @@ auto Rules = std::array{
 
     Rule(expr, {EXPR, op_l, EXPR}, ErrMsg::NonBinop),
     Rule(stmts, {op_lt}, AST::BuildJump),
-    Rule(expr, {EXPR, EXPR, braced_stmts}, AST::BuildScopeNode),
+    Rule(expr, {EXPR, l_paren, EXPR, r_paren, braced_stmts},
+         AST::BuildScopeNode),
     Rule(expr, {EXPR, braced_stmts}, AST::BuildVoidScopeNode),
 };
-} // namespace Language
+}  // namespace frontend
 
-NNT NextToken(SourceLocation &loc, error::Log *error_log);
+frontend::TaggedNode NextToken(SourceLocation &loc, error::Log *error_log);
 
+namespace frontend {
 namespace {
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
-
 struct ParseState {
-  ParseState(const SourceLocation &c, error::Log *error_log)
-      : lookahead_(nullptr, Language::bof), error_log_(error_log) {
-    lookahead_.node = std::make_unique<AST::TokenNode>(c.ToSpan());
+  ParseState(SourceLocation *loc, error::Log *error_log)
+      : error_log_(error_log), loc_(loc) {
+    lookahead_.push(frontend::TaggedNode(
+        std::make_unique<AST::TokenNode>(loc_->ToSpan()), bof));
   }
 
   template <size_t N>
-  inline Language::NodeType get_type() const {
-    return node_type_stack_[node_type_stack_.size() - N];
+  inline frontend::Tag get_type() const {
+    return tag_stack_[tag_stack_.size() - N];
   }
 
   template <size_t N>
@@ -1078,30 +1086,29 @@ struct ParseState {
     return node_stack_[node_stack_.size() - N].get();
   }
 
-  ShiftState shift_state() const {
+  ShiftState shift_state() {
     using namespace Language;
     // If the size is just 1, no rule will match so don't bother checking.
     if (node_stack_.size() < 2) { return ShiftState::NeedMore; }
 
-    if (lookahead_.node_type == newline) {
-      // TODO it's much more complicated than this. (braces?)
+    const auto &ahead = Next();
+    if (ahead.tag_ == newline) {
       return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::MustReduce;
     }
 
     if (get_type<1>() == dots) {
-      return (lookahead_.node_type &
+      return (ahead.tag_ &
               (op_bl | op_l | op_lt | expr | fn_expr | l_paren | l_bracket))
                  ? ShiftState::NeedMore
                  : ShiftState::MustReduce;
     }
 
-    if (lookahead_.node_type == l_brace && get_type<1>() == fn_expr &&
+    if (ahead.tag_ == l_brace && get_type<1>() == fn_expr &&
         get_type<2>() == fn_arrow) {
       return ShiftState::MustReduce;
     }
 
-    if (lookahead_.node_type == l_brace &&
-        (get_type<1>() & (fn_expr | kw_block))) {
+    if (ahead.tag_ == l_brace && (get_type<1>() & (fn_expr | kw_block))) {
       return ShiftState::NeedMore;
     }
 
@@ -1109,11 +1116,11 @@ struct ParseState {
       return ShiftState::MustReduce;
     }
 
-    if (get_type<1>() == op_lt && lookahead_.node_type != newline) {
+    if (get_type<1>() == op_lt && ahead.tag_ != newline) {
       return ShiftState::NeedMore;
     }
 
-    if (get_type<1>() == kw_block && lookahead_.node_type == newline) {
+    if (get_type<1>() == kw_block && ahead.tag_ == newline) {
       return ShiftState::NeedMore;
     }
 
@@ -1126,19 +1133,23 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    if (lookahead_.node_type == r_paren) { return ShiftState::MustReduce; }
+    if (ahead.tag_ == r_paren) { return ShiftState::MustReduce; }
 
-    constexpr u64 OP_ =
+    if (get_type<1>() == r_paren && ahead.tag_ == l_brace) {
+      return ShiftState::NeedMore;
+    }
+
+    constexpr u64 OP =
         op_l | op_b | colon | eq | comma | op_bl | dots | op_lt | fn_arrow;
-    if (get_type<2>() & OP_) {
+    if (get_type<2>() & OP) {
       auto left_prec = precedence(get<2>()->as<AST::TokenNode>().op);
       size_t right_prec;
-      if (lookahead_.node_type & OP_) {
-        right_prec = precedence(lookahead_.node->as<AST::TokenNode>().op);
-      } else if (lookahead_.node_type == l_bracket) {
+      if (ahead.tag_ & OP) {
+        right_prec = precedence(ahead.node_->as<AST::TokenNode>().op);
+      } else if (ahead.tag_ == l_bracket) {
         right_prec = precedence(Operator::Index);
 
-      } else if (lookahead_.node_type == l_paren) {
+      } else if (ahead.tag_ == l_paren) {
         right_prec = precedence(Operator::Call);
       } else {
         return ShiftState::MustReduce;
@@ -1153,30 +1164,40 @@ struct ParseState {
     return ShiftState::MustReduce;
   }
 
-  std::vector<Language::NodeType> node_type_stack_;
-  std::vector<std::unique_ptr<AST::Node>> node_stack_;
-  NNT lookahead_;
-  error::Log *error_log_;
+  void LookAhead() { lookahead_.push(NextToken(*loc_, error_log_)); }
 
-  // We actually don't care about mathing braces. That is, we can count {[) as 1
-  // open, because we are only using this to determine for the REPL if we should
-  // prompt for further input. If it's wrong, we won't be able to to parse
-  // anyway, so it only needs to be the correct value when the braces match.
+  const TaggedNode& Next() {
+    if (lookahead_.empty()) { LookAhead(); }
+    return lookahead_.back();
+  }
+
+  std::vector<frontend::Tag> tag_stack_;
+  std::vector<std::unique_ptr<AST::Node>> node_stack_;
+  std::queue<frontend::TaggedNode> lookahead_;
+  error::Log *error_log_;
+  SourceLocation *loc_; 
+
+  // We actually don't care about mathing braces because we are only using this
+  // to determine for the REPL if we should prompt for further input. If it's
+  // wrong, we won't be able to to parse anyway, so it only needs to be the
+  // correct value when the braces match.
   int brace_count = 0;
 };
 }  // namespace
+}  // namespace frontend
 
 // Print out the debug information for the parse stack, and pause.
-static void Debug(ParseState *ps, SourceLocation *loc = nullptr) {
+static void Debug(frontend::ParseState *ps) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
-  if (loc != nullptr) {
-    fprintf(stderr, "%s", loc->line().c_str());
+  if (ps->loc_ != nullptr) {
+    fprintf(stderr, "%s", ps->loc_->line().c_str());
     fprintf(stderr, "%*s^\n(offset = %u)\n\n",
-            static_cast<int>(loc->cursor.offset), "", loc->cursor.offset);
+            static_cast<int>(ps->loc_->cursor.offset), "",
+            ps->loc_->cursor.offset);
   }
-  for (auto x : ps->node_type_stack_) { fprintf(stderr, "%lu, ", x); }
-  fprintf(stderr, " -> %lu", ps->lookahead_.node_type);
+  for (auto x : ps->tag_stack_) { fprintf(stderr, "%lu, ", x); }
+  fprintf(stderr, " -> %lu", ps->Next().tag_);
   fputs("", stderr);
 
   for (const auto &node_ptr : ps->node_stack_) {
@@ -1185,25 +1206,27 @@ static void Debug(ParseState *ps, SourceLocation *loc = nullptr) {
   fgetc(stdin);
 }
 
-static void Shift(ParseState *ps, SourceLocation *c) {
-  ps->node_type_stack_.push_back(ps->lookahead_.node_type);
-  ps->node_stack_.push_back(base::wrap_unique(ps->lookahead_.node.release()));
-  ps->lookahead_ = NextToken(*c, ps->error_log_);
-  if (ps->lookahead_.node_type &
-      (Language::l_paren | Language::l_bracket | Language::l_brace |
-       Language::l_double_brace)) {
+static void Shift(frontend::ParseState *ps) {
+  if (ps->lookahead_.empty()) { ps->LookAhead(); }
+  auto ahead = std::move(ps->lookahead_.front());
+  ps->lookahead_.pop();
+  ps->tag_stack_.push_back(ahead.tag_);
+  ps->node_stack_.push_back(std::move(ahead.node_));
+
+  auto tag_ahead = ps->Next().tag_;
+  if (tag_ahead & (frontend::l_paren | frontend::l_bracket | frontend::l_brace |
+                   frontend::l_double_brace)) {
     ++ps->brace_count;
-  } else if (ps->lookahead_.node_type &
-             (Language::r_paren | Language::r_bracket | Language::r_brace |
-              Language::r_double_brace)) {
+  } else if (tag_ahead & (frontend::r_paren | frontend::r_bracket |
+                          frontend::r_brace | frontend::r_double_brace)) {
     --ps->brace_count;
   }
 }
 
-static bool Reduce(ParseState *ps) {
+static bool Reduce(frontend::ParseState *ps) {
   const Rule *matched_rule_ptr = nullptr;
-  for (const Rule &rule : Language::Rules) {
-    if (rule.match(ps->node_type_stack_)) {
+  for (const Rule &rule : frontend::Rules) {
+    if (rule.match(ps->tag_stack_)) {
       matched_rule_ptr = &rule;
       break;
     }
@@ -1213,54 +1236,50 @@ static bool Reduce(ParseState *ps) {
   // return false
   if (matched_rule_ptr == nullptr) { return false; }
 
-  matched_rule_ptr->apply(&ps->node_stack_, &ps->node_type_stack_,
+  matched_rule_ptr->apply(&ps->node_stack_, &ps->tag_stack_,
                           ps->error_log_);
 
   return true;
 }
 
-void CleanUpReduction(ParseState *state, SourceLocation *loc) {
+static void CleanUpReduction(frontend::ParseState *state) {
   // Reduce what you can
   while (Reduce(state)) {
-    if (debug::parser) { Debug(state, loc); }
+    if (debug::parser) { Debug(state); }
   }
 
-  state->node_type_stack_.push_back(Language::eof);
-  state->node_stack_.push_back(
-      std::make_unique<AST::TokenNode>(loc->ToSpan(), ""));
-  state->lookahead_ =
-      NNT(std::make_unique<AST::TokenNode>(loc->ToSpan(), ""), Language::eof);
+  Shift(state);
 
   // Reduce what you can again
   while (Reduce(state)) {
-    if (debug::parser) { Debug(state, loc); }
+    if (debug::parser) { Debug(state); }
   }
-  if (debug::parser) { Debug(state, loc); }
+  if (debug::parser) { Debug(state); }
 }
 
 std::unique_ptr<AST::Statements> Repl::Parse(error::Log *error_log) {
-  first_entry = true; // Show '>> ' the first time.
+  first_entry = true;  // Show '>> ' the first time.
 
   SourceLocation loc;
   loc.source = this;
 
-  auto state = ParseState(loc, error_log);
-  Shift(&state, &loc);
+  auto state = frontend::ParseState(&loc, error_log);
+  Shift(&state);
 
   while (true) {
     auto shift_state = state.shift_state();
     switch (shift_state) {
-    case ShiftState::NeedMore:
-      Shift(&state, &loc);
+      case frontend::ShiftState::NeedMore:
+        Shift(&state);
 
-      if (debug::parser) { Debug(&state, &loc); }
-      continue;
-    case ShiftState::EndOfExpr:
-      CleanUpReduction(&state, &loc);
-      return move_as<AST::Statements>(state.node_stack_.back());
-    case ShiftState::MustReduce:
-      Reduce(&state) || (Shift(&state, &loc), true);
-      if (debug::parser) { Debug(&state, &loc); }
+        if (debug::parser) { Debug(&state); }
+        continue;
+      case frontend::ShiftState::EndOfExpr:
+        CleanUpReduction(&state);
+        return move_as<AST::Statements>(state.node_stack_.back());
+      case frontend::ShiftState::MustReduce:
+        Reduce(&state) || (Shift(&state), true);
+        if (debug::parser) { Debug(&state); }
     }
   }
 }
@@ -1269,32 +1288,33 @@ std::unique_ptr<AST::Statements> File::Parse(error::Log *error_log) {
   SourceLocation loc;
   loc.source = this;
 
-  auto state = ParseState(loc, error_log);
-  Shift(&state, &loc);
+  auto state = frontend::ParseState(&loc, error_log);
+  Shift(&state);
 
-  while (state.lookahead_.node_type != Language::eof) {
-    ASSERT_EQ(state.node_type_stack_.size(), state.node_stack_.size());
+  while (state.Next().tag_ != frontend::eof) {
+    ASSERT_EQ(state.tag_stack_.size(), state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
-    if (state.shift_state() == ShiftState::NeedMore || !Reduce(&state)) {
-      Shift(&state, &loc);
+    if (state.shift_state() == frontend::ShiftState::NeedMore ||
+        !Reduce(&state)) {
+      Shift(&state);
     }
 
     if (debug::parser) { Debug(&state); }
   }
 
   // Cleanup
-  CleanUpReduction(&state, &loc);
+  CleanUpReduction(&state);
 
   // Finish
   if (state.node_stack_.size() > 1) {
     std::vector<TextSpan> lines;
 
     for (size_t i = 0; i < state.node_stack_.size(); ++i) {
-      if (state.node_type_stack_[i] &
-          (Language::braced_stmts | Language::l_paren | Language::r_paren |
-           Language::l_bracket | Language::r_bracket | Language::l_brace |
-           Language::r_brace | Language::semicolon | Language::fn_arrow |
-           Language::expr)) {
+      if (state.tag_stack_[i] &
+          (frontend::braced_stmts | frontend::l_paren | frontend::r_paren |
+           frontend::l_bracket | frontend::r_bracket | frontend::l_brace |
+           frontend::r_brace | frontend::semicolon | frontend::fn_arrow |
+           frontend::expr)) {
         lines.push_back(state.node_stack_[i]->span);
       }
     }

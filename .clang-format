@@ -1,4 +1,5 @@
 BasedOnStyle: Google
+AlignConsecutiveAssignments: true
 AlignEscapedNewlines: Right
 AllowShortBlocksOnASingleLine: true
 AllowShortCaseLabelsOnASingleLine: true

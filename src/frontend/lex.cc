@@ -3,14 +3,22 @@
 
 #include "ast/ast.h"
 #include "error/log.h"
-#include "nnt.h"
+#include "tagged_node.h"
+#include "text_span.h"
 #include "type/primitive.h"
 
-// TODO audit every location where NNT::Invalid is returned to see if you need
-// to log an error.
+// TODO audit every location where frontend::TaggedNode::Invalid is returned to
+// see if you need to log an error.
 
-NNT::NNT(const TextSpan &span, const std::string &token, Language::NodeType nt)
-    : node(std::make_unique<AST::TokenNode>(span, token)), node_type(nt) {}
+namespace frontend {
+TaggedNode::TaggedNode(const TextSpan &span, const std::string &token, Tag tag)
+    : node_(std::make_unique<AST::TokenNode>(span, token)), tag_(tag) {}
+
+TaggedNode TaggedNode::TerminalExpression(const TextSpan &span, IR::Val val) {
+  return TaggedNode(std::make_unique<AST::Terminal>(span, std::move(val)),
+                    expr);
+}
+}  // namespace frontend
 
 IR::Val ErrorFunc();
 IR::Val AsciiFunc();
@@ -50,7 +58,7 @@ inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
 
-NNT NextWord(SourceLocation &loc) {
+frontend::TaggedNode NextWord(SourceLocation &loc) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
   // We have already matched the first character
   auto span = loc.ToSpan();
@@ -71,24 +79,24 @@ NNT NextWord(SourceLocation &loc) {
   };
   auto iter = Reserved.find(token);
   if (iter != Reserved.end()) {
-    return NNT::TerminalExpression(span, iter->second);
+    return frontend::TaggedNode::TerminalExpression(span, iter->second);
   }
 
-  static const std::unordered_map<std::string, Language::NodeType> KeywordMap =
-      {{"in", Language::op_b},         {"print", Language::op_l},
-       {"ensure", Language::op_l},     {"needs", Language::op_l},
-       {"require", Language::op_l},    {"free", Language::op_l},
-       {"for", Language::kw_for},      {"flags", Language::kw_block},
-       {"enum", Language::kw_block},   {"generate", Language::op_l},
-       {"struct", Language::kw_block}, {"return", Language::op_lt},
-       {"continue", Language::op_lt},  {"break", Language::op_lt},
-       {"repeat", Language::op_lt},    {"restart", Language::op_lt},
-       {"scope", Language::kw_block}};
+  static const std::unordered_map<std::string, frontend::Tag> KeywordMap = {
+      {"in", frontend::op_b},         {"print", frontend::op_l},
+      {"ensure", frontend::op_l},     {"needs", frontend::op_l},
+      {"require", frontend::op_l},    {"free", frontend::op_l},
+      {"for", frontend::kw_for},      {"flags", frontend::kw_block},
+      {"enum", frontend::kw_block},   {"generate", frontend::op_l},
+      {"struct", frontend::kw_block}, {"return", frontend::op_lt},
+      {"continue", frontend::op_lt},  {"break", frontend::op_lt},
+      {"repeat", frontend::op_lt},    {"restart", frontend::op_lt},
+      {"scope", frontend::kw_block}};
   for (const auto & [ key, val ] : KeywordMap) {
-    if (token == key) { return NNT(span, key, val); }
+    if (token == key) { return frontend::TaggedNode(span, key, val); }
   }
 
-  return NNT(std::make_unique<AST::Identifier>(span, token), Language::expr);
+  return frontend::TaggedNode(std::make_unique<AST::Identifier>(span, token), frontend::expr);
 }
 
 template <int Base> inline int pow(i32 num) {
@@ -169,7 +177,7 @@ double RepresentationAsRealInBase<8>(const std::vector<i32> &digits,
   if (exponent > 1023 || exponent < -1022) { return NAN; }
   NOT_YET();
 }
-template <int Base> NNT NextNumberInBase(SourceLocation &loc) {
+template <int Base> frontend::TaggedNode NextNumberInBase(SourceLocation &loc) {
   auto span = loc.ToSpan();
 
   const char *start = nullptr;
@@ -227,14 +235,14 @@ done_reading:
               ": Found a number that has no starting digit. Treat as zero.");
     } else {
       switch (num_dots) {
-      case 0: return NNT::TerminalExpression(span, IR::Val::Int(0));
+      case 0: return frontend::TaggedNode::TerminalExpression(span, IR::Val::Int(0));
       default:
         ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
                                        std::to_string(__LINE__) +
                                        ": Too many periods in numeric literal. "
                                        "Ignoring all but the first.");
         [[fallthrough]];
-      case 1: return NNT::TerminalExpression(span, IR::Val::Real(0));
+      case 1: return frontend::TaggedNode::TerminalExpression(span, IR::Val::Real(0));
       }
     }
   } else {
@@ -253,9 +261,9 @@ done_reading:
                                        std::to_string(__LINE__) +
                                        "Number is too large to fit in a  IEEE "
                                        "754-2008 floating point number");
-        return NNT::TerminalExpression(span, IR::Val::Real(0));
+        return frontend::TaggedNode::TerminalExpression(span, IR::Val::Real(0));
       } else {
-        return NNT::TerminalExpression(span, IR::Val::Real(rep));
+        return frontend::TaggedNode::TerminalExpression(span, IR::Val::Real(rep));
       }
     }
     case 0: {
@@ -264,9 +272,9 @@ done_reading:
         ErrorLog::LogGeneric(
             span, "TODO " __FILE__ ":" + std::to_string(__LINE__) +
                       "Number is too large to fit in a 32-bit integer");
-        return NNT::TerminalExpression(span, IR::Val::Int(0));
+        return frontend::TaggedNode::TerminalExpression(span, IR::Val::Int(0));
       } else {
-        return NNT::TerminalExpression(span, IR::Val::Int(rep));
+        return frontend::TaggedNode::TerminalExpression(span, IR::Val::Int(rep));
       }
     } break;
     }
@@ -285,10 +293,10 @@ done_reading:
   }
 
   span.finish = loc.cursor;
-  return NNT{};
+  return frontend::TaggedNode{};
 }
 
-NNT NextZeroInitiatedNumber(SourceLocation &loc) {
+frontend::TaggedNode NextZeroInitiatedNumber(SourceLocation &loc) {
   loc.Increment();
 
   switch (*loc) {
@@ -308,12 +316,12 @@ NNT NextZeroInitiatedNumber(SourceLocation &loc) {
       // short enough?)
       return NextNumberInBase<10>(loc);
     } else {
-      return NNT::TerminalExpression(loc.ToSpan(), IR::Val::Int(0));
+      return frontend::TaggedNode::TerminalExpression(loc.ToSpan(), IR::Val::Int(0));
     }
   }
 }
 
-NNT NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
+frontend::TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
 
@@ -357,10 +365,10 @@ NNT NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
   }
 
   span.finish = loc.cursor;
-  return NNT::TerminalExpression(span, IR::Val::StrLit(str_lit));
+  return frontend::TaggedNode::TerminalExpression(span, IR::Val::StrLit(str_lit));
 }
 
-NNT NextCharLiteral(SourceLocation &loc, error::Log* error_log) {
+frontend::TaggedNode NextCharLiteral(SourceLocation &loc, error::Log* error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
   span.finish = loc.cursor;
@@ -379,7 +387,7 @@ NNT NextCharLiteral(SourceLocation &loc, error::Log* error_log) {
   case '\0':
     span.finish = loc.cursor;
     error_log->RunawayCharacterLiteral(span);
-    return NNT::TerminalExpression(span, IR::Val::Char('\0'));
+    return frontend::TaggedNode::TerminalExpression(span, IR::Val::Char('\0'));
   case '\\': {
     loc.Increment();
     switch (*loc) {
@@ -410,64 +418,64 @@ NNT NextCharLiteral(SourceLocation &loc, error::Log* error_log) {
   }
   loc.Increment();
   span.finish = loc.cursor;
-  return NNT::TerminalExpression(span, IR::Val::Char(result));
+  return frontend::TaggedNode::TerminalExpression(span, IR::Val::Char(result));
 }
 
-NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
+frontend::TaggedNode NextOperator(SourceLocation &loc, error::Log* error_log) {
   auto span = loc.ToSpan();
   switch (*loc) {
   case '@':
     loc.Increment();
     span.finish = loc.cursor;
-    return NNT(span, "@", Language::op_l);
+    return frontend::TaggedNode(span, "@", frontend::op_l);
   case ',':
     loc.Increment();
     span.finish = loc.cursor;
-    return NNT(span, ",", Language::comma);
+    return frontend::TaggedNode(span, ",", frontend::comma);
   case ';':
     loc.Increment();
     span.finish = loc.cursor;
-    return NNT(span, ";", Language::semicolon);
+    return frontend::TaggedNode(span, ";", frontend::semicolon);
   case '(':
     loc.Increment();
     span.finish = loc.cursor;
-    return NNT(span, "(", Language::l_paren);
+    return frontend::TaggedNode(span, "(", frontend::l_paren);
   case ')':
     loc.Increment();
     span.finish = loc.cursor;
-    return NNT(span, ")", Language::r_paren);
+    return frontend::TaggedNode(span, ")", frontend::r_paren);
   case '[':
     loc.Increment();
     span.finish = loc.cursor;
-    return NNT(span, "[", Language::l_bracket);
+    return frontend::TaggedNode(span, "[", frontend::l_bracket);
   case ']':
     loc.Increment();
     span.finish = loc.cursor;
-    return NNT(span, "]", Language::r_bracket);
+    return frontend::TaggedNode(span, "]", frontend::r_bracket);
   case '$':
     loc.Increment();
     span.finish = loc.cursor;
-    return NNT(span, "$", Language::op_l);
+    return frontend::TaggedNode(span, "$", frontend::op_l);
 
   case '{': {
     loc.Increment();
     if (*loc == '{') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, "{{", Language::l_double_brace);
+      return frontend::TaggedNode(span, "{{", frontend::l_double_brace);
     }
     span.finish = loc.cursor;
-    return NNT(span, "{", Language::l_brace);
+    return frontend::TaggedNode(span, "{", frontend::l_brace);
   }
   case '}': {
     loc.Increment();
     if (*loc == '}') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, "}}", Language::r_double_brace);
+      return frontend::TaggedNode(span, "}}", frontend::r_double_brace);
     }
     span.finish = loc.cursor;
-    return NNT(span, "}", Language::r_brace);
+    return frontend::TaggedNode(span, "}", frontend::r_brace);
   }
 
   case '.': {
@@ -481,11 +489,11 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
         return NextNumberInBase<10>(loc);
       }
       span.finish = loc.cursor;
-      return NNT(span, ".", Language::op_b);
+      return frontend::TaggedNode(span, ".", frontend::op_b);
     } else {
       if (num_dots > 2) { error_log->TooManyDots(span); }
       span.finish = loc.cursor;
-      return NNT(span, "..", Language::dots);
+      return frontend::TaggedNode(span, "..", frontend::dots);
     }
   } break;
 
@@ -498,17 +506,17 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
     case '\\':
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, "", Language::newline);
+      return frontend::TaggedNode(span, "", frontend::newline);
       break;
     case '(':
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, "\\(", Language::l_ref);
+      return frontend::TaggedNode(span, "\\(", frontend::l_ref);
       break;
     case '\0':
       // Ignore the following newline and retry
       loc.Increment();
-      return NNT::Invalid();
+      return frontend::TaggedNode::Invalid();
     case ' ':
     case '\t':
       while (IsWhitespace(*loc)) {
@@ -517,7 +525,7 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
       }
       if (*loc == '\0') {
         loc.Increment();
-        return NNT::Invalid();
+        return frontend::TaggedNode::Invalid();
       }
       [[fallthrough]];
     default:
@@ -525,7 +533,7 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
       ++span.finish.offset;
       // TODO this often causes the parser to fail afterwards
       error_log->NonWhitespaceAfterNewlineEscape(span);
-      return NNT::Invalid();
+      return frontend::TaggedNode::Invalid();
     }
   } break;
 
@@ -547,7 +555,7 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
     }
 
     span.finish = loc.cursor;
-    return NNT(span, token, Language::op_b);
+    return frontend::TaggedNode(span, token, frontend::op_b);
   } break;
 
   case '*':
@@ -559,19 +567,19 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
         // one-line comment.
         loc.BackUp();
         span.finish = loc.cursor;
-        return NNT(span, "*", Language::op_b);
+        return frontend::TaggedNode(span, "*", frontend::op_b);
       } else {
         span.finish = loc.cursor;
         error_log->NotInMultilineComment(span);
-        return NNT::Invalid();
+        return frontend::TaggedNode::Invalid();
       }
     } else if (*loc == '=') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, "*=", Language::op_b);
+      return frontend::TaggedNode(span, "*=", frontend::op_b);
     } else {
       span.finish = loc.cursor;
-      return NNT(span, "*", Language::op_bl);
+      return frontend::TaggedNode(span, "*", frontend::op_bl);
     }
 
   case '&': {
@@ -579,10 +587,10 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
     if (*loc == '=') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, "&=", Language::op_b);
+      return frontend::TaggedNode(span, "&=", frontend::op_b);
     } else {
       span.finish = loc.cursor;
-      return NNT(span, "&", Language::op_bl);
+      return frontend::TaggedNode(span, "&", frontend::op_bl);
     }
   } break;
 
@@ -592,13 +600,13 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
     if (*loc == '=') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, ":=", Language::op_b);
+      return frontend::TaggedNode(span, ":=", frontend::op_b);
 
     } else if (*loc == '?') {
       loc.Increment();
       // TODO does this make more sense as a right unary operator?
       span.finish = loc.cursor;
-      return NNT(span, ":?", Language::op_l);
+      return frontend::TaggedNode(span, ":?", frontend::op_l);
 
     } else if (*loc == ':') {
       loc.Increment();
@@ -606,14 +614,14 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
       if (*loc == '=') {
         loc.Increment();
         span.finish = loc.cursor;
-        return NNT(span, "::=", Language::op_b);
+        return frontend::TaggedNode(span, "::=", frontend::op_b);
       } else {
         span.finish = loc.cursor;
-        return NNT(span, "::", Language::colon);
+        return frontend::TaggedNode(span, "::", frontend::colon);
       }
     } else {
       span.finish = loc.cursor;
-      return NNT(span, ":", Language::colon);
+      return frontend::TaggedNode(span, ":", frontend::colon);
     }
   } break;
 
@@ -622,10 +630,10 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
     if (*loc == '=') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, "!=", Language::op_b);
+      return frontend::TaggedNode(span, "!=", frontend::op_b);
     } else {
       span.finish = loc.cursor;
-      return NNT(span, "!", Language::op_l);
+      return frontend::TaggedNode(span, "!", frontend::op_l);
     }
   } break;
 
@@ -634,23 +642,23 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
     if (*loc == '=') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, "-=", Language::op_b);
+      return frontend::TaggedNode(span, "-=", frontend::op_b);
 
     } else if (*loc == '>') {
       loc.Increment();
       span.finish = loc.cursor;
       auto nptr   = std::make_unique<AST::TokenNode>(span, "->");
       nptr->op    = Language::Operator::Arrow;
-      return NNT(std::move(nptr), Language::fn_arrow);
+      return frontend::TaggedNode(std::move(nptr), frontend::fn_arrow);
 
     } else if (*loc == '-') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(std::make_unique<AST::Hole>(span), Language::expr);
+      return frontend::TaggedNode(std::make_unique<AST::Hole>(span), frontend::expr);
 
     } else {
       span.finish = loc.cursor;
-      return NNT(span, "-", Language::op_bl);
+      return frontend::TaggedNode(span, "-", frontend::op_bl);
     }
   } break;
 
@@ -659,32 +667,32 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
     if (*loc == '=') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, "==", Language::op_b);
+      return frontend::TaggedNode(span, "==", frontend::op_b);
 
     } else if (*loc == '>') {
       loc.Increment();
       span.finish = loc.cursor;
-      return NNT(span, "=>", Language::op_b);
+      return frontend::TaggedNode(span, "=>", frontend::op_b);
 
     } else {
       span.finish = loc.cursor;
-      return NNT(span, "=", Language::eq);
+      return frontend::TaggedNode(span, "=", frontend::eq);
     }
   } break;
   case '?':
     loc.Increment();
     span.finish = loc.cursor;
     error_log->InvalidCharacterQuestionMark(span);
-    return NNT::Invalid();
+    return frontend::TaggedNode::Invalid();
   case '~':
     loc.Increment();
     span.finish = loc.cursor;
     error_log->InvalidCharacterTilde(span);
-    return NNT::Invalid();
+    return frontend::TaggedNode::Invalid();
   case '\'':
     loc.Increment();
     span.finish = loc.cursor;
-    return NNT(span, "'", Language::op_bl);
+    return frontend::TaggedNode(span, "'", frontend::op_bl);
   case '_': UNREACHABLE();
   default:
     UNREACHABLE("Encountered character whose value is ",
@@ -692,13 +700,13 @@ NNT NextOperator(SourceLocation &loc, error::Log* error_log) {
   }
 }
 
-NNT NextSlashInitiatedToken(SourceLocation &loc, error::Log* error_log) {
+frontend::TaggedNode NextSlashInitiatedToken(SourceLocation &loc, error::Log* error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
   switch (*loc) {
   case '/': // line comment
     loc.SkipToEndOfLine();
-    return NNT::Invalid();
+    return frontend::TaggedNode::Invalid();
   case '*': { // Multiline comment
     loc.Increment();
     char back_one = *loc;
@@ -709,7 +717,7 @@ NNT NextSlashInitiatedToken(SourceLocation &loc, error::Log* error_log) {
       if (loc.source->seen_eof) {
         error_log->RunawayMultilineComment();
         span.finish = loc.cursor;
-        return NNT(span, "", Language::eof);
+        return frontend::TaggedNode(span, "", frontend::eof);
 
       } else if (back_one == '/' && *loc == '*') {
         ++comment_layer;
@@ -721,42 +729,44 @@ NNT NextSlashInitiatedToken(SourceLocation &loc, error::Log* error_log) {
       back_one = *loc;
       loc.Increment();
     }
-    return NNT::Invalid();
+    return frontend::TaggedNode::Invalid();
   }
   case '=':
     loc.Increment();
     span.finish = loc.cursor;
-    return NNT(span, "/=", Language::op_b);
-  default: span.finish = loc.cursor; return NNT(span, "/", Language::op_b);
+    return frontend::TaggedNode(span, "/=", frontend::op_b);
+  default: span.finish = loc.cursor; return frontend::TaggedNode(span, "/", frontend::op_b);
   }
 }
 } // namespace
 
-NNT NextToken(SourceLocation &loc, error::Log *error_log) {
+frontend::TaggedNode NextToken(SourceLocation &loc, error::Log *error_log) {
 restart:
   // Delegate based on the next character in the file stream
   if (loc.source->seen_eof) {
-    return NNT(loc.ToSpan(), "", Language::eof);
+    return frontend::TaggedNode(loc.ToSpan(), "", frontend::eof);
   } else if (IsAlphaOrUnderscore(*loc)) {
     return NextWord(loc);
   } else if (IsNonZeroDigit(*loc)) {
     return NextNumberInBase<10>(loc);
   }
 
-  NNT nnt = NNT::Invalid();
+  frontend::TaggedNode tagged_node = frontend::TaggedNode::Invalid();
   switch (*loc) {
-  case '0': nnt = NextZeroInitiatedNumber(loc); break;
-  case '`': nnt = NextCharLiteral(loc, error_log); break;
-  case '"': nnt = NextStringLiteral(loc, error_log); break;
-  case '/': nnt = NextSlashInitiatedToken(loc, error_log); break;
-  case '\t':
-  case ' ':
-    loc.Increment();
-    goto restart; // Skip whitespace
-  case '\n':
-  case '\0': loc.Increment(); return NNT(loc.ToSpan(), "", Language::newline);
-  default: nnt = NextOperator(loc, error_log); break;
+    case '0': tagged_node = NextZeroInitiatedNumber(loc); break;
+    case '`': tagged_node = NextCharLiteral(loc, error_log); break;
+    case '"': tagged_node = NextStringLiteral(loc, error_log); break;
+    case '/': tagged_node = NextSlashInitiatedToken(loc, error_log); break;
+    case '\t':
+    case ' ':
+      loc.Increment();
+      goto restart;  // Skip whitespace
+    case '\n':
+    case '\0':
+      loc.Increment();
+      return frontend::TaggedNode(loc.ToSpan(), "", frontend::newline);
+    default: tagged_node = NextOperator(loc, error_log); break;
   }
-  if (nnt == NNT::Invalid()) { goto restart; }
-  return nnt;
+  if (!tagged_node.valid()) { goto restart; }
+  return tagged_node;
 }
