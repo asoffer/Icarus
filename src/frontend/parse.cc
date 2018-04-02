@@ -599,6 +599,7 @@ BuildEmptyCodeBlock(std::vector<std::unique_ptr<Node>> nodes,
 }
 } // namespace AST
 
+namespace {
 struct Rule {
 public:
   using OptVec = std::vector<u64>;
@@ -653,6 +654,7 @@ private:
   OptVec input_;
   fnptr fn_;
 };
+}  // namespace
 
 namespace debug {
 extern bool parser;
@@ -750,22 +752,6 @@ BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>> nodes,
 
     return binop;
   }
-}
-
-static std::unique_ptr<AST::Node>
-BuildKWExprBlock(std::vector<std::unique_ptr<AST::Node>> nodes,
-                 error::Log *error_log) {
-  const std::string &tk = nodes[0]->as<AST::TokenNode>().token;
-
-  if (tk == "for") {
-    return AST::BuildFor(std::move(nodes), error_log);
-
-  } else if (tk == "struct") {
-    // Parmaetric struct
-    NOT_YET();
-  }
-
-  UNREACHABLE();
 }
 
 static std::unique_ptr<AST::Node>
@@ -971,7 +957,7 @@ namespace Language {
 static constexpr u64 OP_B = op_b | comma | dots | colon | eq;
 static constexpr u64 EXPR = expr | fn_expr;
 // Used in error productions only!
-static constexpr u64 RESERVED = kw_expr_block | kw_block | kw_struct | op_lt;
+static constexpr u64 RESERVED = kw_for | kw_block | op_lt;
 
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in the
@@ -1050,7 +1036,7 @@ auto Rules = std::array{
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
     Rule(stmts, {stmts, (expr | fn_expr | stmts), newline},
          AST::BuildMoreStatements),
-    Rule(expr, {(kw_block | kw_struct), braced_stmts}, BuildKWBlock),
+    Rule(expr, {kw_block, braced_stmts}, BuildKWBlock),
 
     Rule(expr, {RESERVED, dots}, ErrMsg::Reserved<1, 0>),
     Rule(expr, {(op_l | op_bl | op_lt), RESERVED}, ErrMsg::Reserved<0, 1>),
@@ -1062,8 +1048,7 @@ auto Rules = std::array{
     Rule(l_brace, {l_brace, newline}, drop_all_but<0>),
     Rule(l_double_brace, {l_double_brace, newline}, drop_all_but<0>),
     Rule(stmts, {stmts, newline}, drop_all_but<0>),
-    Rule(stmts, {kw_expr_block, EXPR, braced_stmts}, BuildKWExprBlock),
-    Rule(expr, {kw_struct, EXPR, braced_stmts}, BuildKWExprBlock),
+    Rule(stmts, {kw_for, EXPR, braced_stmts}, AST::BuildFor),
 
     Rule(expr, {EXPR, op_l, EXPR}, ErrMsg::NonBinop),
     Rule(stmts, {op_lt}, AST::BuildJump),
@@ -1074,15 +1059,8 @@ auto Rules = std::array{
 
 NNT NextToken(SourceLocation &loc, error::Log *error_log);
 
+namespace {
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
-std::ostream &operator<<(std::ostream &os, ShiftState s) {
-  switch (s) {
-  case ShiftState::NeedMore: return os << "NeedMore";
-  case ShiftState::EndOfExpr: return os << "EndOfExpr";
-  case ShiftState::MustReduce: return os << "MustReduce";
-  default: UNREACHABLE();
-  }
-}
 
 struct ParseState {
   ParseState(const SourceLocation &c, error::Log *error_log)
@@ -1090,11 +1068,13 @@ struct ParseState {
     lookahead_.node = std::make_unique<AST::TokenNode>(c.ToSpan());
   }
 
-  template <size_t N> inline Language::NodeType get_type() const {
+  template <size_t N>
+  inline Language::NodeType get_type() const {
     return node_type_stack_[node_type_stack_.size() - N];
   }
 
-  template <size_t N> inline AST::Node *get() const {
+  template <size_t N>
+  inline AST::Node *get() const {
     return node_stack_[node_stack_.size() - N].get();
   }
 
@@ -1121,17 +1101,12 @@ struct ParseState {
     }
 
     if (lookahead_.node_type == l_brace &&
-        (get_type<1>() & (fn_expr | kw_struct | kw_block))) {
+        (get_type<1>() & (fn_expr | kw_block))) {
       return ShiftState::NeedMore;
     }
 
     if (get_type<1>() == newline && get_type<2>() == comma) {
       return ShiftState::MustReduce;
-    }
-
-    // We require struct params to be in parentheses.
-    if (lookahead_.node_type == l_paren && get_type<1>() == kw_struct) {
-      return ShiftState::NeedMore;
     }
 
     if (get_type<1>() == op_lt && lookahead_.node_type != newline) {
@@ -1146,7 +1121,7 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    if (node_stack_.size() > 2 && get_type<3>() == kw_expr_block &&
+    if (node_stack_.size() > 2 && get_type<3>() == kw_for &&
         get_type<2>() == expr && get_type<1>() == newline) {
       return ShiftState::NeedMore;
     }
@@ -1189,6 +1164,7 @@ struct ParseState {
   // anyway, so it only needs to be the correct value when the braces match.
   int brace_count = 0;
 };
+}  // namespace
 
 // Print out the debug information for the parse stack, and pause.
 static void Debug(ParseState *ps, SourceLocation *loc = nullptr) {

@@ -75,15 +75,15 @@ NNT NextWord(SourceLocation &loc) {
   }
 
   static const std::unordered_map<std::string, Language::NodeType> KeywordMap =
-      {{"in", Language::op_b},           {"print", Language::op_l},
-       {"ensure", Language::op_l},       {"needs", Language::op_l},
-       {"require", Language::op_l},      {"free", Language::op_l},
-       {"for", Language::kw_expr_block}, {"flags", Language::kw_block},
-       {"enum", Language::kw_block},     {"generate", Language::op_l},
-       {"struct", Language::kw_struct},  {"return", Language::op_lt},
-       {"continue", Language::op_lt},    {"break", Language::op_lt},
-       {"repeat", Language::op_lt},      {"restart", Language::op_lt},
-       {"scope", Language::kw_struct}};
+      {{"in", Language::op_b},         {"print", Language::op_l},
+       {"ensure", Language::op_l},     {"needs", Language::op_l},
+       {"require", Language::op_l},    {"free", Language::op_l},
+       {"for", Language::kw_for},      {"flags", Language::kw_block},
+       {"enum", Language::kw_block},   {"generate", Language::op_l},
+       {"struct", Language::kw_block}, {"return", Language::op_lt},
+       {"continue", Language::op_lt},  {"break", Language::op_lt},
+       {"repeat", Language::op_lt},    {"restart", Language::op_lt},
+       {"scope", Language::kw_block}};
   for (const auto & [ key, val ] : KeywordMap) {
     if (token == key) { return NNT(span, key, val); }
   }
