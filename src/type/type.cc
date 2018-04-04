@@ -346,12 +346,11 @@ const Type *Meet(const Type *lhs, const Type *rhs) {
   return nullptr;
 }
 
-// TODO move this and type-related functions below into type/type.cc?
 const Type *Join(const Type *lhs, const Type *rhs) {
   if (lhs == rhs) { return lhs; }
   if (lhs == Err) { return rhs; } // Ignore errors
   if (rhs == Err) { return lhs; } // Ignore errors
-  if (lhs->is<Primitive>() || rhs->is<Primitive>()) {
+  if (lhs->is<Primitive>() && rhs->is<Primitive>()) {
     return lhs == rhs ? lhs : nullptr;
   }
   if (lhs == NullPtr && rhs->is<Pointer>()) { return rhs; }

@@ -2,6 +2,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "architecture.h"
 
 namespace type {
 llvm::Type* Primitive::llvm(llvm::LLVMContext& ctx) const {
@@ -33,7 +34,25 @@ llvm::Type* Function::llvm(llvm::LLVMContext& ctx) const {
 llvm::Type* Pointer::llvm(llvm::LLVMContext &ctx) const {
   return pointee->llvm(ctx)->getPointerTo(0);
 }
-llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const { NOT_YET(); }
+llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
+  // TODO pass in information about the machine we're compiling to
+  auto arch = Architecture::CompilingMachine();
+
+  const Type* max_elem       = nullptr;
+  size_t max_alignment = 0;
+  for (const Type* v : variants_) {
+    auto v_alignment = arch.alignment(v);
+    if (max_alignment < v_alignment) {
+      max_alignment = v_alignment;
+      max_elem      = v;
+    }
+  }
+  return llvm::StructType::get(
+      ctx, {llvm::Type::getInt64Ty(ctx), max_elem->llvm(ctx),
+            llvm::ArrayType::get(llvm::Type::getInt8Ty(ctx),
+                                 arch.bytes(this) - arch.bytes(max_elem) - 8)});
+}
+
 llvm::Type* Range::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }
 llvm::Type* Slice::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }
 llvm::Type* Scope::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }

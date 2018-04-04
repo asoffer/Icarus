@@ -180,8 +180,14 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
               llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0), true));
       for (const auto &arg : cmd.args) {
         if (arg.type == type::Bool) {
-          NOT_YET();
-
+          return llvm_data->builder->CreateCall(
+              printf_fn,
+              {StringConstant(llvm_data->builder, "%s"),
+               llvm_data->builder->CreateSelect(
+                   EmitValue(num_args, llvm_data, arg),
+                   StringConstant(llvm_data->builder, "true"),
+                   StringConstant(llvm_data->builder, "false"))},
+              "print");
         } else if (arg.type == type::Char) {
           return llvm_data->builder->CreateCall(
               printf_fn, {StringConstant(llvm_data->builder, "%c"),
@@ -264,7 +270,8 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
-          cmd.args[0].type->is<type::Enum>()) {
+          cmd.args[0].type->is<type::Enum>() ||
+          cmd.args[0].type == type::Type_) {
         return llvm_data->builder->CreateICmpEQ(lhs, rhs);
       } else if (cmd.args[0].type == type::Real) {
         // TODO ordered vs unordered
@@ -277,7 +284,8 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
-          cmd.args[0].type->is<type::Enum>()) {
+          cmd.args[0].type->is<type::Enum>() ||
+          cmd.args[0].type == type::Type_) {
         return llvm_data->builder->CreateICmpNE(lhs, rhs);
       } else if (cmd.args[0].type == type::Real) {
         // TODO ordered vs unordered
@@ -340,9 +348,9 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
                                                 cmd.args.size() / 2);
       for (size_t i = 0; i < cmd.args.size(); i += 2) {
         phi->addIncoming(
-            EmitValue(num_args, llvm_data, cmd.args[i]),
-            llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[i + 1].value)
-                                  .value]);
+            EmitValue(num_args, llvm_data, cmd.args[i + 1]),
+            llvm_data
+                ->blocks[std::get<IR::BlockIndex>(cmd.args[i].value).value]);
       }
       return phi;
     } break;
@@ -390,6 +398,7 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
     llvm_data.fn = fn->llvm_fn_;
 
     llvm_data.blocks.reserve(fn->blocks_.size());
+
     for (const auto &block : fn->blocks_) {
       llvm_data.blocks.push_back(
           llvm::BasicBlock::Create(ctx, "block", fn->llvm_fn_));
