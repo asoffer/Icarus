@@ -47,10 +47,17 @@ llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
       max_elem      = v;
     }
   }
-  return llvm::StructType::get(
-      ctx, {llvm::Type::getInt64Ty(ctx), max_elem->llvm(ctx),
-            llvm::ArrayType::get(llvm::Type::getInt8Ty(ctx),
-                                 arch.bytes(this) - arch.bytes(max_elem) - 8)});
+  auto extra_bytes = arch.bytes(this) - arch.bytes(max_elem) - 8;
+  if (extra_bytes == 0) {
+    return llvm::StructType::get(
+        ctx, {llvm::Type::getInt64Ty(ctx), max_elem->llvm(ctx)});
+  } else {
+    return llvm::StructType::get(
+        ctx,
+        {llvm::Type::getInt64Ty(ctx), max_elem->llvm(ctx),
+         llvm::ArrayType::get(llvm::Type::getInt8Ty(ctx),
+                              arch.bytes(this) - arch.bytes(max_elem) - 8)});
+  }
 }
 
 llvm::Type* Range::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }

@@ -221,7 +221,9 @@ static IR::Val EmitCallDispatch(
 
   auto landing_block = IR::Func::Current->AddBlock();
 
-  for (const auto & [ call_arg_type, binding ] : dispatch_table.bindings_) {
+  auto iter = dispatch_table.bindings_.begin();
+  for (size_t i = 0; i < dispatch_table.bindings_.size() - 1; ++i, ++iter) {
+    const auto & [ call_arg_type, binding ] = *iter;
     auto next_binding = CallLookupTest(args, call_arg_type);
     auto result = EmitOneCallDispatch(ret_type, expr_map, binding, ctx);
     results.push_back(IR::Val::Block(IR::Block::Current));
@@ -231,8 +233,9 @@ static IR::Val EmitCallDispatch(
     IR::Block::Current = next_binding;
   }
 
-  // TODO this very last block is not be reachable and should never be
-  // generated.
+  const auto & [ call_arg_type, binding ] = *iter;
+  results.push_back(IR::Val::Block(IR::Block::Current));
+  results.push_back(EmitOneCallDispatch(ret_type, expr_map, binding, ctx));
 
   IR::UncondJump(landing_block);
   IR::Block::Current = landing_block;
@@ -242,10 +245,12 @@ static IR::Val EmitCallDispatch(
   } else {
     if (results.size() == 2) {
       return results[1];
-    } else {
+    } else if (ret_type != type::Void) {
       auto phi = IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
       IR::Func::Current->SetArgs(phi, std::move(results));
       return IR::Func::Current->Command(phi).reg();
+    } else {
+      return IR::Val::None();
     }
   }
 }

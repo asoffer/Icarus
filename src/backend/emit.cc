@@ -343,17 +343,11 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
                   llvm::Type::getInt64Ty(ctx)->getPointerTo(0)),
               llvm::ConstantInt::get(ctx, llvm::APInt(64, 1, false))),
           cmd.type->llvm(ctx));
-    case IR::Op::Phi: {
-      auto *phi = llvm_data->builder->CreatePHI(cmd.type->llvm(ctx),
-                                                cmd.args.size() / 2);
-      for (size_t i = 0; i < cmd.args.size(); i += 2) {
-        phi->addIncoming(
-            EmitValue(num_args, llvm_data, cmd.args[i + 1]),
-            llvm_data
-                ->blocks[std::get<IR::BlockIndex>(cmd.args[i].value).value]);
-      }
-      return phi;
-    } break;
+    case IR::Op::Phi:
+      // We have to skip the phi->addIncoming here because the values may not
+      // yet have been seen from a future basic block.
+      return llvm_data->builder->CreatePHI(cmd.type->llvm(ctx),
+                                           cmd.args.size() / 2);
     case IR::Op::Field:
       return llvm_data->builder->CreateStructGEP(
           cmd.args[0]
@@ -393,9 +387,9 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
 
   for (auto &fn : fns) {
     LlvmData llvm_data;
-    llvm_data.module = module;
+    llvm_data.module  = module;
     llvm_data.builder = &builder;
-    llvm_data.fn = fn->llvm_fn_;
+    llvm_data.fn      = fn->llvm_fn_;
 
     llvm_data.blocks.reserve(fn->blocks_.size());
 
@@ -415,6 +409,19 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
       for (const auto &cmd : fn->blocks_[i].cmds_) {
         llvm_data.regs[cmd.result] =
             EmitCmd(fn->type_->output.size(), &llvm_data, cmd);
+      }
+    }
+
+    for (size_t i = 0; i < fn->blocks_.size(); ++i) {
+      for (const auto &cmd : fn->blocks_[i].cmds_) {
+        if (cmd.op_code_ != IR::Op::Phi) { continue; }
+        llvm::Value *phi = llvm_data.regs[cmd.result];
+        for (size_t i = 0; i < cmd.args.size(); i += 2) {
+          llvm::cast<llvm::PHINode>(phi)->addIncoming(
+              EmitValue(fn->type_->output.size(), &llvm_data, cmd.args[i + 1]),
+              llvm_data
+                  .blocks[std::get<IR::BlockIndex>(cmd.args[i].value).value]);
+        }
       }
     }
   }
