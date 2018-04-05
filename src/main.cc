@@ -110,22 +110,6 @@ int GenerateCode() {
     }
     for (auto *future : future_ptrs) { future->wait(); }
   } while (current_size != modules.lock()->size());
-
-  /*
-  Context ctx;
-  RUN(timer, "Verify preconditions") {
-    std::queue<IR::Func *> validation_queue;
-    for (const auto &fn : ctx.mod_->fns_) { validation_queue.push(fn.get()); }
-
-    int num_errors = 0;
-    while (!validation_queue.empty()) {
-      auto fn = std::move(validation_queue.front());
-      validation_queue.pop();
-      num_errors += fn->ValidateCalls(&validation_queue);
-    }
-  }
-  */
-
   return 0;
 }
 

@@ -22,8 +22,21 @@ llvm::Type* Primitive::llvm(llvm::LLVMContext& ctx) const {
   default: UNREACHABLE();
   }
 }
-llvm::Type* Array::llvm(llvm::LLVMContext& ctx) const { NOT_YET(); }
-llvm::Type* Tuple::llvm(llvm::LLVMContext& ctx) const { NOT_YET(); }
+llvm::Type* Array::llvm(llvm::LLVMContext& ctx) const {
+  if (fixed_length) {
+    return llvm::ArrayType::get(data_type->llvm(ctx), len);
+  } else {
+    return llvm::StructType::get(ctx, {llvm::Type::getInt64Ty(ctx),
+                                       data_type->llvm(ctx)->getPointerTo(0)});
+  }
+}
+llvm::Type* Tuple::llvm(llvm::LLVMContext& ctx) const {
+  std::vector<llvm::Type*> llvm_types;
+  llvm_types.reserve(entries.size());
+  for (const Type* t : entries) { llvm_types.push_back(t->llvm(ctx)); }
+  return llvm::StructType::get(ctx, llvm_types);
+}
+
 llvm::Type* Enum::llvm(llvm::LLVMContext& ctx) const { 
   // TODO make as wide as is necessary
   return llvm::Type::getInt32Ty(ctx);
@@ -63,7 +76,12 @@ llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
 llvm::Type* Range::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }
 llvm::Type* Slice::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }
 llvm::Type* Scope::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }
-llvm::Type* Struct::llvm(llvm::LLVMContext& ctx) const { NOT_YET(); }
+llvm::Type* Struct::llvm(llvm::LLVMContext& ctx) const {
+  std::vector<llvm::Type*> llvm_types;
+  llvm_types.reserve(fields_.size());
+  for (const auto& f : fields_) { llvm_types.push_back(f.type->llvm(ctx)); }
+  return llvm::StructType::get(ctx, llvm_types);
+}
 
 llvm::FunctionType* Function::llvm_fn(llvm::LLVMContext& ctx) const {
   ASSERT_LE(output.size(), 1u);

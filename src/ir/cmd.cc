@@ -5,7 +5,6 @@
 
 #include "../type/all.h"
 #include "func.h"
-#include "property.h"
 
 namespace IR {
 BlockIndex Block::Current;
