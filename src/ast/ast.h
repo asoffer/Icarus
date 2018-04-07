@@ -43,6 +43,7 @@ struct TokenNode : public Node {
 
   void SaveReferences(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
   TokenNode *Clone() const override;
+  virtual void VerifyType(Context *) {}
   virtual void Validate(Context *) {}
   virtual void ExtractReturnTypes(
       std::unordered_set<const type::Type *> *types) const override {}
@@ -216,6 +217,7 @@ struct FunctionLiteral : public Expression {
   FunctionLiteral(FunctionLiteral &&) = default;
   FunctionLiteral *Clone() const override;
 
+  void Complete(Context* ctx);
   virtual IR::Val EmitIR(Context *);
 
   std::unique_ptr<FnScope> fn_scope;

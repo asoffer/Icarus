@@ -15,7 +15,7 @@ extern base::guarded<std::unordered_map<
     modules;
 
 
-static constexpr int ThisStage() { return 3; }
+static constexpr int ThisStage() { return 4; }
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 extern std::vector<IR::Val> global_vals;
@@ -159,6 +159,7 @@ static IR::Val EmitOneCallDispatch(
   // After the last check, if you pass, you should dispatch
   IR::Func *fn_to_call = std::visit(
       base::overloaded{[](IR::Func *fn) { return fn; },
+      // TODO is calling ir_func_ here safe?
                        [](AST::FunctionLiteral *fn) { return fn->ir_func_; },
                        [](auto &&) -> IR::Func * {
                          UNREACHABLE();
@@ -521,6 +522,10 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   IR::UncondJump(enter_block);
   IR::Block::Current = enter_block;
 
+  // TODO wrong contexts!
+  enter_fn->as<FunctionLiteral>().Complete(ctx);
+  exit_fn->as<FunctionLiteral>().Complete(ctx);
+
   auto call_enter_result = IR::Call(
       IR::Val::Func(enter_fn->as<FunctionLiteral>().ir_func_),
       expr ? std::vector<IR::Val>{expr->EmitIR(ctx)} : std::vector<IR::Val>{},
@@ -663,6 +668,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
 
       auto *stmts = &std::get<AST::Statements>(block.content_);
       stmts->assign_scope(scope_);
+      stmts->VerifyType(ctx);
       stmts->Validate(ctx);
       return stmts->EmitIR(ctx);
 
@@ -962,90 +968,94 @@ IR::Val AST::GenericFunctionLiteral::EmitIR(Context *) {
 }
 
 IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
+  return IR::Val::FnLit(this);
+}
+
+// TODO terrible name.
+void AST::FunctionLiteral::Complete(Context *ctx) {
+  if (ir_func_) { return; }
+
+  statements->VerifyType(ctx);
   statements->Validate(ctx);
   limit_to(statements);
   stage_range_.low = ThisStage();
-  if (stage_range_.high < ThisStage()) { return IR::Val::None(); }
+  if (stage_range_.high < ThisStage()) { return; }
 
-  if (type == type::Err) { return IR::Val::None(); }
+  if (type == type::Err) { return; }
 
-  if (ir_func_ == nullptr) {
-    std::vector<std::pair<std::string, AST::Expression *>> args;
-    args.reserve(inputs.size());
-    for (const auto &input : inputs) {
-      args.emplace_back(input->as<Declaration>().identifier->token,
-                        input->as<Declaration>().init_val.get());
-    }
-
-    std::vector<const type::Type *> input_types;
-    for (const type::Type *in : type->as<type::Function>().input) {
-      input_types.push_back(in->is_big() ? Ptr(in) : in);
-    }
-    auto *fn_type =
-        type::Func(std::move(input_types), type->as<type::Function>().output);
-    // TODO could this be a data race if the future containing the module hasn't
-    // resolved yet? I don't think so
-    auto* s = scope_;
-    while (s->parent) { s = s->parent; }
-    ASSERT(s->is<DeclScope>(), "");
-    ir_func_ = s->as<DeclScope>().module_->AddFunc(fn_type, std::move(args));
-
-    CURRENT_FUNC(ir_func_) {
-      IR::Block::Current = ir_func_->entry();
-      // Leave space for allocas that will come later (added to the entry
-      // block).
-      auto start_block = IR::Func::Current->AddBlock();
-      IR::Block::Current = start_block;
-
-      // TODO arguments should be renumbered to not waste space on const values
-      for (size_t i = 0; i < inputs.size(); ++i) {
-        // TODO positional arguments
-        if (inputs[i]->const_) {
-          if (auto iter =
-                  ctx->bound_constants_.find(inputs[i]->identifier->token);
-              iter != ctx->bound_constants_.end()) {
-            inputs[i]->addr = std::move(iter->second);
-          }
-          continue;
-        }
-        inputs[i]->addr = IR::Func::Current->Argument(static_cast<i32>(i));
-      }
-
-      // TODO multiple return types
-      if (return_type_expr->is<Declaration>()) {
-        return_type_expr->as<Declaration>().addr =
-            IR::Val::Ret(IR::ReturnValue{0}, return_type_expr->type);
-      }
-
-      for (auto scope : fn_scope->innards_) {
-        scope->ForEachDeclHere([](Declaration *decl) {
-          if (decl->const_) {
-            // Compute these values lazily in Identifier::EmitIR, because
-            // otherwise we would have to figure out a valid ordering.
-            return;
-          }
-
-          // TODO arg_val seems to go along with in_decl a lot. Is there some
-          // reason for this that *should* be abstracted?
-          if (decl->arg_val || decl->is<InDecl>()) { return; }
-          ASSERT_NE(decl->type, nullptr);
-          decl->addr = IR::Alloca(decl->type);
-        });
-      }
-
-      statements->EmitIR(ctx);
-      if (fn_type->output.empty()) {
-        // TODO even this is wrong. Figure out the right jumping strategy
-        // between here and where you call SetReturn
-        IR::ReturnJump();
-      }
-
-      IR::Block::Current = ir_func_->entry();
-      IR::UncondJump(start_block);
-    }
+  std::vector<std::pair<std::string, AST::Expression *>> args;
+  args.reserve(inputs.size());
+  for (const auto &input : inputs) {
+    args.emplace_back(input->as<Declaration>().identifier->token,
+                      input->as<Declaration>().init_val.get());
   }
 
-  return IR::Val::FnLit(this);
+  std::vector<const type::Type *> input_types;
+  for (const type::Type *in : type->as<type::Function>().input) {
+    input_types.push_back(in->is_big() ? Ptr(in) : in);
+  }
+  auto *fn_type =
+      type::Func(std::move(input_types), type->as<type::Function>().output);
+  // TODO could this be a data race if the future containing the module hasn't
+  // resolved yet? I don't think so
+  auto *s = scope_;
+  while (s->parent) { s = s->parent; }
+  ASSERT(s->is<DeclScope>(), "");
+  ir_func_ = s->as<DeclScope>().module_->AddFunc(fn_type, std::move(args));
+
+  CURRENT_FUNC(ir_func_) {
+    IR::Block::Current = ir_func_->entry();
+    // Leave space for allocas that will come later (added to the entry
+    // block).
+    auto start_block   = IR::Func::Current->AddBlock();
+    IR::Block::Current = start_block;
+
+    // TODO arguments should be renumbered to not waste space on const values
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      // TODO positional arguments
+      if (inputs[i]->const_) {
+        if (auto iter =
+                ctx->bound_constants_.find(inputs[i]->identifier->token);
+            iter != ctx->bound_constants_.end()) {
+          inputs[i]->addr = std::move(iter->second);
+        }
+        continue;
+      }
+      inputs[i]->addr = IR::Func::Current->Argument(static_cast<i32>(i));
+    }
+
+    // TODO multiple return types
+    if (return_type_expr->is<Declaration>()) {
+      return_type_expr->as<Declaration>().addr =
+          IR::Val::Ret(IR::ReturnValue{0}, return_type_expr->type);
+    }
+
+    for (auto scope : fn_scope->innards_) {
+      scope->ForEachDeclHere([](Declaration *decl) {
+        if (decl->const_) {
+          // Compute these values lazily in Identifier::EmitIR, because
+          // otherwise we would have to figure out a valid ordering.
+          return;
+        }
+
+        // TODO arg_val seems to go along with in_decl a lot. Is there some
+        // reason for this that *should* be abstracted?
+        if (decl->arg_val || decl->is<InDecl>()) { return; }
+        ASSERT_NE(decl->type, nullptr);
+        decl->addr = IR::Alloca(decl->type);
+      });
+    }
+
+    statements->EmitIR(ctx);
+    if (fn_type->output.empty()) {
+      // TODO even this is wrong. Figure out the right jumping strategy
+      // between here and where you call SetReturn
+      IR::ReturnJump();
+    }
+
+    IR::Block::Current = ir_func_->entry();
+    IR::UncondJump(start_block);
+  }
 }
 
 IR::Val AST::Statements::EmitIR(Context *ctx) {

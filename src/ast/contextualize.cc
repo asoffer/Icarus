@@ -42,6 +42,7 @@ void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
     Context ctx;
     operand->assign_scope(scope);
+    operand->VerifyType(&ctx);
     operand->Validate(&ctx);
     auto val = operand->EmitIR(&ctx);
 

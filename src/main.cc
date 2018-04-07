@@ -46,6 +46,7 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
   }
 
   file_stmts->assign_scope(ctx.mod_->global_.get());
+  file_stmts->VerifyType(&ctx);
   file_stmts->Validate(&ctx);
   if (ctx.num_errors() != 0) {
     ctx.DumpErrors();
@@ -59,6 +60,19 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
   }
 
   ctx.mod_->statements_ = std::move(*file_stmts);
+
+  for (const auto &stmt : ctx.mod_->statements_.content_) {
+    if (!stmt->is<AST::Declaration>()) { continue; }
+    auto &decl = stmt->as<AST::Declaration>();
+    auto val = Evaluate(decl.init_val.get(), &ctx);
+    ASSERT_EQ(val.size(), 1u);
+    if (auto fn_lit = std::get_if<AST::FunctionLiteral *>(&val[0].value)) {
+      // TODO check more than one?
+      // TODO is this context correct?
+      (*fn_lit)->Complete(&ctx);
+    }
+  }
+
   backend::EmitAll(ctx.mod_->fns_, ctx.mod_->llvm_.get());
 
   for (const auto &stmt : ctx.mod_->statements_.content_) {
@@ -130,6 +144,7 @@ repl_start : {
     if (stmt->is<AST::Declaration>()) {
       auto *decl = &stmt->as<AST::Declaration>();
       decl->assign_scope(ctx.mod_->global_.get());
+      decl->VerifyType(&ctx);
       decl->Validate(&ctx);
       decl->EmitIR(&ctx);
       if (ctx.num_errors() != 0) {

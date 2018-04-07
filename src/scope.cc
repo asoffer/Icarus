@@ -21,7 +21,7 @@ Scope::AllDeclsWithId(const std::string &id, Context *ctx) {
     auto iter = scope_ptr->decls_.find(id);
     if (iter == scope_ptr->decls_.end()) { continue; }
     for (const auto &decl : iter->second) {
-      decl->Validate(ctx);
+      decl->VerifyType(ctx);
       (decl->type == type::Err ? matching_error_decls : matching_decls)
           .push_back(decl);
     }
