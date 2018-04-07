@@ -13,20 +13,19 @@ IR::Val Architecture::ComputeArrayLength(const IR::Val &len,
 size_t Architecture::alignment(const type::Type *t) const {
   if (t->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
-    case type::PrimType::Generic:
-    case type::PrimType::Module:
-    case type::PrimType::Err: NOT_YET();
-    case type::PrimType::Unknown: UNREACHABLE();
-    case type::PrimType::EmptyArray:
-    case type::PrimType::Void: return 0;
-    case type::PrimType::Bool:
-    case type::PrimType::Char: return 1;
-    case type::PrimType::Int:
-    case type::PrimType::Real:
-    case type::PrimType::Type:
-    case type::PrimType::NullPtr:
-    case type::PrimType::Code: return 8;
-    case type::PrimType::String: return 8;
+      case type::PrimType::Generic: NOT_YET();
+      case type::PrimType::Module: NOT_YET();
+      case type::PrimType::Err: NOT_YET();
+      case type::PrimType::EmptyArray:
+      case type::PrimType::Void: return 0;
+      case type::PrimType::Bool:
+      case type::PrimType::Char: return 1;
+      case type::PrimType::Int:
+      case type::PrimType::Real:
+      case type::PrimType::Type:
+      case type::PrimType::NullPtr:
+      case type::PrimType::Code: return 8;
+      case type::PrimType::String: return 8;
     }
   } else if (t->is<type::Pointer>()) {
     return ptr_bytes_;
@@ -61,20 +60,19 @@ size_t Architecture::alignment(const type::Type *t) const {
 size_t Architecture::bytes(const type::Type *t) const {
   if (t->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
-    case type::PrimType::Generic:
-    case type::PrimType::Module:
-    case type::PrimType::Err: NOT_YET();
-    case type::PrimType::Unknown: UNREACHABLE();
-    case type::PrimType::EmptyArray:
-    case type::PrimType::Void: return 0;
-    case type::PrimType::Bool:
-    case type::PrimType::Char: return 1;
-    case type::PrimType::Int:
-    case type::PrimType::Real:
-    case type::PrimType::Type:
-    case type::PrimType::NullPtr:
-    case type::PrimType::Code: return 8;
-    case type::PrimType::String: return 8;
+      case type::PrimType::Generic: NOT_YET();
+      case type::PrimType::Module: NOT_YET();
+      case type::PrimType::Err: NOT_YET();
+      case type::PrimType::EmptyArray:
+      case type::PrimType::Void: return 0;
+      case type::PrimType::Bool:
+      case type::PrimType::Char: return 1;
+      case type::PrimType::Int:
+      case type::PrimType::Real:
+      case type::PrimType::Type:
+      case type::PrimType::NullPtr:
+      case type::PrimType::Code: return 8;
+      case type::PrimType::String: return 8;
     }
   } else if (t->is<type::Pointer>()) {
     return ptr_bytes_;

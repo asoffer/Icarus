@@ -64,8 +64,8 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
 void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
                   IR::Val to_var, Context*ctx);
 
-extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Void,
-    *NullPtr, *String, *EmptyArray, *Generic;
+extern Type *Err, *Bool, *Char, *Int, *Real, *Code, *Type_, *Void, *NullPtr,
+       *String, *EmptyArray, *Generic;
 } // namespace type
 
 #undef ENDING

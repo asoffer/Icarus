@@ -8,7 +8,6 @@ namespace type {
 llvm::Type* Primitive::llvm(llvm::LLVMContext& ctx) const {
   switch (type_) {
   case PrimType::Err: UNREACHABLE();
-  case PrimType::Unknown: UNREACHABLE();
   case PrimType::Type: return llvm::Type::getInt64Ty(ctx);
   case PrimType::Void: return llvm::Type::getVoidTy(ctx);
   case PrimType::NullPtr: UNREACHABLE();

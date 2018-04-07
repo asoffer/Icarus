@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "stages.h"
 
 namespace AST {
 TokenNode::TokenNode(const TextSpan &span, std::string str)
@@ -14,8 +15,10 @@ TokenNode::TokenNode(const TextSpan &span, std::string str)
 }
 
 Terminal::Terminal(const TextSpan &span, IR::Val val) : Expression(span) {
-  type  = val.type;
-  value = std::move(val);
+  stage_range_.low = DoneTypeVerificationStage;
+  type   = val.type;
+  lvalue = Assign::Const;
+  value  = std::move(val);
 }
 
 Jump::Jump(const TextSpan &span, JumpType jump_type)
@@ -36,4 +39,9 @@ CodeBlock::CodeBlock(std::string s) : content_(std::move(s)) {
   lvalue = Assign::RVal;
   type   = type::Code;
 }
-} // namespace AST
+
+GenericFunctionLiteral::GenericFunctionLiteral() {
+  lvalue = Assign::Const;
+  type   = type::Generic;
+}
+}  // namespace AST

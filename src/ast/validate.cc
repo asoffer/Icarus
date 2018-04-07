@@ -6,6 +6,7 @@
 #include "../error/log.h"
 #include "../ir/func.h"
 #include "../type/all.h"
+#include "stages.h"
 
 // TODO catch functions that don't return along all paths.
 // TODO Join/Meet for type::EmptyArray <-> [0; T] (explicitly empty)? Why!?
@@ -16,49 +17,52 @@ IR::Val OrdFunc();
 
 void ScheduleModule(const Source::Name &src);
 
-static constexpr int ThisStage() { return 1; }
-
 std::vector<IR::Val> Evaluate(AST::Expression *expr);
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 #define HANDLE_CYCLIC_DEPENDENCIES                                             \
   do {                                                                         \
-    if (ctx->cyc_dep_vec_ != nullptr) {                                        \
-      if constexpr (std::is_same_v<decltype(this), Identifier *>) {            \
-        auto *this_as_id = reinterpret_cast<Identifier *>(this);               \
-        if (!ctx->cyc_dep_vec_->empty() &&                                     \
-            this_as_id == ctx->cyc_dep_vec_->front()) {                        \
-          ctx->cyc_dep_vec_ = nullptr;                                         \
-        } else {                                                               \
-          ctx->cyc_dep_vec_->push_back(this_as_id);                            \
-        }                                                                      \
-      } else if constexpr (std::is_same_v<decltype(this), Declaration *>) {    \
-        auto *this_as_id =                                                     \
-            reinterpret_cast<Declaration *>(this)->identifier.get();           \
-        if (!ctx->cyc_dep_vec_->empty() &&                                     \
-            this_as_id == ctx->cyc_dep_vec_->front()) {                        \
-          ctx->cyc_dep_vec_ = nullptr;                                         \
-        } else {                                                               \
-          ctx->cyc_dep_vec_->push_back(this_as_id);                            \
-        }                                                                      \
+    if (ctx->cyc_dep_vec_ == nullptr) { break; }                               \
+    if constexpr (std::is_same_v<decltype(this), Identifier *>) {              \
+      auto *this_as_id = reinterpret_cast<Identifier *>(this);                 \
+      if (!ctx->cyc_dep_vec_->empty() &&                                       \
+          this_as_id == ctx->cyc_dep_vec_->front()) {                          \
+        ctx->cyc_dep_vec_ = nullptr;                                           \
+      } else {                                                                 \
+        ctx->cyc_dep_vec_->push_back(this_as_id);                              \
       }                                                                        \
-      type = type::Err;                                                        \
-      limit_to(StageRange::Nothing());                                         \
-      return;                                                                  \
+    } else if constexpr (std::is_same_v<decltype(this), Declaration *>) {      \
+      auto *this_as_id =                                                       \
+          reinterpret_cast<Declaration *>(this)->identifier.get();             \
+      if (!ctx->cyc_dep_vec_->empty() &&                                       \
+          this_as_id == ctx->cyc_dep_vec_->front()) {                          \
+        ctx->cyc_dep_vec_ = nullptr;                                           \
+      } else {                                                                 \
+        ctx->cyc_dep_vec_->push_back(this_as_id);                              \
+      }                                                                        \
     }                                                                          \
+    type = type::Err;                                                          \
+    limit_to(StageRange::Nothing());                                           \
+    return;                                                                    \
   } while (false)
 
 #define STARTING_CHECK                                                         \
-  do {                                                                         \
-    ASSERT(scope_, "Need to first call assign_scope()");                       \
-    if (type == type::Unknown) {                                               \
-      ctx->cyc_dep_vec_ = ctx->error_log_.CyclicDependency();                  \
-      HANDLE_CYCLIC_DEPENDENCIES;                                              \
-    }                                                                          \
-    if (type != nullptr) { return; }                                           \
-    type = type::Unknown;                                                      \
-    STAGE_CHECK;                                                               \
-  } while (false)
+  base::defer defer_##__LINE__(                                                \
+      [this]() { this->stage_range_.low = DoneTypeVerificationStage; });       \
+  if (stage_range_.high < StartTypeVerificationStage) { return; }              \
+  if (stage_range_.low >= DoneTypeVerificationStage) { return; }               \
+  stage_range_.low = StartTypeVerificationStage
+
+#define STARTING_CHECK_EXPR                                                    \
+  base::defer defer_##__LINE__(                                                \
+      [this]() { this->stage_range_.low = DoneTypeVerificationStage; });       \
+  if (stage_range_.high < StartTypeVerificationStage) { return; }              \
+  if (stage_range_.low >= DoneTypeVerificationStage) { return; }               \
+  if (stage_range_.low == StartTypeVerificationStage) {                        \
+    ctx->cyc_dep_vec_ = ctx->error_log_.CyclicDependency();                    \
+    HANDLE_CYCLIC_DEPENDENCIES;                                                \
+  }                                                                            \
+  stage_range_.low = StartTypeVerificationStage
 
 #define VALIDATE_AND_RETURN_ON_ERROR(expr)                                     \
   do {                                                                         \
@@ -460,9 +464,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
 }
 
 void GenericFunctionLiteral::Validate(Context *ctx) {
-  STARTING_CHECK;
-  lvalue = Assign::Const;
-  type = type::Generic;  // Doable at construction.
+  STARTING_CHECK_EXPR;
   // TODO sort these correctly.
   decl_order_.reserve(inputs.size());
   for (size_t i = 0; i < inputs.size(); ++i) { decl_order_.push_back(i); }
@@ -481,13 +483,12 @@ void DispatchTable::insert(FnArgs<const type::Type *> call_arg_types,
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
 }
 
-void Terminal::Validate(Context *) {
-  STAGE_CHECK;
-  lvalue = Assign::Const;
-}
+void Terminal::Validate(Context *) {}
+void Hole::Validate(Context *) {}
+void CodeBlock::Validate(Context *) {}
 
 void Identifier::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
 
   if (decl == nullptr) {
     auto[potential_decls, potential_error_decls] =
@@ -543,11 +544,6 @@ void Identifier::Validate(Context *ctx) {
   lvalue = decl->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
 }
 
-void Hole::Validate(Context *) {
-  STAGE_CHECK;
-  lvalue = Assign::Const;
-}
-
 static std::vector<Expression *> FunctionOptions(const std::string &token,
                                                  Scope *scope, Context *ctx) {
   std::vector<Expression *> fn_options;
@@ -599,7 +595,7 @@ static const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
 }
 
 void Binop::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
 
   lhs->Validate(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
@@ -812,7 +808,7 @@ void Binop::Validate(Context *ctx) {
 }
 
 void Call::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
 
   bool all_const = true;
   args_.Apply([&ctx, &all_const, this](auto &arg) {
@@ -881,8 +877,8 @@ void Call::Validate(Context *ctx) {
   if (fn_->is<Identifier>()) {
     // fn_'s type should never be considered beacuse it could be one of many
     // different things. 'type::Void' just indicates that it has been computed
-    // (i.e., not 0x0 or type::Unknown) and that there was no error in doing so
-    // (i.e., not type::Err).
+    // (i.e., not 0x0) and that there was no error in doing so (i.e., not
+    // type::Err).
     fn_->type = type::Void;
   }
 
@@ -897,109 +893,110 @@ void Call::Validate(Context *ctx) {
 }
 
 void Declaration::Validate(Context *ctx) {
-  STARTING_CHECK;
+  {
+    STARTING_CHECK_EXPR;
 
-  lvalue = const_ ? Assign::Const : Assign::RVal;
+    lvalue = const_ ? Assign::Const : Assign::RVal;
 
-  if (type_expr) {
-    type_expr->Validate(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(type_expr);
-    if (type_expr->type != type::Type_) {
-      ctx->error_log_.NotAType(type_expr.get());
-      limit_to(StageRange::Nothing());
+    if (type_expr) {
+      type_expr->Validate(ctx);
+      HANDLE_CYCLIC_DEPENDENCIES;
+      limit_to(type_expr);
+      if (type_expr->type != type::Type_) {
+        ctx->error_log_.NotAType(type_expr.get());
+        limit_to(StageRange::Nothing());
 
-      type = type::Err;
-      identifier->limit_to(StageRange::Nothing());
-    } else {
-      auto results = Evaluate(type_expr.get(), ctx);
-      // TODO figure out if you need to generate an error here
-      if (results.size() == 1) {
-        type = identifier->type =
-            std::get<const type::Type *>(results[0].value);
+        type = type::Err;
+        identifier->limit_to(StageRange::Nothing());
       } else {
-        type = identifier->type = type::Err;
+        auto results = Evaluate(type_expr.get(), ctx);
+        // TODO figure out if you need to generate an error here
+        if (results.size() == 1) {
+          type = identifier->type =
+              std::get<const type::Type *>(results[0].value);
+        } else {
+          type = identifier->type = type::Err;
+        }
+      }
+
+      identifier->stage_range_.low = StartTypeVerificationStage;
+    }
+
+    if (init_val && !init_val->is<Hole>()) {
+      init_val->Validate(ctx);
+      HANDLE_CYCLIC_DEPENDENCIES;
+      limit_to(init_val);
+
+      if (init_val->type != type::Err) {
+        if (!Inferrable(init_val->type)) {
+          ctx->error_log_.UninferrableType(init_val->span);
+          type = identifier->type = type::Err;
+          limit_to(StageRange::Nothing());
+          identifier->limit_to(StageRange::Nothing());
+
+        } else if (!type_expr) {
+          identifier->stage_range_.low = StartTypeVerificationStage;
+          type = identifier->type = init_val->type;
+        }
       }
     }
 
-    identifier->stage_range_.low = ThisStage();
-  }
-
-  if (init_val && !init_val->is<Hole>()) {
-    init_val->Validate(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(init_val);
-
-    if (init_val->type != type::Err) {
-      if (!Inferrable(init_val->type)) {
-        ctx->error_log_.UninferrableType(init_val->span);
-        type = identifier->type = type::Err;
+    if (type_expr && type_expr->type == type::Type_ && init_val &&
+        !init_val->is<Hole>()) {
+      if (!CanCastImplicitly(init_val->type, type)) {
+        ctx->error_log_.AssignmentTypeMismatch(identifier.get(),
+                                               init_val.get());
         limit_to(StageRange::Nothing());
-        identifier->limit_to(StageRange::Nothing());
-
-      } else if (!type_expr) {
-        identifier->stage_range_.low = ThisStage();
-        type = identifier->type = init_val->type;
       }
     }
-  }
 
-  if (type_expr && type_expr->type == type::Type_ && init_val &&
-      !init_val->is<Hole>()) {
-    if (!CanCastImplicitly(init_val->type, type)) {
-      ctx->error_log_.AssignmentTypeMismatch(identifier.get(), init_val.get());
-      limit_to(StageRange::Nothing());
-    }
-  }
+    if (!type_expr) {
+      ASSERT_NE(init_val.get(), nullptr);
+      if (!init_val->is<Hole>()) {  // I := V
+        if (init_val->type == type::Err) {
+          type = identifier->type = type::Err;
+          limit_to(StageRange::Nothing());
+          identifier->limit_to(StageRange::Nothing());
+        }
 
-  if (!type_expr) {
-    ASSERT_NE(init_val.get(), nullptr);
-    if (!init_val->is<Hole>()) {  // I := V
-      if (init_val->type == type::Err) {
-        type = identifier->type = type::Err;
+      } else {  // I := --
+        ctx->error_log_.InferringHole(span);
+        type = init_val->type = identifier->type = type::Err;
         limit_to(StageRange::Nothing());
+        init_val->limit_to(StageRange::Nothing());
         identifier->limit_to(StageRange::Nothing());
       }
-
-    } else {  // I := --
-      ctx->error_log_.InferringHole(span);
-      type = init_val->type = identifier->type = type::Err;
-      limit_to(StageRange::Nothing());
-      init_val->limit_to(StageRange::Nothing());
-      identifier->limit_to(StageRange::Nothing());
     }
-  }
 
-  if (const_ && init_val) {
-    if (init_val->is<Hole>()) {
-      ctx->error_log_.UninitializedConstant(span);
+    if (const_ && init_val) {
+      if (init_val->is<Hole>()) {
+        ctx->error_log_.UninitializedConstant(span);
+        limit_to(StageRange::Nothing());
+        return;
+      } else if (init_val->lvalue != Assign::Const) {
+        ASSERT(init_val->lvalue != Assign::Unset, "");
+        ctx->error_log_.NonConstantBindingToConstantDeclaration(span);
+        limit_to(StageRange::Nothing());
+        return;
+      }
+    }
+
+    if (type == type::Err) {
       limit_to(StageRange::Nothing());
       return;
-    } else if (init_val->lvalue != Assign::Const) {
-      ASSERT(init_val->lvalue != Assign::Unset, "");
-      ctx->error_log_.NonConstantBindingToConstantDeclaration(span);
-      limit_to(StageRange::Nothing());
-      return;
+    }
+
+    if (identifier->is<Hole>()) {
+      if (type == type::Module) {
+        // TODO check shadowing against other modules?
+        // TODO what if no init val is provded? what if not constant?
+        ctx->mod_->embedded_modules_.push_back(
+            std::get<const Module *>(Evaluate(init_val.get(), ctx)[0].value));
+      } else {
+        NOT_YET(type);
+      }
     }
   }
-
-  if (type == type::Err) {
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  if (identifier->is<Hole>()) {
-    if (type == type::Module) {
-      // TODO check shadowing against other modules?
-      // TODO what if no init val is provded? what if not constant?
-      ctx->mod_->embedded_modules_.push_back(
-          std::get<const Module *>(Evaluate(init_val.get(), ctx)[0].value));
-    } else {
-      NOT_YET(type);
-    }
-  }
-
-
   std::vector<Declaration *> decls_to_check;
   {
     auto[good_decls_to_check, error_decls_to_check] =
@@ -1021,6 +1018,7 @@ void Declaration::Validate(Context *ctx) {
                             iter->second.end());
     }
   }
+
   auto iter =
       std::partition(decls_to_check.begin(), decls_to_check.end(),
                      [this](AST::Declaration *decl) { return this >= decl; });
@@ -1049,7 +1047,7 @@ void Declaration::Validate(Context *ctx) {
 }
 
 void InDecl::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
   container->Validate(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(container);
@@ -1090,14 +1088,12 @@ void InDecl::Validate(Context *ctx) {
 }
 
 void Statements::Validate(Context *ctx) {
-  STAGE_CHECK;
+  STARTING_CHECK;
   for (auto &stmt : content_) {
     stmt->Validate(ctx);
     limit_to(stmt);
   }
 }
-
-void CodeBlock::Validate(Context *) {}
 
 void Import::Validate(Context *ctx) {
   VALIDATE_AND_RETURN_ON_ERROR(operand_);
@@ -1114,7 +1110,7 @@ void Import::Validate(Context *ctx) {
 }
 
 void Unop::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
   VALIDATE_AND_RETURN_ON_ERROR(operand);
 
   using Language::Operator;
@@ -1248,7 +1244,7 @@ void Unop::Validate(Context *ctx) {
 }
 
 void Access::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
   VALIDATE_AND_RETURN_ON_ERROR(operand);
   lvalue =
       (operand->type->is<type::Array>() &&
@@ -1309,7 +1305,7 @@ void Access::Validate(Context *ctx) {
 }
 
 void ChainOp::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
   bool found_err = false;
 
   lvalue = Assign::Const;
@@ -1431,7 +1427,7 @@ void ChainOp::Validate(Context *ctx) {
 }
 
 void CommaList::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
   for (auto &expr : exprs) {
     expr->Validate(ctx);
@@ -1463,7 +1459,7 @@ void CommaList::Validate(Context *ctx) {
 }
 
 void ArrayLiteral::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
 
   lvalue = Assign::Const;
   if (elems.empty()) {
@@ -1498,7 +1494,7 @@ void ArrayLiteral::Validate(Context *ctx) {
 }
 
 void ArrayType::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
 
   length->Validate(ctx);
@@ -1522,7 +1518,7 @@ void ArrayType::Validate(Context *ctx) {
 }
 
 void FunctionLiteral::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
   for (auto &input : inputs) {
     input->Validate(ctx);
@@ -1612,7 +1608,7 @@ void FunctionLiteral::Validate(Context *ctx) {
 }
 
 void For::Validate(Context *ctx) {
-  STAGE_CHECK;
+  STARTING_CHECK;
   for (auto &iter : iterators) {
     iter->Validate(ctx);
     limit_to(iter);
@@ -1622,7 +1618,7 @@ void For::Validate(Context *ctx) {
 }
 
 void Jump::Validate(Context *ctx) {
-  STAGE_CHECK;
+  STARTING_CHECK;
   // TODO made this slightly wrong
   auto scope_ptr = scope_;
   while (scope_ptr && scope_ptr->is<ExecScope>()) {
@@ -1638,7 +1634,7 @@ void Jump::Validate(Context *ctx) {
 }
 
 void ScopeNode::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
 
   lvalue = Assign::RVal;
 
@@ -1663,7 +1659,7 @@ void ScopeNode::Validate(Context *ctx) {
 }
 
 void ScopeLiteral::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
   bool cannot_proceed_due_to_errors = false;
   if (!enter_fn) {
@@ -1706,7 +1702,7 @@ void ScopeLiteral::Validate(Context *ctx) {
 }
 
 void StructLiteral::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
   type = type::Type_;
   for (auto &field : fields_) {
@@ -1717,3 +1713,4 @@ void StructLiteral::Validate(Context *ctx) {
 
 #undef VALIDATE_AND_RETURN_ON_ERROR
 #undef STARTING_CHECK
+#undef STARTING_CHECK_EXPR

@@ -232,7 +232,7 @@ struct FunctionLiteral : public Expression {
 };
 
 struct GenericFunctionLiteral : public FunctionLiteral {
-  GenericFunctionLiteral() {}
+  GenericFunctionLiteral();
   EXPR_FNS(GenericFunctionLiteral);
   GenericFunctionLiteral *Clone() const override;
   IR::Val EmitIR(Context *) override;

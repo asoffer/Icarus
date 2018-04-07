@@ -15,6 +15,17 @@
       "Result is vacuously false.")
 
 namespace base {
+template <typename Fn>
+struct defer {
+  defer(Fn &&fn) : fn_(std::move(fn)) {}
+  ~defer() { fn_(); }
+
+ private:
+  Fn fn_;
+};
+template <typename Fn>
+defer(Fn &&)->defer<Fn>;
+
 template <typename Base> struct Cast {
   template <typename T> bool is() const {
     STATIC_ASSERT_RELATED(Base, T);

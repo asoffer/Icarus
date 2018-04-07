@@ -31,7 +31,6 @@ IR::Val Variant::EmitInitialValue(Context* ctx) const { NOT_YET(); }
 IR::Val Primitive::EmitInitialValue(Context* ctx) const {
   switch (type_) {
     case PrimType::Err: UNREACHABLE(this, ": Err");
-    case PrimType::Unknown: UNREACHABLE(this, ": Unknown");
     case PrimType::Type: return IR::Val::Type(Void);
     case PrimType::Void: UNREACHABLE();
     case PrimType::NullPtr: UNREACHABLE();
