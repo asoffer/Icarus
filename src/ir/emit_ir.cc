@@ -127,6 +127,17 @@ IR::Val AST::Node::EmitIR(Context *) { UNREACHABLE(*this); }
 IR::Val AST::Expression::EmitIR(Context *) { UNREACHABLE(*this); }
 IR::Val AST::Expression::EmitLVal(Context *) { UNREACHABLE(*this); }
 
+IR::Val AST::Jump::EmitIR(Context *) {
+  switch (jump_type) {
+    case JumpType::Return: IR::ReturnJump(); return IR::Val::None();
+    case JumpType::Restart: NOT_YET();
+    case JumpType::Repeat: NOT_YET();
+    case JumpType::Break: NOT_YET();
+    case JumpType::Continue: NOT_YET();
+  }
+  UNREACHABLE();
+}
+
 static IR::BlockIndex CallLookupTest(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::FnArgs<const type::Type *> &call_arg_type) {
@@ -157,15 +168,17 @@ static IR::Val EmitOneCallDispatch(
     const std::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
   // After the last check, if you pass, you should dispatch
-  IR::Func *fn_to_call = std::visit(
-      base::overloaded{[](IR::Func *fn) { return fn; },
-      // TODO is calling ir_func_ here safe?
-                       [](AST::FunctionLiteral *fn) { return fn->ir_func_; },
-                       [](auto &&) -> IR::Func * {
-                         UNREACHABLE();
-                         return nullptr;
-                       }},
-      binding.fn_expr_->EmitIR(ctx).value);
+  IR::Func *fn_to_call =
+      std::visit(base::overloaded{[](IR::Func *fn) { return fn; },
+                                  [](AST::FunctionLiteral *fn) {
+                                    ASSERT_NE(fn->ir_func_, nullptr);
+                                    return fn->ir_func_;
+                                  },
+                                  [](auto &&) -> IR::Func * {
+                                    UNREACHABLE();
+                                    return nullptr;
+                                  }},
+                 binding.fn_expr_->EmitIR(ctx).value);
 
   std::vector<IR::Val> args;
   args.resize(binding.exprs_.size());

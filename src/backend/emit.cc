@@ -159,11 +159,12 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
           llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[2].value).value]);
     case IR::Op::ReturnJump:
       if (num_args == 1) {
-        return llvm_data->builder->CreateRet(
+        llvm_data->builder->CreateRet(
             llvm_data->builder->CreateLoad(llvm_data->rets[0]));
       } else {
-        return llvm_data->builder->CreateRetVoid();
+        llvm_data->builder->CreateRetVoid();
       }
+      return nullptr;
     case IR::Op::Trunc:
       return llvm_data->builder->CreateTrunc(
           EmitValue(num_args, llvm_data, cmd.args[0]),
@@ -409,6 +410,7 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
       for (const auto &cmd : fn->blocks_[i].cmds_) {
         llvm_data.regs[cmd.result] =
             EmitCmd(fn->type_->output.size(), &llvm_data, cmd);
+        if (llvm_data.regs[cmd.result] == nullptr) { break; }
       }
     }
 

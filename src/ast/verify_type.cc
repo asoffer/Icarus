@@ -1601,6 +1601,7 @@ void For::VerifyType(Context *ctx) {
 
 void Jump::VerifyType(Context *ctx) {
   STARTING_CHECK;
+  if (jump_type == JumpType::Return) { return; }
   // TODO made this slightly wrong
   auto scope_ptr = scope_;
   while (scope_ptr && scope_ptr->is<ExecScope>()) {

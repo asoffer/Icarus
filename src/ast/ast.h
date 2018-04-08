@@ -269,6 +269,7 @@ struct Jump : public Node {
   VIRTUAL_METHODS_FOR_NODES;
   virtual ~Jump() {}
   Jump *Clone() const override;
+  virtual IR::Val EmitIR(Context *);
 
   enum class JumpType { Restart, Continue, Repeat, Break, Return };
 
