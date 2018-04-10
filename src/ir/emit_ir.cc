@@ -304,16 +304,11 @@ IR::Val AST::Access::EmitIR(Context *ctx) {
 IR::Val AST::Terminal::EmitIR(Context *) { return value; }
 
 IR::Val AST::Identifier::EmitIR(Context *ctx) {
-  if (!decl) {
-    auto iter = ctx->bound_constants_->find(token);
-    return iter != ctx->bound_constants_->end() ? iter->second : IR::Val::None();
-  }
+  auto *val = AST::find(ctx->bound_constants_, token);
+  if (!decl) { return val ? *val : IR::Val::None(); }
 
   if (decl->const_) {
-    if (auto iter = ctx->bound_constants_->find(token);
-        iter != ctx->bound_constants_->end()) {
-      return iter->second;
-    }
+    if (val) { return *val; }
 
     if (decl->IsCustomInitialized()) {
       return Evaluate(decl->init_val.get(), ctx) AT(0);
@@ -1012,11 +1007,9 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
     for (size_t i = 0; i < inputs.size(); ++i) {
       // TODO positional arguments
       if (inputs[i]->const_) {
-        if (auto iter =
-                ctx.bound_constants_->find(inputs[i]->identifier->token);
-            iter != ctx.bound_constants_->end()) {
-          inputs[i]->addr = std::move(iter->second);
-        }
+        auto *val =
+            AST::find(ctx.bound_constants_, inputs[i]->identifier->token);
+        if (val) { inputs[i]->addr = *val; }
         continue;
       }
       inputs[i]->addr = IR::Func::Current->Argument(static_cast<i32>(i));

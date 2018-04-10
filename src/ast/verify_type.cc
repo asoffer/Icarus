@@ -1575,7 +1575,7 @@ void FunctionLiteral::VerifyType(Context *ctx) {
       return;
     } else if (std::get<const type::Type *>(ret_type_val.value) == type::Err) {
       type = type::Err;
-      limit_to(StageRange::Nothing());
+     limit_to(StageRange::Nothing());
       return;
     }
 

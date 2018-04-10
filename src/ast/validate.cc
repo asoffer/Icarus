@@ -116,8 +116,18 @@ void FunctionLiteral::Validate(Context *ctx) {
 
   std::unordered_set<const type::Type *> types;
   statements->ExtractReturnTypes(&types);
-  // TODO actually join all types
+  // TODO actually join all types.
   statements->Validate(ctx);
+
+  std::vector<const type::Type *> input_type_vec;
+  input_type_vec.reserve(inputs.size());
+  for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
+
+  switch (types.size()) {
+    case 0: type = type::Func(std::move(input_type_vec), type::Void); break;
+    case 1: type = type::Func(std::move(input_type_vec), *types.begin()); break;
+    default: NOT_YET();
+  }
 
   // TODO all the empty, == 1 or > 1 logic should be handled by a joining
   // function

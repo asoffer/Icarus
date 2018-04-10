@@ -7,6 +7,12 @@
 
 namespace AST {
 struct BoundConstants : public std::map<std::string, IR::Val> {};
+
+inline const IR::Val* find(const BoundConstants* bc, const std::string& str) {
+  if (!bc) { return nullptr; }
+  if (auto iter = bc->find(str); iter != bc->end()) { return &iter->second; }
+  return nullptr;
+}
 } // namespace AST
 
 namespace std {
