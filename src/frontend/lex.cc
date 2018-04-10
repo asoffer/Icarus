@@ -138,9 +138,15 @@ i32 RepresentationAsIntInBase(const std::vector<i32> &digits) {
 }
 
 template <int Base>
-double RepresentationAsRealInBase(const std::vector<i32> &, i32) {
-  // TODO
-  return NAN;
+double RepresentationAsRealInBase(const std::vector<i32> &, i32);
+
+template <>
+double RepresentationAsRealInBase<10>(const std::vector<i32> &digits,
+                                      i32 dot_offset) {
+  std::stringstream ss;
+  // TODO this is an awful terrible hack and I feel lazy and gross
+  for (i32 digit : digits) { ss << digit; }
+  return std::stod(ss.str());
 }
 
 template <>
@@ -177,6 +183,7 @@ double RepresentationAsRealInBase<8>(const std::vector<i32> &digits,
   if (exponent > 1023 || exponent < -1022) { return NAN; }
   NOT_YET();
 }
+
 template <int Base> frontend::TaggedNode NextNumberInBase(SourceLocation &loc) {
   auto span = loc.ToSpan();
 
@@ -242,7 +249,8 @@ done_reading:
                                        ": Too many periods in numeric literal. "
                                        "Ignoring all but the first.");
         [[fallthrough]];
-      case 1: return frontend::TaggedNode::TerminalExpression(span, IR::Val::Real(0));
+      case 1:
+        return frontend::TaggedNode::TerminalExpression(span, IR::Val::Real(0));
       }
     }
   } else {

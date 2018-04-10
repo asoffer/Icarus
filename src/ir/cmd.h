@@ -15,7 +15,7 @@ enum class Op : char {
   Malloc, Free,
   Load, Store,
   ArrayLength, ArrayData, PtrIncr,
-  Phi, Field, Call, Cast,
+  Phi, Field, Call,
   SetReturn, Arrow, Variant, Array, Ptr,
   Alloca,
   Contextualize,
@@ -68,7 +68,6 @@ Val Xor(Val v1, Val v2);
 Val Or(Val v1, Val v2);
 Val And(Val v1, Val v2);
 Val Index(Val v1, Val v2);
-Val Cast(Val result_type, Val val);
 Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs);
 Val Load(Val v);
 Val ArrayLength(Val v);

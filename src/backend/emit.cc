@@ -61,7 +61,10 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             return llvm::ConstantInt::get(llvm_data->module->getContext(),
                                           llvm::APInt(8, c, false));
           },
-          [&](double d) -> llvm::Value * { NOT_YET(); },
+          [&](double d) -> llvm::Value * {
+            return llvm::ConstantFP::get(
+                llvm::Type::getDoubleTy(llvm_data->module->getContext()), d);
+          },
           [&](i32 n) -> llvm::Value * {
             return llvm::ConstantInt::get(llvm_data->module->getContext(),
                                           llvm::APInt(32, n, true));
@@ -365,9 +368,6 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
       return llvm_data->builder->CreateStore(
           EmitValue(num_args, llvm_data, cmd.args[1]),
           llvm_data->rets[std::get<IR::ReturnValue>(cmd.args[0].value).value]);
-    case IR::Op::Cast:
-      NOT_YET();  // TODO this isn't even usable yet, so perhaps we just want to
-                  // gut it?
     case IR::Op::CreateStruct: UNREACHABLE();
     case IR::Op::InsertField: UNREACHABLE();
     case IR::Op::FinalizeStruct: UNREACHABLE();

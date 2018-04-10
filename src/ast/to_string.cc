@@ -102,7 +102,6 @@ std::string Binop::to_string(size_t n) const {
 
   ss << "(" << lhs->to_string(n) << ")";
   switch (op) {
-  case Language::Operator::Cast: ss << "Cast"; break;
   case Language::Operator::Arrow: ss << " -> "; break;
   case Language::Operator::Add: ss << " + "; break;
   case Language::Operator::Sub: ss << " - "; break;

@@ -189,28 +189,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     return IR::Val::Type(type::Var(std::move(types)));
   }
   case Op::Array: return Array(resolved[0], resolved[1]);
-  case Op::Cast:
-    if (resolved[1].type == type::Int) {
-      if (std::get<const type::Type *>(resolved[0].value) == type::Int) {
-        return resolved[1];
-      } else if (std::get<const type::Type *>(resolved[0].value) == type::Real) {
-        return IR::Val::Real(
-            static_cast<double>(std::get<i32>(resolved[1].value)));
-      } else {
-        call_stack.top().fn_->dump();
-        NOT_YET("(", resolved[0], ", ", resolved[1], ")");
-      }
-    } else if (auto *ptr_type = std::get<const type::Type *>(resolved[0].value);
-               ptr_type->is<type::Pointer>() &&
-               resolved[1].type->is<type::Pointer>()) {
-      return Val::Addr(std::get<Addr>(resolved[1].value),
-                       ptr_type->as<type::Pointer>().pointee);
-    } else {
-      call_stack.top().fn_->dump();
-      cmd.dump(10);
-      NOT_YET("(", resolved[0], ", ", resolved[1], ")");
-    }
-    break;
   case Op::Xor: return Xor(resolved[0], resolved[1]);
   case Op::Or: return Or(resolved[0], resolved[1]);
   case Op::And: return And(resolved[0], resolved[1]);

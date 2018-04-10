@@ -31,24 +31,22 @@ static void ValidateStatementSyntax(AST::Node *node, error::Log* error_log) {
   }
 }
 
-namespace Language {
-constexpr size_t left_assoc  = 0;
-constexpr size_t right_assoc = 1;
-constexpr size_t non_assoc   = 2;
-constexpr size_t chain_assoc = 3;
-constexpr size_t assoc_mask  = 3;
+static constexpr size_t left_assoc  = 0;
+static constexpr size_t right_assoc = 1;
+static constexpr size_t non_assoc   = 2;
+static constexpr size_t chain_assoc = 3;
+static constexpr size_t assoc_mask  = 3;
 
-constexpr size_t precedence(Operator op) {
+static constexpr size_t precedence(Language::Operator op) {
   switch (op) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
-  case Operator::name:                                                         \
+  case Language::Operator::name:                                               \
     return (((prec) << 2) + (assoc));
 #include "operators.xmacro.h"
 #undef OPERATOR_MACRO
   }
   __builtin_unreachable();
 }
-}  // namespace Language
 
 static std::unique_ptr<AST::Node>
 OneBracedStatement(std::vector<std::unique_ptr<AST::Node>> nodes,
@@ -748,15 +746,14 @@ BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>> nodes,
   binop->rhs = move_as<AST::Expression>(nodes[2]);
 
   static const std::unordered_map<std::string, Language::Operator> symbols = {
-      {"", Language::Operator::Cast},    {"->", Language::Operator::Arrow},
-      {"|=", Language::Operator::OrEq},  {"&=", Language::Operator::AndEq},
-      {"^=", Language::Operator::XorEq}, {"+=", Language::Operator::AddEq},
-      {"-=", Language::Operator::SubEq}, {"*=", Language::Operator::MulEq},
-      {"/=", Language::Operator::DivEq}, {"%=", Language::Operator::ModEq},
-      {"..", Language::Operator::Dots},  {"+", Language::Operator::Add},
-      {"-", Language::Operator::Sub},    {"*", Language::Operator::Mul},
-      {"/", Language::Operator::Div},    {"%", Language::Operator::Mod},
-      {"[", Language::Operator::Index}};
+      {"->", Language::Operator::Arrow}, {"|=", Language::Operator::OrEq},
+      {"&=", Language::Operator::AndEq}, {"^=", Language::Operator::XorEq},
+      {"+=", Language::Operator::AddEq}, {"-=", Language::Operator::SubEq},
+      {"*=", Language::Operator::MulEq}, {"/=", Language::Operator::DivEq},
+      {"%=", Language::Operator::ModEq}, {"..", Language::Operator::Dots},
+      {"+", Language::Operator::Add},    {"-", Language::Operator::Sub},
+      {"*", Language::Operator::Mul},    {"/", Language::Operator::Div},
+      {"%", Language::Operator::Mod},    {"[", Language::Operator::Index}};
   {
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }

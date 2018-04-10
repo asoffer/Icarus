@@ -4,7 +4,7 @@ if ::= scope {
 }
 
 forever ::= scope {
-  enter ::= (cond: bool) => true
+  enter ::= void => true
   exit ::= void => true
 }
 

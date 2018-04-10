@@ -718,12 +718,6 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
     CASE(Mod);
     CASE(Arrow);
 #undef CASE
-    case Language::Operator::Cast: {
-      ASSERT(!rhs->is<AST::CommaList>(), "");
-      auto lhs_ir = lhs->EmitIR(ctx);
-      auto rhs_ir = rhs->EmitIR(ctx);
-      return IR::Cast(lhs_ir, rhs_ir);
-    } break;
     case Language::Operator::Assign: {
       std::vector<const type::Type *> lhs_types, rhs_types;
       std::vector<IR::Val> rhs_vals;

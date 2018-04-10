@@ -622,7 +622,7 @@ void Binop::VerifyType(Context *ctx) {
       case Assign::LVal: UNREACHABLE();
     }
     limit_to(StageRange::Nothing());
-  } else if (op == Operator::Cast || op == Operator::Index) {
+  } else if (op == Operator::Index) {
     lvalue = rhs->lvalue;
   } else if (lhs->lvalue == Assign::Const && rhs->lvalue == Assign::Const) {
     lvalue = Assign::Const;

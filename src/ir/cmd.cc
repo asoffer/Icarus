@@ -397,12 +397,6 @@ Val Ne(Val v1, Val v2) {
 }
 #undef CONSTANT_PROPOGATION
 
-Val Cast(Val v1, Val v2) {
-  // v1 = result_type, v2 = val
-  ASSERT_EQ(v1.type,type::Type_);
-  MAKE_AND_RETURN2(std::get<const type::Type *>(v1.value), Op::Cast);
-}
-
 #undef MAKE_AND_RETURN2
 #undef MAKE_AND_RETURN
 #undef MAKE_VOID2
@@ -482,7 +476,6 @@ void Cmd::dump(size_t indent) const {
   case Op::Phi: std::cerr << "phi"; break;
   case Op::Field: std::cerr << "field"; break;
   case Op::Call: std::cerr << "call"; break;
-  case Op::Cast: std::cerr << "cast"; break;
   case Op::SetReturn: std::cerr << "set-ret"; break;
   case Op::Arrow: std::cerr << "arrow"; break;
   case Op::Array: std::cerr << "array-type"; break;
