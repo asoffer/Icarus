@@ -1,0 +1,14 @@
+main ::= void -> void {
+  n := 0
+  while (n <= 10) {
+    print "fib(", n, ") = ", fibonacci(n), "\n"
+    n += 1
+  }
+}
+
+fibonacci ::= (n: int) -> int {
+  if (n < 2) { return n }
+  return fibonacci(n - 1) + fibonacci(n - 2)
+}
+
+-- ::= import "examples/lib/core.ic"
