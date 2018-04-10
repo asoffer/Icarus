@@ -38,6 +38,12 @@
 #define ASSERT_LT(lhs, rhs) ASSERT_SYM(lhs, rhs, <)
 #define ASSERT_LE(lhs, rhs) ASSERT_SYM(lhs, rhs, <=)
 
+#define ASSERT_NOT_NULL(expr)                                                  \
+  ([](auto *ptr) {                                                             \
+    if (!ptr) { std::abort(); }                                                \
+    return ptr;                                                                \
+  })(expr)
+
 #define ASSERT_TYPE(type, val)                                                 \
   do {                                                                         \
     if (!(val)->is<type>()) {                                                  \

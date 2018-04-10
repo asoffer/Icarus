@@ -35,14 +35,15 @@ base::guarded<std::unordered_map<Source::Name,
 // TODO deprecate source_map
 std::unordered_map<Source::Name, File *> source_map;
 std::unique_ptr<Module> CompileModule(const Source::Name &src) {
-  Context ctx;
+  auto mod = std::make_unique<Module>();
+  Context ctx(mod.get());
   auto *f = new File(src);
   source_map[src] = f;
   error::Log log;
   auto file_stmts = f->Parse(&log);
   if (log.size() > 0) {
     log.Dump();
-    return std::move(ctx.mod_);
+    return mod;
   }
 
   file_stmts->assign_scope(ctx.mod_->global_.get());
@@ -50,29 +51,17 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
   file_stmts->Validate(&ctx);
   if (ctx.num_errors() != 0) {
     ctx.DumpErrors();
-    return std::move(ctx.mod_);
+    return mod;
   }
 
   file_stmts->EmitIR(&ctx);
   if (ctx.num_errors() != 0) {
     ctx.DumpErrors();
-    return std::move(ctx.mod_);
+    return mod;
   }
 
   ctx.mod_->statements_ = std::move(*file_stmts);
-
-  for (const auto &stmt : ctx.mod_->statements_.content_) {
-    if (!stmt->is<AST::Declaration>()) { continue; }
-    auto &decl = stmt->as<AST::Declaration>();
-    auto val = Evaluate(decl.init_val.get(), &ctx);
-    ASSERT_EQ(val.size(), 1u);
-    if (auto fn_lit = std::get_if<AST::FunctionLiteral *>(&val[0].value)) {
-      // TODO check more than one?
-      // TODO is this context correct?
-      (*fn_lit)->Complete(&ctx);
-    }
-  }
-
+  ctx.mod_->Complete();
   backend::EmitAll(ctx.mod_->fns_, ctx.mod_->llvm_.get());
 
   for (const auto &stmt : ctx.mod_->statements_.content_) {
@@ -89,12 +78,12 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
   }
 
   if (std::string err = backend::WriteObjectFile(
-          src.substr(0, src.size() - 2) + "o", ctx.mod_.get());
+          src.substr(0, src.size() - 2) + "o", ctx.mod_);
       err != "") {
     std::cerr << err;
   }
 
-  return std::move(ctx.mod_);
+  return mod;
 }
 
 void ScheduleModule(const Source::Name &src) {
@@ -131,9 +120,9 @@ int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
   Repl repl;
-
+  auto mod = std::make_unique<Module>();
+  Context ctx(mod.get());
 repl_start : {
-  Context ctx;
   auto stmts = repl.Parse(&ctx.error_log_);
   if (ctx.num_errors() > 0) {
     ctx.DumpErrors();

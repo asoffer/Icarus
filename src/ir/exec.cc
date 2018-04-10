@@ -16,9 +16,9 @@
 
 std::vector<IR::Val> global_vals;
 
-std::unique_ptr<IR::Func>
-ExprFn(AST::Expression *expr, const type::Type *input, Context *ctx = nullptr,
-       const std::vector<std::pair<std::string, AST::Expression *>> args = {}) {
+static std::unique_ptr<IR::Func> ExprFn(
+    AST::Expression *expr, const type::Type *input, Context *ctx,
+    const std::vector<std::pair<std::string, AST::Expression *>> args = {}) {
   auto fn = std::make_unique<IR::Func>(type::Func(input, expr->type), args);
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
@@ -33,9 +33,6 @@ ExprFn(AST::Expression *expr, const type::Type *input, Context *ctx = nullptr,
     IR::Val result;
     if (ctx) {
       result = expr->EmitIR(ctx);
-    } else {
-      Context context;
-      result = expr->EmitIR(&context);
     }
 
     if (expr->type != type::Void) {
@@ -57,7 +54,8 @@ static std::unique_ptr<IR::Func> AssignmentFunction(const type::Type *from,
       std::vector<std::pair<std::string, AST::Expression *>>{{"from", nullptr},
                                                              {"to", nullptr}});
   // TODO maybe we want to wire contexts through here? probably.
-  Context ctx; 
+  // TODO get the right module
+  Context ctx(nullptr); 
   CURRENT_FUNC(assign_func.get()) {
     IR::Block::Current = assign_func->entry();
     to->EmitAssign(from, assign_func->Argument(0), assign_func->Argument(1),
@@ -590,7 +588,8 @@ void ReplEval(AST::Expression *expr) {
       std::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
-    Context ctx;
+    // TODO use the right module
+    Context ctx(nullptr);
     auto expr_val      = expr->EmitIR(&ctx);
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
@@ -603,14 +602,6 @@ void ReplEval(AST::Expression *expr) {
 
   IR::ExecContext ctx;
   Execute(fn.get(), {}, &ctx);
-}
-
-std::vector<IR::Val> Evaluate(AST::Expression *expr) {
-  IR::ExecContext exec_context;
-  // TODO wire through errors. Currently we just return IR::Val::None() if there
-  // were errors
-  auto fn = ExprFn(expr, type::Void);
-  return Execute(fn.get(), {}, &exec_context);
 }
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {

@@ -1,6 +1,7 @@
 #ifndef ICARUS_MODULE_H
 #define ICARUS_MODULE_H
 
+#include <queue>
 #include <memory>
 #include <vector>
 #include <string>
@@ -24,6 +25,7 @@ struct Func;
 
 namespace AST {
 struct Expression;
+struct FunctionLiteral;
 }  // namespace AST
 
 struct Module {
@@ -36,6 +38,9 @@ struct Module {
   const type::Type* GetType(const std::string& name) const;
   AST::Declaration* GetDecl(const std::string& name) const;
 
+  void Complete();
+
+  std::queue<AST::FunctionLiteral*> to_complete_;
   std::unique_ptr<DeclScope> global_;
 
   // TODO long-term this is not a good way to store these. We should probably

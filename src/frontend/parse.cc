@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../module.h"
 #include "../type/enum.h"
 #include "ast/ast.h"
 #include "base/debug.h"

@@ -9,14 +9,13 @@
 #include "../context.h"
 #include "../error/log.h"
 #include "../type/all.h"
+#include "../ast/stages.h"
 
 extern base::guarded<std::unordered_map<
     Source::Name, std::shared_future<std::unique_ptr<Module>>>>
     modules;
 
 
-static constexpr int ThisStage() { return 4; }
-std::vector<IR::Val> Evaluate(AST::Expression *expr);
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 extern std::vector<IR::Val> global_vals;
 
@@ -168,18 +167,14 @@ static IR::Val EmitOneCallDispatch(
     const std::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
   // After the last check, if you pass, you should dispatch
-  IR::Func *fn_to_call =
-      std::visit(base::overloaded{[](IR::Func *fn) { return fn; },
-                                  [](AST::FunctionLiteral *fn) {
-                                    ASSERT_NE(fn->ir_func_, nullptr);
-                                    return fn->ir_func_;
-                                  },
-                                  [](auto &&) -> IR::Func * {
-                                    UNREACHABLE();
-                                    return nullptr;
-                                  }},
-                 binding.fn_expr_->EmitIR(ctx).value);
-
+  IR::Func *fn_to_call = std::visit(
+      base::overloaded{[](IR::Func *fn) { return fn; },
+                       [](AST::FunctionLiteral *fn) { return fn->ir_func_; },
+                       [](auto &&) -> IR::Func * {
+                         UNREACHABLE();
+                         return nullptr;
+                       }},
+      binding.fn_expr_->EmitIR(ctx).value);
   std::vector<IR::Val> args;
   args.resize(binding.exprs_.size());
   for (size_t i = 0; i < args.size(); ++i) {
@@ -195,6 +190,7 @@ static IR::Val EmitOneCallDispatch(
     }
   }
 
+  ASSERT_NE(fn_to_call, nullptr);
   const type::Type *output_type_for_this_binding =
       type::Tup(fn_to_call->type_->output);
   IR::Val ret_val;
@@ -309,13 +305,13 @@ IR::Val AST::Terminal::EmitIR(Context *) { return value; }
 
 IR::Val AST::Identifier::EmitIR(Context *ctx) {
   if (!decl) {
-    auto iter = ctx->bound_constants_.find(token);
-    return iter != ctx->bound_constants_.end() ? iter->second : IR::Val::None();
+    auto iter = ctx->bound_constants_->find(token);
+    return iter != ctx->bound_constants_->end() ? iter->second : IR::Val::None();
   }
 
   if (decl->const_) {
-    if (auto iter = ctx->bound_constants_.find(token);
-        iter != ctx->bound_constants_.end()) {
+    if (auto iter = ctx->bound_constants_->find(token);
+        iter != ctx->bound_constants_->end()) {
       return iter->second;
     }
 
@@ -385,7 +381,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
 
       } else if (decl->container->type == type::Type_) {
         // TODO this conditional check on the line above is wrong
-        IR::Val container_val = Evaluate(decl->container.get())[0];
+        IR::Val container_val = Evaluate(decl->container.get(), ctx)[0];
         if (const type::Type *t =
                 std::get<const type::Type *>(container_val.value);
             t->is<type::Enum>()) {
@@ -406,7 +402,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
     IR::Block::Current = phi;
     for (auto &decl : iterators) {
       if (decl->container->type == type::Type_) {
-        IR::Val container_val = Evaluate(decl->container.get())[0];
+        IR::Val container_val = Evaluate(decl->container.get(), ctx)[0];
         if (auto *t = std::get<const type::Type *>(container_val.value);
             t->is<type::Enum>()) {
           phis.push_back(IR::Phi(&t->as<type::Enum>()));
@@ -480,7 +476,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
             reg, IR::Index(decl->container->EmitLVal(ctx),
                            IR::Val::Int(static_cast<i32>(array_type->len))));
       } else if (decl->container->type == type::Type_) {
-        IR::Val container_val = Evaluate(decl->container.get())[0];
+        IR::Val container_val = Evaluate(decl->container.get(), ctx)[0];
         if (auto *t = std::get<const type::Type *>(container_val.value);
             t->is<type::Enum>()) {
           cmp = IR::Le(reg,
@@ -520,7 +516,7 @@ IR::Val AST::ScopeLiteral::EmitIR(Context *ctx) {
 }
 
 IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
-  IR::Val scope_expr_val = Evaluate(scope_expr.get())[0];
+  IR::Val scope_expr_val = Evaluate(scope_expr.get(), ctx)[0];
   ASSERT_TYPE(type::Scope, scope_expr_val.type);
 
   auto enter_fn =
@@ -534,10 +530,6 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   auto enter_block = IR::Func::Current->AddBlock();
   IR::UncondJump(enter_block);
   IR::Block::Current = enter_block;
-
-  // TODO wrong contexts!
-  enter_fn->as<FunctionLiteral>().Complete(ctx);
-  exit_fn->as<FunctionLiteral>().Complete(ctx);
 
   auto call_enter_result = IR::Call(
       IR::Val::Func(enter_fn->as<FunctionLiteral>().ir_func_),
@@ -981,40 +973,33 @@ IR::Val AST::GenericFunctionLiteral::EmitIR(Context *) {
 }
 
 IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
+  if (!ir_func_) {
+    std::vector<std::pair<std::string, AST::Expression *>> args;
+    args.reserve(inputs.size());
+    for (const auto &input : inputs) {
+      args.emplace_back(input->as<Declaration>().identifier->token,
+                        input->as<Declaration>().init_val.get());
+    }
+
+    ir_func_ = ctx->mod_->AddFunc(&type->as<type::Function>(), std::move(args));
+    ctx->mod_->to_complete_.push(this);
+  }
   return IR::Val::FnLit(this);
 }
 
-// TODO terrible name.
-void AST::FunctionLiteral::Complete(Context *ctx) {
-  if (ir_func_) { return; }
+void AST::FunctionLiteral::CompleteBody(Module *mod) {
+  if (completed_) { return; }
+  completed_ = true;
 
-  statements->VerifyType(ctx);
-  statements->Validate(ctx);
+  Context ctx(mod);
+  ctx.bound_constants_ = bound_constants_;
+  statements->VerifyType(&ctx);
+  statements->Validate(&ctx);
   limit_to(statements);
-  stage_range_.low = ThisStage();
-  if (stage_range_.high < ThisStage()) { return; }
+  stage_range_.low = EmitStage;
 
+  if (stage_range_.high < EmitStage) { return; }
   if (type == type::Err) { return; }
-
-  std::vector<std::pair<std::string, AST::Expression *>> args;
-  args.reserve(inputs.size());
-  for (const auto &input : inputs) {
-    args.emplace_back(input->as<Declaration>().identifier->token,
-                      input->as<Declaration>().init_val.get());
-  }
-
-  std::vector<const type::Type *> input_types;
-  for (const type::Type *in : type->as<type::Function>().input) {
-    input_types.push_back(in->is_big() ? Ptr(in) : in);
-  }
-  auto *fn_type =
-      type::Func(std::move(input_types), type->as<type::Function>().output);
-  // TODO could this be a data race if the future containing the module hasn't
-  // resolved yet? I don't think so
-  auto *s = scope_;
-  while (s->parent) { s = s->parent; }
-  ASSERT(s->is<DeclScope>(), "");
-  ir_func_ = s->as<DeclScope>().module_->AddFunc(fn_type, std::move(args));
 
   CURRENT_FUNC(ir_func_) {
     IR::Block::Current = ir_func_->entry();
@@ -1028,8 +1013,8 @@ void AST::FunctionLiteral::Complete(Context *ctx) {
       // TODO positional arguments
       if (inputs[i]->const_) {
         if (auto iter =
-                ctx->bound_constants_.find(inputs[i]->identifier->token);
-            iter != ctx->bound_constants_.end()) {
+                ctx.bound_constants_->find(inputs[i]->identifier->token);
+            iter != ctx.bound_constants_->end()) {
           inputs[i]->addr = std::move(iter->second);
         }
         continue;
@@ -1059,8 +1044,10 @@ void AST::FunctionLiteral::Complete(Context *ctx) {
       });
     }
 
-    statements->EmitIR(ctx);
-    if (fn_type->output.empty()) {
+    statements->VerifyType(&ctx);
+    statements->Validate(&ctx);
+    statements->EmitIR(&ctx);
+    if (type->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
       // between here and where you call SetReturn
       IR::ReturnJump();
@@ -1134,4 +1121,3 @@ IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
   }
   return IR::FinalizeStruct(std::move(new_struct));
 }
-

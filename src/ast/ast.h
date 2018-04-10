@@ -19,6 +19,7 @@
 #include "expression.h"
 #include "fn_args.h"
 #include "import.h"
+#include "module.h"
 #include "unop.h"
 
 struct Context;
@@ -29,14 +30,6 @@ struct Func;
 
 namespace AST {
 struct Statements;
-
-// TODO this is hopefully no longer necessary.
-#define STAGE_CHECK                                                            \
-  do {                                                                         \
-    if (stage_range_.high < ThisStage()) { return; }                           \
-    if (stage_range_.low >= ThisStage()) { return; }                           \
-    stage_range_.low = ThisStage();                                            \
-  } while (false)
 
 struct TokenNode : public Node {
   virtual std::string to_string(size_t n) const;
@@ -217,7 +210,7 @@ struct FunctionLiteral : public Expression {
   FunctionLiteral(FunctionLiteral &&) = default;
   FunctionLiteral *Clone() const override;
 
-  void Complete(Context* ctx);
+  void CompleteBody(Module *mod);
   virtual IR::Val EmitIR(Context *);
 
   std::unique_ptr<FnScope> fn_scope;
@@ -230,7 +223,9 @@ struct FunctionLiteral : public Expression {
   // Example: (a: int, b: char, c: string) -> int
   //           a => 0, b => 1, c => 2
   std::unordered_map<std::string, size_t> lookup_;
-  IR::Func *ir_func_ = nullptr;
+  IR::Func *ir_func_                     = nullptr;
+  const BoundConstants *bound_constants_ = nullptr;
+  bool completed_                        = false;
 };
 
 struct GenericFunctionLiteral : public FunctionLiteral {

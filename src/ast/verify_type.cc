@@ -17,7 +17,6 @@ IR::Val OrdFunc();
 
 void ScheduleModule(const Source::Name &src);
 
-std::vector<IR::Val> Evaluate(AST::Expression *expr);
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 #define HANDLE_CYCLIC_DEPENDENCIES                                             \
@@ -157,7 +156,7 @@ static bool CommonAmbiguousFunctionCall(
   return false;
 }
 
-bool Shadow(Declaration *decl1, Declaration *decl2) {
+static bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
   if ((!decl1->type->is<type::Function>() && decl1->type != type::Generic) ||
       (!decl2->type->is<type::Function>() && decl2->type != type::Generic)) {
     return true;
@@ -204,11 +203,11 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
     }
   };
 
-  auto val1 = Evaluate(decl1->init_val.get())[0];
+  auto val1 = Evaluate(decl1->init_val.get(), ctx)[0];
   if (val1.type == nullptr) { return false; }
   auto metadata1 = std::visit(ExtractMetaData, val1.value);
 
-  auto val2 = Evaluate(decl2->init_val.get())[0];
+  auto val2 = Evaluate(decl2->init_val.get(), ctx)[0];
   if (val2.type == nullptr) { return false; }
   auto metadata2 = std::visit(ExtractMetaData, val2.value);
 
@@ -375,7 +374,9 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
   if (!maybe_binding.has_value()) { return std::pair(nullptr, Binding{}); }
   auto binding = std::move(maybe_binding).value();
 
-  Context new_ctx;
+  Context new_ctx(ctx->mod_);
+  BoundConstants bound_constants;
+  new_ctx.bound_constants_ = &bound_constants;
   Expression *expr_to_eval = nullptr;
 
   for (size_t i : decl_order_) {
@@ -418,22 +419,18 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     }
 
     if (inputs[i]->const_) {
-      if (binding.defaulted(i)) {
-        new_ctx.bound_constants_.emplace(
-            inputs[i]->identifier->token,
-            Evaluate(inputs[i].get(), &new_ctx)[0]);
-      } else {
-        new_ctx.bound_constants_.emplace(
-            inputs[i]->identifier->token,
-            Evaluate(binding.exprs_[i].second, ctx)[0]);
-      }
+      bound_constants.emplace(
+          inputs[i]->identifier->token,
+          (binding.defaulted(i) ? Evaluate(inputs[i].get(), &new_ctx)
+                                : Evaluate(binding.exprs_[i].second, ctx))[0]);
     }
 
     binding.exprs_[i].first = input_type;
   }
 
   auto[iter, success] =
-      fns_.emplace(new_ctx.bound_constants_, FunctionLiteral{});
+      fns_.emplace(std::move(bound_constants), FunctionLiteral{});
+  new_ctx.bound_constants_ = &iter->first;
   if (success) {
     auto &func = iter->second;
     if (return_type_expr) {
@@ -518,9 +515,9 @@ void Identifier::VerifyType(Context *ctx) {
 
     if (potential_decls[0]->const_ && potential_decls[0]->arg_val != nullptr &&
         potential_decls[0]->arg_val->is<GenericFunctionLiteral>()) {
-      if (auto iter =
-              ctx->bound_constants_.find(potential_decls[0]->identifier->token);
-          iter != ctx->bound_constants_.end()) {
+      if (auto iter = ctx->bound_constants_->find(
+              potential_decls[0]->identifier->token);
+          iter != ctx->bound_constants_->end()) {
         potential_decls[0]->arg_val = scope_->ContainingFnScope()->fn_lit;
       } else {
         ctx->error_log_.UndeclaredIdentifier(this);
@@ -1030,7 +1027,7 @@ void Declaration::VerifyType(Context *ctx) {
     auto *decl = *iter;
     decl->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
-    if (Shadow(this, decl)) {
+    if (Shadow(this, decl, ctx)) {
       failed_shadowing = true;
       ctx->error_log_.ShadowingDeclaration(*this, *decl);
       limit_to(StageRange::NoEmitIR());
@@ -1105,8 +1102,8 @@ void Import::VerifyType(Context *ctx) {
   if (operand_->type != type::String || operand_->lvalue != Assign::Const) {
     ctx->error_log_.InvalidImport(operand_->span);
   } else {
-    cache_ =
-        Source::Name{std::get<std::string>(Evaluate(operand_.get())[0].value)};
+    cache_ = Source::Name{
+        std::get<std::string>(Evaluate(operand_.get(), ctx)[0].value)};
     ScheduleModule(*cache_);
   }
   limit_to(operand_);
@@ -1266,7 +1263,7 @@ void Access::VerifyType(Context *ctx) {
     }
   } else if (base_type == type::Type_) {
     auto *evaled_type =
-        std::get<const type::Type *>(Evaluate(operand.get())[0].value);
+        std::get<const type::Type *>(Evaluate(operand.get(), ctx)[0].value);
     if (evaled_type->is<type::Enum>()) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on

@@ -1,7 +1,13 @@
 #include "ast.h"
+#include "stages.h"
 
 namespace AST {
-static constexpr int ThisStage() { return 0; }
+#define STAGE_CHECK                                                            \
+  if (stage_range_.high < AssignScopeStage ||                                  \
+      stage_range_.low >= AssignScopeStage) {                                  \
+    return;                                                                    \
+  }                                                                            \
+  stage_range_.low = AssignScopeStage
 
 void Unop::assign_scope(Scope *scope) {
   STAGE_CHECK;
@@ -29,7 +35,7 @@ void Identifier::assign_scope(Scope *scope) {
 void Terminal::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;
-  if (type !=type::Type_) { return; }
+  if (type != type::Type_) { return; }
 }
 
 void ArrayType::assign_scope(Scope *scope) {
@@ -156,4 +162,4 @@ void Hole::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;
 }
-} // namespace AST
+}  // namespace AST

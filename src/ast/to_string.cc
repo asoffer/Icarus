@@ -110,7 +110,7 @@ std::string Binop::to_string(size_t n) const {
   case Language::Operator::Div: ss << " / "; break;
   case Language::Operator::Mod: ss << " % "; break;
   case Language::Operator::Dots: ss << " .. "; break;
-  case Language::Operator::Assign: ss << ""; break;
+  case Language::Operator::Assign: ss << " <<:=>> "; break;
   case Language::Operator::OrEq: ss << " |= "; break;
   case Language::Operator::XorEq: ss << " ^= "; break;
   case Language::Operator::AndEq: ss << " &= "; break;

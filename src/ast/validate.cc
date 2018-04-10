@@ -5,9 +5,9 @@
 
 #define STARTING_CHECK                                                         \
   do {                                                                         \
-    if (stage_range_.high < Validated) { return; }                             \
-    if (stage_range_.low >= Validated) { return; }                             \
-    stage_range_.low = Validated;                                              \
+    if (stage_range_.high < ValidatedStage) { return; }                        \
+    if (stage_range_.low >= ValidatedStage) { return; }                        \
+    stage_range_.low = ValidatedStage;                                         \
   } while (false)
 
 // TODO macro duplicated in verifytypes

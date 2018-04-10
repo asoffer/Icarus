@@ -1,5 +1,18 @@
--- ::= import "examples/lib/core.ic"
+// -- ::= import "examples/lib/core.ic"
+if ::= scope {
+  enter ::= (cond: bool) => cond
+  exit ::= void => false
+}
 
+forever ::= scope {
+  enter ::= (cond: bool) => true
+  exit ::= void => true
+}
+
+while ::= scope {
+  enter ::= (cond: bool) => cond
+  exit ::= void => true
+}
 main ::= void -> void {
   i := 0
   while (i < 100) {

@@ -40,7 +40,8 @@ void StructLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
-    Context ctx;
+    // TODO need to extract the right module here
+    Context ctx(nullptr);
     operand->assign_scope(scope);
     operand->VerifyType(&ctx);
     operand->Validate(&ctx);

@@ -42,3 +42,11 @@ AST::Declaration* Module::GetDecl(const std::string& name) const {
   }
   return nullptr;
 }
+
+void Module::Complete() {
+  while (!to_complete_.empty()) {
+    auto* fn_lit = to_complete_.front();
+    fn_lit->CompleteBody(this);
+    to_complete_.pop();
+  }
+}
