@@ -1,9 +1,12 @@
 MAKEFLAGS += --jobs=4
 
-TARGET  := bin/$(shell basename `pwd`)
+TESTS := $(shell find src -name *_test.cc 2>/dev/null)
+TEST_TARGETS := $(patsubst src/%.cc,bin/test/%,$(TESTS))
 
-SOURCES := $(shell find src -name *.cc 2>/dev/null)
-OBJECTS := $(patsubst src/%.cc,build/%.o,$(SOURCES))
+SRCS := $(shell find src -name *.cc ! -name *_test.cc 2>/dev/null)
+SRC_OBJS := $(patsubst src/%.cc,build/%.o,$(SRCS))
+TARGET := bin/$(shell basename `pwd`)
+
 
 COMPILER := g++-7
 BUILD_FLAGS := -g -O0 -D DBG -rdynamic
@@ -25,24 +28,30 @@ release: BUILD_FLAGS := -O3
 release: $(TARGET)
 
 build/%.o: src/%.cc
+	@mkdir -p `dirname build/%.o`
 	@time $(COMPILER) $(LLVM_CXX) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) -c src/$*.cc -o build/$*.o
 	@echo "Above time is for: " $< "\n"
 
-$(TARGET): $(OBJECTS)
+$(TARGET): $(SRC_OBJS)
 	@echo -n Linking...
-	@$(COMPILER) $(LINK_FLAGS) $(OBJECTS) $(LLVM_LINK) -o $@
+	@$(COMPILER) $(LINK_FLAGS) $(SRC_OBJS) $(LLVM_LINK) -o $@
 	@echo Done.
 
+test: $(TEST_TARGETS)
+
+bin/test/%: src/%.cc
+	@mkdir -p `dirname bin/test/$*.cc`
+	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) src/$*.cc -o $@
+
 clean:
-	@rm -f $(TARGET) $(OBJECTS)
+	@rm -f $(TARGET) $(SRC_OBJS) $(TEST_TARGETS)
 
 help:
-	@echo "TARGET  : $(TARGET)"
-	@echo "SOURCES : $(SOURCES)"
-	@echo "OBJECTS : $(OBJECTS)"
-	@echo "DEPENDS : $(DEPENDS)"
-	@echo "LLVM_CXX : $(LLVM_CXX)"
-	@echo "LLVM_LINK : $(LLVM_LINK)"
+	@echo "      TARGET: $(TARGET)"
+	@echo "        SRCS: $(SRCS)"
+	@echo "    SRC_OBJS: $(SRC_OBJS)"
+	@echo "       TESTS: $(TESTS)"
+	@echo "TEST_TARGETS: $(TEST_TARGETS)"
 
 wc:
 	@wc src/*.* src/*/*.*

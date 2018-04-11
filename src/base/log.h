@@ -2,7 +2,6 @@
 #define ICARUS_BASE_LOG_H
 
 #include <cstdio>
-#include <functional>
 #include "string.h"
 
 namespace base {
