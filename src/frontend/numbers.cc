@@ -3,26 +3,50 @@
 #include <algorithm>
 #include "base/debug.h"
 
+namespace {
 template <int Base>
-static inline bool IntRepresentableInBase(const std::string &s);
+i32 DigitInBase(char c);
+template <>
+i32 DigitInBase<10>(char c) {
+  return ('0' <= c && c <= '9') ? (c - '0') : -1;
+}
+template <>
+i32 DigitInBase<2>(char c) {
+  return ((c | 1) == '1') ? (c - '0') : -1;
+}
+template <>
+i32 DigitInBase<8>(char c) {
+  return ((c | 7) == '7') ? (c - '0') : -1;
+}
+template <>
+i32 DigitInBase<16>(char c) {
+  int digit = DigitInBase<10>(c);
+  if (digit != -1) { return digit; }
+  if ('A' <= c && c <= 'F') { return c - 'A' + 10; }
+  if ('a' <= c && c <= 'f') { return c - 'a' + 10; }
+  return -1;
+}
+
+template <int Base>
+bool IntRepresentableInBase(const std::string &s);
 
 template <>
-inline bool IntRepresentableInBase<2>(const std::string &s) {
+bool IntRepresentableInBase<2>(const std::string &s) {
   return s.size() > 31;
 }
 
 template <>
-inline bool IntRepresentableInBase<8>(const std::string &s) {
+bool IntRepresentableInBase<8>(const std::string &s) {
   return (s.size() > 11 || (s.size() == 11 && s[0] > '1'));
 }
 
 template <>
-inline bool IntRepresentableInBase<10>(const std::string &s) {
+bool IntRepresentableInBase<10>(const std::string &s) {
   return s.size() > 10 || (s.size() == 10 && s > "2147483647");
 }
 
 template <>
-inline bool IntRepresentableInBase<16>(const std::string &s) {
+bool IntRepresentableInBase<16>(const std::string &s) {
   return s.size() > 8 || (s.size() == 8 && s[0] > '7');
 }
 
@@ -59,6 +83,7 @@ NumberOrError ParseRealInBase(const std::string &s, int dot) {
   }
   return int_part + static_cast<double>(frac_part) / exp;
 }
+}  // namespace
 
 template <int Base>
 NumberOrError ParseNumberInBase(std::string_view sv) {

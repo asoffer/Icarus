@@ -85,57 +85,29 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
                               frontend::expr);
 }
 
-template <int Base>
-frontend::TaggedNode NextNumberInBase(SourceLocation &loc) {
+frontend::TaggedNode NextNumber(SourceLocation &loc) {
   auto span = loc.ToSpan();
   const char *start = &*loc;
-  while (*loc == '_' || *loc == '.' || DigitInBase<Base>(*loc) != -1) {
+  while (*loc == 'b' || *loc == 'o' || *loc == 'd' || *loc == 'x' ||
+         *loc == '_' || *loc == '.' || IsDigit(*loc)) {
     loc.Increment();
   }
-
   return std::visit(
-      base::overloaded{
-          [&span](i32 n) {
-            return frontend::TaggedNode::TerminalExpression(span,
-                                                            IR::Val::Int(n));
-          },
-          [&span](double d) {
-            return frontend::TaggedNode::TerminalExpression(span,
-                                                            IR::Val::Real(d));
-          },
-          [&span](const std::string &err) {
-            ErrorLog::LogGeneric(
-                span,
-                "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": " + err);
-            return frontend::TaggedNode {};
-          }},
-      ParseNumberInBase<Base>(std::string_view(start, &*loc - start)));
-}
-
-frontend::TaggedNode NextZeroInitiatedNumber(SourceLocation &loc) {
-  loc.Increment();
-
-  switch (*loc) {
-  case 'b': loc.Increment(); return NextNumberInBase<2>(loc);
-  case 'o': loc.Increment(); return NextNumberInBase<8>(loc);
-  case 'd': loc.Increment(); return NextNumberInBase<10>(loc);
-  case 'x': loc.Increment(); return NextNumberInBase<16>(loc);
-  default:
-    if (*loc == '.') {
-      return NextNumberInBase<10>(loc);
-    } else if (IsAlphaNumericOrUnderscore(*loc)) {
-      ErrorLog::LogGeneric(loc.ToSpan(), "TODO " __FILE__ ":" +
-                                             std::to_string(__LINE__) + ": ");
-      loc.BackUp();
-      // TODO guess the base that was intended? If it has letters a-f, it's
-      // obviously hex. If it's just 0s and 1s it's probably binary (unless it's
-      // short enough?)
-      return NextNumberInBase<10>(loc);
-    } else {
-      return frontend::TaggedNode::TerminalExpression(loc.ToSpan(),
-                                                      IR::Val::Int(0));
-    }
-  }
+      base::overloaded{[&span](i32 n) {
+                         return frontend::TaggedNode::TerminalExpression(
+                             span, IR::Val::Int(n));
+                       },
+                       [&span](double d) {
+                         return frontend::TaggedNode::TerminalExpression(
+                             span, IR::Val::Real(d));
+                       },
+                       [&span](const std::string &err) {
+                         ErrorLog::LogGeneric(
+                             span, "TODO " __FILE__ ":" +
+                                       std::to_string(__LINE__) + ": " + err);
+                         return frontend::TaggedNode{};
+                       }},
+      ParseNumber(std::string_view(start, &*loc - start)));
 }
 
 frontend::TaggedNode NextStringLiteral(SourceLocation &loc,
@@ -306,7 +278,7 @@ frontend::TaggedNode NextOperator(SourceLocation &loc, error::Log* error_log) {
     if (num_dots == 1) {
       if (IsDigit(*loc)) {
         loc.BackUp();
-        return NextNumberInBase<10>(loc);
+        return NextNumber(loc);
       }
       span.finish = loc.cursor;
       return frontend::TaggedNode(span, ".", frontend::op_b);
@@ -568,13 +540,12 @@ restart:
     return frontend::TaggedNode(loc.ToSpan(), "", frontend::eof);
   } else if (IsAlphaOrUnderscore(*loc)) {
     return NextWord(loc);
-  } else if (IsNonZeroDigit(*loc)) {
-    return NextNumberInBase<10>(loc);
+  } else if (IsDigit(*loc)) {
+    return NextNumber(loc);
   }
 
   frontend::TaggedNode tagged_node = frontend::TaggedNode::Invalid();
   switch (*loc) {
-    case '0': tagged_node = NextZeroInitiatedNumber(loc); break;
     case '`': tagged_node = NextCharLiteral(loc, error_log); break;
     case '"': tagged_node = NextStringLiteral(loc, error_log); break;
     case '/': tagged_node = NextSlashInitiatedToken(loc, error_log); break;
