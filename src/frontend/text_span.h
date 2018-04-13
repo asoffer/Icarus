@@ -39,8 +39,6 @@ struct SourceLocation {
     return span;
   }
 
-  static SourceLocation Behind(const SourceLocation &cursor, u32 dist);
-
   void SkipToEndOfLine() { cursor.offset = static_cast<u32>(line().size()); }
 
   void BackUp() {

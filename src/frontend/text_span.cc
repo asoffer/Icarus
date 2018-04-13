@@ -19,10 +19,3 @@ static void IncrementCursor(Source *source, Cursor *cursor) {
 
 void TextSpan::Increment() { IncrementCursor(source, &finish); }
 void SourceLocation::Increment() { IncrementCursor(source, &cursor); }
-
-SourceLocation SourceLocation::Behind(const SourceLocation &loc, u32 dist) {
-  ASSERT_GE(loc.cursor.offset, dist);
-  SourceLocation result = loc;
-  result.cursor.offset -= dist;
-  return result;
-}

@@ -26,36 +26,20 @@ IR::Val AsciiFunc();
 IR::Val OrdFunc();
 
 namespace {
-inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
-inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
-inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
-inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
+constexpr inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
+constexpr inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
+constexpr inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
+constexpr inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
 
-template <int Base> inline i32 DigitInBase(char c);
-template <> i32 DigitInBase<10>(char c) {
-  return ('0' <= c && c <= '9') ? (c - '0') : -1;
-}
-template <> i32 DigitInBase<2>(char c) {
-  return ((c | 1) == '1') ? (c - '0') : -1;
-}
-template <> i32 DigitInBase<8>(char c) {
-  return ((c | 7) == '7') ? (c - '0') : -1;
-}
-template <> i32 DigitInBase<16>(char c) {
-  int digit = DigitInBase<10>(c);
-  if (digit != -1) { return digit; }
-  if ('A' <= c && c <= 'F') { return c - 'A' + 10; }
-  if ('a' <= c && c <= 'f') { return c - 'a' + 10; }
-  return -1;
-}
-
-inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
-inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
-inline bool IsWhitespace(char c) {
+constexpr inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
+constexpr inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
+constexpr inline bool IsWhitespace(char c) {
   return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
-inline bool IsAlphaOrUnderscore(char c) { return IsAlpha(c) || (c == '_'); }
-inline bool IsAlphaNumericOrUnderscore(char c) {
+constexpr inline bool IsAlphaOrUnderscore(char c) {
+  return IsAlpha(c) || (c == '_');
+}
+constexpr inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
 
@@ -97,127 +81,35 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
     if (token == key) { return frontend::TaggedNode(span, key, val); }
   }
 
-  return frontend::TaggedNode(std::make_unique<AST::Identifier>(span, token), frontend::expr);
+  return frontend::TaggedNode(std::make_unique<AST::Identifier>(span, token),
+                              frontend::expr);
 }
 
-template <int Base> frontend::TaggedNode NextNumberInBase(SourceLocation &loc) {
+template <int Base>
+frontend::TaggedNode NextNumberInBase(SourceLocation &loc) {
   auto span = loc.ToSpan();
-
-  const char *start = nullptr;
-  const char *dot   = nullptr;
-  size_t num_dots   = 0; // 0 indicates int, 1 indicates real,
-                         // anything else indicates an error.
-  bool seen_zero = false;
-  std::vector<i32> digits;
-
-  while (true) {
-    switch (*loc) {
-    case '.':
-      if (num_dots++ == 0) { dot = &*loc; }
-      goto next_pre_start;
-    case '0': seen_zero = true; goto next_pre_start;
-    case '_': goto next_pre_start;
-    default: {
-      i32 digit = DigitInBase<Base>(*loc);
-      if (digit == -1) { goto done_reading; }
-      digits.push_back(digit);
-      start = &*loc;
-      goto seen_start;
-    }
-    }
-  next_pre_start:
-    loc.Increment();
-  }
-seen_start:
-  loc.Increment();
-
-  while (true) {
-    switch (*loc) {
-    case '.':
-      if (num_dots++ == 0) { dot = &*loc; }
-      goto next_post_start;
-    case '_': goto next_post_start;
-    default:
-      i32 digit = DigitInBase<Base>(*loc);
-      if (digit == -1) { goto done_reading; }
-      digits.push_back(digit);
-    }
-  next_post_start:
+  const char *start = &*loc;
+  while (*loc == '_' || *loc == '.' || DigitInBase<Base>(*loc) != -1) {
     loc.Increment();
   }
 
-done_reading:
-  (void)dot;
-
-  span.finish = loc.cursor;
-  if (start == nullptr) {
-    if (!seen_zero) {
-      ErrorLog::LogGeneric(
-          span,
-          "TODO " __FILE__ ":" + std::to_string(__LINE__) +
-              ": Found a number that has no starting digit. Treat as zero.");
-    } else {
-      switch (num_dots) {
-      case 0: return frontend::TaggedNode::TerminalExpression(span, IR::Val::Int(0));
-      default:
-        ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
-                                       std::to_string(__LINE__) +
-                                       ": Too many periods in numeric literal. "
-                                       "Ignoring all but the first.");
-        [[fallthrough]];
-      case 1:
-        return frontend::TaggedNode::TerminalExpression(span, IR::Val::Real(0));
-      }
-    }
-  } else {
-    switch (num_dots) {
-    default:
-      ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
-                                     std::to_string(__LINE__) +
-                                     ": Too many periods in numeric literal. "
-                                     "Ignoring all but the first.");
-      [[fallthrough]];
-    case 1: {
-      i32 dot_offset = 0; // TODO compute this based on where the dot is
-      double rep     = RepresentationAsRealInBase<Base>(digits, dot_offset);
-      if (std::isnan(rep)) {
-        ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
-                                       std::to_string(__LINE__) +
-                                       "Number is too large to fit in a  IEEE "
-                                       "754-2008 floating point number");
-        return frontend::TaggedNode::TerminalExpression(span, IR::Val::Real(0));
-      } else {
-        return frontend::TaggedNode::TerminalExpression(span, IR::Val::Real(rep));
-      }
-    }
-    case 0: {
-      i32 rep = RepresentationAsIntInBase<Base>(digits);
-      if (rep == -1) {
-        ErrorLog::LogGeneric(
-            span, "TODO " __FILE__ ":" + std::to_string(__LINE__) +
-                      "Number is too large to fit in a 32-bit integer");
-        return frontend::TaggedNode::TerminalExpression(span, IR::Val::Int(0));
-      } else {
-        return frontend::TaggedNode::TerminalExpression(span, IR::Val::Int(rep));
-      }
-    } break;
-    }
-  }
-
-  // Also ignore any trailing alpha-numeric
-  bool found_extra_junk = false;
-  while (IsAlphaNumericOrUnderscore(*loc)) {
-    found_extra_junk = true;
-    loc.Increment();
-  }
-
-  if (found_extra_junk) {
-    ErrorLog::LogGeneric(loc.ToSpan(), "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-  }
-
-  span.finish = loc.cursor;
-  return frontend::TaggedNode{};
+  return std::visit(
+      base::overloaded{
+          [&span](i32 n) {
+            return frontend::TaggedNode::TerminalExpression(span,
+                                                            IR::Val::Int(n));
+          },
+          [&span](double d) {
+            return frontend::TaggedNode::TerminalExpression(span,
+                                                            IR::Val::Real(d));
+          },
+          [&span](const std::string &err) {
+            ErrorLog::LogGeneric(
+                span,
+                "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": " + err);
+            return frontend::TaggedNode {};
+          }},
+      ParseNumberInBase<Base>(std::string_view(start, &*loc - start)));
 }
 
 frontend::TaggedNode NextZeroInitiatedNumber(SourceLocation &loc) {
@@ -240,12 +132,14 @@ frontend::TaggedNode NextZeroInitiatedNumber(SourceLocation &loc) {
       // short enough?)
       return NextNumberInBase<10>(loc);
     } else {
-      return frontend::TaggedNode::TerminalExpression(loc.ToSpan(), IR::Val::Int(0));
+      return frontend::TaggedNode::TerminalExpression(loc.ToSpan(),
+                                                      IR::Val::Int(0));
     }
   }
 }
 
-frontend::TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
+frontend::TaggedNode NextStringLiteral(SourceLocation &loc,
+                                       error::Log *error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
 
@@ -289,10 +183,12 @@ frontend::TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_lo
   }
 
   span.finish = loc.cursor;
-  return frontend::TaggedNode::TerminalExpression(span, IR::Val::StrLit(str_lit));
+  return frontend::TaggedNode::TerminalExpression(span,
+                                                  IR::Val::StrLit(str_lit));
 }
 
-frontend::TaggedNode NextCharLiteral(SourceLocation &loc, error::Log* error_log) {
+frontend::TaggedNode NextCharLiteral(SourceLocation &loc,
+                                     error::Log *error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
   span.finish = loc.cursor;
@@ -624,7 +520,8 @@ frontend::TaggedNode NextOperator(SourceLocation &loc, error::Log* error_log) {
   }
 }
 
-frontend::TaggedNode NextSlashInitiatedToken(SourceLocation &loc, error::Log* error_log) {
+frontend::TaggedNode NextSlashInitiatedToken(SourceLocation &loc,
+                                             error::Log *error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
   switch (*loc) {

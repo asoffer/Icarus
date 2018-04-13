@@ -1,9 +1,35 @@
 #ifndef ICARUS_TEST_H
 #define ICARUS_TEST_H
 
+#include <functional>
 #include <iostream>
 #include <type_traits>
+#include <variant>
 #include "base/string.h"
+
+namespace test {
+template <typename T>
+auto Holds() {
+  return [](const auto& v) -> std::string {
+    return std::holds_alternative<T>(v) ? "" : "Holds unexpected alternative.";
+  };
+}
+
+template <typename T>
+auto Holds(T&& val) {
+  return [val{std::forward<T>(val)}](const auto& v) -> std::string {
+    if (auto* vptr = std::get_if<std::decay_t<T>>(&v)) {
+      if (*vptr == val) {
+        return "";
+      } else {
+        return "A variant holding " + base::internal::stringify(val);
+      }
+    } else {
+      return "Holds unexpected alternative.";
+    }
+  };
+}
+}  // namespace test
 
 namespace test::internal {
 struct LhsStealer {
@@ -54,6 +80,18 @@ template <typename T, typename U>
 auto operator>>(const Expr<T>& lhs, U&&rhs) {
   return Expr<decltype(std::declval<T>() >> std::declval<U>())>(
       lhs.stealer, lhs.val >> std::forward<U>(rhs));
+}
+
+template <typename T, typename M>
+bool operator,(Expr<T>&& e, M&& m) {
+  auto str    = base::internal::stringify(e.val);
+  auto result = std::forward<M>(m)(std::move(e.val));
+  if (result.empty()) { return true; }
+  std::cerr << "Expectation failed (" << e.stealer.file << ", line #"
+            << e.stealer.line << ")\n\n  EXPECT(" << e.stealer.expr << ")"
+            << "\n\nFound:    " << str << "\nExpected: " << result
+            << "\n\n";
+  return false;
 }
 
 #define MAKE_OPERATOR(op)                                                      \

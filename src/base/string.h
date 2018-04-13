@@ -1,15 +1,18 @@
 #ifndef ICARUS_BASE_STRING_H
 #define ICARUS_BASE_STRING_H
 
+#include <variant>
 #include <sstream>
 #include <string>
 
-namespace base {
-namespace internal {
-template <int N> struct dispatch_rank : public dispatch_rank<N - 1> {};
-template <> struct dispatch_rank<0> {};
+namespace base::internal {
+template <int N>
+struct dispatch_rank : public dispatch_rank<N - 1> {};
+template <>
+struct dispatch_rank<0> {};
 
-template <typename T> std::string stringify(T &&t);
+template <typename T>
+std::string stringify(T &&t);
 
 template <typename T>
 auto stringify(dispatch_rank<7>, const T &s)
@@ -61,6 +64,12 @@ auto stringify(dispatch_rank<5>, const T &t)
   return t;
 }
 
+template <typename... Args>
+auto stringify(dispatch_rank<4>, const std::variant<Args...> &v)
+    -> std::string {
+  return std::visit([](auto &&v) { return stringify(v); }, v);
+}
+
 template <typename T>
 auto stringify(dispatch_rank<4>, const T &t)
     -> decltype(std::declval<T>().to_string(), std::string()) {
@@ -87,7 +96,8 @@ auto stringify(dispatch_rank<2>, T b)
   return b ? "true" : "false";
 }
 
-template <typename T> auto stringify(dispatch_rank<1>, T *ptr) -> std::string {
+template <typename T>
+auto stringify(dispatch_rank<1>, T *ptr) -> std::string {
   std::stringstream ss;
   ss << ptr;
   return ss.str();
@@ -99,10 +109,10 @@ auto stringify(dispatch_rank<0>, T &&t)
   return std::to_string(std::forward<T>(t));
 }
 
-template <typename T> std::string stringify(T &&t) {
+template <typename T>
+std::string stringify(T &&t) {
   return internal::stringify(internal::dispatch_rank<7>{}, std::forward<T>(t));
 }
-} // namespace internal
-} // namespace base
+}  // namespace base::internal
 
 #endif // ICARUS_BASE_STRING_H
