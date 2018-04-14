@@ -83,11 +83,10 @@ NumberOrError ParseRealInBase(const std::string &s, int dot) {
   }
   return int_part + static_cast<double>(frac_part) / exp;
 }
-}  // namespace
 
 template <int Base>
 NumberOrError ParseNumberInBase(std::string_view sv) {
-  std::string copy(sv.data());
+  std::string copy(sv.data(), sv.size());
   copy.erase(
       std::remove_if(copy.begin(), copy.end(), [](char c) { return c == '_'; }),
       copy.end());
@@ -111,6 +110,7 @@ NumberOrError ParseNumberInBase(std::string_view sv) {
   }
   UNREACHABLE();
 }
+}  // namespace
 
 NumberOrError ParseNumber(std::string_view sv) {
   if (sv.size() > 1 && sv[0] == '0') {
