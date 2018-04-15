@@ -37,6 +37,7 @@ struct LlvmData {
 
 static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
                               const IR::Val &val) {
+  UNREACHABLE();
   return std::visit(
       base::overloaded{
           [&](IR::Register reg) -> llvm::Value * {
