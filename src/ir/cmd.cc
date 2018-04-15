@@ -74,7 +74,7 @@ Val Field(Val v, size_t n) {
   return cmd.reg()
 
 Val Malloc(const type::Type *t, Val v) {
-  ASSERT_EQ(v.type,type::Int);
+  ASSERT_EQ(v.type, type::Int);
   MAKE_AND_RETURN(type::Ptr(t), Op::Malloc);
 }
 
@@ -100,6 +100,14 @@ Val Neg(Val v) {
   if (double *r = std::get_if<double>(&v.value)) { return Val::Real(-*r); }
   MAKE_AND_RETURN(v.type, Op::Neg);
 }
+
+Val Cast(const type::Type *to, Val v) {
+  if (v.type == to) { return v; }
+  if (i32 *n = std::get_if<i32>(&v.value)) {
+    if (to == type::Real) { return Val::Real(static_cast<double>(*n)); }
+  }
+  MAKE_AND_RETURN(to, Op::Cast); }
+
 
 void Print(Val v) { MAKE_VOID(Op::Print); }
 void Free(Val v) {
@@ -483,6 +491,7 @@ void Cmd::dump(size_t indent) const {
   case Op::Contextualize: std::cerr << "contextualize"; break;
   case Op::VariantType: std::cerr << "variant-type"; break;
   case Op::VariantValue: std::cerr << "variant-value"; break;
+  case Op::Cast: std::cerr << "cast"; break;
   case Op::Err: std::cerr << "err"; break;
   }
 

@@ -368,6 +368,7 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
       return llvm_data->builder->CreateStore(
           EmitValue(num_args, llvm_data, cmd.args[1]),
           llvm_data->rets[std::get<IR::ReturnValue>(cmd.args[0].value).value]);
+    case IR::Op::Cast: NOT_YET();
     case IR::Op::CreateStruct: UNREACHABLE();
     case IR::Op::InsertField: UNREACHABLE();
     case IR::Op::FinalizeStruct: UNREACHABLE();

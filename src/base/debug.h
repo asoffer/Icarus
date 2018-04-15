@@ -95,6 +95,7 @@ template <typename... Args> void LogArgs(Args &&... args) {
 
 namespace debug {
 inline void DumpStackTrace(int) {
+  /*
   constexpr u32 max_frames = 20;
   fprintf(stderr, "stack trace:\n");
   void *addrlist[max_frames + 1];
@@ -127,6 +128,7 @@ inline void DumpStackTrace(int) {
     }
     free(symbollist);
   }
+  */
 }
 } // namespace debug
 

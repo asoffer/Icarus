@@ -166,6 +166,14 @@ static IR::Val EmitOneCallDispatch(
     const type::Type *ret_type,
     const std::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
+  auto callee = binding.fn_expr_->EmitIR(ctx).value;
+  if (const type::Type **cast_to = std::get_if<const type::Type *>(&callee)) {
+    ASSERT_EQ(binding.exprs_.size(), 1u);
+    auto[bound_type, expr] = binding.exprs_[0];
+    return IR::Cast(*cast_to, bound_type->PrepareArgument(
+                                       expr->type, *expr_map.at(expr), ctx));
+  }
+
   // After the last check, if you pass, you should dispatch
   IR::Func *fn_to_call = std::visit(
       base::overloaded{[](IR::Func *fn) { return fn; },
@@ -174,7 +182,7 @@ static IR::Val EmitOneCallDispatch(
                          UNREACHABLE();
                          return nullptr;
                        }},
-      binding.fn_expr_->EmitIR(ctx).value);
+      callee);
   std::vector<IR::Val> args;
   args.resize(binding.exprs_.size());
   for (size_t i = 0; i < args.size(); ++i) {
@@ -182,7 +190,7 @@ static IR::Val EmitOneCallDispatch(
     if (expr == nullptr) {
       ASSERT_NE(bound_type, nullptr);
       auto default_expr = fn_to_call->args_[i].second;
-      args[i] = bound_type->PrepareArgument(default_expr->type,
+      args[i]           = bound_type->PrepareArgument(default_expr->type,
                                             default_expr->EmitIR(ctx), ctx);
     } else {
       args[i] =
@@ -266,7 +274,7 @@ static IR::Val EmitCallDispatch(
 }
 
 IR::Val AST::Call::EmitIR(Context *ctx) {
-  if (fn_->is<Terminal>()) {
+  if (fn_->is<Terminal>() && fn_->type != type::Type_) {
     return IR::Call(ErrorFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
   }
 

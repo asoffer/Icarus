@@ -21,6 +21,7 @@ enum class Op : char {
   Contextualize,
   VariantType, VariantValue,
   Err,
+  Cast,
   CondJump,
   UncondJump,
   ReturnJump,
@@ -86,6 +87,7 @@ Val VariantValue(const type::Type *t, Val);
 Val Err(Val v);
 Val CreateStruct();
 Val FinalizeStruct(Val v);
+Val Cast(const type::Type *to, Val v);
 
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val);

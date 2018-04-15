@@ -355,9 +355,20 @@ static std::optional<DispatchTable> ComputeDispatchTable(
       } else {
         goto next_option;
       }
+    } else if (fn_option->type == type::Type_) {
+      ASSERT_EQ(args.pos_.size(), 1u);
+      ASSERT(args.named_.empty(), "");
+
+      FnArgs<const type::Type *> call_arg_types;
+      call_arg_types.pos_.push_back(args.pos_[0]->type);
+      Binding binding;
+      binding.fn_expr_ = fn_option;
+      binding.exprs_.emplace_back(args.pos_[0]->type, args.pos_[0]);
+      table.insert(std::move(call_arg_types), std::move(binding));
+
     } else if (fn_option->type == type::Err) {
       // If there's a type error, do I want to exit entirely or assume this
-      // one doesn't exist? and juts goto next_option?
+      // one doesn't exist? and just goto next_option?
       return std::nullopt;
 
     } else {
@@ -583,9 +594,16 @@ static const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
     out_types.reserve(dispatch_table->bindings_.size());
     ASSERT_NE(0u, dispatch_table->bindings_.size());
     for (const auto & [ key, val ] : dispatch_table->bindings_) {
-      auto &outs = val.fn_expr_->type->as<type::Function>().output;
-      ASSERT_LE(outs.size(), 1u);
-      out_types.push_back(outs.empty() ? type::Void : outs[0]);
+      if (val.fn_expr_->type->is<type::Function>()) {
+        auto &outs = val.fn_expr_->type->as<type::Function>().output;
+        ASSERT_LE(outs.size(), 1u);
+        out_types.push_back(outs.empty() ? type::Void : outs[0]);
+      } else if (val.fn_expr_->type == type::Type_) {
+        out_types.push_back(std::get<const type ::Type *>(
+            Evaluate(val.fn_expr_, ctx)[0].value));
+      } else {
+        UNREACHABLE(val.fn_expr_->type);
+      }
     }
     return type::Var(std::move(out_types));
   } else {
@@ -824,7 +842,7 @@ void Call::VerifyType(Context *ctx) {
     return;
   }
 
-  if (fn_->is<Terminal>()) {
+  if (fn_->is<Terminal>() && fn_->type != type::Type_) {
     // Special case for error/ord/ascii
     if (fn_->as<Terminal>().value == OrdFunc()) {
       NOT_YET();
@@ -836,6 +854,7 @@ void Call::VerifyType(Context *ctx) {
       UNREACHABLE();
     }
   }
+
   std::vector<Expression *> fn_options;
   if (!fn_->is<Identifier>()) {
     fn_->VerifyType(ctx);
@@ -881,15 +900,6 @@ void Call::VerifyType(Context *ctx) {
     // type::Err).
     fn_->type = type::Void;
   }
-
-  std::vector<const type::Type *> out_types;
-  out_types.reserve(dispatch_table_.bindings_.size());
-  for (const auto & [ key, val ] : dispatch_table_.bindings_) {
-    auto &outs = val.fn_expr_->type->as<type::Function>().output;
-    ASSERT_LE(outs.size(), 1u);
-    out_types.push_back(outs.empty() ? type::Void : outs[0]);
-  }
-  type = type::Var(std::move(out_types));
 }
 
 void Declaration::VerifyType(Context *ctx) {
