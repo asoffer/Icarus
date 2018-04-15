@@ -356,15 +356,29 @@ static std::optional<DispatchTable> ComputeDispatchTable(
         goto next_option;
       }
     } else if (fn_option->type == type::Type_) {
+      LOG << fn_option;
       ASSERT_EQ(args.pos_.size(), 1u);
       ASSERT(args.named_.empty(), "");
 
-      FnArgs<const type::Type *> call_arg_types;
-      call_arg_types.pos_.push_back(args.pos_[0]->type);
-      Binding binding;
-      binding.fn_expr_ = fn_option;
-      binding.exprs_.emplace_back(args.pos_[0]->type, args.pos_[0]);
-      table.insert(std::move(call_arg_types), std::move(binding));
+      // TODO check for validity of call
+      if (args.pos_[0]->type->is<type::Variant>()) {
+        for (auto *t : args.pos_[0]->type->as<type::Variant>().variants_) {
+          FnArgs<const type::Type *> call_arg_types;
+          call_arg_types.pos_.push_back(args.pos_[0]->type);
+          Binding binding;
+          binding.fn_expr_ = fn_option;
+          binding.exprs_.emplace_back(t, args.pos_[0]);
+          LOG << binding.exprs_;
+          table.insert(std::move(call_arg_types), std::move(binding), 1);
+        }
+      } else {
+        FnArgs<const type::Type *> call_arg_types;
+        call_arg_types.pos_.push_back(args.pos_[0]->type);
+        Binding binding;
+        binding.fn_expr_ = fn_option;
+        binding.exprs_.emplace_back(args.pos_[0]->type, args.pos_[0]);
+        table.insert(std::move(call_arg_types), std::move(binding));
+      }
 
     } else if (fn_option->type == type::Err) {
       // If there's a type error, do I want to exit entirely or assume this
@@ -481,13 +495,15 @@ void GenericFunctionLiteral::VerifyType(Context *ctx) {
 }
 
 void DispatchTable::insert(FnArgs<const type::Type *> call_arg_types,
-                           Binding binding) {
-  u64 expanded_size = 1;
-  call_arg_types.Apply([&expanded_size](const type::Type *t) {
-    if (t->is<type::Variant>()) {
-      expanded_size *= t->as<type::Variant>().size();
-    }
-  });
+                           Binding binding, size_t expanded_size) {
+  if (expanded_size == std::numeric_limits<size_t>::max()) {
+    expanded_size = 1;
+    call_arg_types.Apply([&expanded_size](const type::Type *t) {
+      if (t->is<type::Variant>()) {
+        expanded_size *= t->as<type::Variant>().size();
+      }
+    });
+  }
 
   total_size_ += expanded_size;
   bindings_.emplace(std::move(call_arg_types), std::move(binding));

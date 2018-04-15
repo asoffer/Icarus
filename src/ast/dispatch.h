@@ -38,7 +38,8 @@ struct DispatchTable {
   //   streaming manner?
   // * Add weights for PGO optimizations?
 
-  void insert(FnArgs<const type::Type *> call_arg_types, Binding binding);
+  void insert(FnArgs<const type::Type *> call_arg_types, Binding binding,
+              size_t expanded_size = std::numeric_limits<size_t>::max());
 
   std::map<FnArgs<const type::Type *>, Binding> bindings_;
   size_t total_size_ = 0;
