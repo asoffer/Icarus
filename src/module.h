@@ -33,6 +33,8 @@ struct Module {
   ~Module();
   Module(Module&&) = delete;
 
+  IR::Func* AddFunc(AST::FunctionLiteral* fn_lit,
+      std::vector<std::pair<std::string, AST::Expression *>> args);
   IR::Func* AddFunc(const type::Function* fn_type,
       std::vector<std::pair<std::string, AST::Expression *>> args);
   const type::Type* GetType(const std::string& name) const;

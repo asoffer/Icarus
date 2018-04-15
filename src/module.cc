@@ -17,9 +17,21 @@ Module::Module()
 Module::~Module() = default;
 
 IR::Func* Module::AddFunc(
+    AST::FunctionLiteral* fn_lit,
+    std::vector<std::pair<std::string, AST::Expression*>> args) {
+  fns_.push_back(std::make_unique<IR::Func>(this, fn_lit, std::move(args)));
+  fns_.back()->llvm_fn_ = llvm::Function::Create(
+      fn_lit->type->as<type::Function>().llvm_fn(*llvm_ctx_),
+      llvm::Function::ExternalLinkage, "", llvm_.get());
+  fns_.back()->llvm_fn_->setName(fns_.back()->name());
+  return fns_.back().get();
+}
+
+
+IR::Func* Module::AddFunc(
     const type::Function* fn_type,
     std::vector<std::pair<std::string, AST::Expression*>> args) {
-  fns_.push_back(std::make_unique<IR::Func>(fn_type, std::move(args)));
+  fns_.push_back(std::make_unique<IR::Func>(this, fn_type, std::move(args)));
   fns_.back()->llvm_fn_ =
       llvm::Function::Create(fn_type->llvm_fn(*llvm_ctx_),
                              llvm::Function::ExternalLinkage, "", llvm_.get());

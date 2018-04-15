@@ -31,9 +31,12 @@ void ForEachExpr(AST::Expression *expr,
   }
 }
 
+// TODO using nullptr for module. Is that safe here? Is it correct?
+
 IR::Val ErrorFunc() {
   static IR::Func *error_func_ = []() {
-    auto fn = new IR::Func(Func(type::String, type::Code), {{"", nullptr}});
+    auto fn =
+        new IR::Func(nullptr, Func(type::String, type::Code), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       // TODO
@@ -47,7 +50,8 @@ IR::Val ErrorFunc() {
 
 IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
-    auto fn = new IR::Func(Func(type::Int, type::Char), {{"", nullptr}});
+    auto fn =
+        new IR::Func(nullptr, Func(type::Int, type::Char), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
@@ -60,7 +64,8 @@ IR::Val AsciiFunc() {
 
 IR::Val OrdFunc() {
   static IR::Func *ord_func_ = []() {
-    auto fn = new IR::Func(Func(type::Char, type::Int), {{"", nullptr}});
+    auto fn =
+        new IR::Func(nullptr, Func(type::Char, type::Int), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));
@@ -978,7 +983,7 @@ IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
                         input->as<Declaration>().init_val.get());
     }
 
-    ir_func_ = ctx->mod_->AddFunc(&type->as<type::Function>(), std::move(args));
+    ir_func_ = ctx->mod_->AddFunc(this, std::move(args));
     ctx->mod_->to_complete_.push(this);
   }
   return IR::Val::FnLit(this);

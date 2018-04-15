@@ -19,7 +19,8 @@ std::vector<IR::Val> global_vals;
 static std::unique_ptr<IR::Func> ExprFn(
     AST::Expression *expr, const type::Type *input, Context *ctx,
     const std::vector<std::pair<std::string, AST::Expression *>> args = {}) {
-  auto fn = std::make_unique<IR::Func>(type::Func(input, expr->type), args);
+  auto fn = std::make_unique<IR::Func>(ctx->mod_, type::Func(input, expr->type),
+                                       args);
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
     // Factor these out together.
@@ -49,8 +50,9 @@ static std::unique_ptr<IR::Func> ExprFn(
 // TODO This is ugly and possibly wasteful.
 static std::unique_ptr<IR::Func> AssignmentFunction(const type::Type *from,
                                                     const type::Type *to) {
+  // TODO is nullptr for module okay here?
   auto assign_func = std::make_unique<IR::Func>(
-      Func({Ptr(from), Ptr(to)}, type::Void),
+      nullptr, Func({Ptr(from), Ptr(to)}, type::Void),
       std::vector<std::pair<std::string, AST::Expression *>>{{"from", nullptr},
                                                              {"to", nullptr}});
   // TODO maybe we want to wire contexts through here? probably.
@@ -68,6 +70,7 @@ static std::unique_ptr<IR::Func> AssignmentFunction(const type::Type *from,
 namespace IR {
 static std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
                                 ExecContext *ctx) {
+  if (fn->fn_lit_) { fn->fn_lit_->CompleteBody(fn->mod_); }
   /*
   if (were_errors != nullptr) {
     int num_errors = 0;
@@ -579,8 +582,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 } // namespace IR
 
 void ReplEval(AST::Expression *expr) {
+  // TODO is nullptr for module okay here?
   auto fn = std::make_unique<IR::Func>(
-      type::Func(type::Void, type::Void),
+      nullptr, type::Func(type::Void, type::Void),
       std::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();

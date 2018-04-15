@@ -16,13 +16,22 @@ namespace type {
 struct Function;
 }  // namespace type
 
+struct Module;
+
+namespace AST {
+struct FunctionLiteral;
+}  // namespace AST
+
+
 struct ExecContext;
 
 namespace IR {
 struct Func {
   static Func *Current;
 
-  Func(const type::Function *fn_type,
+  Func(Module *mod, const type::Function *fn_type,
+       std::vector<std::pair<std::string, AST::Expression *>> args);
+  Func(Module *mod, AST::FunctionLiteral* fn_lit,
        std::vector<std::pair<std::string, AST::Expression *>> args);
 
   void dump() const;
@@ -60,7 +69,8 @@ struct Func {
 
   // Is this needed? Or can it be determined from the containing FunctionLiteral
   // object?
-  const type::Function *const type_ = nullptr;
+  AST::FunctionLiteral *fn_lit_       = nullptr;
+  const type::Function *const type_   = nullptr;
   const type::Function *const ir_type = nullptr;
   std::vector<std::pair<std::string, AST::Expression *>> args_;
   bool has_default(size_t i) const { return args_[i].second != nullptr; }
@@ -77,6 +87,7 @@ struct Func {
   std::unordered_map<Register, CmdIndex> reg_map_;
   std::vector<AST::Expression *> preconditions_;
   std::vector<AST::Expression *> postconditions_;
+  Module* mod_;
   // TODO many of these maps could and should be vectors except they're keyed on
   // strong ints. Consider adding a strong int vector.
   std::unordered_map<CmdIndex, std::vector<CmdIndex>> references_;
