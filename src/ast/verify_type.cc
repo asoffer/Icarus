@@ -356,7 +356,6 @@ static std::optional<DispatchTable> ComputeDispatchTable(
         goto next_option;
       }
     } else if (fn_option->type == type::Type_) {
-      LOG << fn_option;
       ASSERT_EQ(args.pos_.size(), 1u);
       ASSERT(args.named_.empty(), "");
 
@@ -368,7 +367,6 @@ static std::optional<DispatchTable> ComputeDispatchTable(
           Binding binding;
           binding.fn_expr_ = fn_option;
           binding.exprs_.emplace_back(t, args.pos_[0]);
-          LOG << binding.exprs_;
           table.insert(std::move(call_arg_types), std::move(binding), 1);
         }
       } else {

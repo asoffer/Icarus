@@ -1138,6 +1138,12 @@ struct ParseState {
     if (ahead.tag_ == r_paren) { return ShiftState::MustReduce; }
 
     if (get_type<1>() == r_paren && ahead.tag_ == l_brace) {
+      size_t i = tag_stack_.size() - 1;
+      while (i > 0) {
+        if (tag_stack_[i] == fn_arrow) { return ShiftState::MustReduce; }
+        if (tag_stack_[i] == stmts) { return ShiftState::NeedMore; }
+        --i;
+      }
       return ShiftState::NeedMore;
     }
 

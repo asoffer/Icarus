@@ -21,7 +21,6 @@ struct ExecContext;
 namespace IR {
 struct Func {
   static Func *Current;
-  static std::vector<std::unique_ptr<Func>> All;
 
   Func(const type::Function *fn_type,
        std::vector<std::pair<std::string, AST::Expression *>> args);

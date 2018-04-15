@@ -123,6 +123,7 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
 
 BlockIndex ExecContext::ExecuteBlock() {
   Val result;
+  ASSERT_GT(current_block().cmds_.size(), 0u);
   auto cmd_iter = current_block().cmds_.begin();
   do {
     result = ExecuteCmd(*cmd_iter);
