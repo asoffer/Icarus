@@ -106,8 +106,8 @@ Val Cast(const type::Type *to, Val v) {
   if (i32 *n = std::get_if<i32>(&v.value)) {
     if (to == type::Real) { return Val::Real(static_cast<double>(*n)); }
   }
-  MAKE_AND_RETURN(to, Op::Cast); }
-
+  MAKE_AND_RETURN(to, Op::Cast);
+}
 
 void Print(Val v) { MAKE_VOID(Op::Print); }
 void Free(Val v) {

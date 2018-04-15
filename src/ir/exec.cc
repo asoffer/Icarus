@@ -173,8 +173,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   }
 
   switch (cmd.op_code_) {
-    case Op::Cast:
-      return Cast(std::get<const type::Type *>(resolved[0].value), resolved[1]);
+    case Op::Cast: return Cast(cmd.type, resolved[0]);
     case Op::Neg: return Neg(resolved[0]);
     case Op::Add: return Add(resolved[0], resolved[1]);
     case Op::Sub: return Sub(resolved[0], resolved[1]);

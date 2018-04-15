@@ -171,7 +171,7 @@ static IR::Val EmitOneCallDispatch(
     ASSERT_EQ(binding.exprs_.size(), 1u);
     auto[bound_type, expr] = binding.exprs_[0];
     return IR::Cast(*cast_to, bound_type->PrepareArgument(
-                                       expr->type, *expr_map.at(expr), ctx));
+                                  expr->type, *expr_map.at(expr), ctx));
   }
 
   // After the last check, if you pass, you should dispatch
