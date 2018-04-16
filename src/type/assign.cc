@@ -75,10 +75,6 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to, Context*
   IR::Call(IR::Val::Func(fn), {from, to}, {});
 }
 
-void Tuple::EmitAssign(const Type *, IR::Val, IR::Val, Context *ctx) const {
-  NOT_YET();
-}
-
 void Pointer::EmitAssign(const Type *from_type, IR::Val from,
                          IR::Val to, Context*ctx) const {
   ASSERT_EQ(this, from_type);

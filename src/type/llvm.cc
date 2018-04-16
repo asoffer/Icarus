@@ -29,12 +29,6 @@ llvm::Type* Array::llvm(llvm::LLVMContext& ctx) const {
                                        data_type->llvm(ctx)->getPointerTo(0)});
   }
 }
-llvm::Type* Tuple::llvm(llvm::LLVMContext& ctx) const {
-  std::vector<llvm::Type*> llvm_types;
-  llvm_types.reserve(entries.size());
-  for (const Type* t : entries) { llvm_types.push_back(t->llvm(ctx)); }
-  return llvm::StructType::get(ctx, llvm_types);
-}
 
 llvm::Type* Enum::llvm(llvm::LLVMContext& ctx) const { 
   // TODO make as wide as is necessary

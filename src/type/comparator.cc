@@ -5,15 +5,6 @@ namespace type {
 // result of this function is... maybe not what you intended.
 Cmp Array::Comparator() const { return data_type->Comparator(); }
 
-Cmp Tuple::Comparator() const {
-  using cmp_t = std::underlying_type_t<Cmp>;
-  auto cmp = static_cast<cmp_t>(Cmp::Order);
-  for (const Type *t : entries) {
-    cmp = std::min(cmp, static_cast<cmp_t>(t->Comparator()));
-  }
-  return static_cast<Cmp>(cmp);
-}
-
 Cmp Primitive::Comparator() const {
   if (type_ == PrimType::Int || type_ == PrimType::Real ||
       type_ == PrimType::String) {

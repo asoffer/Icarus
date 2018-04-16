@@ -114,7 +114,6 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
   IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
 }
 
-void Tuple::EmitRepr(IR::Val, Context *ctx) const { NOT_YET(); }
 // TODO print something friendlier
 void Pointer::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(val); }
 void Enum::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(val); }

@@ -21,10 +21,6 @@ IR::Val Array::PrepareArgument(const Type *from, const IR::Val &val,
   }
 }
 
-IR::Val Tuple::PrepareArgument(const Type *from, const IR::Val &,
-                               Context *ctx) const {
-  NOT_YET(this, from);
-}
 IR::Val Primitive::PrepareArgument(const Type *from, const IR::Val &val,
                                    Context *ctx) const {
   if (from->is<Variant>()) {

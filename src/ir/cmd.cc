@@ -435,10 +435,11 @@ Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
   // Long-term we should do this consistently even for small types, because for
   // multiple return values, we really could return them in multiple registers
   // rather than allocating stack space.
+  const auto &fn_type = fn.type->as<type::Function>();
   const type::Type *output_type =
-      type::Tup(fn.type->as<type::Function>().output)->is_big()
-          ? type::Void
-          : type::Tup(fn.type->as<type::Function>().output);
+      (fn_type.output.size() == 1 && !fn_type.output[0]->is_big())
+          ? fn_type.output[0]
+          : type::Void;
   Cmd cmd(output_type, Op::Call, std::move(vals));
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();

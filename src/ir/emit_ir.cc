@@ -204,19 +204,23 @@ static IR::Val EmitOneCallDispatch(
   }
 
   ASSERT_NE(fn_to_call, nullptr);
-  const type::Type *output_type_for_this_binding =
-      type::Tup(fn_to_call->type_->output);
+
+  if (fn_to_call->type_->output.size() > 1) {
+    NOT_YET(fn_to_call->type_->output);
+  }
   IR::Val ret_val;
-  if (output_type_for_this_binding->is_big()) {
+  auto *out_type = fn_to_call->type_->output.empty()
+                       ? type::Void
+                       : fn_to_call->type_->output AT(0);
+  if (out_type->is_big()) {
     ret_val = IR::Alloca(ret_type);
     IR::Call(IR::Val::Func(fn_to_call), std::move(args), {ret_val});
   } else {
     if (ret_type->is_big()) {
       ret_val = IR::Alloca(ret_type);
       ret_type->EmitAssign(
-          output_type_for_this_binding,
-          IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}), ret_val,
-          ctx);
+          out_type, IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}),
+          ret_val, ctx);
     } else {
       ret_val = IR::Call(IR::Val::Func(fn_to_call), std::move(args), {});
     }

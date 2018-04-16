@@ -231,13 +231,14 @@ static bool Inferrable(const type::Type *t) {
     return Inferrable(t->as<type::Array>().data_type);
   } else if (t->is<type::Pointer>()) {
     return Inferrable(t->as<type::Pointer>().pointee);
-  } else if (t->is<type::Tuple>()) {
-    for (auto *entry : t->as<type::Tuple>().entries) {
-      if (!Inferrable(entry)) { return false; }
-    }
   } else if (t->is<type::Function>()) {
-    return Inferrable(type::Tup(t->as<type::Function>().input)) &&
-           Inferrable(type::Tup(t->as<type::Function>().output));
+    const auto &f = t->as<type::Function>();
+    for (auto *t : f.input) {
+      if (!Inferrable(t)) { return false; }
+    }
+    for (auto *t : f.output) {
+      if (!Inferrable(t)) { return false; }
+    }
   }
   // TODO higher order types?
   return true;
@@ -1414,7 +1415,7 @@ void ChainOp::VerifyType(Context *ctx) {
             switch (ops[i]) {
               case Language::Operator::Eq:
               case Language::Operator::Ne: {
-                switch (lhs_type->Comparator()) {
+                switch (cmp) {
                   case type::Cmp::Order:
                   case type::Cmp::Equality: continue;
                   case type::Cmp::None:
@@ -1464,22 +1465,6 @@ void CommaList::VerifyType(Context *ctx) {
     limit_to(StageRange::Nothing());
     return;
   }
-
-  // TODO this is probably not a good way to do it.  If the tuple consists of a
-  // list of types, it should be interpretted as a
-  // type itself rather than a tuple. This is a limitation in your support of
-  // full tuples.
-  bool all_types = true;
-  std::vector<const type::Type *> type_vec(exprs.size(), nullptr);
-
-  size_t position = 0;
-  for (const auto &expr : exprs) {
-    type_vec[position] = expr->type;
-    all_types &= (expr->type == type::Type_);
-    ++position;
-  }
-  // TODO got to have a better way to make tuple types i think
-  type = all_types ? type::Type_ : type::Tup(type_vec);
 }
 
 void ArrayLiteral::VerifyType(Context *ctx) {
@@ -1701,7 +1686,7 @@ void ScopeLiteral::VerifyType(Context *ctx) {
   if (cannot_proceed_due_to_errors) {
     limit_to(StageRange::Nothing());
   } else {
-    type = type::Scp(type::Tup(enter_fn->type->as<type::Function>().input));
+    type = type::Scp(enter_fn->type->as<type::Function>().input);
   }
 }
 

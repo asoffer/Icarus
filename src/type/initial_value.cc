@@ -15,8 +15,6 @@ IR::Val Array::EmitInitialValue(Context* ctx) const {
   return temp_allocation;
 }
 
-IR::Val Tuple::EmitInitialValue(Context* ctx) const { NOT_YET(); }
-
 IR::Val Pointer::EmitInitialValue(Context* ctx) const {
   return IR::Val::Null(this);
 }

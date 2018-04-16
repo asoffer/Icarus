@@ -212,24 +212,6 @@ char *Variant::WriteTo(char *buf) const {
   return buf;
 }
 
-size_t Tuple::string_size() const {
-  size_t result = 2 * entries.size();
-  for (const Type *entry : entries) { result += entry->string_size(); }
-  return result;
-}
-char *Tuple::WriteTo(char *buf) const {
-  buf = std::strcpy(buf, "(") + 1;
-  auto iter = entries.begin();
-  buf = (*iter)->WriteTo(buf);
-  ++iter;
-  for (; iter != entries.end(); ++iter) {
-    buf = std::strcpy(buf, ", ") + 2;
-    buf = (*iter)->WriteTo(buf);
-  }
-  buf = std::strcpy(buf, ")") + 1;
-  return buf;
-}
-
 size_t Range::string_size() const { return 7 + end_type->string_size(); }
 char *Range::WriteTo(char *buf) const {
   buf = std::strcpy(buf, "Range(") + 6;
@@ -245,10 +227,21 @@ char *Slice::WriteTo(char *buf) const {
   return buf;
 }
 
-size_t Scope::string_size() const { return 7 + type_->string_size(); }
+size_t Scope::string_size() const {
+  size_t result = 5 + 2 * types_.size();
+  for (const Type *t : types_) { result += t->string_size(); }
+  return result;
+}
+
 char *Scope::WriteTo(char *buf) const {
-  buf = std::strcpy(buf, "Scope(") + 6;
-  buf = type_->WriteTo(buf);
+  buf = std::strcpy(buf, "scope(") + 6;
+  auto iter = types_.begin();
+  buf = (*iter)->WriteTo(buf);
+  ++iter;
+  for (; iter != types_.end(); ++iter) {
+    buf = std::strcpy(buf, ", ") + 2;
+    buf = (*iter)->WriteTo(buf);
+  }
   buf = std::strcpy(buf, ")") + 1;
   return buf;
 }

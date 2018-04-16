@@ -209,8 +209,6 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
 
   } else if (to_type->is<Function>()) {
     NOT_YET();
-  } else if (to_type->is<Tuple>()) {
-    NOT_YET();
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
     to_type->EmitAssign(from_type, from_val, to_var, ctx);
@@ -256,8 +254,6 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
 
   } else if (to_type->is<Function>()) {
     NOT_YET();
-  } else if (to_type->is<Tuple>()) {
-    NOT_YET();
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
     to_type->EmitAssign(from_type, from_val, to_var, ctx);
@@ -302,21 +298,6 @@ const Type *Meet(const Type *lhs, const Type *rhs) {
   } else if (rhs->is<Array>() && lhs == EmptyArray &&
              !rhs->as<Array>().fixed_length) {
     return Arr(rhs->as<Array>().data_type, 0);
-  } else if (lhs->is<Tuple>()) {
-    if (!rhs->is<Tuple>() ||
-        lhs->as<Tuple>().entries.size() != rhs->as<Tuple>().entries.size()) {
-      return nullptr;
-    }
-    std::vector<const Type *> joined;
-    for (size_t i = 0; i < lhs->as<Tuple>().entries.size(); ++i) {
-      if (const Type *result =
-              Meet(lhs->as<Tuple>().entries[i], rhs->as<Tuple>().entries[i])) {
-        joined.push_back(result);
-      } else {
-        return nullptr;
-      }
-    }
-    return Tup(std::move(joined));
   } else if (lhs->is<Variant>()) {
     // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
     std::vector<const Type *> results;
@@ -373,17 +354,6 @@ const Type *Join(const Type *lhs, const Type *rhs) {
   } else if (rhs->is<Array>() && lhs == EmptyArray &&
              !rhs->as<Array>().fixed_length) {
     return rhs;
-  } else if (lhs->is<Tuple>() && rhs->is<Tuple>()) {
-    const Tuple *lhs_tup = &lhs->as<Tuple>();
-    const Tuple *rhs_tup = &rhs->as<Tuple>();
-    if (lhs_tup->entries.size() != rhs_tup->entries.size()) { return nullptr; }
-    std::vector<const Type *> joined;
-    for (size_t i = 0; i < lhs_tup->entries.size(); ++i) {
-      const Type *result = Join(lhs_tup->entries[i], rhs_tup->entries[i]);
-      if (result == nullptr) { return nullptr; }
-      joined.push_back(result);
-    }
-    return Tup(std::move(joined));
   } else if (lhs->is<Variant>()) {
     std::vector<const Type *> rhs_types;
     if (rhs->is<Variant>()) {
@@ -420,13 +390,6 @@ const Array *Arr(const Type *t) {
   return &arrays_.emplace(t, Array(t)).first->second;
 }
 
-static std::map<std::vector<const Type *>, Tuple> tuples_;
-const Type *Tup(std::vector<const Type *> types) {
-  if (types.empty()) { return Void; }
-  if (types.size() == 1) { return types.front(); }
-  return &tuples_.emplace(types, Tuple(types)).first->second;
-}
-
 static std::map<std::vector<const Type *>, Variant> variants_;
 const Type *Var(std::vector<const Type *> variants) {
   ASSERT_NE(variants.size(), 0u);
@@ -458,7 +421,8 @@ const Type *Var(std::vector<const Type *> variants) {
   return &variants_.emplace(std::move(variants), std::move(v)).first->second;
 }
 
-static TypeContainer<const Type *, TypeContainer<const Type *, Function>>
+static std::map<std::vector<const Type *>,
+                std::map<std::vector<const Type *>, Function>>
     funcs_;
 const Function *Function::ToIR() const {
   std::vector<const Type *> ins;
@@ -488,9 +452,10 @@ const Function *Func(const Type *in, std::vector<const Type *> out) {
 }
 const Function *Func(std::vector<const Type *> in,
                      std::vector<const Type *> out) {
+  // TODO if void is unit in some way we shouldn't do this.
   if (in == std::vector<const Type *>{Void}) { in = {}; }
   if (out == std::vector<const Type *>{Void}) { out = {}; }
-  return &funcs_[Tup(in)].emplace(Tup(out), Function(in, out)).first->second;
+  return &funcs_[in].emplace(out, Function(in, out)).first->second;
 }
 
 static TypeContainer<const Type *, const Range> ranges_;
@@ -503,9 +468,9 @@ const Slice *Slc(const Array *a) {
   return &slices_.emplace(a, Slice(a)).first->second;
 }
 
-static TypeContainer<const Type *, const Scope> scopes_;
-const Scope *Scp(const Type *t) {
-  return &scopes_.emplace(t, Scope(t)).first->second;
+static std::map<std::vector<const Type *>, const Scope> scopes_;
+const Scope *Scp(const std::vector<const Type *> &types) {
+  return &scopes_.emplace(types, Scope(types)).first->second;
 }
 
 bool Type::is_big() const {

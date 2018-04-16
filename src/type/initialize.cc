@@ -52,8 +52,6 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
   IR::Call(IR::Val::Func(init_func_), std::vector<IR::Val>{id_val}, {});
 }
 
-void Tuple::EmitInit(IR::Val, Context *ctx) const { NOT_YET(); }
-
 void Primitive::EmitInit(IR::Val id_val, Context *ctx) const {
   IR::Store(EmitInitialValue(ctx), id_val);
 }

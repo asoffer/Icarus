@@ -51,8 +51,6 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
   IR::Call(IR::Val::Func(destroy_func_), {id_val}, {});
 }
 
-void Tuple::EmitDestroy(IR::Val, Context *ctx) const { NOT_YET(); }
-
 void Enum::EmitDestroy(IR::Val, Context *ctx) const {}
 void Function::EmitDestroy(IR::Val, Context *ctx) const {}
 void Pointer::EmitDestroy(IR::Val, Context *ctx) const {}

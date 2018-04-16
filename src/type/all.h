@@ -10,7 +10,6 @@ struct Range;
 struct Scope;
 struct Slice;
 struct Struct;
-struct Tuple;
 struct Type;
 struct Variant;
 } // namespace type
@@ -49,7 +48,6 @@ struct Identifier;
 #include "scope.h"
 #include "slice.h"
 #include "struct.h"
-#include "tuple.h"
 #include "variant.h"
 
 #undef TYPE_FNS
