@@ -49,7 +49,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             }
 
             // TODO still need to be sure these are read in the correct order
-            return llvm_data->regs.at(reg);
+            return llvm_data->regs AT(reg);
           },
           [&](IR::ReturnValue ret) -> llvm::Value * { NOT_YET(); },
           [&](IR::Addr addr) -> llvm::Value * { NOT_YET(); },
@@ -97,8 +97,11 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
       val.value);
 }
 
-static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
+static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
                             const IR::Cmd &cmd) {
+  size_t num_args = fn_type->input.size();
+  size_t num_rets = fn_type->output.size();
+
   auto &ctx = llvm_data->module->getContext();
   switch (cmd.op_code_) {
     case IR::Op::Alloca:
@@ -161,11 +164,13 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
           llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[1].value).value],
           llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[2].value).value]);
     case IR::Op::ReturnJump:
-      if (num_args == 1) {
-        llvm_data->builder->CreateRet(
-            llvm_data->builder->CreateLoad(llvm_data->rets[0]));
-      } else {
-        llvm_data->builder->CreateRetVoid();
+      switch (num_rets) {
+        case 0: llvm_data->builder->CreateRetVoid(); break;
+        case 1:
+          llvm_data->builder->CreateRet(
+              llvm_data->builder->CreateLoad(llvm_data->rets[0]));
+          break;
+        default: NOT_YET();
       }
       return nullptr;
     case IR::Op::Trunc:
@@ -194,18 +199,21 @@ static llvm::Value *EmitCmd(size_t num_args, LlvmData *llvm_data,
               "print");
         } else if (arg.type == type::Char) {
           return llvm_data->builder->CreateCall(
-              printf_fn, {StringConstant(llvm_data->builder, "%c"),
-                          EmitValue(num_args, llvm_data, arg)},
+              printf_fn,
+              {StringConstant(llvm_data->builder, "%c"),
+               EmitValue(num_args, llvm_data, arg)},
               "print");
         } else if (arg.type == type::Int) {
           return llvm_data->builder->CreateCall(
-              printf_fn, {StringConstant(llvm_data->builder, "%d"),
-                          EmitValue(num_args, llvm_data, arg)},
+              printf_fn,
+              {StringConstant(llvm_data->builder, "%d"),
+               EmitValue(num_args, llvm_data, arg)},
               "print");
         } else if (arg.type == type::Real) {
           return llvm_data->builder->CreateCall(
-              printf_fn, {StringConstant(llvm_data->builder, "%f"),
-                          EmitValue(num_args, llvm_data, arg)},
+              printf_fn,
+              {StringConstant(llvm_data->builder, "%f"),
+               EmitValue(num_args, llvm_data, arg)},
               "print");
         } else if (arg.type == type::String) {
           // TODO this is wrong because strings aren't char*
@@ -416,10 +424,10 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
 
     for (size_t i = 0; i < fn->blocks_.size(); ++i) {
       builder.SetInsertPoint(llvm_data.blocks[i]);
-      for (const auto &cmd : fn->blocks_[i].cmds_) {
-        llvm_data.regs[cmd.result] =
-            EmitCmd(fn->type_->output.size(), &llvm_data, cmd);
-        if (llvm_data.regs[cmd.result] == nullptr) { break; }
+      for (const auto &cmd : fn->blocks_ AT(i).cmds_) {
+        auto cmd_result = EmitCmd(fn->type_, &llvm_data, cmd);
+        llvm_data.regs[cmd.result] = cmd_result;
+        if (cmd_result == nullptr) { break; }
       }
     }
 
@@ -437,4 +445,5 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
     }
   }
 }
+
 }  // namespace backend

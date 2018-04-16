@@ -108,14 +108,16 @@ int GenerateCode() {
   do {
     std::vector<std::shared_future<std::unique_ptr<Module>> *> future_ptrs;
     {
-      auto handle = modules.lock();
+      auto handle  = modules.lock();
       current_size = handle->size();
       for (auto & [ src, module ] : *handle) { future_ptrs.push_back(&module); }
     }
     for (auto *future : future_ptrs) { future->wait(); }
   } while (current_size != modules.lock()->size());
+
   return 0;
 }
+
 
 int RunRepl() {
   std::puts("Icarus REPL (v0.1)");

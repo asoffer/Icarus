@@ -2,7 +2,6 @@ main ::= void -> void {
   x: bool | int = 999
   y: bool | int = true
 
-  foo(3, 4)
   x = true
   y = 123
   foo(x, y)
@@ -20,7 +19,18 @@ main ::= void -> void {
   foo(x, y)
 }
 
-foo ::= (x: bool, y: bool) -> void { print "foo(x: bool, y: bool)\n" }
-foo ::= (x: bool, y: int) -> void { print "foo(x: bool, y: int)\n" }
-foo ::= (x: int, y: bool) -> void { print "foo(x: int, y: bool)\n" }
-foo ::= (x: int, y: int) -> void { print "foo(x: int, y: int)\n" }
+foo ::= (x: bool, y: bool) -> void {
+  print "foo(x: bool = ", x, ", y: bool = ", y, ")\n"
+}
+
+foo ::= (x: bool, y: int) -> void {
+  print "foo(x: bool = ", x, ", y: int = ", y, ")\n"
+}
+
+foo ::= (x: int, y: bool) -> void {
+  print "foo(x: int = ", x, ", y: bool = ", y, ")\n"
+}
+
+foo ::= (x: int, y: int) -> void {
+  print "foo(x: int = ", x, ", y: int = ", y, ")\n"
+}
