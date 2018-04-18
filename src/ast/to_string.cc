@@ -212,9 +212,21 @@ std::string FunctionLiteral::to_string(size_t n) const {
     }
     ss << ")";
   }
-  ss << " -> " << (return_type_expr ? return_type_expr->to_string(n + 1) : "")
-     << " {\n"
-     << statements->to_string(n + 1) << tabs(n) << "}";
+  ss << " -> ";
+  if (!return_type_inferred_) {
+    ss << "(";
+    if (!outputs.empty()) {
+      auto iter = outputs.begin();
+      ss << (*iter)->to_string(n);
+      ++iter;
+      while (iter != outputs.end()) {
+        ss << ", " << (*iter)->to_string(n);
+        ++iter;
+      }
+    }
+    ss << ")";
+  }
+  ss << " {\n" << statements->to_string(n + 1) << tabs(n) << "}";
   return ss.str();
 }
 

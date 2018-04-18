@@ -80,8 +80,8 @@ void GenericFunctionLiteral::ExtractReturnTypes(
 
 void FunctionLiteral::ExtractReturnTypes(
     std::unordered_set<const type::Type *> *types) const {
-  if (return_type_expr) { return_type_expr->ExtractReturnTypes(types); }
   for (auto &in : inputs) { in->ExtractReturnTypes(types); }
+  for (auto &out : outputs) { out->ExtractReturnTypes(types); }
 }
 
 void Jump::ExtractReturnTypes(std::unordered_set<const type::Type *> *) const {}

@@ -113,8 +113,8 @@ void FunctionLiteral::assign_scope(Scope *scope) {
     fn_scope         = scope->add_child<FnScope>();
     fn_scope->fn_lit = this;
   }
-  if (return_type_expr) { return_type_expr->assign_scope(fn_scope.get()); }
   for (auto &in : inputs) { in->assign_scope(fn_scope.get()); }
+  for (auto &out : outputs) { out->assign_scope(fn_scope.get()); }
   statements->assign_scope(fn_scope.get());
 }
 

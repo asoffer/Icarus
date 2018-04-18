@@ -457,14 +457,22 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
   new_ctx.bound_constants_ = &iter->first;
   if (success) {
     auto &func = iter->second;
-    if (return_type_expr) {
-      func.return_type_expr = base::wrap_unique(return_type_expr->Clone());
-    }
+    func.return_type_inferred_ = return_type_inferred_;
+
     func.inputs.reserve(inputs.size());
     for (const auto &input : inputs) {
       func.inputs.emplace_back(input->Clone());
       func.inputs.back()->arg_val = &func;
     }
+
+    func.outputs.reserve(outputs.size());
+    for (const auto &output : outputs) {
+      func.outputs.emplace_back(output->Clone());
+      if (output->is<Declaration>()) {
+        func.outputs.back()->as<Declaration>().arg_val = &func;
+      }
+    }
+
     func.statements = base::wrap_unique(statements->Clone());
     func.ClearIdDecls();
 
@@ -1534,62 +1542,68 @@ void FunctionLiteral::VerifyType(Context *ctx) {
     HANDLE_CYCLIC_DEPENDENCIES;
   }
 
-  if (return_type_expr) {
-    return_type_expr->VerifyType(ctx);
+  for (auto &output : outputs) {
+    output->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(return_type_expr);
   }
-
+  
   if (ctx->num_errors() > 0) {
     type = type::Err;
     limit_to(StageRange::Nothing());
     return;
   }
 
-  if (return_type_expr) {
+  if (!return_type_inferred_) {
     std::vector<const type::Type *> input_type_vec;
     input_type_vec.reserve(inputs.size());
     for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
 
     // TODO should named return types be required?
-    auto rets = Evaluate(
-        [&]() {
-          if (!return_type_expr->is<Declaration>()) {
-            return return_type_expr.get();
-          }
+    std::vector<IR::Val> out_vals;
+    out_vals.reserve(outputs.size());
+    for (const auto &out : outputs) {
+      auto result = Evaluate(
+          [&]() {
+            if (!out->is<Declaration>()) { return out.get(); }
 
-          auto *decl_return = &return_type_expr->as<Declaration>();
-          if (decl_return->IsInferred()) { NOT_YET(); }
+            auto *out_decl = &out->as<Declaration>();
+            if (out_decl->IsInferred()) { NOT_YET(); }
+            return out_decl->type_expr.get();
+          }(),
+          ctx);
+      ASSERT_EQ(result.size(), 1u);
+      out_vals.push_back(std::move(result)[0]);
+    }
 
-          return decl_return->type_expr.get();
-        }(),
-        ctx);
-
-    if (rets.empty()) {
+    if (out_vals.empty()) {
       type = type::Err;
       limit_to(StageRange::Nothing());
     }
 
-    auto &ret_type_val = rets[0];
-
-    // TODO must this really be undeclared?
-    if (ret_type_val == IR::Val::None() /* TODO Error() */) {
-      ctx->error_log_.IndeterminantType(return_type_expr->span);
-      type = type::Err;
-      limit_to(StageRange::Nothing());
-    } else if (ret_type_val.type != type::Type_) {
-      ctx->error_log_.NotAType(return_type_expr.get());
-      type = type::Err;
-      limit_to(StageRange::Nothing());
-      return;
-    } else if (std::get<const type::Type *>(ret_type_val.value) == type::Err) {
-      type = type::Err;
-     limit_to(StageRange::Nothing());
-      return;
+    std::vector<const type::Type*> ret_types;
+    ret_types.reserve(out_vals.size());
+    for (size_t i= 0; i < out_vals.size(); ++i) {
+      const auto& out = out_vals[i];
+      if (out == IR::Val::None() /* TODO Error() */) {
+        ctx->error_log_.IndeterminantType(outputs[i]->span);
+        type = type::Err;
+        limit_to(StageRange::Nothing());
+      } else if (out.type != type::Type_) {
+        ctx->error_log_.NotAType(outputs[i].get());
+        type = type::Err;
+        limit_to(StageRange::Nothing());
+        continue;
+      } else if (auto *ret_type = std::get<const type::Type *>(out.value);
+                 ret_type == type::Err) {
+        type = type::Err;
+        limit_to(StageRange::Nothing());
+        continue;
+      } else {
+        ret_types.push_back(ret_type);
+      }
     }
 
-    auto *ret_type = std::get<const type::Type *>(ret_type_val.value);
-    type           = type::Func(input_type_vec, ret_type);
+    type = type::Func(std::move(input_type_vec), std::move(ret_types));
   } else {
     Validate(ctx);
   }

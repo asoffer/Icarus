@@ -76,16 +76,16 @@ ArrayType *ArrayType::Clone() const {
 }
 
 FunctionLiteral *FunctionLiteral::Clone() const {
-  auto *result             = new FunctionLiteral;
-  result->span      = span;
-  if (return_type_expr) {
-    result->return_type_expr = base::wrap_unique(return_type_expr->Clone());
-  }
-  result->statements       = base::wrap_unique(statements->Clone());
-  result->lookup_          = lookup_;
+  auto *result       = new FunctionLiteral;
+  result->span       = span;
+  result->statements = base::wrap_unique(statements->Clone());
+  result->lookup_    = lookup_;
   result->inputs.reserve(inputs.size());
   for (const auto &input : inputs) {
     result->inputs.emplace_back(input->Clone());
+  }
+  for (const auto &output : outputs) {
+    result->outputs.emplace_back(output->Clone());
   }
   return result;
 }

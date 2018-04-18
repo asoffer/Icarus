@@ -80,8 +80,8 @@ void ArrayType::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 }
 
 void FunctionLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  if (return_type_expr) { return_type_expr->SaveReferences(scope, args); }
   for (auto &input : inputs) { input->SaveReferences(scope, args); }
+  for (auto &output : outputs) { output->SaveReferences(scope, args); }
   statements->SaveReferences(fn_scope.get(), args);
 }
 
@@ -198,8 +198,8 @@ void ArrayType::contextualize(const Node *correspondant,
 
 void FunctionLiteral::contextualize(const Node *correspondant,
                                     const RefMap &replacements) {
-  if (return_type_expr) { CONTEXTUALIZE(return_type_expr); }
   for (size_t i = 0; i < inputs.size(); ++i) { CONTEXTUALIZE(inputs[i]); }
+  for (size_t i = 0; i < outputs.size(); ++i) { CONTEXTUALIZE(outputs[i]); }
   CONTEXTUALIZE(statements);
 }
 

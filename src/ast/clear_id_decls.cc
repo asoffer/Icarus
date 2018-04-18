@@ -81,8 +81,8 @@ void GenericFunctionLiteral::ClearIdDecls() {
 void FunctionLiteral::ClearIdDecls() {
   fn_scope = nullptr;
   stage_range_ = StageRange{};
-  if (return_type_expr) { return_type_expr->ClearIdDecls(); }
   for (auto &in : inputs) { in->ClearIdDecls(); }
+  for (auto &out : outputs) { out->ClearIdDecls(); }
   statements->ClearIdDecls();
 }
 

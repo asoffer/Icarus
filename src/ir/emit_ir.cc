@@ -647,7 +647,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
       return IR::Neg(operand->EmitIR(ctx));
     } break;
     case Language::Operator::Return: {
-      ForEachExpr(operand.get(), [&ctx](size_t i, AST::Expression *expr) {
+      ForEachExpr(operand.get(), [ctx](size_t i, AST::Expression *expr) {
         IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)}, expr->EmitIR(ctx));
       });
       IR::ReturnJump();
@@ -1026,10 +1026,10 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
       inputs[i]->addr = IR::Func::Current->Argument(static_cast<i32>(i));
     }
 
-    // TODO multiple return types
-    if (return_type_expr->is<Declaration>()) {
-      return_type_expr->as<Declaration>().addr =
-          IR::Val::Ret(IR::ReturnValue{0}, return_type_expr->type);
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      if (!outputs[i]->is<Declaration>()) { continue; }
+      outputs[i]->as<Declaration>().addr =
+          IR::Val::Ret(IR::ReturnValue(i), outputs[i]->type);
     }
 
     for (auto scope : fn_scope->innards_) {

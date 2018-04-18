@@ -493,9 +493,18 @@ BuildFunctionLiteral(std::vector<std::unique_ptr<Node>> nodes,
   fn_lit->inputs           = std::move(inputs);
   fn_lit->span             = TextSpan(nodes[0]->span, nodes[1]->span);
   fn_lit->statements       = move_as<Statements>(nodes[1]);
-  fn_lit->return_type_expr = move_as<Expression>(binop->rhs);
-  if (fn_lit->return_type_expr->is<Declaration>()) {
-    fn_lit->return_type_expr->as<Declaration>().arg_val = fn_lit;
+
+  if (binop->rhs->is<CommaList>()) {
+    for (auto &expr : binop->rhs->as<CommaList>().exprs) {
+      fn_lit->outputs.push_back(std::move(expr));
+    }
+  } else {
+    fn_lit->outputs.push_back(move_as<Expression>(binop->rhs));
+  }
+  fn_lit->return_type_inferred_ = false;
+
+  for (auto &expr : fn_lit->outputs) {
+    if (expr->is<Declaration>()) { expr->as<Declaration>().arg_val = fn_lit; }
   }
 
   size_t i = 0;

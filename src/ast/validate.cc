@@ -107,8 +107,8 @@ void ArrayType::Validate(Context *ctx) {
 
 void FunctionLiteral::Validate(Context *ctx) {
   STARTING_CHECK;
-  if (return_type_expr) { return_type_expr->Validate(ctx); }
   for (auto &in : inputs) { in->Validate(ctx); }
+  for (auto &out : outputs) { out->Validate(ctx); }
 
   // NOTE! Type verifcation on statements first!
   statements->VerifyType(ctx);
@@ -131,9 +131,13 @@ void FunctionLiteral::Validate(Context *ctx) {
 
   // TODO all the empty, == 1 or > 1 logic should be handled by a joining
   // function
-  if (!return_type_expr) {
-    return_type_expr =
-        std::make_unique<Terminal>(TextSpan(), IR::Val::Type(type));
+  if (return_type_inferred_) {
+    outputs.reserve(types.size());
+    for (const auto &t : types) {
+      // TODO the order is super relevant here!
+      outputs.push_back(
+          std::make_unique<Terminal>(TextSpan(), IR::Val::Type(type)));
+    }
   }
 }
 

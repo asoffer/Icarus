@@ -16,6 +16,9 @@
 
 std::vector<IR::Val> global_vals;
 
+void ForEachExpr(AST::Expression *expr,
+                 const std::function<void(size_t, AST::Expression *)> &fn);
+
 static std::unique_ptr<IR::Func> ExprFn(
     AST::Expression *expr, const type::Type *input, Context *ctx,
     const std::vector<std::pair<std::string, AST::Expression *>> args = {}) {
@@ -28,17 +31,13 @@ static std::unique_ptr<IR::Func> ExprFn(
     // Leave space for allocas that will come later (added to the entry
     // block).
 
-    auto start_block   = IR::Func::Current->AddBlock();
-    IR::Block::Current = start_block;
+    auto start_block = IR::Block::Current = IR::Func::Current->AddBlock();
 
-    IR::Val result;
-    if (ctx) {
-      result = expr->EmitIR(ctx);
-    }
-
-    if (expr->type != type::Void) {
-      IR::SetReturn(IR::ReturnValue{0}, std::move(result));
-    }
+    ASSERT_NE(ctx, nullptr);
+    ForEachExpr(expr, [ctx](size_t i, AST::Expression *e) {
+      IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)},
+                    std::move(e->EmitIR(ctx)));
+    });
     IR::ReturnJump();
 
     IR::Block::Current = fn->entry();

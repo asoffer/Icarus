@@ -214,9 +214,9 @@ struct FunctionLiteral : public Expression {
   virtual IR::Val EmitIR(Context *);
 
   std::unique_ptr<FnScope> fn_scope;
-  std::unique_ptr<Expression> return_type_expr;
 
   std::vector<std::unique_ptr<Declaration>> inputs;
+  std::vector<std::unique_ptr<Expression>> outputs;
   std::unique_ptr<Statements> statements;
 
   // Maps the string name of the declared argument to it's index:
@@ -226,6 +226,7 @@ struct FunctionLiteral : public Expression {
   IR::Func *ir_func_                     = nullptr;
   const BoundConstants *bound_constants_ = nullptr;
   bool completed_                        = false;
+  bool return_type_inferred_             = true;
 };
 
 struct GenericFunctionLiteral : public FunctionLiteral {
