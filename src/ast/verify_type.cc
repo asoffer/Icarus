@@ -606,32 +606,36 @@ static std::vector<Expression *> FunctionOptions(const std::string &token,
   return fn_options;
 }
 
-static const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
-                                          std::vector<Expression *> fn_options,
-                                          AST::DispatchTable *dispatch_table,
-                                          Context *ctx) {
+static std::vector<const type::Type *> SetDispatchTable(
+    const FnArgs<Expression *> &args, std::vector<Expression *> fn_options,
+    AST::DispatchTable *dispatch_table, Context *ctx) {
   if (auto maybe_table =
           ComputeDispatchTable(args, std::move(fn_options), ctx)) {
     *dispatch_table = std::move(maybe_table).value();
-    std::vector<const type::Type *> out_types;
+    std::vector<std::vector<const type::Type *>> out_types;
     out_types.reserve(dispatch_table->bindings_.size());
     ASSERT_NE(0u, dispatch_table->bindings_.size());
     for (const auto & [ key, val ] : dispatch_table->bindings_) {
       if (val.fn_expr_->type->is<type::Function>()) {
-        auto &outs = val.fn_expr_->type->as<type::Function>().output;
-        ASSERT_LE(outs.size(), 1u);
-        out_types.push_back(outs.empty() ? type::Void : outs[0]);
+        const auto &outs = val.fn_expr_->type->as<type::Function>().output;
+        out_types.push_back(outs.empty() ? std::vector<const type::Type *>{}
+                                         : outs);
       } else if (val.fn_expr_->type == type::Type_) {
-        out_types.push_back(std::get<const type ::Type *>(
-            Evaluate(val.fn_expr_, ctx)[0].value));
+        out_types.push_back({std::get<const type::Type *>(
+            Evaluate(val.fn_expr_, ctx)[0].value)});
       } else {
         UNREACHABLE(val.fn_expr_->type);
       }
     }
-    return type::Var(std::move(out_types));
+
+    std::vector<const type::Type*> var_outs;
+    var_outs.reserve(out_types.size());
+    std::transform(out_types.begin(), out_types.end(),
+                   std::back_inserter(var_outs), type::Var);
+    return var_outs;
   } else {
     LOG << "FAIL!"; /* TODO do I need to log an error here? */
-    return type::Err;
+    return {};
   }
 }
 
@@ -673,14 +677,48 @@ void Binop::VerifyType(Context *ctx) {
 
   // TODO if lhs is reserved?
   if (op == Operator::Assign) {
-    if (CanCastImplicitly(rhs->type, lhs->type)) {
-      type = type::Void;
+    if (lhs->is<CommaList>()) {
+      if (rhs->is<CommaList>()) {
+        if (lhs->as<CommaList>().exprs.size() !=
+            rhs->as<CommaList>().exprs.size()) {
+          NOT_YET("error message");
+        } else {
+          for (size_t i = 0; i < lhs->as<CommaList>().exprs.size(); ++i) {
+            auto &lhs_expr = lhs->as<CommaList>().exprs[i];
+            auto &rhs_expr = rhs->as<CommaList>().exprs[i];
+            if (CanCastImplicitly(rhs_expr->type, lhs_expr->type)) {
+              type = type::Void;
+            } else {
+              ErrorLog::LogGeneric(
+                  this->span,
+                  "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
+              type = type::Err;
+              limit_to(StageRange::NoEmitIR());
+            }
+          }
+        }
+      } else {
+        LOG << lhs;
+        LOG << rhs;
+        NOT_YET("error message");
+      }
     } else {
-      ErrorLog::LogGeneric(
-          this->span, "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-      type = type::Err;
-      limit_to(StageRange::NoEmitIR());
+      if (rhs->is<CommaList>()) {
+        LOG << lhs;
+        LOG << rhs;
+        NOT_YET("error message");
+      } else {
+        if (CanCastImplicitly(rhs->type, lhs->type)) {
+          type = type::Void;
+        } else {
+          ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                               std::to_string(__LINE__) + ": ");
+          type = type::Err;
+          limit_to(StageRange::NoEmitIR());
+        }
+      }
     }
+
     return;
   }
 
@@ -781,9 +819,11 @@ void Binop::VerifyType(Context *ctx) {
       type = ret_type;                                                         \
     } else {                                                                   \
       FnArgs<Expression *> args;                                               \
-      args.pos_ = std::vector{lhs.get(), rhs.get()};                           \
-      type = SetDispatchTable(args, FunctionOptions(symbol, scope_, ctx),      \
-                              &dispatch_table_, ctx);                          \
+      args.pos_  = std::vector{lhs.get(), rhs.get()};                          \
+      auto types = SetDispatchTable(                                           \
+          args, FunctionOptions(symbol, scope_, ctx), &dispatch_table_, ctx);  \
+      ASSERT_EQ(1u, types.size());                                             \
+      type = types[0];                                                         \
       if (type == type::Err) { limit_to(StageRange::Nothing()); }              \
     }                                                                          \
   } break;
@@ -821,9 +861,11 @@ void Binop::VerifyType(Context *ctx) {
 
       } else {
         FnArgs<Expression *> args;
-        args.pos_ = std::vector{lhs.get(), rhs.get()};
-        type = SetDispatchTable(args, FunctionOptions("*", scope_, ctx),
-                                &dispatch_table_, ctx);
+        args.pos_  = std::vector{lhs.get(), rhs.get()};
+        auto types = SetDispatchTable(args, FunctionOptions("*", scope_, ctx),
+                                      &dispatch_table_, ctx);
+        ASSERT(1u, types.size());
+        type = types[0];
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       }
     } break;
@@ -898,7 +940,11 @@ void Call::VerifyType(Context *ctx) {
         return const_cast<Expression *>(arg.get());
       });
 
-  type = SetDispatchTable(args, std::move(fn_options), &dispatch_table_, ctx);
+  auto types =
+      SetDispatchTable(args, std::move(fn_options), &dispatch_table_, ctx);
+  ASSERT(1u, types.size());
+  type = types[0];
+
   if (type == type::Err) { limit_to(StageRange::Nothing()); }
 
   u64 expanded_size = 1;
@@ -1224,9 +1270,11 @@ void Unop::VerifyType(Context *ctx) {
 
       } else if (operand->type->is<type::Struct>()) {
         FnArgs<Expression *> args;
-        args.pos_ = std::vector{operand.get()};
-        type = SetDispatchTable(args, FunctionOptions("-", scope_, ctx),
-                                &dispatch_table_, ctx);
+        args.pos_  = std::vector{operand.get()};
+        auto types = SetDispatchTable(args, FunctionOptions("-", scope_, ctx),
+                                      &dispatch_table_, ctx);
+        ASSERT(1u, types.size());
+        type = types[0];
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       }
     } break;
@@ -1245,8 +1293,10 @@ void Unop::VerifyType(Context *ctx) {
       } else if (operand->type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_ = std::vector{operand.get()};
-        type = SetDispatchTable(args, FunctionOptions("!", scope_, ctx),
-                                &dispatch_table_, ctx);
+        auto types = SetDispatchTable(args, FunctionOptions("!", scope_, ctx),
+                                      &dispatch_table_, ctx);
+        ASSERT(1u, types.size());
+        type = types[0];
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       } else {
         ErrorLog::LogGeneric(
@@ -1411,8 +1461,11 @@ void ChainOp::VerifyType(Context *ctx) {
 
           FnArgs<Expression *> args;
           args.pos_ = std::vector{exprs[i].get(), exprs[i + 1].get()};
-          type = SetDispatchTable(args, FunctionOptions(token, scope_, ctx),
-                                  &dispatch_tables_[i], ctx);
+          auto types =
+              SetDispatchTable(args, FunctionOptions(token, scope_, ctx),
+                               &dispatch_tables_[i], ctx);
+          ASSERT(1u, types.size());
+          type = types[0];
           if (type == type::Err) { limit_to(StageRange::Nothing()); }
         } else {
           if (lhs_type != rhs_type) {

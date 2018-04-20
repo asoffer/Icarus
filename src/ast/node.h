@@ -3,12 +3,12 @@
 
 #include <iosfwd>
 #include <limits>
+#include <set>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <unordered_set>
-#include <unordered_map>
 
 #include "../base/util.h"
 #include "../frontend/text_span.h"
@@ -23,7 +23,7 @@
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void ExtractReturnTypes(                                             \
-      std::unordered_set<const type::Type *> *types) const override;           \
+      std::set<std::vector<const type::Type *>> *types) const override;        \
   virtual void contextualize(                                                  \
       const Node *correspondant,                                               \
       const std::unordered_map<const Expression *, IR::Val> &) override
@@ -63,8 +63,8 @@ struct Node : public base::Cast<Node> {
   contextualize(const Node *correspondant,
                 const std::unordered_map<const Expression *, IR::Val> &) = 0;
   virtual Node *Clone() const                                            = 0;
-  virtual void
-  ExtractReturnTypes(std::unordered_set<const type::Type *> *types) const = 0;
+  virtual void ExtractReturnTypes(
+      std::set<std::vector<const type::Type *>> *types) const = 0;
 
   std::string to_string() const { return to_string(0); }
 

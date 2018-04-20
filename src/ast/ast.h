@@ -39,7 +39,7 @@ struct TokenNode : public Node {
   virtual void VerifyType(Context *) {}
   virtual void Validate(Context *) {}
   virtual void ExtractReturnTypes(
-      std::unordered_set<const type::Type *> *types) const override {}
+      std::set<std::vector<const type::Type *>> *types) const override {}
 
   virtual void
   contextualize(const Node *correspondant,

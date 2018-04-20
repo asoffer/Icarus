@@ -114,17 +114,20 @@ void FunctionLiteral::Validate(Context *ctx) {
   statements->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
 
-  std::unordered_set<const type::Type *> types;
+  std::set<std::vector<const type::Type *>> types;
   statements->ExtractReturnTypes(&types);
   // TODO actually join all types.
   statements->Validate(ctx);
 
-  std::vector<const type::Type *> input_type_vec;
+  std::vector<const type::Type *> input_type_vec, output_type_vec;
   input_type_vec.reserve(inputs.size());
   for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
 
   switch (types.size()) {
-    case 0: type = type::Func(std::move(input_type_vec), type::Void); break;
+    case 0:
+      type = type::Func(std::move(input_type_vec),
+                        std::vector<const type::Type *>{});
+      break;
     case 1: type = type::Func(std::move(input_type_vec), *types.begin()); break;
     default: NOT_YET();
   }

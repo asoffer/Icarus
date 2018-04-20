@@ -77,12 +77,20 @@ llvm::Type* Struct::llvm(llvm::LLVMContext& ctx) const {
 }
 
 llvm::FunctionType* Function::llvm_fn(llvm::LLVMContext& ctx) const {
-  ASSERT_LE(output.size(), 1u);
   std::vector<llvm::Type*> llvm_inputs;
   llvm_inputs.reserve(input.size());
   for (auto* t : input) { llvm_inputs.push_back(t->llvm(ctx)); }
-  return llvm::FunctionType::get(
-      output.empty() ? llvm::Type::getVoidTy(ctx) : output[0]->llvm(ctx),
-      llvm_inputs, false);
+  switch (output.size()) {
+    case 0:
+      return llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), llvm_inputs,
+                                     false);
+    case 1:
+      return llvm::FunctionType::get(output[0]->llvm(ctx), llvm_inputs, false);
+    default: {
+      for (auto* t : output) { llvm_inputs.push_back(Ptr(t)->llvm(ctx)); }
+      return llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), llvm_inputs,
+                                     false);
+    } break;
+  }
 }
 } // namespace type

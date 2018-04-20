@@ -170,7 +170,9 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
           llvm_data->builder->CreateRet(
               llvm_data->builder->CreateLoad(llvm_data->rets[0]));
           break;
-        default: NOT_YET();
+        default: 
+          // TODO write outputs to all the out-params
+          llvm_data->builder->CreateRetVoid();
       }
       return nullptr;
     case IR::Op::Trunc:

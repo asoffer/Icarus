@@ -373,7 +373,7 @@ const Type *Join(const Type *lhs, const Type *rhs) {
     }
     return nullptr;
   }
-  UNREACHABLE();
+  UNREACHABLE(lhs, rhs);
 }
 
 template <typename Key, typename Val>

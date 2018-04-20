@@ -17,7 +17,7 @@ struct Context;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void ExtractReturnTypes(                                             \
-      std::unordered_set<const type::Type *> *types) const override;           \
+      std::set<std::vector<const type::Type *>> *types) const override;        \
   virtual void contextualize(                                                  \
       const Node *correspondant,                                               \
       const std::unordered_map<const Expression *, IR::Val> &) override
