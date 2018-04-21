@@ -293,7 +293,11 @@ Val Mod(Val v1, Val v2) {
 }
 
 Val Arrow(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(const type::Type *, type::Func, Type);
+  CONSTANT_PROPOGATION(const type::Type *,
+                       [](const type::Type *lhs, const type::Type *rhs) {
+                         return type::Func({lhs}, {rhs});
+                       },
+                       Type);
   MAKE_AND_RETURN2(type::Type_, Op::Arrow);
 }
 

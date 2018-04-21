@@ -17,67 +17,7 @@
   }                                                                            \
   struct type_name
 
-#define DEFINE_STRONG_STRING(type_name)                                        \
-  struct type_name : public ::base::StrongString<type_name> {                  \
-    explicit type_name(const char *name = "")                                  \
-        : ::base::StrongString<type_name>(name) {}                             \
-    explicit type_name(std::string name)                                       \
-        : ::base::StrongString<type_name>(std::move(name)) {}                  \
-  }
-
 namespace base {
-template <typename StringType> struct StrongString;
-
-template <typename StringType>
-bool operator==(const StrongString<StringType> &lhs,
-                const StrongString<StringType> &rhs);
-template <typename StringType>
-std::ostream &operator<<(std::ostream &os, const StrongString<StringType> &s);
-
-template <typename StringType> struct StrongString {
-public:
-  explicit StrongString(const char *name = "") : value(name) {}
-  explicit StrongString(std::string name) : value(std::move(name)) {}
-  const char *c_str() const { return value.c_str(); }
-  const std::string& to_string() const { return value; }
-  const char &operator[](size_t n) const {
-    // Because this method is const, it is DEFINED behavior to access a const
-    // reference to the character just passed the end of the string. It will
-    // return a const reference to '\0'
-    ASSERT(n <= value.size());
-    return value[n];
-  }
-  size_t size() const { return value.size(); }
-
-  // TODO should this be a StrongString type?
-  std::string substr(size_t pos = 0, size_t len = std::string::npos) const {
-    return value.substr(pos, len);
-  }
-
-private:
-  friend struct std::hash<StringType>;
-  friend bool operator==<>(const StrongString &lhs, const StrongString &rhs);
-  friend std::ostream &operator<<<>(std::ostream &os, const StrongString &s);
-
-  std::string value;
-};
-
-template <typename StringType>
-inline std::ostream &operator<<(std::ostream &os,
-                                const ::base::StrongString<StringType> &s) {
-  return os << s.value;
-}
-template <typename StringType>
-inline bool operator==(const StrongString<StringType> &lhs,
-                       const StrongString<StringType> &rhs) {
-  return lhs.value == rhs.value;
-}
-template <typename StringType>
-inline bool operator!=(const StrongString<StringType> &lhs,
-                       const StrongString<StringType> &rhs) {
-  return lhs != rhs;
-}
-
 template <typename IndexType, typename BaseType, BaseType DefaultValue>
 struct StrongIndex {
   constexpr explicit StrongIndex(BaseType val = DefaultValue) : value(val) {}

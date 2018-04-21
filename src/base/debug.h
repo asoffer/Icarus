@@ -13,16 +13,19 @@
 #ifdef DBG
 #define ASSERT(...)                                                            \
   do {                                                                         \
-    if (::base::check::internal::LhsStealer(__FILE__, __LINE__, #__VA_ARGS__)  \
-        << __VA_ARGS__) {                                                      \
+    if (!(::base::check::internal::LhsStealer(__FILE__, __LINE__,              \
+                                              #__VA_ARGS__)                    \
+          << __VA_ARGS__)) {                                                   \
       std::abort();                                                            \
     }                                                                          \
   } while (false)
 
 #define ASSERT_NOT_NULL(expr)                                                  \
   ([](auto *ptr) {                                                             \
-    LOG << #expr << " is unexpectedly null.";                                  \
-    if (!ptr) { std::abort(); }                                                \
+    if (ptr == nullptr) {                                                      \
+      LOG << #expr << " is unexpectedly null.";                                \
+      std::abort();                                                            \
+    }                                                                          \
     return ptr;                                                                \
   })(expr)
 

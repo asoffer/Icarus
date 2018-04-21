@@ -37,8 +37,8 @@ void ForEachExpr(AST::Expression *expr,
 
 IR::Val ErrorFunc() {
   static IR::Func *error_func_ = []() {
-    auto fn =
-        new IR::Func(nullptr, Func(type::String, type::Code), {{"", nullptr}});
+    auto fn = new IR::Func(nullptr, type::Func({type::String}, {type::Code}),
+                           {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       // TODO
@@ -52,8 +52,8 @@ IR::Val ErrorFunc() {
 
 IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
-    auto fn =
-        new IR::Func(nullptr, Func(type::Int, type::Char), {{"", nullptr}});
+    auto fn = new IR::Func(nullptr, type::Func({type::Int}, {type::Char}),
+                           {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
@@ -66,8 +66,8 @@ IR::Val AsciiFunc() {
 
 IR::Val OrdFunc() {
   static IR::Func *ord_func_ = []() {
-    auto fn =
-        new IR::Func(nullptr, Func(type::Char, type::Int), {{"", nullptr}});
+    auto fn = new IR::Func(nullptr, type::Func({type::Char}, {type::Int}),
+                           {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));

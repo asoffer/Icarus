@@ -156,6 +156,7 @@ std::string ChainOp::to_string(size_t n) const {
 
 std::string CommaList::to_string(size_t n) const {
   std::stringstream ss;
+  if (exprs.empty()) { return "()"; }
   auto iter = exprs.begin();
   ss << (*iter)->to_string(n);
   ++iter;
@@ -200,19 +201,17 @@ std::string Statements::to_string(size_t n) const {
 
 std::string FunctionLiteral::to_string(size_t n) const {
   std::stringstream ss;
-  if (inputs.empty()) {
-    ss << "void";
-  } else {
+  ss << "(";
+  if (!inputs.empty()) {
     auto iter = inputs.begin();
-    ss << "(" << (*iter)->to_string(n);
+    ss << (*iter)->to_string(n);
     ++iter;
     while (iter != inputs.end()) {
       ss << ", " << (*iter)->to_string(n);
       ++iter;
     }
-    ss << ")";
   }
-  ss << " -> ";
+  ss << ") -> ";
   if (!return_type_inferred_) {
     ss << "(";
     if (!outputs.empty()) {

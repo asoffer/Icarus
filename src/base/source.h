@@ -17,8 +17,8 @@ struct Statements;
 }
 
 struct Source {
-  DEFINE_STRONG_STRING(Name);
-  DEFINE_STRONG_STRING(Line);
+  using Name = std::string;
+  using Line = std::string;
 
   virtual ~Source() {}
   virtual std::optional<Line> NextLine() = 0;
@@ -35,9 +35,6 @@ struct Source {
 protected:
   Source(Name name) : name(std::move(name)) {}
 };
-
-DEFINE_STRONG_HASH(Source::Name);
-DEFINE_STRONG_HASH(Source::Line);
 
 struct Repl: public Source {
   ~Repl() final {}

@@ -616,9 +616,7 @@ static std::vector<const type::Type *> SetDispatchTable(
     ASSERT(dispatch_table->bindings_.size() != 0u);
     for (const auto & [ key, val ] : dispatch_table->bindings_) {
       if (val.fn_expr_->type->is<type::Function>()) {
-        const auto &outs = val.fn_expr_->type->as<type::Function>().output;
-        out_types.push_back(outs.empty() ? std::vector<const type::Type *>{}
-                                         : outs);
+        out_types.push_back(val.fn_expr_->type->as<type::Function>().output);
       } else if (val.fn_expr_->type == type::Type_) {
         out_types.push_back({std::get<const type::Type *>(
             Evaluate(val.fn_expr_, ctx)[0].value)});
@@ -627,10 +625,17 @@ static std::vector<const type::Type *> SetDispatchTable(
       }
     }
 
+    // TODO Can I assume all the lengths are the same?
+    ASSERT(out_types.size() != 0u);
     std::vector<const type::Type*> var_outs;
-    var_outs.reserve(out_types.size());
-    std::transform(out_types.begin(), out_types.end(),
-                   std::back_inserter(var_outs), type::Var);
+    var_outs.reserve(out_types[0].size());
+    for (size_t i = 0; i < out_types[0].size(); ++i) {
+      std::vector<const type::Type*> types;
+      types.reserve(out_types.size());
+      for (const auto &out_type : out_types) { types.push_back(out_type[i]); }
+      var_outs.push_back(type::Var(types));
+    }
+
     return var_outs;
   } else {
     LOG << "FAIL!"; /* TODO do I need to log an error here? */
@@ -849,7 +854,7 @@ void Binop::VerifyType(Context *ctx) {
         auto *lhs_fn = &lhs->type->as<type::Function>();
         auto *rhs_fn = &rhs->type->as<type::Function>();
         if (rhs_fn->output == lhs_fn->input) {
-          type = Func(rhs_fn->input, lhs_fn->output);
+          type = type::Func({rhs_fn->input}, {lhs_fn->output});
 
         } else {
           type = type::Err;
@@ -941,8 +946,8 @@ void Call::VerifyType(Context *ctx) {
 
   auto types =
       SetDispatchTable(args, std::move(fn_options), &dispatch_table_, ctx);
-  ASSERT(types.size() == 1u);
-  type = types[0];
+  ASSERT(types.size() <= 1u);
+  type = types.empty() ? type::Void : types[0];
 
   if (type == type::Err) { limit_to(StageRange::Nothing()); }
 
@@ -1625,11 +1630,6 @@ void FunctionLiteral::VerifyType(Context *ctx) {
           ctx);
       ASSERT(result.size() == 1u);
       out_vals.push_back(std::move(result)[0]);
-    }
-
-    if (out_vals.empty()) {
-      type = type::Err;
-      limit_to(StageRange::Nothing());
     }
 
     std::vector<const type::Type*> ret_types;

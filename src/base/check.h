@@ -66,8 +66,9 @@ auto operator>>(const Expr<T> &lhs, U &&rhs) {
     if (lhs.val op rhs) { return true; }                                       \
     LOG << "Expectation failed (" << lhs.stealer.file << ", line #"            \
         << lhs.stealer.line << ")\n\n  " << lhs.stealer.expr                   \
-        << "\n\nleft-hand side:  " << base::internal::stringify(lhs.val)       \
-        << "\nright-hand side: " << base::internal::stringify(rhs) << "\n\n";  \
+        << "\n\nleft-hand side:  " << ::base::internal::stringify(lhs.val)     \
+        << "\nright-hand side: " << ::base::internal::stringify(rhs)           \
+        << "\n\n";                                                             \
     return false;                                                              \
   }
 MAKE_OPERATOR(<)
@@ -78,15 +79,27 @@ MAKE_OPERATOR(>=)
 MAKE_OPERATOR(>)
 #undef MAKE_OPERATOR
 
+struct CastableToBool {
+  // The only point of this struct is to be able to delete the comma operator
+  // following it.
+  explicit CastableToBool(bool b) : b_(b) {}
+  operator bool() { return b_; }
+
+ private:
+  bool b_;
+};
+template <typename T>
+CastableToBool operator,(CastableToBool, T) = delete;
+
 template <typename T, typename M>
-bool operator,(Expr<T> &&e, M &&m) {
+CastableToBool operator,(Expr<T> &&e, M &&m) {
   auto str    = base::internal::stringify(e.val);
   auto result = std::forward<M>(m)(std::move(e.val));
-  if (result.empty()) { return true; }
+  if (result.empty()) { return CastableToBool(true); }
   std::cerr << "Expectation failed (" << e.stealer.file << ", line #"
             << e.stealer.line << ")\n\n  " << e.stealer.expr
             << "\n\nFound:    " << str << "\nExpected: " << result << "\n\n";
-  return false;
+  return CastableToBool(false);
 }
 }  // namespace internal
 

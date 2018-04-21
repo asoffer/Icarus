@@ -15,7 +15,7 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
 
   if (!init_func_) {
     init_func_ = ctx->mod_->AddFunc(
-        Func(Ptr(this), Void),
+        Func({Ptr(this)}, {}),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
 
@@ -80,7 +80,7 @@ void Scope::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
 void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
   if (!init_func_) {
     init_func_ = ctx->mod_->AddFunc(
-        Func(Ptr(this), Void),
+        Func({Ptr(this)}, {}),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
 

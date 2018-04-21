@@ -22,9 +22,6 @@ struct Function : public Type {
   std::vector<const Type *> input, output;
 };
 
-const Function *Func(const Type *in, const Type *out);
-const Function *Func(std::vector<const Type *> in, const Type *out);
-const Function *Func(const Type *in, std::vector<Type *> out);
 const Function *Func(std::vector<const Type *> in,
                      std::vector<const Type *> out);
 

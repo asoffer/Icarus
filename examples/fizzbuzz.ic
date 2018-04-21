@@ -1,6 +1,6 @@
 -- ::= import "examples/lib/core.ic"
 
-main ::= void -> void {
+main ::= () -> () {
   i := 0
   while (i < 100) {
     if (i % 15 == 0) { print "FizzBuzz\n" }

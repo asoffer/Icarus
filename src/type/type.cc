@@ -29,8 +29,8 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
   if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"lhs", nullptr}, {"rhs", nullptr}};
-    auto *fn = ctx->mod_->AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool),
-                                 std::move(args));
+    auto *fn = ctx->mod_->AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, {Bool}),
+                                  std::move(args));
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
 
@@ -109,8 +109,8 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
 
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
-    auto *fn = ctx->mod_->AddFunc(Func({from_type, Ptr(to_type)}, Void),
-                                 std::move(args));
+    auto *fn = ctx->mod_->AddFunc(Func({from_type, Ptr(to_type)}, {}),
+                                  std::move(args));
 
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
@@ -175,7 +175,7 @@ static IR::Val StructInitializationWith(const Struct *struct_type,
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
     auto *fn = iter->second = ctx->mod_->AddFunc(
-        Func({Ptr(struct_type), Ptr(struct_type)}, Void), std::move(args));
+        Func({Ptr(struct_type), Ptr(struct_type)}, {}), std::move(args));
 
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
@@ -392,7 +392,7 @@ const Array *Arr(const Type *t) {
 
 static std::map<std::vector<const Type *>, Variant> variants_;
 const Type *Var(std::vector<const Type *> variants) {
-  ASSERT(variants.size() != 0u);
+  if (variants.empty()) { return type::Void; }
   if (variants.size() == 1) { return variants[0]; }
 
   size_t end = variants.size();
@@ -432,7 +432,7 @@ const Function *Function::ToIR() const {
   std::vector<const Type *> outs;
   outs.reserve(output.size());
   for (const Type *t : output) { outs.push_back(t->is_big() ? Ptr(t) : t); }
-  return Func(ins, outs);
+  return Func(std::move(ins), std::move(outs));
 }
 
 static TypeContainer<const Type *, const Pointer> pointers_;
@@ -440,22 +440,13 @@ const Pointer *Ptr(const Type *t) {
   return &pointers_.emplace(t, Pointer(t)).first->second;
 }
 
-const Function *Func(const Type *in, const Type *out) {
-  return Func(std::vector{in}, std::vector{out});
-}
-
-const Function *Func(std::vector<const Type *> in, const Type *out) {
-  return Func(std::move(in), std::vector{out});
-}
-const Function *Func(const Type *in, std::vector<const Type *> out) {
-  return Func(std::vector{in}, std::move(out));
-}
 const Function *Func(std::vector<const Type *> in,
                      std::vector<const Type *> out) {
   // TODO if void is unit in some way we shouldn't do this.
-  if (in == std::vector<const Type *>{Void}) { in = {}; }
-  if (out == std::vector<const Type *>{Void}) { out = {}; }
-  return &funcs_[in].emplace(out, Function(in, out)).first->second;
+  auto f = Function(in, out);
+  return &funcs_[std::move(in)]
+              .emplace(std::move(out), std::move(f))
+              .first->second;
 }
 
 static TypeContainer<const Type *, const Range> ranges_;

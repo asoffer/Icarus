@@ -343,6 +343,13 @@ BuildEmptyArray(std::vector<std::unique_ptr<Node>> nodes,
   return array_lit;
 }
 
+static std::unique_ptr<Node> BuildEmptyCommaList(
+    std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
+  auto comma_list = std::make_unique<CommaList>();
+  comma_list->span = TextSpan(nodes[0]->span, nodes[1]->span);
+  return comma_list;
+}
+
 // Input guarantee:
 // [expression] [dots]
 //
@@ -997,6 +1004,7 @@ auto Rules = std::array{
     Rule(expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
     Rule(expr, {l_paren, op_l | op_b | eq | op_bl, r_paren},
          BuildOperatorIdentifier),
+    Rule (expr, {l_paren, r_paren}, AST::BuildEmptyCommaList),
     Rule(expr, {EXPR, l_bracket, EXPR, r_bracket}, AST::BuildIndexOperator),
     Rule(expr, {l_bracket, r_bracket}, AST::BuildEmptyArray),
     Rule(expr, {l_bracket, EXPR, semicolon, EXPR, r_bracket},
@@ -1190,8 +1198,8 @@ struct ParseState {
   std::vector<frontend::Tag> tag_stack_;
   std::vector<std::unique_ptr<AST::Node>> node_stack_;
   std::queue<frontend::TaggedNode> lookahead_;
-  error::Log *error_log_;
-  SourceLocation *loc_; 
+  error::Log *error_log_ = nullptr;
+  SourceLocation *loc_   = nullptr;
 
   // We actually don't care about mathing braces because we are only using this
   // to determine for the REPL if we should prompt for further input. If it's

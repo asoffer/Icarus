@@ -12,7 +12,7 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
   if (destroy_func_ == nullptr) {
     if (!needs_destroy()) { return; }
     destroy_func_ = ctx->mod_->AddFunc(
-        Func(Ptr(this), Void),
+        Func({Ptr(this)}, {}),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
 
@@ -62,7 +62,7 @@ void Scope::EmitDestroy(IR::Val, Context *ctx) const { UNREACHABLE(); }
 void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
   if (destroy_func_ == nullptr) {
     destroy_func_ = ctx->mod_->AddFunc(
-        Func(Ptr(this), Void),
+        Func({Ptr(this)}, {}),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
 

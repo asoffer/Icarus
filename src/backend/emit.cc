@@ -168,9 +168,9 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
         case 0: llvm_data->builder->CreateRetVoid(); break;
         case 1:
           llvm_data->builder->CreateRet(
-              llvm_data->builder->CreateLoad(llvm_data->rets[0]));
+              llvm_data->builder->CreateLoad(llvm_data->rets.at(0)));
           break;
-        default: 
+        default:
           // TODO write outputs to all the out-params
           llvm_data->builder->CreateRetVoid();
       }

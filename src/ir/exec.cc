@@ -21,11 +21,10 @@ std::vector<IR::Val> global_vals;
 void ForEachExpr(AST::Expression *expr,
                  const std::function<void(size_t, AST::Expression *)> &fn);
 
-static std::unique_ptr<IR::Func> ExprFn(
-    AST::Expression *expr, const type::Type *input, Context *ctx,
-    const std::vector<std::pair<std::string, AST::Expression *>> args = {}) {
-  auto fn = std::make_unique<IR::Func>(ctx->mod_, type::Func(input, expr->type),
-                                       args);
+static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
+  auto fn = std::make_unique<IR::Func>(
+      ctx->mod_, type::Func({}, {expr->type}),
+      std::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
     // Factor these out together.
@@ -53,7 +52,7 @@ static std::unique_ptr<IR::Func> AssignmentFunction(const type::Type *from,
                                                     const type::Type *to) {
   // TODO is nullptr for module okay here?
   auto assign_func = std::make_unique<IR::Func>(
-      nullptr, Func({Ptr(from), Ptr(to)}, type::Void),
+      nullptr, type::Func({Ptr(from), Ptr(to)}, {}),
       std::vector<std::pair<std::string, AST::Expression *>>{{"from", nullptr},
                                                              {"to", nullptr}});
   // TODO maybe we want to wire contexts through here? probably.
@@ -583,7 +582,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 void ReplEval(AST::Expression *expr) {
   // TODO is nullptr for module okay here?
   auto fn = std::make_unique<IR::Func>(
-      nullptr, type::Func(type::Void, type::Void),
+      nullptr, type::Func({}, {}),
       std::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
@@ -606,7 +605,7 @@ void ReplEval(AST::Expression *expr) {
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
   IR::ExecContext exec_context;
   // TODO wire through errors.
-  auto fn = ExprFn(expr, type::Void, ctx);
+  auto fn = ExprFn(expr, ctx);
   if (ctx->num_errors() == 0) {
     return Execute(fn.get(), {}, &exec_context);
   } else {

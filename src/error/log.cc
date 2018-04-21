@@ -30,7 +30,7 @@ static std::string LineToDisplay(size_t line_num, const Source::Line &line,
   if (border_alignment == 0) { border_alignment = num_digits; }
   ASSERT(border_alignment >= num_digits);
   return std::string(border_alignment - num_digits, ' ') +
-         std::to_string(line_num) + "| " + line.to_string() + "\n";
+         std::to_string(line_num) + "| " + line + "\n";
 }
 
 namespace {
@@ -108,8 +108,7 @@ WriteSource(std::ostream &os, const Source &source,
          << std::setw(static_cast<int>(border_alignment)) << line_num
          << " | \033[0m";
 
-      std::string_view line_view(line.to_string().data(),
-                                 line.to_string().size());
+      std::string_view line_view(line);
       iter = std::lower_bound(iter, underlines.end(), line_num,
                               [](const auto &span_and_attrs, size_t n) {
                                 return span_and_attrs.first.start.line_num < n;

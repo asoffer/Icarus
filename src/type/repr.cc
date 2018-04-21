@@ -9,7 +9,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
   case PrimType::Char: {
     if (!repr_func_) {
       repr_func_ = ctx->mod_->AddFunc(
-          Func(this, Void),
+          Func({this}, {}),
           std::vector<std::pair<std::string, AST::Expression *>>{
               {"arg", nullptr}});
 
@@ -61,7 +61,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
 void Array::EmitRepr(IR::Val val, Context *ctx) const {
   if (!repr_func_) {
     repr_func_ = ctx->mod_->AddFunc(
-        Func(this, Void),
+        Func({this}, {}),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
 
@@ -150,7 +150,7 @@ void Function::EmitRepr(IR::Val, Context *ctx) const {
 void Struct::EmitRepr(IR::Val val, Context *ctx) const {
   if (!repr_func_) {
     repr_func_ = ctx->mod_->AddFunc(
-        Func(this, Void),
+        Func({this}, {}),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
 

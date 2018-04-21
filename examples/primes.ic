@@ -1,6 +1,6 @@
 -- ::= import "examples/lib/core.ic"
 
-main ::= void -> void {
+main ::= () -> () {
   num := 0
   upper ::= 1_000
   n := 2

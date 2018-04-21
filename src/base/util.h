@@ -72,4 +72,5 @@ template <typename... Ts> struct overloaded : Ts... {
 };
 template <typename... Ts> overloaded(Ts...)->overloaded<Ts...>;
 } // namespace base
+#undef STATIC_ASSERT_RELATED
 #endif // ICARUS_BASE_UTIL_H

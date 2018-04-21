@@ -124,11 +124,10 @@ void FunctionLiteral::Validate(Context *ctx) {
   for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
 
   switch (types.size()) {
-    case 0:
-      type = type::Func(std::move(input_type_vec),
-                        std::vector<const type::Type *>{});
+    case 0: type = type::Func(std::move(input_type_vec), {}); break;
+    case 1:
+      type = type::Func(std::move(input_type_vec), {*types.begin()});
       break;
-    case 1: type = type::Func(std::move(input_type_vec), *types.begin()); break;
     default: NOT_YET();
   }
 

@@ -1,4 +1,4 @@
-main ::= void -> void {
+main ::= () -> () {
   n := 0
   while (n <= 10) {
     print "fib(", n, ") = ", fibonacci(n), "\n"
