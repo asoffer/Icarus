@@ -7,8 +7,10 @@
 // TODO destructor for previously held value.
 
 namespace type {
-void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to, Context*ctx) const {
-  ASSERT_TYPE(Array, from_type);
+using base::check::Is;
+void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
+                       Context *ctx) const {
+  ASSERT(from_type, Is<Array>());
   auto *from_array_type = &from_type->as<Array>();
 
   auto *&fn = assign_fns_[from_array_type];
@@ -77,7 +79,7 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to, Context*
 
 void Pointer::EmitAssign(const Type *from_type, IR::Val from,
                          IR::Val to, Context*ctx) const {
-  ASSERT_EQ(this, from_type);
+  ASSERT(this == from_type);
   IR::Store(from, to);
 }
 
@@ -89,13 +91,13 @@ void Slice::EmitAssign(const Type *, IR::Val, IR::Val, Context *ctx) const {
 }
 void Scope::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                        Context *ctx) const {
-  ASSERT_EQ(this, from_type);
+  ASSERT(this == from_type);
   IR::Store(from, to);
 }
 
 void Enum::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                       Context *ctx) const {
-  ASSERT_EQ(this, from_type);
+  ASSERT(this == from_type);
   IR::Store(from, to);
 }
 
@@ -130,7 +132,7 @@ void Variant::EmitAssign(const Type *from_type, IR::Val from,
 
 void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                         Context *ctx) const {
-  ASSERT_EQ(this, from_type);
+  ASSERT(this == from_type);
   if (!assign_func) {
     assign_func = ctx->mod_->AddFunc(
         Func({from_type, Ptr(this)}, Void),
@@ -152,18 +154,18 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
       IR::ReturnJump();
     }
   }
-  ASSERT(assign_func, "");
+  ASSERT(assign_func != nullptr);
   IR::Call(IR::Val::Func(assign_func), {from, to}, {});
 }
 
 void Function::EmitAssign(const Type *from_type, IR::Val from,
                           IR::Val to, Context*ctx) const {
-  ASSERT_EQ(this, from_type);
+  ASSERT(this == from_type);
   IR::Store(from, to);
 }
 void Primitive::EmitAssign(const Type *from_type, IR::Val from,
                            IR::Val to, Context*ctx) const {
-  ASSERT_EQ(this, from_type);
+  ASSERT(this == from_type);
   IR::Store(from, to);
 }
 

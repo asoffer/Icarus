@@ -9,7 +9,7 @@ IR::Val Array::PrepareArgument(const Type *from, const IR::Val &val,
   if (from->is<Variant>()) {
     NOT_YET(this, from);
   } else {
-    ASSERT_EQ(from, this);
+    ASSERT(from == this);
     if (fixed_length) {
       // TODO Copy may be overkill. Think about value category.
       auto arg = IR::Alloca(from);
@@ -26,14 +26,14 @@ IR::Val Primitive::PrepareArgument(const Type *from, const IR::Val &val,
   if (from->is<Variant>()) {
     return IR::Load(IR::VariantValue(this, val));
   } else {
-    ASSERT_EQ(from, this);
+    ASSERT(from == this);
     return val;
   }
 }
 
 IR::Val Pointer::PrepareArgument(const Type *from, const IR::Val &val,
                                  Context *ctx) const {
-  ASSERT_EQ(from, this);
+  ASSERT(from == this);
   return val;
 }
 
@@ -44,7 +44,7 @@ IR::Val Function::PrepareArgument(const Type *from, const IR::Val &,
 
 IR::Val Enum::PrepareArgument(const Type *from, const IR::Val &val,
                               Context *ctx) const {
-  ASSERT_EQ(from, this);
+  ASSERT(from == this);
   return val;
 }
 

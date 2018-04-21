@@ -194,7 +194,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
                   IR::Val to_var, Context* ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() ||
       to_type->is<Pointer>()) {
-    ASSERT_EQ(to_type, from_type);
+    ASSERT(to_type == from_type);
     IR::Store(from_val, to_var);
   } else if (to_type->is<Array>()) {
     IR::Call(ArrayInitializationWith<EmitCopyInit>(&from_type->as<Array>(),
@@ -202,7 +202,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
              {from_val, to_var}, {});
 
   } else if (to_type->is<Struct>()) {
-    ASSERT_EQ(to_type, from_type);
+    ASSERT(to_type == from_type);
     IR::Call(
         StructInitializationWith<EmitCopyInit>(&to_type->as<Struct>(), ctx),
         {from_val, to_var}, {});
@@ -225,7 +225,7 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
                   IR::Val to_var, Context *ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() ||
       to_type->is<Pointer>()) {
-    ASSERT_EQ(to_type, from_type);
+    ASSERT(to_type == from_type);
     IR::Store(from_val, to_var);
 
   } else if (to_type->is<Array>()) {
@@ -247,7 +247,7 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
                 IR::ArrayData(from_val));
     }
   } else if (to_type->is<Struct>()) {
-    ASSERT_EQ(to_type, from_type);
+    ASSERT(to_type == from_type);
     IR::Call(
         StructInitializationWith<EmitMoveInit>(&to_type->as<Struct>(), ctx),
         {from_val, to_var}, {});
@@ -392,7 +392,7 @@ const Array *Arr(const Type *t) {
 
 static std::map<std::vector<const Type *>, Variant> variants_;
 const Type *Var(std::vector<const Type *> variants) {
-  ASSERT_NE(variants.size(), 0u);
+  ASSERT(variants.size() != 0u);
   if (variants.size() == 1) { return variants[0]; }
 
   size_t end = variants.size();

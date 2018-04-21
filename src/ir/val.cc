@@ -102,8 +102,8 @@ std::string Val::to_string() const {
           },
           [](const type::Type *t) -> std::string { return t->to_string(); },
           [](IR::Func *f) -> std::string {
-            ASSERT_NE(f, nullptr);
-            ASSERT_NE(f->type_, nullptr);
+            ASSERT(f != nullptr);
+            ASSERT(f->type_ != nullptr);
             return "fn." + f->name() + "-" + f->type_->to_string();
           },
           [](AST::ScopeLiteral *s) -> std::string {

@@ -28,7 +28,7 @@ static std::string LineToDisplay(size_t line_num, const Source::Line &line,
                                  size_t border_alignment = 0) {
   auto num_digits = NumDigits(line_num);
   if (border_alignment == 0) { border_alignment = num_digits; }
-  ASSERT_GE(border_alignment, num_digits);
+  ASSERT(border_alignment >= num_digits);
   return std::string(border_alignment - num_digits, ' ') +
          std::to_string(line_num) + "| " + line.to_string() + "\n";
 }
@@ -123,8 +123,8 @@ WriteSource(std::ostream &os, const Source &source,
                                iter->first.start.offset - prev_start_offset);
 
         // TODO what if it goes for multiple lines.
-        ASSERT_EQ(iter->first.start.line_num, iter->first.finish.line_num);
-        ASSERT_LT(iter->first.start.offset, iter->first.finish.offset);
+        ASSERT(iter->first.start.line_num == iter->first.finish.line_num);
+        ASSERT(iter->first.start.offset < iter->first.finish.offset);
         os << iter->second
            << line_view.substr(iter->first.start.offset,
                                iter->first.finish.offset -

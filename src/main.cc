@@ -70,7 +70,7 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
     auto &decl = stmt->as<AST::Declaration>();
     if (decl.identifier->token != "main") { continue; }
     auto val = Evaluate(decl.init_val.get(), &ctx);
-    ASSERT_EQ(val.size(), 1u);
+    ASSERT(val.size() == 1u);
     auto fn_lit = std::get<AST::FunctionLiteral *>(val[0].value);
     // TODO check more than one?
 

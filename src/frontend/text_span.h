@@ -14,7 +14,7 @@ struct TextSpan {
   TextSpan(const Cursor &s, const Cursor &f) : start(s), finish(f) {}
   TextSpan(const TextSpan &s, const TextSpan &f)
       : start(s.start), finish(f.finish), source(s.source) {
-    ASSERT(s.source == f.source, "");
+    ASSERT(s.source == f.source);
   }
 
   char last_char() const {
@@ -43,7 +43,7 @@ struct SourceLocation {
 
   void BackUp() {
     // You can't back up to a previous line.
-    ASSERT_GT(cursor.offset, 0u);
+    ASSERT(cursor.offset > 0u);
     --cursor.offset;
   }
 

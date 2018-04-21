@@ -44,7 +44,7 @@ public:
     // Because this method is const, it is DEFINED behavior to access a const
     // reference to the character just passed the end of the string. It will
     // return a const reference to '\0'
-    ASSERT_LE(n, value.size());
+    ASSERT(n <= value.size());
     return value[n];
   }
   size_t size() const { return value.size(); }

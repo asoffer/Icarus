@@ -5,7 +5,7 @@ static void IncrementCursor(Source *source, Cursor *cursor) {
   if (cursor->offset != source->lines[cursor->line_num].size()) {
     ++cursor->offset;
   } else {
-    ASSERT(source != nullptr, "");
+    ASSERT(source != nullptr);
     auto next = source->NextLine();
     if (!next) {
       source->seen_eof = true;

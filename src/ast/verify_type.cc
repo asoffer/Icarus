@@ -310,7 +310,7 @@ static std::optional<DispatchTable> ComputeDispatchTable(
           } else {
             auto iter =
                 call_arg_types.find(fn_lit->inputs[i]->identifier->token);
-            ASSERT(iter != call_arg_types.named_.end(), "");
+            ASSERT(iter != call_arg_types.named_.end());
             iter->second = match;
           }
         }
@@ -345,8 +345,7 @@ static std::optional<DispatchTable> ComputeDispatchTable(
             } else {
               auto iter =
                   call_arg_types.find(fn_lit->inputs[i]->identifier->token);
-              ASSERT(iter != call_arg_types.named_.end(),
-                     "looking for " + fn_lit->inputs[i]->identifier->token);
+              ASSERT(iter != call_arg_types.named_.end());
               iter->second = match;
             }
           }
@@ -357,8 +356,8 @@ static std::optional<DispatchTable> ComputeDispatchTable(
         goto next_option;
       }
     } else if (fn_option->type == type::Type_) {
-      ASSERT_EQ(args.pos_.size(), 1u);
-      ASSERT(args.named_.empty(), "");
+      ASSERT(args.pos_.size() == 1u);
+      ASSERT(args.named_.empty());
 
       // TODO check for validity of call
       if (args.pos_[0]->type->is<type::Variant>()) {
@@ -614,7 +613,7 @@ static std::vector<const type::Type *> SetDispatchTable(
     *dispatch_table = std::move(maybe_table).value();
     std::vector<std::vector<const type::Type *>> out_types;
     out_types.reserve(dispatch_table->bindings_.size());
-    ASSERT_NE(0u, dispatch_table->bindings_.size());
+    ASSERT(dispatch_table->bindings_.size() != 0u);
     for (const auto & [ key, val ] : dispatch_table->bindings_) {
       if (val.fn_expr_->type->is<type::Function>()) {
         const auto &outs = val.fn_expr_->type->as<type::Function>().output;
@@ -822,7 +821,7 @@ void Binop::VerifyType(Context *ctx) {
       args.pos_  = std::vector{lhs.get(), rhs.get()};                          \
       auto types = SetDispatchTable(                                           \
           args, FunctionOptions(symbol, scope_, ctx), &dispatch_table_, ctx);  \
-      ASSERT_EQ(1u, types.size());                                             \
+      ASSERT(1u == types.size());                                             \
       type = types[0];                                                         \
       if (type == type::Err) { limit_to(StageRange::Nothing()); }              \
     }                                                                          \
@@ -864,7 +863,7 @@ void Binop::VerifyType(Context *ctx) {
         args.pos_  = std::vector{lhs.get(), rhs.get()};
         auto types = SetDispatchTable(args, FunctionOptions("*", scope_, ctx),
                                       &dispatch_table_, ctx);
-        ASSERT(1u, types.size());
+        ASSERT(types.size() == 1u);
         type = types[0];
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       }
@@ -942,7 +941,7 @@ void Call::VerifyType(Context *ctx) {
 
   auto types =
       SetDispatchTable(args, std::move(fn_options), &dispatch_table_, ctx);
-  ASSERT(1u, types.size());
+  ASSERT(types.size() == 1u);
   type = types[0];
 
   if (type == type::Err) { limit_to(StageRange::Nothing()); }
@@ -1030,7 +1029,7 @@ void Declaration::VerifyType(Context *ctx) {
     }
 
     if (!type_expr) {
-      ASSERT_NE(init_val.get(), nullptr);
+      ASSERT(init_val.get() != nullptr);
       if (!init_val->is<Hole>()) {  // I := V
         if (init_val->type == type::Err) {
           type = identifier->type = type::Err;
@@ -1053,7 +1052,7 @@ void Declaration::VerifyType(Context *ctx) {
         limit_to(StageRange::Nothing());
         return;
       } else if (init_val->lvalue != Assign::Const) {
-        ASSERT(init_val->lvalue != Assign::Unset, "");
+        ASSERT(init_val->lvalue != Assign::Unset);
         ctx->error_log_.NonConstantBindingToConstantDeclaration(span);
         limit_to(StageRange::Nothing());
         return;
@@ -1273,7 +1272,7 @@ void Unop::VerifyType(Context *ctx) {
         args.pos_  = std::vector{operand.get()};
         auto types = SetDispatchTable(args, FunctionOptions("-", scope_, ctx),
                                       &dispatch_table_, ctx);
-        ASSERT(1u, types.size());
+        ASSERT(types.size() == 1u);
         type = types[0];
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       }
@@ -1295,7 +1294,7 @@ void Unop::VerifyType(Context *ctx) {
         args.pos_ = std::vector{operand.get()};
         auto types = SetDispatchTable(args, FunctionOptions("!", scope_, ctx),
                                       &dispatch_table_, ctx);
-        ASSERT(1u, types.size());
+        ASSERT(types.size() == 1u);
         type = types[0];
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       } else {
@@ -1440,7 +1439,7 @@ void ChainOp::VerifyType(Context *ctx) {
       return;
     } break;
     default: {
-      ASSERT_GE(exprs.size(), 2u);
+      ASSERT(exprs.size() >= 2u);
       for (size_t i = 0; i < exprs.size() - 1; ++i) {
         const type::Type *lhs_type = exprs[i]->type;
         const type::Type *rhs_type = exprs[i + 1]->type;
@@ -1464,7 +1463,7 @@ void ChainOp::VerifyType(Context *ctx) {
           auto types =
               SetDispatchTable(args, FunctionOptions(token, scope_, ctx),
                                &dispatch_tables_[i], ctx);
-          ASSERT(1u, types.size());
+          ASSERT(types.size() == 1u);
           type = types[0];
           if (type == type::Err) { limit_to(StageRange::Nothing()); }
         } else {
@@ -1624,7 +1623,7 @@ void FunctionLiteral::VerifyType(Context *ctx) {
             return out_decl->type_expr.get();
           }(),
           ctx);
-      ASSERT_EQ(result.size(), 1u);
+      ASSERT(result.size() == 1u);
       out_vals.push_back(std::move(result)[0]);
     }
 

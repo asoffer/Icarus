@@ -166,8 +166,7 @@ BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
                  {":?", {Language::Operator::TypeOf, false}},
                  {"$", {Language::Operator::Eval, false}}};
   auto iter = UnopMap.find(tk);
-  ASSERT(iter != UnopMap.end(),
-         std::string("Failed to match token: \"") + tk + "\"");
+  ASSERT(iter != UnopMap.end());
   std::tie(unop->op, check_id) = iter->second;
 
   if (check_id) {
@@ -402,7 +401,7 @@ BuildArrayType(std::vector<std::unique_ptr<Node>> nodes,
 
 static std::unique_ptr<Node>
 BuildInDecl(std::vector<std::unique_ptr<Node>> nodes) {
-  ASSERT(nodes[1]->as<TokenNode>().op == Language::Operator::In, "");
+  ASSERT(nodes[1]->as<TokenNode>().op == Language::Operator::In);
   auto in_decl              = std::make_unique<InDecl>();
   in_decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
   in_decl->identifier       = move_as<Identifier>(nodes[0]);
@@ -543,7 +542,7 @@ static std::unique_ptr<Node> BuildJump(std::vector<std::unique_ptr<Node>> nodes,
       {"repeat", Jump::JumpType::Repeat},
       {"restart", Jump::JumpType::Restart}};
   auto iter = JumpTypeMap.find(nodes[0]->as<TokenNode>().token);
-  ASSERT(iter != JumpTypeMap.end(), "");
+  ASSERT(iter != JumpTypeMap.end());
 
   auto stmts  = std::make_unique<Statements>();
   stmts->span = nodes[0]->span;
@@ -1309,7 +1308,7 @@ std::unique_ptr<AST::Statements> File::Parse(error::Log *error_log) {
   Shift(&state);
 
   while (state.Next().tag_ != frontend::eof) {
-    ASSERT_EQ(state.tag_stack_.size(), state.node_stack_.size());
+    ASSERT(state.tag_stack_.size() == state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
     if (state.shift_state() == frontend::ShiftState::NeedMore ||
         !Reduce(&state)) {

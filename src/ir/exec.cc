@@ -14,6 +14,8 @@
 #include "../type/all.h"
 #include "func.h"
 
+using base::check::Is;
+
 std::vector<IR::Val> global_vals;
 
 void ForEachExpr(AST::Expression *expr,
@@ -33,7 +35,7 @@ static std::unique_ptr<IR::Func> ExprFn(
 
     auto start_block = IR::Block::Current = IR::Func::Current->AddBlock();
 
-    ASSERT_NE(ctx, nullptr);
+    ASSERT(ctx != nullptr);
     ForEachExpr(expr, [ctx](size_t i, AST::Expression *e) {
       IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)},
                     std::move(e->EmitIR(ctx)));
@@ -110,8 +112,8 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
     : fn_(fn), current_(fn_->entry()), prev_(fn_->entry()),
       regs_(fn->num_regs_, Val::None()) {
   size_t num_inputs = fn->ir_type->input.size();
-  ASSERT_LE(num_inputs, arguments.size());
-  ASSERT_LE(num_inputs, regs_.size());
+  ASSERT(num_inputs <= arguments.size());
+  ASSERT(num_inputs <= regs_.size());
   size_t i = 0;
   for (; i < num_inputs; ++i) { regs_[i] = arguments[i]; }
   for (; i < arguments.size(); ++i) { rets_.push_back(arguments[i]); }
@@ -125,12 +127,12 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
 
 BlockIndex ExecContext::ExecuteBlock() {
   Val result;
-  ASSERT_GT(current_block().cmds_.size(), 0u);
+  ASSERT(current_block().cmds_.size() > 0u);
   auto cmd_iter = current_block().cmds_.begin();
   do {
     result = ExecuteCmd(*cmd_iter);
     if (cmd_iter->type != nullptr && cmd_iter->type != type::Void) {
-      ASSERT_EQ(result.type, cmd_iter->type);
+      ASSERT(result.type == cmd_iter->type);
       this->reg(cmd_iter->result) = result;
     }
     ++cmd_iter;
@@ -154,7 +156,7 @@ IR::Val Stack::Push(const type::Pointer *ptr) {
     free(stack_);
     stack_ = new_stack;
   }
-  ASSERT_LE(size_, capacity_);
+  ASSERT(size_ <= capacity_);
   return IR::Val::StackAddr(addr, ptr->pointee);
 }
 
@@ -469,8 +471,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       auto[iter, success] = struct_to_mod->field_indices_.emplace(
           std::get<std::string>(resolved[1].value),
           struct_to_mod->fields_.size() - 1);
-
-      ASSERT(success, "");
+      ASSERT(success);
 
       return IR::Val::None();
     } break;
@@ -507,7 +508,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             resolved[i];
       }
 
-      ASSERT_EQ(cmd.args.back().type, type::Code);
+      ASSERT(cmd.args.back().type == type::Code);
       const auto &code_block = std::get<AST::CodeBlock>(cmd.args.back().value);
       auto copied_block      = code_block;
       std::get<AST::Statements>(copied_block.content_)
@@ -522,8 +523,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       auto bytes_fwd =
           Architecture::InterprettingMachine().MoveForwardToAlignment(
               Ptr(type::Type_), bytes);
-      ASSERT(std::get_if<Addr>(&resolved[0].value) != nullptr,
-             "resolved[0] = " + resolved[0].to_string());
+      ASSERT(std::get_if<Addr>(&resolved[0].value) != nullptr);
       switch (std::get<Addr>(resolved[0].value).kind) {
         case Addr::Kind::Stack: {
           return Val::StackAddr(
@@ -545,7 +545,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                   static_cast<int>(std::get<Addr>(resolved[0].value).kind));
     } break;
     case Op::Malloc:
-      ASSERT_TYPE(type::Pointer, cmd.type);
+      ASSERT(cmd.type, Is<type::Pointer>());
       return IR::Val::HeapAddr(malloc(std::get<i32>(resolved[0].value)),
                                cmd.type->as<type::Pointer>().pointee);
     case Op::Free:

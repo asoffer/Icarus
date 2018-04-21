@@ -15,7 +15,7 @@ template <typename T>
 std::string stringify(T &&t);
 
 template <typename T>
-auto stringify(dispatch_rank<7>, const T &s)
+auto stringify(dispatch_rank<8>, const T &s)
     -> decltype(std::enable_if_t<std::is_same_v<T, std::string>>(),
                 std::string()) {
   return s;
@@ -29,7 +29,7 @@ auto stringify(dispatch_rank<7>, const T &s)
 }
 
 template <typename Container>
-auto stringify(dispatch_rank<6>, const Container &t)
+auto stringify(dispatch_rank<7>, const Container &t)
     -> decltype(std::declval<Container>().begin(),
                 std::declval<Container>().end(),
                 ++std::declval<Container>().begin(),
@@ -51,7 +51,7 @@ auto stringify(dispatch_rank<6>, const Container &t)
 }
 
 template <typename Pair>
-auto stringify(dispatch_rank<6>, const Pair &p)
+auto stringify(dispatch_rank<7>, const Pair &p)
     -> decltype(std::enable_if_t<std::is_same_v<
                     Pair, std::pair<decltype(p.first), decltype(p.second)>>>(),
                 std::string()) {
@@ -59,54 +59,59 @@ auto stringify(dispatch_rank<6>, const Pair &p)
 }
 
 template <typename T>
-auto stringify(dispatch_rank<5>, const T &t)
+auto stringify(dispatch_rank<6>, const T &t)
     -> decltype((std::string)std::declval<T>(), std::string()) {
   return t;
 }
 
 template <typename... Args>
-auto stringify(dispatch_rank<4>, const std::variant<Args...> &v)
+auto stringify(dispatch_rank<5>, const std::variant<Args...> &v)
     -> std::string {
   return std::visit([](auto &&v) { return stringify(v); }, v);
 }
 
 template <typename T>
-auto stringify(dispatch_rank<4>, const T &t)
+auto stringify(dispatch_rank<5>, const T &t)
     -> decltype(std::declval<T>().to_string(), std::string()) {
   return t.to_string();
 }
 
 template <typename T>
-auto stringify(dispatch_rank<3>, const T &t)
+auto stringify(dispatch_rank<4>, const T &t)
     -> decltype(std::declval<T>() == nullptr, std::declval<T>()->to_string(),
                 std::string()) {
   return t == nullptr ? "0x0" : t->to_string();
 }
 
 template <typename T>
-auto stringify(dispatch_rank<2>, T c)
+auto stringify(dispatch_rank<3>, T c)
     -> decltype(std::enable_if_t<std::is_same_v<T, char>>(), std::string()) {
   if (c == '\0') { return "\\0"; }
   return std::string(1, c);
 }
 
 template <typename T>
-auto stringify(dispatch_rank<2>, T b)
+auto stringify(dispatch_rank<3>, T b)
     -> decltype(std::enable_if_t<std::is_same_v<T, bool>>(), std::string()) {
   return b ? "true" : "false";
 }
 
 template <typename T>
-auto stringify(dispatch_rank<1>, T *ptr) -> std::string {
+auto stringify(dispatch_rank<2>, T *ptr) -> std::string {
   std::stringstream ss;
   ss << ptr;
   return ss.str();
 }
 
 template <typename T>
-auto stringify(dispatch_rank<0>, T &&t)
+auto stringify(dispatch_rank<1>, T &&t)
     -> decltype(std::to_string(std::declval<T>()), std::string()) {
   return std::to_string(std::forward<T>(t));
+}
+
+template <typename T>
+auto stringify(dispatch_rank<0>, const T &) -> std::string {
+  return "<object>";
 }
 
 template <typename T>

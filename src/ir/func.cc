@@ -20,7 +20,7 @@ Func::Func(Module *mod, AST::FunctionLiteral *fn_lit,
       args_(std::move(args)),
       num_regs_(static_cast<i32>(type_->input.size())),
       mod_(mod) {
-  ASSERT_EQ(args_.size(), type_->input.size());
+  ASSERT(args_.size() == type_->input.size());
   blocks_.push_back(std::move(Block(this)));
   i32 num_args = static_cast<i32>(args_.size());
   for (i32 i = 0; i < num_args; ++i) {
@@ -36,7 +36,7 @@ Func::Func(Module *mod, const type::Function *fn_type,
       args_(std::move(args)),
       num_regs_(static_cast<i32>(fn_type->input.size())),
       mod_(mod) {
-  ASSERT_EQ(args_.size(), fn_type->input.size());
+  ASSERT(args_.size() == fn_type->input.size());
   blocks_.push_back(std::move(Block(this)));
   i32 num_args = static_cast<i32>(args_.size());
   for (i32 i = 0; i < num_args; ++i) {
@@ -49,7 +49,7 @@ std::unordered_map<const Block *, std::unordered_set<const Block *>>
 Func::GetIncomingBlocks() const {
   std::unordered_map<const Block *, std::unordered_set<const Block *>> incoming;
   for (const auto &b : blocks_) {
-    ASSERT_GT(b.cmds_.size(), 0u);
+    ASSERT(b.cmds_.size() > 0u);
     const auto &last = b.cmds_.back();
     switch (last.op_code_) {
     case Op::UncondJump:

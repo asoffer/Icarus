@@ -48,7 +48,7 @@ public:
   std::string to_string() const {
     std::string result(string_size(), '\0');
     char *end_buf = WriteTo(result.data());
-    ASSERT_EQ(static_cast<size_t>(end_buf - result.data()), result.size());
+    ASSERT(static_cast<size_t>(end_buf - result.data()) == result.size());
     return result;
   }
 

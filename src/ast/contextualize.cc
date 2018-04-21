@@ -146,7 +146,7 @@ void Unop::contextualize(const Node *correspondant,
                          const RefMap &replacements) {
   if (op == Language::Operator::Ref) {
     auto iter = replacements.find(&correspondant->as<Unop>());
-    ASSERT(iter != replacements.end(), "");
+    ASSERT(iter != replacements.end());
     auto terminal    = std::make_unique<Terminal>();
     terminal->scope_ = scope_; // TODO Eh? Do I care?
     terminal->span   = span;

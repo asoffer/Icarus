@@ -26,7 +26,7 @@ struct Stack {
   }
 
   template <typename T> T Load(size_t index) {
-    ASSERT_EQ(index & (alignof(T) - 1), 0u); // Alignment error
+    ASSERT((index & (alignof(T) - 1)) == 0u);  // Alignment error
     if constexpr (std::is_trivially_default_constructible_v<T>) {
       return *reinterpret_cast<T *>(this->location(index));
     } else {
@@ -59,7 +59,7 @@ struct Stack {
 
 private:
   void *location(size_t index) {
-    ASSERT_LT(index, capacity_);
+    ASSERT(index < capacity_);
     return reinterpret_cast<void *>(reinterpret_cast<char *>(stack_) + index);
   }
 };
@@ -72,7 +72,7 @@ struct ExecContext {
     Frame(Func *fn, const std::vector<Val> &arguments);
 
     void MoveTo(BlockIndex block_index) {
-      ASSERT_GE(block_index.value, 0);
+      ASSERT(block_index.value >= 0);
       prev_    = current_;
       current_ = block_index;
     }
@@ -95,11 +95,11 @@ struct ExecContext {
 
 
   Val reg(Register r) const {
-    ASSERT_GE(r.value, 0);
+    ASSERT(r.value >= 0);
     return call_stack.top().regs_ AT(static_cast<u32>(r.value));
   }
   Val &reg(Register r) {
-    ASSERT_GE(r.value, 0);
+    ASSERT(r.value >= 0);
     return call_stack.top().regs_[static_cast<u32>(r.value)];
   }
 

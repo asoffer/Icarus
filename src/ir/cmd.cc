@@ -7,6 +7,8 @@
 #include "func.h"
 
 namespace IR {
+using base::check::Is;
+
 BlockIndex Block::Current;
 
 template <bool IsPhi = false>
@@ -42,7 +44,7 @@ Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
 }
 
 Val Field(Val v, size_t n) {
-  ASSERT_TYPE(type::Pointer, v.type);
+  ASSERT(v.type, Is<type::Pointer>());
   const type::Type *result_type =
       type::Ptr(v.type->as<type::Pointer>().pointee->as<type::Struct>().fields_ AT(n).type);
   Cmd cmd(result_type, Op::Field,
@@ -53,17 +55,17 @@ Val Field(Val v, size_t n) {
 }
 
 #define MAKE_VOID(op)                                                          \
-  ASSERT_NE(Func::Current, nullptr);                                           \
+  ASSERT(Func::Current != nullptr);                                           \
   Cmd cmd(nullptr, op, {std::move(v)});                                        \
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 
 #define MAKE_VOID2(op)                                                         \
-  ASSERT_NE(Func::Current, nullptr);                                           \
+  ASSERT(Func::Current != nullptr);                                           \
   Cmd cmd(nullptr, op, {std::move(v1), std::move(v2)});                        \
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 
 #define MAKE_AND_RETURN(type, op)                                              \
-  ASSERT_NE(Func::Current, nullptr);                                           \
+  ASSERT(Func::Current != nullptr);                                           \
   Cmd cmd(type, op, {std::move(v)});                                           \
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));        \
   return cmd.reg()
@@ -74,7 +76,7 @@ Val Field(Val v, size_t n) {
   return cmd.reg()
 
 Val Malloc(const type::Type *t, Val v) {
-  ASSERT_EQ(v.type, type::Int);
+  ASSERT(v.type ==  type::Int);
   MAKE_AND_RETURN(type::Ptr(t), Op::Malloc);
 }
 
@@ -111,12 +113,12 @@ Val Cast(const type::Type *to, Val v) {
 
 void Print(Val v) { MAKE_VOID(Op::Print); }
 void Free(Val v) {
-  ASSERT_TYPE(type::Pointer, v.type);
+  ASSERT(v.type, Is<type::Pointer>());
   MAKE_VOID(Op::Free);
 }
 
 Val CreateStruct() {
-  ASSERT_NE(Func::Current, nullptr);
+  ASSERT(Func::Current != nullptr);
   Cmd cmd(type::Type_, Op::CreateStruct, {});
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();
@@ -128,7 +130,7 @@ IR::Val FinalizeStruct(Val v) {
 
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val) {
-  ASSERT_NE(Func::Current, nullptr);
+  ASSERT(Func::Current != nullptr);
   Cmd cmd(nullptr, Op::InsertField,
           {std::move(struct_type), Val::StrLit(std::move(field_name)),
            std::move(type), std::move(init_val)});
@@ -136,7 +138,7 @@ void InsertField(Val struct_type, std::string field_name, Val type,
 }
 
 Val Alloca(const type::Type *t) {
-  ASSERT_NE(t,type::Void);
+  ASSERT(t != type::Void);
   Cmd cmd(type::Ptr(t), Op::Alloca, {});
   Func::Current->block(Func::Current->entry()).cmds_.push_back(std::move(cmd));
   return cmd.reg();
@@ -153,25 +155,24 @@ Val VariantValue(const type::Type *t, Val v) {
 }
 
 Val Load(Val v) {
-  ASSERT_TYPE(type::Pointer, v.type);
+  ASSERT(v.type, Is<type::Pointer>());
   MAKE_AND_RETURN(v.type->as<type::Pointer>().pointee, Op::Load);
 }
 
 Val ArrayLength(Val v) {
-  ASSERT_TYPE(type::Pointer, v.type);
+  ASSERT(v.type, Is<type::Pointer>());
   auto *ptee = v.type->as<type::Pointer>().pointee;
-  ASSERT_TYPE(type::Array, ptee);
-  ASSERT(!ptee->as<type::Array>().fixed_length,
-         "Pointee type is " + ptee->to_string());
+  ASSERT(ptee, Is<type::Array>());
+  ASSERT(!ptee->as<type::Array>().fixed_length);
   MAKE_AND_RETURN(type::Ptr(type::Int), Op::ArrayLength);
 }
 
 Val ArrayData(Val v) {
-  ASSERT_TYPE(type::Pointer, v.type);
+  ASSERT(v.type, Is<type::Pointer>());
   auto *ptee = v.type->as<type::Pointer>().pointee;
-  ASSERT_TYPE(type::Array, ptee);
+  ASSERT(ptee, Is<type::Array>());
   auto *array_type = &ptee->as<type::Array>();
-  ASSERT(!array_type->fixed_length, "");
+  ASSERT(!array_type->fixed_length);
   MAKE_AND_RETURN(type::Ptr(type::Ptr(array_type->data_type)), Op::ArrayData);
 }
 
@@ -184,19 +185,19 @@ void Store(Val v1, Val v2) {
   if (auto *rv = std::get_if<ReturnValue>(&v2.value)) {
     SetReturn(*rv, v1);
   } else {
-    ASSERT_TYPE(type::Pointer, v2.type);
+    ASSERT(v2.type, Is<type::Pointer>());
     MAKE_VOID2(Op::Store);
   }
 }
 
 Val PtrIncr(Val v1, Val v2) {
-  ASSERT_TYPE(type::Pointer, v1.type);
-  ASSERT_EQ(v2.type, type::Int);
+  ASSERT(v1.type, Is<type::Pointer>());
+  ASSERT(v2.type ==  type::Int);
   MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
 
 Val Ptr(Val v) {
-  ASSERT_EQ(v.type,type::Type_);
+  ASSERT(v.type == type::Type_);
   if (const type::Type **t = std::get_if<const type::Type *>(&v.value)) {
     return Val::Type(type::Ptr(*t));
   }
@@ -303,8 +304,8 @@ Val Variant(std::vector<Val> args) {
 }
 
 Val Array(Val v1, Val v2) {
-  ASSERT(v1.type == nullptr || v1.type == type::Int, "");
-  ASSERT_EQ(v2.type,type::Type_);
+  ASSERT(v1.type == nullptr || v1.type == type::Int);
+  ASSERT(v2.type == type::Type_);
 
   if (const type::Type **t = std::get_if<const type::Type *>(&v2.value)) {
     if (i32 *m = std::get_if<i32>(&v1.value)) {
@@ -320,8 +321,8 @@ Val Array(Val v1, Val v2) {
 }
 
 Val Index(Val v1, Val v2) {
-  ASSERT_TYPE(type::Pointer, v1.type);
-  ASSERT_EQ(v2.type,type::Int);
+  ASSERT(v1.type, Is<type::Pointer>());
+  ASSERT(v2.type == type::Int);
   auto *array_type = &v1.type->as<type::Pointer>().pointee->as<type::Array>();
   IR::Val ptr = array_type->fixed_length ? v1 : Load(ArrayData(v1));
   ptr.type    = type::Ptr(array_type->data_type);
@@ -422,7 +423,7 @@ CmdIndex Phi(const type::Type *t) {
 }
 
 Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
-  ASSERT_TYPE(type::Function, fn.type);
+  ASSERT(fn.type, Is<type::Function>());
   vals.insert(vals.end(), std::make_move_iterator(result_locs.begin()),
               std::make_move_iterator(result_locs.end()));
   vals.push_back(fn);
@@ -508,18 +509,18 @@ void Cmd::dump(size_t indent) const {
 }
 
 void CondJump(Val cond, BlockIndex true_block, BlockIndex false_block) {
-  ASSERT_NE(Func::Current, nullptr);
+  ASSERT(Func::Current != nullptr);
   Cmd cmd(nullptr, Op::CondJump,
           {cond, Val::Block(true_block), Val::Block(false_block)});
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 }
 void UncondJump(BlockIndex block) {
-  ASSERT_NE(Func::Current, nullptr);
+  ASSERT(Func::Current != nullptr);
   Cmd cmd(nullptr, Op::UncondJump, {Val::Block(block)});
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 }
 void ReturnJump() {
-  ASSERT_NE(Func::Current, nullptr);
+  ASSERT(Func::Current != nullptr);
   Cmd cmd(nullptr, Op::ReturnJump, {});
   Func::Current->return_blocks_.insert(Block::Current);
   Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
@@ -540,7 +541,7 @@ void Func::dump() const {
 // TODO this may not be necessary anymore? I can just make the phi later?
 void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
   auto &cmd = Command(cmd_index);
-  ASSERT(cmd.op_code_ == Op::Phi, "");
+  ASSERT(cmd.op_code_ == Op::Phi);
   cmd.args = std::move(args);
   RecordReferences</* IsPhi = */ true>(Func::Current, cmd_index, cmd.args);
 }

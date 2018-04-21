@@ -76,7 +76,7 @@ void InDecl::assign_scope(Scope *scope) {
 
 void Declaration::assign_scope(Scope *scope) {
   STAGE_CHECK;
-  ASSERT(scope, "");
+  ASSERT(scope != nullptr);
   scope_ = scope;
   scope_->InsertDecl(this);
   identifier->assign_scope(scope);

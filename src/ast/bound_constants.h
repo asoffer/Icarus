@@ -24,7 +24,7 @@ template <> struct less<AST::BoundConstants> {
     auto lhs_iter = lhs.begin();
     auto rhs_iter = rhs.begin();
     while (lhs_iter != lhs.end()) {
-      ASSERT_EQ(lhs_iter->first, rhs_iter->first);
+      ASSERT(lhs_iter->first == rhs_iter->first);
       if (lhs_iter->second.value < rhs_iter->second.value) { return true; }
       if (lhs_iter->second.value > rhs_iter->second.value) { return false; }
       ++lhs_iter;

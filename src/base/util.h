@@ -44,9 +44,8 @@ template <typename Base> struct Cast {
     STATIC_ASSERT_RELATED(Base, T);
 
 #ifdef DBG
-    auto *result = dynamic_cast<T *>(reinterpret_cast<Base *>(this));
-    ASSERT(result, "Failed to convert");
-    return std::move(*result);
+    return std::move(
+        *ASSERT_NOT_NULL(dynamic_cast<T *>(reinterpret_cast<Base *>(this))));
 #else
     return std::move(*reinterpret_cast<T *>(this));
 #endif
@@ -56,10 +55,8 @@ template <typename Base> struct Cast {
     STATIC_ASSERT_RELATED(Base, T);
 
 #ifdef DBG
-    auto *result =
-        dynamic_cast<const T *>(reinterpret_cast<const Base *>(this));
-    ASSERT(result, "Failed to convert");
-    return *result;
+    return *ASSERT_NOT_NULL(
+        dynamic_cast<const T *>(reinterpret_cast<const Base *>(this)));
 #else
     return *reinterpret_cast<const T *>(this);
 #endif

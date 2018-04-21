@@ -11,6 +11,8 @@
 #include "../type/all.h"
 #include "../ast/stages.h"
 
+using base::check::Is;
+
 extern base::guarded<std::unordered_map<
     Source::Name, std::shared_future<std::unique_ptr<Module>>>>
     modules;
@@ -83,8 +85,8 @@ IR::Val AST::Access::EmitLVal(Context *ctx) {
     val = IR::Load(val);
   }
 
-  ASSERT_TYPE(type::Pointer, val.type);
-  ASSERT_TYPE(type::Struct, val.type->as<type::Pointer>().pointee);
+  ASSERT(val.type, Is<type::Pointer>());
+  ASSERT(val.type->as<type::Pointer>().pointee, Is<type::Struct>());
 
   auto *struct_type =
       &val.type->as<type::Pointer>().pointee->as<type::Struct>();
@@ -173,7 +175,7 @@ static IR::Val EmitOneCallDispatch(
     const AST::Binding &binding, Context *ctx) {
   auto callee = binding.fn_expr_->EmitIR(ctx).value;
   if (const type::Type **cast_to = std::get_if<const type::Type *>(&callee)) {
-    ASSERT_EQ(binding.exprs_.size(), 1u);
+    ASSERT(binding.exprs_.size() == 1u);
     auto[bound_type, expr] = binding.exprs_[0];
     return IR::Cast(*cast_to, bound_type->PrepareArgument(
                                   expr->type, *expr_map.at(expr), ctx));
@@ -193,7 +195,7 @@ static IR::Val EmitOneCallDispatch(
   for (size_t i = 0; i < args.size(); ++i) {
     auto[bound_type, expr] = binding.exprs_[i];
     if (expr == nullptr) {
-      ASSERT_NE(bound_type, nullptr);
+      ASSERT(bound_type != nullptr);
       auto default_expr = fn_to_call->args_[i].second;
       args[i]           = bound_type->PrepareArgument(default_expr->type,
                                             default_expr->EmitIR(ctx), ctx);
@@ -203,7 +205,7 @@ static IR::Val EmitOneCallDispatch(
     }
   }
 
-  ASSERT_NE(fn_to_call, nullptr);
+  ASSERT(fn_to_call != nullptr);
 
   if (fn_to_call->type_->output.size() > 1) {
     NOT_YET(fn_to_call->type_->output);
@@ -287,7 +289,7 @@ IR::Val AST::Call::EmitIR(Context *ctx) {
     return IR::Call(ErrorFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
   }
 
-  ASSERT_GT(dispatch_table_.bindings_.size(), 0u);
+  ASSERT(dispatch_table_.bindings_.size() > 0u);
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching
   // insanity.
@@ -529,7 +531,7 @@ IR::Val AST::ScopeLiteral::EmitIR(Context *ctx) {
 
 IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   IR::Val scope_expr_val = Evaluate(scope_expr.get(), ctx)[0];
-  ASSERT_TYPE(type::Scope, scope_expr_val.type);
+  ASSERT(scope_expr_val.type, Is<type::Scope>());
 
   auto enter_fn =
       std::get<ScopeLiteral *>(scope_expr_val.value)->enter_fn->init_val.get();
@@ -605,8 +607,8 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
     // set, but the allocation has to be done much earlier. We do the allocation
     // in FunctionLiteral::EmitIR. Declaration::EmitIR is just used to set the
     // value.
-    ASSERT_NE(addr, IR::Val::None());
-    ASSERT(scope_->ContainingFnScope(), "");
+    ASSERT(addr != IR::Val::None());
+    ASSERT(scope_->ContainingFnScope() != nullptr);
 
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) { return IR::Val::None(); }
@@ -627,7 +629,7 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
 }
 
 IR::Val AST::Import::EmitIR(Context *ctx) {
-  ASSERT(cache_.has_value(), "");
+  ASSERT(cache_.has_value());
   return IR::Val::Mod(modules.lock()->at(*cache_).get().get());
 }
 
@@ -676,7 +678,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
     }
     case Language::Operator::Generate: {
       auto val = Evaluate(operand.get(), ctx) AT(0);
-      ASSERT_EQ(val.type, type::Code);
+      ASSERT(val.type == type::Code);
       auto block = std::get<AST::CodeBlock>(val.value);
       if (auto *err = std::get_if<std::string>(&block.content_)) {
         ctx->error_log_.UserDefinedError(*err);
@@ -751,7 +753,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
         lhs_types.push_back(expr->type);
       });
 
-      ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
+      ASSERT(lhs_lvals.size() == rhs_vals.size());
       for (size_t i = 0; i < lhs_lvals.size(); ++i) {
         lhs_types[i]->EmitAssign(rhs_types[i], PtrCallFix(rhs_vals[i]),
                                  lhs_lvals[i], ctx);
@@ -842,7 +844,7 @@ static IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
   auto op = chain_op->ops[index];
 
   if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
-    ASSERT(op == Language::Operator::Eq || op == Language::Operator::Ne, "");
+    ASSERT(op == Language::Operator::Eq || op == Language::Operator::Ne);
     return type::Array::Compare(&lhs_type->as<type::Array>(), lhs_ir,
                                 &rhs_type->as<type::Array>(), rhs_ir,
                                 op == Language::Operator::Eq, ctx);
@@ -1043,7 +1045,7 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
         // TODO arg_val seems to go along with in_decl a lot. Is there some
         // reason for this that *should* be abstracted?
         if (decl->arg_val || decl->is<InDecl>()) { return; }
-        ASSERT_NE(decl->type, nullptr);
+        ASSERT(decl->type != nullptr);
         decl->addr = IR::Alloca(decl->type);
       });
     }
@@ -1077,13 +1079,13 @@ IR::Val AST::CodeBlock::EmitIR(Context *) {
 }
 
 IR::Val AST::Identifier::EmitLVal(Context *ctx) {
-  ASSERT_NE(decl, nullptr);
+  ASSERT(decl != nullptr);
   if (decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
   return decl->addr;
 }
 
 IR::Val AST::Unop::EmitLVal(Context *ctx) {
-  ASSERT_EQ(static_cast<int>(op), static_cast<int>(Language::Operator::At));
+  ASSERT(static_cast<int>(op) == static_cast<int>(Language::Operator::At));
   return operand->EmitIR(ctx);
 }
 
@@ -1117,7 +1119,7 @@ IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
     if (field->type_expr) {
       field_type = field->type_expr->EmitIR(ctx);
     } else {
-      ASSERT_NE(nullptr, field->init_val.get());
+      ASSERT(nullptr != field->init_val.get());
       field_type = IR::Val::Type(field->init_val->type);
     }
     IR::InsertField(new_struct, field->identifier->token, std::move(field_type),

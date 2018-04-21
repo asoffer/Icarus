@@ -126,7 +126,7 @@ std::string Binop::to_string(size_t n) const {
 }
 
 std::string ArrayType::to_string(size_t n) const {
-  ASSERT(length, "");
+  ASSERT(length != nullptr);
   std::stringstream ss;
   ss << "[" << length->to_string(n) << "; " << data_type->to_string(n) << "]";
   return ss.str();
