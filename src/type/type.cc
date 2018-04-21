@@ -464,6 +464,19 @@ const Scope *Scp(const std::vector<const Type *> &types) {
   return &scopes_.emplace(types, Scope(types)).first->second;
 }
 
+static std::map<std::vector<const Type*>, const Tuple> tups_;
+const Type *Tup(std::vector<const Type *> entries) {
+  switch (entries.size()) {
+    case 0: return type::Void;
+    case 1: return entries[0];
+    default: {
+      Tuple tup(entries);
+      auto[iter, success] = tups_.emplace(std::move(entries), std::move(tup));
+      return &iter->second;
+    } break;
+  }
+}
+
 bool Type::is_big() const {
   return is<Array>() || is<Struct>() || is<Variant>();
 }

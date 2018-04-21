@@ -103,7 +103,8 @@ struct Val {
                EnumVal, const type::Type *, type::Struct *,
                AST::GenericFunctionLiteral *, AST::FunctionLiteral *,
                IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
-               AST::Expression *, BlockIndex, std::string, const Module *>
+               AST::Expression *, BlockIndex, std::string, const Module *,
+               std::vector<Val>>
       value{false};
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
@@ -127,6 +128,10 @@ struct Val {
   static Val Mod(const Module *mod) { return Val(type::Module, mod); }
   static Val Null(const type::Type *t);
   static Val NullPtr();
+  static Val Many(std::vector<IR::Val> vals) {
+    return Val(nullptr, std::move(vals));
+  }
+
   static Val StrLit(std::string str) { return Val(type::String, std::move(str)); }
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
@@ -151,6 +156,7 @@ inline bool operator==(const Val &lhs, const Val &rhs) {
   return lhs.type == rhs.type && lhs.value == rhs.value;
 }
 inline bool operator!=(const Val &lhs, const Val &rhs) { return !(lhs == rhs); }
+bool operator<(const ::IR::Val &lhs, const ::IR::Val &rhs);
 } // namespace IR
 
 #endif // ICARUS_IR_VAL_H

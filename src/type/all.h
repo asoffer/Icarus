@@ -39,15 +39,16 @@ struct Identifier;
 // should be better? Should be necessarily unnamed? Figure it out and be
 // consistent.
 
-#include "primitive.h"
 #include "array.h"
 #include "enum.h"
 #include "function.h"
 #include "pointer.h"
+#include "primitive.h"
 #include "range.h"
 #include "scope.h"
 #include "slice.h"
 #include "struct.h"
+#include "tuple.h"
 #include "variant.h"
 
 #undef TYPE_FNS

@@ -31,9 +31,10 @@ struct Expr<bool> {
   bool val;
   operator bool() {
     if (val) { return true; }
-    LOG << "Expectation failed (" << stealer.file << ", line #" << stealer.line
-        << ")\n"
-        << stealer.expr << "\n(Value was false but expected to be true).\n\n";
+    std::cerr << "Expectation failed (" << stealer.file << ", line #"
+              << stealer.line << ")\n"
+              << stealer.expr
+              << "\n(Value was false but expected to be true).\n\n";
     return false;
   }
 };
@@ -64,11 +65,12 @@ auto operator>>(const Expr<T> &lhs, U &&rhs) {
   template <typename T, typename U>                                            \
   inline bool operator op(const Expr<T> &lhs, U &&rhs) {                       \
     if (lhs.val op rhs) { return true; }                                       \
-    LOG << "Expectation failed (" << lhs.stealer.file << ", line #"            \
-        << lhs.stealer.line << ")\n\n  " << lhs.stealer.expr                   \
-        << "\n\nleft-hand side:  " << ::base::internal::stringify(lhs.val)     \
-        << "\nright-hand side: " << ::base::internal::stringify(rhs)           \
-        << "\n\n";                                                             \
+    std::cerr << "Expectation failed (" << lhs.stealer.file << ", line #"      \
+              << lhs.stealer.line << ")\n\n  " << lhs.stealer.expr             \
+              << "\n\nleft-hand side:  "                                       \
+              << ::base::internal::stringify(lhs.val)                          \
+              << "\nright-hand side: " << ::base::internal::stringify(rhs)     \
+              << "\n\n";                                                       \
     return false;                                                              \
   }
 MAKE_OPERATOR(<)
@@ -107,6 +109,19 @@ template <typename T>
 auto Is() {
   return [](const auto &v) -> std::string {
     return v->template is<T>() ? "" : "Unexpected type";
+  };
+}
+
+template <typename M>
+auto Not(M matcher) {
+  return [m{std::move(matcher)}](const auto &v)->std::string {
+    auto res = m(v);
+    if (res != "") {
+      return "";
+    } else {
+      // TODO do matchers correctly and have them generate a good error message.
+      return "something else";
+    }
   };
 }
 }  // namespace base::check

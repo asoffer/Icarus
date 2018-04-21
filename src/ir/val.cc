@@ -125,6 +125,10 @@ std::string Val::to_string() const {
           [](const Module *module) -> std::string {
             // TODO
             return "module";
+          },
+          [](const std::vector<IR::Val> &) -> std::string {
+            // TODO
+            return "vector<IR::Val>{...}";
           }},
       value);
 }
@@ -150,7 +154,20 @@ bool operator==(Addr lhs, Addr rhs) {
   }
   UNREACHABLE();
 }
-} // namespace IR
+
+bool operator<(const ::IR::Val &lhs, const ::IR::Val &rhs) {
+  auto lhs_index = lhs.value.index();
+  auto rhs_index = rhs.value.index();
+  if (lhs_index < rhs_index) { return true; }
+  if (lhs_index > rhs_index) { return false; }
+  const auto &rhs_val = rhs.value;
+  return std::visit(
+      [&rhs_val](const auto &l) -> bool {
+        return l < std::get<std::decay_t<decltype(l)>>(rhs_val);
+      },
+      lhs.value);
+}
+}  // namespace IR
 
 IR::Val PtrCallFix(IR::Val v) {
   return !v.type->is<type::Pointer>() ||

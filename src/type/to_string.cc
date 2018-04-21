@@ -245,4 +245,23 @@ char *Scope::WriteTo(char *buf) const {
   buf = std::strcpy(buf, ")") + 1;
   return buf;
 }
+
+size_t Tuple::string_size() const {
+  size_t result = 2 * entries_.size();
+  for (const Type *t : entries_) { result += t->string_size(); }
+  return result;
+}
+
+char *Tuple::WriteTo(char *buf) const {
+  buf = std::strcpy(buf, "(") + 1;
+  auto iter = entries_.begin();
+  buf = (*iter)->WriteTo(buf);
+  ++iter;
+  for (; iter != entries_.end(); ++iter) {
+    buf = std::strcpy(buf, ", ") + 2;
+    buf = (*iter)->WriteTo(buf);
+  }
+  buf = std::strcpy(buf, ")") + 1;
+  return buf;
+}
 } // namespace type

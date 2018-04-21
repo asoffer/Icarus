@@ -169,7 +169,7 @@ static IR::BlockIndex CallLookupTest(
   return next_binding;
 }
 
-static IR::Val EmitOneCallDispatch(
+static std::vector<IR::Val> EmitOneCallDispatch(
     const type::Type *ret_type,
     const std::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
@@ -177,8 +177,8 @@ static IR::Val EmitOneCallDispatch(
   if (const type::Type **cast_to = std::get_if<const type::Type *>(&callee)) {
     ASSERT(binding.exprs_.size() == 1u);
     auto[bound_type, expr] = binding.exprs_[0];
-    return IR::Cast(*cast_to, bound_type->PrepareArgument(
-                                  expr->type, *expr_map.at(expr), ctx));
+    return {IR::Cast(*cast_to, bound_type->PrepareArgument(
+                                   expr->type, *expr_map.at(expr), ctx))};
   }
 
   // After the last check, if you pass, you should dispatch
@@ -207,31 +207,33 @@ static IR::Val EmitOneCallDispatch(
 
   ASSERT(fn_to_call != nullptr);
 
-  if (fn_to_call->type_->output.size() > 1) {
-    NOT_YET(fn_to_call->type_->output);
+  std::vector<IR::Val> ret_vals;
+  switch (fn_to_call->type_->output.size()) {
+    case 0: {
+      return std::vector{
+          IR::Call(IR::Val::Func(fn_to_call), std::move(args), {})};
+    } break;
+    case 1: {
+      if (fn_to_call->type_->output AT(0)->is_big()) {
+        ret_vals.push_back(IR::Alloca(ret_type));
+      } else {
+        return std::vector{
+            IR::Call(IR::Val::Func(fn_to_call), std::move(args), {})};
+      }
+    } break;
+    default: {
+      ret_vals.reserve(fn_to_call->type_->output.size());
+      for (const type::Type *ret_type : fn_to_call->type_->output) {
+        ret_vals.push_back(IR::Alloca(ret_type));
+      }
+    } break;
   }
-  IR::Val ret_val;
-  auto *out_type = fn_to_call->type_->output.empty()
-                       ? type::Void
-                       : fn_to_call->type_->output AT(0);
-  if (out_type->is_big()) {
-    ret_val = IR::Alloca(ret_type);
-    IR::Call(IR::Val::Func(fn_to_call), std::move(args), {ret_val});
-  } else {
-    if (ret_type->is_big()) {
-      ret_val = IR::Alloca(ret_type);
-      ret_type->EmitAssign(
-          out_type, IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}),
-          ret_val, ctx);
-    } else {
-      ret_val = IR::Call(IR::Val::Func(fn_to_call), std::move(args), {});
-    }
-  }
+  IR::Call(IR::Val::Func(fn_to_call), std::move(args), ret_vals);
 
-  return ret_val;
+  return ret_vals;
 }
 
-static IR::Val EmitCallDispatch(
+static std::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx) {
@@ -245,8 +247,14 @@ static IR::Val EmitCallDispatch(
     return EmitOneCallDispatch(ret_type, expr_map, binding, ctx);
   }
 
-  std::vector<IR::Val> results;
-  results.reserve(2 * dispatch_table.bindings_.size());
+  size_t num_rets = ret_type->is<type::Tuple>()
+                        ? ret_type->as<type::Tuple>().entries_.size()
+                        : 1;
+
+  std::vector<std::vector<IR::Val>> result_phi_args(num_rets);
+  for (auto &result : result_phi_args) {
+    result.reserve(2 * dispatch_table.bindings_.size());
+  }
 
   auto landing_block = IR::Func::Current->AddBlock();
 
@@ -254,34 +262,39 @@ static IR::Val EmitCallDispatch(
   for (size_t i = 0; i < dispatch_table.bindings_.size() - 1; ++i, ++iter) {
     const auto & [ call_arg_type, binding ] = *iter;
     auto next_binding = CallLookupTest(args, call_arg_type);
-    auto result = EmitOneCallDispatch(ret_type, expr_map, binding, ctx);
-    results.push_back(IR::Val::Block(IR::Block::Current));
-    results.push_back(std::move(result));
+    size_t j          = 0;
+    for (auto &&result :
+         EmitOneCallDispatch(ret_type, expr_map, binding, ctx)) {
+      result_phi_args AT(j).push_back(IR::Val::Block(IR::Block::Current));
+      result_phi_args AT(j).push_back(std::move(result));
+      ++j;
+    }
+    ASSERT(j == num_rets);
 
     IR::UncondJump(landing_block);
     IR::Block::Current = next_binding;
   }
 
   const auto & [ call_arg_type, binding ] = *iter;
-  results.push_back(IR::Val::Block(IR::Block::Current));
-  results.push_back(EmitOneCallDispatch(ret_type, expr_map, binding, ctx));
+  size_t j                                = 0;
+  for (auto &&result : EmitOneCallDispatch(ret_type, expr_map, binding, ctx)) {
+    result_phi_args AT(j).push_back(IR::Val::Block(IR::Block::Current));
+    result_phi_args AT(j).push_back(std::move(result));
+    ++j;
+  }
+  ASSERT(j == num_rets);
 
   IR::UncondJump(landing_block);
   IR::Block::Current = landing_block;
 
-  if (results.empty()) {
-    return IR::Val::None();
-  } else {
-    if (results.size() == 2) {
-      return results[1];
-    } else if (ret_type != type::Void) {
-      auto phi = IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
-      IR::Func::Current->SetArgs(phi, std::move(results));
-      return IR::Func::Current->Command(phi).reg();
-    } else {
-      return IR::Val::None();
-    }
+  std::vector<IR::Val> results;
+  results.reserve(num_rets);
+  for (auto &result_phi_arg : result_phi_args) {
+    auto phi = IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
+    IR::Func::Current->SetArgs(phi, std::move(result_phi_arg));
+    results.push_back(IR::Func::Current->Command(phi).reg());
   }
+  return results;
 }
 
 IR::Val AST::Call::EmitIR(Context *ctx) {
@@ -298,13 +311,14 @@ IR::Val AST::Call::EmitIR(Context *ctx) {
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
 
-  return EmitCallDispatch(
+  auto results = EmitCallDispatch(
       args_.Transform([ctx](const std::unique_ptr<Expression> &expr) {
         return std::pair(const_cast<Expression *>(expr.get()),
                          expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
                                               : expr->EmitIR(ctx));
       }),
       dispatch_table_, type, ctx);
+  return IR::Val::Many(results);
 }
 
 IR::Val AST::Access::EmitIR(Context *ctx) {
@@ -640,7 +654,9 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
     args.pos_ = {std::pair(operand.get(), operand->type->is_big()
                                               ? PtrCallFix(operand->EmitIR(ctx))
                                               : operand->EmitIR(ctx))};
-    return EmitCallDispatch(args, dispatch_table_, type, ctx);
+    auto results = EmitCallDispatch(args, dispatch_table_, type, ctx);
+    ASSERT(results.size() == 1u);
+    return results[0];
   }
 
   switch (op) {
@@ -720,7 +736,9 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
         args.pos_.emplace_back(rhs.get(), rhs->type->is_big()
                                               ? PtrCallFix(rhs->EmitIR(ctx))
                                               : rhs->EmitIR(ctx));
-        return EmitCallDispatch(args, dispatch_table_, type, ctx);
+        auto results = EmitCallDispatch(args, dispatch_table_, type, ctx);
+        ASSERT(results.size() == 1u);
+        return results[0];
       }
 
       switch (op) {
@@ -745,6 +763,13 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
                     rhs_vals.push_back(expr->EmitIR(ctx));
                     rhs_types.push_back(expr->type);
                   });
+      if (rhs_vals.size() == 1) {
+        if (auto many_ptr =
+                std::get_if<std::vector<IR::Val>>(&rhs_vals[0].value)) {
+          rhs_vals  = std::move(*many_ptr);
+          rhs_types = rhs->type->as<type::Tuple>().entries_;
+        }
+      }
 
       std::vector<IR::Val> lhs_lvals;
       ForEachExpr(lhs.get(), [&ctx, &lhs_lvals, &lhs_types](
@@ -859,8 +884,10 @@ static IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
                                ? PtrCallFix(rhs_ir)
                                : rhs_ir);
 
-    return EmitCallDispatch(args, chain_op->dispatch_tables_[index], type::Bool,
-                            ctx);
+    auto results = EmitCallDispatch(args, chain_op->dispatch_tables_[index],
+                                    type::Bool, ctx);
+    ASSERT(results.size() == 1u);
+    return results[0];
 
   } else {
     switch (op) {

@@ -93,7 +93,8 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             // okay and we can do promotion later?
             return StringConstant(llvm_data->builder, s);
           },
-          [&](AST::FunctionLiteral *fn) -> llvm::Value * { NOT_YET(); }},
+          [&](AST::FunctionLiteral *fn) -> llvm::Value * { NOT_YET(); },
+          [&](const std::vector<IR::Val>&) -> llvm::Value * { UNREACHABLE(); }},
       val.value);
 }
 

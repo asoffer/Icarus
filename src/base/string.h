@@ -116,7 +116,7 @@ auto stringify(dispatch_rank<0>, const T &) -> std::string {
 
 template <typename T>
 std::string stringify(T &&t) {
-  return internal::stringify(internal::dispatch_rank<7>{}, std::forward<T>(t));
+  return internal::stringify(internal::dispatch_rank<8>{}, std::forward<T>(t));
 }
 }  // namespace base::internal
 
