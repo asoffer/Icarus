@@ -41,11 +41,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
       base::overloaded{
           [&](IR::Register reg) -> llvm::Value * {
             if (static_cast<size_t>(reg.value) < num_args) {
-              auto arg_iter = llvm_data->fn->arg_begin();
-              for (size_t i = 0; i < static_cast<size_t>(reg.value); ++i) {
-                ++arg_iter;
-              }
-              return arg_iter;
+              return llvm_data->fn->arg_begin() + reg.value;
             }
 
             // TODO still need to be sure these are read in the correct order
@@ -94,7 +90,9 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             return StringConstant(llvm_data->builder, s);
           },
           [&](AST::FunctionLiteral *fn) -> llvm::Value * { NOT_YET(); },
-          [&](const std::vector<IR::Val>&) -> llvm::Value * { UNREACHABLE(); }},
+          [&](const std::vector<IR::Val> &) -> llvm::Value * {
+            UNREACHABLE();
+          }},
       val.value);
 }
 
@@ -165,15 +163,12 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
           llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[1].value).value],
           llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[2].value).value]);
     case IR::Op::ReturnJump:
-      switch (num_rets) {
-        case 0: llvm_data->builder->CreateRetVoid(); break;
-        case 1:
-          llvm_data->builder->CreateRet(
-              llvm_data->builder->CreateLoad(llvm_data->rets.at(0)));
-          break;
-        default:
-          // TODO write outputs to all the out-params
-          llvm_data->builder->CreateRetVoid();
+      // TODO what about large values
+      if (num_rets == 1) {
+        llvm_data->builder->CreateRet(
+            llvm_data->builder->CreateLoad(llvm_data->rets.at(0)));
+      } else {
+        llvm_data->builder->CreateRetVoid();
       }
       return nullptr;
     case IR::Op::Trunc:
@@ -224,8 +219,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
               printf_fn, {StringConstant(llvm_data->builder, "%s"),
                           EmitValue(num_args, llvm_data, arg)});
         } else {
-          LOG << arg.type;
-          NOT_YET();
+          NOT_YET(arg.type);
         }
       }
     } break;
@@ -420,9 +414,17 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
     }
 
     builder.SetInsertPoint(llvm_data.blocks[0]);
-    llvm_data.rets.reserve(fn->type_->output.size());
-    for (auto t : fn->type_->output) {
-      llvm_data.rets.push_back(builder.CreateAlloca(t->llvm(ctx)));
+    // TODO what about large values?
+    if (fn->type_->output.size() == 1) {
+      llvm_data.rets.push_back(
+          builder.CreateAlloca(fn->type_->output[0]->llvm(ctx)));
+    } else {
+      llvm_data.rets.reserve(fn->type_->output.size());
+      auto arg_iter = llvm_data.fn->arg_begin() + fn->type_->input.size();
+      for (size_t i = 0; i < fn->type_->output.size(); ++i) {
+        llvm_data.rets.push_back(arg_iter);
+        ++arg_iter;
+      }
     }
 
     for (size_t i = 0; i < fn->blocks_.size(); ++i) {
