@@ -287,14 +287,35 @@ static std::vector<IR::Val> EmitCallDispatch(
   IR::UncondJump(landing_block);
   IR::Block::Current = landing_block;
 
-  std::vector<IR::Val> results;
-  results.reserve(num_rets);
-  for (auto &result_phi_arg : result_phi_args) {
-    auto phi = IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
-    IR::Func::Current->SetArgs(phi, std::move(result_phi_arg));
-    results.push_back(IR::Func::Current->Command(phi).reg());
+  switch (num_rets) {
+    case 0: return {};
+    case 1:
+      if (ret_type == type::Void) {
+        return std::vector(1, IR::Val::None());
+      } else {
+        auto phi = IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
+        IR::Func::Current->SetArgs(phi, std::move(result_phi_args[0]));
+        return std::vector(1, IR::Func::Current->Command(phi).reg());
+      }
+    default: {
+      std::vector<IR::Val> results;
+      results.reserve(num_rets);
+      const auto &tup_entries = ret_type->as<type::Tuple>().entries_;
+      for (size_t i = 0; i < num_rets; ++i) {
+        const type::Type *single_ret_type = tup_entries[i];
+        if (single_ret_type == type::Void) {
+          results.push_back(IR::Val::None());
+        } else {
+          auto phi = IR::Phi(single_ret_type->is_big() ? Ptr(single_ret_type)
+                                                       : single_ret_type);
+          IR::Func::Current->SetArgs(phi, std::move(result_phi_args[i]));
+          results.push_back(IR::Func::Current->Command(phi).reg());
+        }
+      }
+      return results;
+    } break;
   }
-  return results;
+  UNREACHABLE();
 }
 
 IR::Val AST::Call::EmitIR(Context *ctx) {
@@ -318,7 +339,12 @@ IR::Val AST::Call::EmitIR(Context *ctx) {
                                               : expr->EmitIR(ctx));
       }),
       dispatch_table_, type, ctx);
-  return IR::Val::Many(results);
+
+  switch (results.size()) {
+    case 0: return IR::Val::None();
+    case 1: return std::move(results)[0];
+    default: return IR::Val::Many(results);
+  }
 }
 
 IR::Val AST::Access::EmitIR(Context *ctx) {
@@ -651,7 +677,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
   if (operand->type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
     // TODO struct is not exactly right. we really mean user-defined
     AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
-    args.pos_ = {std::pair(operand.get(), operand->type->is_big()
+    args.pos_    = {std::pair(operand.get(), operand->type->is_big()
                                               ? PtrCallFix(operand->EmitIR(ctx))
                                               : operand->EmitIR(ctx))};
     auto results = EmitCallDispatch(args, dispatch_table_, type, ctx);
@@ -673,15 +699,14 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
     }
     case Language::Operator::TypeOf: return IR::Val::Type(operand->type);
     case Language::Operator::Print: {
-      ForEachExpr(
-          operand.get(), [&ctx](size_t, AST::Expression *expr) {
-            if (expr->type->is<type::Primitive>() ||
-                expr->type->is<type::Pointer>()) {
-              IR::Print(expr->EmitIR(ctx));
-            } else {
-              expr->type->EmitRepr(expr->EmitIR(ctx), ctx);
-            }
-          });
+      ForEachExpr(operand.get(), [&ctx](size_t, AST::Expression *expr) {
+        if (expr->type->is<type::Primitive>() ||
+            expr->type->is<type::Pointer>()) {
+          IR::Print(expr->EmitIR(ctx));
+        } else {
+          expr->type->EmitRepr(expr->EmitIR(ctx), ctx);
+        }
+      });
 
       return IR::Val::None();
     } break;
@@ -723,25 +748,25 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
     case Language::Operator::Pass: return operand->EmitIR(ctx);
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
-    }
+}
 
-    IR::Val AST::Binop::EmitIR(Context * ctx) {
-      if (lhs->type->is<type::Struct>() || rhs->type->is<type::Struct>()) {
-        // TODO struct is not exactly right. we really mean user-defined
-        AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
-        args.pos_.reserve(2);
-        args.pos_.emplace_back(lhs.get(), lhs->type->is_big()
-                                              ? PtrCallFix(lhs->EmitIR(ctx))
-                                              : lhs->EmitIR(ctx));
-        args.pos_.emplace_back(rhs.get(), rhs->type->is_big()
-                                              ? PtrCallFix(rhs->EmitIR(ctx))
-                                              : rhs->EmitIR(ctx));
-        auto results = EmitCallDispatch(args, dispatch_table_, type, ctx);
-        ASSERT(results.size() == 1u);
-        return results[0];
-      }
+IR::Val AST::Binop::EmitIR(Context *ctx) {
+  if (lhs->type->is<type::Struct>() || rhs->type->is<type::Struct>()) {
+    // TODO struct is not exactly right. we really mean user-defined
+    AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
+    args.pos_.reserve(2);
+    args.pos_.emplace_back(lhs.get(), lhs->type->is_big()
+                                          ? PtrCallFix(lhs->EmitIR(ctx))
+                                          : lhs->EmitIR(ctx));
+    args.pos_.emplace_back(rhs.get(), rhs->type->is_big()
+                                          ? PtrCallFix(rhs->EmitIR(ctx))
+                                          : rhs->EmitIR(ctx));
+    auto results = EmitCallDispatch(args, dispatch_table_, type, ctx);
+    ASSERT(results.size() == 1u);
+    return results[0];
+  }
 
-      switch (op) {
+  switch (op) {
 #define CASE(op_name)                                                          \
   case Language::Operator::op_name: {                                          \
     auto lhs_ir = lhs->EmitIR(ctx);                                            \
@@ -794,12 +819,12 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
       auto land_block = IR::Func::Current->AddBlock();
       auto more_block = IR::Func::Current->AddBlock();
 
-      auto lhs_val = lhs->EmitIR(ctx);
+      auto lhs_val       = lhs->EmitIR(ctx);
       auto lhs_end_block = IR::Block::Current;
       IR::CondJump(lhs_val, land_block, more_block);
 
       IR::Block::Current = more_block;
-      auto rhs_val = rhs->EmitIR(ctx);
+      auto rhs_val       = rhs->EmitIR(ctx);
       auto rhs_end_block = IR::Block::Current;
       IR::UncondJump(land_block);
 
@@ -821,12 +846,12 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
       auto land_block = IR::Func::Current->AddBlock();
       auto more_block = IR::Func::Current->AddBlock();
 
-      auto lhs_val = lhs->EmitIR(ctx);
+      auto lhs_val       = lhs->EmitIR(ctx);
       auto lhs_end_block = IR::Block::Current;
       IR::CondJump(lhs_val, more_block, land_block);
 
       IR::Block::Current = more_block;
-      auto rhs_val = rhs->EmitIR(ctx);
+      auto rhs_val       = rhs->EmitIR(ctx);
       auto rhs_end_block = IR::Block::Current;
       IR::UncondJump(land_block);
 
@@ -841,7 +866,7 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
 #define CASE_ASSIGN_EQ(op_name)                                                \
   case Language::Operator::op_name##Eq: {                                      \
     auto lhs_lval = lhs->EmitLVal(ctx);                                        \
-    auto rhs_ir = rhs->EmitIR(ctx);                                            \
+    auto rhs_ir   = rhs->EmitIR(ctx);                                          \
     IR::Store(IR::op_name(PtrCallFix(lhs_lval), rhs_ir), lhs_lval);            \
     return IR::Val::None();                                                    \
   } break

@@ -708,7 +708,17 @@ void Binop::VerifyType(Context *ctx) {
         NOT_YET("error message");
       }
     } else {
-      NOT_YET();
+      if (rhs->type->is<type::Tuple>()){
+        LOG << lhs;
+        LOG << rhs;
+        NOT_YET("error message");
+      } else {
+        if (!CanCastImplicitly(rhs->type, lhs->type)) {
+          ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                               std::to_string(__LINE__) + ": ");
+          limit_to(StageRange::NoEmitIR());
+        }
+      }
     }
 
     return;
