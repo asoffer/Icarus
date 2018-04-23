@@ -16,10 +16,45 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/TargetSelect.h"
 #include "module.h"
-#include "util/command_line_args.h"
-#include "util/timer.h"
 
-Timer timer;
+// Debug flags and their default values
+namespace debug {
+inline bool parser        = false;
+inline bool ct_eval       = false;
+inline bool no_validation = false;
+} // namespace debug
+
+const char *output_file_name = "a.out";
+std::vector<Source::Name> files;
+
+static void
+ShowUsage(char *argv0) {
+  fprintf(stderr,
+          R"(Usage: %s [options] input_file... -o output_file
+
+  -o output_file                 Default is a.out
+
+  -e, --eval                     Run compile-time evaluator step-by-step (debug).
+
+  --file-type=[ir|nat|bin|none]  Output a file of the specified type:
+                                   ir   - LLVM intermediate representation
+                                   nat  - Output a native object file
+                                   bin  - Output a single native object file and
+                                          link it (requires gcc)
+                                   none - Do not write any files (debug)
+                                          This is the default option.
+
+  -h, --help                     Display this usage message.
+
+  -n, --no-validation            Do not run property validation
+
+  -p, --parser                   Display step-by-step file parsing (debug).
+
+  -r, --repl                     Invoke Icarus Read-Eval-Print-Loop
+
+)",
+          argv0);
+}
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
@@ -199,12 +234,85 @@ int main(int argc, char *argv[]) {
   });
 #endif
 
-  RUN(timer, "Argument parsing") {
-    switch (ParseCLArguments(argc, argv)) {
-      case CLArgFlag::QuitSuccessfully: return 0;
-      case CLArgFlag::QuitWithFailure: return -1;
-      case CLArgFlag::Continue:;
+  bool repl = false;
+  for (int arg_num = 1; arg_num < argc; ++arg_num) {
+    auto arg = argv[arg_num];
+
+    if (strcmp(arg, "-o") == 0) {
+      if (++arg_num == argc) {
+        ShowUsage(argv[0]);
+        return -1;
+      }
+      arg = argv[arg_num];
+      if (arg[0] == '-') {
+        ShowUsage(argv[0]);
+        return -1;
+      }
+      output_file_name = arg;
+      goto next_arg;
     }
+
+    if (arg[0] == '-') {
+      if (arg[1] == '-') {
+        /* Long-form argument */
+        char *ptr = arg + 2;
+        while (*ptr != '=' && *ptr != '\0') { ++ptr; }
+        if (*ptr == '=') {
+          /* Long-form with value */
+
+          *ptr = '\0';
+          ptr++;  // points to the argument
+        } else {
+          /* Long-form flag */
+          if (strcmp(arg + 2, "eval") == 0) {
+            debug::ct_eval = true;
+            goto next_arg;
+
+          } else if (strcmp(arg + 2, "help") == 0) {
+            ShowUsage(argv[0]);
+            return 0;
+
+          } else if (strcmp(arg + 2, "no-validation") == 0) {
+            debug::no_validation = true;
+            goto next_arg;
+
+          } else if (strcmp(arg + 2, "parser") == 0) {
+            debug::parser = true;
+            goto next_arg;
+
+          } else if (strcmp(arg + 2, "repl") == 0) {
+            repl = true;
+            goto next_arg;
+
+          } else {
+            ShowUsage(argv[0]);
+            return -1;
+          }
+        }
+
+      } else {
+        /* Short-form arguments */
+        for (auto ptr = arg + 1; ptr; ++ptr) {
+          switch (*ptr) {
+            case 'h': ShowUsage(argv[0]); return 0;
+            case 'e': debug::ct_eval = true; break;
+            case 'n': debug::no_validation = true; break;
+            case 'p': debug::parser = true; break;
+            case 'r': repl = true; break;
+            case '\0': goto next_arg;
+            default: ShowUsage(argv[0]); return -1;
+          }
+        }
+      }
+    } else {
+      files.emplace_back(arg);
+    }
+  next_arg:;
+  }
+
+  if (files.empty() && !repl) {
+    ShowUsage(argv[0]);
+    return -1;
   }
 
   return repl ? RunRepl() : GenerateCode();

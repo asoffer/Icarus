@@ -14,7 +14,6 @@
 #include "error/log.h"
 #include "operators.h"
 #include "tagged_node.h"
-#include "util/timer.h"
 
 template <typename To, typename From>
 static std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
