@@ -456,9 +456,10 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
 
   auto[iter, success] =
       fns_.emplace(std::move(bound_constants), FunctionLiteral{});
-  new_ctx.bound_constants_ = &iter->first;
+   new_ctx.bound_constants_ = &iter->first;
   if (success) {
-    auto &func = iter->second;
+    auto &func                 = iter->second;
+    func.bound_constants_      = &iter->first;
     func.return_type_inferred_ = return_type_inferred_;
 
     func.inputs.reserve(inputs.size());
@@ -480,6 +481,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
 
     func.assign_scope(scope_);
     func.VerifyType(&new_ctx);
+    func.Validate(&new_ctx);
     func.EmitIR(&new_ctx);
     
     if (new_ctx.num_errors() > 0) {
@@ -617,7 +619,9 @@ static const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
     *dispatch_table = std::move(maybe_table).value();
     std::vector<std::vector<const type::Type *>> out_types;
     out_types.reserve(dispatch_table->bindings_.size());
-    ASSERT(dispatch_table->bindings_.size() != 0u);
+
+    if (dispatch_table->bindings_.size() == 0u) { return type::Err; }
+
     for (const auto & [ key, val ] : dispatch_table->bindings_) {
       if (val.fn_expr_->type->is<type::Function>()) {
         out_types.push_back(val.fn_expr_->type->as<type::Function>().output);
@@ -629,8 +633,8 @@ static const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
       }
     }
 
+    ASSERT(!out_types.empty());
     // TODO Can I assume all the lengths are the same?
-    ASSERT(out_types.size() != 0u);
     std::vector<const type::Type *> var_outs;
     var_outs.reserve(out_types[0].size());
     for (size_t i = 0; i < out_types[0].size(); ++i) {
@@ -892,7 +896,6 @@ void Binop::VerifyType(Context *ctx) {
 
 void Call::VerifyType(Context *ctx) {
   STARTING_CHECK_EXPR;
-
   bool all_const = true;
   args_.Apply([ctx, &all_const, this](auto &arg) {
     arg->VerifyType(ctx);
@@ -941,7 +944,6 @@ void Call::VerifyType(Context *ctx) {
       });
 
   type = SetDispatchTable(args, std::move(fn_options), &dispatch_table_, ctx);
-
   if (type == type::Err) { limit_to(StageRange::Nothing()); }
 
   u64 expanded_size = 1;

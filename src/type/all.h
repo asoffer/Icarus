@@ -55,6 +55,6 @@ struct Identifier;
 #undef BASIC_METHODS
 #undef ENDING
 
-IR::Val PtrCallFix(IR::Val v);
+IR::Val PtrCallFix(const IR::Val& v);
 
 #endif // ICARUS_TYPE_ALL_H

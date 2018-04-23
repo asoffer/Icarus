@@ -169,7 +169,7 @@ bool operator<(const ::IR::Val &lhs, const ::IR::Val &rhs) {
 }
 }  // namespace IR
 
-IR::Val PtrCallFix(IR::Val v) {
+IR::Val PtrCallFix(const IR::Val& v) {
   return !v.type->is<type::Pointer>() ||
                  v.type->as<type::Pointer>().pointee->is_big()
              ? v

@@ -45,8 +45,9 @@ struct Stack {
     if constexpr (std::is_trivially_default_constructible_v<T>) {
       *reinterpret_cast<T *>(this->location(index)) = val;
     } else {
-      delete *reinterpret_cast<T **>(this->location(index));
-      *reinterpret_cast<T **>(this->location(index)) = new T(val);
+      auto *loc = reinterpret_cast<T **>(this->location(index));
+      delete *loc;
+      *loc = new T(std::move(val));
     }
   }
 

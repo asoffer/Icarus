@@ -100,8 +100,11 @@ struct Func {
 
 template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, Val cond) {
   auto continue_block = Func::Current->AddBlock();
-  CondJump(cond, B ? exit_block : continue_block,
-           B ? continue_block : exit_block);
+  if constexpr (B) {
+    CondJump(cond, exit_block, continue_block);
+  } else {
+    CondJump(cond, continue_block, exit_block);
+  }
   return continue_block;
 }
 

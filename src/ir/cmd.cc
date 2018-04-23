@@ -149,7 +149,9 @@ Val Contextualize(AST::CodeBlock code, std::vector<IR::Val> v) {
   MAKE_AND_RETURN(type::Code, Op::Contextualize);
 }
 
-Val VariantType(Val v) { MAKE_AND_RETURN(type::Ptr(type::Type_), Op::VariantType); }
+Val VariantType(Val v) {
+  MAKE_AND_RETURN(type::Ptr(type::Type_), Op::VariantType);
+}
 Val VariantValue(const type::Type *t, Val v) {
   MAKE_AND_RETURN(type::Ptr(t), Op::VariantValue);
 }

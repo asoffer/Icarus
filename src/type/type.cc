@@ -193,7 +193,7 @@ static IR::Val StructInitializationWith(const Struct *struct_type,
 void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
                   IR::Val to_var, Context* ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() ||
-      to_type->is<Pointer>()) {
+      to_type->is<Pointer>() || to_type->is<Function>()) {
     ASSERT(to_type == from_type);
     IR::Store(from_val, to_var);
   } else if (to_type->is<Array>()) {
@@ -207,8 +207,6 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
         StructInitializationWith<EmitCopyInit>(&to_type->as<Struct>(), ctx),
         {from_val, to_var}, {});
 
-  } else if (to_type->is<Function>()) {
-    NOT_YET();
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
     to_type->EmitAssign(from_type, from_val, to_var, ctx);
@@ -218,6 +216,8 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     NOT_YET();
   } else if (to_type->is<Scope>()) {
     NOT_YET();
+  } else {
+    UNREACHABLE(to_type, from_type);
   }
 }
 

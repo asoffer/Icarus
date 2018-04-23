@@ -207,30 +207,70 @@ static std::vector<IR::Val> EmitOneCallDispatch(
 
   ASSERT(fn_to_call != nullptr);
 
-  std::vector<IR::Val> ret_vals;
   switch (fn_to_call->type_->output.size()) {
-    case 0: {
+    case 0:
       return std::vector{
           IR::Call(IR::Val::Func(fn_to_call), std::move(args), {})};
-    } break;
     case 1: {
       if (fn_to_call->type_->output AT(0)->is_big()) {
-        ret_vals.push_back(IR::Alloca(ret_type));
+        auto ret_val = IR::Alloca(ret_type);
+
+        if (ret_type->is<type::Variant>()) {
+          IR::Call(IR::Val::Func(fn_to_call), std::move(args),
+                   std::vector{IR::VariantValue(fn_to_call->type_->output AT(0),
+                                                ret_val)});
+          IR::Store(IR::Val::Type(fn_to_call->type_->output AT(0)),
+                    IR::VariantType(ret_val));
+        } else {
+          IR::Call(IR::Val::Func(fn_to_call), std::move(args),
+                   std::vector{ret_val});
+        }
+        return {ret_val};
       } else {
-        return std::vector{
-            IR::Call(IR::Val::Func(fn_to_call), std::move(args), {})};
+        auto ret_val = IR::Alloca(ret_type);
+        if (ret_type->is<type::Variant>()) {
+          IR::Store(IR::Val::Type(fn_to_call->type_->output AT(0)),
+                    IR::VariantType(ret_val));
+          IR::Store(IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}),
+                    IR::VariantValue(fn_to_call->type_->output AT(0), ret_val));
+          return {ret_val};
+        } else {
+          return {IR::Call(IR::Val::Func(fn_to_call), std::move(args), {})};
+        }
       }
     } break;
     default: {
-      ret_vals.reserve(fn_to_call->type_->output.size());
-      for (const type::Type *ret_type : fn_to_call->type_->output) {
-        ret_vals.push_back(IR::Alloca(ret_type));
-      }
-    } break;
-  }
-  IR::Call(IR::Val::Func(fn_to_call), std::move(args), ret_vals);
+      ASSERT(ret_type, Is<type::Tuple>());
+      const auto& tup_entries = ret_type->as<type::Tuple>().entries_;
+      ASSERT(fn_to_call->type_->output.size() == tup_entries.size());
 
-  return ret_vals;
+      std::vector<IR::Val> ret_vals;
+      ret_vals.reserve(fn_to_call->type_->output.size());
+      for (auto *entry : tup_entries) { ret_vals.push_back(IR::Alloca(entry)); }
+
+      std::vector<IR::Val> return_args;
+      for (size_t i = 0; i < tup_entries.size(); ++i) {
+        auto *return_type   = fn_to_call->type_->output AT(i);
+        auto *expected_type = tup_entries AT(i);
+
+        if (return_type->is<type::Variant>()) {
+          return_args.push_back(ret_vals AT(i));
+        } else {
+          if (expected_type->is<type::Variant>()) {
+            IR::Store(IR::Val::Type(return_type),
+                      IR::VariantType(ret_vals AT(i)));
+            return_args.push_back(
+                IR::VariantValue(return_type, ret_vals AT(i)));
+          } else {
+            return_args.push_back(ret_vals AT(i));
+          }
+        }
+      }
+      IR::Call(IR::Val::Func(fn_to_call), std::move(args), return_args);
+      return ret_vals;
+    }
+  }
+  UNREACHABLE();
 }
 
 static std::vector<IR::Val> EmitCallDispatch(

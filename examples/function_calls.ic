@@ -1,0 +1,231 @@
+main ::= () -> () {
+  // The purpose of this example is to show all the ways in which functions can
+  // be called. This includes things like default arguments, named arguments,
+  // dynamic dispatch, and and all the combinations thereof.
+
+  print "Basic calls:\n"
+  basic_calls()
+  print "--------------------------------------------------------------------\n"
+
+  print "Named arguments:\n"
+  named_arguments()
+  print "--------------------------------------------------------------------\n"
+
+  print "Default arguments:\n"
+  default_arguments()
+  print "--------------------------------------------------------------------\n"
+
+  print "Compile-time arguments:\n"
+  compile_time_arguments()
+  print "--------------------------------------------------------------------\n"
+
+  print "Dynamic dispatch:\n"
+  dynamic_dispatch()
+  print "--------------------------------------------------------------------\n"
+
+  print "Multiple return values:\n"
+  multiple_return_values()
+  print "--------------------------------------------------------------------\n"
+}
+
+basic_calls ::= () -> () {
+  // There are several syntaxes for defining functions. The most verbose uses
+  // the single arrow `->` and requires you to specify the return type.
+  squared ::= (n: int) -> int { return n * n }
+
+  // The shortest option is is to use the double arrow `=>`. Using this syntax,
+  // the return type is inferred, and the returned value is placed on the
+  // right-hand side of the arrow.
+  cubed ::= (n: int) => n * n * n
+
+  // This means that the short option is not particularly useful for functions
+  // that are more than a single expression. However, we also allow the return
+  // type to be inferred for longer functions by simply not specifying the
+  // return type:
+  print_sum ::= (x: int, y: int) -> () {
+    print "x + y = ", (x + y), "\n"
+  }
+
+  // Functions can be called by passing arguments in parentheses after the name
+  // of the function.
+  print "2^2 = ", squared(2), "\n"
+  print_sum(3, 4)
+
+  // Functions may also be called by following the arguments with a single quote
+  // character ' and then the function name.
+  print "2^3 = ", 2'cubed, "\n"
+  (3, 4)'print_sum
+  print "2^3^3 = ", 2'cubed'cubed, "\n"
+
+  // There is nothing special here about giving functions a name. Function
+  // literals (also known as "lambdas") can be called in exactly the same way.
+  print "3^2 = ", ((n: int) => n * n)(3), "\n"
+  print "4^2 = ", 4'((n: int) => n * n), "\n"
+}
+
+named_arguments ::= () -> () {
+  // Functions which are compile-time constants can have their arguments called
+  // with names. You may specify the names in any order, but once a named
+  // argument is used, all further arguments must also be named.
+  f ::= (a: int, b: int, c: int, d: int, e: int) -> () {
+    print "f(a = ", a,", ",
+            "b = ", b, ", ",
+            "c = ", c, ", ",
+            "d = ", d, ", ",
+            "e = ", e, ")\n"
+  }
+
+  // A call to f using only positional arguments:
+  f(1, 2, 3, 4, 5)
+
+  // A call to f using only named arguments:
+  f(e = 5, d = 4, c = 3, b = 2, a = 1)
+
+  // A call to f with a mix of named and positional arguments:
+  f(1, 2, 3, d = 4, e = 5)
+
+  // Once again, there is nothing special about the fact that we gave a name to
+  // the function f. We colud just as well have called a lambda:
+  (x: int, y: int) -> () {
+    print "lambda called with x = ", x, " and y = ", y, "\n"
+  }(y = 3, x = 4)
+
+  // However, to use named arguments, a function must be known at compile-time.
+  // If a function is not a compile-time constant, as below (note the use of :=
+  // instead of ::=), attempting to use a named argument will result in a
+  // compilation error. This is because the function could be reassigned while
+  // the program is running to a new value with different names.
+  // TODO g := (n: int) => n * n
+  // Uncomment the following line to get a compilation error:
+  // print g(n = 3)
+}
+
+default_arguments ::= () -> () {
+  // Functions can also take default arguments. Default arguments are specified
+  // at the function definition cite. The normal declaration rules apply. Here
+  // we are specifying that the argument `b` gets a default value of 2 if no
+  // value is provided. We can also infer the type of the argument as is done
+  // with `c := 3`.
+  // 5`.
+  f ::= (a: int, b: int = 2, c := 3) -> () {
+    print "f(a = ", a,", ",
+            "b = ", b, ", ",
+            "c = ", c, ")\n"
+  }
+  f(1)
+  f(1, 20)
+  f(1, 20, 30)
+
+  // This works with named arguments too. In the example below
+  f(c = 30, a = 10)
+
+  // If a function call uses a default argument, further arguments must either
+  // use the default if they have one, or be named. In the example below, only
+  // `b` has a default, so if a value for `b` is not provided at the call site,
+  // `c` must be explicitly named.
+  g ::= (a: int, b := 2, c: int) -> () {
+    print "g(a = ", a,", ",
+            "b = ", b, ", ",
+            "c = ", c, ")\n"
+  }
+  g(10, 20, 30)
+  g(10, c = 30)
+  g(c = 30, a = 10)
+  // Uncomment the following line to get a compilation error:
+  // g(10, 30)
+}
+
+compile_time_arguments ::= () -> () {
+  // So far we have only seen arguments to functions declared with a
+  // single colon. Using `::` marks the argument as required to be known at
+  // compile-time.
+  compile_time_square ::= (n :: int) => n * n
+  print compile_time_square(3), "\n"
+
+  // Compile-time arguments do not need to be literals. They can also be
+  // compile-time constants, or expressions known at compile-time.
+  N ::= 17
+  print compile_time_square(N), "\n"
+  print compile_time_square(2 * N - 10), "\n"
+  
+  // Compile-time arguments work just as well with named or default arguments.
+  f ::= (a: int, b ::= 2, c: int) -> void {
+    print "f(a = ", a,", ",
+          "b = ", b, ", ",
+          "c = ", c, ")\n"
+  }
+  // TODO f(1, c = 3)
+  f(1, c = 30, b = 20)
+
+  // One benefit of compile-time arguments is that they can be used in the
+  // return type of a function.
+  // default_int_array ::= (len :: int) -> [len; int] {
+  //   result: [len; int]
+  //   return result
+  // }
+  // TODO print default_int_array(3)
+}
+
+dynamic_dispatch ::= () -> () {
+  // The notion with dynamic dispatch is the ability to call a function without
+  // knowing at run-time exactly which function will be called. Icarus supports
+  // dynamic dispatch with a variant type. If a variant is passed to a function,
+  // a function of the given name need not actually exist, so long as the
+  // function exists for any possible input type. For example,
+  f ::= (n: int) -> () { print "f(int)\n" }
+  f ::= (x: bool | char) -> () { print "f(bool | char)\n" }
+  v: bool | int = true
+  f(v)
+
+  // Dynamic dispatch can be used simultaneously with multiple arguments.
+  g ::= (x: bool, y: bool) -> () { print "g(x: bool, y: bool)\n" }
+  g ::= (x: bool, y: int) -> () { print "g(x: bool, y: int)\n" }
+  g ::= (x: int, y: int) -> () { print "g(x: int, y: int)\n" }
+  g ::= (x: int, y: bool) -> () { print "g(x: int, y: bool)\n" }
+  g(v, v)
+
+  // This works just as well with named arguments
+  g(y = v, x = 3)
+
+  // And even with default arguments.
+  h ::= (x: bool = true, y: int) -> () { print "h(x: bool, y: int)\n" }
+  h ::= (x: int, y: int) -> () { print "h(x: int, y: int)\n" }
+  h(v, 3)
+  h(y = 3)
+
+  // The functions used in a dynamic dispatch need not have the same return
+  // type. The type of the result of a dynamic dispatch call will be a variant
+  // of all possible return types.
+  squared ::= (n: int) => n * n
+  squared ::= (r: real) => r * r
+  number: int | real = 17
+  print "17^2 = ", number'squared, "\n"
+  number = 1.7
+  print "1.7^2 = ", number'squared, "\n"
+}
+
+multiple_return_values ::= () -> () {
+  // Functions can have multiple return values
+  f ::= (n: int) => (n, n * n)
+
+  a: int
+  b: int
+  (a, b) = f(3)
+  print a, "^2 = ", b, "\n"
+
+  // Regarding dynamic dispatch, all possible dispatches must have the same
+  // number of arguments. when considering the resulting type of each argument,
+  // each return value position is handled separately.
+  g ::= (x: int) => (1, 1.5)
+  g ::= (x: bool) => (1.5, 1)
+
+  arg1: real | int = 0
+  arg2: real | int = 0
+  var: bool | int = true
+  (arg1, arg2) = g(var)
+  print "arg1 = ", arg1, " and arg2 = ", arg2, "\n"
+
+  var = 3
+  (arg1, arg2) = g(var)
+  print "arg1 = ", arg1, " and arg2 = ", arg2, "\n"
+}

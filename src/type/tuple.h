@@ -21,7 +21,7 @@ struct Tuple : public Type {
   virtual Cmp Comparator() const { UNREACHABLE(); }
   virtual llvm::Type *llvm(llvm::LLVMContext &) const { UNREACHABLE(); }
 
-      std::vector<const Type *> entries_;
+  std::vector<const Type *> entries_;
 };
 
 const Type *Tup(std::vector<const Type *> entries);

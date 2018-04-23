@@ -89,7 +89,11 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             // okay and we can do promotion later?
             return StringConstant(llvm_data->builder, s);
           },
-          [&](AST::FunctionLiteral *fn) -> llvm::Value * { NOT_YET(); },
+          [&](AST::FunctionLiteral *fn) -> llvm::Value * {
+            return llvm_data->module->getOrInsertFunction(
+                fn->ir_func_->name(), fn->ir_func_->ir_type->llvm_fn(
+                                          llvm_data->module->getContext()));
+          },
           [&](const std::vector<IR::Val> &) -> llvm::Value * {
             UNREACHABLE();
           }},
@@ -107,6 +111,8 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       return llvm_data->builder->CreateAlloca(
           cmd.type->as<type::Pointer>().pointee->llvm(ctx));
     case IR::Op::Store:
+      // TODO in the case of a function, we are given the declaration but we
+      // actually need to extract the corresponding function pointer.
       return llvm_data->builder->CreateStore(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           EmitValue(num_args, llvm_data, cmd.args[1]));

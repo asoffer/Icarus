@@ -36,8 +36,7 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
 
     ASSERT(ctx != nullptr);
     ForEachExpr(expr, [ctx](size_t i, AST::Expression *e) {
-      IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)},
-                    std::move(e->EmitIR(ctx)));
+      IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)}, e->EmitIR(ctx));
     });
     IR::ReturnJump();
 
@@ -71,23 +70,9 @@ namespace IR {
 static std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
                                 ExecContext *ctx) {
   if (fn->fn_lit_) { fn->fn_lit_->CompleteBody(fn->mod_); }
-  /*
-  if (were_errors != nullptr) {
-    int num_errors = 0;
-    std::queue<Func *> validation_queue;
-    validation_queue.push(fn);
-    while (!validation_queue.empty()) {
-      auto fn = std::move(validation_queue.front());
-      validation_queue.pop();
-      num_errors += fn->ValidateCalls(&validation_queue);
-    }
-    if (num_errors > 0) {
-      *were_errors = true;
-      return {};
-    }
-  }*/
-
   ctx->call_stack.emplace(fn, arguments);
+
+  // TODO log an error if you're asked to execute a function that had an error.
 
   while (true) {
     auto block_index = ctx->ExecuteBlock();
