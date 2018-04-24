@@ -406,24 +406,8 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
   Expression *expr_to_eval = nullptr;
 
   for (size_t i : decl_order_) {
-    const type::Type *input_type = nullptr;
-    if (inputs[i]->type_expr) {
-      if (auto type_result = Evaluate(inputs[i]->type_expr.get(), &new_ctx);
-          !type_result.empty() && type_result[0] != IR::Val::None()) {
-        input_type = std::get<const type::Type *>(type_result[0].value);
-      } else {
-        ErrorLog::LogGeneric(
-            TextSpan(), "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-        return std::pair(nullptr, Binding{});
-      }
-    } else {
-      // TODO must this type have been computed already? The line below
-      // might be superfluous.
-      inputs[i]->init_val->VerifyType(&new_ctx);
-      input_type = inputs[i]->init_val->type;
-    }
-
-    if (input_type == type::Err) { return std::pair(nullptr, Binding{}); }
+    inputs[i]->VerifyType(&new_ctx);
+    if (inputs[i]->type == type::Err) { return std::pair(nullptr, Binding{}); }
 
     if (binding.defaulted(i) && inputs[i]->IsDefaultInitialized()) {
       // TODO maybe send back an explanation of why this didn't match. Or
@@ -437,7 +421,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
 
       if (!binding.defaulted(i)) {
         if (auto *match =
-                type::Meet(binding.exprs_[i].second->type, input_type);
+                type::Meet(binding.exprs_[i].second->type, inputs[i]->type);
             match == nullptr) {
           return std::pair(nullptr, Binding{});
         }
@@ -451,7 +435,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
                                 : Evaluate(binding.exprs_[i].second, ctx))[0]);
     }
 
-    binding.exprs_[i].first = input_type;
+    binding.exprs_[i].first = inputs[i]->type;
   }
 
   auto[iter, success] =

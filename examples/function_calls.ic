@@ -154,7 +154,7 @@ compile_time_arguments ::= () -> () {
           "b = ", b, ", ",
           "c = ", c, ")\n"
   }
-  // TODO f(1, c = 3)
+  f(1, c = 3)
   f(1, c = 30, b = 20)
 
   // One benefit of compile-time arguments is that they can be used in the

@@ -22,6 +22,7 @@ void ForEachExpr(AST::Expression *expr,
                  const std::function<void(size_t, AST::Expression *)> &fn);
 
 static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
+  ASSERT(expr->type != nullptr);
   auto fn = std::make_unique<IR::Func>(
       ctx->mod_, type::Func({}, {expr->type}),
       std::vector<std::pair<std::string, AST::Expression *>>{});

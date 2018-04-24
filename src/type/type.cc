@@ -15,6 +15,7 @@ namespace type {
 #undef PRIMITIVE_MACRO
 
 // TODO better to hash pair of Array*
+// TODO thread safety?
 static std::unordered_map<const Array *,
                           std::unordered_map<const Array *, IR::Func *>>
     eq_funcs;
