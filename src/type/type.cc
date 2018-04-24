@@ -3,6 +3,7 @@
 #include <map>
 #include <unordered_map>
 
+#include "base/guarded.h"
 #include "../architecture.h"
 #include "../context.h"
 #include "../ir/func.h"
@@ -421,9 +422,6 @@ const Type *Var(std::vector<const Type *> variants) {
   return &variants_.emplace(std::move(variants), std::move(v)).first->second;
 }
 
-static std::map<std::vector<const Type *>,
-                std::map<std::vector<const Type *>, Function>>
-    funcs_;
 const Function *Function::ToIR() const {
   std::vector<const Type *> ins;
   ins.reserve(input.size());
@@ -435,43 +433,47 @@ const Function *Function::ToIR() const {
   return Func(std::move(ins), std::move(outs));
 }
 
-static TypeContainer<const Type *, const Pointer> pointers_;
+static base::guarded<TypeContainer<const Type *, const Pointer>> pointers_;
 const Pointer *Ptr(const Type *t) {
-  return &pointers_.emplace(t, Pointer(t)).first->second;
+  return &pointers_.lock()->emplace(t, Pointer(t)).first->second;
 }
 
+static base::guarded<std::map<std::vector<const Type *>,
+                              std::map<std::vector<const Type *>, Function>>>
+    funcs_;
 const Function *Func(std::vector<const Type *> in,
                      std::vector<const Type *> out) {
   // TODO if void is unit in some way we shouldn't do this.
   auto f = Function(in, out);
-  return &funcs_[std::move(in)]
+  return &(*funcs_.lock())[std::move(in)]
               .emplace(std::move(out), std::move(f))
               .first->second;
 }
 
-static TypeContainer<const Type *, const Range> ranges_;
+static base::guarded<TypeContainer<const Type *, const Range>> ranges_;
 const Range *Rng(const Type *t) {
-  return &ranges_.emplace(t, Range(t)).first->second;
+  return &ranges_.lock()->emplace(t, Range(t)).first->second;
 }
 
-static TypeContainer<const Array *, const Slice> slices_;
+static base::guarded<TypeContainer<const Array *, const Slice>> slices_;
 const Slice *Slc(const Array *a) {
-  return &slices_.emplace(a, Slice(a)).first->second;
+  return &slices_.lock()->emplace(a, Slice(a)).first->second;
 }
 
-static std::map<std::vector<const Type *>, const Scope> scopes_;
+static base::guarded<std::map<std::vector<const Type *>, const Scope>> scopes_;
 const Scope *Scp(const std::vector<const Type *> &types) {
-  return &scopes_.emplace(types, Scope(types)).first->second;
+  return &scopes_.lock()->emplace(types, Scope(types)).first->second;
 }
 
-static std::map<std::vector<const Type*>, const Tuple> tups_;
+static base::guarded<std::map<std::vector<const Type *>, const Tuple>> tups_;
 const Type *Tup(std::vector<const Type *> entries) {
   switch (entries.size()) {
     case 0: return type::Void;
     case 1: return entries[0];
     default: {
       Tuple tup(entries);
-      auto[iter, success] = tups_.emplace(std::move(entries), std::move(tup));
+      auto[iter, success] =
+          tups_.lock()->emplace(std::move(entries), std::move(tup));
       return &iter->second;
     } break;
   }
