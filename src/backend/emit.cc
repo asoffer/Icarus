@@ -4,7 +4,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../architecture.h"
+#include "architecture.h"
+#include "base/check.h"
 #include "ir/func.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
@@ -25,6 +26,8 @@ static llvm::Value *StringConstant(llvm::IRBuilder<> *builder,
 
 namespace backend {
 namespace {
+using base::check::Is;
+
 struct LlvmData {
   llvm::Function *fn;
   llvm::Module *module;
@@ -48,7 +51,20 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             return llvm_data->regs AT(reg);
           },
           [&](IR::ReturnValue ret) -> llvm::Value * { NOT_YET(); },
-          [&](IR::Addr addr) -> llvm::Value * { NOT_YET(); },
+          [&](IR::Addr addr) -> llvm::Value * {
+            switch (addr.kind) {
+              case IR::Addr::Kind::Null:
+              ASSERT(val.type, Is<type::Pointer>());
+              LOG << val.type;
+                return llvm::ConstantPointerNull::get(
+                    val.type->as<type::Pointer>().llvm_ptr(
+                        llvm_data->module->getContext()));
+              case IR::Addr::Kind::Global: NOT_YET();
+              case IR::Addr::Kind::Stack: NOT_YET();
+              case IR::Addr::Kind::Heap: NOT_YET();
+            }
+            UNREACHABLE();
+          },
           [&](bool b) -> llvm::Value * {
             return llvm::ConstantInt::get(llvm_data->module->getContext(),
                                           llvm::APInt(1, b ? 1 : 0, false));
@@ -113,6 +129,9 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
     case IR::Op::Store:
       // TODO in the case of a function, we are given the declaration but we
       // actually need to extract the corresponding function pointer.
+          EmitValue(num_args, llvm_data, cmd.args[0])->dump();
+          EmitValue(num_args, llvm_data, cmd.args[1])->dump();
+
       return llvm_data->builder->CreateStore(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           EmitValue(num_args, llvm_data, cmd.args[1]));

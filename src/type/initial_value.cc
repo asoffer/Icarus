@@ -16,7 +16,7 @@ IR::Val Array::EmitInitialValue(Context* ctx) const {
 }
 
 IR::Val Pointer::EmitInitialValue(Context* ctx) const {
-  return IR::Val::Null(this);
+  return IR::Val::Null(pointee);
 }
 IR::Val Function::EmitInitialValue(Context* ctx) const {
   return IR::Val::Func(nullptr);

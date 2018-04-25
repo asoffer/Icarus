@@ -38,6 +38,9 @@ llvm::Type* Function::llvm(llvm::LLVMContext& ctx) const {
   return llvm_fn(ctx);
 }
 llvm::Type* Pointer::llvm(llvm::LLVMContext &ctx) const {
+  return llvm_ptr(ctx);
+}
+llvm::PointerType* Pointer::llvm_ptr(llvm::LLVMContext &ctx) const {
   return pointee->llvm(ctx)->getPointerTo(0);
 }
 llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
