@@ -224,6 +224,10 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
           return llvm_data->builder->CreateCall(
               printf_fn, {StringConstant(llvm_data->builder, "%s"),
                           EmitValue(num_args, llvm_data, arg)});
+        } else if (arg.type->is<type::Pointer>()) {
+          return llvm_data->builder->CreateCall(
+              printf_fn, {StringConstant(llvm_data->builder, "0x%016x"),
+                          EmitValue(num_args, llvm_data, arg)});
         } else {
           NOT_YET(arg.type);
         }
