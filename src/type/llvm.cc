@@ -79,7 +79,11 @@ llvm::Type* Struct::llvm(llvm::LLVMContext& ctx) const {
 llvm::FunctionType* Function::llvm_fn(llvm::LLVMContext& ctx) const {
   std::vector<llvm::Type*> llvm_inputs;
   llvm_inputs.reserve(input.size());
-  for (auto* t : input) { llvm_inputs.push_back(t->llvm(ctx)); }
+  for (auto* t : input) {
+    auto* llvm_type = t->llvm(ctx);
+    if (t->is_big()) { llvm_type = llvm_type->getPointerTo(0); }
+    llvm_inputs.push_back(llvm_type);
+  }
   switch (output.size()) {
     case 0:
       return llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), llvm_inputs,
@@ -87,7 +91,11 @@ llvm::FunctionType* Function::llvm_fn(llvm::LLVMContext& ctx) const {
     case 1:
       return llvm::FunctionType::get(output[0]->llvm(ctx), llvm_inputs, false);
     default: {
-      for (auto* t : output) { llvm_inputs.push_back(Ptr(t)->llvm(ctx)); }
+      for (auto* t : output) {
+        auto* llvm_type = t->llvm(ctx);
+        if (t->is_big()) { llvm_type = llvm_type->getPointerTo(0); }
+        llvm_inputs.push_back(llvm_type);
+      }
       return llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), llvm_inputs,
                                      false);
     } break;

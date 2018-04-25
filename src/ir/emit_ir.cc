@@ -90,7 +90,7 @@ IR::Val AST::Access::EmitLVal(Context *ctx) {
 
   auto *struct_type =
       &val.type->as<type::Pointer>().pointee->as<type::Struct>();
-  return IR::Field(val, struct_type->field_indices_.at(member_name));
+  return IR::Field(val, struct_type->field_indices_ AT(member_name));
 }
 
 static IR::Val EmitVariantMatch(const IR::Val &needle,

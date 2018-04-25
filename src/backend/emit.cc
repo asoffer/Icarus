@@ -286,6 +286,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
           cmd.args[0].type->is<type::Enum>() ||
+          cmd.args[0].type->is<type::Pointer>() ||
           cmd.args[0].type == type::Type_) {
         return llvm_data->builder->CreateICmpEQ(lhs, rhs);
       } else if (cmd.args[0].type == type::Real) {
@@ -300,6 +301,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
           cmd.args[0].type->is<type::Enum>() ||
+          cmd.args[0].type->is<type::Pointer>() ||
           cmd.args[0].type == type::Type_) {
         return llvm_data->builder->CreateICmpNE(lhs, rhs);
       } else if (cmd.args[0].type == type::Real) {

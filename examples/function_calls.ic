@@ -94,7 +94,8 @@ named_arguments ::= () -> () {
   // If a function is not a compile-time constant, as below (note the use of :=
   // instead of ::=), attempting to use a named argument will result in a
   // compilation error. This is because the function could be reassigned while
-  // the program is running to a new value with different names.
+  // the program is running to a new value with different names for its
+  // arguments.
   // TODO g := (n: int) => n * n
   // Uncomment the following line to get a compilation error:
   // print g(n = 3)

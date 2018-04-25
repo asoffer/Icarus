@@ -310,7 +310,6 @@ Val Variant(std::vector<Val> args) {
 }
 
 Val Array(Val v1, Val v2) {
-  ASSERT(v1.type == nullptr || v1.type == type::Int);
   ASSERT(v2.type == type::Type_);
 
   if (const type::Type **t = std::get_if<const type::Type *>(&v2.value)) {
