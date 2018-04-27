@@ -68,7 +68,6 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
     CURRENT_FUNC(repr_func_) {
       IR::Block::Current = repr_func_->entry();
 
-      auto init_block = repr_func_->AddBlock();
       auto exit_block = repr_func_->AddBlock();
 
       IR::Print(IR::Val::Char('['));
@@ -76,12 +75,9 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       auto length_var = fixed_length
                             ? IR::Val::Int(static_cast<i32>(len))
                             : IR::Load(IR::ArrayLength(repr_func_->Argument(0)));
-      IR::CondJump(IR::Eq(length_var, IR::Val::Int(0)), exit_block,
-                   init_block);
-
-      IR::Block::Current = init_block;
+      auto init_block = IR::Block::Current = IR::EarlyExitOn<true>(
+          exit_block, IR::Eq(length_var, IR::Val::Int(0)));
       auto ptr           = IR::Index(repr_func_->Argument(0), IR::Val::Int(0));
-      auto end_ptr       = IR::PtrIncr(ptr, length_var);
 
       auto loop_phi  = repr_func_->AddBlock();
       auto loop_body = repr_func_->AddBlock();
@@ -90,10 +86,13 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       IR::UncondJump(loop_phi);
 
       IR::Block::Current = loop_phi;
+      auto countdown     = IR::Phi(Int);
+      auto countdown_reg = IR::Func::Current->Command(countdown).reg();
       auto phi           = IR::Phi(Ptr(data_type));
       auto phi_reg       = IR::Func::Current->Command(phi).reg();
       auto elem_ptr      = IR::PtrIncr(phi_reg, IR::Val::Int(1));
-      IR::CondJump(IR::Eq(elem_ptr, end_ptr), exit_block, loop_body);
+      auto next          = IR::Sub(countdown_reg, IR::Val::Int(1));
+      IR::CondJump(IR::Eq(next, IR::Val::Int(0)), exit_block, loop_body);
 
       IR::Block::Current = loop_body;
       IR::Print(IR::Val::Char(','));
@@ -101,9 +100,12 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       data_type->EmitRepr(PtrCallFix(elem_ptr), ctx);
       IR::UncondJump(loop_phi);
 
-      IR::Func::Current->SetArgs(phi, {IR::Val::Block(init_block), ptr,
-                                       IR::Val::Block(IR::Block::Current),
-                                       elem_ptr});
+      IR::Func::Current->SetArgs(
+          phi, {IR::Val::Block(init_block), ptr,
+                IR::Val::Block(IR::Block::Current), elem_ptr});
+      IR::Func::Current->SetArgs(countdown,
+                                 {IR::Val::Block(init_block), length_var,
+                                  IR::Val::Block(IR::Block::Current), next});
 
       IR::Block::Current = exit_block;
       IR::Print(IR::Val::Char(']'));

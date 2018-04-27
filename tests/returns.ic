@@ -1,10 +1,6 @@
 // TODO:
 // null -> pointer conversions
 // [] -> array conversions
-// Arrays of length zero as sub-arrays are a WAT because they take up zero space
-// and after printing the first one, we check if we're at the end by matching
-// pointers. Even if there are 100 elements, the size is zero and lo and behold
-// we're at the end! So we only print one empty array. :(
 
 bool_long ::= () -> bool { return true }
 bool_short ::= () => true
@@ -23,13 +19,18 @@ real_ptr_long ::= () -> *real {
   return &r
 }
 
-array_long0 ::= () -> [0; int] {
+array_long_int0 ::= () -> [0; int] {
   a: [0; int]
   return a
 }
 
-array_long3 ::= () -> [3; int] { return [1, 2, 3] }
-array_short3 ::= () => [1, 2, 3]
+array_long_bool0 ::= () -> [3, 0; int] {
+  a: [3, 0; int]
+  return a
+}
+
+array_long_int3 ::= () -> [3; int] { return [1, 2, 3] }
+array_short_int3 ::= () => [1, 2, 3]
 
 multi_dim_array_long ::= () -> [2, 3; int] { return [[1, 2, 3], [4, 5, 6]] }
 multi_dim_array_short ::= () => [[1], [2], [3]]
@@ -81,9 +82,10 @@ main ::= () -> () {
 
   print real_ptr_long(), "\n"
 
-  print array_long0(), "\n"
-  print array_long3(), "\n"
-  print array_short3(), "\n"
+  print array_long_int0(), "\n"
+  print array_long_int3(), "\n"
+  print array_long_bool0(), "\n"
+  print array_short_int3(), "\n"
 
   print multi_dim_array_long(), "\n"
   print multi_dim_array_short(), "\n"
