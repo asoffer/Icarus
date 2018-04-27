@@ -329,9 +329,11 @@ Val Index(Val v1, Val v2) {
   ASSERT(v1.type, Is<type::Pointer>());
   ASSERT(v2.type == type::Int);
   auto *array_type = &v1.type->as<type::Pointer>().pointee->as<type::Array>();
-  IR::Val ptr = array_type->fixed_length ? v1 : Load(ArrayData(v1));
-  ptr.type    = type::Ptr(array_type->data_type);
-  return PtrIncr(ptr, v2);
+  // TODO this works but generates worse IR (both here and in llvm). It's worth
+  // figuring out how to do this better.
+  return PtrIncr(Cast(type::Ptr(array_type->data_type),
+                      array_type->fixed_length ? v1 : Load(ArrayData(v1))),
+                 v2);
 }
 
 Val Lt(Val v1, Val v2) {

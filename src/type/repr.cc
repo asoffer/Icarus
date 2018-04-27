@@ -87,7 +87,6 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       auto loop_body = repr_func_->AddBlock();
 
       data_type->EmitRepr(PtrCallFix(ptr), ctx);
-      IR::PtrIncr(ptr, length_var);
       IR::UncondJump(loop_phi);
 
       IR::Block::Current = loop_phi;

@@ -185,8 +185,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
           llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[1].value).value],
           llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[2].value).value]);
     case IR::Op::ReturnJump:
-      // TODO what about large values
-      if (num_rets == 1) {
+      if (num_rets == 1 && !fn_type->output AT(0)->is_big()) {
         llvm_data->builder->CreateRet(
             llvm_data->builder->CreateLoad(llvm_data->rets AT(0)));
       } else {
@@ -403,12 +402,24 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
           llvm_data->rets AT(
               std::get<IR::ReturnValue>(cmd.args[0].value).value));
     case IR::Op::Cast:{
-      if (cmd.args[1].type == cmd.type) {
-        return EmitValue(num_args, llvm_data, cmd.args[1]);
+      if (cmd.args[0].type == cmd.type) {
+        return EmitValue(num_args, llvm_data, cmd.args[0]);
       } else if (cmd.args[0].type == type::Int && cmd.type == type::Real) {
         return llvm_data->builder->CreateSIToFP(
             EmitValue(num_args, llvm_data, cmd.args[0]), type::Real->llvm(ctx));
+      } else if (cmd.args[0].type->is<type::Pointer>() &&
+                 cmd.args[0]
+                     .type->as<type::Pointer>()
+                     .pointee->is<type::Array>() &&
+                 cmd.type->is<type::Pointer>()) {
+        // TODO check that it's an array of the same type as the pointed to
+        // thing?
+        auto *zero = llvm::ConstantInt::get(llvm_data->module->getContext(),
+                                            llvm::APInt(32, 0, false));
+        return llvm_data->builder->CreateGEP(
+            EmitValue(num_args, llvm_data, cmd.args[0]), {zero, zero});
       }
+      cmd.dump(10);
       UNREACHABLE();
     } break;
     case IR::Op::CreateStruct: UNREACHABLE();

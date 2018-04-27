@@ -108,11 +108,11 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
 
   auto[iter, success] = init_fns[to_type].emplace(from_type, nullptr);
   if (success) {
-
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
     auto *fn = ctx->mod_->AddFunc(Func({from_type, Ptr(to_type)}, {}),
                                   std::move(args));
+    iter->second = fn;
 
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
