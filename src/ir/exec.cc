@@ -96,7 +96,7 @@ Block &ExecContext::current_block() {
 ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
     : fn_(fn), current_(fn_->entry()), prev_(fn_->entry()),
       regs_(fn->num_regs_, Val::None()) {
-  size_t num_inputs = fn->ir_type->input.size();
+  size_t num_inputs = fn->type_->input.size();
   ASSERT(num_inputs <= arguments.size());
   ASSERT(num_inputs <= regs_.size());
   size_t i = 0;

@@ -18,7 +18,6 @@ struct Function : public Type {
 
   llvm::FunctionType *llvm_fn(llvm::LLVMContext &ctx) const;
 
-  const Function* ToIR() const;
   std::vector<const Type *> input, output;
 };
 

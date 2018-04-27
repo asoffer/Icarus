@@ -69,9 +69,8 @@ struct Func {
 
   // Is this needed? Or can it be determined from the containing FunctionLiteral
   // object?
-  AST::FunctionLiteral *fn_lit_       = nullptr;
-  const type::Function *const type_   = nullptr;
-  const type::Function *const ir_type = nullptr;
+  AST::FunctionLiteral *fn_lit_     = nullptr;
+  const type::Function *const type_ = nullptr;
   std::vector<std::pair<std::string, AST::Expression *>> args_;
   bool has_default(size_t i) const { return args_[i].second != nullptr; }
   i32 num_regs_  = 0;

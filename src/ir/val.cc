@@ -52,7 +52,7 @@ Val Val::Enum(const type::Enum *enum_type, size_t integral_val) {
 
 Val Val::FnLit(AST::FunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::GenFnLit(AST::GenericFunctionLiteral *fn) { return Val(fn->type, fn); }
-Val Val::Func(IR::Func *fn) { return Val(fn->ir_type, fn); }
+Val Val::Func(IR::Func *fn) { return Val(fn->type_, fn); }
 Val Val::Null(const type::Type *t) {
   return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0});
 }

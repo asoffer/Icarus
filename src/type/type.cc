@@ -424,17 +424,6 @@ const Type *Var(std::vector<const Type *> variants) {
               .first->second;
 }
 
-const Function *Function::ToIR() const {
-  std::vector<const Type *> ins;
-  ins.reserve(input.size());
-  for (const Type *t : input) { ins.push_back(t->is_big() ? Ptr(t) : t); }
-
-  std::vector<const Type *> outs;
-  outs.reserve(output.size());
-  for (const Type *t : output) { outs.push_back(t->is_big() ? Ptr(t) : t); }
-  return Func(std::move(ins), std::move(outs));
-}
-
 static base::guarded<TypeContainer<const Type *, const Pointer>> pointers_;
 const Pointer *Ptr(const Type *t) {
   return &pointers_.lock()->emplace(t, Pointer(t)).first->second;

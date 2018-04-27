@@ -1,13 +1,19 @@
 #include "func.h"
 
-#include "../type/function.h"
 #include "../ast/ast.h"
+#include "../type/function.h"
+
+namespace type {
+const Type *Ptr(const Type *);
+}  // namespace type
 
 namespace IR {
 Func *Func::Current{nullptr};
 
 Val Func::Argument(u32 n) {
-  return Val::Reg(Register(n), ir_type->input AT(n));
+  auto *arg_type = type_->input AT(n);
+  if (arg_type->is_big()) { arg_type = type::Ptr(arg_type); }
+  return Val::Reg(Register(n), arg_type);
 }
 
 // TODO there's no reason to take args because they can be computed from the
@@ -16,7 +22,6 @@ Func::Func(Module *mod, AST::FunctionLiteral *fn_lit,
            std::vector<std::pair<std::string, AST::Expression *>> args)
     : fn_lit_(fn_lit),
       type_(&fn_lit->type->as<type::Function>()),
-      ir_type(type_->ToIR()),
       args_(std::move(args)),
       num_regs_(static_cast<i32>(type_->input.size())),
       mod_(mod) {
@@ -32,7 +37,6 @@ Func::Func(Module *mod, AST::FunctionLiteral *fn_lit,
 Func::Func(Module *mod, const type::Function *fn_type,
            std::vector<std::pair<std::string, AST::Expression *>> args)
     : type_(fn_type),
-      ir_type(fn_type->ToIR()),
       args_(std::move(args)),
       num_regs_(static_cast<i32>(fn_type->input.size())),
       mod_(mod) {
