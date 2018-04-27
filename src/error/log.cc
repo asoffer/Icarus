@@ -181,14 +181,6 @@ static void DisplayErrorMessage(const char *msg_head,
 namespace ErrorLog {
 void LogGeneric(const TextSpan &, const std::string &msg) { std::cerr << msg; }
 
-void InvalidRange(const TextSpan &span, const type::Type *t) {
-  std::string msg_foot = "Expected type: int, uint, or char\n"
-                         "Given type: " +
-                         t->to_string() + ".";
-  DisplayErrorMessage("Attempting to create a range with an invalid type.",
-                      msg_foot, span, t->to_string().size());
-}
-
 void InvalidStringIndex(const TextSpan &span, const type::Type *index_type) {
   std::string msg_head = "String indexed by an invalid type. Expected an int "
                          "or uint, but encountered a " +
@@ -214,18 +206,6 @@ void MissingMember(const TextSpan &span, const std::string &member_name,
 void IndexingNonArray(const TextSpan &span, const type::Type *t) {
   DisplayErrorMessage("Cannot index into a non-array type.",
                       "Indexed type is a `" + t->to_string() + "`.", span, 1);
-}
-
-void SlicingNonArray(const TextSpan &span, const type::Type *t) {
-  DisplayErrorMessage("Cannot slice a non-array type.",
-                      "Sliced type is a `" + t->to_string() + "`.", span, 1);
-}
-
-void InvalidRanges(const TextSpan &span, const type::Type *lhs, const type::Type *rhs) {
-  std::string msg_head = "No range construction for types " + lhs->to_string() +
-                         " .. " + rhs->to_string() + ".";
-  // TODO underline length is incorrect?
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void InvalidScope(const TextSpan &span, const type::Type *t) {

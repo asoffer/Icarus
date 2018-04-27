@@ -724,39 +724,19 @@ void Binop::VerifyType(Context *ctx) {
                             // wrong.
         return;
       } else if (!lhs->type->is<type::Array>()) {
-        if (rhs->type->is<type::Range>()) {
-          ErrorLog::SlicingNonArray(span, lhs->type);
-        } else {
-          ErrorLog::IndexingNonArray(span, lhs->type);
-        }
+        ErrorLog::IndexingNonArray(span, lhs->type);
         limit_to(StageRange::NoEmitIR());
         return;
-      } else if (rhs->type->is<type::Range>()) {
-        type = type::Slc(&lhs->type->as<type::Array>());
-        break;
       } else {
         type = lhs->type->as<type::Array>().data_type;
 
-        // TODO allow slice indexing
         if (rhs->type == type::Int) { break; }
         ErrorLog::NonIntegralArrayIndex(span, rhs->type);
         limit_to(StageRange::NoEmitIR());
         return;
       }
     } break;
-    case Operator::Dots: {
-      if (lhs->type == type::Int && rhs->type == type::Int) {
-        type = type::Rng(type::Int);
-
-      } else if (lhs->type == type::Char && rhs->type == type::Char) {
-        type = type::Rng(type::Char);
-
-      } else {
-        ErrorLog::InvalidRanges(span, lhs->type, rhs->type);
-        limit_to(StageRange::Nothing());
-        return;
-      }
-    } break;
+    case Operator::Dots: NOT_YET();
     case Operator::XorEq: {
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
         type = type::Bool;
@@ -1127,12 +1107,6 @@ void InDecl::VerifyType(Context *ctx) {
   if (container->type->is<type::Array>()) {
     type = container->type->as<type::Array>().data_type;
 
-  } else if (container->type->is<type::Slice>()) {
-    type = container->type->as<type::Slice>().array_type->data_type;
-
-  } else if (container->type->is<type::Range>()) {
-    type = container->type->as<type::Range>().end_type;
-
   } else if (container->type == type::Type_) {
     auto t =
         std::get<const type::Type *>(Evaluate(container.get(), ctx)[0].value);
@@ -1260,15 +1234,7 @@ void Unop::VerifyType(Context *ctx) {
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       }
     } break;
-    case Operator::Dots: {
-      if (operand->type == type::Int || operand->type == type::Char) {
-        type = type::Rng(operand->type);
-      } else {
-        ErrorLog::InvalidRange(span, type);
-        type = type::Err;
-        limit_to(StageRange::Nothing());
-      }
-    } break;
+    case Operator::Dots: NOT_YET();
     case Operator::Not: {
       if (operand->type == type::Bool) {
         type = type::Bool;

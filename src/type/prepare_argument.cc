@@ -110,14 +110,6 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
   return arg;
 }
 
-IR::Val Range::PrepareArgument(const Type *from, const IR::Val &,
-                               Context *ctx) const {
-  NOT_YET(this, from);
-}
-IR::Val Slice::PrepareArgument(const Type *from, const IR::Val &,
-                               Context *ctx) const {
-  NOT_YET(this, from);
-}
 IR::Val Scope::PrepareArgument(const Type *from, const IR::Val &,
                                Context *ctx) const {
   NOT_YET(this, from);

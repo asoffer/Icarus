@@ -69,8 +69,6 @@ llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
   }
 }
 
-llvm::Type* Range::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }
-llvm::Type* Slice::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }
 llvm::Type* Scope::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }
 llvm::Type* Struct::llvm(llvm::LLVMContext& ctx) const {
   std::vector<llvm::Type*> llvm_types;

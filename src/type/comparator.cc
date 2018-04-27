@@ -27,8 +27,6 @@ Cmp Variant::Comparator() const {
   return static_cast<Cmp>(cmp);
 }
 
-Cmp Range::Comparator() const { NOT_YET(this); }
-Cmp Slice::Comparator() const { NOT_YET(this); }
 Cmp Scope::Comparator() const { return Cmp::None; }
 Cmp Struct::Comparator() const { return Cmp::None; }
 } // namespace type

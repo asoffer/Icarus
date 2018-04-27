@@ -461,15 +461,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
   {  // Init block
     IR::Block::Current = init;
     for (auto &decl : iterators) {
-      if (decl->container->type->is<type::Range>()) {
-        if (decl->container->is<Binop>()) {
-          init_vals.push_back(decl->container->as<Binop>().lhs->EmitIR(ctx));
-        } else if (decl->container->is<Unop>()) {
-          init_vals.push_back(decl->container->as<Unop>().operand->EmitIR(ctx));
-        } else {
-          NOT_YET();
-        }
-      } else if (decl->container->type->is<type::Array>()) {
+      if (decl->container->type->is<type::Array>()) {
         init_vals.push_back(
             IR::Index(decl->container->EmitLVal(ctx), IR::Val::Int(0)));
 
@@ -503,9 +495,6 @@ IR::Val AST::For::EmitIR(Context *ctx) {
         } else {
           NOT_YET();
         }
-      } else if (decl->container->type->is<type::Range>()) {
-        phis.push_back(
-            IR::Phi(decl->container->type->as<type::Range>().end_type));
       } else if (decl->container->type->is<type::Array>()) {
         phis.push_back(
             IR::Phi(Ptr(decl->container->type->as<type::Array>().data_type)));
@@ -553,18 +542,7 @@ IR::Val AST::For::EmitIR(Context *ctx) {
       auto reg = IR::Func::Current->Command(phis[i]).reg();
       auto next = IR::Func::Current->AddBlock();
       IR::Val cmp;
-      if (decl->container->type->is<type::Range>()) {
-        if (decl->container->is<Binop>()) {
-          auto rhs_val = decl->container->as<Binop>().rhs->EmitIR(ctx);
-          cmp = IR::Le(reg, rhs_val);
-        } else if (decl->container->is<Unop>()) {
-          // TODO we should optimize this here rather then generate suboptimal
-          // code and trust optimizations later on.
-          cmp = IR::Val::Bool(true);
-        } else {
-          NOT_YET();
-        }
-      } else if (decl->container->type->is<type::Array>()) {
+      if (decl->container->type->is<type::Array>()) {
         auto *array_type = &decl->container->type->as<type::Array>();
         cmp = IR::Ne(
             reg, IR::Index(decl->container->EmitLVal(ctx),

@@ -55,8 +55,6 @@ void Enum::EmitDestroy(IR::Val, Context *ctx) const {}
 void Function::EmitDestroy(IR::Val, Context *ctx) const {}
 void Pointer::EmitDestroy(IR::Val, Context *ctx) const {}
 void Variant::EmitDestroy(IR::Val, Context *ctx) const { NOT_YET(); }
-void Range::EmitDestroy(IR::Val, Context *ctx) const { UNREACHABLE(); }
-void Slice::EmitDestroy(IR::Val, Context *ctx) const { UNREACHABLE(); }
 void Scope::EmitDestroy(IR::Val, Context *ctx) const { UNREACHABLE(); }
 
 void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {

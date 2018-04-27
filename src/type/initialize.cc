@@ -73,8 +73,6 @@ void Function::EmitInit(IR::Val id_val, Context *ctx) const {
   IR::Store(EmitInitialValue(ctx), id_val);
 }
 
-void Range::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
-void Slice::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
 void Scope::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
 
 void Struct::EmitInit(IR::Val id_val, Context *ctx) const {

@@ -21,8 +21,6 @@ IR::Val Pointer::EmitInitialValue(Context* ctx) const {
 IR::Val Function::EmitInitialValue(Context* ctx) const {
   return IR::Val::Func(nullptr);
 }
-IR::Val Range::EmitInitialValue(Context* ctx) const { NOT_YET(); }
-IR::Val Slice::EmitInitialValue(Context* ctx) const { NOT_YET(); }
 IR::Val Scope::EmitInitialValue(Context* ctx) const { NOT_YET(); }
 IR::Val Variant::EmitInitialValue(Context* ctx) const { NOT_YET(); }
 

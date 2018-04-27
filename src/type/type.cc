@@ -212,10 +212,6 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
     to_type->EmitAssign(from_type, from_val, to_var, ctx);
-  } else if (to_type->is<Range>()) {
-    NOT_YET();
-  } else if (to_type->is<Slice>()) {
-    NOT_YET();
   } else if (to_type->is<Scope>()) {
     NOT_YET();
   } else {
@@ -259,10 +255,6 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
     to_type->EmitAssign(from_type, from_val, to_var, ctx);
-  } else if (to_type->is<Range>()) {
-    NOT_YET();
-  } else if (to_type->is<Slice>()) {
-    NOT_YET();
   } else if (to_type->is<Scope>()) {
     NOT_YET();
   }
@@ -449,16 +441,6 @@ const Function *Func(std::vector<const Type *> in,
   return &(*funcs_.lock())[std::move(in)]
               .emplace(std::move(out), std::move(f))
               .first->second;
-}
-
-static base::guarded<TypeContainer<const Type *, const Range>> ranges_;
-const Range *Rng(const Type *t) {
-  return &ranges_.lock()->emplace(t, Range(t)).first->second;
-}
-
-static base::guarded<TypeContainer<const Array *, const Slice>> slices_;
-const Slice *Slc(const Array *a) {
-  return &slices_.lock()->emplace(a, Slice(a)).first->second;
 }
 
 static base::guarded<std::map<std::vector<const Type *>, const Scope>> scopes_;

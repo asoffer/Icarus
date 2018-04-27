@@ -212,21 +212,6 @@ char *Variant::WriteTo(char *buf) const {
   return buf;
 }
 
-size_t Range::string_size() const { return 7 + end_type->string_size(); }
-char *Range::WriteTo(char *buf) const {
-  buf = std::strcpy(buf, "Range(") + 6;
-  buf = end_type->WriteTo(buf);
-  buf = std::strcpy(buf, ")") + 1;
-  return buf;
-}
-
-size_t Slice::string_size() const { return 4 + array_type->string_size(); }
-char *Slice::WriteTo(char *buf) const {
-  buf = array_type->WriteTo(buf);
-  buf = std::strcpy(buf, "[..]") + 4;
-  return buf;
-}
-
 size_t Scope::string_size() const {
   size_t result = 5 + 2 * types_.size();
   for (const Type *t : types_) { result += t->string_size(); }

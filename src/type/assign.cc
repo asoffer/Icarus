@@ -83,12 +83,6 @@ void Pointer::EmitAssign(const Type *from_type, IR::Val from,
   IR::Store(from, to);
 }
 
-void Range::EmitAssign(const Type *, IR::Val, IR::Val, Context *ctx) const {
-  NOT_YET();
-}
-void Slice::EmitAssign(const Type *, IR::Val, IR::Val, Context *ctx) const {
-  NOT_YET();
-}
 void Scope::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                        Context *ctx) const {
   ASSERT(this == from_type);

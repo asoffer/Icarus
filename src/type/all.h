@@ -6,9 +6,7 @@ struct Array;
 struct Enum;
 struct Function;
 struct Pointer;
-struct Range;
 struct Scope;
-struct Slice;
 struct Struct;
 struct Type;
 struct Variant;
@@ -44,9 +42,7 @@ struct Identifier;
 #include "function.h"
 #include "pointer.h"
 #include "primitive.h"
-#include "range.h"
 #include "scope.h"
-#include "slice.h"
 #include "struct.h"
 #include "tuple.h"
 #include "variant.h"
