@@ -38,8 +38,8 @@ struct TokenNode : public Node {
   TokenNode *Clone() const override;
   virtual void VerifyType(Context *) {}
   virtual void Validate(Context *) {}
-  virtual void ExtractReturnTypes(
-      std::set<std::vector<const type::Type *>> *types) const override {}
+  virtual void ExtractReturns(
+      std::vector<const Expression *> *) const override {}
 
   virtual void
   contextualize(const Node *correspondant,

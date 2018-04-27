@@ -5,6 +5,7 @@
 
 #include "ast/ast.h"
 #include "base/source.h"
+#include "type/tuple.h"
 #include "type/type.h"
 
 extern std::unordered_map<Source::Name, File *> source_map;
@@ -301,6 +302,85 @@ void Log::DoubleDeclAssignment(const TextSpan &decl_span,
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
+
+void Log::ReturnTypeMismatch(const type::Type *expected_type,
+                             const AST::Expression *ret_expr) {
+  std::stringstream ss;
+  if (ret_expr->type->is<type::Tuple>()) {
+    ss << "Attempting to return multiple values";
+  } else {
+    ss << "Returning an expression of type `" << ret_expr->type->to_string()
+       << '`';
+  }
+  ss << " from a function which returns `" << expected_type->to_string()
+     << "`.\n\n";
+  auto &span = ret_expr->span;
+  // TODO also show where the return type is specified?
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::NoReturnTypes(const AST::Expression *ret_expr) {
+  std::stringstream ss;
+  // TODO allow "return foo(...)" when foo: ??? -> ().
+
+  ss << "Attempting to return a value when function returns nothing\n\n";
+  auto &span = ret_expr->span;
+  // TODO also show where the return type is specified?
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::ReturningWrongNumber(const AST::Expression *ret_expr,
+                               size_t num_rets) {
+  std::stringstream ss;
+  ss << "Attempting to return "
+     << (ret_expr->type->is<type::Tuple>()
+             ? ret_expr->type->as<type::Tuple>().entries_.size()
+             : 1)
+     << " values from a function which has " << num_rets
+     << " return values.\n\n";
+  auto &span = ret_expr->span;
+  // TODO also show where the return type is specified?
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::IndexedReturnTypeMismatch(const type::Type *expected_type,
+                                    const AST::Expression *ret_expr,
+                                    size_t index) {
+  std::stringstream ss;
+  // TODO should the slots be zero- or one-indexed?
+  ss << "Returning an expression in slot #" << (index + 1) << " of type `"
+     << ret_expr->type->as<type::Tuple>().entries_ AT(index)->to_string()
+     << "` but function expects a value of type `" << expected_type->to_string()
+     << "` in that slot.\n\n";
+  auto &span = ret_expr->span;
+  // TODO also show where the return type is specified?
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
 
 void Log::DereferencingNonPointer(const type::Type *type,
                                   const TextSpan &span) {

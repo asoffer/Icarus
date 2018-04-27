@@ -92,6 +92,7 @@ frontend::TaggedNode NextNumber(SourceLocation &loc) {
          *loc == '_' || *loc == '.' || IsDigit(*loc)) {
     loc.Increment();
   }
+  span.finish = loc.cursor;
   return std::visit(
       base::overloaded{[&span](i32 n) {
                          return frontend::TaggedNode::TerminalExpression(

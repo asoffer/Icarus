@@ -16,8 +16,8 @@ struct Context;
   virtual void Validate(Context *) override;                                   \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
-  virtual void ExtractReturnTypes(                                             \
-      std::set<std::vector<const type::Type *>> *types) const override;        \
+  virtual void ExtractReturns(std::vector<const Expression *> *)               \
+      const override;                                                          \
   virtual void contextualize(                                                  \
       const Node *correspondant,                                               \
       const std::unordered_map<const Expression *, IR::Val> &) override

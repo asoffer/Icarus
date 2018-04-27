@@ -22,8 +22,8 @@
   virtual void Validate(Context *) override;                                   \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
-  virtual void ExtractReturnTypes(                                             \
-      std::set<std::vector<const type::Type *>> *types) const override;        \
+  virtual void ExtractReturns(std::vector<const Expression *> *)               \
+      const override;                                                          \
   virtual void contextualize(                                                  \
       const Node *correspondant,                                               \
       const std::unordered_map<const Expression *, IR::Val> &) override
@@ -63,8 +63,7 @@ struct Node : public base::Cast<Node> {
   contextualize(const Node *correspondant,
                 const std::unordered_map<const Expression *, IR::Val> &) = 0;
   virtual Node *Clone() const                                            = 0;
-  virtual void ExtractReturnTypes(
-      std::set<std::vector<const type::Type *>> *types) const = 0;
+  virtual void ExtractReturns(std::vector<const Expression *> *) const   = 0;
 
   std::string to_string() const { return to_string(0); }
 
