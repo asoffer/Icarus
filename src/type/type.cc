@@ -481,6 +481,6 @@ const Type *Tup(std::vector<const Type *> entries) {
 }
 
 bool Type::is_big() const {
-  return is<Array>() || is<Struct>() || is<Variant>();
+  return is<Array>() || is<Struct>() || is<Variant>() || is<Tuple>();
 }
 } // namespace type

@@ -15,9 +15,8 @@ struct Context {
   void DumpErrors() { error_log_.Dump(); }
 
   error::Log error_log_;
-  const AST::BoundConstants *bound_constants_;
-
-  Module *mod_;
+  const AST::BoundConstants *bound_constants_ = nullptr;
+  Module *mod_                                = nullptr;
 
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it

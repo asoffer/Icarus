@@ -50,12 +50,13 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             // TODO still need to be sure these are read in the correct order
             return llvm_data->regs AT(reg);
           },
-          [&](IR::ReturnValue ret) -> llvm::Value * { NOT_YET(); },
+          [&](IR::ReturnValue ret) -> llvm::Value * {
+            return llvm_data->rets AT(ret.value);
+          },
           [&](IR::Addr addr) -> llvm::Value * {
             switch (addr.kind) {
               case IR::Addr::Kind::Null:
-              ASSERT(val.type, Is<type::Pointer>());
-              LOG << val.type;
+                ASSERT(val.type, Is<type::Pointer>());
                 return llvm::ConstantPointerNull::get(
                     val.type->as<type::Pointer>().llvm_ptr(
                         llvm_data->module->getContext()));
@@ -93,8 +94,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
           },
           [&](IR::Func *f) -> llvm::Value * {
             return llvm_data->module->getOrInsertFunction(
-                f->name(),
-                f->ir_type->llvm_fn(llvm_data->module->getContext()));
+                f->name(), f->type_->llvm_fn(llvm_data->module->getContext()));
           },
           [&](AST::ScopeLiteral *s) -> llvm::Value * { NOT_YET(); },
           [&](const AST::CodeBlock &c) -> llvm::Value * { NOT_YET(); },
@@ -107,7 +107,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
           },
           [&](AST::FunctionLiteral *fn) -> llvm::Value * {
             return llvm_data->module->getOrInsertFunction(
-                fn->ir_func_->name(), fn->ir_func_->ir_type->llvm_fn(
+                fn->ir_func_->name(), fn->ir_func_->type_->llvm_fn(
                                           llvm_data->module->getContext()));
           },
           [&](const std::vector<IR::Val> &) -> llvm::Value * {
@@ -129,9 +129,6 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
     case IR::Op::Store:
       // TODO in the case of a function, we are given the declaration but we
       // actually need to extract the corresponding function pointer.
-          EmitValue(num_args, llvm_data, cmd.args[0])->dump();
-          EmitValue(num_args, llvm_data, cmd.args[1])->dump();
-
       return llvm_data->builder->CreateStore(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           EmitValue(num_args, llvm_data, cmd.args[1]));
@@ -191,7 +188,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       // TODO what about large values
       if (num_rets == 1) {
         llvm_data->builder->CreateRet(
-            llvm_data->builder->CreateLoad(llvm_data->rets.at(0)));
+            llvm_data->builder->CreateLoad(llvm_data->rets AT(0)));
       } else {
         llvm_data->builder->CreateRetVoid();
       }
@@ -403,7 +400,8 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
     case IR::Op::SetReturn:
       return llvm_data->builder->CreateStore(
           EmitValue(num_args, llvm_data, cmd.args[1]),
-          llvm_data->rets[std::get<IR::ReturnValue>(cmd.args[0].value).value]);
+          llvm_data->rets AT(
+              std::get<IR::ReturnValue>(cmd.args[0].value).value));
     case IR::Op::Cast:{
       if (cmd.args[1].type == cmd.type) {
         return EmitValue(num_args, llvm_data, cmd.args[1]);
@@ -445,8 +443,9 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
     }
 
     builder.SetInsertPoint(llvm_data.blocks[0]);
-    // TODO what about large values?
-    if (fn->type_->output.size() == 1) {
+    if (fn->type_->output.size() == 1 && !fn->type_->output[0]->is_big()) {
+      // TODO Something feels super duper fishy here. Why do we need an
+      // allocation?
       llvm_data.rets.push_back(
           builder.CreateAlloca(fn->type_->output[0]->llvm(ctx)));
     } else {

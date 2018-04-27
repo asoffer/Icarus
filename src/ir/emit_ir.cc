@@ -731,9 +731,20 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
       return IR::Neg(operand->EmitIR(ctx));
     } break;
     case Language::Operator::Return: {
-      ForEachExpr(operand.get(), [ctx](size_t i, AST::Expression *expr) {
-        IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)}, expr->EmitIR(ctx));
-      });
+      if (!operand->type->is_big()) {
+        IR::SetReturn(IR::ReturnValue{static_cast<i32>(0)},
+                      operand->EmitIR(ctx));
+      } else {
+        ForEachExpr(operand.get(), [ctx](size_t i, AST::Expression *expr) {
+          // TODO return type maybe not the same as type actually returned?
+          auto *ret_type = expr->type;
+          ret_type->EmitAssign(
+              expr->type, expr->EmitIR(ctx),
+              IR::Val::Ret(IR::ReturnValue{static_cast<i32>(i)},
+                           ret_type->is_big() ? Ptr(ret_type) : ret_type),
+              ctx);
+        });
+      }
       IR::ReturnJump();
       return IR::Val::None();
     }
@@ -791,16 +802,15 @@ IR::Val AST::Unop::EmitIR(Context *ctx) {
 }
 
 IR::Val AST::Binop::EmitIR(Context *ctx) {
-  if (lhs->type->is<type::Struct>() || rhs->type->is<type::Struct>()) {
+  if (op != Language::Operator::Assign &&
+      (lhs->type->is<type::Struct>() || rhs->type->is<type::Struct>())) {
     // TODO struct is not exactly right. we really mean user-defined
     AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
     args.pos_.reserve(2);
-    args.pos_.emplace_back(lhs.get(), lhs->type->is_big()
-                                          ? PtrCallFix(lhs->EmitIR(ctx))
-                                          : lhs->EmitIR(ctx));
-    args.pos_.emplace_back(rhs.get(), rhs->type->is_big()
-                                          ? PtrCallFix(rhs->EmitIR(ctx))
-                                          : rhs->EmitIR(ctx));
+    args.pos_.emplace_back(lhs.get(), PtrCallFix(lhs->EmitIR(ctx)));
+    args.pos_.emplace_back(rhs.get(), PtrCallFix(rhs->EmitIR(ctx)));
+
+    ASSERT(type != nullptr);
     auto results = EmitCallDispatch(args, dispatch_table_, type, ctx);
     ASSERT(results.size() == 1u);
     return results[0];

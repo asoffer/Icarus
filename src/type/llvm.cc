@@ -92,11 +92,17 @@ llvm::FunctionType* Function::llvm_fn(llvm::LLVMContext& ctx) const {
       return llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), llvm_inputs,
                                      false);
     case 1:
-      return llvm::FunctionType::get(output[0]->llvm(ctx), llvm_inputs, false);
+      if (output[0]->is_big()) {
+        llvm_inputs.push_back(output[0]->llvm(ctx)->getPointerTo(0));
+        return llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), llvm_inputs,
+                                       false);
+      } else {
+        return llvm::FunctionType::get(output[0]->llvm(ctx), llvm_inputs,
+                                       false);
+      }
     default: {
       for (auto* t : output) {
-        auto* llvm_type = t->llvm(ctx);
-        if (t->is_big()) { llvm_type = llvm_type->getPointerTo(0); }
+        auto* llvm_type = t->llvm(ctx)->getPointerTo(0);
         llvm_inputs.push_back(llvm_type);
       }
       return llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), llvm_inputs,
