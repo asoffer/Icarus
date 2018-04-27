@@ -7,6 +7,7 @@ namespace type {
 void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
   switch (type_) {
   case PrimType::Char: {
+    std::unique_lock lock(mtx_);
     if (!repr_func_) {
       repr_func_ = ctx->mod_->AddFunc(
           Func({this}, {}),
@@ -59,6 +60,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
 }
 
 void Array::EmitRepr(IR::Val val, Context *ctx) const {
+  std::unique_lock lock(mtx_);
   if (!repr_func_) {
     repr_func_ = ctx->mod_->AddFunc(
         Func({this}, {}),
@@ -124,29 +126,48 @@ void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
   // TODO repr_func_
   // TODO remove these casts in favor of something easier to track properties on
 
-  auto landing = IR::Func::Current->AddBlock();
-  auto type    = IR::Load(IR::VariantType(id_val));
-  for (const Type *v : variants_) {
-    auto old_block   = IR::Block::Current;
-    auto found_block = IR::Func::Current->AddBlock();
+  std::unique_lock lock(mtx_);
+  if (!repr_func_) {
+    repr_func_ = ctx->mod_->AddFunc(
+        Func({this}, {}),
+        std::vector<std::pair<std::string, AST::Expression *>>{
+            {"arg", nullptr}});
+    CURRENT_FUNC(repr_func_) {
+      IR::Block::Current = repr_func_->entry();
+      auto landing       = IR::Func::Current->AddBlock();
+      auto type          = IR::Load(IR::VariantType(repr_func_->Argument(0)));
 
-    IR::Block::Current = found_block;
-    v->EmitRepr(PtrCallFix(IR::VariantValue(v, id_val)),ctx);
-    IR::UncondJump(landing);
+      for (const Type *v : variants_) {
+        auto old_block   = IR::Block::Current;
+        auto found_block = IR::Func::Current->AddBlock();
 
-    IR::Block::Current = old_block;
-    IR::Block::Current =
-        IR::EarlyExitOn<true>(found_block, IR::Eq(type, IR::Val::Type(v)));
+        IR::Block::Current = found_block;
+        v->EmitRepr(PtrCallFix(IR::VariantValue(v, repr_func_->Argument(0))),
+                    ctx);
+        IR::UncondJump(landing);
+
+        IR::Block::Current = old_block;
+        IR::Block::Current =
+            IR::EarlyExitOn<true>(found_block, IR::Eq(type, IR::Val::Type(v)));
+      }
+
+      IR::UncondJump(landing);
+      IR::Block::Current = landing;
+      IR::ReturnJump();
+    }
   }
-  IR::UncondJump(landing);
-  IR::Block::Current = landing;
+
+  IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{id_val}, {});
 }
+
 void Function::EmitRepr(IR::Val, Context *ctx) const {
   IR::Print(IR::Val::Char('{'));
   IR::Print(IR::Val::Type(this));
   IR::Print(IR::Val::Char('}'));
 }
+
 void Struct::EmitRepr(IR::Val val, Context *ctx) const {
+  std::unique_lock lock(mtx_);
   if (!repr_func_) {
     repr_func_ = ctx->mod_->AddFunc(
         Func({this}, {}),

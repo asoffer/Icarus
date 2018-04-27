@@ -91,6 +91,7 @@ llvm::FunctionType* Function::llvm_fn(llvm::LLVMContext& ctx) const {
                                      false);
     case 1:
       if (output[0]->is_big()) {
+        LOG << input << " ----> " << output;
         llvm_inputs.push_back(output[0]->llvm(ctx)->getPointerTo(0));
         return llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), llvm_inputs,
                                        false);

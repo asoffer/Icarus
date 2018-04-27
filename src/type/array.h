@@ -2,6 +2,7 @@
 #define ICARUS_TYPE_ARRAY_H
 
 #include "type.h"
+#include <mutex>
 
 struct Context;
 
@@ -20,15 +21,17 @@ struct Array : public Type {
     return !fixed_length || data_type->needs_destroy();
   }
 
-  mutable IR::Func *repr_func_ = nullptr, *init_func_ = nullptr;
 
   const Type *data_type;
   size_t len;
   bool fixed_length;
 
 private:
+  mutable std::mutex mtx_;
   mutable std::unordered_map<const Array *, IR::Func *> assign_fns_;
   mutable IR::Func *destroy_func_ = nullptr;
+  mutable IR::Func *repr_func_    = nullptr;
+  mutable IR::Func *init_func_    = nullptr;
 };
 
 const Array *Arr(const Type *t);

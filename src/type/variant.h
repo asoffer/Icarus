@@ -2,6 +2,7 @@
 #define ICARUS_TYPE_VARIANT_H
 
 #include "type.h"
+#include <mutex>
 
 namespace type {
 struct Variant : public Type {
@@ -13,6 +14,7 @@ struct Variant : public Type {
   std::vector<const Type *> variants_;
 
 private:
+  mutable std::mutex mtx_;
   mutable IR::Func *repr_func_ = nullptr;
 };
 

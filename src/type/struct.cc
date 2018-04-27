@@ -1,6 +1,7 @@
 #include "struct.h"
 
 #include <set>
+#include "base/guarded.h"
 
 namespace std {
 template <> struct less<type::Struct> {
@@ -22,8 +23,7 @@ static bool operator<(const Struct::Field &lhs, const Struct::Field &rhs) {
   // return lhs.init_val < rhs.init_val;
 }
 
-static std::set<Struct> structs_;
-
+static base::guarded<std::set<Struct>> structs_;
 const Struct::Field *Struct::field(const std::string &name) const {
   auto iter = field_indices_.find(name);
   if (iter == field_indices_.end()) { return nullptr; }
@@ -31,7 +31,10 @@ const Struct::Field *Struct::field(const std::string &name) const {
 }
 
 const Type *Struct::finalize() {
-  const Struct *interned = &*structs_.insert(std::move(*this)).first;
+  const Struct *interned =
+      &*structs_.lock()
+            ->emplace(std::move(fields_), std::move(field_indices_))
+            .first;
 
   delete this;
   return interned;

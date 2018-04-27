@@ -13,6 +13,7 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
     return;
   }
 
+  std::unique_lock lock(mtx_);
   if (!init_func_) {
     init_func_ = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),
@@ -76,6 +77,7 @@ void Function::EmitInit(IR::Val id_val, Context *ctx) const {
 void Scope::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
 
 void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
+  std::unique_lock lock(mtx_);
   if (!init_func_) {
     init_func_ = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),

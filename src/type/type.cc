@@ -377,11 +377,17 @@ static TypeContainer<const Type *,
                      std::unordered_map<size_t, Array>>
     fixed_arrays_;
 const Array *Arr(const Type *t, size_t len) {
-  return &fixed_arrays_[t].emplace(len, Array(t, len)).first->second;
+  return &fixed_arrays_[t]
+              .emplace(std::piecewise_construct, std::forward_as_tuple(len),
+                       std::forward_as_tuple(t, len))
+              .first->second;
 }
 static TypeContainer<const Type *, Array> arrays_;
 const Array *Arr(const Type *t) {
-  return &arrays_.emplace(t, Array(t)).first->second;
+  return &arrays_
+              .emplace(std::piecewise_construct, std::forward_as_tuple(t),
+                       std::forward_as_tuple(t))
+              .first->second;
 }
 
 static std::map<std::vector<const Type *>, Variant> variants_;
@@ -411,8 +417,11 @@ const Type *Var(std::vector<const Type *> variants) {
 
   if (variants.size() == 1) { return variants.front(); }
 
-  Variant v(variants);
-  return &variants_.emplace(std::move(variants), std::move(v)).first->second;
+  return &variants_
+              .emplace(std::piecewise_construct,
+                       std::forward_as_tuple(variants),
+                       std::forward_as_tuple(variants))
+              .first->second;
 }
 
 const Function *Function::ToIR() const {

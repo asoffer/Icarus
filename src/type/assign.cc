@@ -5,6 +5,8 @@
 #include "../ir/func.h"
 
 // TODO destructor for previously held value.
+// TODO here and everywhere else: choose a canonical module to add these
+// fucntions to.
 
 namespace type {
 using base::check::Is;
@@ -13,6 +15,7 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   ASSERT(from_type, Is<Array>());
   auto *from_array_type = &from_type->as<Array>();
 
+  std::unique_lock lock(mtx_);
   auto *&fn = assign_fns_[from_array_type];
   if (fn == nullptr) {
     fn = ctx->mod_->AddFunc(
@@ -126,6 +129,7 @@ void Variant::EmitAssign(const Type *from_type, IR::Val from,
 
 void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                         Context *ctx) const {
+  std::unique_lock lock(mtx_);
   ASSERT(this == from_type);
   if (!assign_func) {
     assign_func = ctx->mod_->AddFunc(

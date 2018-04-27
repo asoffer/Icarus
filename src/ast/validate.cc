@@ -129,9 +129,18 @@ void FunctionLiteral::Validate(Context *ctx) {
       case 0: type = type::Func(std::move(input_type_vec), {}); break;
       case 1: {
         auto *one_type = *types.begin();
-        outputs.push_back(
-            std::make_unique<Terminal>(TextSpan(), IR::Val::Type(one_type)));
-        type = type::Func(std::move(input_type_vec), {one_type});
+        if (one_type->is<type::Tuple>()) {
+          const auto &entries = one_type->as<type::Tuple>().entries_;
+          for (auto *entry : entries) {
+            outputs.push_back(
+                std::make_unique<Terminal>(TextSpan(), IR::Val::Type(entry)));
+          }
+          type = type::Func(std::move(input_type_vec), entries);
+        } else {
+          outputs.push_back(
+              std::make_unique<Terminal>(TextSpan(), IR::Val::Type(one_type)));
+          type = type::Func(std::move(input_type_vec), {one_type});
+        }
       } break;
       default: {
         // Note: this feels impossible, but it is possible if we allow scopes to
