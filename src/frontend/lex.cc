@@ -73,9 +73,7 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       {"import", frontend::op_l},    {"free", frontend::op_l},
       {"flags", frontend::kw_block}, {"enum", frontend::kw_block},
       {"generate", frontend::op_l},  {"struct", frontend::kw_block},
-      {"return", frontend::op_lt},   {"continue", frontend::op_lt},
-      {"break", frontend::op_lt},    {"repeat", frontend::op_lt},
-      {"restart", frontend::op_lt},  {"scope", frontend::kw_block}};
+      {"return", frontend::op_lt},   {"scope", frontend::kw_block}};
   for (const auto & [ key, val ] : KeywordMap) {
     if (token == key) { return frontend::TaggedNode(span, key, val); }
   }

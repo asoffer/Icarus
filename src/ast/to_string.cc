@@ -221,13 +221,9 @@ std::string GenericFunctionLiteral::to_string(size_t n) const {
 
 std::string Jump::to_string(size_t) const {
   switch (jump_type) {
-  case JumpType::Restart: return "restart";
-  case JumpType::Continue: return "continue";
-  case JumpType::Repeat: return "repeat";
-  case JumpType::Break: return "break";
-  case JumpType::Return: return "return";
-  default: UNREACHABLE();
+    case JumpType::Return: return "return";
   }
+  UNREACHABLE();
 }
 
 std::string ScopeNode::to_string(size_t n) const {

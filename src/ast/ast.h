@@ -255,7 +255,7 @@ struct Jump : public Node {
   Jump *Clone() const override;
   virtual IR::Val EmitIR(Context *);
 
-  enum class JumpType { Restart, Continue, Repeat, Break, Return };
+  enum class JumpType { Return };
 
   Jump(const TextSpan &span, JumpType jump_type);
 

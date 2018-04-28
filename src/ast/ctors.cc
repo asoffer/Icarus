@@ -15,7 +15,7 @@ TokenNode::TokenNode(const TextSpan &span, std::string str)
 }
 
 Terminal::Terminal(const TextSpan &span, IR::Val val) : Expression(span) {
-  stage_range_.low = ValidatedStage;
+  stage_range_.low = DoneBodyValidationStage;
   type   = val.type;
   lvalue = Assign::Const;
   value  = std::move(val);

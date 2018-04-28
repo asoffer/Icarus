@@ -10,8 +10,9 @@
 #include <utility>
 #include <vector>
 
-#include "../base/util.h"
-#include "../frontend/text_span.h"
+#include "ast/stages.h"
+#include "base/util.h"
+#include "frontend/text_span.h"
 
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const override;                      \
@@ -39,15 +40,6 @@ struct Val;
 } // namespace IR
 
 namespace AST {
-struct StageRange {
-  // Last stage completed so far.
-  int low = -1;
-  // Last stage you can safely compute.
-  int high = std::numeric_limits<int>::max();
-  static constexpr int Nothing() { return -1; }
-  static constexpr int NoEmitIR() { return 2; }
-};
-
 struct Expression;
 
 struct Node : public base::Cast<Node> {

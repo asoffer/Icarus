@@ -1,14 +1,13 @@
 #include "ast.h"
-#include "stages.h"
 #include "../type/all.h"
 #include "context.h"
 
 #define STARTING_CHECK                                                         \
-  do {                                                                         \
-    if (stage_range_.high < ValidatedStage) { return; }                        \
-    if (stage_range_.low >= ValidatedStage) { return; }                        \
-    stage_range_.low = ValidatedStage;                                         \
-  } while (false)
+  base::defer defer_##__LINE__(                                                \
+      [this]() { this->stage_range_.low = DoneBodyValidationStage; });       \
+  if (stage_range_.high < StartBodyValidationStage) { return; }              \
+  if (stage_range_.low >= DoneBodyValidationStage) { return; }               \
+  stage_range_.low = StartBodyValidationStage
 
 // TODO macro duplicated in verifytypes
 #define HANDLE_CYCLIC_DEPENDENCIES                                             \
@@ -206,7 +205,11 @@ void ScopeLiteral::Validate(Context *ctx) {
 
 void StructLiteral::Validate(Context *ctx) {
   STARTING_CHECK;
-  for (auto &f : fields_) { f->Validate(ctx); }
+
+  for (auto &field : fields_) {
+    if (field->type_expr) { field->type_expr->VerifyType(ctx); }
+    field->Validate(ctx);
+  }
 }
 }  // namespace AST
 #undef STARTING_CHECK

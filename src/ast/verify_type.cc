@@ -2,11 +2,10 @@
 
 #include <algorithm>
 
-#include "../context.h"
-#include "../error/log.h"
-#include "../ir/func.h"
-#include "../type/all.h"
-#include "stages.h"
+#include "context.h"
+#include "error/log.h"
+#include "ir/func.h"
+#include "type/all.h"
 
 // TODO catch functions that don't return along all paths.
 // TODO Join/Meet for type::EmptyArray <-> [0; T] (explicitly empty)? Why!?
@@ -1607,22 +1606,7 @@ void FunctionLiteral::VerifyType(Context *ctx) {
   }
 }
 
-void Jump::VerifyType(Context *ctx) {
-  STARTING_CHECK;
-  if (jump_type == JumpType::Return) { return; }
-  // TODO made this slightly wrong
-  auto scope_ptr = scope_;
-  while (scope_ptr && scope_ptr->is<ExecScope>()) {
-    auto exec_scope_ptr = &scope_ptr->as<ExecScope>();
-    if (exec_scope_ptr->can_jump) {
-      scope = exec_scope_ptr;
-      return;
-    }
-    scope_ptr = exec_scope_ptr->parent;
-  }
-  ctx->error_log_.JumpOutsideLoop(span);
-  limit_to(StageRange::NoEmitIR());
-}
+void Jump::VerifyType(Context *ctx) { STARTING_CHECK; }
 
 void ScopeNode::VerifyType(Context *ctx) {
   STARTING_CHECK_EXPR;
@@ -1696,9 +1680,6 @@ void StructLiteral::VerifyType(Context *ctx) {
   STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
   type = type::Type_;
-  for (auto &field : fields_) {
-    if (field->type_expr) { field->type_expr->VerifyType(ctx); }
-  }
 }
 }  // namespace AST
 

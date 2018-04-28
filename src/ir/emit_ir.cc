@@ -136,10 +136,6 @@ IR::Val AST::Expression::EmitLVal(Context *) { UNREACHABLE(*this); }
 IR::Val AST::Jump::EmitIR(Context *) {
   switch (jump_type) {
     case JumpType::Return: IR::ReturnJump(); return IR::Val::None();
-    case JumpType::Restart: NOT_YET();
-    case JumpType::Repeat: NOT_YET();
-    case JumpType::Break: NOT_YET();
-    case JumpType::Continue: NOT_YET();
   }
   UNREACHABLE();
 }
@@ -1048,6 +1044,7 @@ IR::Val AST::Binop::EmitLVal(Context *ctx) {
 }
 
 IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
+  NOT_YET();
   auto new_struct = IR::CreateStruct();
   for (const auto &field : fields_) {
     // TODO in initial value doesn't match type of field?

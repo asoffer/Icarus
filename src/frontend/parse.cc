@@ -108,10 +108,6 @@ BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
                                   std::pair<Language::Operator, bool>>
       UnopMap = {{"import", {Language::Operator::Import, false}},
                  {"return", {Language::Operator::Return, false}},
-                 {"break", {Language::Operator::Break, true}},
-                 {"continue", {Language::Operator::Continue, true}},
-                 {"restart", {Language::Operator::Restart, true}},
-                 {"repeat", {Language::Operator::Repeat, true}},
                  {"free", {Language::Operator::Free, false}},
                  {"generate", {Language::Operator::Generate, false}},
                  {"print", {Language::Operator::Print, false}},
@@ -502,11 +498,7 @@ BuildMoreStatements(std::vector<std::unique_ptr<Node>> nodes,
 static std::unique_ptr<Node> BuildJump(std::vector<std::unique_ptr<Node>> nodes,
                                        error::Log *error_log) {
   const static std::unordered_map<std::string, Jump::JumpType> JumpTypeMap = {
-      {"break", Jump::JumpType::Break},
-      {"continue", Jump::JumpType::Continue},
-      {"return", Jump::JumpType::Return},
-      {"repeat", Jump::JumpType::Repeat},
-      {"restart", Jump::JumpType::Restart}};
+      {"return", Jump::JumpType::Return}};
   auto iter = JumpTypeMap.find(nodes[0]->as<TokenNode>().token);
   ASSERT(iter != JumpTypeMap.end());
 
