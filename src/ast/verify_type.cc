@@ -1607,16 +1607,6 @@ void FunctionLiteral::VerifyType(Context *ctx) {
   }
 }
 
-void For::VerifyType(Context *ctx) {
-  STARTING_CHECK;
-  for (auto &iter : iterators) {
-    iter->VerifyType(ctx);
-    limit_to(iter);
-  }
-  statements->VerifyType(ctx);
-  limit_to(statements);
-}
-
 void Jump::VerifyType(Context *ctx) {
   STARTING_CHECK;
   if (jump_type == JumpType::Return) { return; }

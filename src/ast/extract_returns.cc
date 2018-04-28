@@ -23,11 +23,6 @@ void ArrayType::ExtractReturns(std::vector<const Expression *> *rets) const {
   data_type->ExtractReturns(rets);
 }
 
-void For::ExtractReturns(std::vector<const Expression *> *rets) const {
-  for (auto &iter : iterators) { iter->ExtractReturns(rets); }
-  statements->ExtractReturns(rets);
-}
-
 void ArrayLiteral::ExtractReturns(std::vector<const Expression *> *rets) const {
   for (auto &el : elems) { el->ExtractReturns(rets); }
 }

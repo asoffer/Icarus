@@ -249,18 +249,6 @@ struct GenericFunctionLiteral : public FunctionLiteral {
   std::map<BoundConstants, FunctionLiteral> fns_;
 };
 
-struct For : public Node {
-  VIRTUAL_METHODS_FOR_NODES;
-  virtual ~For() {}
-  For *Clone() const override;
-
-  virtual IR::Val EmitIR(Context *);
-
-  std::vector<std::unique_ptr<InDecl>> iterators;
-  std::unique_ptr<Statements> statements;
-  std::unique_ptr<ExecScope> for_scope;
-};
-
 struct Jump : public Node {
   VIRTUAL_METHODS_FOR_NODES;
   virtual ~Jump() {}

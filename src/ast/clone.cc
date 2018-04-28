@@ -92,18 +92,6 @@ FunctionLiteral *FunctionLiteral::Clone() const {
 
 GenericFunctionLiteral *GenericFunctionLiteral::Clone() const { UNREACHABLE(); }
 
-For *For::Clone() const {
-  auto *result = new For;
-  result->span = span;
-  result->iterators.reserve(iterators.size());
-  for (const auto &input : iterators) {
-    result->iterators.emplace_back(input->Clone());
-  }
-  result->statements = base::wrap_unique(statements->Clone());
-
-  return result;
-}
-
 ScopeNode *ScopeNode::Clone() const {
   auto *result       = new ScopeNode;
   result->span = span;

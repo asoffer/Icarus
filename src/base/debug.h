@@ -40,7 +40,7 @@
 
 #define ASSERT(...)
 #define ASSERT_NOT_NULL(...)
-#define UNREACHABLE(...)                                                       \
+#define UNREACHABLE(...) __builtin_unreachable();
 
 #endif
 

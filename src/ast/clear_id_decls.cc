@@ -27,11 +27,6 @@ void ArrayType::ClearIdDecls() {
   length->ClearIdDecls();
   data_type->ClearIdDecls();
 }
-void For::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto &iter : iterators) { iter->ClearIdDecls(); }
-  statements->ClearIdDecls();
-}
 
 void ArrayLiteral::ClearIdDecls() {
   stage_range_ = StageRange{};

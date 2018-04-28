@@ -45,14 +45,6 @@ void ArrayType::assign_scope(Scope *scope) {
   data_type->assign_scope(scope);
 }
 
-void For::assign_scope(Scope *scope) {
-  STAGE_CHECK;
-  if (!for_scope) { for_scope = scope->add_child<ExecScope>(); }
-  for_scope->can_jump = true;
-  for (auto &iter : iterators) { iter->assign_scope(for_scope.get()); }
-  statements->assign_scope(for_scope.get());
-}
-
 void ArrayLiteral::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;

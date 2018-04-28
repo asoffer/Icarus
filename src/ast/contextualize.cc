@@ -90,11 +90,6 @@ void GenericFunctionLiteral::SaveReferences(Scope *scope,
   FunctionLiteral::SaveReferences(scope, args);
 }
 
-void For::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  statements->SaveReferences(scope, args);
-  for (auto &iter : iterators) { iter->SaveReferences(scope, args); }
-}
-
 void ScopeNode::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   expr->SaveReferences(scope, args);
   scope_expr->SaveReferences(scope, args);
@@ -206,11 +201,6 @@ void FunctionLiteral::contextualize(const Node *correspondant,
 void GenericFunctionLiteral::contextualize(const Node *correspondant,
                                            const RefMap &replacements) {
   FunctionLiteral::contextualize(correspondant, replacements);
-}
-
-void For::contextualize(const Node *correspondant, const RefMap &replacements) {
-  CONTEXTUALIZE(statements);
-  for (size_t i = 0; i < iterators.size(); ++i) { CONTEXTUALIZE(iterators[i]); }
 }
 
 void ScopeNode::contextualize(const Node *correspondant,

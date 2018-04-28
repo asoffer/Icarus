@@ -41,20 +41,6 @@ std::string Call::to_string(size_t n) const {
   return ss.str();
 }
 
-std::string For::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << "for ";
-  auto iter = iterators.begin();
-  ss << (*iter)->to_string(n);
-  ++iter;
-  while (iter != iterators.end()) {
-    ss << ", " << (*iter)->to_string(n);
-    ++iter;
-  }
-  ss << " {\n" << statements->to_string(n + 1) << tabs(n) << "}";
-  return ss.str();
-}
-
 std::string Import::to_string(size_t n) const {
   return "import " + operand_->to_string(n);
 }

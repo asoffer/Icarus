@@ -83,46 +83,6 @@ BracedStatementsSameLineEnd(std::vector<std::unique_ptr<AST::Node>> nodes,
 }
 
 namespace AST {
-static void CheckForLoopDeclaration(std::unique_ptr<Expression> maybe_decl,
-                                    std::vector<std::unique_ptr<InDecl>> *iters,
-                                    error::Log *error_log) {
-  if (!maybe_decl->is<InDecl>()) {
-    error_log->NonInDeclInForLoop(maybe_decl->span);
-  } else {
-    iters->push_back(move_as<InDecl>(maybe_decl));
-  }
-}
-
-// Input guarantees:
-// [for] [expression] [braced_statements]
-//
-// Internal checks:
-// [expression] is either an in-declaration or a list of in-declarations
-static std::unique_ptr<Node>
-BuildFor(std::vector<std::unique_ptr<Node>> nodes, error::Log*error_log) {
-  auto for_stmt        = std::make_unique<For>();
-  for_stmt->span       = TextSpan(nodes[0]->span, nodes[2]->span);
-  for_stmt->statements = move_as<Statements>(nodes[2]);
-
-  auto iter = &nodes[1]->as<Expression>();
-  if (iter->is<CommaList>()) {
-    auto iter_list = &iter->as<CommaList>();
-    for_stmt->iterators.reserve(iter_list->exprs.size());
-
-    for (auto &expr : iter_list->exprs) {
-      CheckForLoopDeclaration(std::move(expr), &for_stmt->iterators, error_log);
-    }
-  } else {
-    CheckForLoopDeclaration(move_as<Expression>(nodes[1]), &for_stmt->iterators,
-                            error_log);
-  }
-
-  auto stmts  = std::make_unique<Statements>();
-  stmts->span = for_stmt->span;
-  stmts->content_.push_back(std::move(for_stmt));
-  return stmts;
-}
-
 // Input guarantees:
 // [unop] [expression]
 //
@@ -979,7 +939,7 @@ namespace frontend {
 static constexpr u64 OP_B = op_b | comma | dots | colon | eq;
 static constexpr u64 EXPR = expr | fn_expr;
 // Used in error productions only!
-static constexpr u64 RESERVED = kw_for | kw_block | op_lt;
+static constexpr u64 RESERVED = kw_block | op_lt;
 
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in the
@@ -1045,8 +1005,7 @@ auto Rules = std::array{
     Rule(expr, {fn_expr, braced_stmts}, AST::BuildFunctionLiteral),
 
     // Call and index operator with reserved words. We can't put reserved words
-    // in the first slot because that might conflict with a real use case. For
-    // example, "for(a)".
+    // in the first slot because that might conflict with a real use case.
     Rule(expr, {EXPR, l_paren, RESERVED, r_paren}, ErrMsg::Reserved<0, 2>),
     Rule(expr, {EXPR, l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<0, 2>),
 
@@ -1071,7 +1030,6 @@ auto Rules = std::array{
     Rule(l_brace, {l_brace, newline}, drop_all_but<0>),
     Rule(l_double_brace, {l_double_brace, newline}, drop_all_but<0>),
     Rule(stmts, {stmts, newline}, drop_all_but<0>),
-    Rule(stmts, {kw_for, EXPR, braced_stmts}, AST::BuildFor),
 
     Rule(expr, {EXPR, op_l, EXPR}, ErrMsg::NonBinop),
     Rule(stmts, {op_lt}, AST::BuildJump),
@@ -1142,11 +1100,6 @@ struct ParseState {
     }
 
     if (get_type<2>() == kw_block && get_type<1>() == newline) {
-      return ShiftState::NeedMore;
-    }
-
-    if (node_stack_.size() > 2 && get_type<3>() == kw_for &&
-        get_type<2>() == expr && get_type<1>() == newline) {
       return ShiftState::NeedMore;
     }
 

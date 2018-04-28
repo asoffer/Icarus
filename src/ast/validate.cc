@@ -194,11 +194,6 @@ void FunctionLiteral::Validate(Context *ctx) {
   }
 }
 
-void For::Validate(Context *ctx) {
-  STARTING_CHECK;
-  // TODO
-}
-
 void ScopeNode::Validate(Context *ctx) {
   STARTING_CHECK;
   // TODO
