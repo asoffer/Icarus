@@ -39,13 +39,6 @@ Declaration * Declaration::Clone() const {
   return result;
 }
 
-InDecl *InDecl::Clone() const {
-  auto *result      = new InDecl;
-  result->span      = span;
-  result->container = base::wrap_unique(container->Clone());
-  return result;
-}
-
 Unop *Unop::Clone() const {
   auto *result    = new Unop;
   result->span    = span;

@@ -63,11 +63,6 @@ void Declaration::Validate(Context *ctx) {
   if (init_val) { init_val->Validate(ctx); }
 }
 
-void InDecl::Validate(Context *ctx) {
-  STARTING_CHECK;
-  container->Validate(ctx);
-}
-
 void Statements::Validate(Context *ctx) {
   STARTING_CHECK;
   for (auto &stmt : content_) { stmt->Validate(ctx); }

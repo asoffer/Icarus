@@ -361,17 +361,6 @@ BuildArrayType(std::vector<std::unique_ptr<Node>> nodes,
   }
 }
 
-static std::unique_ptr<Node>
-BuildInDecl(std::vector<std::unique_ptr<Node>> nodes) {
-  ASSERT(nodes[1]->as<TokenNode>().op == Language::Operator::In);
-  auto in_decl              = std::make_unique<InDecl>();
-  in_decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
-  in_decl->identifier       = move_as<Identifier>(nodes[0]);
-  in_decl->identifier->decl = in_decl.get();
-  in_decl->container        = move_as<Expression>(nodes[2]);
-  return in_decl;
-}
-
 template <bool IsConst>
 static std::unique_ptr<Node>
 BuildDeclaration(std::vector<std::unique_ptr<Node>> nodes) {
@@ -665,9 +654,6 @@ BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>> nodes,
 
   } else if (tk == "::" || tk == "::=") {
     return AST::BuildDeclaration<true>(std::move(nodes));
-
-  } else if (tk == "in") {
-    return AST::BuildInDecl(std::move(nodes));
 
   } else if (tk == "=>") {
     return AST::BuildShortFunctionLiteral(move_as<AST::Expression>(nodes[0]),

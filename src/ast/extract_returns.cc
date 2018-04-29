@@ -32,11 +32,6 @@ void Binop::ExtractReturns(std::vector<const Expression *> *rets) const {
   rhs->ExtractReturns(rets);
 }
 
-void InDecl::ExtractReturns(std::vector<const Expression *> *rets) const {
-  identifier->ExtractReturns(rets);
-  container->ExtractReturns(rets);
-}
-
 void Declaration::ExtractReturns(std::vector<const Expression *> *rets) const {
   identifier->ExtractReturns(rets);
   if (type_expr) { type_expr->ExtractReturns(rets); }

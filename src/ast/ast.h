@@ -150,12 +150,6 @@ struct Declaration : public Expression {
   }
 };
 
-struct InDecl : public Declaration {
-  EXPR_FNS(InDecl);
-  InDecl *Clone() const override;
-  std::unique_ptr<Expression> container;
-};
-
 struct Access : public Expression {
   EXPR_FNS(Access);
   virtual IR::Val EmitIR(Context *);

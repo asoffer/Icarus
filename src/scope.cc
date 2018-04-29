@@ -41,8 +41,7 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
 
 void ExecScope::Enter(Context* ctx) const {
   ForEachDeclHere([ctx](AST::Declaration *decl) {
-    if (decl->const_) { return; }
-    if (!decl->is<AST::InDecl>()) { decl->EmitIR(ctx); }
+    if (!decl->const_) { decl->EmitIR(ctx); }
   });
 }
 

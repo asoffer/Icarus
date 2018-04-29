@@ -51,7 +51,6 @@ MAKE_LOG_ERROR(NonDeclarationInStructDeclaration,
                "Each struct member must be defined using a declaration.")
 MAKE_LOG_ERROR(CommaListStatement,
                "Comma-separated lists are not allowed as statements")
-MAKE_LOG_ERROR(NonInDeclInForLoop, "Expected 'in' declaration in for-loop.")
 MAKE_LOG_ERROR(InvalidImport,
                "Import statements must take a constant string as the name of "
                "the file to be imported.")
@@ -82,7 +81,6 @@ MAKE_LOG_ERROR(InconsistentArrayType,
                "Type error: Array literal must have consistent type")
 MAKE_LOG_ERROR(ArrayIndexType, "Array length indexed by non-integral type")
 MAKE_LOG_ERROR(JumpOutsideLoop, "statement must be contained inside a loop.")
-MAKE_LOG_ERROR(TypeIteration, "Cannot iterate over a type")
 MAKE_LOG_ERROR(IndeterminantType, "Cannot determine type from in declaration.")
 MAKE_LOG_ERROR(XorEqNeedsBool,
                "Operator '^=' must take arguments of type bool.")

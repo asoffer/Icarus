@@ -156,10 +156,6 @@ std::string CommaList::to_string(size_t n) const {
 std::string Terminal::to_string(size_t) const { return value.to_string(); }
 std::string Identifier::to_string(size_t) const { return token; }
 
-std::string InDecl::to_string(size_t n) const {
-  return identifier->token + " in " + container->to_string(n);
-}
-
 std::string Declaration::to_string(size_t n) const {
   std::stringstream ss;
   ss << identifier->to_string(n);

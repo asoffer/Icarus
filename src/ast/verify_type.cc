@@ -1087,41 +1087,6 @@ void Declaration::VerifyType(Context *ctx) {
   }
 }
 
-void InDecl::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
-  container->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
-  limit_to(container);
-
-  lvalue = Assign::RVal;
-
-  if (container->type == type::Void) {
-    type = type::Err;
-    identifier->type = type::Err;
-    ctx->error_log_.TypeIteration(span);
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  if (container->type->is<type::Array>()) {
-    type = container->type->as<type::Array>().data_type;
-
-  } else if (container->type == type::Type_) {
-    auto t =
-        std::get<const type::Type *>(Evaluate(container.get(), ctx)[0].value);
-    if (t->is<type::Enum>()) { type = t; }
-
-  } else {
-    ctx->error_log_.IndeterminantType(span);
-    type = type::Err;
-    limit_to(StageRange::Nothing());
-  }
-
-  identifier->type = type;
-  identifier->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
-}
-
 void Statements::VerifyType(Context *ctx) {
   STARTING_CHECK;
   for (auto &stmt : content_) {

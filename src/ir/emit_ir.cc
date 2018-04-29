@@ -416,19 +416,7 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
 
   // TODO this global scope thing is probably wrong.
   if (decl->scope_ == ctx->mod_->global_.get()) { decl->EmitIR(ctx); }
-
-  if (decl->arg_val) {
-    return decl->addr;
-  } else if (decl->is<InDecl>()) {
-    if (auto &in_decl = decl->as<InDecl>();
-        in_decl.container->type->is<type::Array>()) {
-      return PtrCallFix(EmitLVal(ctx));
-    } else {
-      return decl->addr;
-    }
-  } else {
-    return PtrCallFix(EmitLVal(ctx));
-  }
+  return decl->arg_val ? decl->addr : PtrCallFix(EmitLVal(ctx));
 }
 
 IR::Val AST::ArrayLiteral::EmitIR(Context *ctx) {
@@ -983,9 +971,7 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
           return;
         }
 
-        // TODO arg_val seems to go along with in_decl a lot. Is there some
-        // reason for this that *should* be abstracted?
-        if (decl->arg_val || decl->is<InDecl>()) { return; }
+        if (decl->arg_val) { return; }
         ASSERT(decl->type != nullptr);
         decl->addr = IR::Alloca(decl->type);
       });

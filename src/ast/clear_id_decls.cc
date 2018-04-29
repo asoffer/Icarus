@@ -39,13 +39,6 @@ void Binop::ClearIdDecls() {
   rhs->ClearIdDecls();
 }
 
-void InDecl::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  scope_->InsertDecl(this);
-  identifier->ClearIdDecls();
-  container->ClearIdDecls();
-}
-
 void Declaration::ClearIdDecls() {
   stage_range_ = StageRange{};
   identifier->ClearIdDecls();

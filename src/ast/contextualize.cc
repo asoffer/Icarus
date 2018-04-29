@@ -19,10 +19,6 @@ void Declaration::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   if (init_val) { init_val->SaveReferences(scope, args); }
 }
 
-void InDecl::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  container->SaveReferences(scope, args);
-}
-
 void Call::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   for (auto &pos : args_.pos_) { pos->SaveReferences(scope, args); }
   for (auto & [ name, expr ] : args_.named_) {
@@ -125,11 +121,6 @@ void Declaration::contextualize(const Node *correspondant,
   CONTEXTUALIZE(identifier);
   if (type_expr) { CONTEXTUALIZE(type_expr); }
   if (init_val) { CONTEXTUALIZE(init_val); }
-}
-
-void InDecl::contextualize(const Node *correspondant,
-                           const RefMap &replacements) {
-  CONTEXTUALIZE(container);
 }
 
 void Statements::contextualize(const Node *correspondant,

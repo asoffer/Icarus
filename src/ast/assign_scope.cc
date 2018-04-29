@@ -58,14 +58,6 @@ void Binop::assign_scope(Scope *scope) {
   rhs->assign_scope(scope);
 }
 
-void InDecl::assign_scope(Scope *scope) {
-  STAGE_CHECK;
-  scope_ = scope;
-  scope_->InsertDecl(this);
-  identifier->assign_scope(scope);
-  container->assign_scope(scope);
-}
-
 void Declaration::assign_scope(Scope *scope) {
   STAGE_CHECK;
   ASSERT(scope != nullptr);
