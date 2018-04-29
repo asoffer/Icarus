@@ -81,7 +81,6 @@ Val Variant(std::vector<Val> vals);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(const type::Type *t);
-Val Contextualize(AST::CodeBlock code, std::vector<Val> args);
 Val VariantType(Val v1);
 Val VariantValue(const type::Type *t, Val);
 Val Err(Val v);

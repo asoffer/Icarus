@@ -2,10 +2,12 @@
 
 #include <algorithm>
 
-#include "context.h"
+#include "ast/hole.h"
 #include "error/log.h"
 #include "ir/func.h"
 #include "type/all.h"
+#include "module.h"
+#include "verify_macros.h"
 
 // TODO catch functions that don't return along all paths.
 // TODO Join/Meet for type::EmptyArray <-> [0; T] (explicitly empty)? Why!?
@@ -17,65 +19,7 @@ IR::Val OrdFunc();
 using base::check::Is; 
 using base::check::Not; 
 
-void ScheduleModule(const Source::Name &src);
-
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
-
-#define HANDLE_CYCLIC_DEPENDENCIES                                             \
-  do {                                                                         \
-    if (ctx->cyc_dep_vec_ == nullptr) { break; }                               \
-    if constexpr (std::is_same_v<decltype(this), Identifier *>) {              \
-      auto *this_as_id = reinterpret_cast<Identifier *>(this);                 \
-      if (!ctx->cyc_dep_vec_->empty() &&                                       \
-          this_as_id == ctx->cyc_dep_vec_->front()) {                          \
-        ctx->cyc_dep_vec_ = nullptr;                                           \
-      } else {                                                                 \
-        ctx->cyc_dep_vec_->push_back(this_as_id);                              \
-      }                                                                        \
-    } else if constexpr (std::is_same_v<decltype(this), Declaration *>) {      \
-      auto *this_as_id =                                                       \
-          reinterpret_cast<Declaration *>(this)->identifier.get();             \
-      if (!ctx->cyc_dep_vec_->empty() &&                                       \
-          this_as_id == ctx->cyc_dep_vec_->front()) {                          \
-        ctx->cyc_dep_vec_ = nullptr;                                           \
-      } else {                                                                 \
-        ctx->cyc_dep_vec_->push_back(this_as_id);                              \
-      }                                                                        \
-    }                                                                          \
-    type = type::Err;                                                          \
-    limit_to(StageRange::Nothing());                                           \
-    return;                                                                    \
-  } while (false)
-
-#define STARTING_CHECK                                                         \
-  base::defer defer_##__LINE__(                                                \
-      [this]() { this->stage_range_.low = DoneTypeVerificationStage; });       \
-  if (stage_range_.high < StartTypeVerificationStage) { return; }              \
-  if (stage_range_.low >= DoneTypeVerificationStage) { return; }               \
-  stage_range_.low = StartTypeVerificationStage
-
-#define STARTING_CHECK_EXPR                                                    \
-  base::defer defer_##__LINE__(                                                \
-      [this]() { this->stage_range_.low = DoneTypeVerificationStage; });       \
-  if (stage_range_.high < StartTypeVerificationStage) { return; }              \
-  if (stage_range_.low >= DoneTypeVerificationStage) { return; }               \
-  if (stage_range_.low == StartTypeVerificationStage) {                        \
-    ctx->cyc_dep_vec_ = ctx->error_log_.CyclicDependency();                    \
-    HANDLE_CYCLIC_DEPENDENCIES;                                                \
-  }                                                                            \
-  stage_range_.low = StartTypeVerificationStage
-
-#define VERIFY_AND_RETURN_ON_ERROR(expr)                                     \
-  do {                                                                         \
-    expr->VerifyType(ctx);                                                     \
-    HANDLE_CYCLIC_DEPENDENCIES;                                                \
-    if (expr->type == type::Err) {                                             \
-      type = type::Err;                                                        \
-      /* TODO Maybe this should be Nothing() */                                \
-      limit_to(expr->stage_range_.high);                                       \
-      return;                                                                  \
-    }                                                                          \
-  } while (false)
 
 namespace AST {
 struct ArgumentMetaData {
@@ -482,7 +426,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
 }
 
 void GenericFunctionLiteral::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
   // TODO sort these correctly.
   decl_order_.reserve(inputs.size());
   for (size_t i = 0; i < inputs.size(); ++i) { decl_order_.push_back(i); }
@@ -504,11 +448,9 @@ void DispatchTable::insert(FnArgs<const type::Type *> call_arg_types,
 }
 
 void Terminal::VerifyType(Context *) {}
-void Hole::VerifyType(Context *) {}
-void CodeBlock::VerifyType(Context *) {}
 
 void Identifier::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
 
   if (decl == nullptr) {
     auto[potential_decls, potential_error_decls] =
@@ -635,7 +577,7 @@ static const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
 }
 
 void Binop::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
 
   lhs->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
@@ -858,7 +800,7 @@ void Binop::VerifyType(Context *ctx) {
 }
 
 void Call::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
   bool all_const = true;
   args_.Apply([ctx, &all_const, this](auto &arg) {
     arg->VerifyType(ctx);
@@ -933,9 +875,16 @@ void Call::VerifyType(Context *ctx) {
   }
 }
 
+bool Declaration::IsCustomInitialized() const {
+  return init_val && !init_val->is<Hole>();
+}
+bool Declaration::IsUninitialized() const {
+  return init_val && init_val->is<Hole>();
+}
+
 void Declaration::VerifyType(Context *ctx) {
   {
-    STARTING_CHECK_EXPR;
+    VERIFY_STARTING_CHECK_EXPR;
 
     lvalue = const_ ? Assign::Const : Assign::RVal;
 
@@ -963,7 +912,7 @@ void Declaration::VerifyType(Context *ctx) {
       identifier->stage_range_.low = StartTypeVerificationStage;
     }
 
-    if (init_val && !init_val->is<Hole>()) {
+    if (this->IsCustomInitialized()) {
       init_val->VerifyType(ctx);
       HANDLE_CYCLIC_DEPENDENCIES;
       limit_to(init_val);
@@ -1088,29 +1037,15 @@ void Declaration::VerifyType(Context *ctx) {
 }
 
 void Statements::VerifyType(Context *ctx) {
-  STARTING_CHECK;
+  VERIFY_STARTING_CHECK;
   for (auto &stmt : content_) {
     stmt->VerifyType(ctx);
     limit_to(stmt);
   }
 }
 
-void Import::VerifyType(Context *ctx) {
-  VERIFY_AND_RETURN_ON_ERROR(operand_);
-  lvalue = Assign::Const;
-  type = type::Module;
-  if (operand_->type != type::String || operand_->lvalue != Assign::Const) {
-    ctx->error_log_.InvalidImport(operand_->span);
-  } else {
-    cache_ = Source::Name{
-        std::get<std::string>(Evaluate(operand_.get(), ctx)[0].value)};
-    ScheduleModule(*cache_);
-  }
-  limit_to(operand_);
-}
-
 void Unop::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
   VERIFY_AND_RETURN_ON_ERROR(operand);
 
   using Language::Operator;
@@ -1238,7 +1173,7 @@ void Unop::VerifyType(Context *ctx) {
 }
 
 void Access::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
   VERIFY_AND_RETURN_ON_ERROR(operand);
   lvalue =
       (operand->type->is<type::Array>() &&
@@ -1299,7 +1234,7 @@ void Access::VerifyType(Context *ctx) {
 }
 
 void ChainOp::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
   bool found_err = false;
 
   lvalue = Assign::Const;
@@ -1422,7 +1357,7 @@ void ChainOp::VerifyType(Context *ctx) {
 }
 
 void CommaList::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
   // TODO actually compute value category
   lvalue = Assign::LVal;
   for (auto &expr : exprs) {
@@ -1443,7 +1378,7 @@ void CommaList::VerifyType(Context *ctx) {
 }
 
 void ArrayLiteral::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
 
   lvalue = Assign::Const;
   if (elems.empty()) {
@@ -1478,7 +1413,7 @@ void ArrayLiteral::VerifyType(Context *ctx) {
 }
 
 void ArrayType::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
 
   length->VerifyType(ctx);
@@ -1502,7 +1437,7 @@ void ArrayType::VerifyType(Context *ctx) {
 }
 
 void FunctionLiteral::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
   for (auto &input : inputs) {
     input->VerifyType(ctx);
@@ -1571,10 +1506,8 @@ void FunctionLiteral::VerifyType(Context *ctx) {
   }
 }
 
-void Jump::VerifyType(Context *ctx) { STARTING_CHECK; }
-
 void ScopeNode::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
 
   lvalue = Assign::RVal;
 
@@ -1599,7 +1532,7 @@ void ScopeNode::VerifyType(Context *ctx) {
 }
 
 void ScopeLiteral::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
   bool cannot_proceed_due_to_errors = false;
   if (!enter_fn) {
@@ -1642,12 +1575,8 @@ void ScopeLiteral::VerifyType(Context *ctx) {
 }
 
 void StructLiteral::VerifyType(Context *ctx) {
-  STARTING_CHECK_EXPR;
+  VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
   type = type::Type_;
 }
 }  // namespace AST
-
-#undef VERIFY_AND_RETURN_ON_ERROR
-#undef STARTING_CHECK
-#undef STARTING_CHECK_EXPR

@@ -6,60 +6,47 @@
 #include "expression.h"
 #include "statements.h"
 
-extern type::Type *Code;
+namespace type {
+extern Type *Code;
+}  // namespace type
+
 namespace AST {
 struct CodeBlock : public Expression {
-  EXPR_FNS(CodeBlock);
-  CodeBlock();
-  CodeBlock(std::string s);
+  CodeBlock() {
+    lvalue = Assign::Const;
+    type   = type::Code;
+  }
+  CodeBlock(std::string s) : CodeBlock() { content_ = std::move(s); }
 
   CodeBlock(const CodeBlock &)     = default;
   CodeBlock(CodeBlock &&) noexcept = default;
   CodeBlock &operator=(const CodeBlock &) = default;
-  CodeBlock &operator=(CodeBlock &&) = default;
+  CodeBlock &operator=(CodeBlock &&) noexcept = default;
+  ~CodeBlock() override {}
+
+  std::string to_string(size_t n) const override;
+  std::string to_string() const { return to_string(0); }
+  void assign_scope(Scope *scope) override {}
+  void ClearIdDecls() override { stage_range_ = StageRange{}; }
+  CodeBlock *Clone() const { return new CodeBlock(*this); }
+
+  void VerifyType(Context *) override {}
+  virtual void Validate(Context *) override {}
+  void SaveReferences(Scope *, std::vector<IR::Val> *) override {}
+  void contextualize(
+      const Node *,
+      const std::unordered_map<const Expression *, IR::Val> &) override {}
+
+  void ExtractReturns(std::vector<const Expression *> *) const override {}
 
   std::variant<Statements, std::string> content_;
 
-  CodeBlock *Clone() const override;
   IR::Val EmitIR(Context *) override;
 };
 
-inline bool operator==(const CodeBlock &lhs, const CodeBlock &rhs) {
-  if (auto* lhs_stmts = std::get_if<Statements>(&lhs.content_)) {
-    if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {
-      return lhs_stmts->content_ == rhs_stmts->content_;
-    } else {
-      return false;
-    }
-  } else {
-    if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {
-      return false;
-    } else {
-      return std::get<std::string>(lhs.content_) ==
-             std::get<std::string>(rhs.content_);
-    }
-  }
-}
-
-inline bool operator<(const CodeBlock &lhs, const CodeBlock &rhs) {
-  if (auto* lhs_stmts = std::get_if<Statements>(&lhs.content_)) {
-    if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {
-      return lhs_stmts->content_ < rhs_stmts->content_;
-    } else {
-      return true;
-    }
-  } else {
-    if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {
-      return false;
-    } else {
-      return std::get<std::string>(lhs.content_) <
-             std::get<std::string>(rhs.content_);
-    }
-  }
-}
-
-inline bool operator>(const CodeBlock &lhs, const CodeBlock &rhs) {
-  return rhs < lhs;
-}
+bool operator==(const CodeBlock &lhs, const CodeBlock &rhs);
+bool operator<(const CodeBlock &lhs, const CodeBlock &rhs);
+bool operator>(const CodeBlock &lhs, const CodeBlock &rhs);
 } // namespace AST
+
 #endif // ICARUS_AST_CODEBLOCK_H

@@ -3,6 +3,7 @@
 #include "ast/ast.h"
 #include "context.h"
 #include "ir/func.h"
+#include "module.h"
 #include "type/function.h"
 
 void Scope::InsertDecl(AST::Declaration *decl) {

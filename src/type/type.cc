@@ -3,10 +3,11 @@
 #include <map>
 #include <unordered_map>
 
+#include "architecture.h"
 #include "base/guarded.h"
-#include "../architecture.h"
-#include "../context.h"
-#include "../ir/func.h"
+#include "context.h"
+#include "ir/func.h"
+#include "module.h"
 
 namespace type {
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \

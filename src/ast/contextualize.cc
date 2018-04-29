@@ -4,9 +4,6 @@
 namespace AST {
 void Terminal::SaveReferences(Scope *, std::vector<IR::Val> *) {}
 void Identifier::SaveReferences(Scope *, std::vector<IR::Val> *) {}
-void CodeBlock::SaveReferences(Scope *, std::vector<IR::Val> *) {}
-void Jump::SaveReferences(Scope *, std::vector<IR::Val> *) {}
-void Hole::SaveReferences(Scope *, std::vector<IR::Val> *) {}
 
 void Binop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   lhs->SaveReferences(scope, args);
@@ -48,10 +45,6 @@ void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   } else {
     operand->SaveReferences(scope, args);
   }
-}
-
-void Import::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  operand_->SaveReferences(scope, args);
 }
 
 void Access::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
@@ -105,11 +98,6 @@ void ScopeLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 using RefMap = std::unordered_map<const Expression *, IR::Val>;
 void Terminal::contextualize(const Node *, const RefMap &) {}
 void Identifier::contextualize(const Node *, const RefMap &) {}
-void CodeBlock::contextualize(const Node *, const RefMap &) {}
-void Jump::contextualize(const Node *, const RefMap &) {}
-void Hole::contextualize(const Node *, const RefMap &) {}
-void TokenNode::contextualize(const Node *, const RefMap &) { UNREACHABLE(); }
-
 void Binop::contextualize(const Node *correspondant,
                           const RefMap &replacements) {
   CONTEXTUALIZE(lhs);
@@ -144,11 +132,6 @@ void Unop::contextualize(const Node *correspondant,
   } else {
     CONTEXTUALIZE(operand);
   }
-}
-
-void Import::contextualize(const Node *correspondant,
-                         const RefMap &replacements) {
-  CONTEXTUALIZE(operand_);
 }
 
 void Access::contextualize(const Node *correspondant,

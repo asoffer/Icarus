@@ -39,11 +39,7 @@
 namespace AST {
 void GenericFunctionLiteral::Validate(Context *ctx) {}
 void Terminal::Validate(Context *ctx) {}
-void Hole::Validate(Context *ctx) {}
-void CodeBlock::Validate(Context *ctx) {}
 void Identifier::Validate(Context *ctx) {}
-void Import::Validate(Context *ctx) {}
-void Jump::Validate(Context *ctx) {}
 
 void Binop::Validate(Context *ctx) {
   STARTING_CHECK;

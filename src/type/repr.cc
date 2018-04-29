@@ -1,7 +1,8 @@
 #include "all.h"
 
-#include "../context.h"
-#include "../ir/func.h"
+#include "context.h"
+#include "ir/func.h"
+#include "module.h"
 
 namespace type {
 void Primitive::EmitRepr(IR::Val val, Context *ctx) const {

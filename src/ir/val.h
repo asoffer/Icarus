@@ -6,9 +6,9 @@
 #include <memory>
 #include <variant>
 
-#include "../ast/codeblock.h"
-#include "../base/strong_types.h"
-#include "../base/types.h"
+#include "ast/codeblock.h"
+#include "base/strong_types.h"
+#include "base/types.h"
 
 struct Module;
 

@@ -1,22 +1,16 @@
 #include "func.h"
 
-#include <future>
 #include <algorithm>
 #include <optional>
 
 #include "../ast/ast.h"
-#include "../base/guarded.h"
 #include "../context.h"
 #include "../error/log.h"
 #include "../type/all.h"
 #include "../ast/stages.h"
+#include "module.h"
 
 using base::check::Is;
-
-extern base::guarded<std::unordered_map<
-    Source::Name, std::shared_future<std::unique_ptr<Module>>>>
-    modules;
-
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 extern std::vector<IR::Val> global_vals;
@@ -132,13 +126,6 @@ static IR::Val EmitVariantMatch(const IR::Val &needle,
 IR::Val AST::Node::EmitIR(Context *) { UNREACHABLE(*this); }
 IR::Val AST::Expression::EmitIR(Context *) { UNREACHABLE(*this); }
 IR::Val AST::Expression::EmitLVal(Context *) { UNREACHABLE(*this); }
-
-IR::Val AST::Jump::EmitIR(Context *) {
-  switch (jump_type) {
-    case JumpType::Return: IR::ReturnJump(); return IR::Val::None();
-  }
-  UNREACHABLE();
-}
 
 static IR::BlockIndex CallLookupTest(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
@@ -533,11 +520,6 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
   }
 
   return addr;
-}
-
-IR::Val AST::Import::EmitIR(Context *ctx) {
-  ASSERT(cache_.has_value());
-  return IR::Val::Mod(modules.lock()->at(*cache_).get().get());
 }
 
 IR::Val AST::Unop::EmitIR(Context *ctx) {
@@ -996,15 +978,6 @@ IR::Val AST::Statements::EmitIR(Context *ctx) {
   return IR::Val::None();
 }
 
-IR::Val AST::CodeBlock::EmitIR(Context *) {
-  std::vector<IR::Val> args;
-  auto copy = *this;
-  if (auto *stmts = std::get_if<AST::Statements>(&copy.content_)) {
-    stmts->SaveReferences(scope_, &args);
-  }
-  return IR::Contextualize(std::move(copy), std::move(args));
-}
-
 IR::Val AST::Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
   if (decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
@@ -1015,8 +988,6 @@ IR::Val AST::Unop::EmitLVal(Context *ctx) {
   ASSERT(static_cast<int>(op) == static_cast<int>(Language::Operator::At));
   return operand->EmitIR(ctx);
 }
-
-IR::Val AST::Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
 
 IR::Val AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {

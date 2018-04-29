@@ -3,10 +3,10 @@
 
 #include <string>
 
-#include "../base/debug.h"
-#include "../base/util.h"
+#include "base/debug.h"
+#include "base/util.h"
 
-#include "../ir/val.h"
+#include "ir/val.h"
 
 namespace llvm {
 class Type;

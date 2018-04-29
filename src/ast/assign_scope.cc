@@ -15,12 +15,6 @@ void Unop::assign_scope(Scope *scope) {
   operand->assign_scope(scope);
 }
 
-void Import::assign_scope(Scope *scope) {
-  STAGE_CHECK;
-  scope_ = scope;
-  operand_->assign_scope(scope);
-}
-
 void Access::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;
@@ -102,15 +96,6 @@ void FunctionLiteral::assign_scope(Scope *scope) {
   statements->assign_scope(fn_scope.get());
 }
 
-void Jump::assign_scope(Scope *scope) {
-  STAGE_CHECK;
-  scope_ = scope;
-}
-void CodeBlock::assign_scope(Scope *scope) {
-  STAGE_CHECK;
-  scope_ = scope;
-}
-
 void Call::assign_scope(Scope *scope) {
   STAGE_CHECK;
   scope_ = scope;
@@ -140,10 +125,5 @@ void StructLiteral::assign_scope(Scope *scope) {
   scope_     = scope;
   type_scope = scope->add_child<DeclScope>();
   for (auto &f : fields_) { f->assign_scope(type_scope.get()); }
-}
-
-void Hole::assign_scope(Scope *scope) {
-  STAGE_CHECK;
-  scope_ = scope;
 }
 }  // namespace AST

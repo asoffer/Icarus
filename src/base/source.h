@@ -7,8 +7,6 @@
 #include <string>
 #include <vector>
 
-#include "strong_types.h"
-
 namespace error {
 struct Log;
 }

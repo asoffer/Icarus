@@ -7,8 +7,6 @@ void Unop::ExtractReturns(std::vector<const Expression *> *rets) const {
   if (op == Language::Operator::Return) { rets->push_back(operand.get()); }
 }
 
-void Import::ExtractReturns(std::vector<const Expression *> *) const {}
-
 void Access::ExtractReturns(std::vector<const Expression *> *rets) const {
   operand->ExtractReturns(rets);
 }
@@ -61,9 +59,6 @@ void FunctionLiteral::ExtractReturns(
   for (auto &out : outputs) { out->ExtractReturns(rets); }
 }
 
-void Jump::ExtractReturns(std::vector<const Expression *> *) const {}
-void CodeBlock::ExtractReturns(std::vector<const Expression *> *) const {}
-
 void Call::ExtractReturns(std::vector<const Expression *> *rets) const {
   fn_->ExtractReturns(rets);
   for (const auto &val : args_.pos_) { val->ExtractReturns(rets); }
@@ -85,6 +80,4 @@ void StructLiteral::ExtractReturns(
     std::vector<const Expression *> *rets) const {
   for (auto &f : fields_) { f->ExtractReturns(rets); }
 }
-
-void Hole::ExtractReturns(std::vector<const Expression *> *) const {}
 }  // namespace AST

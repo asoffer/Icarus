@@ -5,12 +5,6 @@
 namespace AST {
 static std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
-std::string TokenNode::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << tabs(n) << "[" << token << "]\n";
-  return ss.str();
-}
-
 std::string ArrayLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "[";
@@ -39,10 +33,6 @@ std::string Call::to_string(size_t n) const {
   }
   ss << ")";
   return ss.str();
-}
-
-std::string Import::to_string(size_t n) const {
-  return "import " + operand_->to_string(n);
 }
 
 std::string Unop::to_string(size_t n) const {
@@ -215,13 +205,6 @@ std::string GenericFunctionLiteral::to_string(size_t n) const {
   return FunctionLiteral::to_string(n);
 }
 
-std::string Jump::to_string(size_t) const {
-  switch (jump_type) {
-    case JumpType::Return: return "return";
-  }
-  UNREACHABLE();
-}
-
 std::string ScopeNode::to_string(size_t n) const {
   std::stringstream ss;
   ss << scope_expr->to_string(n);
@@ -229,22 +212,6 @@ std::string ScopeNode::to_string(size_t n) const {
   ss << " {\n" << stmts->to_string(n) << tabs(n) << "}";
   return ss.str();
 }
-
-std::string CodeBlock::to_string(size_t n) const {
-  if (auto* err = std::get_if<std::string>(&content_)) {
-    return "error(" + *err + ")";
-  }
-  auto str = std::get<Statements>(content_).to_string(n + 1);
-
-  if (str.empty()) { return "{{}}"; }
-  if (str.find('\n') != std::string::npos) { return "{{\n" + str + "\n}}"; }
-
-  str[0] = '{';
-  str[1] = ' ';
-  return "{" + str + " }}";
-}
-
-std::string Hole::to_string(size_t) const { return "--"; }
 
 std::string ScopeLiteral::to_string(size_t n) const {
   std::stringstream ss;

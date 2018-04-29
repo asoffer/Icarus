@@ -1,8 +1,9 @@
 #include "all.h"
 
-#include "../architecture.h"
-#include "../context.h"
-#include "../ir/func.h"
+#include "architecture.h"
+#include "context.h"
+#include "ir/func.h"
+#include "module.h"
 
 // TODO destructor for previously held value.
 // TODO here and everywhere else: choose a canonical module to add these

@@ -18,43 +18,16 @@
 #include "dispatch.h"
 #include "expression.h"
 #include "fn_args.h"
-#include "import.h"
-#include "module.h"
 #include "unop.h"
 
+struct Module;
 struct Context;
 
 namespace IR {
 struct Func;
-} // namespace IR
+}  // namespace IR
 
 namespace AST {
-struct Statements;
-
-struct TokenNode : public Node {
-  virtual std::string to_string(size_t n) const;
-
-  void SaveReferences(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
-  TokenNode *Clone() const override;
-  virtual void VerifyType(Context *) {}
-  virtual void Validate(Context *) {}
-  virtual void ExtractReturns(
-      std::vector<const Expression *> *) const override {}
-
-  virtual void
-  contextualize(const Node *correspondant,
-                const std::unordered_map<const Expression *, IR::Val> &);
-
-  virtual IR::Val EmitIR(Context *) { UNREACHABLE(); }
-
-  virtual ~TokenNode() {}
-
-  TokenNode(const TextSpan &span = TextSpan(), std::string str = "");
-
-  std::string token;
-  Language::Operator op;
-};
-
 struct Terminal : public Expression {
   EXPR_FNS(Terminal);
   Terminal() = default;
@@ -76,16 +49,6 @@ struct Identifier : public Expression {
 
   std::string token;
   Declaration *decl = nullptr;
-};
-
-struct Hole : public Terminal {
-  Hole() = delete;
-  EXPR_FNS(Hole);
-  Hole(const TextSpan &span) : Terminal(span, IR::Val::None()) {}
-  Hole *Clone() const override;
-
-  IR::Val EmitIR(Context *) override { return IR::Val::None(); }
-  IR::Val EmitLVal(Context *) override { return IR::Val::None(); }
 };
 
 struct Binop : public Expression {
@@ -142,12 +105,8 @@ struct Declaration : public Expression {
   // there is no default value provided.
   inline bool IsInferred() const { return !type_expr; }
   inline bool IsDefaultInitialized() const { return !init_val; }
-  inline bool IsCustomInitialized() const {
-    return init_val && !init_val->is<Hole>();
-  }
-  inline bool IsUninitialized() const {
-    return init_val && init_val->is<Hole>();
-  }
+  bool IsCustomInitialized() const;
+  bool IsUninitialized() const;
 };
 
 struct Access : public Expression {
@@ -232,8 +191,8 @@ struct GenericFunctionLiteral : public FunctionLiteral {
   // Attempts to match the call argument types to the dependent types here. If
   // it can it materializes a function literal and returns a pointer to it.
   // Otherwise, returns nullptr.
-  std::pair<FunctionLiteral *, Binding>
-  ComputeType(const FnArgs<Expression *> &args, Context *ctx);
+  std::pair<FunctionLiteral *, Binding> ComputeType(
+      const FnArgs<Expression *> &args, Context *ctx);
 
   // Holds an ordering of the indices of 'inputs' sorted in such a way that if a
   // type depends on a value of another declaration, the dependent type occurs
@@ -241,20 +200,6 @@ struct GenericFunctionLiteral : public FunctionLiteral {
   std::vector<size_t> decl_order_;
 
   std::map<BoundConstants, FunctionLiteral> fns_;
-};
-
-struct Jump : public Node {
-  VIRTUAL_METHODS_FOR_NODES;
-  virtual ~Jump() {}
-  Jump *Clone() const override;
-  virtual IR::Val EmitIR(Context *);
-
-  enum class JumpType { Return };
-
-  Jump(const TextSpan &span, JumpType jump_type);
-
-  ExecScope *scope;
-  JumpType jump_type;
 };
 
 struct ScopeNode : public Expression {
@@ -291,9 +236,9 @@ struct StructLiteral : public Expression {
   std::unique_ptr<DeclScope> type_scope;
   std::vector<std::unique_ptr<Declaration>> fields_;
 };
-} // namespace AST
+}  // namespace AST
 
 #undef VIRTUAL_METHODS_FOR_NODES
 #undef EXPR_FNS
 
-#endif // ICARUS_AST_AST_H
+#endif  // ICARUS_AST_AST_H

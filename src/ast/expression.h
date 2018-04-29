@@ -1,8 +1,7 @@
 #ifndef ICARUS_AST_EXPRESSION_H
 #define ICARUS_AST_EXPRESSION_H
 
-#include "node.h"
-#include "../type/type.h"
+#include "ast/node.h"
 
 struct Context;
 

@@ -144,11 +144,6 @@ Val Alloca(const type::Type *t) {
   return cmd.reg();
 }
 
-Val Contextualize(AST::CodeBlock code, std::vector<IR::Val> v) {
-  v.push_back(IR::Val::CodeBlock(std::move(code)));
-  MAKE_AND_RETURN(type::Code, Op::Contextualize);
-}
-
 Val VariantType(Val v) {
   MAKE_AND_RETURN(type::Ptr(type::Type_), Op::VariantType);
 }

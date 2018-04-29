@@ -1,7 +1,8 @@
 #include "../ir/func.h"
 
-#include "../context.h"
+#include "context.h"
 #include "all.h"
+#include "module.h"
 
 namespace type {
 void Primitive::EmitDestroy(IR::Val, Context *ctx) const {}

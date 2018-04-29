@@ -2,28 +2,29 @@
 #include <cmath>
 
 #include "ast/ast.h"
+#include "ast/hole.h"
 #include "error/log.h"
 #include "frontend/numbers.h"
 #include "frontend/tagged_node.h"
 #include "frontend/text_span.h"
+#include "frontend/token.h"
 #include "type/primitive.h"
 
 // TODO audit every location where frontend::TaggedNode::Invalid is returned to
 // see if you need to log an error.
 
+IR::Val ErrorFunc();
+IR::Val AsciiFunc();
+IR::Val OrdFunc();
+
 namespace frontend {
 TaggedNode::TaggedNode(const TextSpan &span, const std::string &token, Tag tag)
-    : node_(std::make_unique<AST::TokenNode>(span, token)), tag_(tag) {}
+    : node_(std::make_unique<Token>(span, token)), tag_(tag) {}
 
 TaggedNode TaggedNode::TerminalExpression(const TextSpan &span, IR::Val val) {
   return TaggedNode(std::make_unique<AST::Terminal>(span, std::move(val)),
                     expr);
 }
-}  // namespace frontend
-
-IR::Val ErrorFunc();
-IR::Val AsciiFunc();
-IR::Val OrdFunc();
 
 namespace {
 constexpr inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
@@ -437,15 +438,15 @@ frontend::TaggedNode NextOperator(SourceLocation &loc, error::Log* error_log) {
     } else if (*loc == '>') {
       loc.Increment();
       span.finish = loc.cursor;
-      auto nptr   = std::make_unique<AST::TokenNode>(span, "->");
+      auto nptr   = std::make_unique<Token>(span, "->");
       nptr->op    = Language::Operator::Arrow;
       return frontend::TaggedNode(std::move(nptr), frontend::fn_arrow);
 
     } else if (*loc == '-') {
       loc.Increment();
       span.finish = loc.cursor;
-      return frontend::TaggedNode(std::make_unique<AST::Hole>(span), frontend::expr);
-
+      return frontend::TaggedNode(std::make_unique<AST::Hole>(span),
+                                  frontend::expr);
     } else {
       span.finish = loc.cursor;
       return frontend::TaggedNode(span, "-", frontend::op_bl);
@@ -531,7 +532,7 @@ frontend::TaggedNode NextSlashInitiatedToken(SourceLocation &loc,
 }
 } // namespace
 
-frontend::TaggedNode NextToken(SourceLocation &loc, error::Log *error_log) {
+TaggedNode NextToken(SourceLocation &loc, error::Log *error_log) {
 restart:
   // Delegate based on the next character in the file stream
   if (loc.source->seen_eof) {
@@ -560,3 +561,4 @@ restart:
   if (!tagged_node.valid()) { goto restart; }
   return tagged_node;
 }
+}  // namespace frontend

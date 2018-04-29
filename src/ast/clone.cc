@@ -47,11 +47,6 @@ Unop *Unop::Clone() const {
   return result;
 }
 
-Import *Import::Clone() const {
-  auto *result = new Import(base::wrap_unique(operand_->Clone()));
-  result->span = span;
-  return result;
-}
 Access *Access::Clone() const {
   auto *result        = new Access;
   result->span        = span;
@@ -143,10 +138,6 @@ StructLiteral *StructLiteral::Clone() const {
   return result;
 }
 
-TokenNode *TokenNode::Clone() const { return new TokenNode(*this); }
 Terminal *Terminal::Clone() const { return new Terminal(*this); }
-Hole *Hole::Clone() const { return new Hole(*this); }
 Statements *Statements::Clone() const { return new Statements(*this); }
-CodeBlock *CodeBlock::Clone() const { return new CodeBlock(*this); }
-Jump *Jump::Clone() const { return new Jump(*this); }
 } // namespace AST

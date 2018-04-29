@@ -21,9 +21,9 @@
   } while (false)
 
 #define ASSERT_NOT_NULL(expr)                                                  \
-  ([](auto *ptr) {                                                             \
+  ([](auto &&ptr) {                                                            \
     if (ptr == nullptr) {                                                      \
-      LOG << #expr << " is unexpectedly null.";                                \
+      LOG << #expr " is unexpectedly null.";                                   \
       std::abort();                                                            \
     }                                                                          \
     return ptr;                                                                \
