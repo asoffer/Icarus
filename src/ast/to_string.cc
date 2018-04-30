@@ -5,20 +5,6 @@
 namespace AST {
 static std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
-std::string ArrayLiteral::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << "[";
-  auto iter = elems.begin();
-  ss << (*iter)->to_string(n);
-  ++iter;
-  while (iter != elems.end()) {
-    ss << ", " << (*iter)->to_string(n);
-    ++iter;
-  }
-  ss << "]";
-  return ss.str();
-}
-
 std::string Call::to_string(size_t n) const {
   std::stringstream ss;
   ss << fn_->to_string(n) << "(";
@@ -32,36 +18,6 @@ std::string Call::to_string(size_t n) const {
     seen_one = true;
   }
   ss << ")";
-  return ss.str();
-}
-
-std::string Unop::to_string(size_t n) const {
-  std::stringstream ss;
-  switch (op) {
-  case Language::Operator::Return: ss << "return "; break;
-  case Language::Operator::Break: ss << "break "; break;
-  case Language::Operator::Continue: ss << "continue "; break;
-  case Language::Operator::Repeat: ss << "repeat "; break;
-  case Language::Operator::Restart: ss << "restart "; break;
-  case Language::Operator::Print: ss << "print "; break;
-  case Language::Operator::Free: ss << "free "; break;
-  case Language::Operator::Mul: ss << "*"; break;
-  case Language::Operator::And: ss << "&"; break;
-  case Language::Operator::Sub: ss << "-"; break;
-  case Language::Operator::Generate: ss << "generate "; break;
-  case Language::Operator::Not: ss << "!"; break;
-  case Language::Operator::At: ss << "@"; break;
-  case Language::Operator::Eval: ss << "$"; break;
-  case Language::Operator::Dots: ss << ".."; break; // TODO
-  case Language::Operator::Ref: ss << "\\"; break;
-  case Language::Operator::Needs: ss << "needs "; break;
-  case Language::Operator::Ensure: ss << "ensure "; break;
-  case Language::Operator::TypeOf: ss << ":? "; break;
-  case Language::Operator::Pass: break;
-  default: { UNREACHABLE(); }
-  }
-
-  ss << operand->to_string(n);
   return ss.str();
 }
 
@@ -98,13 +54,6 @@ std::string Binop::to_string(size_t n) const {
   }
   ss << "(" << rhs->to_string(n) << ")";
 
-  return ss.str();
-}
-
-std::string ArrayType::to_string(size_t n) const {
-  ASSERT(length != nullptr);
-  std::stringstream ss;
-  ss << "[" << length->to_string(n) << "; " << data_type->to_string(n) << "]";
   return ss.str();
 }
 

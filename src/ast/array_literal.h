@@ -1,14 +1,11 @@
-#ifndef ICARUS_AST_UNOP_H
-#define ICARUS_AST_UNOP_H
+#ifndef ICARUS_AST_ARRAY_LITERAL_H
+#define ICARUS_AST_ARRAY_LITERAL_H
 
-#include "ast/dispatch.h"
 #include "ast/expression.h"
-#include "frontend/operators.h"
 
 namespace AST {
-struct Unop : public Expression {
-  ~Unop() override {}
-
+struct ArrayLiteral : public Expression {
+  ~ArrayLiteral() override {}
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
   void ClearIdDecls() override;
@@ -21,13 +18,11 @@ struct Unop : public Expression {
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
   IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  ArrayLiteral *Clone() const override;
 
-  Unop *Clone() const override;
-
-  std::unique_ptr<Expression> operand;
-  Language::Operator op;
-  DispatchTable dispatch_table_;
+  std::vector<std::unique_ptr<Expression>> elems_;
 };
-} //
-#endif  // ICARUS_AST_UNOP_H
+}  // namespace AST
+
+#endif  // ICARUS_AST_ARRAY_LITERAL_H
+

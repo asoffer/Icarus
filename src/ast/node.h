@@ -16,7 +16,6 @@
 
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const override;                      \
-  std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
   virtual void ClearIdDecls() override;                                        \
   virtual void VerifyType(Context *) override;                                 \
@@ -56,8 +55,6 @@ struct Node : public base::Cast<Node> {
                 const std::unordered_map<const Expression *, IR::Val> &) = 0;
   virtual Node *Clone() const                                            = 0;
   virtual void ExtractReturns(std::vector<const Expression *> *) const   = 0;
-
-  std::string to_string() const { return to_string(0); }
 
   template <typename T> void limit_to(T &&t) {
     if constexpr (std::is_same_v<std::decay_t<T>, int>) {

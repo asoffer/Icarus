@@ -1,6 +1,9 @@
 #ifndef ICARUS_AST_FN_ARGS_H
 #define ICARUS_AST_FN_ARGS_H
 
+#include <vector>
+#include <unordered_map>
+
 namespace AST {
 template <typename T> struct FnArgs {
   auto find(const std::string &name) -> decltype(auto) {

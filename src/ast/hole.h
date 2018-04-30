@@ -1,6 +1,8 @@
 #ifndef ICARUS_AST_HOLE_H
 #define ICARUS_AST_HOLE_H
 
+#include "ast/ast.h"
+
 namespace AST {
 // TODO currently needs to be an identifier because Declaration::identifier has
 // that type. This will change when declarations support commalists too at which

@@ -12,7 +12,6 @@ struct Import : public Expression {
   ~Import() override {}
 
   std::string to_string(size_t n) const override;
-  std::string to_string() const { return to_string(0); }
   void assign_scope(Scope *scope) override;
 
   void ClearIdDecls() override {

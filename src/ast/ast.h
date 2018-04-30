@@ -18,7 +18,6 @@
 #include "dispatch.h"
 #include "expression.h"
 #include "fn_args.h"
-#include "unop.h"
 
 struct Module;
 struct Context;
@@ -26,6 +25,22 @@ struct Context;
 namespace IR {
 struct Func;
 }  // namespace IR
+
+#define EXPR_FNS(name)                                                         \
+  virtual ~name() {}                                                           \
+  virtual std::string to_string(size_t n) const override;                      \
+  virtual void assign_scope(Scope *scope) override;                            \
+  virtual void ClearIdDecls() override;                                        \
+  virtual void VerifyType(Context *) override;                                 \
+  virtual void Validate(Context *) override;                                   \
+  virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
+      override;                                                                \
+  virtual void ExtractReturns(std::vector<const Expression *> *)               \
+      const override;                                                          \
+  virtual void contextualize(                                                  \
+      const Node *correspondant,                                               \
+      const std::unordered_map<const Expression *, IR::Val> &) override
+
 
 namespace AST {
 struct Terminal : public Expression {
@@ -138,23 +153,6 @@ struct CommaList : public Expression {
   virtual IR::Val EmitLVal(Context *);
 
   std::vector<std::unique_ptr<Expression>> exprs;
-};
-
-struct ArrayLiteral : public Expression {
-  EXPR_FNS(ArrayLiteral);
-  ArrayLiteral *Clone() const override;
-
-  virtual IR::Val EmitIR(Context *);
-
-  std::vector<std::unique_ptr<Expression>> elems;
-};
-
-struct ArrayType : public Expression {
-  EXPR_FNS(ArrayType);
-  virtual IR::Val EmitIR(Context *);
-  ArrayType *Clone() const override;
-
-  std::unique_ptr<Expression> length, data_type;
 };
 
 struct FunctionLiteral : public Expression {

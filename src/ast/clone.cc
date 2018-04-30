@@ -39,27 +39,11 @@ Declaration * Declaration::Clone() const {
   return result;
 }
 
-Unop *Unop::Clone() const {
-  auto *result    = new Unop;
-  result->span    = span;
-  result->operand = base::wrap_unique(operand->Clone());
-  result->op      = op;
-  return result;
-}
-
 Access *Access::Clone() const {
   auto *result        = new Access;
   result->span        = span;
   result->operand     = base::wrap_unique(operand->Clone());
   result->member_name = member_name;
-  return result;
-}
-
-ArrayType *ArrayType::Clone() const {
-  auto *result      = new ArrayType;
-  result->span      = span;
-  result->length    = base::wrap_unique(length->Clone());
-  result->data_type = base::wrap_unique(data_type->Clone());
   return result;
 }
 
@@ -111,14 +95,6 @@ CommaList *CommaList::Clone() const {
   result->span     = span;
   result->exprs.reserve(exprs.size());
   for (const auto &expr : exprs) { result->exprs.emplace_back(expr->Clone()); }
-  return result;
-}
-
-ArrayLiteral *ArrayLiteral::Clone() const {
-  auto *result = new ArrayLiteral;
-  result->span     = span;
-  result->elems.reserve(elems.size());
-  for (const auto &elem : elems) { result->elems.emplace_back(elem->Clone()); }
   return result;
 }
 

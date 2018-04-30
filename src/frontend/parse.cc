@@ -1,14 +1,16 @@
 #include <array>
 #include <cstdio>
-#include <future>
 #include <iosfwd>
 #include <queue>
 #include <unordered_map>
 #include <vector>
 
+#include "ast/array_literal.h"
+#include "ast/array_type.h"
 #include "ast/ast.h"
 #include "ast/import.h"
 #include "ast/jump.h"
+#include "ast/unop.h"
 #include "base/debug.h"
 #include "base/guarded.h"
 #include "base/types.h"
@@ -322,9 +324,9 @@ static std::unique_ptr<Node> BuildArrayLiteral(
   array_lit->span = nodes[0]->span;
 
   if (nodes[1]->is<CommaList>()) {
-    array_lit->elems = std::move(nodes[1]->as<CommaList>().exprs);
+    array_lit->elems_ = std::move(nodes[1]->as<CommaList>().exprs);
   } else {
-    array_lit->elems.push_back(move_as<Expression>(nodes[1]));
+    array_lit->elems_.push_back(move_as<Expression>(nodes[1]));
   }
 
   return array_lit;
@@ -338,20 +340,20 @@ static std::unique_ptr<Node> BuildArrayType(
     auto prev          = move_as<Expression>(nodes[3]);
 
     while (i >= 0) {
-      auto array_type       = std::make_unique<ArrayType>();
-      array_type->span      = length_chain->exprs[i]->span;
-      array_type->length    = std::move(length_chain->exprs[i]);
-      array_type->data_type = std::move(prev);
-      prev                  = std::move(array_type);
+      auto array_type        = std::make_unique<AST::ArrayType>();
+      array_type->span       = length_chain->exprs[i]->span;
+      array_type->length_    = std::move(length_chain->exprs[i]);
+      array_type->data_type_ = std::move(prev);
+      prev                   = std::move(array_type);
       i -= 1;
     }
     return prev;
 
   } else {
-    auto array_type       = std::make_unique<ArrayType>();
-    array_type->span      = nodes[0]->span;
-    array_type->length    = move_as<Expression>(nodes[1]);
-    array_type->data_type = move_as<Expression>(nodes[3]);
+    auto array_type        = std::make_unique<AST::ArrayType>();
+    array_type->span       = nodes[0]->span;
+    array_type->length_    = move_as<Expression>(nodes[1]);
+    array_type->data_type_ = move_as<Expression>(nodes[3]);
 
     return array_type;
   }

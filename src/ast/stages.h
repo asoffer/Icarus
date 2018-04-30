@@ -18,4 +18,10 @@ struct StageRange {
   static constexpr int NoEmitIR() { return EmitStage - 1; }
 };
 }  // namespace AST
+
+#define STAGE_CHECK(start, end)                                                \
+  if (stage_range_.high < start || stage_range_.low >= end) { return; }        \
+  base::defer defer_##__LINE__([this]() { this->stage_range_.low = end; });    \
+  stage_range_.low = start
+
 #endif  // ICARUS_AST_STAGES_H

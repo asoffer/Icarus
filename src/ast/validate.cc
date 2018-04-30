@@ -2,13 +2,6 @@
 #include "../type/all.h"
 #include "context.h"
 
-#define STARTING_CHECK                                                         \
-  base::defer defer_##__LINE__(                                                \
-      [this]() { this->stage_range_.low = DoneBodyValidationStage; });       \
-  if (stage_range_.high < StartBodyValidationStage) { return; }              \
-  if (stage_range_.low >= DoneBodyValidationStage) { return; }               \
-  stage_range_.low = StartBodyValidationStage
-
 // TODO macro duplicated in verifytypes
 #define HANDLE_CYCLIC_DEPENDENCIES                                             \
   do {                                                                         \
@@ -42,61 +35,45 @@ void Terminal::Validate(Context *ctx) {}
 void Identifier::Validate(Context *ctx) {}
 
 void Binop::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   lhs->Validate(ctx);
   rhs->Validate(ctx);
 }
 
 void Call::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   fn_->Validate(ctx);
   args_.Apply([ctx](auto &arg) { arg->Validate(ctx); });
 }
 
 void Declaration::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   if (type_expr) { type_expr->Validate(ctx); }
   if (init_val) { init_val->Validate(ctx); }
 }
 
 void Statements::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &stmt : content_) { stmt->Validate(ctx); }
 }
 
-void Unop::Validate(Context *ctx) {
-  STARTING_CHECK;
-  operand->Validate(ctx);
-}
-
 void Access::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   operand->Validate(ctx);
 }
 
 void ChainOp::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &expr : exprs) { expr->Validate(ctx); }
 }
 
 void CommaList::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &expr : exprs) { expr->Validate(ctx); }
 }
 
-void ArrayLiteral::Validate(Context *ctx) {
-  STARTING_CHECK;
-  for (auto &elem : elems) { elem->Validate(ctx); }
-}
-
-void ArrayType::Validate(Context *ctx) {
-  STARTING_CHECK;
-  length->Validate(ctx);
-  data_type->Validate(ctx);
-}
-
 void FunctionLiteral::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &in : inputs) { in->Validate(ctx); }
   for (auto &out : outputs) { out->Validate(ctx); }
 
@@ -185,17 +162,17 @@ void FunctionLiteral::Validate(Context *ctx) {
 }
 
 void ScopeNode::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   // TODO
 }
 
 void ScopeLiteral::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   // TODO
 }
 
 void StructLiteral::Validate(Context *ctx) {
-  STARTING_CHECK;
+  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
 
   for (auto &field : fields_) {
     if (field->type_expr) { field->type_expr->VerifyType(ctx); }
@@ -203,5 +180,4 @@ void StructLiteral::Validate(Context *ctx) {
   }
 }
 }  // namespace AST
-#undef STARTING_CHECK
 #undef HANDLE_CYCLIC_DEPENDENCIES

@@ -256,7 +256,7 @@ static std::vector<IR::Val> EmitOneCallDispatch(
   UNREACHABLE();
 }
 
-static std::vector<IR::Val> EmitCallDispatch(
+std::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx) {
@@ -406,17 +406,6 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
   return decl->arg_val ? decl->addr : PtrCallFix(EmitLVal(ctx));
 }
 
-IR::Val AST::ArrayLiteral::EmitIR(Context *ctx) {
-  auto array_val = IR::Alloca(type);
-  auto *data_type = type->as<type::Array>().data_type;
-  for (size_t i = 0; i < elems.size(); ++i) {
-    auto elem_i = IR::Index(array_val, IR::Val::Int(static_cast<i32>(i)));
-    type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(ctx), elem_i,
-                       ctx);
-  }
-  return array_val;
-}
-
 IR::Val AST::ScopeLiteral::EmitIR(Context *ctx) {
   enter_fn->init_val->EmitIR(ctx);
   exit_fn->init_val->EmitIR(ctx);
@@ -520,94 +509,6 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
   }
 
   return addr;
-}
-
-IR::Val AST::Unop::EmitIR(Context *ctx) {
-  if (operand->type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
-    // TODO struct is not exactly right. we really mean user-defined
-    AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
-    args.pos_    = {std::pair(operand.get(), operand->type->is_big()
-                                              ? PtrCallFix(operand->EmitIR(ctx))
-                                              : operand->EmitIR(ctx))};
-    auto results = EmitCallDispatch(args, dispatch_table_, type, ctx);
-    ASSERT(results.size() == 1u);
-    return results[0];
-  }
-
-  switch (op) {
-    case Language::Operator::Not:
-    case Language::Operator::Sub: {
-      return IR::Neg(operand->EmitIR(ctx));
-    } break;
-    case Language::Operator::Return: {
-      if (!operand->type->is_big()) {
-        IR::SetReturn(IR::ReturnValue{static_cast<i32>(0)},
-                      operand->EmitIR(ctx));
-      } else {
-        ForEachExpr(operand.get(), [ctx](size_t i, AST::Expression *expr) {
-          // TODO return type maybe not the same as type actually returned?
-          auto *ret_type = expr->type;
-          ret_type->EmitAssign(
-              expr->type, expr->EmitIR(ctx),
-              IR::Val::Ret(IR::ReturnValue{static_cast<i32>(i)},
-                           ret_type->is_big() ? Ptr(ret_type) : ret_type),
-              ctx);
-        });
-      }
-      IR::ReturnJump();
-      return IR::Val::None();
-    }
-    case Language::Operator::TypeOf: return IR::Val::Type(operand->type);
-    case Language::Operator::Print: {
-      ForEachExpr(operand.get(), [&ctx](size_t, AST::Expression *expr) {
-        if (expr->type->is<type::Primitive>() ||
-            expr->type->is<type::Pointer>()) {
-          IR::Print(expr->EmitIR(ctx));
-        } else {
-          expr->type->EmitRepr(expr->EmitIR(ctx), ctx);
-        }
-      });
-
-      return IR::Val::None();
-    } break;
-    case Language::Operator::And: return operand->EmitLVal(ctx);
-    case Language::Operator::Eval: {
-      // TODO what if there's an error during evaluation?
-      // TODO what about ``a, b = $FnWithMultipleReturnValues()``
-      auto results = Evaluate(operand.get(), ctx);
-      return results.empty() ? IR::Val::None() : results[0];
-    }
-    case Language::Operator::Generate: {
-      auto val = Evaluate(operand.get(), ctx) AT(0);
-      ASSERT(val.type == type::Code);
-      auto block = std::get<AST::CodeBlock>(val.value);
-      if (auto *err = std::get_if<std::string>(&block.content_)) {
-        ctx->error_log_.UserDefinedError(*err);
-        return IR::Val::None();
-      }
-
-      auto *stmts = &std::get<AST::Statements>(block.content_);
-      stmts->assign_scope(scope_);
-      stmts->VerifyType(ctx);
-      stmts->Validate(ctx);
-      return stmts->EmitIR(ctx);
-
-    } break;
-    case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(ctx));
-    case Language::Operator::At: return PtrCallFix(operand->EmitIR(ctx));
-    case Language::Operator::Needs: {
-      // TODO validate requirements are well-formed?
-      IR::Func::Current->preconditions_.push_back(operand.get());
-      return IR::Val::None();
-    } break;
-    case Language::Operator::Ensure: {
-      // TODO validate requirements are well-formed?
-      IR::Func::Current->postconditions_.push_back(operand.get());
-      return IR::Val::None();
-    } break;
-    case Language::Operator::Pass: return operand->EmitIR(ctx);
-    default: UNREACHABLE("Operator is ", static_cast<int>(op));
-  }
 }
 
 IR::Val AST::Binop::EmitIR(Context *ctx) {
@@ -739,10 +640,6 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Index: return PtrCallFix(EmitLVal(ctx));
     default: UNREACHABLE(*this);
   }
-}
-
-IR::Val AST::ArrayType::EmitIR(Context *ctx) {
-  return IR::Array(length->EmitIR(ctx), data_type->EmitIR(ctx));
 }
 
 static IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
@@ -982,11 +879,6 @@ IR::Val AST::Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
   if (decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
   return decl->addr;
-}
-
-IR::Val AST::Unop::EmitLVal(Context *ctx) {
-  ASSERT(static_cast<int>(op) == static_cast<int>(Language::Operator::At));
-  return operand->EmitIR(ctx);
 }
 
 IR::Val AST::Binop::EmitLVal(Context *ctx) {

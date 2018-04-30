@@ -5,22 +5,6 @@
 
 struct Context;
 
-#define EXPR_FNS(name)                                                         \
-  virtual ~name() {}                                                           \
-  virtual std::string to_string(size_t n) const override;                      \
-  std::string to_string() const { return to_string(0); }                       \
-  virtual void assign_scope(Scope *scope) override;                            \
-  virtual void ClearIdDecls() override;                                        \
-  virtual void VerifyType(Context *) override;                                 \
-  virtual void Validate(Context *) override;                                   \
-  virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
-      override;                                                                \
-  virtual void ExtractReturns(std::vector<const Expression *> *)               \
-      const override;                                                          \
-  virtual void contextualize(                                                  \
-      const Node *correspondant,                                               \
-      const std::unordered_map<const Expression *, IR::Val> &) override
-
 enum class Assign : char { Unset, Const, LVal, RVal };
 
 namespace AST {
@@ -33,7 +17,6 @@ struct Expression : public Node {
   virtual void VerifyType(Context *ctx)                                 = 0;
   virtual void Validate(Context *ctx)                                   = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
-  std::string to_string() const { return to_string(0); }
 
   virtual Expression *Clone() const = 0;
 

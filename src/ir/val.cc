@@ -110,7 +110,7 @@ std::string Val::to_string() const {
             return "scope(" + std::to_string(reinterpret_cast<uintptr_t>(s)) +
                    ")";
           },
-          [](const AST::CodeBlock &c) -> std::string { return c.to_string(); },
+          [](const AST::CodeBlock &c) -> std::string { return c.to_string(0); },
           [](AST::Expression *) -> std::string { return "<expr>"; },
           [](BlockIndex b) -> std::string {
             return "block #" + std::to_string(b);
@@ -120,7 +120,7 @@ std::string Val::to_string() const {
             return "string \"" + Escaped(s) + "\"";
           },
           [](AST::FunctionLiteral *fn) -> std::string {
-            return fn->to_string();
+            return fn->to_string(0);
           },
           [](const Module *module) -> std::string {
             // TODO

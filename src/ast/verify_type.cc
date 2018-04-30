@@ -506,8 +506,8 @@ void Identifier::VerifyType(Context *ctx) {
   lvalue = decl->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
 }
 
-static std::vector<Expression *> FunctionOptions(const std::string &token,
-                                                 Scope *scope, Context *ctx) {
+std::vector<Expression *> FunctionOptions(const std::string &token,
+                                          Scope *scope, Context *ctx) {
   std::vector<Expression *> fn_options;
   for (auto *scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
     if (scope_ptr->shadowed_decls_.find(token) !=
@@ -535,7 +535,7 @@ static std::vector<Expression *> FunctionOptions(const std::string &token,
   return fn_options;
 }
 
-static const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
+const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
                                           std::vector<Expression *> fn_options,
                                           AST::DispatchTable *dispatch_table,
                                           Context *ctx) {
@@ -1037,139 +1037,11 @@ void Declaration::VerifyType(Context *ctx) {
 }
 
 void Statements::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK;
+  STAGE_CHECK(StartTypeVerificationStage, DoneTypeVerificationStage);
   for (auto &stmt : content_) {
     stmt->VerifyType(ctx);
     limit_to(stmt);
   }
-}
-
-void Unop::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-  VERIFY_AND_RETURN_ON_ERROR(operand);
-
-  using Language::Operator;
-
-  if (op != Operator::At && op != Operator::And) {
-    lvalue = operand->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
-  }
-
-  switch (op) {
-    case Operator::TypeOf:
-      type = type::Type_;
-      lvalue = Assign::Const;
-      break;
-    case Operator::Eval: type = operand->type; break;
-    case Operator::Generate: type = type::Void; break;
-    case Operator::Free: {
-      if (!operand->type->is<type::Pointer>()) {
-        ctx->error_log_.FreeingNonPointer(operand->type, span);
-        limit_to(StageRange::NoEmitIR());
-      }
-      type = type::Void;
-    } break;
-    case Operator::Print: {
-      if (operand->type == type::Void) {
-        ctx->error_log_.PrintingVoid(span);
-        limit_to(StageRange::NoEmitIR());
-      }
-      type = type::Void;
-    } break;
-    case Operator::Return: {
-      if (operand->type == type::Void) {
-        // TODO this should probably be allowed (c.f., regular void)
-        ctx->error_log_.ReturningVoid(span);
-        limit_to(StageRange::NoEmitIR());
-      }
-      type = type::Void;
-    } break;
-    case Operator::At: {
-      lvalue = Assign::LVal;
-      if (operand->type->is<type::Pointer>()) {
-        type = operand->type->as<type::Pointer>().pointee;
-
-      } else {
-        ctx->error_log_.DereferencingNonPointer(operand->type, span);
-        type = type::Err;
-        limit_to(StageRange::Nothing());
-      }
-    } break;
-    case Operator::And: {
-      switch (operand->lvalue) {
-        case Assign::Const:
-          ctx->error_log_.TakingAddressOfConstant(span);
-          lvalue = Assign::RVal;
-          break;
-        case Assign::RVal:
-          ctx->error_log_.TakingAddressOfTemporary(span);
-          lvalue = Assign::RVal;
-          break;
-        case Assign::LVal: break;
-        case Assign::Unset: UNREACHABLE();
-      }
-      type = Ptr(operand->type);
-    } break;
-    case Operator::Mul: {
-      limit_to(operand);
-      if (operand->type != type::Type_) {
-        ErrorLog::LogGeneric(
-            this->span, "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-        type = type::Err;
-        limit_to(StageRange::Nothing());
-      } else {
-        type = type::Type_;
-      }
-    } break;
-    case Operator::Sub: {
-      if (operand->type == type::Int || operand->type == type::Real) {
-        type = operand->type;
-
-      } else if (operand->type->is<type::Struct>()) {
-        FnArgs<Expression *> args;
-        args.pos_  = std::vector{operand.get()};
-        type       = SetDispatchTable(args, FunctionOptions("-", scope_, ctx),
-                                &dispatch_table_, ctx);
-        ASSERT(type, Not(Is<type::Tuple>()));
-        if (type == type::Err) { limit_to(StageRange::Nothing()); }
-      }
-    } break;
-    case Operator::Dots: NOT_YET();
-    case Operator::Not: {
-      if (operand->type == type::Bool) {
-        type = type::Bool;
-      } else if (operand->type->is<type::Struct>()) {
-        FnArgs<Expression *> args;
-        args.pos_ = std::vector{operand.get()};
-        type      = SetDispatchTable(args, FunctionOptions("!", scope_, ctx),
-                                &dispatch_table_, ctx);
-        ASSERT(type, Not(Is<type::Tuple>()));
-        if (type == type::Err) { limit_to(StageRange::Nothing()); }
-      } else {
-        ErrorLog::LogGeneric(
-            TextSpan(), "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-
-        type = type::Err;
-        limit_to(StageRange::Nothing());
-      }
-    } break;
-    case Operator::Needs: {
-      type = type::Void;
-      if (operand->type != type::Bool) {
-        ctx->error_log_.PreconditionNeedsBool(this);
-        limit_to(StageRange::NoEmitIR());
-      }
-    } break;
-    case Operator::Ensure: {
-      type = type::Void;
-      if (operand->type != type::Bool) {
-        ctx->error_log_.PostconditionNeedsBool(this);
-        limit_to(StageRange::NoEmitIR());
-      }
-    } break;
-    case Operator::Pass: type = operand->type; break;
-    default: UNREACHABLE(*this);
-  }
-  limit_to(operand);
 }
 
 void Access::VerifyType(Context *ctx) {
@@ -1374,65 +1246,6 @@ void CommaList::VerifyType(Context *ctx) {
     entries.reserve(exprs.size());
     for (const auto &expr : exprs) { entries.push_back(expr->type); }
     type = type::Tup(std::move(entries));
-  }
-}
-
-void ArrayLiteral::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
-  lvalue = Assign::Const;
-  if (elems.empty()) {
-    type = type::EmptyArray;
-    return;
-  }
-
-  for (auto &elem : elems) {
-    elem->VerifyType(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(elem);
-    if (elem->lvalue != Assign::Const) { lvalue = Assign::RVal; }
-  }
-
-  const type::Type *joined = type::Err;
-  for (auto &elem : elems) {
-    joined = type::Join(joined, elem->type);
-    if (joined == nullptr) { break; }
-  }
-
-  if (joined == nullptr) {
-    // type::Types couldn't be joined. Emit an error
-    ctx->error_log_.InconsistentArrayType(span);
-    type = type::Err;
-    limit_to(StageRange::Nothing());
-  } else if (joined == type::Err) {
-    type = type::Err;  // There were no valid types anywhere in the array
-    limit_to(StageRange::Nothing());
-  } else {
-    type = Arr(joined, elems.size());
-  }
-}
-
-void ArrayType::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-  lvalue = Assign::Const;
-
-  length->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
-  limit_to(length);
-  data_type->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
-  limit_to(data_type);
-
-  type = type::Type_;
-
-  if (length->is<Hole>()) { return; }
-  if (length->lvalue != Assign::Const || data_type->lvalue != Assign::Const) {
-    lvalue = Assign::RVal;
-  }
-
-  if (length->type != type::Int) {
-    ctx->error_log_.ArrayIndexType(span);
-    limit_to(StageRange::NoEmitIR());
   }
 }
 

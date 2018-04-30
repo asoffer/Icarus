@@ -234,7 +234,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               [](char c) { std::cerr << c; },
               [](double d) { std::cerr << d; },
               [](const type::Type *t) { std::cerr << t->to_string(); },
-              [](const AST::CodeBlock &cb) { std::cerr << cb.to_string(); },
+              // TODO is this actually how you want ot print a codeblock? should
+              // you be allowed to print a codeblock?
+              [](const AST::CodeBlock &cb) { std::cerr << cb.to_string(0); },
               [](const std::string &s) { std::cerr << s; },
               [](const Addr &a) { std::cerr << a.to_string(); },
               [&resolved](EnumVal e) {

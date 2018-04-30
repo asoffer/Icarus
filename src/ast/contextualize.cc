@@ -31,22 +31,6 @@ void StructLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   for (auto &f: fields_) { f->SaveReferences(scope, args); }
 }
 
-void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  if (op == Language::Operator::Ref) {
-    // TODO need to extract the right module here
-    Context ctx(nullptr);
-    operand->assign_scope(scope);
-    operand->VerifyType(&ctx);
-    operand->Validate(&ctx);
-    auto val = operand->EmitIR(&ctx);
-
-    args->push_back(val);
-    args->push_back(IR::Val::Ref(this));
-  } else {
-    operand->SaveReferences(scope, args);
-  }
-}
-
 void Access::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   operand->SaveReferences(scope, args);
 }
@@ -57,15 +41,6 @@ void ChainOp::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void CommaList::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   for (auto &expr : exprs) { expr->SaveReferences(scope, args); }
-}
-
-void ArrayLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  for (auto &elem : elems) { elem->SaveReferences(scope, args); }
-}
-
-void ArrayType::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  length->SaveReferences(scope, args);
-  data_type->SaveReferences(scope, args);
 }
 
 void FunctionLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
@@ -116,24 +91,6 @@ void Statements::contextualize(const Node *correspondant,
   for (size_t i = 0; i < content_.size(); ++i) { CONTEXTUALIZE(content_[i]); }
 }
 
-void Unop::contextualize(const Node *correspondant,
-                         const RefMap &replacements) {
-  if (op == Language::Operator::Ref) {
-    auto iter = replacements.find(&correspondant->as<Unop>());
-    ASSERT(iter != replacements.end());
-    auto terminal    = std::make_unique<Terminal>();
-    terminal->scope_ = scope_; // TODO Eh? Do I care?
-    terminal->span   = span;
-    terminal->lvalue = lvalue; // TODO????
-    terminal->type   = iter->second.type;
-    terminal->value  = iter->second;
-    operand          = std::move(terminal);
-    op               = Language::Operator::Pass;
-  } else {
-    CONTEXTUALIZE(operand);
-  }
-}
-
 void Access::contextualize(const Node *correspondant,
                            const RefMap &replacements) {
   CONTEXTUALIZE(operand);
@@ -152,17 +109,6 @@ void StructLiteral::contextualize(const Node *correspondant,
 void CommaList::contextualize(const Node *correspondant,
                               const RefMap &replacements) {
   for (size_t i = 0; i < exprs.size(); ++i) { CONTEXTUALIZE(exprs[i]); }
-}
-
-void ArrayLiteral::contextualize(const Node *correspondant,
-                                 const RefMap &replacements) {
-  for (size_t i = 0; i < elems.size(); ++i) { CONTEXTUALIZE(elems[i]); }
-}
-
-void ArrayType::contextualize(const Node *correspondant,
-                              const RefMap &replacements) {
-  CONTEXTUALIZE(length);
-  CONTEXTUALIZE(data_type);
 }
 
 void FunctionLiteral::contextualize(const Node *correspondant,

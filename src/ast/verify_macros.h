@@ -3,6 +3,7 @@
 
 #include "ast.h"
 #include "context.h"
+#include "ast/stages.h"
 
 namespace type {
 extern Type *Err;
@@ -33,13 +34,6 @@ extern Type *Err;
     limit_to(StageRange::Nothing());                                           \
     return;                                                                    \
   } while (false)
-
-#define VERIFY_STARTING_CHECK                                                  \
-  base::defer defer_##__LINE__(                                                \
-      [this]() { this->stage_range_.low = DoneTypeVerificationStage; });       \
-  if (stage_range_.high < StartTypeVerificationStage) { return; }              \
-  if (stage_range_.low >= DoneTypeVerificationStage) { return; }               \
-  stage_range_.low = StartTypeVerificationStage
 
 #define VERIFY_STARTING_CHECK_EXPR                                             \
   base::defer defer_##__LINE__(                                                \

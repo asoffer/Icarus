@@ -1,10 +1,6 @@
 #include "ast.h"
 
 namespace AST {
-void Unop::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  operand->ClearIdDecls();
-}
 void Access::ClearIdDecls() {
   stage_range_ = StageRange{};
   operand->ClearIdDecls();
@@ -14,17 +10,6 @@ void Identifier::ClearIdDecls() {
   decl         = nullptr;
 }
 void Terminal::ClearIdDecls() { stage_range_ = StageRange{}; }
-
-void ArrayType::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  length->ClearIdDecls();
-  data_type->ClearIdDecls();
-}
-
-void ArrayLiteral::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto &el : elems) { el->ClearIdDecls(); }
-}
 
 void Binop::ClearIdDecls() {
   stage_range_ = StageRange{};
