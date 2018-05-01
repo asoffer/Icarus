@@ -11,23 +11,6 @@ Binop *Binop::Clone() const {
   return result;
 }
 
-Call *Call::Clone() const {
-  auto *result            = new Call;
-  result->span = span;
-  result->fn_             = base::wrap_unique(fn_->Clone());
-  result->args_.pos_.reserve(args_.pos_.size());
-  for (const auto &val : args_.pos_) {
-    result->args_.pos_.emplace_back(val->Clone());
-  }
-  for (const auto & [ key, val ] : args_.named_) {
-    result->args_.named_.emplace(key, base::wrap_unique(val->Clone()));
-  }
-
-
-  result->dispatch_table_ = dispatch_table_;
-  return result;
-}
-
 Declaration * Declaration::Clone() const {
   auto *result       = new Declaration;
   result->span       = span;
@@ -64,15 +47,6 @@ FunctionLiteral *FunctionLiteral::Clone() const {
 
 GenericFunctionLiteral *GenericFunctionLiteral::Clone() const { UNREACHABLE(); }
 
-ScopeNode *ScopeNode::Clone() const {
-  auto *result       = new ScopeNode;
-  result->span = span;
-  result->expr       = base::wrap_unique(expr->Clone());
-  result->scope_expr = base::wrap_unique(scope_expr->Clone());
-  result->stmts      = base::wrap_unique(stmts->Clone());
-  return result;
-}
-
 ScopeLiteral *ScopeLiteral::Clone() const {
   auto *result     = new ScopeLiteral;
   result->span     = span;
@@ -98,14 +72,6 @@ CommaList *CommaList::Clone() const {
   return result;
 }
 
-Identifier *Identifier::Clone() const {
-  auto *result      = new Identifier;
-  result->span     = span;
-  result->token     = token;
-  Declaration *decl = nullptr;
-  return result;
-}
-
 StructLiteral *StructLiteral::Clone() const {
   auto *result = new StructLiteral;
   result->span = span;
@@ -114,6 +80,4 @@ StructLiteral *StructLiteral::Clone() const {
   return result;
 }
 
-Terminal *Terminal::Clone() const { return new Terminal(*this); }
-Statements *Statements::Clone() const { return new Statements(*this); }
 } // namespace AST

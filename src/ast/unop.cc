@@ -1,6 +1,7 @@
 #include "ast/unop.h"
-#include "ast/ast.h"  // TODO for terminal only? remove once this is pulled out.
+
 #include "ast/fn_args.h"
+#include "ast/terminal.h"
 #include "ast/verify_macros.h"
 #include "base/check.h"
 #include "context.h"

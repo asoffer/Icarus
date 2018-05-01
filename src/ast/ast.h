@@ -18,6 +18,7 @@
 #include "dispatch.h"
 #include "expression.h"
 #include "fn_args.h"
+#include "ast/identifier.h"
 
 struct Module;
 struct Context;
@@ -25,6 +26,10 @@ struct Context;
 namespace IR {
 struct Func;
 }  // namespace IR
+
+namespace type {
+extern Type *Generic;
+}  // namespace type
 
 #define EXPR_FNS(name)                                                         \
   virtual ~name() {}                                                           \
@@ -43,29 +48,6 @@ struct Func;
 
 
 namespace AST {
-struct Terminal : public Expression {
-  EXPR_FNS(Terminal);
-  Terminal() = default;
-  Terminal(const TextSpan &span, IR::Val val);
-
-  Terminal *Clone() const override;
-
-  virtual IR::Val EmitIR(Context *);
-  IR::Val value = IR::Val::None();
-};
-
-struct Identifier : public Expression {
-  Identifier() {}
-  EXPR_FNS(Identifier);
-  Identifier(const TextSpan &span, const std::string &token_string);
-  Identifier *Clone() const override;
-  virtual IR::Val EmitIR(Context *);
-  virtual IR::Val EmitLVal(Context *);
-
-  std::string token;
-  Declaration *decl = nullptr;
-};
-
 struct Binop : public Expression {
   EXPR_FNS(Binop);
 
@@ -75,19 +57,6 @@ struct Binop : public Expression {
 
   Language::Operator op;
   std::unique_ptr<Expression> lhs, rhs;
-  DispatchTable dispatch_table_;
-};
-
-struct Call : public Expression {
-  EXPR_FNS(Call);
-  Call *Clone() const override;
-
-  IR::Val EmitIR(Context *) override;
-
-  std::unique_ptr<Expression> fn_;
-  FnArgs<std::unique_ptr<Expression>> args_;
-
-  // Filled in after type verification
   DispatchTable dispatch_table_;
 };
 
@@ -181,7 +150,11 @@ struct FunctionLiteral : public Expression {
 };
 
 struct GenericFunctionLiteral : public FunctionLiteral {
-  GenericFunctionLiteral();
+  GenericFunctionLiteral() {
+    lvalue = Assign::Const;
+    type   = type::Generic;
+  }
+
   EXPR_FNS(GenericFunctionLiteral);
   GenericFunctionLiteral *Clone() const override;
   IR::Val EmitIR(Context *) override;
@@ -198,18 +171,6 @@ struct GenericFunctionLiteral : public FunctionLiteral {
   std::vector<size_t> decl_order_;
 
   std::map<BoundConstants, FunctionLiteral> fns_;
-};
-
-struct ScopeNode : public Expression {
-  EXPR_FNS(ScopeNode);
-  ScopeNode *Clone() const override;
-
-  virtual IR::Val EmitIR(Context *);
-
-  // If the scope takes an argument, 'expr' is it. Otherwise 'expr' is null
-  std::unique_ptr<Expression> expr, scope_expr;
-  std::unique_ptr<Statements> stmts;
-  std::unique_ptr<ExecScope> internal;
 };
 
 struct ScopeLiteral : public Expression {

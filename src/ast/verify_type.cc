@@ -213,130 +213,6 @@ Binding::Binding(AST::Expression *fn_expr, size_t n)
     : fn_expr_(fn_expr),
       exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
 
-// We already know there can be at most one match (multiple matches would
-// have been caught by shadowing), so we just return a pointer to it if it
-// exists, and null otherwise.
-static std::optional<DispatchTable> ComputeDispatchTable(
-    const FnArgs<Expression *> &args, std::vector<Expression *> fn_options,
-    Context *ctx) {
-  DispatchTable table;
-  for (Expression *fn_option : fn_options) {
-    // TODO the reason you fail to generate what you want is because right here
-    // you are calling evaluate which is problematic for recursive functions
-    auto vals = Evaluate(fn_option, ctx);
-    if (vals.empty() || vals[0] == IR::Val::None()) { continue; }
-    auto &fn_val = vals[0].value;
-    if (fn_option->type->is<type::Function>()) {
-      auto *fn_lit = std::get<FunctionLiteral *>(fn_val);
-
-      auto maybe_binding = Binding::MakeUntyped(fn_lit, args, fn_lit->lookup_);
-      if (!maybe_binding) { continue; }
-      auto binding = std::move(maybe_binding).value();
-
-      FnArgs<const type::Type *> call_arg_types;
-      call_arg_types.pos_.resize(args.pos_.size(), nullptr);
-      for (const auto & [ key, val ] : fn_lit->lookup_) {
-        if (val < args.pos_.size()) { continue; }
-        call_arg_types.named_.emplace(key, nullptr);
-      }
-
-      const auto &fn_opt_input = fn_option->type->as<type::Function>().input;
-      for (size_t i = 0; i < binding.exprs_.size(); ++i) {
-        if (binding.defaulted(i)) {
-          if (fn_lit->inputs[i]->IsDefaultInitialized()) { goto next_option; }
-          binding.exprs_[i].first = fn_opt_input[i];
-        } else {
-          const type::Type *match =
-              type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
-          if (match == nullptr) { goto next_option; }
-          binding.exprs_[i].first = fn_opt_input[i];
-
-          if (i < call_arg_types.pos_.size()) {
-            call_arg_types.pos_[i] = match;
-          } else {
-            auto iter =
-                call_arg_types.find(fn_lit->inputs[i]->identifier->token);
-            ASSERT(iter != call_arg_types.named_.end());
-            iter->second = match;
-          }
-        }
-      }
-
-      table.insert(std::move(call_arg_types), std::move(binding));
-
-    } else if (fn_option->type == type::Generic) {
-      auto *gen_fn_lit = std::get<GenericFunctionLiteral *>(fn_val);
-      if (auto[fn_lit, binding] = gen_fn_lit->ComputeType(args, ctx); fn_lit) {
-        // TODO this is copied almost exactly from above.
-        FnArgs<const type::Type *> call_arg_types;
-        call_arg_types.pos_.resize(args.pos_.size(), nullptr);
-        for (const auto & [ key, val ] : gen_fn_lit->lookup_) {
-          if (val < args.pos_.size()) { continue; }
-          call_arg_types.named_.emplace(key, nullptr);
-        }
-
-        const auto &fn_opt_input = fn_lit->type->as<type::Function>().input;
-        for (size_t i = 0; i < binding.exprs_.size(); ++i) {
-          if (binding.defaulted(i)) {
-            if (fn_lit->inputs[i]->IsDefaultInitialized()) { goto next_option; }
-            binding.exprs_[i].first = fn_opt_input[i];
-          } else {
-            const type::Type *match =
-                type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
-            if (match == nullptr) { goto next_option; }
-            binding.exprs_[i].first = fn_opt_input[i];
-
-            if (i < call_arg_types.pos_.size()) {
-              call_arg_types.pos_[i] = match;
-            } else {
-              auto iter =
-                  call_arg_types.find(fn_lit->inputs[i]->identifier->token);
-              ASSERT(iter != call_arg_types.named_.end());
-              iter->second = match;
-            }
-          }
-        }
-
-        table.insert(std::move(call_arg_types), std::move(binding));
-      } else {
-        goto next_option;
-      }
-    } else if (fn_option->type == type::Type_) {
-      ASSERT(args.pos_.size() == 1u);
-      ASSERT(args.named_.empty());
-
-      // TODO check for validity of call
-      if (args.pos_[0]->type->is<type::Variant>()) {
-        for (auto *t : args.pos_[0]->type->as<type::Variant>().variants_) {
-          FnArgs<const type::Type *> call_arg_types;
-          call_arg_types.pos_.push_back(args.pos_[0]->type);
-          Binding binding;
-          binding.fn_expr_ = fn_option;
-          binding.exprs_.emplace_back(t, args.pos_[0]);
-          table.insert(std::move(call_arg_types), std::move(binding), 1);
-        }
-      } else {
-        FnArgs<const type::Type *> call_arg_types;
-        call_arg_types.pos_.push_back(args.pos_[0]->type);
-        Binding binding;
-        binding.fn_expr_ = fn_option;
-        binding.exprs_.emplace_back(args.pos_[0]->type, args.pos_[0]);
-        table.insert(std::move(call_arg_types), std::move(binding));
-      }
-
-    } else if (fn_option->type == type::Err) {
-      // If there's a type error, do I want to exit entirely or assume this
-      // one doesn't exist? and just goto next_option?
-      return std::nullopt;
-
-    } else {
-      UNREACHABLE(fn_option);
-    }
-  next_option:;
-  }
-  return std::move(table);
-}
-
 std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     const FnArgs<Expression *> &args, Context *ctx) {
   auto maybe_binding = Binding::MakeUntyped(this, args, lookup_);
@@ -447,134 +323,13 @@ void DispatchTable::insert(FnArgs<const type::Type *> call_arg_types,
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
 }
 
-void Terminal::VerifyType(Context *) {}
-
-void Identifier::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
-  if (decl == nullptr) {
-    auto[potential_decls, potential_error_decls] =
-        scope_->AllDeclsWithId(token, ctx);
-
-    if (potential_decls.size() != 1) {
-      if (potential_decls.empty()) {
-        switch (potential_error_decls.size()) {
-          case 0: ctx->error_log_.UndeclaredIdentifier(this); break;
-          case 1:
-            decl = potential_error_decls[0];
-            HANDLE_CYCLIC_DEPENDENCIES;
-            break;
-          default: NOT_YET();
-        }
-      } else {
-        // TODO is this reachable? Or does shadowing cover this case?
-        ErrorLog::LogGeneric(
-            this->span, "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-      }
-      type = type::Err;
-      limit_to(StageRange::Nothing());
-      return;
-    }
-
-    if (potential_decls[0]->const_ && potential_decls[0]->arg_val != nullptr &&
-        potential_decls[0]->arg_val->is<GenericFunctionLiteral>()) {
-      if (auto iter = ctx->bound_constants_->find(
-              potential_decls[0]->identifier->token);
-          iter != ctx->bound_constants_->end()) {
-        potential_decls[0]->arg_val = scope_->ContainingFnScope()->fn_lit;
-      } else {
-        ctx->error_log_.UndeclaredIdentifier(this);
-        type = type::Err;
-        limit_to(StageRange::Nothing());
-        return;
-      }
-    }
-    decl = potential_decls[0];
-  }
-
-  if (!decl->const_ && (span.start.line_num < decl->span.start.line_num ||
-                        (span.start.line_num == decl->span.start.line_num &&
-                         span.start.offset < decl->span.start.offset))) {
-    ctx->error_log_.DeclOutOfOrder(decl, this);
-    limit_to(StageRange::NoEmitIR());
-  }
-
-  // No guarantee the declaration has been validated yet.
-  decl->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
-  type = decl->type;
-  lvalue = decl->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
-}
-
 std::vector<Expression *> FunctionOptions(const std::string &token,
-                                          Scope *scope, Context *ctx) {
-  std::vector<Expression *> fn_options;
-  for (auto *scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
-    if (scope_ptr->shadowed_decls_.find(token) !=
-        scope_ptr->shadowed_decls_.end()) {
-      // The declaration of this identifier is shadowed so it will be
-      // difficult to give meaningful error messages. Bailing out.
-      // TODO Come up with a good way to give decent error messages anyway (at
-      // least in some circumstances. For instance, there may be overlap here,
-      // but it may not be relevant to the function call at hand. If, for
-      // example, one call takes an A | B and the other takes a B | C, but
-      // here we wish to validate a call for just a C, it's safe to do so
-      // here.
-      return {};
-    }
-
-    auto iter = scope_ptr->decls_.find(token);
-    if (iter == scope_ptr->decls_.end()) { continue; }
-    for (const auto &decl : iter->second) {
-      decl->VerifyType(ctx);
-      // TODO HANDLE_CYCLIC_DEPENDENCIES;
-      if (decl->type == type::Err) { return {}; }
-      fn_options.push_back(decl);
-    }
-  }
-  return fn_options;
-}
+                                          Scope *scope, Context *ctx);
 
 const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
-                                          std::vector<Expression *> fn_options,
-                                          AST::DispatchTable *dispatch_table,
-                                          Context *ctx) {
-  if (auto maybe_table =
-          ComputeDispatchTable(args, std::move(fn_options), ctx)) {
-    *dispatch_table = std::move(maybe_table).value();
-    std::vector<std::vector<const type::Type *>> out_types;
-    out_types.reserve(dispatch_table->bindings_.size());
-
-    if (dispatch_table->bindings_.size() == 0u) { return type::Err; }
-
-    for (const auto & [ key, val ] : dispatch_table->bindings_) {
-      if (val.fn_expr_->type->is<type::Function>()) {
-        out_types.push_back(val.fn_expr_->type->as<type::Function>().output);
-      } else if (val.fn_expr_->type == type::Type_) {
-        out_types.push_back({std::get<const type::Type *>(
-            Evaluate(val.fn_expr_, ctx)[0].value)});
-      } else {
-        UNREACHABLE(val.fn_expr_->type);
-      }
-    }
-
-    ASSERT(!out_types.empty());
-    // TODO Can I assume all the lengths are the same?
-    std::vector<const type::Type *> var_outs;
-    var_outs.reserve(out_types[0].size());
-    for (size_t i = 0; i < out_types[0].size(); ++i) {
-      std::vector<const type::Type *> types;
-      types.reserve(out_types.size());
-      for (const auto &out_type : out_types) { types.push_back(out_type[i]); }
-      var_outs.push_back(type::Var(types));
-    }
-
-    return type::Tup(var_outs);
-  } else {
-    LOG << "FAIL!"; /* TODO do I need to log an error here? */
-    return type::Err;
-  }
-}
+                                   std::vector<Expression *> fn_options,
+                                   AST::DispatchTable *dispatch_table,
+                                   Context *ctx);
 
 void Binop::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
@@ -799,82 +554,6 @@ void Binop::VerifyType(Context *ctx) {
   }
 }
 
-void Call::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-  bool all_const = true;
-  args_.Apply([ctx, &all_const, this](auto &arg) {
-    arg->VerifyType(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;  // TODO audit macro in lambda
-    if (arg->type == type::Err) { this->type = type::Err; }
-    all_const &= arg->lvalue == Assign::Const;
-  });
-
-  lvalue = all_const ? Assign::Const : Assign::RVal;
-  if (type == type::Err) {
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  if (fn_->is<Terminal>() && fn_->type != type::Type_) {
-    // Special case for error/ord/ascii
-    if (fn_->as<Terminal>().value == OrdFunc()) {
-      NOT_YET();
-    } else if (fn_->as<Terminal>().value == AsciiFunc()) {
-      NOT_YET();
-    } else if (fn_->as<Terminal>().value == ErrorFunc()) {
-      NOT_YET();
-    } else {
-      UNREACHABLE();
-    }
-  }
-
-  std::vector<Expression *> fn_options;
-  if (!fn_->is<Identifier>()) {
-    fn_->VerifyType(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    fn_options.push_back(fn_.get());
-  } else {
-    fn_options = FunctionOptions(fn_->as<Identifier>().token, scope_, ctx);
-  }
-
-  if (fn_options.empty()) {
-    type = type::Err;
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  FnArgs<Expression *> args =
-      args_.Transform([](const std::unique_ptr<Expression> &arg) {
-        return const_cast<Expression *>(arg.get());
-      });
-
-  type = SetDispatchTable(args, std::move(fn_options), &dispatch_table_, ctx);
-  if (type == type::Err) { limit_to(StageRange::Nothing()); }
-
-  u64 expanded_size = 1;
-  args_.Apply([&expanded_size](auto &arg) {
-    if (arg->type->template is<type::Variant>()) {
-      expanded_size *= arg->type->template as<type::Variant>().size();
-    }
-  });
-
-  if (dispatch_table_.total_size_ != expanded_size) {
-    LOG << "Failed to find a match for everything. ("
-        << dispatch_table_.total_size_ << " vs " << expanded_size << ")";
-    type = fn_->type = type::Err;
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  if (fn_->is<Identifier>()) {
-    // fn_'s type should never be considered beacuse it could be one of many
-    // different things. 'type::Void' just indicates that it has been computed
-    // (i.e., not 0x0) and that there was no error in doing so (i.e., not
-    // type::Err).
-    fn_->type = type::Void;
-  }
-}
-
 bool Declaration::IsCustomInitialized() const {
   return init_val && !init_val->is<Hole>();
 }
@@ -1033,14 +712,6 @@ void Declaration::VerifyType(Context *ctx) {
     scope_->shadowed_decls_.insert(identifier->token);
     limit_to(StageRange::Nothing());
     return;
-  }
-}
-
-void Statements::VerifyType(Context *ctx) {
-  STAGE_CHECK(StartTypeVerificationStage, DoneTypeVerificationStage);
-  for (auto &stmt : content_) {
-    stmt->VerifyType(ctx);
-    limit_to(stmt);
   }
 }
 
@@ -1317,31 +988,6 @@ void FunctionLiteral::VerifyType(Context *ctx) {
   } else {
     Validate(ctx);
   }
-}
-
-void ScopeNode::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
-  lvalue = Assign::RVal;
-
-  scope_expr->VerifyType(ctx);
-  limit_to(scope_expr);
-  if (expr != nullptr) {
-    expr->VerifyType(ctx);
-    limit_to(expr);
-  }
-  stmts->VerifyType(ctx);
-  limit_to(stmts);
-
-  if (!scope_expr->type->is<type::Scope>()) {
-    ErrorLog::InvalidScope(scope_expr->span, scope_expr->type);
-    type = type::Err;
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  // TODO verify it uses the fields correctly
-  type = type::Void;  // TODO can this evaluate to anything?
 }
 
 void ScopeLiteral::VerifyType(Context *ctx) {

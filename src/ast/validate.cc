@@ -1,6 +1,8 @@
-#include "ast.h"
 #include "../type/all.h"
+#include "ast.h"
+#include "ast/terminal.h"
 #include "context.h"
+#include "ir/val.h"
 
 // TODO macro duplicated in verifytypes
 #define HANDLE_CYCLIC_DEPENDENCIES                                             \
@@ -31,8 +33,6 @@
 
 namespace AST {
 void GenericFunctionLiteral::Validate(Context *ctx) {}
-void Terminal::Validate(Context *ctx) {}
-void Identifier::Validate(Context *ctx) {}
 
 void Binop::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
@@ -40,21 +40,10 @@ void Binop::Validate(Context *ctx) {
   rhs->Validate(ctx);
 }
 
-void Call::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-  fn_->Validate(ctx);
-  args_.Apply([ctx](auto &arg) { arg->Validate(ctx); });
-}
-
 void Declaration::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   if (type_expr) { type_expr->Validate(ctx); }
   if (init_val) { init_val->Validate(ctx); }
-}
-
-void Statements::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-  for (auto &stmt : content_) { stmt->Validate(ctx); }
 }
 
 void Access::Validate(Context *ctx) {
@@ -159,11 +148,6 @@ void FunctionLiteral::Validate(Context *ctx) {
       } break;
     }
   }
-}
-
-void ScopeNode::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-  // TODO
 }
 
 void ScopeLiteral::Validate(Context *ctx) {

@@ -1,22 +1,12 @@
 #include "ast.h"
 #include "stages.h"
+#include "ast/identifier.h"
 
 namespace AST {
 void Access::assign_scope(Scope *scope) {
   STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   operand->assign_scope(scope);
-}
-
-void Identifier::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
-  scope_ = scope;
-}
-
-void Terminal::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
-  scope_ = scope;
-  if (type != type::Type_) { return; }
 }
 
 void Binop::assign_scope(Scope *scope) {
@@ -48,12 +38,6 @@ void CommaList::assign_scope(Scope *scope) {
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
-void Statements::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
-  scope_ = scope;
-  for (auto &stmt : content_) { stmt->assign_scope(scope); }
-}
-
 void GenericFunctionLiteral::assign_scope(Scope *scope) {
   FunctionLiteral::assign_scope(scope);
 }
@@ -68,22 +52,6 @@ void FunctionLiteral::assign_scope(Scope *scope) {
   for (auto &in : inputs) { in->assign_scope(fn_scope.get()); }
   for (auto &out : outputs) { out->assign_scope(fn_scope.get()); }
   statements->assign_scope(fn_scope.get());
-}
-
-void Call::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
-  scope_ = scope;
-  fn_->assign_scope(scope);
-  args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
-}
-
-void ScopeNode::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
-  scope_ = scope;
-  if (!internal) { internal = scope_->add_child<ExecScope>(); }
-  scope_expr->assign_scope(scope);
-  if (expr) { expr->assign_scope(scope); }
-  stmts->assign_scope(internal.get());
 }
 
 void ScopeLiteral::assign_scope(Scope *scope) {

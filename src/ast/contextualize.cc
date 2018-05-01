@@ -2,9 +2,6 @@
 #include "context.h"
 
 namespace AST {
-void Terminal::SaveReferences(Scope *, std::vector<IR::Val> *) {}
-void Identifier::SaveReferences(Scope *, std::vector<IR::Val> *) {}
-
 void Binop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   lhs->SaveReferences(scope, args);
   rhs->SaveReferences(scope, args);
@@ -14,17 +11,6 @@ void Declaration::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   identifier->SaveReferences(scope, args);
   if (type_expr) { type_expr->SaveReferences(scope, args); }
   if (init_val) { init_val->SaveReferences(scope, args); }
-}
-
-void Call::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  for (auto &pos : args_.pos_) { pos->SaveReferences(scope, args); }
-  for (auto & [ name, expr ] : args_.named_) {
-    expr->SaveReferences(scope, args);
-  }
-}
-
-void Statements::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  for (auto &stmt : content_) { stmt->SaveReferences(scope, args); }
 }
 
 void StructLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
@@ -54,12 +40,6 @@ void GenericFunctionLiteral::SaveReferences(Scope *scope,
   FunctionLiteral::SaveReferences(scope, args);
 }
 
-void ScopeNode::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  expr->SaveReferences(scope, args);
-  scope_expr->SaveReferences(scope, args);
-  stmts->SaveReferences(scope, args);
-}
-
 void ScopeLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   enter_fn->SaveReferences(scope, args);
   exit_fn->SaveReferences(scope, args);
@@ -71,8 +51,6 @@ void ScopeLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
       replacements)
 
 using RefMap = std::unordered_map<const Expression *, IR::Val>;
-void Terminal::contextualize(const Node *, const RefMap &) {}
-void Identifier::contextualize(const Node *, const RefMap &) {}
 void Binop::contextualize(const Node *correspondant,
                           const RefMap &replacements) {
   CONTEXTUALIZE(lhs);
@@ -86,10 +64,10 @@ void Declaration::contextualize(const Node *correspondant,
   if (init_val) { CONTEXTUALIZE(init_val); }
 }
 
-void Statements::contextualize(const Node *correspondant,
-                               const RefMap &replacements) {
-  for (size_t i = 0; i < content_.size(); ++i) { CONTEXTUALIZE(content_[i]); }
+void Statements::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+  for (auto &stmt : content_) { stmt->SaveReferences(scope, args); }
 }
+
 
 void Access::contextualize(const Node *correspondant,
                            const RefMap &replacements) {
@@ -123,31 +101,11 @@ void GenericFunctionLiteral::contextualize(const Node *correspondant,
   FunctionLiteral::contextualize(correspondant, replacements);
 }
 
-void ScopeNode::contextualize(const Node *correspondant,
-                              const RefMap &replacements) {
-  CONTEXTUALIZE(expr);
-  CONTEXTUALIZE(scope_expr);
-  CONTEXTUALIZE(stmts);
-}
-
 void ScopeLiteral::contextualize(const Node *correspondant,
                                  const RefMap &replacements) {
   CONTEXTUALIZE(enter_fn);
   CONTEXTUALIZE(exit_fn);
 }
 
-void Call::contextualize(const Node *correspondant,
-                         const RefMap &replacements) {
-  CONTEXTUALIZE(fn_);
-  for (size_t i = 0; i < args_.pos_.size(); ++i) {
-    CONTEXTUALIZE(args_.pos_[i]);
-  }
-  for (auto && [ name, expr ] : args_.named_) {
-    expr->contextualize(correspondant->as<std::decay_t<decltype(*this)>>()
-                            .args_.named_.find(name)
-                            ->second.get(),
-                        replacements);
-  }
-}
 #undef CONTEXTUALIZE
 } // namespace AST

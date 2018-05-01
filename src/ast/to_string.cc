@@ -5,22 +5,6 @@
 namespace AST {
 static std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
-std::string Call::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << fn_->to_string(n) << "(";
-  bool seen_one = false;
-  for (const auto &pos : args_.pos_) {
-    ss << (seen_one ? ", " : "") << pos->to_string(n);
-    seen_one = true;
-  }
-  for (const auto & [ key, val ] : args_.named_) {
-    ss << (seen_one ? ", " : "") << key << " = " << val->to_string(n) << ", ";
-    seen_one = true;
-  }
-  ss << ")";
-  return ss.str();
-}
-
 std::string Access::to_string(size_t n) const {
   return operand->to_string(n) + "." + member_name;
 }
@@ -92,9 +76,6 @@ std::string CommaList::to_string(size_t n) const {
   return ss.str();
 }
 
-std::string Terminal::to_string(size_t) const { return value.to_string(); }
-std::string Identifier::to_string(size_t) const { return token; }
-
 std::string Declaration::to_string(size_t n) const {
   std::stringstream ss;
   ss << identifier->to_string(n);
@@ -107,16 +88,6 @@ std::string Declaration::to_string(size_t n) const {
     }
   }
 
-  return ss.str();
-}
-
-std::string Statements::to_string(size_t n) const {
-  if (content_.empty()) { return ""; }
-
-  std::stringstream ss;
-  for (const auto &stmt : content_) {
-    ss << tabs(n) << stmt->to_string(n) << "\n";
-  }
   return ss.str();
 }
 
@@ -152,14 +123,6 @@ std::string FunctionLiteral::to_string(size_t n) const {
 
 std::string GenericFunctionLiteral::to_string(size_t n) const {
   return FunctionLiteral::to_string(n);
-}
-
-std::string ScopeNode::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << scope_expr->to_string(n);
-  if (expr) { ss << " " << expr->to_string(n); }
-  ss << " {\n" << stmts->to_string(n) << tabs(n) << "}";
-  return ss.str();
 }
 
 std::string ScopeLiteral::to_string(size_t n) const {

@@ -9,6 +9,7 @@
 #include "frontend/text_span.h"
 #include "frontend/token.h"
 #include "type/primitive.h"
+#include "ast/terminal.h"
 
 // TODO audit every location where frontend::TaggedNode::Invalid is returned to
 // see if you need to log an error.

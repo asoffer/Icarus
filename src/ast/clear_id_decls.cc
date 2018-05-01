@@ -5,11 +5,6 @@ void Access::ClearIdDecls() {
   stage_range_ = StageRange{};
   operand->ClearIdDecls();
 }
-void Identifier::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  decl         = nullptr;
-}
-void Terminal::ClearIdDecls() { stage_range_ = StageRange{}; }
 
 void Binop::ClearIdDecls() {
   stage_range_ = StageRange{};
@@ -34,11 +29,6 @@ void CommaList::ClearIdDecls() {
   for (auto &expr : exprs) { expr->ClearIdDecls(); }
 }
 
-void Statements::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto &stmt : content_) { stmt->ClearIdDecls(); }
-}
-
 void GenericFunctionLiteral::ClearIdDecls() {
   stage_range_ = StageRange{};
   FunctionLiteral::ClearIdDecls();
@@ -50,19 +40,6 @@ void FunctionLiteral::ClearIdDecls() {
   for (auto &in : inputs) { in->ClearIdDecls(); }
   for (auto &out : outputs) { out->ClearIdDecls(); }
   statements->ClearIdDecls();
-}
-
-void Call::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  fn_->ClearIdDecls();
-  args_.Apply([](auto &expr) { expr->ClearIdDecls(); });
-}
-
-void ScopeNode::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  scope_expr->ClearIdDecls();
-  if (expr) { expr->ClearIdDecls(); }
-  stmts->ClearIdDecls();
 }
 
 void ScopeLiteral::ClearIdDecls() {

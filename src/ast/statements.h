@@ -7,17 +7,16 @@
 
 namespace AST {
 struct Statements : public Node {
-  VIRTUAL_METHODS_FOR_NODES;
-  Statements *Clone() const override;
+  Statements() {}
   Statements(const Statements &statements) : Node(statements.span) {
     content_.reserve(statements.content_.size());
     for (const auto &stmt : statements.content_) {
       content_.emplace_back(stmt->Clone());
     }
   }
+  ~Statements() override {}
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
-
   Statements &operator=(const Statements& stmts) noexcept {
     content_.reserve(stmts.content_.size());
     content_.clear();
@@ -26,6 +25,19 @@ struct Statements : public Node {
     }
     return *this;
   }
+
+  std::string to_string(size_t n) const override;
+  void assign_scope(Scope *scope) override;
+  void ClearIdDecls() override;
+  void VerifyType(Context *) override;
+  void Validate(Context *) override;
+  void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override;
+  void ExtractReturns(std::vector<const Expression *> *) const override;
+  void contextualize(
+      const Node *correspondant,
+      const std::unordered_map<const Expression *, IR::Val> &) override;
+
+  Statements *Clone() const { return new Statements(*this); }
 
   IR::Val EmitIR(Context *) override;
 
@@ -46,9 +58,6 @@ struct Statements : public Node {
 
     return result;
   }
-
-  Statements() {}
-  virtual ~Statements() {}
 
   std::vector<std::unique_ptr<Node>> content_;
 };

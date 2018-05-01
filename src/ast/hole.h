@@ -1,7 +1,8 @@
 #ifndef ICARUS_AST_HOLE_H
 #define ICARUS_AST_HOLE_H
 
-#include "ast/ast.h"
+#include "ast/identifier.h"
+#include "ir/val.h"
 
 namespace AST {
 // TODO currently needs to be an identifier because Declaration::identifier has
