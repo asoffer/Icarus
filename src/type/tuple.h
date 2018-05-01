@@ -19,7 +19,10 @@ struct Tuple : public Type {
                                   Context *ctx) const { UNREACHABLE(); }
   virtual void EmitRepr(IR::Val id_val, Context *ctx) const { UNREACHABLE(); }
   virtual Cmp Comparator() const { UNREACHABLE(); }
+
+#ifdef ICARUS_USE_LLVM
   virtual llvm::Type *llvm(llvm::LLVMContext &) const { UNREACHABLE(); }
+#endif // ICARUS_USE_LLVM
 
   std::vector<const Type *> entries_;
 };

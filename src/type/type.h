@@ -8,10 +8,12 @@
 
 #include "ir/val.h"
 
+#ifdef ICARUS_USE_LLVM
 namespace llvm {
 class Type;
 class LLVMContext;
 } // namespace llvm
+#endif // ICARUS_USE_LLVM
 
 #define TYPE_FNS(name)                                                         \
   name() = delete;                                                             \
@@ -21,7 +23,7 @@ class LLVMContext;
 // TODO pass by reference is probably what you want for IR::Val anyway and has
 // the added benefit of allowing you to forward declare Val
 #define ENDING = 0
-#define BASIC_METHODS                                                          \
+#define BASIC_METHODS_WITHOUT_LLVM                                             \
   virtual char *WriteTo(char *buf) const ENDING;                               \
   virtual size_t string_size() const ENDING;                                   \
   virtual void EmitAssign(const Type *from_type, IR::Val from, IR::Val to,     \
@@ -32,8 +34,15 @@ class LLVMContext;
   virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val,           \
                                   Context *ctx) const ENDING;                  \
   virtual void EmitRepr(IR::Val id_val, Context *ctx) const ENDING;            \
-  virtual Cmp Comparator() const ENDING;                                       \
+  virtual Cmp Comparator() const ENDING
+
+#ifdef ICARUS_USE_LLVM
+#define BASIC_METHODS                                                          \
+  BASIC_METHODS_WITHOUT_LLVM;                                                  \
   virtual llvm::Type *llvm(llvm::LLVMContext &) const ENDING
+#else
+#define BASIC_METHODS BASIC_METHODS_WITHOUT_LLVM
+#endif
 
 namespace type {
 // Note: the order of these is meaningful and relied upon!

@@ -9,10 +9,12 @@
 #include "ast/statements.h"
 #include "scope.h"
 
+#ifdef ICARUS_USE_LLVM
 namespace llvm {
 class Module;
 class LLVMContext;
 }  // namespace llvm
+#endif // ICARUS_USE_LLVM
 
 namespace type {
 struct Type;
@@ -49,8 +51,11 @@ struct Module {
   // extract the declarations determine which are public, etc.
   AST::Statements statements_;
 
+#ifdef ICARUS_USE_LLVM
   std::unique_ptr<llvm::LLVMContext> llvm_ctx_;
   std::unique_ptr<llvm::Module> llvm_;
+#endif // ICARUS_USE_LLVM
+
   std::vector<std::unique_ptr<IR::Func>> fns_;
   std::vector<const Module*> embedded_modules_;
 };

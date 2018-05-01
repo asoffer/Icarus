@@ -1,3 +1,4 @@
+#ifdef ICARUS_USE_LLVM
 #ifndef ICARUS_BACKEND_EMIT_H
 #define ICARUS_BACKEND_EMIT_H
 
@@ -19,3 +20,4 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
 }  // namespace backend
 
 #endif  // ICARUS_BACKEND_EMIT_H
+#endif  // ICARUS_USE_LLVM

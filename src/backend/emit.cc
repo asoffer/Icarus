@@ -1,3 +1,4 @@
+#ifdef ICARUS_USE_LLVM
 #include "backend/emit.h"
 
 #include <string>
@@ -493,3 +494,4 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
 }
 
 }  // namespace backend
+#endif // ICARUS_USE_LLVM

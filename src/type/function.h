@@ -3,9 +3,11 @@
 
 #include "type.h"
 
+#ifdef ICARUS_USE_LLVM
 namespace llvm {
 class FunctionType;
 }  // namespace llvm
+#endif // ICARUS_USE_LLVM
 
 namespace type {
 struct Function : public Type {
@@ -16,7 +18,9 @@ struct Function : public Type {
     for (auto *t : output) { ASSERT(t != nullptr); }
   }
 
+#ifdef ICARUS_USE_LLVM
   llvm::FunctionType *llvm_fn(llvm::LLVMContext &ctx) const;
+#endif // ICARUS_USE_LLVM
 
   std::vector<const Type *> input, output;
 };

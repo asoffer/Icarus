@@ -4,6 +4,7 @@
 #include <execinfo.h>
 
 #include "ast/ast.h"
+#include "ast/call.h"
 #include "ast/statements.h"
 #include "backend/emit.h"
 #include "base/debug.h"
@@ -12,10 +13,13 @@
 #include "context.h"
 #include "error/log.h"
 #include "ir/func.h"
+#include "module.h"
+
+#ifdef ICARUS_USE_LLVM
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/TargetSelect.h"
-#include "module.h"
+#endif // ICARUS_USE_LLVM
 
 // Debug flags and their default values
 namespace debug {
@@ -26,6 +30,10 @@ inline bool no_validation = false;
 
 const char *output_file_name = "a.out";
 std::vector<Source::Name> files;
+
+// TODO sad. don't use a global to do this.
+static AST::FunctionLiteral* main_fn;
+static Module *main_mod;
 
 static void
 ShowUsage(char *argv0) {
@@ -98,7 +106,9 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
 
   ctx.mod_->statements_ = std::move(*file_stmts);
   ctx.mod_->Complete();
+#ifdef ICARUS_USE_LLVM
   backend::EmitAll(ctx.mod_->fns_, ctx.mod_->llvm_.get());
+#endif // ICARUS_USE_LLVM
 
   for (const auto &stmt : ctx.mod_->statements_.content_) {
     if (!stmt->is<AST::Declaration>()) { continue; }
@@ -109,15 +119,22 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
     auto fn_lit = std::get<AST::FunctionLiteral *>(val[0].value);
     // TODO check more than one?
 
+#ifdef ICARUS_USE_LLVM
     fn_lit->ir_func_->llvm_fn_->setName("main");
     fn_lit->ir_func_->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
+#else
+    main_fn = fn_lit;
+    main_mod = mod.get();
+#endif // ICARUS_USE_LLVM
   }
 
+#ifdef ICARUS_USE_LLVM
   if (std::string err = backend::WriteObjectFile(
           src.substr(0, src.size() - 2) + "o", ctx.mod_);
       err != "") {
     std::cerr << err;
   }
+#endif // ICARUS_USE_LLVM
 
   return mod;
 }
@@ -131,12 +148,13 @@ void ScheduleModule(const Source::Name &src) {
 }
 
 int GenerateCode() {
+#ifdef ICARUS_USE_LLVM
   llvm::InitializeAllTargetInfos();
   llvm::InitializeAllTargets();
   llvm::InitializeAllTargetMCs();
   llvm::InitializeAllAsmParsers();
   llvm::InitializeAllAsmPrinters();
-
+#endif // ICARUS_USE_LLVM
   for (const auto &src : files) { ScheduleModule(src); }
 
   size_t current_size = 0;
@@ -149,6 +167,20 @@ int GenerateCode() {
     }
     for (auto *future : future_ptrs) { future->wait(); }
   } while (current_size != modules.lock()->size());
+
+#ifndef ICARUS_USE_LLVM
+  ASSERT(main_fn != nullptr);
+
+  AST::Call c;
+  c.fn_ = std::unique_ptr<AST::Expression>(main_fn);
+  // TODO does the context matter?
+  Context ctx(main_mod);
+  c.assign_scope(main_fn->scope_);
+  c.VerifyType(&ctx);
+  c.Validate(&ctx);
+  Evaluate(&c, &ctx);
+  c.fn_.release();
+#endif
 
   return 0;
 }

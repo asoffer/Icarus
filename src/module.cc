@@ -2,16 +2,23 @@
 
 #include "ast/ast.h"
 #include "ir/func.h"
+#include "type/function.h"
+
+#ifdef ICARUS_USE_LLVM
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
-#include "type/function.h"
+#endif  // ICARUS_USE_LLVM
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of IR::Func which we want to forward declare.
 Module::Module()
-    : global_(std::make_unique<DeclScope>(nullptr)),
+    : global_(std::make_unique<DeclScope>(nullptr))
+#ifdef ICARUS_USE_LLVM
+      ,
       llvm_ctx_(std::make_unique<llvm::LLVMContext>()),
-      llvm_(std::make_unique<llvm::Module>("my module", *llvm_ctx_)) {
+      llvm_(std::make_unique<llvm::Module>("my module", *llvm_ctx_))
+#endif  // ICARUS_USE_LLVM
+{
   global_->module_ = this;
 }
 Module::~Module() = default;
@@ -20,10 +27,14 @@ IR::Func* Module::AddFunc(
     AST::FunctionLiteral* fn_lit,
     std::vector<std::pair<std::string, AST::Expression*>> args) {
   fns_.push_back(std::make_unique<IR::Func>(this, fn_lit, std::move(args)));
+
+#ifdef ICARUS_USE_LLVM
   fns_.back()->llvm_fn_ = llvm::Function::Create(
       fn_lit->type->as<type::Function>().llvm_fn(*llvm_ctx_),
       llvm::Function::ExternalLinkage, "", llvm_.get());
   fns_.back()->llvm_fn_->setName(fns_.back()->name());
+#endif  // ICARUS_USE_LLVM
+
   return fns_.back().get();
 }
 
@@ -32,10 +43,14 @@ IR::Func* Module::AddFunc(
     const type::Function* fn_type,
     std::vector<std::pair<std::string, AST::Expression*>> args) {
   fns_.push_back(std::make_unique<IR::Func>(this, fn_type, std::move(args)));
+
+#ifdef ICARUS_USE_LLVM
   fns_.back()->llvm_fn_ =
       llvm::Function::Create(fn_type->llvm_fn(*llvm_ctx_),
                              llvm::Function::ExternalLinkage, "", llvm_.get());
   fns_.back()->llvm_fn_->setName(fns_.back()->name());
+#endif  // ICARUS_USE_LLVM
+
   return fns_.back().get();
 }
 

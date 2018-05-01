@@ -1,3 +1,4 @@
+#ifdef ICARUS_USE_LLVM
 #include "type/all.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
@@ -109,3 +110,4 @@ llvm::FunctionType* Function::llvm_fn(llvm::LLVMContext& ctx) const {
   }
 }
 } // namespace type
+#endif  // ICARUS_USE_LLVM

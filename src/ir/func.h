@@ -8,9 +8,11 @@
 
 #include "block.h"
 
+#ifdef ICARUS_USE_LLVM
 namespace llvm {
 class Function;
 }  // namespace llvm
+#endif // ICARUS_USE_LLVM
 
 namespace type {
 struct Function;
@@ -76,7 +78,9 @@ struct Func {
   i32 num_regs_  = 0;
   i32 num_voids_ = 0;
   std::vector<Block> blocks_;
+#ifdef ICARUS_USE_LLVM
   llvm::Function *llvm_fn_ = nullptr;
+#endif // ICARUS_USE_LLVM
 
   // Indices for blocks that end in a return statement.
   std::unordered_set<BlockIndex> return_blocks_;

@@ -1,3 +1,4 @@
+#ifdef ICARUS_USE_LLVM
 #include <system_error>
 #include <iostream>
 #include <string>
@@ -42,3 +43,4 @@ std::string WriteObjectFile(const std::string& name, Module * mod) {
   return "";
 }
 }  // namespace backend
+#endif  // ICARUS_USE_LLVM
