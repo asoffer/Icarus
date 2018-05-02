@@ -464,4 +464,9 @@ const Type *Tup(std::vector<const Type *> entries) {
 bool Type::is_big() const {
   return is<Array>() || is<Struct>() || is<Variant>() || is<Tuple>();
 }
+
+bool CanCastImplicitly(const type::Type *from, const type::Type *to) {
+  return Join(from, to) == to;
+}
+
 } // namespace type

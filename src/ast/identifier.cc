@@ -1,6 +1,7 @@
 #include "ast/identifier.h"
 
-#include "ast/ast.h"  // TODO change this to declaration when that is moved out.
+#include "ast/declaration.h"
+#include "ast/function_literal.h"
 #include "ast/verify_macros.h"
 #include "context.h"
 #include "error/log.h"

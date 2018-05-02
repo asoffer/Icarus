@@ -3,17 +3,17 @@
 #include <algorithm>
 #include <optional>
 
-#include "../ast/ast.h"
+#include "../ast/stages.h"
 #include "../context.h"
 #include "../error/log.h"
 #include "../type/all.h"
-#include "../ast/stages.h"
+#include "ast/ast.h"
+#include "ast/declaration.h"
 #include "module.h"
 
 using base::check::Is;
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
-extern std::vector<IR::Val> global_vals;
 
 // If the expression is a CommaList, apply the function to each expr. Otherwise
 // call it on the expression itself.
@@ -64,75 +64,6 @@ IR::Val AST::Access::EmitIR(Context *ctx) {
     return PtrCallFix(EmitLVal(ctx));
   }
   return IR::Val::None();
-}
-
-IR::Val AST::ScopeLiteral::EmitIR(Context *ctx) {
-  enter_fn->init_val->EmitIR(ctx);
-  exit_fn->init_val->EmitIR(ctx);
-  return IR::Val::Scope(this);
-}
-
-IR::Val AST::Declaration::EmitIR(Context *ctx) {
-  if (const_) {
-    // TODO it's custom or default initialized. cannot be uninitialized. This
-    // should be verified by the type system.
-    if (IsCustomInitialized()) {
-      auto eval = Evaluate(init_val.get(), ctx);
-      if (ctx->num_errors()) { return IR::Val::None(); }
-      addr = eval[0];
-    } else if (IsDefaultInitialized()) {
-      // TODO if EmitInitialValue requires generating code, that would be bad.
-      addr = type->EmitInitialValue(ctx);
-    } else {
-      UNREACHABLE();
-    }
-  } else if (scope_ == ctx->mod_->global_.get()) {
-    // TODO these checks actually overlap and could be simplified.
-    if (IsUninitialized()) {
-      global_vals.emplace_back();
-      global_vals.back().type = type;
-      addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
-    } else if (IsCustomInitialized()) {
-      auto eval = Evaluate(init_val.get(), ctx);
-      if (ctx->num_errors()) { return IR::Val::None(); }
-      global_vals.push_back(eval[0]);
-      addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
-
-    } else if (IsDefaultInitialized()) {
-      // TODO if EmitInitialValue requires generating code, that would be bad.
-      global_vals.push_back(type->EmitInitialValue(ctx));
-      addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
-
-    } else if (IsInferred()) {
-      NOT_YET();
-
-    } else {
-      UNREACHABLE();
-    }
-  } else {
-    // For local variables the declaration determines where the initial value is
-    // set, but the allocation has to be done much earlier. We do the allocation
-    // in FunctionLiteral::EmitIR. Declaration::EmitIR is just used to set the
-    // value.
-    ASSERT(addr != IR::Val::None());
-    ASSERT(scope_->ContainingFnScope() != nullptr);
-
-    // TODO these checks actually overlap and could be simplified.
-    if (IsUninitialized()) { return IR::Val::None(); }
-    if (IsCustomInitialized()) {
-      if (init_val->lvalue == Assign::RVal) {
-        type::EmitMoveInit(init_val->type, type, init_val->EmitIR(ctx), addr,
-                           ctx);
-      } else {
-        type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx), addr,
-                           ctx);
-      }
-    } else {
-      type->EmitInit(addr, ctx);
-    }
-  }
-
-  return addr;
 }
 
 IR::Val AST::Binop::EmitIR(Context *ctx) {
@@ -408,92 +339,6 @@ IR::Val AST::ChainOp::EmitIR(Context *ctx) {
 IR::Val AST::CommaList::EmitIR(Context *) { UNREACHABLE(this); }
 IR::Val AST::CommaList::EmitLVal(Context *) { NOT_YET(); }
 
-IR::Val AST::GenericFunctionLiteral::EmitIR(Context *) {
-  return IR::Val::GenFnLit(this);
-}
-
-IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
-  if (!ir_func_) {
-    std::vector<std::pair<std::string, AST::Expression *>> args;
-    args.reserve(inputs.size());
-    for (const auto &input : inputs) {
-      args.emplace_back(input->as<Declaration>().identifier->token,
-                        input->as<Declaration>().init_val.get());
-    }
-
-    ir_func_ = ctx->mod_->AddFunc(this, std::move(args));
-    ctx->mod_->to_complete_.push(this);
-  }
-  return IR::Val::FnLit(this);
-}
-
-void AST::FunctionLiteral::CompleteBody(Module *mod) {
-  if (completed_) { return; }
-  completed_ = true;
-
-  Context ctx(mod);
-  ctx.bound_constants_ = bound_constants_;
-  statements->VerifyType(&ctx);
-  statements->Validate(&ctx);
-  limit_to(statements);
-  stage_range_.low = EmitStage;
-
-  if (stage_range_.high < EmitStage) { return; }
-  if (type == type::Err) { return; }
-
-  CURRENT_FUNC(ir_func_) {
-    IR::Block::Current = ir_func_->entry();
-    // Leave space for allocas that will come later (added to the entry
-    // block).
-    auto start_block   = IR::Func::Current->AddBlock();
-    IR::Block::Current = start_block;
-
-    // TODO arguments should be renumbered to not waste space on const values
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      // TODO positional arguments
-      if (inputs[i]->const_) {
-        auto *val =
-            AST::find(ctx.bound_constants_, inputs[i]->identifier->token);
-        if (val) { inputs[i]->addr = *val; }
-        continue;
-      }
-      inputs[i]->addr = IR::Func::Current->Argument(static_cast<i32>(i));
-    }
-
-    for (size_t i = 0; i < outputs.size(); ++i) {
-      if (!outputs[i]->is<Declaration>()) { continue; }
-      outputs[i]->as<Declaration>().addr =
-          IR::Val::Ret(IR::ReturnValue(i), outputs[i]->type);
-    }
-
-    for (auto scope : fn_scope->innards_) {
-      scope->ForEachDeclHere([](Declaration *decl) {
-        if (decl->const_) {
-          // Compute these values lazily in Identifier::EmitIR, because
-          // otherwise we would have to figure out a valid ordering.
-          return;
-        }
-
-        if (decl->arg_val) { return; }
-        ASSERT(decl->type != nullptr);
-        decl->addr = IR::Alloca(decl->type);
-      });
-    }
-
-    statements->VerifyType(&ctx);
-    statements->Validate(&ctx);
-    statements->EmitIR(&ctx);
-    if (type->as<type::Function>().output.empty()) {
-      // TODO even this is wrong. Figure out the right jumping strategy
-      // between here and where you call SetReturn
-      IR::ReturnJump();
-    }
-
-    IR::Block::Current = ir_func_->entry();
-    IR::UncondJump(start_block);
-  }
-}
-
 IR::Val AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::Index:
@@ -503,31 +348,4 @@ IR::Val AST::Binop::EmitLVal(Context *ctx) {
       [[fallthrough]];
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
-}
-
-IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
-  NOT_YET();
-  auto new_struct = IR::CreateStruct();
-  for (const auto &field : fields_) {
-    // TODO in initial value doesn't match type of field?
-    // That should probably be handled elsewhere consistently with function
-    // default args.
-    IR::Val init_val = IR::Val::None();
-    if (field->init_val) {
-      field->init_val->assign_scope(scope_);
-      field->init_val->Validate(ctx);
-      init_val = field->init_val->EmitIR(ctx);
-    }
-
-    IR::Val field_type;
-    if (field->type_expr) {
-      field_type = field->type_expr->EmitIR(ctx);
-    } else {
-      ASSERT(nullptr != field->init_val.get());
-      field_type = IR::Val::Type(field->init_val->type);
-    }
-    IR::InsertField(new_struct, field->identifier->token, std::move(field_type),
-                    std::move(init_val));
-  }
-  return IR::FinalizeStruct(std::move(new_struct));
 }

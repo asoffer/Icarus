@@ -1,9 +1,11 @@
 #include "ast/call.h"
 
 #include <sstream>
+#include "ast/function_literal.h"
 #include "ast/terminal.h"
 #include "ast/verify_macros.h"
 #include "ir/func.h"
+#include "scope.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/tuple.h"

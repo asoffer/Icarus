@@ -7,6 +7,8 @@
 #include "../type/function.h"
 #include "../type/pointer.h"
 #include "../type/struct.h"
+#include "ast/scope_literal.h"
+#include "ast/function_literal.h"
 #include "func.h"
 
 extern type::Type *NullPtr;

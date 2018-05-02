@@ -1,13 +1,15 @@
 #include "ast/scope_node.h"
 
 #include <sstream>
+#include "ast/function_literal.h"
+#include "ast/scope_literal.h"
 #include "ast/stages.h"
 #include "ast/verify_macros.h"
 #include "context.h"
 #include "ir/func.h"
 #include "scope.h"
-#include "type/type.h"
 #include "type/scope.h"
+#include "type/type.h"
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 

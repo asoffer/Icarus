@@ -5,14 +5,15 @@
 #include <memory>
 #include <future>
 
-#include "../architecture.h"
-#include "../ast/ast.h"
-#include "../base/guarded.h"
-#include "../base/util.h"
-#include "../context.h"
-#include "../error/log.h"
-#include "../type/all.h"
+#include "architecture.h"
+#include "ast/ast.h"
+#include "ast/function_literal.h"
+#include "base/guarded.h"
+#include "base/util.h"
+#include "context.h"
+#include "error/log.h"
 #include "func.h"
+#include "type/all.h"
 
 using base::check::Is;
 

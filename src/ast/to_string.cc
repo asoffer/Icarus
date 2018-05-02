@@ -1,10 +1,6 @@
 #include "ast.h"
 
-#define TYPE_OR(other) (type ? type->to_string() : (other))
-
 namespace AST {
-static std::string tabs(size_t n) { return std::string(n << 1, ' '); }
-
 std::string Access::to_string(size_t n) const {
   return operand->to_string(n) + "." + member_name;
 }
@@ -76,71 +72,4 @@ std::string CommaList::to_string(size_t n) const {
   return ss.str();
 }
 
-std::string Declaration::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << identifier->to_string(n);
-  if (type_expr) {
-    ss << (const_ ? " :: " : ": ") << type_expr->to_string(n);
-    if (init_val) { ss << " = " << init_val->to_string(n); }
-  } else {
-    if (init_val) {
-      ss << (const_ ? " ::= " : " := ") << init_val->to_string(n);
-    }
-  }
-
-  return ss.str();
-}
-
-std::string FunctionLiteral::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << "(";
-  if (!inputs.empty()) {
-    auto iter = inputs.begin();
-    ss << (*iter)->to_string(n);
-    ++iter;
-    while (iter != inputs.end()) {
-      ss << ", " << (*iter)->to_string(n);
-      ++iter;
-    }
-  }
-  ss << ") -> ";
-  if (!return_type_inferred_) {
-    ss << "(";
-    if (!outputs.empty()) {
-      auto iter = outputs.begin();
-      ss << (*iter)->to_string(n);
-      ++iter;
-      while (iter != outputs.end()) {
-        ss << ", " << (*iter)->to_string(n);
-        ++iter;
-      }
-    }
-    ss << ")";
-  }
-  ss << " {\n" << statements->to_string(n + 1) << tabs(n) << "}";
-  return ss.str();
-}
-
-std::string GenericFunctionLiteral::to_string(size_t n) const {
-  return FunctionLiteral::to_string(n);
-}
-
-std::string ScopeLiteral::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << "scope {\n"
-     << tabs(n + 1) << enter_fn->to_string(n + 1) << "\n"
-     << tabs(n + 1) << exit_fn->to_string(n + 1) << "\n"
-     << tabs(n) << "}";
-  return ss.str();
-}
-
-std::string StructLiteral::to_string(size_t n) const { 
-  std::stringstream ss;
-  ss << "struct {\n";
-  for (const auto &f : fields_) {
-    ss << tabs(n + 1) << f->to_string(n) << "\n";
-  }
-  ss << tabs(n) << "}";
-  return ss.str();
-}
 } // namespace AST

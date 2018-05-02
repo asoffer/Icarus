@@ -1,9 +1,9 @@
 #ifndef ICARUS_AST_VERIFY_MACROS_H
 #define ICARUS_AST_VERIFY_MACROS_H
 
-#include "ast.h"
-#include "context.h"
+#include "ast/declaration.h"
 #include "ast/stages.h"
+#include "context.h"
 
 namespace type {
 extern Type *Err;

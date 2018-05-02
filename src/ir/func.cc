@@ -1,7 +1,7 @@
 #include "func.h"
 
-#include "../ast/ast.h"
-#include "../type/function.h"
+#include "ast/function_literal.h"
+#include "type/function.h"
 
 namespace type {
 const Type *Ptr(const Type *);

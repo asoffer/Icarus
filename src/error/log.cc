@@ -3,7 +3,8 @@
 #include <iomanip>
 #include <iostream>
 
-#include "ast/ast.h"
+#include "ast/declaration.h"
+#include "ast/identifier.h"
 #include "base/source.h"
 #include "type/tuple.h"
 #include "type/type.h"

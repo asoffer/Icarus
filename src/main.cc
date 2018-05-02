@@ -5,6 +5,8 @@
 
 #include "ast/ast.h"
 #include "ast/call.h"
+#include "ast/declaration.h"
+#include "ast/function_literal.h"
 #include "ast/statements.h"
 #include "backend/emit.h"
 #include "base/debug.h"

@@ -1,6 +1,7 @@
 #include "scope.h"
 
-#include "ast/ast.h"
+#include "ast/declaration.h"
+#include "ast/identifier.h"
 #include "context.h"
 #include "ir/func.h"
 #include "module.h"

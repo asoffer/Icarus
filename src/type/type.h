@@ -67,6 +67,7 @@ public:
 
 const Type *Meet(const Type *lhs, const Type *rhs);
 const Type *Join(const Type *lhs, const Type *rhs);
+bool CanCastImplicitly(const type::Type *from, const type::Type *to);
 
 void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
                   IR::Val to_var, Context*ctx);
@@ -75,6 +76,7 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
 
 extern Type *Err, *Bool, *Char, *Int, *Real, *Code, *Type_, *Void, *NullPtr,
        *String, *EmptyArray, *Generic;
+
 } // namespace type
 
 #undef ENDING
