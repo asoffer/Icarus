@@ -68,7 +68,7 @@ struct GenericFunctionLiteral : public FunctionLiteral {
   void assign_scope(Scope *scope) override;
   void ClearIdDecls() override;
   void VerifyType(Context *) override;
-  void Validate(Context *) override;
+  void Validate(Context *) override {};
   void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override;
   void ExtractReturns(std::vector<const Expression *> *) const override;
   void contextualize(
