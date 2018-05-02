@@ -13,6 +13,7 @@
 #include "context.h"
 #include "error/log.h"
 #include "func.h"
+#include "module.h"
 #include "type/all.h"
 
 using base::check::Is;
@@ -58,7 +59,8 @@ static std::unique_ptr<IR::Func> AssignmentFunction(const type::Type *from,
                                                              {"to", nullptr}});
   // TODO maybe we want to wire contexts through here? probably.
   // TODO get the right module
-  Context ctx(nullptr); 
+  Module m;
+  Context ctx(&m); 
   CURRENT_FUNC(assign_func.get()) {
     IR::Block::Current = assign_func->entry();
     to->EmitAssign(from, assign_func->Argument(0), assign_func->Argument(1),
