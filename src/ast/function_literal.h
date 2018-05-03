@@ -40,6 +40,7 @@ struct FunctionLiteral : public Expression {
 
   void CompleteBody(Module *mod);
   IR::Val EmitIR(Context *) override;
+  IR::Val EmitLVal(Context *) override;
 
   std::unique_ptr<FnScope> fn_scope;
 
@@ -76,6 +77,7 @@ struct GenericFunctionLiteral : public FunctionLiteral {
       const std::unordered_map<const Expression *, IR::Val> &) override;
   GenericFunctionLiteral *Clone() const override;
   IR::Val EmitIR(Context *) override;
+  IR::Val EmitLVal(Context *) override;
 
   // Attempts to match the call argument types to the dependent types here. If
   // it can it materializes a function literal and returns a pointer to it.

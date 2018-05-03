@@ -37,6 +37,8 @@ IR::Val CodeBlock::EmitIR(Context *) {
   return IR::Contextualize(std::move(copy), std::move(args));
 }
 
+IR::Val CodeBlock::EmitLVal(Context *) { UNREACHABLE(*this); }
+
 bool operator==(const CodeBlock &lhs, const CodeBlock &rhs) {
   if (auto *lhs_stmts = std::get_if<Statements>(&lhs.content_)) {
     if (auto *rhs_stmts = std::get_if<Statements>(&rhs.content_)) {

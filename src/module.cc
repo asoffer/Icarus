@@ -1,6 +1,7 @@
 #include "module.h"
 
-#include "ast/ast.h"
+#include "ast/declaration.h"
+#include "ast/expression.h"
 #include "ast/function_literal.h"
 #include "ir/func.h"
 #include "type/function.h"

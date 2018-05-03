@@ -79,9 +79,11 @@ ArrayType *ArrayType::Clone() const {
   return result;
 }
 
-IR::Val AST::ArrayType::EmitIR(Context *ctx) {
+IR::Val ArrayType::EmitIR(Context *ctx) {
   return IR::Array(length_->EmitIR(ctx), data_type_->EmitIR(ctx));
 }
+
+IR::Val ArrayType::EmitLVal(Context *ct) { UNREACHABLE(*this); }
 
 void ArrayType::ExtractReturns(std::vector<const Expression *> *rets) const {
   // TODO length_ needs to be constexpr so maybe we're safe here? and don't need

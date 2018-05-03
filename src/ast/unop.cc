@@ -15,6 +15,8 @@ std::vector<IR::Val> EmitCallDispatch(
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
 
+IR::Val PtrCallFix(const IR::Val& v);
+
 void ForEachExpr(AST::Expression *expr,
                  const std::function<void(size_t, AST::Expression *)> &fn);
 

@@ -137,4 +137,5 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   return IR::Val::None();
 }
 
+IR::Val ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

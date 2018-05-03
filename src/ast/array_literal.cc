@@ -111,4 +111,5 @@ IR::Val AST::ArrayLiteral::EmitIR(Context *ctx) {
   return array_val;
 }
 
+IR::Val AST::ArrayLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 }  // namespace AST

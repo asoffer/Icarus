@@ -29,7 +29,9 @@ struct Binding {
   std::vector<std::pair<const type::Type *, Expression *>> exprs_;
 
 private:
-  Binding(Expression *fn_expr, size_t n);
+ Binding(AST::Expression *fn_expr, size_t n)
+     : fn_expr_(fn_expr),
+       exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
 };
 
 struct DispatchTable {

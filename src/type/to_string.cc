@@ -1,6 +1,5 @@
-#include "all.h"
+#include "type/all.h"
 
-#include "../ast/ast.h"
 #include <cstring>
 
 namespace type {

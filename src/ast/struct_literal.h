@@ -25,6 +25,7 @@ struct StructLiteral : public Expression {
   StructLiteral *Clone() const override;
 
   IR::Val EmitIR(Context *) override;
+  IR::Val EmitLVal(Context *) override;
 
   std::unique_ptr<DeclScope> type_scope;
   std::vector<std::unique_ptr<Declaration>> fields_;

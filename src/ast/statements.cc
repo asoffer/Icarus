@@ -47,6 +47,10 @@ void Statements::contextualize(
   }
 }
 
+void Statements::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+  for (auto &stmt : content_) { stmt->SaveReferences(scope, args); }
+}
+
 void Statements::ExtractReturns(std::vector<const Expression *> *rets) const {
   for (auto &stmt : content_) { stmt->ExtractReturns(rets); }
 }

@@ -1,10 +1,13 @@
-#include "all.h"
+#include "type/all.h"
 
 #include "architecture.h"
-#include "ast/ast.h"
 #include "context.h"
 #include "ir/func.h"
 #include "module.h"
+
+namespace AST {
+struct Expression;
+}  // namespace AST
 
 namespace type {
 void Array::EmitInit(IR::Val id_val, Context *ctx) const {

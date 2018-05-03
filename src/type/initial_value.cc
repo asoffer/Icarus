@@ -1,7 +1,8 @@
-#include "all.h"
+#include "type/all.h"
 
-#include "../ast/ast.h"
-#include "../ir/func.h"
+#include "ast/codeblock.h"
+#include "ast/statements.h"
+#include "ir/func.h"
 
 namespace type {
 IR::Val Array::EmitInitialValue(Context* ctx) const {

@@ -6,7 +6,8 @@
 #include <future>
 
 #include "architecture.h"
-#include "ast/ast.h"
+#include "ast/codeblock.h"
+#include "ast/expression.h"
 #include "ast/function_literal.h"
 #include "base/guarded.h"
 #include "base/util.h"

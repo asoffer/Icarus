@@ -41,6 +41,7 @@ struct CodeBlock : public Expression {
   std::variant<Statements, std::string> content_;
 
   IR::Val EmitIR(Context *) override;
+  IR::Val EmitLVal(Context *) override;
 };
 
 bool operator==(const CodeBlock &lhs, const CodeBlock &rhs);

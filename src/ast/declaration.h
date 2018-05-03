@@ -25,6 +25,7 @@ struct Declaration : public Expression {
 
   Declaration *Clone() const override;
   IR::Val EmitIR(Context *) override;
+  IR::Val EmitLVal(Context *) override;
 
   std::unique_ptr<Identifier> identifier;
   std::unique_ptr<Expression> type_expr, init_val;

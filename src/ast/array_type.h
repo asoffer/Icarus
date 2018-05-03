@@ -18,6 +18,8 @@ struct ArrayType : public Expression {
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
   IR::Val EmitIR(Context *) override;
+  IR::Val EmitLVal(Context *ct) override;
+
   ArrayType *Clone() const override;
 
   std::unique_ptr<Expression> length_, data_type_;

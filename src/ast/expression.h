@@ -7,6 +7,10 @@ struct Context;
 
 enum class Assign : char { Unset, Const, LVal, RVal };
 
+namespace IR {
+struct Val;
+}  // namespace IR
+
 namespace AST {
 struct Expression : public Node {
   Expression(const TextSpan &span = TextSpan()) : Node(span) {}
@@ -17,15 +21,13 @@ struct Expression : public Node {
   virtual void VerifyType(Context *ctx)                                 = 0;
   virtual void Validate(Context *ctx)                                   = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
-
-  virtual Expression *Clone() const = 0;
+  virtual Expression *Clone() const                                     = 0;
+  virtual IR::Val EmitIR(Context *)                                     = 0;
+  virtual IR::Val EmitLVal(Context *)                                   = 0;
 
   virtual void
   contextualize(const Node *correspondant,
                 const std::unordered_map<const Expression *, IR::Val> &) = 0;
-
-  virtual IR::Val EmitIR(Context *);
-  virtual IR::Val EmitLVal(Context *);
 
   // Use these two functions to verify that an identifier can be declared using
   // these expressions. We pass in a string representing the identifier being

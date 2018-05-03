@@ -481,4 +481,6 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
   }
 }
 
+IR::Val FunctionLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
+IR::Val GenericFunctionLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

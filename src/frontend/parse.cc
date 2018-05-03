@@ -5,10 +5,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ast/access.h"
 #include "ast/array_literal.h"
 #include "ast/array_type.h"
-#include "ast/ast.h"
+#include "ast/binop.h"
+#include "ast/chainop.h"
 #include "ast/call.h"
+#include "ast/comma_list.h"
 #include "ast/declaration.h"
 #include "ast/function_literal.h"
 #include "ast/identifier.h"

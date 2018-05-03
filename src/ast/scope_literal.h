@@ -22,6 +22,7 @@ struct ScopeLiteral : public Expression {
   ScopeLiteral *Clone() const override;
 
   IR::Val EmitIR(Context *) override;
+  IR::Val EmitLVal(Context *) override;
 
   std::unique_ptr<Declaration> enter_fn, exit_fn;
   std::unique_ptr<Scope> body_scope;

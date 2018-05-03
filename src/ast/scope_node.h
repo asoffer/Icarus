@@ -25,6 +25,7 @@ struct ScopeNode : public Expression {
   ScopeNode *Clone() const override;
 
   IR::Val EmitIR(Context *) override;
+  IR::Val EmitLVal(Context *) override;
 
   // If the scope takes an argument, 'expr' is it. Otherwise 'expr' is null
   std::unique_ptr<Expression> expr, scope_expr;

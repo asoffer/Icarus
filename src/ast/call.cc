@@ -697,4 +697,5 @@ IR::Val AST::Call::EmitIR(Context *ctx) {
   }
 }
 
+IR::Val Call::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

@@ -1,11 +1,13 @@
-#ifndef ICARUS_AST_ARRAY_LITERAL_H
-#define ICARUS_AST_ARRAY_LITERAL_H
+#ifndef ICARUS_AST_COMMA_LIST_H
+#define ICARUS_AST_COMMA_LIST_H
 
 #include "ast/expression.h"
 
 namespace AST {
-struct ArrayLiteral : public Expression {
-  ~ArrayLiteral() override {}
+struct CommaList : public Expression {
+  CommaList() = default;
+  ~CommaList() override {}
+
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
   void ClearIdDecls() override;
@@ -17,13 +19,12 @@ struct ArrayLiteral : public Expression {
       const Node *correspondant,
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
+  CommaList *Clone() const override;
   IR::Val EmitIR(Context *) override;
   IR::Val EmitLVal(Context *) override;
-  ArrayLiteral *Clone() const override;
 
-  std::vector<std::unique_ptr<Expression>> elems_;
+  std::vector<std::unique_ptr<Expression>> exprs;
 };
 }  // namespace AST
 
-#endif  // ICARUS_AST_ARRAY_LITERAL_H
-
+#endif // ICARUS_AST_COMMA_LIST_H

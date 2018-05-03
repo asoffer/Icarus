@@ -100,4 +100,6 @@ IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
   }
   return IR::FinalizeStruct(std::move(new_struct));
 }
+
+IR::Val AST::StructLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 }  // namespace AST

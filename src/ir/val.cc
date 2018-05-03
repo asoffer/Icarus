@@ -2,14 +2,14 @@
 
 #include <sstream>
 
-#include "../ast/ast.h"
-#include "../type/enum.h"
-#include "../type/function.h"
-#include "../type/pointer.h"
-#include "../type/struct.h"
-#include "ast/scope_literal.h"
+#include "ast/codeblock.h"
 #include "ast/function_literal.h"
-#include "func.h"
+#include "ast/scope_literal.h"
+#include "ir/func.h"
+#include "type/enum.h"
+#include "type/function.h"
+#include "type/pointer.h"
+#include "type/struct.h"
 
 extern type::Type *NullPtr;
 

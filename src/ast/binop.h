@@ -1,11 +1,20 @@
-#ifndef ICARUS_AST_ARRAY_LITERAL_H
-#define ICARUS_AST_ARRAY_LITERAL_H
+#ifndef ICARUS_AST_BINOP_H
+#define ICARUS_AST_BINOP_H
 
+#include <memory>
+#include <vector>
+
+#include "ast/dispatch.h"
 #include "ast/expression.h"
+#include "frontend/operators.h"
+#include "ir/val.h"
+
+struct Scope;
+struct Context;
 
 namespace AST {
-struct ArrayLiteral : public Expression {
-  ~ArrayLiteral() override {}
+struct Binop : public Expression {
+  ~Binop() override {}
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
   void ClearIdDecls() override;
@@ -17,13 +26,15 @@ struct ArrayLiteral : public Expression {
       const Node *correspondant,
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
+  Binop *Clone() const override;
   IR::Val EmitIR(Context *) override;
   IR::Val EmitLVal(Context *) override;
-  ArrayLiteral *Clone() const override;
 
-  std::vector<std::unique_ptr<Expression>> elems_;
+  Language::Operator op;
+  std::unique_ptr<Expression> lhs, rhs;
+  DispatchTable dispatch_table_;
 };
+
 }  // namespace AST
 
-#endif  // ICARUS_AST_ARRAY_LITERAL_H
-
+#endif  // ICARUS_AST_BINOP_H

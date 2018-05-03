@@ -14,20 +14,6 @@
 #include "base/util.h"
 #include "frontend/text_span.h"
 
-#define VIRTUAL_METHODS_FOR_NODES                                              \
-  virtual std::string to_string(size_t n) const override;                      \
-  virtual void assign_scope(Scope *scope) override;                            \
-  virtual void ClearIdDecls() override;                                        \
-  virtual void VerifyType(Context *) override;                                 \
-  virtual void Validate(Context *) override;                                   \
-  virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
-      override;                                                                \
-  virtual void ExtractReturns(std::vector<const Expression *> *)               \
-      const override;                                                          \
-  virtual void contextualize(                                                  \
-      const Node *correspondant,                                               \
-      const std::unordered_map<const Expression *, IR::Val> &) override
-
 struct Context;
 struct Scope;
 namespace type {
@@ -42,13 +28,12 @@ namespace AST {
 struct Expression;
 
 struct Node : public base::Cast<Node> {
-  virtual std::string to_string(size_t n) const = 0;
-  virtual void assign_scope(Scope *) {}
-  virtual void ClearIdDecls() {}
-  virtual void VerifyType(Context *) = 0;
-  virtual void Validate(Context *)   = 0;
-
-  virtual IR::Val EmitIR(Context *);
+  virtual std::string to_string(size_t n) const                         = 0;
+  virtual void assign_scope(Scope *)                                    = 0;
+  virtual void ClearIdDecls()                                           = 0;
+  virtual void VerifyType(Context *)                                    = 0;
+  virtual void Validate(Context *)                                      = 0;
+  virtual IR::Val EmitIR(Context *)                                     = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   virtual void
   contextualize(const Node *correspondant,

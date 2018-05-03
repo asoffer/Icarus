@@ -12,9 +12,7 @@ struct Type;
 struct Variant;
 } // namespace type
 
-
-#include "../ast/ast.h"
-#include "../base/types.h"
+#include "base/types.h"
 
 #include <iosfwd>
 #include <string>
