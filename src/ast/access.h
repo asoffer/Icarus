@@ -6,7 +6,7 @@
 
 namespace AST {
 struct Access : public Expression {
-  ~Access() {}
+  ~Access() override {}
   std::string to_string(size_t n) const override {
     return operand->to_string(n) + "." + member_name;
   }
@@ -19,7 +19,7 @@ struct Access : public Expression {
     operand->SaveReferences(scope, args);
   }
 
-  void ExtractReturns(std::vector<const Expression *> *rets) const {
+  void ExtractReturns(std::vector<const Expression *> *rets) const override {
     operand->ExtractReturns(rets);
   }
 
@@ -27,8 +27,8 @@ struct Access : public Expression {
       const Node *correspondant,
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
-  IR::Val EmitIR(Context *);
-  IR::Val EmitLVal(Context *);
+  IR::Val EmitIR(Context *) override;
+  IR::Val EmitLVal(Context *) override;
 
   Access *Clone() const override;
   std::string member_name;

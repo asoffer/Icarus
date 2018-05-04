@@ -75,7 +75,8 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       {"free", frontend::op_l},       {"flags", frontend::kw_block},
       {"enum", frontend::kw_block},   {"generate", frontend::op_l},
       {"struct", frontend::kw_block}, {"return", frontend::op_lt},
-      {"scope", frontend::kw_block}};
+      {"scope", frontend::kw_block},  {"switch", frontend::kw_block},
+      {"when", frontend::op_b}};
   for (const auto & [ key, val ] : KeywordMap) {
     if (token == key) { return frontend::TaggedNode(span, key, val); }
   }

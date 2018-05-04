@@ -9,8 +9,8 @@
 #include "ast/array_literal.h"
 #include "ast/array_type.h"
 #include "ast/binop.h"
-#include "ast/chainop.h"
 #include "ast/call.h"
+#include "ast/chainop.h"
 #include "ast/comma_list.h"
 #include "ast/declaration.h"
 #include "ast/function_literal.h"
@@ -21,8 +21,10 @@
 #include "ast/scope_node.h"
 #include "ast/statements.h"
 #include "ast/struct_literal.h"
+#include "ast/switch.h"
 #include "ast/terminal.h"
 #include "ast/unop.h"
+#include "base/check.h"
 #include "base/debug.h"
 #include "base/guarded.h"
 #include "base/types.h"
@@ -703,7 +705,8 @@ static std::unique_ptr<AST::Node> BuildBinaryOperator(
       {"%=", Language::Operator::ModEq}, {"..", Language::Operator::Dots},
       {"+", Language::Operator::Add},    {"-", Language::Operator::Sub},
       {"*", Language::Operator::Mul},    {"/", Language::Operator::Div},
-      {"%", Language::Operator::Mod},    {"[", Language::Operator::Index}};
+      {"%", Language::Operator::Mod},    {"[", Language::Operator::Index},
+      {"when", Language::Operator::When}};
   {
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }
@@ -774,6 +777,8 @@ static std::unique_ptr<AST::Node> BuildScopeLiteral(
         scope_lit->exit_fn = std::move(decl);
       }
     }
+  } else {
+    NOT_YET(); 
   }
 
   if (!scope_lit->enter_fn) {
@@ -785,6 +790,32 @@ static std::unique_ptr<AST::Node> BuildScopeLiteral(
   }
 
   return scope_lit;
+}
+
+using base::check::Is;
+
+static std::unique_ptr<AST::Node> BuildSwitch(
+    std::unique_ptr<AST::Statements> stmts, error::Log *error_log) {
+  auto switch_expr = std::make_unique<AST::Switch>();
+  switch_expr->span = stmts->span;  // TODO it's really bigger than this because
+                                    // it involves the keyword too.
+
+  switch_expr->cases_.reserve(stmts->content_.size());
+  for (auto &stmt : stmts->content_) {
+    if (stmt->is<AST::Binop>()) {
+      auto binop = move_as<AST::Binop>(stmt);
+      if (binop->op == Language::Operator::When) {
+        switch_expr->cases_.emplace_back(std::move(binop->lhs),
+                                         std::move(binop->rhs));
+      } else {
+        NOT_YET("handle error");
+      }
+    } else {
+      NOT_YET("handle error");
+    }
+  }
+
+  return switch_expr;
 }
 
 static std::unique_ptr<AST::Node> BuildKWBlock(
@@ -799,6 +830,9 @@ static std::unique_ptr<AST::Node> BuildKWBlock(
 
   } else if (tk == "scope") {
     return BuildScopeLiteral(std::move(nodes));
+
+  } else if (tk == "switch") {
+    return BuildSwitch(move_as<AST::Statements>(nodes[1]), error_log);
   }
 
   UNREACHABLE();

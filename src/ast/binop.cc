@@ -66,6 +66,7 @@ std::string Binop::to_string(size_t n) const {
   case Language::Operator::MulEq: ss << " *= "; break;
   case Language::Operator::DivEq: ss << " /= "; break;
   case Language::Operator::ModEq: ss << " %= "; break;
+  case Language::Operator::When: ss << " when "; break;
   default: UNREACHABLE();
   }
   ss << "(" << rhs->to_string(n) << ")";
