@@ -25,7 +25,7 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
             {"arg", nullptr}});
 
     CURRENT_FUNC(init_func_) {
-      IR::Block::Current = init_func_->entry();
+      IR::BasicBlock::Current = init_func_->entry();
 
       auto loop_phi   = IR::Func::Current->AddBlock();
       auto loop_body  = IR::Func::Current->AddBlock();
@@ -36,21 +36,21 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
       auto end_ptr    = IR::PtrIncr(ptr, length_var);
       IR::UncondJump(loop_phi);
 
-      IR::Block::Current = loop_phi;
+      IR::BasicBlock::Current = loop_phi;
       auto phi           = IR::Phi(Ptr(data_type));
       auto phi_reg       = IR::Func::Current->Command(phi).reg();
       IR::CondJump(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
 
-      IR::Block::Current = loop_body;
+      IR::BasicBlock::Current = loop_body;
       data_type->EmitInit(phi_reg, ctx);
       auto incr = IR::PtrIncr(phi_reg, IR::Val::Int(1));
       IR::UncondJump(loop_phi);
 
-      IR::Block::Current = exit_block;
+      IR::BasicBlock::Current = exit_block;
       IR::ReturnJump();
 
-      IR::Func::Current->SetArgs(phi, {IR::Val::Block(init_func_->entry()), ptr,
-                                       IR::Val::Block(loop_body), incr});
+      IR::Func::Current->SetArgs(phi, {IR::Val::BasicBlock(init_func_->entry()), ptr,
+                                       IR::Val::BasicBlock(loop_body), incr});
     }
   }
 
@@ -89,7 +89,7 @@ void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
             {"arg", nullptr}});
 
     CURRENT_FUNC(init_func_) {
-      IR::Block::Current = init_func_->entry();
+      IR::BasicBlock::Current = init_func_->entry();
 
       // TODO init expressions? Do these need to be verfied too?
       for (size_t i = 0; i < fields_.size(); ++i) {

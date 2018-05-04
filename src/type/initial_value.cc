@@ -6,10 +6,10 @@
 
 namespace type {
 IR::Val Array::EmitInitialValue(Context* ctx) const {
-  auto current_block = IR::Block::Current;
-  IR::Block::Current = IR::Func::Current->entry();
+  auto current_block = IR::BasicBlock::Current;
+  IR::BasicBlock::Current = IR::Func::Current->entry();
   auto temp_allocation = IR::Alloca(this);
-  IR::Block::Current = current_block;
+  IR::BasicBlock::Current = current_block;
 
   // TODO must remember to destroy
   EmitInit(temp_allocation, ctx);
@@ -48,10 +48,10 @@ IR::Val Primitive::EmitInitialValue(Context* ctx) const {
 }
 
 IR::Val Struct::EmitInitialValue(Context* ctx) const {
-  auto current_block = IR::Block::Current;
-  IR::Block::Current = IR::Func::Current->entry();
+  auto current_block = IR::BasicBlock::Current;
+  IR::BasicBlock::Current = IR::Func::Current->entry();
   auto temp_allocation = IR::Alloca(this);
-  IR::Block::Current = current_block;
+  IR::BasicBlock::Current = current_block;
 
   // TODO must remember to destroy
   EmitInit(temp_allocation, ctx);

@@ -1,3 +1,5 @@
+// TODO some of these are given a name but shouldn't have one! Anything with a
+// hyphen.
 PRIMITIVE_MACRO(Bool,       Bool,       bool)
 PRIMITIVE_MACRO(Char,       Char,       char)
 PRIMITIVE_MACRO(Code,       Code,       code)
@@ -7,7 +9,8 @@ PRIMITIVE_MACRO(Type_,      Type,       type)
 PRIMITIVE_MACRO(Void,       Void,       void)
 PRIMITIVE_MACRO(NullPtr,    NullPtr,    null-pointer)
 PRIMITIVE_MACRO(EmptyArray, EmptyArray, empty-array)
-PRIMITIVE_MACRO(Err,        Err,        err)
+PRIMITIVE_MACRO(Err,        Err,        -err)
 PRIMITIVE_MACRO(String,     String,     string)
-PRIMITIVE_MACRO(Generic,    Generic,    generic)
+PRIMITIVE_MACRO(Generic,    Generic,    -generic)
+PRIMITIVE_MACRO(Block,      Block,      -block)
 PRIMITIVE_MACRO(Module,     Module,     module)

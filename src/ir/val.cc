@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "ast/block_literal.h"
 #include "ast/codeblock.h"
 #include "ast/function_literal.h"
 #include "ast/scope_literal.h"
@@ -11,13 +12,16 @@
 #include "type/pointer.h"
 #include "type/struct.h"
 
-extern type::Type *NullPtr;
+namespace type {
+extern Type *NullPtr;
+}  // namespace type
 
 namespace IR {
 Val Val::CodeBlock(AST::CodeBlock block) {
   return Val(type::Code, std::move(block));
 }
 
+Val Val::Block(AST::BlockLiteral *b) { return Val(type::Block, b); }
 Val Val::Struct() { return Val(type::Type_, new type::Struct); }
 
 Val Val::Addr(IR::Addr addr, const type::Type *t) { return Val(Ptr(t), addr); }

@@ -429,11 +429,11 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
   if (type == type::Err) { return; }
 
   CURRENT_FUNC(ir_func_) {
-    IR::Block::Current = ir_func_->entry();
+    IR::BasicBlock::Current = ir_func_->entry();
     // Leave space for allocas that will come later (added to the entry
     // block).
     auto start_block   = IR::Func::Current->AddBlock();
-    IR::Block::Current = start_block;
+    IR::BasicBlock::Current = start_block;
 
     // TODO arguments should be renumbered to not waste space on const values
     for (size_t i = 0; i < inputs.size(); ++i) {
@@ -476,7 +476,7 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
       IR::ReturnJump();
     }
 
-    IR::Block::Current = ir_func_->entry();
+    IR::BasicBlock::Current = ir_func_->entry();
     IR::UncondJump(start_block);
   }
 }

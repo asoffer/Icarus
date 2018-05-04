@@ -20,7 +20,7 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
             {"arg", nullptr}});
 
     CURRENT_FUNC(destroy_func_) {
-      IR::Block::Current = destroy_func_->entry();
+      IR::BasicBlock::Current = destroy_func_->entry();
 
       auto arg        = destroy_func_->Argument(0);
       auto loop_phi   = IR::Func::Current->AddBlock();
@@ -33,20 +33,20 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
                                         : IR::Load(IR::ArrayLength(arg)));
       IR::UncondJump(loop_phi);
 
-      IR::Block::Current = loop_phi;
+      IR::BasicBlock::Current = loop_phi;
       auto phi           = IR::Phi(Ptr(data_type));
       auto phi_reg       = IR::Func::Current->Command(phi).reg();
       IR::CondJump(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
 
-      IR::Block::Current = loop_body;
+      IR::BasicBlock::Current = loop_body;
       data_type->EmitDestroy(phi_reg, ctx);
       IR::UncondJump(loop_phi);
 
-      destroy_func_->SetArgs(phi, {IR::Val::Block(destroy_func_->entry()), ptr,
-                                  IR::Val::Block(loop_body),
+      destroy_func_->SetArgs(phi, {IR::Val::BasicBlock(destroy_func_->entry()), ptr,
+                                  IR::Val::BasicBlock(loop_body),
                                   IR::PtrIncr(phi_reg, IR::Val::Int(1))});
 
-      IR::Block::Current = exit_block;
+      IR::BasicBlock::Current = exit_block;
       if (!fixed_length) { IR::Free(IR::Load(IR::ArrayData(arg))); }
       IR::ReturnJump();
     }
@@ -69,7 +69,7 @@ void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
             {"arg", nullptr}});
 
     CURRENT_FUNC(destroy_func_) {
-      IR::Block::Current = destroy_func_->entry();
+      IR::BasicBlock::Current = destroy_func_->entry();
       for (size_t i = 0; i < fields_.size(); ++i) {
         fields_[i].type->EmitDestroy(IR::Field(destroy_func_->Argument(0), i),
                                      ctx);

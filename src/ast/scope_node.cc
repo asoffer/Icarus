@@ -115,7 +115,7 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
 
   auto enter_block = IR::Func::Current->AddBlock();
   IR::UncondJump(enter_block);
-  IR::Block::Current = enter_block;
+  IR::BasicBlock::Current = enter_block;
 
   auto call_enter_result = IR::Call(
       IR::Val::Func(enter_fn->as<FunctionLiteral>().ir_func_),
@@ -126,14 +126,14 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
 
   IR::CondJump(call_enter_result, body_start_block, land_block);
 
-  IR::Block::Current = body_start_block;
+  IR::BasicBlock::Current = body_start_block;
   stmts->EmitIR(ctx);
 
   auto call_exit_result =
       IR::Call(IR::Val::Func(exit_fn->as<FunctionLiteral>().ir_func_), {}, {});
   IR::CondJump(call_exit_result, enter_block, land_block);
 
-  IR::Block::Current = land_block;
+  IR::BasicBlock::Current = land_block;
   return IR::Val::None();
 }
 

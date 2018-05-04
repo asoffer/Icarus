@@ -402,20 +402,20 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
       auto more_block = IR::Func::Current->AddBlock();
 
       auto lhs_val       = lhs->EmitIR(ctx);
-      auto lhs_end_block = IR::Block::Current;
+      auto lhs_end_block = IR::BasicBlock::Current;
       IR::CondJump(lhs_val, land_block, more_block);
 
-      IR::Block::Current = more_block;
+      IR::BasicBlock::Current = more_block;
       auto rhs_val       = rhs->EmitIR(ctx);
-      auto rhs_end_block = IR::Block::Current;
+      auto rhs_end_block = IR::BasicBlock::Current;
       IR::UncondJump(land_block);
 
-      IR::Block::Current = land_block;
+      IR::BasicBlock::Current = land_block;
 
       auto phi = IR::Phi(type::Bool);
       IR::Func::Current->SetArgs(
-          phi, {IR::Val::Block(lhs_end_block), IR::Val::Bool(true),
-                IR::Val::Block(rhs_end_block), rhs_val});
+          phi, {IR::Val::BasicBlock(lhs_end_block), IR::Val::Bool(true),
+                IR::Val::BasicBlock(rhs_end_block), rhs_val});
       return IR::Func::Current->Command(phi).reg();
     } break;
     case Language::Operator::AndEq: {
@@ -429,20 +429,20 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
       auto more_block = IR::Func::Current->AddBlock();
 
       auto lhs_val       = lhs->EmitIR(ctx);
-      auto lhs_end_block = IR::Block::Current;
+      auto lhs_end_block = IR::BasicBlock::Current;
       IR::CondJump(lhs_val, more_block, land_block);
 
-      IR::Block::Current = more_block;
+      IR::BasicBlock::Current = more_block;
       auto rhs_val       = rhs->EmitIR(ctx);
-      auto rhs_end_block = IR::Block::Current;
+      auto rhs_end_block = IR::BasicBlock::Current;
       IR::UncondJump(land_block);
 
-      IR::Block::Current = land_block;
+      IR::BasicBlock::Current = land_block;
 
       auto phi = IR::Phi(type::Bool);
       IR::Func::Current->SetArgs(
-          phi, {IR::Val::Block(lhs_end_block), IR::Val::Bool(false),
-                IR::Val::Block(rhs_end_block), rhs_val});
+          phi, {IR::Val::BasicBlock(lhs_end_block), IR::Val::Bool(false),
+                IR::Val::BasicBlock(rhs_end_block), rhs_val});
       return IR::Func::Current->Command(phi).reg();
     } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \

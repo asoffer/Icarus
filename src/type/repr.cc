@@ -16,7 +16,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
               {"arg", nullptr}});
 
       CURRENT_FUNC(repr_func_) {
-        IR::Block::Current = repr_func_->entry();
+        IR::BasicBlock::Current = repr_func_->entry();
 
         IR::Print(IR::Val::Char('`'));
 
@@ -29,12 +29,12 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
           IR::CondJump(IR::Eq(repr_func_->Argument(0), IR::Val::Char(c)),
                        special_block, next_block);
 
-          IR::Block::Current = special_block;
+          IR::BasicBlock::Current = special_block;
           IR::Print(IR::Val::Char('\\'));
           IR::Print(IR::Val::Char(rep));
           IR::ReturnJump();
 
-          IR::Block::Current = next_block;
+          IR::BasicBlock::Current = next_block;
         }
 
         IR::Print(repr_func_->Argument(0));
@@ -56,6 +56,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
   case PrimType::EmptyArray:
   case PrimType::Generic:
   case PrimType::Module:
+  case PrimType::Block:
   case PrimType::Err: NOT_YET();
   }
 }
@@ -69,7 +70,7 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
             {"arg", nullptr}});
 
     CURRENT_FUNC(repr_func_) {
-      IR::Block::Current = repr_func_->entry();
+      IR::BasicBlock::Current = repr_func_->entry();
 
       auto exit_block = repr_func_->AddBlock();
 
@@ -78,7 +79,7 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       auto length_var = fixed_length
                             ? IR::Val::Int(static_cast<i32>(len))
                             : IR::Load(IR::ArrayLength(repr_func_->Argument(0)));
-      auto init_block = IR::Block::Current = IR::EarlyExitOn<true>(
+      auto init_block = IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           exit_block, IR::Eq(length_var, IR::Val::Int(0)));
       auto ptr           = IR::Index(repr_func_->Argument(0), IR::Val::Int(0));
 
@@ -88,7 +89,7 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       data_type->EmitRepr(PtrCallFix(ptr), ctx);
       IR::UncondJump(loop_phi);
 
-      IR::Block::Current = loop_phi;
+      IR::BasicBlock::Current = loop_phi;
       auto countdown     = IR::Phi(Int);
       auto countdown_reg = IR::Func::Current->Command(countdown).reg();
       auto phi           = IR::Phi(Ptr(data_type));
@@ -97,20 +98,20 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       auto next          = IR::Sub(countdown_reg, IR::Val::Int(1));
       IR::CondJump(IR::Eq(next, IR::Val::Int(0)), exit_block, loop_body);
 
-      IR::Block::Current = loop_body;
+      IR::BasicBlock::Current = loop_body;
       IR::Print(IR::Val::Char(','));
       IR::Print(IR::Val::Char(' '));
       data_type->EmitRepr(PtrCallFix(elem_ptr), ctx);
       IR::UncondJump(loop_phi);
 
       IR::Func::Current->SetArgs(
-          phi, {IR::Val::Block(init_block), ptr,
-                IR::Val::Block(IR::Block::Current), elem_ptr});
+          phi, {IR::Val::BasicBlock(init_block), ptr,
+                IR::Val::BasicBlock(IR::BasicBlock::Current), elem_ptr});
       IR::Func::Current->SetArgs(countdown,
-                                 {IR::Val::Block(init_block), length_var,
-                                  IR::Val::Block(IR::Block::Current), next});
+                                 {IR::Val::BasicBlock(init_block), length_var,
+                                  IR::Val::BasicBlock(IR::BasicBlock::Current), next});
 
-      IR::Block::Current = exit_block;
+      IR::BasicBlock::Current = exit_block;
       IR::Print(IR::Val::Char(']'));
       IR::ReturnJump();
     }
@@ -134,26 +135,26 @@ void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
     CURRENT_FUNC(repr_func_) {
-      IR::Block::Current = repr_func_->entry();
+      IR::BasicBlock::Current = repr_func_->entry();
       auto landing       = IR::Func::Current->AddBlock();
       auto type          = IR::Load(IR::VariantType(repr_func_->Argument(0)));
 
       for (const Type *v : variants_) {
-        auto old_block   = IR::Block::Current;
+        auto old_block   = IR::BasicBlock::Current;
         auto found_block = IR::Func::Current->AddBlock();
 
-        IR::Block::Current = found_block;
+        IR::BasicBlock::Current = found_block;
         v->EmitRepr(PtrCallFix(IR::VariantValue(v, repr_func_->Argument(0))),
                     ctx);
         IR::UncondJump(landing);
 
-        IR::Block::Current = old_block;
-        IR::Block::Current =
+        IR::BasicBlock::Current = old_block;
+        IR::BasicBlock::Current =
             IR::EarlyExitOn<true>(found_block, IR::Eq(type, IR::Val::Type(v)));
       }
 
       IR::UncondJump(landing);
-      IR::Block::Current = landing;
+      IR::BasicBlock::Current = landing;
       IR::ReturnJump();
     }
   }
@@ -176,7 +177,7 @@ void Struct::EmitRepr(IR::Val val, Context *ctx) const {
             {"arg", nullptr}});
 
     CURRENT_FUNC(repr_func_) {
-      IR::Block::Current = repr_func_->entry();
+      IR::BasicBlock::Current = repr_func_->entry();
 
       IR::Print(IR::Val::Char('{'));
       IR::Print(IR::Val::Char(' '));

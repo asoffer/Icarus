@@ -109,22 +109,22 @@ IR::Val AST::Switch::EmitIR(Context *ctx) {
     auto expr_block = IR::Func::Current->AddBlock();
     auto next_block = IR::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx));
 
-    IR::Block::Current = expr_block;
+    IR::BasicBlock::Current = expr_block;
     auto val           = expr->EmitIR(ctx);
-    phi_args.push_back(IR::Val::Block(IR::Block::Current));
+    phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
     phi_args.push_back(std::move(val));
     IR::UncondJump(land_block);
 
-    IR::Block::Current = next_block;
+    IR::BasicBlock::Current = next_block;
   }
 
   auto val = cases_.back().first->EmitIR(ctx);
   IR::UncondJump(land_block);
 
-  phi_args.push_back(IR::Val::Block(IR::Block::Current));
+  phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
   phi_args.push_back(std::move(val));
  
-  IR::Block::Current = land_block;
+  IR::BasicBlock::Current = land_block;
   auto phi           = IR::Phi(type);
   IR::Func::Current->SetArgs(phi, std::move(phi_args));
 

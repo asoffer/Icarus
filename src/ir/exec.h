@@ -3,9 +3,9 @@
 #include <cstddef>
 #include <stack>
 
-#include "val.h"
-#include "cmd.h"
-#include "block.h"
+#include "ir/basic_block.h"
+#include "ir/cmd.h"
+#include "ir/val.h"
 
 namespace IR {
 struct Func;
@@ -86,7 +86,7 @@ struct ExecContext {
     std::vector<Val> rets_ = {};
   };
 
-  Block &current_block();
+  BasicBlock &current_block();
 
   std::stack<Frame> call_stack;
 

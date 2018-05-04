@@ -25,7 +25,7 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
             {"from", nullptr}, {"to", nullptr}});
 
     CURRENT_FUNC(fn) {
-      IR::Block::Current = fn->entry();
+      IR::BasicBlock::Current = fn->entry();
       auto val = fn->Argument(0);
       auto var = fn->Argument(1);
       IR::Val len = from_array_type->fixed_length
@@ -47,17 +47,17 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
       IR::Val to_ptr = IR::Index(var, IR::Val::Int(0));
 
       auto exit_block = IR::Func::Current->AddBlock();
-      auto init_block = IR::Block::Current;
+      auto init_block = IR::BasicBlock::Current;
       auto loop_phi = IR::Func::Current->AddBlock();
       IR::UncondJump(loop_phi);
 
-      IR::Block::Current = loop_phi;
+      IR::BasicBlock::Current = loop_phi;
       auto from_phi = IR::Phi(Ptr(from_array_type->data_type));
       auto to_phi = IR::Phi(Ptr(data_type));
       auto from_phi_reg = IR::Func::Current->Command(from_phi).reg();
       auto to_phi_reg = IR::Func::Current->Command(to_phi).reg();
 
-      IR::Block::Current =
+      IR::BasicBlock::Current =
           IR::EarlyExitOn<true>(exit_block, IR::Eq(from_phi_reg, from_end_ptr));
       // Loop body
 
@@ -65,16 +65,16 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                    PtrCallFix(from_phi_reg), to_phi_reg, ctx);
 
       IR::Func::Current->SetArgs(
-          from_phi, {IR::Val::Block(init_block), from_ptr,
-                     IR::Val::Block(IR::Block::Current),
+          from_phi, {IR::Val::BasicBlock(init_block), from_ptr,
+                     IR::Val::BasicBlock(IR::BasicBlock::Current),
                      IR::PtrIncr(from_phi_reg, IR::Val::Int(1ul))});
       IR::Func::Current->SetArgs(to_phi,
-                                 {IR::Val::Block(init_block), to_ptr,
-                                  IR::Val::Block(IR::Block::Current),
+                                 {IR::Val::BasicBlock(init_block), to_ptr,
+                                  IR::Val::BasicBlock(IR::BasicBlock::Current),
                                   IR::PtrIncr(to_phi_reg, IR::Val::Int(1ul))});
       IR::UncondJump(loop_phi);
 
-      IR::Block::Current = exit_block;
+      IR::BasicBlock::Current = exit_block;
       IR::ReturnJump();
     }
   }
@@ -109,16 +109,16 @@ void Variant::EmitAssign(const Type *from_type, IR::Val from,
     auto landing = IR::Func::Current->AddBlock();
     for (const Type *v : from_type->as<Variant>().variants_) {
       auto next_block = IR::Func::Current->AddBlock();
-      IR::Block::Current = IR::EarlyExitOn<false>(
+      IR::BasicBlock::Current = IR::EarlyExitOn<false>(
           next_block, IR::Eq(actual_type, IR::Val::Type(v)));
       IR::Store(IR::Val::Type(v), IR::VariantType(to));
       v->EmitAssign(v, PtrCallFix(IR::VariantValue(v, from)),
                     IR::VariantValue(v, to), ctx);
       IR::UncondJump(landing);
-      IR::Block::Current = next_block;
+      IR::BasicBlock::Current = next_block;
     }
     IR::UncondJump(landing);
-    IR::Block::Current = landing;
+    IR::BasicBlock::Current = landing;
   } else {
     IR::Store(IR::Val::Type(from_type), IR::VariantType(to));
     // TODO Find the best match amongst the variants available.
@@ -139,7 +139,7 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
             {"from", nullptr}, {"to", nullptr}});
 
     CURRENT_FUNC(assign_func) {
-      IR::Block::Current = assign_func->entry();
+      IR::BasicBlock::Current = assign_func->entry();
       auto val = assign_func->Argument(0);
       auto var = assign_func->Argument(1);
 

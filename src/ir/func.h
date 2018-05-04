@@ -6,7 +6,7 @@
 #include <queue>
 #include <vector>
 
-#include "block.h"
+#include "ir/basic_block.h"
 
 #ifdef ICARUS_USE_LLVM
 namespace llvm {
@@ -45,9 +45,9 @@ struct Func {
 
   int ValidateCalls(std::queue<Func *> *validation_queue) const;
 
-  const Block &block(BlockIndex index) const { return blocks_.at(index.value); }
-  Block &block(BlockIndex index) {
-    return const_cast<Block &>(static_cast<const Func *>(this)->block(index));
+  const BasicBlock &block(BlockIndex index) const { return blocks_.at(index.value); }
+  BasicBlock &block(BlockIndex index) {
+    return const_cast<BasicBlock &>(static_cast<const Func *>(this)->block(index));
   }
 
   const Cmd &Command(CmdIndex cmd_index) const {
@@ -77,7 +77,7 @@ struct Func {
   bool has_default(size_t i) const { return args_[i].second != nullptr; }
   i32 num_regs_  = 0;
   i32 num_voids_ = 0;
-  std::vector<Block> blocks_;
+  std::vector<BasicBlock> blocks_;
 #ifdef ICARUS_USE_LLVM
   llvm::Function *llvm_fn_ = nullptr;
 #endif // ICARUS_USE_LLVM
@@ -97,7 +97,7 @@ struct Func {
 
   mutable int num_errors_ = -1; // -1 indicates not yet validated
 
-  std::unordered_map<const Block *, std::unordered_set<const Block *>>
+  std::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
   GetIncomingBlocks() const;
 };
 
@@ -113,12 +113,12 @@ template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, Val cond) {
 
 namespace internal {
 struct FuncResetter {
-  FuncResetter(Func *fn) : old_fn_(Func::Current), old_block_(Block::Current) {
+  FuncResetter(Func *fn) : old_fn_(Func::Current), old_block_(BasicBlock::Current) {
     Func::Current = fn;
   }
   ~FuncResetter() {
     Func::Current  = old_fn_;
-    Block::Current = old_block_;
+    BasicBlock::Current = old_block_;
   }
 
   Func *old_fn_;

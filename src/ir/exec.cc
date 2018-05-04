@@ -32,11 +32,11 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
     // Factor these out together.
-    IR::Block::Current = fn->entry();
+    IR::BasicBlock::Current = fn->entry();
     // Leave space for allocas that will come later (added to the entry
     // block).
 
-    auto start_block = IR::Block::Current = IR::Func::Current->AddBlock();
+    auto start_block = IR::BasicBlock::Current = IR::Func::Current->AddBlock();
 
     ASSERT(ctx != nullptr);
     ForEachExpr(expr, [ctx](size_t i, AST::Expression *e) {
@@ -44,7 +44,7 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
     });
     IR::ReturnJump();
 
-    IR::Block::Current = fn->entry();
+    IR::BasicBlock::Current = fn->entry();
     IR::UncondJump(start_block);
   }
   return fn;
@@ -63,7 +63,7 @@ static std::unique_ptr<IR::Func> AssignmentFunction(const type::Type *from,
   Module m;
   Context ctx(&m); 
   CURRENT_FUNC(assign_func.get()) {
-    IR::Block::Current = assign_func->entry();
+    IR::BasicBlock::Current = assign_func->entry();
     to->EmitAssign(from, assign_func->Argument(0), assign_func->Argument(1),
                    &ctx);
     IR::ReturnJump();
@@ -93,7 +93,7 @@ static std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
 
 ExecContext::ExecContext() : stack_(50u) {}
 
-Block &ExecContext::current_block() {
+BasicBlock &ExecContext::current_block() {
   return call_stack.top().fn_->block(call_stack.top().current_);
 }
 
@@ -421,8 +421,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         }
       }
       call_stack.top().fn_->dump();
-      UNREACHABLE("Previous block was ", Val::Block(call_stack.top().prev_),
-                  "\nCurrent block is ", Val::Block(call_stack.top().current_));
+      UNREACHABLE("Previous block was ", Val::BasicBlock(call_stack.top().prev_),
+                  "\nCurrent block is ", Val::BasicBlock(call_stack.top().current_));
     case Op::Alloca: return stack_.Push(&cmd.type->as<type::Pointer>());
     case Op::PtrIncr:
       switch (std::get<Addr>(resolved[0].value).kind) {
@@ -567,7 +567,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::CondJump:
       return resolved[std::get<bool>(resolved[0].value) ? 1 : 2];
     case Op::UncondJump: return resolved[0];
-    case Op::ReturnJump: return Val::Block(BlockIndex{-1});
+    case Op::ReturnJump: return Val::BasicBlock(BlockIndex{-1});
   }
   UNREACHABLE();
 }
@@ -579,7 +579,7 @@ void ReplEval(AST::Expression *expr) {
       nullptr, type::Func({}, {}),
       std::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
-    IR::Block::Current = fn->entry();
+    IR::BasicBlock::Current = fn->entry();
     // TODO use the right module
     Context ctx(nullptr);
     auto expr_val      = expr->EmitIR(&ctx);

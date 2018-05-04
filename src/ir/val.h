@@ -25,6 +25,7 @@ extern Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String, *Module;
 namespace AST {
 struct Expression;
 struct ScopeLiteral;
+struct BlockLiteral;
 struct GenericFunctionLiteral;
 struct FunctionLiteral;
 } // namespace AST
@@ -104,7 +105,7 @@ struct Val {
                AST::GenericFunctionLiteral *, AST::FunctionLiteral *,
                IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
                AST::Expression *, BlockIndex, std::string, const Module *,
-               std::vector<Val>>
+               AST::BlockLiteral *, std::vector<Val>>
       value{false};
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
@@ -123,7 +124,8 @@ struct Val {
   static Val Func(IR::Func *fn); // TODO deprecate?
   static Val FnLit(AST::FunctionLiteral *fn);
   static Val GenFnLit(AST::GenericFunctionLiteral *fn);
-  static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
+  static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }
+  static Val Block(AST::BlockLiteral *b);
   static Val Void() { return Val(type::Void, false); }
   static Val Mod(const Module *mod) { return Val(type::Module, mod); }
   static Val Null(const type::Type *t);

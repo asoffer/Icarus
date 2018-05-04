@@ -28,7 +28,7 @@ IR::Val ErrorFunc() {
     auto fn = new IR::Func(nullptr, type::Func({type::String}, {type::Code}),
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
-      IR::Block::Current = fn->entry();
+      IR::BasicBlock::Current = fn->entry();
       // TODO
       IR::SetReturn(IR::ReturnValue{0}, IR::Err(fn->Argument(0)));
       IR::ReturnJump();
@@ -43,7 +43,7 @@ IR::Val AsciiFunc() {
     auto fn = new IR::Func(nullptr, type::Func({type::Int}, {type::Char}),
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
-      IR::Block::Current = fn->entry();
+      IR::BasicBlock::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
       IR::ReturnJump();
     }
@@ -57,7 +57,7 @@ IR::Val OrdFunc() {
     auto fn = new IR::Func(nullptr, type::Func({type::Char}, {type::Int}),
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
-      IR::Block::Current = fn->entry();
+      IR::BasicBlock::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));
       IR::ReturnJump();
     }
@@ -79,18 +79,18 @@ static IR::Val EmitVariantMatch(const IR::Val &needle,
     std::vector<IR::Val> phi_args;
     phi_args.reserve(2 * haystack->as<type::Variant>().size() + 2);
     for (const type::Type *v : haystack->as<type::Variant>().variants_) {
-      phi_args.push_back(IR::Val::Block(IR::Block::Current));
+      phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
       phi_args.push_back(IR::Val::Bool(true));
 
-      IR::Block::Current = IR::EarlyExitOn<true>(
+      IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           landing, IR::Eq(IR::Val::Type(v), runtime_type));
     }
 
-    phi_args.push_back(IR::Val::Block(IR::Block::Current));
+    phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
     phi_args.push_back(IR::Val::Bool(false));
     IR::UncondJump(landing);
 
-    IR::Block::Current = landing;
+    IR::BasicBlock::Current = landing;
     auto phi = IR::Phi(type::Bool);
     IR::Func::Current->SetArgs(phi, std::move(phi_args));
 
@@ -110,7 +110,7 @@ static IR::BlockIndex CallLookupTest(
   auto next_binding = IR::Func::Current->AddBlock();
   for (size_t i = 0; i < args.pos_.size(); ++i) {
     if (!args.pos_[i].first->type->is<type::Variant>()) { continue; }
-    IR::Block::Current = IR::EarlyExitOn<false>(
+    IR::BasicBlock::Current = IR::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(args.pos_.at(i).second, call_arg_type.pos_[i]));
   }
@@ -119,7 +119,7 @@ static IR::BlockIndex CallLookupTest(
     auto iter = call_arg_type.find(name);
     if (iter == call_arg_type.named_.end()) { continue; }
     if (!expr_and_val.first->type->is<type::Variant>()) { continue; }
-    IR::Block::Current = IR::EarlyExitOn<false>(
+    IR::BasicBlock::Current = IR::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(args.named_.at(iter->first).second, iter->second));
   }
@@ -263,27 +263,27 @@ std::vector<IR::Val> EmitCallDispatch(
     size_t j          = 0;
     for (auto &&result :
          EmitOneCallDispatch(ret_type, expr_map, binding, ctx)) {
-      result_phi_args AT(j).push_back(IR::Val::Block(IR::Block::Current));
+      result_phi_args AT(j).push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
       result_phi_args AT(j).push_back(std::move(result));
       ++j;
     }
     ASSERT(j == num_rets);
 
     IR::UncondJump(landing_block);
-    IR::Block::Current = next_binding;
+    IR::BasicBlock::Current = next_binding;
   }
 
   const auto & [ call_arg_type, binding ] = *iter;
   size_t j                                = 0;
   for (auto &&result : EmitOneCallDispatch(ret_type, expr_map, binding, ctx)) {
-    result_phi_args AT(j).push_back(IR::Val::Block(IR::Block::Current));
+    result_phi_args AT(j).push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
     result_phi_args AT(j).push_back(std::move(result));
     ++j;
   }
   ASSERT(j == num_rets);
 
   IR::UncondJump(landing_block);
-  IR::Block::Current = landing_block;
+  IR::BasicBlock::Current = landing_block;
 
   switch (num_rets) {
     case 0: return {};

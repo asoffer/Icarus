@@ -35,7 +35,7 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
     auto *fn = ctx->mod_->AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, {Bool}),
                                   std::move(args));
     CURRENT_FUNC(fn) {
-      IR::Block::Current = fn->entry();
+      IR::BasicBlock::Current = fn->entry();
 
       auto lhs_len = lhs_type->fixed_length
                          ? IR::Val::Int(static_cast<i32>(lhs_type->len))
@@ -56,41 +56,41 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
 
       IR::CondJump(len_cmp, equal_len_block, false_block);
 
-      IR::Block::Current = true_block;
+      IR::BasicBlock::Current = true_block;
       IR::SetReturn(IR::ReturnValue{0}, IR::Val::Bool(true));
       IR::ReturnJump();
 
-      IR::Block::Current = false_block;
+      IR::BasicBlock::Current = false_block;
       IR::SetReturn(IR::ReturnValue{0}, IR::Val::Bool(false));
       IR::ReturnJump();
 
-      IR::Block::Current = equal_len_block;
+      IR::BasicBlock::Current = equal_len_block;
       auto lhs_start     = IR::Index(fn->Argument(0), IR::Val::Int(0));
       auto rhs_start     = IR::Index(fn->Argument(1), IR::Val::Int(0));
       auto lhs_end       = IR::PtrIncr(lhs_start, lhs_len);
       IR::UncondJump(phi_block);
 
-      IR::Block::Current = phi_block;
+      IR::BasicBlock::Current = phi_block;
       auto lhs_phi       = IR::Phi(Ptr(lhs_type->data_type));
       auto rhs_phi       = IR::Phi(Ptr(rhs_type->data_type));
       auto lhs_phi_reg   = IR::Func::Current->Command(lhs_phi).reg();
       auto rhs_phi_reg   = IR::Func::Current->Command(rhs_phi).reg();
       IR::CondJump(IR::Eq(lhs_phi_reg, lhs_end), true_block, body_block);
 
-      IR::Block::Current = body_block;
+      IR::BasicBlock::Current = body_block;
       // TODO what if data type is an array?
       IR::CondJump(IR::Eq(IR::Load(lhs_phi_reg), IR::Load(rhs_phi_reg)),
                    incr_block, false_block);
 
-      IR::Block::Current = incr_block;
+      IR::BasicBlock::Current = incr_block;
       auto lhs_incr      = IR::PtrIncr(lhs_phi_reg, IR::Val::Int(1));
       auto rhs_incr      = IR::PtrIncr(rhs_phi_reg, IR::Val::Int(1));
       IR::UncondJump(phi_block);
 
-      fn->SetArgs(lhs_phi, {IR::Val::Block(equal_len_block), lhs_start,
-                            IR::Val::Block(incr_block), lhs_incr});
-      fn->SetArgs(rhs_phi, {IR::Val::Block(equal_len_block), rhs_start,
-                            IR::Val::Block(incr_block), rhs_incr});
+      fn->SetArgs(lhs_phi, {IR::Val::BasicBlock(equal_len_block), lhs_start,
+                            IR::Val::BasicBlock(incr_block), lhs_incr});
+      fn->SetArgs(rhs_phi, {IR::Val::BasicBlock(equal_len_block), rhs_start,
+                            IR::Val::BasicBlock(incr_block), rhs_incr});
     }
   }
 
@@ -116,7 +116,7 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
     iter->second = fn;
 
     CURRENT_FUNC(fn) {
-      IR::Block::Current = fn->entry();
+      IR::BasicBlock::Current = fn->entry();
       auto from_arg      = fn->Argument(0);
       auto to_arg        = fn->Argument(1);
       auto phi_block     = IR::Func::Current->AddBlock();
@@ -142,26 +142,26 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
       auto from_end   = IR::PtrIncr(from_start, from_len);
       IR::UncondJump(phi_block);
 
-      IR::Block::Current = phi_block;
+      IR::BasicBlock::Current = phi_block;
       auto from_phi      = IR::Phi(Ptr(from_type->data_type));
       auto from_phi_reg  = IR::Func::Current->Command(from_phi).reg();
       auto to_phi        = IR::Phi(Ptr(to_type->data_type));
       auto to_phi_reg    = IR::Func::Current->Command(to_phi).reg();
       IR::CondJump(IR::Ne(from_phi_reg, from_end), body_block, exit_block);
 
-      IR::Block::Current = body_block;
+      IR::BasicBlock::Current = body_block;
       InitFn(from_type->data_type, to_type->data_type, PtrCallFix(from_phi_reg),
              to_phi_reg, ctx);
       auto from_incr = IR::PtrIncr(from_phi_reg, IR::Val::Int(1));
       auto to_incr   = IR::PtrIncr(to_phi_reg, IR::Val::Int(1));
       IR::UncondJump(phi_block);
 
-      fn->SetArgs(from_phi, {IR::Val::Block(fn->entry()), from_start,
-                             IR::Val::Block(body_block), from_incr});
-      fn->SetArgs(to_phi, {IR::Val::Block(fn->entry()), to_start,
-                           IR::Val::Block(body_block), to_incr});
+      fn->SetArgs(from_phi, {IR::Val::BasicBlock(fn->entry()), from_start,
+                             IR::Val::BasicBlock(body_block), from_incr});
+      fn->SetArgs(to_phi, {IR::Val::BasicBlock(fn->entry()), to_start,
+                           IR::Val::BasicBlock(body_block), to_incr});
 
-      IR::Block::Current = exit_block;
+      IR::BasicBlock::Current = exit_block;
       IR::ReturnJump();
     }
   }
@@ -181,7 +181,7 @@ static IR::Val StructInitializationWith(const Struct *struct_type,
         Func({Ptr(struct_type), Ptr(struct_type)}, {}), std::move(args));
 
     CURRENT_FUNC(fn) {
-      IR::Block::Current = fn->entry();
+      IR::BasicBlock::Current = fn->entry();
       for (size_t i = 0; i < struct_type->fields_.size(); ++i) {
         InitFn(struct_type->fields_[i].type, struct_type->fields_[i].type,
                PtrCallFix(IR::Field(fn->Argument(0), i)),

@@ -9,7 +9,7 @@
 namespace IR {
 using base::check::Is;
 
-BlockIndex Block::Current;
+BlockIndex BasicBlock::Current;
 
 template <bool IsPhi = false>
 static void RecordReferences(Func *fn, const CmdIndex &ci,
@@ -35,8 +35,8 @@ static void RecordReferences(Func *fn, const CmdIndex &ci,
 Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
     : args(std::move(arg_vec)), op_code_(op), type(t) {
   CmdIndex cmd_index{
-      Block::Current,
-      static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
+      BasicBlock::Current,
+      static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
   result = Register(t != nullptr ? Func::Current->num_regs_++
                                  : -(++Func::Current->num_voids_));
   Func::Current->reg_map_[result] = cmd_index;
@@ -50,29 +50,29 @@ Val Field(Val v, size_t n) {
   Cmd cmd(result_type, Op::Field,
           std::vector{std::move(v), Val::Int(static_cast<i32>(n))});
   auto reg = cmd.reg();
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
   return reg;
 }
 
 #define MAKE_VOID(op)                                                          \
   ASSERT(Func::Current != nullptr);                                           \
   Cmd cmd(nullptr, op, {std::move(v)});                                        \
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
 
 #define MAKE_VOID2(op)                                                         \
   ASSERT(Func::Current != nullptr);                                           \
   Cmd cmd(nullptr, op, {std::move(v1), std::move(v2)});                        \
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
 
 #define MAKE_AND_RETURN(type, op)                                              \
   ASSERT(Func::Current != nullptr);                                           \
   Cmd cmd(type, op, {std::move(v)});                                           \
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));        \
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));        \
   return cmd.reg()
 
 #define MAKE_AND_RETURN2(type, op)                                             \
   Cmd cmd(type, op, {std::move(v1), std::move(v2)});                           \
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));        \
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));        \
   return cmd.reg()
 
 Val Malloc(const type::Type *t, Val v) {
@@ -120,7 +120,7 @@ void Free(Val v) {
 Val CreateStruct() {
   ASSERT(Func::Current != nullptr);
   Cmd cmd(type::Type_, Op::CreateStruct, {});
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();
 }
 
@@ -134,7 +134,7 @@ void InsertField(Val struct_type, std::string field_name, Val type,
   Cmd cmd(nullptr, Op::InsertField,
           {std::move(struct_type), Val::StrLit(std::move(field_name)),
            std::move(type), std::move(init_val)});
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
 }
 
 Val Alloca(const type::Type *t) {
@@ -300,7 +300,7 @@ Val Arrow(Val v1, Val v2) {
 
 Val Variant(std::vector<Val> args) {
   Cmd cmd(type::Type_, Op::Variant, std::move(args));
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();
 }
 
@@ -415,11 +415,11 @@ Val Ne(Val v1, Val v2) {
 
 CmdIndex Phi(const type::Type *t) {
   CmdIndex cmd_index{
-      Block::Current,
-      static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
+      BasicBlock::Current,
+      static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
 
   Cmd cmd(t, Op::Phi, {});
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
 
   return cmd_index;
 }
@@ -444,7 +444,7 @@ Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
           ? fn_type.output[0]
           : type::Void;
   Cmd cmd(output_type, Op::Call, std::move(vals));
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();
 }
 
@@ -513,22 +513,22 @@ void Cmd::dump(size_t indent) const {
 void CondJump(Val cond, BlockIndex true_block, BlockIndex false_block) {
   ASSERT(Func::Current != nullptr);
   Cmd cmd(nullptr, Op::CondJump,
-          {cond, Val::Block(true_block), Val::Block(false_block)});
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+          {cond, Val::BasicBlock(true_block), Val::BasicBlock(false_block)});
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
 }
 void UncondJump(BlockIndex block) {
   ASSERT(Func::Current != nullptr);
-  Cmd cmd(nullptr, Op::UncondJump, {Val::Block(block)});
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  Cmd cmd(nullptr, Op::UncondJump, {Val::BasicBlock(block)});
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
 }
 void ReturnJump() {
   ASSERT(Func::Current != nullptr);
   Cmd cmd(nullptr, Op::ReturnJump, {});
-  Func::Current->return_blocks_.insert(Block::Current);
-  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  Func::Current->return_blocks_.insert(BasicBlock::Current);
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
 }
 
-void Block::dump(size_t indent) const {
+void BasicBlock::dump(size_t indent) const {
   for (const auto &cmd : cmds_) { cmd.dump(indent); }
 }
 

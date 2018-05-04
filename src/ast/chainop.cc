@@ -297,17 +297,17 @@ IR::Val ChainOp::EmitIR(Context *ctx) {
       auto next_block = IR::Func::Current->AddBlock();
       IR::CondJump(val, is_or ? land_block : next_block,
                    is_or ? next_block : land_block);
-      phi_args.push_back(IR::Val::Block(IR::Block::Current));
+      phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
       phi_args.push_back(IR::Val::Bool(is_or));
 
-      IR::Block::Current = next_block;
+      IR::BasicBlock::Current = next_block;
     }
 
-    phi_args.push_back(IR::Val::Block(IR::Block::Current));
+    phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
     phi_args.push_back(exprs.back()->EmitIR(ctx));
     IR::UncondJump(land_block);
 
-    IR::Block::Current = land_block;
+    IR::BasicBlock::Current = land_block;
     auto phi           = IR::Phi(type::Bool);
     IR::Func::Current->SetArgs(phi, std::move(phi_args));
     return IR::Func::Current->Command(phi).reg();
@@ -327,11 +327,11 @@ IR::Val ChainOp::EmitIR(Context *ctx) {
         auto rhs_ir = exprs[i + 1]->EmitIR(ctx);
         IR::Val cmp = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
 
-        phi_args.push_back(IR::Val::Block(IR::Block::Current));
+        phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
         phi_args.push_back(IR::Val::Bool(false));
         auto next_block = IR::Func::Current->AddBlock();
         IR::CondJump(cmp, next_block, land_block);
-        IR::Block::Current = next_block;
+        IR::BasicBlock::Current = next_block;
         lhs_ir             = rhs_ir;
       }
 
@@ -339,11 +339,11 @@ IR::Val ChainOp::EmitIR(Context *ctx) {
       auto rhs_ir = exprs.back()->EmitIR(ctx);
       auto last_cmp =
           EmitChainOpPair(this, exprs.size() - 2, lhs_ir, rhs_ir, ctx);
-      phi_args.push_back(IR::Val::Block(IR::Block::Current));
+      phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
       phi_args.push_back(last_cmp);
       IR::UncondJump(land_block);
 
-      IR::Block::Current = land_block;
+      IR::BasicBlock::Current = land_block;
       auto phi           = IR::Phi(type::Bool);
       IR::Func::Current->SetArgs(phi, std::move(phi_args));
       return IR::Func::Current->Command(phi).reg();

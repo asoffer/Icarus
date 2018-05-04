@@ -89,23 +89,23 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
       blocks.push_back(IR::Func::Current->AddBlock());
     }
 
-    auto current = IR::Block::Current;
+    auto current = IR::BasicBlock::Current;
     for (size_t i = 0; i < intersection.size(); ++i) {
-      IR::Block::Current = blocks[i];
+      IR::BasicBlock::Current = blocks[i];
       this->EmitAssign(intersection[i],
                        PtrCallFix(IR::VariantValue(intersection[i], val)), arg,
                        ctx);
       IR::UncondJump(landing);
     }
 
-    IR::Block::Current = current;
+    IR::BasicBlock::Current = current;
     for (size_t i = 0; i < intersection.size() - 1; ++i) {
       IR::Print(IR::Val::StrLit("dbg" + std::to_string(i)));
-      IR::Block::Current = IR::EarlyExitOn<true>(
+      IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           blocks[i], IR::Eq(runtime_type, IR::Val::Type(intersection[i])));
     }
     IR::UncondJump(blocks.back());
-    IR::Block::Current = landing;
+    IR::BasicBlock::Current = landing;
   }
   return arg;
 }

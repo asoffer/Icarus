@@ -9,6 +9,7 @@
 #include "ast/array_literal.h"
 #include "ast/array_type.h"
 #include "ast/binop.h"
+#include "ast/block_literal.h"
 #include "ast/call.h"
 #include "ast/chainop.h"
 #include "ast/comma_list.h"
@@ -24,7 +25,6 @@
 #include "ast/switch.h"
 #include "ast/terminal.h"
 #include "ast/unop.h"
-#include "base/check.h"
 #include "base/debug.h"
 #include "base/guarded.h"
 #include "base/types.h"
@@ -792,7 +792,28 @@ static std::unique_ptr<AST::Node> BuildScopeLiteral(
   return scope_lit;
 }
 
-using base::check::Is;
+static std::unique_ptr<AST::Node> BuildBlock(
+    std::unique_ptr<AST::Statements> stmts, error::Log *error_log) {
+  auto block_expr = std::make_unique<AST::BlockLiteral>();
+  block_expr->span = stmts->span;  // TODO it's really bigger than this because
+                                   // it involves the keyword too.
+
+  for (auto &stmt : stmts->content_) {
+    if (stmt->is<AST::Declaration>()) {
+      auto decl = move_as<AST::Declaration>(stmt);
+      if (decl->identifier->token == "before") {
+        block_expr->before_ = std::move(decl);
+      } else if (decl->identifier->token == "after") {
+        block_expr->after_ = std::move(decl);
+      }
+    } else {
+      NOT_YET();
+    }
+  }
+
+  return block_expr;
+}
+
 
 static std::unique_ptr<AST::Node> BuildSwitch(
     std::unique_ptr<AST::Statements> stmts, error::Log *error_log) {
@@ -833,6 +854,9 @@ static std::unique_ptr<AST::Node> BuildKWBlock(
 
   } else if (tk == "switch") {
     return BuildSwitch(move_as<AST::Statements>(nodes[1]), error_log);
+
+  } else if (tk == "block") {
+    return BuildBlock(move_as<AST::Statements>(nodes[1]), error_log);
   }
 
   UNREACHABLE();

@@ -16,6 +16,7 @@ size_t Architecture::alignment(const type::Type *t) const {
       case type::PrimType::Generic: NOT_YET();
       case type::PrimType::Module: NOT_YET();
       case type::PrimType::Err: NOT_YET();
+      case type::PrimType::Block: NOT_YET();
       case type::PrimType::EmptyArray:
       case type::PrimType::Void: return 0;
       case type::PrimType::Bool:
@@ -40,14 +41,14 @@ size_t Architecture::alignment(const type::Type *t) const {
     }
     return alignment_val;
   } else if (t->is<type::Function>()) {
-    return  ptr_align_;
+    return ptr_align_;
   } else if (t->is<type::Enum>()) {
-    return 8; // TODO
+    return 8;  // TODO
   } else if (t->is<type::Scope>()) {
     return 1;
   } else if (t->is<type::Variant>()) {
     size_t alignment_val = this->alignment(type::Type_);
-    for (const type::Type* type : t->as<type::Variant>().variants_) {
+    for (const type::Type *type : t->as<type::Variant>().variants_) {
       alignment_val = std::max(alignment_val, this->alignment(type));
     }
     return alignment_val;
@@ -63,6 +64,7 @@ size_t Architecture::bytes(const type::Type *t) const {
       case type::PrimType::Generic: NOT_YET();
       case type::PrimType::Module: NOT_YET();
       case type::PrimType::Err: NOT_YET();
+      case type::PrimType::Block: NOT_YET();
       case type::PrimType::EmptyArray:
       case type::PrimType::Void: return 0;
       case type::PrimType::Bool:
