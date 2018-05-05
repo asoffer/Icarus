@@ -1,4 +1,4 @@
-#include "func.h"
+#include "ir/func.h"
 
 #include "ast/function_literal.h"
 #include "type/function.h"

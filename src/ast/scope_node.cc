@@ -1,6 +1,7 @@
 #include "ast/scope_node.h"
 
 #include <sstream>
+#include "ast/block_literal.h"
 #include "ast/function_literal.h"
 #include "ast/scope_literal.h"
 #include "ast/stages.h"
@@ -42,7 +43,6 @@ void ScopeNode::ClearIdDecls() {
 
 void ScopeNode::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-
   lvalue = Assign::RVal;
 
   scope_expr->VerifyType(ctx);
@@ -104,36 +104,63 @@ ScopeNode *ScopeNode::Clone() const {
 IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   IR::Val scope_expr_val = Evaluate(scope_expr.get(), ctx)[0];
   ASSERT(scope_expr_val.type, Is<type::Scope>());
+  auto *scope_lit           = std::get<ScopeLiteral *>(scope_expr_val.value);
 
-  auto enter_fn =
-      std::get<ScopeLiteral *>(scope_expr_val.value)->enter_fn->init_val.get();
-  enter_fn->EmitIR(ctx);
+  struct BlockData {
+    IR::BlockIndex before, body, after;
+  };
+  std::unordered_map<AST::BlockLiteral*, BlockData> block_map;
 
-  auto exit_fn =
-      std::get<ScopeLiteral *>(scope_expr_val.value)->exit_fn->init_val.get();
-  exit_fn->EmitIR(ctx);
+  for (const auto &decl : scope_lit->decls_) {
+    if (decl.type != type::Block) { NOT_YET("local variables"); }
+    auto block_val  = Evaluate(decl.init_val.get(), ctx)[0];
+    auto block_lit  = std::get<AST::BlockLiteral *>(block_val.value);
+    auto block_data = BlockData{
+        IR::Func::Current->AddBlock(),
+        IR::Func::Current->AddBlock(),
+        IR::Func::Current->AddBlock(),
+    };
+    block_map[block_lit] = block_data;
 
-  auto enter_block = IR::Func::Current->AddBlock();
-  IR::UncondJump(enter_block);
-  IR::BasicBlock::Current = enter_block;
+    if (decl.identifier->token == "self") {
+      // TODO check constness as part of type-checking
+      IR::UncondJump(block_data.before);
+    }
+  }
 
-  auto call_enter_result = IR::Call(
-      IR::Val::Func(enter_fn->as<FunctionLiteral>().ir_func_),
-      expr ? std::vector<IR::Val>{expr->EmitIR(ctx)} : std::vector<IR::Val>{},
-      {});
-  auto land_block       = IR::Func::Current->AddBlock();
-  auto body_start_block = IR::Func::Current->AddBlock();
+  for (auto& [block_lit, block_data] : block_map) {
+    IR::BasicBlock::Current = block_data.before;
+    // TODO the context for the before_ and after_ functions is wrong. Bound
+    // constants should not be for those in this scope but in the block literal
+    // scope.
+    auto call_enter_result = IR::Call(
+        block_lit->before_->EmitIR(ctx),
+        expr ? std::vector<IR::Val>{expr->EmitIR(ctx)} : std::vector<IR::Val>{},
+        {});
+    for (auto & [ jump_block_lit, jump_block_data ] : block_map) {
+      IR::BasicBlock::Current = IR::EarlyExitOn<true>(
+          jump_block_data.body,
+          IR::Eq(call_enter_result, IR::Val::Block(jump_block_lit)));
+    }
+    // TODO what to do with this last block? probably won't compile if llvm is
+    // enabled.
 
-  IR::CondJump(call_enter_result, body_start_block, land_block);
+    IR::BasicBlock::Current = block_data.body;
+    stmts->EmitIR(ctx);
+    IR::UncondJump(block_data.after);
 
-  IR::BasicBlock::Current = body_start_block;
-  stmts->EmitIR(ctx);
+    IR::BasicBlock::Current = block_data.after;
+    auto call_exit_result = IR::Call(block_lit->after_->EmitIR(ctx), {}, {});
+    for (auto & [ jump_block_lit, jump_block_data ] : block_map) {
+      IR::BasicBlock::Current = IR::EarlyExitOn<true>(
+          jump_block_data.before,
+          IR::Eq(call_exit_result, IR::Val::Block(jump_block_lit)));
+    }
+    // TODO what to do with this last block? probably won't compile if llvm is
+    // enabled.
 
-  auto call_exit_result =
-      IR::Call(IR::Val::Func(exit_fn->as<FunctionLiteral>().ir_func_), {}, {});
-  IR::CondJump(call_exit_result, enter_block, land_block);
+  }
 
-  IR::BasicBlock::Current = land_block;
   return IR::Val::None();
 }
 

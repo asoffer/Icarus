@@ -1,11 +1,10 @@
 #ifndef ICARUS_AST_SCOPE_LITERAL_H
 #define ICARUS_AST_SCOPE_LITERAL_H
 
+#include "ast/declaration.h"
 #include "ast/expression.h"
 
 namespace AST {
-struct Declaration;
-
 struct ScopeLiteral : public Expression {
   ~ScopeLiteral() override {}
   std::string to_string(size_t n) const override;
@@ -24,8 +23,8 @@ struct ScopeLiteral : public Expression {
   IR::Val EmitIR(Context *) override;
   IR::Val EmitLVal(Context *) override;
 
-  std::unique_ptr<Declaration> enter_fn, exit_fn;
-  std::unique_ptr<Scope> body_scope;
+  std::vector<Declaration> decls_;
+  std::unique_ptr<Scope> body_scope_;
 };
 }  // namespace AST
 

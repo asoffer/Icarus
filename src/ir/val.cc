@@ -117,6 +117,7 @@ std::string Val::to_string() const {
                    ")";
           },
           [](const AST::CodeBlock &c) -> std::string { return c.to_string(0); },
+          [](AST::BlockLiteral *b) -> std::string { return b->to_string(0); },
           [](AST::Expression *) -> std::string { return "<expr>"; },
           [](BlockIndex b) -> std::string {
             return "block #" + std::to_string(b);

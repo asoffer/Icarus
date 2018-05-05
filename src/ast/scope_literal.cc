@@ -11,107 +11,68 @@
 namespace AST {
 std::string ScopeLiteral::to_string(size_t n) const {
   std::stringstream ss;
-  ss << "scope {\n"
-     << std::string(2 * (n + 1), ' ') << enter_fn->to_string(n + 1) << "\n"
-     << std::string(2 * (n + 1), ' ') << exit_fn->to_string(n + 1) << "\n"
-     << std::string(2 * n, ' ') << "}";
+  ss << "scope {\n";
+  for (const auto &decl : decls_) {
+    ss << std::string(n * 2, ' ') << decl.to_string(n) << "\n";
+  }
+  ss << "}";
   return ss.str();
 }
 
 void ScopeLiteral::assign_scope(Scope *scope) {
   STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_     = scope;
-  body_scope = scope->add_child<DeclScope>();
-  if (enter_fn) { enter_fn->assign_scope(body_scope.get()); }
-  if (exit_fn) { exit_fn->assign_scope(body_scope.get()); }
+  body_scope_ = scope->add_child<DeclScope>();
+  for (auto &decl : decls_) { decl.assign_scope(body_scope_.get()); }
 }
 
 void ScopeLiteral::ClearIdDecls() {
   stage_range_ = StageRange{};
-  if (enter_fn) { enter_fn->ClearIdDecls(); }
-  if (exit_fn) { exit_fn->ClearIdDecls(); }
+  for (auto &decl : decls_) { decl.ClearIdDecls(); }
 }
 
 void ScopeLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  lvalue                            = Assign::Const;
-  bool cannot_proceed_due_to_errors = false;
-  if (!enter_fn) {
-    cannot_proceed_due_to_errors = true;
-    ErrorLog::LogGeneric(
-        this->span, "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-  }
-
-  if (!exit_fn) {
-    cannot_proceed_due_to_errors = true;
-    ErrorLog::LogGeneric(
-        this->span, "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-  }
-
-  if (cannot_proceed_due_to_errors) {
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  VERIFY_AND_RETURN_ON_ERROR(enter_fn);
-  VERIFY_AND_RETURN_ON_ERROR(exit_fn);
-
-  if (!enter_fn->type->is<type::Function>()) {
-    cannot_proceed_due_to_errors = true;
-    ErrorLog::LogGeneric(
-        this->span, "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-  }
-
-  if (!exit_fn->type->is<type::Function>()) {
-    cannot_proceed_due_to_errors = true;
-    ErrorLog::LogGeneric(
-        this->span, "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-  }
-
-  if (cannot_proceed_due_to_errors) {
-    limit_to(StageRange::Nothing());
-  } else {
-    type = type::Scp(enter_fn->type->as<type::Function>().input);
-  }
+  lvalue = Assign::Const;
+  type = type::Scp({});
+  // TODO
 }
 
 void ScopeLiteral::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-  // TODO
+  for (auto &decl : decls_) {
+    decl.VerifyType(ctx);
+    decl.Validate(ctx);
+  }
 }
 
 void ScopeLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
-  enter_fn->SaveReferences(scope, args);
-  exit_fn->SaveReferences(scope, args);
+  for (auto &decl : decls_) { decl.SaveReferences(scope, args); }
 }
 
 void ScopeLiteral::contextualize(
     const Node *correspondant,
     const std::unordered_map<const Expression *, IR::Val> &replacements) {
-  enter_fn->contextualize(correspondant->as<ScopeLiteral>().enter_fn.get(),
-                          replacements);
-  exit_fn->contextualize(correspondant->as<ScopeLiteral>().exit_fn.get(),
-                         replacements);
+  for (size_t i = 0; i < decls_.size(); ++i) {
+    decls_[i].contextualize(&correspondant->as<ScopeLiteral>().decls_[i],
+                            replacements);
+  }
 }
 
 void ScopeLiteral::ExtractReturns(std::vector<const Expression *> *rets) const {
-  if (enter_fn) { enter_fn->ExtractReturns(rets); }
-  if (exit_fn) { exit_fn->ExtractReturns(rets); }
+  for (auto &decl : decls_) { decl.ExtractReturns(rets); }
 }
 
 ScopeLiteral *ScopeLiteral::Clone() const {
-  auto *result     = new ScopeLiteral;
-  result->span     = span;
-  result->enter_fn = base::wrap_unique(enter_fn->Clone());
-  result->exit_fn  = base::wrap_unique(exit_fn->Clone());
+  auto *result = new ScopeLiteral;
+  result->span = span;
+  result->decls_.reserve(decls_.size());
+  for (const auto &decl : decls_) {
+    result->decls_.emplace_back(decl.Clone());
+  }
   return result;
 }
 
-IR::Val AST::ScopeLiteral::EmitIR(Context *ctx) {
-  enter_fn->init_val->EmitIR(ctx);
-  exit_fn->init_val->EmitIR(ctx);
-  return IR::Val::Scope(this);
-}
-
+IR::Val AST::ScopeLiteral::EmitIR(Context *ctx) { return IR::Val::Scope(this); }
 IR::Val ScopeLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

@@ -762,33 +762,17 @@ static std::unique_ptr<AST::Node> BuildStructLiteral(
 }
 
 static std::unique_ptr<AST::Node> BuildScopeLiteral(
-    std::vector<std::unique_ptr<AST::Node>> nodes) {
+    std::unique_ptr<AST::Statements> stmts, error::Log *error_log) {
   auto scope_lit  = std::make_unique<AST::ScopeLiteral>();
-  scope_lit->span = TextSpan(nodes[0]->span, nodes[1]->span);
-
-  // TODO take arguments as well
-  if (nodes.size() > 1) {
-    for (auto &stmt : nodes[1]->as<AST::Statements>().content_) {
-      if (!stmt->is<AST::Declaration>()) { continue; }
-      auto decl = move_as<AST::Declaration>(stmt);
-      if (decl->identifier->token == "enter") {
-        scope_lit->enter_fn = std::move(decl);
-      } else if (decl->identifier->token == "exit") {
-        scope_lit->exit_fn = std::move(decl);
-      }
+  scope_lit->span = stmts->span;  // TODO it's really bigger than this because
+                                  // it involves the keyword too.
+  for (auto& stmt : stmts->content_) {
+    if (stmt->is<AST::Declaration>()) {
+      scope_lit->decls_.push_back(std::move(stmt->as<AST::Declaration>()));
+    } else {
+      NOT_YET(stmt);
     }
-  } else {
-    NOT_YET(); 
   }
-
-  if (!scope_lit->enter_fn) {
-    // TODO log an error
-  }
-
-  if (!scope_lit->exit_fn) {
-    // TODO log an error
-  }
-
   return scope_lit;
 }
 
@@ -850,7 +834,7 @@ static std::unique_ptr<AST::Node> BuildKWBlock(
     return BuildStructLiteral(std::move(nodes), error_log);
 
   } else if (tk == "scope") {
-    return BuildScopeLiteral(std::move(nodes));
+    return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), error_log);
 
   } else if (tk == "switch") {
     return BuildSwitch(move_as<AST::Statements>(nodes[1]), error_log);

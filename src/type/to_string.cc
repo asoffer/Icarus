@@ -212,19 +212,21 @@ char *Variant::WriteTo(char *buf) const {
 }
 
 size_t Scope::string_size() const {
-  size_t result = 5 + 2 * types_.size();
+  size_t result = 5 + 2 * std::max(size_t{1}, types_.size());
   for (const Type *t : types_) { result += t->string_size(); }
   return result;
 }
 
 char *Scope::WriteTo(char *buf) const {
   buf = std::strcpy(buf, "scope(") + 6;
-  auto iter = types_.begin();
-  buf = (*iter)->WriteTo(buf);
-  ++iter;
-  for (; iter != types_.end(); ++iter) {
-    buf = std::strcpy(buf, ", ") + 2;
-    buf = (*iter)->WriteTo(buf);
+  if (!types_.empty()) {
+    auto iter = types_.begin();
+    buf       = (*iter)->WriteTo(buf);
+    ++iter;
+    for (; iter != types_.end(); ++iter) {
+      buf = std::strcpy(buf, ", ") + 2;
+      buf = (*iter)->WriteTo(buf);
+    }
   }
   buf = std::strcpy(buf, ")") + 1;
   return buf;

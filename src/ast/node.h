@@ -53,6 +53,8 @@ struct Node : public base::Cast<Node> {
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}
 
+  std::string to_string() const { return to_string(0); }
+
   inline friend std::ostream &operator<<(std::ostream &os, const Node &node) {
     return os << node.to_string(0);
   }

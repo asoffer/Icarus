@@ -12,5 +12,6 @@ PRIMITIVE_MACRO(EmptyArray, EmptyArray, empty-array)
 PRIMITIVE_MACRO(Err,        Err,        -err)
 PRIMITIVE_MACRO(String,     String,     string)
 PRIMITIVE_MACRO(Generic,    Generic,    -generic)
-PRIMITIVE_MACRO(Block,      Block,      -block)
+// TODO this is a bad name and the ambiguity with the keyword needs to be fixed
+PRIMITIVE_MACRO(Block,      Block,      bloc)
 PRIMITIVE_MACRO(Module,     Module,     module)

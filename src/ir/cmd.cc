@@ -384,7 +384,11 @@ Val Eq(Val v1, Val v2) {
   CONSTANT_PROPOGATION(char, std::equal_to<char>{}, Bool);
   CONSTANT_PROPOGATION(i32, std::equal_to<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::equal_to<double>{}, Bool);
-  CONSTANT_PROPOGATION(const type::Type *,std::equal_to<const type::Type*>{}, Bool);
+  CONSTANT_PROPOGATION(const type::Type *, std::equal_to<const type::Type *>{},
+                       Bool);
+  CONSTANT_PROPOGATION(AST::BlockLiteral *,
+                       std::equal_to<AST::BlockLiteral *>{}, Bool);
+
   CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
   CONSTANT_PROPOGATION(
       EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value == rhs.value; },

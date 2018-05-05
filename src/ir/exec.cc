@@ -221,7 +221,21 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return IR::Val::CodeBlock(
           AST::CodeBlock(std::get<std::string>(resolved[0].value)));
     case Op::Call: {
-      auto fn = std::get<IR::Func *>(resolved.back().value);
+      // TODO this feels like a gross hack
+      IR::Func *fn = std::visit(
+          [](auto f) -> IR::Func * {
+            if constexpr (std::is_same_v<std::decay_t<decltype(f)>,
+                                         IR::Func *>) {
+              return f;
+            }
+            if constexpr (std::is_same_v<std::decay_t<decltype(f)>,
+                                         AST::FunctionLiteral *>) {
+              return f->ir_func_;
+            } else {
+              return nullptr;
+            }
+          },
+          resolved.back().value);
       resolved.pop_back();
       // There's no need to do validation here, because by virtue of executing
       // this function, we know we've already validated all functions that could
