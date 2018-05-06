@@ -30,6 +30,7 @@ struct ScopeNode : public Expression {
 
   struct BlockNode {
     Statements stmts_;
+    std::unique_ptr<Expression> arg_;
     std::unique_ptr<ExecScope> block_scope_;
   };
 

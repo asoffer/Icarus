@@ -542,6 +542,21 @@ static std::unique_ptr<Node> BuildEmptyCodeBlock(
 }  // namespace AST
 
 namespace {
+std::unique_ptr<AST::Node> BuildScopeNode(
+    std::vector<std::unique_ptr<AST::Node>> nodes, error::Log *error_log) {
+  auto scope_name  = move_as<AST::Expression>(nodes[0]);
+  auto stmts       = nodes[4]->as<AST::Statements>();
+  auto scope_node  = std::make_unique<AST::ScopeNode>();
+  scope_node->span = TextSpan(scope_name->span, stmts.span);
+  scope_node->blocks_.push_back(std::move(scope_name));
+
+  scope_node->block_map_.emplace(
+      scope_node->blocks_.back().get(),
+      AST::ScopeNode::BlockNode{std::move(stmts),
+                                move_as<AST::Expression>(nodes[2]), nullptr});
+  return scope_node;
+}
+
 std::unique_ptr<AST::Node> BuildVoidScopeNode(
     std::vector<std::unique_ptr<AST::Node>> nodes, error::Log *error_log) {
   auto scope_name  = move_as<AST::Expression>(nodes[0]);
@@ -552,7 +567,7 @@ std::unique_ptr<AST::Node> BuildVoidScopeNode(
 
   scope_node->block_map_.emplace(
       scope_node->blocks_.back().get(),
-      AST::ScopeNode::BlockNode{std::move(stmts), nullptr});
+      AST::ScopeNode::BlockNode{std::move(stmts), nullptr, nullptr});
   return scope_node;
 }
 
@@ -1047,6 +1062,8 @@ auto Rules = std::array{
     Rule(expr, {EXPR, op_l, EXPR}, ErrMsg::NonBinop),
     Rule(stmts, {op_lt}, AST::BuildJump),
     Rule(scope_expr, {expr, braced_stmts}, BuildVoidScopeNode),
+    Rule(scope_expr, {expr, l_paren, EXPR, r_paren, braced_stmts},
+         BuildScopeNode),
     Rule(scope_expr, {scope_expr, scope_expr}, ExtendScopeNode),
 };
 

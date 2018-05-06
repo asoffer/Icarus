@@ -21,10 +21,14 @@ using base::check::Is;
 std::string ScopeNode::to_string(size_t n) const {
   std::stringstream ss;
   for (const auto &block : blocks_) {
-    ss << block->to_string(n) << " {";
-    auto &stmts = block_map_.at(block.get()).stmts_;
-    if (stmts.content_.size() > 1) { ss << "\n"; }
-    ss << stmts.to_string(n + 1) << "} ";
+    ss << block->to_string(n);
+    const auto &block_node = block_map_.at(block.get());
+    if (block_node.arg_ != nullptr) {
+      ss << " (" << block_node.arg_->to_string(n) << ")";
+    }
+    ss << " {";
+    if (block_node.stmts_.content_.size() > 1) { ss << "\n"; }
+    ss << block_node.stmts_.to_string(n + 1) << "} ";
   }
   return ss.str();
 }
@@ -36,6 +40,9 @@ void ScopeNode::assign_scope(Scope *scope) {
     block_expr->assign_scope(scope);
     block_node.block_scope_ = scope_->add_child<ExecScope>();
     block_node.stmts_.assign_scope(block_node.block_scope_.get());
+    if (block_node.arg_) {
+      block_node.arg_->assign_scope(block_node.block_scope_.get());
+    }
   }
 }
 
@@ -44,6 +51,7 @@ void ScopeNode::ClearIdDecls() {
   for (auto & [ block_expr, block_node ] : block_map_) {
     block_expr->ClearIdDecls();
     block_node.stmts_.ClearIdDecls();
+    if (block_node.arg_) { block_node.arg_->ClearIdDecls(); }
   }
 }
 
@@ -54,11 +62,16 @@ void ScopeNode::VerifyType(Context *ctx) {
   for (auto & [ block_expr, block_node ] : block_map_) {
     block_node.stmts_.VerifyType(ctx);
     limit_to(&block_node.stmts_);
+    if (block_node.arg_) {
+      block_node.arg_->VerifyType(ctx);
+      limit_to(block_node.arg_);
+    }
   }
 
-  blocks_[0]->VerifyType(ctx);
-  limit_to(blocks_[0]);
-  if (!blocks_[0]->type->is<type::Scope>()) { NOT_YET("not a scope"); }
+  VERIFY_AND_RETURN_ON_ERROR(blocks_[0]);
+  if (!blocks_[0]->type->is<type::Scope>()) {
+    NOT_YET("not a scope", blocks_[0]->type);
+  }
 
   type = type::Void;  // TODO can this evaluate to anything?
 }
@@ -72,6 +85,7 @@ void ScopeNode::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   for (auto & [ block_expr, block_node ] : block_map_) {
     block_expr->SaveReferences(scope, args);
     block_node.stmts_.SaveReferences(scope, args);
+    if (block_node.arg_) { block_node.arg_->SaveReferences(scope, args); }
   }
 }
 
@@ -83,13 +97,18 @@ void ScopeNode::contextualize(
     blocks_[i]->contextualize(corr.blocks_[i].get(), replacements);
     block_map_[blocks_[i].get()].stmts_.contextualize(
         &corr.block_map_.at(blocks_[i].get()).stmts_, replacements);
+    if (block_map_[blocks_[i].get()].arg_) {
+      block_map_[blocks_[i].get()].arg_->contextualize(
+          corr.block_map_.at(blocks_[i].get()).arg_.get(), replacements);
+    }
   }
 }
 
 void ScopeNode::ExtractReturns(std::vector<const Expression *> *rets) const {
   for (const auto & [ block_expr, block_node ] : block_map_) {
     block_expr->ExtractReturns(rets);
-    block_node.stmts_.ExtractReturns(rets);
+     block_node.stmts_.ExtractReturns(rets);
+     if (block_node.arg_) { block_node.arg_->ExtractReturns(rets); }
   }
 }
 
@@ -102,7 +121,11 @@ ScopeNode *ScopeNode::Clone() const {
     result->blocks_.emplace_back(block_expr->Clone());
     const auto &block_node = block_map_.at(block_expr.get());
     result->block_map_[result->blocks_.back().get()] =
-        BlockNode{Statements{block_node.stmts_}, nullptr};
+        BlockNode{Statements{block_node.stmts_},
+                  block_node.arg_ == nullptr
+                      ? nullptr
+                      : base::wrap_unique(block_node.arg_->Clone()),
+                  nullptr};
   }
   return result;
 }
@@ -142,11 +165,11 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     }
   }
 
-  std::unordered_map<BlockData *, Statements *> data_to_stmts;
+  std::unordered_map<BlockData *, BlockNode *> data_to_node;
   for (const auto &block : blocks_) {
     ASSERT(block, Is<Identifier>());
     auto *block_data = name_to_data.at(block->as<Identifier>().token);
-    data_to_stmts.emplace(block_data, &block_map_.at(block.get()).stmts_);
+    data_to_node.emplace(block_data, &block_map_.at(block.get()));
   }
   name_to_data.clear();
 
@@ -156,7 +179,13 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     // TODO the context for the before_ and after_ functions is wrong. Bound
     // constants should not be for those in this scope but in the block literal
     // scope.
-    auto call_enter_result = IR::Call(block_lit->before_->EmitIR(ctx), {}, {});
+    auto *arg_expr = data_to_node.at(&block_data)->arg_.get();
+    std::vector<IR::Val> args;
+    // TODO multiple args
+    if (arg_expr != nullptr) { args.push_back(arg_expr->EmitIR(ctx)); }
+
+    auto call_enter_result =
+        IR::Call(block_lit->before_->EmitIR(ctx), std::move(args), {});
     for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           jump_block_data.body,
@@ -167,7 +196,7 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     IR::UncondJump(land_block);
 
     IR::BasicBlock::Current = block_data.body;
-    data_to_stmts.at(&block_data)->EmitIR(ctx);
+    data_to_node.at(&block_data)->stmts_.EmitIR(ctx);
     IR::UncondJump(block_data.after);
 
     IR::BasicBlock::Current = block_data.after;
