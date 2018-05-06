@@ -60,10 +60,10 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
   {#name, IR::Val::Type(type::GlobalName)},
 #include "../type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
-      {"true", IR::Val::Bool(true)}, {"false", IR::Val::Bool(false)},
-      {"null", IR::Val::NullPtr()},  {"ord", OrdFunc()},
-      {"ascii", AsciiFunc()},        {"error", ErrorFunc()},
-  };
+      {"true", IR::Val::Bool(true)},    {"false", IR::Val::Bool(false)},
+      {"null", IR::Val::NullPtr()},     {"ord", OrdFunc()},
+      {"ascii", AsciiFunc()},           {"error", ErrorFunc()},
+      {"exit", IR::Val::Block(nullptr)}};
   auto iter = Reserved.find(token);
   if (iter != Reserved.end()) {
     return frontend::TaggedNode::TerminalExpression(span, iter->second);

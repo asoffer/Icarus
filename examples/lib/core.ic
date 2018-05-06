@@ -1,14 +1,26 @@
 if ::= scope {
-  enter ::= (cond: bool) => cond
-  exit ::= () => false
+  self ::= block {
+    before ::= (b: bool) => switch {
+      self when b
+      exit when !b
+    }
+    after ::= () => exit
+  }
 }
 
 forever ::= scope {
-  enter ::= () => true
-  exit ::= () => true
+  self ::= block {
+    before ::= () => self
+    after ::= () => self
+  }
 }
 
 while ::= scope {
-  enter ::= (cond: bool) => cond
-  exit ::= () => true
+  self ::= block {
+    before ::= (b: bool) => switch {
+      self when b
+      exit when !b
+    }
+    after ::= () => self
+  }
 }

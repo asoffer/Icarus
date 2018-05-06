@@ -112,6 +112,8 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   ASSERT(scope_expr_val.type, Is<type::Scope>());
   auto *scope_lit = std::get<ScopeLiteral *>(scope_expr_val.value);
 
+  auto land_block = IR::Func::Current->AddBlock();
+
   struct BlockData {
     IR::BlockIndex before, body, after;
   };
@@ -160,8 +162,9 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
           jump_block_data.body,
           IR::Eq(call_enter_result, IR::Val::Block(jump_block_lit)));
     }
-    // TODO what to do with this last block? probably won't compile if llvm is
-    // enabled.
+    // TODO we're not checking that this is an exit block but we probably
+    // should.
+    IR::UncondJump(land_block);
 
     IR::BasicBlock::Current = block_data.body;
     data_to_stmts.at(&block_data)->EmitIR(ctx);
@@ -174,10 +177,12 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
           jump_block_data.before,
           IR::Eq(call_exit_result, IR::Val::Block(jump_block_lit)));
     }
-    // TODO what to do with this last block? probably won't compile if llvm is
-    // enabled.
-
+    // TODO we're not checking that this is an exit block but we probably
+    // should.
+    IR::UncondJump(land_block);
   }
+
+  IR::BasicBlock::Current = land_block;
 
   return IR::Val::None();
 }
