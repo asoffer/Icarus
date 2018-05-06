@@ -15,6 +15,9 @@
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
+void ForEachExpr(AST::Expression *expr,
+                 const std::function<void(size_t, AST::Expression *)> &fn);
+
 namespace AST {
 using base::check::Is;
 
@@ -181,8 +184,11 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     // scope.
     auto *arg_expr = data_to_node.at(&block_data)->arg_.get();
     std::vector<IR::Val> args;
-    // TODO multiple args
-    if (arg_expr != nullptr) { args.push_back(arg_expr->EmitIR(ctx)); }
+    if (arg_expr != nullptr) {
+      ForEachExpr(arg_expr, [ctx, &args](size_t, Expression *expr) {
+        args.push_back(expr->EmitIR(ctx));
+      });
+    }
 
     auto call_enter_result =
         IR::Call(block_lit->before_->EmitIR(ctx), std::move(args), {});
