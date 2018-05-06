@@ -1,0 +1,19 @@
+ping ::= scope {
+  self ::= block {
+    before ::= () => self
+    after ::= () => pong
+  }
+
+  pong ::= block {
+    before ::= () => pong
+    after ::= () => self
+  }
+}
+
+main ::= () -> () {
+  ping {
+    print "sending..."
+  } pong {
+    print "received!\n"
+  }
+}
