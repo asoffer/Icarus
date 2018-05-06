@@ -145,7 +145,6 @@ void ScheduleModule(const Source::Name &src) {
   auto handle = modules.lock();
   auto iter = handle->find(src);
   if (iter != handle->end()) { return; }
-  CompileModule(src);
   handle->emplace(src, std::shared_future<std::unique_ptr<Module>>(
                            std::async(std::launch::async, CompileModule, src)));
 }
