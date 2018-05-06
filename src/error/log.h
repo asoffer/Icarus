@@ -90,7 +90,6 @@ void MissingMember(const TextSpan &span, const std::string &member_name,
 void InvalidStringIndex(const TextSpan &span, const type::Type *index_type);
 void NonIntegralArrayIndex(const TextSpan &span, const type::Type *index_type);
 void IndexingNonArray(const TextSpan &span, const type::Type *t);
-void InvalidScope(const TextSpan &span, const type::Type *t);
 } // namespace ErrorLog
 
 #endif // ICARUS_ERROR_LOG_H

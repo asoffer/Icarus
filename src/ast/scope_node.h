@@ -3,6 +3,7 @@
 
 #include <memory>
 #include "ast/expression.h"
+#include "ast/statements.h"
 #include "scope.h"
 
 struct Context;
@@ -27,10 +28,14 @@ struct ScopeNode : public Expression {
   IR::Val EmitIR(Context *) override;
   IR::Val EmitLVal(Context *) override;
 
-  // If the scope takes an argument, 'expr' is it. Otherwise 'expr' is null
-  std::unique_ptr<Expression> expr, scope_expr;
-  std::unique_ptr<Statements> stmts;
-  std::unique_ptr<ExecScope> internal;
+  struct BlockNode {
+    Statements stmts_;
+    std::unique_ptr<ExecScope> block_scope_;
+  };
+
+  std::vector<std::unique_ptr<Expression>> blocks_;
+  // TODO expression passed as arguments to the scope?
+  std::unordered_map<Expression *, BlockNode> block_map_;
 };
 }  // namespace AST
 

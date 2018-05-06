@@ -31,7 +31,7 @@
 #include "error/log.h"
 #include "frontend/token.h"
 #include "operators.h"
-#include "tagged_node.h"
+#include "frontend/tagged_node.h"
 #include "type/enum.h"
 
 template <typename To, typename From>
@@ -506,31 +506,6 @@ static std::unique_ptr<Node> BuildJump(std::vector<std::unique_ptr<Node>> nodes,
   return stmts;
 }
 
-static std::unique_ptr<Node> BuildScopeNode(
-    std::unique_ptr<Expression> scope_name,
-    std::unique_ptr<Expression> arg_expr,
-    std::unique_ptr<Statements> stmt_node) {
-  auto scope_node        = std::make_unique<ScopeNode>();
-  scope_node->span       = TextSpan(scope_name->span, stmt_node->span);
-  scope_node->scope_expr = std::move(scope_name);
-  scope_node->expr       = std::move(arg_expr);
-  scope_node->stmts      = std::move(stmt_node);
-  return scope_node;
-}
-
-static std::unique_ptr<Node> BuildScopeNode(
-    std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
-  return BuildScopeNode(move_as<Expression>(nodes[0]),
-                        move_as<Expression>(nodes[2]),
-                        move_as<Statements>(nodes[4]));
-}
-
-static std::unique_ptr<Node> BuildVoidScopeNode(
-    std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
-  return BuildScopeNode(move_as<Expression>(nodes[0]), nullptr,
-                        move_as<Statements>(nodes[1]));
-}
-
 static std::unique_ptr<Node> BuildCodeBlockFromStatements(
     std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
   auto block      = std::make_unique<CodeBlock>();
@@ -567,6 +542,35 @@ static std::unique_ptr<Node> BuildEmptyCodeBlock(
 }  // namespace AST
 
 namespace {
+std::unique_ptr<AST::Node> BuildVoidScopeNode(
+    std::vector<std::unique_ptr<AST::Node>> nodes, error::Log *error_log) {
+  auto scope_name  = move_as<AST::Expression>(nodes[0]);
+  auto stmts       = nodes[1]->as<AST::Statements>();
+  auto scope_node  = std::make_unique<AST::ScopeNode>();
+  scope_node->span = TextSpan(scope_name->span, stmts.span);
+  scope_node->blocks_.push_back(std::move(scope_name));
+
+  scope_node->block_map_.emplace(
+      scope_node->blocks_.back().get(),
+      AST::ScopeNode::BlockNode{std::move(stmts), nullptr});
+  return scope_node;
+}
+
+std::unique_ptr<AST::Node> ExtendScopeNode(
+    std::vector<std::unique_ptr<AST::Node>> nodes, error::Log *error_log) {
+  // TODO is this a valid node? it should probably be an identifier?
+  auto &scope_node = nodes[0]->as<AST::ScopeNode>();
+  auto &extension  = nodes[1]->as<AST::ScopeNode>();
+  ASSERT(extension.blocks_.size() == 1u);
+  scope_node.blocks_.push_back(std::move(extension.blocks_[0]));
+  auto &ext_block_node =
+      extension.block_map_.at(scope_node.blocks_.back().get());
+  scope_node.block_map_.emplace(scope_node.blocks_.back().get(),
+                                std::move(ext_block_node));
+
+  return std::move(nodes[0]);
+}
+
 struct Rule {
  public:
   using OptVec = std::vector<u64>;
@@ -946,7 +950,7 @@ static std::unique_ptr<AST::Node> BuildOperatorIdentifier(
 
 namespace frontend {
 static constexpr u64 OP_B = op_b | comma | dots | colon | eq;
-static constexpr u64 EXPR = expr | fn_expr;
+static constexpr u64 EXPR = expr | fn_expr | scope_expr;
 // Used in error productions only!
 static constexpr u64 RESERVED = kw_block | op_lt;
 
@@ -998,18 +1002,17 @@ auto Rules = std::array{
     Rule(r_bracket, {r_bracket, newline}, drop_all_but<0>),
     Rule(r_brace, {r_brace, newline}, drop_all_but<0>),
     Rule(r_double_brace, {r_double_brace, newline}, drop_all_but<0>),
-    Rule(braced_stmts, {l_brace, stmts, stmts | expr | fn_expr, r_brace},
+    Rule(braced_stmts, {l_brace, stmts, stmts | EXPR, r_brace},
          BracedStatementsSameLineEnd),
     Rule(braced_stmts, {l_brace, stmts, r_brace}, drop_all_but<1>),
     Rule(braced_stmts, {l_brace, r_brace}, EmptyBraces),
-    Rule(braced_stmts, {l_brace, (expr | fn_expr), r_brace},
-         OneBracedStatement),
-    Rule(expr, {l_double_brace, stmts, stmts | expr | fn_expr, r_double_brace},
+    Rule(braced_stmts, {l_brace, EXPR, r_brace}, OneBracedStatement),
+    Rule(expr, {l_double_brace, stmts, stmts | EXPR, r_double_brace},
          AST::BuildCodeBlockFromStatementsSameLineEnd),
     Rule(expr, {l_double_brace, stmts, r_double_brace},
          AST::BuildCodeBlockFromStatements),
     Rule(expr, {l_double_brace, r_double_brace}, AST::BuildEmptyCodeBlock),
-    Rule(expr, {l_double_brace, (expr | fn_expr), r_double_brace},
+    Rule(expr, {l_double_brace, EXPR, r_double_brace},
          AST::BuildCodeBlockFromOneStatement),
     Rule(expr, {fn_expr, braced_stmts}, AST::BuildFunctionLiteral),
 
@@ -1025,14 +1028,15 @@ auto Rules = std::array{
     Rule(expr, {l_bracket, EXPR, r_bracket}, AST::BuildArrayLiteral),
     Rule(expr, {l_paren, RESERVED, r_paren}, ErrMsg::Reserved<1, 1>),
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
-    Rule(stmts, {stmts, (expr | fn_expr | stmts), newline},
-         AST::BuildMoreStatements),
+    Rule(stmts, {stmts, (EXPR | stmts), newline}, AST::BuildMoreStatements),
     Rule(expr, {kw_block, braced_stmts}, BuildKWBlock),
 
     Rule(expr, {RESERVED, dots}, ErrMsg::Reserved<1, 0>),
     Rule(expr, {(op_l | op_bl | op_lt), RESERVED}, ErrMsg::Reserved<0, 1>),
     Rule(expr, {RESERVED, op_l, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
-    Rule(stmts, {(expr | fn_expr), (newline | eof)}, AST::BuildOneStatement),
+    // TODO does this rule prevent chained scope blocks on new lines or is it
+    // preceeded by a shift rule that eats newlines after a right-brace?
+    Rule(stmts, {EXPR, (newline | eof)}, AST::BuildOneStatement),
     Rule(comma, {comma, newline}, drop_all_but<0>),
     Rule(l_paren, {l_paren, newline}, drop_all_but<0>),
     Rule(l_bracket, {l_bracket, newline}, drop_all_but<0>),
@@ -1042,9 +1046,8 @@ auto Rules = std::array{
 
     Rule(expr, {EXPR, op_l, EXPR}, ErrMsg::NonBinop),
     Rule(stmts, {op_lt}, AST::BuildJump),
-    Rule(expr, {EXPR, l_paren, EXPR, r_paren, braced_stmts},
-         AST::BuildScopeNode),
-    Rule(expr, {EXPR, braced_stmts}, AST::BuildVoidScopeNode),
+    Rule(scope_expr, {expr, braced_stmts}, BuildVoidScopeNode),
+    Rule(scope_expr, {scope_expr, scope_expr}, ExtendScopeNode),
 };
 
 TaggedNode NextToken(SourceLocation &loc, error::Log *error_log);

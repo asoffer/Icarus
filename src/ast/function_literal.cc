@@ -68,7 +68,7 @@ void GenericFunctionLiteral::assign_scope(Scope *scope) {
 }
 
 void FunctionLiteral::ClearIdDecls() {
-  fn_scope = nullptr;
+  fn_scope     = nullptr;
   stage_range_ = StageRange{};
   for (auto &in : inputs) { in->ClearIdDecls(); }
   for (auto &out : outputs) { out->ClearIdDecls(); }
@@ -92,7 +92,7 @@ void FunctionLiteral::VerifyType(Context *ctx) {
     output->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
   }
-  
+
   if (ctx->num_errors() > 0) {
     type = type::Err;
     limit_to(StageRange::Nothing());
@@ -121,10 +121,10 @@ void FunctionLiteral::VerifyType(Context *ctx) {
       out_vals.push_back(std::move(result)[0]);
     }
 
-    std::vector<const type::Type*> ret_types;
+    std::vector<const type::Type *> ret_types;
     ret_types.reserve(out_vals.size());
-    for (size_t i= 0; i < out_vals.size(); ++i) {
-      const auto& out = out_vals[i];
+    for (size_t i = 0; i < out_vals.size(); ++i) {
+      const auto &out = out_vals[i];
       if (out == IR::Val::None() /* TODO Error() */) {
         ctx->error_log_.IndeterminantType(outputs[i]->span);
         type = type::Err;
@@ -203,7 +203,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
 
   auto[iter, success] =
       fns_.emplace(std::move(bound_constants), FunctionLiteral{});
-   new_ctx.bound_constants_ = &iter->first;
+  new_ctx.bound_constants_ = &iter->first;
   if (success) {
     auto &func                 = iter->second;
     func.bound_constants_      = &iter->first;
@@ -230,7 +230,7 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
     func.VerifyType(&new_ctx);
     func.Validate(&new_ctx);
     func.EmitIR(&new_ctx);
-    
+
     if (new_ctx.num_errors() > 0) {
       // TODO figure out the call stack of generic function requests and then
       // print the relevant parts.
@@ -257,8 +257,8 @@ void FunctionLiteral::Validate(Context *ctx) {
   std::vector<const Expression *> rets;
   statements->ExtractReturns(&rets);
   statements->Validate(ctx);
-  std::set<const type::Type*> types;
-  for (auto* expr : rets) { types.insert(expr->type); }
+  std::set<const type::Type *> types;
+  for (auto *expr : rets) { types.insert(expr->type); }
 
   std::vector<const type::Type *> input_type_vec, output_type_vec;
   input_type_vec.reserve(inputs.size());
@@ -312,7 +312,7 @@ void FunctionLiteral::Validate(Context *ctx) {
               ctx->error_log_.ReturningWrongNumber(expr, outs.size());
               limit_to(StageRange::NoEmitIR());
             } else {
-              for(size_t i = 0; i < tup_entries.size(); ++i) {
+              for (size_t i = 0; i < tup_entries.size(); ++i) {
                 // TODO compare with Join rather than direct comparison
                 if (tup_entries AT(i) != outs AT(i)) {
                   // TODO if this is a commalist we can point to it more
@@ -432,7 +432,7 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
     IR::BasicBlock::Current = ir_func_->entry();
     // Leave space for allocas that will come later (added to the entry
     // block).
-    auto start_block   = IR::Func::Current->AddBlock();
+    auto start_block        = IR::Func::Current->AddBlock();
     IR::BasicBlock::Current = start_block;
 
     // TODO arguments should be renumbered to not waste space on const values

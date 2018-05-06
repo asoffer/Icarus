@@ -110,7 +110,7 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
   ctx.mod_->Complete();
 #ifdef ICARUS_USE_LLVM
   backend::EmitAll(ctx.mod_->fns_, ctx.mod_->llvm_.get());
-#endif // ICARUS_USE_LLVM
+#endif  // ICARUS_USE_LLVM
 
   for (const auto &stmt : ctx.mod_->statements_.content_) {
     if (!stmt->is<AST::Declaration>()) { continue; }
@@ -125,9 +125,9 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
     fn_lit->ir_func_->llvm_fn_->setName("main");
     fn_lit->ir_func_->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
 #else
-    main_fn = fn_lit;
+    main_fn  = fn_lit;
     main_mod = mod.get();
-#endif // ICARUS_USE_LLVM
+#endif  // ICARUS_USE_LLVM
   }
 
 #ifdef ICARUS_USE_LLVM
@@ -145,6 +145,7 @@ void ScheduleModule(const Source::Name &src) {
   auto handle = modules.lock();
   auto iter = handle->find(src);
   if (iter != handle->end()) { return; }
+  CompileModule(src);
   handle->emplace(src, std::shared_future<std::unique_ptr<Module>>(
                            std::async(std::launch::async, CompileModule, src)));
 }
@@ -169,7 +170,6 @@ int GenerateCode() {
     }
     for (auto *future : future_ptrs) { future->wait(); }
   } while (current_size != modules.lock()->size());
-
 #ifndef ICARUS_USE_LLVM
   ASSERT(main_fn != nullptr);
 

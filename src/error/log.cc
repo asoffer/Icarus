@@ -208,12 +208,6 @@ void IndexingNonArray(const TextSpan &span, const type::Type *t) {
   DisplayErrorMessage("Cannot index into a non-array type.",
                       "Indexed type is a `" + t->to_string() + "`.", span, 1);
 }
-
-void InvalidScope(const TextSpan &span, const type::Type *t) {
-  std::string msg_head =
-      "Object of type '" + t->to_string() + "' used as if it were a scope.";
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
 } // namespace ErrorLog
 
 namespace error {

@@ -8,7 +8,7 @@ SRC_OBJS := $(patsubst src/%.cc,build/%.o,$(SRCS))
 TARGET := bin/$(shell basename `pwd`)
 
 COMPILER := g++-7
-BUILD_FLAGS := -g -O0 -D DBG -rdynamic
+BUILD_FLAGS := -g -O0 -DDBG -rdynamic
 STDS = -std=c++17
 WARN = -Wno-unused-but-set-parameter -Wno-unused-variable -Wall -Wextra -Werror -Wuninitialized -Wpedantic -Wno-unused-parameter #-Weffc++
 OPTS = -iquote$(shell pwd)/src
