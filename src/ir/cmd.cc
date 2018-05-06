@@ -45,8 +45,10 @@ Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
 
 Val Field(Val v, size_t n) {
   ASSERT(v.type, Is<type::Pointer>());
-  const type::Type *result_type =
-      type::Ptr(v.type->as<type::Pointer>().pointee->as<type::Struct>().fields_ AT(n).type);
+  const type::Type *result_type = type::Ptr(v.type->as<type::Pointer>()
+                                                .pointee->as<type::Struct>()
+                                                .fields_ AT(n)
+                                                .type);
   Cmd cmd(result_type, Op::Field,
           std::vector{std::move(v), Val::Int(static_cast<i32>(n))});
   auto reg = cmd.reg();
@@ -54,67 +56,66 @@ Val Field(Val v, size_t n) {
   return reg;
 }
 
-#define MAKE_VOID(op)                                                          \
-  ASSERT(Func::Current != nullptr);                                           \
-  Cmd cmd(nullptr, op, {std::move(v)});                                        \
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
-
-#define MAKE_VOID2(op)                                                         \
-  ASSERT(Func::Current != nullptr);                                           \
-  Cmd cmd(nullptr, op, {std::move(v1), std::move(v2)});                        \
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
-
-#define MAKE_AND_RETURN(type, op)                                              \
-  ASSERT(Func::Current != nullptr);                                           \
-  Cmd cmd(type, op, {std::move(v)});                                           \
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));        \
-  return cmd.reg()
-
-#define MAKE_AND_RETURN2(type, op)                                             \
-  Cmd cmd(type, op, {std::move(v1), std::move(v2)});                           \
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));        \
-  return cmd.reg()
+static Val MakeCmd(const type::Type *t, Op op, std::vector<Val> &&vals) {
+  // ASSERT(Func::Current != nullptr);
+  if (Func::Current == nullptr) { std::abort(); }
+  auto &cmds = Func::Current->block(BasicBlock::Current).cmds_;
+  cmds.emplace_back(t, op, std::move(vals));
+  return cmds.back().reg();
+}
 
 Val Malloc(const type::Type *t, Val v) {
-  ASSERT(v.type ==  type::Int);
-  MAKE_AND_RETURN(type::Ptr(t), Op::Malloc);
+  ASSERT(v.type == type::Int);
+  return MakeCmd(type::Ptr(t), Op::Malloc, std::vector{std::move(v)});
 }
 
 Val Extend(Val v) {
   if (char *c = std::get_if<char>(&v.value)) {
     return Val::Int(static_cast<i32>(*c));
   }
-  MAKE_AND_RETURN(type::Char, Op::Extend);
+  return MakeCmd(type::Char, Op::Extend, std::vector{std::move(v)});
 }
 
 Val Trunc(Val v) {
   if (i32 *n = std::get_if<i32>(&v.value)) {
     return Val::Char(static_cast<char>(*n));
   }
-  MAKE_AND_RETURN(type::Char, Op::Trunc);
+  return MakeCmd(type::Char, Op::Trunc, std::vector{std::move(v)});
 }
 
-Val Err(Val v) { MAKE_AND_RETURN(type::Code, Op::Err); }
+Val Err(Val v) {
+  return MakeCmd(type::Code, Op::Err, std::vector{std::move(v)});
+}
 
 Val Neg(Val v) {
   if (bool *b = std::get_if<bool>(&v.value)) { return Val::Bool(!*b); }
   if (i32 *n = std::get_if<i32>(&v.value)) { return Val::Int(-*n); }
   if (double *r = std::get_if<double>(&v.value)) { return Val::Real(-*r); }
-  MAKE_AND_RETURN(v.type, Op::Neg);
+  return MakeCmd(v.type, Op::Neg, std::vector{std::move(v)});
 }
 
 Val Cast(const type::Type *to, Val v) {
-  if (v.type == to) { return v; }
-  if (i32 *n = std::get_if<i32>(&v.value)) {
+  if (v.type == to) {
+    return v;
+  } else if (i32 *n = std::get_if<i32>(&v.value)) {
     if (to == type::Real) { return Val::Real(static_cast<double>(*n)); }
+  } else if (v.type->is<type::Pointer>()) {
+    auto *ptee_type = v.type->as<type::Pointer>().pointee;
+    if (ptee_type->is<type::Array>()) {
+      auto &array_type = ptee_type->as<type::Array>();
+      if (array_type.fixed_length && Ptr(array_type.data_type) == to) {
+        v.type = to;
+        return v;
+      }
+    }
   }
-  MAKE_AND_RETURN(to, Op::Cast);
+  return MakeCmd(to, Op::Cast, std::vector{std::move(v)});
 }
 
-void Print(Val v) { MAKE_VOID(Op::Print); }
+void Print(Val v) { MakeCmd(nullptr, Op::Print, std::vector{std::move(v)}); }
 void Free(Val v) {
   ASSERT(v.type, Is<type::Pointer>());
-  MAKE_VOID(Op::Free);
+  MakeCmd(nullptr, Op::Free, std::vector{std::move(v)});
 }
 
 Val CreateStruct() {
@@ -125,7 +126,7 @@ Val CreateStruct() {
 }
 
 IR::Val FinalizeStruct(Val v) {
-  MAKE_AND_RETURN(type::Type_, Op::FinalizeStruct);
+  return MakeCmd(type::Type_, Op::FinalizeStruct, std::vector{std::move(v)});
 }
 
 void InsertField(Val struct_type, std::string field_name, Val type,
@@ -145,15 +146,17 @@ Val Alloca(const type::Type *t) {
 }
 
 Val VariantType(Val v) {
-  MAKE_AND_RETURN(type::Ptr(type::Type_), Op::VariantType);
+  return MakeCmd(type::Ptr(type::Type_), Op::VariantType,
+                 std::vector{std::move(v)});
 }
 Val VariantValue(const type::Type *t, Val v) {
-  MAKE_AND_RETURN(type::Ptr(t), Op::VariantValue);
+  return MakeCmd(type::Ptr(t), Op::VariantValue, std::vector{std::move(v)});
 }
 
 Val Load(Val v) {
   ASSERT(v.type, Is<type::Pointer>());
-  MAKE_AND_RETURN(v.type->as<type::Pointer>().pointee, Op::Load);
+  return MakeCmd(v.type->as<type::Pointer>().pointee, Op::Load,
+                 std::vector{std::move(v)});
 }
 
 Val ArrayLength(Val v) {
@@ -161,7 +164,8 @@ Val ArrayLength(Val v) {
   auto *ptee = v.type->as<type::Pointer>().pointee;
   ASSERT(ptee, Is<type::Array>());
   ASSERT(!ptee->as<type::Array>().fixed_length);
-  MAKE_AND_RETURN(type::Ptr(type::Int), Op::ArrayLength);
+  return MakeCmd(type::Ptr(type::Int), Op::ArrayLength,
+                 std::vector{std::move(v)});
 }
 
 Val ArrayData(Val v) {
@@ -170,12 +174,13 @@ Val ArrayData(Val v) {
   ASSERT(ptee, Is<type::Array>());
   auto *array_type = &ptee->as<type::Array>();
   ASSERT(!array_type->fixed_length);
-  MAKE_AND_RETURN(type::Ptr(type::Ptr(array_type->data_type)), Op::ArrayData);
+  return MakeCmd(type::Ptr(type::Ptr(array_type->data_type)), Op::ArrayData,
+                 std::vector{std::move(v)});
 }
 
 void SetReturn(ReturnValue r, Val v2) {
   Val v1 = Val::Ret(r, v2.type);
-  MAKE_VOID2(Op::SetReturn);
+  MakeCmd(nullptr, Op::SetReturn, std::vector{std::move(v1), std::move(v2)});
 }
 
 void Store(Val v1, Val v2) {
@@ -183,14 +188,15 @@ void Store(Val v1, Val v2) {
     SetReturn(*rv, v1);
   } else {
     ASSERT(v2.type, Is<type::Pointer>());
-    MAKE_VOID2(Op::Store);
+    MakeCmd(nullptr, Op::Store, std::vector{std::move(v1), std::move(v2)});
   }
 }
 
 Val PtrIncr(Val v1, Val v2) {
   ASSERT(v1.type, Is<type::Pointer>());
-  ASSERT(v2.type ==  type::Int);
-  MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
+  ASSERT(v2.type == type::Int);
+  return MakeCmd(v1.type, Op::PtrIncr,
+                 std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Ptr(Val v) {
@@ -198,7 +204,7 @@ Val Ptr(Val v) {
   if (const type::Type **t = std::get_if<const type::Type *>(&v.value)) {
     return Val::Type(type::Ptr(*t));
   }
-  MAKE_AND_RETURN(type::Type_, Op::Ptr);
+  return MakeCmd(type::Type_, Op::Ptr, std::vector{std::move(v)});
 }
 
 Val Xor(Val v1, Val v2) {
@@ -209,7 +215,7 @@ Val Xor(Val v1, Val v2) {
       e1 != nullptr && e2 != nullptr) {
     return Val::Enum(&v1.type->as<type::Enum>(), e1->value ^ e2->value);
   }
-  MAKE_AND_RETURN2(v1.type, Op::Xor);
+  return MakeCmd(v1.type, Op::Xor, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Or(Val v1, Val v2) {
@@ -218,7 +224,7 @@ Val Or(Val v1, Val v2) {
       e1 != nullptr && e2 != nullptr) {
     return Val::Enum(&v1.type->as<type::Enum>(), e1->value | e2->value);
   }
-  MAKE_AND_RETURN2(v1.type, Op::Or);
+  return MakeCmd(v1.type, Op::Or, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val And(Val v1, Val v2) {
@@ -227,7 +233,7 @@ Val And(Val v1, Val v2) {
       e1 != nullptr && e2 != nullptr) {
     return Val::Enum(&v1.type->as<type::Enum>(), e1->value & e2->value);
   }
-  MAKE_AND_RETURN2(v1.type, Op::And);
+  return MakeCmd(v1.type, Op::And, std::vector{std::move(v1), std::move(v2)});
 }
 
 #define CONSTANT_PROPOGATION(cpp_type, fn, result_type)                        \
@@ -260,33 +266,32 @@ Val Add(Val v1, Val v2) {
       e1 != nullptr && e2 != nullptr) {
     return Val::Enum(&v1.type->as<type::Enum>(), e1->value + e2->value);
   }
-
-  MAKE_AND_RETURN2(v1.type, Op::Add);
+  return MakeCmd(v1.type, Op::Add, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Sub(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::minus<i32>{}, Int);
-  CONSTANT_PROPOGATION(double, std::minus<double>{},Real);
+  CONSTANT_PROPOGATION(double, std::minus<double>{}, Real);
   CONSTANT_PROPOGATION(char, std::minus<char>{}, Char);
-  MAKE_AND_RETURN2(v1.type, Op::Sub);
+  return MakeCmd(v1.type, Op::Sub, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Mul(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::multiplies<i32>{}, Int);
   CONSTANT_PROPOGATION(double, std::multiplies<double>{}, Real);
-  MAKE_AND_RETURN2(v1.type, Op::Mul);
+  return MakeCmd(v1.type, Op::Mul, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Div(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::divides<i32>{}, Int);
   CONSTANT_PROPOGATION(double, std::divides<double>{}, Real);
-  MAKE_AND_RETURN2(v1.type, Op::Div);
+  return MakeCmd(v1.type, Op::Div, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Mod(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::modulus<i32>{}, Int);
   CONSTANT_PROPOGATION(double, std::fmod, Real);
-  MAKE_AND_RETURN2(v1.type, Op::Mod);
+  return MakeCmd(v1.type, Op::Mod, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Arrow(Val v1, Val v2) {
@@ -295,7 +300,8 @@ Val Arrow(Val v1, Val v2) {
                          return type::Func({lhs}, {rhs});
                        },
                        Type);
-  MAKE_AND_RETURN2(type::Type_, Op::Arrow);
+  return MakeCmd(type::Type_, Op::Arrow,
+                 std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Variant(std::vector<Val> args) {
@@ -317,7 +323,8 @@ Val Array(Val v1, Val v2) {
     if (v1 == Val::None()) { return Val::Type(type::Arr(*t)); }
   }
 
-  MAKE_AND_RETURN2(type::Type_, Op::Array);
+  return MakeCmd(type::Type_, Op::Array,
+                 std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Index(Val v1, Val v2) {
@@ -340,7 +347,7 @@ Val Lt(Val v1, Val v2) {
                                 ((lhs.value | rhs.value) == rhs.value);
                        },
                        Bool);
-  MAKE_AND_RETURN2(type::Bool, Op::Lt);
+  return MakeCmd(type::Bool, Op::Lt, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Le(Val v1, Val v2) {
@@ -351,7 +358,7 @@ Val Le(Val v1, Val v2) {
                          return (lhs.value | rhs.value) == rhs.value;
                        },
                        Bool);
-  MAKE_AND_RETURN2(type::Bool, Op::Le);
+  return MakeCmd(type::Bool, Op::Le, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Gt(Val v1, Val v2) {
@@ -363,7 +370,7 @@ Val Gt(Val v1, Val v2) {
                                 ((lhs.value | rhs.value) == lhs.value);
                        },
                        Bool);
-  MAKE_AND_RETURN2(type::Bool, Op::Gt);
+  return MakeCmd(type::Bool, Op::Gt, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Ge(Val v1, Val v2) {
@@ -374,7 +381,7 @@ Val Ge(Val v1, Val v2) {
                          return (lhs.value | rhs.value) == rhs.value;
                        },
                        Bool);
-  MAKE_AND_RETURN2(type::Bool, Op::Ge);
+  return MakeCmd(type::Bool, Op::Ge, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Eq(Val v1, Val v2) {
@@ -393,7 +400,7 @@ Val Eq(Val v1, Val v2) {
   CONSTANT_PROPOGATION(
       EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value == rhs.value; },
       Bool);
-  MAKE_AND_RETURN2(type::Bool, Op::Eq);
+  return MakeCmd(type::Bool, Op::Eq, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Ne(Val v1, Val v2) {
@@ -403,19 +410,15 @@ Val Ne(Val v1, Val v2) {
   CONSTANT_PROPOGATION(char, std::not_equal_to<char>{}, Bool);
   CONSTANT_PROPOGATION(i32, std::not_equal_to<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::not_equal_to<double>{}, Bool);
-  CONSTANT_PROPOGATION(const type::Type *, std::not_equal_to<const type::Type *>{}, Bool);
+  CONSTANT_PROPOGATION(const type::Type *,
+                       std::not_equal_to<const type::Type *>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::not_equal_to<Addr>{}, Bool);
   CONSTANT_PROPOGATION(
       EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value != rhs.value; },
       Bool);
-  MAKE_AND_RETURN2(type::Bool, Op::Ne);
+  return MakeCmd(type::Bool, Op::Ne, std::vector{std::move(v1), std::move(v2)});
 }
 #undef CONSTANT_PROPOGATION
-
-#undef MAKE_AND_RETURN2
-#undef MAKE_AND_RETURN
-#undef MAKE_VOID2
-#undef MAKE_VOID
 
 CmdIndex Phi(const type::Type *t) {
   CmdIndex cmd_index{

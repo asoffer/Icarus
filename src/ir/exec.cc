@@ -435,37 +435,38 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         }
       }
       call_stack.top().fn_->dump();
-      UNREACHABLE("Previous block was ", Val::BasicBlock(call_stack.top().prev_),
-                  "\nCurrent block is ", Val::BasicBlock(call_stack.top().current_));
+      UNREACHABLE(
+          "Previous block was ", Val::BasicBlock(call_stack.top().prev_),
+          "\nCurrent block is ", Val::BasicBlock(call_stack.top().current_));
     case Op::Alloca: return stack_.Push(&cmd.type->as<type::Pointer>());
     case Op::PtrIncr:
-      switch (std::get<Addr>(resolved[0].value).kind) {
-        case Addr::Kind::Stack: {
-          auto bytes_fwd =
-              Architecture::InterprettingMachine().ComputeArrayLength(
-                  std::get<i32>(resolved[1].value),
-                  cmd.type->as<type::Pointer>().pointee);
-          return Val::StackAddr(
-              std::get<Addr>(resolved[0].value).as_stack + bytes_fwd,
-              cmd.type->as<type::Pointer>().pointee);
+      if (auto addr = std::get_if<Addr>(&resolved[0].value)) {
+        switch (addr->kind) {
+          case Addr::Kind::Stack: {
+            auto bytes_fwd =
+                Architecture::InterprettingMachine().ComputeArrayLength(
+                    std::get<i32>(resolved[1].value),
+                    cmd.type->as<type::Pointer>().pointee);
+            return Val::StackAddr(addr->as_stack + bytes_fwd,
+                                  cmd.type->as<type::Pointer>().pointee);
+          }
+          case Addr::Kind::Heap: {
+            auto bytes_fwd =
+                Architecture::InterprettingMachine().ComputeArrayLength(
+                    std::get<i32>(resolved[1].value),
+                    cmd.type->as<type::Pointer>().pointee);
+            return Val::HeapAddr(
+                static_cast<void *>(static_cast<char *>(addr->as_heap) +
+                                    bytes_fwd),
+                cmd.type->as<type::Pointer>().pointee);
+          }
+          case Addr::Kind::Global: NOT_YET();
+          case Addr::Kind::Null: NOT_YET();
         }
-        case Addr::Kind::Heap: {
-          auto bytes_fwd =
-              Architecture::InterprettingMachine().ComputeArrayLength(
-                  std::get<i32>(resolved[1].value),
-                  cmd.type->as<type::Pointer>().pointee);
-          return Val::HeapAddr(
-              static_cast<void *>(
-                  static_cast<char *>(
-                      std::get<Addr>(resolved[0].value).as_heap) +
-                  bytes_fwd),
-              cmd.type->as<type::Pointer>().pointee);
-        }
-        case Addr::Kind::Global: NOT_YET();
-        case Addr::Kind::Null: NOT_YET();
+        UNREACHABLE("Invalid address kind: ", static_cast<int>(addr->kind));
+       } else {
+        NOT_YET();
       }
-      UNREACHABLE("Invalid address kind: ",
-                  static_cast<int>(std::get<Addr>(resolved[0].value).kind));
     case Op::CreateStruct: {
       return IR::Val::Struct();
     } break;
