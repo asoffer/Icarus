@@ -449,8 +449,7 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
 
     for (size_t i = 0; i < outputs.size(); ++i) {
       if (!outputs[i]->is<Declaration>()) { continue; }
-      outputs[i]->as<Declaration>().addr =
-          IR::Val::Ret(IR::ReturnValue(i), outputs[i]->type);
+      outputs[i]->as<Declaration>().addr = IR::Func::Current->Return(i);
     }
 
     for (auto scope : fn_scope->innards_) {

@@ -30,7 +30,7 @@ IR::Val ErrorFunc() {
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
       // TODO
-      IR::SetReturn(IR::ReturnValue{0}, IR::Err(fn->Argument(0)));
+      IR::SetReturn(0, IR::Err(fn->Argument(0)));
       IR::ReturnJump();
     }
     return fn;
@@ -44,7 +44,7 @@ IR::Val AsciiFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
+      IR::SetReturn(0, IR::Trunc(fn->Argument(0)));
       IR::ReturnJump();
     }
     return fn;
@@ -58,7 +58,7 @@ IR::Val OrdFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));
+      IR::SetReturn(0, IR::Extend(fn->Argument(0)));
       IR::ReturnJump();
     }
     return fn;

@@ -270,17 +270,13 @@ IR::Val Unop::EmitIR(Context *ctx) {
     } break;
     case Language::Operator::Return: {
       if (!operand->type->is_big()) {
-        IR::SetReturn(IR::ReturnValue{static_cast<i32>(0)},
-                      operand->EmitIR(ctx));
+        IR::SetReturn(0, operand->EmitIR(ctx));
       } else {
         ForEachExpr(operand.get(), [ctx](size_t i, AST::Expression *expr) {
           // TODO return type maybe not the same as type actually returned?
           auto *ret_type = expr->type;
-          ret_type->EmitAssign(
-              expr->type, expr->EmitIR(ctx),
-              IR::Val::Ret(IR::ReturnValue{static_cast<i32>(i)},
-                           ret_type->is_big() ? Ptr(ret_type) : ret_type),
-              ctx);
+          ret_type->EmitAssign(expr->type, expr->EmitIR(ctx),
+                               IR::Func::Current->Return(i), ctx);
         });
       }
       IR::ReturnJump();

@@ -32,7 +32,6 @@ struct FunctionLiteral;
 
 namespace IR {
 DEFINE_STRONG_INT(BlockIndex, i32, -1);
-DEFINE_STRONG_INT(ReturnValue, i32, -1);
 DEFINE_STRONG_INT(EnumVal, size_t, 0);
 DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
 
@@ -83,7 +82,6 @@ inline bool operator>=(Addr lhs, Addr rhs) { return !(lhs < rhs); }
 struct Func;
 } // namespace IR
 
-DEFINE_STRONG_HASH(IR::ReturnValue);
 DEFINE_STRONG_HASH(IR::BlockIndex);
 DEFINE_STRONG_HASH(IR::Register);
 
@@ -100,8 +98,8 @@ template <> struct hash<IR::CmdIndex> {
 namespace IR {
 struct Val {
   const type::Type *type = nullptr;
-  std::variant<Register, ReturnValue, IR::Addr, bool, char, double, i32,
-               EnumVal, const type::Type *, type::Struct *,
+  std::variant<Register, IR::Addr, bool, char, double, i32, EnumVal,
+               const type::Type *, type::Struct *,
                AST::GenericFunctionLiteral *, AST::FunctionLiteral *,
                IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
                AST::Expression *, BlockIndex, std::string, const Module *,
@@ -109,7 +107,6 @@ struct Val {
       value{false};
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
-  static Val Ret(ReturnValue r, const type::Type *t) { return Val(t, r); }
   static Val Addr(Addr addr, const type::Type *t);
   static Val GlobalAddr(u64 addr, const type::Type *t);
   static Val HeapAddr(void *addr, const type::Type *t);

@@ -51,9 +51,6 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             // TODO still need to be sure these are read in the correct order
             return llvm_data->regs AT(reg);
           },
-          [&](IR::ReturnValue ret) -> llvm::Value * {
-            return llvm_data->rets AT(ret.value);
-          },
           [&](IR::Addr addr) -> llvm::Value * {
             switch (addr.kind) {
               case IR::Addr::Kind::Null:
@@ -400,8 +397,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
     case IR::Op::SetReturn:
       return llvm_data->builder->CreateStore(
           EmitValue(num_args, llvm_data, cmd.args[1]),
-          llvm_data->rets AT(
-              std::get<IR::ReturnValue>(cmd.args[0].value).value));
+          EmitValue(num_args, llvm_data, cmd.args[0]));
     case IR::Op::Cast:{
       if (cmd.args[0].type == cmd.type) {
         return EmitValue(num_args, llvm_data, cmd.args[0]);

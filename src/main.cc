@@ -174,6 +174,7 @@ int GenerateCode() {
 
   AST::Call c;
   c.fn_ = std::unique_ptr<AST::Expression>(main_fn);
+
   // TODO does the context matter?
   Context ctx(main_mod);
   c.assign_scope(main_fn->scope_);

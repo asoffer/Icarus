@@ -40,7 +40,7 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
 
     ASSERT(ctx != nullptr);
     ForEachExpr(expr, [ctx](size_t i, AST::Expression *e) {
-      IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)}, e->EmitIR(ctx));
+      IR::SetReturn(i, e->EmitIR(ctx));
     });
     IR::ReturnJump();
 
@@ -48,27 +48,6 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
     IR::UncondJump(start_block);
   }
   return fn;
-}
-
-// TODO This is ugly and possibly wasteful.
-static std::unique_ptr<IR::Func> AssignmentFunction(const type::Type *from,
-                                                    const type::Type *to) {
-  // TODO is nullptr for module okay here?
-  auto assign_func = std::make_unique<IR::Func>(
-      nullptr, type::Func({Ptr(from), Ptr(to)}, {}),
-      std::vector<std::pair<std::string, AST::Expression *>>{{"from", nullptr},
-                                                             {"to", nullptr}});
-  // TODO maybe we want to wire contexts through here? probably.
-  // TODO get the right module
-  Module m;
-  Context ctx(&m); 
-  CURRENT_FUNC(assign_func.get()) {
-    IR::BasicBlock::Current = assign_func->entry();
-    to->EmitAssign(from, assign_func->Argument(0), assign_func->Argument(1),
-                   &ctx);
-    IR::ReturnJump();
-  }
-  return assign_func;
 }
 
 namespace IR {
@@ -82,7 +61,12 @@ static std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
   while (true) {
     auto block_index = ctx->ExecuteBlock();
     if (block_index.is_default()) {
-      auto rets = std::move(ctx->call_stack.top().rets_);
+      std::vector<IR::Val> rets;
+      auto *fn_type = ctx->call_stack.top().fn_->type_;
+      for (size_t i = fn_type->input.size();
+           i < fn_type->input.size() + fn_type->output.size(); ++i) {
+        rets.push_back(std::move(ctx->reg(Register(i))));
+      }
       ctx->call_stack.pop();
       return rets;
     } else {
@@ -103,15 +87,7 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
   size_t num_inputs = fn->type_->input.size();
   ASSERT(num_inputs <= arguments.size());
   ASSERT(num_inputs <= regs_.size());
-  size_t i = 0;
-  for (; i < num_inputs; ++i) { regs_[i] = arguments[i]; }
-  for (; i < arguments.size(); ++i) { rets_.push_back(arguments[i]); }
-
-  if (rets_.empty() && fn->type_->output.size() == 1) {
-    // This is the case of a simple return type (i.e., type can be held in
-    // register).
-    rets_.push_back(IR::Val::None());
-  }
+  for (size_t i = 0; i < arguments.size(); ++i) { regs_[i] = arguments[i]; }
 }
 
 BlockIndex ExecContext::ExecuteBlock() {
@@ -195,26 +171,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Ne: return Ne(resolved[0], resolved[1]);
     case Op::Ge: return Ge(resolved[0], resolved[1]);
     case Op::Gt: return Gt(resolved[0], resolved[1]);
-    case Op::SetReturn: {
-      const auto &rets = call_stack.top().rets_;
-      if (call_stack.top().fn_->type_->output.size() == 1 &&
-          !call_stack.top().fn_->type_->output[0]->is_big()) {
-        call_stack.top().rets_ AT(0) = resolved[1];
-      } else {
-        auto fn = AssignmentFunction(
-            resolved[0].type->is<type::Pointer>()
-                ? resolved[0].type->as<type::Pointer>().pointee
-                : resolved[0].type,
-            rets[std::get<ReturnValue>(resolved[0].value).value]
-                .type->as<type::Pointer>()
-                .pointee);
-        Execute(
-            fn.get(),
-            {resolved[1], rets[std::get<ReturnValue>(resolved[0].value).value]},
-            this);
-      }
-      return IR::Val::None();
-    }
     case Op::Extend: return Extend(resolved[0]);
     case Op::Trunc: return Trunc(resolved[0]);
     case Op::Err:
@@ -359,6 +315,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 #undef LOAD_FROM_STACK
         } break;
       }
+    } break;
+    case Op::SetReturn: {
+      reg(std::get<Register>(cmd.args[1].value)) = std::move(resolved[0]);
+      return IR::Val::None();
     } break;
     case Op::Store: {
       auto &addr = std::get<Addr>(resolved[1].value);

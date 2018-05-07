@@ -86,10 +86,6 @@ std::string Val::to_string() const {
           [this](Register reg) -> std::string {
             return this->type->to_string() + " r." + std::to_string(reg);
           },
-          [this](ReturnValue ret) -> std::string {
-            return this->type->to_string() + " ret." +
-                   std::to_string(ret.value);
-          },
           [](IR::Addr addr) -> std::string { return addr.to_string(); },
           [this](bool b) -> std::string {
             // type::Bool is used to represent -- if the type is missing.

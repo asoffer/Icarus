@@ -14,9 +14,10 @@ enum class Op : char {
   Print,
   Malloc, Free,
   Load, Store,
+  SetReturn,
   ArrayLength, ArrayData, PtrIncr,
   Phi, Field, Call,
-  SetReturn, Arrow, Variant, Array, Ptr,
+  Arrow, Variant, Array, Ptr,
   Alloca,
   Contextualize,
   VariantType, VariantValue,
@@ -90,7 +91,7 @@ Val Cast(const type::Type *to, Val v);
 
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val);
-void SetReturn(ReturnValue n, Val v2);
+void SetReturn(size_t n, Val v2);
 void Print(Val v);
 void Store(Val val, Val loc);
 void Free(Val v);

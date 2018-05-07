@@ -37,7 +37,8 @@ struct Func {
        std::vector<std::pair<std::string, AST::Expression *>> args);
 
   void dump() const;
-  Val Argument(u32 n);
+  Val Argument(u32 n) const;
+  Val Return(u32 n) const;
 
   const std::string name() const {
     return std::to_string(reinterpret_cast<uintptr_t>(this));
@@ -45,9 +46,13 @@ struct Func {
 
   int ValidateCalls(std::queue<Func *> *validation_queue) const;
 
-  const BasicBlock &block(BlockIndex index) const { return blocks_.at(index.value); }
+  const BasicBlock &block(BlockIndex index) const {
+    ASSERT(blocks_.size() > static_cast<size_t>(index.value));
+    return blocks_.at(index.value);
+  }
   BasicBlock &block(BlockIndex index) {
-    return const_cast<BasicBlock &>(static_cast<const Func *>(this)->block(index));
+    return const_cast<BasicBlock &>(
+        static_cast<const Func *>(this)->block(index));
   }
 
   const Cmd &Command(CmdIndex cmd_index) const {
@@ -82,20 +87,8 @@ struct Func {
   llvm::Function *llvm_fn_ = nullptr;
 #endif // ICARUS_USE_LLVM
 
-  // Indices for blocks that end in a return statement.
-  std::unordered_set<BlockIndex> return_blocks_;
-
-  // TODO we can probably come up with a way to more closely tie Register and
-  // CmdIndex so we don't need to store this map:
-  std::unordered_map<Register, CmdIndex> reg_map_;
-  std::vector<AST::Expression *> preconditions_;
-  std::vector<AST::Expression *> postconditions_;
   Module* mod_;
-  // TODO many of these maps could and should be vectors except they're keyed on
-  // strong ints. Consider adding a strong int vector.
-  std::unordered_map<CmdIndex, std::vector<CmdIndex>> references_;
-
-  mutable int num_errors_ = -1; // -1 indicates not yet validated
+  std::vector<AST::Expression *> preconditions_, postconditions_;
 
   std::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
   GetIncomingBlocks() const;

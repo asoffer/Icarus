@@ -1,6 +1,7 @@
 #include "cmd.h"
 
 #include <cmath>
+#include <vector>
 #include <iostream>
 
 #include "../type/all.h"
@@ -11,27 +12,6 @@ using base::check::Is;
 
 BlockIndex BasicBlock::Current;
 
-template <bool IsPhi = false>
-static void RecordReferences(Func *fn, const CmdIndex &ci,
-                             const std::vector<Val> &args) {
-  for (const auto &cmd_arg : args) {
-    std::visit(
-        base::overloaded{
-            [fn, &ci](Register reg) {
-              fn->references_[fn->reg_map_ AT(reg)].push_back(ci);
-            },
-            [fn, &ci](BlockIndex bi) {
-              if constexpr (IsPhi) {
-                size_t num_cmds    = fn->block(bi).cmds_.size();
-                i32 index_on_block = static_cast<i32>(num_cmds) - 1;
-                fn->references_[CmdIndex{bi, index_on_block}].push_back(ci);
-              }
-            },
-            [](auto &&) {},
-        },
-        cmd_arg.value);
-  }
-}
 Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
     : args(std::move(arg_vec)), op_code_(op), type(t) {
   CmdIndex cmd_index{
@@ -39,8 +19,6 @@ Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
       static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
   result = Register(t != nullptr ? Func::Current->num_regs_++
                                  : -(++Func::Current->num_voids_));
-  Func::Current->reg_map_[result] = cmd_index;
-  RecordReferences(Func::Current, cmd_index, args);
 }
 
 Val Field(Val v, size_t n) {
@@ -56,12 +34,12 @@ Val Field(Val v, size_t n) {
   return reg;
 }
 
-static Val MakeCmd(const type::Type *t, Op op, std::vector<Val> &&vals) {
-  // ASSERT(Func::Current != nullptr);
-  if (Func::Current == nullptr) { std::abort(); }
+static Val MakeCmd(const type::Type *t, Op op, std::vector<Val> vals) {
+  ASSERT(Func::Current != nullptr);
   auto &cmds = Func::Current->block(BasicBlock::Current).cmds_;
-  cmds.emplace_back(t, op, std::move(vals));
-  return cmds.back().reg();
+  Cmd c{t, op, std::move(vals)};
+  cmds.emplace_back(std::move(c));
+  return t == nullptr ? IR::Val::None() : cmds.back().reg();
 }
 
 Val Malloc(const type::Type *t, Val v) {
@@ -178,18 +156,15 @@ Val ArrayData(Val v) {
                  std::vector{std::move(v)});
 }
 
-void SetReturn(ReturnValue r, Val v2) {
-  Val v1 = Val::Ret(r, v2.type);
-  MakeCmd(nullptr, Op::SetReturn, std::vector{std::move(v1), std::move(v2)});
+void SetReturn(size_t r, Val v2) {
+  // TODO ***maybe*** later optimize a return register
+  MakeCmd(nullptr, Op::SetReturn,
+          std::vector{std::move(v2), IR::Func::Current->Return(r)});
 }
 
 void Store(Val v1, Val v2) {
-  if (auto *rv = std::get_if<ReturnValue>(&v2.value)) {
-    SetReturn(*rv, v1);
-  } else {
-    ASSERT(v2.type, Is<type::Pointer>());
-    MakeCmd(nullptr, Op::Store, std::vector{std::move(v1), std::move(v2)});
-  }
+  ASSERT(v2.type, Is<type::Pointer>());
+  MakeCmd(nullptr, Op::Store, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val PtrIncr(Val v1, Val v2) {
@@ -487,6 +462,7 @@ void Cmd::dump(size_t indent) const {
   case Op::FinalizeStruct: std::cerr << "finalize-struct"; break;
   case Op::Load: std::cerr << "load"; break;
   case Op::Store: std::cerr << "store"; break;
+  case Op::SetReturn: std::cerr << "set-ret"; break;
   case Op::Variant: std::cerr << "variant"; break;
   case Op::ArrayLength: std::cerr << "array-length"; break;
   case Op::ArrayData: std::cerr << "array-data"; break;
@@ -495,7 +471,6 @@ void Cmd::dump(size_t indent) const {
   case Op::Phi: std::cerr << "phi"; break;
   case Op::Field: std::cerr << "field"; break;
   case Op::Call: std::cerr << "call"; break;
-  case Op::SetReturn: std::cerr << "set-ret"; break;
   case Op::Arrow: std::cerr << "arrow"; break;
   case Op::Array: std::cerr << "array-type"; break;
   case Op::Alloca: std::cerr << "alloca"; break;
@@ -531,7 +506,6 @@ void UncondJump(BlockIndex block) {
 void ReturnJump() {
   ASSERT(Func::Current != nullptr);
   Cmd cmd(nullptr, Op::ReturnJump, {});
-  Func::Current->return_blocks_.insert(BasicBlock::Current);
   Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
 }
 
@@ -552,7 +526,6 @@ void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
   auto &cmd = Command(cmd_index);
   ASSERT(cmd.op_code_ == Op::Phi);
   cmd.args = std::move(args);
-  RecordReferences</* IsPhi = */ true>(Func::Current, cmd_index, cmd.args);
 }
 
 } // namespace IR

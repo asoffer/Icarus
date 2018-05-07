@@ -83,7 +83,6 @@ struct ExecContext {
     BlockIndex prev_;
 
     std::vector<Val> regs_ = {};
-    std::vector<Val> rets_ = {};
   };
 
   BasicBlock &current_block();
