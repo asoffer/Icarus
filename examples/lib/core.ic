@@ -2,10 +2,14 @@ if ::= scope {
   self ::= block {
     before ::= (b: bool) => switch {
       self when b
-      exit when !b
+      else when !b
     }
     after ::= () => exit
   }
+  else ::= block {
+    before ::= () => else
+    after ::= () => exit
+  } 
 }
 
 forever ::= scope {

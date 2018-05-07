@@ -11,11 +11,11 @@ main ::= () -> () {
       if (n % test == 0) {
         found_div = true
         test = n // Force break
-      }
+      } else {}
       test += 1
     }
 
-    if (!found_div) { num += 1 }
+    if (!found_div) { num += 1 } else {}
     n += 1
   }
   print "There are ", num, " prime numbers less than or equal to ", upper, "\n"
