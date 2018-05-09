@@ -122,6 +122,7 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
 // TODO print something friendlier
 void Pointer::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(val); }
 void Enum::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(val); }
+void Flags::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(val); }
 void Scope::EmitRepr(IR::Val, Context *ctx) const { NOT_YET(); }
 void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
   // TODO design and build a jump table?

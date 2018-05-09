@@ -16,7 +16,8 @@ Cmp Primitive::Comparator() const {
 
 Cmp Pointer::Comparator() const { return Cmp::Equality; }
 Cmp Function::Comparator() const { NOT_YET(this); }
-Cmp Enum::Comparator() const { return is_enum_ ? Cmp::Equality : Cmp::Order; }
+Cmp Enum::Comparator() const { return Cmp::Equality; }
+Cmp Flags::Comparator() const { return Cmp::Order; }
 
 Cmp Variant::Comparator() const {
   using cmp_t = std::underlying_type_t<Cmp>;

@@ -64,8 +64,7 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       {"null", IR::Val::NullPtr()},     {"ord", OrdFunc()},
       {"ascii", AsciiFunc()},           {"error", ErrorFunc()},
       {"exit", IR::Val::Block(nullptr)}};
-  auto iter = Reserved.find(token);
-  if (iter != Reserved.end()) {
+  if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     return frontend::TaggedNode::TerminalExpression(span, iter->second);
   }
 
@@ -77,8 +76,8 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       {"struct", frontend::kw_block}, {"return", frontend::op_lt},
       {"scope", frontend::kw_block},  {"switch", frontend::kw_block},
       {"when", frontend::op_b},       {"block", frontend::kw_block}};
-  for (const auto & [ key, val ] : KeywordMap) {
-    if (token == key) { return frontend::TaggedNode(span, key, val); }
+  if (auto iter = KeywordMap.find(token); iter != KeywordMap.end()) {
+    return frontend::TaggedNode(span, iter->first, iter->second);
   }
 
   return frontend::TaggedNode(std::make_unique<AST::Identifier>(span, token),
@@ -281,13 +280,11 @@ frontend::TaggedNode NextOperator(SourceLocation &loc, error::Log* error_log) {
         loc.BackUp();
         return NextNumber(loc);
       }
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, ".", frontend::op_b);
     } else {
-      if (num_dots > 2) { error_log->TooManyDots(span); }
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "..", frontend::dots);
+     error_log->TooManyDots(span);
     }
+    span.finish = loc.cursor;
+    return frontend::TaggedNode(span, ".", frontend::op_b);
   } break;
 
   case '\\': {

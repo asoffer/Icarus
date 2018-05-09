@@ -185,28 +185,28 @@ Val Ptr(Val v) {
 Val Xor(Val v1, Val v2) {
   if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? Neg(v2) : v2; }
   if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? Neg(v1) : v1; }
-  if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
-      *e2         = std::get_if<EnumVal>(&v2.value);
+  if (FlagsVal *e1 = std::get_if<FlagsVal>(&v1.value),
+      *e2         = std::get_if<FlagsVal>(&v2.value);
       e1 != nullptr && e2 != nullptr) {
-    return Val::Enum(&v1.type->as<type::Enum>(), e1->value ^ e2->value);
+    return Val::Flags(&v1.type->as<type::Flags>(), e1->value ^ e2->value);
   }
   return MakeCmd(v1.type, Op::Xor, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val Or(Val v1, Val v2) {
-  if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
-      *e2         = std::get_if<EnumVal>(&v2.value);
+  if (FlagsVal *e1 = std::get_if<FlagsVal>(&v1.value),
+      *e2         = std::get_if<FlagsVal>(&v2.value);
       e1 != nullptr && e2 != nullptr) {
-    return Val::Enum(&v1.type->as<type::Enum>(), e1->value | e2->value);
+    return Val::Flags(&v1.type->as<type::Flags>(), e1->value | e2->value);
   }
   return MakeCmd(v1.type, Op::Or, std::vector{std::move(v1), std::move(v2)});
 }
 
 Val And(Val v1, Val v2) {
-  if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
-      *e2         = std::get_if<EnumVal>(&v2.value);
+  if (FlagsVal *e1 = std::get_if<FlagsVal>(&v1.value),
+      *e2         = std::get_if<FlagsVal>(&v2.value);
       e1 != nullptr && e2 != nullptr) {
-    return Val::Enum(&v1.type->as<type::Enum>(), e1->value & e2->value);
+    return Val::Flags(&v1.type->as<type::Flags>(), e1->value & e2->value);
   }
   return MakeCmd(v1.type, Op::And, std::vector{std::move(v1), std::move(v2)});
 }
@@ -236,11 +236,6 @@ Val Add(Val v1, Val v2) {
     return Val::CodeBlock(std::move(block));
   }
 
-  if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
-      *e2         = std::get_if<EnumVal>(&v2.value);
-      e1 != nullptr && e2 != nullptr) {
-    return Val::Enum(&v1.type->as<type::Enum>(), e1->value + e2->value);
-  }
   return MakeCmd(v1.type, Op::Add, std::vector{std::move(v1), std::move(v2)});
 }
 
@@ -316,8 +311,8 @@ Val Index(Val v1, Val v2) {
 Val Lt(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::less<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::less<double>{}, Bool);
-  CONSTANT_PROPOGATION(EnumVal,
-                       [](EnumVal lhs, EnumVal rhs) {
+  CONSTANT_PROPOGATION(FlagsVal,
+                       [](FlagsVal lhs, FlagsVal rhs) {
                          return lhs.value != rhs.value &&
                                 ((lhs.value | rhs.value) == rhs.value);
                        },
@@ -328,8 +323,8 @@ Val Lt(Val v1, Val v2) {
 Val Le(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::less_equal<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::less_equal<double>{}, Bool);
-  CONSTANT_PROPOGATION(EnumVal,
-                       [](EnumVal lhs, EnumVal rhs) {
+  CONSTANT_PROPOGATION(FlagsVal,
+                       [](FlagsVal lhs, FlagsVal rhs) {
                          return (lhs.value | rhs.value) == rhs.value;
                        },
                        Bool);
@@ -339,8 +334,8 @@ Val Le(Val v1, Val v2) {
 Val Gt(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::greater<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::greater<double>{}, Bool);
-  CONSTANT_PROPOGATION(EnumVal,
-                       [](EnumVal lhs, EnumVal rhs) {
+  CONSTANT_PROPOGATION(FlagsVal,
+                       [](FlagsVal lhs, FlagsVal rhs) {
                          return lhs.value != rhs.value &&
                                 ((lhs.value | rhs.value) == lhs.value);
                        },
@@ -351,8 +346,8 @@ Val Gt(Val v1, Val v2) {
 Val Ge(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::greater_equal<i32>{}, Bool);
   CONSTANT_PROPOGATION(double, std::greater_equal<double>{}, Bool);
-  CONSTANT_PROPOGATION(EnumVal,
-                       [](EnumVal lhs, EnumVal rhs) {
+  CONSTANT_PROPOGATION(FlagsVal,
+                       [](FlagsVal lhs, FlagsVal rhs) {
                          return (lhs.value | rhs.value) == rhs.value;
                        },
                        Bool);
@@ -373,8 +368,8 @@ Val Eq(Val v1, Val v2) {
 
   CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
   CONSTANT_PROPOGATION(
-      EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value == rhs.value; },
-      Bool);
+      FlagsVal,
+      [](FlagsVal lhs, FlagsVal rhs) { return lhs.value == rhs.value; }, Bool);
   return MakeCmd(type::Bool, Op::Eq, std::vector{std::move(v1), std::move(v2)});
 }
 
@@ -389,8 +384,8 @@ Val Ne(Val v1, Val v2) {
                        std::not_equal_to<const type::Type *>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::not_equal_to<Addr>{}, Bool);
   CONSTANT_PROPOGATION(
-      EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value != rhs.value; },
-      Bool);
+      FlagsVal,
+      [](FlagsVal lhs, FlagsVal rhs) { return lhs.value != rhs.value; }, Bool);
   return MakeCmd(type::Bool, Op::Ne, std::vector{std::move(v1), std::move(v2)});
 }
 #undef CONSTANT_PROPOGATION

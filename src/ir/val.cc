@@ -8,6 +8,7 @@
 #include "ast/scope_literal.h"
 #include "ir/func.h"
 #include "type/enum.h"
+#include "type/flags.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/struct.h"
@@ -56,6 +57,10 @@ Val Val::Enum(const type::Enum *enum_type, size_t integral_val) {
   return Val(enum_type, EnumVal{integral_val});
 }
 
+Val Val::Flags(const type::Flags *flags_type, size_t integral_val) {
+  return Val(flags_type, FlagsVal{integral_val});
+}
+
 Val Val::FnLit(AST::FunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::GenFnLit(AST::GenericFunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::Func(IR::Func *fn) { return Val(fn->type_, fn); }
@@ -97,10 +102,15 @@ std::string Val::to_string() const {
           [](double d) -> std::string { return std::to_string(d) + "_r"; },
           [](i32 n) -> std::string { return std::to_string(n); },
           [this](EnumVal e) -> std::string {
-            // TODO this is wrong now that we have enum flags
             return e.value >= this->type->as<type::Enum>().members_.size()
                        ? this->type->as<type::Enum>().to_string() + ":END"
                        : this->type->as<type::Enum>().members_ AT(e.value);
+          },
+          [this](FlagsVal f) -> std::string {
+            return f.value >=
+                           (1u << this->type->as<type::Flags>().members_.size())
+                       ? this->type->as<type::Flags>().to_string() + ":END"
+                       : this->type->as<type::Flags>().members_ AT(f.value);
           },
           [](const type::Type *t) -> std::string { return t->to_string(); },
           [](IR::Func *f) -> std::string {

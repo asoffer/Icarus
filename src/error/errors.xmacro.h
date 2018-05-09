@@ -21,9 +21,9 @@ MAKE_LOG_ERROR(SpaceInCharacterLiteral, "Found a backtick (`) followed by a "
 MAKE_LOG_ERROR(TabInCharacterLiteral, "Founda tab in your character-literal. "
                                       "Tab charcater literals are written as "
                                       "`\t.")
-// TODO lexing things like 1..2 (as a range, but not 1...2 as 1..(.2))
-MAKE_LOG_ERROR(TooManyDots, "There are too many consecutive period (.) "
-                            "characters. Did you mean just \"..\"?")
+MAKE_LOG_ERROR(TooManyDots,
+               "There are too many consecutive period (.) characters.")
+
 MAKE_LOG_ERROR(InvalidCharacterQuestionMark, "Question mark characters are not "
                                              "valid syntax by themselves. Did "
                                              "you mean \":?\"?")
@@ -35,10 +35,6 @@ MAKE_LOG_ERROR(
     NotInMultilineComment,
     "Found a token representing the end of a "
     "multi-line comment (*/), but it was not part of a comment block.")
-
-// TODO this is a crappy error message
-MAKE_LOG_ERROR(DeclarationUsedAsOrdinaryExpression,
-               "Declarations cannot be used as ordinary expressions.")
 
 // TODO handle case where a value is repeated multiple times. build a set and
 // highlight them accordingly.
@@ -64,19 +60,15 @@ MAKE_LOG_ERROR(UninferrableType,
 MAKE_LOG_ERROR(
     NonConstantBindingToConstantDeclaration,
     "Attempting to initialize a constant with a non-constant value.")
-
-// TODO better text here
 MAKE_LOG_ERROR(InferringHole,
                "Attempting to infer the type of an uninitialized value")
 MAKE_LOG_ERROR(UninitializedConstant,
                "Attempting to define a constant with an uninitialized value.")
 MAKE_LOG_ERROR(NonComposableFunctions, "Functions cannot be composed.")
-
-// TODO better text here
-MAKE_LOG_ERROR(NonTypeFunctionInput, "From-type for a function must be a type.")
-
-// TODO better text here
-MAKE_LOG_ERROR(NonTypeFunctionOutput, "To-type for a function must be a type.")
+MAKE_LOG_ERROR(NonTypeFunctionInput,
+               "The specified return type for a function must be a type.")
+MAKE_LOG_ERROR(NonTypeFunctionOutput,
+               "The specified input type for a function must be a type.")
 MAKE_LOG_ERROR(InconsistentArrayType,
                "Type error: Array literal must have consistent type")
 MAKE_LOG_ERROR(ArrayIndexType, "Array length indexed by non-integral type")

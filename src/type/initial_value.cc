@@ -3,7 +3,7 @@
 #include "ast/codeblock.h"
 #include "ast/statements.h"
 #include "ir/func.h"
-
+// TODO deprecate these.
 namespace type {
 IR::Val Array::EmitInitialValue(Context* ctx) const {
   auto current_block = IR::BasicBlock::Current;

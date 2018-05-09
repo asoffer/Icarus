@@ -42,9 +42,9 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
       data_type->EmitDestroy(phi_reg, ctx);
       IR::UncondJump(loop_phi);
 
-      destroy_func_->SetArgs(phi, {IR::Val::BasicBlock(destroy_func_->entry()), ptr,
-                                  IR::Val::BasicBlock(loop_body),
-                                  IR::PtrIncr(phi_reg, IR::Val::Int(1))});
+      destroy_func_->SetArgs(phi, {IR::Val::BasicBlock(destroy_func_->entry()),
+                                   ptr, IR::Val::BasicBlock(loop_body),
+                                   IR::PtrIncr(phi_reg, IR::Val::Int(1))});
 
       IR::BasicBlock::Current = exit_block;
       if (!fixed_length) { IR::Free(IR::Load(IR::ArrayData(arg))); }
@@ -55,6 +55,7 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
 }
 
 void Enum::EmitDestroy(IR::Val, Context *ctx) const {}
+void Flags::EmitDestroy(IR::Val, Context *ctx) const {}
 void Function::EmitDestroy(IR::Val, Context *ctx) const {}
 void Pointer::EmitDestroy(IR::Val, Context *ctx) const {}
 void Variant::EmitDestroy(IR::Val, Context *ctx) const { NOT_YET(); }

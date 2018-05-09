@@ -8,6 +8,7 @@
 #include "ir/func.h"
 #include "type/array.h"
 #include "type/enum.h"
+#include "type/flags.h"
 #include "type/function.h"
 #include "type/struct.h"
 #include "type/tuple.h"
@@ -192,8 +193,7 @@ void Binop::VerifyType(Context *ctx) {
     case Operator::XorEq: {
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
         type = type::Bool;
-      } else if (lhs->type->is<type::Enum>() && rhs->type == lhs->type &&
-                 !lhs->type->as<type::Enum>().is_enum_) {
+      } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
         type = lhs->type;
       } else {
         type = type::Err;
@@ -206,8 +206,7 @@ void Binop::VerifyType(Context *ctx) {
     case Operator::AndEq: {
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
         type = type::Bool;
-      } else if (lhs->type->is<type::Enum>() && rhs->type == lhs->type &&
-                 !lhs->type->as<type::Enum>().is_enum_) {
+      } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
         type = lhs->type;
       } else {
         type = type::Err;
@@ -220,8 +219,7 @@ void Binop::VerifyType(Context *ctx) {
     case Operator::OrEq: {
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
         type = type::Bool;
-      } else if (lhs->type->is<type::Enum>() && rhs->type == lhs->type &&
-                 !lhs->type->as<type::Enum>().is_enum_) {
+      } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
         type = lhs->type;
       } else {
         type = type::Err;

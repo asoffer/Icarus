@@ -46,6 +46,11 @@ IR::Val Enum::PrepareArgument(const Type *from, const IR::Val &val,
   return val;
 }
 
+IR::Val Flags::PrepareArgument(const Type *from, const IR::Val &val,
+                               Context *ctx) const {
+  ASSERT(from == this);
+  return val;
+}
 IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
                                  Context *ctx) const {
   if (this == from) { return val; }

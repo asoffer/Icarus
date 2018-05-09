@@ -44,6 +44,8 @@ size_t Architecture::alignment(const type::Type *t) const {
     return ptr_align_;
   } else if (t->is<type::Enum>()) {
     return 8;  // TODO
+  } else if (t->is<type::Flags>()) {
+    return 8;  // TODO
   } else if (t->is<type::Scope>()) {
     return 1;
   } else if (t->is<type::Variant>()) {
@@ -99,6 +101,8 @@ size_t Architecture::bytes(const type::Type *t) const {
   } else if (t->is<type::Function>()) {
     return 2 * ptr_bytes_;
   } else if (t->is<type::Enum>()) {
+    return 8; // TODO
+  } else if (t->is<type::Flags>()) {
     return 8; // TODO
   } else if (t->is<type::Scope>()) {
     return 0;

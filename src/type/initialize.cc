@@ -65,6 +65,9 @@ void Enum::EmitInit(IR::Val id_val, Context *ctx) const {
   IR::Store(EmitInitialValue(ctx), id_val);
 }
 
+void Flags::EmitInit(IR::Val id_val, Context *ctx) const {
+  IR::Store(EmitInitialValue(ctx), id_val);
+}
 
 void Variant::EmitInit(IR::Val, Context *ctx) const {
   UNREACHABLE("Variants must be initialized.");

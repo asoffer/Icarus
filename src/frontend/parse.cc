@@ -147,7 +147,7 @@ static std::unique_ptr<Node> BuildLeftUnop(
     }
   } else {
     if (unop->operand->is<Declaration>()) {
-      error_log->DeclarationUsedAsOrdinaryExpression(unop->operand->span);
+      error_log->DeclarationUsedInUnop(tk, unop->operand->span);
     }
   }
   return unop;
@@ -317,19 +317,6 @@ static std::unique_ptr<Node> BuildEmptyCommaList(
   auto comma_list  = std::make_unique<CommaList>();
   comma_list->span = TextSpan(nodes[0]->span, nodes[1]->span);
   return comma_list;
-}
-
-// Input guarantee:
-// [expression] [dots]
-//
-// Internal checks: None
-static std::unique_ptr<Node> BuildDots(std::vector<std::unique_ptr<Node>> nodes,
-                                       error::Log *error_log) {
-  auto unop     = std::make_unique<Unop>();
-  unop->operand = move_as<Expression>(nodes[0]);
-  unop->span    = TextSpan(nodes[0]->span, nodes[1]->span);
-  unop->op      = nodes[1]->as<frontend::Token>().op;
-  return unop;
 }
 
 static std::unique_ptr<Node> BuildArrayLiteral(
@@ -721,11 +708,10 @@ static std::unique_ptr<AST::Node> BuildBinaryOperator(
       {"&=", Language::Operator::AndEq}, {"^=", Language::Operator::XorEq},
       {"+=", Language::Operator::AddEq}, {"-=", Language::Operator::SubEq},
       {"*=", Language::Operator::MulEq}, {"/=", Language::Operator::DivEq},
-      {"%=", Language::Operator::ModEq}, {"..", Language::Operator::Dots},
-      {"+", Language::Operator::Add},    {"-", Language::Operator::Sub},
-      {"*", Language::Operator::Mul},    {"/", Language::Operator::Div},
-      {"%", Language::Operator::Mod},    {"[", Language::Operator::Index},
-      {"when", Language::Operator::When}};
+      {"%=", Language::Operator::ModEq}, {"+", Language::Operator::Add},
+      {"-", Language::Operator::Sub},    {"*", Language::Operator::Mul},
+      {"/", Language::Operator::Div},    {"%", Language::Operator::Mod},
+      {"[", Language::Operator::Index},  {"when", Language::Operator::When}};
   {
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }
@@ -734,7 +720,7 @@ static std::unique_ptr<AST::Node> BuildBinaryOperator(
   }
 }
 
-static std::unique_ptr<AST::Node> BuildEnumLiteral(
+static std::unique_ptr<AST::Node> BuildEnumOrFlagLiteral(
     std::vector<std::unique_ptr<AST::Node>> nodes, bool is_enum,
     error::Log *error_log) {
   std::unordered_set<std::string> members;
@@ -757,11 +743,19 @@ static std::unique_ptr<AST::Node> BuildEnumLiteral(
   static size_t anon_enum_counter = 0;
   std::vector<std::string> members_vec(std::make_move_iterator(members.begin()),
                                        std::make_move_iterator(members.end()));
-  return std::make_unique<AST::Terminal>(
-      TextSpan(nodes[0]->span, nodes[1]->span),
-      IR::Val::Type(
-          new type::Enum("__anon.enum" + std::to_string(anon_enum_counter++),
-                         std::move(members_vec), is_enum)));
+  if (is_enum) {
+    return std::make_unique<AST::Terminal>(
+        TextSpan(nodes[0]->span, nodes[1]->span),
+        IR::Val::Type(
+            new type::Enum("__anon.enum" + std::to_string(anon_enum_counter++),
+                           std::move(members_vec))));
+  } else {
+    return std::make_unique<AST::Terminal>(
+        TextSpan(nodes[0]->span, nodes[1]->span),
+        IR::Val::Type(
+            new type::Enum("__anon.enum" + std::to_string(anon_enum_counter++),
+                           std::move(members_vec))));
+  }
 }
 
 static std::unique_ptr<AST::Node> BuildStructLiteral(
@@ -847,7 +841,7 @@ static std::unique_ptr<AST::Node> BuildKWBlock(
   const std::string &tk = nodes[0]->as<frontend::Token>().token;
 
   if (bool is_enum = (tk == "enum"); is_enum || tk == "flags") {
-    return BuildEnumLiteral(std::move(nodes), is_enum, error_log);
+    return BuildEnumOrFlagLiteral(std::move(nodes), is_enum, error_log);
 
   } else if (tk == "struct") {
     return BuildStructLiteral(std::move(nodes), error_log);
@@ -964,7 +958,7 @@ static std::unique_ptr<AST::Node> BuildOperatorIdentifier(
 }
 
 namespace frontend {
-static constexpr u64 OP_B = op_b | comma | dots | colon | eq;
+static constexpr u64 OP_B = op_b | comma | colon | eq;
 static constexpr u64 EXPR = expr | fn_expr | scope_expr;
 // Used in error productions only!
 static constexpr u64 RESERVED = kw_block | op_lt;
@@ -982,7 +976,7 @@ auto Rules = std::array{
     Rule(fn_expr, {RESERVED, fn_arrow, EXPR}, ErrMsg::Reserved<1, 0>),
     Rule(fn_expr, {RESERVED, fn_arrow, RESERVED},
          ErrMsg::BothReserved<1, 0, 2>),
-    Rule(expr, {EXPR, (OP_B | op_bl | dots), RESERVED}, ErrMsg::Reserved<1, 2>),
+    Rule(expr, {EXPR, (OP_B | op_bl), RESERVED}, ErrMsg::Reserved<1, 2>),
     Rule(expr, {RESERVED, (OP_B | op_bl), RESERVED},
          ErrMsg::BothReserved<1, 0, 2>),
     Rule(expr, {EXPR, op_l, RESERVED}, ErrMsg::NonBinopReserved<1, 2>),
@@ -1038,7 +1032,6 @@ auto Rules = std::array{
 
     Rule(expr, {(op_l | op_bl | op_lt), EXPR}, AST::BuildLeftUnop),
     Rule(expr, {RESERVED, (OP_B | op_bl), EXPR}, ErrMsg::Reserved<1, 0>),
-    Rule(expr, {EXPR, dots}, AST::BuildDots),
     Rule(expr, {l_paren | l_ref, EXPR, r_paren}, Parenthesize),
     Rule(expr, {l_bracket, EXPR, r_bracket}, AST::BuildArrayLiteral),
     Rule(expr, {l_paren, RESERVED, r_paren}, ErrMsg::Reserved<1, 1>),
@@ -1046,7 +1039,6 @@ auto Rules = std::array{
     Rule(stmts, {stmts, (EXPR | stmts), newline}, AST::BuildMoreStatements),
     Rule(expr, {kw_block, braced_stmts}, BuildKWBlock),
 
-    Rule(expr, {RESERVED, dots}, ErrMsg::Reserved<1, 0>),
     Rule(expr, {(op_l | op_bl | op_lt), RESERVED}, ErrMsg::Reserved<0, 1>),
     Rule(expr, {RESERVED, op_l, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
     // TODO does this rule prevent chained scope blocks on new lines or is it
@@ -1098,13 +1090,6 @@ struct ParseState {
       return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::MustReduce;
     }
 
-    if (get_type<1>() == dots) {
-      return (ahead.tag_ &
-              (op_bl | op_l | op_lt | expr | fn_expr | l_paren | l_bracket))
-                 ? ShiftState::NeedMore
-                 : ShiftState::MustReduce;
-    }
-
     if (ahead.tag_ == l_brace && get_type<1>() == fn_expr &&
         get_type<2>() == fn_arrow) {
       return ShiftState::MustReduce;
@@ -1143,7 +1128,7 @@ struct ParseState {
     }
 
     constexpr u64 OP =
-        op_l | op_b | colon | eq | comma | op_bl | dots | op_lt | fn_arrow;
+        op_l | op_b | colon | eq | comma | op_bl | op_lt | fn_arrow;
     if (get_type<2>() & OP) {
       auto left_prec = precedence(get<2>()->as<frontend::Token>().op);
       size_t right_prec;

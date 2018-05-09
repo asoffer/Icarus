@@ -14,6 +14,7 @@ struct Module;
 
 namespace type {
 struct Enum;
+struct Flags;
 struct Pointer;
 struct Struct;
 struct Type;
@@ -33,6 +34,7 @@ struct FunctionLiteral;
 namespace IR {
 DEFINE_STRONG_INT(BlockIndex, i32, -1);
 DEFINE_STRONG_INT(EnumVal, size_t, 0);
+DEFINE_STRONG_INT(FlagsVal, size_t, 0);
 DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
 
 struct CmdIndex {
@@ -98,7 +100,7 @@ template <> struct hash<IR::CmdIndex> {
 namespace IR {
 struct Val {
   const type::Type *type = nullptr;
-  std::variant<Register, IR::Addr, bool, char, double, i32, EnumVal,
+  std::variant<Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
                const type::Type *, type::Struct *,
                AST::GenericFunctionLiteral *, AST::FunctionLiteral *,
                IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
@@ -116,6 +118,7 @@ struct Val {
   static Val Real(double r) { return Val(type::Real, r); }
   static Val Int(i32 n) { return Val(type::Int, n); }
   static Val Enum(const type::Enum *enum_type, size_t integral_val);
+  static Val Flags(const type::Flags *flags_type, size_t integral_val);
   static Val Type(const type::Type *t) { return Val(type::Type_, t); }
   static Val CodeBlock(AST::CodeBlock block);
   static Val Func(IR::Func *fn); // TODO deprecate?

@@ -100,17 +100,23 @@ char* Enum::WriteTo(char *buf) const {
   return std::strcpy(buf, bound_name.c_str()) + string_size();
 }
 
+size_t Flags::string_size() const { return bound_name.size(); }
+char* Flags::WriteTo(char *buf) const {
+  return std::strcpy(buf, bound_name.c_str()) + string_size();
+}
+
 size_t Pointer::string_size() const {
   return ((pointee->is<Struct>() || pointee->is<Primitive>() ||
-           pointee->is<Enum>() || pointee->is<Array>() ||
-           pointee->is<Pointer>())
+           pointee->is<Enum>() || pointee->is<Flags>() ||
+           pointee->is<Array>() || pointee->is<Pointer>())
               ? 1
               : 3) +
          pointee->string_size();
 }
 char* Pointer::WriteTo(char *buf) const {
   if (pointee->is<Struct>() || pointee->is<Primitive>() ||
-      pointee->is<Enum>() || pointee->is<Array>() || pointee->is<Pointer>()) {
+      pointee->is<Enum>() || pointee->is<Flags>() || pointee->is<Array>() ||
+      pointee->is<Pointer>()) {
     buf = std::strcpy(buf, "*") + 1;
     buf = pointee->WriteTo(buf);
   } else {
@@ -172,12 +178,12 @@ char *Function::WriteTo(char *buf) const {
 size_t Variant::string_size() const {
   size_t result = (variants_.size() - 1) * 3;
   for (const Type *v : variants_) {
-    result +=
-        v->string_size() + (v->is<Struct>() || v->is<Primitive>() ||
-                                    v->is<Enum>() || v->is<Pointer>() ||
-                                    v->is<Function>() || v->is<Array>()
-                                ? 0
-                                : 2);
+    result += v->string_size() + (v->is<Struct>() || v->is<Primitive>() ||
+                                          v->is<Enum>() || v->is<Flags>() ||
+                                          v->is<Pointer>() ||
+                                          v->is<Function>() || v->is<Array>()
+                                      ? 0
+                                      : 2);
   }
   return result;
 }
@@ -186,7 +192,7 @@ char *Variant::WriteTo(char *buf) const {
   auto iter = variants_.begin();
 
   if ((*iter)->is<Struct>() || (*iter)->is<Primitive>() ||
-      (*iter)->is<Enum>() || (*iter)->is<Pointer>() ||
+      (*iter)->is<Enum>() || (*iter)->is<Flags>() || (*iter)->is<Pointer>() ||
       (*iter)->is<Function>() || (*iter)->is<Array>()) {
     buf = (*iter)->WriteTo(buf);
   } else {
@@ -199,7 +205,7 @@ char *Variant::WriteTo(char *buf) const {
   for (; iter != variants_.end(); ++iter) {
     buf = std::strcpy(buf, " | ") + 3;
     if ((*iter)->is<Struct>() || (*iter)->is<Primitive>() ||
-        (*iter)->is<Enum>() || (*iter)->is<Pointer>() ||
+        (*iter)->is<Enum>() || (*iter)->is<Flags>() || (*iter)->is<Pointer>() ||
         (*iter)->is<Function>() || (*iter)->is<Array>()) {
       buf = (*iter)->WriteTo(buf);
     } else {

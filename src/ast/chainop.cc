@@ -7,6 +7,7 @@
 #include "ir/func.h"
 #include "type/array.h"
 #include "type/enum.h"
+#include "type/flags.h"
 #include "type/struct.h"
 #include "type/tuple.h"
 
@@ -151,8 +152,7 @@ void ChainOp::VerifyType(Context *ctx) {
       if (exprs[0]->type != type::Bool &&
           !(exprs[0]->type == type::Type_ &&
             ops[0] == Language::Operator::Or) &&
-          (!exprs[0]->type->is<type::Enum>() ||
-           exprs[0]->type->as<type::Enum>().is_enum_)) {
+          (!exprs[0]->type->is<type::Flags>())) {
         ErrorLog::LogGeneric(
             TextSpan(), "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
         if (failed) {

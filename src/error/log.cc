@@ -278,6 +278,20 @@ void Log::DoubleDeclAssignment(const TextSpan &decl_span,
   errors_.push_back(ss.str());
 }
 
+void Log::DeclarationUsedInUnop(const std::string &unop,
+                                const TextSpan &decl_span) {
+  std::stringstream ss;
+  ss << "Declarations cannot be used as argument to unary operator `" << unop
+     << "`.\n\n";
+  WriteSource(
+      ss, *decl_span.source,
+      {Interval{decl_span.start.line_num, decl_span.finish.line_num + 1}},
+      NumDigits(decl_span.finish.line_num) + 2,
+      {{decl_span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
 void Log::ReturnTypeMismatch(const type::Type *expected_type,
                              const AST::Expression *ret_expr) {
   std::stringstream ss;

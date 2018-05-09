@@ -4,6 +4,7 @@
 namespace type {
 struct Array;
 struct Enum;
+struct Flags;
 struct Function;
 struct Pointer;
 struct Scope;
@@ -37,6 +38,7 @@ struct Identifier;
 
 #include "array.h"
 #include "enum.h"
+#include "flags.h"
 #include "function.h"
 #include "pointer.h"
 #include "primitive.h"

@@ -57,6 +57,9 @@ struct Log {
                                  const AST::Expression *ret_expr, size_t index);
   void ReturningWrongNumber(const AST::Expression *ret_expr, size_t num_rets);
   void NoReturnTypes(const AST::Expression *ret_expr);
+  void DeclarationUsedInUnop(const std::string &unop,
+                             const TextSpan &decl_span);
+
   std::vector<AST::Identifier *> *CyclicDependency();
 
   size_t size() const {

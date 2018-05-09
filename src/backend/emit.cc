@@ -84,6 +84,10 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             return llvm::ConstantInt::get(llvm_data->module->getContext(),
                                           llvm::APInt(32, e.value, true));
           },
+          [&](IR::FlagsVal e) -> llvm::Value * {
+            return llvm::ConstantInt::get(llvm_data->module->getContext(),
+                                          llvm::APInt(32, e.value, true));
+          },
           [&](const type::Type *t) -> llvm::Value * {
             // TODO this is probably a bad idea?
             return llvm::ConstantInt::get(
@@ -303,6 +307,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
           cmd.args[0].type->is<type::Enum>() ||
+          cmd.args[0].type->is<type::Flags>() ||
           cmd.args[0].type->is<type::Pointer>() ||
           cmd.args[0].type == type::Type_) {
         return llvm_data->builder->CreateICmpEQ(lhs, rhs);
@@ -318,6 +323,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
           cmd.args[0].type->is<type::Enum>() ||
+          cmd.args[0].type->is<type::Flags>() ||
           cmd.args[0].type->is<type::Pointer>() ||
           cmd.args[0].type == type::Type_) {
         return llvm_data->builder->CreateICmpNE(lhs, rhs);

@@ -1,13 +1,10 @@
 #include "enum.h"
 
 namespace type {
-Enum::Enum(const std::string &name, std::vector<std::string> members,
-           bool is_enum)
-    : bound_name(name), members_(std::move(members)), is_enum_(is_enum) {
+Enum::Enum(const std::string &name, std::vector<std::string> members)
+    : bound_name(name), members_(std::move(members)) {
   auto num_members = members_.size();
-  for (size_t i = 0; i < num_members; ++i) {
-    int_values[members_[i]] = is_enum ? i : (1 << i);
-  }
+  for (size_t i = 0; i < num_members; ++i) { int_values[members_[i]] = i; }
 }
 
 size_t Enum::IntValueOrFail(const std::string &str) const {

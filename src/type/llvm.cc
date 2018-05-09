@@ -35,6 +35,10 @@ llvm::Type* Enum::llvm(llvm::LLVMContext& ctx) const {
   // TODO make as wide as is necessary
   return llvm::Type::getInt32Ty(ctx);
 }
+llvm::Type* Flags::llvm(llvm::LLVMContext& ctx) const { 
+  // TODO make as wide as is necessary
+  return llvm::Type::getInt32Ty(ctx);
+}
 llvm::Type* Function::llvm(llvm::LLVMContext& ctx) const {
   return llvm_fn(ctx);
 }

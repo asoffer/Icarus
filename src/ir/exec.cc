@@ -216,30 +216,27 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               [](const std::string &s) { std::cerr << s; },
               [](const Addr &a) { std::cerr << a.to_string(); },
               [&resolved](EnumVal e) {
-                if (resolved[0].type->as<type::Enum>().is_enum_) {
-                  std::cerr
-                      << resolved[0].type->as<type::Enum>().members_[e.value];
+                std::cerr
+                    << resolved[0].type->as<type::Enum>().members_[e.value];
+              },
+              [&resolved](FlagsVal f) {
+                size_t val = f.value;
+                std::vector<std::string> vals;
+                const auto &members =
+                    resolved[0].type->as<type::Flags>().members_;
+                size_t i   = 0;
+                size_t pow = 1;
+                while (pow <= val) {
+                  if (val & pow) { vals.push_back(members[i]); }
+                  ++i;
+                  pow <<= 1;
+                }
+                if (vals.empty()) {
+                  std::cerr << "(empty)";
                 } else {
-                  size_t val = e.value;
-                  std::vector<std::string> vals;
-                  const auto &members =
-                      resolved[0].type->as<type::Enum>().members_;
-                  size_t i   = 0;
-                  size_t pow = 1;
-                  while (pow <= val) {
-                    if (val & pow) { vals.push_back(members[i]); }
-                    ++i;
-                    pow <<= 1;
-                  }
-                  if (vals.empty()) {
-                    std::cerr << "(empty)";
-                  } else {
-                    auto iter = vals.begin();
-                    std::cerr << *iter++;
-                    while (iter != vals.end()) {
-                      std::cerr << " | " << *iter++;
-                    }
-                  }
+                  auto iter = vals.begin();
+                  std::cerr << *iter++;
+                  while (iter != vals.end()) { std::cerr << " | " << *iter++; }
                 }
               },
               [](IR::Func *f) {
@@ -277,6 +274,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           } else if (cmd.type->is<type::Enum>()) {
             return IR::Val::Enum(&cmd.type->as<type::Enum>(),
                                  *static_cast<size_t *>(addr.as_heap));
+          } else if (cmd.type->is<type::Flags>()) {
+            return IR::Val::Flags(&cmd.type->as<type::Flags>(),
+                                 *static_cast<size_t *>(addr.as_heap));
           } else {
             NOT_YET("Don't know how to load type: ", cmd.type);
           }
@@ -307,6 +307,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             }
           } else if (cmd.type->is<type::Enum>()) {
             return IR::Val::Enum(&cmd.type->as<type::Enum>(),
+                                 stack_.Load<size_t>(addr.as_stack));
+          } else if (cmd.type->is<type::Flags>()) {
+            return IR::Val::Flags(&cmd.type->as<type::Flags>(),
                                  stack_.Load<size_t>(addr.as_stack));
           } else {
             call_stack.top().fn_->dump();
@@ -344,6 +347,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           } else if (resolved[0].type->is<type::Enum>()) {
             stack_.Store(std::get<EnumVal>(resolved[0].value).value,
                          addr.as_stack);
+          } else if (resolved[0].type->is<type::Flags>()) {
+            stack_.Store(std::get<FlagsVal>(resolved[0].value).value,
+                         addr.as_stack);
           } else if (resolved[0].type == type::Type_) {
             stack_.Store(std::get<const type::Type *>(resolved[0].value),
                          addr.as_stack);
@@ -378,6 +384,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             *static_cast<const type::Type **>(addr.as_heap) =
                 std::get<const type::Type *>(resolved[0].value);
           } else if (resolved[0].type->is<type::Enum>()) {
+            NOT_YET();
+          } else if (resolved[0].type->is<type::Flags>()) {
             NOT_YET();
           } else if (resolved[0].type == type::Code) {
             NOT_YET();

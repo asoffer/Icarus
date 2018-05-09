@@ -99,6 +99,12 @@ void Enum::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   IR::Store(from, to);
 }
 
+void Flags::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
+                       Context *ctx) const {
+  ASSERT(this == from_type);
+  IR::Store(from, to);
+}
+
 void Variant::EmitAssign(const Type *from_type, IR::Val from,
                          IR::Val to, Context*ctx) const {
   if (from_type->is<Variant>()) {
