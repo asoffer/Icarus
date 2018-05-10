@@ -13,11 +13,6 @@ size_t Flags::IntValueOrFail(const std::string &str) const {
                                     : iter->second;
 }
 
-IR::Val Flags::EmitInitialValue(Context* ctx) const {
-  // TODO enums don't have intial values. flags do
-  return IR::Val::Flags(this, 0);
-}
-
 IR::Val Flags::EmitLiteral(const std::string &member_name) const {
   return IR::Val::Flags(this, int_values AT(member_name));
 }

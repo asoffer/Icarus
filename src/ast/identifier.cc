@@ -95,7 +95,7 @@ void Identifier::Validate(Context *ctx) {
 
 IR::Val AST::Identifier::EmitIR(Context *ctx) {
   auto *val = AST::find(ctx->bound_constants_, token);
-  if (!decl) { return val ? *val : IR::Val::None(); }
+  if (decl == nullptr) { return val ? *val : IR::Val::None(); }
 
   if (decl->const_) {
     if (val) { return *val; }
@@ -104,8 +104,7 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
       return Evaluate(decl->init_val.get(), ctx) AT(0);
 
     } else {
-      // TODO this may be wrong for types that require nontrivial construction.
-      return decl->type->EmitInitialValue(ctx);
+      NOT_YET();
     }
   }
 

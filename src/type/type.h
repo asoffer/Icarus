@@ -30,7 +30,6 @@ class LLVMContext;
                           Context *ctx) const ENDING;                          \
   virtual void EmitInit(IR::Val id_val, Context *ctx) const ENDING;            \
   virtual void EmitDestroy(IR::Val id_val, Context *ctx) const ENDING;         \
-  virtual IR::Val EmitInitialValue(Context *ctx) const ENDING;                 \
   virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val,           \
                                   Context *ctx) const ENDING;                  \
   virtual void EmitRepr(IR::Val id_val, Context *ctx) const ENDING;            \

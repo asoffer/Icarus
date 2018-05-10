@@ -103,16 +103,24 @@ void Binop::VerifyType(Context *ctx) {
   }
 
   using Language::Operator;
-  if (lhs->lvalue != Assign::LVal &&
-      (op == Operator::Assign || op == Operator::OrEq ||
-       op == Operator::XorEq || op == Operator::AndEq ||
-       op == Operator::AddEq || op == Operator::SubEq ||
-       op == Operator::MulEq || op == Operator::DivEq ||
-       op == Operator::ModEq)) {
+  if (lhs->lvalue != Assign::LVal && op == Operator::Assign) {
     switch (lhs->lvalue) {
       case Assign::Unset: UNREACHABLE();
       case Assign::Const: ctx->error_log_.AssigningToConstant(span); break;
       case Assign::RVal: ctx->error_log_.AssigningToTemporary(span); break;
+      case Assign::LVal: UNREACHABLE();
+    }
+    limit_to(StageRange::Nothing());
+
+  } else if (lhs->lvalue != Assign::LVal &&
+             (op == Operator::OrEq || op == Operator::XorEq ||
+              op == Operator::AndEq || op == Operator::AddEq ||
+              op == Operator::SubEq || op == Operator::MulEq ||
+              op == Operator::DivEq || op == Operator::ModEq)) {
+    switch (lhs->lvalue) {
+      case Assign::Unset: UNREACHABLE();
+      case Assign::Const: ctx->error_log_.ModifyingToConstant(span); break;
+      case Assign::RVal: ctx->error_log_.ModifyingToTemporary(span); break;
       case Assign::LVal: UNREACHABLE();
     }
     limit_to(StageRange::Nothing());

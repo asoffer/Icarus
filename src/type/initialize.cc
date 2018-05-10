@@ -58,15 +58,33 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
 }
 
 void Primitive::EmitInit(IR::Val id_val, Context *ctx) const {
-  IR::Store(EmitInitialValue(ctx), id_val);
+  switch (type_) {
+    case PrimType::Err: UNREACHABLE(this, ": Err");
+    case PrimType::Type: IR::Store(IR::Val::Type(Void), id_val); break;
+    case PrimType::Void: UNREACHABLE();
+    case PrimType::NullPtr: UNREACHABLE();
+    case PrimType::EmptyArray: UNREACHABLE();
+    case PrimType::Code: {
+      AST::CodeBlock block;
+      block.type     = Code;
+      block.content_ = AST::Statements{};
+      return IR::Store(IR::Val::CodeBlock(std::move(block)), id_val);
+    }
+    case PrimType::Bool: IR::Store(IR::Val::Bool(false), id_val); break;
+    case PrimType::Char: IR::Store(IR::Val::Char('\0'), id_val); break;
+    case PrimType::Int: IR::Store(IR::Val::Int(0l), id_val); break;
+    case PrimType::Real: IR::Store(IR::Val::Real(0.0), id_val); break;
+    case PrimType::String: IR::Store(IR::Val::StrLit(""), id_val); break;
+    default: UNREACHABLE();
+  }
 }
 
 void Enum::EmitInit(IR::Val id_val, Context *ctx) const {
-  IR::Store(EmitInitialValue(ctx), id_val);
+  IR::Store(IR::Val::Enum(this, 0), id_val);
 }
 
 void Flags::EmitInit(IR::Val id_val, Context *ctx) const {
-  IR::Store(EmitInitialValue(ctx), id_val);
+  IR::Store(IR::Val::Flags(this, 0), id_val);
 }
 
 void Variant::EmitInit(IR::Val, Context *ctx) const {
@@ -74,12 +92,10 @@ void Variant::EmitInit(IR::Val, Context *ctx) const {
 }
 
 void Pointer::EmitInit(IR::Val id_val, Context *ctx) const {
-  IR::Store(EmitInitialValue(ctx), id_val);
+  IR::Store(IR::Val::Null(pointee), id_val);
 }
 
-void Function::EmitInit(IR::Val id_val, Context *ctx) const {
-  IR::Store(EmitInitialValue(ctx), id_val);
-}
+void Function::EmitInit(IR::Val id_val, Context *ctx) const { UNREACHABLE(); }
 
 void Scope::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
 

@@ -421,8 +421,7 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
       if (ctx->num_errors()) { return IR::Val::None(); }
       addr = eval[0];
     } else if (IsDefaultInitialized()) {
-      // TODO if EmitInitialValue requires generating code, that would be bad.
-      addr = type->EmitInitialValue(ctx);
+      NOT_YET();
     } else {
       UNREACHABLE();
     }
@@ -439,8 +438,7 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
       addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
 
     } else if (IsDefaultInitialized()) {
-      // TODO if EmitInitialValue requires generating code, that would be bad.
-      global_vals.push_back(type->EmitInitialValue(ctx));
+      NOT_YET();
       addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
 
     } else if (IsInferred()) {

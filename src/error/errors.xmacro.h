@@ -87,3 +87,5 @@ MAKE_LOG_ERROR(TakingAddressOfTemporary,
                "Attempting to take the address of a temporary.")
 MAKE_LOG_ERROR(AssigningToConstant, "Attempting to assign to a constant.")
 MAKE_LOG_ERROR(AssigningToTemporary, "Attempting to assign to a temporary.")
+MAKE_LOG_ERROR(ModifyingToConstant, "Attempting to modify to a constant.")
+MAKE_LOG_ERROR(ModifyingToTemporary, "Attempting to modify to a temporary.")

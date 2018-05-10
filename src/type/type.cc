@@ -15,20 +15,19 @@ namespace type {
 #include "../type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
-// TODO better to hash pair of Array*
-// TODO thread safety?
-static std::unordered_map<const Array *,
-                          std::unordered_map<const Array *, IR::Func *>>
+static base::guarded<std::unordered_map<
+    const Array *, std::unordered_map<const Array *, IR::Func *>>>
     eq_funcs;
-static std::unordered_map<const Array *,
-                          std::unordered_map<const Array *, IR::Func *>>
+static base::guarded<std::unordered_map<
+    const Array *, std::unordered_map<const Array *, IR::Func *>>>
     ne_funcs;
 IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
                              const Array *rhs_type, IR::Val rhs_ir,
                              bool equality, Context* ctx) {
   auto &funcs = equality ? eq_funcs : ne_funcs;
+  auto handle = funcs.lock();
 
-  auto[iter, success] = funcs[lhs_type].emplace(rhs_type, nullptr);
+  auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"lhs", nullptr}, {"rhs", nullptr}};
@@ -103,11 +102,12 @@ using InitFnType = void (*)(const Type *, const Type *, IR::Val,
 template <InitFnType InitFn>
 static IR::Val ArrayInitializationWith(const Array *from_type,
                                        const Array *to_type, Context* ctx) {
-  static std::unordered_map<const Array *,
-                            std::unordered_map<const Array *, IR::Func *>>
+  static base::guarded<std::unordered_map<
+      const Array *, std::unordered_map<const Array *, IR::Func *>>>
       init_fns;
 
-  auto[iter, success] = init_fns[to_type].emplace(from_type, nullptr);
+  auto handle = init_fns.lock();
+  auto[iter, success] = (*handle)[to_type].emplace(from_type, nullptr);
   if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
@@ -171,8 +171,9 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
 template <InitFnType InitFn>
 static IR::Val StructInitializationWith(const Struct *struct_type,
                                         Context *ctx) {
-  static std::unordered_map<const Struct *, IR::Func *> struct_init_fns;
-  auto[iter, success] = struct_init_fns.emplace(struct_type, nullptr);
+  static base::guarded<std::unordered_map<const Struct *, IR::Func *>> struct_init_fns;
+  auto handle = struct_init_fns.lock();
+  auto[iter, success] = handle->emplace(struct_type, nullptr);
 
   if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
@@ -371,27 +372,25 @@ const Type *Join(const Type *lhs, const Type *rhs) {
   UNREACHABLE(lhs, rhs);
 }
 
-template <typename Key, typename Val>
-using TypeContainer = std::unordered_map<Key, Val>;
-
-static TypeContainer<const Type *,
-                     std::unordered_map<size_t, Array>>
+static base::guarded<
+    std::unordered_map<const Type *, std::unordered_map<size_t, Array>>>
     fixed_arrays_;
 const Array *Arr(const Type *t, size_t len) {
-  return &fixed_arrays_[t]
+  auto handle = fixed_arrays_.lock();
+  return &(*handle)[t]
               .emplace(std::piecewise_construct, std::forward_as_tuple(len),
                        std::forward_as_tuple(t, len))
               .first->second;
 }
-static TypeContainer<const Type *, Array> arrays_;
+static base::guarded<std::unordered_map<const Type *, Array>> arrays_;
 const Array *Arr(const Type *t) {
-  return &arrays_
-              .emplace(std::piecewise_construct, std::forward_as_tuple(t),
-                       std::forward_as_tuple(t))
+  return &arrays_.lock()
+              ->emplace(std::piecewise_construct, std::forward_as_tuple(t),
+                        std::forward_as_tuple(t))
               .first->second;
 }
 
-static std::map<std::vector<const Type *>, Variant> variants_;
+static base::guarded<std::map<std::vector<const Type *>, Variant>> variants_;
 const Type *Var(std::vector<const Type *> variants) {
   if (variants.empty()) { return type::Void; }
   if (variants.size() == 1) { return variants[0]; }
@@ -418,14 +417,14 @@ const Type *Var(std::vector<const Type *> variants) {
 
   if (variants.size() == 1) { return variants.front(); }
 
-  return &variants_
-              .emplace(std::piecewise_construct,
-                       std::forward_as_tuple(variants),
-                       std::forward_as_tuple(variants))
+  return &variants_.lock()
+              ->emplace(std::piecewise_construct,
+                        std::forward_as_tuple(variants),
+                        std::forward_as_tuple(variants))
               .first->second;
 }
 
-static base::guarded<TypeContainer<const Type *, const Pointer>> pointers_;
+static base::guarded<std::unordered_map<const Type *, const Pointer>> pointers_;
 const Pointer *Ptr(const Type *t) {
   return &pointers_.lock()->emplace(t, Pointer(t)).first->second;
 }
