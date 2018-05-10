@@ -191,8 +191,7 @@ void Unop::VerifyType(Context *ctx) {
     case Operator::Mul: {
       limit_to(operand);
       if (operand->type != type::Type_) {
-        ErrorLog::LogGeneric(
-            this->span, "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
+        NOT_YET("log an error");
         type = type::Err;
         limit_to(StageRange::Nothing());
       } else {
@@ -224,9 +223,7 @@ void Unop::VerifyType(Context *ctx) {
         ASSERT(type, Not(Is<type::Tuple>()));
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       } else {
-        ErrorLog::LogGeneric(
-            TextSpan(), "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
-
+        NOT_YET("log an error");
         type = type::Err;
         limit_to(StageRange::Nothing());
       }

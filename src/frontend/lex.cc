@@ -102,9 +102,7 @@ frontend::TaggedNode NextNumber(SourceLocation &loc) {
                              span, IR::Val::Real(d));
                        },
                        [&span](const std::string &err) {
-                         ErrorLog::LogGeneric(
-                             span, "TODO " __FILE__ ":" +
-                                       std::to_string(__LINE__) + ": " + err);
+                         NOT_YET("log an error");
                          return frontend::TaggedNode{};
                        }},
       ParseNumber(std::string_view(start, &*loc - start)));

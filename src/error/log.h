@@ -59,6 +59,12 @@ struct Log {
   void NoReturnTypes(const AST::Expression *ret_expr);
   void DeclarationUsedInUnop(const std::string &unop,
                              const TextSpan &decl_span);
+  void MissingMember(const TextSpan &span, const std::string &member_name,
+                     const type::Type *t);
+  void InvalidStringIndex(const TextSpan &span, const type::Type *index_type);
+  void NonIntegralArrayIndex(const TextSpan &span,
+                             const type::Type *index_type);
+  void IndexingNonArray(const TextSpan &span, const type::Type *t);
 
   std::vector<AST::Identifier *> *CyclicDependency();
 
@@ -81,18 +87,5 @@ struct Log {
   std::vector<std::string> errors_;
 };
 } // namespace error
-
-// TODO everything below here is legacy and needs to be cleaned up
-
-namespace ErrorLog {
-void LogGeneric(const TextSpan &span, const std::string &msg);
-// TODO build a graph of declarations that shadow each other and show connected
-// components together.
-void MissingMember(const TextSpan &span, const std::string &member_name,
-                   const type::Type *t);
-void InvalidStringIndex(const TextSpan &span, const type::Type *index_type);
-void NonIntegralArrayIndex(const TextSpan &span, const type::Type *index_type);
-void IndexingNonArray(const TextSpan &span, const type::Type *t);
-} // namespace ErrorLog
 
 #endif // ICARUS_ERROR_LOG_H

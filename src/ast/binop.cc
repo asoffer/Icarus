@@ -144,9 +144,7 @@ void Binop::VerifyType(Context *ctx) {
         } else {
           for (size_t i = 0; i < lhs_entries_.size(); ++i) {
             if (!type::CanCastImplicitly(rhs_entries_[i], lhs_entries_[i])) {
-              ErrorLog::LogGeneric(
-                  this->span,
-                  "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
+              NOT_YET("log an error");
               limit_to(StageRange::NoEmitIR());
             }
           }
@@ -163,8 +161,7 @@ void Binop::VerifyType(Context *ctx) {
         NOT_YET("error message");
       } else {
         if (!type::CanCastImplicitly(rhs->type, lhs->type)) {
-          ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
-                                               std::to_string(__LINE__) + ": ");
+          NOT_YET("log an error");
           limit_to(StageRange::NoEmitIR());
         }
       }
@@ -178,21 +175,21 @@ void Binop::VerifyType(Context *ctx) {
       type = type::Err;
       if (lhs->type == type::String) {
         if (rhs->type != type::Int) {
-          ErrorLog::InvalidStringIndex(span, rhs->type);
+          ctx->error_log_.InvalidStringIndex(span, rhs->type);
           limit_to(StageRange::NoEmitIR());
         }
         type = type::Char;  // Assuming it's a char, even if the index type was
                             // wrong.
         return;
       } else if (!lhs->type->is<type::Array>()) {
-        ErrorLog::IndexingNonArray(span, lhs->type);
+        ctx->error_log_.IndexingNonArray(span, lhs->type);
         limit_to(StageRange::NoEmitIR());
         return;
       } else {
         type = lhs->type->as<type::Array>().data_type;
 
         if (rhs->type == type::Int) { break; }
-        ErrorLog::NonIntegralArrayIndex(span, rhs->type);
+        ctx->error_log_.NonIntegralArrayIndex(span, rhs->type);
         limit_to(StageRange::NoEmitIR());
         return;
       }

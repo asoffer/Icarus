@@ -16,7 +16,8 @@ using LineNum          = size_t;
 using FileToLineNumMap = std::unordered_map<Source::Name, std::vector<LineNum>>;
 static FileToLineNumMap global_non_decl;
 
-static inline size_t NumDigits(size_t n) {
+namespace {
+inline size_t NumDigits(size_t n) {
   if (n == 0) { return 1; }
   size_t counter = 0;
   while (n != 0) {
@@ -26,7 +27,7 @@ static inline size_t NumDigits(size_t n) {
   return counter;
 }
 
-static std::string LineToDisplay(size_t line_num, const Source::Line &line,
+std::string LineToDisplay(size_t line_num, const Source::Line &line,
                                  size_t border_alignment = 0) {
   auto num_digits = NumDigits(line_num);
   if (border_alignment == 0) { border_alignment = num_digits; }
@@ -35,7 +36,6 @@ static std::string LineToDisplay(size_t line_num, const Source::Line &line,
          std::to_string(line_num) + "| " + line + "\n";
 }
 
-namespace {
 // TODO templatize? and merge with texspan
 struct Interval {
   size_t start = 0, past_end = 0;
@@ -92,9 +92,8 @@ std::ostream& operator<<(std::ostream& os, const DisplayAttrs& attrs) {
             << static_cast<char>(attrs.effect) << 'm';
 }
 
-} // namespace
 
-static void
+void
 WriteSource(std::ostream &os, const Source &source,
             const IntervalSet &line_intervals, size_t border_alignment,
             const std::vector<std::pair<TextSpan, DisplayAttrs>> &underlines) {
@@ -155,61 +154,7 @@ WriteSource(std::ostream &os, const Source &source,
     }
   }
 }
-
-static void DisplayErrorMessage(const char *msg_head,
-                                const std::string &msg_foot,
-                                const TextSpan &span, size_t underline_length) {
-  auto line = source_map AT(span.source->name)->lines AT(span.start.line_num);
-
-  size_t left_border_width = NumDigits(span.start.line_num) + 6;
-
-  // Extra + 1 at the end because we might point after the end of the line.
-  std::string underline(line.size() + left_border_width + 1, ' ');
-  for (size_t i = left_border_width + span.start.offset;
-       i < left_border_width + span.start.offset + underline_length; ++i) {
-    underline[i] = '^';
-  }
-
-  std::cerr << msg_head << "\n\n    "
-            << LineToDisplay(span.start.line_num, line) << underline << '\n';
-  if (msg_foot != "") {
-    std::cerr << msg_foot << "\n\n";
-  } else {
-    std::cerr << '\n';
-  }
-}
-
-namespace ErrorLog {
-void LogGeneric(const TextSpan &, const std::string &msg) { std::cerr << msg; }
-
-void InvalidStringIndex(const TextSpan &span, const type::Type *index_type) {
-  std::string msg_head = "String indexed by an invalid type. Expected an int "
-                         "or uint, but encountered a " +
-                         index_type->to_string() + ".";
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
-void NonIntegralArrayIndex(const TextSpan &span, const type::Type *index_type) {
-  std::string msg_head = "Array is being indexed by an expression of type " +
-                         index_type->to_string() + ".";
-  DisplayErrorMessage(
-      msg_head.c_str(),
-      "Arrays must be indexed by integral types (either int or uint)", span, 1);
-}
-
-void MissingMember(const TextSpan &span, const std::string &member_name,
-                   const type::Type *t) {
-  std::string msg_head = "Expressions of type `" + t->to_string() +
-                         "` have no member named '" + member_name + "'.";
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
-void IndexingNonArray(const TextSpan &span, const type::Type *t) {
-  DisplayErrorMessage("Cannot index into a non-array type.",
-                      "Indexed type is a `" + t->to_string() + "`.", span, 1);
-}
-} // namespace ErrorLog
-
+} // namespace
 namespace error {
 void Log::UndeclaredIdentifier(AST::Identifier *id) {
   undeclared_ids_[id->token].push_back(id);
@@ -291,6 +236,22 @@ void Log::DeclarationUsedInUnop(const std::string &unop,
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
+
+void Log::MissingMember(const TextSpan &span, const std::string &member_name,
+                        const type::Type *t) {
+  std::stringstream ss;
+  ss << "Expressions of type `" << t->to_string() << "` have no member named `"
+     << member_name << "`.";
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  ss<<"\n\n";
+  errors_.push_back(ss.str());
+}
+
 
 void Log::ReturnTypeMismatch(const type::Type *expected_type,
                              const AST::Expression *ret_expr) {
@@ -602,6 +563,50 @@ void Log::Dump() const {
 
 void Log::DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id) {
   out_of_order_decls_[decl].push_back(id);
+}
+
+void Log::InvalidStringIndex(const TextSpan &span,
+                             const type::Type *index_type) {
+  std::stringstream ss;
+  ss << "String indexed by an invalid type. Expected an int or uint, but "
+        "encountered a "
+     << index_type->to_string() << ".";
+
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::NonIntegralArrayIndex(const TextSpan &span,
+                                const type::Type *index_type) {
+  std::stringstream ss;
+  ss << "Array is being indexed by an expression of type "
+     << index_type->to_string() << ".";
+
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::IndexingNonArray(const TextSpan &span, const type::Type *t) {
+  std::stringstream ss;
+  ss << "Cannot index into a non-array type. Indexed type is a `"
+     << t->to_string() << "`.";
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
 }
 
 } // namespace error

@@ -141,8 +141,7 @@ void ChainOp::VerifyType(Context *ctx) {
       bool failed = false;
       for (const auto &expr : exprs) {
         if (expr->type != exprs[0]->type) {
-          ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                               std::to_string(__LINE__) + ": ");
+          NOT_YET("log an error");
           failed = true;
         }
       }
@@ -153,8 +152,7 @@ void ChainOp::VerifyType(Context *ctx) {
           !(exprs[0]->type == type::Type_ &&
             ops[0] == Language::Operator::Or) &&
           (!exprs[0]->type->is<type::Flags>())) {
-        ErrorLog::LogGeneric(
-            TextSpan(), "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
+        NOT_YET("log an error");
         if (failed) {
           limit_to(StageRange::Nothing());
           return;
@@ -203,9 +201,7 @@ void ChainOp::VerifyType(Context *ctx) {
                   case type::Cmp::Equality: continue;
                   case type::Cmp::None:
                     type = type::Err;
-                    ErrorLog::LogGeneric(
-                        TextSpan(),
-                        "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
+                    NOT_YET("log an error");
                 }
               } break;
               case Language::Operator::Lt:
@@ -217,9 +213,7 @@ void ChainOp::VerifyType(Context *ctx) {
                   case type::Cmp::Equality:
                   case type::Cmp::None:
                     type = type::Err;
-                    ErrorLog::LogGeneric(
-                        TextSpan(),
-                        "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
+                    NOT_YET("log an error");
                 }
               } break;
               default: UNREACHABLE("Expecting a ChainOp operator type.");

@@ -49,7 +49,7 @@ void Access::VerifyType(Context *ctx) {
     if (member_name == "size") {
       type = type::Int;
     } else {
-      ErrorLog::MissingMember(span, member_name, base_type);
+      ctx->error_log_.MissingMember(span, member_name, base_type);
       type = type::Err;
       limit_to(StageRange::Nothing());
     }
@@ -63,7 +63,7 @@ void Access::VerifyType(Context *ctx) {
       type = evaled_type;
       if (evaled_type->as<type::Enum>().IntValueOrFail(member_name) ==
           std::numeric_limits<size_t>::max()) {
-        ErrorLog::MissingMember(span, member_name, evaled_type);
+        ctx->error_log_.MissingMember(span, member_name, evaled_type);
         limit_to(StageRange::NoEmitIR());
       }
     }
@@ -73,7 +73,7 @@ void Access::VerifyType(Context *ctx) {
       type = member->type;
 
     } else {
-      ErrorLog::MissingMember(span, member_name, base_type);
+      ctx->error_log_.MissingMember(span, member_name, base_type);
       type = type::Err;
       limit_to(StageRange::Nothing());
     }
@@ -82,15 +82,14 @@ void Access::VerifyType(Context *ctx) {
         std::get<const Module *>(Evaluate(operand.get(), ctx)[0].value);
     type = module->GetType(member_name);
     if (type == nullptr) {
-      ErrorLog::LogGeneric(
-          TextSpan(), "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
+      NOT_YET("log an error");
       type = type::Err;
       limit_to(StageRange::Nothing());
     }
 
   } else if (base_type->is<type::Primitive>() ||
              base_type->is<type::Function>()) {
-    ErrorLog::MissingMember(span, member_name, base_type);
+    ctx->error_log_.MissingMember(span, member_name, base_type);
     type = type::Err;
     limit_to(StageRange::Nothing());
   }

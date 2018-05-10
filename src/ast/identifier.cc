@@ -51,8 +51,7 @@ void Identifier::VerifyType(Context *ctx) {
         }
       } else {
         // TODO is this reachable? Or does shadowing cover this case?
-        ErrorLog::LogGeneric(
-            this->span, "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
+        NOT_YET("log an error");
       }
       type = type::Err;
       limit_to(StageRange::Nothing());
