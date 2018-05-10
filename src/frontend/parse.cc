@@ -396,7 +396,7 @@ static std::pair<bool, std::vector<std::unique_ptr<Declaration>>> ExtractInputs(
       generic |= inputs.back()->const_;
     }
   } else {
-    // TODO sometimes this is okay (like if you put 'void', but mostly it's not)
+    NOT_YET("log an error");
   }
   return std::pair(generic, std::move(inputs));
 }

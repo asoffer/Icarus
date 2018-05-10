@@ -1,19 +1,18 @@
-#include "exec.h"
+#include "backend/exec.h"
 
 #include <cstring>
+#include <future>
 #include <iostream>
 #include <memory>
-#include <future>
 
 #include "architecture.h"
 #include "ast/codeblock.h"
 #include "ast/expression.h"
 #include "ast/function_literal.h"
-#include "base/guarded.h"
 #include "base/util.h"
 #include "context.h"
 #include "error/log.h"
-#include "func.h"
+#include "ir/func.h"
 #include "module.h"
 #include "type/all.h"
 
@@ -334,64 +333,23 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           global_vals[addr.as_global] = resolved[0];
           return IR::Val::None();
         case Addr::Kind::Stack:
-          if (resolved[0].type == type::Bool) {
-            stack_.Store(std::get<bool>(resolved[0].value), addr.as_stack);
-          } else if (resolved[0].type == type::Char) {
-            stack_.Store(std::get<char>(resolved[0].value), addr.as_stack);
-          } else if (resolved[0].type == type::Int) {
-            stack_.Store(std::get<i32>(resolved[0].value), addr.as_stack);
-          } else if (resolved[0].type == type::Real) {
-            stack_.Store(std::get<double>(resolved[0].value), addr.as_stack);
-          } else if (resolved[0].type->is<type::Pointer>()) {
-            stack_.Store(std::get<Addr>(resolved[0].value), addr.as_stack);
-          } else if (resolved[0].type->is<type::Enum>()) {
-            stack_.Store(std::get<EnumVal>(resolved[0].value).value,
-                         addr.as_stack);
-          } else if (resolved[0].type->is<type::Flags>()) {
-            stack_.Store(std::get<FlagsVal>(resolved[0].value).value,
-                         addr.as_stack);
-          } else if (resolved[0].type == type::Type_) {
-            stack_.Store(std::get<const type::Type *>(resolved[0].value),
-                         addr.as_stack);
-          } else if (resolved[0].type == type::Code) {
-            stack_.Store(std::get<AST::CodeBlock>(resolved[0].value),
-                         addr.as_stack);
-          } else if (resolved[0].type == type::String) {
-            stack_.Store(std::get<std::string>(resolved[0].value),
-                         addr.as_stack);
-          } else {
-            NOT_YET("Don't know how to store that: args = ", resolved);
-          }
-
+          std::visit(base::overloaded{[this, &addr](EnumVal e) {
+                                        stack_.Store(e.value, addr.as_stack);
+                                      },
+                                      [this, &addr](FlagsVal f) {
+                                        stack_.Store(f.value, addr.as_stack);
+                                      },
+                                      [this, &addr](const auto &v) {
+                                        stack_.Store(v, addr.as_stack);
+                                      }},
+                     resolved[0].value);
           return IR::Val::None();
         case Addr::Kind::Heap:
-          if (resolved[0].type == type::Bool) {
-            *static_cast<bool *>(addr.as_heap) =
-                std::get<bool>(resolved[0].value);
-          } else if (resolved[0].type == type::Char) {
-            *static_cast<char *>(addr.as_heap) =
-                std::get<char>(resolved[0].value);
-          } else if (resolved[0].type == type::Int) {
-            *static_cast<i32 *>(addr.as_heap) =
-                std::get<i32>(resolved[0].value);
-          } else if (resolved[0].type == type::Real) {
-            *static_cast<double *>(addr.as_heap) =
-                std::get<double>(resolved[0].value);
-          } else if (resolved[0].type->is<type::Pointer>()) {
-            *static_cast<Addr *>(addr.as_heap) =
-                std::get<Addr>(resolved[0].value);
-          } else if (resolved[0].type == type::Type_) {
-            *static_cast<const type::Type **>(addr.as_heap) =
-                std::get<const type::Type *>(resolved[0].value);
-          } else if (resolved[0].type->is<type::Enum>()) {
-            NOT_YET();
-          } else if (resolved[0].type->is<type::Flags>()) {
-            NOT_YET();
-          } else if (resolved[0].type == type::Code) {
-            NOT_YET();
-          } else {
-            NOT_YET("Don't know how to store that: args = ", resolved);
-          }
+          std::visit(
+              [&addr](const auto &v) {
+                *static_cast<std::decay_t<decltype(v)> *>(addr.as_heap) = v;
+              },
+              resolved[0].value);
           return IR::Val::None();
       }
     } break;
