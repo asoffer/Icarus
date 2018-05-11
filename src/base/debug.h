@@ -39,7 +39,7 @@
 #else
 
 #define ASSERT(...)
-#define ASSERT_NOT_NULL(...)
+#define ASSERT_NOT_NULL(...) __VA_ARGS__
 #define UNREACHABLE(...) __builtin_unreachable();
 
 #endif

@@ -14,6 +14,6 @@ size_t Flags::IntValueOrFail(const std::string &str) const {
 }
 
 IR::Val Flags::EmitLiteral(const std::string &member_name) const {
-  return IR::Val::Flags(this, int_values AT(member_name));
+  return IR::Val::Flags(this, int_values.at(member_name));
 }
 } // namespace type
