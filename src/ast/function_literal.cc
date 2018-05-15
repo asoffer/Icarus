@@ -411,7 +411,7 @@ IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
     ir_func_ = ctx->mod_->AddFunc(this, std::move(args));
     ctx->mod_->to_complete_.push(this);
   }
-  return IR::Val::FnLit(this);
+  return IR::Val::Func(ir_func_);
 }
 
 void AST::FunctionLiteral::CompleteBody(Module *mod) {
@@ -466,8 +466,6 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
       });
     }
 
-    statements->VerifyType(&ctx);
-    statements->Validate(&ctx);
     statements->EmitIR(&ctx);
     if (type->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy

@@ -20,7 +20,7 @@ extern Type *Int;
 extern Type *Char;
 }  // namespace type
 
-IR::Val PtrCallFix(const IR::Val& v);
+IR::Val PtrCallFix(const IR::Val &v);
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 IR::Val ErrorFunc() {
@@ -91,7 +91,7 @@ static IR::Val EmitVariantMatch(const IR::Val &needle,
     IR::UncondJump(landing);
 
     IR::BasicBlock::Current = landing;
-    auto phi = IR::Phi(type::Bool);
+    auto phi                = IR::Phi(type::Bool);
     IR::Func::Current->SetArgs(phi, std::move(phi_args));
 
     return IR::Func::Current->Command(phi).reg();
@@ -131,8 +131,9 @@ static std::vector<IR::Val> EmitOneCallDispatch(
     const type::Type *ret_type,
     const std::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
-  auto callee = binding.fn_expr_->EmitIR(ctx).value;
-  if (const type::Type **cast_to = std::get_if<const type::Type *>(&callee)) {
+  auto callee = binding.fn_expr_->EmitIR(ctx);
+  if (const type::Type **cast_to =
+          std::get_if<const type::Type *>(&callee.value)) {
     ASSERT(binding.exprs_.size() == 1u);
     auto[bound_type, expr] = binding.exprs_[0];
     return {IR::Cast(*cast_to, bound_type->PrepareArgument(
@@ -142,12 +143,13 @@ static std::vector<IR::Val> EmitOneCallDispatch(
   // After the last check, if you pass, you should dispatch
   IR::Func *fn_to_call = std::visit(
       base::overloaded{[](IR::Func *fn) { return fn; },
-                       [](AST::FunctionLiteral *fn) { return fn->ir_func_; },
+                       [](IR::Register r) -> IR::Func * { return nullptr; },
                        [](auto &&) -> IR::Func * {
                          UNREACHABLE();
                          return nullptr;
                        }},
-      callee);
+      callee.value);
+
   std::vector<IR::Val> args;
   args.resize(binding.exprs_.size());
   for (size_t i = 0; i < args.size(); ++i) {
@@ -163,52 +165,50 @@ static std::vector<IR::Val> EmitOneCallDispatch(
     }
   }
 
-  ASSERT(fn_to_call != nullptr);
-
-  switch (fn_to_call->type_->output.size()) {
-    case 0:
-      return std::vector{
-          IR::Call(IR::Val::Func(fn_to_call), std::move(args), {})};
+  ASSERT(binding.fn_expr_->type, Is<type::Function>());
+  auto *fn_type = &binding.fn_expr_->type->as<type::Function>();
+  switch (fn_type->output.size()) {
+    // TODO this return is wrong.
+    case 0: return {IR::Call(callee, std::move(args), {})};
     case 1: {
-      if (fn_to_call->type_->output AT(0)->is_big()) {
+      if (fn_type->output AT(0)->is_big()) {
         auto ret_val = IR::Alloca(ret_type);
 
         if (ret_type->is<type::Variant>()) {
-          IR::Call(IR::Val::Func(fn_to_call), std::move(args),
-                   std::vector{IR::VariantValue(fn_to_call->type_->output AT(0),
-                                                ret_val)});
-          IR::Store(IR::Val::Type(fn_to_call->type_->output AT(0)),
+          IR::Call(
+              callee, std::move(args),
+              std::vector{IR::VariantValue(fn_type->output AT(0), ret_val)});
+          IR::Store(IR::Val::Type(fn_type->output AT(0)),
                     IR::VariantType(ret_val));
         } else {
-          IR::Call(IR::Val::Func(fn_to_call), std::move(args),
-                   std::vector{ret_val});
+          IR::Call(callee, std::move(args), std::vector{ret_val});
         }
         return {ret_val};
       } else {
-        auto ret_val = IR::Alloca(ret_type);
         if (ret_type->is<type::Variant>()) {
-          IR::Store(IR::Val::Type(fn_to_call->type_->output AT(0)),
+          auto ret_val = IR::Alloca(ret_type);
+          IR::Store(IR::Val::Type(fn_type->output AT(0)),
                     IR::VariantType(ret_val));
-          IR::Store(IR::Call(IR::Val::Func(fn_to_call), std::move(args), {}),
-                    IR::VariantValue(fn_to_call->type_->output AT(0), ret_val));
+          IR::Store(IR::Call(callee, std::move(args), {}),
+                    IR::VariantValue(fn_type->output AT(0), ret_val));
           return {ret_val};
         } else {
-          return {IR::Call(IR::Val::Func(fn_to_call), std::move(args), {})};
+          return {IR::Call(callee, std::move(args), {})};
         }
       }
     } break;
     default: {
       ASSERT(ret_type, Is<type::Tuple>());
       const auto &tup_entries = ret_type->as<type::Tuple>().entries_;
-      ASSERT(fn_to_call->type_->output.size() == tup_entries.size());
+      ASSERT(fn_type->output.size() == tup_entries.size());
 
       std::vector<IR::Val> ret_vals;
-      ret_vals.reserve(fn_to_call->type_->output.size());
+      ret_vals.reserve(fn_type->output.size());
       for (auto *entry : tup_entries) { ret_vals.push_back(IR::Alloca(entry)); }
 
       std::vector<IR::Val> return_args;
       for (size_t i = 0; i < tup_entries.size(); ++i) {
-        auto *return_type   = fn_to_call->type_->output AT(i);
+        auto *return_type   = fn_type->output AT(i);
         auto *expected_type = tup_entries AT(i);
 
         if (return_type->is<type::Variant>()) {
@@ -224,7 +224,7 @@ static std::vector<IR::Val> EmitOneCallDispatch(
           }
         }
       }
-      IR::Call(IR::Val::Func(fn_to_call), std::move(args), return_args);
+      IR::Call(callee, std::move(args), return_args);
       return ret_vals;
     }
   }
@@ -263,7 +263,8 @@ std::vector<IR::Val> EmitCallDispatch(
     size_t j          = 0;
     for (auto &&result :
          EmitOneCallDispatch(ret_type, expr_map, binding, ctx)) {
-      result_phi_args AT(j).push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
+      result_phi_args AT(j).push_back(
+          IR::Val::BasicBlock(IR::BasicBlock::Current));
       result_phi_args AT(j).push_back(std::move(result));
       ++j;
     }
@@ -276,7 +277,8 @@ std::vector<IR::Val> EmitCallDispatch(
   const auto & [ call_arg_type, binding ] = *iter;
   size_t j                                = 0;
   for (auto &&result : EmitOneCallDispatch(ret_type, expr_map, binding, ctx)) {
-    result_phi_args AT(j).push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
+    result_phi_args AT(j).push_back(
+        IR::Val::BasicBlock(IR::BasicBlock::Current));
     result_phi_args AT(j).push_back(std::move(result));
     ++j;
   }
@@ -317,59 +319,104 @@ std::vector<IR::Val> EmitCallDispatch(
 }
 
 namespace AST {
+static std::optional<std::pair<FnArgs<const type::Type *>, Binding>>
+DispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
+              Context *ctx) {
+  // TODO check if anything is called with named args (it's illegal to do so).
+  // Also break up MakeUntyped so we don't need to check the named args section.
+  auto maybe_binding =
+      Binding::MakeUntyped(expr, args, {/* intentionally no lookup */});
+  if (!maybe_binding) { return std::nullopt; }
+  auto binding = std::move(maybe_binding).value();
 
-// We already know there can be at most one match (multiple matches would
-// have been caught by shadowing), so we just return a pointer to it if it
-// exists, and null otherwise.
+  FnArgs<const type::Type *> call_arg_types;
+  call_arg_types.pos_.resize(args.pos_.size(), nullptr);
+  const auto &fn_opt_input = expr->type->as<type::Function>().input;
+  for (size_t i = 0; i < binding.exprs_.size(); ++i) {
+    const type::Type *match =
+        type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
+    if (match == nullptr) { return std::nullopt; }
+    binding.exprs_[i].first = fn_opt_input[i];
+
+    ASSERT(i < call_arg_types.pos_.size());
+    call_arg_types.pos_[i] = match;
+  }
+
+  return std::pair(std::move(call_arg_types), std::move(binding));
+}
+
+static std::optional<std::pair<FnArgs<const type::Type *>, Binding>>
+ConstantDispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
+                      Context *ctx) {
+  FunctionLiteral *fn_lit = nullptr;
+  {
+    auto vals = Evaluate(expr, ctx);
+    if (vals.empty() || vals[0] == IR::Val::None()) { return std::nullopt; }
+    fn_lit = ASSERT_NOT_NULL(std::get<IR::Func *>(vals[0].value)->fn_lit_);
+  }
+
+  auto maybe_binding = Binding::MakeUntyped(fn_lit, args, fn_lit->lookup_);
+  if (!maybe_binding) { return std::nullopt; }
+  auto binding = std::move(maybe_binding).value();
+
+  FnArgs<const type::Type *> call_arg_types;
+  call_arg_types.pos_.resize(args.pos_.size(), nullptr);
+  for (const auto & [ key, val ] : fn_lit->lookup_) {
+    if (val < args.pos_.size()) { continue; }
+    call_arg_types.named_.emplace(key, nullptr);
+  }
+
+  const auto &fn_opt_input = expr->type->as<type::Function>().input;
+  for (size_t i = 0; i < binding.exprs_.size(); ++i) {
+    if (binding.defaulted(i)) {
+      if (fn_lit->inputs[i]->IsDefaultInitialized()) { return std::nullopt; }
+      binding.exprs_[i].first = fn_opt_input[i];
+    } else {
+      const type::Type *match =
+          type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
+      if (match == nullptr) { return std::nullopt; }
+      binding.exprs_[i].first = fn_opt_input[i];
+
+      if (i < call_arg_types.pos_.size()) {
+        call_arg_types.pos_[i] = match;
+      } else {
+        auto iter = call_arg_types.find(fn_lit->inputs[i]->identifier->token);
+        ASSERT(iter != call_arg_types.named_.end());
+        iter->second = match;
+      }
+    }
+  }
+
+  return std::pair(std::move(call_arg_types), std::move(binding));
+}
+
 static std::optional<DispatchTable> ComputeDispatchTable(
     const FnArgs<Expression *> &args, std::vector<Expression *> fn_options,
     Context *ctx) {
   DispatchTable table;
   for (Expression *fn_option : fn_options) {
-    // TODO the reason you fail to generate what you want is because right here
-    // you are calling evaluate which is problematic for recursive functions
-    auto vals = Evaluate(fn_option, ctx);
-    if (vals.empty() || vals[0] == IR::Val::None()) { continue; }
-    auto &fn_val = vals[0].value;
+    // TODO the reason you fail to generate what you want is because right
+    // here you are calling evaluate which is problematic for recursive
+    // functions
+    fn_option->VerifyType(ctx);
     if (fn_option->type->is<type::Function>()) {
-      auto *fn_lit = std::get<FunctionLiteral *>(fn_val);
+      std::optional<std::pair<FnArgs<const type::Type *>, Binding>>
+          dispatch_entry;
 
-      auto maybe_binding = Binding::MakeUntyped(fn_lit, args, fn_lit->lookup_);
-      if (!maybe_binding) { continue; }
-      auto binding = std::move(maybe_binding).value();
-
-      FnArgs<const type::Type *> call_arg_types;
-      call_arg_types.pos_.resize(args.pos_.size(), nullptr);
-      for (const auto & [ key, val ] : fn_lit->lookup_) {
-        if (val < args.pos_.size()) { continue; }
-        call_arg_types.named_.emplace(key, nullptr);
+      if (fn_option->lvalue == Assign::Const) {
+        dispatch_entry = ConstantDispatchEntry(fn_option, args, ctx);
+      } else {
+        dispatch_entry = DispatchEntry(fn_option, args, ctx);
       }
-
-      const auto &fn_opt_input = fn_option->type->as<type::Function>().input;
-      for (size_t i = 0; i < binding.exprs_.size(); ++i) {
-        if (binding.defaulted(i)) {
-          if (fn_lit->inputs[i]->IsDefaultInitialized()) { goto next_option; }
-          binding.exprs_[i].first = fn_opt_input[i];
-        } else {
-          const type::Type *match =
-              type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
-          if (match == nullptr) { goto next_option; }
-          binding.exprs_[i].first = fn_opt_input[i];
-
-          if (i < call_arg_types.pos_.size()) {
-            call_arg_types.pos_[i] = match;
-          } else {
-            auto iter =
-                call_arg_types.find(fn_lit->inputs[i]->identifier->token);
-            ASSERT(iter != call_arg_types.named_.end());
-            iter->second = match;
-          }
-        }
-      }
-
+      if (!dispatch_entry.has_value()) { continue; }
+      auto[call_arg_types, binding] = *dispatch_entry;
       table.insert(std::move(call_arg_types), std::move(binding));
 
     } else if (fn_option->type == type::Generic) {
+      auto vals = Evaluate(fn_option, ctx);
+      if (vals.empty() || vals[0] == IR::Val::None()) { continue; }
+      auto &fn_val = vals[0].value;
+
       auto *gen_fn_lit = std::get<GenericFunctionLiteral *>(fn_val);
       if (auto[fn_lit, binding] = gen_fn_lit->ComputeType(args, ctx); fn_lit) {
         // TODO this is copied almost exactly from above.
@@ -439,7 +486,7 @@ static std::optional<DispatchTable> ComputeDispatchTable(
     }
   next_option:;
   }
-  return std::move(table);
+  return table;
 }
 
 std::vector<Expression *> FunctionOptions(const std::string &token,
@@ -465,7 +512,7 @@ std::vector<Expression *> FunctionOptions(const std::string &token,
       decl->VerifyType(ctx);
       // TODO HANDLE_CYCLIC_DEPENDENCIES;
       if (decl->type == type::Err) { return {}; }
-      fn_options.push_back(decl);
+      fn_options.push_back(decl->identifier.get());
     }
   }
   return fn_options;

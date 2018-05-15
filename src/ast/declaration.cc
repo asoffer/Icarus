@@ -218,6 +218,7 @@ void Declaration::VerifyType(Context *ctx) {
     VERIFY_STARTING_CHECK_EXPR;
 
     lvalue = const_ ? Assign::Const : Assign::RVal;
+    identifier->decl = this;
 
     if (type_expr) {
       type_expr->VerifyType(ctx);
@@ -233,14 +234,11 @@ void Declaration::VerifyType(Context *ctx) {
         auto results = Evaluate(type_expr.get(), ctx);
         // TODO figure out if you need to generate an error here
         if (results.size() == 1) {
-          type = identifier->type =
-              std::get<const type::Type *>(results[0].value);
+          type = std::get<const type::Type *>(results[0].value);
         } else {
-          type = identifier->type = type::Err;
+          type = type::Err;
         }
       }
-
-      identifier->stage_range_.low = StartTypeVerificationStage;
     }
 
     if (this->IsCustomInitialized()) {
@@ -251,13 +249,12 @@ void Declaration::VerifyType(Context *ctx) {
       if (init_val->type != type::Err) {
         if (!Inferrable(init_val->type)) {
           ctx->error_log_.UninferrableType(init_val->span);
-          type = identifier->type = type::Err;
+          type = type::Err;
           limit_to(StageRange::Nothing());
           identifier->limit_to(StageRange::Nothing());
 
         } else if (!type_expr) {
-          identifier->stage_range_.low = StartTypeVerificationStage;
-          type = identifier->type = init_val->type;
+          type = init_val->type;
         }
       }
     }
@@ -275,14 +272,14 @@ void Declaration::VerifyType(Context *ctx) {
       ASSERT(init_val.get() != nullptr);
       if (!init_val->is<Hole>()) {  // I := V
         if (init_val->type == type::Err) {
-          type = identifier->type = type::Err;
+          type = type::Err;
           limit_to(StageRange::Nothing());
           identifier->limit_to(StageRange::Nothing());
         }
 
       } else {  // I := --
         ctx->error_log_.InferringHole(span);
-        type = init_val->type = identifier->type = type::Err;
+        type = init_val->type = type::Err;
         limit_to(StageRange::Nothing());
         init_val->limit_to(StageRange::Nothing());
         identifier->limit_to(StageRange::Nothing());
@@ -318,6 +315,7 @@ void Declaration::VerifyType(Context *ctx) {
       }
     }
   }
+  identifier->VerifyType(ctx);
   std::vector<Declaration *> decls_to_check;
   {
     auto[good_decls_to_check, error_decls_to_check] =

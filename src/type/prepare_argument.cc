@@ -105,7 +105,6 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
 
     IR::BasicBlock::Current = current;
     for (size_t i = 0; i < intersection.size() - 1; ++i) {
-      IR::Print(IR::Val::StrLit("dbg" + std::to_string(i)));
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           blocks[i], IR::Eq(runtime_type, IR::Val::Type(intersection[i])));
     }

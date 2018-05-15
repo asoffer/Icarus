@@ -10,6 +10,8 @@
 #include "scope.h"
 #include "type/type.h"
 
+#include "ir/cmd.h"
+
 IR::Val PtrCallFix(const IR::Val& v);
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
@@ -107,14 +109,15 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
     }
   }
 
-  // TODO this global scope thing is probably wrong.
-  if (decl->scope_ == ctx->mod_->global_.get()) { decl->EmitIR(ctx); }
+  // TODO checking for const isn't really what we want to do. we'd rather just
+  // have addr not be tied to anything if it's const.
+  if (decl->const_ && decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
   return decl->arg_val ? decl->addr : PtrCallFix(EmitLVal(ctx));
 }
 
 IR::Val AST::Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
-  if (decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
+  if (decl->const_ && decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
   return decl->addr;
 }
 

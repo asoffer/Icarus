@@ -21,7 +21,11 @@ void DispatchTable::insert(FnArgs<const type::Type *> call_arg_types,
 std::optional<Binding> Binding::MakeUntyped(
     AST::Expression *fn_expr, const FnArgs<Expression *> &args,
     const std::unordered_map<std::string, size_t> &index_lookup) {
-  Binding result(fn_expr, index_lookup.size());
+  // index_lookup.size() works for constants because it considers default args.
+  // It's empty for non-constants, but the other approach covers this because
+  // default args are not allowed.
+  Binding result(fn_expr, std::max(index_lookup.size(),
+                                   args.pos_.size() + args.named_.size()));
   for (size_t i = 0; i < args.pos_.size(); ++i) {
     result.exprs_[i] = std::pair(nullptr, args.pos_[i]);
   }
@@ -32,7 +36,7 @@ std::optional<Binding> Binding::MakeUntyped(
     // was a missing named argument.
     auto iter = index_lookup.find(name);
     if (iter == index_lookup.end()) { return std::nullopt; }
-    result.exprs_[iter->second] = std::pair(nullptr, expr);
+    result.exprs_.at(iter->second) = std::pair(nullptr, expr);
   }
   return result;
 }

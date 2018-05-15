@@ -28,7 +28,6 @@ struct Expression;
 struct ScopeLiteral;
 struct BlockLiteral;
 struct GenericFunctionLiteral;
-struct FunctionLiteral;
 } // namespace AST
 
 namespace IR {
@@ -102,10 +101,9 @@ struct Val {
   const type::Type *type = nullptr;
   std::variant<Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
                const type::Type *, type::Struct *,
-               AST::GenericFunctionLiteral *, AST::FunctionLiteral *,
-               IR::Func *, AST::ScopeLiteral *, AST::CodeBlock,
-               AST::Expression *, BlockIndex, std::string, const Module *,
-               AST::BlockLiteral *, std::vector<Val>>
+               AST::GenericFunctionLiteral *, IR::Func *, AST::ScopeLiteral *,
+               AST::CodeBlock, AST::Expression *, BlockIndex, std::string,
+               const Module *, AST::BlockLiteral *, std::vector<Val>>
       value{false};
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
@@ -122,7 +120,6 @@ struct Val {
   static Val Type(const type::Type *t) { return Val(type::Type_, t); }
   static Val CodeBlock(AST::CodeBlock block);
   static Val Func(IR::Func *fn); // TODO deprecate?
-  static Val FnLit(AST::FunctionLiteral *fn);
   static Val GenFnLit(AST::GenericFunctionLiteral *fn);
   static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Block(AST::BlockLiteral *b);

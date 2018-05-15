@@ -50,8 +50,8 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
 }
 
 namespace IR {
-static std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
-                                ExecContext *ctx) {
+std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
+                         ExecContext *ctx) {
   if (fn->fn_lit_) { fn->fn_lit_->CompleteBody(fn->mod_); }
   ctx->call_stack.emplace(fn, arguments);
 
@@ -182,10 +182,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             if constexpr (std::is_same_v<std::decay_t<decltype(f)>,
                                          IR::Func *>) {
               return f;
-            }
-            if constexpr (std::is_same_v<std::decay_t<decltype(f)>,
-                                         AST::FunctionLiteral *>) {
-              return f->ir_func_;
             } else {
               return nullptr;
             }
@@ -310,6 +306,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           } else if (cmd.type->is<type::Flags>()) {
             return IR::Val::Flags(&cmd.type->as<type::Flags>(),
                                  stack_.Load<size_t>(addr.as_stack));
+          } else if (cmd.type->is<type::Function>()) {
+            return IR::Val::Func(stack_.Load<IR::Func *>(addr.as_stack));
           } else {
             call_stack.top().fn_->dump();
             NOT_YET("Don't know how to load type: ", cmd.type);

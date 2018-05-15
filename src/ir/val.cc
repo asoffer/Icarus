@@ -61,7 +61,6 @@ Val Val::Flags(const type::Flags *flags_type, size_t integral_val) {
   return Val(flags_type, FlagsVal{integral_val});
 }
 
-Val Val::FnLit(AST::FunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::GenFnLit(AST::GenericFunctionLiteral *fn) { return Val(fn->type, fn); }
 Val Val::Func(IR::Func *fn) { return Val(fn->type_, fn); }
 Val Val::Null(const type::Type *t) {
@@ -131,9 +130,6 @@ std::string Val::to_string() const {
 
           [](const std::string &s) -> std::string {
             return "string \"" + Escaped(s) + "\"";
-          },
-          [](AST::FunctionLiteral *fn) -> std::string {
-            return fn->to_string(0);
           },
           [](const Module *module) -> std::string {
             // TODO

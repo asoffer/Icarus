@@ -4,6 +4,7 @@
 #include <execinfo.h>
 
 #include "ast/call.h"
+#include "backend/exec.h"
 #include "ast/declaration.h"
 #include "ast/expression.h"
 #include "ast/function_literal.h"
@@ -34,7 +35,7 @@ const char *output_file_name = "a.out";
 std::vector<Source::Name> files;
 
 // TODO sad. don't use a global to do this.
-static AST::FunctionLiteral* main_fn;
+static IR::Func* main_fn;
 static Module *main_mod;
 
 static void
@@ -118,15 +119,14 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
       if (decl.identifier->token != "main") { continue; }
       auto val = Evaluate(decl.init_val.get(), &ctx);
       ASSERT(val.size() == 1u);
-      auto fn_lit = std::get<AST::FunctionLiteral *>(val[0].value);
+      auto fn = std::get<IR::Func *>(val[0].value);
       // TODO check more than one?
 
 #ifdef ICARUS_USE_LLVM
-      fn_lit->ir_func_->llvm_fn_->setName("main");
-      fn_lit->ir_func_->llvm_fn_->setLinkage(
-          llvm::GlobalValue::ExternalLinkage);
+      fn->llvm_fn_->setName("main");
+      fn->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
 #else
-    main_fn  = fn_lit;
+    main_fn  = fn;
     main_mod = mod.get();
 #endif  // ICARUS_USE_LLVM
     }
@@ -148,6 +148,11 @@ void ScheduleModule(const Source::Name &src) {
   if (iter != handle->end()) { return; }
   handle->emplace(src, std::shared_future<std::unique_ptr<Module>>(
                            std::async(std::launch::async, CompileModule, src)));
+}
+
+namespace IR {
+std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
+                         ExecContext *ctx);
 }
 
 int GenerateCode() {
@@ -173,16 +178,8 @@ int GenerateCode() {
 #ifndef ICARUS_USE_LLVM
   ASSERT(main_fn != nullptr);
 
-  AST::Call c;
-  c.fn_ = std::unique_ptr<AST::Expression>(main_fn);
-
-  // TODO does the context matter?
-  Context ctx(main_mod);
-  c.assign_scope(main_fn->scope_);
-  c.VerifyType(&ctx);
-  c.Validate(&ctx);
-  Evaluate(&c, &ctx);
-  c.fn_.release();
+  IR::ExecContext exec_ctx;
+  IR::Execute(main_fn, {}, &exec_ctx);
 #endif
 
   return 0;
