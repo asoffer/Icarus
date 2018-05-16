@@ -66,9 +66,9 @@ MAKE_LOG_ERROR(UninitializedConstant,
                "Attempting to define a constant with an uninitialized value.")
 MAKE_LOG_ERROR(NonComposableFunctions, "Functions cannot be composed.")
 MAKE_LOG_ERROR(NonTypeFunctionInput,
-               "The specified return type for a function must be a type.")
-MAKE_LOG_ERROR(NonTypeFunctionOutput,
                "The specified input type for a function must be a type.")
+MAKE_LOG_ERROR(NonTypeFunctionOutput,
+               "The specified return type for a function must be a type.")
 MAKE_LOG_ERROR(InconsistentArrayType,
                "Type error: Array literal must have consistent type")
 MAKE_LOG_ERROR(ArrayIndexType, "Array length indexed by non-integral type")

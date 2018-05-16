@@ -265,13 +265,26 @@ Val Mod(Val v1, Val v2) {
 }
 
 Val Arrow(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(const type::Type *,
-                       [](const type::Type *lhs, const type::Type *rhs) {
-                         return type::Func({lhs}, {rhs});
-                       },
-                       Type);
+  CONSTANT_PROPOGATION(
+      const type::Type *,
+      [](const type::Type *lhs, const type::Type *rhs) {
+        std::vector<const type::Type *> lhs_vec =
+            (lhs->is<type::Tuple>()) ? lhs->as<type::Tuple>().entries_
+                                     : std::vector{lhs};
+        std::vector<const type::Type *> rhs_vec =
+            (rhs->is<type::Tuple>()) ? rhs->as<type::Tuple>().entries_
+                                     : std::vector{rhs};
+        return type::Func(std::move(lhs_vec), std::move(rhs_vec));
+      },
+      Type);
   return MakeCmd(type::Type_, Op::Arrow,
                  std::vector{std::move(v1), std::move(v2)});
+}
+
+Val Tup(std::vector<Val> args) {
+  Cmd cmd(type::Type_, Op::Tup, std::move(args));
+  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
+  return cmd.reg();
 }
 
 Val Variant(std::vector<Val> args) {
@@ -459,6 +472,7 @@ void Cmd::dump(size_t indent) const {
   case Op::Store: std::cerr << "store"; break;
   case Op::SetReturn: std::cerr << "set-ret"; break;
   case Op::Variant: std::cerr << "variant"; break;
+  case Op::Tup: std::cerr << "tup"; break;
   case Op::ArrayLength: std::cerr << "array-length"; break;
   case Op::ArrayData: std::cerr << "array-data"; break;
   case Op::PtrIncr: std::cerr << "ptr-incr"; break;

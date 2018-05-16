@@ -17,7 +17,7 @@ enum class Op : char {
   SetReturn,
   ArrayLength, ArrayData, PtrIncr,
   Phi, Field, Call,
-  Arrow, Variant, Array, Ptr,
+  Tup, Arrow, Variant, Array, Ptr,
   Alloca,
   Contextualize,
   VariantType, VariantValue,
@@ -77,6 +77,7 @@ Val ArrayData(Val v);
 Val PtrIncr(Val v1, Val v2);
 Val Malloc(const type::Type *t, Val v);
 Val Field(Val v, size_t n);
+Val Tup(std::vector<IR::Val> vals);
 Val Arrow(Val v1, Val v2);
 Val Variant(std::vector<Val> vals);
 Val Array(Val v1, Val v2);

@@ -332,14 +332,15 @@ DispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
   FnArgs<const type::Type *> call_arg_types;
   call_arg_types.pos_.resize(args.pos_.size(), nullptr);
   const auto &fn_opt_input = expr->type->as<type::Function>().input;
+  ASSERT(binding.exprs_.size() == fn_opt_input.size());
   for (size_t i = 0; i < binding.exprs_.size(); ++i) {
     const type::Type *match =
-        type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
+        type::Meet(binding.exprs_.at(i).second->type, fn_opt_input.at(i));
     if (match == nullptr) { return std::nullopt; }
-    binding.exprs_[i].first = fn_opt_input[i];
+    binding.exprs_.at(i).first = fn_opt_input.at(i);
 
     ASSERT(i < call_arg_types.pos_.size());
-    call_arg_types.pos_[i] = match;
+    call_arg_types.pos_.at(i) = match;
   }
 
   return std::pair(std::move(call_arg_types), std::move(binding));

@@ -45,7 +45,12 @@ void CommaList::VerifyType(Context *ctx) {
     std::vector<const type::Type *> entries;
     entries.reserve(exprs.size());
     for (const auto &expr : exprs) { entries.push_back(expr->type); }
-    type = type::Tup(std::move(entries));
+    if (entries.empty()) {
+      // TODO This is a hack and perhaps not always accurate?
+      type = type::Type_;
+    } else {
+      type = type::Tup(std::move(entries));
+    }
   }
 }
 

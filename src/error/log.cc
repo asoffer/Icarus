@@ -374,7 +374,7 @@ void Log::Reserved(const TextSpan &span, const std::string &token) {
 
 void Log::NotBinary(const TextSpan &span, const std::string &token) {
   std::stringstream ss;
-  ss << "Operator '" << token << "' is not a binary operator.";
+  ss << "Operator '" << token << "' is not a binary operator.\n\n";
   WriteSource(
       ss, *span.source,
       {Interval{span.start.line_num, span.finish.line_num + 1}},
@@ -387,7 +387,7 @@ void Log::NotBinary(const TextSpan &span, const std::string &token) {
 void Log::NotAType(AST::Expression *expr) {
   std::stringstream ss;
   ss << "Expression was expected to be a type, but instead it was a(n) "
-     << expr->type->to_string() << ".";
+     << expr->type->to_string() << ".\n\n";
   WriteSource(
       ss, *expr->span.source,
       {Interval{expr->span.start.line_num, expr->span.finish.line_num + 1}},

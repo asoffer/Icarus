@@ -35,9 +35,13 @@ IR::Val Pointer::PrepareArgument(const Type *from, const IR::Val &val,
   return val;
 }
 
-IR::Val Function::PrepareArgument(const Type *from, const IR::Val &,
+IR::Val Function::PrepareArgument(const Type *from, const IR::Val &val,
                                   Context *ctx) const {
-  NOT_YET(this, from);
+  if (this == from) {
+    return val;
+  } else {
+    NOT_YET(this, from);
+  }
 }
 
 IR::Val Enum::PrepareArgument(const Type *from, const IR::Val &val,

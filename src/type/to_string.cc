@@ -239,12 +239,16 @@ char *Scope::WriteTo(char *buf) const {
 }
 
 size_t Tuple::string_size() const {
-  size_t result = 2 * entries_.size();
+  size_t result = std::max<size_t>(2, 2 * entries_.size());
   for (const Type *t : entries_) { result += t->string_size(); }
   return result;
 }
 
 char *Tuple::WriteTo(char *buf) const {
+  if (entries_.empty()) {
+    buf = std::strcpy(buf, "()") + 2;
+    return buf;
+  }
   buf = std::strcpy(buf, "(") + 1;
   auto iter = entries_.begin();
   buf = (*iter)->WriteTo(buf);

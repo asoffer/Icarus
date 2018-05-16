@@ -363,13 +363,23 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
     CASE(Mul);
     CASE(Div);
     CASE(Mod);
-    CASE(Arrow);
 #undef CASE
+    case Language::Operator::Arrow: {
+      std::vector<IR::Val> lhs_vals, rhs_vals;
+      ForEachExpr(lhs.get(), [&lhs_vals, ctx](size_t, Expression *expr) {
+        lhs_vals.push_back(expr->EmitIR(ctx));
+      });
+      ForEachExpr(rhs.get(), [&rhs_vals, ctx](size_t, Expression *expr) {
+        rhs_vals.push_back(expr->EmitIR(ctx));
+      });
+      return IR::Arrow(IR::Tup(std::move(lhs_vals)),
+                       IR::Tup(std::move(rhs_vals)));
+    } break;
     case Language::Operator::Assign: {
       std::vector<const type::Type *> lhs_types, rhs_types;
       std::vector<IR::Val> rhs_vals;
       ForEachExpr(rhs.get(),
-                  [&ctx, &rhs_vals, &rhs_types](size_t, AST::Expression *expr) {
+                  [&ctx, &rhs_vals, &rhs_types](size_t, Expression *expr) {
                     rhs_vals.push_back(expr->EmitIR(ctx));
                     rhs_types.push_back(expr->type);
                   });

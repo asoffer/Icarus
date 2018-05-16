@@ -448,16 +448,11 @@ const Scope *Scp(const std::vector<const Type *> &types) {
 
 static base::guarded<std::map<std::vector<const Type *>, const Tuple>> tups_;
 const Type *Tup(std::vector<const Type *> entries) {
-  switch (entries.size()) {
-    case 0: return type::Void;
-    case 1: return entries[0];
-    default: {
-      Tuple tup(entries);
-      auto[iter, success] =
-          tups_.lock()->emplace(std::move(entries), std::move(tup));
-      return &iter->second;
-    } break;
-  }
+  if (entries.size() == 1) { return entries[0]; }
+  Tuple tup(entries);
+  auto[iter, success] =
+      tups_.lock()->emplace(std::move(entries), std::move(tup));
+  return &iter->second;
 }
 
 bool Type::is_big() const {
