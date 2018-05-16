@@ -462,7 +462,11 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
 
         if (decl->arg_val) { return; }
         ASSERT(decl->type != nullptr);
-        decl->addr = IR::Alloca(decl->type);
+        if (decl->addr == IR::Val::None()) {
+          // TODO this test isn't perfect and needs to change (c.f. const
+          // arguments?)
+          decl->addr = IR::Alloca(decl->type);
+        }
       });
     }
 

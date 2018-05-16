@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_EXEC_H
-#define ICARUS_IR_EXEC_H
+#ifndef ICARUS_BACKEND_EXEC_H
+#define ICARUS_BACKEND_EXEC_H
 #include <cstddef>
 #include <stack>
 
@@ -96,14 +96,14 @@ struct ExecContext {
 
   Val reg(Register r) const {
     ASSERT(r.value >= 0);
-    return call_stack.top().regs_ AT(static_cast<u32>(r.value));
+    return call_stack.top().regs_.at(static_cast<u32>(r.value));
   }
   Val &reg(Register r) {
     ASSERT(r.value >= 0);
-    return call_stack.top().regs_[static_cast<u32>(r.value)];
+    return call_stack.top().regs_.at(static_cast<u32>(r.value));
   }
 
   Stack stack_;
 };
 } // namespace IR
-#endif // ICARUS_IR_EXEC_H
+#endif // ICARUS_BACKEND_EXEC_H

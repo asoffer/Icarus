@@ -168,8 +168,7 @@ static std::vector<IR::Val> EmitOneCallDispatch(
   ASSERT(binding.fn_expr_->type, Is<type::Function>());
   auto *fn_type = &binding.fn_expr_->type->as<type::Function>();
   switch (fn_type->output.size()) {
-    // TODO this return is wrong.
-    case 0: return {IR::Call(callee, std::move(args), {})};
+    case 0: IR::Call(callee, std::move(args), {}); return {};
     case 1: {
       if (fn_type->output AT(0)->is_big()) {
         auto ret_val = IR::Alloca(ret_type);
@@ -245,9 +244,10 @@ std::vector<IR::Val> EmitCallDispatch(
     return EmitOneCallDispatch(ret_type, expr_map, binding, ctx);
   }
 
+  // TODO push void out of here.
   size_t num_rets = ret_type->is<type::Tuple>()
                         ? ret_type->as<type::Tuple>().entries_.size()
-                        : 1;
+                        : (ret_type == type::Void ? 0 : 1);
 
   std::vector<std::vector<IR::Val>> result_phi_args(num_rets);
   for (auto &result : result_phi_args) {
