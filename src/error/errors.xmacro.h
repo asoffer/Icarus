@@ -89,3 +89,5 @@ MAKE_LOG_ERROR(AssigningToConstant, "Attempting to assign to a constant.")
 MAKE_LOG_ERROR(AssigningToTemporary, "Attempting to assign to a temporary.")
 MAKE_LOG_ERROR(ModifyingToConstant, "Attempting to modify to a constant.")
 MAKE_LOG_ERROR(ModifyingToTemporary, "Attempting to modify to a temporary.")
+MAKE_LOG_ERROR(EvaluatingNonConstant,
+               "Attempting to evaluate a non-constant at compile-time.")

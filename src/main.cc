@@ -79,6 +79,8 @@ base::guarded<std::unordered_map<Source::Name,
                                  std::shared_future<std::unique_ptr<Module>>>>
     modules;
 
+std::atomic<bool> found_errors = false;
+
 // TODO deprecate source_map
 std::unordered_map<Source::Name, File *> source_map;
 std::unique_ptr<Module> CompileModule(const Source::Name &src) {
@@ -90,6 +92,7 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
     auto file_stmts = f->Parse(&log);
     if (log.size() > 0) {
       log.Dump();
+      found_errors = true;
       return mod;
     }
 
@@ -98,12 +101,14 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
     file_stmts->Validate(&ctx);
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
+      found_errors = true;
       return mod;
     }
 
     file_stmts->EmitIR(&ctx);
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
+      found_errors = true;
       return mod;
     }
 
@@ -175,11 +180,15 @@ int GenerateCode() {
     }
     for (auto *future : future_ptrs) { future->wait(); }
   } while (current_size != modules.lock()->size());
-#ifndef ICARUS_USE_LLVM
-  ASSERT(main_fn != nullptr);
 
-  IR::ExecContext exec_ctx;
-  IR::Execute(main_fn, {}, &exec_ctx);
+#ifndef ICARUS_USE_LLVM
+
+    if (main_fn == nullptr) {
+      std::cerr << "No compiled module has a `main` function.\n";
+    } else if (!found_errors) {
+      IR::ExecContext exec_ctx;
+      IR::Execute(main_fn, {}, &exec_ctx);
+    }
 #endif
 
   return 0;

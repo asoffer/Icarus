@@ -141,7 +141,14 @@ void Unop::VerifyType(Context *ctx) {
       type   = type::Type_;
       lvalue = Assign::Const;
       break;
-    case Operator::Eval: type = operand->type; break;
+    case Operator::Eval:
+      type   = operand->type;
+      lvalue = Assign::Const;
+      if (operand->lvalue != Assign::Const) {
+        ctx->error_log_.EvaluatingNonConstant(span);
+        limit_to(StageRange::NoEmitIR());
+      }
+      break;
     case Operator::Generate: type = type::Void; break;
     case Operator::Free: {
       if (!operand->type->is<type::Pointer>()) {

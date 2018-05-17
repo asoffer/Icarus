@@ -175,7 +175,7 @@ void Log::PreconditionNeedsBool(AST::Expression *expr) {
 }
 
 template <typename ExprContainer>
-static decltype(auto) LinesToShow(const ExprContainer &exprs) {
+static auto LinesToShow(const ExprContainer &exprs) {
   IntervalSet iset;
   std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
   for (const auto &expr : exprs) {
