@@ -33,6 +33,10 @@ const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
                                    Context *ctx);
 
 std::string Unop::to_string(size_t n) const {
+  if (op == Language::Operator::TypeOf) {
+    return "(" + operand->to_string(n) + "):?";
+  }
+
   std::stringstream ss;
   switch (op) {
     case Language::Operator::Return: ss << "return "; break;
@@ -49,7 +53,6 @@ std::string Unop::to_string(size_t n) const {
     case Language::Operator::Ref: ss << "\\"; break;
     case Language::Operator::Needs: ss << "needs "; break;
     case Language::Operator::Ensure: ss << "ensure "; break;
-    case Language::Operator::TypeOf: ss << ":? "; break;
     case Language::Operator::Pass: break;
     default: { UNREACHABLE(); }
   }

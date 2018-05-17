@@ -393,9 +393,8 @@ frontend::TaggedNode NextOperator(SourceLocation &loc, error::Log* error_log) {
 
     } else if (*loc == '?') {
       loc.Increment();
-      // TODO does this make more sense as a right unary operator?
       span.finish = loc.cursor;
-      return frontend::TaggedNode(span, ":?", frontend::op_l);
+      return frontend::TaggedNode(span, ":?", frontend::op_r);
 
     } else if (*loc == ':') {
       loc.Increment();

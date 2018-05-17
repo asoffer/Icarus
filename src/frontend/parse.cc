@@ -99,6 +99,25 @@ static std::unique_ptr<AST::Node> BracedStatementsSameLineEnd(
 }
 
 namespace AST {
+static std::unique_ptr<Node> BuildRightUnop(
+    std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
+  const std::string &tk = nodes[1]->as<frontend::Token>().token;
+  if (tk == ":?") {
+    auto unop      = std::make_unique<Unop>();
+    unop->operand  = move_as<Expression>(nodes[0]);
+    unop->op       = Language::Operator::TypeOf;
+    unop->span     = TextSpan(unop->operand->span, nodes[1]->span);
+
+    if (unop->operand->is<Declaration>()) {
+      error_log->DeclarationUsedInUnop(tk, unop->operand->span);
+    }
+
+    return unop;
+  } else {
+    UNREACHABLE();
+  }
+}
+
 // Input guarantees:
 // [unop] [expression]
 //
@@ -119,37 +138,21 @@ static std::unique_ptr<Node> BuildLeftUnop(
   unop->operand = move_as<Expression>(nodes[1]);
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
-  bool check_id = false;
-  const static std::unordered_map<std::string,
-                                  std::pair<Language::Operator, bool>>
-      UnopMap = {{"import", {Language::Operator::Import, false}},
-                 {"return", {Language::Operator::Return, false}},
-                 {"free", {Language::Operator::Free, false}},
-                 {"generate", {Language::Operator::Generate, false}},
-                 {"which", {Language::Operator::Which, false}},
-                 {"print", {Language::Operator::Print, false}},
-                 {"needs", {Language::Operator::Needs, false}},
-                 {"ensure", {Language::Operator::Ensure, false}},
-                 {"*", {Language::Operator::Mul, false}},
-                 {"&", {Language::Operator::And, false}},
-                 {"-", {Language::Operator::Sub, false}},
-                 {"!", {Language::Operator::Not, false}},
-                 {"@", {Language::Operator::At, false}},
-                 {":?", {Language::Operator::TypeOf, false}},
-                 {"$", {Language::Operator::Eval, false}}};
-  auto iter   = UnopMap.find(tk);
+  using Language::Operator;
+  const static std::unordered_map<std::string, Operator> UnopMap = {
+      {"import", Operator::Import}, {"return", Operator::Return},
+      {"free", Operator::Free},     {"generate", Operator::Generate},
+      {"which", Operator::Which},   {"print", Operator::Print},
+      {"needs", Operator::Needs},   {"ensure", Operator::Ensure},
+      {"*", Operator::Mul},         {"&", Operator::And},
+      {"-", Operator::Sub},         {"!", Operator::Not},
+      {"@", Operator::At},          {"$", Operator::Eval}};
+  auto iter = UnopMap.find(tk);
   ASSERT(iter != UnopMap.end());
-  std::tie(unop->op, check_id) = iter->second;
+  unop->op = iter->second;
 
-  if (check_id) {
-    if (!unop->operand->is<Identifier>()) {
-      // Support named jumps (only support named jumps?)
-      NOT_YET();
-    }
-  } else {
-    if (unop->operand->is<Declaration>()) {
-      error_log->DeclarationUsedInUnop(tk, unop->operand->span);
-    }
+  if (unop->operand->is<Declaration>()) {
+    error_log->DeclarationUsedInUnop(tk, unop->operand->span);
   }
   return unop;
 }
@@ -1031,6 +1034,7 @@ auto Rules = std::array{
     Rule(expr, {EXPR, l_paren, RESERVED, r_paren}, ErrMsg::Reserved<0, 2>),
     Rule(expr, {EXPR, l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<0, 2>),
 
+    Rule(expr, {EXPR, op_r}, AST::BuildRightUnop),
     Rule(expr, {(op_l | op_bl | op_lt), EXPR}, AST::BuildLeftUnop),
     Rule(expr, {RESERVED, (OP_B | op_bl), EXPR}, ErrMsg::Reserved<1, 0>),
     Rule(expr, {l_paren | l_ref, EXPR, r_paren}, Parenthesize),
@@ -1129,7 +1133,7 @@ struct ParseState {
     }
 
     constexpr u64 OP =
-        op_l | op_b | colon | eq | comma | op_bl | op_lt | fn_arrow;
+        op_r | op_l | op_b | colon | eq | comma | op_bl | op_lt | fn_arrow;
     if (get_type<2>() & OP) {
       auto left_prec = precedence(get<2>()->as<frontend::Token>().op);
       size_t right_prec;
