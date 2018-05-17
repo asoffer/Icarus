@@ -51,6 +51,7 @@ struct Log {
   void UserDefinedError(const std::string &err);
   void DereferencingNonPointer(const type::Type *type, const TextSpan &span);
   void FreeingNonPointer(const type::Type *type, const TextSpan &span);
+  void WhichNonVariant(const type::Type *type, const TextSpan &span);
   void ReturnTypeMismatch(const type::Type *expected_type,
                           const AST::Expression *ret_expr);
   void IndexedReturnTypeMismatch(const type::Type *expected_type,

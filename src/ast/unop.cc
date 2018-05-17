@@ -37,6 +37,7 @@ std::string Unop::to_string(size_t n) const {
   switch (op) {
     case Language::Operator::Return: ss << "return "; break;
     case Language::Operator::Print: ss << "print "; break;
+    case Language::Operator::Which: ss << "which "; break;
     case Language::Operator::Free: ss << "free "; break;
     case Language::Operator::Mul: ss << "*"; break;
     case Language::Operator::And: ss << "&"; break;
@@ -45,7 +46,6 @@ std::string Unop::to_string(size_t n) const {
     case Language::Operator::Not: ss << "!"; break;
     case Language::Operator::At: ss << "@"; break;
     case Language::Operator::Eval: ss << "$"; break;
-    case Language::Operator::Dots: ss << ".."; break;
     case Language::Operator::Ref: ss << "\\"; break;
     case Language::Operator::Needs: ss << "needs "; break;
     case Language::Operator::Ensure: ss << "ensure "; break;
@@ -147,6 +147,14 @@ void Unop::VerifyType(Context *ctx) {
       }
       type = type::Void;
     } break;
+    case Operator::Which: {
+      type   = type::Type_;
+      lvalue = Assign::RVal;
+      if (!operand->type->is<type::Variant>()) {
+        ctx->error_log_.WhichNonVariant(operand->type, span);
+        limit_to(StageRange::NoEmitIR());
+      }
+    } break;
     case Operator::Print: {
       if (operand->type == type::Void) {
         ctx->error_log_.PrintingVoid(span);
@@ -211,7 +219,6 @@ void Unop::VerifyType(Context *ctx) {
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       }
     } break;
-    case Operator::Dots: NOT_YET();
     case Operator::Not: {
       if (operand->type == type::Bool) {
         type = type::Bool;
@@ -280,6 +287,8 @@ IR::Val Unop::EmitIR(Context *ctx) {
       return IR::Val::None();
     }
     case Language::Operator::TypeOf: return IR::Val::Type(operand->type);
+    case Language::Operator::Which:
+      return IR::Load(IR::VariantType(operand->EmitIR(ctx)));
     case Language::Operator::Print: {
       ForEachExpr(operand.get(), [&ctx](size_t, AST::Expression *expr) {
         if (expr->type->is<type::Primitive>() ||

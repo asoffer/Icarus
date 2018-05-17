@@ -126,6 +126,7 @@ static std::unique_ptr<Node> BuildLeftUnop(
                  {"return", {Language::Operator::Return, false}},
                  {"free", {Language::Operator::Free, false}},
                  {"generate", {Language::Operator::Generate, false}},
+                 {"which", {Language::Operator::Which, false}},
                  {"print", {Language::Operator::Print, false}},
                  {"needs", {Language::Operator::Needs, false}},
                  {"ensure", {Language::Operator::Ensure, false}},

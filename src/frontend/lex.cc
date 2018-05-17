@@ -69,13 +69,14 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
   }
 
   static const std::unordered_map<std::string, frontend::Tag> KeywordMap = {
-      {"print", frontend::op_l},      {"ensure", frontend::op_l},
-      {"needs", frontend::op_l},      {"import", frontend::op_l},
-      {"free", frontend::op_l},       {"flags", frontend::kw_block},
-      {"enum", frontend::kw_block},   {"generate", frontend::op_l},
-      {"struct", frontend::kw_block}, {"return", frontend::op_lt},
-      {"scope", frontend::kw_block},  {"switch", frontend::kw_block},
-      {"when", frontend::op_b},       {"block", frontend::kw_block}};
+      {"which", frontend::op_l},      {"print", frontend::op_l},
+      {"ensure", frontend::op_l},     {"needs", frontend::op_l},
+      {"import", frontend::op_l},     {"free", frontend::op_l},
+      {"flags", frontend::kw_block},  {"enum", frontend::kw_block},
+      {"generate", frontend::op_l},   {"struct", frontend::kw_block},
+      {"return", frontend::op_lt},    {"scope", frontend::kw_block},
+      {"switch", frontend::kw_block}, {"when", frontend::op_b},
+      {"block", frontend::kw_block}};
   if (auto iter = KeywordMap.find(token); iter != KeywordMap.end()) {
     return frontend::TaggedNode(span, iter->first, iter->second);
   }

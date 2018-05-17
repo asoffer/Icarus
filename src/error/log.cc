@@ -1,4 +1,4 @@
-#include "log.h"
+#include "error/log.h"
 
 #include <iomanip>
 #include <iostream>
@@ -336,7 +336,7 @@ void Log::DereferencingNonPointer(const type::Type *type,
                                   const TextSpan &span) {
   std::stringstream ss;
   ss << "Attempting to dereference an object of type `" << type->to_string()
-     << "` which is not a pointer.";
+     << "` which is not a pointer.\n\n";
   WriteSource(
       ss, *span.source,
       {Interval{span.start.line_num, span.finish.line_num + 1}},
@@ -346,11 +346,23 @@ void Log::DereferencingNonPointer(const type::Type *type,
   errors_.push_back(ss.str());
 }
 
+void Log::WhichNonVariant(const type::Type *type, const TextSpan &span) {
+  std::stringstream ss;
+  ss << "Attempting to call `which` an object of type `" << type->to_string()
+     << "` which is not a variant.\n\n";
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
 void Log::FreeingNonPointer(const type::Type *type,
                                   const TextSpan &span) {
   std::stringstream ss;
   ss << "Attempting to free an object of type `" << type->to_string()
-     << "` which is not a pointer.";
+     << "` which is not a pointer.\n\n";
   WriteSource(
       ss, *span.source,
       {Interval{span.start.line_num, span.finish.line_num + 1}},
