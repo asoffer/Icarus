@@ -856,7 +856,7 @@ static std::unique_ptr<AST::Node> BuildKWBlock(
   } else if (tk == "switch") {
     return BuildSwitch(move_as<AST::Statements>(nodes[1]), error_log);
 
-  } else if (tk == "block") {
+  } else if (tk == "block" || tk == "block?") {
     return BuildBlock(move_as<AST::Statements>(nodes[1]), error_log);
   }
 
@@ -965,7 +965,7 @@ namespace frontend {
 static constexpr u64 OP_B = op_b | comma | colon | eq;
 static constexpr u64 EXPR = expr | fn_expr | scope_expr;
 // Used in error productions only!
-static constexpr u64 RESERVED = kw_block | op_lt;
+static constexpr u64 RESERVED = kw_block | kw_block_head | op_lt;
 
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in the
@@ -1042,7 +1042,7 @@ auto Rules = std::array{
     Rule(expr, {l_paren, RESERVED, r_paren}, ErrMsg::Reserved<1, 1>),
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
     Rule(stmts, {stmts, (EXPR | stmts), newline}, AST::BuildMoreStatements),
-    Rule(expr, {kw_block, braced_stmts}, BuildKWBlock),
+    Rule(expr, {kw_block_head | kw_block, braced_stmts}, BuildKWBlock),
 
     Rule(expr, {(op_l | op_bl | op_lt), RESERVED}, ErrMsg::Reserved<0, 1>),
     Rule(expr, {RESERVED, op_l, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
@@ -1095,12 +1095,19 @@ struct ParseState {
       return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::MustReduce;
     }
 
+    if (ahead.tag_ == l_brace && (get_type<1>() & kw_block) &&
+        (get_type<2>() == fn_arrow)) {
+      
+      return ShiftState::MustReduce;
+    }
+
     if (ahead.tag_ == l_brace && get_type<1>() == fn_expr &&
         get_type<2>() == fn_arrow) {
       return ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace && (get_type<1>() & (fn_expr | kw_block))) {
+    if (ahead.tag_ == l_brace &&
+        (get_type<1>() & (fn_expr | kw_block_head | kw_block))) {
       return ShiftState::NeedMore;
     }
 
@@ -1112,11 +1119,12 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    if (get_type<1>() == kw_block && ahead.tag_ == newline) {
+    if ((get_type<1>() & (kw_block_head | kw_block)) && ahead.tag_ == newline) {
       return ShiftState::NeedMore;
     }
 
-    if (get_type<2>() == kw_block && get_type<1>() == newline) {
+    if ((get_type<2>() & (kw_block_head | kw_block)) &&
+        get_type<1>() == newline) {
       return ShiftState::NeedMore;
     }
 

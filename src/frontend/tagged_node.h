@@ -24,19 +24,19 @@ enum Tag : u64 {
   r_brace        = 1ull << 14,
   l_ref          = 1ull << 15,
   semicolon      = 1ull << 16,
-  kw_block       = 1ull << 17,
+  kw_block_head  = 1ull << 17,
   l_double_brace = 1ull << 18,
   r_double_brace = 1ull << 19,
-
-  op_r     = 1ull << 20,
-  op_l     = 1ull << 21,
-  op_b     = 1ull << 22,
-  colon    = 1ull << 23,
-  eq       = 1ull << 24,
-  comma    = 1ull << 25,
-  op_bl    = 1ull << 26,
-  op_lt    = 1ull << 28,
-  fn_arrow = 1ull << 29,
+  op_r           = 1ull << 20,
+  op_l           = 1ull << 21,
+  op_b           = 1ull << 22,
+  colon          = 1ull << 23,
+  eq             = 1ull << 24,
+  comma          = 1ull << 25,
+  op_bl          = 1ull << 26,
+  op_lt          = 1ull << 28,
+  fn_arrow       = 1ull << 29,
+  kw_block       = 1ull << 30
 };
 
 struct TaggedNode {
