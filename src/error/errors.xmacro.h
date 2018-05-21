@@ -80,7 +80,6 @@ MAKE_LOG_ERROR(AndEqNeedsBool,
                "Operator '&=' must take arguments of type bool.")
 MAKE_LOG_ERROR(OrEqNeedsBool, "Operator '|=' must take arguments of type bool.")
 MAKE_LOG_ERROR(PrintingVoid, "Attempting to print an object of type void")
-MAKE_LOG_ERROR(ReturningVoid, "Attempting to return an object of type void")
 MAKE_LOG_ERROR(TakingAddressOfConstant,
                "Attempting to take the address of a constant.")
 MAKE_LOG_ERROR(TakingAddressOfTemporary,

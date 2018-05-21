@@ -392,7 +392,7 @@ const Array *Arr(const Type *t) {
 
 static base::guarded<std::map<std::vector<const Type *>, Variant>> variants_;
 const Type *Var(std::vector<const Type *> variants) {
-  if (variants.empty()) { return type::Void; }
+  if (variants.empty()) { return type::Void(); }
   if (variants.size() == 1) { return variants[0]; }
 
   size_t end = variants.size();
@@ -454,6 +454,8 @@ const Type *Tup(std::vector<const Type *> entries) {
       tups_.lock()->emplace(std::move(entries), std::move(tup));
   return &iter->second;
 }
+
+const Type *Void() { return Tup({}); }
 
 bool Type::is_big() const {
   return is<Array>() || is<Struct>() || is<Variant>() || is<Tuple>();

@@ -254,11 +254,11 @@ void Binop::VerifyType(Context *ctx) {
       CASE(Sub, "-", lhs->type);
       CASE(Div, "/", lhs->type);
       CASE(Mod, "%", lhs->type);
-      CASE(AddEq, "+=", type::Void);
-      CASE(SubEq, "-=", type::Void);
-      CASE(MulEq, "*=", type::Void);
-      CASE(DivEq, "/=", type::Void);
-      CASE(ModEq, "%=", type::Void);
+      CASE(AddEq, "+=", type::Void());
+      CASE(SubEq, "-=", type::Void());
+      CASE(MulEq, "*=", type::Void());
+      CASE(DivEq, "/=", type::Void());
+      CASE(ModEq, "%=", type::Void());
 #undef CASE
 
     // Mul is done separately because of the function composition

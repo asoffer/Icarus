@@ -247,7 +247,7 @@ std::vector<IR::Val> EmitCallDispatch(
   // TODO push void out of here.
   size_t num_rets = ret_type->is<type::Tuple>()
                         ? ret_type->as<type::Tuple>().entries_.size()
-                        : (ret_type == type::Void ? 0 : 1);
+                        : 1;
 
   std::vector<std::vector<IR::Val>> result_phi_args(num_rets);
   for (auto &result : result_phi_args) {
@@ -290,7 +290,7 @@ std::vector<IR::Val> EmitCallDispatch(
   switch (num_rets) {
     case 0: return {};
     case 1:
-      if (ret_type == type::Void) {
+      if (ret_type == type::Void()) {
         return std::vector(1, IR::Val::None());
       } else {
         auto phi = IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
@@ -303,7 +303,7 @@ std::vector<IR::Val> EmitCallDispatch(
       const auto &tup_entries = ret_type->as<type::Tuple>().entries_;
       for (size_t i = 0; i < num_rets; ++i) {
         const type::Type *single_ret_type = tup_entries[i];
-        if (single_ret_type == type::Void) {
+        if (single_ret_type == type::Void()) {
           results.push_back(IR::Val::None());
         } else {
           auto phi = IR::Phi(single_ret_type->is_big() ? Ptr(single_ret_type)
@@ -658,10 +658,10 @@ void Call::VerifyType(Context *ctx) {
 
   if (fn_->is<Identifier>()) {
     // fn_'s type should never be considered beacuse it could be one of many
-    // different things. 'type::Void' just indicates that it has been computed
+    // different things. 'type::Void()' just indicates that it has been computed
     // (i.e., not 0x0) and that there was no error in doing so (i.e., not
     // type::Err).
-    fn_->type = type::Void;
+    fn_->type = type::Void();
   }
 }
 

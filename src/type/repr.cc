@@ -51,7 +51,6 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
   case PrimType::Type:
   case PrimType::String:
   case PrimType::Code: IR::Print(val); break;
-  case PrimType::Void:
   case PrimType::NullPtr:
   case PrimType::EmptyArray:
   case PrimType::Generic:

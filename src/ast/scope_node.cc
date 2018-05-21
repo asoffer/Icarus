@@ -76,7 +76,7 @@ void ScopeNode::VerifyType(Context *ctx) {
     NOT_YET("not a scope", blocks_[0]->type);
   }
 
-  type = type::Void;  // TODO can this evaluate to anything?
+  type = type::Void();  // TODO can this evaluate to anything?
 }
 
 void ScopeNode::Validate(Context *ctx) {

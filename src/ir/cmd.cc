@@ -117,7 +117,7 @@ void InsertField(Val struct_type, std::string field_name, Val type,
 }
 
 Val Alloca(const type::Type *t) {
-  ASSERT(t != type::Void);
+  ASSERT(t, Not(Is<type::Tuple>()));
   Cmd cmd(type::Ptr(t), Op::Alloca, {});
   Func::Current->block(Func::Current->entry()).cmds_.push_back(std::move(cmd));
   return cmd.reg();
@@ -432,7 +432,7 @@ Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
   const type::Type *output_type =
       (fn_type.output.size() == 1 && !fn_type.output[0]->is_big())
           ? fn_type.output[0]
-          : type::Void;
+          : type::Void();
   Cmd cmd(output_type, Op::Call, std::move(vals));
   Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();

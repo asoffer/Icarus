@@ -149,13 +149,13 @@ void Unop::VerifyType(Context *ctx) {
         limit_to(StageRange::NoEmitIR());
       }
       break;
-    case Operator::Generate: type = type::Void; break;
+    case Operator::Generate: type = type::Void(); break;
     case Operator::Free: {
       if (!operand->type->is<type::Pointer>()) {
         ctx->error_log_.FreeingNonPointer(operand->type, span);
         limit_to(StageRange::NoEmitIR());
       }
-      type = type::Void;
+      type = type::Void();
     } break;
     case Operator::Which: {
       type   = type::Type_;
@@ -166,19 +166,14 @@ void Unop::VerifyType(Context *ctx) {
       }
     } break;
     case Operator::Print: {
-      if (operand->type == type::Void) {
+      if (operand->type == type::Void()) {
         ctx->error_log_.PrintingVoid(span);
         limit_to(StageRange::NoEmitIR());
       }
-      type = type::Void;
+      type = type::Void();
     } break;
     case Operator::Return: {
-      if (operand->type == type::Void) {
-        // TODO this should probably be allowed (c.f., regular void)
-        ctx->error_log_.ReturningVoid(span);
-        limit_to(StageRange::NoEmitIR());
-      }
-      type = type::Void;
+      type = type::Void();
     } break;
     case Operator::At: {
       lvalue = Assign::LVal;
@@ -246,14 +241,14 @@ void Unop::VerifyType(Context *ctx) {
       }
     } break;
     case Operator::Needs: {
-      type = type::Void;
+      type = type::Void();
       if (operand->type != type::Bool) {
         ctx->error_log_.PreconditionNeedsBool(this);
         limit_to(StageRange::NoEmitIR());
       }
     } break;
     case Operator::Ensure: {
-      type = type::Void;
+      type = type::Void();
       if (operand->type != type::Bool) {
         ctx->error_log_.PostconditionNeedsBool(this);
         limit_to(StageRange::NoEmitIR());

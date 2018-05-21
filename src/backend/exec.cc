@@ -95,7 +95,7 @@ BlockIndex ExecContext::ExecuteBlock() {
   auto cmd_iter = current_block().cmds_.begin();
   do {
     result = ExecuteCmd(*cmd_iter);
-    if (cmd_iter->type != nullptr && cmd_iter->type != type::Void) {
+    if (cmd_iter->type != nullptr && cmd_iter->type != type::Void()) {
       // TODO the below assertion fails for structs (actual struct vs ptr to the
       // struct). Figure out how to fix it
       // ASSERT(result.type == cmd_iter->type);
@@ -535,7 +535,7 @@ void ReplEval(AST::Expression *expr) {
       return;
     }
 
-    if (expr->type != type::Void) { expr->type->EmitRepr(expr_val, &ctx); }
+    if (expr->type != type::Void()) { expr->type->EmitRepr(expr_val, &ctx); }
     IR::ReturnJump();
   }
 

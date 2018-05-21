@@ -19,7 +19,8 @@ struct Pointer;
 struct Struct;
 struct Type;
 
-extern Type *Bool, *Char, *Real, *Int, *Type_, *Void, *String, *Module;
+const Type *Void();
+extern Type *Bool, *Char, *Real, *Int, *Type_, *String, *Module;
 } // namespace type
 
 
@@ -123,7 +124,7 @@ struct Val {
   static Val GenFnLit(AST::GenericFunctionLiteral *fn);
   static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Block(AST::BlockLiteral *b);
-  static Val Void() { return Val(type::Void, false); }
+  static Val Void() { return Val(type::Void(), false); }
   static Val Mod(const Module *mod) { return Val(type::Module, mod); }
   static Val Null(const type::Type *t);
   static Val NullPtr();
