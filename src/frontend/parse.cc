@@ -794,8 +794,9 @@ static std::unique_ptr<AST::Node> BuildScopeLiteral(
 }
 
 static std::unique_ptr<AST::Node> BuildBlock(
-    std::unique_ptr<AST::Statements> stmts, error::Log *error_log) {
-  auto block_expr = std::make_unique<AST::BlockLiteral>();
+    std::unique_ptr<AST::Statements> stmts, bool required,
+    error::Log *error_log) {
+  auto block_expr = std::make_unique<AST::BlockLiteral>(required);
   block_expr->span = stmts->span;  // TODO it's really bigger than this because
                                    // it involves the keyword too.
 
@@ -842,25 +843,38 @@ static std::unique_ptr<AST::Node> BuildSwitch(
 
 static std::unique_ptr<AST::Node> BuildKWBlock(
     std::vector<std::unique_ptr<AST::Node>> nodes, error::Log *error_log) {
-  const std::string &tk = nodes[0]->as<frontend::Token>().token;
+  if (nodes[0]->is<frontend::Token>()) {
+    const std::string &tk = nodes[0]->as<frontend::Token>().token;
 
-  if (bool is_enum = (tk == "enum"); is_enum || tk == "flags") {
-    return BuildEnumOrFlagLiteral(std::move(nodes), is_enum, error_log);
+    if (bool is_enum = (tk == "enum"); is_enum || tk == "flags") {
+      return BuildEnumOrFlagLiteral(std::move(nodes), is_enum, error_log);
 
-  } else if (tk == "struct") {
-    return BuildStructLiteral(std::move(nodes), error_log);
+    } else if (tk == "struct") {
+      return BuildStructLiteral(std::move(nodes), error_log);
 
-  } else if (tk == "scope") {
-    return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), error_log);
+    } else if (tk == "scope") {
+      return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), error_log);
 
-  } else if (tk == "switch") {
-    return BuildSwitch(move_as<AST::Statements>(nodes[1]), error_log);
+    } else if (tk == "switch") {
+      return BuildSwitch(move_as<AST::Statements>(nodes[1]), error_log);
+    } else {
+      UNREACHABLE(tk);
+    }
+  } else if (nodes[0]->is<AST::Terminal>()) {
+    auto *t = std::get<const type::Type *>(nodes[0]->as<AST::Terminal>().value.value);
 
-  } else if (tk == "block" || tk == "block?") {
-    return BuildBlock(move_as<AST::Statements>(nodes[1]), error_log);
+    if (t == type::Block) {
+      return BuildBlock(move_as<AST::Statements>(nodes[1]), true, error_log);
+
+    } else if (t == type::OptBlock) {
+      return BuildBlock(move_as<AST::Statements>(nodes[1]), false, error_log);
+
+    } else {
+      UNREACHABLE(t);
+    }
+  } else {
+    UNREACHABLE();
   }
-
-  UNREACHABLE();
 }
 
 static std::unique_ptr<AST::Node> Parenthesize(
@@ -963,9 +977,9 @@ static std::unique_ptr<AST::Node> BuildOperatorIdentifier(
 
 namespace frontend {
 static constexpr u64 OP_B = op_b | comma | colon | eq;
-static constexpr u64 EXPR = expr | fn_expr | scope_expr;
+static constexpr u64 EXPR = expr | fn_expr | scope_expr | kw_block;
 // Used in error productions only!
-static constexpr u64 RESERVED = kw_block | kw_block_head | op_lt;
+static constexpr u64 RESERVED = kw_block_head | op_lt;
 
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in the
@@ -1043,6 +1057,7 @@ auto Rules = std::array{
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
     Rule(stmts, {stmts, (EXPR | stmts), newline}, AST::BuildMoreStatements),
     Rule(expr, {kw_block_head | kw_block, braced_stmts}, BuildKWBlock),
+    Rule(expr, {kw_block, newline}, drop_all_but<0>),
 
     Rule(expr, {(op_l | op_bl | op_lt), RESERVED}, ErrMsg::Reserved<0, 1>),
     Rule(expr, {RESERVED, op_l, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
@@ -1123,8 +1138,7 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<2>() & (kw_block_head | kw_block)) &&
-        get_type<1>() == newline) {
+    if ((get_type<2>() & (kw_block_head)) && get_type<1>() == newline) {
       return ShiftState::NeedMore;
     }
 

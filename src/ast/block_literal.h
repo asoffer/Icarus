@@ -5,6 +5,7 @@
 
 namespace AST {
 struct BlockLiteral : public Expression {
+  BlockLiteral(bool required);
   ~BlockLiteral() override {}
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;

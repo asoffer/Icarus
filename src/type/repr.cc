@@ -56,6 +56,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
   case PrimType::Generic:
   case PrimType::Module:
   case PrimType::Block:
+  case PrimType::OptBlock:
   case PrimType::Err: NOT_YET();
   }
 }

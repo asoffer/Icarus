@@ -3,8 +3,13 @@
 #include "ast/verify_macros.h"
 #include "scope.h"
 #include "type/function.h"
+#include "type/primitive.h"
 
 namespace AST {
+BlockLiteral::BlockLiteral(bool required) {
+  type = required ? type::Block : type::OptBlock;
+}
+
 std::string BlockLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "block {\n"
@@ -31,7 +36,6 @@ void BlockLiteral::ClearIdDecls() {
 void BlockLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
-  type = type::Block;
 }
 
 void BlockLiteral::Validate(Context *ctx) {
@@ -60,11 +64,7 @@ void BlockLiteral::Validate(Context *ctx) {
     NOT_YET("log an error");
   }
 
-  if (cannot_proceed_due_to_errors) {
-    limit_to(StageRange::Nothing());
-  } else {
-    type = type::Block;
-  }
+  if (cannot_proceed_due_to_errors) { limit_to(StageRange::Nothing()); }
 
   before_->Validate(ctx);
   after_->Validate(ctx);
@@ -90,7 +90,7 @@ void BlockLiteral::ExtractReturns(std::vector<const Expression *> *rets) const {
 }
 
 BlockLiteral *BlockLiteral::Clone() const {
-  auto *result     = new BlockLiteral;
+  auto *result     = new BlockLiteral(type == type::Block);
   result->span     = span;
   result->before_ = base::wrap_unique(before_->Clone());
   result->after_  = base::wrap_unique(after_->Clone());

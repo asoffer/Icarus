@@ -56,38 +56,47 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
                                         span.finish.offset - span.start.offset);
 
   static std::unordered_map<std::string, IR::Val> Reserved{
-#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
-  {#name, IR::Val::Type(type::GlobalName)},
-#include "../type/primitive.xmacro.h"
-#undef PRIMITIVE_MACRO
-      {"true", IR::Val::Bool(true)},    {"false", IR::Val::Bool(false)},
-      {"null", IR::Val::NullPtr()},     {"ord", OrdFunc()},
-      {"ascii", AsciiFunc()},           {"error", ErrorFunc()},
+      {"bool", IR::Val::Type(type::Bool)},
+      {"char", IR::Val::Type(type::Char)},
+      {"code", IR::Val::Type(type::Code)},
+      {"int", IR::Val::Type(type::Int)},
+      {"real", IR::Val::Type(type::Real)},
+      {"type", IR::Val::Type(type::Type_)},
+      {"string", IR::Val::Type(type::String)},
+      {"module", IR::Val::Type(type::Module)},
+      {"true", IR::Val::Bool(true)},
+      {"false", IR::Val::Bool(false)},
+      {"null", IR::Val::NullPtr()},
+      {"ord", OrdFunc()},
+      {"ascii", AsciiFunc()},
+      {"error", ErrorFunc()},
       {"exit", IR::Val::Block(nullptr)}};
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     return frontend::TaggedNode::TerminalExpression(span, iter->second);
   }
 
   static const std::unordered_map<std::string, frontend::Tag> KeywordMap = {
-      {"which", frontend::op_l},          {"print", frontend::op_l},
-      {"ensure", frontend::op_l},         {"needs", frontend::op_l},
-      {"import", frontend::op_l},         {"free", frontend::op_l},
-      {"flags", frontend::kw_block_head}, {"enum", frontend::kw_block_head},
-      {"generate", frontend::op_l},       {"struct", frontend::kw_block_head},
-      {"return", frontend::op_lt},        {"scope", frontend::kw_block_head},
-      {"switch", frontend::kw_block_head},     {"when", frontend::op_b}};
+      {"which", frontend::op_l},           {"print", frontend::op_l},
+      {"ensure", frontend::op_l},          {"needs", frontend::op_l},
+      {"import", frontend::op_l},          {"free", frontend::op_l},
+      {"flags", frontend::kw_block_head},  {"enum", frontend::kw_block_head},
+      {"generate", frontend::op_l},        {"struct", frontend::kw_block_head},
+      {"return", frontend::op_lt},         {"scope", frontend::kw_block_head},
+      {"switch", frontend::kw_block_head}, {"when", frontend::op_b}};
   if (auto iter = KeywordMap.find(token); iter != KeywordMap.end()) {
     return frontend::TaggedNode(span, iter->first, iter->second);
   }
 
   if (token == "block") {
+    auto t = type::Block;
     if (*loc == '?') {
       loc.Increment();
       span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "block?", frontend::kw_block);
-    } else {
-      return frontend::TaggedNode(span, "block", frontend::kw_block);
+      t           = type::OptBlock;
     }
+    return frontend::TaggedNode(
+        std::make_unique<AST::Terminal>(span, IR::Val::Type(t)),
+        frontend::kw_block);
   }
 
   return frontend::TaggedNode(std::make_unique<AST::Identifier>(span, token),
