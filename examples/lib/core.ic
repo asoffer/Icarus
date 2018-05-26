@@ -6,7 +6,7 @@ if ::= scope {
     }
     after ::= () => exit
   }
-  else ::= block {
+  else ::= block? {
     before ::= () => else
     after ::= () => exit
   } 

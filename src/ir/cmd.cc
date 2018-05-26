@@ -4,8 +4,9 @@
 #include <vector>
 #include <iostream>
 
-#include "../type/all.h"
-#include "func.h"
+#include "ir/block_sequence.h"
+#include "ir/func.h"
+#include "type/all.h"
 
 namespace IR {
 using base::check::Is;
@@ -59,6 +60,32 @@ Val Trunc(Val v) {
     return Val::Char(static_cast<char>(*n));
   }
   return MakeCmd(type::Char, Op::Trunc, std::vector{std::move(v)});
+}
+
+Val MakeBlockSeq(const std::vector<Val> &blocks) {
+  BlockSequence seq;
+  seq.seq_.reserve(blocks.size());
+  for (const auto &val : blocks) {
+    if (auto *const *lit = std::get_if<AST::BlockLiteral *>(&val.value)) {
+      seq.seq_.push_back(*lit);
+    } else if (auto *bseq = std::get_if<IR::BlockSequence>(&val.value)) {
+      seq.seq_.insert(seq.seq_.end(), bseq->seq_.begin(), bseq->seq_.end());
+    } else {
+      UNREACHABLE();
+    }
+  }
+  return IR::Val::BlockSeq(std::move(seq));
+}
+
+Val BlockSeq(std::vector<Val> blocks) {
+  if (std::all_of(blocks.begin(), blocks.end(), [](const IR::Val &v) {
+        return std::holds_alternative<AST::BlockLiteral *>(v.value) ||
+               std::holds_alternative<IR::BlockSequence>(v.value);
+      })) {
+    return MakeBlockSeq(blocks);
+  }
+  auto *t = blocks.back().type;
+  return MakeCmd(t, Op::BlockSeq, std::move(blocks));
 }
 
 Val Err(Val v) {
@@ -367,6 +394,11 @@ Val Ge(Val v1, Val v2) {
   return MakeCmd(type::Bool, Op::Ge, std::vector{std::move(v1), std::move(v2)});
 }
 
+Val BlockSeqContains(Val v, AST::BlockLiteral* lit) {
+  return MakeCmd(type::Bool, Op::BlockSeqContains,
+                 std::vector{std::move(v), IR::Val::Block(lit)});
+}
+
 Val Eq(Val v1, Val v2) {
   if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? v2 : Neg(v2); }
   if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? v1 : Neg(v1); }
@@ -380,6 +412,7 @@ Val Eq(Val v1, Val v2) {
                        std::equal_to<AST::BlockLiteral *>{}, Bool);
 
   CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
+  CONSTANT_PROPOGATION(BlockSequence, std::equal_to<BlockSequence>{}, Bool);
   CONSTANT_PROPOGATION(
       FlagsVal,
       [](FlagsVal lhs, FlagsVal rhs) { return lhs.value == rhs.value; }, Bool);
@@ -488,6 +521,8 @@ void Cmd::dump(size_t indent) const {
   case Op::VariantValue: std::cerr << "variant-value"; break;
   case Op::Cast: std::cerr << "cast"; break;
   case Op::Err: std::cerr << "err"; break;
+  case Op::BlockSeq: std::cerr << "block-seq"; break;
+  case Op::BlockSeqContains: std::cerr << "block-seq-contains"; break;
   }
 
   if (args.empty()) {

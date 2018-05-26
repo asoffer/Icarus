@@ -22,8 +22,18 @@ Val Val::CodeBlock(AST::CodeBlock block) {
   return Val(type::Code, std::move(block));
 }
 
-Val Val::Block(AST::BlockLiteral *b) { return Val(type::Block, b); }
+Val Val::Block(AST::BlockLiteral *b) { 
+ BlockSequence seq; 
+ seq.seq_.push_back(b);
+  return BlockSeq(std::move(seq));
+}
+
 Val Val::Struct() { return Val(type::Type_, new type::Struct); }
+Val Val::BlockSeq(BlockSequence b) {
+  ASSERT(b.seq_.size() != 0u);
+  auto *t = (b.seq_.back() == nullptr) ? type::Block : b.seq_.back()->type;
+  return Val(t, std::move(b));
+}
 
 Val Val::Addr(IR::Addr addr, const type::Type *t) { return Val(Ptr(t), addr); }
 
@@ -140,6 +150,10 @@ std::string Val::to_string() const {
           [](const std::vector<IR::Val> &) -> std::string {
             // TODO
             return "vector<IR::Val>{...}";
+          },
+          [](const BlockSequence &) -> std::string {
+            // TODO
+            return "BlockSequence";
           }},
       value);
 }

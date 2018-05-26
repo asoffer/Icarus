@@ -9,6 +9,7 @@
 #include "ast/codeblock.h"
 #include "base/strong_types.h"
 #include "base/types.h"
+#include "ir/block_sequence.h"
 
 struct Module;
 
@@ -100,11 +101,13 @@ template <> struct hash<IR::CmdIndex> {
 namespace IR {
 struct Val {
   const type::Type *type = nullptr;
-  std::variant<Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
-               const type::Type *, type::Struct *,
-               AST::GenericFunctionLiteral *, IR::Func *, AST::ScopeLiteral *,
-               AST::CodeBlock, AST::Expression *, BlockIndex, std::string,
-               const Module *, AST::BlockLiteral *, std::vector<Val>>
+  std::variant<
+      Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
+      const type::Type *, type::Struct *, AST::GenericFunctionLiteral *,
+      IR::Func *, AST::ScopeLiteral *, AST::CodeBlock, AST::Expression *,
+      BlockIndex, std::string, const Module *,
+      AST::BlockLiteral *,  // TODO no longer necessary with blocksequence?
+      std::vector<Val>, BlockSequence>
       value{false};
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
@@ -124,6 +127,7 @@ struct Val {
   static Val GenFnLit(AST::GenericFunctionLiteral *fn);
   static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Block(AST::BlockLiteral *b);
+  static Val BlockSeq(BlockSequence b);
   static Val Void() { return Val(type::Void(), false); }
   static Val Mod(const Module *mod) { return Val(type::Module, mod); }
   static Val Null(const type::Type *t);

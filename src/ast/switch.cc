@@ -1,9 +1,11 @@
 #include "ast/switch.h"
 
+#include <numeric>
 #include <sstream>
 #include <unordered_set>
 #include "ast/verify_macros.h"
 #include "base/util.h"
+#include "type/type.h"
 #include "ir/func.h"
 
 namespace AST {
@@ -47,8 +49,13 @@ void Switch::VerifyType(Context *ctx) {
     // good error messages.
     types.insert(expr->type);
   }
-  if (types.size() != 1) { NOT_YET("handle type error"); }
-  type = *types.begin();
+  if (types.empty()) { NOT_YET("handle type error"); }
+  type =
+      std::accumulate(types.begin(), types.end(), *types.begin(), type::Join);
+  if (type == nullptr) {
+    type = type::Err;
+    NOT_YET("handle type error");
+  }
 }
 
 void Switch::Validate(Context *ctx) {

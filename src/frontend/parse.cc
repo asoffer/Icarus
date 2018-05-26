@@ -551,7 +551,7 @@ std::unique_ptr<AST::Node> BuildScopeNode(
 std::unique_ptr<AST::Node> BuildVoidScopeNode(
     std::vector<std::unique_ptr<AST::Node>> nodes, error::Log *error_log) {
   auto scope_name  = move_as<AST::Expression>(nodes[0]);
-  auto stmts       = nodes[1]->as<AST::Statements>();
+  auto &stmts      = nodes[1]->as<AST::Statements>();
   auto scope_node  = std::make_unique<AST::ScopeNode>();
   scope_node->span = TextSpan(scope_name->span, stmts.span);
   scope_node->blocks_.push_back(std::move(scope_name));
@@ -861,7 +861,8 @@ static std::unique_ptr<AST::Node> BuildKWBlock(
       UNREACHABLE(tk);
     }
   } else if (nodes[0]->is<AST::Terminal>()) {
-    auto *t = std::get<const type::Type *>(nodes[0]->as<AST::Terminal>().value.value);
+    auto *t =
+        std::get<const type::Type *>(nodes[0]->as<AST::Terminal>().value.value);
 
     if (t == type::Block) {
       return BuildBlock(move_as<AST::Statements>(nodes[1]), true, error_log);

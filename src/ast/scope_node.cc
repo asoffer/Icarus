@@ -8,6 +8,7 @@
 #include "ast/stages.h"
 #include "ast/verify_macros.h"
 #include "context.h"
+#include "ir/block_sequence.h"
 #include "ir/func.h"
 #include "scope.h"
 #include "type/scope.h"
@@ -145,26 +146,38 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   };
   std::unordered_map<AST::BlockLiteral *, BlockData> lit_to_data;
   std::unordered_map<std::string, BlockData *> name_to_data;
-  for (const auto &decl : scope_lit->decls_) {
-    if (decl.type != type::Block) { NOT_YET("local variables"); }
-    auto block_val  = Evaluate(decl.init_val.get(), ctx)[0];
-    auto block_lit  = std::get<AST::BlockLiteral *>(block_val.value);
-    auto[iter, success] =
-        lit_to_data.emplace(block_lit, BlockData{
-                                           IR::Func::Current->AddBlock(),
-                                           IR::Func::Current->AddBlock(),
-                                           IR::Func::Current->AddBlock(),
-                                       });
-    ASSERT(success);
-    auto* block_data = &iter->second;
+  for (const auto & [ expr, block_node ] : block_map_) {
+    // TODO this probably doesn't always have to be an identifier.
+    const auto& block_node_name = expr->as<Identifier>().token;
+    // TODO better search
 
-    if (decl.identifier->token == "self") {
-      // TODO check constness as part of type-checking
-      IR::UncondJump(block_data->before);
-      ASSERT(blocks_[0], Is<Identifier>());
-      name_to_data.emplace(blocks_[0]->as<Identifier>().token, block_data);
-    } else {
-      name_to_data.emplace(decl.identifier->token, block_data);
+    for (const auto &decl : scope_lit->decls_) {
+      if (decl.identifier->token != block_node_name &&
+          !(decl.identifier->token == "self" && expr == blocks_[0].get())) {
+        continue;
+      }
+      auto block_val = Evaluate(decl.init_val.get(), ctx)[0];
+      auto block_seq = std::get<IR::BlockSequence>(block_val.value);
+      ASSERT(block_seq.seq_.size() == 1u);
+      auto *block_lit = block_seq.seq_[0];
+      auto[iter, success] =
+          lit_to_data.emplace(block_lit, BlockData{
+                                             IR::Func::Current->AddBlock(),
+                                             IR::Func::Current->AddBlock(),
+                                             IR::Func::Current->AddBlock(),
+                                         });
+      ASSERT(success);
+      auto *block_data = &iter->second;
+
+      if (decl.identifier->token == "self") {
+        // TODO check constness as part of type-checking
+        IR::UncondJump(block_data->before);
+        ASSERT(blocks_[0], Is<Identifier>());
+        name_to_data.emplace(blocks_[0]->as<Identifier>().token, block_data);
+      } else {
+        name_to_data.emplace(decl.identifier->token, block_data);
+      }
+      break;
     }
   }
 
@@ -176,13 +189,15 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   }
   name_to_data.clear();
 
-
   for (auto & [ block_lit, block_data ] : lit_to_data) {
     IR::BasicBlock::Current = block_data.before;
     // TODO the context for the before_ and after_ functions is wrong. Bound
     // constants should not be for those in this scope but in the block literal
     // scope.
-    auto *arg_expr = data_to_node.at(&block_data)->arg_.get();
+    auto iter = data_to_node.find(&block_data);
+    if (iter == data_to_node.end()) { continue; }
+    auto* arg_expr = iter->second->arg_.get();
+
     std::vector<IR::Val> args;
     if (arg_expr != nullptr) {
       ForEachExpr(arg_expr, [ctx, &args](size_t, Expression *expr) {
@@ -195,7 +210,7 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           jump_block_data.body,
-          IR::Eq(call_enter_result, IR::Val::Block(jump_block_lit)));
+          IR::BlockSeqContains(call_enter_result, jump_block_lit));
     }
     // TODO we're not checking that this is an exit block but we probably
     // should.
@@ -210,8 +225,9 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           jump_block_data.before,
-          IR::Eq(call_exit_result, IR::Val::Block(jump_block_lit)));
+          IR::BlockSeqContains(call_exit_result, jump_block_lit));
     }
+
     // TODO we're not checking that this is an exit block but we probably
     // should.
     IR::UncondJump(land_block);

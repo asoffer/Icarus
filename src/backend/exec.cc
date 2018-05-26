@@ -152,6 +152,15 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Div: return Div(resolved[0], resolved[1]);
     case Op::Mod: return Mod(resolved[0], resolved[1]);
     case Op::Arrow: return Arrow(resolved[0], resolved[1]);
+    case Op::BlockSeq: return BlockSeq(std::move(resolved));
+    case Op::BlockSeqContains: {
+      // TODO constant propogation?
+      const auto &seq = std::get<BlockSequence>(resolved[0].value).seq_;
+      auto* block_lit = std::get<BlockSequence>(resolved[1].value).seq_[0];
+      return IR::Val::Bool(std::any_of(
+          seq.begin(), seq.end(),
+          [block_lit](AST::BlockLiteral *lit) { return lit == block_lit; }));
+    } break;
     case Op::Tup: {
       std::vector<const type::Type *> types;
       types.reserve(resolved.size());

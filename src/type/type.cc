@@ -327,6 +327,9 @@ const Type *Join(const Type *lhs, const Type *rhs) {
   if (lhs == rhs) { return lhs; }
   if (lhs == Err) { return rhs; } // Ignore errors
   if (rhs == Err) { return lhs; } // Ignore errors
+  if ((lhs == Block && rhs == OptBlock) || (lhs == OptBlock && rhs == Block)) {
+    return Block;
+  }
   if (lhs->is<Primitive>() && rhs->is<Primitive>()) {
     return lhs == rhs ? lhs : nullptr;
   }

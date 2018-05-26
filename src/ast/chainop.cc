@@ -12,6 +12,10 @@
 #include "type/tuple.h"
 
 IR::Val PtrCallFix(const IR::Val& v);
+namespace IR {
+
+IR::Val MakeBlockSeq(const std::vector<IR::Val>&);
+}  // namespace IR
 
 std::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
@@ -129,6 +133,27 @@ void ChainOp::VerifyType(Context *ctx) {
     limit_to(StageRange::Nothing());
     return;
   }
+
+  if (ops[0] == Language::Operator::Or) {
+    for (size_t i = 0; i < exprs.size() - 1; ++i) {
+      if (exprs[i]->type == type::Block) {
+        NOT_YET("log an error");
+      } else if (exprs[i]->type == type::OptBlock) {
+        continue;
+      } else {
+        goto not_blocks;
+      }
+    }
+    if (exprs.back()->type != type::Block &&
+        exprs.back()->type != type::OptBlock) {
+      NOT_YET("log an error");
+      type = type::Err;
+    } else {
+      type = exprs.back()->type;
+      return;
+    }
+  }
+  not_blocks:
 
   // TODO Can we recover from errors here? Should we?
 
@@ -279,6 +304,12 @@ IR::Val ChainOp::EmitIR(Context *ctx) {
     args.reserve(exprs.size());
     for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)); }
     return IR::Variant(std::move(args));
+  } else if (ops[0] == Language::Operator::Or &&
+             (type == type::Block || type == type::OptBlock)) {
+    std::vector<IR::Val> vals;
+    vals.reserve(exprs.size());
+    for (auto &expr : exprs) { vals.push_back(expr->EmitIR(ctx)); }
+    return IR::MakeBlockSeq(vals);
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
     auto land_block = IR::Func::Current->AddBlock();

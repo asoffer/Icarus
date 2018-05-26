@@ -21,6 +21,7 @@ enum class Op : char {
   Alloca,
   Contextualize,
   VariantType, VariantValue,
+  BlockSeq, BlockSeqContains,
   Err,
   Cast,
   CondJump,
@@ -85,10 +86,12 @@ Val Ptr(Val v1);
 Val Alloca(const type::Type *t);
 Val VariantType(Val v1);
 Val VariantValue(const type::Type *t, Val);
+Val BlockSeq(std::vector<Val> blocks);
 Val Err(Val v);
 Val CreateStruct();
 Val FinalizeStruct(Val v);
 Val Cast(const type::Type *to, Val v);
+Val BlockSeqContains(Val v, AST::BlockLiteral *lit);
 
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val);
