@@ -90,3 +90,6 @@ MAKE_LOG_ERROR(ModifyingToConstant, "Attempting to modify to a constant.")
 MAKE_LOG_ERROR(ModifyingToTemporary, "Attempting to modify to a temporary.")
 MAKE_LOG_ERROR(EvaluatingNonConstant,
                "Attempting to evaluate a non-constant at compile-time.")
+MAKE_LOG_ERROR(
+    EarlyRequiredBlock,
+    "Required block appears on the left-hand side of `|` operator.")

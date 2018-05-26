@@ -137,7 +137,8 @@ void ChainOp::VerifyType(Context *ctx) {
   if (ops[0] == Language::Operator::Or) {
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       if (exprs[i]->type == type::Block) {
-        NOT_YET("log an error");
+        ctx->error_log_.EarlyRequiredBlock(exprs[i]->span);
+        type = type::Err;
       } else if (exprs[i]->type == type::OptBlock) {
         continue;
       } else {
@@ -146,8 +147,7 @@ void ChainOp::VerifyType(Context *ctx) {
     }
     if (exprs.back()->type != type::Block &&
         exprs.back()->type != type::OptBlock) {
-      NOT_YET("log an error");
-      type = type::Err;
+      goto not_blocks;
     } else {
       type = exprs.back()->type;
       return;
