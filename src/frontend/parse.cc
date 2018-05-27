@@ -669,7 +669,6 @@ static std::unique_ptr<AST::Node> BuildBinaryOperator(
     return AST::BuildShortFunctionLiteral(move_as<AST::Expression>(nodes[0]),
                                           move_as<AST::Expression>(nodes[2]),
                                           error_log);
-
   } else if (tk == "=") {
     if (nodes[0]->is<AST::Declaration>()) {
       if (nodes[0]->as<AST::Declaration>().IsInferred()) {
@@ -715,7 +714,8 @@ static std::unique_ptr<AST::Node> BuildBinaryOperator(
       {"%=", Language::Operator::ModEq}, {"+", Language::Operator::Add},
       {"-", Language::Operator::Sub},    {"*", Language::Operator::Mul},
       {"/", Language::Operator::Div},    {"%", Language::Operator::Mod},
-      {"[", Language::Operator::Index},  {"when", Language::Operator::When}};
+      {"[", Language::Operator::Index},  {"when", Language::Operator::When},
+      {"as", Language::Operator::As}};
   {
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }

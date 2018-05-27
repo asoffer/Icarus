@@ -10,10 +10,15 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
+#include "type/pointer.h"
 #include "type/struct.h"
 #include "type/tuple.h"
 
+std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 IR::Val PtrCallFix(const IR::Val& v);
+namespace type {
+const Pointer *Ptr(const Type *);
+}  // namespace type
 
 std::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
@@ -66,6 +71,7 @@ std::string Binop::to_string(size_t n) const {
   case Language::Operator::MulEq: ss << " *= "; break;
   case Language::Operator::DivEq: ss << " /= "; break;
   case Language::Operator::ModEq: ss << " %= "; break;
+  case Language::Operator::As: ss << " as "; break;
   case Language::Operator::When: ss << " when "; break;
   default: UNREACHABLE();
   }
@@ -192,6 +198,12 @@ void Binop::VerifyType(Context *ctx) {
         limit_to(StageRange::NoEmitIR());
         return;
       }
+    } break;
+    case Operator::As: {
+      // TODO check that the type actually can be cast
+      // correctly.
+      type   = std::get<const type::Type *>(Evaluate(rhs.get(), ctx)[0].value);
+      lvalue = lhs->lvalue;
     } break;
     case Operator::XorEq: {
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
@@ -362,6 +374,9 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
     CASE(Div);
     CASE(Mod);
 #undef CASE
+    case Language::Operator::As: {
+      return IR::Cast(type, lhs->EmitIR(ctx), ctx);
+    } break;
     case Language::Operator::Arrow: {
       std::vector<IR::Val> lhs_vals, rhs_vals;
       ForEachExpr(lhs.get(), [&lhs_vals, ctx](size_t, Expression *expr) {
@@ -477,6 +492,7 @@ IR::Val AST::Binop::EmitIR(Context *ctx) {
 
 IR::Val AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {
+    case Language::Operator::As: NOT_YET();
     case Language::Operator::Index:
       if (lhs->type->is<type::Array>()) {
         return IR::Index(lhs->EmitLVal(ctx), rhs->EmitIR(ctx));

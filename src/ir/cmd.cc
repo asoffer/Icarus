@@ -99,11 +99,22 @@ Val Neg(Val v) {
   return MakeCmd(v.type, Op::Neg, std::vector{std::move(v)});
 }
 
-Val Cast(const type::Type *to, Val v) {
+Val Cast(const type::Type *to, Val v, Context *ctx) {
   if (v.type == to) {
+    // TODO lvalue/rvalue?
     return v;
-  } else if (i32 *n = std::get_if<i32>(&v.value)) {
-    if (to == type::Real) { return Val::Real(static_cast<double>(*n)); }
+
+  } else if (i32 *n = std::get_if<i32>(&v.value); n && to == type::Real) {
+    return Val::Real(static_cast<double>(*n));
+
+  } else if (to->is<type::Variant>()) {
+    ASSERT(ctx != nullptr);
+    // TODO cleanup?
+    auto alloc = Alloca(to);
+
+    to->EmitAssign(v.type, std::move(v), alloc, ctx);
+    return alloc;
+
   } else if (v.type->is<type::Pointer>()) {
     auto *ptee_type = v.type->as<type::Pointer>().pointee;
     if (ptee_type->is<type::Array>()) {
@@ -343,9 +354,10 @@ Val Index(Val v1, Val v2) {
   auto *array_type = &v1.type->as<type::Pointer>().pointee->as<type::Array>();
   // TODO this works but generates worse IR (both here and in llvm). It's worth
   // figuring out how to do this better.
-  return PtrIncr(Cast(type::Ptr(array_type->data_type),
-                      array_type->fixed_length ? v1 : Load(ArrayData(v1))),
-                 v2);
+  return PtrIncr(
+      Cast(type::Ptr(array_type->data_type),
+           array_type->fixed_length ? v1 : Load(ArrayData(v1)), nullptr),
+      v2);
 }
 
 Val Lt(Val v1, Val v2) {

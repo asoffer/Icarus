@@ -159,7 +159,7 @@ void Unop::VerifyType(Context *ctx) {
     } break;
     case Operator::Which: {
       type   = type::Type_;
-      lvalue = Assign::RVal;
+      lvalue = operand->lvalue == Assign::Const ? Assign::Const : Assign::RVal;
       if (!operand->type->is<type::Variant>()) {
         ctx->error_log_.WhichNonVariant(operand->type, span);
         limit_to(StageRange::NoEmitIR());
@@ -293,7 +293,11 @@ IR::Val Unop::EmitIR(Context *ctx) {
     }
     case Language::Operator::TypeOf: return IR::Val::Type(operand->type);
     case Language::Operator::Which:
-      return IR::Load(IR::VariantType(operand->EmitIR(ctx)));
+      if (lvalue == Assign::Const) {
+        NOT_YET();
+      } else {
+        return IR::Load(IR::VariantType(operand->EmitIR(ctx)));
+      }
     case Language::Operator::Print: {
       ForEachExpr(operand.get(), [&ctx](size_t, AST::Expression *expr) {
         if (expr->type->is<type::Primitive>() ||

@@ -132,13 +132,6 @@ static std::vector<IR::Val> EmitOneCallDispatch(
     const std::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
   auto callee = binding.fn_expr_->EmitIR(ctx);
-  if (const type::Type **cast_to =
-          std::get_if<const type::Type *>(&callee.value)) {
-    ASSERT(binding.exprs_.size() == 1u);
-    auto[bound_type, expr] = binding.exprs_[0];
-    return {IR::Cast(*cast_to, bound_type->PrepareArgument(
-                                   expr->type, *expr_map.at(expr), ctx))};
-  }
 
   // After the last check, if you pass, you should dispatch
   IR::Func *fn_to_call = std::visit(

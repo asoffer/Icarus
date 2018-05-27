@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_CMD_H
 #define ICARUS_IR_CMD_H
 
+#include "context.h"
 #include "val.h"
 
 namespace IR {
@@ -90,7 +91,7 @@ Val BlockSeq(std::vector<Val> blocks);
 Val Err(Val v);
 Val CreateStruct();
 Val FinalizeStruct(Val v);
-Val Cast(const type::Type *to, Val v);
+Val Cast(const type::Type *to, Val v, Context* ctx);
 Val BlockSeqContains(Val v, AST::BlockLiteral *lit);
 
 void InsertField(Val struct_type, std::string field_name, Val type,
