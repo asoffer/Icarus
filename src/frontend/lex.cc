@@ -82,6 +82,7 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       {"needs", frontend::op_l},
       {"import", frontend::op_l},
       {"free", frontend::op_l},
+      {"interface", frontend::kw_block_head},
       {"flags", frontend::kw_block_head},
       {"enum", frontend::kw_block_head},
       {"generate", frontend::op_l},

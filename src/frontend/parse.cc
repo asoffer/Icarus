@@ -17,6 +17,7 @@
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
 #include "ast/import.h"
+#include "ast/interface.h"
 #include "ast/jump.h"
 #include "ast/scope_literal.h"
 #include "ast/scope_node.h"
@@ -29,9 +30,9 @@
 #include "base/guarded.h"
 #include "base/types.h"
 #include "error/log.h"
+#include "frontend/tagged_node.h"
 #include "frontend/token.h"
 #include "operators.h"
-#include "frontend/tagged_node.h"
 #include "type/enum.h"
 
 template <typename To, typename From>
@@ -778,6 +779,22 @@ static std::unique_ptr<AST::Node> BuildStructLiteral(
   return struct_lit;
 }
 
+static std::unique_ptr<AST::Node> BuildInterfaceLiteral(
+    std::unique_ptr<AST::Statements> stmts, error::Log *error_log) {
+  auto interface_lit = std::make_unique<AST::Interface>();
+  interface_lit->span =
+      stmts->span;  // TODO it's really bigger than this because
+                    // it involves the keyword too.
+  for (auto &stmt : stmts->content_) {
+    if (stmt->is<AST::Declaration>()) {
+      interface_lit->decls_.push_back(std::move(stmt->as<AST::Declaration>()));
+    } else {
+      NOT_YET(stmt);
+    }
+  }
+  return interface_lit;
+}
+
 static std::unique_ptr<AST::Node> BuildScopeLiteral(
     std::unique_ptr<AST::Statements> stmts, error::Log *error_log) {
   auto scope_lit  = std::make_unique<AST::ScopeLiteral>();
@@ -854,6 +871,10 @@ static std::unique_ptr<AST::Node> BuildKWBlock(
 
     } else if (tk == "scope") {
       return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), error_log);
+
+    } else if (tk == "interface") {
+      return BuildInterfaceLiteral(move_as<AST::Statements>(nodes[1]),
+                                   error_log);
 
     } else if (tk == "switch") {
       return BuildSwitch(move_as<AST::Statements>(nodes[1]), error_log);

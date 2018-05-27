@@ -18,6 +18,7 @@ size_t Architecture::alignment(const type::Type *t) const {
       case type::PrimType::Err: NOT_YET();
       case type::PrimType::Block: NOT_YET();
       case type::PrimType::OptBlock: NOT_YET();
+      case type::PrimType::Interface: NOT_YET();
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
       case type::PrimType::Char: return 1;
@@ -68,6 +69,7 @@ size_t Architecture::bytes(const type::Type *t) const {
       case type::PrimType::Err: NOT_YET();
       case type::PrimType::Block: NOT_YET();
       case type::PrimType::OptBlock: NOT_YET();
+      case type::PrimType::Interface: NOT_YET();
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
       case type::PrimType::Char: return 1;
