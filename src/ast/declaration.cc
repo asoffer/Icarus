@@ -118,6 +118,8 @@ bool CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
 }
 
 bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
+  LOG << decl1->to_string(0);
+  LOG << decl2->to_string(0);
   if ((!decl1->type->is<type::Function>() && decl1->type != type::Generic) ||
       (!decl2->type->is<type::Function>() && decl2->type != type::Generic)) {
     return true;
@@ -144,8 +146,8 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
             /* has_default = */ eval->args_[i].second != nullptr});
       }
       return metadata;
-    } else if constexpr (std::is_same_v<eval_t, FunctionLiteral *> ||
-                         std::is_same_v<eval_t, GenericFunctionLiteral *>) {
+    } else if constexpr (std::is_same_v<eval_t, Function *> ||
+                         std::is_same_v<eval_t, GeneratedFunction *>) {
       metadata.reserve(eval->inputs.size());
       for (size_t i = 0; i < eval->inputs.size(); ++i) {
         metadata.push_back(ArgumentMetaData{
@@ -448,7 +450,7 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation
-    // in FunctionLiteral::EmitIR. Declaration::EmitIR is just used to set the
+    // in GenreatedFunction::EmitIR. Declaration::EmitIR is just used to set the
     // value.
     ASSERT(addr != IR::Val::None());
     ASSERT(scope_->ContainingFnScope() != nullptr);

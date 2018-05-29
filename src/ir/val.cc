@@ -71,8 +71,9 @@ Val Val::Flags(const type::Flags *flags_type, size_t integral_val) {
   return Val(flags_type, FlagsVal{integral_val});
 }
 
-Val Val::GenFnLit(AST::GenericFunctionLiteral *fn) { return Val(fn->type, fn); }
+Val Val::Func(AST::Function *fn) { return Val(fn->type, fn); }
 Val Val::Func(IR::Func *fn) { return Val(fn->type_, fn); }
+
 Val Val::Null(const type::Type *t) {
   return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0});
 }

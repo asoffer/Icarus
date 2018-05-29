@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include "ast/block_literal.h"
+#include "ast/fn_args.h"
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
 #include "ast/scope_literal.h"
@@ -16,11 +17,20 @@
 
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
+std::vector<IR::Val> EmitCallDispatch(
+    const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
+    const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
+    Context *ctx);
+
 void ForEachExpr(AST::Expression *expr,
                  const std::function<void(size_t, AST::Expression *)> &fn);
 
 namespace AST {
 using base::check::Is;
+
+const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
+                                   std::vector<Expression *> fn_options,
+                                   DispatchTable *dispatch_table, Context *ctx);
 
 std::string ScopeNode::to_string(size_t n) const {
   std::stringstream ss;
@@ -198,15 +208,24 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     if (iter == data_to_node.end()) { continue; }
     auto* arg_expr = iter->second->arg_.get();
 
-    std::vector<IR::Val> args;
-    if (arg_expr != nullptr) {
-      ForEachExpr(arg_expr, [ctx, &args](size_t, Expression *expr) {
-        args.push_back(expr->EmitIR(ctx));
-      });
-    }
+    auto call_enter_result = [&] {
+      DispatchTable dispatch_table;
+      FnArgs<std::pair<Expression *, IR::Val>> args;
+      FnArgs<Expression *> expr_args;
+      if (arg_expr != nullptr) {
+        ForEachExpr(arg_expr,
+                    [ctx, &args, &expr_args](size_t, Expression *expr) {
+                      args.pos_.emplace_back(expr, expr->EmitIR(ctx));
+                      expr_args.pos_.push_back(expr);
+                    });
+      }
 
-    auto call_enter_result =
-        IR::Call(block_lit->before_->EmitIR(ctx), std::move(args), {});
+      const type::Type *result_type = SetDispatchTable(
+          expr_args, {block_lit->before_.get()}, &dispatch_table, ctx);
+
+      return EmitCallDispatch(args, dispatch_table, result_type, ctx)[0];
+    }();
+
     for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           jump_block_data.body,
@@ -221,7 +240,15 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     IR::UncondJump(block_data.after);
 
     IR::BasicBlock::Current = block_data.after;
-    auto call_exit_result = IR::Call(block_lit->after_->EmitIR(ctx), {}, {});
+
+    auto call_exit_result = [&] {
+      DispatchTable dispatch_table;
+      const type::Type *result_type =
+          SetDispatchTable(FnArgs<Expression *>{}, {block_lit->after_.get()},
+                           &dispatch_table, ctx);
+      return EmitCallDispatch(FnArgs<std::pair<Expression *, IR::Val>>{},
+                              dispatch_table, result_type, ctx)[0];
+    }();
     for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           jump_block_data.before,

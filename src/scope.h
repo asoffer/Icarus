@@ -19,7 +19,7 @@ namespace AST {
 struct Declaration;
 struct Expression;
 struct Identifier;
-struct FunctionLiteral;
+struct FuncContent;
 } // namespace AST
 
 namespace type {
@@ -83,8 +83,8 @@ struct FnScope : public ExecScope {
   ~FnScope() final {}
 
   FnScope *Clone() const override { return new FnScope(*this); }
-  type::Function *fn_type      = nullptr;
-  AST::FunctionLiteral *fn_lit = nullptr;
+  type::Function *fn_type  = nullptr;
+  AST::FuncContent *fn_lit = nullptr;
   std::vector<ExecScope *> innards_{1, this};
 };
 

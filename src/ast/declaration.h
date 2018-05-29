@@ -39,7 +39,6 @@ struct Declaration : public Expression {
 
   // If it's an argument or return value, this points to the function for which
   // it's an argument. Otherwise this field is null.
-  // TODO rename this now that it no longer is just for function arguments
   Expression *arg_val = nullptr;
 
   // These functions are confusingly named. They look correct in normal

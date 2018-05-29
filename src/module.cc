@@ -26,7 +26,7 @@ Module::Module()
 Module::~Module() = default;
 
 IR::Func* Module::AddFunc(
-    AST::FunctionLiteral* fn_lit,
+    AST::GeneratedFunction* fn_lit,
     std::vector<std::pair<std::string, AST::Expression*>> args) {
   fns_.push_back(std::make_unique<IR::Func>(this, fn_lit, std::move(args)));
 

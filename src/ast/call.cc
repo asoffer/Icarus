@@ -342,20 +342,20 @@ DispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
 static std::optional<std::pair<FnArgs<const type::Type *>, Binding>>
 ConstantDispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
                       Context *ctx) {
-  FunctionLiteral *fn_lit = nullptr;
+  GeneratedFunction *fn = nullptr;
   {
     auto vals = Evaluate(expr, ctx);
     if (vals.empty() || vals[0] == IR::Val::None()) { return std::nullopt; }
-    fn_lit = ASSERT_NOT_NULL(std::get<IR::Func *>(vals[0].value)->fn_lit_);
+    fn = ASSERT_NOT_NULL(std::get<IR::Func *>(vals[0].value)->gened_fn_);
   }
 
-  auto maybe_binding = Binding::MakeUntyped(fn_lit, args, fn_lit->lookup_);
+  auto maybe_binding = Binding::MakeUntyped(fn, args, fn->lookup_);
   if (!maybe_binding) { return std::nullopt; }
   auto binding = std::move(maybe_binding).value();
 
   FnArgs<const type::Type *> call_arg_types;
   call_arg_types.pos_.resize(args.pos_.size(), nullptr);
-  for (const auto & [ key, val ] : fn_lit->lookup_) {
+  for (const auto & [ key, val ] : fn->lookup_) {
     if (val < args.pos_.size()) { continue; }
     call_arg_types.named_.emplace(key, nullptr);
   }
@@ -363,7 +363,7 @@ ConstantDispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
   const auto &fn_opt_input = expr->type->as<type::Function>().input;
   for (size_t i = 0; i < binding.exprs_.size(); ++i) {
     if (binding.defaulted(i)) {
-      if (fn_lit->inputs[i]->IsDefaultInitialized()) { return std::nullopt; }
+      if (fn->inputs[i]->IsDefaultInitialized()) { return std::nullopt; }
       binding.exprs_[i].first = fn_opt_input[i];
     } else {
       const type::Type *match =
@@ -374,7 +374,7 @@ ConstantDispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
       if (i < call_arg_types.pos_.size()) {
         call_arg_types.pos_[i] = match;
       } else {
-        auto iter = call_arg_types.find(fn_lit->inputs[i]->identifier->token);
+        auto iter = call_arg_types.find(fn->inputs[i]->identifier->token);
         ASSERT(iter != call_arg_types.named_.end());
         iter->second = match;
       }
@@ -411,20 +411,23 @@ static std::optional<DispatchTable> ComputeDispatchTable(
       if (vals.empty() || vals[0] == IR::Val::None()) { continue; }
       auto &fn_val = vals[0].value;
 
-      auto *gen_fn_lit = std::get<GenericFunctionLiteral *>(fn_val);
-      if (auto[fn_lit, binding] = gen_fn_lit->ComputeType(args, ctx); fn_lit) {
+      auto *fn = std::get<AST::Function *>(fn_val);
+      if (auto binding = fn->ComputeType(args, ctx); binding.fn_expr_) {
+        auto &gened_fn = binding.fn_expr_->as<GeneratedFunction>();
         // TODO this is copied almost exactly from above.
         FnArgs<const type::Type *> call_arg_types;
         call_arg_types.pos_.resize(args.pos_.size(), nullptr);
-        for (const auto & [ key, val ] : gen_fn_lit->lookup_) {
+        for (const auto & [ key, val ] : fn->lookup_) {
           if (val < args.pos_.size()) { continue; }
           call_arg_types.named_.emplace(key, nullptr);
         }
 
-        const auto &fn_opt_input = fn_lit->type->as<type::Function>().input;
+        const auto &fn_opt_input = gened_fn.type->as<type::Function>().input;
         for (size_t i = 0; i < binding.exprs_.size(); ++i) {
           if (binding.defaulted(i)) {
-            if (fn_lit->inputs[i]->IsDefaultInitialized()) { goto next_option; }
+            if (gened_fn.inputs[i]->IsDefaultInitialized()) {
+              goto next_option;
+            }
             binding.exprs_[i].first = fn_opt_input[i];
           } else {
             const type::Type *match =
@@ -436,7 +439,7 @@ static std::optional<DispatchTable> ComputeDispatchTable(
               call_arg_types.pos_[i] = match;
             } else {
               auto iter =
-                  call_arg_types.find(fn_lit->inputs[i]->identifier->token);
+                  call_arg_types.find(gened_fn.inputs[i]->identifier->token);
               ASSERT(iter != call_arg_types.named_.end());
               iter->second = match;
             }
@@ -527,9 +530,6 @@ const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
     for (const auto & [ key, val ] : dispatch_table->bindings_) {
       if (val.fn_expr_->type->is<type::Function>()) {
         out_types.push_back(val.fn_expr_->type->as<type::Function>().output);
-      } else if (val.fn_expr_->type == type::Type_) {
-        out_types.push_back({std::get<const type::Type *>(
-            Evaluate(val.fn_expr_, ctx)[0].value)});
       } else {
         UNREACHABLE(val.fn_expr_->type);
       }

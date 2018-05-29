@@ -107,7 +107,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             // okay and we can do promotion later?
             return StringConstant(llvm_data->builder, s);
           },
-          [&](AST::FunctionLiteral *fn) -> llvm::Value * {
+          [&](AST::GeneratedFunction *fn) -> llvm::Value * {
             return llvm_data->module->getOrInsertFunction(
                 fn->ir_func_->name(), fn->ir_func_->type_->llvm_fn(
                                           llvm_data->module->getContext()));

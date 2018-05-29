@@ -27,7 +27,7 @@ struct Func;
 
 namespace AST {
 struct Expression;
-struct FunctionLiteral;
+struct GeneratedFunction;
 }  // namespace AST
 
 struct Module {
@@ -35,7 +35,7 @@ struct Module {
   ~Module();
   Module(Module&&) = delete;
 
-  IR::Func* AddFunc(AST::FunctionLiteral* fn_lit,
+  IR::Func* AddFunc(AST::GeneratedFunction* fn_lit,
       std::vector<std::pair<std::string, AST::Expression *>> args);
   IR::Func* AddFunc(const type::Function* fn_type,
       std::vector<std::pair<std::string, AST::Expression *>> args);
@@ -44,7 +44,7 @@ struct Module {
 
   void Complete();
 
-  std::queue<AST::FunctionLiteral*> to_complete_;
+  std::queue<AST::GeneratedFunction*> to_complete_;
   std::unique_ptr<DeclScope> global_;
 
   // TODO long-term this is not a good way to store these. We should probably

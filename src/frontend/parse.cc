@@ -384,13 +384,11 @@ static std::unique_ptr<Node> BuildDeclaration(
   return decl;
 }
 
-static std::pair<bool, std::vector<std::unique_ptr<Declaration>>> ExtractInputs(
+static std::vector<std::unique_ptr<Declaration>> ExtractInputs(
     std::unique_ptr<Expression> args) {
   std::vector<std::unique_ptr<Declaration>> inputs;
-  bool generic = false;
   if (args->is<Declaration>()) {
     inputs.push_back(move_as<Declaration>(args));
-    generic |= inputs.back()->const_;
 
   } else if (args->is<CommaList>()) {
     auto *decls = &args->as<CommaList>();
@@ -398,73 +396,70 @@ static std::pair<bool, std::vector<std::unique_ptr<Declaration>>> ExtractInputs(
 
     for (auto &expr : decls->exprs) {
       inputs.push_back(move_as<Declaration>(expr));
-      generic |= inputs.back()->const_;
     }
   } else {
     NOT_YET("log an error");
   }
-  return std::pair(generic, std::move(inputs));
+  return inputs;
 }
 
 // TODO deal with duplication between this and below
 static std::unique_ptr<Node> BuildShortFunctionLiteral(
     std::unique_ptr<Expression> args, std::unique_ptr<Expression> body,
     error::Log *error_log) {
-  auto span             = TextSpan(args->span, body->span);
-  auto[generic, inputs] = ExtractInputs(std::move(args));
+  auto span   = TextSpan(args->span, body->span);
+  auto inputs = ExtractInputs(std::move(args));
 
-  FunctionLiteral *fn_lit =
-      generic ? new GenericFunctionLiteral : new FunctionLiteral;
-  for (auto &input : inputs) { input->arg_val = fn_lit; }
+  auto fn = std::make_unique<AST::Function>();
+  for (auto &input : inputs) { input->arg_val = fn.get(); }
 
-  fn_lit->inputs     = std::move(inputs);
-  fn_lit->span       = span;
-  auto ret           = std::make_unique<Unop>();
-  ret->op            = Language::Operator::Return;
-  ret->operand       = std::move(body);
-  fn_lit->statements = std::make_unique<Statements>();
-  fn_lit->statements->content_.push_back(std::move(ret));
+  fn->inputs     = std::move(inputs);
+  fn->span       = span;
+  auto ret       = std::make_unique<Unop>();
+  ret->op        = Language::Operator::Return;
+  ret->operand   = std::move(body);
+  fn->statements = std::make_unique<Statements>();
+  fn->statements->content_.push_back(std::move(ret));
 
   size_t i = 0;
-  for (const auto &input : fn_lit->inputs) {
-    fn_lit->lookup_[input->identifier->token] = i++;
+  for (const auto &input : fn->inputs) {
+    fn->lookup_[input->identifier->token] = i++;
   }
 
-  return base::wrap_unique(fn_lit);
+  return fn;
 }
 
 static std::unique_ptr<Node> BuildFunctionLiteral(
     std::vector<std::unique_ptr<Node>> nodes, error::Log *error_log) {
-  auto *binop           = &nodes[0]->as<Binop>();
-  auto[generic, inputs] = ExtractInputs(std::move(binop->lhs));
+  auto *binop = &nodes[0]->as<Binop>();
+  auto inputs = ExtractInputs(std::move(binop->lhs));
 
-  FunctionLiteral *fn_lit =
-      generic ? new GenericFunctionLiteral : new FunctionLiteral;
-  for (auto &input : inputs) { input->arg_val = fn_lit; }
+  auto fn = std::make_unique<AST::Function>();
+  for (auto &input : inputs) { input->arg_val = fn.get(); }
 
-  fn_lit->inputs     = std::move(inputs);
-  fn_lit->span       = TextSpan(nodes[0]->span, nodes[1]->span);
-  fn_lit->statements = move_as<Statements>(nodes[1]);
+  fn->inputs     = std::move(inputs);
+  fn->span       = TextSpan(nodes[0]->span, nodes[1]->span);
+  fn->statements = move_as<Statements>(nodes[1]);
 
   if (binop->rhs->is<CommaList>()) {
     for (auto &expr : binop->rhs->as<CommaList>().exprs) {
-      fn_lit->outputs.push_back(std::move(expr));
+      fn->outputs.push_back(std::move(expr));
     }
   } else {
-    fn_lit->outputs.push_back(move_as<Expression>(binop->rhs));
+    fn->outputs.push_back(move_as<Expression>(binop->rhs));
   }
-  fn_lit->return_type_inferred_ = false;
+  fn->return_type_inferred_ = false;
 
-  for (auto &expr : fn_lit->outputs) {
-    if (expr->is<Declaration>()) { expr->as<Declaration>().arg_val = fn_lit; }
+  for (auto &expr : fn->outputs) {
+    if (expr->is<Declaration>()) { expr->as<Declaration>().arg_val = fn.get(); }
   }
 
   size_t i = 0;
-  for (const auto &input : fn_lit->inputs) {
-    fn_lit->lookup_[input->identifier->token] = i++;
+  for (const auto &input : fn->inputs) {
+    fn->lookup_[input->identifier->token] = i++;
   }
 
-  return base::wrap_unique(fn_lit);
+  return fn;
 }
 
 static std::unique_ptr<Node> BuildOneStatement(

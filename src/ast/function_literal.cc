@@ -16,7 +16,52 @@
 std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 namespace AST {
-std::string FunctionLiteral::to_string(size_t n) const {
+GeneratedFunction *Function::generate(BoundConstants bc, Module *mod) {
+  auto[iter, success] =
+      fns_.emplace(std::move(bc), GeneratedFunction{});
+  if (!success) { return &iter->second; }
+
+  auto &func                 = iter->second;
+  func.generated_from_       = this;
+  func.bound_constants_      = &iter->first;
+  func.return_type_inferred_ = return_type_inferred_;
+
+  Context ctx(mod);
+  ctx.bound_constants_ = func.bound_constants_;
+
+  func.inputs.reserve(inputs.size());
+  for (const auto &input : inputs) {
+    func.inputs.emplace_back(input->Clone());
+    func.inputs.back()->arg_val = &func;
+  }
+
+  func.outputs.reserve(outputs.size());
+  for (const auto &output : outputs) {
+    func.outputs.emplace_back(output->Clone());
+    if (output->is<Declaration>()) {
+      func.outputs.back()->as<Declaration>().arg_val = &func;
+    }
+  }
+
+  func.statements = base::wrap_unique(statements->Clone());
+  func.ClearIdDecls();
+  func.assign_scope(scope_);
+  func.VerifyType(&ctx);
+  func.Validate(&ctx);
+  func.EmitIR(&ctx);
+
+  if (ctx.num_errors() > 0) {
+    // TODO figure out the call stack of generic function requests and then
+    // print the relevant parts.
+    std::cerr << "While generating code for generic function:\n";
+    ctx.DumpErrors();
+    // TODO delete all the data held by iter->second
+    return nullptr;
+  }
+  return &func;
+}
+
+std::string FuncContent::to_string(size_t n) const {
   std::stringstream ss;
   ss << "(";
   if (!inputs.empty()) {
@@ -47,11 +92,7 @@ std::string FunctionLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-std::string GenericFunctionLiteral::to_string(size_t n) const {
-  return FunctionLiteral::to_string(n);
-}
-
-void FunctionLiteral::assign_scope(Scope *scope) {
+void FuncContent::assign_scope(Scope *scope) {
   STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   if (!fn_scope) {
@@ -63,11 +104,7 @@ void FunctionLiteral::assign_scope(Scope *scope) {
   statements->assign_scope(fn_scope.get());
 }
 
-void GenericFunctionLiteral::assign_scope(Scope *scope) {
-  FunctionLiteral::assign_scope(scope);
-}
-
-void FunctionLiteral::ClearIdDecls() {
+void FuncContent::ClearIdDecls() {
   fn_scope     = nullptr;
   stage_range_ = StageRange{};
   for (auto &in : inputs) { in->ClearIdDecls(); }
@@ -75,12 +112,7 @@ void FunctionLiteral::ClearIdDecls() {
   statements->ClearIdDecls();
 }
 
-void GenericFunctionLiteral::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  FunctionLiteral::ClearIdDecls();
-}
-
-void FunctionLiteral::VerifyType(Context *ctx) {
+void FuncContent::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
   for (auto &input : inputs) {
@@ -150,17 +182,15 @@ void FunctionLiteral::VerifyType(Context *ctx) {
   }
 }
 
-void GenericFunctionLiteral::VerifyType(Context *ctx) {
+void Function::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  // TODO sort these correctly.
-  decl_order_.reserve(inputs.size());
-  for (size_t i = 0; i < inputs.size(); ++i) { decl_order_.push_back(i); }
+  type = type::Generic;
+  lvalue = Assign::Const;
 }
 
-std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
-    const FnArgs<Expression *> &args, Context *ctx) {
+Binding Function::ComputeType(const FnArgs<Expression *> &args, Context *ctx) {
   auto maybe_binding = Binding::MakeUntyped(this, args, lookup_);
-  if (!maybe_binding.has_value()) { return std::pair(nullptr, Binding{}); }
+  if (!maybe_binding.has_value()) { return Binding{}; }
   auto binding = std::move(maybe_binding).value();
 
   Context new_ctx(ctx->mod_);
@@ -168,25 +198,26 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
   new_ctx.bound_constants_ = &bound_constants;
   Expression *expr_to_eval = nullptr;
 
-  for (size_t i : decl_order_) {
+  // TODO handle declaration order
+  for (size_t i = 0; i < inputs.size(); ++i) {
     inputs[i]->VerifyType(&new_ctx);
-    if (inputs[i]->type == type::Err) { return std::pair(nullptr, Binding{}); }
+    if (inputs[i]->type == type::Err) { return Binding{}; }
 
     if (binding.defaulted(i) && inputs[i]->IsDefaultInitialized()) {
       // TODO maybe send back an explanation of why this didn't match. Or
       // perhaps continue to get better diagnostics?
-      return std::pair(nullptr, Binding{});
+      return  Binding{};
     } else {
       if (inputs[i]->const_ && !binding.defaulted(i) &&
           binding.exprs_[i].second->lvalue != Assign::Const) {
-        return std::pair(nullptr, Binding{});
+        return Binding{};
       }
 
       if (!binding.defaulted(i)) {
         if (auto *match =
                 type::Meet(binding.exprs_[i].second->type, inputs[i]->type);
             match == nullptr) {
-          return std::pair(nullptr, Binding{});
+          return Binding{};
         }
       }
     }
@@ -200,52 +231,13 @@ std::pair<FunctionLiteral *, Binding> GenericFunctionLiteral::ComputeType(
 
     binding.exprs_[i].first = inputs[i]->type;
   }
-
-  auto[iter, success] =
-      fns_.emplace(std::move(bound_constants), FunctionLiteral{});
-  new_ctx.bound_constants_ = &iter->first;
-  if (success) {
-    auto &func                 = iter->second;
-    func.bound_constants_      = &iter->first;
-    func.return_type_inferred_ = return_type_inferred_;
-
-    func.inputs.reserve(inputs.size());
-    for (const auto &input : inputs) {
-      func.inputs.emplace_back(input->Clone());
-      func.inputs.back()->arg_val = &func;
-    }
-
-    func.outputs.reserve(outputs.size());
-    for (const auto &output : outputs) {
-      func.outputs.emplace_back(output->Clone());
-      if (output->is<Declaration>()) {
-        func.outputs.back()->as<Declaration>().arg_val = &func;
-      }
-    }
-
-    func.statements = base::wrap_unique(statements->Clone());
-    func.ClearIdDecls();
-
-    func.assign_scope(scope_);
-    func.VerifyType(&new_ctx);
-    func.Validate(&new_ctx);
-    func.EmitIR(&new_ctx);
-
-    if (new_ctx.num_errors() > 0) {
-      // TODO figure out the call stack of generic function requests and then
-      // print the relevant parts.
-      std::cerr << "While generating code for generic function:\n";
-      new_ctx.DumpErrors();
-      // TODO delete all the data held by iter->second
-      return std::pair(nullptr, Binding{});
-    }
-  }
-
-  binding.fn_expr_ = &iter->second;
-  return std::pair(&iter->second, binding);
+  binding.fn_expr_ = generate(std::move(bound_constants), ctx->mod_);
+  return binding;
 }
 
-void FunctionLiteral::Validate(Context *ctx) {
+void Function::Validate(Context *ctx) {}
+
+void FuncContent::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &in : inputs) { in->Validate(ctx); }
   for (auto &out : outputs) { out->Validate(ctx); }
@@ -334,74 +326,75 @@ void FunctionLiteral::Validate(Context *ctx) {
   }
 }
 
-void FunctionLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void FuncContent::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   for (auto &input : inputs) { input->SaveReferences(scope, args); }
   for (auto &output : outputs) { output->SaveReferences(scope, args); }
   statements->SaveReferences(fn_scope.get(), args);
 }
 
-void GenericFunctionLiteral::SaveReferences(Scope *scope,
-                                            std::vector<IR::Val> *args) {
-  FunctionLiteral::SaveReferences(scope, args);
-}
-
-void FunctionLiteral::contextualize(
+void FuncContent::contextualize(
     const Node *correspondant,
     const std::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < inputs.size(); ++i) {
     inputs[i]->contextualize(
-        correspondant->as<FunctionLiteral>().inputs[i].get(), replacements);
+        correspondant->as<FuncContent>().inputs[i].get(), replacements);
   }
   for (size_t i = 0; i < outputs.size(); ++i) {
     outputs[i]->contextualize(
-        correspondant->as<FunctionLiteral>().outputs[i].get(), replacements);
+        correspondant->as<FuncContent>().outputs[i].get(), replacements);
   }
 
   statements->contextualize(
-      correspondant->as<FunctionLiteral>().statements.get(), replacements);
+      correspondant->as<FuncContent>().statements.get(), replacements);
 }
 
-void GenericFunctionLiteral::contextualize(
-    const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
-  FunctionLiteral::contextualize(correspondant, replacements);
-}
-
-void GenericFunctionLiteral::ExtractReturns(
-    std::vector<const Expression *> *rets) const {
-  FunctionLiteral::ExtractReturns(rets);
-}
-
-void FunctionLiteral::ExtractReturns(
+void FuncContent::ExtractReturns(
     std::vector<const Expression *> *rets) const {
   for (auto &in : inputs) { in->ExtractReturns(rets); }
   for (auto &out : outputs) { out->ExtractReturns(rets); }
 }
 
-FunctionLiteral *FunctionLiteral::Clone() const {
-  auto *result       = new FunctionLiteral;
-  result->span       = span;
-  result->statements = base::wrap_unique(statements->Clone());
-  result->lookup_    = lookup_;
-  result->inputs.reserve(inputs.size());
-  for (const auto &input : inputs) {
-    result->inputs.emplace_back(input->Clone());
+namespace {
+void CloneTo(const FuncContent &from, FuncContent *to) {
+  to->span       = from.span;
+  to->statements = base::wrap_unique(from.statements->Clone());
+  to->lookup_    = from.lookup_;
+  to->inputs.reserve(from.inputs.size());
+  for (const auto &input : from.inputs) {
+    to->inputs.emplace_back(input->Clone());
   }
-  for (const auto &output : outputs) {
-    result->outputs.emplace_back(output->Clone());
+  to->outputs.reserve(from.outputs.size());
+  for (const auto &output : from.outputs) {
+    to->outputs.emplace_back(output->Clone());
   }
+}
+}  // namespace
+
+FuncContent *FuncContent::Clone() const {
+  auto *result       = new FuncContent;
+  CloneTo(*this, result);
   return result;
 }
 
-GenericFunctionLiteral *GenericFunctionLiteral::Clone() const { UNREACHABLE(); }
-
-IR::Val AST::GenericFunctionLiteral::EmitIR(Context *) {
-  return IR::Val::GenFnLit(this);
+GeneratedFunction *GeneratedFunction::Clone() const {
+  auto *result = new GeneratedFunction;
+  CloneTo(*this, result);
+  result->ir_func_ = nullptr;
+  return result;
 }
 
-IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
+Function *Function::Clone() const {
+  auto *result = new Function;
+  CloneTo(*this, result);
+  // TODO how to deal with cloning generated bindings?
+  return result;
+}
+
+IR::Val Function::EmitIR(Context *) { return IR::Val::Func(this); }
+
+IR::Val GeneratedFunction::EmitIR(Context *ctx) {
   if (!ir_func_) {
-    std::vector<std::pair<std::string, AST::Expression *>> args;
+    std::vector<std::pair<std::string, Expression *>> args;
     args.reserve(inputs.size());
     for (const auto &input : inputs) {
       args.emplace_back(input->as<Declaration>().identifier->token,
@@ -414,7 +407,7 @@ IR::Val AST::FunctionLiteral::EmitIR(Context *ctx) {
   return IR::Val::Func(ir_func_);
 }
 
-void AST::FunctionLiteral::CompleteBody(Module *mod) {
+void GeneratedFunction::CompleteBody(Module *mod) {
   if (completed_) { return; }
   completed_ = true;
 
@@ -482,6 +475,6 @@ void AST::FunctionLiteral::CompleteBody(Module *mod) {
   }
 }
 
-IR::Val FunctionLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
-IR::Val GenericFunctionLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
+IR::Val GeneratedFunction::EmitLVal(Context *) { UNREACHABLE(this); }
+IR::Val Function::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

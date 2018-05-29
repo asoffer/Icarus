@@ -21,7 +21,7 @@ struct Function;
 struct Module;
 
 namespace AST {
-struct FunctionLiteral;
+struct GeneratedFunction;
 }  // namespace AST
 
 
@@ -33,7 +33,7 @@ struct Func {
 
   Func(Module *mod, const type::Function *fn_type,
        std::vector<std::pair<std::string, AST::Expression *>> args);
-  Func(Module *mod, AST::FunctionLiteral* fn_lit,
+  Func(Module *mod, AST::GeneratedFunction* fn_lit,
        std::vector<std::pair<std::string, AST::Expression *>> args);
 
   void dump() const;
@@ -74,9 +74,9 @@ struct Func {
 
   BlockIndex entry() const { return BlockIndex(0); }
 
-  // Is this needed? Or can it be determined from the containing FunctionLiteral
-  // object?
-  AST::FunctionLiteral *fn_lit_     = nullptr;
+  // Is this needed? Or can it be determined from the containing
+  // GeneratedFunction object?
+  AST::GeneratedFunction *gened_fn_ = nullptr;
   const type::Function *const type_ = nullptr;
   std::vector<std::pair<std::string, AST::Expression *>> args_;
   bool has_default(size_t i) const { return args_[i].second != nullptr; }

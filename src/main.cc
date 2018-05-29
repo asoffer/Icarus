@@ -84,67 +84,73 @@ std::atomic<bool> found_errors = false;
 // TODO deprecate source_map
 std::unordered_map<Source::Name, File *> source_map;
 std::unique_ptr<Module> CompileModule(const Source::Name &src) {
-    auto mod = std::make_unique<Module>();
-    Context ctx(mod.get());
-    auto *f         = new File(src);
-    source_map[src] = f;
-    error::Log log;
-    auto file_stmts = f->Parse(&log);
-    if (log.size() > 0) {
-      log.Dump();
-      found_errors = true;
-      return mod;
-    }
+  auto mod = std::make_unique<Module>();
+  AST::BoundConstants bc;
+  Context ctx(mod.get());
+  ctx.bound_constants_ = &bc;
+  auto *f              = new File(src);
+  source_map[src]      = f;
+  error::Log log;
+  auto file_stmts = f->Parse(&log);
+  if (log.size() > 0) {
+    log.Dump();
+    found_errors = true;
+    return mod;
+  }
 
-    file_stmts->assign_scope(ctx.mod_->global_.get());
-    file_stmts->VerifyType(&ctx);
-    file_stmts->Validate(&ctx);
-    if (ctx.num_errors() != 0) {
-      ctx.DumpErrors();
-      found_errors = true;
-      return mod;
-    }
+  file_stmts->assign_scope(ctx.mod_->global_.get());
+  file_stmts->VerifyType(&ctx);
+  file_stmts->Validate(&ctx);
+  if (ctx.num_errors() != 0) {
+    ctx.DumpErrors();
+    found_errors = true;
+    return mod;
+  }
 
-    file_stmts->EmitIR(&ctx);
-    if (ctx.num_errors() != 0) {
-      ctx.DumpErrors();
-      found_errors = true;
-      return mod;
-    }
+  file_stmts->EmitIR(&ctx);
+  if (ctx.num_errors() != 0) {
+    ctx.DumpErrors();
+    found_errors = true;
+    return mod;
+  }
 
-    ctx.mod_->statements_ = std::move(*file_stmts);
-    ctx.mod_->Complete();
+  ctx.mod_->statements_ = std::move(*file_stmts);
+  ctx.mod_->Complete();
 #ifdef ICARUS_USE_LLVM
-    backend::EmitAll(ctx.mod_->fns_, ctx.mod_->llvm_.get());
+  backend::EmitAll(ctx.mod_->fns_, ctx.mod_->llvm_.get());
 #endif  // ICARUS_USE_LLVM
 
-    for (const auto &stmt : ctx.mod_->statements_.content_) {
-      if (!stmt->is<AST::Declaration>()) { continue; }
-      auto &decl = stmt->as<AST::Declaration>();
-      if (decl.identifier->token != "main") { continue; }
-      auto val = Evaluate(decl.init_val.get(), &ctx);
-      ASSERT(val.size() == 1u);
-      auto fn = std::get<IR::Func *>(val[0].value);
-      // TODO check more than one?
+  for (const auto &stmt : ctx.mod_->statements_.content_) {
+    if (!stmt->is<AST::Declaration>()) { continue; }
+    auto &decl = stmt->as<AST::Declaration>();
+    if (decl.identifier->token != "main") { continue; }
+    auto val = Evaluate(decl.init_val.get(), &ctx);
+    ASSERT(val.size() == 1u);
+    auto fn        = std::get<AST::Function *>(val[0].value);
+    auto *gened_fn = fn->generate(bc, ctx.mod_);
+    gened_fn->CompleteBody(ctx.mod_);
+    auto ir_fn = gened_fn->ir_func_;
+
+    // TODO check more than one?
 
 #ifdef ICARUS_USE_LLVM
-      fn->llvm_fn_->setName("main");
-      fn->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
+    ir_fn->llvm_fn_->setName("main");
+    ir_fn->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
 #else
-    main_fn  = fn;
+    main_fn  = ir_fn;
     main_mod = mod.get();
 #endif  // ICARUS_USE_LLVM
-    }
+  }
 
 #ifdef ICARUS_USE_LLVM
-    if (std::string err = backend::WriteObjectFile(
-            src.substr(0, src.size() - 2) + "o", ctx.mod_);
-        err != "") {
-      std::cerr << err;
-    }
+  if (std::string err = backend::WriteObjectFile(
+          src.substr(0, src.size() - 2) + "o", ctx.mod_);
+      err != "") {
+    std::cerr << err;
+  }
 #endif  // ICARUS_USE_LLVM
 
-    return mod;
+  return mod;
 }
 
 void ScheduleModule(const Source::Name &src) {

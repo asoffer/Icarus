@@ -44,27 +44,7 @@ void BlockLiteral::Validate(Context *ctx) {
   VERIFY_AND_RETURN_ON_ERROR(before_);
   VERIFY_AND_RETURN_ON_ERROR(after_);
 
-  bool cannot_proceed_due_to_errors = false;
-
-  if (!before_->type->is<type::Function>()) {
-    cannot_proceed_due_to_errors = true;
-    NOT_YET("log an error");
-  } else if (after_->type->as<type::Function>().output !=
-             std::vector<const type::Type *>{type::Block}) {
-    cannot_proceed_due_to_errors = true;
-    NOT_YET("log an error");
-  }
-
-  if (!after_->type->is<type::Function>()) {
-    cannot_proceed_due_to_errors = true;
-    NOT_YET("log an error");
-  } else if (after_->type->as<type::Function>().output !=
-             std::vector<const type::Type *>{type::Block}) {
-    cannot_proceed_due_to_errors = true;
-    NOT_YET("log an error");
-  }
-
-  if (cannot_proceed_due_to_errors) { limit_to(StageRange::Nothing()); }
+  // TODO type-check before/after functions.
 
   before_->Validate(ctx);
   after_->Validate(ctx);

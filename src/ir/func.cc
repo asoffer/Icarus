@@ -23,10 +23,10 @@ Val Func::Return(u32 n) const {
 
 // TODO there's no reason to take args because they can be computed from the
 // function literal.
-Func::Func(Module *mod, AST::FunctionLiteral *fn_lit,
+Func::Func(Module *mod, AST::GeneratedFunction *fn,
            std::vector<std::pair<std::string, AST::Expression *>> args)
-    : fn_lit_(fn_lit),
-      type_(&fn_lit->type->as<type::Function>()),
+    : gened_fn_(fn),
+      type_(&fn->type->as<type::Function>()),
       args_(std::move(args)),
       num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
       mod_(mod) {

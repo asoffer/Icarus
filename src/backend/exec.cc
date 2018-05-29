@@ -29,7 +29,7 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
       ctx->mod_, type::Func({}, {expr->type}),
       std::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
-    // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
+    // TODO this is essentially a copy of the body of GeneratedFunction::EmitIR.
     // Factor these out together.
     IR::BasicBlock::Current = fn->entry();
     // Leave space for allocas that will come later (added to the entry
@@ -52,7 +52,7 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
 namespace IR {
 std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
                          ExecContext *ctx) {
-  if (fn->fn_lit_) { fn->fn_lit_->CompleteBody(fn->mod_); }
+  if (fn->gened_fn_) { fn->gened_fn_->CompleteBody(fn->mod_); }
   ctx->call_stack.emplace(fn, arguments);
 
   // TODO log an error if you're asked to execute a function that had an error.
@@ -255,9 +255,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               },
               [](IR::Func *f) {
                 std::cerr << "{" << f->type_->to_string() << "}";
-              },
-              [](AST::GenericFunctionLiteral *f) {
-                std::cerr << "{" << f->type->to_string() << "}";
               },
               [&resolved](auto) { NOT_YET(resolved[0].type); },
           },

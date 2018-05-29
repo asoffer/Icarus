@@ -60,19 +60,6 @@ void Identifier::VerifyType(Context *ctx) {
       return;
     }
 
-    if (potential_decls[0]->const_ && potential_decls[0]->arg_val != nullptr &&
-        potential_decls[0]->arg_val->is<GenericFunctionLiteral>()) {
-      if (auto iter = ctx->bound_constants_->find(
-              potential_decls[0]->identifier->token);
-          iter != ctx->bound_constants_->end()) {
-        potential_decls[0]->arg_val = scope_->ContainingFnScope()->fn_lit;
-      } else {
-        ctx->error_log_.UndeclaredIdentifier(this);
-        type = type::Err;
-        limit_to(StageRange::Nothing());
-        return;
-      }
-    }
     decl = potential_decls[0];
   }
 
@@ -105,7 +92,7 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
       return Evaluate(decl->init_val.get(), ctx) AT(0);
 
     } else {
-      NOT_YET();
+      NOT_YET(this->to_string(0));
     }
   }
 
