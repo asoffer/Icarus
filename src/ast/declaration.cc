@@ -4,11 +4,10 @@
 #include "ast/function_literal.h"
 #include "ast/hole.h"
 #include "ast/verify_macros.h"
+#include "backend/eval.h"
 #include "ir/func.h"
 #include "module.h"
 #include "type/all.h"
-
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 extern std::vector<IR::Val> global_vals;
 
@@ -166,11 +165,11 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
     }
   };
 
-  auto val1 = Evaluate(decl1->init_val.get(), ctx)[0];
+  auto val1 = backend::Evaluate(decl1->init_val.get(), ctx)[0];
   if (val1.type == nullptr) { return false; }
   auto metadata1 = std::visit(ExtractMetaData, val1.value);
 
-  auto val2 = Evaluate(decl2->init_val.get(), ctx)[0];
+  auto val2 = backend::Evaluate(decl2->init_val.get(), ctx)[0];
   if (val2.type == nullptr) { return false; }
   auto metadata2 = std::visit(ExtractMetaData, val2.value);
 
@@ -233,7 +232,7 @@ void Declaration::VerifyType(Context *ctx) {
         type = type::Err;
         identifier->limit_to(StageRange::Nothing());
       } else {
-        auto results = Evaluate(type_expr.get(), ctx);
+        auto results = backend::Evaluate(type_expr.get(), ctx);
         // TODO figure out if you need to generate an error here
         if (results.size() == 1) {
           type = std::get<const type::Type *>(results[0].value);
@@ -311,7 +310,7 @@ void Declaration::VerifyType(Context *ctx) {
         // TODO check shadowing against other modules?
         // TODO what if no init val is provded? what if not constant?
         ctx->mod_->embedded_modules_.push_back(
-            std::get<const Module *>(Evaluate(init_val.get(), ctx)[0].value));
+            backend::EvaluateAs<const Module *>(init_val.get(), ctx));
       } else {
         NOT_YET(type);
       }
@@ -417,7 +416,7 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
     if (IsCustomInitialized()) {
-      auto eval = Evaluate(init_val.get(), ctx);
+      auto eval = backend::Evaluate(init_val.get(), ctx);
       if (ctx->num_errors()) { return IR::Val::None(); }
       addr = eval[0];
     } else if (IsDefaultInitialized()) {
@@ -432,7 +431,7 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
       global_vals.back().type = type;
       addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
     } else if (IsCustomInitialized()) {
-      auto eval = Evaluate(init_val.get(), ctx);
+      auto eval = backend::Evaluate(init_val.get(), ctx);
       if (ctx->num_errors()) { return IR::Val::None(); }
       global_vals.push_back(eval[0]);
       addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);

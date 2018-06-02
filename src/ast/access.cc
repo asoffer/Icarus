@@ -2,6 +2,7 @@
 
 #include "ast/stages.h"
 #include "ast/verify_macros.h"
+#include "backend/eval.h"
 #include "ir/cmd.h"
 #include "module.h"
 #include "type/array.h"
@@ -11,7 +12,6 @@
 #include "type/primitive.h"
 #include "type/struct.h"
 
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 IR::Val PtrCallFix(const IR::Val &v);
 
 namespace AST {
@@ -55,7 +55,7 @@ void Access::VerifyType(Context *ctx) {
     }
   } else if (base_type == type::Type_) {
     auto *evaled_type =
-        std::get<const type::Type *>(Evaluate(operand.get(), ctx)[0].value);
+        backend::EvaluateAs<const type::Type *>(operand.get(), ctx);
     if (evaled_type->is<type::Enum>()) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on
@@ -78,9 +78,8 @@ void Access::VerifyType(Context *ctx) {
       limit_to(StageRange::Nothing());
     }
   } else if (base_type == type::Module) {
-    auto module =
-        std::get<const Module *>(Evaluate(operand.get(), ctx)[0].value);
-    type = module->GetType(member_name);
+    type = backend::EvaluateAs<const Module *>(operand.get(), ctx)
+               ->GetType(member_name);
     if (type == nullptr) {
       NOT_YET("log an error");
       type = type::Err;
@@ -124,9 +123,9 @@ IR::Val AST::Access::EmitLVal(Context *ctx) {
 
 IR::Val AST::Access::EmitIR(Context *ctx) {
   if (operand->type == type::Module) {
-    auto mod =
-        std::get<const Module *>(Evaluate(operand.get(), ctx) AT(0).value);
-    return mod->GetDecl(member_name)->EmitIR(ctx);
+    return backend::EvaluateAs<const Module *>(operand.get(), ctx)
+        ->GetDecl(member_name)
+        ->EmitIR(ctx);
   } else if (type->is<type::Enum>()) {
     return type->as<type::Enum>().EmitLiteral(member_name);
   } else {

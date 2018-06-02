@@ -4,12 +4,13 @@
 #include <execinfo.h>
 
 #include "ast/call.h"
-#include "backend/exec.h"
 #include "ast/declaration.h"
 #include "ast/expression.h"
 #include "ast/function_literal.h"
 #include "ast/statements.h"
 #include "backend/emit.h"
+#include "backend/eval.h"
+#include "backend/exec.h"
 #include "base/debug.h"
 #include "base/guarded.h"
 #include "base/source.h"
@@ -67,8 +68,6 @@ ShowUsage(char *argv0) {
           argv0);
 }
 
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
-
 extern void ReplEval(AST::Expression *expr);
 
 namespace backend {
@@ -124,10 +123,9 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
     if (!stmt->is<AST::Declaration>()) { continue; }
     auto &decl = stmt->as<AST::Declaration>();
     if (decl.identifier->token != "main") { continue; }
-    auto val = Evaluate(decl.init_val.get(), &ctx);
-    ASSERT(val.size() == 1u);
-    auto fn        = std::get<AST::Function *>(val[0].value);
-    auto *gened_fn = fn->generate(bc, ctx.mod_);
+    auto gened_fn =
+        backend::EvaluateAs<AST::Function *>(decl.init_val.get(), &ctx)
+            ->generate(bc, ctx.mod_);
     gened_fn->CompleteBody(ctx.mod_);
     auto ir_fn = gened_fn->ir_func_;
 

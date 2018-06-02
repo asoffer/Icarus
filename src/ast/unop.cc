@@ -3,12 +3,11 @@
 #include "ast/fn_args.h"
 #include "ast/terminal.h"
 #include "ast/verify_macros.h"
+#include "backend/eval.h"
 #include "base/check.h"
 #include "context.h"
 #include "ir/func.h"
 #include "type/all.h"
-
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 std::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,

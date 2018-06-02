@@ -1,14 +1,13 @@
 #include "ast/dispatch.h"
 
 #include "ast/function_literal.h"
+#include "backend/eval.h"
 #include "context.h"
 #include "ir/func.h"
 #include "scope.h"
 #include "type/function.h"
 #include "type/tuple.h"
 #include "type/variant.h"
-
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 namespace AST {
 static std::optional<std::pair<FnArgs<const type::Type *>, Binding>>
@@ -41,12 +40,8 @@ DispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
 static std::optional<std::pair<FnArgs<const type::Type *>, Binding>>
 ConstantDispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
                       Context *ctx) {
-  GeneratedFunction *fn = nullptr;
-  {
-    auto vals = Evaluate(expr, ctx);
-    if (vals.empty() || vals[0] == IR::Val::None()) { return std::nullopt; }
-    fn = ASSERT_NOT_NULL(std::get<IR::Func *>(vals[0].value)->gened_fn_);
-  }
+  GeneratedFunction *fn =
+      ASSERT_NOT_NULL(backend::EvaluateAs<IR::Func *>(expr, ctx)->gened_fn_);
 
   auto maybe_binding = Binding::MakeUntyped(fn, args, fn->lookup_);
   if (!maybe_binding) { return std::nullopt; }
@@ -88,7 +83,6 @@ void DispatchTable::TryInsert(Expression *fn_option,
   // TODO the reason you fail to generate what you want is because right
   // here you are calling evaluate which is problematic for recursive
   // functions
-  fn_option->VerifyType(ctx);
   if (fn_option->type->is<type::Function>()) {
     std::optional<std::pair<FnArgs<const type::Type *>, Binding>>
         dispatch_entry;
@@ -103,11 +97,7 @@ void DispatchTable::TryInsert(Expression *fn_option,
     this->insert(std::move(call_arg_types), std::move(binding));
 
   } else if (fn_option->type == type::Generic) {
-    auto vals = Evaluate(fn_option, ctx);
-    if (vals.empty() || vals[0] == IR::Val::None()) { return; }
-    auto &fn_val = vals[0].value;
-
-    auto *fn = std::get<AST::Function *>(fn_val);
+    auto *fn = backend::EvaluateAs<AST::Function *>(fn_option, ctx);
     if (auto binding = fn->ComputeType(args, ctx); binding.fn_expr_) {
       auto &gened_fn = binding.fn_expr_->as<GeneratedFunction>();
       // TODO this is copied almost exactly from above.
@@ -144,11 +134,6 @@ void DispatchTable::TryInsert(Expression *fn_option,
     } else {
       return;
     }
-  } else if (fn_option->type == type::Err) {
-    // If there's a type error, do I want to exit entirely or assume this
-    // one doesn't exist? and just goto next_option?
-    return;
-
   } else {
     UNREACHABLE(fn_option);
   }
@@ -219,6 +204,8 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
 std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
     const FnArgs<Expression *> &args, Expression *fn, Context *ctx) {
   DispatchTable table;
+  fn->VerifyType(ctx);
+  if (fn->type == type::Err) { return {}; }
   table.TryInsert(fn, args, ctx);
   const type::Type *ret_type = ComputeRetType(args, table, ctx);
   return std::pair{std::move(table), ret_type};

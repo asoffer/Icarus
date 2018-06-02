@@ -8,14 +8,13 @@
 #include "ast/scope_literal.h"
 #include "ast/stages.h"
 #include "ast/verify_macros.h"
+#include "backend/eval.h"
 #include "context.h"
 #include "ir/block_sequence.h"
 #include "ir/func.h"
 #include "scope.h"
 #include "type/scope.h"
 #include "type/type.h"
-
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 std::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
@@ -141,9 +140,7 @@ ScopeNode *ScopeNode::Clone() const {
 }
 
 IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
-  IR::Val scope_expr_val = Evaluate(blocks_[0].get(), ctx)[0];
-  ASSERT(scope_expr_val.type, Is<type::Scope>());
-  auto *scope_lit = std::get<ScopeLiteral *>(scope_expr_val.value);
+  auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(blocks_[0].get(), ctx);
 
   auto land_block = IR::Func::Current->AddBlock();
 
@@ -162,8 +159,8 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
           !(decl.identifier->token == "self" && expr == blocks_[0].get())) {
         continue;
       }
-      auto block_val = Evaluate(decl.init_val.get(), ctx)[0];
-      auto block_seq = std::get<IR::BlockSequence>(block_val.value);
+      auto block_seq =
+          backend::EvaluateAs<IR::BlockSequence>(decl.init_val.get(), ctx);
       ASSERT(block_seq.seq_.size() == 1u);
       auto *block_lit = block_seq.seq_[0];
       auto[iter, success] =

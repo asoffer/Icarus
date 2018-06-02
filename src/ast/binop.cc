@@ -3,6 +3,7 @@
 #include "ast/comma_list.h"
 #include "ast/fn_args.h"
 #include "ast/verify_macros.h"
+#include "backend/eval.h"
 #include "base/check.h"
 #include "context.h"
 #include "ir/func.h"
@@ -14,8 +15,8 @@
 #include "type/struct.h"
 #include "type/tuple.h"
 
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 IR::Val PtrCallFix(const IR::Val& v);
+
 namespace type {
 const Pointer *Ptr(const Type *);
 }  // namespace type
@@ -195,7 +196,7 @@ void Binop::VerifyType(Context *ctx) {
     case Operator::As: {
       // TODO check that the type actually can be cast
       // correctly.
-      type   = std::get<const type::Type *>(Evaluate(rhs.get(), ctx)[0].value);
+      type   = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
       lvalue = lhs->lvalue;
     } break;
     case Operator::XorEq: {

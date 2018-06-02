@@ -3,10 +3,9 @@
 #include <future>
 #include "ast/stages.h"
 #include "ast/verify_macros.h"
+#include "backend/eval.h"
 #include "base/guarded.h"
 #include "ir/val.h"
-
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 void ScheduleModule(const Source::Name &src);
 
@@ -57,8 +56,8 @@ void Import::VerifyType(Context *ctx) {
   if (operand_->type != type::String || operand_->lvalue != Assign::Const) {
     ctx->error_log_.InvalidImport(operand_->span);
   } else {
-    cache_ = Source::Name{
-        std::get<std::string>(Evaluate(operand_.get(), ctx)[0].value)};
+    cache_ =
+        Source::Name{backend::EvaluateAs<std::string>(operand_.get(), ctx)};
     ScheduleModule(*cache_);
   }
   limit_to(operand_);

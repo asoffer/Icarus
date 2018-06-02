@@ -12,8 +12,7 @@
 #include "type/function.h"
 #include "type/tuple.h"
 #include "type/type.h"
-
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
+#include "backend/eval.h"
 
 namespace AST {
 GeneratedFunction *Function::generate(BoundConstants bc, Module *mod) {
@@ -140,7 +139,7 @@ void FuncContent::VerifyType(Context *ctx) {
     std::vector<IR::Val> out_vals;
     out_vals.reserve(outputs.size());
     for (const auto &out : outputs) {
-      auto result = Evaluate(
+      auto result = backend::Evaluate(
           [&]() {
             if (!out->is<Declaration>()) { return out.get(); }
 
@@ -225,8 +224,9 @@ Binding Function::ComputeType(const FnArgs<Expression *> &args, Context *ctx) {
     if (inputs[i]->const_) {
       bound_constants.emplace(
           inputs[i]->identifier->token,
-          (binding.defaulted(i) ? Evaluate(inputs[i].get(), &new_ctx)
-                                : Evaluate(binding.exprs_[i].second, ctx))[0]);
+          (binding.defaulted(i)
+               ? backend::Evaluate(inputs[i].get(), &new_ctx)
+               : backend::Evaluate(binding.exprs_[i].second, ctx))[0]);
     }
 
     binding.exprs_[i].first = inputs[i]->type;

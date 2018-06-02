@@ -3,6 +3,7 @@
 #include "ast/declaration.h"
 #include "ast/function_literal.h"
 #include "ast/verify_macros.h"
+#include "backend/eval.h"
 #include "context.h"
 #include "error/log.h"
 #include "ir/val.h"
@@ -10,10 +11,7 @@
 #include "scope.h"
 #include "type/type.h"
 
-#include "ir/cmd.h"
-
 IR::Val PtrCallFix(const IR::Val& v);
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 namespace AST {
 void Identifier::assign_scope(Scope *scope) {
@@ -89,7 +87,7 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
     if (val) { return *val; }
 
     if (decl->IsCustomInitialized()) {
-      return Evaluate(decl->init_val.get(), ctx) AT(0);
+      return backend::Evaluate(decl->init_val.get(), ctx) AT(0);
 
     } else {
       NOT_YET(this->to_string(0));
