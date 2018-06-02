@@ -398,7 +398,8 @@ void Log::NotBinary(const TextSpan &span, const std::string &token) {
 
 void Log::NotAType(AST::Expression *expr) {
   std::stringstream ss;
-  ss << "Expression was expected to be a type, but instead it was a(n) "
+  ss << "Expression was expected to be a type or interface, but instead it was "
+        "a(n) "
      << expr->type->to_string() << ".\n\n";
   WriteSource(
       ss, *expr->span.source,

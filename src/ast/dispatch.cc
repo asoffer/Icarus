@@ -59,7 +59,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
 
 bool DispatchEntry::SetTypes(FuncContent *fn) {
   const auto &input_types = binding_.fn_expr_->type->as<type::Function>().input;
-  bool bound_at_compile_time = (fn == nullptr);
+  bool bound_at_compile_time = (fn != nullptr);
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
     if (bound_at_compile_time && binding_.defaulted(i)) {
       if (fn->inputs[i]->IsDefaultInitialized()) { return false; }
@@ -239,7 +239,7 @@ void DispatchTable::InsertEntry(DispatchEntry entry) {
 }
 
 void Binding::SetPositionalArgs(const FnArgs<Expression *> &args) {
-  ASSERT(exprs_.size() <= args.pos_.size());
+  ASSERT(exprs_.size() >= args.pos_.size());
   for (size_t i = 0; i < args.pos_.size(); ++i) {
     exprs_[i] = std::pair(nullptr, args.pos_[i]);
   }

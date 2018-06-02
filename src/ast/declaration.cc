@@ -117,11 +117,10 @@ bool CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
 }
 
 bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
-  LOG << decl1->to_string(0);
-  LOG << decl2->to_string(0);
-  if ((!decl1->type->is<type::Function>() && decl1->type != type::Generic) ||
-      (!decl2->type->is<type::Function>() && decl2->type != type::Generic)) {
-    return true;
+  // TODO Don't worry about generic shadowing? It'll be checked later?
+  if (decl1->type->is<type::Function>() || decl1->type == type::Generic ||
+      decl2->type->is<type::Function>() || decl2->type == type::Generic) {
+    return false;
   }
 
   // If they're both functions, we have more work to do because we allow
@@ -225,20 +224,17 @@ void Declaration::VerifyType(Context *ctx) {
       type_expr->VerifyType(ctx);
       HANDLE_CYCLIC_DEPENDENCIES;
       limit_to(type_expr);
-      if (type_expr->type != type::Type_) {
+
+      if (type_expr->type == type::Type_) {
+        type = backend::EvaluateAs<const type::Type *>(type_expr.get(), ctx);
+      } else if (type_expr->type == type::Interface) {
+        NOT_YET();
+      } else {
         ctx->error_log_.NotAType(type_expr.get());
         limit_to(StageRange::Nothing());
 
         type = type::Err;
         identifier->limit_to(StageRange::Nothing());
-      } else {
-        auto results = backend::Evaluate(type_expr.get(), ctx);
-        // TODO figure out if you need to generate an error here
-        if (results.size() == 1) {
-          type = std::get<const type::Type *>(results[0].value);
-        } else {
-          type = type::Err;
-        }
       }
     }
 

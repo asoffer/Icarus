@@ -34,6 +34,8 @@ GeneratedFunction *Function::generate(BoundConstants bc, Module *mod) {
     func.inputs.back()->arg_val = &func;
   }
 
+  func.lookup_ = lookup_;
+
   func.outputs.reserve(outputs.size());
   for (const auto &output : outputs) {
     func.outputs.emplace_back(output->Clone());
