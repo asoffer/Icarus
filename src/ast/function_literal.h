@@ -81,13 +81,7 @@ struct Function : public FuncContent {
   IR::Val EmitIR(Context *) override;
   IR::Val EmitLVal(Context *) override;
 
-  // Attempts to match the call argument types to the dependent types here. If
-  // it can it materializes a function literal and returns a pointer to it.
-  // Otherwise, returns nullptr.
-  Binding ComputeType(const FnArgs<Expression *> &args, Context *ctx);
   GeneratedFunction *generate(BoundConstants bc, Module *mod);
-
-
 
   std::map<BoundConstants, GeneratedFunction> fns_;
 };

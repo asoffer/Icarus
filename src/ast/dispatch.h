@@ -17,6 +17,8 @@ struct Type;
 } // namespace type
 
 namespace AST {
+struct GeneratedFunction;
+struct FuncContent;
 struct Expression;
 // Represents a particular call resolution.
 struct Binding {
@@ -24,16 +26,34 @@ struct Binding {
   MakeUntyped(Expression *fn_expr, const FnArgs<Expression *> &args,
               const std::unordered_map<std::string, size_t> &index_lookup);
 
+  void SetPositionalArgs(const FnArgs<Expression *> &args);
+  bool SetNamedArgs(
+      const FnArgs<Expression *> &args,
+      const std::unordered_map<std::string, size_t> &index_lookup);
+
   bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
 
-  Binding() = default;
+  Binding(AST::Expression *fn_expr, size_t n)
+      : fn_expr_(fn_expr),
+        exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
+
   Expression *fn_expr_ = nullptr;
   std::vector<std::pair<const type::Type *, Expression *>> exprs_;
+};
 
-private:
- Binding(AST::Expression *fn_expr, size_t n)
-     : fn_expr_(fn_expr),
-       exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
+// Represents a row in the dispatch table.
+struct DispatchEntry {
+  bool SetTypes(FuncContent *fn);
+
+  static std::optional<DispatchEntry> Make(Expression *fn_option,
+                                           const FnArgs<Expression *> &args,
+                                           Context *ctx);
+
+  FnArgs<const type::Type *> call_arg_types_;
+  Binding binding_;
+
+ private:
+  DispatchEntry(Binding b) : binding_(std::move(b)) {}
 };
 
 struct DispatchTable {
@@ -48,11 +68,7 @@ struct DispatchTable {
       const FnArgs<Expression *> &args, const std::string &op, Scope *scope,
       Context *ctx);
 
-  void TryInsert(Expression *fn_option, const FnArgs<Expression *> &args,
-                 Context *ctx);
-
-  void insert(FnArgs<const type::Type *> call_arg_types, Binding binding,
-              size_t expanded_size = std::numeric_limits<size_t>::max());
+  void InsertEntry(DispatchEntry entry);
 
   std::map<FnArgs<const type::Type *>, Binding> bindings_;
   size_t total_size_ = 0;

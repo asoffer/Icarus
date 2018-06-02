@@ -187,54 +187,6 @@ void Function::VerifyType(Context *ctx) {
   lvalue = Assign::Const;
 }
 
-Binding Function::ComputeType(const FnArgs<Expression *> &args, Context *ctx) {
-  auto maybe_binding = Binding::MakeUntyped(this, args, lookup_);
-  if (!maybe_binding.has_value()) { return Binding{}; }
-  auto binding = std::move(maybe_binding).value();
-
-  Context new_ctx(ctx->mod_);
-  BoundConstants bound_constants;
-  new_ctx.bound_constants_ = &bound_constants;
-  Expression *expr_to_eval = nullptr;
-
-  // TODO handle declaration order
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    inputs[i]->VerifyType(&new_ctx);
-    if (inputs[i]->type == type::Err) { return Binding{}; }
-
-    if (binding.defaulted(i) && inputs[i]->IsDefaultInitialized()) {
-      // TODO maybe send back an explanation of why this didn't match. Or
-      // perhaps continue to get better diagnostics?
-      return  Binding{};
-    } else {
-      if (inputs[i]->const_ && !binding.defaulted(i) &&
-          binding.exprs_[i].second->lvalue != Assign::Const) {
-        return Binding{};
-      }
-
-      if (!binding.defaulted(i)) {
-        if (auto *match =
-                type::Meet(binding.exprs_[i].second->type, inputs[i]->type);
-            match == nullptr) {
-          return Binding{};
-        }
-      }
-    }
-
-    if (inputs[i]->const_) {
-      bound_constants.emplace(
-          inputs[i]->identifier->token,
-          (binding.defaulted(i)
-               ? backend::Evaluate(inputs[i].get(), &new_ctx)
-               : backend::Evaluate(binding.exprs_[i].second, ctx))[0]);
-    }
-
-    binding.exprs_[i].first = inputs[i]->type;
-  }
-  binding.fn_expr_ = generate(std::move(bound_constants), ctx->mod_);
-  return binding;
-}
-
 void Function::Validate(Context *ctx) {}
 
 void FuncContent::Validate(Context *ctx) {

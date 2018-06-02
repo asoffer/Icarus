@@ -21,7 +21,4 @@ T EvaluateAs(AST::Expression *expr, Context *ctx) {
 
 }  // namespace backend
 
-// TODO finish migration ::Evaluate -> ::backend::Evaluate
-using backend::Evaluate;
-
 #endif  // ICARUS_BACKEND_EVAL_H

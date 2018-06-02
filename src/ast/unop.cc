@@ -305,11 +305,11 @@ IR::Val Unop::EmitIR(Context *ctx) {
     case Language::Operator::Eval: {
       // TODO what if there's an error during evaluation?
       // TODO what about ``a, b = $FnWithMultipleReturnValues()``
-      auto results = Evaluate(operand.get(), ctx);
+      auto results = backend::Evaluate(operand.get(), ctx);
       return results.empty() ? IR::Val::None() : results[0];
     }
     case Language::Operator::Generate: {
-      auto val = Evaluate(operand.get(), ctx) AT(0);
+      auto val = backend::Evaluate(operand.get(), ctx) AT(0);
       ASSERT(val.type == type::Code);
       auto block = std::get<AST::CodeBlock>(val.value);
       if (auto *err = std::get_if<std::string>(&block.content_)) {

@@ -10,133 +10,142 @@
 #include "type/variant.h"
 
 namespace AST {
-static std::optional<std::pair<FnArgs<const type::Type *>, Binding>>
-DispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
-              Context *ctx) {
-  // TODO check if anything is called with named args (it's illegal to do so).
-  // Also break up MakeUntyped so we don't need to check the named args section.
-  auto maybe_binding =
-      Binding::MakeUntyped(expr, args, {/* intentionally no lookup */});
-  if (!maybe_binding) { return std::nullopt; }
-  auto binding = std::move(maybe_binding).value();
+// Attempts to match the call argument types to the dependent types here. If
+// it can it materializes a function literal and returns a pointer to it.
+// Otherwise, returns nullptr.
+std::optional<BoundConstants> ComputeBoundConstants(
+    Function *fn, const FnArgs<Expression *> &args, Binding *binding,
+    Context *ctx) {
+  Context new_ctx(ctx->mod_);
+  BoundConstants bound_constants;
+  new_ctx.bound_constants_ = &bound_constants;
 
-  FnArgs<const type::Type *> call_arg_types;
-  call_arg_types.pos_.resize(args.pos_.size(), nullptr);
-  const auto &fn_opt_input = expr->type->as<type::Function>().input;
-  ASSERT(binding.exprs_.size() == fn_opt_input.size());
-  for (size_t i = 0; i < binding.exprs_.size(); ++i) {
-    const type::Type *match =
-        type::Meet(binding.exprs_.at(i).second->type, fn_opt_input.at(i));
-    if (match == nullptr) { return std::nullopt; }
-    binding.exprs_.at(i).first = fn_opt_input.at(i);
+  // TODO handle declaration order
+  for (size_t i = 0; i < fn->inputs.size(); ++i) {
+    fn->inputs[i]->VerifyType(&new_ctx);
+    if (fn->inputs[i]->type == type::Err) { return std::nullopt; }
 
-    ASSERT(i < call_arg_types.pos_.size());
-    call_arg_types.pos_.at(i) = match;
-  }
-
-  return std::pair(std::move(call_arg_types), std::move(binding));
-}
-
-static std::optional<std::pair<FnArgs<const type::Type *>, Binding>>
-ConstantDispatchEntry(Expression *expr, const FnArgs<Expression *> &args,
-                      Context *ctx) {
-  GeneratedFunction *fn =
-      ASSERT_NOT_NULL(backend::EvaluateAs<IR::Func *>(expr, ctx)->gened_fn_);
-
-  auto maybe_binding = Binding::MakeUntyped(fn, args, fn->lookup_);
-  if (!maybe_binding) { return std::nullopt; }
-  auto binding = std::move(maybe_binding).value();
-
-  FnArgs<const type::Type *> call_arg_types;
-  call_arg_types.pos_.resize(args.pos_.size(), nullptr);
-  for (const auto & [ key, val ] : fn->lookup_) {
-    if (val < args.pos_.size()) { continue; }
-    call_arg_types.named_.emplace(key, nullptr);
-  }
-
-  const auto &fn_opt_input = expr->type->as<type::Function>().input;
-  for (size_t i = 0; i < binding.exprs_.size(); ++i) {
-    if (binding.defaulted(i)) {
-      if (fn->inputs[i]->IsDefaultInitialized()) { return std::nullopt; }
-      binding.exprs_[i].first = fn_opt_input[i];
+    if (binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) {
+      // TODO maybe send back an explanation of why this didn't match. Or
+      // perhaps continue to get better diagnostics?
+      return std::nullopt;
     } else {
-      const type::Type *match =
-          type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
-      if (match == nullptr) { return std::nullopt; }
-      binding.exprs_[i].first = fn_opt_input[i];
-
-      if (i < call_arg_types.pos_.size()) {
-        call_arg_types.pos_[i] = match;
-      } else {
-        auto iter = call_arg_types.find(fn->inputs[i]->identifier->token);
-        ASSERT(iter != call_arg_types.named_.end());
-        iter->second = match;
-      }
-    }
-  }
-
-  return std::pair(std::move(call_arg_types), std::move(binding));
-}
-
-void DispatchTable::TryInsert(Expression *fn_option,
-                              const FnArgs<Expression *> &args, Context *ctx) {
-  // TODO the reason you fail to generate what you want is because right
-  // here you are calling evaluate which is problematic for recursive
-  // functions
-  if (fn_option->type->is<type::Function>()) {
-    std::optional<std::pair<FnArgs<const type::Type *>, Binding>>
-        dispatch_entry;
-
-    if (fn_option->lvalue == Assign::Const) {
-      dispatch_entry = ConstantDispatchEntry(fn_option, args, ctx);
-    } else {
-      dispatch_entry = DispatchEntry(fn_option, args, ctx);
-    }
-    if (!dispatch_entry.has_value()) { return; }
-    auto[call_arg_types, binding] = *dispatch_entry;
-    this->insert(std::move(call_arg_types), std::move(binding));
-
-  } else if (fn_option->type == type::Generic) {
-    auto *fn = backend::EvaluateAs<AST::Function *>(fn_option, ctx);
-    if (auto binding = fn->ComputeType(args, ctx); binding.fn_expr_) {
-      auto &gened_fn = binding.fn_expr_->as<GeneratedFunction>();
-      // TODO this is copied almost exactly from above.
-      FnArgs<const type::Type *> call_arg_types;
-      call_arg_types.pos_.resize(args.pos_.size(), nullptr);
-      for (const auto & [ key, val ] : fn->lookup_) {
-        if (val < args.pos_.size()) { continue; }
-        call_arg_types.named_.emplace(key, nullptr);
+      if (fn->inputs[i]->const_ && !binding->defaulted(i) &&
+          binding->exprs_[i].second->lvalue != Assign::Const) {
+        return std::nullopt;
       }
 
-      const auto &fn_opt_input = gened_fn.type->as<type::Function>().input;
-      for (size_t i = 0; i < binding.exprs_.size(); ++i) {
-        if (binding.defaulted(i)) {
-          if (gened_fn.inputs[i]->IsDefaultInitialized()) { return; }
-          binding.exprs_[i].first = fn_opt_input[i];
-        } else {
-          const type::Type *match =
-              type::Meet(binding.exprs_[i].second->type, fn_opt_input[i]);
-          if (match == nullptr) { return; }
-          binding.exprs_[i].first = fn_opt_input[i];
-
-          if (i < call_arg_types.pos_.size()) {
-            call_arg_types.pos_[i] = match;
-          } else {
-            auto iter =
-                call_arg_types.find(gened_fn.inputs[i]->identifier->token);
-            ASSERT(iter != call_arg_types.named_.end());
-            iter->second = match;
-          }
+      if (!binding->defaulted(i)) {
+        if (auto *match =
+                type::Meet(binding->exprs_[i].second->type, fn->inputs[i]->type);
+            match == nullptr) {
+          return std::nullopt;
         }
       }
-
-      this->insert(std::move(call_arg_types), std::move(binding));
-    } else {
-      return;
     }
+
+    if (fn->inputs[i]->const_) {
+      bound_constants.emplace(
+          fn->inputs[i]->identifier->token,
+          (binding->defaulted(i)
+               ? backend::Evaluate(fn->inputs[i].get(), &new_ctx)
+               : backend::Evaluate(binding->exprs_[i].second, ctx))[0]);
+    }
+
+    binding->exprs_[i].first = fn->inputs[i]->type;
+  }
+  return bound_constants;
+}
+
+bool DispatchEntry::SetTypes(FuncContent *fn) {
+  const auto &input_types = binding_.fn_expr_->type->as<type::Function>().input;
+  bool bound_at_compile_time = (fn == nullptr);
+  for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
+    if (bound_at_compile_time && binding_.defaulted(i)) {
+      if (fn->inputs[i]->IsDefaultInitialized()) { return false; }
+      binding_.exprs_.at(i).first = input_types.at(i);
+      continue;
+    }
+
+    const type::Type *match =
+        type::Meet(binding_.exprs_.at(i).second->type, input_types[i]);
+    if (match == nullptr) { return false; }
+
+    binding_.exprs_.at(i).first = input_types.at(i);
+
+    if (i < call_arg_types_.pos_.size()) {
+      call_arg_types_.pos_.at(i) = match;
+    } else {
+      if (bound_at_compile_time) {
+        auto iter = call_arg_types_.find(fn->inputs[i]->identifier->token);
+        ASSERT(iter != call_arg_types_.named_.end());
+        iter->second = match;
+      } else {
+        UNREACHABLE();
+      }
+    }
+  }
+  return true;
+}
+
+std::optional<DispatchEntry> DispatchEntry::Make(
+    Expression *fn_option, const FnArgs<Expression *> &args, Context *ctx) {
+  Expression *bound_fn;
+  size_t binding_size;
+  if (fn_option->type->is<type::Function>()) {
+    if (fn_option->lvalue == Assign::Const) {
+      GeneratedFunction *fn = ASSERT_NOT_NULL(
+          backend::EvaluateAs<IR::Func *>(fn_option, ctx)->gened_fn_);
+      bound_fn = fn;
+      binding_size =
+          std::max(fn->lookup_.size(), args.pos_.size() + args.named_.size());
+    } else {
+      bound_fn     = fn_option;
+      binding_size = args.pos_.size() + args.named_.size();
+    }
+  } else if (fn_option->type == type::Generic) {
+    bound_fn = backend::EvaluateAs<Function *>(fn_option, ctx);
+    binding_size = std::max(bound_fn->as<Function>().lookup_.size(),
+                            args.pos_.size() + args.named_.size());
   } else {
     UNREACHABLE(fn_option);
   }
+
+  Binding binding(bound_fn, binding_size);
+  binding.SetPositionalArgs(args);
+
+  if (fn_option->lvalue == Assign::Const) {
+    if (!binding.SetNamedArgs(args, bound_fn->as<FuncContent>().lookup_)) {
+      return std::nullopt;
+    }
+  }
+
+  DispatchEntry dispatch_entry(std::move(binding));
+  dispatch_entry.call_arg_types_.pos_.resize(args.pos_.size(), nullptr);
+
+  GeneratedFunction *fn = nullptr;
+  if (fn_option->lvalue == Assign::Const) {
+    if (fn_option->type == type::Generic) {
+      auto *generic_fn     = &bound_fn->as<Function>();
+      auto bound_constants = ComputeBoundConstants(
+          generic_fn, args, &dispatch_entry.binding_, ctx);
+      if (!bound_constants) { return std::nullopt; }
+
+      // TODO can generate fail? Probably
+      dispatch_entry.binding_.fn_expr_ = ASSERT_NOT_NULL(
+          generic_fn->generate(std::move(bound_constants).value(), ctx->mod_));
+    }
+
+    fn = &dispatch_entry.binding_.fn_expr_->as<GeneratedFunction>();
+
+    for (const auto & [ key, val ] : fn->lookup_) {
+      if (val < args.pos_.size()) { continue; }
+      dispatch_entry.call_arg_types_.named_.emplace(key, nullptr);
+    }
+  }
+
+  if (!dispatch_entry.SetTypes(fn)) { return std::nullopt; }
+  return dispatch_entry;
 }
 
 static const type::Type *ComputeRetType(const FnArgs<Expression *> &args,
@@ -193,7 +202,10 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
       decl->VerifyType(ctx);
       // TODO HANDLE_CYCLIC_DEPENDENCIES;
       if (decl->type == type::Err) { return {}; }
-      table.TryInsert(decl->identifier.get(), args, ctx);
+      if (auto maybe_dispatch_entry =
+              DispatchEntry::Make(decl->identifier.get(), args, ctx)) {
+        table.InsertEntry(std::move(maybe_dispatch_entry).value());
+      }
     }
   }
 
@@ -206,46 +218,43 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
   DispatchTable table;
   fn->VerifyType(ctx);
   if (fn->type == type::Err) { return {}; }
-  table.TryInsert(fn, args, ctx);
+  if (auto maybe_dispatch_entry = DispatchEntry::Make(fn, args, ctx)) {
+    table.InsertEntry(std::move(maybe_dispatch_entry).value());
+  }
   const type::Type *ret_type = ComputeRetType(args, table, ctx);
   return std::pair{std::move(table), ret_type};
 }
 
-void DispatchTable::insert(FnArgs<const type::Type *> call_arg_types,
-                           Binding binding, size_t expanded_size) {
-  if (expanded_size == std::numeric_limits<size_t>::max()) {
-    expanded_size = 1;
-    call_arg_types.Apply([&expanded_size](const type::Type *t) {
-      if (t->is<type::Variant>()) {
-        expanded_size *= t->as<type::Variant>().size();
-      }
-    });
-  }
+void DispatchTable::InsertEntry(DispatchEntry entry) {
+  size_t expanded_size = 1;
+  entry.call_arg_types_.Apply([&expanded_size](const type::Type *t) {
+    if (t->is<type::Variant>()) {
+      expanded_size *= t->as<type::Variant>().size();
+    }
+  });
 
   total_size_ += expanded_size;
-  bindings_.emplace(std::move(call_arg_types), std::move(binding));
+  bindings_.emplace(std::move(entry.call_arg_types_),
+                    std::move(entry.binding_));
 }
 
-std::optional<Binding> Binding::MakeUntyped(
-    AST::Expression *fn_expr, const FnArgs<Expression *> &args,
-    const std::unordered_map<std::string, size_t> &index_lookup) {
-  // index_lookup.size() works for constants because it considers default args.
-  // It's empty for non-constants, but the other approach covers this because
-  // default args are not allowed.
-  Binding result(fn_expr, std::max(index_lookup.size(),
-                                   args.pos_.size() + args.named_.size()));
+void Binding::SetPositionalArgs(const FnArgs<Expression *> &args) {
+  ASSERT(exprs_.size() <= args.pos_.size());
   for (size_t i = 0; i < args.pos_.size(); ++i) {
-    result.exprs_[i] = std::pair(nullptr, args.pos_[i]);
+    exprs_[i] = std::pair(nullptr, args.pos_[i]);
   }
+}
 
-  // Match the named arguments
+bool Binding::SetNamedArgs(
+    const FnArgs<Expression *> &args,
+    const std::unordered_map<std::string, size_t> &index_lookup) {
   for (const auto & [ name, expr ] : args.named_) {
     // TODO emit an error explaining why we couldn't use this one if there
     // was a missing named argument.
     auto iter = index_lookup.find(name);
-    if (iter == index_lookup.end()) { return std::nullopt; }
-    result.exprs_.at(iter->second) = std::pair(nullptr, expr);
+    if (iter == index_lookup.end()) { return false; }
+    exprs_.at(iter->second) = std::pair(nullptr, expr);
   }
-  return result;
+  return true;
 }
 }  // namespace AST
