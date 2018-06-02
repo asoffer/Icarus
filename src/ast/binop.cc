@@ -40,13 +40,6 @@ namespace AST {
 using base::check::Not;
 using base::check::Is;
 
-std::vector<Expression *> FunctionOptions(const std::string &token,
-                                          Scope *scope, Context *ctx);
-const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
-                                   std::vector<Expression *> fn_options,
-                                   AST::DispatchTable *dispatch_table,
-                                   Context *ctx);
-
 std::string Binop::to_string(size_t n) const {
   std::stringstream ss;
   if (op == Language::Operator::Index) {
@@ -255,8 +248,8 @@ void Binop::VerifyType(Context *ctx) {
     } else {                                                                   \
       FnArgs<Expression *> args;                                               \
       args.pos_ = std::vector{lhs.get(), rhs.get()};                           \
-      type      = SetDispatchTable(args, FunctionOptions(symbol, scope_, ctx), \
-                              &dispatch_table_, ctx);                          \
+      std::tie(dispatch_table_, type) =                                        \
+          DispatchTable::Make(args, symbol, scope_, ctx);                      \
       ASSERT(type, Not(Is<type::Tuple>()));                                    \
       if (type == type::Err) { limit_to(StageRange::Nothing()); }              \
     }                                                                          \
@@ -296,8 +289,8 @@ void Binop::VerifyType(Context *ctx) {
       } else {
         FnArgs<Expression *> args;
         args.pos_  = std::vector{lhs.get(), rhs.get()};
-        type       = SetDispatchTable(args, FunctionOptions("*", scope_, ctx),
-                                &dispatch_table_, ctx);
+        std::tie(dispatch_table_, type) =
+            DispatchTable::Make(args, "*", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       }

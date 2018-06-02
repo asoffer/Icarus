@@ -9,13 +9,15 @@
 
 #include "fn_args.h"
 
+struct Context;
+struct Scope;
+
 namespace type {
 struct Type;
 } // namespace type
 
 namespace AST {
 struct Expression;
-
 // Represents a particular call resolution.
 struct Binding {
   static std::optional<Binding>
@@ -40,12 +42,22 @@ struct DispatchTable {
   //   streaming manner?
   // * Add weights for PGO optimizations?
 
+  static std::pair<DispatchTable, const type::Type *> Make(
+      const FnArgs<Expression *> &args, Expression *fn, Context *ctx);
+  static std::pair<DispatchTable, const type::Type *> Make(
+      const FnArgs<Expression *> &args, const std::string &op, Scope *scope,
+      Context *ctx);
+
+  void TryInsert(Expression *fn_option, const FnArgs<Expression *> &args,
+                 Context *ctx);
+
   void insert(FnArgs<const type::Type *> call_arg_types, Binding binding,
               size_t expanded_size = std::numeric_limits<size_t>::max());
 
   std::map<FnArgs<const type::Type *>, Binding> bindings_;
   size_t total_size_ = 0;
 };
+
 } // namespace AST
 
 #endif // ICARUS_AST_DISPATCH_H

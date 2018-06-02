@@ -26,13 +26,6 @@ void ForEachExpr(AST::Expression *expr,
                  const std::function<void(size_t, AST::Expression *)> &fn);
 
 namespace AST {
-std::vector<Expression *> FunctionOptions(const std::string &token,
-                                          Scope *scope, Context *ctx);
-const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
-                                   std::vector<Expression *> fn_options,
-                                   AST::DispatchTable *dispatch_table,
-                                   Context *ctx);
-
 namespace {
 using base::check::Is;
 using base::check::Not;
@@ -208,8 +201,9 @@ void ChainOp::VerifyType(Context *ctx) {
 
           FnArgs<Expression *> args;
           args.pos_ = std::vector{exprs[i].get(), exprs[i + 1].get()};
-          type = SetDispatchTable(args, FunctionOptions(token, scope_, ctx),
-                                  &dispatch_tables_[i], ctx);
+          // TODO overwriting type a bunch of times?
+          std::tie(dispatch_tables_[i], type) =
+              DispatchTable::Make(args, token, scope_, ctx);
           ASSERT(type, Not(Is<type::Tuple>()));
           if (type == type::Err) { limit_to(StageRange::Nothing()); }
         } else {

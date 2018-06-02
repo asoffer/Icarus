@@ -24,14 +24,6 @@ namespace AST {
 using base::check::Is; 
 using base::check::Not; 
 
-std::vector<Expression *> FunctionOptions(const std::string &token,
-                                          Scope *scope, Context *ctx);
-
-const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
-                                   std::vector<Expression *> fn_options,
-                                   AST::DispatchTable *dispatch_table,
-                                   Context *ctx);
-
 std::string Unop::to_string(size_t n) const {
   if (op == Language::Operator::TypeOf) {
     return "(" + operand->to_string(n) + "):?";
@@ -218,8 +210,8 @@ void Unop::VerifyType(Context *ctx) {
       } else if (operand->type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_ = std::vector{operand.get()};
-        type      = SetDispatchTable(args, FunctionOptions("-", scope_, ctx),
-                                &dispatch_table_, ctx);
+        std::tie(dispatch_table_, type) =
+            DispatchTable::Make(args, "-", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       }
@@ -230,8 +222,8 @@ void Unop::VerifyType(Context *ctx) {
       } else if (operand->type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_ = std::vector{operand.get()};
-        type      = SetDispatchTable(args, FunctionOptions("!", scope_, ctx),
-                                &dispatch_table_, ctx);
+        std::tie(dispatch_table_, type) =
+            DispatchTable::Make(args, "!", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
         if (type == type::Err) { limit_to(StageRange::Nothing()); }
       } else {

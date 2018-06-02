@@ -28,10 +28,6 @@ void ForEachExpr(AST::Expression *expr,
 namespace AST {
 using base::check::Is;
 
-const type::Type *SetDispatchTable(const FnArgs<Expression *> &args,
-                                   std::vector<Expression *> fn_options,
-                                   DispatchTable *dispatch_table, Context *ctx);
-
 std::string ScopeNode::to_string(size_t n) const {
   std::stringstream ss;
   for (const auto &block : blocks_) {
@@ -209,7 +205,6 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     auto* arg_expr = iter->second->arg_.get();
 
     auto call_enter_result = [&] {
-      DispatchTable dispatch_table;
       FnArgs<std::pair<Expression *, IR::Val>> args;
       FnArgs<Expression *> expr_args;
       if (arg_expr != nullptr) {
@@ -220,8 +215,8 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
                     });
       }
 
-      const type::Type *result_type = SetDispatchTable(
-          expr_args, {block_lit->before_.get()}, &dispatch_table, ctx);
+      auto[dispatch_table, result_type] =
+          DispatchTable::Make(expr_args, block_lit->before_.get(), ctx);
 
       return EmitCallDispatch(args, dispatch_table, result_type, ctx)[0];
     }();
@@ -242,10 +237,9 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     IR::BasicBlock::Current = block_data.after;
 
     auto call_exit_result = [&] {
-      DispatchTable dispatch_table;
-      const type::Type *result_type =
-          SetDispatchTable(FnArgs<Expression *>{}, {block_lit->after_.get()},
-                           &dispatch_table, ctx);
+      auto[dispatch_table, result_type] = DispatchTable::Make(
+          FnArgs<Expression *>{}, block_lit->after_.get(), ctx);
+
       return EmitCallDispatch(FnArgs<std::pair<Expression *, IR::Val>>{},
                               dispatch_table, result_type, ctx)[0];
     }();
