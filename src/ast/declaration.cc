@@ -228,7 +228,7 @@ void Declaration::VerifyType(Context *ctx) {
       if (type_expr->type == type::Type_) {
         type = backend::EvaluateAs<const type::Type *>(type_expr.get(), ctx);
       } else if (type_expr->type == type::Interface) {
-        NOT_YET();
+        type = type::Generic;
       } else {
         ctx->error_log_.NotAType(type_expr.get());
         limit_to(StageRange::Nothing());

@@ -36,16 +36,32 @@ std::optional<BoundConstants> ComputeBoundConstants(
       }
 
       if (!binding->defaulted(i)) {
-        if (auto *match =
-                type::Meet(binding->exprs_[i].second->type, fn->inputs[i]->type);
-            match == nullptr) {
+        if (fn->inputs[i]->type_expr != nullptr &&
+            fn->inputs[i]->type_expr->type == type::Interface) {
+          // TODO case where it is defaulted.
+          // TODO expand all variants
+          auto ifc = backend::EvaluateAs<IR::Interface>(
+              fn->inputs[i]->type_expr.get(), ctx);
+          if (!ifc.Matches(binding->exprs_[i].second->type)) {
+            return std::nullopt;
+          }
+          bound_constants.interfaces_.emplace(fn->inputs[i].get(),
+                                               binding->exprs_[i].second->type);
+
+          // TODO using this for now to signify an interface when in reality we
+          // want something much more meaningful. 'Generic' is a weird catch-all
+          // type currently that needs to be deprecated.
+
+        } else if (auto *match = type::Meet(binding->exprs_[i].second->type,
+                                            fn->inputs[i]->type);
+                   match == nullptr) {
           return std::nullopt;
         }
       }
     }
 
     if (fn->inputs[i]->const_) {
-      bound_constants.emplace(
+      bound_constants.constants_.emplace(
           fn->inputs[i]->identifier->token,
           (binding->defaulted(i)
                ? backend::Evaluate(fn->inputs[i].get(), &new_ctx)
@@ -116,6 +132,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
 
   if (fn_option->lvalue == Assign::Const) {
     if (!binding.SetNamedArgs(args, bound_fn->as<FuncContent>().lookup_)) {
+      LOG << "bailing";
       return std::nullopt;
     }
   }

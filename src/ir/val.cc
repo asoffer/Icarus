@@ -37,6 +37,10 @@ Val Val::BlockSeq(BlockSequence b) {
 
 Val Val::Addr(IR::Addr addr, const type::Type *t) { return Val(Ptr(t), addr); }
 
+Val Val::Interface(IR::Interface ifc) {
+  return Val(type::Interface, std::move(ifc));
+}
+
 Val Val::StackAddr(u64 addr, const type::Type *t) {
   IR::Addr a;
   a.kind     = Addr::Kind::Stack;
@@ -155,6 +159,10 @@ std::string Val::to_string() const {
           [](const BlockSequence &) -> std::string {
             // TODO
             return "BlockSequence";
+          },
+          [](const IR::Interface &ifc) -> std::string {
+            // TODO
+            return "Interface";
           }},
       value);
 }

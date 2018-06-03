@@ -75,6 +75,18 @@ Interface *Interface::Clone() const {
   return result;
 }
 
-IR::Val AST::Interface::EmitIR(Context *ctx) { return IR::Val::None(); }
+IR::Val AST::Interface::EmitIR(Context *ctx) {
+  // TODO this needs to be serialized as instructions so that we can evaluate
+  // functions which return interfaces. For example,
+  // HasFoo ::= (T: type) => interface {
+  //   foo: T
+  // }
+  IR::Interface ifc;
+  for (const auto &decl : decls_) {
+    ifc.field_map_.emplace(decl.identifier->token, decl.type);
+  }
+  return IR::Val::Interface(std::move(ifc));
+}
+
 IR::Val AST::Interface::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 }  // namespace AST

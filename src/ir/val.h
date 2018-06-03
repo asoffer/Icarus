@@ -10,6 +10,7 @@
 #include "base/strong_types.h"
 #include "base/types.h"
 #include "ir/block_sequence.h"
+#include "ir/interface.h"
 
 struct Module;
 
@@ -104,8 +105,8 @@ struct Val {
   std::variant<
       Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
       const type::Type *, type::Struct *, IR::Func *, AST::Function *,
-      AST::ScopeLiteral *, AST::CodeBlock, AST::Expression *, BlockIndex,
-      std::string, const Module *,
+      AST::ScopeLiteral *, IR::Interface, AST::CodeBlock, AST::Expression *,
+      BlockIndex, std::string, const Module *,
       AST::BlockLiteral *,  // TODO no longer necessary with blocksequence?
       std::vector<Val>, BlockSequence>
       value{false};
@@ -135,6 +136,7 @@ struct Val {
   static Val Many(std::vector<IR::Val> vals) {
     return Val(nullptr, std::move(vals));
   }
+  static Val Interface(IR::Interface ifc);
 
   static Val StrLit(std::string str) { return Val(type::String, std::move(str)); }
   static Val Ref(AST::Expression *expr);

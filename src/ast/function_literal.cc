@@ -30,8 +30,18 @@ GeneratedFunction *Function::generate(BoundConstants bc, Module *mod) {
 
   func.inputs.reserve(inputs.size());
   for (const auto &input : inputs) {
+    // TODO this copies the type_expr on the input and then, if it's an
+    // interface, we overwrite it. Easy, but that copy is unnecessary and we
+    // sholud remove it.
     func.inputs.emplace_back(input->Clone());
-    func.inputs.back()->arg_val = &func;
+    auto ifc_iter = ctx.bound_constants_->interfaces_.find(input.get());
+    if (ifc_iter ==  ctx.bound_constants_->interfaces_.end()) {
+      func.inputs.back()->arg_val = &func;
+    } else {
+      auto type_expr_span           = func.inputs.back()->type_expr->span;
+      func.inputs.back()->type_expr = std::make_unique<Terminal>(
+          type_expr_span, IR::Val::Type(ifc_iter->second));
+    }
   }
 
   func.lookup_ = lookup_;
