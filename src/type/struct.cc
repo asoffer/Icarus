@@ -1,4 +1,4 @@
-#include "struct.h"
+#include "type/struct.h"
 
 #include <set>
 #include "base/guarded.h"

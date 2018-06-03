@@ -2,6 +2,8 @@
 #define ICARUS_IR_INTERFACE_H
 
 #include <map>
+#include <string>
+#include <vector>
 
 namespace AST {
 struct BlockLiteral;
@@ -13,10 +15,7 @@ struct Type;
 
 namespace IR {
 struct Interface {
-  bool Matches(const type::Type*) {
-    // TODO
-    return true;
-  }
+  std::vector<std::string> MatchErrors(const type::Type*) const;
 
   // TODO would prefer unordered but constraints from Val's variant make this
   // hard.

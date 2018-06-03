@@ -42,7 +42,9 @@ std::optional<BoundConstants> ComputeBoundConstants(
           // TODO expand all variants
           auto ifc = backend::EvaluateAs<IR::Interface>(
               fn->inputs[i]->type_expr.get(), ctx);
-          if (!ifc.Matches(binding->exprs_[i].second->type)) {
+          auto errs = ifc.MatchErrors(binding->exprs_[i].second->type);
+          if (!errs.empty()) {
+            for (auto err : errs) { LOG << err; }
             return std::nullopt;
           }
           bound_constants.interfaces_.emplace(fn->inputs[i].get(),
