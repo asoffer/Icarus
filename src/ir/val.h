@@ -33,12 +33,12 @@ struct BlockLiteral;
 struct Function;
 } // namespace AST
 
-namespace IR {
-DEFINE_STRONG_INT(BlockIndex, i32, -1);
-DEFINE_STRONG_INT(EnumVal, size_t, 0);
-DEFINE_STRONG_INT(FlagsVal, size_t, 0);
-DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
+DEFINE_STRONG_INT(IR, BlockIndex, i32, -1);
+DEFINE_STRONG_INT(IR, EnumVal, size_t, 0);
+DEFINE_STRONG_INT(IR, FlagsVal, size_t, 0);
+DEFINE_STRONG_INT(IR, Register, i32, std::numeric_limits<i32>::lowest());
 
+namespace IR {
 struct CmdIndex {
   BlockIndex block;
   i32 cmd;
@@ -85,9 +85,6 @@ inline bool operator>=(Addr lhs, Addr rhs) { return !(lhs < rhs); }
 
 struct Func;
 } // namespace IR
-
-DEFINE_STRONG_HASH(IR::BlockIndex);
-DEFINE_STRONG_HASH(IR::Register);
 
 namespace std {
 template <> struct hash<IR::CmdIndex> {

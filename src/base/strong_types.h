@@ -1,83 +1,41 @@
 #ifndef ICARUS_BASE_STRONG_TYPES_H
 #define ICARUS_BASE_STRONG_TYPES_H
 
-#include "debug.h"
 #include <cstdint>
 #include <iosfwd>
 #include <string>
+#include "debug.h"
 
-#define DEFINE_STRONG_INT(type_name, base_type, default_value)                 \
-  struct type_name                                                             \
-      : public base::StrongIndex<type_name, base_type, default_value> {        \
-    constexpr explicit type_name(base_type val = default_value)                \
-        : ::base::StrongIndex<type_name, base_type, default_value>(val) {}     \
+#define DEFINE_STRONG_INT(ns, type, underlying_type, default_value)            \
+  namespace ns {                                                               \
+  struct type {                                                                \
+    constexpr type() = default;                                                \
+    constexpr explicit type(underlying_type num) : value(num) {}               \
+    std::string to_string() const {                                            \
+      return #type "." + std::to_string(value);                                \
+    }                                                                          \
+    bool is_default() const { return value == default_value; }                 \
+                                                                               \
+    underlying_type value = default_value;                                     \
   };                                                                           \
-  inline std::ostream &operator<<(std::ostream &os, type_name val) {           \
-    return os << val.value;                                                    \
+  inline bool operator==(type lhs, type rhs) {                                 \
+    return lhs.value == rhs.value;                                             \
   }                                                                            \
-  struct type_name
-
-namespace base {
-template <typename IndexType, typename BaseType, BaseType DefaultValue>
-struct StrongIndex {
-  constexpr explicit StrongIndex(BaseType val = DefaultValue) : value(val) {}
-  bool is_default() const { return value == DefaultValue; }
-
-  BaseType value;
-};
-
-template <typename IndexType, typename BaseType, BaseType DefaultValue>
-inline bool operator==(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
-                       StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
-  return lhs.value == rhs.value;
-}
-
-template <typename IndexType, typename BaseType, BaseType DefaultValue>
-inline bool operator!=(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
-                       StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
-  return !(lhs == rhs);
-}
-
-template <typename IndexType, typename BaseType, BaseType DefaultValue>
-inline bool operator<(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
-                      StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
-  return lhs.value < rhs.value;
-}
-
-template <typename IndexType, typename BaseType, BaseType DefaultValue>
-inline bool operator<=(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
-                      StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
-  return !(rhs < lhs);
-}
-
-template <typename IndexType, typename BaseType, BaseType DefaultValue>
-inline bool operator>(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
-                      StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
-  return rhs < lhs;
-}
-
-template <typename IndexType, typename BaseType, BaseType DefaultValue>
-inline bool operator>=(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
-                       StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
-  return !(lhs < rhs);
-}
-} // namespace base
-
-namespace std {
-template <typename IndexType, typename BaseType, BaseType DefaultValue>
-string to_string(base::StrongIndex<IndexType, BaseType, DefaultValue> val) {
-  return to_string(val.value);
-}
-} // namespace std
-
-#define DEFINE_STRONG_HASH(qualified_type)                                     \
+  inline bool operator<(type lhs, type rhs) { return lhs.value < rhs.value; }  \
+  inline bool operator!=(type lhs, type rhs) { return !(lhs == rhs); }         \
+  inline bool operator<=(type lhs, type rhs) { return !(rhs < lhs); }          \
+  inline bool operator>(type lhs, type rhs) { return rhs < lhs; }              \
+  inline bool operator>=(type lhs, type rhs) { return !(lhs < rhs); }          \
+  } /* namespace ns */                                                         \
+                                                                               \
   namespace std {                                                              \
-  template <> struct hash<qualified_type> {                                    \
-    decltype(auto) operator()(qualified_type val) const noexcept {             \
-      return std::hash<decltype(val.value)>{}(val.value);                      \
+  template <>                                                                  \
+  struct hash<ns::type> {                                                      \
+    decltype(auto) operator()(ns::type val) const noexcept {                   \
+      return std::hash<underlying_type>{}(val.value);                          \
     }                                                                          \
   };                                                                           \
-  }                                                                            \
-  struct FakeStructToRequireSemicolonInMacro
+  } /* namespace std */                                                        \
+  struct FakeStructToAllowSemicolonAfterMacro
 
-#endif // ICARUS_BASE_STRONG_TYPES_H
+#endif  // ICARUS_BASE_STRONG_TYPES_H

@@ -79,21 +79,9 @@ BlockIndex ExecContext::ExecuteBlock() {
 }
 
 IR::Val Stack::Push(const type::Pointer *ptr) {
-  size_ = Architecture::InterprettingMachine().MoveForwardToAlignment(
-      ptr->pointee, size_);
-  auto addr = size_;
-  size_ += ptr->pointee->is<type::Pointer>()
-               ? sizeof(Addr)
-               : Architecture::InterprettingMachine().bytes(ptr->pointee);
-  if (size_ > capacity_) {
-    auto old_capacity = capacity_;
-    capacity_         = 2 * size_;
-    void *new_stack   = calloc(1, capacity_);
-    memcpy(new_stack, stack_, old_capacity);
-    free(stack_);
-    stack_ = new_stack;
-  }
-  ASSERT(size_ <= capacity_);
+  size_t addr = buffer_.size();
+  buffer_.append_bytes(
+      Architecture::InterprettingMachine().bytes(ptr->pointee));
   return IR::Val::StackAddr(addr, ptr->pointee);
 }
 
@@ -242,14 +230,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         case Addr::Kind::Heap: {
 #define LOAD_FROM_HEAP(lang_type, ctor, cpp_type)                              \
   if (cmd.type == lang_type) {                                                 \
-    return IR::Val::ctor(*static_cast<cpp_type *>(addr.as_heap));              \
+    return ctor(*static_cast<cpp_type *>(addr.as_heap));                       \
   }
-          LOAD_FROM_HEAP(type::Bool, Bool, bool);
-          LOAD_FROM_HEAP(type::Char, Char, char);
-          LOAD_FROM_HEAP(type::Int, Int, i32);
-          LOAD_FROM_HEAP(type::Real, Real, double);
-          LOAD_FROM_HEAP(type::Code, CodeBlock, AST::CodeBlock);
-          LOAD_FROM_HEAP(type::Type_, Type, const type::Type *);
+          LOAD_FROM_HEAP(type::Bool, IR::Val::Bool, bool);
+          LOAD_FROM_HEAP(type::Char, IR::Val::Char, char);
+          LOAD_FROM_HEAP(type::Int, IR::Val::Int, i32);
+          LOAD_FROM_HEAP(type::Real, IR::Val::Real, double);
+          // LOAD_FROM_HEAP(type::Code, IR::Val::CodeBlock, AST::CodeBlock);
+          LOAD_FROM_HEAP(type::Type_, IR::Val::Type, const type::Type *);
           if (cmd.type->is<type::Pointer>()) {
             return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
                                  cmd.type->as<type::Pointer>().pointee);
@@ -258,10 +246,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                                  *static_cast<size_t *>(addr.as_heap));
           } else if (cmd.type->is<type::Flags>()) {
             return IR::Val::Flags(&cmd.type->as<type::Flags>(),
-                                 *static_cast<size_t *>(addr.as_heap));
+                                  *static_cast<size_t *>(addr.as_heap));
           } else {
             NOT_YET("Don't know how to load type: ", cmd.type);
           }
+          NOT_YET("Don't know how to load type: ", cmd.type);
 #undef LOAD_FROM_HEAP
         } break;
         case Addr::Kind::Stack: {
@@ -273,8 +262,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           LOAD_FROM_STACK(type::Char, Char, char);
           LOAD_FROM_STACK(type::Int, Int, i32);
           LOAD_FROM_STACK(type::Real, Real, double);
-          LOAD_FROM_STACK(type::Code, CodeBlock, AST::CodeBlock);
-          LOAD_FROM_STACK(type::String, StrLit, std::string);
+          // TODO LOAD_FROM_STACK(type::Code, CodeBlock, AST::CodeBlock);
+          // TODO LOAD_FROM_STACK(type::String, StrLit, std::string);
           LOAD_FROM_STACK(type::Type_, Type, const type::Type *);
           if (cmd.type->is<type::Pointer>()) {
             switch (addr.kind) {
@@ -299,7 +288,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             call_stack.top().fn_->dump();
             NOT_YET("Don't know how to load type: ", cmd.type);
           }
-#undef LOAD_FROM_STACK
+#undef LOAD_FROM_STACK_IF
         } break;
       }
     } break;
@@ -318,16 +307,22 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           global_vals[addr.as_global] = resolved[0];
           return IR::Val::None();
         case Addr::Kind::Stack:
-          std::visit(base::overloaded{[this, &addr](EnumVal e) {
-                                        stack_.Store(e.value, addr.as_stack);
-                                      },
-                                      [this, &addr](FlagsVal f) {
-                                        stack_.Store(f.value, addr.as_stack);
-                                      },
-                                      [this, &addr](const auto &v) {
-                                        stack_.Store(v, addr.as_stack);
-                                      }},
-                     resolved[0].value);
+          std::visit(
+              base::overloaded{[this, &addr](EnumVal e) {
+                                 stack_.Store(e.value, addr.as_stack);
+                               },
+                               [this, &addr](FlagsVal f) {
+                                 stack_.Store(f.value, addr.as_stack);
+                               },
+                               [this, &addr](const auto &v) {
+                                 if constexpr (std::is_trivial_v<
+                                                   std::decay_t<decltype(v)>>) {
+                                   stack_.Store(v, addr.as_stack);
+                                 } else {
+                                   NOT_YET();
+                                 }
+                               }},
+              resolved[0].value);
           return IR::Val::None();
         case Addr::Kind::Heap:
           std::visit(

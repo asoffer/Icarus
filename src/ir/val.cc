@@ -103,7 +103,7 @@ std::string Val::to_string() const {
   return std::visit(
       base::overloaded{
           [this](Register reg) -> std::string {
-            return this->type->to_string() + " r." + std::to_string(reg);
+            return this->type->to_string() + " " + reg.to_string();
           },
           [](IR::Addr addr) -> std::string { return addr.to_string(); },
           [this](bool b) -> std::string {
@@ -141,10 +141,7 @@ std::string Val::to_string() const {
             return std::to_string(reinterpret_cast<uintptr_t>(b));
           },
           [](AST::Expression *) -> std::string { return "<expr>"; },
-          [](BlockIndex b) -> std::string {
-            return "block #" + std::to_string(b);
-          },
-
+          [](BlockIndex b) -> std::string { return b.to_string(); },
           [](const std::string &s) -> std::string {
             return "string \"" + Escaped(s) + "\"";
           },

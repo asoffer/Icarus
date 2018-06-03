@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <stack>
 
+#include "base/untyped_buffer.h"
 #include "ir/basic_block.h"
 #include "ir/cmd.h"
 #include "ir/val.h"
@@ -10,59 +11,25 @@
 namespace IR {
 struct Func;
 
+// This is basically just a buffer. Why wrap it?
 struct Stack {
   Stack() = delete;
-  Stack(size_t cap) : capacity_(cap), stack_(calloc(1, capacity_)) {}
-  Stack(const Stack &) = delete;
-  Stack(Stack &&other) {
-    free(stack_);
-    stack_          = other.stack_;
-    other.stack_    = nullptr;
-    other.capacity_ = other.size_ = 0;
-  }
-  ~Stack() {
-    for (const auto &dtor : dtors_) { dtor(); }
-    free(stack_);
+  Stack(size_t cap) : buffer_(cap) {}
+
+  template <typename T>
+  T Load(size_t index) {
+    return buffer_.get<T>(index);
   }
 
-  template <typename T> T Load(size_t index) {
-    ASSERT((index & (alignof(T) - 1)) == 0u);  // Alignment error
-    if constexpr (std::is_trivially_default_constructible_v<T>) {
-      return *reinterpret_cast<T *>(this->location(index));
-    } else {
-      T *ptr = *reinterpret_cast<T **>(this->location(index));
-      if (ptr == nullptr) {
-        ptr = new T;
-        dtors_.emplace_back([this, index]() {
-          delete *reinterpret_cast<T **>(this->location(index));
-        });
-      }
-      return *ptr;
-    }
-  }
-
-  template <typename T> void Store(T val, size_t index) {
-    if constexpr (std::is_trivially_default_constructible_v<T>) {
-      *reinterpret_cast<T *>(this->location(index)) = val;
-    } else {
-      auto *loc = reinterpret_cast<T **>(this->location(index));
-      delete *loc;
-      *loc = new T(std::move(val));
-    }
+  template <typename T>
+  void Store(T val, size_t index) {
+    buffer_.set(index, val);
   }
 
   IR::Val Push(const type::Pointer *ptr);
 
-  std::vector<std::function<void()>> dtors_;
-  size_t capacity_ = 0;
-  size_t size_     = 0;
-  void *stack_     = nullptr;
-
 private:
-  void *location(size_t index) {
-    ASSERT(index < capacity_);
-    return reinterpret_cast<void *>(reinterpret_cast<char *>(stack_) + index);
-  }
+  base::untyped_buffer buffer_;
 };
 
 struct ExecContext {
