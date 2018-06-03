@@ -1,11 +1,13 @@
 #include "ir/val.h"
 
 #include <sstream>
+#include <unordered_set>
 
 #include "ast/block_literal.h"
 #include "ast/codeblock.h"
 #include "ast/function_literal.h"
 #include "ast/scope_literal.h"
+#include "base/guarded.h"
 #include "ir/func.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -26,6 +28,13 @@ Val Val::Block(AST::BlockLiteral *b) {
  BlockSequence seq; 
  seq.seq_.push_back(b);
   return BlockSeq(std::move(seq));
+}
+
+static base::guarded<std::unordered_set<std::string>> GlobalStringSet;
+Val Val::StrLit(const std::string &str) {
+  auto handle = GlobalStringSet.lock();
+  auto [iter, success] = handle->insert(str);
+  return Val(type::String, iter->c_str());
 }
 
 Val Val::Struct() { return Val(type::Type_, new type::Struct); }
@@ -83,9 +92,9 @@ Val Val::Null(const type::Type *t) {
 }
 Val Val::NullPtr() { return Val(type::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
 
-static std::string Escaped(const std::string& s) {
+static std::string Escaped(const char *cstr) {
   std::stringstream ss;
-  for (char c : s) {
+  for (char c = *cstr; c != '\0'; ++cstr) {
     switch (c) {
     case '\a': ss << R"(\a)"; break;
     case '\b': ss << R"(\b)"; break;
@@ -142,8 +151,8 @@ std::string Val::to_string() const {
           },
           [](AST::Expression *) -> std::string { return "<expr>"; },
           [](BlockIndex b) -> std::string { return b.to_string(); },
-          [](const std::string &s) -> std::string {
-            return "string \"" + Escaped(s) + "\"";
+          [](const char *cstr) -> std::string {
+            return "string \"" + Escaped(cstr) + "\"";
           },
           [](const Module *module) -> std::string {
             // TODO

@@ -99,11 +99,12 @@ template <> struct hash<IR::CmdIndex> {
 namespace IR {
 struct Val {
   const type::Type *type = nullptr;
+  // TODO make trivial: interface, codeblock
   std::variant<
       Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
       const type::Type *, type::Struct *, IR::Func *, AST::Function *,
       AST::ScopeLiteral *, IR::Interface, AST::CodeBlock, AST::Expression *,
-      BlockIndex, std::string, const Module *,
+      BlockIndex, const char *, const Module *,
       AST::BlockLiteral *,  // TODO no longer necessary with blocksequence?
       std::vector<Val>, BlockSequence>
       value{false};
@@ -135,7 +136,7 @@ struct Val {
   }
   static Val Interface(IR::Interface ifc);
 
-  static Val StrLit(std::string str) { return Val(type::String, std::move(str)); }
+  static Val StrLit(const std::string &str);
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);

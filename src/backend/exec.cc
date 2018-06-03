@@ -152,7 +152,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Trunc: return Trunc(resolved[0]);
     case Op::Err:
       return IR::Val::CodeBlock(
-          AST::CodeBlock(std::get<std::string>(resolved[0].value)));
+          AST::CodeBlock(std::get<const char *>(resolved[0].value)));
     case Op::Call: {
       // TODO this feels like a gross hack
       IR::Func *fn = std::visit(
@@ -186,7 +186,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               // TODO is this actually how you want ot print a codeblock? should
               // you be allowed to print a codeblock?
               [](const AST::CodeBlock &cb) { std::cerr << cb.to_string(0); },
-              [](const std::string &s) { std::cerr << s; },
+              [](const char *s) { std::cerr << s; },
               [](const Addr &a) { std::cerr << a.to_string(); },
               [&resolved](EnumVal e) {
                 std::cerr
@@ -379,11 +379,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::InsertField: {
       auto *struct_to_mod = std::get<type::Struct *>(resolved[0].value);
       struct_to_mod->fields_.push_back(type::Struct::Field{
-          std::get<std::string>(resolved[1].value),
+          std::get<const char *>(resolved[1].value),
           std::get<const type::Type *>(resolved[2].value), resolved[3]});
 
       auto[iter, success] = struct_to_mod->field_indices_.emplace(
-          std::get<std::string>(resolved[1].value),
+          std::get<const char *>(resolved[1].value),
           struct_to_mod->fields_.size() - 1);
       ASSERT(success);
 

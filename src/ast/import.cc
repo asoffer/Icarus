@@ -57,7 +57,7 @@ void Import::VerifyType(Context *ctx) {
     ctx->error_log_.InvalidImport(operand_->span);
   } else {
     cache_ =
-        Source::Name{backend::EvaluateAs<std::string>(operand_.get(), ctx)};
+        Source::Name{backend::EvaluateAs<const char *>(operand_.get(), ctx)};
     ScheduleModule(*cache_);
   }
   limit_to(operand_);
