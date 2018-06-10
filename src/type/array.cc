@@ -169,11 +169,10 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
                                      IR::Val::BasicBlock(loop_body), to_incr});
       IR::BasicBlock::Current = exit_block;
 
-
-
+      auto old_buf = IR::ArrayData(arg);
       IR::Store(size_arg, IR::ArrayLength(arg));
-      IR::Store(new_arr, IR::ArrayData(arg));
-      // TODO free the old buffer
+      IR::Free(IR::Load(old_buf));
+      IR::Store(new_arr, old_buf);
       IR::ReturnJump();
     }
   }
