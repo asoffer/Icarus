@@ -7,7 +7,7 @@
 struct Context;
 
 namespace type {
-void CreateLoop(
+std::vector<IR::Val> CreateLoop(
     const std::vector<IR::Val> &entry_vals,
     std::function<IR::Val(const std::vector<IR::Val> &)> loop_phi_fn,
     std::function<std::vector<IR::Val>(const std::vector<IR::Val> &)>

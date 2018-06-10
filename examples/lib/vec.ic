@@ -23,7 +23,6 @@ remove ::= (T :: type, v: *T'vec) -> T {
   return result
 }
 
-
 dump ::= (T :: type, v: T'vec) -> () {
   core.if (v._size == 0) { print "[]" }
   print "[", v._data[0]

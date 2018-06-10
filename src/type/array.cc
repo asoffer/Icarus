@@ -109,7 +109,7 @@ static IR::Val ComputeMin(IR::Val x, IR::Val y) {
   return IR::Func::Current->Command(phi).reg();
 }
 
-void CreateLoop(
+std::vector<IR::Val> CreateLoop(
     const std::vector<IR::Val> &entry_vals,
     std::function<IR::Val(const std::vector<IR::Val> &)> loop_phi_fn,
     std::function<std::vector<IR::Val>(const std::vector<IR::Val> &)>
@@ -148,6 +148,7 @@ void CreateLoop(
   }
 
   IR::BasicBlock::Current = exit_block;
+  return phi_vals;
 }
 
 // TODO resize shoud probably take a custom allocator
@@ -178,7 +179,7 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
       IR::Val min_val  = ComputeMin(IR::Load(IR::ArrayLength(arg)), size_arg);
       IR::Val end_ptr  = IR::PtrIncr(from_ptr, min_val);
 
-      CreateLoop(
+      auto finish_phis = CreateLoop(
           {from_ptr, new_arr},
           [&](const std::vector<IR::Val> &phis) {
             return IR::Eq(phis[0], end_ptr);
@@ -189,6 +190,28 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
             return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1)),
                                IR::PtrIncr(phis[1], IR::Val::Int(1))};
           });
+
+      if (data_type->needs_destroy()) {
+        auto end_old_buf = IR::PtrIncr(IR::ArrayData(arg), IR::ArrayLength(arg));
+        CreateLoop({end_ptr},
+                   [&](const std::vector<IR::Val> &phis) {
+                     return IR::Eq(phis[0], end_old_buf);
+                   },
+                   [&](const std::vector<IR::Val> &phis) {
+                     data_type->EmitDestroy(phis[0], ctx);
+                     return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1))};
+                   });
+      }
+
+      auto end_to_ptr = IR::PtrIncr(new_arr, size_arg);
+      CreateLoop({finish_phis[1]},
+                 [&](const std::vector<IR::Val> &phis) {
+                   return IR::Eq(phis[0], end_to_ptr);
+                 },
+                 [&](const std::vector<IR::Val> &phis) {
+                   data_type->EmitInit(phis[0], ctx);
+                   return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1))};
+                 });
 
       auto old_buf = IR::ArrayData(arg);
       IR::Store(size_arg, IR::ArrayLength(arg));
