@@ -7,6 +7,12 @@
 struct Context;
 
 namespace type {
+void CreateLoop(
+    const std::vector<IR::Val> &entry_vals,
+    std::function<IR::Val(const std::vector<IR::Val> &)> loop_phi_fn,
+    std::function<std::vector<IR::Val>(const std::vector<IR::Val> &)>
+        loop_body_fn);
+
 struct Array : public Type {
   TYPE_FNS(Array);
   Array(const Type *t) : data_type(t), len(0), fixed_length(false) {}

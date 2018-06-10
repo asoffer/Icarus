@@ -48,35 +48,16 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
 
       IR::Val to_ptr = IR::Index(var, IR::Val::Int(0));
 
-      auto exit_block = IR::Func::Current->AddBlock();
-      auto init_block = IR::BasicBlock::Current;
-      auto loop_phi   = IR::Func::Current->AddBlock();
-      IR::UncondJump(loop_phi);
-
-      IR::BasicBlock::Current = loop_phi;
-      auto from_phi           = IR::Phi(Ptr(from_array_type->data_type));
-      auto to_phi             = IR::Phi(Ptr(data_type));
-      auto from_phi_reg       = IR::Func::Current->Command(from_phi).reg();
-      auto to_phi_reg         = IR::Func::Current->Command(to_phi).reg();
-
-      IR::BasicBlock::Current =
-          IR::EarlyExitOn<true>(exit_block, IR::Eq(from_phi_reg, from_end_ptr));
-      // Loop body
-
-      EmitCopyInit(from_array_type->data_type, data_type,
-                   PtrCallFix(from_phi_reg), to_phi_reg, ctx);
-
-      IR::Func::Current->SetArgs(
-          from_phi, {IR::Val::BasicBlock(init_block), from_ptr,
-                     IR::Val::BasicBlock(IR::BasicBlock::Current),
-                     IR::PtrIncr(from_phi_reg, IR::Val::Int(1ul))});
-      IR::Func::Current->SetArgs(to_phi,
-                                 {IR::Val::BasicBlock(init_block), to_ptr,
-                                  IR::Val::BasicBlock(IR::BasicBlock::Current),
-                                  IR::PtrIncr(to_phi_reg, IR::Val::Int(1ul))});
-      IR::UncondJump(loop_phi);
-
-      IR::BasicBlock::Current = exit_block;
+      CreateLoop({from_ptr, to_ptr},
+                 [&](const std::vector<IR::Val> &phis) {
+                   return IR::Eq(phis[0], from_end_ptr);
+                 },
+                 [&](const std::vector<IR::Val> &phis) {
+                   EmitCopyInit(from_array_type->data_type, data_type,
+                                PtrCallFix(phis[0]), phis[1], ctx);
+                   return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1ul)),
+                                      IR::PtrIncr(phis[1], IR::Val::Int(1ul))};
+                 });
       IR::ReturnJump();
     }
   }

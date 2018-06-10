@@ -80,37 +80,26 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       auto length_var = fixed_length
                             ? IR::Val::Int(static_cast<i32>(len))
                             : IR::Load(IR::ArrayLength(repr_func_->Argument(0)));
-      auto init_block = IR::BasicBlock::Current = IR::EarlyExitOn<true>(
+      IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           exit_block, IR::Eq(length_var, IR::Val::Int(0)));
-      auto ptr           = IR::Index(repr_func_->Argument(0), IR::Val::Int(0));
-
-      auto loop_phi  = repr_func_->AddBlock();
-      auto loop_body = repr_func_->AddBlock();
+      auto ptr = IR::Index(repr_func_->Argument(0), IR::Val::Int(0));
 
       data_type->EmitRepr(PtrCallFix(ptr), ctx);
-      IR::UncondJump(loop_phi);
 
-      IR::BasicBlock::Current = loop_phi;
-      auto countdown     = IR::Phi(Int);
-      auto countdown_reg = IR::Func::Current->Command(countdown).reg();
-      auto phi           = IR::Phi(Ptr(data_type));
-      auto phi_reg       = IR::Func::Current->Command(phi).reg();
-      auto elem_ptr      = IR::PtrIncr(phi_reg, IR::Val::Int(1));
-      auto next          = IR::Sub(countdown_reg, IR::Val::Int(1));
-      IR::CondJump(IR::Eq(next, IR::Val::Int(0)), exit_block, loop_body);
+      CreateLoop({ptr, IR::Sub(length_var, IR::Val::Int(1))},
+                 [&](const std::vector<IR::Val> &phis) {
+                   return IR::Eq(phis[1], IR::Val::Int(0));
+                 },
+                 [&](const std::vector<IR::Val> &phis) {
+                   auto elem_ptr = IR::PtrIncr(phis[0], IR::Val::Int(1));
 
-      IR::BasicBlock::Current = loop_body;
-      IR::Print(IR::Val::Char(','));
-      IR::Print(IR::Val::Char(' '));
-      data_type->EmitRepr(PtrCallFix(elem_ptr), ctx);
-      IR::UncondJump(loop_phi);
+                   IR::Print(IR::Val::Char(','));
+                   IR::Print(IR::Val::Char(' '));
+                   data_type->EmitRepr(PtrCallFix(elem_ptr), ctx);
 
-      IR::Func::Current->SetArgs(
-          phi, {IR::Val::BasicBlock(init_block), ptr,
-                IR::Val::BasicBlock(IR::BasicBlock::Current), elem_ptr});
-      IR::Func::Current->SetArgs(countdown,
-                                 {IR::Val::BasicBlock(init_block), length_var,
-                                  IR::Val::BasicBlock(IR::BasicBlock::Current), next});
+                   return std::vector{elem_ptr, IR::Sub(phis[1], IR::Val::Int(1))};
+                 });
+      IR::UncondJump(exit_block);
 
       IR::BasicBlock::Current = exit_block;
       IR::Print(IR::Val::Char(']'));

@@ -20,30 +20,19 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
     auto arg                = destroy_func_->Argument(0);
 
     if (data_type->needs_destroy()) {
-      auto loop_phi   = IR::Func::Current->AddBlock();
-      auto loop_body  = IR::Func::Current->AddBlock();
-      auto exit_block = IR::Func::Current->AddBlock();
-
       IR::Val ptr = IR::Index(arg, IR::Val::Int(0));
       auto end_ptr =
           IR::PtrIncr(ptr, fixed_length ? IR::Val::Int(static_cast<i32>(len))
                                         : IR::Load(IR::ArrayLength(arg)));
-      IR::UncondJump(loop_phi);
 
-      IR::BasicBlock::Current = loop_phi;
-      auto phi                = IR::Phi(Ptr(data_type));
-      auto phi_reg            = IR::Func::Current->Command(phi).reg();
-      IR::CondJump(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
-
-      IR::BasicBlock::Current = loop_body;
-      data_type->EmitDestroy(phi_reg, ctx);
-      auto incr = IR::PtrIncr(phi_reg, IR::Val::Int(1));
-      IR::UncondJump(loop_phi);
-
-      destroy_func_->SetArgs(phi, {IR::Val::BasicBlock(destroy_func_->entry()),
-                                   ptr, IR::Val::BasicBlock(loop_body), incr});
-
-      IR::BasicBlock::Current = exit_block;
+      CreateLoop({ptr},
+                 [&](const std::vector<IR::Val> &phis) {
+                   return IR::Eq(phis[0], end_ptr);
+                 },
+                 [&](const std::vector<IR::Val> &phis) {
+                   data_type->EmitDestroy(phis[0], ctx);
+                   return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1))};
+                 });
     }
 
     if (!fixed_length) { IR::Free(IR::Load(IR::ArrayData(arg))); }

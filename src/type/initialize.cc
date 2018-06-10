@@ -26,30 +26,20 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
     CURRENT_FUNC(init_func_) {
       IR::BasicBlock::Current = init_func_->entry();
 
-      auto loop_phi   = IR::Func::Current->AddBlock();
-      auto loop_body  = IR::Func::Current->AddBlock();
-      auto exit_block = IR::Func::Current->AddBlock();
-
       auto ptr        = IR::Index(init_func_->Argument(0), IR::Val::Int(0));
       auto length_var = IR::Val::Int(static_cast<i32>(len));
       auto end_ptr    = IR::PtrIncr(ptr, length_var);
-      IR::UncondJump(loop_phi);
 
-      IR::BasicBlock::Current = loop_phi;
-      auto phi           = IR::Phi(Ptr(data_type));
-      auto phi_reg       = IR::Func::Current->Command(phi).reg();
-      IR::CondJump(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
+      CreateLoop({ptr},
+                 [&](const std::vector<IR::Val> &phis) {
+                   return IR::Eq(phis[0], end_ptr);
+                 },
+                 [&](const std::vector<IR::Val> &phis) {
+                   data_type->EmitInit(phis[0], ctx);
+                   return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1))};
+                 });
 
-      IR::BasicBlock::Current = loop_body;
-      data_type->EmitInit(phi_reg, ctx);
-      auto incr = IR::PtrIncr(phi_reg, IR::Val::Int(1));
-      IR::UncondJump(loop_phi);
-
-      IR::BasicBlock::Current = exit_block;
       IR::ReturnJump();
-
-      IR::Func::Current->SetArgs(phi, {IR::Val::BasicBlock(init_func_->entry()), ptr,
-                                       IR::Val::BasicBlock(loop_body), incr});
     }
   }
 

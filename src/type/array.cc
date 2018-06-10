@@ -109,6 +109,48 @@ static IR::Val ComputeMin(IR::Val x, IR::Val y) {
   return IR::Func::Current->Command(phi).reg();
 }
 
+void CreateLoop(
+    const std::vector<IR::Val> &entry_vals,
+    std::function<IR::Val(const std::vector<IR::Val> &)> loop_phi_fn,
+    std::function<std::vector<IR::Val>(const std::vector<IR::Val> &)>
+        loop_body_fn) {
+  auto entry_block_val = IR::Val::BasicBlock(IR::BasicBlock::Current);
+
+  auto loop_phi   = IR::Func::Current->AddBlock();
+  auto loop_body  = IR::Func::Current->AddBlock();
+  auto exit_block = IR::Func::Current->AddBlock();
+
+  IR::UncondJump(loop_phi);
+  IR::BasicBlock::Current = loop_phi;
+
+  std::vector<IR::CmdIndex> phis;
+  phis.reserve(entry_vals.size());
+  std::vector<IR::Val> phi_vals;
+  phi_vals.reserve(phis.size());
+  for (const auto &val : entry_vals) {
+    auto phi = IR::Phi(val.type);
+    phis.push_back(phi);
+    phi_vals.push_back(IR::Func::Current->Command(phi).reg());
+  }
+
+  auto exit_cond = loop_phi_fn(phi_vals);
+  IR::CondJump(exit_cond, exit_block, loop_body);
+
+  IR::BasicBlock::Current = loop_body;
+  auto new_phis           = loop_body_fn(phi_vals);
+  IR::UncondJump(loop_phi);
+
+  auto loop_body_val = IR::Val::BasicBlock(loop_body);
+  for (size_t i = 0; i < phis.size(); ++i) {
+    IR::Func::Current->SetArgs(
+        phis[i],
+        {entry_block_val, entry_vals[i], loop_body_val, new_phis[i]});
+  }
+
+  IR::BasicBlock::Current = exit_block;
+}
+
+// TODO resize shoud probably take a custom allocator
 void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
                        Context *ctx) const {
   // TODO these could maybe be moved into separate structs, or templated
@@ -132,42 +174,21 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
                   IR::Val::Int(
                       Architecture::InterprettingMachine().bytes(data_type))));
 
-      auto loop_phi   = IR::Func::Current->AddBlock();
-      auto loop_body  = IR::Func::Current->AddBlock();
-      auto exit_block = IR::Func::Current->AddBlock();
-
       IR::Val from_ptr = IR::Index(arg, IR::Val::Int(0));
+      IR::Val min_val  = ComputeMin(IR::Load(IR::ArrayLength(arg)), size_arg);
+      IR::Val end_ptr  = IR::PtrIncr(from_ptr, min_val);
 
-      IR::Val min_val = ComputeMin(IR::Load(IR::ArrayLength(arg)), size_arg);
-      auto start_block_val = IR::Val::BasicBlock(IR::BasicBlock::Current);
-
-      auto end_ptr = IR::PtrIncr(from_ptr, min_val);
-      IR::UncondJump(loop_phi);
-
-      IR::BasicBlock::Current = loop_phi;
-      auto from_phi           = IR::Phi(Ptr(data_type));
-      auto from_phi_reg       = IR::Func::Current->Command(from_phi).reg();
-      auto to_phi             = IR::Phi(Ptr(data_type));
-      auto to_phi_reg         = IR::Func::Current->Command(to_phi).reg();
-
-      IR::CondJump(IR::Eq(from_phi_reg, end_ptr), exit_block, loop_body);
-
-      IR::BasicBlock::Current = loop_body;
-      data_type->EmitDestroy(from_phi_reg, ctx);
-      data_type->EmitAssign(data_type, PtrCallFix(from_phi_reg), to_phi_reg, ctx);
-
-      data_type->EmitDestroy(from_phi_reg, ctx);
-
-      auto from_incr = IR::PtrIncr(from_phi_reg, IR::Val::Int(1));
-      auto to_incr   = IR::PtrIncr(to_phi_reg, IR::Val::Int(1));
-      IR::UncondJump(loop_phi);
-
-      resize_func_->SetArgs(
-          from_phi, {start_block_val, from_ptr, IR::Val::BasicBlock(loop_body),
-                     from_incr});
-      resize_func_->SetArgs(to_phi, {start_block_val, new_arr,
-                                     IR::Val::BasicBlock(loop_body), to_incr});
-      IR::BasicBlock::Current = exit_block;
+      CreateLoop(
+          {from_ptr, new_arr},
+          [&](const std::vector<IR::Val> &phis) {
+            return IR::Eq(phis[0], end_ptr);
+          },
+          [&](const std::vector<IR::Val> &phis) {
+            data_type->EmitAssign(data_type, PtrCallFix(phis[0]), phis[1], ctx);
+            data_type->EmitDestroy(phis[0], ctx);
+            return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1)),
+                               IR::PtrIncr(phis[1], IR::Val::Int(1))};
+          });
 
       auto old_buf = IR::ArrayData(arg);
       IR::Store(size_arg, IR::ArrayLength(arg));
