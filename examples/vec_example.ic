@@ -1,0 +1,18 @@
+vec ::= import "examples/lib/vec.ic"
+
+main ::= () -> () {
+  v := vec.make(bool)
+  vec.append(bool, false, &v)
+  vec.dump(bool, v)
+  print "\n"
+
+  vec.append(bool, true, &v)
+  vec.dump(bool, v)
+  print "\n"
+
+  print vec.remove(bool, &v)
+  print "\n"
+
+  vec.dump(bool, v)
+  print "\n"
+}

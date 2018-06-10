@@ -39,7 +39,9 @@ void Import::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 IR::Val Import::EmitIR(Context *ctx) {
   ASSERT(cache_.has_value());
-  return IR::Val::Mod(modules.lock()->at(*cache_).get().get());
+  auto fut = modules.lock()->at(*cache_);
+  auto *mod = fut.get().get();
+  return IR::Val::Mod(mod);
 }
 
 IR::Val Import::EmitLVal(Context *ctx) { UNREACHABLE(); }

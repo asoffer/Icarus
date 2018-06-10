@@ -1,0 +1,36 @@
+core ::= import "examples/lib/core.ic"
+
+vec ::= (T: type) => struct {
+  _size: int
+  _data: [--; T]
+}
+
+make ::= (T :: type) -> T'vec {
+  result: T'vec
+  resize(&result._data, 1)
+  return result
+}
+
+append ::= (T :: type, val: T, v: *T'vec) -> () {
+  core.if (v._data.size == v._size) { resize(&v._data, v._data.size * 2) }
+  v._data[v._size] = val
+  v._size += 1
+}
+
+remove ::= (T :: type, v: *T'vec) -> T {
+  v._size -= 1
+  result := v._data[v._size]
+  return result
+}
+
+
+dump ::= (T :: type, v: T'vec) -> () {
+  core.if (v._size == 0) { print "[]" }
+  print "[", v._data[0]
+  i := 1
+  core.while (i < v._size) {
+    print ", ", v._data[i]
+    i += 1
+  }
+  print "]"
+}
