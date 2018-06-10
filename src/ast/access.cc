@@ -113,6 +113,16 @@ IR::Val AST::Access::EmitLVal(Context *ctx) {
     val = IR::Load(val);
   }
 
+  if (val.type->is<type::Pointer>() &&
+      val.type->as<type::Pointer>().pointee->is<type::Array>()) {
+    auto &arr_type = val.type->as<type::Pointer>().pointee->as<type::Array>();
+    if (arr_type.fixed_length) {
+      return IR::Val::Int(arr_type.len);
+    } else {
+      return IR::Load(IR::ArrayLength(std::move(val)));
+    }
+  }
+
   ASSERT(val.type, Is<type::Pointer>());
   ASSERT(val.type->as<type::Pointer>().pointee, Is<type::Struct>());
 
