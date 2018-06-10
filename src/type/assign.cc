@@ -26,16 +26,18 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
 
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      auto val = fn->Argument(0);
-      auto var = fn->Argument(1);
-      IR::Val len = from_array_type->fixed_length
+      auto val                = fn->Argument(0);
+      auto var                = fn->Argument(1);
+      IR::Val len             = from_array_type->fixed_length
                         ? IR::Val::Int(static_cast<i32>(from_array_type->len))
                         : IR::Load(IR::ArrayLength(val));
-      IR::Val from_ptr = IR::Index(val, IR::Val::Int(0));
+      IR::Val from_ptr     = IR::Index(val, IR::Val::Int(0));
       IR::Val from_end_ptr = IR::PtrIncr(from_ptr, len);
 
       if (!fixed_length) {
-        EmitDestroy(var, ctx);
+        ComputeDestroyWithoutLock(ctx);
+        IR::Call(IR::Val::Func(destroy_func_), {std::move(var)}, {});
+
         // TODO Architecture dependence?
         auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
             len, data_type);
@@ -48,14 +50,14 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
 
       auto exit_block = IR::Func::Current->AddBlock();
       auto init_block = IR::BasicBlock::Current;
-      auto loop_phi = IR::Func::Current->AddBlock();
+      auto loop_phi   = IR::Func::Current->AddBlock();
       IR::UncondJump(loop_phi);
 
       IR::BasicBlock::Current = loop_phi;
-      auto from_phi = IR::Phi(Ptr(from_array_type->data_type));
-      auto to_phi = IR::Phi(Ptr(data_type));
-      auto from_phi_reg = IR::Func::Current->Command(from_phi).reg();
-      auto to_phi_reg = IR::Func::Current->Command(to_phi).reg();
+      auto from_phi           = IR::Phi(Ptr(from_array_type->data_type));
+      auto to_phi             = IR::Phi(Ptr(data_type));
+      auto from_phi_reg       = IR::Func::Current->Command(from_phi).reg();
+      auto to_phi_reg         = IR::Func::Current->Command(to_phi).reg();
 
       IR::BasicBlock::Current =
           IR::EarlyExitOn<true>(exit_block, IR::Eq(from_phi_reg, from_end_ptr));
@@ -81,8 +83,8 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   IR::Call(IR::Val::Func(fn), {from, to}, {});
 }
 
-void Pointer::EmitAssign(const Type *from_type, IR::Val from,
-                         IR::Val to, Context*ctx) const {
+void Pointer::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
+                         Context *ctx) const {
   ASSERT(this == from_type);
   IR::Store(from, to);
 }
@@ -105,16 +107,16 @@ void Flags::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   IR::Store(from, to);
 }
 
-void Variant::EmitAssign(const Type *from_type, IR::Val from,
-                         IR::Val to, Context*ctx) const {
+void Variant::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
+                         Context *ctx) const {
   if (from_type->is<Variant>()) {
     // TODO find the best match for variant types. For instance, we allow
     // assignments like:
     // [3; int] | [4; bool] -> [--; int] | [--; bool]
     auto actual_type = IR::Load(IR::VariantType(from));
-    auto landing = IR::Func::Current->AddBlock();
+    auto landing     = IR::Func::Current->AddBlock();
     for (const Type *v : from_type->as<Variant>().variants_) {
-      auto next_block = IR::Func::Current->AddBlock();
+      auto next_block         = IR::Func::Current->AddBlock();
       IR::BasicBlock::Current = IR::EarlyExitOn<false>(
           next_block, IR::Eq(actual_type, IR::Val::Type(v)));
       IR::Store(IR::Val::Type(v), IR::VariantType(to));
@@ -146,8 +148,8 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
 
     CURRENT_FUNC(assign_func) {
       IR::BasicBlock::Current = assign_func->entry();
-      auto val = assign_func->Argument(0);
-      auto var = assign_func->Argument(1);
+      auto val                = assign_func->Argument(0);
+      auto var                = assign_func->Argument(1);
 
       for (size_t i = 0; i < fields_.size(); ++i) {
         // TODO is that the right scope?
@@ -163,13 +165,13 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   IR::Call(IR::Val::Func(assign_func), {from, to}, {});
 }
 
-void Function::EmitAssign(const Type *from_type, IR::Val from,
-                          IR::Val to, Context*ctx) const {
+void Function::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
+                          Context *ctx) const {
   ASSERT(this == from_type);
   IR::Store(from, to);
 }
-void Primitive::EmitAssign(const Type *from_type, IR::Val from,
-                           IR::Val to, Context*ctx) const {
+void Primitive::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
+                           Context *ctx) const {
   ASSERT(this == from_type);
   IR::Store(from, to);
 }

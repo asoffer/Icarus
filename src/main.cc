@@ -126,6 +126,7 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
     auto gened_fn =
         backend::EvaluateAs<AST::Function *>(decl.init_val.get(), &ctx)
             ->generate(bc, ctx.mod_);
+    if (gened_fn == nullptr) { continue; }
     gened_fn->CompleteBody(ctx.mod_);
     auto ir_fn = gened_fn->ir_func_;
 

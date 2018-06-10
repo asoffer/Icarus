@@ -9,20 +9,17 @@ void Primitive::EmitDestroy(IR::Val, Context *ctx) const {}
 
 extern IR::Val PtrCallFix(Type *t, IR::Val v);
 
-void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
-  if (!needs_destroy()) { return; }
+void Array::ComputeDestroyWithoutLock(Context *ctx) const {
+  if (destroy_func_ != nullptr) { return; }
+  destroy_func_ = ctx->mod_->AddFunc(
+      Func({Ptr(this)}, {}),
+      std::vector<std::pair<std::string, AST::Expression *>>{{"arg", nullptr}});
 
-  std::unique_lock lock(mtx_);
-  if (destroy_func_ == nullptr) {
-    destroy_func_ = ctx->mod_->AddFunc(
-        Func({Ptr(this)}, {}),
-        std::vector<std::pair<std::string, AST::Expression *>>{
-            {"arg", nullptr}});
+  CURRENT_FUNC(destroy_func_) {
+    IR::BasicBlock::Current = destroy_func_->entry();
+    auto arg                = destroy_func_->Argument(0);
 
-    CURRENT_FUNC(destroy_func_) {
-      IR::BasicBlock::Current = destroy_func_->entry();
-
-      auto arg        = destroy_func_->Argument(0);
+    if (data_type->needs_destroy()) {
       auto loop_phi   = IR::Func::Current->AddBlock();
       auto loop_body  = IR::Func::Current->AddBlock();
       auto exit_block = IR::Func::Current->AddBlock();
@@ -34,22 +31,32 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
       IR::UncondJump(loop_phi);
 
       IR::BasicBlock::Current = loop_phi;
-      auto phi           = IR::Phi(Ptr(data_type));
-      auto phi_reg       = IR::Func::Current->Command(phi).reg();
+      auto phi                = IR::Phi(Ptr(data_type));
+      auto phi_reg            = IR::Func::Current->Command(phi).reg();
       IR::CondJump(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
 
       IR::BasicBlock::Current = loop_body;
       data_type->EmitDestroy(phi_reg, ctx);
+      auto incr = IR::PtrIncr(phi_reg, IR::Val::Int(1));
       IR::UncondJump(loop_phi);
 
       destroy_func_->SetArgs(phi, {IR::Val::BasicBlock(destroy_func_->entry()),
-                                   ptr, IR::Val::BasicBlock(loop_body),
-                                   IR::PtrIncr(phi_reg, IR::Val::Int(1))});
+                                   ptr, IR::Val::BasicBlock(loop_body), incr});
 
       IR::BasicBlock::Current = exit_block;
-      if (!fixed_length) { IR::Free(IR::Load(IR::ArrayData(arg))); }
-      IR::ReturnJump();
     }
+
+    if (!fixed_length) { IR::Free(IR::Load(IR::ArrayData(arg))); }
+    IR::ReturnJump();
+  }
+}
+
+void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
+  if (!needs_destroy()) { return; }
+
+  {
+    std::unique_lock lock(mtx_);
+    ComputeDestroyWithoutLock(ctx);
   }
   IR::Call(IR::Val::Func(destroy_func_), {id_val}, {});
 }
@@ -62,20 +69,22 @@ void Variant::EmitDestroy(IR::Val, Context *ctx) const { NOT_YET(); }
 void Scope::EmitDestroy(IR::Val, Context *ctx) const { UNREACHABLE(); }
 
 void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
-  std::unique_lock lock(mtx_);
-  if (destroy_func_ == nullptr) {
-    destroy_func_ = ctx->mod_->AddFunc(
-        Func({Ptr(this)}, {}),
-        std::vector<std::pair<std::string, AST::Expression *>>{
-            {"arg", nullptr}});
+  {
+    std::unique_lock lock(mtx_);
+    if (destroy_func_ == nullptr) {
+      destroy_func_ = ctx->mod_->AddFunc(
+          Func({Ptr(this)}, {}),
+          std::vector<std::pair<std::string, AST::Expression *>>{
+              {"arg", nullptr}});
 
-    CURRENT_FUNC(destroy_func_) {
-      IR::BasicBlock::Current = destroy_func_->entry();
-      for (size_t i = 0; i < fields_.size(); ++i) {
-        fields_[i].type->EmitDestroy(IR::Field(destroy_func_->Argument(0), i),
-                                     ctx);
+      CURRENT_FUNC(destroy_func_) {
+        IR::BasicBlock::Current = destroy_func_->entry();
+        for (size_t i = 0; i < fields_.size(); ++i) {
+          fields_[i].type->EmitDestroy(IR::Field(destroy_func_->Argument(0), i),
+                                       ctx);
+        }
+        IR::ReturnJump();
       }
-      IR::ReturnJump();
     }
   }
   IR::Call(IR::Val::Func(destroy_func_), {id_val}, {});

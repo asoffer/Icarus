@@ -208,6 +208,9 @@ void Store(Val v1, Val v2) {
 Val PtrIncr(Val v1, Val v2) {
   ASSERT(v1.type, Is<type::Pointer>());
   ASSERT(v2.type == type::Int);
+  if (i32 *n = std::get_if<i32>(&v2.value)) {
+    if (*n == 0) { return v1; }
+  }
   return MakeCmd(v1.type, Op::PtrIncr,
                  std::vector{std::move(v1), std::move(v2)});
 }

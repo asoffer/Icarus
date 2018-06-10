@@ -93,3 +93,5 @@ MAKE_LOG_ERROR(EvaluatingNonConstant,
 MAKE_LOG_ERROR(
     EarlyRequiredBlock,
     "Required block appears on the left-hand side of `|` operator.")
+MAKE_LOG_ERROR(NoCallMatch,
+               "Failed to find a matching function signature to call.")

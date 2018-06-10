@@ -14,7 +14,6 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
   if (!fixed_length) {
     IR::Store(IR::Val::Int(0), IR::ArrayLength(id_val));
     IR::Store(IR::Malloc(data_type, IR::Val::Int(0)), IR::ArrayData(id_val));
-    return;
   }
 
   std::unique_lock lock(mtx_);

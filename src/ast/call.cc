@@ -389,8 +389,8 @@ void Call::VerifyType(Context *ctx) {
   });
 
   if (dispatch_table_.total_size_ != expanded_size) {
-    LOG << "Failed to find a match for everything. ("
-        << dispatch_table_.total_size_ << " vs " << expanded_size << ")";
+    // TODO give a better error message here.
+    ctx->error_log_.NoCallMatch(span);
     type = fn_->type = type::Err;
     limit_to(StageRange::Nothing());
     return;

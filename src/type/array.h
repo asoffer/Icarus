@@ -27,11 +27,12 @@ struct Array : public Type {
   bool fixed_length;
 
 private:
-  mutable std::mutex mtx_;
-  mutable std::unordered_map<const Array *, IR::Func *> assign_fns_;
-  mutable IR::Func *destroy_func_ = nullptr;
-  mutable IR::Func *repr_func_    = nullptr;
-  mutable IR::Func *init_func_    = nullptr;
+ void ComputeDestroyWithoutLock(Context *ctx) const;
+ mutable std::mutex mtx_;
+ mutable std::unordered_map<const Array *, IR::Func *> assign_fns_;
+ mutable IR::Func *destroy_func_ = nullptr;
+ mutable IR::Func *repr_func_    = nullptr;
+ mutable IR::Func *init_func_    = nullptr;
 };
 
 const Array *Arr(const Type *t);
