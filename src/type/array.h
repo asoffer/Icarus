@@ -21,6 +21,7 @@ struct Array : public Type {
     return !fixed_length || data_type->needs_destroy();
   }
 
+  void EmitResize(IR::Val ptr_to_array, IR::Val new_size, Context *ctx) const;
 
   const Type *data_type;
   size_t len;
@@ -33,6 +34,7 @@ private:
  mutable IR::Func *destroy_func_ = nullptr;
  mutable IR::Func *repr_func_    = nullptr;
  mutable IR::Func *init_func_    = nullptr;
+ mutable IR::Func *resize_func_  = nullptr;
 };
 
 const Array *Arr(const Type *t);

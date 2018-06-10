@@ -14,6 +14,7 @@
 // TODO audit every location where frontend::TaggedNode::Invalid is returned to
 // see if you need to log an error.
 
+IR::Val ResizeFunc();
 IR::Val ErrorFunc();
 IR::Val AsciiFunc();
 IR::Val OrdFunc();
@@ -70,6 +71,7 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       {"ord", OrdFunc()},
       {"ascii", AsciiFunc()},
       {"error", ErrorFunc()},
+      {"resize", ResizeFunc()},
       {"exit", IR::Val::Block(nullptr)}};
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     return frontend::TaggedNode::TerminalExpression(span, iter->second);

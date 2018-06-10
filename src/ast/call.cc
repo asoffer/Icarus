@@ -6,6 +6,7 @@
 #include "ast/verify_macros.h"
 #include "ir/func.h"
 #include "scope.h"
+#include "type/array.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/tuple.h"
@@ -21,6 +22,15 @@ extern Type *Char;
 }  // namespace type
 
 IR::Val PtrCallFix(const IR::Val &v);
+
+IR::Val ResizeFunc() {
+  // TODO: this is a super hack. it makes resize special as it can't be treated
+  // like a normal (generic) function.
+  //
+  // Also this is a terrible choice for that function. It's utterly meaningless
+  // and could easily be confused.
+  return IR::Val::None();
+}
 
 IR::Val ErrorFunc() {
   static IR::Func *error_func_ = []() {
@@ -356,14 +366,26 @@ void Call::VerifyType(Context *ctx) {
     return;
   }
 
-  if (fn_->is<Terminal>() && fn_->type != type::Type_) {
+  if (fn_->is<Terminal>()) {
     // Special case for error/ord/ascii
-    if (fn_->as<Terminal>().value == OrdFunc()) {
+    auto fn_val = fn_->as<Terminal>().value;
+    if (fn_val == OrdFunc()) {
       NOT_YET();
-    } else if (fn_->as<Terminal>().value == AsciiFunc()) {
+    } else if (fn_val == AsciiFunc()) {
       NOT_YET();
-    } else if (fn_->as<Terminal>().value == ErrorFunc()) {
+    } else if (fn_val == ErrorFunc()) {
       NOT_YET();
+    } else if (fn_val == ResizeFunc()) {
+      // TODO turn assert into actual checks with error logging. Or maybe allow
+      // named args here?
+      ASSERT(args_.named_.size() == 0u);
+      ASSERT(args_.pos_.size() == 2u);
+      ASSERT(args_.pos_[0]->type, Is<type::Pointer>());
+      ASSERT(args_.pos_[0]->type->as<type::Pointer>().pointee,
+             Is<type::Array>());
+      ASSERT(args_.pos_[1]->type == type::Int);
+      type = type::Void();
+      return;
     } else {
       UNREACHABLE();
     }
@@ -457,8 +479,25 @@ Call *Call::Clone() const {
 }
 
 IR::Val AST::Call::EmitIR(Context *ctx) {
-  if (fn_->is<Terminal>() && fn_->type != type::Type_) {
-    return IR::Call(ErrorFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
+  if (fn_->is<Terminal>()) {
+    // Special case for error/ord/ascii
+    auto fn_val = fn_->as<Terminal>().value;
+    if (fn_val == OrdFunc()) {
+      return IR::Call(OrdFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
+    } else if (fn_val == AsciiFunc()) {
+      return IR::Call(AsciiFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
+    } else if (fn_val == ErrorFunc()) {
+      return IR::Call(ErrorFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
+    } else if (fn_val == ResizeFunc()) {
+      args_.pos_[0]
+          ->type->as<type::Pointer>()
+          .pointee->as<type::Array>()
+          .EmitResize(args_.pos_[0]->EmitIR(ctx), args_.pos_[1]->EmitIR(ctx),
+                      ctx);
+
+      return IR::Val::None();
+    }
+    UNREACHABLE();
   }
 
   ASSERT(dispatch_table_.bindings_.size() > 0u);

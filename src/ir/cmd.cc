@@ -15,6 +15,7 @@ BlockIndex BasicBlock::Current;
 
 Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
     : args(std::move(arg_vec)), op_code_(op), type(t) {
+  ASSERT(Func::Current != nullptr);
   CmdIndex cmd_index{
       BasicBlock::Current,
       static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
