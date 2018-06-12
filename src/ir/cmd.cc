@@ -263,6 +263,12 @@ Val And(Val v1, Val v2) {
   } while (false)
 
 Val Add(Val v1, Val v2) {
+  if (auto *s1 = std::get_if<std::string_view>(&v1.value),
+      *s2      = std::get_if<std::string_view>(&v2.value);
+      s1 != nullptr && s2 != nullptr) {
+    return IR::Val::CharBuf(std::string(*s1) + std::string(*s2));
+  }
+
   CONSTANT_PROPOGATION(i32, std::plus<i32>{}, Int);
   CONSTANT_PROPOGATION(double, std::plus<double>{}, Real);
   CONSTANT_PROPOGATION(char, std::plus<char>{}, Char);

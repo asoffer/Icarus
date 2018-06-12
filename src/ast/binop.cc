@@ -243,9 +243,7 @@ void Binop::VerifyType(Context *ctx) {
 #define CASE(OpName, symbol, ret_type)                                         \
   case Operator::OpName: {                                                     \
     if ((lhs->type == type::Int && rhs->type == type::Int) ||                  \
-        (lhs->type == type::Real && rhs->type == type::Real) ||                \
-        (lhs->type == type::Code && rhs->type == type::Code)) {                \
-      /* TODO type::Code should only be valid for Add, not Sub, etc */         \
+        (lhs->type == type::Real && rhs->type == type::Real)) {                \
       type = ret_type;                                                         \
     } else {                                                                   \
       FnArgs<Expression *> args;                                               \
@@ -257,17 +255,48 @@ void Binop::VerifyType(Context *ctx) {
     }                                                                          \
   } break;
 
-      CASE(Add, "+", lhs->type);
       CASE(Sub, "-", lhs->type);
       CASE(Div, "/", lhs->type);
       CASE(Mod, "%", lhs->type);
-      CASE(AddEq, "+=", type::Void());
       CASE(SubEq, "-=", type::Void());
       CASE(MulEq, "*=", type::Void());
       CASE(DivEq, "/=", type::Void());
       CASE(ModEq, "%=", type::Void());
 #undef CASE
-
+    case Operator::Add: {
+      if ((lhs->type == type::Int && rhs->type == type::Int) ||
+          (lhs->type == type::Real && rhs->type == type::Real) ||
+          (lhs->type == type::Code && rhs->type == type::Code)) {
+        type = lhs->type;
+      } else if (lhs->type->is<type::CharBuffer>() &&
+                 rhs->type->is<type::CharBuffer>()) {
+        type = type::CharBuf(lhs->type->as<type::CharBuffer>().length_ +
+                             rhs->type->as<type::CharBuffer>().length_);
+      } else {
+        FnArgs<Expression *> args;
+        args.pos_ = std::vector{lhs.get(), rhs.get()};
+        std::tie(dispatch_table_, type) =
+            DispatchTable::Make(args, "+", scope_, ctx);
+        ASSERT(type, Not(Is<type::Tuple>()));
+        if (type == type::Err) { limit_to(StageRange::Nothing()); }
+      }
+    } break;
+    case Operator::AddEq: {
+      if ((lhs->type == type::Int && rhs->type == type::Int) ||
+          (lhs->type == type::Real && rhs->type == type::Real) ||
+          (lhs->type == type::Code &&
+           rhs->type == type::Code)) { /* TODO type::Code should only be valid
+                                          for Add, not Sub, etc */
+        type = type::Void();
+      } else {
+        FnArgs<Expression *> args;
+        args.pos_ = std::vector{lhs.get(), rhs.get()};
+        std::tie(dispatch_table_, type) =
+            DispatchTable::Make(args, "+=", scope_, ctx);
+        ASSERT(type, Not(Is<type::Tuple>()));
+        if (type == type::Err) { limit_to(StageRange::Nothing()); }
+      }
+    } break;
     // Mul is done separately because of the function composition
     case Operator::Mul: {
       if ((lhs->type == type::Int && rhs->type == type::Int) ||
