@@ -52,6 +52,7 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
 
 void Enum::EmitDestroy(IR::Val, Context *ctx) const {}
 void Flags::EmitDestroy(IR::Val, Context *ctx) const {}
+void CharBuffer::EmitDestroy(IR::Val, Context *ctx) const {}
 void Function::EmitDestroy(IR::Val, Context *ctx) const {}
 void Pointer::EmitDestroy(IR::Val, Context *ctx) const {}
 void Variant::EmitDestroy(IR::Val, Context *ctx) const { NOT_YET(); }

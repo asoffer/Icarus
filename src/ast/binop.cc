@@ -8,6 +8,7 @@
 #include "context.h"
 #include "ir/func.h"
 #include "type/array.h"
+#include "type/char_buffer.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
@@ -172,9 +173,9 @@ void Binop::VerifyType(Context *ctx) {
   switch (op) {
     case Operator::Index: {
       type = type::Err;
-      if (lhs->type == type::String) {
+      if (lhs->type->is<type::CharBuffer>()) {
         if (rhs->type != type::Int) {
-          ctx->error_log_.InvalidStringIndex(span, rhs->type);
+          ctx->error_log_.InvalidCharBufIndex(span, rhs->type);
           limit_to(StageRange::NoEmitIR());
         }
         type = type::Char;  // Assuming it's a char, even if the index type was

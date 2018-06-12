@@ -157,4 +157,9 @@ void Primitive::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   IR::Store(from, to);
 }
 
+void CharBuffer::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
+                            Context *ctx) const {
+  // TODO Only callable at compile-time?
+  NOT_YET();
+}
 }  // namespace type

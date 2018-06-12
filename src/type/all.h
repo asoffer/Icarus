@@ -37,6 +37,7 @@ struct Identifier;
 // consistent.
 
 #include "array.h"
+#include "char_buffer.h"
 #include "enum.h"
 #include "flags.h"
 #include "function.h"

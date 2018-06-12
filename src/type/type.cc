@@ -387,4 +387,9 @@ bool CanCastImplicitly(const type::Type *from, const type::Type *to) {
   return Join(from, to) == to;
 }
 
+static base::guarded<std::unordered_map<size_t, CharBuffer>> char_bufs_;
+const CharBuffer *CharBuf(size_t len) {
+  auto[iter, success] = char_bufs_.lock()->emplace(len, CharBuffer(len));
+  return &iter->second;
+}
 } // namespace type

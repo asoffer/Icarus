@@ -578,11 +578,11 @@ void Log::DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id) {
   out_of_order_decls_[decl].push_back(id);
 }
 
-void Log::InvalidStringIndex(const TextSpan &span,
-                             const type::Type *index_type) {
+void Log::InvalidCharBufIndex(const TextSpan &span,
+                              const type::Type *index_type) {
   std::stringstream ss;
-  ss << "String indexed by an invalid type. Expected an int or uint, but "
-        "encountered a "
+  ss << "Character buffer indexed by an invalid type. Expected an int or uint, "
+        "but encountered a "
      << index_type->to_string() << ".";
 
   WriteSource(

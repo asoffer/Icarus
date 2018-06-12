@@ -9,6 +9,7 @@
 #include "ast/scope_literal.h"
 #include "base/guarded.h"
 #include "ir/func.h"
+#include "type/char_buffer.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
@@ -31,10 +32,10 @@ Val Val::Block(AST::BlockLiteral *b) {
 }
 
 static base::guarded<std::unordered_set<std::string>> GlobalStringSet;
-Val Val::StrLit(const std::string &str) {
-  auto handle = GlobalStringSet.lock();
-  auto [iter, success] = handle->insert(str);
-  return Val(type::String, iter->c_str());
+Val Val::CharBuf(const std::string &str) {
+  auto handle         = GlobalStringSet.lock();
+  auto[iter, success] = handle->insert(str);
+  return Val(type::CharBuf(iter->size()), std::string_view(*iter));
 }
 
 Val Val::Struct() { return Val(type::Type_, new type::Struct); }
@@ -92,9 +93,9 @@ Val Val::Null(const type::Type *t) {
 }
 Val Val::NullPtr() { return Val(type::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
 
-static std::string Escaped(const char *cstr) {
+static std::string Escaped(std::string_view sv) {
   std::stringstream ss;
-  for (char c = *cstr; c != '\0'; ++cstr) {
+  for (char c : sv) {
     switch (c) {
     case '\a': ss << R"(\a)"; break;
     case '\b': ss << R"(\b)"; break;
@@ -151,8 +152,8 @@ std::string Val::to_string() const {
           },
           [](AST::Expression *) -> std::string { return "<expr>"; },
           [](BlockIndex b) -> std::string { return b.to_string(); },
-          [](const char *cstr) -> std::string {
-            return "string \"" + Escaped(cstr) + "\"";
+          [](std::string_view sv) -> std::string {
+            return "\"" + Escaped(sv) + "\"";
           },
           [](const Module *module) -> std::string {
             // TODO

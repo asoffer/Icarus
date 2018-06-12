@@ -6,12 +6,8 @@ namespace type {
 Cmp Array::Comparator() const { return data_type->Comparator(); }
 
 Cmp Primitive::Comparator() const {
-  if (type_ == PrimType::Int || type_ == PrimType::Real ||
-      type_ == PrimType::String) {
-    return Cmp::Order;
-  } else {
-    return Cmp::Equality;
-  }
+  return (type_ == PrimType::Int || type_ == PrimType::Real) ? Cmp::Order
+                                                             : Cmp::Equality;
 }
 
 Cmp Pointer::Comparator() const { return Cmp::Equality; }
@@ -30,4 +26,6 @@ Cmp Variant::Comparator() const {
 
 Cmp Scope::Comparator() const { return Cmp::None; }
 Cmp Struct::Comparator() const { return Cmp::None; }
+Cmp CharBuffer::Comparator() const { return Cmp::Order; }
+
 } // namespace type

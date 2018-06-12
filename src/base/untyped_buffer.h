@@ -23,7 +23,7 @@ struct untyped_buffer {
 
   template <typename T>
   T get(size_t offset) const {
-    static_assert(std::is_trivial_v<T>);
+    static_assert(std::is_trivially_copyable_v<T>);
     ASSERT(offset + sizeof(T) <= size_);
     T result;
     std::memcpy(&result, data_ + offset, sizeof(T));
@@ -32,7 +32,7 @@ struct untyped_buffer {
 
   template <typename T>
   void set(size_t offset, const T &t) {
-    static_assert(std::is_trivial_v<T>);
+    static_assert(std::is_trivially_copyable_v<T>);
     ASSERT(offset + sizeof(T) <= size_);
     std::memcpy(data_ + offset, &t, sizeof(T));
   }

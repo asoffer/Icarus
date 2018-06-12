@@ -7,6 +7,7 @@
 #include "ir/func.h"
 #include "scope.h"
 #include "type/array.h"
+#include "type/char_buffer.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/tuple.h"
@@ -15,7 +16,6 @@
 using base::check::Is;
 
 namespace type {
-extern Type *String;
 extern Type *Code;
 extern Type *Int;
 extern Type *Char;
@@ -33,18 +33,8 @@ IR::Val ResizeFunc() {
 }
 
 IR::Val ErrorFunc() {
-  static IR::Func *error_func_ = []() {
-    auto fn = new IR::Func(nullptr, type::Func({type::String}, {type::Code}),
-                           {{"", nullptr}});
-    CURRENT_FUNC(fn) {
-      IR::BasicBlock::Current = fn->entry();
-      // TODO
-      IR::SetReturn(0, IR::Err(fn->Argument(0)));
-      IR::ReturnJump();
-    }
-    return fn;
-  }();
-  return IR::Val::Func(error_func_);
+  // TODO implement me
+  return IR::Val::Real(123.456);
 }
 
 IR::Val AsciiFunc() {

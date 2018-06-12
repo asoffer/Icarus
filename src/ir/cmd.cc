@@ -150,8 +150,8 @@ void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val) {
   ASSERT(Func::Current != nullptr);
   Cmd cmd(nullptr, Op::InsertField,
-          {std::move(struct_type), Val::StrLit(std::move(field_name)),
-           std::move(type), std::move(init_val)});
+          {std::move(struct_type), Val::CharBuf(field_name), std::move(type),
+           std::move(init_val)});
   Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
 }
 

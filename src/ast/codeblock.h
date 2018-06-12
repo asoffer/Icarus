@@ -16,7 +16,7 @@ struct CodeBlock : public Expression {
     lvalue = Assign::Const;
     type   = type::Code;
   }
-  CodeBlock(std::string s) : CodeBlock() { content_ = std::move(s); }
+  CodeBlock(std::string_view s) : CodeBlock() { content_ = std::string(s); }
 
   CodeBlock(const CodeBlock &)     = default;
   CodeBlock(CodeBlock &&) noexcept = default;

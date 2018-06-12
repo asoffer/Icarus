@@ -123,6 +123,11 @@ IR::Val Scope::PrepareArgument(const Type *from, const IR::Val &,
   NOT_YET(this, from);
 }
 
+IR::Val CharBuffer::PrepareArgument(const Type *from, const IR::Val &,
+                                    Context *ctx) const {
+  NOT_YET(this, from);
+}
+
 IR::Val Struct::PrepareArgument(const Type *from, const IR::Val &val,
                                 Context *ctx) const {
   auto arg = IR::Alloca(this);

@@ -49,7 +49,6 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
   case PrimType::Int:
   case PrimType::Real:
   case PrimType::Type:
-  case PrimType::String:
   case PrimType::Code: IR::Print(val); break;
   case PrimType::NullPtr:
   case PrimType::EmptyArray:
@@ -185,4 +184,5 @@ void Struct::EmitRepr(IR::Val val, Context *ctx) const {
   IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
 }
 
+void CharBuffer::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(std::move(val)); }
 } // namespace type

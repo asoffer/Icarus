@@ -1,9 +1,15 @@
 core ::= import "examples/lib/core.ic"
 
-vec ::= (T: type) => struct {
+double ::= (n: int) => 2 * n
+
+vec ::= (T: type,
+         resize_by ::= double) => struct {
   _size: int
   _data: [--; T]
 }
+
+capacity ::= (T :: type, v: T'vec) => v._data.size
+size ::= (T :: type, v: T'vec) => v.size
 
 make ::= (T :: type) -> T'vec {
   result: T'vec

@@ -62,7 +62,7 @@ struct Log {
                              const TextSpan &decl_span);
   void MissingMember(const TextSpan &span, const std::string &member_name,
                      const type::Type *t);
-  void InvalidStringIndex(const TextSpan &span, const type::Type *index_type);
+  void InvalidCharBufIndex(const TextSpan &span, const type::Type *index_type);
   void NonIntegralArrayIndex(const TextSpan &span,
                              const type::Type *index_type);
   void IndexingNonArray(const TextSpan &span, const type::Type *t);

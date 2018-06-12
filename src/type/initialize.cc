@@ -62,7 +62,6 @@ void Primitive::EmitInit(IR::Val id_val, Context *ctx) const {
     case PrimType::Char: IR::Store(IR::Val::Char('\0'), id_val); break;
     case PrimType::Int: IR::Store(IR::Val::Int(0l), id_val); break;
     case PrimType::Real: IR::Store(IR::Val::Real(0.0), id_val); break;
-    case PrimType::String: IR::Store(IR::Val::StrLit(""), id_val); break;
     default: UNREACHABLE();
   }
 }
@@ -86,6 +85,10 @@ void Pointer::EmitInit(IR::Val id_val, Context *ctx) const {
 void Function::EmitInit(IR::Val id_val, Context *ctx) const { UNREACHABLE(); }
 
 void Scope::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
+
+void CharBuffer::EmitInit(IR::Val id_val, Context *ctx) const {
+  IR::Store(IR::Val::CharBuf(""), id_val);
+}
 
 void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
   std::unique_lock lock(mtx_);

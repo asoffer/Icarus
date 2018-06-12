@@ -63,7 +63,6 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       {"int", IR::Val::Type(type::Int)},
       {"real", IR::Val::Type(type::Real)},
       {"type", IR::Val::Type(type::Type_)},
-      {"string", IR::Val::Type(type::String)},
       {"module", IR::Val::Type(type::Module)},
       {"true", IR::Val::Bool(true)},
       {"false", IR::Val::Bool(false)},
@@ -184,7 +183,7 @@ frontend::TaggedNode NextStringLiteral(SourceLocation &loc,
 
   span.finish = loc.cursor;
   return frontend::TaggedNode::TerminalExpression(span,
-                                                  IR::Val::StrLit(str_lit));
+                                                  IR::Val::CharBuf(str_lit));
 }
 
 frontend::TaggedNode NextCharLiteral(SourceLocation &loc,

@@ -27,8 +27,10 @@ size_t Architecture::alignment(const type::Type *t) const {
       case type::PrimType::Type:
       case type::PrimType::NullPtr:
       case type::PrimType::Code: return 8;
-      case type::PrimType::String: return 8;
     }
+  } else if (t->is<type::CharBuffer>()) {
+    // TODO what about utf-16 or utf-32 buffers?
+    return alignment(type::Char);
   } else if (t->is<type::Pointer>()) {
     return ptr_bytes_;
   } else if (t->is<type::Array>()) {
@@ -78,8 +80,9 @@ size_t Architecture::bytes(const type::Type *t) const {
       case type::PrimType::Type:
       case type::PrimType::NullPtr:
       case type::PrimType::Code: return 8;
-      case type::PrimType::String: return 8;
     }
+  } else if (t->is<type::CharBuffer>()) {
+    return t->as<type::CharBuffer>().length_;
   } else if (t->is<type::Pointer>()) {
     return ptr_bytes_;
   } else if (t->is<type::Array>()) {

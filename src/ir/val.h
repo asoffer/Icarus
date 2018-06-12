@@ -104,7 +104,7 @@ struct Val {
       Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
       const type::Type *, type::Struct *, IR::Func *, AST::Function *,
       AST::ScopeLiteral *, IR::Interface, AST::CodeBlock, AST::Expression *,
-      BlockIndex, const char *, const Module *,
+      BlockIndex, std::string_view, const Module *,
       AST::BlockLiteral *,  // TODO no longer necessary with blocksequence?
       std::vector<Val>, BlockSequence>
       value{false};
@@ -136,7 +136,7 @@ struct Val {
   }
   static Val Interface(IR::Interface ifc);
 
-  static Val StrLit(const std::string &str);
+  static Val CharBuf(const std::string &str);
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);

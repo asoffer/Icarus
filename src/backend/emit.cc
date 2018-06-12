@@ -236,7 +236,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
               {StringConstant(llvm_data->builder, "%f"),
                EmitValue(num_args, llvm_data, arg)},
               "print");
-        } else if (arg.type == type::String) {
+        } else if (arg.type->is<type::CharBuffer>()) {
           // TODO this is wrong because strings aren't char*
           return llvm_data->builder->CreateCall(
               printf_fn, {StringConstant(llvm_data->builder, "%s"),

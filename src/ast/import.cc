@@ -6,6 +6,7 @@
 #include "backend/eval.h"
 #include "base/guarded.h"
 #include "ir/val.h"
+#include "type/char_buffer.h"
 
 void ScheduleModule(const Source::Name &src);
 
@@ -55,11 +56,12 @@ void Import::VerifyType(Context *ctx) {
   VERIFY_AND_RETURN_ON_ERROR(operand_);
   lvalue = Assign::Const;
   type   = type::Module;
-  if (operand_->type != type::String || operand_->lvalue != Assign::Const) {
+  if (!operand_->type->is<type::CharBuffer>() ||
+      operand_->lvalue != Assign::Const) {
     ctx->error_log_.InvalidImport(operand_->span);
   } else {
-    cache_ =
-        Source::Name{backend::EvaluateAs<const char *>(operand_.get(), ctx)};
+    cache_ = Source::Name{
+        backend::EvaluateAs<std::string_view>(operand_.get(), ctx)};
     ScheduleModule(*cache_);
   }
   limit_to(operand_);

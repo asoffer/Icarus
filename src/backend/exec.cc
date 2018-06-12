@@ -152,7 +152,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Trunc: return Trunc(resolved[0]);
     case Op::Err:
       return IR::Val::CodeBlock(
-          AST::CodeBlock(std::get<const char *>(resolved[0].value)));
+          AST::CodeBlock(std::get<std::string_view>(resolved[0].value)));
     case Op::Call: {
       // TODO this feels like a gross hack
       IR::Func *fn = std::visit(
@@ -186,7 +186,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               // TODO is this actually how you want ot print a codeblock? should
               // you be allowed to print a codeblock?
               [](const AST::CodeBlock &cb) { std::cerr << cb.to_string(0); },
-              [](const char *s) { std::cerr << s; },
+              [](std::string_view s) { std::cerr << s; },
               [](const Addr &a) { std::cerr << a.to_string(); },
               [&resolved](EnumVal e) {
                 std::cerr
@@ -247,6 +247,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           } else if (cmd.type->is<type::Flags>()) {
             return IR::Val::Flags(&cmd.type->as<type::Flags>(),
                                   *static_cast<size_t *>(addr.as_heap));
+          } else if (cmd.type->is<type::CharBuffer>()) {
+            // TODO Add a string_view overload for Val::CharBuf.
+            return IR::Val::CharBuf(
+                std::string(*static_cast<std::string_view *>(addr.as_heap)));
           } else {
             NOT_YET("Don't know how to load type: ", cmd.type);
           }
@@ -263,7 +267,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           LOAD_FROM_STACK(type::Int, Int, i32);
           LOAD_FROM_STACK(type::Real, Real, double);
           // TODO LOAD_FROM_STACK(type::Code, CodeBlock, AST::CodeBlock);
-          // TODO LOAD_FROM_STACK(type::String, StrLit, std::string);
           LOAD_FROM_STACK(type::Type_, Type, const type::Type *);
           if (cmd.type->is<type::Pointer>()) {
             switch (addr.kind) {
@@ -279,6 +282,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           } else if (cmd.type->is<type::Enum>()) {
             return IR::Val::Enum(&cmd.type->as<type::Enum>(),
                                  stack_.Load<size_t>(addr.as_stack));
+          } else if (cmd.type->is<type::CharBuffer>()) {
+            // TODO Add a string_view overload for Val::CharBuf.
+            return IR::Val::CharBuf(
+                std::string(stack_.Load<std::string_view>(addr.as_stack)));
           } else if (cmd.type->is<type::Flags>()) {
             return IR::Val::Flags(&cmd.type->as<type::Flags>(),
                                  stack_.Load<size_t>(addr.as_stack));
@@ -379,11 +386,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::InsertField: {
       auto *struct_to_mod = std::get<type::Struct *>(resolved[0].value);
       struct_to_mod->fields_.push_back(type::Struct::Field{
-          std::get<const char *>(resolved[1].value),
+          std::string(std::get<std::string_view>(resolved[1].value)),
           std::get<const type::Type *>(resolved[2].value), resolved[3]});
 
       auto[iter, success] = struct_to_mod->field_indices_.emplace(
-          std::get<const char *>(resolved[1].value),
+          std::string(std::get<std::string_view>(resolved[1].value)),
           struct_to_mod->fields_.size() - 1);
       ASSERT(success);
 
