@@ -1,18 +1,19 @@
 vec ::= import "examples/lib/vec.ic"
+-- ::= import "examples/lib/core.ic"
 
 main ::= () -> () {
-  v := vec.make(bool)
-  vec.append(bool, false, &v)
-  vec.dump(bool, v)
+  v := vec.make(int)
+  i := 0
+  while (i < 30) {
+    vec.append(int, i, &v)
+    vec.dump(int, v)
+    print "\n"
+    i += 1
+  }
+
+  print vec.remove(int, &v)
   print "\n"
 
-  vec.append(bool, true, &v)
-  vec.dump(bool, v)
-  print "\n"
-
-  print vec.remove(bool, &v)
-  print "\n"
-
-  vec.dump(bool, v)
+  vec.dump(int, v)
   print "\n"
 }

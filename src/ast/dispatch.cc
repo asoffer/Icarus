@@ -134,7 +134,6 @@ std::optional<DispatchEntry> DispatchEntry::Make(
 
   if (fn_option->lvalue == Assign::Const) {
     if (!binding.SetNamedArgs(args, bound_fn->as<FuncContent>().lookup_)) {
-      LOG << "bailing";
       return std::nullopt;
     }
   }
@@ -152,7 +151,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
 
       // TODO can generate fail? Probably
       dispatch_entry.binding_.fn_expr_ = ASSERT_NOT_NULL(
-          generic_fn->generate(std::move(bound_constants).value(), ctx->mod_));
+          generic_fn->generate(std::move(bound_constants).value()));
     }
 
     fn = &dispatch_entry.binding_.fn_expr_->as<GeneratedFunction>();

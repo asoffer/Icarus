@@ -1,4 +1,4 @@
-core ::= import "examples/lib/core.ic"
+-- ::= import "examples/lib/core.ic"
 
 double ::= (n: int) => 2 * n
 
@@ -18,7 +18,7 @@ make ::= (T :: type) -> T'vec {
 }
 
 append ::= (T :: type, val: T, v: *T'vec) -> () {
-  core.if (v._data.size == v._size) { resize(&v._data, v._data.size * 2) }
+  if (v._data.size == v._size) { resize(&v._data, v._data.size * 2) }
   v._data[v._size] = val
   v._size += 1
 }
@@ -30,10 +30,10 @@ remove ::= (T :: type, v: *T'vec) -> T {
 }
 
 dump ::= (T :: type, v: T'vec) -> () {
-  core.if (v._size == 0) { print "[]" }
+  if (v._size == 0) { print "[]" }
   print "[", v._data[0]
   i := 1
-  core.while (i < v._size) {
+  while (i < v._size) {
     print ", ", v._data[i]
     i += 1
   }

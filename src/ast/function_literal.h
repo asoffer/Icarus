@@ -12,6 +12,8 @@
 #include "ir/val.h"
 #include "scope.h"
 
+struct Module;
+
 namespace IR {
 struct Func;
 }  // namespace IR
@@ -51,6 +53,7 @@ struct FuncContent : public Expression {
   //           a => 0, b => 1, c => 2
   std::unordered_map<std::string, size_t> lookup_;
   bool return_type_inferred_ = true;
+  Module *module_            = nullptr;
 };
 
 struct Function;
@@ -81,7 +84,7 @@ struct Function : public FuncContent {
   IR::Val EmitIR(Context *) override;
   IR::Val EmitLVal(Context *) override;
 
-  GeneratedFunction *generate(BoundConstants bc, Module *mod);
+  GeneratedFunction *generate(BoundConstants bc);
 
   std::map<BoundConstants, GeneratedFunction> fns_;
 };

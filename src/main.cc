@@ -15,7 +15,6 @@
 #include "base/guarded.h"
 #include "base/source.h"
 #include "context.h"
-#include "error/log.h"
 #include "ir/func.h"
 #include "module.h"
 
@@ -89,10 +88,9 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
   ctx.bound_constants_ = &bc;
   auto *f              = new File(src);
   source_map[src]      = f;
-  error::Log log;
-  auto file_stmts = f->Parse(&log);
-  if (log.size() > 0) {
-    log.Dump();
+  auto file_stmts = f->Parse(&ctx);
+  if (ctx.num_errors() > 0) {
+    ctx.DumpErrors();
     found_errors = true;
     return mod;
   }
@@ -125,7 +123,7 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
     if (decl.identifier->token != "main") { continue; }
     auto gened_fn =
         backend::EvaluateAs<AST::Function *>(decl.init_val.get(), &ctx)
-            ->generate(bc, ctx.mod_);
+            ->generate(bc);
     if (gened_fn == nullptr) { continue; }
     gened_fn->CompleteBody(ctx.mod_);
     auto ir_fn = gened_fn->ir_func_;
@@ -207,7 +205,7 @@ int RunRepl() {
   auto mod = std::make_unique<Module>();
   Context ctx(mod.get());
 repl_start : {
-  auto stmts = repl.Parse(&ctx.error_log_);
+  auto stmts = repl.Parse(&ctx);
   if (ctx.num_errors() > 0) {
     ctx.DumpErrors();
     goto repl_start;

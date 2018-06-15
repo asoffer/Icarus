@@ -15,7 +15,7 @@
 #include "backend/eval.h"
 
 namespace AST {
-GeneratedFunction *Function::generate(BoundConstants bc, Module *mod) {
+GeneratedFunction *Function::generate(BoundConstants bc) {
   auto[iter, success] =
       fns_.emplace(std::move(bc), GeneratedFunction{});
   if (!success) { return &iter->second; }
@@ -25,7 +25,7 @@ GeneratedFunction *Function::generate(BoundConstants bc, Module *mod) {
   func.bound_constants_      = &iter->first;
   func.return_type_inferred_ = return_type_inferred_;
 
-  Context ctx(mod);
+  Context ctx(ASSERT_NOT_NULL(module_));
   ctx.bound_constants_ = func.bound_constants_;
 
   func.inputs.reserve(inputs.size());
@@ -320,6 +320,7 @@ void FuncContent::ExtractReturns(
 
 namespace {
 void CloneTo(const FuncContent &from, FuncContent *to) {
+  to->module_    = from.module_;
   to->span       = from.span;
   to->statements = base::wrap_unique(from.statements->Clone());
   to->lookup_    = from.lookup_;
