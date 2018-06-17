@@ -26,11 +26,6 @@ void ScopeLiteral::assign_scope(Scope *scope) {
   for (auto &decl : decls_) { decl.assign_scope(body_scope_.get()); }
 }
 
-void ScopeLiteral::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto &decl : decls_) { decl.ClearIdDecls(); }
-}
-
 void ScopeLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::Const;

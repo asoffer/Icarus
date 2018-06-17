@@ -30,7 +30,6 @@ struct Expression;
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const                         = 0;
   virtual void assign_scope(Scope *)                                    = 0;
-  virtual void ClearIdDecls()                                           = 0;
   virtual void VerifyType(Context *)                                    = 0;
   virtual void Validate(Context *)                                      = 0;
   virtual IR::Val EmitIR(Context *)                                     = 0;

@@ -27,11 +27,6 @@ std::string ArrayLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void ArrayLiteral::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto &el : elems_) { el->ClearIdDecls(); }
-}
-
 void ArrayLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 

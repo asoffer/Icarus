@@ -20,12 +20,6 @@ void ArrayType::assign_scope(Scope *scope) {
   data_type_->assign_scope(scope);
 }
 
-void ArrayType::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  length_->ClearIdDecls();
-  data_type_->ClearIdDecls();
-}
-
 void ArrayType::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::Const;

@@ -55,7 +55,6 @@ GeneratedFunction *Function::generate(BoundConstants bc) {
   }
 
   func.statements = base::wrap_unique(statements->Clone());
-  func.ClearIdDecls();
   func.assign_scope(scope_);
   func.VerifyType(&ctx);
   func.Validate(&ctx);
@@ -113,14 +112,6 @@ void FuncContent::assign_scope(Scope *scope) {
   for (auto &in : inputs) { in->assign_scope(fn_scope.get()); }
   for (auto &out : outputs) { out->assign_scope(fn_scope.get()); }
   statements->assign_scope(fn_scope.get());
-}
-
-void FuncContent::ClearIdDecls() {
-  fn_scope     = nullptr;
-  stage_range_ = StageRange{};
-  for (auto &in : inputs) { in->ClearIdDecls(); }
-  for (auto &out : outputs) { out->ClearIdDecls(); }
-  statements->ClearIdDecls();
 }
 
 void FuncContent::VerifyType(Context *ctx) {
@@ -336,7 +327,7 @@ void CloneTo(const FuncContent &from, FuncContent *to) {
 }  // namespace
 
 FuncContent *FuncContent::Clone() const {
-  auto *result       = new FuncContent;
+  auto *result = new FuncContent;
   CloneTo(*this, result);
   return result;
 }

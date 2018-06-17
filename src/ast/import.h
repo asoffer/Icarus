@@ -13,12 +13,6 @@ struct Import : public Expression {
 
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
-
-  void ClearIdDecls() override {
-    stage_range_ = StageRange{};
-    operand_->ClearIdDecls();
-  }
-
   void VerifyType(Context *) override;
   void Validate(Context *) override {}
   void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override;

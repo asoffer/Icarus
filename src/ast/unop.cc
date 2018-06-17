@@ -58,11 +58,6 @@ void Unop::assign_scope(Scope *scope) {
   operand->assign_scope(scope);
 }
 
-void Unop::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  operand->ClearIdDecls();
-}
-
 void Unop::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   operand->Validate(ctx);

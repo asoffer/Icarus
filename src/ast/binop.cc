@@ -82,12 +82,6 @@ void Binop::assign_scope(Scope *scope) {
   rhs->assign_scope(scope);
 }
 
-void Binop::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  lhs->ClearIdDecls();
-  rhs->ClearIdDecls();
-}
-
 void Binop::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 

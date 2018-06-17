@@ -55,15 +55,6 @@ void ScopeNode::assign_scope(Scope *scope) {
   }
 }
 
-void ScopeNode::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto & [ block_expr, block_node ] : block_map_) {
-    block_expr->ClearIdDecls();
-    block_node.stmts_.ClearIdDecls();
-    if (block_node.arg_) { block_node.arg_->ClearIdDecls(); }
-  }
-}
-
 void ScopeNode::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::RVal;

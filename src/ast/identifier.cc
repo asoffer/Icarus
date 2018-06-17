@@ -19,16 +19,10 @@ void Identifier::assign_scope(Scope *scope) {
   scope_ = scope;
 }
 
-void Identifier::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  decl         = nullptr;
-}
-
 Identifier *Identifier::Clone() const {
-  auto *result      = new Identifier;
-  result->span     = span;
-  result->token     = token;
-  Declaration *decl = nullptr;
+  auto *result  = new Identifier;
+  result->span  = span;
+  result->token = token;
   return result;
 }
 

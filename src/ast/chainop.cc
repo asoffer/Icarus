@@ -104,11 +104,6 @@ void ChainOp::assign_scope(Scope *scope) {
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
-void ChainOp::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto &expr : exprs) { expr->ClearIdDecls(); }
-}
-
 void ChainOp::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   bool found_err = false;

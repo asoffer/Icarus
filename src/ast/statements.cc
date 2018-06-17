@@ -20,11 +20,6 @@ void Statements::assign_scope(Scope *scope) {
   for (auto &stmt : content_) { stmt->assign_scope(scope); }
 }
 
-void Statements::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto &stmt : content_) { stmt->ClearIdDecls(); }
-}
-
 void Statements::VerifyType(Context *ctx) {
   STAGE_CHECK(StartTypeVerificationStage, DoneTypeVerificationStage);
   for (auto &stmt : content_) {

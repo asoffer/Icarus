@@ -26,7 +26,6 @@ struct CodeBlock : public Expression {
 
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override {}
-  void ClearIdDecls() override { stage_range_ = StageRange{}; }
   CodeBlock *Clone() const { return new CodeBlock(*this); }
 
   void VerifyType(Context *) override {}

@@ -29,14 +29,6 @@ void Switch::assign_scope(Scope *scope) {
   }
 }
 
-void Switch::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto & [ expr, cond ] : cases_) {
-    expr->ClearIdDecls();
-    cond->ClearIdDecls();
-  }
-}
-
 void Switch::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::RVal;

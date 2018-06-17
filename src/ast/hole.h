@@ -22,7 +22,6 @@ struct Hole : public Identifier {
   void SaveReferences(Scope *, std::vector<IR::Val> *) {}
   void contextualize(const Node *,
                      const std::unordered_map<const Expression *, IR::Val> &) {}
-  void ClearIdDecls() { stage_range_ = StageRange{}; }
   void ExtractReturns(std::vector<const Expression *> *) const {}
   void VerifyType(Context *) {}
   void Validate(Context *ctx) {}

@@ -25,8 +25,6 @@ struct Terminal : public Expression {
     if (type != type::Type_) { return; }
   }
 
-  void ClearIdDecls() { stage_range_ = StageRange{}; }
-
   void VerifyType(Context *) override {}
   void Validate(Context *) override {}
   void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override {}

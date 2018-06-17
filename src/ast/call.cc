@@ -334,12 +334,6 @@ void Call::assign_scope(Scope *scope) {
   args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
 }
 
-void Call::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  fn_->ClearIdDecls();
-  args_.Apply([](auto &expr) { expr->ClearIdDecls(); });
-}
-
 void Call::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   bool all_const = true;

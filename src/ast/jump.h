@@ -23,7 +23,6 @@ struct Jump : public Node {
   }
 
   void assign_scope(Scope *scope) override { scope_ = scope; }
-  void ClearIdDecls() override { stage_range_ = StageRange{}; }
   void VerifyType(Context *) override {}
   void Validate(Context *) override {}
   void SaveReferences(Scope *scope, std::vector<IR::Val> *) override {}

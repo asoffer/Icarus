@@ -17,7 +17,6 @@ struct Expression : public Node {
   virtual ~Expression(){};
   virtual std::string to_string(size_t n) const                         = 0;
   virtual void assign_scope(Scope *scope)                               = 0;
-  virtual void ClearIdDecls()                                           = 0;
   virtual void VerifyType(Context *ctx)                                 = 0;
   virtual void Validate(Context *ctx)                                   = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;

@@ -30,11 +30,6 @@ void Access::assign_scope(Scope *scope) {
   operand->assign_scope(scope);
 }
 
-void Access::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  operand->ClearIdDecls();
-}
-
 void Access::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   VERIFY_AND_RETURN_ON_ERROR(operand);

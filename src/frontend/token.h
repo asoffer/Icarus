@@ -26,7 +26,6 @@ struct Token : public AST::Node {
   std::string to_string(size_t) const override { return "[" + token + "]\n"; }
 
   void assign_scope(Scope *) override { UNREACHABLE(); }
-  void ClearIdDecls() override { UNREACHABLE(); }
   Token *Clone() const override { UNREACHABLE(); }
   void VerifyType(Context *) override { UNREACHABLE(); }
   void Validate(Context *) override { UNREACHABLE(); }

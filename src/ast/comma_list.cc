@@ -23,11 +23,6 @@ void CommaList::assign_scope(Scope *scope) {
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
-void CommaList::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto &expr : exprs) { expr->ClearIdDecls(); }
-}
-
 void CommaList::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   // TODO actually compute value category

@@ -24,11 +24,6 @@ std::string Interface::to_string(size_t n) const {
   return ss.str();
 }
 
-void Interface::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto &d : decls_) { d.ClearIdDecls(); }
-}
-
 void Interface::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 

@@ -27,12 +27,6 @@ void BlockLiteral::assign_scope(Scope *scope) {
   after_->assign_scope(body_scope_.get());
 }
 
-void BlockLiteral::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  before_->ClearIdDecls();
-  after_->ClearIdDecls();
-}
-
 void BlockLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::Const;

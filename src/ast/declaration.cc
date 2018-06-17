@@ -202,13 +202,6 @@ void Declaration::assign_scope(Scope *scope) {
   if (init_val) { init_val->assign_scope(scope); }
 }
 
-void Declaration::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  identifier->ClearIdDecls();
-  if (type_expr) { type_expr->ClearIdDecls(); }
-  if (init_val) { init_val->ClearIdDecls(); }
-}
-
 bool Declaration::IsCustomInitialized() const {
   return init_val && !init_val->is<Hole>();
 }

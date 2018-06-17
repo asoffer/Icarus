@@ -29,11 +29,6 @@ void StructLiteral::assign_scope(Scope *scope) {
   for (auto &f : fields_) { f->assign_scope(type_scope.get()); }
 }
 
-void StructLiteral::ClearIdDecls() {
-  stage_range_ = StageRange{};
-  for (auto& f : fields_) { f->ClearIdDecls(); }
-}
-
 void StructLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   lvalue = Assign::Const;
