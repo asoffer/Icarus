@@ -51,7 +51,7 @@ struct FuncContent : public Expression {
   // Example: (a: int, b: char, c: string) -> int
   //           a => 0, b => 1, c => 2
   std::unordered_map<std::string, size_t> lookup_;
-  bool return_type_inferred_ = true;
+  bool return_type_inferred_ = false;
   Module *module_            = nullptr;
 };
 

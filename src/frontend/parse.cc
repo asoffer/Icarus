@@ -403,54 +403,27 @@ static std::vector<std::unique_ptr<Declaration>> ExtractInputs(
   return inputs;
 }
 
-// TODO deal with duplication between this and below
-static std::unique_ptr<Node> BuildShortFunctionLiteral(
-    std::unique_ptr<Expression> args, std::unique_ptr<Expression> body,
-    Context *ctx) {
-  auto span   = TextSpan(args->span, body->span);
-  auto inputs = ExtractInputs(std::move(args));
-
-  auto fn     = std::make_unique<AST::Function>();
-  fn->module_ = ASSERT_NOT_NULL(ctx->mod_);
-  for (auto &input : inputs) { input->arg_val = fn.get(); }
-
-  fn->inputs     = std::move(inputs);
-  fn->span       = span;
-  auto ret       = std::make_unique<Unop>();
-  ret->op        = Language::Operator::Return;
-  ret->operand   = std::move(body);
-  fn->statements = std::make_unique<Statements>();
-  fn->statements->content_.push_back(std::move(ret));
-
-  size_t i = 0;
-  for (const auto &input : fn->inputs) {
-    fn->lookup_[input->identifier->token] = i++;
-  }
-
-  return fn;
-}
-
-static std::unique_ptr<Node> BuildFunctionLiteral(
-    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  auto *binop = &nodes[0]->as<Binop>();
-  auto inputs = ExtractInputs(std::move(binop->lhs));
-
+static std::unique_ptr<Node> BuildFunctionLiteral(TextSpan span,
+    std::vector<std::unique_ptr<Declaration>> inputs,
+    std::unique_ptr<Expression> output,
+    std::unique_ptr<Statements> stmts, Context *ctx) {
   auto fn = std::make_unique<AST::Function>();
   fn->module_ = ASSERT_NOT_NULL(ctx->mod_);
   for (auto &input : inputs) { input->arg_val = fn.get(); }
 
+  fn->span       = std::move(span);
   fn->inputs     = std::move(inputs);
-  fn->span       = TextSpan(nodes[0]->span, nodes[1]->span);
-  fn->statements = move_as<Statements>(nodes[1]);
+  fn->statements = std::move(stmts);
 
-  if (binop->rhs->is<CommaList>()) {
-    for (auto &expr : binop->rhs->as<CommaList>().exprs) {
+  if (output == nullptr) {
+    fn->return_type_inferred_ = true;
+  } else if (output->is<CommaList>()) {
+    for (auto &expr : output->as<CommaList>().exprs) {
       fn->outputs.push_back(std::move(expr));
     }
   } else {
-    fn->outputs.push_back(move_as<Expression>(binop->rhs));
+    fn->outputs.push_back(std::move(output));
   }
-  fn->return_type_inferred_ = false;
 
   for (auto &expr : fn->outputs) {
     if (expr->is<Declaration>()) { expr->as<Declaration>().arg_val = fn.get(); }
@@ -462,6 +435,40 @@ static std::unique_ptr<Node> BuildFunctionLiteral(
   }
 
   return fn;
+}
+
+static std::unique_ptr<Node> BuildNormalFunctionLiteral(
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+  auto span   = TextSpan(nodes[0]->span, nodes.back()->span);
+  auto *binop = &nodes[0]->as<Binop>();
+  return BuildFunctionLiteral(std::move(span),
+                              ExtractInputs(std::move(binop->lhs)),
+                              std::move(binop->rhs),
+                              move_as<Statements>(nodes[1]), ctx);
+}
+
+static std::unique_ptr<Node> BuildInferredFunctionLiteral(
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+  auto span   = TextSpan(nodes[0]->span, nodes.back()->span);
+  return BuildFunctionLiteral(std::move(span),
+                              ExtractInputs(move_as<Expression>(nodes[0])),
+                              nullptr, move_as<Statements>(nodes[2]), ctx);
+}
+
+static std::unique_ptr<Node> BuildShortFunctionLiteral(
+    std::unique_ptr<Expression> args, std::unique_ptr<Expression> body,
+    Context *ctx) {
+  auto span   = TextSpan(args->span, body->span);
+  auto inputs = ExtractInputs(std::move(args));
+
+  auto ret     = std::make_unique<Unop>();
+  ret->op      = Language::Operator::Return;
+  ret->operand = std::move(body);
+  auto stmts   = std::make_unique<Statements>();
+  stmts->content_.push_back(std::move(ret));
+
+  return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
+                              std::move(stmts), ctx);
 }
 
 static std::unique_ptr<Node> BuildOneStatement(
@@ -1064,7 +1071,8 @@ auto Rules = std::array{
     Rule(expr, {l_double_brace, r_double_brace}, AST::BuildEmptyCodeBlock),
     Rule(expr, {l_double_brace, EXPR, r_double_brace},
          AST::BuildCodeBlockFromOneStatement),
-    Rule(expr, {fn_expr, braced_stmts}, AST::BuildFunctionLiteral),
+    Rule(expr, {fn_expr, braced_stmts}, AST::BuildNormalFunctionLiteral),
+    Rule(expr, {expr, fn_arrow, braced_stmts}, AST::BuildInferredFunctionLiteral),
 
     // Call and index operator with reserved words. We can't put reserved words
     // in the first slot because that might conflict with a real use case.
