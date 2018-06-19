@@ -311,10 +311,11 @@ void FuncContent::ExtractReturns(
 
 namespace {
 void CloneTo(const FuncContent &from, FuncContent *to) {
-  to->module_    = from.module_;
-  to->span       = from.span;
-  to->statements = base::wrap_unique(from.statements->Clone());
-  to->lookup_    = from.lookup_;
+  to->module_               = from.module_;
+  to->span                  = from.span;
+  to->statements            = base::wrap_unique(from.statements->Clone());
+  to->lookup_               = from.lookup_;
+  to->return_type_inferred_ = from.return_type_inferred_;
   to->inputs.reserve(from.inputs.size());
   for (const auto &input : from.inputs) {
     to->inputs.emplace_back(input->Clone());
