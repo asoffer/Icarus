@@ -321,6 +321,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                                [this, &addr](FlagsVal f) {
                                  stack_.Store(f.value, addr.as_stack);
                                },
+                               [this, &addr](AST::Function *fn) {
+                                 LOG << fn;
+                                 UNREACHABLE();
+                                 stack_.Store(fn, addr.as_stack);
+                               },
                                [this, &addr](const auto &v) {
                                  if constexpr (std::is_trivial_v<
                                                    std::decay_t<decltype(v)>>) {

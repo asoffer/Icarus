@@ -10,6 +10,8 @@
 #include "type/variant.h"
 
 namespace AST {
+using base::check::Is;
+
 // Attempts to match the call argument types to the dependent types here. If
 // it can it materializes a function literal and returns a pointer to it.
 // Otherwise, returns nullptr.
@@ -25,40 +27,37 @@ std::optional<BoundConstants> ComputeBoundConstants(
     fn->inputs[i]->VerifyType(&new_ctx);
     if (fn->inputs[i]->type == type::Err) { return std::nullopt; }
 
-    if (binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) {
+    if ((binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) ||
+        (fn->inputs[i]->const_ && !binding->defaulted(i) &&
+         binding->exprs_[i].second->lvalue != Assign::Const)) {
       // TODO maybe send back an explanation of why this didn't match. Or
       // perhaps continue to get better diagnostics?
       return std::nullopt;
-    } else {
-      if (fn->inputs[i]->const_ && !binding->defaulted(i) &&
-          binding->exprs_[i].second->lvalue != Assign::Const) {
-        return std::nullopt;
-      }
+    }
 
-      if (!binding->defaulted(i)) {
-        if (fn->inputs[i]->type_expr != nullptr &&
-            fn->inputs[i]->type_expr->type == type::Interface) {
-          // TODO case where it is defaulted.
-          // TODO expand all variants
-          auto ifc = backend::EvaluateAs<IR::Interface>(
-              fn->inputs[i]->type_expr.get(), ctx);
-          auto errs = ifc.MatchErrors(binding->exprs_[i].second->type);
-          if (!errs.empty()) {
-            for (auto err : errs) { LOG << err; }
-            return std::nullopt;
-          }
-          bound_constants.interfaces_.emplace(fn->inputs[i].get(),
-                                               binding->exprs_[i].second->type);
-
-          // TODO using this for now to signify an interface when in reality we
-          // want something much more meaningful. 'Generic' is a weird catch-all
-          // type currently that needs to be deprecated.
-
-        } else if (auto *match = type::Meet(binding->exprs_[i].second->type,
-                                            fn->inputs[i]->type);
-                   match == nullptr) {
+    if (!binding->defaulted(i)) {
+      if (fn->inputs[i]->type_expr != nullptr &&
+          fn->inputs[i]->type_expr->type == type::Interface) {
+        // TODO case where it is defaulted.
+        // TODO expand all variants
+        auto ifc = backend::EvaluateAs<IR::Interface>(
+            fn->inputs[i]->type_expr.get(), ctx);
+        auto errs = ifc.MatchErrors(binding->exprs_[i].second->type);
+        if (!errs.empty()) {
+          for (auto err : errs) { LOG << err; }
           return std::nullopt;
         }
+        bound_constants.interfaces_.emplace(fn->inputs[i].get(),
+                                            binding->exprs_[i].second->type);
+
+        // TODO using this for now to signify an interface when in reality we
+        // want something much more meaningful. 'Generic' is a weird catch-all
+        // type currently that needs to be deprecated.
+
+      } else if (auto *match = type::Meet(binding->exprs_[i].second->type,
+                                          fn->inputs[i]->type);
+                 match == nullptr) {
+        return std::nullopt;
       }
     }
 
@@ -76,6 +75,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
 }
 
 bool DispatchEntry::SetTypes(FuncContent *fn) {
+  ASSERT(binding_.fn_expr_->type, Is<type::Function>());
   const auto &input_types = binding_.fn_expr_->type->as<type::Function>().input;
   bool bound_at_compile_time = (fn != nullptr);
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
@@ -108,27 +108,22 @@ bool DispatchEntry::SetTypes(FuncContent *fn) {
 
 std::optional<DispatchEntry> DispatchEntry::Make(
     Expression *fn_option, const FnArgs<Expression *> &args, Context *ctx) {
-  Expression *bound_fn;
+  Expression *bound_fn = nullptr;
   size_t binding_size;
-  if (fn_option->type->is<type::Function>()) {
-    if (fn_option->lvalue == Assign::Const) {
-      GeneratedFunction *fn = ASSERT_NOT_NULL(
-          backend::EvaluateAs<IR::Func *>(fn_option, ctx)->gened_fn_);
-      bound_fn = fn;
-      binding_size =
-          std::max(fn->lookup_.size(), args.pos_.size() + args.named_.size());
-    } else {
-      bound_fn     = fn_option;
-      binding_size = args.pos_.size() + args.named_.size();
-    }
-  } else if (fn_option->type == type::Generic) {
-    bound_fn = backend::EvaluateAs<Function *>(fn_option, ctx);
-    binding_size = std::max(bound_fn->as<Function>().lookup_.size(),
+  if (fn_option->lvalue == Assign::Const) {
+    bound_fn = std::visit(
+        base::overloaded{
+            [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
+            [](Function *fn) -> Expression * { return fn; },
+            [](auto &&) -> Expression * { UNREACHABLE(); }},
+        backend::Evaluate(fn_option, ctx)[0].value);
+
+    binding_size = std::max(bound_fn->as<FuncContent>().lookup_.size(),
                             args.pos_.size() + args.named_.size());
   } else {
-    UNREACHABLE(fn_option);
+    bound_fn     = fn_option;
+    binding_size = args.pos_.size() + args.named_.size();
   }
-
   Binding binding(bound_fn, binding_size);
   binding.SetPositionalArgs(args);
 
@@ -141,20 +136,20 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   DispatchEntry dispatch_entry(std::move(binding));
   dispatch_entry.call_arg_types_.pos_.resize(args.pos_.size(), nullptr);
 
-  GeneratedFunction *fn = nullptr;
+  if (bound_fn->is<Function>()) {
+    auto *generic_fn = &bound_fn->as<Function>();
+    auto bound_constants =
+        ComputeBoundConstants(generic_fn, args, &dispatch_entry.binding_, ctx);
+    if (!bound_constants) { return std::nullopt; }
+
+    // TODO can generate fail? Probably
+    dispatch_entry.binding_.fn_expr_ = ASSERT_NOT_NULL(
+        generic_fn->generate(std::move(bound_constants).value()));
+  }
+
+  FuncContent *fn = nullptr;
   if (fn_option->lvalue == Assign::Const) {
-    if (fn_option->type == type::Generic) {
-      auto *generic_fn     = &bound_fn->as<Function>();
-      auto bound_constants = ComputeBoundConstants(
-          generic_fn, args, &dispatch_entry.binding_, ctx);
-      if (!bound_constants) { return std::nullopt; }
-
-      // TODO can generate fail? Probably
-      dispatch_entry.binding_.fn_expr_ = ASSERT_NOT_NULL(
-          generic_fn->generate(std::move(bound_constants).value()));
-    }
-
-    fn = &dispatch_entry.binding_.fn_expr_->as<GeneratedFunction>();
+    fn = &dispatch_entry.binding_.fn_expr_->as<FuncContent>();
 
     for (const auto & [ key, val ] : fn->lookup_) {
       if (val < args.pos_.size()) { continue; }

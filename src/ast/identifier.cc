@@ -45,6 +45,10 @@ void Identifier::VerifyType(Context *ctx) {
         }
       } else {
         // TODO is this reachable? Or does shadowing cover this case?
+        // Actually this is possible with overloading?
+        for (auto *id : potential_decls) {
+          LOG << id->to_string(0) << ": " << id->type;
+        }
         NOT_YET("log an error");
       }
       type = type::Err;

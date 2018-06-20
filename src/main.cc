@@ -121,12 +121,7 @@ std::unique_ptr<Module> CompileModule(const Source::Name &src) {
     if (!stmt->is<AST::Declaration>()) { continue; }
     auto &decl = stmt->as<AST::Declaration>();
     if (decl.identifier->token != "main") { continue; }
-    auto gened_fn =
-        backend::EvaluateAs<AST::Function *>(decl.init_val.get(), &ctx)
-            ->generate(bc);
-    if (gened_fn == nullptr) { continue; }
-    gened_fn->CompleteBody(ctx.mod_);
-    auto ir_fn = gened_fn->ir_func_;
+    auto ir_fn = backend::EvaluateAs<IR::Func *>(decl.init_val.get(), &ctx);
 
     // TODO check more than one?
 

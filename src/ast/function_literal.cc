@@ -141,6 +141,7 @@ void FuncContent::VerifyType(Context *ctx) {
     // TODO should named return types be required?
     std::vector<IR::Val> out_vals;
     out_vals.reserve(outputs.size());
+
     for (const auto &out : outputs) {
       auto result = backend::Evaluate(
           [&]() {
@@ -177,7 +178,6 @@ void FuncContent::VerifyType(Context *ctx) {
         ret_types.push_back(ret_type);
       }
     }
-
     type = type::Func(std::move(input_type_vec), std::move(ret_types));
   } else {
     Validate(ctx);
@@ -185,12 +185,31 @@ void FuncContent::VerifyType(Context *ctx) {
 }
 
 void Function::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-  type = type::Generic;
-  lvalue = Assign::Const;
+  bool is_generic = false;
+  // TODO this loop can be decided on much earlier.
+  for (const auto &input : inputs) {
+    if (input->const_) {
+      is_generic = true;
+      break;
+    }
+  }
+
+  if (is_generic) {
+    VERIFY_STARTING_CHECK_EXPR;
+    type   = type::Generic;
+    lvalue = Assign::Const;
+  } else {
+    FuncContent::VerifyType(ctx);
+  }
 }
 
-void Function::Validate(Context *ctx) {}
+void Function::Validate(Context *ctx) {
+  // TODO this loop can be decided on much earlier.
+  for (const auto &input : inputs) {
+    if (input->const_) { return; }
+  }
+  FuncContent::Validate(ctx);
+}
 
 void FuncContent::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
@@ -347,7 +366,17 @@ Function *Function::Clone() const {
   return result;
 }
 
-IR::Val Function::EmitIR(Context *) { return IR::Val::Func(this); }
+IR::Val Function::EmitIR(Context *ctx) {
+  // TODO this loop can be decided on much earlier.
+  for (const auto &input : inputs) {
+    if (input->const_) { return IR::Val::Func(this); }
+  }
+
+  // TODO this is a hack because I can't tell the difference between a generic
+  // function early enough. This really indicates that the code structure here
+  // is still wrong.
+  return generate(*ctx->bound_constants_)->EmitIR(ctx);
+}
 
 IR::Val GeneratedFunction::EmitIR(Context *ctx) {
   if (!ir_func_) {

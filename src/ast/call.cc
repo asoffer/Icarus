@@ -133,14 +133,10 @@ static std::vector<IR::Val> EmitOneCallDispatch(
   auto callee = binding.fn_expr_->EmitIR(ctx);
 
   // After the last check, if you pass, you should dispatch
-  IR::Func *fn_to_call = std::visit(
-      base::overloaded{[](IR::Func *fn) { return fn; },
-                       [](IR::Register r) -> IR::Func * { return nullptr; },
-                       [](auto &&) -> IR::Func * {
-                         UNREACHABLE();
-                         return nullptr;
-                       }},
-      callee.value);
+  std::vector<std::pair<std::string, AST::Expression *>> *const_args = nullptr;
+  if (auto **fn_to_call = std::get_if<IR::Func *>(&callee.value)) {
+    const_args = &((**fn_to_call).args_);
+  }
 
   std::vector<IR::Val> args;
   args.resize(binding.exprs_.size());
@@ -148,7 +144,7 @@ static std::vector<IR::Val> EmitOneCallDispatch(
     auto[bound_type, expr] = binding.exprs_[i];
     if (expr == nullptr) {
       ASSERT(bound_type != nullptr);
-      auto default_expr = fn_to_call->args_[i].second;
+      auto default_expr = (*ASSERT_NOT_NULL(const_args))[i].second;
       args[i]           = bound_type->PrepareArgument(default_expr->type,
                                             default_expr->EmitIR(ctx), ctx);
     } else {
