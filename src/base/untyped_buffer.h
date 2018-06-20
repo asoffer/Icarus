@@ -45,15 +45,16 @@ struct untyped_buffer {
   }
 
   void append_bytes(size_t num) {
-    if (size_ + num > capacity_) { reallocate(); }
+    if (size_ + num > capacity_) { reallocate(size_ + num); }
     size_ += num;
   }
 
  private:
-  void reallocate() {
-    char *new_data = static_cast<char *>(malloc(capacity_ * 2));
+  void reallocate(size_t num) {
+    size_t new_cap = std::max<size_t>(num, capacity_ * 2);
+    char *new_data = static_cast<char *>(malloc(new_cap));
     std::memcpy(new_data, data_, size_);
-    capacity_ *= 2;
+    capacity_ = new_cap;
     free(data_);
     data_ = new_data;
   }
