@@ -5,6 +5,7 @@
 #include "ast/fn_args.h"
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
+#include "ast/access.h"
 #include "ast/scope_literal.h"
 #include "ast/stages.h"
 #include "ast/verify_macros.h"
@@ -130,6 +131,19 @@ ScopeNode *ScopeNode::Clone() const {
   return result;
 }
 
+static std::pair<const Module *, std::string> GetQualifiedIdentifier(
+    Expression *expr, Context *ctx) {
+  if (expr->is<Identifier>()) {
+    const auto &token = expr->as<Identifier>().token;
+    return std::pair{ctx->mod_, token};
+  } else if (expr->is<Access>()) {
+    auto *access = &expr->as<Access>();
+    auto *mod    = backend::EvaluateAs<const Module *>(access->operand.get(), ctx);
+    return std::pair{mod, access->member_name};
+  }
+  UNREACHABLE(expr->to_string(0));
+}
+
 IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(blocks_[0].get(), ctx);
 
@@ -140,9 +154,10 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
   };
   std::unordered_map<AST::BlockLiteral *, BlockData> lit_to_data;
   std::unordered_map<std::string, BlockData *> name_to_data;
+  std::string top_block_node_name;
   for (const auto & [ expr, block_node ] : block_map_) {
-    // TODO this probably doesn't always have to be an identifier.
-    const auto& block_node_name = expr->as<Identifier>().token;
+    auto [mod, block_node_name] = GetQualifiedIdentifier(expr, ctx);
+
     // TODO better search
 
     for (const auto &decl : scope_lit->decls_) {
@@ -166,8 +181,8 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
       if (decl.identifier->token == "self") {
         // TODO check constness as part of type-checking
         IR::UncondJump(block_data->before);
-        ASSERT(blocks_[0], Is<Identifier>());
-        name_to_data.emplace(blocks_[0]->as<Identifier>().token, block_data);
+        top_block_node_name = block_node_name;
+        name_to_data.emplace(block_node_name, block_data);
       } else {
         name_to_data.emplace(decl.identifier->token, block_data);
       }
@@ -175,10 +190,12 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     }
   }
 
+  // TODO can we just store "self" in name_to_data to avoid this nonsense?
   std::unordered_map<BlockData *, BlockNode *> data_to_node;
   for (const auto &block : blocks_) {
-    ASSERT(block, Is<Identifier>());
-    auto *block_data = name_to_data.at(block->as<Identifier>().token);
+    auto *block_data = block->is<Identifier>()
+                           ? name_to_data.at(block->as<Identifier>().token)
+                           : name_to_data.at(top_block_node_name);
     data_to_node.emplace(block_data, &block_map_.at(block.get()));
   }
   name_to_data.clear();
