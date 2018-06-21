@@ -65,13 +65,6 @@ Val Val::HeapAddr(void *addr, const type::Type *t) {
   return Val(Ptr(t), a);
 }
 
-Val Val::GlobalAddr(u64 addr, const type::Type *t) {
-  IR::Addr a;
-  a.kind      = Addr::Kind::Global;
-  a.as_global = addr;
-  return Val(Ptr(t), a);
-}
-
 Val Val::Ref(AST::Expression *expr) { return Val(expr->type, expr); }
 
 Val Val::Scope(AST::ScopeLiteral *scope_lit) {
@@ -178,7 +171,6 @@ std::string Addr::to_string() const {
   std::stringstream ss;
   switch (kind) {
   case Kind::Null: ss << "null"; break;
-  case Kind::Global: ss << "g." << as_global; break;
   case Kind::Stack: ss << "s." << as_stack; break;
   case Kind::Heap: ss << "h." << as_heap; break;
   }
@@ -190,7 +182,6 @@ bool operator==(Addr lhs, Addr rhs) {
   switch (lhs.kind) {
   case Addr::Kind::Null: return true;
   case Addr::Kind::Stack: return lhs.as_stack == rhs.as_stack;
-  case Addr::Kind::Global: return lhs.as_global == rhs.as_global;
   case Addr::Kind::Heap: return lhs.as_heap == rhs.as_heap;
   }
   UNREACHABLE();

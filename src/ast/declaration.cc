@@ -9,8 +9,6 @@
 #include "module.h"
 #include "type/all.h"
 
-extern std::vector<IR::Val> global_vals;
-
 namespace AST {
 namespace {
 bool IsUninitialized(Declaration *decl) {
@@ -418,27 +416,7 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
       UNREACHABLE();
     }
   } else if (scope_ == ctx->mod_->global_.get()) {
-    // TODO these checks actually overlap and could be simplified.
-    if (IsUninitialized(this)) {
-      global_vals.emplace_back();
-      global_vals.back().type = type;
-      addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
-    } else if (IsCustomInitialized()) {
-      auto eval = backend::Evaluate(init_val.get(), ctx);
-      if (ctx->num_errors()) { return IR::Val::None(); }
-      global_vals.push_back(eval[0]);
-      addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
-
-    } else if (IsDefaultInitialized()) {
-      NOT_YET();
-      addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
-
-    } else if (IsInferred()) {
-      NOT_YET();
-
-    } else {
-      UNREACHABLE();
-    }
+    NOT_YET();
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation

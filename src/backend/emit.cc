@@ -58,7 +58,6 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
                 return llvm::ConstantPointerNull::get(
                     val.type->as<type::Pointer>().llvm_ptr(
                         llvm_data->module->getContext()));
-              case IR::Addr::Kind::Global: NOT_YET();
               case IR::Addr::Kind::Stack: NOT_YET();
               case IR::Addr::Kind::Heap: NOT_YET();
             }

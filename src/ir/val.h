@@ -54,9 +54,8 @@ inline bool operator<(CmdIndex lhs, CmdIndex rhs) {
 }
 
 struct Addr {
-  enum class Kind : u8 { Null, Global, Stack, Heap } kind;
+  enum class Kind : u8 { Null, Stack, Heap } kind;
   union {
-    u64 as_global;
     u64 as_stack;
     void *as_heap;
   };
@@ -73,7 +72,6 @@ inline bool operator<(Addr lhs, Addr rhs) {
   if (lhs_kind > rhs_kind) { return false; }
   switch (lhs.kind) {
   case Addr::Kind::Null: return false;
-  case Addr::Kind::Global: return lhs.as_global < rhs.as_global;
   case Addr::Kind::Stack: return lhs.as_stack < rhs.as_stack;
   case Addr::Kind::Heap: return lhs.as_heap < rhs.as_heap;
   }
@@ -111,7 +109,6 @@ struct Val {
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
   static Val Addr(Addr addr, const type::Type *t);
-  static Val GlobalAddr(u64 addr, const type::Type *t);
   static Val HeapAddr(void *addr, const type::Type *t);
   static Val StackAddr(u64 addr, const type::Type *t);
   static Val Bool(bool b) { return Val(type::Bool, b); }

@@ -18,8 +18,6 @@
 
 using base::check::Is;
 
-std::vector<IR::Val> global_vals;
-
 namespace IR {
 std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
                          ExecContext *ctx) {
@@ -226,7 +224,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         case Addr::Kind::Null:
           // TODO compile-time failure. dump the stack trace and abort.
           UNREACHABLE();
-        case Addr::Kind::Global: return global_vals[addr.as_global];
         case Addr::Kind::Heap: {
 #define LOAD_FROM_HEAP(lang_type, ctor, cpp_type)                              \
   if (cmd.type == lang_type) {                                                 \
@@ -276,7 +273,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               case Addr::Kind::Heap:
                 return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
                                      cmd.type->as<type::Pointer>().pointee);
-              case Addr::Kind::Global: NOT_YET();
               case Addr::Kind::Null: NOT_YET();
             }
           } else if (cmd.type->is<type::Enum>()) {
@@ -310,9 +306,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           // TODO compile-time failure. dump the stack trace and abort.
           cmd.dump(0);
           UNREACHABLE();
-        case Addr::Kind::Global:
-          global_vals[addr.as_global] = resolved[0];
-          return IR::Val::None();
         case Addr::Kind::Stack:
           std::visit(
               base::overloaded{[this, &addr](EnumVal e) {
@@ -378,7 +371,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                                     bytes_fwd),
                 cmd.type->as<type::Pointer>().pointee);
           }
-          case Addr::Kind::Global: NOT_YET();
           case Addr::Kind::Null: NOT_YET();
         }
         UNREACHABLE("Invalid address kind: ", static_cast<int>(addr->kind));
@@ -464,7 +456,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                   bytes_fwd),
               cmd.type->as<type::Pointer>().pointee);
         }
-        case Addr::Kind::Global: NOT_YET();
         case Addr::Kind::Null: NOT_YET();
       }
       UNREACHABLE("Invalid address kind: ",
@@ -482,7 +473,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::ArrayData:
       switch (std::get<Addr>(resolved[0].value).kind) {
         case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Global: NOT_YET();
         case Addr::Kind::Stack:
           return IR::Val::StackAddr(
               std::get<Addr>(resolved[0].value).as_stack +
