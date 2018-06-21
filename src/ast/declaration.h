@@ -23,8 +23,10 @@ struct Declaration : public Expression {
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
   Declaration *Clone() const override;
+  void CloneTo(Declaration *) const;
+
   IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  IR::Val EmitLVal(Context *) override { UNREACHABLE(this); }
 
   std::unique_ptr<Identifier> identifier;
   std::unique_ptr<Expression> type_expr, init_val;

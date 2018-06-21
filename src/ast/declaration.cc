@@ -390,14 +390,18 @@ void Declaration::ExtractReturns(std::vector<const Expression *> *rets) const {
 }
 
 Declaration *Declaration::Clone() const {
-  auto *result       = new Declaration;
+  auto *result = new Declaration;
+  CloneTo(result);
+  return result;
+}
+
+void Declaration::CloneTo(Declaration *result) const {
   result->span       = span;
   result->const_     = const_;
   result->identifier = base::wrap_unique(identifier->Clone());
   result->type_expr =
       type_expr ? base::wrap_unique(type_expr->Clone()) : nullptr;
   result->init_val = init_val ? base::wrap_unique(init_val->Clone()) : nullptr;
-  return result;
 }
 
 IR::Val AST::Declaration::EmitIR(Context *ctx) {
@@ -460,6 +464,4 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
 
   return addr;
 }
-
-IR::Val Declaration::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

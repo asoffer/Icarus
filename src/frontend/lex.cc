@@ -570,7 +570,18 @@ restart:
 
   frontend::TaggedNode tagged_node = frontend::TaggedNode::Invalid();
   switch (*loc) {
-    case '`': tagged_node = NextCharLiteral(loc, error_log); break;
+    case '`': {
+      loc.Increment();
+      if (*loc == '`') {
+        auto span = loc.ToSpan();
+        loc.Increment();
+        span.finish = loc.cursor;
+        tagged_node = frontend::TaggedNode(span, "``", frontend::op_b);
+      } else {
+        loc.BackUp();
+        tagged_node = NextCharLiteral(loc, error_log);
+      }
+    } break;
     case '"': tagged_node = NextStringLiteral(loc, error_log); break;
     case '/': tagged_node = NextSlashInitiatedToken(loc, error_log); break;
     case '\t':

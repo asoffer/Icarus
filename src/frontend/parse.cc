@@ -19,6 +19,7 @@
 #include "ast/import.h"
 #include "ast/interface.h"
 #include "ast/jump.h"
+#include "ast/match_declaration.h"
 #include "ast/scope_literal.h"
 #include "ast/scope_node.h"
 #include "ast/statements.h"
@@ -384,6 +385,16 @@ static std::unique_ptr<Node> BuildDeclaration(
   return decl;
 }
 
+static std::unique_ptr<Node> BuildMatchDeclaration(
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+  auto decl              = std::make_unique<AST::MatchDeclaration>();
+  decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
+  decl->identifier       = move_as<Identifier>(nodes[2]);
+  decl->identifier->decl = decl.get();
+  decl->type_expr        = move_as<Expression>(nodes[0]);
+  return decl;
+}
+
 static std::vector<std::unique_ptr<Declaration>> ExtractInputs(
     std::unique_ptr<Expression> args) {
   std::vector<std::unique_ptr<Declaration>> inputs;
@@ -663,6 +674,9 @@ static std::unique_ptr<AST::Node> BuildBinaryOperator(
 
   if (tk == ".") {
     return AST::BuildAccess(std::move(nodes), ctx);
+
+  } else if (tk == "``") {
+    return AST::BuildMatchDeclaration(std::move(nodes), ctx);
 
   } else if (tk == ":" || tk == ":=") {
     return AST::BuildDeclaration<false>(std::move(nodes), ctx);
