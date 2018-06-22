@@ -32,9 +32,26 @@ void Identifier::VerifyType(Context *ctx) {
   if (decl == nullptr) {
     auto[potential_decls, potential_error_decls] =
         scope_->AllDeclsWithId(token, ctx);
+    switch (potential_decls.size()) {
+      case 1:
+        // TODO could it be that evn though there is only one declaration,
+        // there's a bound constant of the same name? If so, we need to deal
+        // with this case.
+        decl = potential_decls[0];
+        break;
+      case 0:
+        // TODO what if you find a bound constant and some errror decls?
+        for (const auto & [ tk, v ] : ctx->bound_constants_->constants_) {
+          if (tk == token) { 
+            // TODO Note that you're not assigning a declaration here. Is that
+            // required? You shouldn't be relying on it... that's what the
+            // staging system is for.
+            type   = type::Type_;
+            lvalue = Assign::Const;
+            return;
+          }
+        }
 
-    if (potential_decls.size() != 1) {
-      if (potential_decls.empty()) {
         switch (potential_error_decls.size()) {
           case 0: ctx->error_log_.UndeclaredIdentifier(this); break;
           case 1:
@@ -43,20 +60,20 @@ void Identifier::VerifyType(Context *ctx) {
             break;
           default: NOT_YET();
         }
-      } else {
+        type = type::Err;
+        limit_to(StageRange::Nothing());
+        return;
+      default:
         // TODO is this reachable? Or does shadowing cover this case?
         // Actually this is possible with overloading?
         for (auto *id : potential_decls) {
           LOG << id->to_string(0) << ": " << id->type;
         }
         NOT_YET("log an error");
-      }
-      type = type::Err;
-      limit_to(StageRange::Nothing());
-      return;
+        type = type::Err;
+        limit_to(StageRange::Nothing());
+        return;
     }
-
-    decl = potential_decls[0];
   }
 
   if (!decl->const_ && (span.start.line_num < decl->span.start.line_num ||

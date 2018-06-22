@@ -131,6 +131,7 @@ static std::vector<IR::Val> EmitOneCallDispatch(
     const std::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
   auto callee = binding.fn_expr_->EmitIR(ctx);
+  ASSERT(callee.type, Is<type::Function>());
 
   // After the last check, if you pass, you should dispatch
   std::vector<std::pair<std::string, AST::Expression *>> *const_args = nullptr;

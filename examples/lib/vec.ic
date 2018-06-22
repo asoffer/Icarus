@@ -9,7 +9,7 @@ vec ::= (T: type,
 }
 
 capacity ::= (T :: type, v: T'vec) => v._data.size
-size ::= (T :: type, v: T'vec) => v.size
+size ::= (T :: type, v: T'vec) => v._size
 
 make ::= (T :: type) -> T'vec {
   result: T'vec
@@ -29,7 +29,11 @@ remove ::= (T :: type, v: *T'vec) -> T {
   return result
 }
 
-dump ::= (T :: type, v: T'vec) -> () {
+
+any ::= interface {}
+// 'blah' field is only to deal with ab bug where we don't recognize that this
+// is generic and try to to type verification to early. TODO fix me.
+dump ::= (v: any``V, blah ::= bool) -> () {
   if (v._size == 0) { print "[]" }
   print "[", v._data[0]
   i := 1

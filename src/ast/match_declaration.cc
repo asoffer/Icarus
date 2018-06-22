@@ -1,7 +1,8 @@
 #include "ast/match_declaration.h"
 
-#include "type/primitive.h"
 #include "ast/verify_macros.h"
+#include "backend/eval.h"
+#include "type/primitive.h"
 
 namespace AST {
 std::string MatchDeclaration::to_string(size_t n) const {
@@ -14,12 +15,14 @@ void MatchDeclaration::VerifyType(Context *ctx) {
     type_expr->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(type_expr);
-    type = type::Type_;
+    // TODO this is wrong. it's a type satisfying a given interface. does that
+    // matter?
+    type = type::Interface;
   }
   identifier->VerifyType(ctx);
 }
 
-void MatchDeclaration::Validate(Context *ctx) { NOT_YET(); }
+void MatchDeclaration::Validate(Context *ctx) { type_expr->Validate(ctx); }
 
 MatchDeclaration *MatchDeclaration::Clone() const {
   auto *result = new MatchDeclaration;
@@ -27,5 +30,8 @@ MatchDeclaration *MatchDeclaration::Clone() const {
   return result;
 }
 
-IR::Val MatchDeclaration::EmitIR(Context *ctx) { UNREACHABLE(); }
+IR::Val MatchDeclaration::EmitIR(Context *ctx) {
+  return IR::Val::Interface(
+      backend::EvaluateAs<IR::Interface>(type_expr.get(), ctx));
+}
 }  // namespace AST

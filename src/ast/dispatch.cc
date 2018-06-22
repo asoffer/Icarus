@@ -1,6 +1,7 @@
 #include "ast/dispatch.h"
 
 #include "ast/function_literal.h"
+#include "ast/match_declaration.h"
 #include "backend/eval.h"
 #include "context.h"
 #include "ir/func.h"
@@ -49,6 +50,14 @@ std::optional<BoundConstants> ComputeBoundConstants(
         }
         bound_constants.interfaces_.emplace(fn->inputs[i].get(),
                                             binding->exprs_[i].second->type);
+        if (fn->inputs[i]->type_expr->is<MatchDeclaration>()) {
+          bound_constants.constants_.emplace(
+              fn->inputs[i]
+                  ->type_expr->as<MatchDeclaration>()
+                  .identifier->token,
+              IR::Val::Type(binding->exprs_[i].second->type));
+        }
+
 
         // TODO using this for now to signify an interface when in reality we
         // want something much more meaningful. 'Generic' is a weird catch-all
@@ -138,6 +147,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
 
   if (bound_fn->is<Function>()) {
     auto *generic_fn = &bound_fn->as<Function>();
+
     auto bound_constants =
         ComputeBoundConstants(generic_fn, args, &dispatch_entry.binding_, ctx);
     if (!bound_constants) { return std::nullopt; }

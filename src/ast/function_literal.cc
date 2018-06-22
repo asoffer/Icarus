@@ -3,8 +3,10 @@
 #include <sstream>
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"
+#include "ast/stages.h"
 #include "ast/terminal.h"
 #include "ast/verify_macros.h"
+#include "backend/eval.h"
 #include "context.h"
 #include "error/log.h"
 #include "ir/func.h"
@@ -12,7 +14,6 @@
 #include "type/function.h"
 #include "type/tuple.h"
 #include "type/type.h"
-#include "backend/eval.h"
 
 namespace AST {
 GeneratedFunction *Function::generate(BoundConstants bc) {
@@ -179,6 +180,7 @@ void FuncContent::VerifyType(Context *ctx) {
       }
     }
     type = type::Func(std::move(input_type_vec), std::move(ret_types));
+
   } else {
     Validate(ctx);
   }
@@ -379,6 +381,8 @@ IR::Val Function::EmitIR(Context *ctx) {
 }
 
 IR::Val GeneratedFunction::EmitIR(Context *ctx) {
+  if (stage_range_.high < EmitStage) { return IR::Val::None(); }
+
   if (!ir_func_) {
     std::vector<std::pair<std::string, Expression *>> args;
     args.reserve(inputs.size());

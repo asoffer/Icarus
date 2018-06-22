@@ -6,7 +6,7 @@ main ::= () -> () {
   i := 0
   while (i < 30) {
     vec.append(int, i, &v)
-    vec.dump(int, v)
+    vec.dump(v)
     print "\n"
     i += 1
   }
@@ -14,6 +14,6 @@ main ::= () -> () {
   print vec.remove(int, &v)
   print "\n"
 
-  vec.dump(int, v)
+  vec.dump(v)
   print "\n"
 }

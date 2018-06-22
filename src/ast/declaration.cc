@@ -416,7 +416,7 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
       UNREACHABLE();
     }
   } else if (scope_ == ctx->mod_->global_.get()) {
-    NOT_YET();
+    NOT_YET(to_string(0));
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation

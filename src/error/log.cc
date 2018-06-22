@@ -241,7 +241,7 @@ void Log::MissingMember(const TextSpan &span, const std::string &member_name,
                         const type::Type *t) {
   std::stringstream ss;
   ss << "Expressions of type `" << t->to_string() << "` have no member named `"
-     << member_name << "`.";
+     << member_name << "`.\n\n";
   WriteSource(
       ss, *span.source,
       {Interval{span.start.line_num, span.finish.line_num + 1}},
