@@ -179,31 +179,36 @@ void ChainOp::VerifyType(Context *ctx) {
       for (size_t i = 0; i < exprs.size() - 1; ++i) {
         const type::Type *lhs_type = exprs[i]->type;
         const type::Type *rhs_type = exprs[i + 1]->type;
-        if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
-          // TODO struct is wrong. generally user-defined (could be array of
-          // struct too, or perhaps a variant containing a struct?) need to
-          // figure out the details here.
-          const char *token = nullptr;
-          switch (ops[i]) {
-            case Language::Operator::Lt: token = "<"; break;
-            case Language::Operator::Le: token = "<="; break;
-            case Language::Operator::Eq: token = "=="; break;
-            case Language::Operator::Ne: token = "!="; break;
-            case Language::Operator::Ge: token = ">="; break;
-            case Language::Operator::Gt: token = ">"; break;
-            default: UNREACHABLE();
+
+        // TODO struct is wrong. generally user-defined (could be array of
+        // struct too, or perhaps a variant containing a struct?) need to
+        // figure out the details here.
+        const char *token = nullptr;
+        switch (ops[i]) {
+          case Language::Operator::Lt: token = "<"; break;
+          case Language::Operator::Le: token = "<="; break;
+          case Language::Operator::Eq: token = "=="; break;
+          case Language::Operator::Ne: token = "!="; break;
+          case Language::Operator::Ge: token = ">="; break;
+          case Language::Operator::Gt: token = ">"; break;
+          default: UNREACHABLE();
           }
 
+        if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
           FnArgs<Expression *> args;
           args.pos_ = std::vector{exprs[i].get(), exprs[i + 1].get()};
           // TODO overwriting type a bunch of times?
-          std::tie(dispatch_tables_[i], type) =
+          std::tie(dispatch_tables_.at(i), type) =
               DispatchTable::Make(args, token, scope_, ctx);
           ASSERT(type, Not(Is<type::Tuple>()));
           if (type == type::Err) { limit_to(StageRange::Nothing()); }
         } else {
           if (lhs_type != rhs_type) {
-            NOT_YET(lhs_type, " ", rhs_type);
+            // TODO better error.
+            ctx->error_log_.NoMatchingOperator(token, lhs_type, rhs_type, span);
+            ctx->DumpErrors();
+            limit_to(StageRange::NoEmitIR());
+
           } else {
             auto cmp = lhs_type->Comparator();
 
@@ -368,9 +373,10 @@ IR::Val ChainOp::EmitIR(Context *ctx) {
 IR::Val ChainOp::EmitLVal(Context *ctx) { UNREACHABLE(this); }
 
 ChainOp *ChainOp::Clone() const {
-  auto *result = new ChainOp;
-  result->span = span;
-  result->ops  = ops;
+  auto *result             = new ChainOp;
+  result->span             = span;
+  result->ops              = ops;
+  result->dispatch_tables_ = dispatch_tables_;
   result->exprs.reserve(exprs.size());
   for (const auto &expr : exprs) { result->exprs.emplace_back(expr->Clone()); }
   return result;

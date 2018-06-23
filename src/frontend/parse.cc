@@ -183,7 +183,6 @@ static std::unique_ptr<Node> BuildChainOp(
   chain->ops.push_back(op);
   chain->dispatch_tables_.emplace_back();
   chain->exprs.push_back(move_as<Expression>(nodes[2]));
-
   return chain;
 }
 
@@ -1250,7 +1249,7 @@ static void Debug(frontend::ParseState *ps) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
   if (ps->loc_ != nullptr) {
-    fprintf(stderr, "%s", ps->loc_->line().c_str());
+    fprintf(stderr, "%s\n", ps->loc_->line().c_str());
     fprintf(stderr, "%*s^\n(offset = %u)\n\n",
             static_cast<int>(ps->loc_->cursor.offset), "",
             ps->loc_->cursor.offset);

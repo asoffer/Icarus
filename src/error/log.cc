@@ -274,6 +274,19 @@ void Log::ReturnTypeMismatch(const type::Type *expected_type,
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
+void Log::NoMatchingOperator(const std::string &op, const type::Type *lhs,
+                             const type::Type *rhs, const TextSpan &span) {
+  std::stringstream ss;
+  ss << "No matching operator (" << op << ") with arguments of type "
+     << lhs->to_string() << " and " << rhs->to_string() << "\n\n";
+  WriteSource(
+      ss, *span.source,
+      {Interval{span.start.line_num, span.finish.line_num + 1}},
+      NumDigits(span.finish.line_num) + 2,
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
 
 void Log::NoReturnTypes(const AST::Expression *ret_expr) {
   std::stringstream ss;
