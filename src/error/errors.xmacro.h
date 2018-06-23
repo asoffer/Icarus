@@ -95,3 +95,6 @@ MAKE_LOG_ERROR(
     "Required block appears on the left-hand side of `|` operator.")
 MAKE_LOG_ERROR(NoCallMatch,
                "Failed to find a matching function signature to call.")
+
+MAKE_LOG_ERROR(UnspecifiedOverload,
+               "Attempting to access an overloaded function by name.")

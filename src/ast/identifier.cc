@@ -64,12 +64,8 @@ void Identifier::VerifyType(Context *ctx) {
         limit_to(StageRange::Nothing());
         return;
       default:
-        // TODO is this reachable? Or does shadowing cover this case?
-        // Actually this is possible with overloading?
-        for (auto *id : potential_decls) {
-          LOG << id->to_string(0) << ": " << id->type;
-        }
-        NOT_YET("log an error");
+        // TODO Should we allow the overload?
+        ctx->error_log_.UnspecifiedOverload(span);
         type = type::Err;
         limit_to(StageRange::Nothing());
         return;
