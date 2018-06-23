@@ -152,10 +152,26 @@ void Unop::VerifyType(Context *ctx) {
       }
     } break;
     case Operator::Print: {
-      if (operand->type == type::Void()) {
-        ctx->error_log_.PrintingVoid(span);
-        limit_to(StageRange::NoEmitIR());
-      }
+      ForEachExpr(operand.get(), [ctx, this](size_t i, AST::Expression *expr) {
+        if (expr->type->is<type::Primitive>() ||
+            expr->type->is<type::Pointer>() ||
+            expr->type->is<type::CharBuffer>()) {
+          return;
+        } else if (expr->type->is<type::Struct>()) {
+          FnArgs<Expression *> args;
+          args.pos_            = std::vector{expr};
+          const type::Type *ret_type = nullptr;
+          // TODO multiple dispatch tables?
+          std::tie(this->dispatch_table_, ret_type) =
+              DispatchTable::Make(args, "print", scope_, ctx);
+          if (ret_type != type::Void()) {
+            NOT_YET("log an error");
+            limit_to(StageRange::Nothing());
+          }
+        } else {
+          NOT_YET(expr->type);
+        }
+      });
       type = type::Void();
     } break;
     case Operator::Return: {
@@ -254,8 +270,11 @@ IR::Val Unop::EmitIR(Context *ctx) {
                                               ? PtrCallFix(operand->EmitIR(ctx))
                                               : operand->EmitIR(ctx))};
     auto results = EmitCallDispatch(args, dispatch_table_, type, ctx);
-    ASSERT(results.size() == 1u);
-    return results[0];
+    switch (results.size()) {
+      case 0: return IR::Val::None();
+      case 1: return results[0];
+      default: UNREACHABLE();
+    }
   }
 
   switch (op) {
@@ -289,6 +308,8 @@ IR::Val Unop::EmitIR(Context *ctx) {
         if (expr->type->is<type::Primitive>() ||
             expr->type->is<type::Pointer>()) {
           IR::Print(expr->EmitIR(ctx));
+        } else if (expr->type->is<type::Struct>()) {
+          UNREACHABLE();
         } else {
           expr->type->EmitRepr(expr->EmitIR(ctx), ctx);
         }

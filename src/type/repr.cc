@@ -152,37 +152,8 @@ void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
   IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{id_val}, {});
 }
 
-void Function::EmitRepr(IR::Val, Context *ctx) const {
-  IR::Print(IR::Val::Char('{'));
-  IR::Print(IR::Val::Type(this));
-  IR::Print(IR::Val::Char('}'));
-}
-
-void Struct::EmitRepr(IR::Val val, Context *ctx) const {
-  std::unique_lock lock(mtx_);
-  if (!repr_func_) {
-    repr_func_ = ctx->mod_->AddFunc(
-        Func({this}, {}),
-        std::vector<std::pair<std::string, AST::Expression *>>{
-            {"arg", nullptr}});
-
-    CURRENT_FUNC(repr_func_) {
-      IR::BasicBlock::Current = repr_func_->entry();
-
-      IR::Print(IR::Val::Char('{'));
-      IR::Print(IR::Val::Char(' '));
-
-      for (size_t i = 0; i < fields_.size(); ++i) {
-        fields_[i].type->EmitRepr(
-            PtrCallFix(IR::Field(repr_func_->Argument(0), i)), ctx);
-        IR::Print(IR::Val::Char(' '));
-      }
-      IR::Print(IR::Val::Char('}'));
-      IR::ReturnJump();
-    }
-  }
-  IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
-}
+void Function::EmitRepr(IR::Val, Context *ctx) const { UNREACHABLE(); }
+void Struct::EmitRepr(IR::Val val, Context *ctx) const { UNREACHABLE(); }
 
 void CharBuffer::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(std::move(val)); }
 } // namespace type

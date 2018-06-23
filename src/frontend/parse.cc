@@ -1200,6 +1200,10 @@ struct ParseState {
     constexpr u64 OP =
         op_r | op_l | op_b | colon | eq | comma | op_bl | op_lt | fn_arrow;
     if (get_type<2>() & OP) {
+      if (get_type<1>() == r_paren) {
+        // TODO this feels like a hack, but maybe this whole function is.
+        return ShiftState::MustReduce;
+      }
       auto left_prec = precedence(get<2>()->as<frontend::Token>().op);
       size_t right_prec;
       if (ahead.tag_ & OP) {
