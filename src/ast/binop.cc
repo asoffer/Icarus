@@ -245,7 +245,11 @@ void Binop::VerifyType(Context *ctx) {
       std::tie(dispatch_table_, type) =                                        \
           DispatchTable::Make(args, symbol, scope_, ctx);                      \
       ASSERT(type, Not(Is<type::Tuple>()));                                    \
-      if (type == type::Err) { limit_to(StageRange::Nothing()); }              \
+      if (type == type::Err) {                                                 \
+        ctx->error_log_.NoMatchingOperator(symbol, lhs->type, rhs->type,       \
+                                           span);                              \
+        limit_to(StageRange::Nothing());                                       \
+      }                                                                        \
     }                                                                          \
   } break;
 
@@ -272,7 +276,10 @@ void Binop::VerifyType(Context *ctx) {
         std::tie(dispatch_table_, type) =
             DispatchTable::Make(args, "+", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
-        if (type == type::Err) { limit_to(StageRange::Nothing()); }
+        if (type == type::Err) {
+          ctx->error_log_.NoMatchingOperator("+", lhs->type, rhs->type, span);
+          limit_to(StageRange::Nothing());
+        }
       }
     } break;
     case Operator::AddEq: {
@@ -317,7 +324,10 @@ void Binop::VerifyType(Context *ctx) {
         std::tie(dispatch_table_, type) =
             DispatchTable::Make(args, "*", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
-        if (type == type::Err) { limit_to(StageRange::Nothing()); }
+        if (type == type::Err) {
+          ctx->error_log_.NoMatchingOperator("+", lhs->type, rhs->type, span);
+          limit_to(StageRange::Nothing());
+        }
       }
     } break;
     case Operator::Arrow: {

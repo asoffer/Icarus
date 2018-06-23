@@ -77,7 +77,7 @@ dump ::= (z: complex) -> () {
     }
   } else {
     if (z._im == 0.0) {
-      print 0
+      print 0.0
     } else {
       if (z._im != 1.0) { print z._im  }
       print "i"

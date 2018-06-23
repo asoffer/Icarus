@@ -206,7 +206,6 @@ void ChainOp::VerifyType(Context *ctx) {
           if (lhs_type != rhs_type) {
             // TODO better error.
             ctx->error_log_.NoMatchingOperator(token, lhs_type, rhs_type, span);
-            ctx->DumpErrors();
             limit_to(StageRange::NoEmitIR());
 
           } else {

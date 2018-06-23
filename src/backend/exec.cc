@@ -505,7 +505,7 @@ void ReplEval(AST::Expression *expr) {
     IR::BasicBlock::Current = fn->entry();
     // TODO use the right module
     Context ctx(nullptr);
-    auto expr_val      = expr->EmitIR(&ctx);
+    auto expr_val = expr->EmitIR(&ctx);
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
       return;
