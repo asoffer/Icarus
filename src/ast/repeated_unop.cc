@@ -95,43 +95,43 @@ void RepeatedUnop::VerifyType(Context *ctx) {
   }
 }
 
-IR::Val RepeatedUnop::EmitIR(Context *ctx) {
+std::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
+  auto arg_vals = args_.EmitIR(ctx);
   switch (op_) {
     case Language::Operator::Return: {
       if (args_.exprs.size() == 1 && !args_.exprs[0]->type->is_big()) {
-        IR::SetReturn(0, args_.exprs[0]->EmitIR(ctx));
+        IR::SetReturn(0, arg_vals[0]);
       } else {
         for (size_t i = 0; i < args_.exprs.size(); ++i) {
           // TODO return type maybe not the same as type actually returned?
           auto *ret_type = args_.exprs[i]->type;
-          ret_type->EmitAssign(args_.exprs[i]->type,
-                               args_.exprs[i]->EmitIR(ctx),
+          ret_type->EmitAssign(args_.exprs[i]->type, arg_vals[i],
                                IR::Func::Current->Return(i), ctx);
         }
       }
       IR::ReturnJump();
-      return IR::Val::None();
+      return {};
     }
     case Language::Operator::Print:
       for (size_t i = 0; i < args_.exprs.size(); ++i) {
         if (args_.exprs[i]->type->is<type::Primitive>() ||
             args_.exprs[i]->type->is<type::Pointer>() ||
             args_.exprs[i]->type->is<type::CharBuffer>()) {
-          IR::Print(args_.exprs[i]->EmitIR(ctx));
+          IR::Print(arg_vals[i]);
         } else if (args_.exprs[i]->type->is<type::Struct>()) {
           ASSERT(dispatch_tables_[i].total_size_ != 0u);
           // TODO struct is not exactly right. we really mean user-defined
           FnArgs<std::pair<Expression *, IR::Val>> args;
-          auto arg_val = args_.exprs[i]->EmitIR(ctx);
-          args.pos_    = {std::pair(
-              args_.exprs[i].get(),
-              args_.exprs[i]->type->is_big() ? PtrCallFix(arg_val) : arg_val)};
+          args.pos_ = {
+              std::pair(args_.exprs[i].get(), args_.exprs[i]->type->is_big()
+                                                  ? PtrCallFix(arg_vals[i])
+                                                  : arg_vals[i])};
           EmitCallDispatch(args, dispatch_tables_[i], type::Void(), ctx);
         } else {
-          args_.exprs[i]->type->EmitRepr(args_.exprs[i]->EmitIR(ctx), ctx);
+          args_.exprs[i]->type->EmitRepr(arg_vals[i], ctx);
         }
       }
-      return IR::Val::None();
+      return {};
     default: UNREACHABLE("Operator is ", static_cast<int>(op_));
   }
 }

@@ -101,8 +101,8 @@ void Access::contextualize(
                          replacements);
 }
 
-IR::Val AST::Access::EmitLVal(Context *ctx) {
-  auto val = operand->EmitLVal(ctx);
+std::vector<IR::Val> AST::Access::EmitLVal(Context *ctx) {
+  auto val = operand->EmitLVal(ctx)[0];
   while (val.type->is<type::Pointer>() &&
          !val.type->as<type::Pointer>().pointee->is_big()) {
     val = IR::Load(val);
@@ -112,9 +112,9 @@ IR::Val AST::Access::EmitLVal(Context *ctx) {
       val.type->as<type::Pointer>().pointee->is<type::Array>()) {
     auto &arr_type = val.type->as<type::Pointer>().pointee->as<type::Array>();
     if (arr_type.fixed_length) {
-      return IR::Val::Int(arr_type.len);
+      return {IR::Val::Int(arr_type.len)};
     } else {
-      return IR::Load(IR::ArrayLength(std::move(val)));
+      return {IR::Load(IR::ArrayLength(std::move(val)))};
     }
   }
 
@@ -123,20 +123,19 @@ IR::Val AST::Access::EmitLVal(Context *ctx) {
 
   auto *struct_type =
       &val.type->as<type::Pointer>().pointee->as<type::Struct>();
-  return IR::Field(val, struct_type->field_indices_.at(member_name));
+  return {IR::Field(val, struct_type->field_indices_.at(member_name))};
 }
 
-IR::Val AST::Access::EmitIR(Context *ctx) {
+std::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
   if (operand->type == type::Module) {
     return backend::EvaluateAs<const Module *>(operand.get(), ctx)
         ->GetDecl(member_name)
         ->EmitIR(ctx);
   } else if (type->is<type::Enum>()) {
-    return type->as<type::Enum>().EmitLiteral(member_name);
+    return {type->as<type::Enum>().EmitLiteral(member_name)};
   } else {
-    return PtrCallFix(EmitLVal(ctx));
+    return {PtrCallFix(EmitLVal(ctx)[0])};
   }
-  return IR::Val::None();
 }
 
 Access *Access::Clone() const {

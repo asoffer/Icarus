@@ -24,8 +24,8 @@ struct ScopeNode : public Expression {
 
   ScopeNode *Clone() const override;
 
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
 
   struct BlockNode {
     Statements stmts_;

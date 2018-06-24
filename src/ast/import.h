@@ -25,8 +25,8 @@ struct Import : public Expression {
       const std::unordered_map<const Expression *, IR::Val> &) override;
   Import *Clone() const override;
 
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *ctx) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
 
   // TODO optimization: if the operand_ is a string literal, schedule it
   // immediately.

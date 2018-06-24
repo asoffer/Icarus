@@ -96,7 +96,7 @@ Switch *Switch::Clone() const {
   return result;
 }
 
-IR::Val AST::Switch::EmitIR(Context *ctx) {
+std::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
   std::vector<IR::Val> phi_args;
   phi_args.reserve(2 * cases_.size());
   auto land_block = IR::Func::Current->AddBlock();
@@ -106,10 +106,10 @@ IR::Val AST::Switch::EmitIR(Context *ctx) {
   for (size_t i= 0; i < cases_.size() - 1; ++i) {
     auto & [ expr, cond ] = cases_[i];
     auto expr_block = IR::Func::Current->AddBlock();
-    auto next_block = IR::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx));
+    auto next_block = IR::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx)[0]);
 
     IR::BasicBlock::Current = expr_block;
-    auto val           = expr->EmitIR(ctx);
+    auto val                = expr->EmitIR(ctx)[0];
     phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
     phi_args.push_back(std::move(val));
     IR::UncondJump(land_block);
@@ -117,7 +117,7 @@ IR::Val AST::Switch::EmitIR(Context *ctx) {
     IR::BasicBlock::Current = next_block;
   }
 
-  auto val = cases_.back().first->EmitIR(ctx);
+  auto val = cases_.back().first->EmitIR(ctx)[0];
   IR::UncondJump(land_block);
 
   phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
@@ -127,9 +127,9 @@ IR::Val AST::Switch::EmitIR(Context *ctx) {
   auto phi           = IR::Phi(type);
   IR::Func::Current->SetArgs(phi, std::move(phi_args));
 
-  return IR::Func::Current->Command(phi).reg();
+  return {IR::Func::Current->Command(phi).reg()};
 }
 
-IR::Val AST::Switch::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+std::vector<IR::Val> AST::Switch::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 
 }  // namespace AST

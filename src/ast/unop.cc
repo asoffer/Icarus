@@ -68,7 +68,7 @@ void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
     operand->assign_scope(scope);
     operand->VerifyType(&ctx);
     operand->Validate(&ctx);
-    auto val = operand->EmitIR(&ctx);
+    auto val = operand->EmitIR(&ctx)[0];
 
     args->push_back(val);
     args->push_back(IR::Val::Ref(this));
@@ -234,37 +234,32 @@ void Unop::VerifyType(Context *ctx) {
   limit_to(operand);
 }
 
-IR::Val Unop::EmitIR(Context *ctx) {
+std::vector<IR::Val> Unop::EmitIR(Context *ctx) {
   if (operand->type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
     // TODO struct is not exactly right. we really mean user-defined
     FnArgs<std::pair<Expression *, IR::Val>> args;
-    args.pos_    = {std::pair(operand.get(), operand->type->is_big()
-                                              ? PtrCallFix(operand->EmitIR(ctx))
-                                              : operand->EmitIR(ctx))};
-    auto results = EmitCallDispatch(args, dispatch_table_, type, ctx);
-    switch (results.size()) {
-      case 0: return IR::Val::None();
-      case 1: return results[0];
-      default: UNREACHABLE();
-    }
+    args.pos_ = {
+        std::pair(operand.get(), operand->type->is_big()
+                                     ? PtrCallFix(operand->EmitIR(ctx)[0])
+                                     : operand->EmitIR(ctx)[0])};
+    return EmitCallDispatch(args, dispatch_table_, type, ctx);
   }
 
   switch (op) {
     case Language::Operator::Not:
-    case Language::Operator::Sub: return IR::Neg(operand->EmitIR(ctx));
-    case Language::Operator::TypeOf: return IR::Val::Type(operand->type);
+    case Language::Operator::Sub: return {IR::Neg(operand->EmitIR(ctx)[0])};
+    case Language::Operator::TypeOf: return {IR::Val::Type(operand->type)};
     case Language::Operator::Which:
       if (lvalue == Assign::Const) {
         NOT_YET();
       } else {
-        return IR::Load(IR::VariantType(operand->EmitIR(ctx)));
+        return {IR::Load(IR::VariantType(operand->EmitIR(ctx)[0]))};
       }
-    case Language::Operator::And: return operand->EmitLVal(ctx);
+    case Language::Operator::And: return {operand->EmitLVal(ctx)[0]};
     case Language::Operator::Eval: {
       // TODO what if there's an error during evaluation?
       // TODO what about ``a, b = $FnWithMultipleReturnValues()``
-      auto results = backend::Evaluate(operand.get(), ctx);
-      return results.empty() ? IR::Val::None() : results[0];
+      return backend::Evaluate(operand.get(), ctx);
     }
     case Language::Operator::Generate: {
       auto val = backend::Evaluate(operand.get(), ctx) AT(0);
@@ -272,7 +267,7 @@ IR::Val Unop::EmitIR(Context *ctx) {
       auto block = std::get<AST::CodeBlock>(val.value);
       if (auto *err = std::get_if<std::string>(&block.content_)) {
         ctx->error_log_.UserDefinedError(*err);
-        return IR::Val::None();
+        return {};
       }
 
       auto *stmts = &std::get<AST::Statements>(block.content_);
@@ -282,24 +277,24 @@ IR::Val Unop::EmitIR(Context *ctx) {
       return stmts->EmitIR(ctx);
 
     } break;
-    case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(ctx));
-    case Language::Operator::At: return PtrCallFix(operand->EmitIR(ctx));
+    case Language::Operator::Mul: return {IR::Ptr(operand->EmitIR(ctx)[0])};
+    case Language::Operator::At: return {PtrCallFix(operand->EmitIR(ctx)[0])};
     case Language::Operator::Needs: {
       // TODO validate requirements are well-formed?
       IR::Func::Current->preconditions_.push_back(operand.get());
-      return IR::Val::None();
+      return {};
     } break;
     case Language::Operator::Ensure: {
       // TODO validate requirements are well-formed?
       IR::Func::Current->postconditions_.push_back(operand.get());
-      return IR::Val::None();
+      return {};
     } break;
     case Language::Operator::Pass: return operand->EmitIR(ctx);
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
 
-IR::Val Unop::EmitLVal(Context *ctx) {
+std::vector<IR::Val> Unop::EmitLVal(Context *ctx) {
   ASSERT(op == Language::Operator::At);
   return operand->EmitIR(ctx);
 }

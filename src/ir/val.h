@@ -98,13 +98,11 @@ namespace IR {
 struct Val {
   const type::Type *type = nullptr;
   // TODO make trivial: interface, codeblock
-  std::variant<
-      Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
-      const type::Type *, type::Struct *, IR::Func *, AST::Function *,
-      AST::ScopeLiteral *, IR::Interface, AST::CodeBlock, AST::Expression *,
-      BlockIndex, std::string_view, const Module *,
-      AST::BlockLiteral *,  // TODO no longer necessary with blocksequence?
-      std::vector<Val>, BlockSequence>
+  std::variant<Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
+               const type::Type *, type::Struct *, IR::Func *, AST::Function *,
+               AST::ScopeLiteral *, IR::Interface, AST::CodeBlock,
+               AST::Expression *, BlockIndex, std::string_view, const Module *,
+               BlockSequence>
       value{false};
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
@@ -128,9 +126,6 @@ struct Val {
   static Val Mod(const Module *mod) { return Val(type::Module, mod); }
   static Val Null(const type::Type *t);
   static Val NullPtr();
-  static Val Many(std::vector<IR::Val> vals) {
-    return Val(nullptr, std::move(vals));
-  }
   static Val Interface(IR::Interface ifc);
 
   static Val CharBuf(const std::string &str);

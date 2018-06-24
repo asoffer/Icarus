@@ -21,8 +21,8 @@ struct Expression : public Node {
   virtual void Validate(Context *ctx)                                   = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   virtual Expression *Clone() const                                     = 0;
-  virtual IR::Val EmitIR(Context *)                                     = 0;
-  virtual IR::Val EmitLVal(Context *)                                   = 0;
+  virtual std::vector<IR::Val> EmitIR(Context *)                        = 0;
+  virtual std::vector<IR::Val> EmitLVal(Context *)                      = 0;
 
   virtual void contextualize(
       const Node *correspondant,

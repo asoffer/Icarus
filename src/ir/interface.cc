@@ -5,7 +5,7 @@
 namespace IR {
 std::vector<std::string> Interface::MatchErrors(const type::Type* t) const {
   std::vector<std::string> errors;
-  if (!field_map_.empty()) {
+  if (!field_map_->empty()) {
     auto CheckStruct =
         [&errors, this](const type::Type* t) {
           if (!t->is<type::Struct>()) {
@@ -15,7 +15,7 @@ std::vector<std::string> Interface::MatchErrors(const type::Type* t) const {
             return;
           }
           const auto* s = &t->as<type::Struct>();
-          for (const auto & [ name, type ] : field_map_) {
+          for (const auto & [ name, type ] : *field_map_) {
             if (auto* field = s->field(name)) {
               if (field->type != type) {
                 errors.push_back(

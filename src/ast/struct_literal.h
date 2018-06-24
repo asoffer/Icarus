@@ -23,8 +23,8 @@ struct StructLiteral : public Expression {
       const std::unordered_map<const Expression *, IR::Val> &) override;
   StructLiteral *Clone() const override;
 
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
 
   std::unique_ptr<DeclScope> type_scope;
   std::vector<std::unique_ptr<Declaration>> fields_;

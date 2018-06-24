@@ -368,10 +368,10 @@ Function *Function::Clone() const {
   return result;
 }
 
-IR::Val Function::EmitIR(Context *ctx) {
+std::vector<IR::Val> Function::EmitIR(Context *ctx) {
   // TODO this loop can be decided on much earlier.
   for (const auto &input : inputs) {
-    if (input->const_) { return IR::Val::Func(this); }
+    if (input->const_) { return {IR::Val::Func(this)}; }
   }
 
   // TODO this is a hack because I can't tell the difference between a generic
@@ -380,8 +380,8 @@ IR::Val Function::EmitIR(Context *ctx) {
   return generate(*ctx->bound_constants_)->EmitIR(ctx);
 }
 
-IR::Val GeneratedFunction::EmitIR(Context *ctx) {
-  if (stage_range_.high < EmitStage) { return IR::Val::None(); }
+std::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
+  if (stage_range_.high < EmitStage) { return {}; }
 
   if (!ir_func_) {
     std::vector<std::pair<std::string, Expression *>> args;
@@ -394,7 +394,7 @@ IR::Val GeneratedFunction::EmitIR(Context *ctx) {
     ir_func_ = ctx->mod_->AddFunc(this, std::move(args));
     ctx->mod_->to_complete_.push(this);
   }
-  return IR::Val::Func(ir_func_);
+  return {IR::Val::Func(ir_func_)};
 }
 
 void GeneratedFunction::CompleteBody(Module *mod) {
@@ -465,6 +465,6 @@ void GeneratedFunction::CompleteBody(Module *mod) {
   }
 }
 
-IR::Val GeneratedFunction::EmitLVal(Context *) { UNREACHABLE(this); }
-IR::Val Function::EmitLVal(Context *) { UNREACHABLE(this); }
+std::vector<IR::Val> GeneratedFunction::EmitLVal(Context *) { UNREACHABLE(this); }
+std::vector<IR::Val> Function::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

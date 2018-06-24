@@ -67,9 +67,7 @@ Val MakeBlockSeq(const std::vector<Val> &blocks) {
   BlockSequence seq;
   seq.seq_.reserve(blocks.size());
   for (const auto &val : blocks) {
-    if (auto *const *lit = std::get_if<AST::BlockLiteral *>(&val.value)) {
-      seq.seq_.push_back(*lit);
-    } else if (auto *bseq = std::get_if<IR::BlockSequence>(&val.value)) {
+    if (auto *bseq = std::get_if<IR::BlockSequence>(&val.value)) {
       seq.seq_.insert(seq.seq_.end(), bseq->seq_.begin(), bseq->seq_.end());
     } else {
       UNREACHABLE();
@@ -80,8 +78,7 @@ Val MakeBlockSeq(const std::vector<Val> &blocks) {
 
 Val BlockSeq(std::vector<Val> blocks) {
   if (std::all_of(blocks.begin(), blocks.end(), [](const IR::Val &v) {
-        return std::holds_alternative<AST::BlockLiteral *>(v.value) ||
-               std::holds_alternative<IR::BlockSequence>(v.value);
+        return std::holds_alternative<IR::BlockSequence>(v.value);
       })) {
     return MakeBlockSeq(blocks);
   }
@@ -430,8 +427,6 @@ Val Eq(Val v1, Val v2) {
   CONSTANT_PROPOGATION(double, std::equal_to<double>{}, Bool);
   CONSTANT_PROPOGATION(const type::Type *, std::equal_to<const type::Type *>{},
                        Bool);
-  CONSTANT_PROPOGATION(AST::BlockLiteral *,
-                       std::equal_to<AST::BlockLiteral *>{}, Bool);
 
   CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
   CONSTANT_PROPOGATION(BlockSequence, std::equal_to<BlockSequence>{}, Bool);

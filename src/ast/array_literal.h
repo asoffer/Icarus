@@ -16,10 +16,11 @@ struct ArrayLiteral : public Expression {
       const Node *correspondant,
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
   ArrayLiteral *Clone() const override;
 
+  // TODO replace with a comma-list
   std::vector<std::unique_ptr<Expression>> elems_;
 };
 }  // namespace AST

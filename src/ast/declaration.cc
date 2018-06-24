@@ -402,13 +402,13 @@ void Declaration::CloneTo(Declaration *result) const {
   result->init_val = init_val ? base::wrap_unique(init_val->Clone()) : nullptr;
 }
 
-IR::Val AST::Declaration::EmitIR(Context *ctx) {
+std::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
     if (IsCustomInitialized()) {
       auto eval = backend::Evaluate(init_val.get(), ctx);
-      if (ctx->num_errors()) { return IR::Val::None(); }
+      if (ctx->num_errors()) { return {}; }
       addr = eval[0];
     } else if (IsDefaultInitialized()) {
       NOT_YET();
@@ -426,13 +426,13 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
     ASSERT(scope_->ContainingFnScope() != nullptr);
 
     // TODO these checks actually overlap and could be simplified.
-    if (IsUninitialized(this)) { return IR::Val::None(); }
+    if (IsUninitialized(this)) { return {}; }
     if (IsCustomInitialized()) {
       if (init_val->lvalue == Assign::RVal) {
-        type::EmitMoveInit(init_val->type, type, init_val->EmitIR(ctx), addr,
+        type::EmitMoveInit(init_val->type, type, init_val->EmitIR(ctx)[0], addr,
                            ctx);
       } else {
-        type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx), addr,
+        type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx)[0], addr,
                            ctx);
       }
     } else {
@@ -440,6 +440,6 @@ IR::Val AST::Declaration::EmitIR(Context *ctx) {
     }
   }
 
-  return addr;
+  return {addr};
 }
 }  // namespace AST

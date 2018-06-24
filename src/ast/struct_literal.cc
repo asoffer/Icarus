@@ -70,7 +70,7 @@ StructLiteral *StructLiteral::Clone() const {
   return result;
 }
 
-IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
+std::vector<IR::Val> AST::StructLiteral::EmitIR(Context *ctx) {
   auto new_struct = IR::CreateStruct();
   for (const auto &field : fields_) {
     // TODO in initial value doesn't match type of field?
@@ -80,12 +80,12 @@ IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
     if (field->init_val) {
       field->init_val->assign_scope(scope_);
       field->init_val->Validate(ctx);
-      init_val = field->init_val->EmitIR(ctx);
+      init_val = field->init_val->EmitIR(ctx)[0];
     }
 
     IR::Val field_type;
     if (field->type_expr) {
-      field_type = field->type_expr->EmitIR(ctx);
+      field_type = field->type_expr->EmitIR(ctx)[0];
     } else {
       ASSERT(nullptr != field->init_val.get());
       field_type = IR::Val::Type(field->init_val->type);
@@ -93,8 +93,8 @@ IR::Val AST::StructLiteral::EmitIR(Context *ctx) {
     IR::InsertField(new_struct, field->identifier->token, std::move(field_type),
                     std::move(init_val));
   }
-  return IR::FinalizeStruct(std::move(new_struct));
+  return {IR::FinalizeStruct(std::move(new_struct))};
 }
 
-IR::Val AST::StructLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+std::vector<IR::Val> AST::StructLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 }  // namespace AST

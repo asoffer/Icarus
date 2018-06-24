@@ -26,8 +26,8 @@ struct Binop : public Expression {
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
   Binop *Clone() const override;
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
 
   Language::Operator op;
   std::unique_ptr<Expression> lhs, rhs;

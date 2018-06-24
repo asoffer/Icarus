@@ -32,12 +32,7 @@ struct Jump : public Node {
       const std::unordered_map<const Expression *, IR::Val> &) override {}
 
   Jump *Clone() const override { return new Jump(*this); }
-  IR::Val EmitIR(Context *) override {
-    switch (jump_type) {
-      case Kind::Return: IR::ReturnJump(); return IR::Val::None();
-    }
-    UNREACHABLE();
-  }
+  std::vector<IR::Val> EmitIR(Context *) override { return {}; }
 
   ExecScope *scope;
   Kind jump_type;

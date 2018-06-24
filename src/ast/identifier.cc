@@ -90,15 +90,15 @@ void Identifier::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
 }
 
-IR::Val AST::Identifier::EmitIR(Context *ctx) {
+std::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
   auto *val = AST::find(ctx->bound_constants_, token);
-  if (decl == nullptr) { return val ? *val : IR::Val::None(); }
+  if (decl == nullptr) { return {val ? *val : IR::Val::None()}; }
 
   if (decl->const_) {
-    if (val) { return *val; }
+    if (val) { return {*val}; }
 
     if (decl->IsCustomInitialized()) {
-      return backend::Evaluate(decl->init_val.get(), ctx) AT(0);
+      return backend::Evaluate(decl->init_val.get(), ctx);
 
     } else {
       NOT_YET(this->to_string(0));
@@ -108,13 +108,13 @@ IR::Val AST::Identifier::EmitIR(Context *ctx) {
   // TODO checking for const isn't really what we want to do. we'd rather just
   // have addr not be tied to anything if it's const.
   if (decl->const_ && decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
-  return decl->arg_val ? decl->addr : PtrCallFix(EmitLVal(ctx));
+  return {decl->arg_val ? decl->addr : PtrCallFix(EmitLVal(ctx)[0])};
 }
 
-IR::Val AST::Identifier::EmitLVal(Context *ctx) {
+std::vector<IR::Val> AST::Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
   if (decl->const_ && decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
-  return decl->addr;
+  return {decl->addr};
 }
 
 }  // namespace AST

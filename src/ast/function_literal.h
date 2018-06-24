@@ -38,8 +38,8 @@ struct FuncContent : public Expression {
       const std::unordered_map<const Expression *, IR::Val> &) override;
   FuncContent *Clone() const override;
 
-  IR::Val EmitIR(Context *) override { UNREACHABLE(); }
-  IR::Val EmitLVal(Context *) override { UNREACHABLE(); }
+  std::vector<IR::Val> EmitIR(Context *) override { UNREACHABLE(); }
+  std::vector<IR::Val> EmitLVal(Context *) override { UNREACHABLE(); }
 
   std::unique_ptr<FnScope> fn_scope;
 
@@ -63,8 +63,8 @@ struct GeneratedFunction : public FuncContent {
   ~GeneratedFunction() override {}
 
   GeneratedFunction *Clone() const override;
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
 
   void CompleteBody(Module *mod);
   IR::Func *ir_func_                     = nullptr;
@@ -80,8 +80,8 @@ struct Function : public FuncContent {
   void VerifyType(Context *ctx) override;
   void Validate(Context *ctx) override;
   Function *Clone() const override;
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
 
   GeneratedFunction *generate(BoundConstants bc);
 

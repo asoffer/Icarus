@@ -130,7 +130,7 @@ static std::vector<IR::Val> EmitOneCallDispatch(
     const type::Type *ret_type,
     const std::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
-  auto callee = binding.fn_expr_->EmitIR(ctx);
+  auto callee = binding.fn_expr_->EmitIR(ctx)[0];
   ASSERT(callee.type, Is<type::Function>());
 
   // After the last check, if you pass, you should dispatch
@@ -147,7 +147,7 @@ static std::vector<IR::Val> EmitOneCallDispatch(
       ASSERT(bound_type != nullptr);
       auto default_expr = (*ASSERT_NOT_NULL(const_args))[i].second;
       args[i]           = bound_type->PrepareArgument(default_expr->type,
-                                            default_expr->EmitIR(ctx), ctx);
+                                            default_expr->EmitIR(ctx)[0], ctx);
     } else {
       args[i] =
           bound_type->PrepareArgument(expr->type, *expr_map.at(expr), ctx);
@@ -459,24 +459,24 @@ Call *Call::Clone() const {
   return result;
 }
 
-IR::Val AST::Call::EmitIR(Context *ctx) {
+std::vector<IR::Val> Call::EmitIR(Context *ctx) {
   if (fn_->is<Terminal>()) {
     // Special case for error/ord/ascii
     auto fn_val = fn_->as<Terminal>().value;
     if (fn_val == OrdFunc()) {
-      return IR::Call(OrdFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
+      return {IR::Call(OrdFunc(), args_.pos_[0]->EmitIR(ctx), {})};
     } else if (fn_val == AsciiFunc()) {
-      return IR::Call(AsciiFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
+      return {IR::Call(AsciiFunc(), args_.pos_[0]->EmitIR(ctx), {})};
     } else if (fn_val == ErrorFunc()) {
-      return IR::Call(ErrorFunc(), {args_.pos_[0]->EmitIR(ctx)}, {});
+      return {IR::Call(ErrorFunc(), args_.pos_[0]->EmitIR(ctx), {})};
     } else if (fn_val == ResizeFunc()) {
       args_.pos_[0]
           ->type->as<type::Pointer>()
           .pointee->as<type::Array>()
-          .EmitResize(args_.pos_[0]->EmitIR(ctx), args_.pos_[1]->EmitIR(ctx),
-                      ctx);
+          .EmitResize(args_.pos_[0]->EmitIR(ctx)[0],
+                      args_.pos_[1]->EmitIR(ctx)[0], ctx);
 
-      return IR::Val::None();
+      return {};
     }
     UNREACHABLE();
   }
@@ -490,20 +490,14 @@ IR::Val AST::Call::EmitIR(Context *ctx) {
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
 
-  auto results = EmitCallDispatch(
+  return EmitCallDispatch(
       args_.Transform([ctx](const std::unique_ptr<Expression> &expr) {
         return std::pair(const_cast<Expression *>(expr.get()),
-                         expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx))
-                                              : expr->EmitIR(ctx));
+                         expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx)[0])
+                                              : expr->EmitIR(ctx)[0]);
       }),
       dispatch_table_, type, ctx);
-
-  switch (results.size()) {
-    case 0: return IR::Val::None();
-    case 1: return std::move(results)[0];
-    default: return IR::Val::Many(results);
-  }
 }
 
-IR::Val Call::EmitLVal(Context *) { UNREACHABLE(this); }
+std::vector<IR::Val> Call::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

@@ -39,11 +39,13 @@ struct CodeBlock : public Expression {
 
   std::variant<Statements, std::string> content_;
 
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
 };
 
 bool operator==(const CodeBlock &lhs, const CodeBlock &rhs);
+// TODO delete these. they're only around so we can put them in maps which we
+// shouldn't be doing anyway.
 bool operator<(const CodeBlock &lhs, const CodeBlock &rhs);
 bool operator>(const CodeBlock &lhs, const CodeBlock &rhs);
 } // namespace AST

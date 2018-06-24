@@ -22,8 +22,8 @@ struct CommaList : public Expression {
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
   CommaList *Clone() const override;
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
 
   std::vector<std::unique_ptr<Expression>> exprs;
 };

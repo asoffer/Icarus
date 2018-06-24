@@ -31,9 +31,11 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
     auto start_block = IR::BasicBlock::Current = IR::Func::Current->AddBlock();
 
     ASSERT(ctx != nullptr);
-    ForEachExpr(expr, [ctx](size_t i, AST::Expression *e) {
-      IR::SetReturn(i, e->EmitIR(ctx));
-    });
+    auto vals = expr->EmitIR(ctx);
+    // TODO wrap this up into SetReturn(vector)
+    for (size_t i = 0; i < vals.size(); ++i) {
+      IR::SetReturn(i, std::move(vals[i]));
+    }
     IR::ReturnJump();
 
     IR::BasicBlock::Current = fn->entry();

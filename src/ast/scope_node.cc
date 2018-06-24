@@ -144,7 +144,7 @@ static std::pair<const Module *, std::string> GetQualifiedIdentifier(
   UNREACHABLE(expr->to_string(0));
 }
 
-IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
+std::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(blocks_[0].get(), ctx);
 
   auto land_block = IR::Func::Current->AddBlock();
@@ -215,7 +215,7 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
       if (arg_expr != nullptr) {
         ForEachExpr(arg_expr,
                     [ctx, &args, &expr_args](size_t, Expression *expr) {
-                      args.pos_.emplace_back(expr, expr->EmitIR(ctx));
+                      args.pos_.emplace_back(expr, expr->EmitIR(ctx)[0]);
                       expr_args.pos_.push_back(expr);
                     });
       }
@@ -236,7 +236,7 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
     IR::UncondJump(land_block);
 
     IR::BasicBlock::Current = block_data.body;
-    data_to_node.at(&block_data)->stmts_.EmitIR(ctx);
+    data_to_node.at(&block_data)->stmts_.EmitIR(ctx)[0];
     IR::UncondJump(block_data.after);
 
     IR::BasicBlock::Current = block_data.after;
@@ -261,8 +261,8 @@ IR::Val AST::ScopeNode::EmitIR(Context *ctx) {
 
   IR::BasicBlock::Current = land_block;
 
-  return IR::Val::None();
+  return {};
 }
 
-IR::Val ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
+std::vector<IR::Val> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

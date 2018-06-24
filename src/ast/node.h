@@ -32,7 +32,7 @@ struct Node : public base::Cast<Node> {
   virtual void assign_scope(Scope *)                                    = 0;
   virtual void VerifyType(Context *)                                    = 0;
   virtual void Validate(Context *)                                      = 0;
-  virtual IR::Val EmitIR(Context *)                                     = 0;
+  virtual std::vector<IR::Val> EmitIR(Context *)                        = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   virtual void
   contextualize(const Node *correspondant,

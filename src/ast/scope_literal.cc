@@ -68,6 +68,8 @@ ScopeLiteral *ScopeLiteral::Clone() const {
   return result;
 }
 
-IR::Val AST::ScopeLiteral::EmitIR(Context *ctx) { return IR::Val::Scope(this); }
-IR::Val ScopeLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
+std::vector<IR::Val> AST::ScopeLiteral::EmitIR(Context *ctx) {
+  return {IR::Val::Scope(this)};
+}
+std::vector<IR::Val> ScopeLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

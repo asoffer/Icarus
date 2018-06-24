@@ -18,8 +18,9 @@ struct Interface : public Expression {
       const Node *correspondant,
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
+
   Interface *Clone() const override;
 
   std::vector<Declaration> decls_;

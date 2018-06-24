@@ -21,8 +21,8 @@ struct ChainOp : public Expression {
       const Node *correspondant,
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
 
   ChainOp *Clone() const override;
   std::vector<Language::Operator> ops;

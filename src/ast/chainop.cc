@@ -268,41 +268,41 @@ void ChainOp::ExtractReturns(std::vector<const Expression *> *rets) const {
   for (auto &expr : exprs) { expr->ExtractReturns(rets); }
 }
 
-IR::Val ChainOp::EmitIR(Context *ctx) {
+std::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
   if (ops[0] == Language::Operator::Xor) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(ctx);
+    auto val  = (*iter)->EmitIR(ctx)[0];
     while (++iter != exprs.end()) {
-      val = IR::Xor(std::move(val), (*iter)->EmitIR(ctx));
+      val = IR::Xor(std::move(val), (*iter)->EmitIR(ctx)[0]);
     }
-    return val;
+    return {val};
   } else if (ops[0] == Language::Operator::Or && type->is<type::Enum>()) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(ctx);
+    auto val  = (*iter)->EmitIR(ctx)[0];
     while (++iter != exprs.end()) {
-      val = IR::Or(std::move(val), (*iter)->EmitIR(ctx));
+      val = IR::Or(std::move(val), (*iter)->EmitIR(ctx)[0]);
     }
-    return val;
+    return {val};
   } else if (ops[0] == Language::Operator::And && type->is<type::Enum>()) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(ctx);
+    auto val  = (*iter)->EmitIR(ctx)[0];
     while (++iter != exprs.end()) {
-      val = IR::And(std::move(val), (*iter)->EmitIR(ctx));
+      val = IR::And(std::move(val), (*iter)->EmitIR(ctx)[0]);
     }
-    return val;
+    return {val};
   } else if (ops[0] == Language::Operator::Or && type == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
     std::vector<IR::Val> args;
     args.reserve(exprs.size());
-    for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)); }
-    return IR::Variant(std::move(args));
+    for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)[0]); }
+    return {IR::Variant(std::move(args))};
   } else if (ops[0] == Language::Operator::Or &&
              (type == type::Block || type == type::OptBlock)) {
     std::vector<IR::Val> vals;
     vals.reserve(exprs.size());
-    for (auto &expr : exprs) { vals.push_back(expr->EmitIR(ctx)); }
-    return IR::MakeBlockSeq(vals);
+    for (auto &expr : exprs) { vals.push_back(expr->EmitIR(ctx)[0]); }
+    return {IR::MakeBlockSeq(vals)};
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
     auto land_block = IR::Func::Current->AddBlock();
@@ -310,7 +310,7 @@ IR::Val ChainOp::EmitIR(Context *ctx) {
     phi_args.reserve(2 * exprs.size());
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
-      auto val = exprs[i]->EmitIR(ctx);
+      auto val = exprs[i]->EmitIR(ctx)[0];
 
       auto next_block = IR::Func::Current->AddBlock();
       IR::CondJump(val, is_or ? land_block : next_block,
@@ -322,27 +322,27 @@ IR::Val ChainOp::EmitIR(Context *ctx) {
     }
 
     phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
-    phi_args.push_back(exprs.back()->EmitIR(ctx));
+    phi_args.push_back(exprs.back()->EmitIR(ctx)[0]);
     IR::UncondJump(land_block);
 
     IR::BasicBlock::Current = land_block;
     auto phi           = IR::Phi(type::Bool);
     IR::Func::Current->SetArgs(phi, std::move(phi_args));
-    return IR::Func::Current->Command(phi).reg();
+    return {IR::Func::Current->Command(phi).reg()};
 
   } else {
     if (ops.size() == 1) {
-      auto lhs_ir = exprs[0]->EmitIR(ctx);
-      auto rhs_ir = exprs[1]->EmitIR(ctx);
+      auto lhs_ir = exprs[0]->EmitIR(ctx)[0];
+      auto rhs_ir = exprs[1]->EmitIR(ctx)[0];
       auto val    = EmitChainOpPair(this, 0, lhs_ir, rhs_ir, ctx);
-      return val;
+      return {val};
 
     } else {
       std::vector<IR::Val> phi_args;
-      auto lhs_ir     = exprs.front()->EmitIR(ctx);
+      auto lhs_ir     = exprs.front()->EmitIR(ctx)[0];
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
-        auto rhs_ir = exprs[i + 1]->EmitIR(ctx);
+        auto rhs_ir = exprs[i + 1]->EmitIR(ctx)[0];
         IR::Val cmp = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
 
         phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
@@ -354,7 +354,7 @@ IR::Val ChainOp::EmitIR(Context *ctx) {
       }
 
       // Once more for the last element, but don't do a conditional jump.
-      auto rhs_ir = exprs.back()->EmitIR(ctx);
+      auto rhs_ir = exprs.back()->EmitIR(ctx)[0];
       auto last_cmp =
           EmitChainOpPair(this, exprs.size() - 2, lhs_ir, rhs_ir, ctx);
       phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
@@ -364,12 +364,12 @@ IR::Val ChainOp::EmitIR(Context *ctx) {
       IR::BasicBlock::Current = land_block;
       auto phi           = IR::Phi(type::Bool);
       IR::Func::Current->SetArgs(phi, std::move(phi_args));
-      return IR::Func::Current->Command(phi).reg();
+      return {IR::Func::Current->Command(phi).reg()};
     }
   }
 }
 
-IR::Val ChainOp::EmitLVal(Context *ctx) { UNREACHABLE(this); }
+std::vector<IR::Val> ChainOp::EmitLVal(Context *ctx) { UNREACHABLE(this); }
 
 ChainOp *ChainOp::Clone() const {
   auto *result             = new ChainOp;

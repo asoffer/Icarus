@@ -50,9 +50,9 @@ void Statements::ExtractReturns(std::vector<const Expression *> *rets) const {
   for (auto &stmt : content_) { stmt->ExtractReturns(rets); }
 }
 
-IR::Val AST::Statements::EmitIR(Context *ctx) {
+std::vector<IR::Val> AST::Statements::EmitIR(Context *ctx) {
   for (auto &stmt : content_) { stmt->EmitIR(ctx); }
-  return IR::Val::None();
+  return {};
 }
 
 }  // namespace AST

@@ -38,14 +38,14 @@ void Import::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   operand_->SaveReferences(scope, args);
 }
 
-IR::Val Import::EmitIR(Context *ctx) {
+std::vector<IR::Val> Import::EmitIR(Context *ctx) {
   ASSERT(cache_.has_value());
   auto fut = modules.lock()->at(*cache_);
   auto *mod = fut.get().get();
-  return IR::Val::Mod(mod);
+  return {IR::Val::Mod(mod)};
 }
 
-IR::Val Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
+std::vector<IR::Val> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
 Import *Import::Clone() const {
   auto *result = new Import(base::wrap_unique(operand_->Clone()));
   result->span = span;

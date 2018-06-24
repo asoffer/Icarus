@@ -78,7 +78,18 @@ CommaList *CommaList::Clone() const {
   return result;
 }
 
-IR::Val CommaList::EmitIR(Context *) { UNREACHABLE(to_string(0)); }
-IR::Val CommaList::EmitLVal(Context *) { NOT_YET(); }
+std::vector<IR::Val> CommaList::EmitIR(Context *ctx) {
+  std::vector<IR::Val> results;
+  results.reserve(exprs.size());
+  for (auto &expr : exprs) { results.push_back(expr->EmitIR(ctx)[0]); }
+  return results;
+}
+
+std::vector<IR::Val> CommaList::EmitLVal(Context *ctx) {
+  std::vector<IR::Val> results;
+  results.reserve(exprs.size());
+  for (auto &expr : exprs) { results.push_back(expr->EmitLVal(ctx)[0]); }
+  return results;
+}
 
 }  // namespace AST

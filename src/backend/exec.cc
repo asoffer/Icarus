@@ -505,7 +505,8 @@ void ReplEval(AST::Expression *expr) {
     IR::BasicBlock::Current = fn->entry();
     // TODO use the right module
     Context ctx(nullptr);
-    auto expr_val = expr->EmitIR(&ctx);
+    // TODO support multiple values computed simultaneously?
+    auto expr_val = expr->EmitIR(&ctx)[0];
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
       return;

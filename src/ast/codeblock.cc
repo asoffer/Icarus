@@ -28,16 +28,16 @@ std::string CodeBlock::to_string(size_t n) const {
       content_);
 }
 
-IR::Val CodeBlock::EmitIR(Context *) {
+std::vector<IR::Val> CodeBlock::EmitIR(Context *) {
   std::vector<IR::Val> args;
   auto copy = *this;
   if (auto *stmts = std::get_if<AST::Statements>(&copy.content_)) {
     stmts->SaveReferences(scope_, &args);
   }
-  return IR::Contextualize(std::move(copy), std::move(args));
+  return {IR::Contextualize(std::move(copy), std::move(args))};
 }
 
-IR::Val CodeBlock::EmitLVal(Context *) { UNREACHABLE(*this); }
+std::vector<IR::Val> CodeBlock::EmitLVal(Context *) { UNREACHABLE(*this); }
 
 bool operator==(const CodeBlock &lhs, const CodeBlock &rhs) {
   if (auto *lhs_stmts = std::get_if<Statements>(&lhs.content_)) {

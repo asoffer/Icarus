@@ -20,7 +20,7 @@ struct RepeatedUnop : public Node {
       const Node *correspondant,
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
-  IR::Val EmitIR(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
 
   RepeatedUnop *Clone() const override;
 

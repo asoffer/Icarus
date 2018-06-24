@@ -38,7 +38,7 @@ struct Statements : public Node {
 
   Statements *Clone() const { return new Statements(*this); }
 
-  IR::Val EmitIR(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
 
   inline size_t size() const { return content_.size(); }
 

@@ -19,8 +19,8 @@ struct Call : public Expression {
       const std::unordered_map<const Expression *, IR::Val> &) override;
   Call *Clone() const override;
 
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *) override;
 
   std::unique_ptr<Expression> fn_;
   FnArgs<std::unique_ptr<Expression>> args_;

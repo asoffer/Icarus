@@ -26,8 +26,8 @@ struct Hole : public Identifier {
   void VerifyType(Context *) {}
   void Validate(Context *ctx) {}
 
-  IR::Val EmitIR(Context *) override { return IR::Val::None(); }
-  IR::Val EmitLVal(Context *) override { return IR::Val::None(); }
+  std::vector<IR::Val> EmitIR(Context *) override { return {IR::Val::None()}; }
+  std::vector<IR::Val> EmitLVal(Context *) override { return {IR::Val::None()}; }
 };
 }  // namespace AST
 

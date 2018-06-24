@@ -30,8 +30,8 @@ MatchDeclaration *MatchDeclaration::Clone() const {
   return result;
 }
 
-IR::Val MatchDeclaration::EmitIR(Context *ctx) {
-  return IR::Val::Interface(
-      backend::EvaluateAs<IR::Interface>(type_expr.get(), ctx));
+std::vector<IR::Val> MatchDeclaration::EmitIR(Context *ctx) {
+  // TODO build it
+  return backend::Evaluate(type_expr.get(), ctx);
 }
 }  // namespace AST

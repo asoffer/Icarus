@@ -41,7 +41,7 @@ struct Token : public AST::Node {
       const std::unordered_map<const AST::Expression *, IR::Val> &) override {
     UNREACHABLE();
   }
-  IR::Val EmitIR(Context *) override { UNREACHABLE(); }
+  std::vector<IR::Val> EmitIR(Context *) override { UNREACHABLE(); }
 
   std::string token;
   Language::Operator op;

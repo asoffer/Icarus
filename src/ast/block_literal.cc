@@ -71,10 +71,10 @@ BlockLiteral *BlockLiteral::Clone() const {
   return result;
 }
 
-IR::Val AST::BlockLiteral::EmitIR(Context *ctx) {
-  return IR::Val::Block(this);
+std::vector<IR::Val> AST::BlockLiteral::EmitIR(Context *ctx) {
+  return {IR::Val::Block(this)};
 }
 
-IR::Val BlockLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
+std::vector<IR::Val> BlockLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
 
 }  // namespace AST

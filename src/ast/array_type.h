@@ -16,8 +16,8 @@ struct ArrayType : public Expression {
       const Node *correspondant,
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
-  IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *ct) override;
+  std::vector<IR::Val> EmitIR(Context *) override;
+  std::vector<IR::Val> EmitLVal(Context *ct) override;
 
   ArrayType *Clone() const override;
 

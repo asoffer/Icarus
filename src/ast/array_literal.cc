@@ -94,17 +94,17 @@ ArrayLiteral *ArrayLiteral::Clone() const {
   return result;
 }
 
-IR::Val AST::ArrayLiteral::EmitIR(Context *ctx) {
+std::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
   auto array_val  = IR::Alloca(type);
   auto *data_type = type->as<type::Array>().data_type;
   for (size_t i = 0; i < elems_.size(); ++i) {
-    type::EmitMoveInit(data_type, data_type, elems_[i]->EmitIR(ctx),
+    type::EmitMoveInit(data_type, data_type, elems_[i]->EmitIR(ctx)[0],
                        IR::Index(array_val, IR::Val::Int(static_cast<i32>(i))),
                        ctx);
   }
-  return array_val;
+  return {array_val};
 }
 
-IR::Val AST::ArrayLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+std::vector<IR::Val> AST::ArrayLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 }  // namespace AST
