@@ -78,7 +78,7 @@ CommaList *CommaList::Clone() const {
   return result;
 }
 
-IR::Val CommaList::EmitIR(Context *) { UNREACHABLE(this); }
+IR::Val CommaList::EmitIR(Context *) { UNREACHABLE(to_string(0)); }
 IR::Val CommaList::EmitLVal(Context *) { NOT_YET(); }
 
 }  // namespace AST

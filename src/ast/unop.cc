@@ -30,8 +30,6 @@ std::string Unop::to_string(size_t n) const {
 
   std::stringstream ss;
   switch (op) {
-    case Language::Operator::Return: ss << "return "; break;
-    case Language::Operator::Print: ss << "print "; break;
     case Language::Operator::Which: ss << "which "; break;
     case Language::Operator::Free: ss << "free "; break;
     case Language::Operator::Mul: ss << "*"; break;
@@ -101,14 +99,14 @@ void Unop::contextualize(
 
 void Unop::ExtractReturns(std::vector<const Expression *> *rets) const {
   operand->ExtractReturns(rets);
-  if (op == Language::Operator::Return) { rets->push_back(operand.get()); }
 }
 
 Unop *Unop::Clone() const {
-  auto *result    = new Unop;
-  result->span    = span;
-  result->operand = base::wrap_unique(operand->Clone());
-  result->op      = op;
+  auto *result            = new Unop;
+  result->span            = span;
+  result->operand         = base::wrap_unique(operand->Clone());
+  result->op              = op;
+  result->dispatch_table_ = dispatch_table_;
   return result;
 }
 
@@ -150,32 +148,6 @@ void Unop::VerifyType(Context *ctx) {
         ctx->error_log_.WhichNonVariant(operand->type, span);
         limit_to(StageRange::NoEmitIR());
       }
-    } break;
-    case Operator::Print: {
-      ForEachExpr(operand.get(), [ctx, this](size_t i, AST::Expression *expr) {
-        if (expr->type->is<type::Primitive>() ||
-            expr->type->is<type::Pointer>() ||
-            expr->type->is<type::CharBuffer>()) {
-          return;
-        } else if (expr->type->is<type::Struct>()) {
-          FnArgs<Expression *> args;
-          args.pos_            = std::vector{expr};
-          const type::Type *ret_type = nullptr;
-          // TODO multiple dispatch tables?
-          std::tie(this->dispatch_table_, ret_type) =
-              DispatchTable::Make(args, "print", scope_, ctx);
-          if (ret_type != type::Void()) {
-            NOT_YET("log an error");
-            limit_to(StageRange::Nothing());
-          }
-        } else {
-          NOT_YET(expr->type);
-        }
-      });
-      type = type::Void();
-    } break;
-    case Operator::Return: {
-      type = type::Void();
     } break;
     case Operator::At: {
       lvalue = Assign::LVal;
@@ -279,23 +251,7 @@ IR::Val Unop::EmitIR(Context *ctx) {
 
   switch (op) {
     case Language::Operator::Not:
-    case Language::Operator::Sub: {
-      return IR::Neg(operand->EmitIR(ctx));
-    } break;
-    case Language::Operator::Return: {
-      if (!operand->type->is_big()) {
-        IR::SetReturn(0, operand->EmitIR(ctx));
-      } else {
-        ForEachExpr(operand.get(), [ctx](size_t i, AST::Expression *expr) {
-          // TODO return type maybe not the same as type actually returned?
-          auto *ret_type = expr->type;
-          ret_type->EmitAssign(expr->type, expr->EmitIR(ctx),
-                               IR::Func::Current->Return(i), ctx);
-        });
-      }
-      IR::ReturnJump();
-      return IR::Val::None();
-    }
+    case Language::Operator::Sub: return IR::Neg(operand->EmitIR(ctx));
     case Language::Operator::TypeOf: return IR::Val::Type(operand->type);
     case Language::Operator::Which:
       if (lvalue == Assign::Const) {
@@ -303,20 +259,6 @@ IR::Val Unop::EmitIR(Context *ctx) {
       } else {
         return IR::Load(IR::VariantType(operand->EmitIR(ctx)));
       }
-    case Language::Operator::Print: {
-      ForEachExpr(operand.get(), [&ctx](size_t, AST::Expression *expr) {
-        if (expr->type->is<type::Primitive>() ||
-            expr->type->is<type::Pointer>()) {
-          IR::Print(expr->EmitIR(ctx));
-        } else if (expr->type->is<type::Struct>()) {
-          UNREACHABLE();
-        } else {
-          expr->type->EmitRepr(expr->EmitIR(ctx), ctx);
-        }
-      });
-
-      return IR::Val::None();
-    } break;
     case Language::Operator::And: return operand->EmitLVal(ctx);
     case Language::Operator::Eval: {
       // TODO what if there's an error during evaluation?

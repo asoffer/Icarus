@@ -1,15 +1,14 @@
-#ifndef ICARUS_AST_COMMA_LIST_H
-#define ICARUS_AST_COMMA_LIST_H
+#ifndef ICARUS_AST_REPEATED_UNOP_H
+#define ICARUS_AST_REPEATED_UNOP_H
 
-#include "ast/expression.h"
+#include "ast/comma_list.h"
+#include "ast/dispatch.h"
+#include "ast/node.h"
+#include "frontend/operators.h"
 
 namespace AST {
-struct CommaList : public Expression {
-  CommaList() = default;
-  CommaList(CommaList&&) noexcept = default;
-  ~CommaList() override {}
-
-  CommaList &operator=(CommaList &&) noexcept = default;
+struct RepeatedUnop : public Node {
+  ~RepeatedUnop() override {}
 
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
@@ -21,12 +20,13 @@ struct CommaList : public Expression {
       const Node *correspondant,
       const std::unordered_map<const Expression *, IR::Val> &) override;
 
-  CommaList *Clone() const override;
   IR::Val EmitIR(Context *) override;
-  IR::Val EmitLVal(Context *) override;
 
-  std::vector<std::unique_ptr<Expression>> exprs;
+  RepeatedUnop *Clone() const override;
+
+  Language::Operator op_;
+  CommaList args_;
+  std::vector<DispatchTable> dispatch_tables_;
 };
-}  // namespace AST
-
-#endif // ICARUS_AST_COMMA_LIST_H
+} //
+#endif  // ICARUS_AST_REPEATED_UNOP_H

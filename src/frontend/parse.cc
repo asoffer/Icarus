@@ -20,6 +20,7 @@
 #include "ast/interface.h"
 #include "ast/jump.h"
 #include "ast/match_declaration.h"
+#include "ast/repeated_unop.h"
 #include "ast/scope_literal.h"
 #include "ast/scope_node.h"
 #include "ast/statements.h"
@@ -40,9 +41,6 @@ template <typename To, typename From>
 static std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
   return std::unique_ptr<To>(static_cast<To *>(val.release()));
 }
-
-void ForEachExpr(AST::Expression *expr,
-                 const std::function<void(size_t, AST::Expression *)> &fn);
 
 static void ValidateStatementSyntax(AST::Node *node, Context *ctx) {
   if (node->is<AST::CommaList>()) {
@@ -130,25 +128,47 @@ static std::unique_ptr<Node> BuildLeftUnop(
     std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   const std::string &tk = nodes[0]->as<frontend::Token>().token;
 
+  using Language::Operator;
   if (tk == "import") {
     auto import_node  = std::make_unique<Import>(move_as<Expression>(nodes[1]));
     import_node->span = TextSpan(nodes[0]->span, import_node->operand_->span);
     return import_node;
+  } else if (tk == "return") {
+    auto unop = std::make_unique<RepeatedUnop>();
+    unop->op_ = Operator::Return;
+    unop->span = TextSpan(nodes.front()->span, nodes.back()->span);
+    if (nodes[1]->is<CommaList>()) {
+      unop->args_ = std::move(nodes[1]->as<CommaList>());
+    } else {
+      unop->args_.exprs.push_back(move_as<Expression>(nodes[1]));
+    }
+    unop->dispatch_tables_.resize(unop->args_.exprs.size());
+    return unop;
+  } else if (tk == "print") {
+    // TODO Copy of above.
+    auto unop = std::make_unique<RepeatedUnop>();
+    unop->op_ = Operator::Print;
+    unop->span = TextSpan(nodes.front()->span, nodes.back()->span);
+    if (nodes[1]->is<CommaList>()) {
+      unop->args_ = std::move(nodes[1]->as<CommaList>());
+    } else {
+      unop->args_.exprs.push_back(move_as<Expression>(nodes[1]));
+    }
+    unop->dispatch_tables_.resize(unop->args_.exprs.size());
+    return unop;
   }
 
   auto unop     = std::make_unique<Unop>();
   unop->operand = move_as<Expression>(nodes[1]);
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
-  using Language::Operator;
   const static std::unordered_map<std::string, Operator> UnopMap = {
-      {"import", Operator::Import}, {"return", Operator::Return},
-      {"free", Operator::Free},     {"generate", Operator::Generate},
-      {"which", Operator::Which},   {"print", Operator::Print},
-      {"needs", Operator::Needs},   {"ensure", Operator::Ensure},
-      {"*", Operator::Mul},         {"&", Operator::And},
-      {"-", Operator::Sub},         {"!", Operator::Not},
-      {"@", Operator::At},          {"$", Operator::Eval}};
+      {"import", Operator::Import},     {"*", Operator::Mul},
+      {"free", Operator::Free},         {"&", Operator::And},
+      {"generate", Operator::Generate}, {"-", Operator::Sub},
+      {"which", Operator::Which},       {"!", Operator::Not},
+      {"needs", Operator::Needs},       {"@", Operator::At},
+      {"ensure", Operator::Ensure},     {"$", Operator::Eval}};
   auto iter = UnopMap.find(tk);
   ASSERT(iter != UnopMap.end());
   unop->op = iter->second;
@@ -471,12 +491,17 @@ static std::unique_ptr<Node> BuildShortFunctionLiteral(
   auto span   = TextSpan(args->span, body->span);
   auto inputs = ExtractInputs(std::move(args));
 
-  auto ret     = std::make_unique<Unop>();
-  ret->op      = Language::Operator::Return;
-  ret->operand = std::move(body);
-  auto stmts   = std::make_unique<Statements>();
-  stmts->content_.push_back(std::move(ret));
+  auto ret = std::make_unique<RepeatedUnop>();
+  ret->op_ = Language::Operator::Return;
+  if (body->is<CommaList>()) {
+    ret->args_ = std::move(body->as<CommaList>());
+  } else {
+    ret->args_.exprs.push_back(std::move(body));
+  }
+  ret->dispatch_tables_.resize(ret->args_.exprs.size());
 
+  auto stmts = std::make_unique<Statements>();
+  stmts->content_.push_back(std::move(ret));
   return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
                               std::move(stmts), ctx);
 }

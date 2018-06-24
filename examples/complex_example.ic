@@ -5,27 +5,20 @@ math ::= import "examples/lib/math/complex.ic"
 (+) ::= math.(+)
 (-) ::= math.(-)
 (*) ::= math.(*)
+(print) ::= math.(print)
 
 main ::= () -> () {
   z: math.complex
-  z'math.dump
-  print `\n
+  print z, `\n
   z._re = 3.1
-  z'math.dump
-  print `\n
+  print z, `\n
   z._im = -1.2
-  z'math.dump
-  print `\n
-  print z != z, `\n
-  (z + z)'math.dump
-  print `\n
-  (z - z)'math.dump
-  print `\n
-  (z * z)'math.dump
-  print `\n
-  z'math.conjugate'math.dump
-  print `\n
-  print z'math.square_norm, " == "
-  (z * z'math.conjugate)'math.dump
-  print `\n
+
+  print z, `\n,
+        z != z, `\n,
+        z + z, `\n,
+        z - z, `\n,
+        z * z, `\n,
+        z'math.conjugate, `\n,
+        z'math.square_norm, " == ", z * z'math.conjugate, `\n
 }

@@ -60,7 +60,7 @@ square_norm ::= (z: complex) => z._re * z._re + z._im * z._im
 (==) ::= (lhs: complex, rhs: complex) => lhs._re == rhs._re & lhs._im == rhs._im
 (!=) ::= (lhs: complex, rhs: complex) => !(lhs == rhs)
 
-dump ::= (z: complex) -> () {
+(print) ::= (z: complex) -> () {
   if ::= (import "examples/lib/core.ic").if
   if (z._re != 0.0) {
     print z._re
