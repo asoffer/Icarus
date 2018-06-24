@@ -1,10 +1,11 @@
 #ifndef ICARUS_MODULE_H
 #define ICARUS_MODULE_H
 
-#include <queue>
 #include <memory>
-#include <vector>
+#include <queue>
 #include <string>
+#include <unordered_set>
+#include <vector>
 
 #include "ast/statements.h"
 #include "scope.h"
@@ -57,7 +58,7 @@ struct Module {
 #endif // ICARUS_USE_LLVM
 
   std::vector<std::unique_ptr<IR::Func>> fns_;
-  std::vector<const Module*> embedded_modules_;
+  std::unordered_set<const Module*> embedded_modules_;
 };
 
 #endif // ICARUS_MODULE_H

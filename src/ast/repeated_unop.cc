@@ -83,7 +83,7 @@ void RepeatedUnop::VerifyType(Context *ctx) {
         std::tie(dispatch_tables_[i], ret_type) =
             DispatchTable::Make(args, "print", scope_, ctx);
         if (ret_type != type::Void()) {
-          NOT_YET("log an error");
+          NOT_YET("log an error: ", ret_type);
           limit_to(StageRange::Nothing());
         }
       } else if (arg->type->is<type::Variant>()) {

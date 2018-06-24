@@ -296,7 +296,7 @@ void Declaration::VerifyType(Context *ctx) {
       if (type == type::Module) {
         // TODO check shadowing against other modules?
         // TODO what if no init val is provded? what if not constant?
-        ctx->mod_->embedded_modules_.push_back(
+        ctx->mod_->embedded_modules_.insert(
             backend::EvaluateAs<const Module *>(init_val.get(), ctx));
       } else {
         NOT_YET(type);

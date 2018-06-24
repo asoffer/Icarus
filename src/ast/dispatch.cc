@@ -205,30 +205,13 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
     const FnArgs<Expression *> &args, const std::string &token, Scope *scope,
     Context *ctx) {
   DispatchTable table;
-  for (auto *scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
-    if (scope_ptr->shadowed_decls_.find(token) !=
-        scope_ptr->shadowed_decls_.end()) {
-      // The declaration of this identifier is shadowed so it will be
-      // difficult to give meaningful error messages. Bailing out.
-      // TODO Come up with a good way to give decent error messages anyway (at
-      // least in some circumstances. For instance, there may be overlap here,
-      // but it may not be relevant to the function call at hand. If, for
-      // example, one call takes an A | B and the other takes a B | C, but
-      // here we wish to validate a call for just a C, it's safe to do so
-      // here.
-      return {};
-    }
-
-    auto iter = scope_ptr->decls_.find(token);
-    if (iter == scope_ptr->decls_.end()) { continue; }
-    for (const auto &decl : iter->second) {
-      decl->VerifyType(ctx);
-      // TODO HANDLE_CYCLIC_DEPENDENCIES;
-      if (decl->type == type::Err) { return {}; }
-      if (auto maybe_dispatch_entry =
-              DispatchEntry::Make(decl->identifier.get(), args, ctx)) {
-        table.InsertEntry(std::move(maybe_dispatch_entry).value());
-      }
+  // TODO error decls?
+  auto[decls, error_decls] = scope->AllDeclsWithId(token, ctx);
+  for (auto &decl : decls) {
+    if (decl->type == type::Err) { return {}; }
+    if (auto maybe_dispatch_entry =
+            DispatchEntry::Make(decl->identifier.get(), args, ctx)) {
+      table.InsertEntry(std::move(maybe_dispatch_entry).value());
     }
   }
 

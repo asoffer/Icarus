@@ -9,10 +9,10 @@ complex ::= struct {
   return lhs
 }
 
-// (+) ::= (lhs: complex, rhs: real) -> complex {
-//   lhs._re += rhs
-//   return lhs
-// }
+(+) ::= (lhs: complex, rhs: real) -> complex {
+  lhs._re += rhs
+  return lhs
+}
 // (+) ::= (lhs: real, rhs: complex) => rhs + lhs
 
 (-) ::= (lhs: complex, rhs: complex) -> complex {
