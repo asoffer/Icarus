@@ -1,9 +1,0 @@
-main ::= void -> void {
-n := 3
-a := -n
-n = 0
-b := -n
-x := 3.14
-c := -(-(-(-(-x)))) // TODO fix lexing bug
-print a, `n, b, `n, c, `n
-}

@@ -1,2 +1,0 @@
-core ::= import "examples/lib/core.ic"
-

@@ -1,6 +1,0 @@
-main := void -> void {
-
-// This will not compile because `a` and `b` are undeclared identifiers
-a = 1
-b = 'b'
-}

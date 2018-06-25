@@ -34,17 +34,9 @@ enum class Op : char {
 };
 
 struct Cmd {
-  // For pre/post-conditions, we generate blocks of code in the same function
-  // but which would otherwise be unreachable from the normal execution paths of
-  // that function. This enum attached to each command indicates what kind of
-  // command, so we know not to emit this during code gen or during execution if
-  // it's not 'Exec'.
-  enum class Kind : char { Exec, PreCondition, PostCondition };
-
   Cmd(const type::Type *t, Op op, std::vector<Val> args);
   std::vector<Val> args;
   Op op_code_;
-  Kind kind_ = Kind::Exec;
 
   const type::Type *type = nullptr;
   Register result;

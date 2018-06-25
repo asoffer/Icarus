@@ -1,17 +1,8 @@
-collatz := (n: int) -> int {
-  if n == 1 {
-    print n, `\n
-    return 1
-
-  } else if n % 2 == 0 { 
-    print n, ", "
-    return collatz(n / 2)
-
-  } else {
-    print n, ", "
-    return collatz(3 * n + 1)
-  }
+collatz ::= (n: int) => switch {
+  n / 2       when  n % 2 == 0
+  3 * n + 1   when  n % 2 == 1
 }
+
 
 main := void -> void {
   for i in 1 .. 50 { collatz(i) }

@@ -1,8 +1,0 @@
-main := void -> void {
-  square := (r: real) -> real {
-    retval := r * r
-    return retval
-  }
-
-  square(3.0)
-}

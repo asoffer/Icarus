@@ -1,4 +1,0 @@
-main := void -> &&&int -> (char,int){
-  return 3
-  return
-}

@@ -1,9 +1,0 @@
-require "lib/prelude.ic"
-main := void -> void {
-  print [`x, `y, `z, `\\, `\n, `\t, `\r]
-  char_array: [256; char]
-  
-  for i in (0 :> uint) .. { char_array[i] = ascii(i) }
-  
-  print char_array, `\n
-}

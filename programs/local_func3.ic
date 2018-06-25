@@ -1,9 +1,0 @@
-main := void -> void {
-  f := (n: &int) -> void {
-    @n = 17
-  }
-
-  x := 3
-  f(&x)
-  print x
-}
