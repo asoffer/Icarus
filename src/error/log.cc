@@ -371,19 +371,6 @@ void Log::WhichNonVariant(const type::Type *type, const TextSpan &span) {
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
-void Log::FreeingNonPointer(const type::Type *type,
-                                  const TextSpan &span) {
-  std::stringstream ss;
-  ss << "Attempting to free an object of type `" << type->to_string()
-     << "` which is not a pointer.\n\n";
-  WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
-      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
-}
 
 void Log::Reserved(const TextSpan &span, const std::string &token) {
   std::stringstream ss;

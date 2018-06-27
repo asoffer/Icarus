@@ -31,7 +31,6 @@ std::string Unop::to_string(size_t n) const {
   std::stringstream ss;
   switch (op) {
     case Language::Operator::Which: ss << "which "; break;
-    case Language::Operator::Free: ss << "free "; break;
     case Language::Operator::Mul: ss << "*"; break;
     case Language::Operator::And: ss << "&"; break;
     case Language::Operator::Sub: ss << "-"; break;
@@ -134,13 +133,6 @@ void Unop::VerifyType(Context *ctx) {
       }
       break;
     case Operator::Generate: type = type::Void(); break;
-    case Operator::Free: {
-      if (!operand->type->is<type::Pointer>()) {
-        ctx->error_log_.FreeingNonPointer(operand->type, span);
-        limit_to(StageRange::NoEmitIR());
-      }
-      type = type::Void();
-    } break;
     case Operator::Which: {
       type   = type::Type_;
       lvalue = operand->lvalue == Assign::Const ? Assign::Const : Assign::RVal;

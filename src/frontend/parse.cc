@@ -163,12 +163,12 @@ static std::unique_ptr<Node> BuildLeftUnop(
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
   const static std::unordered_map<std::string, Operator> UnopMap = {
-      {"import", Operator::Import},     {"*", Operator::Mul},
-      {"free", Operator::Free},         {"&", Operator::And},
-      {"generate", Operator::Generate}, {"-", Operator::Sub},
-      {"which", Operator::Which},       {"!", Operator::Not},
-      {"needs", Operator::Needs},       {"@", Operator::At},
-      {"ensure", Operator::Ensure},     {"$", Operator::Eval}};
+      {"*", Operator::Mul}, {"import", Operator::Import},
+      {"&", Operator::And}, {"generate", Operator::Generate},
+      {"-", Operator::Sub}, {"which", Operator::Which},
+      {"!", Operator::Not}, {"needs", Operator::Needs},
+      {"@", Operator::At},  {"ensure", Operator::Ensure},
+      {"$", Operator::Eval}};
   auto iter = UnopMap.find(tk);
   ASSERT(iter != UnopMap.end());
   unop->op = iter->second;
