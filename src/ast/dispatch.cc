@@ -2,6 +2,7 @@
 
 #include "ast/function_literal.h"
 #include "ast/match_declaration.h"
+#include "ast/terminal.h"
 #include "backend/eval.h"
 #include "context.h"
 #include "ir/func.h"
@@ -124,11 +125,18 @@ std::optional<DispatchEntry> DispatchEntry::Make(
         base::overloaded{
             [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
             [](Function *fn) -> Expression * { return fn; },
+            [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
             [](auto &&) -> Expression * { UNREACHABLE(); }},
         backend::Evaluate(fn_option, ctx)[0].value);
 
-    binding_size = std::max(bound_fn->as<FuncContent>().lookup_.size(),
-                            args.pos_.size() + args.named_.size());
+    if (bound_fn->is<FuncContent>()) {
+      binding_size = std::max(bound_fn->as<FuncContent>().lookup_.size(),
+                              args.pos_.size() + args.named_.size());
+    } else {
+      // TODO must this be a builtin?
+      // TODO is this 1 even right?
+      binding_size = 1;
+    }
   } else {
     bound_fn     = fn_option;
     binding_size = args.pos_.size() + args.named_.size();
@@ -137,7 +145,8 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   binding.SetPositionalArgs(args);
 
   if (fn_option->lvalue == Assign::Const) {
-    if (!binding.SetNamedArgs(args, bound_fn->as<FuncContent>().lookup_)) {
+    if (bound_fn->is<FuncContent>() &&
+        !binding.SetNamedArgs(args, bound_fn->as<FuncContent>().lookup_)) {
       return std::nullopt;
     }
   }
@@ -159,11 +168,12 @@ std::optional<DispatchEntry> DispatchEntry::Make(
 
   FuncContent *fn = nullptr;
   if (fn_option->lvalue == Assign::Const) {
-    fn = &dispatch_entry.binding_.fn_expr_->as<FuncContent>();
-
-    for (const auto & [ key, val ] : fn->lookup_) {
-      if (val < args.pos_.size()) { continue; }
-      dispatch_entry.call_arg_types_.named_.emplace(key, nullptr);
+    if (dispatch_entry.binding_.fn_expr_->is<FuncContent>()) {
+      fn = &dispatch_entry.binding_.fn_expr_->as<FuncContent>();
+      for (const auto & [ key, val ] : fn->lookup_) {
+        if (val < args.pos_.size()) { continue; }
+        dispatch_entry.call_arg_types_.named_.emplace(key, nullptr);
+      }
     }
   }
 

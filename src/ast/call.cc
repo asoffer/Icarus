@@ -4,6 +4,7 @@
 #include "ast/function_literal.h"
 #include "ast/terminal.h"
 #include "ast/verify_macros.h"
+#include "backend/eval.h"
 #include "ir/func.h"
 #include "scope.h"
 #include "type/array.h"
@@ -21,16 +22,10 @@ extern Type *Int;
 extern Type *Char;
 }  // namespace type
 
-IR::Val PtrCallFix(const IR::Val &v);
+i32 ResizeFuncIndex  = 0;
+i32 ForeignFuncIndex = 1;
 
-IR::Val ResizeFunc() {
-  // TODO: this is a super hack. it makes resize special as it can't be treated
-  // like a normal (generic) function.
-  //
-  // Also this is a terrible choice for that function. It's utterly meaningless
-  // and could easily be confused.
-  return IR::Val::None();
-}
+IR::Val PtrCallFix(const IR::Val &v);
 
 IR::Val ErrorFunc() {
   // TODO implement me
@@ -356,7 +351,7 @@ void Call::VerifyType(Context *ctx) {
       NOT_YET();
     } else if (fn_val == ErrorFunc()) {
       NOT_YET();
-    } else if (fn_val == ResizeFunc()) {
+    } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
       ASSERT(args_.named_.size() == 0u);
@@ -366,6 +361,16 @@ void Call::VerifyType(Context *ctx) {
              Is<type::Array>());
       ASSERT(args_.pos_[1]->type == type::Int);
       type = type::Void();
+      return;
+    } else if (fn_val == IR::Val::BuiltinGeneric(ForeignFuncIndex)) {
+      // TODO turn assert into actual checks with error logging. Or maybe allow
+      // named args here?
+      ASSERT(args_.named_.size() == 0u);
+      ASSERT(args_.pos_.size() == 2u);
+      ASSERT(args_.pos_[0]->type, Is<type::CharBuffer>());
+      ASSERT(args_.pos_[1]->type == type::Type_);
+      type = backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx);
+      ASSERT(type, Is<type::Function>());
       return;
     } else {
       UNREACHABLE();
@@ -469,7 +474,7 @@ std::vector<IR::Val> Call::EmitIR(Context *ctx) {
       return {IR::Call(AsciiFunc(), args_.pos_[0]->EmitIR(ctx), {})};
     } else if (fn_val == ErrorFunc()) {
       return {IR::Call(ErrorFunc(), args_.pos_[0]->EmitIR(ctx), {})};
-    } else if (fn_val == ResizeFunc()) {
+    } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       args_.pos_[0]
           ->type->as<type::Pointer>()
           .pointee->as<type::Array>()
@@ -477,6 +482,12 @@ std::vector<IR::Val> Call::EmitIR(Context *ctx) {
                       args_.pos_[1]->EmitIR(ctx)[0], ctx);
 
       return {};
+    } else if (fn_val == IR::Val::BuiltinGeneric(ForeignFuncIndex)) {
+      return {IR::Val::Foreign(
+          backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx),
+          IR::ForeignFn{
+              backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx),
+              this})};
     }
     UNREACHABLE();
   }

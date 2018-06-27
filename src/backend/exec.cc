@@ -152,17 +152,15 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return IR::Val::CodeBlock(
           AST::CodeBlock(std::get<std::string_view>(resolved[0].value)));
     case Op::Call: {
-      // TODO this feels like a gross hack
-      IR::Func *fn = std::visit(
-          [](auto f) -> IR::Func * {
-            if constexpr (std::is_same_v<std::decay_t<decltype(f)>,
-                                         IR::Func *>) {
-              return f;
-            } else {
-              return nullptr;
-            }
-          },
-          resolved.back().value);
+      if (auto *foreign_fn =
+              std::get_if<IR::ForeignFn>(&resolved.back().value)) {
+        if (foreign_fn->name_ == "malloc") {
+          goto malloc_case;
+        } else {
+          UNREACHABLE();
+        }
+      }
+      auto *fn = std::get<IR::Func *>(resolved.back().value);
       resolved.pop_back();
       // There's no need to do validation here, because by virtue of executing
       // this function, we know we've already validated all functions that could
@@ -462,6 +460,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                   static_cast<int>(std::get<Addr>(resolved[0].value).kind));
     } break;
     case Op::Malloc:
+    malloc_case:
       ASSERT(cmd.type, Is<type::Pointer>());
       return IR::Val::HeapAddr(malloc(std::get<i32>(resolved[0].value)),
                                cmd.type->as<type::Pointer>().pointee);

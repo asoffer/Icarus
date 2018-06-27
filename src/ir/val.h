@@ -22,7 +22,7 @@ struct Struct;
 struct Type;
 
 const Type *Void();
-extern Type *Bool, *Char, *Real, *Int, *Type_, *String, *Module;
+extern Type *Bool, *Char, *Real, *Int, *Type_, *String, *Module, *Generic;
 } // namespace type
 
 
@@ -37,12 +37,25 @@ DEFINE_STRONG_INT(IR, BlockIndex, i32, -1);
 DEFINE_STRONG_INT(IR, EnumVal, size_t, 0);
 DEFINE_STRONG_INT(IR, FlagsVal, size_t, 0);
 DEFINE_STRONG_INT(IR, Register, i32, std::numeric_limits<i32>::lowest());
+DEFINE_STRONG_INT(IR, BuiltinGenericIndex, i32, -1);
 
 namespace IR {
 struct CmdIndex {
   BlockIndex block;
   i32 cmd;
 };
+
+struct ForeignFn {
+  std::string_view name_;
+  AST::Expression *expr_;
+};
+inline bool operator==(ForeignFn lhs, ForeignFn rhs) {
+  return lhs.name_ == rhs.name_;
+}
+inline bool operator<(ForeignFn lhs, ForeignFn rhs) {
+  return lhs.name_ < rhs.name_;
+}
+inline bool operator>(ForeignFn lhs, ForeignFn rhs) { return rhs.name_ < lhs.name_; }
 
 inline bool operator==(CmdIndex lhs, CmdIndex rhs) {
   return lhs.block == rhs.block && lhs.cmd == rhs.cmd;
@@ -102,7 +115,7 @@ struct Val {
                const type::Type *, type::Struct *, IR::Func *, AST::Function *,
                AST::ScopeLiteral *, IR::Interface, AST::CodeBlock,
                AST::Expression *, BlockIndex, std::string_view, const Module *,
-               BlockSequence>
+               BlockSequence, BuiltinGenericIndex, ForeignFn>
       value{false};
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
@@ -111,12 +124,14 @@ struct Val {
   static Val StackAddr(u64 addr, const type::Type *t);
   static Val Bool(bool b) { return Val(type::Bool, b); }
   static Val Char(char c) { return Val(type::Char, c); }
+  static Val BuiltinGeneric(i32 n) { return Val(type::Generic, BuiltinGenericIndex{n}); }
   static Val Real(double r) { return Val(type::Real, r); }
   static Val Int(i32 n) { return Val(type::Int, n); }
   static Val Enum(const type::Enum *enum_type, size_t integral_val);
   static Val Flags(const type::Flags *flags_type, size_t integral_val);
   static Val Type(const type::Type *t) { return Val(type::Type_, t); }
   static Val CodeBlock(AST::CodeBlock block);
+  static Val Foreign(const type::Type *t, ForeignFn f) { return Val(t, f); }
   static Val Func(IR::Func *fn); // TODO deprecate?
   static Val Func(AST::Function* fn);
   static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }

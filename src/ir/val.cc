@@ -156,6 +156,12 @@ std::string Val::to_string() const {
           [](const IR::Interface &ifc) -> std::string {
             // TODO
             return "Interface";
+          },
+          [](IR::BuiltinGenericIndex n) -> std::string {
+            return "builtin(" + n.to_string() + ")";
+          },
+        [](ForeignFn f) -> std::string {
+            return "foreign(" + std::string(f.name_) + ")";
           }},
       value);
 }

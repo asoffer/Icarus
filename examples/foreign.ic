@@ -1,0 +1,13 @@
+main ::= () -> () {
+  nptr := allocate(int)
+  @nptr = 3
+  @nptr *= @nptr
+  print @nptr
+  // Leaking!
+}
+
+allocate ::= (T :: type) -> *T {
+  malloc ::= foreign("malloc", int -> *T)
+  // TODO function returning number of bytes in a type
+  return malloc(4)
+}

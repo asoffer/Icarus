@@ -91,6 +91,7 @@ Val Err(Val v) {
 }
 
 Val Neg(Val v) {
+  if (bool *b = std::get_if<bool>(&v.value)) { return Val::Bool(!*b); }
   if (i32 *n = std::get_if<i32>(&v.value)) { return Val::Int(-*n); }
   if (double *r = std::get_if<double>(&v.value)) { return Val::Real(-*r); }
   return MakeCmd(v.type, Op::Neg, std::vector{std::move(v)});

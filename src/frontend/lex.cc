@@ -14,10 +14,12 @@
 // TODO audit every location where frontend::TaggedNode::Invalid is returned to
 // see if you need to log an error.
 
-IR::Val ResizeFunc();
 IR::Val ErrorFunc();
 IR::Val AsciiFunc();
 IR::Val OrdFunc();
+
+extern i32 ResizeFuncIndex;
+extern i32 ForeignFuncIndex;
 
 namespace frontend {
 TaggedNode::TaggedNode(const TextSpan &span, const std::string &token, Tag tag)
@@ -70,7 +72,8 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       {"ord", OrdFunc()},
       {"ascii", AsciiFunc()},
       {"error", ErrorFunc()},
-      {"resize", ResizeFunc()},
+      {"resize", IR::Val::BuiltinGeneric(ResizeFuncIndex)},
+      {"foreign", IR::Val::BuiltinGeneric(ForeignFuncIndex)},
       {"exit", IR::Val::Block(nullptr)}};
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     return frontend::TaggedNode::TerminalExpression(span, iter->second);
