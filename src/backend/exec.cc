@@ -146,6 +146,12 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Ne: return Ne(resolved[0], resolved[1]);
     case Op::Ge: return Ge(resolved[0], resolved[1]);
     case Op::Gt: return Gt(resolved[0], resolved[1]);
+    case Op::Bytes:
+      return IR::Val::Int(Architecture::InterprettingMachine().bytes(
+          std::get<const type::Type *>(resolved[0].value)));
+    case Op::Align:
+      return IR::Val::Int(Architecture::InterprettingMachine().alignment(
+          std::get<const type::Type *>(resolved[0].value)));
     case Op::Extend: return Extend(resolved[0]);
     case Op::Trunc: return Trunc(resolved[0]);
     case Op::Err:
@@ -412,7 +418,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             std::get<Addr>(resolved[0].value).as_stack + offset,
             cmd.type->as<type::Pointer>().pointee);
       } else {
-        NOT_YET();
+        return Val::HeapAddr(
+            static_cast<char *>(std::get<Addr>(resolved[0].value).as_heap) + offset,
+            cmd.type->as<type::Pointer>().pointee);
       }
     } break;
     case Op::Contextualize: {

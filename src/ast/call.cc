@@ -60,6 +60,33 @@ IR::Val OrdFunc() {
   return IR::Val::Func(ord_func_);
 }
 
+IR::Val BytesFunc() {
+  static IR::Func *bytes_func_ = []() {
+    auto fn = new IR::Func(nullptr, type::Func({type::Type_}, {type::Int}),
+                           {{"", nullptr}});
+    CURRENT_FUNC(fn) {
+      IR::BasicBlock::Current = fn->entry();
+      IR::SetReturn(0, IR::Bytes(fn->Argument(0)));
+      IR::ReturnJump();
+    }
+    return fn;
+  }();
+  return IR::Val::Func(bytes_func_);
+}
+
+IR::Val AlignFunc() {
+  static IR::Func *bytes_func_ = []() {
+    auto fn = new IR::Func(nullptr, type::Func({type::Type_}, {type::Int}),
+                           {{"", nullptr}});
+    CURRENT_FUNC(fn) {
+      IR::BasicBlock::Current = fn->entry();
+      IR::SetReturn(0, IR::Align(fn->Argument(0)));
+      IR::ReturnJump();
+    }
+    return fn;
+  }();
+  return IR::Val::Func(bytes_func_);
+}
 static IR::Val EmitVariantMatch(const IR::Val &needle,
                                 const type::Type *haystack) {
   auto runtime_type = IR::Load(IR::VariantType(needle));
@@ -343,7 +370,8 @@ void Call::VerifyType(Context *ctx) {
   }
 
   if (fn_->is<Terminal>()) {
-    // Special case for error/ord/ascii
+    // Special case for error/ord/ascii/etc.
+    // TODO can these be overloaded?
     auto fn_val = fn_->as<Terminal>().value;
     if (fn_val == OrdFunc()) {
       NOT_YET();
@@ -351,6 +379,14 @@ void Call::VerifyType(Context *ctx) {
       NOT_YET();
     } else if (fn_val == ErrorFunc()) {
       NOT_YET();
+    } else if (fn_val == BytesFunc() || fn_val == AlignFunc()) {
+      // TODO turn assert into actual checks with error logging. Or maybe allow
+      // named args here?
+      ASSERT(args_.named_.size() == 0u);
+      ASSERT(args_.pos_.size() == 1u);
+      ASSERT(args_.pos_[0]->type == type::Type_);
+      type = type::Int;
+      return;
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
@@ -468,12 +504,10 @@ std::vector<IR::Val> Call::EmitIR(Context *ctx) {
   if (fn_->is<Terminal>()) {
     // Special case for error/ord/ascii
     auto fn_val = fn_->as<Terminal>().value;
-    if (fn_val == OrdFunc()) {
-      return {IR::Call(OrdFunc(), args_.pos_[0]->EmitIR(ctx), {})};
-    } else if (fn_val == AsciiFunc()) {
-      return {IR::Call(AsciiFunc(), args_.pos_[0]->EmitIR(ctx), {})};
-    } else if (fn_val == ErrorFunc()) {
-      return {IR::Call(ErrorFunc(), args_.pos_[0]->EmitIR(ctx), {})};
+    if (fn_val == OrdFunc() || fn_val == AsciiFunc() || fn_val == ErrorFunc() ||
+        fn_val == BytesFunc() || fn_val == AlignFunc()) {
+      return {IR::Call(fn_val, args_.pos_[0]->EmitIR(ctx), {})};
+
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       args_.pos_[0]
           ->type->as<type::Pointer>()

@@ -6,7 +6,7 @@
 
 namespace IR {
 enum class Op : char {
-  Trunc, Extend,
+  Trunc, Extend, Bytes, Align,
   Neg, // ! for bool, - for numeric types
   Or, And,
   Add, Sub, Mul, Div, Mod, // numeric types only
@@ -49,6 +49,8 @@ struct Cmd {
 Val Neg(Val v);
 Val Trunc(Val v);
 Val Extend(Val v);
+Val Bytes(Val v);
+Val Align(Val v);
 Val Add(Val v1, Val v2);
 Val Sub(Val v1, Val v2);
 Val Mul(Val v1, Val v2);

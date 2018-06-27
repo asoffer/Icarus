@@ -17,6 +17,8 @@
 IR::Val ErrorFunc();
 IR::Val AsciiFunc();
 IR::Val OrdFunc();
+IR::Val BytesFunc();
+IR::Val AlignFunc();
 
 extern i32 ResizeFuncIndex;
 extern i32 ForeignFuncIndex;
@@ -74,6 +76,8 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       {"error", ErrorFunc()},
       {"resize", IR::Val::BuiltinGeneric(ResizeFuncIndex)},
       {"foreign", IR::Val::BuiltinGeneric(ForeignFuncIndex)},
+      {"bytes", BytesFunc()},
+      {"alignment", AlignFunc()},
       {"exit", IR::Val::Block(nullptr)}};
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     return frontend::TaggedNode::TerminalExpression(span, iter->second);

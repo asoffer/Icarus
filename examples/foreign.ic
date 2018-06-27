@@ -1,13 +1,20 @@
+pair ::= struct {
+  x: real
+  y: real
+}
+
+(print) ::= (p: pair) -> { print "(", p.x, ", ", p.y, ")" }
+
 main ::= () -> () {
-  nptr := allocate(int)
-  @nptr = 3
-  @nptr *= @nptr
-  print @nptr
+  ptr := allocate(pair)
+  ptr.x = 3.14160
+  ptr.y = 2.71828
+  print @ptr, "\n"
   // Leaking!
 }
 
 allocate ::= (T :: type) -> *T {
   malloc ::= foreign("malloc", int -> *T)
   // TODO function returning number of bytes in a type
-  return malloc(4)
+  return malloc(T'bytes)
 }

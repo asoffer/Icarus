@@ -56,6 +56,14 @@ Val Extend(Val v) {
   return MakeCmd(type::Char, Op::Extend, std::vector{std::move(v)});
 }
 
+Val Bytes(Val v) {
+  return MakeCmd(type::Char, Op::Bytes, std::vector{std::move(v)});
+}
+
+Val Align(Val v) {
+  return MakeCmd(type::Char, Op::Align, std::vector{std::move(v)});
+}
+
 Val Trunc(Val v) {
   if (i32 *n = std::get_if<i32>(&v.value)) {
     return Val::Char(static_cast<char>(*n));
@@ -494,6 +502,8 @@ void Cmd::dump(size_t indent) const {
   switch (op_code_) {
   case Op::Malloc: std::cerr << "malloc"; break;
   case Op::Free: std::cerr << "free"; break;
+  case Op::Bytes: std::cerr << "bytes"; break;
+  case Op::Align: std::cerr << "align"; break;
   case Op::Extend: std::cerr << "extend"; break;
   case Op::Trunc: std::cerr << "trunc"; break;
   case Op::Neg: std::cerr << "neg"; break;
