@@ -182,6 +182,7 @@ int GenerateCode() {
 #ifndef ICARUS_USE_LLVM
 
     if (main_fn == nullptr) {
+      // TODO make this an actual error?
       std::cerr << "No compiled module has a `main` function.\n";
     } else if (!found_errors) {
       IR::ExecContext exec_ctx;

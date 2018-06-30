@@ -161,17 +161,32 @@ void Log::UndeclaredIdentifier(AST::Identifier *id) {
 }
 
 void Log::PostconditionNeedsBool(AST::Expression *expr) {
-  errors_.push_back(
-      "Function postcondition must be of type bool, but you provided "
-      "an expression of type " +
-      expr->type->to_string() + ".");
+  std::stringstream ss;
+  ss << "Function postcondition must be of type bool, but you provided an "
+        "expression of type "
+     << expr->type->to_string() << "\n\n";
+  WriteSource(
+      ss, *expr->span.source,
+      {Interval{expr->span.start.line_num, expr->span.finish.line_num + 1}},
+      NumDigits(expr->span.finish.line_num) + 2,
+      {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());                                               \
+
 }
 
 void Log::PreconditionNeedsBool(AST::Expression *expr) {
-  errors_.push_back(
-      "Function precondition must be of type bool, but you provided "
-      "an expression of type " +
-      expr->type->to_string() + ".");
+  std::stringstream ss;
+  ss << "Function precondition must be of type bool, but you provided an "
+        "expression of type "
+     << expr->type->to_string() << "\n\n";
+  WriteSource(
+      ss, *expr->span.source,
+      {Interval{expr->span.start.line_num, expr->span.finish.line_num + 1}},
+      NumDigits(expr->span.finish.line_num) + 2,
+      {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());                                               \
 }
 
 template <typename ExprContainer>

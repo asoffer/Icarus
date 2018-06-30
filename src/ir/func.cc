@@ -68,4 +68,13 @@ Func::GetIncomingBlocks() const {
   return incoming;
 }
 
+void Func::CheckInvariants() const {
+  for (const auto &expr : preconditions_) {
+    LOG << "Precondition: " << expr->to_string(0);
+  }
+  for (const auto &expr : postconditions_) {
+    LOG << "Postcondition: " << expr->to_string(0);
+  }
+}
+
 } // namespace IR

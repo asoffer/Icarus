@@ -209,14 +209,14 @@ void Unop::VerifyType(Context *ctx) {
     case Operator::Needs: {
       type = type::Void();
       if (operand->type != type::Bool) {
-        ctx->error_log_.PreconditionNeedsBool(this);
+        ctx->error_log_.PreconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
       }
     } break;
     case Operator::Ensure: {
       type = type::Void();
       if (operand->type != type::Bool) {
-        ctx->error_log_.PostconditionNeedsBool(this);
+        ctx->error_log_.PostconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
       }
     } break;

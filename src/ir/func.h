@@ -40,6 +40,8 @@ struct Func {
   Val Argument(u32 n) const;
   Val Return(u32 n) const;
 
+  void CheckInvariants() const;
+
   const std::string name() const {
     return std::to_string(reinterpret_cast<uintptr_t>(this));
   }
