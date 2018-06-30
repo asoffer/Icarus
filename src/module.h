@@ -34,7 +34,11 @@ struct GeneratedFunction;
 struct Module {
   Module();
   ~Module();
+
+  // We take pointers to the module, so it cannot be moved.
   Module(Module&&) = delete;
+
+  static std::unique_ptr<Module> Compile(const Source::Name& src);
 
   IR::Func* AddFunc(AST::GeneratedFunction* fn_lit,
       std::vector<std::pair<std::string, AST::Expression *>> args);

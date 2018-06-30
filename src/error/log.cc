@@ -9,7 +9,6 @@
 #include "type/tuple.h"
 #include "type/type.h"
 
-extern std::unordered_map<Source::Name, File *> source_map;
 extern type::Type *Err;
 
 using LineNum          = size_t;
@@ -491,10 +490,8 @@ std::vector<AST::Identifier *> *Log::CyclicDependency() {
 void Log::ShadowingDeclaration(const AST::Declaration &decl1,
                           const AST::Declaration &decl2) {
   // TODO migrate away from old display.
-  auto line1 = source_map AT(decl1.span.source->name)
-                   ->lines AT(decl1.span.start.line_num);
-  auto line2 = source_map AT(decl2.span.source->name)
-                   ->lines AT(decl2.span.start.line_num);
+  auto line1     = decl1.span.source->lines AT(decl1.span.start.line_num);
+  auto line2     = decl2.span.source->lines AT(decl2.span.start.line_num);
   auto line_num1 = decl1.span.start.line_num;
   auto line_num2 = decl2.span.start.line_num;
   auto align =

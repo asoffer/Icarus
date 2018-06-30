@@ -1,15 +1,31 @@
 #include "module.h"
 
+#include <future>
+
 #include "ast/declaration.h"
 #include "ast/expression.h"
 #include "ast/function_literal.h"
+#include "backend/emit.h"
+#include "backend/eval.h"
+#include "backend/exec.h"
+#include "base/guarded.h"
+#include "base/source.h"
 #include "ir/func.h"
 #include "type/function.h"
 
 #ifdef ICARUS_USE_LLVM
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+
+namespace backend {
+std::string WriteObjectFile(const std::string& name, Module* mod);
+}  // namespace backend
+
 #endif  // ICARUS_USE_LLVM
+
+std::atomic<bool> found_errors = false;
+IR::Func* main_fn;
+static Module *main_mod;
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of IR::Func which we want to forward declare.
@@ -81,4 +97,74 @@ void Module::Complete() {
     fn_lit->CompleteBody(this);
     to_complete_.pop();
   }
+}
+
+base::guarded<std::unordered_map<Source::Name,
+                                 std::shared_future<std::unique_ptr<Module>>>>
+    modules;
+
+// Once this function exits the file is destructed and we no longer have
+// access to the source lines. All verification for this module must be done
+// inside this function.
+std::unique_ptr<Module> Module::Compile(const Source::Name& src) {
+  auto mod = std::make_unique<Module>();
+  AST::BoundConstants bc;
+  Context ctx(mod.get());
+  ctx.bound_constants_ = &bc;
+  File f(src);
+  auto file_stmts = f.Parse(&ctx);
+  if (ctx.num_errors() > 0) {
+    ctx.DumpErrors();
+    found_errors = true;
+    return mod;
+  }
+
+  file_stmts->assign_scope(ctx.mod_->global_.get());
+  file_stmts->VerifyType(&ctx);
+  file_stmts->Validate(&ctx);
+  if (ctx.num_errors() != 0) {
+    ctx.DumpErrors();
+    found_errors = true;
+    return mod;
+  }
+
+  file_stmts->EmitIR(&ctx);
+  if (ctx.num_errors() != 0) {
+    ctx.DumpErrors();
+    found_errors = true;
+    return mod;
+  }
+
+  ctx.mod_->statements_ = std::move(*file_stmts);
+  ctx.mod_->Complete();
+#ifdef ICARUS_USE_LLVM
+  backend::EmitAll(ctx.mod_->fns_, ctx.mod_->llvm_.get());
+#endif  // ICARUS_USE_LLVM
+
+  for (const auto &stmt : ctx.mod_->statements_.content_) {
+    if (!stmt->is<AST::Declaration>()) { continue; }
+    auto &decl = stmt->as<AST::Declaration>();
+    if (decl.identifier->token != "main") { continue; }
+    auto ir_fn = backend::EvaluateAs<IR::Func *>(decl.init_val.get(), &ctx);
+
+    // TODO check more than one?
+
+#ifdef ICARUS_USE_LLVM
+    ir_fn->llvm_fn_->setName("main");
+    ir_fn->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
+#else
+    main_fn  = ir_fn;
+    main_mod = mod.get();
+#endif  // ICARUS_USE_LLVM
+  }
+
+#ifdef ICARUS_USE_LLVM
+  if (std::string err = backend::WriteObjectFile(
+          src.substr(0, src.size() - 2) + "o", ctx.mod_);
+      err != "") {
+    std::cerr << err;
+  }
+#endif  // ICARUS_USE_LLVM
+
+  return mod;
 }
