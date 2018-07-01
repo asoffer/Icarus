@@ -86,7 +86,13 @@ void Func::CheckInvariants() {
       IR::ReturnJump();
     }
     prop_map = prop::PropertyMap(&precond_func);
-    prop_map.Returns();
+    auto ret = prop_map.Returns();
+    // TODO bind with arguments first!
+    if (!ret.can_be_true_) {
+      LOG << "pre-condition is necessarily false.";
+    } else if (ret.can_be_false_) {
+      LOG << "pre-condition cannot be guaranteed.";
+    }
   }
   for (const auto &expr : postcondition_exprs_) {
     LOG << "Postcondition: " << expr->to_string(0);

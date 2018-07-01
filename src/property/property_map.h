@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/util.h"
 #include "base/stale_set.h"
 #include "ir/val.h"
 
@@ -14,7 +15,7 @@ struct Func;
 }  // namespace IR
 
 namespace prop {
-struct Property {
+struct Property : public base::Cast<Property> {
   virtual ~Property() {}
 };
 
@@ -73,7 +74,7 @@ struct PropertyMap {
   PropertyMap(PropertyMap &&p) noexcept = default;
   PropertyMap &operator=(PropertyMap &&p) noexcept = default;
 
-  void Returns() const;
+  DefaultBoolProperty Returns() const;
 
   IR::Func *fn_ = nullptr;
   base::stale_set<Entry> stale_entries_;

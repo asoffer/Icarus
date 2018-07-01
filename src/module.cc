@@ -108,6 +108,7 @@ std::unique_ptr<Module> Module::Compile(const Source::Name& src) {
   ctx.bound_constants_ = &bc;
   File f(src);
   auto file_stmts = f.Parse(&ctx);
+  LOG << file_stmts;
   if (ctx.num_errors() > 0) {
     ctx.DumpErrors();
     found_errors = true;

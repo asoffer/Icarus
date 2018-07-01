@@ -50,7 +50,7 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
 
 // TODO this is not a great way to handle this. Probably should store all
 // set-rets first.
-void PropertyMap::Returns() const {
+DefaultBoolProperty PropertyMap::Returns() const {
   std::vector<IR::CmdIndex> rets;
 
   // This can be precompeted and stored on the actual IR::Func.
@@ -59,7 +59,9 @@ void PropertyMap::Returns() const {
     i32 num_cmds = static_cast<i32>(fn_->blocks_[i].cmds_.size());
     for (i32 j = 0; j < num_cmds; ++j) {
       const auto &cmd = fn_->blocks_[i].cmds_[j];
-      if (cmd.op_code_ == IR::Op::SetReturn) { rets.push_back(IR::CmdIndex{IR::BlockIndex{i}, j}); }
+      if (cmd.op_code_ == IR::Op::SetReturn) {
+        rets.push_back(IR::CmdIndex{IR::BlockIndex{i}, j});
+      }
     }
   }
 
@@ -68,14 +70,14 @@ void PropertyMap::Returns() const {
   for (auto ret : rets) {
     IR::BasicBlock *block = &fn_->blocks_[ret.block.value];
     auto *x = view_.at(block).view_.at(block).view_[ret.cmd].get();
-    acc.Merge(reinterpret_cast<DefaultBoolProperty *>(x));
+    acc.Merge(&ASSERT_NOT_NULL(x)->as<DefaultBoolProperty>());
   }
 
-  LOG << acc.can_be_true_ << " " << acc.can_be_false_;
+  return acc;
 }
 
 void DefaultBoolProperty::Merge(const DefaultBoolProperty &p) {
-  can_be_true_ &= p.can_be_true_;
-  can_be_false_ &= p.can_be_false_;
+  can_be_true_ |= p.can_be_true_;
+  can_be_false_ |= p.can_be_false_;
 }
 }  // namespace prop

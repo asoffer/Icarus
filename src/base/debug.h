@@ -6,8 +6,8 @@
 #include <string>
 #include <unistd.h>
 
-#include "types.h"
-#include "log.h"
+#include "base/types.h"
+#include "base/log.h"
 #include "base/check.h"
 
 #ifdef DBG
