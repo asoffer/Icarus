@@ -25,7 +25,6 @@ std::string WriteObjectFile(const std::string& name, Module* mod);
 
 std::atomic<bool> found_errors = false;
 IR::Func* main_fn;
-static Module *main_mod;
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of IR::Func which we want to forward declare.
@@ -99,10 +98,6 @@ void Module::Complete() {
   }
 }
 
-base::guarded<std::unordered_map<Source::Name,
-                                 std::shared_future<std::unique_ptr<Module>>>>
-    modules;
-
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
 // inside this function.
@@ -137,6 +132,9 @@ std::unique_ptr<Module> Module::Compile(const Source::Name& src) {
 
   ctx.mod_->statements_ = std::move(*file_stmts);
   ctx.mod_->Complete();
+
+  for (auto& fn : ctx.mod_->fns_) { fn->CheckInvariants(); }
+
 #ifdef ICARUS_USE_LLVM
   backend::EmitAll(ctx.mod_->fns_, ctx.mod_->llvm_.get());
 #endif  // ICARUS_USE_LLVM
@@ -154,7 +152,6 @@ std::unique_ptr<Module> Module::Compile(const Source::Name& src) {
     ir_fn->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
 #else
     main_fn  = ir_fn;
-    main_mod = mod.get();
 #endif  // ICARUS_USE_LLVM
   }
 

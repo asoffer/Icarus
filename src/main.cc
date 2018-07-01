@@ -34,7 +34,6 @@ std::vector<Source::Name> files;
 
 // TODO sad. don't use a global to do this.
 extern IR::Func* main_fn;
-extern Module *main_mod;
 
 static void
 ShowUsage(char *argv0) {
@@ -67,8 +66,8 @@ ShowUsage(char *argv0) {
 
 extern void ReplEval(AST::Expression *expr);
 
-extern base::guarded<std::unordered_map<
-    Source::Name, std::shared_future<std::unique_ptr<Module>>>>
+base::guarded<std::unordered_map<Source::Name,
+                                 std::shared_future<std::unique_ptr<Module>>>>
     modules;
 
 extern std::atomic<bool> found_errors;

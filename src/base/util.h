@@ -71,6 +71,12 @@ template <typename... Ts> struct overloaded : Ts... {
   using Ts::operator()...;
 };
 template <typename... Ts> overloaded(Ts...)->overloaded<Ts...>;
+
+template <typename Arg>
+void hash_combine(size_t &seed, const Arg &arg) {
+  seed ^= std::hash<Arg>{}(arg) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
 } // namespace base
 #undef STATIC_ASSERT_RELATED
 #endif // ICARUS_BASE_UTIL_H

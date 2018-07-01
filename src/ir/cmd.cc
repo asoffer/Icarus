@@ -21,6 +21,14 @@ Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
       static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
   result = Register(t != nullptr ? Func::Current->num_regs_++
                                  : -(++Func::Current->num_voids_));
+
+  if (t == nullptr) { return; }
+
+  for (const auto &val : args) {
+    if (auto *reg = std::get_if<Register>(&val.value)) {
+      Func::Current->references_[*reg].push_back(cmd_index);
+    }
+  }
 }
 
 Val Field(Val v, size_t n) {

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "ir/basic_block.h"
+#include "property/property_map.h"
 
 #ifdef ICARUS_USE_LLVM
 namespace llvm {
@@ -40,7 +41,7 @@ struct Func {
   Val Argument(u32 n) const;
   Val Return(u32 n) const;
 
-  void CheckInvariants() const;
+  void CheckInvariants();
 
   const std::string name() const {
     return std::to_string(reinterpret_cast<uintptr_t>(this));
@@ -90,7 +91,10 @@ struct Func {
 #endif // ICARUS_USE_LLVM
 
   Module* mod_;
-  std::vector<AST::Expression *> preconditions_, postconditions_;
+  std::vector<AST::Expression *> precondition_exprs_, postcondition_exprs_;
+  std::vector<std::pair<IR::Func, prop::PropertyMap>> preconditions_,
+      postconditions_;
+  std::unordered_map<Register, std::vector<CmdIndex>> references_;
 
   std::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
   GetIncomingBlocks() const;

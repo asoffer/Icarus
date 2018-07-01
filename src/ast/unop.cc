@@ -273,12 +273,12 @@ std::vector<IR::Val> Unop::EmitIR(Context *ctx) {
     case Language::Operator::At: return {PtrCallFix(operand->EmitIR(ctx)[0])};
     case Language::Operator::Needs: {
       // TODO validate requirements are well-formed?
-      IR::Func::Current->preconditions_.push_back(operand.get());
+      IR::Func::Current->precondition_exprs_.push_back(operand.get());
       return {};
     } break;
     case Language::Operator::Ensure: {
       // TODO validate requirements are well-formed?
-      IR::Func::Current->postconditions_.push_back(operand.get());
+      IR::Func::Current->postcondition_exprs_.push_back(operand.get());
       return {};
     } break;
     case Language::Operator::Pass: return operand->EmitIR(ctx);

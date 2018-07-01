@@ -68,11 +68,27 @@ Func::GetIncomingBlocks() const {
   return incoming;
 }
 
-void Func::CheckInvariants() const {
-  for (const auto &expr : preconditions_) {
-    LOG << "Precondition: " << expr->to_string(0);
+void Func::CheckInvariants() {
+  // Resreve to guarantee pointer stability.
+  preconditions_.reserve(precondition_exprs_.size());
+  for (const auto &expr : precondition_exprs_) {
+    auto & [ precond_func, prop_map ] = preconditions_.emplace_back(
+        std::piecewise_construct,
+        std::forward_as_tuple(mod_, type::Func(type_->input, {type::Bool}),
+                              args_),
+        std::forward_as_tuple());
+
+    CURRENT_FUNC(&precond_func) {
+      IR::BasicBlock::Current = precond_func.entry();
+      // TODO bound constants?
+      Context ctx(mod_);
+      IR::SetReturn(0, expr->EmitIR(&ctx)[0]);
+      IR::ReturnJump();
+    }
+    prop_map = prop::PropertyMap(&precond_func);
+    prop_map.Returns();
   }
-  for (const auto &expr : postconditions_) {
+  for (const auto &expr : postcondition_exprs_) {
     LOG << "Postcondition: " << expr->to_string(0);
   }
 }
