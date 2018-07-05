@@ -68,34 +68,56 @@ Func::GetIncomingBlocks() const {
   return incoming;
 }
 
-void Func::CheckInvariants() {
+static std::vector<std::pair<IR::Func, prop::PropertyMap>> InvariantsFor(
+    IR::Func *fn, const std::vector<AST::Expression *> &exprs) {
+  std::vector<std::pair<IR::Func, prop::PropertyMap>> result;
   // Resreve to guarantee pointer stability.
-  preconditions_.reserve(precondition_exprs_.size());
-  for (const auto &expr : precondition_exprs_) {
-    auto & [ precond_func, prop_map ] = preconditions_.emplace_back(
+  for (const auto &expr : exprs) {
+    auto & [ func, prop_map ] = result.emplace_back(
         std::piecewise_construct,
-        std::forward_as_tuple(mod_, type::Func(type_->input, {type::Bool}),
-                              args_),
+        std::forward_as_tuple(fn->mod_, type::Func(fn->type_->input, {type::Bool}),
+                              fn->args_),
         std::forward_as_tuple());
 
-    CURRENT_FUNC(&precond_func) {
-      IR::BasicBlock::Current = precond_func.entry();
+    CURRENT_FUNC(&func) {
+      IR::BasicBlock::Current = func.entry();
       // TODO bound constants?
-      Context ctx(mod_);
+      Context ctx(fn->mod_);
       IR::SetReturn(0, expr->EmitIR(&ctx)[0]);
       IR::ReturnJump();
     }
-    prop_map = prop::PropertyMap(&precond_func);
-    auto ret = prop_map.Returns();
-    // TODO bind with arguments first!
-    if (!ret.can_be_true_) {
-      LOG << "pre-condition is necessarily false.";
-    } else if (ret.can_be_false_) {
-      LOG << "pre-condition cannot be guaranteed.";
-    }
+    prop_map = prop::PropertyMap(&func);
   }
-  for (const auto &expr : postcondition_exprs_) {
-    LOG << "Postcondition: " << expr->to_string(0);
+  return result;
+}
+
+void Func::ComputeInvariants() {
+  preconditions_  = InvariantsFor(this, precondition_exprs_);
+  postconditions_ = InvariantsFor(this, postcondition_exprs_);
+}
+
+void Func::CheckInvariants() {
+  // auto prop_map = prop::PropertyMap(this);
+  for (const auto& block : blocks_) {
+    for (const auto& cmd : block.cmds_) {
+      if (cmd.op_code_ != Op::Call) { continue; }
+      if (std::holds_alternative<IR::Register>(cmd.args.back().value)) { continue; }
+      // Only care about calls to functions known at compile-time (hence
+      // ignoring the register above.
+
+      ASSERT(std::holds_alternative<IR::Func *>(cmd.args.back().value));
+      auto *fn = std::get<IR::Func *>(cmd.args.back().value);
+      for (const auto & [ precond, prop_map ] : fn->preconditions_) {
+        // TODO avoid this copy. Pass in some sort of view-type?
+        auto args = cmd.args;
+        args.pop_back();
+        auto prop_copy = prop_map.with_args(args);
+
+        // TODO Insert properties and recompute
+        fn->dump();
+      }
+      cmd.dump(10);
+    }
   }
 }
 

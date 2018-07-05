@@ -1,12 +1,12 @@
 #ifndef ICARUS_PROPERTY_PROPERTY_MAP_H
 #define ICARUS_PROPERTY_PROPERTY_MAP_H
 
-#include <memory>
 #include <unordered_map>
 #include <vector>
 
-#include "base/util.h"
+#include "base/owned_ptr.h"
 #include "base/stale_set.h"
+#include "base/util.h"
 #include "ir/val.h"
 
 namespace IR {
@@ -17,28 +17,68 @@ struct Func;
 namespace prop {
 struct Property : public base::Cast<Property> {
   virtual ~Property() {}
+  virtual Property *Clone() const = 0;
+  virtual std::string to_string() const = 0;
 };
 
-struct DefaultBoolProperty : public Property {
-  DefaultBoolProperty() : can_be_true_(true), can_be_false_(true) {}
-  DefaultBoolProperty(bool b) : can_be_true_(b), can_be_false_(!b) {}
-  ~DefaultBoolProperty() override {}
+template <typename T>
+struct DefaultProperty : public Property {
+  DefaultProperty<T>* Clone() const override {}
+  std::string to_string() const override = 0;
+};
+
+template <>
+struct DefaultProperty<bool> : public Property {
+  DefaultProperty() : can_be_true_(true), can_be_false_(true) {}
+  DefaultProperty(bool b) : can_be_true_(b), can_be_false_(!b) {}
+  ~DefaultProperty() override {}
+
+  std::string to_string() const override {
+    return std::string{} + (can_be_true_ ? "y" : "n") +
+           (can_be_false_ ? "y" : "n");
+  }
+
+  DefaultProperty<bool> *Clone() const override {
+    auto *result          = new DefaultProperty;
+    result->can_be_true_  = can_be_true_;
+    result->can_be_false_ = can_be_false_;
+    return result;
+  }
+
+  static DefaultProperty<bool> Bottom() {
+    DefaultProperty<bool> val;
+    val.can_be_true_  = false;
+    val.can_be_false_ = false;
+    return val;
+  }
+
+  void Merge(const DefaultProperty &p) {
+    can_be_true_ |= p.can_be_true_;
+    can_be_false_ |= p.can_be_false_;
+  }
+
   bool can_be_true_  = true;
   bool can_be_false_ = true;
-
-  void Merge(const DefaultBoolProperty &p);
 };
 
 struct BlockStateView {
   BlockStateView(const IR::BasicBlock *block);
-  std::vector<std::unique_ptr<Property>> view_;
+  std::vector<base::owned_ptr<Property>> view_;
 };
+
+inline std::ostream &operator<<(std::ostream &os, const BlockStateView &bsv) {
+  return os << base::internal::stringify(bsv.view_);
+}
 
 struct FnStateView {
   FnStateView(IR::Func *fn);
 
   std::unordered_map<const IR::BasicBlock *, BlockStateView> view_;
 };
+
+inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
+  return os << base::internal::stringify(fsv.view_);
+}
 
 struct Entry {
   Entry(const IR::BasicBlock *viewing_block, IR::CmdIndex cmd_index)
@@ -71,12 +111,22 @@ namespace prop {
 struct PropertyMap {
   PropertyMap() = default;
   PropertyMap(IR::Func *fn);
-  PropertyMap(PropertyMap &&p) noexcept = default;
+  PropertyMap(const PropertyMap &p) = default;
+  PropertyMap &operator=(const PropertyMap &p) = default;
+  PropertyMap(PropertyMap &&p) noexcept        = default;
   PropertyMap &operator=(PropertyMap &&p) noexcept = default;
 
-  DefaultBoolProperty Returns() const;
+  // Make a copy of this map and set the arguments to the values passed in
+  PropertyMap with_args(const std::vector<IR::Val>& args) const;
+
+  // TODO rename or delete me.
+  DefaultProperty<bool> Returns() const;
+
+  void refresh();
 
   IR::Func *fn_ = nullptr;
+  // TODO given that you want the invariant that this is always empty...
+  // probably shouldn't be storing it.
   base::stale_set<Entry> stale_entries_;
   std::unordered_map<const IR::BasicBlock *, FnStateView> view_;
 };

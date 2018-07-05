@@ -41,6 +41,7 @@ struct Func {
   Val Argument(u32 n) const;
   Val Return(u32 n) const;
 
+  void ComputeInvariants();
   void CheckInvariants();
 
   const std::string name() const {

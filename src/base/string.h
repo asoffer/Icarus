@@ -86,6 +86,12 @@ auto stringify(dispatch_rank<2>, const std::unique_ptr<T> &ptr) -> std::string {
 }
 
 template <typename T>
+auto stringify(dispatch_rank<2>, const base::owned_ptr<T> &ptr) -> std::string {
+  return ptr == nullptr ? "owned(null)"
+                        : "owned_ptr(" + stringify(*ptr) + ")";
+}
+
+template <typename T>
 auto stringify(dispatch_rank<3>, T &&val)
     -> decltype(std::declval<T>().to_string(), std::string()) {
   return val.to_string();

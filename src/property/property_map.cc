@@ -29,20 +29,41 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
     }
   }
 
+  refresh();
+}
+
+void PropertyMap::refresh() {
   stale_entries_.until_empty([&](const Entry &e) {
     auto &cmd = fn_->Command(e.cmd_index_);
     switch (cmd.op_code_) {
       case IR::Op::UncondJump: return;
       case IR::Op::CondJump: return;
       case IR::Op::ReturnJump: return;
-      case IR::Op::SetReturn:
+      case IR::Op::Neg: {
+        auto &prop = view_.at(e.viewing_block_)
+                         .view_.at(&fn_->block(e.cmd_index_.block))
+                         .view_[e.cmd_index_.cmd];
+        LOG << prop;
+      } break;
+      case IR::Op::SetReturn: {
+        auto &prop = view_.at(e.viewing_block_)
+                         .view_.at(&fn_->block(e.cmd_index_.block))
+                         .view_[e.cmd_index_.cmd];
+
         if (bool *b = std::get_if<bool>(&cmd.args[0].value)) {
-          view_.at(e.viewing_block_)
-              .view_.at(&fn_->block(e.cmd_index_.block))
-              .view_[e.cmd_index_.cmd] =
-              std::make_unique<DefaultBoolProperty>(*b);
+          prop = std::make_unique<DefaultProperty<bool>>(*b);
+
+        } else if (IR::Register *reg =
+                       std::get_if<IR::Register>(&cmd.args[0].value)) {
+          if (cmd.args[0].type == type::Bool) {
+            prop = std::make_unique<DefaultProperty<bool>>();
+          } else {
+            NOT_YET();
+          }
+        } else {
+          LOG << "???";
         }
-        break;
+      } break;
       default: NOT_YET(static_cast<int>(cmd.op_code_));
     }
   });
@@ -50,7 +71,7 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
 
 // TODO this is not a great way to handle this. Probably should store all
 // set-rets first.
-DefaultBoolProperty PropertyMap::Returns() const {
+DefaultProperty<bool> PropertyMap::Returns() const {
   std::vector<IR::CmdIndex> rets;
 
   // This can be precompeted and stored on the actual IR::Func.
@@ -66,18 +87,33 @@ DefaultBoolProperty PropertyMap::Returns() const {
   }
 
   // TODO default bool property is way too specifc.
-  DefaultBoolProperty acc;
+  auto acc = DefaultProperty<bool>::Bottom();
   for (auto ret : rets) {
     IR::BasicBlock *block = &fn_->blocks_[ret.block.value];
     auto *x = view_.at(block).view_.at(block).view_[ret.cmd].get();
-    acc.Merge(&ASSERT_NOT_NULL(x)->as<DefaultBoolProperty>());
+    acc.Merge(ASSERT_NOT_NULL(x)->as<DefaultProperty<bool>>());
   }
 
   return acc;
 }
 
-void DefaultBoolProperty::Merge(const DefaultBoolProperty &p) {
-  can_be_true_ |= p.can_be_true_;
-  can_be_false_ |= p.can_be_false_;
+PropertyMap PropertyMap::with_args(const std::vector<IR::Val> &args) const {
+  auto copy = *this;
+  LOG << copy.view_;
+  auto *entry_block = &fn_->block(fn_->entry());
+  auto& prop_vec = copy.view_.at(entry_block).view_.at(entry_block).view_;
+  for (size_t i = 0; i < args.size(); ++i) {
+    if (args[i].type == type::Bool) {
+      prop_vec.at(i) = base::make_owned<DefaultProperty<bool>>(
+          std::get<bool>(args[i].value));
+      copy.stale_entries_.emplace(
+          entry_block, IR::CmdIndex{IR::BlockIndex{0}, static_cast<i32>(i)});
+    }
+  }
+
+  copy.refresh();
+  LOG << copy.view_;
+  return copy;
 }
+
 }  // namespace prop
