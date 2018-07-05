@@ -6,6 +6,8 @@
 #include <string>
 #include <variant>
 
+#include "base/owned_ptr.h"
+
 namespace base::internal {
 template <int N>
 struct dispatch_rank_count_down : public dispatch_rank_count_down<N - 1> {};

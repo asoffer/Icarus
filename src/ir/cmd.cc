@@ -24,9 +24,11 @@ Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
 
   if (t == nullptr) { return; }
 
+  Func::Current->reg_to_cmd_.emplace(result, cmd_index);
+  Func::Current->references_[result];  // Make sure this entry exists
   for (const auto &val : args) {
     if (auto *reg = std::get_if<Register>(&val.value)) {
-      Func::Current->references_[*reg].push_back(cmd_index);
+      Func::Current->references_[*reg].push_back(result);
     }
   }
 }

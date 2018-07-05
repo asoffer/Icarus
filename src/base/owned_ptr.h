@@ -7,9 +7,15 @@ namespace base {
 template <typename T>
 struct owned_ptr {
   owned_ptr() noexcept = default;
+  owned_ptr(std::unique_ptr<T> ptr) noexcept : ptr_(std::move(ptr)) {}
   owned_ptr(owned_ptr const& ptr) noexcept
       : ptr_(ptr == nullptr ? nullptr : ptr->Clone()) {}
+  template <typename D>
+  owned_ptr(owned_ptr<D> const& ptr) noexcept
+      : ptr_(ptr == nullptr ? nullptr : ptr->Clone()) {}
   owned_ptr(owned_ptr&& ptr) noexcept : ptr_(std::move(ptr).ptr_) {}
+  template <typename D>
+  owned_ptr(owned_ptr<D>&& ptr) noexcept : ptr_(std::move(ptr).ptr_) {}
 
   T* operator->() { return ptr_.get(); }
   T const* operator->() const { return ptr_.get(); }

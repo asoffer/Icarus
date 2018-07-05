@@ -62,6 +62,9 @@ struct Func {
   const Cmd &Command(CmdIndex cmd_index) const {
     return blocks_.at(cmd_index.block.value).cmds_.at(cmd_index.cmd);
   }
+
+  Cmd const *Command(Register reg) const;
+
   Cmd &Command(CmdIndex cmd_index) {
     return const_cast<Cmd &>(
         static_cast<const Func *>(this)->Command(cmd_index));
@@ -95,7 +98,8 @@ struct Func {
   std::vector<AST::Expression *> precondition_exprs_, postcondition_exprs_;
   std::vector<std::pair<IR::Func, prop::PropertyMap>> preconditions_,
       postconditions_;
-  std::unordered_map<Register, std::vector<CmdIndex>> references_;
+  std::unordered_map<Register, std::vector<Register>> references_;
+  std::unordered_map<Register, CmdIndex> reg_to_cmd_;
 
   std::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
   GetIncomingBlocks() const;

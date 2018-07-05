@@ -30,6 +30,11 @@ Func::Func(Module *mod, AST::GeneratedFunction *fn,
       args_(std::move(args)),
       num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
       mod_(mod) {
+  // Set the references for arguments and returns
+  for (i32 i = 0;
+       i < static_cast<i32>(type_->input.size() + type_->output.size()); ++i) {
+    references_[Register{i}];
+  }
   ASSERT(args_.size() == type_->input.size());
   blocks_.emplace_back(this);
 }
@@ -40,6 +45,11 @@ Func::Func(Module *mod, const type::Function *fn_type,
       args_(std::move(args)),
       num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
       mod_(mod) {
+  // Set the references for arguments and returns
+  for (i32 i = 0;
+       i < static_cast<i32>(type_->input.size() + type_->output.size()); ++i) {
+    references_[Register{i}];
+  }
   ASSERT(args_.size() == fn_type->input.size());
   blocks_.emplace_back(this);
 }
@@ -66,6 +76,12 @@ Func::GetIncomingBlocks() const {
   // Hack: First entry depends on itself.
   incoming[&block(entry())].insert(&block(entry()));
   return incoming;
+}
+
+Cmd const *Func::Command(Register reg) const {
+  auto iter = reg_to_cmd_.find(reg);
+  if (iter == reg_to_cmd_.end()) { return nullptr; }
+  return &Command(iter->second);
 }
 
 static std::vector<std::pair<IR::Func, prop::PropertyMap>> InvariantsFor(

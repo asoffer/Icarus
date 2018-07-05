@@ -3,12 +3,11 @@
 #include "ir/func.h"
 
 namespace prop {
-BlockStateView::BlockStateView(const IR::BasicBlock *block)
-    : view_(block->cmds_.size()) {}
-
 FnStateView::FnStateView(IR::Func *fn) {
-  for (const auto &block : fn->blocks_) {
-    view_.emplace(&block, BlockStateView{&block});
+  // TODO for now (non-void) registers are counted up from zero to fn->num_regs_
+  // - 1 inclusive. This is likely to change.
+  for (i32 i = 0; i < static_cast<i32>(fn->num_regs_); ++i) {
+    view_.emplace(IR::Register{i}, PropertySet{});
   }
 }
 
@@ -19,44 +18,61 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
   }
 
   for (const auto &block1 : fn_->blocks_) {
-    for (i32 block_index = 0;
-         block_index < static_cast<i32>(fn_->blocks_.size()); ++block_index) {
-      i32 len = fn_->block(IR::BlockIndex{block_index}).cmds_.size();
-      for (i32 cmd_index = 0; cmd_index < len; ++cmd_index) {
-        stale_entries_.emplace(
-            &block1, IR::CmdIndex{IR::BlockIndex{block_index}, cmd_index});
-      }
+    for (i32 i = 0; i < static_cast<i32>(fn->num_regs_); ++i) {
+      stale_entries_.emplace(&block1, IR::Register{i});
     }
   }
-
   refresh();
 }
 
 void PropertyMap::refresh() {
   stale_entries_.until_empty([&](const Entry &e) {
-    auto &cmd = fn_->Command(e.cmd_index_);
+    auto *cmd_ptr = fn_->Command(e.reg_);
+    if (cmd_ptr == nullptr) {
+      for (IR::Register reg : fn_->references_.at(e.reg_)) {
+        // TODO also this entry on all blocks you jump to
+        stale_entries_.emplace(e.viewing_block_, reg);
+      }
+      return;
+    }
+    auto &cmd = *cmd_ptr;
     switch (cmd.op_code_) {
       case IR::Op::UncondJump: return;
       case IR::Op::CondJump: return;
       case IR::Op::ReturnJump: return;
       case IR::Op::Neg: {
-        auto &prop = view_.at(e.viewing_block_)
-                         .view_.at(&fn_->block(e.cmd_index_.block))
-                         .view_[e.cmd_index_.cmd];
-        LOG << prop;
+
+        auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
+        bool change    = false;
+        for (auto &prop :
+             view_.at(e.viewing_block_)
+                 .view_.at(std::get<IR::Register>(cmd.args[0].value))
+                 .props_) {
+          if (prop->is<DefaultProperty<bool>>()) {
+            auto new_prop = std::make_unique<DefaultProperty<bool>>(
+                prop->as<DefaultProperty<bool>>());
+            std::swap(new_prop->can_be_true_, new_prop->can_be_false_);
+            change |= prop_set.add(std::move(new_prop));
+          }
+        }
+
+        if (change) {
+          for (IR::Register reg : fn_->references_.at(e.reg_)) {
+            // TODO also this entry on all blocks you jump to
+            stale_entries_.emplace(e.viewing_block_, reg);
+          }
+        }
       } break;
       case IR::Op::SetReturn: {
-        auto &prop = view_.at(e.viewing_block_)
-                         .view_.at(&fn_->block(e.cmd_index_.block))
-                         .view_[e.cmd_index_.cmd];
+        auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
 
-        if (bool *b = std::get_if<bool>(&cmd.args[0].value)) {
-          prop = std::make_unique<DefaultProperty<bool>>(*b);
+        if (const bool *b = std::get_if<bool>(&cmd.args[0].value)) {
+          prop_set.add(std::make_unique<DefaultProperty<bool>>(*b));
 
-        } else if (IR::Register *reg =
+        } else if (const IR::Register *reg =
                        std::get_if<IR::Register>(&cmd.args[0].value)) {
           if (cmd.args[0].type == type::Bool) {
-            prop = std::make_unique<DefaultProperty<bool>>();
+            prop_set.add(std::make_unique<DefaultProperty<bool>>());
           } else {
             NOT_YET();
           }
@@ -73,6 +89,7 @@ void PropertyMap::refresh() {
 // set-rets first.
 DefaultProperty<bool> PropertyMap::Returns() const {
   std::vector<IR::CmdIndex> rets;
+  std::vector<IR::Register> regs;
 
   // This can be precompeted and stored on the actual IR::Func.
   i32 num_blocks = static_cast<i32>(fn_->blocks_.size());
@@ -82,15 +99,20 @@ DefaultProperty<bool> PropertyMap::Returns() const {
       const auto &cmd = fn_->blocks_[i].cmds_[j];
       if (cmd.op_code_ == IR::Op::SetReturn) {
         rets.push_back(IR::CmdIndex{IR::BlockIndex{i}, j});
+        regs.push_back(cmd.result);
       }
     }
   }
 
   // TODO default bool property is way too specifc.
   auto acc = DefaultProperty<bool>::Bottom();
-  for (auto ret : rets) {
+  for (size_t i = 0; i < rets.size(); ++i) {
+    const auto &ret       = rets[i];
+    const auto &reg       = regs[i];
     IR::BasicBlock *block = &fn_->blocks_[ret.block.value];
-    auto *x = view_.at(block).view_.at(block).view_[ret.cmd].get();
+    const PropertySet& prop_set = view_.at(block).view_.at(reg);
+    // TODO blah. not just one entry
+    auto *x = prop_set.props_.at(0).get();
     acc.Merge(ASSERT_NOT_NULL(x)->as<DefaultProperty<bool>>());
   }
 
@@ -101,13 +123,13 @@ PropertyMap PropertyMap::with_args(const std::vector<IR::Val> &args) const {
   auto copy = *this;
   LOG << copy.view_;
   auto *entry_block = &fn_->block(fn_->entry());
-  auto& prop_vec = copy.view_.at(entry_block).view_.at(entry_block).view_;
-  for (size_t i = 0; i < args.size(); ++i) {
+  auto &props       = copy.view_.at(entry_block).view_;
+  for (i32 i = 0; i < static_cast<i32>(args.size()); ++i) {
     if (args[i].type == type::Bool) {
-      prop_vec.at(i) = base::make_owned<DefaultProperty<bool>>(
-          std::get<bool>(args[i].value));
-      copy.stale_entries_.emplace(
-          entry_block, IR::CmdIndex{IR::BlockIndex{0}, static_cast<i32>(i)});
+      props.at(IR::Register{i})
+          .add(std::make_unique<DefaultProperty<bool>>(
+              std::get<bool>(args[i].value)));
+      copy.stale_entries_.emplace(entry_block, IR::Register{i});
     }
   }
 

@@ -61,19 +61,23 @@ struct DefaultProperty<bool> : public Property {
   bool can_be_false_ = true;
 };
 
-struct BlockStateView {
-  BlockStateView(const IR::BasicBlock *block);
-  std::vector<base::owned_ptr<Property>> view_;
-};
+struct PropertySet {
+  template <typename Prop>
+  bool add(std::unique_ptr<Prop> prop) {
+    props_.emplace_back(std::move(prop));
+    return true;
+  }
 
-inline std::ostream &operator<<(std::ostream &os, const BlockStateView &bsv) {
-  return os << base::internal::stringify(bsv.view_);
+  std::vector<base::owned_ptr<Property>> props_;
+};
+inline std::ostream &operator<<(std::ostream &os, const PropertySet &props) {
+  return os << base::internal::stringify(props.props_);
 }
 
 struct FnStateView {
   FnStateView(IR::Func *fn);
 
-  std::unordered_map<const IR::BasicBlock *, BlockStateView> view_;
+  std::unordered_map<IR::Register, PropertySet> view_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
@@ -81,16 +85,15 @@ inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
 }
 
 struct Entry {
-  Entry(const IR::BasicBlock *viewing_block, IR::CmdIndex cmd_index)
-      : viewing_block_(viewing_block), cmd_index_(cmd_index) {}
+  Entry(const IR::BasicBlock *viewing_block, IR::Register reg)
+      : viewing_block_(viewing_block), reg_(reg) {}
 
   const IR::BasicBlock *viewing_block_;
-  IR::CmdIndex cmd_index_;
+  IR::Register reg_;
 };
 
 inline bool operator==(const Entry &lhs, const Entry &rhs) {
-  return lhs.viewing_block_ == rhs.viewing_block_ &&
-         lhs.cmd_index_ == rhs.cmd_index_;
+  return lhs.viewing_block_ == rhs.viewing_block_ && lhs.reg_ == rhs.reg_;
 }
 }  // namespace prop
 
@@ -100,8 +103,7 @@ struct hash<prop::Entry> {
   size_t operator()(const prop::Entry &e) const {
     size_t seed = 0x9e3779b97f681513ull;
     base::hash_combine(seed, e.viewing_block_);
-    base::hash_combine(seed, e.cmd_index_.block);
-    base::hash_combine(seed, e.cmd_index_.cmd);
+    base::hash_combine(seed, e.reg_);
     return seed;
   }
 };
