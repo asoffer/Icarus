@@ -22,9 +22,9 @@ Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
   result = Register(t != nullptr ? Func::Current->num_regs_++
                                  : -(++Func::Current->num_voids_));
 
+  Func::Current->reg_to_cmd_.emplace(result, cmd_index);
   if (t == nullptr) { return; }
 
-  Func::Current->reg_to_cmd_.emplace(result, cmd_index);
   Func::Current->references_[result];  // Make sure this entry exists
   for (const auto &val : args) {
     if (auto *reg = std::get_if<Register>(&val.value)) {

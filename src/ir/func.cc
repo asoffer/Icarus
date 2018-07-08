@@ -128,11 +128,11 @@ void Func::CheckInvariants() {
         auto args = cmd.args;
         args.pop_back();
         auto prop_copy = prop_map.with_args(args);
+        LOG << prop_copy.Returns();
 
         // TODO Insert properties and recompute
         fn->dump();
       }
-      cmd.dump(10);
     }
   }
 }

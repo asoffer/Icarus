@@ -41,7 +41,6 @@ void PropertyMap::refresh() {
       case IR::Op::CondJump: return;
       case IR::Op::ReturnJump: return;
       case IR::Op::Neg: {
-
         auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
         bool change    = false;
         for (auto &prop :
@@ -94,9 +93,10 @@ DefaultProperty<bool> PropertyMap::Returns() const {
   // This can be precompeted and stored on the actual IR::Func.
   i32 num_blocks = static_cast<i32>(fn_->blocks_.size());
   for (i32 i = 0; i < num_blocks; ++i) {
-    i32 num_cmds = static_cast<i32>(fn_->blocks_[i].cmds_.size());
+    const auto &block = fn_->blocks_[i];
+    i32 num_cmds = static_cast<i32>(block.cmds_.size());
     for (i32 j = 0; j < num_cmds; ++j) {
-      const auto &cmd = fn_->blocks_[i].cmds_[j];
+      const auto &cmd = block.cmds_[j];
       if (cmd.op_code_ == IR::Op::SetReturn) {
         rets.push_back(IR::CmdIndex{IR::BlockIndex{i}, j});
         regs.push_back(cmd.result);
@@ -121,7 +121,6 @@ DefaultProperty<bool> PropertyMap::Returns() const {
 
 PropertyMap PropertyMap::with_args(const std::vector<IR::Val> &args) const {
   auto copy = *this;
-  LOG << copy.view_;
   auto *entry_block = &fn_->block(fn_->entry());
   auto &props       = copy.view_.at(entry_block).view_;
   for (i32 i = 0; i < static_cast<i32>(args.size()); ++i) {
@@ -132,9 +131,11 @@ PropertyMap PropertyMap::with_args(const std::vector<IR::Val> &args) const {
       copy.stale_entries_.emplace(entry_block, IR::Register{i});
     }
   }
+  for (auto &cmd : entry_block->cmds_) {
+    copy.stale_entries_.emplace(entry_block, cmd.result);
+  }
 
   copy.refresh();
-  LOG << copy.view_;
   return copy;
 }
 
