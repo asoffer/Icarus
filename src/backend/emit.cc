@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "architecture.h"
+#include "ast/function_literal.h"
 #include "base/check.h"
 #include "ir/func.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -18,10 +19,10 @@
 // TODO worry about concurrent access as well as modularity (global? per
 // module?)
 static llvm::Value *StringConstant(llvm::IRBuilder<> *builder,
-                                   const std::string &str) {
+                                   std::string_view str) {
   static std::unordered_map<std::string, llvm::Value *> global_strs;
-  auto &result = global_strs[str];
-  if (!result) { result = builder->CreateGlobalStringPtr(str); }
+  auto &result = global_strs[std::string(str)];
+  if (!result) { result = builder->CreateGlobalStringPtr(llvm::StringRef{str.data(), str.size()}); }
   return result;
 }
 
@@ -100,20 +101,25 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
           [&](AST::ScopeLiteral *s) -> llvm::Value * { NOT_YET(); },
           [&](const AST::CodeBlock &c) -> llvm::Value * { NOT_YET(); },
           [&](AST::Expression *e) -> llvm::Value * { NOT_YET(); },
+          [&](IR::Interface b) -> llvm::Value * { UNREACHABLE(); },
           [&](IR::BlockIndex b) -> llvm::Value * { NOT_YET(); },
-          [&](const std::string &s) -> llvm::Value * {
+          [&](std::string_view s) -> llvm::Value * {
             // TODO this is wrong because strings aren't char*, but maybe it's
             // okay and we can do promotion later?
             return StringConstant(llvm_data->builder, s);
           },
+          [&](const IR::BlockSequence &bs) -> llvm::Value * { NOT_YET(); },
+          [&](const IR::BuiltinGenericIndex &bgi) -> llvm::Value * {
+            NOT_YET();
+          },
+          [&](const IR::ForeignFn &f) -> llvm::Value * { NOT_YET(); }
+          /*
           [&](AST::GeneratedFunction *fn) -> llvm::Value * {
             return llvm_data->module->getOrInsertFunction(
                 fn->ir_func_->name(), fn->ir_func_->type_->llvm_fn(
                                           llvm_data->module->getContext()));
-          },
-          [&](const std::vector<IR::Val> &) -> llvm::Value * {
-            UNREACHABLE();
-          }},
+          }*/
+      },
       val.value);
 }
 
@@ -424,6 +430,11 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       cmd.dump(10);
       UNREACHABLE();
     } break;
+    case IR::Op::Align: UNREACHABLE();
+    case IR::Op::Bytes: UNREACHABLE();
+    case IR::Op::Tup: UNREACHABLE();
+    case IR::Op::BlockSeq: UNREACHABLE();
+    case IR::Op::BlockSeqContains: UNREACHABLE();
     case IR::Op::CreateStruct: UNREACHABLE();
     case IR::Op::InsertField: UNREACHABLE();
     case IR::Op::FinalizeStruct: UNREACHABLE();

@@ -24,7 +24,7 @@ release: $(TARGET)
 .PHONY: llvm
 llvm: LLVM_CXX = -I/usr/lib/llvm/include -fPIC -fvisibility-inlines-hidden -Werror=date-time -std=c++17 -Wall -W -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -pedantic -Wno-long-long -Wno-maybe-uninitialized -Wdelete-non-virtual-dtor -Wno-comment -ffunction-sections -fdata-sections -O3 -fno-exceptions -D_GNU_SOURCE -D_DEBUG -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 llvm: LLVM_LINK = $(shell /usr/lib/llvm/bin/llvm-config --cxxflags --ldflags --system-libs --libs)
-
+llvm: OPTS += -DICARUS_USE_LLVM
 # mild modifications to $(shell /usr/lib/llvm/bin/llvm-config --cxxflags)
 # -std=c++11 -> -std=c++17
 # removed -fno-rtti so I could use dynamic cast
