@@ -42,7 +42,7 @@ Module::~Module() = default;
 
 IR::Func* Module::AddFunc(
     AST::GeneratedFunction* fn_lit,
-    std::vector<std::pair<std::string, AST::Expression*>> args) {
+    base::vector<std::pair<std::string, AST::Expression*>> args) {
   auto* result = fns_.emplace_back(std::make_unique<IR::Func>(this, fn_lit,
                                                               std::move(args)))
                      .get();
@@ -59,7 +59,7 @@ IR::Func* Module::AddFunc(
 
 IR::Func* Module::AddFunc(
     const type::Function* fn_type,
-    std::vector<std::pair<std::string, AST::Expression*>> args) {
+    base::vector<std::pair<std::string, AST::Expression*>> args) {
   auto* result = fns_.emplace_back(std::make_unique<IR::Func>(this, fn_type,
                                                               std::move(args)))
                      .get();

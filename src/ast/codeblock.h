@@ -30,17 +30,17 @@ struct CodeBlock : public Expression {
 
   void VerifyType(Context *) override {}
   virtual void Validate(Context *) override {}
-  void SaveReferences(Scope *, std::vector<IR::Val> *) override {}
+  void SaveReferences(Scope *, base::vector<IR::Val> *) override {}
   void contextualize(
       const Node *,
-      const std::unordered_map<const Expression *, IR::Val> &) override {}
+      const base::unordered_map<const Expression *, IR::Val> &) override {}
 
-  void ExtractReturns(std::vector<const Expression *> *) const override {}
+  void ExtractReturns(base::vector<const Expression *> *) const override {}
 
   std::variant<Statements, std::string> content_;
 
-  std::vector<IR::Val> EmitIR(Context *) override;
-  std::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitLVal(Context *) override;
 };
 
 bool operator==(const CodeBlock &lhs, const CodeBlock &rhs);

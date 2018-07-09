@@ -20,7 +20,7 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
   if (!init_func_) {
     init_func_ = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),
-        std::vector<std::pair<std::string, AST::Expression *>>{
+        base::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
 
     CURRENT_FUNC(init_func_) {
@@ -31,19 +31,20 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
       auto end_ptr    = IR::PtrIncr(ptr, length_var);
 
       CreateLoop({ptr},
-                 [&](const std::vector<IR::Val> &phis) {
+                 [&](const base::vector<IR::Val> &phis) {
                    return IR::Eq(phis[0], end_ptr);
                  },
-                 [&](const std::vector<IR::Val> &phis) {
+                 [&](const base::vector<IR::Val> &phis) {
                    data_type->EmitInit(phis[0], ctx);
-                   return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1))};
+                   return base::vector<IR::Val>{
+                       IR::PtrIncr(phis[0], IR::Val::Int(1))};
                  });
 
       IR::ReturnJump();
     }
   }
 
-  IR::Call(IR::Val::Func(init_func_), std::vector<IR::Val>{id_val}, {});
+  IR::Call(IR::Val::Func(init_func_), base::vector<IR::Val>{id_val}, {});
 }
 
 void Primitive::EmitInit(IR::Val id_val, Context *ctx) const {
@@ -95,7 +96,7 @@ void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
   if (!init_func_) {
     init_func_ = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),
-        std::vector<std::pair<std::string, AST::Expression *>>{
+        base::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
 
     CURRENT_FUNC(init_func_) {

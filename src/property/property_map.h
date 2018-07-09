@@ -1,8 +1,8 @@
 #ifndef ICARUS_PROPERTY_PROPERTY_MAP_H
 #define ICARUS_PROPERTY_PROPERTY_MAP_H
 
-#include <unordered_map>
-#include <vector>
+#include "base/container/unordered_map.h"
+#include "base/container/vector.h"
 
 #include "base/owned_ptr.h"
 #include "base/stale_set.h"
@@ -68,7 +68,7 @@ struct PropertySet {
     return true;
   }
 
-  std::vector<base::owned_ptr<Property>> props_;
+  base::vector<base::owned_ptr<Property>> props_;
 };
 inline std::ostream &operator<<(std::ostream &os, const PropertySet &props) {
   return os << base::internal::stringify(props.props_);
@@ -77,7 +77,7 @@ inline std::ostream &operator<<(std::ostream &os, const PropertySet &props) {
 struct FnStateView {
   FnStateView(IR::Func *fn);
 
-  std::unordered_map<IR::Register, PropertySet> view_;
+  base::unordered_map<IR::Register, PropertySet> view_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
@@ -119,7 +119,7 @@ struct PropertyMap {
   PropertyMap &operator=(PropertyMap &&p) noexcept = default;
 
   // Make a copy of this map and set the arguments to the values passed in
-  PropertyMap with_args(const std::vector<IR::Val>& args) const;
+  PropertyMap with_args(const base::vector<IR::Val>& args) const;
 
   // TODO rename or delete me.
   DefaultProperty<bool> Returns() const;
@@ -130,7 +130,7 @@ struct PropertyMap {
   // TODO given that you want the invariant that this is always empty...
   // probably shouldn't be storing it.
   base::stale_set<Entry> stale_entries_;
-  std::unordered_map<const IR::BasicBlock *, FnStateView> view_;
+  base::unordered_map<const IR::BasicBlock *, FnStateView> view_;
 };
 }  // namespace prop
 

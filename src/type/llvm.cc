@@ -78,14 +78,14 @@ llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
 llvm::Type* CharBuffer::llvm(llvm::LLVMContext& ctx) const { NOT_YET(); }
 llvm::Type* Scope::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }
 llvm::Type* Struct::llvm(llvm::LLVMContext& ctx) const {
-  std::vector<llvm::Type*> llvm_types;
+  base::vector<llvm::Type*> llvm_types;
   llvm_types.reserve(fields_.size());
   for (const auto& f : fields_) { llvm_types.push_back(f.type->llvm(ctx)); }
   return llvm::StructType::get(ctx, llvm_types);
 }
 
 llvm::FunctionType* Function::llvm_fn(llvm::LLVMContext& ctx) const {
-  std::vector<llvm::Type*> llvm_inputs;
+  base::vector<llvm::Type*> llvm_inputs;
   llvm_inputs.reserve(input.size());
   for (auto* t : input) {
     auto* llvm_type = t->llvm(ctx);

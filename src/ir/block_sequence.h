@@ -1,7 +1,7 @@
 #ifndef ICARUS_IR_BLOCK_SEQUENCE_H
 #define ICARUS_IR_BLOCK_SEQUENCE_H
 
-#include <vector>
+#include "base/container/vector.h"
 
 namespace AST {
 struct BlockLiteral;
@@ -9,7 +9,7 @@ struct BlockLiteral;
 
 namespace IR {
 struct BlockSequence {
-  std::vector<AST::BlockLiteral*> seq_;
+  base::vector<AST::BlockLiteral*> seq_;
 };
 
 inline bool operator==(const BlockSequence& lhs, const BlockSequence& rhs) {

@@ -1,10 +1,10 @@
 #ifndef ICARUS_IR_FUNC_H
 #define ICARUS_IR_FUNC_H
 
-#include <unordered_map>
+#include "base/container/unordered_map.h"
 #include <unordered_set>
 #include <queue>
-#include <vector>
+#include "base/container/vector.h"
 
 #include "ir/basic_block.h"
 #include "property/property_map.h"
@@ -33,9 +33,9 @@ struct Func {
   static Func *Current;
 
   Func(Module *mod, const type::Function *fn_type,
-       std::vector<std::pair<std::string, AST::Expression *>> args);
+       base::vector<std::pair<std::string, AST::Expression *>> args);
   Func(Module *mod, AST::GeneratedFunction* fn_lit,
-       std::vector<std::pair<std::string, AST::Expression *>> args);
+       base::vector<std::pair<std::string, AST::Expression *>> args);
 
   void dump() const;
   Val Argument(u32 n) const;
@@ -70,7 +70,7 @@ struct Func {
         static_cast<const Func *>(this)->Command(cmd_index));
   }
 
-  void SetArgs(CmdIndex cmd_index, std::vector<IR::Val> args);
+  void SetArgs(CmdIndex cmd_index, base::vector<IR::Val> args);
 
   static BlockIndex AddBlock() {
     BlockIndex index;
@@ -85,23 +85,23 @@ struct Func {
   // GeneratedFunction object?
   AST::GeneratedFunction *gened_fn_ = nullptr;
   const type::Function *const type_ = nullptr;
-  std::vector<std::pair<std::string, AST::Expression *>> args_;
+  base::vector<std::pair<std::string, AST::Expression *>> args_;
   bool has_default(size_t i) const { return args_[i].second != nullptr; }
   i32 num_regs_  = 0;
   i32 num_voids_ = 0;
-  std::vector<BasicBlock> blocks_;
+  base::vector<BasicBlock> blocks_;
 #ifdef ICARUS_USE_LLVM
   llvm::Function *llvm_fn_ = nullptr;
 #endif // ICARUS_USE_LLVM
 
   Module* mod_;
-  std::vector<AST::Expression *> precondition_exprs_, postcondition_exprs_;
-  std::vector<std::pair<IR::Func, prop::PropertyMap>> preconditions_,
+  base::vector<AST::Expression *> precondition_exprs_, postcondition_exprs_;
+  base::vector<std::pair<IR::Func, prop::PropertyMap>> preconditions_,
       postconditions_;
-  std::unordered_map<Register, std::vector<Register>> references_;
-  std::unordered_map<Register, CmdIndex> reg_to_cmd_;
+  base::unordered_map<Register, base::vector<Register>> references_;
+  base::unordered_map<Register, CmdIndex> reg_to_cmd_;
 
-  std::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
+  base::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
   GetIncomingBlocks() const;
 };
 

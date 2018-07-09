@@ -135,12 +135,12 @@ void FuncContent::VerifyType(Context *ctx) {
   }
 
   if (!return_type_inferred_) {
-    std::vector<const type::Type *> input_type_vec;
+    base::vector<const type::Type *> input_type_vec;
     input_type_vec.reserve(inputs.size());
     for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
 
     // TODO should named return types be required?
-    std::vector<IR::Val> out_vals;
+    base::vector<IR::Val> out_vals;
     out_vals.reserve(outputs.size());
 
     for (const auto &out : outputs) {
@@ -157,7 +157,7 @@ void FuncContent::VerifyType(Context *ctx) {
       out_vals.push_back(std::move(result)[0]);
     }
 
-    std::vector<const type::Type *> ret_types;
+    base::vector<const type::Type *> ret_types;
     ret_types.reserve(out_vals.size());
     for (size_t i = 0; i < out_vals.size(); ++i) {
       const auto &out = out_vals[i];
@@ -222,13 +222,13 @@ void FuncContent::Validate(Context *ctx) {
   statements->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
 
-  std::vector<const Expression *> rets;
+  base::vector<const Expression *> rets;
   statements->ExtractReturns(&rets);
   statements->Validate(ctx);
   std::set<const type::Type *> types;
   for (auto *expr : rets) { types.insert(expr->type); }
 
-  std::vector<const type::Type *> input_type_vec, output_type_vec;
+  base::vector<const type::Type *> input_type_vec, output_type_vec;
   input_type_vec.reserve(inputs.size());
   for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
 
@@ -282,11 +282,11 @@ void FuncContent::Validate(Context *ctx) {
             } else {
               for (size_t i = 0; i < tup_entries.size(); ++i) {
                 // TODO compare with Join rather than direct comparison
-                if (tup_entries AT(i) != outs AT(i)) {
+                if (tup_entries.at(i) != outs.at(i)) {
                   // TODO if this is a commalist we can point to it more
                   // carefully but if we're just passing on multiple return
                   // values it's harder.
-                  ctx->error_log_.IndexedReturnTypeMismatch(outs AT(i), expr,
+                  ctx->error_log_.IndexedReturnTypeMismatch(outs.at(i), expr,
                                                             i);
                   limit_to(StageRange::NoEmitIR());
                 }
@@ -302,7 +302,7 @@ void FuncContent::Validate(Context *ctx) {
   }
 }
 
-void FuncContent::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void FuncContent::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto &input : inputs) { input->SaveReferences(scope, args); }
   for (auto &output : outputs) { output->SaveReferences(scope, args); }
   statements->SaveReferences(fn_scope.get(), args);
@@ -310,7 +310,7 @@ void FuncContent::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void FuncContent::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < inputs.size(); ++i) {
     inputs[i]->contextualize(
         correspondant->as<FuncContent>().inputs[i].get(), replacements);
@@ -325,7 +325,7 @@ void FuncContent::contextualize(
 }
 
 void FuncContent::ExtractReturns(
-    std::vector<const Expression *> *rets) const {
+    base::vector<const Expression *> *rets) const {
   for (auto &in : inputs) { in->ExtractReturns(rets); }
   for (auto &out : outputs) { out->ExtractReturns(rets); }
 }
@@ -368,7 +368,7 @@ Function *Function::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> Function::EmitIR(Context *ctx) {
+base::vector<IR::Val> Function::EmitIR(Context *ctx) {
   // TODO this loop can be decided on much earlier.
   for (const auto &input : inputs) {
     if (input->const_) { return {IR::Val::Func(this)}; }
@@ -380,11 +380,11 @@ std::vector<IR::Val> Function::EmitIR(Context *ctx) {
   return generate(*ctx->bound_constants_)->EmitIR(ctx);
 }
 
-std::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
+base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
   if (stage_range_.high < EmitStage) { return {}; }
 
   if (!ir_func_) {
-    std::vector<std::pair<std::string, Expression *>> args;
+    base::vector<std::pair<std::string, Expression *>> args;
     args.reserve(inputs.size());
     for (const auto &input : inputs) {
       args.emplace_back(input->as<Declaration>().identifier->token,
@@ -465,6 +465,6 @@ void GeneratedFunction::CompleteBody(Module *mod) {
   }
 }
 
-std::vector<IR::Val> GeneratedFunction::EmitLVal(Context *) { UNREACHABLE(this); }
-std::vector<IR::Val> Function::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Val> GeneratedFunction::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Val> Function::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

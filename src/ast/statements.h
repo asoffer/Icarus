@@ -1,7 +1,7 @@
 #ifndef ICARUS_AST_STATEMENTS_H
 #define ICARUS_AST_STATEMENTS_H
 
-#include <vector>
+#include "base/container/vector.h"
 
 #include "node.h"
 
@@ -30,19 +30,19 @@ struct Statements : public Node {
   void assign_scope(Scope *scope) override;
   void VerifyType(Context *) override;
   void Validate(Context *) override;
-  void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override;
-  void ExtractReturns(std::vector<const Expression *> *) const override;
+  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
+  void ExtractReturns(base::vector<const Expression *> *) const override;
   void contextualize(
       const Node *correspondant,
-      const std::unordered_map<const Expression *, IR::Val> &) override;
+      const base::unordered_map<const Expression *, IR::Val> &) override;
 
   Statements *Clone() const { return new Statements(*this); }
 
-  std::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
 
   inline size_t size() const { return content_.size(); }
 
-  static Statements Merge(std::vector<Statements> &&stmts_vec) {
+  static Statements Merge(base::vector<Statements> &&stmts_vec) {
     size_t num_stmts = 0;
     for (const auto &stmts : stmts_vec) { num_stmts += stmts.size(); }
 
@@ -58,7 +58,7 @@ struct Statements : public Node {
     return result;
   }
 
-  std::vector<std::unique_ptr<Node>> content_;
+  base::vector<std::unique_ptr<Node>> content_;
 };
 
 } // namespace AST

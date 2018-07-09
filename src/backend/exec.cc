@@ -19,7 +19,7 @@
 using base::check::Is;
 
 namespace IR {
-std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
+base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
                          ExecContext *ctx) {
   if (fn->gened_fn_) { fn->gened_fn_->CompleteBody(fn->mod_); }
   ctx->call_stack.emplace(fn, arguments);
@@ -29,7 +29,7 @@ std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
   while (true) {
     auto block_index = ctx->ExecuteBlock();
     if (block_index.is_default()) {
-      std::vector<IR::Val> rets;
+      base::vector<IR::Val> rets;
       auto *fn_type = ctx->call_stack.top().fn_->type_;
       for (size_t i = fn_type->input.size();
            i < fn_type->input.size() + fn_type->output.size(); ++i) {
@@ -49,7 +49,7 @@ BasicBlock &ExecContext::current_block() {
   return call_stack.top().fn_->block(call_stack.top().current_);
 }
 
-ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
+ExecContext::Frame::Frame(Func *fn, const base::vector<Val> &arguments)
     : fn_(fn), current_(fn_->entry()), prev_(fn_->entry()),
       regs_(fn->num_regs_, Val::None()) {
   size_t num_inputs = fn->type_->input.size();
@@ -90,7 +90,7 @@ void ExecContext::Resolve(Val *v) const {
 }
 
 Val ExecContext::ExecuteCmd(const Cmd &cmd) {
-  std::vector<Val> resolved;
+  base::vector<Val> resolved;
   resolved.reserve(cmd.args.size());
   for (const auto& arg : cmd.args) {
     if (auto *r = std::get_if<Register>(&arg.value)) {
@@ -121,7 +121,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           [block_lit](AST::BlockLiteral *lit) { return lit == block_lit; }));
     } break;
     case Op::Tup: {
-      std::vector<const type::Type *> types;
+      base::vector<const type::Type *> types;
       types.reserve(resolved.size());
       for (const auto &val : resolved) {
         types.push_back(std::get<const type::Type *>(val.value));
@@ -129,7 +129,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return IR::Val::Type(type::Tup(std::move(types)));
     }
     case Op::Variant: {
-      std::vector<const type::Type *> types;
+      base::vector<const type::Type *> types;
       types.reserve(resolved.size());
       for (const auto &val : resolved) {
         types.push_back(std::get<const type::Type *>(val.value));
@@ -196,7 +196,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               },
               [&resolved](FlagsVal f) {
                 size_t val = f.value;
-                std::vector<std::string> vals;
+                base::vector<std::string> vals;
                 const auto &members =
                     resolved[0].type->as<type::Flags>().members_;
                 size_t i   = 0;
@@ -407,10 +407,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       // This can probably be precomputed.
       size_t offset = 0;
       for (i32 i = 0; i < std::get<i32>(resolved[1].value); ++i) {
-        auto field_type = struct_type->fields_ AT(i).type;
+        auto field_type = struct_type->fields_.at(i).type;
         offset += Architecture::InterprettingMachine().bytes(field_type);
         offset = Architecture::InterprettingMachine().MoveForwardToAlignment(
-            struct_type->fields_ AT(i + 1).type, offset);
+            struct_type->fields_.at(i + 1).type, offset);
       }
 
       if (std::get<Addr>(resolved[0].value).kind == Addr::Kind::Stack) {
@@ -426,7 +426,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Contextualize: {
       // TODO this is probably the right way to encode it rather than a vector
       // of alternating entries. Same for PHI nodes.
-      std::unordered_map<const AST::Expression *, IR::Val> replacements;
+      base::unordered_map<const AST::Expression *, IR::Val> replacements;
       for (size_t i = 0; i < resolved.size() - 1; i += 2) {
         replacements[std::get<AST::Expression *>(resolved[i + 1].value)] =
             resolved[i];
@@ -507,7 +507,7 @@ void ReplEval(AST::Expression *expr) {
   // TODO is nullptr for module okay here?
   auto fn = std::make_unique<IR::Func>(
       nullptr, type::Func({}, {}),
-      std::vector<std::pair<std::string, AST::Expression *>>{});
+      base::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     IR::BasicBlock::Current = fn->entry();
     // TODO use the right module

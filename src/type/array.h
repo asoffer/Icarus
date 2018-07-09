@@ -7,10 +7,10 @@
 struct Context;
 
 namespace type {
-std::vector<IR::Val> CreateLoop(
-    const std::vector<IR::Val> &entry_vals,
-    std::function<IR::Val(const std::vector<IR::Val> &)> loop_phi_fn,
-    std::function<std::vector<IR::Val>(const std::vector<IR::Val> &)>
+base::vector<IR::Val> CreateLoop(
+    const base::vector<IR::Val> &entry_vals,
+    std::function<IR::Val(const base::vector<IR::Val> &)> loop_phi_fn,
+    std::function<base::vector<IR::Val>(const base::vector<IR::Val> &)>
         loop_body_fn);
 
 struct Array : public Type {
@@ -36,7 +36,7 @@ struct Array : public Type {
 private:
  void ComputeDestroyWithoutLock(Context *ctx) const;
  mutable std::mutex mtx_;
- mutable std::unordered_map<const Array *, IR::Func *> assign_fns_;
+ mutable base::unordered_map<const Array *, IR::Func *> assign_fns_;
  mutable IR::Func *destroy_func_ = nullptr;
  mutable IR::Func *repr_func_    = nullptr;
  mutable IR::Func *init_func_    = nullptr;

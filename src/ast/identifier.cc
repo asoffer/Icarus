@@ -90,7 +90,7 @@ void Identifier::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
 }
 
-std::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
   auto *val = AST::find(ctx->bound_constants_, token);
   if (decl == nullptr) { return {val ? *val : IR::Val::None()}; }
 
@@ -111,7 +111,7 @@ std::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
   return {decl->arg_val ? decl->addr : PtrCallFix(EmitLVal(ctx)[0])};
 }
 
-std::vector<IR::Val> AST::Identifier::EmitLVal(Context *ctx) {
+base::vector<IR::Val> AST::Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
   if (decl->const_ && decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
   return {decl->addr};

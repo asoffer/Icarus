@@ -41,20 +41,20 @@ void ScopeLiteral::Validate(Context *ctx) {
   }
 }
 
-void ScopeLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void ScopeLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto &decl : decls_) { decl.SaveReferences(scope, args); }
 }
 
 void ScopeLiteral::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < decls_.size(); ++i) {
     decls_[i].contextualize(&correspondant->as<ScopeLiteral>().decls_[i],
                             replacements);
   }
 }
 
-void ScopeLiteral::ExtractReturns(std::vector<const Expression *> *rets) const {
+void ScopeLiteral::ExtractReturns(base::vector<const Expression *> *rets) const {
   for (auto &decl : decls_) { decl.ExtractReturns(rets); }
 }
 
@@ -68,8 +68,8 @@ ScopeLiteral *ScopeLiteral::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> AST::ScopeLiteral::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::ScopeLiteral::EmitIR(Context *ctx) {
   return {IR::Val::Scope(this)};
 }
-std::vector<IR::Val> ScopeLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Val> ScopeLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

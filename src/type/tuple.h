@@ -7,7 +7,7 @@ namespace type {
 struct Tuple : public Type {
   Tuple() = delete;
   ~Tuple() {}
-  Tuple(std::vector<const Type *> entries) : entries_(std::move(entries)) {}
+  Tuple(base::vector<const Type *> entries) : entries_(std::move(entries)) {}
   virtual char *WriteTo(char *buf) const;
   virtual size_t string_size() const;
   virtual void EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
@@ -23,10 +23,10 @@ struct Tuple : public Type {
   virtual llvm::Type *llvm(llvm::LLVMContext &) const { UNREACHABLE(); }
 #endif // ICARUS_USE_LLVM
 
-  std::vector<const Type *> entries_;
+  base::vector<const Type *> entries_;
 };
 
-const Type *Tup(std::vector<const Type *> entries);
+const Type *Tup(base::vector<const Type *> entries);
 }  // namespace type
 
 #endif  // ICARUS_TYPE_TUPLE_H

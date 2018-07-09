@@ -2,9 +2,9 @@
 #define ICARUS_SCOPE_H
 
 #include <iosfwd>
-#include <vector>
+#include "base/container/vector.h"
 #include <unordered_set>
-#include <unordered_map>
+#include "base/container/unordered_map.h"
 
 #include "base/util.h"
 
@@ -41,7 +41,7 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this);
   }
 
-  std::pair<std::vector<AST::Declaration *>, std::vector<AST::Declaration *>>
+  std::pair<base::vector<AST::Declaration *>, base::vector<AST::Declaration *>>
   AllDeclsWithId(const std::string &id, Context *ctx);
 
   template <typename Fn>
@@ -55,8 +55,8 @@ struct Scope : public base::Cast<Scope> {
 
   FnScope *ContainingFnScope();
   std::unordered_set<std::string> shadowed_decls_;
-  std::unordered_map<std::string, std::vector<AST::Declaration *>> decls_;
-  std::unordered_map<std::string, std::vector<AST::Declaration *>> child_decls_;
+  base::unordered_map<std::string, base::vector<AST::Declaration *>> decls_;
+  base::unordered_map<std::string, base::vector<AST::Declaration *>> child_decls_;
   Scope *parent = nullptr;
 };
 
@@ -85,7 +85,7 @@ struct FnScope : public ExecScope {
   FnScope *Clone() const override { return new FnScope(*this); }
   type::Function *fn_type  = nullptr;
   AST::FuncContent *fn_lit = nullptr;
-  std::vector<ExecScope *> innards_{1, this};
+  base::vector<ExecScope *> innards_{1, this};
 };
 
 inline FnScope *Scope::ContainingFnScope() {

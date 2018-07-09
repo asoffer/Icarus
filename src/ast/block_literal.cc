@@ -44,21 +44,21 @@ void BlockLiteral::Validate(Context *ctx) {
   after_->Validate(ctx);
 }
 
-void BlockLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void BlockLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   before_->SaveReferences(scope, args);
   after_->SaveReferences(scope, args);
 }
 
 void BlockLiteral::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   before_->contextualize(correspondant->as<BlockLiteral>().before_.get(),
                           replacements);
   after_->contextualize(correspondant->as<BlockLiteral>().after_.get(),
                          replacements);
 }
 
-void BlockLiteral::ExtractReturns(std::vector<const Expression *> *rets) const {
+void BlockLiteral::ExtractReturns(base::vector<const Expression *> *rets) const {
   before_->ExtractReturns(rets);
   after_->ExtractReturns(rets);
 }
@@ -71,10 +71,10 @@ BlockLiteral *BlockLiteral::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> AST::BlockLiteral::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::BlockLiteral::EmitIR(Context *ctx) {
   return {IR::Val::Block(this)};
 }
 
-std::vector<IR::Val> BlockLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Val> BlockLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
 
 }  // namespace AST

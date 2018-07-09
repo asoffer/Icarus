@@ -1,12 +1,12 @@
 #ifndef ICARUS_AST_DISPATCH_H
 #define ICARUS_AST_DISPATCH_H
 
-#include <map>
 #include <string>
-#include <unordered_map>
+#include "base/container/unordered_map.h"
 #include <optional>
 #include <variant>
 
+#include "base/container/map.h"
 #include "fn_args.h"
 
 struct Context;
@@ -24,12 +24,12 @@ struct Expression;
 struct Binding {
   static std::optional<Binding>
   MakeUntyped(Expression *fn_expr, const FnArgs<Expression *> &args,
-              const std::unordered_map<std::string, size_t> &index_lookup);
+              const base::unordered_map<std::string, size_t> &index_lookup);
 
   void SetPositionalArgs(const FnArgs<Expression *> &args);
   bool SetNamedArgs(
       const FnArgs<Expression *> &args,
-      const std::unordered_map<std::string, size_t> &index_lookup);
+      const base::unordered_map<std::string, size_t> &index_lookup);
 
   bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
 
@@ -38,7 +38,7 @@ struct Binding {
         exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
 
   Expression *fn_expr_ = nullptr;
-  std::vector<std::pair<const type::Type *, Expression *>> exprs_;
+  base::vector<std::pair<const type::Type *, Expression *>> exprs_;
 };
 
 // Represents a row in the dispatch table.
@@ -70,7 +70,7 @@ struct DispatchTable {
 
   void InsertEntry(DispatchEntry entry);
 
-  std::map<FnArgs<const type::Type *>, Binding> bindings_;
+  base::map<FnArgs<const type::Type *>, Binding> bindings_;
   size_t total_size_ = 0;
 };
 

@@ -3,8 +3,8 @@
 
 #include <set>
 #include <string>
-#include <vector>
-#include <unordered_map>
+#include "base/container/vector.h"
+#include "base/container/unordered_map.h"
 
 #include "../base/debug.h"
 #include "../frontend/text_span.h"
@@ -40,8 +40,8 @@ struct Log {
                             const TextSpan &val_span);
   void Reserved(const TextSpan &span, const std::string &token);
   void NotBinary(const TextSpan &span, const std::string &token);
-  void UnknownParseError(const std::vector<TextSpan> &span);
-  void PositionalArgumentFollowingNamed(const std::vector<TextSpan> &pos_spans,
+  void UnknownParseError(const base::vector<TextSpan> &span);
+  void PositionalArgumentFollowingNamed(const base::vector<TextSpan> &pos_spans,
                                         const TextSpan &named_span);
   void NotAType(AST::Expression *expr);
   void ShadowingDeclaration(const AST::Declaration &decl1,
@@ -68,7 +68,7 @@ struct Log {
                              const type::Type *index_type);
   void IndexingNonArray(const TextSpan &span, const type::Type *t);
 
-  std::vector<AST::Identifier *> *CyclicDependency();
+  base::vector<AST::Identifier *> *CyclicDependency();
 
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() +
@@ -79,14 +79,14 @@ struct Log {
   // TODO per source file splitting? Can't do this until you figure out the
   // module/multi-source-file story.
   using Token = std::string;
-  std::unordered_map<Token, std::vector<AST::Identifier *>>
+  base::unordered_map<Token, base::vector<AST::Identifier *>>
       undeclared_ids_;
-  std::unordered_map<AST::Declaration *, std::vector<AST::Identifier *>>
+  base::unordered_map<AST::Declaration *, base::vector<AST::Identifier *>>
       out_of_order_decls_;
 
-  std::vector<std::unique_ptr<std::vector<AST::Identifier *>>> cyc_dep_vecs_;
+  base::vector<std::unique_ptr<base::vector<AST::Identifier *>>> cyc_dep_vecs_;
 
-  std::vector<std::string> errors_;
+  base::vector<std::string> errors_;
 };
 } // namespace error
 

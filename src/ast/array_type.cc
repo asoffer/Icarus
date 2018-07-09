@@ -50,14 +50,14 @@ void ArrayType::Validate(Context *ctx) {
   data_type_->Validate(ctx);
 }
 
-void ArrayType::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void ArrayType::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   length_->SaveReferences(scope, args);
   data_type_->SaveReferences(scope, args);
 }
 
 void ArrayType::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   length_->contextualize(
       correspondant->as<std::decay_t<ArrayType>>().length_.get(), replacements);
   data_type_->contextualize(
@@ -73,13 +73,13 @@ ArrayType *ArrayType::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> ArrayType::EmitIR(Context *ctx) {
+base::vector<IR::Val> ArrayType::EmitIR(Context *ctx) {
   return {IR::Array(length_->EmitIR(ctx)[0], data_type_->EmitIR(ctx)[0])};
 }
 
-std::vector<IR::Val> ArrayType::EmitLVal(Context *ct) { UNREACHABLE(*this); }
+base::vector<IR::Val> ArrayType::EmitLVal(Context *ct) { UNREACHABLE(*this); }
 
-void ArrayType::ExtractReturns(std::vector<const Expression *> *rets) const {
+void ArrayType::ExtractReturns(base::vector<const Expression *> *rets) const {
   // TODO length_ needs to be constexpr so maybe we're safe here? and don't need
   // to check it? This happens in other places too!
   length_->ExtractReturns(rets);

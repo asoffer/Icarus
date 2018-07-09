@@ -3,8 +3,8 @@
 
 #include <string_view>
 #include <string>
-#include <vector>
-#include <unordered_map>
+#include "base/container/vector.h"
+#include "base/container/unordered_map.h"
 #include <mutex>
 
 #include "type.h"
@@ -23,8 +23,8 @@ struct Struct : public Type {
   };
 
   Struct() = default;
-  Struct(std::vector<Field> fields,
-         std::unordered_map<std::string, size_t> field_indices)
+  Struct(base::vector<Field> fields,
+         base::unordered_map<std::string, size_t> field_indices)
       : fields_(std::move(fields)), field_indices_(std::move(field_indices)) {}
   virtual ~Struct() {}
   BASIC_METHODS;
@@ -41,8 +41,8 @@ struct Struct : public Type {
 
   const Type *finalize();
 
-  std::vector<Field> fields_;
-  std::unordered_map<std::string, size_t> field_indices_;
+  base::vector<Field> fields_;
+  base::unordered_map<std::string, size_t> field_indices_;
 
 private:
   mutable std::mutex mtx_;

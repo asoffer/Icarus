@@ -1,9 +1,9 @@
 #ifndef ICARUS_AST_FUNCTION_LITERAL_H
 #define ICARUS_AST_FUNCTION_LITERAL_H
 
-#include <map>
-#include <vector>
+#include "base/container/vector.h"
 
+#include "base/container/map.h"
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"
 #include "ast/dispatch.h"
@@ -31,26 +31,26 @@ struct FuncContent : public Expression {
   void assign_scope(Scope *scope) override;
   void VerifyType(Context *) override;
   void Validate(Context *) override;
-  void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override;
-  void ExtractReturns(std::vector<const Expression *> *) const override;
+  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
+  void ExtractReturns(base::vector<const Expression *> *) const override;
   void contextualize(
       const Node *correspondant,
-      const std::unordered_map<const Expression *, IR::Val> &) override;
+      const base::unordered_map<const Expression *, IR::Val> &) override;
   FuncContent *Clone() const override;
 
-  std::vector<IR::Val> EmitIR(Context *) override { UNREACHABLE(); }
-  std::vector<IR::Val> EmitLVal(Context *) override { UNREACHABLE(); }
+  base::vector<IR::Val> EmitIR(Context *) override { UNREACHABLE(); }
+  base::vector<IR::Val> EmitLVal(Context *) override { UNREACHABLE(); }
 
   std::unique_ptr<FnScope> fn_scope;
 
-  std::vector<std::unique_ptr<Declaration>> inputs;
-  std::vector<std::unique_ptr<Expression>> outputs;
+  base::vector<std::unique_ptr<Declaration>> inputs;
+  base::vector<std::unique_ptr<Expression>> outputs;
   std::unique_ptr<Statements> statements;
 
   // Maps the string name of the declared argument to it's index:
   // Example: (a: int, b: char, c: string) -> int
   //           a => 0, b => 1, c => 2
-  std::unordered_map<std::string, size_t> lookup_;
+  base::unordered_map<std::string, size_t> lookup_;
   bool return_type_inferred_ = false;
   Module *module_            = nullptr;
 };
@@ -63,8 +63,8 @@ struct GeneratedFunction : public FuncContent {
   ~GeneratedFunction() override {}
 
   GeneratedFunction *Clone() const override;
-  std::vector<IR::Val> EmitIR(Context *) override;
-  std::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitLVal(Context *) override;
 
   void CompleteBody(Module *mod);
   IR::Func *ir_func_                     = nullptr;
@@ -80,12 +80,12 @@ struct Function : public FuncContent {
   void VerifyType(Context *ctx) override;
   void Validate(Context *ctx) override;
   Function *Clone() const override;
-  std::vector<IR::Val> EmitIR(Context *) override;
-  std::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitLVal(Context *) override;
 
   GeneratedFunction *generate(BoundConstants bc);
 
-  std::map<BoundConstants, GeneratedFunction> fns_;
+  base::map<BoundConstants, GeneratedFunction> fns_;
 };
 }  // namespace AST
 

@@ -1,4 +1,4 @@
-#include <unordered_map>
+#include "base/container/unordered_map.h"
 #include <cmath>
 
 #include "ast/hole.h"
@@ -60,7 +60,7 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
   std::string token = loc.line().substr(span.start.offset,
                                         span.finish.offset - span.start.offset);
 
-  static std::unordered_map<std::string, IR::Val> Reserved{
+  static base::unordered_map<std::string, IR::Val> Reserved{
       {"bool", IR::Val::Type(type::Bool)},
       {"char", IR::Val::Type(type::Char)},
       {"code", IR::Val::Type(type::Code)},
@@ -83,7 +83,7 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
     return frontend::TaggedNode::TerminalExpression(span, iter->second);
   }
 
-  static const std::unordered_map<std::string, frontend::Tag> KeywordMap = {
+  static const base::unordered_map<std::string, frontend::Tag> KeywordMap = {
       {"which", frontend::op_l},
       {"print", frontend::op_l},
       {"ensure", frontend::op_l},

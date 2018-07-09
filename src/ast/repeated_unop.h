@@ -14,19 +14,19 @@ struct RepeatedUnop : public Node {
   void assign_scope(Scope *scope) override;
   void VerifyType(Context *) override;
   void Validate(Context *) override;
-  void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override;
-  void ExtractReturns(std::vector<const Expression *> *) const override;
+  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
+  void ExtractReturns(base::vector<const Expression *> *) const override;
   void contextualize(
       const Node *correspondant,
-      const std::unordered_map<const Expression *, IR::Val> &) override;
+      const base::unordered_map<const Expression *, IR::Val> &) override;
 
-  std::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
 
   RepeatedUnop *Clone() const override;
 
   Language::Operator op_;
   CommaList args_;
-  std::vector<DispatchTable> dispatch_tables_;
+  base::vector<DispatchTable> dispatch_tables_;
 };
 } //
 #endif  // ICARUS_AST_REPEATED_UNOP_H

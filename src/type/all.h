@@ -17,8 +17,8 @@ struct Variant;
 
 #include <iosfwd>
 #include <string>
-#include <unordered_map>
-#include <vector>
+#include "base/container/unordered_map.h"
+#include "base/container/vector.h"
 
 struct Context;
 

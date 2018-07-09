@@ -17,7 +17,7 @@
 #include "type/scope.h"
 #include "type/type.h"
 
-std::vector<IR::Val> EmitCallDispatch(
+base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
@@ -82,7 +82,7 @@ void ScopeNode::Validate(Context *ctx) {
   // TODO
 }
 
-void ScopeNode::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void ScopeNode::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto & [ block_expr, block_node ] : block_map_) {
     block_expr->SaveReferences(scope, args);
     block_node.stmts_.SaveReferences(scope, args);
@@ -92,7 +92,7 @@ void ScopeNode::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void ScopeNode::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   const auto &corr = correspondant->as<ScopeNode>();
   for (size_t i = 0; i < blocks_.size(); ++i) {
     blocks_[i]->contextualize(corr.blocks_[i].get(), replacements);
@@ -105,7 +105,7 @@ void ScopeNode::contextualize(
   }
 }
 
-void ScopeNode::ExtractReturns(std::vector<const Expression *> *rets) const {
+void ScopeNode::ExtractReturns(base::vector<const Expression *> *rets) const {
   for (const auto & [ block_expr, block_node ] : block_map_) {
     block_expr->ExtractReturns(rets);
      block_node.stmts_.ExtractReturns(rets);
@@ -144,7 +144,7 @@ static std::pair<const Module *, std::string> GetQualifiedIdentifier(
   UNREACHABLE(expr->to_string(0));
 }
 
-std::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(blocks_[0].get(), ctx);
 
   auto land_block = IR::Func::Current->AddBlock();
@@ -152,8 +152,8 @@ std::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   struct BlockData {
     IR::BlockIndex before, body, after;
   };
-  std::unordered_map<AST::BlockLiteral *, BlockData> lit_to_data;
-  std::unordered_map<std::string, BlockData *> name_to_data;
+  base::unordered_map<AST::BlockLiteral *, BlockData> lit_to_data;
+  base::unordered_map<std::string, BlockData *> name_to_data;
   std::string top_block_node_name;
   for (const auto & [ expr, block_node ] : block_map_) {
     auto [mod, block_node_name] = GetQualifiedIdentifier(expr, ctx);
@@ -191,7 +191,7 @@ std::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   }
 
   // TODO can we just store "self" in name_to_data to avoid this nonsense?
-  std::unordered_map<BlockData *, BlockNode *> data_to_node;
+  base::unordered_map<BlockData *, BlockNode *> data_to_node;
   for (const auto &block : blocks_) {
     auto *block_data = block->is<Identifier>()
                            ? name_to_data.at(block->as<Identifier>().token)
@@ -264,5 +264,5 @@ std::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   return {};
 }
 
-std::vector<IR::Val> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Val> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

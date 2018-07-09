@@ -27,15 +27,15 @@ struct Terminal : public Expression {
 
   void VerifyType(Context *) override {}
   void Validate(Context *) override {}
-  void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override {}
-  void ExtractReturns(std::vector<const Expression *> *) const override {}
+  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override {}
+  void ExtractReturns(base::vector<const Expression *> *) const override {}
   void contextualize(
       const Node *correspondant,
-      const std::unordered_map<const Expression *, IR::Val> &) override {}
+      const base::unordered_map<const Expression *, IR::Val> &) override {}
 
   Terminal *Clone() const { return new Terminal(*this); }
-  std::vector<IR::Val> EmitIR(Context *) override { return {value}; }
-  std::vector<IR::Val> EmitLVal(Context *ct) override { UNREACHABLE(this); }
+  base::vector<IR::Val> EmitIR(Context *) override { return {value}; }
+  base::vector<IR::Val> EmitLVal(Context *ct) override { UNREACHABLE(this); }
 
   IR::Val value = IR::Val::None();
 };

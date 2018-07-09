@@ -43,20 +43,20 @@ void Interface::Validate(Context *ctx) {
   for (auto &decl: decls_) { decl.Validate(ctx); }
 }
 
-void Interface::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void Interface::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto &decl : decls_) { decl.SaveReferences(scope, args); }
 }
 
 void Interface::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < decls_.size(); ++i) {
     decls_[i].contextualize(&correspondant->as<Interface>().decls_[i],
                             replacements);
   }
 }
 
-void Interface::ExtractReturns(std::vector<const Expression *> *rets) const {
+void Interface::ExtractReturns(base::vector<const Expression *> *rets) const {
   for (auto &d : decls_) { d.ExtractReturns(rets); }
 }
 
@@ -70,7 +70,7 @@ Interface *Interface::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> AST::Interface::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::Interface::EmitIR(Context *ctx) {
   // TODO this needs to be serialized as instructions so that we can evaluate
   // functions which return interfaces. For example,
   // HasFoo ::= (T: type) => interface {
@@ -83,5 +83,5 @@ std::vector<IR::Val> AST::Interface::EmitIR(Context *ctx) {
   return { IR::Val::Interface(std::move(ifc))};
 }
 
-std::vector<IR::Val> AST::Interface::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+base::vector<IR::Val> AST::Interface::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 }  // namespace AST

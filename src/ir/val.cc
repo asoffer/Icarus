@@ -121,13 +121,13 @@ std::string Val::to_string() const {
           [this](EnumVal e) -> std::string {
             return e.value >= this->type->as<type::Enum>().members_.size()
                        ? this->type->as<type::Enum>().to_string() + ":END"
-                       : this->type->as<type::Enum>().members_ AT(e.value);
+                       : this->type->as<type::Enum>().members_.at(e.value);
           },
           [this](FlagsVal f) -> std::string {
             return f.value >=
                            (1u << this->type->as<type::Flags>().members_.size())
                        ? this->type->as<type::Flags>().to_string() + ":END"
-                       : this->type->as<type::Flags>().members_ AT(f.value);
+                       : this->type->as<type::Flags>().members_.at(f.value);
           },
           [](const type::Type *t) -> std::string { return t->to_string(); },
           [](IR::Func *f) -> std::string {

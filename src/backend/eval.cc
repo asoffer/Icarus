@@ -11,7 +11,7 @@ void ForEachExpr(AST::Expression *expr,
 
 namespace IR {
 // TODO namespace migration.
-std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
+base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
                          ExecContext *ctx);
 }  // namespace IR
 
@@ -20,7 +20,7 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
   ASSERT(expr->type != nullptr);
   auto fn = std::make_unique<IR::Func>(
       ctx->mod_, type::Func({}, {expr->type}),
-      std::vector<std::pair<std::string, AST::Expression *>>{});
+      base::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of GeneratedFunction::EmitIR.
     // Factor these out together.
@@ -44,7 +44,7 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
   return fn;
 }
 
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
+base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
   IR::ExecContext exec_context;
   // TODO wire through errors.
   auto fn = ExprFn(expr, ctx);

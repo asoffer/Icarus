@@ -1,6 +1,6 @@
 #include <cstring>
 #include <future>
-#include <vector>
+#include "base/container/vector.h"
 #include <execinfo.h>
 
 #include "ast/call.h"
@@ -30,7 +30,7 @@ inline bool no_validation = false;
 } // namespace debug
 
 const char *output_file_name = "a.out";
-std::vector<Source::Name> files;
+base::vector<Source::Name> files;
 
 // TODO sad. don't use a global to do this.
 extern IR::Func* main_fn;
@@ -66,7 +66,7 @@ ShowUsage(char *argv0) {
 
 extern void ReplEval(AST::Expression *expr);
 
-base::guarded<std::unordered_map<Source::Name,
+base::guarded<base::unordered_map<Source::Name,
                                  std::shared_future<std::unique_ptr<Module>>>>
     modules;
 
@@ -81,7 +81,7 @@ void ScheduleModule(const Source::Name &src) {
 }
 
 namespace IR {
-std::vector<Val> Execute(Func *fn, const std::vector<Val> &arguments,
+base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
                          ExecContext *ctx);
 }
 
@@ -97,7 +97,7 @@ int GenerateCode() {
 
   size_t current_size = 0;
   do {
-    std::vector<std::shared_future<std::unique_ptr<Module>> *> future_ptrs;
+    base::vector<std::shared_future<std::unique_ptr<Module>> *> future_ptrs;
     {
       auto handle  = modules.lock();
       current_size = handle->size();

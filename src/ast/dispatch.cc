@@ -184,7 +184,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
 static const type::Type *ComputeRetType(const FnArgs<Expression *> &args,
                                         const DispatchTable &table,
                                         Context *ctx) {
-  std::vector<std::vector<const type::Type *>> out_types;
+  base::vector<base::vector<const type::Type *>> out_types;
   out_types.reserve(table.bindings_.size());
 
   if (table.bindings_.size() == 0u) { return type::Err; }
@@ -199,10 +199,10 @@ static const type::Type *ComputeRetType(const FnArgs<Expression *> &args,
 
   ASSERT(!out_types.empty());
   // TODO Can I assume all the lengths are the same?
-  std::vector<const type::Type *> var_outs;
+  base::vector<const type::Type *> var_outs;
   var_outs.reserve(out_types[0].size());
   for (size_t i = 0; i < out_types[0].size(); ++i) {
-    std::vector<const type::Type *> types;
+    base::vector<const type::Type *> types;
     types.reserve(out_types.size());
     for (const auto &out_type : out_types) { types.push_back(out_type[i]); }
     var_outs.push_back(type::Var(types));
@@ -263,7 +263,7 @@ void Binding::SetPositionalArgs(const FnArgs<Expression *> &args) {
 
 bool Binding::SetNamedArgs(
     const FnArgs<Expression *> &args,
-    const std::unordered_map<std::string, size_t> &index_lookup) {
+    const base::unordered_map<std::string, size_t> &index_lookup) {
   for (const auto & [ name, expr ] : args.named_) {
     // TODO emit an error explaining why we couldn't use this one if there
     // was a missing named argument.

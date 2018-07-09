@@ -10,18 +10,18 @@ struct ArrayLiteral : public Expression {
   void assign_scope(Scope *scope) override;
   void VerifyType(Context *) override;
   void Validate(Context *) override;
-  void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override;
-  void ExtractReturns(std::vector<const Expression *> *) const override;
+  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
+  void ExtractReturns(base::vector<const Expression *> *) const override;
   void contextualize(
       const Node *correspondant,
-      const std::unordered_map<const Expression *, IR::Val> &) override;
+      const base::unordered_map<const Expression *, IR::Val> &) override;
 
-  std::vector<IR::Val> EmitIR(Context *) override;
-  std::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitLVal(Context *) override;
   ArrayLiteral *Clone() const override;
 
   // TODO replace with a comma-list
-  std::vector<std::unique_ptr<Expression>> elems_;
+  base::vector<std::unique_ptr<Expression>> elems_;
 };
 }  // namespace AST
 

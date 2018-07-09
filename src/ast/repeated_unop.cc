@@ -6,7 +6,7 @@
 #include "ir/func.h"
 #include "type/all.h"
 
-std::vector<IR::Val> EmitCallDispatch(
+base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
@@ -36,19 +36,19 @@ void RepeatedUnop::Validate(Context *ctx) {
   args_.Validate(ctx);
 }
 
-void RepeatedUnop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void RepeatedUnop::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   args_.SaveReferences(scope, args);
 }
 
 void RepeatedUnop::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < args_.exprs.size(); ++i) {
     args_.contextualize(&correspondant->as<RepeatedUnop>().args_, replacements);
   }
 }
 
-void RepeatedUnop::ExtractReturns(std::vector<const Expression *> *rets) const {
+void RepeatedUnop::ExtractReturns(base::vector<const Expression *> *rets) const {
   args_.ExtractReturns(rets);
   if (op_ == Language::Operator::Return) { rets->push_back(&args_); }
 }
@@ -95,7 +95,7 @@ void RepeatedUnop::VerifyType(Context *ctx) {
   }
 }
 
-std::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
+base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
   auto arg_vals = args_.EmitIR(ctx);
   switch (op_) {
     case Language::Operator::Return: {

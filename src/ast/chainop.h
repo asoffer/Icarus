@@ -2,7 +2,7 @@
 #define ICARUS_AST_CHAINOP_H
 
 #include <memory>
-#include <vector>
+#include "base/container/vector.h"
 #include "ast/dispatch.h"
 #include "ast/expression.h"
 #include "frontend/operators.h"
@@ -15,19 +15,19 @@ struct ChainOp : public Expression {
   void assign_scope(Scope *scope) override;
   void VerifyType(Context *) override;
   void Validate(Context *) override;
-  void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override;
-  void ExtractReturns(std::vector<const Expression *> *) const override;
+  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
+  void ExtractReturns(base::vector<const Expression *> *) const override;
   void contextualize(
       const Node *correspondant,
-      const std::unordered_map<const Expression *, IR::Val> &) override;
+      const base::unordered_map<const Expression *, IR::Val> &) override;
 
-  std::vector<IR::Val> EmitIR(Context *) override;
-  std::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitLVal(Context *) override;
 
   ChainOp *Clone() const override;
-  std::vector<Language::Operator> ops;
-  std::vector<std::unique_ptr<Expression>> exprs;
-  std::vector<DispatchTable> dispatch_tables_;
+  base::vector<Language::Operator> ops;
+  base::vector<std::unique_ptr<Expression>> exprs;
+  base::vector<DispatchTable> dispatch_tables_;
 };
 }  // namespace AST
 #endif // ICARUS_AST_CHAINOP_H

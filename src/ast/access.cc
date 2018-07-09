@@ -96,12 +96,12 @@ void Access::Validate(Context *ctx) {
 
 void Access::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements){
+    const base::unordered_map<const Expression *, IR::Val> &replacements){
   operand->contextualize(correspondant->as<Access>().operand.get(),
                          replacements);
 }
 
-std::vector<IR::Val> AST::Access::EmitLVal(Context *ctx) {
+base::vector<IR::Val> AST::Access::EmitLVal(Context *ctx) {
   auto val = operand->EmitLVal(ctx)[0];
   while (val.type->is<type::Pointer>() &&
          !val.type->as<type::Pointer>().pointee->is_big()) {
@@ -126,7 +126,7 @@ std::vector<IR::Val> AST::Access::EmitLVal(Context *ctx) {
   return {IR::Field(val, struct_type->field_indices_.at(member_name))};
 }
 
-std::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
   if (operand->type == type::Module) {
     return backend::EvaluateAs<const Module *>(operand.get(), ctx)
         ->GetDecl(member_name)

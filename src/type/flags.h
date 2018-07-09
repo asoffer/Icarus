@@ -6,7 +6,7 @@
 namespace type {
 struct Flags : public type::Type {
   TYPE_FNS(Flags);
-  Flags(const std::string &name, std::vector<std::string> members);
+  Flags(const std::string &name, base::vector<std::string> members);
 
   size_t IntValueOrFail(const std::string &str) const;
   IR::Val EmitLiteral(const std::string &member_name) const;
@@ -14,8 +14,8 @@ struct Flags : public type::Type {
   // TODO combine "members" and "int_values" to save the double allocation of
   // strings.
   std::string bound_name;
-  std::vector<std::string> members_;
-  std::unordered_map<std::string, size_t> int_values;
+  base::vector<std::string> members_;
+  base::unordered_map<std::string, size_t> int_values;
 };
 } // namespace type
 #endif // ICARUS_TYPE_FLAGS_H

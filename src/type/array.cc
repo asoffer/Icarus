@@ -11,11 +11,11 @@
 IR::Val PtrCallFix(const IR::Val& v);
 
 namespace type {
-static base::guarded<std::unordered_map<
-    const Array *, std::unordered_map<const Array *, IR::Func *>>>
+static base::guarded<base::unordered_map<
+    const Array *, base::unordered_map<const Array *, IR::Func *>>>
     eq_funcs;
-static base::guarded<std::unordered_map<
-    const Array *, std::unordered_map<const Array *, IR::Func *>>>
+static base::guarded<base::unordered_map<
+    const Array *, base::unordered_map<const Array *, IR::Func *>>>
     ne_funcs;
 IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
                        const Array *rhs_type, IR::Val rhs_ir, bool equality,
@@ -25,7 +25,7 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
 
   auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
-    std::vector<std::pair<std::string, AST::Expression *>> args = {
+    base::vector<std::pair<std::string, AST::Expression *>> args = {
         {"lhs", nullptr}, {"rhs", nullptr}};
     auto *fn = ctx->mod_->AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, {Bool}),
                                   std::move(args));
@@ -109,10 +109,10 @@ static IR::Val ComputeMin(IR::Val x, IR::Val y) {
   return IR::Func::Current->Command(phi).reg();
 }
 
-std::vector<IR::Val> CreateLoop(
-    const std::vector<IR::Val> &entry_vals,
-    std::function<IR::Val(const std::vector<IR::Val> &)> loop_phi_fn,
-    std::function<std::vector<IR::Val>(const std::vector<IR::Val> &)>
+base::vector<IR::Val> CreateLoop(
+    const base::vector<IR::Val> &entry_vals,
+    std::function<IR::Val(const base::vector<IR::Val> &)> loop_phi_fn,
+    std::function<base::vector<IR::Val>(const base::vector<IR::Val> &)>
         loop_body_fn) {
   auto entry_block_val = IR::Val::BasicBlock(IR::BasicBlock::Current);
 
@@ -123,9 +123,9 @@ std::vector<IR::Val> CreateLoop(
   IR::UncondJump(loop_phi);
   IR::BasicBlock::Current = loop_phi;
 
-  std::vector<IR::CmdIndex> phis;
+  base::vector<IR::CmdIndex> phis;
   phis.reserve(entry_vals.size());
-  std::vector<IR::Val> phi_vals;
+  base::vector<IR::Val> phi_vals;
   phi_vals.reserve(phis.size());
   for (const auto &val : entry_vals) {
     auto phi = IR::Phi(val.type);
@@ -162,7 +162,7 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
 
     resize_func_ = ctx->mod_->AddFunc(
         Func({Ptr(this), Int}, {}),
-        std::vector<std::pair<std::string, AST::Expression *>>{
+        base::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}, {"new_size", nullptr}});
 
     CURRENT_FUNC(resize_func_) {
@@ -181,37 +181,40 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
 
       auto finish_phis = CreateLoop(
           {from_ptr, new_arr},
-          [&](const std::vector<IR::Val> &phis) {
+          [&](const base::vector<IR::Val> &phis) {
             return IR::Eq(phis[0], end_ptr);
           },
-          [&](const std::vector<IR::Val> &phis) {
+          [&](const base::vector<IR::Val> &phis) {
             data_type->EmitAssign(data_type, PtrCallFix(phis[0]), phis[1], ctx);
             data_type->EmitDestroy(phis[0], ctx);
-            return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1)),
-                               IR::PtrIncr(phis[1], IR::Val::Int(1))};
+            return base::vector<IR::Val>{IR::PtrIncr(phis[0], IR::Val::Int(1)),
+                                         IR::PtrIncr(phis[1], IR::Val::Int(1))};
           });
 
       if (data_type->needs_destroy()) {
-        auto end_old_buf = IR::PtrIncr(IR::ArrayData(arg), IR::ArrayLength(arg));
+        auto end_old_buf =
+            IR::PtrIncr(IR::ArrayData(arg), IR::ArrayLength(arg));
         CreateLoop({end_ptr},
-                   [&](const std::vector<IR::Val> &phis) {
+                   [&](const base::vector<IR::Val> &phis) {
                      return IR::Eq(phis[0], end_old_buf);
                    },
-                   [&](const std::vector<IR::Val> &phis) {
+                   [&](const base::vector<IR::Val> &phis) {
                      data_type->EmitDestroy(phis[0], ctx);
-                     return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1))};
+                     return base::vector<IR::Val>{
+                         IR::PtrIncr(phis[0], IR::Val::Int(1))};
                    });
       }
 
       auto end_to_ptr = IR::PtrIncr(new_arr, size_arg);
-      CreateLoop({finish_phis[1]},
-                 [&](const std::vector<IR::Val> &phis) {
-                   return IR::Eq(phis[0], end_to_ptr);
-                 },
-                 [&](const std::vector<IR::Val> &phis) {
-                   data_type->EmitInit(phis[0], ctx);
-                   return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1))};
-                 });
+      CreateLoop(
+          {finish_phis[1]},
+          [&](const base::vector<IR::Val> &phis) {
+            return IR::Eq(phis[0], end_to_ptr);
+          },
+          [&](const base::vector<IR::Val> &phis) {
+            data_type->EmitInit(phis[0], ctx);
+            return base::vector<IR::Val>{IR::PtrIncr(phis[0], IR::Val::Int(1))};
+          });
 
       auto old_buf = IR::ArrayData(arg);
       IR::Store(size_arg, IR::ArrayLength(arg));

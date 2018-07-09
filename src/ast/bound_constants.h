@@ -1,8 +1,7 @@
 #ifndef ICARUS_AST_BOUND_CONSTANTS_H
 #define ICARUS_AST_BOUND_CONSTANTS_H
 
-#include <map>
-
+#include "base/container/map.h"
 #include "base/string.h"
 #include "ir/val.h"
 
@@ -10,9 +9,9 @@ namespace AST {
 struct Declaration;
 
 struct BoundConstants {
-  std::map<std::string, IR::Val> constants_;
+  base::map<std::string, IR::Val> constants_;
 
-  std::map<Declaration*, const type::Type*> interfaces_;
+  base::map<Declaration*, const type::Type*> interfaces_;
 
   // TODO blah.
   std::string to_string() const {

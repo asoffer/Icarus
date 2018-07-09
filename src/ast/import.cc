@@ -10,7 +10,7 @@
 
 void ScheduleModule(const Source::Name &src);
 
-extern base::guarded<std::unordered_map<
+extern base::guarded<base::unordered_map<
     Source::Name, std::shared_future<std::unique_ptr<Module>>>>
     modules;
 
@@ -30,22 +30,22 @@ void Import::assign_scope(Scope *scope) {
 
 void Import::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   operand_->contextualize(correspondant->as<Import>().operand_.get(),
                           replacements);
 }
-void Import::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void Import::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   operand_->SaveReferences(scope, args);
 }
 
-std::vector<IR::Val> Import::EmitIR(Context *ctx) {
+base::vector<IR::Val> Import::EmitIR(Context *ctx) {
   ASSERT(cache_.has_value());
   auto fut = modules.lock()->at(*cache_);
   auto *mod = fut.get().get();
   return {IR::Val::Mod(mod)};
 }
 
-std::vector<IR::Val> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
+base::vector<IR::Val> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
 Import *Import::Clone() const {
   auto *result = new Import(base::wrap_unique(operand_->Clone()));
   result->span = span;

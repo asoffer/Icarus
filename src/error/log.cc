@@ -12,7 +12,7 @@
 extern type::Type *Err;
 
 using LineNum          = size_t;
-using FileToLineNumMap = std::unordered_map<Source::Name, std::vector<LineNum>>;
+using FileToLineNumMap = base::unordered_map<Source::Name, base::vector<LineNum>>;
 static FileToLineNumMap global_non_decl;
 
 namespace {
@@ -53,7 +53,7 @@ struct IntervalSet {
         std::upper_bound(endpoints_.begin(), endpoints_.end(), i.past_end);
 
     if (std::distance(lower, upper) == 0) {
-      std::vector entries = {i.start, i.past_end};
+      auto entries = base::vector<size_t>{i.start, i.past_end};
       endpoints_.insert(lower, entries.begin(), entries.end());
       return;
     }
@@ -69,7 +69,7 @@ struct IntervalSet {
     endpoints_.erase(lower, upper);
   }
 
-  std::vector<size_t> endpoints_;
+  base::vector<size_t> endpoints_;
 };
 
 struct DisplayAttrs {
@@ -95,13 +95,13 @@ std::ostream& operator<<(std::ostream& os, const DisplayAttrs& attrs) {
 void
 WriteSource(std::ostream &os, const Source &source,
             const IntervalSet &line_intervals, size_t border_alignment,
-            const std::vector<std::pair<TextSpan, DisplayAttrs>> &underlines) {
+            const base::vector<std::pair<TextSpan, DisplayAttrs>> &underlines) {
   auto iter = underlines.begin();
   for (size_t i = 0; i < line_intervals.endpoints_.size(); i += 2) {
     size_t line_num = line_intervals.endpoints_[i];
     size_t end_num  = line_intervals.endpoints_[i + 1];
     while (line_num < end_num) {
-      const auto &line = source.lines AT(line_num);
+      const auto &line = source.lines.at(line_num);
 
       // Line number
       os << "\033[97;1m" << std::right
@@ -144,7 +144,7 @@ WriteSource(std::ostream &os, const Source &source,
       if (end_num + 1 == line_intervals.endpoints_[i + 2]) {
         os << "\033[97;1m" << std::right
            << std::setw(static_cast<int>(border_alignment)) << line_num << " | "
-           << "\033[0m" << source.lines AT(end_num) << "\n";
+           << "\033[0m" << source.lines.at(end_num) << "\n";
       } else {
         os << "\033[97;1m" << std::right
            << std::setw(static_cast<int>(border_alignment) + 3)
@@ -191,7 +191,7 @@ void Log::PreconditionNeedsBool(AST::Expression *expr) {
 template <typename ExprContainer>
 static auto LinesToShow(const ExprContainer &exprs) {
   IntervalSet iset;
-  std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
+  base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
   for (const auto &expr : exprs) {
     iset.insert(Interval{expr->span.start.line_num - 1,
                          expr->span.finish.line_num + 2});
@@ -344,7 +344,7 @@ void Log::IndexedReturnTypeMismatch(const type::Type *expected_type,
   std::stringstream ss;
   // TODO should the slots be zero- or one-indexed?
   ss << "Returning an expression in slot #" << (index + 1) << " of type `"
-     << ret_expr->type->as<type::Tuple>().entries_ AT(index)->to_string()
+     << ret_expr->type->as<type::Tuple>().entries_.at(index)->to_string()
      << "` but function expects a value of type `" << expected_type->to_string()
      << "` in that slot.\n\n";
   auto &span = ret_expr->span;
@@ -442,12 +442,12 @@ void Log::AssignmentTypeMismatch(AST::Expression *lhs,
 }
 
 void Log::PositionalArgumentFollowingNamed(
-    const std::vector<TextSpan> &pos_spans, const TextSpan &named_span) {
+    const base::vector<TextSpan> &pos_spans, const TextSpan &named_span) {
   std::stringstream ss;
   ss << "Positional function arguments cannot follow a named argument.\n\n";
   IntervalSet iset;
 
-  std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
+  base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
   // TODO do you also want to show the whole function call?
   iset.insert(
       Interval{named_span.start.line_num - 1, named_span.finish.line_num + 2});
@@ -466,7 +466,7 @@ void Log::PositionalArgumentFollowingNamed(
   errors_.push_back(ss.str());
 }
 
-void Log::UnknownParseError(const std::vector<TextSpan> &lines) {
+void Log::UnknownParseError(const base::vector<TextSpan> &lines) {
   // TODO there's something seriously wrong with this
   std::stringstream ss;
   ss << "Parse errors found in \"" << lines.front().source->name
@@ -481,17 +481,17 @@ void Log::UnknownParseError(const std::vector<TextSpan> &lines) {
   errors_.push_back(ss.str());
 }
 
-std::vector<AST::Identifier *> *Log::CyclicDependency() {
+base::vector<AST::Identifier *> *Log::CyclicDependency() {
   cyc_dep_vecs_.push_back(
-      std::make_unique<std::vector<AST::Identifier *>>());
+      std::make_unique<base::vector<AST::Identifier *>>());
   return cyc_dep_vecs_.back().get();
 }
 
 void Log::ShadowingDeclaration(const AST::Declaration &decl1,
                           const AST::Declaration &decl2) {
   // TODO migrate away from old display.
-  auto line1     = decl1.span.source->lines AT(decl1.span.start.line_num);
-  auto line2     = decl2.span.source->lines AT(decl2.span.start.line_num);
+  auto line1     = decl1.span.source->lines.at(decl1.span.start.line_num);
+  auto line2     = decl2.span.source->lines.at(decl2.span.start.line_num);
   auto line_num1 = decl1.span.start.line_num;
   auto line_num2 = decl2.span.start.line_num;
   auto align =
@@ -533,13 +533,13 @@ void Log::Dump() const {
                 return lhs->span.finish.offset < rhs->span.finish.offset;
               });
 
-    std::unordered_map<AST::Declaration *, size_t> decls;
+    base::unordered_map<AST::Declaration *, size_t> decls;
     for (const auto &id : *ids) {
       decls.emplace(id->as<AST::Identifier>().decl, decls.size());
     }
 
     IntervalSet iset;
-    std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
+    base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
     for (const auto &id : *ids) {
       iset.insert(
           Interval{id->span.start.line_num - 1, id->span.finish.line_num + 2});

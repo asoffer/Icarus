@@ -16,16 +16,16 @@ struct ScopeNode : public Expression {
   void assign_scope(Scope *scope) override;
   void VerifyType(Context *) override;
   void Validate(Context *) override;
-  void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override;
-  void ExtractReturns(std::vector<const Expression *> *) const override;
+  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
+  void ExtractReturns(base::vector<const Expression *> *) const override;
   void contextualize(
       const Node *correspondant,
-      const std::unordered_map<const Expression *, IR::Val> &) override;
+      const base::unordered_map<const Expression *, IR::Val> &) override;
 
   ScopeNode *Clone() const override;
 
-  std::vector<IR::Val> EmitIR(Context *) override;
-  std::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitLVal(Context *) override;
 
   struct BlockNode {
     Statements stmts_;
@@ -33,9 +33,9 @@ struct ScopeNode : public Expression {
     std::unique_ptr<ExecScope> block_scope_;
   };
 
-  std::vector<std::unique_ptr<Expression>> blocks_;
+  base::vector<std::unique_ptr<Expression>> blocks_;
   // TODO expression passed as arguments to the scope?
-  std::unordered_map<Expression *, BlockNode> block_map_;
+  base::unordered_map<Expression *, BlockNode> block_map_;
 };
 }  // namespace AST
 

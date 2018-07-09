@@ -29,19 +29,19 @@ struct Token : public AST::Node {
   Token *Clone() const override { UNREACHABLE(); }
   void VerifyType(Context *) override { UNREACHABLE(); }
   void Validate(Context *) override { UNREACHABLE(); }
-  void ExtractReturns(std::vector<const AST::Expression *> *) const override {
+  void ExtractReturns(base::vector<const AST::Expression *> *) const override {
     UNREACHABLE();
   }
 
-  void SaveReferences(Scope *, std::vector<IR::Val> *) override {
+  void SaveReferences(Scope *, base::vector<IR::Val> *) override {
     UNREACHABLE();
   }
   void contextualize(
       const Node *correspondant,
-      const std::unordered_map<const AST::Expression *, IR::Val> &) override {
+      const base::unordered_map<const AST::Expression *, IR::Val> &) override {
     UNREACHABLE();
   }
-  std::vector<IR::Val> EmitIR(Context *) override { UNREACHABLE(); }
+  base::vector<IR::Val> EmitIR(Context *) override { UNREACHABLE(); }
 
   std::string token;
   Language::Operator op;

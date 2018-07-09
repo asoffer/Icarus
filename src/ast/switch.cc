@@ -59,7 +59,7 @@ void Switch::Validate(Context *ctx) {
   }
 }
 
-void Switch::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void Switch::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto & [ expr, cond ] : cases_) {
     expr->SaveReferences(scope, args);
     cond->SaveReferences(scope, args);
@@ -68,7 +68,7 @@ void Switch::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void Switch::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < cases_.size(); ++i) {
     cases_[i].first->contextualize(
         correspondant->as<Switch>().cases_[i].first.get(), replacements);
@@ -77,7 +77,7 @@ void Switch::contextualize(
   }
 }
 
-void Switch::ExtractReturns(std::vector<const Expression *> * rets) const {
+void Switch::ExtractReturns(base::vector<const Expression *> * rets) const {
   for (auto & [ expr, cond ] : cases_) {
     expr->ExtractReturns(rets);
     cond->ExtractReturns(rets);
@@ -96,8 +96,8 @@ Switch *Switch::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
-  std::vector<IR::Val> phi_args;
+base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
+  base::vector<IR::Val> phi_args;
   phi_args.reserve(2 * cases_.size());
   auto land_block = IR::Func::Current->AddBlock();
 
@@ -130,6 +130,6 @@ std::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
   return {IR::Func::Current->Command(phi).reg()};
 }
 
-std::vector<IR::Val> AST::Switch::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+base::vector<IR::Val> AST::Switch::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 
 }  // namespace AST

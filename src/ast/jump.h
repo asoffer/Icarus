@@ -25,14 +25,14 @@ struct Jump : public Node {
   void assign_scope(Scope *scope) override { scope_ = scope; }
   void VerifyType(Context *) override {}
   void Validate(Context *) override {}
-  void SaveReferences(Scope *scope, std::vector<IR::Val> *) override {}
-  void ExtractReturns(std::vector<const Expression *> *) const override {};
+  void SaveReferences(Scope *scope, base::vector<IR::Val> *) override {}
+  void ExtractReturns(base::vector<const Expression *> *) const override {};
   void contextualize(
       const Node *,
-      const std::unordered_map<const Expression *, IR::Val> &) override {}
+      const base::unordered_map<const Expression *, IR::Val> &) override {}
 
   Jump *Clone() const override { return new Jump(*this); }
-  std::vector<IR::Val> EmitIR(Context *) override { return {}; }
+  base::vector<IR::Val> EmitIR(Context *) override { return {}; }
 
   ExecScope *scope;
   Kind jump_type;

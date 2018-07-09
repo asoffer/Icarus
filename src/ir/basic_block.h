@@ -1,6 +1,6 @@
 #ifndef ICARUS_IR_BASIC_BLOCK_H
 #define ICARUS_IR_BASIC_BLOCK_H
-#include <vector>
+#include "base/container/vector.h"
 
 #include "cmd.h"
 
@@ -20,8 +20,8 @@ struct BasicBlock {
   void dump(size_t indent) const;
 
   Func *fn_;  // Containing function
-  std::vector<BlockIndex> incoming_blocks_;
-  std::vector<Cmd> cmds_;
+  base::vector<BlockIndex> incoming_blocks_;
+  base::vector<Cmd> cmds_;
 };
 }  // namespace IR
 #endif  // ICARUS_IR_BASIC_BLOCK_H

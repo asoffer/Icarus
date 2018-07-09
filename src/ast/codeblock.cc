@@ -5,7 +5,7 @@
 
 namespace IR {
 namespace {
-Val Contextualize(AST::CodeBlock code, std::vector<IR::Val> args) {
+Val Contextualize(AST::CodeBlock code, base::vector<IR::Val> args) {
   args.push_back(IR::Val::CodeBlock(std::move(code)));
   ASSERT(Func::Current != nullptr);
   Cmd cmd(type::Code, Op::Contextualize, {std::move(args)});
@@ -28,8 +28,8 @@ std::string CodeBlock::to_string(size_t n) const {
       content_);
 }
 
-std::vector<IR::Val> CodeBlock::EmitIR(Context *) {
-  std::vector<IR::Val> args;
+base::vector<IR::Val> CodeBlock::EmitIR(Context *) {
+  base::vector<IR::Val> args;
   auto copy = *this;
   if (auto *stmts = std::get_if<AST::Statements>(&copy.content_)) {
     stmts->SaveReferences(scope_, &args);
@@ -37,7 +37,7 @@ std::vector<IR::Val> CodeBlock::EmitIR(Context *) {
   return {IR::Contextualize(std::move(copy), std::move(args))};
 }
 
-std::vector<IR::Val> CodeBlock::EmitLVal(Context *) { UNREACHABLE(*this); }
+base::vector<IR::Val> CodeBlock::EmitLVal(Context *) { UNREACHABLE(*this); }
 
 bool operator==(const CodeBlock &lhs, const CodeBlock &rhs) {
   if (auto *lhs_stmts = std::get_if<Statements>(&lhs.content_)) {

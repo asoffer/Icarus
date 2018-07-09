@@ -37,7 +37,7 @@ void CommaList::VerifyType(Context *ctx) {
     limit_to(StageRange::Nothing());
     return;
   } else {
-    std::vector<const type::Type *> entries;
+    base::vector<const type::Type *> entries;
     entries.reserve(exprs.size());
     for (const auto &expr : exprs) { entries.push_back(expr->type); }
     if (entries.empty()) {
@@ -54,19 +54,19 @@ void CommaList::Validate(Context *ctx) {
   for (auto &expr : exprs) { expr->Validate(ctx); }
 }
 
-void CommaList::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void CommaList::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto &expr : exprs) { expr->SaveReferences(scope, args); }
 }
 void CommaList::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < exprs.size(); ++i) {
     exprs[i]->contextualize(correspondant->as<CommaList>().exprs[i].get(),
                             replacements);
   }
 }
 
-void CommaList::ExtractReturns(std::vector<const Expression *> *rets) const {
+void CommaList::ExtractReturns(base::vector<const Expression *> *rets) const {
   for (auto &expr : exprs) { expr->ExtractReturns(rets); }
 }
 
@@ -78,15 +78,15 @@ CommaList *CommaList::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> CommaList::EmitIR(Context *ctx) {
-  std::vector<IR::Val> results;
+base::vector<IR::Val> CommaList::EmitIR(Context *ctx) {
+  base::vector<IR::Val> results;
   results.reserve(exprs.size());
   for (auto &expr : exprs) { results.push_back(expr->EmitIR(ctx)[0]); }
   return results;
 }
 
-std::vector<IR::Val> CommaList::EmitLVal(Context *ctx) {
-  std::vector<IR::Val> results;
+base::vector<IR::Val> CommaList::EmitLVal(Context *ctx) {
+  base::vector<IR::Val> results;
   results.reserve(exprs.size());
   for (auto &expr : exprs) { results.push_back(expr->EmitLVal(ctx)[0]); }
   return results;

@@ -14,10 +14,10 @@
 IR::Val PtrCallFix(const IR::Val& v);
 namespace IR {
 
-IR::Val MakeBlockSeq(const std::vector<IR::Val>&);
+IR::Val MakeBlockSeq(const base::vector<IR::Val>&);
 }  // namespace IR
 
-std::vector<IR::Val> EmitCallDispatch(
+base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
@@ -196,7 +196,8 @@ void ChainOp::VerifyType(Context *ctx) {
 
         if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
           FnArgs<Expression *> args;
-          args.pos_ = std::vector{exprs[i].get(), exprs[i + 1].get()};
+          args.pos_ =
+              base::vector<Expression *>{{exprs[i].get(), exprs[i + 1].get()}};
           // TODO overwriting type a bunch of times?
           std::tie(dispatch_tables_.at(i), type) =
               DispatchTable::Make(args, token, scope_, ctx);
@@ -251,24 +252,24 @@ void ChainOp::Validate(Context *ctx) {
   for (auto &expr : exprs) { expr->Validate(ctx); }
 }
 
-void ChainOp::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void ChainOp::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto &expr : exprs) { expr->SaveReferences(scope, args); }
 }
 
 void ChainOp::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < exprs.size(); ++i) {
     exprs[i]->contextualize(correspondant->as<ChainOp>().exprs[i].get(),
                             replacements);
   }
 }
 
-void ChainOp::ExtractReturns(std::vector<const Expression *> *rets) const {
+void ChainOp::ExtractReturns(base::vector<const Expression *> *rets) const {
   for (auto &expr : exprs) { expr->ExtractReturns(rets); }
 }
 
-std::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
+base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
   if (ops[0] == Language::Operator::Xor) {
     auto iter = exprs.begin();
     auto val  = (*iter)->EmitIR(ctx)[0];
@@ -293,20 +294,20 @@ std::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
   } else if (ops[0] == Language::Operator::Or && type == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
-    std::vector<IR::Val> args;
+    base::vector<IR::Val> args;
     args.reserve(exprs.size());
     for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)[0]); }
     return {IR::Variant(std::move(args))};
   } else if (ops[0] == Language::Operator::Or &&
              (type == type::Block || type == type::OptBlock)) {
-    std::vector<IR::Val> vals;
+    base::vector<IR::Val> vals;
     vals.reserve(exprs.size());
     for (auto &expr : exprs) { vals.push_back(expr->EmitIR(ctx)[0]); }
     return {IR::MakeBlockSeq(vals)};
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
     auto land_block = IR::Func::Current->AddBlock();
-    std::vector<IR::Val> phi_args;
+    base::vector<IR::Val> phi_args;
     phi_args.reserve(2 * exprs.size());
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
@@ -338,7 +339,7 @@ std::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       return {val};
 
     } else {
-      std::vector<IR::Val> phi_args;
+      base::vector<IR::Val> phi_args;
       auto lhs_ir     = exprs.front()->EmitIR(ctx)[0];
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
@@ -369,7 +370,7 @@ std::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
   }
 }
 
-std::vector<IR::Val> ChainOp::EmitLVal(Context *ctx) { UNREACHABLE(this); }
+base::vector<IR::Val> ChainOp::EmitLVal(Context *ctx) { UNREACHABLE(this); }
 
 ChainOp *ChainOp::Clone() const {
   auto *result             = new ChainOp;

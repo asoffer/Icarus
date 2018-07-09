@@ -7,18 +7,18 @@
 namespace type {
 struct Variant : public Type {
   TYPE_FNS(Variant);
-  Variant(std::vector<const Type *> variants)
+  Variant(base::vector<const Type *> variants)
       : variants_(std::move(variants)) {}
   size_t size() const { return variants_.size(); }
 
-  std::vector<const Type *> variants_;
+  base::vector<const Type *> variants_;
 
 private:
   mutable std::mutex mtx_;
   mutable IR::Func *repr_func_ = nullptr;
 };
 
-const Type *Var(std::vector<const Type *> variants);
+const Type *Var(base::vector<const Type *> variants);
 
 } // namespace type
 #endif // ICARUS_TYPE_VARIANT_H

@@ -13,7 +13,7 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
   if (destroy_func_ != nullptr) { return; }
   destroy_func_ = ctx->mod_->AddFunc(
       Func({Ptr(this)}, {}),
-      std::vector<std::pair<std::string, AST::Expression *>>{{"arg", nullptr}});
+      base::vector<std::pair<std::string, AST::Expression *>>{{"arg", nullptr}});
 
   CURRENT_FUNC(destroy_func_) {
     IR::BasicBlock::Current = destroy_func_->entry();
@@ -26,12 +26,13 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
                                         : IR::Load(IR::ArrayLength(arg)));
 
       CreateLoop({ptr},
-                 [&](const std::vector<IR::Val> &phis) {
+                 [&](const base::vector<IR::Val> &phis) {
                    return IR::Eq(phis[0], end_ptr);
                  },
-                 [&](const std::vector<IR::Val> &phis) {
+                 [&](const base::vector<IR::Val> &phis) {
                    data_type->EmitDestroy(phis[0], ctx);
-                   return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1))};
+                   return base::vector<IR::Val>{
+                       IR::PtrIncr(phis[0], IR::Val::Int(1))};
                  });
     }
 
@@ -64,7 +65,7 @@ void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
     if (destroy_func_ == nullptr) {
       destroy_func_ = ctx->mod_->AddFunc(
           Func({Ptr(this)}, {}),
-          std::vector<std::pair<std::string, AST::Expression *>>{
+          base::vector<std::pair<std::string, AST::Expression *>>{
               {"arg", nullptr}});
 
       CURRENT_FUNC(destroy_func_) {

@@ -87,8 +87,8 @@ void PropertyMap::refresh() {
 // TODO this is not a great way to handle this. Probably should store all
 // set-rets first.
 DefaultProperty<bool> PropertyMap::Returns() const {
-  std::vector<IR::CmdIndex> rets;
-  std::vector<IR::Register> regs;
+  base::vector<IR::CmdIndex> rets;
+  base::vector<IR::Register> regs;
 
   // This can be precompeted and stored on the actual IR::Func.
   i32 num_blocks = static_cast<i32>(fn_->blocks_.size());
@@ -119,7 +119,7 @@ DefaultProperty<bool> PropertyMap::Returns() const {
   return acc;
 }
 
-PropertyMap PropertyMap::with_args(const std::vector<IR::Val> &args) const {
+PropertyMap PropertyMap::with_args(const base::vector<IR::Val> &args) const {
   auto copy = *this;
   auto *entry_block = &fn_->block(fn_->entry());
   auto &props       = copy.view_.at(entry_block).view_;

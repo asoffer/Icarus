@@ -44,13 +44,13 @@ void StructLiteral::Validate(Context *ctx) {
   }
 }
 
-void StructLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void StructLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto &f: fields_) { f->SaveReferences(scope, args); }
 }
 
 void StructLiteral::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < fields_.size(); ++i) {
     fields_[i]->contextualize(
         correspondant->as<StructLiteral>().fields_[i].get(), replacements);
@@ -58,7 +58,7 @@ void StructLiteral::contextualize(
 }
 
 void StructLiteral::ExtractReturns(
-    std::vector<const Expression *> *rets) const {
+    base::vector<const Expression *> *rets) const {
   for (auto &f : fields_) { f->ExtractReturns(rets); }
 }
 
@@ -70,7 +70,7 @@ StructLiteral *StructLiteral::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> AST::StructLiteral::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::StructLiteral::EmitIR(Context *ctx) {
   auto new_struct = IR::CreateStruct();
   for (const auto &field : fields_) {
     // TODO in initial value doesn't match type of field?
@@ -96,5 +96,5 @@ std::vector<IR::Val> AST::StructLiteral::EmitIR(Context *ctx) {
   return {IR::FinalizeStruct(std::move(new_struct))};
 }
 
-std::vector<IR::Val> AST::StructLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+base::vector<IR::Val> AST::StructLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 }  // namespace AST

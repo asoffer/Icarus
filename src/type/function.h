@@ -12,7 +12,7 @@ class FunctionType;
 namespace type {
 struct Function : public Type {
   TYPE_FNS(Function);
-  Function(std::vector<const Type *> in, std::vector<const Type *> out)
+  Function(base::vector<const Type *> in, base::vector<const Type *> out)
       : input(std::move(in)), output(std::move(out)) {
     for (auto *t : input) { ASSERT(t != nullptr); }
     for (auto *t : output) { ASSERT(t != nullptr); }
@@ -22,11 +22,11 @@ struct Function : public Type {
   llvm::FunctionType *llvm_fn(llvm::LLVMContext &ctx) const;
 #endif // ICARUS_USE_LLVM
 
-  std::vector<const Type *> input, output;
+  base::vector<const Type *> input, output;
 };
 
-const Function *Func(std::vector<const Type *> in,
-                     std::vector<const Type *> out);
+const Function *Func(base::vector<const Type *> in,
+                     base::vector<const Type *> out);
 
 } // namespace type
 

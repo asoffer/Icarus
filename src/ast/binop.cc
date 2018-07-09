@@ -22,7 +22,7 @@ namespace type {
 const Pointer *Ptr(const Type *);
 }  // namespace type
 
-std::vector<IR::Val> EmitCallDispatch(
+base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
@@ -241,7 +241,7 @@ void Binop::VerifyType(Context *ctx) {
       type = ret_type;                                                         \
     } else {                                                                   \
       FnArgs<Expression *> args;                                               \
-      args.pos_ = std::vector{lhs.get(), rhs.get()};                           \
+      args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};          \
       std::tie(dispatch_table_, type) =                                        \
           DispatchTable::Make(args, symbol, scope_, ctx);                      \
       ASSERT(type, Not(Is<type::Tuple>()));                                    \
@@ -272,7 +272,7 @@ void Binop::VerifyType(Context *ctx) {
                              rhs->type->as<type::CharBuffer>().length_);
       } else {
         FnArgs<Expression *> args;
-        args.pos_ = std::vector{lhs.get(), rhs.get()};
+        args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         std::tie(dispatch_table_, type) =
             DispatchTable::Make(args, "+", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
@@ -291,7 +291,7 @@ void Binop::VerifyType(Context *ctx) {
         type = type::Void();
       } else {
         FnArgs<Expression *> args;
-        args.pos_ = std::vector{lhs.get(), rhs.get()};
+        args.pos_ = base::vector<Expression*>{{lhs.get(), rhs.get()}};
         std::tie(dispatch_table_, type) =
             DispatchTable::Make(args, "+=", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
@@ -320,7 +320,7 @@ void Binop::VerifyType(Context *ctx) {
 
       } else {
         FnArgs<Expression *> args;
-        args.pos_  = std::vector{lhs.get(), rhs.get()};
+        args.pos_ = base::vector<Expression*>{{lhs.get(), rhs.get()}};
         std::tie(dispatch_table_, type) =
             DispatchTable::Make(args, "*", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
@@ -357,24 +357,24 @@ void Binop::Validate(Context *ctx) {
   rhs->Validate(ctx);
 }
 
-void Binop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void Binop::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   lhs->SaveReferences(scope, args);
   rhs->SaveReferences(scope, args);
 }
 
 void Binop::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   lhs->contextualize(correspondant->as<Binop>().lhs.get(), replacements);
   rhs->contextualize(correspondant->as<Binop>().rhs.get(), replacements);
 }
 
-void Binop::ExtractReturns(std::vector<const Expression *> *rets) const {
+void Binop::ExtractReturns(base::vector<const Expression *> *rets) const {
   lhs->ExtractReturns(rets);
   rhs->ExtractReturns(rets);
 }
 
-std::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
   if (op != Language::Operator::Assign &&
       (lhs->type->is<type::Struct>() || rhs->type->is<type::Struct>())) {
     // TODO struct is not exactly right. we really mean user-defined
@@ -405,7 +405,7 @@ std::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Arrow:
       return {IR::Arrow(IR::Tup(lhs->EmitIR(ctx)), IR::Tup(rhs->EmitIR(ctx)))};
     case Language::Operator::Assign: {
-      std::vector<const type::Type *> lhs_types, rhs_types;
+      base::vector<const type::Type *> lhs_types, rhs_types;
       ForEachExpr(rhs.get(), [&ctx, &rhs_types](size_t, Expression *expr) {
         if (expr->type->is<type::Tuple>()) {
           rhs_types.insert(rhs_types.end(),
@@ -504,7 +504,7 @@ std::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
   }
 }
 
-std::vector<IR::Val> AST::Binop::EmitLVal(Context *ctx) {
+base::vector<IR::Val> AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::As: NOT_YET();
     case Language::Operator::Index:

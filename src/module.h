@@ -5,7 +5,7 @@
 #include <queue>
 #include <string>
 #include <unordered_set>
-#include <vector>
+#include "base/container/vector.h"
 
 #include "ast/statements.h"
 #include "scope.h"
@@ -41,9 +41,9 @@ struct Module {
   static std::unique_ptr<Module> Compile(const Source::Name& src);
 
   IR::Func* AddFunc(AST::GeneratedFunction* fn_lit,
-      std::vector<std::pair<std::string, AST::Expression *>> args);
+      base::vector<std::pair<std::string, AST::Expression *>> args);
   IR::Func* AddFunc(const type::Function* fn_type,
-      std::vector<std::pair<std::string, AST::Expression *>> args);
+      base::vector<std::pair<std::string, AST::Expression *>> args);
   const type::Type* GetType(const std::string& name) const;
   AST::Declaration* GetDecl(const std::string& name) const;
 
@@ -61,7 +61,7 @@ struct Module {
   std::unique_ptr<llvm::Module> llvm_;
 #endif // ICARUS_USE_LLVM
 
-  std::vector<std::unique_ptr<IR::Func>> fns_;
+  base::vector<std::unique_ptr<IR::Func>> fns_;
   std::unordered_set<const Module*> embedded_modules_;
 };
 

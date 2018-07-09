@@ -9,7 +9,7 @@
 #include "ir/func.h"
 #include "type/all.h"
 
-std::vector<IR::Val> EmitCallDispatch(
+base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
@@ -60,7 +60,7 @@ void Unop::Validate(Context *ctx) {
   operand->Validate(ctx);
 }
 
-void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void Unop::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
     // TODO need to extract the right module here
     Context ctx(nullptr);
@@ -78,7 +78,7 @@ void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void Unop::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   if (op == Language::Operator::Ref) {
     auto iter = replacements.find(&correspondant->as<Unop>());
     ASSERT(iter != replacements.end());
@@ -96,7 +96,7 @@ void Unop::contextualize(
   }
 }
 
-void Unop::ExtractReturns(std::vector<const Expression *> *rets) const {
+void Unop::ExtractReturns(base::vector<const Expression *> *rets) const {
   operand->ExtractReturns(rets);
 }
 
@@ -183,7 +183,7 @@ void Unop::VerifyType(Context *ctx) {
 
       } else if (operand->type->is<type::Struct>()) {
         FnArgs<Expression *> args;
-        args.pos_ = std::vector{operand.get()};
+        args.pos_ = base::vector<Expression*>{operand.get()};
         std::tie(dispatch_table_, type) =
             DispatchTable::Make(args, "-", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
@@ -195,7 +195,7 @@ void Unop::VerifyType(Context *ctx) {
         type = type::Bool;
       } else if (operand->type->is<type::Struct>()) {
         FnArgs<Expression *> args;
-        args.pos_ = std::vector{operand.get()};
+        args.pos_ = base::vector<Expression*>{operand.get()};
         std::tie(dispatch_table_, type) =
             DispatchTable::Make(args, "!", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
@@ -226,7 +226,7 @@ void Unop::VerifyType(Context *ctx) {
   limit_to(operand);
 }
 
-std::vector<IR::Val> Unop::EmitIR(Context *ctx) {
+base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
   if (operand->type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
     // TODO struct is not exactly right. we really mean user-defined
     FnArgs<std::pair<Expression *, IR::Val>> args;
@@ -254,7 +254,7 @@ std::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       return backend::Evaluate(operand.get(), ctx);
     }
     case Language::Operator::Generate: {
-      auto val = backend::Evaluate(operand.get(), ctx) AT(0);
+      auto val = backend::Evaluate(operand.get(), ctx).at(0);
       ASSERT(val.type == type::Code);
       auto block = std::get<AST::CodeBlock>(val.value);
       if (auto *err = std::get_if<std::string>(&block.content_)) {
@@ -286,7 +286,7 @@ std::vector<IR::Val> Unop::EmitIR(Context *ctx) {
   }
 }
 
-std::vector<IR::Val> Unop::EmitLVal(Context *ctx) {
+base::vector<IR::Val> Unop::EmitLVal(Context *ctx) {
   ASSERT(op == Language::Operator::At);
   return operand->EmitIR(ctx);
 }

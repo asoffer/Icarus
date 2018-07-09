@@ -11,20 +11,20 @@ namespace IR {
 Func *Func::Current{nullptr};
 
 Val Func::Argument(u32 n) const {
-  auto *arg_type = type_->input AT(n);
+  auto *arg_type = type_->input.at(n);
   if (arg_type->is_big()) { arg_type = type::Ptr(arg_type); }
   return Val::Reg(Register(n), arg_type);
 }
 
 Val Func::Return(u32 n) const {
   return Val::Reg(Register(type_->input.size() + n),
-                  type::Ptr(type_->output AT(n)));
+                  type::Ptr(type_->output.at(n)));
 }
 
 // TODO there's no reason to take args because they can be computed from the
 // function literal.
 Func::Func(Module *mod, AST::GeneratedFunction *fn,
-           std::vector<std::pair<std::string, AST::Expression *>> args)
+           base::vector<std::pair<std::string, AST::Expression *>> args)
     : gened_fn_(fn),
       type_(&fn->type->as<type::Function>()),
       args_(std::move(args)),
@@ -40,7 +40,7 @@ Func::Func(Module *mod, AST::GeneratedFunction *fn,
 }
 
 Func::Func(Module *mod, const type::Function *fn_type,
-           std::vector<std::pair<std::string, AST::Expression *>> args)
+           base::vector<std::pair<std::string, AST::Expression *>> args)
     : type_(fn_type),
       args_(std::move(args)),
       num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
@@ -54,9 +54,9 @@ Func::Func(Module *mod, const type::Function *fn_type,
   blocks_.emplace_back(this);
 }
 
-std::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
+base::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
 Func::GetIncomingBlocks() const {
-  std::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
+  base::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
       incoming;
   for (const auto &b : blocks_) {
     ASSERT(b.cmds_.size() > 0u);
@@ -84,9 +84,9 @@ Cmd const *Func::Command(Register reg) const {
   return &Command(iter->second);
 }
 
-static std::vector<std::pair<IR::Func, prop::PropertyMap>> InvariantsFor(
-    IR::Func *fn, const std::vector<AST::Expression *> &exprs) {
-  std::vector<std::pair<IR::Func, prop::PropertyMap>> result;
+static base::vector<std::pair<IR::Func, prop::PropertyMap>> InvariantsFor(
+    IR::Func *fn, const base::vector<AST::Expression *> &exprs) {
+  base::vector<std::pair<IR::Func, prop::PropertyMap>> result;
   // Resreve to guarantee pointer stability.
   for (const auto &expr : exprs) {
     auto & [ func, prop_map ] = result.emplace_back(

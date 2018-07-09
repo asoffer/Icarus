@@ -35,22 +35,22 @@ void Statements::Validate(Context *ctx) {
 
 void Statements::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < content_.size(); ++i) {
     content_[i]->contextualize(
         correspondant->as<Statements>().content_[i].get(), replacements);
   }
 }
 
-void Statements::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void Statements::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto &stmt : content_) { stmt->SaveReferences(scope, args); }
 }
 
-void Statements::ExtractReturns(std::vector<const Expression *> *rets) const {
+void Statements::ExtractReturns(base::vector<const Expression *> *rets) const {
   for (auto &stmt : content_) { stmt->ExtractReturns(rets); }
 }
 
-std::vector<IR::Val> AST::Statements::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::Statements::EmitIR(Context *ctx) {
   for (auto &stmt : content_) { stmt->EmitIR(ctx); }
   return {};
 }

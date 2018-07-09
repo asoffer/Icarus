@@ -97,7 +97,7 @@ static IR::Val EmitVariantMatch(const IR::Val &needle,
     // other.
     auto landing = IR::Func::Current->AddBlock();
 
-    std::vector<IR::Val> phi_args;
+    base::vector<IR::Val> phi_args;
     phi_args.reserve(2 * haystack->as<type::Variant>().size() + 2);
     for (const type::Type *v : haystack->as<type::Variant>().variants_) {
       phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
@@ -148,20 +148,20 @@ static IR::BlockIndex CallLookupTest(
   return next_binding;
 }
 
-static std::vector<IR::Val> EmitOneCallDispatch(
+static base::vector<IR::Val> EmitOneCallDispatch(
     const type::Type *ret_type,
-    const std::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
+    const base::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
   auto callee = binding.fn_expr_->EmitIR(ctx)[0];
   ASSERT(callee.type, Is<type::Function>());
 
   // After the last check, if you pass, you should dispatch
-  std::vector<std::pair<std::string, AST::Expression *>> *const_args = nullptr;
+  base::vector<std::pair<std::string, AST::Expression *>> *const_args = nullptr;
   if (auto **fn_to_call = std::get_if<IR::Func *>(&callee.value)) {
     const_args = &((**fn_to_call).args_);
   }
 
-  std::vector<IR::Val> args;
+  base::vector<IR::Val> args;
   args.resize(binding.exprs_.size());
   for (size_t i = 0; i < args.size(); ++i) {
     auto[bound_type, expr] = binding.exprs_[i];
@@ -181,26 +181,26 @@ static std::vector<IR::Val> EmitOneCallDispatch(
   switch (fn_type->output.size()) {
     case 0: IR::Call(callee, std::move(args), {}); return {};
     case 1: {
-      if (fn_type->output AT(0)->is_big()) {
+      if (fn_type->output.at(0)->is_big()) {
         auto ret_val = IR::Alloca(ret_type);
 
         if (ret_type->is<type::Variant>()) {
           IR::Call(
               callee, std::move(args),
-              std::vector{IR::VariantValue(fn_type->output AT(0), ret_val)});
-          IR::Store(IR::Val::Type(fn_type->output AT(0)),
+              base::vector<IR::Val>{IR::VariantValue(fn_type->output.at(0), ret_val)});
+          IR::Store(IR::Val::Type(fn_type->output.at(0)),
                     IR::VariantType(ret_val));
         } else {
-          IR::Call(callee, std::move(args), std::vector{ret_val});
+          IR::Call(callee, std::move(args), base::vector<IR::Val>{ret_val});
         }
         return {ret_val};
       } else {
         if (ret_type->is<type::Variant>()) {
           auto ret_val = IR::Alloca(ret_type);
-          IR::Store(IR::Val::Type(fn_type->output AT(0)),
+          IR::Store(IR::Val::Type(fn_type->output.at(0)),
                     IR::VariantType(ret_val));
           IR::Store(IR::Call(callee, std::move(args), {}),
-                    IR::VariantValue(fn_type->output AT(0), ret_val));
+                    IR::VariantValue(fn_type->output.at(0), ret_val));
           return {ret_val};
         } else {
           return {IR::Call(callee, std::move(args), {})};
@@ -212,25 +212,25 @@ static std::vector<IR::Val> EmitOneCallDispatch(
       const auto &tup_entries = ret_type->as<type::Tuple>().entries_;
       ASSERT(fn_type->output.size() == tup_entries.size());
 
-      std::vector<IR::Val> ret_vals;
+      base::vector<IR::Val> ret_vals;
       ret_vals.reserve(fn_type->output.size());
       for (auto *entry : tup_entries) { ret_vals.push_back(IR::Alloca(entry)); }
 
-      std::vector<IR::Val> return_args;
+      base::vector<IR::Val> return_args;
       for (size_t i = 0; i < tup_entries.size(); ++i) {
-        auto *return_type   = fn_type->output AT(i);
-        auto *expected_type = tup_entries AT(i);
+        auto *return_type   = fn_type->output.at(i);
+        auto *expected_type = tup_entries.at(i);
 
         if (return_type->is<type::Variant>()) {
-          return_args.push_back(ret_vals AT(i));
+          return_args.push_back(ret_vals.at(i));
         } else {
           if (expected_type->is<type::Variant>()) {
             IR::Store(IR::Val::Type(return_type),
-                      IR::VariantType(ret_vals AT(i)));
+                      IR::VariantType(ret_vals.at(i)));
             return_args.push_back(
-                IR::VariantValue(return_type, ret_vals AT(i)));
+                IR::VariantValue(return_type, ret_vals.at(i)));
           } else {
-            return_args.push_back(ret_vals AT(i));
+            return_args.push_back(ret_vals.at(i));
           }
         }
       }
@@ -241,11 +241,11 @@ static std::vector<IR::Val> EmitOneCallDispatch(
   UNREACHABLE();
 }
 
-std::vector<IR::Val> EmitCallDispatch(
+base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx) {
-  std::unordered_map<AST::Expression *, const IR::Val *> expr_map;
+  base::unordered_map<AST::Expression *, const IR::Val *> expr_map;
   args.Apply([&expr_map](const std::pair<AST::Expression *, IR::Val> &arg) {
     expr_map[arg.first] = &arg.second;
   });
@@ -260,7 +260,7 @@ std::vector<IR::Val> EmitCallDispatch(
                         ? ret_type->as<type::Tuple>().entries_.size()
                         : 1;
 
-  std::vector<std::vector<IR::Val>> result_phi_args(num_rets);
+  base::vector<base::vector<IR::Val>> result_phi_args(num_rets);
   for (auto &result : result_phi_args) {
     result.reserve(2 * dispatch_table.bindings_.size());
   }
@@ -274,9 +274,9 @@ std::vector<IR::Val> EmitCallDispatch(
     size_t j          = 0;
     for (auto &&result :
          EmitOneCallDispatch(ret_type, expr_map, binding, ctx)) {
-      result_phi_args AT(j).push_back(
+      result_phi_args.at(j).push_back(
           IR::Val::BasicBlock(IR::BasicBlock::Current));
-      result_phi_args AT(j).push_back(std::move(result));
+      result_phi_args.at(j).push_back(std::move(result));
       ++j;
     }
     ASSERT(j == num_rets);
@@ -288,9 +288,9 @@ std::vector<IR::Val> EmitCallDispatch(
   const auto & [ call_arg_type, binding ] = *iter;
   size_t j                                = 0;
   for (auto &&result : EmitOneCallDispatch(ret_type, expr_map, binding, ctx)) {
-    result_phi_args AT(j).push_back(
+    result_phi_args.at(j).push_back(
         IR::Val::BasicBlock(IR::BasicBlock::Current));
-    result_phi_args AT(j).push_back(std::move(result));
+    result_phi_args.at(j).push_back(std::move(result));
     ++j;
   }
   ASSERT(j == num_rets);
@@ -302,14 +302,14 @@ std::vector<IR::Val> EmitCallDispatch(
     case 0: return {};
     case 1:
       if (ret_type == type::Void()) {
-        return std::vector(1, IR::Val::None());
+        return base::vector<IR::Val>(1, IR::Val::None());
       } else {
         auto phi = IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
         IR::Func::Current->SetArgs(phi, std::move(result_phi_args[0]));
-        return std::vector(1, IR::Func::Current->Command(phi).reg());
+        return base::vector<IR::Val>(1, IR::Func::Current->Command(phi).reg());
       }
     default: {
-      std::vector<IR::Val> results;
+      base::vector<IR::Val> results;
       results.reserve(num_rets);
       const auto &tup_entries = ret_type->as<type::Tuple>().entries_;
       for (size_t i = 0; i < num_rets; ++i) {
@@ -455,7 +455,7 @@ void Call::Validate(Context *ctx) {
   args_.Apply([ctx](auto &arg) { arg->Validate(ctx); });
 }
 
-void Call::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void Call::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto &pos : args_.pos_) { pos->SaveReferences(scope, args); }
   for (auto & [ name, expr ] : args_.named_) {
     expr->SaveReferences(scope, args);
@@ -464,7 +464,7 @@ void Call::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void Call::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   fn_->contextualize(correspondant->as<Call>().fn_.get(), replacements);
 
   for (size_t i = 0; i < args_.pos_.size(); ++i) {
@@ -478,7 +478,7 @@ void Call::contextualize(
   }
 }
 
-void Call::ExtractReturns(std::vector<const Expression *> *rets) const {
+void Call::ExtractReturns(base::vector<const Expression *> *rets) const {
   fn_->ExtractReturns(rets);
   for (const auto &val : args_.pos_) { val->ExtractReturns(rets); }
   for (const auto & [ key, val ] : args_.named_) { val->ExtractReturns(rets); }
@@ -500,7 +500,7 @@ Call *Call::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> Call::EmitIR(Context *ctx) {
+base::vector<IR::Val> Call::EmitIR(Context *ctx) {
   if (fn_->is<Terminal>()) {
     // Special case for error/ord/ascii
     auto fn_val = fn_->as<Terminal>().value;
@@ -544,5 +544,5 @@ std::vector<IR::Val> Call::EmitIR(Context *ctx) {
       dispatch_table_, type, ctx);
 }
 
-std::vector<IR::Val> Call::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Val> Call::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

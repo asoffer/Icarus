@@ -19,15 +19,15 @@ struct Hole : public Identifier {
 
   void assign_scope(Scope *scope) { scope_ = scope; }
   Hole *Clone() const { return new Hole(*this); }
-  void SaveReferences(Scope *, std::vector<IR::Val> *) {}
+  void SaveReferences(Scope *, base::vector<IR::Val> *) {}
   void contextualize(const Node *,
-                     const std::unordered_map<const Expression *, IR::Val> &) {}
-  void ExtractReturns(std::vector<const Expression *> *) const {}
+                     const base::unordered_map<const Expression *, IR::Val> &) {}
+  void ExtractReturns(base::vector<const Expression *> *) const {}
   void VerifyType(Context *) {}
   void Validate(Context *ctx) {}
 
-  std::vector<IR::Val> EmitIR(Context *) override { return {IR::Val::None()}; }
-  std::vector<IR::Val> EmitLVal(Context *) override { return {IR::Val::None()}; }
+  base::vector<IR::Val> EmitIR(Context *) override { return {IR::Val::None()}; }
+  base::vector<IR::Val> EmitLVal(Context *) override { return {IR::Val::None()}; }
 };
 }  // namespace AST
 

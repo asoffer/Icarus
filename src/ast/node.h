@@ -6,9 +6,9 @@
 #include <set>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
+#include "base/container/unordered_map.h"
 #include <utility>
-#include <vector>
+#include "base/container/vector.h"
 
 #include "ast/stages.h"
 #include "base/util.h"
@@ -32,13 +32,13 @@ struct Node : public base::Cast<Node> {
   virtual void assign_scope(Scope *)                                    = 0;
   virtual void VerifyType(Context *)                                    = 0;
   virtual void Validate(Context *)                                      = 0;
-  virtual std::vector<IR::Val> EmitIR(Context *)                        = 0;
-  virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
+  virtual base::vector<IR::Val> EmitIR(Context *)                        = 0;
+  virtual void SaveReferences(Scope *scope, base::vector<IR::Val> *args) = 0;
   virtual void
   contextualize(const Node *correspondant,
-                const std::unordered_map<const Expression *, IR::Val> &) = 0;
+                const base::unordered_map<const Expression *, IR::Val> &) = 0;
   virtual Node *Clone() const                                            = 0;
-  virtual void ExtractReturns(std::vector<const Expression *> *) const   = 0;
+  virtual void ExtractReturns(base::vector<const Expression *> *) const   = 0;
 
   template <typename T> void limit_to(T &&t) {
     if constexpr (std::is_same_v<std::decay_t<T>, int>) {

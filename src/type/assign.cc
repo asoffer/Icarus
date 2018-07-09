@@ -21,7 +21,7 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   if (fn == nullptr) {
     fn = ctx->mod_->AddFunc(
         Func({from_type, Ptr(this)}, {}),
-        std::vector<std::pair<std::string, AST::Expression *>>{
+        base::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}});
 
     CURRENT_FUNC(fn) {
@@ -49,14 +49,15 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
       IR::Val to_ptr = IR::Index(var, IR::Val::Int(0));
 
       CreateLoop({from_ptr, to_ptr},
-                 [&](const std::vector<IR::Val> &phis) {
+                 [&](const base::vector<IR::Val> &phis) {
                    return IR::Eq(phis[0], from_end_ptr);
                  },
-                 [&](const std::vector<IR::Val> &phis) {
+                 [&](const base::vector<IR::Val> &phis) {
                    EmitCopyInit(from_array_type->data_type, data_type,
                                 PtrCallFix(phis[0]), phis[1], ctx);
-                   return std::vector{IR::PtrIncr(phis[0], IR::Val::Int(1ul)),
-                                      IR::PtrIncr(phis[1], IR::Val::Int(1ul))};
+                   return base::vector<IR::Val>{
+                       IR::PtrIncr(phis[0], IR::Val::Int(1ul)),
+                       IR::PtrIncr(phis[1], IR::Val::Int(1ul))};
                  });
       IR::ReturnJump();
     }
@@ -124,7 +125,7 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   if (!assign_func) {
     assign_func = ctx->mod_->AddFunc(
         Func({from_type, Ptr(this)}, {}),
-        std::vector<std::pair<std::string, AST::Expression *>>{
+        base::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}});
 
     CURRENT_FUNC(assign_func) {

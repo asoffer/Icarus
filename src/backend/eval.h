@@ -10,7 +10,7 @@ struct Expression;
 struct Context;
 
 namespace backend {
-std::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
+base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx);
 
 template <typename T>
 T EvaluateAs(AST::Expression *expr, Context *ctx) {

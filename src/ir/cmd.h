@@ -34,8 +34,8 @@ enum class Op : char {
 };
 
 struct Cmd {
-  Cmd(const type::Type *t, Op op, std::vector<Val> args);
-  std::vector<Val> args;
+  Cmd(const type::Type *t, Op op, base::vector<Val> args);
+  base::vector<Val> args;
   Op op_code_;
 
   const type::Type *type = nullptr;
@@ -66,22 +66,22 @@ Val Xor(Val v1, Val v2);
 Val Or(Val v1, Val v2);
 Val And(Val v1, Val v2);
 Val Index(Val v1, Val v2);
-Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs);
+Val Call(Val fn, base::vector<Val> vals, base::vector<Val> result_locs);
 Val Load(Val v);
 Val ArrayLength(Val v);
 Val ArrayData(Val v);
 Val PtrIncr(Val v1, Val v2);
 Val Malloc(const type::Type *t, Val v);
 Val Field(Val v, size_t n);
-Val Tup(std::vector<IR::Val> vals);
+Val Tup(base::vector<IR::Val> vals);
 Val Arrow(Val v1, Val v2);
-Val Variant(std::vector<Val> vals);
+Val Variant(base::vector<Val> vals);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(const type::Type *t);
 Val VariantType(Val v1);
 Val VariantValue(const type::Type *t, Val);
-Val BlockSeq(std::vector<Val> blocks);
+Val BlockSeq(base::vector<Val> blocks);
 Val Err(Val v);
 Val CreateStruct();
 Val FinalizeStruct(Val v);

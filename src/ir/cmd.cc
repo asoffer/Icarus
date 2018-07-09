@@ -1,8 +1,8 @@
 #include "cmd.h"
 
 #include <cmath>
-#include <vector>
 #include <iostream>
+#include "base/container/vector.h"
 
 #include "ir/block_sequence.h"
 #include "ir/func.h"
@@ -13,7 +13,7 @@ using base::check::Is;
 
 BlockIndex BasicBlock::Current;
 
-Cmd::Cmd(const type::Type *t, Op op, std::vector<Val> arg_vec)
+Cmd::Cmd(const type::Type *t, Op op, base::vector<Val> arg_vec)
     : args(std::move(arg_vec)), op_code_(op), type(t) {
   ASSERT(Func::Current != nullptr);
   CmdIndex cmd_index{
@@ -37,16 +37,16 @@ Val Field(Val v, size_t n) {
   ASSERT(v.type, Is<type::Pointer>());
   const type::Type *result_type = type::Ptr(v.type->as<type::Pointer>()
                                                 .pointee->as<type::Struct>()
-                                                .fields_ AT(n)
+                                                .fields_.at(n)
                                                 .type);
   Cmd cmd(result_type, Op::Field,
-          std::vector{std::move(v), Val::Int(static_cast<i32>(n))});
+          base::vector<IR::Val>{std::move(v), Val::Int(static_cast<i32>(n))});
   auto reg = cmd.reg();
   Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
   return reg;
 }
 
-static Val MakeCmd(const type::Type *t, Op op, std::vector<Val> vals) {
+static Val MakeCmd(const type::Type *t, Op op, base::vector<Val> vals) {
   ASSERT(Func::Current != nullptr);
   auto &cmds = Func::Current->block(BasicBlock::Current).cmds_;
   Cmd c{t, op, std::move(vals)};
@@ -56,32 +56,32 @@ static Val MakeCmd(const type::Type *t, Op op, std::vector<Val> vals) {
 
 Val Malloc(const type::Type *t, Val v) {
   ASSERT(v.type == type::Int);
-  return MakeCmd(type::Ptr(t), Op::Malloc, std::vector{std::move(v)});
+  return MakeCmd(type::Ptr(t), Op::Malloc, base::vector<IR::Val>{std::move(v)});
 }
 
 Val Extend(Val v) {
   if (char *c = std::get_if<char>(&v.value)) {
     return Val::Int(static_cast<i32>(*c));
   }
-  return MakeCmd(type::Char, Op::Extend, std::vector{std::move(v)});
+  return MakeCmd(type::Char, Op::Extend, base::vector<IR::Val>{std::move(v)});
 }
 
 Val Bytes(Val v) {
-  return MakeCmd(type::Char, Op::Bytes, std::vector{std::move(v)});
+  return MakeCmd(type::Char, Op::Bytes, base::vector<IR::Val>{std::move(v)});
 }
 
 Val Align(Val v) {
-  return MakeCmd(type::Char, Op::Align, std::vector{std::move(v)});
+  return MakeCmd(type::Char, Op::Align, base::vector<IR::Val>{std::move(v)});
 }
 
 Val Trunc(Val v) {
   if (i32 *n = std::get_if<i32>(&v.value)) {
     return Val::Char(static_cast<char>(*n));
   }
-  return MakeCmd(type::Char, Op::Trunc, std::vector{std::move(v)});
+  return MakeCmd(type::Char, Op::Trunc, base::vector<IR::Val>{std::move(v)});
 }
 
-Val MakeBlockSeq(const std::vector<Val> &blocks) {
+Val MakeBlockSeq(const base::vector<Val> &blocks) {
   BlockSequence seq;
   seq.seq_.reserve(blocks.size());
   for (const auto &val : blocks) {
@@ -94,7 +94,7 @@ Val MakeBlockSeq(const std::vector<Val> &blocks) {
   return IR::Val::BlockSeq(std::move(seq));
 }
 
-Val BlockSeq(std::vector<Val> blocks) {
+Val BlockSeq(base::vector<Val> blocks) {
   if (std::all_of(blocks.begin(), blocks.end(), [](const IR::Val &v) {
         return std::holds_alternative<IR::BlockSequence>(v.value);
       })) {
@@ -105,14 +105,14 @@ Val BlockSeq(std::vector<Val> blocks) {
 }
 
 Val Err(Val v) {
-  return MakeCmd(type::Code, Op::Err, std::vector{std::move(v)});
+  return MakeCmd(type::Code, Op::Err, base::vector<IR::Val>{std::move(v)});
 }
 
 Val Neg(Val v) {
   if (bool *b = std::get_if<bool>(&v.value)) { return Val::Bool(!*b); }
   if (i32 *n = std::get_if<i32>(&v.value)) { return Val::Int(-*n); }
   if (double *r = std::get_if<double>(&v.value)) { return Val::Real(-*r); }
-  return MakeCmd(v.type, Op::Neg, std::vector{std::move(v)});
+  return MakeCmd(v.type, Op::Neg, base::vector<IR::Val>{std::move(v)});
 }
 
 Val Cast(const type::Type *to, Val v, Context *ctx) {
@@ -141,13 +141,15 @@ Val Cast(const type::Type *to, Val v, Context *ctx) {
       }
     }
   }
-  return MakeCmd(to, Op::Cast, std::vector{std::move(v)});
+  return MakeCmd(to, Op::Cast, base::vector<IR::Val>{std::move(v)});
 }
 
-void Print(Val v) { MakeCmd(nullptr, Op::Print, std::vector{std::move(v)}); }
+void Print(Val v) {
+  MakeCmd(nullptr, Op::Print, base::vector<IR::Val>{std::move(v)});
+}
 void Free(Val v) {
   ASSERT(v.type, Is<type::Pointer>());
-  MakeCmd(nullptr, Op::Free, std::vector{std::move(v)});
+  MakeCmd(nullptr, Op::Free, base::vector<IR::Val>{std::move(v)});
 }
 
 Val CreateStruct() {
@@ -158,7 +160,8 @@ Val CreateStruct() {
 }
 
 IR::Val FinalizeStruct(Val v) {
-  return MakeCmd(type::Type_, Op::FinalizeStruct, std::vector{std::move(v)});
+  return MakeCmd(type::Type_, Op::FinalizeStruct,
+                 base::vector<IR::Val>{std::move(v)});
 }
 
 void InsertField(Val struct_type, std::string field_name, Val type,
@@ -179,16 +182,17 @@ Val Alloca(const type::Type *t) {
 
 Val VariantType(Val v) {
   return MakeCmd(type::Ptr(type::Type_), Op::VariantType,
-                 std::vector{std::move(v)});
+                 base::vector<IR::Val>{std::move(v)});
 }
 Val VariantValue(const type::Type *t, Val v) {
-  return MakeCmd(type::Ptr(t), Op::VariantValue, std::vector{std::move(v)});
+  return MakeCmd(type::Ptr(t), Op::VariantValue,
+                 base::vector<IR::Val>{std::move(v)});
 }
 
 Val Load(Val v) {
   ASSERT(v.type, Is<type::Pointer>());
   return MakeCmd(v.type->as<type::Pointer>().pointee, Op::Load,
-                 std::vector{std::move(v)});
+                 base::vector<IR::Val>{std::move(v)});
 }
 
 Val ArrayLength(Val v) {
@@ -197,7 +201,7 @@ Val ArrayLength(Val v) {
   ASSERT(ptee, Is<type::Array>());
   ASSERT(!ptee->as<type::Array>().fixed_length);
   return MakeCmd(type::Ptr(type::Int), Op::ArrayLength,
-                 std::vector{std::move(v)});
+                 base::vector<IR::Val>{std::move(v)});
 }
 
 Val ArrayData(Val v) {
@@ -207,18 +211,19 @@ Val ArrayData(Val v) {
   auto *array_type = &ptee->as<type::Array>();
   ASSERT(!array_type->fixed_length);
   return MakeCmd(type::Ptr(type::Ptr(array_type->data_type)), Op::ArrayData,
-                 std::vector{std::move(v)});
+                 base::vector<IR::Val>{std::move(v)});
 }
 
 void SetReturn(size_t r, Val v2) {
   // TODO ***maybe*** later optimize a return register
   MakeCmd(nullptr, Op::SetReturn,
-          std::vector{std::move(v2), IR::Func::Current->Return(r)});
+          base::vector<IR::Val>{std::move(v2), IR::Func::Current->Return(r)});
 }
 
 void Store(Val v1, Val v2) {
   ASSERT(v2.type, Is<type::Pointer>());
-  MakeCmd(nullptr, Op::Store, std::vector{std::move(v1), std::move(v2)});
+  MakeCmd(nullptr, Op::Store,
+          base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val PtrIncr(Val v1, Val v2) {
@@ -228,7 +233,7 @@ Val PtrIncr(Val v1, Val v2) {
     if (*n == 0) { return v1; }
   }
   return MakeCmd(v1.type, Op::PtrIncr,
-                 std::vector{std::move(v1), std::move(v2)});
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Ptr(Val v) {
@@ -236,36 +241,39 @@ Val Ptr(Val v) {
   if (const type::Type **t = std::get_if<const type::Type *>(&v.value)) {
     return Val::Type(type::Ptr(*t));
   }
-  return MakeCmd(type::Type_, Op::Ptr, std::vector{std::move(v)});
+  return MakeCmd(type::Type_, Op::Ptr, base::vector<IR::Val>{std::move(v)});
 }
 
 Val Xor(Val v1, Val v2) {
   if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? Neg(v2) : v2; }
   if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? Neg(v1) : v1; }
   if (FlagsVal *e1 = std::get_if<FlagsVal>(&v1.value),
-      *e2         = std::get_if<FlagsVal>(&v2.value);
+      *e2          = std::get_if<FlagsVal>(&v2.value);
       e1 != nullptr && e2 != nullptr) {
     return Val::Flags(&v1.type->as<type::Flags>(), e1->value ^ e2->value);
   }
-  return MakeCmd(v1.type, Op::Xor, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(v1.type, Op::Xor,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Or(Val v1, Val v2) {
   if (FlagsVal *e1 = std::get_if<FlagsVal>(&v1.value),
-      *e2         = std::get_if<FlagsVal>(&v2.value);
+      *e2          = std::get_if<FlagsVal>(&v2.value);
       e1 != nullptr && e2 != nullptr) {
     return Val::Flags(&v1.type->as<type::Flags>(), e1->value | e2->value);
   }
-  return MakeCmd(v1.type, Op::Or, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(v1.type, Op::Or,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val And(Val v1, Val v2) {
   if (FlagsVal *e1 = std::get_if<FlagsVal>(&v1.value),
-      *e2         = std::get_if<FlagsVal>(&v2.value);
+      *e2          = std::get_if<FlagsVal>(&v2.value);
       e1 != nullptr && e2 != nullptr) {
     return Val::Flags(&v1.type->as<type::Flags>(), e1->value & e2->value);
   }
-  return MakeCmd(v1.type, Op::And, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(v1.type, Op::And,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 #define CONSTANT_PROPOGATION(cpp_type, fn, result_type)                        \
@@ -293,64 +301,69 @@ Val Add(Val v1, Val v2) {
       cb1 != nullptr && cb2 != nullptr) {
     AST::CodeBlock block;
     // TODO is this std::get<Statements> call safe?
-    block.content_ = AST::Statements::Merge(
-        std::vector{std::get<AST::Statements>(std::move(*cb1).content_),
-                    std::get<AST::Statements>(std::move(*cb2).content_)});
+    block.content_ = AST::Statements::Merge(base::vector<AST::Statements>{
+        {std::get<AST::Statements>(std::move(*cb1).content_),
+         std::get<AST::Statements>(std::move(*cb2).content_)}});
     return Val::CodeBlock(std::move(block));
   }
 
-  return MakeCmd(v1.type, Op::Add, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(v1.type, Op::Add,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Sub(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::minus<i32>{}, Int);
   CONSTANT_PROPOGATION(double, std::minus<double>{}, Real);
   CONSTANT_PROPOGATION(char, std::minus<char>{}, Char);
-  return MakeCmd(v1.type, Op::Sub, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(v1.type, Op::Sub,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Mul(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::multiplies<i32>{}, Int);
   CONSTANT_PROPOGATION(double, std::multiplies<double>{}, Real);
-  return MakeCmd(v1.type, Op::Mul, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(v1.type, Op::Mul,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Div(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::divides<i32>{}, Int);
   CONSTANT_PROPOGATION(double, std::divides<double>{}, Real);
-  return MakeCmd(v1.type, Op::Div, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(v1.type, Op::Div,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Mod(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::modulus<i32>{}, Int);
   CONSTANT_PROPOGATION(double, std::fmod, Real);
-  return MakeCmd(v1.type, Op::Mod, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(v1.type, Op::Mod,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Arrow(Val v1, Val v2) {
   CONSTANT_PROPOGATION(
       const type::Type *,
       [](const type::Type *lhs, const type::Type *rhs) {
-        std::vector<const type::Type *> lhs_vec =
+        base::vector<const type::Type *> lhs_vec =
             (lhs->is<type::Tuple>()) ? lhs->as<type::Tuple>().entries_
-                                     : std::vector{lhs};
-        std::vector<const type::Type *> rhs_vec =
+                                     : base::vector<const type::Type *>{lhs};
+        base::vector<const type::Type *> rhs_vec =
             (rhs->is<type::Tuple>()) ? rhs->as<type::Tuple>().entries_
-                                     : std::vector{rhs};
+                                     : base::vector<const type::Type *>{rhs};
         return type::Func(std::move(lhs_vec), std::move(rhs_vec));
       },
       Type);
   return MakeCmd(type::Type_, Op::Arrow,
-                 std::vector{std::move(v1), std::move(v2)});
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
-Val Tup(std::vector<Val> args) {
+Val Tup(base::vector<Val> args) {
   Cmd cmd(type::Type_, Op::Tup, std::move(args));
   Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();
 }
 
-Val Variant(std::vector<Val> args) {
+Val Variant(base::vector<Val> args) {
   Cmd cmd(type::Type_, Op::Variant, std::move(args));
   Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();
@@ -370,7 +383,7 @@ Val Array(Val v1, Val v2) {
   }
 
   return MakeCmd(type::Type_, Op::Array,
-                 std::vector{std::move(v1), std::move(v2)});
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Index(Val v1, Val v2) {
@@ -394,7 +407,8 @@ Val Lt(Val v1, Val v2) {
                                 ((lhs.value | rhs.value) == rhs.value);
                        },
                        Bool);
-  return MakeCmd(type::Bool, Op::Lt, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(type::Bool, Op::Lt,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Le(Val v1, Val v2) {
@@ -405,7 +419,8 @@ Val Le(Val v1, Val v2) {
                          return (lhs.value | rhs.value) == rhs.value;
                        },
                        Bool);
-  return MakeCmd(type::Bool, Op::Le, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(type::Bool, Op::Le,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Gt(Val v1, Val v2) {
@@ -417,7 +432,8 @@ Val Gt(Val v1, Val v2) {
                                 ((lhs.value | rhs.value) == lhs.value);
                        },
                        Bool);
-  return MakeCmd(type::Bool, Op::Gt, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(type::Bool, Op::Gt,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Ge(Val v1, Val v2) {
@@ -428,12 +444,13 @@ Val Ge(Val v1, Val v2) {
                          return (lhs.value | rhs.value) == rhs.value;
                        },
                        Bool);
-  return MakeCmd(type::Bool, Op::Ge, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(type::Bool, Op::Ge,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
-Val BlockSeqContains(Val v, AST::BlockLiteral* lit) {
+Val BlockSeqContains(Val v, AST::BlockLiteral *lit) {
   return MakeCmd(type::Bool, Op::BlockSeqContains,
-                 std::vector{std::move(v), IR::Val::Block(lit)});
+                 base::vector<IR::Val>{std::move(v), IR::Val::Block(lit)});
 }
 
 Val Eq(Val v1, Val v2) {
@@ -451,7 +468,8 @@ Val Eq(Val v1, Val v2) {
   CONSTANT_PROPOGATION(
       FlagsVal,
       [](FlagsVal lhs, FlagsVal rhs) { return lhs.value == rhs.value; }, Bool);
-  return MakeCmd(type::Bool, Op::Eq, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(type::Bool, Op::Eq,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val Ne(Val v1, Val v2) {
@@ -467,7 +485,8 @@ Val Ne(Val v1, Val v2) {
   CONSTANT_PROPOGATION(
       FlagsVal,
       [](FlagsVal lhs, FlagsVal rhs) { return lhs.value != rhs.value; }, Bool);
-  return MakeCmd(type::Bool, Op::Ne, std::vector{std::move(v1), std::move(v2)});
+  return MakeCmd(type::Bool, Op::Ne,
+                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 #undef CONSTANT_PROPOGATION
 
@@ -482,7 +501,7 @@ CmdIndex Phi(const type::Type *t) {
   return cmd_index;
 }
 
-Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
+Val Call(Val fn, base::vector<Val> vals, base::vector<Val> result_locs) {
   ASSERT(fn.type, Is<type::Function>());
   vals.insert(vals.end(), std::make_move_iterator(result_locs.begin()),
               std::make_move_iterator(result_locs.end()));
@@ -510,56 +529,56 @@ void Cmd::dump(size_t indent) const {
   std::cerr << std::string(indent, ' ');
   if (type != nullptr) { std::cerr << reg().to_string() << " = "; }
   switch (op_code_) {
-  case Op::Malloc: std::cerr << "malloc"; break;
-  case Op::Free: std::cerr << "free"; break;
-  case Op::Bytes: std::cerr << "bytes"; break;
-  case Op::Align: std::cerr << "align"; break;
-  case Op::Extend: std::cerr << "extend"; break;
-  case Op::Trunc: std::cerr << "trunc"; break;
-  case Op::Neg: std::cerr << "neg"; break;
-  case Op::Add: std::cerr << "add"; break;
-  case Op::Sub: std::cerr << "sub"; break;
-  case Op::Mul: std::cerr << "mul"; break;
-  case Op::Div: std::cerr << "div"; break;
-  case Op::Mod: std::cerr << "mod"; break;
-  case Op::Lt: std::cerr << "lt"; break;
-  case Op::Le: std::cerr << "le"; break;
-  case Op::Eq: std::cerr << "eq"; break;
-  case Op::Ne: std::cerr << "ne"; break;
-  case Op::Ge: std::cerr << "ge"; break;
-  case Op::Gt: std::cerr << "gt"; break;
-  case Op::Xor: std::cerr << "xor"; break;
-  case Op::Or: std::cerr << "or"; break;
-  case Op::And: std::cerr << "and"; break;
-  case Op::Print: std::cerr << "print"; break;
-  case Op::CondJump: std::cerr << "cond"; break;
-  case Op::UncondJump: std::cerr << "uncond"; break;
-  case Op::ReturnJump: std::cerr << "return"; break;
-  case Op::CreateStruct: std::cerr << "create-struct"; break;
-  case Op::InsertField: std::cerr << "insert-field"; break;
-  case Op::FinalizeStruct: std::cerr << "finalize-struct"; break;
-  case Op::Load: std::cerr << "load"; break;
-  case Op::Store: std::cerr << "store"; break;
-  case Op::SetReturn: std::cerr << "set-ret"; break;
-  case Op::Variant: std::cerr << "variant"; break;
-  case Op::Tup: std::cerr << "tup"; break;
-  case Op::ArrayLength: std::cerr << "array-length"; break;
-  case Op::ArrayData: std::cerr << "array-data"; break;
-  case Op::PtrIncr: std::cerr << "ptr-incr"; break;
-  case Op::Ptr: std::cerr << "ptr"; break;
-  case Op::Phi: std::cerr << "phi"; break;
-  case Op::Field: std::cerr << "field"; break;
-  case Op::Call: std::cerr << "call"; break;
-  case Op::Arrow: std::cerr << "arrow"; break;
-  case Op::Array: std::cerr << "array-type"; break;
-  case Op::Alloca: std::cerr << "alloca"; break;
-  case Op::Contextualize: std::cerr << "contextualize"; break;
-  case Op::VariantType: std::cerr << "variant-type"; break;
-  case Op::VariantValue: std::cerr << "variant-value"; break;
-  case Op::Cast: std::cerr << "cast"; break;
-  case Op::Err: std::cerr << "err"; break;
-  case Op::BlockSeq: std::cerr << "block-seq"; break;
-  case Op::BlockSeqContains: std::cerr << "block-seq-contains"; break;
+    case Op::Malloc: std::cerr << "malloc"; break;
+    case Op::Free: std::cerr << "free"; break;
+    case Op::Bytes: std::cerr << "bytes"; break;
+    case Op::Align: std::cerr << "align"; break;
+    case Op::Extend: std::cerr << "extend"; break;
+    case Op::Trunc: std::cerr << "trunc"; break;
+    case Op::Neg: std::cerr << "neg"; break;
+    case Op::Add: std::cerr << "add"; break;
+    case Op::Sub: std::cerr << "sub"; break;
+    case Op::Mul: std::cerr << "mul"; break;
+    case Op::Div: std::cerr << "div"; break;
+    case Op::Mod: std::cerr << "mod"; break;
+    case Op::Lt: std::cerr << "lt"; break;
+    case Op::Le: std::cerr << "le"; break;
+    case Op::Eq: std::cerr << "eq"; break;
+    case Op::Ne: std::cerr << "ne"; break;
+    case Op::Ge: std::cerr << "ge"; break;
+    case Op::Gt: std::cerr << "gt"; break;
+    case Op::Xor: std::cerr << "xor"; break;
+    case Op::Or: std::cerr << "or"; break;
+    case Op::And: std::cerr << "and"; break;
+    case Op::Print: std::cerr << "print"; break;
+    case Op::CondJump: std::cerr << "cond"; break;
+    case Op::UncondJump: std::cerr << "uncond"; break;
+    case Op::ReturnJump: std::cerr << "return"; break;
+    case Op::CreateStruct: std::cerr << "create-struct"; break;
+    case Op::InsertField: std::cerr << "insert-field"; break;
+    case Op::FinalizeStruct: std::cerr << "finalize-struct"; break;
+    case Op::Load: std::cerr << "load"; break;
+    case Op::Store: std::cerr << "store"; break;
+    case Op::SetReturn: std::cerr << "set-ret"; break;
+    case Op::Variant: std::cerr << "variant"; break;
+    case Op::Tup: std::cerr << "tup"; break;
+    case Op::ArrayLength: std::cerr << "array-length"; break;
+    case Op::ArrayData: std::cerr << "array-data"; break;
+    case Op::PtrIncr: std::cerr << "ptr-incr"; break;
+    case Op::Ptr: std::cerr << "ptr"; break;
+    case Op::Phi: std::cerr << "phi"; break;
+    case Op::Field: std::cerr << "field"; break;
+    case Op::Call: std::cerr << "call"; break;
+    case Op::Arrow: std::cerr << "arrow"; break;
+    case Op::Array: std::cerr << "array-type"; break;
+    case Op::Alloca: std::cerr << "alloca"; break;
+    case Op::Contextualize: std::cerr << "contextualize"; break;
+    case Op::VariantType: std::cerr << "variant-type"; break;
+    case Op::VariantValue: std::cerr << "variant-value"; break;
+    case Op::Cast: std::cerr << "cast"; break;
+    case Op::Err: std::cerr << "err"; break;
+    case Op::BlockSeq: std::cerr << "block-seq"; break;
+    case Op::BlockSeqContains: std::cerr << "block-seq-contains"; break;
   }
 
   if (args.empty()) {
@@ -603,10 +622,10 @@ void Func::dump() const {
 }
 
 // TODO this may not be necessary anymore? I can just make the phi later?
-void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
+void Func::SetArgs(CmdIndex cmd_index, base::vector<Val> args) {
   auto &cmd = Command(cmd_index);
   ASSERT(cmd.op_code_ == Op::Phi);
   cmd.args = std::move(args);
 }
 
-} // namespace IR
+}  // namespace IR

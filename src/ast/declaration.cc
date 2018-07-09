@@ -43,13 +43,13 @@ bool Inferrable(const type::Type *t) {
 }
 // TODO: This algorithm is sufficiently complicated you should combine it
 // with proof of correctness and good explanation of what it does.
-bool CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
-                                 const std::vector<ArgumentMetaData> &data2) {
+bool CommonAmbiguousFunctionCall(const base::vector<ArgumentMetaData> &data1,
+                                 const base::vector<ArgumentMetaData> &data2) {
   // TODO Don't need to reprocess this each time
-  std::unordered_map<std::string, size_t> index2;
+  base::unordered_map<std::string, size_t> index2;
   for (size_t i = 0; i < data2.size(); ++i) { index2[data2[i].name] = i; }
 
-  std::vector<int> delta_fwd_matches(std::max(data1.size(), data2.size()), 0);
+  base::vector<int> delta_fwd_matches(std::max(data1.size(), data2.size()), 0);
   for (size_t i = 0; i < data1.size(); ++i) {
     auto iter = index2.find(data1[i].name);
     if (iter == index2.end()) { continue; }
@@ -58,7 +58,7 @@ bool CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
     delta_fwd_matches[std::max(i, j)]--;
   }
 
-  std::vector<size_t> indices = {0};
+  base::vector<size_t> indices = {0};
   // One useful invariant here is that accumulating delta_fwd_matches always
   // yields a non-negative integer. This is because any subtraction that
   // occurs is always preceeded by an addition.
@@ -129,9 +129,9 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
   // information.
   // TODO check const-decl or not.
 
-  auto ExtractMetaData = [](auto &eval) -> std::vector<ArgumentMetaData> {
+  auto ExtractMetaData = [](auto &eval) -> base::vector<ArgumentMetaData> {
     using eval_t = std::decay_t<decltype(eval)>;
-    std::vector<ArgumentMetaData> metadata;
+    base::vector<ArgumentMetaData> metadata;
 
     if constexpr (std::is_same_v<eval_t, IR::Func *>) {
       metadata.reserve(eval->args_.size());
@@ -304,7 +304,7 @@ void Declaration::VerifyType(Context *ctx) {
     }
   }
   identifier->VerifyType(ctx);
-  std::vector<Declaration *> decls_to_check;
+  base::vector<Declaration *> decls_to_check;
   {
     auto[good_decls_to_check, error_decls_to_check] =
         scope_->AllDeclsWithId(identifier->token, ctx);
@@ -359,7 +359,7 @@ void Declaration::Validate(Context *ctx) {
   if (init_val) { init_val->Validate(ctx); }
 }
 
-void Declaration::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void Declaration::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   identifier->SaveReferences(scope, args);
   if (type_expr) { type_expr->SaveReferences(scope, args); }
   if (init_val) { init_val->SaveReferences(scope, args); }
@@ -367,7 +367,7 @@ void Declaration::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void Declaration::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   identifier->contextualize(correspondant->as<Declaration>().identifier.get(),
                             replacements);
 
@@ -381,7 +381,7 @@ void Declaration::contextualize(
   }
 }
 
-void Declaration::ExtractReturns(std::vector<const Expression *> *rets) const {
+void Declaration::ExtractReturns(base::vector<const Expression *> *rets) const {
   identifier->ExtractReturns(rets);
   if (type_expr) { type_expr->ExtractReturns(rets); }
   if (init_val) { init_val->ExtractReturns(rets); }
@@ -402,7 +402,7 @@ void Declaration::CloneTo(Declaration *result) const {
   result->init_val = init_val ? base::wrap_unique(init_val->Clone()) : nullptr;
 }
 
-std::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.

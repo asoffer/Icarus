@@ -37,7 +37,7 @@ struct ExecContext {
 
   struct Frame {
     Frame() = delete;
-    Frame(Func *fn, const std::vector<Val> &arguments);
+    Frame(Func *fn, const base::vector<Val> &arguments);
 
     void MoveTo(BlockIndex block_index) {
       ASSERT(block_index.value >= 0);
@@ -49,7 +49,7 @@ struct ExecContext {
     BlockIndex current_;
     BlockIndex prev_;
 
-    std::vector<Val> regs_ = {};
+    base::vector<Val> regs_ = {};
   };
 
   BasicBlock &current_block();

@@ -1,9 +1,9 @@
 #include "all.h"
 
-#include <map>
-#include <unordered_map>
+#include "base/container/unordered_map.h"
 
 #include "architecture.h"
+#include "base/container/map.h"
 #include "base/guarded.h"
 #include "context.h"
 #include "ir/func.h"
@@ -15,32 +15,32 @@ namespace type {
 #include "../type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
-using InitFnType = void (*)(const Type *, const Type *, IR::Val,
-                            IR::Val, Context* ctx);
+using InitFnType = void (*)(const Type *, const Type *, IR::Val, IR::Val,
+                            Context *ctx);
 
 template <InitFnType InitFn>
 static IR::Val ArrayInitializationWith(const Array *from_type,
-                                       const Array *to_type, Context* ctx) {
-  static base::guarded<std::unordered_map<
-      const Array *, std::unordered_map<const Array *, IR::Func *>>>
+                                       const Array *to_type, Context *ctx) {
+  static base::guarded<base::unordered_map<
+      const Array *, base::unordered_map<const Array *, IR::Func *>>>
       init_fns;
 
-  auto handle = init_fns.lock();
+  auto handle         = init_fns.lock();
   auto[iter, success] = (*handle)[to_type].emplace(from_type, nullptr);
   if (success) {
-    std::vector<std::pair<std::string, AST::Expression *>> args = {
+    base::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
-    auto *fn = ctx->mod_->AddFunc(Func({from_type, Ptr(to_type)}, {}),
+    auto *fn     = ctx->mod_->AddFunc(Func({from_type, Ptr(to_type)}, {}),
                                   std::move(args));
     iter->second = fn;
 
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      auto from_arg      = fn->Argument(0);
-      auto to_arg        = fn->Argument(1);
-      auto phi_block     = IR::Func::Current->AddBlock();
-      auto body_block    = IR::Func::Current->AddBlock();
-      auto exit_block    = IR::Func::Current->AddBlock();
+      auto from_arg           = fn->Argument(0);
+      auto to_arg             = fn->Argument(1);
+      auto phi_block          = IR::Func::Current->AddBlock();
+      auto body_block         = IR::Func::Current->AddBlock();
+      auto exit_block         = IR::Func::Current->AddBlock();
 
       auto from_len = from_type->fixed_length
                           ? IR::Val::Int(static_cast<i32>(from_type->len))
@@ -62,10 +62,10 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
       IR::UncondJump(phi_block);
 
       IR::BasicBlock::Current = phi_block;
-      auto from_phi      = IR::Phi(Ptr(from_type->data_type));
-      auto from_phi_reg  = IR::Func::Current->Command(from_phi).reg();
-      auto to_phi        = IR::Phi(Ptr(to_type->data_type));
-      auto to_phi_reg    = IR::Func::Current->Command(to_phi).reg();
+      auto from_phi           = IR::Phi(Ptr(from_type->data_type));
+      auto from_phi_reg       = IR::Func::Current->Command(from_phi).reg();
+      auto to_phi             = IR::Phi(Ptr(to_type->data_type));
+      auto to_phi_reg         = IR::Func::Current->Command(to_phi).reg();
       IR::CondJump(IR::Ne(from_phi_reg, from_end), body_block, exit_block);
 
       IR::BasicBlock::Current = body_block;
@@ -90,12 +90,13 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
 template <InitFnType InitFn>
 static IR::Val StructInitializationWith(const Struct *struct_type,
                                         Context *ctx) {
-  static base::guarded<std::unordered_map<const Struct *, IR::Func *>> struct_init_fns;
-  auto handle = struct_init_fns.lock();
+  static base::guarded<base::unordered_map<const Struct *, IR::Func *>>
+      struct_init_fns;
+  auto handle         = struct_init_fns.lock();
   auto[iter, success] = handle->emplace(struct_type, nullptr);
 
   if (success) {
-    std::vector<std::pair<std::string, AST::Expression *>> args = {
+    base::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
     auto *fn = iter->second = ctx->mod_->AddFunc(
         Func({Ptr(struct_type), Ptr(struct_type)}, {}), std::move(args));
@@ -114,7 +115,7 @@ static IR::Val StructInitializationWith(const Struct *struct_type,
 }
 
 void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var, Context* ctx) {
+                  IR::Val to_var, Context *ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>() || to_type->is<Function>()) {
     ASSERT(to_type == from_type);
@@ -185,8 +186,8 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
 // don't match you can early exit.
 const Type *Meet(const Type *lhs, const Type *rhs) {
   if (lhs == rhs) { return lhs; }
-  if (lhs == Err) { return rhs; } // Ignore errors
-  if (rhs == Err) { return lhs; } // Ignore errors
+  if (lhs == Err) { return rhs; }  // Ignore errors
+  if (rhs == Err) { return lhs; }  // Ignore errors
   if (lhs == NullPtr || rhs == NullPtr) {
     // TODO It's not obvious to me that this is what I want to do.
     return nullptr;
@@ -215,7 +216,7 @@ const Type *Meet(const Type *lhs, const Type *rhs) {
     return Arr(rhs->as<Array>().data_type, 0);
   } else if (lhs->is<Variant>()) {
     // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
-    std::vector<const Type *> results;
+    base::vector<const Type *> results;
     if (rhs->is<Variant>()) {
       for (const Type *l_type : lhs->as<Variant>().variants_) {
         for (const Type *r_type : rhs->as<Variant>().variants_) {
@@ -229,10 +230,10 @@ const Type *Meet(const Type *lhs, const Type *rhs) {
       }
     }
     return results.empty() ? nullptr : Var(std::move(results));
-  } else if (rhs->is<Variant>()) { // lhs is not a variant
+  } else if (rhs->is<Variant>()) {  // lhs is not a variant
     // TODO faster lookups? maybe not represented as a vector. at least give a
     // better interface.
-    std::vector<const Type *> results;
+    base::vector<const Type *> results;
     for (const Type *t : rhs->as<Variant>().variants_) {
       if (const Type *result = Meet(t, lhs)) { results.push_back(result); }
     }
@@ -244,8 +245,8 @@ const Type *Meet(const Type *lhs, const Type *rhs) {
 
 const Type *Join(const Type *lhs, const Type *rhs) {
   if (lhs == rhs) { return lhs; }
-  if (lhs == Err) { return rhs; } // Ignore errors
-  if (rhs == Err) { return lhs; } // Ignore errors
+  if (lhs == Err) { return rhs; }  // Ignore errors
+  if (rhs == Err) { return lhs; }  // Ignore errors
   if ((lhs == Block && rhs == OptBlock) || (lhs == OptBlock && rhs == Block)) {
     return Block;
   }
@@ -273,7 +274,7 @@ const Type *Join(const Type *lhs, const Type *rhs) {
              !rhs->as<Array>().fixed_length) {
     return rhs;
   } else if (lhs->is<Variant>()) {
-    std::vector<const Type *> rhs_types;
+    base::vector<const Type *> rhs_types;
     if (rhs->is<Variant>()) {
       rhs_types = rhs->as<Variant>().variants_;
     } else {
@@ -283,7 +284,7 @@ const Type *Join(const Type *lhs, const Type *rhs) {
     auto vars = lhs->as<Variant>().variants_;
     vars.insert(vars.end(), rhs_types.begin(), rhs_types.end());
     return Var(std::move(vars));
-  } else if (rhs->is<Variant>()) { // lhs is not a variant
+  } else if (rhs->is<Variant>()) {  // lhs is not a variant
     // TODO faster lookups? maybe not represented as a vector. at least give
     // a better interface.
     for (const Type *v : rhs->as<Variant>().variants_) {
@@ -295,7 +296,7 @@ const Type *Join(const Type *lhs, const Type *rhs) {
 }
 
 static base::guarded<
-    std::unordered_map<const Type *, std::unordered_map<size_t, Array>>>
+    base::unordered_map<const Type *, base::unordered_map<size_t, Array>>>
     fixed_arrays_;
 const Array *Arr(const Type *t, size_t len) {
   auto handle = fixed_arrays_.lock();
@@ -304,7 +305,7 @@ const Array *Arr(const Type *t, size_t len) {
                        std::forward_as_tuple(t, len))
               .first->second;
 }
-static base::guarded<std::unordered_map<const Type *, Array>> arrays_;
+static base::guarded<base::unordered_map<const Type *, Array>> arrays_;
 const Array *Arr(const Type *t) {
   return &arrays_.lock()
               ->emplace(std::piecewise_construct, std::forward_as_tuple(t),
@@ -312,8 +313,8 @@ const Array *Arr(const Type *t) {
               .first->second;
 }
 
-static base::guarded<std::map<std::vector<const Type *>, Variant>> variants_;
-const Type *Var(std::vector<const Type *> variants) {
+static base::guarded<base::map<base::vector<const Type *>, Variant>> variants_;
+const Type *Var(base::vector<const Type *> variants) {
   if (variants.empty()) { return type::Void(); }
   if (variants.size() == 1) { return variants[0]; }
 
@@ -346,16 +347,17 @@ const Type *Var(std::vector<const Type *> variants) {
               .first->second;
 }
 
-static base::guarded<std::unordered_map<const Type *, const Pointer>> pointers_;
+static base::guarded<base::unordered_map<const Type *, const Pointer>>
+    pointers_;
 const Pointer *Ptr(const Type *t) {
   return &pointers_.lock()->emplace(t, Pointer(t)).first->second;
 }
 
-static base::guarded<std::map<std::vector<const Type *>,
-                              std::map<std::vector<const Type *>, Function>>>
+static base::guarded<base::map<base::vector<const Type *>,
+                               base::map<base::vector<const Type *>, Function>>>
     funcs_;
-const Function *Func(std::vector<const Type *> in,
-                     std::vector<const Type *> out) {
+const Function *Func(base::vector<const Type *> in,
+                     base::vector<const Type *> out) {
   // TODO if void is unit in some way we shouldn't do this.
   auto f = Function(in, out);
   return &(*funcs_.lock())[std::move(in)]
@@ -363,13 +365,13 @@ const Function *Func(std::vector<const Type *> in,
               .first->second;
 }
 
-static base::guarded<std::map<std::vector<const Type *>, const Scope>> scopes_;
-const Scope *Scp(const std::vector<const Type *> &types) {
+static base::guarded<base::map<base::vector<const Type *>, const Scope>> scopes_;
+const Scope *Scp(const base::vector<const Type *> &types) {
   return &scopes_.lock()->emplace(types, Scope(types)).first->second;
 }
 
-static base::guarded<std::map<std::vector<const Type *>, const Tuple>> tups_;
-const Type *Tup(std::vector<const Type *> entries) {
+static base::guarded<base::map<base::vector<const Type *>, const Tuple>> tups_;
+const Type *Tup(base::vector<const Type *> entries) {
   if (entries.size() == 1) { return entries[0]; }
   Tuple tup(entries);
   auto[iter, success] =
@@ -387,9 +389,9 @@ bool CanCastImplicitly(const type::Type *from, const type::Type *to) {
   return Join(from, to) == to;
 }
 
-static base::guarded<std::unordered_map<size_t, CharBuffer>> char_bufs_;
+static base::guarded<base::unordered_map<size_t, CharBuffer>> char_bufs_;
 const CharBuffer *CharBuf(size_t len) {
   auto[iter, success] = char_bufs_.lock()->emplace(len, CharBuffer(len));
   return &iter->second;
 }
-} // namespace type
+}  // namespace type

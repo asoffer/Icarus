@@ -15,7 +15,7 @@ struct MatchDeclaration : public Declaration {
   void Validate(Context *) override;
 
   MatchDeclaration *Clone() const override;
-  std::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
 };
 }  // namespace AST
 

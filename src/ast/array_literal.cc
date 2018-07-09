@@ -67,20 +67,20 @@ void ArrayLiteral::Validate(Context *ctx) {
   for (auto &elem : elems_) { elem->Validate(ctx); }
 }
 
-void ArrayLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
+void ArrayLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto &elem : elems_) { elem->SaveReferences(scope, args); }
 }
 
 void ArrayLiteral::contextualize(
     const Node *correspondant,
-    const std::unordered_map<const Expression *, IR::Val> &replacements) {
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < elems_.size(); ++i) {
     elems_[i]->contextualize(correspondant->as<ArrayLiteral>().elems_[i].get(),
                              replacements);
   }
 }
 
-void ArrayLiteral::ExtractReturns(std::vector<const Expression *> *rets) const {
+void ArrayLiteral::ExtractReturns(base::vector<const Expression *> *rets) const {
   for (auto &el : elems_) { el->ExtractReturns(rets); }
 }
 
@@ -94,7 +94,7 @@ ArrayLiteral *ArrayLiteral::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {
+base::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
   auto array_val  = IR::Alloca(type);
   auto *data_type = type->as<type::Array>().data_type;
@@ -106,5 +106,5 @@ std::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {
   return {array_val};
 }
 
-std::vector<IR::Val> AST::ArrayLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+base::vector<IR::Val> AST::ArrayLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 }  // namespace AST

@@ -57,11 +57,4 @@ template <typename... Args> void LogArgs(Args &&... args) {
       (base::Logger{} << ... << std::forward<Args>(args));
 }
 } // namespace debug
-
-#ifdef DBG
-#define AT(access) .at(access)
-#else
-#define AT(access) [access]
-#endif
-
 #endif // ICARUS_BASE_DEBUG_H

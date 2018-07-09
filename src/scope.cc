@@ -15,9 +15,9 @@ void Scope::InsertDecl(AST::Declaration *decl) {
   }
 }
 
-std::pair<std::vector<AST::Declaration *>, std::vector<AST::Declaration *>>
+std::pair<base::vector<AST::Declaration *>, base::vector<AST::Declaration *>>
 Scope::AllDeclsWithId(const std::string &id, Context *ctx) {
-  std::vector<AST::Declaration *> matching_decls, matching_error_decls;
+  base::vector<AST::Declaration *> matching_decls, matching_error_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {
     auto iter = scope_ptr->decls_.find(id);

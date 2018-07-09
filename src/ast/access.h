@@ -14,20 +14,20 @@ struct Access : public Expression {
   void assign_scope(Scope *scope) override;
   void VerifyType(Context *) override;
   void Validate(Context *) override;
-  void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override {
+  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override {
     operand->SaveReferences(scope, args);
   }
 
-  void ExtractReturns(std::vector<const Expression *> *rets) const override {
+  void ExtractReturns(base::vector<const Expression *> *rets) const override {
     operand->ExtractReturns(rets);
   }
 
   void contextualize(
       const Node *correspondant,
-      const std::unordered_map<const Expression *, IR::Val> &) override;
+      const base::unordered_map<const Expression *, IR::Val> &) override;
 
-  std::vector<IR::Val> EmitIR(Context *) override;
-  std::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitLVal(Context *) override;
 
   Access *Clone() const override;
   std::string member_name;

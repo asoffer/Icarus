@@ -15,18 +15,18 @@ struct Import : public Expression {
   void assign_scope(Scope *scope) override;
   void VerifyType(Context *) override;
   void Validate(Context *) override {}
-  void SaveReferences(Scope *scope, std::vector<IR::Val> *args) override;
+  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
 
   // TODO what if the operand does a result/return thing in a scope? This feels
   // like it should be disallowed but maybe I need this to catch the error!
-  void ExtractReturns(std::vector<const Expression *> *) const override {}
+  void ExtractReturns(base::vector<const Expression *> *) const override {}
   void contextualize(
       const Node *correspondant,
-      const std::unordered_map<const Expression *, IR::Val> &) override;
+      const base::unordered_map<const Expression *, IR::Val> &) override;
   Import *Clone() const override;
 
-  std::vector<IR::Val> EmitIR(Context *) override;
-  std::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Val> EmitLVal(Context *) override;
 
   // TODO optimization: if the operand_ is a string literal, schedule it
   // immediately.

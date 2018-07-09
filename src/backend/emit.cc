@@ -2,8 +2,8 @@
 #include "backend/emit.h"
 
 #include <string>
-#include <unordered_map>
-#include <vector>
+#include "base/container/vector.h"
+#include "base/container/unordered_map.h"
 
 #include "architecture.h"
 #include "ast/function_literal.h"
@@ -20,9 +20,12 @@
 // module?)
 static llvm::Value *StringConstant(llvm::IRBuilder<> *builder,
                                    std::string_view str) {
-  static std::unordered_map<std::string, llvm::Value *> global_strs;
+  static base::unordered_map<std::string, llvm::Value *> global_strs;
   auto &result = global_strs[std::string(str)];
-  if (!result) { result = builder->CreateGlobalStringPtr(llvm::StringRef{str.data(), str.size()}); }
+  if (!result) {
+    result =
+        builder->CreateGlobalStringPtr(llvm::StringRef{str.data(), str.size()});
+  }
   return result;
 }
 
@@ -34,9 +37,9 @@ struct LlvmData {
   llvm::Function *fn;
   llvm::Module *module;
   llvm::IRBuilder<> *builder;
-  std::unordered_map<IR::Register, llvm::Value *> regs;
-  std::vector<llvm::BasicBlock *> blocks;
-  std::vector<llvm::Value *> rets;
+  base::unordered_map<IR::Register, llvm::Value *> regs;
+  base::vector<llvm::BasicBlock *> blocks;
+  base::vector<llvm::Value *> rets;
 };
 }  // namespace
 
@@ -50,7 +53,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             }
 
             // TODO still need to be sure these are read in the correct order
-            return llvm_data->regs AT(reg);
+            return llvm_data->regs.at(reg);
           },
           [&](IR::Addr addr) -> llvm::Value * {
             switch (addr.kind) {
@@ -142,15 +145,15 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
     case IR::Op::Load:
       return llvm_data->builder->CreateLoad(
           EmitValue(num_args, llvm_data, cmd.args[0]));
-#define ARITHMETIC_CASE(op, llvm_float, llvm_int)            \
-  case IR::Op::op: {                                         \
-    auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]); \
-    auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]); \
-    if (cmd.type == type::Real) {                            \
-      return llvm_data->builder->llvm_float(lhs, rhs);       \
-    } else {                                                 \
-      return llvm_data->builder->llvm_int(lhs, rhs);         \
-    }                                                        \
+#define ARITHMETIC_CASE(op, llvm_float, llvm_int)                              \
+  case IR::Op::op: {                                                           \
+    auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);                   \
+    auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);                   \
+    if (cmd.type == type::Real) {                                              \
+      return llvm_data->builder->llvm_float(lhs, rhs);                         \
+    } else {                                                                   \
+      return llvm_data->builder->llvm_int(lhs, rhs);                           \
+    }                                                                          \
   } break
       ARITHMETIC_CASE(Add, CreateFAdd, CreateAdd);
       ARITHMETIC_CASE(Sub, CreateFSub, CreateSub);
@@ -192,9 +195,9 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
           llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[1].value).value],
           llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[2].value).value]);
     case IR::Op::ReturnJump:
-      if (num_rets == 1 && !fn_type->output AT(0)->is_big()) {
+      if (num_rets == 1 && !fn_type->output.at(0)->is_big()) {
         llvm_data->builder->CreateRet(
-            llvm_data->builder->CreateLoad(llvm_data->rets AT(0)));
+            llvm_data->builder->CreateLoad(llvm_data->rets.at(0)));
       } else {
         llvm_data->builder->CreateRetVoid();
       }
@@ -266,8 +269,9 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       return llvm_data->builder->CreateCall(
           malloc_fn,
           {llvm::ConstantInt::get(
-              ctx, llvm::APInt(64, target_architecture.bytes(
-                                       cmd.type->as<type::Pointer>().pointee),
+              ctx, llvm::APInt(64,
+                               target_architecture.bytes(
+                                   cmd.type->as<type::Pointer>().pointee),
                                false))});
     } break;
     case IR::Op::Free: {
@@ -280,7 +284,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
           free_fn, {EmitValue(num_args, llvm_data, cmd.args[0])});
     } break;
     case IR::Op::Call: {
-      std::vector<llvm::Value *> values;
+      base::vector<llvm::Value *> values;
       values.reserve(cmd.args.size());
       for (const auto &arg : cmd.args) {
         values.push_back(EmitValue(num_args, llvm_data, arg));
@@ -409,7 +413,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       return llvm_data->builder->CreateStore(
           EmitValue(num_args, llvm_data, cmd.args[1]),
           EmitValue(num_args, llvm_data, cmd.args[0]));
-    case IR::Op::Cast:{
+    case IR::Op::Cast: {
       if (cmd.args[0].type == cmd.type) {
         return EmitValue(num_args, llvm_data, cmd.args[0]);
       } else if (cmd.args[0].type == type::Int && cmd.type == type::Real) {
@@ -448,7 +452,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
   UNREACHABLE();
 }
 
-void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
+void EmitAll(const base::vector<std::unique_ptr<IR::Func>> &fns,
              llvm::Module *module) {
   auto &ctx = module->getContext();
   llvm::IRBuilder<> builder(ctx);
@@ -483,8 +487,8 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
 
     for (size_t i = 0; i < fn->blocks_.size(); ++i) {
       builder.SetInsertPoint(llvm_data.blocks[i]);
-      for (const auto &cmd : fn->blocks_ AT(i).cmds_) {
-        auto cmd_result = EmitCmd(fn->type_, &llvm_data, cmd);
+      for (const auto &cmd : fn->blocks_.at(i).cmds_) {
+        auto cmd_result            = EmitCmd(fn->type_, &llvm_data, cmd);
         llvm_data.regs[cmd.result] = cmd_result;
         if (cmd_result == nullptr) { break; }
       }
@@ -506,4 +510,4 @@ void EmitAll(const std::vector<std::unique_ptr<IR::Func>> &fns,
 }
 
 }  // namespace backend
-#endif // ICARUS_USE_LLVM
+#endif  // ICARUS_USE_LLVM

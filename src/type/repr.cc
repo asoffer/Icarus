@@ -12,7 +12,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
     if (!repr_func_) {
       repr_func_ = ctx->mod_->AddFunc(
           Func({this}, {}),
-          std::vector<std::pair<std::string, AST::Expression *>>{
+          base::vector<std::pair<std::string, AST::Expression *>>{
               {"arg", nullptr}});
 
       CURRENT_FUNC(repr_func_) {
@@ -42,7 +42,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
       }
     }
 
-    IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
+    IR::Call(IR::Val::Func(repr_func_), base::vector<IR::Val>{val}, {});
   } break;
 
   case PrimType::Bool:
@@ -66,7 +66,7 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
   if (!repr_func_) {
     repr_func_ = ctx->mod_->AddFunc(
         Func({this}, {}),
-        std::vector<std::pair<std::string, AST::Expression *>>{
+        base::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
 
     CURRENT_FUNC(repr_func_) {
@@ -86,17 +86,18 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       data_type->EmitRepr(PtrCallFix(ptr), ctx);
 
       CreateLoop({ptr, IR::Sub(length_var, IR::Val::Int(1))},
-                 [&](const std::vector<IR::Val> &phis) {
+                 [&](const base::vector<IR::Val> &phis) {
                    return IR::Eq(phis[1], IR::Val::Int(0));
                  },
-                 [&](const std::vector<IR::Val> &phis) {
+                 [&](const base::vector<IR::Val> &phis) {
                    auto elem_ptr = IR::PtrIncr(phis[0], IR::Val::Int(1));
 
                    IR::Print(IR::Val::Char(','));
                    IR::Print(IR::Val::Char(' '));
                    data_type->EmitRepr(PtrCallFix(elem_ptr), ctx);
 
-                   return std::vector{elem_ptr, IR::Sub(phis[1], IR::Val::Int(1))};
+                   return base::vector<IR::Val>{
+                       elem_ptr, IR::Sub(phis[1], IR::Val::Int(1))};
                  });
       IR::UncondJump(exit_block);
 
@@ -105,7 +106,7 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       IR::ReturnJump();
     }
   }
-  IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{val}, {});
+  IR::Call(IR::Val::Func(repr_func_), base::vector<IR::Val>{val}, {});
 }
 
 // TODO print something friendlier
@@ -122,7 +123,7 @@ void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
   if (!repr_func_) {
     repr_func_ = ctx->mod_->AddFunc(
         Func({this}, {}),
-        std::vector<std::pair<std::string, AST::Expression *>>{
+        base::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}});
     CURRENT_FUNC(repr_func_) {
       IR::BasicBlock::Current = repr_func_->entry();
@@ -149,7 +150,7 @@ void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
     }
   }
 
-  IR::Call(IR::Val::Func(repr_func_), std::vector<IR::Val>{id_val}, {});
+  IR::Call(IR::Val::Func(repr_func_), base::vector<IR::Val>{id_val}, {});
 }
 
 void Function::EmitRepr(IR::Val, Context *ctx) const { UNREACHABLE(); }

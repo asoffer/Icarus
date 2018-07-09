@@ -3,8 +3,8 @@
 #include "type/all.h"
 
 namespace IR {
-std::vector<std::string> Interface::MatchErrors(const type::Type* t) const {
-  std::vector<std::string> errors;
+base::vector<std::string> Interface::MatchErrors(const type::Type* t) const {
+  base::vector<std::string> errors;
   if (!field_map_.empty()) {
     auto CheckStruct =
         [&errors, this](const type::Type* t) {

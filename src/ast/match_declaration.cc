@@ -30,7 +30,7 @@ MatchDeclaration *MatchDeclaration::Clone() const {
   return result;
 }
 
-std::vector<IR::Val> MatchDeclaration::EmitIR(Context *ctx) {
+base::vector<IR::Val> MatchDeclaration::EmitIR(Context *ctx) {
   // TODO build it
   return backend::Evaluate(type_expr.get(), ctx);
 }
