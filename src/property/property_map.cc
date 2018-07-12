@@ -40,13 +40,11 @@ void PropertyMap::refresh() {
       case IR::Op::UncondJump: return;
       case IR::Op::CondJump: return;
       case IR::Op::ReturnJump: return;
-      case IR::Op::Neg: {
+      case IR::Op::Not: {
         auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
         bool change    = false;
         for (auto &prop :
-             view_.at(e.viewing_block_)
-                 .view_.at(std::get<IR::Register>(cmd.args[0].value))
-                 .props_) {
+             view_.at(e.viewing_block_).view_.at(cmd.not_.reg_).props_) {
           if (prop->is<DefaultProperty<bool>>()) {
             auto new_prop = std::make_unique<DefaultProperty<bool>>(
                 prop->as<DefaultProperty<bool>>());

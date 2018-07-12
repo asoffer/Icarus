@@ -30,7 +30,8 @@ struct vector : public std::vector<Ts...> {
 };
 
 #else
-using vector = std::vector;
+template <typename... Ts>
+using vector = std::vector<Ts...>;
 #endif
 }  // namespace base
 

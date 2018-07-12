@@ -165,14 +165,13 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
           EmitValue(num_args, llvm_data, cmd.args[0]),
           EmitValue(num_args, llvm_data, cmd.args[1]));
     // TODO support fmod, or stop supporting elsewhere
-    case IR::Op::Neg:
-      if (cmd.type == type::Bool) {
-        return llvm_data->builder->CreateNot(
-            EmitValue(num_args, llvm_data, cmd.args[0]));
-      } else {
-        return llvm_data->builder->CreateNeg(
-            EmitValue(num_args, llvm_data, cmd.args[0]));
-      }
+    case IR::Op::Not:
+      return llvm_data->builder->CreateNot(
+          EmitValue(num_args, llvm_data, cmd.args[0]));
+    case IR::Op::NegInt:
+    case IR::Op::NegReal:
+      return llvm_data->builder->CreateNeg(
+          EmitValue(num_args, llvm_data, cmd.args[0]));
     case IR::Op::Or:
       return llvm_data->builder->CreateOr(
           EmitValue(num_args, llvm_data, cmd.args[0]),

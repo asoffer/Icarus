@@ -27,7 +27,8 @@ struct map : public std::map<Ts...> {
   }
 };
 #else
-using map = std::map;
+template <typename... Ts>
+using map = std::map<Ts...>;
 #endif
 }  // namespace base
 

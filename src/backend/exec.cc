@@ -18,6 +18,9 @@
 
 using base::check::Is;
 
+// TODO compile-time failure. dump the stack trace and abort for Null address
+// kinds
+
 namespace IR {
 base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
                          ExecContext *ctx) {
@@ -101,10 +104,183 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   }
 
   switch (cmd.op_code_) {
+    case Op::Trunc: return Trunc(reg(cmd.trunc_.reg_));
+    case Op::Extend: return Extend(reg(cmd.extend_.reg_));
+    case Op::Bytes:
+      return IR::Val::Int(Architecture::InterprettingMachine().bytes(
+          cmd.bytes_.arg_.is_reg_
+              ? std::get<const type::Type *>(reg(cmd.bytes_.arg_.reg_).value)
+              : cmd.bytes_.arg_.val_));
+    case Op::Align:
+      return IR::Val::Int(Architecture::InterprettingMachine().alignment(
+          cmd.align_.arg_.is_reg_
+              ? std::get<const type::Type *>(reg(cmd.align_.arg_.reg_).value)
+              : cmd.align_.arg_.val_));
+    case Op::Not: return Not(reg(cmd.not_.reg_));
+    case Op::NegInt: return NegInt(reg(cmd.neg_int_.reg_));
+    case Op::NegReal: return NegReal(reg(cmd.neg_real_.reg_));
+    case Op::ArrayLength:
+      return IR::Val::Addr(
+          cmd.array_data_.arg_.is_reg_
+              ? std::get<IR::Addr>(reg(cmd.array_data_.arg_.reg_).value)
+              : cmd.array_data_.arg_.val_,
+          type::Int);
+    case Op::ArrayData: {
+      auto addr = cmd.array_data_.arg_.is_reg_
+                      ? std::get<IR::Addr>(reg(cmd.array_data_.arg_.reg_).value)
+                      : cmd.array_data_.arg_.val_;
+      switch (addr.kind) {
+        case Addr::Kind::Null: UNREACHABLE();
+        case Addr::Kind::Stack:
+          return IR::Val::StackAddr(
+              addr.as_stack +
+                  Architecture::InterprettingMachine().bytes(type::Int),
+              cmd.type->as<type::Pointer>().pointee);
+
+        case Addr::Kind::Heap:
+          return IR::Val::HeapAddr(
+              static_cast<void *>(
+                  static_cast<u8 *>(addr.as_heap) +
+                  Architecture::InterprettingMachine().bytes(type::Int)),
+              cmd.type->as<type::Pointer>().pointee);
+      }
+    } break;
+    case Op::Ptr: return IR::Ptr(reg(cmd.ptr_.reg_));
+    case Op::LoadBool: {
+      auto addr = cmd.load_bool_.arg_.is_reg_
+                      ? std::get<IR::Addr>(reg(cmd.load_bool_.arg_.reg_).value)
+                      : cmd.load_bool_.arg_.val_;
+      switch (addr.kind) {
+        case Addr::Kind::Null: UNREACHABLE();
+        case Addr::Kind::Heap:
+          return IR::Val::Bool(*static_cast<bool *>(addr.as_heap));
+        case Addr::Kind::Stack:
+          return IR::Val::Bool(stack_.Load<bool>(addr.as_stack));
+      }
+    } break;
+    case Op::LoadChar: {
+      auto addr = cmd.load_char_.arg_.is_reg_
+                      ? std::get<IR::Addr>(reg(cmd.load_char_.arg_.reg_).value)
+                      : cmd.load_char_.arg_.val_;
+      switch (addr.kind) {
+        case Addr::Kind::Null: UNREACHABLE();
+        case Addr::Kind::Heap:
+          return IR::Val::Char(*static_cast<char *>(addr.as_heap));
+        case Addr::Kind::Stack:
+          return IR::Val::Char(stack_.Load<char>(addr.as_stack));
+      }
+    } break;
+    case Op::LoadInt: {
+      auto addr = cmd.load_int_.arg_.is_reg_
+                      ? std::get<IR::Addr>(reg(cmd.load_int_.arg_.reg_).value)
+                      : cmd.load_int_.arg_.val_;
+      switch (addr.kind) {
+        case Addr::Kind::Null: UNREACHABLE();
+        case Addr::Kind::Heap:
+          return IR::Val::Int(*static_cast<int *>(addr.as_heap));
+        case Addr::Kind::Stack:
+          return IR::Val::Int(stack_.Load<int>(addr.as_stack));
+      }
+    } break;
+    case Op::LoadReal: {
+      auto addr = cmd.load_real_.arg_.is_reg_
+                      ? std::get<IR::Addr>(reg(cmd.load_real_.arg_.reg_).value)
+                      : cmd.load_real_.arg_.val_;
+      switch (addr.kind) {
+        case Addr::Kind::Null: UNREACHABLE();
+        case Addr::Kind::Heap:
+          return IR::Val::Real(*static_cast<double*>(addr.as_heap));
+        case Addr::Kind::Stack:
+          return IR::Val::Real(stack_.Load<double>(addr.as_stack));
+      }
+    } break;
+    case Op::LoadType: {
+      auto addr = cmd.load_type_.arg_.is_reg_
+                      ? std::get<IR::Addr>(reg(cmd.load_type_.arg_.reg_).value)
+                      : cmd.load_type_.arg_.val_;
+      switch (addr.kind) {
+        case Addr::Kind::Null: UNREACHABLE();
+        case Addr::Kind::Heap:
+          return IR::Val::Type(*static_cast<const type::Type **>(addr.as_heap));
+        case Addr::Kind::Stack:
+          return IR::Val::Type(stack_.Load<const type::Type *>(addr.as_stack));
+      }
+    } break;
+     case Op::LoadEnum: {
+       auto addr = cmd.load_enum_.arg_.is_reg_
+                       ? std::get<IR::Addr>(reg(cmd.load_enum_.arg_.reg_).value)
+                       : cmd.load_enum_.arg_.val_;
+       switch (addr.kind) {
+         case Addr::Kind::Null: UNREACHABLE();
+         case Addr::Kind::Heap:
+           return IR::Val::Enum(&cmd.type->as<type::Enum>(),
+                                *static_cast<size_t *>(addr.as_heap));
+         case Addr::Kind::Stack:
+           return IR::Val::Enum(&cmd.type->as<type::Enum>(),
+                                stack_.Load<size_t>(addr.as_stack));
+       }
+     } break;
+     case Op::LoadFlags: {
+       auto addr =
+           cmd.load_flags_.arg_.is_reg_
+               ? std::get<IR::Addr>(reg(cmd.load_flags_.arg_.reg_).value)
+               : cmd.load_flags_.arg_.val_;
+       switch (addr.kind) {
+         case Addr::Kind::Null: UNREACHABLE();
+         case Addr::Kind::Heap:
+           return IR::Val::Flags(&cmd.type->as<type::Flags>(),
+                                 *static_cast<size_t *>(addr.as_heap));
+         case Addr::Kind::Stack:
+           return IR::Val::Flags(&cmd.type->as<type::Flags>(),
+                                 stack_.Load<size_t>(addr.as_stack));
+       }
+     } break;
+     case Op::Load: {
+       const auto &addr = std::get<IR::Addr>(resolved[0].value);
+       switch (addr.kind) {
+         case Addr::Kind::Null: UNREACHABLE();
+         case Addr::Kind::Heap: {
+           // LOAD_FROM_HEAP(type::Code, IR::Val::CodeBlock, AST::CodeBlock);
+           if (cmd.type->is<type::Pointer>()) {
+             return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
+                                  cmd.type->as<type::Pointer>().pointee);
+           } else if (cmd.type->is<type::CharBuffer>()) {
+             // TODO Add a string_view overload for Val::CharBuf.
+             return IR::Val::CharBuf(
+                 std::string(*static_cast<std::string_view *>(addr.as_heap)));
+           } else {
+             NOT_YET("Don't know how to load type: ", cmd.type);
+           }
+           NOT_YET("Don't know how to load type: ", cmd.type);
+         } break;
+         case Addr::Kind::Stack: {
+           // TODO LOAD_FROM_STACK(type::Code, CodeBlock, AST::CodeBlock);
+           if (cmd.type->is<type::Pointer>()) {
+             switch (addr.kind) {
+               case Addr::Kind::Stack:
+                 return IR::Val::Addr(stack_.Load<Addr>(addr.as_stack),
+                                      cmd.type->as<type::Pointer>().pointee);
+               case Addr::Kind::Heap:
+                 return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
+                                      cmd.type->as<type::Pointer>().pointee);
+               case Addr::Kind::Null: NOT_YET();
+             }
+           } else if (cmd.type->is<type::CharBuffer>()) {
+             // TODO Add a string_view overload for Val::CharBuf.
+             return IR::Val::CharBuf(
+                 std::string(stack_.Load<std::string_view>(addr.as_stack)));
+           } else if (cmd.type->is<type::Function>()) {
+             return IR::Val::Func(stack_.Load<IR::Func *>(addr.as_stack));
+           } else {
+             call_stack.top().fn_->dump();
+             NOT_YET("Don't know how to load type: ", cmd.type);
+           }
+         } break;
+       }
+    } break;
     case Op::Cast:
       // TODO nullptr okay here?
       return Cast(cmd.type, resolved[0], nullptr);
-    case Op::Neg: return Neg(resolved[0]);
     case Op::Add: return Add(resolved[0], resolved[1]);
     case Op::Sub: return Sub(resolved[0], resolved[1]);
     case Op::Mul: return Mul(resolved[0], resolved[1]);
@@ -114,8 +290,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::BlockSeq: return BlockSeq(std::move(resolved));
     case Op::BlockSeqContains: {
       // TODO constant propogation?
-      const auto &seq = std::get<BlockSequence>(resolved[0].value).seq_;
-      auto* block_lit = std::get<BlockSequence>(resolved[1].value).seq_[0];
+      const auto &seq = *std::get<BlockSequence>(resolved[0].value).seq_;
+      auto *block_lit =
+          std::get<BlockSequence>(resolved[1].value).seq_->front();
       return IR::Val::Bool(std::any_of(
           seq.begin(), seq.end(),
           [block_lit](AST::BlockLiteral *lit) { return lit == block_lit; }));
@@ -146,17 +323,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Ne: return Ne(resolved[0], resolved[1]);
     case Op::Ge: return Ge(resolved[0], resolved[1]);
     case Op::Gt: return Gt(resolved[0], resolved[1]);
-    case Op::Bytes:
-      return IR::Val::Int(Architecture::InterprettingMachine().bytes(
-          std::get<const type::Type *>(resolved[0].value)));
-    case Op::Align:
-      return IR::Val::Int(Architecture::InterprettingMachine().alignment(
-          std::get<const type::Type *>(resolved[0].value)));
-    case Op::Extend: return Extend(resolved[0]);
-    case Op::Trunc: return Trunc(resolved[0]);
-    case Op::Err:
-      return IR::Val::CodeBlock(
-          AST::CodeBlock(std::get<std::string_view>(resolved[0].value)));
     case Op::Call: {
       if (auto *foreign_fn =
               std::get_if<IR::ForeignFn>(&resolved.back().value)) {
@@ -221,84 +387,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           },
           resolved[0].value);
       return IR::Val::None();
-    case Op::Ptr: return Ptr(resolved[0]);
-    case Op::Load: {
-      auto &addr = std::get<Addr>(resolved[0].value);
-      switch (addr.kind) {
-        case Addr::Kind::Null:
-          // TODO compile-time failure. dump the stack trace and abort.
-          UNREACHABLE();
-        case Addr::Kind::Heap: {
-#define LOAD_FROM_HEAP(lang_type, ctor, cpp_type)                              \
-  if (cmd.type == lang_type) {                                                 \
-    return ctor(*static_cast<cpp_type *>(addr.as_heap));                       \
-  }
-          LOAD_FROM_HEAP(type::Bool, IR::Val::Bool, bool);
-          LOAD_FROM_HEAP(type::Char, IR::Val::Char, char);
-          LOAD_FROM_HEAP(type::Int, IR::Val::Int, i32);
-          LOAD_FROM_HEAP(type::Real, IR::Val::Real, double);
-          // LOAD_FROM_HEAP(type::Code, IR::Val::CodeBlock, AST::CodeBlock);
-          LOAD_FROM_HEAP(type::Type_, IR::Val::Type, const type::Type *);
-          if (cmd.type->is<type::Pointer>()) {
-            return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
-                                 cmd.type->as<type::Pointer>().pointee);
-          } else if (cmd.type->is<type::Enum>()) {
-            return IR::Val::Enum(&cmd.type->as<type::Enum>(),
-                                 *static_cast<size_t *>(addr.as_heap));
-          } else if (cmd.type->is<type::Flags>()) {
-            return IR::Val::Flags(&cmd.type->as<type::Flags>(),
-                                  *static_cast<size_t *>(addr.as_heap));
-          } else if (cmd.type->is<type::CharBuffer>()) {
-            // TODO Add a string_view overload for Val::CharBuf.
-            return IR::Val::CharBuf(
-                std::string(*static_cast<std::string_view *>(addr.as_heap)));
-          } else {
-            NOT_YET("Don't know how to load type: ", cmd.type);
-          }
-          NOT_YET("Don't know how to load type: ", cmd.type);
-#undef LOAD_FROM_HEAP
-        } break;
-        case Addr::Kind::Stack: {
-#define LOAD_FROM_STACK(lang_type, ctor, cpp_type)                             \
-  if (cmd.type == lang_type) {                                                 \
-    return IR::Val::ctor(stack_.Load<cpp_type>(addr.as_stack));                \
-  }
-          LOAD_FROM_STACK(type::Bool, Bool, bool);
-          LOAD_FROM_STACK(type::Char, Char, char);
-          LOAD_FROM_STACK(type::Int, Int, i32);
-          LOAD_FROM_STACK(type::Real, Real, double);
-          // TODO LOAD_FROM_STACK(type::Code, CodeBlock, AST::CodeBlock);
-          LOAD_FROM_STACK(type::Type_, Type, const type::Type *);
-          if (cmd.type->is<type::Pointer>()) {
-            switch (addr.kind) {
-              case Addr::Kind::Stack:
-                return IR::Val::Addr(stack_.Load<Addr>(addr.as_stack),
-                                     cmd.type->as<type::Pointer>().pointee);
-              case Addr::Kind::Heap:
-                return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
-                                     cmd.type->as<type::Pointer>().pointee);
-              case Addr::Kind::Null: NOT_YET();
-            }
-          } else if (cmd.type->is<type::Enum>()) {
-            return IR::Val::Enum(&cmd.type->as<type::Enum>(),
-                                 stack_.Load<size_t>(addr.as_stack));
-          } else if (cmd.type->is<type::CharBuffer>()) {
-            // TODO Add a string_view overload for Val::CharBuf.
-            return IR::Val::CharBuf(
-                std::string(stack_.Load<std::string_view>(addr.as_stack)));
-          } else if (cmd.type->is<type::Flags>()) {
-            return IR::Val::Flags(&cmd.type->as<type::Flags>(),
-                                 stack_.Load<size_t>(addr.as_stack));
-          } else if (cmd.type->is<type::Function>()) {
-            return IR::Val::Func(stack_.Load<IR::Func *>(addr.as_stack));
-          } else {
-            call_stack.top().fn_->dump();
-            NOT_YET("Don't know how to load type: ", cmd.type);
-          }
-#undef LOAD_FROM_STACK_IF
-        } break;
-      }
-    } break;
     case Op::SetReturn: {
       reg(std::get<Register>(cmd.args[1].value)) = std::move(resolved[0]);
       return IR::Val::None();
@@ -475,25 +563,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Free:
       free(std::get<Addr>(resolved[0].value).as_heap);
       return Val::None();
-    case Op::ArrayLength:
-      return IR::Val::Addr(std::get<Addr>(resolved[0].value), type::Int);
-    case Op::ArrayData:
-      switch (std::get<Addr>(resolved[0].value).kind) {
-        case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Stack:
-          return IR::Val::StackAddr(
-              std::get<Addr>(resolved[0].value).as_stack +
-                  Architecture::InterprettingMachine().bytes(type::Int),
-              cmd.type->as<type::Pointer>().pointee);
-
-        case Addr::Kind::Heap:
-          return IR::Val::HeapAddr(
-              static_cast<void *>(
-                  static_cast<u8 *>(std::get<Addr>(resolved[0].value).as_heap) +
-                  Architecture::InterprettingMachine().bytes(type::Int)),
-              cmd.type->as<type::Pointer>().pointee);
-      }
-      break;
     case Op::CondJump:
       return resolved[std::get<bool>(resolved[0].value) ? 1 : 2];
     case Op::UncondJump: return resolved[0];

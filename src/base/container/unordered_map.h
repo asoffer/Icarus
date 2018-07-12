@@ -33,7 +33,8 @@ struct unordered_map : public std::unordered_map<Ts...> {
   }
 };
 #else
-using unordered_map = std::unordered_map;
+template <typename... Ts>
+using unordered_map = std::unordered_map<Ts...>;
 #endif
 }  // namespace base
 

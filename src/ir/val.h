@@ -9,7 +9,6 @@
 #include "ast/codeblock.h"
 #include "base/strong_types.h"
 #include "base/types.h"
-#include "ir/block_sequence.h"
 #include "ir/interface.h"
 
 struct Module;
@@ -40,6 +39,20 @@ DEFINE_STRONG_INT(IR, Register, i32, std::numeric_limits<i32>::lowest());
 DEFINE_STRONG_INT(IR, BuiltinGenericIndex, i32, -1);
 
 namespace IR {
+struct BlockSequence {
+  base::vector<AST::BlockLiteral *> const *seq_;
+};
+
+// TODO not really comparable. just for variant? :(
+inline bool operator==(const BlockSequence &lhs, const BlockSequence &rhs) {
+  return lhs.seq_ == rhs.seq_;
+}
+
+// TODO not really comparable. just for variant? :(
+inline bool operator<(const BlockSequence &lhs, const BlockSequence &rhs) {
+  return lhs.seq_ < rhs.seq_;
+}
+
 struct CmdIndex {
   BlockIndex block;
   i32 cmd;

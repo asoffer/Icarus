@@ -11,7 +11,6 @@
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "context.h"
-#include "ir/block_sequence.h"
 #include "ir/func.h"
 #include "scope.h"
 #include "type/scope.h"
@@ -167,8 +166,8 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
       }
       auto block_seq =
           backend::EvaluateAs<IR::BlockSequence>(decl.init_val.get(), ctx);
-      ASSERT(block_seq.seq_.size() == 1u);
-      auto *block_lit = block_seq.seq_[0];
+      ASSERT(block_seq.seq_->size() == 1u);
+      auto *block_lit = block_seq.seq_->front();
       auto[iter, success] =
           lit_to_data.emplace(block_lit, BlockData{
                                              IR::Func::Current->AddBlock(),

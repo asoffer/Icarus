@@ -118,7 +118,7 @@ size_t Architecture::bytes(const type::Type *t) const {
     }
     return num_bytes + ptr_bytes_;
   } else {
-    NOT_YET();
+    NOT_YET(t);
   }
   UNREACHABLE();
 }

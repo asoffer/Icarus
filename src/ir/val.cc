@@ -25,10 +25,14 @@ Val Val::CodeBlock(AST::CodeBlock block) {
   return Val(type::Code, std::move(block));
 }
 
-Val Val::Block(AST::BlockLiteral *b) { 
- BlockSequence seq; 
- seq.seq_.push_back(b);
-  return BlockSeq(std::move(seq));
+// TODO this stores way more than is needed. It'd be nice to have a way to say
+// when you're done with these. this could be done by code manually
+// incrementing/decrementing counters because this is compile-time only.
+static base::guarded<std::set<base::vector<AST::BlockLiteral *>>> seqs;
+Val Val::Block(AST::BlockLiteral *b) {
+  auto handle = seqs.lock();
+  auto[iter, success] = handle->insert(base::vector<AST::BlockLiteral *>{b});
+  return Val::BlockSeq(BlockSequence{&*iter});
 }
 
 static base::guarded<std::unordered_set<std::string>> GlobalStringSet;
@@ -39,10 +43,25 @@ Val Val::CharBuf(const std::string &str) {
 }
 
 Val Val::Struct() { return Val(type::Type_, new type::Struct); }
+
 Val Val::BlockSeq(BlockSequence b) {
-  ASSERT(b.seq_.size() != 0u);
-  auto *t = (b.seq_.back() == nullptr) ? type::Block : b.seq_.back()->type;
-  return Val(t, std::move(b));
+  ASSERT(b.seq_->size() != 0u);
+  auto *t = (b.seq_->back() == nullptr) ? type::Block : b.seq_->back()->type;
+  return Val(t, b);
+}
+
+Val MakeBlockSeq(const base::vector<Val> &blocks) {
+  base::vector<AST::BlockLiteral *> seq;
+  seq.reserve(blocks.size());
+  for (const auto &val : blocks) {
+    ASSERT(std::holds_alternative<IR::BlockSequence>(val.value));
+    const auto &bseq = std::get<IR::BlockSequence>(val.value);
+    seq.insert(seq.end(), bseq.seq_->begin(), bseq.seq_->end());
+  }
+
+  auto handle         = seqs.lock();
+  auto[iter, success] = handle->insert(std::move(seq));
+  return Val::BlockSeq(BlockSequence{&*iter});
 }
 
 Val Val::Addr(IR::Addr addr, const type::Type *t) { return Val(Ptr(t), addr); }
@@ -149,7 +168,7 @@ std::string Val::to_string() const {
             // TODO
             return "module";
           },
-          [](const BlockSequence &) -> std::string {
+          [](BlockSequence) -> std::string {
             // TODO
             return "BlockSequence";
           },
@@ -160,7 +179,7 @@ std::string Val::to_string() const {
           [](IR::BuiltinGenericIndex n) -> std::string {
             return "builtin(" + n.to_string() + ")";
           },
-        [](ForeignFn f) -> std::string {
+          [](ForeignFn f) -> std::string {
             return "foreign(" + std::string(f.name_) + ")";
           }},
       value);
