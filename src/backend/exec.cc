@@ -1,5 +1,6 @@
 #include "backend/exec.h"
 
+#include <cmath>
 #include <cstring>
 #include <future>
 #include <iostream>
@@ -235,8 +236,21 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                                  stack_.Load<size_t>(addr.as_stack));
        }
      } break;
-     case Op::Load: {
-       const auto &addr = std::get<IR::Addr>(resolved[0].value);
+     case Op::LoadAddr: {
+       auto addr = cmd.load_addr_.arg_.is_reg_
+                       ? std::get<IR::Addr>(reg(cmd.load_addr_.arg_.reg_).value)
+                       : cmd.load_addr_.arg_.val_;
+       switch (addr.kind) {
+         case Addr::Kind::Null: UNREACHABLE();
+         case Addr::Kind::Heap:
+           return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
+                                cmd.type->as<type::Pointer>().pointee);
+         case Addr::Kind::Stack:
+           return IR::Val::Addr(stack_.Load<Addr>(addr.as_stack),
+                                cmd.type->as<type::Pointer>().pointee);
+       }
+
+       /*
        switch (addr.kind) {
          case Addr::Kind::Null: UNREACHABLE();
          case Addr::Kind::Heap: {
@@ -276,26 +290,223 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
              NOT_YET("Don't know how to load type: ", cmd.type);
            }
          } break;
-       }
-    } break;
-    case Op::Cast:
-      // TODO nullptr okay here?
-      return Cast(cmd.type, resolved[0], nullptr);
-    case Op::Add: return Add(resolved[0], resolved[1]);
-    case Op::Sub: return Sub(resolved[0], resolved[1]);
-    case Op::Mul: return Mul(resolved[0], resolved[1]);
-    case Op::Div: return Div(resolved[0], resolved[1]);
-    case Op::Mod: return Mod(resolved[0], resolved[1]);
-    case Op::Arrow: return Arrow(resolved[0], resolved[1]);
-    case Op::BlockSeq: return BlockSeq(std::move(resolved));
-    case Op::BlockSeqContains: {
-      // TODO constant propogation?
-      const auto &seq = *std::get<BlockSequence>(resolved[0].value).seq_;
-      auto *block_lit =
-          std::get<BlockSequence>(resolved[1].value).seq_->front();
-      return IR::Val::Bool(std::any_of(
-          seq.begin(), seq.end(),
-          [block_lit](AST::BlockLiteral *lit) { return lit == block_lit; }));
+       }*/
+     } break;
+
+     case Op::AddInt:
+       return IR::Val::Int(
+           (cmd.add_int_.args_[0].is_reg_
+                ? std::get<i32>(reg(cmd.add_int_.args_[0].reg_).value)
+                : cmd.add_int_.args_[0].val_) +
+           (cmd.add_int_.args_[1].is_reg_
+                ? std::get<i32>(reg(cmd.add_int_.args_[1].reg_).value)
+                : cmd.add_int_.args_[1].val_));
+     case Op::AddReal:
+       return IR::Val::Real(
+           (cmd.add_real_.args_[0].is_reg_
+                ? std::get<double>(reg(cmd.add_real_.args_[0].reg_).value)
+                : cmd.add_real_.args_[0].val_) +
+           (cmd.add_real_.args_[1].is_reg_
+                ? std::get<double>(reg(cmd.add_real_.args_[1].reg_).value)
+                : cmd.add_real_.args_[1].val_));
+     case Op::AddCharBuf:
+       return IR::Val::CharBuf(
+           std::string(cmd.add_char_buf_.args_[0].is_reg_
+                           ? std::get<std::string_view>(
+                                 reg(cmd.add_char_buf_.args_[0].reg_).value)
+                           : cmd.add_char_buf_.args_[0].val_) +
+           std::string(cmd.add_char_buf_.args_[1].is_reg_
+                           ? std::get<std::string_view>(
+                                 reg(cmd.add_char_buf_.args_[1].reg_).value)
+                           : cmd.add_char_buf_.args_[1].val_));
+     case Op::SubInt:
+       return IR::Val::Int(
+           (cmd.sub_int_.args_[0].is_reg_
+                ? std::get<i32>(reg(cmd.sub_int_.args_[0].reg_).value)
+                : cmd.sub_int_.args_[0].val_) -
+           (cmd.sub_int_.args_[1].is_reg_
+                ? std::get<i32>(reg(cmd.sub_int_.args_[1].reg_).value)
+                : cmd.sub_int_.args_[1].val_));
+     case Op::SubReal:
+       return IR::Val::Real(
+           (cmd.sub_real_.args_[0].is_reg_
+                ? std::get<double>(reg(cmd.sub_real_.args_[0].reg_).value)
+                : cmd.sub_real_.args_[0].val_) -
+           (cmd.sub_real_.args_[1].is_reg_
+                ? std::get<double>(reg(cmd.sub_real_.args_[1].reg_).value)
+                : cmd.sub_real_.args_[1].val_));
+     case Op::MulInt:
+       return IR::Val::Int(
+           (cmd.mul_int_.args_[0].is_reg_
+                ? std::get<i32>(reg(cmd.mul_int_.args_[0].reg_).value)
+                : cmd.mul_int_.args_[0].val_) *
+           (cmd.mul_int_.args_[1].is_reg_
+                ? std::get<i32>(reg(cmd.mul_int_.args_[1].reg_).value)
+                : cmd.mul_int_.args_[1].val_));
+     case Op::MulReal:
+       return IR::Val::Real(
+           (cmd.mul_real_.args_[0].is_reg_
+                ? std::get<double>(reg(cmd.mul_real_.args_[0].reg_).value)
+                : cmd.mul_real_.args_[0].val_) *
+           (cmd.mul_real_.args_[1].is_reg_
+                ? std::get<double>(reg(cmd.mul_real_.args_[1].reg_).value)
+                : cmd.mul_real_.args_[1].val_));
+     case Op::DivInt:
+       return IR::Val::Int(
+           (cmd.div_int_.args_[0].is_reg_
+                ? std::get<i32>(reg(cmd.div_int_.args_[0].reg_).value)
+                : cmd.div_int_.args_[0].val_) *
+           (cmd.div_int_.args_[1].is_reg_
+                ? std::get<i32>(reg(cmd.div_int_.args_[1].reg_).value)
+                : cmd.div_int_.args_[1].val_));
+     case Op::DivReal:
+       return IR::Val::Real(
+           (cmd.div_real_.args_[0].is_reg_
+                ? std::get<double>(reg(cmd.div_real_.args_[0].reg_).value)
+                : cmd.div_real_.args_[0].val_) *
+           (cmd.div_real_.args_[1].is_reg_
+                ? std::get<double>(reg(cmd.div_real_.args_[1].reg_).value)
+                : cmd.div_real_.args_[1].val_));
+     case Op::ModInt:
+       return IR::Val::Int(
+           (cmd.mod_int_.args_[0].is_reg_
+                ? std::get<i32>(reg(cmd.mod_int_.args_[0].reg_).value)
+                : cmd.mod_int_.args_[0].val_) %
+           (cmd.mod_int_.args_[1].is_reg_
+                ? std::get<i32>(reg(cmd.mod_int_.args_[1].reg_).value)
+                : cmd.mod_int_.args_[1].val_));
+     case Op::ModReal:
+       return IR::Val::Real(std::fmod(
+           (cmd.mod_real_.args_[0].is_reg_
+                ? std::get<double>(reg(cmd.mod_real_.args_[0].reg_).value)
+                : cmd.mod_real_.args_[0].val_),
+           (cmd.mod_real_.args_[1].is_reg_
+                ? std::get<double>(reg(cmd.mod_real_.args_[1].reg_).value)
+                : cmd.mod_real_.args_[1].val_)));
+     case Op::LtInt:
+       return IR::Val::Bool(
+           (cmd.lt_int_.args_[0].is_reg_
+                ? std::get<i32>(reg(cmd.lt_int_.args_[0].reg_).value)
+                : cmd.lt_int_.args_[0].val_) <
+           (cmd.lt_int_.args_[1].is_reg_
+                ? std::get<i32>(reg(cmd.lt_int_.args_[1].reg_).value)
+                : cmd.lt_int_.args_[1].val_));
+     case Op::LtReal:
+       return IR::Val::Bool(
+           (cmd.lt_real_.args_[0].is_reg_
+                ? std::get<double>(reg(cmd.lt_real_.args_[0].reg_).value)
+                : cmd.lt_real_.args_[0].val_) <
+           (cmd.lt_real_.args_[1].is_reg_
+                ? std::get<double>(reg(cmd.lt_real_.args_[1].reg_).value)
+                : cmd.lt_real_.args_[1].val_));
+     case Op::LtFlags: {
+       auto lhs =
+           cmd.lt_flags_.args_[0].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[0].reg_).value)
+               : cmd.lt_flags_.args_[0].val_;
+       auto rhs =
+           cmd.lt_flags_.args_[1].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[1].reg_).value)
+               : cmd.lt_flags_.args_[1].val_;
+       return IR::Val::Bool(lhs.value != rhs.value &&
+                            ((lhs.value | rhs.value) == rhs.value));
+     } break;
+     case Op::LeInt:
+       return IR::Val::Bool(
+           (cmd.le_int_.args_[0].is_reg_
+                ? std::get<i32>(reg(cmd.le_int_.args_[0].reg_).value)
+                : cmd.le_int_.args_[0].val_) <=
+           (cmd.le_int_.args_[1].is_reg_
+                ? std::get<i32>(reg(cmd.le_int_.args_[1].reg_).value)
+                : cmd.le_int_.args_[1].val_));
+     case Op::LeReal:
+       return IR::Val::Bool(
+           (cmd.le_real_.args_[0].is_reg_
+                ? std::get<double>(reg(cmd.le_real_.args_[0].reg_).value)
+                : cmd.le_real_.args_[0].val_) <=
+           (cmd.le_real_.args_[1].is_reg_
+                ? std::get<double>(reg(cmd.le_real_.args_[1].reg_).value)
+                : cmd.le_real_.args_[1].val_));
+     case Op::LeFlags: {
+       auto lhs =
+           cmd.lt_flags_.args_[0].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[0].reg_).value)
+               : cmd.lt_flags_.args_[0].val_;
+       auto rhs =
+           cmd.lt_flags_.args_[1].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[1].reg_).value)
+               : cmd.lt_flags_.args_[1].val_;
+       return IR::Val::Bool((lhs.value | rhs.value) == rhs.value);
+     } break;
+     case Op::GtInt:
+       return IR::Val::Bool(
+           (cmd.lt_int_.args_[0].is_reg_
+                ? std::get<i32>(reg(cmd.lt_int_.args_[0].reg_).value)
+                : cmd.lt_int_.args_[0].val_) >
+           (cmd.lt_int_.args_[1].is_reg_
+                ? std::get<i32>(reg(cmd.lt_int_.args_[1].reg_).value)
+                : cmd.lt_int_.args_[1].val_));
+     case Op::GtReal:
+       return IR::Val::Bool(
+           (cmd.lt_real_.args_[0].is_reg_
+                ? std::get<double>(reg(cmd.lt_real_.args_[0].reg_).value)
+                : cmd.lt_real_.args_[0].val_) >
+           (cmd.lt_real_.args_[1].is_reg_
+                ? std::get<double>(reg(cmd.lt_real_.args_[1].reg_).value)
+                : cmd.lt_real_.args_[1].val_));
+     case Op::GtFlags: {
+       auto lhs =
+           cmd.lt_flags_.args_[0].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[0].reg_).value)
+               : cmd.lt_flags_.args_[0].val_;
+       auto rhs =
+           cmd.lt_flags_.args_[1].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[1].reg_).value)
+               : cmd.lt_flags_.args_[1].val_;
+       return IR::Val::Bool(lhs.value != rhs.value &&
+                            ((lhs.value | rhs.value) == lhs.value));
+     } break;
+     case Op::GeInt:
+       return IR::Val::Bool(
+           (cmd.le_int_.args_[0].is_reg_
+                ? std::get<i32>(reg(cmd.le_int_.args_[0].reg_).value)
+                : cmd.le_int_.args_[0].val_) >=
+           (cmd.le_int_.args_[1].is_reg_
+                ? std::get<i32>(reg(cmd.le_int_.args_[1].reg_).value)
+                : cmd.le_int_.args_[1].val_));
+     case Op::GeReal:
+       return IR::Val::Bool(
+           (cmd.le_real_.args_[0].is_reg_
+                ? std::get<double>(reg(cmd.le_real_.args_[0].reg_).value)
+                : cmd.le_real_.args_[0].val_) >=
+           (cmd.le_real_.args_[1].is_reg_
+                ? std::get<double>(reg(cmd.le_real_.args_[1].reg_).value)
+                : cmd.le_real_.args_[1].val_));
+     case Op::GeFlags: {
+       auto lhs =
+           cmd.lt_flags_.args_[0].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[0].reg_).value)
+               : cmd.lt_flags_.args_[0].val_;
+       auto rhs =
+           cmd.lt_flags_.args_[1].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[1].reg_).value)
+               : cmd.lt_flags_.args_[1].val_;
+       return IR::Val::Bool((lhs.value | rhs.value) == lhs.value);
+     } break;
+     case Op::Cast:
+       // TODO nullptr okay here?
+       return Cast(cmd.type, resolved[0], nullptr);
+     case Op::AddCodeBlock: return AddCodeBlock(resolved[0], resolved[1]);
+     case Op::Arrow: return Arrow(resolved[0], resolved[1]);
+     case Op::BlockSeq: return BlockSeq(std::move(resolved));
+     case Op::BlockSeqContains: {
+       // TODO constant propogation?
+       const auto &seq = *std::get<BlockSequence>(resolved[0].value).seq_;
+       auto *block_lit =
+           std::get<BlockSequence>(resolved[1].value).seq_->front();
+       return IR::Val::Bool(std::any_of(
+           seq.begin(), seq.end(),
+           [block_lit](AST::BlockLiteral *lit) { return lit == block_lit; }));
     } break;
     case Op::Tup: {
       base::vector<const type::Type *> types;
@@ -317,12 +528,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Xor: return Xor(resolved[0], resolved[1]);
     case Op::Or: return Or(resolved[0], resolved[1]);
     case Op::And: return And(resolved[0], resolved[1]);
-    case Op::Lt: return Lt(resolved[0], resolved[1]);
-    case Op::Le: return Le(resolved[0], resolved[1]);
     case Op::Eq: return Eq(resolved[0], resolved[1]);
     case Op::Ne: return Ne(resolved[0], resolved[1]);
-    case Op::Ge: return Ge(resolved[0], resolved[1]);
-    case Op::Gt: return Gt(resolved[0], resolved[1]);
     case Op::Call: {
       if (auto *foreign_fn =
               std::get_if<IR::ForeignFn>(&resolved.back().value)) {

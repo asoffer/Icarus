@@ -6,13 +6,29 @@
 
 namespace IR {
 enum class Op : char {
-  Trunc, Extend, Bytes, Align, Not, NegInt, NegReal, ArrayLength, ArrayData,
-  LoadBool, LoadChar, LoadInt, LoadReal, LoadType, LoadEnum, LoadFlags,
+  // clang-format off
+  Trunc, Extend,
+  Bytes, Align,
+  Not,
+  NegInt, NegReal,
+  ArrayLength, ArrayData,
+  LoadBool, LoadChar, LoadInt, LoadReal, LoadType, LoadEnum, LoadFlags, LoadAddr,
 
-  Load,
+  AddInt, AddReal, AddCharBuf,
+  SubInt, SubReal,
+  MulInt, MulReal,
+  DivInt, DivReal,
+  ModInt, ModReal,
+
+  LtInt, LtReal, LtFlags,
+  LeInt, LeReal, LeFlags,
+  GtInt, GtReal, GtFlags,
+  GeInt, GeReal, GeFlags,
+  // clang-format on
+
   Or, And,
-  Add, Sub, Mul, Div, Mod, // numeric types only
-  Lt, Le, Eq, Ne, Gt, Ge, // numeric types only
+  AddCodeBlock, // TODO remove codeblock
+  Eq, Ne, // numeric types only
   Xor,
   Print,
   Malloc, Free,
@@ -76,6 +92,31 @@ struct Cmd {
   CMD(LoadType) { RegisterOr<IR::Addr> arg_; };
   CMD(LoadEnum) { RegisterOr<IR::Addr> arg_; };
   CMD(LoadFlags) { RegisterOr<IR::Addr> arg_; };
+  CMD(LoadAddr) { RegisterOr<IR::Addr> arg_; };
+  CMD(AddInt) { RegisterOr<i32> args_[2]; };
+  CMD(AddReal) { RegisterOr<double> args_[2]; };
+  CMD(AddCharBuf) { RegisterOr<std::string_view> args_[2]; };
+  CMD(SubInt) { RegisterOr<i32> args_[2]; };
+  CMD(SubReal) { RegisterOr<double> args_[2]; };
+  CMD(MulInt) { RegisterOr<i32> args_[2]; };
+  CMD(MulReal) { RegisterOr<double> args_[2]; };
+  CMD(DivInt) { RegisterOr<i32> args_[2]; };
+  CMD(DivReal) { RegisterOr<double> args_[2]; };
+  CMD(ModInt) { RegisterOr<i32> args_[2]; };
+  CMD(ModReal) { RegisterOr<double> args_[2]; };
+
+  CMD(LtInt) { RegisterOr<i32> args_[2]; };
+  CMD(LtReal) { RegisterOr<double> args_[2]; };
+  CMD(LtFlags) { RegisterOr<FlagsVal> args_[2]; };
+  CMD(LeInt) { RegisterOr<i32> args_[2]; };
+  CMD(LeReal) { RegisterOr<double> args_[2]; };
+  CMD(LeFlags) { RegisterOr<FlagsVal> args_[2]; };
+  CMD(GtInt) { RegisterOr<i32> args_[2]; };
+  CMD(GtReal) { RegisterOr<double> args_[2]; };
+  CMD(GtFlags) { RegisterOr<FlagsVal> args_[2]; };
+  CMD(GeInt) { RegisterOr<i32> args_[2]; };
+  CMD(GeReal) { RegisterOr<double> args_[2]; };
+  CMD(GeFlags) { RegisterOr<FlagsVal> args_[2]; };
 #undef CMD
 
   operator IR::Val() const { return reg(); }
@@ -102,6 +143,32 @@ struct Cmd {
     LoadType load_type_;
     LoadEnum load_enum_;
     LoadFlags load_flags_;
+    LoadAddr load_addr_;
+
+    AddInt add_int_;
+    AddReal add_real_;
+    AddCharBuf add_char_buf_;
+    SubInt sub_int_;
+    SubReal sub_real_;
+    MulInt mul_int_;
+    MulReal mul_real_;
+    DivInt div_int_;
+    DivReal div_real_;
+    ModInt mod_int_;
+    ModReal mod_real_;
+
+    LtInt lt_int_;
+    LtReal lt_real_;
+    LtFlags lt_flags_;
+    LeInt le_int_;
+    LeReal le_real_;
+    LeFlags le_flags_;
+    GtInt gt_int_;
+    GtReal gt_real_;
+    GtFlags gt_flags_;
+    GeInt ge_int_;
+    GeReal ge_real_;
+    GeFlags ge_flags_;
   };
 
   const type::Type *type = nullptr;
@@ -112,36 +179,59 @@ struct Cmd {
   void dump(size_t indent) const;
 };
 
-Val Trunc(Val v);
-Val Extend(Val v);
-Val Bytes(Val v);
-Val Align(Val v);
-Val Not(Val v);
-Val NegInt(Val v);
-Val NegReal(Val v);
-Val ArrayLength(Val v);
-Val ArrayData(Val v);
-Val Ptr(Val v);
-Val LoadBool(Val v);
-Val LoadChar(Val v);
-Val LoadInt(Val v);
-Val LoadReal(Val v);
-Val LoadType(Val v);
-Val LoadEnum(Val v);
-Val LoadFlags(Val v);
+Val Trunc(const Val &v);
+Val Extend(const Val &v);
+Val Bytes(const Val &v);
+Val Align(const Val &v);
+Val Not(const Val &v);
+Val NegInt(const Val &v);
+Val NegReal(const Val &v);
+Val ArrayLength(const Val &v);
+Val ArrayData(const Val &v);
+Val Ptr(const Val &v);
+Val LoadBool(const Val &v);
+Val LoadChar(const Val &v);
+Val LoadInt(const Val &v);
+Val LoadReal(const Val &v);
+Val LoadType(const Val &v);
+Val LoadEnum(const Val &v);
+Val LoadFlags(const Val &v);
+Val LoadAddr(const Val &v);
+Val AddInt(const Val &v1, const Val &v2);
+Val AddReal(const Val &v1, const Val &v2);
+Val SubInt(const Val &v1, const Val &v2);
+Val SubReal(const Val &v1, const Val &v2);
+Val MulInt(const Val &v1, const Val &v2);
+Val MulReal(const Val &v1, const Val &v2);
+Val DivInt(const Val &v1, const Val &v2);
+Val DivReal(const Val &v1, const Val &v2);
+Val LtInt(const Val &v1, const Val &v2);
+Val LtReal(const Val &v1, const Val &v2);
+Val LtFlags(const Val &v1, const Val &v2);
+Val LeInt(const Val &v1, const Val &v2);
+Val LeReal(const Val &v1, const Val &v2);
+Val LeFlags(const Val &v1, const Val &v2);
+Val GeInt(const Val &v1, const Val &v2);
+Val GeReal(const Val &v1, const Val &v2);
+Val GeFlags(const Val &v1, const Val &v2);
+Val GtInt(const Val &v1, const Val &v2);
+Val GtReal(const Val &v1, const Val &v2);
+Val GtFlags(const Val &v1, const Val &v2);
 
-Val Load(Val v);
-Val Add(Val v1, Val v2);
-Val Sub(Val v1, Val v2);
-Val Mul(Val v1, Val v2);
-Val Div(Val v1, Val v2);
-Val Mod(Val v1, Val v2);
-Val Lt(Val v1, Val v2);
-Val Le(Val v1, Val v2);
+Val Load(const Val& v);
+Val Add(const Val& v1, const Val& v2);
+Val Sub(const Val &v1, const Val &v2);
+Val Mul(const Val &v1, const Val &v2);
+Val Div(const Val &v1, const Val &v2);
+Val Mod(const Val &v1, const Val &v2);
+Val Lt(const Val &v1, const Val &v2);
+Val Le(const Val &v1, const Val &v2);
+Val Ge(const Val &v1, const Val &v2);
+Val Gt(const Val &v1, const Val &v2);
+
+Val AddCodeBlock(const Val& v1, const Val& v2);
 Val Eq(Val v1, Val v2);
 Val Ne(Val v1, Val v2);
-Val Ge(Val v1, Val v2);
-Val Gt(Val v1, Val v2);
 Val Xor(Val v1, Val v2);
 Val Or(Val v1, Val v2);
 Val And(Val v1, Val v2);
