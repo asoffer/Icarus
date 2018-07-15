@@ -22,6 +22,10 @@ struct BasicBlock {
   Func *fn_;  // Containing function
   base::vector<BlockIndex> incoming_blocks_;
   base::vector<Cmd> cmds_;
+  // TODO I don't need the whole vector to be ptr stable, but for now that's
+  // easier. what I actually need is the data stable and knowledge of the length
+  // (which I should have through other means)
+  base::vector<std::unique_ptr<base::vector<IR::Val>>> call_args_;
 };
 }  // namespace IR
 #endif  // ICARUS_IR_BASIC_BLOCK_H

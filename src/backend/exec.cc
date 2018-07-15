@@ -704,6 +704,16 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                      : cmd.arrow_.args_[1].val_;
       return IR::Val::Type(type::Func({lhs}, {rhs}));
     } break;
+    case Op::Array: {
+      auto len = cmd.array_.len_.is_reg_
+                     ? std::get<i32>(reg(cmd.array_.len_.reg_).value)
+                     : cmd.array_.len_.val_;
+      auto t =
+          cmd.array_.type_.is_reg_
+              ? std::get<type::Type const *>(reg(cmd.array_.type_.reg_).value)
+              : cmd.array_.type_.val_;
+      return IR::Val::Type(len == -1 ? type::Arr(t) : type::Arr(t, len));
+    } break;
     case Op::VariantType:
       return Val::Addr(std::get<Addr>(reg(cmd.variant_type_.reg_).value), type::Type_);
     case Op::VariantValue: {
@@ -729,8 +739,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         }
         case Addr::Kind::Null: NOT_YET();
       }
-      UNREACHABLE("Invalid address kind: ",
-                  static_cast<int>(std::get<Addr>(resolved[0].value).kind));
+      UNREACHABLE("Invalid address kind: ");
     } break;
     case Op::PtrIncr: {
       auto addr = std::get<Addr>(reg(cmd.ptr_incr_.ptr_).value);
@@ -781,11 +790,129 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                              cmd.type->as<type::Pointer>().pointee);
       }
     } break;
+    case Op::PrintBool:
+      std::cerr << ((cmd.print_bool_.arg_.is_reg_
+                         ? std::get<bool>(reg(cmd.print_bool_.arg_.reg_).value)
+                         : cmd.print_bool_.arg_.val_)
+                        ? "true"
+                        : "false");
+      return IR::Val::None();
+    case Op::PrintChar:
+      std::cerr << (cmd.print_char_.arg_.is_reg_
+                        ? std::get<char>(reg(cmd.print_char_.arg_.reg_).value)
+                        : cmd.print_char_.arg_.val_);
+      return IR::Val::None();
+    case Op::PrintInt:
+      std::cerr << (cmd.print_int_.arg_.is_reg_
+                        ? std::get<i32>(reg(cmd.print_int_.arg_.reg_).value)
+                        : cmd.print_int_.arg_.val_);
+      return IR::Val::None();
+    case Op::PrintReal:
+      std::cerr << (cmd.print_real_.arg_.is_reg_
+                        ? std::get<double>(
+                              reg(cmd.print_real_.arg_.reg_).value)
+                        : cmd.print_real_.arg_.val_);
+      return IR::Val::None();
+    case Op::PrintType:
+      std::cerr << (cmd.print_type_.arg_.is_reg_
+                        ? std::get<type::Type const *>(
+                              reg(cmd.print_type_.arg_.reg_).value)
+                        : cmd.print_type_.arg_.val_)
+                       ->to_string();
+      return IR::Val::None();
+    case Op::PrintEnum: NOT_YET(); return IR::Val::None();
+      /*
+      std::cerr << resolved[0].type->as<type::Enum>().members_[e.value];
+      */
+    case Op::PrintFlags:
+      NOT_YET();
+      /*
+      size_t val = f.value;
+      base::vector<std::string> vals;
+      const auto &members = resolved[0].type->as<type::Flags>().members_;
+      size_t i            = 0;
+      size_t pow          = 1;
+      while (pow <= val) {
+        if (val & pow) { vals.push_back(members[i]); }
+        ++i;
+        pow <<= 1;
+      }
+      if (vals.empty()) {
+        std::cerr << "(empty)";
+      } else {
+        auto iter = vals.begin();
+        std::cerr << *iter++;
+        while (iter != vals.end()) { std::cerr << " | " << *iter++; }
+      }
+      */
+      return IR::Val::None();
+    case Op::PrintAddr:
+      std::cerr << (cmd.print_addr_.arg_.is_reg_
+                        ? std::get<IR::Addr>(
+                              reg(cmd.print_addr_.arg_.reg_).value)
+                        : cmd.print_addr_.arg_.val_)
+                       .to_string();
+      return IR::Val::None();
+    case Op::PrintCharBuffer:
+      std::cerr << (cmd.print_char_buffer_.arg_.is_reg_
+                        ? std::get<std::string_view>(
+                              reg(cmd.print_char_buffer_.arg_.reg_).value)
+                        : cmd.print_char_buffer_.arg_.val_);
+      return IR::Val::None();
+    case Op::Call: {
+      std::vector<Val> resolved_args;
+      resolved_args.reserve(ASSERT_NOT_NULL(cmd.call_.args_)->size());
+      for (auto const &arg : *cmd.call_.args_) {
+        if (auto *r = std::get_if<Register>(&arg.value)) {
+          resolved_args.push_back(reg(*r));
+        } else {
+          resolved_args.push_back(arg);
+        }
+      }
+
+      // TODO you need to be able to determine how many args there are
+      switch (cmd.call_.which_active_) {
+        case 0x00: {
+          // TODO what if the register is a foerign fn?
+          auto results = Execute(std::get<Func *>(reg(cmd.call_.reg_).value),
+                                 resolved_args, this);
+          return results.empty() ? IR::Val::None() : results[0];
+        } break;
+        case 0x01: {
+          auto results = Execute(cmd.call_.fn_, resolved_args, this);
+          return results.empty() ? IR::Val::None() : results[0];
+        } break;
+        case 0x02:
+          if (cmd.call_.foreign_fn_.name_ == "malloc") {
+            return IR::Val::HeapAddr(
+                malloc(std::get<i32>(resolved_args[0].value)),
+                cmd.type->as<type::Pointer>().pointee);
+          } else {
+            NOT_YET();
+          }
+      }
+    } break;
+    case Op::Tup: {
+      base::vector<const type::Type *> types;
+      types.reserve(cmd.tup_.args_->size());
+      for (const auto &val : *cmd.tup_.args_) {
+        types.push_back(std::get<const type::Type *>(val.value));
+      }
+      return IR::Val::Type(type::Tup(std::move(types)));
+    }
+    case Op::Variant: {
+      base::vector<const type::Type *> types;
+      types.reserve(cmd.variant_.args_->size());
+      for (const auto &val : *cmd.variant_.args_) {
+        types.push_back(std::get<const type::Type *>(val.value));
+      }
+      return IR::Val::Type(type::Var(std::move(types)));
+    }
 
     case Op::Cast:
       // TODO nullptr okay here?
       return Cast(cmd.type, resolved[0], nullptr);
-    case Op::AddCodeBlock: return AddCodeBlock(resolved[0], resolved[1]);
+    case Op::AddCodeBlock: NOT_YET();
     case Op::BlockSeq: return BlockSeq(std::move(resolved));
     case Op::BlockSeqContains: {
       // TODO constant propogation?
@@ -796,90 +923,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           seq.begin(), seq.end(),
           [block_lit](AST::BlockLiteral *lit) { return lit == block_lit; }));
     } break;
-    case Op::Tup: {
-      base::vector<const type::Type *> types;
-      types.reserve(resolved.size());
-      for (const auto &val : resolved) {
-        types.push_back(std::get<const type::Type *>(val.value));
-      }
-      return IR::Val::Type(type::Tup(std::move(types)));
-    }
-    case Op::Variant: {
-      base::vector<const type::Type *> types;
-      types.reserve(resolved.size());
-      for (const auto &val : resolved) {
-        types.push_back(std::get<const type::Type *>(val.value));
-      }
-      return IR::Val::Type(type::Var(std::move(types)));
-    }
-    case Op::Array: return Array(resolved[0], resolved[1]);
-    case Op::Call: {
-      if (auto *foreign_fn =
-              std::get_if<IR::ForeignFn>(&resolved.back().value)) {
-        if (foreign_fn->name_ == "malloc") {
-          // TODO goto malloc_case;
-          ASSERT(cmd.type, Is<type::Pointer>());
-          return IR::Val::HeapAddr(malloc(std::get<i32>(resolved[0].value)),
-                                   cmd.type->as<type::Pointer>().pointee);
-        } else {
-          UNREACHABLE();
-        }
-      }
-      auto *fn = std::get<IR::Func *>(resolved.back().value);
-      resolved.pop_back();
-      // There's no need to do validation here, because by virtue of executing
-      // this function, we know we've already validated all functions that could
-      // be called.
-
-      // If there were multiple return values, they would be passed as
-      // out-params in the IR.
-      auto results = Execute(fn, resolved, this);
-      return results.empty() ? IR::Val::None() : results[0];
-    } break;
-    case Op::Print:
-      std::visit(
-          base::overloaded{
-              [](i32 n) { std::cerr << n; },
-              [](bool b) { std::cerr << (b ? "true" : "false"); },
-              [](char c) { std::cerr << c; },
-              [](double d) { std::cerr << d; },
-              [](const type::Type *t) { std::cerr << t->to_string(); },
-              // TODO is this actually how you want ot print a codeblock? should
-              // you be allowed to print a codeblock?
-              [](const AST::CodeBlock &cb) { std::cerr << cb.to_string(0); },
-              [](std::string_view s) { std::cerr << s; },
-              [](const Addr &a) { std::cerr << a.to_string(); },
-              [&resolved](EnumVal e) {
-                std::cerr
-                    << resolved[0].type->as<type::Enum>().members_[e.value];
-              },
-              [&resolved](FlagsVal f) {
-                size_t val = f.value;
-                base::vector<std::string> vals;
-                const auto &members =
-                    resolved[0].type->as<type::Flags>().members_;
-                size_t i   = 0;
-                size_t pow = 1;
-                while (pow <= val) {
-                  if (val & pow) { vals.push_back(members[i]); }
-                  ++i;
-                  pow <<= 1;
-                }
-                if (vals.empty()) {
-                  std::cerr << "(empty)";
-                } else {
-                  auto iter = vals.begin();
-                  std::cerr << *iter++;
-                  while (iter != vals.end()) { std::cerr << " | " << *iter++; }
-                }
-              },
-              [](IR::Func *f) {
-                std::cerr << "{" << f->type_->to_string() << "}";
-              },
-              [&resolved](auto) { NOT_YET(resolved[0].type); },
-          },
-          resolved[0].value);
-      return IR::Val::None();
     case Op::SetReturn: {
       reg(std::get<Register>(cmd.args[1].value)) = std::move(resolved[0]);
       return IR::Val::None();
@@ -934,26 +977,12 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       UNREACHABLE(
           "Previous block was ", Val::BasicBlock(call_stack.top().prev_),
           "\nCurrent block is ", Val::BasicBlock(call_stack.top().current_));
-    case Op::Contextualize: {
-      // TODO this is probably the right way to encode it rather than a vector
-      // of alternating entries. Same for PHI nodes.
-      base::unordered_map<const AST::Expression *, IR::Val> replacements;
-      for (size_t i = 0; i < resolved.size() - 1; i += 2) {
-        replacements[std::get<AST::Expression *>(resolved[i + 1].value)] =
-            resolved[i];
-      }
-
-      ASSERT(cmd.args.back().type == type::Code);
-      const auto &code_block = std::get<AST::CodeBlock>(cmd.args.back().value);
-      auto copied_block      = code_block;
-      std::get<AST::Statements>(copied_block.content_)
-          .contextualize(&std::get<AST::Statements>(code_block.content_),
-                         replacements);
-      return IR::Val::CodeBlock(std::move(copied_block));
-    } break;
+    case Op::Contextualize: NOT_YET();
     case Op::CondJump:
-      return resolved[std::get<bool>(resolved[0].value) ? 1 : 2];
-    case Op::UncondJump: return resolved[0];
+      return Val::BasicBlock(
+          cmd.cond_jump_
+              .blocks_[std::get<bool>(reg(cmd.cond_jump_.cond_).value)]);
+    case Op::UncondJump: return Val::BasicBlock(cmd.uncond_jump_.block_);
     case Op::ReturnJump: return Val::BasicBlock(BlockIndex{-1});
   }
   UNREACHABLE();

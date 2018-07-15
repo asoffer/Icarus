@@ -261,6 +261,8 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       return backend::Evaluate(operand.get(), ctx);
     }
     case Language::Operator::Generate: {
+      NOT_YET();
+      /*
       auto val = backend::Evaluate(operand.get(), ctx).at(0);
       ASSERT(val.type == type::Code);
       auto block = std::get<AST::CodeBlock>(val.value);
@@ -274,7 +276,7 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       stmts->VerifyType(ctx);
       stmts->Validate(ctx);
       return stmts->EmitIR(ctx);
-
+      */
     } break;
     case Language::Operator::Mul: return {IR::Ptr(operand->EmitIR(ctx)[0])};
     case Language::Operator::At: return {PtrCallFix(operand->EmitIR(ctx)[0])};

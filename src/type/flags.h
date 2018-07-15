@@ -1,6 +1,7 @@
 #ifndef ICARUS_TYPE_FLAGS_H
 #define ICARUS_TYPE_FLAGS_H
 
+#include "base/container/unordered_map.h"
 #include "type.h"
 
 namespace type {

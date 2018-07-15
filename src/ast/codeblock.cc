@@ -6,11 +6,7 @@
 namespace IR {
 namespace {
 Val Contextualize(AST::CodeBlock code, base::vector<IR::Val> args) {
-  args.push_back(IR::Val::CodeBlock(std::move(code)));
-  ASSERT(Func::Current != nullptr);
-  Cmd cmd(type::Code, Op::Contextualize, {std::move(args)});
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
-  return cmd.reg();
+  NOT_YET();
 }
 }  // namespace
 }  // namespace IR

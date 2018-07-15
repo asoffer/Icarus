@@ -1,8 +1,9 @@
 #ifndef ICARUS_TYPE_ARRAY_H
 #define ICARUS_TYPE_ARRAY_H
 
-#include "type.h"
 #include <mutex>
+#include "base/container/unordered_map.h"
+#include "type.h"
 
 struct Context;
 

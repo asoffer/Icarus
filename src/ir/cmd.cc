@@ -127,61 +127,37 @@ Val Ptr(const Val &v) {
   return cmd.reg();
 }
 
-Val LoadBool(const Val &v) {
-  auto &cmd         = MakeNewCmd(type::Bool, Op::LoadBool);
-  const Register *r = std::get_if<Register>(&v.value);
-  cmd.load_bool_    = Cmd::LoadBool::Make(r ? *r : std::get<Register>(v.value));
-  return cmd.reg();
-}
-
-Val LoadChar(const Val &v) {
-  auto &cmd      = MakeNewCmd(type::Char, Op::LoadChar);
- const  Register *r    = std::get_if<Register>(&v.value);
-  cmd.load_char_ = Cmd::LoadChar::Make(r ? *r : std::get<Register>(v.value));
-  return cmd.reg();
-}
-
-Val LoadInt(const Val &v) {
-  auto &cmd     = MakeNewCmd(type::Int, Op::LoadInt);
- const  Register *r   = std::get_if<Register>(&v.value);
-  cmd.load_int_ = Cmd::LoadInt::Make(r ? *r : std::get<Register>(v.value));
-  return cmd.reg();
-}
-
-Val LoadReal(const Val &v) {
-  auto &cmd      = MakeNewCmd(type::Real, Op::LoadReal);
- const  Register *r    = std::get_if<Register>(&v.value);
-  cmd.load_real_ = Cmd::LoadReal::Make(r ? *r : std::get<Register>(v.value));
-  return cmd.reg();
-}
-
-Val LoadType(const Val &v) {
-  auto &cmd      = MakeNewCmd(type::Type_, Op::LoadType);
- const  Register *r    = std::get_if<Register>(&v.value);
-  cmd.load_type_ = Cmd::LoadType::Make(r ? *r : std::get<Register>(v.value));
-  return cmd.reg();
-}
-
-Val LoadEnum(const Val &v) {
-  auto &cmd   = MakeNewCmd(v.type->as<type::Pointer>().pointee, Op::LoadEnum);
- const  Register *r = std::get_if<Register>(&v.value);
-  cmd.load_enum_ = Cmd::LoadEnum::Make(r ? *r : std::get<Register>(v.value));
-  return cmd.reg();
-}
-
-Val LoadFlags(const Val &v) {
-  auto &cmd = MakeNewCmd(v.type->as<type::Pointer>().pointee, Op::LoadFlags);
-  const Register *r = std::get_if<Register>(&v.value);
-  cmd.load_flags_ = Cmd::LoadFlags::Make(r ? *r : std::get<Register>(v.value));
-  return cmd.reg();
-}
-
-Val LoadAddr(const Val &v) {
-  auto &cmd = MakeNewCmd(v.type->as<type::Pointer>().pointee, Op::LoadAddr);
-  const Register *r = std::get_if<Register>(&v.value);
-  cmd.load_addr_    = Cmd::LoadAddr::Make(r ? *r : std::get<Register>(v.value));
-  return cmd.reg();
-}
+#define DEFINE_CMD1(Name, name, arg_type, RetType)                             \
+  Val Name(Val const &v) {                                                     \
+    auto &cmd = MakeNewCmd(RetType, Op::Name);                                 \
+    auto *x   = std::get_if<arg_type>(&v.value);                               \
+    cmd.name  = Cmd::Name::Make(                                               \
+        x ? RegisterOr<arg_type>(*x)                                          \
+          : RegisterOr<arg_type>(std::get<Register>(v.value)));               \
+    return cmd.reg();                                                          \
+  }                                                                            \
+  struct AllowSemicolon
+DEFINE_CMD1(LoadBool, load_bool_, IR::Addr, type::Bool);
+DEFINE_CMD1(LoadChar, load_char_, IR::Addr, type::Char);
+DEFINE_CMD1(LoadInt, load_int_, IR::Addr, type::Int);
+DEFINE_CMD1(LoadReal, load_real_, IR::Addr, type::Real);
+DEFINE_CMD1(LoadType, load_type_, IR::Addr, type::Type_);
+DEFINE_CMD1(LoadEnum, load_enum_, IR::Addr,
+            v.type->as<type::Pointer>().pointee);
+DEFINE_CMD1(LoadFlags, load_flags_, IR::Addr,
+            v.type->as<type::Pointer>().pointee);
+DEFINE_CMD1(LoadAddr, load_addr_, IR::Addr,
+            v.type->as<type::Pointer>().pointee);
+DEFINE_CMD1(PrintBool, print_bool_, bool, type::Bool);
+DEFINE_CMD1(PrintChar, print_char_, char, type::Char);
+DEFINE_CMD1(PrintInt, print_int_, i32, type::Int);
+DEFINE_CMD1(PrintReal, print_real_, double, type::Real);
+DEFINE_CMD1(PrintType, print_type_, type::Type const *, type::Type_);
+DEFINE_CMD1(PrintEnum, print_enum_, EnumVal, v.type);
+DEFINE_CMD1(PrintFlags, print_flags_, FlagsVal, v.type);
+DEFINE_CMD1(PrintAddr, print_addr_, IR::Addr, v.type);
+DEFINE_CMD1(PrintCharBuffer, print_char_buffer_, std::string_view, v.type);
+#undef DEFINE_CMD1
 
 Val AddCharBuf(const Val &v1, const Val &v2) {
   auto *s1 = std::get_if<std::string_view>(&v1.value);
@@ -199,7 +175,7 @@ Val AddCharBuf(const Val &v1, const Val &v2) {
   return cmd.reg();
 }
 
-#define DEFINE_CMD(Name, name, arg_type, RetType, fn)                          \
+#define DEFINE_CMD2(Name, name, arg_type, RetType, fn)                         \
   Val Name(Val const &v1, Val const &v2) {                                     \
     auto const *x1 = std::get_if<arg_type>(&v1.value);                         \
     auto const *x2 = std::get_if<arg_type>(&v2.value);                         \
@@ -213,63 +189,94 @@ Val AddCharBuf(const Val &v1, const Val &v2) {
     return cmd.reg();                                                          \
   }                                                                            \
   struct AllowSemicolon
-DEFINE_CMD(AddInt, add_int_, i32, Int, std::plus<i32>{});
-DEFINE_CMD(AddReal, add_real_, double, Real, std::plus<double>{});
-DEFINE_CMD(SubInt, sub_int_, i32, Int, std::minus<i32>{});
-DEFINE_CMD(SubReal, sub_real_, double, Real, std::minus<double>{});
-DEFINE_CMD(MulInt, mul_int_, i32, Int, std::multiplies<i32>{});
-DEFINE_CMD(MulReal, mul_real_, double, Real, std::multiplies<double>{});
-DEFINE_CMD(DivInt, div_int_, i32, Int, std::divides<i32>{});
-DEFINE_CMD(DivReal, div_real_, double, Real, std::divides<double>{});
-DEFINE_CMD(ModInt, mod_int_, i32, Int, std::modulus<i32>{});
-DEFINE_CMD(ModReal, mod_real_, double, Real, std::fmod);
-DEFINE_CMD(LtInt, lt_int_, i32, Bool, std::less<i32>{});
-DEFINE_CMD(LtReal, lt_real_, double, Bool, std::less<double>{});
-DEFINE_CMD(LtFlags, lt_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
+DEFINE_CMD2(AddInt, add_int_, i32, Int, std::plus<i32>{});
+DEFINE_CMD2(AddReal, add_real_, double, Real, std::plus<double>{});
+DEFINE_CMD2(SubInt, sub_int_, i32, Int, std::minus<i32>{});
+DEFINE_CMD2(SubReal, sub_real_, double, Real, std::minus<double>{});
+DEFINE_CMD2(MulInt, mul_int_, i32, Int, std::multiplies<i32>{});
+DEFINE_CMD2(MulReal, mul_real_, double, Real, std::multiplies<double>{});
+DEFINE_CMD2(DivInt, div_int_, i32, Int, std::divides<i32>{});
+DEFINE_CMD2(DivReal, div_real_, double, Real, std::divides<double>{});
+DEFINE_CMD2(ModInt, mod_int_, i32, Int, std::modulus<i32>{});
+DEFINE_CMD2(ModReal, mod_real_, double, Real, std::fmod);
+DEFINE_CMD2(LtInt, lt_int_, i32, Bool, std::less<i32>{});
+DEFINE_CMD2(LtReal, lt_real_, double, Bool, std::less<double>{});
+DEFINE_CMD2(LtFlags, lt_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
   return lhs.value != rhs.value && ((lhs.value | rhs.value) == rhs.value);
 });
-DEFINE_CMD(LeInt, le_int_, i32, Bool, std::less_equal<i32>{});
-DEFINE_CMD(LeReal, le_real_, double, Bool, std::less_equal<double>{});
-DEFINE_CMD(LeFlags, le_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
+DEFINE_CMD2(LeInt, le_int_, i32, Bool, std::less_equal<i32>{});
+DEFINE_CMD2(LeReal, le_real_, double, Bool, std::less_equal<double>{});
+DEFINE_CMD2(LeFlags, le_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
   return (lhs.value | rhs.value) == rhs.value;
 });
-DEFINE_CMD(GtInt, gt_int_, i32, Bool, std::less<i32>{});
-DEFINE_CMD(GtReal, gt_real_, double, Bool, std::less<double>{});
-DEFINE_CMD(GtFlags, gt_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
+DEFINE_CMD2(GtInt, gt_int_, i32, Bool, std::less<i32>{});
+DEFINE_CMD2(GtReal, gt_real_, double, Bool, std::less<double>{});
+DEFINE_CMD2(GtFlags, gt_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
   return lhs.value != rhs.value && ((lhs.value | rhs.value) == lhs.value);
 });
-DEFINE_CMD(GeInt, ge_int_, i32, Bool, std::less_equal<i32>{});
-DEFINE_CMD(GeReal, ge_real_, double, Bool, std::less_equal<double>{});
-DEFINE_CMD(GeFlags, ge_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
+DEFINE_CMD2(GeInt, ge_int_, i32, Bool, std::less_equal<i32>{});
+DEFINE_CMD2(GeReal, ge_real_, double, Bool, std::less_equal<double>{});
+DEFINE_CMD2(GeFlags, ge_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
   return (lhs.value | rhs.value) == lhs.value;
 });
-DEFINE_CMD(EqChar, eq_char_, char, Bool, std::equal_to<char>{});
-DEFINE_CMD(EqInt, eq_int_, i32, Bool, std::equal_to<i32>{});
-DEFINE_CMD(EqReal, eq_real_, double, Bool, std::equal_to<double>{});
-DEFINE_CMD(EqType, eq_type_, const type::Type *, Bool,
+DEFINE_CMD2(EqChar, eq_char_, char, Bool, std::equal_to<char>{});
+DEFINE_CMD2(EqInt, eq_int_, i32, Bool, std::equal_to<i32>{});
+DEFINE_CMD2(EqReal, eq_real_, double, Bool, std::equal_to<double>{});
+DEFINE_CMD2(EqType, eq_type_, const type::Type *, Bool,
            std::equal_to<const type::Type *>{});
-DEFINE_CMD(EqFlags, eq_flags_, FlagsVal, Bool, std::equal_to<FlagsVal>{});
-DEFINE_CMD(EqAddr, eq_addr_, Addr, Bool, std::equal_to<Addr>{});
-DEFINE_CMD(NeChar, ne_char_, char, Bool, std::not_equal_to<char>{});
-DEFINE_CMD(NeInt, ne_int_, i32, Bool, std::not_equal_to<i32>{});
-DEFINE_CMD(NeReal, ne_real_, double, Bool, std::not_equal_to<double>{});
-DEFINE_CMD(NeType, ne_type_, const type::Type *, Bool,
+DEFINE_CMD2(EqFlags, eq_flags_, FlagsVal, Bool, std::equal_to<FlagsVal>{});
+DEFINE_CMD2(EqAddr, eq_addr_, Addr, Bool, std::equal_to<Addr>{});
+DEFINE_CMD2(NeChar, ne_char_, char, Bool, std::not_equal_to<char>{});
+DEFINE_CMD2(NeInt, ne_int_, i32, Bool, std::not_equal_to<i32>{});
+DEFINE_CMD2(NeReal, ne_real_, double, Bool, std::not_equal_to<double>{});
+DEFINE_CMD2(NeType, ne_type_, const type::Type *, Bool,
            std::not_equal_to<const type::Type *>{});
-DEFINE_CMD(NeFlags, ne_flags_, FlagsVal, Bool, std::not_equal_to<FlagsVal>{});
-DEFINE_CMD(NeAddr, ne_addr_, Addr, Bool, std::not_equal_to<Addr>{});
+DEFINE_CMD2(NeFlags, ne_flags_, FlagsVal, Bool, std::not_equal_to<FlagsVal>{});
+DEFINE_CMD2(NeAddr, ne_addr_, Addr, Bool, std::not_equal_to<Addr>{});
+DEFINE_CMD2(Arrow, arrow_, type::Type const *, Type_,
+            [](type::Type const *lhs, type::Type const *rhs) {
+              return type::Func({lhs}, {rhs});
+            });
+#undef DEFINE_CMD2
 
-#undef DEFINE_CMD
+Val Array(const Val &v1, const Val &v2) {
+  ASSERT(v2.type == type::Type_);
 
-Val Arrow(Val const &v1, Val const &v2) {
-  auto const *x1 = std::get_if<type::Type const *>(&v1.value);
-  auto const *x2 = std::get_if<type::Type const *>(&v2.value);
-  if (x1 && x2) { return Val::Type(type::Func({*x1}, {*x2})); }
-  auto &cmd  = MakeNewCmd(type::Type_, Op::Arrow);
-  cmd.arrow_ = Cmd::Arrow::Make(
-      x1 ? RegisterOr<type::Type const *>(*x1)
-         : RegisterOr<type::Type const *>(std::get<Register>(v1.value)),
-      x2 ? RegisterOr<type::Type const *>(*x2)
-         : RegisterOr<type::Type const *>(std::get<Register>(v2.value)));
+  i32 const *m               = std::get_if<i32>(&v1.value);
+  type::Type const *const *t = std::get_if<const type::Type *>(&v2.value);
+  if (t) {
+    if (m) { return Val::Type(type::Arr(*t, *m)); }
+    if (v1 == Val::None()) { return Val::Type(type::Arr(*t)); }
+  }
+
+  auto &cmd = MakeNewCmd(type::Type_, Op::Array);
+  cmd.array_ = Cmd::Array::Make(
+      m ? RegisterOr<i32>(*m)
+        : v1 == Val::None() ? RegisterOr<i32>(-1)
+                            : RegisterOr<i32>(std::get<Register>(v1.value)),
+      t ? RegisterOr<type::Type const *>(*t)
+        : RegisterOr<type::Type const *>(std::get<Register>(v2.value)));
+  return cmd.reg();
+}
+
+Val Tup(base::vector<Val> vals) {
+  LOG << vals;
+  auto &args =
+      Func::Current->block(BasicBlock::Current)
+          .call_args_.emplace_back(
+              std::make_unique<base::vector<IR::Val>>(std::move(vals)));
+  auto &cmd = MakeNewCmd(type::Type_, Op::Tup);
+  cmd.tup_  = Cmd::Tup{{}, args.get()};
+  return cmd.reg();
+}
+
+Val Variant(base::vector<Val> vals) {
+  auto &args =
+      Func::Current->block(BasicBlock::Current)
+          .call_args_.emplace_back(
+              std::make_unique<base::vector<IR::Val>>(std::move(vals)));
+  auto &cmd    = MakeNewCmd(type::Type_, Op::Variant);
+  cmd.variant_ = Cmd::Variant{{}, args.get()};
   return cmd.reg();
 }
 
@@ -394,10 +401,6 @@ Val Cast(const type::Type *to, Val v, Context *ctx) {
   return MakeCmd(to, Op::Cast, base::vector<IR::Val>{std::move(v)});
 }
 
-void Print(Val v) {
-  MakeCmd(nullptr, Op::Print, base::vector<IR::Val>{std::move(v)});
-}
-
 Val CreateStruct() { return MakeNewCmd(type::Type_, Op::CreateStruct).reg(); }
 
 IR::Val FinalizeStruct(const Val &v) {
@@ -490,21 +493,7 @@ Val Add(const Val &v1, const Val &v2) {
   UNREACHABLE();
 }
 
-Val AddCodeBlock(const Val &v1, const Val &v2) {
-  if (auto *cb1 = std::get_if<AST::CodeBlock>(&v1.value),
-      *cb2      = std::get_if<AST::CodeBlock>(&v2.value);
-      cb1 != nullptr && cb2 != nullptr) {
-    AST::CodeBlock block;
-    // TODO is this std::get<Statements> call safe?
-    block.content_ = AST::Statements::Merge(base::vector<AST::Statements>{
-        {std::get<AST::Statements>(std::move(*cb1).content_),
-         std::get<AST::Statements>(std::move(*cb2).content_)}});
-    return Val::CodeBlock(std::move(block));
-  }
-
-  return MakeCmd(v1.type, Op::AddCodeBlock,
-                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
-}
+Val AddCodeBlock(const Val &v1, const Val &v2) { NOT_YET(); }
 
 Val Sub(const Val &v1, const Val &v2) {
   if (v1.type == type::Int) { return SubInt(v1, v2); }
@@ -530,18 +519,6 @@ Val Mod(const Val &v1, const Val &v2) {
   UNREACHABLE();
 }
 
-Val Tup(base::vector<Val> args) {
-  Cmd cmd(type::Type_, Op::Tup, std::move(args));
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
-  return cmd.reg();
-}
-
-Val Variant(base::vector<Val> args) {
-  Cmd cmd(type::Type_, Op::Variant, std::move(args));
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
-  return cmd.reg();
-}
-
 Val Load(const Val& v) {
   auto *ptee = v.type->as<type::Pointer>().pointee;
   if (ptee == type::Bool) { return LoadBool(v); }
@@ -555,21 +532,17 @@ Val Load(const Val& v) {
   UNREACHABLE(v.type);
 }
 
-Val Array(Val v1, Val v2) {
-  ASSERT(v2.type == type::Type_);
-
-  if (const type::Type **t = std::get_if<const type::Type *>(&v2.value)) {
-    if (i32 *m = std::get_if<i32>(&v1.value)) {
-      return Val::Type(type::Arr(*t, *m));
-    }
-    if (i32 *n = std::get_if<i32>(&v1.value)) {
-      return Val::Type(type::Arr(*t, *n));
-    }
-    if (v1 == Val::None()) { return Val::Type(type::Arr(*t)); }
-  }
-
-  return MakeCmd(type::Type_, Op::Array,
-                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
+Val Print(const Val& v) {
+  if (v.type == type::Bool) { return PrintBool(v); }
+  if (v.type == type::Char) { return PrintChar(v); }
+  if (v.type == type::Int) { return PrintInt(v); }
+  if (v.type == type::Real) { return PrintReal(v); }
+  if (v.type == type::Type_) { return PrintType(v); }
+  if (v.type->is<type::Enum>()) { return PrintEnum(v); }
+  if (v.type->is<type::Flags>()) { return PrintFlags(v); }
+  if (v.type->is<type::Pointer>()) { return PrintAddr(v); }
+  if (v.type->is<type::CharBuffer>()) { return PrintCharBuffer(v); }
+  UNREACHABLE(v.type);
 }
 
 Val Index(const Val &v1, const Val &v2) {
@@ -663,11 +636,10 @@ CmdIndex Phi(const type::Type *t) {
   return cmd_index;
 }
 
-Val Call(Val fn, base::vector<Val> vals, base::vector<Val> result_locs) {
+Val Call(const Val &fn, base::vector<Val> vals, base::vector<Val> result_locs) {
   ASSERT(fn.type, Is<type::Function>());
   vals.insert(vals.end(), std::make_move_iterator(result_locs.begin()),
               std::make_move_iterator(result_locs.end()));
-  vals.push_back(fn);
 
   // TODO either fix the output type here or do it at the execution site. Not
   // sure which makes sense. "Fix" means that if a function returns a struct or
@@ -682,9 +654,42 @@ Val Call(Val fn, base::vector<Val> vals, base::vector<Val> result_locs) {
       (fn_type.output.size() == 1 && !fn_type.output[0]->is_big())
           ? fn_type.output[0]
           : type::Void();
-  Cmd cmd(output_type, Op::Call, std::move(vals));
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
+
+  auto &args =
+      Func::Current->block(BasicBlock::Current)
+          .call_args_.emplace_back(
+              std::make_unique<base::vector<IR::Val>>(std::move(vals)));
+  auto &cmd = MakeNewCmd(output_type, Op::Call);
+
+  if (auto *r = std::get_if<Register>(&fn.value)) {
+    cmd.call_ = Cmd::Call(*r, args.get());
+  } else if (auto *f = std::get_if<Func *>(&fn.value)) {
+    cmd.call_ = Cmd::Call(*f, args.get());
+  } else if (auto *f = std::get_if<ForeignFn>(&fn.value)) {
+    cmd.call_ = Cmd::Call(*f, args.get());
+  } else {
+    UNREACHABLE();
+  }
   return cmd.reg();
+}
+
+void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block) {
+  if (auto *b = std::get_if<bool>(&cond.value)) {
+    return UncondJump(*b ? true_block : false_block);
+  }
+  auto &cmd      = MakeNewCmd(nullptr, Op::CondJump);
+  cmd.cond_jump_ = Cmd::CondJump{
+      {}, std::get<Register>(cond.value), {false_block, true_block}};
+}
+
+void UncondJump(BlockIndex block) {
+  auto &cmd        = MakeNewCmd(nullptr, Op::UncondJump);
+  cmd.uncond_jump_ = Cmd::UncondJump{{}, block};
+}
+
+void ReturnJump() {
+  auto &cmd        = MakeNewCmd(nullptr, Op::ReturnJump);
+  cmd.return_jump_ = Cmd::ReturnJump{};
 }
 
 void Cmd::dump(size_t indent) const {
@@ -709,7 +714,15 @@ void Cmd::dump(size_t indent) const {
     case Op::LoadEnum: std::cerr << "load-enum"; break;
     case Op::LoadFlags: std::cerr << "load-flags"; break;
     case Op::LoadAddr: std::cerr << "load-addr"; break;
-
+    case Op::PrintBool: std::cerr << "print-bool"; break;
+    case Op::PrintChar: std::cerr << "print-char"; break;
+    case Op::PrintInt: std::cerr << "print-int"; break;
+    case Op::PrintReal: std::cerr << "print-real"; break;
+    case Op::PrintType: std::cerr << "print-type"; break;
+    case Op::PrintEnum: std::cerr << "print-enum"; break;
+    case Op::PrintFlags: std::cerr << "print-flags"; break;
+    case Op::PrintAddr: std::cerr << "print-addr"; break;
+    case Op::PrintCharBuffer: std::cerr << "print-char-buffer"; break;
     case Op::AddInt: std::cerr << "add-int"; break;
     case Op::AddReal: std::cerr << "add-real"; break;
     case Op::AddCharBuf: std::cerr << "add-char-buf"; break;
@@ -760,23 +773,22 @@ void Cmd::dump(size_t indent) const {
     case Op::Free: std::cerr << "free"; break;
     case Op::Alloca: std::cerr << "alloca"; break;
     case Op::Arrow: std::cerr << "arrow"; break;
+    case Op::Array: std::cerr << "array-type"; break;
+    case Op::Variant: std::cerr << "variant"; break;
+    case Op::Tup: std::cerr << "tup"; break;
     case Op::VariantType: std::cerr << "variant-type"; break;
     case Op::VariantValue: std::cerr << "variant-value"; break;
     case Op::PtrIncr: std::cerr << "ptr-incr"; break;
     case Op::Field: std::cerr << "field"; break;
-
-    case Op::AddCodeBlock: std::cerr << "add-codeblock"; break;
-    case Op::Print: std::cerr << "print"; break;
     case Op::CondJump: std::cerr << "cond"; break;
     case Op::UncondJump: std::cerr << "uncond"; break;
     case Op::ReturnJump: std::cerr << "return"; break;
+
+    case Op::AddCodeBlock: std::cerr << "add-codeblock"; break;
     case Op::Store: std::cerr << "store"; break;
     case Op::SetReturn: std::cerr << "set-ret"; break;
-    case Op::Variant: std::cerr << "variant"; break;
-    case Op::Tup: std::cerr << "tup"; break;
     case Op::Phi: std::cerr << "phi"; break;
     case Op::Call: std::cerr << "call"; break;
-    case Op::Array: std::cerr << "array-type"; break;
     case Op::Contextualize: std::cerr << "contextualize"; break;
     case Op::Cast: std::cerr << "cast"; break;
     case Op::BlockSeq: std::cerr << "block-seq"; break;
@@ -792,23 +804,6 @@ void Cmd::dump(size_t indent) const {
     std::cerr << ", " << args[i].to_string();
   }
   std::cerr << std::endl;
-}
-
-void CondJump(Val cond, BlockIndex true_block, BlockIndex false_block) {
-  ASSERT(Func::Current != nullptr);
-  Cmd cmd(nullptr, Op::CondJump,
-          {cond, Val::BasicBlock(true_block), Val::BasicBlock(false_block)});
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
-}
-void UncondJump(BlockIndex block) {
-  ASSERT(Func::Current != nullptr);
-  Cmd cmd(nullptr, Op::UncondJump, {Val::BasicBlock(block)});
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
-}
-void ReturnJump() {
-  ASSERT(Func::Current != nullptr);
-  Cmd cmd(nullptr, Op::ReturnJump, {});
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
 }
 
 void BasicBlock::dump(size_t indent) const {

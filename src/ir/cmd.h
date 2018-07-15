@@ -12,7 +12,10 @@ enum class Op : char {
   Not,
   NegInt, NegReal,
   ArrayLength, ArrayData,
+
   LoadBool, LoadChar, LoadInt, LoadReal, LoadType, LoadEnum, LoadFlags, LoadAddr,
+  PrintBool, PrintChar, PrintInt, PrintReal, PrintType, PrintEnum, PrintFlags, PrintAddr, PrintCharBuffer,
+  // StoreBool, StoreChar, StoreInt, StoreReal, StoreType, StoreEnum, StoreFlags, StoreAddr,
 
   AddInt, AddReal, AddCharBuf,
   SubInt, SubReal,
@@ -35,25 +38,26 @@ enum class Op : char {
 
   Malloc, Free, Alloca,
 
-  Arrow, Ptr,
+  Arrow, Ptr, Array, Tup, Variant,
 
   VariantType, VariantValue,
   PtrIncr, Field,
+
+  CondJump, UncondJump, ReturnJump,
+
+  Call,
   // clang-format on
 
   InsertField,
-  AddCodeBlock, // TODO remove codeblock
-  Print,
   Store,
   SetReturn,
-  Phi, Call,
-  Tup, Variant, Array, 
-  Contextualize,
-  BlockSeq, BlockSeqContains,
+  Phi,
+  BlockSeq,
+  BlockSeqContains,
   Cast,
-  CondJump,
-  UncondJump,
-  ReturnJump,
+
+  AddCodeBlock,  // TODO remove codeblock
+  Contextualize,
 };
 
 template <typename T>
@@ -99,6 +103,16 @@ struct Cmd {
   CMD(LoadEnum) { RegisterOr<IR::Addr> arg_; };
   CMD(LoadFlags) { RegisterOr<IR::Addr> arg_; };
   CMD(LoadAddr) { RegisterOr<IR::Addr> arg_; };
+
+  CMD(PrintBool) { RegisterOr<bool> arg_; };
+  CMD(PrintChar) { RegisterOr<char> arg_; };
+  CMD(PrintInt) { RegisterOr<i32> arg_; };
+  CMD(PrintReal) { RegisterOr<double> arg_; };
+  CMD(PrintType) { RegisterOr<type::Type const *> arg_; };
+  CMD(PrintEnum) { RegisterOr<EnumVal> arg_; };
+  CMD(PrintFlags) { RegisterOr<FlagsVal> arg_; };
+  CMD(PrintAddr) { RegisterOr<IR::Addr> arg_; };
+  CMD(PrintCharBuffer) { RegisterOr<std::string_view> arg_; };
 
   CMD(AddInt) { RegisterOr<i32> args_[2]; };
   CMD(AddReal) { RegisterOr<double> args_[2]; };
@@ -155,6 +169,13 @@ struct Cmd {
 
   CMD(Ptr) { Register reg_; };
   CMD(Arrow) { RegisterOr<type::Type const *> args_[2]; };
+  CMD(Array) {
+    RegisterOr<i32> len_;
+    RegisterOr<type::Type const *> type_;
+  };
+  CMD(Tup) { base::vector<Val> *args_; };
+  CMD(Variant) { base::vector<Val> *args_; };
+
   CMD(VariantType) { Register reg_; };
   CMD(VariantValue) { Register reg_; };
   CMD(PtrIncr) {
@@ -165,6 +186,29 @@ struct Cmd {
     Register ptr_;
     size_t num_;
   };
+
+  CMD(Call) {
+    Call(Register r, base::vector<IR::Val> * args)
+        : reg_(r), which_active_(0x00), args_(args) {}
+    Call(Func * f, base::vector<IR::Val> * args)
+        : fn_(f), which_active_(0x01), args_(args) {}
+    Call(ForeignFn f, base::vector<IR::Val> * args)
+        : foreign_fn_(f), which_active_(0x02), args_(args) {}
+    union {
+      Register reg_;
+      Func *fn_;
+      ForeignFn foreign_fn_;
+    };
+    char which_active_;
+    base::vector<IR::Val> *args_;
+  };
+
+  CMD(CondJump) {
+    Register cond_;
+    BlockIndex blocks_[2];
+  };
+  CMD(UncondJump) { BlockIndex block_; };
+  CMD(ReturnJump){};
 
 #undef CMD
 
@@ -192,6 +236,16 @@ struct Cmd {
     LoadEnum load_enum_;
     LoadFlags load_flags_;
     LoadAddr load_addr_;
+
+    PrintBool print_bool_;
+    PrintChar print_char_;
+    PrintInt print_int_;
+    PrintReal print_real_;
+    PrintType print_type_;
+    PrintEnum print_enum_;
+    PrintFlags print_flags_;
+    PrintAddr print_addr_;
+    PrintCharBuffer print_char_buffer_;
 
     AddInt add_int_;
     AddReal add_real_;
@@ -251,9 +305,18 @@ struct Cmd {
 
     Cmd::Ptr ptr_;
     Cmd::Arrow arrow_;
+    Cmd::Array array_;
+    Cmd::Tup tup_;
+    Cmd::Variant variant_;
+
+    CondJump cond_jump_;
+    UncondJump uncond_jump_;
+    ReturnJump return_jump_;
 
     Cmd::VariantType variant_type_;
     Cmd::VariantValue variant_value_;
+
+    Call call_;
   };
 
   const type::Type *type = nullptr;
@@ -325,10 +388,27 @@ Val Malloc(const type::Type *t, const Val& v);
 void Free(const Val &v);
 Val Arrow(const Val &v1, const Val &v2);
 Val Ptr(const Val &v);
+Val Array(const Val &v1, const Val &v2);
 Val VariantType(const Val &v);
 Val VariantValue(const type::Type *t, const Val&);
 Val PtrIncr(const Val &v1, const Val &v2);
 Val Field(const Val &v, size_t n);
+Val PrintBool(const Val &v);
+Val PrintChar(const Val &v);
+Val PrintInt(const Val &v);
+Val PrintReal(const Val &v);
+Val PrintType(const Val &v);
+Val PrintEnum(const Val &v);
+Val PrintFlags(const Val &v);
+Val PrintAddr(const Val &v);
+Val PrintCharBuffer(const Val &v);
+Val Call(const Val &fn, base::vector<Val> vals, base::vector<Val> result_locs);
+Val Tup(base::vector<IR::Val> vals);
+Val Variant(base::vector<Val> vals);
+
+void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block);
+void UncondJump(BlockIndex block);
+void ReturnJump();
 
 Val Load(const Val& v);
 Val Add(const Val& v1, const Val& v2);
@@ -347,12 +427,9 @@ Val Or(const Val &v1, const Val &v2);
 Val And(const Val &v1, const Val &v2);
 Val Index(const Val &v1, const Val &v2);
 Val Alloca(const type::Type *t);
+Val Print(const Val& v);
 
 Val AddCodeBlock(const Val& v1, const Val& v2);
-Val Call(Val fn, base::vector<Val> vals, base::vector<Val> result_locs);
-Val Tup(base::vector<IR::Val> vals);
-Val Variant(base::vector<Val> vals);
-Val Array(Val v1, Val v2);
 Val BlockSeq(base::vector<Val> blocks);
 Val Cast(const type::Type *to, Val v, Context* ctx);
 Val BlockSeqContains(Val v, AST::BlockLiteral *lit);
@@ -360,11 +437,7 @@ Val BlockSeqContains(Val v, AST::BlockLiteral *lit);
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val);
 void SetReturn(size_t n, Val v2);
-void Print(Val v);
 void Store(Val val, Val loc);
-void CondJump(Val cond, BlockIndex true_block, BlockIndex false_block);
-void UncondJump(BlockIndex block);
-void ReturnJump();
 
 CmdIndex Phi(const type::Type *t);
 

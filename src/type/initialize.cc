@@ -1,6 +1,7 @@
 #include "type/all.h"
 
 #include "architecture.h"
+#include "ast/codeblock.h"
 #include "context.h"
 #include "ir/func.h"
 #include "module.h"

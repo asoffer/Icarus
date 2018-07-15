@@ -1,14 +1,14 @@
 #ifndef ICARUS_AST_FUNCTION_LITERAL_H
 #define ICARUS_AST_FUNCTION_LITERAL_H
 
-#include "base/container/vector.h"
-
-#include "base/container/map.h"
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"
 #include "ast/dispatch.h"
 #include "ast/expression.h"
 #include "ast/identifier.h"
+#include "ast/statements.h"
+#include "base/container/map.h"
+#include "base/container/vector.h"
 #include "ir/val.h"
 #include "scope.h"
 

@@ -117,10 +117,11 @@ void Func::CheckInvariants() {
   for (const auto& block : blocks_) {
     for (const auto& cmd : block.cmds_) {
       if (cmd.op_code_ != Op::Call) { continue; }
-      if (std::holds_alternative<IR::Register>(cmd.args.back().value)) { continue; }
       // Only care about calls to functions known at compile-time (hence
       // ignoring the register above.
 
+      // TODO fix this after moving call to call_.fn_
+      /*
       ASSERT(std::holds_alternative<IR::Func *>(cmd.args.back().value));
       auto *fn = std::get<IR::Func *>(cmd.args.back().value);
       for (const auto & [ precond, prop_map ] : fn->preconditions_) {
@@ -133,6 +134,7 @@ void Func::CheckInvariants() {
         // TODO Insert properties and recompute
         fn->dump();
       }
+      */
     }
   }
 }

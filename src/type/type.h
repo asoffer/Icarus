@@ -8,6 +8,8 @@
 
 #include "ir/val.h"
 
+struct Context;
+
 #ifdef ICARUS_USE_LLVM
 namespace llvm {
 class Type;
@@ -69,9 +71,9 @@ const Type *Join(const Type *lhs, const Type *rhs);
 bool CanCastImplicitly(const type::Type *from, const type::Type *to);
 
 void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var, Context*ctx);
+                  IR::Val to_var, Context *ctx);
 void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var, Context*ctx);
+                  IR::Val to_var, Context *ctx);
 
 const Type *Void();
 extern Type *Err, *Bool, *Char, *Int, *Real, *Code, *Type_, *NullPtr,

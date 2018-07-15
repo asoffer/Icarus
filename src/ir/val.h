@@ -123,12 +123,12 @@ template <> struct hash<IR::CmdIndex> {
 namespace IR {
 struct Val {
   const type::Type *type = nullptr;
-  // TODO make trivial: interface, codeblock
+  // TODO make trivial: interface
   std::variant<Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
                const type::Type *, type::Struct *, IR::Func *, AST::Function *,
-               AST::ScopeLiteral *, IR::Interface, AST::CodeBlock,
-               AST::Expression *, BlockIndex, std::string_view, const Module *,
-               BlockSequence, BuiltinGenericIndex, ForeignFn>
+               AST::ScopeLiteral *, IR::Interface, AST::Expression *,
+               BlockIndex, std::string_view, const Module *, BlockSequence,
+               BuiltinGenericIndex, ForeignFn>
       value{false};
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
@@ -143,6 +143,7 @@ struct Val {
   static Val Enum(const type::Enum *enum_type, size_t integral_val);
   static Val Flags(const type::Flags *flags_type, size_t integral_val);
   static Val Type(const type::Type *t) { return Val(type::Type_, t); }
+  static Val Type_(const type::Type *t) { return Val::Type(t); } // TODO hack to get a cmd macro to work.
   static Val CodeBlock(AST::CodeBlock block);
   static Val Foreign(const type::Type *t, ForeignFn f) { return Val(t, f); }
   static Val Func(IR::Func *fn); // TODO deprecate?
