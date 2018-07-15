@@ -61,11 +61,11 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
       auto from_end   = IR::PtrIncr(from_start, from_len);
       IR::UncondJump(phi_block);
 
-      IR::BasicBlock::Current = phi_block;
-      auto from_phi           = IR::Phi(Ptr(from_type->data_type));
-      auto from_phi_reg       = IR::Func::Current->Command(from_phi).reg();
-      auto to_phi             = IR::Phi(Ptr(to_type->data_type));
-      auto to_phi_reg         = IR::Func::Current->Command(to_phi).reg();
+      IR::BasicBlock::Current   = phi_block;
+      auto[from_phi, from_args] = IR::Phi(Ptr(from_type->data_type));
+      auto from_phi_reg         = IR::Func::Current->Command(from_phi).reg();
+      auto[to_phi, to_args]     = IR::Phi(Ptr(to_type->data_type));
+      auto to_phi_reg           = IR::Func::Current->Command(to_phi).reg();
       IR::CondJump(IR::Ne(from_phi_reg, from_end), body_block, exit_block);
 
       IR::BasicBlock::Current = body_block;
@@ -75,10 +75,10 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
       auto to_incr   = IR::PtrIncr(to_phi_reg, IR::Val::Int(1));
       IR::UncondJump(phi_block);
 
-      fn->SetArgs(from_phi, {IR::Val::BasicBlock(fn->entry()), from_start,
-                             IR::Val::BasicBlock(body_block), from_incr});
-      fn->SetArgs(to_phi, {IR::Val::BasicBlock(fn->entry()), to_start,
-                           IR::Val::BasicBlock(body_block), to_incr});
+      *from_args = {IR::Val::BasicBlock(fn->entry()), from_start,
+                    IR::Val::BasicBlock(body_block), from_incr};
+      *to_args   = {IR::Val::BasicBlock(fn->entry()), to_start,
+                  IR::Val::BasicBlock(body_block), to_incr};
 
       IR::BasicBlock::Current = exit_block;
       IR::ReturnJump();

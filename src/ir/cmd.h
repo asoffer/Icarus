@@ -15,7 +15,7 @@ enum class Op : char {
 
   LoadBool, LoadChar, LoadInt, LoadReal, LoadType, LoadEnum, LoadFlags, LoadAddr,
   PrintBool, PrintChar, PrintInt, PrintReal, PrintType, PrintEnum, PrintFlags, PrintAddr, PrintCharBuffer,
-  // StoreBool, StoreChar, StoreInt, StoreReal, StoreType, StoreEnum, StoreFlags, StoreAddr,
+  StoreBool, StoreChar, StoreInt, StoreReal, StoreType, StoreEnum, StoreFlags, StoreAddr,
 
   AddInt, AddReal, AddCharBuf,
   SubInt, SubReal,
@@ -34,7 +34,7 @@ enum class Op : char {
   OrBool, OrFlags,
   AndBool, AndFlags,
 
-  CreateStruct, FinalizeStruct,
+  CreateStruct, InsertField, FinalizeStruct,
 
   Malloc, Free, Alloca,
 
@@ -45,19 +45,15 @@ enum class Op : char {
 
   CondJump, UncondJump, ReturnJump,
 
-  Call,
-  // clang-format on
+  BlockSeq, BlockSeqContains,
 
-  InsertField,
-  Store,
-  SetReturn,
+  Call, CastIntToReal, CastPtr,
   Phi,
-  BlockSeq,
-  BlockSeqContains,
-  Cast,
 
   AddCodeBlock,  // TODO remove codeblock
   Contextualize,
+  // clang-format on
+  SetReturn,
 };
 
 template <typename T>
@@ -103,6 +99,39 @@ struct Cmd {
   CMD(LoadEnum) { RegisterOr<IR::Addr> arg_; };
   CMD(LoadFlags) { RegisterOr<IR::Addr> arg_; };
   CMD(LoadAddr) { RegisterOr<IR::Addr> arg_; };
+
+  CMD(StoreBool) {
+    Register addr_;
+    RegisterOr<bool> val_;
+  };
+  CMD(StoreChar) {
+    Register addr_;
+    RegisterOr<char> val_;
+  };
+  CMD(StoreInt) {
+    Register addr_;
+    RegisterOr<i32> val_;
+  };
+  CMD(StoreReal) {
+    Register addr_;
+    RegisterOr<double> val_;
+  };
+  CMD(StoreType) {
+    Register addr_;
+    RegisterOr<type::Type const *> val_;
+  };
+  CMD(StoreEnum) {
+    Register addr_;
+    RegisterOr<EnumVal> val_;
+  };
+  CMD(StoreFlags) {
+    Register addr_;
+    RegisterOr<FlagsVal> val_;
+  };
+  CMD(StoreAddr) {
+    Register addr_;
+    RegisterOr<IR::Addr> val_;
+  };
 
   CMD(PrintBool) { RegisterOr<bool> arg_; };
   CMD(PrintChar) { RegisterOr<char> arg_; };
@@ -161,6 +190,7 @@ struct Cmd {
   CMD(AndFlags) { RegisterOr<FlagsVal> args_[2]; };
 
   CMD(CreateStruct) {};
+  CMD(InsertField) { base::vector<Val> *args_; };
   CMD(FinalizeStruct) { Register reg_; };
 
   CMD(Malloc) { RegisterOr<i32> arg_; };
@@ -203,12 +233,26 @@ struct Cmd {
     base::vector<IR::Val> *args_;
   };
 
+  CMD(Phi) { base::vector<Val> *args_; };
+
   CMD(CondJump) {
     Register cond_;
     BlockIndex blocks_[2];
   };
   CMD(UncondJump) { BlockIndex block_; };
   CMD(ReturnJump){};
+
+  CMD(CastIntToReal) { Register reg_; };
+  CMD(CastPtr) {
+    Register reg_;
+    type::Type const *type_;
+  };
+
+  CMD(BlockSeq) { base::vector<Val> *args_; };
+  CMD(BlockSeqContains) {
+    Register reg_;
+    AST::BlockLiteral *lit_;
+  };
 
 #undef CMD
 
@@ -236,6 +280,15 @@ struct Cmd {
     LoadEnum load_enum_;
     LoadFlags load_flags_;
     LoadAddr load_addr_;
+
+    StoreBool store_bool_;
+    StoreChar store_char_;
+    StoreInt store_int_;
+    StoreReal store_real_;
+    StoreType store_type_;
+    StoreEnum store_enum_;
+    StoreFlags store_flags_;
+    StoreAddr store_addr_;
 
     PrintBool print_bool_;
     PrintChar print_char_;
@@ -294,6 +347,7 @@ struct Cmd {
     AndFlags and_flags_;
 
     CreateStruct create_struct_;
+    InsertField insert_field_;
     FinalizeStruct finalize_struct_;
 
     Malloc malloc_;
@@ -317,6 +371,12 @@ struct Cmd {
     Cmd::VariantValue variant_value_;
 
     Call call_;
+    CastIntToReal cast_int_to_real_;
+    CastPtr cast_ptr_;
+    Phi phi_;
+
+    BlockSeq block_seq_;
+    BlockSeqContains block_seq_contains_;
   };
 
   const type::Type *type = nullptr;
@@ -344,6 +404,14 @@ Val LoadType(const Val &v);
 Val LoadEnum(const Val &v);
 Val LoadFlags(const Val &v);
 Val LoadAddr(const Val &v);
+void StoreBool(const Val &v, const Val &addr);
+void StoreChar(const Val &v, const Val &addr);
+void StoreInt(const Val &v, const Val &addr);
+void StoreReal(const Val &v, const Val &addr);
+void StoreType(const Val &v, const Val &addr);
+void StoreEnum(const Val &v, const Val &addr);
+void StoreFlags(const Val &v, const Val &addr);
+void StoreAddr(const Val &v, const Val &addr);
 Val AddInt(const Val &v1, const Val &v2);
 Val AddReal(const Val &v1, const Val &v2);
 Val SubInt(const Val &v1, const Val &v2);
@@ -383,6 +451,8 @@ Val OrFlags(const Val &v1, const Val &v2);
 Val AndBool(const Val &v1, const Val &v2);
 Val AndFlags(const Val &v1, const Val &v2);
 Val CreateStruct();
+void InsertField(Val struct_type, std::string field_name, Val type,
+                 Val init_val);
 Val FinalizeStruct(const Val &v);
 Val Malloc(const type::Type *t, const Val& v);
 void Free(const Val &v);
@@ -405,10 +475,11 @@ Val PrintCharBuffer(const Val &v);
 Val Call(const Val &fn, base::vector<Val> vals, base::vector<Val> result_locs);
 Val Tup(base::vector<IR::Val> vals);
 Val Variant(base::vector<Val> vals);
-
 void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();
+Val BlockSeq(const base::vector<Val>& blocks);
+Val BlockSeqContains(const Val& v, AST::BlockLiteral *lit);
 
 Val Load(const Val& v);
 Val Add(const Val& v1, const Val& v2);
@@ -428,18 +499,12 @@ Val And(const Val &v1, const Val &v2);
 Val Index(const Val &v1, const Val &v2);
 Val Alloca(const type::Type *t);
 Val Print(const Val& v);
+Val Cast(const type::Type *to, const Val& v, Context* ctx);
+void Store(const Val &val, const Val &loc);
+
+void SetReturn(size_t n, Val v2);
+std::pair<CmdIndex, base::vector<IR::Val> *> Phi(const type::Type *t);
 
 Val AddCodeBlock(const Val& v1, const Val& v2);
-Val BlockSeq(base::vector<Val> blocks);
-Val Cast(const type::Type *to, Val v, Context* ctx);
-Val BlockSeqContains(Val v, AST::BlockLiteral *lit);
-
-void InsertField(Val struct_type, std::string field_name, Val type,
-                 Val init_val);
-void SetReturn(size_t n, Val v2);
-void Store(Val val, Val loc);
-
-CmdIndex Phi(const type::Type *t);
-
 } // namespace IR
 #endif // ICARUS_IR_CMD_H

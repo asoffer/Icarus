@@ -122,10 +122,10 @@ base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
 
   phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
   phi_args.push_back(std::move(val));
- 
+
   IR::BasicBlock::Current = land_block;
-  auto phi           = IR::Phi(type);
-  IR::Func::Current->SetArgs(phi, std::move(phi_args));
+  auto[phi, args]         = IR::Phi(type);
+  *args                   = std::move(phi_args);
 
   return {IR::Func::Current->Command(phi).reg()};
 }

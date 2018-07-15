@@ -362,22 +362,37 @@ static Val MakeCmd(const type::Type *t, Op op, base::vector<Val> vals) {
 
 extern Val MakeBlockSeq(const base::vector<Val> &blocks);
 
-Val BlockSeq(base::vector<Val> blocks) {
+Val BlockSeq(const base::vector<Val> &blocks) {
   if (std::all_of(blocks.begin(), blocks.end(), [](const IR::Val &v) {
         return std::holds_alternative<IR::BlockSequence>(v.value);
       })) {
     return MakeBlockSeq(blocks);
   }
-  auto *t = blocks.back().type;
-  return MakeCmd(t, Op::BlockSeq, std::move(blocks));
+  auto &cmd  = MakeNewCmd(blocks.back().type, Op::BlockSeq);
+  auto &args = Func::Current->block(BasicBlock::Current)
+                   .call_args_.emplace_back(
+                       std::make_unique<base::vector<IR::Val>>(blocks));
+  cmd.block_seq_ = Cmd::BlockSeq{{}, args.get()};
+  return cmd.reg();
 }
 
-Val Cast(const type::Type *to, Val v, Context *ctx) {
+Val BlockSeqContains(const Val &v, AST::BlockLiteral *lit) {
+  auto &cmd = MakeNewCmd(type::Bool, Op::BlockSeqContains);
+  if (auto *bs = std::get_if<BlockSequence>(&v.value)) {
+    return IR::Val::Bool(
+        std::any_of(bs->seq_->begin(), bs->seq_->end(),
+                    [lit](AST::BlockLiteral *l) { return lit == l; }));
+  }
+  cmd.block_seq_contains_ =
+      Cmd::BlockSeqContains{{}, std::get<Register>(v.value), lit};
+  return cmd.reg();
+}
+
+Val Cast(const type::Type *to, const Val& v, Context *ctx) {
   if (v.type == to) {
     // TODO lvalue/rvalue?
     return v;
-
-  } else if (i32 *n = std::get_if<i32>(&v.value); n && to == type::Real) {
+  } else if (i32 const *n = std::get_if<i32>(&v.value); n && to == type::Real) {
     return Val::Real(static_cast<double>(*n));
 
   } else if (to->is<type::Variant>()) {
@@ -393,12 +408,25 @@ Val Cast(const type::Type *to, Val v, Context *ctx) {
     if (ptee_type->is<type::Array>()) {
       auto &array_type = ptee_type->as<type::Array>();
       if (array_type.fixed_length && Ptr(array_type.data_type) == to) {
-        v.type = to;
-        return v;
+        Val v_copy  = v;
+        v_copy.type = to;
+        return v_copy;
       }
     }
   }
-  return MakeCmd(to, Op::Cast, base::vector<IR::Val>{std::move(v)});
+
+  if (to == type::Real && v.type == type::Int) {
+    auto &cmd             = MakeNewCmd(type::Real, Op::CastIntToReal);
+    cmd.cast_int_to_real_ = Cmd::CastIntToReal{{}, std::get<Register>(v.value)};
+    return cmd.reg();
+  } else if (to->is<type::Pointer>()) {
+    auto &cmd     = MakeNewCmd(to, Op::CastPtr);
+    cmd.cast_ptr_ = Cmd::CastPtr{
+        {}, std::get<Register>(v.value), to->as<type::Pointer>().pointee};
+    return cmd.reg();
+  } else {
+    UNREACHABLE();
+  }
 }
 
 Val CreateStruct() { return MakeNewCmd(type::Type_, Op::CreateStruct).reg(); }
@@ -423,12 +451,14 @@ Val VariantValue(type::Type const *t, const Val &v) {
 
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val) {
-  Cmd cmd(nullptr, Op::InsertField,
-          {std::move(struct_type), Val::CharBuf(field_name), std::move(type),
-           std::move(init_val)});
-  ASSERT_NOT_NULL(Func::Current)
-      ->block(BasicBlock::Current)
-      .cmds_.push_back(std::move(cmd));
+  auto &cmd = MakeNewCmd(nullptr, Op::InsertField);
+  auto &args =
+      Func::Current->block(BasicBlock::Current)
+          .call_args_.emplace_back(
+              std::make_unique<base::vector<IR::Val>>(base::vector<Val>{
+                  std::move(struct_type), Val::CharBuf(field_name),
+                  std::move(type), std::move(init_val)}));
+  cmd.insert_field_.args_ = args.get();
 }
 
 Val Alloca(const type::Type *t) {
@@ -443,12 +473,6 @@ void SetReturn(size_t r, Val v2) {
   // TODO ***maybe*** later optimize a return register
   MakeCmd(nullptr, Op::SetReturn,
           base::vector<IR::Val>{std::move(v2), IR::Func::Current->Return(r)});
-}
-
-void Store(Val v1, Val v2) {
-  ASSERT(v2.type, Is<type::Pointer>());
-  MakeCmd(nullptr, Op::Store,
-          base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
 Val PtrIncr(const Val &v1, const Val &v2) {
@@ -519,6 +543,75 @@ Val Mod(const Val &v1, const Val &v2) {
   UNREACHABLE();
 }
 
+template <typename T>
+static RegisterOr<T> GetRegOr(const Val &v) {
+  auto *x = std::get_if<T>(&v.value);
+  if (x) { return RegisterOr<T>(*x); }
+  return RegisterOr<T>(std::get<Register>(v.value));
+}
+
+void StoreBool(const Val &val, const Val &loc) {
+  auto &cmd = MakeNewCmd(nullptr, Op::StoreBool);
+  cmd.store_bool_ =
+      Cmd::StoreBool::Make(std::get<Register>(loc.value), GetRegOr<bool>(val));
+}
+
+void StoreChar(const Val &val, const Val &loc) {
+  auto &cmd = MakeNewCmd(nullptr, Op::StoreChar);
+  cmd.store_char_ =
+      Cmd::StoreChar::Make(std::get<Register>(loc.value), GetRegOr<char>(val));
+}
+
+void StoreInt(const Val &val, const Val &loc) {
+  auto &cmd = MakeNewCmd(nullptr, Op::StoreInt);
+  cmd.store_int_ =
+      Cmd::StoreInt::Make(std::get<Register>(loc.value), GetRegOr<i32>(val));
+}
+
+void StoreReal(const Val &val, const Val &loc) {
+  auto &cmd       = MakeNewCmd(nullptr, Op::StoreReal);
+  cmd.store_real_ = Cmd::StoreReal::Make(std::get<Register>(loc.value),
+                                         GetRegOr<double>(val));
+}
+
+void StoreType(const Val &val, const Val &loc) {
+  auto &cmd       = MakeNewCmd(nullptr, Op::StoreType);
+  cmd.store_type_ = Cmd::StoreType::Make(std::get<Register>(loc.value),
+                                         GetRegOr<type::Type const *>(val));
+}
+
+void StoreEnum(const Val &val, const Val &loc) {
+  auto &cmd       = MakeNewCmd(nullptr, Op::StoreEnum);
+  cmd.store_enum_ = Cmd::StoreEnum::Make(std::get<Register>(loc.value),
+                                         GetRegOr<EnumVal>(val));
+}
+
+void StoreFlags(const Val &val, const Val &loc) {
+  auto &cmd        = MakeNewCmd(nullptr, Op::StoreFlags);
+  cmd.store_flags_ = Cmd::StoreFlags::Make(std::get<Register>(loc.value),
+                                           GetRegOr<FlagsVal>(val));
+}
+
+void StoreAddr(const Val &val, const Val &loc) {
+  auto &cmd       = MakeNewCmd(nullptr, Op::StoreAddr);
+  cmd.store_addr_ = Cmd::StoreAddr::Make(std::get<Register>(loc.value),
+                                         GetRegOr<IR::Addr>(val));
+}
+
+void Store(const Val &val, const Val &loc) {
+  ASSERT(loc.type, Is<type::Pointer>());
+  auto *ptee = loc.type->as<type::Pointer>().pointee;
+  if (ptee == type::Bool) { return StoreBool(val, loc); }
+  if (ptee == type::Char) { return StoreChar(val, loc); }
+  if (ptee == type::Int) { return StoreInt(val, loc); }
+  if (ptee == type::Real) { return StoreReal(val, loc); }
+  if (ptee == type::Type_) { return StoreType(val, loc); }
+  if (ptee->is<type::Enum>()) { return StoreEnum(val, loc); }
+  if (ptee->is<type::Flags>()) { return StoreFlags(val, loc); }
+  if (ptee->is<type::Pointer>()) { return StoreAddr(val, loc); }
+  UNREACHABLE(loc.type);
+}
+
 Val Load(const Val& v) {
   auto *ptee = v.type->as<type::Pointer>().pointee;
   if (ptee == type::Bool) { return LoadBool(v); }
@@ -585,11 +678,6 @@ Val Ge(const Val &v1, const Val &v2) {
   UNREACHABLE();
 }
 
-Val BlockSeqContains(Val v, AST::BlockLiteral *lit) {
-  return MakeCmd(type::Bool, Op::BlockSeqContains,
-                 base::vector<IR::Val>{std::move(v), IR::Val::Block(lit)});
-}
-
 Val Eq(const Val &v1, const Val &v2) {
   if (const bool *b = std::get_if<bool>(&v1.value)) {
     return *b ? v2 : Not(v2);
@@ -625,15 +713,17 @@ Val Ne(const Val &v1, const Val &v2) {
   UNREACHABLE();
 }
 
-CmdIndex Phi(const type::Type *t) {
+std::pair<CmdIndex, base::vector<IR::Val> *> Phi(const type::Type *t) {
   CmdIndex cmd_index{
       BasicBlock::Current,
       static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
 
-  Cmd cmd(t, Op::Phi, {});
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
-
-  return cmd_index;
+  auto &args =
+      Func::Current->block(BasicBlock::Current)
+          .call_args_.emplace_back(std::make_unique<base::vector<IR::Val>>());
+  auto &cmd = MakeNewCmd(t, Op::Phi);
+  cmd.phi_  = Cmd::Phi::Make(args.get());
+  return std::pair(cmd_index, args.get());
 }
 
 Val Call(const Val &fn, base::vector<Val> vals, base::vector<Val> result_locs) {
@@ -783,16 +873,26 @@ void Cmd::dump(size_t indent) const {
     case Op::CondJump: std::cerr << "cond"; break;
     case Op::UncondJump: std::cerr << "uncond"; break;
     case Op::ReturnJump: std::cerr << "return"; break;
-
-    case Op::AddCodeBlock: std::cerr << "add-codeblock"; break;
-    case Op::Store: std::cerr << "store"; break;
-    case Op::SetReturn: std::cerr << "set-ret"; break;
-    case Op::Phi: std::cerr << "phi"; break;
     case Op::Call: std::cerr << "call"; break;
-    case Op::Contextualize: std::cerr << "contextualize"; break;
-    case Op::Cast: std::cerr << "cast"; break;
     case Op::BlockSeq: std::cerr << "block-seq"; break;
     case Op::BlockSeqContains: std::cerr << "block-seq-contains"; break;
+    case Op::CastIntToReal: std::cerr << "cast-int-to-real"; break;
+    case Op::CastPtr: std::cerr << "cast-ptr"; break;
+
+    case Op::AddCodeBlock: std::cerr << "add-codeblock"; break;
+    case Op::Contextualize: std::cerr << "contextualize"; break;
+
+    case Op::StoreBool: std::cerr << "store-bool"; break;
+    case Op::StoreChar: std::cerr << "store-char"; break;
+    case Op::StoreInt: std::cerr << "store-int"; break;
+    case Op::StoreReal: std::cerr << "store-real"; break;
+    case Op::StoreType: std::cerr << "store-type"; break;
+    case Op::StoreEnum: std::cerr << "store-enum"; break;
+    case Op::StoreFlags: std::cerr << "store-flags"; break;
+    case Op::StoreAddr: std::cerr << "store-addr"; break;
+
+    case Op::SetReturn: std::cerr << "set-ret"; break;
+    case Op::Phi: std::cerr << "phi"; break;
   }
 
   if (args.empty()) {
@@ -817,12 +917,4 @@ void Func::dump() const {
     blocks_[i].dump(2);
   }
 }
-
-// TODO this may not be necessary anymore? I can just make the phi later?
-void Func::SetArgs(CmdIndex cmd_index, base::vector<Val> args) {
-  auto &cmd = Command(cmd_index);
-  ASSERT(cmd.op_code_ == Op::Phi);
-  cmd.args = std::move(args);
-}
-
 }  // namespace IR

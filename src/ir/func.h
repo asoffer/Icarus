@@ -70,8 +70,6 @@ struct Func {
         static_cast<const Func *>(this)->Command(cmd_index));
   }
 
-  void SetArgs(CmdIndex cmd_index, base::vector<IR::Val> args);
-
   static BlockIndex AddBlock() {
     BlockIndex index;
     index.value = static_cast<decltype(index.value)>(Current->blocks_.size());

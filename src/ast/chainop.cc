@@ -327,8 +327,8 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
     IR::UncondJump(land_block);
 
     IR::BasicBlock::Current = land_block;
-    auto phi           = IR::Phi(type::Bool);
-    IR::Func::Current->SetArgs(phi, std::move(phi_args));
+    auto[phi, args]         = IR::Phi(type::Bool);
+    *args                   = std::move(phi_args);
     return {IR::Func::Current->Command(phi).reg()};
 
   } else {
@@ -363,8 +363,8 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       IR::UncondJump(land_block);
 
       IR::BasicBlock::Current = land_block;
-      auto phi           = IR::Phi(type::Bool);
-      IR::Func::Current->SetArgs(phi, std::move(phi_args));
+      auto[phi, args]         = IR::Phi(type::Bool);
+      *args                   = std::move(phi_args);
       return {IR::Func::Current->Command(phi).reg()};
     }
   }

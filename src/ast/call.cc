@@ -112,9 +112,8 @@ static IR::Val EmitVariantMatch(const IR::Val &needle,
     IR::UncondJump(landing);
 
     IR::BasicBlock::Current = landing;
-    auto phi                = IR::Phi(type::Bool);
-    IR::Func::Current->SetArgs(phi, std::move(phi_args));
-
+    auto[phi, args]         = IR::Phi(type::Bool);
+    *args                   = std::move(phi_args);
     return IR::Func::Current->Command(phi).reg();
 
   } else {
@@ -304,10 +303,12 @@ base::vector<IR::Val> EmitCallDispatch(
       if (ret_type == type::Void()) {
         return base::vector<IR::Val>(1, IR::Val::None());
       } else {
-        auto phi = IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
-        IR::Func::Current->SetArgs(phi, std::move(result_phi_args[0]));
+        auto[phi, args] =
+            IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
+        *args = std::move(result_phi_args[0]);
         return base::vector<IR::Val>(1, IR::Func::Current->Command(phi).reg());
       }
+      break;
     default: {
       base::vector<IR::Val> results;
       results.reserve(num_rets);
@@ -317,9 +318,10 @@ base::vector<IR::Val> EmitCallDispatch(
         if (single_ret_type == type::Void()) {
           results.push_back(IR::Val::None());
         } else {
-          auto phi = IR::Phi(single_ret_type->is_big() ? Ptr(single_ret_type)
-                                                       : single_ret_type);
-          IR::Func::Current->SetArgs(phi, std::move(result_phi_args[i]));
+          auto[phi, args] =
+              IR::Phi(single_ret_type->is_big() ? Ptr(single_ret_type)
+                                                : single_ret_type);
+          *args = std::move(result_phi_args[i]);
           results.push_back(IR::Func::Current->Command(phi).reg());
         }
       }

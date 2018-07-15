@@ -452,10 +452,9 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
 
       IR::BasicBlock::Current = land_block;
 
-      auto phi = IR::Phi(type::Bool);
-      IR::Func::Current->SetArgs(
-          phi, {IR::Val::BasicBlock(lhs_end_block), IR::Val::Bool(true),
-                IR::Val::BasicBlock(rhs_end_block), rhs_val});
+      auto [phi, args] = IR::Phi(type::Bool);
+      *args = {IR::Val::BasicBlock(lhs_end_block), IR::Val::Bool(true),
+               IR::Val::BasicBlock(rhs_end_block), rhs_val};
       return {IR::Func::Current->Command(phi).reg()};
     } break;
     case Language::Operator::AndEq: {
@@ -479,10 +478,9 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
 
       IR::BasicBlock::Current = land_block;
 
-      auto phi = IR::Phi(type::Bool);
-      IR::Func::Current->SetArgs(
-          phi, {IR::Val::BasicBlock(lhs_end_block), IR::Val::Bool(false),
-                IR::Val::BasicBlock(rhs_end_block), rhs_val});
+      auto[phi, args] = IR::Phi(type::Bool);
+      *args = {IR::Val::BasicBlock(lhs_end_block), IR::Val::Bool(false),
+               IR::Val::BasicBlock(rhs_end_block), rhs_val};
       return {IR::Func::Current->Command(phi).reg()};
     } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \
