@@ -6,7 +6,7 @@
 
 namespace IR {
 Val CreateStruct();
-Val FinalizeStruct(Val v);
+Val FinalizeStruct(const Val &v);
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val);
 }  // namespace IR

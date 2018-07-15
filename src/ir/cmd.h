@@ -24,30 +24,36 @@ enum class Op : char {
   LeInt, LeReal, LeFlags,
   GtInt, GtReal, GtFlags,
   GeInt, GeReal, GeFlags,
+  EqBool, EqChar, EqInt, EqReal, EqType, EqFlags, EqAddr,
+  NeBool, NeChar, NeInt, NeReal, NeType, NeFlags, NeAddr,
+  
+  XorBool, XorFlags,
+  OrBool, OrFlags,
+  AndBool, AndFlags,
+
+  CreateStruct, FinalizeStruct,
+
+  Malloc, Free, Alloca,
+
+  Arrow, Ptr,
+
+  VariantType, VariantValue,
+  PtrIncr, Field,
   // clang-format on
 
-  Or, And,
+  InsertField,
   AddCodeBlock, // TODO remove codeblock
-  Eq, Ne, // numeric types only
-  Xor,
   Print,
-  Malloc, Free,
   Store,
   SetReturn,
-   PtrIncr,
-  Phi, Field, Call,
-  Tup, Arrow, Variant, Array, Ptr,
-  Alloca,
+  Phi, Call,
+  Tup, Variant, Array, 
   Contextualize,
-  VariantType, VariantValue,
   BlockSeq, BlockSeqContains,
   Cast,
   CondJump,
   UncondJump,
   ReturnJump,
-  CreateStruct,
-  InsertField,
-  FinalizeStruct,
 };
 
 template <typename T>
@@ -84,7 +90,7 @@ struct Cmd {
   CMD(NegReal) { Register reg_; };
   CMD(ArrayLength) { RegisterOr<IR::Addr> arg_; };
   CMD(ArrayData) { RegisterOr<IR::Addr> arg_; };
-  CMD(Ptr) { Register reg_; };
+
   CMD(LoadBool) { RegisterOr<IR::Addr> arg_; };
   CMD(LoadChar) { RegisterOr<IR::Addr> arg_; };
   CMD(LoadInt) { RegisterOr<IR::Addr> arg_; };
@@ -93,6 +99,7 @@ struct Cmd {
   CMD(LoadEnum) { RegisterOr<IR::Addr> arg_; };
   CMD(LoadFlags) { RegisterOr<IR::Addr> arg_; };
   CMD(LoadAddr) { RegisterOr<IR::Addr> arg_; };
+
   CMD(AddInt) { RegisterOr<i32> args_[2]; };
   CMD(AddReal) { RegisterOr<double> args_[2]; };
   CMD(AddCharBuf) { RegisterOr<std::string_view> args_[2]; };
@@ -117,6 +124,48 @@ struct Cmd {
   CMD(GeInt) { RegisterOr<i32> args_[2]; };
   CMD(GeReal) { RegisterOr<double> args_[2]; };
   CMD(GeFlags) { RegisterOr<FlagsVal> args_[2]; };
+  CMD(EqBool) { RegisterOr<bool> args_[2]; };
+  CMD(EqChar) { RegisterOr<char> args_[2]; };
+  CMD(EqInt) { RegisterOr<i32> args_[2]; };
+  CMD(EqReal) { RegisterOr<double> args_[2]; };
+  CMD(EqType) { RegisterOr<type::Type const *> args_[2]; };
+  CMD(EqFlags) { RegisterOr<FlagsVal> args_[2]; };
+  CMD(EqAddr) { RegisterOr<IR::Addr> args_[2]; };
+  CMD(NeBool) { RegisterOr<bool> args_[2]; };
+  CMD(NeChar) { RegisterOr<char> args_[2]; };
+  CMD(NeInt) { RegisterOr<i32> args_[2]; };
+  CMD(NeReal) { RegisterOr<double> args_[2]; };
+  CMD(NeType) { RegisterOr<type::Type const *> args_[2]; };
+  CMD(NeFlags) { RegisterOr<FlagsVal> args_[2]; };
+  CMD(NeAddr) { RegisterOr<IR::Addr> args_[2]; };
+
+  CMD(XorBool) { RegisterOr<bool> args_[2]; };
+  CMD(XorFlags) { RegisterOr<FlagsVal> args_[2]; };
+  CMD(OrBool) { RegisterOr<bool> args_[2]; };
+  CMD(OrFlags) { RegisterOr<FlagsVal> args_[2]; };
+  CMD(AndBool) { RegisterOr<bool> args_[2]; };
+  CMD(AndFlags) { RegisterOr<FlagsVal> args_[2]; };
+
+  CMD(CreateStruct) {};
+  CMD(FinalizeStruct) { Register reg_; };
+
+  CMD(Malloc) { RegisterOr<i32> arg_; };
+  CMD(Free) { Register reg_; };
+  CMD(Alloca) {};
+
+  CMD(Ptr) { Register reg_; };
+  CMD(Arrow) { RegisterOr<type::Type const *> args_[2]; };
+  CMD(VariantType) { Register reg_; };
+  CMD(VariantValue) { Register reg_; };
+  CMD(PtrIncr) {
+    Register ptr_;
+    RegisterOr<i32> incr_;
+  };
+  CMD(Field) {
+    Register ptr_;
+    size_t num_;
+  };
+
 #undef CMD
 
   operator IR::Val() const { return reg(); }
@@ -135,7 +184,6 @@ struct Cmd {
     NegReal neg_real_;
     ArrayLength array_length_;
     ArrayData array_data_;
-    Cmd::Ptr ptr_;
     LoadBool load_bool_;
     LoadChar load_char_;
     LoadInt load_int_;
@@ -169,6 +217,43 @@ struct Cmd {
     GeInt ge_int_;
     GeReal ge_real_;
     GeFlags ge_flags_;
+    EqBool eq_bool_;
+    EqChar eq_char_;
+    EqInt eq_int_;
+    EqReal eq_real_;
+    EqType eq_type_;
+    EqFlags eq_flags_;
+    EqAddr eq_addr_;
+    NeBool ne_bool_;
+    NeChar ne_char_;
+    NeInt ne_int_;
+    NeReal ne_real_;
+    NeType ne_type_;
+    NeFlags ne_flags_;
+    NeAddr ne_addr_;
+
+    XorBool xor_bool_;
+    XorFlags xor_flags_;
+    OrBool or_bool_;
+    OrFlags or_flags_;
+    AndBool and_bool_;
+    AndFlags and_flags_;
+
+    CreateStruct create_struct_;
+    FinalizeStruct finalize_struct_;
+
+    Malloc malloc_;
+    Free free_;
+    Alloca alloca_;
+
+    PtrIncr ptr_incr_;
+    Field field_;
+
+    Cmd::Ptr ptr_;
+    Cmd::Arrow arrow_;
+
+    Cmd::VariantType variant_type_;
+    Cmd::VariantValue variant_value_;
   };
 
   const type::Type *type = nullptr;
@@ -188,7 +273,6 @@ Val NegInt(const Val &v);
 Val NegReal(const Val &v);
 Val ArrayLength(const Val &v);
 Val ArrayData(const Val &v);
-Val Ptr(const Val &v);
 Val LoadBool(const Val &v);
 Val LoadChar(const Val &v);
 Val LoadInt(const Val &v);
@@ -217,6 +301,34 @@ Val GeFlags(const Val &v1, const Val &v2);
 Val GtInt(const Val &v1, const Val &v2);
 Val GtReal(const Val &v1, const Val &v2);
 Val GtFlags(const Val &v1, const Val &v2);
+Val EqBool(const Val &v1, const Val &v2);
+Val EqChar(const Val &v1, const Val &v2);
+Val EqInt(const Val &v1, const Val &v2);
+Val EqReal(const Val &v1, const Val &v2);
+Val EqType(const Val &v1, const Val &v2);
+Val EqAddr(const Val &v1, const Val &v2);
+Val NeBool(const Val &v1, const Val &v2);
+Val NeChar(const Val &v1, const Val &v2);
+Val NeInt(const Val &v1, const Val &v2);
+Val NeReal(const Val &v1, const Val &v2);
+Val NeType(const Val &v1, const Val &v2);
+Val NeAddr(const Val &v1, const Val &v2);
+Val XorBool(const Val &v1, const Val &v2);
+Val XorFlags(const Val &v1, const Val &v2);
+Val OrBool(const Val &v1, const Val &v2);
+Val OrFlags(const Val &v1, const Val &v2);
+Val AndBool(const Val &v1, const Val &v2);
+Val AndFlags(const Val &v1, const Val &v2);
+Val CreateStruct();
+Val FinalizeStruct(const Val &v);
+Val Malloc(const type::Type *t, const Val& v);
+void Free(const Val &v);
+Val Arrow(const Val &v1, const Val &v2);
+Val Ptr(const Val &v);
+Val VariantType(const Val &v);
+Val VariantValue(const type::Type *t, const Val&);
+Val PtrIncr(const Val &v1, const Val &v2);
+Val Field(const Val &v, size_t n);
 
 Val Load(const Val& v);
 Val Add(const Val& v1, const Val& v2);
@@ -228,28 +340,20 @@ Val Lt(const Val &v1, const Val &v2);
 Val Le(const Val &v1, const Val &v2);
 Val Ge(const Val &v1, const Val &v2);
 Val Gt(const Val &v1, const Val &v2);
+Val Eq(const Val &v1, const Val &v2);
+Val Ne(const Val &v1, const Val &v2);
+Val Xor(const Val &v1, const Val &v2);
+Val Or(const Val &v1, const Val &v2);
+Val And(const Val &v1, const Val &v2);
+Val Index(const Val &v1, const Val &v2);
+Val Alloca(const type::Type *t);
 
 Val AddCodeBlock(const Val& v1, const Val& v2);
-Val Eq(Val v1, Val v2);
-Val Ne(Val v1, Val v2);
-Val Xor(Val v1, Val v2);
-Val Or(Val v1, Val v2);
-Val And(Val v1, Val v2);
-Val Index(Val v1, Val v2);
 Val Call(Val fn, base::vector<Val> vals, base::vector<Val> result_locs);
-Val PtrIncr(Val v1, Val v2);
-Val Malloc(const type::Type *t, Val v);
-Val Field(Val v, size_t n);
 Val Tup(base::vector<IR::Val> vals);
-Val Arrow(Val v1, Val v2);
 Val Variant(base::vector<Val> vals);
 Val Array(Val v1, Val v2);
-Val Alloca(const type::Type *t);
-Val VariantType(Val v1);
-Val VariantValue(const type::Type *t, Val);
 Val BlockSeq(base::vector<Val> blocks);
-Val CreateStruct();
-Val FinalizeStruct(Val v);
 Val Cast(const type::Type *to, Val v, Context* ctx);
 Val BlockSeqContains(Val v, AST::BlockLiteral *lit);
 
@@ -258,7 +362,6 @@ void InsertField(Val struct_type, std::string field_name, Val type,
 void SetReturn(size_t n, Val v2);
 void Print(Val v);
 void Store(Val val, Val loc);
-void Free(Val v);
 void CondJump(Val cond, BlockIndex true_block, BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();

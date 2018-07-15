@@ -38,24 +38,20 @@ Val Extend(const Val &v) {
 }
 
 Val Bytes(const Val &v) {
-  auto &cmd = MakeNewCmd(type::Int, Op::Bytes);
-  if (const Register *r = std::get_if<Register>(&v.value)) {
-    cmd.bytes_ = Cmd::Bytes::Make(RegisterOr<const type::Type *>(*r));
-  } else {
-    cmd.bytes_ = Cmd::Bytes::Make(
-        RegisterOr<const type::Type *>(std::get<const type::Type *>(v.value)));
-  }
+  auto &cmd         = MakeNewCmd(type::Int, Op::Bytes);
+  const Register *r = std::get_if<Register>(&v.value);
+  cmd.bytes_        = Cmd::Bytes::Make(r ? RegisterOr<const type::Type *>(*r)
+                                  : RegisterOr<const type::Type *>(
+                                        std::get<const type::Type *>(v.value)));
   return cmd.reg();
 }
 
 Val Align(const Val &v) {
-  auto &cmd = MakeNewCmd(type::Int, Op::Align);
-  if (const Register *r = std::get_if<Register>(&v.value)) {
-    cmd.align_ = Cmd::Align::Make(RegisterOr<const type::Type *>(*r));
-  } else {
-    cmd.align_ = Cmd::Align::Make(
-        RegisterOr<const type::Type *>(std::get<const type::Type *>(v.value)));
-  }
+  auto &cmd         = MakeNewCmd(type::Int, Op::Align);
+  Register const *r = std::get_if<Register>(&v.value);
+  cmd.align_        = Cmd::Align::Make(r ? RegisterOr<const type::Type *>(*r)
+                                  : RegisterOr<const type::Type *>(
+                                        std::get<const type::Type *>(v.value)));
   return cmd.reg();
 }
 
@@ -64,6 +60,22 @@ Val Not(const Val &v) {
   auto &cmd = MakeNewCmd(type::Bool, Op::Not);
   cmd.not_  = Cmd::Not::Make(std::get<Register>(v.value));
   return cmd.reg();
+}
+
+
+// TODO do you really want to support this? How can array allocation be
+// customized?
+Val Malloc(const type::Type *t, const Val &v) {
+  auto &cmd         = MakeNewCmd(type::Ptr(t), Op::Malloc);
+  Register const *r = std::get_if<Register>(&v.value);
+  cmd.malloc_       = Cmd::Malloc::Make(r ? RegisterOr<i32>(*r)
+                                    : RegisterOr<i32>(std::get<i32>(v.value)));
+  return cmd.reg();
+}
+
+void Free(const Val &v) {
+  auto &cmd = MakeNewCmd(v.type, Op::Free);
+  cmd.free_ = Cmd::Free::Make(std::get<Register>(v.value));
 }
 
 Val NegInt(const Val &v) {
@@ -231,8 +243,87 @@ DEFINE_CMD(GeReal, ge_real_, double, Bool, std::less_equal<double>{});
 DEFINE_CMD(GeFlags, ge_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
   return (lhs.value | rhs.value) == lhs.value;
 });
+DEFINE_CMD(EqChar, eq_char_, char, Bool, std::equal_to<char>{});
+DEFINE_CMD(EqInt, eq_int_, i32, Bool, std::equal_to<i32>{});
+DEFINE_CMD(EqReal, eq_real_, double, Bool, std::equal_to<double>{});
+DEFINE_CMD(EqType, eq_type_, const type::Type *, Bool,
+           std::equal_to<const type::Type *>{});
+DEFINE_CMD(EqFlags, eq_flags_, FlagsVal, Bool, std::equal_to<FlagsVal>{});
+DEFINE_CMD(EqAddr, eq_addr_, Addr, Bool, std::equal_to<Addr>{});
+DEFINE_CMD(NeChar, ne_char_, char, Bool, std::not_equal_to<char>{});
+DEFINE_CMD(NeInt, ne_int_, i32, Bool, std::not_equal_to<i32>{});
+DEFINE_CMD(NeReal, ne_real_, double, Bool, std::not_equal_to<double>{});
+DEFINE_CMD(NeType, ne_type_, const type::Type *, Bool,
+           std::not_equal_to<const type::Type *>{});
+DEFINE_CMD(NeFlags, ne_flags_, FlagsVal, Bool, std::not_equal_to<FlagsVal>{});
+DEFINE_CMD(NeAddr, ne_addr_, Addr, Bool, std::not_equal_to<Addr>{});
 
 #undef DEFINE_CMD
+
+Val Arrow(Val const &v1, Val const &v2) {
+  auto const *x1 = std::get_if<type::Type const *>(&v1.value);
+  auto const *x2 = std::get_if<type::Type const *>(&v2.value);
+  if (x1 && x2) { return Val::Type(type::Func({*x1}, {*x2})); }
+  auto &cmd  = MakeNewCmd(type::Type_, Op::Arrow);
+  cmd.arrow_ = Cmd::Arrow::Make(
+      x1 ? RegisterOr<type::Type const *>(*x1)
+         : RegisterOr<type::Type const *>(std::get<Register>(v1.value)),
+      x2 ? RegisterOr<type::Type const *>(*x2)
+         : RegisterOr<type::Type const *>(std::get<Register>(v2.value)));
+  return cmd.reg();
+}
+
+Val XorBool(const Val &v1, const Val &v2) {
+  bool const *x1 = std::get_if<bool>(&v1.value);
+  bool const *x2 = std::get_if<bool>(&v2.value);
+  if (x1) { return *x1 ? Not(v2) : v2; }
+  if (x2) { return *x2 ? Not(v1) : v1; }
+  auto &cmd     = MakeNewCmd(type::Bool, Op::XorBool);
+  cmd.xor_bool_ =
+      Cmd::XorBool::Make(x1 ? RegisterOr<bool>(*x1)
+                            : RegisterOr<bool>(std::get<Register>(v1.value)),
+                         x2 ? RegisterOr<bool>(*x2)
+                            : RegisterOr<bool>(std::get<Register>(v2.value)));
+  return cmd.reg();
+}
+
+Val OrBool(const Val &v1, const Val &v2) {
+  bool const *x1 = std::get_if<bool>(&v1.value);
+  bool const *x2 = std::get_if<bool>(&v2.value);
+  if (x1) { return *x1 ? IR::Val::Bool(true) : v2; }
+  if (x2) { return *x2 ? IR::Val::Bool(true) : v1; }
+  auto &cmd = MakeNewCmd(type::Bool, Op::OrBool);
+  cmd.or_bool_ =
+      Cmd::OrBool::Make(x1 ? RegisterOr<bool>(*x1)
+                           : RegisterOr<bool>(std::get<Register>(v1.value)),
+                        x2 ? RegisterOr<bool>(*x2)
+                           : RegisterOr<bool>(std::get<Register>(v2.value)));
+  return cmd.reg();
+}
+
+Val AndBool(const Val &v1, const Val &v2) {
+  bool const *x1 = std::get_if<bool>(&v1.value);
+  bool const *x2 = std::get_if<bool>(&v2.value);
+  if (x1) { return *x1 ? v2 : IR::Val::Bool(false); }
+  if (x2) { return *x2 ? v1 : IR::Val::Bool(false); }
+  auto &cmd = MakeNewCmd(type::Bool, Op::AndBool);
+  cmd.and_bool_ =
+      Cmd::AndBool::Make(x1 ? RegisterOr<bool>(*x1)
+                            : RegisterOr<bool>(std::get<Register>(v1.value)),
+                         x2 ? RegisterOr<bool>(*x2)
+                            : RegisterOr<bool>(std::get<Register>(v2.value)));
+  return cmd.reg();
+}
+
+Val Field(const Val &v, size_t n) {
+  const type::Type *result_type = type::Ptr(v.type->as<type::Pointer>()
+                                                .pointee->as<type::Struct>()
+                                                .fields_.at(n)
+                                                .type);
+  auto &cmd                     = MakeNewCmd(result_type, Op::Field);
+  cmd.field_ = Cmd::Field::Make(std::get<Register>(v.value), n);
+  return cmd.reg();
+}
 
 Cmd::Cmd(const type::Type *t, Op op, base::vector<Val> arg_vec)
     : args(std::move(arg_vec)), op_code_(op), type(t) {
@@ -254,19 +345,6 @@ Cmd::Cmd(const type::Type *t, Op op, base::vector<Val> arg_vec)
   }
 }
 
-Val Field(Val v, size_t n) {
-  ASSERT(v.type, Is<type::Pointer>());
-  const type::Type *result_type = type::Ptr(v.type->as<type::Pointer>()
-                                                .pointee->as<type::Struct>()
-                                                .fields_.at(n)
-                                                .type);
-  Cmd cmd(result_type, Op::Field,
-          base::vector<IR::Val>{std::move(v), Val::Int(static_cast<i32>(n))});
-  auto reg = cmd.reg();
-  Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
-  return reg;
-}
-
 static Val MakeCmd(const type::Type *t, Op op, base::vector<Val> vals) {
   auto &cmds = ASSERT_NOT_NULL(Func::Current)->block(BasicBlock::Current).cmds_;
   Cmd c{t, op, std::move(vals)};
@@ -274,10 +352,6 @@ static Val MakeCmd(const type::Type *t, Op op, base::vector<Val> vals) {
   return t == nullptr ? IR::Val::None() : cmds.back().reg();
 }
 
-Val Malloc(const type::Type *t, Val v) {
-  ASSERT(v.type == type::Int);
-  return MakeCmd(type::Ptr(t), Op::Malloc, base::vector<IR::Val>{std::move(v)});
-}
 
 extern Val MakeBlockSeq(const base::vector<Val> &blocks);
 
@@ -323,20 +397,25 @@ Val Cast(const type::Type *to, Val v, Context *ctx) {
 void Print(Val v) {
   MakeCmd(nullptr, Op::Print, base::vector<IR::Val>{std::move(v)});
 }
-void Free(Val v) {
-  ASSERT(v.type, Is<type::Pointer>());
-  MakeCmd(nullptr, Op::Free, base::vector<IR::Val>{std::move(v)});
-}
 
-Val CreateStruct() {
-  Cmd cmd(type::Type_, Op::CreateStruct, {});
-  ASSERT_NOT_NULL(Func::Current)->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
+Val CreateStruct() { return MakeNewCmd(type::Type_, Op::CreateStruct).reg(); }
+
+IR::Val FinalizeStruct(const Val &v) {
+  auto &cmd = MakeNewCmd(type::Type_, Op::CreateStruct);
+  cmd.finalize_struct_ = Cmd::FinalizeStruct::Make(std::get<Register>(v.value));
   return cmd.reg();
 }
 
-IR::Val FinalizeStruct(Val v) {
-  return MakeCmd(type::Type_, Op::FinalizeStruct,
-                 base::vector<IR::Val>{std::move(v)});
+Val VariantType(const Val& v) {
+  auto &cmd = MakeNewCmd(Ptr(type::Type_), Op::VariantType);
+  cmd.variant_type_ = Cmd::VariantType::Make(std::get<Register>(v.value));
+  return cmd.reg();
+}
+
+Val VariantValue(type::Type const *t, const Val &v) {
+  auto &cmd = MakeNewCmd(type::Ptr(t), Op::VariantValue);
+  cmd.variant_type_ = Cmd::VariantType::Make(std::get<Register>(v.value));
+  return cmd.reg();
 }
 
 void InsertField(Val struct_type, std::string field_name, Val type,
@@ -351,18 +430,10 @@ void InsertField(Val struct_type, std::string field_name, Val type,
 
 Val Alloca(const type::Type *t) {
   ASSERT(t, Not(Is<type::Tuple>()));
-  Cmd cmd(type::Ptr(t), Op::Alloca, {});
-  Func::Current->block(Func::Current->entry()).cmds_.push_back(std::move(cmd));
-  return cmd.reg();
-}
-
-Val VariantType(Val v) {
-  return MakeCmd(type::Ptr(type::Type_), Op::VariantType,
-                 base::vector<IR::Val>{std::move(v)});
-}
-Val VariantValue(const type::Type *t, Val v) {
-  return MakeCmd(type::Ptr(t), Op::VariantValue,
-                 base::vector<IR::Val>{std::move(v)});
+  return ASSERT_NOT_NULL(Func::Current)
+      ->block(Func::Current->entry())
+      .cmds_.emplace_back(type::Ptr(t), Op::Alloca, base::vector<IR::Val>{})
+      .reg();
 }
 
 void SetReturn(size_t r, Val v2) {
@@ -377,58 +448,39 @@ void Store(Val v1, Val v2) {
           base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
-Val PtrIncr(Val v1, Val v2) {
+Val PtrIncr(const Val &v1, const Val &v2) {
   ASSERT(v1.type, Is<type::Pointer>());
   ASSERT(v2.type == type::Int);
-  if (i32 *n = std::get_if<i32>(&v2.value)) {
-    if (*n == 0) { return v1; }
-  }
-  return MakeCmd(v1.type, Op::PtrIncr,
-                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
+  i32 const *n = std::get_if<i32>(&v2.value);
+  if (n && *n == 0) { return v1; }
+  auto &cmd  = MakeNewCmd(v1.type, Op::PtrIncr);
+  cmd.ptr_incr_ = Cmd::PtrIncr::Make(
+      std::get<Register>(v1.value),
+      n ? RegisterOr<i32>(*n) : RegisterOr<i32>(std::get<i32>(v2.value)));
+  return cmd.reg();
 }
 
-Val Xor(Val v1, Val v2) {
-  if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? Not(v2) : v2; }
-  if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? Not(v1) : v1; }
-  if (FlagsVal *e1 = std::get_if<FlagsVal>(&v1.value),
-      *e2          = std::get_if<FlagsVal>(&v2.value);
-      e1 != nullptr && e2 != nullptr) {
-    return Val::Flags(&v1.type->as<type::Flags>(), e1->value ^ e2->value);
-  }
-  return MakeCmd(v1.type, Op::Xor,
-                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
+Val XorFlags(const Val &v1, const Val &v2) { NOT_YET(); }
+Val OrFlags(const Val &v1, const Val &v2) { NOT_YET(); }
+Val AndFlags(const Val &v1, const Val &v2) { NOT_YET(); }
+
+Val Xor(const Val &v1, const Val &v2) {
+  if (v1.type == type::Bool) { return XorBool(v1, v2); }
+  if (v1.type->is<type::Flags>()) { return XorFlags(v1, v2); }
+  UNREACHABLE();
 }
 
-Val Or(Val v1, Val v2) {
-  if (FlagsVal *e1 = std::get_if<FlagsVal>(&v1.value),
-      *e2          = std::get_if<FlagsVal>(&v2.value);
-      e1 != nullptr && e2 != nullptr) {
-    return Val::Flags(&v1.type->as<type::Flags>(), e1->value | e2->value);
-  }
-  return MakeCmd(v1.type, Op::Or,
-                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
+Val Or(const Val &v1, const Val &v2) {
+  if (v1.type == type::Bool) { return OrBool(v1, v2); }
+  if (v1.type->is<type::Flags>()) { return OrFlags(v1, v2); }
+  UNREACHABLE();
 }
 
-Val And(Val v1, Val v2) {
-  if (FlagsVal *e1 = std::get_if<FlagsVal>(&v1.value),
-      *e2          = std::get_if<FlagsVal>(&v2.value);
-      e1 != nullptr && e2 != nullptr) {
-    return Val::Flags(&v1.type->as<type::Flags>(), e1->value & e2->value);
-  }
-  return MakeCmd(v1.type, Op::And,
-                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
+Val And(const Val &v1, const Val &v2) {
+  if (v1.type == type::Bool) { return AndBool(v1, v2); }
+  if (v1.type->is<type::Flags>()) { return AndFlags(v1, v2); }
+  UNREACHABLE();
 }
-
-#define CONSTANT_PROPOGATION(cpp_type, fn, result_type)                        \
-  do {                                                                         \
-    cpp_type *val1 = std::get_if<cpp_type>(&v1.value);                         \
-    cpp_type *val2 = std::get_if<cpp_type>(&v2.value);                         \
-    if (val1 != nullptr && val2 != nullptr) {                                  \
-      return Val::result_type(fn(*val1, *val2));                               \
-    }                                                                          \
-  } while (false)
-
-
 
 Val Add(const Val &v1, const Val &v2) {
   if (v1.type == type::Int) { return AddInt(v1, v2); }
@@ -478,23 +530,6 @@ Val Mod(const Val &v1, const Val &v2) {
   UNREACHABLE();
 }
 
-Val Arrow(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(
-      const type::Type *,
-      [](const type::Type *lhs, const type::Type *rhs) {
-        base::vector<const type::Type *> lhs_vec =
-            (lhs->is<type::Tuple>()) ? lhs->as<type::Tuple>().entries_
-                                     : base::vector<const type::Type *>{lhs};
-        base::vector<const type::Type *> rhs_vec =
-            (rhs->is<type::Tuple>()) ? rhs->as<type::Tuple>().entries_
-                                     : base::vector<const type::Type *>{rhs};
-        return type::Func(std::move(lhs_vec), std::move(rhs_vec));
-      },
-      Type);
-  return MakeCmd(type::Type_, Op::Arrow,
-                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
-}
-
 Val Tup(base::vector<Val> args) {
   Cmd cmd(type::Type_, Op::Tup, std::move(args));
   Func::Current->block(BasicBlock::Current).cmds_.push_back(std::move(cmd));
@@ -537,7 +572,7 @@ Val Array(Val v1, Val v2) {
                  base::vector<IR::Val>{std::move(v1), std::move(v2)});
 }
 
-Val Index(Val v1, Val v2) {
+Val Index(const Val &v1, const Val &v2) {
   ASSERT(v1.type, Is<type::Pointer>());
   ASSERT(v2.type == type::Int);
   auto *array_type = &v1.type->as<type::Pointer>().pointee->as<type::Array>();
@@ -582,42 +617,40 @@ Val BlockSeqContains(Val v, AST::BlockLiteral *lit) {
                  base::vector<IR::Val>{std::move(v), IR::Val::Block(lit)});
 }
 
-Val Eq(Val v1, Val v2) {
-  if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? v2 : Not(v2); }
-  if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? v1 : Not(v1); }
+Val Eq(const Val &v1, const Val &v2) {
+  if (const bool *b = std::get_if<bool>(&v1.value)) {
+    return *b ? v2 : Not(v2);
+  }
+  if (const bool *b = std::get_if<bool>(&v2.value)) {
+    return *b ? v1 : Not(v1);
+  }
 
-  CONSTANT_PROPOGATION(char, std::equal_to<char>{}, Bool);
-  CONSTANT_PROPOGATION(i32, std::equal_to<i32>{}, Bool);
-  CONSTANT_PROPOGATION(double, std::equal_to<double>{}, Bool);
-  CONSTANT_PROPOGATION(const type::Type *, std::equal_to<const type::Type *>{},
-                       Bool);
+  if (v1.type == type::Char) { return EqChar(v1, v2); }
+  if (v1.type == type::Int) { return EqInt(v1, v2); }
+  if (v1.type == type::Real) { return EqReal(v1, v2); }
+  if (v1.type == type::Type_) { return EqType(v1, v2); }
+  if (v1.type->is<type::Flags>()) { return EqFlags(v1, v2); }
+  if (v1.type->is<type::Pointer>()) { return EqAddr(v1, v2); }
 
-  CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
-  CONSTANT_PROPOGATION(BlockSequence, std::equal_to<BlockSequence>{}, Bool);
-  CONSTANT_PROPOGATION(
-      FlagsVal,
-      [](FlagsVal lhs, FlagsVal rhs) { return lhs.value == rhs.value; }, Bool);
-  return MakeCmd(type::Bool, Op::Eq,
-                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
+  BlockSequence const *val1 = std::get_if<BlockSequence>(&v1.value);
+  BlockSequence const *val2 = std::get_if<BlockSequence>(&v2.value);
+  if (val1 != nullptr && val2 != nullptr) { return Val::Bool(*val1 == *val2); }
+
+  // TODO block sequence at runtime?
+  UNREACHABLE();
 }
 
-Val Ne(Val v1, Val v2) {
-  if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? Not(v2) : v2; }
-  if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? Not(v1) : v1; }
+Val Ne(const Val &v1, const Val &v2) {
+  if (const bool *b = std::get_if<bool>(&v1.value)) { return *b ? Not(v2) : v2; }
+  if (const bool *b = std::get_if<bool>(&v2.value)) { return *b ? Not(v1) : v1; }
 
-  CONSTANT_PROPOGATION(char, std::not_equal_to<char>{}, Bool);
-  CONSTANT_PROPOGATION(i32, std::not_equal_to<i32>{}, Bool);
-  CONSTANT_PROPOGATION(double, std::not_equal_to<double>{}, Bool);
-  CONSTANT_PROPOGATION(const type::Type *,
-                       std::not_equal_to<const type::Type *>{}, Bool);
-  CONSTANT_PROPOGATION(Addr, std::not_equal_to<Addr>{}, Bool);
-  CONSTANT_PROPOGATION(
-      FlagsVal,
-      [](FlagsVal lhs, FlagsVal rhs) { return lhs.value != rhs.value; }, Bool);
-  return MakeCmd(type::Bool, Op::Ne,
-                 base::vector<IR::Val>{std::move(v1), std::move(v2)});
+  if (v1.type == type::Char) { return NeChar(v1, v2); }
+  if (v1.type == type::Int) { return NeInt(v1, v2); }
+  if (v1.type == type::Real) { return NeReal(v1, v2); }
+  if (v1.type == type::Type_) { return NeType(v1, v2); }
+  if (v1.type->is<type::Pointer>()) { return NeAddr(v1, v2); }
+  UNREACHABLE();
 }
-#undef CONSTANT_PROPOGATION
 
 CmdIndex Phi(const type::Type *t) {
   CmdIndex cmd_index{
@@ -691,45 +724,60 @@ void Cmd::dump(size_t indent) const {
     case Op::LtInt: std::cerr << "lt-int"; break;
     case Op::LtReal: std::cerr << "lt-real"; break;
     case Op::LtFlags: std::cerr << "lt-flags"; break;
-    case Op::LeInt: std::cerr << "lt-int"; break;
-    case Op::LeReal: std::cerr << "lt-real"; break;
-    case Op::LeFlags: std::cerr << "lt-flags"; break;
-    case Op::GtInt: std::cerr << "lt-int"; break;
-    case Op::GtReal: std::cerr << "lt-real"; break;
-    case Op::GtFlags: std::cerr << "lt-flags"; break;
-    case Op::GeInt: std::cerr << "lt-int"; break;
-    case Op::GeReal: std::cerr << "lt-real"; break;
-    case Op::GeFlags: std::cerr << "lt-flags"; break;
-
+    case Op::LeInt: std::cerr << "le-int"; break;
+    case Op::LeReal: std::cerr << "le-real"; break;
+    case Op::LeFlags: std::cerr << "le-flags"; break;
+    case Op::GtInt: std::cerr << "gt-int"; break;
+    case Op::GtReal: std::cerr << "gt-real"; break;
+    case Op::GtFlags: std::cerr << "gt-flags"; break;
+    case Op::GeInt: std::cerr << "ge-int"; break;
+    case Op::GeReal: std::cerr << "ge-real"; break;
+    case Op::GeFlags: std::cerr << "ge-flags"; break;
+    case Op::EqBool: std::cerr << "eq-bool"; break;
+    case Op::EqChar: std::cerr << "eq-char"; break;
+    case Op::EqInt: std::cerr << "eq-int"; break;
+    case Op::EqReal: std::cerr << "eq-real"; break;
+    case Op::EqFlags: std::cerr << "eq-flags"; break;
+    case Op::EqType: std::cerr << "eq-type"; break;
+    case Op::EqAddr: std::cerr << "eq-addr"; break;
+    case Op::NeBool: std::cerr << "ne-bool"; break;
+    case Op::NeChar: std::cerr << "ne-char"; break;
+    case Op::NeInt: std::cerr << "ne-int"; break;
+    case Op::NeReal: std::cerr << "ne-real"; break;
+    case Op::NeFlags: std::cerr << "ne-flags"; break;
+    case Op::NeType: std::cerr << "ne-type"; break;
+    case Op::NeAddr: std::cerr << "ne-addr"; break;
+    case Op::XorBool: std::cerr << "xor-bool"; break;
+    case Op::XorFlags: std::cerr << "xor-flags"; break;
+    case Op::OrBool: std::cerr << "or-bool"; break;
+    case Op::OrFlags: std::cerr << "or-flags"; break;
+    case Op::AndBool: std::cerr << "and-bool"; break;
+    case Op::AndFlags: std::cerr << "and-flags"; break;
+    case Op::CreateStruct: std::cerr << "create-struct"; break;
+    case Op::InsertField: std::cerr << "insert-field"; break;
+    case Op::FinalizeStruct: std::cerr << "finalize-struct"; break;
     case Op::Malloc: std::cerr << "malloc"; break;
     case Op::Free: std::cerr << "free"; break;
+    case Op::Alloca: std::cerr << "alloca"; break;
+    case Op::Arrow: std::cerr << "arrow"; break;
+    case Op::VariantType: std::cerr << "variant-type"; break;
+    case Op::VariantValue: std::cerr << "variant-value"; break;
+    case Op::PtrIncr: std::cerr << "ptr-incr"; break;
+    case Op::Field: std::cerr << "field"; break;
+
     case Op::AddCodeBlock: std::cerr << "add-codeblock"; break;
-    case Op::Eq: std::cerr << "eq"; break;
-    case Op::Ne: std::cerr << "ne"; break;
-    case Op::Xor: std::cerr << "xor"; break;
-    case Op::Or: std::cerr << "or"; break;
-    case Op::And: std::cerr << "and"; break;
     case Op::Print: std::cerr << "print"; break;
     case Op::CondJump: std::cerr << "cond"; break;
     case Op::UncondJump: std::cerr << "uncond"; break;
     case Op::ReturnJump: std::cerr << "return"; break;
-    case Op::CreateStruct: std::cerr << "create-struct"; break;
-    case Op::InsertField: std::cerr << "insert-field"; break;
-    case Op::FinalizeStruct: std::cerr << "finalize-struct"; break;
     case Op::Store: std::cerr << "store"; break;
     case Op::SetReturn: std::cerr << "set-ret"; break;
     case Op::Variant: std::cerr << "variant"; break;
     case Op::Tup: std::cerr << "tup"; break;
-    case Op::PtrIncr: std::cerr << "ptr-incr"; break;
     case Op::Phi: std::cerr << "phi"; break;
-    case Op::Field: std::cerr << "field"; break;
     case Op::Call: std::cerr << "call"; break;
-    case Op::Arrow: std::cerr << "arrow"; break;
     case Op::Array: std::cerr << "array-type"; break;
-    case Op::Alloca: std::cerr << "alloca"; break;
     case Op::Contextualize: std::cerr << "contextualize"; break;
-    case Op::VariantType: std::cerr << "variant-type"; break;
-    case Op::VariantValue: std::cerr << "variant-value"; break;
     case Op::Cast: std::cerr << "cast"; break;
     case Op::BlockSeq: std::cerr << "block-seq"; break;
     case Op::BlockSeqContains: std::cerr << "block-seq-contains"; break;

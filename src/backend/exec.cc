@@ -146,7 +146,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               cmd.type->as<type::Pointer>().pointee);
       }
     } break;
-    case Op::Ptr: return IR::Ptr(reg(cmd.ptr_.reg_));
     case Op::LoadBool: {
       auto addr = cmd.load_bool_.arg_.is_reg_
                       ? std::get<IR::Addr>(reg(cmd.load_bool_.arg_.reg_).value)
@@ -493,20 +492,309 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                : cmd.lt_flags_.args_[1].val_;
        return IR::Val::Bool((lhs.value | rhs.value) == lhs.value);
      } break;
-     case Op::Cast:
-       // TODO nullptr okay here?
-       return Cast(cmd.type, resolved[0], nullptr);
-     case Op::AddCodeBlock: return AddCodeBlock(resolved[0], resolved[1]);
-     case Op::Arrow: return Arrow(resolved[0], resolved[1]);
-     case Op::BlockSeq: return BlockSeq(std::move(resolved));
-     case Op::BlockSeqContains: {
-       // TODO constant propogation?
-       const auto &seq = *std::get<BlockSequence>(resolved[0].value).seq_;
-       auto *block_lit =
-           std::get<BlockSequence>(resolved[1].value).seq_->front();
-       return IR::Val::Bool(std::any_of(
-           seq.begin(), seq.end(),
-           [block_lit](AST::BlockLiteral *lit) { return lit == block_lit; }));
+     case Op::EqBool: {
+       auto lhs = cmd.eq_bool_.args_[0].is_reg_
+                      ? std::get<bool>(reg(cmd.eq_bool_.args_[0].reg_).value)
+                      : cmd.eq_bool_.args_[0].val_;
+       auto rhs = cmd.eq_bool_.args_[1].is_reg_
+                      ? std::get<bool>(reg(cmd.eq_bool_.args_[1].reg_).value)
+                      : cmd.eq_bool_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::EqChar: {
+       auto lhs = cmd.eq_char_.args_[0].is_reg_
+                      ? std::get<char>(reg(cmd.eq_char_.args_[0].reg_).value)
+                      : cmd.eq_char_.args_[0].val_;
+       auto rhs = cmd.eq_char_.args_[1].is_reg_
+                      ? std::get<char>(reg(cmd.eq_char_.args_[1].reg_).value)
+                      : cmd.eq_char_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::EqInt: {
+       auto lhs = cmd.eq_int_.args_[0].is_reg_
+                      ? std::get<int>(reg(cmd.eq_int_.args_[0].reg_).value)
+                      : cmd.eq_int_.args_[0].val_;
+       auto rhs = cmd.eq_int_.args_[1].is_reg_
+                      ? std::get<int>(reg(cmd.eq_int_.args_[1].reg_).value)
+                      : cmd.eq_int_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::EqReal: {
+       auto lhs = cmd.eq_real_.args_[0].is_reg_
+                      ? std::get<double>(reg(cmd.eq_real_.args_[0].reg_).value)
+                      : cmd.eq_real_.args_[0].val_;
+       auto rhs = cmd.eq_real_.args_[1].is_reg_
+                      ? std::get<double>(reg(cmd.eq_real_.args_[1].reg_).value)
+                      : cmd.eq_real_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::EqFlags: {
+       auto lhs =
+           cmd.eq_flags_.args_[0].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.eq_flags_.args_[0].reg_).value)
+               : cmd.eq_flags_.args_[0].val_;
+       auto rhs =
+           cmd.eq_type_.args_[1].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.eq_flags_.args_[1].reg_).value)
+               : cmd.eq_flags_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::EqType: {
+       auto lhs = cmd.eq_type_.args_[0].is_reg_
+                      ? std::get<const type::Type *>(
+                            reg(cmd.eq_type_.args_[0].reg_).value)
+                      : cmd.eq_type_.args_[0].val_;
+       auto rhs = cmd.eq_type_.args_[1].is_reg_
+                      ? std::get<const type::Type *>(
+                            reg(cmd.eq_type_.args_[1].reg_).value)
+                      : cmd.eq_type_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::EqAddr: {
+       auto lhs =
+           cmd.eq_addr_.args_[0].is_reg_
+               ? std::get<IR::Addr>(reg(cmd.eq_addr_.args_[0].reg_).value)
+               : cmd.eq_addr_.args_[0].val_;
+       auto rhs =
+           cmd.eq_addr_.args_[1].is_reg_
+               ? std::get<IR::Addr>(reg(cmd.eq_addr_.args_[1].reg_).value)
+               : cmd.eq_addr_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::NeBool: {
+       auto lhs = cmd.ne_bool_.args_[0].is_reg_
+                      ? std::get<bool>(reg(cmd.ne_bool_.args_[0].reg_).value)
+                      : cmd.ne_bool_.args_[0].val_;
+       auto rhs = cmd.ne_bool_.args_[1].is_reg_
+                      ? std::get<bool>(reg(cmd.ne_bool_.args_[1].reg_).value)
+                      : cmd.ne_bool_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::NeChar: {
+       auto lhs = cmd.ne_char_.args_[0].is_reg_
+                      ? std::get<char>(reg(cmd.ne_char_.args_[0].reg_).value)
+                      : cmd.ne_char_.args_[0].val_;
+       auto rhs = cmd.ne_char_.args_[1].is_reg_
+                      ? std::get<char>(reg(cmd.ne_char_.args_[1].reg_).value)
+                      : cmd.ne_char_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::NeInt: {
+       auto lhs = cmd.ne_int_.args_[0].is_reg_
+                      ? std::get<int>(reg(cmd.ne_int_.args_[0].reg_).value)
+                      : cmd.ne_int_.args_[0].val_;
+       auto rhs = cmd.ne_int_.args_[1].is_reg_
+                      ? std::get<int>(reg(cmd.ne_int_.args_[1].reg_).value)
+                      : cmd.ne_int_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::NeReal: {
+       auto lhs = cmd.ne_real_.args_[0].is_reg_
+                      ? std::get<double>(reg(cmd.ne_real_.args_[0].reg_).value)
+                      : cmd.ne_real_.args_[0].val_;
+       auto rhs = cmd.ne_real_.args_[1].is_reg_
+                      ? std::get<double>(reg(cmd.ne_real_.args_[1].reg_).value)
+                      : cmd.ne_real_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::NeFlags: {
+       auto lhs =
+           cmd.ne_flags_.args_[0].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.ne_flags_.args_[0].reg_).value)
+               : cmd.ne_flags_.args_[0].val_;
+       auto rhs =
+           cmd.ne_type_.args_[1].is_reg_
+               ? std::get<FlagsVal>(reg(cmd.ne_flags_.args_[1].reg_).value)
+               : cmd.ne_flags_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::NeType: {
+       auto lhs = cmd.ne_type_.args_[0].is_reg_
+                      ? std::get<const type::Type *>(
+                            reg(cmd.ne_type_.args_[0].reg_).value)
+                      : cmd.ne_type_.args_[0].val_;
+       auto rhs = cmd.ne_type_.args_[1].is_reg_
+                      ? std::get<const type::Type *>(
+                            reg(cmd.ne_type_.args_[1].reg_).value)
+                      : cmd.ne_type_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::NeAddr: {
+       auto lhs =
+           cmd.ne_addr_.args_[0].is_reg_
+               ? std::get<IR::Addr>(reg(cmd.ne_addr_.args_[0].reg_).value)
+               : cmd.ne_addr_.args_[0].val_;
+       auto rhs =
+           cmd.ne_addr_.args_[1].is_reg_
+               ? std::get<IR::Addr>(reg(cmd.ne_addr_.args_[1].reg_).value)
+               : cmd.ne_addr_.args_[1].val_;
+       return IR::Val::Bool(lhs == rhs);
+     } break;
+     case Op::XorBool: {
+       auto lhs = cmd.xor_bool_.args_[0].is_reg_
+                      ? std::get<bool>(reg(cmd.xor_bool_.args_[0].reg_).value)
+                      : cmd.xor_bool_.args_[0].val_;
+       auto rhs = cmd.xor_bool_.args_[1].is_reg_
+                      ? std::get<bool>(reg(cmd.xor_bool_.args_[1].reg_).value)
+                      : cmd.xor_bool_.args_[1].val_;
+       return IR::Val::Bool(lhs ^ rhs);
+     } break;
+     case Op::XorFlags: NOT_YET();
+     case Op::OrBool: {
+       auto lhs = cmd.or_bool_.args_[0].is_reg_
+                      ? std::get<bool>(reg(cmd.or_bool_.args_[0].reg_).value)
+                      : cmd.or_bool_.args_[0].val_;
+       auto rhs = cmd.or_bool_.args_[1].is_reg_
+                      ? std::get<bool>(reg(cmd.or_bool_.args_[1].reg_).value)
+                      : cmd.or_bool_.args_[1].val_;
+       return IR::Val::Bool(lhs | rhs);
+     } break;
+     case Op::OrFlags: NOT_YET();
+     case Op::AndBool: {
+       auto lhs = cmd.and_bool_.args_[0].is_reg_
+                      ? std::get<bool>(reg(cmd.and_bool_.args_[0].reg_).value)
+                      : cmd.and_bool_.args_[0].val_;
+       auto rhs = cmd.and_bool_.args_[1].is_reg_
+                      ? std::get<bool>(reg(cmd.and_bool_.args_[1].reg_).value)
+                      : cmd.and_bool_.args_[1].val_;
+       return IR::Val::Bool(lhs & rhs);
+     } break;
+     case Op::AndFlags: NOT_YET();
+     case Op::CreateStruct: {
+       return IR::Val::Struct();
+     } break;
+     case Op::FinalizeStruct: {
+       return IR::Val::Type(
+           std::get<type::Struct *>(reg(cmd.finalize_struct_.reg_).value)
+               ->finalize());
+     } break;
+
+     case Op::InsertField: {
+       auto *struct_to_mod = std::get<type::Struct *>(resolved[0].value);
+       struct_to_mod->fields_.push_back(type::Struct::Field{
+           std::string(std::get<std::string_view>(resolved[1].value)),
+           std::get<const type::Type *>(resolved[2].value), resolved[3]});
+
+       auto[iter, success] = struct_to_mod->field_indices_.emplace(
+           std::string(std::get<std::string_view>(resolved[1].value)),
+           struct_to_mod->fields_.size() - 1);
+       ASSERT(success);
+
+       return IR::Val::None();
+    } break;
+    case Op::Malloc:
+      return IR::Val::HeapAddr(
+          malloc(cmd.malloc_.arg_.is_reg_
+                     ? std::get<i32>(reg(cmd.malloc_.arg_.reg_).value)
+                     : cmd.malloc_.arg_.val_),
+          cmd.type->as<type::Pointer>().pointee);
+    case Op::Free:
+      free(std::get<Addr>(reg(cmd.free_.reg_).value).as_heap);
+      return Val::None();
+    case Op::Alloca: return stack_.Push(&cmd.type->as<type::Pointer>());
+    case Op::Ptr: return IR::Ptr(reg(cmd.ptr_.reg_));
+    case Op::Arrow: {
+      auto lhs = cmd.arrow_.args_[0].is_reg_
+                     ? std::get<type::Type const *>(
+                           reg(cmd.arrow_.args_[0].reg_).value)
+                     : cmd.arrow_.args_[0].val_;
+      auto rhs = cmd.arrow_.args_[1].is_reg_
+                     ? std::get<type::Type const *>(
+                           reg(cmd.arrow_.args_[1].reg_).value)
+                     : cmd.arrow_.args_[1].val_;
+      return IR::Val::Type(type::Func({lhs}, {rhs}));
+    } break;
+    case Op::VariantType:
+      return Val::Addr(std::get<Addr>(reg(cmd.variant_type_.reg_).value), type::Type_);
+    case Op::VariantValue: {
+      auto bytes = Architecture::InterprettingMachine().bytes(Ptr(type::Type_));
+      auto bytes_fwd =
+          Architecture::InterprettingMachine().MoveForwardToAlignment(
+              Ptr(type::Type_), bytes);
+      switch (std::get<Addr>(reg(cmd.variant_value_.reg_).value).kind) {
+        case Addr::Kind::Stack: {
+          return Val::StackAddr(
+              std::get<Addr>(reg(cmd.variant_value_.reg_).value).as_stack +
+                  bytes_fwd,
+              cmd.type->as<type::Pointer>().pointee);
+        }
+        case Addr::Kind::Heap: {
+          return Val::HeapAddr(
+              static_cast<void *>(
+                  static_cast<char *>(
+                      std::get<Addr>(reg(cmd.variant_value_.reg_).value)
+                          .as_heap) +
+                  bytes_fwd),
+              cmd.type->as<type::Pointer>().pointee);
+        }
+        case Addr::Kind::Null: NOT_YET();
+      }
+      UNREACHABLE("Invalid address kind: ",
+                  static_cast<int>(std::get<Addr>(resolved[0].value).kind));
+    } break;
+    case Op::PtrIncr: {
+      auto addr = std::get<Addr>(reg(cmd.ptr_incr_.ptr_).value);
+      auto incr = cmd.ptr_incr_.incr_.is_reg_
+                      ? std::get<i32>(reg(cmd.ptr_incr_.incr_.reg_).value)
+                      : cmd.ptr_incr_.incr_.val_;
+      // Sadly must convert to value and back even though it's guaranteed to be
+      // constant folded
+      auto bytes_fwd = std::get<i32>(
+          Architecture::InterprettingMachine()
+              .ComputeArrayLength(IR::Val::Int(incr),
+                                  cmd.type->as<type::Pointer>().pointee)
+              .value);
+      switch (addr.kind) {
+        case Addr::Kind::Stack:
+          return Val::StackAddr(addr.as_stack + bytes_fwd,
+                                cmd.type->as<type::Pointer>().pointee);
+
+        case Addr::Kind::Heap:
+          return Val::HeapAddr(
+              static_cast<void *>(static_cast<char *>(addr.as_heap) +
+                                  bytes_fwd),
+              cmd.type->as<type::Pointer>().pointee);
+
+        case Addr::Kind::Null: NOT_YET();
+      }
+    } break;
+    case Op::Field: {
+      auto addr_val = reg(cmd.field_.ptr_);
+      auto addr     = std::get<Addr>(addr_val.value);
+
+      auto *struct_type =
+          &addr_val.type->as<type::Pointer>().pointee->as<type::Struct>();
+      // This can probably be precomputed.
+      size_t offset = 0;
+      for (size_t i = 0; i < cmd.field_.num_; ++i) {
+        auto field_type = struct_type->fields_.at(i).type;
+        offset += Architecture::InterprettingMachine().bytes(field_type);
+        offset = Architecture::InterprettingMachine().MoveForwardToAlignment(
+            struct_type->fields_.at(i + 1).type, offset);
+      }
+
+      if (addr.kind == Addr::Kind::Stack) {
+        return Val::StackAddr(addr.as_stack + offset,
+                              cmd.type->as<type::Pointer>().pointee);
+      } else {
+        return Val::HeapAddr(static_cast<char *>(addr.as_heap) + offset,
+                             cmd.type->as<type::Pointer>().pointee);
+      }
+    } break;
+
+    case Op::Cast:
+      // TODO nullptr okay here?
+      return Cast(cmd.type, resolved[0], nullptr);
+    case Op::AddCodeBlock: return AddCodeBlock(resolved[0], resolved[1]);
+    case Op::BlockSeq: return BlockSeq(std::move(resolved));
+    case Op::BlockSeqContains: {
+      // TODO constant propogation?
+      const auto &seq = *std::get<BlockSequence>(resolved[0].value).seq_;
+      auto *block_lit =
+          std::get<BlockSequence>(resolved[1].value).seq_->front();
+      return IR::Val::Bool(std::any_of(
+          seq.begin(), seq.end(),
+          [block_lit](AST::BlockLiteral *lit) { return lit == block_lit; }));
     } break;
     case Op::Tup: {
       base::vector<const type::Type *> types;
@@ -525,16 +813,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return IR::Val::Type(type::Var(std::move(types)));
     }
     case Op::Array: return Array(resolved[0], resolved[1]);
-    case Op::Xor: return Xor(resolved[0], resolved[1]);
-    case Op::Or: return Or(resolved[0], resolved[1]);
-    case Op::And: return And(resolved[0], resolved[1]);
-    case Op::Eq: return Eq(resolved[0], resolved[1]);
-    case Op::Ne: return Ne(resolved[0], resolved[1]);
     case Op::Call: {
       if (auto *foreign_fn =
               std::get_if<IR::ForeignFn>(&resolved.back().value)) {
         if (foreign_fn->name_ == "malloc") {
-          goto malloc_case;
+          // TODO goto malloc_case;
+          ASSERT(cmd.type, Is<type::Pointer>());
+          return IR::Val::HeapAddr(malloc(std::get<i32>(resolved[0].value)),
+                                   cmd.type->as<type::Pointer>().pointee);
         } else {
           UNREACHABLE();
         }
@@ -648,76 +934,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       UNREACHABLE(
           "Previous block was ", Val::BasicBlock(call_stack.top().prev_),
           "\nCurrent block is ", Val::BasicBlock(call_stack.top().current_));
-    case Op::Alloca: return stack_.Push(&cmd.type->as<type::Pointer>());
-    case Op::PtrIncr:
-      if (auto addr = std::get_if<Addr>(&resolved[0].value)) {
-        switch (addr->kind) {
-          case Addr::Kind::Stack: {
-            auto bytes_fwd =
-                Architecture::InterprettingMachine().ComputeArrayLength(
-                    std::get<i32>(resolved[1].value),
-                    cmd.type->as<type::Pointer>().pointee);
-            return Val::StackAddr(addr->as_stack + bytes_fwd,
-                                  cmd.type->as<type::Pointer>().pointee);
-          }
-          case Addr::Kind::Heap: {
-            auto bytes_fwd =
-                Architecture::InterprettingMachine().ComputeArrayLength(
-                    std::get<i32>(resolved[1].value),
-                    cmd.type->as<type::Pointer>().pointee);
-            return Val::HeapAddr(
-                static_cast<void *>(static_cast<char *>(addr->as_heap) +
-                                    bytes_fwd),
-                cmd.type->as<type::Pointer>().pointee);
-          }
-          case Addr::Kind::Null: NOT_YET();
-        }
-        UNREACHABLE("Invalid address kind: ", static_cast<int>(addr->kind));
-       } else {
-        NOT_YET();
-      }
-    case Op::CreateStruct: {
-      return IR::Val::Struct();
-    } break;
-    case Op::InsertField: {
-      auto *struct_to_mod = std::get<type::Struct *>(resolved[0].value);
-      struct_to_mod->fields_.push_back(type::Struct::Field{
-          std::string(std::get<std::string_view>(resolved[1].value)),
-          std::get<const type::Type *>(resolved[2].value), resolved[3]});
-
-      auto[iter, success] = struct_to_mod->field_indices_.emplace(
-          std::string(std::get<std::string_view>(resolved[1].value)),
-          struct_to_mod->fields_.size() - 1);
-      ASSERT(success);
-
-      return IR::Val::None();
-    } break;
-    case Op::FinalizeStruct: {
-      return IR::Val::Type(
-          std::get<type::Struct *>(resolved[0].value)->finalize());
-    } break;
-    case Op::Field: {
-      auto *struct_type =
-          &resolved[0].type->as<type::Pointer>().pointee->as<type::Struct>();
-      // This can probably be precomputed.
-      size_t offset = 0;
-      for (i32 i = 0; i < std::get<i32>(resolved[1].value); ++i) {
-        auto field_type = struct_type->fields_.at(i).type;
-        offset += Architecture::InterprettingMachine().bytes(field_type);
-        offset = Architecture::InterprettingMachine().MoveForwardToAlignment(
-            struct_type->fields_.at(i + 1).type, offset);
-      }
-
-      if (std::get<Addr>(resolved[0].value).kind == Addr::Kind::Stack) {
-        return Val::StackAddr(
-            std::get<Addr>(resolved[0].value).as_stack + offset,
-            cmd.type->as<type::Pointer>().pointee);
-      } else {
-        return Val::HeapAddr(
-            static_cast<char *>(std::get<Addr>(resolved[0].value).as_heap) + offset,
-            cmd.type->as<type::Pointer>().pointee);
-      }
-    } break;
     case Op::Contextualize: {
       // TODO this is probably the right way to encode it rather than a vector
       // of alternating entries. Same for PHI nodes.
@@ -735,41 +951,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                          replacements);
       return IR::Val::CodeBlock(std::move(copied_block));
     } break;
-    case Op::VariantType:
-      return Val::Addr(std::get<Addr>(resolved[0].value), type::Type_);
-    case Op::VariantValue: {
-      auto bytes = Architecture::InterprettingMachine().bytes(Ptr(type::Type_));
-      auto bytes_fwd =
-          Architecture::InterprettingMachine().MoveForwardToAlignment(
-              Ptr(type::Type_), bytes);
-      ASSERT(std::get_if<Addr>(&resolved[0].value) != nullptr);
-      switch (std::get<Addr>(resolved[0].value).kind) {
-        case Addr::Kind::Stack: {
-          return Val::StackAddr(
-              std::get<Addr>(resolved[0].value).as_stack + bytes_fwd,
-              cmd.type->as<type::Pointer>().pointee);
-        }
-        case Addr::Kind::Heap: {
-          return Val::HeapAddr(
-              static_cast<void *>(
-                  static_cast<char *>(
-                      std::get<Addr>(resolved[0].value).as_heap) +
-                  bytes_fwd),
-              cmd.type->as<type::Pointer>().pointee);
-        }
-        case Addr::Kind::Null: NOT_YET();
-      }
-      UNREACHABLE("Invalid address kind: ",
-                  static_cast<int>(std::get<Addr>(resolved[0].value).kind));
-    } break;
-    case Op::Malloc:
-    malloc_case:
-      ASSERT(cmd.type, Is<type::Pointer>());
-      return IR::Val::HeapAddr(malloc(std::get<i32>(resolved[0].value)),
-                               cmd.type->as<type::Pointer>().pointee);
-    case Op::Free:
-      free(std::get<Addr>(resolved[0].value).as_heap);
-      return Val::None();
     case Op::CondJump:
       return resolved[std::get<bool>(resolved[0].value) ? 1 : 2];
     case Op::UncondJump: return resolved[0];
