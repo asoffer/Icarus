@@ -11,6 +11,7 @@ IR::Val Architecture::ComputeArrayLength(const IR::Val &len,
 }
 
 size_t Architecture::alignment(const type::Type *t) const {
+  if (!t) { return 0; }
   if (t->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Generic: NOT_YET();
@@ -58,12 +59,13 @@ size_t Architecture::alignment(const type::Type *t) const {
     }
     return alignment_val;
   } else {
-    NOT_YET();
+    NOT_YET(t->to_string());
   }
   UNREACHABLE();
 }
 
 size_t Architecture::bytes(const type::Type *t) const {
+  if (!t) { return 0; }
   if (t->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Generic: NOT_YET();

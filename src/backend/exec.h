@@ -17,7 +17,7 @@ struct Stack {
   Stack(size_t cap) : buffer_(cap) {}
 
   template <typename T>
-  T Load(size_t index) {
+  T Load(size_t index) const {
     return buffer_.get<T>(index);
   }
 
@@ -26,7 +26,7 @@ struct Stack {
     buffer_.set(index, val);
   }
 
-  IR::Val Push(const type::Pointer *ptr);
+  IR::Addr Push(const type::Pointer *ptr);
 
 private:
   base::untyped_buffer buffer_;
@@ -49,7 +49,8 @@ struct ExecContext {
     BlockIndex current_;
     BlockIndex prev_;
 
-    base::vector<Val> regs_ = {};
+    base::vector<Val> old_regs_ = {};
+    base::untyped_buffer regs_;
   };
 
   BasicBlock &current_block();
@@ -58,16 +59,23 @@ struct ExecContext {
 
   BlockIndex ExecuteBlock();
   Val ExecuteCmd(const Cmd &cmd);
-  void Resolve(Val *v) const;
-
 
   Val reg(Register r) const {
     ASSERT(r.value >= 0);
-    return call_stack.top().regs_.at(static_cast<u32>(r.value));
+    return call_stack.top().old_regs_.at(static_cast<u32>(r.value));
   }
+
   Val &reg(Register r) {
     ASSERT(r.value >= 0);
-    return call_stack.top().regs_.at(static_cast<u32>(r.value));
+    return call_stack.top().old_regs_.at(static_cast<u32>(r.value));
+  }
+
+  template <typename T>
+  T resolve(Register val) const;
+
+  template <typename T>
+  T resolve(RegisterOr<T> val) const {
+    return val.is_reg_ ? resolve<T>(val.reg_) : val.val_;
   }
 
   Stack stack_;

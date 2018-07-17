@@ -23,6 +23,17 @@ using base::check::Is;
 // kinds
 
 namespace IR {
+template <typename T>
+T ExecContext::resolve(Register val) const {
+  auto &reg_map = call_stack.top().fn_->reg_map_;
+  auto iter     = reg_map.find(val);
+  if (iter == reg_map.end()) {
+    return std::get<T>(reg(val).value);
+  } else {
+    return call_stack.top().regs_.get<T>(iter->second);
+  }
+}
+
 extern Val MakeBlockSeq(const base::vector<Val> &blocks);
 
 base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
@@ -32,6 +43,7 @@ base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
 
   // TODO log an error if you're asked to execute a function that had an error.
 
+  fn->dump();
   while (true) {
     auto block_index = ctx->ExecuteBlock();
     if (block_index.is_default()) {
@@ -59,11 +71,12 @@ ExecContext::Frame::Frame(Func *fn, const base::vector<Val> &arguments)
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
-      regs_(fn->num_regs_, Val::None()) {
+      old_regs_(fn->num_regs_, Val::None()),
+      regs_(base::untyped_buffer::MakeFull(fn_->reg_size_)) {
   size_t num_inputs = fn->type_->input.size();
   ASSERT(num_inputs <= arguments.size());
-  ASSERT(num_inputs <= regs_.size());
-  for (size_t i = 0; i < arguments.size(); ++i) { regs_[i] = arguments[i]; }
+  ASSERT(num_inputs <= old_regs_.size());
+  for (size_t i = 0; i < arguments.size(); ++i) { old_regs_[i] = arguments[i]; }
 }
 
 BlockIndex ExecContext::ExecuteBlock() {
@@ -76,7 +89,41 @@ BlockIndex ExecContext::ExecuteBlock() {
       // TODO the below assertion fails for structs (actual struct vs ptr to the
       // struct). Figure out how to fix it
       // ASSERT(result.type == cmd_iter->type);
-      this->reg(cmd_iter->result) = result;
+      if (result == IR::Val::None()) {
+        /*
+        auto iter = call_stack.top().fn_->reg_map_.find(cmd_iter->result);
+        if (cmd_iter->type == type::Bool) {
+          cmd_iter->dump(10);
+          this->reg(cmd_iter->result) =
+              IR::Val::Bool(call_stack.top().regs_.get<bool>(iter->second));
+        } else if (cmd_iter->type == type::Char) {
+          this->reg(cmd_iter->result) =
+              IR::Val::Char(call_stack.top().regs_.get<char>(iter->second));
+        } else if (cmd_iter->type == type::Int) {
+          this->reg(cmd_iter->result) =
+              IR::Val::Int(call_stack.top().regs_.get<i32>(iter->second));
+        } else if (cmd_iter->type == type::Real) {
+          this->reg(cmd_iter->result) =
+              IR::Val::Real(call_stack.top().regs_.get<double>(iter->second));
+        } else if (cmd_iter->type == type::Type_) {
+          this->reg(cmd_iter->result) = IR::Val::Type(
+              call_stack.top().regs_.get<type::Type const *>(iter->second));
+        } else if (cmd_iter->type ->is<type::CharBuffer>()) {
+          // TODO Unnecessary copy and global string table lookup.
+          this->reg(cmd_iter->result) = IR::Val::CharBuf(std::string(
+              call_stack.top().regs_.get<std::string_view>(iter->second)));
+        } else if (cmd_iter->type->is<type::Pointer>()) {
+          this->reg(cmd_iter->result) =
+              IR::Val::Addr(call_stack.top().regs_.get<Addr>(iter->second),
+                            cmd_iter->type->as<type::Pointer>().pointee);
+        } else {
+          cmd_iter->dump(10);
+          NOT_YET(cmd_iter->type->to_string());
+        }
+        */
+      } else {
+        this->reg(cmd_iter->result) = result;
+      }
     }
     ++cmd_iter;
   } while (!std::holds_alternative<BlockIndex>(result.value));
@@ -84,174 +131,100 @@ BlockIndex ExecContext::ExecuteBlock() {
   return std::get<BlockIndex>(result.value);
 }
 
-IR::Val Stack::Push(const type::Pointer *ptr) {
-  size_t addr = buffer_.size();
+IR::Addr Stack::Push(const type::Pointer *ptr) {
+  Addr addr;
+  addr.as_stack = buffer_.size();
+  addr.kind     = Addr::Kind::Stack;
   buffer_.append_bytes(
       Architecture::InterprettingMachine().bytes(ptr->pointee));
-  return IR::Val::StackAddr(addr, ptr->pointee);
+  return addr;
 }
 
-void ExecContext::Resolve(Val *v) const {
-  if (auto *r = std::get_if<Register>(&v->value); r != nullptr) {
-    *v = reg(*r);
+template <typename T>
+static T LoadValue(Addr addr, const Stack &stack) {
+  LOG << addr;
+  switch (addr.kind) {
+    case Addr::Kind::Null: UNREACHABLE();
+    case Addr::Kind::Heap: return *static_cast<T *>(addr.as_heap); break;
+    case Addr::Kind::Stack: return stack.Load<T>(addr.as_stack); break;
+  }
+  UNREACHABLE();
+}
+
+template <typename T>
+static void StoreValue(T val, Addr addr, Stack *stack) {
+  switch (addr.kind) {
+    case Addr::Kind::Null:
+      // TODO compile-time failure. dump the stack trace and abort.
+      UNREACHABLE();
+    case Addr::Kind::Stack: stack->Store(val, addr.as_stack); return;
+    case Addr::Kind::Heap: *static_cast<T *>(addr.as_heap) = val;
   }
 }
 
 Val ExecContext::ExecuteCmd(const Cmd &cmd) {
-  base::vector<Val> resolved;
-  resolved.reserve(cmd.args.size());
-  for (const auto &arg : cmd.args) {
-    if (auto *r = std::get_if<Register>(&arg.value)) {
-      resolved.push_back(reg(*r));
-    } else {
-      resolved.push_back(arg);
-    }
-  }
+  auto save = [&](auto val) {
+    call_stack.top().regs_.set(call_stack.top().fn_->reg_map_.at(cmd.result), val);
+  };
 
   switch (cmd.op_code_) {
-    case Op::Trunc: return Trunc(reg(cmd.trunc_.reg_));
-    case Op::Extend: return Extend(reg(cmd.extend_.reg_));
+    case Op::Trunc:
+      save(static_cast<char>(resolve<i32>(cmd.trunc_.reg_)));
+      break;
+    case Op::Extend:
+      save(static_cast<i32>(resolve<char>(cmd.extend_.reg_)));
+      break;
     case Op::Bytes:
-      return IR::Val::Int(Architecture::InterprettingMachine().bytes(
-          cmd.bytes_.arg_.is_reg_
-              ? std::get<const type::Type *>(reg(cmd.bytes_.arg_.reg_).value)
-              : cmd.bytes_.arg_.val_));
+      save(
+          Architecture::InterprettingMachine().bytes(resolve(cmd.bytes_.arg_)));
+      break;
     case Op::Align:
-      return IR::Val::Int(Architecture::InterprettingMachine().alignment(
-          cmd.align_.arg_.is_reg_
-              ? std::get<const type::Type *>(reg(cmd.align_.arg_.reg_).value)
-              : cmd.align_.arg_.val_));
-    case Op::Not: return Not(reg(cmd.not_.reg_));
-    case Op::NegInt: return NegInt(reg(cmd.neg_int_.reg_));
-    case Op::NegReal: return NegReal(reg(cmd.neg_real_.reg_));
-    case Op::ArrayLength:
-      return IR::Val::Addr(
-          cmd.array_data_.arg_.is_reg_
-              ? std::get<IR::Addr>(reg(cmd.array_data_.arg_.reg_).value)
-              : cmd.array_data_.arg_.val_,
-          type::Int);
+      save(Architecture::InterprettingMachine().alignment(
+          resolve(cmd.align_.arg_)));
+      break;
+    case Op::Not: save(!resolve<bool>(cmd.not_.reg_)); break;
+    case Op::NegInt: save(-resolve<i32>(cmd.neg_int_.reg_)); break;
+    case Op::NegReal: save(-resolve<double>(cmd.neg_real_.reg_)); break;
+    case Op::ArrayLength: save(resolve(cmd.array_data_.arg_)); break;
     case Op::ArrayData: {
-      auto addr = cmd.array_data_.arg_.is_reg_
-                      ? std::get<IR::Addr>(reg(cmd.array_data_.arg_.reg_).value)
-                      : cmd.array_data_.arg_.val_;
+      auto addr = resolve(cmd.array_data_.arg_);
       switch (addr.kind) {
         case Addr::Kind::Null: UNREACHABLE();
         case Addr::Kind::Stack:
-          return IR::Val::StackAddr(
-              addr.as_stack +
-                  Architecture::InterprettingMachine().bytes(type::Int),
-              cmd.type->as<type::Pointer>().pointee);
-
+          save(addr.as_stack +
+               Architecture::InterprettingMachine().bytes(type::Int));
+          break;
         case Addr::Kind::Heap:
-          return IR::Val::HeapAddr(
-              static_cast<void *>(
-                  static_cast<u8 *>(addr.as_heap) +
-                  Architecture::InterprettingMachine().bytes(type::Int)),
-              cmd.type->as<type::Pointer>().pointee);
+          save(static_cast<void *>(
+              static_cast<u8 *>(addr.as_heap) +
+              Architecture::InterprettingMachine().bytes(type::Int)));
+          break;
       }
     } break;
-    case Op::LoadBool: {
-      auto addr = cmd.load_bool_.arg_.is_reg_
-                      ? std::get<IR::Addr>(reg(cmd.load_bool_.arg_.reg_).value)
-                      : cmd.load_bool_.arg_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Heap:
-          return IR::Val::Bool(*static_cast<bool *>(addr.as_heap));
-        case Addr::Kind::Stack:
-          return IR::Val::Bool(stack_.Load<bool>(addr.as_stack));
-      }
-    } break;
-    case Op::LoadChar: {
-      auto addr = cmd.load_char_.arg_.is_reg_
-                      ? std::get<IR::Addr>(reg(cmd.load_char_.arg_.reg_).value)
-                      : cmd.load_char_.arg_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Heap:
-          return IR::Val::Char(*static_cast<char *>(addr.as_heap));
-        case Addr::Kind::Stack:
-          return IR::Val::Char(stack_.Load<char>(addr.as_stack));
-      }
-    } break;
-    case Op::LoadInt: {
-      auto addr = cmd.load_int_.arg_.is_reg_
-                      ? std::get<IR::Addr>(reg(cmd.load_int_.arg_.reg_).value)
-                      : cmd.load_int_.arg_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Heap:
-          return IR::Val::Int(*static_cast<int *>(addr.as_heap));
-        case Addr::Kind::Stack:
-          return IR::Val::Int(stack_.Load<int>(addr.as_stack));
-      }
-    } break;
-    case Op::LoadReal: {
-      auto addr = cmd.load_real_.arg_.is_reg_
-                      ? std::get<IR::Addr>(reg(cmd.load_real_.arg_.reg_).value)
-                      : cmd.load_real_.arg_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Heap:
-          return IR::Val::Real(*static_cast<double *>(addr.as_heap));
-        case Addr::Kind::Stack:
-          return IR::Val::Real(stack_.Load<double>(addr.as_stack));
-      }
-    } break;
-    case Op::LoadType: {
-      auto addr = cmd.load_type_.arg_.is_reg_
-                      ? std::get<IR::Addr>(reg(cmd.load_type_.arg_.reg_).value)
-                      : cmd.load_type_.arg_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Heap:
-          return IR::Val::Type(*static_cast<const type::Type **>(addr.as_heap));
-        case Addr::Kind::Stack:
-          return IR::Val::Type(stack_.Load<const type::Type *>(addr.as_stack));
-      }
-    } break;
-    case Op::LoadEnum: {
-      auto addr = cmd.load_enum_.arg_.is_reg_
-                      ? std::get<IR::Addr>(reg(cmd.load_enum_.arg_.reg_).value)
-                      : cmd.load_enum_.arg_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Heap:
-          return IR::Val::Enum(&cmd.type->as<type::Enum>(),
-                               *static_cast<size_t *>(addr.as_heap));
-        case Addr::Kind::Stack:
-          return IR::Val::Enum(&cmd.type->as<type::Enum>(),
-                               stack_.Load<size_t>(addr.as_stack));
-      }
-    } break;
-    case Op::LoadFlags: {
-      auto addr = cmd.load_flags_.arg_.is_reg_
-                      ? std::get<IR::Addr>(reg(cmd.load_flags_.arg_.reg_).value)
-                      : cmd.load_flags_.arg_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Heap:
-          return IR::Val::Flags(&cmd.type->as<type::Flags>(),
-                                *static_cast<size_t *>(addr.as_heap));
-        case Addr::Kind::Stack:
-          return IR::Val::Flags(&cmd.type->as<type::Flags>(),
-                                stack_.Load<size_t>(addr.as_stack));
-      }
-    } break;
-    case Op::LoadAddr: {
-      auto addr = cmd.load_addr_.arg_.is_reg_
-                      ? std::get<IR::Addr>(reg(cmd.load_addr_.arg_.reg_).value)
-                      : cmd.load_addr_.arg_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Heap:
-          return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
-                               cmd.type->as<type::Pointer>().pointee);
-        case Addr::Kind::Stack:
-          return IR::Val::Addr(stack_.Load<Addr>(addr.as_stack),
-                               cmd.type->as<type::Pointer>().pointee);
-      }
-
+    case Op::LoadBool:
+      save(LoadValue<bool>(resolve(cmd.load_bool_.arg_), stack_));
+      break;
+    case Op::LoadChar:
+      save(LoadValue<char>(resolve(cmd.load_char_.arg_), stack_));
+      break;
+    case Op::LoadInt:
+      save(LoadValue<i32>(resolve(cmd.load_int_.arg_), stack_));
+      break;
+    case Op::LoadReal:
+      save(LoadValue<double>(resolve(cmd.load_real_.arg_), stack_));
+      break;
+    case Op::LoadType:
+      save(LoadValue<type::Type const *>(resolve(cmd.load_type_.arg_), stack_));
+      break;
+    case Op::LoadEnum:
+      save(LoadValue<size_t>(resolve(cmd.load_enum_.arg_), stack_));
+      break;
+    case Op::LoadFlags:
+      save(LoadValue<size_t>(resolve(cmd.load_flags_.arg_), stack_));
+      break;
+    case Op::LoadAddr:
+      save(LoadValue<Addr>(resolve(cmd.load_addr_.arg_), stack_));
+      break;
       /*
       switch (addr.kind) {
         case Addr::Kind::Null: UNREACHABLE();
@@ -293,375 +266,143 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           }
         } break;
       }*/
-    } break;
-
     case Op::AddInt:
-      return IR::Val::Int(
-          (cmd.add_int_.args_[0].is_reg_
-               ? std::get<i32>(reg(cmd.add_int_.args_[0].reg_).value)
-               : cmd.add_int_.args_[0].val_) +
-          (cmd.add_int_.args_[1].is_reg_
-               ? std::get<i32>(reg(cmd.add_int_.args_[1].reg_).value)
-               : cmd.add_int_.args_[1].val_));
+      save(resolve(cmd.add_int_.args_[0]) + resolve(cmd.add_int_.args_[1]));
+      break;
     case Op::AddReal:
-      return IR::Val::Real(
-          (cmd.add_real_.args_[0].is_reg_
-               ? std::get<double>(reg(cmd.add_real_.args_[0].reg_).value)
-               : cmd.add_real_.args_[0].val_) +
-          (cmd.add_real_.args_[1].is_reg_
-               ? std::get<double>(reg(cmd.add_real_.args_[1].reg_).value)
-               : cmd.add_real_.args_[1].val_));
+      save(resolve(cmd.add_real_.args_[0]) + resolve(cmd.add_real_.args_[1]));
+      break;
     case Op::AddCharBuf:
-      return IR::Val::CharBuf(
-          std::string(cmd.add_char_buf_.args_[0].is_reg_
-                          ? std::get<std::string_view>(
-                                reg(cmd.add_char_buf_.args_[0].reg_).value)
-                          : cmd.add_char_buf_.args_[0].val_) +
-          std::string(cmd.add_char_buf_.args_[1].is_reg_
-                          ? std::get<std::string_view>(
-                                reg(cmd.add_char_buf_.args_[1].reg_).value)
-                          : cmd.add_char_buf_.args_[1].val_));
+      // TODO remove to/from Val. it's a waste.
+      save(std::get<std::string_view>(
+          IR::Val::CharBuf(std::string(resolve(cmd.add_char_buf_.args_[0])) +
+                           std::string(resolve(cmd.add_char_buf_.args_[1])))
+              .value));
+      break;
     case Op::SubInt:
-      return IR::Val::Int(
-          (cmd.sub_int_.args_[0].is_reg_
-               ? std::get<i32>(reg(cmd.sub_int_.args_[0].reg_).value)
-               : cmd.sub_int_.args_[0].val_) -
-          (cmd.sub_int_.args_[1].is_reg_
-               ? std::get<i32>(reg(cmd.sub_int_.args_[1].reg_).value)
-               : cmd.sub_int_.args_[1].val_));
+      save(resolve(cmd.sub_int_.args_[0]) - resolve(cmd.sub_int_.args_[1]));
+      break;
     case Op::SubReal:
-      return IR::Val::Real(
-          (cmd.sub_real_.args_[0].is_reg_
-               ? std::get<double>(reg(cmd.sub_real_.args_[0].reg_).value)
-               : cmd.sub_real_.args_[0].val_) -
-          (cmd.sub_real_.args_[1].is_reg_
-               ? std::get<double>(reg(cmd.sub_real_.args_[1].reg_).value)
-               : cmd.sub_real_.args_[1].val_));
+      save(resolve(cmd.sub_real_.args_[0]) - resolve(cmd.sub_real_.args_[1]));
+      break;
     case Op::MulInt:
-      return IR::Val::Int(
-          (cmd.mul_int_.args_[0].is_reg_
-               ? std::get<i32>(reg(cmd.mul_int_.args_[0].reg_).value)
-               : cmd.mul_int_.args_[0].val_) *
-          (cmd.mul_int_.args_[1].is_reg_
-               ? std::get<i32>(reg(cmd.mul_int_.args_[1].reg_).value)
-               : cmd.mul_int_.args_[1].val_));
+      save(resolve(cmd.mul_int_.args_[0]) * resolve(cmd.mul_int_.args_[1]));
+      break;
     case Op::MulReal:
-      return IR::Val::Real(
-          (cmd.mul_real_.args_[0].is_reg_
-               ? std::get<double>(reg(cmd.mul_real_.args_[0].reg_).value)
-               : cmd.mul_real_.args_[0].val_) *
-          (cmd.mul_real_.args_[1].is_reg_
-               ? std::get<double>(reg(cmd.mul_real_.args_[1].reg_).value)
-               : cmd.mul_real_.args_[1].val_));
+      save(resolve(cmd.mul_real_.args_[0]) * resolve(cmd.mul_real_.args_[1]));
+      break;
     case Op::DivInt:
-      return IR::Val::Int(
-          (cmd.div_int_.args_[0].is_reg_
-               ? std::get<i32>(reg(cmd.div_int_.args_[0].reg_).value)
-               : cmd.div_int_.args_[0].val_) *
-          (cmd.div_int_.args_[1].is_reg_
-               ? std::get<i32>(reg(cmd.div_int_.args_[1].reg_).value)
-               : cmd.div_int_.args_[1].val_));
+      save(resolve(cmd.div_int_.args_[0]) / resolve(cmd.div_int_.args_[1]));
+      break;
     case Op::DivReal:
-      return IR::Val::Real(
-          (cmd.div_real_.args_[0].is_reg_
-               ? std::get<double>(reg(cmd.div_real_.args_[0].reg_).value)
-               : cmd.div_real_.args_[0].val_) *
-          (cmd.div_real_.args_[1].is_reg_
-               ? std::get<double>(reg(cmd.div_real_.args_[1].reg_).value)
-               : cmd.div_real_.args_[1].val_));
+      save(resolve(cmd.div_real_.args_[0]) / resolve(cmd.div_real_.args_[1]));
+      break;
     case Op::ModInt:
-      return IR::Val::Int(
-          (cmd.mod_int_.args_[0].is_reg_
-               ? std::get<i32>(reg(cmd.mod_int_.args_[0].reg_).value)
-               : cmd.mod_int_.args_[0].val_) %
-          (cmd.mod_int_.args_[1].is_reg_
-               ? std::get<i32>(reg(cmd.mod_int_.args_[1].reg_).value)
-               : cmd.mod_int_.args_[1].val_));
+      save(resolve(cmd.mod_int_.args_[0]) % resolve(cmd.mod_int_.args_[1]));
+      break;
     case Op::ModReal:
-      return IR::Val::Real(std::fmod(
-          (cmd.mod_real_.args_[0].is_reg_
-               ? std::get<double>(reg(cmd.mod_real_.args_[0].reg_).value)
-               : cmd.mod_real_.args_[0].val_),
-          (cmd.mod_real_.args_[1].is_reg_
-               ? std::get<double>(reg(cmd.mod_real_.args_[1].reg_).value)
-               : cmd.mod_real_.args_[1].val_)));
+      save(std::fmod(resolve(cmd.mod_real_.args_[0]),
+                     resolve(cmd.mod_real_.args_[1])));
+      break;
     case Op::LtInt:
-      return IR::Val::Bool(
-          (cmd.lt_int_.args_[0].is_reg_
-               ? std::get<i32>(reg(cmd.lt_int_.args_[0].reg_).value)
-               : cmd.lt_int_.args_[0].val_) <
-          (cmd.lt_int_.args_[1].is_reg_
-               ? std::get<i32>(reg(cmd.lt_int_.args_[1].reg_).value)
-               : cmd.lt_int_.args_[1].val_));
+      save(resolve(cmd.lt_int_.args_[0]) < resolve(cmd.lt_int_.args_[1]));
+      break;
     case Op::LtReal:
-      return IR::Val::Bool(
-          (cmd.lt_real_.args_[0].is_reg_
-               ? std::get<double>(reg(cmd.lt_real_.args_[0].reg_).value)
-               : cmd.lt_real_.args_[0].val_) <
-          (cmd.lt_real_.args_[1].is_reg_
-               ? std::get<double>(reg(cmd.lt_real_.args_[1].reg_).value)
-               : cmd.lt_real_.args_[1].val_));
+      save(resolve(cmd.lt_real_.args_[0]) < resolve(cmd.lt_real_.args_[1]));
+      break;
     case Op::LtFlags: {
-      auto lhs =
-          cmd.lt_flags_.args_[0].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[0].reg_).value)
-              : cmd.lt_flags_.args_[0].val_;
-      auto rhs =
-          cmd.lt_flags_.args_[1].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[1].reg_).value)
-              : cmd.lt_flags_.args_[1].val_;
-      return IR::Val::Bool(lhs.value != rhs.value &&
-                           ((lhs.value | rhs.value) == rhs.value));
+      auto lhs = resolve(cmd.lt_flags_.args_[0]);
+      auto rhs = resolve(cmd.lt_flags_.args_[1]);
+      save(lhs.value != rhs.value && ((lhs.value | rhs.value) == rhs.value));
     } break;
     case Op::LeInt:
-      return IR::Val::Bool(
-          (cmd.le_int_.args_[0].is_reg_
-               ? std::get<i32>(reg(cmd.le_int_.args_[0].reg_).value)
-               : cmd.le_int_.args_[0].val_) <=
-          (cmd.le_int_.args_[1].is_reg_
-               ? std::get<i32>(reg(cmd.le_int_.args_[1].reg_).value)
-               : cmd.le_int_.args_[1].val_));
+      save(resolve(cmd.le_int_.args_[0]) <= resolve(cmd.le_int_.args_[1]));
+      break;
     case Op::LeReal:
-      return IR::Val::Bool(
-          (cmd.le_real_.args_[0].is_reg_
-               ? std::get<double>(reg(cmd.le_real_.args_[0].reg_).value)
-               : cmd.le_real_.args_[0].val_) <=
-          (cmd.le_real_.args_[1].is_reg_
-               ? std::get<double>(reg(cmd.le_real_.args_[1].reg_).value)
-               : cmd.le_real_.args_[1].val_));
+      save(resolve(cmd.le_real_.args_[0]) <= resolve(cmd.le_real_.args_[1]));
+      break;
     case Op::LeFlags: {
-      auto lhs =
-          cmd.lt_flags_.args_[0].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[0].reg_).value)
-              : cmd.lt_flags_.args_[0].val_;
-      auto rhs =
-          cmd.lt_flags_.args_[1].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[1].reg_).value)
-              : cmd.lt_flags_.args_[1].val_;
-      return IR::Val::Bool((lhs.value | rhs.value) == rhs.value);
+      auto lhs = resolve(cmd.le_flags_.args_[0]);
+      auto rhs = resolve(cmd.le_flags_.args_[1]);
+      save((lhs.value | rhs.value) == rhs.value);
     } break;
     case Op::GtInt:
-      return IR::Val::Bool(
-          (cmd.lt_int_.args_[0].is_reg_
-               ? std::get<i32>(reg(cmd.lt_int_.args_[0].reg_).value)
-               : cmd.lt_int_.args_[0].val_) >
-          (cmd.lt_int_.args_[1].is_reg_
-               ? std::get<i32>(reg(cmd.lt_int_.args_[1].reg_).value)
-               : cmd.lt_int_.args_[1].val_));
+      save(resolve(cmd.gt_int_.args_[0]) > resolve(cmd.gt_int_.args_[1]));
+      break;
     case Op::GtReal:
-      return IR::Val::Bool(
-          (cmd.lt_real_.args_[0].is_reg_
-               ? std::get<double>(reg(cmd.lt_real_.args_[0].reg_).value)
-               : cmd.lt_real_.args_[0].val_) >
-          (cmd.lt_real_.args_[1].is_reg_
-               ? std::get<double>(reg(cmd.lt_real_.args_[1].reg_).value)
-               : cmd.lt_real_.args_[1].val_));
+      save(resolve(cmd.gt_real_.args_[0]) > resolve(cmd.gt_real_.args_[1]));
+      break;
     case Op::GtFlags: {
-      auto lhs =
-          cmd.lt_flags_.args_[0].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[0].reg_).value)
-              : cmd.lt_flags_.args_[0].val_;
-      auto rhs =
-          cmd.lt_flags_.args_[1].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[1].reg_).value)
-              : cmd.lt_flags_.args_[1].val_;
-      return IR::Val::Bool(lhs.value != rhs.value &&
-                           ((lhs.value | rhs.value) == lhs.value));
+      auto lhs = resolve(cmd.gt_flags_.args_[0]);
+      auto rhs = resolve(cmd.gt_flags_.args_[1]);
+      save(lhs.value != rhs.value && ((lhs.value | rhs.value) == lhs.value));
     } break;
     case Op::GeInt:
-      return IR::Val::Bool(
-          (cmd.le_int_.args_[0].is_reg_
-               ? std::get<i32>(reg(cmd.le_int_.args_[0].reg_).value)
-               : cmd.le_int_.args_[0].val_) >=
-          (cmd.le_int_.args_[1].is_reg_
-               ? std::get<i32>(reg(cmd.le_int_.args_[1].reg_).value)
-               : cmd.le_int_.args_[1].val_));
+      save(resolve(cmd.ge_int_.args_[0]) >= resolve(cmd.ge_int_.args_[1]));
+      break;
     case Op::GeReal:
-      return IR::Val::Bool(
-          (cmd.le_real_.args_[0].is_reg_
-               ? std::get<double>(reg(cmd.le_real_.args_[0].reg_).value)
-               : cmd.le_real_.args_[0].val_) >=
-          (cmd.le_real_.args_[1].is_reg_
-               ? std::get<double>(reg(cmd.le_real_.args_[1].reg_).value)
-               : cmd.le_real_.args_[1].val_));
+      save(resolve(cmd.ge_real_.args_[0]) >= resolve(cmd.ge_real_.args_[1]));
+      break;
     case Op::GeFlags: {
-      auto lhs =
-          cmd.lt_flags_.args_[0].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[0].reg_).value)
-              : cmd.lt_flags_.args_[0].val_;
-      auto rhs =
-          cmd.lt_flags_.args_[1].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.lt_flags_.args_[1].reg_).value)
-              : cmd.lt_flags_.args_[1].val_;
-      return IR::Val::Bool((lhs.value | rhs.value) == lhs.value);
+      auto lhs = resolve(cmd.ge_flags_.args_[0]);
+      auto rhs = resolve(cmd.ge_flags_.args_[1]);
+      save((lhs.value | rhs.value) == lhs.value);
     } break;
-    case Op::EqBool: {
-      auto lhs = cmd.eq_bool_.args_[0].is_reg_
-                     ? std::get<bool>(reg(cmd.eq_bool_.args_[0].reg_).value)
-                     : cmd.eq_bool_.args_[0].val_;
-      auto rhs = cmd.eq_bool_.args_[1].is_reg_
-                     ? std::get<bool>(reg(cmd.eq_bool_.args_[1].reg_).value)
-                     : cmd.eq_bool_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::EqChar: {
-      auto lhs = cmd.eq_char_.args_[0].is_reg_
-                     ? std::get<char>(reg(cmd.eq_char_.args_[0].reg_).value)
-                     : cmd.eq_char_.args_[0].val_;
-      auto rhs = cmd.eq_char_.args_[1].is_reg_
-                     ? std::get<char>(reg(cmd.eq_char_.args_[1].reg_).value)
-                     : cmd.eq_char_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::EqInt: {
-      auto lhs = cmd.eq_int_.args_[0].is_reg_
-                     ? std::get<int>(reg(cmd.eq_int_.args_[0].reg_).value)
-                     : cmd.eq_int_.args_[0].val_;
-      auto rhs = cmd.eq_int_.args_[1].is_reg_
-                     ? std::get<int>(reg(cmd.eq_int_.args_[1].reg_).value)
-                     : cmd.eq_int_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::EqReal: {
-      auto lhs = cmd.eq_real_.args_[0].is_reg_
-                     ? std::get<double>(reg(cmd.eq_real_.args_[0].reg_).value)
-                     : cmd.eq_real_.args_[0].val_;
-      auto rhs = cmd.eq_real_.args_[1].is_reg_
-                     ? std::get<double>(reg(cmd.eq_real_.args_[1].reg_).value)
-                     : cmd.eq_real_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::EqFlags: {
-      auto lhs =
-          cmd.eq_flags_.args_[0].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.eq_flags_.args_[0].reg_).value)
-              : cmd.eq_flags_.args_[0].val_;
-      auto rhs =
-          cmd.eq_type_.args_[1].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.eq_flags_.args_[1].reg_).value)
-              : cmd.eq_flags_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::EqType: {
-      auto lhs = cmd.eq_type_.args_[0].is_reg_
-                     ? std::get<const type::Type *>(
-                           reg(cmd.eq_type_.args_[0].reg_).value)
-                     : cmd.eq_type_.args_[0].val_;
-      auto rhs = cmd.eq_type_.args_[1].is_reg_
-                     ? std::get<const type::Type *>(
-                           reg(cmd.eq_type_.args_[1].reg_).value)
-                     : cmd.eq_type_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::EqAddr: {
-      auto lhs = cmd.eq_addr_.args_[0].is_reg_
-                     ? std::get<IR::Addr>(reg(cmd.eq_addr_.args_[0].reg_).value)
-                     : cmd.eq_addr_.args_[0].val_;
-      auto rhs = cmd.eq_addr_.args_[1].is_reg_
-                     ? std::get<IR::Addr>(reg(cmd.eq_addr_.args_[1].reg_).value)
-                     : cmd.eq_addr_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::NeBool: {
-      auto lhs = cmd.ne_bool_.args_[0].is_reg_
-                     ? std::get<bool>(reg(cmd.ne_bool_.args_[0].reg_).value)
-                     : cmd.ne_bool_.args_[0].val_;
-      auto rhs = cmd.ne_bool_.args_[1].is_reg_
-                     ? std::get<bool>(reg(cmd.ne_bool_.args_[1].reg_).value)
-                     : cmd.ne_bool_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::NeChar: {
-      auto lhs = cmd.ne_char_.args_[0].is_reg_
-                     ? std::get<char>(reg(cmd.ne_char_.args_[0].reg_).value)
-                     : cmd.ne_char_.args_[0].val_;
-      auto rhs = cmd.ne_char_.args_[1].is_reg_
-                     ? std::get<char>(reg(cmd.ne_char_.args_[1].reg_).value)
-                     : cmd.ne_char_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::NeInt: {
-      auto lhs = cmd.ne_int_.args_[0].is_reg_
-                     ? std::get<int>(reg(cmd.ne_int_.args_[0].reg_).value)
-                     : cmd.ne_int_.args_[0].val_;
-      auto rhs = cmd.ne_int_.args_[1].is_reg_
-                     ? std::get<int>(reg(cmd.ne_int_.args_[1].reg_).value)
-                     : cmd.ne_int_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::NeReal: {
-      auto lhs = cmd.ne_real_.args_[0].is_reg_
-                     ? std::get<double>(reg(cmd.ne_real_.args_[0].reg_).value)
-                     : cmd.ne_real_.args_[0].val_;
-      auto rhs = cmd.ne_real_.args_[1].is_reg_
-                     ? std::get<double>(reg(cmd.ne_real_.args_[1].reg_).value)
-                     : cmd.ne_real_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::NeFlags: {
-      auto lhs =
-          cmd.ne_flags_.args_[0].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.ne_flags_.args_[0].reg_).value)
-              : cmd.ne_flags_.args_[0].val_;
-      auto rhs =
-          cmd.ne_type_.args_[1].is_reg_
-              ? std::get<FlagsVal>(reg(cmd.ne_flags_.args_[1].reg_).value)
-              : cmd.ne_flags_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::NeType: {
-      auto lhs = cmd.ne_type_.args_[0].is_reg_
-                     ? std::get<const type::Type *>(
-                           reg(cmd.ne_type_.args_[0].reg_).value)
-                     : cmd.ne_type_.args_[0].val_;
-      auto rhs = cmd.ne_type_.args_[1].is_reg_
-                     ? std::get<const type::Type *>(
-                           reg(cmd.ne_type_.args_[1].reg_).value)
-                     : cmd.ne_type_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::NeAddr: {
-      auto lhs = cmd.ne_addr_.args_[0].is_reg_
-                     ? std::get<IR::Addr>(reg(cmd.ne_addr_.args_[0].reg_).value)
-                     : cmd.ne_addr_.args_[0].val_;
-      auto rhs = cmd.ne_addr_.args_[1].is_reg_
-                     ? std::get<IR::Addr>(reg(cmd.ne_addr_.args_[1].reg_).value)
-                     : cmd.ne_addr_.args_[1].val_;
-      return IR::Val::Bool(lhs == rhs);
-    } break;
-    case Op::XorBool: {
-      auto lhs = cmd.xor_bool_.args_[0].is_reg_
-                     ? std::get<bool>(reg(cmd.xor_bool_.args_[0].reg_).value)
-                     : cmd.xor_bool_.args_[0].val_;
-      auto rhs = cmd.xor_bool_.args_[1].is_reg_
-                     ? std::get<bool>(reg(cmd.xor_bool_.args_[1].reg_).value)
-                     : cmd.xor_bool_.args_[1].val_;
-      return IR::Val::Bool(lhs ^ rhs);
-    } break;
+    case Op::EqBool:
+      save(resolve(cmd.eq_bool_.args_[0]) == resolve(cmd.eq_bool_.args_[1]));
+      break;
+    case Op::EqChar:
+      save(resolve(cmd.eq_char_.args_[0]) == resolve(cmd.eq_char_.args_[1]));
+      break;
+    case Op::EqInt:
+      save(resolve(cmd.eq_int_.args_[0]) == resolve(cmd.eq_int_.args_[1]));
+      break;
+    case Op::EqReal:
+      save(resolve(cmd.eq_real_.args_[0]) == resolve(cmd.eq_real_.args_[1]));
+      break;
+    case Op::EqFlags:
+      save(resolve(cmd.eq_flags_.args_[0]) == resolve(cmd.eq_flags_.args_[1]));
+      break;
+    case Op::EqType:
+      save(resolve(cmd.eq_type_.args_[0]) == resolve(cmd.eq_type_.args_[1]));
+      break;
+    case Op::EqAddr:
+      save(resolve(cmd.eq_addr_.args_[0]) == resolve(cmd.eq_addr_.args_[1]));
+      break;
+    case Op::NeBool:
+      save(resolve(cmd.ne_bool_.args_[0]) == resolve(cmd.ne_bool_.args_[1]));
+      break;
+    case Op::NeChar:
+      save(resolve(cmd.ne_char_.args_[0]) == resolve(cmd.ne_char_.args_[1]));
+      break;
+    case Op::NeInt:
+      save(resolve(cmd.ne_int_.args_[0]) == resolve(cmd.ne_int_.args_[1]));
+      break;
+    case Op::NeReal:
+      save(resolve(cmd.ne_real_.args_[0]) == resolve(cmd.ne_real_.args_[1]));
+      break;
+    case Op::NeFlags:
+      save(resolve(cmd.ne_flags_.args_[0]) == resolve(cmd.ne_flags_.args_[1]));
+      break;
+    case Op::NeType:
+      save(resolve(cmd.ne_type_.args_[0]) == resolve(cmd.ne_type_.args_[1]));
+      break;
+    case Op::NeAddr:
+      save(resolve(cmd.ne_addr_.args_[0]) == resolve(cmd.ne_addr_.args_[1]));
+      break;
+    case Op::XorBool:
+      save(resolve(cmd.xor_bool_.args_[0]) ^ resolve(cmd.xor_bool_.args_[1]));
+      break;
     case Op::XorFlags: NOT_YET();
-    case Op::OrBool: {
-      auto lhs = cmd.or_bool_.args_[0].is_reg_
-                     ? std::get<bool>(reg(cmd.or_bool_.args_[0].reg_).value)
-                     : cmd.or_bool_.args_[0].val_;
-      auto rhs = cmd.or_bool_.args_[1].is_reg_
-                     ? std::get<bool>(reg(cmd.or_bool_.args_[1].reg_).value)
-                     : cmd.or_bool_.args_[1].val_;
-      return IR::Val::Bool(lhs | rhs);
-    } break;
+    case Op::OrBool:
+      save(resolve(cmd.or_bool_.args_[0]) | resolve(cmd.or_bool_.args_[1]));
+      break;
     case Op::OrFlags: NOT_YET();
-    case Op::AndBool: {
-      auto lhs = cmd.and_bool_.args_[0].is_reg_
-                     ? std::get<bool>(reg(cmd.and_bool_.args_[0].reg_).value)
-                     : cmd.and_bool_.args_[0].val_;
-      auto rhs = cmd.and_bool_.args_[1].is_reg_
-                     ? std::get<bool>(reg(cmd.and_bool_.args_[1].reg_).value)
-                     : cmd.and_bool_.args_[1].val_;
-      return IR::Val::Bool(lhs & rhs);
-    } break;
+    case Op::AndBool:
+      save(resolve(cmd.and_bool_.args_[0]) & resolve(cmd.and_bool_.args_[1]));
+      break;
     case Op::AndFlags: NOT_YET();
-    case Op::CreateStruct: {
-      return IR::Val::Struct();
-    } break;
+    case Op::CreateStruct: save(new type::Struct); break;
     case Op::InsertField: {
       std::vector<Val> resolved_args;
       resolved_args.reserve(ASSERT_NOT_NULL(cmd.insert_field_.args_)->size());
@@ -683,79 +424,45 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           std::string(std::get<std::string_view>(resolved_args[1].value)),
           struct_to_mod->fields_.size() - 1);
       ASSERT(success);
-      return IR::Val::None();
     } break;
-
-    case Op::FinalizeStruct: {
-      return IR::Val::Type(
-          std::get<type::Struct *>(reg(cmd.finalize_struct_.reg_).value)
-              ->finalize());
-    } break;
-    case Op::Malloc:
-      return IR::Val::HeapAddr(
-          malloc(cmd.malloc_.arg_.is_reg_
-                     ? std::get<i32>(reg(cmd.malloc_.arg_.reg_).value)
-                     : cmd.malloc_.arg_.val_),
-          cmd.type->as<type::Pointer>().pointee);
+    case Op::FinalizeStruct:
+      save(resolve<type::Struct *>(cmd.finalize_struct_.reg_)->finalize());
+      break;
+    case Op::Malloc: save(malloc(resolve(cmd.malloc_.arg_))); break;
     case Op::Free:
       free(std::get<Addr>(reg(cmd.free_.reg_).value).as_heap);
-      return Val::None();
-    case Op::Alloca: return stack_.Push(&cmd.type->as<type::Pointer>());
-    case Op::Ptr: return IR::Ptr(reg(cmd.ptr_.reg_));
-    case Op::Arrow: {
-      auto lhs = cmd.arrow_.args_[0].is_reg_
-                     ? std::get<type::Type const *>(
-                           reg(cmd.arrow_.args_[0].reg_).value)
-                     : cmd.arrow_.args_[0].val_;
-      auto rhs = cmd.arrow_.args_[1].is_reg_
-                     ? std::get<type::Type const *>(
-                           reg(cmd.arrow_.args_[1].reg_).value)
-                     : cmd.arrow_.args_[1].val_;
-      return IR::Val::Type(type::Func({lhs}, {rhs}));
-    } break;
+      break;
+    case Op::Alloca: save(stack_.Push(&cmd.type->as<type::Pointer>())); break;
+    case Op::Ptr:
+      save(type::Ptr(resolve<type::Type const *>(cmd.ptr_.reg_)));
+      break;
+    case Op::Arrow:
+      save(type::Func({resolve(cmd.arrow_.args_[0])},
+                      {resolve(cmd.arrow_.args_[1])}));
+      break;
     case Op::Array: {
-      auto len = cmd.array_.len_.is_reg_
-                     ? std::get<i32>(reg(cmd.array_.len_.reg_).value)
-                     : cmd.array_.len_.val_;
-      auto t =
-          cmd.array_.type_.is_reg_
-              ? std::get<type::Type const *>(reg(cmd.array_.type_.reg_).value)
-              : cmd.array_.type_.val_;
-      return IR::Val::Type(len == -1 ? type::Arr(t) : type::Arr(t, len));
+      auto len = resolve(cmd.array_.len_);
+      auto t   = resolve(cmd.array_.type_);
+      save(len == -1 ? type::Arr(t) : type::Arr(t, len));
     } break;
-    case Op::VariantType:
-      return Val::Addr(std::get<Addr>(reg(cmd.variant_type_.reg_).value),
-                       type::Type_);
+    case Op::VariantType: save(resolve<Addr>(cmd.variant_type_.reg_)); break;
     case Op::VariantValue: {
       auto bytes = Architecture::InterprettingMachine().bytes(Ptr(type::Type_));
       auto bytes_fwd =
           Architecture::InterprettingMachine().MoveForwardToAlignment(
               Ptr(type::Type_), bytes);
-      switch (std::get<Addr>(reg(cmd.variant_value_.reg_).value).kind) {
-        case Addr::Kind::Stack: {
-          return Val::StackAddr(
-              std::get<Addr>(reg(cmd.variant_value_.reg_).value).as_stack +
-                  bytes_fwd,
-              cmd.type->as<type::Pointer>().pointee);
-        }
-        case Addr::Kind::Heap: {
-          return Val::HeapAddr(
-              static_cast<void *>(
-                  static_cast<char *>(
-                      std::get<Addr>(reg(cmd.variant_value_.reg_).value)
-                          .as_heap) +
-                  bytes_fwd),
-              cmd.type->as<type::Pointer>().pointee);
-        }
+      auto addr = resolve<Addr>(cmd.variant_value_.reg_);
+      switch (addr.kind) {
+        case Addr::Kind::Stack: save(addr.as_stack + bytes_fwd); break;
+        case Addr::Kind::Heap:
+          save(static_cast<char *>(addr.as_heap) + bytes_fwd);
+          break;
         case Addr::Kind::Null: NOT_YET();
       }
-      UNREACHABLE("Invalid address kind: ");
     } break;
     case Op::PtrIncr: {
-      auto addr = std::get<Addr>(reg(cmd.ptr_incr_.ptr_).value);
-      auto incr = cmd.ptr_incr_.incr_.is_reg_
-                      ? std::get<i32>(reg(cmd.ptr_incr_.incr_.reg_).value)
-                      : cmd.ptr_incr_.incr_.val_;
+      auto addr = resolve<Addr>(cmd.ptr_incr_.ptr_);
+      auto incr = resolve(cmd.ptr_incr_.incr_);
       // Sadly must convert to value and back even though it's guaranteed to be
       // constant folded
       auto bytes_fwd = std::get<i32>(
@@ -764,16 +471,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                                   cmd.type->as<type::Pointer>().pointee)
               .value);
       switch (addr.kind) {
-        case Addr::Kind::Stack:
-          return Val::StackAddr(addr.as_stack + bytes_fwd,
-                                cmd.type->as<type::Pointer>().pointee);
-
+        case Addr::Kind::Stack: save(addr.as_stack + bytes_fwd); break;
         case Addr::Kind::Heap:
-          return Val::HeapAddr(
-              static_cast<void *>(static_cast<char *>(addr.as_heap) +
-                                  bytes_fwd),
-              cmd.type->as<type::Pointer>().pointee);
-
+          save(static_cast<char *>(addr.as_heap) + bytes_fwd);
+          break;
         case Addr::Kind::Null: NOT_YET();
       }
     } break;
@@ -793,45 +494,22 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       }
 
       if (addr.kind == Addr::Kind::Stack) {
-        return Val::StackAddr(addr.as_stack + offset,
-                              cmd.type->as<type::Pointer>().pointee);
+        save(addr.as_stack + offset);
       } else {
-        return Val::HeapAddr(static_cast<char *>(addr.as_heap) + offset,
-                             cmd.type->as<type::Pointer>().pointee);
+        save(static_cast<char *>(addr.as_heap) + offset);
       }
     } break;
     case Op::PrintBool:
-      std::cerr << ((cmd.print_bool_.arg_.is_reg_
-                         ? std::get<bool>(reg(cmd.print_bool_.arg_.reg_).value)
-                         : cmd.print_bool_.arg_.val_)
-                        ? "true"
-                        : "false");
-      return IR::Val::None();
-    case Op::PrintChar:
-      std::cerr << (cmd.print_char_.arg_.is_reg_
-                        ? std::get<char>(reg(cmd.print_char_.arg_.reg_).value)
-                        : cmd.print_char_.arg_.val_);
-      return IR::Val::None();
-    case Op::PrintInt:
-      std::cerr << (cmd.print_int_.arg_.is_reg_
-                        ? std::get<i32>(reg(cmd.print_int_.arg_.reg_).value)
-                        : cmd.print_int_.arg_.val_);
-      return IR::Val::None();
-    case Op::PrintReal:
-      std::cerr << (cmd.print_real_.arg_.is_reg_
-                        ? std::get<double>(reg(cmd.print_real_.arg_.reg_).value)
-                        : cmd.print_real_.arg_.val_);
-      return IR::Val::None();
+      std::cerr << (resolve(cmd.print_bool_.arg_) ? "true" : "false");
+      break;
+    case Op::PrintChar: std::cerr << resolve(cmd.print_char_.arg_); break;
+    case Op::PrintInt: std::cerr << resolve(cmd.print_int_.arg_); break;
+    case Op::PrintReal: std::cerr << resolve(cmd.print_real_.arg_); break;
     case Op::PrintType:
-      std::cerr << (cmd.print_type_.arg_.is_reg_
-                        ? std::get<type::Type const *>(
-                              reg(cmd.print_type_.arg_.reg_).value)
-                        : cmd.print_type_.arg_.val_)
-                       ->to_string();
-      return IR::Val::None();
+      std::cerr << resolve(cmd.print_type_.arg_)->to_string();
+      break;
     case Op::PrintEnum:
       NOT_YET();
-      return IR::Val::None();
       /*
       std::cerr << resolved[0].type->as<type::Enum>().members_[e.value];
       */
@@ -856,26 +534,23 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         while (iter != vals.end()) { std::cerr << " | " << *iter++; }
       }
       */
-      return IR::Val::None();
+      break;
     case Op::PrintAddr:
-      std::cerr << (cmd.print_addr_.arg_.is_reg_
-                        ? std::get<IR::Addr>(
-                              reg(cmd.print_addr_.arg_.reg_).value)
-                        : cmd.print_addr_.arg_.val_)
-                       .to_string();
-      return IR::Val::None();
+      std::cerr << resolve(cmd.print_addr_.arg_).to_string();
+      break;
     case Op::PrintCharBuffer:
-      std::cerr << (cmd.print_char_buffer_.arg_.is_reg_
-                        ? std::get<std::string_view>(
-                              reg(cmd.print_char_buffer_.arg_.reg_).value)
-                        : cmd.print_char_buffer_.arg_.val_);
-      return IR::Val::None();
+      std::cerr << resolve(cmd.print_char_buffer_.arg_);
+      break;
     case Op::Call: {
       std::vector<Val> resolved_args;
       resolved_args.reserve(ASSERT_NOT_NULL(cmd.call_.args_)->size());
       for (auto const &arg : *cmd.call_.args_) {
         if (auto *r = std::get_if<Register>(&arg.value)) {
-          resolved_args.push_back(reg(*r));
+          if (arg.type == type::Bool) {
+            resolved_args.push_back(IR::Val::Bool(resolve<bool>(*r)));
+          } else {
+            resolved_args.push_back(reg(*r));
+          }
         } else {
           resolved_args.push_back(arg);
         }
@@ -909,23 +584,20 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       for (const auto &val : *cmd.tup_.args_) {
         types.push_back(std::get<const type::Type *>(val.value));
       }
-      return IR::Val::Type(type::Tup(std::move(types)));
-    }
+      save(type::Tup(std::move(types)));
+    } break;
     case Op::Variant: {
       base::vector<const type::Type *> types;
       types.reserve(cmd.variant_.args_->size());
       for (const auto &val : *cmd.variant_.args_) {
         types.push_back(std::get<const type::Type *>(val.value));
       }
-      return IR::Val::Type(type::Var(std::move(types)));
-    }
+      save(type::Var(std::move(types)));
+    } break;
     case Op::CastIntToReal:
-      return IR::Val::Real(static_cast<double>(
-          std::get<i32>(reg(cmd.cast_int_to_real_.reg_).value)));
-    case Op::CastPtr:
-      return IR::Val::Addr(std::get<IR::Addr>(reg(cmd.cast_ptr_.reg_).value),
-                           cmd.cast_ptr_.type_);
-
+      save(static_cast<double>(resolve<i32>(cmd.cast_int_to_real_.reg_)));
+      break;
+    case Op::CastPtr: save(resolve<IR::Addr>(cmd.cast_ptr_.reg_)); break;
     case Op::AddCodeBlock: NOT_YET();
     case Op::BlockSeq: {
       std::vector<Val> resolved_args;
@@ -937,152 +609,61 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           resolved_args.push_back(arg);
         }
       }
-      return MakeBlockSeq(resolved_args);
+      save(std::get<BlockSequence>(MakeBlockSeq(resolved_args).value));
     } break;
     case Op::BlockSeqContains: {
       auto *seq =
           std::get<BlockSequence>(reg(cmd.block_seq_contains_.reg_).value).seq_;
-      return IR::Val::Bool(
-          std::any_of(seq->begin(), seq->end(), [&](AST::BlockLiteral *lit) {
-            return lit == cmd.block_seq_contains_.lit_;
-          }));
+      save(std::any_of(seq->begin(), seq->end(), [&](AST::BlockLiteral *lit) {
+        return lit == cmd.block_seq_contains_.lit_;
+      }));
     } break;
     case Op::SetReturn: {
+      base::vector<Val> resolved;
+      resolved.reserve(cmd.args.size());
+      for (const auto &arg : cmd.args) {
+        if (auto *r = std::get_if<Register>(&arg.value)) {
+          resolved.push_back(reg(*r));
+        } else {
+          resolved.push_back(arg);
+        }
+      }
+
       reg(std::get<Register>(cmd.args[1].value)) = std::move(resolved[0]);
       return IR::Val::None();
     } break;
-    case Op::StoreBool: {
-      IR::Addr addr = std::get<IR::Addr>(reg(cmd.store_bool_.addr_).value);
-      bool val      = cmd.store_bool_.val_.is_reg_
-                     ? std::get<bool>(reg(cmd.store_bool_.val_.reg_).value)
-                     : cmd.store_bool_.val_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null:
-          // TODO compile-time failure. dump the stack trace and abort.
-          cmd.dump(0);
-          UNREACHABLE();
-        case Addr::Kind::Stack:
-          stack_.Store(val, addr.as_stack);
-          return IR::Val::None();
-        case Addr::Kind::Heap: *static_cast<bool *>(addr.as_heap) = val;
-      }
-    } break;
-    case Op::StoreChar: {
-      IR::Addr addr = std::get<IR::Addr>(reg(cmd.store_bool_.addr_).value);
-      char val      = cmd.store_char_.val_.is_reg_
-                     ? std::get<char>(reg(cmd.store_char_.val_.reg_).value)
-                     : cmd.store_char_.val_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null:
-          // TODO compile-time failure. dump the stack trace and abort.
-          cmd.dump(0);
-          UNREACHABLE();
-        case Addr::Kind::Stack:
-          stack_.Store(val, addr.as_stack);
-          return IR::Val::None();
-        case Addr::Kind::Heap: *static_cast<char *>(addr.as_heap) = val;
-      }
-    } break;
-    case Op::StoreInt: {
-      IR::Addr addr = std::get<IR::Addr>(reg(cmd.store_bool_.addr_).value);
-      i32 val = cmd.store_int_.val_.is_reg_
-                     ? std::get<i32>(reg(cmd.store_int_.val_.reg_).value)
-                     : cmd.store_int_.val_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null:
-          // TODO compile-time failure. dump the stack trace and abort.
-          cmd.dump(0);
-          UNREACHABLE();
-        case Addr::Kind::Stack:
-          stack_.Store(val, addr.as_stack);
-          return IR::Val::None();
-        case Addr::Kind::Heap: *static_cast<i32*>(addr.as_heap) = val;
-      }
-    } break;
-    case Op::StoreReal: {
-      IR::Addr addr = std::get<IR::Addr>(reg(cmd.store_bool_.addr_).value);
-      double val = cmd.store_real_.val_.is_reg_
-                     ? std::get<double>(reg(cmd.store_real_.val_.reg_).value)
-                     : cmd.store_real_.val_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null:
-          // TODO compile-time failure. dump the stack trace and abort.
-          cmd.dump(0);
-          UNREACHABLE();
-        case Addr::Kind::Stack:
-          stack_.Store(val, addr.as_stack);
-          return IR::Val::None();
-        case Addr::Kind::Heap: *static_cast<double*>(addr.as_heap) = val;
-      }
-    } break;
-    case Op::StoreType: {
-      IR::Addr addr = std::get<IR::Addr>(reg(cmd.store_bool_.addr_).value);
-      type::Type const *val =
-          cmd.store_type_.val_.is_reg_
-              ? std::get<type::Type const *>(reg(cmd.store_type_.val_.reg_).value)
-              : cmd.store_type_.val_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null:
-          // TODO compile-time failure. dump the stack trace and abort.
-          cmd.dump(0);
-          UNREACHABLE();
-        case Addr::Kind::Stack:
-          stack_.Store(val, addr.as_stack);
-          return IR::Val::None();
-        case Addr::Kind::Heap:
-          *static_cast<type::Type const **>(addr.as_heap) = val;
-      }
-    } break;
-    case Op::StoreEnum: {
-      IR::Addr addr = std::get<IR::Addr>(reg(cmd.store_bool_.addr_).value);
-      EnumVal val =
-          cmd.store_enum_.val_.is_reg_
-              ? std::get<EnumVal>(reg(cmd.store_enum_.val_.reg_).value)
-              : cmd.store_enum_.val_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null:
-          // TODO compile-time failure. dump the stack trace and abort.
-          cmd.dump(0);
-          UNREACHABLE();
-        case Addr::Kind::Stack:
-          stack_.Store(val, addr.as_stack);
-          return IR::Val::None();
-        case Addr::Kind::Heap: *static_cast<EnumVal *>(addr.as_heap) = val;
-      }
-    } break;
-    case Op::StoreFlags: {
-      IR::Addr addr = std::get<IR::Addr>(reg(cmd.store_bool_.addr_).value);
-      FlagsVal val = cmd.store_flags_.val_.is_reg_
-                     ? std::get<FlagsVal>(reg(cmd.store_flags_.val_.reg_).value)
-                     : cmd.store_flags_.val_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null:
-          // TODO compile-time failure. dump the stack trace and abort.
-          cmd.dump(0);
-          UNREACHABLE();
-        case Addr::Kind::Stack:
-          stack_.Store(val, addr.as_stack);
-          return IR::Val::None();
-        case Addr::Kind::Heap: *static_cast<FlagsVal *>(addr.as_heap) = val;
-      }
-    } break;
-    case Op::StoreAddr: {
-      IR::Addr addr = std::get<IR::Addr>(reg(cmd.store_bool_.addr_).value);
-      IR::Addr val =
-          cmd.store_addr_.val_.is_reg_
-              ? std::get<IR::Addr>(reg(cmd.store_addr_.val_.reg_).value)
-              : cmd.store_addr_.val_.val_;
-      switch (addr.kind) {
-        case Addr::Kind::Null:
-          // TODO compile-time failure. dump the stack trace and abort.
-          cmd.dump(0);
-          UNREACHABLE();
-        case Addr::Kind::Stack:
-          stack_.Store(val, addr.as_stack);
-          return IR::Val::None();
-        case Addr::Kind::Heap: *static_cast<IR::Addr *>(addr.as_heap) = val;
-      }
-    } break;
+    case Op::StoreBool:
+      StoreValue(resolve(cmd.store_bool_.val_),
+                 resolve<IR::Addr>(cmd.store_bool_.addr_), &stack_);
+      break;
+    case Op::StoreChar:
+      StoreValue(resolve(cmd.store_char_.val_),
+                 resolve<IR::Addr>(cmd.store_char_.addr_), &stack_);
+      break;
+    case Op::StoreInt:
+      StoreValue(resolve(cmd.store_int_.val_),
+                 resolve<IR::Addr>(cmd.store_int_.addr_), &stack_);
+      break;
+    case Op::StoreReal:
+      StoreValue(resolve(cmd.store_real_.val_),
+                 resolve<IR::Addr>(cmd.store_real_.addr_), &stack_);
+      break;
+    case Op::StoreType:
+      StoreValue(resolve(cmd.store_type_.val_),
+                 resolve<IR::Addr>(cmd.store_type_.addr_), &stack_);
+      break;
+    case Op::StoreEnum:
+      StoreValue(resolve(cmd.store_enum_.val_),
+                 resolve<IR::Addr>(cmd.store_enum_.addr_), &stack_);
+      break;
+    case Op::StoreFlags:
+      StoreValue(resolve(cmd.store_flags_.val_),
+                 resolve<IR::Addr>(cmd.store_flags_.addr_), &stack_);
+      break;
+    case Op::StoreAddr:
+      StoreValue(resolve(cmd.store_addr_.val_),
+                 resolve<IR::Addr>(cmd.store_addr_.addr_), &stack_);
+      break;
     case Op::Phi: {
       std::vector<Val> resolved_args;
       resolved_args.reserve(ASSERT_NOT_NULL(cmd.phi_.args_)->size());
@@ -1108,12 +689,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Contextualize: NOT_YET();
     case Op::CondJump:
       return Val::BasicBlock(
-          cmd.cond_jump_
-              .blocks_[std::get<bool>(reg(cmd.cond_jump_.cond_).value)]);
+          cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)]);
     case Op::UncondJump: return Val::BasicBlock(cmd.uncond_jump_.block_);
     case Op::ReturnJump: return Val::BasicBlock(BlockIndex{-1});
   }
-  UNREACHABLE();
+  return IR::Val::None();
 }
 }  // namespace IR
 

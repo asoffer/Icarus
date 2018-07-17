@@ -2,8 +2,9 @@
 
 #include <cmath>
 #include <iostream>
-#include "base/container/vector.h"
 
+#include "architecture.h"
+#include "base/container/vector.h"
 #include "ir/func.h"
 #include "type/all.h"
 
@@ -11,10 +12,11 @@ namespace IR {
 using base::check::Is;
 BlockIndex BasicBlock::Current;
 
-static Cmd &MakeNewCmd(const type::Type *t, Op op) {
-  return ASSERT_NOT_NULL(Func::Current)
-      ->block(BasicBlock::Current)
-      .cmds_.emplace_back(t, op, base::vector<IR::Val>{});
+static Cmd &MakeCmd(const type::Type *t, Op op, bool do_it = false) {
+  auto &cmd = ASSERT_NOT_NULL(Func::Current)
+                  ->block(BasicBlock::Current)
+                  .cmds_.emplace_back(t, op, base::vector<IR::Val>{}, do_it);
+  return cmd;
 }
 
 Val Trunc(const Val &v) {
@@ -22,7 +24,7 @@ Val Trunc(const Val &v) {
     return Val::Char(static_cast<char>(*n));
   }
 
-  auto &cmd  = MakeNewCmd(type::Char, Op::Trunc);
+  auto &cmd  = MakeCmd(type::Char, Op::Trunc, true);
   cmd.trunc_ = Cmd::Trunc::Make(std::get<Register>(v.value));
   return cmd.reg();
 }
@@ -32,13 +34,13 @@ Val Extend(const Val &v) {
     return Val::Int(static_cast<i32>(*c));
   }
 
-  auto &cmd   = MakeNewCmd(type::Int, Op::Extend);
+  auto &cmd   = MakeCmd(type::Int, Op::Extend, true);
   cmd.extend_ = Cmd::Extend::Make(std::get<Register>(v.value));
   return cmd.reg();
 }
 
 Val Bytes(const Val &v) {
-  auto &cmd         = MakeNewCmd(type::Int, Op::Bytes);
+  auto &cmd         = MakeCmd(type::Int, Op::Bytes, true);
   const Register *r = std::get_if<Register>(&v.value);
   cmd.bytes_        = Cmd::Bytes::Make(r ? RegisterOr<const type::Type *>(*r)
                                   : RegisterOr<const type::Type *>(
@@ -47,7 +49,7 @@ Val Bytes(const Val &v) {
 }
 
 Val Align(const Val &v) {
-  auto &cmd         = MakeNewCmd(type::Int, Op::Align);
+  auto &cmd         = MakeCmd(type::Int, Op::Align, true);
   Register const *r = std::get_if<Register>(&v.value);
   cmd.align_        = Cmd::Align::Make(r ? RegisterOr<const type::Type *>(*r)
                                   : RegisterOr<const type::Type *>(
@@ -57,7 +59,7 @@ Val Align(const Val &v) {
 
 Val Not(const Val &v) {
   if (const bool *b = std::get_if<bool>(&v.value)) { return Val::Bool(!*b); }
-  auto &cmd = MakeNewCmd(type::Bool, Op::Not);
+  auto &cmd = MakeCmd(type::Bool, Op::Not, true);
   cmd.not_  = Cmd::Not::Make(std::get<Register>(v.value));
   return cmd.reg();
 }
@@ -66,7 +68,7 @@ Val Not(const Val &v) {
 // TODO do you really want to support this? How can array allocation be
 // customized?
 Val Malloc(const type::Type *t, const Val &v) {
-  auto &cmd         = MakeNewCmd(type::Ptr(t), Op::Malloc);
+  auto &cmd         = MakeCmd(type::Ptr(t), Op::Malloc, true);
   Register const *r = std::get_if<Register>(&v.value);
   cmd.malloc_       = Cmd::Malloc::Make(r ? RegisterOr<i32>(*r)
                                     : RegisterOr<i32>(std::get<i32>(v.value)));
@@ -74,26 +76,26 @@ Val Malloc(const type::Type *t, const Val &v) {
 }
 
 void Free(const Val &v) {
-  auto &cmd = MakeNewCmd(v.type, Op::Free);
+  auto &cmd = MakeCmd(v.type, Op::Free, true);
   cmd.free_ = Cmd::Free::Make(std::get<Register>(v.value));
 }
 
 Val NegInt(const Val &v) {
   if (const i32 *n = std::get_if<i32>(&v.value)) { return Val::Int(-*n); }
-  auto &cmd    = MakeNewCmd(type::Bool, Op::NegInt);
+  auto &cmd    = MakeCmd(type::Bool, Op::NegInt, true);
   cmd.neg_int_ = Cmd::NegInt::Make(std::get<Register>(v.value));
   return cmd.reg();
 }
 
 Val NegReal(const Val &v) {
   if (const double *r = std::get_if<double>(&v.value)) { return Val::Real(-*r); }
-  auto &cmd     = MakeNewCmd(type::Bool, Op::NegReal);
+  auto &cmd     = MakeCmd(type::Bool, Op::NegReal, true);
   cmd.neg_real_ = Cmd::NegReal::Make(std::get<Register>(v.value));
   return cmd.reg();
 }
 
 Val ArrayLength(const Val &v) {
-  auto &cmd = MakeNewCmd(type::Ptr(type::Int), Op::ArrayLength);
+  auto &cmd = MakeCmd(type::Ptr(type::Int), Op::ArrayLength, true);
   const Register *r = std::get_if<Register>(&v.value);
   cmd.array_length_ = Cmd::ArrayLength::Make(
       r ? RegisterOr<IR::Addr>(*r)
@@ -108,7 +110,7 @@ Val ArrayData(const Val &v) {
   auto *array_type = &ptee->as<type::Array>();
   ASSERT(!array_type->fixed_length);
 
-  auto &cmd = MakeNewCmd(type::Ptr(array_type->data_type), Op::ArrayData);
+  auto &cmd = MakeCmd(type::Ptr(array_type->data_type), Op::ArrayData, true);
   const Register *r = std::get_if<Register>(&v.value);
   cmd.array_data_   = Cmd::ArrayData::Make(
       r ? RegisterOr<IR::Addr>(*r)
@@ -122,14 +124,14 @@ Val Ptr(const Val &v) {
     return Val::Type(type::Ptr(*t));
   }
 
-  auto &cmd = MakeNewCmd(type::Type_, Op::Ptr);
+  auto &cmd = MakeCmd(type::Type_, Op::Ptr, true);
   cmd.ptr_  = Cmd::Ptr::Make(std::get<Register>(v.value));
   return cmd.reg();
 }
 
 #define DEFINE_CMD1(Name, name, arg_type, RetType)                             \
   Val Name(Val const &v) {                                                     \
-    auto &cmd = MakeNewCmd(RetType, Op::Name);                                 \
+    auto &cmd = MakeCmd(RetType, Op::Name, true);                              \
     auto *x   = std::get_if<arg_type>(&v.value);                               \
     cmd.name  = Cmd::Name::Make(                                               \
         x ? RegisterOr<arg_type>(*x)                                          \
@@ -166,7 +168,7 @@ Val AddCharBuf(const Val &v1, const Val &v2) {
     return IR::Val::CharBuf(std::string(*s1) + std::string(*s2));
   }
 
-  auto &cmd         = MakeNewCmd(nullptr /* TODO */, Op::AddCharBuf);
+  auto &cmd         = MakeCmd(nullptr /* TODO */, Op::AddCharBuf, true);
   cmd.add_char_buf_ = Cmd::AddCharBuf::Make(
       s1 ? RegisterOr<std::string_view>(*s1)
          : RegisterOr<std::string_view>(std::get<Register>(v1.value)),
@@ -180,7 +182,7 @@ Val AddCharBuf(const Val &v1, const Val &v2) {
     auto const *x1 = std::get_if<arg_type>(&v1.value);                         \
     auto const *x2 = std::get_if<arg_type>(&v2.value);                         \
     if (x1 && x2) { return Val::RetType(fn(*x1, *x2)); }                       \
-    auto &cmd = MakeNewCmd(type::RetType, Op::Name);                           \
+    auto &cmd = MakeCmd(type::RetType, Op::Name, true);                        \
     cmd.name  = Cmd::Name::Make(                                               \
         x1 ? RegisterOr<arg_type>(*x1)                                        \
            : RegisterOr<arg_type>(std::get<Register>(v1.value)),              \
@@ -249,7 +251,7 @@ Val Array(const Val &v1, const Val &v2) {
     if (v1 == Val::None()) { return Val::Type(type::Arr(*t)); }
   }
 
-  auto &cmd = MakeNewCmd(type::Type_, Op::Array);
+  auto &cmd = MakeCmd(type::Type_, Op::Array, true);
   cmd.array_ = Cmd::Array::Make(
       m ? RegisterOr<i32>(*m)
         : v1 == Val::None() ? RegisterOr<i32>(-1)
@@ -260,12 +262,11 @@ Val Array(const Val &v1, const Val &v2) {
 }
 
 Val Tup(base::vector<Val> vals) {
-  LOG << vals;
   auto &args =
       Func::Current->block(BasicBlock::Current)
           .call_args_.emplace_back(
               std::make_unique<base::vector<IR::Val>>(std::move(vals)));
-  auto &cmd = MakeNewCmd(type::Type_, Op::Tup);
+  auto &cmd = MakeCmd(type::Type_, Op::Tup, true);
   cmd.tup_  = Cmd::Tup{{}, args.get()};
   return cmd.reg();
 }
@@ -275,7 +276,7 @@ Val Variant(base::vector<Val> vals) {
       Func::Current->block(BasicBlock::Current)
           .call_args_.emplace_back(
               std::make_unique<base::vector<IR::Val>>(std::move(vals)));
-  auto &cmd    = MakeNewCmd(type::Type_, Op::Variant);
+  auto &cmd    = MakeCmd(type::Type_, Op::Variant, true);
   cmd.variant_ = Cmd::Variant{{}, args.get()};
   return cmd.reg();
 }
@@ -285,7 +286,7 @@ Val XorBool(const Val &v1, const Val &v2) {
   bool const *x2 = std::get_if<bool>(&v2.value);
   if (x1) { return *x1 ? Not(v2) : v2; }
   if (x2) { return *x2 ? Not(v1) : v1; }
-  auto &cmd     = MakeNewCmd(type::Bool, Op::XorBool);
+  auto &cmd     = MakeCmd(type::Bool, Op::XorBool, true);
   cmd.xor_bool_ =
       Cmd::XorBool::Make(x1 ? RegisterOr<bool>(*x1)
                             : RegisterOr<bool>(std::get<Register>(v1.value)),
@@ -299,7 +300,7 @@ Val OrBool(const Val &v1, const Val &v2) {
   bool const *x2 = std::get_if<bool>(&v2.value);
   if (x1) { return *x1 ? IR::Val::Bool(true) : v2; }
   if (x2) { return *x2 ? IR::Val::Bool(true) : v1; }
-  auto &cmd = MakeNewCmd(type::Bool, Op::OrBool);
+  auto &cmd = MakeCmd(type::Bool, Op::OrBool, true);
   cmd.or_bool_ =
       Cmd::OrBool::Make(x1 ? RegisterOr<bool>(*x1)
                            : RegisterOr<bool>(std::get<Register>(v1.value)),
@@ -313,7 +314,7 @@ Val AndBool(const Val &v1, const Val &v2) {
   bool const *x2 = std::get_if<bool>(&v2.value);
   if (x1) { return *x1 ? v2 : IR::Val::Bool(false); }
   if (x2) { return *x2 ? v1 : IR::Val::Bool(false); }
-  auto &cmd = MakeNewCmd(type::Bool, Op::AndBool);
+  auto &cmd = MakeCmd(type::Bool, Op::AndBool, true);
   cmd.and_bool_ =
       Cmd::AndBool::Make(x1 ? RegisterOr<bool>(*x1)
                             : RegisterOr<bool>(std::get<Register>(v1.value)),
@@ -327,12 +328,12 @@ Val Field(const Val &v, size_t n) {
                                                 .pointee->as<type::Struct>()
                                                 .fields_.at(n)
                                                 .type);
-  auto &cmd                     = MakeNewCmd(result_type, Op::Field);
+  auto &cmd                     = MakeCmd(result_type, Op::Field, true);
   cmd.field_ = Cmd::Field::Make(std::get<Register>(v.value), n);
   return cmd.reg();
 }
 
-Cmd::Cmd(const type::Type *t, Op op, base::vector<Val> arg_vec)
+Cmd::Cmd(const type::Type *t, Op op, base::vector<Val> arg_vec, bool do_it)
     : args(std::move(arg_vec)), op_code_(op), type(t) {
   ASSERT(Func::Current != nullptr);
   CmdIndex cmd_index{
@@ -340,6 +341,13 @@ Cmd::Cmd(const type::Type *t, Op op, base::vector<Val> arg_vec)
       static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
   result = Register(t != nullptr ? Func::Current->num_regs_++
                                  : -(++Func::Current->num_voids_));
+
+  if (do_it) {
+    auto arch  = Architecture::InterprettingMachine();
+    auto entry = arch.MoveForwardToAlignment(t, Func::Current->reg_size_);
+    Func::Current->reg_map_.emplace(result, entry);
+    Func::Current->reg_size_ = entry + arch.bytes(t);
+  }
 
   Func::Current->reg_to_cmd_.emplace(result, cmd_index);
   if (t == nullptr) { return; }
@@ -352,14 +360,6 @@ Cmd::Cmd(const type::Type *t, Op op, base::vector<Val> arg_vec)
   }
 }
 
-static Val MakeCmd(const type::Type *t, Op op, base::vector<Val> vals) {
-  auto &cmds = ASSERT_NOT_NULL(Func::Current)->block(BasicBlock::Current).cmds_;
-  Cmd c{t, op, std::move(vals)};
-  cmds.emplace_back(std::move(c));
-  return t == nullptr ? IR::Val::None() : cmds.back().reg();
-}
-
-
 extern Val MakeBlockSeq(const base::vector<Val> &blocks);
 
 Val BlockSeq(const base::vector<Val> &blocks) {
@@ -368,7 +368,7 @@ Val BlockSeq(const base::vector<Val> &blocks) {
       })) {
     return MakeBlockSeq(blocks);
   }
-  auto &cmd  = MakeNewCmd(blocks.back().type, Op::BlockSeq);
+  auto &cmd  = MakeCmd(blocks.back().type, Op::BlockSeq, true);
   auto &args = Func::Current->block(BasicBlock::Current)
                    .call_args_.emplace_back(
                        std::make_unique<base::vector<IR::Val>>(blocks));
@@ -377,7 +377,7 @@ Val BlockSeq(const base::vector<Val> &blocks) {
 }
 
 Val BlockSeqContains(const Val &v, AST::BlockLiteral *lit) {
-  auto &cmd = MakeNewCmd(type::Bool, Op::BlockSeqContains);
+  auto &cmd = MakeCmd(type::Bool, Op::BlockSeqContains, true);
   if (auto *bs = std::get_if<BlockSequence>(&v.value)) {
     return IR::Val::Bool(
         std::any_of(bs->seq_->begin(), bs->seq_->end(),
@@ -416,11 +416,11 @@ Val Cast(const type::Type *to, const Val& v, Context *ctx) {
   }
 
   if (to == type::Real && v.type == type::Int) {
-    auto &cmd             = MakeNewCmd(type::Real, Op::CastIntToReal);
+    auto &cmd             = MakeCmd(type::Real, Op::CastIntToReal, true);
     cmd.cast_int_to_real_ = Cmd::CastIntToReal{{}, std::get<Register>(v.value)};
     return cmd.reg();
   } else if (to->is<type::Pointer>()) {
-    auto &cmd     = MakeNewCmd(to, Op::CastPtr);
+    auto &cmd     = MakeCmd(to, Op::CastPtr, true);
     cmd.cast_ptr_ = Cmd::CastPtr{
         {}, std::get<Register>(v.value), to->as<type::Pointer>().pointee};
     return cmd.reg();
@@ -429,29 +429,29 @@ Val Cast(const type::Type *to, const Val& v, Context *ctx) {
   }
 }
 
-Val CreateStruct() { return MakeNewCmd(type::Type_, Op::CreateStruct).reg(); }
+Val CreateStruct() { return MakeCmd(type::Type_, Op::CreateStruct, true).reg(); }
 
 IR::Val FinalizeStruct(const Val &v) {
-  auto &cmd = MakeNewCmd(type::Type_, Op::CreateStruct);
+  auto &cmd = MakeCmd(type::Type_, Op::CreateStruct, true);
   cmd.finalize_struct_ = Cmd::FinalizeStruct::Make(std::get<Register>(v.value));
   return cmd.reg();
 }
 
 Val VariantType(const Val& v) {
-  auto &cmd = MakeNewCmd(Ptr(type::Type_), Op::VariantType);
+  auto &cmd = MakeCmd(Ptr(type::Type_), Op::VariantType, true);
   cmd.variant_type_ = Cmd::VariantType::Make(std::get<Register>(v.value));
   return cmd.reg();
 }
 
 Val VariantValue(type::Type const *t, const Val &v) {
-  auto &cmd = MakeNewCmd(type::Ptr(t), Op::VariantValue);
+  auto &cmd = MakeCmd(type::Ptr(t), Op::VariantValue, true);
   cmd.variant_type_ = Cmd::VariantType::Make(std::get<Register>(v.value));
   return cmd.reg();
 }
 
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val) {
-  auto &cmd = MakeNewCmd(nullptr, Op::InsertField);
+  auto &cmd = MakeCmd(nullptr, Op::InsertField, true);
   auto &args =
       Func::Current->block(BasicBlock::Current)
           .call_args_.emplace_back(
@@ -465,13 +465,17 @@ Val Alloca(const type::Type *t) {
   ASSERT(t, Not(Is<type::Tuple>()));
   return ASSERT_NOT_NULL(Func::Current)
       ->block(Func::Current->entry())
-      .cmds_.emplace_back(type::Ptr(t), Op::Alloca, base::vector<IR::Val>{})
+      .cmds_
+      .emplace_back(type::Ptr(t), Op::Alloca, base::vector<IR::Val>{}, true)
       .reg();
 }
 
 void SetReturn(size_t r, Val v2) {
   // TODO ***maybe*** later optimize a return register
-  MakeCmd(nullptr, Op::SetReturn,
+  ASSERT_NOT_NULL(Func::Current)
+      ->block(BasicBlock::Current)
+      .cmds_.emplace_back(
+          nullptr, Op::SetReturn,
           base::vector<IR::Val>{std::move(v2), IR::Func::Current->Return(r)});
 }
 
@@ -480,7 +484,7 @@ Val PtrIncr(const Val &v1, const Val &v2) {
   ASSERT(v2.type == type::Int);
   i32 const *n = std::get_if<i32>(&v2.value);
   if (n && *n == 0) { return v1; }
-  auto &cmd  = MakeNewCmd(v1.type, Op::PtrIncr);
+  auto &cmd  = MakeCmd(v1.type, Op::PtrIncr, true);
   cmd.ptr_incr_ = Cmd::PtrIncr::Make(
       std::get<Register>(v1.value),
       n ? RegisterOr<i32>(*n) : RegisterOr<i32>(std::get<i32>(v2.value)));
@@ -551,49 +555,49 @@ static RegisterOr<T> GetRegOr(const Val &v) {
 }
 
 void StoreBool(const Val &val, const Val &loc) {
-  auto &cmd = MakeNewCmd(nullptr, Op::StoreBool);
+  auto &cmd = MakeCmd(nullptr, Op::StoreBool, true);
   cmd.store_bool_ =
       Cmd::StoreBool::Make(std::get<Register>(loc.value), GetRegOr<bool>(val));
 }
 
 void StoreChar(const Val &val, const Val &loc) {
-  auto &cmd = MakeNewCmd(nullptr, Op::StoreChar);
+  auto &cmd = MakeCmd(nullptr, Op::StoreChar, true);
   cmd.store_char_ =
       Cmd::StoreChar::Make(std::get<Register>(loc.value), GetRegOr<char>(val));
 }
 
 void StoreInt(const Val &val, const Val &loc) {
-  auto &cmd = MakeNewCmd(nullptr, Op::StoreInt);
+  auto &cmd = MakeCmd(nullptr, Op::StoreInt, true);
   cmd.store_int_ =
       Cmd::StoreInt::Make(std::get<Register>(loc.value), GetRegOr<i32>(val));
 }
 
 void StoreReal(const Val &val, const Val &loc) {
-  auto &cmd       = MakeNewCmd(nullptr, Op::StoreReal);
+  auto &cmd       = MakeCmd(nullptr, Op::StoreReal, true);
   cmd.store_real_ = Cmd::StoreReal::Make(std::get<Register>(loc.value),
                                          GetRegOr<double>(val));
 }
 
 void StoreType(const Val &val, const Val &loc) {
-  auto &cmd       = MakeNewCmd(nullptr, Op::StoreType);
+  auto &cmd       = MakeCmd(nullptr, Op::StoreType, true);
   cmd.store_type_ = Cmd::StoreType::Make(std::get<Register>(loc.value),
                                          GetRegOr<type::Type const *>(val));
 }
 
 void StoreEnum(const Val &val, const Val &loc) {
-  auto &cmd       = MakeNewCmd(nullptr, Op::StoreEnum);
+  auto &cmd       = MakeCmd(nullptr, Op::StoreEnum, true);
   cmd.store_enum_ = Cmd::StoreEnum::Make(std::get<Register>(loc.value),
                                          GetRegOr<EnumVal>(val));
 }
 
 void StoreFlags(const Val &val, const Val &loc) {
-  auto &cmd        = MakeNewCmd(nullptr, Op::StoreFlags);
+  auto &cmd        = MakeCmd(nullptr, Op::StoreFlags, true);
   cmd.store_flags_ = Cmd::StoreFlags::Make(std::get<Register>(loc.value),
                                            GetRegOr<FlagsVal>(val));
 }
 
 void StoreAddr(const Val &val, const Val &loc) {
-  auto &cmd       = MakeNewCmd(nullptr, Op::StoreAddr);
+  auto &cmd       = MakeCmd(nullptr, Op::StoreAddr, true);
   cmd.store_addr_ = Cmd::StoreAddr::Make(std::get<Register>(loc.value),
                                          GetRegOr<IR::Addr>(val));
 }
@@ -721,7 +725,7 @@ std::pair<CmdIndex, base::vector<IR::Val> *> Phi(const type::Type *t) {
   auto &args =
       Func::Current->block(BasicBlock::Current)
           .call_args_.emplace_back(std::make_unique<base::vector<IR::Val>>());
-  auto &cmd = MakeNewCmd(t, Op::Phi);
+  auto &cmd = MakeCmd(t, Op::Phi);
   cmd.phi_  = Cmd::Phi::Make(args.get());
   return std::pair(cmd_index, args.get());
 }
@@ -749,7 +753,7 @@ Val Call(const Val &fn, base::vector<Val> vals, base::vector<Val> result_locs) {
       Func::Current->block(BasicBlock::Current)
           .call_args_.emplace_back(
               std::make_unique<base::vector<IR::Val>>(std::move(vals)));
-  auto &cmd = MakeNewCmd(output_type, Op::Call);
+  auto &cmd = MakeCmd(output_type, Op::Call);
 
   if (auto *r = std::get_if<Register>(&fn.value)) {
     cmd.call_ = Cmd::Call(*r, args.get());
@@ -767,18 +771,18 @@ void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block) {
   if (auto *b = std::get_if<bool>(&cond.value)) {
     return UncondJump(*b ? true_block : false_block);
   }
-  auto &cmd      = MakeNewCmd(nullptr, Op::CondJump);
+  auto &cmd      = MakeCmd(nullptr, Op::CondJump);
   cmd.cond_jump_ = Cmd::CondJump{
       {}, std::get<Register>(cond.value), {false_block, true_block}};
 }
 
 void UncondJump(BlockIndex block) {
-  auto &cmd        = MakeNewCmd(nullptr, Op::UncondJump);
+  auto &cmd        = MakeCmd(nullptr, Op::UncondJump);
   cmd.uncond_jump_ = Cmd::UncondJump{{}, block};
 }
 
 void ReturnJump() {
-  auto &cmd        = MakeNewCmd(nullptr, Op::ReturnJump);
+  auto &cmd        = MakeCmd(nullptr, Op::ReturnJump);
   cmd.return_jump_ = Cmd::ReturnJump{};
 }
 

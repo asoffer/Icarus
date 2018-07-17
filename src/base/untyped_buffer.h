@@ -11,6 +11,12 @@ struct untyped_buffer {
         capacity_(starting_capacity),
         data_(static_cast<char *>(malloc(starting_capacity))) {}
 
+  static untyped_buffer MakeFull(size_t starting_size) {
+    untyped_buffer result(starting_size);
+    result.size_ = result.capacity_;
+    return result;
+  }
+
   untyped_buffer(untyped_buffer &&that)
       : size_(that.size_), capacity_(that.capacity_), data_(that.data_) {
     that.size_     = 0;

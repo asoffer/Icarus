@@ -1,11 +1,11 @@
 #ifndef ICARUS_IR_FUNC_H
 #define ICARUS_IR_FUNC_H
 
-#include "base/container/unordered_map.h"
 #include <unordered_set>
 #include <queue>
-#include "base/container/vector.h"
 
+#include "base/container/unordered_map.h"
+#include "base/container/vector.h"
 #include "ir/basic_block.h"
 #include "property/property_map.h"
 
@@ -93,6 +93,10 @@ struct Func {
 #endif // ICARUS_USE_LLVM
 
   Module* mod_;
+
+  size_t reg_size_ = 0;
+  base::unordered_map<Register, size_t> reg_map_;
+
   base::vector<AST::Expression *> precondition_exprs_, postcondition_exprs_;
   base::vector<std::pair<IR::Func, prop::PropertyMap>> preconditions_,
       postconditions_;

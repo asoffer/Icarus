@@ -258,7 +258,7 @@ struct Cmd {
 
   operator IR::Val() const { return reg(); }
 
-  Cmd(const type::Type *t, Op op, base::vector<Val> args);
+  Cmd(const type::Type *t, Op op, base::vector<Val> args, bool do_it = false);
   base::vector<Val> args;
   Op op_code_;
 
