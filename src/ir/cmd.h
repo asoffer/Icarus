@@ -143,62 +143,62 @@ struct Cmd {
   CMD(PrintAddr) { RegisterOr<IR::Addr> arg_; };
   CMD(PrintCharBuffer) { RegisterOr<std::string_view> arg_; };
 
-  CMD(AddInt) { RegisterOr<i32> args_[2]; };
-  CMD(AddReal) { RegisterOr<double> args_[2]; };
-  CMD(AddCharBuf) { RegisterOr<std::string_view> args_[2]; };
-  CMD(SubInt) { RegisterOr<i32> args_[2]; };
-  CMD(SubReal) { RegisterOr<double> args_[2]; };
-  CMD(MulInt) { RegisterOr<i32> args_[2]; };
-  CMD(MulReal) { RegisterOr<double> args_[2]; };
-  CMD(DivInt) { RegisterOr<i32> args_[2]; };
-  CMD(DivReal) { RegisterOr<double> args_[2]; };
-  CMD(ModInt) { RegisterOr<i32> args_[2]; };
-  CMD(ModReal) { RegisterOr<double> args_[2]; };
+  CMD(AddInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(AddReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(AddCharBuf) { std::array<RegisterOr<std::string_view>, 2> args_; };
+  CMD(SubInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(SubReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(MulInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(MulReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(DivInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(DivReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(ModInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(ModReal) { std::array<RegisterOr<double>, 2> args_; };
 
-  CMD(LtInt) { RegisterOr<i32> args_[2]; };
-  CMD(LtReal) { RegisterOr<double> args_[2]; };
-  CMD(LtFlags) { RegisterOr<FlagsVal> args_[2]; };
-  CMD(LeInt) { RegisterOr<i32> args_[2]; };
-  CMD(LeReal) { RegisterOr<double> args_[2]; };
-  CMD(LeFlags) { RegisterOr<FlagsVal> args_[2]; };
-  CMD(GtInt) { RegisterOr<i32> args_[2]; };
-  CMD(GtReal) { RegisterOr<double> args_[2]; };
-  CMD(GtFlags) { RegisterOr<FlagsVal> args_[2]; };
-  CMD(GeInt) { RegisterOr<i32> args_[2]; };
-  CMD(GeReal) { RegisterOr<double> args_[2]; };
-  CMD(GeFlags) { RegisterOr<FlagsVal> args_[2]; };
-  CMD(EqBool) { RegisterOr<bool> args_[2]; };
-  CMD(EqChar) { RegisterOr<char> args_[2]; };
-  CMD(EqInt) { RegisterOr<i32> args_[2]; };
-  CMD(EqReal) { RegisterOr<double> args_[2]; };
-  CMD(EqType) { RegisterOr<type::Type const *> args_[2]; };
-  CMD(EqFlags) { RegisterOr<FlagsVal> args_[2]; };
-  CMD(EqAddr) { RegisterOr<IR::Addr> args_[2]; };
-  CMD(NeBool) { RegisterOr<bool> args_[2]; };
-  CMD(NeChar) { RegisterOr<char> args_[2]; };
-  CMD(NeInt) { RegisterOr<i32> args_[2]; };
-  CMD(NeReal) { RegisterOr<double> args_[2]; };
-  CMD(NeType) { RegisterOr<type::Type const *> args_[2]; };
-  CMD(NeFlags) { RegisterOr<FlagsVal> args_[2]; };
-  CMD(NeAddr) { RegisterOr<IR::Addr> args_[2]; };
+  CMD(LtInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(LtReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(LtFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
+  CMD(LeInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(LeReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(LeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
+  CMD(GtInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(GtReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(GtFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
+  CMD(GeInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(GeReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(GeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
+  CMD(EqBool) { std::array<RegisterOr<bool>, 2> args_; };
+  CMD(EqChar) { std::array<RegisterOr<char>, 2> args_; };
+  CMD(EqInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(EqReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(EqType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
+  CMD(EqFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
+  CMD(EqAddr) { std::array<RegisterOr<IR::Addr>, 2> args_; };
+  CMD(NeBool) { std::array<RegisterOr<bool>, 2> args_; };
+  CMD(NeChar) { std::array<RegisterOr<char>, 2> args_; };
+  CMD(NeInt) { std::array<RegisterOr<i32>, 2> args_; };
+  CMD(NeReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(NeType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
+  CMD(NeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
+  CMD(NeAddr) { std::array<RegisterOr<IR::Addr>, 2> args_; };
 
-  CMD(XorBool) { RegisterOr<bool> args_[2]; };
-  CMD(XorFlags) { RegisterOr<FlagsVal> args_[2]; };
-  CMD(OrBool) { RegisterOr<bool> args_[2]; };
-  CMD(OrFlags) { RegisterOr<FlagsVal> args_[2]; };
-  CMD(AndBool) { RegisterOr<bool> args_[2]; };
-  CMD(AndFlags) { RegisterOr<FlagsVal> args_[2]; };
+  CMD(XorBool) { std::array<RegisterOr<bool>, 2> args_; };
+  CMD(XorFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
+  CMD(OrBool) { std::array<RegisterOr<bool>, 2> args_; };
+  CMD(OrFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
+  CMD(AndBool) { std::array<RegisterOr<bool>, 2> args_; };
+  CMD(AndFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
 
-  CMD(CreateStruct) {};
+  CMD(CreateStruct){};
   CMD(InsertField) { base::vector<Val> *args_; };
   CMD(FinalizeStruct) { Register reg_; };
 
   CMD(Malloc) { RegisterOr<i32> arg_; };
   CMD(Free) { Register reg_; };
-  CMD(Alloca) {};
+  CMD(Alloca){};
 
   CMD(Ptr) { Register reg_; };
-  CMD(Arrow) { RegisterOr<type::Type const *> args_[2]; };
+  CMD(Arrow) { std::array<RegisterOr<type::Type const *>, 2> args_; };
   CMD(Array) {
     RegisterOr<i32> len_;
     RegisterOr<type::Type const *> type_;
@@ -258,7 +258,7 @@ struct Cmd {
 
   operator IR::Val() const { return reg(); }
 
-  Cmd(const type::Type *t, Op op, base::vector<Val> args, bool do_it = false);
+  Cmd(const type::Type *t, Op op, base::vector<Val> args);
   base::vector<Val> args;
   Op op_code_;
 

@@ -43,7 +43,6 @@ base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
 
   // TODO log an error if you're asked to execute a function that had an error.
 
-  fn->dump();
   while (true) {
     auto block_index = ctx->ExecuteBlock();
     if (block_index.is_default()) {
@@ -93,7 +92,6 @@ BlockIndex ExecContext::ExecuteBlock() {
         /*
         auto iter = call_stack.top().fn_->reg_map_.find(cmd_iter->result);
         if (cmd_iter->type == type::Bool) {
-          cmd_iter->dump(10);
           this->reg(cmd_iter->result) =
               IR::Val::Bool(call_stack.top().regs_.get<bool>(iter->second));
         } else if (cmd_iter->type == type::Char) {
@@ -142,7 +140,6 @@ IR::Addr Stack::Push(const type::Pointer *ptr) {
 
 template <typename T>
 static T LoadValue(Addr addr, const Stack &stack) {
-  LOG << addr;
   switch (addr.kind) {
     case Addr::Kind::Null: UNREACHABLE();
     case Addr::Kind::Heap: return *static_cast<T *>(addr.as_heap); break;
@@ -548,8 +545,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         if (auto *r = std::get_if<Register>(&arg.value)) {
           if (arg.type == type::Bool) {
             resolved_args.push_back(IR::Val::Bool(resolve<bool>(*r)));
+          } else if (arg.type == type::Char) {
+            resolved_args.push_back(IR::Val::Char(resolve<char>(*r)));
+          } else if (arg.type == type::Int) {
+            resolved_args.push_back(IR::Val::Int(resolve<i32>(*r)));
+          } else if (arg.type == type::Real) {
+            resolved_args.push_back(IR::Val::Real(resolve<double>(*r)));
           } else {
-            resolved_args.push_back(reg(*r));
+            NOT_YET(arg.type->to_string());
           }
         } else {
           resolved_args.push_back(arg);
@@ -562,10 +565,48 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           // TODO what if the register is a foerign fn?
           auto results = Execute(std::get<Func *>(reg(cmd.call_.reg_).value),
                                  resolved_args, this);
+
+          if (cmd.type == type::Bool) {
+            save(std::get<bool>(results[0].value));
+          } else if (cmd.type == type::Char) {
+            save(std::get<char>(results[0].value));
+          } else if (cmd.type == type::Int) {
+            save(std::get<i32>(results[0].value));
+          } else if (cmd.type == type::Real) {
+            save(std::get<double>(results[0].value));
+          } else if (cmd.type == type::Type_) {
+            save(std::get<type::Type const *>(results[0].value));
+          } else if (cmd.type->is<type::Pointer>()) {
+            save(std::get<IR::Addr>(results[0].value));
+          } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
+            save(std::get<BlockSequence>(results[0].value));
+          } else {
+            NOT_YET(cmd.type->to_string());
+          }
+
           return results.empty() ? IR::Val::None() : results[0];
         } break;
         case 0x01: {
           auto results = Execute(cmd.call_.fn_, resolved_args, this);
+          LOG << results;
+          cmd.dump(10);
+          if (cmd.type == type::Bool) {
+            save(std::get<bool>(results[0].value));
+          } else if (cmd.type == type::Char) {
+            save(std::get<char>(results[0].value));
+          } else if (cmd.type == type::Int) {
+            save(std::get<i32>(results[0].value));
+          } else if (cmd.type == type::Real) {
+            save(std::get<double>(results[0].value));
+          } else if (cmd.type == type::Type_) {
+            save(std::get<type::Type const *>(results[0].value));
+          } else if (cmd.type->is<type::Pointer>()) {
+            save(std::get<IR::Addr>(results[0].value));
+          } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
+            save(std::get<BlockSequence>(results[0].value));
+          } else {
+            NOT_YET(cmd.type->to_string());
+          }
           return results.empty() ? IR::Val::None() : results[0];
         } break;
         case 0x02:
@@ -623,7 +664,35 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       resolved.reserve(cmd.args.size());
       for (const auto &arg : cmd.args) {
         if (auto *r = std::get_if<Register>(&arg.value)) {
-          resolved.push_back(reg(*r));
+          auto save_to_reg = [&](auto val) {
+            call_stack.top().regs_.set(
+                call_stack.top().fn_->reg_map_.at(
+                    std::get<Register>(cmd.args[1].value)),
+                val);
+          };
+          LOG << cmd.args;
+          LOG << call_stack.top().fn_->reg_map_;
+
+          auto *t = cmd.args[1].type->as<type::Pointer>().pointee;
+          if (t == type::Bool) {
+            save_to_reg(resolve<bool>(*r));
+          } else if (t == type::Char) {
+            save_to_reg(resolve<char>(*r));
+          } else if (t == type::Int) {
+            save_to_reg(resolve<i32>(*r));
+          } else if (t == type::Real) {
+            save_to_reg(resolve<double>(*r));
+          } else if (t == type::Type_) {
+            save_to_reg(resolve<type::Type const *>(*r));
+          } else if (t->is<type::Pointer>()) {
+            save_to_reg(resolve<IR::Addr>(*r));
+          } else if (t == type::Block || t == type::OptBlock) {
+            save_to_reg(resolve<BlockSequence>(*r));
+          } else if (t->is<type::CharBuffer>()) {
+            save_to_reg(resolve<std::string_view>(*r));
+          } else {
+            NOT_YET(cmd.args[1].type->to_string());
+          }
         } else {
           resolved.push_back(arg);
         }
@@ -669,7 +738,20 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       resolved_args.reserve(ASSERT_NOT_NULL(cmd.phi_.args_)->size());
       for (auto const &arg : *cmd.phi_.args_) {
         if (auto *r = std::get_if<Register>(&arg.value)) {
-          resolved_args.push_back(reg(*r));
+          if (cmd.type == type::Bool) {
+            resolved_args.push_back(IR::Val::Bool(resolve<bool>(*r)));
+          } else if (cmd.type == type::Char) {
+            resolved_args.push_back(IR::Val::Char(resolve<char>(*r)));
+          } else if (cmd.type == type::Int) {
+            resolved_args.push_back(IR::Val::Int(resolve<i32>(*r)));
+          } else if (cmd.type == type::Real) {
+            resolved_args.push_back(IR::Val::Real(resolve<double>(*r)));
+          } else if (cmd.type->is<type::Pointer>()) {
+            resolved_args.push_back(IR::Val::Addr(
+                resolve<IR::Addr>(*r), cmd.type->as<type::Pointer>().pointee));
+          } else {
+            NOT_YET(cmd.type->to_string());
+          }
         } else {
           resolved_args.push_back(arg);
         }
@@ -678,6 +760,23 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       for (size_t i = 0; i < resolved_args.size(); i += 2) {
         if (call_stack.top().prev_ ==
             std::get<IR::BlockIndex>(resolved_args[i].value)) {
+          if (cmd.type == type::Bool) {
+            save(std::get<bool>(resolved_args[i + 1].value));
+          } else if (cmd.type == type::Char) {
+            save(std::get<char>(resolved_args[i + 1].value));
+          } else if (cmd.type == type::Int) {
+            save(std::get<i32>(resolved_args[i + 1].value));
+          } else if (cmd.type == type::Real) {
+            save(std::get<double>(resolved_args[i + 1].value));
+          } else if (cmd.type == type::Type_) {
+            save(std::get<type::Type const *>(resolved_args[i + 1].value));
+          } else if (cmd.type->is<type::Pointer>()) {
+            save(std::get<IR::Addr>(resolved_args[i + 1].value));
+          } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
+            save(std::get<BlockSequence>(resolved_args[i + 1].value));
+          } else {
+            NOT_YET(cmd.type->to_string());
+          }
           return resolved_args[i + 1];
         }
       }

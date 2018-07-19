@@ -2,7 +2,7 @@
 
 main ::= () -> () {
   num := 0
-  upper ::= 30_000
+  upper ::= 1_000
   n := 2
   while (n <= upper) {
     found_div := false
