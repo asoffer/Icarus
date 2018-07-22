@@ -1,5 +1,6 @@
 #include "ir/func.h"
 
+#include "architecture.h"
 #include "ast/function_literal.h"
 #include "type/function.h"
 
@@ -35,6 +36,20 @@ Func::Func(Module *mod, AST::GeneratedFunction *fn,
        i < static_cast<i32>(type_->input.size() + type_->output.size()); ++i) {
     references_[Register{i}];
   }
+
+  auto arch  = Architecture::InterprettingMachine();
+  i32 i = 0;
+  for (auto *t : type_->input) {
+    auto entry = arch.MoveForwardToAlignment(t, reg_size_);
+    reg_map_.emplace(Register{i++}, entry);
+    reg_size_ = entry + arch.bytes(t);
+  }
+  for (auto *t : type_->output) {
+    auto entry = arch.MoveForwardToAlignment(t, reg_size_);
+    reg_map_.emplace(Register{i++}, entry);
+    reg_size_ = entry + arch.bytes(t);
+  }
+
   ASSERT(args_.size() == type_->input.size());
   blocks_.emplace_back(this);
 }
@@ -50,6 +65,20 @@ Func::Func(Module *mod, const type::Function *fn_type,
        i < static_cast<i32>(type_->input.size() + type_->output.size()); ++i) {
     references_[Register{i}];
   }
+
+  auto arch  = Architecture::InterprettingMachine();
+  i32 i = 0;
+  for (auto *t : type_->input) {
+    auto entry = arch.MoveForwardToAlignment(t, reg_size_);
+    reg_map_.emplace(Register{i++}, entry);
+    reg_size_ = entry + arch.bytes(t);
+  }
+  for (auto *t : type_->output) {
+    auto entry = arch.MoveForwardToAlignment(t, reg_size_);
+    reg_map_.emplace(Register{i++}, entry);
+    reg_size_ = entry + arch.bytes(t);
+  }
+
   ASSERT(args_.size() == fn_type->input.size());
   blocks_.emplace_back(this);
 }

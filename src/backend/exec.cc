@@ -1,5 +1,6 @@
 #include "backend/exec.h"
 
+#include <iomanip>
 #include <cmath>
 #include <cstring>
 #include <future>
@@ -40,6 +41,20 @@ base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
                           ExecContext *ctx) {
   if (fn->gened_fn_) { fn->gened_fn_->CompleteBody(fn->mod_); }
   ctx->call_stack.emplace(fn, arguments);
+
+  for (i32 i = 0; i < static_cast<i32>(arguments.size()); ++i) {
+    std::visit(
+        [&](auto arg) {
+          if constexpr (std::is_trivially_copyable_v<
+                            std::decay_t<decltype(arg)>>) {
+            ctx->call_stack.top().regs_.set(
+                ctx->call_stack.top().fn_->reg_map_.at(Register{i}), arg);
+          } else {
+            UNREACHABLE();
+          }
+        },
+        arguments[i].value);
+  }
 
   // TODO log an error if you're asked to execute a function that had an error.
 
@@ -161,7 +176,8 @@ static void StoreValue(T val, Addr addr, Stack *stack) {
 
 Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   auto save = [&](auto val) {
-    call_stack.top().regs_.set(call_stack.top().fn_->reg_map_.at(cmd.result), val);
+    call_stack.top().regs_.set(call_stack.top().fn_->reg_map_.at(cmd.result),
+                               val);
   };
 
   switch (cmd.op_code_) {
@@ -551,6 +567,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             resolved_args.push_back(IR::Val::Int(resolve<i32>(*r)));
           } else if (arg.type == type::Real) {
             resolved_args.push_back(IR::Val::Real(resolve<double>(*r)));
+          } else if (arg.type == type::Type_) {
+            resolved_args.push_back(
+                IR::Val::Type(resolve<type::Type const *>(*r)));
           } else {
             NOT_YET(arg.type->to_string());
           }
@@ -588,8 +607,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         } break;
         case 0x01: {
           auto results = Execute(cmd.call_.fn_, resolved_args, this);
-          LOG << results;
-          cmd.dump(10);
           if (cmd.type == type::Bool) {
             save(std::get<bool>(results[0].value));
           } else if (cmd.type == type::Char) {
@@ -660,45 +677,56 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       }));
     } break;
     case Op::SetReturn: {
-      base::vector<Val> resolved;
-      resolved.reserve(cmd.args.size());
-      for (const auto &arg : cmd.args) {
-        if (auto *r = std::get_if<Register>(&arg.value)) {
-          auto save_to_reg = [&](auto val) {
-            call_stack.top().regs_.set(
-                call_stack.top().fn_->reg_map_.at(
-                    std::get<Register>(cmd.args[1].value)),
-                val);
-          };
-          LOG << cmd.args;
-          LOG << call_stack.top().fn_->reg_map_;
+      Register out_reg = std::get<Register>(cmd.args[1].value);
+      const auto &arg = cmd.args[0];
 
-          auto *t = cmd.args[1].type->as<type::Pointer>().pointee;
-          if (t == type::Bool) {
-            save_to_reg(resolve<bool>(*r));
-          } else if (t == type::Char) {
-            save_to_reg(resolve<char>(*r));
-          } else if (t == type::Int) {
-            save_to_reg(resolve<i32>(*r));
-          } else if (t == type::Real) {
-            save_to_reg(resolve<double>(*r));
-          } else if (t == type::Type_) {
-            save_to_reg(resolve<type::Type const *>(*r));
-          } else if (t->is<type::Pointer>()) {
-            save_to_reg(resolve<IR::Addr>(*r));
-          } else if (t == type::Block || t == type::OptBlock) {
-            save_to_reg(resolve<BlockSequence>(*r));
-          } else if (t->is<type::CharBuffer>()) {
-            save_to_reg(resolve<std::string_view>(*r));
-          } else {
-            NOT_YET(cmd.args[1].type->to_string());
-          }
+      if (auto *r = std::get_if<Register>(&arg.value)) {
+        auto save_to_reg = [&](auto val) {
+          call_stack.top().regs_.set(call_stack.top().fn_->reg_map_.at(out_reg),
+                                     val);
+        };
+
+        auto *t = cmd.args[1].type->as<type::Pointer>().pointee;
+        if (t == type::Bool) {
+          save_to_reg(resolve<bool>(*r));
+          reg(out_reg) = IR::Val::Bool(resolve<bool>(*r));
+        } else if (t == type::Char) {
+          save_to_reg(resolve<char>(*r));
+          reg(out_reg) = IR::Val::Char(resolve<char>(*r));
+        } else if (t == type::Int) {
+          save_to_reg(resolve<i32>(*r));
+          reg(out_reg) = IR::Val::Int(resolve<i32>(*r));
+        } else if (t == type::Real) {
+          save_to_reg(resolve<double>(*r));
+          reg(out_reg) = IR::Val::Real(resolve<double>(*r));
+        } else if (t == type::Type_) {
+          save_to_reg(resolve<type::Type const *>(*r));
+          reg(out_reg) = IR::Val::Type(resolve<type::Type const *>(*r));
+        } else if (t->is<type::Pointer>()) {
+          save_to_reg(resolve<IR::Addr>(*r));
+          // TODO push back resolved
+        } else if (t == type::Block || t == type::OptBlock) {
+          save_to_reg(resolve<BlockSequence>(*r));
+          reg(out_reg) = IR::Val::BlockSeq(resolve<BlockSequence>(*r));
+        } else if (t->is<type::CharBuffer>()) {
+          save_to_reg(resolve<std::string_view>(*r));
+          // TODO push back resolved
+        } else if (t->is<type::Function>()) {
+          // TODO what kind of function?
+          save_to_reg(resolve<IR::Func *>(*r));
+          reg(out_reg) = IR::Val::Func(resolve<IR::Func *>(*r));
+        } else if (t->is<type::Scope>()) {
+          // TODO what kind of function?
+          save_to_reg(resolve<AST::ScopeLiteral *>(*r));
+          reg(out_reg) = IR::Val::Scope(resolve<AST::ScopeLiteral *>(*r));
+
         } else {
-          resolved.push_back(arg);
+          NOT_YET(t->to_string());
         }
+      } else {
+        reg(out_reg) = arg;
       }
 
-      reg(std::get<Register>(cmd.args[1].value)) = std::move(resolved[0]);
       return IR::Val::None();
     } break;
     case Op::StoreBool:

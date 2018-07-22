@@ -14,7 +14,7 @@ size_t Architecture::alignment(const type::Type *t) const {
   if (t->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Generic: NOT_YET();
-      case type::PrimType::Module: NOT_YET();
+      case type::PrimType::Module: return 8; // TODO ???
       case type::PrimType::Err: NOT_YET();
       case type::PrimType::Block: return 8; // TODO ???
       case type::PrimType::OptBlock: return 8; // TODO ??
@@ -50,10 +50,16 @@ size_t Architecture::alignment(const type::Type *t) const {
   } else if (t->is<type::Flags>()) {
     return 8;  // TODO
   } else if (t->is<type::Scope>()) {
-    return 1;
+    return 8;
   } else if (t->is<type::Variant>()) {
     size_t alignment_val = this->alignment(type::Type_);
     for (const type::Type *type : t->as<type::Variant>().variants_) {
+      alignment_val = std::max(alignment_val, this->alignment(type));
+    }
+    return alignment_val;
+  } else if (t->is<type::Tuple>()) {
+    size_t alignment_val = 0;
+    for (const type::Type *type : t->as<type::Tuple>().entries_) {
       alignment_val = std::max(alignment_val, this->alignment(type));
     }
     return alignment_val;
@@ -67,7 +73,7 @@ size_t Architecture::bytes(const type::Type *t) const {
   if (t->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Generic: NOT_YET();
-      case type::PrimType::Module: NOT_YET();
+      case type::PrimType::Module: return 8; // TODO ???
       case type::PrimType::Err: NOT_YET();
       case type::PrimType::Block: return 8; // TODO ???
       case type::PrimType::OptBlock: return 8; // TODO ??
@@ -103,6 +109,15 @@ size_t Architecture::bytes(const type::Type *t) const {
     }
 
     return MoveForwardToAlignment(struct_type, num_bytes);
+  } else if (t->is<type::Tuple>()) {
+    auto *tuple_type = &t->as<type::Tuple>();
+    size_t num_bytes = 0;
+    for (const auto &entry_type : tuple_type->entries_) {
+      num_bytes += this->bytes(entry_type);
+      num_bytes = this->MoveForwardToAlignment(entry_type, num_bytes);
+    }
+
+    return MoveForwardToAlignment(t, num_bytes);
   } else if (t->is<type::Function>()) {
     return 2 * ptr_bytes_;
   } else if (t->is<type::Enum>()) {
@@ -110,7 +125,7 @@ size_t Architecture::bytes(const type::Type *t) const {
   } else if (t->is<type::Flags>()) {
     return 8; // TODO
   } else if (t->is<type::Scope>()) {
-    return 0;
+    return 8;
   } else if (t->is<type::Variant>()) {
     size_t num_bytes = 0;
     for (const type::Type* type : t->as<type::Variant>().variants_) {

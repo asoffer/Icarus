@@ -164,9 +164,9 @@ std::string Val::to_string() const {
             // TODO
             return "module";
           },
-          [](BlockSequence) -> std::string {
+          [](BlockSequence bs) -> std::string {
             // TODO
-            return "BlockSequence";
+            return "bs." + std::to_string(reinterpret_cast<uintptr_t>(bs.seq_));
           },
           [](const IR::Interface &ifc) -> std::string {
             // TODO
