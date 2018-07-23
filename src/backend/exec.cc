@@ -445,7 +445,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::Free:
       free(std::get<Addr>(reg(cmd.free_.reg_).value).as_heap);
       break;
-    case Op::Alloca: save(stack_.Push(&cmd.type->as<type::Pointer>())); break;
+    case Op::Alloca: 
+      save(stack_.Push(&cmd.type->as<type::Pointer>())); break;
     case Op::Ptr:
       save(type::Ptr(resolve<type::Type const *>(cmd.ptr_.reg_)));
       break;
@@ -466,9 +467,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               Ptr(type::Type_), bytes);
       auto addr = resolve<Addr>(cmd.variant_value_.reg_);
       switch (addr.kind) {
-        case Addr::Kind::Stack: save(addr.as_stack + bytes_fwd); break;
+        case Addr::Kind::Stack:
+          addr.as_stack += bytes_fwd;
+          save(addr);
+          break;
         case Addr::Kind::Heap:
-          save(static_cast<char *>(addr.as_heap) + bytes_fwd);
+          addr.as_heap = static_cast<void *>(static_cast<char *>(addr.as_heap) +
+                                             bytes_fwd);
+          save(addr);
           break;
         case Addr::Kind::Null: NOT_YET();
       }
@@ -570,6 +576,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           } else if (arg.type == type::Type_) {
             resolved_args.push_back(
                 IR::Val::Type(resolve<type::Type const *>(*r)));
+          } else if (arg.type->is<type::Pointer>()) {
+            resolved_args.push_back(IR::Val::Addr(
+                resolve<IR::Addr>(*r), arg.type->as<type::Pointer>().pointee));
           } else {
             NOT_YET(arg.type->to_string());
           }
@@ -607,6 +616,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         } break;
         case 0x01: {
           auto results = Execute(cmd.call_.fn_, resolved_args, this);
+          if (results.empty()) return IR::Val::None();
+
           if (cmd.type == type::Bool) {
             save(std::get<bool>(results[0].value));
           } else if (cmd.type == type::Char) {
@@ -624,7 +635,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           } else {
             NOT_YET(cmd.type->to_string());
           }
-          return results.empty() ? IR::Val::None() : results[0];
+          return results[0];
         } break;
         case 0x02:
           if (cmd.call_.foreign_fn_.name_ == "malloc") {

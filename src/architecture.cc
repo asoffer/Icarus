@@ -4,6 +4,9 @@
 #include "ir/cmd.h"
 #include "type/all.h"
 
+// TODO a lot of stuff that can only be run at compile-time needs to have
+// values for size and alignment. Figure out the best way to handle this.
+
 IR::Val Architecture::ComputeArrayLength(const IR::Val &len,
                                          const type::Type *t) const {
   auto space_in_array = MoveForwardToAlignment(t, bytes(t));
@@ -13,7 +16,7 @@ IR::Val Architecture::ComputeArrayLength(const IR::Val &len,
 size_t Architecture::alignment(const type::Type *t) const {
   if (t->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
-      case type::PrimType::Generic: NOT_YET();
+      case type::PrimType::Generic: return 8; // TODO ???
       case type::PrimType::Module: return 8; // TODO ???
       case type::PrimType::Err: NOT_YET();
       case type::PrimType::Block: return 8; // TODO ???
@@ -58,7 +61,7 @@ size_t Architecture::alignment(const type::Type *t) const {
     }
     return alignment_val;
   } else if (t->is<type::Tuple>()) {
-    size_t alignment_val = 0;
+    size_t alignment_val = 1;
     for (const type::Type *type : t->as<type::Tuple>().entries_) {
       alignment_val = std::max(alignment_val, this->alignment(type));
     }
@@ -72,7 +75,7 @@ size_t Architecture::alignment(const type::Type *t) const {
 size_t Architecture::bytes(const type::Type *t) const {
   if (t->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
-      case type::PrimType::Generic: NOT_YET();
+      case type::PrimType::Generic: return 8; // TODO ???
       case type::PrimType::Module: return 8; // TODO ???
       case type::PrimType::Err: NOT_YET();
       case type::PrimType::Block: return 8; // TODO ???

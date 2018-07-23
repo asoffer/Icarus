@@ -257,7 +257,6 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
     case Language::Operator::And: return {operand->EmitLVal(ctx)[0]};
     case Language::Operator::Eval: {
       // TODO what if there's an error during evaluation?
-      // TODO what about ``a, b = $FnWithMultipleReturnValues()``
       return backend::Evaluate(operand.get(), ctx);
     }
     case Language::Operator::Generate: {

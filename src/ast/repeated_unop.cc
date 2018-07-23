@@ -104,9 +104,7 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
       } else {
         for (size_t i = 0; i < args_.exprs.size(); ++i) {
           // TODO return type maybe not the same as type actually returned?
-          auto *ret_type = args_.exprs[i]->type;
-          ret_type->EmitAssign(args_.exprs[i]->type, arg_vals[i],
-                               IR::Func::Current->Return(i), ctx);
+          IR::SetReturn(i, arg_vals[i]);
         }
       }
       IR::ReturnJump();
