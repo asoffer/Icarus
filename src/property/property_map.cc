@@ -60,6 +60,7 @@ void PropertyMap::refresh() {
           }
         }
       } break;
+                               /*
       case IR::Op::SetReturn: {
         auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
 
@@ -76,7 +77,7 @@ void PropertyMap::refresh() {
         } else {
           LOG << "???";
         }
-      } break;
+      } break;*/
       default: NOT_YET(static_cast<int>(cmd.op_code_));
     }
   });
@@ -95,10 +96,11 @@ DefaultProperty<bool> PropertyMap::Returns() const {
     i32 num_cmds = static_cast<i32>(block.cmds_.size());
     for (i32 j = 0; j < num_cmds; ++j) {
       const auto &cmd = block.cmds_[j];
+      /*
       if (cmd.op_code_ == IR::Op::SetReturn) {
         rets.push_back(IR::CmdIndex{IR::BlockIndex{i}, j});
         regs.push_back(cmd.result);
-      }
+      }*/
     }
   }
 

@@ -65,7 +65,39 @@ base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
       auto *fn_type = ctx->call_stack.top().fn_->type_;
       for (size_t i = fn_type->input.size();
            i < fn_type->input.size() + fn_type->output.size(); ++i) {
-        rets.push_back(std::move(ctx->reg(Register(i))));
+        auto *ret_type = fn_type->output[i - fn_type->input.size()];
+        if (ret_type == type::Bool) {
+          rets.push_back(IR::Val::Bool(ctx->resolve<bool>(Register(i))));
+        } else if (ret_type == type::Char) {
+          rets.push_back(IR::Val::Char(ctx->resolve<char>(Register(i))));
+        } else if (ret_type == type::Int) {
+          rets.push_back(IR::Val::Int(ctx->resolve<i32>(Register(i))));
+        } else if (ret_type == type::Real) {
+          rets.push_back(IR::Val::Real(ctx->resolve<double>(Register(i))));
+        } else if (ret_type == type::Type_) {
+          rets.push_back(
+              IR::Val::Type(ctx->resolve<type::Type const *>(Register(i))));
+        } else if (ret_type->is<type::CharBuffer>()) {
+          rets.push_back(
+              IR::Val::CharBuf(std::string(ctx->resolve<std::string_view>(Register(i)))));
+        } else if (ret_type->is<type::Function>()) {
+          rets.push_back(IR::Val::Func(ctx->resolve<IR::Func *>(Register(i))));
+        } else if (ret_type->is<type::Scope>()) {
+          rets.push_back(IR::Val::Scope(ctx->resolve<AST::ScopeLiteral *>(Register(i))));
+        } else if (ret_type == type::Module) {
+          rets.push_back(
+              IR::Val::Mod(ctx->resolve<Module const *>(Register(i))));
+        } else if (ret_type == type::Generic) {
+          // TODO mostly wrong.
+          rets.push_back(
+              IR::Val::Func(ctx->resolve<AST::Function *>(Register(i))));
+        } else if (ret_type == type::Block || ret_type == type::OptBlock) {
+          rets.push_back(
+              IR::Val::BlockSeq(ctx->resolve<IR::BlockSequence>(Register(i))));
+
+        } else {
+          NOT_YET(ret_type->to_string());
+        }
       }
       ctx->call_stack.pop();
       return rets;
@@ -594,6 +626,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           auto results = Execute(std::get<Func *>(reg(cmd.call_.reg_).value),
                                  resolved_args, this);
 
+          LOG << results;
           if (cmd.type == type::Bool) {
             save(std::get<bool>(results[0].value));
           } else if (cmd.type == type::Char) {
@@ -608,6 +641,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             save(std::get<IR::Addr>(results[0].value));
           } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
             save(std::get<BlockSequence>(results[0].value));
+          } else if (cmd.type == type::Void()) {
+            // Do nothing.
           } else {
             NOT_YET(cmd.type->to_string());
           }
@@ -632,6 +667,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             save(std::get<IR::Addr>(results[0].value));
           } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
             save(std::get<BlockSequence>(results[0].value));
+          } else if (cmd.type == type::Void()) {
+            // Do nothing.
           } else {
             NOT_YET(cmd.type->to_string());
           }
@@ -687,41 +724,86 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         return lit == cmd.block_seq_contains_.lit_;
       }));
     } break;
+    case Op::SetReturnBool:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_bool_.reg_),
+          resolve(cmd.set_return_bool_.val_));
+      break;
+    case Op::SetReturnChar:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_char_.reg_),
+          resolve(cmd.set_return_char_.val_));
+      break;
+    case Op::SetReturnInt:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_int_.reg_),
+          resolve(cmd.set_return_int_.val_));
+      break;
+    case Op::SetReturnReal:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_real_.reg_),
+          resolve(cmd.set_return_real_.val_));
+      break;
+    case Op::SetReturnType:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_type_.reg_),
+          resolve(cmd.set_return_type_.val_));
+      break;
+    case Op::SetReturnCharBuf:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_char_buf_.reg_),
+          resolve(cmd.set_return_char_buf_.val_));
+      break;
+    case Op::SetReturnAddr:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_addr_.reg_),
+          resolve(cmd.set_return_addr_.val_));
+      break;
+    case Op::SetReturnEnum:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_enum_.reg_),
+          resolve(cmd.set_return_enum_.val_));
+      break;
+    case Op::SetReturnFlags:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_flags_.reg_),
+          resolve(cmd.set_return_flags_.val_));
+      break;
+    case Op::SetReturnFunc:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_func_.reg_),
+          resolve(cmd.set_return_func_.val_));
+      break;
+    case Op::SetReturnScope:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_scope_.reg_),
+          resolve(cmd.set_return_scope_.val_));
+      break;
+    case Op::SetReturnModule:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_module_.reg_),
+          resolve(cmd.set_return_module_.val_));
+      break;
+    case Op::SetReturnBlock:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_block_.reg_),
+          resolve(cmd.set_return_block_.val_));
+      break;
+    case Op::SetReturnGeneric:
+      call_stack.top().regs_.set(
+          call_stack.top().fn_->reg_map_.at(cmd.set_return_generic_.reg_),
+          resolve(cmd.set_return_generic_.val_));
+      break;
+
+
+                             /*
     case Op::SetReturn: {
       Register out_reg = std::get<Register>(cmd.args[1].value);
       const auto &arg = cmd.args[0];
 
       if (auto *r = std::get_if<Register>(&arg.value)) {
-        auto save_to_reg = [&](auto val) {
-          call_stack.top().regs_.set(call_stack.top().fn_->reg_map_.at(out_reg),
-                                     val);
-        };
 
         auto *t = cmd.args[1].type->as<type::Pointer>().pointee;
-        if (t == type::Bool) {
-          save_to_reg(resolve<bool>(*r));
-          reg(out_reg) = IR::Val::Bool(resolve<bool>(*r));
-        } else if (t == type::Char) {
-          save_to_reg(resolve<char>(*r));
-          reg(out_reg) = IR::Val::Char(resolve<char>(*r));
-        } else if (t == type::Int) {
-          save_to_reg(resolve<i32>(*r));
-          reg(out_reg) = IR::Val::Int(resolve<i32>(*r));
-        } else if (t == type::Real) {
-          save_to_reg(resolve<double>(*r));
-          reg(out_reg) = IR::Val::Real(resolve<double>(*r));
-        } else if (t == type::Type_) {
-          save_to_reg(resolve<type::Type const *>(*r));
-          reg(out_reg) = IR::Val::Type(resolve<type::Type const *>(*r));
-        } else if (t->is<type::Pointer>()) {
-          save_to_reg(resolve<IR::Addr>(*r));
-          // TODO push back resolved
-        } else if (t == type::Block || t == type::OptBlock) {
-          save_to_reg(resolve<BlockSequence>(*r));
-          reg(out_reg) = IR::Val::BlockSeq(resolve<BlockSequence>(*r));
-        } else if (t->is<type::CharBuffer>()) {
-          save_to_reg(resolve<std::string_view>(*r));
-          // TODO push back resolved
         } else if (t->is<type::Function>()) {
           // TODO what kind of function?
           save_to_reg(resolve<IR::Func *>(*r));
@@ -740,6 +822,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 
       return IR::Val::None();
     } break;
+    */
     case Op::StoreBool:
       StoreValue(resolve(cmd.store_bool_.val_),
                  resolve<IR::Addr>(cmd.store_bool_.addr_), &stack_);

@@ -99,13 +99,9 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
   auto arg_vals = args_.EmitIR(ctx);
   switch (op_) {
     case Language::Operator::Return: {
-      if (args_.exprs.size() == 1 && !args_.exprs[0]->type->is_big()) {
-        IR::SetReturn(0, arg_vals[0]);
-      } else {
-        for (size_t i = 0; i < args_.exprs.size(); ++i) {
-          // TODO return type maybe not the same as type actually returned?
-          IR::SetReturn(i, arg_vals[i]);
-        }
+      for (size_t i = 0; i < args_.exprs.size(); ++i) {
+        // TODO return type maybe not the same as type actually returned?
+        IR::SetReturn(i, arg_vals[i]);
       }
       IR::ReturnJump();
       return {};

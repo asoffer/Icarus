@@ -16,6 +16,9 @@ enum class Op : char {
   LoadBool, LoadChar, LoadInt, LoadReal, LoadType, LoadEnum, LoadFlags, LoadAddr,
   PrintBool, PrintChar, PrintInt, PrintReal, PrintType, PrintEnum, PrintFlags, PrintAddr, PrintCharBuffer,
   StoreBool, StoreChar, StoreInt, StoreReal, StoreType, StoreEnum, StoreFlags, StoreAddr,
+  SetReturnBool, SetReturnChar, SetReturnInt, SetReturnReal, SetReturnType, SetReturnEnum,
+  SetReturnCharBuf, SetReturnFlags, SetReturnAddr, SetReturnFunc, SetReturnScope,
+  SetReturnModule, SetReturnGeneric, SetReturnBlock,
 
   AddInt, AddReal, AddCharBuf,
   SubInt, SubReal,
@@ -53,7 +56,6 @@ enum class Op : char {
   AddCodeBlock,  // TODO remove codeblock
   Contextualize,
   // clang-format on
-  SetReturn,
 };
 
 template <typename T>
@@ -254,6 +256,76 @@ struct Cmd {
     AST::BlockLiteral *lit_;
   };
 
+  CMD(SetReturnBool) {
+    Register reg_;
+    RegisterOr<bool> val_;
+  };
+
+  CMD(SetReturnChar) {
+    Register reg_;
+    RegisterOr<char> val_;
+  };
+
+  CMD(SetReturnInt) {
+    Register reg_;
+    RegisterOr<i32> val_;
+  };
+
+  CMD(SetReturnReal) {
+    Register reg_;
+    RegisterOr<double> val_;
+  };
+
+  CMD(SetReturnType) {
+    Register reg_;
+    RegisterOr<type::Type const *> val_;
+  };
+
+  CMD(SetReturnEnum) {
+    Register reg_;
+    RegisterOr<EnumVal> val_;
+  };
+
+  CMD(SetReturnFlags) {
+    Register reg_;
+    RegisterOr<FlagsVal> val_;
+  };
+
+  CMD(SetReturnAddr) {
+    Register reg_;
+    RegisterOr<IR::Addr> val_;
+  };
+
+  CMD(SetReturnCharBuf) {
+    Register reg_;
+    RegisterOr<std::string_view> val_;
+  };
+
+  CMD(SetReturnFunc) {
+    Register reg_;
+    RegisterOr<IR::Func *> val_;
+  };
+
+  CMD(SetReturnScope) {
+    Register reg_;
+    RegisterOr<AST::ScopeLiteral *> val_;
+  };
+
+  CMD(SetReturnModule) {
+    Register reg_;
+    RegisterOr<Module const *> val_;
+  };
+
+  CMD(SetReturnGeneric) {
+    Register reg_;
+    RegisterOr<AST::Function *> val_;
+  };
+
+
+  CMD(SetReturnBlock) {
+    Register reg_;
+    RegisterOr<BlockSequence> val_;
+  };
 #undef CMD
 
   operator IR::Val() const { return reg(); }
@@ -377,6 +449,21 @@ struct Cmd {
 
     BlockSeq block_seq_;
     BlockSeqContains block_seq_contains_;
+
+    SetReturnBool set_return_bool_;
+    SetReturnChar set_return_char_;
+    SetReturnInt set_return_int_;
+    SetReturnReal set_return_real_;
+    SetReturnType set_return_type_;
+    SetReturnEnum set_return_enum_;
+    SetReturnFlags set_return_flags_;
+    SetReturnCharBuf set_return_char_buf_;
+    SetReturnAddr set_return_addr_;
+    SetReturnFunc set_return_func_;
+    SetReturnScope set_return_scope_;
+    SetReturnModule set_return_module_;
+    SetReturnGeneric set_return_generic_;
+    SetReturnBlock set_return_block_;
   };
 
   const type::Type *type = nullptr;
@@ -478,8 +565,22 @@ Val Variant(base::vector<Val> vals);
 void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();
-Val BlockSeq(const base::vector<Val>& blocks);
-Val BlockSeqContains(const Val& v, AST::BlockLiteral *lit);
+Val BlockSeq(const base::vector<Val> &blocks);
+Val BlockSeqContains(const Val &v, AST::BlockLiteral *lit);
+void SetReturnBool(size_t n, const Val &v2);
+void SetReturnChar(size_t n, const Val &v2);
+void SetReturnInt(size_t n, const Val &v2);
+void SetReturnReal(size_t n, const Val &v2);
+void SetReturnType(size_t n, const Val &v2);
+void SetReturnEnum(size_t n, const Val &v2);
+void SetReturnFlags(size_t n, const Val &v2);
+void SetReturnCharBuf(size_t n, const Val &v2);
+void SetReturnAddr(size_t n, const Val &v2);
+void SetReturnFunc(size_t n, const Val &v2);
+void SetReturnScope(size_t n, const Val &v2);
+void SetReturnModule(size_t n, const Val &v2);
+void SetReturnGeneric(size_t n, const Val &v2);
+void SetReturnBlock(size_t n, const Val &v2);
 
 Val Load(const Val& v);
 Val Add(const Val& v1, const Val& v2);
