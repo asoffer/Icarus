@@ -92,11 +92,11 @@ Func::GetIncomingBlocks() const {
     const auto &last = b.cmds_.back();
     switch (last.op_code_) {
     case Op::UncondJump:
-      incoming[&block(std::get<BlockIndex>(last.args[0].value))].insert(&b);
+      incoming[&block(last.uncond_jump_.block_)].insert(&b);
       break;
     case Op::CondJump:
-      incoming[&block(std::get<BlockIndex>(last.args[1].value))].insert(&b);
-      incoming[&block(std::get<BlockIndex>(last.args[2].value))].insert(&b);
+      incoming[&block(last.cond_jump_.blocks_[0])].insert(&b);
+      incoming[&block(last.cond_jump_.blocks_[1])].insert(&b);
       break;
     case Op::ReturnJump: /* Nothing to do */ break;
     default: dump(); UNREACHABLE(static_cast<int>(last.op_code_));

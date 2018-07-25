@@ -15,7 +15,7 @@ BlockIndex BasicBlock::Current;
 static Cmd &MakeCmd(const type::Type *t, Op op) {
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
                   ->block(BasicBlock::Current)
-                  .cmds_.emplace_back(t, op, base::vector<IR::Val>{});
+                  .cmds_.emplace_back(t, op);
   return cmd;
 }
 
@@ -334,8 +334,7 @@ Val Field(const Val &v, size_t n) {
   return cmd.reg();
 }
 
-Cmd::Cmd(const type::Type *t, Op op, base::vector<Val> arg_vec)
-    : args(std::move(arg_vec)), op_code_(op), type(t) {
+Cmd::Cmd(const type::Type *t, Op op) : op_code_(op), type(t) {
   ASSERT(Func::Current != nullptr);
   CmdIndex cmd_index{
       BasicBlock::Current,
@@ -352,11 +351,7 @@ Cmd::Cmd(const type::Type *t, Op op, base::vector<Val> arg_vec)
   Func::Current->reg_size_ = entry + arch.bytes(t);
 
   Func::Current->references_[result];  // Make sure this entry exists
-  for (const auto &val : args) {
-    if (auto *reg = std::get_if<Register>(&val.value)) {
-      Func::Current->references_[*reg].push_back(result);
-    }
-  }
+  // TODO references_
 }
 
 extern Val MakeBlockSeq(const base::vector<Val> &blocks);
@@ -466,8 +461,7 @@ Val Alloca(const type::Type *t) {
   ASSERT(t, Not(Is<type::Tuple>()));
   return ASSERT_NOT_NULL(Func::Current)
       ->block(Func::Current->entry())
-      .cmds_
-      .emplace_back(type::Ptr(t), Op::Alloca, base::vector<IR::Val>{})
+      .cmds_.emplace_back(type::Ptr(t), Op::Alloca)
       .reg();
 }
 
@@ -1132,14 +1126,6 @@ void Cmd::dump(size_t indent) const {
       break;
   }
 
-  if (args.empty()) {
-    std::cerr << std::endl;
-    return;
-  }
-  std::cerr << ": " << args[0].to_string();
-  for (size_t i = 1; i < args.size(); ++i) {
-    std::cerr << ", " << args[i].to_string();
-  }
   std::cerr << std::endl;
 }
 

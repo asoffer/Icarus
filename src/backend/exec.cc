@@ -26,13 +26,7 @@ using base::check::Is;
 namespace IR {
 template <typename T>
 T ExecContext::resolve(Register val) const {
-  auto &reg_map = call_stack.top().fn_->reg_map_;
-  auto iter     = reg_map.find(val);
-  if (iter == reg_map.end()) {
-    return std::get<T>(reg(val).value);
-  } else {
-    return call_stack.top().regs_.get<T>(iter->second);
-  }
+  return call_stack.top().regs_.get<T>(call_stack.top().fn_->reg_map_.at(val));
 }
 
 extern Val MakeBlockSeq(const base::vector<Val> &blocks);
@@ -117,63 +111,17 @@ ExecContext::Frame::Frame(Func *fn, const base::vector<Val> &arguments)
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
-      old_regs_(fn->num_regs_, Val::None()),
       regs_(base::untyped_buffer::MakeFull(fn_->reg_size_)) {
   size_t num_inputs = fn->type_->input.size();
   ASSERT(num_inputs <= arguments.size());
-  ASSERT(num_inputs <= old_regs_.size());
-  for (size_t i = 0; i < arguments.size(); ++i) { old_regs_[i] = arguments[i]; }
 }
 
 BlockIndex ExecContext::ExecuteBlock() {
-  Val result;
+  BlockIndex result;
   ASSERT(current_block().cmds_.size() > 0u);
   auto cmd_iter = current_block().cmds_.begin();
-  do {
-    result = ExecuteCmd(*cmd_iter);
-    if (cmd_iter->type != nullptr && cmd_iter->type != type::Void()) {
-      // TODO the below assertion fails for structs (actual struct vs ptr to the
-      // struct). Figure out how to fix it
-      // ASSERT(result.type == cmd_iter->type);
-      if (result == IR::Val::None()) {
-        /*
-        auto iter = call_stack.top().fn_->reg_map_.find(cmd_iter->result);
-        if (cmd_iter->type == type::Bool) {
-          this->reg(cmd_iter->result) =
-              IR::Val::Bool(call_stack.top().regs_.get<bool>(iter->second));
-        } else if (cmd_iter->type == type::Char) {
-          this->reg(cmd_iter->result) =
-              IR::Val::Char(call_stack.top().regs_.get<char>(iter->second));
-        } else if (cmd_iter->type == type::Int) {
-          this->reg(cmd_iter->result) =
-              IR::Val::Int(call_stack.top().regs_.get<i32>(iter->second));
-        } else if (cmd_iter->type == type::Real) {
-          this->reg(cmd_iter->result) =
-              IR::Val::Real(call_stack.top().regs_.get<double>(iter->second));
-        } else if (cmd_iter->type == type::Type_) {
-          this->reg(cmd_iter->result) = IR::Val::Type(
-              call_stack.top().regs_.get<type::Type const *>(iter->second));
-        } else if (cmd_iter->type ->is<type::CharBuffer>()) {
-          // TODO Unnecessary copy and global string table lookup.
-          this->reg(cmd_iter->result) = IR::Val::CharBuf(std::string(
-              call_stack.top().regs_.get<std::string_view>(iter->second)));
-        } else if (cmd_iter->type->is<type::Pointer>()) {
-          this->reg(cmd_iter->result) =
-              IR::Val::Addr(call_stack.top().regs_.get<Addr>(iter->second),
-                            cmd_iter->type->as<type::Pointer>().pointee);
-        } else {
-          cmd_iter->dump(10);
-          NOT_YET(cmd_iter->type->to_string());
-        }
-        */
-      } else {
-        this->reg(cmd_iter->result) = result;
-      }
-    }
-    ++cmd_iter;
-  } while (!std::holds_alternative<BlockIndex>(result.value));
-
-  return std::get<BlockIndex>(result.value);
+  do { result = ExecuteCmd(*cmd_iter++); } while (result == BlockIndex{-2});
+  return result;
 }
 
 IR::Addr Stack::Push(const type::Pointer *ptr) {
@@ -206,7 +154,7 @@ static void StoreValue(T val, Addr addr, Stack *stack) {
   }
 }
 
-Val ExecContext::ExecuteCmd(const Cmd &cmd) {
+BlockIndex ExecContext::ExecuteCmd(const Cmd &cmd) {
   auto save = [&](auto val) {
     call_stack.top().regs_.set(call_stack.top().fn_->reg_map_.at(cmd.result),
                                val);
@@ -449,34 +397,33 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::AndFlags: NOT_YET();
     case Op::CreateStruct: save(new type::Struct); break;
     case Op::InsertField: {
-      std::vector<Val> resolved_args;
-      resolved_args.reserve(ASSERT_NOT_NULL(cmd.insert_field_.args_)->size());
-      for (auto const &arg : *cmd.insert_field_.args_) {
-        if (auto *r = std::get_if<Register>(&arg.value)) {
-          resolved_args.push_back(reg(*r));
-        } else {
-          resolved_args.push_back(arg);
-        }
-      }
+      NOT_YET();
+      // std::vector<Val> resolved_args;
+      // resolved_args.reserve(ASSERT_NOT_NULL(cmd.insert_field_.args_)->size());
+      // for (auto const &arg : *cmd.insert_field_.args_) {
+      //   if (auto *r = std::get_if<Register>(&arg.value)) {
+      //     resolved_args.push_back(reg(*r));
+      //   } else {
+      //     resolved_args.push_back(arg);
+      //   }
+      // }
 
-      auto *struct_to_mod = std::get<type::Struct *>(resolved_args[0].value);
-      struct_to_mod->fields_.push_back(type::Struct::Field{
-          std::string(std::get<std::string_view>(resolved_args[1].value)),
-          std::get<const type::Type *>(resolved_args[2].value),
-          resolved_args[3]});
+      // auto *struct_to_mod = std::get<type::Struct *>(resolved_args[0].value);
+      // struct_to_mod->fields_.push_back(type::Struct::Field{
+      //     std::string(std::get<std::string_view>(resolved_args[1].value)),
+      //     std::get<const type::Type *>(resolved_args[2].value),
+      //     resolved_args[3]});
 
-      auto[iter, success] = struct_to_mod->field_indices_.emplace(
-          std::string(std::get<std::string_view>(resolved_args[1].value)),
-          struct_to_mod->fields_.size() - 1);
-      ASSERT(success);
+      // auto[iter, success] = struct_to_mod->field_indices_.emplace(
+      //     std::string(std::get<std::string_view>(resolved_args[1].value)),
+      //     struct_to_mod->fields_.size() - 1);
+      // ASSERT(success);
     } break;
     case Op::FinalizeStruct:
       save(resolve<type::Struct *>(cmd.finalize_struct_.reg_)->finalize());
       break;
     case Op::Malloc: save(malloc(resolve(cmd.malloc_.arg_))); break;
-    case Op::Free:
-      free(std::get<Addr>(reg(cmd.free_.reg_).value).as_heap);
-      break;
+    case Op::Free: free(resolve<Addr>(cmd.free_.reg_).as_heap); break;
     case Op::Alloca: 
       save(stack_.Push(&cmd.type->as<type::Pointer>())); break;
     case Op::Ptr:
@@ -530,25 +477,25 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       }
     } break;
     case Op::Field: {
-      auto addr_val = reg(cmd.field_.ptr_);
-      auto addr     = std::get<Addr>(addr_val.value);
+      NOT_YET();
+      // TODO
+      // auto addr = resolve<Addr>(cmd.field_.ptr_);
+      // auto *struct_type =
+      //     &addr_val.type->as<type::Pointer>().pointee->as<type::Struct>();
+      // // This can probably be precomputed.
+      // size_t offset = 0;
+      // for (size_t i = 0; i < cmd.field_.num_; ++i) {
+      //   auto field_type = struct_type->fields_.at(i).type;
+      //   offset += Architecture::InterprettingMachine().bytes(field_type);
+      //   offset = Architecture::InterprettingMachine().MoveForwardToAlignment(
+      //       struct_type->fields_.at(i + 1).type, offset);
+      // }
 
-      auto *struct_type =
-          &addr_val.type->as<type::Pointer>().pointee->as<type::Struct>();
-      // This can probably be precomputed.
-      size_t offset = 0;
-      for (size_t i = 0; i < cmd.field_.num_; ++i) {
-        auto field_type = struct_type->fields_.at(i).type;
-        offset += Architecture::InterprettingMachine().bytes(field_type);
-        offset = Architecture::InterprettingMachine().MoveForwardToAlignment(
-            struct_type->fields_.at(i + 1).type, offset);
-      }
-
-      if (addr.kind == Addr::Kind::Stack) {
-        save(addr.as_stack + offset);
-      } else {
-        save(static_cast<char *>(addr.as_heap) + offset);
-      }
+      // if (addr.kind == Addr::Kind::Stack) {
+      //   save(addr.as_stack + offset);
+      // } else {
+      //   save(static_cast<char *>(addr.as_heap) + offset);
+      // }
     } break;
     case Op::PrintBool:
       std::cerr << (resolve(cmd.print_bool_.arg_) ? "true" : "false");
@@ -623,10 +570,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       switch (cmd.call_.which_active_) {
         case 0x00: {
           // TODO what if the register is a foerign fn?
-          auto results = Execute(std::get<Func *>(reg(cmd.call_.reg_).value),
-                                 resolved_args, this);
-
-          LOG << results;
+          auto results =
+              Execute(resolve<IR::Func *>(cmd.call_.reg_), resolved_args, this);
           if (cmd.type == type::Bool) {
             save(std::get<bool>(results[0].value));
           } else if (cmd.type == type::Char) {
@@ -646,12 +591,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           } else {
             NOT_YET(cmd.type->to_string());
           }
-
-          return results.empty() ? IR::Val::None() : results[0];
         } break;
         case 0x01: {
           auto results = Execute(cmd.call_.fn_, resolved_args, this);
-          if (results.empty()) return IR::Val::None();
+          if (results.empty()) return BlockIndex{-2};
 
           if (cmd.type == type::Bool) {
             save(std::get<bool>(results[0].value));
@@ -672,13 +615,13 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           } else {
             NOT_YET(cmd.type->to_string());
           }
-          return results[0];
         } break;
         case 0x02:
           if (cmd.call_.foreign_fn_.name_ == "malloc") {
-            return IR::Val::HeapAddr(
-                malloc(std::get<i32>(resolved_args[0].value)),
-                cmd.type->as<type::Pointer>().pointee);
+            IR::Addr addr;
+            addr.kind    = Addr::Kind::Heap;
+            addr.as_heap = malloc(std::get<i32>(resolved_args[0].value));
+            save(addr);
           } else {
             NOT_YET();
           }
@@ -710,7 +653,20 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       resolved_args.reserve(ASSERT_NOT_NULL(cmd.block_seq_.args_)->size());
       for (auto const &arg : *cmd.block_seq_.args_) {
         if (auto *r = std::get_if<Register>(&arg.value)) {
-          resolved_args.push_back(reg(*r));
+          if (cmd.type == type::Bool) {
+            resolved_args.push_back(IR::Val::Bool(resolve<bool>(*r)));
+          } else if (cmd.type == type::Char) {
+            resolved_args.push_back(IR::Val::Char(resolve<char>(*r)));
+          } else if (cmd.type == type::Int) {
+            resolved_args.push_back(IR::Val::Int(resolve<i32>(*r)));
+          } else if (cmd.type == type::Real) {
+            resolved_args.push_back(IR::Val::Real(resolve<double>(*r)));
+          } else if (cmd.type->is<type::Pointer>()) {
+            resolved_args.push_back(IR::Val::Addr(
+                resolve<IR::Addr>(*r), cmd.type->as<type::Pointer>().pointee));
+          } else {
+            NOT_YET(cmd.type->to_string());
+          }
         } else {
           resolved_args.push_back(arg);
         }
@@ -718,8 +674,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       save(std::get<BlockSequence>(MakeBlockSeq(resolved_args).value));
     } break;
     case Op::BlockSeqContains: {
-      auto *seq =
-          std::get<BlockSequence>(reg(cmd.block_seq_contains_.reg_).value).seq_;
+      auto *seq = resolve<BlockSequence>(cmd.block_seq_contains_.reg_).seq_;
       save(std::any_of(seq->begin(), seq->end(), [&](AST::BlockLiteral *lit) {
         return lit == cmd.block_seq_contains_.lit_;
       }));
@@ -794,35 +749,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           call_stack.top().fn_->reg_map_.at(cmd.set_return_generic_.reg_),
           resolve(cmd.set_return_generic_.val_));
       break;
-
-
-                             /*
-    case Op::SetReturn: {
-      Register out_reg = std::get<Register>(cmd.args[1].value);
-      const auto &arg = cmd.args[0];
-
-      if (auto *r = std::get_if<Register>(&arg.value)) {
-
-        auto *t = cmd.args[1].type->as<type::Pointer>().pointee;
-        } else if (t->is<type::Function>()) {
-          // TODO what kind of function?
-          save_to_reg(resolve<IR::Func *>(*r));
-          reg(out_reg) = IR::Val::Func(resolve<IR::Func *>(*r));
-        } else if (t->is<type::Scope>()) {
-          // TODO what kind of function?
-          save_to_reg(resolve<AST::ScopeLiteral *>(*r));
-          reg(out_reg) = IR::Val::Scope(resolve<AST::ScopeLiteral *>(*r));
-
-        } else {
-          NOT_YET(t->to_string());
-        }
-      } else {
-        reg(out_reg) = arg;
-      }
-
-      return IR::Val::None();
-    } break;
-    */
     case Op::StoreBool:
       StoreValue(resolve(cmd.store_bool_.val_),
                  resolve<IR::Addr>(cmd.store_bool_.addr_), &stack_);
@@ -899,7 +825,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           } else {
             NOT_YET(cmd.type->to_string());
           }
-          return resolved_args[i + 1];
+          return BlockIndex{-2};
         }
       }
       call_stack.top().fn_->dump();
@@ -909,12 +835,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } break;
     case Op::Contextualize: NOT_YET();
     case Op::CondJump:
-      return Val::BasicBlock(
-          cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)]);
-    case Op::UncondJump: return Val::BasicBlock(cmd.uncond_jump_.block_);
-    case Op::ReturnJump: return Val::BasicBlock(BlockIndex{-1});
+      return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];
+    case Op::UncondJump: return cmd.uncond_jump_.block_;
+    case Op::ReturnJump: return BlockIndex{-1};
   }
-  return IR::Val::None();
+  return BlockIndex{-2};
 }
 }  // namespace IR
 

@@ -330,8 +330,7 @@ struct Cmd {
 
   operator IR::Val() const { return reg(); }
 
-  Cmd(const type::Type *t, Op op, base::vector<Val> args);
-  base::vector<Val> args;
+  Cmd(const type::Type *t, Op op);
   Op op_code_;
 
   union {

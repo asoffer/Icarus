@@ -49,7 +49,6 @@ struct ExecContext {
     BlockIndex current_;
     BlockIndex prev_;
 
-    base::vector<Val> old_regs_ = {};
     base::untyped_buffer regs_;
   };
 
@@ -58,17 +57,7 @@ struct ExecContext {
   std::stack<Frame> call_stack;
 
   BlockIndex ExecuteBlock();
-  Val ExecuteCmd(const Cmd &cmd);
-
-  Val reg(Register r) const {
-    ASSERT(r.value >= 0);
-    return call_stack.top().old_regs_.at(static_cast<u32>(r.value));
-  }
-
-  Val &reg(Register r) {
-    ASSERT(r.value >= 0);
-    return call_stack.top().old_regs_.at(static_cast<u32>(r.value));
-  }
+  BlockIndex ExecuteCmd(const Cmd &cmd);
 
   template <typename T>
   T resolve(Register val) const;
