@@ -477,25 +477,22 @@ BlockIndex ExecContext::ExecuteCmd(const Cmd &cmd) {
       }
     } break;
     case Op::Field: {
-      NOT_YET();
-      // TODO
-      // auto addr = resolve<Addr>(cmd.field_.ptr_);
-      // auto *struct_type =
-      //     &addr_val.type->as<type::Pointer>().pointee->as<type::Struct>();
-      // // This can probably be precomputed.
-      // size_t offset = 0;
-      // for (size_t i = 0; i < cmd.field_.num_; ++i) {
-      //   auto field_type = struct_type->fields_.at(i).type;
-      //   offset += Architecture::InterprettingMachine().bytes(field_type);
-      //   offset = Architecture::InterprettingMachine().MoveForwardToAlignment(
-      //       struct_type->fields_.at(i + 1).type, offset);
-      // }
+      auto addr         = resolve<Addr>(cmd.field_.ptr_);
+      auto *struct_type =
+          resolve<type::Struct const *>(cmd.field_.struct_type_);
+      size_t offset     = 0;
+      for (size_t i = 0; i < cmd.field_.num_; ++i) {
+        auto field_type = struct_type->fields_.at(i).type;
+        offset += Architecture::InterprettingMachine().bytes(field_type);
+        offset = Architecture::InterprettingMachine().MoveForwardToAlignment(
+            struct_type->fields_.at(i + 1).type, offset);
+      }
 
-      // if (addr.kind == Addr::Kind::Stack) {
-      //   save(addr.as_stack + offset);
-      // } else {
-      //   save(static_cast<char *>(addr.as_heap) + offset);
-      // }
+      if (addr.kind == Addr::Kind::Stack) {
+        save(addr.as_stack + offset);
+      } else {
+        save(static_cast<char *>(addr.as_heap) + offset);
+      }
     } break;
     case Op::PrintBool:
       std::cerr << (resolve(cmd.print_bool_.arg_) ? "true" : "false");

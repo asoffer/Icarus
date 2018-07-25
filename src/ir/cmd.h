@@ -216,6 +216,7 @@ struct Cmd {
   };
   CMD(Field) {
     Register ptr_;
+    type::Struct const *struct_type_;
     size_t num_;
   };
 

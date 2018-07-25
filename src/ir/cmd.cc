@@ -325,12 +325,11 @@ Val AndBool(const Val &v1, const Val &v2) {
 }
 
 Val Field(const Val &v, size_t n) {
-  const type::Type *result_type = type::Ptr(v.type->as<type::Pointer>()
-                                                .pointee->as<type::Struct>()
-                                                .fields_.at(n)
-                                                .type);
+  const type::Struct *struct_type =
+      &v.type->as<type::Pointer>().pointee->as<type::Struct>();
+  const type::Type *result_type = type::Ptr(struct_type->fields_.at(n).type);
   auto &cmd                     = MakeCmd(result_type, Op::Field);
-  cmd.field_ = Cmd::Field::Make(std::get<Register>(v.value), n);
+  cmd.field_ = Cmd::Field::Make(std::get<Register>(v.value), struct_type, n);
   return cmd.reg();
 }
 
