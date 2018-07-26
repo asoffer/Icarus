@@ -14,11 +14,11 @@ Func *Func::Current{nullptr};
 Val Func::Argument(u32 n) const {
   auto *arg_type = type_->input.at(n);
   if (arg_type->is_big()) { arg_type = type::Ptr(arg_type); }
-  return Val::Reg(Register(n), arg_type);
+  return Val::Reg(Register(reg_map_.at(n)), arg_type);
 }
 
 Val Func::Return(u32 n) const {
-  return Val::Reg(Register(type_->input.size() + n),
+  return Val::Reg(Register(reg_map_.at(type_->input.size() + n)),
                   type::Ptr(type_->output.at(n)));
 }
 
@@ -41,12 +41,12 @@ Func::Func(Module *mod, AST::GeneratedFunction *fn,
   i32 i = 0;
   for (auto *t : type_->input) {
     auto entry = arch.MoveForwardToAlignment(t, reg_size_);
-    reg_map_.emplace(Register{i++}, entry);
+    reg_map_.emplace(i++, Register(entry));
     reg_size_ = entry + arch.bytes(t);
   }
   for (auto *t : type_->output) {
     auto entry = arch.MoveForwardToAlignment(t, reg_size_);
-    reg_map_.emplace(Register{i++}, entry);
+    reg_map_.emplace(i++, Register(entry));
     reg_size_ = entry + arch.bytes(t);
   }
 
@@ -70,12 +70,12 @@ Func::Func(Module *mod, const type::Function *fn_type,
   i32 i = 0;
   for (auto *t : type_->input) {
     auto entry = arch.MoveForwardToAlignment(t, reg_size_);
-    reg_map_.emplace(Register{i++}, entry);
+    reg_map_.emplace(i++, Register(entry));
     reg_size_ = entry + arch.bytes(t);
   }
   for (auto *t : type_->output) {
     auto entry = arch.MoveForwardToAlignment(t, reg_size_);
-    reg_map_.emplace(Register{i++}, entry);
+    reg_map_.emplace(i++, Register(entry));
     reg_size_ = entry + arch.bytes(t);
   }
 

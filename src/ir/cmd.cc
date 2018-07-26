@@ -338,16 +338,20 @@ Cmd::Cmd(const type::Type *t, Op op) : op_code_(op), type(t) {
   CmdIndex cmd_index{
       BasicBlock::Current,
       static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
-  result = Register(t != nullptr ? Func::Current->num_regs_++
-                                 : -(++Func::Current->num_voids_));
+  if (t == nullptr) {
+    result = Register{-++Func::Current->num_voids_};
+    Func::Current->reg_to_cmd_.emplace(result, cmd_index);
+    return;
+  }
+
+  auto arch    = Architecture::InterprettingMachine();
+  auto reg_val = arch.MoveForwardToAlignment(t, Func::Current->reg_size_);
+  result       = Register(reg_val);
+  Func::Current->reg_size_ = reg_val + arch.bytes(t);
+  ++Func::Current->num_regs_;
 
   Func::Current->reg_to_cmd_.emplace(result, cmd_index);
-  if (t == nullptr) { return; }
 
-  auto arch  = Architecture::InterprettingMachine();
-  auto entry = arch.MoveForwardToAlignment(t, Func::Current->reg_size_);
-  Func::Current->reg_map_.emplace(result, entry);
-  Func::Current->reg_size_ = entry + arch.bytes(t);
 
   Func::Current->references_[result];  // Make sure this entry exists
   // TODO references_

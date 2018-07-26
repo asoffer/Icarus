@@ -26,7 +26,7 @@ using base::check::Is;
 namespace IR {
 template <typename T>
 T ExecContext::resolve(Register val) const {
-  return call_stack.top().regs_.get<T>(call_stack.top().fn_->reg_map_.at(val));
+  return call_stack.top().regs_.get<T>(val.value);
 }
 
 extern Val MakeBlockSeq(const base::vector<Val> &blocks);
@@ -42,7 +42,7 @@ base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
           if constexpr (std::is_trivially_copyable_v<
                             std::decay_t<decltype(arg)>>) {
             ctx->call_stack.top().regs_.set(
-                ctx->call_stack.top().fn_->reg_map_.at(Register{i}), arg);
+                ctx->call_stack.top().fn_->reg_map_.at(i).value, arg);
           } else {
             UNREACHABLE();
           }
@@ -156,8 +156,7 @@ static void StoreValue(T val, Addr addr, Stack *stack) {
 
 BlockIndex ExecContext::ExecuteCmd(const Cmd &cmd) {
   auto save = [&](auto val) {
-    call_stack.top().regs_.set(call_stack.top().fn_->reg_map_.at(cmd.result),
-                               val);
+    call_stack.top().regs_.set(cmd.result.value, val);
   };
 
   switch (cmd.op_code_) {
@@ -677,74 +676,60 @@ BlockIndex ExecContext::ExecuteCmd(const Cmd &cmd) {
       }));
     } break;
     case Op::SetReturnBool:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_bool_.reg_),
-          resolve(cmd.set_return_bool_.val_));
+      call_stack.top().regs_.set(cmd.set_return_bool_.reg_.value,
+                                 resolve(cmd.set_return_bool_.val_));
       break;
     case Op::SetReturnChar:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_char_.reg_),
-          resolve(cmd.set_return_char_.val_));
+      call_stack.top().regs_.set(cmd.set_return_char_.reg_.value,
+                                 resolve(cmd.set_return_char_.val_));
       break;
     case Op::SetReturnInt:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_int_.reg_),
-          resolve(cmd.set_return_int_.val_));
+      call_stack.top().regs_.set(cmd.set_return_int_.reg_.value,
+                                 resolve(cmd.set_return_int_.val_));
       break;
     case Op::SetReturnReal:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_real_.reg_),
-          resolve(cmd.set_return_real_.val_));
+      call_stack.top().regs_.set(cmd.set_return_real_.reg_.value,
+                                 resolve(cmd.set_return_real_.val_));
       break;
     case Op::SetReturnType:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_type_.reg_),
-          resolve(cmd.set_return_type_.val_));
+      call_stack.top().regs_.set(cmd.set_return_type_.reg_.value,
+                                 resolve(cmd.set_return_type_.val_));
       break;
     case Op::SetReturnCharBuf:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_char_buf_.reg_),
-          resolve(cmd.set_return_char_buf_.val_));
+      call_stack.top().regs_.set(cmd.set_return_char_buf_.reg_.value,
+                                 resolve(cmd.set_return_char_buf_.val_));
       break;
     case Op::SetReturnAddr:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_addr_.reg_),
-          resolve(cmd.set_return_addr_.val_));
+      call_stack.top().regs_.set(cmd.set_return_addr_.reg_.value,
+                                 resolve(cmd.set_return_addr_.val_));
       break;
     case Op::SetReturnEnum:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_enum_.reg_),
-          resolve(cmd.set_return_enum_.val_));
+      call_stack.top().regs_.set(cmd.set_return_enum_.reg_.value,
+                                 resolve(cmd.set_return_enum_.val_));
       break;
     case Op::SetReturnFlags:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_flags_.reg_),
-          resolve(cmd.set_return_flags_.val_));
+      call_stack.top().regs_.set(cmd.set_return_flags_.reg_.value,
+                                 resolve(cmd.set_return_flags_.val_));
       break;
     case Op::SetReturnFunc:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_func_.reg_),
-          resolve(cmd.set_return_func_.val_));
+      call_stack.top().regs_.set(cmd.set_return_func_.reg_.value,
+                                 resolve(cmd.set_return_func_.val_));
       break;
     case Op::SetReturnScope:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_scope_.reg_),
-          resolve(cmd.set_return_scope_.val_));
+      call_stack.top().regs_.set(cmd.set_return_scope_.reg_.value,
+                                 resolve(cmd.set_return_scope_.val_));
       break;
     case Op::SetReturnModule:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_module_.reg_),
-          resolve(cmd.set_return_module_.val_));
+      call_stack.top().regs_.set(cmd.set_return_module_.reg_.value,
+                                 resolve(cmd.set_return_module_.val_));
       break;
     case Op::SetReturnBlock:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_block_.reg_),
-          resolve(cmd.set_return_block_.val_));
+      call_stack.top().regs_.set(cmd.set_return_block_.reg_.value,
+                                 resolve(cmd.set_return_block_.val_));
       break;
     case Op::SetReturnGeneric:
-      call_stack.top().regs_.set(
-          call_stack.top().fn_->reg_map_.at(cmd.set_return_generic_.reg_),
-          resolve(cmd.set_return_generic_.val_));
+      call_stack.top().regs_.set(cmd.set_return_generic_.reg_.value,
+                                 resolve(cmd.set_return_generic_.val_));
       break;
     case Op::StoreBool:
       StoreValue(resolve(cmd.store_bool_.val_),

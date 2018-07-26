@@ -95,7 +95,7 @@ struct Func {
   Module* mod_;
 
   size_t reg_size_ = 0;
-  base::unordered_map<Register, size_t> reg_map_;
+  base::unordered_map<size_t, Register> reg_map_;
 
   base::vector<AST::Expression *> precondition_exprs_, postcondition_exprs_;
   base::vector<std::pair<IR::Func, prop::PropertyMap>> preconditions_,
