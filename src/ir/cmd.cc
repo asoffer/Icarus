@@ -12,6 +12,18 @@ namespace IR {
 using base::check::Is;
 BlockIndex BasicBlock::Current;
 
+void LongArgs::append(const IR::Val &val) {
+  std::visit(
+      base::overloaded{
+          [](const IR::Interface &) { UNREACHABLE(); },
+          [&](auto &&val) {
+            args_.append(val);
+            is_reg_.push_back(
+                std::is_same_v<IR::Register, std::decay_t<decltype(val)>>);
+          }},
+      val.value);
+}
+
 static Cmd &MakeCmd(const type::Type *t, Op op) {
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
                   ->block(BasicBlock::Current)
@@ -829,37 +841,31 @@ std::pair<CmdIndex, base::vector<IR::Val> *> Phi(const type::Type *t) {
   return std::pair(cmd_index, args.get());
 }
 
-Val Call(const Val &fn, base::vector<Val> vals, base::vector<Val> result_locs) {
+Val Call(const Val &fn, std::unique_ptr<LongArgs> long_args) {
   ASSERT(fn.type, Is<type::Function>());
-  vals.insert(vals.end(), std::make_move_iterator(result_locs.begin()),
-              std::make_move_iterator(result_locs.end()));
-
-  // TODO either fix the output type here or do it at the execution site. Not
-  // sure which makes sense. "Fix" means that if a function returns a struct or
-  // has multiple return values, we actually need to represent this internally
-  // with out-params, so a function looks like it returns something, but
-  // actually we pass in 'result_locs' which are assigned to.
-  // Long-term we should do this consistently even for small types, because for
-  // multiple return values, we really could return them in multiple registers
-  // rather than allocating stack space.
+  // TODO either fix the output type here or do it at the execution site.
+  // Not sure which makes sense. "Fix" means that if a function returns a
+  // struct or has multiple return values, we actually need to represent
+  // this internally with out-params, so a function looks like it returns
+  // something, but actually we pass in 'result_locs' which are assigned to.
+  // Long-term we should do this consistently even for small types, because
+  // for multiple return values, we really could return them in multiple
+  // registers rather than allocating stack space.
   const auto &fn_type = fn.type->as<type::Function>();
   const type::Type *output_type =
       (fn_type.output.size() == 1 && !fn_type.output[0]->is_big())
           ? fn_type.output[0]
           : type::Void();
 
-  auto &args =
-      Func::Current->block(BasicBlock::Current)
-          .call_args_.emplace_back(
-              std::make_unique<base::vector<IR::Val>>(std::move(vals)));
+  auto &args = Func::Current->block(BasicBlock::Current)
+                   .long_args_.emplace_back(std::move(long_args));
   auto &cmd = MakeCmd(output_type, Op::Call);
-
   if (auto *r = std::get_if<Register>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*r, args.get());
+    cmd.call_ = Cmd::Call(*r, &fn_type, args.get());
   } else if (auto *f = std::get_if<Func *>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*f, args.get());
+    cmd.call_ = Cmd::Call(*f, &fn_type, args.get());
   } else if (auto *f = std::get_if<ForeignFn>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*f, args.get());
+    cmd.call_ = Cmd::Call(*f, &fn_type, args.get());
   } else {
     UNREACHABLE();
   }
@@ -1046,12 +1052,7 @@ void Cmd::dump(size_t indent) const {
       break;
     case Op::UncondJump: std::cerr << "uncond " << uncond_jump_.block_; break;
     case Op::ReturnJump: std::cerr << "return"; break;
-    case Op::Call:
-      std::cerr << "call";
-      for (const auto &arg : *call_.args_) {
-        std::cerr << " " << arg.to_string();
-      };
-      break;
+    case Op::Call: std::cerr << "call"; break; // TODO
     case Op::BlockSeq:
       std::cerr << "block-seq";
       for (const auto &arg : *block_seq_.args_) {

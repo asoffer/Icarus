@@ -26,12 +26,13 @@ struct untyped_buffer {
   ~untyped_buffer() { free(data_); }
 
   size_t size() const { return size_; }
+  bool empty() const { return size_ == 0; }
 
   template <typename T>
   T get(size_t offset) const {
     static_assert(std::is_trivially_copyable_v<T>);
     ASSERT(offset + sizeof(T) <= size_);
-    T result;
+    T result{};
     std::memcpy(&result, data_ + offset, sizeof(T));
     return result;
   }
@@ -48,6 +49,11 @@ struct untyped_buffer {
     size_t old_size = size_;
     append_bytes(sizeof(T));
     set(old_size, t);
+  }
+
+  void write(size_t offset, const base::untyped_buffer &buf) {
+    append_bytes(buf.size());
+    std::memcpy(data_ + offset, buf.data_, buf.size_);
   }
 
   void append_bytes(size_t num) {

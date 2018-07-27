@@ -42,6 +42,8 @@ std::optional<BoundConstants> ComputeBoundConstants(
           fn->inputs[i]->type_expr->type == type::Interface) {
         // TODO case where it is defaulted.
         // TODO expand all variants
+        NOT_YET();
+        /*
         auto ifc = backend::EvaluateAs<IR::Interface>(
             fn->inputs[i]->type_expr.get(), ctx);
         auto errs = ifc.MatchErrors(binding->exprs_[i].second->type);
@@ -59,7 +61,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
               IR::Val::Type(binding->exprs_[i].second->type));
         }
 
-
+        */
         // TODO using this for now to signify an interface when in reality we
         // want something much more meaningful. 'Generic' is a weird catch-all
         // type currently that needs to be deprecated.

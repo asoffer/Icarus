@@ -45,7 +45,9 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
     }
   }
 
-  IR::Call(IR::Val::Func(init_func_), base::vector<IR::Val>{id_val}, {});
+  auto call_args = std::make_unique<IR::LongArgs>();
+  call_args->append(id_val);
+  IR::Call(IR::Val::Func(init_func_), std::move(call_args));
 }
 
 void Primitive::EmitInit(IR::Val id_val, Context *ctx) const {
@@ -120,6 +122,8 @@ void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
     }
   }
 
-  IR::Call(IR::Val::Func(init_func_), {id_val}, {});
+  auto call_args = std::make_unique<IR::LongArgs>();
+  call_args->append(id_val);
+  IR::Call(IR::Val::Func(init_func_), std::move(call_args));
 }
 } // namespace type

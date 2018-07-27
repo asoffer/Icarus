@@ -175,22 +175,25 @@ static base::vector<IR::Val> EmitOneCallDispatch(
     }
   }
 
+  auto call_args = std::make_unique<IR::LongArgs>();
+  for (const auto &arg : args) { call_args->append(arg); }
+
   ASSERT(binding.fn_expr_->type, Is<type::Function>());
   auto *fn_type = &binding.fn_expr_->type->as<type::Function>();
   switch (fn_type->output.size()) {
-    case 0: IR::Call(callee, std::move(args), {}); return {};
+    case 0: IR::Call(callee, std::move(call_args)); return {};
     case 1: {
       if (fn_type->output.at(0)->is_big()) {
         auto ret_val = IR::Alloca(ret_type);
 
         if (ret_type->is<type::Variant>()) {
-          IR::Call(
-              callee, std::move(args),
-              base::vector<IR::Val>{IR::VariantValue(fn_type->output.at(0), ret_val)});
+          call_args->append(IR::VariantValue(fn_type->output.at(0), ret_val));
+          IR::Call(callee, std::move(call_args));
           IR::Store(IR::Val::Type(fn_type->output.at(0)),
                     IR::VariantType(ret_val));
         } else {
-          IR::Call(callee, std::move(args), base::vector<IR::Val>{ret_val});
+          call_args->append(ret_val);
+          IR::Call(callee, std::move(call_args));
         }
         return {ret_val};
       } else {
@@ -198,11 +201,11 @@ static base::vector<IR::Val> EmitOneCallDispatch(
           auto ret_val = IR::Alloca(ret_type);
           IR::Store(IR::Val::Type(fn_type->output.at(0)),
                     IR::VariantType(ret_val));
-          IR::Store(IR::Call(callee, std::move(args), {}),
+          IR::Store(IR::Call(callee, std::move(call_args)),
                     IR::VariantValue(fn_type->output.at(0), ret_val));
           return {ret_val};
         } else {
-          return {IR::Call(callee, std::move(args), {})};
+          return {IR::Call(callee, std::move(call_args))};
         }
       }
     } break;
@@ -221,19 +224,18 @@ static base::vector<IR::Val> EmitOneCallDispatch(
         auto *expected_type = tup_entries.at(i);
 
         if (return_type->is<type::Variant>()) {
-          return_args.push_back(ret_vals.at(i));
+          call_args->append(ret_vals.at(i));
         } else {
           if (expected_type->is<type::Variant>()) {
             IR::Store(IR::Val::Type(return_type),
                       IR::VariantType(ret_vals.at(i)));
-            return_args.push_back(
-                IR::VariantValue(return_type, ret_vals.at(i)));
+            call_args->append(IR::VariantValue(return_type, ret_vals.at(i)));
           } else {
-            return_args.push_back(ret_vals.at(i));
+            call_args->append(ret_vals.at(i));
           }
         }
       }
-      IR::Call(callee, std::move(args), return_args);
+      IR::Call(callee, std::move(call_args));
       return ret_vals;
     }
   }
@@ -508,7 +510,11 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
     auto fn_val = fn_->as<Terminal>().value;
     if (fn_val == OrdFunc() || fn_val == AsciiFunc() || fn_val == ErrorFunc() ||
         fn_val == BytesFunc() || fn_val == AlignFunc()) {
-      return {IR::Call(fn_val, args_.pos_[0]->EmitIR(ctx), {})};
+      auto call_args = std::make_unique<IR::LongArgs>();
+      for (const auto &arg : args_.pos_[0]->EmitIR(ctx)) {
+        call_args->append(arg);
+      }
+      return {IR::Call(fn_val, std::move(call_args))};
 
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       args_.pos_[0]

@@ -23,6 +23,64 @@ using base::check::Is;
 // TODO compile-time failure. dump the stack trace and abort for Null address
 // kinds
 
+namespace backend {
+base::untyped_buffer Execute(IR::Func *fn,
+                             const base::untyped_buffer &arguments,
+                             IR::ExecContext *ctx) {
+  if (fn->gened_fn_) { fn->gened_fn_->CompleteBody(fn->mod_); }
+  ctx->call_stack.emplace(fn, arguments);
+
+  // TODO log an error if you're asked to execute a function that had an error.
+
+  while (true) {
+    auto block_index = ctx->ExecuteBlock();
+    if (block_index.is_default()) {
+      auto *fn_type = ctx->call_stack.top().fn_->type_;
+      // TODO we should actually be able to calculate the required size and not
+      // need a guess. Just move forward to alignment over all the outputs. But
+      // this is probably worth storing somewhere on the function so thing about
+      // the right way to do it.
+      base::untyped_buffer ret_buffer(32);
+      for (size_t i = fn_type->input.size();
+           i < fn_type->input.size() + fn_type->output.size(); ++i) {
+        auto *ret_type = fn_type->output[i - fn_type->input.size()];
+        if (ret_type == type::Bool) {
+          ret_buffer.append(ctx->resolve<bool>(IR::Register(i)));
+        } else if (ret_type == type::Char) {
+          ret_buffer.append(ctx->resolve<char>(IR::Register(i)));
+        } else if (ret_type == type::Int) {
+          ret_buffer.append(ctx->resolve<i32>(IR::Register(i)));
+        } else if (ret_type == type::Real) {
+          ret_buffer.append(ctx->resolve<double>(IR::Register(i)));
+        } else if (ret_type == type::Type_) {
+          ret_buffer.append(ctx->resolve<type::Type const *>(IR::Register(i)));
+        } else if (ret_type->is<type::CharBuffer>()) {
+          ret_buffer.append(ctx->resolve<std::string_view>(IR::Register(i)));
+        } else if (ret_type->is<type::Function>()) {
+          ret_buffer.append(ctx->resolve<IR::Func *>(IR::Register(i)));
+        } else if (ret_type->is<type::Scope>()) {
+          ret_buffer.append(ctx->resolve<AST::ScopeLiteral *>(IR::Register(i)));
+        } else if (ret_type == type::Module) {
+          ret_buffer.append(ctx->resolve<Module const *>(IR::Register(i)));
+        } else if (ret_type == type::Generic) {
+          // TODO mostly wrong.
+          ret_buffer.append(ctx->resolve<AST::Function *>(IR::Register(i)));
+        } else if (ret_type == type::Block || ret_type == type::OptBlock) {
+          ret_buffer.append(ctx->resolve<IR::BlockSequence>(IR::Register(i)));
+        } else {
+          NOT_YET(ret_type->to_string());
+        }
+      }
+      ctx->call_stack.pop();
+      return ret_buffer;
+    } else {
+      ctx->call_stack.top().MoveTo(block_index);
+    }
+  }
+}
+}  // namespace backend
+
+// TODO namespace migration.
 namespace IR {
 template <typename T>
 T ExecContext::resolve(Register val) const {
@@ -31,89 +89,18 @@ T ExecContext::resolve(Register val) const {
 
 extern Val MakeBlockSeq(const base::vector<Val> &blocks);
 
-base::vector<Val> Execute(Func *fn, const base::vector<Val> &arguments,
-                          ExecContext *ctx) {
-  if (fn->gened_fn_) { fn->gened_fn_->CompleteBody(fn->mod_); }
-  ctx->call_stack.emplace(fn, arguments);
-
-  for (i32 i = 0; i < static_cast<i32>(arguments.size()); ++i) {
-    std::visit(
-        [&](auto arg) {
-          if constexpr (std::is_trivially_copyable_v<
-                            std::decay_t<decltype(arg)>>) {
-            ctx->call_stack.top().regs_.set(
-                ctx->call_stack.top().fn_->reg_map_.at(i).value, arg);
-          } else {
-            UNREACHABLE();
-          }
-        },
-        arguments[i].value);
-  }
-
-  // TODO log an error if you're asked to execute a function that had an error.
-
-  while (true) {
-    auto block_index = ctx->ExecuteBlock();
-    if (block_index.is_default()) {
-      base::vector<IR::Val> rets;
-      auto *fn_type = ctx->call_stack.top().fn_->type_;
-      for (size_t i = fn_type->input.size();
-           i < fn_type->input.size() + fn_type->output.size(); ++i) {
-        auto *ret_type = fn_type->output[i - fn_type->input.size()];
-        if (ret_type == type::Bool) {
-          rets.push_back(IR::Val::Bool(ctx->resolve<bool>(Register(i))));
-        } else if (ret_type == type::Char) {
-          rets.push_back(IR::Val::Char(ctx->resolve<char>(Register(i))));
-        } else if (ret_type == type::Int) {
-          rets.push_back(IR::Val::Int(ctx->resolve<i32>(Register(i))));
-        } else if (ret_type == type::Real) {
-          rets.push_back(IR::Val::Real(ctx->resolve<double>(Register(i))));
-        } else if (ret_type == type::Type_) {
-          rets.push_back(
-              IR::Val::Type(ctx->resolve<type::Type const *>(Register(i))));
-        } else if (ret_type->is<type::CharBuffer>()) {
-          rets.push_back(
-              IR::Val::CharBuf(std::string(ctx->resolve<std::string_view>(Register(i)))));
-        } else if (ret_type->is<type::Function>()) {
-          rets.push_back(IR::Val::Func(ctx->resolve<IR::Func *>(Register(i))));
-        } else if (ret_type->is<type::Scope>()) {
-          rets.push_back(IR::Val::Scope(ctx->resolve<AST::ScopeLiteral *>(Register(i))));
-        } else if (ret_type == type::Module) {
-          rets.push_back(
-              IR::Val::Mod(ctx->resolve<Module const *>(Register(i))));
-        } else if (ret_type == type::Generic) {
-          // TODO mostly wrong.
-          rets.push_back(
-              IR::Val::Func(ctx->resolve<AST::Function *>(Register(i))));
-        } else if (ret_type == type::Block || ret_type == type::OptBlock) {
-          rets.push_back(
-              IR::Val::BlockSeq(ctx->resolve<IR::BlockSequence>(Register(i))));
-
-        } else {
-          NOT_YET(ret_type->to_string());
-        }
-      }
-      ctx->call_stack.pop();
-      return rets;
-    } else {
-      ctx->call_stack.top().MoveTo(block_index);
-    }
-  }
-}
-
 ExecContext::ExecContext() : stack_(50u) {}
 
 BasicBlock &ExecContext::current_block() {
   return call_stack.top().fn_->block(call_stack.top().current_);
 }
 
-ExecContext::Frame::Frame(Func *fn, const base::vector<Val> &arguments)
+ExecContext::Frame::Frame(Func *fn, const base::untyped_buffer &arguments)
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
       regs_(base::untyped_buffer::MakeFull(fn_->reg_size_)) {
-  size_t num_inputs = fn->type_->input.size();
-  ASSERT(num_inputs <= arguments.size());
+  regs_.write(0, arguments);
 }
 
 BlockIndex ExecContext::ExecuteBlock() {
@@ -217,47 +204,6 @@ BlockIndex ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Op::LoadAddr:
       save(LoadValue<Addr>(resolve(cmd.load_addr_.arg_), stack_));
       break;
-      /*
-      switch (addr.kind) {
-        case Addr::Kind::Null: UNREACHABLE();
-        case Addr::Kind::Heap: {
-          // LOAD_FROM_HEAP(type::Code, IR::Val::CodeBlock, AST::CodeBlock);
-          if (cmd.type->is<type::Pointer>()) {
-            return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
-                                 cmd.type->as<type::Pointer>().pointee);
-          } else if (cmd.type->is<type::CharBuffer>()) {
-            // TODO Add a string_view overload for Val::CharBuf.
-            return IR::Val::CharBuf(
-                std::string(*static_cast<std::string_view *>(addr.as_heap)));
-          } else {
-            NOT_YET("Don't know how to load type: ", cmd.type);
-          }
-          NOT_YET("Don't know how to load type: ", cmd.type);
-        } break;
-        case Addr::Kind::Stack: {
-          // TODO LOAD_FROM_STACK(type::Code, CodeBlock, AST::CodeBlock);
-          if (cmd.type->is<type::Pointer>()) {
-            switch (addr.kind) {
-              case Addr::Kind::Stack:
-                return IR::Val::Addr(stack_.Load<Addr>(addr.as_stack),
-                                     cmd.type->as<type::Pointer>().pointee);
-              case Addr::Kind::Heap:
-                return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
-                                     cmd.type->as<type::Pointer>().pointee);
-              case Addr::Kind::Null: NOT_YET();
-            }
-          } else if (cmd.type->is<type::CharBuffer>()) {
-            // TODO Add a string_view overload for Val::CharBuf.
-            return IR::Val::CharBuf(
-                std::string(stack_.Load<std::string_view>(addr.as_stack)));
-          } else if (cmd.type->is<type::Function>()) {
-            return IR::Val::Func(stack_.Load<IR::Func *>(addr.as_stack));
-          } else {
-            call_stack.top().fn_->dump();
-            NOT_YET("Don't know how to load type: ", cmd.type);
-          }
-        } break;
-      }*/
     case Op::AddInt:
       save(resolve(cmd.add_int_.args_[0]) + resolve(cmd.add_int_.args_[1]));
       break;
@@ -462,11 +408,8 @@ BlockIndex ExecContext::ExecuteCmd(const Cmd &cmd) {
       auto incr = resolve(cmd.ptr_incr_.incr_);
       // Sadly must convert to value and back even though it's guaranteed to be
       // constant folded
-      auto bytes_fwd = std::get<i32>(
-          Architecture::InterprettingMachine()
-              .ComputeArrayLength(IR::Val::Int(incr),
-                                  cmd.type->as<type::Pointer>().pointee)
-              .value);
+      auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
+          incr, cmd.type->as<type::Pointer>().pointee);
       switch (addr.kind) {
         case Addr::Kind::Stack: save(addr.as_stack + bytes_fwd); break;
         case Addr::Kind::Heap:
@@ -536,87 +479,89 @@ BlockIndex ExecContext::ExecuteCmd(const Cmd &cmd) {
       std::cerr << resolve(cmd.print_char_buffer_.arg_);
       break;
     case Op::Call: {
-      std::vector<Val> resolved_args;
-      resolved_args.reserve(ASSERT_NOT_NULL(cmd.call_.args_)->size());
-      for (auto const &arg : *cmd.call_.args_) {
-        if (auto *r = std::get_if<Register>(&arg.value)) {
-          if (arg.type == type::Bool) {
-            resolved_args.push_back(IR::Val::Bool(resolve<bool>(*r)));
-          } else if (arg.type == type::Char) {
-            resolved_args.push_back(IR::Val::Char(resolve<char>(*r)));
-          } else if (arg.type == type::Int) {
-            resolved_args.push_back(IR::Val::Int(resolve<i32>(*r)));
-          } else if (arg.type == type::Real) {
-            resolved_args.push_back(IR::Val::Real(resolve<double>(*r)));
-          } else if (arg.type == type::Type_) {
-            resolved_args.push_back(
-                IR::Val::Type(resolve<type::Type const *>(*r)));
-          } else if (arg.type->is<type::Pointer>()) {
-            resolved_args.push_back(IR::Val::Addr(
-                resolve<IR::Addr>(*r), arg.type->as<type::Pointer>().pointee));
-          } else {
-            NOT_YET(arg.type->to_string());
-          }
+      // TODO we can compute the exact required size.
+      base::untyped_buffer call_buf(32);
+
+      size_t offset = 0;
+      auto arch  = Architecture::InterprettingMachine();
+      auto &long_args = cmd.call_.long_args_->args_;
+      for (size_t i = 0; i < cmd.call_.long_args_->is_reg_.size(); ++i) {
+        bool is_reg = cmd.call_.long_args_->is_reg_[i];
+        auto *t     = cmd.call_.fn_type_->input.at(i);
+        offset      = arch.MoveForwardToAlignment(t, offset);
+
+        if (t == type::Bool) {
+          call_buf.append(is_reg
+                              ? resolve<bool>(long_args.get<Register>(offset))
+                              : long_args.get<bool>(offset));
+        } else if (t == type::Char) {
+          call_buf.append(is_reg
+                              ? resolve<char>(long_args.get<Register>(offset))
+                              : long_args.get<char>(offset));
+        } else if (t == type::Int) {
+          call_buf.append(is_reg ? resolve<i32>(long_args.get<Register>(offset))
+                                 : long_args.get<i32>(offset));
+        } else if (t == type::Real) {
+          call_buf.append(is_reg
+                              ? resolve<double>(long_args.get<Register>(offset))
+                              : long_args.get<double>(offset));
+        } else if (t == type::Type_) {
+          call_buf.append(is_reg ? resolve<type::Type const *>(
+                                       long_args.get<Register>(offset))
+                                 : long_args.get<type::Type const *>(offset));
+        } else if (t->is<type::CharBuffer>()) {
+          call_buf.append(is_reg ? resolve<std::string_view>(
+                                       long_args.get<Register>(offset))
+                                 : long_args.get<std::string_view>(offset));
+        } else if (t->is<type::Function>()) {
+          call_buf.append(
+              is_reg ? resolve<IR::Func *>(long_args.get<Register>(offset))
+                     : long_args.get<IR::Func *>(offset));
+        } else if (t->is<type::Scope>()) {
+          call_buf.append(is_reg ? resolve<AST::ScopeLiteral *>(
+                                       long_args.get<Register>(offset))
+                                 : long_args.get<AST::ScopeLiteral *>(offset));
+        } else if (t == type::Module) {
+          call_buf.append(
+              is_reg ? resolve<Module const *>(long_args.get<Register>(offset))
+                     : long_args.get<Module const *>(offset));
+        } else if (t == type::Generic) {
+          // TODO mostly wrong.
+          call_buf.append(
+              is_reg ? resolve<AST::Function *>(long_args.get<Register>(offset))
+                     : long_args.get<AST::Function *>(offset));
+        } else if (t == type::Block || t == type::OptBlock) {
+          call_buf.append(is_reg ? resolve<IR::BlockSequence>(
+                                       long_args.get<Register>(offset))
+                                 : long_args.get<IR::BlockSequence>(offset));
         } else {
-          resolved_args.push_back(arg);
+          NOT_YET(t->to_string());
         }
+
+        offset += is_reg ? sizeof(Register) : arch.bytes(t);
       }
 
       // TODO you need to be able to determine how many args there are
       switch (cmd.call_.which_active_) {
         case 0x00: {
           // TODO what if the register is a foerign fn?
-          auto results =
-              Execute(resolve<IR::Func *>(cmd.call_.reg_), resolved_args, this);
-          if (cmd.type == type::Bool) {
-            save(std::get<bool>(results[0].value));
-          } else if (cmd.type == type::Char) {
-            save(std::get<char>(results[0].value));
-          } else if (cmd.type == type::Int) {
-            save(std::get<i32>(results[0].value));
-          } else if (cmd.type == type::Real) {
-            save(std::get<double>(results[0].value));
-          } else if (cmd.type == type::Type_) {
-            save(std::get<type::Type const *>(results[0].value));
-          } else if (cmd.type->is<type::Pointer>()) {
-            save(std::get<IR::Addr>(results[0].value));
-          } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
-            save(std::get<BlockSequence>(results[0].value));
-          } else if (cmd.type == type::Void()) {
-            // Do nothing.
-          } else {
-            NOT_YET(cmd.type->to_string());
-          }
+          call_stack.top().regs_.write(
+              cmd.result.value,
+              backend::Execute(resolve<IR::Func *>(cmd.call_.reg_),
+                               call_buf, this));
         } break;
         case 0x01: {
-          auto results = Execute(cmd.call_.fn_, resolved_args, this);
+          auto results = backend::Execute(cmd.call_.fn_, call_buf, this);
+          // TODO Something feels fishy here?
           if (results.empty()) return BlockIndex{-2};
+          call_stack.top().regs_.write(cmd.result.value, results);
 
-          if (cmd.type == type::Bool) {
-            save(std::get<bool>(results[0].value));
-          } else if (cmd.type == type::Char) {
-            save(std::get<char>(results[0].value));
-          } else if (cmd.type == type::Int) {
-            save(std::get<i32>(results[0].value));
-          } else if (cmd.type == type::Real) {
-            save(std::get<double>(results[0].value));
-          } else if (cmd.type == type::Type_) {
-            save(std::get<type::Type const *>(results[0].value));
-          } else if (cmd.type->is<type::Pointer>()) {
-            save(std::get<IR::Addr>(results[0].value));
-          } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
-            save(std::get<BlockSequence>(results[0].value));
-          } else if (cmd.type == type::Void()) {
-            // Do nothing.
-          } else {
-            NOT_YET(cmd.type->to_string());
-          }
         } break;
         case 0x02:
           if (cmd.call_.foreign_fn_.name_ == "malloc") {
             IR::Addr addr;
             addr.kind    = Addr::Kind::Heap;
-            addr.as_heap = malloc(std::get<i32>(resolved_args[0].value));
+            addr.as_heap = malloc(call_buf.get<i32>(0));
             save(addr);
           } else {
             NOT_YET();
@@ -846,5 +791,5 @@ void ReplEval(AST::Expression *expr) {
   }
 
   IR::ExecContext ctx;
-  Execute(fn.get(), {}, &ctx);
+  backend::Execute(fn.get(), base::untyped_buffer(0), &ctx);
 }

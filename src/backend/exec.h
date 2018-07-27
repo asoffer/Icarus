@@ -37,7 +37,7 @@ struct ExecContext {
 
   struct Frame {
     Frame() = delete;
-    Frame(Func *fn, const base::vector<Val> &arguments);
+    Frame(Func *fn, const base::untyped_buffer &arguments);
 
     void MoveTo(BlockIndex block_index) {
       ASSERT(block_index.value >= 0);

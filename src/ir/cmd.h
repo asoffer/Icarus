@@ -3,8 +3,20 @@
 
 #include "context.h"
 #include "val.h"
+#include "base/untyped_buffer.h"
+
+namespace type {
+struct Function;
+}  // namespace type
 
 namespace IR {
+struct LongArgs {
+  void append(const IR::Val &val);
+
+  base::vector<bool> is_reg_;
+  base::untyped_buffer args_{0};
+};
+
 enum class Op : char {
   // clang-format off
   Trunc, Extend,
@@ -221,19 +233,23 @@ struct Cmd {
   };
 
   CMD(Call) {
-    Call(Register r, base::vector<IR::Val> * args)
-        : reg_(r), which_active_(0x00), args_(args) {}
-    Call(Func * f, base::vector<IR::Val> * args)
-        : fn_(f), which_active_(0x01), args_(args) {}
-    Call(ForeignFn f, base::vector<IR::Val> * args)
-        : foreign_fn_(f), which_active_(0x02), args_(args) {}
+    Call(Register r, type::Function const *fn_type, LongArgs *args)
+        : reg_(r), which_active_(0x00), fn_type_(fn_type), long_args_(args) {}
+    Call(Func * f, type::Function const *fn_type, LongArgs *args)
+        : fn_(f), which_active_(0x01), fn_type_(fn_type), long_args_(args) {}
+    Call(ForeignFn f, type::Function const *fn_type, LongArgs *args)
+        : foreign_fn_(f),
+          which_active_(0x02),
+          fn_type_(fn_type),
+          long_args_(args) {}
     union {
       Register reg_;
       Func *fn_;
       ForeignFn foreign_fn_;
     };
     char which_active_;
-    base::vector<IR::Val> *args_;
+    type::Function const *fn_type_;
+    LongArgs *long_args_;
   };
 
   CMD(Phi) { base::vector<Val> *args_; };
@@ -559,7 +575,7 @@ Val PrintEnum(const Val &v);
 Val PrintFlags(const Val &v);
 Val PrintAddr(const Val &v);
 Val PrintCharBuffer(const Val &v);
-Val Call(const Val &fn, base::vector<Val> vals, base::vector<Val> result_locs);
+Val Call(const Val &fn, std::unique_ptr<LongArgs> long_args);
 Val Tup(base::vector<IR::Val> vals);
 Val Variant(base::vector<Val> vals);
 void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block);
