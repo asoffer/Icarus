@@ -39,6 +39,19 @@ DEFINE_STRONG_INT(IR, Register, i32, std::numeric_limits<i32>::lowest());
 DEFINE_STRONG_INT(IR, BuiltinGenericIndex, i32, -1);
 
 namespace IR {
+template <typename T>
+struct RegisterOr {
+  static_assert(!std::is_same_v<Register, T>);
+  RegisterOr(Register reg) : reg_(reg), is_reg_(true) {}
+  RegisterOr(T val) : val_(val), is_reg_(false) {}
+
+  union {
+    Register reg_;
+    T val_;
+  };
+  bool is_reg_;
+};
+
 struct BlockSequence {
   base::vector<AST::BlockLiteral *> const *seq_;
 };
@@ -130,6 +143,15 @@ struct Val {
                BlockIndex, std::string_view, const Module *, BlockSequence,
                BuiltinGenericIndex, ForeignFn>
       value{false};
+
+  template <typename T>
+  RegisterOr<T> reg_or() const {
+    if (auto *r = std::get_if<Register>(&value)) {
+      return RegisterOr<T>(*r);
+    } else {
+      return RegisterOr<T>(std::get<T>(value));
+    }
+  }
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
   static Val Addr(Addr addr, const type::Type *t);

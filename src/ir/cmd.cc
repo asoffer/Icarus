@@ -828,6 +828,36 @@ Val Ne(const Val &v1, const Val &v2) {
   UNREACHABLE();
 }
 
+std::pair<CmdIndex, PhiArgs<bool> *> PhiBool() {
+  CmdIndex cmd_index{
+      BasicBlock::Current,
+      static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
+
+  auto phi_args = std::make_unique<PhiArgs<bool>>();
+  auto *raw_ptr = phi_args.get();
+  Func::Current->block(BasicBlock::Current)
+      .phi_args_.push_back(std::move(phi_args));
+  auto &cmd     = MakeCmd(type::Bool, Op::PhiBool);
+  cmd.phi_bool_ = Cmd::PhiBool::Make(raw_ptr);
+  return std::pair(cmd_index, raw_ptr);
+}
+
+std::pair<CmdIndex, PhiArgs<IR::BlockSequence> *> PhiBlock() {
+  CmdIndex cmd_index{
+      BasicBlock::Current,
+      static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
+
+  auto phi_args = std::make_unique<PhiArgs<BlockSequence>>();
+  auto *raw_ptr = phi_args.get();
+  Func::Current->block(BasicBlock::Current)
+      .phi_args_.push_back(std::move(phi_args));
+  // TODO could be opt-block. do we care? Probably not really using this type to
+  // much anymore.
+  auto &cmd     = MakeCmd(type::Block, Op::PhiBlock);
+  cmd.phi_block_ = Cmd::PhiBlock::Make(raw_ptr);
+  return std::pair(cmd_index, raw_ptr);
+}
+
 std::pair<CmdIndex, base::vector<IR::Val> *> Phi(const type::Type *t) {
   CmdIndex cmd_index{
       BasicBlock::Current,
@@ -1122,6 +1152,8 @@ void Cmd::dump(size_t indent) const {
     case Op::SetReturnModule: std::cerr << "set-ret-module"; break;
     case Op::SetReturnGeneric: std::cerr << "set-ret-generic"; break;
     case Op::SetReturnBlock: std::cerr << "set-ret-block"; break;
+    case Op::PhiBool: std::cerr << "phi-bool"; break; // TODO
+    case Op::PhiBlock: std::cerr << "phi-block"; break; // TODO
     case Op::Phi:
       std::cerr << "phi";
       for (const auto &arg : *phi_.args_) {

@@ -63,6 +63,7 @@ enum class Op : char {
   BlockSeq, BlockSeqContains,
 
   Call, CastIntToReal, CastPtr,
+  PhiBool, PhiBlock,
   Phi,
 
   AddCodeBlock,  // TODO remove codeblock
@@ -70,17 +71,14 @@ enum class Op : char {
   // clang-format on
 };
 
+struct GenericPhiArgs : public base::Cast<GenericPhiArgs> {
+  virtual ~GenericPhiArgs() {}
+};
 template <typename T>
-struct RegisterOr {
-  static_assert(!std::is_same_v<Register, T>);
-  RegisterOr(Register reg) : reg_(reg), is_reg_(true) {}
-  RegisterOr(T val) : val_(val), is_reg_(false) {}
-
-  union {
-    Register reg_;
-    T val_;
-  };
-  bool is_reg_;
+struct PhiArgs : GenericPhiArgs {
+  ~PhiArgs() override {}
+  base::vector<BlockIndex> blocks_;
+  base::vector<RegisterOr<T>> vals_;
 };
 
 struct Cmd {
@@ -252,6 +250,8 @@ struct Cmd {
     LongArgs *long_args_;
   };
 
+  CMD(PhiBool) { PhiArgs<bool> *args_; };
+  CMD(PhiBlock) { PhiArgs<BlockSequence> *args_; };
   CMD(Phi) { base::vector<Val> *args_; };
 
   CMD(CondJump) {
@@ -461,6 +461,8 @@ struct Cmd {
     Call call_;
     CastIntToReal cast_int_to_real_;
     CastPtr cast_ptr_;
+    PhiBool phi_bool_;
+    PhiBlock phi_block_;
     Phi phi_;
 
     BlockSeq block_seq_;
@@ -620,6 +622,16 @@ Val Cast(const type::Type *to, const Val& v, Context* ctx);
 void Store(const Val &val, const Val &loc);
 
 void SetReturn(size_t n, Val v2);
+
+std::pair<CmdIndex, PhiArgs<bool> *> PhiBool();
+std::pair<CmdIndex, PhiArgs<BlockSequence> *> PhiBlock();
+
+template <typename T>
+std::pair<CmdIndex, PhiArgs<T> *> PhiCmd() {
+  if constexpr (std::is_same_v<T, bool>) { return PhiBool(); }
+  if constexpr (std::is_same_v<T, BlockSequence>) { return PhiBlock(); }
+}
+
 std::pair<CmdIndex, base::vector<IR::Val> *> Phi(const type::Type *t);
 
 Val AddCodeBlock(const Val& v1, const Val& v2);

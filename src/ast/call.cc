@@ -97,23 +97,27 @@ static IR::Val EmitVariantMatch(const IR::Val &needle,
     // other.
     auto landing = IR::Func::Current->AddBlock();
 
-    base::vector<IR::Val> phi_args;
-    phi_args.reserve(2 * haystack->as<type::Variant>().size() + 2);
+    base::vector<IR::BlockIndex> phi_blocks;
+    phi_blocks.reserve(haystack->as<type::Variant>().size() + 1);
+    base::vector<IR::RegisterOr<bool>> phi_vals;
+    phi_vals.reserve(haystack->as<type::Variant>().size() + 1);
     for (const type::Type *v : haystack->as<type::Variant>().variants_) {
-      phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
-      phi_args.push_back(IR::Val::Bool(true));
+      phi_blocks.push_back(IR::BasicBlock::Current);
+      phi_vals.push_back(true);
 
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           landing, IR::Eq(IR::Val::Type(v), runtime_type));
     }
 
-    phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
-    phi_args.push_back(IR::Val::Bool(false));
+    phi_blocks.push_back(IR::BasicBlock::Current);
+    phi_vals.push_back(false);
+
     IR::UncondJump(landing);
 
     IR::BasicBlock::Current = landing;
-    auto[phi, args]         = IR::Phi(type::Bool);
-    *args                   = std::move(phi_args);
+    auto[phi, args]         = IR::PhiCmd<bool>();
+    args->blocks_           = std::move(phi_blocks);
+    args->vals_             = std::move(phi_vals);
     return IR::Func::Current->Command(phi).reg();
 
   } else {

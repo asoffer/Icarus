@@ -307,8 +307,12 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
     auto land_block = IR::Func::Current->AddBlock();
-    base::vector<IR::Val> phi_args;
-    phi_args.reserve(2 * exprs.size());
+
+    base::vector<IR::BlockIndex> phi_blocks;
+    phi_blocks.reserve(exprs.size());
+    base::vector<IR::RegisterOr<bool>> phi_vals;
+    phi_vals.reserve(exprs.size());
+
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       auto val = exprs[i]->EmitIR(ctx)[0];
@@ -316,19 +320,22 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       auto next_block = IR::Func::Current->AddBlock();
       IR::CondJump(val, is_or ? land_block : next_block,
                    is_or ? next_block : land_block);
-      phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
-      phi_args.push_back(IR::Val::Bool(is_or));
+      phi_blocks.push_back(IR::BasicBlock::Current);
+      phi_vals.push_back(is_or);
 
       IR::BasicBlock::Current = next_block;
     }
 
-    phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
-    phi_args.push_back(exprs.back()->EmitIR(ctx)[0]);
+    phi_blocks.push_back(IR::BasicBlock::Current);
+    phi_vals.push_back(exprs.back()->EmitIR(ctx)[0].reg_or<bool>());
     IR::UncondJump(land_block);
 
     IR::BasicBlock::Current = land_block;
-    auto[phi, args]         = IR::Phi(type::Bool);
-    *args                   = std::move(phi_args);
+
+    auto[phi, args]         = IR::PhiCmd<bool>();
+    args->blocks_           = std::move(phi_blocks);
+    args->vals_             = std::move(phi_vals);
+
     return {IR::Func::Current->Command(phi).reg()};
 
   } else {
@@ -339,32 +346,36 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       return {val};
 
     } else {
-      base::vector<IR::Val> phi_args;
+      base::vector<IR::BlockIndex> phi_blocks;
+      base::vector<IR::RegisterOr<bool>> phi_vals;
+
       auto lhs_ir     = exprs.front()->EmitIR(ctx)[0];
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
         auto rhs_ir = exprs[i + 1]->EmitIR(ctx)[0];
         IR::Val cmp = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
 
-        phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
-        phi_args.push_back(IR::Val::Bool(false));
+        phi_blocks.push_back(IR::BasicBlock::Current);
+        phi_vals.push_back(false);
         auto next_block = IR::Func::Current->AddBlock();
         IR::CondJump(cmp, next_block, land_block);
         IR::BasicBlock::Current = next_block;
-        lhs_ir             = rhs_ir;
+        lhs_ir                  = rhs_ir;
       }
 
       // Once more for the last element, but don't do a conditional jump.
       auto rhs_ir = exprs.back()->EmitIR(ctx)[0];
       auto last_cmp =
           EmitChainOpPair(this, exprs.size() - 2, lhs_ir, rhs_ir, ctx);
-      phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
-      phi_args.push_back(last_cmp);
+      phi_blocks.push_back(IR::BasicBlock::Current);
+      phi_vals.emplace_back(last_cmp.reg_or<bool>());
       IR::UncondJump(land_block);
 
       IR::BasicBlock::Current = land_block;
-      auto[phi, args]         = IR::Phi(type::Bool);
-      *args                   = std::move(phi_args);
+
+      auto[phi, args] = IR::PhiCmd<bool>();
+      args->blocks_           = std::move(phi_blocks);
+      args->vals_             = std::move(phi_vals);
       return {IR::Func::Current->Command(phi).reg()};
     }
   }

@@ -593,24 +593,10 @@ BlockIndex ExecContext::ExecuteCmd(const Cmd &cmd) {
       std::vector<Val> resolved_args;
       resolved_args.reserve(ASSERT_NOT_NULL(cmd.block_seq_.args_)->size());
       for (auto const &arg : *cmd.block_seq_.args_) {
-        if (auto *r = std::get_if<Register>(&arg.value)) {
-          if (cmd.type == type::Bool) {
-            resolved_args.push_back(IR::Val::Bool(resolve<bool>(*r)));
-          } else if (cmd.type == type::Char) {
-            resolved_args.push_back(IR::Val::Char(resolve<char>(*r)));
-          } else if (cmd.type == type::Int) {
-            resolved_args.push_back(IR::Val::Int(resolve<i32>(*r)));
-          } else if (cmd.type == type::Real) {
-            resolved_args.push_back(IR::Val::Real(resolve<double>(*r)));
-          } else if (cmd.type->is<type::Pointer>()) {
-            resolved_args.push_back(IR::Val::Addr(
-                resolve<IR::Addr>(*r), cmd.type->as<type::Pointer>().pointee));
-          } else {
-            NOT_YET(cmd.type->to_string());
-          }
-        } else {
-          resolved_args.push_back(arg);
-        }
+        auto *r = std::get_if<Register>(&arg.value);
+        resolved_args.push_back(
+            (r == nullptr) ? arg
+                           : IR::Val::BlockSeq(resolve<BlockSequence>(*r)));
       }
       save(std::get<BlockSequence>(MakeBlockSeq(resolved_args).value));
     } break;
@@ -708,6 +694,24 @@ BlockIndex ExecContext::ExecuteCmd(const Cmd &cmd) {
       StoreValue(resolve(cmd.store_addr_.val_),
                  resolve<IR::Addr>(cmd.store_addr_.addr_), &stack_);
       break;
+    case Op::PhiBlock: {
+      size_t i         = 0;
+      auto const *args = cmd.phi_block_.args_;
+      for (; i < args->blocks_.size(); ++i) {
+        if (call_stack.top().prev_ == args->blocks_[i]) { break; }
+      }
+      ASSERT(i < args->blocks_.size());
+      save(resolve(args->vals_[i]));
+    } break;
+    case Op::PhiBool: {
+      size_t i         = 0;
+      auto const *args = cmd.phi_bool_.args_;
+      for (; i < args->blocks_.size(); ++i) {
+        if (call_stack.top().prev_ == args->blocks_[i]) { break; }
+      }
+      ASSERT(i < args->blocks_.size());
+      save(resolve(args->vals_[i]));
+    } break;
     case Op::Phi: {
       std::vector<Val> resolved_args;
       resolved_args.reserve(ASSERT_NOT_NULL(cmd.phi_.args_)->size());
