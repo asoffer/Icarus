@@ -18,12 +18,12 @@ struct vector : public std::vector<Ts...> {
   vector(std::initializer_list<value_type> init)
       : VecT(std::forward<std::initializer_list<value_type>>(init)) {}
 
-  value_type& at(size_t pos) {
+  typename VecT::reference at(size_t pos) {
     if (pos >= this->size()) std::abort();
     return VecT::at(pos);
   }
 
-  const value_type& at(size_t pos) const {
+  typename VecT::const_reference at(size_t pos) const {
     if (pos >= this->size()) std::abort();
     return VecT::at(pos);
   }

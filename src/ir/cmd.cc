@@ -872,7 +872,9 @@ std::pair<CmdIndex, base::vector<IR::Val> *> Phi(const type::Type *t) {
 }
 
 Val Call(const Val &fn, std::unique_ptr<LongArgs> long_args) {
+  ASSERT(long_args->types_ == nullptr);
   ASSERT(fn.type, Is<type::Function>());
+  long_args->types_ = &fn.type->as<type::Function>().input;
   // TODO either fix the output type here or do it at the execution site.
   // Not sure which makes sense. "Fix" means that if a function returns a
   // struct or has multiple return values, we actually need to represent
@@ -891,11 +893,11 @@ Val Call(const Val &fn, std::unique_ptr<LongArgs> long_args) {
                    .long_args_.emplace_back(std::move(long_args));
   auto &cmd = MakeCmd(output_type, Op::Call);
   if (auto *r = std::get_if<Register>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*r, &fn_type, args.get());
+    cmd.call_ = Cmd::Call(*r, args.get());
   } else if (auto *f = std::get_if<Func *>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*f, &fn_type, args.get());
+    cmd.call_ = Cmd::Call(*f, args.get());
   } else if (auto *f = std::get_if<ForeignFn>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*f, &fn_type, args.get());
+    cmd.call_ = Cmd::Call(*f, args.get());
   } else {
     UNREACHABLE();
   }

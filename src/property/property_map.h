@@ -7,7 +7,7 @@
 #include "base/owned_ptr.h"
 #include "base/stale_set.h"
 #include "base/util.h"
-#include "ir/val.h"
+#include "ir/cmd.h"
 
 namespace IR {
 struct BasicBlock;
@@ -119,7 +119,7 @@ struct PropertyMap {
   PropertyMap &operator=(PropertyMap &&p) noexcept = default;
 
   // Make a copy of this map and set the arguments to the values passed in
-  PropertyMap with_args(const base::vector<IR::Val>& args) const;
+  PropertyMap with_args(const IR::LongArgs &) const;
 
   // TODO rename or delete me.
   DefaultProperty<bool> Returns() const;

@@ -33,10 +33,15 @@ Val Val::Block(AST::BlockLiteral *b) {
 }
 
 static base::guarded<std::unordered_set<std::string>> GlobalStringSet;
-Val Val::CharBuf(const std::string &str) {
+std::string_view SaveStringGlobally(std::string const &str) {
   auto handle         = GlobalStringSet.lock();
   auto[iter, success] = handle->insert(str);
-  return Val(type::CharBuf(iter->size()), std::string_view(*iter));
+  return std::string_view(*iter);
+}
+
+Val Val::CharBuf(const std::string &str) {
+  auto sv = SaveStringGlobally(str);
+  return Val(type::CharBuf(sv.size()), sv);
 }
 
 Val Val::Struct() { return Val(type::Type_, new type::Struct); }

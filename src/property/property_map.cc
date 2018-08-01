@@ -1,5 +1,6 @@
 #include "property/property_map.h"
 
+#include "architecture.h"
 #include "ir/func.h"
 
 namespace prop {
@@ -60,24 +61,13 @@ void PropertyMap::refresh() {
           }
         }
       } break;
-                               /*
-      case IR::Op::SetReturn: {
+      case IR::Op::SetReturnBool: {
         auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
-
-        if (const bool *b = std::get_if<bool>(&cmd.args[0].value)) {
-          prop_set.add(std::make_unique<DefaultProperty<bool>>(*b));
-
-        } else if (const IR::Register *reg =
-                       std::get_if<IR::Register>(&cmd.args[0].value)) {
-          if (cmd.args[0].type == type::Bool) {
-            prop_set.add(std::make_unique<DefaultProperty<bool>>());
-          } else {
-            NOT_YET();
-          }
-        } else {
-          LOG << "???";
-        }
-      } break;*/
+        prop_set.add(cmd.set_return_bool_.val_.is_reg_
+                         ? std::make_unique<DefaultProperty<bool>>()
+                         : std::make_unique<DefaultProperty<bool>>(
+                               cmd.set_return_bool_.val_.val_));
+      } break;
       default: NOT_YET(static_cast<int>(cmd.op_code_));
     }
   });
@@ -119,18 +109,29 @@ DefaultProperty<bool> PropertyMap::Returns() const {
   return acc;
 }
 
-PropertyMap PropertyMap::with_args(const base::vector<IR::Val> &args) const {
+PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
   auto copy = *this;
   auto *entry_block = &fn_->block(fn_->entry());
   auto &props       = copy.view_.at(entry_block).view_;
-  for (i32 i = 0; i < static_cast<i32>(args.size()); ++i) {
-    if (args[i].type == type::Bool) {
-      props.at(IR::Register{i})
-          .add(std::make_unique<DefaultProperty<bool>>(
-              std::get<bool>(args[i].value)));
-      copy.stale_entries_.emplace(entry_block, IR::Register{i});
+
+  auto arch = Architecture::InterprettingMachine();
+  size_t offset = 0;
+  size_t index  = 0;
+  while (offset < args.args_.size()) {
+    auto *t = args.types_->at(index);
+    offset  = arch.MoveForwardToAlignment(t, offset);
+    if (t == type::Bool) {
+      props.at(IR::Register(offset))
+          .add(args.is_reg_.at(index)
+                   ? std::make_unique<DefaultProperty<bool>>()
+                   : std::make_unique<DefaultProperty<bool>>(
+                         args.args_.get<bool>(offset)));
+      copy.stale_entries_.emplace(entry_block, IR::Register(offset));
     }
+    ++index;
+    offset += arch.bytes(t);
   }
+
   for (auto &cmd : entry_block->cmds_) {
     copy.stale_entries_.emplace(entry_block, cmd.result);
   }

@@ -13,6 +13,7 @@ namespace IR {
 struct LongArgs {
   void append(const IR::Val &val);
 
+  base::vector<type::Type const *> const *types_ = nullptr;
   base::vector<bool> is_reg_;
   base::untyped_buffer args_{0};
 };
@@ -231,22 +232,18 @@ struct Cmd {
   };
 
   CMD(Call) {
-    Call(Register r, type::Function const *fn_type, LongArgs *args)
-        : reg_(r), which_active_(0x00), fn_type_(fn_type), long_args_(args) {}
-    Call(Func * f, type::Function const *fn_type, LongArgs *args)
-        : fn_(f), which_active_(0x01), fn_type_(fn_type), long_args_(args) {}
-    Call(ForeignFn f, type::Function const *fn_type, LongArgs *args)
-        : foreign_fn_(f),
-          which_active_(0x02),
-          fn_type_(fn_type),
-          long_args_(args) {}
+    Call(Register r, LongArgs * args)
+        : reg_(r), which_active_(0x00), long_args_(args) {}
+    Call(Func * f, LongArgs * args)
+        : fn_(f), which_active_(0x01), long_args_(args) {}
+    Call(ForeignFn f, LongArgs * args)
+        : foreign_fn_(f), which_active_(0x02), long_args_(args) {}
     union {
       Register reg_;
       Func *fn_;
       ForeignFn foreign_fn_;
     };
     char which_active_;
-    type::Function const *fn_type_;
     LongArgs *long_args_;
   };
 

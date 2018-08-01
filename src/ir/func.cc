@@ -144,26 +144,19 @@ void Func::ComputeInvariants() {
 void Func::CheckInvariants() {
   // auto prop_map = prop::PropertyMap(this);
   for (const auto& block : blocks_) {
-    for (const auto& cmd : block.cmds_) {
+    for (const auto &cmd : block.cmds_) {
       if (cmd.op_code_ != Op::Call) { continue; }
-      // Only care about calls to functions known at compile-time (hence
-      // ignoring the register above.
-
-      // TODO fix this after moving call to call_.fn_
-      /*
-      ASSERT(std::holds_alternative<IR::Func *>(cmd.args.back().value));
-      auto *fn = std::get<IR::Func *>(cmd.args.back().value);
-      for (const auto & [ precond, prop_map ] : fn->preconditions_) {
-        // TODO avoid this copy. Pass in some sort of view-type?
-        auto args = cmd.args;
-        args.pop_back();
-        auto prop_copy = prop_map.with_args(args);
+      // TODO what if it's foreign_fn_ or a register? Registers mean it isn't
+      // known at compile-time and therefore can't have preconditions. Foreign
+      // functions maybe can have preconditions?
+      if (cmd.call_.which_active_ != 0x01) { continue; }
+      for (const auto & [ precond, prop_map ] : cmd.call_.fn_->preconditions_) {
+        auto prop_copy = prop_map.with_args(*cmd.call_.long_args_);
         LOG << prop_copy.Returns();
 
         // TODO Insert properties and recompute
-        fn->dump();
+        cmd.call_.fn_->dump();
       }
-      */
     }
   }
 }
