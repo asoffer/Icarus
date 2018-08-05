@@ -51,7 +51,7 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
 
   auto call_args = std::make_unique<IR::LongArgs>();
   call_args->append(id_val);
-  IR::Call(IR::Val::Func(destroy_func_), std::move(call_args));
+  IR::Call(IR::Val::Func(destroy_func_), std::move(call_args), nullptr);
 }
 
 void Enum::EmitDestroy(IR::Val, Context *ctx) const {}
@@ -83,6 +83,6 @@ void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
   }
   auto call_args = std::make_unique<IR::LongArgs>();
   call_args->append(id_val);
-  IR::Call(IR::Val::Func(destroy_func_), std::move(call_args));
+  IR::Call(IR::Val::Func(destroy_func_), std::move(call_args), nullptr);
 }
 }

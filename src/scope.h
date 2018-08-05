@@ -83,7 +83,7 @@ struct FnScope : public ExecScope {
   ~FnScope() final {}
 
   FnScope *Clone() const override { return new FnScope(*this); }
-  type::Function *fn_type  = nullptr;
+  type::Function *fn_type  = nullptr; // TODO deprecate?
   AST::FuncContent *fn_lit = nullptr;
   base::vector<ExecScope *> innards_{1, this};
 };

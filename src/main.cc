@@ -81,8 +81,8 @@ void ScheduleModule(const Source::Name &src) {
 }
 
 namespace backend {
-base::untyped_buffer Execute(IR::Func *fn, const base::untyped_buffer &,
-                             IR::ExecContext *ctx);
+void Execute(IR::Func *fn, const base::untyped_buffer &,
+             const base::vector<IR::Addr> &ret_slots, IR::ExecContext *ctx);
 }
 
 int GenerateCode() {
@@ -113,7 +113,7 @@ int GenerateCode() {
       std::cerr << "No compiled module has a `main` function.\n";
     } else if (!found_errors) {
       IR::ExecContext exec_ctx;
-      backend::Execute(main_fn, base::untyped_buffer(0), &exec_ctx);
+      backend::Execute(main_fn, base::untyped_buffer(0), {}, &exec_ctx);
     }
 #endif
 

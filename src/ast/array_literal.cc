@@ -5,6 +5,7 @@
 #include "error/log.h"
 #include "ir/cmd.h"
 #include "type/array.h"
+#include "type/pointer.h"
 
 namespace AST {
 void ArrayLiteral::assign_scope(Scope *scope) {
@@ -96,7 +97,7 @@ ArrayLiteral *ArrayLiteral::Clone() const {
 
 base::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
-  auto array_val  = IR::Alloca(type);
+  auto array_val  = IR::Val::Reg(IR::Alloca(type), type::Ptr(type));
   auto *data_type = type->as<type::Array>().data_type;
   for (size_t i = 0; i < elems_.size(); ++i) {
     type::EmitMoveInit(data_type, data_type, elems_[i]->EmitIR(ctx)[0],

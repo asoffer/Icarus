@@ -38,7 +38,7 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
         ComputeDestroyWithoutLock(ctx);
         auto call_args = std::make_unique<IR::LongArgs>();
         call_args->append(var);
-        IR::Call(IR::Val::Func(destroy_func_), std::move(call_args));
+        IR::Call(IR::Val::Func(destroy_func_), std::move(call_args), nullptr);
 
         // TODO Architecture dependence?
         auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
@@ -68,7 +68,7 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   auto call_args = std::make_unique<IR::LongArgs>();
   call_args->append(from);
   call_args->append(to);
-  IR::Call(IR::Val::Func(fn), std::move(call_args));
+  IR::Call(IR::Val::Func(fn), std::move(call_args), nullptr);
 }
 
 void Pointer::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
@@ -153,7 +153,7 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   auto call_args = std::make_unique<IR::LongArgs>();
   call_args->append(from);
   call_args->append(to);
-  IR::Call(IR::Val::Func(assign_func), std::move(call_args));
+  IR::Call(IR::Val::Func(assign_func), std::move(call_args), nullptr);
 }
 
 void Function::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,

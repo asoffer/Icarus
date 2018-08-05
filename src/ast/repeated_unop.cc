@@ -1,9 +1,11 @@
 #include "ast/repeated_unop.h"
 
 #include "ast/fn_args.h"
+#include "ast/function_literal.h"
 #include "ast/verify_macros.h"
 #include "context.h"
 #include "ir/func.h"
+#include "scope.h"
 #include "type/all.h"
 
 base::vector<IR::Val> EmitCallDispatch(
@@ -99,6 +101,10 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
   auto arg_vals = args_.EmitIR(ctx);
   switch (op_) {
     case Language::Operator::Return: {
+      size_t offset = 0;
+      auto *fn_scope = ASSERT_NOT_NULL(scope_->ContainingFnScope());
+      auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit);
+      auto *fn_type  = &ASSERT_NOT_NULL(fn_lit->type)->as<type::Function>();
       for (size_t i = 0; i < args_.exprs.size(); ++i) {
         // TODO return type maybe not the same as type actually returned?
         IR::SetReturn(i, arg_vals[i]);

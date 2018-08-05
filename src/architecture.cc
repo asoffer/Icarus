@@ -25,7 +25,7 @@ size_t Architecture::alignment(const type::Type *t) const {
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
       case type::PrimType::Char: return 1;
-      case type::PrimType::Int:
+      case type::PrimType::Int: return 4;
       case type::PrimType::Real:
       case type::PrimType::Type:
       case type::PrimType::NullPtr:
@@ -33,7 +33,8 @@ size_t Architecture::alignment(const type::Type *t) const {
     }
   } else if (t->is<type::CharBuffer>()) {
     // TODO what about utf-16 or utf-32 buffers?
-    return alignment(type::Char);
+    return alignof(std::string_view);
+    // alignment(type::Char);
   } else if (t->is<type::Pointer>()) {
     return ptr_bytes_;
   } else if (t->is<type::Array>()) {
@@ -84,14 +85,14 @@ size_t Architecture::bytes(const type::Type *t) const {
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
       case type::PrimType::Char: return 1;
-      case type::PrimType::Int:
+      case type::PrimType::Int: return 4;
       case type::PrimType::Real:
       case type::PrimType::Type:
       case type::PrimType::NullPtr:
       case type::PrimType::Code: return 8;
     }
   } else if (t->is<type::CharBuffer>()) {
-    return t->as<type::CharBuffer>().length_;
+    return sizeof(std::string_view); // TODO fix me t->as<type::CharBuffer>().length_;
   } else if (t->is<type::Pointer>()) {
     return ptr_bytes_;
   } else if (t->is<type::Array>()) {
@@ -122,7 +123,10 @@ size_t Architecture::bytes(const type::Type *t) const {
 
     return MoveForwardToAlignment(t, num_bytes);
   } else if (t->is<type::Function>()) {
-    return 2 * ptr_bytes_;
+    return 8;  // TODO it's weird that this is 8 and not ptr_bytes_ which may be
+               // larger. On the interpretting machinge, it seems like we aren't
+               // just returning a pointer type but sometimes an actual
+               // IR::Func* which is smaller.
   } else if (t->is<type::Enum>()) {
     return 8; // TODO
   } else if (t->is<type::Flags>()) {

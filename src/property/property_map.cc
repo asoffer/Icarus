@@ -2,6 +2,7 @@
 
 #include "architecture.h"
 #include "ir/func.h"
+#include "type/function.h"
 
 namespace prop {
 FnStateView::FnStateView(IR::Func *fn) {
@@ -118,7 +119,7 @@ PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
   size_t offset = 0;
   size_t index  = 0;
   while (offset < args.args_.size()) {
-    auto *t = args.types_->at(index);
+    auto *t = args.type_->input.at(index);
     offset  = arch.MoveForwardToAlignment(t, offset);
     if (t == type::Bool) {
       props.at(IR::Register(offset))

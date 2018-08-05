@@ -92,7 +92,11 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
   auto call_args = std::make_unique<IR::LongArgs>();
   call_args->append(lhs_ir);
   call_args->append(rhs_ir);
-  return IR::Call(IR::Val::Func(iter->second), std::move(call_args));
+  auto outs = std::make_unique<IR::OutParams>();
+  auto result = outs->AppendReg(type::Bool);
+
+  IR::Call(IR::Val::Func(iter->second), std::move(call_args), std::move(outs));
+  return {result};
 }
 
 static IR::Val ComputeMin(IR::Val x, IR::Val y) {
@@ -229,6 +233,6 @@ call_fn:
   auto call_args = std::make_unique<IR::LongArgs>();
   call_args->append(ptr_to_array);
   call_args->append(new_size);
-  IR::Call(IR::Val::Func(ASSERT_NOT_NULL(resize_func_)), std::move(call_args));
+  IR::Call(IR::Val::Func(ASSERT_NOT_NULL(resize_func_)), std::move(call_args), nullptr);
 }
 }  // namespace type

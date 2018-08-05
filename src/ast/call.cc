@@ -151,8 +151,11 @@ static IR::BlockIndex CallLookupTest(
   return next_binding;
 }
 
-static base::vector<IR::Val> EmitOneCallDispatch(
-    const type::Type *ret_type,
+// We allow overwriting outgoing_regs slots. This will only happen with locally
+// declared registers which means they're all simple and this works as a nice
+// return value.
+static void EmitOneCallDispatch(
+    const type::Type *ret_type, base::vector<IR::Val> *outgoing_regs,
     const base::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
   auto callee = binding.fn_expr_->EmitIR(ctx)[0];
@@ -184,66 +187,62 @@ static base::vector<IR::Val> EmitOneCallDispatch(
 
   ASSERT(binding.fn_expr_->type, Is<type::Function>());
   auto *fn_type = &binding.fn_expr_->type->as<type::Function>();
-  switch (fn_type->output.size()) {
-    case 0: IR::Call(callee, std::move(call_args)); return {};
-    case 1: {
-      if (fn_type->output.at(0)->is_big()) {
-        auto ret_val = IR::Alloca(ret_type);
 
-        if (ret_type->is<type::Variant>()) {
-          call_args->append(IR::VariantValue(fn_type->output.at(0), ret_val));
-          IR::Call(callee, std::move(call_args));
-          IR::Store(IR::Val::Type(fn_type->output.at(0)),
-                    IR::VariantType(ret_val));
-        } else {
-          call_args->append(ret_val);
-          IR::Call(callee, std::move(call_args));
-        }
-        return {ret_val};
-      } else {
-        if (ret_type->is<type::Variant>()) {
-          auto ret_val = IR::Alloca(ret_type);
-          IR::Store(IR::Val::Type(fn_type->output.at(0)),
-                    IR::VariantType(ret_val));
-          IR::Store(IR::Call(callee, std::move(call_args)),
-                    IR::VariantValue(fn_type->output.at(0), ret_val));
-          return {ret_val};
-        } else {
-          return {IR::Call(callee, std::move(call_args))};
-        }
+  base::vector<IR::Val> results;
+  std::unique_ptr<IR::OutParams> outs;
+  if (!fn_type->output.empty()) {
+    outs = std::make_unique<IR::OutParams>();
+
+    auto MakeRegister = [&](type::Type const *ret_type,
+                            type::Type const *expected_ret_type,
+                            IR::Val *out_reg) {
+      // Cases:
+      // 1. I return a small value, and am expected to return the same
+      //    reg return
+      //
+      // 2. I return a big value and am expected to return the same
+      //    pass in a return
+      // 3. I return a variant and am expected to return a variant
+      //    pass in a return
+      //
+      // 4. I return a small value but am expected to return a variant
+      //    pass in a return and fix
+      // 5. I return a big value but am expected to return a variant
+      //    pass in a return and fix
+      //
+      // TODO: This is a lot like PrepareArgument.
+      if (!ret_type->is_big() && !expected_ret_type->is_big()) {
+        outs->AppendReg(expected_ret_type);
+        *out_reg = IR::Val::Reg(outs->outs_.back().reg_, expected_ret_type);
+        return;
       }
-    } break;
-    default: {
-      ASSERT(ret_type, Is<type::Tuple>());
-      const auto &tup_entries = ret_type->as<type::Tuple>().entries_;
-      ASSERT(fn_type->output.size() == tup_entries.size());
 
-      base::vector<IR::Val> ret_vals;
-      ret_vals.reserve(fn_type->output.size());
-      for (auto *entry : tup_entries) { ret_vals.push_back(IR::Alloca(entry)); }
-
-      base::vector<IR::Val> return_args;
-      for (size_t i = 0; i < tup_entries.size(); ++i) {
-        auto *return_type   = fn_type->output.at(i);
-        auto *expected_type = tup_entries.at(i);
-
-        if (return_type->is<type::Variant>()) {
-          call_args->append(ret_vals.at(i));
-        } else {
-          if (expected_type->is<type::Variant>()) {
-            IR::Store(IR::Val::Type(return_type),
-                      IR::VariantType(ret_vals.at(i)));
-            call_args->append(IR::VariantValue(return_type, ret_vals.at(i)));
-          } else {
-            call_args->append(ret_vals.at(i));
-          }
-        }
+      if (ret_type == expected_ret_type || ret_type->is<type::Variant>()) {
+        outs->AppendLoc(std::get<IR::Register>(out_reg->value));
+        return;
       }
-      IR::Call(callee, std::move(call_args));
-      return ret_vals;
+
+      ASSERT(expected_ret_type, Is<type::Variant>());
+      IR::Store(IR::Val::Type(ret_type), IR::VariantType(*out_reg));
+      auto vval = IR::VariantValue(ret_type, *out_reg);
+      outs->AppendLoc(std::get<IR::Register>(vval.value));
+    };
+
+    if (ret_type->is<type::Tuple>()) {
+      ASSERT(ret_type->as<type::Tuple>().entries_.size() ==
+             fn_type->output.size());
+      for (size_t i = 0; i < fn_type->output.size(); ++i) {
+        MakeRegister(fn_type->output.at(i),
+                     ret_type->as<type::Tuple>().entries_.at(i),
+                     &outgoing_regs->at(i));
+      }
+    } else {
+      MakeRegister(fn_type->output.at(0), ret_type, &outgoing_regs->at(0));
     }
   }
-  UNREACHABLE();
+
+  auto *outs_ptr = outs.get();
+  IR::Call(callee, std::move(call_args), std::move(outs));
 }
 
 base::vector<IR::Val> EmitCallDispatch(
@@ -255,9 +254,24 @@ base::vector<IR::Val> EmitCallDispatch(
     expr_map[arg.first] = &arg.second;
   });
 
+  base::vector<IR::Val> out_regs;
+  if (ret_type->is<type::Tuple>()) {
+    out_regs.reserve(ret_type->as<type::Tuple>().entries_.size());
+    for (auto *entry : ret_type->as<type::Tuple>().entries_) {
+      out_regs.push_back(entry->is_big()
+                             ? IR::Val::Reg(IR::Alloca(entry), type::Ptr(entry))
+                             : IR::Val::None());
+    }
+  } else {
+    out_regs.push_back(ret_type->is_big() ? IR::Val::Reg(IR::Alloca(ret_type),
+                                                         type::Ptr(ret_type))
+                                          : IR::Val::None());
+  }
+
   if (dispatch_table.bindings_.size() == 1) {
     const auto & [ call_arg_type, binding ] = *dispatch_table.bindings_.begin();
-    return EmitOneCallDispatch(ret_type, expr_map, binding, ctx);
+    EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
+    return out_regs;
   }
 
   // TODO push void out of here.
@@ -277,11 +291,12 @@ base::vector<IR::Val> EmitCallDispatch(
     const auto & [ call_arg_type, binding ] = *iter;
     auto next_binding = CallLookupTest(args, call_arg_type);
     size_t j          = 0;
-    for (auto &&result :
-         EmitOneCallDispatch(ret_type, expr_map, binding, ctx)) {
+
+    EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
+    for (const auto &result : out_regs) {
       result_phi_args.at(j).push_back(
           IR::Val::BasicBlock(IR::BasicBlock::Current));
-      result_phi_args.at(j).push_back(std::move(result));
+      result_phi_args.at(j).push_back(result);
       ++j;
     }
     ASSERT(j == num_rets);
@@ -292,10 +307,11 @@ base::vector<IR::Val> EmitCallDispatch(
 
   const auto & [ call_arg_type, binding ] = *iter;
   size_t j                                = 0;
-  for (auto &&result : EmitOneCallDispatch(ret_type, expr_map, binding, ctx)) {
+  EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
+  for (const auto &result : out_regs) {
     result_phi_args.at(j).push_back(
         IR::Val::BasicBlock(IR::BasicBlock::Current));
-    result_phi_args.at(j).push_back(std::move(result));
+    result_phi_args.at(j).push_back(result);
     ++j;
   }
   ASSERT(j == num_rets);
@@ -518,7 +534,14 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
       for (const auto &arg : args_.pos_[0]->EmitIR(ctx)) {
         call_args->append(arg);
       }
-      return {IR::Call(fn_val, std::move(call_args))};
+
+      auto *out_type = fn_->type->as<type::Function>().output.at(0);
+      ASSERT(!out_type->is_big());
+
+      auto outs = std::make_unique<IR::OutParams>();
+      auto reg = outs->AppendReg(out_type);
+      IR::Call(fn_val, std::move(call_args), std::move(outs));
+      return {reg};
 
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       args_.pos_[0]

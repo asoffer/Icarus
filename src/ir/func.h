@@ -44,9 +44,7 @@ struct Func {
   void ComputeInvariants();
   void CheckInvariants();
 
-  const std::string name() const {
-    return std::to_string(reinterpret_cast<uintptr_t>(this));
-  }
+  std::string name() const;
 
   int ValidateCalls(std::queue<Func *> *validation_queue) const;
 

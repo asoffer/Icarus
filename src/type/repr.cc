@@ -44,7 +44,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
 
     auto call_args = std::make_unique<IR::LongArgs>();
     call_args->append(val);
-    IR::Call(IR::Val::Func(repr_func_), std::move(call_args));
+    IR::Call(IR::Val::Func(repr_func_), std::move(call_args), nullptr);
   } break;
 
   case PrimType::Bool:
@@ -111,7 +111,7 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
 
   auto call_args = std::make_unique<IR::LongArgs>();
   call_args->append(val);
-  IR::Call(IR::Val::Func(repr_func_), std::move(call_args));
+  IR::Call(IR::Val::Func(repr_func_), std::move(call_args), nullptr);
 }
 
 // TODO print something friendlier
@@ -157,7 +157,7 @@ void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
 
   auto call_args = std::make_unique<IR::LongArgs>();
   call_args->append(id_val);
-  IR::Call(IR::Val::Func(repr_func_), std::move(call_args));
+  IR::Call(IR::Val::Func(repr_func_), std::move(call_args), nullptr);
 }
 
 void Function::EmitRepr(IR::Val, Context *ctx) const { UNREACHABLE(); }

@@ -28,6 +28,7 @@ struct BasicBlock {
   // (which I should have through other means)
   base::vector<std::unique_ptr<base::vector<IR::Val>>> call_args_;
   base::vector<std::unique_ptr<LongArgs>> long_args_;
+  base::vector<std::unique_ptr<OutParams>> outs_;
   base::vector<std::unique_ptr<GenericPhiArgs>> phi_args_;
 };
 }  // namespace IR

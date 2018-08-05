@@ -56,8 +56,8 @@ struct ExecContext {
 
   std::stack<Frame> call_stack;
 
-  BlockIndex ExecuteBlock();
-  BlockIndex ExecuteCmd(const Cmd &cmd);
+  BlockIndex ExecuteBlock(const base::vector<IR::Addr> &ret_slots);
+  BlockIndex ExecuteCmd(const Cmd &cmd, const base::vector<IR::Addr> &ret_slots);
 
   template <typename T>
   T resolve(Register val) const;

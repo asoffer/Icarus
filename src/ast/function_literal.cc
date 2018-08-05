@@ -11,6 +11,7 @@
 #include "error/log.h"
 #include "ir/func.h"
 #include "module.h"
+#include "type/pointer.h"
 #include "type/function.h"
 #include "type/tuple.h"
 #include "type/type.h"
@@ -394,6 +395,7 @@ base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
     ir_func_ = ctx->mod_->AddFunc(this, std::move(args));
     ctx->mod_->to_complete_.push(this);
   }
+
   return {IR::Val::Func(ir_func_)};
 }
 
@@ -448,7 +450,8 @@ void GeneratedFunction::CompleteBody(Module *mod) {
         if (decl->addr == IR::Val::None()) {
           // TODO this test isn't perfect and needs to change (c.f. const
           // arguments?)
-          decl->addr = IR::Alloca(decl->type);
+          decl->addr =
+              IR::Val::Reg(IR::Alloca(decl->type), type::Ptr(decl->type));
         }
       });
     }

@@ -12,10 +12,32 @@ struct Function;
 namespace IR {
 struct LongArgs {
   void append(const IR::Val &val);
+  std::string to_string() const;
 
-  base::vector<type::Type const *> const *types_ = nullptr;
+  type::Function const *type_ = nullptr;
   base::vector<bool> is_reg_;
   base::untyped_buffer args_{0};
+};
+
+
+// Represents an output parameter. The boolean value denotes whether the
+// register is a register to be filled with the value, or it is the address to
+// which the value should be written.
+struct OutParam {
+  OutParam(Register reg, bool is_loc) : reg_(reg), is_loc_(is_loc) {}
+  OutParam(const OutParam &) noexcept = default;
+  OutParam(OutParam &&) noexcept      = default;
+  OutParam &operator=(const OutParam &) noexcept = default;
+  OutParam &operator=(OutParam &&) noexcept = default;
+
+  Register reg_;
+  bool is_loc_;
+};
+
+struct OutParams {
+  Val AppendReg(type::Type const *);
+  void AppendLoc(Register reg) { outs_.emplace_back(reg, true); }
+  base::vector<OutParam> outs_;
 };
 
 enum class Op : char {
@@ -232,12 +254,12 @@ struct Cmd {
   };
 
   CMD(Call) {
-    Call(Register r, LongArgs * args)
-        : reg_(r), which_active_(0x00), long_args_(args) {}
-    Call(Func * f, LongArgs * args)
-        : fn_(f), which_active_(0x01), long_args_(args) {}
-    Call(ForeignFn f, LongArgs * args)
-        : foreign_fn_(f), which_active_(0x02), long_args_(args) {}
+    Call(Register r, LongArgs * args, OutParams * outs)
+        : reg_(r), which_active_(0x00), long_args_(args), outs_(outs) {}
+    Call(Func * f, LongArgs * args, OutParams * outs)
+        : fn_(f), which_active_(0x01), long_args_(args), outs_(outs) {}
+    Call(ForeignFn f, LongArgs * args, OutParams * outs)
+        : foreign_fn_(f), which_active_(0x02), long_args_(args), outs_(outs) {}
     union {
       Register reg_;
       Func *fn_;
@@ -245,6 +267,7 @@ struct Cmd {
     };
     char which_active_;
     LongArgs *long_args_;
+    OutParams *outs_;
   };
 
   CMD(PhiBool) { PhiArgs<bool> *args_; };
@@ -271,73 +294,73 @@ struct Cmd {
   };
 
   CMD(SetReturnBool) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<bool> val_;
   };
 
   CMD(SetReturnChar) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<char> val_;
   };
 
   CMD(SetReturnInt) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<i32> val_;
   };
 
   CMD(SetReturnReal) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<double> val_;
   };
 
   CMD(SetReturnType) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<type::Type const *> val_;
   };
 
   CMD(SetReturnEnum) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<EnumVal> val_;
   };
 
   CMD(SetReturnFlags) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<FlagsVal> val_;
   };
 
   CMD(SetReturnAddr) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<IR::Addr> val_;
   };
 
   CMD(SetReturnCharBuf) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<std::string_view> val_;
   };
 
   CMD(SetReturnFunc) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<IR::Func *> val_;
   };
 
   CMD(SetReturnScope) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<AST::ScopeLiteral *> val_;
   };
 
   CMD(SetReturnModule) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<Module const *> val_;
   };
 
   CMD(SetReturnGeneric) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<AST::Function *> val_;
   };
 
 
   CMD(SetReturnBlock) {
-    Register reg_;
+    size_t ret_num_;
     RegisterOr<BlockSequence> val_;
   };
 #undef CMD
@@ -574,7 +597,8 @@ Val PrintEnum(const Val &v);
 Val PrintFlags(const Val &v);
 Val PrintAddr(const Val &v);
 Val PrintCharBuffer(const Val &v);
-Val Call(const Val &fn, std::unique_ptr<LongArgs> long_args);
+void Call(const Val &fn, std::unique_ptr<LongArgs> long_args,
+          std::unique_ptr<IR::OutParams> outs);
 Val Tup(base::vector<IR::Val> vals);
 Val Variant(base::vector<Val> vals);
 void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block);
@@ -598,6 +622,7 @@ void SetReturnGeneric(size_t n, const Val &v2);
 void SetReturnBlock(size_t n, const Val &v2);
 
 Val Load(const Val& v);
+
 Val Add(const Val& v1, const Val& v2);
 Val Sub(const Val &v1, const Val &v2);
 Val Mul(const Val &v1, const Val &v2);
@@ -613,7 +638,7 @@ Val Xor(const Val &v1, const Val &v2);
 Val Or(const Val &v1, const Val &v2);
 Val And(const Val &v1, const Val &v2);
 Val Index(const Val &v1, const Val &v2);
-Val Alloca(const type::Type *t);
+Register Alloca(const type::Type *t);
 Val Print(const Val& v);
 Val Cast(const type::Type *to, const Val& v, Context* ctx);
 void Store(const Val &val, const Val &loc);

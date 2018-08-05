@@ -37,6 +37,11 @@ struct untyped_buffer {
     return result;
   }
 
+  void *raw(size_t offset) {
+    ASSERT(offset <= size_);
+    return data_ + offset;
+  }
+
   template <typename T>
   void set(size_t offset, const T &t) {
     static_assert(std::is_trivially_copyable_v<T>);
@@ -47,6 +52,10 @@ struct untyped_buffer {
   template <typename T>
   void append(const T &t) {
     size_t old_size = size_;
+
+    // TODO combine with Architecture::MoveForwardToAlignment?
+    size_ = ((size_ - 1) | (alignof(T) - 1)) + 1;
+
     append_bytes(sizeof(T));
     set(old_size, t);
   }

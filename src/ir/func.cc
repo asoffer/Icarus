@@ -161,4 +161,18 @@ void Func::CheckInvariants() {
   }
 }
 
-} // namespace IR
+void Func::dump() const {
+  std::cerr << name() << ": " << type_->to_string();
+  for (size_t i = 0; i < blocks_.size(); ++i) {
+    std::cerr << "\n block #" << i << std::endl;
+    blocks_[i].dump(2);
+  }
+}
+
+std::string Func::name() const {
+  std::stringstream ss;
+  ss << this;
+  return ss.str();
+}
+
+}  // namespace IR

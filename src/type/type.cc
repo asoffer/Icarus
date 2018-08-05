@@ -126,7 +126,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     call_args->append(to_var);
     IR::Call(ArrayInitializationWith<EmitCopyInit>(&from_type->as<Array>(),
                                                    &to_type->as<Array>(), ctx),
-             std::move(call_args));
+             std::move(call_args), nullptr);
 
   } else if (to_type->is<Struct>()) {
     ASSERT(to_type == from_type);
@@ -135,7 +135,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     call_args->append(to_var);
     IR::Call(
         StructInitializationWith<EmitCopyInit>(&to_type->as<Struct>(), ctx),
-        std::move(call_args));
+        std::move(call_args), nullptr);
 
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
@@ -164,7 +164,7 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
       call_args->append(to_var);
       IR::Call(ArrayInitializationWith<EmitMoveInit>(
                    &from_type->as<Array>(), &to_type->as<Array>(), ctx),
-               std::move(call_args));
+               std::move(call_args), nullptr);
     } else {
       IR::Store(IR::Load(IR::ArrayLength(from_val)), IR::ArrayLength(to_var));
       IR::Store(IR::Load(IR::ArrayData(from_val)), IR::ArrayData(to_var));
@@ -181,7 +181,7 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     call_args->append(to_var);
     IR::Call(
         StructInitializationWith<EmitMoveInit>(&to_type->as<Struct>(), ctx),
-        std::move(call_args));
+        std::move(call_args), nullptr);
   } else if (to_type->is<Function>()) {
     NOT_YET();
   } else if (to_type->is<Variant>()) {
