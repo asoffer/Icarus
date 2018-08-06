@@ -53,21 +53,21 @@ struct untyped_buffer {
   void append(const T &t) {
     size_t old_size = size_;
 
-    // TODO combine with Architecture::MoveForwardToAlignment?
-    size_ = ((size_ - 1) | (alignof(T) - 1)) + 1;
-
-    append_bytes(sizeof(T));
+    append_bytes(sizeof(T), alignof(T));
     set(old_size, t);
   }
 
   void write(size_t offset, const base::untyped_buffer &buf) {
-    append_bytes(buf.size());
+    append_bytes(buf.size(), 1);
     std::memcpy(data_ + offset, buf.data_, buf.size_);
   }
 
-  void append_bytes(size_t num) {
-    if (size_ + num > capacity_) { reallocate(size_ + num); }
-    size_ += num;
+  void append_bytes(size_t num, size_t alignment) {
+    // TODO combine with Architecture::MoveForwardToAlignment?
+    size_t new_size = ((size_ - 1) | (alignment - 1)) + 1 + num;
+
+    if (new_size > capacity_) { reallocate(new_size); }
+    size_ = new_size;
   }
 
  private:

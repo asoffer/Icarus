@@ -399,14 +399,20 @@ Val OutParams::AppendReg(type::Type const *t) {
   return IR::Val::Reg(reg, t);
 }
 
-extern Val MakeBlockSeq(const base::vector<Val> &blocks);
+BlockSequence MakeBlockSeq(const base::vector<IR::BlockSequence> &blocks);
 
 Val BlockSeq(const base::vector<Val> &blocks) {
   if (std::all_of(blocks.begin(), blocks.end(), [](const IR::Val &v) {
         return std::holds_alternative<IR::BlockSequence>(v.value);
       })) {
-    return MakeBlockSeq(blocks);
+    std::vector<IR::BlockSequence> block_seqs;
+    block_seqs.reserve(blocks.size());
+    for (const auto &val : blocks) {
+      block_seqs.push_back(std::get<IR::BlockSequence>(val.value));
+    }
+    return IR::Val::BlockSeq(MakeBlockSeq(block_seqs));
   }
+
   auto &cmd  = MakeCmd(blocks.back().type, Op::BlockSeq);
   auto &args = Func::Current->block(BasicBlock::Current)
                    .call_args_.emplace_back(

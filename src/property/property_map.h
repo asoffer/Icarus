@@ -6,6 +6,7 @@
 
 #include "base/owned_ptr.h"
 #include "base/stale_set.h"
+#include "base/hash.h"
 #include "base/util.h"
 #include "ir/cmd.h"
 
@@ -23,8 +24,8 @@ struct Property : public base::Cast<Property> {
 
 template <typename T>
 struct DefaultProperty : public Property {
-  DefaultProperty<T>* Clone() const override {}
-  std::string to_string() const override = 0;
+  DefaultProperty<T> *Clone() const override = 0;
+  std::string to_string() const override     = 0;
 };
 
 template <>
@@ -101,10 +102,7 @@ namespace std {
 template <>
 struct hash<prop::Entry> {
   size_t operator()(const prop::Entry &e) const {
-    size_t seed = 0x9e3779b97f681513ull;
-    base::hash_combine(seed, e.viewing_block_);
-    base::hash_combine(seed, e.reg_);
-    return seed;
+    return base::hash_args(e.viewing_block_, e.reg_);
   }
 };
 }  // namespace std

@@ -64,7 +64,9 @@ ShowUsage(char *argv0) {
           argv0);
 }
 
+namespace backend {
 extern void ReplEval(AST::Expression *expr);
+}  // namespace backend
 
 base::guarded<base::unordered_map<Source::Name,
                                  std::shared_future<std::unique_ptr<Module>>>>
@@ -82,7 +84,8 @@ void ScheduleModule(const Source::Name &src) {
 
 namespace backend {
 void Execute(IR::Func *fn, const base::untyped_buffer &,
-             const base::vector<IR::Addr> &ret_slots, IR::ExecContext *ctx);
+             const base::vector<IR::Addr> &ret_slots,
+             backend::ExecContext *ctx);
 }
 
 int GenerateCode() {
@@ -112,7 +115,7 @@ int GenerateCode() {
       // TODO make this an actual error?
       std::cerr << "No compiled module has a `main` function.\n";
     } else if (!found_errors) {
-      IR::ExecContext exec_ctx;
+      backend::ExecContext exec_ctx;
       backend::Execute(main_fn, base::untyped_buffer(0), {}, &exec_ctx);
     }
 #endif
@@ -149,7 +152,7 @@ repl_start : {
     } else if (stmt->is<AST::Expression>()) {
       auto *expr = &stmt->as<AST::Expression>();
       expr->assign_scope(ctx.mod_->global_.get());
-      ReplEval(expr);
+      backend::ReplEval(expr);
       fprintf(stderr, "\n");
     } else {
       NOT_YET(*stmt);

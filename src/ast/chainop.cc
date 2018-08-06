@@ -12,18 +12,11 @@
 #include "type/tuple.h"
 
 IR::Val PtrCallFix(const IR::Val& v);
-namespace IR {
-
-IR::Val MakeBlockSeq(const base::vector<IR::Val>&);
-}  // namespace IR
 
 base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
-
-void ForEachExpr(AST::Expression *expr,
-                 const std::function<void(size_t, AST::Expression *)> &fn);
 
 namespace AST {
 namespace {
@@ -303,7 +296,7 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
     base::vector<IR::Val> vals;
     vals.reserve(exprs.size());
     for (auto &expr : exprs) { vals.push_back(expr->EmitIR(ctx)[0]); }
-    return {IR::MakeBlockSeq(vals)};
+    return {IR::BlockSeq(vals)};
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
     auto land_block = IR::Func::Current->AddBlock();

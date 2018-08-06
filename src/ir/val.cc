@@ -32,6 +32,17 @@ Val Val::Block(AST::BlockLiteral *b) {
   return Val::BlockSeq(BlockSequence{&*iter});
 }
 
+BlockSequence MakeBlockSeq(const base::vector<IR::BlockSequence> &blocks) {
+  base::vector<AST::BlockLiteral *> seq;
+  for (const auto &bseq : blocks) {
+    seq.insert(seq.end(), bseq.seq_->begin(), bseq.seq_->end());
+  }
+
+  auto handle         = seqs.lock();
+  auto[iter, success] = handle->insert(std::move(seq));
+  return BlockSequence{&*iter};
+}
+
 static base::guarded<std::unordered_set<std::string>> GlobalStringSet;
 std::string_view SaveStringGlobally(std::string const &str) {
   auto handle         = GlobalStringSet.lock();
@@ -50,20 +61,6 @@ Val Val::BlockSeq(BlockSequence b) {
   ASSERT(b.seq_->size() != 0u);
   auto *t = (b.seq_->back() == nullptr) ? type::Block : b.seq_->back()->type;
   return Val(t, b);
-}
-
-Val MakeBlockSeq(const base::vector<Val> &blocks) {
-  base::vector<AST::BlockLiteral *> seq;
-  seq.reserve(blocks.size());
-  for (const auto &val : blocks) {
-    ASSERT(std::holds_alternative<IR::BlockSequence>(val.value));
-    const auto &bseq = std::get<IR::BlockSequence>(val.value);
-    seq.insert(seq.end(), bseq.seq_->begin(), bseq.seq_->end());
-  }
-
-  auto handle         = seqs.lock();
-  auto[iter, success] = handle->insert(std::move(seq));
-  return Val::BlockSeq(BlockSequence{&*iter});
 }
 
 Val Val::Addr(IR::Addr addr, const type::Type *t) { return Val(Ptr(t), addr); }

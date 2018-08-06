@@ -26,8 +26,6 @@ struct GeneratedFunction;
 }  // namespace AST
 
 
-struct ExecContext;
-
 namespace IR {
 struct Func {
   static Func *Current;

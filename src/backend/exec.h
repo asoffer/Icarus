@@ -10,64 +10,46 @@
 
 namespace IR {
 struct Func;
+}  // namespace IR
 
-// This is basically just a buffer. Why wrap it?
-struct Stack {
-  Stack() = delete;
-  Stack(size_t cap) : buffer_(cap) {}
-
-  template <typename T>
-  T Load(size_t index) const {
-    return buffer_.get<T>(index);
-  }
-
-  template <typename T>
-  void Store(T val, size_t index) {
-    buffer_.set(index, val);
-  }
-
-  IR::Addr Push(const type::Pointer *ptr);
-
-private:
-  base::untyped_buffer buffer_;
-};
-
+namespace backend {
 struct ExecContext {
   ExecContext();
 
   struct Frame {
     Frame() = delete;
-    Frame(Func *fn, const base::untyped_buffer &arguments);
+    Frame(IR::Func *fn, const base::untyped_buffer &arguments);
 
-    void MoveTo(BlockIndex block_index) {
+    void MoveTo(IR::BlockIndex block_index) {
       ASSERT(block_index.value >= 0);
       prev_    = current_;
       current_ = block_index;
     }
 
-    Func *fn_ = nullptr;
-    BlockIndex current_;
-    BlockIndex prev_;
+    IR::Func *fn_ = nullptr;
+    IR::BlockIndex current_;
+    IR::BlockIndex prev_;
 
     base::untyped_buffer regs_;
   };
 
-  BasicBlock &current_block();
+  IR::BasicBlock &current_block();
 
   std::stack<Frame> call_stack;
 
-  BlockIndex ExecuteBlock(const base::vector<IR::Addr> &ret_slots);
-  BlockIndex ExecuteCmd(const Cmd &cmd, const base::vector<IR::Addr> &ret_slots);
+  IR::BlockIndex ExecuteBlock(const base::vector<IR::Addr> &ret_slots);
+  IR::BlockIndex ExecuteCmd(const IR::Cmd &cmd,
+                            const base::vector<IR::Addr> &ret_slots);
 
   template <typename T>
-  T resolve(Register val) const;
+  T resolve(IR::Register val) const;
 
   template <typename T>
-  T resolve(RegisterOr<T> val) const {
+  T resolve(IR::RegisterOr<T> val) const {
     return val.is_reg_ ? resolve<T>(val.reg_) : val.val_;
   }
 
-  Stack stack_;
+  base::untyped_buffer stack_;
 };
-} // namespace IR
-#endif // ICARUS_BACKEND_EXEC_H
+}  // namespace backend
+#endif  // ICARUS_BACKEND_EXEC_H

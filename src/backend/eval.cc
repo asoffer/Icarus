@@ -10,7 +10,7 @@
 
 namespace backend {
 void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
-             const base::vector<IR::Addr> &ret_slots, IR::ExecContext *ctx);
+             const base::vector<IR::Addr> &ret_slots, backend::ExecContext *ctx);
 
 static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
   ASSERT(expr->type != nullptr);
@@ -50,14 +50,14 @@ base::untyped_buffer EvaluateToBuffer(AST::Expression *expr, Context *ctx) {
 
   size_t bytes_needed = Architecture::InterprettingMachine().bytes(expr->type);
   base::untyped_buffer ret_buf(bytes_needed);
-  ret_buf.append_bytes(bytes_needed);
+  ret_buf.append_bytes(bytes_needed, 1);
   base::vector<IR::Addr> ret_slots;
 
   IR::Addr addr;
   addr.kind    = IR::Addr::Kind::Heap;
   addr.as_heap = ret_buf.raw(0);
   ret_slots.push_back(addr);
-  IR::ExecContext exec_context;
+  backend::ExecContext exec_context;
   Execute(fn.get(), base::untyped_buffer(0), ret_slots, &exec_context);
   return ret_buf;
 }

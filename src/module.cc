@@ -7,7 +7,6 @@
 #include "ast/function_literal.h"
 #include "backend/emit.h"
 #include "backend/eval.h"
-#include "backend/exec.h"
 #include "base/guarded.h"
 #include "base/source.h"
 #include "ir/func.h"
