@@ -301,11 +301,7 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
              ops[0] == Language::Operator::Or) {
     auto land_block = IR::Func::Current->AddBlock();
 
-    base::vector<IR::BlockIndex> phi_blocks;
-    phi_blocks.reserve(exprs.size());
-    base::vector<IR::RegisterOr<bool>> phi_vals;
-    phi_vals.reserve(exprs.size());
-
+    base::unordered_map<IR::BlockIndex, IR::Val> phi_args;
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       auto val = exprs[i]->EmitIR(ctx)[0];
@@ -313,23 +309,17 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       auto next_block = IR::Func::Current->AddBlock();
       IR::CondJump(val, is_or ? land_block : next_block,
                    is_or ? next_block : land_block);
-      phi_blocks.push_back(IR::BasicBlock::Current);
-      phi_vals.push_back(is_or);
+      phi_args[IR::BasicBlock::Current] = IR::Val::Bool(is_or);
 
       IR::BasicBlock::Current = next_block;
     }
 
-    phi_blocks.push_back(IR::BasicBlock::Current);
-    phi_vals.push_back(exprs.back()->EmitIR(ctx)[0].reg_or<bool>());
+    phi_args[IR::BasicBlock::Current] = exprs.back()->EmitIR(ctx)[0];
     IR::UncondJump(land_block);
 
     IR::BasicBlock::Current = land_block;
 
-    auto[phi, args]         = IR::PhiCmd<bool>();
-    args->blocks_           = std::move(phi_blocks);
-    args->vals_             = std::move(phi_vals);
-
-    return {IR::Func::Current->Command(phi).reg()};
+    return {IR::MakePhi(IR::Phi(exprs[0]->type), phi_args)};
 
   } else {
     if (ops.size() == 1) {
@@ -339,17 +329,14 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       return {val};
 
     } else {
-      base::vector<IR::BlockIndex> phi_blocks;
-      base::vector<IR::RegisterOr<bool>> phi_vals;
-
+      base::unordered_map<IR::BlockIndex, IR::Val> phi_args;
       auto lhs_ir     = exprs.front()->EmitIR(ctx)[0];
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
         auto rhs_ir = exprs[i + 1]->EmitIR(ctx)[0];
         IR::Val cmp = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
 
-        phi_blocks.push_back(IR::BasicBlock::Current);
-        phi_vals.push_back(false);
+        phi_args[IR::BasicBlock::Current] = IR::Val::Bool(false);
         auto next_block = IR::Func::Current->AddBlock();
         IR::CondJump(cmp, next_block, land_block);
         IR::BasicBlock::Current = next_block;
@@ -360,16 +347,12 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       auto rhs_ir = exprs.back()->EmitIR(ctx)[0];
       auto last_cmp =
           EmitChainOpPair(this, exprs.size() - 2, lhs_ir, rhs_ir, ctx);
-      phi_blocks.push_back(IR::BasicBlock::Current);
-      phi_vals.emplace_back(last_cmp.reg_or<bool>());
+      phi_args[IR::BasicBlock::Current] = last_cmp;
       IR::UncondJump(land_block);
 
       IR::BasicBlock::Current = land_block;
 
-      auto[phi, args] = IR::PhiCmd<bool>();
-      args->blocks_           = std::move(phi_blocks);
-      args->vals_             = std::move(phi_vals);
-      return {IR::Func::Current->Command(phi).reg()};
+      return {IR::MakePhi(IR::Phi(type::Bool), phi_args)};
     }
   }
 }

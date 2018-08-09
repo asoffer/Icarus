@@ -42,6 +42,7 @@ struct OutParams {
 
 enum class Op : char {
   // clang-format off
+  Death,
   Trunc, Extend,
   Bytes, Align,
   Not,
@@ -86,8 +87,7 @@ enum class Op : char {
   BlockSeq, BlockSeqContains,
 
   Call, CastIntToReal, CastPtr,
-  PhiBool, PhiBlock,
-  Phi,
+  PhiBool, PhiChar, PhiInt, PhiReal, PhiType, PhiBlock,
 
   AddCodeBlock,  // TODO remove codeblock
   Contextualize,
@@ -100,8 +100,7 @@ struct GenericPhiArgs : public base::Cast<GenericPhiArgs> {
 template <typename T>
 struct PhiArgs : GenericPhiArgs {
   ~PhiArgs() override {}
-  base::vector<BlockIndex> blocks_;
-  base::vector<RegisterOr<T>> vals_;
+  std::unordered_map<BlockIndex, RegisterOr<T>> map_;
 };
 
 struct Cmd {
@@ -271,8 +270,11 @@ struct Cmd {
   };
 
   CMD(PhiBool) { PhiArgs<bool> *args_; };
+  CMD(PhiChar) { PhiArgs<char> *args_; };
+  CMD(PhiInt) { PhiArgs<i32> *args_; };
+  CMD(PhiReal) { PhiArgs<double> *args_; };
+  CMD(PhiType) { PhiArgs<type::Type const *> *args_; };
   CMD(PhiBlock) { PhiArgs<BlockSequence> *args_; };
-  CMD(Phi) { base::vector<Val> *args_; };
 
   CMD(CondJump) {
     Register cond_;
@@ -482,8 +484,11 @@ struct Cmd {
     CastIntToReal cast_int_to_real_;
     CastPtr cast_ptr_;
     PhiBool phi_bool_;
+    PhiChar phi_char_;
+    PhiInt phi_int_;
+    PhiReal phi_real_;
+    PhiType phi_type_;
     PhiBlock phi_block_;
-    Phi phi_;
 
     BlockSeq block_seq_;
     BlockSeqContains block_seq_contains_;
@@ -645,16 +650,9 @@ void Store(const Val &val, const Val &loc);
 
 void SetReturn(size_t n, Val v2);
 
-std::pair<CmdIndex, PhiArgs<bool> *> PhiBool();
-std::pair<CmdIndex, PhiArgs<BlockSequence> *> PhiBlock();
-
-template <typename T>
-std::pair<CmdIndex, PhiArgs<T> *> PhiCmd() {
-  if constexpr (std::is_same_v<T, bool>) { return PhiBool(); }
-  if constexpr (std::is_same_v<T, BlockSequence>) { return PhiBlock(); }
-}
-
-std::pair<CmdIndex, base::vector<IR::Val> *> Phi(const type::Type *t);
+CmdIndex Phi(type::Type const *);
+Val MakePhi(CmdIndex phi_index,
+             const std::unordered_map<BlockIndex, IR::Val> &val_map);
 
 Val AddCodeBlock(const Val& v1, const Val& v2);
 } // namespace IR

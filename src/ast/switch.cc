@@ -5,8 +5,9 @@
 #include <unordered_set>
 #include "ast/verify_macros.h"
 #include "base/util.h"
-#include "type/type.h"
 #include "ir/func.h"
+#include "type/pointer.h"
+#include "type/type.h"
 
 namespace AST {
 std::string Switch::to_string(size_t n) const {
@@ -96,53 +97,8 @@ Switch *Switch::Clone() const {
   return result;
 }
 
-template <typename T>
-static base::vector<IR::Val> EmitTypedIR(AST::Switch *sw, Context *ctx) {
-  base::vector<IR::BlockIndex> phi_blocks;
-  phi_blocks.reserve(sw->cases_.size());
-
-  base::vector<IR::RegisterOr<T>> phi_vals;
-  phi_vals.reserve(sw->cases_.size());
-
-  auto land_block = IR::Func::Current->AddBlock();
-
-  // TODO handle a default value. for now, we're just not checking the very last
-  // condition. This is very wrong.
-  for (size_t i= 0; i < sw->cases_.size() - 1; ++i) {
-    auto & [ expr, cond ] = sw->cases_[i];
-    auto expr_block = IR::Func::Current->AddBlock();
-    auto next_block = IR::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx)[0]);
-
-    IR::BasicBlock::Current = expr_block;
-    auto val                = expr->EmitIR(ctx)[0];
-    phi_blocks.push_back(IR::BasicBlock::Current);
-    phi_vals.push_back(val.reg_or<T>());
-    IR::UncondJump(land_block);
-
-    IR::BasicBlock::Current = next_block;
-  }
-
-  auto val = sw->cases_.back().first->EmitIR(ctx)[0];
-  IR::UncondJump(land_block);
-
-  phi_blocks.push_back(IR::BasicBlock::Current);
-  phi_vals.push_back(val.reg_or<T>());
-
-  IR::BasicBlock::Current = land_block;
-  auto[phi, args]         = IR::PhiCmd<T>();
-  args->blocks_           = std::move(phi_blocks);
-  args->vals_             = std::move(phi_vals);
-
-  return {IR::Func::Current->Command(phi).reg()};
-}
-
 base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
-  if (type == type::Block || type == type::OptBlock) {
-    return {EmitTypedIR<IR::BlockSequence>(this, ctx)};
-  }
-
-  base::vector<IR::Val> phi_args;
-  phi_args.reserve(2 * cases_.size());
+  base::unordered_map<IR::BlockIndex, IR::Val> phi_args;
   auto land_block = IR::Func::Current->AddBlock();
 
   // TODO handle a default value. for now, we're just not checking the very last
@@ -152,26 +108,20 @@ base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
     auto expr_block = IR::Func::Current->AddBlock();
     auto next_block = IR::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx)[0]);
 
-    IR::BasicBlock::Current = expr_block;
-    auto val                = expr->EmitIR(ctx)[0];
-    phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
-    phi_args.push_back(std::move(val));
+    IR::BasicBlock::Current           = expr_block;
+    auto val                          = expr->EmitIR(ctx)[0];
+    phi_args[IR::BasicBlock::Current] = std::move(val);
     IR::UncondJump(land_block);
 
     IR::BasicBlock::Current = next_block;
   }
 
-  auto val = cases_.back().first->EmitIR(ctx)[0];
+  phi_args[IR::BasicBlock::Current] = cases_.back().first->EmitIR(ctx)[0];
   IR::UncondJump(land_block);
 
-  phi_args.push_back(IR::Val::BasicBlock(IR::BasicBlock::Current));
-  phi_args.push_back(std::move(val));
-
   IR::BasicBlock::Current = land_block;
-  auto[phi, args]         = IR::Phi(type);
-  *args                   = std::move(phi_args);
-
-  return {IR::Func::Current->Command(phi).reg()};
+  return {
+      IR::MakePhi(IR::Phi(type->is_big() ? type::Ptr(type) : type), phi_args)};
 }
 
 base::vector<IR::Val> AST::Switch::EmitLVal(Context *ctx) { UNREACHABLE(*this); }

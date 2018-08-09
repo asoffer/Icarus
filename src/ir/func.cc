@@ -146,11 +146,14 @@ void Func::CheckInvariants() {
   for (const auto& block : blocks_) {
     for (const auto &cmd : block.cmds_) {
       if (cmd.op_code_ != Op::Call) { continue; }
-      // TODO what if it's foreign_fn_ or a register? Registers mean it isn't
-      // known at compile-time and therefore can't have preconditions. Foreign
-      // functions maybe can have preconditions?
+      // If it's a register it isn't known at compile time and therefore is not
+      // allowed to have preconditions. If it's a foreign function we also don't
+      // allow preconditions. This can be handled correctly by declaring the
+      // foreign function locally and wrapping it.
       if (cmd.call_.which_active_ != 0x01) { continue; }
+
       for (const auto & [ precond, prop_map ] : cmd.call_.fn_->preconditions_) {
+        precond.dump();
         auto prop_copy = prop_map.with_args(*cmd.call_.long_args_);
         LOG << prop_copy.Returns();
 

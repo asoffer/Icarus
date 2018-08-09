@@ -93,6 +93,10 @@ struct Entry {
   IR::Register reg_;
 };
 
+inline std::ostream &operator<<(std::ostream &os, const Entry &e) {
+  return os << "{" << e.viewing_block_ << ", " << e.reg_.to_string() << "}";
+}
+
 inline bool operator==(const Entry &lhs, const Entry &rhs) {
   return lhs.viewing_block_ == rhs.viewing_block_ && lhs.reg_ == rhs.reg_;
 }

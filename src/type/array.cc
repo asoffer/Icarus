@@ -66,10 +66,14 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
       IR::UncondJump(phi_block);
 
       IR::BasicBlock::Current = phi_block;
-      auto[lhs_phi, lhs_args] = IR::Phi(Ptr(lhs_type->data_type));
-      auto[rhs_phi, rhs_args] = IR::Phi(Ptr(rhs_type->data_type));
-      auto lhs_phi_reg        = IR::Func::Current->Command(lhs_phi).reg();
-      auto rhs_phi_reg        = IR::Func::Current->Command(rhs_phi).reg();
+      auto lhs_phi_index      = IR::Phi(Ptr(lhs_type->data_type));
+      auto rhs_phi_index      = IR::Phi(Ptr(rhs_type->data_type));
+      auto lhs_phi_reg =
+          IR::Val::Reg(IR::Func::Current->Command(lhs_phi_index).result,
+                       Ptr(lhs_type->data_type));
+      auto rhs_phi_reg =
+          IR::Val::Reg(IR::Func::Current->Command(rhs_phi_index).result,
+                       Ptr(rhs_type->data_type));
       IR::CondJump(IR::Eq(lhs_phi_reg, lhs_end), true_block, body_block);
 
       IR::BasicBlock::Current = body_block;
@@ -82,10 +86,10 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
       auto rhs_incr           = IR::PtrIncr(rhs_phi_reg, IR::Val::Int(1));
       IR::UncondJump(phi_block);
 
-      *lhs_args = {IR::Val::BasicBlock(equal_len_block), lhs_start,
-                   IR::Val::BasicBlock(incr_block), lhs_incr};
-      *rhs_args = {IR::Val::BasicBlock(equal_len_block), rhs_start,
-                   IR::Val::BasicBlock(incr_block), rhs_incr};
+      IR::MakePhi(lhs_phi_index,
+                  {{equal_len_block, lhs_start}, {incr_block, lhs_incr}});
+      IR::MakePhi(rhs_phi_index,
+                  {{equal_len_block, rhs_start}, {incr_block, rhs_incr}});
     }
   }
 
@@ -109,18 +113,17 @@ static IR::Val ComputeMin(IR::Val x, IR::Val y) {
   IR::UncondJump(land_block);
 
   IR::BasicBlock::Current = land_block;
-  auto[phi, args]         = IR::Phi(x.type);
-  *args                   = {IR::Val::BasicBlock(x_block), std::move(x),
-           IR::Val::BasicBlock(entry_block), std::move(y)};
-  return IR::Func::Current->Command(phi).reg();
+  return IR::MakePhi(IR::Phi(x.type),
+                     {{x_block, std::move(x)}, {entry_block, std::move(y)}});
 }
 
+// TODO pass funcs by ref
 base::vector<IR::Val> CreateLoop(
     const base::vector<IR::Val> &entry_vals,
     std::function<IR::Val(const base::vector<IR::Val> &)> loop_phi_fn,
     std::function<base::vector<IR::Val>(const base::vector<IR::Val> &)>
         loop_body_fn) {
-  auto entry_block_val = IR::Val::BasicBlock(IR::BasicBlock::Current);
+  auto entry_block = IR::BasicBlock::Current;
 
   auto loop_phi   = IR::Func::Current->AddBlock();
   auto loop_body  = IR::Func::Current->AddBlock();
@@ -129,14 +132,15 @@ base::vector<IR::Val> CreateLoop(
   IR::UncondJump(loop_phi);
   IR::BasicBlock::Current = loop_phi;
 
-  base::vector<base::vector<IR::Val> *> phi_args;
-  phi_args.reserve(entry_vals.size());
   base::vector<IR::Val> phi_vals;
-  phi_vals.reserve(phi_args.size());
+  phi_vals.reserve(entry_vals.size());
+  base::vector<IR::CmdIndex> phi_indices;
+  phi_indices.reserve(entry_vals.size());
   for (const auto &val : entry_vals) {
-    auto[phi, args] = IR::Phi(val.type);
-    phi_args.push_back(args);
-    phi_vals.push_back(IR::Func::Current->Command(phi).reg());
+    phi_vals.push_back(IR::Val::Reg(
+        IR::Func::Current->Command(phi_indices.emplace_back(IR::Phi(val.type)))
+            .result,
+        val.type));
   }
 
   auto exit_cond = loop_phi_fn(phi_vals);
@@ -146,9 +150,9 @@ base::vector<IR::Val> CreateLoop(
   auto new_phis           = loop_body_fn(phi_vals);
   IR::UncondJump(loop_phi);
 
-  auto loop_body_val = IR::Val::BasicBlock(loop_body);
-  for (size_t i = 0; i < phi_args.size(); ++i) {
-    *phi_args[i] = {entry_block_val, entry_vals[i], loop_body_val, new_phis[i]};
+  for (size_t i = 0; i < phi_indices.size(); ++i) {
+    IR::MakePhi(phi_indices[i],
+                {{entry_block, entry_vals[i]}, {loop_body, new_phis[i]}});
   }
 
   IR::BasicBlock::Current = exit_block;

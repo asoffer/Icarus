@@ -452,11 +452,9 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
 
       IR::BasicBlock::Current = land_block;
 
-      auto[phi, args] = IR::PhiCmd<bool>();
-      args->blocks_   = {lhs_end_block, rhs_end_block};
-      args->vals_     = {IR::RegisterOr<bool>(true), rhs_val.reg_or<bool>()};
-
-      return {IR::Func::Current->Command(phi).reg()};
+      return {IR::MakePhi(
+          IR::Phi(type::Bool),
+          {{lhs_end_block, IR::Val::Bool(true)}, {rhs_end_block, rhs_val}})};
     } break;
     case Language::Operator::AndEq: {
       if (type->is<type::Enum>()) {
@@ -479,11 +477,9 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
 
       IR::BasicBlock::Current = land_block;
 
-      auto[phi, args] = IR::PhiCmd<bool>();
-      args->blocks_   = {lhs_end_block, rhs_end_block};
-      args->vals_     = {rhs_val.reg_or<bool>(), false};
-
-      return {IR::Func::Current->Command(phi).reg()};
+      return {IR::MakePhi(
+          IR::Phi(type::Bool),
+          {{lhs_end_block, rhs_val}, {rhs_end_block, IR::Val::Bool(false)}})};
     } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \
   case Language::Operator::op_name##Eq: {                                      \

@@ -97,28 +97,20 @@ static IR::Val EmitVariantMatch(const IR::Val &needle,
     // other.
     auto landing = IR::Func::Current->AddBlock();
 
-    base::vector<IR::BlockIndex> phi_blocks;
-    phi_blocks.reserve(haystack->as<type::Variant>().size() + 1);
-    base::vector<IR::RegisterOr<bool>> phi_vals;
-    phi_vals.reserve(haystack->as<type::Variant>().size() + 1);
+    base::unordered_map<IR::BlockIndex, IR::Val> phi_map;
     for (const type::Type *v : haystack->as<type::Variant>().variants_) {
-      phi_blocks.push_back(IR::BasicBlock::Current);
-      phi_vals.push_back(true);
+      phi_map[IR::BasicBlock::Current] = IR::Val::Bool(true);
 
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           landing, IR::Eq(IR::Val::Type(v), runtime_type));
     }
 
-    phi_blocks.push_back(IR::BasicBlock::Current);
-    phi_vals.push_back(false);
+    phi_map[IR::BasicBlock::Current] = IR::Val::Bool(false);
 
     IR::UncondJump(landing);
 
     IR::BasicBlock::Current = landing;
-    auto[phi, args]         = IR::PhiCmd<bool>();
-    args->blocks_           = std::move(phi_blocks);
-    args->vals_             = std::move(phi_vals);
-    return IR::Func::Current->Command(phi).reg();
+    return {IR::MakePhi(IR::Phi(type::Bool), phi_map)};
 
   } else {
     // TODO actually just implicitly convertible to haystack
@@ -279,10 +271,7 @@ base::vector<IR::Val> EmitCallDispatch(
                         ? ret_type->as<type::Tuple>().entries_.size()
                         : 1;
 
-  base::vector<base::vector<IR::Val>> result_phi_args(num_rets);
-  for (auto &result : result_phi_args) {
-    result.reserve(2 * dispatch_table.bindings_.size());
-  }
+  base::vector<base::unordered_map<IR::BlockIndex, IR::Val>> result_phi_args(num_rets);
 
   auto landing_block = IR::Func::Current->AddBlock();
 
@@ -294,9 +283,7 @@ base::vector<IR::Val> EmitCallDispatch(
 
     EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
     for (const auto &result : out_regs) {
-      result_phi_args.at(j).push_back(
-          IR::Val::BasicBlock(IR::BasicBlock::Current));
-      result_phi_args.at(j).push_back(result);
+      result_phi_args.at(j)[IR::BasicBlock::Current] = result;
       ++j;
     }
     ASSERT(j == num_rets);
@@ -309,9 +296,7 @@ base::vector<IR::Val> EmitCallDispatch(
   size_t j                                = 0;
   EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
   for (const auto &result : out_regs) {
-    result_phi_args.at(j).push_back(
-        IR::Val::BasicBlock(IR::BasicBlock::Current));
-    result_phi_args.at(j).push_back(result);
+    result_phi_args.at(j)[IR::BasicBlock::Current] = result;
     ++j;
   }
   ASSERT(j == num_rets);
@@ -323,12 +308,11 @@ base::vector<IR::Val> EmitCallDispatch(
     case 0: return {};
     case 1:
       if (ret_type == type::Void()) {
-        return base::vector<IR::Val>(1, IR::Val::None());
+        return {IR::Val::None()};
       } else {
-        auto[phi, args] =
-            IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type);
-        *args = std::move(result_phi_args[0]);
-        return base::vector<IR::Val>(1, IR::Func::Current->Command(phi).reg());
+        return {
+            IR::MakePhi(IR::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type),
+                        result_phi_args[0])};
       }
       break;
     default: {
@@ -340,11 +324,10 @@ base::vector<IR::Val> EmitCallDispatch(
         if (single_ret_type == type::Void()) {
           results.push_back(IR::Val::None());
         } else {
-          auto[phi, args] =
+          results.push_back(IR::MakePhi(
               IR::Phi(single_ret_type->is_big() ? Ptr(single_ret_type)
-                                                : single_ret_type);
-          *args = std::move(result_phi_args[i]);
-          results.push_back(IR::Func::Current->Command(phi).reg());
+                                                : single_ret_type),
+              result_phi_args[i]));
         }
       }
       return results;

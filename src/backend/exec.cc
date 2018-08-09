@@ -114,6 +114,8 @@ IR::BlockIndex ExecContext::ExecuteCmd(
   };
 
   switch (cmd.op_code_) {
+    case IR::Op::Death:
+      UNREACHABLE();
     case IR::Op::Trunc:
       save(static_cast<char>(resolve<i32>(cmd.trunc_.reg_)));
       break;
@@ -692,75 +694,24 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       StoreValue(resolve(cmd.store_addr_.val_),
                  resolve<IR::Addr>(cmd.store_addr_.addr_), &stack_);
       break;
-    case IR::Op::PhiBlock: {
-      size_t i         = 0;
-      auto const *args = cmd.phi_block_.args_;
-      for (; i < args->blocks_.size(); ++i) {
-        if (call_stack.top().prev_ == args->blocks_[i]) { break; }
-      }
-      ASSERT(i < args->blocks_.size());
-      save(resolve(args->vals_[i]));
-    } break;
-    case IR::Op::PhiBool: {
-      size_t i         = 0;
-      auto const *args = cmd.phi_bool_.args_;
-      for (; i < args->blocks_.size(); ++i) {
-        if (call_stack.top().prev_ == args->blocks_[i]) { break; }
-      }
-      ASSERT(i < args->blocks_.size());
-      save(resolve(args->vals_[i]));
-    } break;
-    case IR::Op::Phi: {
-      std::vector<IR::Val> resolved_args;
-      resolved_args.reserve(ASSERT_NOT_NULL(cmd.phi_.args_)->size());
-      for (auto const &arg : *cmd.phi_.args_) {
-        if (auto *r = std::get_if<IR::Register>(&arg.value)) {
-          if (cmd.type == type::Bool) {
-            resolved_args.push_back(IR::Val::Bool(resolve<bool>(*r)));
-          } else if (cmd.type == type::Char) {
-            resolved_args.push_back(IR::Val::Char(resolve<char>(*r)));
-          } else if (cmd.type == type::Int) {
-            resolved_args.push_back(IR::Val::Int(resolve<i32>(*r)));
-          } else if (cmd.type == type::Real) {
-            resolved_args.push_back(IR::Val::Real(resolve<double>(*r)));
-          } else if (cmd.type->is<type::Pointer>()) {
-            resolved_args.push_back(IR::Val::Addr(
-                resolve<IR::Addr>(*r), cmd.type->as<type::Pointer>().pointee));
-          } else {
-            NOT_YET(cmd.type->to_string());
-          }
-        } else {
-          resolved_args.push_back(arg);
-        }
-      }
-
-      for (size_t i = 0; i < resolved_args.size(); i += 2) {
-        if (call_stack.top().prev_ ==
-            std::get<IR::BlockIndex>(resolved_args[i].value)) {
-          if (cmd.type == type::Bool) {
-            save(std::get<bool>(resolved_args[i + 1].value));
-          } else if (cmd.type == type::Char) {
-            save(std::get<char>(resolved_args[i + 1].value));
-          } else if (cmd.type == type::Int) {
-            save(std::get<i32>(resolved_args[i + 1].value));
-          } else if (cmd.type == type::Real) {
-            save(std::get<double>(resolved_args[i + 1].value));
-          } else if (cmd.type == type::Type_) {
-            save(std::get<type::Type const *>(resolved_args[i + 1].value));
-          } else if (cmd.type->is<type::Pointer>()) {
-            save(std::get<IR::Addr>(resolved_args[i + 1].value));
-          } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
-            save(std::get<IR::BlockSequence>(resolved_args[i + 1].value));
-          } else {
-            NOT_YET(cmd.type->to_string());
-          }
-          return IR::BlockIndex{-2};
-        }
-      }
-      call_stack.top().fn_->dump();
-      UNREACHABLE("Previous block was ", call_stack.top().prev_,
-                  "\nCurrent block is ", call_stack.top().current_);
-    } break;
+    case IR::Op::PhiBool:
+      save(resolve(cmd.phi_bool_.args_->map_.at(call_stack.top().prev_)));
+      break;
+    case IR::Op::PhiChar:
+      save(resolve(cmd.phi_char_.args_->map_.at(call_stack.top().prev_)));
+      break;
+    case IR::Op::PhiInt:
+      save(resolve(cmd.phi_int_.args_->map_.at(call_stack.top().prev_)));
+      break;
+    case IR::Op::PhiReal:
+      save(resolve(cmd.phi_real_.args_->map_.at(call_stack.top().prev_)));
+      break;
+    case IR::Op::PhiType:
+      save(resolve(cmd.phi_type_.args_->map_.at(call_stack.top().prev_)));
+      break;
+    case IR::Op::PhiBlock:
+      save(resolve(cmd.phi_block_.args_->map_.at(call_stack.top().prev_)));
+      break;
     case IR::Op::Contextualize: NOT_YET();
     case IR::Op::CondJump:
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];

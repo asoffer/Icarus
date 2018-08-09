@@ -856,47 +856,69 @@ Val Ne(const Val &v1, const Val &v2) {
   UNREACHABLE();
 }
 
-std::pair<CmdIndex, PhiArgs<bool> *> PhiBool() {
-  CmdIndex cmd_index{
-      BasicBlock::Current,
-      static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
-
-  auto phi_args = std::make_unique<PhiArgs<bool>>();
-  auto *raw_ptr = phi_args.get();
-  Func::Current->block(BasicBlock::Current)
-      .phi_args_.push_back(std::move(phi_args));
-  auto &cmd     = MakeCmd(type::Bool, Op::PhiBool);
-  cmd.phi_bool_ = Cmd::PhiBool::Make(raw_ptr);
-  return std::pair(cmd_index, raw_ptr);
+template <typename T>
+static std::unique_ptr<PhiArgs<T>> MakePhiArgs(
+    const std::unordered_map<BlockIndex, IR::Val> &val_map) {
+  auto phi_args = std::make_unique<PhiArgs<T>>();
+  for (const auto & [ block, val ] : val_map) {
+    phi_args->map_.emplace(block, val.template reg_or<T>());
+  }
+  return phi_args;
 }
 
-std::pair<CmdIndex, PhiArgs<IR::BlockSequence> *> PhiBlock() {
+CmdIndex Phi(type::Type const *t) {
   CmdIndex cmd_index{
       BasicBlock::Current,
       static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
-
-  auto phi_args = std::make_unique<PhiArgs<BlockSequence>>();
-  auto *raw_ptr = phi_args.get();
-  Func::Current->block(BasicBlock::Current)
-      .phi_args_.push_back(std::move(phi_args));
-  // TODO could be opt-block. do we care? Probably not really using this type to
-  // much anymore.
-  auto &cmd     = MakeCmd(type::Block, Op::PhiBlock);
-  cmd.phi_block_ = Cmd::PhiBlock::Make(raw_ptr);
-  return std::pair(cmd_index, raw_ptr);
+  MakeCmd(t, Op::Death);
+  return cmd_index;
 }
 
-std::pair<CmdIndex, base::vector<IR::Val> *> Phi(const type::Type *t) {
-  CmdIndex cmd_index{
-      BasicBlock::Current,
-      static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
+Val MakePhi(CmdIndex phi_index,
+             const std::unordered_map<BlockIndex, IR::Val> &val_map) {
+  auto &cmd = IR::Func::Current->Command(phi_index);
+  cmd.type  = val_map.begin()->second.type;
 
-  auto &args =
-      Func::Current->block(BasicBlock::Current)
-          .call_args_.emplace_back(std::make_unique<base::vector<IR::Val>>());
-  auto &cmd = MakeCmd(t, Op::Phi);
-  cmd.phi_  = Cmd::Phi::Make(args.get());
-  return std::pair(cmd_index, args.get());
+  if (cmd.type == type::Bool) {
+    auto phi_args = MakePhiArgs<bool>(val_map);
+    cmd.op_code_ = Op::PhiBool;
+    cmd.phi_bool_ = Cmd::PhiBool::Make(phi_args.get());
+    IR::Func::Current->block(BasicBlock::Current)
+        .phi_args_.push_back(std::move(phi_args));
+  } else if (cmd.type == type::Char) {
+    auto phi_args = MakePhiArgs<char>(val_map);
+    cmd.op_code_ = Op::PhiChar;
+    cmd.phi_char_ = Cmd::PhiChar::Make(phi_args.get());
+    IR::Func::Current->block(BasicBlock::Current)
+        .phi_args_.push_back(std::move(phi_args));
+  } else if (cmd.type == type::Int) {
+    auto phi_args = MakePhiArgs<i32>(val_map);
+    cmd.op_code_ = Op::PhiInt;
+    cmd.phi_int_  = Cmd::PhiInt::Make(phi_args.get());
+    IR::Func::Current->block(BasicBlock::Current)
+        .phi_args_.push_back(std::move(phi_args));
+  } else if (cmd.type == type::Real) {
+    auto phi_args = MakePhiArgs<double>(val_map);
+    cmd.op_code_ = Op::PhiReal;
+    cmd.phi_real_ = Cmd::PhiReal::Make(phi_args.get());
+    IR::Func::Current->block(BasicBlock::Current)
+        .phi_args_.push_back(std::move(phi_args));
+  } else if (cmd.type == type::Type_) {
+    auto phi_args = MakePhiArgs<type::Type const *>(val_map);
+    cmd.op_code_ = Op::PhiType;
+    cmd.phi_type_ = Cmd::PhiType::Make(phi_args.get());
+    IR::Func::Current->block(BasicBlock::Current)
+        .phi_args_.push_back(std::move(phi_args));
+  } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
+    auto phi_args = MakePhiArgs<BlockSequence>(val_map);
+    cmd.op_code_ = Op::PhiBlock;
+    cmd.phi_block_ = Cmd::PhiBlock::Make(phi_args.get());
+    IR::Func::Current->block(BasicBlock::Current)
+        .phi_args_.push_back(std::move(phi_args));
+  } else {
+    NOT_YET(cmd.type->to_string());
+  }
+  return cmd.reg();
 }
 
 void Call(const Val &fn, std::unique_ptr<LongArgs> long_args,
@@ -1195,14 +1217,13 @@ void Cmd::dump(size_t indent) const {
     case Op::SetReturnGeneric: std::cerr << "set-ret-generic"; break;
     case Op::SetReturnBlock: std::cerr << "set-ret-block"; break;
     case Op::PhiBool: std::cerr << "phi-bool"; break; // TODO
+    case Op::PhiChar: std::cerr << "phi-char"; break; // TODO
+    case Op::PhiInt: std::cerr << "phi-int"; break; // TODO
+    case Op::PhiReal: std::cerr << "phi-real"; break; // TODO
+    case Op::PhiType: std::cerr << "phi-type"; break; // TODO
     case Op::PhiBlock: std::cerr << "phi-block"; break; // TODO
-    case Op::Phi:
-      std::cerr << "phi";
-      for (const auto &arg : *phi_.args_) {
-        std::cerr << " " << arg.to_string();
-      };
-      break;
-  }
+    case Op::Death: std::cerr << "death"; break; // TODO
+   }
 
   std::cerr << std::endl;
 }
