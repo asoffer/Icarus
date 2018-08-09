@@ -93,11 +93,11 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
     }
   }
 
-  auto call_args = std::make_unique<IR::LongArgs>();
-  call_args->append(lhs_ir);
-  call_args->append(rhs_ir);
-  auto outs = std::make_unique<IR::OutParams>();
-  auto result = outs->AppendReg(type::Bool);
+  IR::LongArgs call_args;
+  call_args.append(lhs_ir);
+  call_args.append(rhs_ir);
+  IR::OutParams outs;
+  auto result = outs.AppendReg(type::Bool);
 
   IR::Call(IR::Val::Func(iter->second), std::move(call_args), std::move(outs));
   return {result};
@@ -234,9 +234,9 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
 
 call_fn:
   ASSERT(IR::Func::Current != nullptr);
-  auto call_args = std::make_unique<IR::LongArgs>();
-  call_args->append(ptr_to_array);
-  call_args->append(new_size);
-  IR::Call(IR::Val::Func(ASSERT_NOT_NULL(resize_func_)), std::move(call_args), nullptr);
+  IR::LongArgs call_args;
+  call_args.append(ptr_to_array);
+  call_args.append(new_size);
+  IR::Call(IR::Val::Func(ASSERT_NOT_NULL(resize_func_)), std::move(call_args));
 }
 }  // namespace type

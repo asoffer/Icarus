@@ -87,7 +87,7 @@ enum class Op : char {
   BlockSeq, BlockSeqContains,
 
   Call, CastIntToReal, CastPtr,
-  PhiBool, PhiChar, PhiInt, PhiReal, PhiType, PhiBlock,
+  PhiBool, PhiChar, PhiInt, PhiReal, PhiType, PhiBlock, PhiAddr,
 
   AddCodeBlock,  // TODO remove codeblock
   Contextualize,
@@ -275,6 +275,7 @@ struct Cmd {
   CMD(PhiReal) { PhiArgs<double> *args_; };
   CMD(PhiType) { PhiArgs<type::Type const *> *args_; };
   CMD(PhiBlock) { PhiArgs<BlockSequence> *args_; };
+  CMD(PhiAddr) { PhiArgs<IR::Addr> *args_; };
 
   CMD(CondJump) {
     Register cond_;
@@ -489,6 +490,7 @@ struct Cmd {
     PhiReal phi_real_;
     PhiType phi_type_;
     PhiBlock phi_block_;
+    PhiAddr phi_addr_;
 
     BlockSeq block_seq_;
     BlockSeqContains block_seq_contains_;
@@ -602,8 +604,8 @@ Val PrintEnum(const Val &v);
 Val PrintFlags(const Val &v);
 Val PrintAddr(const Val &v);
 Val PrintCharBuffer(const Val &v);
-void Call(const Val &fn, std::unique_ptr<LongArgs> long_args,
-          std::unique_ptr<IR::OutParams> outs);
+void Call(const Val &fn, LongArgs long_args);
+void Call(const Val &fn, LongArgs long_args, IR::OutParams outs);
 Val Tup(base::vector<IR::Val> vals);
 Val Variant(base::vector<Val> vals);
 void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block);

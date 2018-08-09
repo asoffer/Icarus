@@ -709,6 +709,9 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::PhiType:
       save(resolve(cmd.phi_type_.args_->map_.at(call_stack.top().prev_)));
       break;
+    case IR::Op::PhiAddr:
+      save(resolve(cmd.phi_addr_.args_->map_.at(call_stack.top().prev_)));
+      break;
     case IR::Op::PhiBlock:
       save(resolve(cmd.phi_block_.args_->map_.at(call_stack.top().prev_)));
       break;

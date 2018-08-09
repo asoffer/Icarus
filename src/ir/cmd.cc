@@ -295,22 +295,18 @@ Val Array(const Val &v1, const Val &v2) {
 }
 
 Val Tup(base::vector<Val> vals) {
-  auto &args =
-      Func::Current->block(BasicBlock::Current)
-          .call_args_.emplace_back(
-              std::make_unique<base::vector<IR::Val>>(std::move(vals)));
+  auto *args = &Func::Current->block(BasicBlock::Current)
+                     .call_args_.emplace_back(std::move(vals));
   auto &cmd = MakeCmd(type::Type_, Op::Tup);
-  cmd.tup_  = Cmd::Tup{{}, args.get()};
+  cmd.tup_  = Cmd::Tup{{}, args};
   return cmd.reg();
 }
 
 Val Variant(base::vector<Val> vals) {
-  auto &args =
-      Func::Current->block(BasicBlock::Current)
-          .call_args_.emplace_back(
-              std::make_unique<base::vector<IR::Val>>(std::move(vals)));
+  auto *args = &Func::Current->block(BasicBlock::Current)
+                     .call_args_.emplace_back(std::move(vals));
   auto &cmd    = MakeCmd(type::Type_, Op::Variant);
-  cmd.variant_ = Cmd::Variant{{}, args.get()};
+  cmd.variant_ = Cmd::Variant{{}, args};
   return cmd.reg();
 }
 
@@ -414,10 +410,9 @@ Val BlockSeq(const base::vector<Val> &blocks) {
   }
 
   auto &cmd  = MakeCmd(blocks.back().type, Op::BlockSeq);
-  auto &args = Func::Current->block(BasicBlock::Current)
-                   .call_args_.emplace_back(
-                       std::make_unique<base::vector<IR::Val>>(blocks));
-  cmd.block_seq_ = Cmd::BlockSeq{{}, args.get()};
+  auto *args = &Func::Current->block(BasicBlock::Current)
+                    .call_args_.emplace_back(blocks);
+  cmd.block_seq_ = Cmd::BlockSeq{{}, args};
   return cmd.reg();
 }
 
@@ -499,13 +494,11 @@ Val VariantValue(type::Type const *t, const Val &v) {
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val) {
   auto &cmd = MakeCmd(nullptr, Op::InsertField);
-  auto &args =
-      Func::Current->block(BasicBlock::Current)
-          .call_args_.emplace_back(
-              std::make_unique<base::vector<IR::Val>>(base::vector<Val>{
-                  std::move(struct_type), Val::CharBuf(field_name),
-                  std::move(type), std::move(init_val)}));
-  cmd.insert_field_.args_ = args.get();
+  cmd.insert_field_.args_ =
+      &Func::Current->block(BasicBlock::Current)
+           .call_args_.emplace_back(base::vector<Val>{
+               std::move(struct_type), Val::CharBuf(field_name),
+               std::move(type), std::move(init_val)});
 }
 
 Register Alloca(const type::Type *t) {
@@ -909,6 +902,12 @@ Val MakePhi(CmdIndex phi_index,
     cmd.phi_type_ = Cmd::PhiType::Make(phi_args.get());
     IR::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
+  } else if (cmd.type->is<type::Pointer>()) {
+    auto phi_args = MakePhiArgs<IR::Addr>(val_map);
+    cmd.op_code_ = Op::PhiAddr;
+    cmd.phi_addr_ = Cmd::PhiAddr::Make(phi_args.get());
+    IR::Func::Current->block(BasicBlock::Current)
+        .phi_args_.push_back(std::move(phi_args));
   } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
     auto phi_args = MakePhiArgs<BlockSequence>(val_map);
     cmd.op_code_ = Op::PhiBlock;
@@ -921,27 +920,44 @@ Val MakePhi(CmdIndex phi_index,
   return cmd.reg();
 }
 
-void Call(const Val &fn, std::unique_ptr<LongArgs> long_args,
-          std::unique_ptr<OutParams> outs) {
-  ASSERT(long_args->type_ == nullptr);
+void Call(const Val &fn, LongArgs long_args) {
+  ASSERT(long_args.type_ == nullptr);
   ASSERT(fn.type, Is<type::Function>());
-  long_args->type_    = &fn.type->as<type::Function>();
+  long_args.type_    = &fn.type->as<type::Function>();
   const auto &fn_type = fn.type->as<type::Function>();
 
   auto &block = Func::Current->block(BasicBlock::Current);
-  auto &args = block.long_args_.emplace_back(std::move(long_args));
-
-  auto *outs_ptr = (outs != nullptr)
-                       ? block.outs_.emplace_back(std::move(outs)).get()
-                       : nullptr;
+  LongArgs *args  = &block.long_args_.emplace_back(std::move(long_args));
 
   auto &cmd = MakeCmd(nullptr, Op::Call);
   if (auto *r = std::get_if<Register>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*r, args.get(), outs_ptr);
+    cmd.call_ = Cmd::Call(*r, args, nullptr);
   } else if (auto *f = std::get_if<Func *>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*f, args.get(), outs_ptr);
+    cmd.call_ = Cmd::Call(*f, args, nullptr);
   } else if (auto *f = std::get_if<ForeignFn>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*f, args.get(), outs_ptr);
+    cmd.call_ = Cmd::Call(*f, args, nullptr);
+  } else {
+    UNREACHABLE();
+  }
+}
+void Call(const Val &fn, LongArgs long_args, OutParams outs) {
+  ASSERT(long_args.type_ == nullptr);
+  ASSERT(fn.type, Is<type::Function>());
+  long_args.type_    = &fn.type->as<type::Function>();
+  const auto &fn_type = fn.type->as<type::Function>();
+
+  auto &block = Func::Current->block(BasicBlock::Current);
+  auto *args  = &block.long_args_.emplace_back(std::move(long_args));
+
+  auto *outs_ptr = &block.outs_.emplace_back(std::move(outs));
+
+  auto &cmd = MakeCmd(nullptr, Op::Call);
+  if (auto *r = std::get_if<Register>(&fn.value)) {
+    cmd.call_ = Cmd::Call(*r, args, outs_ptr);
+  } else if (auto *f = std::get_if<Func *>(&fn.value)) {
+    cmd.call_ = Cmd::Call(*f, args, outs_ptr);
+  } else if (auto *f = std::get_if<ForeignFn>(&fn.value)) {
+    cmd.call_ = Cmd::Call(*f, args, outs_ptr);
   } else {
     UNREACHABLE();
   }
@@ -1222,6 +1238,7 @@ void Cmd::dump(size_t indent) const {
     case Op::PhiReal: std::cerr << "phi-real"; break; // TODO
     case Op::PhiType: std::cerr << "phi-type"; break; // TODO
     case Op::PhiBlock: std::cerr << "phi-block"; break; // TODO
+    case Op::PhiAddr: std::cerr << "phi-addr"; break; // TODO
     case Op::Death: std::cerr << "death"; break; // TODO
    }
 

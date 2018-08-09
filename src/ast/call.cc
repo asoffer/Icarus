@@ -174,16 +174,15 @@ static void EmitOneCallDispatch(
     }
   }
 
-  auto call_args = std::make_unique<IR::LongArgs>();
-  for (const auto &arg : args) { call_args->append(arg); }
+  IR::LongArgs call_args;
+  for (const auto &arg : args) { call_args.append(arg); }
 
   ASSERT(binding.fn_expr_->type, Is<type::Function>());
   auto *fn_type = &binding.fn_expr_->type->as<type::Function>();
 
   base::vector<IR::Val> results;
-  std::unique_ptr<IR::OutParams> outs;
+  IR::OutParams outs;
   if (!fn_type->output.empty()) {
-    outs = std::make_unique<IR::OutParams>();
 
     auto MakeRegister = [&](type::Type const *ret_type,
                             type::Type const *expected_ret_type,
@@ -204,20 +203,20 @@ static void EmitOneCallDispatch(
       //
       // TODO: This is a lot like PrepareArgument.
       if (!ret_type->is_big() && !expected_ret_type->is_big()) {
-        outs->AppendReg(expected_ret_type);
-        *out_reg = IR::Val::Reg(outs->outs_.back().reg_, expected_ret_type);
+        outs.AppendReg(expected_ret_type);
+        *out_reg = IR::Val::Reg(outs.outs_.back().reg_, expected_ret_type);
         return;
       }
 
       if (ret_type == expected_ret_type || ret_type->is<type::Variant>()) {
-        outs->AppendLoc(std::get<IR::Register>(out_reg->value));
+        outs.AppendLoc(std::get<IR::Register>(out_reg->value));
         return;
       }
 
       ASSERT(expected_ret_type, Is<type::Variant>());
       IR::Store(IR::Val::Type(ret_type), IR::VariantType(*out_reg));
       auto vval = IR::VariantValue(ret_type, *out_reg);
-      outs->AppendLoc(std::get<IR::Register>(vval.value));
+      outs.AppendLoc(std::get<IR::Register>(vval.value));
     };
 
     if (ret_type->is<type::Tuple>()) {
@@ -233,7 +232,6 @@ static void EmitOneCallDispatch(
     }
   }
 
-  auto *outs_ptr = outs.get();
   IR::Call(callee, std::move(call_args), std::move(outs));
 }
 
@@ -513,16 +511,16 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
     auto fn_val = fn_->as<Terminal>().value;
     if (fn_val == OrdFunc() || fn_val == AsciiFunc() || fn_val == ErrorFunc() ||
         fn_val == BytesFunc() || fn_val == AlignFunc()) {
-      auto call_args = std::make_unique<IR::LongArgs>();
+      IR::LongArgs call_args;
       for (const auto &arg : args_.pos_[0]->EmitIR(ctx)) {
-        call_args->append(arg);
+        call_args.append(arg);
       }
 
       auto *out_type = fn_->type->as<type::Function>().output.at(0);
       ASSERT(!out_type->is_big());
 
-      auto outs = std::make_unique<IR::OutParams>();
-      auto reg = outs->AppendReg(out_type);
+      IR::OutParams outs;
+      auto reg = outs.AppendReg(out_type);
       IR::Call(fn_val, std::move(call_args), std::move(outs));
       return {reg};
 
