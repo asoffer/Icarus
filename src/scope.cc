@@ -6,10 +6,10 @@
 #include "ir/func.h"
 #include "module.h"
 #include "type/function.h"
+#include "type/pointer.h"
 
 void Scope::InsertDecl(AST::Declaration *decl) {
   decls_[decl->identifier->token].push_back(decl);
-  if (parent == nullptr) { return; }
   for (auto *scope_ptr = parent; scope_ptr; scope_ptr = scope_ptr->parent) {
     scope_ptr->child_decls_[decl->identifier->token].push_back(decl);
   }
@@ -41,15 +41,17 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
   if (containing_fn_scope) { containing_fn_scope->innards_.push_back(this); }
 }
 
-void ExecScope::Enter(Context* ctx) const {
-  ForEachDeclHere([ctx](AST::Declaration *decl) {
-    if (!decl->const_) { decl->EmitIR(ctx); }
-  });
-}
+void FnScope::MakeAllStackAllocations() {
+  for (auto *scope : innards_) {
+    for (const auto & [ key, val ] : scope->decls_) {
+      for (auto *decl : val) {
+        if (decl->const_ || decl->arg_val) { continue; }
 
-void ExecScope::Exit(Context *ctx) const {
-  ForEachDeclHere([ctx](AST::Declaration *decl) {
-    if (decl->const_) { return; }
-    decl->type->EmitDestroy(decl->addr, ctx);
-  });
+        ASSERT(decl->type != nullptr);
+        ASSERT(decl->addr == IR::Val::None());
+        decl->addr =
+            IR::Val::Reg(IR::Alloca(decl->type), type::Ptr(decl->type));
+      }
+    }
+  }
 }

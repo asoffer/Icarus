@@ -35,7 +35,6 @@ struct Scope : public base::Cast<Scope> {
   Scope() = delete;
   Scope(Scope *parent) : parent(parent) {}
   virtual ~Scope() {}
-  virtual Scope *Clone() const = 0;
 
   template <typename ScopeType> std::unique_ptr<ScopeType> add_child() {
     return std::make_unique<ScopeType>(this);
@@ -43,13 +42,6 @@ struct Scope : public base::Cast<Scope> {
 
   std::pair<base::vector<AST::Declaration *>, base::vector<AST::Declaration *>>
   AllDeclsWithId(const std::string &id, Context *ctx);
-
-  template <typename Fn>
-  void ForEachDeclHere(const Fn& fn) const {
-    for (const auto &[key, val] : decls_) {
-      for (auto *decl : val) { fn(decl); }
-    }
-  }
 
   void InsertDecl(AST::Declaration *decl);
 
@@ -63,26 +55,20 @@ struct Scope : public base::Cast<Scope> {
 struct DeclScope : public Scope {
   DeclScope(Scope *parent) : Scope(parent) {}
   ~DeclScope() override {}
-  DeclScope *Clone() const override { return new DeclScope(*this); }
   Module* module_; // Should be only on global scopes?
 };
 
 struct ExecScope : public Scope {
   ExecScope(Scope *parent);
   ~ExecScope() override {}
-
-  ExecScope *Clone() const override { return new ExecScope(*this); }
-  void Enter(Context *ctx) const;
-  void Exit(Context *ctx) const;
-
-  bool can_jump = false;
 };
 
 struct FnScope : public ExecScope {
   FnScope(Scope *parent) : ExecScope(parent) {}
   ~FnScope() final {}
 
-  FnScope *Clone() const override { return new FnScope(*this); }
+  void MakeAllStackAllocations();
+
   type::Function *fn_type  = nullptr; // TODO deprecate?
   AST::FuncContent *fn_lit = nullptr;
   base::vector<ExecScope *> innards_{1, this};

@@ -11,7 +11,6 @@
 #include "error/log.h"
 #include "ir/func.h"
 #include "module.h"
-#include "type/pointer.h"
 #include "type/function.h"
 #include "type/tuple.h"
 #include "type/type.h"
@@ -437,24 +436,7 @@ void GeneratedFunction::CompleteBody(Module *mod) {
       outputs[i]->as<Declaration>().addr = IR::Func::Current->Return(i);
     }
 
-    for (auto scope : fn_scope->innards_) {
-      scope->ForEachDeclHere([](Declaration *decl) {
-        if (decl->const_) {
-          // Compute these values lazily in Identifier::EmitIR, because
-          // otherwise we would have to figure out a valid ordering.
-          return;
-        }
-
-        if (decl->arg_val) { return; }
-        ASSERT(decl->type != nullptr);
-        if (decl->addr == IR::Val::None()) {
-          // TODO this test isn't perfect and needs to change (c.f. const
-          // arguments?)
-          decl->addr =
-              IR::Val::Reg(IR::Alloca(decl->type), type::Ptr(decl->type));
-        }
-      });
-    }
+    fn_scope->MakeAllStackAllocations();
 
     statements->EmitIR(&ctx);
     if (type->as<type::Function>().output.empty()) {
