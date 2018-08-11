@@ -723,28 +723,4 @@ IR::BlockIndex ExecContext::ExecuteCmd(
   }
   return IR::BlockIndex{-2};
 }
-
-void ReplEval(AST::Expression *expr) {
-  // TODO is nullptr for module okay here?
-  auto fn = std::make_unique<IR::Func>(
-      nullptr, type::Func({}, {}),
-      base::vector<std::pair<std::string, AST::Expression *>>{});
-  CURRENT_FUNC(fn.get()) {
-    IR::BasicBlock::Current = fn->entry();
-    // TODO use the right module
-    Context ctx(nullptr);
-    // TODO support multiple values computed simultaneously?
-    auto expr_val = expr->EmitIR(&ctx)[0];
-    if (ctx.num_errors() != 0) {
-      ctx.DumpErrors();
-      return;
-    }
-
-    if (expr->type != type::Void()) { expr->type->EmitRepr(expr_val, &ctx); }
-    IR::ReturnJump();
-  }
-
-  ExecContext ctx;
-  Execute(fn.get(), base::untyped_buffer(0), {}, &ctx);
-}
 }  // namespace backend
