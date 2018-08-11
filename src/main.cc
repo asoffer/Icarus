@@ -1,7 +1,5 @@
-#include <cstring>
 #include <future>
 #include "base/container/vector.h"
-#include <execinfo.h>
 
 #include "ast/call.h"
 #include "ast/declaration.h"
@@ -13,6 +11,8 @@
 #include "base/guarded.h"
 #include "base/source.h"
 #include "context.h"
+#include "init/argon.h"
+#include "init/signal.h"
 #include "ir/func.h"
 #include "module.h"
 
@@ -22,11 +22,9 @@
 #include "llvm/Support/TargetSelect.h"
 #endif // ICARUS_USE_LLVM
 
-// Debug flags and their default values
 namespace debug {
-inline bool parser        = false;
-inline bool ct_eval       = false;
-inline bool no_validation = false;
+inline bool parser     = false;
+inline bool validation = false;
 } // namespace debug
 
 const char *output_file_name = "a.out";
@@ -34,35 +32,6 @@ base::vector<Source::Name> files;
 
 // TODO sad. don't use a global to do this.
 extern IR::Func* main_fn;
-
-static void
-ShowUsage(char *argv0) {
-  fprintf(stderr,
-          R"(Usage: %s [options] input_file... -o output_file
-
-  -o output_file                 Default is a.out
-
-  -e, --eval                     Run compile-time evaluator step-by-step (debug).
-
-  --file-type=[ir|nat|bin|none]  Output a file of the specified type:
-                                   ir   - LLVM intermediate representation
-                                   nat  - Output a native object file
-                                   bin  - Output a single native object file and
-                                          link it (requires gcc)
-                                   none - Do not write any files (debug)
-                                          This is the default option.
-
-  -h, --help                     Display this usage message.
-
-  -n, --no-validation            Do not run property validation
-
-  -p, --parser                   Display step-by-step file parsing (debug).
-
-  -r, --repl                     Invoke Icarus Read-Eval-Print-Loop
-
-)",
-          argv0);
-}
 
 namespace backend {
 extern void ReplEval(AST::Expression *expr);
@@ -162,128 +131,27 @@ repl_start : {
 }
 }
 
-int main(int argc, char *argv[]) {
-#ifdef DBG
-  signal(SIGABRT, +[](int) {
-    constexpr u32 max_frames = 20;
-    fprintf(stderr, "stack trace:\n");
-    void *addrlist[max_frames + 1];
-    int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void *));
-    if (addrlen == 0) {
-      fprintf(stderr, "  \n");
-    } else {
-      char **symbollist = backtrace_symbols(addrlist, addrlen);
-      for (int i = 4; i < addrlen; i++) {
-        std::string symbol = symbollist[i];
-        auto start_iter    = symbol.find('(');
-        auto end_iter      = symbol.find(')');
-        std::string mangled =
-            symbol.substr(start_iter + 1, end_iter - start_iter - 1);
-        end_iter = mangled.find('+');
-        mangled =
-            end_iter >= mangled.size() ? mangled : mangled.substr(0, end_iter);
-        char demangled[1024];
-        size_t demangled_size = 1024;
+void argon::Usage() {
+  ARGON_FLAG("debug-parser")
+      << "Step through the parser step-by-step for debugging."
+      << [](bool b = true) { debug::parser = b; };
 
-        int status;
-        abi::__cxa_demangle(mangled.c_str(), &demangled[0], &demangled_size,
-                            &status);
-        if (status != 0) {
-          fprintf(stderr, "#%2d| %s\n", i - 3, symbol.c_str());
-        } else {
-          if (demangled_size > 70) {
-            auto s = std::string(&demangled[0], 70) + " ...";
-            fprintf(stderr, "#%2d| %s\n", i - 3, s.c_str());
-          } else {
-            fprintf(stderr, "#%2d| %s\n", i - 3, demangled);
-          }
-        }
-      }
-      free(symbollist);
-    }
-  });
-#endif
+  ARGON_FLAG("repl", "r")                 //
+      << "Run the read-eval-print-loop."  //
+      << [](bool b = true) { /* TODO */ };
+
+  ARGON_FLAG("validation", "v")
+      << "Whether or not to do function pre/post-condition validation at "
+         "compile-time."
+      << [](bool b = true) { debug::validation = b; };
+
+  ArgonHandleOther = [](const char *arg) { files.emplace_back(arg); };
 
   bool repl = false;
-  for (int arg_num = 1; arg_num < argc; ++arg_num) {
-    auto arg = argv[arg_num];
+  ArgonExecute = (repl ? RunRepl : GenerateCode);
+}
 
-    if (strcmp(arg, "-o") == 0) {
-      if (++arg_num == argc) {
-        ShowUsage(argv[0]);
-        return -1;
-      }
-      arg = argv[arg_num];
-      if (arg[0] == '-') {
-        ShowUsage(argv[0]);
-        return -1;
-      }
-      output_file_name = arg;
-      goto next_arg;
-    }
-
-    if (arg[0] == '-') {
-      if (arg[1] == '-') {
-        /* Long-form argument */
-        char *ptr = arg + 2;
-        while (*ptr != '=' && *ptr != '\0') { ++ptr; }
-        if (*ptr == '=') {
-          /* Long-form with value */
-
-          *ptr = '\0';
-          ptr++;  // points to the argument
-        } else {
-          /* Long-form flag */
-          if (strcmp(arg + 2, "eval") == 0) {
-            debug::ct_eval = true;
-            goto next_arg;
-
-          } else if (strcmp(arg + 2, "help") == 0) {
-            ShowUsage(argv[0]);
-            return 0;
-
-          } else if (strcmp(arg + 2, "no-validation") == 0) {
-            debug::no_validation = true;
-            goto next_arg;
-
-          } else if (strcmp(arg + 2, "parser") == 0) {
-            debug::parser = true;
-            goto next_arg;
-
-          } else if (strcmp(arg + 2, "repl") == 0) {
-            repl = true;
-            goto next_arg;
-
-          } else {
-            ShowUsage(argv[0]);
-            return -1;
-          }
-        }
-
-      } else {
-        /* Short-form arguments */
-        for (auto ptr = arg + 1; ptr; ++ptr) {
-          switch (*ptr) {
-            case 'h': ShowUsage(argv[0]); return 0;
-            case 'e': debug::ct_eval = true; break;
-            case 'n': debug::no_validation = true; break;
-            case 'p': debug::parser = true; break;
-            case 'r': repl = true; break;
-            case '\0': goto next_arg;
-            default: ShowUsage(argv[0]); return -1;
-          }
-        }
-      }
-    } else {
-      files.emplace_back(arg);
-    }
-  next_arg:;
-  }
-
-  if (files.empty() && !repl) {
-    ShowUsage(argv[0]);
-    return -1;
-  }
-
-  return repl ? RunRepl() : GenerateCode();
+int main(int argc, char *argv[]) {
+  init::InstallSignalHandlers();
+  return argon::Parse(argc, argv);
 }
