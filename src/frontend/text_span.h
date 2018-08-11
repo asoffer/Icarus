@@ -1,8 +1,9 @@
 #ifndef ICARUS_FRONTEND_TEXT_SPAN_H
 #define ICARUS_FRONTEND_TEXT_SPAN_H
 
-#include "../base/debug.h"
-#include "../base/source.h"
+#include "base/types.h"
+#include "base/debug.h"
+#include "frontend/source.h"
 
 struct Cursor {
   u32 offset   = 0;
@@ -24,7 +25,7 @@ struct TextSpan {
 
   Cursor start;
   Cursor finish;
-  Source *source = nullptr;
+  frontend::Source *source = nullptr;
 };
 
 struct SourceLocation {
@@ -32,7 +33,7 @@ struct SourceLocation {
   const char &operator*() const {
     return source->lines[cursor.line_num][cursor.offset];
   }
-  const Source::Line &line() const { return source->lines[cursor.line_num]; }
+  const frontend::Source::Line &line() const { return source->lines[cursor.line_num]; }
   TextSpan ToSpan() const {
     TextSpan span(cursor, cursor);
     span.source = source;
@@ -50,7 +51,7 @@ struct SourceLocation {
   void Increment();
 
   Cursor cursor;
-  Source *source = nullptr;
+  frontend::Source *source = nullptr;
 };
 
 #endif // ICARUS_FRONTEND_TEXT_SPAN_H

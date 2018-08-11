@@ -1,6 +1,7 @@
-#include "source.h"
+#include "frontend/source.h"
 #include <iostream>
 
+namespace frontend {
 std::optional<Source::Line> File::NextLine() {
   if (ifs.eof()) { return std::nullopt; }
   std::string temp;
@@ -16,3 +17,4 @@ std::optional<Source::Line> Repl::NextLine() {
   input += '\n';
   return Line(input);
 }
+}  // namespace frontend

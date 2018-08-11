@@ -6,13 +6,8 @@
 #include "backend/eval.h"
 #include "base/guarded.h"
 #include "ir/val.h"
+#include "run/run.h"
 #include "type/char_buffer.h"
-
-void ScheduleModule(const Source::Name &src);
-
-extern base::guarded<base::unordered_map<
-    Source::Name, std::shared_future<std::unique_ptr<Module>>>>
-    modules;
 
 namespace AST {
 std::string Import::to_string(size_t n) const {
@@ -60,7 +55,7 @@ void Import::VerifyType(Context *ctx) {
       operand_->lvalue != Assign::Const) {
     ctx->error_log_.InvalidImport(operand_->span);
   } else {
-    cache_ = Source::Name{
+    cache_ = frontend::Source::Name{
         backend::EvaluateAs<std::string_view>(operand_.get(), ctx)};
     ScheduleModule(*cache_);
   }

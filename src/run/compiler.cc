@@ -4,8 +4,6 @@
 
 #include "backend/exec.h"
 #include "base/container/vector.h"
-#include "base/guarded.h"
-#include "base/source.h"
 #include "base/untyped_buffer.h"
 #include "context.h"
 #include "ir/func.h"
@@ -23,18 +21,18 @@ void Execute(IR::Func *fn, const base::untyped_buffer &,
              backend::ExecContext *ctx);
 }
 
-base::vector<Source::Name> files;
+base::vector<frontend::Source::Name> files;
 
 // TODO sad. don't use a global to do this.
 extern IR::Func* main_fn;
 
-base::guarded<base::unordered_map<Source::Name,
-                                 std::shared_future<std::unique_ptr<Module>>>>
+base::guarded<base::unordered_map<frontend::Source::Name,
+                                  std::shared_future<std::unique_ptr<Module>>>>
     modules;
 
 extern std::atomic<bool> found_errors;
 
-void ScheduleModule(const Source::Name &src) {
+void ScheduleModule(const frontend::Source::Name &src) {
   auto handle = modules.lock();
   auto iter = handle->find(src);
   if (iter != handle->end()) { return; }

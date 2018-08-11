@@ -1,7 +1,8 @@
-#include "text_span.h"
-#include "../base/debug.h"
+#include "frontend/text_span.h"
 
-static void IncrementCursor(Source *source, Cursor *cursor) {
+#include "base/debug.h"
+
+static void IncrementCursor(frontend::Source *source, Cursor *cursor) {
   if (cursor->offset != source->lines[cursor->line_num].size()) {
     ++cursor->offset;
   } else {

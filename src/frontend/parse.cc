@@ -1344,7 +1344,7 @@ static void CleanUpReduction(frontend::ParseState *state) {
   if (debug::parser) { Debug(state); }
 }
 
-std::unique_ptr<AST::Statements> Repl::Parse(Context *ctx) {
+std::unique_ptr<AST::Statements> frontend::Repl::Parse(Context *ctx) {
   first_entry = true;  // Show '>> ' the first time.
 
   SourceLocation loc;
@@ -1371,7 +1371,7 @@ std::unique_ptr<AST::Statements> Repl::Parse(Context *ctx) {
   }
 }
 
-std::unique_ptr<AST::Statements> File::Parse(Context *ctx) {
+std::unique_ptr<AST::Statements> frontend::File::Parse(Context *ctx) {
   SourceLocation loc;
   loc.source = this;
 

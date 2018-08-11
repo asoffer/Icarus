@@ -1,5 +1,5 @@
-#ifndef ICARUS_BASE_SOURCE_H
-#define ICARUS_BASE_SOURCE_H
+#ifndef ICARUS_FRONTEND_SOURCE_H
+#define ICARUS_FRONTEND_SOURCE_H
 
 #include <fstream>
 #include <memory>
@@ -13,6 +13,7 @@ namespace AST {
 struct Statements;
 }
 
+namespace frontend {
 struct Source {
   using Name = std::string;
   using Line = std::string;
@@ -54,5 +55,6 @@ struct File : Source {
   AST::Statements *ast = nullptr;
   std::ifstream ifs;
 };
+}  // namespace frontend
 
-#endif // ICARUS_BASE_SOURCE_H
+#endif // ICARUS_FRONTEND_SOURCE_H

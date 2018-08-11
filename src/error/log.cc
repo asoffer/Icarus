@@ -5,14 +5,14 @@
 
 #include "ast/declaration.h"
 #include "ast/identifier.h"
-#include "base/source.h"
+#include "frontend/source.h"
 #include "type/tuple.h"
 #include "type/type.h"
 
 extern type::Type *Err;
 
 using LineNum          = size_t;
-using FileToLineNumMap = base::unordered_map<Source::Name, base::vector<LineNum>>;
+using FileToLineNumMap = base::unordered_map<frontend::Source::Name, base::vector<LineNum>>;
 static FileToLineNumMap global_non_decl;
 
 namespace {
@@ -26,7 +26,7 @@ inline size_t NumDigits(size_t n) {
   return counter;
 }
 
-std::string LineToDisplay(size_t line_num, const Source::Line &line,
+std::string LineToDisplay(size_t line_num, const frontend::Source::Line &line,
                                  size_t border_alignment = 0) {
   auto num_digits = NumDigits(line_num);
   if (border_alignment == 0) { border_alignment = num_digits; }
@@ -93,7 +93,7 @@ std::ostream& operator<<(std::ostream& os, const DisplayAttrs& attrs) {
 
 
 void
-WriteSource(std::ostream &os, const Source &source,
+WriteSource(std::ostream &os, const frontend::Source &source,
             const IntervalSet &line_intervals, size_t border_alignment,
             const base::vector<std::pair<TextSpan, DisplayAttrs>> &underlines) {
   auto iter = underlines.begin();

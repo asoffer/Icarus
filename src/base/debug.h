@@ -1,12 +1,6 @@
 #ifndef ICARUS_BASE_DEBUG_H
 #define ICARUS_BASE_DEBUG_H
 
-#include <cxxabi.h>
-#include <signal.h>
-#include <string>
-#include <unistd.h>
-
-#include "base/types.h"
 #include "base/log.h"
 #include "base/check.h"
 

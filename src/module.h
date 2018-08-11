@@ -38,7 +38,7 @@ struct Module {
   // We take pointers to the module, so it cannot be moved.
   Module(Module&&) = delete;
 
-  static std::unique_ptr<Module> Compile(const Source::Name& src);
+  static std::unique_ptr<Module> Compile(const frontend::Source::Name& src);
 
   IR::Func* AddFunc(AST::GeneratedFunction* fn_lit,
       base::vector<std::pair<std::string, AST::Expression *>> args);

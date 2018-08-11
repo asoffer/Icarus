@@ -8,7 +8,7 @@
 #include "backend/emit.h"
 #include "backend/eval.h"
 #include "base/guarded.h"
-#include "base/source.h"
+#include "frontend/source.h"
 #include "ir/func.h"
 #include "type/function.h"
 
@@ -100,12 +100,12 @@ void Module::Complete() {
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
 // inside this function.
-std::unique_ptr<Module> Module::Compile(const Source::Name& src) {
+std::unique_ptr<Module> Module::Compile(const frontend::Source::Name& src) {
   auto mod = std::make_unique<Module>();
   AST::BoundConstants bc;
   Context ctx(mod.get());
   ctx.bound_constants_ = &bc;
-  File f(src);
+  frontend::File f(src);
   auto file_stmts = f.Parse(&ctx);
   if (ctx.num_errors() > 0) {
     ctx.DumpErrors();

@@ -3,13 +3,13 @@
 #include <cstdio>
 #include <memory>
 
-#include "ast/expression.h"
 #include "ast/declaration.h"
+#include "ast/expression.h"
 #include "backend/exec.h"
 #include "base/container/vector.h"
-#include "base/source.h"
 #include "base/untyped_buffer.h"
 #include "context.h"
+#include "frontend/source.h"
 #include "ir/func.h"
 #include "module.h"
 #include "type/function.h"
@@ -47,7 +47,7 @@ static void ReplEval(AST::Expression *expr) {
 int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
-  Repl repl;
+  frontend::Repl repl;
   Module mod;
   Context ctx(&mod);
 

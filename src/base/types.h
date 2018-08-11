@@ -2,12 +2,12 @@
 #define ICARUS_BASE_TYPES_H
 
 #include <cstdint>
-#include <string>
 
 #define DEFINE_TYPE(new_name, old_name, size)                                  \
   using new_name = old_name;                                                   \
   static_assert(sizeof(new_name) == size, "")
 
+// TODO deprecate. these are silly.
 DEFINE_TYPE(i8, int8_t, 1);
 DEFINE_TYPE(i16, int16_t, 2);
 DEFINE_TYPE(i32, int32_t, 4);
