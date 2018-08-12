@@ -59,9 +59,9 @@ auto stringify(dispatch_rank<1>, const Container &t)
 }
 
 template <typename T>
-auto stringify(dispatch_rank<1>, T &&ptr)
-    -> decltype(*std::declval<T>(), std::string()) {
-  return ptr == nullptr ? "null" : "*" + stringify(*ptr);
+auto stringify(dispatch_rank<1>, T &&t)
+    -> decltype(static_cast<bool>(t), *std::declval<T>(), std::string()) {
+  return static_cast<bool>(t) ? "null" : "*" + stringify(*t);
 }
 
 template <typename T>
