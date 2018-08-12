@@ -153,12 +153,16 @@ void Func::CheckInvariants() {
       if (cmd.call_.which_active_ != 0x01) { continue; }
 
       for (const auto & [ precond, prop_map ] : cmd.call_.fn_->preconditions_) {
-        precond.dump();
         auto prop_copy = prop_map.with_args(*cmd.call_.long_args_);
-        LOG << prop_copy.Returns();
 
-        // TODO Insert properties and recompute
-        cmd.call_.fn_->dump();
+        prop::DefaultProperty<bool> prop = prop_copy.Returns();
+        if (!prop.can_be_true_) {
+          LOG << "Provably false!";
+        } else if (prop.can_be_false_) {
+          LOG << "Not provably true!";
+        } else {
+          LOG << "Okay";
+        }
       }
     }
   }

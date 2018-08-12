@@ -72,7 +72,9 @@ struct PropertySet {
   base::vector<base::owned_ptr<Property>> props_;
 };
 inline std::ostream &operator<<(std::ostream &os, const PropertySet &props) {
-  return os << base::internal::stringify(props.props_);
+  os << "{-";
+  for (const auto &x : props.props_) { os << base::internal::stringify(*x) << "-"; }
+  return os << "}";
 }
 
 struct FnStateView {

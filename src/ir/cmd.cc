@@ -1226,7 +1226,14 @@ void Cmd::dump(size_t indent) const {
                 << store_addr_.val_;
       break;
 
-    case Op::SetReturnBool: std::cerr << "set-ret-bool"; break;
+    case Op::SetReturnBool:
+      std::cerr << "set-ret-bool " << set_return_bool_.ret_num_ << " ";
+      if (set_return_bool_.val_.is_reg_) {
+        std::cerr << set_return_bool_.val_.reg_;
+      } else {
+        std::cerr << set_return_bool_.val_.val_;
+      }
+      break;
     case Op::SetReturnChar: std::cerr << "set-ret-char"; break;
     case Op::SetReturnInt: std::cerr << "set-ret-int"; break;
     case Op::SetReturnReal: std::cerr << "set-ret-real"; break;

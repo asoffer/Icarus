@@ -6,9 +6,12 @@
 
 namespace prop {
 FnStateView::FnStateView(IR::Func *fn) {
-  // TODO for now (non-void) registers are counted up from zero to fn->num_regs_
-  // - 1 inclusive. This is likely to change.
+  // TODO this is wrong since registers arent incremented this way.
   for (i32 i = 0; i < static_cast<i32>(fn->num_regs_); ++i) {
+    view_.emplace(IR::Register{i}, PropertySet{});
+  }
+
+  for (i32 i = -1; i >= -fn->num_voids_; --i) {
     view_.emplace(IR::Register{i}, PropertySet{});
   }
 }
@@ -64,10 +67,16 @@ void PropertyMap::refresh() {
       } break;
       case IR::Op::SetReturnBool: {
         auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
-        prop_set.add(cmd.set_return_bool_.val_.is_reg_
-                         ? std::make_unique<DefaultProperty<bool>>()
-                         : std::make_unique<DefaultProperty<bool>>(
-                               cmd.set_return_bool_.val_.val_));
+        if (cmd.set_return_bool_.val_.is_reg_) {
+          for (const auto &p : view_.at(e.viewing_block_)
+                                   .view_.at(cmd.set_return_bool_.val_.reg_)
+                                   .props_) {
+            prop_set.add(base::wrap_unique(p->Clone()));
+          }
+        } else {
+          prop_set.add(std::make_unique<DefaultProperty<bool>>(
+              cmd.set_return_bool_.val_.val_));
+        }
       } break;
       default: NOT_YET(static_cast<int>(cmd.op_code_));
     }
@@ -87,11 +96,10 @@ DefaultProperty<bool> PropertyMap::Returns() const {
     i32 num_cmds = static_cast<i32>(block.cmds_.size());
     for (i32 j = 0; j < num_cmds; ++j) {
       const auto &cmd = block.cmds_[j];
-      /*
-      if (cmd.op_code_ == IR::Op::SetReturn) {
+      if (cmd.op_code_ == IR::Op::SetReturnBool) {
         rets.push_back(IR::CmdIndex{IR::BlockIndex{i}, j});
         regs.push_back(cmd.result);
-      }*/
+      }
     }
   }
 
@@ -103,6 +111,7 @@ DefaultProperty<bool> PropertyMap::Returns() const {
     IR::BasicBlock *block = &fn_->blocks_[ret.block.value];
     const PropertySet& prop_set = view_.at(block).view_.at(reg);
     // TODO blah. not just one entry
+    LOG << view_;
     auto *x = prop_set.props_.at(0).get();
     acc.Merge(ASSERT_NOT_NULL(x)->as<DefaultProperty<bool>>());
   }
@@ -129,8 +138,15 @@ PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
                          args.args_.get<bool>(offset)));
       copy.stale_entries_.emplace(entry_block, IR::Register(offset));
     }
+
     ++index;
     offset += arch.bytes(t);
+  }
+
+  // TODO this loop is overkill if you do branching correctly.
+  for (const auto & b : fn_->blocks_) {
+    // TODO not just register 0. all args
+    copy.stale_entries_.emplace(&b, IR::Register{0});
   }
 
   for (auto &cmd : entry_block->cmds_) {

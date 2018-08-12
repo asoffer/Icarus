@@ -49,7 +49,10 @@ struct owned_ptr {
   T const* get() const { return ptr_.get(); }
   T* get() { return ptr_.get(); }
 
+  operator bool() { return ptr_ != nullptr; }
+
   std::unique_ptr<T> ptr_;
+
 };
 
 template <typename T, typename... Args>
