@@ -1,12 +1,10 @@
 #ifndef ICARUS_BASE_STRING_H
 #define ICARUS_BASE_STRING_H
 
-#include <memory>
+#include <type_traits>
 #include <sstream>
 #include <string>
 #include <variant>
-
-#include "base/owned_ptr.h"
 
 namespace base::internal {
 template <int N>
@@ -24,7 +22,7 @@ std::string stringify(T &&t);
 #define DEFINE_RANKED_STRINGIFY(rank, type)                                    \
   template <typename T>                                                        \
   auto stringify(dispatch_rank<rank>, T &&val)                                 \
-      ->decltype(std::enable_if_t<std::is_same_v<std::decay_t<T>, type>>(),       \
+      ->decltype(std::enable_if_t<std::is_same_v<std::decay_t<T>, type>>(),    \
                  std::string())
 DEFINE_RANKED_STRINGIFY(0, bool) { return val ? "true" : "false"; }
 DEFINE_RANKED_STRINGIFY(0, const char *) { return val; }
@@ -61,10 +59,9 @@ auto stringify(dispatch_rank<1>, const Container &t)
 }
 
 template <typename T>
-auto stringify(dispatch_rank<1>, T *ptr)
-    -> decltype(stringify(dispatch_rank<0>{}, *std::declval<T>()),
-                std::string()) {
-  return ptr == nullptr ? "null" : "ptr(" + stringify(*ptr) + ")";
+auto stringify(dispatch_rank<1>, T &&ptr)
+    -> decltype(*std::declval<T>(), std::string()) {
+  return ptr == nullptr ? "null" : "*" + stringify(*ptr);
 }
 
 template <typename T>
@@ -82,18 +79,6 @@ auto stringify(dispatch_rank<2>, T &&val)
 }
 
 template <typename T>
-auto stringify(dispatch_rank<2>, const std::unique_ptr<T> &ptr) -> std::string {
-  return ptr == nullptr ? "unique(null)"
-                        : "unique_ptr(" + stringify(*ptr) + ")";
-}
-
-template <typename T>
-auto stringify(dispatch_rank<2>, const base::owned_ptr<T> &ptr) -> std::string {
-  return ptr == nullptr ? "owned(null)"
-                        : "owned_ptr(" + stringify(*ptr) + ")";
-}
-
-template <typename T>
 auto stringify(dispatch_rank<3>, T &&val)
     -> decltype(std::declval<T>().to_string(), std::string()) {
   return val.to_string();
@@ -105,13 +90,20 @@ auto stringify(dispatch_rank<3>, const std::variant<Args...> &v)
   return std::visit([](auto &&v) { return stringify(v); }, v);
 }
 
-template <typename Pair>
-auto stringify(dispatch_rank<3>, const Pair &p)
-  -> decltype(std::enable_if_t<std::is_same_v<
-                  Pair, std::pair<decltype(p.first), decltype(p.second)>>>(),
-              std::string()) {
-return "(" + stringify(p.first) + ", " + stringify(p.second) + ")";
+template <typename... Args>
+auto stringify(dispatch_rank<3>, std::variant<Args...> &&v) -> std::string {
+  return std::visit([](auto &&v) { return stringify(v); }, v);
 }
+
+template <typename Pair>
+auto stringify(dispatch_rank<3>, Pair &&p) -> decltype(
+    std::enable_if_t<
+        std::is_same_v<std::decay_t<Pair>,
+                       std::pair<decltype(p.first), decltype(p.second)>>>(),
+    std::string()) {
+  return "(" + stringify(p.first) + ", " + stringify(p.second) + ")";
+}
+
 template <typename T>
 auto stringify(dispatch_rank<5>, T val)
     -> decltype(std::enable_if_t<std::is_enum_v<std::decay_t<T>>>(),
@@ -127,7 +119,7 @@ auto stringify(dispatch_rank<6>, T &&val) -> std::string {
 template <typename T>
 std::string stringify(T &&t) {
   return internal::stringify(internal::dispatch_rank<0>{}, std::forward<T>(t));
-}
+  }
 }  // namespace base::internal
 
 #endif // ICARUS_BASE_STRING_H

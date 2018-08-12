@@ -149,7 +149,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
   } else if (to_type->is<Scope>()) {
     NOT_YET();
   } else {
-    UNREACHABLE(to_type, from_type);
+    UNREACHABLE(to_type->to_string(), from_type->to_string());
   }
 }
 
