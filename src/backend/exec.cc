@@ -562,7 +562,10 @@ IR::BlockIndex ExecContext::ExecuteCmd(
             IR::Addr addr;
             addr.kind    = IR::Addr::Kind::Heap;
             addr.as_heap = malloc(call_buf.get<i32>(0));
-            save(addr);
+            StoreValue(addr, ret_slots.at(0), &stack_);
+          } else if (cmd.call_.foreign_fn_.name_ == "abs") {
+            StoreValue(std::abs(call_buf.get<i32>(0)), ret_slots.at(0),
+                       &stack_);
           } else {
             NOT_YET();
           }

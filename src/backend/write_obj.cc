@@ -16,6 +16,8 @@
 #include "../module.h"
 
 namespace backend {
+char const *output_file = nullptr;
+
 std::string WriteObjectFile(const std::string& name, Module * mod) {
   auto target_triple = llvm::sys::getDefaultTargetTriple();
   mod->llvm_->setTargetTriple(target_triple);

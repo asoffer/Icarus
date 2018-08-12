@@ -134,6 +134,18 @@ template <> struct hash<IR::CmdIndex> {
 } // namespace std
 
 namespace IR {
+
+// TODO This is a terrible name. Pick something better.
+struct AnyFunc {
+  AnyFunc(Func *fn = nullptr) : fn_(fn), is_fn_(true) {}
+  AnyFunc(ForeignFn foreign) : foreign_(foreign), is_fn_(false) {}
+  union {
+    IR::Func *fn_;
+    ForeignFn foreign_;
+  };
+  bool is_fn_;
+};
+
 struct Val {
   const type::Type *type = nullptr;
   // TODO make trivial: interface

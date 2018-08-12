@@ -123,10 +123,10 @@ size_t Architecture::bytes(const type::Type *t) const {
 
     return MoveForwardToAlignment(t, num_bytes);
   } else if (t->is<type::Function>()) {
-    return 8;  // TODO it's weird that this is 8 and not ptr_bytes_ which may be
-               // larger. On the interpretting machinge, it seems like we aren't
-               // just returning a pointer type but sometimes an actual
-               // IR::Func* which is smaller.
+    return sizeof(IR::AnyFunc);
+    // TODO it's weird that this is 8 and not ptr_bytes_ which may be larger. On
+    // the interpretting machinge, it seems like we aren't just returning a
+    // pointer type but sometimes an actual IR::Func* which is smaller.
   } else if (t->is<type::Enum>()) {
     return 8; // TODO
   } else if (t->is<type::Flags>()) {

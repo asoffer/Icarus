@@ -96,7 +96,10 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
           std::string(result_buf.get<std::string_view>(offset))));
     } else if (t->is<type::Function>()) {
       // TODO foreign func, etc?
-      results.push_back(IR::Val::Func(result_buf.get<IR::Func *>(offset)));
+      auto any_func = result_buf.get<IR::AnyFunc>(offset);
+      results.push_back(any_func.is_fn_
+                            ? IR::Val::Func(any_func.fn_)
+                            : IR::Val::Foreign(t, any_func.foreign_));
     } else if (t->is<type::Scope>()) {
       // TODO foreign func, etc?
       results.push_back(

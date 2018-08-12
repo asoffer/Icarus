@@ -343,7 +343,7 @@ struct Cmd {
 
   CMD(SetReturnFunc) {
     size_t ret_num_;
-    RegisterOr<IR::Func *> val_;
+    RegisterOr<IR::AnyFunc> val_;
   };
 
   CMD(SetReturnScope) {
@@ -650,7 +650,7 @@ Val Print(const Val& v);
 Val Cast(const type::Type *to, const Val& v, Context* ctx);
 void Store(const Val &val, const Val &loc);
 
-void SetReturn(size_t n, Val v2);
+void SetReturn(size_t n, Val const &v2);
 
 CmdIndex Phi(type::Type const *);
 Val MakePhi(CmdIndex phi_index,

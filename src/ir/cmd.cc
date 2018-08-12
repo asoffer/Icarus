@@ -511,7 +511,7 @@ Register Alloca(const type::Type *t) {
           .value);
 }
 
-void SetReturn(size_t n, Val v2) {
+void SetReturn(size_t n, Val const &v2) {
   if (v2.type == type::Bool) { return SetReturnBool(n, v2); }
   if (v2.type == type::Char) { return SetReturnChar(n, v2); }
   if (v2.type == type::Int) { return SetReturnInt(n, v2); }
@@ -703,7 +703,15 @@ void SetReturnAddr(size_t n, const Val &v2) {
 
 void SetReturnFunc(size_t n, const Val &v2) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnFunc);
-  cmd.set_return_func_ = Cmd::SetReturnFunc::Make(n, GetRegOr<IR::Func *>(v2));
+  cmd.set_return_func_ = Cmd::SetReturnFunc::Make(
+      n,
+      std::visit(
+          base::overloaded{
+              [](IR::Func *f) -> RegisterOr<AnyFunc> { return AnyFunc{f}; },
+              [](IR::Register r) -> RegisterOr<AnyFunc> { return r; },
+              [](IR::ForeignFn f) -> RegisterOr<AnyFunc> { return AnyFunc{f}; },
+              [n](auto &&) -> RegisterOr<AnyFunc> { UNREACHABLE(); }},
+          v2.value));
 }
 
 void SetReturnScope(size_t n, const Val &v2) {

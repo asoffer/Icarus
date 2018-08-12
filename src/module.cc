@@ -143,7 +143,9 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name& src) {
     if (!stmt->is<AST::Declaration>()) { continue; }
     auto &decl = stmt->as<AST::Declaration>();
     if (decl.identifier->token != "main") { continue; }
-    auto ir_fn = backend::EvaluateAs<IR::Func *>(decl.init_val.get(), &ctx);
+    auto f = backend::EvaluateAs<IR::AnyFunc>(decl.init_val.get(), &ctx);
+    ASSERT(f.is_fn_);
+    auto ir_fn = f.fn_;
 
     // TODO check more than one?
 

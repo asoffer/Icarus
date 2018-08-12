@@ -11,6 +11,12 @@ bool validation = false;
 
 extern base::vector<frontend::Source::Name> files;
 
+#ifdef ICARUS_USE_LLVM
+namespace backend {
+extern char const *output_file;
+}  // namespace backend
+#endif
+
 void cli::Usage() {
   Flag("help") << "Show usage information."
                << []() { execute = cli::ShowUsage; };
@@ -22,6 +28,11 @@ void cli::Usage() {
   Flag("validation", "v") << "Whether or not to do function pre/post-condition "
                              "validation at compile-time."
                           << [](bool b = true) { debug::validation = b; };
+#endif
+
+#ifdef ICARUS_USE_LLVM
+  Flag("output") << "The name of the output file to write."
+                 << [](char const *out = "a.out") { backend::output_file = out; };
 #endif
 
   Flag("repl", "r") << "Run the read-eval-print-loop." << [](bool b = false) {
