@@ -53,7 +53,7 @@ struct DefaultProperty<bool> : public Property {
     return val;
   }
 
-  void Merge(const DefaultProperty &p) {
+  void operator|=(const DefaultProperty &p) {
     can_be_true_ |= p.can_be_true_;
     can_be_false_ |= p.can_be_false_;
   }
@@ -63,7 +63,10 @@ struct DefaultProperty<bool> : public Property {
 };
 
 struct PropertySet {
-  void add(std::unique_ptr<Property> prop);
+  void add(base::owned_ptr<Property> prop);
+  void add(const PropertySet &prop_set);
+
+  void accumulate(Property *prop) const;
 
   base::bag<base::owned_ptr<Property>> props_;
 };

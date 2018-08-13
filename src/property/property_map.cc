@@ -18,16 +18,29 @@ enum class Combine {
             // combination
 };
 
-Combine combine(Property *lhs, Property *rhs) {
-  // TODO implement.
+Combine combine(Property *lhs, Property const *rhs) {
+  if (lhs->is<DefaultProperty<bool>>() && rhs->is<DefaultProperty<bool>>()) {
+    auto& l = lhs->as<DefaultProperty<bool>>();
+    auto& r = rhs->as<DefaultProperty<bool>>();
+    auto prev = l;
+    l.can_be_true_ &= r.can_be_true_;
+    l.can_be_false_ &= r.can_be_false_;
+    return (l.can_be_true_ == prev.can_be_true_ &&
+            l.can_be_false_ == prev.can_be_false_)
+               ? Combine::None
+               : Combine::Merge;
+  }
+  // TODO handling all pairs is not scalable (or even possible with user-defined
+  // properties.
   return Combine::None;
 }
 
-void PropertySet::add(std::unique_ptr<Property> prop) {
-  auto iter        = props_.begin();
+void PropertySet::add(base::owned_ptr<Property> prop) {
+  if (prop == nullptr) { return; }
   bool saw_partial = true;
   while (saw_partial) {
     saw_partial = false;
+    auto iter   = props_.begin();
     while (iter != props_.end()) {
       switch (combine(prop.get(), iter->get())) {
         case Combine::Merge: props_.erase(iter); break;
@@ -40,6 +53,21 @@ void PropertySet::add(std::unique_ptr<Property> prop) {
     }
   }
   props_.insert(std::move(prop));
+}
+
+void PropertySet::add(const PropertySet &prop_set) {
+  for (auto const &p : prop_set.props_) { add(p); }
+}
+
+void PropertySet::accumulate(Property *prop) const {
+  ASSERT(prop != nullptr);
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (const auto &p : props_) {
+      if (combine(prop, p.get()) != Combine::None) { changed = true; }
+    }
+  }
 }
 
 FnStateView::FnStateView(IR::Func *fn) {
@@ -67,6 +95,17 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
   refresh();
 }
 
+namespace {
+base::owned_ptr<Property> Not(base::owned_ptr<Property> const &p) {
+  if (!p->is<DefaultProperty<bool>>()) { return nullptr; }
+  auto copy              = p;
+  auto &copy_ref         = copy->as<DefaultProperty<bool>>();
+  copy_ref.can_be_true_  = !copy_ref.can_be_true_;
+  copy_ref.can_be_false_ = !copy_ref.can_be_false_;
+  return copy;
+}
+}  // namespace
+
 void PropertyMap::refresh() {
   stale_entries_.until_empty([&](const Entry &e) {
     auto *cmd_ptr = fn_->Command(e.reg_);
@@ -82,17 +121,21 @@ void PropertyMap::refresh() {
       case IR::Op::UncondJump: return;
       case IR::Op::CondJump: return;
       case IR::Op::ReturnJump: return;
+      case IR::Op::Not: {
+        auto &block_view = view_.at(e.viewing_block_).view_;
+        auto &prop_set   = block_view.at(e.reg_);
+        for (const auto &p : block_view.at(cmd.not_.reg_).props_) {
+          prop_set.add(Not(p));
+        }
+        LOG << prop_set;
+      } break;
       case IR::Op::SetReturnBool: {
-        auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
+        auto &block_view = view_.at(e.viewing_block_).view_;
+        auto &prop_set   = block_view.at(e.reg_);
         if (cmd.set_return_bool_.val_.is_reg_) {
-          for (const auto &p : view_.at(e.viewing_block_)
-                                   .view_.at(cmd.set_return_bool_.val_.reg_)
-                                   .props_) {
-            auto x = base::wrap_unique(ASSERT_NOT_NULL(p)->Clone());
-            prop_set.add(std::move(x));
-          }
+          prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
         } else {
-          prop_set.add(std::make_unique<DefaultProperty<bool>>(
+          prop_set.add(base::make_owned<DefaultProperty<bool>>(
               cmd.set_return_bool_.val_.val_));
         }
       } break;
@@ -111,7 +154,7 @@ DefaultProperty<bool> PropertyMap::Returns() const {
   i32 num_blocks = static_cast<i32>(fn_->blocks_.size());
   for (i32 i = 0; i < num_blocks; ++i) {
     const auto &block = fn_->blocks_[i];
-    i32 num_cmds = static_cast<i32>(block.cmds_.size());
+    i32 num_cmds      = static_cast<i32>(block.cmds_.size());
     for (i32 j = 0; j < num_cmds; ++j) {
       const auto &cmd = block.cmds_[j];
       if (cmd.op_code_ == IR::Op::SetReturnBool) {
@@ -121,20 +164,15 @@ DefaultProperty<bool> PropertyMap::Returns() const {
     }
   }
 
-  // TODO default bool property is way too specifc.
-  auto acc = DefaultProperty<bool>::Bottom();
+  auto bool_ret = DefaultProperty<bool>::Bottom();
   for (size_t i = 0; i < rets.size(); ++i) {
-    const auto &ret       = rets[i];
-    const auto &reg       = regs[i];
-    IR::BasicBlock *block = &fn_->blocks_[ret.block.value];
-    const PropertySet& prop_set = view_.at(block).view_.at(reg);
-    // TODO blah. not just one entry
-    LOG << view_;
-    auto *x = prop_set.props_.begin()->get();
-    acc.Merge(ASSERT_NOT_NULL(x)->as<DefaultProperty<bool>>());
+    IR::BasicBlock *block = &fn_->blocks_[rets.at(i).block.value];
+    DefaultProperty<bool> acc;
+    view_.at(block).view_.at(regs.at(i)).accumulate(&acc);
+    bool_ret |= acc;
   }
 
-  return acc;
+  return bool_ret;
 }
 
 PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
@@ -149,11 +187,14 @@ PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
     auto *t = args.type_->input.at(index);
     offset  = arch.MoveForwardToAlignment(t, offset);
     if (t == type::Bool) {
+      // TODO understand why adding a default here in the register case is
+      // necessary for correctness.
       props.at(IR::Register(offset))
           .add(args.is_reg_.at(index)
-                   ? std::make_unique<DefaultProperty<bool>>()
-                   : std::make_unique<DefaultProperty<bool>>(
+                   ? base::make_owned<DefaultProperty<bool>>()
+                   : base::make_owned<DefaultProperty<bool>>(
                          args.args_.get<bool>(offset)));
+
       copy.stale_entries_.emplace(entry_block, IR::Register(offset));
     }
 
@@ -172,6 +213,7 @@ PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
   }
 
   copy.refresh();
+  LOG << copy.view_;
   return copy;
 }
 

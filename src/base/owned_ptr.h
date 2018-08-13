@@ -7,6 +7,7 @@ namespace base {
 template <typename T>
 struct owned_ptr {
   owned_ptr() noexcept = default;
+  owned_ptr(nullptr_t) noexcept {}
   owned_ptr(std::unique_ptr<T> ptr) noexcept : ptr_(std::move(ptr)) {}
   owned_ptr(owned_ptr const& ptr) noexcept
       : ptr_(ptr == nullptr ? nullptr : ptr->Clone()) {}
