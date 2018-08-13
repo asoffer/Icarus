@@ -7,8 +7,9 @@
 namespace prop {
 // When combining the information available between two properties, we overwrite
 // the left-hand side property with any new information gleanable from the
-// right-hand side. There are three possible outcomes.
+// right-hand side. There are several possible outcomes.
 enum class Combine {
+  Same,     // The properties are equal
   Merge,    // The new property completely subsumes both the left-hand and
             // right-hand sides.
   Partial,  // The new property has more information than the right-hand side,
@@ -23,6 +24,11 @@ Combine combine(Property *lhs, Property const *rhs) {
     auto& l = lhs->as<DefaultProperty<bool>>();
     auto& r = rhs->as<DefaultProperty<bool>>();
     auto prev = l;
+    if (l.can_be_true_ == r.can_be_true_ &&
+        l.can_be_false_ == r.can_be_false_) {
+      return Combine::Same;
+    }
+
     l.can_be_true_ &= r.can_be_true_;
     l.can_be_false_ &= r.can_be_false_;
     return (l.can_be_true_ == prev.can_be_true_ &&
@@ -35,17 +41,24 @@ Combine combine(Property *lhs, Property const *rhs) {
   return Combine::None;
 }
 
-void PropertySet::add(base::owned_ptr<Property> prop) {
-  if (prop == nullptr) { return; }
+bool PropertySet::add(base::owned_ptr<Property> prop) {
+  bool change = false;
   bool saw_partial = true;
   while (saw_partial) {
     saw_partial = false;
     auto iter   = props_.begin();
+    // TODO write down the exact invariants that this guarantees. Something like
+    // "every pair of properties is incomparbale."
     while (iter != props_.end()) {
       switch (combine(prop.get(), iter->get())) {
-        case Combine::Merge: props_.erase(iter); break;
+        case Combine::Same: return false;
+        case Combine::Merge:
+          change = true;
+          props_.erase(iter);
+          break;
         case Combine::Partial:
           saw_partial = true;
+          change      = true;
           ++iter;
           break;
         case Combine::None: ++iter; break;
@@ -53,10 +66,13 @@ void PropertySet::add(base::owned_ptr<Property> prop) {
     }
   }
   props_.insert(std::move(prop));
+  return change;
 }
 
-void PropertySet::add(const PropertySet &prop_set) {
-  for (auto const &p : prop_set.props_) { add(p); }
+bool PropertySet::add(const PropertySet &prop_set) {
+  bool change = false;
+  for (auto const &p : prop_set.props_) { change |= add(p); }
+  return change;
 }
 
 void PropertySet::accumulate(Property *prop) const {
@@ -96,13 +112,14 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
 }
 
 namespace {
-base::owned_ptr<Property> Not(base::owned_ptr<Property> const &p) {
-  if (!p->is<DefaultProperty<bool>>()) { return nullptr; }
-  auto copy              = p;
-  auto &copy_ref         = copy->as<DefaultProperty<bool>>();
-  copy_ref.can_be_true_  = !copy_ref.can_be_true_;
-  copy_ref.can_be_false_ = !copy_ref.can_be_false_;
-  return copy;
+PropertySet Not(PropertySet prop_set) {
+  prop_set.props_.for_each([](base::owned_ptr<Property> *prop) {
+    if (!(**prop).is<DefaultProperty<bool>>()) { return; }
+    auto p           = &(**prop).as<DefaultProperty<bool>>();
+    p->can_be_true_  = !p->can_be_true_;
+    p->can_be_false_ = !p->can_be_false_;
+  });
+  return prop_set;
 }
 }  // namespace
 
@@ -116,25 +133,21 @@ void PropertyMap::refresh() {
       }
       return;
     }
-    auto &cmd = *cmd_ptr;
+    auto &cmd        = *cmd_ptr;
+    auto &block_view = view_.at(e.viewing_block_).view_;
+    auto &prop_set   = block_view.at(e.reg_);
+
     switch (cmd.op_code_) {
       case IR::Op::UncondJump: return;
       case IR::Op::CondJump: return;
       case IR::Op::ReturnJump: return;
-      case IR::Op::Not: {
-        auto &block_view = view_.at(e.viewing_block_).view_;
-        auto &prop_set   = block_view.at(e.reg_);
-        for (const auto &p : block_view.at(cmd.not_.reg_).props_) {
-          prop_set.add(Not(p));
-        }
-        LOG << prop_set;
-      } break;
+      case IR::Op::Not: prop_set.add(Not(block_view.at(cmd.not_.reg_))); break;
       case IR::Op::SetReturnBool: {
-        auto &block_view = view_.at(e.viewing_block_).view_;
-        auto &prop_set   = block_view.at(e.reg_);
         if (cmd.set_return_bool_.val_.is_reg_) {
           prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
         } else {
+          // TODO Adding a default property seems really silly. You should be
+          // able to just not add anything.
           prop_set.add(base::make_owned<DefaultProperty<bool>>(
               cmd.set_return_bool_.val_.val_));
         }
@@ -165,6 +178,7 @@ DefaultProperty<bool> PropertyMap::Returns() const {
   }
 
   auto bool_ret = DefaultProperty<bool>::Bottom();
+
   for (size_t i = 0; i < rets.size(); ++i) {
     IR::BasicBlock *block = &fn_->blocks_[rets.at(i).block.value];
     DefaultProperty<bool> acc;

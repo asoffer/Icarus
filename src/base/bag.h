@@ -70,6 +70,11 @@ struct bag {
 
   void clear() { data_.clear(); }
 
+  template <typename Fn>
+  void for_each(Fn&& fn) {
+    for (T& t : data_) { fn(&t); }
+  }
+
  private:
   std::vector<T, Allocator> data_;
 };

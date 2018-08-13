@@ -35,8 +35,8 @@ struct DefaultProperty<bool> : public Property {
   ~DefaultProperty() override {}
 
   std::string to_string() const override {
-    return std::string{} + (can_be_true_ ? "y" : "n") +
-           (can_be_false_ ? "y" : "n");
+    return can_be_true_ ? (can_be_false_ ? "TF" : "T-")
+                        : (can_be_false_ ? "-F" : "--");
   }
 
   DefaultProperty<bool> *Clone() const override {
@@ -63,17 +63,15 @@ struct DefaultProperty<bool> : public Property {
 };
 
 struct PropertySet {
-  void add(base::owned_ptr<Property> prop);
-  void add(const PropertySet &prop_set);
+  bool add(base::owned_ptr<Property> prop);
+  bool add(const PropertySet &prop_set);
 
   void accumulate(Property *prop) const;
 
   base::bag<base::owned_ptr<Property>> props_;
 };
 inline std::ostream &operator<<(std::ostream &os, const PropertySet &props) {
-  os << "{-";
-  for (const auto &x : props.props_) { os << base::internal::stringify(*x) << "-"; }
-  return os << "}";
+  return os << base::internal::stringify(props.props_);
 }
 
 struct FnStateView {
