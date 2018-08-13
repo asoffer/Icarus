@@ -294,6 +294,7 @@ Val Array(const Val &v1, const Val &v2) {
   return cmd.reg();
 }
 
+// TODO stop using call_args
 Val Tup(base::vector<Val> vals) {
   auto *args = &Func::Current->block(BasicBlock::Current)
                      .call_args_.emplace_back(std::move(vals));
@@ -302,6 +303,7 @@ Val Tup(base::vector<Val> vals) {
   return cmd.reg();
 }
 
+// TODO stop using call_args
 Val Variant(base::vector<Val> vals) {
   auto *args = &Func::Current->block(BasicBlock::Current)
                      .call_args_.emplace_back(std::move(vals));
@@ -318,34 +320,6 @@ Val XorBool(const Val &v1, const Val &v2) {
   auto &cmd = MakeCmd(type::Bool, Op::XorBool);
   cmd.xor_bool_ =
       Cmd::XorBool::Make(x1 ? RegisterOr<bool>(*x1)
-                            : RegisterOr<bool>(std::get<Register>(v1.value)),
-                         x2 ? RegisterOr<bool>(*x2)
-                            : RegisterOr<bool>(std::get<Register>(v2.value)));
-  return cmd.reg();
-}
-
-Val OrBool(const Val &v1, const Val &v2) {
-  bool const *x1 = std::get_if<bool>(&v1.value);
-  bool const *x2 = std::get_if<bool>(&v2.value);
-  if (x1) { return *x1 ? IR::Val::Bool(true) : v2; }
-  if (x2) { return *x2 ? IR::Val::Bool(true) : v1; }
-  auto &cmd = MakeCmd(type::Bool, Op::OrBool);
-  cmd.or_bool_ =
-      Cmd::OrBool::Make(x1 ? RegisterOr<bool>(*x1)
-                           : RegisterOr<bool>(std::get<Register>(v1.value)),
-                        x2 ? RegisterOr<bool>(*x2)
-                           : RegisterOr<bool>(std::get<Register>(v2.value)));
-  return cmd.reg();
-}
-
-Val AndBool(const Val &v1, const Val &v2) {
-  bool const *x1 = std::get_if<bool>(&v1.value);
-  bool const *x2 = std::get_if<bool>(&v2.value);
-  if (x1) { return *x1 ? v2 : IR::Val::Bool(false); }
-  if (x2) { return *x2 ? v1 : IR::Val::Bool(false); }
-  auto &cmd = MakeCmd(type::Bool, Op::AndBool);
-  cmd.and_bool_ =
-      Cmd::AndBool::Make(x1 ? RegisterOr<bool>(*x1)
                             : RegisterOr<bool>(std::get<Register>(v1.value)),
                          x2 ? RegisterOr<bool>(*x2)
                             : RegisterOr<bool>(std::get<Register>(v2.value)));
@@ -550,18 +524,6 @@ Val AndFlags(const Val &v1, const Val &v2) { NOT_YET(); }
 Val Xor(const Val &v1, const Val &v2) {
   if (v1.type == type::Bool) { return XorBool(v1, v2); }
   if (v1.type->is<type::Flags>()) { return XorFlags(v1, v2); }
-  UNREACHABLE();
-}
-
-Val Or(const Val &v1, const Val &v2) {
-  if (v1.type == type::Bool) { return OrBool(v1, v2); }
-  if (v1.type->is<type::Flags>()) { return OrFlags(v1, v2); }
-  UNREACHABLE();
-}
-
-Val And(const Val &v1, const Val &v2) {
-  if (v1.type == type::Bool) { return AndBool(v1, v2); }
-  if (v1.type->is<type::Flags>()) { return AndFlags(v1, v2); }
   UNREACHABLE();
 }
 
@@ -1103,9 +1065,7 @@ void Cmd::dump(size_t indent) const {
     case Op::NeAddr: std::cerr << "ne-addr " << ne_addr_.args_; break;
     case Op::XorBool: std::cerr << "xor-bool " << xor_bool_.args_; break;
     case Op::XorFlags: std::cerr << "xor-flags " << xor_flags_.args_; break;
-    case Op::OrBool: std::cerr << "or-bool " << or_bool_.args_; break;
     case Op::OrFlags: std::cerr << "or-flags " << or_flags_.args_; break;
-    case Op::AndBool: std::cerr << "and-bool " << and_bool_.args_; break;
     case Op::AndFlags: std::cerr << "and-flags " << and_flags_.args_; break;
     case Op::CreateStruct: std::cerr << "create-struct "; break;
     case Op::InsertField:

@@ -433,9 +433,10 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::OrEq: {
-      if (type->is<type::Enum>()) {
+      if (type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::Store(IR::Or(IR::Load(lhs_lval), rhs->EmitIR(ctx)[0]), lhs_lval);
+        IR::Store(IR::OrFlags(IR::Load(lhs_lval), rhs->EmitIR(ctx)[0]),
+                  lhs_lval);
         return {};
       }
       auto land_block = IR::Func::Current->AddBlock();
@@ -457,9 +458,10 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
           {{lhs_end_block, IR::Val::Bool(true)}, {rhs_end_block, rhs_val}})};
     } break;
     case Language::Operator::AndEq: {
-      if (type->is<type::Enum>()) {
+      if (type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::Store(IR::And(IR::Load(lhs_lval), rhs->EmitIR(ctx)[0]), lhs_lval);
+        IR::Store(IR::AndFlags(IR::Load(lhs_lval), rhs->EmitIR(ctx)[0]),
+                  lhs_lval);
         return {};
       }
 

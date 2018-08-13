@@ -270,18 +270,18 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       val = IR::Xor(std::move(val), (*iter)->EmitIR(ctx)[0]);
     }
     return {val};
-  } else if (ops[0] == Language::Operator::Or && type->is<type::Enum>()) {
+  } else if (ops[0] == Language::Operator::Or && type->is<type::Flags>()) {
     auto iter = exprs.begin();
     auto val  = (*iter)->EmitIR(ctx)[0];
     while (++iter != exprs.end()) {
-      val = IR::Or(std::move(val), (*iter)->EmitIR(ctx)[0]);
+      val = IR::OrFlags(std::move(val), (*iter)->EmitIR(ctx)[0]);
     }
     return {val};
-  } else if (ops[0] == Language::Operator::And && type->is<type::Enum>()) {
+  } else if (ops[0] == Language::Operator::And && type->is<type::Flags>()) {
     auto iter = exprs.begin();
     auto val  = (*iter)->EmitIR(ctx)[0];
     while (++iter != exprs.end()) {
-      val = IR::And(std::move(val), (*iter)->EmitIR(ctx)[0]);
+      val = IR::AndFlags(std::move(val), (*iter)->EmitIR(ctx)[0]);
     }
     return {val};
   } else if (ops[0] == Language::Operator::Or && type == type::Type_) {

@@ -69,9 +69,8 @@ enum class Op : char {
   EqBool, EqChar, EqInt, EqReal, EqType, EqFlags, EqAddr,
   NeBool, NeChar, NeInt, NeReal, NeType, NeFlags, NeAddr,
   
-  XorBool, XorFlags,
-  OrBool, OrFlags,
-  AndBool, AndFlags,
+  XorBool,
+  XorFlags, OrFlags, AndFlags,
 
   CreateStruct, InsertField, FinalizeStruct,
 
@@ -217,10 +216,9 @@ struct Cmd {
   CMD(NeAddr) { std::array<RegisterOr<IR::Addr>, 2> args_; };
 
   CMD(XorBool) { std::array<RegisterOr<bool>, 2> args_; };
+
   CMD(XorFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(OrBool) { std::array<RegisterOr<bool>, 2> args_; };
   CMD(OrFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(AndBool) { std::array<RegisterOr<bool>, 2> args_; };
   CMD(AndFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
 
   CMD(CreateStruct){};
@@ -452,9 +450,7 @@ struct Cmd {
 
     XorBool xor_bool_;
     XorFlags xor_flags_;
-    OrBool or_bool_;
     OrFlags or_flags_;
-    AndBool and_bool_;
     AndFlags and_flags_;
 
     CreateStruct create_struct_;
@@ -578,9 +574,7 @@ Val NeType(const Val &v1, const Val &v2);
 Val NeAddr(const Val &v1, const Val &v2);
 Val XorBool(const Val &v1, const Val &v2);
 Val XorFlags(const Val &v1, const Val &v2);
-Val OrBool(const Val &v1, const Val &v2);
 Val OrFlags(const Val &v1, const Val &v2);
-Val AndBool(const Val &v1, const Val &v2);
 Val AndFlags(const Val &v1, const Val &v2);
 Val CreateStruct();
 void InsertField(Val struct_type, std::string field_name, Val type,
@@ -642,8 +636,6 @@ Val Gt(const Val &v1, const Val &v2);
 Val Eq(const Val &v1, const Val &v2);
 Val Ne(const Val &v1, const Val &v2);
 Val Xor(const Val &v1, const Val &v2);
-Val Or(const Val &v1, const Val &v2);
-Val And(const Val &v1, const Val &v2);
 Val Index(const Val &v1, const Val &v2);
 Register Alloca(const type::Type *t);
 Val Print(const Val& v);
