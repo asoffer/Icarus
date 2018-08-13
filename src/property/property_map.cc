@@ -5,6 +5,43 @@
 #include "type/function.h"
 
 namespace prop {
+// When combining the information available between two properties, we overwrite
+// the left-hand side property with any new information gleanable from the
+// right-hand side. There are three possible outcomes.
+enum class Combine {
+  Merge,    // The new property completely subsumes both the left-hand and
+            // right-hand sides.
+  Partial,  // The new property has more information than the right-hand side,
+            // but the right-hand side still has some useful information that
+            // isn't expresed in the new property.
+  None      // The new property is identical to the left-hand side before
+            // combination
+};
+
+Combine combine(Property *lhs, Property *rhs) {
+  // TODO implement.
+  return Combine::None;
+}
+
+void PropertySet::add(std::unique_ptr<Property> prop) {
+  auto iter        = props_.begin();
+  bool saw_partial = true;
+  while (saw_partial) {
+    saw_partial = false;
+    while (iter != props_.end()) {
+      switch (combine(prop.get(), iter->get())) {
+        case Combine::Merge: props_.erase(iter); break;
+        case Combine::Partial:
+          saw_partial = true;
+          ++iter;
+          break;
+        case Combine::None: ++iter; break;
+      }
+    }
+  }
+  props_.insert(std::move(prop));
+}
+
 FnStateView::FnStateView(IR::Func *fn) {
   // TODO this is wrong since registers arent incremented this way.
   for (i32 i = 0; i < static_cast<i32>(fn->num_regs_); ++i) {
@@ -45,33 +82,14 @@ void PropertyMap::refresh() {
       case IR::Op::UncondJump: return;
       case IR::Op::CondJump: return;
       case IR::Op::ReturnJump: return;
-      case IR::Op::Not: {
-        auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
-        bool change    = false;
-        for (auto &prop :
-             view_.at(e.viewing_block_).view_.at(cmd.not_.reg_).props_) {
-          if (prop->is<DefaultProperty<bool>>()) {
-            auto new_prop = std::make_unique<DefaultProperty<bool>>(
-                prop->as<DefaultProperty<bool>>());
-            std::swap(new_prop->can_be_true_, new_prop->can_be_false_);
-            change |= prop_set.add(std::move(new_prop));
-          }
-        }
-
-        if (change) {
-          for (IR::Register reg : fn_->references_.at(e.reg_)) {
-            // TODO also this entry on all blocks you jump to
-            stale_entries_.emplace(e.viewing_block_, reg);
-          }
-        }
-      } break;
       case IR::Op::SetReturnBool: {
         auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
         if (cmd.set_return_bool_.val_.is_reg_) {
           for (const auto &p : view_.at(e.viewing_block_)
                                    .view_.at(cmd.set_return_bool_.val_.reg_)
                                    .props_) {
-            prop_set.add(base::wrap_unique(p->Clone()));
+            auto x = base::wrap_unique(ASSERT_NOT_NULL(p)->Clone());
+            prop_set.add(std::move(x));
           }
         } else {
           prop_set.add(std::make_unique<DefaultProperty<bool>>(
@@ -112,7 +130,7 @@ DefaultProperty<bool> PropertyMap::Returns() const {
     const PropertySet& prop_set = view_.at(block).view_.at(reg);
     // TODO blah. not just one entry
     LOG << view_;
-    auto *x = prop_set.props_.at(0).get();
+    auto *x = prop_set.props_.begin()->get();
     acc.Merge(ASSERT_NOT_NULL(x)->as<DefaultProperty<bool>>());
   }
 

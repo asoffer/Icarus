@@ -2,7 +2,7 @@
 #define ICARUS_PROPERTY_PROPERTY_MAP_H
 
 #include "base/container/unordered_map.h"
-#include "base/container/vector.h"
+#include "base/bag.h"
 
 #include "base/owned_ptr.h"
 #include "base/stale_set.h"
@@ -63,13 +63,9 @@ struct DefaultProperty<bool> : public Property {
 };
 
 struct PropertySet {
-  template <typename Prop>
-  bool add(std::unique_ptr<Prop> prop) {
-    props_.emplace_back(std::move(prop));
-    return true;
-  }
+  void add(std::unique_ptr<Property> prop);
 
-  base::vector<base::owned_ptr<Property>> props_;
+  base::bag<base::owned_ptr<Property>> props_;
 };
 inline std::ostream &operator<<(std::ostream &os, const PropertySet &props) {
   os << "{-";
