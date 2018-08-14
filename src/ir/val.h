@@ -39,6 +39,15 @@ DEFINE_STRONG_INT(IR, Register, i32, std::numeric_limits<i32>::lowest());
 DEFINE_STRONG_INT(IR, BuiltinGenericIndex, i32, -1);
 
 namespace IR {
+inline FlagsVal operator|(FlagsVal lhs, FlagsVal rhs) {
+  return FlagsVal{lhs.value | rhs.value};
+}
+inline FlagsVal operator^(FlagsVal lhs, FlagsVal rhs) {
+  return FlagsVal{lhs.value ^ rhs.value};
+}
+inline FlagsVal operator&(FlagsVal lhs, FlagsVal rhs) {
+  return FlagsVal{lhs.value & rhs.value};
+}
 template <typename T>
 struct RegisterOr {
   static_assert(!std::is_same_v<Register, T>);
@@ -175,7 +184,7 @@ struct Val {
   static Val Real(double r) { return Val(type::Real, r); }
   static Val Int(i32 n) { return Val(type::Int, n); }
   static Val Enum(const type::Enum *enum_type, size_t integral_val);
-  static Val Flags(const type::Flags *flags_type, size_t integral_val);
+  static Val Flags(const type::Flags *flags_type, FlagsVal val);
   static Val Type(const type::Type *t) { return Val(type::Type_, t); }
   static Val Type_(const type::Type *t) { return Val::Type(t); } // TODO hack to get a cmd macro to work.
   static Val CodeBlock(AST::CodeBlock block);

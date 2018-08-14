@@ -75,7 +75,7 @@ void Enum::EmitInit(IR::Val id_val, Context *ctx) const {
 }
 
 void Flags::EmitInit(IR::Val id_val, Context *ctx) const {
-  IR::Store(IR::Val::Flags(this, 0), id_val);
+  IR::Store(IR::Val::Flags(this, IR::FlagsVal{0}), id_val);
 }
 
 void Variant::EmitInit(IR::Val, Context *ctx) const {

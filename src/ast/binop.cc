@@ -435,7 +435,9 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::OrEq: {
       if (type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::Store(IR::OrFlags(IR::Load(lhs_lval), rhs->EmitIR(ctx)[0]),
+        IR::Store(IR::OrFlags(&type->as<type::Flags>(),
+                              IR::Load(lhs_lval).reg_or<IR::FlagsVal>(),
+                              rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
                   lhs_lval);
         return {};
       }
@@ -460,7 +462,9 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::AndEq: {
       if (type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::Store(IR::AndFlags(IR::Load(lhs_lval), rhs->EmitIR(ctx)[0]),
+        IR::Store(IR::AndFlags(&type->as<type::Flags>(),
+                               IR::Load(lhs_lval).reg_or<IR::FlagsVal>(),
+                               rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
                   lhs_lval);
         return {};
       }

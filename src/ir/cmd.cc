@@ -517,13 +517,42 @@ Val PtrIncr(const Val &v1, const Val &v2) {
   return cmd.reg();
 }
 
-Val XorFlags(const Val &v1, const Val &v2) { NOT_YET(); }
-Val OrFlags(const Val &v1, const Val &v2) { NOT_YET(); }
-Val AndFlags(const Val &v1, const Val &v2) { NOT_YET(); }
+Val XorFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
+             RegisterOr<FlagsVal> const &rhs) {
+  if (!lhs.is_reg_ && !rhs.is_reg_) {
+    return Val::Flags(type, lhs.val_ ^ rhs.val_);
+  }
+  auto &cmd      = MakeCmd(type, Op::XorFlags);
+  cmd.xor_flags_ = Cmd::XorFlags::Make(lhs, rhs);
+  return cmd.reg();
+}
+
+Val OrFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
+            RegisterOr<FlagsVal> const &rhs) {
+  if (!lhs.is_reg_ && !rhs.is_reg_) {
+    return Val::Flags(type, lhs.val_ | rhs.val_);
+  }
+  auto &cmd     = MakeCmd(type, Op::OrFlags);
+  cmd.or_flags_ = Cmd::OrFlags::Make(lhs, rhs);
+  return cmd.reg();
+}
+
+Val AndFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
+             RegisterOr<FlagsVal> const &rhs) {
+  if (!lhs.is_reg_ && !rhs.is_reg_) {
+    return Val::Flags(type, lhs.val_ & rhs.val_);
+  }
+  auto &cmd      = MakeCmd(type, Op::AndFlags);
+  cmd.and_flags_ = Cmd::AndFlags::Make(lhs, rhs);
+  return cmd.reg();
+}
 
 Val Xor(const Val &v1, const Val &v2) {
   if (v1.type == type::Bool) { return XorBool(v1, v2); }
-  if (v1.type->is<type::Flags>()) { return XorFlags(v1, v2); }
+  if (v1.type->is<type::Flags>()) {
+    return XorFlags(&v1.type->as<type::Flags>(), v1.reg_or<FlagsVal>(),
+                    v2.reg_or<FlagsVal>());
+  }
   UNREACHABLE();
 }
 

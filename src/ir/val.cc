@@ -92,8 +92,8 @@ Val Val::Enum(const type::Enum *enum_type, size_t integral_val) {
   return Val(enum_type, EnumVal{integral_val});
 }
 
-Val Val::Flags(const type::Flags *flags_type, size_t integral_val) {
-  return Val(flags_type, FlagsVal{integral_val});
+Val Val::Flags(const type::Flags *flags_type, FlagsVal val) {
+  return Val(flags_type, val);
 }
 
 Val Val::Func(AST::Function *fn) { return Val(fn->type, fn); }

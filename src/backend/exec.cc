@@ -298,9 +298,15 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::XorBool:
       save(resolve(cmd.xor_bool_.args_[0]) ^ resolve(cmd.xor_bool_.args_[1]));
       break;
-    case IR::Op::XorFlags: NOT_YET();
-    case IR::Op::OrFlags: NOT_YET();
-    case IR::Op::AndFlags: NOT_YET();
+    case IR::Op::XorFlags:
+      save(resolve(cmd.xor_flags_.args_[0]) ^ resolve(cmd.xor_flags_.args_[1]));
+      break;
+    case IR::Op::OrFlags:
+      save(resolve(cmd.or_flags_.args_[0]) | resolve(cmd.or_flags_.args_[1]));
+      break;
+    case IR::Op::AndFlags:
+      save(resolve(cmd.and_flags_.args_[0]) & resolve(cmd.and_flags_.args_[1]));
+      break;
     case IR::Op::CreateStruct: save(new type::Struct); break;
     case IR::Op::InsertField: {
       NOT_YET();

@@ -274,14 +274,16 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
     auto iter = exprs.begin();
     auto val  = (*iter)->EmitIR(ctx)[0];
     while (++iter != exprs.end()) {
-      val = IR::OrFlags(std::move(val), (*iter)->EmitIR(ctx)[0]);
+      val = IR::OrFlags(&type->as<type::Flags>(), val.reg_or<IR::FlagsVal>(),
+                        (*iter)->EmitIR(ctx)[0].reg_or<IR::FlagsVal>());
     }
     return {val};
   } else if (ops[0] == Language::Operator::And && type->is<type::Flags>()) {
     auto iter = exprs.begin();
     auto val  = (*iter)->EmitIR(ctx)[0];
     while (++iter != exprs.end()) {
-      val = IR::AndFlags(std::move(val), (*iter)->EmitIR(ctx)[0]);
+      val = IR::AndFlags(&type->as<type::Flags>(), val.reg_or<IR::FlagsVal>(),
+                         (*iter)->EmitIR(ctx)[0].reg_or<IR::FlagsVal>());
     }
     return {val};
   } else if (ops[0] == Language::Operator::Or && type == type::Type_) {

@@ -573,9 +573,12 @@ Val NeReal(const Val &v1, const Val &v2);
 Val NeType(const Val &v1, const Val &v2);
 Val NeAddr(const Val &v1, const Val &v2);
 Val XorBool(const Val &v1, const Val &v2);
-Val XorFlags(const Val &v1, const Val &v2);
-Val OrFlags(const Val &v1, const Val &v2);
-Val AndFlags(const Val &v1, const Val &v2);
+Val XorFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
+             RegisterOr<FlagsVal> const &rhs);
+Val OrFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
+            RegisterOr<FlagsVal> const &rhs);
+Val AndFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
+             RegisterOr<FlagsVal> const &rhs);
 Val CreateStruct();
 void InsertField(Val struct_type, std::string field_name, Val type,
                  Val init_val);
