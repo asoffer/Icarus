@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <queue>
 
+#include "base/bag.h"
 #include "base/container/unordered_map.h"
 #include "base/container/vector.h"
 #include "ir/basic_block.h"
@@ -82,7 +83,7 @@ struct Func {
   base::vector<std::pair<std::string, AST::Expression *>> args_;
   bool has_default(size_t i) const { return args_[i].second != nullptr; }
   i32 num_regs_  = 0;
-  i32 num_voids_ = 0;
+  i32 neg_bound_ = 0;
   base::vector<BasicBlock> blocks_;
 #ifdef ICARUS_USE_LLVM
   llvm::Function *llvm_fn_ = nullptr;
@@ -91,15 +92,16 @@ struct Func {
   Module* mod_;
 
   size_t reg_size_ = 0;
-  base::unordered_map<size_t, Register> reg_map_;
+  base::unordered_map<i32, Register> reg_map_;
 
   base::vector<AST::Expression *> precondition_exprs_, postcondition_exprs_;
   base::vector<std::pair<IR::Func, prop::PropertyMap>> preconditions_,
       postconditions_;
-  base::unordered_map<Register, base::vector<Register>> references_;
+  base::unordered_map<Register, base::bag<Register>> references_;
   base::unordered_map<Register, CmdIndex> reg_to_cmd_;
 
-  base::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
+  base::unordered_map<const BasicBlock *,
+                      std::unordered_set<const BasicBlock *>>
   GetIncomingBlocks() const;
 };
 

@@ -32,8 +32,8 @@ Func::Func(Module *mod, AST::GeneratedFunction *fn,
       num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
       mod_(mod) {
   // Set the references for arguments and returns
-  for (i32 i = 0;
-       i < static_cast<i32>(type_->input.size() + type_->output.size()); ++i) {
+  for (i32 i = -static_cast<i32>(type_->output.size());
+       i < static_cast<i32>(type_->input.size()); ++i) {
     references_[Register{i}];
   }
 
@@ -44,10 +44,11 @@ Func::Func(Module *mod, AST::GeneratedFunction *fn,
     reg_map_.emplace(i++, Register(entry));
     reg_size_ = entry + arch.bytes(t);
   }
+
+  // Return registers are just negative integers starting at -1 and decreasing
   for (auto *t : type_->output) {
-    auto entry = arch.MoveForwardToAlignment(t, reg_size_);
-    reg_map_.emplace(i++, Register(entry));
-    reg_size_ = entry + arch.bytes(t);
+    --neg_bound_;
+    reg_map_.emplace(neg_bound_, Register(neg_bound_));
   }
 
   ASSERT(args_.size() == type_->input.size());
@@ -61,8 +62,8 @@ Func::Func(Module *mod, const type::Function *fn_type,
       num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
       mod_(mod) {
   // Set the references for arguments and returns
-  for (i32 i = 0;
-       i < static_cast<i32>(type_->input.size() + type_->output.size()); ++i) {
+  for (i32 i = -static_cast<i32>(type_->output.size());
+       i < static_cast<i32>(type_->input.size()); ++i) {
     references_[Register{i}];
   }
 
@@ -73,10 +74,11 @@ Func::Func(Module *mod, const type::Function *fn_type,
     reg_map_.emplace(i++, Register(entry));
     reg_size_ = entry + arch.bytes(t);
   }
+
+  // Return registers are just negative integers starting at -1 and decreasing
   for (auto *t : type_->output) {
-    auto entry = arch.MoveForwardToAlignment(t, reg_size_);
-    reg_map_.emplace(i++, Register(entry));
-    reg_size_ = entry + arch.bytes(t);
+    --neg_bound_;
+    reg_map_.emplace(neg_bound_, Register(neg_bound_));
   }
 
   ASSERT(args_.size() == fn_type->input.size());

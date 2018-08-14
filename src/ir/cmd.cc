@@ -14,9 +14,9 @@ BlockIndex BasicBlock::Current;
 
 std::string LongArgs::to_string() const {
   std::stringstream ss;
-  auto arch = Architecture::InterprettingMachine();
+  auto arch     = Architecture::InterprettingMachine();
   size_t offset = 0;
-  size_t i = 0;
+  size_t i      = 0;
   for (auto *t : type_->input) {
     offset = arch.MoveForwardToAlignment(t, offset);
     if (is_reg_[i]) {
@@ -93,6 +93,8 @@ Val Not(const Val &v) {
   if (const bool *b = std::get_if<bool>(&v.value)) { return Val::Bool(!*b); }
   auto &cmd = MakeCmd(type::Bool, Op::Not);
   cmd.not_  = Cmd::Not::Make(std::get<Register>(v.value));
+  Func::Current->references_[cmd.not_.reg_].insert(cmd.result);
+
   return cmd.reg();
 }
 
@@ -297,7 +299,7 @@ Val Array(const Val &v1, const Val &v2) {
 // TODO stop using call_args
 Val Tup(base::vector<Val> vals) {
   auto *args = &Func::Current->block(BasicBlock::Current)
-                     .call_args_.emplace_back(std::move(vals));
+                    .call_args_.emplace_back(std::move(vals));
   auto &cmd = MakeCmd(type::Type_, Op::Tup);
   cmd.tup_  = Cmd::Tup{{}, args};
   return cmd.reg();
@@ -306,7 +308,7 @@ Val Tup(base::vector<Val> vals) {
 // TODO stop using call_args
 Val Variant(base::vector<Val> vals) {
   auto *args = &Func::Current->block(BasicBlock::Current)
-                     .call_args_.emplace_back(std::move(vals));
+                    .call_args_.emplace_back(std::move(vals));
   auto &cmd    = MakeCmd(type::Type_, Op::Variant);
   cmd.variant_ = Cmd::Variant{{}, args};
   return cmd.reg();
@@ -335,12 +337,15 @@ Val Field(const Val &v, size_t n) {
   return cmd.reg();
 }
 
-static Register Reserve(type::Type const *t) {
+static Register Reserve(type::Type const *t, bool incr_num_regs = true) {
   auto arch    = Architecture::InterprettingMachine();
   auto reg_val = arch.MoveForwardToAlignment(t, Func::Current->reg_size_);
   auto result  = Register(reg_val);
   Func::Current->reg_size_ = reg_val + arch.bytes(t);
-  ++Func::Current->num_regs_;
+  if (incr_num_regs) {
+    Func::Current->reg_map_.emplace(Func::Current->num_regs_, result);
+    ++Func::Current->num_regs_;
+  }
   return result;
 }
 
@@ -350,21 +355,21 @@ Cmd::Cmd(const type::Type *t, Op op) : op_code_(op), type(t) {
       BasicBlock::Current,
       static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
   if (t == nullptr) {
-    result = Register{-++Func::Current->num_voids_};
+    result = Register{--Func::Current->neg_bound_};
+    Func::Current->references_[result];  // Guarantee it exists.
     Func::Current->reg_to_cmd_.emplace(result, cmd_index);
+    Func::Current->reg_map_.emplace(Func::Current->neg_bound_, result);
     return;
   }
 
   result = Reserve(t);
+  Func::Current->references_[result];  // Guarantee it exists.
   // TODO for implicitly declared out-params of a Call, map them to the call.
   Func::Current->reg_to_cmd_.emplace(result, cmd_index);
-
-  Func::Current->references_[result];  // Make sure this entry exists
-  // TODO references_
 }
 
 Val OutParams::AppendReg(type::Type const *t) {
-  auto reg = Reserve(t);
+  auto reg = Reserve(t, false);
   outs_.emplace_back(reg, false);
   return IR::Val::Reg(reg, t);
 }
@@ -443,9 +448,7 @@ Val Cast(const type::Type *to, const Val &v, Context *ctx) {
   }
 }
 
-Val CreateStruct() {
-  return MakeCmd(type::Type_, Op::CreateStruct).reg();
-}
+Val CreateStruct() { return MakeCmd(type::Type_, Op::CreateStruct).reg(); }
 
 IR::Val FinalizeStruct(const Val &v) {
   auto &cmd            = MakeCmd(type::Type_, Op::CreateStruct);
@@ -590,106 +593,103 @@ Val Mod(const Val &v1, const Val &v2) {
   UNREACHABLE();
 }
 
-template <typename T>
-static RegisterOr<T> GetRegOr(const Val &v) {
-  auto *x = std::get_if<T>(&v.value);
-  if (x) { return RegisterOr<T>(*x); }
-  return RegisterOr<T>(std::get<Register>(v.value));
-}
-
 void StoreBool(const Val &val, const Val &loc) {
   auto &cmd = MakeCmd(nullptr, Op::StoreBool);
   cmd.store_bool_ =
-      Cmd::StoreBool::Make(std::get<Register>(loc.value), GetRegOr<bool>(val));
+      Cmd::StoreBool::Make(std::get<Register>(loc.value), val.reg_or<bool>());
 }
 
 void StoreChar(const Val &val, const Val &loc) {
   auto &cmd = MakeCmd(nullptr, Op::StoreChar);
   cmd.store_char_ =
-      Cmd::StoreChar::Make(std::get<Register>(loc.value), GetRegOr<char>(val));
+      Cmd::StoreChar::Make(std::get<Register>(loc.value), val.reg_or<char>());
 }
 
 void StoreInt(const Val &val, const Val &loc) {
   auto &cmd = MakeCmd(nullptr, Op::StoreInt);
   cmd.store_int_ =
-      Cmd::StoreInt::Make(std::get<Register>(loc.value), GetRegOr<i32>(val));
+      Cmd::StoreInt::Make(std::get<Register>(loc.value), val.reg_or<i32>());
 }
 
 void StoreReal(const Val &val, const Val &loc) {
-  auto &cmd       = MakeCmd(nullptr, Op::StoreReal);
-  cmd.store_real_ = Cmd::StoreReal::Make(std::get<Register>(loc.value),
-                                         GetRegOr<double>(val));
+  auto &cmd = MakeCmd(nullptr, Op::StoreReal);
+  cmd.store_real_ =
+      Cmd::StoreReal::Make(std::get<Register>(loc.value), val.reg_or<double>());
 }
 
 void StoreType(const Val &val, const Val &loc) {
   auto &cmd       = MakeCmd(nullptr, Op::StoreType);
   cmd.store_type_ = Cmd::StoreType::Make(std::get<Register>(loc.value),
-                                         GetRegOr<type::Type const *>(val));
+                                         val.reg_or<type::Type const *>());
 }
 
 void StoreEnum(const Val &val, const Val &loc) {
   auto &cmd       = MakeCmd(nullptr, Op::StoreEnum);
   cmd.store_enum_ = Cmd::StoreEnum::Make(std::get<Register>(loc.value),
-                                         GetRegOr<EnumVal>(val));
+                                         val.reg_or<EnumVal>());
 }
 
 void StoreFlags(const Val &val, const Val &loc) {
   auto &cmd        = MakeCmd(nullptr, Op::StoreFlags);
   cmd.store_flags_ = Cmd::StoreFlags::Make(std::get<Register>(loc.value),
-                                           GetRegOr<FlagsVal>(val));
+                                           val.reg_or<FlagsVal>());
 }
 
 void StoreAddr(const Val &val, const Val &loc) {
   auto &cmd       = MakeCmd(nullptr, Op::StoreAddr);
   cmd.store_addr_ = Cmd::StoreAddr::Make(std::get<Register>(loc.value),
-                                         GetRegOr<IR::Addr>(val));
+                                         val.reg_or<IR::Addr>());
 }
 
 void SetReturnBool(size_t n, const Val &v2) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnBool);
-  cmd.set_return_bool_ = Cmd::SetReturnBool::Make(n, GetRegOr<bool>(v2));
+  auto reg_or = v2.reg_or<bool>();
+  cmd.set_return_bool_ = Cmd::SetReturnBool::Make(n, reg_or);
+  if (reg_or.is_reg_) {
+    Func::Current->references_[reg_or.reg_].insert(cmd.result);
+  }
 }
 
 void SetReturnChar(size_t n, const Val &v2) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnChar);
-  cmd.set_return_char_ = Cmd::SetReturnChar::Make(n, GetRegOr<char>(v2));
+  cmd.set_return_char_ = Cmd::SetReturnChar::Make(n, v2.reg_or<char>());
 }
 
 void SetReturnInt(size_t n, const Val &v2) {
   auto &cmd           = MakeCmd(nullptr, Op::SetReturnInt);
-  cmd.set_return_int_ = Cmd::SetReturnInt::Make(n, GetRegOr<i32>(v2));
+  cmd.set_return_int_ = Cmd::SetReturnInt::Make(n, v2.reg_or<i32>());
 }
 
 void SetReturnCharBuf(size_t n, const Val &v2) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnCharBuf);
   cmd.set_return_char_buf_ =
-      Cmd::SetReturnCharBuf::Make(n, GetRegOr<std::string_view>(v2));
+      Cmd::SetReturnCharBuf::Make(n, v2.reg_or<std::string_view>());
 }
 
 void SetReturnReal(size_t n, const Val &v2) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnReal);
-  cmd.set_return_real_ = Cmd::SetReturnReal::Make(n, GetRegOr<double>(v2));
+  cmd.set_return_real_ = Cmd::SetReturnReal::Make(n, v2.reg_or<double>());
 }
 
 void SetReturnType(size_t n, const Val &v2) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnType);
   cmd.set_return_type_ =
-      Cmd::SetReturnType::Make(n, GetRegOr<type::Type const *>(v2));
+      Cmd::SetReturnType::Make(n, v2.reg_or<type::Type const *>());
 }
 
 void SetReturnEnum(size_t n, const Val &v2) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnEnum);
-  cmd.set_return_enum_ = Cmd::SetReturnEnum::Make(n, GetRegOr<EnumVal>(v2));
+  cmd.set_return_enum_ = Cmd::SetReturnEnum::Make(n, v2.reg_or<EnumVal>());
 }
 
 void SetReturnFlags(size_t n, const Val &v2) {
   auto &cmd             = MakeCmd(nullptr, Op::SetReturnFlags);
-  cmd.set_return_flags_ = Cmd::SetReturnFlags::Make(n, GetRegOr<FlagsVal>(v2));
+  cmd.set_return_flags_ = Cmd::SetReturnFlags::Make(n, v2.reg_or<FlagsVal>());
 }
 
 void SetReturnAddr(size_t n, const Val &v2) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnAddr);
-  cmd.set_return_addr_ = Cmd::SetReturnAddr::Make(n, GetRegOr<IR::Addr>(v2));
+  cmd.set_return_addr_ = Cmd::SetReturnAddr::Make(n, v2.reg_or<IR::Addr>());
 }
 
 void SetReturnFunc(size_t n, const Val &v2) {
@@ -708,25 +708,25 @@ void SetReturnFunc(size_t n, const Val &v2) {
 void SetReturnScope(size_t n, const Val &v2) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnScope);
   cmd.set_return_scope_ =
-      Cmd::SetReturnScope::Make(n, GetRegOr<AST::ScopeLiteral *>(v2));
+      Cmd::SetReturnScope::Make(n, v2.reg_or<AST::ScopeLiteral *>());
 }
 
 void SetReturnModule(size_t n, const Val &v2) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnModule);
   cmd.set_return_module_ =
-      Cmd::SetReturnModule::Make(n, GetRegOr<Module const *>(v2));
+      Cmd::SetReturnModule::Make(n, v2.reg_or<Module const *>());
 }
 
 void SetReturnGeneric(size_t n, const Val &v2) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnGeneric);
   cmd.set_return_generic_ =
-      Cmd::SetReturnGeneric::Make(n, GetRegOr<AST::Function *>(v2));
+      Cmd::SetReturnGeneric::Make(n, v2.reg_or<AST::Function *>());
 }
 
 void SetReturnBlock(size_t n, const Val &v2) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnBlock);
   cmd.set_return_block_ =
-      Cmd::SetReturnBlock::Make(n, GetRegOr<BlockSequence>(v2));
+      Cmd::SetReturnBlock::Make(n, v2.reg_or<BlockSequence>());
 }
 
 void Store(const Val &val, const Val &loc) {
@@ -867,49 +867,49 @@ CmdIndex Phi(type::Type const *t) {
 }
 
 Val MakePhi(CmdIndex phi_index,
-             const std::unordered_map<BlockIndex, IR::Val> &val_map) {
+            const std::unordered_map<BlockIndex, IR::Val> &val_map) {
   auto &cmd = IR::Func::Current->Command(phi_index);
   cmd.type  = val_map.begin()->second.type;
 
   if (cmd.type == type::Bool) {
     auto phi_args = MakePhiArgs<bool>(val_map);
-    cmd.op_code_ = Op::PhiBool;
+    cmd.op_code_  = Op::PhiBool;
     cmd.phi_bool_ = Cmd::PhiBool::Make(phi_args.get());
     IR::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
   } else if (cmd.type == type::Char) {
     auto phi_args = MakePhiArgs<char>(val_map);
-    cmd.op_code_ = Op::PhiChar;
+    cmd.op_code_  = Op::PhiChar;
     cmd.phi_char_ = Cmd::PhiChar::Make(phi_args.get());
     IR::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
   } else if (cmd.type == type::Int) {
     auto phi_args = MakePhiArgs<i32>(val_map);
-    cmd.op_code_ = Op::PhiInt;
+    cmd.op_code_  = Op::PhiInt;
     cmd.phi_int_  = Cmd::PhiInt::Make(phi_args.get());
     IR::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
   } else if (cmd.type == type::Real) {
     auto phi_args = MakePhiArgs<double>(val_map);
-    cmd.op_code_ = Op::PhiReal;
+    cmd.op_code_  = Op::PhiReal;
     cmd.phi_real_ = Cmd::PhiReal::Make(phi_args.get());
     IR::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
   } else if (cmd.type == type::Type_) {
     auto phi_args = MakePhiArgs<type::Type const *>(val_map);
-    cmd.op_code_ = Op::PhiType;
+    cmd.op_code_  = Op::PhiType;
     cmd.phi_type_ = Cmd::PhiType::Make(phi_args.get());
     IR::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
   } else if (cmd.type->is<type::Pointer>()) {
     auto phi_args = MakePhiArgs<IR::Addr>(val_map);
-    cmd.op_code_ = Op::PhiAddr;
+    cmd.op_code_  = Op::PhiAddr;
     cmd.phi_addr_ = Cmd::PhiAddr::Make(phi_args.get());
     IR::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
   } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
-    auto phi_args = MakePhiArgs<BlockSequence>(val_map);
-    cmd.op_code_ = Op::PhiBlock;
+    auto phi_args  = MakePhiArgs<BlockSequence>(val_map);
+    cmd.op_code_   = Op::PhiBlock;
     cmd.phi_block_ = Cmd::PhiBlock::Make(phi_args.get());
     IR::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
@@ -922,11 +922,11 @@ Val MakePhi(CmdIndex phi_index,
 void Call(const Val &fn, LongArgs long_args) {
   ASSERT(long_args.type_ == nullptr);
   ASSERT(fn.type, Is<type::Function>());
-  long_args.type_    = &fn.type->as<type::Function>();
+  long_args.type_     = &fn.type->as<type::Function>();
   const auto &fn_type = fn.type->as<type::Function>();
 
-  auto &block = Func::Current->block(BasicBlock::Current);
-  LongArgs *args  = &block.long_args_.emplace_back(std::move(long_args));
+  auto &block    = Func::Current->block(BasicBlock::Current);
+  LongArgs *args = &block.long_args_.emplace_back(std::move(long_args));
 
   auto &cmd = MakeCmd(nullptr, Op::Call);
   if (auto *r = std::get_if<Register>(&fn.value)) {
@@ -942,7 +942,7 @@ void Call(const Val &fn, LongArgs long_args) {
 void Call(const Val &fn, LongArgs long_args, OutParams outs) {
   ASSERT(long_args.type_ == nullptr);
   ASSERT(fn.type, Is<type::Function>());
-  long_args.type_    = &fn.type->as<type::Function>();
+  long_args.type_     = &fn.type->as<type::Function>();
   const auto &fn_type = fn.type->as<type::Function>();
 
   auto &block = Func::Current->block(BasicBlock::Current);
@@ -1236,15 +1236,31 @@ void Cmd::dump(size_t indent) const {
     case Op::SetReturnModule: std::cerr << "set-ret-module"; break;
     case Op::SetReturnGeneric: std::cerr << "set-ret-generic"; break;
     case Op::SetReturnBlock: std::cerr << "set-ret-block"; break;
-    case Op::PhiBool: std::cerr << "phi-bool"; break; // TODO
-    case Op::PhiChar: std::cerr << "phi-char"; break; // TODO
-    case Op::PhiInt: std::cerr << "phi-int"; break; // TODO
-    case Op::PhiReal: std::cerr << "phi-real"; break; // TODO
-    case Op::PhiType: std::cerr << "phi-type"; break; // TODO
-    case Op::PhiBlock: std::cerr << "phi-block"; break; // TODO
-    case Op::PhiAddr: std::cerr << "phi-addr"; break; // TODO
-    case Op::Death: std::cerr << "death"; break; // TODO
-   }
+    case Op::PhiBool:
+      std::cerr << "phi-bool";
+      break;  // TODO
+    case Op::PhiChar:
+      std::cerr << "phi-char";
+      break;  // TODO
+    case Op::PhiInt:
+      std::cerr << "phi-int";
+      break;  // TODO
+    case Op::PhiReal:
+      std::cerr << "phi-real";
+      break;  // TODO
+    case Op::PhiType:
+      std::cerr << "phi-type";
+      break;  // TODO
+    case Op::PhiBlock:
+      std::cerr << "phi-block";
+      break;  // TODO
+    case Op::PhiAddr:
+      std::cerr << "phi-addr";
+      break;  // TODO
+    case Op::Death:
+      std::cerr << "death";
+      break;  // TODO
+  }
 
   std::cerr << std::endl;
 }

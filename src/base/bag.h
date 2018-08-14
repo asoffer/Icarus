@@ -1,4 +1,4 @@
-#ifndef ICARS_BASE_BAG_H
+#ifndef ICARUS_BASE_BAG_H
 #define ICARUS_BASE_BAG_H
 
 #include <vector>

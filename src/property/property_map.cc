@@ -42,6 +42,11 @@ Combine combine(Property *lhs, Property const *rhs) {
 }
 
 bool PropertySet::add(base::owned_ptr<Property> prop) {
+  if (props_.empty()) {
+    props_.insert(std::move(prop));
+    return true;
+  }
+
   bool change = false;
   bool saw_partial = true;
   while (saw_partial) {
@@ -81,19 +86,19 @@ void PropertySet::accumulate(Property *prop) const {
   while (changed) {
     changed = false;
     for (const auto &p : props_) {
-      if (combine(prop, p.get()) != Combine::None) { changed = true; }
+      auto c = combine(prop, p.get());
+      switch (c) {
+        case Combine::Merge:
+        case Combine::Partial: changed = true;
+        default:;
+      }
     }
   }
 }
 
 FnStateView::FnStateView(IR::Func *fn) {
-  // TODO this is wrong since registers arent incremented this way.
-  for (i32 i = 0; i < static_cast<i32>(fn->num_regs_); ++i) {
-    view_.emplace(IR::Register{i}, PropertySet{});
-  }
-
-  for (i32 i = -1; i >= -fn->num_voids_; --i) {
-    view_.emplace(IR::Register{i}, PropertySet{});
+  for (const auto & [ num, reg ] : fn->reg_map_) {
+    view_.emplace(reg, PropertySet{});
   }
 }
 
@@ -104,8 +109,9 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
   }
 
   for (const auto &block1 : fn_->blocks_) {
-    for (i32 i = 0; i < static_cast<i32>(fn->num_regs_); ++i) {
-      stale_entries_.emplace(&block1, IR::Register{i});
+    // TODO why do you need to populate thes at all?
+    for (const auto & [ num, reg ] : fn->reg_map_) {
+      stale_entries_.emplace(&block1, reg);
     }
   }
   refresh();
@@ -141,10 +147,20 @@ void PropertyMap::refresh() {
       case IR::Op::UncondJump: return;
       case IR::Op::CondJump: return;
       case IR::Op::ReturnJump: return;
-      case IR::Op::Not: prop_set.add(Not(block_view.at(cmd.not_.reg_))); break;
+      case IR::Op::Not:
+      if (prop_set.add(Not(block_view.at(cmd.not_.reg_)))) {
+        for (IR::Register reg : fn_->references_.at(cmd.result)) {
+          stale_entries_.emplace(e.viewing_block_, reg);
+        }
+      }
+      break;
       case IR::Op::SetReturnBool: {
         if (cmd.set_return_bool_.val_.is_reg_) {
-          prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
+          if (prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_))) {
+            for (IR::Register reg : fn_->references_.at(cmd.result)) {
+              stale_entries_.emplace(e.viewing_block_, reg);
+            }
+          }
         } else {
           // TODO Adding a default property seems really silly. You should be
           // able to just not add anything.
@@ -197,7 +213,9 @@ PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
   auto arch = Architecture::InterprettingMachine();
   size_t offset = 0;
   size_t index  = 0;
-  while (offset < args.args_.size()) {
+  // TODO offset < args.args_.size() should work as the condition but it isn't,
+  // so figure out why.
+  while (index < args.type_->input.size()) {
     auto *t = args.type_->input.at(index);
     offset  = arch.MoveForwardToAlignment(t, offset);
     if (t == type::Bool) {
@@ -209,7 +227,10 @@ PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
                    : base::make_owned<DefaultProperty<bool>>(
                          args.args_.get<bool>(offset)));
 
-      copy.stale_entries_.emplace(entry_block, IR::Register(offset));
+      // TODO only need to do this on the entry block.
+      for (const auto &b : fn_->blocks_) {
+        copy.stale_entries_.emplace(&b, IR::Register(offset));
+      }
     }
 
     ++index;
@@ -227,7 +248,6 @@ PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
   }
 
   copy.refresh();
-  LOG << copy.view_;
   return copy;
 }
 
