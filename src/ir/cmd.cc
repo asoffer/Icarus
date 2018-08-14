@@ -256,6 +256,7 @@ DEFINE_CMD2(GeReal, ge_real_, double, Bool, std::less_equal<double>{});
 DEFINE_CMD2(GeFlags, ge_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
   return (lhs.value | rhs.value) == lhs.value;
 });
+DEFINE_CMD2(EqBool, eq_bool_, bool, Bool, std::equal_to<bool>{});
 DEFINE_CMD2(EqChar, eq_char_, char, Bool, std::equal_to<char>{});
 DEFINE_CMD2(EqInt, eq_int_, i32, Bool, std::equal_to<i32>{});
 DEFINE_CMD2(EqReal, eq_real_, double, Bool, std::equal_to<double>{});
@@ -817,6 +818,7 @@ Val Eq(const Val &v1, const Val &v2) {
     return *b ? v1 : Not(v1);
   }
 
+  if (v1.type == type::Bool) { return EqBool(v1, v2); }
   if (v1.type == type::Char) { return EqChar(v1, v2); }
   if (v1.type == type::Int) { return EqInt(v1, v2); }
   if (v1.type == type::Real) { return EqReal(v1, v2); }

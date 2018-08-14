@@ -108,12 +108,17 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
     view_.emplace(&block, FnStateView(fn_));
   }
 
+  // TODO this is overkill, but you do need to consider blocks not reachable
+  // from the function arguments.
   for (const auto &block1 : fn_->blocks_) {
-    // TODO why do you need to populate thes at all?
     for (const auto & [ num, reg ] : fn->reg_map_) {
       stale_entries_.emplace(&block1, reg);
     }
   }
+
+  // This refresh is an optimization. Because it's likely that this gets called
+  // many times with different arguments, it's better to precompute whatever can
+  // be on this function rather than repeating all that on many different calls.
   refresh();
 }
 
@@ -143,24 +148,17 @@ void PropertyMap::refresh() {
     auto &block_view = view_.at(e.viewing_block_).view_;
     auto &prop_set   = block_view.at(e.reg_);
 
+    bool change = false;
     switch (cmd.op_code_) {
       case IR::Op::UncondJump: return;
       case IR::Op::CondJump: return;
       case IR::Op::ReturnJump: return;
       case IR::Op::Not:
-      if (prop_set.add(Not(block_view.at(cmd.not_.reg_)))) {
-        for (IR::Register reg : fn_->references_.at(cmd.result)) {
-          stale_entries_.emplace(e.viewing_block_, reg);
-        }
-      }
-      break;
+        change = prop_set.add(Not(block_view.at(cmd.not_.reg_)));
+        break;
       case IR::Op::SetReturnBool: {
         if (cmd.set_return_bool_.val_.is_reg_) {
-          if (prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_))) {
-            for (IR::Register reg : fn_->references_.at(cmd.result)) {
-              stale_entries_.emplace(e.viewing_block_, reg);
-            }
-          }
+          change = prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
         } else {
           // TODO Adding a default property seems really silly. You should be
           // able to just not add anything.
@@ -170,6 +168,12 @@ void PropertyMap::refresh() {
       } break;
       default: NOT_YET(static_cast<int>(cmd.op_code_));
     }
+    if (change) {
+      for (IR::Register reg : fn_->references_.at(cmd.result)) {
+        stale_entries_.emplace(e.viewing_block_, reg);
+      }
+    }
+
   });
 }
 
@@ -218,33 +222,25 @@ PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
   while (index < args.type_->input.size()) {
     auto *t = args.type_->input.at(index);
     offset  = arch.MoveForwardToAlignment(t, offset);
-    if (t == type::Bool) {
-      // TODO understand why adding a default here in the register case is
-      // necessary for correctness.
-      props.at(IR::Register(offset))
-          .add(args.is_reg_.at(index)
-                   ? base::make_owned<DefaultProperty<bool>>()
-                   : base::make_owned<DefaultProperty<bool>>(
-                         args.args_.get<bool>(offset)));
-
-      // TODO only need to do this on the entry block.
-      for (const auto &b : fn_->blocks_) {
-        copy.stale_entries_.emplace(&b, IR::Register(offset));
+    // TODO instead of looking for non-register args, this should be moved out
+    // to the caller. because registers might also have some properties that can
+    // be reasoned about, all of this should be figured out where it's known and
+    // then passed in.
+    if (!args.is_reg_.at(index)) {
+      if (t == type::Bool) {
+        props.at(IR::Register(offset))
+            .add(base::make_owned<DefaultProperty<bool>>(
+                args.args_.get<bool>(offset)));
+        // TODO only need to do this on the entry block, but we're not passing
+        // info between block views yet.
+        for (const auto &b : fn_->blocks_) {
+          copy.stale_entries_.emplace(&b, IR::Register(offset));
+        }
       }
     }
 
     ++index;
     offset += arch.bytes(t);
-  }
-
-  // TODO this loop is overkill if you do branching correctly.
-  for (const auto & b : fn_->blocks_) {
-    // TODO not just register 0. all args
-    copy.stale_entries_.emplace(&b, IR::Register{0});
-  }
-
-  for (auto &cmd : entry_block->cmds_) {
-    copy.stale_entries_.emplace(entry_block, cmd.result);
   }
 
   copy.refresh();
