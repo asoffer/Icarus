@@ -64,6 +64,9 @@ struct RegisterOr {
 struct BlockSequence {
   base::vector<AST::BlockLiteral *> const *seq_;
 };
+inline std::ostream &operator<<(std::ostream &os, BlockSequence b) {
+  return os << base::internal::stringify(*b.seq_);
+}
 
 // TODO not really comparable. just for variant? :(
 inline bool operator==(const BlockSequence &lhs, const BlockSequence &rhs) {
@@ -154,6 +157,11 @@ struct AnyFunc {
   };
   bool is_fn_;
 };
+
+inline std::ostream& operator<<(std::ostream& os, AnyFunc a) {
+  if (a.is_fn_) { return os << a.fn_; }
+  return os << a.foreign_;
+}
 
 struct Val {
   const type::Type *type = nullptr;

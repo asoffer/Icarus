@@ -1018,256 +1018,178 @@ static std::ostream &operator<<(std::ostream &os,
   return os << r[0] << " " << r[1];
 }
 
-void Cmd::dump(size_t indent) const {
-  std::cerr << std::string(indent, ' ');
-  if (this->type != nullptr) { std::cerr << result << " = "; }
-  switch (op_code_) {
-    case Op::Trunc: std::cerr << "trunc " << trunc_.reg_; break;
-    case Op::Extend: std::cerr << "extend " << extend_.reg_; break;
-    case Op::Bytes: std::cerr << "bytes " << bytes_.arg_; break;
-    case Op::Align: std::cerr << "align " << align_.arg_; break;
-    case Op::Not: std::cerr << "not " << not_.reg_; break;
-    case Op::NegInt: std::cerr << "neg-int " << neg_int_.reg_; break;
-    case Op::NegReal: std::cerr << "neg-real " << neg_real_.reg_; break;
-    case Op::ArrayLength:
-      std::cerr << "array-length " << array_length_.arg_;
-      break;
-    case Op::ArrayData: std::cerr << "array-data " << array_data_.arg_; break;
-    case Op::Ptr: std::cerr << "ptr " << ptr_.reg_; break;
-    case Op::LoadBool: std::cerr << "load-bool " << load_bool_.arg_; break;
-    case Op::LoadChar: std::cerr << "load-char " << load_char_.arg_; break;
-    case Op::LoadInt: std::cerr << "load-int " << load_int_.arg_; break;
-    case Op::LoadReal: std::cerr << "load-real " << load_real_.arg_; break;
-    case Op::LoadType: std::cerr << "load-type " << load_type_.arg_; break;
-    case Op::LoadEnum: std::cerr << "load-enum " << load_enum_.arg_; break;
-    case Op::LoadFlags: std::cerr << "load-flags " << load_type_.arg_; break;
-    case Op::LoadAddr: std::cerr << "load-addr " << load_addr_.arg_; break;
-    case Op::PrintBool: std::cerr << "print-bool " << print_bool_.arg_; break;
-    case Op::PrintChar: std::cerr << "print-char " << print_char_.arg_; break;
-    case Op::PrintInt: std::cerr << "print-int " << print_int_.arg_; break;
-    case Op::PrintReal: std::cerr << "print-real " << print_real_.arg_; break;
-    case Op::PrintType: std::cerr << "print-type " << print_type_.arg_; break;
-    case Op::PrintEnum: std::cerr << "print-enum " << print_enum_.arg_; break;
-    case Op::PrintFlags:
-      std::cerr << "print-flags " << print_flags_.arg_;
-      break;
-    case Op::PrintAddr: std::cerr << "print-addr" << print_addr_.arg_; break;
-    case Op::PrintCharBuffer:
-      std::cerr << "print-char-buffer" << print_char_buffer_.arg_;
-      break;
-    case Op::AddInt: std::cerr << "add-int " << add_int_.args_; break;
-    case Op::AddReal: std::cerr << "add-real " << add_real_.args_; break;
-    case Op::AddCharBuf:
-      std::cerr << "add-char-buf " << add_char_buf_.args_;
-      break;
-    case Op::SubInt: std::cerr << "sub-int " << sub_int_.args_; break;
-    case Op::SubReal: std::cerr << "sub-real " << sub_real_.args_; break;
-    case Op::MulInt: std::cerr << "mul-int " << mul_int_.args_; break;
-    case Op::MulReal: std::cerr << "mul-real " << mul_real_.args_; break;
-    case Op::DivInt: std::cerr << "div-int " << div_int_.args_; break;
-    case Op::DivReal: std::cerr << "div-real " << div_real_.args_; break;
-    case Op::ModInt: std::cerr << "mod-int " << mod_int_.args_; break;
-    case Op::ModReal: std::cerr << "mod-real " << mod_real_.args_; break;
-    case Op::LtInt: std::cerr << "lt-int " << lt_int_.args_; break;
-    case Op::LtReal: std::cerr << "lt-real " << lt_real_.args_; break;
-    case Op::LtFlags: std::cerr << "lt-flags " << lt_flags_.args_; break;
-    case Op::LeInt: std::cerr << "le-int " << le_int_.args_; break;
-    case Op::LeReal: std::cerr << "le-real " << le_real_.args_; break;
-    case Op::LeFlags: std::cerr << "le-flags " << le_flags_.args_; break;
-    case Op::GtInt: std::cerr << "gt-int " << gt_int_.args_; break;
-    case Op::GtReal: std::cerr << "gt-real " << gt_real_.args_; break;
-    case Op::GtFlags: std::cerr << "gt-flags " << gt_flags_.args_; break;
-    case Op::GeInt: std::cerr << "ge-int " << ge_int_.args_; break;
-    case Op::GeReal: std::cerr << "ge-real " << ge_real_.args_; break;
-    case Op::GeFlags: std::cerr << "ge-flags " << ge_flags_.args_; break;
-    case Op::EqBool: std::cerr << "eq-bool " << eq_bool_.args_; break;
-    case Op::EqChar: std::cerr << "eq-char " << eq_char_.args_; break;
-    case Op::EqInt: std::cerr << "eq-int " << eq_int_.args_; break;
-    case Op::EqReal: std::cerr << "eq-real " << eq_real_.args_; break;
-    case Op::EqFlags: std::cerr << "eq-flags " << eq_flags_.args_; break;
-    case Op::EqType: std::cerr << "eq-type " << eq_type_.args_; break;
-    case Op::EqAddr: std::cerr << "eq-addr " << eq_addr_.args_; break;
-    case Op::NeBool: std::cerr << "ne-bool " << ne_bool_.args_; break;
-    case Op::NeChar: std::cerr << "ne-char " << ne_char_.args_; break;
-    case Op::NeInt: std::cerr << "ne-int " << ne_int_.args_; break;
-    case Op::NeReal: std::cerr << "ne-real " << ne_real_.args_; break;
-    case Op::NeFlags: std::cerr << "ne-flags " << ne_flags_.args_; break;
-    case Op::NeType: std::cerr << "ne-type " << ne_type_.args_; break;
-    case Op::NeAddr: std::cerr << "ne-addr " << ne_addr_.args_; break;
-    case Op::XorBool: std::cerr << "xor-bool " << xor_bool_.args_; break;
-    case Op::XorFlags: std::cerr << "xor-flags " << xor_flags_.args_; break;
-    case Op::OrFlags: std::cerr << "or-flags " << or_flags_.args_; break;
-    case Op::AndFlags: std::cerr << "and-flags " << and_flags_.args_; break;
-    case Op::CreateStruct: std::cerr << "create-struct "; break;
-    case Op::InsertField:
-      std::cerr << "insert-field " << insert_field_.args_;
-      break;
-    case Op::FinalizeStruct:
-      std::cerr << "finalize-struct " << finalize_struct_.reg_;
-      break;
-    case Op::Malloc: std::cerr << "malloc " << malloc_.arg_; break;
-    case Op::Free: std::cerr << "free " << free_.reg_; break;
+char const *OpCodeStr(Op op) {
+  switch (op) {
+#define OP_MACRO(op)                                                           \
+  case Op::op:                                                                 \
+    return #op;
+#include "ir/op.xmacro.h"
+#undef OP_MACRO
+  }
+  __builtin_unreachable();
+}
+
+std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
+  if (cmd.result.value >= 0) { os << cmd.result << " = "; }
+  os << OpCodeStr(cmd.op_code_) << " ";
+  switch (cmd.op_code_) {
+    case Op::Trunc: return os << cmd.trunc_.reg_;
+    case Op::Extend: return os << cmd.extend_.reg_;
+    case Op::Bytes: return os << cmd.bytes_.arg_;
+    case Op::Align: return os << cmd.align_.arg_;
+    case Op::Not: return os << cmd.not_.reg_;
+    case Op::NegInt: return os << cmd.neg_int_.reg_;
+    case Op::NegReal: return os << cmd.neg_real_.reg_;
+    case Op::ArrayLength: return os << cmd.array_length_.arg_;
+    case Op::ArrayData: return os << cmd.array_data_.arg_;
+    case Op::Ptr: return os << cmd.ptr_.reg_;
+    case Op::LoadBool: return os << cmd.load_bool_.arg_;
+    case Op::LoadChar: return os << cmd.load_char_.arg_;
+    case Op::LoadInt: return os << cmd.load_int_.arg_;
+    case Op::LoadReal: return os << cmd.load_real_.arg_;
+    case Op::LoadType: return os << cmd.load_type_.arg_;
+    case Op::LoadEnum: return os << cmd.load_enum_.arg_;
+    case Op::LoadFlags: return os << cmd.load_type_.arg_;
+    case Op::LoadAddr: return os << cmd.load_addr_.arg_;
+    case Op::PrintBool: return os << cmd.print_bool_.arg_;
+    case Op::PrintChar: return os << cmd.print_char_.arg_;
+    case Op::PrintInt: return os << cmd.print_int_.arg_;
+    case Op::PrintReal: return os << cmd.print_real_.arg_;
+    case Op::PrintType: return os << cmd.print_type_.arg_;
+    case Op::PrintEnum: return os << cmd.print_enum_.arg_;
+    case Op::PrintFlags: return os << cmd.print_flags_.arg_;
+    case Op::PrintAddr: return os << cmd.print_addr_.arg_;
+    case Op::PrintCharBuffer: return os << cmd.print_char_buffer_.arg_;
+    case Op::AddInt: return os << cmd.add_int_.args_;
+    case Op::AddReal: return os << cmd.add_real_.args_;
+    case Op::AddCharBuf: return os << cmd.add_char_buf_.args_;
+    case Op::SubInt: return os << cmd.sub_int_.args_;
+    case Op::SubReal: return os << cmd.sub_real_.args_;
+    case Op::MulInt: return os << cmd.mul_int_.args_;
+    case Op::MulReal: return os << cmd.mul_real_.args_;
+    case Op::DivInt: return os << cmd.div_int_.args_;
+    case Op::DivReal: return os << cmd.div_real_.args_;
+    case Op::ModInt: return os << cmd.mod_int_.args_;
+    case Op::ModReal: return os << cmd.mod_real_.args_;
+    case Op::LtInt: return os << cmd.lt_int_.args_;
+    case Op::LtReal: return os << cmd.lt_real_.args_;
+    case Op::LtFlags: return os << cmd.lt_flags_.args_;
+    case Op::LeInt: return os << cmd.le_int_.args_;
+    case Op::LeReal: return os << cmd.le_real_.args_;
+    case Op::LeFlags: return os << cmd.le_flags_.args_;
+    case Op::GtInt: return os << cmd.gt_int_.args_;
+    case Op::GtReal: return os << cmd.gt_real_.args_;
+    case Op::GtFlags: return os << cmd.gt_flags_.args_;
+    case Op::GeInt: return os << cmd.ge_int_.args_;
+    case Op::GeReal: return os << cmd.ge_real_.args_;
+    case Op::GeFlags: return os << cmd.ge_flags_.args_;
+    case Op::EqBool: return os << cmd.eq_bool_.args_;
+    case Op::EqChar: return os << cmd.eq_char_.args_;
+    case Op::EqInt: return os << cmd.eq_int_.args_;
+    case Op::EqReal: return os << cmd.eq_real_.args_;
+    case Op::EqFlags: return os << cmd.eq_flags_.args_;
+    case Op::EqType: return os << cmd.eq_type_.args_;
+    case Op::EqAddr: return os << cmd.eq_addr_.args_;
+    case Op::NeBool: return os << cmd.ne_bool_.args_;
+    case Op::NeChar: return os << cmd.ne_char_.args_;
+    case Op::NeInt: return os << cmd.ne_int_.args_;
+    case Op::NeReal: return os << cmd.ne_real_.args_;
+    case Op::NeFlags: return os << cmd.ne_flags_.args_;
+    case Op::NeType: return os << cmd.ne_type_.args_;
+    case Op::NeAddr: return os << cmd.ne_addr_.args_;
+    case Op::XorBool: return os << cmd.xor_bool_.args_;
+    case Op::XorFlags: return os << cmd.xor_flags_.args_;
+    case Op::OrFlags: return os << cmd.or_flags_.args_;
+    case Op::AndFlags: return os << cmd.and_flags_.args_;
+    case Op::CreateStruct: NOT_YET();
+    case Op::InsertField: return os << cmd.insert_field_.args_;
+    case Op::FinalizeStruct: return os << cmd.finalize_struct_.reg_;
+
+    case Op::Malloc: return os << cmd.malloc_.arg_;
+    case Op::Free: return os << cmd.free_.reg_;
     case Op::Alloca:
-      std::cerr << "alloca "
-                << this->type->as<type::Pointer>().pointee->to_string();
-      break;
-    case Op::Arrow: std::cerr << "arrow " << arrow_.args_; break;
-    case Op::Array:
-      std::cerr << "array " << array_.len_ << " " << array_.type_;
-      break;
+      return os << cmd.type->as<type::Pointer>().pointee->to_string();
+
+    case Op::Arrow: return os << cmd.arrow_.args_;
+    case Op::Array: return os << cmd.array_.type_;
+
     case Op::Variant:
-      std::cerr << "variant";
-      for (const auto &arg : *variant_.args_) {
-        std::cerr << " " << arg.to_string();
-      }
-      break;
+      for (const auto &arg : *cmd.variant_.args_) {  os << arg.to_string(); }
+      return os;
+
     case Op::Tup:
-      std::cerr << "tup";
-      for (const auto &arg : *tup_.args_) {
-        std::cerr << " " << arg.to_string();
-      }
-      break;
-    case Op::VariantType:
-      std::cerr << "variant-type " << variant_type_.reg_;
-      break;
-    case Op::VariantValue:
-      std::cerr << "variant-value " << variant_value_.reg_;
-      break;
-    case Op::PtrIncr:
-      std::cerr << "ptr-incr " << ptr_incr_.ptr_ << " " << ptr_incr_.incr_;
-      break;
-    case Op::Field:
-      std::cerr << "field " << field_.ptr_ << " " << field_.num_;
-      break;
+      for (const auto &arg : *cmd.tup_.args_) { os << arg.to_string(); }
+      return os;
+
+    case Op::VariantType: return os << cmd.variant_type_.reg_;
+
+    case Op::VariantValue: return os << cmd.variant_value_.reg_;
+
+    case Op::PtrIncr: return os << cmd.ptr_incr_.incr_;
+
+    case Op::Field: return os << cmd.field_.num_;
+
     case Op::CondJump:
-      std::cerr << "cond " << cond_jump_.cond_ << " " << cond_jump_.blocks_[0]
-                << " " << cond_jump_.blocks_[1];
-      break;
-    case Op::UncondJump: std::cerr << "uncond " << uncond_jump_.block_; break;
-    case Op::ReturnJump: std::cerr << "return"; break;
+      return os << cmd.cond_jump_.blocks_[0] << " " << cmd.cond_jump_.blocks_[1];
+
+    case Op::UncondJump: return os << cmd.uncond_jump_.block_;
+    case Op::ReturnJump: return os;
     case Op::Call:
-      std::cerr << "call ";
-      switch (call_.which_active_) {
-        case 0x00: std::cerr << call_.reg_; break;
-        case 0x01: std::cerr << call_.fn_; break;
-        case 0x02: std::cerr << call_.foreign_fn_.name_; break;
+      switch (cmd.call_.which_active_) {
+        case 0x00: os << cmd.call_.reg_; break;
+        case 0x01: os << cmd.call_.fn_; break;
+        case 0x02: os << cmd.call_.foreign_fn_.name_; break;
       }
-      std::cerr << call_.long_args_->to_string();
-      if (call_.outs_) {
-        for (const auto &out : call_.outs_->outs_) {
-          std::cerr << " ";
-          if (out.is_loc_) {
-            std::cerr << "[" << out.reg_ << "]";
-          } else {
-            std::cerr << out.reg_;
-          }
+      os << cmd.call_.long_args_->to_string();
+      if (cmd.call_.outs_) {
+        for (const auto &out : cmd.call_.outs_->outs_) {
+          if (out.is_loc_) { os << "*"; }
+          os << out.reg_;
         }
       }
 
-      break;  // TODO
-    case Op::BlockSeq:
-      std::cerr << "block-seq";
-      for (const auto &arg : *block_seq_.args_) {
-        std::cerr << " " << arg.to_string();
-      };
-      break;
-    case Op::BlockSeqContains:
-      std::cerr << "block-seq-contains " << block_seq_contains_.reg_ << " "
-                << block_seq_contains_.lit_;
-      break;
-    case Op::CastIntToReal:
-      std::cerr << "cast-int-to-real " << cast_int_to_real_.reg_;
-      break;
-    case Op::CastPtr:
-      std::cerr << "cast-ptr " << cast_ptr_.reg_ << " " << cast_ptr_.type_;
-      break;
+      return os;
+    case Op::BlockSeq: NOT_YET();
+    case Op::BlockSeqContains: return os << cmd.block_seq_contains_.lit_;
 
-    case Op::AddCodeBlock: std::cerr << "add-codeblock"; break;
-    case Op::Contextualize: std::cerr << "contextualize"; break;
+    case Op::CastIntToReal: return os << cmd.cast_int_to_real_.reg_;
 
-    case Op::StoreBool:
-      std::cerr << "store-bool " << store_bool_.addr_ << " "
-                << store_bool_.val_;
-      break;
-    case Op::StoreChar:
-      std::cerr << "store-char " << store_char_.addr_ << " "
-                << store_char_.val_;
-      break;
-    case Op::StoreInt:
-      std::cerr << "store-int " << store_int_.addr_ << " " << store_int_.val_;
-      break;
-    case Op::StoreReal:
-      std::cerr << "store-real " << store_real_.addr_ << " "
-                << store_real_.val_;
-      break;
-    case Op::StoreType:
-      std::cerr << "store-type " << store_type_.addr_ << " "
-                << store_type_.val_;
-      break;
-    case Op::StoreEnum:
-      std::cerr << "store-enum " << store_enum_.addr_ << " "
-                << store_enum_.val_;
-      break;
-    case Op::StoreFlags:
-      std::cerr << "store-flags " << store_flags_.addr_ << " "
-                << store_flags_.val_;
-      break;
-    case Op::StoreAddr:
-      std::cerr << "store-addr " << store_addr_.addr_ << " "
-                << store_addr_.val_;
-      break;
+    case Op::CastPtr: return os << cmd.cast_ptr_.type_;
 
-    case Op::SetReturnBool:
-      std::cerr << "set-ret-bool " << set_return_bool_.ret_num_ << " ";
-      if (set_return_bool_.val_.is_reg_) {
-        std::cerr << set_return_bool_.val_.reg_;
-      } else {
-        std::cerr << set_return_bool_.val_.val_;
-      }
-      break;
-    case Op::SetReturnChar: std::cerr << "set-ret-char"; break;
-    case Op::SetReturnInt: std::cerr << "set-ret-int"; break;
-    case Op::SetReturnReal: std::cerr << "set-ret-real"; break;
-    case Op::SetReturnType: std::cerr << "set-ret-type"; break;
-    case Op::SetReturnEnum: std::cerr << "set-ret-enum"; break;
-    case Op::SetReturnFlags: std::cerr << "set-ret-flags"; break;
-    case Op::SetReturnCharBuf: std::cerr << "set-ret-char-buf"; break;
-    case Op::SetReturnAddr: std::cerr << "set-ret-addr"; break;
-    case Op::SetReturnFunc: std::cerr << "set-ret-func"; break;
-    case Op::SetReturnScope: std::cerr << "set-ret-scope"; break;
-    case Op::SetReturnModule: std::cerr << "set-ret-module"; break;
-    case Op::SetReturnGeneric: std::cerr << "set-ret-generic"; break;
-    case Op::SetReturnBlock: std::cerr << "set-ret-block"; break;
-    case Op::PhiBool:
-      std::cerr << "phi-bool";
-      break;  // TODO
-    case Op::PhiChar:
-      std::cerr << "phi-char";
-      break;  // TODO
-    case Op::PhiInt:
-      std::cerr << "phi-int";
-      break;  // TODO
-    case Op::PhiReal:
-      std::cerr << "phi-real";
-      break;  // TODO
-    case Op::PhiType:
-      std::cerr << "phi-type";
-      break;  // TODO
-    case Op::PhiBlock:
-      std::cerr << "phi-block";
-      break;  // TODO
-    case Op::PhiAddr:
-      std::cerr << "phi-addr";
-      break;  // TODO
-    case Op::Death:
-      std::cerr << "death";
-      break;  // TODO
+    case Op::AddCodeBlock: NOT_YET();
+    case Op::Contextualize: NOT_YET();
+
+    case Op::StoreBool: return os << cmd.store_bool_.val_;
+    case Op::StoreChar: return os << cmd.store_char_.val_;
+    case Op::StoreInt: return os << cmd.store_int_.val_;
+    case Op::StoreReal: return os << cmd.store_real_.val_;
+    case Op::StoreType: return os << cmd.store_type_.val_;
+    case Op::StoreEnum: return os << cmd.store_enum_.val_;
+    case Op::StoreFlags: return os << cmd.store_flags_.val_;
+    case Op::StoreAddr: return os << cmd.store_addr_.val_;
+    case Op::SetReturnBool: return os << cmd.set_return_bool_.val_;
+    case Op::SetReturnChar: return os << cmd.set_return_char_.val_;
+    case Op::SetReturnInt: return os << cmd.set_return_int_.val_;
+    case Op::SetReturnReal: return os << cmd.set_return_real_.val_;
+    case Op::SetReturnType: return os << cmd.set_return_type_.val_;
+    case Op::SetReturnEnum: return os << cmd.set_return_enum_.val_;
+    case Op::SetReturnFlags: return os << cmd.set_return_flags_.val_;
+    case Op::SetReturnCharBuf: return os << cmd.set_return_char_buf_.val_;
+    case Op::SetReturnAddr: return os << cmd.set_return_addr_.val_;
+    case Op::SetReturnFunc: return os << cmd.set_return_func_.val_;
+    case Op::SetReturnScope: return os << cmd.set_return_scope_.val_;
+    case Op::SetReturnModule: return os << cmd.set_return_module_.val_;
+    case Op::SetReturnGeneric: return os << cmd.set_return_generic_.val_;
+    case Op::SetReturnBlock: return os << cmd.set_return_block_.val_;
+    case Op::PhiBool: return os << cmd.phi_bool_.args_;
+    case Op::PhiChar: return os << cmd.phi_char_.args_;
+    case Op::PhiInt: return os << cmd.phi_int_.args_;
+    case Op::PhiReal: return os << cmd.phi_real_.args_;
+    case Op::PhiType: return os << cmd.phi_type_.args_;
+    case Op::PhiBlock: return os << cmd.phi_block_.args_;
+    case Op::PhiAddr: return os << cmd.phi_addr_.args_;
+    case Op::Death: return os;
   }
-
-  std::cerr << std::endl;
-}
-
-void BasicBlock::dump(size_t indent) const {
-  for (const auto &cmd : cmds_) { cmd.dump(indent); }
+  UNREACHABLE();
 }
 }  // namespace IR

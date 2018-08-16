@@ -19,8 +19,6 @@ struct BasicBlock {
   BasicBlock &operator=(BasicBlock &&) = default;
   BasicBlock &operator=(const BasicBlock &) = delete;
 
-  void dump(size_t indent) const;
-
   Func *fn_;  // Containing function
   base::vector<BlockIndex> incoming_blocks_;
   base::vector<Cmd> cmds_;
@@ -34,5 +32,10 @@ struct BasicBlock {
   std::list<OutParams> outs_;
   std::vector<std::unique_ptr<GenericPhiArgs>> phi_args_;
 };
+
+inline std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
+  for (const auto &cmd : b.cmds_) { os << "  " << cmd << "\n"; }
+  return os;
+}
 }  // namespace IR
 #endif  // ICARUS_IR_BASIC_BLOCK_H

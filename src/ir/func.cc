@@ -102,7 +102,7 @@ Func::GetIncomingBlocks() const {
       incoming[&block(last.cond_jump_.blocks_[1])].insert(&b);
       break;
     case Op::ReturnJump: /* Nothing to do */ break;
-    default: dump(); UNREACHABLE(static_cast<int>(last.op_code_));
+    default:  UNREACHABLE(IR::OpCodeStr(last.op_code_));
     }
   }
   // Hack: First entry depends on itself.
@@ -174,12 +174,12 @@ void Func::CheckInvariants() {
   }
 }
 
-void Func::dump() const {
-  std::cerr << name() << ": " << type_->to_string();
-  for (size_t i = 0; i < blocks_.size(); ++i) {
-    std::cerr << "\n block #" << i << std::endl;
-    blocks_[i].dump(2);
+std::ostream &operator<<(std::ostream &os, IR::Func const &f) {
+  os << "\n" << f.name() << ": " << f.type_->to_string();
+  for (size_t i = 0; i < f.blocks_.size(); ++i) {
+    os << "\n block #" << i << "\n" << f.blocks_[i];
   }
+  return os;
 }
 
 std::string Func::name() const {

@@ -36,7 +36,6 @@ struct Func {
   Func(Module *mod, AST::GeneratedFunction* fn_lit,
        base::vector<std::pair<std::string, AST::Expression *>> args);
 
-  void dump() const;
   Val Argument(u32 n) const;
   Val Return(u32 n) const;
 
@@ -104,6 +103,7 @@ struct Func {
                       std::unordered_set<const BasicBlock *>>
   GetIncomingBlocks() const;
 };
+std::ostream &operator<<(std::ostream &, IR::Func const &);
 
 template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, Val cond) {
   auto continue_block = Func::Current->AddBlock();

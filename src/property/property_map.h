@@ -21,6 +21,9 @@ struct Property : public base::Cast<Property> {
   virtual Property *Clone() const = 0;
   virtual std::string to_string() const = 0;
 };
+inline std::ostream &operator<<(std::ostream &os, const Property &p) {
+  return os << p.to_string();
+}
 
 template <typename T>
 struct DefaultProperty : public Property {

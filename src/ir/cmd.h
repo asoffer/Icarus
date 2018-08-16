@@ -41,57 +41,11 @@ struct OutParams {
 };
 
 enum class Op : char {
-  // clang-format off
-  Death,
-  Trunc, Extend,
-  Bytes, Align,
-  Not,
-  NegInt, NegReal,
-  ArrayLength, ArrayData,
-
-  LoadBool, LoadChar, LoadInt, LoadReal, LoadType, LoadEnum, LoadFlags, LoadAddr,
-  PrintBool, PrintChar, PrintInt, PrintReal, PrintType, PrintEnum, PrintFlags, PrintAddr, PrintCharBuffer,
-  StoreBool, StoreChar, StoreInt, StoreReal, StoreType, StoreEnum, StoreFlags, StoreAddr,
-  SetReturnBool, SetReturnChar, SetReturnInt, SetReturnReal, SetReturnType, SetReturnEnum,
-  SetReturnCharBuf, SetReturnFlags, SetReturnAddr, SetReturnFunc, SetReturnScope,
-  SetReturnModule, SetReturnGeneric, SetReturnBlock,
-
-  AddInt, AddReal, AddCharBuf,
-  SubInt, SubReal,
-  MulInt, MulReal,
-  DivInt, DivReal,
-  ModInt, ModReal,
-
-  LtInt, LtReal, LtFlags,
-  LeInt, LeReal, LeFlags,
-  GtInt, GtReal, GtFlags,
-  GeInt, GeReal, GeFlags,
-  EqBool, EqChar, EqInt, EqReal, EqType, EqFlags, EqAddr,
-  NeBool, NeChar, NeInt, NeReal, NeType, NeFlags, NeAddr,
-  
-  XorBool,
-  XorFlags, OrFlags, AndFlags,
-
-  CreateStruct, InsertField, FinalizeStruct,
-
-  Malloc, Free, Alloca,
-
-  Arrow, Ptr, Array, Tup, Variant,
-
-  VariantType, VariantValue,
-  PtrIncr, Field,
-
-  CondJump, UncondJump, ReturnJump,
-
-  BlockSeq, BlockSeqContains,
-
-  Call, CastIntToReal, CastPtr,
-  PhiBool, PhiChar, PhiInt, PhiReal, PhiType, PhiBlock, PhiAddr,
-
-  AddCodeBlock,  // TODO remove codeblock
-  Contextualize,
-  // clang-format on
+#define OP_MACRO(op) op,
+#include "ir/op.xmacro.h"
+#undef OP_MACRO
 };
+char const *OpCodeStr(Op op);
 
 struct GenericPhiArgs : public base::Cast<GenericPhiArgs> {
   virtual ~GenericPhiArgs() {}
@@ -511,8 +465,6 @@ struct Cmd {
   Register result;
 
   Val reg() const { return Val::Reg(result, type); }
-
-  void dump(size_t indent) const;
 };
 
 Val Trunc(const Val &v);
@@ -652,5 +604,7 @@ Val MakePhi(CmdIndex phi_index,
              const std::unordered_map<BlockIndex, IR::Val> &val_map);
 
 Val AddCodeBlock(const Val& v1, const Val& v2);
+
+std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
 } // namespace IR
 #endif // ICARUS_IR_CMD_H

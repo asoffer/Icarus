@@ -155,12 +155,9 @@ PropertySet Not(PropertySet prop_set) {
 }  // namespace
 
 void PropertyMap::refresh() {
-  LOG << "----------------------------------";
   stale_entries_.until_empty([&](const Entry &e) {
-    LOG << e;
     auto *cmd_ptr = fn_->Command(e.reg_);
     if (cmd_ptr == nullptr) {
-      LOG << e.reg_;
       for (IR::Register reg : fn_->references_.at(e.reg_)) {
         // TODO also this entry on all blocks you jump to
         stale_entries_.emplace(e.viewing_block_, reg);

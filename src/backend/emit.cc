@@ -430,8 +430,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
         return llvm_data->builder->CreateGEP(
             EmitValue(num_args, llvm_data, cmd.args[0]), {zero, zero});
       }
-      cmd.dump(10);
-      UNREACHABLE();
+      UNREACHABLE(cmd);
     } break;
     case IR::Op::Align: UNREACHABLE();
     case IR::Op::Bytes: UNREACHABLE();
