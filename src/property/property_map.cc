@@ -196,7 +196,7 @@ void PropertyMap::refresh() {
               cmd.set_return_bool_.val_.val_));
         }
       } break;
-      default: NOT_YET(static_cast<int>(cmd.op_code_));
+      default: NOT_YET(IR::OpCodeStr(cmd.op_code_);
     }
     if (change) {
       for (IR::Register reg : fn_->references_.at(cmd.result)) {
