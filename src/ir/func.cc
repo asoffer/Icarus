@@ -2,6 +2,7 @@
 
 #include "architecture.h"
 #include "ast/function_literal.h"
+#include "property/property_map.h"
 #include "type/function.h"
 
 namespace type {
@@ -144,8 +145,9 @@ void Func::ComputeInvariants() {
 }
 
 void Func::CheckInvariants() {
-  // auto prop_map = prop::PropertyMap(this);
-  for (const auto& block : blocks_) {
+  auto prop_map = prop::PropertyMap(this);
+
+  for (const auto &block : blocks_) {
     for (const auto &cmd : block.cmds_) {
       if (cmd.op_code_ != Op::Call) { continue; }
       // If it's a register it isn't known at compile time and therefore is not
@@ -154,8 +156,10 @@ void Func::CheckInvariants() {
       // foreign function locally and wrapping it.
       if (cmd.call_.which_active_ != 0x01) { continue; }
 
-      for (const auto & [ precond, prop_map ] : cmd.call_.fn_->preconditions_) {
-        auto prop_copy = prop_map.with_args(*cmd.call_.long_args_);
+      for (const auto & [ precond, precond_prop_map ] :
+           cmd.call_.fn_->preconditions_) {
+        auto prop_copy = precond_prop_map.with_args(*cmd.call_.long_args_,
+                                                    prop_map.view_.at(&block));
 
         prop::DefaultProperty<bool> prop = prop_copy.Returns();
         if (!prop.can_be_true_) {

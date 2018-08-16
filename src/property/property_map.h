@@ -120,7 +120,7 @@ struct PropertyMap {
   PropertyMap &operator=(PropertyMap &&p) noexcept = default;
 
   // Make a copy of this map and set the arguments to the values passed in
-  PropertyMap with_args(const IR::LongArgs &) const;
+  PropertyMap with_args(IR::LongArgs const &, FnStateView const &) const;
 
   // TODO rename or delete me.
   DefaultProperty<bool> Returns() const;

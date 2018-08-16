@@ -116,6 +116,26 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
     }
   }
 
+  for (auto const & [ f, pm ] : fn->preconditions_) {
+    auto pm_copy = pm;
+    for (const auto &block : f.blocks_) {
+      for (const auto &cmd : block.cmds_) {
+        if (cmd.op_code_ != IR::Op::SetReturnBool) { continue; }
+
+        // TODO I actually know this on every block.
+        pm_copy.view_.at(&block)
+            .view_.at(cmd.result)
+            .add(base::make_owned<prop::DefaultProperty<bool>>(true));
+      }
+    }
+    pm_copy.refresh();
+
+    // TODO all the registers
+    this->view_.at(&fn_->blocks_.at(0))
+        .view_.at(IR::Register(0))
+        .add(pm_copy.view_.at(&f.blocks_.at(0)).view_.at(IR::Register(0)));
+  }
+
   // This refresh is an optimization. Because it's likely that this gets called
   // many times with different arguments, it's better to precompute whatever can
   // be on this function rather than repeating all that on many different calls.
@@ -135,9 +155,12 @@ PropertySet Not(PropertySet prop_set) {
 }  // namespace
 
 void PropertyMap::refresh() {
+  LOG << "----------------------------------";
   stale_entries_.until_empty([&](const Entry &e) {
+    LOG << e;
     auto *cmd_ptr = fn_->Command(e.reg_);
     if (cmd_ptr == nullptr) {
+      LOG << e.reg_;
       for (IR::Register reg : fn_->references_.at(e.reg_)) {
         // TODO also this entry on all blocks you jump to
         stale_entries_.emplace(e.viewing_block_, reg);
@@ -150,15 +173,25 @@ void PropertyMap::refresh() {
 
     bool change = false;
     switch (cmd.op_code_) {
-      case IR::Op::UncondJump: return;
-      case IR::Op::CondJump: return;
-      case IR::Op::ReturnJump: return;
+      case IR::Op::UncondJump:
+        return;  // TODO
+      case IR::Op::CondJump:
+        return;  // TODO
+      case IR::Op::ReturnJump:
+        return;  // TODO
+      case IR::Op::Call:
+        return;  // TODO
       case IR::Op::Not:
         change = prop_set.add(Not(block_view.at(cmd.not_.reg_)));
+        if (change) { stale_entries_.emplace(e.viewing_block_, cmd.not_.reg_); }
         break;
       case IR::Op::SetReturnBool: {
         if (cmd.set_return_bool_.val_.is_reg_) {
           change = prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
+          if (change) {
+            stale_entries_.emplace(e.viewing_block_,
+                                   cmd.set_return_bool_.val_.reg_);
+          }
         } else {
           // TODO Adding a default property seems really silly. You should be
           // able to just not add anything.
@@ -173,7 +206,6 @@ void PropertyMap::refresh() {
         stale_entries_.emplace(e.viewing_block_, reg);
       }
     }
-
   });
 }
 
@@ -209,7 +241,8 @@ DefaultProperty<bool> PropertyMap::Returns() const {
   return bool_ret;
 }
 
-PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
+PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
+                                   FnStateView const &fn_state_view) const {
   auto copy = *this;
   auto *entry_block = &fn_->block(fn_->entry());
   auto &props       = copy.view_.at(entry_block).view_;
@@ -226,7 +259,11 @@ PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
     // to the caller. because registers might also have some properties that can
     // be reasoned about, all of this should be figured out where it's known and
     // then passed in.
-    if (!args.is_reg_.at(index)) {
+    if (args.is_reg_.at(index)) {
+      props.at(IR::Register(offset))
+          .add(fn_state_view.view_.at(args.args_.get<IR::Register>(offset)));
+      offset += sizeof(IR::Register);
+    } else {
       if (t == type::Bool) {
         props.at(IR::Register(offset))
             .add(base::make_owned<DefaultProperty<bool>>(
@@ -237,10 +274,9 @@ PropertyMap PropertyMap::with_args(const IR::LongArgs &args) const {
           copy.stale_entries_.emplace(&b, IR::Register(offset));
         }
       }
-    }
-
-    ++index;
     offset += arch.bytes(t);
+    }
+    ++index;
   }
 
   copy.refresh();
