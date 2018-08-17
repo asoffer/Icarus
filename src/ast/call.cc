@@ -38,7 +38,7 @@ IR::Val AsciiFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturn(0, IR::Trunc(fn->Argument(0)));
+      IR::SetReturn(0, Trunc(fn->Argument(0)));
       IR::ReturnJump();
     }
     return fn;
@@ -52,7 +52,7 @@ IR::Val OrdFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturn(0, IR::Extend(fn->Argument(0)));
+      IR::SetReturn(0, Extend(fn->Argument(0)));
       IR::ReturnJump();
     }
     return fn;
@@ -66,7 +66,7 @@ IR::Val BytesFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturn(0, IR::Bytes(fn->Argument(0)));
+      IR::SetReturn(0, Bytes(fn->Argument(0)));
       IR::ReturnJump();
     }
     return fn;
@@ -80,7 +80,7 @@ IR::Val AlignFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturn(0, IR::Align(fn->Argument(0)));
+      IR::SetReturn(0, Align(fn->Argument(0)));
       IR::ReturnJump();
     }
     return fn;

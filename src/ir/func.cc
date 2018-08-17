@@ -10,7 +10,7 @@ const Type *Ptr(const Type *);
 }  // namespace type
 
 namespace IR {
-Func *Func::Current{nullptr};
+thread_local Func *Func::Current{nullptr};
 
 Val Func::Argument(u32 n) const {
   auto *arg_type = type_->input.at(n);
@@ -145,8 +145,7 @@ void Func::ComputeInvariants() {
 }
 
 void Func::CheckInvariants() {
-  auto prop_map = prop::PropertyMap(this);
-
+  std::vector<std::pair<BasicBlock const *, IR::Cmd const *>> cmds;
   for (const auto &block : blocks_) {
     for (const auto &cmd : block.cmds_) {
       if (cmd.op_code_ != Op::Call) { continue; }
@@ -155,20 +154,27 @@ void Func::CheckInvariants() {
       // allow preconditions. This can be handled correctly by declaring the
       // foreign function locally and wrapping it.
       if (cmd.call_.which_active_ != 0x01) { continue; }
+      if (cmd.call_.fn_->preconditions_.empty()) { continue; }
+      cmds.emplace_back(&block, &cmd);
+    }
+  }
+  if (cmds.empty()) { return; }
 
-      for (const auto & [ precond, precond_prop_map ] :
-           cmd.call_.fn_->preconditions_) {
-        auto prop_copy = precond_prop_map.with_args(*cmd.call_.long_args_,
-                                                    prop_map.view_.at(&block));
+  auto prop_map = prop::PropertyMap(this);
 
-        prop::DefaultProperty<bool> prop = prop_copy.Returns();
-        if (!prop.can_be_true_) {
-          LOG << "Provably false!";
-        } else if (prop.can_be_false_) {
-          LOG << "Not provably true!";
-        } else {
-          LOG << "Okay";
-        }
+  for (auto const & [ block, cmd ] : cmds) {
+    for (const auto & [ precond, precond_prop_map ] :
+         cmd->call_.fn_->preconditions_) {
+      auto prop_copy = precond_prop_map.with_args(*cmd->call_.long_args_,
+                                                  prop_map.view_.at(block));
+
+      prop::DefaultProperty<bool> prop = prop_copy.Returns();
+      if (!prop.can_be_true_) {
+        LOG << "Provably false!";
+      } else if (prop.can_be_false_) {
+        LOG << "Not provably true!";
+      } else {
+        LOG << "Okay";
       }
     }
   }

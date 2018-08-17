@@ -29,7 +29,7 @@ struct GeneratedFunction;
 
 namespace IR {
 struct Func {
-  static Func *Current;
+  static thread_local Func *Current;
 
   Func(Module *mod, const type::Function *fn_type,
        base::vector<std::pair<std::string, AST::Expression *>> args);
