@@ -153,6 +153,15 @@ PropertySet Not(PropertySet prop_set) {
   });
   return prop_set;
 }
+
+PropertySet NeBool(PropertySet const &lhs, PropertySet const &rhs) {
+  return {};  // TODO
+}
+
+PropertySet EqBool(PropertySet const &lhs, PropertySet const &rhs) {
+  return {};  // TODO
+}
+
 }  // namespace
 
 // TODO no longer need to pass stale in as ptr.
@@ -228,6 +237,16 @@ void PropertyMap::UpdateEntryFromAbove(Entry const &e) {
       bool change = prop_set.add(Not(block_view.at(cmd.not_.reg_)));
       if (change) { MarkStale(e); }
     } break;
+    case IR::Op::EqBool: {
+      bool change = prop_set.add(EqBool(block_view.at(cmd.eq_bool_.args_[0]),
+                                        block_view.at(cmd.eq_bool_.args_[1])));
+      if (change) { MarkStale(e); }
+    } break;
+    case IR::Op::NeBool: {
+      bool change = prop_set.add(NeBool(block_view.at(cmd.ne_bool_.args_[0]),
+                                        block_view.at(cmd.ne_bool_.args_[1])));
+      if (change) { MarkStale(e); }
+    } break;
     case IR::Op::SetReturnBool: {
       if (cmd.set_return_bool_.val_.is_reg_) {
         prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
@@ -273,6 +292,12 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         stale_up_[Entry{e.viewing_block_, cmd.not_.reg_}].push_back(
             &view_.at(e.viewing_block_).view_.at(e.reg_));
       }
+    } break;
+    case IR::Op::EqBool: {
+      // TODO
+    } break;
+    case IR::Op::NeBool: {
+      // TODO
     } break;
     default: NOT_YET(cmd);
   }

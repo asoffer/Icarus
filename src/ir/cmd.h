@@ -154,14 +154,14 @@ struct Cmd {
   CMD(GeInt) { std::array<RegisterOr<i32>, 2> args_; };
   CMD(GeReal) { std::array<RegisterOr<double>, 2> args_; };
   CMD(GeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(EqBool) { std::array<RegisterOr<bool>, 2> args_; };
+  CMD(EqBool) { std::array<Register, 2> args_; };
   CMD(EqChar) { std::array<RegisterOr<char>, 2> args_; };
   CMD(EqInt) { std::array<RegisterOr<i32>, 2> args_; };
   CMD(EqReal) { std::array<RegisterOr<double>, 2> args_; };
   CMD(EqType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
   CMD(EqFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
   CMD(EqAddr) { std::array<RegisterOr<IR::Addr>, 2> args_; };
-  CMD(NeBool) { std::array<RegisterOr<bool>, 2> args_; };
+  CMD(NeBool) { std::array<Register, 2> args_; };
   CMD(NeChar) { std::array<RegisterOr<char>, 2> args_; };
   CMD(NeInt) { std::array<RegisterOr<i32>, 2> args_; };
   CMD(NeReal) { std::array<RegisterOr<double>, 2> args_; };

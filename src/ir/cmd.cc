@@ -256,7 +256,6 @@ DEFINE_CMD2(GeReal, ge_real_, double, Bool, std::less_equal<double>{});
 DEFINE_CMD2(GeFlags, ge_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
   return (lhs.value | rhs.value) == lhs.value;
 });
-DEFINE_CMD2(EqBool, eq_bool_, bool, Bool, std::equal_to<bool>{});
 DEFINE_CMD2(EqChar, eq_char_, char, Bool, std::equal_to<char>{});
 DEFINE_CMD2(EqInt, eq_int_, i32, Bool, std::equal_to<i32>{});
 DEFINE_CMD2(EqReal, eq_real_, double, Bool, std::equal_to<double>{});
@@ -276,6 +275,34 @@ DEFINE_CMD2(Arrow, arrow_, type::Type const *, Type_,
               return type::Func({lhs}, {rhs});
             });
 #undef DEFINE_CMD2
+
+Val EqBool(Val const &v1, Val const &v2) {
+  if (auto const *b = std::get_if<bool>(&v1.value)) {
+    return *b ? v2 : Not(v2);
+  }
+  if (auto const *b = std::get_if<bool>(&v1.value)) {
+    return *b ? v1 : Not(v1);
+  }
+
+  auto &cmd    = MakeCmd(type::Bool, Op::EqBool);
+  cmd.eq_bool_ = Cmd::EqBool::Make(std::get<Register>(v1.value),
+                                   std::get<Register>(v2.value));
+  return cmd.reg();
+}
+
+Val NeBool(Val const &v1, Val const &v2) {
+  if (auto const *b = std::get_if<bool>(&v1.value)) {
+    return *b ? Not(v2) : v2;
+  }
+  if (auto const *b = std::get_if<bool>(&v1.value)) {
+    return *b ? Not(v1) : v1;
+  }
+
+  auto &cmd    = MakeCmd(type::Bool, Op::NeBool);
+  cmd.ne_bool_ = Cmd::NeBool::Make(std::get<Register>(v1.value),
+                                   std::get<Register>(v2.value));
+  return cmd.reg();
+}
 
 Val Array(const Val &v1, const Val &v2) {
   ASSERT(v2.type == type::Type_);
@@ -811,13 +838,6 @@ Val Ge(const Val &v1, const Val &v2) {
 }
 
 Val Eq(const Val &v1, const Val &v2) {
-  if (const bool *b = std::get_if<bool>(&v1.value)) {
-    return *b ? v2 : Not(v2);
-  }
-  if (const bool *b = std::get_if<bool>(&v2.value)) {
-    return *b ? v1 : Not(v1);
-  }
-
   if (v1.type == type::Bool) { return EqBool(v1, v2); }
   if (v1.type == type::Char) { return EqChar(v1, v2); }
   if (v1.type == type::Int) { return EqInt(v1, v2); }
@@ -835,13 +855,7 @@ Val Eq(const Val &v1, const Val &v2) {
 }
 
 Val Ne(const Val &v1, const Val &v2) {
-  if (const bool *b = std::get_if<bool>(&v1.value)) {
-    return *b ? Not(v2) : v2;
-  }
-  if (const bool *b = std::get_if<bool>(&v2.value)) {
-    return *b ? Not(v1) : v1;
-  }
-
+  if (v1.type == type::Bool) { return NeBool(v1, v2); }
   if (v1.type == type::Char) { return NeChar(v1, v2); }
   if (v1.type == type::Int) { return NeInt(v1, v2); }
   if (v1.type == type::Real) { return NeReal(v1, v2); }
@@ -1083,14 +1097,14 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::GeInt: return os << cmd.ge_int_.args_;
     case Op::GeReal: return os << cmd.ge_real_.args_;
     case Op::GeFlags: return os << cmd.ge_flags_.args_;
-    case Op::EqBool: return os << cmd.eq_bool_.args_;
+    case Op::EqBool: return os << cmd.eq_bool_.args_[0] << " " << cmd.eq_bool_.args_[1];
     case Op::EqChar: return os << cmd.eq_char_.args_;
     case Op::EqInt: return os << cmd.eq_int_.args_;
     case Op::EqReal: return os << cmd.eq_real_.args_;
     case Op::EqFlags: return os << cmd.eq_flags_.args_;
     case Op::EqType: return os << cmd.eq_type_.args_;
     case Op::EqAddr: return os << cmd.eq_addr_.args_;
-    case Op::NeBool: return os << cmd.ne_bool_.args_;
+    case Op::NeBool: return os << cmd.ne_bool_.args_[0] << " " << cmd.ne_bool_.args_[1];
     case Op::NeChar: return os << cmd.ne_char_.args_;
     case Op::NeInt: return os << cmd.ne_int_.args_;
     case Op::NeReal: return os << cmd.ne_real_.args_;

@@ -254,7 +254,8 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       save((lhs.value | rhs.value) == lhs.value);
     } break;
     case IR::Op::EqBool:
-      save(resolve(cmd.eq_bool_.args_[0]) == resolve(cmd.eq_bool_.args_[1]));
+      save(resolve<bool>(cmd.eq_bool_.args_[0]) ==
+           resolve<bool>(cmd.eq_bool_.args_[1]));
       break;
     case IR::Op::EqChar:
       save(resolve(cmd.eq_char_.args_[0]) == resolve(cmd.eq_char_.args_[1]));
@@ -275,7 +276,8 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       save(resolve(cmd.eq_addr_.args_[0]) == resolve(cmd.eq_addr_.args_[1]));
       break;
     case IR::Op::NeBool:
-      save(resolve(cmd.ne_bool_.args_[0]) == resolve(cmd.ne_bool_.args_[1]));
+      save(resolve<bool>(cmd.ne_bool_.args_[0]) !=
+           resolve<bool>(cmd.ne_bool_.args_[1]));
       break;
     case IR::Op::NeChar:
       save(resolve(cmd.ne_char_.args_[0]) == resolve(cmd.ne_char_.args_[1]));
