@@ -25,9 +25,8 @@ void cli::Usage() {
   Flag("debug-parser") << "Step through the parser step-by-step for debugging."
                        << [](bool b = false) { debug::parser = b; };
 
-  Flag("validation", "v") << "Whether or not to do function pre/post-condition "
-                             "validation at compile-time."
-                          << [](bool b = true) { debug::validation = b; };
+  Flag("debug-validation", "v") << "Step through validator for debugging."
+                                << [](bool b = false) { debug::validation = b; };
 #endif
 
 #ifdef ICARUS_USE_LLVM

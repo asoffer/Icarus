@@ -1,12 +1,11 @@
 #ifndef ICARUS_PROPERTY_PROPERTY_MAP_H
 #define ICARUS_PROPERTY_PROPERTY_MAP_H
 
-#include "base/container/unordered_map.h"
 #include "base/bag.h"
-
-#include "base/owned_ptr.h"
-#include "base/stale_set.h"
+#include "base/container/stale.h"
+#include "base/container/unordered_map.h"
 #include "base/hash.h"
+#include "base/owned_ptr.h"
 #include "base/util.h"
 #include "ir/cmd.h"
 
@@ -87,6 +86,7 @@ inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
   return os << base::internal::stringify(fsv.view_);
 }
 
+// TODO rename me.
 struct Entry {
   Entry(const IR::BasicBlock *viewing_block, IR::Register reg)
       : viewing_block_(viewing_block), reg_(reg) {}
@@ -133,9 +133,17 @@ struct PropertyMap {
   IR::Func *fn_ = nullptr;
   // TODO given that you want the invariant that this is always empty...
   // probably shouldn't be storing it.
-  base::stale_set<Entry> stale_entries_;
+  base::stale_set<Entry> stale_down_;
+  base::stale_map<Entry, base::vector<PropertySet *>> stale_up_;
   base::unordered_map<const IR::BasicBlock *, FnStateView> view_;
+
+ private:
+  void MarkStale(Entry const &e);
+  void UpdateEntryFromAbove(Entry const &e);
+  void UpdateEntryFromBelow(Entry const &e,
+                            base::vector<PropertySet *> const &p);
 };
+
 }  // namespace prop
 
 #endif  // ICARUS_PROPERTY_PROPERTY_MAP_H

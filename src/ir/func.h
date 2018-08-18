@@ -2,7 +2,6 @@
 #define ICARUS_IR_FUNC_H
 
 #include <unordered_set>
-#include <queue>
 
 #include "base/bag.h"
 #include "base/container/unordered_map.h"
@@ -43,8 +42,6 @@ struct Func {
   void CheckInvariants();
 
   std::string name() const;
-
-  int ValidateCalls(std::queue<Func *> *validation_queue) const;
 
   const BasicBlock &block(BlockIndex index) const {
     ASSERT(blocks_.size() > static_cast<size_t>(index.value));
@@ -99,8 +96,8 @@ struct Func {
   base::unordered_map<Register, base::bag<Register>> references_;
   base::unordered_map<Register, CmdIndex> reg_to_cmd_;
 
-  base::unordered_map<const BasicBlock *,
-                      std::unordered_set<const BasicBlock *>>
+  base::unordered_map<BasicBlock const *,
+                      std::unordered_set<BasicBlock const *>>
   GetIncomingBlocks() const;
 };
 std::ostream &operator<<(std::ostream &, IR::Func const &);

@@ -86,9 +86,10 @@ Func::Func(Module *mod, const type::Function *fn_type,
   blocks_.emplace_back(this);
 }
 
-base::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
+base::unordered_map<BasicBlock const *, std::unordered_set<BasicBlock const *>>
 Func::GetIncomingBlocks() const {
-  base::unordered_map<const BasicBlock *, std::unordered_set<const BasicBlock *>>
+  base::unordered_map<BasicBlock const *,
+                      std::unordered_set<BasicBlock const *>>
       incoming;
   for (const auto &b : blocks_) {
     ASSERT(b.cmds_.size() > 0u);
@@ -105,8 +106,6 @@ Func::GetIncomingBlocks() const {
     default:  UNREACHABLE(IR::OpCodeStr(last.op_code_));
     }
   }
-  // Hack: First entry depends on itself.
-  incoming[&block(entry())].insert(&block(entry()));
   return incoming;
 }
 

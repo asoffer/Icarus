@@ -4,6 +4,10 @@
 #include "ir/func.h"
 #include "type/function.h"
 
+namespace debug {
+extern bool validation;
+}  // namespace debug
+
 namespace prop {
 // When combining the information available between two properties, we overwrite
 // the left-hand side property with any new information gleanable from the
@@ -108,12 +112,9 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
     view_.emplace(&block, FnStateView(fn_));
   }
 
-  // TODO this is overkill, but you do need to consider blocks not reachable
-  // from the function arguments.
-  for (const auto &block1 : fn_->blocks_) {
-    for (const auto & [ num, reg ] : fn->reg_map_) {
-      stale_entries_.emplace(&block1, reg);
-    }
+  // TODO all the argument registers.
+  for (auto const &block : fn->blocks_) {
+    stale_down_.emplace(&block, IR::Register(0));
   }
 
   for (auto const & [ f, pm ] : fn->preconditions_) {
@@ -123,13 +124,13 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
         if (cmd.op_code_ != IR::Op::SetReturnBool) { continue; }
 
         // TODO I actually know this on every block.
-        pm_copy.view_.at(&block)
-            .view_.at(cmd.result)
-            .add(base::make_owned<prop::DefaultProperty<bool>>(true));
+        auto &pset = pm_copy.view_.at(&block).view_.at(cmd.result);
+        pset.add(base::make_owned<prop::DefaultProperty<bool>>(true));
+        pm_copy.stale_up_[Entry{&block, cmd.result}].push_back(&pset);
       }
     }
-    pm_copy.refresh();
 
+    pm_copy.refresh();
     // TODO all the registers
     this->view_.at(&fn_->blocks_.at(0))
         .view_.at(IR::Register(0))
@@ -154,56 +155,138 @@ PropertySet Not(PropertySet prop_set) {
 }
 }  // namespace
 
-void PropertyMap::refresh() {
-  stale_entries_.until_empty([&](const Entry &e) {
-    auto *cmd_ptr = fn_->Command(e.reg_);
-    if (cmd_ptr == nullptr) {
-      for (IR::Register reg : fn_->references_.at(e.reg_)) {
-        // TODO also this entry on all blocks you jump to
-        stale_entries_.emplace(e.viewing_block_, reg);
-      }
-      return;
-    }
-    auto &cmd        = *cmd_ptr;
-    auto &block_view = view_.at(e.viewing_block_).view_;
-    auto &prop_set   = block_view.at(e.reg_);
+// TODO no longer need to pass stale in as ptr.
+void PropertyMap::MarkStale(Entry const& e) {
+  for (IR::Register reg : fn_->references_.at(e.reg_)) {
+    stale_down_.emplace(e.viewing_block_, reg);
+  }
 
-    bool change = false;
-    switch (cmd.op_code_) {
-      case IR::Op::UncondJump:
-        return;  // TODO
-      case IR::Op::CondJump:
-        return;  // TODO
-      case IR::Op::ReturnJump:
-        return;  // TODO
-      case IR::Op::Call:
-        return;  // TODO
-      case IR::Op::Not:
-        change = prop_set.add(Not(block_view.at(cmd.not_.reg_)));
-        if (change) { stale_entries_.emplace(e.viewing_block_, cmd.not_.reg_); }
-        break;
-      case IR::Op::SetReturnBool: {
-        if (cmd.set_return_bool_.val_.is_reg_) {
-          change = prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
-          if (change) {
-            stale_entries_.emplace(e.viewing_block_,
-                                   cmd.set_return_bool_.val_.reg_);
-          }
-        } else {
-          // TODO Adding a default property seems really silly. You should be
-          // able to just not add anything.
-          prop_set.add(base::make_owned<DefaultProperty<bool>>(
-              cmd.set_return_bool_.val_.val_));
-        }
-      } break;
-      default: NOT_YET(IR::OpCodeStr(cmd.op_code_));
-    }
-    if (change) {
-      for (IR::Register reg : fn_->references_.at(cmd.result)) {
-        stale_entries_.emplace(e.viewing_block_, reg);
+  auto &last_cmd = e.viewing_block_->cmds_.back();
+  switch (last_cmd.op_code_) {
+    case IR::Op::UncondJump:
+      stale_down_.emplace(&fn_->block(last_cmd.uncond_jump_.block_), e.reg_);
+      break;
+    case IR::Op::CondJump:
+    stale_down_.emplace(&fn_->block(last_cmd.cond_jump_.blocks_[0]), e.reg_);
+    stale_down_.emplace(&fn_->block(last_cmd.cond_jump_.blocks_[1]), e.reg_);
+    break;
+    case IR::Op::ReturnJump:
+      break;
+    default: UNREACHABLE();
+  }
+}
+
+static void Debug(PropertyMap const& pm) {
+  fprintf(stderr, "\033[2J\033[1;1H\n"); // Clear the screen
+  LOG << pm.fn_;
+  for (auto const & [ block, view ] : pm.view_) {
+    fprintf(stderr, "VIEWING BLOCK: %lu\n", reinterpret_cast<uintptr_t>(block));
+    for (auto const & [ reg, prop_set ] : view.view_) {
+      fprintf(stderr, "  reg.%d:\n", reg.value);
+      for (auto const& p : prop_set.props_) {
+        fprintf(stderr, "    %s\n", p->to_string().c_str());
       }
     }
-  });
+    fprintf(stderr, "\n");
+  }
+  fgetc(stdin);
+}
+
+void PropertyMap::UpdateEntryFromAbove(Entry const &e) {
+  if (debug::validation) { Debug(*this); }
+
+  auto *cmd_ptr = fn_->Command(e.reg_);
+  if (cmd_ptr == nullptr) {
+    auto inc  = fn_->GetIncomingBlocks();
+    auto iter = inc.find(e.viewing_block_);
+    if (iter != inc.end()) {
+      auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
+      bool changed   = false;
+      for (auto const *incoming_block : iter->second) {
+        changed |= prop_set.add(view_.at(incoming_block).view_.at(e.reg_));
+      }
+    }
+    MarkStale(e);
+
+    return;
+  }
+
+  auto &cmd        = *cmd_ptr;
+  auto &block_view = view_.at(e.viewing_block_).view_;
+  auto &prop_set   = block_view.at(e.reg_);
+
+  switch (cmd.op_code_) {
+    case IR::Op::UncondJump:
+      return;  // TODO
+    case IR::Op::CondJump:
+      return;  // TODO
+    case IR::Op::ReturnJump:
+      return;  // TODO
+    case IR::Op::Call:
+      return;  // TODO
+    case IR::Op::Not: {
+      bool change = prop_set.add(Not(block_view.at(cmd.not_.reg_)));
+      if (change) { MarkStale(e); }
+    } break;
+    case IR::Op::SetReturnBool: {
+      if (cmd.set_return_bool_.val_.is_reg_) {
+        prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
+        // TODO Do I need to mark stale upwards?
+      } else {
+        prop_set.add(base::make_owned<DefaultProperty<bool>>(
+            cmd.set_return_bool_.val_.val_));
+      }
+    } break;
+    default: NOT_YET(cmd.op_code_);
+  }
+}
+
+void PropertyMap::UpdateEntryFromBelow(Entry const &e,
+                                       base::vector<PropertySet *> const &ps) {
+  if (debug::validation) { Debug(*this); }
+
+  auto *cmd_ptr = fn_->Command(e.reg_);
+  if (cmd_ptr == nullptr) {
+    auto &prop  = view_.at(e.viewing_block_).view_.at(e.reg_);
+    bool change = false;
+    for (auto *p : ps) { change |= prop.add(*p); }
+    if (change) { stale_down_.insert(e); }
+    return;
+  }
+
+  auto &cmd = *ASSERT_NOT_NULL(cmd_ptr);
+  switch (cmd.op_code_) {
+    case IR::Op::SetReturnBool:
+      if (cmd.set_return_bool_.val_.is_reg_) {
+        stale_up_[Entry{e.viewing_block_, cmd.set_return_bool_.val_.reg_}]
+            .push_back(&view_.at(e.viewing_block_).view_.at(e.reg_));
+      }
+      break;
+    case IR::Op::Not: {
+      auto &current_prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
+      bool changed           = false;
+      for (auto *prop_set : ps) {
+        changed |= current_prop_set.add(Not(*prop_set));
+      }
+
+      if (changed) {
+        stale_up_[Entry{e.viewing_block_, cmd.not_.reg_}].push_back(
+            &view_.at(e.viewing_block_).view_.at(e.reg_));
+      }
+    } break;
+    default: NOT_YET(cmd);
+  }
+}
+
+void PropertyMap::refresh() {
+  do {
+    stale_down_.until_empty(
+        [this](Entry const &e) { this->UpdateEntryFromAbove(e); });
+    stale_up_.until_empty(
+        [this](Entry const &e, base::vector<PropertySet *> const &p) {
+          this->UpdateEntryFromBelow(e, p);
+        });
+  } while (!stale_down_.empty());
 }
 
 // TODO this is not a great way to handle this. Probably should store all
@@ -259,6 +342,12 @@ PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
     if (args.is_reg_.at(index)) {
       props.at(IR::Register(offset))
           .add(fn_state_view.view_.at(args.args_.get<IR::Register>(offset)));
+
+      // TODO only need to do this on the entry block, but we're not passing
+      // info between block views yet.
+      for (const auto &b : fn_->blocks_) {
+        copy.stale_down_.emplace(&b, IR::Register(offset));
+      }
       offset += sizeof(IR::Register);
     } else {
       if (t == type::Bool) {
@@ -268,7 +357,7 @@ PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
         // TODO only need to do this on the entry block, but we're not passing
         // info between block views yet.
         for (const auto &b : fn_->blocks_) {
-          copy.stale_entries_.emplace(&b, IR::Register(offset));
+          copy.stale_down_.emplace(&b, IR::Register(offset));
         }
       }
     offset += arch.bytes(t);
