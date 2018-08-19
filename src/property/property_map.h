@@ -1,13 +1,14 @@
 #ifndef ICARUS_PROPERTY_PROPERTY_MAP_H
 #define ICARUS_PROPERTY_PROPERTY_MAP_H
 
-#include "base/bag.h"
 #include "base/container/stale.h"
 #include "base/container/unordered_map.h"
 #include "base/hash.h"
 #include "base/owned_ptr.h"
 #include "base/util.h"
 #include "ir/cmd.h"
+#include "property/property.h"
+#include "property/property_set.h"
 
 namespace IR {
 struct BasicBlock;
@@ -15,67 +16,6 @@ struct Func;
 }  // namespace IR
 
 namespace prop {
-struct Property : public base::Cast<Property> {
-  virtual ~Property() {}
-  virtual Property *Clone() const = 0;
-  virtual std::string to_string() const = 0;
-};
-inline std::ostream &operator<<(std::ostream &os, const Property &p) {
-  return os << p.to_string();
-}
-
-template <typename T>
-struct DefaultProperty : public Property {
-  DefaultProperty<T> *Clone() const override = 0;
-  std::string to_string() const override     = 0;
-};
-
-template <>
-struct DefaultProperty<bool> : public Property {
-  DefaultProperty() : can_be_true_(true), can_be_false_(true) {}
-  DefaultProperty(bool b) : can_be_true_(b), can_be_false_(!b) {}
-  ~DefaultProperty() override {}
-
-  std::string to_string() const override {
-    return can_be_true_ ? (can_be_false_ ? "TF" : "T-")
-                        : (can_be_false_ ? "-F" : "--");
-  }
-
-  DefaultProperty<bool> *Clone() const override {
-    auto *result          = new DefaultProperty;
-    result->can_be_true_  = can_be_true_;
-    result->can_be_false_ = can_be_false_;
-    return result;
-  }
-
-  static DefaultProperty<bool> Bottom() {
-    DefaultProperty<bool> val;
-    val.can_be_true_  = false;
-    val.can_be_false_ = false;
-    return val;
-  }
-
-  void operator|=(const DefaultProperty &p) {
-    can_be_true_ |= p.can_be_true_;
-    can_be_false_ |= p.can_be_false_;
-  }
-
-  bool can_be_true_  = true;
-  bool can_be_false_ = true;
-};
-
-struct PropertySet {
-  bool add(base::owned_ptr<Property> prop);
-  bool add(const PropertySet &prop_set);
-
-  void accumulate(Property *prop) const;
-
-  base::bag<base::owned_ptr<Property>> props_;
-};
-inline std::ostream &operator<<(std::ostream &os, const PropertySet &props) {
-  return os << base::internal::stringify(props.props_);
-}
-
 struct FnStateView {
   FnStateView(IR::Func *fn);
 
@@ -126,7 +66,7 @@ struct PropertyMap {
   PropertyMap with_args(IR::LongArgs const &, FnStateView const &) const;
 
   // TODO rename or delete me.
-  DefaultProperty<bool> Returns() const;
+  BoolProp Returns() const;
 
   void refresh();
 

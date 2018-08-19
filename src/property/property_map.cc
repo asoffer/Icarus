@@ -2,6 +2,7 @@
 
 #include "architecture.h"
 #include "ir/func.h"
+#include "property/property.h"
 #include "type/function.h"
 
 namespace debug {
@@ -9,97 +10,6 @@ extern bool validation;
 }  // namespace debug
 
 namespace prop {
-// When combining the information available between two properties, we overwrite
-// the left-hand side property with any new information gleanable from the
-// right-hand side. There are several possible outcomes.
-enum class Combine {
-  Same,     // The properties are equal
-  Merge,    // The new property completely subsumes both the left-hand and
-            // right-hand sides.
-  Partial,  // The new property has more information than the right-hand side,
-            // but the right-hand side still has some useful information that
-            // isn't expresed in the new property.
-  None      // The new property is identical to the left-hand side before
-            // combination
-};
-
-Combine combine(Property *lhs, Property const *rhs) {
-  if (lhs->is<DefaultProperty<bool>>() && rhs->is<DefaultProperty<bool>>()) {
-    auto& l = lhs->as<DefaultProperty<bool>>();
-    auto& r = rhs->as<DefaultProperty<bool>>();
-    auto prev = l;
-    if (l.can_be_true_ == r.can_be_true_ &&
-        l.can_be_false_ == r.can_be_false_) {
-      return Combine::Same;
-    }
-
-    l.can_be_true_ &= r.can_be_true_;
-    l.can_be_false_ &= r.can_be_false_;
-    return (l.can_be_true_ == prev.can_be_true_ &&
-            l.can_be_false_ == prev.can_be_false_)
-               ? Combine::None
-               : Combine::Merge;
-  }
-  // TODO handling all pairs is not scalable (or even possible with user-defined
-  // properties.
-  return Combine::None;
-}
-
-bool PropertySet::add(base::owned_ptr<Property> prop) {
-  if (props_.empty()) {
-    props_.insert(std::move(prop));
-    return true;
-  }
-
-  bool change = false;
-  bool saw_partial = true;
-  while (saw_partial) {
-    saw_partial = false;
-    auto iter   = props_.begin();
-    // TODO write down the exact invariants that this guarantees. Something like
-    // "every pair of properties is incomparbale."
-    while (iter != props_.end()) {
-      switch (combine(prop.get(), iter->get())) {
-        case Combine::Same: return false;
-        case Combine::Merge:
-          change = true;
-          props_.erase(iter);
-          break;
-        case Combine::Partial:
-          saw_partial = true;
-          change      = true;
-          ++iter;
-          break;
-        case Combine::None: ++iter; break;
-      }
-    }
-  }
-  props_.insert(std::move(prop));
-  return change;
-}
-
-bool PropertySet::add(const PropertySet &prop_set) {
-  bool change = false;
-  for (auto const &p : prop_set.props_) { change |= add(p); }
-  return change;
-}
-
-void PropertySet::accumulate(Property *prop) const {
-  ASSERT(prop != nullptr);
-  bool changed = true;
-  while (changed) {
-    changed = false;
-    for (const auto &p : props_) {
-      auto c = combine(prop, p.get());
-      switch (c) {
-        case Combine::Merge:
-        case Combine::Partial: changed = true;
-        default:;
-      }
-    }
-  }
-}
-
 FnStateView::FnStateView(IR::Func *fn) {
   for (const auto & [ num, reg ] : fn->reg_map_) {
     view_.emplace(reg, PropertySet{});
@@ -125,7 +35,7 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
 
         // TODO I actually know this on every block.
         auto &pset = pm_copy.view_.at(&block).view_.at(cmd.result);
-        pset.add(base::make_owned<prop::DefaultProperty<bool>>(true));
+        pset.add(base::make_owned<prop::BoolProp>(true));
         pm_copy.stale_up_[Entry{&block, cmd.result}].push_back(&pset);
       }
     }
@@ -146,8 +56,8 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
 namespace {
 PropertySet Not(PropertySet prop_set) {
   prop_set.props_.for_each([](base::owned_ptr<Property> *prop) {
-    if (!(**prop).is<DefaultProperty<bool>>()) { return; }
-    auto p           = &(**prop).as<DefaultProperty<bool>>();
+    if (!(**prop).is<BoolProp>()) { return; }
+    auto p           = &(**prop).as<BoolProp>();
     p->can_be_true_  = !p->can_be_true_;
     p->can_be_false_ = !p->can_be_false_;
   });
@@ -165,7 +75,7 @@ PropertySet EqBool(PropertySet const &lhs, PropertySet const &rhs) {
 }  // namespace
 
 // TODO no longer need to pass stale in as ptr.
-void PropertyMap::MarkStale(Entry const& e) {
+void PropertyMap::MarkStale(Entry const &e) {
   for (IR::Register reg : fn_->references_.at(e.reg_)) {
     stale_down_.emplace(e.viewing_block_, reg);
   }
@@ -176,23 +86,22 @@ void PropertyMap::MarkStale(Entry const& e) {
       stale_down_.emplace(&fn_->block(last_cmd.uncond_jump_.block_), e.reg_);
       break;
     case IR::Op::CondJump:
-    stale_down_.emplace(&fn_->block(last_cmd.cond_jump_.blocks_[0]), e.reg_);
-    stale_down_.emplace(&fn_->block(last_cmd.cond_jump_.blocks_[1]), e.reg_);
-    break;
-    case IR::Op::ReturnJump:
+      stale_down_.emplace(&fn_->block(last_cmd.cond_jump_.blocks_[0]), e.reg_);
+      stale_down_.emplace(&fn_->block(last_cmd.cond_jump_.blocks_[1]), e.reg_);
       break;
+    case IR::Op::ReturnJump: break;
     default: UNREACHABLE();
   }
 }
 
-static void Debug(PropertyMap const& pm) {
-  fprintf(stderr, "\033[2J\033[1;1H\n"); // Clear the screen
+static void Debug(PropertyMap const &pm) {
+  fprintf(stderr, "\033[2J\033[1;1H\n");  // Clear the screen
   LOG << pm.fn_;
   for (auto const & [ block, view ] : pm.view_) {
     fprintf(stderr, "VIEWING BLOCK: %lu\n", reinterpret_cast<uintptr_t>(block));
     for (auto const & [ reg, prop_set ] : view.view_) {
       fprintf(stderr, "  reg.%d:\n", reg.value);
-      for (auto const& p : prop_set.props_) {
+      for (auto const &p : prop_set.props_) {
         fprintf(stderr, "    %s\n", p->to_string().c_str());
       }
     }
@@ -239,8 +148,8 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
         prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
         // TODO Do I need to mark stale upwards?
       } else {
-        prop_set.add(base::make_owned<DefaultProperty<bool>>(
-            cmd.set_return_bool_.val_.val_));
+        prop_set.add(
+            base::make_owned<BoolProp>(cmd.set_return_bool_.val_.val_));
       }
       return false;
     default: NOT_YET(cmd.op_code_);
@@ -304,7 +213,7 @@ void PropertyMap::refresh() {
 
 // TODO this is not a great way to handle this. Probably should store all
 // set-rets first.
-DefaultProperty<bool> PropertyMap::Returns() const {
+BoolProp PropertyMap::Returns() const {
   base::vector<IR::CmdIndex> rets;
   base::vector<IR::Register> regs;
 
@@ -322,11 +231,11 @@ DefaultProperty<bool> PropertyMap::Returns() const {
     }
   }
 
-  auto bool_ret = DefaultProperty<bool>::Bottom();
+  auto bool_ret = BoolProp::Bottom();
 
   for (size_t i = 0; i < rets.size(); ++i) {
     IR::BasicBlock *block = &fn_->blocks_[rets.at(i).block.value];
-    DefaultProperty<bool> acc;
+    BoolProp acc;
     view_.at(block).view_.at(regs.at(i)).accumulate(&acc);
     bool_ret |= acc;
   }
@@ -336,11 +245,11 @@ DefaultProperty<bool> PropertyMap::Returns() const {
 
 PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
                                    FnStateView const &fn_state_view) const {
-  auto copy = *this;
+  auto copy         = *this;
   auto *entry_block = &fn_->block(fn_->entry());
   auto &props       = copy.view_.at(entry_block).view_;
 
-  auto arch = Architecture::InterprettingMachine();
+  auto arch     = Architecture::InterprettingMachine();
   size_t offset = 0;
   size_t index  = 0;
   // TODO offset < args.args_.size() should work as the condition but it isn't,
@@ -365,15 +274,14 @@ PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
     } else {
       if (t == type::Bool) {
         props.at(IR::Register(offset))
-            .add(base::make_owned<DefaultProperty<bool>>(
-                args.args_.get<bool>(offset)));
+            .add(base::make_owned<BoolProp>(args.args_.get<bool>(offset)));
         // TODO only need to do this on the entry block, but we're not passing
         // info between block views yet.
         for (const auto &b : fn_->blocks_) {
           copy.stale_down_.emplace(&b, IR::Register(offset));
         }
       }
-    offset += arch.bytes(t);
+      offset += arch.bytes(t);
     }
     ++index;
   }

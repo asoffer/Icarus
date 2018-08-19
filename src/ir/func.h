@@ -3,7 +3,7 @@
 
 #include <unordered_set>
 
-#include "base/bag.h"
+#include "base/container/bag.h"
 #include "base/container/unordered_map.h"
 #include "base/container/vector.h"
 #include "ir/basic_block.h"
