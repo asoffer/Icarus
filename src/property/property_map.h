@@ -1,7 +1,8 @@
 #ifndef ICARUS_PROPERTY_PROPERTY_MAP_H
 #define ICARUS_PROPERTY_PROPERTY_MAP_H
 
-#include "base/container/stale.h"
+#include <unordered_set>
+
 #include "base/container/unordered_map.h"
 #include "base/hash.h"
 #include "base/owned_ptr.h"
@@ -68,19 +69,36 @@ struct PropertyMap {
   // TODO rename or delete me.
   BoolProp Returns() const;
 
-  void refresh();
+  void refresh(std::unordered_set<Entry> stale_up   = {},
+               std::unordered_set<Entry> stale_down = {});
+
+  PropertySet const &lookup(Entry const &e) const {
+    return view_.at(e.viewing_block_).view_.at(e.reg_);
+  }
+
+  PropertySet &lookup(Entry const &e) {
+    return view_.at(e.viewing_block_).view_.at(e.reg_);
+  }
+
+  PropertySet const &lookup(IR::BasicBlock const *viewing_block,
+                            IR::Register reg) const {
+    return view_.at(viewing_block).view_.at(reg);
+  }
+
+  PropertySet &lookup(IR::BasicBlock const *viewing_block, IR::Register reg) {
+    return view_.at(viewing_block).view_.at(reg);
+  }
 
   IR::Func *fn_ = nullptr;
-  // TODO given that you want the invariant that this is always empty...
-  // probably shouldn't be storing it.
-  base::stale_set<Entry> stale_down_;
-  base::stale_set<Entry> stale_up_;
   base::unordered_map<const IR::BasicBlock *, FnStateView> view_;
 
  private:
-  void MarkStale(Entry const &e);
+  void MarkReferencesStale(Entry const &e,
+                           std::unordered_set<Entry> *stale_down);
   bool UpdateEntryFromAbove(Entry const &e);
-  void UpdateEntryFromBelow(Entry const &e);
+  void UpdateEntryFromBelow(Entry const &e,
+                            std::unordered_set<Entry> *stale_up,
+                            std::unordered_set<Entry> *stale_down);
 };
 
 }  // namespace prop

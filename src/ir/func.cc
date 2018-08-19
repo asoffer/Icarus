@@ -2,6 +2,7 @@
 
 #include "architecture.h"
 #include "ast/function_literal.h"
+#include "property/property.h"
 #include "property/property_map.h"
 #include "type/function.h"
 
@@ -167,7 +168,7 @@ void Func::CheckInvariants() {
       auto prop_copy = precond_prop_map.with_args(*cmd->call_.long_args_,
                                                   prop_map.view_.at(block));
 
-      prop::DefaultProperty<bool> prop = prop_copy.Returns();
+      prop::BoolProp prop = prop_copy.Returns();
       if (!prop.can_be_true_) {
         LOG << "Provably false!";
       } else if (prop.can_be_false_) {

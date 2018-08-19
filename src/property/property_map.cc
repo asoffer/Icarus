@@ -22,38 +22,51 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
     view_.emplace(&block, FnStateView(fn_));
   }
 
-  // TODO all the argument registers.
-  for (auto const &block : fn->blocks_) {
-    stale_down_.emplace(&block, IR::Register(0));
-  }
-
   for (auto const & [ f, pm ] : fn->preconditions_) {
     auto pm_copy = pm;
+    std::unordered_set<Entry> stale_up;
     for (const auto &block : f.blocks_) {
       for (const auto &cmd : block.cmds_) {
         if (cmd.op_code_ != IR::Op::SetReturnBool) { continue; }
 
         // TODO I actually know this on every block.
-        auto &pset = pm_copy.view_.at(&block).view_.at(cmd.result);
+        auto &pset = pm_copy.lookup(&block, cmd.result);
         pset.add(base::make_owned<prop::BoolProp>(true));
-        pm_copy.stale_up_.emplace(&block, cmd.result);
+        stale_up.emplace(&block, cmd.result);
       }
     }
 
-    pm_copy.refresh();
+    pm_copy.refresh(std::move(stale_up), {});
     // TODO all the registers
-    this->view_.at(&fn_->blocks_.at(0))
-        .view_.at(IR::Register(0))
-        .add(pm_copy.view_.at(&f.blocks_.at(0)).view_.at(IR::Register(0)));
+    this->lookup(&fn_->blocks_.at(0), IR::Register(0))
+        .add(pm_copy.lookup(&f.blocks_.at(0), IR::Register(0)));
+  }
+
+  // TODO all the argument registers.
+  std::unordered_set<Entry> stale_down;
+  for (auto const &block : fn->blocks_) {
+    stale_down.emplace(&block, IR::Register(0));
   }
 
   // This refresh is an optimization. Because it's likely that this gets called
   // many times with different arguments, it's better to precompute whatever can
   // be on this function rather than repeating all that on many different calls.
-  refresh();
+  refresh({}, std::move(stale_down));
 }
 
 namespace {
+template <typename SetContainer, typename Fn>
+void until_empty(SetContainer *container, Fn &&fn) {
+  while (!container->empty()) {
+    auto iter = container->begin();
+    while (iter != container->end()) {
+      auto next_iter = std::next(iter);
+      fn(container->extract(iter).value());
+      iter = next_iter;
+    }
+  }
+}
+
 PropertySet Not(PropertySet prop_set) {
   prop_set.props_.for_each([](base::owned_ptr<Property> *prop) {
     if (!(**prop).is<BoolProp>()) { return; }
@@ -91,19 +104,20 @@ PropertySet LtInt(PropertySet const &lhs, int rhs) {
 }  // namespace
 
 // TODO no longer need to pass stale in as ptr.
-void PropertyMap::MarkStale(Entry const &e) {
+void PropertyMap::MarkReferencesStale(Entry const &e,
+                                      std::unordered_set<Entry> *stale_down) {
   for (IR::Register reg : fn_->references_.at(e.reg_)) {
-    stale_down_.emplace(e.viewing_block_, reg);
+    stale_down->emplace(e.viewing_block_, reg);
   }
 
   auto &last_cmd = e.viewing_block_->cmds_.back();
   switch (last_cmd.op_code_) {
     case IR::Op::UncondJump:
-      stale_down_.emplace(&fn_->block(last_cmd.uncond_jump_.block_), e.reg_);
+      stale_down->emplace(&fn_->block(last_cmd.uncond_jump_.block_), e.reg_);
       break;
     case IR::Op::CondJump:
-      stale_down_.emplace(&fn_->block(last_cmd.cond_jump_.blocks_[0]), e.reg_);
-      stale_down_.emplace(&fn_->block(last_cmd.cond_jump_.blocks_[1]), e.reg_);
+      stale_down->emplace(&fn_->block(last_cmd.cond_jump_.blocks_[0]), e.reg_);
+      stale_down->emplace(&fn_->block(last_cmd.cond_jump_.blocks_[1]), e.reg_);
       break;
     case IR::Op::ReturnJump: break;
     default: UNREACHABLE();
@@ -134,10 +148,10 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
     auto inc  = fn_->GetIncomingBlocks();
     auto iter = inc.find(e.viewing_block_);
     if (iter != inc.end()) {
-      auto &prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
+      auto &prop_set = this->lookup(e);
       bool changed   = false;
       for (auto const *incoming_block : iter->second) {
-        changed |= prop_set.add(view_.at(incoming_block).view_.at(e.reg_));
+        changed |= prop_set.add(this->lookup(incoming_block, e.reg_));
       }
     }
     return true;
@@ -184,24 +198,24 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
   }
 }
 
-void PropertyMap::UpdateEntryFromBelow(Entry const &e) {
+void PropertyMap::UpdateEntryFromBelow(Entry const &e,
+                                       std::unordered_set<Entry> *stale_up,
+                                       std::unordered_set<Entry> *stale_down) {
   if (debug::validation) { Debug(*this); }
 
   auto *cmd_ptr = fn_->Command(e.reg_);
   if (cmd_ptr == nullptr) {
-    stale_down_.insert(e);
+    stale_down->insert(e);
     return;
   }
-  auto &cmd = *ASSERT_NOT_NULL(cmd_ptr);
-
+  auto &cmd  = *ASSERT_NOT_NULL(cmd_ptr);
+  auto &view = view_.at(e.viewing_block_).view_;
   switch (cmd.op_code_) {
 #define DEFINE_CASE(op_name)                                                   \
   {                                                                            \
     if (cmd.op_name.val_.is_reg_) {                                            \
-      view_.at(e.viewing_block_)                                               \
-          .view_.at(cmd.op_name.val_.reg_)                                     \
-          .add(view_.at(e.viewing_block_).view_.at(e.reg_));                   \
-      stale_up_.emplace(e.viewing_block_, cmd.op_name.val_.reg_);              \
+      view.at(cmd.op_name.val_.reg_).add(view.at(e.reg_));                     \
+      stale_up->emplace(e.viewing_block_, cmd.op_name.val_.reg_);              \
     }                                                                          \
   }                                                                            \
   break
@@ -221,23 +235,25 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e) {
     case IR::Op::SetReturnBlock: DEFINE_CASE(set_return_block_);
 #undef DEFINE_CASE
     case IR::Op::Not: {
-      bool changed = view_.at(e.viewing_block_)
-                         .view_.at(cmd.not_.reg_)
-                         .add(Not(view_.at(e.viewing_block_).view_.at(e.reg_)));
-      if (changed) { stale_up_.emplace(e.viewing_block_, cmd.not_.reg_); }
+      bool changed = view.at(cmd.not_.reg_).add(Not(view.at(e.reg_)));
+      if (changed) { stale_up->emplace(e.viewing_block_, cmd.not_.reg_); }
     } break;
     default: NOT_YET(cmd);
   }
 }
 
-void PropertyMap::refresh() {
+void PropertyMap::refresh(std::unordered_set<Entry> stale_up,
+                          std::unordered_set<Entry> stale_down) {
   do {
-    stale_down_.until_empty([this](Entry const &e) {
-      if (this->UpdateEntryFromAbove(e)) { MarkStale(e); }
+    until_empty(&stale_down, [this, &stale_down](Entry const &e) {
+      if (this->UpdateEntryFromAbove(e)) {
+        MarkReferencesStale(e, &stale_down);
+      }
     });
-    stale_up_.until_empty(
-        [this](Entry const &e) { this->UpdateEntryFromBelow(e); });
-  } while (!stale_down_.empty());
+    until_empty(&stale_up, [this, &stale_up, &stale_down](Entry const &e) {
+      this->UpdateEntryFromBelow(e, &stale_up, &stale_down);
+    });
+  } while (!stale_down.empty());
 }
 
 // TODO this is not a great way to handle this. Probably should store all
@@ -265,7 +281,7 @@ BoolProp PropertyMap::Returns() const {
   for (size_t i = 0; i < rets.size(); ++i) {
     IR::BasicBlock *block = &fn_->blocks_[rets.at(i).block.value];
     BoolProp acc;
-    view_.at(block).view_.at(regs.at(i)).accumulate(&acc);
+    lookup(block, regs.at(i)).accumulate(&acc);
     bool_ret |= acc;
   }
 
@@ -283,6 +299,8 @@ PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
   size_t index  = 0;
   // TODO offset < args.args_.size() should work as the condition but it isn't,
   // so figure out why.
+
+  std::unordered_set<Entry> stale_down;
   while (index < args.type_->input.size()) {
     auto *t = args.type_->input.at(index);
     offset  = arch.MoveForwardToAlignment(t, offset);
@@ -297,7 +315,7 @@ PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
       // TODO only need to do this on the entry block, but we're not passing
       // info between block views yet.
       for (const auto &b : fn_->blocks_) {
-        copy.stale_down_.emplace(&b, IR::Register(offset));
+        stale_down.emplace(&b, IR::Register(offset));
       }
       offset += sizeof(IR::Register);
     } else {
@@ -307,7 +325,7 @@ PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
         // TODO only need to do this on the entry block, but we're not passing
         // info between block views yet.
         for (const auto &b : fn_->blocks_) {
-          copy.stale_down_.emplace(&b, IR::Register(offset));
+          stale_down.emplace(&b, IR::Register(offset));
         }
       }
       offset += arch.bytes(t);
@@ -315,7 +333,7 @@ PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
     ++index;
   }
 
-  copy.refresh();
+  copy.refresh({}, std::move(stale_down));
   return copy;
 }
 
