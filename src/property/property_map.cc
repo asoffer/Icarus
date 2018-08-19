@@ -36,7 +36,7 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
         // TODO I actually know this on every block.
         auto &pset = pm_copy.view_.at(&block).view_.at(cmd.result);
         pset.add(base::make_owned<prop::BoolProp>(true));
-        pm_copy.stale_up_[Entry{&block, cmd.result}].push_back(&pset);
+        pm_copy.stale_up_.emplace(&block, cmd.result);
       }
     }
 
@@ -70,6 +70,22 @@ PropertySet NeBool(PropertySet const &lhs, PropertySet const &rhs) {
 
 PropertySet EqBool(PropertySet const &lhs, PropertySet const &rhs) {
   return {};  // TODO
+}
+
+PropertySet LtInt(PropertySet const &lhs, int rhs) {
+  auto b = base::make_owned<BoolProp>();
+  lhs.props_.for_each([&b, rhs](base::owned_ptr<Property> const *prop) {
+    if (!(**prop).is<IntProp>()) { return; }
+    auto p = &(**prop).as<IntProp>();
+    if (p->lower_) {
+      if (p->bound_ >= rhs) { *b = BoolProp(false); }
+    } else {
+      if (p->bound_ <= rhs) { *b = BoolProp(true); }
+    }
+  });
+  PropertySet ps;
+  ps.add(b);
+  return ps;
 }
 
 }  // namespace
@@ -143,6 +159,18 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
     case IR::Op::NeBool:
       return prop_set.add(NeBool(block_view.at(cmd.ne_bool_.args_[0]),
                                  block_view.at(cmd.ne_bool_.args_[1])));
+    case IR::Op::LtInt:
+      if (cmd.lt_int_.args_[0].is_reg_) {
+        if (cmd.lt_int_.args_[1].is_reg_) {
+          NOT_YET();
+        } else {
+          return prop_set.add(LtInt(block_view.at(cmd.lt_int_.args_[0].reg_),
+                                    cmd.lt_int_.args_[1].val_));
+        }
+      } else {
+        NOT_YET();
+      }
+
     case IR::Op::SetReturnBool:
       if (cmd.set_return_bool_.val_.is_reg_) {
         prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
@@ -156,44 +184,47 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
   }
 }
 
-void PropertyMap::UpdateEntryFromBelow(Entry const &e,
-                                       base::vector<PropertySet *> const &ps) {
+void PropertyMap::UpdateEntryFromBelow(Entry const &e) {
   if (debug::validation) { Debug(*this); }
 
   auto *cmd_ptr = fn_->Command(e.reg_);
   if (cmd_ptr == nullptr) {
-    auto &prop  = view_.at(e.viewing_block_).view_.at(e.reg_);
-    bool change = false;
-    for (auto *p : ps) { change |= prop.add(*p); }
-    if (change) { stale_down_.insert(e); }
+    stale_down_.insert(e);
     return;
   }
-
   auto &cmd = *ASSERT_NOT_NULL(cmd_ptr);
-  switch (cmd.op_code_) {
-    case IR::Op::SetReturnBool:
-      if (cmd.set_return_bool_.val_.is_reg_) {
-        stale_up_[Entry{e.viewing_block_, cmd.set_return_bool_.val_.reg_}]
-            .push_back(&view_.at(e.viewing_block_).view_.at(e.reg_));
-      }
-      break;
-    case IR::Op::Not: {
-      auto &current_prop_set = view_.at(e.viewing_block_).view_.at(e.reg_);
-      bool changed           = false;
-      for (auto *prop_set : ps) {
-        changed |= current_prop_set.add(Not(*prop_set));
-      }
 
-      if (changed) {
-        stale_up_[Entry{e.viewing_block_, cmd.not_.reg_}].push_back(
-            &view_.at(e.viewing_block_).view_.at(e.reg_));
-      }
-    } break;
-    case IR::Op::EqBool: {
-      // TODO
-    } break;
-    case IR::Op::NeBool: {
-      // TODO
+  switch (cmd.op_code_) {
+#define DEFINE_CASE(op_name)                                                   \
+  {                                                                            \
+    if (cmd.op_name.val_.is_reg_) {                                            \
+      view_.at(e.viewing_block_)                                               \
+          .view_.at(cmd.op_name.val_.reg_)                                     \
+          .add(view_.at(e.viewing_block_).view_.at(e.reg_));                   \
+      stale_up_.emplace(e.viewing_block_, cmd.op_name.val_.reg_);              \
+    }                                                                          \
+  }                                                                            \
+  break
+    case IR::Op::SetReturnBool: DEFINE_CASE(set_return_bool_);
+    case IR::Op::SetReturnChar: DEFINE_CASE(set_return_char_);
+    case IR::Op::SetReturnInt: DEFINE_CASE(set_return_int_);
+    case IR::Op::SetReturnReal: DEFINE_CASE(set_return_real_);
+    case IR::Op::SetReturnType: DEFINE_CASE(set_return_type_);
+    case IR::Op::SetReturnEnum: DEFINE_CASE(set_return_enum_);
+    case IR::Op::SetReturnCharBuf: DEFINE_CASE(set_return_char_buf_);
+    case IR::Op::SetReturnFlags: DEFINE_CASE(set_return_flags_);
+    case IR::Op::SetReturnAddr: DEFINE_CASE(set_return_addr_);
+    case IR::Op::SetReturnFunc: DEFINE_CASE(set_return_func_);
+    case IR::Op::SetReturnScope: DEFINE_CASE(set_return_scope_);
+    case IR::Op::SetReturnModule: DEFINE_CASE(set_return_module_);
+    case IR::Op::SetReturnGeneric: DEFINE_CASE(set_return_generic_);
+    case IR::Op::SetReturnBlock: DEFINE_CASE(set_return_block_);
+#undef DEFINE_CASE
+    case IR::Op::Not: {
+      bool changed = view_.at(e.viewing_block_)
+                         .view_.at(cmd.not_.reg_)
+                         .add(Not(view_.at(e.viewing_block_).view_.at(e.reg_)));
+      if (changed) { stale_up_.emplace(e.viewing_block_, cmd.not_.reg_); }
     } break;
     default: NOT_YET(cmd);
   }
@@ -205,9 +236,7 @@ void PropertyMap::refresh() {
       if (this->UpdateEntryFromAbove(e)) { MarkStale(e); }
     });
     stale_up_.until_empty(
-        [this](Entry const &e, base::vector<PropertySet *> const &p) {
-          this->UpdateEntryFromBelow(e, p);
-        });
+        [this](Entry const &e) { this->UpdateEntryFromBelow(e); });
   } while (!stale_down_.empty());
 }
 

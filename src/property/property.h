@@ -49,6 +49,24 @@ struct BoolProp : public Property {
   bool can_be_true_  = true;
   bool can_be_false_ = true;
 };
+
+struct IntProp : public Property {
+  ~IntProp() override {}
+
+  IntProp *Clone() const override {
+    auto *result   = new IntProp;
+    result->lower_ = lower_;
+    result->bound_ = bound_;
+    return result;
+  }
+
+  std::string to_string() const override {
+    return (lower_ ? ">" : "<") + std::to_string(bound_);
+  }
+
+  bool lower_;
+  int bound_;
+};
 }  // namespace prop
 
 #endif  // ICARUS_PROPERTY_PROPERTY_H

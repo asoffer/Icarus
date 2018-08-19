@@ -74,14 +74,13 @@ struct PropertyMap {
   // TODO given that you want the invariant that this is always empty...
   // probably shouldn't be storing it.
   base::stale_set<Entry> stale_down_;
-  base::stale_map<Entry, base::vector<PropertySet *>> stale_up_;
+  base::stale_set<Entry> stale_up_;
   base::unordered_map<const IR::BasicBlock *, FnStateView> view_;
 
  private:
   void MarkStale(Entry const &e);
   bool UpdateEntryFromAbove(Entry const &e);
-  void UpdateEntryFromBelow(Entry const &e,
-                            base::vector<PropertySet *> const &p);
+  void UpdateEntryFromBelow(Entry const &e);
 };
 
 }  // namespace prop

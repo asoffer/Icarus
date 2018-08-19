@@ -75,6 +75,11 @@ struct bag {
     for (T& t : data_) { fn(&t); }
   }
 
+  template <typename Fn>
+  void for_each(Fn&& fn) const {
+    for (T const& t : data_) { fn(&t); }
+  }
+
  private:
   std::vector<T, Allocator> data_;
 };
