@@ -139,7 +139,7 @@ struct PropertyMap {
 
  private:
   void MarkStale(Entry const &e);
-  void UpdateEntryFromAbove(Entry const &e);
+  bool UpdateEntryFromAbove(Entry const &e);
   void UpdateEntryFromBelow(Entry const &e,
                             base::vector<PropertySet *> const &p);
 };

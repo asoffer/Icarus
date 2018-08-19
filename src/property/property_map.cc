@@ -201,7 +201,7 @@ static void Debug(PropertyMap const& pm) {
   fgetc(stdin);
 }
 
-void PropertyMap::UpdateEntryFromAbove(Entry const &e) {
+bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
   if (debug::validation) { Debug(*this); }
 
   auto *cmd_ptr = fn_->Command(e.reg_);
@@ -215,9 +215,7 @@ void PropertyMap::UpdateEntryFromAbove(Entry const &e) {
         changed |= prop_set.add(view_.at(incoming_block).view_.at(e.reg_));
       }
     }
-    MarkStale(e);
-
-    return;
+    return true;
   }
 
   auto &cmd        = *cmd_ptr;
@@ -225,29 +223,18 @@ void PropertyMap::UpdateEntryFromAbove(Entry const &e) {
   auto &prop_set   = block_view.at(e.reg_);
 
   switch (cmd.op_code_) {
-    case IR::Op::UncondJump:
-      return;  // TODO
-    case IR::Op::CondJump:
-      return;  // TODO
-    case IR::Op::ReturnJump:
-      return;  // TODO
-    case IR::Op::Call:
-      return;  // TODO
-    case IR::Op::Not: {
-      bool change = prop_set.add(Not(block_view.at(cmd.not_.reg_)));
-      if (change) { MarkStale(e); }
-    } break;
-    case IR::Op::EqBool: {
-      bool change = prop_set.add(EqBool(block_view.at(cmd.eq_bool_.args_[0]),
-                                        block_view.at(cmd.eq_bool_.args_[1])));
-      if (change) { MarkStale(e); }
-    } break;
-    case IR::Op::NeBool: {
-      bool change = prop_set.add(NeBool(block_view.at(cmd.ne_bool_.args_[0]),
-                                        block_view.at(cmd.ne_bool_.args_[1])));
-      if (change) { MarkStale(e); }
-    } break;
-    case IR::Op::SetReturnBool: {
+    case IR::Op::UncondJump: return /* TODO */ false;
+    case IR::Op::CondJump: return /* TODO */ false;
+    case IR::Op::ReturnJump: return /* TODO */ false;
+    case IR::Op::Call: return /* TODO */ false;
+    case IR::Op::Not: return prop_set.add(Not(block_view.at(cmd.not_.reg_)));
+    case IR::Op::EqBool:
+      return prop_set.add(EqBool(block_view.at(cmd.eq_bool_.args_[0]),
+                                 block_view.at(cmd.eq_bool_.args_[1])));
+    case IR::Op::NeBool:
+      return prop_set.add(NeBool(block_view.at(cmd.ne_bool_.args_[0]),
+                                 block_view.at(cmd.ne_bool_.args_[1])));
+    case IR::Op::SetReturnBool:
       if (cmd.set_return_bool_.val_.is_reg_) {
         prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
         // TODO Do I need to mark stale upwards?
@@ -255,7 +242,7 @@ void PropertyMap::UpdateEntryFromAbove(Entry const &e) {
         prop_set.add(base::make_owned<DefaultProperty<bool>>(
             cmd.set_return_bool_.val_.val_));
       }
-    } break;
+      return false;
     default: NOT_YET(cmd.op_code_);
   }
 }
@@ -305,8 +292,9 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
 
 void PropertyMap::refresh() {
   do {
-    stale_down_.until_empty(
-        [this](Entry const &e) { this->UpdateEntryFromAbove(e); });
+    stale_down_.until_empty([this](Entry const &e) {
+      if (this->UpdateEntryFromAbove(e)) { MarkStale(e); }
+    });
     stale_up_.until_empty(
         [this](Entry const &e, base::vector<PropertySet *> const &p) {
           this->UpdateEntryFromBelow(e, p);
