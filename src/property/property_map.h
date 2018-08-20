@@ -69,9 +69,6 @@ struct PropertyMap {
   // TODO rename or delete me.
   BoolProp Returns() const;
 
-  void refresh(std::unordered_set<Entry> stale_up   = {},
-               std::unordered_set<Entry> stale_down = {});
-
   PropertySet const &lookup(Entry const &e) const {
     return view_.at(e.viewing_block_).view_.at(e.reg_);
   }
@@ -93,6 +90,11 @@ struct PropertyMap {
   base::unordered_map<const IR::BasicBlock *, FnStateView> view_;
 
  private:
+  void refresh(std::unordered_set<Entry> stale_up,
+               std::unordered_set<Entry> stale_down);
+
+  void AssumeReturnsTrue();
+
   void MarkReferencesStale(Entry const &e,
                            std::unordered_set<Entry> *stale_down);
   bool UpdateEntryFromAbove(Entry const &e);

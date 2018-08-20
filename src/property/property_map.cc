@@ -16,6 +16,21 @@ FnStateView::FnStateView(IR::Func *fn) {
   }
 }
 
+void PropertyMap::AssumeReturnsTrue() {
+  std::unordered_set<Entry> stale_up;
+  for (const auto &block : fn_->blocks_) {
+    for (const auto &cmd : block.cmds_) {
+      if (cmd.op_code_ != IR::Op::SetReturnBool) { continue; }
+
+      // TODO I actually know this on every block.
+      lookup(&block, cmd.result).add(base::make_owned<prop::BoolProp>(true));
+      stale_up.emplace(&block, cmd.result);
+    }
+  }
+
+  refresh(std::move(stale_up), {});
+}
+
 PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
   // TODO copy fnstateview rather than creating it repeatedly?
   for (const auto &block : fn_->blocks_) {
@@ -24,19 +39,8 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
 
   for (auto const & [ f, pm ] : fn->preconditions_) {
     auto pm_copy = pm;
-    std::unordered_set<Entry> stale_up;
-    for (const auto &block : f.blocks_) {
-      for (const auto &cmd : block.cmds_) {
-        if (cmd.op_code_ != IR::Op::SetReturnBool) { continue; }
+    pm_copy.AssumeReturnsTrue();
 
-        // TODO I actually know this on every block.
-        auto &pset = pm_copy.lookup(&block, cmd.result);
-        pset.add(base::make_owned<prop::BoolProp>(true));
-        stale_up.emplace(&block, cmd.result);
-      }
-    }
-
-    pm_copy.refresh(std::move(stale_up), {});
     // TODO all the registers
     this->lookup(&fn_->blocks_.at(0), IR::Register(0))
         .add(pm_copy.lookup(&f.blocks_.at(0), IR::Register(0)));
