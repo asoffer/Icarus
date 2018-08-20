@@ -93,7 +93,7 @@ struct PropertyMap {
   void refresh(std::unordered_set<Entry> stale_up,
                std::unordered_set<Entry> stale_down);
 
-  void AssumeReturnsTrue();
+  PropertyMap AssumingReturnsTrue() const;
 
   void MarkReferencesStale(Entry const &e,
                            std::unordered_set<Entry> *stale_down);

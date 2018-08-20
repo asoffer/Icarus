@@ -10,55 +10,35 @@ extern bool validation;
 }  // namespace debug
 
 namespace prop {
-FnStateView::FnStateView(IR::Func *fn) {
-  for (const auto & [ num, reg ] : fn->reg_map_) {
-    view_.emplace(reg, PropertySet{});
-  }
-}
-
-void PropertyMap::AssumeReturnsTrue() {
-  std::unordered_set<Entry> stale_up;
-  for (const auto &block : fn_->blocks_) {
-    for (const auto &cmd : block.cmds_) {
-      if (cmd.op_code_ != IR::Op::SetReturnBool) { continue; }
-
-      // TODO I actually know this on every block.
-      lookup(&block, cmd.result).add(base::make_owned<prop::BoolProp>(true));
-      stale_up.emplace(&block, cmd.result);
-    }
-  }
-
-  refresh(std::move(stale_up), {});
-}
-
-PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
-  // TODO copy fnstateview rather than creating it repeatedly?
-  for (const auto &block : fn_->blocks_) {
-    view_.emplace(&block, FnStateView(fn_));
-  }
-
-  for (auto const & [ f, pm ] : fn->preconditions_) {
-    auto pm_copy = pm;
-    pm_copy.AssumeReturnsTrue();
-
-    // TODO all the registers
-    this->lookup(&fn_->blocks_.at(0), IR::Register(0))
-        .add(pm_copy.lookup(&f.blocks_.at(0), IR::Register(0)));
-  }
-
-  // TODO all the argument registers.
-  std::unordered_set<Entry> stale_down;
-  for (auto const &block : fn->blocks_) {
-    stale_down.emplace(&block, IR::Register(0));
-  }
-
-  // This refresh is an optimization. Because it's likely that this gets called
-  // many times with different arguments, it's better to precompute whatever can
-  // be on this function rather than repeating all that on many different calls.
-  refresh({}, std::move(stale_down));
-}
-
 namespace {
+void Debug(PropertyMap const &pm) {
+  fprintf(stderr, "\033[2J\033[1;1H\n");  // Clear the screen
+  LOG << pm.fn_;
+  for (auto const & [ block, view ] : pm.view_) {
+    fprintf(stderr, "VIEWING BLOCK: %lu\n", reinterpret_cast<uintptr_t>(block));
+    for (auto const & [ reg, prop_set ] : view.view_) {
+      fprintf(stderr, "  reg.%d:\n", reg.value);
+      for (auto const &p : prop_set.props_) {
+        fprintf(stderr, "    %s\n", p->to_string().c_str());
+      }
+    }
+    fprintf(stderr, "\n");
+  }
+  fgetc(stdin);
+}
+
+template <typename Fn>
+void ForEachRegister(IR::Func const &f, Fn &&fn_to_call) {
+  auto arch     = Architecture::InterprettingMachine();
+  size_t offset = 0;
+
+  for (auto *t : f.type_->input) {
+    offset = arch.MoveForwardToAlignment(t, offset);
+    fn_to_call(IR::Register{static_cast<int>(offset)});
+    offset += arch.bytes(t);
+  }
+}
+
 template <typename SetContainer, typename Fn>
 void until_empty(SetContainer *container, Fn &&fn) {
   while (!container->empty()) {
@@ -107,6 +87,61 @@ PropertySet LtInt(PropertySet const &lhs, int rhs) {
 
 }  // namespace
 
+FnStateView::FnStateView(IR::Func *fn) {
+  for (const auto & [ num, reg ] : fn->reg_map_) {
+    view_.emplace(reg, PropertySet{});
+  }
+}
+
+PropertyMap PropertyMap::AssumingReturnsTrue() const {
+  ASSERT(fn_->type_->output.size() == 1u);
+  ASSERT(fn_->type_->output.at(0) == type::Bool);
+  PropertyMap result = *this;
+
+  std::unordered_set<Entry> stale_up;
+  for (auto const &block : fn_->blocks_) {
+    for (auto const &cmd : block.cmds_) {
+      if (cmd.op_code_ != IR::Op::SetReturnBool) { continue; }
+
+      result.lookup(&block, cmd.result)
+          .add(base::make_owned<prop::BoolProp>(true));
+      stale_up.emplace(&block, cmd.result);
+    }
+  }
+
+  result.refresh(std::move(stale_up), {});
+  return result;
+}
+
+PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
+  // TODO copy fnstateview rather than creating it repeatedly?
+  for (const auto &block : fn_->blocks_) {
+    view_.emplace(&block, FnStateView(fn_));
+  }
+
+  for (auto const & [ f, pm ] : fn->preconditions_) {
+    auto pm_copy = pm.AssumingReturnsTrue();
+
+    ForEachRegister(*fn_, [this, &pm_copy, &f](IR::Register arg) {
+      lookup(&fn_->blocks_.at(0), arg)
+          .add(pm_copy.lookup(&f.blocks_.at(0), arg));
+    });
+  }
+
+  // TODO all the argument registers.
+  std::unordered_set<Entry> stale_down;
+  for (auto const &block : fn->blocks_) {
+    stale_down.emplace(&block, IR::Register(0));
+  }
+
+  // This refresh is an optimization. Because it's likely that this gets called
+  // many times with different arguments, it's better to precompute whatever can
+  // be on this function rather than repeating all that on many different calls.
+  refresh({}, std::move(stale_down));
+}
+
+
+
 // TODO no longer need to pass stale in as ptr.
 void PropertyMap::MarkReferencesStale(Entry const &e,
                                       std::unordered_set<Entry> *stale_down) {
@@ -126,22 +161,6 @@ void PropertyMap::MarkReferencesStale(Entry const &e,
     case IR::Op::ReturnJump: break;
     default: UNREACHABLE();
   }
-}
-
-static void Debug(PropertyMap const &pm) {
-  fprintf(stderr, "\033[2J\033[1;1H\n");  // Clear the screen
-  LOG << pm.fn_;
-  for (auto const & [ block, view ] : pm.view_) {
-    fprintf(stderr, "VIEWING BLOCK: %lu\n", reinterpret_cast<uintptr_t>(block));
-    for (auto const & [ reg, prop_set ] : view.view_) {
-      fprintf(stderr, "  reg.%d:\n", reg.value);
-      for (auto const &p : prop_set.props_) {
-        fprintf(stderr, "    %s\n", p->to_string().c_str());
-      }
-    }
-    fprintf(stderr, "\n");
-  }
-  fgetc(stdin);
 }
 
 bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
