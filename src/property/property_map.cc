@@ -28,7 +28,7 @@ void Debug(PropertyMap const &pm) {
 }
 
 template <typename Fn>
-void ForEachRegister(IR::Func const &f, Fn &&fn_to_call) {
+void ForEachArgument(IR::Func const &f, Fn &&fn_to_call) {
   auto arch     = Architecture::InterprettingMachine();
   size_t offset = 0;
 
@@ -122,17 +122,17 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
   for (auto const & [ f, pm ] : fn->preconditions_) {
     auto pm_copy = pm.AssumingReturnsTrue();
 
-    ForEachRegister(*fn_, [this, &pm_copy, &f](IR::Register arg) {
+    ForEachArgument(*fn_, [this, &pm_copy, &f](IR::Register arg) {
       lookup(&fn_->blocks_.at(0), arg)
           .add(pm_copy.lookup(&f.blocks_.at(0), arg));
     });
   }
 
-  // TODO all the argument registers.
   std::unordered_set<Entry> stale_down;
-  for (auto const &block : fn->blocks_) {
-    stale_down.emplace(&block, IR::Register(0));
-  }
+  auto *entry_block = &fn_->block(fn_->entry());
+  ForEachArgument(*fn_, [&stale_down, entry_block](IR::Register arg) {
+    stale_down.emplace(entry_block, IR::Register(0));
+  });
 
   // This refresh is an optimization. Because it's likely that this gets called
   // many times with different arguments, it's better to precompute whatever can

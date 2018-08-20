@@ -1,0 +1,20 @@
+main ::= () -> () {}
+
+only_callable_with_false ::= (b: bool) -> () {
+  needs !b
+}
+
+only_callable_with_true ::= (b: bool) -> () {
+  needs b // Due to this line, the combiler will verify at compile-time that it
+          // is impossible to call `only_callable_with_true` with any value other
+          // than `true`
+
+  // We can call this function, because the compiler can prove that `b` must be
+  // true and therefore `!b` must be false, which satisfies the constraints
+  // defined in `only_callable_with_false`. Importantly, notice that `main` is
+  // empty. These functions are *never* called in actual program execution, but
+  // their requirements are still verified.
+  only_callable_with_false(!b)
+}
+
+
