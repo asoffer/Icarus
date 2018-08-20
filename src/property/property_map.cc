@@ -258,8 +258,21 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
     case IR::Op::SetReturnBlock: DEFINE_CASE(set_return_block_);
 #undef DEFINE_CASE
     case IR::Op::Not: {
+      // Not works in both directions. Huzzah!
       bool changed = view.at(cmd.not_.reg_).add(Not(view.at(e.reg_)));
       if (changed) { stale_up->emplace(e.viewing_block_, cmd.not_.reg_); }
+    } break;
+    case IR::Op::LtInt: {
+      auto &prop_set = view.at(e.reg_).props_;
+      prop_set.for_each([&](base::owned_ptr<Property> *prop) {
+        if (!(**prop).is<BoolProp>()) { return; }
+        auto &bool_prop = (**prop).as<BoolProp>();
+        if (bool_prop.can_be_false_ && bool_prop.can_be_true_) { return; }
+        auto[reg, int_prop] =
+            IntProp::Make(cmd.lt_int_, !bool_prop.can_be_false_);
+        bool changed = view.at(reg).add(std::move(int_prop));
+        if (changed) { stale_up->emplace(e.viewing_block_, reg); }
+      });
     } break;
     default: NOT_YET(cmd);
   }

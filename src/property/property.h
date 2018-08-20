@@ -5,6 +5,8 @@
 #include <string>
 
 #include "base/util.h"
+#include "base/owned_ptr.h"
+#include "ir/cmd.h"
 
 namespace prop {
 struct Property : public base::Cast<Property> {
@@ -51,6 +53,9 @@ struct BoolProp : public Property {
 };
 
 struct IntProp : public Property {
+  static std::pair<IR::Register, base::owned_ptr<IntProp>> Make(
+      IR::Cmd::LtInt const &lt_int, bool is_true);
+
   ~IntProp() override {}
 
   IntProp *Clone() const override {

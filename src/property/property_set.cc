@@ -86,8 +86,7 @@ void PropertySet::accumulate(Property *prop) const {
   while (changed) {
     changed = false;
     for (auto const &p : props_) {
-      auto c = combine(prop, p.get());
-      switch (c) {
+      switch (combine(prop, p.get())) {
         case Combine::Merge:
         case Combine::Partial: changed = true;
         default:;
