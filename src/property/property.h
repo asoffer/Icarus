@@ -62,7 +62,6 @@ struct IntProp : public Property {
   static std::pair<IR::Register, base::owned_ptr<IntProp>> Make(
       IR::Cmd::GeInt const &le_int, bool is_true);
 
-
   ~IntProp() override {}
 
   IntProp *Clone() const override {

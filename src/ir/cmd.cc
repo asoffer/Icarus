@@ -223,6 +223,14 @@ Val AddCharBuf(const Val &v1, const Val &v2) {
            : RegisterOr<arg_type>(std::get<Register>(v1.value)),              \
         x2 ? RegisterOr<arg_type>(*x2)                                        \
            : RegisterOr<arg_type>(std::get<Register>(v2.value)));             \
+    if (!x1) {                                                                 \
+      Func::Current->references_[std::get<Register>(v1.value)].insert(         \
+          cmd.result);                                                         \
+    }                                                                          \
+    if (!x2) {                                                                 \
+      Func::Current->references_[std::get<Register>(v2.value)].insert(         \
+          cmd.result);                                                         \
+    }                                                                          \
     return cmd.reg();                                                          \
   }                                                                            \
   struct AllowSemicolon

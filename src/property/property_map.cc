@@ -13,7 +13,6 @@ namespace prop {
 namespace {
 void Debug(PropertyMap const &pm) {
   fprintf(stderr, "\033[2J\033[1;1H\n");  // Clear the screen
-  LOG << pm.fn_;
   for (auto const & [ block, view ] : pm.view_) {
     fprintf(stderr, "VIEWING BLOCK: %lu\n", reinterpret_cast<uintptr_t>(block));
     for (auto const & [ reg, prop_set ] : view.view_) {
@@ -74,6 +73,7 @@ PropertySet LtInt(PropertySet const &lhs, int rhs) {
   lhs.props_.for_each([&b, rhs](base::owned_ptr<Property> const *prop) {
     if (!(**prop).is<IntProp>()) { return; }
     auto p = &(**prop).as<IntProp>();
+
     if (p->lower_) {
       if (p->bound_ >= rhs) { *b = BoolProp(false); }
     } else {
@@ -108,7 +108,7 @@ PropertyMap PropertyMap::AssumingReturnsTrue() const {
       stale_up.emplace(&block, cmd.result);
     }
   }
-
+ 
   result.refresh(std::move(stale_up), {});
   return result;
 }
@@ -270,7 +270,6 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         if (bool_prop.can_be_false_ && bool_prop.can_be_true_) { return; }
         auto[reg, int_prop] =
             IntProp::Make(cmd.lt_int_, !bool_prop.can_be_false_);
-            LOG << *int_prop;
         bool changed = view.at(reg).add(std::move(int_prop));
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
@@ -283,7 +282,6 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         if (bool_prop.can_be_false_ && bool_prop.can_be_true_) { return; }
         auto[reg, int_prop] =
             IntProp::Make(cmd.le_int_, !bool_prop.can_be_false_);
-            LOG << *int_prop;
         bool changed = view.at(reg).add(std::move(int_prop));
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
@@ -296,7 +294,6 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         if (bool_prop.can_be_false_ && bool_prop.can_be_true_) { return; }
         auto[reg, int_prop] =
             IntProp::Make(cmd.gt_int_, !bool_prop.can_be_false_);
-            LOG << *int_prop;
         bool changed = view.at(reg).add(std::move(int_prop));
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
@@ -309,7 +306,6 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         if (bool_prop.can_be_false_ && bool_prop.can_be_true_) { return; }
         auto[reg, int_prop] =
             IntProp::Make(cmd.ge_int_, !bool_prop.can_be_false_);
-            LOG << *int_prop;
         bool changed = view.at(reg).add(std::move(int_prop));
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
