@@ -31,12 +31,13 @@ llvm: OPTS += -DICARUS_USE_LLVM
 llvm: $(TARGET)
 
 build/%.o: src/%.cc
-	@mkdir -p `dirname build/%.o`
+	@mkdir -p `dirname build/$*.o`
 	@time $(COMPILER) $(LLVM_CXX) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) -c src/$*.cc -o build/$*.o
 	@echo "Above time is for: " $< "\n"
 
 $(TARGET): $(SRC_OBJS)
 	@echo -n Linking...
+	@mkdir -p `dirname $(TARGET)`
 	@$(COMPILER) $(LINK_FLAGS) $(SRC_OBJS) $(LLVM_LINK) -o $@
 	@echo Done.
 
