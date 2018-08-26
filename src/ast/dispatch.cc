@@ -123,13 +123,14 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   Expression *bound_fn = nullptr;
   size_t binding_size;
   if (fn_option->lvalue == Assign::Const) {
+    LOG << fn_option->to_string(0);
     bound_fn = std::visit(
         base::overloaded{
             [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
             [](Function *fn) -> Expression * { return fn; },
             [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
             [](auto &&) -> Expression * { UNREACHABLE(); }},
-        backend::Evaluate(fn_option, ctx)[0].value);
+        backend::Evaluate(fn_option, ctx).at(0).value);
 
     if (bound_fn->is<FuncContent>()) {
       binding_size = std::max(bound_fn->as<FuncContent>().lookup_.size(),

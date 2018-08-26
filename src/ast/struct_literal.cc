@@ -5,10 +5,11 @@
 #include "ir/val.h"
 
 namespace IR {
-Val CreateStruct();
-Val FinalizeStruct(const Val &v);
-void InsertField(Val struct_type, std::string field_name, Val type,
-                 Val init_val);
+Register CreateStruct();
+void CreateStructField(Register struct_type,
+                       RegisterOr<type::Type const *> type);
+void SetStructFieldName(Register struct_type, std::string_view field_name);
+Register FinalizeStruct(Register r);
 }  // namespace IR
 
 namespace AST {
@@ -71,29 +72,18 @@ StructLiteral *StructLiteral::Clone() const {
 }
 
 base::vector<IR::Val> AST::StructLiteral::EmitIR(Context *ctx) {
-  auto new_struct = IR::CreateStruct();
+  IR::Register new_struct = IR::CreateStruct();
   for (const auto &field : fields_) {
-    // TODO in initial value doesn't match type of field?
-    // That should probably be handled elsewhere consistently with function
-    // default args.
-    IR::Val init_val = IR::Val::None();
-    if (field->init_val) {
-      field->init_val->assign_scope(scope_);
-      field->init_val->Validate(ctx);
-      init_val = field->init_val->EmitIR(ctx)[0];
-    }
+    // TODO initial values? hashatgs?
 
-    IR::Val field_type;
-    if (field->type_expr) {
-      field_type = field->type_expr->EmitIR(ctx)[0];
-    } else {
-      ASSERT(nullptr != field->init_val.get());
-      field_type = IR::Val::Type(field->init_val->type);
-    }
-    IR::InsertField(new_struct, field->identifier->token, std::move(field_type),
-                    std::move(init_val));
+    // NOTE: CreateStructField may invalidate all other struct fields, so it's
+    // not safe to access these registers returned by CreateStructField after a
+    // subsequent call to CreateStructField.
+    IR::CreateStructField(
+        new_struct, field->type_expr->EmitIR(ctx)[0].reg_or<type::Type const *>());
+    IR::SetStructFieldName(new_struct, field->identifier->token);
   }
-  return {IR::FinalizeStruct(std::move(new_struct))};
+  return {IR::Val::Reg(IR::FinalizeStruct(new_struct), type::Type_)};
 }
 
 base::vector<IR::Val> AST::StructLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }

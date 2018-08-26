@@ -484,12 +484,12 @@ Val Cast(const type::Type *to, const Val &v, Context *ctx) {
   }
 }
 
-Val CreateStruct() { return MakeCmd(type::Type_, Op::CreateStruct).reg(); }
+Register CreateStruct() { return MakeCmd(type::Type_, Op::CreateStruct).result; }
 
-IR::Val FinalizeStruct(const Val &v) {
-  auto &cmd            = MakeCmd(type::Type_, Op::CreateStruct);
-  cmd.finalize_struct_ = Cmd::FinalizeStruct::Make(std::get<Register>(v.value));
-  return cmd.reg();
+Register FinalizeStruct(Register r) {
+  auto &cmd            = MakeCmd(type::Type_, Op::FinalizeStruct);
+  cmd.finalize_struct_ = Cmd::FinalizeStruct::Make(r);
+  return cmd.result;
 }
 
 Val VariantType(const Val &v) {
@@ -504,14 +504,16 @@ Val VariantValue(type::Type const *t, const Val &v) {
   return cmd.reg();
 }
 
-void InsertField(Val struct_type, std::string field_name, Val type,
-                 Val init_val) {
-  auto &cmd = MakeCmd(nullptr, Op::InsertField);
-  cmd.insert_field_.args_ =
-      &Func::Current->block(BasicBlock::Current)
-           .call_args_.emplace_back(base::vector<Val>{
-               std::move(struct_type), Val::CharBuf(field_name),
-               std::move(type), std::move(init_val)});
+void CreateStructField(Register struct_type,
+                       RegisterOr<type::Type const *> type) {
+  auto &cmd = MakeCmd(nullptr, Op::CreateStructField);
+  cmd.create_struct_field_ =
+      Cmd::CreateStructField::Make(struct_type, std::move(type));
+}
+
+void SetStructFieldName(Register struct_type, std::string_view field_name) {
+  auto &cmd                  = MakeCmd(nullptr, Op::SetStructFieldName);
+  cmd.set_struct_field_name_ = Cmd::SetStructFieldName::Make(struct_type, field_name);
 }
 
 Register Alloca(const type::Type *t) {
@@ -1123,8 +1125,13 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::XorFlags: return os << cmd.xor_flags_.args_;
     case Op::OrFlags: return os << cmd.or_flags_.args_;
     case Op::AndFlags: return os << cmd.and_flags_.args_;
-    case Op::CreateStruct: NOT_YET();
-    case Op::InsertField: return os << cmd.insert_field_.args_;
+    case Op::CreateStruct: return os;
+    case Op::CreateStructField:
+      return os << cmd.create_struct_field_.struct_ << " "
+                << cmd.create_struct_field_.type_;
+    case Op::SetStructFieldName:
+      return os << cmd.set_struct_field_name_.struct_ << " "
+                << cmd.set_struct_field_name_.name_;
     case Op::FinalizeStruct: return os << cmd.finalize_struct_.reg_;
 
     case Op::Malloc: return os << cmd.malloc_.arg_;
@@ -1149,7 +1156,9 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
 
     case Op::PtrIncr: return os << cmd.ptr_incr_.incr_;
 
-    case Op::Field: return os << cmd.field_.num_;
+    case Op::Field:
+      return os << cmd.field_.ptr_ << " " << cmd.field_.struct_type_->to_string() << " "
+                << cmd.field_.num_;
 
     case Op::CondJump:
       return os << cmd.cond_jump_.blocks_[0] << " " << cmd.cond_jump_.blocks_[1];
@@ -1181,14 +1190,22 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::AddCodeBlock: NOT_YET();
     case Op::Contextualize: NOT_YET();
 
-    case Op::StoreBool: return os << cmd.store_bool_.val_;
-    case Op::StoreChar: return os << cmd.store_char_.val_;
-    case Op::StoreInt: return os << cmd.store_int_.val_;
-    case Op::StoreReal: return os << cmd.store_real_.val_;
-    case Op::StoreType: return os << cmd.store_type_.val_;
-    case Op::StoreEnum: return os << cmd.store_enum_.val_;
-    case Op::StoreFlags: return os << cmd.store_flags_.val_;
-    case Op::StoreAddr: return os << cmd.store_addr_.val_;
+    case Op::StoreBool:
+      return os << cmd.store_bool_.addr_ << " " << cmd.store_bool_.val_;
+    case Op::StoreChar:
+      return os << cmd.store_char_.addr_ << " " << cmd.store_char_.val_;
+    case Op::StoreInt:
+      return os << cmd.store_int_.addr_ << " " << cmd.store_int_.val_;
+    case Op::StoreReal:
+      return os << cmd.store_real_.addr_ << " " << cmd.store_real_.val_;
+    case Op::StoreType:
+      return os << cmd.store_type_.addr_ << " " << cmd.store_type_.val_;
+    case Op::StoreEnum:
+      return os << cmd.store_enum_.addr_ << " " << cmd.store_enum_.val_;
+    case Op::StoreFlags:
+      return os << cmd.store_flags_.addr_ << " " << cmd.store_flags_.val_;
+    case Op::StoreAddr:
+      return os << cmd.store_addr_.addr_ << " " << cmd.store_addr_.val_;
     case Op::SetReturnBool: return os << cmd.set_return_bool_.val_;
     case Op::SetReturnChar: return os << cmd.set_return_char_.val_;
     case Op::SetReturnInt: return os << cmd.set_return_int_.val_;

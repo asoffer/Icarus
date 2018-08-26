@@ -16,6 +16,7 @@ struct Func;
 namespace type {
 struct Struct : public Type {
   struct Field {
+    Field(type::Type const *t) : type(t) {}
     // TODO make a string_view but deal with trickiness of moving
     std::string name;
     const Type *type = nullptr;

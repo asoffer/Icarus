@@ -139,15 +139,17 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       switch (addr.kind) {
         case IR::Addr::Kind::Null: UNREACHABLE();
         case IR::Addr::Kind::Stack:
-          save(addr.as_stack +
-               Architecture::InterprettingMachine().bytes(type::Int));
+          addr.as_stack +=
+              Architecture::InterprettingMachine().bytes(type::Int);
           break;
         case IR::Addr::Kind::Heap:
-          save(static_cast<void *>(
+          addr.as_heap = static_cast<void *>(
               static_cast<u8 *>(addr.as_heap) +
-              Architecture::InterprettingMachine().bytes(type::Int)));
+              Architecture::InterprettingMachine().bytes(type::Int));
           break;
       }
+      save(addr);
+
     } break;
     case IR::Op::LoadBool:
       save(LoadValue<bool>(resolve(cmd.load_bool_.arg_), stack_));
@@ -310,29 +312,21 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       save(resolve(cmd.and_flags_.args_[0]) & resolve(cmd.and_flags_.args_[1]));
       break;
     case IR::Op::CreateStruct: save(new type::Struct); break;
-    case IR::Op::InsertField: {
-      NOT_YET();
-      // std::vector<IR::Val> resolved_args;
-      // resolved_args.reserve(ASSERT_NOT_NULL(cmd.insert_field_.args_)->size());
-      // for (auto const &arg : *cmd.insert_field_.args_) {
-      //   if (auto *r = std::get_if<IR::Register>(&arg.value)) {
-      //     resolved_args.push_back(reg(*r));
-      //   } else {
-      //     resolved_args.push_back(arg);
-      //   }
-      // }
-
-      // auto *struct_to_mod = std::get<type::Struct
-      // *>(resolved_args[0].value);
-      // struct_to_mod->fields_.push_back(type::Struct::Field{
-      //     std::string(std::get<std::string_view>(resolved_args[1].value)),
-      //     std::get<const type::Type *>(resolved_args[2].value),
-      //     resolved_args[3]});
-
-      // auto[iter, success] = struct_to_mod->field_indices_.emplace(
-      //     std::string(std::get<std::string_view>(resolved_args[1].value)),
-      //     struct_to_mod->fields_.size() - 1);
-      // ASSERT(success);
+    case IR::Op::CreateStructField: {
+      auto *struct_to_modify = ASSERT_NOT_NULL(
+          resolve<type::Struct *>(cmd.create_struct_field_.struct_));
+      struct_to_modify->fields_.emplace_back(
+          resolve(cmd.create_struct_field_.type_));
+    } break;
+    case IR::Op::SetStructFieldName: {
+      auto *struct_to_modify = ASSERT_NOT_NULL(
+          resolve<type::Struct *>(cmd.set_struct_field_name_.struct_));
+      struct_to_modify->fields_.back().name = cmd.set_struct_field_name_.name_;
+      auto[iter, success] = struct_to_modify->field_indices_.emplace(
+          std::piecewise_construct,
+          std::forward_as_tuple(cmd.set_struct_field_name_.name_),
+          std::forward_as_tuple(struct_to_modify->fields_.size() - 1));
+      ASSERT(success);
     } break;
     case IR::Op::FinalizeStruct:
       save(resolve<type::Struct *>(cmd.finalize_struct_.reg_)->finalize());
@@ -412,10 +406,12 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       }
 
       if (addr.kind == IR::Addr::Kind::Stack) {
-        save(addr.as_stack + offset);
+        addr.as_stack += offset;
       } else {
-        save(static_cast<char *>(addr.as_heap) + offset);
+        addr.as_heap =
+            static_cast<void *>(static_cast<char *>(addr.as_heap) + offset);
       }
+      save(addr);
     } break;
     case IR::Op::PrintBool:
       std::cerr << (resolve(cmd.print_bool_.arg_) ? "true" : "false");
@@ -541,6 +537,10 @@ IR::BlockIndex ExecContext::ExecuteCmd(
           call_buf.append(
               is_reg ? resolve<IR::Addr>(long_args.get<IR::Register>(offset))
                      : long_args.get<IR::Addr>(offset));
+        } else if (t->is<type::Pointer>()) {
+          ASSERT(is_reg);
+          call_buf.append(
+              resolve<IR::Addr>(long_args.get<IR::Register>(offset)));
         } else {
           NOT_YET(t->to_string());
         }

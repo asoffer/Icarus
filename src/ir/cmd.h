@@ -176,7 +176,15 @@ struct Cmd {
   CMD(AndFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
 
   CMD(CreateStruct){};
-  CMD(InsertField) { base::vector<Val> *args_; };
+  CMD(CreateStructField) {
+    Register struct_;
+    RegisterOr<type::Type const *> type_;
+  };
+  CMD(SetStructFieldName) {
+    // Implicitly the last element.
+    Register struct_;
+    std::string_view name_;
+  };
   CMD(FinalizeStruct) { Register reg_; };
 
   CMD(Malloc) { RegisterOr<i32> arg_; };
@@ -408,7 +416,8 @@ struct Cmd {
     AndFlags and_flags_;
 
     CreateStruct create_struct_;
-    InsertField insert_field_;
+    CreateStructField create_struct_field_;
+    SetStructFieldName set_struct_field_name_;
     FinalizeStruct finalize_struct_;
 
     Malloc malloc_;
@@ -531,10 +540,13 @@ Val OrFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
             RegisterOr<FlagsVal> const &rhs);
 Val AndFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
              RegisterOr<FlagsVal> const &rhs);
-Val CreateStruct();
-void InsertField(Val struct_type, std::string field_name, Val type,
-                 Val init_val);
-Val FinalizeStruct(const Val &v);
+
+Register CreateStruct();
+void CreateStructField(Register struct_type,
+                       RegisterOr<type::Type const *> type);
+void SetStructFieldName(Register struct_type, std::string_view field_name);
+Register FinalizeStruct(Register r);
+
 Val Malloc(const type::Type *t, const Val& v);
 void Free(const Val &v);
 Val Arrow(const Val &v1, const Val &v2);
