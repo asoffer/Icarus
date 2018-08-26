@@ -18,6 +18,10 @@
 
 IR::Val PtrCallFix(const IR::Val& v);
 
+namespace IR {
+Register Tup(base::vector<Val> const &entries);
+}  // namespace IR
+
 namespace type {
 const Pointer *Ptr(const Type *);
 }  // namespace type
@@ -402,8 +406,12 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
 #undef CASE
     case Language::Operator::As:
       return {IR::Cast(type, lhs->EmitIR(ctx)[0], ctx)};
-    case Language::Operator::Arrow:
-      return {IR::Arrow(IR::Tup(lhs->EmitIR(ctx)), IR::Tup(rhs->EmitIR(ctx)))};
+    case Language::Operator::Arrow: {
+      auto reg_or_type =
+          IR::Arrow(IR::Tup(lhs->EmitIR(ctx)), IR::Tup(rhs->EmitIR(ctx)));
+      return {reg_or_type.is_reg_ ? IR::Val::Reg(reg_or_type.reg_, type::Type_)
+                                  : IR::Val::Type(reg_or_type.val_)};
+    } break;
     case Language::Operator::Assign: {
       base::vector<const type::Type *> lhs_types, rhs_types;
       ForEachExpr(rhs.get(), [&ctx, &rhs_types](size_t, Expression *expr) {

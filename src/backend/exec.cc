@@ -573,13 +573,16 @@ IR::BlockIndex ExecContext::ExecuteCmd(
           }
       }
     } break;
-    case IR::Op::Tup: {
-      base::vector<const type::Type *> types;
-      types.reserve(cmd.tup_.args_->size());
-      for (const auto &val : *cmd.tup_.args_) {
-        types.push_back(std::get<const type::Type *>(val.value));
-      }
-      save(type::Tup(std::move(types)));
+    case IR::Op::CreateTuple: {
+      save(new type::Tuple(base::vector<type::Type const *>{}));
+    } break;
+    case IR::Op::AppendToTuple: {
+      auto *tuple_to_modify =
+          ASSERT_NOT_NULL(resolve<type::Tuple *>(cmd.append_to_tuple_.tup_));
+      tuple_to_modify->entries_.push_back(resolve(cmd.append_to_tuple_.arg_));
+    } break;
+    case IR::Op::FinalizeTuple: {
+      save(resolve<type::Tuple *>(cmd.finalize_tuple_.tup_)->finalize());
     } break;
     case IR::Op::Variant: {
       base::vector<const type::Type *> types;

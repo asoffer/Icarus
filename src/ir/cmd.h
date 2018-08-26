@@ -7,6 +7,7 @@
 
 namespace type {
 struct Function;
+struct Tuple;
 }  // namespace type
 
 namespace IR {
@@ -197,7 +198,12 @@ struct Cmd {
     RegisterOr<i32> len_;
     RegisterOr<type::Type const *> type_;
   };
-  CMD(Tup) { base::vector<Val> *args_; };
+  CMD(CreateTuple) {};
+  CMD(AppendToTuple) {
+    Register tup_;
+    RegisterOr<type::Type const *> arg_;
+  };
+  CMD(FinalizeTuple) { Register tup_; };
   CMD(Variant) { base::vector<Val> *args_; };
 
   CMD(VariantType) { Register reg_; };
@@ -430,7 +436,9 @@ struct Cmd {
     Cmd::Ptr ptr_;
     Cmd::Arrow arrow_;
     Cmd::Array array_;
-    Cmd::Tup tup_;
+    CreateTuple create_tuple_;
+    AppendToTuple append_to_tuple_;
+    FinalizeTuple finalize_tuple_;
     Cmd::Variant variant_;
 
     CondJump cond_jump_;
@@ -549,7 +557,8 @@ Register FinalizeStruct(Register r);
 
 Val Malloc(const type::Type *t, const Val& v);
 void Free(const Val &v);
-Val Arrow(const Val &v1, const Val &v2);
+RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
+                                     RegisterOr<type::Type const *> out);
 Val Ptr(const Val &v);
 Val Array(const Val &v1, const Val &v2);
 Val VariantType(const Val &v);
@@ -567,7 +576,9 @@ Val PrintAddr(const Val &v);
 Val PrintCharBuffer(const Val &v);
 void Call(const Val &fn, LongArgs long_args);
 void Call(const Val &fn, LongArgs long_args, IR::OutParams outs);
-Val Tup(base::vector<IR::Val> vals);
+Register CreateTuple();
+void AppendToTuple(Register tup, RegisterOr<type::Type const *> entry);
+type::Type const *FinalizeTuple(type::Tuple *tup);
 Val Variant(base::vector<Val> vals);
 void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block);
 void UncondJump(BlockIndex block);

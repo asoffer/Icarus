@@ -284,6 +284,20 @@ DEFINE_CMD2(Arrow, arrow_, type::Type const *, Type_,
             });
 #undef DEFINE_CMD2
 
+RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
+                                     RegisterOr<type::Type const *> out) {
+  if (!in.is_reg_ && !out.is_reg_) {
+    return RegisterOr<type::Type const *>(type::Func({in.val_}, {out.val_}));
+  }
+  auto &cmd = MakeCmd(type::Type_, Op::Arrow);
+  cmd.arrow_ =
+      Cmd::Arrow::Make(in.is_reg_ ? RegisterOr<type::Type const *>(in.reg_)
+                                  : RegisterOr<type::Type const *>(in.val_),
+                       out.is_reg_ ? RegisterOr<type::Type const *>(out.reg_)
+                                   : RegisterOr<type::Type const *>(out.val_));
+  return RegisterOr<type::Type const *>(cmd.result);
+}
+
 Val EqBool(Val const &v1, Val const &v2) {
   if (auto const *b = std::get_if<bool>(&v1.value)) {
     return *b ? v2 : Not(v2);
@@ -332,13 +346,25 @@ Val Array(const Val &v1, const Val &v2) {
   return cmd.reg();
 }
 
-// TODO stop using call_args
-Val Tup(base::vector<Val> vals) {
-  auto *args = &Func::Current->block(BasicBlock::Current)
-                    .call_args_.emplace_back(std::move(vals));
-  auto &cmd = MakeCmd(type::Type_, Op::Tup);
-  cmd.tup_  = Cmd::Tup{{}, args};
-  return cmd.reg();
+Register CreateTuple() { return MakeCmd(type::Type_, Op::CreateTuple).result; }
+
+void AppendToTuple(Register tup, RegisterOr<type::Type const *> entry) {
+  auto &cmd                  = MakeCmd(nullptr, Op::AppendToTuple);
+  cmd.append_to_tuple_       = Cmd::AppendToTuple::Make(tup, entry);
+}
+
+Register FinalizeTuple(Register r) {
+  auto &cmd           = MakeCmd(type::Type_, Op::FinalizeTuple);
+  cmd.finalize_tuple_ = Cmd::FinalizeTuple::Make(r);
+  return cmd.result;
+}
+
+Register Tup(base::vector<Val> const &entries) {
+  IR::Register tup = IR::CreateTuple();
+  for (auto const &val : entries) {
+    IR::AppendToTuple(tup, val.reg_or<type::Type const *>());
+  }
+  return IR::FinalizeTuple(tup);
 }
 
 // TODO stop using call_args
@@ -1141,28 +1167,23 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
 
     case Op::Arrow: return os << cmd.arrow_.args_;
     case Op::Array: return os << cmd.array_.type_;
-
     case Op::Variant:
       for (const auto &arg : *cmd.variant_.args_) {  os << arg.to_string(); }
       return os;
-
-    case Op::Tup:
-      for (const auto &arg : *cmd.tup_.args_) { os << arg.to_string(); }
-      return os;
-
+    case Op::CreateTuple: return os;
+    case Op::AppendToTuple:
+      return os << cmd.append_to_tuple_.tup_ << " "
+                << cmd.append_to_tuple_.arg_;
+    case Op::FinalizeTuple:
+      return os << cmd.finalize_tuple_.tup_;
     case Op::VariantType: return os << cmd.variant_type_.reg_;
-
     case Op::VariantValue: return os << cmd.variant_value_.reg_;
-
     case Op::PtrIncr: return os << cmd.ptr_incr_.incr_;
-
     case Op::Field:
       return os << cmd.field_.ptr_ << " " << cmd.field_.struct_type_->to_string() << " "
                 << cmd.field_.num_;
-
     case Op::CondJump:
       return os << cmd.cond_jump_.blocks_[0] << " " << cmd.cond_jump_.blocks_[1];
-
     case Op::UncondJump: return os << cmd.uncond_jump_.block_;
     case Op::ReturnJump: return os;
     case Op::Call:
