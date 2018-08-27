@@ -367,13 +367,39 @@ Register Tup(base::vector<Val> const &entries) {
   return IR::FinalizeTuple(tup);
 }
 
-// TODO stop using call_args
-Val Variant(base::vector<Val> vals) {
-  auto *args = &Func::Current->block(BasicBlock::Current)
-                    .call_args_.emplace_back(std::move(vals));
-  auto &cmd    = MakeCmd(type::Type_, Op::Variant);
-  cmd.variant_ = Cmd::Variant{{}, args};
-  return cmd.reg();
+Register CreateVariant() {
+  return MakeCmd(type::Type_, Op::CreateVariant).result;
+}
+
+void AppendToVariant(Register var, RegisterOr<type::Type const *> entry) {
+  auto &cmd              = MakeCmd(nullptr, Op::AppendToVariant);
+  cmd.append_to_variant_ = Cmd::AppendToVariant::Make(var, entry);
+}
+
+Register FinalizeVariant(Register r) {
+  auto &cmd             = MakeCmd(type::Type_, Op::FinalizeVariant);
+  cmd.finalize_variant_ = Cmd::FinalizeVariant::Make(r);
+  return cmd.result;
+}
+
+RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals) {
+  if (std::all_of(vals.begin(), vals.end(), [](Val const& v) {
+        return std::holds_alternative<type::Type const *>(v.value);
+        })) {
+
+    base::vector<type::Type const *> types;
+    types.reserve(vals.size());
+    for (Val const &v : vals) {
+      types.push_back(std::get<type::Type const *>(v.value));
+    }
+
+    return type::Var(std::move(types));
+  }
+  IR::Register var = IR::CreateVariant();
+  for (auto const &val : vals) {
+    IR::AppendToVariant(var, val.reg_or<type::Type const *>());
+  }
+  return IR::FinalizeVariant(var);
 }
 
 Val XorBool(const Val &v1, const Val &v2) {
@@ -1167,15 +1193,18 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
 
     case Op::Arrow: return os << cmd.arrow_.args_;
     case Op::Array: return os << cmd.array_.type_;
-    case Op::Variant:
-      for (const auto &arg : *cmd.variant_.args_) {  os << arg.to_string(); }
-      return os;
     case Op::CreateTuple: return os;
     case Op::AppendToTuple:
       return os << cmd.append_to_tuple_.tup_ << " "
                 << cmd.append_to_tuple_.arg_;
     case Op::FinalizeTuple:
       return os << cmd.finalize_tuple_.tup_;
+    case Op::CreateVariant: return os;
+    case Op::AppendToVariant:
+      return os << cmd.append_to_variant_.var_ << " "
+                << cmd.append_to_variant_.arg_;
+    case Op::FinalizeVariant:
+      return os << cmd.finalize_variant_.var_;
     case Op::VariantType: return os << cmd.variant_type_.reg_;
     case Op::VariantValue: return os << cmd.variant_value_.reg_;
     case Op::PtrIncr: return os << cmd.ptr_incr_.incr_;

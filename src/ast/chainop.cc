@@ -18,6 +18,10 @@ base::vector<IR::Val> EmitCallDispatch(
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
 
+namespace IR {
+RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals);
+}  // namespace IR
+
 namespace AST {
 namespace {
 using base::check::Is;
@@ -292,7 +296,9 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
     base::vector<IR::Val> args;
     args.reserve(exprs.size());
     for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)[0]); }
-    return {IR::Variant(std::move(args))};
+    auto reg_or_type = IR::Variant(args);
+    return {reg_or_type.is_reg_ ? IR::Val::Reg(reg_or_type.reg_, type::Type_)
+                                : IR::Val::Type(reg_or_type.val_)};
   } else if (ops[0] == Language::Operator::Or &&
              (type == type::Block || type == type::OptBlock)) {
     base::vector<IR::Val> vals;

@@ -204,7 +204,12 @@ struct Cmd {
     RegisterOr<type::Type const *> arg_;
   };
   CMD(FinalizeTuple) { Register tup_; };
-  CMD(Variant) { base::vector<Val> *args_; };
+  CMD(CreateVariant) {};
+  CMD(AppendToVariant) {
+    Register var_;
+    RegisterOr<type::Type const *> arg_;
+  };
+  CMD(FinalizeVariant) { Register var_; };
 
   CMD(VariantType) { Register reg_; };
   CMD(VariantValue) { Register reg_; };
@@ -439,7 +444,10 @@ struct Cmd {
     CreateTuple create_tuple_;
     AppendToTuple append_to_tuple_;
     FinalizeTuple finalize_tuple_;
-    Cmd::Variant variant_;
+    CreateVariant create_variant_;
+    AppendToVariant append_to_variant_;
+    FinalizeVariant finalize_variant_;
+
 
     CondJump cond_jump_;
     UncondJump uncond_jump_;
@@ -578,8 +586,10 @@ void Call(const Val &fn, LongArgs long_args);
 void Call(const Val &fn, LongArgs long_args, IR::OutParams outs);
 Register CreateTuple();
 void AppendToTuple(Register tup, RegisterOr<type::Type const *> entry);
-type::Type const *FinalizeTuple(type::Tuple *tup);
-Val Variant(base::vector<Val> vals);
+Register FinalizeTuple(Register tup);
+Register CreateVariant();
+void AppendToVariant(Register tup, RegisterOr<type::Type const *> entry);
+Register FinalizeVariant(Register var);
 void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();

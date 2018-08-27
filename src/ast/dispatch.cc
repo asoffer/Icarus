@@ -123,7 +123,6 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   Expression *bound_fn = nullptr;
   size_t binding_size;
   if (fn_option->lvalue == Assign::Const) {
-    LOG << fn_option->to_string(0);
     bound_fn = std::visit(
         base::overloaded{
             [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },

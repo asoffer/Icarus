@@ -584,13 +584,16 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::FinalizeTuple: {
       save(resolve<type::Tuple *>(cmd.finalize_tuple_.tup_)->finalize());
     } break;
-    case IR::Op::Variant: {
-      base::vector<const type::Type *> types;
-      types.reserve(cmd.variant_.args_->size());
-      for (const auto &val : *cmd.variant_.args_) {
-        types.push_back(std::get<const type::Type *>(val.value));
-      }
-      save(type::Var(std::move(types)));
+    case IR::Op::CreateVariant: {
+      save(new type::Variant(base::vector<type::Type const *>{}));
+    } break;
+    case IR::Op::AppendToVariant: {
+      auto *variant_to_modify =
+          ASSERT_NOT_NULL(resolve<type::Variant *>(cmd.append_to_variant_.var_));
+      variant_to_modify->variants_.push_back(resolve(cmd.append_to_variant_.arg_));
+    } break;
+    case IR::Op::FinalizeVariant: {
+      save(resolve<type::Variant *>(cmd.finalize_variant_.var_)->finalize());
     } break;
     case IR::Op::CastIntToReal:
       save(static_cast<double>(resolve<i32>(cmd.cast_int_to_real_.reg_)));
