@@ -27,7 +27,6 @@ struct BasicBlock {
   // elments so we never traverse. We just need pointer stabiltiy. In the long
   // term a single allocation is probably better but that's not easy with the
   // current setup.
-  std::list<base::vector<IR::Val>> call_args_;
   std::list<LongArgs> long_args_;
   std::list<OutParams> outs_;
   std::vector<std::unique_ptr<GenericPhiArgs>> phi_args_;

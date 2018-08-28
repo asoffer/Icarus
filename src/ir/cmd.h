@@ -41,7 +41,7 @@ struct OutParams {
   base::vector<OutParam> outs_;
 };
 
-enum class Op : char {
+enum class Op : uint8_t {
 #define OP_MACRO(op) op,
 #include "ir/op.xmacro.h"
 #undef OP_MACRO
@@ -210,6 +210,12 @@ struct Cmd {
     RegisterOr<type::Type const *> arg_;
   };
   CMD(FinalizeVariant) { Register var_; };
+  CMD(CreateBlockSeq) {};
+  CMD(AppendToBlockSeq) {
+    Register block_seq_;
+    RegisterOr<IR::BlockSequence> arg_;
+  };
+  CMD(FinalizeBlockSeq) { Register block_seq_; };
 
   CMD(VariantType) { Register reg_; };
   CMD(VariantValue) { Register reg_; };
@@ -261,7 +267,6 @@ struct Cmd {
     type::Type const *type_;
   };
 
-  CMD(BlockSeq) { base::vector<Val> *args_; };
   CMD(BlockSeqContains) {
     Register reg_;
     AST::BlockLiteral *lit_;
@@ -447,7 +452,9 @@ struct Cmd {
     CreateVariant create_variant_;
     AppendToVariant append_to_variant_;
     FinalizeVariant finalize_variant_;
-
+    CreateBlockSeq create_block_seq_;
+    AppendToBlockSeq append_to_block_seq_;
+    FinalizeBlockSeq finalize_block_seq_;
 
     CondJump cond_jump_;
     UncondJump uncond_jump_;
@@ -467,7 +474,6 @@ struct Cmd {
     PhiBlock phi_block_;
     PhiAddr phi_addr_;
 
-    BlockSeq block_seq_;
     BlockSeqContains block_seq_contains_;
 
     SetReturnBool set_return_bool_;
@@ -593,7 +599,6 @@ Register FinalizeVariant(Register var);
 void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();
-Val BlockSeq(const base::vector<Val> &blocks);
 Val BlockSeqContains(const Val &v, AST::BlockLiteral *lit);
 void SetReturnBool(size_t n, const Val &v2);
 void SetReturnChar(size_t n, const Val &v2);

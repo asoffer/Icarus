@@ -600,16 +600,21 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       break;
     case IR::Op::CastPtr: save(resolve<IR::Addr>(cmd.cast_ptr_.reg_)); break;
     case IR::Op::AddCodeBlock: NOT_YET();
-    case IR::Op::BlockSeq: {
-      std::vector<IR::BlockSequence> resolved_args;
-      resolved_args.reserve(ASSERT_NOT_NULL(cmd.block_seq_.args_)->size());
-      for (auto const &arg : *cmd.block_seq_.args_) {
-        auto *r = std::get_if<IR::Register>(&arg.value);
-        resolved_args.push_back((r == nullptr)
-                                    ? std::get<IR::BlockSequence>(arg.value)
-                                    : resolve<IR::BlockSequence>(*r));
-      }
-      save(MakeBlockSeq(resolved_args));
+    case IR::Op::CreateBlockSeq: {
+      save(new base::vector<IR::BlockSequence>{});
+    } break;
+    case IR::Op::AppendToBlockSeq: {
+      auto *block_seq_to_modify =
+          ASSERT_NOT_NULL(resolve<base::vector<IR::BlockSequence> *>(
+              cmd.append_to_block_seq_.block_seq_));
+      block_seq_to_modify->push_back(resolve(cmd.append_to_block_seq_.arg_));
+    } break;
+    case IR::Op::FinalizeBlockSeq: {
+      auto *block_seq = resolve<base::vector<IR::BlockSequence> *>(
+          cmd.finalize_block_seq_.block_seq_);
+      auto seq = IR::MakeBlockSeq(*block_seq);
+      delete block_seq;
+      save(seq);
     } break;
     case IR::Op::BlockSeqContains: {
       auto *seq = resolve<IR::BlockSequence>(cmd.block_seq_contains_.reg_).seq_;

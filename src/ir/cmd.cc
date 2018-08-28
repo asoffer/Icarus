@@ -462,8 +462,24 @@ Val OutParams::AppendReg(type::Type const *t) {
   return IR::Val::Reg(reg, t);
 }
 
-BlockSequence MakeBlockSeq(const base::vector<IR::BlockSequence> &blocks);
+BlockSequence MakeBlockSeq(base::vector<IR::BlockSequence> const &blocks);
 
+Register CreateBlockSeq() { return MakeCmd(type::Type_, Op::CreateBlockSeq).result; }
+
+void AppendToBlockSeq(Register block_seq,
+                      RegisterOr<IR::BlockSequence> more_block_seq) {
+  auto &cmd = MakeCmd(nullptr, Op::AppendToBlockSeq);
+  cmd.append_to_block_seq_ =
+      Cmd::AppendToBlockSeq::Make(block_seq, more_block_seq);
+}
+
+Register FinalizeBlockSeq(Register r) {
+  auto &cmd           = MakeCmd(type::Block, Op::FinalizeBlockSeq);
+  cmd.finalize_block_seq_ = Cmd::FinalizeBlockSeq::Make(r);
+  return cmd.result;
+}
+
+// TODO replace Val with RegOr<BlockSequence>
 Val BlockSeq(const base::vector<Val> &blocks) {
   if (std::all_of(blocks.begin(), blocks.end(), [](const IR::Val &v) {
         return std::holds_alternative<IR::BlockSequence>(v.value);
@@ -476,11 +492,12 @@ Val BlockSeq(const base::vector<Val> &blocks) {
     return IR::Val::BlockSeq(MakeBlockSeq(block_seqs));
   }
 
-  auto &cmd  = MakeCmd(blocks.back().type, Op::BlockSeq);
-  auto *args = &Func::Current->block(BasicBlock::Current)
-                    .call_args_.emplace_back(blocks);
-  cmd.block_seq_ = Cmd::BlockSeq{{}, args};
-  return cmd.reg();
+  auto reg = CreateBlockSeq();
+  for (auto const &val : blocks) {
+    IR::AppendToBlockSeq(reg, val.reg_or<IR::BlockSequence>());
+  }
+  // TODO can it be an opt block?
+  return IR::Val::Reg(IR::FinalizeBlockSeq(reg), type::Block);
 }
 
 Val BlockSeqContains(const Val &v, AST::BlockLiteral *lit) {
@@ -1205,6 +1222,12 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
                 << cmd.append_to_variant_.arg_;
     case Op::FinalizeVariant:
       return os << cmd.finalize_variant_.var_;
+    case Op::CreateBlockSeq: return os;
+    case Op::AppendToBlockSeq:
+      return os << cmd.append_to_block_seq_.block_seq_ << " "
+                << cmd.append_to_block_seq_.arg_;
+    case Op::FinalizeBlockSeq:
+      return os << cmd.finalize_block_seq_.block_seq_;
     case Op::VariantType: return os << cmd.variant_type_.reg_;
     case Op::VariantValue: return os << cmd.variant_value_.reg_;
     case Op::PtrIncr: return os << cmd.ptr_incr_.incr_;
@@ -1230,7 +1253,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
       }
 
       return os;
-    case Op::BlockSeq: NOT_YET();
     case Op::BlockSeqContains: return os << cmd.block_seq_contains_.lit_;
 
     case Op::CastIntToReal: return os << cmd.cast_int_to_real_.reg_;

@@ -19,6 +19,7 @@ base::vector<IR::Val> EmitCallDispatch(
     Context *ctx);
 
 namespace IR {
+Val BlockSeq(base::vector<Val> const &blocks);
 RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals);
 }  // namespace IR
 
