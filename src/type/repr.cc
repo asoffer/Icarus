@@ -1,4 +1,4 @@
-#include "all.h"
+#include "type/all.h"
 
 #include "context.h"
 #include "ir/func.h"

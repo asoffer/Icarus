@@ -1,4 +1,4 @@
-#include "all.h"
+#include "type/all.h"
 
 #include "base/container/unordered_map.h"
 
@@ -12,7 +12,7 @@
 namespace type {
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
   Type *GlobalName = new Primitive(PrimType::EnumName);
-#include "../type/primitive.xmacro.h"
+#include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
 using InitFnType = void (*)(const Type *, const Type *, IR::Val, IR::Val,

@@ -1,4 +1,4 @@
-#include "flags.h"
+#include "type/flags.h"
 
 namespace type {
 Flags::Flags(const std::string &name, base::vector<std::string> members)

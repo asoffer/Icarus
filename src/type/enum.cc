@@ -1,4 +1,4 @@
-#include "enum.h"
+#include "type/enum.h"
 
 namespace type {
 Enum::Enum(const std::string &name, base::vector<std::string> members)

@@ -8,7 +8,7 @@ size_t Primitive::string_size() const {
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
   case PrimType::EnumName:                                                     \
     return sizeof(#name) - 1;
-#include "primitive.xmacro.h"
+#include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
   default: UNREACHABLE();
   }
@@ -19,7 +19,7 @@ char *Primitive::WriteTo(char *buf) const {
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
   case PrimType::EnumName:                                                     \
     return std::strcpy(buf, #name) + string_size();
-#include "primitive.xmacro.h"
+#include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
   default: UNREACHABLE();
   }

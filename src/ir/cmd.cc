@@ -1,4 +1,4 @@
-#include "cmd.h"
+#include "ir/cmd.h"
 
 #include <cmath>
 #include <iostream>

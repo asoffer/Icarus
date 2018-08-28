@@ -214,7 +214,7 @@ static auto LinesToShow(const ExprContainer &exprs) {
     ss << "\n\n";                                                              \
     errors_.push_back(ss.str());                                               \
   }
-#include "errors.xmacro.h"
+#include "error/errors.xmacro.h"
 #undef MAKE_LOG_ERROR
 
 void Log::RunawayMultilineComment() {

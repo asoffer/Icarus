@@ -35,7 +35,7 @@
 #include "context.h"
 #include "frontend/tagged_node.h"
 #include "frontend/token.h"
-#include "operators.h"
+#include "frontend/operators.h"
 #include "type/enum.h"
 
 template <typename To, typename From>
@@ -61,7 +61,7 @@ static constexpr size_t precedence(Language::Operator op) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
   case Language::Operator::name:                                               \
     return (((prec) << 2) + (assoc));
-#include "operators.xmacro.h"
+#include "frontend/operators.xmacro.h"
 #undef OPERATOR_MACRO
   }
   __builtin_unreachable();

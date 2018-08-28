@@ -1,4 +1,4 @@
-#include "all.h"
+#include "type/all.h"
 
 #include "architecture.h"
 #include "context.h"

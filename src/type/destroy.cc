@@ -1,13 +1,11 @@
-#include "../ir/func.h"
+#include "ir/func.h"
 
 #include "context.h"
-#include "all.h"
+#include "type/all.h"
 #include "module.h"
 
 namespace type {
 void Primitive::EmitDestroy(IR::Val, Context *ctx) const {}
-
-extern IR::Val PtrCallFix(Type *t, IR::Val v);
 
 void Array::ComputeDestroyWithoutLock(Context *ctx) const {
   if (destroy_func_ != nullptr) { return; }

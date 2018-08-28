@@ -25,7 +25,7 @@ namespace error {
 struct Log {
 #define MAKE_LOG_ERROR(fn_name, msg)                                           \
   void fn_name(const TextSpan& span);
-#include "errors.xmacro.h"
+#include "error/errors.xmacro.h"
 #undef MAKE_LOG_ERROR
 
   void UndeclaredIdentifier(AST::Identifier *id);

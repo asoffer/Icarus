@@ -7,7 +7,7 @@
 #include "type/function.h"
 
 namespace type {
-const Type *Ptr(const Type *);
+Pointer const *Ptr(const Type *);
 }  // namespace type
 
 namespace IR {

@@ -1,4 +1,4 @@
-#include "all.h"
+#include "type/all.h"
 
 namespace type {
 // TODO arrays are tricky because they may contain structs and so just using the

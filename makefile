@@ -50,6 +50,16 @@ bin/test/%: src/%.cc
 	@mkdir -p `dirname bin/test/$*.cc`
 	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) src/$*.cc -o $@
 
+.PHONY: unity
+unity:
+	@cat $(SRCS) > build/unity.cc
+	@echo Building...
+	@time $(COMPILER) $(LLVM_CXX) $(STDS) $(OPTS) $(WARN) -O3 -c build/unity.cc -o build/unity.o
+	@echo Linking...
+	@mkdir -p `dirname $(TARGET)`
+	@$(COMPILER) $(LINK_FLAGS) build/unity.o $(LLVM_LINK) -o bin/icarus
+	@echo DONE
+
 .PHONY: clean
 clean:
 	@rm -f $(TARGET) $(SRC_OBJS) $(TEST_TARGETS)

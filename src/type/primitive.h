@@ -2,14 +2,14 @@
 #define ICARUS_TYPE_PRIMITIVE_H
 
 #include <mutex>
-#include "type.h"
+#include "type/type.h"
 
 struct Architecture;
 
 namespace type {
 enum class PrimType : char {
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name) EnumName,
-#include "primitive.xmacro.h"
+#include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 };
 

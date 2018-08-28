@@ -1,6 +1,6 @@
 #include "property/property_set.h"
 
-#include "property.h"
+#include "property/property.h"
 
 namespace prop {
 namespace {
