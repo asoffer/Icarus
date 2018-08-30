@@ -51,42 +51,30 @@ static Cmd &MakeCmd(const type::Type *t, Op op) {
   return cmd;
 }
 
-Val Trunc(const Val &v) {
-  if (const i32 *n = std::get_if<i32>(&v.value)) {
-    return Val::Char(static_cast<char>(*n));
-  }
-
+RegisterOr<char> Trunc(RegisterOr<i32> r) {
+  if (!r.is_reg_) { return static_cast<char>(r.val_); }
   auto &cmd  = MakeCmd(type::Char, Op::Trunc);
-  cmd.trunc_ = Cmd::Trunc::Make(std::get<Register>(v.value));
-  return cmd.reg();
+  cmd.trunc_ = Cmd::Trunc::Make(r.reg_);
+  return cmd.result;
 }
 
-Val Extend(const Val &v) {
-  if (const char *c = std::get_if<char>(&v.value)) {
-    return Val::Int(static_cast<i32>(*c));
-  }
-
+RegisterOr<i32> Extend(RegisterOr<char> r) {
+  if (!r.is_reg_) { return static_cast<i32>(r.val_); }
   auto &cmd   = MakeCmd(type::Int, Op::Extend);
-  cmd.extend_ = Cmd::Extend::Make(std::get<Register>(v.value));
-  return cmd.reg();
+  cmd.extend_ = Cmd::Extend::Make(r.reg_);
+  return cmd.result;
 }
 
-Val Bytes(const Val &v) {
-  auto &cmd         = MakeCmd(type::Int, Op::Bytes);
-  const Register *r = std::get_if<Register>(&v.value);
-  cmd.bytes_        = Cmd::Bytes::Make(r ? RegisterOr<const type::Type *>(*r)
-                                  : RegisterOr<const type::Type *>(
-                                        std::get<const type::Type *>(v.value)));
-  return cmd.reg();
+Register Bytes(RegisterOr<type::Type const *> r) {
+  auto &cmd  = MakeCmd(type::Int, Op::Bytes);
+  cmd.bytes_ = Cmd::Bytes::Make(r);
+  return cmd.result;
 }
 
-Val Align(const Val &v) {
-  auto &cmd         = MakeCmd(type::Int, Op::Align);
-  Register const *r = std::get_if<Register>(&v.value);
-  cmd.align_        = Cmd::Align::Make(r ? RegisterOr<const type::Type *>(*r)
-                                  : RegisterOr<const type::Type *>(
-                                        std::get<const type::Type *>(v.value)));
-  return cmd.reg();
+Register Align(RegisterOr<type::Type const *> r) {
+  auto &cmd  = MakeCmd(type::Int, Op::Align);
+  cmd.align_ = Cmd::Align::Make(r);
+  return cmd.result;
 }
 
 Val Not(const Val &v) {

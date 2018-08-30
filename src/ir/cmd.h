@@ -498,10 +498,10 @@ struct Cmd {
   Val reg() const { return Val::Reg(result, type); }
 };
 
-Val Trunc(const Val &v);
-Val Extend(const Val &v);
-Val Bytes(const Val &v);
-Val Align(const Val &v);
+RegisterOr<char> Trunc(RegisterOr<i32> r);
+RegisterOr<i32> Extend(RegisterOr<char> r);
+Register Bytes(RegisterOr<type::Type const *> r);
+Register Align(RegisterOr<type::Type const *> r);
 Val Not(const Val &v);
 Val NegInt(const Val &v);
 Val NegReal(const Val &v);

@@ -5,6 +5,7 @@
 #include "property/property.h"
 #include "property/property_map.h"
 #include "type/function.h"
+#include "type/pointer.h"
 
 namespace type {
 Pointer const *Ptr(const Type *);
