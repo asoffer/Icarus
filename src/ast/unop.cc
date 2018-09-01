@@ -238,12 +238,14 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
   }
 
   switch (op) {
-    case Language::Operator::Not: return {IR::Not(operand->EmitIR(ctx)[0])};
+    case Language::Operator::Not:
+      return {IR::ValFrom(IR::Not(operand->EmitIR(ctx)[0].reg_or<bool>()))};
     case Language::Operator::Sub:
       if (operand->type == type::Int) {
-        return {IR::NegInt(operand->EmitIR(ctx)[0])};
+        return {IR::ValFrom(IR::NegInt(operand->EmitIR(ctx)[0].reg_or<i32>()))};
       } else if (operand->type == type::Real) {
-        return {IR::NegReal(operand->EmitIR(ctx)[0])};
+        return {
+            IR::ValFrom(IR::NegReal(operand->EmitIR(ctx)[0].reg_or<double>()))};
       } else {
         UNREACHABLE();
       }

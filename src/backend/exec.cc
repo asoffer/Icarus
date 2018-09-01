@@ -277,10 +277,6 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::EqAddr:
       save(resolve(cmd.eq_addr_.args_[0]) == resolve(cmd.eq_addr_.args_[1]));
       break;
-    case IR::Op::NeBool:
-      save(resolve<bool>(cmd.ne_bool_.args_[0]) !=
-           resolve<bool>(cmd.ne_bool_.args_[1]));
-      break;
     case IR::Op::NeChar:
       save(resolve(cmd.ne_char_.args_[0]) == resolve(cmd.ne_char_.args_[1]));
       break;

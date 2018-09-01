@@ -60,10 +60,6 @@ PropertySet Not(PropertySet prop_set) {
   return prop_set;
 }
 
-PropertySet NeBool(PropertySet const &lhs, PropertySet const &rhs) {
-  return {};  // TODO
-}
-
 PropertySet EqBool(PropertySet const &lhs, PropertySet const &rhs) {
   return {};  // TODO
 }
@@ -193,9 +189,6 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
     case IR::Op::EqBool:
       return prop_set.add(EqBool(block_view.at(cmd.eq_bool_.args_[0]),
                                  block_view.at(cmd.eq_bool_.args_[1])));
-    case IR::Op::NeBool:
-      return prop_set.add(NeBool(block_view.at(cmd.ne_bool_.args_[0]),
-                                 block_view.at(cmd.ne_bool_.args_[1])));
     case IR::Op::LtInt:
       if (cmd.lt_int_.args_[0].is_reg_) {
         if (cmd.lt_int_.args_[1].is_reg_) {

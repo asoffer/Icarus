@@ -228,6 +228,18 @@ private:
   Val(const type::Type *t, T &&val) : type(t), value(std::forward<T>(val)) {}
 };
 
+inline Val ValFrom(RegisterOr<bool> r) {
+  return r.is_reg_ ? Val::Reg(r.reg_, type::Bool) : Val::Bool(r.val_);
+}
+
+inline Val ValFrom(RegisterOr<i32> r) {
+  return r.is_reg_ ? Val::Reg(r.reg_, type::Int) : Val::Int(r.val_);
+}
+
+inline Val ValFrom(RegisterOr<double> r) {
+  return r.is_reg_ ? Val::Reg(r.reg_, type::Real) : Val::Real(r.val_);
+}
+
 inline bool operator==(const Val &lhs, const Val &rhs) {
   return lhs.type == rhs.type && lhs.value == rhs.value;
 }

@@ -77,13 +77,12 @@ Register Align(RegisterOr<type::Type const *> r) {
   return cmd.result;
 }
 
-Val Not(const Val &v) {
-  if (const bool *b = std::get_if<bool>(&v.value)) { return Val::Bool(!*b); }
+RegisterOr<bool> Not(RegisterOr<bool> r) {
+  if (!r.is_reg_) { return !r.val_; }
   auto &cmd = MakeCmd(type::Bool, Op::Not);
-  cmd.not_  = Cmd::Not::Make(std::get<Register>(v.value));
+  cmd.not_  = Cmd::Not::Make(r.reg_);
   Func::Current->references_[cmd.not_.reg_].insert(cmd.result);
-
-  return cmd.reg();
+  return cmd.result;
 }
 
 // TODO do you really want to support this? How can array allocation be
@@ -101,20 +100,20 @@ void Free(const Val &v) {
   cmd.free_ = Cmd::Free::Make(std::get<Register>(v.value));
 }
 
-Val NegInt(const Val &v) {
-  if (const i32 *n = std::get_if<i32>(&v.value)) { return Val::Int(-*n); }
-  auto &cmd    = MakeCmd(type::Bool, Op::NegInt);
-  cmd.neg_int_ = Cmd::NegInt::Make(std::get<Register>(v.value));
-  return cmd.reg();
+RegisterOr<i32> NegInt(RegisterOr<i32> r) {
+  if (!r.is_reg_) { return -r.val_; }
+  auto &cmd = MakeCmd(type::Bool, Op::NegInt);
+  cmd.neg_int_ = Cmd::NegInt::Make(r.reg_);
+  Func::Current->references_[cmd.neg_int_.reg_].insert(cmd.result);
+  return cmd.result;
 }
 
-Val NegReal(const Val &v) {
-  if (const double *r = std::get_if<double>(&v.value)) {
-    return Val::Real(-*r);
-  }
+RegisterOr<double> NegReal(RegisterOr<double> r) {
+  if (!r.is_reg_) { return -r.val_; }
   auto &cmd     = MakeCmd(type::Bool, Op::NegReal);
-  cmd.neg_real_ = Cmd::NegReal::Make(std::get<Register>(v.value));
-  return cmd.reg();
+  cmd.neg_real_ = Cmd::NegReal::Make(r.reg_);
+  Func::Current->references_[cmd.neg_real_.reg_].insert(cmd.result);
+  return cmd.result;
 }
 
 Val ArrayLength(const Val &v) {
@@ -286,32 +285,12 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
   return RegisterOr<type::Type const *>(cmd.result);
 }
 
-Val EqBool(Val const &v1, Val const &v2) {
-  if (auto const *b = std::get_if<bool>(&v1.value)) {
-    return *b ? v2 : Not(v2);
-  }
-  if (auto const *b = std::get_if<bool>(&v1.value)) {
-    return *b ? v1 : Not(v1);
-  }
-
+RegisterOr<bool> EqBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
+  if (!v1.is_reg_) { return v1.val_ ? v2 : Not(v2); }
+  if (!v2.is_reg_) { return v2.val_ ? v1 : Not(v1); }
   auto &cmd    = MakeCmd(type::Bool, Op::EqBool);
-  cmd.eq_bool_ = Cmd::EqBool::Make(std::get<Register>(v1.value),
-                                   std::get<Register>(v2.value));
-  return cmd.reg();
-}
-
-Val NeBool(Val const &v1, Val const &v2) {
-  if (auto const *b = std::get_if<bool>(&v1.value)) {
-    return *b ? Not(v2) : v2;
-  }
-  if (auto const *b = std::get_if<bool>(&v1.value)) {
-    return *b ? Not(v1) : v1;
-  }
-
-  auto &cmd    = MakeCmd(type::Bool, Op::NeBool);
-  cmd.ne_bool_ = Cmd::NeBool::Make(std::get<Register>(v1.value),
-                                   std::get<Register>(v2.value));
-  return cmd.reg();
+  cmd.eq_bool_ = Cmd::EqBool::Make(v1.reg_, v2.reg_);
+  return cmd.result;
 }
 
 Val Array(const Val &v1, const Val &v2) {
@@ -390,18 +369,12 @@ RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals) {
   return IR::FinalizeVariant(var);
 }
 
-Val XorBool(const Val &v1, const Val &v2) {
-  bool const *x1 = std::get_if<bool>(&v1.value);
-  bool const *x2 = std::get_if<bool>(&v2.value);
-  if (x1) { return *x1 ? Not(v2) : v2; }
-  if (x2) { return *x2 ? Not(v1) : v1; }
-  auto &cmd = MakeCmd(type::Bool, Op::XorBool);
-  cmd.xor_bool_ =
-      Cmd::XorBool::Make(x1 ? RegisterOr<bool>(*x1)
-                            : RegisterOr<bool>(std::get<Register>(v1.value)),
-                         x2 ? RegisterOr<bool>(*x2)
-                            : RegisterOr<bool>(std::get<Register>(v2.value)));
-  return cmd.reg();
+RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
+  if (!v1.is_reg_) { return v1.val_ ? Not(v2) : v2; }
+  if (!v2.is_reg_) { return v2.val_ ? Not(v1) : v1; }
+  auto &cmd     = MakeCmd(type::Bool, Op::XorBool);
+  cmd.xor_bool_ = Cmd::XorBool::Make(v1, v2);
+  return cmd.result;
 }
 
 Val Field(const Val &v, size_t n) {
@@ -646,7 +619,9 @@ Val AndFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
 }
 
 Val Xor(const Val &v1, const Val &v2) {
-  if (v1.type == type::Bool) { return XorBool(v1, v2); }
+  if (v1.type == type::Bool) {
+    return ValFrom(XorBool(v1.reg_or<bool>(), v2.reg_or<bool>()));
+  }
   if (v1.type->is<type::Flags>()) {
     return XorFlags(&v1.type->as<type::Flags>(), v1.reg_or<FlagsVal>(),
                     v2.reg_or<FlagsVal>());
@@ -905,7 +880,9 @@ Val Ge(const Val &v1, const Val &v2) {
 }
 
 Val Eq(const Val &v1, const Val &v2) {
-  if (v1.type == type::Bool) { return EqBool(v1, v2); }
+  if (v1.type == type::Bool) {
+    return ValFrom(EqBool(v1.reg_or<bool>(), v2.reg_or<bool>()));
+  }
   if (v1.type == type::Char) { return EqChar(v1, v2); }
   if (v1.type == type::Int) { return EqInt(v1, v2); }
   if (v1.type == type::Real) { return EqReal(v1, v2); }
@@ -922,7 +899,9 @@ Val Eq(const Val &v1, const Val &v2) {
 }
 
 Val Ne(const Val &v1, const Val &v2) {
-  if (v1.type == type::Bool) { return NeBool(v1, v2); }
+  if (v1.type == type::Bool) {
+    return ValFrom(XorBool(v1.reg_or<bool>(), v2.reg_or<bool>()));
+  }
   if (v1.type == type::Char) { return NeChar(v1, v2); }
   if (v1.type == type::Int) { return NeInt(v1, v2); }
   if (v1.type == type::Real) { return NeReal(v1, v2); }
@@ -1171,7 +1150,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::EqFlags: return os << cmd.eq_flags_.args_;
     case Op::EqType: return os << cmd.eq_type_.args_;
     case Op::EqAddr: return os << cmd.eq_addr_.args_;
-    case Op::NeBool: return os << cmd.ne_bool_.args_[0] << " " << cmd.ne_bool_.args_[1];
     case Op::NeChar: return os << cmd.ne_char_.args_;
     case Op::NeInt: return os << cmd.ne_int_.args_;
     case Op::NeReal: return os << cmd.ne_real_.args_;
