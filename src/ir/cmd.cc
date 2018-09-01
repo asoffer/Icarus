@@ -151,6 +151,23 @@ Val Ptr(const Val &v) {
   return cmd.reg();
 }
 
+#define DEFINE_CMD1(Name, name)                                                \
+  Register Name(Register r, type::Type const *t) {                             \
+    auto &cmd = MakeCmd(t, Op::Name);                                          \
+    cmd.name  = Cmd::Name::Make(r);                                            \
+    return cmd.result;                                                         \
+  }                                                                            \
+  struct AllowSemicolon
+DEFINE_CMD1(LoadBool, load_bool_);
+DEFINE_CMD1(LoadChar, load_char_);
+DEFINE_CMD1(LoadInt, load_int_);
+DEFINE_CMD1(LoadReal, load_real_);
+DEFINE_CMD1(LoadType, load_type_);
+DEFINE_CMD1(LoadEnum, load_enum_);
+DEFINE_CMD1(LoadFlags, load_flags_);
+DEFINE_CMD1(LoadAddr, load_addr_);
+#undef DEFINE_CMD1
+
 #define DEFINE_CMD1(Name, name, arg_type, RetType)                             \
   Val Name(Val const &v) {                                                     \
     auto &cmd = MakeCmd(RetType, Op::Name);                                    \
@@ -161,17 +178,6 @@ Val Ptr(const Val &v) {
     return cmd.reg();                                                          \
   }                                                                            \
   struct AllowSemicolon
-DEFINE_CMD1(LoadBool, load_bool_, IR::Addr, type::Bool);
-DEFINE_CMD1(LoadChar, load_char_, IR::Addr, type::Char);
-DEFINE_CMD1(LoadInt, load_int_, IR::Addr, type::Int);
-DEFINE_CMD1(LoadReal, load_real_, IR::Addr, type::Real);
-DEFINE_CMD1(LoadType, load_type_, IR::Addr, type::Type_);
-DEFINE_CMD1(LoadEnum, load_enum_, IR::Addr,
-            v.type->as<type::Pointer>().pointee);
-DEFINE_CMD1(LoadFlags, load_flags_, IR::Addr,
-            v.type->as<type::Pointer>().pointee);
-DEFINE_CMD1(LoadAddr, load_addr_, IR::Addr,
-            v.type->as<type::Pointer>().pointee);
 DEFINE_CMD1(PrintBool, print_bool_, bool, type::Bool);
 DEFINE_CMD1(PrintChar, print_char_, char, type::Char);
 DEFINE_CMD1(PrintInt, print_int_, i32, type::Int);
@@ -199,91 +205,76 @@ Val AddCharBuf(const Val &v1, const Val &v2) {
   return cmd.reg();
 }
 
-#define DEFINE_CMD2(Name, name, arg_type, RetType, fn)                         \
-  Val Name(Val const &v1, Val const &v2) {                                     \
-    auto const *x1 = std::get_if<arg_type>(&v1.value);                         \
-    auto const *x2 = std::get_if<arg_type>(&v2.value);                         \
-    if (x1 && x2) { return Val::RetType(fn(*x1, *x2)); }                       \
-    auto &cmd = MakeCmd(type::RetType, Op::Name);                              \
-    cmd.name  = Cmd::Name::Make(                                               \
-        x1 ? RegisterOr<arg_type>(*x1)                                        \
-           : RegisterOr<arg_type>(std::get<Register>(v1.value)),              \
-        x2 ? RegisterOr<arg_type>(*x2)                                        \
-           : RegisterOr<arg_type>(std::get<Register>(v2.value)));             \
-    if (!x1) {                                                                 \
-      Func::Current->references_[std::get<Register>(v1.value)].insert(         \
-          cmd.result);                                                         \
-    }                                                                          \
-    if (!x2) {                                                                 \
-      Func::Current->references_[std::get<Register>(v2.value)].insert(         \
-          cmd.result);                                                         \
-    }                                                                          \
-    return cmd.reg();                                                          \
+#define DEFINE_CMD2(Name, name, arg_type, RetType, ret_type, fn)               \
+  RegisterOr<ret_type> Name(RegisterOr<arg_type> v1,                           \
+                            RegisterOr<arg_type> v2) {                         \
+    if (!v1.is_reg_ && v2.is_reg_) { return fn(v1.val_, v2.val_); }            \
+    auto &cmd  = MakeCmd(type::RetType, Op::Name);                             \
+    cmd.name   = Cmd::Name::Make(v1, v2);                                      \
+    auto &refs = Func::Current->references_;                                   \
+    if (v1.is_reg_) { refs[v1.reg_].insert(cmd.result); }                      \
+    if (v2.is_reg_) { refs[v2.reg_].insert(cmd.result); }                      \
+    return cmd.result;                                                         \
   }                                                                            \
   struct AllowSemicolon
-DEFINE_CMD2(AddInt, add_int_, i32, Int, std::plus<i32>{});
-DEFINE_CMD2(AddReal, add_real_, double, Real, std::plus<double>{});
-DEFINE_CMD2(SubInt, sub_int_, i32, Int, std::minus<i32>{});
-DEFINE_CMD2(SubReal, sub_real_, double, Real, std::minus<double>{});
-DEFINE_CMD2(MulInt, mul_int_, i32, Int, std::multiplies<i32>{});
-DEFINE_CMD2(MulReal, mul_real_, double, Real, std::multiplies<double>{});
-DEFINE_CMD2(DivInt, div_int_, i32, Int, std::divides<i32>{});
-DEFINE_CMD2(DivReal, div_real_, double, Real, std::divides<double>{});
-DEFINE_CMD2(ModInt, mod_int_, i32, Int, std::modulus<i32>{});
-DEFINE_CMD2(ModReal, mod_real_, double, Real, std::fmod);
-DEFINE_CMD2(LtInt, lt_int_, i32, Bool, std::less<i32>{});
-DEFINE_CMD2(LtReal, lt_real_, double, Bool, std::less<double>{});
-DEFINE_CMD2(LtFlags, lt_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
-  return lhs.value != rhs.value && ((lhs.value | rhs.value) == rhs.value);
-});
-DEFINE_CMD2(LeInt, le_int_, i32, Bool, std::less_equal<i32>{});
-DEFINE_CMD2(LeReal, le_real_, double, Bool, std::less_equal<double>{});
-DEFINE_CMD2(LeFlags, le_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
-  return (lhs.value | rhs.value) == rhs.value;
-});
-DEFINE_CMD2(GtInt, gt_int_, i32, Bool, std::less<i32>{});
-DEFINE_CMD2(GtReal, gt_real_, double, Bool, std::less<double>{});
-DEFINE_CMD2(GtFlags, gt_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
-  return lhs.value != rhs.value && ((lhs.value | rhs.value) == lhs.value);
-});
-DEFINE_CMD2(GeInt, ge_int_, i32, Bool, std::less_equal<i32>{});
-DEFINE_CMD2(GeReal, ge_real_, double, Bool, std::less_equal<double>{});
-DEFINE_CMD2(GeFlags, ge_flags_, FlagsVal, Bool, [](FlagsVal lhs, FlagsVal rhs) {
-  return (lhs.value | rhs.value) == lhs.value;
-});
-DEFINE_CMD2(EqChar, eq_char_, char, Bool, std::equal_to<char>{});
-DEFINE_CMD2(EqInt, eq_int_, i32, Bool, std::equal_to<i32>{});
-DEFINE_CMD2(EqReal, eq_real_, double, Bool, std::equal_to<double>{});
-DEFINE_CMD2(EqType, eq_type_, const type::Type *, Bool,
+DEFINE_CMD2(AddInt, add_int_, i32, Int, i32, std::plus<i32>{});
+DEFINE_CMD2(AddReal, add_real_, double, Real, double, std::plus<double>{});
+DEFINE_CMD2(SubInt, sub_int_, i32, Int, i32, std::minus<i32>{});
+DEFINE_CMD2(SubReal, sub_real_, double, Real, double, std::minus<double>{});
+DEFINE_CMD2(MulInt, mul_int_, i32, Int, i32, std::multiplies<i32>{});
+DEFINE_CMD2(MulReal, mul_real_, double, Real, double,
+            std::multiplies<double>{});
+DEFINE_CMD2(DivInt, div_int_, i32, Int, i32, std::divides<i32>{});
+DEFINE_CMD2(DivReal, div_real_, double, Real, double, std::divides<double>{});
+DEFINE_CMD2(ModInt, mod_int_, i32, Int, i32, std::modulus<i32>{});
+DEFINE_CMD2(ModReal, mod_real_, double, Real, double, std::fmod);
+DEFINE_CMD2(LtInt, lt_int_, i32, Bool, bool, std::less<i32>{});
+DEFINE_CMD2(LtReal, lt_real_, double, Bool, bool, std::less<double>{});
+DEFINE_CMD2(LtFlags, lt_flags_, FlagsVal, Bool, bool,
+            [](FlagsVal lhs, FlagsVal rhs) {
+              return lhs.value != rhs.value &&
+                     ((lhs.value | rhs.value) == rhs.value);
+            });
+DEFINE_CMD2(LeInt, le_int_, i32, Bool, bool, std::less_equal<i32>{});
+DEFINE_CMD2(LeReal, le_real_, double, Bool, bool, std::less_equal<double>{});
+DEFINE_CMD2(LeFlags, le_flags_, FlagsVal, Bool, bool,
+            [](FlagsVal lhs, FlagsVal rhs) {
+              return (lhs.value | rhs.value) == rhs.value;
+            });
+DEFINE_CMD2(GtInt, gt_int_, i32, Bool, bool, std::less<i32>{});
+DEFINE_CMD2(GtReal, gt_real_, double, Bool, bool, std::less<double>{});
+DEFINE_CMD2(GtFlags, gt_flags_, FlagsVal, Bool, bool,
+            [](FlagsVal lhs, FlagsVal rhs) {
+              return lhs.value != rhs.value &&
+                     ((lhs.value | rhs.value) == lhs.value);
+            });
+DEFINE_CMD2(GeInt, ge_int_, i32, Bool, bool, std::less_equal<i32>{});
+DEFINE_CMD2(GeReal, ge_real_, double, Bool, bool, std::less_equal<double>{});
+DEFINE_CMD2(GeFlags, ge_flags_, FlagsVal, Bool, bool,
+            [](FlagsVal lhs, FlagsVal rhs) {
+              return (lhs.value | rhs.value) == lhs.value;
+            });
+DEFINE_CMD2(EqChar, eq_char_, char, Bool, bool, std::equal_to<char>{});
+DEFINE_CMD2(EqInt, eq_int_, i32, Bool, bool, std::equal_to<i32>{});
+DEFINE_CMD2(EqReal, eq_real_, double, Bool, bool, std::equal_to<double>{});
+DEFINE_CMD2(EqType, eq_type_, const type::Type *, Bool, bool,
             std::equal_to<const type::Type *>{});
-DEFINE_CMD2(EqFlags, eq_flags_, FlagsVal, Bool, std::equal_to<FlagsVal>{});
-DEFINE_CMD2(EqAddr, eq_addr_, Addr, Bool, std::equal_to<Addr>{});
-DEFINE_CMD2(NeChar, ne_char_, char, Bool, std::not_equal_to<char>{});
-DEFINE_CMD2(NeInt, ne_int_, i32, Bool, std::not_equal_to<i32>{});
-DEFINE_CMD2(NeReal, ne_real_, double, Bool, std::not_equal_to<double>{});
-DEFINE_CMD2(NeType, ne_type_, const type::Type *, Bool,
+DEFINE_CMD2(EqFlags, eq_flags_, FlagsVal, Bool, bool,
+            std::equal_to<FlagsVal>{});
+DEFINE_CMD2(EqAddr, eq_addr_, Addr, Bool, bool, std::equal_to<Addr>{});
+DEFINE_CMD2(NeChar, ne_char_, char, Bool, bool, std::not_equal_to<char>{});
+DEFINE_CMD2(NeInt, ne_int_, i32, Bool, bool, std::not_equal_to<i32>{});
+DEFINE_CMD2(NeReal, ne_real_, double, Bool, bool, std::not_equal_to<double>{});
+DEFINE_CMD2(NeType, ne_type_, const type::Type *, Bool, bool,
             std::not_equal_to<const type::Type *>{});
-DEFINE_CMD2(NeFlags, ne_flags_, FlagsVal, Bool, std::not_equal_to<FlagsVal>{});
-DEFINE_CMD2(NeAddr, ne_addr_, Addr, Bool, std::not_equal_to<Addr>{});
-DEFINE_CMD2(Arrow, arrow_, type::Type const *, Type_,
+DEFINE_CMD2(NeFlags, ne_flags_, FlagsVal, Bool, bool,
+            std::not_equal_to<FlagsVal>{});
+DEFINE_CMD2(NeAddr, ne_addr_, Addr, Bool, bool, std::not_equal_to<Addr>{});
+DEFINE_CMD2(Arrow, arrow_, type::Type const *, Type_, type::Type const *,
             [](type::Type const *lhs, type::Type const *rhs) {
               return type::Func({lhs}, {rhs});
             });
 #undef DEFINE_CMD2
-
-RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
-                                     RegisterOr<type::Type const *> out) {
-  if (!in.is_reg_ && !out.is_reg_) {
-    return RegisterOr<type::Type const *>(type::Func({in.val_}, {out.val_}));
-  }
-  auto &cmd = MakeCmd(type::Type_, Op::Arrow);
-  cmd.arrow_ =
-      Cmd::Arrow::Make(in.is_reg_ ? RegisterOr<type::Type const *>(in.reg_)
-                                  : RegisterOr<type::Type const *>(in.val_),
-                       out.is_reg_ ? RegisterOr<type::Type const *>(out.reg_)
-                                   : RegisterOr<type::Type const *>(out.val_));
-  return RegisterOr<type::Type const *>(cmd.result);
-}
 
 RegisterOr<bool> EqBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
   if (!v1.is_reg_) { return v1.val_ ? v2 : Not(v2); }
@@ -630,36 +621,55 @@ Val Xor(const Val &v1, const Val &v2) {
 }
 
 Val Add(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) { return AddInt(v1, v2); }
-  if (v1.type == type::Real) { return AddReal(v1, v2); }
+  if (v1.type == type::Int) {
+    return ValFrom(AddInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(AddReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
   if (v1.type->is<type::CharBuffer>()) { return AddCharBuf(v1, v2); }
-  if (v1.type == type::Code) { return AddCharBuf(v1, v2); }
   UNREACHABLE();
 }
 
 Val AddCodeBlock(const Val &v1, const Val &v2) { NOT_YET(); }
 
 Val Sub(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) { return SubInt(v1, v2); }
-  if (v1.type == type::Real) { return SubReal(v1, v2); }
+  if (v1.type == type::Int) {
+    return ValFrom(SubInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(SubReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
   UNREACHABLE();
 }
 
 Val Mul(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) { return MulInt(v1, v2); }
-  if (v1.type == type::Real) { return MulReal(v1, v2); }
+  if (v1.type == type::Int) {
+    return ValFrom(MulInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(MulReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
   UNREACHABLE();
 }
 
 Val Div(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) { return DivInt(v1, v2); }
-  if (v1.type == type::Real) { return DivReal(v1, v2); }
+  if (v1.type == type::Int) {
+    return ValFrom(DivInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(DivReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
   UNREACHABLE();
 }
 
 Val Mod(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) { return ModInt(v1, v2); }
-  if (v1.type == type::Real) { return ModReal(v1, v2); }
+  if (v1.type == type::Int) {
+    return ValFrom(ModInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(ModReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
   UNREACHABLE();
 }
 
@@ -815,15 +825,19 @@ void Store(const Val &val, const Val &loc) {
 
 Val Load(const Val &v) {
   auto *ptee = v.type->as<type::Pointer>().pointee;
-  if (ptee == type::Bool) { return LoadBool(v); }
-  if (ptee == type::Char) { return LoadChar(v); }
-  if (ptee == type::Int) { return LoadInt(v); }
-  if (ptee == type::Real) { return LoadReal(v); }
-  if (ptee == type::Type_) { return LoadType(v); }
-  if (ptee->is<type::Enum>()) { return LoadEnum(v); }
-  if (ptee->is<type::Flags>()) { return LoadFlags(v); }
-  if (ptee->is<type::Pointer>()) { return LoadAddr(v); }
-  UNREACHABLE(v.type->to_string());
+  return IR::Val::Reg(
+      [&](Register r) {
+        if (ptee == type::Bool) { return LoadBool(r, ptee); }
+        if (ptee == type::Char) { return LoadChar(r, ptee); }
+        if (ptee == type::Int) { return LoadInt(r, ptee); }
+        if (ptee == type::Real) { return LoadReal(r, ptee); }
+        if (ptee == type::Type_) { return LoadType(r, ptee); }
+        if (ptee->is<type::Enum>()) { return LoadEnum(r, ptee); }
+        if (ptee->is<type::Flags>()) { return LoadFlags(r, ptee); }
+        if (ptee->is<type::Pointer>()) { return LoadAddr(r, ptee); }
+        UNREACHABLE(v.type->to_string());
+      }(std::get<Register>(v.value)),
+      ptee);
 }
 
 Val Print(const Val &v) {
@@ -852,30 +866,54 @@ Val Index(const Val &v1, const Val &v2) {
 }
 
 Val Lt(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) { return LtInt(v1, v2); }
-  if (v1.type == type::Real) { return LtReal(v1, v2); }
-  if (v1.type->is<type::Flags>()) { return LtFlags(v1, v2); }
+  if (v1.type == type::Int) {
+    return ValFrom(LtInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(LtReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
+  if (v1.type->is<type::Flags>()) {
+    return ValFrom(LtFlags(v1.reg_or<FlagsVal>(), v2.reg_or<FlagsVal>()));
+  }
   UNREACHABLE();
 }
 
 Val Le(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) { return LeInt(v1, v2); }
-  if (v1.type == type::Real) { return LeReal(v1, v2); }
-  if (v1.type->is<type::Flags>()) { return LeFlags(v1, v2); }
+  if (v1.type == type::Int) {
+    return ValFrom(LeInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(LeReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
+  if (v1.type->is<type::Flags>()) {
+    return ValFrom(LeFlags(v1.reg_or<FlagsVal>(), v2.reg_or<FlagsVal>()));
+  }
   UNREACHABLE();
 }
 
 Val Gt(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) { return GtInt(v1, v2); }
-  if (v1.type == type::Real) { return GtReal(v1, v2); }
-  if (v1.type->is<type::Flags>()) { return GtFlags(v1, v2); }
+  if (v1.type == type::Int) {
+    return ValFrom(GtInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(GtReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
+  if (v1.type->is<type::Flags>()) {
+    return ValFrom(GtFlags(v1.reg_or<FlagsVal>(), v2.reg_or<FlagsVal>()));
+  }
   UNREACHABLE();
 }
 
 Val Ge(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) { return GeInt(v1, v2); }
-  if (v1.type == type::Real) { return GeReal(v1, v2); }
-  if (v1.type->is<type::Flags>()) { return GeFlags(v1, v2); }
+  if (v1.type == type::Int) {
+    return ValFrom(GeInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(GeReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
+  if (v1.type->is<type::Flags>()) {
+    return ValFrom(GeFlags(v1.reg_or<FlagsVal>(), v2.reg_or<FlagsVal>()));
+  }
   UNREACHABLE();
 }
 
@@ -883,12 +921,25 @@ Val Eq(const Val &v1, const Val &v2) {
   if (v1.type == type::Bool) {
     return ValFrom(EqBool(v1.reg_or<bool>(), v2.reg_or<bool>()));
   }
-  if (v1.type == type::Char) { return EqChar(v1, v2); }
-  if (v1.type == type::Int) { return EqInt(v1, v2); }
-  if (v1.type == type::Real) { return EqReal(v1, v2); }
-  if (v1.type == type::Type_) { return EqType(v1, v2); }
-  if (v1.type->is<type::Flags>()) { return EqFlags(v1, v2); }
-  if (v1.type->is<type::Pointer>()) { return EqAddr(v1, v2); }
+  if (v1.type == type::Char) {
+    return ValFrom(EqChar(v1.reg_or<char>(), v2.reg_or<char>()));
+  }
+  if (v1.type == type::Int) {
+    return ValFrom(EqInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(EqReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
+  if (v1.type == type::Type_) {
+    return ValFrom(EqType(v1.reg_or<type::Type const *>(),
+                          v2.reg_or<type::Type const *>()));
+  }
+  if (v1.type->is<type::Flags>()) {
+    return ValFrom(EqFlags(v1.reg_or<FlagsVal>(), v2.reg_or<FlagsVal>()));
+  }
+  if (v1.type->is<type::Pointer>()) {
+    return ValFrom(EqAddr(v1.reg_or<IR::Addr>(), v2.reg_or<IR::Addr>()));
+  }
 
   BlockSequence const *val1 = std::get_if<BlockSequence>(&v1.value);
   BlockSequence const *val2 = std::get_if<BlockSequence>(&v2.value);
@@ -902,11 +953,22 @@ Val Ne(const Val &v1, const Val &v2) {
   if (v1.type == type::Bool) {
     return ValFrom(XorBool(v1.reg_or<bool>(), v2.reg_or<bool>()));
   }
-  if (v1.type == type::Char) { return NeChar(v1, v2); }
-  if (v1.type == type::Int) { return NeInt(v1, v2); }
-  if (v1.type == type::Real) { return NeReal(v1, v2); }
-  if (v1.type == type::Type_) { return NeType(v1, v2); }
-  if (v1.type->is<type::Pointer>()) { return NeAddr(v1, v2); }
+  if (v1.type == type::Char) {
+    return ValFrom(NeChar(v1.reg_or<char>(), v2.reg_or<char>()));
+  }
+  if (v1.type == type::Int) {
+    return ValFrom(NeInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
+  }
+  if (v1.type == type::Real) {
+    return ValFrom(NeReal(v1.reg_or<double>(), v2.reg_or<double>()));
+  }
+  if (v1.type == type::Type_) {
+    return ValFrom(NeType(v1.reg_or<type::Type const *>(),
+                          v2.reg_or<type::Type const *>()));
+  }
+  if (v1.type->is<type::Pointer>()) {
+    return ValFrom(NeAddr(v1.reg_or<IR::Addr>(), v2.reg_or<IR::Addr>()));
+  }
   UNREACHABLE();
 }
 

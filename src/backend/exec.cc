@@ -152,28 +152,29 @@ IR::BlockIndex ExecContext::ExecuteCmd(
 
     } break;
     case IR::Op::LoadBool:
-      save(LoadValue<bool>(resolve(cmd.load_bool_.arg_), stack_));
+      save(LoadValue<bool>(resolve<IR::Addr>(cmd.load_bool_.arg_), stack_));
       break;
     case IR::Op::LoadChar:
-      save(LoadValue<char>(resolve(cmd.load_char_.arg_), stack_));
+      save(LoadValue<char>(resolve<IR::Addr>(cmd.load_char_.arg_), stack_));
       break;
     case IR::Op::LoadInt:
-      save(LoadValue<i32>(resolve(cmd.load_int_.arg_), stack_));
+      save(LoadValue<i32>(resolve<IR::Addr>(cmd.load_int_.arg_), stack_));
       break;
     case IR::Op::LoadReal:
-      save(LoadValue<double>(resolve(cmd.load_real_.arg_), stack_));
+      save(LoadValue<double>(resolve<IR::Addr>(cmd.load_real_.arg_), stack_));
       break;
     case IR::Op::LoadType:
-      save(LoadValue<type::Type const *>(resolve(cmd.load_type_.arg_), stack_));
+      save(LoadValue<type::Type const *>(resolve<IR::Addr>(cmd.load_type_.arg_),
+                                         stack_));
       break;
     case IR::Op::LoadEnum:
-      save(LoadValue<size_t>(resolve(cmd.load_enum_.arg_), stack_));
+      save(LoadValue<size_t>(resolve<IR::Addr>(cmd.load_enum_.arg_), stack_));
       break;
     case IR::Op::LoadFlags:
-      save(LoadValue<size_t>(resolve(cmd.load_flags_.arg_), stack_));
+      save(LoadValue<size_t>(resolve<IR::Addr>(cmd.load_flags_.arg_), stack_));
       break;
     case IR::Op::LoadAddr:
-      save(LoadValue<IR::Addr>(resolve(cmd.load_addr_.arg_), stack_));
+      save(LoadValue<IR::Addr>(resolve<IR::Addr>(cmd.load_addr_.arg_), stack_));
       break;
     case IR::Op::AddInt:
       save(resolve(cmd.add_int_.args_[0]) + resolve(cmd.add_int_.args_[1]));
