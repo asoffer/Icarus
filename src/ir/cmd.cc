@@ -116,28 +116,19 @@ RegisterOr<double> NegReal(RegisterOr<double> r) {
   return cmd.result;
 }
 
-Val ArrayLength(const Val &v) {
+Register ArrayLength(Register r) {
   auto &cmd         = MakeCmd(type::Ptr(type::Int), Op::ArrayLength);
-  const Register *r = std::get_if<Register>(&v.value);
-  cmd.array_length_ = Cmd::ArrayLength::Make(
-      r ? RegisterOr<IR::Addr>(*r)
-        : RegisterOr<IR::Addr>(std::get<IR::Addr>(v.value)));
-  return cmd.reg();
+  cmd.array_length_ = Cmd::ArrayLength::Make(r);
+  return cmd.result;
 }
 
-Val ArrayData(const Val &v) {
-  ASSERT(v.type, Is<type::Pointer>());
-  auto *ptee = v.type->as<type::Pointer>().pointee;
-  ASSERT(ptee, Is<type::Array>());
-  auto *array_type = &ptee->as<type::Array>();
+Register ArrayData(Register r, type::Type const *ptr) {
+  auto *array_type = &ptr->as<type::Pointer>().pointee->as<type::Array>();
   ASSERT(!array_type->fixed_length);
 
-  auto &cmd         = MakeCmd(type::Ptr(array_type->data_type), Op::ArrayData);
-  const Register *r = std::get_if<Register>(&v.value);
-  cmd.array_data_   = Cmd::ArrayData::Make(
-      r ? RegisterOr<IR::Addr>(*r)
-        : RegisterOr<IR::Addr>(std::get<IR::Addr>(v.value)));
-  return cmd.reg();
+  auto &cmd       = MakeCmd(type::Ptr(array_type->data_type), Op::ArrayData);
+  cmd.array_data_ = Cmd::ArrayData::Make(r);
+  return cmd.result;
 }
 
 Val Ptr(const Val &v) {
@@ -151,6 +142,20 @@ Val Ptr(const Val &v) {
   return cmd.reg();
 }
 
+#define DEFINE_CMD1(Name, name, t)                                             \
+  Register Name(Register r) {                                                  \
+    auto &cmd = MakeCmd(t, Op::Name);                                          \
+    cmd.name  = Cmd::Name::Make(r);                                            \
+    return cmd.result;                                                         \
+  }                                                                            \
+  struct AllowSemicolon
+DEFINE_CMD1(LoadBool, load_bool_, type::Bool);
+DEFINE_CMD1(LoadChar, load_char_, type::Char);
+DEFINE_CMD1(LoadInt, load_int_, type::Int);
+DEFINE_CMD1(LoadReal, load_real_, type::Real);
+DEFINE_CMD1(LoadType, load_type_, type::Type_);
+#undef DEFINE_CMD1
+
 #define DEFINE_CMD1(Name, name)                                                \
   Register Name(Register r, type::Type const *t) {                             \
     auto &cmd = MakeCmd(t, Op::Name);                                          \
@@ -158,11 +163,6 @@ Val Ptr(const Val &v) {
     return cmd.result;                                                         \
   }                                                                            \
   struct AllowSemicolon
-DEFINE_CMD1(LoadBool, load_bool_);
-DEFINE_CMD1(LoadChar, load_char_);
-DEFINE_CMD1(LoadInt, load_int_);
-DEFINE_CMD1(LoadReal, load_real_);
-DEFINE_CMD1(LoadType, load_type_);
 DEFINE_CMD1(LoadEnum, load_enum_);
 DEFINE_CMD1(LoadFlags, load_flags_);
 DEFINE_CMD1(LoadAddr, load_addr_);
@@ -827,11 +827,11 @@ Val Load(const Val &v) {
   auto *ptee = v.type->as<type::Pointer>().pointee;
   return IR::Val::Reg(
       [&](Register r) {
-        if (ptee == type::Bool) { return LoadBool(r, ptee); }
-        if (ptee == type::Char) { return LoadChar(r, ptee); }
-        if (ptee == type::Int) { return LoadInt(r, ptee); }
-        if (ptee == type::Real) { return LoadReal(r, ptee); }
-        if (ptee == type::Type_) { return LoadType(r, ptee); }
+        if (ptee == type::Bool) { return LoadBool(r); }
+        if (ptee == type::Char) { return LoadChar(r); }
+        if (ptee == type::Int) { return LoadInt(r); }
+        if (ptee == type::Real) { return LoadReal(r); }
+        if (ptee == type::Type_) { return LoadType(r); }
         if (ptee->is<type::Enum>()) { return LoadEnum(r, ptee); }
         if (ptee->is<type::Flags>()) { return LoadFlags(r, ptee); }
         if (ptee->is<type::Pointer>()) { return LoadAddr(r, ptee); }
@@ -861,7 +861,14 @@ Val Index(const Val &v1, const Val &v2) {
   // figuring out how to do this better.
   return PtrIncr(
       Cast(type::Ptr(array_type->data_type),
-           array_type->fixed_length ? v1 : Load(ArrayData(v1)), nullptr),
+           array_type->fixed_length
+               ? v1
+               : Load(IR::Val::Reg(
+                     ArrayData(std::get<Register>(v1.value), v1.type),
+                     type::Ptr(v1.type->as<type::Pointer>()
+                                   .pointee->as<type::Array>()
+                                   .data_type))),
+           nullptr),
       v2);
 }
 

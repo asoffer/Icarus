@@ -18,10 +18,15 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
     auto arg                = destroy_func_->Argument(0);
 
     if (data_type->needs_destroy()) {
-      IR::Val ptr = IR::Index(arg, IR::Val::Int(0));
-      auto end_ptr =
-          IR::PtrIncr(ptr, fixed_length ? IR::Val::Int(static_cast<i32>(len))
-                                        : IR::Load(IR::ArrayLength(arg)));
+      IR::Val ptr  = IR::Index(arg, IR::Val::Int(0));
+      auto end_ptr = IR::PtrIncr(ptr, IR::ValFrom([&]() -> IR::RegisterOr<i32> {
+                                   if (fixed_length) {
+                                     return static_cast<i32>(len);
+                                   } else {
+                                     return IR::LoadInt(IR::ArrayLength(
+                                         std::get<IR::Register>(arg.value)));
+                                   }
+                                 }()));
 
       CreateLoop({ptr},
                  [&](const base::vector<IR::Val> &phis) {
@@ -34,7 +39,11 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
                  });
     }
 
-    if (!fixed_length) { IR::Free(IR::Load(IR::ArrayData(arg))); }
+    if (!fixed_length) {
+      IR::Free(IR::Load(IR::Val::Reg(
+          IR::ArrayData(std::get<IR::Register>(arg.value), arg.type),
+          type::Ptr(data_type))));
+    }
     IR::ReturnJump();
   }
 }

@@ -114,7 +114,9 @@ base::vector<IR::Val> AST::Access::EmitLVal(Context *ctx) {
     if (arr_type.fixed_length) {
       return {IR::Val::Int(arr_type.len)};
     } else {
-      return {IR::Load(IR::ArrayLength(std::move(val)))};
+      return {IR::Val::Reg(
+          IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(val.value))),
+          type::Int)};
     }
   }
 

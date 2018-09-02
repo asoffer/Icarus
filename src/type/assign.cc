@@ -28,9 +28,14 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
       IR::BasicBlock::Current = fn->entry();
       auto val                = fn->Argument(0);
       auto var                = fn->Argument(1);
-      IR::Val len             = from_array_type->fixed_length
-                        ? IR::Val::Int(static_cast<i32>(from_array_type->len))
-                        : IR::Load(IR::ArrayLength(val));
+
+      auto len = IR::ValFrom([&]() -> IR::RegisterOr<i32> {
+        if (from_array_type->fixed_length) {
+          return static_cast<i32>(from_array_type->len);
+        }
+        return IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(val.value)));
+      }());
+
       IR::Val from_ptr     = IR::Index(val, IR::Val::Int(0));
       IR::Val from_end_ptr = IR::PtrIncr(from_ptr, len);
 
@@ -44,8 +49,13 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
         auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
             len, data_type);
         auto ptr = IR::Malloc(data_type, to_bytes);
-        IR::Store(len, IR::ArrayLength(var));
-        IR::Store(ptr, IR::ArrayData(var));
+        IR::Store(len, IR::Val::Reg(
+                           IR::ArrayLength(std::get<IR::Register>(var.value)),
+                           type::Ptr(type::Int)));
+        IR::Store(
+            ptr, IR::Val::Reg(
+                     IR::ArrayData(std::get<IR::Register>(var.value), var.type),
+                     type::Ptr(data_type)));
       }
 
       IR::Val to_ptr = IR::Index(var, IR::Val::Int(0));

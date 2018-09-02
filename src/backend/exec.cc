@@ -133,9 +133,11 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::Not: save(!resolve<bool>(cmd.not_.reg_)); break;
     case IR::Op::NegInt: save(-resolve<i32>(cmd.neg_int_.reg_)); break;
     case IR::Op::NegReal: save(-resolve<double>(cmd.neg_real_.reg_)); break;
-    case IR::Op::ArrayLength: save(resolve(cmd.array_data_.arg_)); break;
+    case IR::Op::ArrayLength:
+      save(resolve<IR::Addr>(cmd.array_data_.arg_));
+      break;
     case IR::Op::ArrayData: {
-      auto addr = resolve(cmd.array_data_.arg_);
+      auto addr = resolve<IR::Addr>(cmd.array_data_.arg_);
       switch (addr.kind) {
         case IR::Addr::Kind::Null: UNREACHABLE();
         case IR::Addr::Kind::Stack:

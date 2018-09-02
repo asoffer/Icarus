@@ -78,16 +78,18 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
 
       IR::Print(IR::Val::Char('['));
 
-      auto length_var =
-          fixed_length ? IR::Val::Int(static_cast<i32>(len))
-                       : IR::Load(IR::ArrayLength(repr_func_->Argument(0)));
+      auto length_var = [&]() -> IR::RegisterOr<i32> {
+        if (fixed_length) { return static_cast<i32>(len); }
+        return IR::LoadInt(IR::ArrayLength(
+            std::get<IR::Register>(repr_func_->Argument(0).value)));
+      }();
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
-          exit_block, IR::Eq(length_var, IR::Val::Int(0)));
+          exit_block, IR::ValFrom(IR::EqInt(length_var, 0)));
       auto ptr = IR::Index(repr_func_->Argument(0), IR::Val::Int(0));
 
       data_type->EmitRepr(PtrCallFix(ptr), ctx);
 
-      CreateLoop({ptr, IR::Sub(length_var, IR::Val::Int(1))},
+      CreateLoop({ptr, IR::ValFrom(IR::SubInt(length_var, 1))},
                  [&](const base::vector<IR::Val> &phis) {
                    return IR::Eq(phis[1], IR::Val::Int(0));
                  },

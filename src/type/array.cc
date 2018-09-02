@@ -32,15 +32,19 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
 
-      auto lhs_len = lhs_type->fixed_length
-                         ? IR::Val::Int(static_cast<i32>(lhs_type->len))
-                         : IR::Load(IR::ArrayLength(fn->Argument(0)));
+      auto lhs_len = [&]() -> IR::RegisterOr<i32> {
+        if (lhs_type->fixed_length) { return static_cast<i32>(lhs_type->len); }
+        return IR::LoadInt(
+            IR::ArrayLength(std::get<IR::Register>(fn->Argument(0).value)));
+      }();
 
-      auto rhs_len = rhs_type->fixed_length
-                         ? IR::Val::Int(static_cast<i32>(rhs_type->len))
-                         : IR::Load(IR::ArrayLength(fn->Argument(1)));
+      auto rhs_len = [&]() -> IR::RegisterOr<i32> {
+        if (rhs_type->fixed_length) { return static_cast<i32>(rhs_type->len); }
+        return IR::LoadInt(
+            IR::ArrayLength(std::get<IR::Register>(fn->Argument(1).value)));
+      }();
 
-      auto len_cmp = IR::Eq(lhs_len, rhs_len);
+      auto len_cmp = IR::ValFrom(IR::EqInt(lhs_len, rhs_len));
 
       auto equal_len_block = IR::Func::Current->AddBlock();
       auto true_block      = IR::Func::Current->AddBlock();
@@ -62,7 +66,7 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
       IR::BasicBlock::Current = equal_len_block;
       auto lhs_start          = IR::Index(fn->Argument(0), IR::Val::Int(0));
       auto rhs_start          = IR::Index(fn->Argument(1), IR::Val::Int(0));
-      auto lhs_end            = IR::PtrIncr(lhs_start, lhs_len);
+      auto lhs_end            = IR::PtrIncr(lhs_start, IR::ValFrom(lhs_len));
       IR::UncondJump(phi_block);
 
       IR::BasicBlock::Current = phi_block;
@@ -103,18 +107,17 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
   return {result};
 }
 
-static IR::Val ComputeMin(IR::Val x, IR::Val y) {
-  ASSERT(x.type == y.type);
+static IR::Val ComputeMin(IR::RegisterOr<i32> x, IR::RegisterOr<i32> y) {
   auto entry_block = IR::BasicBlock::Current;
   auto x_block     = IR::Func::Current->AddBlock();
   auto land_block  = IR::Func::Current->AddBlock();
-  IR::CondJump(IR::Lt(x, y), x_block, land_block);
+  IR::CondJump(IR::ValFrom(IR::LtInt(x, y)), x_block, land_block);
   IR::BasicBlock::Current = x_block;
   IR::UncondJump(land_block);
 
   IR::BasicBlock::Current = land_block;
-  return IR::MakePhi(IR::Phi(x.type),
-                     {{x_block, std::move(x)}, {entry_block, std::move(y)}});
+  return IR::MakePhi(IR::Phi(type::Int), {{x_block, IR::ValFrom(x)},
+                                          {entry_block, IR::ValFrom(y)}});
 }
 
 // TODO pass funcs by ref
@@ -184,7 +187,9 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
                       Architecture::InterprettingMachine().bytes(data_type))));
 
       IR::Val from_ptr = IR::Index(arg, IR::Val::Int(0));
-      IR::Val min_val  = ComputeMin(IR::Load(IR::ArrayLength(arg)), size_arg);
+      IR::Val min_val  = ComputeMin(
+          IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(arg.value))),
+          size_arg.reg_or<i32>());
       IR::Val end_ptr  = IR::PtrIncr(from_ptr, min_val);
 
       auto finish_phis = CreateLoop(
@@ -200,8 +205,13 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
           });
 
       if (data_type->needs_destroy()) {
-        auto end_old_buf =
-            IR::PtrIncr(IR::ArrayData(arg), IR::ArrayLength(arg));
+        auto end_old_buf = IR::PtrIncr(
+            IR::Val::Reg(
+                IR::ArrayData(std::get<IR::Register>(arg.value), arg.type),
+                type::Ptr(data_type)),
+            IR::Val::Reg(
+                IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(arg.value))),
+                type::Int));
         CreateLoop({end_ptr},
                    [&](const base::vector<IR::Val> &phis) {
                      return IR::Eq(phis[0], end_old_buf);
@@ -224,8 +234,12 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
             return base::vector<IR::Val>{IR::PtrIncr(phis[0], IR::Val::Int(1))};
           });
 
-      auto old_buf = IR::ArrayData(arg);
-      IR::Store(size_arg, IR::ArrayLength(arg));
+      auto old_buf = IR::Val::Reg(
+          IR::ArrayData(std::get<IR::Register>(arg.value), arg.type),
+          type::Ptr(data_type));
+      IR::Store(size_arg,
+                IR::Val::Reg(IR::ArrayLength(std::get<IR::Register>(arg.value)),
+                             type::Ptr(type::Int)));
       IR::Free(IR::Load(old_buf));
       IR::Store(new_arr, old_buf);
       IR::ReturnJump();
