@@ -556,12 +556,15 @@ RegisterOr<bool> NeType(RegisterOr<type::Type const *> v1,
                         RegisterOr<type::Type const *> v2);
 RegisterOr<bool> NeAddr(RegisterOr<IR::Addr> v1, RegisterOr<IR::Addr> v2);
 RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2);
-Val XorFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
-             RegisterOr<FlagsVal> const &rhs);
-Val OrFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
-            RegisterOr<FlagsVal> const &rhs);
-Val AndFlags(type::Flags const *type, RegisterOr<FlagsVal> const &lhs,
-             RegisterOr<FlagsVal> const &rhs);
+RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
+                              RegisterOr<FlagsVal> const &lhs,
+                              RegisterOr<FlagsVal> const &rhs);
+RegisterOr<FlagsVal> OrFlags(type::Flags const *type,
+                             RegisterOr<FlagsVal> const &lhs,
+                             RegisterOr<FlagsVal> const &rhs);
+RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
+                              RegisterOr<FlagsVal> const &lhs,
+                              RegisterOr<FlagsVal> const &rhs);
 
 Register CreateStruct();
 void CreateStructField(Register struct_type,
@@ -629,7 +632,6 @@ Val Ge(const Val &v1, const Val &v2);
 Val Gt(const Val &v1, const Val &v2);
 Val Eq(const Val &v1, const Val &v2);
 Val Ne(const Val &v1, const Val &v2);
-Val Xor(const Val &v1, const Val &v2);
 Val Index(const Val &v1, const Val &v2);
 Register Alloca(const type::Type *t);
 Val Print(const Val& v);

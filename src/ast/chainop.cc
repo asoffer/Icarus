@@ -1,5 +1,7 @@
 #include "ast/chainop.h"
 
+#include <numeric>
+
 #include "ast/fn_args.h"
 #include "ast/verify_macros.h"
 #include "base/check.h"
@@ -269,28 +271,44 @@ void ChainOp::ExtractReturns(base::vector<const Expression *> *rets) const {
 
 base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
   if (ops[0] == Language::Operator::Xor) {
-    auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(ctx)[0];
-    while (++iter != exprs.end()) {
-      val = IR::Xor(std::move(val), (*iter)->EmitIR(ctx)[0]);
+    if (type == type::Bool) {
+      return {IR::ValFrom(std::accumulate(
+          exprs.begin(), exprs.end(), IR::RegisterOr<bool>(false),
+          [&](IR::RegisterOr<bool> acc, auto &expr) {
+            return IR::XorBool(acc,
+                               expr->EmitIR(ctx)[0].template reg_or<bool>());
+          }))};
+    } else if (type->is<type::Flags>()) {
+      return {IR::ValFrom(
+          std::accumulate(
+              exprs.begin(), exprs.end(),
+              IR::RegisterOr<IR::FlagsVal>(IR::FlagsVal{0}),
+              [&](IR::RegisterOr<IR::FlagsVal> acc, auto &expr) {
+                return IR::XorFlags(
+                    &type->as<type::Flags>(), acc,
+                    expr->EmitIR(ctx)[0].template reg_or<IR::FlagsVal>());
+              }),
+          &type->as<type::Flags>())};
+    } else {
+      UNREACHABLE();
     }
-    return {val};
+
   } else if (ops[0] == Language::Operator::Or && type->is<type::Flags>()) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(ctx)[0];
+    auto val  = (*iter)->EmitIR(ctx)[0].reg_or<IR::FlagsVal>();
     while (++iter != exprs.end()) {
-      val = IR::OrFlags(&type->as<type::Flags>(), val.reg_or<IR::FlagsVal>(),
+      val = IR::OrFlags(&type->as<type::Flags>(), val,
                         (*iter)->EmitIR(ctx)[0].reg_or<IR::FlagsVal>());
     }
-    return {val};
+    return {IR::ValFrom(val, &type->as<type::Flags>())};
   } else if (ops[0] == Language::Operator::And && type->is<type::Flags>()) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(ctx)[0];
+    auto val  = (*iter)->EmitIR(ctx)[0].reg_or<IR::FlagsVal>();
     while (++iter != exprs.end()) {
-      val = IR::AndFlags(&type->as<type::Flags>(), val.reg_or<IR::FlagsVal>(),
+      val = IR::AndFlags(&type->as<type::Flags>(), val,
                          (*iter)->EmitIR(ctx)[0].reg_or<IR::FlagsVal>());
     }
-    return {val};
+    return {IR::ValFrom(val, &type->as<type::Flags>())};
   } else if (ops[0] == Language::Operator::Or && type == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?

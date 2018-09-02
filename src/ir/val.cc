@@ -215,6 +215,10 @@ bool operator<(const ::IR::Val &lhs, const ::IR::Val &rhs) {
       },
       lhs.value);
 }
+
+Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t) {
+  return r.is_reg_ ? Val::Reg(r.reg_, t) : Val::Flags(t, r.val_);
+}
 }  // namespace IR
 
 IR::Val PtrCallFix(const IR::Val& v) {

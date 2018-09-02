@@ -443,10 +443,10 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::OrEq: {
       if (type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::Store(IR::OrFlags(&type->as<type::Flags>(),
-                              IR::Load(lhs_lval).reg_or<IR::FlagsVal>(),
-                              rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
-                  std::get<IR::Register>(lhs_lval.value));
+        IR::StoreFlags(IR::OrFlags(&type->as<type::Flags>(),
+                                   IR::Load(lhs_lval).reg_or<IR::FlagsVal>(),
+                                   rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
+                       std::get<IR::Register>(lhs_lval.value));
         return {};
       }
       auto land_block = IR::Func::Current->AddBlock();
@@ -470,10 +470,10 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::AndEq: {
       if (type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::Store(IR::AndFlags(&type->as<type::Flags>(),
-                               IR::Load(lhs_lval).reg_or<IR::FlagsVal>(),
-                               rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
-                  std::get<IR::Register>(lhs_lval.value));
+        IR::StoreFlags(IR::AndFlags(&type->as<type::Flags>(),
+                                    IR::Load(lhs_lval).reg_or<IR::FlagsVal>(),
+                                    rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
+                       std::get<IR::Register>(lhs_lval.value));
         return {};
       }
 
@@ -503,13 +503,28 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
               std::get<IR::Register>(lhs_lval.value));                         \
     return {};                                                                 \
   } break
-      CASE_ASSIGN_EQ(Xor);
       CASE_ASSIGN_EQ(Add);
       CASE_ASSIGN_EQ(Sub);
       CASE_ASSIGN_EQ(Mul);
       CASE_ASSIGN_EQ(Div);
       CASE_ASSIGN_EQ(Mod);
 #undef CASE_ASSIGN_EQ
+    case Language::Operator::XorEq: {
+      if (lhs->type == type::Bool) {
+        auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+        auto rhs_ir   = rhs->EmitIR(ctx)[0].reg_or<bool>();
+        IR::StoreBool(IR::XorBool(IR::LoadBool(lhs_lval), rhs_ir), lhs_lval);
+      } else if (lhs->type->is<type::Flags>()) {
+        auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+        auto rhs_ir   = rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>();
+        IR::StoreFlags(IR::XorFlags(&lhs->type->as<type::Flags>(),
+                                    IR::LoadBool(lhs_lval), rhs_ir),
+                       lhs_lval);
+      } else {
+        UNREACHABLE(lhs->type);
+      }
+      return {};
+    } break;
     case Language::Operator::Index: return {PtrCallFix(EmitLVal(ctx)[0])};
     default: UNREACHABLE(*this);
   }
