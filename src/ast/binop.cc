@@ -515,11 +515,13 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
         auto rhs_ir   = rhs->EmitIR(ctx)[0].reg_or<bool>();
         IR::StoreBool(IR::XorBool(IR::LoadBool(lhs_lval), rhs_ir), lhs_lval);
       } else if (lhs->type->is<type::Flags>()) {
+        auto *flags_type = &lhs->type->as<type::Flags>();
         auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
         auto rhs_ir   = rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>();
-        IR::StoreFlags(IR::XorFlags(&lhs->type->as<type::Flags>(),
-                                    IR::LoadBool(lhs_lval), rhs_ir),
-                       lhs_lval);
+        IR::StoreFlags(
+            IR::XorFlags(flags_type, IR::LoadFlags(lhs_lval, flags_type),
+                         rhs_ir),
+            lhs_lval);
       } else {
         UNREACHABLE(lhs->type);
       }
