@@ -49,13 +49,9 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
         auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
             len, data_type);
         auto ptr = IR::Malloc(data_type, to_bytes);
-        IR::Store(len, IR::Val::Reg(
-                           IR::ArrayLength(std::get<IR::Register>(var.value)),
-                           type::Ptr(type::Int)));
-        IR::Store(
-            ptr, IR::Val::Reg(
-                     IR::ArrayData(std::get<IR::Register>(var.value), var.type),
-                     type::Ptr(data_type)));
+        IR::Store(len, IR::ArrayLength(std::get<IR::Register>(var.value)));
+        IR::Store(ptr,
+                  IR::ArrayData(std::get<IR::Register>(var.value), var.type));
       }
 
       IR::Val to_ptr = IR::Index(var, IR::Val::Int(0));
@@ -84,25 +80,25 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
 void Pointer::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                          Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, to);
+  IR::Store(from, std::get<IR::Register>(to.value));
 }
 
 void Scope::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                        Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, to);
+  IR::Store(from, std::get<IR::Register>(to.value));
 }
 
 void Enum::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                       Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, to);
+  IR::Store(from, std::get<IR::Register>(to.value));
 }
 
 void Flags::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                        Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, to);
+  IR::Store(from, std::get<IR::Register>(to.value));
 }
 
 void Variant::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
@@ -117,7 +113,8 @@ void Variant::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
       auto next_block         = IR::Func::Current->AddBlock();
       IR::BasicBlock::Current = IR::EarlyExitOn<false>(
           next_block, IR::Eq(actual_type, IR::Val::Type(v)));
-      IR::Store(IR::Val::Type(v), IR::VariantType(to));
+      IR::Store(IR::Val::Type(v),
+                std::get<IR::Register>(IR::VariantType(to).value));
       v->EmitAssign(v, PtrCallFix(IR::VariantValue(v, from)),
                     IR::VariantValue(v, to), ctx);
       IR::UncondJump(landing);
@@ -126,7 +123,8 @@ void Variant::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
     IR::UncondJump(landing);
     IR::BasicBlock::Current = landing;
   } else {
-    IR::Store(IR::Val::Type(from_type), IR::VariantType(to));
+    IR::Store(IR::Val::Type(from_type),
+              std::get<IR::Register>(IR::VariantType(to).value));
     // TODO Find the best match amongst the variants available.
     const Type *best_match = from_type;
     best_match->EmitAssign(from_type, from, IR::VariantValue(best_match, to),
@@ -169,12 +167,12 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
 void Function::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                           Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, to);
+  IR::Store(from, std::get<IR::Register>(to.value));
 }
 void Primitive::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                            Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, to);
+  IR::Store(from, std::get<IR::Register>(to.value));
 }
 
 void CharBuffer::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,

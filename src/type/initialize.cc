@@ -11,16 +11,12 @@ struct Expression;
 }  // namespace AST
 
 namespace type {
-void Array::EmitInit(IR::Val id_val, Context *ctx) const {
+void Array::EmitInit(IR::Register id_reg, Context *ctx) const {
   if (!fixed_length) {
-    IR::Store(
-        IR::Val::Int(0),
-        IR::Val::Reg(IR::ArrayLength(std::get<IR::Register>(id_val.value)),
-                     type::Ptr(type::Int)));
-    IR::Store(IR::Malloc(data_type, IR::Val::Int(0)),
-              IR::Val::Reg(IR::ArrayData(std::get<IR::Register>(id_val.value),
-                                         id_val.type),
-                           type::Ptr(data_type)));
+    IR::StoreInt(0, IR::ArrayLength(id_reg));
+    IR::StoreAddr(
+        std::get<IR::Register>(IR::Malloc(data_type, IR::Val::Int(0)).value),
+        IR::ArrayData(id_reg, this));
   }
 
   std::unique_lock lock(mtx_);
@@ -42,7 +38,8 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
                    return IR::Eq(phis[0], end_ptr);
                  },
                  [&](const base::vector<IR::Val> &phis) {
-                   data_type->EmitInit(phis[0], ctx);
+                   data_type->EmitInit(std::get<IR::Register>(phis[0].value),
+                                       ctx);
                    return base::vector<IR::Val>{
                        IR::PtrIncr(phis[0], IR::Val::Int(1))};
                  });
@@ -52,55 +49,55 @@ void Array::EmitInit(IR::Val id_val, Context *ctx) const {
   }
 
   IR::LongArgs call_args;
-  call_args.append(id_val);
+  call_args.append(id_reg);
   IR::Call(IR::Val::Func(init_func_), std::move(call_args));
 }
 
-void Primitive::EmitInit(IR::Val id_val, Context *ctx) const {
+void Primitive::EmitInit(IR::Register id_reg, Context *ctx) const {
   switch (type_) {
     case PrimType::Err: UNREACHABLE(this, ": Err");
-    case PrimType::Type: IR::Store(IR::Val::Type(Void()), id_val); break;
+    case PrimType::Type: IR::StoreType(type::Void(), id_reg); break;
     case PrimType::NullPtr: UNREACHABLE();
     case PrimType::EmptyArray: UNREACHABLE();
     case PrimType::Code: {
       AST::CodeBlock block;
       block.type     = Code;
       block.content_ = AST::Statements{};
-      return IR::Store(IR::Val::CodeBlock(std::move(block)), id_val);
+      NOT_YET();
     }
-    case PrimType::Bool: IR::Store(IR::Val::Bool(false), id_val); break;
-    case PrimType::Char: IR::Store(IR::Val::Char('\0'), id_val); break;
-    case PrimType::Int: IR::Store(IR::Val::Int(0l), id_val); break;
-    case PrimType::Real: IR::Store(IR::Val::Real(0.0), id_val); break;
+    case PrimType::Bool: IR::StoreBool(false, id_reg); break;
+    case PrimType::Char: IR::StoreChar('\0', id_reg); break;
+    case PrimType::Int: IR::StoreInt(0, id_reg); break;
+    case PrimType::Real: IR::StoreReal(0.0, id_reg); break;
     default: UNREACHABLE();
   }
 }
 
-void Enum::EmitInit(IR::Val id_val, Context *ctx) const {
-  IR::Store(IR::Val::Enum(this, 0), id_val);
+void Enum::EmitInit(IR::Register id_reg, Context *ctx) const {
+  IR::StoreEnum(IR::EnumVal{0}, id_reg);
 }
 
-void Flags::EmitInit(IR::Val id_val, Context *ctx) const {
-  IR::Store(IR::Val::Flags(this, IR::FlagsVal{0}), id_val);
+void Flags::EmitInit(IR::Register id_reg, Context *ctx) const {
+  IR::StoreFlags(IR::FlagsVal{0}, id_reg);
 }
 
-void Variant::EmitInit(IR::Val, Context *ctx) const {
+void Variant::EmitInit(IR::Register, Context *ctx) const {
   UNREACHABLE("Variants must be initialized.");
 }
 
-void Pointer::EmitInit(IR::Val id_val, Context *ctx) const {
-  IR::Store(IR::Val::Null(pointee), id_val);
+void Pointer::EmitInit(IR::Register id_reg, Context *ctx) const {
+  IR::StoreAddr(IR::Addr::Null(), id_reg);
 }
 
-void Function::EmitInit(IR::Val id_val, Context *ctx) const { UNREACHABLE(); }
+void Function::EmitInit(IR::Register id_reg, Context *ctx) const { UNREACHABLE(); }
 
-void Scope::EmitInit(IR::Val, Context *ctx) const { UNREACHABLE(); }
+void Scope::EmitInit(IR::Register, Context *ctx) const { UNREACHABLE(); }
 
-void CharBuffer::EmitInit(IR::Val id_val, Context *ctx) const {
-  IR::Store(IR::Val::CharBuf(""), id_val);
+void CharBuffer::EmitInit(IR::Register id_reg, Context *ctx) const {
+  NOT_YET();
 }
 
-void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
+void Struct::EmitInit(IR::Register id_reg, Context *ctx) const {
   std::unique_lock lock(mtx_);
   if (!init_func_) {
     init_func_ = ctx->mod_->AddFunc(
@@ -120,7 +117,10 @@ void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
               /*  from_val = */ fields_[i].init_val,
               /*    to_var = */ IR::Field(init_func_->Argument(0), i), ctx);
         } else {
-          fields_[i].type->EmitInit(IR::Field(init_func_->Argument(0), i), ctx);
+          fields_[i].type->EmitInit(
+              std::get<IR::Register>(
+                  IR::Field(init_func_->Argument(0), i).value),
+              ctx);
         }
       }
 
@@ -129,7 +129,7 @@ void Struct::EmitInit(IR::Val id_val, Context *ctx) const {
   }
 
   IR::LongArgs call_args;
-  call_args.append(id_val);
+  call_args.append(id_reg);
   IR::Call(IR::Val::Func(init_func_), std::move(call_args));
 }
 } // namespace type

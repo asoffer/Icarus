@@ -222,7 +222,8 @@ static void EmitOneCallDispatch(
       }
 
       ASSERT(expected_ret_type, Is<type::Variant>());
-      IR::Store(IR::Val::Type(ret_type), IR::VariantType(*out_reg));
+      IR::Store(IR::Val::Type(ret_type),
+                std::get<IR::Register>(IR::VariantType(*out_reg).value));
       auto vval = IR::VariantValue(ret_type, *out_reg);
       outs.AppendLoc(std::get<IR::Register>(vval.value));
     };

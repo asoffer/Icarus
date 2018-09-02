@@ -31,6 +31,10 @@ std::string LongArgs::to_string() const {
   return ss.str();
 }
 
+void LongArgs::append(Register reg) {
+  args_.append(reg);
+  is_reg_.push_back(true);
+}
 void LongArgs::append(const IR::Val &val) {
   // TODO deal with alignment?
   std::visit(
@@ -673,52 +677,44 @@ Val Mod(const Val &v1, const Val &v2) {
   UNREACHABLE();
 }
 
-void StoreBool(const Val &val, const Val &loc) {
-  auto &cmd = MakeCmd(nullptr, Op::StoreBool);
-  cmd.store_bool_ =
-      Cmd::StoreBool::Make(std::get<Register>(loc.value), val.reg_or<bool>());
+void StoreBool(RegisterOr<bool> val, Register loc) {
+  auto &cmd       = MakeCmd(nullptr, Op::StoreBool);
+  cmd.store_bool_ = Cmd::StoreBool::Make(loc, val);
 }
 
-void StoreChar(const Val &val, const Val &loc) {
-  auto &cmd = MakeCmd(nullptr, Op::StoreChar);
-  cmd.store_char_ =
-      Cmd::StoreChar::Make(std::get<Register>(loc.value), val.reg_or<char>());
+void StoreChar(RegisterOr<char> val, Register loc) {
+  auto &cmd       = MakeCmd(nullptr, Op::StoreChar);
+  cmd.store_char_ = Cmd::StoreChar::Make(loc, val);
 }
 
-void StoreInt(const Val &val, const Val &loc) {
-  auto &cmd = MakeCmd(nullptr, Op::StoreInt);
-  cmd.store_int_ =
-      Cmd::StoreInt::Make(std::get<Register>(loc.value), val.reg_or<i32>());
+void StoreInt(RegisterOr<i32> val, Register loc) {
+  auto &cmd      = MakeCmd(nullptr, Op::StoreInt);
+  cmd.store_int_ = Cmd::StoreInt::Make(loc, val);
 }
 
-void StoreReal(const Val &val, const Val &loc) {
-  auto &cmd = MakeCmd(nullptr, Op::StoreReal);
-  cmd.store_real_ =
-      Cmd::StoreReal::Make(std::get<Register>(loc.value), val.reg_or<double>());
+void StoreReal(RegisterOr<double> val, Register loc) {
+  auto &cmd       = MakeCmd(nullptr, Op::StoreReal);
+  cmd.store_real_ = Cmd::StoreReal::Make(loc, val);
 }
 
-void StoreType(const Val &val, const Val &loc) {
+void StoreType(RegisterOr<type::Type const *> val, Register loc) {
   auto &cmd       = MakeCmd(nullptr, Op::StoreType);
-  cmd.store_type_ = Cmd::StoreType::Make(std::get<Register>(loc.value),
-                                         val.reg_or<type::Type const *>());
+  cmd.store_type_ = Cmd::StoreType::Make(loc, val);
 }
 
-void StoreEnum(const Val &val, const Val &loc) {
+void StoreEnum(RegisterOr<EnumVal> val, Register loc) {
   auto &cmd       = MakeCmd(nullptr, Op::StoreEnum);
-  cmd.store_enum_ = Cmd::StoreEnum::Make(std::get<Register>(loc.value),
-                                         val.reg_or<EnumVal>());
+  cmd.store_enum_ = Cmd::StoreEnum::Make(loc, val);
 }
 
-void StoreFlags(const Val &val, const Val &loc) {
+void StoreFlags(RegisterOr<FlagsVal> val, Register loc) {
   auto &cmd        = MakeCmd(nullptr, Op::StoreFlags);
-  cmd.store_flags_ = Cmd::StoreFlags::Make(std::get<Register>(loc.value),
-                                           val.reg_or<FlagsVal>());
+  cmd.store_flags_ = Cmd::StoreFlags::Make(loc, val);
 }
 
-void StoreAddr(const Val &val, const Val &loc) {
+void StoreAddr(RegisterOr<IR::Addr> val, Register loc) {
   auto &cmd       = MakeCmd(nullptr, Op::StoreAddr);
-  cmd.store_addr_ = Cmd::StoreAddr::Make(std::get<Register>(loc.value),
-                                         val.reg_or<IR::Addr>());
+  cmd.store_addr_ = Cmd::StoreAddr::Make(loc, val);
 }
 
 void SetReturnBool(size_t n, const Val &v2) {
@@ -809,18 +805,24 @@ void SetReturnBlock(size_t n, const Val &v2) {
       Cmd::SetReturnBlock::Make(n, v2.reg_or<BlockSequence>());
 }
 
-void Store(const Val &val, const Val &loc) {
-  ASSERT(loc.type, Is<type::Pointer>());
-  auto *ptee = loc.type->as<type::Pointer>().pointee;
-  if (ptee == type::Bool) { return StoreBool(val, loc); }
-  if (ptee == type::Char) { return StoreChar(val, loc); }
-  if (ptee == type::Int) { return StoreInt(val, loc); }
-  if (ptee == type::Real) { return StoreReal(val, loc); }
-  if (ptee == type::Type_) { return StoreType(val, loc); }
-  if (ptee->is<type::Enum>()) { return StoreEnum(val, loc); }
-  if (ptee->is<type::Flags>()) { return StoreFlags(val, loc); }
-  if (ptee->is<type::Pointer>()) { return StoreAddr(val, loc); }
-  UNREACHABLE(loc.type);
+void Store(const Val &val, Register loc) {
+  if (val.type == type::Bool) { return StoreBool(val.reg_or<bool>(), loc); }
+  if (val.type == type::Char) { return StoreChar(val.reg_or<char>(), loc); }
+  if (val.type == type::Int) { return StoreInt(val.reg_or<i32>(), loc); }
+  if (val.type == type::Real) { return StoreReal(val.reg_or<double>(), loc); }
+  if (val.type == type::Type_) {
+    return StoreType(val.reg_or<type::Type const *>(), loc);
+  }
+  if (val.type->is<type::Enum>()) {
+    return StoreEnum(val.reg_or<EnumVal>(), loc);
+  }
+  if (val.type->is<type::Flags>()) {
+    return StoreFlags(val.reg_or<FlagsVal>(), loc);
+  }
+  if (val.type->is<type::Pointer>()) {
+    return StoreAddr(val.reg_or<IR::Addr>(), loc);
+  }
+  UNREACHABLE(val.type);
 }
 
 Val Load(const Val &v) {

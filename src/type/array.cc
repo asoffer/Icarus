@@ -230,18 +230,18 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
             return IR::Eq(phis[0], end_to_ptr);
           },
           [&](const base::vector<IR::Val> &phis) {
-            data_type->EmitInit(phis[0], ctx);
+            data_type->EmitInit(std::get<IR::Register>(phis[0].value), ctx);
             return base::vector<IR::Val>{IR::PtrIncr(phis[0], IR::Val::Int(1))};
           });
 
       auto old_buf = IR::Val::Reg(
           IR::ArrayData(std::get<IR::Register>(arg.value), arg.type),
           type::Ptr(data_type));
-      IR::Store(size_arg,
-                IR::Val::Reg(IR::ArrayLength(std::get<IR::Register>(arg.value)),
-                             type::Ptr(type::Int)));
+      IR::StoreInt(size_arg.reg_or<i32>(),
+                   IR::ArrayLength(std::get<IR::Register>(arg.value)));
       IR::Free(IR::Load(old_buf));
-      IR::Store(new_arr, old_buf);
+      IR::StoreAddr(std::get<IR::Addr>(new_arr.value),
+                    IR::ArrayData(std::get<IR::Register>(arg.value), arg.type));
       IR::ReturnJump();
     }
   }

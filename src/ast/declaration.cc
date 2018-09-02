@@ -436,7 +436,7 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
                            ctx);
       }
     } else {
-      type->EmitInit(addr, ctx);
+      type->EmitInit(std::get<IR::Register>(addr.value), ctx);
     }
   }
 

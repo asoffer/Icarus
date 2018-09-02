@@ -30,7 +30,7 @@ class LLVMContext;
   virtual size_t string_size() const ENDING;                                   \
   virtual void EmitAssign(const Type *from_type, IR::Val from, IR::Val to,     \
                           Context *ctx) const ENDING;                          \
-  virtual void EmitInit(IR::Val id_val, Context *ctx) const ENDING;            \
+  virtual void EmitInit(IR::Register reg, Context *ctx) const ENDING;          \
   virtual void EmitDestroy(IR::Val id_val, Context *ctx) const ENDING;         \
   virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val,           \
                                   Context *ctx) const ENDING;                  \

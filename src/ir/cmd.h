@@ -13,6 +13,7 @@ struct Tuple;
 namespace IR {
 struct LongArgs {
   void append(const IR::Val &val);
+  void append(IR::Register reg);
   std::string to_string() const;
 
   type::Function const *type_ = nullptr;
@@ -513,14 +514,14 @@ Register LoadType(Register r);
 Register LoadEnum(Register r, type::Type const *t);
 Register LoadFlags(Register r, type::Type const *t);
 Register LoadAddr(Register r, type::Type const *t);
-void StoreBool(const Val &v, const Val &addr);
-void StoreChar(const Val &v, const Val &addr);
-void StoreInt(const Val &v, const Val &addr);
-void StoreReal(const Val &v, const Val &addr);
-void StoreType(const Val &v, const Val &addr);
-void StoreEnum(const Val &v, const Val &addr);
-void StoreFlags(const Val &v, const Val &addr);
-void StoreAddr(const Val &v, const Val &addr);
+void StoreBool(RegisterOr<bool> val, Register loc);
+void StoreChar(RegisterOr<char> val, Register loc);
+void StoreInt(RegisterOr<i32> val, Register loc);
+void StoreReal(RegisterOr<double> val, Register loc);
+void StoreType(RegisterOr<type::Type const *> val, Register loc);
+void StoreEnum(RegisterOr<EnumVal> val, Register loc);
+void StoreFlags(RegisterOr<FlagsVal> val, Register loc);
+void StoreAddr(RegisterOr<IR::Addr> val, Register loc);
 RegisterOr<i32> AddInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<double> AddReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<i32> SubInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
@@ -632,7 +633,7 @@ Val Index(const Val &v1, const Val &v2);
 Register Alloca(const type::Type *t);
 Val Print(const Val& v);
 Val Cast(const type::Type *to, const Val& v, Context* ctx);
-void Store(const Val &val, const Val &loc);
+void Store(const Val &val, Register loc);
 
 void SetReturn(size_t n, Val const &v2);
 

@@ -446,7 +446,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
         IR::Store(IR::OrFlags(&type->as<type::Flags>(),
                               IR::Load(lhs_lval).reg_or<IR::FlagsVal>(),
                               rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
-                  lhs_lval);
+                  std::get<IR::Register>(lhs_lval.value));
         return {};
       }
       auto land_block = IR::Func::Current->AddBlock();
@@ -473,7 +473,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
         IR::Store(IR::AndFlags(&type->as<type::Flags>(),
                                IR::Load(lhs_lval).reg_or<IR::FlagsVal>(),
                                rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
-                  lhs_lval);
+                  std::get<IR::Register>(lhs_lval.value));
         return {};
       }
 
@@ -499,7 +499,8 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
   case Language::Operator::op_name##Eq: {                                      \
     auto lhs_lval = lhs->EmitLVal(ctx)[0];                                     \
     auto rhs_ir   = rhs->EmitIR(ctx)[0];                                       \
-    IR::Store(IR::op_name(PtrCallFix(lhs_lval), rhs_ir), lhs_lval);            \
+    IR::Store(IR::op_name(PtrCallFix(lhs_lval), rhs_ir),                       \
+              std::get<IR::Register>(lhs_lval.value));                         \
     return {};                                                                 \
   } break
       CASE_ASSIGN_EQ(Xor);

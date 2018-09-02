@@ -106,6 +106,13 @@ inline bool operator<(CmdIndex lhs, CmdIndex rhs) {
 
 struct Addr {
   enum class Kind : u8 { Null, Stack, Heap } kind;
+
+  constexpr static Addr Null() {
+    Addr result{};
+    result.kind = Kind::Null;
+    return result;
+  }
+
   union {
     u64 as_stack;
     void *as_heap;
