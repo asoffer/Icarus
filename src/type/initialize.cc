@@ -27,19 +27,24 @@ void Array::EmitInit(IR::Register id_reg, Context *ctx) const {
     CURRENT_FUNC(init_func_) {
       IR::BasicBlock::Current = init_func_->entry();
 
-      auto ptr        = IR::Index(init_func_->Argument(0), IR::Val::Int(0));
-      auto length_var = IR::Val::Int(static_cast<i32>(len));
-      auto end_ptr    = IR::PtrIncr(ptr, length_var);
+      auto ptr =
+          IR::Index(type::Ptr(this),
+                    std::get<IR::Register>(init_func_->Argument(0).value), 0);
+      auto end_ptr =
+          IR::PtrIncr(ptr, static_cast<i32>(len), type::Ptr(data_type));
 
-      CreateLoop({ptr},
+      CreateLoop({IR::Val::Reg(ptr, type::Ptr(data_type))},
                  [&](const base::vector<IR::Val> &phis) {
-                   return IR::Eq(phis[0], end_ptr);
+                   return IR::ValFrom(IR::EqAddr(
+                       std::get<IR::Register>(phis[0].value), end_ptr));
                  },
                  [&](const base::vector<IR::Val> &phis) {
                    data_type->EmitInit(std::get<IR::Register>(phis[0].value),
                                        ctx);
-                   return base::vector<IR::Val>{
-                       IR::PtrIncr(phis[0], IR::Val::Int(1))};
+                   return base::vector<IR::Val>{IR::Val::Reg(
+                       IR::PtrIncr(std::get<IR::Register>(phis[0].value), 1,
+                                   phis[0].type),
+                       phis[0].type)};
                  });
 
       IR::ReturnJump();

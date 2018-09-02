@@ -97,12 +97,15 @@ ArrayLiteral *ArrayLiteral::Clone() const {
 
 base::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
-  auto array_val  = IR::Val::Reg(IR::Alloca(type), type::Ptr(type));
+  auto alloc = IR::Alloca(type);
+  auto array_val  = IR::Val::Reg(alloc, type::Ptr(type));
   auto *data_type = type->as<type::Array>().data_type;
   for (size_t i = 0; i < elems_.size(); ++i) {
-    type::EmitMoveInit(data_type, data_type, elems_[i]->EmitIR(ctx)[0],
-                       IR::Index(array_val, IR::Val::Int(static_cast<i32>(i))),
-                       ctx);
+    type::EmitMoveInit(
+        data_type, data_type, elems_[i]->EmitIR(ctx)[0],
+        IR::Val::Reg(IR::Index(type::Ptr(type), alloc, static_cast<i32>(i)),
+                     type::Ptr(type->as<type::Array>().data_type)),
+        ctx);
   }
   return {array_val};
 }

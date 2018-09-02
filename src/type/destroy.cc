@@ -18,24 +18,30 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
     auto arg                = destroy_func_->Argument(0);
 
     if (data_type->needs_destroy()) {
-      IR::Val ptr  = IR::Index(arg, IR::Val::Int(0));
-      auto end_ptr = IR::PtrIncr(ptr, IR::ValFrom([&]() -> IR::RegisterOr<i32> {
+      IR::Register ptr =
+          IR::Index(arg.type, std::get<IR::Register>(arg.value), 0);
+      auto end_ptr = IR::PtrIncr(ptr,
+                                 [&]() -> IR::RegisterOr<i32> {
                                    if (fixed_length) {
                                      return static_cast<i32>(len);
                                    } else {
                                      return IR::LoadInt(IR::ArrayLength(
                                          std::get<IR::Register>(arg.value)));
                                    }
-                                 }()));
+                                 }(),
+                                 type::Ptr(data_type));
 
-      CreateLoop({ptr},
+      CreateLoop({IR::Val::Reg(ptr, type::Ptr(data_type))},
                  [&](const base::vector<IR::Val> &phis) {
-                   return IR::Eq(phis[0], end_ptr);
+                   return IR::ValFrom(IR::EqAddr(
+                       std::get<IR::Register>(phis[0].value), end_ptr));
                  },
                  [&](const base::vector<IR::Val> &phis) {
                    data_type->EmitDestroy(phis[0], ctx);
-                   return base::vector<IR::Val>{
-                       IR::PtrIncr(phis[0], IR::Val::Int(1))};
+                   return base::vector<IR::Val>{IR::Val::Reg(
+                       IR::PtrIncr(std::get<IR::Register>(phis[0].value), 1,
+                                   phis[0].type),
+                       phis[0].type)};
                  });
     }
 

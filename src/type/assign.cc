@@ -36,8 +36,11 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
         return IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(val.value)));
       }());
 
-      IR::Val from_ptr     = IR::Index(val, IR::Val::Int(0));
-      IR::Val from_end_ptr = IR::PtrIncr(from_ptr, len);
+      auto *from_ptr_type = type::Ptr(from_type->as<type::Array>().data_type);
+      IR::Register from_ptr =
+          IR::Index(from_type, std::get<IR::Register>(val.value), 0);
+      IR::Register from_end_ptr =
+          IR::PtrIncr(from_ptr, len.reg_or<i32>(), from_ptr_type);
 
       if (!fixed_length) {
         ComputeDestroyWithoutLock(ctx);
@@ -54,18 +57,28 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
             ptr, IR::ArrayData(std::get<IR::Register>(var.value), var.type));
       }
 
-      IR::Val to_ptr = IR::Index(var, IR::Val::Int(0));
+      auto *to_ptr_type = type::Ptr(data_type);
+      IR::Register to_ptr =
+          IR::Index(type::Ptr(this), std::get<IR::Register>(var.value), 0);
 
-      CreateLoop({from_ptr, to_ptr},
+      CreateLoop({IR::Val::Reg(from_ptr, from_ptr_type),
+                  IR::Val::Reg(to_ptr, to_ptr_type)},
                  [&](const base::vector<IR::Val> &phis) {
-                   return IR::Eq(phis[0], from_end_ptr);
+                   return IR::ValFrom(IR::EqAddr(
+                       std::get<IR::Register>(phis[0].value), from_end_ptr));
                  },
                  [&](const base::vector<IR::Val> &phis) {
                    EmitCopyInit(from_array_type->data_type, data_type,
                                 PtrCallFix(phis[0]), phis[1], ctx);
                    return base::vector<IR::Val>{
-                       IR::PtrIncr(phis[0], IR::Val::Int(1ul)),
-                       IR::PtrIncr(phis[1], IR::Val::Int(1ul))};
+                       IR::Val::Reg(
+                           IR::PtrIncr(std::get<IR::Register>(phis[0].value), 1,
+                                       phis[0].type),
+                           phis[0].type),
+                       IR::Val::Reg(
+                           IR::PtrIncr(std::get<IR::Register>(phis[1].value), 1,
+                                       phis[1].type),
+                           phis[1].type)};
                  });
       IR::ReturnJump();
     }

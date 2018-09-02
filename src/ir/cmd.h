@@ -226,6 +226,8 @@ struct Cmd {
   CMD(VariantType) { Register reg_; };
   CMD(VariantValue) { Register reg_; };
   CMD(PtrIncr) {
+    // TODO maybe store the type here rather than on the cmd because most cmds
+    // don't need it.
     Register ptr_;
     RegisterOr<i32> incr_;
   };
@@ -554,6 +556,7 @@ RegisterOr<bool> EqInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<bool> EqReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<bool> EqType(RegisterOr<type::Type const *> v1,
                         RegisterOr<type::Type const *> v2);
+// TODO can be just a register?
 RegisterOr<bool> EqAddr(RegisterOr<IR::Addr> v1, RegisterOr<IR::Addr> v2);
 RegisterOr<bool> NeChar(RegisterOr<char> v1, RegisterOr<char> v2);
 RegisterOr<bool> NeInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
@@ -586,7 +589,8 @@ RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r);
 Val Array(const Val &v1, const Val &v2);
 Register VariantType(Register r);
 Register VariantValue(const type::Type *t, Register r);
-Val PtrIncr(const Val &v1, const Val &v2);
+// Type repreesents the type of `ptr`
+Register PtrIncr(Register ptr, RegisterOr<i32> inc, type::Type const *t);
 Val Field(const Val &v, size_t n);
 void PrintBool(RegisterOr<bool> r);
 void PrintChar(RegisterOr<char> r);
@@ -638,7 +642,7 @@ Val Ge(const Val &v1, const Val &v2);
 Val Gt(const Val &v1, const Val &v2);
 Val Eq(const Val &v1, const Val &v2);
 Val Ne(const Val &v1, const Val &v2);
-Val Index(const Val &v1, const Val &v2);
+Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset);
 Register Alloca(const type::Type *t);
 void Print(const Val& v);
 Val Cast(const type::Type *to, const Val& v, Context* ctx);

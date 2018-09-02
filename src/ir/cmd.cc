@@ -568,17 +568,11 @@ void SetReturn(size_t n, Val const &v2) {
   }
   UNREACHABLE(v2.type->to_string());
 }
-
-Val PtrIncr(const Val &v1, const Val &v2) {
-  ASSERT(v1.type, Is<type::Pointer>());
-  ASSERT(v2.type == type::Int);
-  i32 const *n = std::get_if<i32>(&v2.value);
-  if (n && *n == 0) { return v1; }
-  auto &cmd     = MakeCmd(v1.type, Op::PtrIncr);
-  cmd.ptr_incr_ = Cmd::PtrIncr::Make(
-      std::get<Register>(v1.value),
-      n ? RegisterOr<i32>(*n) : RegisterOr<i32>(std::get<i32>(v2.value)));
-  return cmd.reg();
+Register PtrIncr(Register ptr, RegisterOr<i32> inc, type::Type const *t) {
+  if (!inc.is_reg_ && inc.val_ == 0) { return ptr; }
+  auto &cmd     = MakeCmd(t, Op::PtrIncr);
+  cmd.ptr_incr_ = Cmd::PtrIncr::Make(ptr, inc);
+  return cmd.result;
 }
 
 RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
@@ -851,23 +845,15 @@ void Print(const Val &v) {
   }
 }
 
-Val Index(const Val &v1, const Val &v2) {
-  ASSERT(v1.type, Is<type::Pointer>());
-  ASSERT(v2.type == type::Int);
-  auto *array_type = &v1.type->as<type::Pointer>().pointee->as<type::Array>();
+Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset) {
+  auto *array_type = &t->as<type::Pointer>().pointee->as<type::Array>();
   // TODO this works but generates worse IR (both here and in llvm). It's worth
   // figuring out how to do this better.
   return PtrIncr(
-      Cast(type::Ptr(array_type->data_type),
-           array_type->fixed_length
-               ? v1
-               : Load(IR::Val::Reg(
-                     ArrayData(std::get<Register>(v1.value), v1.type),
-                     type::Ptr(v1.type->as<type::Pointer>()
-                                   .pointee->as<type::Array>()
-                                   .data_type))),
-           nullptr),
-      v2);
+      array_type->fixed_length
+          ? array_ptr
+          : Load(ArrayData(array_ptr, t), type::Ptr(array_type->data_type)),
+      offset, type::Ptr(array_type->data_type));
 }
 
 Val Lt(const Val &v1, const Val &v2) {

@@ -85,23 +85,29 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       }();
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           exit_block, IR::ValFrom(IR::EqInt(length_var, 0)));
-      auto ptr = IR::Index(repr_func_->Argument(0), IR::Val::Int(0));
+      auto ptr =
+          IR::Index(type::Ptr(this),
+                    std::get<IR::Register>(repr_func_->Argument(0).value), 0);
 
-      data_type->EmitRepr(PtrCallFix(ptr), ctx);
+      data_type->EmitRepr(
+          PtrCallFix(IR::Val::Reg(ptr, type::Ptr(this->data_type))), ctx);
 
-      CreateLoop({ptr, IR::ValFrom(IR::SubInt(length_var, 1))},
+      CreateLoop({IR::Val::Reg(ptr, type::Ptr(this->data_type)),
+                  IR::ValFrom(IR::SubInt(length_var, 1))},
                  [&](const base::vector<IR::Val> &phis) {
                    return IR::Eq(phis[1], IR::Val::Int(0));
                  },
                  [&](const base::vector<IR::Val> &phis) {
-                   auto elem_ptr = IR::PtrIncr(phis[0], IR::Val::Int(1));
+                   auto elem_ptr =
+                       IR::PtrIncr(std::get<IR::Register>(phis[0].value), 1, phis[0].type);
 
                    IR::PrintChar(',');
                    IR::PrintChar(' ');
-                   data_type->EmitRepr(PtrCallFix(elem_ptr), ctx);
+                   data_type->EmitRepr(PtrCallFix(IR::Val::Reg(elem_ptr, phis[0].type)), ctx);
 
                    return base::vector<IR::Val>{
-                       elem_ptr, IR::Sub(phis[1], IR::Val::Int(1))};
+                       IR::Val::Reg(elem_ptr, phis[0].type),
+                       IR::ValFrom(IR::SubInt(phis[1].reg_or<i32>(), 1))};
                  });
       IR::UncondJump(exit_block);
 

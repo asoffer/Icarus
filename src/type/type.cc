@@ -42,53 +42,63 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
       auto body_block         = IR::Func::Current->AddBlock();
       auto exit_block         = IR::Func::Current->AddBlock();
 
-      auto from_len =
-          from_type->fixed_length
-              ? IR::Val::Int(static_cast<i32>(from_type->len))
-              : IR::Load(IR::Val::Reg(
-                    IR::ArrayLength(std::get<IR::Register>(from_arg.value)),
-                    type::Ptr(type::Int)));
+      auto from_len = [&]() -> IR::RegisterOr<i32> {
+        if (from_type->fixed_length) {
+          return static_cast<i32>(from_type->len);
+        }
+        return IR::LoadInt(
+            IR::ArrayLength(std::get<IR::Register>(from_arg.value)));
+      }();
 
       if (!to_type->fixed_length) {
         // TODO Architecture dependence?
         auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
-            from_len, from_type->data_type);
+            IR::ValFrom(from_len), from_type->data_type);
 
-        IR::Store(from_len,
+        IR::StoreInt(from_len,
                   IR::ArrayLength(std::get<IR::Register>(to_arg.value)));
         IR::StoreAddr(
-            IR::Malloc(from_type->data_type, to_bytes.reg_or<i32>()),
+            IR::Malloc(from_type->data_type, to_bytes.template reg_or<i32>()),
             IR::ArrayData(std::get<IR::Register>(to_arg.value), to_arg.type));
       }
 
-      auto from_start = IR::Index(from_arg, IR::Val::Int(0));
-      auto to_start   = IR::Index(to_arg, IR::Val::Int(0));
-      auto from_end   = IR::PtrIncr(from_start, from_len);
+      auto from_start =
+          IR::Index(from_arg.type, std::get<IR::Register>(from_arg.value), 0);
+      auto to_start =
+          IR::Index(to_arg.type, std::get<IR::Register>(to_arg.value), 0);
+      auto from_end =
+          IR::PtrIncr(from_start, from_len, type::Ptr(from_type->data_type));
       IR::UncondJump(phi_block);
 
       IR::BasicBlock::Current = phi_block;
-      auto from_phi_index     = IR::Phi(Ptr(from_type->data_type));
-      auto to_phi_index       = IR::Phi(Ptr(from_type->data_type));
+      auto from_phi_index     = IR::Phi(type::Ptr(from_type->data_type));
+      auto to_phi_index       = IR::Phi(type::Ptr(from_type->data_type));
       auto from_phi_reg =
           IR::Val::Reg(IR::Func::Current->Command(from_phi_index).result,
-                       Ptr(from_type->data_type));
+                       type::Ptr(from_type->data_type));
       auto to_phi_reg =
           IR::Val::Reg(IR::Func::Current->Command(to_phi_index).result,
-                       Ptr(to_type->data_type));
+                       type::Ptr(to_type->data_type));
 
-      IR::CondJump(IR::Ne(from_phi_reg, from_end), body_block, exit_block);
+      IR::CondJump(IR::ValFrom(IR::NeAddr(
+                       std::get<IR::Register>(from_phi_reg.value), from_end)),
+                   body_block, exit_block);
 
       IR::BasicBlock::Current = body_block;
       InitFn(from_type->data_type, to_type->data_type, PtrCallFix(from_phi_reg),
              to_phi_reg, ctx);
-      auto from_incr = IR::PtrIncr(from_phi_reg, IR::Val::Int(1));
-      auto to_incr   = IR::PtrIncr(to_phi_reg, IR::Val::Int(1));
+      auto from_incr = IR::PtrIncr(std::get<IR::Register>(from_phi_reg.value),
+                                   1, from_phi_reg.type);
+      auto to_incr   = IR::PtrIncr(std::get<IR::Register>(to_phi_reg.value), 1,
+                                 to_phi_reg.type);
       IR::UncondJump(phi_block);
 
       IR::MakePhi(from_phi_index,
-                  {{fn->entry(), from_start}, {body_block, from_incr}});
+                  {{fn->entry(), IR::Val::Reg(from_start, from_phi_reg.type)},
+                   {body_block, IR::Val::Reg(from_incr, from_phi_reg.type)}});
       IR::MakePhi(to_phi_index,
-                  {{fn->entry(), to_start}, {body_block, to_incr}});
+                  {{fn->entry(), IR::Val::Reg(to_start, to_phi_reg.type)},
+                   {body_block, IR::Val::Reg(to_incr, to_phi_reg.type)}});
 
       IR::BasicBlock::Current = exit_block;
       IR::ReturnJump();

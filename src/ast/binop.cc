@@ -537,7 +537,11 @@ base::vector<IR::Val> AST::Binop::EmitLVal(Context *ctx) {
     case Language::Operator::As: NOT_YET();
     case Language::Operator::Index:
       if (lhs->type->is<type::Array>()) {
-        return {IR::Index(lhs->EmitLVal(ctx)[0], rhs->EmitIR(ctx)[0])};
+        return {IR::Val::Reg(
+            IR::Index(type::Ptr(this->type),
+                      std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value),
+                      rhs->EmitIR(ctx)[0].reg_or<i32>()),
+            type::Ptr(this->type->as<type::Array>().data_type))};
       }
       [[fallthrough]];
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
