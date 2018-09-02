@@ -170,26 +170,30 @@ DEFINE_CMD1(LoadFlags, load_flags_);
 DEFINE_CMD1(LoadAddr, load_addr_);
 #undef DEFINE_CMD1
 
-#define DEFINE_CMD1(Name, name, arg_type, RetType)                             \
-  Val Name(Val const &v) {                                                     \
-    auto &cmd = MakeCmd(RetType, Op::Name);                                    \
-    auto *x   = std::get_if<arg_type>(&v.value);                               \
-    cmd.name  = Cmd::Name::Make(                                               \
-        x ? RegisterOr<arg_type>(*x)                                          \
-          : RegisterOr<arg_type>(std::get<Register>(v.value)));               \
-    return cmd.reg();                                                          \
+#define DEFINE_CMD1(Name, name, arg_type)                                      \
+  void Name(RegisterOr<arg_type> r) {                                          \
+    auto &cmd = MakeCmd(nullptr, Op::Name);                                    \
+    cmd.name  = Cmd::Name::Make(r);                                            \
   }                                                                            \
   struct AllowSemicolon
-DEFINE_CMD1(PrintBool, print_bool_, bool, type::Bool);
-DEFINE_CMD1(PrintChar, print_char_, char, type::Char);
-DEFINE_CMD1(PrintInt, print_int_, i32, type::Int);
-DEFINE_CMD1(PrintReal, print_real_, double, type::Real);
-DEFINE_CMD1(PrintType, print_type_, type::Type const *, type::Type_);
-DEFINE_CMD1(PrintEnum, print_enum_, EnumVal, v.type);
-DEFINE_CMD1(PrintFlags, print_flags_, FlagsVal, v.type);
-DEFINE_CMD1(PrintAddr, print_addr_, IR::Addr, v.type);
-DEFINE_CMD1(PrintCharBuffer, print_char_buffer_, std::string_view, v.type);
+DEFINE_CMD1(PrintBool, print_bool_, bool);
+DEFINE_CMD1(PrintChar, print_char_, char);
+DEFINE_CMD1(PrintInt, print_int_, i32);
+DEFINE_CMD1(PrintReal, print_real_, double);
+DEFINE_CMD1(PrintType, print_type_, type::Type const *);
+DEFINE_CMD1(PrintAddr, print_addr_, IR::Addr);
+DEFINE_CMD1(PrintCharBuffer, print_char_buffer_, std::string_view);
 #undef DEFINE_CMD1
+
+void PrintEnum(RegisterOr<EnumVal> r, type::Enum const *t) {
+  auto &cmd = MakeCmd(nullptr, Op::PrintEnum);
+  cmd.print_enum_= Cmd::PrintEnum::Make(r, t);
+}
+
+void PrintFlags(RegisterOr<FlagsVal> r, type::Flags const *t) {
+  auto &cmd = MakeCmd(nullptr, Op::PrintFlags);
+  cmd.print_flags_= Cmd::PrintFlags::Make(r, t);
+}
 
 Val AddCharBuf(const Val &v1, const Val &v2) {
   auto *s1 = std::get_if<std::string_view>(&v1.value);
@@ -515,16 +519,16 @@ Register FinalizeStruct(Register r) {
   return cmd.result;
 }
 
-Val VariantType(const Val &v) {
+Register VariantType(Register r) {
   auto &cmd         = MakeCmd(Ptr(type::Type_), Op::VariantType);
-  cmd.variant_type_ = Cmd::VariantType::Make(std::get<Register>(v.value));
-  return cmd.reg();
+  cmd.variant_type_ = Cmd::VariantType::Make(r);
+  return cmd.result;
 }
 
-Val VariantValue(type::Type const *t, const Val &v) {
+Register VariantValue(type::Type const *t, Register r) {
   auto &cmd         = MakeCmd(type::Ptr(t), Op::VariantValue);
-  cmd.variant_type_ = Cmd::VariantType::Make(std::get<Register>(v.value));
-  return cmd.reg();
+  cmd.variant_type_ = Cmd::VariantType::Make(r);
+  return cmd.result;
 }
 
 void CreateStructField(Register struct_type,
@@ -827,17 +831,28 @@ Register Load(Register r, type::Type const *t) {
   UNREACHABLE(t);
 }
 
-Val Print(const Val &v) {
-  if (v.type == type::Bool) { return PrintBool(v); }
-  if (v.type == type::Char) { return PrintChar(v); }
-  if (v.type == type::Int) { return PrintInt(v); }
-  if (v.type == type::Real) { return PrintReal(v); }
-  if (v.type == type::Type_) { return PrintType(v); }
-  if (v.type->is<type::Enum>()) { return PrintEnum(v); }
-  if (v.type->is<type::Flags>()) { return PrintFlags(v); }
-  if (v.type->is<type::Pointer>()) { return PrintAddr(v); }
-  if (v.type->is<type::CharBuffer>()) { return PrintCharBuffer(v); }
-  UNREACHABLE(v.type->to_string());
+void Print(const Val &v) {
+  if (v.type == type::Bool) {
+    PrintBool(v.reg_or<bool>());
+  } else if (v.type == type::Char) {
+    PrintChar(v.reg_or<char>());
+  } else if (v.type == type::Int) {
+    PrintInt(v.reg_or<i32>());
+  } else if (v.type == type::Real) {
+    PrintReal(v.reg_or<double>());
+  } else if (v.type == type::Type_) {
+    PrintType(v.reg_or<type::Type const *>());
+  } else if (v.type->is<type::Enum>()) {
+    PrintEnum(v.reg_or<EnumVal>(), &v.type->as<type::Enum>());
+  } else if (v.type->is<type::Flags>()) {
+    PrintFlags(v.reg_or<FlagsVal>(), &v.type->as<type::Flags>());
+  } else if (v.type->is<type::Pointer>()) {
+    PrintAddr(v.reg_or<IR::Addr>());
+  } else if (v.type->is<type::CharBuffer>()) {
+    PrintCharBuffer(v.reg_or<std::string_view>());
+  } else {
+    UNREACHABLE(v.type->to_string());
+  }
 }
 
 Val Index(const Val &v1, const Val &v2) {

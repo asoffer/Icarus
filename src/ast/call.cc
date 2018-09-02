@@ -95,9 +95,8 @@ IR::Val AlignFunc() {
   }();
   return IR::Val::Func(bytes_func_);
 }
-static IR::Val EmitVariantMatch(const IR::Val &needle,
-                                const type::Type *haystack) {
-  auto runtime_type = IR::Load(IR::VariantType(needle));
+static IR::Val EmitVariantMatch(IR::Register needle, const type::Type *haystack) {
+  auto runtime_type = IR::LoadType(IR::VariantType(needle));
 
   if (haystack->is<type::Variant>()) {
     // TODO I'm fairly confident this will work, but it's also overkill because
@@ -110,7 +109,7 @@ static IR::Val EmitVariantMatch(const IR::Val &needle,
       phi_map[IR::BasicBlock::Current] = IR::Val::Bool(true);
 
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
-          landing, IR::Eq(IR::Val::Type(v), runtime_type));
+          landing, IR::ValFrom(IR::EqType(v, runtime_type)));
     }
 
     phi_map[IR::BasicBlock::Current] = IR::Val::Bool(false);
@@ -122,7 +121,7 @@ static IR::Val EmitVariantMatch(const IR::Val &needle,
 
   } else {
     // TODO actually just implicitly convertible to haystack
-    return IR::Eq(IR::Val::Type(haystack), runtime_type);
+    return IR::ValFrom(IR::EqType(haystack, runtime_type));
   }
 }
 
@@ -136,7 +135,8 @@ static IR::BlockIndex CallLookupTest(
     if (!args.pos_[i].first->type->is<type::Variant>()) { continue; }
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
         next_binding,
-        EmitVariantMatch(args.pos_.at(i).second, call_arg_type.pos_[i]));
+        EmitVariantMatch(std::get<IR::Register>(args.pos_.at(i).second.value),
+                         call_arg_type.pos_[i]));
   }
 
   for (const auto & [ name, expr_and_val ] : args.named_) {
@@ -145,7 +145,9 @@ static IR::BlockIndex CallLookupTest(
     if (!expr_and_val.first->type->is<type::Variant>()) { continue; }
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
         next_binding,
-        EmitVariantMatch(args.named_.at(iter->first).second, iter->second));
+        EmitVariantMatch(
+            std::get<IR::Register>(args.named_.at(iter->first).second.value),
+            iter->second));
   }
 
   return next_binding;
@@ -222,10 +224,10 @@ static void EmitOneCallDispatch(
       }
 
       ASSERT(expected_ret_type, Is<type::Variant>());
-      IR::Store(IR::Val::Type(ret_type),
-                std::get<IR::Register>(IR::VariantType(*out_reg).value));
-      auto vval = IR::VariantValue(ret_type, *out_reg);
-      outs.AppendLoc(std::get<IR::Register>(vval.value));
+      IR::StoreType(ret_type,
+                    IR::VariantType(std::get<IR::Register>(out_reg->value)));
+      outs.AppendLoc(
+          IR::VariantValue(ret_type, std::get<IR::Register>(out_reg->value)));
     };
 
     if (ret_type->is<type::Tuple>()) {

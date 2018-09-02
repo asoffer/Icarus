@@ -254,7 +254,10 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       if (lvalue == Assign::Const) {
         NOT_YET();
       } else {
-        return {IR::Load(IR::VariantType(operand->EmitIR(ctx)[0]))};
+        return {IR::Val::Reg(
+            IR::LoadType(IR::VariantType(
+                std::get<IR::Register>(operand->EmitIR(ctx)[0].value))),
+            type::Type_)};
       }
     case Language::Operator::And: return {operand->EmitLVal(ctx)[0]};
     case Language::Operator::Eval: {

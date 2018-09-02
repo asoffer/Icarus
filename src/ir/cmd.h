@@ -127,8 +127,14 @@ struct Cmd {
   CMD(PrintInt) { RegisterOr<i32> arg_; };
   CMD(PrintReal) { RegisterOr<double> arg_; };
   CMD(PrintType) { RegisterOr<type::Type const *> arg_; };
-  CMD(PrintEnum) { RegisterOr<EnumVal> arg_; };
-  CMD(PrintFlags) { RegisterOr<FlagsVal> arg_; };
+  CMD(PrintEnum) {
+    RegisterOr<EnumVal> arg_;
+    type::Enum const *enum_type_;
+  };
+  CMD(PrintFlags) {
+    RegisterOr<FlagsVal> arg_;
+    type::Flags const *flags_type_;
+  };
   CMD(PrintAddr) { RegisterOr<IR::Addr> arg_; };
   CMD(PrintCharBuffer) { RegisterOr<std::string_view> arg_; };
 
@@ -578,19 +584,19 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
                                      RegisterOr<type::Type const *> out);
 Val Ptr(const Val &v);
 Val Array(const Val &v1, const Val &v2);
-Val VariantType(const Val &v);
-Val VariantValue(const type::Type *t, const Val&);
+Register VariantType(Register r);
+Register VariantValue(const type::Type *t, Register r);
 Val PtrIncr(const Val &v1, const Val &v2);
 Val Field(const Val &v, size_t n);
-Val PrintBool(const Val &v);
-Val PrintChar(const Val &v);
-Val PrintInt(const Val &v);
-Val PrintReal(const Val &v);
-Val PrintType(const Val &v);
-Val PrintEnum(const Val &v);
-Val PrintFlags(const Val &v);
-Val PrintAddr(const Val &v);
-Val PrintCharBuffer(const Val &v);
+void PrintBool(RegisterOr<bool> r);
+void PrintChar(RegisterOr<char> r);
+void PrintInt(RegisterOr<i32> r);
+void PrintReal(RegisterOr<double> r);
+void PrintType(RegisterOr<type::Type const *> r);
+void PrintEnum(RegisterOr<EnumVal> r, type::Enum const *);
+void PrintFlags(RegisterOr<FlagsVal> r, type::Flags const *);
+void PrintAddr(RegisterOr<IR::Addr> r);
+void PrintCharBuffer(RegisterOr<std::string_view> r);
 void Call(const Val &fn, LongArgs long_args);
 void Call(const Val &fn, LongArgs long_args, IR::OutParams outs);
 Register CreateTuple();
@@ -634,7 +640,7 @@ Val Eq(const Val &v1, const Val &v2);
 Val Ne(const Val &v1, const Val &v2);
 Val Index(const Val &v1, const Val &v2);
 Register Alloca(const type::Type *t);
-Val Print(const Val& v);
+void Print(const Val& v);
 Val Cast(const type::Type *to, const Val& v, Context* ctx);
 void Store(const Val &val, Register loc);
 

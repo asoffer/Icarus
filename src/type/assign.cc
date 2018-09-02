@@ -107,28 +107,36 @@ void Variant::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
     // TODO find the best match for variant types. For instance, we allow
     // assignments like:
     // [3; int] | [4; bool] -> [--; int] | [--; bool]
-    auto actual_type = IR::Load(IR::VariantType(from));
+    auto actual_type =
+        IR::LoadType(IR::VariantType(std::get<IR::Register>(from.value)));
     auto landing     = IR::Func::Current->AddBlock();
     for (const Type *v : from_type->as<Variant>().variants_) {
       auto next_block         = IR::Func::Current->AddBlock();
       IR::BasicBlock::Current = IR::EarlyExitOn<false>(
-          next_block, IR::Eq(actual_type, IR::Val::Type(v)));
-      IR::Store(IR::Val::Type(v),
-                std::get<IR::Register>(IR::VariantType(to).value));
-      v->EmitAssign(v, PtrCallFix(IR::VariantValue(v, from)),
-                    IR::VariantValue(v, to), ctx);
+          next_block, IR::ValFrom(IR::EqType(actual_type, v)));
+      IR::StoreType(v, IR::VariantType(std::get<IR::Register>(to.value)));
+      v->EmitAssign(
+          v,
+          PtrCallFix(IR::Val::Reg(
+              IR::VariantValue(v, std::get<IR::Register>(from.value)), v)),
+          IR::Val::Reg(IR::VariantValue(v, std::get<IR::Register>(to.value)),
+                       v),
+          ctx);
       IR::UncondJump(landing);
       IR::BasicBlock::Current = next_block;
     }
     IR::UncondJump(landing);
     IR::BasicBlock::Current = landing;
   } else {
-    IR::Store(IR::Val::Type(from_type),
-              std::get<IR::Register>(IR::VariantType(to).value));
+    IR::StoreType(from_type, IR::VariantType(std::get<IR::Register>(to.value)));
     // TODO Find the best match amongst the variants available.
     const Type *best_match = from_type;
-    best_match->EmitAssign(from_type, from, IR::VariantValue(best_match, to),
-                           ctx);
+    best_match->EmitAssign(
+        from_type, from,
+        IR::Val::Reg(
+            IR::VariantValue(best_match, std::get<IR::Register>(to.value)),
+            best_match),
+        ctx);
   }
 }
 
