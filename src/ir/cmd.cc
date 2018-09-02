@@ -91,17 +91,15 @@ RegisterOr<bool> Not(RegisterOr<bool> r) {
 
 // TODO do you really want to support this? How can array allocation be
 // customized?
-Val Malloc(const type::Type *t, const Val &v) {
+Register Malloc(const type::Type *t, RegisterOr<i32> r) {
   auto &cmd         = MakeCmd(type::Ptr(t), Op::Malloc);
-  Register const *r = std::get_if<Register>(&v.value);
-  cmd.malloc_       = Cmd::Malloc::Make(r ? RegisterOr<i32>(*r)
-                                    : RegisterOr<i32>(std::get<i32>(v.value)));
-  return cmd.reg();
+  cmd.malloc_       = Cmd::Malloc::Make(r);
+  return cmd.result;
 }
 
-void Free(const Val &v) {
-  auto &cmd = MakeCmd(v.type, Op::Free);
-  cmd.free_ = Cmd::Free::Make(std::get<Register>(v.value));
+void Free(Register r) {
+  auto &cmd = MakeCmd(nullptr, Op::Free);
+  cmd.free_ = Cmd::Free::Make(r);
 }
 
 RegisterOr<i32> NegInt(RegisterOr<i32> r) {
@@ -825,21 +823,22 @@ void Store(const Val &val, Register loc) {
   UNREACHABLE(val.type);
 }
 
-Val Load(const Val &v) {
-  auto *ptee = v.type->as<type::Pointer>().pointee;
+Val Load(Val const &v) {
   return IR::Val::Reg(
-      [&](Register r) {
-        if (ptee == type::Bool) { return LoadBool(r); }
-        if (ptee == type::Char) { return LoadChar(r); }
-        if (ptee == type::Int) { return LoadInt(r); }
-        if (ptee == type::Real) { return LoadReal(r); }
-        if (ptee == type::Type_) { return LoadType(r); }
-        if (ptee->is<type::Enum>()) { return LoadEnum(r, ptee); }
-        if (ptee->is<type::Flags>()) { return LoadFlags(r, ptee); }
-        if (ptee->is<type::Pointer>()) { return LoadAddr(r, ptee); }
-        UNREACHABLE(v.type->to_string());
-      }(std::get<Register>(v.value)),
-      ptee);
+      Load(std::get<Register>(v.value), v.type->as<type::Pointer>().pointee),
+      v.type->as<type::Pointer>().pointee);
+}
+
+Register Load(Register r, type::Type const *t) {
+  if (t == type::Bool) { return LoadBool(r); }
+  if (t == type::Char) { return LoadChar(r); }
+  if (t == type::Int) { return LoadInt(r); }
+  if (t == type::Real) { return LoadReal(r); }
+  if (t == type::Type_) { return LoadType(r); }
+  if (t->is<type::Enum>()) { return LoadEnum(r, t); }
+  if (t->is<type::Flags>()) { return LoadFlags(r, t); }
+  if (t->is<type::Pointer>()) { return LoadAddr(r, t); }
+  UNREACHABLE(t);
 }
 
 Val Print(const Val &v) {

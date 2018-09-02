@@ -56,8 +56,8 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
 
         IR::Store(from_len,
                   IR::ArrayLength(std::get<IR::Register>(to_arg.value)));
-        IR::Store(
-            IR::Malloc(from_type->data_type, to_bytes),
+        IR::StoreAddr(
+            IR::Malloc(from_type->data_type, to_bytes.reg_or<i32>()),
             IR::ArrayData(std::get<IR::Register>(to_arg.value), to_arg.type));
       }
 
@@ -191,8 +191,8 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
       // TODO if this move is to be destructive, this assignment to array
       // length is not necessary.
       IR::StoreInt(0, IR::ArrayLength(std::get<IR::Register>(from_val.value)));
-      IR::Store(
-          IR::Malloc(from_array_type->data_type, IR::Val::Int(0)),
+      IR::StoreAddr(
+          IR::Malloc(from_array_type->data_type, 0),
           IR::ArrayData(std::get<IR::Register>(from_val.value), from_val.type));
     }
   } else if (to_type->is<Struct>()) {

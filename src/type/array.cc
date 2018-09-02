@@ -180,11 +180,11 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
       IR::BasicBlock::Current = resize_func_->entry();
       auto arg                = resize_func_->Argument(0);
       auto size_arg           = resize_func_->Argument(1);
-      auto new_arr            = IR::Malloc(
+
+      auto new_arr = IR::Malloc(
           data_type,
-          IR::Mul(size_arg,
-                  IR::Val::Int(
-                      Architecture::InterprettingMachine().bytes(data_type))));
+          IR::MulInt(std::get<IR::Register>(size_arg.value),
+                     Architecture::InterprettingMachine().bytes(data_type)));
 
       IR::Val from_ptr = IR::Index(arg, IR::Val::Int(0));
       IR::Val min_val  = ComputeMin(
@@ -193,7 +193,7 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
       IR::Val end_ptr  = IR::PtrIncr(from_ptr, min_val);
 
       auto finish_phis = CreateLoop(
-          {from_ptr, new_arr},
+          {from_ptr, IR::Val::Reg(new_arr, type::Ptr(data_type))},
           [&](const base::vector<IR::Val> &phis) {
             return IR::Eq(phis[0], end_ptr);
           },
@@ -223,7 +223,8 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
                    });
       }
 
-      auto end_to_ptr = IR::PtrIncr(new_arr, size_arg);
+      auto end_to_ptr =
+          IR::PtrIncr(IR::Val::Reg(new_arr, type::Ptr(data_type)), size_arg);
       CreateLoop(
           {finish_phis[1]},
           [&](const base::vector<IR::Val> &phis) {
@@ -234,14 +235,11 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
             return base::vector<IR::Val>{IR::PtrIncr(phis[0], IR::Val::Int(1))};
           });
 
-      auto old_buf = IR::Val::Reg(
-          IR::ArrayData(std::get<IR::Register>(arg.value), arg.type),
-          type::Ptr(data_type));
+      auto old_buf = IR::ArrayData(std::get<IR::Register>(arg.value), arg.type);
       IR::StoreInt(size_arg.reg_or<i32>(),
                    IR::ArrayLength(std::get<IR::Register>(arg.value)));
-      IR::Free(IR::Load(old_buf));
-      IR::StoreAddr(std::get<IR::Addr>(new_arr.value),
-                    IR::ArrayData(std::get<IR::Register>(arg.value), arg.type));
+      IR::Free(IR::Load(old_buf, data_type));
+      IR::StoreAddr(new_arr, old_buf);
       IR::ReturnJump();
     }
   }

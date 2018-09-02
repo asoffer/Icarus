@@ -569,8 +569,8 @@ void CreateStructField(Register struct_type,
 void SetStructFieldName(Register struct_type, std::string_view field_name);
 Register FinalizeStruct(Register r);
 
-Val Malloc(const type::Type *t, const Val& v);
-void Free(const Val &v);
+Register Malloc(const type::Type *t, RegisterOr<i32> r);
+void Free(Register r);
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
                                      RegisterOr<type::Type const *> out);
 Val Ptr(const Val &v);
@@ -615,7 +615,8 @@ void SetReturnModule(size_t n, const Val &v2);
 void SetReturnGeneric(size_t n, const Val &v2);
 void SetReturnBlock(size_t n, const Val &v2);
 
-Val Load(const Val& v);
+Register Load(Register r, type::Type const *t);
+Val Load(Val const &v);
 
 Val Add(const Val& v1, const Val& v2);
 Val Sub(const Val &v1, const Val &v2);

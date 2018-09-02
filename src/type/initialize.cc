@@ -14,9 +14,7 @@ namespace type {
 void Array::EmitInit(IR::Register id_reg, Context *ctx) const {
   if (!fixed_length) {
     IR::StoreInt(0, IR::ArrayLength(id_reg));
-    IR::StoreAddr(
-        std::get<IR::Register>(IR::Malloc(data_type, IR::Val::Int(0)).value),
-        IR::ArrayData(id_reg, this));
+    IR::StoreAddr(IR::Malloc(data_type, 0), IR::ArrayData(id_reg, this));
   }
 
   std::unique_lock lock(mtx_);

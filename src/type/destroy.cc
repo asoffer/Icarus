@@ -40,9 +40,9 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
     }
 
     if (!fixed_length) {
-      IR::Free(IR::Load(IR::Val::Reg(
-          IR::ArrayData(std::get<IR::Register>(arg.value), arg.type),
-          type::Ptr(data_type))));
+      IR::Free(
+          IR::Load(IR::ArrayData(std::get<IR::Register>(arg.value), arg.type),
+                   data_type));
     }
     IR::ReturnJump();
   }

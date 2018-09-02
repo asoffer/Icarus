@@ -48,10 +48,10 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
         // TODO Architecture dependence?
         auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
             len, data_type);
-        auto ptr = IR::Malloc(data_type, to_bytes);
+        auto ptr = IR::Malloc(data_type, to_bytes.reg_or<i32>());
         IR::Store(len, IR::ArrayLength(std::get<IR::Register>(var.value)));
-        IR::Store(ptr,
-                  IR::ArrayData(std::get<IR::Register>(var.value), var.type));
+        IR::StoreAddr(
+            ptr, IR::ArrayData(std::get<IR::Register>(var.value), var.type));
       }
 
       IR::Val to_ptr = IR::Index(var, IR::Val::Int(0));
