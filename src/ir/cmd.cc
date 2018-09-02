@@ -133,15 +133,11 @@ Register ArrayData(Register r, type::Type const *ptr) {
   return cmd.result;
 }
 
-Val Ptr(const Val &v) {
-  ASSERT(v.type == type::Type_);
-  if (type::Type const *const *t = std::get_if<const type::Type *>(&v.value)) {
-    return Val::Type(type::Ptr(*t));
-  }
-
+RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r) {
+  if (!r.is_reg_) { return type::Ptr(r.val_); }
   auto &cmd = MakeCmd(type::Type_, Op::Ptr);
-  cmd.ptr_  = Cmd::Ptr::Make(std::get<Register>(v.value));
-  return cmd.reg();
+  cmd.ptr_  = Cmd::Ptr::Make(r.reg_);
+  return cmd.result;
 }
 
 #define DEFINE_CMD1(Name, name, t)                                             \
@@ -489,7 +485,7 @@ Val Cast(const type::Type *to, const Val &v, Context *ctx) {
     auto *ptee_type = v.type->as<type::Pointer>().pointee;
     if (ptee_type->is<type::Array>()) {
       auto &array_type = ptee_type->as<type::Array>();
-      if (array_type.fixed_length && Ptr(array_type.data_type) == to) {
+      if (array_type.fixed_length && type::Ptr(array_type.data_type) == to) {
         Val v_copy  = v;
         v_copy.type = to;
         return v_copy;

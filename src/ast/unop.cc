@@ -165,7 +165,7 @@ void Unop::VerifyType(Context *ctx) {
         case Assign::LVal: break;
         case Assign::Unset: UNREACHABLE();
       }
-      type = Ptr(operand->type);
+      type = type::Ptr(operand->type);
     } break;
     case Operator::Mul: {
       limit_to(operand);
@@ -282,7 +282,9 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       return stmts->EmitIR(ctx);
       */
     } break;
-    case Language::Operator::Mul: return {IR::Ptr(operand->EmitIR(ctx)[0])};
+    case Language::Operator::Mul:
+      return {IR::ValFrom(
+          IR::Ptr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
     case Language::Operator::At: return {PtrCallFix(operand->EmitIR(ctx)[0])};
     case Language::Operator::Needs: {
       // TODO validate requirements are well-formed?

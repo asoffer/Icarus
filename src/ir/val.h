@@ -246,6 +246,10 @@ inline Val ValFrom(RegisterOr<i32> r) {
 inline Val ValFrom(RegisterOr<double> r) {
   return r.is_reg_ ? Val::Reg(r.reg_, type::Real) : Val::Real(r.val_);
 }
+
+inline Val ValFrom(RegisterOr<type::Type const *> r) {
+  return r.is_reg_ ? Val::Reg(r.reg_, type::Type_) : Val::Type(r.val_);
+}
 Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t);
 
 inline bool operator==(const Val &lhs, const Val &rhs) {

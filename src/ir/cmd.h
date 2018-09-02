@@ -582,7 +582,7 @@ Register Malloc(const type::Type *t, RegisterOr<i32> r);
 void Free(Register r);
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
                                      RegisterOr<type::Type const *> out);
-Val Ptr(const Val &v);
+RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r);
 Val Array(const Val &v1, const Val &v2);
 Register VariantType(Register r);
 Register VariantValue(const type::Type *t, Register r);
