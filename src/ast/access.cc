@@ -125,7 +125,12 @@ base::vector<IR::Val> AST::Access::EmitLVal(Context *ctx) {
 
   auto *struct_type =
       &val.type->as<type::Pointer>().pointee->as<type::Struct>();
-  return {IR::Field(val, struct_type->field_indices_.at(member_name))};
+  return {IR::Val::Reg(
+      IR::Field(std::get<IR::Register>(val.value), struct_type,
+                struct_type->field_indices_.at(member_name)),
+      type::Ptr(
+          struct_type->fields_.at(struct_type->field_indices_.at(member_name))
+              .type))};
 }
 
 base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {

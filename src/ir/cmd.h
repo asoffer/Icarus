@@ -586,12 +586,15 @@ void Free(Register r);
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
                                      RegisterOr<type::Type const *> out);
 RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r);
-Val Array(const Val &v1, const Val &v2);
+
+RegisterOr<type::Type const *> Array(RegisterOr<type::Type const *> data_type);
+RegisterOr<type::Type const *> Array(RegisterOr<i32> len,
+                                     RegisterOr<type::Type const *> data_type);
 Register VariantType(Register r);
 Register VariantValue(const type::Type *t, Register r);
 // Type repreesents the type of `ptr`
 Register PtrIncr(Register ptr, RegisterOr<i32> inc, type::Type const *t);
-Val Field(const Val &v, size_t n);
+Register Field(Register r, type::Struct const *t, size_t n);
 void PrintBool(RegisterOr<bool> r);
 void PrintChar(RegisterOr<char> r);
 void PrintInt(RegisterOr<i32> r);

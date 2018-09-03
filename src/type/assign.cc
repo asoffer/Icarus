@@ -165,14 +165,19 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
 
     CURRENT_FUNC(assign_func) {
       IR::BasicBlock::Current = assign_func->entry();
-      auto val                = assign_func->Argument(0);
-      auto var                = assign_func->Argument(1);
+      auto val = std::get<IR::Register>(assign_func->Argument(0).value);
+      auto var = std::get<IR::Register>(assign_func->Argument(1).value);
 
       for (size_t i = 0; i < fields_.size(); ++i) {
         // TODO is that the right scope?
-        fields_[i].type->EmitAssign(fields_[i].type,
-                                    PtrCallFix(IR::Field(val, i)),
-                                    IR::Field(var, i), ctx);
+        fields_[i].type->EmitAssign(
+            fields_[i].type,
+            PtrCallFix(IR::Val::Reg(
+                IR::Field(val, this, i),
+                type::Ptr(from_type->as<type::Struct>().fields_.at(i).type))),
+            IR::Val::Reg(IR::Field(var, this, i),
+                         type::Ptr(this->fields_.at(i).type)),
+            ctx);
       }
 
       IR::ReturnJump();

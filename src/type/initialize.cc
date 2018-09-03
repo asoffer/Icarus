@@ -118,11 +118,16 @@ void Struct::EmitInit(IR::Register id_reg, Context *ctx) const {
               /* from_type = */ fields_[i].type,
               /*   to_type = */ fields_[i].type,
               /*  from_val = */ fields_[i].init_val,
-              /*    to_var = */ IR::Field(init_func_->Argument(0), i), ctx);
+              /*    to_var = */
+              IR::Val::Reg(IR::Field(std::get<IR::Register>(
+                                         init_func_->Argument(0).value),
+                                     this, i),
+                           type::Ptr(fields_.at(i).type)),
+              ctx);
         } else {
-          fields_[i].type->EmitInit(
-              std::get<IR::Register>(
-                  IR::Field(init_func_->Argument(0), i).value),
+          fields_.at(i).type->EmitInit(
+              IR::Field(std::get<IR::Register>(init_func_->Argument(0).value),
+                        this, i),
               ctx);
         }
       }

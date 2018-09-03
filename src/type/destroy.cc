@@ -87,8 +87,12 @@ void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
       CURRENT_FUNC(destroy_func_) {
         IR::BasicBlock::Current = destroy_func_->entry();
         for (size_t i = 0; i < fields_.size(); ++i) {
-          fields_[i].type->EmitDestroy(IR::Field(destroy_func_->Argument(0), i),
-                                       ctx);
+          fields_[i].type->EmitDestroy(
+              IR::Val::Reg(IR::Field(std::get<IR::Register>(
+                                         destroy_func_->Argument(0).value),
+                                     this, i),
+                           type::Ptr(fields_.at(i).type)),
+              ctx);
         }
         IR::ReturnJump();
       }

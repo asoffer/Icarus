@@ -125,8 +125,15 @@ static IR::Val StructInitializationWith(const Struct *struct_type,
       IR::BasicBlock::Current = fn->entry();
       for (size_t i = 0; i < struct_type->fields_.size(); ++i) {
         InitFn(struct_type->fields_[i].type, struct_type->fields_[i].type,
-               PtrCallFix(IR::Field(fn->Argument(0), i)),
-               IR::Field(fn->Argument(1), i), ctx);
+               PtrCallFix(IR::Val::Reg(
+                   IR::Field(std::get<IR::Register>(fn->Argument(0).value),
+                             struct_type, i),
+                   type::Ptr(struct_type->fields_.at(i).type))),
+               IR::Val::Reg(
+                   IR::Field(std::get<IR::Register>(fn->Argument(1).value),
+                             struct_type, i),
+                   type::Ptr(struct_type->fields_.at(i).type)),
+               ctx);
       }
       IR::ReturnJump();
     }

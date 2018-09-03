@@ -286,24 +286,23 @@ RegisterOr<bool> EqBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
   return cmd.result;
 }
 
-Val Array(const Val &v1, const Val &v2) {
-  ASSERT(v2.type == type::Type_);
+RegisterOr<type::Type const *> Array(RegisterOr<type::Type const *> data_type) {
+  if (!data_type.is_reg_) { return type::Arr(data_type.val_); }
 
-  i32 const *m               = std::get_if<i32>(&v1.value);
-  type::Type const *const *t = std::get_if<const type::Type *>(&v2.value);
-  if (t) {
-    if (m) { return Val::Type(type::Arr(*t, *m)); }
-    if (v1 == Val::None()) { return Val::Type(type::Arr(*t)); }
+  auto &cmd  = MakeCmd(type::Type_, Op::Array);
+  cmd.array_ = Cmd::Array::Make(-1, data_type);
+  return cmd.result;
+}
+
+RegisterOr<type::Type const *> Array(RegisterOr<i32> len,
+                                     RegisterOr<type::Type const *> data_type) {
+  if (!data_type.is_reg_ && !len.is_reg_) {
+    return type::Arr(data_type.val_, len.val_);
   }
 
   auto &cmd  = MakeCmd(type::Type_, Op::Array);
-  cmd.array_ = Cmd::Array::Make(
-      m ? RegisterOr<i32>(*m)
-        : v1 == Val::None() ? RegisterOr<i32>(-1)
-                            : RegisterOr<i32>(std::get<Register>(v1.value)),
-      t ? RegisterOr<type::Type const *>(*t)
-        : RegisterOr<type::Type const *>(std::get<Register>(v2.value)));
-  return cmd.reg();
+  cmd.array_ = Cmd::Array::Make(len, data_type);
+  return cmd.result;
 }
 
 Register CreateTuple() { return MakeCmd(type::Type_, Op::CreateTuple).result; }
@@ -370,13 +369,10 @@ RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
   return cmd.result;
 }
 
-Val Field(const Val &v, size_t n) {
-  const type::Struct *struct_type =
-      &v.type->as<type::Pointer>().pointee->as<type::Struct>();
-  const type::Type *result_type = type::Ptr(struct_type->fields_.at(n).type);
-  auto &cmd                     = MakeCmd(result_type, Op::Field);
-  cmd.field_ = Cmd::Field::Make(std::get<Register>(v.value), struct_type, n);
-  return cmd.reg();
+Register Field(Register r, type::Struct const *t, size_t n) {
+  auto &cmd  = MakeCmd(type::Ptr(t->fields_.at(n).type), Op::Field);
+  cmd.field_ = Cmd::Field::Make(r, t, n);
+  return cmd.result;
 }
 
 static Register Reserve(type::Type const *t, bool incr_num_regs = true) {

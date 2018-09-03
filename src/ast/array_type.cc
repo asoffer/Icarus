@@ -74,7 +74,13 @@ ArrayType *ArrayType::Clone() const {
 }
 
 base::vector<IR::Val> ArrayType::EmitIR(Context *ctx) {
-  return {IR::Array(length_->EmitIR(ctx)[0], data_type_->EmitIR(ctx)[0])};
+  auto len_val       = length_->EmitIR(ctx)[0];
+  auto data_type_reg = data_type_->EmitIR(ctx)[0].reg_or<type::Type const *>();
+  IR::RegisterOr<type::Type const *> result =
+      (len_val == IR::Val::None())
+          ? IR::Array(data_type_reg)
+          : IR::Array(len_val.reg_or<i32>(), data_type_reg);
+  return {IR::ValFrom(result)};
 }
 
 base::vector<IR::Val> ArrayType::EmitLVal(Context *ct) { UNREACHABLE(*this); }
