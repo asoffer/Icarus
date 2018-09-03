@@ -450,16 +450,16 @@ Val BlockSeq(const base::vector<Val> &blocks) {
   return IR::Val::Reg(IR::FinalizeBlockSeq(reg), type::Block);
 }
 
-Val BlockSeqContains(const Val &v, AST::BlockLiteral *lit) {
-  auto &cmd = MakeCmd(type::Bool, Op::BlockSeqContains);
-  if (auto *bs = std::get_if<BlockSequence>(&v.value)) {
-    return IR::Val::Bool(
-        std::any_of(bs->seq_->begin(), bs->seq_->end(),
-                    [lit](AST::BlockLiteral *l) { return lit == l; }));
+RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
+                                  AST::BlockLiteral *lit) {
+  if (r.is_reg_) {
+    auto &cmd               = MakeCmd(type::Bool, Op::BlockSeqContains);
+    cmd.block_seq_contains_ = Cmd::BlockSeqContains{{}, r.reg_, lit};
+    return cmd.result;
   }
-  cmd.block_seq_contains_ =
-      Cmd::BlockSeqContains{{}, std::get<Register>(v.value), lit};
-  return cmd.reg();
+
+  return std::any_of(r.val_.seq_->begin(), r.val_.seq_->end(),
+                     [lit](AST::BlockLiteral *l) { return lit == l; });
 }
 
 Val Cast(const type::Type *to, const Val &v, Context *ctx) {
@@ -546,21 +546,33 @@ Register Alloca(const type::Type *t) {
 }
 
 void SetReturn(size_t n, Val const &v2) {
-  if (v2.type == type::Bool) { return SetReturnBool(n, v2); }
-  if (v2.type == type::Char) { return SetReturnChar(n, v2); }
-  if (v2.type == type::Int) { return SetReturnInt(n, v2); }
-  if (v2.type == type::Real) { return SetReturnReal(n, v2); }
-  if (v2.type == type::Type_) { return SetReturnType(n, v2); }
-  if (v2.type->is<type::Enum>()) { return SetReturnEnum(n, v2); }
-  if (v2.type->is<type::Flags>()) { return SetReturnFlags(n, v2); }
-  if (v2.type->is<type::CharBuffer>()) { return SetReturnCharBuf(n, v2); }
-  if (v2.type->is<type::Pointer>()) { return SetReturnAddr(n, v2); }
+  if (v2.type == type::Bool) { return SetReturnBool(n, v2.reg_or<bool>()); }
+  if (v2.type == type::Char) { return SetReturnChar(n, v2.reg_or<char>()); }
+  if (v2.type == type::Int) { return SetReturnInt(n, v2.reg_or<i32>()); }
+  if (v2.type == type::Real) { return SetReturnReal(n, v2.reg_or<double>()); }
+  if (v2.type == type::Type_) {
+    return SetReturnType(n, v2.reg_or<type::Type const *>());
+  }
+  if (v2.type->is<type::Enum>()) {
+    return SetReturnEnum(n, v2.reg_or<EnumVal>());
+  }
+  if (v2.type->is<type::Flags>()) {
+    return SetReturnFlags(n, v2.reg_or<FlagsVal>());
+  }
+  if (v2.type->is<type::CharBuffer>()) {
+    return SetReturnCharBuf(n, v2.reg_or<std::string_view>());
+  }
+  if (v2.type->is<type::Pointer>()) {
+    return SetReturnAddr(n, v2.reg_or<IR::Addr>());
+  }
   if (v2.type->is<type::Function>()) { return SetReturnFunc(n, v2); }
-  if (v2.type->is<type::Scope>()) { return SetReturnScope(n, v2); }
-  if (v2.type == type::Module) { return SetReturnModule(n, v2); }
-  if (v2.type == type::Generic) { return SetReturnGeneric(n, v2); }
+  if (v2.type->is<type::Scope>()) {
+    return SetReturnScope(n, v2.reg_or<AST::ScopeLiteral *>());
+  }
+  if (v2.type == type::Module) { return SetReturnModule(n, v2.reg_or<Module const *>()); }
+  if (v2.type == type::Generic) { return SetReturnGeneric(n, v2.reg_or<AST::Function *>()); }
   if (v2.type == type::Block || v2.type == type::OptBlock) {
-    return SetReturnBlock(n, v2);
+    return SetReturnBlock(n, v2.reg_or<BlockSequence>());
   }
   UNREACHABLE(v2.type->to_string());
 }
@@ -691,55 +703,50 @@ void StoreAddr(RegisterOr<IR::Addr> val, Register loc) {
   cmd.store_addr_ = Cmd::StoreAddr::Make(loc, val);
 }
 
-void SetReturnBool(size_t n, const Val &v2) {
+void SetReturnBool(size_t n, RegisterOr<bool> r) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnBool);
-  auto reg_or = v2.reg_or<bool>();
-  cmd.set_return_bool_ = Cmd::SetReturnBool::Make(n, reg_or);
-  if (reg_or.is_reg_) {
-    Func::Current->references_[reg_or.reg_].insert(cmd.result);
-  }
+  cmd.set_return_bool_ = Cmd::SetReturnBool::Make(n, r);
+  if (r.is_reg_) { Func::Current->references_[r.reg_].insert(cmd.result); }
 }
 
-void SetReturnChar(size_t n, const Val &v2) {
+void SetReturnChar(size_t n, RegisterOr<char> r) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnChar);
-  cmd.set_return_char_ = Cmd::SetReturnChar::Make(n, v2.reg_or<char>());
+  cmd.set_return_char_ = Cmd::SetReturnChar::Make(n, r);
 }
 
-void SetReturnInt(size_t n, const Val &v2) {
+void SetReturnInt(size_t n, RegisterOr<i32> r) {
   auto &cmd           = MakeCmd(nullptr, Op::SetReturnInt);
-  cmd.set_return_int_ = Cmd::SetReturnInt::Make(n, v2.reg_or<i32>());
+  cmd.set_return_int_ = Cmd::SetReturnInt::Make(n, r);
 }
 
-void SetReturnCharBuf(size_t n, const Val &v2) {
+void SetReturnCharBuf(size_t n, RegisterOr<std::string_view> r) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnCharBuf);
-  cmd.set_return_char_buf_ =
-      Cmd::SetReturnCharBuf::Make(n, v2.reg_or<std::string_view>());
+  cmd.set_return_char_buf_ = Cmd::SetReturnCharBuf::Make(n, r);
 }
 
-void SetReturnReal(size_t n, const Val &v2) {
+void SetReturnReal(size_t n, RegisterOr<double> r) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnReal);
-  cmd.set_return_real_ = Cmd::SetReturnReal::Make(n, v2.reg_or<double>());
+  cmd.set_return_real_ = Cmd::SetReturnReal::Make(n, r); 
 }
 
-void SetReturnType(size_t n, const Val &v2) {
+void SetReturnType(size_t n, RegisterOr<type::Type const *> r) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnType);
-  cmd.set_return_type_ =
-      Cmd::SetReturnType::Make(n, v2.reg_or<type::Type const *>());
+  cmd.set_return_type_ = Cmd::SetReturnType::Make(n, r);
 }
 
-void SetReturnEnum(size_t n, const Val &v2) {
+void SetReturnEnum(size_t n, RegisterOr<EnumVal> r) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnEnum);
-  cmd.set_return_enum_ = Cmd::SetReturnEnum::Make(n, v2.reg_or<EnumVal>());
+  cmd.set_return_enum_ = Cmd::SetReturnEnum::Make(n, r);
 }
 
-void SetReturnFlags(size_t n, const Val &v2) {
+void SetReturnFlags(size_t n, RegisterOr<FlagsVal> r) {
   auto &cmd             = MakeCmd(nullptr, Op::SetReturnFlags);
-  cmd.set_return_flags_ = Cmd::SetReturnFlags::Make(n, v2.reg_or<FlagsVal>());
+  cmd.set_return_flags_ = Cmd::SetReturnFlags::Make(n, r);
 }
 
-void SetReturnAddr(size_t n, const Val &v2) {
+void SetReturnAddr(size_t n, RegisterOr<Addr> r) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnAddr);
-  cmd.set_return_addr_ = Cmd::SetReturnAddr::Make(n, v2.reg_or<IR::Addr>());
+  cmd.set_return_addr_ = Cmd::SetReturnAddr::Make(n, r);
 }
 
 void SetReturnFunc(size_t n, const Val &v2) {
@@ -755,28 +762,24 @@ void SetReturnFunc(size_t n, const Val &v2) {
           v2.value));
 }
 
-void SetReturnScope(size_t n, const Val &v2) {
+void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnScope);
-  cmd.set_return_scope_ =
-      Cmd::SetReturnScope::Make(n, v2.reg_or<AST::ScopeLiteral *>());
+  cmd.set_return_scope_ = Cmd::SetReturnScope::Make(n, r);
 }
 
-void SetReturnModule(size_t n, const Val &v2) {
+void SetReturnModule(size_t n, RegisterOr<Module const *> r) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnModule);
-  cmd.set_return_module_ =
-      Cmd::SetReturnModule::Make(n, v2.reg_or<Module const *>());
+  cmd.set_return_module_ = Cmd::SetReturnModule::Make(n, r);
 }
 
-void SetReturnGeneric(size_t n, const Val &v2) {
-  auto &cmd = MakeCmd(nullptr, Op::SetReturnGeneric);
-  cmd.set_return_generic_ =
-      Cmd::SetReturnGeneric::Make(n, v2.reg_or<AST::Function *>());
+void SetReturnGeneric(size_t n, RegisterOr<AST::Function *> r) {
+  auto &cmd               = MakeCmd(nullptr, Op::SetReturnGeneric);
+  cmd.set_return_generic_ = Cmd::SetReturnGeneric::Make(n, r);
 }
 
-void SetReturnBlock(size_t n, const Val &v2) {
+void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r) {
   auto &cmd = MakeCmd(nullptr, Op::SetReturnBlock);
-  cmd.set_return_block_ =
-      Cmd::SetReturnBlock::Make(n, v2.reg_or<BlockSequence>());
+  cmd.set_return_block_ = Cmd::SetReturnBlock::Make(n, r);
 }
 
 void Store(const Val &val, Register loc) {

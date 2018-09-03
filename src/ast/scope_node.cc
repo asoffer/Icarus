@@ -222,14 +222,14 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
       auto[dispatch_table, result_type] =
           DispatchTable::Make(expr_args, block_lit->before_.get(), ctx);
 
-      return EmitCallDispatch(args, dispatch_table, result_type, ctx)[0];
+      return EmitCallDispatch(args, dispatch_table, result_type, ctx)[0]
+          .reg_or<IR::BlockSequence>();
     }();
 
     for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           jump_block_data.body,
-          IR::BlockSeqContains(call_enter_result, jump_block_lit)
-              .reg_or<bool>());
+          IR::BlockSeqContains(call_enter_result, jump_block_lit));
     }
     // TODO we're not checking that this is an exit block but we probably
     // should.
@@ -246,13 +246,13 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
           FnArgs<Expression *>{}, block_lit->after_.get(), ctx);
 
       return EmitCallDispatch(FnArgs<std::pair<Expression *, IR::Val>>{},
-                              dispatch_table, result_type, ctx)[0];
+                              dispatch_table, result_type, ctx)[0]
+          .reg_or<IR::BlockSequence>();
     }();
     for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           jump_block_data.before,
-          IR::BlockSeqContains(call_exit_result, jump_block_lit)
-              .reg_or<bool>());
+          IR::BlockSeqContains(call_exit_result, jump_block_lit));
     }
 
     // TODO we're not checking that this is an exit block but we probably

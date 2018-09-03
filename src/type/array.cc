@@ -54,11 +54,11 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
       IR::CondJump(IR::EqInt(lhs_len, rhs_len), equal_len_block, false_block);
 
       IR::BasicBlock::Current = true_block;
-      IR::SetReturn(0, IR::Val::Bool(true));
+      IR::SetReturnBool(0, true);
       IR::ReturnJump();
 
       IR::BasicBlock::Current = false_block;
-      IR::SetReturn(0, IR::Val::Bool(false));
+      IR::SetReturnBool(0, false);
       IR::ReturnJump();
 
       IR::BasicBlock::Current = equal_len_block;
