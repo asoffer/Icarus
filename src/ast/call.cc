@@ -108,8 +108,8 @@ static IR::Val EmitVariantMatch(IR::Register needle, const type::Type *haystack)
     for (const type::Type *v : haystack->as<type::Variant>().variants_) {
       phi_map[IR::BasicBlock::Current] = IR::Val::Bool(true);
 
-      IR::BasicBlock::Current = IR::EarlyExitOn<true>(
-          landing, IR::ValFrom(IR::EqType(v, runtime_type)));
+      IR::BasicBlock::Current =
+          IR::EarlyExitOn<true>(landing, IR::EqType(v, runtime_type));
     }
 
     phi_map[IR::BasicBlock::Current] = IR::Val::Bool(false);
@@ -136,7 +136,8 @@ static IR::BlockIndex CallLookupTest(
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(std::get<IR::Register>(args.pos_.at(i).second.value),
-                         call_arg_type.pos_[i]));
+                         call_arg_type.pos_[i])
+            .reg_or<bool>());
   }
 
   for (const auto & [ name, expr_and_val ] : args.named_) {
@@ -147,7 +148,8 @@ static IR::BlockIndex CallLookupTest(
         next_binding,
         EmitVariantMatch(
             std::get<IR::Register>(args.named_.at(iter->first).second.value),
-            iter->second));
+            iter->second)
+            .reg_or<bool>());
   }
 
   return next_binding;

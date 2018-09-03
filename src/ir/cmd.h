@@ -612,7 +612,7 @@ Register FinalizeTuple(Register tup);
 Register CreateVariant();
 void AppendToVariant(Register tup, RegisterOr<type::Type const *> entry);
 Register FinalizeVariant(Register var);
-void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block);
+void CondJump(RegisterOr<bool> cond, BlockIndex true_block, BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();
 Val BlockSeqContains(const Val &v, AST::BlockLiteral *lit);

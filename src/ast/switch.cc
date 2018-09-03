@@ -106,7 +106,8 @@ base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
   for (size_t i= 0; i < cases_.size() - 1; ++i) {
     auto & [ expr, cond ] = cases_[i];
     auto expr_block = IR::Func::Current->AddBlock();
-    auto next_block = IR::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx)[0]);
+    auto next_block =
+        IR::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx)[0].reg_or<bool>());
 
     IR::BasicBlock::Current           = expr_block;
     auto val                          = expr->EmitIR(ctx)[0];

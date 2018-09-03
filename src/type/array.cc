@@ -44,8 +44,6 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
             IR::ArrayLength(std::get<IR::Register>(fn->Argument(1).value)));
       }();
 
-      auto len_cmp = IR::ValFrom(IR::EqInt(lhs_len, rhs_len));
-
       auto equal_len_block = IR::Func::Current->AddBlock();
       auto true_block      = IR::Func::Current->AddBlock();
       auto false_block     = IR::Func::Current->AddBlock();
@@ -53,7 +51,7 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
       auto body_block      = IR::Func::Current->AddBlock();
       auto incr_block      = IR::Func::Current->AddBlock();
 
-      IR::CondJump(len_cmp, equal_len_block, false_block);
+      IR::CondJump(IR::EqInt(lhs_len, rhs_len), equal_len_block, false_block);
 
       IR::BasicBlock::Current = true_block;
       IR::SetReturn(0, IR::Val::Bool(true));
@@ -80,14 +78,12 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
       auto lhs_phi_reg = IR::Func::Current->Command(lhs_phi_index).result;
       auto rhs_phi_reg = IR::Func::Current->Command(rhs_phi_index).result;
 
-      IR::CondJump(IR::ValFrom(IR::EqAddr(lhs_phi_reg, lhs_end)), true_block,
-                   body_block);
+      IR::CondJump(IR::EqAddr(lhs_phi_reg, lhs_end), true_block, body_block);
 
       IR::BasicBlock::Current = body_block;
       // TODO what if data type is an array?
-      IR::CondJump(IR::ValFrom(IR::EqAddr(
-                       IR::LoadAddr(lhs_phi_reg, lhs_type->data_type),
-                       IR::LoadAddr(rhs_phi_reg, rhs_type->data_type))),
+      IR::CondJump(IR::EqAddr(IR::LoadAddr(lhs_phi_reg, lhs_type->data_type),
+                              IR::LoadAddr(rhs_phi_reg, rhs_type->data_type)),
                    incr_block, false_block);
 
       IR::BasicBlock::Current = incr_block;
@@ -123,7 +119,7 @@ static IR::RegisterOr<i32> ComputeMin(IR::RegisterOr<i32> x,
   auto entry_block = IR::BasicBlock::Current;
   auto x_block     = IR::Func::Current->AddBlock();
   auto land_block  = IR::Func::Current->AddBlock();
-  IR::CondJump(IR::ValFrom(IR::LtInt(x, y)), x_block, land_block);
+  IR::CondJump(IR::LtInt(x, y), x_block, land_block);
   IR::BasicBlock::Current = x_block;
   IR::UncondJump(land_block);
 
@@ -136,7 +132,8 @@ static IR::RegisterOr<i32> ComputeMin(IR::RegisterOr<i32> x,
 // TODO pass funcs by ref
 base::vector<IR::Val> CreateLoop(
     const base::vector<IR::Val> &entry_vals,
-    std::function<IR::Val(const base::vector<IR::Val> &)> loop_phi_fn,
+    std::function<IR::RegisterOr<bool>(const base::vector<IR::Val> &)>
+        loop_phi_fn,
     std::function<base::vector<IR::Val>(const base::vector<IR::Val> &)>
         loop_body_fn) {
   auto entry_block = IR::BasicBlock::Current;
@@ -209,8 +206,7 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
           {IR::Val::Reg(from_ptr, type::Ptr(data_type)),
            IR::Val::Reg(new_arr, type::Ptr(data_type))},
           [&](const base::vector<IR::Val> &phis) {
-            return IR::ValFrom(
-                IR::EqAddr(std::get<IR::Register>(phis[0].value), end_ptr));
+            return IR::EqAddr(std::get<IR::Register>(phis[0].value), end_ptr);
           },
           [&](const base::vector<IR::Val> &phis) {
             data_type->EmitAssign(data_type, PtrCallFix(phis[0]), phis[1], ctx);
@@ -230,8 +226,8 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
                         IR::LoadInt(IR::ArrayLength(arg)), type::Ptr(this));
         CreateLoop({IR::Val::Reg(end_ptr, type::Ptr(data_type))},
                    [&](const base::vector<IR::Val> &phis) {
-                     return IR::ValFrom(IR::EqAddr(
-                         std::get<IR::Register>(phis[0].value), end_old_buf));
+                     return IR::EqAddr(std::get<IR::Register>(phis[0].value),
+                                       end_old_buf);
                    },
                    [&](const base::vector<IR::Val> &phis) {
                      data_type->EmitDestroy(phis[0], ctx);
@@ -246,8 +242,8 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
       CreateLoop(
           {finish_phis[1]},
           [&](const base::vector<IR::Val> &phis) {
-            return IR::ValFrom(
-                IR::EqAddr(std::get<IR::Register>(phis[0].value), end_to_ptr));
+            return IR::EqAddr(std::get<IR::Register>(phis[0].value),
+                              end_to_ptr);
           },
           [&](const base::vector<IR::Val> &phis) {
             data_type->EmitInit(std::get<IR::Register>(phis[0].value), ctx);

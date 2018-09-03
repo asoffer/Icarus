@@ -80,9 +80,9 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
           IR::Val::Reg(IR::Func::Current->Command(to_phi_index).result,
                        type::Ptr(to_type->data_type));
 
-      IR::CondJump(IR::ValFrom(IR::NeAddr(
-                       std::get<IR::Register>(from_phi_reg.value), from_end)),
-                   body_block, exit_block);
+      IR::CondJump(
+          IR::NeAddr(std::get<IR::Register>(from_phi_reg.value), from_end),
+          body_block, exit_block);
 
       IR::BasicBlock::Current = body_block;
       InitFn(from_type->data_type, to_type->data_type, PtrCallFix(from_phi_reg),

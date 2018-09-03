@@ -102,7 +102,7 @@ struct Func {
 };
 std::ostream &operator<<(std::ostream &, IR::Func const &);
 
-template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, Val cond) {
+template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, RegisterOr<bool> cond) {
   auto continue_block = Func::Current->AddBlock();
   if constexpr (B) {
     CondJump(cond, exit_block, continue_block);

@@ -26,8 +26,10 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
             auto special_block = repr_func_->AddBlock();
             auto next_block    = repr_func_->AddBlock();
 
-            IR::CondJump(IR::Eq(repr_func_->Argument(0), IR::Val::Char(c)),
-                         special_block, next_block);
+            IR::CondJump(
+                IR::EqChar(
+                    std::get<IR::Register>(repr_func_->Argument(0).value), c),
+                special_block, next_block);
 
             IR::BasicBlock::Current = special_block;
             IR::PrintChar('\\');
@@ -83,8 +85,8 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
         return IR::LoadInt(IR::ArrayLength(
             std::get<IR::Register>(repr_func_->Argument(0).value)));
       }();
-      IR::BasicBlock::Current = IR::EarlyExitOn<true>(
-          exit_block, IR::ValFrom(IR::EqInt(length_var, 0)));
+      IR::BasicBlock::Current =
+          IR::EarlyExitOn<true>(exit_block, IR::EqInt(length_var, 0));
       auto ptr =
           IR::Index(type::Ptr(this),
                     std::get<IR::Register>(repr_func_->Argument(0).value), 0);
@@ -95,7 +97,7 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       CreateLoop({IR::Val::Reg(ptr, type::Ptr(this->data_type)),
                   IR::ValFrom(IR::SubInt(length_var, 1))},
                  [&](const base::vector<IR::Val> &phis) {
-                   return IR::Eq(phis[1], IR::Val::Int(0));
+                   return IR::EqInt(std::get<IR::Register>(phis[1].value), 0);
                  },
                  [&](const base::vector<IR::Val> &phis) {
                    auto elem_ptr =
@@ -159,8 +161,8 @@ void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
         IR::UncondJump(landing);
 
         IR::BasicBlock::Current = old_block;
-        IR::BasicBlock::Current = IR::EarlyExitOn<true>(
-            found_block, IR::ValFrom(IR::EqType(type, v)));
+        IR::BasicBlock::Current =
+            IR::EarlyExitOn<true>(found_block, IR::EqType(type, v));
       }
 
       IR::UncondJump(landing);

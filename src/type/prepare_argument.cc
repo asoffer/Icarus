@@ -120,7 +120,7 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
     IR::BasicBlock::Current = current;
     for (size_t i = 0; i < intersection.size() - 1; ++i) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
-          blocks[i], IR::ValFrom(IR::EqType(runtime_type, intersection[i])));
+          blocks[i], IR::EqType(runtime_type, intersection[i]));
     }
     IR::UncondJump(blocks.back());
     IR::BasicBlock::Current = landing;

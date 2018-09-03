@@ -1073,13 +1073,13 @@ void Call(const Val &fn, LongArgs long_args, OutParams outs) {
   }
 }
 
-void CondJump(const Val &cond, BlockIndex true_block, BlockIndex false_block) {
-  if (auto *b = std::get_if<bool>(&cond.value)) {
-    return UncondJump(*b ? true_block : false_block);
+void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
+              BlockIndex false_block) {
+  if (!cond.is_reg_) {
+    return UncondJump(cond.val_ ? true_block : false_block);
   }
   auto &cmd      = MakeCmd(nullptr, Op::CondJump);
-  cmd.cond_jump_ = Cmd::CondJump{
-      {}, std::get<Register>(cond.value), {false_block, true_block}};
+  cmd.cond_jump_ = Cmd::CondJump{{}, cond.reg_, {false_block, true_block}};
 }
 
 void UncondJump(BlockIndex block) {

@@ -331,7 +331,7 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
     base::unordered_map<IR::BlockIndex, IR::Val> phi_args;
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
-      auto val = exprs[i]->EmitIR(ctx)[0];
+      auto val = exprs[i]->EmitIR(ctx)[0].reg_or<bool>();
 
       auto next_block = IR::Func::Current->AddBlock();
       IR::CondJump(val, is_or ? land_block : next_block,
@@ -361,7 +361,7 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
         auto rhs_ir = exprs[i + 1]->EmitIR(ctx)[0];
-        IR::Val cmp = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
+        auto cmp = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx).reg_or<bool>();
 
         phi_args[IR::BasicBlock::Current] = IR::Val::Bool(false);
         auto next_block = IR::Func::Current->AddBlock();

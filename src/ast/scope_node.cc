@@ -228,7 +228,8 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           jump_block_data.body,
-          IR::BlockSeqContains(call_enter_result, jump_block_lit));
+          IR::BlockSeqContains(call_enter_result, jump_block_lit)
+              .reg_or<bool>());
     }
     // TODO we're not checking that this is an exit block but we probably
     // should.
@@ -250,7 +251,8 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
           jump_block_data.before,
-          IR::BlockSeqContains(call_exit_result, jump_block_lit));
+          IR::BlockSeqContains(call_exit_result, jump_block_lit)
+              .reg_or<bool>());
     }
 
     // TODO we're not checking that this is an exit block but we probably

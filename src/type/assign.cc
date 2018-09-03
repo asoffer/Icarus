@@ -64,8 +64,8 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
       CreateLoop({IR::Val::Reg(from_ptr, from_ptr_type),
                   IR::Val::Reg(to_ptr, to_ptr_type)},
                  [&](const base::vector<IR::Val> &phis) {
-                   return IR::ValFrom(IR::EqAddr(
-                       std::get<IR::Register>(phis[0].value), from_end_ptr));
+                   return IR::EqAddr(std::get<IR::Register>(phis[0].value),
+                                     from_end_ptr);
                  },
                  [&](const base::vector<IR::Val> &phis) {
                    EmitCopyInit(from_array_type->data_type, data_type,
@@ -125,8 +125,8 @@ void Variant::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
     auto landing     = IR::Func::Current->AddBlock();
     for (const Type *v : from_type->as<Variant>().variants_) {
       auto next_block         = IR::Func::Current->AddBlock();
-      IR::BasicBlock::Current = IR::EarlyExitOn<false>(
-          next_block, IR::ValFrom(IR::EqType(actual_type, v)));
+      IR::BasicBlock::Current =
+          IR::EarlyExitOn<false>(next_block, IR::EqType(actual_type, v));
       IR::StoreType(v, IR::VariantType(std::get<IR::Register>(to.value)));
       v->EmitAssign(
           v,

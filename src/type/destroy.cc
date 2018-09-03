@@ -33,8 +33,8 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
 
       CreateLoop({IR::Val::Reg(ptr, type::Ptr(data_type))},
                  [&](const base::vector<IR::Val> &phis) {
-                   return IR::ValFrom(IR::EqAddr(
-                       std::get<IR::Register>(phis[0].value), end_ptr));
+                   return IR::EqAddr(std::get<IR::Register>(phis[0].value),
+                                     end_ptr);
                  },
                  [&](const base::vector<IR::Val> &phis) {
                    data_type->EmitDestroy(phis[0], ctx);

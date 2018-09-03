@@ -452,7 +452,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       auto land_block = IR::Func::Current->AddBlock();
       auto more_block = IR::Func::Current->AddBlock();
 
-      auto lhs_val       = lhs->EmitIR(ctx)[0];
+      auto lhs_val       = lhs->EmitIR(ctx)[0].reg_or<bool>();
       auto lhs_end_block = IR::BasicBlock::Current;
       IR::CondJump(lhs_val, land_block, more_block);
 
@@ -480,7 +480,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       auto land_block = IR::Func::Current->AddBlock();
       auto more_block = IR::Func::Current->AddBlock();
 
-      auto lhs_val       = lhs->EmitIR(ctx)[0];
+      auto lhs_val       = lhs->EmitIR(ctx)[0].reg_or<bool>();
       auto lhs_end_block = IR::BasicBlock::Current;
       IR::CondJump(lhs_val, more_block, land_block);
 
