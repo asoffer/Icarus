@@ -39,7 +39,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
             IR::BasicBlock::Current = next_block;
           }
 
-          IR::Print(repr_func_->Argument(0));
+          IR::PrintChar(repr_func_->Argument(0).reg_or<char>());
           IR::ReturnJump();
         }
       }
@@ -49,11 +49,11 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
       IR::Call(IR::Val::Func(repr_func_), std::move(call_args));
     } break;
 
-    case PrimType::Bool:
-    case PrimType::Int:
-    case PrimType::Real:
-    case PrimType::Type:
-    case PrimType::Code: IR::Print(val); break;
+    case PrimType::Bool: IR::PrintBool(val.reg_or<bool>()); break;
+    case PrimType::Int: IR::PrintInt(val.reg_or<int>()); break;
+    case PrimType::Real: IR::PrintReal(val.reg_or<double>()); break;
+    case PrimType::Type: IR::PrintType(val.reg_or<type::Type const *>()); break;
+    case PrimType::Code: NOT_YET();
     case PrimType::NullPtr:
     case PrimType::EmptyArray:
     case PrimType::Generic:
@@ -128,8 +128,12 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
 void Pointer::EmitRepr(IR::Val val, Context *ctx) const {
   IR::PrintAddr(val.reg_or<IR::Addr>());
 }
-void Enum::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(val); }
-void Flags::EmitRepr(IR::Val val, Context *ctx) const { IR::Print(val); }
+void Enum::EmitRepr(IR::Val val, Context *ctx) const {
+  IR::PrintEnum(val.reg_or<IR::EnumVal>(), this);
+}
+void Flags::EmitRepr(IR::Val val, Context *ctx) const {
+  IR::PrintFlags(val.reg_or<IR::FlagsVal>(), this);
+}
 void Scope::EmitRepr(IR::Val, Context *ctx) const { NOT_YET(); }
 void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
   // TODO design and build a jump table?
@@ -180,6 +184,6 @@ void Function::EmitRepr(IR::Val, Context *ctx) const { UNREACHABLE(); }
 void Struct::EmitRepr(IR::Val val, Context *ctx) const { UNREACHABLE(); }
 
 void CharBuffer::EmitRepr(IR::Val val, Context *ctx) const {
-  IR::Print(std::move(val));
+  IR::PrintCharBuffer(val.reg_or<std::string_view>());
 }
 }  // namespace type

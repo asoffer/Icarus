@@ -29,18 +29,17 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
       auto val                = fn->Argument(0);
       auto var                = fn->Argument(1);
 
-      auto len = IR::ValFrom([&]() -> IR::RegisterOr<i32> {
+      auto len = [&]() -> IR::RegisterOr<i32> {
         if (from_array_type->fixed_length) {
           return static_cast<i32>(from_array_type->len);
         }
         return IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(val.value)));
-      }());
+      }();
 
       auto *from_ptr_type = type::Ptr(from_type->as<type::Array>().data_type);
       IR::Register from_ptr =
           IR::Index(from_type, std::get<IR::Register>(val.value), 0);
-      IR::Register from_end_ptr =
-          IR::PtrIncr(from_ptr, len.reg_or<i32>(), from_ptr_type);
+      IR::Register from_end_ptr = IR::PtrIncr(from_ptr, len, from_ptr_type);
 
       if (!fixed_length) {
         ComputeDestroyWithoutLock(ctx);
@@ -49,10 +48,10 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
         IR::Call(IR::Val::Func(destroy_func_), std::move(call_args));
 
         // TODO Architecture dependence?
-        auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
-            len, data_type);
-        auto ptr = IR::Malloc(data_type, to_bytes.reg_or<i32>());
-        IR::Store(len, IR::ArrayLength(std::get<IR::Register>(var.value)));
+        auto ptr = IR::Malloc(
+            data_type, Architecture::InterprettingMachine().ComputeArrayLength(
+                           len, data_type));
+        IR::StoreInt(len, IR::ArrayLength(std::get<IR::Register>(var.value)));
         IR::StoreAddr(
             ptr, IR::ArrayData(std::get<IR::Register>(var.value), var.type));
       }

@@ -25,7 +25,8 @@ struct Architecture {
   }
 
   // TODO skip the last alignment requirement?
-  IR::Val ComputeArrayLength(const IR::Val &len, const type::Type *t) const;
+  IR::RegisterOr<i32> ComputeArrayLength(IR::RegisterOr<i32> len,
+                                         const type::Type *t) const;
 
   i32 ComputeArrayLength(i32 len, const type::Type *t) const {
     return len * static_cast<i32>(MoveForwardToAlignment(t, bytes(t)));

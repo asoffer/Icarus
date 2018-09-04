@@ -114,10 +114,9 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
     }
     case Language::Operator::Print:
       for (size_t i = 0; i < args_.exprs.size(); ++i) {
-        if (args_.exprs[i]->type->is<type::Primitive>() ||
-            args_.exprs[i]->type->is<type::Pointer>() ||
-            args_.exprs[i]->type->is<type::CharBuffer>()) {
-          IR::Print(arg_vals[i]);
+        // TODO unify with repr. is repr even a good idea?
+        if (args_.exprs[i]->type == type::Char) {
+          IR::PrintChar(arg_vals[i].reg_or<char>());
         } else if (args_.exprs[i]->type->is<type::Struct>()) {
           ASSERT(dispatch_tables_[i].total_size_ != 0u);
           // TODO struct is not exactly right. we really mean user-defined

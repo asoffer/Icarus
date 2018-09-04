@@ -55,6 +55,19 @@ static Cmd &MakeCmd(const type::Type *t, Op op) {
   return cmd;
 }
 
+RegisterOr<double> CastIntToReal(RegisterOr<i32> r) {
+  if (!r.is_reg_) { return static_cast<double>(r.val_); }
+  auto &cmd             = IR::MakeCmd(type::Real, Op::CastIntToReal);
+  cmd.cast_int_to_real_ = IR::Cmd::CastIntToReal{{}, r.reg_};
+  return cmd.result;
+}
+
+Register CastPtr(Register r, type::Pointer const *t) {
+  auto &cmd     = IR::MakeCmd(t, Op::CastPtr);
+  cmd.cast_ptr_ = IR::Cmd::CastPtr{{}, r, t->pointee};
+  return cmd.result;
+}
+
 RegisterOr<char> Trunc(RegisterOr<i32> r) {
   if (!r.is_reg_) { return static_cast<char>(r.val_); }
   auto &cmd  = MakeCmd(type::Char, Op::Trunc);
@@ -261,6 +274,7 @@ DEFINE_CMD2(EqInt, eq_int_, i32, Bool, bool, std::equal_to<i32>{});
 DEFINE_CMD2(EqReal, eq_real_, double, Bool, bool, std::equal_to<double>{});
 DEFINE_CMD2(EqType, eq_type_, const type::Type *, Bool, bool,
             std::equal_to<const type::Type *>{});
+DEFINE_CMD2(EqEnum, eq_enum_, EnumVal, Bool, bool, std::equal_to<EnumVal>{});
 DEFINE_CMD2(EqFlags, eq_flags_, FlagsVal, Bool, bool,
             std::equal_to<FlagsVal>{});
 DEFINE_CMD2(EqAddr, eq_addr_, Addr, Bool, bool, std::equal_to<Addr>{});
@@ -269,6 +283,8 @@ DEFINE_CMD2(NeInt, ne_int_, i32, Bool, bool, std::not_equal_to<i32>{});
 DEFINE_CMD2(NeReal, ne_real_, double, Bool, bool, std::not_equal_to<double>{});
 DEFINE_CMD2(NeType, ne_type_, const type::Type *, Bool, bool,
             std::not_equal_to<const type::Type *>{});
+DEFINE_CMD2(NeEnum, ne_enum_, EnumVal, Bool, bool,
+            std::not_equal_to<EnumVal>{});
 DEFINE_CMD2(NeFlags, ne_flags_, FlagsVal, Bool, bool,
             std::not_equal_to<FlagsVal>{});
 DEFINE_CMD2(NeAddr, ne_addr_, Addr, Bool, bool, std::not_equal_to<Addr>{});
@@ -462,47 +478,6 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                      [lit](AST::BlockLiteral *l) { return lit == l; });
 }
 
-Val Cast(const type::Type *to, const Val &v, Context *ctx) {
-  if (v.type == to) {
-    // TODO lvalue/rvalue?
-    return v;
-  } else if (i32 const *n = std::get_if<i32>(&v.value); n && to == type::Real) {
-    return Val::Real(static_cast<double>(*n));
-
-  } else if (to->is<type::Variant>()) {
-    ASSERT(ctx != nullptr);
-    // TODO cleanup?
-    auto alloc = IR::Val::Reg(Alloca(to), to);
-
-    to->EmitAssign(v.type, std::move(v), alloc, ctx);
-    return alloc;
-
-  } else if (v.type->is<type::Pointer>()) {
-    auto *ptee_type = v.type->as<type::Pointer>().pointee;
-    if (ptee_type->is<type::Array>()) {
-      auto &array_type = ptee_type->as<type::Array>();
-      if (array_type.fixed_length && type::Ptr(array_type.data_type) == to) {
-        Val v_copy  = v;
-        v_copy.type = to;
-        return v_copy;
-      }
-    }
-  }
-
-  if (to == type::Real && v.type == type::Int) {
-    auto &cmd             = MakeCmd(type::Real, Op::CastIntToReal);
-    cmd.cast_int_to_real_ = Cmd::CastIntToReal{{}, std::get<Register>(v.value)};
-    return cmd.reg();
-  } else if (to->is<type::Pointer>()) {
-    auto &cmd     = MakeCmd(to, Op::CastPtr);
-    cmd.cast_ptr_ = Cmd::CastPtr{
-        {}, std::get<Register>(v.value), to->as<type::Pointer>().pointee};
-    return cmd.reg();
-  } else {
-    UNREACHABLE();
-  }
-}
-
 Register CreateStruct() { return MakeCmd(type::Type_, Op::CreateStruct).result; }
 
 Register FinalizeStruct(Register r) {
@@ -610,58 +585,7 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
   return cmd.result;
 }
 
-Val Add(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) {
-    return ValFrom(AddInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(AddReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  if (v1.type->is<type::CharBuffer>()) { return AddCharBuf(v1, v2); }
-  UNREACHABLE();
-}
-
 Val AddCodeBlock(const Val &v1, const Val &v2) { NOT_YET(); }
-
-Val Sub(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) {
-    return ValFrom(SubInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(SubReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  UNREACHABLE();
-}
-
-Val Mul(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) {
-    return ValFrom(MulInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(MulReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  UNREACHABLE();
-}
-
-Val Div(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) {
-    return ValFrom(DivInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(DivReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  UNREACHABLE();
-}
-
-Val Mod(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) {
-    return ValFrom(ModInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(ModReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  UNREACHABLE();
-}
 
 void StoreBool(RegisterOr<bool> val, Register loc) {
   auto &cmd       = MakeCmd(nullptr, Op::StoreBool);
@@ -820,30 +744,6 @@ Register Load(Register r, type::Type const *t) {
   UNREACHABLE(t);
 }
 
-void Print(const Val &v) {
-  if (v.type == type::Bool) {
-    PrintBool(v.reg_or<bool>());
-  } else if (v.type == type::Char) {
-    PrintChar(v.reg_or<char>());
-  } else if (v.type == type::Int) {
-    PrintInt(v.reg_or<i32>());
-  } else if (v.type == type::Real) {
-    PrintReal(v.reg_or<double>());
-  } else if (v.type == type::Type_) {
-    PrintType(v.reg_or<type::Type const *>());
-  } else if (v.type->is<type::Enum>()) {
-    PrintEnum(v.reg_or<EnumVal>(), &v.type->as<type::Enum>());
-  } else if (v.type->is<type::Flags>()) {
-    PrintFlags(v.reg_or<FlagsVal>(), &v.type->as<type::Flags>());
-  } else if (v.type->is<type::Pointer>()) {
-    PrintAddr(v.reg_or<IR::Addr>());
-  } else if (v.type->is<type::CharBuffer>()) {
-    PrintCharBuffer(v.reg_or<std::string_view>());
-  } else {
-    UNREACHABLE(v.type->to_string());
-  }
-}
-
 Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset) {
   auto *array_type = &t->as<type::Pointer>().pointee->as<type::Array>();
   // TODO this works but generates worse IR (both here and in llvm). It's worth
@@ -853,113 +753,6 @@ Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset) 
           ? array_ptr
           : Load(ArrayData(array_ptr, t), type::Ptr(array_type->data_type)),
       offset, type::Ptr(array_type->data_type));
-}
-
-Val Lt(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) {
-    return ValFrom(LtInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(LtReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  if (v1.type->is<type::Flags>()) {
-    return ValFrom(LtFlags(v1.reg_or<FlagsVal>(), v2.reg_or<FlagsVal>()));
-  }
-  UNREACHABLE();
-}
-
-Val Le(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) {
-    return ValFrom(LeInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(LeReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  if (v1.type->is<type::Flags>()) {
-    return ValFrom(LeFlags(v1.reg_or<FlagsVal>(), v2.reg_or<FlagsVal>()));
-  }
-  UNREACHABLE();
-}
-
-Val Gt(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) {
-    return ValFrom(GtInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(GtReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  if (v1.type->is<type::Flags>()) {
-    return ValFrom(GtFlags(v1.reg_or<FlagsVal>(), v2.reg_or<FlagsVal>()));
-  }
-  UNREACHABLE();
-}
-
-Val Ge(const Val &v1, const Val &v2) {
-  if (v1.type == type::Int) {
-    return ValFrom(GeInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(GeReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  if (v1.type->is<type::Flags>()) {
-    return ValFrom(GeFlags(v1.reg_or<FlagsVal>(), v2.reg_or<FlagsVal>()));
-  }
-  UNREACHABLE();
-}
-
-Val Eq(const Val &v1, const Val &v2) {
-  if (v1.type == type::Bool) {
-    return ValFrom(EqBool(v1.reg_or<bool>(), v2.reg_or<bool>()));
-  }
-  if (v1.type == type::Char) {
-    return ValFrom(EqChar(v1.reg_or<char>(), v2.reg_or<char>()));
-  }
-  if (v1.type == type::Int) {
-    return ValFrom(EqInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(EqReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  if (v1.type == type::Type_) {
-    return ValFrom(EqType(v1.reg_or<type::Type const *>(),
-                          v2.reg_or<type::Type const *>()));
-  }
-  if (v1.type->is<type::Flags>()) {
-    return ValFrom(EqFlags(v1.reg_or<FlagsVal>(), v2.reg_or<FlagsVal>()));
-  }
-  if (v1.type->is<type::Pointer>()) {
-    return ValFrom(EqAddr(v1.reg_or<IR::Addr>(), v2.reg_or<IR::Addr>()));
-  }
-
-  BlockSequence const *val1 = std::get_if<BlockSequence>(&v1.value);
-  BlockSequence const *val2 = std::get_if<BlockSequence>(&v2.value);
-  if (val1 != nullptr && val2 != nullptr) { return Val::Bool(*val1 == *val2); }
-
-  // TODO block sequence at runtime?
-  UNREACHABLE();
-}
-
-Val Ne(const Val &v1, const Val &v2) {
-  if (v1.type == type::Bool) {
-    return ValFrom(XorBool(v1.reg_or<bool>(), v2.reg_or<bool>()));
-  }
-  if (v1.type == type::Char) {
-    return ValFrom(NeChar(v1.reg_or<char>(), v2.reg_or<char>()));
-  }
-  if (v1.type == type::Int) {
-    return ValFrom(NeInt(v1.reg_or<i32>(), v2.reg_or<i32>()));
-  }
-  if (v1.type == type::Real) {
-    return ValFrom(NeReal(v1.reg_or<double>(), v2.reg_or<double>()));
-  }
-  if (v1.type == type::Type_) {
-    return ValFrom(NeType(v1.reg_or<type::Type const *>(),
-                          v2.reg_or<type::Type const *>()));
-  }
-  if (v1.type->is<type::Pointer>()) {
-    return ValFrom(NeAddr(v1.reg_or<IR::Addr>(), v2.reg_or<IR::Addr>()));
-  }
-  UNREACHABLE();
 }
 
 template <typename T>
@@ -1199,12 +992,14 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::EqChar: return os << cmd.eq_char_.args_;
     case Op::EqInt: return os << cmd.eq_int_.args_;
     case Op::EqReal: return os << cmd.eq_real_.args_;
+    case Op::EqEnum: return os << cmd.eq_enum_.args_;
     case Op::EqFlags: return os << cmd.eq_flags_.args_;
     case Op::EqType: return os << cmd.eq_type_.args_;
     case Op::EqAddr: return os << cmd.eq_addr_.args_;
     case Op::NeChar: return os << cmd.ne_char_.args_;
     case Op::NeInt: return os << cmd.ne_int_.args_;
     case Op::NeReal: return os << cmd.ne_real_.args_;
+    case Op::NeEnum: return os << cmd.ne_enum_.args_;
     case Op::NeFlags: return os << cmd.ne_flags_.args_;
     case Op::NeType: return os << cmd.ne_type_.args_;
     case Op::NeAddr: return os << cmd.ne_addr_.args_;

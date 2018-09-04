@@ -51,14 +51,13 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
       }();
 
       if (!to_type->fixed_length) {
-        // TODO Architecture dependence?
-        auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
-            IR::ValFrom(from_len), from_type->data_type);
-
         IR::StoreInt(from_len,
                   IR::ArrayLength(std::get<IR::Register>(to_arg.value)));
+        // TODO Architecture dependence?
         IR::StoreAddr(
-            IR::Malloc(from_type->data_type, to_bytes.template reg_or<i32>()),
+            IR::Malloc(from_type->data_type,
+                       Architecture::InterprettingMachine().ComputeArrayLength(
+                           from_len, from_type->data_type)),
             IR::ArrayData(std::get<IR::Register>(to_arg.value), to_arg.type));
       }
 

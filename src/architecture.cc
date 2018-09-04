@@ -7,10 +7,9 @@
 // TODO a lot of stuff that can only be run at compile-time needs to have
 // values for size and alignment. Figure out the best way to handle this.
 
-IR::Val Architecture::ComputeArrayLength(const IR::Val &len,
-                                         const type::Type *t) const {
-  auto space_in_array = MoveForwardToAlignment(t, bytes(t));
-  return IR::Mul(len, IR::Val::Int(static_cast<i32>(space_in_array)));
+IR::RegisterOr<i32> Architecture::ComputeArrayLength(
+    IR::RegisterOr<i32> len, const type::Type *t) const {
+  return IR::MulInt(len, static_cast<i32>(MoveForwardToAlignment(t, bytes(t))));
 }
 
 size_t Architecture::alignment(const type::Type *t) const {

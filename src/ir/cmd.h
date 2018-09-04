@@ -167,12 +167,14 @@ struct Cmd {
   CMD(EqInt) { std::array<RegisterOr<i32>, 2> args_; };
   CMD(EqReal) { std::array<RegisterOr<double>, 2> args_; };
   CMD(EqType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
+  CMD(EqEnum) { std::array<RegisterOr<EnumVal>, 2> args_; };
   CMD(EqFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
   CMD(EqAddr) { std::array<RegisterOr<IR::Addr>, 2> args_; };
   CMD(NeChar) { std::array<RegisterOr<char>, 2> args_; };
   CMD(NeInt) { std::array<RegisterOr<i32>, 2> args_; };
   CMD(NeReal) { std::array<RegisterOr<double>, 2> args_; };
   CMD(NeType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
+  CMD(NeEnum) { std::array<RegisterOr<EnumVal>, 2> args_; };
   CMD(NeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
   CMD(NeAddr) { std::array<RegisterOr<IR::Addr>, 2> args_; };
 
@@ -424,12 +426,14 @@ struct Cmd {
     EqInt eq_int_;
     EqReal eq_real_;
     EqType eq_type_;
+    EqEnum eq_enum_;
     EqFlags eq_flags_;
     EqAddr eq_addr_;
     NeChar ne_char_;
     NeInt ne_int_;
     NeReal ne_real_;
     NeType ne_type_;
+    NeEnum ne_enum_;
     NeFlags ne_flags_;
     NeAddr ne_addr_;
 
@@ -538,6 +542,8 @@ RegisterOr<i32> MulInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<double> MulReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<i32> DivInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<double> DivReal(RegisterOr<double> v1, RegisterOr<double> v2);
+RegisterOr<i32> ModInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
+RegisterOr<double> ModReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<bool> LtInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<bool> LtReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<bool> LtFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
@@ -553,6 +559,8 @@ RegisterOr<bool> GtFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
 RegisterOr<bool> EqBool(RegisterOr<bool> v1, RegisterOr<bool> v2);
 RegisterOr<bool> EqChar(RegisterOr<char> v1, RegisterOr<char> v2);
 RegisterOr<bool> EqInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
+RegisterOr<bool> EqEnum(RegisterOr<EnumVal> v1, RegisterOr<EnumVal> v2);
+RegisterOr<bool> EqFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
 RegisterOr<bool> EqReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<bool> EqType(RegisterOr<type::Type const *> v1,
                         RegisterOr<type::Type const *> v2);
@@ -563,6 +571,8 @@ RegisterOr<bool> NeInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<bool> NeReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<bool> NeType(RegisterOr<type::Type const *> v1,
                         RegisterOr<type::Type const *> v2);
+RegisterOr<bool> NeEnum(RegisterOr<EnumVal> v1, RegisterOr<EnumVal> v2);
+RegisterOr<bool> NeFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
 RegisterOr<bool> NeAddr(RegisterOr<IR::Addr> v1, RegisterOr<IR::Addr> v2);
 RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2);
 RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
@@ -635,21 +645,11 @@ void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r);
 Register Load(Register r, type::Type const *t);
 Val Load(Val const &v);
 
-Val Add(const Val& v1, const Val& v2);
-Val Sub(const Val &v1, const Val &v2);
-Val Mul(const Val &v1, const Val &v2);
-Val Div(const Val &v1, const Val &v2);
-Val Mod(const Val &v1, const Val &v2);
-Val Lt(const Val &v1, const Val &v2);
-Val Le(const Val &v1, const Val &v2);
-Val Ge(const Val &v1, const Val &v2);
-Val Gt(const Val &v1, const Val &v2);
-Val Eq(const Val &v1, const Val &v2);
-Val Ne(const Val &v1, const Val &v2);
+RegisterOr<double> CastIntToReal(RegisterOr<i32> r);
+Register CastPtr(Register r, type::Pointer const *t);
+
 Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset);
 Register Alloca(const type::Type *t);
-void Print(const Val& v);
-Val Cast(const type::Type *to, const Val& v, Context* ctx);
 void Store(const Val &val, Register loc);
 
 void SetReturn(size_t n, Val const &v2);

@@ -15,6 +15,7 @@
 #include "type/pointer.h"
 #include "type/struct.h"
 #include "type/tuple.h"
+#include "type/variant.h"
 
 IR::Val PtrCallFix(const IR::Val& v);
 
@@ -392,20 +393,110 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
   }
 
   switch (op) {
-#define CASE(op_name)                                                          \
-  case Language::Operator::op_name: {                                          \
-    auto lhs_ir = lhs->EmitIR(ctx)[0];                                         \
-    auto rhs_ir = rhs->EmitIR(ctx)[0];                                         \
-    return {IR::op_name(lhs_ir, rhs_ir)};                                      \
-  } break
-    CASE(Add);
-    CASE(Sub);
-    CASE(Mul);
-    CASE(Div);
-    CASE(Mod);
-#undef CASE
-    case Language::Operator::As:
-      return {IR::Cast(type, lhs->EmitIR(ctx)[0], ctx)};
+    case Language::Operator::Add: {
+      auto lhs_ir = lhs->EmitIR(ctx)[0];
+      auto rhs_ir = rhs->EmitIR(ctx)[0];
+      if (rhs_ir.type == type::Int) {
+        return {IR::ValFrom(
+            IR::AddInt(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
+      } else if (rhs_ir.type == type::Real) {
+        return {IR::ValFrom(
+            IR::AddReal(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
+      } else if (rhs_ir.type->is<type::CharBuffer>()) {
+        NOT_YET();
+      } else {
+        UNREACHABLE(rhs_ir.type);
+      }
+    } break;
+    case Language::Operator::Sub: {
+      auto lhs_ir = lhs->EmitIR(ctx)[0];
+      auto rhs_ir = rhs->EmitIR(ctx)[0];
+      if (rhs_ir.type == type::Int) {
+        return {IR::ValFrom(
+            IR::SubInt(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
+      } else if (rhs_ir.type == type::Real) {
+        return {IR::ValFrom(
+            IR::SubReal(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
+      } else {
+        UNREACHABLE(rhs_ir.type);
+      }
+    } break;
+    case Language::Operator::Mul: {
+      auto lhs_ir = lhs->EmitIR(ctx)[0];
+      auto rhs_ir = rhs->EmitIR(ctx)[0];
+      if (rhs_ir.type == type::Int) {
+        return {IR::ValFrom(
+            IR::MulInt(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
+      } else if (rhs_ir.type == type::Real) {
+        return {IR::ValFrom(
+            IR::MulReal(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
+      } else {
+        UNREACHABLE(rhs_ir.type);
+      }
+    } break;
+    case Language::Operator::Div: {
+      auto lhs_ir = lhs->EmitIR(ctx)[0];
+      auto rhs_ir = rhs->EmitIR(ctx)[0];
+      if (rhs_ir.type == type::Int) {
+        return {IR::ValFrom(
+            IR::DivInt(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
+      } else if (rhs_ir.type == type::Real) {
+        return {IR::ValFrom(
+            IR::DivReal(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
+      } else {
+        UNREACHABLE(rhs_ir.type);
+      }
+    } break;
+    case Language::Operator::Mod: {
+      auto lhs_ir = lhs->EmitIR(ctx)[0];
+      auto rhs_ir = rhs->EmitIR(ctx)[0];
+      if (rhs_ir.type == type::Int) {
+        return {IR::ValFrom(
+            IR::ModInt(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
+      } else if (rhs_ir.type == type::Real) {
+        return {IR::ValFrom(
+            IR::ModReal(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
+      } else {
+        UNREACHABLE(rhs_ir.type);
+      }
+    } break;
+    case Language::Operator::As: {
+      auto val = lhs->EmitIR(ctx)[0];
+      if (val.type == type) {
+        // TODO lvalue/rvalue?
+        return {val};
+      } else if (i32 const *n = std::get_if<i32>(&val.value);
+                 n && type == type::Real) {
+        return {IR::Val::Real(static_cast<double>(*n))};
+      } else if (type->is<type::Variant>()) {
+        auto alloc = IR::Val::Reg(IR::Alloca(type), type);
+        type->EmitAssign(val.type, std::move(val), alloc, ctx);
+        return {alloc};
+      } else if (val.type->is<type::Pointer>()) {
+        auto *ptee_type = val.type->as<type::Pointer>().pointee;
+        if (ptee_type->is<type::Array>()) {
+          auto &array_type = ptee_type->as<type::Array>();
+          if (array_type.fixed_length &&
+              type::Ptr(array_type.data_type) == type) {
+            IR::Val v_copy  = val;
+            v_copy.type = type;
+            return {v_copy};
+          }
+        }
+      }
+
+      if (type == type::Real && val.type == type::Int) {
+        return {IR::ValFrom(IR::CastIntToReal(val.reg_or<i32>()))};
+      } else if (type->is<type::Pointer>()) {
+        return {IR::Val::Reg(IR::CastPtr(std::get<IR::Register>(val.value),
+                                         &type->as<type::Pointer>()),
+                             type)};
+
+      } else {
+        UNREACHABLE();
+      }
+
+    } break;
     case Language::Operator::Arrow: {
       auto reg_or_type =
           IR::Arrow(IR::Tup(lhs->EmitIR(ctx)), IR::Tup(rhs->EmitIR(ctx)));
@@ -495,20 +586,83 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
           IR::Phi(type::Bool),
           {{lhs_end_block, rhs_val}, {rhs_end_block, IR::Val::Bool(false)}})};
     } break;
-#define CASE_ASSIGN_EQ(op_name)                                                \
-  case Language::Operator::op_name##Eq: {                                      \
-    auto lhs_lval = lhs->EmitLVal(ctx)[0];                                     \
-    auto rhs_ir   = rhs->EmitIR(ctx)[0];                                       \
-    IR::Store(IR::op_name(PtrCallFix(lhs_lval), rhs_ir),                       \
-              std::get<IR::Register>(lhs_lval.value));                         \
-    return {};                                                                 \
-  } break
-      CASE_ASSIGN_EQ(Add);
-      CASE_ASSIGN_EQ(Sub);
-      CASE_ASSIGN_EQ(Mul);
-      CASE_ASSIGN_EQ(Div);
-      CASE_ASSIGN_EQ(Mod);
-#undef CASE_ASSIGN_EQ
+    case Language::Operator::AddEq: {
+      auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+      auto rhs_ir   = rhs->EmitIR(ctx)[0];
+      if (rhs_ir.type == type::Int) {
+        IR::StoreInt(IR::AddInt(IR::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
+                     lhs_lval);
+      } else if (rhs_ir.type == type::Real) {
+        IR::StoreReal(
+            IR::AddReal(IR::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
+            lhs_lval);
+      } else if (rhs_ir.type->is<type::CharBuffer>()) {
+        NOT_YET();
+      } else {
+        UNREACHABLE(rhs_ir.type);
+      }
+      return {};
+    } break;
+    case Language::Operator::SubEq: {
+      auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+      auto rhs_ir   = rhs->EmitIR(ctx)[0];
+      if (rhs_ir.type == type::Int) {
+        IR::StoreInt(IR::SubInt(IR::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
+                     lhs_lval);
+      } else if (rhs_ir.type == type::Real) {
+        IR::StoreReal(
+            IR::SubReal(IR::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
+            lhs_lval);
+      } else {
+        UNREACHABLE(rhs_ir.type);
+      }
+      return {};
+    } break;
+    case Language::Operator::DivEq: {
+      auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+      auto rhs_ir   = rhs->EmitIR(ctx)[0];
+      if (rhs_ir.type == type::Int) {
+        IR::StoreInt(IR::DivInt(IR::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
+                     lhs_lval);
+      } else if (rhs_ir.type == type::Real) {
+        IR::StoreReal(
+            IR::DivReal(IR::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
+            lhs_lval);
+      } else {
+        UNREACHABLE(rhs_ir.type);
+      }
+      return {};
+    } break;
+    case Language::Operator::ModEq: {
+      auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+      auto rhs_ir   = rhs->EmitIR(ctx)[0];
+      if (rhs_ir.type == type::Int) {
+        IR::StoreInt(IR::ModInt(IR::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
+                     lhs_lval);
+      } else if (rhs_ir.type == type::Real) {
+        IR::StoreReal(
+            IR::ModReal(IR::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
+            lhs_lval);
+      } else {
+        UNREACHABLE(rhs_ir.type);
+      }
+      return {};
+    } break;
+    case Language::Operator::MulEq: {
+      auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+      auto rhs_ir   = rhs->EmitIR(ctx)[0];
+      if (rhs_ir.type == type::Int) {
+        IR::StoreInt(IR::MulInt(IR::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
+                     lhs_lval);
+      } else if (rhs_ir.type == type::Real) {
+        IR::StoreReal(
+            IR::MulReal(IR::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
+            lhs_lval);
+      } else {
+        UNREACHABLE(rhs_ir.type);
+      }
+      return {};
+    } break;
     case Language::Operator::XorEq: {
       if (lhs->type == type::Bool) {
         auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
@@ -516,8 +670,8 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
         IR::StoreBool(IR::XorBool(IR::LoadBool(lhs_lval), rhs_ir), lhs_lval);
       } else if (lhs->type->is<type::Flags>()) {
         auto *flags_type = &lhs->type->as<type::Flags>();
-        auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
-        auto rhs_ir   = rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>();
+        auto lhs_lval    = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+        auto rhs_ir      = rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>();
         IR::StoreFlags(
             IR::XorFlags(flags_type, IR::LoadFlags(lhs_lval, flags_type),
                          rhs_ir),

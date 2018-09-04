@@ -10,10 +10,11 @@
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"
+#include "type/pointer.h"
 #include "type/struct.h"
 #include "type/tuple.h"
 
-IR::Val PtrCallFix(const IR::Val& v);
+IR::Val PtrCallFix(const IR::Val &v);
 
 base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
@@ -59,18 +60,74 @@ IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
     return results[0];
 
   } else {
+#define MAKE_OP(cpp_type, IcTypeCheck, OpName)                                 \
+  if (lhs_ir.type IcTypeCheck) {                                               \
+    return IR::ValFrom(                                                        \
+        OpName(lhs_ir.reg_or<cpp_type>(), rhs_ir.reg_or<cpp_type>()));         \
+  }
     switch (op) {
-      case Language::Operator::Lt: return IR::Lt(lhs_ir, rhs_ir);
-      case Language::Operator::Le: return IR::Le(lhs_ir, rhs_ir);
-      case Language::Operator::Eq: return IR::Eq(lhs_ir, rhs_ir);
-      case Language::Operator::Ne: return IR::Ne(lhs_ir, rhs_ir);
-      case Language::Operator::Ge: return IR::Ge(lhs_ir, rhs_ir);
+      case Language::Operator::Lt:
+        MAKE_OP(i32, == type::Int, IR::LtInt);
+        MAKE_OP(double, == type::Real, IR::LtReal);
+        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::LtFlags);
+        UNREACHABLE();
+      case Language::Operator::Le:
+        MAKE_OP(i32, == type::Int, IR::LeInt);
+        MAKE_OP(double, == type::Real, IR::LeReal);
+        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::LeFlags);
+        UNREACHABLE();
+      case Language::Operator::Eq:
+        MAKE_OP(bool, == type::Bool, IR::EqBool);
+        MAKE_OP(char, == type::Char, IR::EqChar);
+        MAKE_OP(i32, == type::Int, IR::EqInt);
+        MAKE_OP(double, == type::Real, IR::EqReal);
+        MAKE_OP(type::Type const *, == type::Type_, IR::EqType);
+        MAKE_OP(IR::EnumVal, ->is<type::Enum>(), IR::EqEnum);
+        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::EqFlags);
+        MAKE_OP(IR::Addr, ->is<type::Pointer>(), IR::EqAddr);
+        {
+          IR::BlockSequence const *val1 =
+              std::get_if<IR::BlockSequence>(&lhs_ir.value);
+          IR::BlockSequence const *val2 =
+              std::get_if<IR::BlockSequence>(&rhs_ir.value);
+          if (val1 != nullptr && val2 != nullptr) {
+            return IR::Val::Bool(*val1 == *val2);
+          }
+        }
+        UNREACHABLE();
+      case Language::Operator::Ne:
+        MAKE_OP(bool, == type::Bool, IR::XorBool);
+        MAKE_OP(char, == type::Char, IR::NeChar);
+        MAKE_OP(i32, == type::Int, IR::NeInt);
+        MAKE_OP(double, == type::Real, IR::NeReal);
+        MAKE_OP(type::Type const *, == type::Type_, IR::NeType);
+        MAKE_OP(IR::EnumVal, ->is<type::Enum>(), IR::NeEnum);
+        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::NeFlags);
+        MAKE_OP(IR::Addr, ->is<type::Pointer>(), IR::NeAddr);
+        {
+          IR::BlockSequence const *val1 =
+              std::get_if<IR::BlockSequence>(&lhs_ir.value);
+          IR::BlockSequence const *val2 =
+              std::get_if<IR::BlockSequence>(&rhs_ir.value);
+          if (val1 != nullptr && val2 != nullptr) {
+            return IR::Val::Bool(*val1 == *val2);
+          }
+        }
+        UNREACHABLE();
+      case Language::Operator::Ge:
+        MAKE_OP(i32, == type::Int, IR::GeInt);
+        MAKE_OP(double, == type::Real, IR::GeReal);
+        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::GeFlags);
+        UNREACHABLE();
       case Language::Operator::Gt:
-        return IR::Gt(lhs_ir, rhs_ir);
+        MAKE_OP(i32, == type::Int, IR::GtInt);
+        MAKE_OP(double, == type::Real, IR::GtReal);
+        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::GtFlags);
+        UNREACHABLE();
         // TODO case Language::Operator::And: cmp = lhs_ir; break;
-
       default: UNREACHABLE();
     }
+#undef MAKE_OP
   }
 }
 

@@ -271,6 +271,9 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::EqReal:
       save(resolve(cmd.eq_real_.args_[0]) == resolve(cmd.eq_real_.args_[1]));
       break;
+    case IR::Op::EqEnum:
+      save(resolve(cmd.eq_enum_.args_[0]) == resolve(cmd.eq_enum_.args_[1]));
+      break;
     case IR::Op::EqFlags:
       save(resolve(cmd.eq_flags_.args_[0]) == resolve(cmd.eq_flags_.args_[1]));
       break;
@@ -288,6 +291,9 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       break;
     case IR::Op::NeReal:
       save(resolve(cmd.ne_real_.args_[0]) == resolve(cmd.ne_real_.args_[1]));
+      break;
+    case IR::Op::NeEnum:
+      save(resolve(cmd.ne_enum_.args_[0]) == resolve(cmd.ne_enum_.args_[1]));
       break;
     case IR::Op::NeFlags:
       save(resolve(cmd.ne_flags_.args_[0]) == resolve(cmd.ne_flags_.args_[1]));
@@ -379,11 +385,8 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case IR::Op::PtrIncr: {
       auto addr = resolve<IR::Addr>(cmd.ptr_incr_.ptr_);
-      auto incr = resolve(cmd.ptr_incr_.incr_);
-      // Sadly must convert to value and back even though it's guaranteed to
-      // be constant folded
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          incr, cmd.type->as<type::Pointer>().pointee);
+          resolve(cmd.ptr_incr_.incr_), cmd.type->as<type::Pointer>().pointee);
       switch (addr.kind) {
         case IR::Addr::Kind::Stack: save(addr.as_stack + bytes_fwd); break;
         case IR::Addr::Kind::Heap:
