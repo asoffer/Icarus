@@ -7,6 +7,7 @@
 #include "base/check.h"
 #include "context.h"
 #include "ir/func.h"
+#include "ir/phi.h"
 #include "type/array.h"
 #include "type/char_buffer.h"
 #include "type/enum.h"
@@ -534,10 +535,12 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::OrEq: {
       if (type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::StoreFlags(IR::OrFlags(&type->as<type::Flags>(),
-                                   IR::Load(lhs_lval).reg_or<IR::FlagsVal>(),
-                                   rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
-                       std::get<IR::Register>(lhs_lval.value));
+        IR::StoreFlags(
+            IR::OrFlags(
+                &type->as<type::Flags>(),
+                IR::LoadFlags(std::get<IR::Register>(lhs_lval.value), type),
+                rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
+            std::get<IR::Register>(lhs_lval.value));
         return {};
       }
       auto land_block = IR::Func::Current->AddBlock();
@@ -548,23 +551,25 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       IR::CondJump(lhs_val, land_block, more_block);
 
       IR::BasicBlock::Current = more_block;
-      auto rhs_val            = rhs->EmitIR(ctx)[0];
+      auto rhs_val            = rhs->EmitIR(ctx)[0].reg_or<bool>();
       auto rhs_end_block      = IR::BasicBlock::Current;
       IR::UncondJump(land_block);
 
       IR::BasicBlock::Current = land_block;
 
-      return {IR::MakePhi(
+      return {IR::ValFrom(IR::MakePhi<bool>(
           IR::Phi(type::Bool),
-          {{lhs_end_block, IR::Val::Bool(true)}, {rhs_end_block, rhs_val}})};
+          {{lhs_end_block, true}, {rhs_end_block, rhs_val}}))};
     } break;
     case Language::Operator::AndEq: {
       if (type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::StoreFlags(IR::AndFlags(&type->as<type::Flags>(),
-                                    IR::Load(lhs_lval).reg_or<IR::FlagsVal>(),
-                                    rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
-                       std::get<IR::Register>(lhs_lval.value));
+        IR::StoreFlags(
+            IR::AndFlags(
+                &type->as<type::Flags>(),
+                IR::LoadFlags(std::get<IR::Register>(lhs_lval.value), type),
+                rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
+            std::get<IR::Register>(lhs_lval.value));
         return {};
       }
 
@@ -576,15 +581,15 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       IR::CondJump(lhs_val, more_block, land_block);
 
       IR::BasicBlock::Current = more_block;
-      auto rhs_val            = rhs->EmitIR(ctx)[0];
+      auto rhs_val            = rhs->EmitIR(ctx)[0].reg_or<bool>();
       auto rhs_end_block      = IR::BasicBlock::Current;
       IR::UncondJump(land_block);
 
       IR::BasicBlock::Current = land_block;
 
-      return {IR::MakePhi(
+      return {IR::ValFrom(IR::MakePhi<bool>(
           IR::Phi(type::Bool),
-          {{lhs_end_block, rhs_val}, {rhs_end_block, IR::Val::Bool(false)}})};
+          {{lhs_end_block, rhs_val}, {rhs_end_block, false}}))};
     } break;
     case Language::Operator::AddEq: {
       auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);

@@ -1,11 +1,13 @@
 #include "ast/call.h"
 
 #include <sstream>
+
 #include "ast/function_literal.h"
 #include "ast/terminal.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "ir/func.h"
+#include "ir/phi.h"
 #include "scope.h"
 #include "type/array.h"
 #include "type/char_buffer.h"
@@ -98,20 +100,20 @@ static IR::Val EmitVariantMatch(IR::Register needle, const type::Type *haystack)
     // other.
     auto landing = IR::Func::Current->AddBlock();
 
-    base::unordered_map<IR::BlockIndex, IR::Val> phi_map;
+    base::unordered_map<IR::BlockIndex, IR::RegisterOr<bool>> phi_map;
     for (const type::Type *v : haystack->as<type::Variant>().variants_) {
-      phi_map[IR::BasicBlock::Current] = IR::Val::Bool(true);
+      phi_map.emplace(IR::BasicBlock::Current, true);
 
       IR::BasicBlock::Current =
           IR::EarlyExitOn<true>(landing, IR::EqType(v, runtime_type));
     }
 
-    phi_map[IR::BasicBlock::Current] = IR::Val::Bool(false);
+    phi_map.emplace(IR::BasicBlock::Current, false);
 
     IR::UncondJump(landing);
 
     IR::BasicBlock::Current = landing;
-    return {IR::MakePhi(IR::Phi(type::Bool), phi_map)};
+    return {IR::ValFrom(IR::MakePhi<bool>(IR::Phi(type::Bool), phi_map))};
 
   } else {
     // TODO actually just implicitly convertible to haystack
@@ -181,6 +183,7 @@ static void EmitOneCallDispatch(
   }
 
   IR::LongArgs call_args;
+  call_args.type_ = &callee.type->as<type::Function>();
   for (const auto &arg : args) { call_args.append(arg); }
 
   ASSERT(binding.fn_expr_->type, Is<type::Function>());
@@ -189,7 +192,6 @@ static void EmitOneCallDispatch(
   base::vector<IR::Val> results;
   IR::OutParams outs;
   if (!fn_type->output.empty()) {
-
     auto MakeRegister = [&](type::Type const *ret_type,
                             type::Type const *expected_ret_type,
                             IR::Val *out_reg) {
@@ -239,7 +241,19 @@ static void EmitOneCallDispatch(
     }
   }
 
-  IR::Call(callee, std::move(call_args), std::move(outs));
+  std::visit(
+      [&](auto &val) {
+        using val_t = std::decay_t<decltype(val)>;
+        if constexpr (std::is_same_v<val_t, IR::Func *> ||
+                      std::is_same_v<val_t, IR::ForeignFn>) {
+          IR::Call(IR::AnyFunc{val}, std::move(call_args), std::move(outs));
+        } else if constexpr (std::is_same_v<val_t, IR::Register>) {
+          IR::Call(val, std::move(call_args), std::move(outs));
+        } else {
+          UNREACHABLE(val);
+        }
+      },
+      callee.value);
 }
 
 base::vector<IR::Val> EmitCallDispatch(
@@ -522,13 +536,16 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
       for (const auto &arg : args_.pos_[0]->EmitIR(ctx)) {
         call_args.append(arg);
       }
+      call_args.type_ = &fn_val.type->as<type::Function>();
 
       auto *out_type = fn_->type->as<type::Function>().output.at(0);
       ASSERT(!out_type->is_big());
 
       IR::OutParams outs;
       auto reg = outs.AppendReg(out_type);
-      IR::Call(fn_val, std::move(call_args), std::move(outs));
+      IR::Call(IR::AnyFunc{std::get<IR::Func *>(fn_val.value)},
+               std::move(call_args), std::move(outs));
+
       return {reg};
 
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {

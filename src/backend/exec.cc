@@ -184,11 +184,6 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::AddReal:
       save(resolve(cmd.add_real_.args_[0]) + resolve(cmd.add_real_.args_[1]));
       break;
-    case IR::Op::AddCharBuf:
-      save(IR::SaveStringGlobally(
-          std::string(resolve(cmd.add_char_buf_.args_[0])) +
-          std::string(resolve(cmd.add_char_buf_.args_[1]))));
-      break;
     case IR::Op::SubInt:
       save(resolve(cmd.sub_int_.args_[0]) - resolve(cmd.sub_int_.args_[1]));
       break;
@@ -551,28 +546,23 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       }
 
       // TODO you need to be able to determine how many args there are
-      switch (cmd.call_.which_active_) {
-        case 0x00: {
-          // TODO what if the register is a foerign fn?
-          backend::Execute(resolve<IR::Func *>(cmd.call_.reg_), call_buf,
-                           ret_slots, this);
-        } break;
-        case 0x01: {
-          backend::Execute(cmd.call_.fn_, call_buf, ret_slots, this);
-
-        } break;
-        case 0x02:
-          if (cmd.call_.foreign_fn_.name_ == "malloc") {
-            IR::Addr addr;
-            addr.kind    = IR::Addr::Kind::Heap;
-            addr.as_heap = malloc(call_buf.get<i32>(0));
-            StoreValue(addr, ret_slots.at(0), &stack_);
-          } else if (cmd.call_.foreign_fn_.name_ == "abs") {
-            StoreValue(std::abs(call_buf.get<i32>(0)), ret_slots.at(0),
-                       &stack_);
-          } else {
-            NOT_YET();
-          }
+      if (cmd.call_.fn_.is_reg_) {
+        // TODO what if the register is a foerign fn?
+        backend::Execute(resolve<IR::Func *>(cmd.call_.fn_.reg_), call_buf,
+                         ret_slots, this);
+      } else if (cmd.call_.fn_.val_.is_fn_) {
+          backend::Execute(cmd.call_.fn_.val_.fn_, call_buf, ret_slots, this);
+      } else {
+        if (cmd.call_.fn_.val_.foreign_.name_ == "malloc") {
+          IR::Addr addr;
+          addr.kind    = IR::Addr::Kind::Heap;
+          addr.as_heap = malloc(call_buf.get<i32>(0));
+          StoreValue(addr, ret_slots.at(0), &stack_);
+        } else if (cmd.call_.fn_.val_.foreign_.name_ == "abs") {
+          StoreValue(std::abs(call_buf.get<i32>(0)), ret_slots.at(0), &stack_);
+        } else {
+          NOT_YET();
+        }
       }
     } break;
     case IR::Op::CreateTuple: {

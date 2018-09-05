@@ -6,6 +6,7 @@
 #include "architecture.h"
 #include "base/container/vector.h"
 #include "ir/func.h"
+#include "ir/phi.h"
 #include "type/all.h"
 
 namespace IR {
@@ -105,8 +106,8 @@ RegisterOr<bool> Not(RegisterOr<bool> r) {
 // TODO do you really want to support this? How can array allocation be
 // customized?
 Register Malloc(const type::Type *t, RegisterOr<i32> r) {
-  auto &cmd         = MakeCmd(type::Ptr(t), Op::Malloc);
-  cmd.malloc_       = Cmd::Malloc::Make(r);
+  auto &cmd   = MakeCmd(type::Ptr(t), Op::Malloc);
+  cmd.malloc_ = Cmd::Malloc::Make(r);
   return cmd.result;
 }
 
@@ -117,7 +118,7 @@ void Free(Register r) {
 
 RegisterOr<i32> NegInt(RegisterOr<i32> r) {
   if (!r.is_reg_) { return -r.val_; }
-  auto &cmd = MakeCmd(type::Bool, Op::NegInt);
+  auto &cmd    = MakeCmd(type::Bool, Op::NegInt);
   cmd.neg_int_ = Cmd::NegInt::Make(r.reg_);
   Func::Current->references_[cmd.neg_int_.reg_].insert(cmd.result);
   return cmd.result;
@@ -195,29 +196,13 @@ DEFINE_CMD1(PrintCharBuffer, print_char_buffer_, std::string_view);
 #undef DEFINE_CMD1
 
 void PrintEnum(RegisterOr<EnumVal> r, type::Enum const *t) {
-  auto &cmd = MakeCmd(nullptr, Op::PrintEnum);
-  cmd.print_enum_= Cmd::PrintEnum::Make(r, t);
+  auto &cmd       = MakeCmd(nullptr, Op::PrintEnum);
+  cmd.print_enum_ = Cmd::PrintEnum::Make(r, t);
 }
 
 void PrintFlags(RegisterOr<FlagsVal> r, type::Flags const *t) {
-  auto &cmd = MakeCmd(nullptr, Op::PrintFlags);
-  cmd.print_flags_= Cmd::PrintFlags::Make(r, t);
-}
-
-Val AddCharBuf(const Val &v1, const Val &v2) {
-  auto *s1 = std::get_if<std::string_view>(&v1.value);
-  auto *s2 = std::get_if<std::string_view>(&v2.value);
-  if (s1 && s2) {
-    return IR::Val::CharBuf(std::string(*s1) + std::string(*s2));
-  }
-
-  auto &cmd         = MakeCmd(nullptr /* TODO */, Op::AddCharBuf);
-  cmd.add_char_buf_ = Cmd::AddCharBuf::Make(
-      s1 ? RegisterOr<std::string_view>(*s1)
-         : RegisterOr<std::string_view>(std::get<Register>(v1.value)),
-      s2 ? RegisterOr<std::string_view>(*s2)
-         : RegisterOr<std::string_view>(std::get<Register>(v2.value)));
-  return cmd.reg();
+  auto &cmd        = MakeCmd(nullptr, Op::PrintFlags);
+  cmd.print_flags_ = Cmd::PrintFlags::Make(r, t);
 }
 
 #define DEFINE_CMD2(Name, name, arg_type, RetType, ret_type, fn)               \
@@ -324,8 +309,8 @@ RegisterOr<type::Type const *> Array(RegisterOr<i32> len,
 Register CreateTuple() { return MakeCmd(type::Type_, Op::CreateTuple).result; }
 
 void AppendToTuple(Register tup, RegisterOr<type::Type const *> entry) {
-  auto &cmd                  = MakeCmd(nullptr, Op::AppendToTuple);
-  cmd.append_to_tuple_       = Cmd::AppendToTuple::Make(tup, entry);
+  auto &cmd            = MakeCmd(nullptr, Op::AppendToTuple);
+  cmd.append_to_tuple_ = Cmd::AppendToTuple::Make(tup, entry);
 }
 
 Register FinalizeTuple(Register r) {
@@ -358,10 +343,9 @@ Register FinalizeVariant(Register r) {
 }
 
 RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals) {
-  if (std::all_of(vals.begin(), vals.end(), [](Val const& v) {
+  if (std::all_of(vals.begin(), vals.end(), [](Val const &v) {
         return std::holds_alternative<type::Type const *>(v.value);
-        })) {
-
+      })) {
     base::vector<type::Type const *> types;
     types.reserve(vals.size());
     for (Val const &v : vals) {
@@ -430,7 +414,9 @@ Val OutParams::AppendReg(type::Type const *t) {
 
 BlockSequence MakeBlockSeq(base::vector<IR::BlockSequence> const &blocks);
 
-Register CreateBlockSeq() { return MakeCmd(type::Type_, Op::CreateBlockSeq).result; }
+Register CreateBlockSeq() {
+  return MakeCmd(type::Type_, Op::CreateBlockSeq).result;
+}
 
 void AppendToBlockSeq(Register block_seq,
                       RegisterOr<IR::BlockSequence> more_block_seq) {
@@ -440,7 +426,7 @@ void AppendToBlockSeq(Register block_seq,
 }
 
 Register FinalizeBlockSeq(Register r) {
-  auto &cmd           = MakeCmd(type::Block, Op::FinalizeBlockSeq);
+  auto &cmd               = MakeCmd(type::Block, Op::FinalizeBlockSeq);
   cmd.finalize_block_seq_ = Cmd::FinalizeBlockSeq::Make(r);
   return cmd.result;
 }
@@ -478,7 +464,9 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                      [lit](AST::BlockLiteral *l) { return lit == l; });
 }
 
-Register CreateStruct() { return MakeCmd(type::Type_, Op::CreateStruct).result; }
+Register CreateStruct() {
+  return MakeCmd(type::Type_, Op::CreateStruct).result;
+}
 
 Register FinalizeStruct(Register r) {
   auto &cmd            = MakeCmd(type::Type_, Op::FinalizeStruct);
@@ -506,18 +494,17 @@ void CreateStructField(Register struct_type,
 }
 
 void SetStructFieldName(Register struct_type, std::string_view field_name) {
-  auto &cmd                  = MakeCmd(nullptr, Op::SetStructFieldName);
-  cmd.set_struct_field_name_ = Cmd::SetStructFieldName::Make(struct_type, field_name);
+  auto &cmd = MakeCmd(nullptr, Op::SetStructFieldName);
+  cmd.set_struct_field_name_ =
+      Cmd::SetStructFieldName::Make(struct_type, field_name);
 }
 
 Register Alloca(const type::Type *t) {
   ASSERT(t, Not(Is<type::Tuple>()));
-  return std::get<IR::Register>(
-      ASSERT_NOT_NULL(Func::Current)
-          ->block(Func::Current->entry())
-          .cmds_.emplace_back(type::Ptr(t), Op::Alloca)
-          .reg()
-          .value);
+  return ASSERT_NOT_NULL(Func::Current)
+      ->block(Func::Current->entry())
+      .cmds_.emplace_back(type::Ptr(t), Op::Alloca)
+      .result;
 }
 
 void SetReturn(size_t n, Val const &v2) {
@@ -540,12 +527,30 @@ void SetReturn(size_t n, Val const &v2) {
   if (v2.type->is<type::Pointer>()) {
     return SetReturnAddr(n, v2.reg_or<IR::Addr>());
   }
-  if (v2.type->is<type::Function>()) { return SetReturnFunc(n, v2); }
+  if (v2.type->is<type::Function>()) {
+    return std::visit(
+        [&](auto &val) {
+          using val_t = std::decay_t<decltype(val)>;
+          if constexpr (std::is_same_v<val_t, IR::Func *> ||
+                        std::is_same_v<val_t, IR::ForeignFn>) {
+            return SetReturnFunc(n, IR::AnyFunc{val});
+          } else if constexpr (std::is_same_v<val_t, IR::Register>) {
+            return SetReturnFunc(n, val);
+          } else {
+            UNREACHABLE(val);
+          }
+        },
+        v2.value);
+  }
   if (v2.type->is<type::Scope>()) {
     return SetReturnScope(n, v2.reg_or<AST::ScopeLiteral *>());
   }
-  if (v2.type == type::Module) { return SetReturnModule(n, v2.reg_or<Module const *>()); }
-  if (v2.type == type::Generic) { return SetReturnGeneric(n, v2.reg_or<AST::Function *>()); }
+  if (v2.type == type::Module) {
+    return SetReturnModule(n, v2.reg_or<Module const *>());
+  }
+  if (v2.type == type::Generic) {
+    return SetReturnGeneric(n, v2.reg_or<AST::Function *>());
+  }
   if (v2.type == type::Block || v2.type == type::OptBlock) {
     return SetReturnBlock(n, v2.reg_or<BlockSequence>());
   }
@@ -584,8 +589,6 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
   cmd.and_flags_ = Cmd::AndFlags::Make(lhs, rhs);
   return cmd.result;
 }
-
-Val AddCodeBlock(const Val &v1, const Val &v2) { NOT_YET(); }
 
 void StoreBool(RegisterOr<bool> val, Register loc) {
   auto &cmd       = MakeCmd(nullptr, Op::StoreBool);
@@ -644,17 +647,17 @@ void SetReturnInt(size_t n, RegisterOr<i32> r) {
 }
 
 void SetReturnCharBuf(size_t n, RegisterOr<std::string_view> r) {
-  auto &cmd = MakeCmd(nullptr, Op::SetReturnCharBuf);
+  auto &cmd                = MakeCmd(nullptr, Op::SetReturnCharBuf);
   cmd.set_return_char_buf_ = Cmd::SetReturnCharBuf::Make(n, r);
 }
 
 void SetReturnReal(size_t n, RegisterOr<double> r) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnReal);
-  cmd.set_return_real_ = Cmd::SetReturnReal::Make(n, r); 
+  cmd.set_return_real_ = Cmd::SetReturnReal::Make(n, r);
 }
 
 void SetReturnType(size_t n, RegisterOr<type::Type const *> r) {
-  auto &cmd = MakeCmd(nullptr, Op::SetReturnType);
+  auto &cmd            = MakeCmd(nullptr, Op::SetReturnType);
   cmd.set_return_type_ = Cmd::SetReturnType::Make(n, r);
 }
 
@@ -673,26 +676,18 @@ void SetReturnAddr(size_t n, RegisterOr<Addr> r) {
   cmd.set_return_addr_ = Cmd::SetReturnAddr::Make(n, r);
 }
 
-void SetReturnFunc(size_t n, const Val &v2) {
+void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnFunc);
-  cmd.set_return_func_ = Cmd::SetReturnFunc::Make(
-      n,
-      std::visit(
-          base::overloaded{
-              [](IR::Func *f) -> RegisterOr<AnyFunc> { return AnyFunc{f}; },
-              [](IR::Register r) -> RegisterOr<AnyFunc> { return r; },
-              [](IR::ForeignFn f) -> RegisterOr<AnyFunc> { return AnyFunc{f}; },
-              [n](auto &&) -> RegisterOr<AnyFunc> { UNREACHABLE(); }},
-          v2.value));
+  cmd.set_return_func_ = Cmd::SetReturnFunc::Make(n, r);
 }
 
 void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r) {
-  auto &cmd = MakeCmd(nullptr, Op::SetReturnScope);
+  auto &cmd             = MakeCmd(nullptr, Op::SetReturnScope);
   cmd.set_return_scope_ = Cmd::SetReturnScope::Make(n, r);
 }
 
 void SetReturnModule(size_t n, RegisterOr<Module const *> r) {
-  auto &cmd = MakeCmd(nullptr, Op::SetReturnModule);
+  auto &cmd              = MakeCmd(nullptr, Op::SetReturnModule);
   cmd.set_return_module_ = Cmd::SetReturnModule::Make(n, r);
 }
 
@@ -702,28 +697,8 @@ void SetReturnGeneric(size_t n, RegisterOr<AST::Function *> r) {
 }
 
 void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r) {
-  auto &cmd = MakeCmd(nullptr, Op::SetReturnBlock);
+  auto &cmd             = MakeCmd(nullptr, Op::SetReturnBlock);
   cmd.set_return_block_ = Cmd::SetReturnBlock::Make(n, r);
-}
-
-void Store(const Val &val, Register loc) {
-  if (val.type == type::Bool) { return StoreBool(val.reg_or<bool>(), loc); }
-  if (val.type == type::Char) { return StoreChar(val.reg_or<char>(), loc); }
-  if (val.type == type::Int) { return StoreInt(val.reg_or<i32>(), loc); }
-  if (val.type == type::Real) { return StoreReal(val.reg_or<double>(), loc); }
-  if (val.type == type::Type_) {
-    return StoreType(val.reg_or<type::Type const *>(), loc);
-  }
-  if (val.type->is<type::Enum>()) {
-    return StoreEnum(val.reg_or<EnumVal>(), loc);
-  }
-  if (val.type->is<type::Flags>()) {
-    return StoreFlags(val.reg_or<FlagsVal>(), loc);
-  }
-  if (val.type->is<type::Pointer>()) {
-    return StoreAddr(val.reg_or<IR::Addr>(), loc);
-  }
-  UNREACHABLE(val.type);
 }
 
 Val Load(Val const &v) {
@@ -744,7 +719,8 @@ Register Load(Register r, type::Type const *t) {
   UNREACHABLE(t);
 }
 
-Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset) {
+Register Index(type::Type const *t, Register array_ptr,
+               RegisterOr<i32> offset) {
   auto *array_type = &t->as<type::Pointer>().pointee->as<type::Array>();
   // TODO this works but generates worse IR (both here and in llvm). It's worth
   // figuring out how to do this better.
@@ -753,6 +729,18 @@ Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset) 
           ? array_ptr
           : Load(ArrayData(array_ptr, t), type::Ptr(array_type->data_type)),
       offset, type::Ptr(array_type->data_type));
+}
+
+template <typename T>
+static std::unordered_map<BlockIndex, RegisterOr<T>> ConvertMap(
+    const std::unordered_map<BlockIndex, Val> &val_map) {
+  std::unordered_map<BlockIndex, RegisterOr<T>> result;
+
+  for (const auto & [ block, val ] : val_map) {
+    result.emplace(block, val.template reg_or<T>());
+  }
+
+  return result;
 }
 
 template <typename T>
@@ -779,35 +767,16 @@ Val MakePhi(CmdIndex phi_index,
   cmd.type  = val_map.begin()->second.type;
 
   if (cmd.type == type::Bool) {
-    auto phi_args = MakePhiArgs<bool>(val_map);
-    cmd.op_code_  = Op::PhiBool;
-    cmd.phi_bool_ = Cmd::PhiBool::Make(phi_args.get());
-    IR::Func::Current->block(BasicBlock::Current)
-        .phi_args_.push_back(std::move(phi_args));
+    return IR::ValFrom(MakePhi<bool>(phi_index, ConvertMap<bool>(val_map)));
   } else if (cmd.type == type::Char) {
-    auto phi_args = MakePhiArgs<char>(val_map);
-    cmd.op_code_  = Op::PhiChar;
-    cmd.phi_char_ = Cmd::PhiChar::Make(phi_args.get());
-    IR::Func::Current->block(BasicBlock::Current)
-        .phi_args_.push_back(std::move(phi_args));
+    return IR::ValFrom(MakePhi<char>(phi_index, ConvertMap<char>(val_map)));
   } else if (cmd.type == type::Int) {
-    auto phi_args = MakePhiArgs<i32>(val_map);
-    cmd.op_code_  = Op::PhiInt;
-    cmd.phi_int_  = Cmd::PhiInt::Make(phi_args.get());
-    IR::Func::Current->block(BasicBlock::Current)
-        .phi_args_.push_back(std::move(phi_args));
+    return IR::ValFrom(MakePhi<int>(phi_index, ConvertMap<int>(val_map)));
   } else if (cmd.type == type::Real) {
-    auto phi_args = MakePhiArgs<double>(val_map);
-    cmd.op_code_  = Op::PhiReal;
-    cmd.phi_real_ = Cmd::PhiReal::Make(phi_args.get());
-    IR::Func::Current->block(BasicBlock::Current)
-        .phi_args_.push_back(std::move(phi_args));
+    return IR::ValFrom(MakePhi<double>(phi_index, ConvertMap<double>(val_map)));
   } else if (cmd.type == type::Type_) {
-    auto phi_args = MakePhiArgs<type::Type const *>(val_map);
-    cmd.op_code_  = Op::PhiType;
-    cmd.phi_type_ = Cmd::PhiType::Make(phi_args.get());
-    IR::Func::Current->block(BasicBlock::Current)
-        .phi_args_.push_back(std::move(phi_args));
+    return IR::ValFrom(MakePhi<type::Type const *>(
+        phi_index, ConvertMap<type::Type const *>(val_map)));
   } else if (cmd.type->is<type::Pointer>()) {
     auto phi_args = MakePhiArgs<IR::Addr>(val_map);
     cmd.op_code_  = Op::PhiAddr;
@@ -823,50 +792,24 @@ Val MakePhi(CmdIndex phi_index,
   } else {
     NOT_YET(cmd.type->to_string());
   }
-  return cmd.reg();
+  return IR::Val::Reg(cmd.result, val_map.begin()->second.type);
 }
 
-void Call(const Val &fn, LongArgs long_args) {
-  ASSERT(long_args.type_ == nullptr);
-  ASSERT(fn.type, Is<type::Function>());
-  long_args.type_     = &fn.type->as<type::Function>();
-  const auto &fn_type = fn.type->as<type::Function>();
-
+void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args) {
   auto &block    = Func::Current->block(BasicBlock::Current);
   LongArgs *args = &block.long_args_.emplace_back(std::move(long_args));
 
   auto &cmd = MakeCmd(nullptr, Op::Call);
-  if (auto *r = std::get_if<Register>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*r, args, nullptr);
-  } else if (auto *f = std::get_if<Func *>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*f, args, nullptr);
-  } else if (auto *f = std::get_if<ForeignFn>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*f, args, nullptr);
-  } else {
-    UNREACHABLE();
-  }
+  cmd.call_ = Cmd::Call(f, args, nullptr);
 }
-void Call(const Val &fn, LongArgs long_args, OutParams outs) {
-  ASSERT(long_args.type_ == nullptr);
-  ASSERT(fn.type, Is<type::Function>());
-  long_args.type_     = &fn.type->as<type::Function>();
-  const auto &fn_type = fn.type->as<type::Function>();
 
-  auto &block = Func::Current->block(BasicBlock::Current);
-  auto *args  = &block.long_args_.emplace_back(std::move(long_args));
-
+void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args, OutParams outs) {
+  auto &block    = Func::Current->block(BasicBlock::Current);
+  auto *args     = &block.long_args_.emplace_back(std::move(long_args));
   auto *outs_ptr = &block.outs_.emplace_back(std::move(outs));
 
   auto &cmd = MakeCmd(nullptr, Op::Call);
-  if (auto *r = std::get_if<Register>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*r, args, outs_ptr);
-  } else if (auto *f = std::get_if<Func *>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*f, args, outs_ptr);
-  } else if (auto *f = std::get_if<ForeignFn>(&fn.value)) {
-    cmd.call_ = Cmd::Call(*f, args, outs_ptr);
-  } else {
-    UNREACHABLE();
-  }
+  cmd.call_ = Cmd::Call(f, args, outs_ptr);
 }
 
 void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
@@ -967,7 +910,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::PrintCharBuffer: return os << cmd.print_char_buffer_.arg_;
     case Op::AddInt: return os << cmd.add_int_.args_;
     case Op::AddReal: return os << cmd.add_real_.args_;
-    case Op::AddCharBuf: return os << cmd.add_char_buf_.args_;
     case Op::SubInt: return os << cmd.sub_int_.args_;
     case Op::SubReal: return os << cmd.sub_real_.args_;
     case Op::MulInt: return os << cmd.mul_int_.args_;
@@ -988,7 +930,8 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::GeInt: return os << cmd.ge_int_.args_;
     case Op::GeReal: return os << cmd.ge_real_.args_;
     case Op::GeFlags: return os << cmd.ge_flags_.args_;
-    case Op::EqBool: return os << cmd.eq_bool_.args_[0] << " " << cmd.eq_bool_.args_[1];
+    case Op::EqBool:
+      return os << cmd.eq_bool_.args_[0] << " " << cmd.eq_bool_.args_[1];
     case Op::EqChar: return os << cmd.eq_char_.args_;
     case Op::EqInt: return os << cmd.eq_int_.args_;
     case Op::EqReal: return os << cmd.eq_real_.args_;
@@ -1027,35 +970,36 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::AppendToTuple:
       return os << cmd.append_to_tuple_.tup_ << " "
                 << cmd.append_to_tuple_.arg_;
-    case Op::FinalizeTuple:
-      return os << cmd.finalize_tuple_.tup_;
+    case Op::FinalizeTuple: return os << cmd.finalize_tuple_.tup_;
     case Op::CreateVariant: return os;
     case Op::AppendToVariant:
       return os << cmd.append_to_variant_.var_ << " "
                 << cmd.append_to_variant_.arg_;
-    case Op::FinalizeVariant:
-      return os << cmd.finalize_variant_.var_;
+    case Op::FinalizeVariant: return os << cmd.finalize_variant_.var_;
     case Op::CreateBlockSeq: return os;
     case Op::AppendToBlockSeq:
       return os << cmd.append_to_block_seq_.block_seq_ << " "
                 << cmd.append_to_block_seq_.arg_;
-    case Op::FinalizeBlockSeq:
-      return os << cmd.finalize_block_seq_.block_seq_;
+    case Op::FinalizeBlockSeq: return os << cmd.finalize_block_seq_.block_seq_;
     case Op::VariantType: return os << cmd.variant_type_.reg_;
     case Op::VariantValue: return os << cmd.variant_value_.reg_;
     case Op::PtrIncr: return os << cmd.ptr_incr_.incr_;
     case Op::Field:
-      return os << cmd.field_.ptr_ << " " << cmd.field_.struct_type_->to_string() << " "
+      return os << cmd.field_.ptr_ << " "
+                << cmd.field_.struct_type_->to_string() << " "
                 << cmd.field_.num_;
     case Op::CondJump:
-      return os << cmd.cond_jump_.blocks_[0] << " " << cmd.cond_jump_.blocks_[1];
+      return os << cmd.cond_jump_.blocks_[0] << " "
+                << cmd.cond_jump_.blocks_[1];
     case Op::UncondJump: return os << cmd.uncond_jump_.block_;
     case Op::ReturnJump: return os;
     case Op::Call:
-      switch (cmd.call_.which_active_) {
-        case 0x00: os << cmd.call_.reg_; break;
-        case 0x01: os << cmd.call_.fn_; break;
-        case 0x02: os << cmd.call_.foreign_fn_.name_; break;
+      if (cmd.call_.fn_.is_reg_) {
+        os << cmd.call_.fn_.reg_;
+      } else if (cmd.call_.fn_.val_.is_fn_) {
+        os << cmd.call_.fn_.val_.fn_;
+      } else {
+        os << cmd.call_.fn_.val_.foreign_.name_;
       }
       os << cmd.call_.long_args_->to_string();
       if (cmd.call_.outs_) {

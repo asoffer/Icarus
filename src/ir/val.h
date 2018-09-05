@@ -239,6 +239,10 @@ inline Val ValFrom(RegisterOr<bool> r) {
   return r.is_reg_ ? Val::Reg(r.reg_, type::Bool) : Val::Bool(r.val_);
 }
 
+inline Val ValFrom(RegisterOr<char> r) {
+  return r.is_reg_ ? Val::Reg(r.reg_, type::Char) : Val::Char(r.val_);
+}
+
 inline Val ValFrom(RegisterOr<i32> r) {
   return r.is_reg_ ? Val::Reg(r.reg_, type::Int) : Val::Int(r.val_);
 }

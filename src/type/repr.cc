@@ -46,7 +46,8 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
 
       IR::LongArgs call_args;
       call_args.append(val);
-      IR::Call(IR::Val::Func(repr_func_), std::move(call_args));
+      call_args.type_ = repr_func_->type_;
+      IR::Call(IR::AnyFunc{repr_func_}, std::move(call_args));
     } break;
 
     case PrimType::Bool: IR::PrintBool(val.reg_or<bool>()); break;
@@ -121,7 +122,8 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
 
   IR::LongArgs call_args;
   call_args.append(val);
-  IR::Call(IR::Val::Func(repr_func_), std::move(call_args));
+  call_args.type_ = repr_func_->type_;
+  IR::Call(IR::AnyFunc{repr_func_}, std::move(call_args));
 }
 
 // TODO print something friendlier
@@ -177,7 +179,8 @@ void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
 
   IR::LongArgs call_args;
   call_args.append(id_val);
-  IR::Call(IR::Val::Func(repr_func_), std::move(call_args));
+  call_args.type_ = repr_func_->type_;
+  IR::Call(IR::AnyFunc{repr_func_}, std::move(call_args));
 }
 
 void Function::EmitRepr(IR::Val, Context *ctx) const { UNREACHABLE(); }

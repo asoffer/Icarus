@@ -53,7 +53,8 @@ void Array::EmitInit(IR::Register id_reg, Context *ctx) const {
 
   IR::LongArgs call_args;
   call_args.append(id_reg);
-  IR::Call(IR::Val::Func(init_func_), std::move(call_args));
+  call_args.type_ = init_func_->type_;
+  IR::Call(IR::AnyFunc{init_func_}, std::move(call_args));
 }
 
 void Primitive::EmitInit(IR::Register id_reg, Context *ctx) const {
@@ -138,6 +139,7 @@ void Struct::EmitInit(IR::Register id_reg, Context *ctx) const {
 
   IR::LongArgs call_args;
   call_args.append(id_reg);
-  IR::Call(IR::Val::Func(init_func_), std::move(call_args));
+  call_args.type_ = init_func_->type_;
+  IR::Call(IR::AnyFunc{init_func_}, std::move(call_args));
 }
 } // namespace type

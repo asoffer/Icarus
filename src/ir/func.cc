@@ -154,8 +154,9 @@ void Func::CheckInvariants() {
       // allowed to have preconditions. If it's a foreign function we also don't
       // allow preconditions. This can be handled correctly by declaring the
       // foreign function locally and wrapping it.
-      if (cmd.call_.which_active_ != 0x01) { continue; }
-      if (cmd.call_.fn_->preconditions_.empty()) { continue; }
+      if (cmd.call_.fn_.is_reg_) { continue; }
+      if (!cmd.call_.fn_.val_.is_fn_) { continue; }
+      if (cmd.call_.fn_.val_.fn_->preconditions_.empty()) { continue; }
       cmds.emplace_back(&block, &cmd);
     }
   }
@@ -165,7 +166,7 @@ void Func::CheckInvariants() {
 
   for (auto const & [ block, cmd ] : cmds) {
     for (const auto & [ precond, precond_prop_map ] :
-         cmd->call_.fn_->preconditions_) {
+         cmd->call_.fn_.val_.fn_->preconditions_) {
       auto prop_copy = precond_prop_map.with_args(*cmd->call_.long_args_,
                                                   prop_map.view_.at(block));
 

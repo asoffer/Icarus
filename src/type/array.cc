@@ -27,8 +27,9 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
   if (success) {
     base::vector<std::pair<std::string, AST::Expression *>> args = {
         {"lhs", nullptr}, {"rhs", nullptr}};
-    auto *fn = ctx->mod_->AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, {Bool}),
-                                  std::move(args));
+    auto *fn = ctx->mod_->AddFunc(
+        type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool}),
+        std::move(args));
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
 
@@ -107,10 +108,12 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
   IR::LongArgs call_args;
   call_args.append(lhs_ir);
   call_args.append(rhs_ir);
+  call_args.type_ = iter->second->type_;
+
   IR::OutParams outs;
   auto result = outs.AppendReg(type::Bool);
 
-  IR::Call(IR::Val::Func(iter->second), std::move(call_args), std::move(outs));
+  IR::Call(IR::AnyFunc{iter->second}, std::move(call_args), std::move(outs));
   return {result};
 }
 
@@ -182,7 +185,7 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
     if (resize_func_ != nullptr) { goto call_fn; }
 
     resize_func_ = ctx->mod_->AddFunc(
-        Func({Ptr(this), Int}, {}),
+        type::Func({type::Ptr(this), type::Int}, {}),
         base::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}, {"new_size", nullptr}});
 
@@ -254,7 +257,7 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
 
       auto old_buf = IR::ArrayData(arg, type::Ptr(this));
       IR::StoreInt(size_arg, IR::ArrayLength(arg));
-      IR::Free(IR::Load(old_buf, data_type));
+      IR::Free(IR::LoadAddr(old_buf, data_type));
       IR::StoreAddr(new_arr, old_buf);
       IR::ReturnJump();
     }
@@ -265,6 +268,7 @@ call_fn:
   IR::LongArgs call_args;
   call_args.append(ptr_to_array);
   call_args.append(new_size);
-  IR::Call(IR::Val::Func(ASSERT_NOT_NULL(resize_func_)), std::move(call_args));
+  call_args.type_ = ASSERT_NOT_NULL(resize_func_)->type_;
+  IR::Call(IR::AnyFunc{resize_func_}, std::move(call_args));
 }
 }  // namespace type

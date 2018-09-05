@@ -140,7 +140,6 @@ struct Cmd {
 
   CMD(AddInt) { std::array<RegisterOr<i32>, 2> args_; };
   CMD(AddReal) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(AddCharBuf) { std::array<RegisterOr<std::string_view>, 2> args_; };
   CMD(SubInt) { std::array<RegisterOr<i32>, 2> args_; };
   CMD(SubReal) { std::array<RegisterOr<double>, 2> args_; };
   CMD(MulInt) { std::array<RegisterOr<i32>, 2> args_; };
@@ -240,18 +239,9 @@ struct Cmd {
   };
 
   CMD(Call) {
-    Call(Register r, LongArgs * args, OutParams * outs)
-        : reg_(r), which_active_(0x00), long_args_(args), outs_(outs) {}
-    Call(Func * f, LongArgs * args, OutParams * outs)
-        : fn_(f), which_active_(0x01), long_args_(args), outs_(outs) {}
-    Call(ForeignFn f, LongArgs * args, OutParams * outs)
-        : foreign_fn_(f), which_active_(0x02), long_args_(args), outs_(outs) {}
-    union {
-      Register reg_;
-      Func *fn_;
-      ForeignFn foreign_fn_;
-    };
-    char which_active_;
+    Call(RegisterOr<AnyFunc> f, LongArgs * args, OutParams * outs)
+        : fn_(f), long_args_(args), outs_(outs) {}
+    RegisterOr<AnyFunc> fn_;
     LongArgs *long_args_;
     OutParams *outs_;
   };
@@ -354,8 +344,6 @@ struct Cmd {
   };
 #undef CMD
 
-  operator IR::Val() const { return reg(); }
-
   Cmd(const type::Type *t, Op op);
   Op op_code_;
 
@@ -399,7 +387,6 @@ struct Cmd {
 
     AddInt add_int_;
     AddReal add_real_;
-    AddCharBuf add_char_buf_;
     SubInt sub_int_;
     SubReal sub_real_;
     MulInt mul_int_;
@@ -505,8 +492,6 @@ struct Cmd {
 
   const type::Type *type = nullptr;
   Register result;
-
-  Val reg() const { return Val::Reg(result, type); }
 };
 
 RegisterOr<char> Trunc(RegisterOr<i32> r);
@@ -614,8 +599,8 @@ void PrintEnum(RegisterOr<EnumVal> r, type::Enum const *);
 void PrintFlags(RegisterOr<FlagsVal> r, type::Flags const *);
 void PrintAddr(RegisterOr<IR::Addr> r);
 void PrintCharBuffer(RegisterOr<std::string_view> r);
-void Call(const Val &fn, LongArgs long_args);
-void Call(const Val &fn, LongArgs long_args, IR::OutParams outs);
+void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args);
+void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args, OutParams outs);
 Register CreateTuple();
 void AppendToTuple(Register tup, RegisterOr<type::Type const *> entry);
 Register FinalizeTuple(Register tup);
@@ -636,7 +621,7 @@ void SetReturnEnum(size_t n, RegisterOr<EnumVal> r);
 void SetReturnFlags(size_t n, RegisterOr<FlagsVal> r);
 void SetReturnCharBuf(size_t n, RegisterOr<std::string_view> r);
 void SetReturnAddr(size_t n, RegisterOr<Addr> r);
-void SetReturnFunc(size_t n, const Val &v2);
+void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r);
 void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r);
 void SetReturnModule(size_t n, RegisterOr<Module const *> r);
 void SetReturnGeneric(size_t n, RegisterOr< AST::Function *> r);
@@ -650,15 +635,12 @@ Register CastPtr(Register r, type::Pointer const *t);
 
 Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset);
 Register Alloca(const type::Type *t);
-void Store(const Val &val, Register loc);
 
 void SetReturn(size_t n, Val const &v2);
 
 CmdIndex Phi(type::Type const *);
 Val MakePhi(CmdIndex phi_index,
              const std::unordered_map<BlockIndex, IR::Val> &val_map);
-
-Val AddCodeBlock(const Val& v1, const Val& v2);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
 } // namespace IR

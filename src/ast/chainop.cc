@@ -7,6 +7,7 @@
 #include "base/check.h"
 #include "context.h"
 #include "ir/func.h"
+#include "ir/phi.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -31,9 +32,9 @@ namespace {
 using base::check::Is;
 using base::check::Not;
 
-IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
-                        const IR::Val &lhs_ir, const IR::Val &rhs_ir,
-                        Context *ctx) {
+IR::RegisterOr<bool> EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
+                                     const IR::Val &lhs_ir,
+                                     const IR::Val &rhs_ir, Context *ctx) {
   const type::Type *lhs_type = chain_op->exprs[index]->type;
   const type::Type *rhs_type = chain_op->exprs[index + 1]->type;
   auto op                    = chain_op->ops[index];
@@ -42,7 +43,8 @@ IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
     ASSERT(op == Language::Operator::Eq || op == Language::Operator::Ne);
     return type::Array::Compare(&lhs_type->as<type::Array>(), lhs_ir,
                                 &rhs_type->as<type::Array>(), rhs_ir,
-                                op == Language::Operator::Eq, ctx);
+                                op == Language::Operator::Eq, ctx)
+        .reg_or<bool>();
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
     FnArgs<std::pair<Expression *, IR::Val>> args;
     args.pos_.reserve(2);
@@ -57,13 +59,12 @@ IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
     auto results = EmitCallDispatch(args, chain_op->dispatch_tables_[index],
                                     type::Bool, ctx);
     ASSERT(results.size() == 1u);
-    return results[0];
+    return results[0].reg_or<bool>();
 
   } else {
 #define MAKE_OP(cpp_type, IcTypeCheck, OpName)                                 \
   if (lhs_ir.type IcTypeCheck) {                                               \
-    return IR::ValFrom(                                                        \
-        OpName(lhs_ir.reg_or<cpp_type>(), rhs_ir.reg_or<cpp_type>()));         \
+    return OpName(lhs_ir.reg_or<cpp_type>(), rhs_ir.reg_or<cpp_type>());       \
   }
     switch (op) {
       case Language::Operator::Lt:
@@ -90,9 +91,7 @@ IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
               std::get_if<IR::BlockSequence>(&lhs_ir.value);
           IR::BlockSequence const *val2 =
               std::get_if<IR::BlockSequence>(&rhs_ir.value);
-          if (val1 != nullptr && val2 != nullptr) {
-            return IR::Val::Bool(*val1 == *val2);
-          }
+          if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
         }
         UNREACHABLE();
       case Language::Operator::Ne:
@@ -109,9 +108,7 @@ IR::Val EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
               std::get_if<IR::BlockSequence>(&lhs_ir.value);
           IR::BlockSequence const *val2 =
               std::get_if<IR::BlockSequence>(&rhs_ir.value);
-          if (val1 != nullptr && val2 != nullptr) {
-            return IR::Val::Bool(*val1 == *val2);
-          }
+          if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
         }
         UNREACHABLE();
       case Language::Operator::Ge:
@@ -409,18 +406,17 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
     if (ops.size() == 1) {
       auto lhs_ir = exprs[0]->EmitIR(ctx)[0];
       auto rhs_ir = exprs[1]->EmitIR(ctx)[0];
-      auto val    = EmitChainOpPair(this, 0, lhs_ir, rhs_ir, ctx);
-      return {val};
+      return {IR::ValFrom(EmitChainOpPair(this, 0, lhs_ir, rhs_ir, ctx))};
 
     } else {
-      base::unordered_map<IR::BlockIndex, IR::Val> phi_args;
+      base::unordered_map<IR::BlockIndex, IR::RegisterOr<bool>> phi_args;
       auto lhs_ir     = exprs.front()->EmitIR(ctx)[0];
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
         auto rhs_ir = exprs[i + 1]->EmitIR(ctx)[0];
-        auto cmp = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx).reg_or<bool>();
+        auto cmp = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
 
-        phi_args[IR::BasicBlock::Current] = IR::Val::Bool(false);
+        phi_args.emplace(IR::BasicBlock::Current, false);
         auto next_block = IR::Func::Current->AddBlock();
         IR::CondJump(cmp, next_block, land_block);
         IR::BasicBlock::Current = next_block;
@@ -429,14 +425,14 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
 
       // Once more for the last element, but don't do a conditional jump.
       auto rhs_ir = exprs.back()->EmitIR(ctx)[0];
-      auto last_cmp =
-          EmitChainOpPair(this, exprs.size() - 2, lhs_ir, rhs_ir, ctx);
-      phi_args[IR::BasicBlock::Current] = last_cmp;
+      phi_args.emplace(
+          IR::BasicBlock::Current,
+          EmitChainOpPair(this, exprs.size() - 2, lhs_ir, rhs_ir, ctx));
       IR::UncondJump(land_block);
 
       IR::BasicBlock::Current = land_block;
 
-      return {IR::MakePhi(IR::Phi(type::Bool), phi_args)};
+      return {IR::ValFrom(IR::MakePhi<bool>(IR::Phi(type::Bool), phi_args))};
     }
   }
 }

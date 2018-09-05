@@ -20,7 +20,7 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   auto *&fn = assign_fns_[from_array_type];
   if (fn == nullptr) {
     fn = ctx->mod_->AddFunc(
-        Func({from_type, Ptr(this)}, {}),
+        type::Func({from_type, type::Ptr(this)}, {}),
         base::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}});
 
@@ -45,7 +45,8 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
         ComputeDestroyWithoutLock(ctx);
         IR::LongArgs call_args;
         call_args.append(var);
-        IR::Call(IR::Val::Func(destroy_func_), std::move(call_args));
+        call_args.type_ = destroy_func_->type_;
+        IR::Call(IR::AnyFunc{destroy_func_}, std::move(call_args));
 
         // TODO Architecture dependence?
         auto ptr = IR::Malloc(
@@ -86,31 +87,32 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   IR::LongArgs call_args;
   call_args.append(from);
   call_args.append(to);
-  IR::Call(IR::Val::Func(fn), std::move(call_args));
+  call_args.type_ = fn->type_;
+  IR::Call(IR::AnyFunc{fn}, std::move(call_args));
 }
 
 void Pointer::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                          Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, std::get<IR::Register>(to.value));
+  IR::StoreAddr(from.reg_or<IR::Addr>(), std::get<IR::Register>(to.value));
 }
 
 void Scope::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                        Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, std::get<IR::Register>(to.value));
+  NOT_YET();
 }
 
 void Enum::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                       Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, std::get<IR::Register>(to.value));
+  IR::StoreEnum(from.reg_or<IR::EnumVal>(), std::get<IR::Register>(to.value));
 }
 
 void Flags::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                        Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, std::get<IR::Register>(to.value));
+  IR::StoreFlags(from.reg_or<IR::FlagsVal>(), std::get<IR::Register>(to.value));
 }
 
 void Variant::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
@@ -158,7 +160,7 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   ASSERT(this == from_type);
   if (!assign_func) {
     assign_func = ctx->mod_->AddFunc(
-        Func({from_type, Ptr(this)}, {}),
+        type::Func({from_type, type::Ptr(this)}, {}),
         base::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}});
 
@@ -186,18 +188,33 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
   IR::LongArgs call_args;
   call_args.append(from);
   call_args.append(to);
-  IR::Call(IR::Val::Func(assign_func), std::move(call_args));
+  call_args.type_ = assign_func->type_;
+  IR::Call(IR::AnyFunc{assign_func}, std::move(call_args));
 }
 
 void Function::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                           Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, std::get<IR::Register>(to.value));
+  NOT_YET();
 }
 void Primitive::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
                            Context *ctx) const {
   ASSERT(this == from_type);
-  IR::Store(from, std::get<IR::Register>(to.value));
+  auto id_reg = std::get<IR::Register>(to.value);
+  switch (this->type_) {
+    case PrimType::Err: UNREACHABLE(this, ": Err");
+    case PrimType::Type:
+      IR::StoreType(from.reg_or<type::Type const *>(), id_reg);
+      break;
+    case PrimType::NullPtr: UNREACHABLE();
+    case PrimType::EmptyArray: UNREACHABLE();
+    case PrimType::Code: NOT_YET();
+    case PrimType::Bool: IR::StoreBool(from.reg_or<bool>(), id_reg); break;
+    case PrimType::Char: IR::StoreChar(from.reg_or<char>(), id_reg); break;
+    case PrimType::Int: IR::StoreInt(from.reg_or<i32>(), id_reg); break;
+    case PrimType::Real: IR::StoreReal(from.reg_or<double>(), id_reg); break;
+    default: UNREACHABLE();
+  }
 }
 
 void CharBuffer::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,

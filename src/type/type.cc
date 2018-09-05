@@ -19,8 +19,8 @@ using InitFnType = void (*)(const Type *, const Type *, IR::Val, IR::Val,
                             Context *ctx);
 
 template <InitFnType InitFn>
-static IR::Val ArrayInitializationWith(const Array *from_type,
-                                       const Array *to_type, Context *ctx) {
+static IR::Func *ArrayInitializationWith(const Array *from_type,
+                                         const Array *to_type, Context *ctx) {
   static base::guarded<base::unordered_map<
       const Array *, base::unordered_map<const Array *, IR::Func *>>>
       init_fns;
@@ -103,12 +103,12 @@ static IR::Val ArrayInitializationWith(const Array *from_type,
       IR::ReturnJump();
     }
   }
-  return IR::Val::Func(iter->second);
+  return iter->second;
 }
 
 template <InitFnType InitFn>
-static IR::Val StructInitializationWith(const Struct *struct_type,
-                                        Context *ctx) {
+static IR::Func *StructInitializationWith(const Struct *struct_type,
+                                          Context *ctx) {
   static base::guarded<base::unordered_map<const Struct *, IR::Func *>>
       struct_init_fns;
   auto handle         = struct_init_fns.lock();
@@ -137,7 +137,7 @@ static IR::Val StructInitializationWith(const Struct *struct_type,
       IR::ReturnJump();
     }
   }
-  return IR::Val::Func(iter->second);
+  return iter->second;
 }
 
 void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
@@ -145,14 +145,15 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>() || to_type->is<Function>()) {
     ASSERT(to_type == from_type);
-    IR::Store(from_val, std::get<IR::Register>(to_var.value));
+    to_type->EmitAssign(from_type, from_val, to_var, ctx);
   } else if (to_type->is<Array>()) {
     IR::LongArgs call_args;
     call_args.append(from_val);
     call_args.append(to_var);
-    IR::Call(ArrayInitializationWith<EmitCopyInit>(&from_type->as<Array>(),
-                                                   &to_type->as<Array>(), ctx),
-             std::move(call_args));
+    IR::Func *f = ArrayInitializationWith<EmitCopyInit>(
+        &from_type->as<Array>(), &to_type->as<Array>(), ctx);
+    call_args.type_ = f->type_;
+    IR::Call(IR::AnyFunc{f}, std::move(call_args));
 
   } else if (to_type->is<Struct>()) {
     ASSERT(to_type == from_type);
@@ -160,9 +161,10 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     IR::LongArgs call_args;
     call_args.append(from_val);
     call_args.append(to_var);
-    IR::Call(
-        StructInitializationWith<EmitCopyInit>(&to_type->as<Struct>(), ctx),
-        std::move(call_args));
+    IR::Func *f =
+        StructInitializationWith<EmitCopyInit>(&to_type->as<Struct>(), ctx);
+    call_args.type_ = f->type_;
+    IR::Call(IR::AnyFunc{f}, std::move(call_args));
 
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
@@ -179,7 +181,7 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>()) {
     ASSERT(to_type == from_type);
-    IR::Store(from_val, std::get<IR::Register>(to_var.value));
+    to_type->EmitAssign(from_type, from_val, to_var, ctx);
 
   } else if (to_type->is<Array>()) {
     auto *to_array_type   = &to_type->as<Array>();
@@ -189,20 +191,18 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
       IR::LongArgs call_args;
       call_args.append(from_val);
       call_args.append(to_var);
-      IR::Call(ArrayInitializationWith<EmitMoveInit>(
-                   &from_type->as<Array>(), &to_type->as<Array>(), ctx),
-               std::move(call_args));
+      IR::Func *f = ArrayInitializationWith<EmitMoveInit>(
+          &from_type->as<Array>(), &to_type->as<Array>(), ctx);
+      call_args.type_ = f->type_;
+      IR::Call(IR::AnyFunc{f}, std::move(call_args));
     } else {
-      IR::Store(IR::Val::Reg(IR::LoadInt(IR::ArrayLength(
-                                 std::get<IR::Register>(from_val.value))),
-                             type::Int),
-                IR::ArrayLength(std::get<IR::Register>(to_var.value)));
+      IR::StoreInt(
+          IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(from_val.value))),
+          IR::ArrayLength(std::get<IR::Register>(to_var.value)));
 
-      IR::Store(
-          IR::Load(IR::Val::Reg(
-              IR::ArrayData(std::get<IR::Register>(from_val.value),
-                            from_val.type),
-              type::Ptr(from_val.type->as<type::Array>().data_type))),
+      IR::StoreInt(
+          IR::LoadInt(IR::ArrayData(std::get<IR::Register>(from_val.value),
+                                    from_val.type)),
           IR::ArrayData(std::get<IR::Register>(to_var.value), to_var.type));
       // TODO if this move is to be destructive, this assignment to array
       // length is not necessary.
@@ -217,9 +217,10 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     IR::LongArgs call_args;
     call_args.append(from_val);
     call_args.append(to_var);
-    IR::Call(
-        StructInitializationWith<EmitMoveInit>(&to_type->as<Struct>(), ctx),
-        std::move(call_args));
+    IR::Func *f =
+        StructInitializationWith<EmitCopyInit>(&to_type->as<Struct>(), ctx);
+    call_args.type_ = f->type_;
+    IR::Call(IR::AnyFunc{f}, std::move(call_args));
   } else if (to_type->is<Function>()) {
     NOT_YET();
   } else if (to_type->is<Variant>()) {

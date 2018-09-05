@@ -46,9 +46,9 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
     }
 
     if (!fixed_length) {
-      IR::Free(
-          IR::Load(IR::ArrayData(std::get<IR::Register>(arg.value), arg.type),
-                   data_type));
+      IR::Free(IR::LoadAddr(
+          IR::ArrayData(std::get<IR::Register>(arg.value), arg.type),
+          data_type));
     }
     IR::ReturnJump();
   }
@@ -64,7 +64,8 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
 
   IR::LongArgs call_args;
   call_args.append(id_val);
-  IR::Call(IR::Val::Func(destroy_func_), std::move(call_args));
+  call_args.type_ = destroy_func_->type_;
+  IR::Call(IR::AnyFunc{destroy_func_}, std::move(call_args));
 }
 
 void Enum::EmitDestroy(IR::Val, Context *ctx) const {}
@@ -80,7 +81,7 @@ void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
     std::unique_lock lock(mtx_);
     if (destroy_func_ == nullptr) {
       destroy_func_ = ctx->mod_->AddFunc(
-          Func({Ptr(this)}, {}),
+          type::Func({Ptr(this)}, {}),
           base::vector<std::pair<std::string, AST::Expression *>>{
               {"arg", nullptr}});
 
@@ -100,6 +101,7 @@ void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
   }
   IR::LongArgs call_args;
   call_args.append(id_val);
-  IR::Call(IR::Val::Func(destroy_func_), std::move(call_args));
+  call_args.type_ = destroy_func_->type_;
+  IR::Call(IR::AnyFunc{destroy_func_}, std::move(call_args));
 }
 }
