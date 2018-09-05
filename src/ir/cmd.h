@@ -59,11 +59,14 @@ struct PhiArgs : GenericPhiArgs {
 };
 
 struct Cmd {
-  template <typename T, size_t Index> struct CommandOpCode {
+  template <typename T, size_t Index>
+  struct CommandOpCode {
     constexpr static size_t index = Index;
 
-    template <typename... Args >
-    static T Make(Args&&... args) { return T{{}, std::forward<Args>(args)...}; }
+    template <typename... Args>
+    static T Make(Args &&... args) {
+      return T{{}, std::forward<Args>(args)...};
+    }
   };
 #define CMD(name)                                                              \
   struct name                                                                  \
@@ -197,7 +200,7 @@ struct Cmd {
 
   CMD(Malloc) { RegisterOr<i32> arg_; };
   CMD(Free) { Register reg_; };
-  CMD(Alloca){};
+  CMD(Alloca) { type::Type const *type_; };
 
   CMD(Ptr) { Register reg_; };
   CMD(Arrow) { std::array<RegisterOr<type::Type const *>, 2> args_; };
@@ -205,19 +208,19 @@ struct Cmd {
     RegisterOr<i32> len_;
     RegisterOr<type::Type const *> type_;
   };
-  CMD(CreateTuple) {};
+  CMD(CreateTuple){};
   CMD(AppendToTuple) {
     Register tup_;
     RegisterOr<type::Type const *> arg_;
   };
   CMD(FinalizeTuple) { Register tup_; };
-  CMD(CreateVariant) {};
+  CMD(CreateVariant){};
   CMD(AppendToVariant) {
     Register var_;
     RegisterOr<type::Type const *> arg_;
   };
   CMD(FinalizeVariant) { Register var_; };
-  CMD(CreateBlockSeq) {};
+  CMD(CreateBlockSeq){};
   CMD(AppendToBlockSeq) {
     Register block_seq_;
     RegisterOr<IR::BlockSequence> arg_;
@@ -230,6 +233,7 @@ struct Cmd {
     // TODO maybe store the type here rather than on the cmd because most cmds
     // don't need it.
     Register ptr_;
+    type::Type const *pointee_type_;
     RegisterOr<i32> incr_;
   };
   CMD(Field) {
@@ -336,7 +340,6 @@ struct Cmd {
     size_t ret_num_;
     RegisterOr<AST::Function *> val_;
   };
-
 
   CMD(SetReturnBlock) {
     size_t ret_num_;
@@ -490,7 +493,6 @@ struct Cmd {
     SetReturnBlock set_return_block_;
   };
 
-  const type::Type *type = nullptr;
   Register result;
 };
 

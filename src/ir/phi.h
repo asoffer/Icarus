@@ -31,7 +31,6 @@ template <typename T>
 RegisterOr<T> MakePhi(CmdIndex phi_index,
                       std::unordered_map<BlockIndex, RegisterOr<T>> val_map) {
   auto &cmd = IR::Func::Current->Command(phi_index);
-  cmd.type  = GetType<T>();
 
   auto phi_args  = std::make_unique<PhiArgs<T>>();
   phi_args->map_ = std::move(val_map);

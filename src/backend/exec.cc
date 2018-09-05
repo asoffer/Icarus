@@ -340,8 +340,8 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       save(addr);
 
       auto arch = Architecture::InterprettingMachine();
-      auto *t   = cmd.type->as<type::Pointer>().pointee;
-      stack_.append_bytes(arch.bytes(t), arch.alignment(t));
+      stack_.append_bytes(arch.bytes(cmd.alloca_.type_),
+                          arch.alignment(cmd.alloca_.type_));
 
     } break;
     case IR::Op::Ptr:
@@ -381,7 +381,7 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::PtrIncr: {
       auto addr = resolve<IR::Addr>(cmd.ptr_incr_.ptr_);
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          resolve(cmd.ptr_incr_.incr_), cmd.type->as<type::Pointer>().pointee);
+          resolve(cmd.ptr_incr_.incr_), cmd.ptr_incr_.pointee_type_);
       switch (addr.kind) {
         case IR::Addr::Kind::Stack: save(addr.as_stack + bytes_fwd); break;
         case IR::Addr::Kind::Heap:

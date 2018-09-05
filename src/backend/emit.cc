@@ -134,8 +134,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
   auto &ctx = llvm_data->module->getContext();
   switch (cmd.op_code_) {
     case IR::Op::Alloca:
-      return llvm_data->builder->CreateAlloca(
-          cmd.type->as<type::Pointer>().pointee->llvm(ctx));
+      return llvm_data->builder->CreateAlloca(cmd.alloca_.type_->llvm(ctx));
     case IR::Op::Store:
       // TODO in the case of a function, we are given the declaration but we
       // actually need to extract the corresponding function pointer.

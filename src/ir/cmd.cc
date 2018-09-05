@@ -387,7 +387,7 @@ static Register Reserve(type::Type const *t, bool incr_num_regs = true) {
   return result;
 }
 
-Cmd::Cmd(const type::Type *t, Op op) : op_code_(op), type(t) {
+Cmd::Cmd(const type::Type *t, Op op) : op_code_(op) {
   ASSERT(Func::Current != nullptr);
   CmdIndex cmd_index{
       BasicBlock::Current,
@@ -501,10 +501,10 @@ void SetStructFieldName(Register struct_type, std::string_view field_name) {
 
 Register Alloca(const type::Type *t) {
   ASSERT(t, Not(Is<type::Tuple>()));
-  return ASSERT_NOT_NULL(Func::Current)
-      ->block(Func::Current->entry())
-      .cmds_.emplace_back(type::Ptr(t), Op::Alloca)
-      .result;
+
+  auto &cmd = MakeCmd(type::Ptr(t), Op::Alloca);
+  cmd.alloca_ = Cmd::Alloca::Make(t);
+  return cmd.result;
 }
 
 void SetReturn(size_t n, Val const &v2) {
@@ -557,9 +557,10 @@ void SetReturn(size_t n, Val const &v2) {
   UNREACHABLE(v2.type->to_string());
 }
 Register PtrIncr(Register ptr, RegisterOr<i32> inc, type::Type const *t) {
+  // TODO type must be a pointer.
   if (!inc.is_reg_ && inc.val_ == 0) { return ptr; }
   auto &cmd     = MakeCmd(t, Op::PtrIncr);
-  cmd.ptr_incr_ = Cmd::PtrIncr::Make(ptr, inc);
+  cmd.ptr_incr_ = Cmd::PtrIncr::Make(ptr, t->as<type::Pointer>().pointee, inc);
   return cmd.result;
 }
 
@@ -764,33 +765,33 @@ CmdIndex Phi(type::Type const *t) {
 Val MakePhi(CmdIndex phi_index,
             const std::unordered_map<BlockIndex, IR::Val> &val_map) {
   auto &cmd = IR::Func::Current->Command(phi_index);
-  cmd.type  = val_map.begin()->second.type;
+  auto *cmd_type  = val_map.begin()->second.type;
 
-  if (cmd.type == type::Bool) {
+  if (cmd_type == type::Bool) {
     return IR::ValFrom(MakePhi<bool>(phi_index, ConvertMap<bool>(val_map)));
-  } else if (cmd.type == type::Char) {
+  } else if (cmd_type == type::Char) {
     return IR::ValFrom(MakePhi<char>(phi_index, ConvertMap<char>(val_map)));
-  } else if (cmd.type == type::Int) {
+  } else if (cmd_type == type::Int) {
     return IR::ValFrom(MakePhi<int>(phi_index, ConvertMap<int>(val_map)));
-  } else if (cmd.type == type::Real) {
+  } else if (cmd_type == type::Real) {
     return IR::ValFrom(MakePhi<double>(phi_index, ConvertMap<double>(val_map)));
-  } else if (cmd.type == type::Type_) {
+  } else if (cmd_type == type::Type_) {
     return IR::ValFrom(MakePhi<type::Type const *>(
         phi_index, ConvertMap<type::Type const *>(val_map)));
-  } else if (cmd.type->is<type::Pointer>()) {
+  } else if (cmd_type->is<type::Pointer>()) {
     auto phi_args = MakePhiArgs<IR::Addr>(val_map);
     cmd.op_code_  = Op::PhiAddr;
     cmd.phi_addr_ = Cmd::PhiAddr::Make(phi_args.get());
     IR::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
-  } else if (cmd.type == type::Block || cmd.type == type::OptBlock) {
+  } else if (cmd_type == type::Block || cmd_type == type::OptBlock) {
     auto phi_args  = MakePhiArgs<BlockSequence>(val_map);
     cmd.op_code_   = Op::PhiBlock;
     cmd.phi_block_ = Cmd::PhiBlock::Make(phi_args.get());
     IR::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
   } else {
-    NOT_YET(cmd.type->to_string());
+    NOT_YET(cmd_type->to_string());
   }
   return IR::Val::Reg(cmd.result, val_map.begin()->second.type);
 }
@@ -961,9 +962,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
 
     case Op::Malloc: return os << cmd.malloc_.arg_;
     case Op::Free: return os << cmd.free_.reg_;
-    case Op::Alloca:
-      return os << cmd.type->as<type::Pointer>().pointee->to_string();
-
+    case Op::Alloca: return os << cmd.alloca_.type_->to_string();
     case Op::Arrow: return os << cmd.arrow_.args_;
     case Op::Array: return os << cmd.array_.type_;
     case Op::CreateTuple: return os;
