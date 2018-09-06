@@ -428,12 +428,14 @@ void GeneratedFunction::CompleteBody(Module *mod) {
         if (val) { inputs[i]->addr = *val; }
         continue;
       }
-      inputs[i]->addr = IR::Func::Current->Argument(static_cast<i32>(i));
+      inputs[i]->addr = IR::Val::Reg(
+          IR::Func::Current->Argument(static_cast<i32>(i)), inputs[i]->type);
     }
 
     for (size_t i = 0; i < outputs.size(); ++i) {
       if (!outputs[i]->is<Declaration>()) { continue; }
-      outputs[i]->as<Declaration>().addr = IR::Func::Current->Return(i);
+      outputs[i]->as<Declaration>().addr =
+          IR::Val::Reg(IR::Func::Current->Return(i), outputs[i]->type);
     }
 
     fn_scope->MakeAllStackAllocations();

@@ -26,10 +26,8 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
             auto special_block = repr_func_->AddBlock();
             auto next_block    = repr_func_->AddBlock();
 
-            IR::CondJump(
-                IR::EqChar(
-                    std::get<IR::Register>(repr_func_->Argument(0).value), c),
-                special_block, next_block);
+            IR::CondJump(IR::EqChar(repr_func_->Argument(0), c), special_block,
+                         next_block);
 
             IR::BasicBlock::Current = special_block;
             IR::PrintChar('\\');
@@ -39,7 +37,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
             IR::BasicBlock::Current = next_block;
           }
 
-          IR::PrintChar(repr_func_->Argument(0).reg_or<char>());
+          IR::PrintChar(repr_func_->Argument(0));
           IR::ReturnJump();
         }
       }
@@ -83,14 +81,11 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
 
       auto length_var = [&]() -> IR::RegisterOr<i32> {
         if (fixed_length) { return static_cast<i32>(len); }
-        return IR::LoadInt(IR::ArrayLength(
-            std::get<IR::Register>(repr_func_->Argument(0).value)));
+        return IR::LoadInt(IR::ArrayLength(repr_func_->Argument(0)));
       }();
       IR::BasicBlock::Current =
           IR::EarlyExitOn<true>(exit_block, IR::EqInt(length_var, 0));
-      auto ptr =
-          IR::Index(type::Ptr(this),
-                    std::get<IR::Register>(repr_func_->Argument(0).value), 0);
+      auto ptr = IR::Index(type::Ptr(this), repr_func_->Argument(0), 0);
 
       data_type->EmitRepr(
           PtrCallFix(IR::Val::Reg(ptr, type::Ptr(this->data_type))), ctx);
@@ -151,19 +146,17 @@ void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
     CURRENT_FUNC(repr_func_) {
       IR::BasicBlock::Current = repr_func_->entry();
       auto landing            = IR::Func::Current->AddBlock();
-      auto type               = IR::LoadType(IR::VariantType(
-          std::get<IR::Register>(repr_func_->Argument(0).value)));
+      auto type = IR::LoadType(IR::VariantType(repr_func_->Argument(0)));
 
       for (const Type *v : variants_) {
         auto old_block   = IR::BasicBlock::Current;
         auto found_block = IR::Func::Current->AddBlock();
 
         IR::BasicBlock::Current = found_block;
-        v->EmitRepr(PtrCallFix(IR::Val::Reg(
-                        IR::VariantValue(v, std::get<IR::Register>(
-                                                repr_func_->Argument(0).value)),
-                        type::Ptr(v))),
-                    ctx);
+        v->EmitRepr(
+            PtrCallFix(IR::Val::Reg(
+                IR::VariantValue(v, repr_func_->Argument(0)), type::Ptr(v))),
+            ctx);
         IR::UncondJump(landing);
 
         IR::BasicBlock::Current = old_block;

@@ -27,9 +27,7 @@ void Array::EmitInit(IR::Register id_reg, Context *ctx) const {
     CURRENT_FUNC(init_func_) {
       IR::BasicBlock::Current = init_func_->entry();
 
-      auto ptr =
-          IR::Index(type::Ptr(this),
-                    std::get<IR::Register>(init_func_->Argument(0).value), 0);
+      auto ptr = IR::Index(type::Ptr(this), init_func_->Argument(0), 0);
       auto end_ptr =
           IR::PtrIncr(ptr, static_cast<i32>(len), type::Ptr(data_type));
 
@@ -120,16 +118,14 @@ void Struct::EmitInit(IR::Register id_reg, Context *ctx) const {
               /*   to_type = */ fields_[i].type,
               /*  from_val = */ fields_[i].init_val,
               /*    to_var = */
-              IR::Val::Reg(IR::Field(std::get<IR::Register>(
-                                         init_func_->Argument(0).value),
+              IR::Val::Reg(IR::Field(
+                                         init_func_->Argument(0),
                                      this, i),
                            type::Ptr(fields_.at(i).type)),
               ctx);
         } else {
           fields_.at(i).type->EmitInit(
-              IR::Field(std::get<IR::Register>(init_func_->Argument(0).value),
-                        this, i),
-              ctx);
+              IR::Field(init_func_->Argument(0), this, i), ctx);
         }
       }
 

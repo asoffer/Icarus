@@ -10,7 +10,7 @@ void Primitive::EmitDestroy(IR::Val, Context *ctx) const {}
 void Array::ComputeDestroyWithoutLock(Context *ctx) const {
   if (destroy_func_ != nullptr) { return; }
   destroy_func_ = ctx->mod_->AddFunc(
-      Func({Ptr(this)}, {}),
+      type::Func({type::Ptr(this)}, {}),
       base::vector<std::pair<std::string, AST::Expression *>>{{"arg", nullptr}});
 
   CURRENT_FUNC(destroy_func_) {
@@ -18,15 +18,13 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
     auto arg                = destroy_func_->Argument(0);
 
     if (data_type->needs_destroy()) {
-      IR::Register ptr =
-          IR::Index(arg.type, std::get<IR::Register>(arg.value), 0);
+      IR::Register ptr = IR::Index(type::Ptr(this), arg, 0);
       auto end_ptr = IR::PtrIncr(ptr,
                                  [&]() -> IR::RegisterOr<i32> {
                                    if (fixed_length) {
                                      return static_cast<i32>(len);
                                    } else {
-                                     return IR::LoadInt(IR::ArrayLength(
-                                         std::get<IR::Register>(arg.value)));
+                                     return IR::LoadInt(IR::ArrayLength(arg));
                                    }
                                  }(),
                                  type::Ptr(data_type));
@@ -46,9 +44,7 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
     }
 
     if (!fixed_length) {
-      IR::Free(IR::LoadAddr(
-          IR::ArrayData(std::get<IR::Register>(arg.value), arg.type),
-          data_type));
+      IR::Free(IR::LoadAddr(IR::ArrayData(arg, type::Ptr(this)), data_type));
     }
     IR::ReturnJump();
   }
@@ -81,7 +77,7 @@ void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
     std::unique_lock lock(mtx_);
     if (destroy_func_ == nullptr) {
       destroy_func_ = ctx->mod_->AddFunc(
-          type::Func({Ptr(this)}, {}),
+          type::Func({type::Ptr(this)}, {}),
           base::vector<std::pair<std::string, AST::Expression *>>{
               {"arg", nullptr}});
 
@@ -89,9 +85,7 @@ void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
         IR::BasicBlock::Current = destroy_func_->entry();
         for (size_t i = 0; i < fields_.size(); ++i) {
           fields_[i].type->EmitDestroy(
-              IR::Val::Reg(IR::Field(std::get<IR::Register>(
-                                         destroy_func_->Argument(0).value),
-                                     this, i),
+              IR::Val::Reg(IR::Field(destroy_func_->Argument(0), this, i),
                            type::Ptr(fields_.at(i).type)),
               ctx);
         }

@@ -35,14 +35,12 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
 
       auto lhs_len = [&]() -> IR::RegisterOr<i32> {
         if (lhs_type->fixed_length) { return static_cast<i32>(lhs_type->len); }
-        return IR::LoadInt(
-            IR::ArrayLength(std::get<IR::Register>(fn->Argument(0).value)));
+        return IR::LoadInt(IR::ArrayLength(fn->Argument(0)));
       }();
 
       auto rhs_len = [&]() -> IR::RegisterOr<i32> {
         if (rhs_type->fixed_length) { return static_cast<i32>(rhs_type->len); }
-        return IR::LoadInt(
-            IR::ArrayLength(std::get<IR::Register>(fn->Argument(1).value)));
+        return IR::LoadInt(IR::ArrayLength(fn->Argument(1)));
       }();
 
       auto equal_len_block = IR::Func::Current->AddBlock();
@@ -63,12 +61,8 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
       IR::ReturnJump();
 
       IR::BasicBlock::Current = equal_len_block;
-      auto lhs_start =
-          IR::Index(type::Ptr(lhs_type),
-                    std::get<IR::Register>(fn->Argument(0).value), 0);
-      auto rhs_start =
-          IR::Index(type::Ptr(rhs_type),
-                    std::get<IR::Register>(fn->Argument(1).value), 0);
+      auto lhs_start = IR::Index(type::Ptr(lhs_type), fn->Argument(0), 0);
+      auto rhs_start = IR::Index(type::Ptr(rhs_type), fn->Argument(1), 0);
       auto lhs_end =
           IR::PtrIncr(lhs_start, lhs_len, type::Ptr(rhs_type->data_type));
       IR::UncondJump(phi_block);
@@ -191,8 +185,8 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
 
     CURRENT_FUNC(resize_func_) {
       IR::BasicBlock::Current = resize_func_->entry();
-      auto arg                = std::get<IR::Register>(resize_func_->Argument(0).value);
-      auto size_arg           = std::get<IR::Register>(resize_func_->Argument(1).value);
+      auto arg                = resize_func_->Argument(0);
+      auto size_arg           = resize_func_->Argument(1);
 
       auto new_arr = IR::Malloc(
           data_type,

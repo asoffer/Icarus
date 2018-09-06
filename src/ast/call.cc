@@ -40,8 +40,7 @@ IR::Val AsciiFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturnInt(
-          0, Trunc(std::get<IR::Register>(fn->Argument(0).value)).reg_);
+      IR::SetReturnInt(0, Trunc(fn->Argument(0)).reg_);
       IR::ReturnJump();
     }
     return fn;
@@ -55,8 +54,7 @@ IR::Val OrdFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturnChar(
-          0, Extend(std::get<IR::Register>(fn->Argument(0).value)).reg_);
+      IR::SetReturnChar(0, Extend(fn->Argument(0)).reg_);
       IR::ReturnJump();
     }
     return fn;
@@ -70,7 +68,7 @@ IR::Val BytesFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturnInt(0, Bytes(std::get<IR::Register>(fn->Argument(0).value)));
+      IR::SetReturnInt(0, Bytes(fn->Argument(0)));
       IR::ReturnJump();
     }
     return fn;
@@ -84,7 +82,7 @@ IR::Val AlignFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturnInt(0, Align(std::get<IR::Register>(fn->Argument(0).value)));
+      IR::SetReturnInt(0, Align(fn->Argument(0)));
       IR::ReturnJump();
     }
     return fn;

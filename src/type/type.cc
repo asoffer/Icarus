@@ -30,8 +30,8 @@ static IR::Func *ArrayInitializationWith(const Array *from_type,
   if (success) {
     base::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg0", nullptr}, {"arg1", nullptr}};
-    auto *fn     = ctx->mod_->AddFunc(Func({from_type, Ptr(to_type)}, {}),
-                                  std::move(args));
+    auto *fn = ctx->mod_->AddFunc(
+        type::Func({from_type, type::Ptr(to_type)}, {}), std::move(args));
     iter->second = fn;
 
     CURRENT_FUNC(fn) {
@@ -46,25 +46,21 @@ static IR::Func *ArrayInitializationWith(const Array *from_type,
         if (from_type->fixed_length) {
           return static_cast<i32>(from_type->len);
         }
-        return IR::LoadInt(
-            IR::ArrayLength(std::get<IR::Register>(from_arg.value)));
+        return IR::LoadInt(IR::ArrayLength(from_arg));
       }();
 
       if (!to_type->fixed_length) {
-        IR::StoreInt(from_len,
-                  IR::ArrayLength(std::get<IR::Register>(to_arg.value)));
+        IR::StoreInt(from_len, IR::ArrayLength(to_arg));
         // TODO Architecture dependence?
         IR::StoreAddr(
             IR::Malloc(from_type->data_type,
                        Architecture::InterprettingMachine().ComputeArrayLength(
                            from_len, from_type->data_type)),
-            IR::ArrayData(std::get<IR::Register>(to_arg.value), to_arg.type));
+            IR::ArrayData(to_arg, type::Ptr(to_type)));
       }
 
-      auto from_start =
-          IR::Index(from_arg.type, std::get<IR::Register>(from_arg.value), 0);
-      auto to_start =
-          IR::Index(to_arg.type, std::get<IR::Register>(to_arg.value), 0);
+      auto from_start = IR::Index(from_type, from_arg, 0);
+      auto to_start   = IR::Index(type::Ptr(to_type), to_arg, 0);
       auto from_end =
           IR::PtrIncr(from_start, from_len, type::Ptr(from_type->data_type));
       IR::UncondJump(phi_block);
@@ -72,32 +68,28 @@ static IR::Func *ArrayInitializationWith(const Array *from_type,
       IR::BasicBlock::Current = phi_block;
       auto from_phi_index     = IR::Phi(type::Ptr(from_type->data_type));
       auto to_phi_index       = IR::Phi(type::Ptr(from_type->data_type));
-      auto from_phi_reg =
-          IR::Val::Reg(IR::Func::Current->Command(from_phi_index).result,
-                       type::Ptr(from_type->data_type));
-      auto to_phi_reg =
-          IR::Val::Reg(IR::Func::Current->Command(to_phi_index).result,
-                       type::Ptr(to_type->data_type));
+      auto from_phi_reg = IR::Func::Current->Command(from_phi_index).result;
+      type::Type const *from_phi_reg_type = type::Ptr(from_type->data_type);
+      auto to_phi_reg = IR::Func::Current->Command(to_phi_index).result;
+      type::Type const *to_phi_reg_type = type::Ptr(to_type->data_type);
 
-      IR::CondJump(
-          IR::NeAddr(std::get<IR::Register>(from_phi_reg.value), from_end),
-          body_block, exit_block);
+      IR::CondJump(IR::NeAddr(from_phi_reg, from_end), body_block, exit_block);
 
       IR::BasicBlock::Current = body_block;
-      InitFn(from_type->data_type, to_type->data_type, PtrCallFix(from_phi_reg),
-             to_phi_reg, ctx);
-      auto from_incr = IR::PtrIncr(std::get<IR::Register>(from_phi_reg.value),
-                                   1, from_phi_reg.type);
-      auto to_incr   = IR::PtrIncr(std::get<IR::Register>(to_phi_reg.value), 1,
-                                 to_phi_reg.type);
+      InitFn(from_type->data_type, to_type->data_type,
+             PtrCallFix(IR::Val::Reg(from_phi_reg, from_phi_reg_type)),
+             IR::Val::Reg(to_phi_reg, to_phi_reg_type), ctx);
+      auto from_incr = IR::PtrIncr(from_phi_reg, 1, from_phi_reg_type);
+      auto to_incr   = IR::PtrIncr(to_phi_reg, 1,
+                                 to_phi_reg_type);
       IR::UncondJump(phi_block);
 
       IR::MakePhi(from_phi_index,
-                  {{fn->entry(), IR::Val::Reg(from_start, from_phi_reg.type)},
-                   {body_block, IR::Val::Reg(from_incr, from_phi_reg.type)}});
+                  {{fn->entry(), IR::Val::Reg(from_start, from_phi_reg_type)},
+                   {body_block, IR::Val::Reg(from_incr, from_phi_reg_type)}});
       IR::MakePhi(to_phi_index,
-                  {{fn->entry(), IR::Val::Reg(to_start, to_phi_reg.type)},
-                   {body_block, IR::Val::Reg(to_incr, to_phi_reg.type)}});
+                  {{fn->entry(), IR::Val::Reg(to_start, to_phi_reg_type)},
+                   {body_block, IR::Val::Reg(to_incr, to_phi_reg_type)}});
 
       IR::BasicBlock::Current = exit_block;
       IR::ReturnJump();
@@ -124,14 +116,11 @@ static IR::Func *StructInitializationWith(const Struct *struct_type,
       IR::BasicBlock::Current = fn->entry();
       for (size_t i = 0; i < struct_type->fields_.size(); ++i) {
         InitFn(struct_type->fields_[i].type, struct_type->fields_[i].type,
-               PtrCallFix(IR::Val::Reg(
-                   IR::Field(std::get<IR::Register>(fn->Argument(0).value),
-                             struct_type, i),
-                   type::Ptr(struct_type->fields_.at(i).type))),
-               IR::Val::Reg(
-                   IR::Field(std::get<IR::Register>(fn->Argument(1).value),
-                             struct_type, i),
-                   type::Ptr(struct_type->fields_.at(i).type)),
+               PtrCallFix(
+                   IR::Val::Reg(IR::Field(fn->Argument(0), struct_type, i),
+                                type::Ptr(struct_type->fields_.at(i).type))),
+               IR::Val::Reg(IR::Field(fn->Argument(1), struct_type, i),
+                            type::Ptr(struct_type->fields_.at(i).type)),
                ctx);
       }
       IR::ReturnJump();

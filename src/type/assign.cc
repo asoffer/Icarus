@@ -33,12 +33,12 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
         if (from_array_type->fixed_length) {
           return static_cast<i32>(from_array_type->len);
         }
-        return IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(val.value)));
+        return IR::LoadInt(IR::ArrayLength(val));
       }();
 
       auto *from_ptr_type = type::Ptr(from_type->as<type::Array>().data_type);
       IR::Register from_ptr =
-          IR::Index(from_type, std::get<IR::Register>(val.value), 0);
+          IR::Index(from_type, val, 0);
       IR::Register from_end_ptr = IR::PtrIncr(from_ptr, len, from_ptr_type);
 
       if (!fixed_length) {
@@ -52,14 +52,12 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
         auto ptr = IR::Malloc(
             data_type, Architecture::InterprettingMachine().ComputeArrayLength(
                            len, data_type));
-        IR::StoreInt(len, IR::ArrayLength(std::get<IR::Register>(var.value)));
-        IR::StoreAddr(
-            ptr, IR::ArrayData(std::get<IR::Register>(var.value), var.type));
+        IR::StoreInt(len, IR::ArrayLength(var));
+        IR::StoreAddr(ptr, IR::ArrayData(var, type::Ptr(this)));
       }
 
       auto *to_ptr_type = type::Ptr(data_type);
-      IR::Register to_ptr =
-          IR::Index(type::Ptr(this), std::get<IR::Register>(var.value), 0);
+      IR::Register to_ptr = IR::Index(type::Ptr(this), var, 0);
 
       CreateLoop({IR::Val::Reg(from_ptr, from_ptr_type),
                   IR::Val::Reg(to_ptr, to_ptr_type)},
@@ -166,8 +164,8 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
 
     CURRENT_FUNC(assign_func) {
       IR::BasicBlock::Current = assign_func->entry();
-      auto val = std::get<IR::Register>(assign_func->Argument(0).value);
-      auto var = std::get<IR::Register>(assign_func->Argument(1).value);
+      auto val                = assign_func->Argument(0);
+      auto var                = assign_func->Argument(1);
 
       for (size_t i = 0; i < fields_.size(); ++i) {
         // TODO is that the right scope?

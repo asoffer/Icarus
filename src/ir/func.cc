@@ -14,15 +14,10 @@ Pointer const *Ptr(const Type *);
 namespace IR {
 thread_local Func *Func::Current{nullptr};
 
-Val Func::Argument(u32 n) const {
-  auto *arg_type = type_->input.at(n);
-  if (arg_type->is_big()) { arg_type = type::Ptr(arg_type); }
-  return Val::Reg(Register(reg_map_.at(n)), arg_type);
-}
+Register Func::Argument(u32 n) const { return Register(reg_map_.at(n)); }
 
-Val Func::Return(u32 n) const {
-  return Val::Reg(Register(reg_map_.at(type_->input.size() + n)),
-                  type::Ptr(type_->output.at(n)));
+Register Func::Return(u32 n) const {
+  return Register(reg_map_.at(type_->input.size() + n));
 }
 
 // TODO there's no reason to take args because they can be computed from the
