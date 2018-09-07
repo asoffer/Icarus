@@ -2,7 +2,6 @@
 #define ICARUS_IR_CMD_H
 
 #include "context.h"
-#include "val.h"
 #include "base/untyped_buffer.h"
 
 namespace type {
@@ -21,7 +20,6 @@ struct LongArgs {
   base::untyped_buffer args_{0};
 };
 
-
 // Represents an output parameter. The boolean value denotes whether the
 // register is a register to be filled with the value, or it is the address to
 // which the value should be written.
@@ -37,7 +35,7 @@ struct OutParam {
 };
 
 struct OutParams {
-  Val AppendReg(type::Type const *);
+  Register AppendReg(type::Type const *);
   void AppendLoc(Register reg) { outs_.emplace_back(reg, true); }
   base::vector<OutParam> outs_;
 };
@@ -630,7 +628,6 @@ void SetReturnGeneric(size_t n, RegisterOr< AST::Function *> r);
 void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r);
 
 Register Load(Register r, type::Type const *t);
-Val Load(Val const &v);
 
 RegisterOr<double> CastIntToReal(RegisterOr<i32> r);
 Register CastPtr(Register r, type::Pointer const *t);
@@ -639,10 +636,6 @@ Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset);
 Register Alloca(const type::Type *t);
 
 void SetReturn(size_t n, Val const &v2);
-
-CmdIndex Phi(type::Type const *);
-Val MakePhi(CmdIndex phi_index,
-             const std::unordered_map<BlockIndex, IR::Val> &val_map);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
 } // namespace IR

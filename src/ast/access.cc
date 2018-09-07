@@ -103,9 +103,14 @@ void Access::contextualize(
 
 base::vector<IR::Val> AST::Access::EmitLVal(Context *ctx) {
   auto val = operand->EmitLVal(ctx)[0];
-  while (val.type->is<type::Pointer>() &&
-         !val.type->as<type::Pointer>().pointee->is_big()) {
-    val = IR::Load(val);
+  if (val.type->is<type::Pointer>()) {
+    auto *t          = val.type;
+    IR::Register reg = std::get<IR::Register>(val.value);
+    while (!t->as<type::Pointer>().pointee->is_big()) {
+      reg = IR::Load(reg, type);
+      t   = t->as<type::Pointer>().pointee;
+    }
+    val = IR::Val::Reg(reg, t);
   }
 
   if (val.type->is<type::Pointer>() &&

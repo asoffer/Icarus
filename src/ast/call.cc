@@ -209,8 +209,8 @@ static void EmitOneCallDispatch(
       //
       // TODO: This is a lot like PrepareArgument.
       if (!ret_type->is_big() && !expected_ret_type->is_big()) {
-        outs.AppendReg(expected_ret_type);
-        *out_reg = IR::Val::Reg(outs.outs_.back().reg_, expected_ret_type);
+        *out_reg =
+            IR::Val::Reg(outs.AppendReg(expected_ret_type), expected_ret_type);
         return;
       }
 
@@ -544,7 +544,7 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
       IR::Call(IR::AnyFunc{std::get<IR::Func *>(fn_val.value)},
                std::move(call_args), std::move(outs));
 
-      return {reg};
+      return {IR::Val::Reg(reg, out_type)};
 
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       args_.pos_[0]

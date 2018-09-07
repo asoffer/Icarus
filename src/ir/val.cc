@@ -219,11 +219,19 @@ bool operator<(const ::IR::Val &lhs, const ::IR::Val &rhs) {
 Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t) {
   return r.is_reg_ ? Val::Reg(r.reg_, t) : Val::Flags(t, r.val_);
 }
+
+Val ValFrom(RegisterOr<IR::Addr> r, type::Pointer const *ptr_type) {
+  return r.is_reg_ ? Val::Reg(r.reg_, ptr_type)
+                   : Val::Addr(r.val_, ptr_type->as<type::Pointer>().pointee);
+}
+
 }  // namespace IR
 
-IR::Val PtrCallFix(const IR::Val& v) {
+IR::Val PtrCallFix(const IR::Val &v) {
   return !v.type->is<type::Pointer>() ||
                  v.type->as<type::Pointer>().pointee->is_big()
              ? v
-             : IR::Load(v);
+             : IR::Val::Reg(IR::Load(std::get<IR::Register>(v.value),
+                                     v.type->as<type::Pointer>().pointee),
+                            v.type->as<type::Pointer>().pointee);
 }

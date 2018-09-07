@@ -4,6 +4,7 @@
 #include "base/guarded.h"
 #include "context.h"
 #include "ir/func.h"
+#include "ir/phi.h"
 #include "module.h"
 #include "type/function.h"
 #include "type/pointer.h"
@@ -86,16 +87,10 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
       auto rhs_incr           = IR::PtrIncr(rhs_phi_reg, 1, type::Ptr(rhs_type->data_type));
       IR::UncondJump(phi_block);
 
-      IR::MakePhi(lhs_phi_index,
-                  {{equal_len_block,
-                    IR::Val::Reg(lhs_start, type::Ptr(lhs_type->data_type))},
-                   {incr_block,
-                    IR::Val::Reg(lhs_incr, type::Ptr(lhs_type->data_type))}});
-      IR::MakePhi(rhs_phi_index,
-                  {{equal_len_block,
-                    IR::Val::Reg(rhs_start, type::Ptr(rhs_type->data_type))},
-                   {incr_block,
-                    IR::Val::Reg(rhs_incr, type::Ptr(lhs_type->data_type))}});
+      IR::MakePhi<IR::Addr>(lhs_phi_index, {{equal_len_block, lhs_start},
+                                            {incr_block, lhs_incr}});
+      IR::MakePhi<IR::Addr>(rhs_phi_index, {{equal_len_block, rhs_start},
+                                            {incr_block, rhs_incr}});
     }
   }
 
@@ -108,7 +103,7 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
   auto result = outs.AppendReg(type::Bool);
 
   IR::Call(IR::AnyFunc{iter->second}, std::move(call_args), std::move(outs));
-  return {result};
+  return {IR::Val::Reg(result, type::Bool)};
 }
 
 static IR::RegisterOr<i32> ComputeMin(IR::RegisterOr<i32> x,
@@ -121,9 +116,7 @@ static IR::RegisterOr<i32> ComputeMin(IR::RegisterOr<i32> x,
   IR::UncondJump(land_block);
 
   IR::BasicBlock::Current = land_block;
-  return IR::MakePhi(IR::Phi(type::Int),
-                     {{x_block, IR::ValFrom(x)}, {entry_block, IR::ValFrom(y)}})
-      .reg_or<i32>();
+  return IR::MakePhi<i32>(IR::Phi(type::Int), {{x_block, x}, {entry_block, y}});
 }
 
 // TODO pass funcs by ref

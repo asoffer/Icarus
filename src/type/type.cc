@@ -1,12 +1,12 @@
 #include "type/all.h"
 
-#include "base/container/unordered_map.h"
-
 #include "architecture.h"
 #include "base/container/map.h"
+#include "base/container/unordered_map.h"
 #include "base/guarded.h"
 #include "context.h"
 #include "ir/func.h"
+#include "ir/phi.h"
 #include "module.h"
 
 namespace type {
@@ -84,12 +84,10 @@ static IR::Func *ArrayInitializationWith(const Array *from_type,
                                  to_phi_reg_type);
       IR::UncondJump(phi_block);
 
-      IR::MakePhi(from_phi_index,
-                  {{fn->entry(), IR::Val::Reg(from_start, from_phi_reg_type)},
-                   {body_block, IR::Val::Reg(from_incr, from_phi_reg_type)}});
-      IR::MakePhi(to_phi_index,
-                  {{fn->entry(), IR::Val::Reg(to_start, to_phi_reg_type)},
-                   {body_block, IR::Val::Reg(to_incr, to_phi_reg_type)}});
+      IR::MakePhi<IR::Addr>(
+          from_phi_index, {{fn->entry(), from_start}, {body_block, from_incr}});
+      IR::MakePhi<IR::Addr>(to_phi_index,
+                            {{fn->entry(), to_start}, {body_block, to_incr}});
 
       IR::BasicBlock::Current = exit_block;
       IR::ReturnJump();

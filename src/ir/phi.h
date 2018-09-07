@@ -1,11 +1,13 @@
 #ifndef ICARUS_IR_PHI_H
 #define ICARUS_IR_PHI_H
 
+#include <unordered_map>
 #include "ir/val.h"
 #include "ir/func.h"
 
 namespace IR {
 CmdIndex Phi(type::Type const *);
+
 Val MakePhi(CmdIndex phi_index,
             const std::unordered_map<BlockIndex, IR::Val> &val_map);
 
@@ -25,7 +27,10 @@ constexpr type::Type const * GetType() {
   } else {
     NOT_YET();
   }
+
 }
+Val MakePhi(CmdIndex phi_index,
+            const std::unordered_map<BlockIndex, IR::Val> &val_map);
 
 template <typename T>
 RegisterOr<T> MakePhi(CmdIndex phi_index,
@@ -50,6 +55,9 @@ RegisterOr<T> MakePhi(CmdIndex phi_index,
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     cmd.op_code_  = Op::PhiType;
     cmd.phi_type_ = Cmd::PhiType::Make(phi_args.get());
+  } else if constexpr (std::is_same_v<T, IR::Addr>) {
+    cmd.op_code_  = Op::PhiAddr;
+    cmd.phi_addr_ = Cmd::PhiAddr::Make(phi_args.get());
   }
   IR::Func::Current->block(BasicBlock::Current)
       .phi_args_.push_back(std::move(phi_args));

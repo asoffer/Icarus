@@ -255,6 +255,7 @@ inline Val ValFrom(RegisterOr<type::Type const *> r) {
   return r.is_reg_ ? Val::Reg(r.reg_, type::Type_) : Val::Type(r.val_);
 }
 Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t);
+Val ValFrom(RegisterOr<IR::Addr> r, type::Pointer const *ptr_type);
 
 inline bool operator==(const Val &lhs, const Val &rhs) {
   return lhs.type == rhs.type && lhs.value == rhs.value;
