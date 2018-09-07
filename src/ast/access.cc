@@ -117,7 +117,7 @@ base::vector<IR::Val> AST::Access::EmitLVal(Context *ctx) {
       val.type->as<type::Pointer>().pointee->is<type::Array>()) {
     auto &arr_type = val.type->as<type::Pointer>().pointee->as<type::Array>();
     if (arr_type.fixed_length) {
-      return {IR::Val::Int(arr_type.len)};
+      return {IR::Val(static_cast<i32>(arr_type.len))};
     } else {
       return {IR::Val::Reg(
           IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(val.value))),

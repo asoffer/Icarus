@@ -11,27 +11,6 @@ CmdIndex Phi(type::Type const *);
 Val MakePhi(CmdIndex phi_index,
             const std::unordered_map<BlockIndex, IR::Val> &val_map);
 
-// TODO move this type stuff into type/
-template <typename T>
-constexpr type::Type const * GetType() {
-  if constexpr (std::is_same_v<T, bool>) {
-    return type::Bool;
-  } else if constexpr (std::is_same_v<T, char>) {
-    return type::Char;
-  } else if constexpr (std::is_same_v<T, i32>) {
-    return type::Int;
-  } else if constexpr (std::is_same_v<T, double>) {
-    return type::Real;
-  } else if constexpr (std::is_same_v<T, type::Type const *>) {
-    return type::Type_;
-  } else {
-    NOT_YET();
-  }
-
-}
-Val MakePhi(CmdIndex phi_index,
-            const std::unordered_map<BlockIndex, IR::Val> &val_map);
-
 template <typename T>
 RegisterOr<T> MakePhi(CmdIndex phi_index,
                       std::unordered_map<BlockIndex, RegisterOr<T>> val_map) {

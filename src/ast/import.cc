@@ -37,7 +37,7 @@ base::vector<IR::Val> Import::EmitIR(Context *ctx) {
   ASSERT(cache_.has_value());
   auto fut = modules.lock()->at(*cache_);
   auto *mod = fut.get().get();
-  return {IR::Val::Mod(mod)};
+  return {IR::Val(mod)};
 }
 
 base::vector<IR::Val> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }

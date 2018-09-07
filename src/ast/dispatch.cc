@@ -58,7 +58,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
               fn->inputs[i]
                   ->type_expr->as<MatchDeclaration>()
                   .identifier->token,
-              IR::Val::Type(binding->exprs_[i].second->type));
+              IR::Val(binding->exprs_[i].second->type));
         }
 
         */

@@ -15,10 +15,6 @@
 #include "type/pointer.h"
 #include "type/struct.h"
 
-namespace type {
-extern Type *NullPtr;
-}  // namespace type
-
 namespace IR {
 Val Val::CodeBlock(AST::CodeBlock block) { NOT_YET(); }
 
@@ -63,31 +59,14 @@ Val Val::BlockSeq(BlockSequence b) {
   return Val(t, b);
 }
 
-Val Val::Addr(IR::Addr addr, const type::Type *t) { return Val(Ptr(t), addr); }
-
 Val Val::Interface(IR::Interface ifc) {
   return Val(type::Interface, std::move(ifc));
 }
 
-Val Val::StackAddr(u64 addr, const type::Type *t) {
-  IR::Addr a;
-  a.kind     = Addr::Kind::Stack;
-  a.as_stack = addr;
-  return Val(Ptr(t), a);
-}
-
-Val Val::HeapAddr(void *addr, const type::Type *t) {
-  IR::Addr a;
-  a.kind    = Addr::Kind::Heap;
-  a.as_heap = addr;
-  return Val(Ptr(t), a);
-}
-
 Val Val::Ref(AST::Expression *expr) { return Val(expr->type, expr); }
 
-Val Val::Scope(AST::ScopeLiteral *scope_lit) {
-  return Val(scope_lit->type, scope_lit);
-}
+Val::Val(AST::ScopeLiteral *scope_lit) : Val(scope_lit->type, scope_lit) {}
+
 Val Val::Enum(const type::Enum *enum_type, size_t integral_val) {
   return Val(enum_type, EnumVal{integral_val});
 }
@@ -102,7 +81,6 @@ Val Val::Func(IR::Func *fn) { return Val(fn->type_, fn); }
 Val Val::Null(const type::Type *t) {
   return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0});
 }
-Val Val::NullPtr() { return Val(type::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
 
 static std::string Escaped(std::string_view sv) {
   std::stringstream ss;
@@ -221,8 +199,7 @@ Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t) {
 }
 
 Val ValFrom(RegisterOr<IR::Addr> r, type::Pointer const *ptr_type) {
-  return r.is_reg_ ? Val::Reg(r.reg_, ptr_type)
-                   : Val::Addr(r.val_, ptr_type->as<type::Pointer>().pointee);
+  return r.is_reg_ ? Val::Reg(r.reg_, ptr_type) : Val(ptr_type, r.val_);
 }
 
 }  // namespace IR

@@ -76,7 +76,7 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
                   IR::Val to_var, Context *ctx);
 
 const Type *Void();
-extern Type *Err, *Bool, *Char, *Int, *Real, *Code, *Type_, *NullPtr,
+extern Type const *Err, *Bool, *Char, *Int, *Real, *Code, *Type_, *NullPtr,
     *EmptyArray, *Generic, *Module, *Block, *OptBlock, *Interface;
 
 } // namespace type

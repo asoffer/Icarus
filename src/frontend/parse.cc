@@ -794,7 +794,7 @@ static std::unique_ptr<AST::Node> BuildEnumOrFlagLiteral(
   if (is_enum) {
     auto term = std::make_unique<AST::Terminal>(
         TextSpan(nodes[0]->span, nodes[1]->span),
-        IR::Val::Type(
+        IR::Val(
             new type::Enum("__anon.enum" + std::to_string(anon_enum_counter++),
                            std::move(members_vec))));
     return term;
@@ -802,7 +802,7 @@ static std::unique_ptr<AST::Node> BuildEnumOrFlagLiteral(
   } else {
     auto term = std::make_unique<AST::Terminal>(
         TextSpan(nodes[0]->span, nodes[1]->span),
-        IR::Val::Type(
+        IR::Val(
             new type::Enum("__anon.enum" + std::to_string(anon_enum_counter++),
                            std::move(members_vec))));
     return term;

@@ -6,7 +6,7 @@
 #include "context.h"
 
 namespace type {
-extern Type *Err;
+extern Type const *Err;
 }  // namespace type
 
 #define HANDLE_CYCLIC_DEPENDENCIES                                             \

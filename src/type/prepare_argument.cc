@@ -65,7 +65,7 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
   auto arg       = IR::Val::Reg(alloc_reg, type::Ptr(this));
   if (!from->is<Variant>()) {
     type::Type_->EmitAssign(
-        Type_, IR::Val::Type(from),
+        Type_, IR::Val(from),
         IR::Val::Reg(IR::VariantType(alloc_reg), type::Ptr(this)), ctx);
     // TODO this isn't exactly right because 'from' might not be the appropriate
     // type here.

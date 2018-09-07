@@ -468,7 +468,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
         return {val};
       } else if (i32 const *n = std::get_if<i32>(&val.value);
                  n && type == type::Real) {
-        return {IR::Val::Real(static_cast<double>(*n))};
+        return {IR::Val(static_cast<double>(*n))};
       } else if (type->is<type::Variant>()) {
         auto alloc = IR::Val::Reg(IR::Alloca(type), type);
         type->EmitAssign(val.type, std::move(val), alloc, ctx);
@@ -501,8 +501,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Arrow: {
       auto reg_or_type =
           IR::Arrow(IR::Tup(lhs->EmitIR(ctx)), IR::Tup(rhs->EmitIR(ctx)));
-      return {reg_or_type.is_reg_ ? IR::Val::Reg(reg_or_type.reg_, type::Type_)
-                                  : IR::Val::Type(reg_or_type.val_)};
+      return {IR::ValFrom(reg_or_type)};
     } break;
     case Language::Operator::Assign: {
       base::vector<const type::Type *> lhs_types, rhs_types;

@@ -10,6 +10,7 @@
 #include "base/strong_types.h"
 #include "base/types.h"
 #include "ir/interface.h"
+#include "ir/register.h"
 
 struct Module;
 
@@ -21,9 +22,32 @@ struct Struct;
 struct Type;
 
 const Type *Void();
-extern Type *Bool, *Char, *Real, *Int, *Type_, *String, *Module, *Generic;
+extern Type const *Bool, *Char, *Real, *Int, *Type_, *String, *Module, *Generic, *NullPtr;
 } // namespace type
 
+// TODO move this type stuff into type/
+template <typename T>
+constexpr type::Type const *GetType() {
+  if constexpr (std::is_same_v<T, bool>) {
+    return type::Bool;
+  } else if constexpr (std::is_same_v<T, char>) {
+    return type::Char;
+  } else if constexpr (std::is_same_v<T, i32>) {
+    return type::Int;
+  } else if constexpr (std::is_same_v<T, double>) {
+    return type::Real;
+  } else if constexpr (std::is_same_v<
+                           std::decay_t<decltype(*std::declval<T>())>,
+                           type::Type>) {
+    return type::Type_;
+  } else if constexpr (std::is_same_v<
+                           std::decay_t<decltype(*std::declval<T>())>,
+                           Module>) {
+    return type::Module;
+  } else {
+    NOT_YET();
+  }
+}
 
 namespace AST {
 struct Expression;
@@ -35,7 +59,6 @@ struct Function;
 DEFINE_STRONG_INT(IR, BlockIndex, i32, -1);
 DEFINE_STRONG_INT(IR, EnumVal, size_t, 0);
 DEFINE_STRONG_INT(IR, FlagsVal, size_t, 0);
-DEFINE_STRONG_INT(IR, Register, i32, std::numeric_limits<i32>::lowest());
 DEFINE_STRONG_INT(IR, BuiltinGenericIndex, i32, -1);
 
 namespace IR {
@@ -48,18 +71,6 @@ inline FlagsVal operator^(FlagsVal lhs, FlagsVal rhs) {
 inline FlagsVal operator&(FlagsVal lhs, FlagsVal rhs) {
   return FlagsVal{lhs.value & rhs.value};
 }
-template <typename T>
-struct RegisterOr {
-  static_assert(!std::is_same_v<Register, T>);
-  RegisterOr(Register reg) : reg_(reg), is_reg_(true) {}
-  RegisterOr(T val) : val_(val), is_reg_(false) {}
-
-  union {
-    Register reg_;
-    T val_;
-  };
-  bool is_reg_;
-};
 
 struct BlockSequence {
   base::vector<AST::BlockLiteral *> const *seq_;
@@ -189,19 +200,16 @@ struct Val {
     }
   }
 
+  template <typename T>
+  explicit Val(T val) : Val(GetType<T>(), std::move(val)) {}
+  explicit Val(std::nullptr_t)
+      : Val(type::NullPtr, IR::Addr{Addr::Kind::Null, 0}) {}
+  explicit Val(AST::ScopeLiteral *scope_lit);
+
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
-  static Val Addr(Addr addr, const type::Type *t);
-  static Val HeapAddr(void *addr, const type::Type *t);
-  static Val StackAddr(u64 addr, const type::Type *t);
-  static Val Bool(bool b) { return Val(type::Bool, b); }
-  static Val Char(char c) { return Val(type::Char, c); }
   static Val BuiltinGeneric(i32 n) { return Val(type::Generic, BuiltinGenericIndex{n}); }
-  static Val Real(double r) { return Val(type::Real, r); }
-  static Val Int(i32 n) { return Val(type::Int, n); }
   static Val Enum(const type::Enum *enum_type, size_t integral_val);
   static Val Flags(const type::Flags *flags_type, FlagsVal val);
-  static Val Type(const type::Type *t) { return Val(type::Type_, t); }
-  static Val Type_(const type::Type *t) { return Val::Type(t); } // TODO hack to get a cmd macro to work.
   static Val CodeBlock(AST::CodeBlock block);
   static Val Foreign(const type::Type *t, ForeignFn f) { return Val(t, f); }
   static Val Func(IR::Func *fn); // TODO deprecate?
@@ -209,16 +217,12 @@ struct Val {
   static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Block(AST::BlockLiteral *b);
   static Val BlockSeq(BlockSequence b);
-  static Val Void() { return Val(type::Void(), false); }
-  static Val Mod(const Module *mod) { return Val(type::Module, mod); }
   static Val Null(const type::Type *t);
-  static Val NullPtr();
   static Val Interface(IR::Interface ifc);
 
   static Val CharBuf(const std::string &str);
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
-  static Val Scope(AST::ScopeLiteral *scope_lit);
   static Val Struct();
 
   std::string to_string() const;
@@ -230,30 +234,18 @@ struct Val {
   Val &operator=(const Val &) = default;
   Val &operator=(Val &&) noexcept = default;
 
-private:
+ private:
+  friend Val ValFrom(RegisterOr<IR::Addr> r, type::Pointer const *ptr_type);
+
   template <typename T>
   Val(const type::Type *t, T &&val) : type(t), value(std::forward<T>(val)) {}
 };
 
-inline Val ValFrom(RegisterOr<bool> r) {
-  return r.is_reg_ ? Val::Reg(r.reg_, type::Bool) : Val::Bool(r.val_);
+template <typename T>
+inline Val ValFrom(RegisterOr<T> r) {
+  return r.is_reg_ ? Val::Reg(r.reg_, GetType<T>()) : Val(r.val_);
 }
 
-inline Val ValFrom(RegisterOr<char> r) {
-  return r.is_reg_ ? Val::Reg(r.reg_, type::Char) : Val::Char(r.val_);
-}
-
-inline Val ValFrom(RegisterOr<i32> r) {
-  return r.is_reg_ ? Val::Reg(r.reg_, type::Int) : Val::Int(r.val_);
-}
-
-inline Val ValFrom(RegisterOr<double> r) {
-  return r.is_reg_ ? Val::Reg(r.reg_, type::Real) : Val::Real(r.val_);
-}
-
-inline Val ValFrom(RegisterOr<type::Type const *> r) {
-  return r.is_reg_ ? Val::Reg(r.reg_, type::Type_) : Val::Type(r.val_);
-}
 Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t);
 Val ValFrom(RegisterOr<IR::Addr> r, type::Pointer const *ptr_type);
 

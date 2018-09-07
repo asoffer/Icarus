@@ -7,7 +7,7 @@
 #include "statements.h"
 
 namespace type {
-extern Type *Code;
+extern Type const *Code;
 }  // namespace type
 
 namespace AST {

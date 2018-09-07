@@ -81,16 +81,15 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
   for (auto *t : types) {
     offset = arch.MoveForwardToAlignment(t, offset);
     if (t == type::Bool) {
-      results.push_back(IR::Val::Bool(result_buf.get<bool>(offset)));
+      results.emplace_back(result_buf.get<bool>(offset));
     } else if (t == type::Char) {
-      results.push_back(IR::Val::Char(result_buf.get<char>(offset)));
+      results.emplace_back(result_buf.get<char>(offset));
     } else if (t == type::Int) {
-      results.push_back(IR::Val::Int(result_buf.get<i32>(offset)));
+      results.emplace_back(result_buf.get<i32>(offset));
     } else if (t == type::Real) {
-      results.push_back(IR::Val::Real(result_buf.get<double>(offset)));
+      results.emplace_back(result_buf.get<double>(offset));
     } else if (t == type::Type_) {
-      results.push_back(
-          IR::Val::Type(result_buf.get<type::Type const *>(offset)));
+      results.emplace_back(result_buf.get<type::Type const *>(offset));
     } else if (t->is<type::CharBuffer>()) {
       results.push_back(IR::Val::CharBuf(
           std::string(result_buf.get<std::string_view>(offset))));
@@ -101,11 +100,9 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
                             ? IR::Val::Func(any_func.fn_)
                             : IR::Val::Foreign(t, any_func.foreign_));
     } else if (t->is<type::Scope>()) {
-      // TODO foreign func, etc?
-      results.push_back(
-          IR::Val::Scope(result_buf.get<AST::ScopeLiteral *>(offset)));
+      results.emplace_back(result_buf.get<AST::ScopeLiteral *>(offset));
     } else if (t == type::Module) {
-      results.push_back(IR::Val::Mod(result_buf.get<Module const *>(offset)));
+      results.emplace_back(result_buf.get<Module const *>(offset));
     } else if (t == type::Generic) {
       // TODO mostly wrong.
       results.push_back(IR::Val::Func(result_buf.get<AST::Function *>(offset)));

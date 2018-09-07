@@ -249,7 +249,7 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       } else {
         UNREACHABLE();
       }
-    case Language::Operator::TypeOf: return {IR::Val::Type(operand->type)};
+    case Language::Operator::TypeOf: return {IR::Val(operand->type)};
     case Language::Operator::Which:
       if (lvalue == Assign::Const) {
         NOT_YET();

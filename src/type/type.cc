@@ -11,7 +11,7 @@
 
 namespace type {
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
-  Type *GlobalName = new Primitive(PrimType::EnumName);
+  Type const *GlobalName = new Primitive(PrimType::EnumName);
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 

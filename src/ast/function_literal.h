@@ -19,7 +19,7 @@ struct Func;
 }  // namespace IR
 
 namespace type {
-extern Type *Generic;
+extern Type const *Generic;
 }  // namespace type
 
 namespace AST {

@@ -19,9 +19,7 @@
 using base::check::Is;
 
 namespace type {
-extern Type *Code;
-extern Type *Int;
-extern Type *Char;
+extern Type const *Code, *Int, *Char;
 }  // namespace type
 
 i32 ResizeFuncIndex  = 0;
@@ -31,7 +29,7 @@ IR::Val PtrCallFix(const IR::Val &v);
 
 IR::Val ErrorFunc() {
   // TODO implement me
-  return IR::Val::Real(123.456);
+  return IR::Val(123.456);
 }
 
 IR::Val AsciiFunc() {

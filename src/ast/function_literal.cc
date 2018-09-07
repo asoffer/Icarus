@@ -41,7 +41,7 @@ GeneratedFunction *Function::generate(BoundConstants bc) {
     } else {
       auto type_expr_span           = func.inputs.back()->type_expr->span;
       func.inputs.back()->type_expr = std::make_unique<Terminal>(
-          type_expr_span, IR::Val::Type(ifc_iter->second));
+          type_expr_span, IR::Val(ifc_iter->second));
     }
   }
 
@@ -241,12 +241,12 @@ void FuncContent::Validate(Context *ctx) {
           const auto &entries = one_type->as<type::Tuple>().entries_;
           for (auto *entry : entries) {
             outputs.push_back(
-                std::make_unique<Terminal>(TextSpan(), IR::Val::Type(entry)));
+                std::make_unique<Terminal>(TextSpan(), IR::Val(entry)));
           }
           type = type::Func(std::move(input_type_vec), entries);
         } else {
           outputs.push_back(
-              std::make_unique<Terminal>(TextSpan(), IR::Val::Type(one_type)));
+              std::make_unique<Terminal>(TextSpan(), IR::Val(one_type)));
           type = type::Func(std::move(input_type_vec), {one_type});
         }
       } break;

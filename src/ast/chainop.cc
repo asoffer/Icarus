@@ -370,8 +370,7 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
     args.reserve(exprs.size());
     for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)[0]); }
     auto reg_or_type = IR::Variant(args);
-    return {reg_or_type.is_reg_ ? IR::Val::Reg(reg_or_type.reg_, type::Type_)
-                                : IR::Val::Type(reg_or_type.val_)};
+    return {IR::ValFrom(reg_or_type)};
   } else if (ops[0] == Language::Operator::Or &&
              (type == type::Block || type == type::OptBlock)) {
     base::vector<IR::Val> vals;
@@ -380,9 +379,11 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
     return {IR::BlockSeq(vals)};
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
+    ASSERT(exprs[0]->type == type::Bool);
+
     auto land_block = IR::Func::Current->AddBlock();
 
-    base::unordered_map<IR::BlockIndex, IR::Val> phi_args;
+    base::unordered_map<IR::BlockIndex, IR::RegisterOr<bool>> phi_args;
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       auto val = exprs[i]->EmitIR(ctx)[0].reg_or<bool>();
@@ -390,17 +391,18 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       auto next_block = IR::Func::Current->AddBlock();
       IR::CondJump(val, is_or ? land_block : next_block,
                    is_or ? next_block : land_block);
-      phi_args[IR::BasicBlock::Current] = IR::Val::Bool(is_or);
+      phi_args.emplace(IR::BasicBlock::Current, is_or);
 
       IR::BasicBlock::Current = next_block;
     }
 
-    phi_args[IR::BasicBlock::Current] = exprs.back()->EmitIR(ctx)[0];
+    phi_args.emplace(IR::BasicBlock::Current,
+                     exprs.back()->EmitIR(ctx)[0].reg_or<bool>());
     IR::UncondJump(land_block);
 
     IR::BasicBlock::Current = land_block;
 
-    return {IR::MakePhi(IR::Phi(exprs[0]->type), phi_args)};
+    return {IR::ValFrom(IR::MakePhi<bool>(IR::Phi(type::Bool), phi_args))};
 
   } else {
     if (ops.size() == 1) {

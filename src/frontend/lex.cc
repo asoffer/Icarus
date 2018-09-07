@@ -1,5 +1,5 @@
-#include "base/container/unordered_map.h"
 #include <cmath>
+#include "base/container/unordered_map.h"
 
 #include "ast/hole.h"
 #include "ast/identifier.h"
@@ -39,7 +39,9 @@ constexpr inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
 constexpr inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
 
 constexpr inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
-constexpr inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
+constexpr inline bool IsAlphaNumeric(char c) {
+  return IsAlpha(c) || IsDigit(c);
+}
 constexpr inline bool IsWhitespace(char c) {
   return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
@@ -50,7 +52,7 @@ constexpr inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
 
-frontend::TaggedNode NextWord(SourceLocation &loc) {
+TaggedNode NextWord(SourceLocation &loc) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
   // We have already matched the first character
   auto span = loc.ToSpan();
@@ -61,16 +63,16 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
                                         span.finish.offset - span.start.offset);
 
   static base::unordered_map<std::string, IR::Val> Reserved{
-      {"bool", IR::Val::Type(type::Bool)},
-      {"char", IR::Val::Type(type::Char)},
-      {"code", IR::Val::Type(type::Code)},
-      {"int", IR::Val::Type(type::Int)},
-      {"real", IR::Val::Type(type::Real)},
-      {"type", IR::Val::Type(type::Type_)},
-      {"module", IR::Val::Type(type::Module)},
-      {"true", IR::Val::Bool(true)},
-      {"false", IR::Val::Bool(false)},
-      {"null", IR::Val::NullPtr()},
+      {"bool", IR::Val(type::Bool)},
+      {"char", IR::Val(type::Char)},
+      {"code", IR::Val(type::Code)},
+      {"int", IR::Val(type::Int)},
+      {"real", IR::Val(type::Real)},
+      {"type", IR::Val(type::Type_)},
+      {"module", IR::Val(type::Module)},
+      {"true", IR::Val(true)},
+      {"false", IR::Val(false)},
+      {"null", IR::Val(nullptr)},
       {"ord", OrdFunc()},
       {"ascii", AsciiFunc()},
       {"error", ErrorFunc()},
@@ -80,27 +82,27 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       {"alignment", AlignFunc()},
       {"exit", IR::Val::Block(nullptr)}};
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
-    return frontend::TaggedNode::TerminalExpression(span, iter->second);
+    return TaggedNode::TerminalExpression(span, iter->second);
   }
 
-  static const base::unordered_map<std::string, frontend::Tag> KeywordMap = {
-      {"which", frontend::op_l},
-      {"print", frontend::op_l},
-      {"ensure", frontend::op_l},
-      {"needs", frontend::op_l},
-      {"import", frontend::op_l},
-      {"interface", frontend::kw_block_head},
-      {"flags", frontend::kw_block_head},
-      {"enum", frontend::kw_block_head},
-      {"generate", frontend::op_l},
-      {"struct", frontend::kw_block_head},
-      {"return", frontend::op_lt},
-      {"scope", frontend::kw_block_head},
-      {"switch", frontend::kw_block_head},
-      {"when", frontend::op_b},
-      {"as", frontend::op_b}};
+  static const base::unordered_map<std::string, Tag> KeywordMap = {
+      {"which", op_l},
+      {"print", op_l},
+      {"ensure", op_l},
+      {"needs", op_l},
+      {"import", op_l},
+      {"interface", kw_block_head},
+      {"flags", kw_block_head},
+      {"enum", kw_block_head},
+      {"generate", op_l},
+      {"struct", kw_block_head},
+      {"return", op_lt},
+      {"scope", kw_block_head},
+      {"switch", kw_block_head},
+      {"when", op_b},
+      {"as", op_b}};
   if (auto iter = KeywordMap.find(token); iter != KeywordMap.end()) {
-    return frontend::TaggedNode(span, iter->first, iter->second);
+    return TaggedNode(span, iter->first, iter->second);
   }
 
   if (token == "block") {
@@ -110,41 +112,37 @@ frontend::TaggedNode NextWord(SourceLocation &loc) {
       span.finish = loc.cursor;
       t           = type::OptBlock;
     }
-    return frontend::TaggedNode(
-        std::make_unique<AST::Terminal>(span, IR::Val::Type(t)),
-        frontend::kw_block);
+    return TaggedNode(std::make_unique<AST::Terminal>(span, IR::Val(t)),
+                      kw_block);
   }
 
-  return frontend::TaggedNode(std::make_unique<AST::Identifier>(span, token),
-                              frontend::expr);
+  return TaggedNode(std::make_unique<AST::Identifier>(span, token), expr);
 }
 
-frontend::TaggedNode NextNumber(SourceLocation &loc) {
-  auto span = loc.ToSpan();
+TaggedNode NextNumber(SourceLocation &loc) {
+  auto span         = loc.ToSpan();
   const char *start = &*loc;
   while (*loc == 'b' || *loc == 'o' || *loc == 'd' || *loc == 'x' ||
          *loc == '_' || *loc == '.' || IsDigit(*loc)) {
     loc.Increment();
   }
   span.finish = loc.cursor;
-  return std::visit(
-      base::overloaded{[&span](i32 n) {
-                         return frontend::TaggedNode::TerminalExpression(
-                             span, IR::Val::Int(n));
-                       },
-                       [&span](double d) {
-                         return frontend::TaggedNode::TerminalExpression(
-                             span, IR::Val::Real(d));
-                       },
-                       [&span](const std::string &err) {
-                         NOT_YET("log an error");
-                         return frontend::TaggedNode{};
-                       }},
-      ParseNumber(std::string_view(start, &*loc - start)));
+  return std::visit(base::overloaded{[&span](i32 n) {
+                                       return TaggedNode::TerminalExpression(
+                                           span, IR::Val(n));
+                                     },
+                                     [&span](double d) {
+                                       return TaggedNode::TerminalExpression(
+                                           span, IR::Val(d));
+                                     },
+                                     [&span](const std::string &err) {
+                                       NOT_YET("log an error");
+                                       return TaggedNode{};
+                                     }},
+                    ParseNumber(std::string_view(start, &*loc - start)));
 }
 
-frontend::TaggedNode NextStringLiteral(SourceLocation &loc,
-                                       error::Log *error_log) {
+TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
 
@@ -158,25 +156,25 @@ frontend::TaggedNode NextStringLiteral(SourceLocation &loc,
       continue;
     }
 
-    loc.Increment(); // Iterate past '\\'
+    loc.Increment();  // Iterate past '\\'
     span.finish = loc.cursor;
     switch (*loc) {
-    case '\\': str_lit += '\\'; break;
-    case '"': str_lit += '"'; break;
-    case 'a': str_lit += '\a'; break;
-    case 'b': str_lit += '\b'; break;
-    case 'f': str_lit += '\f'; break;
-    case 'n': str_lit += '\n'; break;
-    case 'r': str_lit += '\r'; break;
-    case 't': str_lit += '\t'; break;
-    case 'v': str_lit += '\v'; break;
-    default:
-      TextSpan invalid = loc.ToSpan();
-      --invalid.start.offset;
-      ++invalid.finish.offset;
-      error_log->InvalidEscapedCharacterInStringLiteral(invalid);
-      str_lit += *loc;
-      break;
+      case '\\': str_lit += '\\'; break;
+      case '"': str_lit += '"'; break;
+      case 'a': str_lit += '\a'; break;
+      case 'b': str_lit += '\b'; break;
+      case 'f': str_lit += '\f'; break;
+      case 'n': str_lit += '\n'; break;
+      case 'r': str_lit += '\r'; break;
+      case 't': str_lit += '\t'; break;
+      case 'v': str_lit += '\v'; break;
+      default:
+        TextSpan invalid = loc.ToSpan();
+        --invalid.start.offset;
+        ++invalid.finish.offset;
+        error_log->InvalidEscapedCharacterInStringLiteral(invalid);
+        str_lit += *loc;
+        break;
     }
   }
 
@@ -188,393 +186,389 @@ frontend::TaggedNode NextStringLiteral(SourceLocation &loc,
   }
 
   span.finish = loc.cursor;
-  return frontend::TaggedNode::TerminalExpression(span,
-                                                  IR::Val::CharBuf(str_lit));
+  return TaggedNode::TerminalExpression(span, IR::Val::CharBuf(str_lit));
 }
 
-frontend::TaggedNode NextCharLiteral(SourceLocation &loc,
-                                     error::Log *error_log) {
+TaggedNode NextCharLiteral(SourceLocation &loc, error::Log *error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
   span.finish = loc.cursor;
   char result;
 
   switch (*loc) {
-  case '\t':
-    error_log->TabInCharacterLiteral(span);
-    result = '\t';
-    break;
-  case ' ':
-    ++span.finish.offset;
-    error_log->SpaceInCharacterLiteral(span);
-    result = '\0';
-    break;
-  case '\0':
-    span.finish = loc.cursor;
-    error_log->RunawayCharacterLiteral(span);
-    return frontend::TaggedNode::TerminalExpression(span, IR::Val::Char('\0'));
-  case '\\': {
-    loc.Increment();
-    switch (*loc) {
-    case '\"': {
-      result = '"';
-      span.finish = loc.cursor;
+    case '\t':
+      error_log->TabInCharacterLiteral(span);
+      result = '\t';
+      break;
+    case ' ':
       ++span.finish.offset;
-      error_log->EscapedDoubleQuoteInCharacterLiteral(span);
-    } break;
-    case '\\': result = '\\'; break;
-    case 'a': result  = '\a'; break;
-    case 'b': result  = '\b'; break;
-    case 'f': result  = '\f'; break;
-    case 'n': result  = '\n'; break;
-    case 'r': result  = '\r'; break;
-    case 's': result  = ' '; break;
-    case 't': result  = '\t'; break;
-    case 'v': result  = '\v'; break;
-    default:
+      error_log->SpaceInCharacterLiteral(span);
+      result = '\0';
+      break;
+    case '\0':
       span.finish = loc.cursor;
-      ++span.finish.offset;
-      error_log->InvalidEscapedCharacterInCharacterLiteral(span);
-      result = *loc;
+      error_log->RunawayCharacterLiteral(span);
+      return TaggedNode::TerminalExpression(span, IR::Val('\0'));
+    case '\\': {
+      loc.Increment();
+      switch (*loc) {
+        case '\"': {
+          result      = '"';
+          span.finish = loc.cursor;
+          ++span.finish.offset;
+          error_log->EscapedDoubleQuoteInCharacterLiteral(span);
+        } break;
+        case '\\': result = '\\'; break;
+        case 'a': result = '\a'; break;
+        case 'b': result = '\b'; break;
+        case 'f': result = '\f'; break;
+        case 'n': result = '\n'; break;
+        case 'r': result = '\r'; break;
+        case 's': result = ' '; break;
+        case 't': result = '\t'; break;
+        case 'v': result = '\v'; break;
+        default:
+          span.finish = loc.cursor;
+          ++span.finish.offset;
+          error_log->InvalidEscapedCharacterInCharacterLiteral(span);
+          result = *loc;
+      }
+      break;
     }
-    break;
-  }
-  default: { result = *loc; } break;
+    default: { result = *loc; } break;
   }
   loc.Increment();
   span.finish = loc.cursor;
-  return frontend::TaggedNode::TerminalExpression(span, IR::Val::Char(result));
+  return TaggedNode::TerminalExpression(span, IR::Val(result));
 }
 
-frontend::TaggedNode NextOperator(SourceLocation &loc, error::Log* error_log) {
+TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
   auto span = loc.ToSpan();
   switch (*loc) {
-  case '@':
-    loc.Increment();
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, "@", frontend::op_l);
-  case ',':
-    loc.Increment();
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, ",", frontend::comma);
-  case ';':
-    loc.Increment();
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, ";", frontend::semicolon);
-  case '(':
-    loc.Increment();
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, "(", frontend::l_paren);
-  case ')':
-    loc.Increment();
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, ")", frontend::r_paren);
-  case '[':
-    loc.Increment();
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, "[", frontend::l_bracket);
-  case ']':
-    loc.Increment();
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, "]", frontend::r_bracket);
-  case '$':
-    loc.Increment();
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, "$", frontend::op_l);
-
-  case '{': {
-    loc.Increment();
-    if (*loc == '{') {
+    case '@':
       loc.Increment();
       span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "{{", frontend::l_double_brace);
-    }
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, "{", frontend::l_brace);
-  }
-  case '}': {
-    loc.Increment();
-    if (*loc == '}') {
+      return TaggedNode(span, "@", op_l);
+    case ',':
       loc.Increment();
       span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "}}", frontend::r_double_brace);
-    }
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, "}", frontend::r_brace);
-  }
-
-  case '.': {
-    while (*loc == '.') { loc.Increment(); }
-    span.finish     = loc.cursor;
-    size_t num_dots = span.finish.offset - span.start.offset;
-
-    if (num_dots == 1) {
-      if (IsDigit(*loc)) {
-        loc.BackUp();
-        return NextNumber(loc);
-      }
-    } else {
-     error_log->TooManyDots(span);
-    }
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, ".", frontend::op_b);
-  } break;
-
-  case '\\': {
-    size_t dist = 1;
-
-    loc.Increment();
-    ++dist;
-    switch (*loc) {
-    case '\\':
+      return TaggedNode(span, ",", comma);
+    case ';':
       loc.Increment();
       span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "", frontend::newline);
-      break;
+      return TaggedNode(span, ";", semicolon);
     case '(':
       loc.Increment();
       span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "\\(", frontend::l_ref);
-      break;
-    case '\0':
-      // Ignore the following newline and retry
+      return TaggedNode(span, "(", l_paren);
+    case ')':
       loc.Increment();
-      return frontend::TaggedNode::Invalid();
-    case ' ':
-    case '\t':
-      while (IsWhitespace(*loc)) {
-        loc.Increment();
-        ++dist;
-      }
-      if (*loc == '\0') {
-        loc.Increment();
-        return frontend::TaggedNode::Invalid();
-      }
-      [[fallthrough]];
-    default:
       span.finish = loc.cursor;
-      ++span.finish.offset;
-      // TODO this often causes the parser to fail afterwards
-      error_log->NonWhitespaceAfterNewlineEscape(span);
-      return frontend::TaggedNode::Invalid();
-    }
-  } break;
-
-  case '+':
-  case '%':
-  case '<':
-  case '>':
-  case '|':
-  case '^': {
-    char first_char = *loc;
-    loc.Increment();
-
-    std::string token = "X=";
-    token[0]          = first_char;
-    if (*loc == '=') {
+      return TaggedNode(span, ")", r_paren);
+    case '[':
       loc.Increment();
-    } else {
-      token = std::string(1, first_char);
+      span.finish = loc.cursor;
+      return TaggedNode(span, "[", l_bracket);
+    case ']':
+      loc.Increment();
+      span.finish = loc.cursor;
+      return TaggedNode(span, "]", r_bracket);
+    case '$':
+      loc.Increment();
+      span.finish = loc.cursor;
+      return TaggedNode(span, "$", op_l);
+
+    case '{': {
+      loc.Increment();
+      if (*loc == '{') {
+        loc.Increment();
+        span.finish = loc.cursor;
+        return TaggedNode(span, "{{", l_double_brace);
+      }
+      span.finish = loc.cursor;
+      return TaggedNode(span, "{", l_brace);
+    }
+    case '}': {
+      loc.Increment();
+      if (*loc == '}') {
+        loc.Increment();
+        span.finish = loc.cursor;
+        return TaggedNode(span, "}}", r_double_brace);
+      }
+      span.finish = loc.cursor;
+      return TaggedNode(span, "}", r_brace);
     }
 
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, token, frontend::op_b);
-  } break;
+    case '.': {
+      while (*loc == '.') { loc.Increment(); }
+      span.finish     = loc.cursor;
+      size_t num_dots = span.finish.offset - span.start.offset;
 
-  case '*':
-    loc.Increment();
-    if (*loc == '/') {
+      if (num_dots == 1) {
+        if (IsDigit(*loc)) {
+          loc.BackUp();
+          return NextNumber(loc);
+        }
+      } else {
+        error_log->TooManyDots(span);
+      }
+      span.finish = loc.cursor;
+      return TaggedNode(span, ".", op_b);
+    } break;
+
+    case '\\': {
+      size_t dist = 1;
+
+      loc.Increment();
+      ++dist;
+      switch (*loc) {
+        case '\\':
+          loc.Increment();
+          span.finish = loc.cursor;
+          return TaggedNode(span, "", newline);
+          break;
+        case '(':
+          loc.Increment();
+          span.finish = loc.cursor;
+          return TaggedNode(span, "\\(", l_ref);
+          break;
+        case '\0':
+          // Ignore the following newline and retry
+          loc.Increment();
+          return TaggedNode::Invalid();
+        case ' ':
+        case '\t':
+          while (IsWhitespace(*loc)) {
+            loc.Increment();
+            ++dist;
+          }
+          if (*loc == '\0') {
+            loc.Increment();
+            return TaggedNode::Invalid();
+          }
+          [[fallthrough]];
+        default:
+          span.finish = loc.cursor;
+          ++span.finish.offset;
+          // TODO this often causes the parser to fail afterwards
+          error_log->NonWhitespaceAfterNewlineEscape(span);
+          return TaggedNode::Invalid();
+      }
+    } break;
+
+    case '+':
+    case '%':
+    case '<':
+    case '>':
+    case '|':
+    case '^': {
+      char first_char = *loc;
+      loc.Increment();
+
+      std::string token = "X=";
+      token[0]          = first_char;
+      if (*loc == '=') {
+        loc.Increment();
+      } else {
+        token = std::string(1, first_char);
+      }
+
+      span.finish = loc.cursor;
+      return TaggedNode(span, token, op_b);
+    } break;
+
+    case '*':
       loc.Increment();
       if (*loc == '/') {
-        // Looking at "*//" which should be parsed as an asterisk followed by a
-        // one-line comment.
-        loc.BackUp();
+        loc.Increment();
+        if (*loc == '/') {
+          // Looking at "*//" which should be parsed as an asterisk followed by
+          // a one-line comment.
+          loc.BackUp();
+          span.finish = loc.cursor;
+          return TaggedNode(span, "*", op_b);
+        } else {
+          span.finish = loc.cursor;
+          error_log->NotInMultilineComment(span);
+          return TaggedNode::Invalid();
+        }
+      } else if (*loc == '=') {
+        loc.Increment();
         span.finish = loc.cursor;
-        return frontend::TaggedNode(span, "*", frontend::op_b);
+        return TaggedNode(span, "*=", op_b);
       } else {
         span.finish = loc.cursor;
-        error_log->NotInMultilineComment(span);
-        return frontend::TaggedNode::Invalid();
+        return TaggedNode(span, "*", op_bl);
       }
-    } else if (*loc == '=') {
+
+    case '&': {
       loc.Increment();
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "*=", frontend::op_b);
-    } else {
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "*", frontend::op_bl);
-    }
+      if (*loc == '=') {
+        loc.Increment();
+        span.finish = loc.cursor;
+        return TaggedNode(span, "&=", op_b);
+      } else {
+        span.finish = loc.cursor;
+        return TaggedNode(span, "&", op_bl);
+      }
+    } break;
 
-  case '&': {
-    loc.Increment();
-    if (*loc == '=') {
-      loc.Increment();
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "&=", frontend::op_b);
-    } else {
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "&", frontend::op_bl);
-    }
-  } break;
-
-  case ':': {
-    loc.Increment();
-
-    if (*loc == '=') {
-      loc.Increment();
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, ":=", frontend::op_b);
-
-    } else if (*loc == '?') {
-      loc.Increment();
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, ":?", frontend::op_r);
-
-    } else if (*loc == ':') {
+    case ':': {
       loc.Increment();
 
       if (*loc == '=') {
         loc.Increment();
         span.finish = loc.cursor;
-        return frontend::TaggedNode(span, "::=", frontend::op_b);
+        return TaggedNode(span, ":=", op_b);
+
+      } else if (*loc == '?') {
+        loc.Increment();
+        span.finish = loc.cursor;
+        return TaggedNode(span, ":?", op_r);
+
+      } else if (*loc == ':') {
+        loc.Increment();
+
+        if (*loc == '=') {
+          loc.Increment();
+          span.finish = loc.cursor;
+          return TaggedNode(span, "::=", op_b);
+        } else {
+          span.finish = loc.cursor;
+          return TaggedNode(span, "::", colon);
+        }
       } else {
         span.finish = loc.cursor;
-        return frontend::TaggedNode(span, "::", frontend::colon);
+        return TaggedNode(span, ":", colon);
       }
-    } else {
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, ":", frontend::colon);
-    }
-  } break;
+    } break;
 
-  case '!': {
-    loc.Increment();
-    if (*loc == '=') {
+    case '!': {
+      loc.Increment();
+      if (*loc == '=') {
+        loc.Increment();
+        span.finish = loc.cursor;
+        return TaggedNode(span, "!=", op_b);
+      } else {
+        span.finish = loc.cursor;
+        return TaggedNode(span, "!", op_l);
+      }
+    } break;
+
+    case '-': {
+      loc.Increment();
+      if (*loc == '=') {
+        loc.Increment();
+        span.finish = loc.cursor;
+        return TaggedNode(span, "-=", op_b);
+
+      } else if (*loc == '>') {
+        loc.Increment();
+        span.finish = loc.cursor;
+        auto nptr   = std::make_unique<Token>(span, "->");
+        nptr->op    = Language::Operator::Arrow;
+        return TaggedNode(std::move(nptr), fn_arrow);
+
+      } else if (*loc == '-') {
+        loc.Increment();
+        span.finish = loc.cursor;
+        return TaggedNode(std::make_unique<AST::Hole>(span), expr);
+      } else {
+        span.finish = loc.cursor;
+        return TaggedNode(span, "-", op_bl);
+      }
+    } break;
+
+    case '=': {
+      loc.Increment();
+      if (*loc == '=') {
+        loc.Increment();
+        span.finish = loc.cursor;
+        return TaggedNode(span, "==", op_b);
+
+      } else if (*loc == '>') {
+        loc.Increment();
+        span.finish = loc.cursor;
+        return TaggedNode(span, "=>", op_b);
+
+      } else {
+        span.finish = loc.cursor;
+        return TaggedNode(span, "=", eq);
+      }
+    } break;
+    case '?':
       loc.Increment();
       span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "!=", frontend::op_b);
-    } else {
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "!", frontend::op_l);
-    }
-  } break;
-
-  case '-': {
-    loc.Increment();
-    if (*loc == '=') {
+      error_log->InvalidCharacterQuestionMark(span);
+      return TaggedNode::Invalid();
+    case '~':
       loc.Increment();
       span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "-=", frontend::op_b);
-
-    } else if (*loc == '>') {
+      error_log->InvalidCharacterTilde(span);
+      return TaggedNode::Invalid();
+    case '\'':
       loc.Increment();
       span.finish = loc.cursor;
-      auto nptr   = std::make_unique<Token>(span, "->");
-      nptr->op    = Language::Operator::Arrow;
-      return frontend::TaggedNode(std::move(nptr), frontend::fn_arrow);
-
-    } else if (*loc == '-') {
-      loc.Increment();
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(std::make_unique<AST::Hole>(span),
-                                  frontend::expr);
-    } else {
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "-", frontend::op_bl);
-    }
-  } break;
-
-  case '=': {
-    loc.Increment();
-    if (*loc == '=') {
-      loc.Increment();
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "==", frontend::op_b);
-
-    } else if (*loc == '>') {
-      loc.Increment();
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "=>", frontend::op_b);
-
-    } else {
-      span.finish = loc.cursor;
-      return frontend::TaggedNode(span, "=", frontend::eq);
-    }
-  } break;
-  case '?':
-    loc.Increment();
-    span.finish = loc.cursor;
-    error_log->InvalidCharacterQuestionMark(span);
-    return frontend::TaggedNode::Invalid();
-  case '~':
-    loc.Increment();
-    span.finish = loc.cursor;
-    error_log->InvalidCharacterTilde(span);
-    return frontend::TaggedNode::Invalid();
-  case '\'':
-    loc.Increment();
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, "'", frontend::op_bl);
-  case '_': UNREACHABLE();
-  default:
-    UNREACHABLE("Encountered character whose value is ",
-                static_cast<int>(*loc));
+      return TaggedNode(span, "'", op_bl);
+    case '_': UNREACHABLE();
+    default:
+      UNREACHABLE("Encountered character whose value is ",
+                  static_cast<int>(*loc));
   }
 }
 
-frontend::TaggedNode NextSlashInitiatedToken(SourceLocation &loc,
-                                             error::Log *error_log) {
+TaggedNode NextSlashInitiatedToken(SourceLocation &loc, error::Log *error_log) {
   auto span = loc.ToSpan();
   loc.Increment();
   switch (*loc) {
-  case '/': // line comment
-    loc.SkipToEndOfLine();
-    return frontend::TaggedNode::Invalid();
-  case '*': { // Multiline comment
-    loc.Increment();
-    char back_one = *loc;
-    loc.Increment();
-
-    u64 comment_layer = 1;
-    while (comment_layer != 0) {
-      if (loc.source->seen_eof) {
-        error_log->RunawayMultilineComment();
-        span.finish = loc.cursor;
-        return frontend::TaggedNode(span, "", frontend::eof);
-
-      } else if (back_one == '/' && *loc == '*') {
-        ++comment_layer;
-
-      } else if (back_one == '*' && *loc == '/') {
-        --comment_layer;
-      }
-
-      back_one = *loc;
+    case '/':  // line comment
+      loc.SkipToEndOfLine();
+      return TaggedNode::Invalid();
+    case '*': {  // Multiline comment
       loc.Increment();
+      char back_one = *loc;
+      loc.Increment();
+
+      u64 comment_layer = 1;
+      while (comment_layer != 0) {
+        if (loc.source->seen_eof) {
+          error_log->RunawayMultilineComment();
+          span.finish = loc.cursor;
+          return TaggedNode(span, "", eof);
+
+        } else if (back_one == '/' && *loc == '*') {
+          ++comment_layer;
+
+        } else if (back_one == '*' && *loc == '/') {
+          --comment_layer;
+        }
+
+        back_one = *loc;
+        loc.Increment();
+      }
+      return TaggedNode::Invalid();
     }
-    return frontend::TaggedNode::Invalid();
-  }
-  case '=':
-    loc.Increment();
-    span.finish = loc.cursor;
-    return frontend::TaggedNode(span, "/=", frontend::op_b);
-  default: span.finish = loc.cursor; return frontend::TaggedNode(span, "/", frontend::op_b);
+    case '=':
+      loc.Increment();
+      span.finish = loc.cursor;
+      return TaggedNode(span, "/=", op_b);
+    default: span.finish = loc.cursor; return TaggedNode(span, "/", op_b);
   }
 }
-} // namespace
+}  // namespace
 
 TaggedNode NextToken(SourceLocation &loc, error::Log *error_log) {
 restart:
   // Delegate based on the next character in the file stream
   if (loc.source->seen_eof) {
-    return frontend::TaggedNode(loc.ToSpan(), "", frontend::eof);
+    return TaggedNode(loc.ToSpan(), "", eof);
   } else if (IsAlphaOrUnderscore(*loc)) {
     return NextWord(loc);
   } else if (IsDigit(*loc)) {
     return NextNumber(loc);
   }
 
-  frontend::TaggedNode tagged_node = frontend::TaggedNode::Invalid();
+  TaggedNode tagged_node = TaggedNode::Invalid();
   switch (*loc) {
     case '`': {
       loc.Increment();
@@ -582,7 +576,7 @@ restart:
         auto span = loc.ToSpan();
         loc.Increment();
         span.finish = loc.cursor;
-        tagged_node = frontend::TaggedNode(span, "``", frontend::op_b);
+        tagged_node = TaggedNode(span, "``", op_b);
       } else {
         loc.BackUp();
         tagged_node = NextCharLiteral(loc, error_log);
@@ -595,9 +589,7 @@ restart:
       loc.Increment();
       goto restart;  // Skip whitespace
     case '\n':
-    case '\0':
-      loc.Increment();
-      return frontend::TaggedNode(loc.ToSpan(), "", frontend::newline);
+    case '\0': loc.Increment(); return TaggedNode(loc.ToSpan(), "", newline);
     default: tagged_node = NextOperator(loc, error_log); break;
   }
   if (!tagged_node.valid()) { goto restart; }
