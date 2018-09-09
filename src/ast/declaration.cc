@@ -429,11 +429,11 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
     if (IsUninitialized(this)) { return {}; }
     if (IsCustomInitialized()) {
       if (init_val->lvalue == Assign::RVal) {
-        type::EmitMoveInit(init_val->type, type, init_val->EmitIR(ctx)[0], addr,
-                           ctx);
+        type::EmitMoveInit(init_val->type, type, init_val->EmitIR(ctx)[0],
+                           std::get<IR::Register>(addr.value), ctx);
       } else {
-        type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx)[0], addr,
-                           ctx);
+        type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx)[0],
+                           std::get<IR::Register>(addr.value), ctx);
       }
     } else {
       type->EmitInit(std::get<IR::Register>(addr.value), ctx);

@@ -75,6 +75,6 @@ base::vector<IR::Val> AST::BlockLiteral::EmitIR(Context *ctx) {
   return {IR::Val::Block(this)};
 }
 
-base::vector<IR::Val> BlockLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Register> BlockLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
 
 }  // namespace AST

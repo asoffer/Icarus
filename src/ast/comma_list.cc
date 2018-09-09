@@ -85,8 +85,8 @@ base::vector<IR::Val> CommaList::EmitIR(Context *ctx) {
   return results;
 }
 
-base::vector<IR::Val> CommaList::EmitLVal(Context *ctx) {
-  base::vector<IR::Val> results;
+base::vector<IR::Register> CommaList::EmitLVal(Context *ctx) {
+  base::vector<IR::Register> results;
   results.reserve(exprs.size());
   for (auto &expr : exprs) { results.push_back(expr->EmitLVal(ctx)[0]); }
   return results;

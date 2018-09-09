@@ -470,9 +470,9 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
                  n && type == type::Real) {
         return {IR::Val(static_cast<double>(*n))};
       } else if (type->is<type::Variant>()) {
-        auto alloc = IR::Val::Reg(IR::Alloca(type), type);
+        auto alloc = IR::Alloca(type);
         type->EmitAssign(val.type, std::move(val), alloc, ctx);
-        return {alloc};
+        return {IR::Val::Reg(alloc, type)};
       } else if (val.type->is<type::Pointer>()) {
         auto *ptee_type = val.type->as<type::Pointer>().pointee;
         if (ptee_type->is<type::Array>()) {
@@ -535,11 +535,9 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       if (type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
         IR::StoreFlags(
-            IR::OrFlags(
-                &type->as<type::Flags>(),
-                IR::LoadFlags(std::get<IR::Register>(lhs_lval.value), type),
-                rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
-            std::get<IR::Register>(lhs_lval.value));
+            IR::OrFlags(&type->as<type::Flags>(), IR::LoadFlags(lhs_lval, type),
+                        rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
+            lhs_lval);
         return {};
       }
       auto land_block = IR::Func::Current->AddBlock();
@@ -563,12 +561,10 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::AndEq: {
       if (type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::StoreFlags(
-            IR::AndFlags(
-                &type->as<type::Flags>(),
-                IR::LoadFlags(std::get<IR::Register>(lhs_lval.value), type),
-                rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
-            std::get<IR::Register>(lhs_lval.value));
+        IR::StoreFlags(IR::AndFlags(&type->as<type::Flags>(),
+                                    IR::LoadFlags(lhs_lval, type),
+                                    rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
+                       lhs_lval);
         return {};
       }
 
@@ -591,7 +587,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
           {{lhs_end_block, rhs_val}, {rhs_end_block, false}}))};
     } break;
     case Language::Operator::AddEq: {
-      auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+      auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
         IR::StoreInt(IR::AddInt(IR::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
@@ -608,7 +604,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::SubEq: {
-      auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+      auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
         IR::StoreInt(IR::SubInt(IR::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
@@ -623,7 +619,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::DivEq: {
-      auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+      auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
         IR::StoreInt(IR::DivInt(IR::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
@@ -638,7 +634,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::ModEq: {
-      auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+      auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
         IR::StoreInt(IR::ModInt(IR::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
@@ -653,7 +649,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::MulEq: {
-      auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+      auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
         IR::StoreInt(IR::MulInt(IR::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
@@ -669,12 +665,12 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     } break;
     case Language::Operator::XorEq: {
       if (lhs->type == type::Bool) {
-        auto lhs_lval = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+        auto lhs_lval = lhs->EmitLVal(ctx)[0];
         auto rhs_ir   = rhs->EmitIR(ctx)[0].reg_or<bool>();
         IR::StoreBool(IR::XorBool(IR::LoadBool(lhs_lval), rhs_ir), lhs_lval);
       } else if (lhs->type->is<type::Flags>()) {
         auto *flags_type = &lhs->type->as<type::Flags>();
-        auto lhs_lval    = std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value);
+        auto lhs_lval    = lhs->EmitLVal(ctx)[0];
         auto rhs_ir      = rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>();
         IR::StoreFlags(
             IR::XorFlags(flags_type, IR::LoadFlags(lhs_lval, flags_type),
@@ -685,21 +681,19 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       }
       return {};
     } break;
-    case Language::Operator::Index: return {PtrCallFix(EmitLVal(ctx)[0])};
+    case Language::Operator::Index:
+      return {PtrCallFix(IR::Val::Reg(EmitLVal(ctx)[0], type::Ptr(type)))};
     default: UNREACHABLE(*this);
   }
 }
 
-base::vector<IR::Val> AST::Binop::EmitLVal(Context *ctx) {
+base::vector<IR::Register> AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::As: NOT_YET();
     case Language::Operator::Index:
       if (lhs->type->is<type::Array>()) {
-        return {IR::Val::Reg(
-            IR::Index(type::Ptr(this->type),
-                      std::get<IR::Register>(lhs->EmitLVal(ctx)[0].value),
-                      rhs->EmitIR(ctx)[0].reg_or<i32>()),
-            type::Ptr(this->type->as<type::Array>().data_type))};
+        return {IR::Index(type::Ptr(this->type), lhs->EmitLVal(ctx)[0],
+                          rhs->EmitIR(ctx)[0].reg_or<i32>())};
       }
       [[fallthrough]];
     default: UNREACHABLE("Operator is ", static_cast<int>(op));

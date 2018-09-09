@@ -452,6 +452,6 @@ void GeneratedFunction::CompleteBody(Module *mod) {
   }
 }
 
-base::vector<IR::Val> GeneratedFunction::EmitLVal(Context *) { UNREACHABLE(this); }
-base::vector<IR::Val> Function::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Register> GeneratedFunction::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Register> Function::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

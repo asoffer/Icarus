@@ -439,7 +439,7 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<IR::Val> ChainOp::EmitLVal(Context *ctx) { UNREACHABLE(this); }
+base::vector<IR::Register> ChainOp::EmitLVal(Context *ctx) { UNREACHABLE(this); }
 
 ChainOp *ChainOp::Clone() const {
   auto *result             = new ChainOp;

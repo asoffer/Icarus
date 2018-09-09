@@ -12,7 +12,7 @@ struct Tuple : public Type {
   Tuple(base::vector<Type const *> entries) : entries_(std::move(entries)) {}
   virtual char *WriteTo(char *buf) const;
   virtual size_t string_size() const;
-  virtual void EmitAssign(const Type *from_type, IR::Val from, IR::Val to,
+  virtual void EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
                           Context *ctx) const {
     UNREACHABLE();
   }

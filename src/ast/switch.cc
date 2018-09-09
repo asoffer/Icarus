@@ -126,6 +126,6 @@ base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
       IR::MakePhi(IR::Phi(type->is_big() ? type::Ptr(type) : type), phi_args)};
 }
 
-base::vector<IR::Val> AST::Switch::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+base::vector<IR::Register> AST::Switch::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 
 }  // namespace AST

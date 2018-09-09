@@ -10,6 +10,7 @@
 #include "module.h"
 #include "scope.h"
 #include "type/type.h"
+#include "type/pointer.h"
 
 IR::Val PtrCallFix(const IR::Val& v);
 
@@ -108,13 +109,15 @@ base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
   // TODO checking for const isn't really what we want to do. we'd rather just
   // have addr not be tied to anything if it's const.
   if (decl->const_ && decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
-  return {decl->arg_val ? decl->addr : PtrCallFix(EmitLVal(ctx)[0])};
+  return {decl->arg_val
+              ? decl->addr
+              : PtrCallFix(IR::Val::Reg(EmitLVal(ctx)[0], type::Ptr(type)))};
 }
 
-base::vector<IR::Val> AST::Identifier::EmitLVal(Context *ctx) {
+base::vector<IR::Register> AST::Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
   if (decl->const_ && decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
-  return {decl->addr};
+  return {std::get<IR::Register>(decl->addr.value)};
 }
 
 }  // namespace AST

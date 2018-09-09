@@ -580,5 +580,5 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
       dispatch_table_, type, ctx);
 }
 
-base::vector<IR::Val> Call::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Register> Call::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

@@ -20,7 +20,7 @@ struct Call : public Expression {
   Call *Clone() const override;
 
   base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Register> EmitLVal(Context *) override;
 
   std::unique_ptr<Expression> fn_;
   FnArgs<std::unique_ptr<Expression>> args_;

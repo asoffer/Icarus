@@ -40,7 +40,7 @@ struct CodeBlock : public Expression {
   std::variant<Statements, std::string> content_;
 
   base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Register> EmitLVal(Context *) override;
 };
 
 bool operator==(const CodeBlock &lhs, const CodeBlock &rhs);

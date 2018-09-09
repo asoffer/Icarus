@@ -83,7 +83,7 @@ base::vector<IR::Val> ArrayType::EmitIR(Context *ctx) {
   return {IR::ValFrom(result)};
 }
 
-base::vector<IR::Val> ArrayType::EmitLVal(Context *ct) { UNREACHABLE(*this); }
+base::vector<IR::Register> ArrayType::EmitLVal(Context *ct) { UNREACHABLE(*this); }
 
 void ArrayType::ExtractReturns(base::vector<const Expression *> *rets) const {
   // TODO length_ needs to be constexpr so maybe we're safe here? and don't need

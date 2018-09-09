@@ -15,7 +15,7 @@ namespace type {
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
-using InitFnType = void (*)(const Type *, const Type *, IR::Val, IR::Val,
+using InitFnType = void (*)(const Type *, const Type *, IR::Val, IR::Register,
                             Context *ctx);
 
 template <InitFnType InitFn>
@@ -78,10 +78,9 @@ static IR::Func *ArrayInitializationWith(const Array *from_type,
       IR::BasicBlock::Current = body_block;
       InitFn(from_type->data_type, to_type->data_type,
              PtrCallFix(IR::Val::Reg(from_phi_reg, from_phi_reg_type)),
-             IR::Val::Reg(to_phi_reg, to_phi_reg_type), ctx);
+             to_phi_reg, ctx);
       auto from_incr = IR::PtrIncr(from_phi_reg, 1, from_phi_reg_type);
-      auto to_incr   = IR::PtrIncr(to_phi_reg, 1,
-                                 to_phi_reg_type);
+      auto to_incr   = IR::PtrIncr(to_phi_reg, 1, to_phi_reg_type);
       IR::UncondJump(phi_block);
 
       IR::MakePhi<IR::Addr>(
@@ -117,9 +116,7 @@ static IR::Func *StructInitializationWith(const Struct *struct_type,
                PtrCallFix(
                    IR::Val::Reg(IR::Field(fn->Argument(0), struct_type, i),
                                 type::Ptr(struct_type->fields_.at(i).type))),
-               IR::Val::Reg(IR::Field(fn->Argument(1), struct_type, i),
-                            type::Ptr(struct_type->fields_.at(i).type)),
-               ctx);
+               IR::Field(fn->Argument(1), struct_type, i), ctx);
       }
       IR::ReturnJump();
     }
@@ -128,7 +125,7 @@ static IR::Func *StructInitializationWith(const Struct *struct_type,
 }
 
 void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var, Context *ctx) {
+                  IR::Register to_var, Context *ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>() || to_type->is<Function>()) {
     ASSERT(to_type == from_type);
@@ -164,7 +161,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
 }
 
 void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var, Context *ctx) {
+                  IR::Register to_var, Context *ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>()) {
     ASSERT(to_type == from_type);
@@ -185,12 +182,11 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
     } else {
       IR::StoreInt(
           IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(from_val.value))),
-          IR::ArrayLength(std::get<IR::Register>(to_var.value)));
+          IR::ArrayLength(to_var));
 
-      IR::StoreInt(
-          IR::LoadInt(IR::ArrayData(std::get<IR::Register>(from_val.value),
-                                    from_val.type)),
-          IR::ArrayData(std::get<IR::Register>(to_var.value), to_var.type));
+      IR::StoreInt(IR::LoadInt(IR::ArrayData(
+                       std::get<IR::Register>(from_val.value), from_val.type)),
+                   IR::ArrayData(to_var, type::Ptr(to_type)));
       // TODO if this move is to be destructive, this assignment to array
       // length is not necessary.
       IR::StoreInt(0, IR::ArrayLength(std::get<IR::Register>(from_val.value)));

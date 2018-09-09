@@ -101,41 +101,17 @@ void Access::contextualize(
                          replacements);
 }
 
-base::vector<IR::Val> AST::Access::EmitLVal(Context *ctx) {
-  auto val = operand->EmitLVal(ctx)[0];
-  if (val.type->is<type::Pointer>()) {
-    auto *t          = val.type;
-    IR::Register reg = std::get<IR::Register>(val.value);
-    while (!t->as<type::Pointer>().pointee->is_big()) {
-      reg = IR::Load(reg, type);
-      t   = t->as<type::Pointer>().pointee;
-    }
-    val = IR::Val::Reg(reg, t);
+base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
+  auto reg         = operand->EmitLVal(ctx)[0];
+  auto *t          = static_cast<type::Type const *>(type::Ptr(operand->type));
+  while (!t->as<type::Pointer>().pointee->is_big()) {
+    reg = IR::Load(reg, type);
+    t   = t->as<type::Pointer>().pointee;
   }
 
-  if (val.type->is<type::Pointer>() &&
-      val.type->as<type::Pointer>().pointee->is<type::Array>()) {
-    auto &arr_type = val.type->as<type::Pointer>().pointee->as<type::Array>();
-    if (arr_type.fixed_length) {
-      return {IR::Val(static_cast<i32>(arr_type.len))};
-    } else {
-      return {IR::Val::Reg(
-          IR::LoadInt(IR::ArrayLength(std::get<IR::Register>(val.value))),
-          type::Int)};
-    }
-  }
-
-  ASSERT(val.type, Is<type::Pointer>());
-  ASSERT(val.type->as<type::Pointer>().pointee, Is<type::Struct>());
-
-  auto *struct_type =
-      &val.type->as<type::Pointer>().pointee->as<type::Struct>();
-  return {IR::Val::Reg(
-      IR::Field(std::get<IR::Register>(val.value), struct_type,
-                struct_type->field_indices_.at(member_name)),
-      type::Ptr(
-          struct_type->fields_.at(struct_type->field_indices_.at(member_name))
-              .type))};
+  auto *struct_type = &t->as<type::Pointer>().pointee->as<type::Struct>();
+  return {
+      IR::Field(reg, struct_type, struct_type->field_indices_.at(member_name))};
 }
 
 base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
@@ -146,7 +122,7 @@ base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
   } else if (type->is<type::Enum>()) {
     return {type->as<type::Enum>().EmitLiteral(member_name)};
   } else {
-    return {PtrCallFix(EmitLVal(ctx)[0])};
+    return {PtrCallFix(IR::Val::Reg(EmitLVal(ctx)[0], type::Ptr(type)))};
   }
 }
 

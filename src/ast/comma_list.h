@@ -23,7 +23,7 @@ struct CommaList : public Expression {
 
   CommaList *Clone() const override;
   base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Register> EmitLVal(Context *) override;
 
   base::vector<std::unique_ptr<Expression>> exprs;
 };

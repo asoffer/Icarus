@@ -10,9 +10,9 @@ IR::Val Array::PrepareArgument(const Type *from, const IR::Val &val,
     ASSERT(from == this);
     if (fixed_length) {
       // TODO Copy may be overkill. Think about value category.
-      auto arg = IR::Val::Reg(IR::Alloca(from), type::Ptr(from));
+      auto arg = IR::Alloca(from);
       from->EmitAssign(from, val, arg, ctx);
-      return arg;
+      return IR::Val::Reg(arg, type::Ptr(from));
     } else {
       NOT_YET();
     }
@@ -62,19 +62,16 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
                                  Context *ctx) const {
   if (this == from) { return val; }
   auto alloc_reg = IR::Alloca(this);
-  auto arg       = IR::Val::Reg(alloc_reg, type::Ptr(this));
+
   if (!from->is<Variant>()) {
-    type::Type_->EmitAssign(
-        Type_, IR::Val(from),
-        IR::Val::Reg(IR::VariantType(alloc_reg), type::Ptr(this)), ctx);
+    type::Type_->EmitAssign(Type_, IR::Val(from), IR::VariantType(alloc_reg),
+                            ctx);
     // TODO this isn't exactly right because 'from' might not be the appropriate
     // type here.
     NOT_YET();
     // TODO this is actually the wrong type to plug in to VariantValue. It needs
     // to be the precise type stored.
-    from->EmitAssign(
-        from, val,
-        IR::Val::Reg(IR::VariantValue(from, alloc_reg), type::Ptr(from)), ctx);
+    from->EmitAssign(from, val, IR::VariantValue(from, alloc_reg), ctx);
   } else {
     auto *from_v = &from->as<Variant>();
     IR::Register runtime_type =
@@ -114,7 +111,7 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
                            IR::VariantValue(intersection[i],
                                             std::get<IR::Register>(val.value)),
                            type::Ptr(intersection[i]))),
-                       arg, ctx);
+                       alloc_reg, ctx);
       IR::UncondJump(landing);
     }
 
@@ -126,7 +123,7 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
     IR::UncondJump(blocks.back());
     IR::BasicBlock::Current = landing;
   }
-  return arg;
+  return IR::Val::Reg(alloc_reg, type::Ptr(this));
 }
 
 IR::Val Scope::PrepareArgument(const Type *from, const IR::Val &,
@@ -141,7 +138,7 @@ IR::Val CharBuffer::PrepareArgument(const Type *from, const IR::Val &,
 
 IR::Val Struct::PrepareArgument(const Type *from, const IR::Val &val,
                                 Context *ctx) const {
-  auto arg = IR::Val::Reg(IR::Alloca(this), type::Ptr(this));
+  auto arg = IR::Alloca(this);
   if (from->is<Variant>()) {
     EmitAssign(
         this,
@@ -153,7 +150,7 @@ IR::Val Struct::PrepareArgument(const Type *from, const IR::Val &val,
   } else {
     UNREACHABLE(from);
   }
-  return arg;
+  return IR::Val::Reg(arg, type::Ptr(this));
 }
 
 } // namespace type

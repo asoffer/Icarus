@@ -259,7 +259,8 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
                 std::get<IR::Register>(operand->EmitIR(ctx)[0].value))),
             type::Type_)};
       }
-    case Language::Operator::And: return {operand->EmitLVal(ctx)[0]};
+    case Language::Operator::And:
+      return {IR::Val::Reg(operand->EmitLVal(ctx)[0], type::Ptr(type))};
     case Language::Operator::Eval: {
       // TODO what if there's an error during evaluation?
       return backend::Evaluate(operand.get(), ctx);
@@ -301,8 +302,8 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<IR::Val> Unop::EmitLVal(Context *ctx) {
+base::vector<IR::Register> Unop::EmitLVal(Context *ctx) {
   ASSERT(op == Language::Operator::At);
-  return operand->EmitIR(ctx);
+  return {std::get<IR::Register>(operand->EmitIR(ctx)[0].value)};
 }
 }  // namespace AST

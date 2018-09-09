@@ -71,5 +71,5 @@ ScopeLiteral *ScopeLiteral::Clone() const {
 base::vector<IR::Val> AST::ScopeLiteral::EmitIR(Context *ctx) {
   return {IR::Val(this)};
 }
-base::vector<IR::Val> ScopeLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Register> ScopeLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

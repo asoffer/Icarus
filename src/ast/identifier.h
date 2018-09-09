@@ -27,7 +27,7 @@ struct Identifier : public Expression {
   Identifier *Clone() const override;
 
   base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Register> EmitLVal(Context *) override;
 
   std::string token;
   Declaration *decl = nullptr;

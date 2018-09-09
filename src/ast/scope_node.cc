@@ -265,5 +265,5 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   return {};
 }
 
-base::vector<IR::Val> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Register> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

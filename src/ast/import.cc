@@ -40,7 +40,7 @@ base::vector<IR::Val> Import::EmitIR(Context *ctx) {
   return {IR::Val(mod)};
 }
 
-base::vector<IR::Val> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
+base::vector<IR::Register> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
 Import *Import::Clone() const {
   auto *result = new Import(base::wrap_unique(operand_->Clone()));
   result->span = span;

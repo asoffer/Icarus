@@ -27,7 +27,7 @@ struct Hole : public Identifier {
   void Validate(Context *ctx) {}
 
   base::vector<IR::Val> EmitIR(Context *) override { return {IR::Val::None()}; }
-  base::vector<IR::Val> EmitLVal(Context *) override { return {IR::Val::None()}; }
+  base::vector<IR::Register> EmitLVal(Context *) override { UNREACHABLE(); }
 };
 }  // namespace AST
 

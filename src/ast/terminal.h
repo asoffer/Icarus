@@ -35,7 +35,7 @@ struct Terminal : public Expression {
 
   Terminal *Clone() const { return new Terminal(*this); }
   base::vector<IR::Val> EmitIR(Context *) override { return {value}; }
-  base::vector<IR::Val> EmitLVal(Context *ct) override { UNREACHABLE(this); }
+  base::vector<IR::Register> EmitLVal(Context *ct) override { UNREACHABLE(this); }
 
   IR::Val value = IR::Val::None();
 };

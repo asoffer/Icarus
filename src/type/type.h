@@ -28,8 +28,8 @@ class LLVMContext;
 #define BASIC_METHODS_WITHOUT_LLVM                                             \
   virtual char *WriteTo(char *buf) const ENDING;                               \
   virtual size_t string_size() const ENDING;                                   \
-  virtual void EmitAssign(const Type *from_type, IR::Val from, IR::Val to,     \
-                          Context *ctx) const ENDING;                          \
+  virtual void EmitAssign(const Type *from_type, IR::Val from,                 \
+                          IR::Register to, Context *ctx) const ENDING;         \
   virtual void EmitInit(IR::Register reg, Context *ctx) const ENDING;          \
   virtual void EmitDestroy(IR::Val id_val, Context *ctx) const ENDING;         \
   virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val,           \
@@ -71,9 +71,9 @@ const Type *Join(const Type *lhs, const Type *rhs);
 bool CanCastImplicitly(const type::Type *from, const type::Type *to);
 
 void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var, Context *ctx);
+                  IR::Register to_var, Context *ctx);
 void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
-                  IR::Val to_var, Context *ctx);
+                  IR::Register to_var, Context *ctx);
 
 const Type *Void();
 extern Type const *Err, *Bool, *Char, *Int, *Real, *Code, *Type_, *NullPtr,

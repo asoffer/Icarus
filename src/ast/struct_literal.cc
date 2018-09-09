@@ -86,5 +86,5 @@ base::vector<IR::Val> AST::StructLiteral::EmitIR(Context *ctx) {
   return {IR::Val::Reg(IR::FinalizeStruct(new_struct), type::Type_)};
 }
 
-base::vector<IR::Val> AST::StructLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+base::vector<IR::Register> AST::StructLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
 }  // namespace AST

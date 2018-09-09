@@ -199,7 +199,8 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
             return IR::EqAddr(std::get<IR::Register>(phis[0].value), end_ptr);
           },
           [&](const base::vector<IR::Val> &phis) {
-            data_type->EmitAssign(data_type, PtrCallFix(phis[0]), phis[1], ctx);
+            data_type->EmitAssign(data_type, PtrCallFix(phis[0]),
+                                  std::get<IR::Register>(phis[1].value), ctx);
             data_type->EmitDestroy(phis[0], ctx);
             return base::vector<IR::Val>{
                 IR::Val::Reg(IR::PtrIncr(std::get<IR::Register>(phis[0].value),

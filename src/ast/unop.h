@@ -20,7 +20,7 @@ struct Unop : public Expression {
       const base::unordered_map<const Expression *, IR::Val> &) override;
 
   base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Val> EmitLVal(Context *) override;
+  base::vector<IR::Register> EmitLVal(Context *) override;
 
   Unop *Clone() const override;
 

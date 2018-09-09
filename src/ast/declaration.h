@@ -26,7 +26,7 @@ struct Declaration : public Expression {
   void CloneTo(Declaration *) const;
 
   base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Val> EmitLVal(Context *) override { UNREACHABLE(this); }
+  base::vector<IR::Register> EmitLVal(Context *) override { UNREACHABLE(this); }
 
   std::unique_ptr<Identifier> identifier;
   std::unique_ptr<Expression> type_expr, init_val;
