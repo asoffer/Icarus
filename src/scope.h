@@ -2,9 +2,9 @@
 #define ICARUS_SCOPE_H
 
 #include <iosfwd>
-#include "base/container/vector.h"
 #include <unordered_set>
 #include "base/container/unordered_map.h"
+#include "base/container/vector.h"
 
 #include "base/util.h"
 
@@ -49,6 +49,7 @@ struct Scope : public base::Cast<Scope> {
   std::unordered_set<std::string> shadowed_decls_;
   base::unordered_map<std::string, base::vector<AST::Declaration *>> decls_;
   base::unordered_map<std::string, base::vector<AST::Declaration *>> child_decls_;
+
   Scope *parent = nullptr;
 };
 

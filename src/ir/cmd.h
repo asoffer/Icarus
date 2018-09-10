@@ -3,11 +3,21 @@
 
 #include "context.h"
 #include "base/untyped_buffer.h"
+#include "val.h"
 
 namespace type {
 struct Function;
 struct Tuple;
+struct Enum;
+struct Flags;
+struct Struct;
+struct Pointer;
 }  // namespace type
+
+namespace AST {
+struct ScopeLiteral;
+struct Function;
+}  // namespace AST
 
 namespace IR {
 struct LongArgs {

@@ -208,7 +208,7 @@ void PrintFlags(RegisterOr<FlagsVal> r, type::Flags const *t) {
 #define DEFINE_CMD2(Name, name, arg_type, RetType, ret_type, fn)               \
   RegisterOr<ret_type> Name(RegisterOr<arg_type> v1,                           \
                             RegisterOr<arg_type> v2) {                         \
-    if (!v1.is_reg_ && v2.is_reg_) { return fn(v1.val_, v2.val_); }            \
+    if (!v1.is_reg_ && !v2.is_reg_) { return fn(v1.val_, v2.val_); }           \
     auto &cmd  = MakeCmd(type::RetType, Op::Name);                             \
     cmd.name   = Cmd::Name::Make(v1, v2);                                      \
     auto &refs = Func::Current->references_;                                   \
@@ -502,12 +502,16 @@ void SetStructFieldName(Register struct_type, std::string_view field_name) {
 Register Alloca(const type::Type *t) {
   ASSERT(t, Not(Is<type::Tuple>()));
 
-  auto &cmd = MakeCmd(type::Ptr(t), Op::Alloca);
+  auto &cmd = ASSERT_NOT_NULL(Func::Current)
+                  ->block(Func::Current->entry())
+                  .cmds_.emplace_back(type::Ptr(t), Op::Alloca);
+
   cmd.alloca_ = Cmd::Alloca::Make(t);
   return cmd.result;
 }
 
 void SetReturn(size_t n, Val const &v2) {
+  ASSERT(v2.type != nullptr);
   if (v2.type == type::Bool) { return SetReturnBool(n, v2.reg_or<bool>()); }
   if (v2.type == type::Char) { return SetReturnChar(n, v2.reg_or<char>()); }
   if (v2.type == type::Int) { return SetReturnInt(n, v2.reg_or<i32>()); }
@@ -918,8 +922,8 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
                 << cmd.field_.struct_type_->to_string() << " "
                 << cmd.field_.num_;
     case Op::CondJump:
-      return os << cmd.cond_jump_.blocks_[0] << " "
-                << cmd.cond_jump_.blocks_[1];
+      return os << cmd.cond_jump_.cond_ << " " << cmd.cond_jump_.blocks_[0]
+                << " " << cmd.cond_jump_.blocks_[1];
     case Op::UncondJump: return os << cmd.uncond_jump_.block_;
     case Op::ReturnJump: return os;
     case Op::Call:
@@ -957,7 +961,12 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::StoreReal:
       return os << cmd.store_real_.addr_ << " " << cmd.store_real_.val_;
     case Op::StoreType:
-      return os << cmd.store_type_.addr_ << " " << cmd.store_type_.val_;
+      if (cmd.store_type_.val_.is_reg_) {
+       return os << cmd.store_type_.addr_ << " " << cmd.store_type_.val_.reg_;
+      } else {
+        return os << cmd.store_type_.addr_ << " "
+                  << cmd.store_type_.val_.val_->to_string();
+      }
     case Op::StoreEnum:
       return os << cmd.store_enum_.addr_ << " " << cmd.store_enum_.val_;
     case Op::StoreFlags:

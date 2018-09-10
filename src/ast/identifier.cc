@@ -42,8 +42,8 @@ void Identifier::VerifyType(Context *ctx) {
         break;
       case 0:
         // TODO what if you find a bound constant and some errror decls?
-        for (const auto & [ tk, v ] : ctx->bound_constants_->constants_) {
-          if (tk == token) { 
+        for (auto const & [ decl, v ] : ctx->mod_->bound_constants_.constants_) {
+          if (decl->identifier->token == token) { 
             // TODO Note that you're not assigning a declaration here. Is that
             // required? You shouldn't be relying on it... that's what the
             // staging system is for.
@@ -92,32 +92,21 @@ void Identifier::Validate(Context *ctx) {
 }
 
 base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
-  auto *val = AST::find(ctx->bound_constants_, token);
-  if (decl == nullptr) { return {val ? *val : IR::Val::None()}; }
-
-  if (decl->const_) {
-    if (val) { return {*val}; }
-
-    if (decl->IsCustomInitialized()) {
-      return backend::Evaluate(decl->init_val.get(), ctx);
-
-    } else {
-      NOT_YET(this->to_string(0));
-    }
+  if (ASSERT_NOT_NULL(decl)->const_) {
+    return decl->EmitIR(ctx);
+  } else if (decl->arg_val) {
+    // NO need to call PtrCallFix because things that would need to be loaded
+    // are passed directly in registers anyway.
+    return {IR::Val::Reg(decl->addr_, type)};
+  } else {
+    return {PtrCallFix(IR::Val::Reg(EmitLVal(ctx)[0], type::Ptr(type)))};
   }
-
-  // TODO checking for const isn't really what we want to do. we'd rather just
-  // have addr not be tied to anything if it's const.
-  if (decl->const_ && decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
-  return {decl->arg_val
-              ? decl->addr
-              : PtrCallFix(IR::Val::Reg(EmitLVal(ctx)[0], type::Ptr(type)))};
 }
 
 base::vector<IR::Register> AST::Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
-  if (decl->const_ && decl->addr == IR::Val::None()) { decl->EmitIR(ctx); }
-  return {std::get<IR::Register>(decl->addr.value)};
+  ASSERT(!decl->const_);
+  return {decl->addr_};
 }
 
 }  // namespace AST

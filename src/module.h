@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include "base/container/vector.h"
 
+#include "ast/bound_constants.h"
 #include "ast/statements.h"
 #include "scope.h"
 
@@ -51,6 +52,10 @@ struct Module {
 
   std::queue<AST::GeneratedFunction*> to_complete_;
   std::unique_ptr<DeclScope> global_;
+
+  // Holds all constants defined in the module (both globals and scoped
+  // constants).
+  AST::BoundConstants bound_constants_;
 
   // TODO long-term this is not a good way to store these. We should probably
   // extract the declarations determine which are public, etc.

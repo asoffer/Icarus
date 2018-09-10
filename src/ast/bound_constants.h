@@ -9,8 +9,7 @@ namespace AST {
 struct Declaration;
 
 struct BoundConstants {
-  base::map<std::string, IR::Val> constants_;
-
+  base::map<Declaration*, IR::Val> constants_;
   base::map<Declaration*, const type::Type*> interfaces_;
 
   // TODO blah.
@@ -19,13 +18,6 @@ struct BoundConstants {
            "\ninterfaces: " + base::internal::stringify(interfaces_);
   }
 };
-
-
-inline const IR::Val* find(const BoundConstants* bc, const std::string& str) {
-  if (!bc) { return nullptr; }
-  if (auto iter = bc->constants_.find(str); iter != bc->constants_.end()) { return &iter->second; }
-  return nullptr;
-}
 } // namespace AST
 
 namespace std {

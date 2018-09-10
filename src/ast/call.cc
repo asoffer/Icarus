@@ -52,7 +52,7 @@ IR::Val OrdFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      IR::SetReturnChar(0, Extend(fn->Argument(0)).reg_);
+      IR::SetReturnInt(0, Extend(fn->Argument(0)).reg_);
       IR::ReturnJump();
     }
     return fn;
@@ -87,6 +87,8 @@ IR::Val AlignFunc() {
   }();
   return IR::Val::Func(bytes_func_);
 }
+
+// TODO can return RegisterOr<bool>
 static IR::Val EmitVariantMatch(IR::Register needle, const type::Type *haystack) {
   auto runtime_type = IR::LoadType(IR::VariantType(needle));
 
@@ -109,9 +111,10 @@ static IR::Val EmitVariantMatch(IR::Register needle, const type::Type *haystack)
     IR::UncondJump(landing);
 
     IR::BasicBlock::Current = landing;
-    return {IR::ValFrom(IR::MakePhi<bool>(IR::Phi(type::Bool), phi_map))};
+    return IR::ValFrom(IR::MakePhi<bool>(IR::Phi(type::Bool), phi_map));
 
   } else {
+
     // TODO actually just implicitly convertible to haystack
     return IR::ValFrom(IR::EqType(haystack, runtime_type));
   }

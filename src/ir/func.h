@@ -25,8 +25,22 @@ namespace AST {
 struct GeneratedFunction;
 }  // namespace AST
 
-
 namespace IR {
+struct CmdIndex {
+  BlockIndex block;
+  i32 cmd;
+};
+
+inline bool operator==(CmdIndex lhs, CmdIndex rhs) {
+  return lhs.block == rhs.block && lhs.cmd == rhs.cmd;
+}
+
+inline bool operator<(CmdIndex lhs, CmdIndex rhs) {
+  if (lhs.block.value < rhs.block.value) return true;
+  if (lhs.block.value > rhs.block.value) return false;
+  return lhs.cmd < rhs.cmd;
+}
+
 struct Func {
   static thread_local Func *Current;
 

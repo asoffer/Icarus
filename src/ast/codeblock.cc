@@ -1,6 +1,7 @@
 #include "ast/codeblock.h"
 
 #include "base/util.h"
+#include "ir/val.h"
 #include "ir/func.h"
 
 namespace IR {

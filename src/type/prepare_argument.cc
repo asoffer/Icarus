@@ -22,10 +22,9 @@ IR::Val Array::PrepareArgument(const Type *from, const IR::Val &val,
 IR::Val Primitive::PrepareArgument(const Type *from, const IR::Val &val,
                                    Context *ctx) const {
   if (from->is<Variant>()) {
-    return IR::Val::Reg(
-        IR::LoadAddr(IR::VariantValue(this, std::get<IR::Register>(val.value)),
-                     this),
-        this);
+    return PtrCallFix(
+        IR::Val::Reg(IR::VariantValue(this, std::get<IR::Register>(val.value)),
+                     type::Ptr(this)));
   } else {
     ASSERT(from == this);
     return val;

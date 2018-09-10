@@ -67,10 +67,9 @@ struct GeneratedFunction : public FuncContent {
   base::vector<IR::Register> EmitLVal(Context *) override;
 
   void CompleteBody(Module *mod);
-  IR::Func *ir_func_                     = nullptr;
-  bool completed_                        = false;
-  const Function *generated_from_        = nullptr;
-  const BoundConstants *bound_constants_ = nullptr;
+  IR::Func *ir_func_                = nullptr;
+  bool completed_                   = false;
+  BoundConstants const *bound_args_ = nullptr;
 };
 
 struct Function : public FuncContent {
@@ -83,8 +82,7 @@ struct Function : public FuncContent {
   base::vector<IR::Val> EmitIR(Context *) override;
   base::vector<IR::Register> EmitLVal(Context *) override;
 
-  GeneratedFunction *generate(BoundConstants bc);
-
+  GeneratedFunction *generate(BoundConstants const &bc);
   base::map<BoundConstants, GeneratedFunction> fns_;
 };
 }  // namespace AST

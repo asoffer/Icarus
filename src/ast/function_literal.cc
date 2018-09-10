@@ -16,18 +16,15 @@
 #include "type/type.h"
 
 namespace AST {
-GeneratedFunction *Function::generate(BoundConstants bc) {
-  auto[iter, success] =
-      fns_.emplace(std::move(bc), GeneratedFunction{});
-  if (!success) { return &iter->second; }
+GeneratedFunction *Function::generate(BoundConstants const &bc) {
+  auto[iter, fresh_insert]    = fns_.emplace(bc, GeneratedFunction{});
+  auto & [ bound_args, func ] = *iter;
+  if (!fresh_insert) { return &func; }
 
-  auto &func                 = iter->second;
-  func.generated_from_       = this;
-  func.bound_constants_      = &iter->first;
+  func.bound_args_           = &bound_args;
   func.return_type_inferred_ = return_type_inferred_;
 
   Context ctx(ASSERT_NOT_NULL(module_));
-  ctx.bound_constants_ = func.bound_constants_;
 
   func.inputs.reserve(inputs.size());
   for (const auto &input : inputs) {
@@ -35,13 +32,18 @@ GeneratedFunction *Function::generate(BoundConstants bc) {
     // interface, we overwrite it. Easy, but that copy is unnecessary and we
     // sholud remove it.
     func.inputs.emplace_back(input->Clone());
-    auto ifc_iter = ctx.bound_constants_->interfaces_.find(input.get());
-    if (ifc_iter ==  ctx.bound_constants_->interfaces_.end()) {
+    auto ifc_iter = bound_args.interfaces_.find(input.get());
+    if (ifc_iter == bound_args.interfaces_.end()) {
       func.inputs.back()->arg_val = &func;
     } else {
       auto type_expr_span           = func.inputs.back()->type_expr->span;
       func.inputs.back()->type_expr = std::make_unique<Terminal>(
           type_expr_span, IR::Val(ifc_iter->second));
+    }
+
+    if (input->const_) {
+      module_->bound_constants_.constants_.emplace(
+          func.inputs.back().get(), bound_args.constants_.at(input.get()));
     }
   }
 
@@ -59,7 +61,6 @@ GeneratedFunction *Function::generate(BoundConstants bc) {
   func.assign_scope(scope_);
   func.VerifyType(&ctx);
   func.Validate(&ctx);
-  func.EmitIR(&ctx);
 
   if (ctx.num_errors() > 0) {
     // TODO figure out the call stack of generic function requests and then
@@ -369,7 +370,7 @@ Function *Function::Clone() const {
 }
 
 base::vector<IR::Val> Function::EmitIR(Context *ctx) {
-  // TODO this loop can be decided on much earlier.
+  // TODO this loop can be decided on much earlier. Like at parse-time.
   for (const auto &input : inputs) {
     if (input->const_) { return {IR::Val::Func(this)}; }
   }
@@ -377,7 +378,7 @@ base::vector<IR::Val> Function::EmitIR(Context *ctx) {
   // TODO this is a hack because I can't tell the difference between a generic
   // function early enough. This really indicates that the code structure here
   // is still wrong.
-  return generate(*ctx->bound_constants_)->EmitIR(ctx);
+  return generate(ctx->mod_->bound_constants_)->EmitIR(ctx);
 }
 
 base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
@@ -403,7 +404,6 @@ void GeneratedFunction::CompleteBody(Module *mod) {
   completed_ = true;
 
   Context ctx(mod);
-  ctx.bound_constants_ = bound_constants_;
   statements->VerifyType(&ctx);
   statements->Validate(&ctx);
   limit_to(statements);
@@ -420,22 +420,13 @@ void GeneratedFunction::CompleteBody(Module *mod) {
     IR::BasicBlock::Current = start_block;
 
     // TODO arguments should be renumbered to not waste space on const values
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      // TODO positional arguments
-      if (inputs[i]->const_) {
-        auto *val =
-            AST::find(ctx.bound_constants_, inputs[i]->identifier->token);
-        if (val) { inputs[i]->addr = *val; }
-        continue;
-      }
-      inputs[i]->addr = IR::Val::Reg(
-          IR::Func::Current->Argument(static_cast<i32>(i)), inputs[i]->type);
+    for (i32 i = 0; i < static_cast<i32>(inputs.size()); ++i) {
+      inputs[i]->addr_ = IR::Func::Current->Argument(i);
     }
 
     for (size_t i = 0; i < outputs.size(); ++i) {
       if (!outputs[i]->is<Declaration>()) { continue; }
-      outputs[i]->as<Declaration>().addr =
-          IR::Val::Reg(IR::Func::Current->Return(i), outputs[i]->type);
+      outputs[i]->as<Declaration>().addr_ = IR::Func::Current->Return(i);
     }
 
     fn_scope->MakeAllStackAllocations();

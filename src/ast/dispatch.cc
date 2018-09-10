@@ -6,6 +6,7 @@
 #include "backend/eval.h"
 #include "context.h"
 #include "ir/func.h"
+#include "module.h"
 #include "scope.h"
 #include "type/function.h"
 #include "type/tuple.h"
@@ -21,8 +22,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
     Function *fn, const FnArgs<Expression *> &args, Binding *binding,
     Context *ctx) {
   Context new_ctx(ctx->mod_);
-  BoundConstants bound_constants;
-  new_ctx.bound_constants_ = &bound_constants;
+  BoundConstants bc;
 
   // TODO handle declaration order
   for (size_t i = 0; i < fn->inputs.size(); ++i) {
@@ -51,14 +51,13 @@ std::optional<BoundConstants> ComputeBoundConstants(
           for (auto err : errs) { LOG << err; }
           return std::nullopt;
         }
-        bound_constants.interfaces_.emplace(fn->inputs[i].get(),
-                                            binding->exprs_[i].second->type);
+        bc.interfaces_.emplace(fn->inputs[i].get(),
+                               binding->exprs_[i].second->type);
         if (fn->inputs[i]->type_expr->is<MatchDeclaration>()) {
-          bound_constants.constants_.emplace(
-              fn->inputs[i]
-                  ->type_expr->as<MatchDeclaration>()
-                  .identifier->token,
-              IR::Val(binding->exprs_[i].second->type));
+          bc.constants_.emplace(fn->inputs[i]
+                                    ->type_expr->as<MatchDeclaration>()
+                                    .identifier->token,
+                                IR::Val(binding->exprs_[i].second->type));
         }
 
         */
@@ -74,8 +73,8 @@ std::optional<BoundConstants> ComputeBoundConstants(
     }
 
     if (fn->inputs[i]->const_) {
-      bound_constants.constants_.emplace(
-          fn->inputs[i]->identifier->token,
+      bc.constants_.emplace(
+          fn->inputs[i].get(),
           (binding->defaulted(i)
                ? backend::Evaluate(fn->inputs[i].get(), &new_ctx)
                : backend::Evaluate(binding->exprs_[i].second, ctx))[0]);
@@ -83,7 +82,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
 
     binding->exprs_[i].first = fn->inputs[i]->type;
   }
-  return bound_constants;
+  return bc;
 }
 
 bool DispatchEntry::SetTypes(FuncContent *fn) {
@@ -164,8 +163,8 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     if (!bound_constants) { return std::nullopt; }
 
     // TODO can generate fail? Probably
-    dispatch_entry.binding_.fn_expr_ = ASSERT_NOT_NULL(
-        generic_fn->generate(std::move(bound_constants).value()));
+    dispatch_entry.binding_.fn_expr_ =
+        ASSERT_NOT_NULL(generic_fn->generate(bound_constants.value()));
   }
 
   FuncContent *fn = nullptr;

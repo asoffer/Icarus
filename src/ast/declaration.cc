@@ -406,12 +406,18 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
+    IR::Val eval;
     if (IsCustomInitialized()) {
-      auto eval = backend::Evaluate(init_val.get(), ctx);
+      auto eval = backend::Evaluate(init_val.get(), ctx)[0];
       if (ctx->num_errors()) { return {}; }
-      addr = eval[0];
+      ctx->mod_->bound_constants_.constants_.emplace(this, eval);
+      return {eval};
     } else if (IsDefaultInitialized()) {
-      NOT_YET();
+      if (arg_val) {
+        return {ctx->mod_->bound_constants_.constants_.at(this)};
+      } else {
+        NOT_YET(this);
+      }
     } else {
       UNREACHABLE();
     }
@@ -422,24 +428,18 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
     // set, but the allocation has to be done much earlier. We do the allocation
     // in GenreatedFunction::EmitIR. Declaration::EmitIR is just used to set the
     // value.
-    ASSERT(addr != IR::Val::None());
     ASSERT(scope_->ContainingFnScope() != nullptr);
 
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized(this)) { return {}; }
     if (IsCustomInitialized()) {
-      if (init_val->lvalue == Assign::RVal) {
-        type::EmitMoveInit(init_val->type, type, init_val->EmitIR(ctx)[0],
-                           std::get<IR::Register>(addr.value), ctx);
-      } else {
-        type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx)[0],
-                           std::get<IR::Register>(addr.value), ctx);
-      }
+      auto initialize = (init_val->lvalue == Assign::RVal ? type::EmitMoveInit
+                                                          : type::EmitCopyInit);
+      initialize(init_val->type, type, init_val->EmitIR(ctx)[0], addr_, ctx);
     } else {
-      type->EmitInit(std::get<IR::Register>(addr.value), ctx);
+      type->EmitInit(addr_, ctx);
     }
+    return {IR::Val::Reg(addr_, this->type)};
   }
-
-  return {addr};
 }
 }  // namespace AST

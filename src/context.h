@@ -1,22 +1,21 @@
 #ifndef ICARUS_CONTEXT_H
 #define ICARUS_CONTEXT_H
 
-#include "base/container/vector.h"
 #include <memory>
 
-#include "ast/bound_constants.h"
+#include "base/container/vector.h"
+#include "base/debug.h"
 #include "error/log.h"
 
 struct Module;
 struct Context {
-  Context(Module* mod);
-  
+  Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {}
+
   size_t num_errors() { return error_log_.size(); }
   void DumpErrors() { error_log_.Dump(); }
 
   error::Log error_log_;
-  const AST::BoundConstants *bound_constants_ = nullptr;
-  Module *mod_                                = nullptr;
+  Module *mod_ = nullptr;
 
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it

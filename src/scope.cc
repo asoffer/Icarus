@@ -48,9 +48,8 @@ void FnScope::MakeAllStackAllocations() {
         if (decl->const_ || decl->arg_val) { continue; }
 
         ASSERT(decl->type != nullptr);
-        ASSERT(decl->addr == IR::Val::None());
-        decl->addr =
-            IR::Val::Reg(IR::Alloca(decl->type), type::Ptr(decl->type));
+        ASSERT(decl->addr_ == IR::Register{-1});
+        decl->addr_ = IR::Alloca(decl->type);
       }
     }
   }

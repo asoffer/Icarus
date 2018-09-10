@@ -3,7 +3,11 @@
 
 #include "ast/expression.h"
 #include "ast/identifier.h"
-#include "ir/val.h"
+#include "ir/register.h"
+
+namespace IR {
+struct Val;
+}  // namespace IR
 
 namespace AST {
 struct Declaration : public Expression {
@@ -34,12 +38,14 @@ struct Declaration : public Expression {
   // For non-const declarations, holds the address at which the value is being
   // stored. For const values (declared with :: or ::=), holds the actual
   // constant value.
-  IR::Val addr = IR::Val::None();
+  IR::Register addr_ = IR::Register{-1};
 
   bool const_ = false;
 
   // If it's an argument or return value, this points to the function for which
   // it's an argument. Otherwise this field is null.
+  // TODO whether this is null is computable from the type and that might be all
+  // we need.
   Expression *arg_val = nullptr;
 
   // These functions are confusingly named. They look correct in normal

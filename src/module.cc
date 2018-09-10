@@ -104,7 +104,6 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name& src) {
   auto mod = std::make_unique<Module>();
   AST::BoundConstants bc;
   Context ctx(mod.get());
-  ctx.bound_constants_ = &bc;
   frontend::File f(src);
   auto file_stmts = f.Parse(&ctx);
   if (ctx.num_errors() > 0) {
