@@ -1,17 +1,18 @@
 #include "ir/func.h"
 
 #include "context.h"
-#include "type/all.h"
 #include "module.h"
+#include "type/all.h"
 
 namespace type {
-void Primitive::EmitDestroy(IR::Val, Context *ctx) const {}
+void Primitive::EmitDestroy(IR::Register, Context *ctx) const {}
 
 void Array::ComputeDestroyWithoutLock(Context *ctx) const {
   if (destroy_func_ != nullptr) { return; }
   destroy_func_ = ctx->mod_->AddFunc(
       type::Func({type::Ptr(this)}, {}),
-      base::vector<std::pair<std::string, AST::Expression *>>{{"arg", nullptr}});
+      base::vector<std::pair<std::string, AST::Expression *>>{
+          {"arg", nullptr}});
 
   CURRENT_FUNC(destroy_func_) {
     IR::BasicBlock::Current = destroy_func_->entry();
@@ -19,7 +20,7 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
 
     if (data_type->needs_destroy()) {
       IR::Register ptr = IR::Index(type::Ptr(this), arg, 0);
-      auto end_ptr = IR::PtrIncr(ptr,
+      auto end_ptr     = IR::PtrIncr(ptr,
                                  [&]() -> IR::RegisterOr<i32> {
                                    if (fixed_length) {
                                      return static_cast<i32>(len);
@@ -29,18 +30,18 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
                                  }(),
                                  type::Ptr(data_type));
 
-      CreateLoop({IR::Val::Reg(ptr, type::Ptr(data_type))},
-                 [&](const base::vector<IR::Val> &phis) {
-                   return IR::EqAddr(std::get<IR::Register>(phis[0].value),
-                                     end_ptr);
-                 },
-                 [&](const base::vector<IR::Val> &phis) {
-                   data_type->EmitDestroy(phis[0], ctx);
-                   return base::vector<IR::Val>{IR::Val::Reg(
-                       IR::PtrIncr(std::get<IR::Register>(phis[0].value), 1,
-                                   phis[0].type),
-                       phis[0].type)};
-                 });
+      CreateLoop(
+          {IR::Val::Reg(ptr, type::Ptr(data_type))},
+          [&](const base::vector<IR::Val> &phis) {
+            return IR::EqAddr(std::get<IR::Register>(phis[0].value), end_ptr);
+          },
+          [&](const base::vector<IR::Val> &phis) {
+            data_type->EmitDestroy(std::get<IR::Register>(phis[0].value), ctx);
+            return base::vector<IR::Val>{
+                IR::Val::Reg(IR::PtrIncr(std::get<IR::Register>(phis[0].value),
+                                         1, type::Ptr(data_type)),
+                             type::Ptr(data_type))};
+          });
     }
 
     if (!fixed_length) {
@@ -50,7 +51,7 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
   }
 }
 
-void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
+void Array::EmitDestroy(IR::Register reg, Context *ctx) const {
   if (!needs_destroy()) { return; }
 
   {
@@ -59,20 +60,20 @@ void Array::EmitDestroy(IR::Val id_val, Context *ctx) const {
   }
 
   IR::LongArgs call_args;
-  call_args.append(id_val);
+  call_args.append(reg);
   call_args.type_ = destroy_func_->type_;
   IR::Call(IR::AnyFunc{destroy_func_}, std::move(call_args));
 }
 
-void Enum::EmitDestroy(IR::Val, Context *ctx) const {}
-void Flags::EmitDestroy(IR::Val, Context *ctx) const {}
-void CharBuffer::EmitDestroy(IR::Val, Context *ctx) const {}
-void Function::EmitDestroy(IR::Val, Context *ctx) const {}
-void Pointer::EmitDestroy(IR::Val, Context *ctx) const {}
-void Variant::EmitDestroy(IR::Val, Context *ctx) const { NOT_YET(); }
-void Scope::EmitDestroy(IR::Val, Context *ctx) const { UNREACHABLE(); }
+void Enum::EmitDestroy(IR::Register, Context *ctx) const {}
+void Flags::EmitDestroy(IR::Register, Context *ctx) const {}
+void CharBuffer::EmitDestroy(IR::Register, Context *ctx) const {}
+void Function::EmitDestroy(IR::Register, Context *ctx) const {}
+void Pointer::EmitDestroy(IR::Register, Context *ctx) const {}
+void Variant::EmitDestroy(IR::Register, Context *ctx) const { NOT_YET(); }
+void Scope::EmitDestroy(IR::Register, Context *ctx) const { UNREACHABLE(); }
 
-void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
+void Struct::EmitDestroy(IR::Register reg, Context *ctx) const {
   {
     std::unique_lock lock(mtx_);
     if (destroy_func_ == nullptr) {
@@ -85,17 +86,15 @@ void Struct::EmitDestroy(IR::Val id_val, Context *ctx) const {
         IR::BasicBlock::Current = destroy_func_->entry();
         for (size_t i = 0; i < fields_.size(); ++i) {
           fields_[i].type->EmitDestroy(
-              IR::Val::Reg(IR::Field(destroy_func_->Argument(0), this, i),
-                           type::Ptr(fields_.at(i).type)),
-              ctx);
+              IR::Field(destroy_func_->Argument(0), this, i), ctx);
         }
         IR::ReturnJump();
       }
     }
   }
   IR::LongArgs call_args;
-  call_args.append(id_val);
+  call_args.append(reg);
   call_args.type_ = destroy_func_->type_;
   IR::Call(IR::AnyFunc{destroy_func_}, std::move(call_args));
 }
-}
+}  // namespace type

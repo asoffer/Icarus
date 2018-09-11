@@ -17,7 +17,7 @@ struct Tuple : public Type {
     UNREACHABLE();
   }
   virtual void EmitInit(IR::Register reg, Context *ctx) const { UNREACHABLE(); }
-  virtual void EmitDestroy(IR::Val id_val, Context *ctx) const {
+  virtual void EmitDestroy(IR::Register reg, Context *ctx) const {
     UNREACHABLE();
   }
   virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val,

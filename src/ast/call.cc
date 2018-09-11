@@ -88,8 +88,8 @@ IR::Val AlignFunc() {
   return IR::Val::Func(bytes_func_);
 }
 
-// TODO can return RegisterOr<bool>
-static IR::Val EmitVariantMatch(IR::Register needle, const type::Type *haystack) {
+static IR::RegisterOr<bool> EmitVariantMatch(IR::Register needle,
+                                             const type::Type *haystack) {
   auto runtime_type = IR::LoadType(IR::VariantType(needle));
 
   if (haystack->is<type::Variant>()) {
@@ -111,12 +111,11 @@ static IR::Val EmitVariantMatch(IR::Register needle, const type::Type *haystack)
     IR::UncondJump(landing);
 
     IR::BasicBlock::Current = landing;
-    return IR::ValFrom(IR::MakePhi<bool>(IR::Phi(type::Bool), phi_map));
+    return IR::MakePhi<bool>(IR::Phi(type::Bool), phi_map);
 
   } else {
-
     // TODO actually just implicitly convertible to haystack
-    return IR::ValFrom(IR::EqType(haystack, runtime_type));
+    return IR::EqType(haystack, runtime_type);
   }
 }
 
@@ -131,8 +130,7 @@ static IR::BlockIndex CallLookupTest(
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(std::get<IR::Register>(args.pos_.at(i).second.value),
-                         call_arg_type.pos_[i])
-            .reg_or<bool>());
+                         call_arg_type.pos_[i]));
   }
 
   for (const auto & [ name, expr_and_val ] : args.named_) {
@@ -143,8 +141,7 @@ static IR::BlockIndex CallLookupTest(
         next_binding,
         EmitVariantMatch(
             std::get<IR::Register>(args.named_.at(iter->first).second.value),
-            iter->second)
-            .reg_or<bool>());
+            iter->second));
   }
 
   return next_binding;
@@ -577,8 +574,7 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
   return EmitCallDispatch(
       args_.Transform([ctx](const std::unique_ptr<Expression> &expr) {
         return std::pair(const_cast<Expression *>(expr.get()),
-                         expr->type->is_big() ? PtrCallFix(expr->EmitIR(ctx)[0])
-                                              : expr->EmitIR(ctx)[0]);
+                         PtrCallFix(expr->EmitIR(ctx)[0]));
       }),
       dispatch_table_, type, ctx);
 }
