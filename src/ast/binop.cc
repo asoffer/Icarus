@@ -28,6 +28,16 @@ namespace type {
 const Pointer *Ptr(const Type *);
 }  // namespace type
 
+namespace {
+bool IsTypeOrTupleOfTypes(type::Type const *t) {
+  if (t == type::Type_) { return true; }
+  if (!t->is<type::Tuple>()) { return false; }
+  auto &entries = t->as<type::Tuple>().entries_;
+  return std::all_of(entries.begin(), entries.end(),
+                     +[](type::Type const *ty) { return ty == type::Type_; });
+}
+}  // namespace
+
 base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
@@ -337,21 +347,28 @@ void Binop::VerifyType(Context *ctx) {
       }
     } break;
     case Operator::Arrow: {
-      if (lhs->type != type::Type_) {
+      if (!IsTypeOrTupleOfTypes(lhs->type)) {
         type = type::Err;
         ctx->error_log_.NonTypeFunctionInput(span);
         limit_to(StageRange::Nothing());
         return;
+      } else {
+        ASSERT(lhs->lvalue == Assign::Const); // TODO error
+        type = type::Type_;
       }
-      if (rhs->type != type::Type_) {
+
+      if (!IsTypeOrTupleOfTypes(rhs->type)) {
         type = type::Err;
         ctx->error_log_.NonTypeFunctionOutput(span);
         limit_to(StageRange::Nothing());
         return;
+      } else {
+        ASSERT(rhs->lvalue == Assign::Const); // TODO error
+        type = type::Type_;
       }
 
       if (type != type::Err) { type = type::Type_; }
-
+      lvalue = Assign::Const;
     } break;
     default: UNREACHABLE();
   }

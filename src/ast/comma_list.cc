@@ -25,14 +25,30 @@ void CommaList::assign_scope(Scope *scope) {
 
 void CommaList::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  // TODO actually compute value category
-  lvalue = Assign::LVal;
+
   for (auto &expr : exprs) {
     expr->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
     if (expr->type == type::Err) { type = type::Err; }
   }
+
+  // TODO there is a bitfield version that would make this as simple as | or &
+  // together the values.
+  if (std::all_of(exprs.begin(), exprs.end(),
+                  +[](std::unique_ptr<Expression> const &e) {
+                    return e->lvalue == Assign::Const;
+                  })) {
+    lvalue = Assign::Const;
+  } else if (std::all_of(exprs.begin(), exprs.end(),
+                         +[](std::unique_ptr<Expression> const &e) {
+                           return e->lvalue == Assign::LVal;
+                         })) {
+    lvalue = Assign::LVal;
+  } else {
+    lvalue = Assign::RVal;
+  }
+
   if (type == type::Err) {
     limit_to(StageRange::Nothing());
     return;

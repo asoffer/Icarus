@@ -91,11 +91,10 @@ std::ostream& operator<<(std::ostream& os, const DisplayAttrs& attrs) {
             << static_cast<char>(attrs.effect) << 'm';
 }
 
-
-void
-WriteSource(std::ostream &os, const frontend::Source &source,
-            const IntervalSet &line_intervals, size_t border_alignment,
-            const base::vector<std::pair<TextSpan, DisplayAttrs>> &underlines) {
+void WriteSource(
+    std::ostream &os, const frontend::Source &source,
+    const IntervalSet &line_intervals, size_t border_alignment,
+    const base::vector<std::pair<TextSpan, DisplayAttrs>> &underlines) {
   auto iter = underlines.begin();
   for (size_t i = 0; i < line_intervals.endpoints_.size(); i += 2) {
     size_t line_num = line_intervals.endpoints_[i];
@@ -281,7 +280,7 @@ void Log::ReturnTypeMismatch(const type::Type *expected_type,
   auto &span = ret_expr->span;
   // TODO also show where the return type is specified?
   WriteSource(
-      ss, *span.source,
+      ss, *ASSERT_NOT_NULL(span.source),
       {Interval{span.start.line_num, span.finish.line_num + 1}},
       NumDigits(span.finish.line_num) + 2,
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});

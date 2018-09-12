@@ -142,6 +142,8 @@ static std::unique_ptr<Node> BuildLeftUnop(
       unop->args_ = std::move(nodes[1]->as<CommaList>());
     } else {
       unop->args_.exprs.push_back(move_as<Expression>(nodes[1]));
+      unop->args_.span = TextSpan(unop->args_.exprs.front()->span,
+                                  unop->args_.exprs.back()->span);
     }
     unop->dispatch_tables_.resize(unop->args_.exprs.size());
     return unop;

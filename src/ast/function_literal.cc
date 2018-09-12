@@ -270,6 +270,7 @@ void FuncContent::Validate(Context *ctx) {
         for (auto *expr : rets) {
           if (expr->type == outs[0]) { continue; }
           limit_to(StageRange::NoEmitIR());
+          ASSERT_NOT_NULL(expr->span.source);
           ctx->error_log_.ReturnTypeMismatch(outs[0], expr);
         }
       } break;
