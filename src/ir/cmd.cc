@@ -474,6 +474,8 @@ Register FinalizeStruct(Register r) {
   return cmd.result;
 }
 
+void DebugIr() { MakeCmd(nullptr, Op::DebugIr); }
+
 Register VariantType(Register r) {
   auto &cmd         = MakeCmd(Ptr(type::Type_), Op::VariantType);
   cmd.variant_type_ = Cmd::VariantType::Make(r);
@@ -995,6 +997,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::PhiBlock: return os << cmd.phi_block_.args_;
     case Op::PhiAddr: return os << cmd.phi_addr_.args_;
     case Op::Death: return os;
+    case Op::DebugIr: return os;
   }
   UNREACHABLE();
 }

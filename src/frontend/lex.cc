@@ -19,6 +19,9 @@ IR::Val AsciiFunc();
 IR::Val OrdFunc();
 IR::Val BytesFunc();
 IR::Val AlignFunc();
+#ifdef DBG
+IR::Val DebugIrFunc();
+#endif  // DBG
 
 extern i32 ResizeFuncIndex;
 extern i32 ForeignFuncIndex;
@@ -75,6 +78,9 @@ TaggedNode NextWord(SourceLocation &loc) {
       {"null", IR::Val(nullptr)},
       {"ord", OrdFunc()},
       {"ascii", AsciiFunc()},
+#ifdef DBG
+      {"debug_ir", DebugIrFunc()},
+#endif  // DBG
       {"error", ErrorFunc()},
       {"resize", IR::Val::BuiltinGeneric(ResizeFuncIndex)},
       {"foreign", IR::Val::BuiltinGeneric(ForeignFuncIndex)},

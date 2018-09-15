@@ -46,6 +46,12 @@ IR::Val AsciiFunc() {
   return IR::Val::Func(ascii_func_);
 }
 
+IR::Val DebugIrFunc() {
+  static IR::Func *debug_ir_func_ =
+      new IR::Func(nullptr, type::Func({}, {}), {});
+  return IR::Val::Func(debug_ir_func_);
+}
+
 IR::Val OrdFunc() {
   static IR::Func *ord_func_ = []() {
     auto fn = new IR::Func(nullptr, type::Func({type::Char}, {type::Int}),
@@ -399,6 +405,10 @@ void Call::VerifyType(Context *ctx) {
       NOT_YET();
     } else if (fn_val == AsciiFunc()) {
       NOT_YET();
+#ifdef DBG
+    } else if (fn_val == DebugIrFunc()) {
+      return;
+#endif  // DBG
     } else if (fn_val == ErrorFunc()) {
       NOT_YET();
     } else if (fn_val == BytesFunc() || fn_val == AlignFunc()) {
@@ -526,6 +536,12 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
   if (fn_->is<Terminal>()) {
     // Special case for error/ord/ascii
     auto fn_val = fn_->as<Terminal>().value;
+#ifdef DBG
+    if (fn_val == DebugIrFunc()) {
+      IR::DebugIr();
+      return {};
+    }
+#endif  // DBG
     if (fn_val == OrdFunc() || fn_val == AsciiFunc() || fn_val == ErrorFunc() ||
         fn_val == BytesFunc() || fn_val == AlignFunc()) {
       IR::LongArgs call_args;

@@ -331,6 +331,7 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::FinalizeStruct:
       save(resolve<type::Struct *>(cmd.finalize_struct_.reg_)->finalize());
       break;
+    case IR::Op::DebugIr: LOG << call_stack.top().fn_; break;
     case IR::Op::Malloc: save(malloc(resolve(cmd.malloc_.arg_))); break;
     case IR::Op::Free: free(resolve<IR::Addr>(cmd.free_.reg_).as_heap); break;
     case IR::Op::Alloca: {

@@ -206,6 +206,8 @@ struct Cmd {
   };
   CMD(FinalizeStruct) { Register reg_; };
 
+  CMD(DebugIr) {};
+
   CMD(Malloc) { RegisterOr<i32> arg_; };
   CMD(Free) { Register reg_; };
   CMD(Alloca) { type::Type const *type_; };
@@ -445,6 +447,8 @@ struct Cmd {
     SetStructFieldName set_struct_field_name_;
     FinalizeStruct finalize_struct_;
 
+    DebugIr debug_ir_;
+
     Malloc malloc_;
     Free free_;
     Alloca alloca_;
@@ -585,6 +589,8 @@ void CreateStructField(Register struct_type,
                        RegisterOr<type::Type const *> type);
 void SetStructFieldName(Register struct_type, std::string_view field_name);
 Register FinalizeStruct(Register r);
+
+void DebugIr();
 
 Register Malloc(const type::Type *t, RegisterOr<i32> r);
 void Free(Register r);
