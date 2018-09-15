@@ -8,13 +8,6 @@
 struct Context;
 
 namespace type {
-base::vector<IR::Val> CreateLoop(
-    const base::vector<IR::Val> &entry_vals,
-    std::function<IR::RegisterOr<bool>(const base::vector<IR::Val> &)>
-        loop_phi_fn,
-    std::function<base::vector<IR::Val>(const base::vector<IR::Val> &)>
-        loop_body_fn);
-
 struct Array : public Type {
   TYPE_FNS(Array);
   Array(const Type *t) : data_type(t), len(0), fixed_length(false) {}

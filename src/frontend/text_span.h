@@ -13,10 +13,7 @@ struct Cursor {
 struct TextSpan {
   TextSpan() {}
   TextSpan(const Cursor &s, const Cursor &f) : start(s), finish(f) {}
-  TextSpan(const TextSpan &s, const TextSpan &f)
-      : start(s.start), finish(f.finish), source(s.source) {
-    ASSERT(s.source == f.source);
-  }
+  TextSpan(const TextSpan &s, const TextSpan &f);
 
   char last_char() const {
     return source->lines[finish.line_num][finish.offset];

@@ -1,11 +1,12 @@
 #include "type/all.h"
 
 #include "context.h"
+#include "ir/components.h"
 #include "ir/func.h"
 #include "module.h"
 
 namespace type {
-void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
+void Primitive::EmitRepr(IR::Val const &val, Context *ctx) const {
   switch (type_) {
     case PrimType::Char: {
       std::unique_lock lock(mtx_);
@@ -64,7 +65,7 @@ void Primitive::EmitRepr(IR::Val val, Context *ctx) const {
   }
 }
 
-void Array::EmitRepr(IR::Val val, Context *ctx) const {
+void Array::EmitRepr(IR::Val const &val, Context *ctx) const {
   std::unique_lock lock(mtx_);
   if (!repr_func_) {
     repr_func_ = ctx->mod_->AddFunc(
@@ -90,23 +91,25 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
       data_type->EmitRepr(
           PtrCallFix(IR::Val::Reg(ptr, type::Ptr(this->data_type))), ctx);
 
-      CreateLoop({IR::Val::Reg(ptr, type::Ptr(this->data_type)),
-                  IR::ValFrom(IR::SubInt(length_var, 1))},
-                 [&](const base::vector<IR::Val> &phis) {
-                   return IR::EqInt(std::get<IR::Register>(phis[1].value), 0);
-                 },
-                 [&](const base::vector<IR::Val> &phis) {
-                   auto elem_ptr =
-                       IR::PtrIncr(std::get<IR::Register>(phis[0].value), 1, phis[0].type);
+      using tup = std::tuple<IR::RegisterOr<IR::Addr>, IR::RegisterOr<i32>>;
+      IR::CreateLoop(
+          [&](tup const &phis) { return IR::EqInt(std::get<1>(phis), 0); },
+          [&](tup const &phis) {
+            ASSERT(std::get<0>(phis).is_reg_);
+            auto elem_ptr = IR::PtrIncr(std::get<0>(phis).reg_, 1,
+                                        type::Ptr(this->data_type));
 
-                   IR::PrintChar(',');
-                   IR::PrintChar(' ');
-                   data_type->EmitRepr(PtrCallFix(IR::Val::Reg(elem_ptr, phis[0].type)), ctx);
+            IR::PrintChar(',');
+            IR::PrintChar(' ');
+            data_type->EmitRepr(
+                PtrCallFix(IR::Val::Reg(elem_ptr, type::Ptr(this->data_type))),
+                ctx);
 
-                   return base::vector<IR::Val>{
-                       IR::Val::Reg(elem_ptr, phis[0].type),
-                       IR::ValFrom(IR::SubInt(phis[1].reg_or<i32>(), 1))};
-                 });
+            return std::make_tuple(elem_ptr, IR::SubInt(std::get<1>(phis), 1));
+          },
+          std::tuple<type::Type const *, type::Type const *>{
+              type::Ptr(this->data_type), type::Int},
+          tup{ptr, IR::SubInt(length_var, 1)});
       IR::UncondJump(exit_block);
 
       IR::BasicBlock::Current = exit_block;
@@ -122,17 +125,17 @@ void Array::EmitRepr(IR::Val val, Context *ctx) const {
 }
 
 // TODO print something friendlier
-void Pointer::EmitRepr(IR::Val val, Context *ctx) const {
+void Pointer::EmitRepr(IR::Val const &val, Context *ctx) const {
   IR::PrintAddr(val.reg_or<IR::Addr>());
 }
-void Enum::EmitRepr(IR::Val val, Context *ctx) const {
+void Enum::EmitRepr(IR::Val const &val, Context *ctx) const {
   IR::PrintEnum(val.reg_or<IR::EnumVal>(), this);
 }
-void Flags::EmitRepr(IR::Val val, Context *ctx) const {
+void Flags::EmitRepr(IR::Val const &val, Context *ctx) const {
   IR::PrintFlags(val.reg_or<IR::FlagsVal>(), this);
 }
-void Scope::EmitRepr(IR::Val, Context *ctx) const { NOT_YET(); }
-void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
+void Scope::EmitRepr(IR::Val const &, Context *ctx) const { NOT_YET(); }
+void Variant::EmitRepr(IR::Val const &id_val, Context *ctx) const {
   // TODO design and build a jump table?
   // TODO repr_func_
   // TODO remove these casts in favor of something easier to track properties on
@@ -176,10 +179,10 @@ void Variant::EmitRepr(IR::Val id_val, Context *ctx) const {
   IR::Call(IR::AnyFunc{repr_func_}, std::move(call_args));
 }
 
-void Function::EmitRepr(IR::Val, Context *ctx) const { UNREACHABLE(); }
-void Struct::EmitRepr(IR::Val val, Context *ctx) const { UNREACHABLE(); }
+void Function::EmitRepr(IR::Val const &, Context *ctx) const { UNREACHABLE(); }
+void Struct::EmitRepr(IR::Val const &val, Context *ctx) const { UNREACHABLE(); }
 
-void CharBuffer::EmitRepr(IR::Val val, Context *ctx) const {
+void CharBuffer::EmitRepr(IR::Val const &val, Context *ctx) const {
   IR::PrintCharBuffer(val.reg_or<std::string_view>());
 }
 }  // namespace type

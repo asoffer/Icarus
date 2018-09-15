@@ -11,6 +11,7 @@
 #include "base/types.h"
 #include "ir/interface.h"
 #include "ir/register.h"
+#include "type/type.h"
 
 struct Module;
 
@@ -19,35 +20,7 @@ struct Enum;
 struct Flags;
 struct Pointer;
 struct Struct;
-struct Type;
-
-const Type *Void();
-extern Type const *Bool, *Char, *Real, *Int, *Type_, *String, *Module, *Generic, *NullPtr;
 } // namespace type
-
-// TODO move this type stuff into type/
-template <typename T>
-constexpr type::Type const *GetType() {
-  if constexpr (std::is_same_v<T, bool>) {
-    return type::Bool;
-  } else if constexpr (std::is_same_v<T, char>) {
-    return type::Char;
-  } else if constexpr (std::is_same_v<T, i32>) {
-    return type::Int;
-  } else if constexpr (std::is_same_v<T, double>) {
-    return type::Real;
-  } else if constexpr (std::is_same_v<
-                           std::decay_t<decltype(*std::declval<T>())>,
-                           type::Type>) {
-    return type::Type_;
-  } else if constexpr (std::is_same_v<
-                           std::decay_t<decltype(*std::declval<T>())>,
-                           Module>) {
-    return type::Module;
-  } else {
-    NOT_YET();
-  }
-}
 
 namespace AST {
 struct Expression;
@@ -90,8 +63,11 @@ struct Val {
     }
   }
 
-  template <typename T>
-  explicit Val(T val) : Val(GetType<T>(), std::move(val)) {}
+  template <typename T,
+            typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Val>>>
+  explicit Val(T &&val)
+      : Val(::type::Get<std::decay_t<T>>(), std::forward<T>(val)) {}
+
   explicit Val(std::nullptr_t)
       : Val(type::NullPtr, IR::Addr{Addr::Kind::Null, 0}) {}
   explicit Val(AST::ScopeLiteral *scope_lit);
@@ -133,7 +109,7 @@ struct Val {
 
 template <typename T>
 inline Val ValFrom(RegisterOr<T> r) {
-  return r.is_reg_ ? Val::Reg(r.reg_, GetType<T>()) : Val(r.val_);
+  return r.is_reg_ ? Val::Reg(r.reg_, type::Get<T>()) : Val(r.val_);
 }
 
 Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t);

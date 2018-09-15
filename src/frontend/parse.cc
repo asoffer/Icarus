@@ -135,9 +135,9 @@ static std::unique_ptr<Node> BuildLeftUnop(
     import_node->span = TextSpan(nodes[0]->span, import_node->operand_->span);
     return import_node;
   } else if (tk == "return") {
-    auto unop = std::make_unique<RepeatedUnop>();
+    auto unop = std::make_unique<RepeatedUnop>(
+        TextSpan(nodes.front()->span, nodes.back()->span));
     unop->op_ = Operator::Return;
-    unop->span = TextSpan(nodes.front()->span, nodes.back()->span);
     if (nodes[1]->is<CommaList>()) {
       unop->args_ = std::move(nodes[1]->as<CommaList>());
     } else {
@@ -146,18 +146,24 @@ static std::unique_ptr<Node> BuildLeftUnop(
                                   unop->args_.exprs.back()->span);
     }
     unop->dispatch_tables_.resize(unop->args_.exprs.size());
+    ASSERT_NOT_NULL(unop->span.source);
     return unop;
   } else if (tk == "print") {
     // TODO Copy of above.
-    auto unop = std::make_unique<RepeatedUnop>();
-    unop->op_ = Operator::Print;
-    unop->span = TextSpan(nodes.front()->span, nodes.back()->span);
+    std::unique_ptr<RepeatedUnop> unop;
     if (nodes[1]->is<CommaList>()) {
+      unop = std::make_unique<RepeatedUnop>(
+          TextSpan(nodes.front()->span, nodes.back()->span));
       unop->args_ = std::move(nodes[1]->as<CommaList>());
     } else {
+      ASSERT_NOT_NULL(nodes[1]->span.source);
+      unop = std::make_unique<RepeatedUnop>(nodes[1]->span);
       unop->args_.exprs.push_back(move_as<Expression>(nodes[1]));
+      ASSERT_NOT_NULL(unop->span.source);
     }
+    unop->op_ = Operator::Print;
     unop->dispatch_tables_.resize(unop->args_.exprs.size());
+    ASSERT_NOT_NULL(unop->span.source);
     return unop;
   }
 
@@ -494,13 +500,19 @@ static std::unique_ptr<Node> BuildShortFunctionLiteral(
   auto span   = TextSpan(args->span, body->span);
   auto inputs = ExtractInputs(std::move(args));
 
-  auto ret = std::make_unique<RepeatedUnop>();
-  ret->op_ = Language::Operator::Return;
+  std::unique_ptr<RepeatedUnop> ret;
   if (body->is<CommaList>()) {
+    ret = std::make_unique<RepeatedUnop>(
+        TextSpan(body->as<CommaList>().exprs.front()->span,
+                 body->as<CommaList>().exprs.back()->span));
+    ret->op_   = Language::Operator::Return;
     ret->args_ = std::move(body->as<CommaList>());
   } else {
+    ret = std::make_unique<RepeatedUnop>(body->span);
+    ret->op_ = Language::Operator::Return;
     ret->args_.exprs.push_back(std::move(body));
   }
+
   ret->dispatch_tables_.resize(ret->args_.exprs.size());
 
   auto stmts = std::make_unique<Statements>();
@@ -1326,7 +1338,9 @@ static bool Reduce(frontend::ParseState *ps) {
   // return false
   if (matched_rule_ptr == nullptr) { return false; }
 
+  ASSERT_NOT_NULL(ps->node_stack_.back()->span.source);
   matched_rule_ptr->apply(&ps->node_stack_, &ps->tag_stack_, ps->ctx_);
+  ASSERT_NOT_NULL(ps->node_stack_.back()->span.source);
 
   return true;
 }

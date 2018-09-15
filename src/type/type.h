@@ -5,8 +5,7 @@
 
 #include "base/debug.h"
 #include "base/util.h"
-
-#include "ir/val.h"
+#include "ir/register.h"
 
 struct Context;
 
@@ -17,13 +16,17 @@ class LLVMContext;
 } // namespace llvm
 #endif // ICARUS_USE_LLVM
 
+struct Module;
+
+namespace IR {
+struct Val;
+}  // namespace IR
+
 #define TYPE_FNS(name)                                                         \
   name() = delete;                                                             \
   virtual ~name() {}                                                           \
   BASIC_METHODS
 
-// TODO pass by reference is probably what you want for IR::Val anyway and has
-// the added benefit of allowing you to forward declare Val
 #define ENDING = 0
 #define BASIC_METHODS_WITHOUT_LLVM                                             \
   virtual char *WriteTo(char *buf) const ENDING;                               \
@@ -34,7 +37,7 @@ class LLVMContext;
   virtual void EmitDestroy(IR::Register reg, Context *ctx) const ENDING;       \
   virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val,           \
                                   Context *ctx) const ENDING;                  \
-  virtual void EmitRepr(IR::Val id_val, Context *ctx) const ENDING;            \
+  virtual void EmitRepr(IR::Val const &id_val, Context *ctx) const ENDING;     \
   virtual Cmp Comparator() const ENDING
 
 #ifdef ICARUS_USE_LLVM
@@ -79,10 +82,32 @@ const Type *Void();
 extern Type const *Err, *Bool, *Char, *Int, *Real, *Code, *Type_, *NullPtr,
     *EmptyArray, *Generic, *Module, *Block, *OptBlock, *Interface;
 
+template <typename T>
+constexpr type::Type const *Get() {
+  if constexpr (std::is_same_v<T, bool>) {
+    return type::Bool;
+  } else if constexpr (std::is_same_v<T, char>) {
+    return type::Char;
+  } else if constexpr (std::is_same_v<T, i32>) {
+    return type::Int;
+  } else if constexpr (std::is_same_v<T, double>) {
+    return type::Real;
+  } else if constexpr (std::is_same_v<
+                           std::decay_t<decltype(*std::declval<T>())>,
+                           type::Type>) {
+    return type::Type_;
+  } else if constexpr (std::is_same_v<
+                           std::decay_t<decltype(*std::declval<T>())>,
+                           ::Module>) {
+    return type::Module;
+  } else {
+    NOT_YET();
+  }
+}
+
 } // namespace type
 
 #undef ENDING
 #define ENDING
 
 #endif // ICARUS_TYPE_TYPE_H
-

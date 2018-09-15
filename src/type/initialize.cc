@@ -3,6 +3,7 @@
 #include "architecture.h"
 #include "ast/codeblock.h"
 #include "context.h"
+#include "ir/components.h"
 #include "ir/func.h"
 #include "module.h"
 
@@ -31,19 +32,18 @@ void Array::EmitInit(IR::Register id_reg, Context *ctx) const {
       auto end_ptr =
           IR::PtrIncr(ptr, static_cast<i32>(len), type::Ptr(data_type));
 
-      CreateLoop({IR::Val::Reg(ptr, type::Ptr(data_type))},
-                 [&](const base::vector<IR::Val> &phis) {
-                   return IR::EqAddr(std::get<IR::Register>(phis[0].value),
-                                     end_ptr);
-                 },
-                 [&](const base::vector<IR::Val> &phis) {
-                   data_type->EmitInit(std::get<IR::Register>(phis[0].value),
-                                       ctx);
-                   return base::vector<IR::Val>{IR::Val::Reg(
-                       IR::PtrIncr(std::get<IR::Register>(phis[0].value), 1,
-                                   phis[0].type),
-                       phis[0].type)};
-                 });
+      using tup = std::tuple<IR::RegisterOr<IR::Addr>>;
+      IR::CreateLoop(
+          [&](tup const &phis) {
+            return IR::EqAddr(std::get<0>(phis), end_ptr);
+          },
+          [&](tup const &phis) {
+            ASSERT(std::get<0>(phis).is_reg_);
+            data_type->EmitInit(std::get<0>(phis).reg_, ctx);
+            return tup{
+                IR::PtrIncr(std::get<0>(phis).reg_, 1, type::Ptr(data_type))};
+          },
+          std::tuple<type::Type const *>{type::Ptr(data_type)}, tup{ptr});
 
       IR::ReturnJump();
     }

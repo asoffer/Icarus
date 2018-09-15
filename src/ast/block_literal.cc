@@ -1,6 +1,7 @@
 #include "ast/block_literal.h"
 
 #include "ast/verify_macros.h"
+#include "ir/val.h"
 #include "scope.h"
 #include "type/function.h"
 #include "type/primitive.h"

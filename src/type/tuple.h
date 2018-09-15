@@ -3,6 +3,8 @@
 
 #include "type.h"
 
+#include "ir/val.h"  // TODO pass by reference to avoid this include
+
 namespace type {
 const Type *Tup(base::vector<Type const *> entries);
 
@@ -24,7 +26,9 @@ struct Tuple : public Type {
                                   Context *ctx) const {
     UNREACHABLE();
   }
-  virtual void EmitRepr(IR::Val id_val, Context *ctx) const { UNREACHABLE(); }
+  virtual void EmitRepr(IR::Val const &id_val, Context *ctx) const {
+    UNREACHABLE();
+  }
   virtual Cmp Comparator() const { UNREACHABLE(); }
 
   Type const *finalize() {

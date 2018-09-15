@@ -2,6 +2,7 @@
 
 #include "architecture.h"
 #include "context.h"
+#include "ir/components.h"
 #include "ir/func.h"
 #include "module.h"
 
@@ -36,9 +37,8 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
         return IR::LoadInt(IR::ArrayLength(val));
       }();
 
-      auto *from_ptr_type = type::Ptr(from_type->as<type::Array>().data_type);
-      IR::Register from_ptr =
-          IR::Index(from_type, val, 0);
+      auto *from_ptr_type   = type::Ptr(from_type->as<type::Array>().data_type);
+      IR::Register from_ptr = IR::Index(from_type, val, 0);
       IR::Register from_end_ptr = IR::PtrIncr(from_ptr, len, from_ptr_type);
 
       if (!fixed_length) {
@@ -56,29 +56,42 @@ void Array::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
         IR::StoreAddr(ptr, IR::ArrayData(var, type::Ptr(this)));
       }
 
-      auto *to_ptr_type = type::Ptr(data_type);
+      auto *to_ptr_type   = type::Ptr(data_type);
       IR::Register to_ptr = IR::Index(type::Ptr(this), var, 0);
 
-      CreateLoop({IR::Val::Reg(from_ptr, from_ptr_type),
-                  IR::Val::Reg(to_ptr, to_ptr_type)},
-                 [&](const base::vector<IR::Val> &phis) {
-                   return IR::EqAddr(std::get<IR::Register>(phis[0].value),
-                                     from_end_ptr);
-                 },
-                 [&](const base::vector<IR::Val> &phis) {
-                   EmitCopyInit(from_array_type->data_type, data_type,
-                                PtrCallFix(phis[0]),
-                                std::get<IR::Register>(phis[1].value), ctx);
-                   return base::vector<IR::Val>{
-                       IR::Val::Reg(
-                           IR::PtrIncr(std::get<IR::Register>(phis[0].value), 1,
-                                       phis[0].type),
-                           phis[0].type),
-                       IR::Val::Reg(
-                           IR::PtrIncr(std::get<IR::Register>(phis[1].value), 1,
-                                       phis[1].type),
-                           phis[1].type)};
-                 });
+      using tup =
+          std::tuple<IR::RegisterOr<IR::Addr>, IR::RegisterOr<IR::Addr>>;
+      IR::CreateLoop(
+          [&](tup const &phis) {
+            ASSERT(std::get<0>(phis).is_reg_);
+            return IR::EqAddr(std::get<0>(phis).reg_, from_end_ptr);
+          },
+          [&](tup const &phis) {
+            ASSERT(std::get<0>(phis).is_reg_);
+            ASSERT(std::get<1>(phis).is_reg_);
+
+            IR::Register ptr_fixed_reg =
+                from_type->as<type::Array>().data_type->is_big()
+                    ? std::get<0>(phis).reg_
+                    : IR::Load(std::get<0>(phis).reg_, data_type);
+            auto ptr_fixed_type =
+                !from_type->as<type::Array>().data_type->is_big()
+                    ? from_type->as<type::Array>().data_type
+                    : type::Ptr(from_type->as<type::Array>().data_type);
+
+            EmitCopyInit(from_array_type->data_type, data_type,
+                         IR::Val::Reg(ptr_fixed_reg, ptr_fixed_type),
+                         std::get<1>(phis).reg_, ctx);
+            return std::make_tuple(
+                IR::RegisterOr<IR::Addr>{
+                    IR::PtrIncr(std::get<0>(phis).reg_, 1, from_ptr_type)},
+                IR::RegisterOr<IR::Addr>{
+                    IR::PtrIncr(std::get<1>(phis).reg_, 1, to_ptr_type)});
+          },
+          std::tuple<type::Type const *, type::Type const *>{from_ptr_type,
+                                                             to_ptr_type},
+          tup{IR::RegisterOr<IR::Addr>{from_ptr},
+              IR::RegisterOr<IR::Addr>{to_ptr}});
       IR::ReturnJump();
     }
   }

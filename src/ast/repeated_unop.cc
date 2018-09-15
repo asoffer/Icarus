@@ -27,6 +27,10 @@ std::string RepeatedUnop::to_string(size_t n) const {
   }
 }
 
+RepeatedUnop::RepeatedUnop(TextSpan const &text_span) {
+  span = args_.span = text_span;
+}
+
 void RepeatedUnop::assign_scope(Scope *scope) {
   STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
@@ -59,8 +63,7 @@ void RepeatedUnop::ExtractReturns(base::vector<const Expression *> *rets) const 
 }
 
 RepeatedUnop *RepeatedUnop::Clone() const {
-  auto *result = new RepeatedUnop;
-  result->span = span;
+  auto *result = new RepeatedUnop(span);
   for (const auto &arg : args_.exprs) {
     result->args_.exprs.emplace_back(arg->Clone());
   }

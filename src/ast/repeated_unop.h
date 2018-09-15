@@ -8,6 +8,7 @@
 
 namespace AST {
 struct RepeatedUnop : public Node {
+  RepeatedUnop(TextSpan const &span);
   ~RepeatedUnop() override {}
 
   std::string to_string(size_t n) const override;

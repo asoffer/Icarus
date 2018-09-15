@@ -1,4 +1,5 @@
 #include "type/flags.h"
+#include "ir/val.h"
 
 namespace type {
 Flags::Flags(const std::string &name, base::vector<std::string> members)

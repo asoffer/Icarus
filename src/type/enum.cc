@@ -1,4 +1,5 @@
 #include "type/enum.h"
+#include "ir/val.h"
 
 namespace type {
 Enum::Enum(const std::string &name, base::vector<std::string> members)

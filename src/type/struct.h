@@ -1,13 +1,13 @@
 #ifndef ICARUS_TYPE_STRUCT_H
 #define ICARUS_TYPE_STRUCT_H
 
-#include <string_view>
-#include <string>
-#include "base/container/vector.h"
-#include "base/container/unordered_map.h"
 #include <mutex>
-
-#include "type.h"
+#include <string>
+#include <string_view>
+#include "base/container/unordered_map.h"
+#include "base/container/vector.h"
+#include "ir/val.h"
+#include "type/type.h"
 
 namespace IR {
 struct Func;

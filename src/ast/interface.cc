@@ -3,6 +3,7 @@
 #include "ast/verify_macros.h"
 #include "context.h"
 #include "error/log.h"
+#include "ir/val.h"
 #include "type/type.h"
 
 namespace AST {

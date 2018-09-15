@@ -3,6 +3,7 @@
 #include "architecture.h"
 #include "base/guarded.h"
 #include "context.h"
+#include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "module.h"
@@ -119,49 +120,6 @@ static IR::RegisterOr<i32> ComputeMin(IR::RegisterOr<i32> x,
   return IR::MakePhi<i32>(IR::Phi(type::Int), {{x_block, x}, {entry_block, y}});
 }
 
-// TODO pass funcs by ref
-base::vector<IR::Val> CreateLoop(
-    const base::vector<IR::Val> &entry_vals,
-    std::function<IR::RegisterOr<bool>(const base::vector<IR::Val> &)>
-        loop_phi_fn,
-    std::function<base::vector<IR::Val>(const base::vector<IR::Val> &)>
-        loop_body_fn) {
-  auto entry_block = IR::BasicBlock::Current;
-
-  auto loop_phi   = IR::Func::Current->AddBlock();
-  auto loop_body  = IR::Func::Current->AddBlock();
-  auto exit_block = IR::Func::Current->AddBlock();
-
-  IR::UncondJump(loop_phi);
-  IR::BasicBlock::Current = loop_phi;
-
-  base::vector<IR::Val> phi_vals;
-  phi_vals.reserve(entry_vals.size());
-  base::vector<IR::CmdIndex> phi_indices;
-  phi_indices.reserve(entry_vals.size());
-  for (const auto &val : entry_vals) {
-    phi_vals.push_back(IR::Val::Reg(
-        IR::Func::Current->Command(phi_indices.emplace_back(IR::Phi(val.type)))
-            .result,
-        val.type));
-  }
-
-  auto exit_cond = loop_phi_fn(phi_vals);
-  IR::CondJump(exit_cond, exit_block, loop_body);
-
-  IR::BasicBlock::Current = loop_body;
-  auto new_phis           = loop_body_fn(phi_vals);
-  IR::UncondJump(loop_phi);
-
-  for (size_t i = 0; i < phi_indices.size(); ++i) {
-    IR::MakePhi(phi_indices[i],
-                {{entry_block, entry_vals[i]}, {loop_body, new_phis[i]}});
-  }
-
-  IR::BasicBlock::Current = exit_block;
-  return phi_vals;
-}
-
 // TODO resize shoud probably take a custom allocator
 void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
                        Context *ctx) const {
@@ -186,63 +144,63 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
           IR::MulInt(size_arg,
                      Architecture::InterprettingMachine().bytes(data_type)));
 
+      auto *ptr_data_type   = type::Ptr(data_type);
       IR::Register from_ptr = IR::Index(type::Ptr(this), arg, 0);
       IR::RegisterOr<i32> min_val =
           ComputeMin(IR::LoadInt(IR::ArrayLength(arg)), size_arg);
-      IR::Register end_ptr =
-          IR::PtrIncr(from_ptr, min_val, type::Ptr(data_type));
+      IR::Register end_ptr = IR::PtrIncr(from_ptr, min_val, ptr_data_type);
 
-      auto finish_phis = CreateLoop(
-          {IR::Val::Reg(from_ptr, type::Ptr(data_type)),
-           IR::Val::Reg(new_arr, type::Ptr(data_type))},
-          [&](const base::vector<IR::Val> &phis) {
-            return IR::EqAddr(std::get<IR::Register>(phis[0].value), end_ptr);
+      using tup2       = std::tuple<IR::RegisterOr<IR::Addr>, IR::RegisterOr<IR::Addr>>;
+      auto finish_phis = IR::CreateLoop(
+          [&](tup2 const &phis) {
+            return IR::EqAddr(std::get<0>(phis), end_ptr);
           },
-          [&](const base::vector<IR::Val> &phis) {
-            data_type->EmitAssign(data_type, PtrCallFix(phis[0]),
-                                  std::get<IR::Register>(phis[1].value), ctx);
-            data_type->EmitDestroy(std::get<IR::Register>(phis[0].value), ctx);
-            return base::vector<IR::Val>{
-                IR::Val::Reg(IR::PtrIncr(std::get<IR::Register>(phis[0].value),
-                                         1, phis[0].type),
-                             phis[0].type),
-                IR::Val::Reg(IR::PtrIncr(std::get<IR::Register>(phis[1].value),
-                                         1, phis[1].type),
-                             phis[1].type)};
-          });
+          [&](tup2 const &phis) {
+            ASSERT(std::get<0>(phis).is_reg_);
+            ASSERT(std::get<1>(phis).is_reg_);
+            data_type->EmitAssign(
+                data_type,
+                PtrCallFix(IR::Val::Reg(std::get<0>(phis).reg_, ptr_data_type)),
+                std::get<1>(phis).reg_, ctx);
+            data_type->EmitDestroy(std::get<0>(phis).reg_, ctx);
+            return tup2{IR::PtrIncr(std::get<0>(phis).reg_, 1, ptr_data_type),
+                        IR::PtrIncr(std::get<1>(phis).reg_, 1, ptr_data_type)};
+          },
+          std::tuple<type::Type const *, type::Type const *>{ptr_data_type,
+                                                             ptr_data_type},
+          tup2{from_ptr, new_arr});
 
       if (data_type->needs_destroy()) {
         auto end_old_buf =
             IR::PtrIncr(IR::ArrayData(arg, type::Ptr(this)),
                         IR::LoadInt(IR::ArrayLength(arg)), type::Ptr(this));
-        CreateLoop({IR::Val::Reg(end_ptr, type::Ptr(data_type))},
-                   [&](const base::vector<IR::Val> &phis) {
-                     return IR::EqAddr(std::get<IR::Register>(phis[0].value),
-                                       end_old_buf);
-                   },
-                   [&](const base::vector<IR::Val> &phis) {
-                     data_type->EmitDestroy(
-                         std::get<IR::Register>(phis[0].value), ctx);
-                     return base::vector<IR::Val>{IR::Val::Reg(
-                         IR::PtrIncr(std::get<IR::Register>(phis[0].value), 1,
-                                     phis[0].type),
-                         phis[0].type)};
-                   });
+
+        using tup = std::tuple<IR::RegisterOr<IR::Addr>>;
+        IR::CreateLoop(
+            [&](tup const &phis) {
+              return IR::EqAddr(std::get<0>(phis), end_old_buf);
+            },
+            [&](tup const &phis) {
+              ASSERT(std::get<0>(phis).is_reg_);
+              data_type->EmitDestroy(std::get<0>(phis).reg_, ctx);
+              return tup{IR::PtrIncr(std::get<0>(phis).reg_, 1, ptr_data_type)};
+            },
+            std::tuple<type::Type const *>{ptr_data_type}, tup{end_ptr});
       }
 
-      auto end_to_ptr = IR::PtrIncr(new_arr, size_arg, type::Ptr(data_type));
-      CreateLoop(
-          {finish_phis[1]},
-          [&](const base::vector<IR::Val> &phis) {
-            return IR::EqAddr(std::get<IR::Register>(phis[0].value),
-                              end_to_ptr);
+      auto end_to_ptr = IR::PtrIncr(new_arr, size_arg, ptr_data_type);
+      using tup       = std::tuple<IR::RegisterOr<IR::Addr>>;
+      IR::CreateLoop(
+          [&](tup const &phis) {
+            return IR::EqAddr(std::get<0>(phis), end_to_ptr);
           },
-          [&](const base::vector<IR::Val> &phis) {
-            data_type->EmitInit(std::get<IR::Register>(phis[0].value), ctx);
-            return base::vector<IR::Val>{IR::Val::Reg(
-                IR::PtrIncr(std::get<IR::Register>(phis[0].value), 1, phis[0].type),
-                phis[0].type)};
-          });
+          [&](tup const &phis) {
+            ASSERT(std::get<0>(phis).is_reg_);
+            data_type->EmitInit(std::get<0>(phis).reg_, ctx);
+            return tup{IR::PtrIncr(std::get<0>(phis).reg_, 1, ptr_data_type)};
+          },
+          std::tuple<type::Type const *>{ptr_data_type},
+          tup{std::get<1>(finish_phis)});
 
       auto old_buf = IR::ArrayData(arg, type::Ptr(this));
       IR::StoreInt(size_arg, IR::ArrayLength(arg));

@@ -1,7 +1,9 @@
 #ifndef ICARUS_IR_REGISTER_H
 #define ICARUS_IR_REGISTER_H
 
+#include "base/container/vector.h"
 #include "base/strong_types.h"
+#include "base/types.h"
 
 DEFINE_STRONG_INT(IR, BlockIndex, i32, -1);
 DEFINE_STRONG_INT(IR, EnumVal, size_t, 0);
@@ -11,6 +13,7 @@ DEFINE_STRONG_INT(IR, BuiltinGenericIndex, i32, -1);
 DEFINE_STRONG_INT(IR, Register, i32, std::numeric_limits<i32>::lowest());
 
 namespace AST {
+struct Expression;
 struct BlockLiteral;
 }  // namespace AST
 
@@ -103,6 +106,8 @@ inline bool operator>=(Addr lhs, Addr rhs) { return !(lhs < rhs); }
 template <typename T>
 struct RegisterOr {
   static_assert(!std::is_same_v<Register, T>);
+  RegisterOr() : reg_(-1), is_reg_(true) {}
+
   RegisterOr(Register reg) : reg_(reg), is_reg_(true) {}
   RegisterOr(T val) : val_(val), is_reg_(false) {}
 

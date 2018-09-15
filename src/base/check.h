@@ -44,6 +44,12 @@ struct Expr<bool &> : public Expr<bool> {
   Expr(LhsStealer s, bool b) : Expr<bool>(s, b) {}
 };
 
+//  TODO this is kind of awful to keep expanding.
+template <>
+struct Expr<bool const &> : public Expr<bool> {
+  Expr(LhsStealer s, bool b) : Expr<bool>(s, b) {}
+};
+
 template <typename T>
 Expr<T> operator<<(LhsStealer stealer, T &&val) {
   return Expr<T>(stealer, std::forward<T>(val));
