@@ -5,8 +5,9 @@
 #include <unordered_set>
 #include "ast/verify_macros.h"
 #include "base/util.h"
-#include "ir/phi.h"
+#include "ir/components.h"
 #include "ir/func.h"
+#include "ir/phi.h"
 #include "type/pointer.h"
 #include "type/type.h"
 

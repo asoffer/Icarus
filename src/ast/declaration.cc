@@ -406,12 +406,15 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
-    IR::Val eval;
+    // TODO arg_val?
+    auto[iter, newly_inserted] =
+        ctx->mod_->bound_constants_.constants_.emplace(this, IR::Val::None());
+    if (!newly_inserted) { return {iter->second}; }
+
     if (IsCustomInitialized()) {
-      auto eval = backend::Evaluate(init_val.get(), ctx)[0];
+      iter->second = backend::Evaluate(init_val.get(), ctx)[0];
       if (ctx->num_errors()) { return {}; }
-      ctx->mod_->bound_constants_.constants_.emplace(this, eval);
-      return {eval};
+      return {iter->second};
     } else if (IsDefaultInitialized()) {
       if (arg_val) {
         return {ctx->mod_->bound_constants_.constants_.at(this)};

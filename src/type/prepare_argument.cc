@@ -1,5 +1,6 @@
-#include "type/all.h"
+#include "ir/components.h"
 #include "ir/func.h"
+#include "type/all.h"
 
 namespace type {
 IR::Val Array::PrepareArgument(const Type *from, const IR::Val &val,

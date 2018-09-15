@@ -116,16 +116,6 @@ struct Func {
 };
 std::ostream &operator<<(std::ostream &, IR::Func const &);
 
-template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, RegisterOr<bool> cond) {
-  auto continue_block = Func::Current->AddBlock();
-  if constexpr (B) {
-    CondJump(cond, exit_block, continue_block);
-  } else {
-    CondJump(cond, continue_block, exit_block);
-  }
-  return continue_block;
-}
-
 namespace internal {
 struct FuncResetter {
   FuncResetter(Func *fn) : old_fn_(Func::Current), old_block_(BasicBlock::Current) {

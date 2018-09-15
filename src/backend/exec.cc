@@ -311,7 +311,7 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::AndFlags:
       save(resolve(cmd.and_flags_.args_[0]) & resolve(cmd.and_flags_.args_[1]));
       break;
-    case IR::Op::CreateStruct: save(new type::Struct); break;
+    case IR::Op::CreateStruct: save(type::Struct::Make()); break;
     case IR::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
           resolve<type::Struct *>(cmd.create_struct_field_.struct_));
@@ -329,7 +329,7 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       ASSERT(success);
     } break;
     case IR::Op::FinalizeStruct:
-      save(resolve<type::Struct *>(cmd.finalize_struct_.reg_)->finalize());
+      resolve<type::Struct *>(cmd.finalize_struct_.reg_)->finalize();
       break;
     case IR::Op::DebugIr: LOG << call_stack.top().fn_; break;
     case IR::Op::Malloc: save(malloc(resolve(cmd.malloc_.arg_))); break;

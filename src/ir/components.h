@@ -10,6 +10,16 @@
 #include "ir/register.h"
 
 namespace IR {
+template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, RegisterOr<bool> cond) {
+  auto continue_block = Func::Current->AddBlock();
+  if constexpr (B) {
+    CondJump(cond, exit_block, continue_block);
+  } else {
+    CondJump(cond, continue_block, exit_block);
+  }
+  return continue_block;
+}
+
 template <typename LoopPhiFn, typename LoopBodyFn, typename TypeTup,
           typename... Ts>
 auto CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,

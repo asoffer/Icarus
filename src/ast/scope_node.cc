@@ -1,16 +1,17 @@
 #include "ast/scope_node.h"
 
 #include <sstream>
+#include "ast/access.h"
 #include "ast/block_literal.h"
 #include "ast/fn_args.h"
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
-#include "ast/access.h"
 #include "ast/scope_literal.h"
 #include "ast/stages.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "context.h"
+#include "ir/components.h"
 #include "ir/func.h"
 #include "scope.h"
 #include "type/scope.h"

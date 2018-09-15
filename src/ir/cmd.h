@@ -584,12 +584,6 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &lhs,
                               RegisterOr<FlagsVal> const &rhs);
 
-Register CreateStruct();
-void CreateStructField(Register struct_type,
-                       RegisterOr<type::Type const *> type);
-void SetStructFieldName(Register struct_type, std::string_view field_name);
-Register FinalizeStruct(Register r);
-
 void DebugIr();
 
 Register Malloc(const type::Type *t, RegisterOr<i32> r);

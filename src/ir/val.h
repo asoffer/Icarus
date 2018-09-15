@@ -89,7 +89,6 @@ struct Val {
   static Val CharBuf(const std::string &str);
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
-  static Val Struct();
 
   std::string to_string() const;
 

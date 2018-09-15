@@ -9,7 +9,7 @@ Register CreateStruct();
 void CreateStructField(Register struct_type,
                        RegisterOr<type::Type const *> type);
 void SetStructFieldName(Register struct_type, std::string_view field_name);
-Register FinalizeStruct(Register r);
+void FinalizeStruct(Register r);
 }  // namespace IR
 
 namespace AST {
@@ -83,7 +83,8 @@ base::vector<IR::Val> AST::StructLiteral::EmitIR(Context *ctx) {
         new_struct, field->type_expr->EmitIR(ctx)[0].reg_or<type::Type const *>());
     IR::SetStructFieldName(new_struct, field->identifier->token);
   }
-  return {IR::Val::Reg(IR::FinalizeStruct(new_struct), type::Type_)};
+  IR::FinalizeStruct(new_struct);
+  return {IR::Val::Reg(new_struct, type::Type_)};
 }
 
 base::vector<IR::Register> AST::StructLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }

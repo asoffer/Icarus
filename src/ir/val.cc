@@ -51,8 +51,6 @@ Val Val::CharBuf(const std::string &str) {
   return Val(type::CharBuf(sv.size()), sv);
 }
 
-Val Val::Struct() { return Val(type::Type_, new type::Struct); }
-
 Val Val::BlockSeq(BlockSequence b) {
   ASSERT(b.seq_->size() != 0u);
   auto *t = (b.seq_->back() == nullptr) ? type::Block : b.seq_->back()->type;

@@ -6,6 +6,7 @@
 #include "ast/terminal.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
+#include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "scope.h"
