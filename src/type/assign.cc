@@ -176,7 +176,6 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
       auto var                = assign_func->Argument(1);
 
       for (size_t i = 0; i < fields_.size(); ++i) {
-        // TODO is that the right scope?
         fields_[i].type->EmitAssign(
             fields_[i].type,
             PtrCallFix(IR::Val::Reg(

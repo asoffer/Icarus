@@ -1,6 +1,8 @@
 #include "type/all.h"
 
 #include "architecture.h"
+#include "ast/declaration.h"
+#include "ast/struct_literal.h"
 #include "base/container/map.h"
 #include "base/container/unordered_map.h"
 #include "base/guarded.h"
@@ -111,12 +113,13 @@ static IR::Func *StructInitializationWith(const Struct *struct_type,
 
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      for (size_t i = 0; i < struct_type->fields_.size(); ++i) {
-        InitFn(struct_type->fields_[i].type, struct_type->fields_[i].type,
-               PtrCallFix(
-                   IR::Val::Reg(IR::Field(fn->Argument(0), struct_type, i),
-                                type::Ptr(struct_type->fields_.at(i).type))),
-               IR::Field(fn->Argument(1), struct_type, i), ctx);
+      auto const & fields = struct_type->fields();
+      for (size_t i = 0; i < fields.size(); ++i) {
+        InitFn(
+            fields.at(i).type, fields.at(i).type,
+            PtrCallFix(IR::Val::Reg(IR::Field(fn->Argument(0), struct_type, i),
+                                    type::Ptr(fields.at(i).type))),
+            IR::Field(fn->Argument(1), struct_type, i), ctx);
       }
       IR::ReturnJump();
     }
@@ -425,5 +428,55 @@ static base::guarded<base::unordered_map<size_t, CharBuffer>> char_bufs_;
 const CharBuffer *CharBuf(size_t len) {
   auto[iter, success] = char_bufs_.lock()->emplace(len, CharBuffer(len));
   return &iter->second;
+}
+
+Struct *Struct::Make(AST::StructLiteral *lit) {
+  auto *s             = new Struct;
+  s->to_be_completed_ = lit;
+  return s;
+}
+
+void Struct::finalize() {
+  auto *ptr = to_be_completed_.exchange(nullptr);
+  if (ptr != nullptr) { ptr->Complete(this); }
+}
+
+base::vector<Struct::Field> const &Struct::fields() const {
+  // TODO is doing this lazily a good idea?
+  // TODO remove this const_cast
+  const_cast<type::Struct *>(this)->finalize();
+  return fields_;
+}
+
+void Struct::set_last_name(std::string_view s) {
+  fields_.back().name = std::string(s);
+  auto[iter, success] =
+      field_indices_.emplace(fields_.back().name, fields_.size() - 1);
+  ASSERT(success);
+}
+size_t Struct::index(std::string const &name) const {
+  // TODO is doing this lazily a good idea?
+  // TODO remove this const_cast
+  const_cast<type::Struct *>(this)->finalize();
+  return field_indices_.at(name);
+}
+
+size_t Struct::offset(size_t field_num, Architecture const &arch) const {
+  size_t offset = 0;
+  for (size_t i = 0; i < field_num; ++i) {
+    offset += arch.bytes(fields_.at(i).type);
+    offset = arch.MoveForwardToAlignment(fields_.at(i + 1).type, offset);
+  }
+  return offset;
+}
+
+Struct::Field const *Struct::field(std::string const &name) const {
+  // TODO is doing this lazily a good idea?
+  // TODO remove this const_cast
+  const_cast<type::Struct *>(this)->finalize();
+
+  auto iter = field_indices_.find(name);
+  if (iter == field_indices_.end()) { return nullptr; }
+  return &fields_[iter->second];
 }
 }  // namespace type

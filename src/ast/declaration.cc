@@ -409,6 +409,7 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
     // TODO arg_val?
     auto[iter, newly_inserted] =
         ctx->mod_->bound_constants_.constants_.emplace(this, IR::Val::None());
+
     if (!newly_inserted) { return {iter->second}; }
 
     if (IsCustomInitialized()) {

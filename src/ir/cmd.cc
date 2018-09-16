@@ -370,7 +370,7 @@ RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
 }
 
 Register Field(Register r, type::Struct const *t, size_t n) {
-  auto &cmd  = MakeCmd(type::Ptr(t->fields_.at(n).type), Op::Field);
+  auto &cmd  = MakeCmd(type::Ptr(t->fields().at(n).type), Op::Field);
   cmd.field_ = Cmd::Field::Make(r, t, n);
   return cmd.result;
 }
@@ -464,8 +464,10 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                      [lit](AST::BlockLiteral *l) { return lit == l; });
 }
 
-Register CreateStruct() {
-  return MakeCmd(type::Type_, Op::CreateStruct).result;
+Register CreateStruct(AST::StructLiteral *lit) {
+  auto &cmd          = MakeCmd(type::Type_, Op::CreateStruct);
+  cmd.create_struct_ = Cmd::CreateStruct::Make(lit);
+  return cmd.result;
 }
 
 Register FinalizeStruct(Register r) {
@@ -488,14 +490,14 @@ Register VariantValue(type::Type const *t, Register r) {
   return cmd.result;
 }
 
-void CreateStructField(Register struct_type,
+void CreateStructField(type::Struct *struct_type,
                        RegisterOr<type::Type const *> type) {
   auto &cmd = MakeCmd(nullptr, Op::CreateStructField);
   cmd.create_struct_field_ =
       Cmd::CreateStructField::Make(struct_type, std::move(type));
 }
 
-void SetStructFieldName(Register struct_type, std::string_view field_name) {
+void SetStructFieldName(type::Struct *struct_type, std::string_view field_name) {
   auto &cmd = MakeCmd(nullptr, Op::SetStructFieldName);
   cmd.set_struct_field_name_ =
       Cmd::SetStructFieldName::Make(struct_type, field_name);
@@ -887,7 +889,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::XorFlags: return os << cmd.xor_flags_.args_;
     case Op::OrFlags: return os << cmd.or_flags_.args_;
     case Op::AndFlags: return os << cmd.and_flags_.args_;
-    case Op::CreateStruct: return os;
+    case Op::CreateStruct: return os << cmd.create_struct_.lit_;
     case Op::CreateStructField:
       return os << cmd.create_struct_field_.struct_ << " "
                 << cmd.create_struct_field_.type_;

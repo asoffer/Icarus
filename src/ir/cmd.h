@@ -1,8 +1,8 @@
 #ifndef ICARUS_IR_CMD_H
 #define ICARUS_IR_CMD_H
 
-#include "context.h"
 #include "base/untyped_buffer.h"
+#include "context.h"
 #include "val.h"
 
 namespace type {
@@ -15,6 +15,7 @@ struct Pointer;
 }  // namespace type
 
 namespace AST {
+struct StructLiteral;
 struct ScopeLiteral;
 struct Function;
 }  // namespace AST
@@ -194,14 +195,14 @@ struct Cmd {
   CMD(OrFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
   CMD(AndFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
 
-  CMD(CreateStruct){};
+  CMD(CreateStruct) { AST::StructLiteral *lit_; };
   CMD(CreateStructField) {
-    Register struct_;
+    type::Struct *struct_;
     RegisterOr<type::Type const *> type_;
   };
   CMD(SetStructFieldName) {
     // Implicitly the last element.
-    Register struct_;
+    type::Struct *struct_;
     std::string_view name_;
   };
   CMD(FinalizeStruct) { Register reg_; };

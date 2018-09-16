@@ -4,6 +4,10 @@
 #include "ast/expression.h"
 #include "scope.h"
 
+namespace type {
+struct Struct;
+}  // namespace type
+
 namespace AST {
 struct StructLiteral : public Expression {
   StructLiteral()                          = default;
@@ -23,11 +27,14 @@ struct StructLiteral : public Expression {
       const base::unordered_map<const Expression *, IR::Val> &) override;
   StructLiteral *Clone() const override;
 
+  void Complete(type::Struct *s);
+
   base::vector<IR::Val> EmitIR(Context *) override;
   base::vector<IR::Register> EmitLVal(Context *) override;
 
   std::unique_ptr<DeclScope> type_scope;
   base::vector<std::unique_ptr<Declaration>> fields_;
+  Module *mod_ = nullptr;
 };
 }  // namespace AST
 

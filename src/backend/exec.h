@@ -51,5 +51,9 @@ struct ExecContext {
 
   base::untyped_buffer stack_;
 };
+
+void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
+             const base::vector<IR::Addr> &ret_slots,
+             backend::ExecContext *ctx);
 }  // namespace backend
 #endif  // ICARUS_BACKEND_EXEC_H

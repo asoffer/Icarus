@@ -42,7 +42,7 @@ size_t Architecture::alignment(const type::Type *t) const {
                                     : ptr_align_;
   } else if (t->is<type::Struct>()) {
     size_t alignment_val = 1;
-    for (const auto &field : t->as<type::Struct>().fields_) {
+    for (auto const &field : t->as<type::Struct>().fields()) {
       alignment_val = std::max(alignment_val, this->alignment(field.type));
     }
     return alignment_val;
@@ -106,7 +106,7 @@ size_t Architecture::bytes(const type::Type *t) const {
   } else if (t->is<type::Struct>()) {
     auto *struct_type = &t->as<type::Struct>();
     size_t num_bytes  = 0;
-    for (const auto &field : struct_type->fields_) {
+    for (auto const &field : struct_type->fields()) {
       num_bytes += this->bytes(field.type);
       num_bytes = this->MoveForwardToAlignment(field.type, num_bytes);
     }

@@ -827,6 +827,7 @@ static std::unique_ptr<AST::Node> BuildEnumOrFlagLiteral(
 static std::unique_ptr<AST::Node> BuildStructLiteral(
     base::vector<std::unique_ptr<AST::Node>> nodes, Context *ctx) {
   auto struct_lit  = std::make_unique<AST::StructLiteral>();
+  struct_lit->mod_ = ctx->mod_;
   struct_lit->span = TextSpan(nodes.front()->span, nodes.back()->span);
   for (auto &stmt : nodes[1]->as<AST::Statements>().content_) {
     if (stmt->is<AST::Declaration>()) {

@@ -543,8 +543,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       ASSERT(lhs_lvals.size() == lhs_types.size());
       ASSERT(lhs_lvals.size() == rhs_types.size());
       for (size_t i = 0; i < lhs_lvals.size(); ++i) {
-        lhs_types[i]->EmitAssign(rhs_types[i], PtrCallFix(rhs_vals[i]),
-                                 lhs_lvals[i], ctx);
+        lhs_types[i]->EmitAssign(rhs_types[i], rhs_vals[i], lhs_lvals[i], ctx);
       }
       return {};
     } break;

@@ -311,25 +311,22 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::AndFlags:
       save(resolve(cmd.and_flags_.args_[0]) & resolve(cmd.and_flags_.args_[1]));
       break;
-    case IR::Op::CreateStruct: save(type::Struct::Make()); break;
+    case IR::Op::CreateStruct:
+      save(type::Struct::Make(cmd.create_struct_.lit_));
+      break;
     case IR::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
           resolve<type::Struct *>(cmd.create_struct_field_.struct_));
-      struct_to_modify->fields_.emplace_back(
-          resolve(cmd.create_struct_field_.type_));
+      struct_to_modify->add_field(
+        resolve(cmd.create_struct_field_.type_));
     } break;
     case IR::Op::SetStructFieldName: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
           resolve<type::Struct *>(cmd.set_struct_field_name_.struct_));
-      struct_to_modify->fields_.back().name = cmd.set_struct_field_name_.name_;
-      auto[iter, success] = struct_to_modify->field_indices_.emplace(
-          std::piecewise_construct,
-          std::forward_as_tuple(cmd.set_struct_field_name_.name_),
-          std::forward_as_tuple(struct_to_modify->fields_.size() - 1));
-      ASSERT(success);
+      struct_to_modify->set_last_name(cmd.set_struct_field_name_.name_);
     } break;
     case IR::Op::FinalizeStruct:
-      resolve<type::Struct *>(cmd.finalize_struct_.reg_)->finalize();
+      // TODO remove me.
       break;
     case IR::Op::DebugIr: LOG << call_stack.top().fn_; break;
     case IR::Op::Malloc: save(malloc(resolve(cmd.malloc_.arg_))); break;
@@ -395,13 +392,8 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       auto addr = resolve<IR::Addr>(cmd.field_.ptr_);
       auto *struct_type =
           resolve<type::Struct const *>(cmd.field_.struct_type_);
-      size_t offset = 0;
-      for (size_t i = 0; i < cmd.field_.num_; ++i) {
-        auto field_type = struct_type->fields_.at(i).type;
-        offset += Architecture::InterprettingMachine().bytes(field_type);
-        offset = Architecture::InterprettingMachine().MoveForwardToAlignment(
-            struct_type->fields_.at(i + 1).type, offset);
-      }
+      size_t offset = struct_type->offset(cmd.field_.num_,
+                                          Architecture::InterprettingMachine());
 
       if (addr.kind == IR::Addr::Kind::Stack) {
         addr.as_stack += offset;

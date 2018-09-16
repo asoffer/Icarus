@@ -2,14 +2,18 @@
 
 #include <sstream>
 #include "ast/verify_macros.h"
+#include "backend/exec.h"
+#include "base/untyped_buffer.h"
+#include "ir/func.h"
 #include "ir/val.h"
+#include "type/function.h"
+#include "type/struct.h"
 
 namespace IR {
-Register CreateStruct();
-void CreateStructField(Register struct_type,
+Register CreateStruct(AST::StructLiteral *lit);
+void CreateStructField(type::Struct *struct_type,
                        RegisterOr<type::Type const *> type);
-void SetStructFieldName(Register struct_type, std::string_view field_name);
-void FinalizeStruct(Register r);
+void SetStructFieldName(type::Struct *struct_type, std::string_view field_name);
 }  // namespace IR
 
 namespace AST {
@@ -32,6 +36,7 @@ void StructLiteral::assign_scope(Scope *scope) {
 
 void StructLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
+
   lvalue = Assign::Const;
   type = type::Type_;
 }
@@ -72,20 +77,33 @@ StructLiteral *StructLiteral::Clone() const {
 }
 
 base::vector<IR::Val> AST::StructLiteral::EmitIR(Context *ctx) {
-  IR::Register new_struct = IR::CreateStruct();
-  for (const auto &field : fields_) {
-    // TODO initial values? hashatgs?
-
-    // NOTE: CreateStructField may invalidate all other struct fields, so it's
-    // not safe to access these registers returned by CreateStructField after a
-    // subsequent call to CreateStructField.
-    IR::CreateStructField(
-        new_struct, field->type_expr->EmitIR(ctx)[0].reg_or<type::Type const *>());
-    IR::SetStructFieldName(new_struct, field->identifier->token);
-  }
-  IR::FinalizeStruct(new_struct);
-  return {IR::Val::Reg(new_struct, type::Type_)};
+  return {IR::Val::Reg(IR::CreateStruct(this), type::Type_)};
 }
 
-base::vector<IR::Register> AST::StructLiteral::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+void AST::StructLiteral::Complete(type::Struct *s) {
+  IR::Func f(mod_, type::Func({}, {}), {});
+  Context ctx(mod_);
+  CURRENT_FUNC(&f) {
+    IR::BasicBlock::Current = f.entry();
+
+    for (const auto &field : fields_) {
+      // TODO initial values? hashatgs?
+
+      // NOTE: CreateStructField may invalidate all other struct fields, so it's
+      // not safe to access these registers returned by CreateStructField after
+      // a subsequent call to CreateStructField.
+      IR::CreateStructField(
+          s, field->type_expr->EmitIR(&ctx)[0].reg_or<type::Type const *>());
+      IR::SetStructFieldName(s, field->identifier->token);
+    }
+    IR::ReturnJump();
+  }
+
+  backend::ExecContext exec_ctx;
+  backend::Execute(&f, base::untyped_buffer(0), {}, &exec_ctx);
+}
+
+base::vector<IR::Register> AST::StructLiteral::EmitLVal(Context *ctx) {
+  UNREACHABLE(*this);
+}
 }  // namespace AST

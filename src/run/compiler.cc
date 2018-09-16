@@ -15,12 +15,6 @@
 #include "llvm/Support/TargetSelect.h"
 #endif // ICARUS_USE_LLVM
 
-namespace backend {
-void Execute(IR::Func *fn, const base::untyped_buffer &,
-             const base::vector<IR::Addr> &ret_slots,
-             backend::ExecContext *ctx);
-}
-
 base::vector<frontend::Source::Name> files;
 
 // TODO sad. don't use a global to do this.

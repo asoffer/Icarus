@@ -74,24 +74,10 @@ char *Array::WriteTo(char *buf) const {
 }
 
 size_t Struct::string_size() const {
-  size_t acc = 0;
-  for (const auto &field : fields_) { acc += field.type->string_size(); }
-  return acc + 2 * fields_.size() + 9;
+  return 9;
 }
 char *Struct::WriteTo(char *buf) const {
-  if (fields_.empty()) {
-    buf = std::strcpy(buf, "struct {}") + 9;
-    return buf;
-  }
-  buf = std::strcpy(buf, "struct { ") + 9;
-  auto iter = fields_.begin();
-  buf = iter->type->WriteTo(buf);
-  ++iter;
-  for (; iter != fields_.end(); ++iter) {
-    buf = std::strcpy(buf, ", ") + 2;
-    buf = iter->type->WriteTo(buf);
-  }
-  buf = std::strcpy(buf, " }") + 2;
+  buf = std::strcpy(buf, "struct {}") + 9;
   return buf;
 }
 

@@ -15,10 +15,6 @@
 #include "type/function.h"
 
 namespace backend {
-void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
-             const base::vector<IR::Addr> &ret_slots,
-             backend::ExecContext *ctx);
-
 static void ReplEval(AST::Expression *expr) {
   // TODO is nullptr for module okay here?
   auto fn = std::make_unique<IR::Func>(
