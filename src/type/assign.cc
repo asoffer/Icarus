@@ -143,8 +143,8 @@ void Variant::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
       IR::StoreType(v, IR::VariantType(to));
       v->EmitAssign(
           v,
-          PtrCallFix(IR::Val::Reg(
-              IR::VariantValue(v, std::get<IR::Register>(from.value)), v)),
+          IR::Val::Reg(IR::PtrFix(
+              IR::VariantValue(v, std::get<IR::Register>(from.value)), v), v),
           IR::VariantValue(v, to), ctx);
       IR::UncondJump(landing);
       IR::BasicBlock::Current = next_block;
@@ -176,11 +176,11 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
       auto var                = assign_func->Argument(1);
 
       for (size_t i = 0; i < fields_.size(); ++i) {
+        auto *field_type = from_type->as<type::Struct>().fields_.at(i).type;
         fields_[i].type->EmitAssign(
             fields_[i].type,
-            PtrCallFix(IR::Val::Reg(
-                IR::Field(val, this, i),
-                type::Ptr(from_type->as<type::Struct>().fields_.at(i).type))),
+            IR::Val::Reg(IR::PtrFix(IR::Field(val, this, i), field_type),
+                         field_type),
             IR::Field(var, this, i), ctx);
       }
 

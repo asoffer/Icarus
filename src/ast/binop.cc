@@ -6,6 +6,7 @@
 #include "backend/eval.h"
 #include "base/check.h"
 #include "context.h"
+#include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "type/array.h"
@@ -17,8 +18,6 @@
 #include "type/struct.h"
 #include "type/tuple.h"
 #include "type/variant.h"
-
-IR::Val PtrCallFix(const IR::Val& v);
 
 namespace IR {
 Register Tup(base::vector<Val> const &entries);
@@ -403,8 +402,8 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     // TODO struct is not exactly right. we really mean user-defined
     AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
     args.pos_.reserve(2);
-    args.pos_.emplace_back(lhs.get(), PtrCallFix(lhs->EmitIR(ctx)[0]));
-    args.pos_.emplace_back(rhs.get(), PtrCallFix(rhs->EmitIR(ctx)[0]));
+    args.pos_.emplace_back(lhs.get(), lhs->EmitIR(ctx)[0]);
+    args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx)[0]);
 
     ASSERT(type != nullptr);
     return EmitCallDispatch(args, dispatch_table_, type, ctx);
@@ -698,7 +697,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::Index:
-      return {PtrCallFix(IR::Val::Reg(EmitLVal(ctx)[0], type::Ptr(type)))};
+      return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], type), type)};
     default: UNREACHABLE(*this);
   }
 }

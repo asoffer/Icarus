@@ -11,8 +11,7 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/struct.h"
-
-IR::Val PtrCallFix(const IR::Val &v);
+#include "ir/components.h"
 
 namespace AST {
 namespace {
@@ -115,13 +114,13 @@ base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
 
 base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
   if (operand->type == type::Module) {
-    return backend::EvaluateAs<const Module *>(operand.get(), ctx)
+    return backend::EvaluateAs<Module const *>(operand.get(), ctx)
         ->GetDecl(member_name)
         ->EmitIR(ctx);
   } else if (type->is<type::Enum>()) {
     return {type->as<type::Enum>().EmitLiteral(member_name)};
   } else {
-    return {PtrCallFix(IR::Val::Reg(EmitLVal(ctx)[0], type::Ptr(type)))};
+    return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], type), type)};
   }
 }
 

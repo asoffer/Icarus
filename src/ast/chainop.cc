@@ -15,8 +15,6 @@
 #include "type/struct.h"
 #include "type/tuple.h"
 
-IR::Val PtrCallFix(const IR::Val &v);
-
 base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
@@ -33,8 +31,8 @@ using base::check::Is;
 using base::check::Not;
 
 IR::RegisterOr<bool> EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
-                                     const IR::Val &lhs_ir,
-                                     const IR::Val &rhs_ir, Context *ctx) {
+                                     IR::Val const &lhs_ir,
+                                     IR::Val const &rhs_ir, Context *ctx) {
   const type::Type *lhs_type = chain_op->exprs[index]->type;
   const type::Type *rhs_type = chain_op->exprs[index + 1]->type;
   auto op                    = chain_op->ops[index];
@@ -48,13 +46,8 @@ IR::RegisterOr<bool> EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
     FnArgs<std::pair<Expression *, IR::Val>> args;
     args.pos_.reserve(2);
-    args.pos_.emplace_back(
-        chain_op->exprs[index].get(),
-        chain_op->exprs[index]->type->is_big() ? PtrCallFix(lhs_ir) : lhs_ir);
-    args.pos_.emplace_back(chain_op->exprs[index + 1].get(),
-                           chain_op->exprs[index + 1]->type->is_big()
-                               ? PtrCallFix(rhs_ir)
-                               : rhs_ir);
+    args.pos_.emplace_back(chain_op->exprs[index].get(), lhs_ir);
+    args.pos_.emplace_back(chain_op->exprs[index + 1].get(), rhs_ir);
 
     auto results = EmitCallDispatch(args, chain_op->dispatch_tables_[index],
                                     type::Bool, ctx);

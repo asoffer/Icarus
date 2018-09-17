@@ -10,8 +10,6 @@
 #include "type/function.h"
 #include "type/pointer.h"
 
-IR::Val PtrCallFix(const IR::Val& v);
-
 namespace type {
 static base::guarded<base::unordered_map<
     const Array *, base::unordered_map<const Array *, IR::Func *>>>
@@ -160,7 +158,8 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
             ASSERT(std::get<1>(phis).is_reg_);
             data_type->EmitAssign(
                 data_type,
-                PtrCallFix(IR::Val::Reg(std::get<0>(phis).reg_, ptr_data_type)),
+                IR::Val::Reg(IR::PtrFix(std::get<0>(phis).reg_, data_type),
+                             data_type),
                 std::get<1>(phis).reg_, ctx);
             data_type->EmitDestroy(std::get<0>(phis).reg_, ctx);
             return tup2{IR::PtrIncr(std::get<0>(phis).reg_, 1, ptr_data_type),

@@ -88,8 +88,8 @@ void Array::EmitRepr(IR::Val const &val, Context *ctx) const {
           IR::EarlyExitOn<true>(exit_block, IR::EqInt(length_var, 0));
       auto ptr = IR::Index(type::Ptr(this), repr_func_->Argument(0), 0);
 
-      data_type->EmitRepr(
-          PtrCallFix(IR::Val::Reg(ptr, type::Ptr(this->data_type))), ctx);
+      data_type->EmitRepr(IR::Val::Reg(IR::PtrFix(ptr, data_type), data_type),
+                          ctx);
 
       using tup = std::tuple<IR::RegisterOr<IR::Addr>, IR::RegisterOr<i32>>;
       IR::CreateLoop(
@@ -102,8 +102,7 @@ void Array::EmitRepr(IR::Val const &val, Context *ctx) const {
             IR::PrintChar(',');
             IR::PrintChar(' ');
             data_type->EmitRepr(
-                PtrCallFix(IR::Val::Reg(elem_ptr, type::Ptr(this->data_type))),
-                ctx);
+                IR::Val::Reg(IR::PtrFix(elem_ptr, data_type), data_type), ctx);
 
             return std::make_tuple(elem_ptr, IR::SubInt(std::get<1>(phis), 1));
           },
@@ -157,8 +156,8 @@ void Variant::EmitRepr(IR::Val const &id_val, Context *ctx) const {
 
         IR::BasicBlock::Current = found_block;
         v->EmitRepr(
-            PtrCallFix(IR::Val::Reg(
-                IR::VariantValue(v, repr_func_->Argument(0)), type::Ptr(v))),
+            IR::Val::Reg(
+                IR::PtrFix(IR::VariantValue(v, repr_func_->Argument(0)), v), v),
             ctx);
         IR::UncondJump(landing);
 

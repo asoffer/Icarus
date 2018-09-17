@@ -1,8 +1,6 @@
 #ifndef ICARUS_CONTEXT_H
 #define ICARUS_CONTEXT_H
 
-#include <memory>
-
 #include "base/container/vector.h"
 #include "base/debug.h"
 #include "error/log.h"

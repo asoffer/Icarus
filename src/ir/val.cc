@@ -201,12 +201,3 @@ Val ValFrom(RegisterOr<IR::Addr> r, type::Pointer const *ptr_type) {
 }
 
 }  // namespace IR
-
-IR::Val PtrCallFix(const IR::Val &v) {
-  return !v.type->is<type::Pointer>() ||
-                 v.type->as<type::Pointer>().pointee->is_big()
-             ? v
-             : IR::Val::Reg(IR::Load(std::get<IR::Register>(v.value),
-                                     v.type->as<type::Pointer>().pointee),
-                            v.type->as<type::Pointer>().pointee);
-}

@@ -60,6 +60,10 @@ auto CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
   IR::BasicBlock::Current = exit_block;
   return phi_vals;
 }
+
+inline Register PtrFix(Register reg, type::Type const *desired_type) {
+  return desired_type->is_big() ? reg : Load(reg, desired_type);
+}
 }  // namespace IR
 
 #endif  // ICARUS_IR_COMPONENTS_H

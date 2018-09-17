@@ -7,6 +7,7 @@
 #include "base/container/unordered_map.h"
 #include "base/guarded.h"
 #include "context.h"
+#include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "module.h"
@@ -79,7 +80,8 @@ static IR::Func *ArrayInitializationWith(const Array *from_type,
 
       IR::BasicBlock::Current = body_block;
       InitFn(from_type->data_type, to_type->data_type,
-             PtrCallFix(IR::Val::Reg(from_phi_reg, from_phi_reg_type)),
+             IR::Val::Reg(IR::PtrFix(from_phi_reg, from_type->data_type),
+                          from_type->data_type),
              to_phi_reg, ctx);
       auto from_incr = IR::PtrIncr(from_phi_reg, 1, from_phi_reg_type);
       auto to_incr   = IR::PtrIncr(to_phi_reg, 1, to_phi_reg_type);
@@ -117,8 +119,9 @@ static IR::Func *StructInitializationWith(const Struct *struct_type,
       for (size_t i = 0; i < fields.size(); ++i) {
         InitFn(
             fields.at(i).type, fields.at(i).type,
-            PtrCallFix(IR::Val::Reg(IR::Field(fn->Argument(0), struct_type, i),
-                                    type::Ptr(fields.at(i).type))),
+            IR::Val::Reg(IR::PtrFix(IR::Field(fn->Argument(0), struct_type, i),
+                                    fields.at(i).type),
+                         fields.at(i).type),
             IR::Field(fn->Argument(1), struct_type, i), ctx);
       }
       IR::ReturnJump();

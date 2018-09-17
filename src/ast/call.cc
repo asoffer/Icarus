@@ -26,8 +26,6 @@ extern Type const *Code, *Int, *Char;
 i32 ResizeFuncIndex  = 0;
 i32 ForeignFuncIndex = 1;
 
-IR::Val PtrCallFix(const IR::Val &v);
-
 IR::Val ErrorFunc() {
   // TODO implement me
   return IR::Val(123.456);
@@ -591,7 +589,7 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
   return EmitCallDispatch(
       args_.Transform([ctx](const std::unique_ptr<Expression> &expr) {
         return std::pair(const_cast<Expression *>(expr.get()),
-                         PtrCallFix(expr->EmitIR(ctx)[0]));
+                         expr->EmitIR(ctx)[0]);
       }),
       dispatch_table_, type, ctx);
 }

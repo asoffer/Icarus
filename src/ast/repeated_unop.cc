@@ -13,8 +13,6 @@ base::vector<IR::Val> EmitCallDispatch(
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
 
-IR::Val PtrCallFix(const IR::Val& v);
-
 void ForEachExpr(AST::Expression *expr,
                  const std::function<void(size_t, AST::Expression *)> &fn);
 
@@ -127,10 +125,7 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
           ASSERT(dispatch_tables_[i].total_size_ != 0u);
           // TODO struct is not exactly right. we really mean user-defined
           FnArgs<std::pair<Expression *, IR::Val>> args;
-          args.pos_ = {
-              std::pair(args_.exprs[i].get(), args_.exprs[i]->type->is_big()
-                                                  ? PtrCallFix(arg_vals[i])
-                                                  : arg_vals[i])};
+          args.pos_ = {std::pair(args_.exprs[i].get(), arg_vals[i])};
           EmitCallDispatch(args, dispatch_tables_[i], type::Void(), ctx);
         } else {
           args_.exprs[i]->type->EmitRepr(arg_vals[i], ctx);

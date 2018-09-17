@@ -14,8 +14,6 @@ base::vector<IR::Val> EmitCallDispatch(
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
 
-IR::Val PtrCallFix(const IR::Val& v);
-
 void ForEachExpr(AST::Expression *expr,
                  const std::function<void(size_t, AST::Expression *)> &fn);
 
@@ -230,10 +228,7 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
   if (operand->type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
     // TODO struct is not exactly right. we really mean user-defined
     FnArgs<std::pair<Expression *, IR::Val>> args;
-    args.pos_ = {
-        std::pair(operand.get(), operand->type->is_big()
-                                     ? PtrCallFix(operand->EmitIR(ctx)[0])
-                                     : operand->EmitIR(ctx)[0])};
+    args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx)[0])};
     return EmitCallDispatch(args, dispatch_table_, type, ctx);
   }
 
@@ -286,7 +281,7 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
     case Language::Operator::Mul:
       return {IR::ValFrom(
           IR::Ptr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
-    case Language::Operator::At: return {PtrCallFix(operand->EmitIR(ctx)[0])};
+    case Language::Operator::At: return {operand->EmitIR(ctx)[0]};
     case Language::Operator::Needs: {
       // TODO validate requirements are well-formed?
       IR::Func::Current->precondition_exprs_.push_back(operand.get());

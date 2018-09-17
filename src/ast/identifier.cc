@@ -6,13 +6,12 @@
 #include "backend/eval.h"
 #include "context.h"
 #include "error/log.h"
+#include "ir/components.h"
 #include "ir/val.h"
 #include "module.h"
 #include "scope.h"
-#include "type/type.h"
 #include "type/pointer.h"
-
-IR::Val PtrCallFix(const IR::Val& v);
+#include "type/type.h"
 
 namespace AST {
 void Identifier::assign_scope(Scope *scope) {
@@ -95,11 +94,9 @@ base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
   if (ASSERT_NOT_NULL(decl)->const_) {
     return decl->EmitIR(ctx);
   } else if (decl->arg_val) {
-    // NO need to call PtrCallFix because things that would need to be loaded
-    // are passed directly in registers anyway.
     return {IR::Val::Reg(decl->addr_, type)};
   } else {
-    return {PtrCallFix(IR::Val::Reg(EmitLVal(ctx)[0], type::Ptr(type)))};
+    return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], type), type)};
   }
 }
 

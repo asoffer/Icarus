@@ -23,10 +23,8 @@ IR::Val Array::PrepareArgument(const Type *from, const IR::Val &val,
 IR::Val Primitive::PrepareArgument(const Type *from, const IR::Val &val,
                                    Context *ctx) const {
   if (from->is<Variant>()) {
-    return PtrCallFix(IR::Val::Reg(
-        IR::Load(IR::VariantValue(this, std::get<IR::Register>(val.value)),
-                 this),
-        this));
+    return IR::Val::Reg(IR::Load(
+        IR::VariantValue(this, std::get<IR::Register>(val.value)), this), this);
   } else {
     ASSERT(from == this);
     return val;
@@ -107,12 +105,14 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
     auto current = IR::BasicBlock::Current;
     for (size_t i = 0; i < intersection.size(); ++i) {
       IR::BasicBlock::Current = blocks[i];
-      this->EmitAssign(intersection[i],
-                       PtrCallFix(IR::Val::Reg(
-                           IR::VariantValue(intersection[i],
-                                            std::get<IR::Register>(val.value)),
-                           type::Ptr(intersection[i]))),
-                       alloc_reg, ctx);
+      this->EmitAssign(
+          intersection[i],
+          IR::Val::Reg(
+              IR::PtrFix(IR::VariantValue(intersection[i],
+                                          std::get<IR::Register>(val.value)),
+                         intersection[i]),
+              intersection[i]),
+          alloc_reg, ctx);
       IR::UncondJump(landing);
     }
 
