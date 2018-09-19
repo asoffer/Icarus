@@ -47,7 +47,6 @@ void Identifier::VerifyType(Context *ctx) {
             // required? You shouldn't be relying on it... that's what the
             // staging system is for.
             type   = type::Type_;
-            lvalue = Assign::Const;
             return;
           }
         }
@@ -83,7 +82,6 @@ void Identifier::VerifyType(Context *ctx) {
   decl->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
   type = decl->type;
-  lvalue = decl->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
 }
 
 void Identifier::Validate(Context *ctx) {

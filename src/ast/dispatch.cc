@@ -30,8 +30,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
     if (fn->inputs[i]->type == type::Err) { return std::nullopt; }
 
     if ((binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) ||
-        (fn->inputs[i]->const_ && !binding->defaulted(i) &&
-         binding->exprs_[i].second->lvalue != Assign::Const)) {
+        (fn->inputs[i]->const_ && !binding->defaulted(i))) {
       // TODO maybe send back an explanation of why this didn't match. Or
       // perhaps continue to get better diagnostics?
       return std::nullopt;
@@ -120,36 +119,29 @@ bool DispatchEntry::SetTypes(FuncContent *fn) {
 std::optional<DispatchEntry> DispatchEntry::Make(
     Expression *fn_option, const FnArgs<Expression *> &args, Context *ctx) {
   Expression *bound_fn = nullptr;
-  size_t binding_size;
-  if (fn_option->lvalue == Assign::Const) {
-    bound_fn = std::visit(
-        base::overloaded{
-            [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
-            [](Function *fn) -> Expression * { return fn; },
-            [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
-            [](auto &&) -> Expression * { UNREACHABLE(); }},
-        backend::Evaluate(fn_option, ctx).at(0).value);
+  bound_fn = std::visit(
+      base::overloaded{
+          [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
+          [](Function *fn) -> Expression * { return fn; },
+          [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
+          [](auto &&) -> Expression * { UNREACHABLE(); }},
+      backend::Evaluate(fn_option, ctx).at(0).value);
 
-    if (bound_fn->is<FuncContent>()) {
-      binding_size = std::max(bound_fn->as<FuncContent>().lookup_.size(),
-                              args.pos_.size() + args.named_.size());
-    } else {
-      // TODO must this be a builtin?
-      // TODO is this 1 even right?
-      binding_size = 1;
-    }
+  size_t binding_size;
+  if (bound_fn->is<FuncContent>()) {
+    binding_size = std::max(bound_fn->as<FuncContent>().lookup_.size(),
+                            args.pos_.size() + args.named_.size());
   } else {
-    bound_fn     = fn_option;
-    binding_size = args.pos_.size() + args.named_.size();
+    // TODO must this be a builtin?
+    // TODO is this 1 even right?
+    binding_size = 1;
   }
   Binding binding(bound_fn, binding_size);
   binding.SetPositionalArgs(args);
 
-  if (fn_option->lvalue == Assign::Const) {
-    if (bound_fn->is<FuncContent>() &&
-        !binding.SetNamedArgs(args, bound_fn->as<FuncContent>().lookup_)) {
-      return std::nullopt;
-    }
+  if (bound_fn->is<FuncContent>() &&
+      !binding.SetNamedArgs(args, bound_fn->as<FuncContent>().lookup_)) {
+    return std::nullopt;
   }
 
   DispatchEntry dispatch_entry(std::move(binding));
@@ -168,13 +160,11 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   }
 
   FuncContent *fn = nullptr;
-  if (fn_option->lvalue == Assign::Const) {
-    if (dispatch_entry.binding_.fn_expr_->is<FuncContent>()) {
-      fn = &dispatch_entry.binding_.fn_expr_->as<FuncContent>();
-      for (const auto & [ key, val ] : fn->lookup_) {
-        if (val < args.pos_.size()) { continue; }
-        dispatch_entry.call_arg_types_.named_.emplace(key, nullptr);
-      }
+  if (dispatch_entry.binding_.fn_expr_->is<FuncContent>()) {
+    fn = &dispatch_entry.binding_.fn_expr_->as<FuncContent>();
+    for (const auto & [ key, val ] : fn->lookup_) {
+      if (val < args.pos_.size()) { continue; }
+      dispatch_entry.call_arg_types_.named_.emplace(key, nullptr);
     }
   }
 

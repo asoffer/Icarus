@@ -56,10 +56,6 @@ MAKE_LOG_ERROR(DeclarationInAccess,
 MAKE_LOG_ERROR(UninferrableType,
                "Unable to infer the type of the following expression:")
 
-// TODO point to the reason(s) why the init_val is non-const
-MAKE_LOG_ERROR(
-    NonConstantBindingToConstantDeclaration,
-    "Attempting to initialize a constant with a non-constant value.")
 MAKE_LOG_ERROR(InferringHole,
                "Attempting to infer the type of an uninitialized value")
 MAKE_LOG_ERROR(UninitializedConstant,
@@ -80,19 +76,8 @@ MAKE_LOG_ERROR(AndEqNeedsBool,
                "Operator '&=' must take arguments of type bool.")
 MAKE_LOG_ERROR(OrEqNeedsBool, "Operator '|=' must take arguments of type bool.")
 MAKE_LOG_ERROR(PrintingVoid, "Attempting to print an object of type void")
-MAKE_LOG_ERROR(TakingAddressOfConstant,
-               "Attempting to take the address of a constant.")
-MAKE_LOG_ERROR(TakingAddressOfTemporary,
-               "Attempting to take the address of a temporary.")
-MAKE_LOG_ERROR(AssigningToConstant, "Attempting to assign to a constant.")
-MAKE_LOG_ERROR(AssigningToTemporary, "Attempting to assign to a temporary.")
-MAKE_LOG_ERROR(ModifyingToConstant, "Attempting to modify to a constant.")
-MAKE_LOG_ERROR(ModifyingToTemporary, "Attempting to modify to a temporary.")
-MAKE_LOG_ERROR(EvaluatingNonConstant,
-               "Attempting to evaluate a non-constant at compile-time.")
-MAKE_LOG_ERROR(
-    EarlyRequiredBlock,
-    "Required block appears on the left-hand side of `|` operator.")
+MAKE_LOG_ERROR(EarlyRequiredBlock,
+               "Required block appears on the left-hand side of `|` operator.")
 MAKE_LOG_ERROR(NoCallMatch,
                "Failed to find a matching function signature to call.")
 

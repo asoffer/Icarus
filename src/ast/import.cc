@@ -49,10 +49,8 @@ Import *Import::Clone() const {
 
 void Import::VerifyType(Context *ctx) {
   VERIFY_AND_RETURN_ON_ERROR(operand_);
-  lvalue = Assign::Const;
   type   = type::Module;
-  if (!operand_->type->is<type::CharBuffer>() ||
-      operand_->lvalue != Assign::Const) {
+  if (!operand_->type->is<type::CharBuffer>()) {
     ctx->error_log_.InvalidImport(operand_->span);
   } else {
     cache_ = frontend::Source::Name{

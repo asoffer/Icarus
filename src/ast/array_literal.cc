@@ -31,7 +31,6 @@ std::string ArrayLiteral::to_string(size_t n) const {
 void ArrayLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
-  lvalue = Assign::Const;
   if (elems_.empty()) {
     type = type::EmptyArray;
     return;
@@ -41,7 +40,6 @@ void ArrayLiteral::VerifyType(Context *ctx) {
     elem->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(elem);
-    if (elem->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
 
   const type::Type *joined = type::Err;

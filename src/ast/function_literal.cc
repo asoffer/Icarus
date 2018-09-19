@@ -118,7 +118,6 @@ void FuncContent::assign_scope(Scope *scope) {
 
 void FuncContent::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  lvalue = Assign::Const;
   for (auto &input : inputs) {
     input->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
@@ -200,7 +199,6 @@ void Function::VerifyType(Context *ctx) {
   if (is_generic) {
     VERIFY_STARTING_CHECK_EXPR;
     type   = type::Generic;
-    lvalue = Assign::Const;
   } else {
     FuncContent::VerifyType(ctx);
   }

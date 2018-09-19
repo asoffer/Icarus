@@ -34,7 +34,6 @@ void Switch::assign_scope(Scope *scope) {
 
 void Switch::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  lvalue = Assign::RVal;
   std::unordered_set<const type::Type *> types;
   for (auto & [ expr, cond ] : cases_) {
     cond->VerifyType(ctx);

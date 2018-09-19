@@ -112,35 +112,6 @@ void Binop::VerifyType(Context *ctx) {
   }
 
   using Language::Operator;
-  if (lhs->lvalue != Assign::LVal && op == Operator::Assign) {
-    switch (lhs->lvalue) {
-      case Assign::Unset: UNREACHABLE();
-      case Assign::Const: ctx->error_log_.AssigningToConstant(span); break;
-      case Assign::RVal: ctx->error_log_.AssigningToTemporary(span); break;
-      case Assign::LVal: UNREACHABLE();
-    }
-    limit_to(StageRange::Nothing());
-
-  } else if (lhs->lvalue != Assign::LVal &&
-             (op == Operator::OrEq || op == Operator::XorEq ||
-              op == Operator::AndEq || op == Operator::AddEq ||
-              op == Operator::SubEq || op == Operator::MulEq ||
-              op == Operator::DivEq || op == Operator::ModEq)) {
-    switch (lhs->lvalue) {
-      case Assign::Unset: UNREACHABLE();
-      case Assign::Const: ctx->error_log_.ModifyingToConstant(span); break;
-      case Assign::RVal: ctx->error_log_.ModifyingToTemporary(span); break;
-      case Assign::LVal: UNREACHABLE();
-    }
-    limit_to(StageRange::Nothing());
-  } else if (op == Operator::Index) {
-    lvalue = rhs->lvalue;
-  } else if (lhs->lvalue == Assign::Const && rhs->lvalue == Assign::Const) {
-    lvalue = Assign::Const;
-  } else {
-    lvalue = Assign::RVal;
-  }
-
   // TODO if lhs is reserved?
   if (op == Operator::Assign) {
     if (lhs->type->is<type::Tuple>()) {
@@ -207,7 +178,6 @@ void Binop::VerifyType(Context *ctx) {
       // TODO check that the type actually can be cast
       // correctly.
       type   = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
-      lvalue = lhs->lvalue;
     } break;
     case Operator::XorEq: {
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
@@ -352,7 +322,6 @@ void Binop::VerifyType(Context *ctx) {
         limit_to(StageRange::Nothing());
         return;
       } else {
-        ASSERT(lhs->lvalue == Assign::Const); // TODO error
         type = type::Type_;
       }
 
@@ -362,12 +331,10 @@ void Binop::VerifyType(Context *ctx) {
         limit_to(StageRange::Nothing());
         return;
       } else {
-        ASSERT(rhs->lvalue == Assign::Const); // TODO error
         type = type::Type_;
       }
 
       if (type != type::Err) { type = type::Type_; }
-      lvalue = Assign::Const;
     } break;
     default: UNREACHABLE();
   }
@@ -480,7 +447,6 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::As: {
       auto val = lhs->EmitIR(ctx)[0];
       if (val.type == type) {
-        // TODO lvalue/rvalue?
         return {val};
       } else if (i32 const *n = std::get_if<i32>(&val.value);
                  n && type == type::Real) {

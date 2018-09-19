@@ -36,8 +36,6 @@ void StructLiteral::assign_scope(Scope *scope) {
 
 void StructLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-
-  lvalue = Assign::Const;
   type = type::Type_;
 }
 

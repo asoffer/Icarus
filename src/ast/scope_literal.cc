@@ -28,7 +28,6 @@ void ScopeLiteral::assign_scope(Scope *scope) {
 
 void ScopeLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  lvalue = Assign::Const;
   type = type::Scp({});
   // TODO
 }

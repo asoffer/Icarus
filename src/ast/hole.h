@@ -13,7 +13,6 @@ struct Hole : public Identifier {
   Hole(const TextSpan &span) : Identifier(span, "--") {
     stage_range_.low = DoneBodyValidationStage;
     type             = nullptr;
-    lvalue           = Assign::Const;
   }
   ~Hole() override {}
 

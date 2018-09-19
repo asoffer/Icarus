@@ -382,15 +382,12 @@ void Call::assign_scope(Scope *scope) {
 
 void Call::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  bool all_const = true;
-  args_.Apply([ctx, &all_const, this](auto &arg) {
+  args_.Apply([ctx, this](auto &arg) {
     arg->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;  // TODO audit macro in lambda
     if (arg->type == type::Err) { this->type = type::Err; }
-    all_const &= arg->lvalue == Assign::Const;
   });
 
-  lvalue = all_const ? Assign::Const : Assign::RVal;
   if (type == type::Err) {
     limit_to(StageRange::Nothing());
     return;

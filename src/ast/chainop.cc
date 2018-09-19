@@ -155,13 +155,11 @@ void ChainOp::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   bool found_err = false;
 
-  lvalue = Assign::Const;
   for (auto &expr : exprs) {
     expr->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
     if (expr->type == type::Err) { found_err = true; }
-    if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
   if (found_err) {
     type = type::Err;

@@ -29,7 +29,6 @@ void Interface::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   type   = type::Interface;
-  lvalue = Assign::Const;
 
   for (auto &decl: decls_) {
     decl.VerifyType(ctx);

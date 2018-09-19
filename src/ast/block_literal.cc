@@ -28,10 +28,7 @@ void BlockLiteral::assign_scope(Scope *scope) {
   after_->assign_scope(body_scope_.get());
 }
 
-void BlockLiteral::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-  lvalue = Assign::Const;
-}
+void BlockLiteral::VerifyType(Context *ctx) { VERIFY_STARTING_CHECK_EXPR; }
 
 void BlockLiteral::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);

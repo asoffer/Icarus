@@ -58,7 +58,6 @@ void ScopeNode::assign_scope(Scope *scope) {
 
 void ScopeNode::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  lvalue = Assign::RVal;
 
   for (auto & [ block_expr, block_node ] : block_map_) {
     block_node.stmts_.VerifyType(ctx);

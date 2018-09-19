@@ -208,7 +208,6 @@ void Declaration::VerifyType(Context *ctx) {
   {
     VERIFY_STARTING_CHECK_EXPR;
 
-    lvalue = const_ ? Assign::Const : Assign::RVal;
     identifier->decl = this;
 
     if (type_expr) {
@@ -277,11 +276,6 @@ void Declaration::VerifyType(Context *ctx) {
     if (const_ && init_val) {
       if (init_val->is<Hole>()) {
         ctx->error_log_.UninitializedConstant(span);
-        limit_to(StageRange::Nothing());
-        return;
-      } else if (init_val->lvalue != Assign::Const) {
-        ASSERT(init_val->lvalue != Assign::Unset);
-        ctx->error_log_.NonConstantBindingToConstantDeclaration(span);
         limit_to(StageRange::Nothing());
         return;
       }
@@ -437,9 +431,8 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized(this)) { return {}; }
     if (IsCustomInitialized()) {
-      auto initialize = (init_val->lvalue == Assign::RVal ? type::EmitMoveInit
-                                                          : type::EmitCopyInit);
-      initialize(init_val->type, type, init_val->EmitIR(ctx)[0], addr_, ctx);
+      type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx)[0], addr_,
+                         ctx);
     } else {
       type->EmitInit(addr_, ctx);
     }

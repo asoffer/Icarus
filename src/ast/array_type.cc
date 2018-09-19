@@ -22,7 +22,6 @@ void ArrayType::assign_scope(Scope *scope) {
 
 void ArrayType::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  lvalue = Assign::Const;
 
   length_->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
@@ -34,9 +33,6 @@ void ArrayType::VerifyType(Context *ctx) {
   type = type::Type_;
 
   if (length_->is<Hole>()) { return; }
-  if (length_->lvalue != Assign::Const || data_type_->lvalue != Assign::Const) {
-    lvalue = Assign::RVal;
-  }
 
   if (length_->type != type::Int) {
     ctx->error_log_.ArrayIndexType(span);

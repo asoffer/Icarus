@@ -6,8 +6,6 @@
 
 struct Context;
 
-enum class Assign : char { Unset, Const, LVal, RVal };
-
 namespace IR {
 struct Val;
 }  // namespace IR
@@ -29,25 +27,6 @@ struct Expression : public Node {
       const Node *correspondant,
       const base::unordered_map<const Expression *, IR::Val> &) = 0;
 
-  // Use these two functions to verify that an identifier can be declared using
-  // these expressions. We pass in a string representing the identifier being
-  // declared to be used in error messages.
-  //
-  // VerifyTypeForDeclaration verifies that the expresison represents a type and
-  // returns the type it represents (or Error if the type is invalid). An
-  // expression could be invalid if it doesn't represent a type or it represents
-  // void.
-  type::Type *VerifyTypeForDeclaration(const std::string &id_tok, Context *ctx);
-
-  // VerifyValueForDeclaration verifies that the expression's type can be used
-  // for a declaration. In practice, it is typically used on initial values for
-  // a declaration. That is, when we see "foo := bar", we verify that the type
-  // of bar is valid. This function has the same return characteristics as
-  // VerifyTypeForDeclaration. Specifically, it returns the type or Error if the
-  // type is invalid.
-  type::Type *VerifyValueForDeclaration(const std::string &id_tok);
-
-  Assign lvalue          = Assign::Unset;
   const type::Type *type = nullptr;
 };
 } // namespace AST

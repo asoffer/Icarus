@@ -12,10 +12,7 @@ extern Type const *Code;
 
 namespace AST {
 struct CodeBlock : public Expression {
-  CodeBlock() {
-    lvalue = Assign::Const;
-    type   = type::Code;
-  }
+  CodeBlock() { type = type::Code; }
   CodeBlock(std::string_view s) : CodeBlock() { content_ = std::string(s); }
 
   CodeBlock(const CodeBlock &)     = default;

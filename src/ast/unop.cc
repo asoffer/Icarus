@@ -83,7 +83,6 @@ void Unop::contextualize(
     auto terminal    = std::make_unique<Terminal>();
     terminal->scope_ = scope_; // TODO Eh? Do I care?
     terminal->span   = span;
-    terminal->lvalue = lvalue; // TODO????
     terminal->type   = iter->second.type;
     terminal->value  = iter->second;
     operand          = std::move(terminal);
@@ -113,34 +112,18 @@ void Unop::VerifyType(Context *ctx) {
 
   using Language::Operator;
 
-  if (op != Operator::At && op != Operator::And) {
-    lvalue = operand->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
-  }
-
   switch (op) {
-    case Operator::TypeOf:
-      type   = type::Type_;
-      lvalue = Assign::Const;
-      break;
-    case Operator::Eval:
-      type   = operand->type;
-      lvalue = Assign::Const;
-      if (operand->lvalue != Assign::Const) {
-        ctx->error_log_.EvaluatingNonConstant(span);
-        limit_to(StageRange::NoEmitIR());
-      }
-      break;
+    case Operator::TypeOf: type = type::Type_; break;
+    case Operator::Eval: type = operand->type; break;
     case Operator::Generate: type = type::Void(); break;
     case Operator::Which: {
       type   = type::Type_;
-      lvalue = operand->lvalue == Assign::Const ? Assign::Const : Assign::RVal;
       if (!operand->type->is<type::Variant>()) {
         ctx->error_log_.WhichNonVariant(operand->type, span);
         limit_to(StageRange::NoEmitIR());
       }
     } break;
     case Operator::At: {
-      lvalue = Assign::LVal;
       if (operand->type->is<type::Pointer>()) {
         type = operand->type->as<type::Pointer>().pointee;
 
@@ -150,21 +133,7 @@ void Unop::VerifyType(Context *ctx) {
         limit_to(StageRange::Nothing());
       }
     } break;
-    case Operator::And: {
-      switch (operand->lvalue) {
-        case Assign::Const:
-          ctx->error_log_.TakingAddressOfConstant(span);
-          lvalue = Assign::RVal;
-          break;
-        case Assign::RVal:
-          ctx->error_log_.TakingAddressOfTemporary(span);
-          lvalue = Assign::RVal;
-          break;
-        case Assign::LVal: break;
-        case Assign::Unset: UNREACHABLE();
-      }
-      type = type::Ptr(operand->type);
-    } break;
+    case Operator::And: type = type::Ptr(operand->type); break;
     case Operator::Mul: {
       limit_to(operand);
       if (operand->type != type::Type_) {
@@ -246,14 +215,9 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       }
     case Language::Operator::TypeOf: return {IR::Val(operand->type)};
     case Language::Operator::Which:
-      if (lvalue == Assign::Const) {
-        NOT_YET();
-      } else {
-        return {IR::Val::Reg(
-            IR::LoadType(IR::VariantType(
-                std::get<IR::Register>(operand->EmitIR(ctx)[0].value))),
-            type::Type_)};
-      }
+      return {IR::Val::Reg(IR::LoadType(IR::VariantType(std::get<IR::Register>(
+                               operand->EmitIR(ctx)[0].value))),
+                           type::Type_)};
     case Language::Operator::And:
       return {IR::Val::Reg(operand->EmitLVal(ctx)[0], type::Ptr(type))};
     case Language::Operator::Eval: {

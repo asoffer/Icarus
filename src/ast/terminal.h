@@ -8,22 +8,12 @@
 namespace AST {
 struct Terminal : public Expression {
   Terminal() = default;
-  Terminal(const TextSpan &span, IR::Val val) : Expression(span) {
-    stage_range_.low = DoneBodyValidationStage;
-    type             = val.type;
-    lvalue           = Assign::Const;
-    value            = std::move(val);
-  }
+  Terminal(const TextSpan &span, IR::Val val);
 
   ~Terminal() override {}
 
+  void assign_scope(Scope *scope) override;
   std::string to_string(size_t) const override { return value.to_string(); }
-
-  void assign_scope(Scope *scope) override {
-    STAGE_CHECK(AssignScopeStage, AssignScopeStage);
-    scope_ = scope;
-    if (type != type::Type_) { return; }
-  }
 
   void VerifyType(Context *) override {}
   void Validate(Context *) override {}
@@ -33,9 +23,9 @@ struct Terminal : public Expression {
       const Node *correspondant,
       const base::unordered_map<const Expression *, IR::Val> &) override {}
 
-  Terminal *Clone() const { return new Terminal(*this); }
-  base::vector<IR::Val> EmitIR(Context *) override { return {value}; }
-  base::vector<IR::Register> EmitLVal(Context *ct) override { UNREACHABLE(this); }
+  Terminal *Clone() const;
+  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Register> EmitLVal(Context *ct) override;
 
   IR::Val value = IR::Val::None();
 };

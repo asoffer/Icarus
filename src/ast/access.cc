@@ -32,11 +32,6 @@ void Access::assign_scope(Scope *scope) {
 void Access::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   VERIFY_AND_RETURN_ON_ERROR(operand);
-  lvalue =
-      (operand->type->is<type::Array>() &&
-       operand->type->as<type::Array>().fixed_length && member_name == "size")
-          ? Assign::Const
-          : operand->lvalue;
 
   auto base_type = DereferenceAll(operand->type);
   if (base_type->is<type::Array>()) {
