@@ -97,7 +97,7 @@ void Binop::assign_scope(Scope *scope) {
   rhs->assign_scope(scope);
 }
 
-void Binop::VerifyType(Context *ctx) {
+type::Type const *Binop::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   lhs->VerifyType(ctx);
@@ -108,7 +108,7 @@ void Binop::VerifyType(Context *ctx) {
     type = type::Err;
     limit_to(lhs);
     limit_to(rhs);
-    return;
+    return nullptr;
   }
 
   using Language::Operator;
@@ -147,7 +147,7 @@ void Binop::VerifyType(Context *ctx) {
       }
     }
 
-    return;
+    return type;
   }
 
   switch (op) {
@@ -161,11 +161,11 @@ void Binop::VerifyType(Context *ctx) {
         type = type::Char;  // Assuming it's a char, even if the index type was
                             // wrong.
         ctx->types_.buffered_emplace(this, type::Char);
-        return;
+        return type::Char;
       } else if (!lhs->type->is<type::Array>()) {
         ctx->error_log_.IndexingNonArray(span, lhs->type);
         limit_to(StageRange::NoEmitIR());
-        return;
+        return nullptr;
       } else {
         type = lhs->type->as<type::Array>().data_type;
         ctx->types_.buffered_emplace(this,
@@ -174,59 +174,63 @@ void Binop::VerifyType(Context *ctx) {
         if (rhs->type == type::Int) { break; }
         ctx->error_log_.NonIntegralArrayIndex(span, rhs->type);
         limit_to(StageRange::NoEmitIR());
-        return;
+        return lhs->type->as<type::Array>().data_type;
       }
     } break;
-    case Operator::As: {
+    case Operator::As:
       // TODO check that the type actually can be cast
       // correctly.
-      type   = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
-    } break;
-    case Operator::XorEq: {
+      type = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
+      ctx->types_.buffered_emplace(this, type);
+      return type;
+    case Operator::XorEq:
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
         type = type::Bool;
         ctx->types_.buffered_emplace(this, type::Bool);
+        return type::Bool;
       } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
         type = lhs->type;
         ctx->types_.buffered_emplace(this, lhs->type);
+        return lhs->type;
       } else {
         type = type::Err;
         // TODO could be bool or enum.
         ctx->error_log_.XorEqNeedsBool(span);
         limit_to(StageRange::Nothing());
-        return;
+        return nullptr;
       }
-    } break;
-    case Operator::AndEq: {
+    case Operator::AndEq: 
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
         type = type::Bool;
         ctx->types_.buffered_emplace(this, type::Bool);
+        return type::Bool;
       } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
         type = lhs->type;
         ctx->types_.buffered_emplace(this, lhs->type);
+        return lhs->type;
       } else {
         type = type::Err;
         // TODO could be bool or enum.
         ctx->error_log_.AndEqNeedsBool(span);
         limit_to(StageRange::Nothing());
-        return;
+        return nullptr;
       }
-    } break;
-    case Operator::OrEq: {
+    case Operator::OrEq:
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
         type = type::Bool;
         ctx->types_.buffered_emplace(this, type::Bool);
+        return type::Bool;
       } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
         type = lhs->type;
         ctx->types_.buffered_emplace(this, lhs->type);
+        return lhs->type;
       } else {
         type = type::Err;
         // TODO could be bool or enum.
         ctx->error_log_.OrEqNeedsBool(span);
         limit_to(StageRange::Nothing());
-        return;
+        return nullptr;
       }
-    } break;
 
 #define CASE(OpName, symbol, ret_type)                                         \
   case Operator::OpName: {                                                     \
@@ -234,6 +238,7 @@ void Binop::VerifyType(Context *ctx) {
         (lhs->type == type::Real && rhs->type == type::Real)) {                \
       type = ret_type;                                                         \
       ctx->types_.buffered_emplace(this, ret_type);                            \
+      return ret_type;                                                         \
     } else {                                                                   \
       FnArgs<Expression *> args;                                               \
       args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};          \
@@ -262,11 +267,13 @@ void Binop::VerifyType(Context *ctx) {
           (lhs->type == type::Code && rhs->type == type::Code)) {
         type = lhs->type;
         ctx->types_.buffered_emplace(this, lhs->type);
+        return lhs->type;
       } else if (lhs->type->is<type::CharBuffer>() &&
                  rhs->type->is<type::CharBuffer>()) {
         type = type::CharBuf(lhs->type->as<type::CharBuffer>().length_ +
                              rhs->type->as<type::CharBuffer>().length_);
         ctx->types_.buffered_emplace(this, type);
+        return type;
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
@@ -287,6 +294,7 @@ void Binop::VerifyType(Context *ctx) {
                                           for Add, not Sub, etc */
         type = type::Void();
         ctx->types_.buffered_emplace(this, type::Void());
+        return type::Void();
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression*>{{lhs.get(), rhs.get()}};
@@ -297,11 +305,12 @@ void Binop::VerifyType(Context *ctx) {
       }
     } break;
     // Mul is done separately because of the function composition
-    case Operator::Mul: {
+    case Operator::Mul:
       if ((lhs->type == type::Int && rhs->type == type::Int) ||
           (lhs->type == type::Real && rhs->type == type::Real)) {
         type = lhs->type;
         ctx->types_.buffered_emplace(this, lhs->type);
+        return lhs->type;
       } else if (lhs->type->is<type::Function>() &&
                  rhs->type->is<type::Function>()) {
         auto *lhs_fn = &lhs->type->as<type::Function>();
@@ -309,12 +318,12 @@ void Binop::VerifyType(Context *ctx) {
         if (rhs_fn->output == lhs_fn->input) {
           type = type::Func({rhs_fn->input}, {lhs_fn->output});
           ctx->types_.buffered_emplace(this, type);
-
+          return type;
         } else {
           type = type::Err;
           ctx->error_log_.NonComposableFunctions(span);
           limit_to(StageRange::Nothing());
-          return;
+          return nullptr;
         }
 
       } else {
@@ -326,35 +335,33 @@ void Binop::VerifyType(Context *ctx) {
         if (type == type::Err) {
           ctx->error_log_.NoMatchingOperator("+", lhs->type, rhs->type, span);
           limit_to(StageRange::Nothing());
+          return nullptr;
         }
       }
-    } break;
-    case Operator::Arrow: {
+      return type;
+    case Operator::Arrow:
+      type = nullptr;
       if (!IsTypeOrTupleOfTypes(lhs->type)) {
         type = type::Err;
         ctx->error_log_.NonTypeFunctionInput(span);
         limit_to(StageRange::Nothing());
-        return;
-      } else {
-        type = type::Type_;
       }
 
       if (!IsTypeOrTupleOfTypes(rhs->type)) {
         type = type::Err;
         ctx->error_log_.NonTypeFunctionOutput(span);
         limit_to(StageRange::Nothing());
-        return;
-      } else {
-        type = type::Type_;
       }
 
       if (type != type::Err) {
         type = type::Type_;
         ctx->types_.buffered_emplace(this, type::Type_);
+        return type::Type_;
       }
-    } break;
+      return type;
     default: UNREACHABLE();
   }
+  return type;
 }
 
 void Binop::Validate(Context *ctx) {

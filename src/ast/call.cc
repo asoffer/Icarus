@@ -380,17 +380,20 @@ void Call::assign_scope(Scope *scope) {
   args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
 }
 
-void Call::VerifyType(Context *ctx) {
+type::Type const *Call::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   args_.Apply([ctx, this](auto &arg) {
     arg->VerifyType(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;  // TODO audit macro in lambda
+    [&]() -> type::Type const * {
+      HANDLE_CYCLIC_DEPENDENCIES;
+      return nullptr;
+    }();  // TODO audit macro in lambda
     if (arg->type == type::Err) { this->type = type::Err; }
   });
 
   if (type == type::Err) {
     limit_to(StageRange::Nothing());
-    return;
+    return nullptr;
   }
 
   if (fn_->is<Terminal>()) {
@@ -403,7 +406,7 @@ void Call::VerifyType(Context *ctx) {
       NOT_YET();
 #ifdef DBG
     } else if (fn_val == DebugIrFunc()) {
-      return;
+      return type::Func({}, {});
 #endif  // DBG
     } else if (fn_val == ErrorFunc()) {
       NOT_YET();
@@ -415,7 +418,7 @@ void Call::VerifyType(Context *ctx) {
       ASSERT(args_.pos_[0]->type == type::Type_);
       type = type::Int;
       ctx->types_.buffered_emplace(this, type::Int);
-      return;
+      return type::Int;
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
@@ -427,7 +430,7 @@ void Call::VerifyType(Context *ctx) {
       ASSERT(args_.pos_[1]->type == type::Int);
       type = type::Void();
       ctx->types_.buffered_emplace(this, type::Void());
-      return;
+      return type::Void();
     } else if (fn_val == IR::Val::BuiltinGeneric(ForeignFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
@@ -438,7 +441,7 @@ void Call::VerifyType(Context *ctx) {
       type = backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx);
       ctx->types_.buffered_emplace(this, type);
       ASSERT(type, Is<type::Function>());
-      return;
+      return type;
     } else {
       UNREACHABLE();
     }
@@ -454,9 +457,7 @@ void Call::VerifyType(Context *ctx) {
           ? DispatchTable::Make(args, fn_.get(), ctx)
           : DispatchTable::Make(args, fn_->as<Identifier>().token, scope_, ctx);
 
-  if (type == type::Err) {
-    limit_to(StageRange::Nothing());
-  }
+  if (type == type::Err) { limit_to(StageRange::Nothing()); }
 
   u64 expanded_size = 1;
   args_.Apply([&expanded_size](auto &arg) {
@@ -470,7 +471,7 @@ void Call::VerifyType(Context *ctx) {
     ctx->error_log_.NoCallMatch(span);
     type = fn_->type = type::Err;
     limit_to(StageRange::Nothing());
-    return;
+    return nullptr;
   }
 
   if (fn_->is<Identifier>()) {
@@ -480,6 +481,7 @@ void Call::VerifyType(Context *ctx) {
     // type::Err).
     fn_->type = type::Void();
   }
+  return type;
 }
 
 void Call::Validate(Context *ctx) {

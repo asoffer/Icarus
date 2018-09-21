@@ -12,7 +12,7 @@ struct Access : public Expression {
   }
 
   void assign_scope(Scope *scope) override;
-  void VerifyType(Context *) override;
+  type::Type const *VerifyType(Context *) override;
   void Validate(Context *) override;
   void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override {
     operand->SaveReferences(scope, args);

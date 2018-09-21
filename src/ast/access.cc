@@ -29,7 +29,7 @@ void Access::assign_scope(Scope *scope) {
   operand->assign_scope(scope);
 }
 
-void Access::VerifyType(Context *ctx) {
+type::Type const *Access::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   VERIFY_OR_RETURN(operand_type, operand);
 
@@ -75,6 +75,7 @@ void Access::VerifyType(Context *ctx) {
     type = type::Err;
     limit_to(StageRange::Nothing());
   }
+  return type;
 }
 
 void Access::Validate(Context *ctx) {

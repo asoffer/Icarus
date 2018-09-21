@@ -26,7 +26,7 @@ Identifier *Identifier::Clone() const {
   return result;
 }
 
-void Identifier::VerifyType(Context *ctx) {
+type::Type const *Identifier::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   if (decl == nullptr) {
@@ -46,8 +46,9 @@ void Identifier::VerifyType(Context *ctx) {
             // TODO Note that you're not assigning a declaration here. Is that
             // required? You shouldn't be relying on it... that's what the
             // staging system is for.
-            type   = type::Type_;
-            return;
+            type = type::Type_;
+            ctx->types_.emplace(this, type::Type_);
+            return type::Type_;
           }
         }
 
@@ -61,13 +62,13 @@ void Identifier::VerifyType(Context *ctx) {
         }
         type = type::Err;
         limit_to(StageRange::Nothing());
-        return;
+        return nullptr;
       default:
         // TODO Should we allow the overload?
         ctx->error_log_.UnspecifiedOverload(span);
         type = type::Err;
         limit_to(StageRange::Nothing());
-        return;
+        return nullptr;
     }
   }
 
@@ -79,10 +80,11 @@ void Identifier::VerifyType(Context *ctx) {
   }
 
   // No guarantee the declaration has been validated yet.
-  decl->VerifyType(ctx);
+  auto *decl_type = decl->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
-  type = decl->type;
-  ctx->types_.emplace(this, decl->type);
+  type = decl_type;
+  ctx->types_.emplace(this, decl_type);
+  return decl_type;
 }
 
 void Identifier::Validate(Context *ctx) {

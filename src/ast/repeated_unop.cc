@@ -67,10 +67,17 @@ RepeatedUnop *RepeatedUnop::Clone() const {
   return result;
 }
 
-void RepeatedUnop::VerifyType(Context *ctx) {
-  STAGE_CHECK(StartTypeVerificationStage, DoneTypeVerificationStage);
+type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
+  if (stage_range_.high < StartTypeVerificationStage ||
+      stage_range_.low >= DoneTypeVerificationStage) {
+    return nullptr;
+  }
+  base::defer deferred(
+      [this]() { this->stage_range_.low = DoneTypeVerificationStage; });
+  stage_range_.low = StartTypeVerificationStage;
+
   args_.VerifyType(ctx);
-  if (args_.type == type::Err) { return; }
+  if (args_.type == type::Err) { return nullptr; }
 
   if (op_ == Language::Operator::Print) {
     ASSERT(dispatch_tables_.size() == args_.exprs.size());
@@ -96,6 +103,7 @@ void RepeatedUnop::VerifyType(Context *ctx) {
       }
     }
   }
+  return nullptr;
 }
 
 base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {

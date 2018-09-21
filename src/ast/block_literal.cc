@@ -28,18 +28,26 @@ void BlockLiteral::assign_scope(Scope *scope) {
   after_->assign_scope(body_scope_.get());
 }
 
-void BlockLiteral::VerifyType(Context *ctx) { VERIFY_STARTING_CHECK_EXPR; }
+type::Type const *BlockLiteral::VerifyType(Context *ctx) {
+  VERIFY_STARTING_CHECK_EXPR;
+  return type;
+}
 
 void BlockLiteral::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-  ctx->types_.buffered_emplace(this, type);
-  VERIFY_OR_RETURN(before_type, before_);
-  VERIFY_OR_RETURN(after_type, after_);
+  // Because this returns void, we need to ignore the return value. Wrapping in
+  // an immediately invoked lambda.
+  [&]() -> type::Type const * {
+    ctx->types_.buffered_emplace(this, type);
+    [[maybe_unused]] VERIFY_OR_RETURN(before_type, before_);
+    [[maybe_unused]] VERIFY_OR_RETURN(after_type, after_);
 
-  // TODO type-check before/after functions.
+    // TODO type-check before/after functions.
 
-  before_->Validate(ctx);
-  after_->Validate(ctx);
+    before_->Validate(ctx);
+    after_->Validate(ctx);
+    return type;
+  }();
 }
 
 void BlockLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {

@@ -25,7 +25,7 @@ std::string Interface::to_string(size_t n) const {
   return ss.str();
 }
 
-void Interface::VerifyType(Context *ctx) {
+type::Type const *Interface::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   type = type::Interface;
@@ -37,6 +37,7 @@ void Interface::VerifyType(Context *ctx) {
     if (decl.init_val != nullptr) { NOT_YET(); }
     limit_to(&decl);
   }
+  return type::Interface;
 }
 
 void Interface::Validate(Context *ctx) {

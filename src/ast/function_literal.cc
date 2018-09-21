@@ -116,7 +116,7 @@ void FuncContent::assign_scope(Scope *scope) {
   statements->assign_scope(fn_scope.get());
 }
 
-void FuncContent::VerifyType(Context *ctx) {
+type::Type const *FuncContent::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   for (auto &input : inputs) {
     input->VerifyType(ctx);
@@ -131,7 +131,7 @@ void FuncContent::VerifyType(Context *ctx) {
   if (ctx->num_errors() > 0) {
     type = type::Err;
     limit_to(StageRange::Nothing());
-    return;
+    return nullptr;
   }
 
   if (!return_type_inferred_) {
@@ -179,16 +179,19 @@ void FuncContent::VerifyType(Context *ctx) {
         ret_types.push_back(ret_type);
       }
     }
+    if (type == type::Err) { return nullptr; }
     type = type::Func(std::move(input_type_vec), std::move(ret_types));
     ctx->types_.buffered_emplace(
         this, type::Func(std::move(input_type_vec), std::move(ret_types)));
 
   } else {
     Validate(ctx);
+    if (type == type::Err) { return nullptr; }
   }
+  return type;
 }
 
-void Function::VerifyType(Context *ctx) {
+type::Type const *Function::VerifyType(Context *ctx) {
   bool is_generic = false;
   // TODO this loop can be decided on much earlier.
   for (const auto &input : inputs) {
@@ -201,8 +204,9 @@ void Function::VerifyType(Context *ctx) {
   if (is_generic) {
     VERIFY_STARTING_CHECK_EXPR;
     type   = type::Generic;
+    return type;
   } else {
-    FuncContent::VerifyType(ctx);
+    return FuncContent::VerifyType(ctx);
   }
 }
 
@@ -221,7 +225,10 @@ void FuncContent::Validate(Context *ctx) {
 
   // NOTE! Type verifcation on statements first!
   statements->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
+  [&]() {
+    HANDLE_CYCLIC_DEPENDENCIES;
+    return nullptr;
+  }();
 
   base::vector<const Expression *> rets;
   statements->ExtractReturns(&rets);

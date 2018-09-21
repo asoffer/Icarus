@@ -22,7 +22,7 @@ struct Hole : public Identifier {
   void contextualize(const Node *,
                      const base::unordered_map<const Expression *, IR::Val> &) {}
   void ExtractReturns(base::vector<const Expression *> *) const {}
-  void VerifyType(Context *) {}
+  type::Type const *VerifyType(Context *) { return nullptr; }
   void Validate(Context *ctx) {}
 
   base::vector<IR::Val> EmitIR(Context *) override { return {IR::Val::None()}; }

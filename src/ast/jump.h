@@ -23,7 +23,7 @@ struct Jump : public Node {
   }
 
   void assign_scope(Scope *scope) override { scope_ = scope; }
-  void VerifyType(Context *) override {}
+  type::Type const *VerifyType(Context *) override { return nullptr; }
   void Validate(Context *) override {}
   void SaveReferences(Scope *scope, base::vector<IR::Val> *) override {}
   void ExtractReturns(base::vector<const Expression *> *) const override {};

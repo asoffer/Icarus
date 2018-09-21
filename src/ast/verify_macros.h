@@ -36,14 +36,16 @@ extern Type const *Err;
     }                                                                          \
     type = type::Err;                                                          \
     limit_to(StageRange::Nothing());                                           \
-    return;                                                                    \
+    return nullptr;                                                            \
   } while (false)
 
+// TODO this is probably not necessary if we treat this as a relatively pure
+// tree? We could likely just store the type of a declaration and nowhere else.
 #define VERIFY_STARTING_CHECK_EXPR                                             \
   base::defer defer_##__LINE__(                                                \
       [this]() { this->stage_range_.low = DoneTypeVerificationStage; });       \
-  if (stage_range_.high < StartTypeVerificationStage) { return; }              \
-  if (stage_range_.low >= DoneTypeVerificationStage) { return; }               \
+  if (stage_range_.high < StartTypeVerificationStage) { return nullptr; }      \
+  if (stage_range_.low >= DoneTypeVerificationStage) { return type; }          \
   if (stage_range_.low == StartTypeVerificationStage) {                        \
     ctx->cyc_dep_vec_ = ctx->error_log_.CyclicDependency();                    \
     HANDLE_CYCLIC_DEPENDENCIES;                                                \
@@ -60,8 +62,13 @@ extern Type const *Err;
       type = type::Err;                                                        \
       /* TODO Maybe this should be Nothing() */                                \
       limit_to(expr->stage_range_.high);                                       \
-      return;                                                                  \
+      return nullptr;                                                          \
     }                                                                          \
+  } while (false)
+
+#define RETURN_IF_NULL(expr)                                                   \
+  do {                                                                         \
+    if (expr == nullptr) { return nullptr; }                                   \
   } while (false)
 
 #endif  // ICARUS_AST_VERIFY_MACROS_H

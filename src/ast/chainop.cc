@@ -151,7 +151,7 @@ void ChainOp::assign_scope(Scope *scope) {
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
-void ChainOp::VerifyType(Context *ctx) {
+type::Type const *ChainOp::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   bool found_err = false;
 
@@ -164,7 +164,7 @@ void ChainOp::VerifyType(Context *ctx) {
   if (found_err) {
     type = type::Err;
     limit_to(StageRange::Nothing());
-    return;
+    return nullptr;
   }
 
   if (ops[0] == Language::Operator::Or) {
@@ -178,13 +178,14 @@ void ChainOp::VerifyType(Context *ctx) {
         goto not_blocks;
       }
     }
+    if (type == type::Err) { return nullptr; }
     if (exprs.back()->type != type::Block &&
         exprs.back()->type != type::OptBlock) {
       goto not_blocks;
     } else {
       type = exprs.back()->type;
       ctx->types_.buffered_emplace(this, type);
-      return;
+      return type;
     }
   }
   not_blocks:
@@ -215,11 +216,11 @@ void ChainOp::VerifyType(Context *ctx) {
         NOT_YET("log an error");
         if (failed) {
           limit_to(StageRange::Nothing());
-          return;
+          return nullptr;
         }
       }
 
-      return;
+      return nullptr;
     } break;
     default: {
       ASSERT(exprs.size() >= 2u);
@@ -268,6 +269,7 @@ void ChainOp::VerifyType(Context *ctx) {
                   case type::Cmp::None:
                     type = type::Err;
                     NOT_YET("log an error");
+                    return nullptr;
                 }
               } break;
               case Language::Operator::Lt:
@@ -280,6 +282,7 @@ void ChainOp::VerifyType(Context *ctx) {
                   case type::Cmp::None:
                     type = type::Err;
                     NOT_YET("log an error");
+                    return nullptr;
                 }
               } break;
               default: UNREACHABLE("Expecting a ChainOp operator type.");
@@ -288,9 +291,13 @@ void ChainOp::VerifyType(Context *ctx) {
         }
       }
 
-      if (type == type::Err) { limit_to(StageRange::Nothing()); }
+      if (type == type::Err) {
+        limit_to(StageRange::Nothing());
+        return nullptr;
+      }
       type = type::Bool;
       ctx->types_.buffered_emplace(this, type::Bool);
+      return type::Bool;
     }
   }
 }

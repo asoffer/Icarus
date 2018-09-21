@@ -26,11 +26,12 @@ void ScopeLiteral::assign_scope(Scope *scope) {
   for (auto &decl : decls_) { decl.assign_scope(body_scope_.get()); }
 }
 
-void ScopeLiteral::VerifyType(Context *ctx) {
+type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   type = type::Scp({});
   ctx->types_.buffered_emplace(this, type::Scp({}));
   // TODO
+  return type::Scp({});
 }
 
 void ScopeLiteral::Validate(Context *ctx) {

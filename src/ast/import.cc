@@ -47,7 +47,7 @@ Import *Import::Clone() const {
   return result;
 }
 
-void Import::VerifyType(Context *ctx) {
+type::Type const *Import::VerifyType(Context *ctx) {
   VERIFY_OR_RETURN(operand_type, operand_);
   type = type::Module;
   ctx->types_.buffered_emplace(this, type::Module);
@@ -60,5 +60,6 @@ void Import::VerifyType(Context *ctx) {
     ScheduleModule(*cache_);
   }
   limit_to(operand_);
+  return type::Module;
 }
 }  // namespace AST

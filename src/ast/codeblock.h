@@ -26,8 +26,9 @@ struct CodeBlock : public Expression {
   void assign_scope(Scope *scope) override {}
   CodeBlock *Clone() const { return new CodeBlock(*this); }
 
-  void VerifyType(Context *ctx) override {
+  type::Type const *VerifyType(Context *ctx) override {
     ctx->types_.buffered_emplace(this, type::Code);
+    return type::Code;
   }
   virtual void Validate(Context *) override {}
   void SaveReferences(Scope *, base::vector<IR::Val> *) override {}

@@ -56,7 +56,7 @@ void ScopeNode::assign_scope(Scope *scope) {
   }
 }
 
-void ScopeNode::VerifyType(Context *ctx) {
+type::Type const *ScopeNode::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   for (auto & [ block_expr, block_node ] : block_map_) {
@@ -72,8 +72,9 @@ void ScopeNode::VerifyType(Context *ctx) {
 
   if (!block_type->is<type::Scope>()) { NOT_YET("not a scope", block_type); }
 
-  type = type::Void();  // TODO can this evaluate to anything?
+  type = type::Void();
   ctx->types_.buffered_emplace(this, type::Void());
+  return type::Void();  // TODO can this evaluate to anything?
 }
 
 void ScopeNode::Validate(Context *ctx) {

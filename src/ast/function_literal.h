@@ -29,7 +29,7 @@ struct FuncContent : public Expression {
   ~FuncContent() override {}
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
-  void VerifyType(Context *) override;
+  type::Type const *VerifyType(Context *) override;
   void Validate(Context *) override;
   void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
   void ExtractReturns(base::vector<const Expression *> *) const override;
@@ -76,7 +76,7 @@ struct Function : public FuncContent {
   // Represents a literal function as specified in the source code. This may
   // have unbound constant arguments.
 
-  void VerifyType(Context *ctx) override;
+  type::Type const *VerifyType(Context *ctx) override;
   void Validate(Context *ctx) override;
   Function *Clone() const override;
   base::vector<IR::Val> EmitIR(Context *) override;

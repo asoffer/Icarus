@@ -28,13 +28,13 @@ std::string ArrayLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void ArrayLiteral::VerifyType(Context *ctx) {
+type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   if (elems_.empty()) {
     type = type::EmptyArray;
     ctx->types_.buffered_emplace(this, type::EmptyArray);
-    return;
+    return type::EmptyArray;
   }
 
   for (auto &elem : elems_) {
@@ -61,6 +61,7 @@ void ArrayLiteral::VerifyType(Context *ctx) {
     type = type::Arr(joined, elems_.size());
     ctx->types_.buffered_emplace(this, type::Arr(joined, elems_.size()));
   }
+  return type;
 }
 
 void ArrayLiteral::Validate(Context *ctx) {

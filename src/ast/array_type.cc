@@ -20,7 +20,7 @@ void ArrayType::assign_scope(Scope *scope) {
   data_type_->assign_scope(scope);
 }
 
-void ArrayType::VerifyType(Context *ctx) {
+type::Type const *ArrayType::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   length_->VerifyType(ctx);
@@ -33,12 +33,12 @@ void ArrayType::VerifyType(Context *ctx) {
   type = type::Type_;
   ctx->types_.buffered_emplace(this, type::Type_);
 
-  if (length_->is<Hole>()) { return; }
-
-  if (length_->type != type::Int) {
+  if (!length_->is<Hole>() && length_->type != type::Int) {
     ctx->error_log_.ArrayIndexType(span);
     limit_to(StageRange::NoEmitIR());
   }
+
+  return type::Type_;
 }
 
 void ArrayType::Validate(Context *ctx) {

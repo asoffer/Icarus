@@ -32,7 +32,7 @@ void Switch::assign_scope(Scope *scope) {
   }
 }
 
-void Switch::VerifyType(Context *ctx) {
+type::Type const *Switch::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   std::unordered_set<const type::Type *> types;
   for (auto & [ expr, cond ] : cases_) {
@@ -46,10 +46,13 @@ void Switch::VerifyType(Context *ctx) {
   if (types.empty()) { NOT_YET("handle type error"); }
   type =
       std::accumulate(types.begin(), types.end(), *types.begin(), type::Join);
+  ctx->types_.buffered_emplace(this, type);
   if (type == nullptr) {
     type = type::Err;
     NOT_YET("handle type error");
+    return nullptr;
   }
+  return type;
 }
 
 void Switch::Validate(Context *ctx) {

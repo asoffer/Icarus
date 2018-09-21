@@ -204,7 +204,7 @@ bool Declaration::IsCustomInitialized() const {
   return init_val && !init_val->is<Hole>();
 }
 
-void Declaration::VerifyType(Context *ctx) {
+type::Type const *Declaration::VerifyType(Context *ctx) {
   {
     VERIFY_STARTING_CHECK_EXPR;
 
@@ -280,13 +280,13 @@ void Declaration::VerifyType(Context *ctx) {
       if (init_val->is<Hole>()) {
         ctx->error_log_.UninitializedConstant(span);
         limit_to(StageRange::Nothing());
-        return;
+        return nullptr;
       }
     }
 
     if (type == type::Err) {
       limit_to(StageRange::Nothing());
-      return;
+      return nullptr;
     }
 
     if (identifier->is<Hole>()) {
@@ -346,8 +346,9 @@ void Declaration::VerifyType(Context *ctx) {
     // from the get-go so maybe we should just do it the right way.
     scope_->shadowed_decls_.insert(identifier->token);
     limit_to(StageRange::Nothing());
-    return;
+    return nullptr;
   }
+  return type;
 }
 
 void Declaration::Validate(Context *ctx) {

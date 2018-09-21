@@ -13,7 +13,7 @@ struct Import : public Expression {
 
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
-  void VerifyType(Context *) override;
+  type::Type const *VerifyType(Context *) override;
   void Validate(Context *) override {}
   void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
 

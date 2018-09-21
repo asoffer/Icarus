@@ -23,19 +23,19 @@ void CommaList::assign_scope(Scope *scope) {
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
-void CommaList::VerifyType(Context *ctx) {
+type::Type const *CommaList::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   for (auto &expr : exprs) {
-    expr->VerifyType(ctx);
+    auto *expr_type = expr->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
-    if (expr->type == type::Err) { type = type::Err; }
+    RETURN_IF_NULL(expr);
   }
 
   if (type == type::Err) {
     limit_to(StageRange::Nothing());
-    return;
+    return nullptr;
   } else {
     base::vector<const type::Type *> entries;
     entries.reserve(exprs.size());
@@ -44,9 +44,12 @@ void CommaList::VerifyType(Context *ctx) {
       // TODO This is a hack and perhaps not always accurate?
       type = type::Type_;
       ctx->types_.buffered_emplace(this, type::Type_);
+      return type::Type_;
     } else {
-      type = type::Tup(std::move(entries));
-      ctx->types_.buffered_emplace(this, type::Tup(std::move(entries)));
+      auto *tup = type::Tup(std::move(entries));
+      type      = tup;
+      ctx->types_.buffered_emplace(this, tup);
+      return tup;
     }
   }
 }

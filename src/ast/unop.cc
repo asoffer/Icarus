@@ -106,109 +106,121 @@ Unop *Unop::Clone() const {
   return result;
 }
 
-void Unop::VerifyType(Context *ctx) {
+type::Type const *Unop::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   VERIFY_OR_RETURN(operand_type, operand);
 
+  limit_to(operand);
   switch (op) {
     case Language::Operator::TypeOf:
       type = type::Type_;
       ctx->types_.buffered_emplace(this, type::Type_);
-      break;
+      return type::Type_;
     case Language::Operator::Eval:
       type = operand_type;
       ctx->types_.buffered_emplace(this, operand_type);
-      break;
+      return operand_type;
     case Language::Operator::Generate:
       type = type::Void();
       ctx->types_.buffered_emplace(this, type::Void());
-      break;
-    case Language::Operator::Which: {
+      return type::Void();
+    case Language::Operator::Which:
       type = type::Type_;
       if (!operand_type->is<type::Variant>()) {
         ctx->error_log_.WhichNonVariant(operand_type, span);
         limit_to(StageRange::NoEmitIR());
       }
-    } break;
-    case Language::Operator::At: {
+      return type::Type_;
+    case Language::Operator::At:
       if (operand_type->is<type::Pointer>()) {
         type = operand_type->as<type::Pointer>().pointee;
         ctx->types_.buffered_emplace(this, type);
-
+        return type;
       } else {
         ctx->error_log_.DereferencingNonPointer(operand_type, span);
         type = type::Err;
         limit_to(StageRange::Nothing());
+        return nullptr;
       }
-    } break;
     case Language::Operator::And:
       type = type::Ptr(operand_type);
       ctx->types_.buffered_emplace(this, type::Ptr(operand_type));
-      break;
-    case Language::Operator::Mul: {
+      return type::Ptr(operand_type);
+    case Language::Operator::Mul: 
       limit_to(operand);
       if (operand_type != type::Type_) {
         NOT_YET("log an error");
         type = type::Err;
         limit_to(StageRange::Nothing());
+        return nullptr;
       } else {
         type = type::Type_;
         ctx->types_.buffered_emplace(this, type::Type_);
+        return type::Type_;
       }
-    } break;
-    case Language::Operator::Sub: {
+    case Language::Operator::Sub: 
       if (operand_type == type::Int || operand_type == type::Real) {
         type = operand_type;
         ctx->types_.buffered_emplace(this, operand_type);
+        return operand_type;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{operand.get()};
         std::tie(dispatch_table_, type) =
             DispatchTable::Make(args, "-", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
-        if (type == type::Err) { limit_to(StageRange::Nothing()); }
+        if (type == type::Err) {
+          limit_to(StageRange::Nothing());
+          return nullptr;
+        }
+        return type;
       }
-    } break;
-    case Language::Operator::Not: {
+      NOT_YET();
+      return nullptr;
+    case Language::Operator::Not: 
       if (operand_type == type::Bool) {
         type = type::Bool;
         ctx->types_.buffered_emplace(this, type::Bool);
+        return type::Bool;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{operand.get()};
         std::tie(dispatch_table_, type) =
             DispatchTable::Make(args, "!", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
-        if (type == type::Err) { limit_to(StageRange::Nothing()); }
+        if (type == type::Err) {
+          limit_to(StageRange::Nothing());
+          return nullptr;
+        }
+        return type;
       } else {
         NOT_YET("log an error");
         type = type::Err;
         limit_to(StageRange::Nothing());
+        return nullptr;
       }
-    } break;
-    case Language::Operator::Needs: {
+    case Language::Operator::Needs:
       type = type::Void();
       ctx->types_.buffered_emplace(this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PreconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
       }
-    } break;
-    case Language::Operator::Ensure: {
+      return type::Void();
+    case Language::Operator::Ensure:
       type = type::Void();
       ctx->types_.buffered_emplace(this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PostconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
       }
-    } break;
+      return type::Void();
     case Language::Operator::Pass:
       type = operand_type;
       ctx->types_.buffered_emplace(this, operand_type);
-      break;
+      return operand_type;
     default: UNREACHABLE(*this);
   }
-  limit_to(operand);
 }
 
 base::vector<IR::Val> Unop::EmitIR(Context *ctx) {

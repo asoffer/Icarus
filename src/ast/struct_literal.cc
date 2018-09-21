@@ -34,9 +34,11 @@ void StructLiteral::assign_scope(Scope *scope) {
   for (auto &f : fields_) { f->assign_scope(type_scope.get()); }
 }
 
-void StructLiteral::VerifyType(Context *ctx) {
+type::Type const *StructLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   type = type::Type_;
+  ctx->types_.buffered_emplace(this, type::Type_);
+  return type::Type_;
 }
 
 void StructLiteral::Validate(Context *ctx) {

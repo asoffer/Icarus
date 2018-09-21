@@ -20,12 +20,20 @@ void Statements::assign_scope(Scope *scope) {
   for (auto &stmt : content_) { stmt->assign_scope(scope); }
 }
 
-void Statements::VerifyType(Context *ctx) {
-  STAGE_CHECK(StartTypeVerificationStage, DoneTypeVerificationStage);
+type::Type const *Statements::VerifyType(Context *ctx) {
+  if (stage_range_.high < StartTypeVerificationStage ||
+      stage_range_.low >= DoneTypeVerificationStage) {
+    return nullptr;
+  }
+  base::defer deferred(
+      [this]() { this->stage_range_.low = DoneTypeVerificationStage; });
+  stage_range_.low = StartTypeVerificationStage;
+
   for (auto &stmt : content_) {
     stmt->VerifyType(ctx);
     limit_to(stmt);
   }
+  return nullptr;
 }
 
 void Statements::Validate(Context *ctx) {

@@ -9,7 +9,7 @@ std::string MatchDeclaration::to_string(size_t n) const {
   return type_expr->to_string(n) + "``" + identifier->to_string(n);
 }
 
-void MatchDeclaration::VerifyType(Context *ctx) {
+type::Type const *MatchDeclaration::VerifyType(Context *ctx) {
   {
     VERIFY_STARTING_CHECK_EXPR;
     type_expr->VerifyType(ctx);
@@ -21,6 +21,7 @@ void MatchDeclaration::VerifyType(Context *ctx) {
     ctx->types_.emplace(this, type::Interface);
   }
   identifier->VerifyType(ctx);
+  return type::Interface;
 }
 
 void MatchDeclaration::Validate(Context *ctx) { type_expr->Validate(ctx); }
