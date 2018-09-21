@@ -3,8 +3,9 @@
 
 #include <variant>
 
-#include "expression.h"
-#include "statements.h"
+#include "context.h"
+#include "ast/expression.h"
+#include "ast/statements.h"
 
 namespace type {
 extern Type const *Code;
@@ -25,7 +26,9 @@ struct CodeBlock : public Expression {
   void assign_scope(Scope *scope) override {}
   CodeBlock *Clone() const { return new CodeBlock(*this); }
 
-  void VerifyType(Context *) override {}
+  void VerifyType(Context *ctx) override {
+    ctx->types_.buffered_emplace(this, type::Code);
+  }
   virtual void Validate(Context *) override {}
   void SaveReferences(Scope *, base::vector<IR::Val> *) override {}
   void contextualize(

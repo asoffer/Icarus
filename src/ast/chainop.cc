@@ -183,6 +183,7 @@ void ChainOp::VerifyType(Context *ctx) {
       goto not_blocks;
     } else {
       type = exprs.back()->type;
+      ctx->types_.buffered_emplace(this, type);
       return;
     }
   }
@@ -205,6 +206,7 @@ void ChainOp::VerifyType(Context *ctx) {
       }
 
       type = exprs[0]->type;
+      ctx->types_.buffered_emplace(this, type);
 
       if (exprs[0]->type != type::Bool &&
           !(exprs[0]->type == type::Type_ &&
@@ -288,6 +290,7 @@ void ChainOp::VerifyType(Context *ctx) {
 
       if (type == type::Err) { limit_to(StageRange::Nothing()); }
       type = type::Bool;
+      ctx->types_.buffered_emplace(this, type::Bool);
     }
   }
 }

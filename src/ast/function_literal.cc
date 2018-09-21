@@ -180,6 +180,8 @@ void FuncContent::VerifyType(Context *ctx) {
       }
     }
     type = type::Func(std::move(input_type_vec), std::move(ret_types));
+    ctx->types_.buffered_emplace(
+        this, type::Func(std::move(input_type_vec), std::move(ret_types)));
 
   } else {
     Validate(ctx);
@@ -233,7 +235,10 @@ void FuncContent::Validate(Context *ctx) {
 
   if (return_type_inferred_) {
     switch (types.size()) {
-      case 0: type = type::Func(std::move(input_type_vec), {}); break;
+      case 0: type = type::Func(std::move(input_type_vec), {});
+        ctx->types_.buffered_emplace(this,
+                                     type::Func(std::move(input_type_vec), {}));
+        break;
       case 1: {
         auto *one_type = *types.begin();
         if (one_type->is<type::Tuple>()) {
@@ -243,10 +248,15 @@ void FuncContent::Validate(Context *ctx) {
                 std::make_unique<Terminal>(TextSpan(), IR::Val(entry)));
           }
           type = type::Func(std::move(input_type_vec), entries);
+          ctx->types_.buffered_emplace(
+              this, type::Func(std::move(input_type_vec), entries));
+
         } else {
           outputs.push_back(
               std::make_unique<Terminal>(TextSpan(), IR::Val(one_type)));
           type = type::Func(std::move(input_type_vec), {one_type});
+          ctx->types_.buffered_emplace(
+              this, type::Func(std::move(input_type_vec), {one_type}));
         }
       } break;
       default: {
@@ -268,7 +278,6 @@ void FuncContent::Validate(Context *ctx) {
         for (auto *expr : rets) {
           if (expr->type == outs[0]) { continue; }
           limit_to(StageRange::NoEmitIR());
-          ASSERT_NOT_NULL(expr->span.source);
           ctx->error_log_.ReturnTypeMismatch(outs[0], expr);
         }
       } break;

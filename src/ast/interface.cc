@@ -28,7 +28,8 @@ std::string Interface::to_string(size_t n) const {
 void Interface::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
-  type   = type::Interface;
+  type = type::Interface;
+  ctx->types_.buffered_emplace(this, type::Interface);
 
   for (auto &decl: decls_) {
     decl.VerifyType(ctx);

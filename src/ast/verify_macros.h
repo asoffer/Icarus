@@ -20,15 +20,19 @@ extern Type const *Err;
       } else {                                                                 \
         ctx->cyc_dep_vec_->push_back(this_as_id);                              \
       }                                                                        \
+      ASSERT(ctx->types_.emplace(this, type::Err).second);                     \
     } else if constexpr (std::is_same_v<decltype(this), Declaration *>) {      \
-      auto *this_as_id =                                                       \
+      auto *this_as_decl =                                                     \
           reinterpret_cast<Declaration *>(this)->identifier.get();             \
       if (!ctx->cyc_dep_vec_->empty() &&                                       \
-          this_as_id == ctx->cyc_dep_vec_->front()) {                          \
+          this_as_decl == ctx->cyc_dep_vec_->front()) {                        \
         ctx->cyc_dep_vec_ = nullptr;                                           \
       } else {                                                                 \
-        ctx->cyc_dep_vec_->push_back(this_as_id);                              \
+        ctx->cyc_dep_vec_->push_back(this_as_decl);                            \
       }                                                                        \
+      ASSERT(ctx->types_.emplace(this, type::Err).second);                     \
+    } else {                                                                   \
+      ctx->types_.buffered_emplace(this, type::Err);                           \
     }                                                                          \
     type = type::Err;                                                          \
     limit_to(StageRange::Nothing());                                           \
@@ -46,10 +50,12 @@ extern Type const *Err;
   }                                                                            \
   stage_range_.low = StartTypeVerificationStage
 
-#define VERIFY_AND_RETURN_ON_ERROR(expr)                                       \
+#define VERIFY_OR_RETURN(expr_type, expr)                                      \
+  type::Type const *expr_type = nullptr;                                       \
   do {                                                                         \
     expr->VerifyType(ctx);                                                     \
     HANDLE_CYCLIC_DEPENDENCIES;                                                \
+    expr_type = expr->type;                                                    \
     if (expr->type == type::Err) {                                             \
       type = type::Err;                                                        \
       /* TODO Maybe this should be Nothing() */                                \

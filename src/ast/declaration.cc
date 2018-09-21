@@ -217,8 +217,10 @@ void Declaration::VerifyType(Context *ctx) {
 
       if (type_expr->type == type::Type_) {
         type = backend::EvaluateAs<const type::Type *>(type_expr.get(), ctx);
+        ctx->types_.buffered_emplace(this, type);
       } else if (type_expr->type == type::Interface) {
         type = type::Generic;
+        ctx->types_.buffered_emplace(this, type::Generic);
       } else {
         ctx->error_log_.NotAType(type_expr.get());
         limit_to(StageRange::Nothing());
@@ -242,6 +244,7 @@ void Declaration::VerifyType(Context *ctx) {
 
         } else if (!type_expr) {
           type = init_val->type;
+          ctx->types_.buffered_emplace(this, init_val->type);
         }
       }
     }

@@ -414,6 +414,7 @@ void Call::VerifyType(Context *ctx) {
       ASSERT(args_.pos_.size() == 1u);
       ASSERT(args_.pos_[0]->type == type::Type_);
       type = type::Int;
+      ctx->types_.buffered_emplace(this, type::Int);
       return;
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
@@ -425,6 +426,7 @@ void Call::VerifyType(Context *ctx) {
              Is<type::Array>());
       ASSERT(args_.pos_[1]->type == type::Int);
       type = type::Void();
+      ctx->types_.buffered_emplace(this, type::Void());
       return;
     } else if (fn_val == IR::Val::BuiltinGeneric(ForeignFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
@@ -434,6 +436,7 @@ void Call::VerifyType(Context *ctx) {
       ASSERT(args_.pos_[0]->type, Is<type::CharBuffer>());
       ASSERT(args_.pos_[1]->type == type::Type_);
       type = backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx);
+      ctx->types_.buffered_emplace(this, type);
       ASSERT(type, Is<type::Function>());
       return;
     } else {
@@ -451,7 +454,9 @@ void Call::VerifyType(Context *ctx) {
           ? DispatchTable::Make(args, fn_.get(), ctx)
           : DispatchTable::Make(args, fn_->as<Identifier>().token, scope_, ctx);
 
-  if (type == type::Err) { limit_to(StageRange::Nothing()); }
+  if (type == type::Err) {
+    limit_to(StageRange::Nothing());
+  }
 
   u64 expanded_size = 1;
   args_.Apply([&expanded_size](auto &arg) {

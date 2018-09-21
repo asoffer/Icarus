@@ -31,6 +31,7 @@ void ArrayType::VerifyType(Context *ctx) {
   limit_to(data_type_);
 
   type = type::Type_;
+  ctx->types_.buffered_emplace(this, type::Type_);
 
   if (length_->is<Hole>()) { return; }
 

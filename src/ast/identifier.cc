@@ -82,6 +82,7 @@ void Identifier::VerifyType(Context *ctx) {
   decl->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
   type = decl->type;
+  ctx->types_.emplace(this, decl->type);
 }
 
 void Identifier::Validate(Context *ctx) {

@@ -33,6 +33,7 @@ void ArrayLiteral::VerifyType(Context *ctx) {
 
   if (elems_.empty()) {
     type = type::EmptyArray;
+    ctx->types_.buffered_emplace(this, type::EmptyArray);
     return;
   }
 
@@ -57,7 +58,8 @@ void ArrayLiteral::VerifyType(Context *ctx) {
     type = type::Err;  // There were no valid types anywhere in the array
     limit_to(StageRange::Nothing());
   } else {
-    type = Arr(joined, elems_.size());
+    type = type::Arr(joined, elems_.size());
+    ctx->types_.buffered_emplace(this, type::Arr(joined, elems_.size()));
   }
 }
 

@@ -32,9 +32,9 @@ void BlockLiteral::VerifyType(Context *ctx) { VERIFY_STARTING_CHECK_EXPR; }
 
 void BlockLiteral::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-
-  VERIFY_AND_RETURN_ON_ERROR(before_);
-  VERIFY_AND_RETURN_ON_ERROR(after_);
+  ctx->types_.buffered_emplace(this, type);
+  VERIFY_OR_RETURN(before_type, before_);
+  VERIFY_OR_RETURN(after_type, after_);
 
   // TODO type-check before/after functions.
 

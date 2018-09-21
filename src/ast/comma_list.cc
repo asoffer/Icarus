@@ -43,8 +43,10 @@ void CommaList::VerifyType(Context *ctx) {
     if (entries.empty()) {
       // TODO This is a hack and perhaps not always accurate?
       type = type::Type_;
+      ctx->types_.buffered_emplace(this, type::Type_);
     } else {
       type = type::Tup(std::move(entries));
+      ctx->types_.buffered_emplace(this, type::Tup(std::move(entries)));
     }
   }
 }

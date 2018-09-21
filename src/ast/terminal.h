@@ -15,7 +15,9 @@ struct Terminal : public Expression {
   void assign_scope(Scope *scope) override;
   std::string to_string(size_t) const override { return value.to_string(); }
 
-  void VerifyType(Context *) override {}
+  void VerifyType(Context *ctx) override {
+    ctx->types_.buffered_emplace(this, type);
+  }
   void Validate(Context *) override {}
   void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override {}
   void ExtractReturns(base::vector<const Expression *> *) const override {}

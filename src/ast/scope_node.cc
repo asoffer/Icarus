@@ -68,12 +68,12 @@ void ScopeNode::VerifyType(Context *ctx) {
     }
   }
 
-  VERIFY_AND_RETURN_ON_ERROR(blocks_[0]);
-  if (!blocks_[0]->type->is<type::Scope>()) {
-    NOT_YET("not a scope", blocks_[0]->type);
-  }
+  VERIFY_OR_RETURN(block_type, blocks_[0]);
+
+  if (!block_type->is<type::Scope>()) { NOT_YET("not a scope", block_type); }
 
   type = type::Void();  // TODO can this evaluate to anything?
+  ctx->types_.buffered_emplace(this, type::Void());
 }
 
 void ScopeNode::Validate(Context *ctx) {

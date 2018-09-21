@@ -31,24 +31,17 @@ void Access::assign_scope(Scope *scope) {
 
 void Access::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  VERIFY_AND_RETURN_ON_ERROR(operand);
+  VERIFY_OR_RETURN(operand_type, operand);
 
-  auto base_type = DereferenceAll(operand->type);
-  if (base_type->is<type::Array>()) {
-    if (member_name == "size") {
-      type = type::Int;
-    } else {
-      ctx->error_log_.MissingMember(span, member_name, base_type);
-      type = type::Err;
-      limit_to(StageRange::Nothing());
-    }
-  } else if (base_type == type::Type_) {
+  auto base_type = DereferenceAll(operand_type);
+  if (base_type == type::Type_) {
     auto *evaled_type =
         backend::EvaluateAs<const type::Type *>(operand.get(), ctx);
     if (evaled_type->is<type::Enum>()) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on
       // assuming that this is an element of that enum type.
+      ctx->types_.buffered_emplace(this, evaled_type);
       type = evaled_type;
       if (evaled_type->as<type::Enum>().IntValueOrFail(member_name) ==
           std::numeric_limits<size_t>::max()) {
@@ -59,6 +52,7 @@ void Access::VerifyType(Context *ctx) {
   } else if (base_type->is<type::Struct>()) {
     const auto *member = base_type->as<type::Struct>().field(member_name);
     if (member != nullptr) {
+      ctx->types_.buffered_emplace(this, member->type);
       type = member->type;
 
     } else {
@@ -68,15 +62,15 @@ void Access::VerifyType(Context *ctx) {
     }
   } else if (base_type == type::Module) {
     type = backend::EvaluateAs<const Module *>(operand.get(), ctx)
-               ->GetType(member_name);
+          ->GetType(member_name);
+    ctx->types_.buffered_emplace(this, type);
     if (type == nullptr) {
       NOT_YET("log an error");
       type = type::Err;
       limit_to(StageRange::Nothing());
     }
 
-  } else if (base_type->is<type::Primitive>() ||
-             base_type->is<type::Function>()) {
+  } else {
     ctx->error_log_.MissingMember(span, member_name, base_type);
     type = type::Err;
     limit_to(StageRange::Nothing());
@@ -96,8 +90,8 @@ void Access::contextualize(
 }
 
 base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
-  auto reg         = operand->EmitLVal(ctx)[0];
-  auto *t          = static_cast<type::Type const *>(type::Ptr(operand->type));
+  auto reg            = operand->EmitLVal(ctx)[0];
+  type::Type const *t = type::Ptr(operand->type);
   while (!t->as<type::Pointer>().pointee->is_big()) {
     reg = IR::Load(reg, type);
     t   = t->as<type::Pointer>().pointee;

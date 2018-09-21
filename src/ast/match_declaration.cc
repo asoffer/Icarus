@@ -18,6 +18,7 @@ void MatchDeclaration::VerifyType(Context *ctx) {
     // TODO this is wrong. it's a type satisfying a given interface. does that
     // matter?
     type = type::Interface;
+    ctx->types_.emplace(this, type::Interface);
   }
   identifier->VerifyType(ctx);
 }

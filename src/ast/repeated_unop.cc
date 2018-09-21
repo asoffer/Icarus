@@ -54,10 +54,7 @@ void RepeatedUnop::contextualize(
 
 void RepeatedUnop::ExtractReturns(base::vector<const Expression *> *rets) const {
   args_.ExtractReturns(rets);
-  if (op_ == Language::Operator::Return) {
-    ASSERT_NOT_NULL(args_.span.source);
-    rets->push_back(&args_);
-  }
+  if (op_ == Language::Operator::Return) { rets->push_back(&args_); }
 }
 
 RepeatedUnop *RepeatedUnop::Clone() const {
