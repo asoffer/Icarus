@@ -424,7 +424,8 @@ void GeneratedFunction::CompleteBody(Module *mod) {
   stage_range_.low = EmitStage;
 
   if (stage_range_.high < EmitStage) { return; }
-  if (type == type::Err) { return; }
+  auto *t = mod->types_.at(this);
+  if (t == type::Err) { return; }
 
   CURRENT_FUNC(ir_func_) {
     IR::BasicBlock::Current = ir_func_->entry();
@@ -446,7 +447,7 @@ void GeneratedFunction::CompleteBody(Module *mod) {
     fn_scope->MakeAllStackAllocations();
 
     statements->EmitIR(&ctx);
-    if (type->as<type::Function>().output.empty()) {
+    if (t->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
       // between here and where you call SetReturn
       IR::ReturnJump();

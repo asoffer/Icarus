@@ -125,8 +125,8 @@ base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
   IR::UncondJump(land_block);
 
   IR::BasicBlock::Current = land_block;
-  return {
-      IR::MakePhi(IR::Phi(type->is_big() ? type::Ptr(type) : type), phi_args)};
+  auto *t = ctx->mod_->types_.at(this);
+  return {IR::MakePhi(IR::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)};
 }
 
 base::vector<IR::Register> AST::Switch::EmitLVal(Context *ctx) { UNREACHABLE(*this); }

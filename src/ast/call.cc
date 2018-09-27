@@ -452,10 +452,13 @@ type::Type const *Call::VerifyType(Context *ctx) {
         return const_cast<Expression *>(arg.get());
       });
 
-  std::tie(dispatch_table_, type) =
+  type::Type const *ret_type = nullptr;
+  std::tie(dispatch_table_, ret_type) =
       !fn_->is<Identifier>()
           ? DispatchTable::Make(args, fn_.get(), ctx)
           : DispatchTable::Make(args, fn_->as<Identifier>().token, scope_, ctx);
+  type = ret_type;
+  ctx->mod_->types_.buffered_emplace(this, ret_type);
 
   if (type == type::Err) { limit_to(StageRange::Nothing()); }
 
@@ -481,7 +484,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
     // type::Err).
     fn_->type = type::Void();
   }
-  return type;
+  return ret_type;
 }
 
 void Call::Validate(Context *ctx) {
@@ -553,7 +556,7 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
       }
       call_args.type_ = &fn_val.type->as<type::Function>();
 
-      auto *out_type = fn_->type->as<type::Function>().output.at(0);
+      auto *out_type = fn_val.type->as<type::Function>().output.at(0);
       ASSERT(!out_type->is_big());
 
       IR::OutParams outs;
@@ -564,8 +567,8 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
       return {IR::Val::Reg(reg, out_type)};
 
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
-      args_.pos_[0]
-          ->type->as<type::Pointer>()
+      ctx->mod_->types_.at(args_.pos_[0].get())
+          ->as<type::Pointer>()
           .pointee->as<type::Array>()
           .EmitResize(args_.pos_[0]->EmitIR(ctx)[0],
                       args_.pos_[1]->EmitIR(ctx)[0], ctx);
@@ -595,7 +598,7 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
         return std::pair(const_cast<Expression *>(expr.get()),
                          expr->EmitIR(ctx)[0]);
       }),
-      dispatch_table_, type, ctx);
+      dispatch_table_, ctx->mod_->types_.at(this), ctx);
 }
 
 base::vector<IR::Register> Call::EmitLVal(Context *) { UNREACHABLE(this); }

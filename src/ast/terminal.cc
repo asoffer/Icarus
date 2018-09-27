@@ -16,8 +16,8 @@ void Terminal::assign_scope(Scope *scope) {
 }
 
 type::Type const *Terminal::VerifyType(Context *ctx) {
-  ctx->mod_->types_.buffered_emplace(this, type);
-  return type;
+  ctx->mod_->types_.buffered_emplace(this, value.type);
+  return value.type;
 }
 
 Terminal *Terminal::Clone() const { return new Terminal(*this); }

@@ -113,7 +113,8 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
       size_t offset = 0;
       auto *fn_scope = ASSERT_NOT_NULL(scope_->ContainingFnScope());
       auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit);
-      auto *fn_type  = &ASSERT_NOT_NULL(fn_lit->type)->as<type::Function>();
+      auto *fn_type =
+          &ASSERT_NOT_NULL(ctx->mod_->types_.at(fn_lit))->as<type::Function>();
       for (size_t i = 0; i < args_.exprs.size(); ++i) {
         // TODO return type maybe not the same as type actually returned?
         IR::SetReturn(i, arg_vals[i]);
@@ -124,16 +125,17 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
     case Language::Operator::Print:
       for (size_t i = 0; i < args_.exprs.size(); ++i) {
         // TODO unify with repr. is repr even a good idea?
-        if (args_.exprs[i]->type == type::Char) {
+        auto *t = ctx->mod_->types_.at(args_.exprs[i].get());
+        if (t == type::Char) {
           IR::PrintChar(arg_vals[i].reg_or<char>());
-        } else if (args_.exprs[i]->type->is<type::Struct>()) {
+        } else if (t->is<type::Struct>()) {
           ASSERT(dispatch_tables_[i].total_size_ != 0u);
           // TODO struct is not exactly right. we really mean user-defined
           FnArgs<std::pair<Expression *, IR::Val>> args;
           args.pos_ = {std::pair(args_.exprs[i].get(), arg_vals[i])};
           EmitCallDispatch(args, dispatch_tables_[i], type::Void(), ctx);
         } else {
-          args_.exprs[i]->type->EmitRepr(arg_vals[i], ctx);
+          t->EmitRepr(arg_vals[i], ctx);
         }
       }
       return {};

@@ -434,13 +434,14 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
 
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized(this)) { return {}; }
+    auto *t = ctx->mod_->types_.at(this);
     if (IsCustomInitialized()) {
-      type::EmitCopyInit(init_val->type, type, init_val->EmitIR(ctx)[0], addr_,
-                         ctx);
+      type::EmitCopyInit(ctx->mod_->types_.at(init_val.get()), t,
+                         init_val->EmitIR(ctx)[0], addr_, ctx);
     } else {
-      type->EmitInit(addr_, ctx);
+      t->EmitInit(addr_, ctx);
     }
-    return {IR::Val::Reg(addr_, this->type)};
+    return {IR::Val::Reg(addr_, t)};
   }
 }
 }  // namespace AST

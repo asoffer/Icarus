@@ -20,9 +20,9 @@ template <typename T> struct NodeLookup {
     return data_.emplace(std::forward<Args>(args)...);
   }
 
-  auto at(Node *n) { return data_.at(n); }
+  auto at(Node const *n) { return data_.at(n); }
 
-  base::unordered_map<Node*, T> data_;
+  base::unordered_map<Node const *, T> data_;
 };
 }  // namespace AST
 
