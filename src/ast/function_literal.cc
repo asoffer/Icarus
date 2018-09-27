@@ -16,15 +16,14 @@
 #include "type/type.h"
 
 namespace AST {
-GeneratedFunction *Function::generate(BoundConstants const &bc) {
-  auto[iter, fresh_insert]    = fns_.emplace(bc, GeneratedFunction{});
+GeneratedFunction *Function::generate(Context *ctx) {
+  auto[iter, fresh_insert] =
+      fns_.emplace(ctx->mod_->bound_constants_, GeneratedFunction{});
   auto & [ bound_args, func ] = *iter;
   if (!fresh_insert) { return &func; }
 
   func.bound_args_           = &bound_args;
   func.return_type_inferred_ = return_type_inferred_;
-
-  Context ctx(ASSERT_NOT_NULL(module_));
 
   func.inputs.reserve(inputs.size());
   for (const auto &input : inputs) {
@@ -59,14 +58,14 @@ GeneratedFunction *Function::generate(BoundConstants const &bc) {
 
   func.statements = base::wrap_unique(statements->Clone());
   func.assign_scope(scope_);
-  func.VerifyType(&ctx);
-  func.Validate(&ctx);
+  func.VerifyType(ctx);
+  func.Validate(ctx);
 
-  if (ctx.num_errors() > 0) {
+  if (ctx->num_errors() > 0) {
     // TODO figure out the call stack of generic function requests and then
     // print the relevant parts.
     std::cerr << "While generating code for generic function:\n";
-    ctx.DumpErrors();
+    ctx->DumpErrors();
     // TODO delete all the data held by iter->second
     return nullptr;
   }
@@ -181,7 +180,7 @@ type::Type const *FuncContent::VerifyType(Context *ctx) {
     }
     if (type == type::Err) { return nullptr; }
     type = type::Func(std::move(input_type_vec), std::move(ret_types));
-    ctx->types_.buffered_emplace(
+    ctx->mod_->types_.buffered_emplace(
         this, type::Func(std::move(input_type_vec), std::move(ret_types)));
 
   } else {
@@ -243,7 +242,7 @@ void FuncContent::Validate(Context *ctx) {
   if (return_type_inferred_) {
     switch (types.size()) {
       case 0: type = type::Func(std::move(input_type_vec), {});
-        ctx->types_.buffered_emplace(this,
+        ctx->mod_->types_.buffered_emplace(this,
                                      type::Func(std::move(input_type_vec), {}));
         break;
       case 1: {
@@ -255,14 +254,14 @@ void FuncContent::Validate(Context *ctx) {
                 std::make_unique<Terminal>(TextSpan(), IR::Val(entry)));
           }
           type = type::Func(std::move(input_type_vec), entries);
-          ctx->types_.buffered_emplace(
+          ctx->mod_->types_.buffered_emplace(
               this, type::Func(std::move(input_type_vec), entries));
 
         } else {
           outputs.push_back(
               std::make_unique<Terminal>(TextSpan(), IR::Val(one_type)));
           type = type::Func(std::move(input_type_vec), {one_type});
-          ctx->types_.buffered_emplace(
+          ctx->mod_->types_.buffered_emplace(
               this, type::Func(std::move(input_type_vec), {one_type}));
         }
       } break;
@@ -393,7 +392,7 @@ base::vector<IR::Val> Function::EmitIR(Context *ctx) {
   // TODO this is a hack because I can't tell the difference between a generic
   // function early enough. This really indicates that the code structure here
   // is still wrong.
-  return generate(ctx->mod_->bound_constants_)->EmitIR(ctx);
+  return generate(ctx)->EmitIR(ctx);
 }
 
 base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {

@@ -1,5 +1,7 @@
 #include "ast/terminal.h"
 
+#include "context.h"
+
 namespace AST {
 Terminal::Terminal(const TextSpan &span, IR::Val val) : Expression(span) {
   stage_range_.low = DoneBodyValidationStage;
@@ -11,6 +13,11 @@ void Terminal::assign_scope(Scope *scope) {
   STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   if (type != type::Type_) { return; }
+}
+
+type::Type const *Terminal::VerifyType(Context *ctx) {
+  ctx->mod_->types_.buffered_emplace(this, type);
+  return type;
 }
 
 Terminal *Terminal::Clone() const { return new Terminal(*this); }

@@ -6,7 +6,6 @@
 #include <memory>
 #include <variant>
 
-#include "ast/codeblock.h"
 #include "base/strong_types.h"
 #include "base/types.h"
 #include "ir/interface.h"
@@ -27,6 +26,7 @@ struct Expression;
 struct ScopeLiteral;
 struct BlockLiteral;
 struct Function;
+struct CodeBlock;
 } // namespace AST
 
 namespace IR {
@@ -76,7 +76,7 @@ struct Val {
   static Val BuiltinGeneric(i32 n) { return Val(type::Generic, BuiltinGenericIndex{n}); }
   static Val Enum(const type::Enum *enum_type, size_t integral_val);
   static Val Flags(const type::Flags *flags_type, FlagsVal val);
-  static Val CodeBlock(AST::CodeBlock block);
+  static Val CodeBlock(const AST::CodeBlock& block);
   static Val Foreign(const type::Type *t, ForeignFn f) { return Val(t, f); }
   static Val Func(IR::Func *fn); // TODO deprecate?
   static Val Func(AST::Function* fn);

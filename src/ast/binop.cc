@@ -160,7 +160,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         }
         type = type::Char;  // Assuming it's a char, even if the index type was
                             // wrong.
-        ctx->types_.buffered_emplace(this, type::Char);
+        ctx->mod_->types_.buffered_emplace(this, type::Char);
         return type::Char;
       } else if (!lhs->type->is<type::Array>()) {
         ctx->error_log_.IndexingNonArray(span, lhs->type);
@@ -168,7 +168,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         return nullptr;
       } else {
         type = lhs->type->as<type::Array>().data_type;
-        ctx->types_.buffered_emplace(this,
+        ctx->mod_->types_.buffered_emplace(this,
                                      lhs->type->as<type::Array>().data_type);
 
         if (rhs->type == type::Int) { break; }
@@ -181,16 +181,16 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       // TODO check that the type actually can be cast
       // correctly.
       type = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
-      ctx->types_.buffered_emplace(this, type);
+      ctx->mod_->types_.buffered_emplace(this, type);
       return type;
     case Operator::XorEq:
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
         type = type::Bool;
-        ctx->types_.buffered_emplace(this, type::Bool);
+        ctx->mod_->types_.buffered_emplace(this, type::Bool);
         return type::Bool;
       } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
         type = lhs->type;
-        ctx->types_.buffered_emplace(this, lhs->type);
+        ctx->mod_->types_.buffered_emplace(this, lhs->type);
         return lhs->type;
       } else {
         type = type::Err;
@@ -202,11 +202,11 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     case Operator::AndEq: 
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
         type = type::Bool;
-        ctx->types_.buffered_emplace(this, type::Bool);
+        ctx->mod_->types_.buffered_emplace(this, type::Bool);
         return type::Bool;
       } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
         type = lhs->type;
-        ctx->types_.buffered_emplace(this, lhs->type);
+        ctx->mod_->types_.buffered_emplace(this, lhs->type);
         return lhs->type;
       } else {
         type = type::Err;
@@ -218,11 +218,11 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     case Operator::OrEq:
       if (lhs->type == type::Bool && rhs->type == type::Bool) {
         type = type::Bool;
-        ctx->types_.buffered_emplace(this, type::Bool);
+        ctx->mod_->types_.buffered_emplace(this, type::Bool);
         return type::Bool;
       } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
         type = lhs->type;
-        ctx->types_.buffered_emplace(this, lhs->type);
+        ctx->mod_->types_.buffered_emplace(this, lhs->type);
         return lhs->type;
       } else {
         type = type::Err;
@@ -237,7 +237,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     if ((lhs->type == type::Int && rhs->type == type::Int) ||                  \
         (lhs->type == type::Real && rhs->type == type::Real)) {                \
       type = ret_type;                                                         \
-      ctx->types_.buffered_emplace(this, ret_type);                            \
+      ctx->mod_->types_.buffered_emplace(this, ret_type);                            \
       return ret_type;                                                         \
     } else {                                                                   \
       FnArgs<Expression *> args;                                               \
@@ -266,13 +266,13 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           (lhs->type == type::Real && rhs->type == type::Real) ||
           (lhs->type == type::Code && rhs->type == type::Code)) {
         type = lhs->type;
-        ctx->types_.buffered_emplace(this, lhs->type);
+        ctx->mod_->types_.buffered_emplace(this, lhs->type);
         return lhs->type;
       } else if (lhs->type->is<type::CharBuffer>() &&
                  rhs->type->is<type::CharBuffer>()) {
         type = type::CharBuf(lhs->type->as<type::CharBuffer>().length_ +
                              rhs->type->as<type::CharBuffer>().length_);
-        ctx->types_.buffered_emplace(this, type);
+        ctx->mod_->types_.buffered_emplace(this, type);
         return type;
       } else {
         FnArgs<Expression *> args;
@@ -293,7 +293,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
            rhs->type == type::Code)) { /* TODO type::Code should only be valid
                                           for Add, not Sub, etc */
         type = type::Void();
-        ctx->types_.buffered_emplace(this, type::Void());
+        ctx->mod_->types_.buffered_emplace(this, type::Void());
         return type::Void();
       } else {
         FnArgs<Expression *> args;
@@ -309,7 +309,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       if ((lhs->type == type::Int && rhs->type == type::Int) ||
           (lhs->type == type::Real && rhs->type == type::Real)) {
         type = lhs->type;
-        ctx->types_.buffered_emplace(this, lhs->type);
+        ctx->mod_->types_.buffered_emplace(this, lhs->type);
         return lhs->type;
       } else if (lhs->type->is<type::Function>() &&
                  rhs->type->is<type::Function>()) {
@@ -317,7 +317,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         auto *rhs_fn = &rhs->type->as<type::Function>();
         if (rhs_fn->output == lhs_fn->input) {
           type = type::Func({rhs_fn->input}, {lhs_fn->output});
-          ctx->types_.buffered_emplace(this, type);
+          ctx->mod_->types_.buffered_emplace(this, type);
           return type;
         } else {
           type = type::Err;
@@ -355,7 +355,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 
       if (type != type::Err) {
         type = type::Type_;
-        ctx->types_.buffered_emplace(this, type::Type_);
+        ctx->mod_->types_.buffered_emplace(this, type::Type_);
         return type::Type_;
       }
       return type;
@@ -388,16 +388,18 @@ void Binop::ExtractReturns(base::vector<const Expression *> *rets) const {
 }
 
 base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
+  auto *lhs_type = ctx->mod_->types_.at(lhs.get());
+  auto *rhs_type = ctx->mod_->types_.at(rhs.get());
   if (op != Language::Operator::Assign &&
-      (lhs->type->is<type::Struct>() || rhs->type->is<type::Struct>())) {
+      (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>())) {
     // TODO struct is not exactly right. we really mean user-defined
     AST::FnArgs<std::pair<AST::Expression *, IR::Val>> args;
     args.pos_.reserve(2);
     args.pos_.emplace_back(lhs.get(), lhs->EmitIR(ctx)[0]);
     args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx)[0]);
 
-    ASSERT(type != nullptr);
-    return EmitCallDispatch(args, dispatch_table_, type, ctx);
+    return EmitCallDispatch(args, dispatch_table_,
+                            ASSERT_NOT_NULL(ctx->mod_->types_.at(this)), ctx);
   }
 
   switch (op) {
@@ -469,35 +471,36 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       }
     } break;
     case Language::Operator::As: {
+      auto *this_type = ctx->mod_->types_.at(this);
       auto val = lhs->EmitIR(ctx)[0];
-      if (val.type == type) {
+      if (val.type == this_type) {
         return {val};
       } else if (i32 const *n = std::get_if<i32>(&val.value);
-                 n && type == type::Real) {
+                 n && this_type == type::Real) {
         return {IR::Val(static_cast<double>(*n))};
-      } else if (type->is<type::Variant>()) {
-        auto alloc = IR::Alloca(type);
-        type->EmitAssign(val.type, std::move(val), alloc, ctx);
-        return {IR::Val::Reg(alloc, type)};
+      } else if (this_type->is<type::Variant>()) {
+        auto alloc = IR::Alloca(this_type);
+        this_type->EmitAssign(val.type, std::move(val), alloc, ctx);
+        return {IR::Val::Reg(alloc, this_type)};
       } else if (val.type->is<type::Pointer>()) {
         auto *ptee_type = val.type->as<type::Pointer>().pointee;
         if (ptee_type->is<type::Array>()) {
           auto &array_type = ptee_type->as<type::Array>();
           if (array_type.fixed_length &&
-              type::Ptr(array_type.data_type) == type) {
+              type::Ptr(array_type.data_type) == this_type) {
             IR::Val v_copy  = val;
-            v_copy.type = type;
+            v_copy.type = this_type;
             return {v_copy};
           }
         }
       }
 
-      if (type == type::Real && val.type == type::Int) {
+      if (this_type == type::Real && val.type == type::Int) {
         return {IR::ValFrom(IR::CastIntToReal(val.reg_or<i32>()))};
-      } else if (type->is<type::Pointer>()) {
+      } else if (this_type->is<type::Pointer>()) {
         return {IR::Val::Reg(IR::CastPtr(std::get<IR::Register>(val.value),
-                                         &type->as<type::Pointer>()),
-                             type)};
+                                         &this_type->as<type::Pointer>()),
+                             this_type)};
 
       } else {
         UNREACHABLE();
@@ -512,19 +515,20 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Assign: {
       base::vector<const type::Type *> lhs_types, rhs_types;
       ForEachExpr(rhs.get(), [&ctx, &rhs_types](size_t, Expression *expr) {
-        if (expr->type->is<type::Tuple>()) {
+        auto *expr_type = ctx->mod_->types_.at(expr);
+        if (expr_type->is<type::Tuple>()) {
           rhs_types.insert(rhs_types.end(),
-                           expr->type->as<type::Tuple>().entries_.begin(),
-                           expr->type->as<type::Tuple>().entries_.end());
+                           expr_type->as<type::Tuple>().entries_.begin(),
+                           expr_type->as<type::Tuple>().entries_.end());
         } else {
-          rhs_types.push_back(expr->type);
+          rhs_types.push_back(expr_type);
         }
       });
       auto rhs_vals = rhs->EmitIR(ctx);
 
       // TODO types can be retrieved from the values?
       ForEachExpr(lhs.get(), [&ctx, &lhs_types](size_t, AST::Expression *expr) {
-        lhs_types.push_back(expr->type);
+        lhs_types.push_back(ctx->mod_->types_.at(expr));
       });
       auto lhs_lvals = lhs->EmitLVal(ctx);
 
@@ -537,12 +541,13 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::OrEq: {
-      if (type->is<type::Flags>()) {
+      auto *this_type = ctx->mod_->types_.at(this);
+      if (this_type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::StoreFlags(
-            IR::OrFlags(&type->as<type::Flags>(), IR::LoadFlags(lhs_lval, type),
-                        rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
-            lhs_lval);
+        IR::StoreFlags(IR::OrFlags(&this_type->as<type::Flags>(),
+                                   IR::LoadFlags(lhs_lval, this_type),
+                                   rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
+                       lhs_lval);
         return {};
       }
       auto land_block = IR::Func::Current->AddBlock();
@@ -564,10 +569,11 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
           {{lhs_end_block, true}, {rhs_end_block, rhs_val}}))};
     } break;
     case Language::Operator::AndEq: {
-      if (type->is<type::Flags>()) {
+      auto *this_type = ctx->mod_->types_.at(this);
+      if (this_type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        IR::StoreFlags(IR::AndFlags(&type->as<type::Flags>(),
-                                    IR::LoadFlags(lhs_lval, type),
+        IR::StoreFlags(IR::AndFlags(&this_type->as<type::Flags>(),
+                                    IR::LoadFlags(lhs_lval, this_type),
                                     rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>()),
                        lhs_lval);
         return {};
@@ -669,12 +675,12 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::XorEq: {
-      if (lhs->type == type::Bool) {
+      if (lhs_type == type::Bool) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
         auto rhs_ir   = rhs->EmitIR(ctx)[0].reg_or<bool>();
         IR::StoreBool(IR::XorBool(IR::LoadBool(lhs_lval), rhs_ir), lhs_lval);
-      } else if (lhs->type->is<type::Flags>()) {
-        auto *flags_type = &lhs->type->as<type::Flags>();
+      } else if (lhs_type->is<type::Flags>()) {
+        auto *flags_type = &lhs_type->as<type::Flags>();
         auto lhs_lval    = lhs->EmitLVal(ctx)[0];
         auto rhs_ir      = rhs->EmitIR(ctx)[0].reg_or<IR::FlagsVal>();
         IR::StoreFlags(
@@ -682,12 +688,14 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
                          rhs_ir),
             lhs_lval);
       } else {
-        UNREACHABLE(lhs->type);
+        UNREACHABLE(lhs_type);
       }
       return {};
     } break;
-    case Language::Operator::Index:
-      return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], type), type)};
+    case Language::Operator::Index: {
+      auto *this_type = ctx->mod_->types_.at(this);
+      return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], this_type), this_type)};
+    } break;
     default: UNREACHABLE(*this);
   }
 }
@@ -696,8 +704,9 @@ base::vector<IR::Register> AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::As: NOT_YET();
     case Language::Operator::Index:
-      if (lhs->type->is<type::Array>()) {
-        return {IR::Index(type::Ptr(this->type), lhs->EmitLVal(ctx)[0],
+      if (ctx->mod_->types_.at(lhs.get())->is<type::Array>()) {
+        return {IR::Index(type::Ptr(ctx->mod_->types_.at(this)),
+                          lhs->EmitLVal(ctx)[0],
                           rhs->EmitIR(ctx)[0].reg_or<i32>())};
       }
       [[fallthrough]];

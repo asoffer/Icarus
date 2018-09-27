@@ -14,13 +14,15 @@ template <typename T> struct NodeLookup {
     return data_.emplace(std::forward<Args>(args)...);
   }
 
+  // TODO handle buffered data separately?
   template <typename... Args>
   auto buffered_emplace(Args&&... args) {
-    return buffer_.emplace_back(std::forward<Args>(args)...);
+    return data_.emplace(std::forward<Args>(args)...);
   }
 
+  auto at(Node *n) { return data_.at(n); }
+
   base::unordered_map<Node*, T> data_;
-  base::vector<std::pair<Node*, T>> buffer_;
 };
 }  // namespace AST
 

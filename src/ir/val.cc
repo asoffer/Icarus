@@ -4,6 +4,7 @@
 #include <unordered_set>
 
 #include "ast/block_literal.h"
+#include "ast/codeblock.h"
 #include "ast/function_literal.h"
 #include "ast/scope_literal.h"
 #include "base/guarded.h"
@@ -16,7 +17,7 @@
 #include "type/struct.h"
 
 namespace IR {
-Val Val::CodeBlock(AST::CodeBlock block) { NOT_YET(); }
+Val Val::CodeBlock(const AST::CodeBlock &block) { NOT_YET(); }
 
 // TODO this stores way more than is needed. It'd be nice to have a way to say
 // when you're done with these. this could be done by code manually

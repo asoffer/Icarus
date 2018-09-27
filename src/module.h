@@ -8,6 +8,7 @@
 #include "base/container/vector.h"
 
 #include "ast/bound_constants.h"
+#include "ast/node_lookup.h"
 #include "ast/statements.h"
 #include "scope.h"
 
@@ -68,6 +69,8 @@ struct Module {
 
   base::vector<std::unique_ptr<IR::Func>> fns_;
   std::unordered_set<const Module*> embedded_modules_;
+
+  AST::NodeLookup<type::Type const *> types_;
 };
 
 #endif // ICARUS_MODULE_H

@@ -184,7 +184,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
       goto not_blocks;
     } else {
       type = exprs.back()->type;
-      ctx->types_.buffered_emplace(this, type);
+      ctx->mod_->types_.buffered_emplace(this, type);
       return type;
     }
   }
@@ -207,7 +207,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
       }
 
       type = exprs[0]->type;
-      ctx->types_.buffered_emplace(this, type);
+      ctx->mod_->types_.buffered_emplace(this, type);
 
       if (exprs[0]->type != type::Bool &&
           !(exprs[0]->type == type::Type_ &&
@@ -296,7 +296,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
         return nullptr;
       }
       type = type::Bool;
-      ctx->types_.buffered_emplace(this, type::Bool);
+      ctx->mod_->types_.buffered_emplace(this, type::Bool);
       return type::Bool;
     }
   }

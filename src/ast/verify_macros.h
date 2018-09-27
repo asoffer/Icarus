@@ -20,7 +20,7 @@ extern Type const *Err;
       } else {                                                                 \
         ctx->cyc_dep_vec_->push_back(this_as_id);                              \
       }                                                                        \
-      ASSERT(ctx->types_.emplace(this, type::Err).second);                     \
+      ASSERT(ctx->mod_->types_.emplace(this, type::Err).second);                     \
     } else if constexpr (std::is_same_v<decltype(this), Declaration *>) {      \
       auto *this_as_decl =                                                     \
           reinterpret_cast<Declaration *>(this)->identifier.get();             \
@@ -30,9 +30,9 @@ extern Type const *Err;
       } else {                                                                 \
         ctx->cyc_dep_vec_->push_back(this_as_decl);                            \
       }                                                                        \
-      ASSERT(ctx->types_.emplace(this, type::Err).second);                     \
+      ASSERT(ctx->mod_->types_.emplace(this, type::Err).second);                     \
     } else {                                                                   \
-      ctx->types_.buffered_emplace(this, type::Err);                           \
+      ctx->mod_->types_.buffered_emplace(this, type::Err);                           \
     }                                                                          \
     type = type::Err;                                                          \
     limit_to(StageRange::Nothing());                                           \

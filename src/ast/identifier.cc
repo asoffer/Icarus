@@ -47,7 +47,7 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
             // required? You shouldn't be relying on it... that's what the
             // staging system is for.
             type = type::Type_;
-            ctx->types_.emplace(this, type::Type_);
+            ctx->mod_->types_.emplace(this, type::Type_);
             return type::Type_;
           }
         }
@@ -83,7 +83,7 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
   auto *decl_type = decl->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
   type = decl_type;
-  ctx->types_.emplace(this, decl_type);
+  ctx->mod_->types_.emplace(this, decl_type);
   return decl_type;
 }
 

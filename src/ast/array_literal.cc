@@ -33,7 +33,7 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
 
   if (elems_.empty()) {
     type = type::EmptyArray;
-    ctx->types_.buffered_emplace(this, type::EmptyArray);
+    ctx->mod_->types_.buffered_emplace(this, type::EmptyArray);
     return type::EmptyArray;
   }
 
@@ -59,7 +59,7 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
     limit_to(StageRange::Nothing());
   } else {
     type = type::Arr(joined, elems_.size());
-    ctx->types_.buffered_emplace(this, type::Arr(joined, elems_.size()));
+    ctx->mod_->types_.buffered_emplace(this, type::Arr(joined, elems_.size()));
   }
   return type;
 }
@@ -98,13 +98,14 @@ ArrayLiteral *ArrayLiteral::Clone() const {
 
 base::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
-  auto alloc = IR::Alloca(type);
-  auto array_val  = IR::Val::Reg(alloc, type::Ptr(type));
-  auto *data_type = type->as<type::Array>().data_type;
+  auto *this_type = ctx->mod_->types_.at(this);
+  auto alloc = IR::Alloca(this_type);
+  auto array_val  = IR::Val::Reg(alloc, type::Ptr(this_type));
+  auto *data_type = this_type->as<type::Array>().data_type;
   for (size_t i = 0; i < elems_.size(); ++i) {
-    type::EmitMoveInit(data_type, data_type, elems_[i]->EmitIR(ctx)[0],
-                       IR::Index(type::Ptr(type), alloc, static_cast<i32>(i)),
-                       ctx);
+    type::EmitMoveInit(
+        data_type, data_type, elems_[i]->EmitIR(ctx)[0],
+        IR::Index(type::Ptr(this_type), alloc, static_cast<i32>(i)), ctx);
   }
   return {array_val};
 }

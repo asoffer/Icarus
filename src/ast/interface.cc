@@ -29,7 +29,7 @@ type::Type const *Interface::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   type = type::Interface;
-  ctx->types_.buffered_emplace(this, type::Interface);
+  ctx->mod_->types_.buffered_emplace(this, type::Interface);
 
   for (auto &decl: decls_) {
     decl.VerifyType(ctx);

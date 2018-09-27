@@ -82,7 +82,7 @@ struct Function : public FuncContent {
   base::vector<IR::Val> EmitIR(Context *) override;
   base::vector<IR::Register> EmitLVal(Context *) override;
 
-  GeneratedFunction *generate(BoundConstants const &bc);
+  GeneratedFunction *generate(Context *ctx);
   base::map<BoundConstants, GeneratedFunction> fns_;
 };
 }  // namespace AST

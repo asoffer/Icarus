@@ -417,7 +417,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(args_.pos_.size() == 1u);
       ASSERT(args_.pos_[0]->type == type::Type_);
       type = type::Int;
-      ctx->types_.buffered_emplace(this, type::Int);
+      ctx->mod_->types_.buffered_emplace(this, type::Int);
       return type::Int;
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
@@ -429,7 +429,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
              Is<type::Array>());
       ASSERT(args_.pos_[1]->type == type::Int);
       type = type::Void();
-      ctx->types_.buffered_emplace(this, type::Void());
+      ctx->mod_->types_.buffered_emplace(this, type::Void());
       return type::Void();
     } else if (fn_val == IR::Val::BuiltinGeneric(ForeignFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
@@ -439,7 +439,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(args_.pos_[0]->type, Is<type::CharBuffer>());
       ASSERT(args_.pos_[1]->type == type::Type_);
       type = backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx);
-      ctx->types_.buffered_emplace(this, type);
+      ctx->mod_->types_.buffered_emplace(this, type);
       ASSERT(type, Is<type::Function>());
       return type;
     } else {

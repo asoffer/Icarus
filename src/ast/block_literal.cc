@@ -38,7 +38,7 @@ void BlockLiteral::Validate(Context *ctx) {
   // Because this returns void, we need to ignore the return value. Wrapping in
   // an immediately invoked lambda.
   [&]() -> type::Type const * {
-    ctx->types_.buffered_emplace(this, type);
+    ctx->mod_->types_.buffered_emplace(this, type);
     [[maybe_unused]] VERIFY_OR_RETURN(before_type, before_);
     [[maybe_unused]] VERIFY_OR_RETURN(after_type, after_);
 

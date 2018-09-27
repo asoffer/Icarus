@@ -46,7 +46,7 @@ type::Type const *Switch::VerifyType(Context *ctx) {
   if (types.empty()) { NOT_YET("handle type error"); }
   type =
       std::accumulate(types.begin(), types.end(), *types.begin(), type::Join);
-  ctx->types_.buffered_emplace(this, type);
+  ctx->mod_->types_.buffered_emplace(this, type);
   if (type == nullptr) {
     type = type::Err;
     NOT_YET("handle type error");

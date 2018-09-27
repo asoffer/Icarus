@@ -114,15 +114,15 @@ type::Type const *Unop::VerifyType(Context *ctx) {
   switch (op) {
     case Language::Operator::TypeOf:
       type = type::Type_;
-      ctx->types_.buffered_emplace(this, type::Type_);
+      ctx->mod_->types_.buffered_emplace(this, type::Type_);
       return type::Type_;
     case Language::Operator::Eval:
       type = operand_type;
-      ctx->types_.buffered_emplace(this, operand_type);
+      ctx->mod_->types_.buffered_emplace(this, operand_type);
       return operand_type;
     case Language::Operator::Generate:
       type = type::Void();
-      ctx->types_.buffered_emplace(this, type::Void());
+      ctx->mod_->types_.buffered_emplace(this, type::Void());
       return type::Void();
     case Language::Operator::Which:
       type = type::Type_;
@@ -134,7 +134,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
     case Language::Operator::At:
       if (operand_type->is<type::Pointer>()) {
         type = operand_type->as<type::Pointer>().pointee;
-        ctx->types_.buffered_emplace(this, type);
+        ctx->mod_->types_.buffered_emplace(this, type);
         return type;
       } else {
         ctx->error_log_.DereferencingNonPointer(operand_type, span);
@@ -144,7 +144,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       }
     case Language::Operator::And:
       type = type::Ptr(operand_type);
-      ctx->types_.buffered_emplace(this, type::Ptr(operand_type));
+      ctx->mod_->types_.buffered_emplace(this, type::Ptr(operand_type));
       return type::Ptr(operand_type);
     case Language::Operator::Mul: 
       limit_to(operand);
@@ -155,13 +155,13 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         return nullptr;
       } else {
         type = type::Type_;
-        ctx->types_.buffered_emplace(this, type::Type_);
+        ctx->mod_->types_.buffered_emplace(this, type::Type_);
         return type::Type_;
       }
     case Language::Operator::Sub: 
       if (operand_type == type::Int || operand_type == type::Real) {
         type = operand_type;
-        ctx->types_.buffered_emplace(this, operand_type);
+        ctx->mod_->types_.buffered_emplace(this, operand_type);
         return operand_type;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
@@ -180,7 +180,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
     case Language::Operator::Not: 
       if (operand_type == type::Bool) {
         type = type::Bool;
-        ctx->types_.buffered_emplace(this, type::Bool);
+        ctx->mod_->types_.buffered_emplace(this, type::Bool);
         return type::Bool;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
@@ -201,7 +201,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       }
     case Language::Operator::Needs:
       type = type::Void();
-      ctx->types_.buffered_emplace(this, type::Void());
+      ctx->mod_->types_.buffered_emplace(this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PreconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
@@ -209,7 +209,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       return type::Void();
     case Language::Operator::Ensure:
       type = type::Void();
-      ctx->types_.buffered_emplace(this, type::Void());
+      ctx->mod_->types_.buffered_emplace(this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PostconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
@@ -217,7 +217,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       return type::Void();
     case Language::Operator::Pass:
       type = operand_type;
-      ctx->types_.buffered_emplace(this, operand_type);
+      ctx->mod_->types_.buffered_emplace(this, operand_type);
       return operand_type;
     default: UNREACHABLE(*this);
   }

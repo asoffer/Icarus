@@ -41,7 +41,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on
       // assuming that this is an element of that enum type.
-      ctx->types_.buffered_emplace(this, evaled_type);
+      ctx->mod_->types_.buffered_emplace(this, evaled_type);
       type = evaled_type;
       if (evaled_type->as<type::Enum>().IntValueOrFail(member_name) ==
           std::numeric_limits<size_t>::max()) {
@@ -52,7 +52,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
   } else if (base_type->is<type::Struct>()) {
     const auto *member = base_type->as<type::Struct>().field(member_name);
     if (member != nullptr) {
-      ctx->types_.buffered_emplace(this, member->type);
+      ctx->mod_->types_.buffered_emplace(this, member->type);
       type = member->type;
 
     } else {
@@ -63,7 +63,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
   } else if (base_type == type::Module) {
     type = backend::EvaluateAs<const Module *>(operand.get(), ctx)
           ->GetType(member_name);
-    ctx->types_.buffered_emplace(this, type);
+    ctx->mod_->types_.buffered_emplace(this, type);
     if (type == nullptr) {
       NOT_YET("log an error");
       type = type::Err;
@@ -92,9 +92,9 @@ void Access::contextualize(
 
 base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
   auto reg            = operand->EmitLVal(ctx)[0];
-  type::Type const *t = type::Ptr(operand->type);
+  type::Type const *t = type::Ptr(ctx->mod_->types_.at(operand.get()));
   while (!t->as<type::Pointer>().pointee->is_big()) {
-    reg = IR::Load(reg, type);
+    reg = IR::Load(reg, ctx->mod_->types_.at(this));
     t   = t->as<type::Pointer>().pointee;
   }
 
@@ -103,14 +103,17 @@ base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
 }
 
 base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
-  if (operand->type == type::Module) {
+  if (ctx->mod_->types_.at(operand.get()) == type::Module) {
     return backend::EvaluateAs<Module const *>(operand.get(), ctx)
         ->GetDecl(member_name)
         ->EmitIR(ctx);
-  } else if (type->is<type::Enum>()) {
-    return {type->as<type::Enum>().EmitLiteral(member_name)};
+  }
+
+  auto *this_type = ctx->mod_->types_.at(this);
+  if (this_type->is<type::Enum>()) {
+    return {this_type->as<type::Enum>().EmitLiteral(member_name)};
   } else {
-    return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], type), type)};
+    return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], this_type), this_type)};
   }
 }
 

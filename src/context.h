@@ -1,12 +1,11 @@
 #ifndef ICARUS_CONTEXT_H
 #define ICARUS_CONTEXT_H
 
-#include "ast/node_lookup.h"
 #include "base/container/vector.h"
 #include "base/debug.h"
 #include "error/log.h"
+#include "module.h"
 
-struct Module;
 struct Context {
   Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {}
 
@@ -21,8 +20,6 @@ struct Context {
   // again, at each step adding the nodes to the error log involved in the
   // dependency. Once complete, we reset this to null
   base::vector<AST::Identifier *> *cyc_dep_vec_ = nullptr;
-
-  AST::NodeLookup<type::Type const *> types_;
 };
 
 #endif // ICARUS_CONTEXT_H

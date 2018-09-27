@@ -73,7 +73,7 @@ type::Type const *ScopeNode::VerifyType(Context *ctx) {
   if (!block_type->is<type::Scope>()) { NOT_YET("not a scope", block_type); }
 
   type = type::Void();
-  ctx->types_.buffered_emplace(this, type::Void());
+  ctx->mod_->types_.buffered_emplace(this, type::Void());
   return type::Void();  // TODO can this evaluate to anything?
 }
 

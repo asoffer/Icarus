@@ -4,6 +4,9 @@
 #include "ast/expression.h"
 #include "ast/stages.h"
 #include "ir/val.h"
+#include "module.h"
+
+struct Context;
 
 namespace AST {
 struct Terminal : public Expression {
@@ -15,10 +18,8 @@ struct Terminal : public Expression {
   void assign_scope(Scope *scope) override;
   std::string to_string(size_t) const override { return value.to_string(); }
 
-  type::Type const *VerifyType(Context *ctx) override {
-    ctx->types_.buffered_emplace(this, type);
-    return type;
-  }
+  type::Type const *VerifyType(Context *ctx) override;
+
   void Validate(Context *) override {}
   void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override {}
   void ExtractReturns(base::vector<const Expression *> *) const override {}

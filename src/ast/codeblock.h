@@ -27,7 +27,7 @@ struct CodeBlock : public Expression {
   CodeBlock *Clone() const { return new CodeBlock(*this); }
 
   type::Type const *VerifyType(Context *ctx) override {
-    ctx->types_.buffered_emplace(this, type::Code);
+    ctx->mod_->types_.buffered_emplace(this, type::Code);
     return type::Code;
   }
   virtual void Validate(Context *) override {}

@@ -21,12 +21,11 @@ using base::check::Is;
 std::optional<BoundConstants> ComputeBoundConstants(
     Function *fn, const FnArgs<Expression *> &args, Binding *binding,
     Context *ctx) {
-  Context new_ctx(ctx->mod_);
   BoundConstants bc;
 
   // TODO handle declaration order
   for (size_t i = 0; i < fn->inputs.size(); ++i) {
-    fn->inputs[i]->VerifyType(&new_ctx);
+    fn->inputs[i]->VerifyType(ctx);
     if (fn->inputs[i]->type == type::Err) { return std::nullopt; }
 
     if ((binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) ||
@@ -75,7 +74,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
       bc.constants_.emplace(
           fn->inputs[i].get(),
           (binding->defaulted(i)
-               ? backend::Evaluate(fn->inputs[i].get(), &new_ctx)
+               ? backend::Evaluate(fn->inputs[i].get(), ctx)
                : backend::Evaluate(binding->exprs_[i].second, ctx))[0]);
     }
 
@@ -150,13 +149,15 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   if (bound_fn->is<Function>()) {
     auto *generic_fn = &bound_fn->as<Function>();
 
+    // TODO these are being ignored, which is definitely wrong for generics, but
+    // we need to redo those anyway.
     auto bound_constants =
         ComputeBoundConstants(generic_fn, args, &dispatch_entry.binding_, ctx);
     if (!bound_constants) { return std::nullopt; }
 
     // TODO can generate fail? Probably
     dispatch_entry.binding_.fn_expr_ =
-        ASSERT_NOT_NULL(generic_fn->generate(bound_constants.value()));
+        ASSERT_NOT_NULL(generic_fn->generate(ctx));
   }
 
   FuncContent *fn = nullptr;

@@ -31,7 +31,7 @@ type::Type const *ArrayType::VerifyType(Context *ctx) {
   limit_to(data_type_);
 
   type = type::Type_;
-  ctx->types_.buffered_emplace(this, type::Type_);
+  ctx->mod_->types_.buffered_emplace(this, type::Type_);
 
   if (!length_->is<Hole>() && length_->type != type::Int) {
     ctx->error_log_.ArrayIndexType(span);
