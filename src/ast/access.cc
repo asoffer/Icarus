@@ -42,40 +42,38 @@ type::Type const *Access::VerifyType(Context *ctx) {
       // supposed to be a member so we should emit an error but carry on
       // assuming that this is an element of that enum type.
       ctx->mod_->types_.buffered_emplace(this, evaled_type);
-      type = evaled_type;
       if (evaled_type->as<type::Enum>().IntValueOrFail(member_name) ==
           std::numeric_limits<size_t>::max()) {
         ctx->error_log_.MissingMember(span, member_name, evaled_type);
         limit_to(StageRange::NoEmitIR());
       }
     }
+    return evaled_type;
   } else if (base_type->is<type::Struct>()) {
     const auto *member = base_type->as<type::Struct>().field(member_name);
     if (member != nullptr) {
       ctx->mod_->types_.buffered_emplace(this, member->type);
-      type = member->type;
+      return member->type;
 
     } else {
       ctx->error_log_.MissingMember(span, member_name, base_type);
-      type = type::Err;
       limit_to(StageRange::Nothing());
+      return nullptr;
     }
   } else if (base_type == type::Module) {
-    type = backend::EvaluateAs<const Module *>(operand.get(), ctx)
-          ->GetType(member_name);
-    ctx->mod_->types_.buffered_emplace(this, type);
-    if (type == nullptr) {
+    auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
+                  ->GetType(member_name);
+    ctx->mod_->types_.buffered_emplace(this, t);
+    if (t == nullptr) {
       NOT_YET("log an error");
-      type = type::Err;
       limit_to(StageRange::Nothing());
     }
-
+    return t;
   } else {
     ctx->error_log_.MissingMember(span, member_name, base_type);
-    type = type::Err;
     limit_to(StageRange::Nothing());
+    return nullptr;
   }
-  return type;
 }
 
 void Access::Validate(Context *ctx) {

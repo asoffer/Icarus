@@ -32,36 +32,36 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   if (elems_.empty()) {
-    type = type::EmptyArray;
     ctx->mod_->types_.buffered_emplace(this, type::EmptyArray);
     return type::EmptyArray;
   }
 
+  std::vector<type::Type const*> elem_types;
   for (auto &elem : elems_) {
-    elem->VerifyType(ctx);
+    elem_types.push_back(elem->VerifyType(ctx));
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(elem);
   }
 
   const type::Type *joined = type::Err;
-  for (auto &elem : elems_) {
-    joined = type::Join(joined, elem->type);
+  for (auto &elem_type : elem_types) {
+    joined = type::Join(joined, elem_type);
     if (joined == nullptr) { break; }
   }
 
   if (joined == nullptr) {
     // type::Types couldn't be joined. Emit an error
     ctx->error_log_.InconsistentArrayType(span);
-    type = type::Err;
     limit_to(StageRange::Nothing());
+    return nullptr;
   } else if (joined == type::Err) {
-    type = type::Err;  // There were no valid types anywhere in the array
     limit_to(StageRange::Nothing());
+    return nullptr;
   } else {
-    type = type::Arr(joined, elems_.size());
-    ctx->mod_->types_.buffered_emplace(this, type::Arr(joined, elems_.size()));
+    auto *t = type::Arr(joined, elems_.size());
+    ctx->mod_->types_.buffered_emplace(this, t);
+    return t;
   }
-  return type;
 }
 
 void ArrayLiteral::Validate(Context *ctx) {

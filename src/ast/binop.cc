@@ -100,12 +100,11 @@ void Binop::assign_scope(Scope *scope) {
 type::Type const *Binop::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
-  lhs->VerifyType(ctx);
+  auto *lhs_type = lhs->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
-  rhs->VerifyType(ctx);
+  auto *rhs_type = rhs->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
-  if (lhs->type == type::Err || rhs->type == type::Err) {
-    type = type::Err;
+  if (lhs_type == nullptr || rhs_type == nullptr) {
     limit_to(lhs);
     limit_to(rhs);
     return nullptr;
@@ -114,10 +113,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
   using Language::Operator;
   // TODO if lhs is reserved?
   if (op == Operator::Assign) {
-    if (lhs->type->is<type::Tuple>()) {
-      if (rhs->type->is<type::Tuple>()) {
-        const auto &lhs_entries_ = lhs->type->as<type::Tuple>().entries_;
-        const auto &rhs_entries_ = rhs->type->as<type::Tuple>().entries_;
+    if (lhs_type->is<type::Tuple>()) {
+      if (rhs_type->is<type::Tuple>()) {
+        const auto &lhs_entries_ = lhs_type->as<type::Tuple>().entries_;
+        const auto &rhs_entries_ = rhs_type->as<type::Tuple>().entries_;
 
         if (lhs_entries_.size() != rhs_entries_.size()) {
           NOT_YET("error message");
@@ -135,192 +134,181 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         NOT_YET("error message");
       }
     } else {
-      if (rhs->type->is<type::Tuple>()){
+      if (rhs_type->is<type::Tuple>()){
         LOG << lhs;
         LOG << rhs;
         NOT_YET("error message");
       } else {
-        if (!type::CanCastImplicitly(rhs->type, lhs->type)) {
+        if (!type::CanCastImplicitly(rhs_type, lhs_type)) {
           NOT_YET("log an error");
           limit_to(StageRange::NoEmitIR());
         }
       }
     }
 
-    return type;
+    return type::Void();
   }
 
   switch (op) {
     case Operator::Index: {
-      type = type::Err;
-      if (lhs->type->is<type::CharBuffer>()) {
-        if (rhs->type != type::Int) {
-          ctx->error_log_.InvalidCharBufIndex(span, rhs->type);
+      if (lhs_type->is<type::CharBuffer>()) {
+        if (rhs_type != type::Int) {
+          ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
           limit_to(StageRange::NoEmitIR());
         }
-        type = type::Char;  // Assuming it's a char, even if the index type was
-                            // wrong.
         ctx->mod_->types_.buffered_emplace(this, type::Char);
         return type::Char;
-      } else if (!lhs->type->is<type::Array>()) {
-        ctx->error_log_.IndexingNonArray(span, lhs->type);
+      } else if (!lhs_type->is<type::Array>()) {
+        ctx->error_log_.IndexingNonArray(span, lhs_type);
         limit_to(StageRange::NoEmitIR());
         return nullptr;
       } else {
-        type = lhs->type->as<type::Array>().data_type;
-        ctx->mod_->types_.buffered_emplace(this,
-                                     lhs->type->as<type::Array>().data_type);
+        auto *t = lhs_type->as<type::Array>().data_type;
+        ctx->mod_->types_.buffered_emplace(this, t);
 
-        if (rhs->type == type::Int) { break; }
-        ctx->error_log_.NonIntegralArrayIndex(span, rhs->type);
+        if (rhs_type == type::Int) { break; }
+        ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
         limit_to(StageRange::NoEmitIR());
-        return lhs->type->as<type::Array>().data_type;
+        return t;
       }
     } break;
-    case Operator::As:
+    case Operator::As: {
       // TODO check that the type actually can be cast
       // correctly.
-      type = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
-      ctx->mod_->types_.buffered_emplace(this, type);
-      return type;
+      auto *t = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
+      ctx->mod_->types_.buffered_emplace(this, t);
+      return t;
+    }
     case Operator::XorEq:
-      if (lhs->type == type::Bool && rhs->type == type::Bool) {
-        type = type::Bool;
+      if (lhs_type == type::Bool && rhs_type == type::Bool) {
         ctx->mod_->types_.buffered_emplace(this, type::Bool);
         return type::Bool;
-      } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
-        type = lhs->type;
-        ctx->mod_->types_.buffered_emplace(this, lhs->type);
-        return lhs->type;
+      } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
+        ctx->mod_->types_.buffered_emplace(this, lhs_type);
+        return lhs_type;
       } else {
-        type = type::Err;
         // TODO could be bool or enum.
         ctx->error_log_.XorEqNeedsBool(span);
         limit_to(StageRange::Nothing());
         return nullptr;
       }
-    case Operator::AndEq: 
-      if (lhs->type == type::Bool && rhs->type == type::Bool) {
-        type = type::Bool;
+    case Operator::AndEq:
+      if (lhs_type == type::Bool && rhs_type == type::Bool) {
         ctx->mod_->types_.buffered_emplace(this, type::Bool);
         return type::Bool;
-      } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
-        type = lhs->type;
-        ctx->mod_->types_.buffered_emplace(this, lhs->type);
-        return lhs->type;
+      } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
+        ctx->mod_->types_.buffered_emplace(this, lhs_type);
+        return lhs_type;
       } else {
-        type = type::Err;
         // TODO could be bool or enum.
         ctx->error_log_.AndEqNeedsBool(span);
         limit_to(StageRange::Nothing());
         return nullptr;
       }
     case Operator::OrEq:
-      if (lhs->type == type::Bool && rhs->type == type::Bool) {
-        type = type::Bool;
+      if (lhs_type == type::Bool && rhs_type == type::Bool) {
         ctx->mod_->types_.buffered_emplace(this, type::Bool);
         return type::Bool;
-      } else if (lhs->type->is<type::Flags>() && rhs->type == lhs->type) {
-        type = lhs->type;
-        ctx->mod_->types_.buffered_emplace(this, lhs->type);
-        return lhs->type;
+      } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
+        ctx->mod_->types_.buffered_emplace(this, lhs_type);
+        return lhs_type;
       } else {
-        type = type::Err;
         // TODO could be bool or enum.
         ctx->error_log_.OrEqNeedsBool(span);
         limit_to(StageRange::Nothing());
         return nullptr;
       }
 
-#define CASE(OpName, symbol, ret_type)                                         \
-  case Operator::OpName: {                                                     \
-    if ((lhs->type == type::Int && rhs->type == type::Int) ||                  \
-        (lhs->type == type::Real && rhs->type == type::Real)) {                \
-      type = ret_type;                                                         \
-      ctx->mod_->types_.buffered_emplace(this, ret_type);                            \
-      return ret_type;                                                         \
-    } else {                                                                   \
-      FnArgs<Expression *> args;                                               \
-      args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};          \
-      std::tie(dispatch_table_, type) =                                        \
-          DispatchTable::Make(args, symbol, scope_, ctx);                      \
-      ASSERT(type, Not(Is<type::Tuple>()));                                    \
-      if (type == type::Err) {                                                 \
-        ctx->error_log_.NoMatchingOperator(symbol, lhs->type, rhs->type,       \
-                                           span);                              \
-        limit_to(StageRange::Nothing());                                       \
-      }                                                                        \
-    }                                                                          \
+#define CASE(OpName, symbol, ret_type)                                          \
+  case Operator::OpName: {                                                      \
+    if ((lhs_type == type::Int && rhs_type == type::Int) ||                     \
+        (lhs_type == type::Real && rhs_type == type::Real)) {                   \
+      auto *t = (ret_type);                                                     \
+      ctx->mod_->types_.buffered_emplace(this, t);                              \
+      return t;                                                                 \
+    } else {                                                                    \
+      FnArgs<Expression *> args;                                                \
+      args.pos_           = base::vector<Expression *>{{lhs.get(), rhs.get()}}; \
+      type::Type const *t = nullptr;                                            \
+      std::tie(dispatch_table_, t) =                                            \
+          DispatchTable::Make(args, symbol, scope_, ctx);                       \
+      ASSERT(type, Not(Is<type::Tuple>()));                                     \
+      /* TODO should this be Err or nullptr? */                                 \
+      if (t == type::Err) {                                                     \
+        ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
+        limit_to(StageRange::Nothing());                                        \
+      }                                                                         \
+    }                                                                           \
   } break;
 
-      CASE(Sub, "-", lhs->type);
-      CASE(Div, "/", lhs->type);
-      CASE(Mod, "%", lhs->type);
+      CASE(Sub, "-", lhs_type);
+      CASE(Div, "/", lhs_type);
+      CASE(Mod, "%", lhs_type);
       CASE(SubEq, "-=", type::Void());
       CASE(MulEq, "*=", type::Void());
       CASE(DivEq, "/=", type::Void());
       CASE(ModEq, "%=", type::Void());
 #undef CASE
     case Operator::Add: {
-      if ((lhs->type == type::Int && rhs->type == type::Int) ||
-          (lhs->type == type::Real && rhs->type == type::Real) ||
-          (lhs->type == type::Code && rhs->type == type::Code)) {
-        type = lhs->type;
-        ctx->mod_->types_.buffered_emplace(this, lhs->type);
-        return lhs->type;
-      } else if (lhs->type->is<type::CharBuffer>() &&
-                 rhs->type->is<type::CharBuffer>()) {
-        type = type::CharBuf(lhs->type->as<type::CharBuffer>().length_ +
-                             rhs->type->as<type::CharBuffer>().length_);
-        ctx->mod_->types_.buffered_emplace(this, type);
-        return type;
+      if ((lhs_type == type::Int && rhs_type == type::Int) ||
+          (lhs_type == type::Real && rhs_type == type::Real) ||
+          (lhs_type == type::Code && rhs_type == type::Code)) {
+        ctx->mod_->types_.buffered_emplace(this, lhs_type);
+        return lhs_type;
+      } else if (lhs_type->is<type::CharBuffer>() &&
+                 rhs_type->is<type::CharBuffer>()) {
+        auto *t = type::CharBuf(lhs_type->as<type::CharBuffer>().length_ +
+                                rhs_type->as<type::CharBuffer>().length_);
+        ctx->mod_->types_.buffered_emplace(this, t);
+        return t;
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
-        std::tie(dispatch_table_, type) =
+        type::Type const *t = nullptr;
+        std::tie(dispatch_table_, t) =
             DispatchTable::Make(args, "+", scope_, ctx);
         ASSERT(type, Not(Is<type::Tuple>()));
-        if (type == type::Err) {
-          ctx->error_log_.NoMatchingOperator("+", lhs->type, rhs->type, span);
+        // TODO should this be Err or nullptr?
+        if (t == type::Err) {
+          ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
           limit_to(StageRange::Nothing());
         }
       }
     } break;
     case Operator::AddEq: {
-      if ((lhs->type == type::Int && rhs->type == type::Int) ||
-          (lhs->type == type::Real && rhs->type == type::Real) ||
-          (lhs->type == type::Code &&
-           rhs->type == type::Code)) { /* TODO type::Code should only be valid
+      if ((lhs_type == type::Int && rhs_type == type::Int) ||
+          (lhs_type == type::Real && rhs_type == type::Real) ||
+          (lhs_type == type::Code &&
+           rhs_type == type::Code)) { /* TODO type::Code should only be valid
                                           for Add, not Sub, etc */
-        type = type::Void();
         ctx->mod_->types_.buffered_emplace(this, type::Void());
         return type::Void();
       } else {
         FnArgs<Expression *> args;
-        args.pos_ = base::vector<Expression*>{{lhs.get(), rhs.get()}};
-        std::tie(dispatch_table_, type) =
+        args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
+        type::Type const *t = nullptr;
+        std::tie(dispatch_table_, t) =
             DispatchTable::Make(args, "+=", scope_, ctx);
-        ASSERT(type, Not(Is<type::Tuple>()));
-        if (type == type::Err) { limit_to(StageRange::Nothing()); }
+        ASSERT(t, Not(Is<type::Tuple>()));
+        // TODO should this be Err or nullptr?
+        if (t == type::Err) { limit_to(StageRange::Nothing()); }
       }
     } break;
     // Mul is done separately because of the function composition
     case Operator::Mul:
-      if ((lhs->type == type::Int && rhs->type == type::Int) ||
-          (lhs->type == type::Real && rhs->type == type::Real)) {
-        type = lhs->type;
-        ctx->mod_->types_.buffered_emplace(this, lhs->type);
-        return lhs->type;
-      } else if (lhs->type->is<type::Function>() &&
-                 rhs->type->is<type::Function>()) {
-        auto *lhs_fn = &lhs->type->as<type::Function>();
-        auto *rhs_fn = &rhs->type->as<type::Function>();
+      if ((lhs_type == type::Int && rhs_type == type::Int) ||
+          (lhs_type == type::Real && rhs_type == type::Real)) {
+        ctx->mod_->types_.buffered_emplace(this, lhs_type);
+        return lhs_type;
+      } else if (lhs_type->is<type::Function>() &&
+                 rhs_type->is<type::Function>()) {
+        auto *lhs_fn = &lhs_type->as<type::Function>();
+        auto *rhs_fn = &rhs_type->as<type::Function>();
         if (rhs_fn->output == lhs_fn->input) {
-          type = type::Func({rhs_fn->input}, {lhs_fn->output});
-          ctx->mod_->types_.buffered_emplace(this, type);
-          return type;
+          auto *t = type::Func({rhs_fn->input}, {lhs_fn->output});
+          ctx->mod_->types_.buffered_emplace(this, t);
+          return t;
         } else {
-          type = type::Err;
           ctx->error_log_.NonComposableFunctions(span);
           limit_to(StageRange::Nothing());
           return nullptr;
@@ -328,40 +316,41 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 
       } else {
         FnArgs<Expression *> args;
-        args.pos_ = base::vector<Expression*>{{lhs.get(), rhs.get()}};
-        std::tie(dispatch_table_, type) =
+        args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
+        type::Type const *t = nullptr;
+        std::tie(dispatch_table_, t) =
             DispatchTable::Make(args, "*", scope_, ctx);
-        ASSERT(type, Not(Is<type::Tuple>()));
-        if (type == type::Err) {
-          ctx->error_log_.NoMatchingOperator("+", lhs->type, rhs->type, span);
+        ASSERT(t, Not(Is<type::Tuple>()));
+        // TODO should this be Err or nullptr?
+        if (t == type::Err) {
+          ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
           limit_to(StageRange::Nothing());
           return nullptr;
         }
+        return t;
       }
-      return type;
-    case Operator::Arrow:
-      type = nullptr;
-      if (!IsTypeOrTupleOfTypes(lhs->type)) {
-        type = type::Err;
+    case Operator::Arrow: {
+      type::Type const *t = type::Type_;
+      if (!IsTypeOrTupleOfTypes(lhs_type)) {
+        t = nullptr;
         ctx->error_log_.NonTypeFunctionInput(span);
-        limit_to(StageRange::Nothing());
       }
 
-      if (!IsTypeOrTupleOfTypes(rhs->type)) {
-        type = type::Err;
+      if (!IsTypeOrTupleOfTypes(rhs_type)) {
+        t = nullptr;
         ctx->error_log_.NonTypeFunctionOutput(span);
-        limit_to(StageRange::Nothing());
       }
 
-      if (type != type::Err) {
-        type = type::Type_;
+      if (t != nullptr) {
         ctx->mod_->types_.buffered_emplace(this, type::Type_);
-        return type::Type_;
+      } else {
+        limit_to(StageRange::Nothing());
       }
-      return type;
+      return t;
+    }
     default: UNREACHABLE();
   }
-  return type;
+  UNREACHABLE();
 }
 
 void Binop::Validate(Context *ctx) {
@@ -472,7 +461,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     } break;
     case Language::Operator::As: {
       auto *this_type = ctx->mod_->types_.at(this);
-      auto val = lhs->EmitIR(ctx)[0];
+      auto val        = lhs->EmitIR(ctx)[0];
       if (val.type == this_type) {
         return {val};
       } else if (i32 const *n = std::get_if<i32>(&val.value);
@@ -488,8 +477,8 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
           auto &array_type = ptee_type->as<type::Array>();
           if (array_type.fixed_length &&
               type::Ptr(array_type.data_type) == this_type) {
-            IR::Val v_copy  = val;
-            v_copy.type = this_type;
+            IR::Val v_copy = val;
+            v_copy.type    = this_type;
             return {v_copy};
           }
         }

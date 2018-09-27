@@ -8,7 +8,8 @@
 
 namespace AST {
 BlockLiteral::BlockLiteral(bool required) {
-  type = required ? type::Block : type::OptBlock;
+  required_ = required;
+  type = required_ ? type::Block : type::OptBlock;
 }
 
 std::string BlockLiteral::to_string(size_t n) const {
@@ -30,7 +31,7 @@ void BlockLiteral::assign_scope(Scope *scope) {
 
 type::Type const *BlockLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  return type;
+  return required_ ? type::Block : type::OptBlock;
 }
 
 void BlockLiteral::Validate(Context *ctx) {
@@ -38,7 +39,8 @@ void BlockLiteral::Validate(Context *ctx) {
   // Because this returns void, we need to ignore the return value. Wrapping in
   // an immediately invoked lambda.
   [&]() -> type::Type const * {
-    ctx->mod_->types_.buffered_emplace(this, type);
+    ctx->mod_->types_.buffered_emplace(
+        this, required_ ? type::Block : type::OptBlock);
     [[maybe_unused]] VERIFY_OR_RETURN(before_type, before_);
     [[maybe_unused]] VERIFY_OR_RETURN(after_type, after_);
 
@@ -46,7 +48,7 @@ void BlockLiteral::Validate(Context *ctx) {
 
     before_->Validate(ctx);
     after_->Validate(ctx);
-    return type;
+    return required_ ? type::Block : type::OptBlock;
   }();
 }
 

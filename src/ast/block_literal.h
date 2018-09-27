@@ -23,6 +23,7 @@ struct BlockLiteral : public Expression {
 
   std::unique_ptr<Expression> before_, after_;
   std::unique_ptr<Scope> body_scope_;
+  bool required_;
 };
 }  // namespace AST
 

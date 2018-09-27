@@ -155,11 +155,14 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   bool found_err = false;
 
+  std::vector<type::Type const *> expr_types;
+  expr_types.reserve(exprs.size());
   for (auto &expr : exprs) {
-    expr->VerifyType(ctx);
+    auto *expr_type = expr->VerifyType(ctx);
+    expr_types.push_back(expr_type);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
-    if (expr->type == type::Err) { found_err = true; }
+    if (expr_type == type::Err) { found_err = true; }
   }
   if (found_err) {
     type = type::Err;
@@ -169,23 +172,23 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
 
   if (ops[0] == Language::Operator::Or) {
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
-      if (exprs[i]->type == type::Block) {
+      if (expr_types[i] == type::Block) {
         ctx->error_log_.EarlyRequiredBlock(exprs[i]->span);
         type = type::Err;
-      } else if (exprs[i]->type == type::OptBlock) {
+      } else if (expr_types[i] == type::OptBlock) {
         continue;
       } else {
         goto not_blocks;
       }
     }
     if (type == type::Err) { return nullptr; }
-    if (exprs.back()->type != type::Block &&
-        exprs.back()->type != type::OptBlock) {
+    if (expr_types.back() != type::Block &&
+        expr_types.back() != type::OptBlock) {
       goto not_blocks;
     } else {
-      type = exprs.back()->type;
-      ctx->mod_->types_.buffered_emplace(this, type);
-      return type;
+      type = expr_types.back();
+      ctx->mod_->types_.buffered_emplace(this, expr_types.back());
+      return expr_types.back();
     }
   }
   not_blocks:
@@ -206,13 +209,12 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
         }
       }
 
-      type = exprs[0]->type;
+      type = expr_types[0];
       ctx->mod_->types_.buffered_emplace(this, type);
 
-      if (exprs[0]->type != type::Bool &&
-          !(exprs[0]->type == type::Type_ &&
-            ops[0] == Language::Operator::Or) &&
-          (!exprs[0]->type->is<type::Flags>())) {
+      if (expr_types[0] != type::Bool &&
+          !(expr_types[0] == type::Type_ && ops[0] == Language::Operator::Or) &&
+          (!expr_types[0]->is<type::Flags>())) {
         NOT_YET("log an error");
         if (failed) {
           limit_to(StageRange::Nothing());
@@ -225,8 +227,8 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
     default: {
       ASSERT(exprs.size() >= 2u);
       for (size_t i = 0; i < exprs.size() - 1; ++i) {
-        const type::Type *lhs_type = exprs[i]->type;
-        const type::Type *rhs_type = exprs[i + 1]->type;
+        const type::Type *lhs_type = expr_types[i];
+        const type::Type *rhs_type = expr_types[i + 1];
 
         // TODO struct is wrong. generally user-defined (could be array of
         // struct too, or perhaps a variant containing a struct?) need to
