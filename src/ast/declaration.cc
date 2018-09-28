@@ -211,7 +211,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     identifier->decl = this;
 
     if (type_expr) {
-      type_expr->VerifyType(ctx);
+      type_expr->type = type_expr->VerifyType(ctx);
       HANDLE_CYCLIC_DEPENDENCIES;
       limit_to(type_expr);
 
@@ -231,7 +231,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     }
 
     if (this->IsCustomInitialized()) {
-      init_val->VerifyType(ctx);
+      init_val->type = init_val->VerifyType(ctx);
       HANDLE_CYCLIC_DEPENDENCIES;
       limit_to(init_val);
 

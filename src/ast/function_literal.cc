@@ -233,7 +233,7 @@ void FuncContent::Validate(Context *ctx) {
   statements->ExtractReturns(&rets);
   statements->Validate(ctx);
   std::set<const type::Type *> types;
-  for (auto *expr : rets) { types.insert(expr->type); }
+  for (auto *expr : rets) { types.insert(ctx->mod_->types_.at(expr)); }
 
   base::vector<const type::Type *> input_type_vec, output_type_vec;
   input_type_vec.reserve(inputs.size());

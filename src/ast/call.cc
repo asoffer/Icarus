@@ -382,16 +382,17 @@ void Call::assign_scope(Scope *scope) {
 
 type::Type const *Call::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  args_.Apply([ctx, this](auto &arg) {
-    arg->VerifyType(ctx);
-    [&]() -> type::Type const * {
-      HANDLE_CYCLIC_DEPENDENCIES;
-      return nullptr;
-    }();  // TODO audit macro in lambda
-    if (arg->type == type::Err) { this->type = type::Err; }
-  });
 
-  if (type == type::Err) {
+  auto arg_types =
+      args_.Transform([ctx, this](auto &arg) { return arg->VerifyType(ctx); });
+  // TODO handle cyclic dependencies in call arguments.
+
+  if (std::any_of(arg_types.pos_.begin(), arg_types.pos_.end(),
+                  +[](type::Type const *t) { return t == nullptr; }) ||
+      std::any_of(arg_types.named_.begin(), arg_types.named_.end(),
+                  [](std::pair<std::string, type::Type const *> const &p) {
+                    return p.second == nullptr;
+                  })) {
     limit_to(StageRange::Nothing());
     return nullptr;
   }
@@ -415,8 +416,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       // named args here?
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.size() == 1u);
-      ASSERT(args_.pos_[0]->type == type::Type_);
-      type = type::Int;
+      ASSERT(arg_types.pos_[0] == type::Type_);
       ctx->mod_->types_.buffered_emplace(this, type::Int);
       return type::Int;
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
@@ -424,11 +424,9 @@ type::Type const *Call::VerifyType(Context *ctx) {
       // named args here?
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.size() == 2u);
-      ASSERT(args_.pos_[0]->type, Is<type::Pointer>());
-      ASSERT(args_.pos_[0]->type->as<type::Pointer>().pointee,
-             Is<type::Array>());
-      ASSERT(args_.pos_[1]->type == type::Int);
-      type = type::Void();
+      ASSERT(arg_types.pos_[0], Is<type::Pointer>());
+      ASSERT(arg_types.pos_[0]->as<type::Pointer>().pointee, Is<type::Array>());
+      ASSERT(arg_types.pos_[1] == type::Int);
       ctx->mod_->types_.buffered_emplace(this, type::Void());
       return type::Void();
     } else if (fn_val == IR::Val::BuiltinGeneric(ForeignFuncIndex)) {
@@ -436,12 +434,13 @@ type::Type const *Call::VerifyType(Context *ctx) {
       // named args here?
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.size() == 2u);
-      ASSERT(args_.pos_[0]->type, Is<type::CharBuffer>());
-      ASSERT(args_.pos_[1]->type == type::Type_);
-      type = backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx);
-      ctx->mod_->types_.buffered_emplace(this, type);
-      ASSERT(type, Is<type::Function>());
-      return type;
+      ASSERT(arg_types.pos_[0], Is<type::CharBuffer>());
+      ASSERT(arg_types.pos_[1] == type::Type_);
+      auto *t =
+          backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx);
+      ctx->mod_->types_.buffered_emplace(this, t);
+      ASSERT(t, Is<type::Function>());
+      return t;
     } else {
       UNREACHABLE();
     }
@@ -457,22 +456,21 @@ type::Type const *Call::VerifyType(Context *ctx) {
       !fn_->is<Identifier>()
           ? DispatchTable::Make(args, fn_.get(), ctx)
           : DispatchTable::Make(args, fn_->as<Identifier>().token, scope_, ctx);
-  type = ret_type;
   ctx->mod_->types_.buffered_emplace(this, ret_type);
 
-  if (type == type::Err) { limit_to(StageRange::Nothing()); }
+  if (ret_type == nullptr) { limit_to(StageRange::Nothing()); }
 
   u64 expanded_size = 1;
-  args_.Apply([&expanded_size](auto &arg) {
-    if (arg->type->template is<type::Variant>()) {
-      expanded_size *= arg->type->template as<type::Variant>().size();
+  arg_types.Apply([&expanded_size](type::Type const *arg_type) {
+    if (arg_type->is<type::Variant>()) {
+      expanded_size *= arg_type->as<type::Variant>().size();
     }
   });
 
   if (dispatch_table_.total_size_ != expanded_size) {
     // TODO give a better error message here.
     ctx->error_log_.NoCallMatch(span);
-    type = fn_->type = type::Err;
+    fn_->type = nullptr;
     limit_to(StageRange::Nothing());
     return nullptr;
   }
@@ -480,8 +478,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
   if (fn_->is<Identifier>()) {
     // fn_'s type should never be considered beacuse it could be one of many
     // different things. 'type::Void()' just indicates that it has been computed
-    // (i.e., not 0x0) and that there was no error in doing so (i.e., not
-    // type::Err).
+    // (i.e., not 0x0).
     fn_->type = type::Void();
   }
   return ret_type;

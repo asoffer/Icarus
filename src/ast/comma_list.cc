@@ -26,31 +26,24 @@ void CommaList::assign_scope(Scope *scope) {
 type::Type const *CommaList::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
+  base::vector<const type::Type *> expr_types;
+  expr_types.reserve(exprs.size());
   for (auto &expr : exprs) {
     auto *expr_type = expr->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
-    RETURN_IF_NULL(expr);
+    if (expr_type == nullptr) { return nullptr; }
+    expr_types.push_back(expr_type);
   }
 
-  if (type == type::Err) {
-    limit_to(StageRange::Nothing());
-    return nullptr;
+  if (expr_types.empty()) {
+    // TODO This is a hack and perhaps not always accurate?
+    ctx->mod_->types_.buffered_emplace(this, type::Type_);
+    return type::Type_;
   } else {
-    base::vector<const type::Type *> entries;
-    entries.reserve(exprs.size());
-    for (const auto &expr : exprs) { entries.push_back(expr->type); }
-    if (entries.empty()) {
-      // TODO This is a hack and perhaps not always accurate?
-      type = type::Type_;
-      ctx->mod_->types_.buffered_emplace(this, type::Type_);
-      return type::Type_;
-    } else {
-      auto *tup = type::Tup(std::move(entries));
-      type      = tup;
-      ctx->mod_->types_.buffered_emplace(this, tup);
-      return tup;
-    }
+    auto *tup = type::Tup(std::move(expr_types));
+    ctx->mod_->types_.buffered_emplace(this, tup);
+    return tup;
   }
 }
 

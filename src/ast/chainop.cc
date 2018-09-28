@@ -162,31 +162,30 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
     expr_types.push_back(expr_type);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
-    if (expr_type == type::Err) { found_err = true; }
+    if (expr_type == nullptr) { found_err = true; }
   }
   if (found_err) {
-    type = type::Err;
     limit_to(StageRange::Nothing());
     return nullptr;
   }
 
   if (ops[0] == Language::Operator::Or) {
+    bool found_err = false;
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       if (expr_types[i] == type::Block) {
         ctx->error_log_.EarlyRequiredBlock(exprs[i]->span);
-        type = type::Err;
+        found_err = true;
       } else if (expr_types[i] == type::OptBlock) {
         continue;
       } else {
         goto not_blocks;
       }
     }
-    if (type == type::Err) { return nullptr; }
+    if (found_err) { return nullptr; }
     if (expr_types.back() != type::Block &&
         expr_types.back() != type::OptBlock) {
       goto not_blocks;
     } else {
-      type = expr_types.back();
       ctx->mod_->types_.buffered_emplace(this, expr_types.back());
       return expr_types.back();
     }
@@ -202,15 +201,14 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
     case Language::Operator::And:
     case Language::Operator::Xor: {
       bool failed = false;
-      for (const auto &expr : exprs) {
-        if (expr->type != exprs[0]->type) {
+      for (const auto &expr_type : expr_types) {
+        if (expr_type != expr_types[0]) {
           NOT_YET("log an error");
           failed = true;
         }
       }
 
-      type = expr_types[0];
-      ctx->mod_->types_.buffered_emplace(this, type);
+      ctx->mod_->types_.buffered_emplace(this, expr_types[0]);
 
       if (expr_types[0] != type::Bool &&
           !(expr_types[0] == type::Type_ && ops[0] == Language::Operator::Or) &&
@@ -222,7 +220,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
         }
       }
 
-      return nullptr;
+      return expr_types[0];
     } break;
     default: {
       ASSERT(exprs.size() >= 2u);
@@ -249,10 +247,14 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
           args.pos_ =
               base::vector<Expression *>{{exprs[i].get(), exprs[i + 1].get()}};
           // TODO overwriting type a bunch of times?
-          std::tie(dispatch_tables_.at(i), type) =
+          type::Type const *t = nullptr;
+          std::tie(dispatch_tables_.at(i), t) =
               DispatchTable::Make(args, token, scope_, ctx);
-          ASSERT(type, Not(Is<type::Tuple>()));
-          if (type == type::Err) { limit_to(StageRange::Nothing()); }
+          ASSERT(t, Not(Is<type::Tuple>()));
+          if (t == nullptr) {
+            limit_to(StageRange::Nothing());
+            return nullptr;
+          }
         } else {
           if (lhs_type != rhs_type) {
             // TODO better error.
@@ -269,7 +271,6 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
                   case type::Cmp::Order:
                   case type::Cmp::Equality: continue;
                   case type::Cmp::None:
-                    type = type::Err;
                     NOT_YET("log an error");
                     return nullptr;
                 }
@@ -282,7 +283,6 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
                   case type::Cmp::Order: continue;
                   case type::Cmp::Equality:
                   case type::Cmp::None:
-                    type = type::Err;
                     NOT_YET("log an error");
                     return nullptr;
                 }
@@ -293,10 +293,6 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
         }
       }
 
-      if (type == type::Err) {
-        limit_to(StageRange::Nothing());
-        return nullptr;
-      }
       type = type::Bool;
       ctx->mod_->types_.buffered_emplace(this, type::Bool);
       return type::Bool;
