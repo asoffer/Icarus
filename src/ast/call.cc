@@ -178,8 +178,8 @@ static void EmitOneCallDispatch(
       args[i]           = bound_type->PrepareArgument(default_expr->type,
                                             default_expr->EmitIR(ctx)[0], ctx);
     } else {
-      args[i] =
-          bound_type->PrepareArgument(expr->type, *expr_map.at(expr), ctx);
+      args[i] = bound_type->PrepareArgument(ctx->mod_->types_.at(expr),
+                                            *expr_map.at(expr), ctx);
     }
   }
 

@@ -43,7 +43,7 @@ struct Binding {
 
 // Represents a row in the dispatch table.
 struct DispatchEntry {
-  bool SetTypes(FuncContent *fn);
+  bool SetTypes(FuncContent *fn, Context *ctx);
 
   static std::optional<DispatchEntry> Make(Expression *fn_option,
                                            const FnArgs<Expression *> &args,

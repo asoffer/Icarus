@@ -83,7 +83,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
   return bc;
 }
 
-bool DispatchEntry::SetTypes(FuncContent *fn) {
+bool DispatchEntry::SetTypes(FuncContent *fn, Context *ctx) {
   const auto &input_types = binding_.fn_expr_->type->as<type::Function>().input;
   bool bound_at_compile_time = (fn != nullptr);
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
@@ -93,8 +93,8 @@ bool DispatchEntry::SetTypes(FuncContent *fn) {
       continue;
     }
 
-    const type::Type *match =
-        type::Meet(binding_.exprs_.at(i).second->type, input_types[i]);
+    const type::Type *match = type::Meet(
+        ctx->mod_->types_.at(binding_.exprs_.at(i).second), input_types[i]);
     if (match == nullptr) { return false; }
 
     binding_.exprs_.at(i).first = input_types.at(i);
@@ -168,7 +168,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     }
   }
 
-  if (!dispatch_entry.SetTypes(fn)) { return std::nullopt; }
+  if (!dispatch_entry.SetTypes(fn, ctx)) { return std::nullopt; }
 
   return dispatch_entry;
 }

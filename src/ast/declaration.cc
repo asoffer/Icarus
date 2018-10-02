@@ -412,7 +412,8 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
     if (!newly_inserted) { return {iter->second}; }
 
     if (IsCustomInitialized()) {
-      iter->second = backend::Evaluate(init_val.get(), ctx)[0];
+      iter->second = backend::Evaluate(
+          init_val.get(), ctx->mod_->types_.at(init_val.get()), ctx)[0];
       if (ctx->num_errors()) { return {}; }
       return {iter->second};
     } else if (IsDefaultInitialized()) {

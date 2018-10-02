@@ -44,13 +44,9 @@ static std::unique_ptr<IR::Func> ExprFn(type::Type const *expr_type,
   return fn;
 }
 
-base::untyped_buffer EvaluateToBuffer(AST::Expression *expr, Context *ctx) {
-  if (ctx->num_errors() != 0u) {
-    ctx->DumpErrors();
-    UNREACHABLE();
-  }
-
-  auto *expr_type = ctx->mod_->types_.at(expr);
+base::untyped_buffer EvaluateToBuffer(AST::Expression *expr,
+                                      type::Type const *expr_type,
+                                      Context *ctx) {
   auto fn = ExprFn(expr_type, expr, ctx);
 
   size_t bytes_needed = Architecture::InterprettingMachine().bytes(expr_type);
@@ -67,13 +63,13 @@ base::untyped_buffer EvaluateToBuffer(AST::Expression *expr, Context *ctx) {
   return ret_buf;
 }
 
-// TODO migrate to untyped_buffer
-base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
+base::vector<IR::Val> Evaluate(AST::Expression *expr,
+                               type::Type const *expr_type, Context *ctx) {
   if (ctx->num_errors() != 0) { return {}; }
 
-  auto result_buf = EvaluateToBuffer(expr, ctx);
+  // TODO migrate to untyped_buffer
+  auto result_buf = EvaluateToBuffer(expr, expr_type, ctx);
 
-  auto expr_type = ctx->mod_->types_.at(expr);
   base::vector<type::Type const *> types =
       expr_type->is<type::Tuple>()
           ? expr_type->as<type::Tuple>().entries_
@@ -123,5 +119,9 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
   }
 
   return results;
+}
+
+base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
+  return Evaluate(expr, ctx->mod_->types_.at(expr), ctx);
 }
 }  // namespace backend
