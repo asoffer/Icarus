@@ -31,6 +31,13 @@ struct DeclScope;
 struct ExecScope;
 struct FnScope;
 
+struct TypedDecl {
+  TypedDecl(type::Type const *type, AST::Declaration *decl)
+      : type_(type), decl_(decl) {}
+  type::Type const *type_;
+  AST::Declaration *decl_;
+};
+
 struct Scope : public base::Cast<Scope> {
   Scope() = delete;
   Scope(Scope *parent) : parent(parent) {}
@@ -40,8 +47,8 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this);
   }
 
-  std::pair<base::vector<AST::Declaration *>, base::vector<AST::Declaration *>>
-  AllDeclsWithId(const std::string &id, Context *ctx);
+  std::pair<base::vector<TypedDecl>, base::vector<TypedDecl>> AllDeclsWithId(
+      const std::string &id, Context *ctx);
 
   void InsertDecl(AST::Declaration *decl);
 
@@ -68,7 +75,7 @@ struct FnScope : public ExecScope {
   FnScope(Scope *parent) : ExecScope(parent) {}
   ~FnScope() final {}
 
-  void MakeAllStackAllocations();
+  void MakeAllStackAllocations(Module *mod);
 
   type::Function *fn_type  = nullptr; // TODO deprecate?
   AST::FuncContent *fn_lit = nullptr;

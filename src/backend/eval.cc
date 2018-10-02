@@ -12,10 +12,11 @@ namespace backend {
 void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
              const base::vector<IR::Addr> &ret_slots, backend::ExecContext *ctx);
 
-static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
-  ASSERT(expr->type != nullptr);
+static std::unique_ptr<IR::Func> ExprFn(type::Type const *expr_type,
+                                        AST::Expression *expr, Context *ctx) {
+  ASSERT(expr_type != nullptr);
   auto fn = std::make_unique<IR::Func>(
-      ctx->mod_, type::Func({}, {expr->type}),
+      ctx->mod_, type::Func({}, {expr_type}),
       base::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of GeneratedFunction::EmitIR.
@@ -30,6 +31,9 @@ static std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Context *ctx) {
     auto vals = expr->EmitIR(ctx);
     // TODO wrap this up into SetReturn(vector)
     for (size_t i = 0; i < vals.size(); ++i) {
+      if (!vals[i].type) {
+        LOG << vals[i];
+      }
       IR::SetReturn(i, std::move(vals[i]));
     }
     IR::ReturnJump();
@@ -46,9 +50,10 @@ base::untyped_buffer EvaluateToBuffer(AST::Expression *expr, Context *ctx) {
     UNREACHABLE();
   }
 
-  auto fn = ExprFn(expr, ctx);
+  auto *expr_type = ctx->mod_->types_.at(expr);
+  auto fn = ExprFn(expr_type, expr, ctx);
 
-  size_t bytes_needed = Architecture::InterprettingMachine().bytes(expr->type);
+  size_t bytes_needed = Architecture::InterprettingMachine().bytes(expr_type);
   base::untyped_buffer ret_buf(bytes_needed);
   ret_buf.append_bytes(bytes_needed, 1);
   base::vector<IR::Addr> ret_slots;
@@ -68,10 +73,11 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
 
   auto result_buf = EvaluateToBuffer(expr, ctx);
 
+  auto expr_type = ctx->mod_->types_.at(expr);
   base::vector<type::Type const *> types =
-      expr->type->is<type::Tuple>()
-          ? expr->type->as<type::Tuple>().entries_
-          : base::vector<type::Type const *>{expr->type};
+      expr_type->is<type::Tuple>()
+          ? expr_type->as<type::Tuple>().entries_
+          : base::vector<type::Type const *>{expr_type};
 
   base::vector<IR::Val> results;
   results.reserve(types.size());
@@ -79,7 +85,7 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
   auto arch     = Architecture::InterprettingMachine();
   size_t offset = 0;
   for (auto *t : types) {
-    offset = arch.MoveForwardToAlignment(t, offset);
+    offset = arch.MoveForwardToAlignment(ASSERT_NOT_NULL(t), offset);
     if (t == type::Bool) {
       results.emplace_back(result_buf.get<bool>(offset));
     } else if (t == type::Char) {
@@ -103,7 +109,7 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
       results.emplace_back(result_buf.get<AST::ScopeLiteral *>(offset));
     } else if (t == type::Module) {
       results.emplace_back(result_buf.get<Module const *>(offset));
-    } else if (t == type::Generic) {
+    } else if (t == type::Generic || t->is<type::Function>()) {
       // TODO mostly wrong.
       results.push_back(IR::Val::Func(result_buf.get<AST::Function *>(offset)));
     } else if (t == type::Block || t == type::OptBlock) {

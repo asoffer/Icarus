@@ -28,7 +28,6 @@ void ScopeLiteral::assign_scope(Scope *scope) {
 
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  type = type::Scp({});
   ctx->mod_->types_.buffered_emplace(this, type::Scp({}));
   // TODO
   return type::Scp({});

@@ -45,7 +45,9 @@ extern Type const *Err;
   base::defer defer_##__LINE__(                                                \
       [this]() { this->stage_range_.low = DoneTypeVerificationStage; });       \
   if (stage_range_.high < StartTypeVerificationStage) { return nullptr; }      \
-  if (stage_range_.low >= DoneTypeVerificationStage) { return type; }          \
+  if (stage_range_.low >= DoneTypeVerificationStage) {                         \
+    return ASSERT_NOT_NULL(ctx->mod_->types_.at(this));                        \
+  }                                                                            \
   if (stage_range_.low == StartTypeVerificationStage) {                        \
     ctx->cyc_dep_vec_ = ctx->error_log_.CyclicDependency();                    \
     HANDLE_CYCLIC_DEPENDENCIES;                                                \
@@ -55,11 +57,9 @@ extern Type const *Err;
 #define VERIFY_OR_RETURN(expr_type, expr)                                      \
   type::Type const *expr_type = nullptr;                                       \
   do {                                                                         \
-    expr->VerifyType(ctx);                                                     \
+    expr_type = expr->VerifyType(ctx);                                         \
     HANDLE_CYCLIC_DEPENDENCIES;                                                \
-    expr_type = expr->type;                                                    \
-    if (expr->type == type::Err) {                                             \
-      type = type::Err;                                                        \
+    if (expr_type == nullptr) {                                                \
       /* TODO Maybe this should be Nothing() */                                \
       limit_to(expr->stage_range_.high);                                       \
       return nullptr;                                                          \

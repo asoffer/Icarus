@@ -29,44 +29,43 @@ Identifier *Identifier::Clone() const {
 type::Type const *Identifier::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
+  type::Type const *t = nullptr;
   if (decl == nullptr) {
     auto[potential_decls, potential_error_decls] =
         scope_->AllDeclsWithId(token, ctx);
     switch (potential_decls.size()) {
-      case 1:
+      case 1: {
         // TODO could it be that evn though there is only one declaration,
         // there's a bound constant of the same name? If so, we need to deal
         // with this case.
-        decl = potential_decls[0];
-        break;
+        auto const &typed_decl = potential_decls[0];
+        t                      = typed_decl.type_;
+        decl                   = typed_decl.decl_;
+      } break;
       case 0:
         // TODO what if you find a bound constant and some errror decls?
-        for (auto const & [ decl, v ] : ctx->mod_->bound_constants_.constants_) {
-          if (decl->identifier->token == token) { 
-            // TODO Note that you're not assigning a declaration here. Is that
-            // required? You shouldn't be relying on it... that's what the
-            // staging system is for.
-            type = type::Type_;
-            ctx->mod_->types_.emplace(this, type::Type_);
-            return type::Type_;
+        for (auto const & [ d, v ] : ctx->mod_->bound_constants_.constants_) {
+          if (d->identifier->token == token) {
+            ctx->mod_->types_.emplace(this, v.type);
+            return v.type;
           }
         }
 
         switch (potential_error_decls.size()) {
           case 0: ctx->error_log_.UndeclaredIdentifier(this); break;
-          case 1:
-            decl = potential_error_decls[0];
+          case 1: {
+            auto const &typed_decl = potential_decls[0];
+            t                      = typed_decl.type_;
+            decl                   = typed_decl.decl_;
             HANDLE_CYCLIC_DEPENDENCIES;
-            break;
+          } break;
           default: NOT_YET();
         }
-        type = type::Err;
         limit_to(StageRange::Nothing());
         return nullptr;
       default:
         // TODO Should we allow the overload?
         ctx->error_log_.UnspecifiedOverload(span);
-        type = type::Err;
         limit_to(StageRange::Nothing());
         return nullptr;
     }
@@ -79,12 +78,9 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
     limit_to(StageRange::NoEmitIR());
   }
 
-  // No guarantee the declaration has been validated yet.
-  auto *decl_type = decl->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
-  type = decl_type;
-  ctx->mod_->types_.emplace(this, decl_type);
-  return decl_type;
+  if (t == nullptr) { return nullptr; }
+  ctx->mod_->types_.emplace(this, t);
+  return t;
 }
 
 void Identifier::Validate(Context *ctx) {
@@ -95,9 +91,9 @@ base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
   if (ASSERT_NOT_NULL(decl)->const_) {
     return decl->EmitIR(ctx);
   } else if (decl->arg_val) {
-    return {IR::Val::Reg(decl->addr_, type)};
+    return {IR::Val::Reg(decl->addr_, ctx->mod_->types_.at(this))};
   } else {
-    auto *t = ctx->mod_->types_.at(this);
+    auto *t = ASSERT_NOT_NULL(ctx->mod_->types_.at(this));
     return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], t), t)};
   }
 }

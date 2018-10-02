@@ -20,7 +20,7 @@ template <typename T> struct NodeLookup {
     return data_.emplace(std::forward<Args>(args)...);
   }
 
-  auto at(Node const *n) { return data_.at(n); }
+  auto at(Node const *n) const { return data_.at(n); }
 
   base::unordered_map<Node const *, T> data_;
 };

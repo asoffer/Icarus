@@ -13,7 +13,7 @@ IR::RegisterOr<i32> Architecture::ComputeArrayLength(
 }
 
 size_t Architecture::alignment(const type::Type *t) const {
-  if (t->is<type::Primitive>()) {
+  if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Generic: return 8; // TODO ???
       case type::PrimType::Module: return 8; // TODO ???
@@ -73,7 +73,7 @@ size_t Architecture::alignment(const type::Type *t) const {
 }
 
 size_t Architecture::bytes(const type::Type *t) const {
-  if (t->is<type::Primitive>()) {
+  if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Generic: return 8; // TODO ???
       case type::PrimType::Module: return 8; // TODO ???

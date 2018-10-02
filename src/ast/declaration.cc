@@ -205,53 +205,54 @@ bool Declaration::IsCustomInitialized() const {
 }
 
 type::Type const *Declaration::VerifyType(Context *ctx) {
+  type::Type const *this_type = nullptr;
   {
     VERIFY_STARTING_CHECK_EXPR;
 
     identifier->decl = this;
 
+    type::Type const *type_expr_type = nullptr;
+    type::Type const *init_val_type  = nullptr;
     if (type_expr) {
-      type_expr->type = type_expr->VerifyType(ctx);
+      type_expr_type = type_expr->VerifyType(ctx);
       HANDLE_CYCLIC_DEPENDENCIES;
       limit_to(type_expr);
 
-      if (type_expr->type == type::Type_) {
-        type = backend::EvaluateAs<const type::Type *>(type_expr.get(), ctx);
-        ctx->mod_->types_.emplace(this, type);
-      } else if (type_expr->type == type::Interface) {
-        type = type::Generic;
+      if (type_expr_type == type::Type_) {
+        this_type =
+            backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx);
+        ctx->mod_->types_.emplace(this, this_type);
+      } else if (type_expr_type == type::Interface) {
+        this_type = type::Generic;
         ctx->mod_->types_.emplace(this, type::Generic);
       } else {
         ctx->error_log_.NotAType(type_expr.get());
         limit_to(StageRange::Nothing());
-
-        type = type::Err;
         identifier->limit_to(StageRange::Nothing());
       }
     }
 
     if (this->IsCustomInitialized()) {
-      init_val->type = init_val->VerifyType(ctx);
+      init_val_type = init_val->VerifyType(ctx);
       HANDLE_CYCLIC_DEPENDENCIES;
       limit_to(init_val);
 
-      if (init_val->type != type::Err) {
-        if (!Inferrable(init_val->type)) {
+      if (init_val_type != nullptr) {
+        if (!Inferrable(init_val_type)) {
           ctx->error_log_.UninferrableType(init_val->span);
-          type = type::Err;
           limit_to(StageRange::Nothing());
           identifier->limit_to(StageRange::Nothing());
 
         } else if (!type_expr) {
-          type = init_val->type;
-          ctx->mod_->types_.emplace(this, init_val->type);
+          this_type = init_val_type;
+          ctx->mod_->types_.emplace(this, init_val_type);
         }
       }
     }
 
-    if (type_expr && type_expr->type == type::Type_ && init_val &&
+    if (type_expr && type_expr_type == type::Type_ && init_val &&
         !init_val->is<Hole>()) {
-      if (!type::CanCastImplicitly(init_val->type, type)) {
+      if (!type::CanCastImplicitly(init_val_type, this_type)) {
         ctx->error_log_.AssignmentTypeMismatch(identifier.get(),
                                                init_val.get());
         limit_to(StageRange::Nothing());
@@ -261,15 +262,15 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     if (!type_expr) {
       ASSERT(init_val.get() != nullptr);
       if (!init_val->is<Hole>()) {  // I := V
-        if (init_val->type == type::Err) {
-          type = type::Err;
+        if (init_val_type == nullptr) {
+          this_type = nullptr;
           limit_to(StageRange::Nothing());
           identifier->limit_to(StageRange::Nothing());
         }
 
       } else {  // I := --
         ctx->error_log_.InferringHole(span);
-        type = init_val->type = type::Err;
+        this_type = init_val_type = nullptr;
         limit_to(StageRange::Nothing());
         init_val->limit_to(StageRange::Nothing());
         identifier->limit_to(StageRange::Nothing());
@@ -284,24 +285,24 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
       }
     }
 
-    if (type == type::Err) {
+    if (this_type == nullptr) {
       limit_to(StageRange::Nothing());
       return nullptr;
     }
 
     if (identifier->is<Hole>()) {
-      if (type == type::Module) {
+      if (this_type == type::Module) {
         // TODO check shadowing against other modules?
         // TODO what if no init val is provded? what if not constant?
         ctx->mod_->embedded_modules_.insert(
             backend::EvaluateAs<const Module *>(init_val.get(), ctx));
       } else {
-        NOT_YET(type);
+        NOT_YET(this_type);
       }
     }
   }
   identifier->VerifyType(ctx);
-  base::vector<Declaration *> decls_to_check;
+  base::vector<TypedDecl> decls_to_check;
   {
     auto[good_decls_to_check, error_decls_to_check] =
         scope_->AllDeclsWithId(identifier->token, ctx);
@@ -318,22 +319,22 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
                           error_decls_to_check.end());
 
     if (has_children) {
-      decls_to_check.insert(decls_to_check.end(), iter->second.begin(),
-                            iter->second.end());
+      for (auto *decl : iter->second) {
+        decls_to_check.emplace_back(ctx->mod_->types_.at(decl), decl);
+      }
     }
   }
 
   auto iter =
       std::partition(decls_to_check.begin(), decls_to_check.end(),
-                     [this](AST::Declaration *decl) { return this >= decl; });
+                     [this](TypedDecl const &td) { return this >= td.decl_; });
   bool failed_shadowing = false;
   while (iter != decls_to_check.end()) {
-    auto *decl = *iter;
-    decl->VerifyType(ctx);
+    auto typed_decl = *iter;
     HANDLE_CYCLIC_DEPENDENCIES;
-    if (Shadow(this, decl, ctx)) {
+    if (Shadow(this, typed_decl.decl_, ctx)) {
       failed_shadowing = true;
-      ctx->error_log_.ShadowingDeclaration(*this, *decl);
+      ctx->error_log_.ShadowingDeclaration(*this, *typed_decl.decl_);
       limit_to(StageRange::NoEmitIR());
     }
     ++iter;
@@ -348,7 +349,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     limit_to(StageRange::Nothing());
     return nullptr;
   }
-  return type;
+  return this_type;
 }
 
 void Declaration::Validate(Context *ctx) {

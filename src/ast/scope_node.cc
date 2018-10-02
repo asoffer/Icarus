@@ -72,7 +72,6 @@ type::Type const *ScopeNode::VerifyType(Context *ctx) {
 
   if (!block_type->is<type::Scope>()) { NOT_YET("not a scope", block_type); }
 
-  type = type::Void();
   ctx->mod_->types_.buffered_emplace(this, type::Void());
   return type::Void();  // TODO can this evaluate to anything?
 }
@@ -220,8 +219,10 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
                     });
       }
 
+      LOG << "_-------------------";
       auto[dispatch_table, result_type] =
           DispatchTable::Make(expr_args, block_lit->before_.get(), ctx);
+      LOG << "_-------------------";
 
       return EmitCallDispatch(args, dispatch_table, result_type, ctx)[0]
           .reg_or<IR::BlockSequence>();

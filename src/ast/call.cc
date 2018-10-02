@@ -261,6 +261,7 @@ base::vector<IR::Val> EmitCallDispatch(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
     const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx) {
+  ASSERT(dispatch_table.bindings_.size() != 0u);
   base::unordered_map<AST::Expression *, const IR::Val *> expr_map;
   args.Apply([&expr_map](const std::pair<AST::Expression *, IR::Val> &arg) {
     expr_map[arg.first] = &arg.second;
@@ -296,6 +297,7 @@ base::vector<IR::Val> EmitCallDispatch(
   auto landing_block = IR::Func::Current->AddBlock();
 
   auto iter = dispatch_table.bindings_.begin();
+  ASSERT(iter != dispatch_table.bindings_.end());
   for (size_t i = 0; i < dispatch_table.bindings_.size() - 1; ++i, ++iter) {
     const auto & [ call_arg_type, binding ] = *iter;
     auto next_binding = CallLookupTest(args, call_arg_type);

@@ -76,17 +76,22 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
       [this]() { this->stage_range_.low = DoneTypeVerificationStage; });
   stage_range_.low = StartTypeVerificationStage;
 
-  args_.VerifyType(ctx);
-  if (args_.type == type::Err) { return nullptr; }
+  auto *t = args_.VerifyType(ctx);
+  std::vector<type::Type const *> arg_types =
+      t->is<type::Tuple>() ? t->as<type::Tuple>().entries_
+                           : base::vector<type::Type const *>{t};
+  if (t == nullptr) { return nullptr; }
+
 
   if (op_ == Language::Operator::Print) {
     ASSERT(dispatch_tables_.size() == args_.exprs.size());
     for (size_t i = 0; i < args_.exprs.size(); ++i) {
       auto &arg = args_.exprs[i];
-      if (arg->type->is<type::Primitive>() || arg->type->is<type::Pointer>() ||
-          arg->type->is<type::CharBuffer>()) {
+      auto &arg_type = arg_types[i];
+      if (arg_type->is<type::Primitive>() || arg->type->is<type::Pointer>() ||
+          arg_type->is<type::CharBuffer>()) {
         continue;
-      } else if (arg->type->is<type::Struct>()) {
+      } else if (arg_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_.push_back(arg.get());
         const type::Type *ret_type = nullptr;
@@ -96,10 +101,10 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
           NOT_YET("log an error: ", ret_type);
           limit_to(StageRange::Nothing());
         }
-      } else if (arg->type->is<type::Variant>()) {
+      } else if (arg_type->is<type::Variant>()) {
         // TODO
       } else {
-        NOT_YET(arg->type);
+        NOT_YET(arg_type);
       }
     }
   }

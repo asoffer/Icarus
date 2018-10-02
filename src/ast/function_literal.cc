@@ -117,8 +117,11 @@ void FuncContent::assign_scope(Scope *scope) {
 
 type::Type const *FuncContent::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
+
+  base::vector<const type::Type *> input_type_vec;
+  input_type_vec.reserve(inputs.size());
   for (auto &input : inputs) {
-    input->VerifyType(ctx);
+    input_type_vec.push_back(input->VerifyType(ctx));
     HANDLE_CYCLIC_DEPENDENCIES;
   }
 
@@ -134,10 +137,6 @@ type::Type const *FuncContent::VerifyType(Context *ctx) {
   }
 
   if (!return_type_inferred_) {
-    base::vector<const type::Type *> input_type_vec;
-    input_type_vec.reserve(inputs.size());
-    for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
-
     // TODO should named return types be required?
     base::vector<IR::Val> out_vals;
     out_vals.reserve(outputs.size());
@@ -217,6 +216,8 @@ void Function::Validate(Context *ctx) {
   FuncContent::Validate(ctx);
 }
 
+// TODO VerifyType has access to types of previous entries, but Validate
+// doesnt.
 void FuncContent::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &in : inputs) { in->Validate(ctx); }
@@ -237,7 +238,9 @@ void FuncContent::Validate(Context *ctx) {
 
   base::vector<const type::Type *> input_type_vec, output_type_vec;
   input_type_vec.reserve(inputs.size());
-  for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
+  for (const auto &input : inputs) {
+    input_type_vec.push_back(ctx->mod_->types_.at(input.get()));
+  }
 
   if (return_type_inferred_) {
     switch (types.size()) {
@@ -444,7 +447,7 @@ void GeneratedFunction::CompleteBody(Module *mod) {
       outputs[i]->as<Declaration>().addr_ = IR::Func::Current->Return(i);
     }
 
-    fn_scope->MakeAllStackAllocations();
+    fn_scope->MakeAllStackAllocations(mod);
 
     statements->EmitIR(&ctx);
     if (t->as<type::Function>().output.empty()) {

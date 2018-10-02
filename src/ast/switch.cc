@@ -36,23 +36,22 @@ type::Type const *Switch::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
   std::unordered_set<const type::Type *> types;
   for (auto & [ expr, cond ] : cases_) {
-    cond->VerifyType(ctx);
-    expr->VerifyType(ctx);
-    if (cond->type != type::Bool) { NOT_YET("handle type error"); }
+    auto *cond_type = cond->VerifyType(ctx);
+    auto *expr_type = expr->VerifyType(ctx);
+    if (cond_type != type::Bool) { NOT_YET("handle type error"); }
     // TODO if there's an error, an unorderded_set is not helpful for giving
     // good error messages.
-    types.insert(expr->type);
+    types.insert(expr_type);
   }
   if (types.empty()) { NOT_YET("handle type error"); }
-  type =
+  auto *t =
       std::accumulate(types.begin(), types.end(), *types.begin(), type::Join);
-  ctx->mod_->types_.buffered_emplace(this, type);
-  if (type == nullptr) {
-    type = type::Err;
+  if (t == nullptr) {
     NOT_YET("handle type error");
     return nullptr;
   }
-  return type;
+  ctx->mod_->types_.buffered_emplace(this, t);
+  return t;
 }
 
 void Switch::Validate(Context *ctx) {

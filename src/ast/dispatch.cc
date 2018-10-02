@@ -84,7 +84,6 @@ std::optional<BoundConstants> ComputeBoundConstants(
 }
 
 bool DispatchEntry::SetTypes(FuncContent *fn) {
-  ASSERT(binding_.fn_expr_->type, Is<type::Function>());
   const auto &input_types = binding_.fn_expr_->type->as<type::Function>().input;
   bool bound_at_compile_time = (fn != nullptr);
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
@@ -118,7 +117,7 @@ bool DispatchEntry::SetTypes(FuncContent *fn) {
 std::optional<DispatchEntry> DispatchEntry::Make(
     Expression *fn_option, const FnArgs<Expression *> &args, Context *ctx) {
   Expression *bound_fn = nullptr;
-  bound_fn = std::visit(
+  bound_fn             = std::visit(
       base::overloaded{
           [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
           [](Function *fn) -> Expression * { return fn; },
@@ -170,6 +169,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   }
 
   if (!dispatch_entry.SetTypes(fn)) { return std::nullopt; }
+
   return dispatch_entry;
 }
 
@@ -210,9 +210,9 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
   // TODO error decls?
   auto[decls, error_decls] = scope->AllDeclsWithId(token, ctx);
   for (auto &decl : decls) {
-    if (decl->type == type::Err) { return {}; }
+    if (decl.type_ == nullptr) { return {}; }
     if (auto maybe_dispatch_entry =
-            DispatchEntry::Make(decl->identifier.get(), args, ctx)) {
+            DispatchEntry::Make(decl.decl_->identifier.get(), args, ctx)) {
       table.InsertEntry(std::move(maybe_dispatch_entry).value());
     }
   }
@@ -224,8 +224,8 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
 std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
     const FnArgs<Expression *> &args, Expression *fn, Context *ctx) {
   DispatchTable table;
-  fn->VerifyType(ctx);
-  if (fn->type == type::Err) { return {}; }
+  auto *fn_type = fn->VerifyType(ctx);
+  if (fn_type == nullptr) { return {}; }
   if (auto maybe_dispatch_entry = DispatchEntry::Make(fn, args, ctx)) {
     table.InsertEntry(std::move(maybe_dispatch_entry).value());
   }

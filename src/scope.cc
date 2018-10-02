@@ -15,22 +15,25 @@ void Scope::InsertDecl(AST::Declaration *decl) {
   }
 }
 
-std::pair<base::vector<AST::Declaration *>, base::vector<AST::Declaration *>>
-Scope::AllDeclsWithId(const std::string &id, Context *ctx) {
-  base::vector<AST::Declaration *> matching_decls, matching_error_decls;
+// TODO error version will always have nullptr types.
+std::pair<base::vector<TypedDecl>, base::vector<TypedDecl>>
+Scope::AllDeclsWithId(std::string const &id, Context *ctx) {
+  base::vector<TypedDecl> matching_decls, matching_error_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {
     auto iter = scope_ptr->decls_.find(id);
     if (iter == scope_ptr->decls_.end()) { continue; }
     for (const auto &decl : iter->second) {
-      decl->VerifyType(ctx);
-      (decl->type == type::Err ? matching_error_decls : matching_decls)
-          .push_back(decl);
+      auto *t = decl->VerifyType(ctx);
+      (t == nullptr ? matching_error_decls : matching_decls)
+          .emplace_back(t, decl);
     }
   }
 
-  for (const auto* mod : ctx->mod_->embedded_modules_) {
-    if (auto *decl = mod->GetDecl(id)) { matching_decls.push_back(decl); }
+  for (auto const* mod : ctx->mod_->embedded_modules_) {
+    if (auto *decl = mod->GetDecl(id)) {
+      matching_decls.emplace_back(mod->types_.at(decl), decl);
+    }
   }
   return std::pair(std::move(matching_decls), std::move(matching_error_decls));
 }
@@ -41,15 +44,15 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
   if (containing_fn_scope) { containing_fn_scope->innards_.push_back(this); }
 }
 
-void FnScope::MakeAllStackAllocations() {
+// TODO not sure you need to pass in the module.
+void FnScope::MakeAllStackAllocations(Module *mod) {
   for (auto *scope : innards_) {
     for (const auto & [ key, val ] : scope->decls_) {
       for (auto *decl : val) {
         if (decl->const_ || decl->arg_val) { continue; }
 
-        ASSERT(decl->type != nullptr);
         ASSERT(decl->addr_ == IR::Register{-1});
-        decl->addr_ = IR::Alloca(decl->type);
+        decl->addr_ = IR::Alloca(mod->types_.at(decl));
       }
     }
   }
