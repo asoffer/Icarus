@@ -115,9 +115,11 @@ bool CommonAmbiguousFunctionCall(const base::vector<ArgumentMetaData> &data1,
 }
 
 bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
+  auto *decl1_type = ctx->mod_->types_.at(decl1);
+  auto *decl2_type = ctx->mod_->types_.at(decl2);
   // TODO Don't worry about generic shadowing? It'll be checked later?
-  if (decl1->type->is<type::Function>() || decl1->type == type::Generic ||
-      decl2->type->is<type::Function>() || decl2->type == type::Generic) {
+  if (decl1_type->is<type::Function>() || decl1_type == type::Generic ||
+      decl2_type->is<type::Function>() || decl2_type == type::Generic) {
     return false;
   }
 
@@ -129,7 +131,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
   // information.
   // TODO check const-decl or not.
 
-  auto ExtractMetaData = [](auto &eval) -> base::vector<ArgumentMetaData> {
+  auto ExtractMetaData = [ctx](auto &eval) -> base::vector<ArgumentMetaData> {
     using eval_t = std::decay_t<decltype(eval)>;
     base::vector<ArgumentMetaData> metadata;
 
@@ -146,8 +148,9 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
                          std::is_same_v<eval_t, GeneratedFunction *>) {
       metadata.reserve(eval->inputs.size());
       for (size_t i = 0; i < eval->inputs.size(); ++i) {
+        auto *input_type = ctx->mod_->types_.at(eval->inputs[i].get());
         metadata.push_back(ArgumentMetaData{
-            /*        type = */ eval->inputs[i]->type,
+            /*        type = */ input_type,
             /*        name = */ eval->inputs[i]->identifier->token,
             /* has_default = */ !eval->inputs[i]->IsDefaultInitialized()});
       }
@@ -205,6 +208,9 @@ bool Declaration::IsCustomInitialized() const {
 }
 
 type::Type const *Declaration::VerifyType(Context *ctx) {
+  Module *old_mod = std::exchange(ctx->mod_, mod_);
+  base::defer d([&] { ctx->mod_ = old_mod; });
+
   type::Type const *this_type = nullptr;
   {
     VERIFY_STARTING_CHECK_EXPR;
@@ -353,6 +359,9 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 }
 
 void Declaration::Validate(Context *ctx) {
+  Module *old_mod = std::exchange(ctx->mod_, mod_);
+  base::defer d([&] { ctx->mod_ = old_mod; });
+
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   if (type_expr) { type_expr->Validate(ctx); }
   if (init_val) { init_val->Validate(ctx); }
@@ -395,6 +404,7 @@ Declaration *Declaration::Clone() const {
 void Declaration::CloneTo(Declaration *result) const {
   result->span       = span;
   result->const_     = const_;
+  result->mod_       = mod_;
   result->identifier = base::wrap_unique(identifier->Clone());
   result->type_expr =
       type_expr ? base::wrap_unique(type_expr->Clone()) : nullptr;
@@ -402,6 +412,9 @@ void Declaration::CloneTo(Declaration *result) const {
 }
 
 base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
+  Module *old_mod = std::exchange(ctx->mod_, mod_);
+  base::defer d([&] { ctx->mod_ = old_mod; });
+
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.

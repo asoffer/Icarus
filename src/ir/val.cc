@@ -55,7 +55,9 @@ Val Val::CharBuf(const std::string &str) {
 
 Val Val::BlockSeq(BlockSequence b) {
   ASSERT(b.seq_->size() != 0u);
-  auto *t = (b.seq_->back() == nullptr) ? type::Block : b.seq_->back()->type;
+  auto *t = (b.seq_->back() == nullptr)
+                ? type::Block
+                : b.seq_->back()->required_ ? type::Block : type::OptBlock;
   return Val(t, b);
 }
 
@@ -63,7 +65,7 @@ Val Val::Interface(IR::Interface ifc) {
   return Val(type::Interface, std::move(ifc));
 }
 
-Val Val::Ref(AST::Expression *expr) { return Val(expr->type, expr); }
+Val Val::Ref(AST::Expression *expr) { NOT_YET(); }
 
 Val::Val(AST::ScopeLiteral *scope_lit) : Val(type::Scp({}), scope_lit) {}
 
@@ -75,7 +77,7 @@ Val Val::Flags(const type::Flags *flags_type, FlagsVal val) {
   return Val(flags_type, val);
 }
 
-Val Val::Func(AST::Function *fn) { return Val(fn->type, fn); }
+Val Val::Func(AST::Function *fn) { NOT_YET(); }  // return Val(fn->type, fn); }
 Val Val::Func(IR::Func *fn) { return Val(fn->type_, fn); }
 
 Val Val::Null(const type::Type *t) {

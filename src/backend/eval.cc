@@ -65,7 +65,11 @@ base::untyped_buffer EvaluateToBuffer(AST::Expression *expr,
 
 base::vector<IR::Val> Evaluate(AST::Expression *expr,
                                type::Type const *expr_type, Context *ctx) {
-  if (ctx->num_errors() != 0) { return {}; }
+  if (ctx->num_errors() != 0) {
+    // TODO when is an appropriate time to surface these?
+    ctx->DumpErrors();
+    return {};
+  }
 
   // TODO migrate to untyped_buffer
   auto result_buf = EvaluateToBuffer(expr, expr_type, ctx);

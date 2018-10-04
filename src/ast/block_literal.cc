@@ -7,10 +7,7 @@
 #include "type/primitive.h"
 
 namespace AST {
-BlockLiteral::BlockLiteral(bool required) {
-  required_ = required;
-  type = required_ ? type::Block : type::OptBlock;
-}
+BlockLiteral::BlockLiteral(bool required) : required_(required) {}
 
 std::string BlockLiteral::to_string(size_t n) const {
   std::stringstream ss;
@@ -72,8 +69,8 @@ void BlockLiteral::ExtractReturns(base::vector<const Expression *> *rets) const 
 }
 
 BlockLiteral *BlockLiteral::Clone() const {
-  auto *result     = new BlockLiteral(type == type::Block);
-  result->span     = span;
+  auto *result    = new BlockLiteral(required_);
+  result->span    = span;
   result->before_ = base::wrap_unique(before_->Clone());
   result->after_  = base::wrap_unique(after_->Clone());
   return result;

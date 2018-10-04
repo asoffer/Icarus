@@ -126,12 +126,14 @@ static IR::RegisterOr<bool> EmitVariantMatch(IR::Register needle,
 
 static IR::BlockIndex CallLookupTest(
     const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
-    const AST::FnArgs<const type::Type *> &call_arg_type) {
+    const AST::FnArgs<const type::Type *> &call_arg_type, Context *ctx) {
   // Generate code that attempts to match the types on each argument (only
   // check the ones at the call-site that could be variants).
   auto next_binding = IR::Func::Current->AddBlock();
   for (size_t i = 0; i < args.pos_.size(); ++i) {
-    if (!args.pos_[i].first->type->is<type::Variant>()) { continue; }
+    if (!ctx->mod_->types_.at(args.pos_[i].first)->is<type::Variant>()) {
+      continue;
+    }
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(std::get<IR::Register>(args.pos_.at(i).second.value),
@@ -141,7 +143,9 @@ static IR::BlockIndex CallLookupTest(
   for (const auto & [ name, expr_and_val ] : args.named_) {
     auto iter = call_arg_type.find(name);
     if (iter == call_arg_type.named_.end()) { continue; }
-    if (!expr_and_val.first->type->is<type::Variant>()) { continue; }
+    if (!ctx->mod_->types_.at(expr_and_val.first)->is<type::Variant>()) {
+      continue;
+    }
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(
@@ -175,7 +179,7 @@ static void EmitOneCallDispatch(
     if (expr == nullptr) {
       ASSERT(bound_type != nullptr);
       auto default_expr = (*ASSERT_NOT_NULL(const_args))[i].second;
-      args[i]           = bound_type->PrepareArgument(default_expr->type,
+      args[i] = bound_type->PrepareArgument(ctx->mod_->types_.at(default_expr),
                                             default_expr->EmitIR(ctx)[0], ctx);
     } else {
       args[i] = bound_type->PrepareArgument(ctx->mod_->types_.at(expr),
@@ -187,14 +191,11 @@ static void EmitOneCallDispatch(
   call_args.type_ = &callee.type->as<type::Function>();
   for (const auto &arg : args) { call_args.append(arg); }
 
-  ASSERT(binding.fn_expr_->type, Is<type::Function>());
-  auto *fn_type = &binding.fn_expr_->type->as<type::Function>();
-
   base::vector<IR::Val> results;
   IR::OutParams outs;
-  if (!fn_type->output.empty()) {
-    auto MakeRegister = [&](type::Type const *ret_type,
-                            type::Type const *expected_ret_type,
+  if (!binding.fn_type_->output.empty()) {
+    auto MakeRegister = [&](type::Type const *return_type,
+                            type::Type const *expected_return_type,
                             IR::Val *out_reg) {
       // Cases:
       // 1. I return a small value, and am expected to return the same
@@ -211,34 +212,36 @@ static void EmitOneCallDispatch(
       //    pass in a return and fix
       //
       // TODO: This is a lot like PrepareArgument.
-      if (!ret_type->is_big() && !expected_ret_type->is_big()) {
-        *out_reg =
-            IR::Val::Reg(outs.AppendReg(expected_ret_type), expected_ret_type);
+      if (!return_type->is_big() && !expected_return_type->is_big()) {
+        *out_reg = IR::Val::Reg(outs.AppendReg(expected_return_type),
+                                expected_return_type);
         return;
       }
 
-      if (ret_type == expected_ret_type || ret_type->is<type::Variant>()) {
+      if (return_type == expected_return_type ||
+          return_type->is<type::Variant>()) {
         outs.AppendLoc(std::get<IR::Register>(out_reg->value));
         return;
       }
 
-      ASSERT(expected_ret_type, Is<type::Variant>());
-      IR::StoreType(ret_type,
+      ASSERT(expected_return_type, Is<type::Variant>());
+      IR::StoreType(return_type,
                     IR::VariantType(std::get<IR::Register>(out_reg->value)));
-      outs.AppendLoc(
-          IR::VariantValue(ret_type, std::get<IR::Register>(out_reg->value)));
+      outs.AppendLoc(IR::VariantValue(return_type,
+                                      std::get<IR::Register>(out_reg->value)));
     };
 
     if (ret_type->is<type::Tuple>()) {
       ASSERT(ret_type->as<type::Tuple>().entries_.size() ==
-             fn_type->output.size());
-      for (size_t i = 0; i < fn_type->output.size(); ++i) {
-        MakeRegister(fn_type->output.at(i),
+             binding.fn_type_->output.size());
+      for (size_t i = 0; i < binding.fn_type_->output.size(); ++i) {
+        MakeRegister(binding.fn_type_->output.at(i),
                      ret_type->as<type::Tuple>().entries_.at(i),
                      &outgoing_regs->at(i));
       }
     } else {
-      MakeRegister(fn_type->output.at(0), ret_type, &outgoing_regs->at(0));
+      MakeRegister(binding.fn_type_->output.at(0), ret_type,
+                   &outgoing_regs->at(0));
     }
   }
 
@@ -300,7 +303,7 @@ base::vector<IR::Val> EmitCallDispatch(
   ASSERT(iter != dispatch_table.bindings_.end());
   for (size_t i = 0; i < dispatch_table.bindings_.size() - 1; ++i, ++iter) {
     const auto & [ call_arg_type, binding ] = *iter;
-    auto next_binding = CallLookupTest(args, call_arg_type);
+    auto next_binding = CallLookupTest(args, call_arg_type, ctx);
     size_t j          = 0;
 
     EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
@@ -446,6 +449,8 @@ type::Type const *Call::VerifyType(Context *ctx) {
     } else {
       UNREACHABLE();
     }
+  } else {
+    fn_->VerifyType(ctx);
   }
 
   FnArgs<Expression *> args =
@@ -472,17 +477,10 @@ type::Type const *Call::VerifyType(Context *ctx) {
   if (dispatch_table_.total_size_ != expanded_size) {
     // TODO give a better error message here.
     ctx->error_log_.NoCallMatch(span);
-    fn_->type = nullptr;
     limit_to(StageRange::Nothing());
     return nullptr;
   }
 
-  if (fn_->is<Identifier>()) {
-    // fn_'s type should never be considered beacuse it could be one of many
-    // different things. 'type::Void()' just indicates that it has been computed
-    // (i.e., not 0x0).
-    fn_->type = type::Void();
-  }
   return ret_type;
 }
 

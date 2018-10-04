@@ -30,8 +30,8 @@ static void ReplEval(AST::Expression *expr) {
       ctx.DumpErrors();
       return;
     }
-
-    if (expr->type != type::Void()) { expr->type->EmitRepr(expr_val, &ctx); }
+    auto *expr_type = ctx.mod_->types_.at(expr);
+    if (expr_type != type::Void()) { expr_type->EmitRepr(expr_val, &ctx); }
     IR::ReturnJump();
   }
 

@@ -63,7 +63,6 @@ void Primitive::EmitInit(IR::Register id_reg, Context *ctx) const {
     case PrimType::EmptyArray: UNREACHABLE();
     case PrimType::Code: {
       AST::CodeBlock block;
-      block.type     = Code;
       block.content_ = AST::Statements{};
       NOT_YET();
     }

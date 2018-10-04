@@ -13,7 +13,7 @@ extern Type const *Code;
 
 namespace AST {
 struct CodeBlock : public Expression {
-  CodeBlock() { type = type::Code; }
+  CodeBlock() {}
   CodeBlock(std::string_view s) : CodeBlock() { content_ = std::string(s); }
 
   CodeBlock(const CodeBlock &)     = default;

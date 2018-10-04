@@ -23,9 +23,10 @@ Register Func::Return(u32 n) const {
 // TODO there's no reason to take args because they can be computed from the
 // function literal.
 Func::Func(Module *mod, AST::GeneratedFunction *fn,
+           type::Function const *fn_type,
            base::vector<std::pair<std::string, AST::Expression *>> args)
     : gened_fn_(fn),
-      type_(&fn->type->as<type::Function>()),
+      type_(fn_type),
       args_(std::move(args)),
       num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
       mod_(mod) {

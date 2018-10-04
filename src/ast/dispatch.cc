@@ -25,8 +25,8 @@ std::optional<BoundConstants> ComputeBoundConstants(
 
   // TODO handle declaration order
   for (size_t i = 0; i < fn->inputs.size(); ++i) {
-    fn->inputs[i]->VerifyType(ctx);
-    if (fn->inputs[i]->type == type::Err) { return std::nullopt; }
+    auto *input_type = fn->inputs[i]->VerifyType(ctx);
+    if (input_type == nullptr) { return std::nullopt; }
 
     if ((binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) ||
         (fn->inputs[i]->const_ && !binding->defaulted(i))) {
@@ -37,7 +37,8 @@ std::optional<BoundConstants> ComputeBoundConstants(
 
     if (!binding->defaulted(i)) {
       if (fn->inputs[i]->type_expr != nullptr &&
-          fn->inputs[i]->type_expr->type == type::Interface) {
+          ctx->mod_->types_.at(fn->inputs[i]->type_expr.get()) ==
+              type::Interface) {
         // TODO case where it is defaulted.
         // TODO expand all variants
         NOT_YET();
@@ -63,8 +64,9 @@ std::optional<BoundConstants> ComputeBoundConstants(
         // want something much more meaningful. 'Generic' is a weird catch-all
         // type currently that needs to be deprecated.
 
-      } else if (auto *match = type::Meet(binding->exprs_[i].second->type,
-                                          fn->inputs[i]->type);
+      } else if (auto *match =
+                     type::Meet(ctx->mod_->types_.at(binding->exprs_[i].second),
+                                input_type);
                  match == nullptr) {
         return std::nullopt;
       }
@@ -78,13 +80,14 @@ std::optional<BoundConstants> ComputeBoundConstants(
                : backend::Evaluate(binding->exprs_[i].second, ctx))[0]);
     }
 
-    binding->exprs_[i].first = fn->inputs[i]->type;
+    binding->exprs_[i].first = input_type;
   }
   return bc;
 }
 
-bool DispatchEntry::SetTypes(FuncContent *fn, Context *ctx) {
-  const auto &input_types = binding_.fn_expr_->type->as<type::Function>().input;
+bool DispatchEntry::SetTypes(FuncContent *fn, type::Function const *fn_type,
+                             Context *ctx) {
+  const auto &input_types = fn_type->input;
   bool bound_at_compile_time = (fn != nullptr);
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
     if (bound_at_compile_time && binding_.defaulted(i)) {
@@ -115,15 +118,17 @@ bool DispatchEntry::SetTypes(FuncContent *fn, Context *ctx) {
 }
 
 std::optional<DispatchEntry> DispatchEntry::Make(
-    Expression *fn_option, const FnArgs<Expression *> &args, Context *ctx) {
+    Expression *fn_option, type::Function const *fn_option_type,
+    const FnArgs<Expression *> &args, Context *ctx) {
   Expression *bound_fn = nullptr;
-  bound_fn             = std::visit(
+  auto evaled_fn = backend::Evaluate(fn_option, fn_option_type, ctx);
+  bound_fn = std::visit(
       base::overloaded{
           [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
           [](Function *fn) -> Expression * { return fn; },
           [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
           [](auto &&) -> Expression * { UNREACHABLE(); }},
-      backend::Evaluate(fn_option, ctx).at(0).value);
+      evaled_fn.at(0).value);
 
   size_t binding_size;
   if (bound_fn->is<FuncContent>()) {
@@ -134,7 +139,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     // TODO is this 1 even right?
     binding_size = 1;
   }
-  Binding binding(bound_fn, binding_size);
+  Binding binding(bound_fn, fn_option_type, binding_size);
   binding.SetPositionalArgs(args);
 
   if (bound_fn->is<FuncContent>() &&
@@ -168,26 +173,21 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     }
   }
 
-  if (!dispatch_entry.SetTypes(fn, ctx)) { return std::nullopt; }
+  if (!dispatch_entry.SetTypes(fn, &fn_option_type->as<type::Function>(),
+                               ctx)) {
+    return std::nullopt;
+  }
 
   return dispatch_entry;
 }
 
-static const type::Type *ComputeRetType(const FnArgs<Expression *> &args,
-                                        const DispatchTable &table,
-                                        Context *ctx) {
+static const type::Type *ComputeRetType(
+    base::vector<type::Type const *> const &fn_types) {
   base::vector<base::vector<const type::Type *>> out_types;
-  out_types.reserve(table.bindings_.size());
-
-  if (table.bindings_.size() == 0u) { return type::Err; }
-
-  for (const auto & [ key, val ] : table.bindings_) {
-    if (val.fn_expr_->type->is<type::Function>()) {
-      out_types.push_back(val.fn_expr_->type->as<type::Function>().output);
-    } else {
-      UNREACHABLE(val.fn_expr_->type);
-    }
+  for (auto *t : fn_types) {
+    out_types.push_back(t->as<type::Function>().output);
   }
+
 
   ASSERT(!out_types.empty());
   // TODO Can I assume all the lengths are the same?
@@ -209,15 +209,18 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
   DispatchTable table;
   // TODO error decls?
   auto[decls, error_decls] = scope->AllDeclsWithId(token, ctx);
+  base::vector<type::Type const*> fn_types;
   for (auto &decl : decls) {
     if (decl.type_ == nullptr) { return {}; }
+    fn_types.push_back(decl.type_);
     if (auto maybe_dispatch_entry =
-            DispatchEntry::Make(decl.decl_->identifier.get(), args, ctx)) {
+            DispatchEntry::Make(decl.decl_->identifier.get(),
+                                &decl.type_->as<type::Function>(), args, ctx)) {
       table.InsertEntry(std::move(maybe_dispatch_entry).value());
     }
   }
 
-  const type::Type *ret_type = ComputeRetType(args, table, ctx);
+  const type::Type *ret_type = ComputeRetType(fn_types);
   return std::pair{std::move(table), ret_type};
 }
 
@@ -226,10 +229,13 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
   DispatchTable table;
   auto *fn_type = fn->VerifyType(ctx);
   if (fn_type == nullptr) { return {}; }
-  if (auto maybe_dispatch_entry = DispatchEntry::Make(fn, args, ctx)) {
+
+  base::vector<type::Type const *> fn_types = {fn_type};
+  if (auto maybe_dispatch_entry =
+          DispatchEntry::Make(fn, &fn_type->as<type::Function>(), args, ctx)) {
     table.InsertEntry(std::move(maybe_dispatch_entry).value());
   }
-  const type::Type *ret_type = ComputeRetType(args, table, ctx);
+  const type::Type *ret_type = ComputeRetType(fn_types);
   return std::pair{std::move(table), ret_type};
 }
 

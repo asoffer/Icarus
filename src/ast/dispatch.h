@@ -14,6 +14,7 @@ struct Scope;
 
 namespace type {
 struct Type;
+struct Function;
 } // namespace type
 
 namespace AST {
@@ -22,10 +23,6 @@ struct FuncContent;
 struct Expression;
 // Represents a particular call resolution.
 struct Binding {
-  static std::optional<Binding>
-  MakeUntyped(Expression *fn_expr, const FnArgs<Expression *> &args,
-              const base::unordered_map<std::string, size_t> &index_lookup);
-
   void SetPositionalArgs(const FnArgs<Expression *> &args);
   bool SetNamedArgs(
       const FnArgs<Expression *> &args,
@@ -33,19 +30,22 @@ struct Binding {
 
   bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
 
-  Binding(AST::Expression *fn_expr, size_t n)
+  Binding(AST::Expression *fn_expr, type::Function const *fn_type, size_t n)
       : fn_expr_(fn_expr),
+        fn_type_(fn_type),
         exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
 
-  Expression *fn_expr_ = nullptr;
+  Expression *fn_expr_            = nullptr;
+  type::Function const *fn_type_ = nullptr;
   base::vector<std::pair<const type::Type *, Expression *>> exprs_;
 };
 
 // Represents a row in the dispatch table.
 struct DispatchEntry {
-  bool SetTypes(FuncContent *fn, Context *ctx);
+  bool SetTypes(FuncContent *fn, type::Function const *fn_type, Context *ctx);
 
   static std::optional<DispatchEntry> Make(Expression *fn_option,
+                                           type::Function const *fn_option_type,
                                            const FnArgs<Expression *> &args,
                                            Context *ctx);
 

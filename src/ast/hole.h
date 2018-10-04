@@ -12,7 +12,6 @@ struct Hole : public Identifier {
   Hole() = delete;
   Hole(const TextSpan &span) : Identifier(span, "--") {
     stage_range_.low = DoneBodyValidationStage;
-    type             = nullptr;
   }
   ~Hole() override {}
 

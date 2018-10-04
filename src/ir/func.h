@@ -46,7 +46,8 @@ struct Func {
 
   Func(Module *mod, const type::Function *fn_type,
        base::vector<std::pair<std::string, AST::Expression *>> args);
-  Func(Module *mod, AST::GeneratedFunction* fn_lit,
+  Func(Module *mod, AST::GeneratedFunction *fn_lit,
+       type::Function const *fn_type,
        base::vector<std::pair<std::string, AST::Expression *>> args);
 
   Register Argument(u32 n) const;

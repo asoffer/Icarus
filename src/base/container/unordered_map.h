@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <unordered_map>
+#include "base/log.h"
 
 namespace base {
 #ifdef DBG
@@ -22,13 +23,19 @@ struct unordered_map : public std::unordered_map<Ts...> {
 
   mapped_type& at(const key_type& key) {
     auto iter = this->find(key);
-    if (iter == this->end()) std::abort();
+    if (iter == this->end()) {
+      LOG << "FATAL ERROR: Failed to find map key: " << key;
+      std::abort();
+    }
     return MapT::at(key);
   }
 
   const mapped_type& at(const key_type& key) const {
     auto iter = this->find(key);
-    if (iter == this->end()) std::abort();
+    if (iter == this->end()) {
+      LOG << "FATAL ERROR: Failed to find map key: " << key;
+      std::abort();
+    }
     return MapT::at(key);
   }
 };

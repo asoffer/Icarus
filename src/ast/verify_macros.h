@@ -5,10 +5,6 @@
 #include "ast/stages.h"
 #include "context.h"
 
-namespace type {
-extern Type const *Err;
-}  // namespace type
-
 #define HANDLE_CYCLIC_DEPENDENCIES                                             \
   do {                                                                         \
     if (ctx->cyc_dep_vec_ == nullptr) { break; }                               \
@@ -20,7 +16,6 @@ extern Type const *Err;
       } else {                                                                 \
         ctx->cyc_dep_vec_->push_back(this_as_id);                              \
       }                                                                        \
-      ASSERT(ctx->mod_->types_.emplace(this, type::Err).second);                     \
     } else if constexpr (std::is_same_v<decltype(this), Declaration *>) {      \
       auto *this_as_decl =                                                     \
           reinterpret_cast<Declaration *>(this)->identifier.get();             \
@@ -30,11 +25,7 @@ extern Type const *Err;
       } else {                                                                 \
         ctx->cyc_dep_vec_->push_back(this_as_decl);                            \
       }                                                                        \
-      ASSERT(ctx->mod_->types_.emplace(this, type::Err).second);                     \
-    } else {                                                                   \
-      ctx->mod_->types_.buffered_emplace(this, type::Err);                           \
     }                                                                          \
-    type = type::Err;                                                          \
     limit_to(StageRange::Nothing());                                           \
     return nullptr;                                                            \
   } while (false)

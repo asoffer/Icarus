@@ -83,7 +83,6 @@ void Unop::contextualize(
     auto terminal    = std::make_unique<Terminal>();
     terminal->scope_ = scope_; // TODO Eh? Do I care?
     terminal->span   = span;
-    terminal->type   = iter->second.type;
     terminal->value  = iter->second;
     operand          = std::move(terminal);
     op               = Language::Operator::Pass;

@@ -5,6 +5,7 @@
 #include "ast/identifier.h"
 #include "ir/register.h"
 
+struct Module;
 namespace IR {
 struct Val;
 }  // namespace IR
@@ -47,6 +48,7 @@ struct Declaration : public Expression {
   // TODO whether this is null is computable from the type and that might be all
   // we need.
   Expression *arg_val = nullptr;
+  Module *mod_ = nullptr;
 
   // These functions are confusingly named. They look correct in normal
   // declarations, but in function arguments, IsDefaultInitialized() is true iff

@@ -80,15 +80,13 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
   std::vector<type::Type const *> arg_types =
       t->is<type::Tuple>() ? t->as<type::Tuple>().entries_
                            : base::vector<type::Type const *>{t};
-  if (t == nullptr) { return nullptr; }
-
 
   if (op_ == Language::Operator::Print) {
     ASSERT(dispatch_tables_.size() == args_.exprs.size());
     for (size_t i = 0; i < args_.exprs.size(); ++i) {
       auto &arg = args_.exprs[i];
       auto &arg_type = arg_types[i];
-      if (arg_type->is<type::Primitive>() || arg->type->is<type::Pointer>() ||
+      if (arg_type->is<type::Primitive>() || arg_type->is<type::Pointer>() ||
           arg_type->is<type::CharBuffer>()) {
         continue;
       } else if (arg_type->is<type::Struct>()) {

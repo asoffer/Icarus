@@ -42,8 +42,9 @@ struct Module {
 
   static std::unique_ptr<Module> Compile(const frontend::Source::Name& src);
 
-  IR::Func* AddFunc(AST::GeneratedFunction* fn_lit,
-      base::vector<std::pair<std::string, AST::Expression *>> args);
+  IR::Func* AddFunc(
+      AST::GeneratedFunction* fn_lit, type::Function const* fn_type,
+      base::vector<std::pair<std::string, AST::Expression*>> args);
   IR::Func* AddFunc(const type::Function* fn_type,
       base::vector<std::pair<std::string, AST::Expression *>> args);
   const type::Type* GetType(const std::string& name) const;

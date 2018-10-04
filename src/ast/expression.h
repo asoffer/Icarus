@@ -16,7 +16,7 @@ struct Expression : public Node {
   virtual ~Expression(){};
   virtual std::string to_string(size_t n) const                          = 0;
   virtual void assign_scope(Scope *scope)                                = 0;
-  virtual type::Type const *VerifyType(Context *ctx)                                  = 0;
+  virtual type::Type const *VerifyType(Context *ctx)                     = 0;
   virtual void Validate(Context *ctx)                                    = 0;
   virtual void SaveReferences(Scope *scope, base::vector<IR::Val> *args) = 0;
   virtual Expression *Clone() const                                      = 0;
@@ -26,8 +26,6 @@ struct Expression : public Node {
   virtual void contextualize(
       const Node *correspondant,
       const base::unordered_map<const Expression *, IR::Val> &) = 0;
-
-  const type::Type *type = nullptr;
 };
 } // namespace AST
 

@@ -401,6 +401,7 @@ static std::unique_ptr<Node> BuildDeclaration(
   auto decl              = std::make_unique<Declaration>(IsConst);
   decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
   decl->identifier       = move_as<Identifier>(nodes[0]);
+  decl->mod_             = ctx->mod_;
   decl->identifier->decl = decl.get();
 
   if (op == Language::Operator::Colon ||
@@ -419,6 +420,7 @@ static std::unique_ptr<Node> BuildMatchDeclaration(
   decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
   decl->identifier       = move_as<Identifier>(nodes[2]);
   decl->identifier->decl = decl.get();
+  decl->mod_             = ctx->mod_;
   decl->type_expr        = move_as<Expression>(nodes[0]);
   return decl;
 }

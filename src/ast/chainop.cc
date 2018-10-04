@@ -33,9 +33,9 @@ using base::check::Not;
 IR::RegisterOr<bool> EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
                                      IR::Val const &lhs_ir,
                                      IR::Val const &rhs_ir, Context *ctx) {
-  const type::Type *lhs_type = chain_op->exprs[index]->type;
-  const type::Type *rhs_type = chain_op->exprs[index + 1]->type;
-  auto op                    = chain_op->ops[index];
+  auto *lhs_type = ctx->mod_->types_.at(chain_op->exprs[index].get());
+  auto *rhs_type = ctx->mod_->types_.at(chain_op->exprs[index + 1].get());
+  auto op        = chain_op->ops[index];
 
   if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
     ASSERT(op == Language::Operator::Eq || op == Language::Operator::Ne);
@@ -293,7 +293,6 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
         }
       }
 
-      type = type::Bool;
       ctx->mod_->types_.buffered_emplace(this, type::Bool);
       return type::Bool;
     }

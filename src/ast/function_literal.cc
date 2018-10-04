@@ -131,12 +131,12 @@ type::Type const *FuncContent::VerifyType(Context *ctx) {
   }
 
   if (ctx->num_errors() > 0) {
-    type = type::Err;
     limit_to(StageRange::Nothing());
     return nullptr;
   }
 
   if (!return_type_inferred_) {
+    bool err = false;
     // TODO should named return types be required?
     base::vector<IR::Val> out_vals;
     out_vals.reserve(outputs.size());
@@ -157,36 +157,33 @@ type::Type const *FuncContent::VerifyType(Context *ctx) {
 
     base::vector<const type::Type *> ret_types;
     ret_types.reserve(out_vals.size());
+
     for (size_t i = 0; i < out_vals.size(); ++i) {
       const auto &out = out_vals[i];
       if (out == IR::Val::None() /* TODO Error() */) {
         ctx->error_log_.IndeterminantType(outputs[i]->span);
-        type = type::Err;
         limit_to(StageRange::Nothing());
       } else if (out.type != type::Type_) {
         ctx->error_log_.NotAType(outputs[i].get());
-        type = type::Err;
         limit_to(StageRange::Nothing());
         continue;
       } else if (auto *ret_type = std::get<const type::Type *>(out.value);
-                 ret_type == type::Err) {
-        type = type::Err;
+                 ret_type == nullptr) {
+        err = true;
         limit_to(StageRange::Nothing());
         continue;
       } else {
         ret_types.push_back(ret_type);
       }
     }
-    if (type == type::Err) { return nullptr; }
-    type = type::Func(std::move(input_type_vec), std::move(ret_types));
-    ctx->mod_->types_.buffered_emplace(
-        this, type::Func(std::move(input_type_vec), std::move(ret_types)));
-
+    if (err) { return nullptr; }
+    auto *t = type::Func(std::move(input_type_vec), std::move(ret_types));
+    ctx->mod_->types_.buffered_emplace(this, t);
+    return t;
   } else {
     Validate(ctx);
-    if (type == type::Err) { return nullptr; }
+    return ctx->mod_->types_.at(this);
   }
-  return type;
 }
 
 type::Type const *Function::VerifyType(Context *ctx) {
@@ -201,8 +198,7 @@ type::Type const *Function::VerifyType(Context *ctx) {
 
   if (is_generic) {
     VERIFY_STARTING_CHECK_EXPR;
-    type   = type::Generic;
-    return type;
+    return type::Generic;
   } else {
     return FuncContent::VerifyType(ctx);
   }
@@ -244,9 +240,9 @@ void FuncContent::Validate(Context *ctx) {
 
   if (return_type_inferred_) {
     switch (types.size()) {
-      case 0: type = type::Func(std::move(input_type_vec), {});
-        ctx->mod_->types_.buffered_emplace(this,
-                                     type::Func(std::move(input_type_vec), {}));
+      case 0:
+        ctx->mod_->types_.buffered_emplace(
+            this, type::Func(std::move(input_type_vec), {}));
         break;
       case 1: {
         auto *one_type = *types.begin();
@@ -256,14 +252,12 @@ void FuncContent::Validate(Context *ctx) {
             outputs.push_back(
                 std::make_unique<Terminal>(TextSpan(), IR::Val(entry)));
           }
-          type = type::Func(std::move(input_type_vec), entries);
           ctx->mod_->types_.buffered_emplace(
               this, type::Func(std::move(input_type_vec), entries));
 
         } else {
           outputs.push_back(
               std::make_unique<Terminal>(TextSpan(), IR::Val(one_type)));
-          type = type::Func(std::move(input_type_vec), {one_type});
           ctx->mod_->types_.buffered_emplace(
               this, type::Func(std::move(input_type_vec), {one_type}));
         }
@@ -275,7 +269,7 @@ void FuncContent::Validate(Context *ctx) {
       } break;
     }
   } else {
-    const auto &outs = type->as<type::Function>().output;
+    const auto &outs = ctx->mod_->types_.at(this)->as<type::Function>().output;
     switch (outs.size()) {
       case 0: {
         for (auto *expr : rets) {
@@ -285,15 +279,16 @@ void FuncContent::Validate(Context *ctx) {
       } break;
       case 1: {
         for (auto *expr : rets) {
-          if (expr->type == outs[0]) { continue; }
+          if (ctx->mod_->types_.at(expr) == outs[0]) { continue; }
           limit_to(StageRange::NoEmitIR());
           ctx->error_log_.ReturnTypeMismatch(outs[0], expr);
         }
       } break;
       default: {
         for (auto *expr : rets) {
-          if (expr->type->is<type::Tuple>()) {
-            const auto &tup_entries = expr->type->as<type::Tuple>().entries_;
+          auto *expr_type = ctx->mod_->types_.at(expr);
+          if (expr_type->is<type::Tuple>()) {
+            const auto &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
               ctx->error_log_.ReturningWrongNumber(expr, outs.size());
               limit_to(StageRange::NoEmitIR());
@@ -409,7 +404,9 @@ base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
                         input->as<Declaration>().init_val.get());
     }
 
-    ir_func_ = ctx->mod_->AddFunc(this, std::move(args));
+    ir_func_ = ctx->mod_->AddFunc(
+        this, &ctx->mod_->types_.at(this)->as<type::Function>(),
+        std::move(args));
     ctx->mod_->to_complete_.push(this);
   }
 

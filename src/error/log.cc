@@ -161,8 +161,8 @@ void Log::UndeclaredIdentifier(AST::Identifier *id) {
 void Log::PostconditionNeedsBool(AST::Expression *expr) {
   std::stringstream ss;
   ss << "Function postcondition must be of type bool, but you provided an "
-        "expression of type "
-     << expr->type->to_string() << "\n\n";
+        "expression of type ";  // TODO pass in type or context too <<
+                                // expr->type->to_string() << "\n\n";
   WriteSource(
       ss, *expr->span.source,
       {Interval{expr->span.start.line_num, expr->span.finish.line_num + 1}},
@@ -176,8 +176,8 @@ void Log::PostconditionNeedsBool(AST::Expression *expr) {
 void Log::PreconditionNeedsBool(AST::Expression *expr) {
   std::stringstream ss;
   ss << "Function precondition must be of type bool, but you provided an "
-        "expression of type "
-     << expr->type->to_string() << "\n\n";
+        "expression of type ";  // TODO pass in type or context too <<
+                                // expr->type->to_string() << "\n\n";
   WriteSource(
       ss, *expr->span.source,
       {Interval{expr->span.start.line_num, expr->span.finish.line_num + 1}},
@@ -268,6 +268,7 @@ void Log::MissingMember(const TextSpan &span, const std::string &member_name,
 
 void Log::ReturnTypeMismatch(const type::Type *expected_type,
                              const AST::Expression *ret_expr) {
+  /* TODO pass in type or context too
   std::stringstream ss;
   if (ret_expr->type->is<type::Tuple>()) {
     ss << "Attempting to return multiple values";
@@ -286,6 +287,7 @@ void Log::ReturnTypeMismatch(const type::Type *expected_type,
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
+  */
 }
 void Log::NoMatchingOperator(const std::string &op, const type::Type *lhs,
                              const type::Type *rhs, const TextSpan &span) {
@@ -319,6 +321,7 @@ void Log::NoReturnTypes(const AST::Expression *ret_expr) {
 
 void Log::ReturningWrongNumber(const AST::Expression *ret_expr,
                                size_t num_rets) {
+  /* TODO pass in type or context too
   std::stringstream ss;
   ss << "Attempting to return "
      << (ret_expr->type->is<type::Tuple>()
@@ -335,11 +338,13 @@ void Log::ReturningWrongNumber(const AST::Expression *ret_expr,
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
+  */
 }
 
 void Log::IndexedReturnTypeMismatch(const type::Type *expected_type,
                                     const AST::Expression *ret_expr,
                                     size_t index) {
+  /* TODO Pass in type or context too
   std::stringstream ss;
   // TODO should the slots be zero- or one-indexed?
   ss << "Returning an expression in slot #" << (index + 1) << " of type `"
@@ -355,6 +360,7 @@ void Log::IndexedReturnTypeMismatch(const type::Type *expected_type,
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
+  */
 }
 
 
@@ -412,8 +418,8 @@ void Log::NotBinary(const TextSpan &span, const std::string &token) {
 void Log::NotAType(AST::Expression *expr) {
   std::stringstream ss;
   ss << "Expression was expected to be a type or interface, but instead it was "
-        "a(n) "
-     << expr->type->to_string() << ".\n\n";
+        "a(n) ";  // TODO pass in type or context too << expr->type->to_string()
+                  // << ".\n\n";
   WriteSource(
       ss, *expr->span.source,
       {Interval{expr->span.start.line_num, expr->span.finish.line_num + 1}},
@@ -426,9 +432,10 @@ void Log::NotAType(AST::Expression *expr) {
 void Log::AssignmentTypeMismatch(AST::Expression *lhs,
                                 AST::Expression *rhs) {
    std::stringstream ss;
-   ss << "Invalid assignment. Left-hand side has type "
-      << lhs->type->to_string() << ", but right-hand side has type "
-      << rhs->type->to_string() << ".\n\n";
+   ss << "Invalid assignment. Left-hand side has type ";
+   // TODO pass in type or context too
+   //      << lhs->type->to_string() << ", but right-hand side has type "
+   //      << rhs->type->to_string() << ".\n\n";
    WriteSource(
        ss, *lhs->span.source,
        {Interval{lhs->span.start.line_num, lhs->span.finish.line_num + 1},

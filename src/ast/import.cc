@@ -49,7 +49,6 @@ Import *Import::Clone() const {
 
 type::Type const *Import::VerifyType(Context *ctx) {
   VERIFY_OR_RETURN(operand_type, operand_);
-  type = type::Module;
   ctx->mod_->types_.buffered_emplace(this, type::Module);
 
   if (!operand_type->is<type::CharBuffer>()) {

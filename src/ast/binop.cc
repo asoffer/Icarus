@@ -232,12 +232,11 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       type::Type const *t = nullptr;                                            \
       std::tie(dispatch_table_, t) =                                            \
           DispatchTable::Make(args, symbol, scope_, ctx);                       \
-      ASSERT(type, Not(Is<type::Tuple>()));                                     \
-      /* TODO should this be Err or nullptr? */                                 \
-      if (t == type::Err) {                                                     \
+      if (t == nullptr) {                                                       \
         ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
         limit_to(StageRange::Nothing());                                        \
       }                                                                         \
+      ASSERT(t, Not(Is<type::Tuple>()));                                        \
     }                                                                           \
   } break;
 
@@ -267,7 +266,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         type::Type const *t = nullptr;
         std::tie(dispatch_table_, t) =
             DispatchTable::Make(args, "+", scope_, ctx);
-        ASSERT(type, Not(Is<type::Tuple>()));
+        ASSERT(t, Not(Is<type::Tuple>()));
         // TODO should this be Err or nullptr?
         if (t == type::Err) {
           ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
