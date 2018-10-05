@@ -376,8 +376,8 @@ void Binop::ExtractReturns(base::vector<const Expression *> *rets) const {
 }
 
 base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
-  auto *lhs_type = ctx->mod_->types_.at(lhs.get());
-  auto *rhs_type = ctx->mod_->types_.at(rhs.get());
+  auto *lhs_type = ctx->mod_->type_of(lhs.get());
+  auto *rhs_type = ctx->mod_->type_of(rhs.get());
   if (op != Language::Operator::Assign &&
       (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>())) {
     // TODO struct is not exactly right. we really mean user-defined
@@ -387,7 +387,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx)[0]);
 
     return EmitCallDispatch(args, dispatch_table_,
-                            ASSERT_NOT_NULL(ctx->mod_->types_.at(this)), ctx);
+                            ASSERT_NOT_NULL(ctx->mod_->type_of(this)), ctx);
   }
 
   switch (op) {
@@ -459,7 +459,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       }
     } break;
     case Language::Operator::As: {
-      auto *this_type = ctx->mod_->types_.at(this);
+      auto *this_type = ctx->mod_->type_of(this);
       auto val        = lhs->EmitIR(ctx)[0];
       if (val.type == this_type) {
         return {val};
@@ -503,7 +503,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Assign: {
       base::vector<const type::Type *> lhs_types, rhs_types;
       ForEachExpr(rhs.get(), [&ctx, &rhs_types](size_t, Expression *expr) {
-        auto *expr_type = ctx->mod_->types_.at(expr);
+        auto *expr_type = ctx->mod_->type_of(expr);
         if (expr_type->is<type::Tuple>()) {
           rhs_types.insert(rhs_types.end(),
                            expr_type->as<type::Tuple>().entries_.begin(),
@@ -516,7 +516,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
 
       // TODO types can be retrieved from the values?
       ForEachExpr(lhs.get(), [&ctx, &lhs_types](size_t, AST::Expression *expr) {
-        lhs_types.push_back(ctx->mod_->types_.at(expr));
+        lhs_types.push_back(ctx->mod_->type_of(expr));
       });
       auto lhs_lvals = lhs->EmitLVal(ctx);
 
@@ -529,7 +529,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::OrEq: {
-      auto *this_type = ctx->mod_->types_.at(this);
+      auto *this_type = ctx->mod_->type_of(this);
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
         IR::StoreFlags(IR::OrFlags(&this_type->as<type::Flags>(),
@@ -557,7 +557,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
           {{lhs_end_block, true}, {rhs_end_block, rhs_val}}))};
     } break;
     case Language::Operator::AndEq: {
-      auto *this_type = ctx->mod_->types_.at(this);
+      auto *this_type = ctx->mod_->type_of(this);
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
         IR::StoreFlags(IR::AndFlags(&this_type->as<type::Flags>(),
@@ -681,7 +681,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::Index: {
-      auto *this_type = ctx->mod_->types_.at(this);
+      auto *this_type = ctx->mod_->type_of(this);
       return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], this_type), this_type)};
     } break;
     default: UNREACHABLE(*this);
@@ -692,8 +692,8 @@ base::vector<IR::Register> AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::As: NOT_YET();
     case Language::Operator::Index:
-      if (ctx->mod_->types_.at(lhs.get())->is<type::Array>()) {
-        return {IR::Index(type::Ptr(ctx->mod_->types_.at(this)),
+      if (ctx->mod_->type_of(lhs.get())->is<type::Array>()) {
+        return {IR::Index(type::Ptr(ctx->mod_->type_of(this)),
                           lhs->EmitLVal(ctx)[0],
                           rhs->EmitIR(ctx)[0].reg_or<i32>())};
       }

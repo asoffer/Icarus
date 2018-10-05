@@ -212,12 +212,12 @@ type::Type const *Unop::VerifyType(Context *ctx) {
 }
 
 base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
-  auto *operand_type = ctx->mod_->types_.at(operand.get());
+  auto *operand_type = ctx->mod_->type_of(operand.get());
   if (operand_type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
     // TODO struct is not exactly right. we really mean user-defined
     FnArgs<std::pair<Expression *, IR::Val>> args;
     args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx)[0])};
-    return EmitCallDispatch(args, dispatch_table_, ctx->mod_->types_.at(this),
+    return EmitCallDispatch(args, dispatch_table_, ctx->mod_->type_of(this),
                             ctx);
   }
 
@@ -225,7 +225,7 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
     case Language::Operator::Not:
       return {IR::ValFrom(IR::Not(operand->EmitIR(ctx)[0].reg_or<bool>()))};
     case Language::Operator::Sub: {
-      auto *operand_type = ctx->mod_->types_.at(operand.get());
+      auto *operand_type = ctx->mod_->type_of(operand.get());
       if (operand_type == type::Int) {
         return {IR::ValFrom(IR::NegInt(operand->EmitIR(ctx)[0].reg_or<i32>()))};
       } else if (operand_type == type::Real) {
@@ -236,14 +236,14 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       }
     }
     case Language::Operator::TypeOf:
-      return {IR::Val(ctx->mod_->types_.at(operand.get()))};
+      return {IR::Val(ctx->mod_->type_of(operand.get()))};
     case Language::Operator::Which:
       return {IR::Val::Reg(IR::LoadType(IR::VariantType(std::get<IR::Register>(
                                operand->EmitIR(ctx)[0].value))),
                            type::Type_)};
     case Language::Operator::And:
       return {IR::Val::Reg(operand->EmitLVal(ctx)[0],
-                           type::Ptr(ctx->mod_->types_.at(this)))};
+                           type::Ptr(ctx->mod_->type_of(this)))};
     case Language::Operator::Eval: {
       // TODO what if there's an error during evaluation?
       return backend::Evaluate(operand.get(), ctx);

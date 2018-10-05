@@ -124,7 +124,7 @@ base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
   IR::UncondJump(land_block);
 
   IR::BasicBlock::Current = land_block;
-  auto *t = ctx->mod_->types_.at(this);
+  auto *t = ctx->mod_->type_of(this);
   return {IR::MakePhi(IR::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)};
 }
 

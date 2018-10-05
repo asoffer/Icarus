@@ -115,8 +115,8 @@ bool CommonAmbiguousFunctionCall(const base::vector<ArgumentMetaData> &data1,
 }
 
 bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
-  auto *decl1_type = ctx->mod_->types_.at(decl1);
-  auto *decl2_type = ctx->mod_->types_.at(decl2);
+  auto *decl1_type = ctx->mod_->type_of(decl1);
+  auto *decl2_type = ctx->mod_->type_of(decl2);
   // TODO Don't worry about generic shadowing? It'll be checked later?
   if (decl1_type->is<type::Function>() || decl1_type == type::Generic ||
       decl2_type->is<type::Function>() || decl2_type == type::Generic) {
@@ -148,7 +148,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
                          std::is_same_v<eval_t, GeneratedFunction *>) {
       metadata.reserve(eval->inputs.size());
       for (size_t i = 0; i < eval->inputs.size(); ++i) {
-        auto *input_type = ctx->mod_->types_.at(eval->inputs[i].get());
+        auto *input_type = ctx->mod_->type_of(eval->inputs[i].get());
         metadata.push_back(ArgumentMetaData{
             /*        type = */ input_type,
             /*        name = */ eval->inputs[i]->identifier->token,
@@ -326,7 +326,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 
     if (has_children) {
       for (auto *decl : iter->second) {
-        decls_to_check.emplace_back(ctx->mod_->types_.at(decl), decl);
+        decls_to_check.emplace_back(ctx->mod_->type_of(decl), decl);
       }
     }
   }
@@ -426,7 +426,7 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
 
     if (IsCustomInitialized()) {
       iter->second = backend::Evaluate(
-          init_val.get(), ctx->mod_->types_.at(init_val.get()), ctx)[0];
+          init_val.get(), ctx->mod_->type_of(init_val.get()), ctx)[0];
       if (ctx->num_errors()) { return {}; }
       return {iter->second};
     } else if (IsDefaultInitialized()) {
@@ -449,9 +449,9 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
 
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized(this)) { return {}; }
-    auto *t = ctx->mod_->types_.at(this);
+    auto *t = ctx->mod_->type_of(this);
     if (IsCustomInitialized()) {
-      type::EmitCopyInit(ctx->mod_->types_.at(init_val.get()), t,
+      type::EmitCopyInit(ctx->mod_->type_of(init_val.get()), t,
                          init_val->EmitIR(ctx)[0], addr_, ctx);
     } else {
       t->EmitInit(addr_, ctx);

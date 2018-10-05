@@ -98,7 +98,7 @@ ArrayLiteral *ArrayLiteral::Clone() const {
 
 base::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
-  auto *this_type = ctx->mod_->types_.at(this);
+  auto *this_type = ctx->mod_->type_of(this);
   auto alloc = IR::Alloca(this_type);
   auto array_val  = IR::Val::Reg(alloc, type::Ptr(this_type));
   auto *data_type = this_type->as<type::Array>().data_type;

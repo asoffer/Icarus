@@ -182,7 +182,7 @@ type::Type const *FuncContent::VerifyType(Context *ctx) {
     return t;
   } else {
     Validate(ctx);
-    return ctx->mod_->types_.at(this);
+    return ctx->mod_->type_of(this);
   }
 }
 
@@ -230,12 +230,12 @@ void FuncContent::Validate(Context *ctx) {
   statements->ExtractReturns(&rets);
   statements->Validate(ctx);
   std::set<const type::Type *> types;
-  for (auto *expr : rets) { types.insert(ctx->mod_->types_.at(expr)); }
+  for (auto *expr : rets) { types.insert(ctx->mod_->type_of(expr)); }
 
   base::vector<const type::Type *> input_type_vec, output_type_vec;
   input_type_vec.reserve(inputs.size());
   for (const auto &input : inputs) {
-    input_type_vec.push_back(ctx->mod_->types_.at(input.get()));
+    input_type_vec.push_back(ctx->mod_->type_of(input.get()));
   }
 
   if (return_type_inferred_) {
@@ -269,7 +269,7 @@ void FuncContent::Validate(Context *ctx) {
       } break;
     }
   } else {
-    const auto &outs = ctx->mod_->types_.at(this)->as<type::Function>().output;
+    const auto &outs = ctx->mod_->type_of(this)->as<type::Function>().output;
     switch (outs.size()) {
       case 0: {
         for (auto *expr : rets) {
@@ -279,14 +279,14 @@ void FuncContent::Validate(Context *ctx) {
       } break;
       case 1: {
         for (auto *expr : rets) {
-          if (ctx->mod_->types_.at(expr) == outs[0]) { continue; }
+          if (ctx->mod_->type_of(expr) == outs[0]) { continue; }
           limit_to(StageRange::NoEmitIR());
           ctx->error_log_.ReturnTypeMismatch(outs[0], expr);
         }
       } break;
       default: {
         for (auto *expr : rets) {
-          auto *expr_type = ctx->mod_->types_.at(expr);
+          auto *expr_type = ctx->mod_->type_of(expr);
           if (expr_type->is<type::Tuple>()) {
             const auto &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
@@ -405,7 +405,7 @@ base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
     }
 
     ir_func_ = ctx->mod_->AddFunc(
-        this, &ctx->mod_->types_.at(this)->as<type::Function>(),
+        this, &ctx->mod_->type_of(this)->as<type::Function>(),
         std::move(args));
     ctx->mod_->to_complete_.push(this);
   }
@@ -424,7 +424,7 @@ void GeneratedFunction::CompleteBody(Module *mod) {
   stage_range_.low = EmitStage;
 
   if (stage_range_.high < EmitStage) { return; }
-  auto *t = mod->types_.at(this);
+  auto *t = mod->type_of(this);
   if (t == type::Err) { return; }
 
   CURRENT_FUNC(ir_func_) {

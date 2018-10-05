@@ -33,8 +33,8 @@ using base::check::Not;
 IR::RegisterOr<bool> EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
                                      IR::Val const &lhs_ir,
                                      IR::Val const &rhs_ir, Context *ctx) {
-  auto *lhs_type = ctx->mod_->types_.at(chain_op->exprs[index].get());
-  auto *rhs_type = ctx->mod_->types_.at(chain_op->exprs[index + 1].get());
+  auto *lhs_type = ctx->mod_->type_of(chain_op->exprs[index].get());
+  auto *rhs_type = ctx->mod_->type_of(chain_op->exprs[index + 1].get());
   auto op        = chain_op->ops[index];
 
   if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
@@ -322,7 +322,7 @@ void ChainOp::ExtractReturns(base::vector<const Expression *> *rets) const {
 }
 
 base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
-  auto *t = ctx->mod_->types_.at(this);
+  auto *t = ctx->mod_->type_of(this);
   if (ops[0] == Language::Operator::Xor) {
     if (t == type::Bool) {
       return {IR::ValFrom(std::accumulate(

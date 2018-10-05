@@ -131,7 +131,7 @@ static IR::BlockIndex CallLookupTest(
   // check the ones at the call-site that could be variants).
   auto next_binding = IR::Func::Current->AddBlock();
   for (size_t i = 0; i < args.pos_.size(); ++i) {
-    if (!ctx->mod_->types_.at(args.pos_[i].first)->is<type::Variant>()) {
+    if (!ctx->mod_->type_of(args.pos_[i].first)->is<type::Variant>()) {
       continue;
     }
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
@@ -143,7 +143,7 @@ static IR::BlockIndex CallLookupTest(
   for (const auto & [ name, expr_and_val ] : args.named_) {
     auto iter = call_arg_type.find(name);
     if (iter == call_arg_type.named_.end()) { continue; }
-    if (!ctx->mod_->types_.at(expr_and_val.first)->is<type::Variant>()) {
+    if (!ctx->mod_->type_of(expr_and_val.first)->is<type::Variant>()) {
       continue;
     }
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
@@ -179,10 +179,10 @@ static void EmitOneCallDispatch(
     if (expr == nullptr) {
       ASSERT(bound_type != nullptr);
       auto default_expr = (*ASSERT_NOT_NULL(const_args))[i].second;
-      args[i] = bound_type->PrepareArgument(ctx->mod_->types_.at(default_expr),
+      args[i] = bound_type->PrepareArgument(ctx->mod_->type_of(default_expr),
                                             default_expr->EmitIR(ctx)[0], ctx);
     } else {
-      args[i] = bound_type->PrepareArgument(ctx->mod_->types_.at(expr),
+      args[i] = bound_type->PrepareArgument(ctx->mod_->type_of(expr),
                                             *expr_map.at(expr), ctx);
     }
   }
@@ -449,8 +449,6 @@ type::Type const *Call::VerifyType(Context *ctx) {
     } else {
       UNREACHABLE();
     }
-  } else {
-    fn_->VerifyType(ctx);
   }
 
   FnArgs<Expression *> args =
@@ -564,7 +562,7 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
       return {IR::Val::Reg(reg, out_type)};
 
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
-      ctx->mod_->types_.at(args_.pos_[0].get())
+      ctx->mod_->type_of(args_.pos_[0].get())
           ->as<type::Pointer>()
           .pointee->as<type::Array>()
           .EmitResize(args_.pos_[0]->EmitIR(ctx)[0],
@@ -595,7 +593,7 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
         return std::pair(const_cast<Expression *>(expr.get()),
                          expr->EmitIR(ctx)[0]);
       }),
-      dispatch_table_, ctx->mod_->types_.at(this), ctx);
+      dispatch_table_, ctx->mod_->type_of(this), ctx);
 }
 
 base::vector<IR::Register> Call::EmitLVal(Context *) { UNREACHABLE(this); }

@@ -126,6 +126,6 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr,
 }
 
 base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
-  return Evaluate(expr, ctx->mod_->types_.at(expr), ctx);
+  return Evaluate(expr, ctx->mod_->type_of(expr), ctx);
 }
 }  // namespace backend

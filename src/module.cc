@@ -166,3 +166,17 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name& src) {
 
   return mod;
 }
+
+type::Type const* Module::type_of(AST::Expression const* expr) const {
+  auto iter = types_.data_.find(expr);
+  if (iter != types_.data_.end()) { return iter->second; }
+
+  // TODO figure out why this is necessary. It shouldn't be because you should
+  // be able to find the expression in this module (even if the declaration is
+  // in another.
+  for (Module const* mod : embedded_modules_) {
+    iter = mod->types_.data_.find(expr);
+    if (iter != mod->types_.data_.end()) { return iter->second; }
+  }
+  return nullptr;
+}

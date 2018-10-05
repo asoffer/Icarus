@@ -91,9 +91,9 @@ base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
   if (ASSERT_NOT_NULL(decl)->const_) {
     return decl->EmitIR(ctx);
   } else if (decl->arg_val) {
-    return {IR::Val::Reg(decl->addr_, ctx->mod_->types_.at(this))};
+    return {IR::Val::Reg(decl->addr_, ctx->mod_->type_of(this))};
   } else {
-    auto *t = ASSERT_NOT_NULL(ctx->mod_->types_.at(this));
+    auto *t = ASSERT_NOT_NULL(ctx->mod_->type_of(this));
     return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], t), t)};
   }
 }

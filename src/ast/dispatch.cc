@@ -37,7 +37,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
 
     if (!binding->defaulted(i)) {
       if (fn->inputs[i]->type_expr != nullptr &&
-          ctx->mod_->types_.at(fn->inputs[i]->type_expr.get()) ==
+          ctx->mod_->type_of(fn->inputs[i]->type_expr.get()) ==
               type::Interface) {
         // TODO case where it is defaulted.
         // TODO expand all variants
@@ -65,7 +65,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
         // type currently that needs to be deprecated.
 
       } else if (auto *match =
-                     type::Meet(ctx->mod_->types_.at(binding->exprs_[i].second),
+                     type::Meet(ctx->mod_->type_of(binding->exprs_[i].second),
                                 input_type);
                  match == nullptr) {
         return std::nullopt;
@@ -97,7 +97,7 @@ bool DispatchEntry::SetTypes(FuncContent *fn, type::Function const *fn_type,
     }
 
     const type::Type *match = type::Meet(
-        ctx->mod_->types_.at(binding_.exprs_.at(i).second), input_types[i]);
+        ctx->mod_->type_of(binding_.exprs_.at(i).second), input_types[i]);
     if (match == nullptr) { return false; }
 
     binding_.exprs_.at(i).first = input_types.at(i);

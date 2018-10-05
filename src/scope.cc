@@ -32,7 +32,7 @@ Scope::AllDeclsWithId(std::string const &id, Context *ctx) {
 
   for (auto const* mod : ctx->mod_->embedded_modules_) {
     if (auto *decl = mod->GetDecl(id)) {
-      matching_decls.emplace_back(mod->types_.at(decl), decl);
+      matching_decls.emplace_back(mod->type_of(decl), decl);
     }
   }
   return std::pair(std::move(matching_decls), std::move(matching_error_decls));
@@ -52,7 +52,7 @@ void FnScope::MakeAllStackAllocations(Module *mod) {
         if (decl->const_ || decl->arg_val) { continue; }
 
         ASSERT(decl->addr_ == IR::Register{-1});
-        decl->addr_ = IR::Alloca(mod->types_.at(decl));
+        decl->addr_ = IR::Alloca(mod->type_of(decl));
       }
     }
   }

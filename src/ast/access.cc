@@ -90,9 +90,9 @@ void Access::contextualize(
 
 base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
   auto reg            = operand->EmitLVal(ctx)[0];
-  type::Type const *t = type::Ptr(ctx->mod_->types_.at(operand.get()));
+  type::Type const *t = type::Ptr(ctx->mod_->type_of(operand.get()));
   while (!t->as<type::Pointer>().pointee->is_big()) {
-    reg = IR::Load(reg, ctx->mod_->types_.at(this));
+    reg = IR::Load(reg, ctx->mod_->type_of(this));
     t   = t->as<type::Pointer>().pointee;
   }
 
@@ -101,13 +101,13 @@ base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
 }
 
 base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
-  if (ctx->mod_->types_.at(operand.get()) == type::Module) {
+  if (ctx->mod_->type_of(operand.get()) == type::Module) {
     return backend::EvaluateAs<Module const *>(operand.get(), ctx)
         ->GetDecl(member_name)
         ->EmitIR(ctx);
   }
 
-  auto *this_type = ctx->mod_->types_.at(this);
+  auto *this_type = ctx->mod_->type_of(this);
   if (this_type->is<type::Enum>()) {
     return {this_type->as<type::Enum>().EmitLiteral(member_name)};
   } else {
