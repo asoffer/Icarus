@@ -497,7 +497,8 @@ void CreateStructField(type::Struct *struct_type,
       Cmd::CreateStructField::Make(struct_type, std::move(type));
 }
 
-void SetStructFieldName(type::Struct *struct_type, std::string_view field_name) {
+void SetStructFieldName(type::Struct *struct_type,
+                        std::string_view field_name) {
   auto &cmd = MakeCmd(nullptr, Op::SetStructFieldName);
   cmd.set_struct_field_name_ =
       Cmd::SetStructFieldName::Make(struct_type, field_name);
@@ -966,7 +967,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
       return os << cmd.store_real_.addr_ << " " << cmd.store_real_.val_;
     case Op::StoreType:
       if (cmd.store_type_.val_.is_reg_) {
-       return os << cmd.store_type_.addr_ << " " << cmd.store_type_.val_.reg_;
+        return os << cmd.store_type_.addr_ << " " << cmd.store_type_.val_.reg_;
       } else {
         return os << cmd.store_type_.addr_ << " "
                   << cmd.store_type_.val_.val_->to_string();

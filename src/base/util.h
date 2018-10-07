@@ -26,21 +26,25 @@ struct defer {
 template <typename Fn>
 defer(Fn &&)->defer<Fn>;
 
-template <typename Base> struct Cast {
-  template <typename T> bool is() const {
+template <typename Base>
+struct Cast {
+  template <typename T>
+  bool is() const {
     STATIC_ASSERT_RELATED(Base, T);
     return dynamic_cast<const T *>(reinterpret_cast<const Base *>(this)) !=
            nullptr;
   }
 
-  template <typename T> T &as() & {
+  template <typename T>
+  T &as() & {
     STATIC_ASSERT_RELATED(Base, T);
     return const_cast<T &>(
         static_cast<const std::remove_reference_t<decltype(*this)> *>(this)
             ->template as<const T>());
   }
 
-  template <typename T> T &&as() && {
+  template <typename T>
+  T &&as() && {
     STATIC_ASSERT_RELATED(Base, T);
 
 #ifdef DBG
@@ -51,7 +55,8 @@ template <typename Base> struct Cast {
 #endif
   }
 
-  template <typename T> const T &as() const {
+  template <typename T>
+  const T &as() const {
     STATIC_ASSERT_RELATED(Base, T);
 
 #ifdef DBG
@@ -63,14 +68,17 @@ template <typename Base> struct Cast {
   }
 };
 
-template <typename T> std::unique_ptr<T> wrap_unique(T *ptr) {
+template <typename T>
+std::unique_ptr<T> wrap_unique(T *ptr) {
   return std::unique_ptr<T>(ptr);
 }
 
-template <typename... Ts> struct overloaded : Ts... {
+template <typename... Ts>
+struct overloaded : Ts... {
   using Ts::operator()...;
 };
-template <typename... Ts> overloaded(Ts...)->overloaded<Ts...>;
-} // namespace base
+template <typename... Ts>
+overloaded(Ts...)->overloaded<Ts...>;
+}  // namespace base
 #undef STATIC_ASSERT_RELATED
-#endif // ICARUS_BASE_UTIL_H
+#endif  // ICARUS_BASE_UTIL_H

@@ -18,5 +18,5 @@ struct Flags : public type::Type {
   base::vector<std::string> members_;
   base::unordered_map<std::string, size_t> int_values;
 };
-} // namespace type
-#endif // ICARUS_TYPE_FLAGS_H
+}  // namespace type
+#endif  // ICARUS_TYPE_FLAGS_H

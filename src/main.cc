@@ -25,13 +25,13 @@ void cli::Usage() {
   Flag("debug-parser") << "Step through the parser step-by-step for debugging."
                        << [](bool b = false) { debug::parser = b; };
 
-  Flag("debug-validation", "v") << "Step through validator for debugging."
-                                << [](bool b = false) { debug::validation = b; };
+  Flag("debug-validation", "v") << "Step through validator for debugging." <<
+      [](bool b = false) { debug::validation = b; };
 #endif
 
 #ifdef ICARUS_USE_LLVM
-  Flag("output") << "The name of the output file to write."
-                 << [](char const *out = "a.out") { backend::output_file = out; };
+  Flag("output") << "The name of the output file to write." <<
+      [](char const *out = "a.out") { backend::output_file = out; };
 #endif
 
   Flag("repl", "r") << "Run the read-eval-print-loop." << [](bool b = false) {

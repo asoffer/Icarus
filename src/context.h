@@ -22,4 +22,4 @@ struct Context {
   base::vector<AST::Identifier *> *cyc_dep_vec_ = nullptr;
 };
 
-#endif // ICARUS_CONTEXT_H
+#endif  // ICARUS_CONTEXT_H

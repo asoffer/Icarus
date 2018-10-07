@@ -37,7 +37,7 @@
       [this]() { this->stage_range_.low = DoneTypeVerificationStage; });       \
   if (stage_range_.high < StartTypeVerificationStage) { return nullptr; }      \
   if (stage_range_.low >= DoneTypeVerificationStage) {                         \
-    return ASSERT_NOT_NULL(ctx->mod_->type_of(this));                        \
+    return ASSERT_NOT_NULL(ctx->mod_->type_of(this));                          \
   }                                                                            \
   if (stage_range_.low == StartTypeVerificationStage) {                        \
     ctx->cyc_dep_vec_ = ctx->error_log_.CyclicDependency();                    \

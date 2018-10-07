@@ -115,7 +115,7 @@ static IR::Func *StructInitializationWith(const Struct *struct_type,
 
     CURRENT_FUNC(fn) {
       IR::BasicBlock::Current = fn->entry();
-      auto const & fields = struct_type->fields();
+      auto const &fields      = struct_type->fields();
       for (size_t i = 0; i < fields.size(); ++i) {
         InitFn(
             fields.at(i).type, fields.at(i).type,
@@ -403,7 +403,8 @@ const Function *Func(base::vector<const Type *> in,
               .first->second;
 }
 
-static base::guarded<base::map<base::vector<const Type *>, const Scope>> scopes_;
+static base::guarded<base::map<base::vector<const Type *>, const Scope>>
+    scopes_;
 const Scope *Scp(const base::vector<const Type *> &types) {
   return &scopes_.lock()->emplace(types, Scope(types)).first->second;
 }

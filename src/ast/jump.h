@@ -26,7 +26,7 @@ struct Jump : public Node {
   type::Type const *VerifyType(Context *) override { return nullptr; }
   void Validate(Context *) override {}
   void SaveReferences(Scope *scope, base::vector<IR::Val> *) override {}
-  void ExtractReturns(base::vector<const Expression *> *) const override {};
+  void ExtractReturns(base::vector<const Expression *> *) const override{};
   void contextualize(
       const Node *,
       const base::unordered_map<const Expression *, IR::Val> &) override {}

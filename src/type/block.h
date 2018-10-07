@@ -14,4 +14,4 @@ struct ScopeBlock : public Type {
 const ScopeBlock* Blk(bool required);
 }  // namespace type
 
-#endif // ICARUS_TYPE_BLOCK_H
+#endif  // ICARUS_TYPE_BLOCK_H

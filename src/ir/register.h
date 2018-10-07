@@ -92,16 +92,15 @@ inline bool operator<(Addr lhs, Addr rhs) {
   if (lhs_kind < rhs_kind) { return true; }
   if (lhs_kind > rhs_kind) { return false; }
   switch (lhs.kind) {
-  case Addr::Kind::Null: return false;
-  case Addr::Kind::Stack: return lhs.as_stack < rhs.as_stack;
-  case Addr::Kind::Heap: return lhs.as_heap < rhs.as_heap;
+    case Addr::Kind::Null: return false;
+    case Addr::Kind::Stack: return lhs.as_stack < rhs.as_stack;
+    case Addr::Kind::Heap: return lhs.as_heap < rhs.as_heap;
   }
   UNREACHABLE();
 }
 inline bool operator<=(Addr lhs, Addr rhs) { return !(rhs < lhs); }
 inline bool operator>(Addr lhs, Addr rhs) { return rhs < lhs; }
 inline bool operator>=(Addr lhs, Addr rhs) { return !(lhs < rhs); }
-
 
 template <typename T>
 struct RegisterOr {

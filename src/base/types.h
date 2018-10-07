@@ -19,4 +19,4 @@ DEFINE_TYPE(u32, uint32_t, 4);
 DEFINE_TYPE(u64, uint64_t, 8);
 #undef DEFINE_TYPE
 
-#endif // ICARUS_BASE_TYPES_H
+#endif  // ICARUS_BASE_TYPES_H

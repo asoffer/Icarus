@@ -52,7 +52,8 @@ void RepeatedUnop::contextualize(
   }
 }
 
-void RepeatedUnop::ExtractReturns(base::vector<const Expression *> *rets) const {
+void RepeatedUnop::ExtractReturns(
+    base::vector<const Expression *> *rets) const {
   args_.ExtractReturns(rets);
   if (op_ == Language::Operator::Return) { rets->push_back(&args_); }
 }
@@ -84,7 +85,7 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
   if (op_ == Language::Operator::Print) {
     ASSERT(dispatch_tables_.size() == args_.exprs.size());
     for (size_t i = 0; i < args_.exprs.size(); ++i) {
-      auto &arg = args_.exprs[i];
+      auto &arg      = args_.exprs[i];
       auto &arg_type = arg_types[i];
       if (arg_type->is<type::Primitive>() || arg_type->is<type::Pointer>() ||
           arg_type->is<type::CharBuffer>()) {
@@ -113,7 +114,7 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
   auto arg_vals = args_.EmitIR(ctx);
   switch (op_) {
     case Language::Operator::Return: {
-      size_t offset = 0;
+      size_t offset  = 0;
       auto *fn_scope = ASSERT_NOT_NULL(scope_->ContainingFnScope());
       auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit);
       auto *fn_type =

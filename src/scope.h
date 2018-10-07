@@ -13,19 +13,19 @@ struct Module;
 
 namespace IR {
 struct Val;
-} // namespace IR
+}  // namespace IR
 
 namespace AST {
 struct Declaration;
 struct Expression;
 struct Identifier;
 struct FuncContent;
-} // namespace AST
+}  // namespace AST
 
 namespace type {
 struct Type;
 struct Function;
-} // namespace type
+}  // namespace type
 
 struct DeclScope;
 struct ExecScope;
@@ -43,7 +43,8 @@ struct Scope : public base::Cast<Scope> {
   Scope(Scope *parent) : parent(parent) {}
   virtual ~Scope() {}
 
-  template <typename ScopeType> std::unique_ptr<ScopeType> add_child() {
+  template <typename ScopeType>
+  std::unique_ptr<ScopeType> add_child() {
     return std::make_unique<ScopeType>(this);
   }
 
@@ -55,7 +56,8 @@ struct Scope : public base::Cast<Scope> {
   FnScope *ContainingFnScope();
   std::unordered_set<std::string> shadowed_decls_;
   base::unordered_map<std::string, base::vector<AST::Declaration *>> decls_;
-  base::unordered_map<std::string, base::vector<AST::Declaration *>> child_decls_;
+  base::unordered_map<std::string, base::vector<AST::Declaration *>>
+      child_decls_;
 
   Scope *parent = nullptr;
 };
@@ -63,7 +65,7 @@ struct Scope : public base::Cast<Scope> {
 struct DeclScope : public Scope {
   DeclScope(Scope *parent) : Scope(parent) {}
   ~DeclScope() override {}
-  Module* module_; // Should be only on global scopes?
+  Module *module_;  // Should be only on global scopes?
 };
 
 struct ExecScope : public Scope {
@@ -77,7 +79,7 @@ struct FnScope : public ExecScope {
 
   void MakeAllStackAllocations(Module *mod);
 
-  type::Function *fn_type  = nullptr; // TODO deprecate?
+  type::Function *fn_type  = nullptr;  // TODO deprecate?
   AST::FuncContent *fn_lit = nullptr;
   base::vector<ExecScope *> innards_{1, this};
 };
@@ -88,4 +90,4 @@ inline FnScope *Scope::ContainingFnScope() {
   // static_cast rather than ->as<FnScope> because it could be null.
   return static_cast<FnScope *>(scope);
 }
-#endif // ICARUS_SCOPE_H
+#endif  // ICARUS_SCOPE_H

@@ -10,7 +10,7 @@ size_t Primitive::string_size() const {
     return sizeof(#name) - 1;
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
-  default: UNREACHABLE();
+    default: UNREACHABLE();
   }
 }
 
@@ -21,7 +21,7 @@ char *Primitive::WriteTo(char *buf) const {
     return std::strcpy(buf, #name) + string_size();
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
-  default: UNREACHABLE();
+    default: UNREACHABLE();
   }
 }
 
@@ -73,21 +73,19 @@ char *Array::WriteTo(char *buf) const {
   return buf;
 }
 
-size_t Struct::string_size() const {
-  return 9;
-}
+size_t Struct::string_size() const { return 9; }
 char *Struct::WriteTo(char *buf) const {
   buf = std::strcpy(buf, "struct {}") + 9;
   return buf;
 }
 
 size_t Enum::string_size() const { return bound_name.size(); }
-char* Enum::WriteTo(char *buf) const {
+char *Enum::WriteTo(char *buf) const {
   return std::strcpy(buf, bound_name.c_str()) + string_size();
 }
 
 size_t Flags::string_size() const { return bound_name.size(); }
-char* Flags::WriteTo(char *buf) const {
+char *Flags::WriteTo(char *buf) const {
   return std::strcpy(buf, bound_name.c_str()) + string_size();
 }
 
@@ -99,7 +97,7 @@ size_t Pointer::string_size() const {
               : 3) +
          pointee->string_size();
 }
-char* Pointer::WriteTo(char *buf) const {
+char *Pointer::WriteTo(char *buf) const {
   if (pointee->is<Struct>() || pointee->is<Primitive>() ||
       pointee->is<Enum>() || pointee->is<Flags>() || pointee->is<Array>() ||
       pointee->is<Pointer>()) {
@@ -116,14 +114,14 @@ size_t Function::string_size() const {
   size_t acc = 0;
   for (const Type *t : input) { acc += t->string_size(); }
   for (const Type *t : output) { acc += t->string_size(); }
-  acc += 2 * (input.size() - 1) +       // space between inputs
-         (input.size() == 1 ? 0 : 2) +  // Parens
-         (input.empty() ? 4 : 0) +      // void
-         4 +                            // " -> "
-         2 * (output.size() - 1) +      // space between outputs
-         (output.size() == 1 ? 0 : 2) + // Parens
-         (output.empty() ? 4 : 0) +     // void
-         (input.size() == 1 && input[0]->is<Function>() ? 2 : 0); // parens
+  acc += 2 * (input.size() - 1) +        // space between inputs
+         (input.size() == 1 ? 0 : 2) +   // Parens
+         (input.empty() ? 4 : 0) +       // void
+         4 +                             // " -> "
+         2 * (output.size() - 1) +       // space between outputs
+         (output.size() == 1 ? 0 : 2) +  // Parens
+         (output.empty() ? 4 : 0) +      // void
+         (input.size() == 1 && input[0]->is<Function>() ? 2 : 0);  // parens
   return acc;
 }
 
@@ -235,9 +233,9 @@ char *Tuple::WriteTo(char *buf) const {
     buf = std::strcpy(buf, "()") + 2;
     return buf;
   }
-  buf = std::strcpy(buf, "(") + 1;
+  buf       = std::strcpy(buf, "(") + 1;
   auto iter = entries_.begin();
-  buf = (*iter)->WriteTo(buf);
+  buf       = (*iter)->WriteTo(buf);
   ++iter;
   for (; iter != entries_.end(); ++iter) {
     buf = std::strcpy(buf, ", ") + 2;
@@ -255,4 +253,4 @@ char *CharBuffer::WriteTo(char *buf) const {
 }
 
 size_t CharBuffer::string_size() const { return 13 + NumDigits(length_); }
-} // namespace type
+}  // namespace type

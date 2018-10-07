@@ -1,9 +1,9 @@
 #ifndef ICARUS_BASE_STRING_H
 #define ICARUS_BASE_STRING_H
 
-#include <type_traits>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <variant>
 
 namespace base::internal {
@@ -86,7 +86,7 @@ auto stringify(dispatch_rank<3>, T &&val)
 
 template <typename... Args>
 auto stringify(dispatch_rank<3>, const std::variant<Args...> &v)
-  -> std::string {
+    -> std::string {
   return std::visit([](auto &&v) { return stringify(v); }, v);
 }
 
@@ -119,7 +119,7 @@ auto stringify(dispatch_rank<6>, T &&val) -> std::string {
 template <typename T>
 std::string stringify(T &&t) {
   return internal::stringify(internal::dispatch_rank<0>{}, std::forward<T>(t));
-  }
+}
 }  // namespace base::internal
 
-#endif // ICARUS_BASE_STRING_H
+#endif  // ICARUS_BASE_STRING_H

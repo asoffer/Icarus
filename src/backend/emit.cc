@@ -2,8 +2,8 @@
 #include "backend/emit.h"
 
 #include <string>
-#include "base/container/vector.h"
 #include "base/container/unordered_map.h"
+#include "base/container/vector.h"
 
 #include "architecture.h"
 #include "ast/function_literal.h"

@@ -64,9 +64,8 @@ std::optional<BoundConstants> ComputeBoundConstants(
         // want something much more meaningful. 'Generic' is a weird catch-all
         // type currently that needs to be deprecated.
 
-      } else if (auto *match =
-                     type::Meet(ctx->mod_->type_of(binding->exprs_[i].second),
-                                input_type);
+      } else if (auto *match = type::Meet(
+                     ctx->mod_->type_of(binding->exprs_[i].second), input_type);
                  match == nullptr) {
         return std::nullopt;
       }
@@ -87,7 +86,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
 
 bool DispatchEntry::SetTypes(FuncContent *fn, type::Function const *fn_type,
                              Context *ctx) {
-  const auto &input_types = fn_type->input;
+  const auto &input_types    = fn_type->input;
   bool bound_at_compile_time = (fn != nullptr);
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
     if (bound_at_compile_time && binding_.defaulted(i)) {
@@ -121,8 +120,8 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     Expression *fn_option, type::Function const *fn_option_type,
     const FnArgs<Expression *> &args, Context *ctx) {
   Expression *bound_fn = nullptr;
-  auto evaled_fn = backend::Evaluate(fn_option, fn_option_type, ctx);
-  bound_fn = std::visit(
+  auto evaled_fn       = backend::Evaluate(fn_option, fn_option_type, ctx);
+  bound_fn             = std::visit(
       base::overloaded{
           [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
           [](Function *fn) -> Expression * { return fn; },
@@ -188,7 +187,6 @@ static const type::Type *ComputeRetType(
     out_types.push_back(t->as<type::Function>().output);
   }
 
-
   ASSERT(!out_types.empty());
   // TODO Can I assume all the lengths are the same?
   base::vector<const type::Type *> var_outs;
@@ -209,7 +207,7 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
   DispatchTable table;
   // TODO error decls?
   auto[decls, error_decls] = scope->AllDeclsWithId(token, ctx);
-  base::vector<type::Type const*> fn_types;
+  base::vector<type::Type const *> fn_types;
   for (auto &decl : decls) {
     if (decl.type_ == nullptr) { return {}; }
     fn_types.push_back(decl.type_);

@@ -11,8 +11,9 @@
 
 extern type::Type *Err;
 
-using LineNum          = size_t;
-using FileToLineNumMap = base::unordered_map<frontend::Source::Name, base::vector<LineNum>>;
+using LineNum = size_t;
+using FileToLineNumMap =
+    base::unordered_map<frontend::Source::Name, base::vector<LineNum>>;
 static FileToLineNumMap global_non_decl;
 
 namespace {
@@ -27,7 +28,7 @@ inline size_t NumDigits(size_t n) {
 }
 
 std::string LineToDisplay(size_t line_num, const frontend::Source::Line &line,
-                                 size_t border_alignment = 0) {
+                          size_t border_alignment = 0) {
   auto num_digits = NumDigits(line_num);
   if (border_alignment == 0) { border_alignment = num_digits; }
   ASSERT(border_alignment >= num_digits);
@@ -86,7 +87,7 @@ struct DisplayAttrs {
   enum Effect : char { NORMAL = '0', BOLD, FAINT, ITALIC, UNDERLINE } effect;
 };
 
-std::ostream& operator<<(std::ostream& os, const DisplayAttrs& attrs) {
+std::ostream &operator<<(std::ostream &os, const DisplayAttrs &attrs) {
   return os << "\033[3" << static_cast<char>(attrs.color) << ';'
             << static_cast<char>(attrs.effect) << 'm';
 }
@@ -124,9 +125,9 @@ void WriteSource(
         ASSERT(iter->first.start.line_num == iter->first.finish.line_num);
         ASSERT(iter->first.start.offset < iter->first.finish.offset);
         os << iter->second
-           << line_view.substr(iter->first.start.offset,
-                               iter->first.finish.offset -
-                                   iter->first.start.offset)
+           << line_view.substr(
+                  iter->first.start.offset,
+                  iter->first.finish.offset - iter->first.start.offset)
            << "\033[0m";
 
         prev_start_offset = iter->first.finish.offset;
@@ -152,7 +153,7 @@ void WriteSource(
     }
   }
 }
-} // namespace
+}  // namespace
 namespace error {
 void Log::UndeclaredIdentifier(AST::Identifier *id) {
   undeclared_ids_[id->token].push_back(id);
@@ -169,8 +170,7 @@ void Log::PostconditionNeedsBool(AST::Expression *expr) {
       NumDigits(expr->span.finish.line_num) + 2,
       {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
-  errors_.push_back(ss.str());                                               \
-
+  errors_.push_back(ss.str());
 }
 
 void Log::PreconditionNeedsBool(AST::Expression *expr) {
@@ -184,7 +184,7 @@ void Log::PreconditionNeedsBool(AST::Expression *expr) {
       NumDigits(expr->span.finish.line_num) + 2,
       {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
-  errors_.push_back(ss.str());                                               \
+  errors_.push_back(ss.str());
 }
 
 template <typename ExprContainer>
@@ -261,10 +261,9 @@ void Log::MissingMember(const TextSpan &span, const std::string &member_name,
       NumDigits(span.finish.line_num) + 2,
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
 
-  ss<<"\n\n";
+  ss << "\n\n";
   errors_.push_back(ss.str());
 }
-
 
 void Log::ReturnTypeMismatch(const type::Type *expected_type,
                              const AST::Expression *ret_expr) {
@@ -363,7 +362,6 @@ void Log::IndexedReturnTypeMismatch(const type::Type *expected_type,
   */
 }
 
-
 void Log::DereferencingNonPointer(const type::Type *type,
                                   const TextSpan &span) {
   std::stringstream ss;
@@ -429,22 +427,21 @@ void Log::NotAType(AST::Expression *expr) {
   errors_.push_back(ss.str());
 }
 
-void Log::AssignmentTypeMismatch(AST::Expression *lhs,
-                                AST::Expression *rhs) {
-   std::stringstream ss;
-   ss << "Invalid assignment. Left-hand side has type ";
-   // TODO pass in type or context too
-   //      << lhs->type->to_string() << ", but right-hand side has type "
-   //      << rhs->type->to_string() << ".\n\n";
-   WriteSource(
-       ss, *lhs->span.source,
-       {Interval{lhs->span.start.line_num, lhs->span.finish.line_num + 1},
-        Interval{rhs->span.start.line_num, rhs->span.finish.line_num + 1}},
-       NumDigits(rhs->span.finish.line_num) + 2,
-       {{lhs->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}},
-        {rhs->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-   ss << "\n\n";
-   errors_.push_back(ss.str());
+void Log::AssignmentTypeMismatch(AST::Expression *lhs, AST::Expression *rhs) {
+  std::stringstream ss;
+  ss << "Invalid assignment. Left-hand side has type ";
+  // TODO pass in type or context too
+  //      << lhs->type->to_string() << ", but right-hand side has type "
+  //      << rhs->type->to_string() << ".\n\n";
+  WriteSource(
+      ss, *lhs->span.source,
+      {Interval{lhs->span.start.line_num, lhs->span.finish.line_num + 1},
+       Interval{rhs->span.start.line_num, rhs->span.finish.line_num + 1}},
+      NumDigits(rhs->span.finish.line_num) + 2,
+      {{lhs->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}},
+       {rhs->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
 }
 
 void Log::PositionalArgumentFollowingNamed(
@@ -457,13 +454,13 @@ void Log::PositionalArgumentFollowingNamed(
   // TODO do you also want to show the whole function call?
   iset.insert(
       Interval{named_span.start.line_num - 1, named_span.finish.line_num + 2});
-  underlines.emplace_back(named_span, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
+  underlines.emplace_back(
+      named_span, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
 
   for (const auto &span : pos_spans) {
     iset.insert(Interval{span.start.line_num - 1, span.finish.line_num + 2});
-    underlines.emplace_back(span, 
-        DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE}
-);
+    underlines.emplace_back(
+        span, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
   }
 
   WriteSource(ss, *named_span.source, iset,
@@ -488,13 +485,12 @@ void Log::UnknownParseError(const base::vector<TextSpan> &lines) {
 }
 
 base::vector<AST::Identifier *> *Log::CyclicDependency() {
-  cyc_dep_vecs_.push_back(
-      std::make_unique<base::vector<AST::Identifier *>>());
+  cyc_dep_vecs_.push_back(std::make_unique<base::vector<AST::Identifier *>>());
   return cyc_dep_vecs_.back().get();
 }
 
 void Log::ShadowingDeclaration(const AST::Declaration &decl1,
-                          const AST::Declaration &decl2) {
+                               const AST::Declaration &decl2) {
   // TODO migrate away from old display.
   auto line1     = decl1.span.source->lines.at(decl1.span.start.line_num);
   auto line2     = decl2.span.source->lines.at(decl2.span.start.line_num);
@@ -640,4 +636,4 @@ void Log::IndexingNonArray(const TextSpan &span, const type::Type *t) {
   errors_.push_back(ss.str());
 }
 
-} // namespace error
+}  // namespace error

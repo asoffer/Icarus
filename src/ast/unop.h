@@ -28,5 +28,5 @@ struct Unop : public Expression {
   Language::Operator op;
   DispatchTable dispatch_table_;
 };
-} //
+}  // namespace AST
 #endif  // ICARUS_AST_UNOP_H

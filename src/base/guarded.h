@@ -6,7 +6,7 @@ namespace base {
 template <typename T>
 struct guarded {
   template <typename... Args>
-  explicit guarded(Args&&...args) : val_(std::forward<Args>(args)...) {}
+  explicit guarded(Args&&... args) : val_(std::forward<Args>(args)...) {}
 
   auto lock() {
     mu_.lock();

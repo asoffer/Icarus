@@ -21,14 +21,14 @@ std::string ScopeLiteral::to_string(size_t n) const {
 
 void ScopeLiteral::assign_scope(Scope *scope) {
   STAGE_CHECK(AssignScopeStage, AssignScopeStage);
-  scope_     = scope;
+  scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
   for (auto &decl : decls_) { decl.assign_scope(body_scope_.get()); }
 }
 
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  ctx->mod_->types_.buffered_emplace(this, type::Scp({}));
+  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Scp({}));
   // TODO
   return type::Scp({});
 }
@@ -54,7 +54,8 @@ void ScopeLiteral::contextualize(
   }
 }
 
-void ScopeLiteral::ExtractReturns(base::vector<const Expression *> *rets) const {
+void ScopeLiteral::ExtractReturns(
+    base::vector<const Expression *> *rets) const {
   for (auto &decl : decls_) { decl.ExtractReturns(rets); }
 }
 
@@ -62,14 +63,14 @@ ScopeLiteral *ScopeLiteral::Clone() const {
   auto *result = new ScopeLiteral;
   result->span = span;
   result->decls_.reserve(decls_.size());
-  for (const auto &decl : decls_) {
-    result->decls_.emplace_back(decl.Clone());
-  }
+  for (const auto &decl : decls_) { result->decls_.emplace_back(decl.Clone()); }
   return result;
 }
 
 base::vector<IR::Val> AST::ScopeLiteral::EmitIR(Context *ctx) {
   return {IR::Val(this)};
 }
-base::vector<IR::Register> ScopeLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Register> ScopeLiteral::EmitLVal(Context *) {
+  UNREACHABLE(this);
+}
 }  // namespace AST

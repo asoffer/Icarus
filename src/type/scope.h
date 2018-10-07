@@ -13,6 +13,6 @@ struct Scope : public Type {
 };
 
 const Scope *Scp(const base::vector<const Type *> &types);
-} // namespace type
+}  // namespace type
 
-#endif // ICARUS_TYPE_SCOPE_H
+#endif  // ICARUS_TYPE_SCOPE_H

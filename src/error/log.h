@@ -3,15 +3,15 @@
 
 #include <set>
 #include <string>
-#include "base/container/vector.h"
 #include "base/container/unordered_map.h"
+#include "base/container/vector.h"
 
 #include "../base/debug.h"
 #include "../frontend/text_span.h"
 
 namespace type {
 struct Type;
-} // namespace type
+}  // namespace type
 
 namespace AST {
 struct Declaration;
@@ -19,12 +19,11 @@ struct Expression;
 struct Identifier;
 struct Node;
 struct Unop;
-} // namespace AST
+}  // namespace AST
 
 namespace error {
 struct Log {
-#define MAKE_LOG_ERROR(fn_name, msg)                                           \
-  void fn_name(const TextSpan& span);
+#define MAKE_LOG_ERROR(fn_name, msg) void fn_name(const TextSpan &span);
 #include "error/errors.xmacro.h"
 #undef MAKE_LOG_ERROR
 
@@ -33,8 +32,7 @@ struct Log {
   void PreconditionNeedsBool(AST::Expression *expr);
   void PostconditionNeedsBool(AST::Expression *expr);
   void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
-  void AssignmentTypeMismatch(AST::Expression *lhs,
-                              AST::Expression *rhs);
+  void AssignmentTypeMismatch(AST::Expression *lhs, AST::Expression *rhs);
   void RunawayMultilineComment();
   void DoubleDeclAssignment(const TextSpan &decl_span,
                             const TextSpan &val_span);
@@ -47,7 +45,8 @@ struct Log {
   void ShadowingDeclaration(const AST::Declaration &decl1,
                             const AST::Declaration &decl2);
 
-  // TODO include a source location/span/trace or whatever you decide to include.
+  // TODO include a source location/span/trace or whatever you decide to
+  // include.
   void UserDefinedError(const std::string &err);
   void DereferencingNonPointer(const type::Type *type, const TextSpan &span);
   void WhichNonVariant(const type::Type *type, const TextSpan &span);
@@ -79,8 +78,7 @@ struct Log {
   // TODO per source file splitting? Can't do this until you figure out the
   // module/multi-source-file story.
   using Token = std::string;
-  base::unordered_map<Token, base::vector<AST::Identifier *>>
-      undeclared_ids_;
+  base::unordered_map<Token, base::vector<AST::Identifier *>> undeclared_ids_;
   base::unordered_map<AST::Declaration *, base::vector<AST::Identifier *>>
       out_of_order_decls_;
 
@@ -88,6 +86,6 @@ struct Log {
 
   base::vector<std::string> errors_;
 };
-} // namespace error
+}  // namespace error
 
-#endif // ICARUS_ERROR_LOG_H
+#endif  // ICARUS_ERROR_LOG_H

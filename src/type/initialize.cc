@@ -90,7 +90,9 @@ void Pointer::EmitInit(IR::Register id_reg, Context *ctx) const {
   IR::StoreAddr(IR::Addr::Null(), id_reg);
 }
 
-void Function::EmitInit(IR::Register id_reg, Context *ctx) const { UNREACHABLE(); }
+void Function::EmitInit(IR::Register id_reg, Context *ctx) const {
+  UNREACHABLE();
+}
 
 void Scope::EmitInit(IR::Register, Context *ctx) const { UNREACHABLE(); }
 
@@ -133,4 +135,4 @@ void Struct::EmitInit(IR::Register id_reg, Context *ctx) const {
   call_args.type_ = init_func_->type_;
   IR::Call(IR::AnyFunc{init_func_}, std::move(call_args));
 }
-} // namespace type
+}  // namespace type

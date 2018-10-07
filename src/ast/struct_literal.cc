@@ -17,7 +17,7 @@ void SetStructFieldName(type::Struct *struct_type, std::string_view field_name);
 }  // namespace IR
 
 namespace AST {
-std::string StructLiteral::to_string(size_t n) const { 
+std::string StructLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "struct {\n";
   for (const auto &f : fields_) {
@@ -36,7 +36,7 @@ void StructLiteral::assign_scope(Scope *scope) {
 
 type::Type const *StructLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
-  ctx->mod_->types_.buffered_emplace(this, type::Type_);
+  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Type_);
   return type::Type_;
 }
 
@@ -50,7 +50,7 @@ void StructLiteral::Validate(Context *ctx) {
 }
 
 void StructLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto &f: fields_) { f->SaveReferences(scope, args); }
+  for (auto &f : fields_) { f->SaveReferences(scope, args); }
 }
 
 void StructLiteral::contextualize(

@@ -19,22 +19,23 @@ struct Source {
   using Line = std::string;
 
   virtual ~Source() {}
-  virtual std::optional<Line> NextLine() = 0;
+  virtual std::optional<Line> NextLine()                    = 0;
   virtual std::unique_ptr<AST::Statements> Parse(Context *) = 0;
 
-  base::vector<Line> lines{1}; // Start with one blank line because line numbers
-                              // are 1-indexed not 0-indexed.
+  base::vector<Line> lines{
+      1};  // Start with one blank line because line numbers
+           // are 1-indexed not 0-indexed.
   // TODO this is a hacky way to do it and you should just shift the counter by
   // one.
 
   Name name;
   bool seen_eof = false;
 
-protected:
+ protected:
   Source(Name name) : name(std::move(name)) {}
 };
 
-struct Repl: public Source {
+struct Repl : public Source {
   ~Repl() final {}
   Repl() : Source(Source::Name("")) {}
 
@@ -50,11 +51,11 @@ struct File : Source {
   ~File() final {}
 
   std::optional<Source::Line> NextLine() final;
-  std::unique_ptr<AST::Statements> Parse(Context*) final;
+  std::unique_ptr<AST::Statements> Parse(Context *) final;
 
   AST::Statements *ast = nullptr;
   std::ifstream ifs;
 };
 }  // namespace frontend
 
-#endif // ICARUS_FRONTEND_SOURCE_H
+#endif  // ICARUS_FRONTEND_SOURCE_H

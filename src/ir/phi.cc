@@ -38,8 +38,8 @@ CmdIndex Phi(type::Type const *t) {
 
 Val MakePhi(CmdIndex phi_index,
             const std::unordered_map<BlockIndex, IR::Val> &val_map) {
-  auto &cmd = IR::Func::Current->Command(phi_index);
-  auto *cmd_type  = val_map.begin()->second.type;
+  auto &cmd      = IR::Func::Current->Command(phi_index);
+  auto *cmd_type = val_map.begin()->second.type;
 
   if (cmd_type == type::Bool) {
     return IR::ValFrom(MakePhi<bool>(phi_index, ConvertMap<bool>(val_map)));

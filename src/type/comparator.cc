@@ -17,7 +17,7 @@ Cmp Flags::Comparator() const { return Cmp::Order; }
 
 Cmp Variant::Comparator() const {
   using cmp_t = std::underlying_type_t<Cmp>;
-  auto cmp = static_cast<cmp_t>(Cmp::Equality);
+  auto cmp    = static_cast<cmp_t>(Cmp::Equality);
   for (const Type *t : variants_) {
     cmp = std::min(cmp, static_cast<cmp_t>(t->Comparator()));
   }
@@ -28,4 +28,4 @@ Cmp Scope::Comparator() const { return Cmp::None; }
 Cmp Struct::Comparator() const { return Cmp::None; }
 Cmp CharBuffer::Comparator() const { return Cmp::Order; }
 
-} // namespace type
+}  // namespace type

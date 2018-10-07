@@ -72,7 +72,7 @@ type::Type const *ScopeNode::VerifyType(Context *ctx) {
 
   if (!block_type->is<type::Scope>()) { NOT_YET("not a scope", block_type); }
 
-  ctx->mod_->types_.buffered_emplace(this, type::Void());
+  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
   return type::Void();  // TODO can this evaluate to anything?
 }
 
@@ -107,8 +107,8 @@ void ScopeNode::contextualize(
 void ScopeNode::ExtractReturns(base::vector<const Expression *> *rets) const {
   for (const auto & [ block_expr, block_node ] : block_map_) {
     block_expr->ExtractReturns(rets);
-     block_node.stmts_.ExtractReturns(rets);
-     if (block_node.arg_) { block_node.arg_->ExtractReturns(rets); }
+    block_node.stmts_.ExtractReturns(rets);
+    if (block_node.arg_) { block_node.arg_->ExtractReturns(rets); }
   }
 }
 
@@ -137,7 +137,7 @@ static std::pair<const Module *, std::string> GetQualifiedIdentifier(
     return std::pair{ctx->mod_, token};
   } else if (expr->is<Access>()) {
     auto *access = &expr->as<Access>();
-    auto *mod    = backend::EvaluateAs<const Module *>(access->operand.get(), ctx);
+    auto *mod = backend::EvaluateAs<const Module *>(access->operand.get(), ctx);
     return std::pair{mod, access->member_name};
   }
   UNREACHABLE(expr->to_string(0));
@@ -155,7 +155,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   base::unordered_map<std::string, BlockData *> name_to_data;
   std::string top_block_node_name;
   for (const auto & [ expr, block_node ] : block_map_) {
-    auto [mod, block_node_name] = GetQualifiedIdentifier(expr, ctx);
+    auto[mod, block_node_name] = GetQualifiedIdentifier(expr, ctx);
 
     // TODO better search
 
@@ -206,7 +206,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     // scope.
     auto iter = data_to_node.find(&block_data);
     if (iter == data_to_node.end()) { continue; }
-    auto* arg_expr = iter->second->arg_.get();
+    auto *arg_expr = iter->second->arg_.get();
 
     auto call_enter_result = [&] {
       FnArgs<std::pair<Expression *, IR::Val>> args;

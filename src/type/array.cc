@@ -82,8 +82,10 @@ IR::Val Array::Compare(const Array *lhs_type, IR::Val lhs_ir,
                    incr_block, false_block);
 
       IR::BasicBlock::Current = incr_block;
-      auto lhs_incr           = IR::PtrIncr(lhs_phi_reg, 1, type::Ptr(lhs_type->data_type));
-      auto rhs_incr           = IR::PtrIncr(rhs_phi_reg, 1, type::Ptr(rhs_type->data_type));
+      auto lhs_incr =
+          IR::PtrIncr(lhs_phi_reg, 1, type::Ptr(lhs_type->data_type));
+      auto rhs_incr =
+          IR::PtrIncr(rhs_phi_reg, 1, type::Ptr(rhs_type->data_type));
       IR::UncondJump(phi_block);
 
       IR::MakePhi<IR::Addr>(lhs_phi_index, {{equal_len_block, lhs_start},
@@ -148,7 +150,8 @@ void Array::EmitResize(IR::Val ptr_to_array, IR::Val new_size,
           ComputeMin(IR::LoadInt(IR::ArrayLength(arg)), size_arg);
       IR::Register end_ptr = IR::PtrIncr(from_ptr, min_val, ptr_data_type);
 
-      using tup2       = std::tuple<IR::RegisterOr<IR::Addr>, IR::RegisterOr<IR::Addr>>;
+      using tup2 =
+          std::tuple<IR::RegisterOr<IR::Addr>, IR::RegisterOr<IR::Addr>>;
       auto finish_phis = IR::CreateLoop(
           [&](tup2 const &phis) {
             return IR::EqAddr(std::get<0>(phis), end_ptr);

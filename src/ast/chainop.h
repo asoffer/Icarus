@@ -2,9 +2,9 @@
 #define ICARUS_AST_CHAINOP_H
 
 #include <memory>
-#include "base/container/vector.h"
 #include "ast/dispatch.h"
 #include "ast/expression.h"
+#include "base/container/vector.h"
 #include "frontend/operators.h"
 
 namespace AST {
@@ -30,4 +30,4 @@ struct ChainOp : public Expression {
   base::vector<DispatchTable> dispatch_tables_;
 };
 }  // namespace AST
-#endif // ICARUS_AST_CHAINOP_H
+#endif  // ICARUS_AST_CHAINOP_H

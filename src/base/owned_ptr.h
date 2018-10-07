@@ -53,7 +53,6 @@ struct owned_ptr {
   operator bool() { return ptr_ != nullptr; }
 
   std::unique_ptr<T> ptr_;
-
 };
 
 template <typename T, typename... Args>

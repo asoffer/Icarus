@@ -1,26 +1,27 @@
 #ifdef ICARUS_USE_LLVM
-#include "type/all.h"
+#include "architecture.h"
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "architecture.h"
+#include "type/all.h"
 
 namespace type {
 llvm::Type* Primitive::llvm(llvm::LLVMContext& ctx) const {
   switch (type_) {
-  case PrimType::Err: UNREACHABLE();
-  case PrimType::Type: return llvm::Type::getInt64Ty(ctx);
-  case PrimType::NullPtr: UNREACHABLE();
-  case PrimType::EmptyArray: UNREACHABLE();
-  case PrimType::Code: UNREACHABLE();
-  case PrimType::Bool: return llvm::Type::getInt1Ty(ctx);
-  case PrimType::Char: return llvm::Type::getInt8Ty(ctx);
-  case PrimType::Int: return llvm::Type::getInt32Ty(ctx);
-  case PrimType::Real: return llvm::Type::getDoubleTy(ctx);
-    // TODO make these impossible to reach.
-  case PrimType::Block: return llvm::Type::getInt32Ty(ctx); 
-  case PrimType::OptBlock: return llvm::Type::getInt32Ty(ctx); 
-  default: UNREACHABLE(to_string());
+    case PrimType::Err: UNREACHABLE();
+    case PrimType::Type: return llvm::Type::getInt64Ty(ctx);
+    case PrimType::NullPtr: UNREACHABLE();
+    case PrimType::EmptyArray: UNREACHABLE();
+    case PrimType::Code: UNREACHABLE();
+    case PrimType::Bool: return llvm::Type::getInt1Ty(ctx);
+    case PrimType::Char: return llvm::Type::getInt8Ty(ctx);
+    case PrimType::Int: return llvm::Type::getInt32Ty(ctx);
+    case PrimType::Real:
+      return llvm::Type::getDoubleTy(ctx);
+      // TODO make these impossible to reach.
+    case PrimType::Block: return llvm::Type::getInt32Ty(ctx);
+    case PrimType::OptBlock: return llvm::Type::getInt32Ty(ctx);
+    default: UNREACHABLE(to_string());
   }
 }
 llvm::Type* Array::llvm(llvm::LLVMContext& ctx) const {
@@ -32,28 +33,28 @@ llvm::Type* Array::llvm(llvm::LLVMContext& ctx) const {
   }
 }
 
-llvm::Type* Enum::llvm(llvm::LLVMContext& ctx) const { 
+llvm::Type* Enum::llvm(llvm::LLVMContext& ctx) const {
   // TODO make as wide as is necessary
   return llvm::Type::getInt32Ty(ctx);
 }
-llvm::Type* Flags::llvm(llvm::LLVMContext& ctx) const { 
+llvm::Type* Flags::llvm(llvm::LLVMContext& ctx) const {
   // TODO make as wide as is necessary
   return llvm::Type::getInt32Ty(ctx);
 }
 llvm::Type* Function::llvm(llvm::LLVMContext& ctx) const {
   return llvm_fn(ctx);
 }
-llvm::Type* Pointer::llvm(llvm::LLVMContext &ctx) const {
+llvm::Type* Pointer::llvm(llvm::LLVMContext& ctx) const {
   return llvm_ptr(ctx);
 }
-llvm::PointerType* Pointer::llvm_ptr(llvm::LLVMContext &ctx) const {
+llvm::PointerType* Pointer::llvm_ptr(llvm::LLVMContext& ctx) const {
   return pointee->llvm(ctx)->getPointerTo(0);
 }
 llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
   // TODO pass in information about the machine we're compiling to
   auto arch = Architecture::CompilingMachine();
 
-  const Type* max_elem       = nullptr;
+  const Type* max_elem = nullptr;
   size_t max_alignment = 0;
   for (const Type* v : variants_) {
     auto v_alignment = arch.alignment(v);
@@ -115,5 +116,5 @@ llvm::FunctionType* Function::llvm_fn(llvm::LLVMContext& ctx) const {
     } break;
   }
 }
-} // namespace type
+}  // namespace type
 #endif  // ICARUS_USE_LLVM

@@ -227,10 +227,10 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
       if (type_expr_type == type::Type_) {
         this_type =
             backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx);
-        ctx->mod_->types_.emplace(this, this_type);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, this_type);
       } else if (type_expr_type == type::Interface) {
         this_type = type::Generic;
-        ctx->mod_->types_.emplace(this, type::Generic);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Generic);
       } else {
         ctx->error_log_.NotAType(type_expr.get());
         limit_to(StageRange::Nothing());
@@ -251,7 +251,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 
         } else if (!type_expr) {
           this_type = init_val_type;
-          ctx->mod_->types_.emplace(this, init_val_type);
+          ctx->mod_->set_type(ctx->mod_->bound_constants_, this, init_val_type);
         }
       }
     }

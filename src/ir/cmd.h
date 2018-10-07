@@ -207,7 +207,7 @@ struct Cmd {
   };
   CMD(FinalizeStruct) { Register reg_; };
 
-  CMD(DebugIr) {};
+  CMD(DebugIr){};
 
   CMD(Malloc) { RegisterOr<i32> arg_; };
   CMD(Free) { Register reg_; };
@@ -618,7 +618,8 @@ Register FinalizeTuple(Register tup);
 Register CreateVariant();
 void AppendToVariant(Register tup, RegisterOr<type::Type const *> entry);
 Register FinalizeVariant(Register var);
-void CondJump(RegisterOr<bool> cond, BlockIndex true_block, BlockIndex false_block);
+void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
+              BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
@@ -635,7 +636,7 @@ void SetReturnAddr(size_t n, RegisterOr<Addr> r);
 void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r);
 void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r);
 void SetReturnModule(size_t n, RegisterOr<Module const *> r);
-void SetReturnGeneric(size_t n, RegisterOr< AST::Function *> r);
+void SetReturnGeneric(size_t n, RegisterOr<AST::Function *> r);
 void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r);
 
 Register Load(Register r, type::Type const *t);
@@ -649,5 +650,5 @@ Register Alloca(const type::Type *t);
 void SetReturn(size_t n, Val const &v2);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
-} // namespace IR
-#endif // ICARUS_IR_CMD_H
+}  // namespace IR
+#endif  // ICARUS_IR_CMD_H

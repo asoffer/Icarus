@@ -25,7 +25,7 @@ Val Val::CodeBlock(const AST::CodeBlock &block) { NOT_YET(); }
 // incrementing/decrementing counters because this is compile-time only.
 static base::guarded<std::set<base::vector<AST::BlockLiteral *>>> seqs;
 Val Val::Block(AST::BlockLiteral *b) {
-  auto handle = seqs.lock();
+  auto handle         = seqs.lock();
   auto[iter, success] = handle->insert(base::vector<AST::BlockLiteral *>{b});
   return Val::BlockSeq(BlockSequence{&*iter});
 }
@@ -88,14 +88,14 @@ static std::string Escaped(std::string_view sv) {
   std::stringstream ss;
   for (char c : sv) {
     switch (c) {
-    case '\a': ss << R"(\a)"; break;
-    case '\b': ss << R"(\b)"; break;
-    case '\n': ss << R"(\n)"; break;
-    case '\r': ss << R"(\r)"; break;
-    case '\t': ss << R"(\t)"; break;
-    case '\v': ss << R"(\r)"; break;
-    case '"': ss << R"(\")"; break;
-    default: ss << c; break;
+      case '\a': ss << R"(\a)"; break;
+      case '\b': ss << R"(\b)"; break;
+      case '\n': ss << R"(\n)"; break;
+      case '\r': ss << R"(\r)"; break;
+      case '\t': ss << R"(\t)"; break;
+      case '\v': ss << R"(\r)"; break;
+      case '"': ss << R"(\")"; break;
+      default: ss << c; break;
     }
   }
   return ss.str();
@@ -166,9 +166,9 @@ std::string Val::to_string() const {
 std::string Addr::to_string() const {
   std::stringstream ss;
   switch (kind) {
-  case Kind::Null: ss << "null"; break;
-  case Kind::Stack: ss << "s." << as_stack; break;
-  case Kind::Heap: ss << "h." << as_heap; break;
+    case Kind::Null: ss << "null"; break;
+    case Kind::Stack: ss << "s." << as_stack; break;
+    case Kind::Heap: ss << "h." << as_heap; break;
   }
   return ss.str();
 }
@@ -176,9 +176,9 @@ std::string Addr::to_string() const {
 bool operator==(Addr lhs, Addr rhs) {
   if (lhs.kind != rhs.kind) { return false; }
   switch (lhs.kind) {
-  case Addr::Kind::Null: return true;
-  case Addr::Kind::Stack: return lhs.as_stack == rhs.as_stack;
-  case Addr::Kind::Heap: return lhs.as_heap == rhs.as_heap;
+    case Addr::Kind::Null: return true;
+    case Addr::Kind::Stack: return lhs.as_stack == rhs.as_stack;
+    case Addr::Kind::Heap: return lhs.as_heap == rhs.as_heap;
   }
   UNREACHABLE();
 }

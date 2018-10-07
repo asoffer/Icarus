@@ -10,7 +10,8 @@
 
 namespace backend {
 void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
-             const base::vector<IR::Addr> &ret_slots, backend::ExecContext *ctx);
+             const base::vector<IR::Addr> &ret_slots,
+             backend::ExecContext *ctx);
 
 static std::unique_ptr<IR::Func> ExprFn(type::Type const *expr_type,
                                         AST::Expression *expr, Context *ctx) {
@@ -31,9 +32,7 @@ static std::unique_ptr<IR::Func> ExprFn(type::Type const *expr_type,
     auto vals = expr->EmitIR(ctx);
     // TODO wrap this up into SetReturn(vector)
     for (size_t i = 0; i < vals.size(); ++i) {
-      if (!vals[i].type) {
-        LOG << vals[i];
-      }
+      if (!vals[i].type) { LOG << vals[i]; }
       IR::SetReturn(i, std::move(vals[i]));
     }
     IR::ReturnJump();

@@ -39,4 +39,4 @@ struct ScopeNode : public Expression {
 };
 }  // namespace AST
 
-#endif // ICARUS_AST_SCOPE_NODE_H
+#endif  // ICARUS_AST_SCOPE_NODE_H

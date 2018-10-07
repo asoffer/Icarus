@@ -10,7 +10,8 @@
 #include "ir/register.h"
 
 namespace IR {
-template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, RegisterOr<bool> cond) {
+template <bool B>
+BlockIndex EarlyExitOn(BlockIndex exit_block, RegisterOr<bool> cond) {
   auto continue_block = Func::Current->AddBlock();
   if constexpr (B) {
     CondJump(cond, exit_block, continue_block);
@@ -34,7 +35,7 @@ auto CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
   IR::BasicBlock::Current = loop_phi;
 
   auto phi_indices = base::tuple::transform(IR::Phi, types);
-  auto phi_vals = base::tuple::transform(
+  auto phi_vals    = base::tuple::transform(
       [](auto &&val) { return IR::Func::Current->Command(val).result; },
       phi_indices);
 

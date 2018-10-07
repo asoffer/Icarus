@@ -18,8 +18,8 @@ void ForEachExpr(AST::Expression *expr,
                  const std::function<void(size_t, AST::Expression *)> &fn);
 
 namespace AST {
-using base::check::Is; 
-using base::check::Not; 
+using base::check::Is;
+using base::check::Not;
 
 std::string Unop::to_string(size_t n) const {
   if (op == Language::Operator::TypeOf) {
@@ -81,7 +81,7 @@ void Unop::contextualize(
     auto iter = replacements.find(&correspondant->as<Unop>());
     ASSERT(iter != replacements.end());
     auto terminal    = std::make_unique<Terminal>();
-    terminal->scope_ = scope_; // TODO Eh? Do I care?
+    terminal->scope_ = scope_;  // TODO Eh? Do I care?
     terminal->span   = span;
     terminal->value  = iter->second;
     operand          = std::move(terminal);
@@ -112,13 +112,13 @@ type::Type const *Unop::VerifyType(Context *ctx) {
   limit_to(operand);
   switch (op) {
     case Language::Operator::TypeOf:
-      ctx->mod_->types_.buffered_emplace(this, type::Type_);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Type_);
       return type::Type_;
     case Language::Operator::Eval:
-      ctx->mod_->types_.buffered_emplace(this, operand_type);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, operand_type);
       return operand_type;
     case Language::Operator::Generate:
-      ctx->mod_->types_.buffered_emplace(this, type::Void());
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
       return type::Void();
     case Language::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
@@ -129,7 +129,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
     case Language::Operator::At:
       if (operand_type->is<type::Pointer>()) {
         auto *t = operand_type->as<type::Pointer>().pointee;
-        ctx->mod_->types_.buffered_emplace(this, t);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
         return t;
       } else {
         ctx->error_log_.DereferencingNonPointer(operand_type, span);
@@ -138,22 +138,22 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       }
     case Language::Operator::And: {
       auto *t = type::Ptr(operand_type);
-      ctx->mod_->types_.buffered_emplace(this, t);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
       return t;
     }
-    case Language::Operator::Mul: 
+    case Language::Operator::Mul:
       limit_to(operand);
       if (operand_type != type::Type_) {
         NOT_YET("log an error");
         limit_to(StageRange::Nothing());
         return nullptr;
       } else {
-        ctx->mod_->types_.buffered_emplace(this, type::Type_);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Type_);
         return type::Type_;
       }
-    case Language::Operator::Sub: 
+    case Language::Operator::Sub:
       if (operand_type == type::Int || operand_type == type::Real) {
-        ctx->mod_->types_.buffered_emplace(this, operand_type);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, operand_type);
         return operand_type;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
@@ -169,14 +169,14 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       }
       NOT_YET();
       return nullptr;
-    case Language::Operator::Not: 
+    case Language::Operator::Not:
       if (operand_type == type::Bool) {
-        ctx->mod_->types_.buffered_emplace(this, type::Bool);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Bool);
         return type::Bool;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
-        args.pos_ = base::vector<Expression *>{operand.get()};
-        type::Type const*t = nullptr;
+        args.pos_           = base::vector<Expression *>{operand.get()};
+        type::Type const *t = nullptr;
         std::tie(dispatch_table_, t) =
             DispatchTable::Make(args, "!", scope_, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
@@ -191,21 +191,21 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         return nullptr;
       }
     case Language::Operator::Needs:
-      ctx->mod_->types_.buffered_emplace(this, type::Void());
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PreconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
       }
       return type::Void();
     case Language::Operator::Ensure:
-      ctx->mod_->types_.buffered_emplace(this, type::Void());
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PostconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
       }
       return type::Void();
     case Language::Operator::Pass:
-      ctx->mod_->types_.buffered_emplace(this, operand_type);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, operand_type);
       return operand_type;
     default: UNREACHABLE(*this);
   }

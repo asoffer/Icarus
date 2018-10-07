@@ -35,9 +35,9 @@ GeneratedFunction *Function::generate(Context *ctx) {
     if (ifc_iter == bound_args.interfaces_.end()) {
       func.inputs.back()->arg_val = &func;
     } else {
-      auto type_expr_span           = func.inputs.back()->type_expr->span;
-      func.inputs.back()->type_expr = std::make_unique<Terminal>(
-          type_expr_span, IR::Val(ifc_iter->second));
+      auto type_expr_span = func.inputs.back()->type_expr->span;
+      func.inputs.back()->type_expr =
+          std::make_unique<Terminal>(type_expr_span, IR::Val(ifc_iter->second));
     }
 
     if (input->const_) {
@@ -178,7 +178,7 @@ type::Type const *FuncContent::VerifyType(Context *ctx) {
     }
     if (err) { return nullptr; }
     auto *t = type::Func(std::move(input_type_vec), std::move(ret_types));
-    ctx->mod_->types_.buffered_emplace(this, t);
+    ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
     return t;
   } else {
     Validate(ctx);
@@ -241,8 +241,8 @@ void FuncContent::Validate(Context *ctx) {
   if (return_type_inferred_) {
     switch (types.size()) {
       case 0:
-        ctx->mod_->types_.buffered_emplace(
-            this, type::Func(std::move(input_type_vec), {}));
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this,
+                            type::Func(std::move(input_type_vec), {}));
         break;
       case 1: {
         auto *one_type = *types.begin();
@@ -252,14 +252,15 @@ void FuncContent::Validate(Context *ctx) {
             outputs.push_back(
                 std::make_unique<Terminal>(TextSpan(), IR::Val(entry)));
           }
-          ctx->mod_->types_.buffered_emplace(
-              this, type::Func(std::move(input_type_vec), entries));
+          ctx->mod_->set_type(ctx->mod_->bound_constants_, this,
+                              type::Func(std::move(input_type_vec), entries));
 
         } else {
           outputs.push_back(
               std::make_unique<Terminal>(TextSpan(), IR::Val(one_type)));
-          ctx->mod_->types_.buffered_emplace(
-              this, type::Func(std::move(input_type_vec), {one_type}));
+          ctx->mod_->set_type(
+              ctx->mod_->bound_constants_, this,
+              type::Func(std::move(input_type_vec), {one_type}));
         }
       } break;
       default: {
@@ -325,20 +326,19 @@ void FuncContent::contextualize(
     const Node *correspondant,
     const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < inputs.size(); ++i) {
-    inputs[i]->contextualize(
-        correspondant->as<FuncContent>().inputs[i].get(), replacements);
+    inputs[i]->contextualize(correspondant->as<FuncContent>().inputs[i].get(),
+                             replacements);
   }
   for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i]->contextualize(
-        correspondant->as<FuncContent>().outputs[i].get(), replacements);
+    outputs[i]->contextualize(correspondant->as<FuncContent>().outputs[i].get(),
+                              replacements);
   }
 
-  statements->contextualize(
-      correspondant->as<FuncContent>().statements.get(), replacements);
+  statements->contextualize(correspondant->as<FuncContent>().statements.get(),
+                            replacements);
 }
 
-void FuncContent::ExtractReturns(
-    base::vector<const Expression *> *rets) const {
+void FuncContent::ExtractReturns(base::vector<const Expression *> *rets) const {
   for (auto &in : inputs) { in->ExtractReturns(rets); }
   for (auto &out : outputs) { out->ExtractReturns(rets); }
 }
@@ -405,8 +405,7 @@ base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
     }
 
     ir_func_ = ctx->mod_->AddFunc(
-        this, &ctx->mod_->type_of(this)->as<type::Function>(),
-        std::move(args));
+        this, &ctx->mod_->type_of(this)->as<type::Function>(), std::move(args));
     ctx->mod_->to_complete_.push(this);
   }
 
@@ -458,6 +457,8 @@ void GeneratedFunction::CompleteBody(Module *mod) {
   }
 }
 
-base::vector<IR::Register> GeneratedFunction::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Register> GeneratedFunction::EmitLVal(Context *) {
+  UNREACHABLE(this);
+}
 base::vector<IR::Register> Function::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

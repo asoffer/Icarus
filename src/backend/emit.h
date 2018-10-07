@@ -2,8 +2,8 @@
 #ifndef ICARUS_BACKEND_EMIT_H
 #define ICARUS_BACKEND_EMIT_H
 
-#include "base/container/vector.h"
 #include <memory>
+#include "base/container/vector.h"
 
 namespace llvm {
 class Module;

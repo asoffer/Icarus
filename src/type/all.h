@@ -11,7 +11,7 @@ struct Scope;
 struct Struct;
 struct Type;
 struct Variant;
-} // namespace type
+}  // namespace type
 
 #include "base/types.h"
 
@@ -24,13 +24,13 @@ struct Context;
 
 namespace IR {
 struct Func;
-} // namespace IR
+}  // namespace IR
 
 namespace AST {
 struct Declaration;
 struct Expression;
 struct Identifier;
-} // namespace AST
+}  // namespace AST
 
 // TODO names for argumentss of built-in functions (repr, assign, destroy, etc)
 // should be better? Should be necessarily unnamed? Figure it out and be
@@ -52,4 +52,4 @@ struct Identifier;
 #undef BASIC_METHODS
 #undef ENDING
 
-#endif // ICARUS_TYPE_ALL_H
+#endif  // ICARUS_TYPE_ALL_H

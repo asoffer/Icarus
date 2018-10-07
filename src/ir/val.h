@@ -19,7 +19,7 @@ struct Enum;
 struct Flags;
 struct Pointer;
 struct Struct;
-} // namespace type
+}  // namespace type
 
 namespace AST {
 struct Expression;
@@ -27,7 +27,7 @@ struct ScopeLiteral;
 struct BlockLiteral;
 struct Function;
 struct CodeBlock;
-} // namespace AST
+}  // namespace AST
 
 namespace IR {
 inline FlagsVal operator|(FlagsVal lhs, FlagsVal rhs) {
@@ -41,7 +41,7 @@ inline FlagsVal operator&(FlagsVal lhs, FlagsVal rhs) {
 }
 
 struct Func;
-} // namespace IR
+}  // namespace IR
 
 namespace IR {
 struct Val {
@@ -73,13 +73,15 @@ struct Val {
   explicit Val(AST::ScopeLiteral *scope_lit);
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
-  static Val BuiltinGeneric(i32 n) { return Val(type::Generic, BuiltinGenericIndex{n}); }
+  static Val BuiltinGeneric(i32 n) {
+    return Val(type::Generic, BuiltinGenericIndex{n});
+  }
   static Val Enum(const type::Enum *enum_type, size_t integral_val);
   static Val Flags(const type::Flags *flags_type, FlagsVal val);
-  static Val CodeBlock(const AST::CodeBlock& block);
+  static Val CodeBlock(const AST::CodeBlock &block);
   static Val Foreign(const type::Type *t, ForeignFn f) { return Val(t, f); }
-  static Val Func(IR::Func *fn); // TODO deprecate?
-  static Val Func(AST::Function* fn);
+  static Val Func(IR::Func *fn);  // TODO deprecate?
+  static Val Func(AST::Function *fn);
   static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Block(AST::BlockLiteral *b);
   static Val BlockSeq(BlockSequence b);
@@ -119,6 +121,6 @@ inline bool operator==(const Val &lhs, const Val &rhs) {
 }
 inline bool operator!=(const Val &lhs, const Val &rhs) { return !(lhs == rhs); }
 bool operator<(const ::IR::Val &lhs, const ::IR::Val &rhs);
-} // namespace IR
+}  // namespace IR
 
-#endif // ICARUS_IR_VAL_H
+#endif  // ICARUS_IR_VAL_H

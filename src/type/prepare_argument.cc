@@ -23,8 +23,10 @@ IR::Val Array::PrepareArgument(const Type *from, const IR::Val &val,
 IR::Val Primitive::PrepareArgument(const Type *from, const IR::Val &val,
                                    Context *ctx) const {
   if (from->is<Variant>()) {
-    return IR::Val::Reg(IR::Load(
-        IR::VariantValue(this, std::get<IR::Register>(val.value)), this), this);
+    return IR::Val::Reg(
+        IR::Load(IR::VariantValue(this, std::get<IR::Register>(val.value)),
+                 this),
+        this);
   } else {
     ASSERT(from == this);
     return val;
@@ -154,4 +156,4 @@ IR::Val Struct::PrepareArgument(const Type *from, const IR::Val &val,
   return IR::Val::Reg(arg, type::Ptr(this));
 }
 
-} // namespace type
+}  // namespace type

@@ -4,8 +4,8 @@
 #include <iosfwd>
 #include <string>
 
-#include "base/util.h"
 #include "base/owned_ptr.h"
+#include "base/util.h"
 #include "ir/cmd.h"
 
 namespace prop {

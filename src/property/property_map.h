@@ -98,8 +98,7 @@ struct PropertyMap {
   void MarkReferencesStale(Entry const &e,
                            std::unordered_set<Entry> *stale_down);
   bool UpdateEntryFromAbove(Entry const &e);
-  void UpdateEntryFromBelow(Entry const &e,
-                            std::unordered_set<Entry> *stale_up,
+  void UpdateEntryFromBelow(Entry const &e, std::unordered_set<Entry> *stale_up,
                             std::unordered_set<Entry> *stale_down);
 };
 

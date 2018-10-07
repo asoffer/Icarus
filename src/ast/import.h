@@ -33,5 +33,5 @@ struct Import : public Expression {
   std::optional<std::string /* Source::Name */> cache_;
   std::unique_ptr<Expression> operand_;
 };
-} //
+}  // namespace AST
 #endif  // ICARUS_AST_IMPORT_H

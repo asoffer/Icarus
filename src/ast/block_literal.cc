@@ -20,7 +20,7 @@ std::string BlockLiteral::to_string(size_t n) const {
 
 void BlockLiteral::assign_scope(Scope *scope) {
   STAGE_CHECK(AssignScopeStage, AssignScopeStage);
-  scope_     = scope;
+  scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
   before_->assign_scope(body_scope_.get());
   after_->assign_scope(body_scope_.get());
@@ -36,8 +36,8 @@ void BlockLiteral::Validate(Context *ctx) {
   // Because this returns void, we need to ignore the return value. Wrapping in
   // an immediately invoked lambda.
   [&]() -> type::Type const * {
-    ctx->mod_->types_.buffered_emplace(
-        this, required_ ? type::Block : type::OptBlock);
+    ctx->mod_->set_type(ctx->mod_->bound_constants_, this,
+                        required_ ? type::Block : type::OptBlock);
     [[maybe_unused]] VERIFY_OR_RETURN(before_type, before_);
     [[maybe_unused]] VERIFY_OR_RETURN(after_type, after_);
 
@@ -58,12 +58,13 @@ void BlockLiteral::contextualize(
     const Node *correspondant,
     const base::unordered_map<const Expression *, IR::Val> &replacements) {
   before_->contextualize(correspondant->as<BlockLiteral>().before_.get(),
-                          replacements);
-  after_->contextualize(correspondant->as<BlockLiteral>().after_.get(),
                          replacements);
+  after_->contextualize(correspondant->as<BlockLiteral>().after_.get(),
+                        replacements);
 }
 
-void BlockLiteral::ExtractReturns(base::vector<const Expression *> *rets) const {
+void BlockLiteral::ExtractReturns(
+    base::vector<const Expression *> *rets) const {
   before_->ExtractReturns(rets);
   after_->ExtractReturns(rets);
 }
@@ -80,6 +81,8 @@ base::vector<IR::Val> AST::BlockLiteral::EmitIR(Context *ctx) {
   return {IR::Val::Block(this)};
 }
 
-base::vector<IR::Register> BlockLiteral::EmitLVal(Context *) { UNREACHABLE(this); }
+base::vector<IR::Register> BlockLiteral::EmitLVal(Context *) {
+  UNREACHABLE(this);
+}
 
 }  // namespace AST

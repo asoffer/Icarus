@@ -1,7 +1,7 @@
 #ifdef ICARUS_USE_LLVM
-#include <system_error>
 #include <iostream>
 #include <string>
+#include <system_error>
 
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -16,9 +16,9 @@
 #include "../module.h"
 
 namespace backend {
-char const *output_file = nullptr;
+char const* output_file = nullptr;
 
-std::string WriteObjectFile(const std::string& name, Module * mod) {
+std::string WriteObjectFile(const std::string& name, Module* mod) {
   auto target_triple = llvm::sys::getDefaultTargetTriple();
   mod->llvm_->setTargetTriple(target_triple);
   std::string err;
@@ -31,8 +31,7 @@ std::string WriteObjectFile(const std::string& name, Module * mod) {
   mod->llvm_->setDataLayout(target_machine->createDataLayout());
 
   std::error_code err_code;
-  llvm::raw_fd_ostream dest(name, err_code,
-                            llvm::sys::fs::OpenFlags::F_None);
+  llvm::raw_fd_ostream dest(name, err_code, llvm::sys::fs::OpenFlags::F_None);
   if (err_code) { std::cerr << err_code.message(); }
 
   llvm::legacy::PassManager pass;

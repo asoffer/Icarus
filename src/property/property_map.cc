@@ -104,7 +104,7 @@ PropertyMap PropertyMap::AssumingReturnsTrue() const {
       stale_up.emplace(&block, cmd.result);
     }
   }
- 
+
   result.refresh(std::move(stale_up), {});
   return result;
 }
@@ -135,8 +135,6 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
   // be on this function rather than repeating all that on many different calls.
   refresh({}, std::move(stale_down));
 }
-
-
 
 // TODO no longer need to pass stale in as ptr.
 void PropertyMap::MarkReferencesStale(Entry const &e,

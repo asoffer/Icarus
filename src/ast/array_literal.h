@@ -26,4 +26,3 @@ struct ArrayLiteral : public Expression {
 }  // namespace AST
 
 #endif  // ICARUS_AST_ARRAY_LITERAL_H
-

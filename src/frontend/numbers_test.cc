@@ -35,8 +35,7 @@ TEST(Base8Integer) {
   EXPECT(ParseNumber("0o11"), Holds(9));
   EXPECT(ParseNumber("0o_11"), Holds(9));
   EXPECT(ParseNumber("0o11__"), Holds(9));
-  EXPECT(ParseNumber("0o17777777777"),
-         Holds(std::numeric_limits<i32>::max()));
+  EXPECT(ParseNumber("0o17777777777"), Holds(std::numeric_limits<i32>::max()));
   EXPECT(ParseNumber("0o177______________77777_____________777"),
          Holds(std::numeric_limits<i32>::max()));
   EXPECT(ParseNumber("0o20000000000"), Holds<std::string>());

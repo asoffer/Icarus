@@ -28,4 +28,3 @@ struct BlockLiteral : public Expression {
 }  // namespace AST
 
 #endif  // ICARUS_AST_BLOCK_LITERAL_H
-

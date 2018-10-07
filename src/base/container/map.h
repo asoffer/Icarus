@@ -9,8 +9,8 @@ namespace base {
 template <typename... Ts>
 struct map : public std::map<Ts...> {
  private:
-  using MapT = typename std::map<Ts...>;
-  using key_type = typename MapT::key_type;
+  using MapT        = typename std::map<Ts...>;
+  using key_type    = typename MapT::key_type;
   using mapped_type = typename MapT::mapped_type;
 
  public:

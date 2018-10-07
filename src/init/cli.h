@@ -1,15 +1,15 @@
 #ifndef ICARUS_INIT_CLI_H
 #define ICARUS_INIT_CLI_H
 
-#include <iostream>
 #include <cstring>
 #include <functional>
+#include <iostream>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <memory>
 
 namespace cli {
 namespace internal {
@@ -49,7 +49,7 @@ struct Handler {
         }
       };
     } else if constexpr (std::is_invocable_v<Fn>) {
-      call_once_ = false;
+      call_once_       = false;
       parse_and_apply_ = [ this, f = std::forward<Fn>(fn) ](char const *) {
         bool called_already = called_;
         called_             = true;
@@ -90,8 +90,7 @@ struct Flag : public Handler {
 template <typename... Args>
 ::cli::internal::Handler &Flag(Args &&... args) {
   return *::cli::internal::owned_handlers.emplace_back(
-      std::make_unique<::cli::internal::Handler>(
-          std::forward<Args>(args)...));
+      std::make_unique<::cli::internal::Handler>(std::forward<Args>(args)...));
 }
 
 extern std::function<int()> execute;
@@ -99,6 +98,6 @@ extern std::function<void(char const *)> HandleOther;
 int ParseAndRun(int argc, char *argv[]);
 void Usage();
 int ShowUsage();
-}  // namespace cli 
+}  // namespace cli
 
 #endif  // ICARUS_INIT_CLI_H

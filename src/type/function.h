@@ -7,7 +7,7 @@
 namespace llvm {
 class FunctionType;
 }  // namespace llvm
-#endif // ICARUS_USE_LLVM
+#endif  // ICARUS_USE_LLVM
 
 namespace type {
 struct Function : public Type {
@@ -20,7 +20,7 @@ struct Function : public Type {
 
 #ifdef ICARUS_USE_LLVM
   llvm::FunctionType *llvm_fn(llvm::LLVMContext &ctx) const;
-#endif // ICARUS_USE_LLVM
+#endif  // ICARUS_USE_LLVM
 
   base::vector<const Type *> input, output;
 };
@@ -28,6 +28,6 @@ struct Function : public Type {
 const Function *Func(base::vector<const Type *> in,
                      base::vector<const Type *> out);
 
-} // namespace type
+}  // namespace type
 
-#endif // ICARUS_TYPE_FUNCTION_H
+#endif  // ICARUS_TYPE_FUNCTION_H

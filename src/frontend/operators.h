@@ -7,6 +7,6 @@ enum class Operator {
 #include "frontend/operators.xmacro.h"
 #undef OPERATOR_MACRO
 };
-} // namespace Language
+}  // namespace Language
 
-#endif // ICARUS_OPERATORS_H
+#endif  // ICARUS_OPERATORS_H

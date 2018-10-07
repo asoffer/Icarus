@@ -5,8 +5,8 @@
 
 namespace AST {
 struct CommaList : public Expression {
-  CommaList() = default;
-  CommaList(CommaList&&) noexcept = default;
+  CommaList()                      = default;
+  CommaList(CommaList &&) noexcept = default;
   ~CommaList() override {}
 
   CommaList &operator=(CommaList &&) noexcept = default;
@@ -29,4 +29,4 @@ struct CommaList : public Expression {
 };
 }  // namespace AST
 
-#endif // ICARUS_AST_COMMA_LIST_H
+#endif  // ICARUS_AST_COMMA_LIST_H

@@ -38,22 +38,22 @@ struct Module {
   ~Module();
 
   // We take pointers to the module, so it cannot be moved.
-  Module(Module&&) = delete;
+  Module(Module &&) = delete;
 
-  static std::unique_ptr<Module> Compile(const frontend::Source::Name& src);
+  static std::unique_ptr<Module> Compile(const frontend::Source::Name &src);
 
-  IR::Func* AddFunc(
-      AST::GeneratedFunction* fn_lit, type::Function const* fn_type,
-      base::vector<std::pair<std::string, AST::Expression*>> args);
-  IR::Func* AddFunc(
-      const type::Function* fn_type,
-      base::vector<std::pair<std::string, AST::Expression*>> args);
-  const type::Type* GetType(const std::string& name) const;
-  AST::Declaration* GetDecl(const std::string& name) const;
+  IR::Func *AddFunc(
+      AST::GeneratedFunction *fn_lit, type::Function const *fn_type,
+      base::vector<std::pair<std::string, AST::Expression *>> args);
+  IR::Func *AddFunc(
+      const type::Function *fn_type,
+      base::vector<std::pair<std::string, AST::Expression *>> args);
+  const type::Type *GetType(const std::string &name) const;
+  AST::Declaration *GetDecl(const std::string &name) const;
 
   void Complete();
 
-  std::queue<AST::GeneratedFunction*> to_complete_;
+  std::queue<AST::GeneratedFunction *> to_complete_;
   std::unique_ptr<DeclScope> global_;
 
   // Holds all constants defined in the module (both globals and scoped
@@ -70,11 +70,13 @@ struct Module {
 #endif  // ICARUS_USE_LLVM
 
   base::vector<std::unique_ptr<IR::Func>> fns_;
-  std::unordered_set<const Module*> embedded_modules_;
+  std::unordered_set<const Module *> embedded_modules_;
 
-  type::Type const* type_of(AST::Expression const* expr) const;
+  void set_type(AST::BoundConstants const &bc, AST::Expression const *expr,
+                type::Type const *);
+  type::Type const *type_of(AST::Expression const *expr) const;
 
-  AST::NodeLookup<type::Type const*> types_;
+  std::map<AST::BoundConstants, AST::NodeLookup<type::Type const *>> types_;
 };
 
-#endif // ICARUS_MODULE_H
+#endif  // ICARUS_MODULE_H

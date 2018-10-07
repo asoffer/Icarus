@@ -30,7 +30,7 @@ type::Type const *ArrayType::VerifyType(Context *ctx) {
   HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(data_type_);
 
-  ctx->mod_->types_.buffered_emplace(this, type::Type_);
+  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Type_);
 
   if (!length_->is<Hole>() && length_type != type::Int) {
     ctx->error_log_.ArrayIndexType(span);
@@ -79,7 +79,9 @@ base::vector<IR::Val> ArrayType::EmitIR(Context *ctx) {
   return {IR::ValFrom(result)};
 }
 
-base::vector<IR::Register> ArrayType::EmitLVal(Context *ct) { UNREACHABLE(*this); }
+base::vector<IR::Register> ArrayType::EmitLVal(Context *ct) {
+  UNREACHABLE(*this);
+}
 
 void ArrayType::ExtractReturns(base::vector<const Expression *> *rets) const {
   // TODO length_ needs to be constexpr so maybe we're safe here? and don't need

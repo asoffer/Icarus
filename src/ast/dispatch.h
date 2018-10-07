@@ -1,10 +1,10 @@
 #ifndef ICARUS_AST_DISPATCH_H
 #define ICARUS_AST_DISPATCH_H
 
-#include <string>
-#include "base/container/unordered_map.h"
 #include <optional>
+#include <string>
 #include <variant>
+#include "base/container/unordered_map.h"
 
 #include "base/container/map.h"
 #include "fn_args.h"
@@ -15,7 +15,7 @@ struct Scope;
 namespace type {
 struct Type;
 struct Function;
-} // namespace type
+}  // namespace type
 
 namespace AST {
 struct GeneratedFunction;
@@ -35,7 +35,7 @@ struct Binding {
         fn_type_(fn_type),
         exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
 
-  Expression *fn_expr_            = nullptr;
+  Expression *fn_expr_           = nullptr;
   type::Function const *fn_type_ = nullptr;
   base::vector<std::pair<const type::Type *, Expression *>> exprs_;
 };
@@ -74,6 +74,6 @@ struct DispatchTable {
   size_t total_size_ = 0;
 };
 
-} // namespace AST
+}  // namespace AST
 
-#endif // ICARUS_AST_DISPATCH_H
+#endif  // ICARUS_AST_DISPATCH_H

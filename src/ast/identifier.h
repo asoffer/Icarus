@@ -7,7 +7,7 @@ namespace AST {
 struct Declaration;
 
 struct Identifier : public Expression {
-  Identifier() {} // TODO needed?
+  Identifier() {}  // TODO needed?
   Identifier(const TextSpan &span, const std::string &token)
       : Expression(span), token(token) {}
   ~Identifier() override {}

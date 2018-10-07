@@ -30,7 +30,7 @@ Scope::AllDeclsWithId(std::string const &id, Context *ctx) {
     }
   }
 
-  for (auto const* mod : ctx->mod_->embedded_modules_) {
+  for (auto const *mod : ctx->mod_->embedded_modules_) {
     if (auto *decl = mod->GetDecl(id)) {
       matching_decls.emplace_back(mod->type_of(decl), decl);
     }

@@ -4,10 +4,10 @@
 #include <iosfwd>
 #include <string>
 
-#include "base/owned_ptr.h"
-#include "base/util.h"
-#include "base/string.h"
 #include "base/container/bag.h"
+#include "base/owned_ptr.h"
+#include "base/string.h"
+#include "base/util.h"
 
 namespace prop {
 struct Property;

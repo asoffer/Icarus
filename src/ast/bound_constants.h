@@ -18,17 +18,18 @@ struct BoundConstants {
            "\ninterfaces: " + base::internal::stringify(interfaces_);
   }
 };
-} // namespace AST
+}  // namespace AST
 
 namespace std {
-  template<>
-    struct less<AST::BoundConstants> {
-      bool operator()(const AST::BoundConstants& lhs, const AST::BoundConstants& rhs) {
-        if (lhs.constants_ < rhs.constants_) { return true; }
-        if (rhs.constants_ < lhs.constants_) { return false; }
-        return lhs.interfaces_ < rhs.interfaces_;
-      }
-    };
-}
+template <>
+struct less<AST::BoundConstants> {
+  bool operator()(const AST::BoundConstants& lhs,
+                  const AST::BoundConstants& rhs) const {
+    if (lhs.constants_ < rhs.constants_) { return true; }
+    if (rhs.constants_ < lhs.constants_) { return false; }
+    return lhs.interfaces_ < rhs.interfaces_;
+  }
+};
+}  // namespace std
 
-#endif // ICARUS_AST_BOUND_CONSTANTS_H
+#endif  // ICARUS_AST_BOUND_CONSTANTS_H

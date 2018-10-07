@@ -17,13 +17,13 @@
 #include "llvm/IR/Module.h"
 
 namespace backend {
-std::string WriteObjectFile(const std::string& name, Module* mod);
+std::string WriteObjectFile(const std::string &name, Module *mod);
 }  // namespace backend
 
 #endif  // ICARUS_USE_LLVM
 
 std::atomic<bool> found_errors = false;
-IR::Func* main_fn;
+IR::Func *main_fn;
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of IR::Func which we want to forward declare.
@@ -39,10 +39,10 @@ Module::Module()
 }
 Module::~Module() = default;
 
-IR::Func* Module::AddFunc(
-    AST::GeneratedFunction* fn_lit, type::Function const* fn_type,
-    base::vector<std::pair<std::string, AST::Expression*>> args) {
-  auto* result = fns_.emplace_back(std::make_unique<IR::Func>(
+IR::Func *Module::AddFunc(
+    AST::GeneratedFunction *fn_lit, type::Function const *fn_type,
+    base::vector<std::pair<std::string, AST::Expression *>> args) {
+  auto *result = fns_.emplace_back(std::make_unique<IR::Func>(
                                        this, fn_lit, fn_type, std::move(args)))
                      .get();
 
@@ -56,10 +56,10 @@ IR::Func* Module::AddFunc(
   return result;
 }
 
-IR::Func* Module::AddFunc(
-    const type::Function* fn_type,
-    base::vector<std::pair<std::string, AST::Expression*>> args) {
-  auto* result = fns_.emplace_back(std::make_unique<IR::Func>(this, fn_type,
+IR::Func *Module::AddFunc(
+    const type::Function *fn_type,
+    base::vector<std::pair<std::string, AST::Expression *>> args) {
+  auto *result = fns_.emplace_back(std::make_unique<IR::Func>(this, fn_type,
                                                               std::move(args)))
                      .get();
 
@@ -73,16 +73,16 @@ IR::Func* Module::AddFunc(
   return result;
 }
 
-const type::Type* Module::GetType(const std::string& name) const {
-  auto* decl = GetDecl(name);
+const type::Type *Module::GetType(const std::string &name) const {
+  auto *decl = GetDecl(name);
   if (decl == nullptr) { return nullptr; }
-  return types_.at(decl);
+  return types_.at(AST::BoundConstants{}).at(decl);
 }
 
-AST::Declaration* Module::GetDecl(const std::string& name) const {
-  for (const auto& stmt : statements_.content_) {
+AST::Declaration *Module::GetDecl(const std::string &name) const {
+  for (const auto &stmt : statements_.content_) {
     if (!stmt->is<AST::Declaration>()) { continue; }
-    const auto& id = stmt->as<AST::Declaration>().identifier->token;
+    const auto &id = stmt->as<AST::Declaration>().identifier->token;
     if (id != name) { continue; }
     return &stmt->as<AST::Declaration>();
   }
@@ -91,7 +91,7 @@ AST::Declaration* Module::GetDecl(const std::string& name) const {
 
 void Module::Complete() {
   while (!to_complete_.empty()) {
-    auto* fn_lit = to_complete_.front();
+    auto *fn_lit = to_complete_.front();
     fn_lit->CompleteBody(this);
     to_complete_.pop();
   }
@@ -100,7 +100,7 @@ void Module::Complete() {
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
 // inside this function.
-std::unique_ptr<Module> Module::Compile(const frontend::Source::Name& src) {
+std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
   auto mod = std::make_unique<Module>();
   AST::BoundConstants bc;
   Context ctx(mod.get());
@@ -131,8 +131,8 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name& src) {
   ctx.mod_->statements_ = std::move(*file_stmts);
   ctx.mod_->Complete();
 
-  for (auto& fn : ctx.mod_->fns_) { fn->ComputeInvariants(); }
-  for (auto& fn : ctx.mod_->fns_) { fn->CheckInvariants(); }
+  for (auto &fn : ctx.mod_->fns_) { fn->ComputeInvariants(); }
+  for (auto &fn : ctx.mod_->fns_) { fn->CheckInvariants(); }
 
 #ifdef ICARUS_USE_LLVM
   backend::EmitAll(ctx.mod_->fns_, ctx.mod_->llvm_.get());
@@ -152,7 +152,7 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name& src) {
     ir_fn->llvm_fn_->setName("main");
     ir_fn->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
 #else
-    main_fn  = ir_fn;
+    main_fn = ir_fn;
 #endif  // ICARUS_USE_LLVM
   }
 
@@ -167,16 +167,26 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name& src) {
   return mod;
 }
 
-type::Type const* Module::type_of(AST::Expression const* expr) const {
-  auto iter = types_.data_.find(expr);
-  if (iter != types_.data_.end()) { return iter->second; }
+type::Type const *Module::type_of(AST::Expression const *expr) const {
+  auto bc_iter = types_.find(AST::BoundConstants{});
+  if (bc_iter != types_.end()) {
+    auto iter = bc_iter->second.data_.find(expr);
+    if (iter != bc_iter->second.data_.end()) { return iter->second; }
+  }
 
   // TODO figure out why this is necessary. It shouldn't be because you should
   // be able to find the expression in this module (even if the declaration is
   // in another.
-  for (Module const* mod : embedded_modules_) {
-    iter = mod->types_.data_.find(expr);
-    if (iter != mod->types_.data_.end()) { return iter->second; }
+  for (Module const *mod : embedded_modules_) {
+    bc_iter = mod->types_.find(AST::BoundConstants{});
+    if (bc_iter == mod->types_.end()) { continue; }
+    auto iter = bc_iter->second.data_.find(expr);
+    if (iter != bc_iter->second.data_.end()) { return iter->second; }
   }
   return nullptr;
+}
+
+void Module::set_type(AST::BoundConstants const &bc,
+                      AST::Expression const *expr, type::Type const *t) {
+  types_[bc].emplace(expr, t);
 }

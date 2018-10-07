@@ -38,11 +38,11 @@ type::Type const *CommaList::VerifyType(Context *ctx) {
 
   if (expr_types.empty()) {
     // TODO This is a hack and perhaps not always accurate?
-    ctx->mod_->types_.buffered_emplace(this, type::Type_);
+    ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Type_);
     return type::Type_;
   } else {
     auto *tup = type::Tup(std::move(expr_types));
-    ctx->mod_->types_.buffered_emplace(this, tup);
+    ctx->mod_->set_type(ctx->mod_->bound_constants_, this, tup);
     return tup;
   }
 }

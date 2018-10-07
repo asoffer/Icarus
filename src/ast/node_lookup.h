@@ -8,15 +8,16 @@ namespace AST {
 struct Node;
 struct Identifier;
 
-template <typename T> struct NodeLookup {
+template <typename T>
+struct NodeLookup {
   template <typename... Args>
-  auto emplace(Args&&... args) {
+  auto emplace(Args &&... args) {
     return data_.emplace(std::forward<Args>(args)...);
   }
 
   // TODO handle buffered data separately?
   template <typename... Args>
-  auto buffered_emplace(Args&&... args) {
+  auto buffered_emplace(Args &&... args) {
     return data_.emplace(std::forward<Args>(args)...);
   }
 

@@ -35,7 +35,7 @@ void Import::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
 
 base::vector<IR::Val> Import::EmitIR(Context *ctx) {
   ASSERT(cache_.has_value());
-  auto fut = modules.lock()->at(*cache_);
+  auto fut  = modules.lock()->at(*cache_);
   auto *mod = fut.get().get();
   return {IR::Val(mod)};
 }
@@ -49,7 +49,7 @@ Import *Import::Clone() const {
 
 type::Type const *Import::VerifyType(Context *ctx) {
   VERIFY_OR_RETURN(operand_type, operand_);
-  ctx->mod_->types_.buffered_emplace(this, type::Module);
+  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Module);
 
   if (!operand_type->is<type::CharBuffer>()) {
     ctx->error_log_.InvalidImport(operand_->span);

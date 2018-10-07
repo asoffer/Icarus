@@ -13,8 +13,8 @@ struct Context;
 namespace llvm {
 class Type;
 class LLVMContext;
-} // namespace llvm
-#endif // ICARUS_USE_LLVM
+}  // namespace llvm
+#endif  // ICARUS_USE_LLVM
 
 struct Module;
 
@@ -53,7 +53,7 @@ namespace type {
 enum class Cmp : u8 { None, Equality, Order };
 
 struct Type : public base::Cast<Type> {
-public:
+ public:
   Type() {}
   virtual ~Type() {}
   BASIC_METHODS;
@@ -105,9 +105,9 @@ constexpr type::Type const *Get() {
   }
 }
 
-} // namespace type
+}  // namespace type
 
 #undef ENDING
 #define ENDING
 
-#endif // ICARUS_TYPE_TYPE_H
+#endif  // ICARUS_TYPE_TYPE_H

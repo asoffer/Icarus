@@ -1,11 +1,12 @@
 #ifndef ICARUS_AST_FN_ARGS_H
 #define ICARUS_AST_FN_ARGS_H
 
-#include "base/container/vector.h"
 #include "base/container/unordered_map.h"
+#include "base/container/vector.h"
 
 namespace AST {
-template <typename T> struct FnArgs {
+template <typename T>
+struct FnArgs {
   auto find(const std::string &name) -> decltype(auto) {
     auto iter = named_.begin();
     for (; iter != named_.end(); ++iter) {
@@ -43,34 +44,31 @@ template <typename T> struct FnArgs {
   }
 
   // TODO const version (would be useful in extract_return_types.cc
-  template <typename Fn> void Apply(Fn &&fn) {
+  template <typename Fn>
+  void Apply(Fn &&fn) {
     for (auto &&val : pos_) { fn(val); }
     for (auto && [ key, val ] : named_) { fn(val); }
   }
 
-  template <typename Fn> void Apply(Fn &&fn) const {
+  template <typename Fn>
+  void Apply(Fn &&fn) const {
     for (const auto &val : pos_) { fn(val); }
     for (const auto & [ key, val ] : named_) { fn(val); }
   }
 
-
-  template <typename Fn> auto Transform(Fn &&fn) const {
+  template <typename Fn>
+  auto Transform(Fn &&fn) const {
     using out_t = decltype(fn(pos_[0]));
     FnArgs<out_t> result;
     result.pos_.reserve(pos_.size());
     for (auto &&val : pos_) { result.pos_.push_back(fn(val)); }
-    for (auto && [ key, val ] : named_) {
-      result.named_.emplace(key, fn(val));
-    }
+    for (auto && [ key, val ] : named_) { result.named_.emplace(key, fn(val)); }
     return result;
   }
-
 
   base::vector<T> pos_;
   base::unordered_map<std::string, T> named_;
 };
-
-
 
 template <typename T>
 bool operator<(const FnArgs<T> &lhs, const FnArgs<T> &rhs) {
@@ -92,6 +90,6 @@ bool operator<(const FnArgs<T> &lhs, const FnArgs<T> &rhs) {
   if (l_iter == lhs.named_.end()) { return false; }
   return *l_iter < *r_iter;
 }
-} // namespace AST
+}  // namespace AST
 
-#endif // ICARUS_AST_FN_ARGS_H
+#endif  // ICARUS_AST_FN_ARGS_H

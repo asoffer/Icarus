@@ -20,5 +20,5 @@ struct CharBuffer : public Type {
 };
 
 const CharBuffer *CharBuf(size_t len);
-} // namespace type
-#endif // ICARUS_TYPE_CHAR_BUFFER_H
+}  // namespace type
+#endif  // ICARUS_TYPE_CHAR_BUFFER_H

@@ -38,13 +38,10 @@ struct Tuple : public Type {
     return result;
   }
 #ifdef ICARUS_USE_LLVM
-virtual llvm::Type *
-llvm(llvm::LLVMContext &) const {
-  UNREACHABLE();
-}
+  virtual llvm::Type *llvm(llvm::LLVMContext &) const { UNREACHABLE(); }
 #endif  // ICARUS_USE_LLVM
 
-base::vector<Type const *> entries_;
+  base::vector<Type const *> entries_;
 };  // namespace type
 }  // namespace type
 

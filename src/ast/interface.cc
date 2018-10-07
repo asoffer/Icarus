@@ -9,7 +9,7 @@
 namespace AST {
 void Interface::assign_scope(Scope *scope) {
   STAGE_CHECK(AssignScopeStage, AssignScopeStage);
-  scope_     = scope;
+  scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
   for (auto &d : decls_) { d.assign_scope(body_scope_.get()); }
 }
@@ -28,9 +28,9 @@ std::string Interface::to_string(size_t n) const {
 type::Type const *Interface::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
-  ctx->mod_->types_.buffered_emplace(this, type::Interface);
+  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Interface);
 
-  for (auto &decl: decls_) {
+  for (auto &decl : decls_) {
     decl.VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     if (decl.init_val != nullptr) { NOT_YET(); }
@@ -41,7 +41,7 @@ type::Type const *Interface::VerifyType(Context *ctx) {
 
 void Interface::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-  for (auto &decl: decls_) { decl.Validate(ctx); }
+  for (auto &decl : decls_) { decl.Validate(ctx); }
 }
 
 void Interface::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
@@ -65,9 +65,7 @@ Interface *Interface::Clone() const {
   auto *result = new Interface;
   result->span = span;
   result->decls_.reserve(decls_.size());
-  for (const auto &decl : decls_) {
-    result->decls_.emplace_back(decl.Clone());
-  }
+  for (const auto &decl : decls_) { result->decls_.emplace_back(decl.Clone()); }
   return result;
 }
 
@@ -81,8 +79,10 @@ base::vector<IR::Val> AST::Interface::EmitIR(Context *ctx) {
   for (const auto &decl : decls_) {
     ifc.field_map_.emplace(decl.identifier->token, ctx->mod_->type_of(&decl));
   }
-  return { IR::Val::Interface(std::move(ifc))};
+  return {IR::Val::Interface(std::move(ifc))};
 }
 
-base::vector<IR::Register> AST::Interface::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+base::vector<IR::Register> AST::Interface::EmitLVal(Context *ctx) {
+  UNREACHABLE(*this);
+}
 }  // namespace AST

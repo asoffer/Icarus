@@ -1,8 +1,8 @@
 #ifndef ICARUS_BASE_DEBUG_H
 #define ICARUS_BASE_DEBUG_H
 
-#include "base/log.h"
 #include "base/check.h"
+#include "base/log.h"
 
 #ifdef DBG
 #define ASSERT(...)                                                            \
@@ -41,14 +41,15 @@
 #define NOT_YET(...)                                                           \
   do {                                                                         \
     auto logger = LOG << "Not yet implemented.\n";                             \
-    debug::LogArgs(__VA_ARGS__);                                    \
+    debug::LogArgs(__VA_ARGS__);                                               \
     std::abort();                                                              \
   } while (false)
 
 namespace debug {
-template <typename... Args> void LogArgs(Args &&... args) {
+template <typename... Args>
+void LogArgs(Args &&... args) {
   [[maybe_unused]] const auto &log =
       (base::Logger{} << ... << std::forward<Args>(args));
 }
-} // namespace debug
-#endif // ICARUS_BASE_DEBUG_H
+}  // namespace debug
+#endif  // ICARUS_BASE_DEBUG_H

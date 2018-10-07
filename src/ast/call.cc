@@ -295,7 +295,8 @@ base::vector<IR::Val> EmitCallDispatch(
                         ? ret_type->as<type::Tuple>().entries_.size()
                         : 1;
 
-  base::vector<base::unordered_map<IR::BlockIndex, IR::Val>> result_phi_args(num_rets);
+  base::vector<base::unordered_map<IR::BlockIndex, IR::Val>> result_phi_args(
+      num_rets);
 
   auto landing_block = IR::Func::Current->AddBlock();
 
@@ -422,7 +423,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.size() == 1u);
       ASSERT(arg_types.pos_[0] == type::Type_);
-      ctx->mod_->types_.buffered_emplace(this, type::Int);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Int);
       return type::Int;
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
@@ -432,7 +433,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(arg_types.pos_[0], Is<type::Pointer>());
       ASSERT(arg_types.pos_[0]->as<type::Pointer>().pointee, Is<type::Array>());
       ASSERT(arg_types.pos_[1] == type::Int);
-      ctx->mod_->types_.buffered_emplace(this, type::Void());
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
       return type::Void();
     } else if (fn_val == IR::Val::BuiltinGeneric(ForeignFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
@@ -443,7 +444,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(arg_types.pos_[1] == type::Type_);
       auto *t =
           backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx);
-      ctx->mod_->types_.buffered_emplace(this, t);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
       ASSERT(t, Is<type::Function>());
       return t;
     } else {
@@ -461,7 +462,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       !fn_->is<Identifier>()
           ? DispatchTable::Make(args, fn_.get(), ctx)
           : DispatchTable::Make(args, fn_->as<Identifier>().token, scope_, ctx);
-  ctx->mod_->types_.buffered_emplace(this, ret_type);
+  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, ret_type);
 
   if (ret_type == nullptr) { limit_to(StageRange::Nothing()); }
 

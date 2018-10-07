@@ -27,6 +27,6 @@ struct Expression : public Node {
       const Node *correspondant,
       const base::unordered_map<const Expression *, IR::Val> &) = 0;
 };
-} // namespace AST
+}  // namespace AST
 
-#endif // ICARUS_AST_EXPRESSION_H
+#endif  // ICARUS_AST_EXPRESSION_H

@@ -17,4 +17,4 @@ size_t Enum::IntValueOrFail(const std::string &str) const {
 IR::Val Enum::EmitLiteral(const std::string &member_name) const {
   return IR::Val::Enum(this, int_values.at(member_name));
 }
-} // namespace type
+}  // namespace type

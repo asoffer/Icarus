@@ -3,9 +3,10 @@
 // to change too.
 MAKE_LOG_ERROR(InvalidEscapedCharacterInStringLiteral,
                "Found an invalid escape sequence in string-literal.")
-MAKE_LOG_ERROR(RunawayStringLiteral, "Reached end of line before finding the "
-                                     "end of a string-literal. Did you forget "
-                                     "a quotation mark?")
+MAKE_LOG_ERROR(RunawayStringLiteral,
+               "Reached end of line before finding the "
+               "end of a string-literal. Did you forget "
+               "a quotation mark?")
 MAKE_LOG_ERROR(EscapedDoubleQuoteInCharacterLiteral,
                "The double quotation mark character (\") does not need to be "
                "esacped in a character-literal.")
@@ -15,18 +16,21 @@ MAKE_LOG_ERROR(InvalidEscapedCharacterInCharacterLiteral,
                "\\a, \\b, \\f, \\n, \\r, \\s, \\t, and \\v.")
 MAKE_LOG_ERROR(RunawayCharacterLiteral,
                "Found a backtick (`), but did not see a character literal.")
-MAKE_LOG_ERROR(SpaceInCharacterLiteral, "Found a backtick (`) followed by a "
-                                        "space character. Space character "
-                                        "literals are written as `\\s.")
-MAKE_LOG_ERROR(TabInCharacterLiteral, "Founda tab in your character-literal. "
-                                      "Tab charcater literals are written as "
-                                      "`\t.")
+MAKE_LOG_ERROR(SpaceInCharacterLiteral,
+               "Found a backtick (`) followed by a "
+               "space character. Space character "
+               "literals are written as `\\s.")
+MAKE_LOG_ERROR(TabInCharacterLiteral,
+               "Founda tab in your character-literal. "
+               "Tab charcater literals are written as "
+               "`\t.")
 MAKE_LOG_ERROR(TooManyDots,
                "There are too many consecutive period (.) characters.")
 
-MAKE_LOG_ERROR(InvalidCharacterQuestionMark, "Question mark characters are not "
-                                             "valid syntax by themselves. Did "
-                                             "you mean \":?\"?")
+MAKE_LOG_ERROR(InvalidCharacterQuestionMark,
+               "Question mark characters are not "
+               "valid syntax by themselves. Did "
+               "you mean \":?\"?")
 MAKE_LOG_ERROR(InvalidCharacterTilde, "Tildes (~) are not valid Icarus syntax.")
 MAKE_LOG_ERROR(
     NonWhitespaceAfterNewlineEscape,

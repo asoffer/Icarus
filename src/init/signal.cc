@@ -17,8 +17,8 @@ void InstallSignalHandlers() {
       char **symbollist = backtrace_symbols(addrlist, addrlen);
       for (int i = 4; i < addrlen; i++) {
         std::string symbol = symbollist[i];
-        auto start_iter         = symbol.find('(');
-        auto end_iter           = symbol.find(')');
+        auto start_iter    = symbol.find('(');
+        auto end_iter      = symbol.find(')');
         std::string mangled =
             symbol.substr(start_iter + 1, end_iter - start_iter - 1);
         end_iter = mangled.find('+');

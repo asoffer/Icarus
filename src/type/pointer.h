@@ -6,8 +6,8 @@
 #ifdef ICARUS_USE_LLVM
 namespace llvm {
 class PointerType;
-} // namespace llvm
-#endif // ICARUS_USE_LLVM
+}  // namespace llvm
+#endif  // ICARUS_USE_LLVM
 
 namespace type {
 struct Pointer : public Type {
@@ -17,9 +17,9 @@ struct Pointer : public Type {
 
 #ifdef ICARUS_USE_LLVM
   llvm::PointerType *llvm_ptr(llvm::LLVMContext &) const;
-#endif // ICARUS_USE_LLVM
+#endif  // ICARUS_USE_LLVM
 };
 
 const Pointer *Ptr(const Type *t);
-} // namespace type
-#endif // ICARUS_TYPE_POINTER_H
+}  // namespace type
+#endif  // ICARUS_TYPE_POINTER_H

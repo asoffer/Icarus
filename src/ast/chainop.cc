@@ -186,11 +186,11 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
         expr_types.back() != type::OptBlock) {
       goto not_blocks;
     } else {
-      ctx->mod_->types_.buffered_emplace(this, expr_types.back());
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, expr_types.back());
       return expr_types.back();
     }
   }
-  not_blocks:
+not_blocks:
 
   // TODO Can we recover from errors here? Should we?
 
@@ -208,7 +208,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
         }
       }
 
-      ctx->mod_->types_.buffered_emplace(this, expr_types[0]);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, expr_types[0]);
 
       if (expr_types[0] != type::Bool &&
           !(expr_types[0] == type::Type_ && ops[0] == Language::Operator::Or) &&
@@ -240,7 +240,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
           case Language::Operator::Ge: token = ">="; break;
           case Language::Operator::Gt: token = ">"; break;
           default: UNREACHABLE();
-          }
+        }
 
         if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
           FnArgs<Expression *> args;
@@ -270,9 +270,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
                 switch (cmp) {
                   case type::Cmp::Order:
                   case type::Cmp::Equality: continue;
-                  case type::Cmp::None:
-                    NOT_YET("log an error");
-                    return nullptr;
+                  case type::Cmp::None: NOT_YET("log an error"); return nullptr;
                 }
               } break;
               case Language::Operator::Lt:
@@ -282,9 +280,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
                 switch (cmp) {
                   case type::Cmp::Order: continue;
                   case type::Cmp::Equality:
-                  case type::Cmp::None:
-                    NOT_YET("log an error");
-                    return nullptr;
+                  case type::Cmp::None: NOT_YET("log an error"); return nullptr;
                 }
               } break;
               default: UNREACHABLE("Expecting a ChainOp operator type.");
@@ -293,7 +289,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
         }
       }
 
-      ctx->mod_->types_.buffered_emplace(this, type::Bool);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Bool);
       return type::Bool;
     }
   }
@@ -413,7 +409,7 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
         auto rhs_ir = exprs[i + 1]->EmitIR(ctx)[0];
-        auto cmp = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
+        auto cmp    = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
 
         phi_args.emplace(IR::BasicBlock::Current, false);
         auto next_block = IR::Func::Current->AddBlock();
@@ -436,7 +432,9 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<IR::Register> ChainOp::EmitLVal(Context *ctx) { UNREACHABLE(this); }
+base::vector<IR::Register> ChainOp::EmitLVal(Context *ctx) {
+  UNREACHABLE(this);
+}
 
 ChainOp *ChainOp::Clone() const {
   auto *result             = new ChainOp;

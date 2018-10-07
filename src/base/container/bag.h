@@ -42,7 +42,6 @@ struct bag {
 
     iterator(typename std::vector<T>::iterator iter) : value_(iter) {}
     typename std::vector<T>::iterator value_;
-
   };
 
   iterator begin() { return iterator(data_.begin()); }

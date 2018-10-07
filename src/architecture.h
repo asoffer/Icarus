@@ -8,11 +8,11 @@
 
 namespace type {
 struct Type;
-} // namespace type
+}  // namespace type
 
 namespace IR {
 struct Val;
-} // namespace IR
+}  // namespace IR
 
 // We only support architectures on which a byte is 8 bits, and assume all
 // alignments are powers of two.
@@ -46,4 +46,4 @@ struct Architecture {
   size_t ptr_align_;
 };
 
-#endif // ICARUS_ARCHITECTURE_H
+#endif  // ICARUS_ARCHITECTURE_H

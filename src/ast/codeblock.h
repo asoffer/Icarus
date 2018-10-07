@@ -3,9 +3,9 @@
 
 #include <variant>
 
-#include "context.h"
 #include "ast/expression.h"
 #include "ast/statements.h"
+#include "context.h"
 
 namespace type {
 extern Type const *Code;
@@ -27,7 +27,7 @@ struct CodeBlock : public Expression {
   CodeBlock *Clone() const { return new CodeBlock(*this); }
 
   type::Type const *VerifyType(Context *ctx) override {
-    ctx->mod_->types_.buffered_emplace(this, type::Code);
+    ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Code);
     return type::Code;
   }
   virtual void Validate(Context *) override {}
@@ -49,6 +49,6 @@ bool operator==(const CodeBlock &lhs, const CodeBlock &rhs);
 // shouldn't be doing anyway.
 bool operator<(const CodeBlock &lhs, const CodeBlock &rhs);
 bool operator>(const CodeBlock &lhs, const CodeBlock &rhs);
-} // namespace AST
+}  // namespace AST
 
-#endif // ICARUS_AST_CODEBLOCK_H
+#endif  // ICARUS_AST_CODEBLOCK_H

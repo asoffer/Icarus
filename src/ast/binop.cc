@@ -54,8 +54,8 @@ void ForEachExpr(AST::Expression *expr,
 }
 
 namespace AST {
-using base::check::Not;
 using base::check::Is;
+using base::check::Not;
 
 std::string Binop::to_string(size_t n) const {
   std::stringstream ss;
@@ -66,24 +66,24 @@ std::string Binop::to_string(size_t n) const {
 
   ss << "(" << lhs->to_string(n) << ")";
   switch (op) {
-  case Language::Operator::Arrow: ss << " -> "; break;
-  case Language::Operator::Add: ss << " + "; break;
-  case Language::Operator::Sub: ss << " - "; break;
-  case Language::Operator::Mul: ss << " * "; break;
-  case Language::Operator::Div: ss << " / "; break;
-  case Language::Operator::Mod: ss << " % "; break;
-  case Language::Operator::Assign: ss << " <<:=>> "; break;
-  case Language::Operator::OrEq: ss << " |= "; break;
-  case Language::Operator::XorEq: ss << " ^= "; break;
-  case Language::Operator::AndEq: ss << " &= "; break;
-  case Language::Operator::AddEq: ss << " += "; break;
-  case Language::Operator::SubEq: ss << " -= "; break;
-  case Language::Operator::MulEq: ss << " *= "; break;
-  case Language::Operator::DivEq: ss << " /= "; break;
-  case Language::Operator::ModEq: ss << " %= "; break;
-  case Language::Operator::As: ss << " as "; break;
-  case Language::Operator::When: ss << " when "; break;
-  default: UNREACHABLE();
+    case Language::Operator::Arrow: ss << " -> "; break;
+    case Language::Operator::Add: ss << " + "; break;
+    case Language::Operator::Sub: ss << " - "; break;
+    case Language::Operator::Mul: ss << " * "; break;
+    case Language::Operator::Div: ss << " / "; break;
+    case Language::Operator::Mod: ss << " % "; break;
+    case Language::Operator::Assign: ss << " <<:=>> "; break;
+    case Language::Operator::OrEq: ss << " |= "; break;
+    case Language::Operator::XorEq: ss << " ^= "; break;
+    case Language::Operator::AndEq: ss << " &= "; break;
+    case Language::Operator::AddEq: ss << " += "; break;
+    case Language::Operator::SubEq: ss << " -= "; break;
+    case Language::Operator::MulEq: ss << " *= "; break;
+    case Language::Operator::DivEq: ss << " /= "; break;
+    case Language::Operator::ModEq: ss << " %= "; break;
+    case Language::Operator::As: ss << " as "; break;
+    case Language::Operator::When: ss << " when "; break;
+    default: UNREACHABLE();
   }
   ss << "(" << rhs->to_string(n) << ")";
 
@@ -134,7 +134,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         NOT_YET("error message");
       }
     } else {
-      if (rhs_type->is<type::Tuple>()){
+      if (rhs_type->is<type::Tuple>()) {
         LOG << lhs;
         LOG << rhs;
         NOT_YET("error message");
@@ -156,7 +156,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
           limit_to(StageRange::NoEmitIR());
         }
-        ctx->mod_->types_.buffered_emplace(this, type::Char);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Char);
         return type::Char;
       } else if (!lhs_type->is<type::Array>()) {
         ctx->error_log_.IndexingNonArray(span, lhs_type);
@@ -164,7 +164,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         return nullptr;
       } else {
         auto *t = lhs_type->as<type::Array>().data_type;
-        ctx->mod_->types_.buffered_emplace(this, t);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
 
         if (rhs_type == type::Int) { break; }
         ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
@@ -176,15 +176,15 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       // TODO check that the type actually can be cast
       // correctly.
       auto *t = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
-      ctx->mod_->types_.buffered_emplace(this, t);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
       return t;
     }
     case Operator::XorEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->mod_->types_.buffered_emplace(this, type::Bool);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Bool);
         return type::Bool;
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->mod_->types_.buffered_emplace(this, lhs_type);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, lhs_type);
         return lhs_type;
       } else {
         // TODO could be bool or enum.
@@ -194,10 +194,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     case Operator::AndEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->mod_->types_.buffered_emplace(this, type::Bool);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Bool);
         return type::Bool;
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->mod_->types_.buffered_emplace(this, lhs_type);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, lhs_type);
         return lhs_type;
       } else {
         // TODO could be bool or enum.
@@ -207,10 +207,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     case Operator::OrEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->mod_->types_.buffered_emplace(this, type::Bool);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Bool);
         return type::Bool;
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->mod_->types_.buffered_emplace(this, lhs_type);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, lhs_type);
         return lhs_type;
       } else {
         // TODO could be bool or enum.
@@ -224,7 +224,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     if ((lhs_type == type::Int && rhs_type == type::Int) ||                     \
         (lhs_type == type::Real && rhs_type == type::Real)) {                   \
       auto *t = (ret_type);                                                     \
-      ctx->mod_->types_.buffered_emplace(this, t);                              \
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);                \
       return t;                                                                 \
     } else {                                                                    \
       FnArgs<Expression *> args;                                                \
@@ -252,13 +252,13 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
           (lhs_type == type::Real && rhs_type == type::Real) ||
           (lhs_type == type::Code && rhs_type == type::Code)) {
-        ctx->mod_->types_.buffered_emplace(this, lhs_type);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::CharBuffer>() &&
                  rhs_type->is<type::CharBuffer>()) {
         auto *t = type::CharBuf(lhs_type->as<type::CharBuffer>().length_ +
                                 rhs_type->as<type::CharBuffer>().length_);
-        ctx->mod_->types_.buffered_emplace(this, t);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
         return t;
       } else {
         FnArgs<Expression *> args;
@@ -280,7 +280,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           (lhs_type == type::Code &&
            rhs_type == type::Code)) { /* TODO type::Code should only be valid
                                           for Add, not Sub, etc */
-        ctx->mod_->types_.buffered_emplace(this, type::Void());
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
         return type::Void();
       } else {
         FnArgs<Expression *> args;
@@ -297,7 +297,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     case Operator::Mul:
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
           (lhs_type == type::Real && rhs_type == type::Real)) {
-        ctx->mod_->types_.buffered_emplace(this, lhs_type);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::Function>() &&
                  rhs_type->is<type::Function>()) {
@@ -305,7 +305,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         auto *rhs_fn = &rhs_type->as<type::Function>();
         if (rhs_fn->output == lhs_fn->input) {
           auto *t = type::Func({rhs_fn->input}, {lhs_fn->output});
-          ctx->mod_->types_.buffered_emplace(this, t);
+          ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
           return t;
         } else {
           ctx->error_log_.NonComposableFunctions(span);
@@ -341,7 +341,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
 
       if (t != nullptr) {
-        ctx->mod_->types_.buffered_emplace(this, type::Type_);
+        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Type_);
       } else {
         limit_to(StageRange::Nothing());
       }
@@ -710,6 +710,5 @@ Binop *Binop::Clone() const {
   result->op   = op;
   return result;
 }
-
 
 }  // namespace AST

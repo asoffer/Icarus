@@ -15,11 +15,15 @@ IR::RegisterOr<i32> Architecture::ComputeArrayLength(
 size_t Architecture::alignment(const type::Type *t) const {
   if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
-      case type::PrimType::Generic: return 8; // TODO ???
-      case type::PrimType::Module: return 8; // TODO ???
+      case type::PrimType::Generic:
+        return 8;  // TODO ???
+      case type::PrimType::Module:
+        return 8;  // TODO ???
       case type::PrimType::Err: NOT_YET();
-      case type::PrimType::Block: return 8; // TODO ???
-      case type::PrimType::OptBlock: return 8; // TODO ??
+      case type::PrimType::Block:
+        return 8;  // TODO ???
+      case type::PrimType::OptBlock:
+        return 8;  // TODO ??
       case type::PrimType::Interface: NOT_YET();
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
@@ -75,11 +79,15 @@ size_t Architecture::alignment(const type::Type *t) const {
 size_t Architecture::bytes(const type::Type *t) const {
   if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
-      case type::PrimType::Generic: return 8; // TODO ???
-      case type::PrimType::Module: return 8; // TODO ???
+      case type::PrimType::Generic:
+        return 8;  // TODO ???
+      case type::PrimType::Module:
+        return 8;  // TODO ???
       case type::PrimType::Err: NOT_YET();
-      case type::PrimType::Block: return 8; // TODO ???
-      case type::PrimType::OptBlock: return 8; // TODO ??
+      case type::PrimType::Block:
+        return 8;  // TODO ???
+      case type::PrimType::OptBlock:
+        return 8;  // TODO ??
       case type::PrimType::Interface: NOT_YET();
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
@@ -91,7 +99,8 @@ size_t Architecture::bytes(const type::Type *t) const {
       case type::PrimType::Code: return 8;
     }
   } else if (t->is<type::CharBuffer>()) {
-    return sizeof(std::string_view); // TODO fix me t->as<type::CharBuffer>().length_;
+    return sizeof(
+        std::string_view);  // TODO fix me t->as<type::CharBuffer>().length_;
   } else if (t->is<type::Pointer>()) {
     return ptr_bytes_;
   } else if (t->is<type::Array>()) {
@@ -127,14 +136,14 @@ size_t Architecture::bytes(const type::Type *t) const {
     // the interpretting machinge, it seems like we aren't just returning a
     // pointer type but sometimes an actual IR::Func* which is smaller.
   } else if (t->is<type::Enum>()) {
-    return 8; // TODO
+    return 8;  // TODO
   } else if (t->is<type::Flags>()) {
-    return 8; // TODO
+    return 8;  // TODO
   } else if (t->is<type::Scope>()) {
     return 8;
   } else if (t->is<type::Variant>()) {
     size_t num_bytes = 0;
-    for (const type::Type* type : t->as<type::Variant>().variants_) {
+    for (const type::Type *type : t->as<type::Variant>().variants_) {
       num_bytes = std::max(num_bytes, this->bytes(type));
     }
     return num_bytes + ptr_bytes_;

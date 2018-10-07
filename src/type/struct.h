@@ -18,7 +18,7 @@ struct StructLiteral;
 
 namespace IR {
 struct Func;
-} // namespace IR
+}  // namespace IR
 
 namespace type {
 struct Struct : public Type {
@@ -68,5 +68,5 @@ struct Struct : public Type {
   mutable std::atomic<AST::StructLiteral *> to_be_completed_ = nullptr;
 };
 
-} // namespace type
-#endif // ICARUS_TYPE_STRUCT_H
+}  // namespace type
+#endif  // ICARUS_TYPE_STRUCT_H

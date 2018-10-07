@@ -2,8 +2,8 @@
 #define ICARUS_IR_PHI_H
 
 #include <unordered_map>
-#include "ir/val.h"
 #include "ir/func.h"
+#include "ir/val.h"
 
 namespace IR {
 CmdIndex Phi(type::Type const *);
@@ -44,4 +44,4 @@ RegisterOr<T> MakePhi(CmdIndex phi_index,
 }
 }  // namespace IR
 
-#endif // ICARUS_IR_PHI_H
+#endif  // ICARUS_IR_PHI_H

@@ -50,7 +50,7 @@ type::Type const *Switch::VerifyType(Context *ctx) {
     NOT_YET("handle type error");
     return nullptr;
   }
-  ctx->mod_->types_.buffered_emplace(this, t);
+  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
   return t;
 }
 
@@ -81,7 +81,7 @@ void Switch::contextualize(
   }
 }
 
-void Switch::ExtractReturns(base::vector<const Expression *> * rets) const {
+void Switch::ExtractReturns(base::vector<const Expression *> *rets) const {
   for (auto & [ expr, cond ] : cases_) {
     expr->ExtractReturns(rets);
     cond->ExtractReturns(rets);
@@ -106,9 +106,9 @@ base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
 
   // TODO handle a default value. for now, we're just not checking the very last
   // condition. This is very wrong.
-  for (size_t i= 0; i < cases_.size() - 1; ++i) {
+  for (size_t i = 0; i < cases_.size() - 1; ++i) {
     auto & [ expr, cond ] = cases_[i];
-    auto expr_block = IR::Func::Current->AddBlock();
+    auto expr_block       = IR::Func::Current->AddBlock();
     auto next_block =
         IR::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx)[0].reg_or<bool>());
 
@@ -124,10 +124,12 @@ base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
   IR::UncondJump(land_block);
 
   IR::BasicBlock::Current = land_block;
-  auto *t = ctx->mod_->type_of(this);
+  auto *t                 = ctx->mod_->type_of(this);
   return {IR::MakePhi(IR::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)};
 }
 
-base::vector<IR::Register> AST::Switch::EmitLVal(Context *ctx) { UNREACHABLE(*this); }
+base::vector<IR::Register> AST::Switch::EmitLVal(Context *ctx) {
+  UNREACHABLE(*this);
+}
 
 }  // namespace AST

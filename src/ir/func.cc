@@ -36,8 +36,8 @@ Func::Func(Module *mod, AST::GeneratedFunction *fn,
     references_[Register{i}];
   }
 
-  auto arch  = Architecture::InterprettingMachine();
-  i32 i = 0;
+  auto arch = Architecture::InterprettingMachine();
+  i32 i     = 0;
   for (auto *t : type_->input) {
     auto entry = arch.MoveForwardToAlignment(t, reg_size_);
     reg_map_.emplace(i++, Register(entry));
@@ -66,8 +66,8 @@ Func::Func(Module *mod, const type::Function *fn_type,
     references_[Register{i}];
   }
 
-  auto arch  = Architecture::InterprettingMachine();
-  i32 i = 0;
+  auto arch = Architecture::InterprettingMachine();
+  i32 i     = 0;
   for (auto *t : type_->input) {
     auto entry = arch.MoveForwardToAlignment(t, reg_size_);
     reg_map_.emplace(i++, Register(entry));
@@ -93,15 +93,15 @@ Func::GetIncomingBlocks() const {
     ASSERT(b.cmds_.size() > 0u);
     const auto &last = b.cmds_.back();
     switch (last.op_code_) {
-    case Op::UncondJump:
-      incoming[&block(last.uncond_jump_.block_)].insert(&b);
-      break;
-    case Op::CondJump:
-      incoming[&block(last.cond_jump_.blocks_[0])].insert(&b);
-      incoming[&block(last.cond_jump_.blocks_[1])].insert(&b);
-      break;
-    case Op::ReturnJump: /* Nothing to do */ break;
-    default:  UNREACHABLE(IR::OpCodeStr(last.op_code_));
+      case Op::UncondJump:
+        incoming[&block(last.uncond_jump_.block_)].insert(&b);
+        break;
+      case Op::CondJump:
+        incoming[&block(last.cond_jump_.blocks_[0])].insert(&b);
+        incoming[&block(last.cond_jump_.blocks_[1])].insert(&b);
+        break;
+      case Op::ReturnJump: /* Nothing to do */ break;
+      default: UNREACHABLE(IR::OpCodeStr(last.op_code_));
     }
   }
   return incoming;
@@ -120,8 +120,8 @@ static base::vector<std::pair<IR::Func, prop::PropertyMap>> InvariantsFor(
   for (const auto &expr : exprs) {
     auto & [ func, prop_map ] = result.emplace_back(
         std::piecewise_construct,
-        std::forward_as_tuple(fn->mod_, type::Func(fn->type_->input, {type::Bool}),
-                              fn->args_),
+        std::forward_as_tuple(
+            fn->mod_, type::Func(fn->type_->input, {type::Bool}), fn->args_),
         std::forward_as_tuple());
 
     CURRENT_FUNC(&func) {

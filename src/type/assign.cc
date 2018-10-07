@@ -135,16 +135,18 @@ void Variant::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
     // [3; int] | [4; bool] -> [--; int] | [--; bool]
     auto actual_type =
         IR::LoadType(IR::VariantType(std::get<IR::Register>(from.value)));
-    auto landing     = IR::Func::Current->AddBlock();
+    auto landing = IR::Func::Current->AddBlock();
     for (const Type *v : from_type->as<Variant>().variants_) {
-      auto next_block         = IR::Func::Current->AddBlock();
+      auto next_block = IR::Func::Current->AddBlock();
       IR::BasicBlock::Current =
           IR::EarlyExitOn<false>(next_block, IR::EqType(actual_type, v));
       IR::StoreType(v, IR::VariantType(to));
       v->EmitAssign(
           v,
-          IR::Val::Reg(IR::PtrFix(
-              IR::VariantValue(v, std::get<IR::Register>(from.value)), v), v),
+          IR::Val::Reg(
+              IR::PtrFix(
+                  IR::VariantValue(v, std::get<IR::Register>(from.value)), v),
+              v),
           IR::VariantValue(v, to), ctx);
       IR::UncondJump(landing);
       IR::BasicBlock::Current = next_block;
@@ -219,8 +221,8 @@ void Primitive::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
   }
 }
 
-void CharBuffer::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
-                            Context *ctx) const {
+void CharBuffer::EmitAssign(const Type *from_type, IR::Val from,
+                            IR::Register to, Context *ctx) const {
   // TODO Only callable at compile-time?
   NOT_YET();
 }

@@ -114,8 +114,7 @@ IR::BlockIndex ExecContext::ExecuteCmd(
   };
 
   switch (cmd.op_code_) {
-    case IR::Op::Death:
-      UNREACHABLE();
+    case IR::Op::Death: UNREACHABLE();
     case IR::Op::Trunc:
       save(static_cast<char>(resolve<i32>(cmd.trunc_.reg_)));
       break;
@@ -317,8 +316,7 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
           resolve<type::Struct *>(cmd.create_struct_field_.struct_));
-      struct_to_modify->add_field(
-        resolve(cmd.create_struct_field_.type_));
+      struct_to_modify->add_field(resolve(cmd.create_struct_field_.type_));
     } break;
     case IR::Op::SetStructFieldName: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
@@ -377,7 +375,7 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       }
     } break;
     case IR::Op::PtrIncr: {
-      auto addr = resolve<IR::Addr>(cmd.ptr_incr_.ptr_);
+      auto addr      = resolve<IR::Addr>(cmd.ptr_incr_.ptr_);
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
           resolve(cmd.ptr_incr_.incr_), cmd.ptr_incr_.pointee_type_);
       switch (addr.kind) {
@@ -491,7 +489,7 @@ IR::BlockIndex ExecContext::ExecuteCmd(
         } else if (t == type::Int) {
           call_buf.append(
               is_reg ? resolve<i32>(long_args.get<IR::Register>(offset))
-                    : long_args.get<i32>(offset));
+                     : long_args.get<i32>(offset));
         } else if (t == type::Real) {
           call_buf.append(
               is_reg ? resolve<double>(long_args.get<IR::Register>(offset))
@@ -545,7 +543,7 @@ IR::BlockIndex ExecContext::ExecuteCmd(
         backend::Execute(resolve<IR::Func *>(cmd.call_.fn_.reg_), call_buf,
                          ret_slots, this);
       } else if (cmd.call_.fn_.val_.is_fn_) {
-          backend::Execute(cmd.call_.fn_.val_.fn_, call_buf, ret_slots, this);
+        backend::Execute(cmd.call_.fn_.val_.fn_, call_buf, ret_slots, this);
       } else {
         if (cmd.call_.fn_.val_.foreign_.name_ == "malloc") {
           IR::Addr addr;
@@ -574,9 +572,10 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       save(new type::Variant(base::vector<type::Type const *>{}));
     } break;
     case IR::Op::AppendToVariant: {
-      auto *variant_to_modify =
-          ASSERT_NOT_NULL(resolve<type::Variant *>(cmd.append_to_variant_.var_));
-      variant_to_modify->variants_.push_back(resolve(cmd.append_to_variant_.arg_));
+      auto *variant_to_modify = ASSERT_NOT_NULL(
+          resolve<type::Variant *>(cmd.append_to_variant_.var_));
+      variant_to_modify->variants_.push_back(
+          resolve(cmd.append_to_variant_.arg_));
     } break;
     case IR::Op::FinalizeVariant: {
       save(resolve<type::Variant *>(cmd.finalize_variant_.var_)->finalize());

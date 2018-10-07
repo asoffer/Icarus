@@ -17,7 +17,7 @@ auto Holds() {
 
 template <typename T>
 auto Holds(T&& val) {
-  return [val{std::forward<T>(val)}](const auto& v) -> std::string {
+  return [val{std::forward<T>(val)}](const auto& v)->std::string {
     if (auto* vptr = std::get_if<std::decay_t<T>>(&v)) {
       if (*vptr == val) {
         return "";

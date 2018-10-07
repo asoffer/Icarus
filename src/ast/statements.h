@@ -17,7 +17,7 @@ struct Statements : public Node {
   ~Statements() override {}
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
-  Statements &operator=(const Statements& stmts) noexcept {
+  Statements &operator=(const Statements &stmts) noexcept {
     content_.reserve(stmts.content_.size());
     content_.clear();
     for (const auto &stmt : stmts.content_) {
@@ -61,5 +61,5 @@ struct Statements : public Node {
   base::vector<std::unique_ptr<Node>> content_;
 };
 
-} // namespace AST
-#endif // ICARUS_AST_STATEMENTS_H
+}  // namespace AST
+#endif  // ICARUS_AST_STATEMENTS_H

@@ -14,11 +14,11 @@ enum class PrimType : char {
 };
 
 struct Primitive : public Type {
-public:
+ public:
   TYPE_FNS(Primitive);
   Primitive(PrimType pt) : type_(pt) {}
 
-private:
+ private:
   friend struct ::Architecture;
   PrimType type_;
 
@@ -26,5 +26,5 @@ private:
   mutable IR::Func *repr_func_ = nullptr;
 };
 
-} // namespace type
-#endif // ICARUS_TYPE_PRIMITIVE_H
+}  // namespace type
+#endif  // ICARUS_TYPE_PRIMITIVE_H

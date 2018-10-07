@@ -19,7 +19,8 @@ struct Hole : public Identifier {
   Hole *Clone() const { return new Hole(*this); }
   void SaveReferences(Scope *, base::vector<IR::Val> *) {}
   void contextualize(const Node *,
-                     const base::unordered_map<const Expression *, IR::Val> &) {}
+                     const base::unordered_map<const Expression *, IR::Val> &) {
+  }
   void ExtractReturns(base::vector<const Expression *> *) const {}
   type::Type const *VerifyType(Context *) { return nullptr; }
   void Validate(Context *ctx) {}

@@ -1,7 +1,7 @@
 #include "property/property.h"
 
 namespace prop {
-  // TODO deal with possibiltiy for overflow/underflow
+// TODO deal with possibiltiy for overflow/underflow
 std::pair<IR::Register, base::owned_ptr<IntProp>> IntProp::Make(
     IR::Cmd::LtInt const& lt_int, bool is_true) {
   if (lt_int.args_[0].is_reg_) {

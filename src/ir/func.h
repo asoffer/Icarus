@@ -13,7 +13,7 @@
 namespace llvm {
 class Function;
 }  // namespace llvm
-#endif // ICARUS_USE_LLVM
+#endif  // ICARUS_USE_LLVM
 
 namespace type {
 struct Function;
@@ -98,9 +98,9 @@ struct Func {
   base::vector<BasicBlock> blocks_;
 #ifdef ICARUS_USE_LLVM
   llvm::Function *llvm_fn_ = nullptr;
-#endif // ICARUS_USE_LLVM
+#endif  // ICARUS_USE_LLVM
 
-  Module* mod_;
+  Module *mod_;
 
   size_t reg_size_ = 0;
   base::unordered_map<i32, Register> reg_map_;
@@ -119,20 +119,21 @@ std::ostream &operator<<(std::ostream &, IR::Func const &);
 
 namespace internal {
 struct FuncResetter {
-  FuncResetter(Func *fn) : old_fn_(Func::Current), old_block_(BasicBlock::Current) {
+  FuncResetter(Func *fn)
+      : old_fn_(Func::Current), old_block_(BasicBlock::Current) {
     Func::Current = fn;
   }
   ~FuncResetter() {
-    Func::Current  = old_fn_;
+    Func::Current       = old_fn_;
     BasicBlock::Current = old_block_;
   }
 
   Func *old_fn_;
   BlockIndex old_block_;
 };
-} // namespace internal 
-} // namespace IR
+}  // namespace internal
+}  // namespace IR
 
 #define CURRENT_FUNC(fn) if (IR::internal::FuncResetter resetter(fn); true)
 
-#endif // ICARUS_IR_FUNC_H
+#endif  // ICARUS_IR_FUNC_H

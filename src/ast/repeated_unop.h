@@ -29,5 +29,5 @@ struct RepeatedUnop : public Node {
   CommaList args_;
   base::vector<DispatchTable> dispatch_tables_;
 };
-} //
+}  // namespace AST
 #endif  // ICARUS_AST_REPEATED_UNOP_H

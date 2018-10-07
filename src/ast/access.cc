@@ -4,6 +4,7 @@
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "ir/cmd.h"
+#include "ir/components.h"
 #include "module.h"
 #include "type/array.h"
 #include "type/enum.h"
@@ -11,7 +12,6 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/struct.h"
-#include "ir/components.h"
 
 namespace AST {
 namespace {
@@ -41,7 +41,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on
       // assuming that this is an element of that enum type.
-      ctx->mod_->types_.buffered_emplace(this, evaled_type);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, evaled_type);
       if (evaled_type->as<type::Enum>().IntValueOrFail(member_name) ==
           std::numeric_limits<size_t>::max()) {
         ctx->error_log_.MissingMember(span, member_name, evaled_type);
@@ -52,7 +52,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
   } else if (base_type->is<type::Struct>()) {
     const auto *member = base_type->as<type::Struct>().field(member_name);
     if (member != nullptr) {
-      ctx->mod_->types_.buffered_emplace(this, member->type);
+      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, member->type);
       return member->type;
 
     } else {
@@ -63,7 +63,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
   } else if (base_type == type::Module) {
     auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
                   ->GetType(member_name);
-    ctx->mod_->types_.buffered_emplace(this, t);
+    ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
     if (t == nullptr) {
       NOT_YET("log an error");
       limit_to(StageRange::Nothing());
@@ -83,7 +83,7 @@ void Access::Validate(Context *ctx) {
 
 void Access::contextualize(
     const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements){
+    const base::unordered_map<const Expression *, IR::Val> &replacements) {
   operand->contextualize(correspondant->as<Access>().operand.get(),
                          replacements);
 }
