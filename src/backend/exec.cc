@@ -476,7 +476,9 @@ IR::BlockIndex ExecContext::ExecuteCmd(
                       ? cmd.call_.long_args_->type_->input.at(i)
                       : cmd.call_.long_args_->type_->output.at(
                             i - cmd.call_.long_args_->type_->input.size());
+
         offset = arch.MoveForwardToAlignment(t, offset);
+        call_buf.pad_to(offset);
 
         if (t == type::Bool) {
           call_buf.append(
@@ -489,7 +491,7 @@ IR::BlockIndex ExecContext::ExecuteCmd(
         } else if (t == type::Int) {
           call_buf.append(
               is_reg ? resolve<i32>(long_args.get<IR::Register>(offset))
-                     : long_args.get<i32>(offset));
+                    : long_args.get<i32>(offset));
         } else if (t == type::Real) {
           call_buf.append(
               is_reg ? resolve<double>(long_args.get<IR::Register>(offset))
@@ -537,7 +539,6 @@ IR::BlockIndex ExecContext::ExecuteCmd(
 
         offset += is_reg ? sizeof(IR::Register) : arch.bytes(t);
       }
-
       // TODO you need to be able to determine how many args there are
       if (cmd.call_.fn_.is_reg_) {
         // TODO what if the register is a foerign fn?

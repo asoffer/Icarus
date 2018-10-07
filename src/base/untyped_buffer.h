@@ -54,7 +54,8 @@ struct untyped_buffer {
     size_t old_size = size_;
 
     append_bytes(sizeof(T), alignof(T));
-    set(old_size, t);
+    size_t old_size_with_alignment = ((old_size - 1) | (alignof(T) - 1)) + 1;
+    set(old_size_with_alignment, t);
   }
 
   void write(size_t offset, const base::untyped_buffer &buf) {
@@ -69,6 +70,30 @@ struct untyped_buffer {
     if (new_size > capacity_) { reallocate(new_size); }
     size_ = new_size;
   }
+
+  void pad_to(size_t n) {
+    size_t new_size = std::max(n, size_);
+    if (new_size > capacity_) { reallocate(new_size); }
+    size_ = new_size;
+  }
+
+#ifdef DBG
+  std::string DebugString() {
+    constexpr char char_lookup[32] =
+        "0\0001\0002\0003\0004\0005\0006\0007\000"
+        "8\0009\000a\000b\000c\000d\000e\000f";
+    std::string s = "[ ";
+    for (size_t i = 0; i < size_; ++i) {
+      uint8_t num   = *reinterpret_cast<uint8_t const *>(raw(i));
+      uint8_t upper = num / 16;
+      s += char_lookup + upper * 2;
+      uint8_t lower = num & 0xf;
+      s += char_lookup + lower * 2;
+      s += " ";
+    }
+    return s + "]";
+  }
+#endif
 
  private:
   void reallocate(size_t num) {

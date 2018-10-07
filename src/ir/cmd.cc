@@ -42,10 +42,10 @@ void LongArgs::append(const IR::Val &val) {
   std::visit(
       base::overloaded{
           [](const IR::Interface &) { UNREACHABLE(); },
-          [&](auto &&val) {
-            args_.append(val);
+          [&](auto &&v) {
+            args_.append(v);
             is_reg_.push_back(
-                std::is_same_v<IR::Register, std::decay_t<decltype(val)>>);
+                std::is_same_v<IR::Register, std::decay_t<decltype(v)>>);
           }},
       val.value);
 }
