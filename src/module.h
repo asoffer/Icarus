@@ -74,8 +74,8 @@ struct Module {
 
   void set_type(AST::BoundConstants const &bc, AST::Expression const *expr,
                 type::Type const *);
-  type::Type const *type_of(AST::Expression const *expr) const;
-
+  type::Type const *type_of(AST::BoundConstants const &bc,
+                            AST::Expression const *expr) const;
   std::map<AST::BoundConstants, AST::NodeLookup<type::Type const *>> types_;
 };
 

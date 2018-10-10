@@ -49,7 +49,7 @@ Import *Import::Clone() const {
 
 type::Type const *Import::VerifyType(Context *ctx) {
   VERIFY_OR_RETURN(operand_type, operand_);
-  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Module);
+  ctx->mod_->set_type(ctx->bound_constants_, this, type::Module);
 
   if (!operand_type->is<type::CharBuffer>()) {
     ctx->error_log_.InvalidImport(operand_->span);

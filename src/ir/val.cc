@@ -77,7 +77,9 @@ Val Val::Flags(const type::Flags *flags_type, FlagsVal val) {
   return Val(flags_type, val);
 }
 
-Val Val::Func(AST::Function *fn) { NOT_YET(); }  // return Val(fn->type, fn); }
+Val Val::Func(AST::FuncContent *fn) {
+  NOT_YET();
+}  // return Val(fn->type, fn); }
 Val Val::Func(IR::Func *fn) { return Val(fn->type_, fn); }
 
 Val Val::Null(const type::Type *t) {

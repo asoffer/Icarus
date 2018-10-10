@@ -17,7 +17,7 @@ type::Type const *MatchDeclaration::VerifyType(Context *ctx) {
     limit_to(type_expr);
     // TODO this is wrong. it's a type satisfying a given interface. does that
     // matter?
-    ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Interface);
+    ctx->mod_->set_type(ctx->bound_constants_, this, type::Interface);
   }
   identifier->VerifyType(ctx);
   return type::Interface;

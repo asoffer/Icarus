@@ -110,7 +110,8 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr,
       results.emplace_back(result_buf.get<Module const *>(offset));
     } else if (t == type::Generic || t->is<type::Function>()) {
       // TODO mostly wrong.
-      results.push_back(IR::Val::Func(result_buf.get<AST::Function *>(offset)));
+      results.push_back(
+          IR::Val::Func(result_buf.get<AST::FuncContent *>(offset)));
     } else if (t == type::Block || t == type::OptBlock) {
       results.push_back(
           IR::Val::BlockSeq(result_buf.get<IR::BlockSequence>(offset)));
@@ -125,6 +126,6 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr,
 }
 
 base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
-  return Evaluate(expr, ctx->mod_->type_of(expr), ctx);
+  return Evaluate(expr, ctx->type_of(expr), ctx);
 }
 }  // namespace backend

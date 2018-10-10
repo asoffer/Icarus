@@ -167,8 +167,9 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
   return mod;
 }
 
-type::Type const *Module::type_of(AST::Expression const *expr) const {
-  auto bc_iter = types_.find(AST::BoundConstants{});
+type::Type const *Module::type_of(AST::BoundConstants const &bc,
+                                  AST::Expression const *expr) const {
+  auto bc_iter = types_.find(bc);
   if (bc_iter != types_.end()) {
     auto iter = bc_iter->second.data_.find(expr);
     if (iter != bc_iter->second.data_.end()) { return iter->second; }
@@ -178,7 +179,7 @@ type::Type const *Module::type_of(AST::Expression const *expr) const {
   // be able to find the expression in this module (even if the declaration is
   // in another.
   for (Module const *mod : embedded_modules_) {
-    bc_iter = mod->types_.find(AST::BoundConstants{});
+    bc_iter = mod->types_.find(bc);
     if (bc_iter == mod->types_.end()) { continue; }
     auto iter = bc_iter->second.data_.find(expr);
     if (iter != bc_iter->second.data_.end()) { return iter->second; }

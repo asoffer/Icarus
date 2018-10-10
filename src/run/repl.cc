@@ -30,7 +30,7 @@ static void ReplEval(AST::Expression *expr) {
       ctx.DumpErrors();
       return;
     }
-    auto *expr_type = ctx.mod_->type_of(expr);
+    auto *expr_type = ctx.type_of(expr);
     if (expr_type != type::Void()) { expr_type->EmitRepr(expr_val, &ctx); }
     IR::ReturnJump();
   }

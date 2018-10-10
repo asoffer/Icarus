@@ -557,9 +557,6 @@ void SetReturn(size_t n, Val const &v2) {
   if (v2.type == type::Module) {
     return SetReturnModule(n, v2.reg_or<Module const *>());
   }
-  if (v2.type == type::Generic) {
-    return SetReturnGeneric(n, v2.reg_or<AST::Function *>());
-  }
   if (v2.type == type::Block || v2.type == type::OptBlock) {
     return SetReturnBlock(n, v2.reg_or<BlockSequence>());
   }
@@ -699,11 +696,6 @@ void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r) {
 void SetReturnModule(size_t n, RegisterOr<Module const *> r) {
   auto &cmd              = MakeCmd(nullptr, Op::SetReturnModule);
   cmd.set_return_module_ = Cmd::SetReturnModule::Make(n, r);
-}
-
-void SetReturnGeneric(size_t n, RegisterOr<AST::Function *> r) {
-  auto &cmd               = MakeCmd(nullptr, Op::SetReturnGeneric);
-  cmd.set_return_generic_ = Cmd::SetReturnGeneric::Make(n, r);
 }
 
 void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r) {
@@ -990,7 +982,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::SetReturnFunc: return os << cmd.set_return_func_.val_;
     case Op::SetReturnScope: return os << cmd.set_return_scope_.val_;
     case Op::SetReturnModule: return os << cmd.set_return_module_.val_;
-    case Op::SetReturnGeneric: return os << cmd.set_return_generic_.val_;
     case Op::SetReturnBlock: return os << cmd.set_return_block_.val_;
     case Op::PhiBool: return os << cmd.phi_bool_.args_;
     case Op::PhiChar: return os << cmd.phi_char_.args_;

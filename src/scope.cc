@@ -32,7 +32,8 @@ Scope::AllDeclsWithId(std::string const &id, Context *ctx) {
 
   for (auto const *mod : ctx->mod_->embedded_modules_) {
     if (auto *decl = mod->GetDecl(id)) {
-      matching_decls.emplace_back(mod->type_of(decl), decl);
+      matching_decls.emplace_back(mod->type_of(AST::BoundConstants{}, decl),
+                                  decl);
     }
   }
   return std::pair(std::move(matching_decls), std::move(matching_error_decls));
@@ -51,8 +52,11 @@ void FnScope::MakeAllStackAllocations(Module *mod) {
       for (auto *decl : val) {
         if (decl->const_ || decl->arg_val) { continue; }
 
+        // TODO it's wrong to use a default BoundConstants, but it's even more
+        // wrong to store the address on the declaration, so you can fix those
+        // together.
         ASSERT(decl->addr_ == IR::Register{-1});
-        decl->addr_ = IR::Alloca(mod->type_of(decl));
+        decl->addr_ = IR::Alloca(mod->type_of(AST::BoundConstants{}, decl));
       }
     }
   }

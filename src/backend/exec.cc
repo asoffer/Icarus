@@ -659,10 +659,6 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       StoreValue(resolve(cmd.set_return_block_.val_),
                  ret_slots.at(cmd.set_return_block_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnGeneric:
-      StoreValue(resolve(cmd.set_return_generic_.val_),
-                 ret_slots.at(cmd.set_return_generic_.ret_num_), &stack_);
-      break;
     case IR::Op::StoreBool:
       StoreValue(resolve(cmd.store_bool_.val_),
                  resolve<IR::Addr>(cmd.store_bool_.addr_), &stack_);

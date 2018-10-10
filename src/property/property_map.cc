@@ -245,7 +245,6 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
     case IR::Op::SetReturnFunc: DEFINE_CASE(set_return_func_);
     case IR::Op::SetReturnScope: DEFINE_CASE(set_return_scope_);
     case IR::Op::SetReturnModule: DEFINE_CASE(set_return_module_);
-    case IR::Op::SetReturnGeneric: DEFINE_CASE(set_return_generic_);
     case IR::Op::SetReturnBlock: DEFINE_CASE(set_return_block_);
 #undef DEFINE_CASE
     case IR::Op::Not: {

@@ -55,7 +55,6 @@ struct FuncContent : public Expression {
   Module *module_            = nullptr;
 };
 
-struct Function;
 struct GeneratedFunction : public FuncContent {
   // Represents a function with all constants bound to some value.
   GeneratedFunction() {}
@@ -70,20 +69,6 @@ struct GeneratedFunction : public FuncContent {
   IR::Func *ir_func_                = nullptr;
   bool completed_                   = false;
   BoundConstants const *bound_args_ = nullptr;
-};
-
-struct Function : public FuncContent {
-  // Represents a literal function as specified in the source code. This may
-  // have unbound constant arguments.
-
-  type::Type const *VerifyType(Context *ctx) override;
-  void Validate(Context *ctx) override;
-  Function *Clone() const override;
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
-
-  GeneratedFunction *generate(Context *ctx);
-  base::map<BoundConstants, GeneratedFunction> fns_;
 };
 }  // namespace AST
 

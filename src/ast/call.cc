@@ -131,7 +131,7 @@ static IR::BlockIndex CallLookupTest(
   // check the ones at the call-site that could be variants).
   auto next_binding = IR::Func::Current->AddBlock();
   for (size_t i = 0; i < args.pos_.size(); ++i) {
-    if (!ctx->mod_->type_of(args.pos_[i].first)->is<type::Variant>()) {
+    if (!ctx->type_of(args.pos_[i].first)->is<type::Variant>()) {
       continue;
     }
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
@@ -143,7 +143,7 @@ static IR::BlockIndex CallLookupTest(
   for (const auto & [ name, expr_and_val ] : args.named_) {
     auto iter = call_arg_type.find(name);
     if (iter == call_arg_type.named_.end()) { continue; }
-    if (!ctx->mod_->type_of(expr_and_val.first)->is<type::Variant>()) {
+    if (!ctx->type_of(expr_and_val.first)->is<type::Variant>()) {
       continue;
     }
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
@@ -179,10 +179,10 @@ static void EmitOneCallDispatch(
     if (expr == nullptr) {
       ASSERT(bound_type != nullptr);
       auto default_expr = (*ASSERT_NOT_NULL(const_args))[i].second;
-      args[i] = bound_type->PrepareArgument(ctx->mod_->type_of(default_expr),
+      args[i] = bound_type->PrepareArgument(ctx->type_of(default_expr),
                                             default_expr->EmitIR(ctx)[0], ctx);
     } else {
-      args[i] = bound_type->PrepareArgument(ctx->mod_->type_of(expr),
+      args[i] = bound_type->PrepareArgument(ctx->type_of(expr),
                                             *expr_map.at(expr), ctx);
     }
   }
@@ -423,7 +423,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.size() == 1u);
       ASSERT(arg_types.pos_[0] == type::Type_);
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Int);
+      ctx->mod_->set_type(ctx->bound_constants_, this, type::Int);
       return type::Int;
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
@@ -433,7 +433,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(arg_types.pos_[0], Is<type::Pointer>());
       ASSERT(arg_types.pos_[0]->as<type::Pointer>().pointee, Is<type::Array>());
       ASSERT(arg_types.pos_[1] == type::Int);
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
+      ctx->mod_->set_type(ctx->bound_constants_, this, type::Void());
       return type::Void();
     } else if (fn_val == IR::Val::BuiltinGeneric(ForeignFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
@@ -444,7 +444,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(arg_types.pos_[1] == type::Type_);
       auto *t =
           backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx);
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+      ctx->mod_->set_type(ctx->bound_constants_, this, t);
       ASSERT(t, Is<type::Function>());
       return t;
     } else {
@@ -462,7 +462,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       !fn_->is<Identifier>()
           ? DispatchTable::Make(args, fn_.get(), ctx)
           : DispatchTable::Make(args, fn_->as<Identifier>().token, scope_, ctx);
-  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, ret_type);
+  ctx->mod_->set_type(ctx->bound_constants_, this, ret_type);
 
   if (ret_type == nullptr) { limit_to(StageRange::Nothing()); }
 
@@ -563,7 +563,7 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
       return {IR::Val::Reg(reg, out_type)};
 
     } else if (fn_val == IR::Val::BuiltinGeneric(ResizeFuncIndex)) {
-      ctx->mod_->type_of(args_.pos_[0].get())
+      ctx->type_of(args_.pos_[0].get())
           ->as<type::Pointer>()
           .pointee->as<type::Array>()
           .EmitResize(args_.pos_[0]->EmitIR(ctx)[0],
@@ -594,7 +594,7 @@ base::vector<IR::Val> Call::EmitIR(Context *ctx) {
         return std::pair(const_cast<Expression *>(expr.get()),
                          expr->EmitIR(ctx)[0]);
       }),
-      dispatch_table_, ctx->mod_->type_of(this), ctx);
+      dispatch_table_, ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
 }
 
 base::vector<IR::Register> Call::EmitLVal(Context *) { UNREACHABLE(this); }

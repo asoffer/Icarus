@@ -118,7 +118,7 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
       auto *fn_scope = ASSERT_NOT_NULL(scope_->ContainingFnScope());
       auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit);
       auto *fn_type =
-          &ASSERT_NOT_NULL(ctx->mod_->type_of(fn_lit))->as<type::Function>();
+          &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
       for (size_t i = 0; i < args_.exprs.size(); ++i) {
         // TODO return type maybe not the same as type actually returned?
         IR::SetReturn(i, arg_vals[i]);
@@ -129,7 +129,7 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
     case Language::Operator::Print:
       for (size_t i = 0; i < args_.exprs.size(); ++i) {
         // TODO unify with repr. is repr even a good idea?
-        auto *t = ctx->mod_->type_of(args_.exprs[i].get());
+        auto *t = ctx->type_of(args_.exprs[i].get());
         if (t == type::Char) {
           IR::PrintChar(arg_vals[i].reg_or<char>());
         } else if (t->is<type::Struct>()) {

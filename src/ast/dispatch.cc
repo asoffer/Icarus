@@ -18,8 +18,8 @@ using base::check::Is;
 // Attempts to match the call argument types to the dependent types here. If
 // it can it materializes a function literal and returns a pointer to it.
 // Otherwise, returns nullptr.
-std::optional<BoundConstants> ComputeBoundConstants(
-    Function *fn, const FnArgs<Expression *> &args, Binding *binding,
+static std::optional<BoundConstants> ComputeBoundConstants(
+    FuncContent *fn, const FnArgs<Expression *> &args, Binding *binding,
     Context *ctx) {
   BoundConstants bc;
 
@@ -37,7 +37,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
 
     if (!binding->defaulted(i)) {
       if (fn->inputs[i]->type_expr != nullptr &&
-          ctx->mod_->type_of(fn->inputs[i]->type_expr.get()) ==
+          ctx->type_of(fn->inputs[i]->type_expr.get()) ==
               type::Interface) {
         // TODO case where it is defaulted.
         // TODO expand all variants
@@ -65,7 +65,7 @@ std::optional<BoundConstants> ComputeBoundConstants(
         // type currently that needs to be deprecated.
 
       } else if (auto *match = type::Meet(
-                     ctx->mod_->type_of(binding->exprs_[i].second), input_type);
+                     ctx->type_of(binding->exprs_[i].second), input_type);
                  match == nullptr) {
         return std::nullopt;
       }
@@ -96,7 +96,7 @@ bool DispatchEntry::SetTypes(FuncContent *fn, type::Function const *fn_type,
     }
 
     const type::Type *match = type::Meet(
-        ctx->mod_->type_of(binding_.exprs_.at(i).second), input_types[i]);
+        ctx->type_of(binding_.exprs_.at(i).second), input_types[i]);
     if (match == nullptr) { return false; }
 
     binding_.exprs_.at(i).first = input_types.at(i);
@@ -124,7 +124,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   bound_fn             = std::visit(
       base::overloaded{
           [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
-          [](Function *fn) -> Expression * { return fn; },
+          [](FuncContent *fn) -> Expression * { return fn; },
           [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
           [](auto &&) -> Expression * { UNREACHABLE(); }},
       evaled_fn.at(0).value);
@@ -149,8 +149,8 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   DispatchEntry dispatch_entry(std::move(binding));
   dispatch_entry.call_arg_types_.pos_.resize(args.pos_.size(), nullptr);
 
-  if (bound_fn->is<Function>()) {
-    auto *generic_fn = &bound_fn->as<Function>();
+  if (bound_fn->is<FuncContent>()) {
+    auto *generic_fn = &bound_fn->as<FuncContent>();
 
     // TODO these are being ignored, which is definitely wrong for generics, but
     // we need to redo those anyway.
@@ -159,13 +159,12 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     if (!bound_constants) { return std::nullopt; }
 
     // TODO can generate fail? Probably
-    dispatch_entry.binding_.fn_expr_ =
-        ASSERT_NOT_NULL(generic_fn->generate(ctx));
+    dispatch_entry.binding_.fn_expr_ = generic_fn;
   }
 
   FuncContent *fn = nullptr;
-  if (dispatch_entry.binding_.fn_expr_->is<FuncContent>()) {
-    fn = &dispatch_entry.binding_.fn_expr_->as<FuncContent>();
+  if (dispatch_entry.binding_.fn_expr_->is<GeneratedFunction>()) {
+    fn = &dispatch_entry.binding_.fn_expr_->as<GeneratedFunction>();
     for (const auto & [ key, val ] : fn->lookup_) {
       if (val < args.pos_.size()) { continue; }
       dispatch_entry.call_arg_types_.named_.emplace(key, nullptr);
@@ -218,7 +217,7 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
     }
   }
 
-  const type::Type *ret_type = ComputeRetType(fn_types);
+  type::Type const *ret_type = ComputeRetType(fn_types);
   return std::pair{std::move(table), ret_type};
 }
 

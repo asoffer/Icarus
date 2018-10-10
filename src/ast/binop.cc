@@ -156,7 +156,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
           limit_to(StageRange::NoEmitIR());
         }
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Char);
+        ctx->mod_->set_type(ctx->bound_constants_, this, type::Char);
         return type::Char;
       } else if (!lhs_type->is<type::Array>()) {
         ctx->error_log_.IndexingNonArray(span, lhs_type);
@@ -164,7 +164,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         return nullptr;
       } else {
         auto *t = lhs_type->as<type::Array>().data_type;
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+        ctx->mod_->set_type(ctx->bound_constants_, this, t);
 
         if (rhs_type == type::Int) { break; }
         ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
@@ -176,15 +176,15 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       // TODO check that the type actually can be cast
       // correctly.
       auto *t = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+      ctx->mod_->set_type(ctx->bound_constants_, this, t);
       return t;
     }
     case Operator::XorEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Bool);
+        ctx->mod_->set_type(ctx->bound_constants_, this, type::Bool);
         return type::Bool;
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, lhs_type);
+        ctx->mod_->set_type(ctx->bound_constants_, this, lhs_type);
         return lhs_type;
       } else {
         // TODO could be bool or enum.
@@ -194,10 +194,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     case Operator::AndEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Bool);
+        ctx->mod_->set_type(ctx->bound_constants_, this, type::Bool);
         return type::Bool;
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, lhs_type);
+        ctx->mod_->set_type(ctx->bound_constants_, this, lhs_type);
         return lhs_type;
       } else {
         // TODO could be bool or enum.
@@ -207,10 +207,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     case Operator::OrEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Bool);
+        ctx->mod_->set_type(ctx->bound_constants_, this, type::Bool);
         return type::Bool;
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, lhs_type);
+        ctx->mod_->set_type(ctx->bound_constants_, this, lhs_type);
         return lhs_type;
       } else {
         // TODO could be bool or enum.
@@ -224,7 +224,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     if ((lhs_type == type::Int && rhs_type == type::Int) ||                     \
         (lhs_type == type::Real && rhs_type == type::Real)) {                   \
       auto *t = (ret_type);                                                     \
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);                \
+      ctx->mod_->set_type(ctx->bound_constants_, this, t);                \
       return t;                                                                 \
     } else {                                                                    \
       FnArgs<Expression *> args;                                                \
@@ -252,13 +252,13 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
           (lhs_type == type::Real && rhs_type == type::Real) ||
           (lhs_type == type::Code && rhs_type == type::Code)) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, lhs_type);
+        ctx->mod_->set_type(ctx->bound_constants_, this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::CharBuffer>() &&
                  rhs_type->is<type::CharBuffer>()) {
         auto *t = type::CharBuf(lhs_type->as<type::CharBuffer>().length_ +
                                 rhs_type->as<type::CharBuffer>().length_);
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+        ctx->mod_->set_type(ctx->bound_constants_, this, t);
         return t;
       } else {
         FnArgs<Expression *> args;
@@ -280,7 +280,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           (lhs_type == type::Code &&
            rhs_type == type::Code)) { /* TODO type::Code should only be valid
                                           for Add, not Sub, etc */
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
+        ctx->mod_->set_type(ctx->bound_constants_, this, type::Void());
         return type::Void();
       } else {
         FnArgs<Expression *> args;
@@ -297,7 +297,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     case Operator::Mul:
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
           (lhs_type == type::Real && rhs_type == type::Real)) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, lhs_type);
+        ctx->mod_->set_type(ctx->bound_constants_, this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::Function>() &&
                  rhs_type->is<type::Function>()) {
@@ -305,7 +305,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         auto *rhs_fn = &rhs_type->as<type::Function>();
         if (rhs_fn->output == lhs_fn->input) {
           auto *t = type::Func({rhs_fn->input}, {lhs_fn->output});
-          ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+          ctx->mod_->set_type(ctx->bound_constants_, this, t);
           return t;
         } else {
           ctx->error_log_.NonComposableFunctions(span);
@@ -341,7 +341,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
 
       if (t != nullptr) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Type_);
+        ctx->mod_->set_type(ctx->bound_constants_, this, type::Type_);
       } else {
         limit_to(StageRange::Nothing());
       }
@@ -376,8 +376,8 @@ void Binop::ExtractReturns(base::vector<const Expression *> *rets) const {
 }
 
 base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
-  auto *lhs_type = ctx->mod_->type_of(lhs.get());
-  auto *rhs_type = ctx->mod_->type_of(rhs.get());
+  auto *lhs_type = ctx->type_of(lhs.get());
+  auto *rhs_type = ctx->type_of(rhs.get());
   if (op != Language::Operator::Assign &&
       (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>())) {
     // TODO struct is not exactly right. we really mean user-defined
@@ -387,7 +387,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx)[0]);
 
     return EmitCallDispatch(args, dispatch_table_,
-                            ASSERT_NOT_NULL(ctx->mod_->type_of(this)), ctx);
+                            ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
   }
 
   switch (op) {
@@ -459,7 +459,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       }
     } break;
     case Language::Operator::As: {
-      auto *this_type = ctx->mod_->type_of(this);
+      auto *this_type = ctx->type_of(this);
       auto val        = lhs->EmitIR(ctx)[0];
       if (val.type == this_type) {
         return {val};
@@ -503,7 +503,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Assign: {
       base::vector<const type::Type *> lhs_types, rhs_types;
       ForEachExpr(rhs.get(), [&ctx, &rhs_types](size_t, Expression *expr) {
-        auto *expr_type = ctx->mod_->type_of(expr);
+        auto *expr_type = ctx->type_of(expr);
         if (expr_type->is<type::Tuple>()) {
           rhs_types.insert(rhs_types.end(),
                            expr_type->as<type::Tuple>().entries_.begin(),
@@ -516,7 +516,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
 
       // TODO types can be retrieved from the values?
       ForEachExpr(lhs.get(), [&ctx, &lhs_types](size_t, AST::Expression *expr) {
-        lhs_types.push_back(ctx->mod_->type_of(expr));
+        lhs_types.push_back(ctx->type_of(expr));
       });
       auto lhs_lvals = lhs->EmitLVal(ctx);
 
@@ -529,7 +529,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::OrEq: {
-      auto *this_type = ctx->mod_->type_of(this);
+      auto *this_type = ctx->type_of(this);
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
         IR::StoreFlags(IR::OrFlags(&this_type->as<type::Flags>(),
@@ -557,7 +557,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
           {{lhs_end_block, true}, {rhs_end_block, rhs_val}}))};
     } break;
     case Language::Operator::AndEq: {
-      auto *this_type = ctx->mod_->type_of(this);
+      auto *this_type = ctx->type_of(this);
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
         IR::StoreFlags(IR::AndFlags(&this_type->as<type::Flags>(),
@@ -681,7 +681,7 @@ base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     case Language::Operator::Index: {
-      auto *this_type = ctx->mod_->type_of(this);
+      auto *this_type = ctx->type_of(this);
       return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], this_type), this_type)};
     } break;
     default: UNREACHABLE(*this);
@@ -692,8 +692,8 @@ base::vector<IR::Register> AST::Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::As: NOT_YET();
     case Language::Operator::Index:
-      if (ctx->mod_->type_of(lhs.get())->is<type::Array>()) {
-        return {IR::Index(type::Ptr(ctx->mod_->type_of(this)),
+      if (ctx->type_of(lhs.get())->is<type::Array>()) {
+        return {IR::Index(type::Ptr(ctx->type_of(this)),
                           lhs->EmitLVal(ctx)[0],
                           rhs->EmitIR(ctx)[0].reg_or<i32>())};
       }

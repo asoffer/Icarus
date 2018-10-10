@@ -32,7 +32,7 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   if (elems_.empty()) {
-    ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::EmptyArray);
+    ctx->mod_->set_type(ctx->bound_constants_, this, type::EmptyArray);
     return type::EmptyArray;
   }
 
@@ -59,7 +59,7 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
     return nullptr;
   } else {
     auto *t = type::Arr(joined, elems_.size());
-    ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+    ctx->mod_->set_type(ctx->bound_constants_, this, t);
     return t;
   }
 }
@@ -99,7 +99,7 @@ ArrayLiteral *ArrayLiteral::Clone() const {
 
 base::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
-  auto *this_type = ctx->mod_->type_of(this);
+  auto *this_type = ctx->type_of(this);
   auto alloc      = IR::Alloca(this_type);
   auto array_val  = IR::Val::Reg(alloc, type::Ptr(this_type));
   auto *data_type = this_type->as<type::Array>().data_type;

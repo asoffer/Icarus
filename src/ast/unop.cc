@@ -112,13 +112,13 @@ type::Type const *Unop::VerifyType(Context *ctx) {
   limit_to(operand);
   switch (op) {
     case Language::Operator::TypeOf:
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Type_);
+      ctx->mod_->set_type(ctx->bound_constants_, this, type::Type_);
       return type::Type_;
     case Language::Operator::Eval:
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, operand_type);
+      ctx->mod_->set_type(ctx->bound_constants_, this, operand_type);
       return operand_type;
     case Language::Operator::Generate:
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
+      ctx->mod_->set_type(ctx->bound_constants_, this, type::Void());
       return type::Void();
     case Language::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
@@ -129,7 +129,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
     case Language::Operator::At:
       if (operand_type->is<type::Pointer>()) {
         auto *t = operand_type->as<type::Pointer>().pointee;
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+        ctx->mod_->set_type(ctx->bound_constants_, this, t);
         return t;
       } else {
         ctx->error_log_.DereferencingNonPointer(operand_type, span);
@@ -138,7 +138,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       }
     case Language::Operator::And: {
       auto *t = type::Ptr(operand_type);
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+      ctx->mod_->set_type(ctx->bound_constants_, this, t);
       return t;
     }
     case Language::Operator::Mul:
@@ -148,12 +148,12 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         limit_to(StageRange::Nothing());
         return nullptr;
       } else {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Type_);
+        ctx->mod_->set_type(ctx->bound_constants_, this, type::Type_);
         return type::Type_;
       }
     case Language::Operator::Sub:
       if (operand_type == type::Int || operand_type == type::Real) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, operand_type);
+        ctx->mod_->set_type(ctx->bound_constants_, this, operand_type);
         return operand_type;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
@@ -171,7 +171,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       return nullptr;
     case Language::Operator::Not:
       if (operand_type == type::Bool) {
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Bool);
+        ctx->mod_->set_type(ctx->bound_constants_, this, type::Bool);
         return type::Bool;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
@@ -191,33 +191,33 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         return nullptr;
       }
     case Language::Operator::Needs:
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
+      ctx->mod_->set_type(ctx->bound_constants_, this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PreconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
       }
       return type::Void();
     case Language::Operator::Ensure:
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Void());
+      ctx->mod_->set_type(ctx->bound_constants_, this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PostconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
       }
       return type::Void();
     case Language::Operator::Pass:
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, operand_type);
+      ctx->mod_->set_type(ctx->bound_constants_, this, operand_type);
       return operand_type;
     default: UNREACHABLE(*this);
   }
 }
 
 base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
-  auto *operand_type = ctx->mod_->type_of(operand.get());
+  auto *operand_type = ctx->type_of(operand.get());
   if (operand_type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
     // TODO struct is not exactly right. we really mean user-defined
     FnArgs<std::pair<Expression *, IR::Val>> args;
     args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx)[0])};
-    return EmitCallDispatch(args, dispatch_table_, ctx->mod_->type_of(this),
+    return EmitCallDispatch(args, dispatch_table_, ctx->type_of(this),
                             ctx);
   }
 
@@ -225,7 +225,7 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
     case Language::Operator::Not:
       return {IR::ValFrom(IR::Not(operand->EmitIR(ctx)[0].reg_or<bool>()))};
     case Language::Operator::Sub: {
-      auto *operand_type = ctx->mod_->type_of(operand.get());
+      auto *operand_type = ctx->type_of(operand.get());
       if (operand_type == type::Int) {
         return {IR::ValFrom(IR::NegInt(operand->EmitIR(ctx)[0].reg_or<i32>()))};
       } else if (operand_type == type::Real) {
@@ -236,14 +236,14 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       }
     }
     case Language::Operator::TypeOf:
-      return {IR::Val(ctx->mod_->type_of(operand.get()))};
+      return {IR::Val(ctx->type_of(operand.get()))};
     case Language::Operator::Which:
       return {IR::Val::Reg(IR::LoadType(IR::VariantType(std::get<IR::Register>(
                                operand->EmitIR(ctx)[0].value))),
                            type::Type_)};
     case Language::Operator::And:
       return {IR::Val::Reg(operand->EmitLVal(ctx)[0],
-                           type::Ptr(ctx->mod_->type_of(this)))};
+                           type::Ptr(ctx->type_of(this)))};
     case Language::Operator::Eval: {
       // TODO what if there's an error during evaluation?
       return backend::Evaluate(operand.get(), ctx);

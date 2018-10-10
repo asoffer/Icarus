@@ -16,62 +16,6 @@
 #include "type/type.h"
 
 namespace AST {
-GeneratedFunction *Function::generate(Context *ctx) {
-  auto[iter, fresh_insert] =
-      fns_.emplace(ctx->mod_->bound_constants_, GeneratedFunction{});
-  auto & [ bound_args, func ] = *iter;
-  if (!fresh_insert) { return &func; }
-
-  func.bound_args_           = &bound_args;
-  func.return_type_inferred_ = return_type_inferred_;
-
-  func.inputs.reserve(inputs.size());
-  for (const auto &input : inputs) {
-    // TODO this copies the type_expr on the input and then, if it's an
-    // interface, we overwrite it. Easy, but that copy is unnecessary and we
-    // sholud remove it.
-    func.inputs.emplace_back(input->Clone());
-    auto ifc_iter = bound_args.interfaces_.find(input.get());
-    if (ifc_iter == bound_args.interfaces_.end()) {
-      func.inputs.back()->arg_val = &func;
-    } else {
-      auto type_expr_span = func.inputs.back()->type_expr->span;
-      func.inputs.back()->type_expr =
-          std::make_unique<Terminal>(type_expr_span, IR::Val(ifc_iter->second));
-    }
-
-    if (input->const_) {
-      module_->bound_constants_.constants_.emplace(
-          func.inputs.back().get(), bound_args.constants_.at(input.get()));
-    }
-  }
-
-  func.lookup_ = lookup_;
-
-  func.outputs.reserve(outputs.size());
-  for (const auto &output : outputs) {
-    func.outputs.emplace_back(output->Clone());
-    if (output->is<Declaration>()) {
-      func.outputs.back()->as<Declaration>().arg_val = &func;
-    }
-  }
-
-  func.statements = base::wrap_unique(statements->Clone());
-  func.assign_scope(scope_);
-  func.VerifyType(ctx);
-  func.Validate(ctx);
-
-  if (ctx->num_errors() > 0) {
-    // TODO figure out the call stack of generic function requests and then
-    // print the relevant parts.
-    std::cerr << "While generating code for generic function:\n";
-    ctx->DumpErrors();
-    // TODO delete all the data held by iter->second
-    return nullptr;
-  }
-  return &func;
-}
-
 std::string FuncContent::to_string(size_t n) const {
   std::stringstream ss;
   ss << "(";
@@ -178,38 +122,12 @@ type::Type const *FuncContent::VerifyType(Context *ctx) {
     }
     if (err) { return nullptr; }
     auto *t = type::Func(std::move(input_type_vec), std::move(ret_types));
-    ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+    ctx->mod_->set_type(ctx->bound_constants_, this, t);
     return t;
   } else {
     Validate(ctx);
-    return ctx->mod_->type_of(this);
+    return ctx->type_of(this);
   }
-}
-
-type::Type const *Function::VerifyType(Context *ctx) {
-  bool is_generic = false;
-  // TODO this loop can be decided on much earlier.
-  for (const auto &input : inputs) {
-    if (input->const_) {
-      is_generic = true;
-      break;
-    }
-  }
-
-  if (is_generic) {
-    VERIFY_STARTING_CHECK_EXPR;
-    return type::Generic;
-  } else {
-    return FuncContent::VerifyType(ctx);
-  }
-}
-
-void Function::Validate(Context *ctx) {
-  // TODO this loop can be decided on much earlier.
-  for (const auto &input : inputs) {
-    if (input->const_) { return; }
-  }
-  FuncContent::Validate(ctx);
 }
 
 // TODO VerifyType has access to types of previous entries, but Validate
@@ -230,18 +148,18 @@ void FuncContent::Validate(Context *ctx) {
   statements->ExtractReturns(&rets);
   statements->Validate(ctx);
   std::set<const type::Type *> types;
-  for (auto *expr : rets) { types.insert(ctx->mod_->type_of(expr)); }
+  for (auto *expr : rets) { types.insert(ctx->type_of(expr)); }
 
   base::vector<const type::Type *> input_type_vec, output_type_vec;
   input_type_vec.reserve(inputs.size());
   for (const auto &input : inputs) {
-    input_type_vec.push_back(ctx->mod_->type_of(input.get()));
+    input_type_vec.push_back(ctx->type_of(input.get()));
   }
 
   if (return_type_inferred_) {
     switch (types.size()) {
       case 0:
-        ctx->mod_->set_type(ctx->mod_->bound_constants_, this,
+        ctx->mod_->set_type(ctx->bound_constants_, this,
                             type::Func(std::move(input_type_vec), {}));
         break;
       case 1: {
@@ -252,7 +170,7 @@ void FuncContent::Validate(Context *ctx) {
             outputs.push_back(
                 std::make_unique<Terminal>(TextSpan(), IR::Val(entry)));
           }
-          ctx->mod_->set_type(ctx->mod_->bound_constants_, this,
+          ctx->mod_->set_type(ctx->bound_constants_, this,
                               type::Func(std::move(input_type_vec), entries));
 
         } else {
@@ -270,7 +188,7 @@ void FuncContent::Validate(Context *ctx) {
       } break;
     }
   } else {
-    const auto &outs = ctx->mod_->type_of(this)->as<type::Function>().output;
+    const auto &outs = ctx->type_of(this)->as<type::Function>().output;
     switch (outs.size()) {
       case 0: {
         for (auto *expr : rets) {
@@ -280,14 +198,14 @@ void FuncContent::Validate(Context *ctx) {
       } break;
       case 1: {
         for (auto *expr : rets) {
-          if (ctx->mod_->type_of(expr) == outs[0]) { continue; }
+          if (ctx->type_of(expr) == outs[0]) { continue; }
           limit_to(StageRange::NoEmitIR());
           ctx->error_log_.ReturnTypeMismatch(outs[0], expr);
         }
       } break;
       default: {
         for (auto *expr : rets) {
-          auto *expr_type = ctx->mod_->type_of(expr);
+          auto *expr_type = ctx->type_of(expr);
           if (expr_type->is<type::Tuple>()) {
             const auto &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
@@ -374,25 +292,6 @@ GeneratedFunction *GeneratedFunction::Clone() const {
   return result;
 }
 
-Function *Function::Clone() const {
-  auto *result = new Function;
-  CloneTo(*this, result);
-  // TODO how to deal with cloning generated bindings?
-  return result;
-}
-
-base::vector<IR::Val> Function::EmitIR(Context *ctx) {
-  // TODO this loop can be decided on much earlier. Like at parse-time.
-  for (const auto &input : inputs) {
-    if (input->const_) { return {IR::Val::Func(this)}; }
-  }
-
-  // TODO this is a hack because I can't tell the difference between a generic
-  // function early enough. This really indicates that the code structure here
-  // is still wrong.
-  return generate(ctx)->EmitIR(ctx);
-}
-
 base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
   if (stage_range_.high < EmitStage) { return {}; }
 
@@ -405,7 +304,7 @@ base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
     }
 
     ir_func_ = ctx->mod_->AddFunc(
-        this, &ctx->mod_->type_of(this)->as<type::Function>(), std::move(args));
+        this, &ctx->type_of(this)->as<type::Function>(), std::move(args));
     ctx->mod_->to_complete_.push(this);
   }
 
@@ -423,7 +322,7 @@ void GeneratedFunction::CompleteBody(Module *mod) {
   stage_range_.low = EmitStage;
 
   if (stage_range_.high < EmitStage) { return; }
-  auto *t = mod->type_of(this);
+  auto *t = ctx.type_of(this);
   if (t == type::Err) { return; }
 
   CURRENT_FUNC(ir_func_) {
@@ -460,5 +359,4 @@ void GeneratedFunction::CompleteBody(Module *mod) {
 base::vector<IR::Register> GeneratedFunction::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
-base::vector<IR::Register> Function::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace AST

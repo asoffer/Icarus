@@ -41,7 +41,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on
       // assuming that this is an element of that enum type.
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, evaled_type);
+      ctx->mod_->set_type(ctx->bound_constants_, this, evaled_type);
       if (evaled_type->as<type::Enum>().IntValueOrFail(member_name) ==
           std::numeric_limits<size_t>::max()) {
         ctx->error_log_.MissingMember(span, member_name, evaled_type);
@@ -52,7 +52,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
   } else if (base_type->is<type::Struct>()) {
     const auto *member = base_type->as<type::Struct>().field(member_name);
     if (member != nullptr) {
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, member->type);
+      ctx->mod_->set_type(ctx->bound_constants_, this, member->type);
       return member->type;
 
     } else {
@@ -63,7 +63,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
   } else if (base_type == type::Module) {
     auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
                   ->GetType(member_name);
-    ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+    ctx->mod_->set_type(ctx->bound_constants_, this, t);
     if (t == nullptr) {
       NOT_YET("log an error");
       limit_to(StageRange::Nothing());
@@ -90,9 +90,9 @@ void Access::contextualize(
 
 base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
   auto reg            = operand->EmitLVal(ctx)[0];
-  type::Type const *t = type::Ptr(ctx->mod_->type_of(operand.get()));
+  type::Type const *t = type::Ptr(ctx->type_of(operand.get()));
   while (!t->as<type::Pointer>().pointee->is_big()) {
-    reg = IR::Load(reg, ctx->mod_->type_of(this));
+    reg = IR::Load(reg, ctx->type_of(this));
     t   = t->as<type::Pointer>().pointee;
   }
 
@@ -101,13 +101,13 @@ base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
 }
 
 base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
-  if (ctx->mod_->type_of(operand.get()) == type::Module) {
+  if (ctx->type_of(operand.get()) == type::Module) {
     return backend::EvaluateAs<Module const *>(operand.get(), ctx)
         ->GetDecl(member_name)
         ->EmitIR(ctx);
   }
 
-  auto *this_type = ctx->mod_->type_of(this);
+  auto *this_type = ctx->type_of(this);
   if (this_type->is<type::Enum>()) {
     return {this_type->as<type::Enum>().EmitLiteral(member_name)};
   } else {

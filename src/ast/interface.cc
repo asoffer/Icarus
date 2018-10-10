@@ -28,7 +28,7 @@ std::string Interface::to_string(size_t n) const {
 type::Type const *Interface::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
-  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Interface);
+  ctx->mod_->set_type(ctx->bound_constants_, this, type::Interface);
 
   for (auto &decl : decls_) {
     decl.VerifyType(ctx);
@@ -77,7 +77,7 @@ base::vector<IR::Val> AST::Interface::EmitIR(Context *ctx) {
   // }
   IR::Interface ifc;
   for (const auto &decl : decls_) {
-    ifc.field_map_.emplace(decl.identifier->token, ctx->mod_->type_of(&decl));
+    ifc.field_map_.emplace(decl.identifier->token, ctx->type_of(&decl));
   }
   return {IR::Val::Interface(std::move(ifc))};
 }

@@ -30,7 +30,7 @@ type::Type const *ArrayType::VerifyType(Context *ctx) {
   HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(data_type_);
 
-  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Type_);
+  ctx->mod_->set_type(ctx->bound_constants_, this, type::Type_);
 
   if (!length_->is<Hole>() && length_type != type::Int) {
     ctx->error_log_.ArrayIndexType(span);

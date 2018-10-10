@@ -34,7 +34,7 @@ T EvaluateAs(AST::Expression *expr, type::Type const *expr_type, Context *ctx) {
 
 template <typename T>
 T EvaluateAs(AST::Expression *expr, Context *ctx) {
-  return EvaluateAs<T>(expr, ctx->mod_->type_of(expr), ctx);
+  return EvaluateAs<T>(expr, ctx->type_of(expr), ctx);
 }
 
 }  // namespace backend

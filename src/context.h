@@ -12,8 +12,14 @@ struct Context {
   size_t num_errors() { return error_log_.size(); }
   void DumpErrors() { error_log_.Dump(); }
 
+  type::Type const *type_of(AST::Expression const *expr) const {
+    return mod_->type_of(bound_constants_, expr);
+  }
+
   error::Log error_log_;
   Module *mod_ = nullptr;
+
+  AST::BoundConstants bound_constants_;
 
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it

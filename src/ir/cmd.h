@@ -347,11 +347,6 @@ struct Cmd {
     RegisterOr<Module const *> val_;
   };
 
-  CMD(SetReturnGeneric) {
-    size_t ret_num_;
-    RegisterOr<AST::Function *> val_;
-  };
-
   CMD(SetReturnBlock) {
     size_t ret_num_;
     RegisterOr<BlockSequence> val_;
@@ -502,7 +497,6 @@ struct Cmd {
     SetReturnFunc set_return_func_;
     SetReturnScope set_return_scope_;
     SetReturnModule set_return_module_;
-    SetReturnGeneric set_return_generic_;
     SetReturnBlock set_return_block_;
   };
 
@@ -636,7 +630,6 @@ void SetReturnAddr(size_t n, RegisterOr<Addr> r);
 void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r);
 void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r);
 void SetReturnModule(size_t n, RegisterOr<Module const *> r);
-void SetReturnGeneric(size_t n, RegisterOr<AST::Function *> r);
 void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r);
 
 Register Load(Register r, type::Type const *t);

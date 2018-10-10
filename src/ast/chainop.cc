@@ -33,8 +33,8 @@ using base::check::Not;
 IR::RegisterOr<bool> EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
                                      IR::Val const &lhs_ir,
                                      IR::Val const &rhs_ir, Context *ctx) {
-  auto *lhs_type = ctx->mod_->type_of(chain_op->exprs[index].get());
-  auto *rhs_type = ctx->mod_->type_of(chain_op->exprs[index + 1].get());
+  auto *lhs_type = ctx->type_of(chain_op->exprs[index].get());
+  auto *rhs_type = ctx->type_of(chain_op->exprs[index + 1].get());
   auto op        = chain_op->ops[index];
 
   if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
@@ -186,7 +186,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
         expr_types.back() != type::OptBlock) {
       goto not_blocks;
     } else {
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, expr_types.back());
+      ctx->mod_->set_type(ctx->bound_constants_, this, expr_types.back());
       return expr_types.back();
     }
   }
@@ -208,7 +208,7 @@ not_blocks:
         }
       }
 
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, expr_types[0]);
+      ctx->mod_->set_type(ctx->bound_constants_, this, expr_types[0]);
 
       if (expr_types[0] != type::Bool &&
           !(expr_types[0] == type::Type_ && ops[0] == Language::Operator::Or) &&
@@ -289,7 +289,7 @@ not_blocks:
         }
       }
 
-      ctx->mod_->set_type(ctx->mod_->bound_constants_, this, type::Bool);
+      ctx->mod_->set_type(ctx->bound_constants_, this, type::Bool);
       return type::Bool;
     }
   }
@@ -318,7 +318,7 @@ void ChainOp::ExtractReturns(base::vector<const Expression *> *rets) const {
 }
 
 base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
-  auto *t = ctx->mod_->type_of(this);
+  auto *t = ctx->type_of(this);
   if (ops[0] == Language::Operator::Xor) {
     if (t == type::Bool) {
       return {IR::ValFrom(std::accumulate(

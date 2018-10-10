@@ -50,7 +50,7 @@ type::Type const *Switch::VerifyType(Context *ctx) {
     NOT_YET("handle type error");
     return nullptr;
   }
-  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+  ctx->mod_->set_type(ctx->bound_constants_, this, t);
   return t;
 }
 
@@ -124,7 +124,7 @@ base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
   IR::UncondJump(land_block);
 
   IR::BasicBlock::Current = land_block;
-  auto *t                 = ctx->mod_->type_of(this);
+  auto *t                 = ctx->type_of(this);
   return {IR::MakePhi(IR::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)};
 }
 

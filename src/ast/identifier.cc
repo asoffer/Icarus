@@ -46,7 +46,7 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
         // TODO what if you find a bound constant and some errror decls?
         for (auto const & [ d, v ] : ctx->mod_->bound_constants_.constants_) {
           if (d->identifier->token == token) {
-            ctx->mod_->set_type(ctx->mod_->bound_constants_, this, v.type);
+            ctx->mod_->set_type(ctx->bound_constants_, this, v.type);
             return v.type;
           }
         }
@@ -79,7 +79,7 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
   }
 
   if (t == nullptr) { return nullptr; }
-  ctx->mod_->set_type(ctx->mod_->bound_constants_, this, t);
+  ctx->mod_->set_type(ctx->bound_constants_, this, t);
   return t;
 }
 
@@ -91,9 +91,9 @@ base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
   if (ASSERT_NOT_NULL(decl)->const_) {
     return decl->EmitIR(ctx);
   } else if (decl->arg_val) {
-    return {IR::Val::Reg(decl->addr_, ctx->mod_->type_of(this))};
+    return {IR::Val::Reg(decl->addr_, ctx->type_of(this))};
   } else {
-    auto *t = ASSERT_NOT_NULL(ctx->mod_->type_of(this));
+    auto *t = ASSERT_NOT_NULL(ctx->type_of(this));
     return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], t), t)};
   }
 }
