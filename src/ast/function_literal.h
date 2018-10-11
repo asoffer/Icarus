@@ -18,15 +18,14 @@ namespace IR {
 struct Func;
 }  // namespace IR
 
-namespace type {
-extern Type const *Generic;
-}  // namespace type
-
 namespace AST {
-struct FuncContent : public Expression {
-  FuncContent() {}
-  FuncContent(FuncContent &&) noexcept = default;
-  ~FuncContent() override {}
+
+struct FunctionLiteral : public Expression {
+  // Represents a function with all constants bound to some value.
+  FunctionLiteral() {}
+  FunctionLiteral(FunctionLiteral &&) noexcept = default;
+  ~FunctionLiteral() override {}
+
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
   type::Type const *VerifyType(Context *) override;
@@ -36,10 +35,12 @@ struct FuncContent : public Expression {
   void contextualize(
       const Node *correspondant,
       const base::unordered_map<const Expression *, IR::Val> &) override;
-  FuncContent *Clone() const override;
 
-  base::vector<IR::Val> EmitIR(Context *) override { UNREACHABLE(); }
-  base::vector<IR::Register> EmitLVal(Context *) override { UNREACHABLE(); }
+  FunctionLiteral *Clone() const override;
+  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<IR::Register> EmitLVal(Context *) override;
+
+  void CompleteBody(Module *mod);
 
   std::unique_ptr<FnScope> fn_scope;
 
@@ -53,19 +54,7 @@ struct FuncContent : public Expression {
   base::unordered_map<std::string, size_t> lookup_;
   bool return_type_inferred_ = false;
   Module *module_            = nullptr;
-};
 
-struct GeneratedFunction : public FuncContent {
-  // Represents a function with all constants bound to some value.
-  GeneratedFunction() {}
-  GeneratedFunction(GeneratedFunction &&) noexcept = default;
-  ~GeneratedFunction() override {}
-
-  GeneratedFunction *Clone() const override;
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
-
-  void CompleteBody(Module *mod);
   IR::Func *ir_func_                = nullptr;
   bool completed_                   = false;
   BoundConstants const *bound_args_ = nullptr;

@@ -18,8 +18,7 @@ struct Function;
 }  // namespace type
 
 namespace AST {
-struct GeneratedFunction;
-struct FuncContent;
+struct FunctionLiteral;
 struct Expression;
 // Represents a particular call resolution.
 struct Binding {
@@ -42,7 +41,8 @@ struct Binding {
 
 // Represents a row in the dispatch table.
 struct DispatchEntry {
-  bool SetTypes(FuncContent *fn, type::Function const *fn_type, Context *ctx);
+  bool SetTypes(FunctionLiteral *fn, type::Function const *fn_type,
+                Context *ctx);
 
   static std::optional<DispatchEntry> Make(Expression *fn_option,
                                            type::Function const *fn_option_type,

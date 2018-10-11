@@ -40,7 +40,7 @@ Module::Module()
 Module::~Module() = default;
 
 IR::Func *Module::AddFunc(
-    AST::GeneratedFunction *fn_lit, type::Function const *fn_type,
+    AST::FunctionLiteral *fn_lit, type::Function const *fn_type,
     base::vector<std::pair<std::string, AST::Expression *>> args) {
   auto *result = fns_.emplace_back(std::make_unique<IR::Func>(
                                        this, fn_lit, fn_type, std::move(args)))

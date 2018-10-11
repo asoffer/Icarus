@@ -19,7 +19,7 @@ namespace AST {
 struct Declaration;
 struct Expression;
 struct Identifier;
-struct FuncContent;
+struct FunctionLiteral;
 }  // namespace AST
 
 namespace type {
@@ -79,8 +79,8 @@ struct FnScope : public ExecScope {
 
   void MakeAllStackAllocations(Module *mod);
 
-  type::Function *fn_type  = nullptr;  // TODO deprecate?
-  AST::FuncContent *fn_lit = nullptr;
+  type::Function *fn_type      = nullptr;  // TODO deprecate?
+  AST::FunctionLiteral *fn_lit = nullptr;
   base::vector<ExecScope *> innards_{1, this};
 };
 

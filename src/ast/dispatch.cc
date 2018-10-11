@@ -19,7 +19,7 @@ using base::check::Is;
 // it can it materializes a function literal and returns a pointer to it.
 // Otherwise, returns nullptr.
 static std::optional<BoundConstants> ComputeBoundConstants(
-    FuncContent *fn, const FnArgs<Expression *> &args, Binding *binding,
+    FunctionLiteral *fn, const FnArgs<Expression *> &args, Binding *binding,
     Context *ctx) {
   BoundConstants bc;
 
@@ -37,8 +37,7 @@ static std::optional<BoundConstants> ComputeBoundConstants(
 
     if (!binding->defaulted(i)) {
       if (fn->inputs[i]->type_expr != nullptr &&
-          ctx->type_of(fn->inputs[i]->type_expr.get()) ==
-              type::Interface) {
+          ctx->type_of(fn->inputs[i]->type_expr.get()) == type::Interface) {
         // TODO case where it is defaulted.
         // TODO expand all variants
         NOT_YET();
@@ -84,7 +83,7 @@ static std::optional<BoundConstants> ComputeBoundConstants(
   return bc;
 }
 
-bool DispatchEntry::SetTypes(FuncContent *fn, type::Function const *fn_type,
+bool DispatchEntry::SetTypes(FunctionLiteral *fn, type::Function const *fn_type,
                              Context *ctx) {
   const auto &input_types    = fn_type->input;
   bool bound_at_compile_time = (fn != nullptr);
@@ -95,8 +94,8 @@ bool DispatchEntry::SetTypes(FuncContent *fn, type::Function const *fn_type,
       continue;
     }
 
-    const type::Type *match = type::Meet(
-        ctx->type_of(binding_.exprs_.at(i).second), input_types[i]);
+    const type::Type *match =
+        type::Meet(ctx->type_of(binding_.exprs_.at(i).second), input_types[i]);
     if (match == nullptr) { return false; }
 
     binding_.exprs_.at(i).first = input_types.at(i);
@@ -124,14 +123,14 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   bound_fn             = std::visit(
       base::overloaded{
           [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
-          [](FuncContent *fn) -> Expression * { return fn; },
+          [](FunctionLiteral *fn) -> Expression * { return fn; },
           [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
           [](auto &&) -> Expression * { UNREACHABLE(); }},
       evaled_fn.at(0).value);
 
   size_t binding_size;
-  if (bound_fn->is<FuncContent>()) {
-    binding_size = std::max(bound_fn->as<FuncContent>().lookup_.size(),
+  if (bound_fn->is<FunctionLiteral>()) {
+    binding_size = std::max(bound_fn->as<FunctionLiteral>().lookup_.size(),
                             args.pos_.size() + args.named_.size());
   } else {
     // TODO must this be a builtin?
@@ -141,16 +140,16 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   Binding binding(bound_fn, fn_option_type, binding_size);
   binding.SetPositionalArgs(args);
 
-  if (bound_fn->is<FuncContent>() &&
-      !binding.SetNamedArgs(args, bound_fn->as<FuncContent>().lookup_)) {
+  if (bound_fn->is<FunctionLiteral>() &&
+      !binding.SetNamedArgs(args, bound_fn->as<FunctionLiteral>().lookup_)) {
     return std::nullopt;
   }
 
   DispatchEntry dispatch_entry(std::move(binding));
   dispatch_entry.call_arg_types_.pos_.resize(args.pos_.size(), nullptr);
 
-  if (bound_fn->is<FuncContent>()) {
-    auto *generic_fn = &bound_fn->as<FuncContent>();
+  if (bound_fn->is<FunctionLiteral>()) {
+    auto *generic_fn = &bound_fn->as<FunctionLiteral>();
 
     // TODO these are being ignored, which is definitely wrong for generics, but
     // we need to redo those anyway.
@@ -162,9 +161,9 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     dispatch_entry.binding_.fn_expr_ = generic_fn;
   }
 
-  FuncContent *fn = nullptr;
-  if (dispatch_entry.binding_.fn_expr_->is<GeneratedFunction>()) {
-    fn = &dispatch_entry.binding_.fn_expr_->as<GeneratedFunction>();
+  FunctionLiteral *fn = nullptr;
+  if (dispatch_entry.binding_.fn_expr_->is<FunctionLiteral>()) {
+    fn = &dispatch_entry.binding_.fn_expr_->as<FunctionLiteral>();
     for (const auto & [ key, val ] : fn->lookup_) {
       if (val < args.pos_.size()) { continue; }
       dispatch_entry.call_arg_types_.named_.emplace(key, nullptr);

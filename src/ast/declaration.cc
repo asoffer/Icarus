@@ -145,7 +145,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
       }
       return metadata;
     } else if constexpr (std::is_same_v<eval_t, Function *> ||
-                         std::is_same_v<eval_t, GeneratedFunction *>) {
+                         std::is_same_v<eval_t, FunctionLiteral *>) {
       metadata.reserve(eval->inputs.size());
       for (size_t i = 0; i < eval->inputs.size(); ++i) {
         auto *input_type = ctx->type_of(eval->inputs[i].get());
@@ -444,7 +444,7 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation
-    // in GenreatedFunction::EmitIR. Declaration::EmitIR is just used to set the
+    // in FunctionLiteral::EmitIR. Declaration::EmitIR is just used to set the
     // value.
     ASSERT(scope_->ContainingFnScope() != nullptr);
 

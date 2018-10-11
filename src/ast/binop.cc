@@ -224,7 +224,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     if ((lhs_type == type::Int && rhs_type == type::Int) ||                     \
         (lhs_type == type::Real && rhs_type == type::Real)) {                   \
       auto *t = (ret_type);                                                     \
-      ctx->mod_->set_type(ctx->bound_constants_, this, t);                \
+      ctx->mod_->set_type(ctx->bound_constants_, this, t);                      \
       return t;                                                                 \
     } else {                                                                    \
       FnArgs<Expression *> args;                                                \
@@ -693,8 +693,7 @@ base::vector<IR::Register> AST::Binop::EmitLVal(Context *ctx) {
     case Language::Operator::As: NOT_YET();
     case Language::Operator::Index:
       if (ctx->type_of(lhs.get())->is<type::Array>()) {
-        return {IR::Index(type::Ptr(ctx->type_of(this)),
-                          lhs->EmitLVal(ctx)[0],
+        return {IR::Index(type::Ptr(ctx->type_of(this)), lhs->EmitLVal(ctx)[0],
                           rhs->EmitIR(ctx)[0].reg_or<i32>())};
       }
       [[fallthrough]];

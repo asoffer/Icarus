@@ -16,7 +16,7 @@
 #include "type/type.h"
 
 namespace AST {
-std::string FuncContent::to_string(size_t n) const {
+std::string FunctionLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "(";
   if (!inputs.empty()) {
@@ -47,7 +47,7 @@ std::string FuncContent::to_string(size_t n) const {
   return ss.str();
 }
 
-void FuncContent::assign_scope(Scope *scope) {
+void FunctionLiteral::assign_scope(Scope *scope) {
   STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   if (!fn_scope) {
@@ -59,7 +59,7 @@ void FuncContent::assign_scope(Scope *scope) {
   statements->assign_scope(fn_scope.get());
 }
 
-type::Type const *FuncContent::VerifyType(Context *ctx) {
+type::Type const *FunctionLiteral::VerifyType(Context *ctx) {
   VERIFY_STARTING_CHECK_EXPR;
 
   base::vector<const type::Type *> input_type_vec;
@@ -132,7 +132,7 @@ type::Type const *FuncContent::VerifyType(Context *ctx) {
 
 // TODO VerifyType has access to types of previous entries, but Validate
 // doesnt.
-void FuncContent::Validate(Context *ctx) {
+void FunctionLiteral::Validate(Context *ctx) {
   STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &in : inputs) { in->Validate(ctx); }
   for (auto &out : outputs) { out->Validate(ctx); }
@@ -234,65 +234,56 @@ void FuncContent::Validate(Context *ctx) {
   }
 }
 
-void FuncContent::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
+void FunctionLiteral::SaveReferences(Scope *scope,
+                                     base::vector<IR::Val> *args) {
   for (auto &input : inputs) { input->SaveReferences(scope, args); }
   for (auto &output : outputs) { output->SaveReferences(scope, args); }
   statements->SaveReferences(fn_scope.get(), args);
 }
 
-void FuncContent::contextualize(
+void FunctionLiteral::contextualize(
     const Node *correspondant,
     const base::unordered_map<const Expression *, IR::Val> &replacements) {
   for (size_t i = 0; i < inputs.size(); ++i) {
-    inputs[i]->contextualize(correspondant->as<FuncContent>().inputs[i].get(),
-                             replacements);
+    inputs[i]->contextualize(
+        correspondant->as<FunctionLiteral>().inputs[i].get(), replacements);
   }
   for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i]->contextualize(correspondant->as<FuncContent>().outputs[i].get(),
-                              replacements);
+    outputs[i]->contextualize(
+        correspondant->as<FunctionLiteral>().outputs[i].get(), replacements);
   }
 
-  statements->contextualize(correspondant->as<FuncContent>().statements.get(),
-                            replacements);
+  statements->contextualize(
+      correspondant->as<FunctionLiteral>().statements.get(), replacements);
 }
 
-void FuncContent::ExtractReturns(base::vector<const Expression *> *rets) const {
+void FunctionLiteral::ExtractReturns(
+    base::vector<const Expression *> *rets) const {
   for (auto &in : inputs) { in->ExtractReturns(rets); }
   for (auto &out : outputs) { out->ExtractReturns(rets); }
 }
 
-namespace {
-void CloneTo(const FuncContent &from, FuncContent *to) {
-  to->module_               = from.module_;
-  to->span                  = from.span;
-  to->statements            = base::wrap_unique(from.statements->Clone());
-  to->lookup_               = from.lookup_;
-  to->return_type_inferred_ = from.return_type_inferred_;
-  to->inputs.reserve(from.inputs.size());
-  for (const auto &input : from.inputs) {
-    to->inputs.emplace_back(input->Clone());
+FunctionLiteral *FunctionLiteral::Clone() const {
+  auto *result                  = new FunctionLiteral;
+  result->module_               = module_;
+  result->span                  = span;
+  result->statements            = base::wrap_unique(statements->Clone());
+  result->lookup_               = lookup_;
+  result->return_type_inferred_ = return_type_inferred_;
+  result->inputs.reserve(inputs.size());
+  for (const auto &input : inputs) {
+    result->inputs.emplace_back(input->Clone());
   }
-  to->outputs.reserve(from.outputs.size());
-  for (const auto &output : from.outputs) {
-    to->outputs.emplace_back(output->Clone());
+  result->outputs.reserve(outputs.size());
+  for (const auto &output : outputs) {
+    result->outputs.emplace_back(output->Clone());
   }
-}
-}  // namespace
 
-FuncContent *FuncContent::Clone() const {
-  auto *result = new FuncContent;
-  CloneTo(*this, result);
-  return result;
-}
-
-GeneratedFunction *GeneratedFunction::Clone() const {
-  auto *result = new GeneratedFunction;
-  CloneTo(*this, result);
   result->ir_func_ = nullptr;
   return result;
 }
 
-base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
+base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
   if (stage_range_.high < EmitStage) { return {}; }
 
   if (!ir_func_) {
@@ -311,7 +302,7 @@ base::vector<IR::Val> GeneratedFunction::EmitIR(Context *ctx) {
   return {IR::Val::Func(ir_func_)};
 }
 
-void GeneratedFunction::CompleteBody(Module *mod) {
+void FunctionLiteral::CompleteBody(Module *mod) {
   if (completed_) { return; }
   completed_ = true;
 
@@ -356,7 +347,7 @@ void GeneratedFunction::CompleteBody(Module *mod) {
   }
 }
 
-base::vector<IR::Register> GeneratedFunction::EmitLVal(Context *) {
+base::vector<IR::Register> FunctionLiteral::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
 }  // namespace AST

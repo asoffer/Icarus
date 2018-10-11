@@ -26,7 +26,7 @@ struct Expression;
 struct ScopeLiteral;
 struct BlockLiteral;
 struct CodeBlock;
-struct FuncContent;
+struct FunctionLiteral;
 }  // namespace AST
 
 namespace IR {
@@ -49,7 +49,7 @@ struct Val {
   // TODO make trivial: interface
   std::variant<Register, IR::Addr, bool, char, double, i32, EnumVal, FlagsVal,
                const type::Type *, type::Struct *, IR::Func *,
-               AST::FuncContent *, AST::ScopeLiteral *, IR::Interface,
+               AST::FunctionLiteral *, AST::ScopeLiteral *, IR::Interface,
                AST::Expression *, BlockIndex, std::string_view, const Module *,
                BlockSequence, BuiltinGenericIndex, ForeignFn>
       value{false};
@@ -81,7 +81,7 @@ struct Val {
   static Val CodeBlock(const AST::CodeBlock &block);
   static Val Foreign(const type::Type *t, ForeignFn f) { return Val(t, f); }
   static Val Func(IR::Func *fn);  // TODO deprecate?
-  static Val Func(AST::FuncContent *fn);
+  static Val Func(AST::FunctionLiteral *fn);
   static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Block(AST::BlockLiteral *b);
   static Val BlockSeq(BlockSequence b);

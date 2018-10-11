@@ -217,8 +217,7 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
     // TODO struct is not exactly right. we really mean user-defined
     FnArgs<std::pair<Expression *, IR::Val>> args;
     args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx)[0])};
-    return EmitCallDispatch(args, dispatch_table_, ctx->type_of(this),
-                            ctx);
+    return EmitCallDispatch(args, dispatch_table_, ctx->type_of(this), ctx);
   }
 
   switch (op) {

@@ -30,7 +30,7 @@ struct Func;
 
 namespace AST {
 struct Expression;
-struct GeneratedFunction;
+struct FunctionLiteral;
 }  // namespace AST
 
 struct Module {
@@ -43,7 +43,7 @@ struct Module {
   static std::unique_ptr<Module> Compile(const frontend::Source::Name &src);
 
   IR::Func *AddFunc(
-      AST::GeneratedFunction *fn_lit, type::Function const *fn_type,
+      AST::FunctionLiteral *fn_lit, type::Function const *fn_type,
       base::vector<std::pair<std::string, AST::Expression *>> args);
   IR::Func *AddFunc(
       const type::Function *fn_type,
@@ -53,7 +53,7 @@ struct Module {
 
   void Complete();
 
-  std::queue<AST::GeneratedFunction *> to_complete_;
+  std::queue<AST::FunctionLiteral *> to_complete_;
   std::unique_ptr<DeclScope> global_;
 
   // Holds all constants defined in the module (both globals and scoped

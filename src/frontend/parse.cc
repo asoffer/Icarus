@@ -448,7 +448,7 @@ static std::unique_ptr<Node> BuildFunctionLiteral(
     TextSpan span, base::vector<std::unique_ptr<Declaration>> inputs,
     std::unique_ptr<Expression> output, std::unique_ptr<Statements> stmts,
     Context *ctx) {
-  auto fn     = std::make_unique<AST::GeneratedFunction>();
+  auto fn     = std::make_unique<AST::FunctionLiteral>();
   fn->module_ = ASSERT_NOT_NULL(ctx->mod_);
   for (auto &input : inputs) { input->arg_val = fn.get(); }
 

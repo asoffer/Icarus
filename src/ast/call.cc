@@ -131,9 +131,7 @@ static IR::BlockIndex CallLookupTest(
   // check the ones at the call-site that could be variants).
   auto next_binding = IR::Func::Current->AddBlock();
   for (size_t i = 0; i < args.pos_.size(); ++i) {
-    if (!ctx->type_of(args.pos_[i].first)->is<type::Variant>()) {
-      continue;
-    }
+    if (!ctx->type_of(args.pos_[i].first)->is<type::Variant>()) { continue; }
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(std::get<IR::Register>(args.pos_.at(i).second.value),
@@ -143,9 +141,7 @@ static IR::BlockIndex CallLookupTest(
   for (const auto & [ name, expr_and_val ] : args.named_) {
     auto iter = call_arg_type.find(name);
     if (iter == call_arg_type.named_.end()) { continue; }
-    if (!ctx->type_of(expr_and_val.first)->is<type::Variant>()) {
-      continue;
-    }
+    if (!ctx->type_of(expr_and_val.first)->is<type::Variant>()) { continue; }
     IR::BasicBlock::Current = IR::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(

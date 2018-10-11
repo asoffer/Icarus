@@ -20,7 +20,7 @@ static std::unique_ptr<IR::Func> ExprFn(type::Type const *expr_type,
       ctx->mod_, type::Func({}, {expr_type}),
       base::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
-    // TODO this is essentially a copy of the body of GeneratedFunction::EmitIR.
+    // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
     // Factor these out together.
     IR::BasicBlock::Current = fn->entry();
     // Leave space for allocas that will come later (added to the entry
@@ -111,7 +111,7 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr,
     } else if (t == type::Generic || t->is<type::Function>()) {
       // TODO mostly wrong.
       results.push_back(
-          IR::Val::Func(result_buf.get<AST::FuncContent *>(offset)));
+          IR::Val::Func(result_buf.get<AST::FunctionLiteral *>(offset)));
     } else if (t == type::Block || t == type::OptBlock) {
       results.push_back(
           IR::Val::BlockSeq(result_buf.get<IR::BlockSequence>(offset)));
