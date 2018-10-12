@@ -90,8 +90,8 @@ void Identifier::Validate(Context *ctx) {
 base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
   if (ASSERT_NOT_NULL(decl)->const_) {
     return decl->EmitIR(ctx);
-  } else if (decl->arg_val) {
-    return {IR::Val::Reg(decl->addr_, ctx->type_of(this))};
+  } else if (decl->is_arg_) {
+    return {IR::Val::Reg(ctx->addr(decl), ctx->type_of(this))};
   } else {
     auto *t = ASSERT_NOT_NULL(ctx->type_of(this));
     return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], t), t)};
@@ -101,7 +101,7 @@ base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
 base::vector<IR::Register> AST::Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
   ASSERT(!decl->const_);
-  return {decl->addr_};
+  return {ctx->addr(decl)};
 }
 
 }  // namespace AST

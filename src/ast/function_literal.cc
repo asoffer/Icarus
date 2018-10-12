@@ -325,15 +325,17 @@ void FunctionLiteral::CompleteBody(Module *mod) {
 
     // TODO arguments should be renumbered to not waste space on const values
     for (i32 i = 0; i < static_cast<i32>(inputs.size()); ++i) {
-      inputs[i]->addr_ = IR::Func::Current->Argument(i);
+      ctx.set_addr(inputs[i].get(), IR::Func::Current->Argument(i));
     }
 
     for (size_t i = 0; i < outputs.size(); ++i) {
       if (!outputs[i]->is<Declaration>()) { continue; }
-      outputs[i]->as<Declaration>().addr_ = IR::Func::Current->Return(i);
+
+      ctx.set_addr(&outputs[i]->as<Declaration>(),
+                   IR::Func::Current->Argument(i));
     }
 
-    fn_scope->MakeAllStackAllocations(mod);
+    fn_scope->MakeAllStackAllocations(&ctx);
 
     statements->EmitIR(&ctx);
     if (t->as<type::Function>().output.empty()) {

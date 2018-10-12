@@ -187,6 +187,11 @@ type::Type const *Module::type_of(AST::BoundConstants const &bc,
   return nullptr;
 }
 
+IR::Register Module::addr(AST::BoundConstants const &bc,
+                          AST::Declaration *decl) const {
+  return addr_.at(bc).at(decl);
+}
+
 void Module::set_type(AST::BoundConstants const &bc,
                       AST::Expression const *expr, type::Type const *t) {
   types_[bc].emplace(expr, t);

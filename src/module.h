@@ -76,7 +76,12 @@ struct Module {
                 type::Type const *);
   type::Type const *type_of(AST::BoundConstants const &bc,
                             AST::Expression const *expr) const;
+  IR::Register addr(AST::BoundConstants const &bc,
+                    AST::Declaration *decl) const;
   std::map<AST::BoundConstants, AST::NodeLookup<type::Type const *>> types_;
+  std::map<AST::BoundConstants,
+           base::unordered_map<AST::Declaration *, IR::Register>>
+      addr_;
 };
 
 #endif  // ICARUS_MODULE_H

@@ -418,7 +418,6 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
-    // TODO arg_val?
     auto[iter, newly_inserted] =
         ctx->mod_->bound_constants_.constants_.emplace(this, IR::Val::None());
 
@@ -431,7 +430,7 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
       if (ctx->num_errors()) { return {}; }
       return {iter->second};
     } else if (IsDefaultInitialized()) {
-      if (arg_val) {
+      if (is_arg_) {
         return {ctx->mod_->bound_constants_.constants_.at(this)};
       } else {
         NOT_YET(this);
@@ -450,14 +449,15 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
 
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized(this)) { return {}; }
-    auto *t = ctx->type_of(this);
+    auto *t   = ctx->type_of(this);
+    auto addr = ctx->addr(this);
     if (IsCustomInitialized()) {
       type::EmitCopyInit(ctx->type_of(init_val.get()), t,
-                         init_val->EmitIR(ctx)[0], addr_, ctx);
+                         init_val->EmitIR(ctx)[0], addr, ctx);
     } else {
-      t->EmitInit(addr_, ctx);
+      t->EmitInit(addr, ctx);
     }
-    return {IR::Val::Reg(addr_, t)};
+    return {IR::Val::Reg(addr, t)};
   }
 }
 }  // namespace AST

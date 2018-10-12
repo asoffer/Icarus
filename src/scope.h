@@ -77,7 +77,7 @@ struct FnScope : public ExecScope {
   FnScope(Scope *parent) : ExecScope(parent) {}
   ~FnScope() final {}
 
-  void MakeAllStackAllocations(Module *mod);
+  void MakeAllStackAllocations(Context *ctx);
 
   type::Function *fn_type      = nullptr;  // TODO deprecate?
   AST::FunctionLiteral *fn_lit = nullptr;

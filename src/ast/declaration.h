@@ -36,19 +36,11 @@ struct Declaration : public Expression {
   std::unique_ptr<Identifier> identifier;
   std::unique_ptr<Expression> type_expr, init_val;
 
-  // For non-const declarations, holds the address at which the value is being
-  // stored. For const values (declared with :: or ::=), holds the actual
-  // constant value.
-  IR::Register addr_ = IR::Register{-1};
-
-  bool const_ = false;
-
   // If it's an argument or return value, this points to the function for which
   // it's an argument. Otherwise this field is null.
-  // TODO whether this is null is computable from the type and that might be all
-  // we need.
-  Expression *arg_val = nullptr;
-  Module *mod_        = nullptr;
+  Module *mod_ = nullptr;
+  bool is_arg_ = false;
+  bool const_  = false;
 
   // These functions are confusingly named. They look correct in normal
   // declarations, but in function arguments, IsDefaultInitialized() is true iff

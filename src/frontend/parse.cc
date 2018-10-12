@@ -450,7 +450,7 @@ static std::unique_ptr<Node> BuildFunctionLiteral(
     Context *ctx) {
   auto fn     = std::make_unique<AST::FunctionLiteral>();
   fn->module_ = ASSERT_NOT_NULL(ctx->mod_);
-  for (auto &input : inputs) { input->arg_val = fn.get(); }
+  for (auto &input : inputs) { input->is_arg_ = fn.get(); }
 
   fn->span       = std::move(span);
   fn->inputs     = std::move(inputs);
@@ -467,7 +467,7 @@ static std::unique_ptr<Node> BuildFunctionLiteral(
   }
 
   for (auto &expr : fn->outputs) {
-    if (expr->is<Declaration>()) { expr->as<Declaration>().arg_val = fn.get(); }
+    if (expr->is<Declaration>()) { expr->as<Declaration>().is_arg_ = fn.get(); }
   }
 
   size_t i = 0;

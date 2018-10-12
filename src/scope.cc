@@ -3,7 +3,7 @@
 #include "ast/declaration.h"
 #include "ast/identifier.h"
 #include "context.h"
-#include "ir/func.h"
+#include "ir/cmd.h"
 #include "module.h"
 #include "type/function.h"
 #include "type/pointer.h"
@@ -46,17 +46,16 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
 }
 
 // TODO not sure you need to pass in the module.
-void FnScope::MakeAllStackAllocations(Module *mod) {
+void FnScope::MakeAllStackAllocations(Context *ctx) {
   for (auto *scope : innards_) {
     for (const auto & [ key, val ] : scope->decls_) {
       for (auto *decl : val) {
-        if (decl->const_ || decl->arg_val) { continue; }
+        if (decl->const_ || decl->is_arg_) { continue; }
 
         // TODO it's wrong to use a default BoundConstants, but it's even more
         // wrong to store the address on the declaration, so you can fix those
         // together.
-        ASSERT(decl->addr_ == IR::Register{-1});
-        decl->addr_ = IR::Alloca(mod->type_of(AST::BoundConstants{}, decl));
+        ctx->set_addr(decl, IR::Alloca(ctx->type_of(decl)));
       }
     }
   }

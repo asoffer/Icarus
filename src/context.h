@@ -4,7 +4,12 @@
 #include "base/container/vector.h"
 #include "base/debug.h"
 #include "error/log.h"
+#include "ir/register.h"
 #include "module.h"
+
+namespace type {
+struct Type;
+}  // namespace type
 
 struct Context {
   Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {}
@@ -12,9 +17,9 @@ struct Context {
   size_t num_errors() { return error_log_.size(); }
   void DumpErrors() { error_log_.Dump(); }
 
-  type::Type const *type_of(AST::Expression const *expr) const {
-    return mod_->type_of(bound_constants_, expr);
-  }
+  type::Type const *type_of(AST::Expression const *expr) const;
+  IR::Register addr(AST::Declaration *decl) const;
+  void set_addr(AST::Declaration *decl, IR::Register);
 
   error::Log error_log_;
   Module *mod_ = nullptr;
