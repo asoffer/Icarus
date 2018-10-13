@@ -38,13 +38,12 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
         // TODO could it be that evn though there is only one declaration,
         // there's a bound constant of the same name? If so, we need to deal
         // with this case.
-        auto const &typed_decl = potential_decls[0];
-        t                      = typed_decl.type_;
-        decl                   = typed_decl.decl_;
+        t    = potential_decls[0].type_;
+        decl = potential_decls[0].decl_;
       } break;
       case 0:
         // TODO what if you find a bound constant and some errror decls?
-        for (auto const & [ d, v ] : ctx->mod_->bound_constants_.constants_) {
+        for (auto const & [ d, v ] : ctx->mod_->constants_.constants_) {
           if (d->identifier->token == token) {
             ctx->mod_->set_type(ctx->bound_constants_, this, v.type);
             return v.type;
@@ -54,9 +53,8 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
         switch (potential_error_decls.size()) {
           case 0: ctx->error_log_.UndeclaredIdentifier(this); break;
           case 1: {
-            auto const &typed_decl = potential_decls[0];
-            t                      = typed_decl.type_;
-            decl                   = typed_decl.decl_;
+            t    = potential_decls[0].type_;
+            decl = potential_decls[0].decl_;
             HANDLE_CYCLIC_DEPENDENCIES;
           } break;
           default: NOT_YET();

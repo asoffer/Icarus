@@ -58,7 +58,7 @@ struct Module {
 
   // Holds all constants defined in the module (both globals and scoped
   // constants).
-  AST::BoundConstants bound_constants_;
+  AST::BoundConstants constants_;
 
   // TODO long-term this is not a good way to store these. We should probably
   // extract the declarations determine which are public, etc.

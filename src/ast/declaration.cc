@@ -416,30 +416,29 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
   base::defer d([&] { ctx->mod_ = old_mod; });
 
   if (const_) {
-    // TODO it's custom or default initialized. cannot be uninitialized. This
-    // should be verified by the type system.
-    auto[iter, newly_inserted] =
-        ctx->mod_->bound_constants_.constants_.emplace(this, IR::Val::None());
-
-    if (!newly_inserted) { return {iter->second}; }
-
-    if (IsCustomInitialized()) {
-      iter->second = backend::Evaluate(
-          init_val.get(), ASSERT_NOT_NULL(ctx->type_of(init_val.get())),
-          ctx)[0];
-      if (ctx->num_errors()) { return {}; }
-      return {iter->second};
-    } else if (IsDefaultInitialized()) {
-      if (is_arg_) {
-        return {ctx->mod_->bound_constants_.constants_.at(this)};
-      } else {
-        NOT_YET(this);
-      }
+    if (is_arg_) {
+      NOT_YET();
     } else {
-      UNREACHABLE();
+      auto[iter, newly_inserted] =
+          ctx->mod_->constants_.constants_.emplace(this, IR::Val::None());
+      if (!newly_inserted) { return {iter->second}; }
+
+      if (IsCustomInitialized()) {
+        iter->second = backend::Evaluate(
+            init_val.get(), ASSERT_NOT_NULL(ctx->type_of(init_val.get())),
+            ctx)[0];
+        if (ctx->num_errors()) { return {}; }
+        return {iter->second};
+      } else if (IsDefaultInitialized()) {
+        if (is_arg_) {
+          return {ctx->mod_->constants_.constants_.at(this)};
+        } else {
+          NOT_YET(this);
+        }
+      } else {
+        UNREACHABLE();
+      }
     }
-  } else if (scope_ == ctx->mod_->global_.get()) {
-    NOT_YET(to_string(0));
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation

@@ -77,7 +77,7 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
       [this]() { this->stage_range_.low = DoneTypeVerificationStage; });
   stage_range_.low = StartTypeVerificationStage;
 
-  auto *t = args_.VerifyType(ctx);
+  auto *t = ASSERT_NOT_NULL(args_.VerifyType(ctx));
   std::vector<type::Type const *> arg_types =
       t->is<type::Tuple>() ? t->as<type::Tuple>().entries_
                            : base::vector<type::Type const *>{t};
@@ -86,7 +86,7 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
     ASSERT(dispatch_tables_.size() == args_.exprs.size());
     for (size_t i = 0; i < args_.exprs.size(); ++i) {
       auto &arg      = args_.exprs[i];
-      auto &arg_type = arg_types[i];
+      auto *arg_type = arg_types[i];
       if (arg_type->is<type::Primitive>() || arg_type->is<type::Pointer>() ||
           arg_type->is<type::CharBuffer>()) {
         continue;

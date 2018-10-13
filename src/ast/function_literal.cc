@@ -177,7 +177,7 @@ void FunctionLiteral::Validate(Context *ctx) {
           outputs.push_back(
               std::make_unique<Terminal>(TextSpan(), IR::Val(one_type)));
           ctx->mod_->set_type(
-              ctx->mod_->bound_constants_, this,
+              ctx->bound_constants_, this,
               type::Func(std::move(input_type_vec), {one_type}));
         }
       } break;
