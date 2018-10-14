@@ -19,7 +19,6 @@ std::string BlockLiteral::to_string(size_t n) const {
 }
 
 void BlockLiteral::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
   before_->assign_scope(body_scope_.get());
@@ -27,12 +26,13 @@ void BlockLiteral::assign_scope(Scope *scope) {
 }
 
 type::Type const *BlockLiteral::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
+  before_->VerifyType(ctx);
+  after_->VerifyType(ctx);
+
   return required_ ? type::Block : type::OptBlock;
 }
 
 void BlockLiteral::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   // Because this returns void, we need to ignore the return value. Wrapping in
   // an immediately invoked lambda.
   [&]() -> type::Type const * {

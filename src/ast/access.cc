@@ -1,6 +1,5 @@
 #include "ast/access.h"
 
-#include "ast/stages.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "ir/cmd.h"
@@ -24,13 +23,11 @@ const type::Type *DereferenceAll(const type::Type *t) {
 }  // namespace
 
 void Access::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   operand->assign_scope(scope);
 }
 
 type::Type const *Access::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
   VERIFY_OR_RETURN(operand_type, operand);
 
   auto base_type = DereferenceAll(operand_type);
@@ -76,10 +73,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
   }
 }
 
-void Access::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-  operand->Validate(ctx);
-}
+void Access::Validate(Context *ctx) { operand->Validate(ctx); }
 
 void Access::contextualize(
     const Node *correspondant,

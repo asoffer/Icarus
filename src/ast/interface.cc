@@ -8,7 +8,6 @@
 
 namespace AST {
 void Interface::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
   for (auto &d : decls_) { d.assign_scope(body_scope_.get()); }
@@ -26,8 +25,6 @@ std::string Interface::to_string(size_t n) const {
 }
 
 type::Type const *Interface::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
   ctx->mod_->set_type(ctx->bound_constants_, this, type::Interface);
 
   for (auto &decl : decls_) {
@@ -40,7 +37,6 @@ type::Type const *Interface::VerifyType(Context *ctx) {
 }
 
 void Interface::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &decl : decls_) { decl.Validate(ctx); }
 }
 

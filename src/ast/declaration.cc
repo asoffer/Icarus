@@ -194,7 +194,6 @@ std::string Declaration::to_string(size_t n) const {
 }
 
 void Declaration::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   ASSERT(scope != nullptr);
   scope_ = scope;
   scope_->InsertDecl(this);
@@ -213,8 +212,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 
   type::Type const *this_type = nullptr;
   {
-    VERIFY_STARTING_CHECK_EXPR;
-
     identifier->decl = this;
 
     type::Type const *type_expr_type = nullptr;
@@ -307,7 +304,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
       }
     }
   }
-  identifier->VerifyType(ctx);
+
   base::vector<TypedDecl> decls_to_check;
   {
     auto[good_decls_to_check, error_decls_to_check] =
@@ -362,7 +359,6 @@ void Declaration::Validate(Context *ctx) {
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   base::defer d([&] { ctx->mod_ = old_mod; });
 
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   if (type_expr) { type_expr->Validate(ctx); }
   if (init_val) { init_val->Validate(ctx); }
 }
@@ -390,7 +386,6 @@ void Declaration::contextualize(
 }
 
 void Declaration::ExtractReturns(base::vector<const Expression *> *rets) const {
-  identifier->ExtractReturns(rets);
   if (type_expr) { type_expr->ExtractReturns(rets); }
   if (init_val) { init_val->ExtractReturns(rets); }
 }

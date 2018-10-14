@@ -14,10 +14,7 @@
 #include "type/type.h"
 
 namespace AST {
-void Identifier::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
-  scope_ = scope;
-}
+void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
 
 Identifier *Identifier::Clone() const {
   auto *result  = new Identifier;
@@ -27,8 +24,6 @@ Identifier *Identifier::Clone() const {
 }
 
 type::Type const *Identifier::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
   type::Type const *t = nullptr;
   if (decl == nullptr) {
     auto[potential_decls, potential_error_decls] =
@@ -81,9 +76,7 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
   return t;
 }
 
-void Identifier::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-}
+void Identifier::Validate(Context *ctx) {}
 
 base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
   if (ASSERT_NOT_NULL(decl)->const_) {

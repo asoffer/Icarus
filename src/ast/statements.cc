@@ -1,6 +1,5 @@
 #include "ast/statements.h"
 
-#include "ast/stages.h"
 #include "ir/val.h"
 
 namespace AST {
@@ -15,20 +14,11 @@ std::string Statements::to_string(size_t n) const {
 }
 
 void Statements::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   for (auto &stmt : content_) { stmt->assign_scope(scope); }
 }
 
 type::Type const *Statements::VerifyType(Context *ctx) {
-  if (stage_range_.high < StartTypeVerificationStage ||
-      stage_range_.low >= DoneTypeVerificationStage) {
-    return nullptr;
-  }
-  base::defer deferred(
-      [this]() { this->stage_range_.low = DoneTypeVerificationStage; });
-  stage_range_.low = StartTypeVerificationStage;
-
   for (auto &stmt : content_) {
     stmt->VerifyType(ctx);
     limit_to(stmt);
@@ -37,7 +27,6 @@ type::Type const *Statements::VerifyType(Context *ctx) {
 }
 
 void Statements::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &stmt : content_) { stmt->Validate(ctx); }
 }
 

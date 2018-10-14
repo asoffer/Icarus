@@ -9,7 +9,6 @@
 
 namespace AST {
 void ArrayLiteral::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   for (auto &el : elems_) { el->assign_scope(scope); }
 }
@@ -29,8 +28,6 @@ std::string ArrayLiteral::to_string(size_t n) const {
 }
 
 type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
   if (elems_.empty()) {
     ctx->mod_->set_type(ctx->bound_constants_, this, type::EmptyArray);
     return type::EmptyArray;
@@ -65,7 +62,6 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
 }
 
 void ArrayLiteral::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &elem : elems_) { elem->Validate(ctx); }
 }
 

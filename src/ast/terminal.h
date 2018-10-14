@@ -2,7 +2,6 @@
 #define ICARUS_AST_TERMINAL_H
 
 #include "ast/expression.h"
-#include "ast/stages.h"
 #include "ir/val.h"
 #include "module.h"
 

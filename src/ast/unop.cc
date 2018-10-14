@@ -48,15 +48,11 @@ std::string Unop::to_string(size_t n) const {
 }
 
 void Unop::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   operand->assign_scope(scope);
 }
 
-void Unop::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-  operand->Validate(ctx);
-}
+void Unop::Validate(Context *ctx) { operand->Validate(ctx); }
 
 void Unop::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
@@ -106,7 +102,6 @@ Unop *Unop::Clone() const {
 }
 
 type::Type const *Unop::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
   VERIFY_OR_RETURN(operand_type, operand);
 
   limit_to(operand);

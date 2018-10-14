@@ -10,7 +10,6 @@
 #include "base/container/unordered_map.h"
 #include "base/container/vector.h"
 
-#include "ast/stages.h"
 #include "base/util.h"
 #include "frontend/text_span.h"
 
@@ -25,6 +24,10 @@ struct Val;
 }  // namespace IR
 
 namespace AST {
+struct StageRange {
+  static int NoEmitIR() { return 1; }
+  static int Nothing() { return 2; }
+};
 struct Expression;
 
 struct Node : public base::Cast<Node> {
@@ -41,14 +44,7 @@ struct Node : public base::Cast<Node> {
   virtual void ExtractReturns(base::vector<const Expression *> *) const = 0;
 
   template <typename T>
-  void limit_to(T &&t) {
-    if constexpr (std::is_same_v<std::decay_t<T>, int>) {
-      stage_range_.high = std::min(t, stage_range_.high);
-    } else {
-      stage_range_.high =
-          std::min(stage_range_.high, std::forward<T>(t)->stage_range_.high);
-    }
-  }
+  void limit_to(T &&t) {}
 
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}
@@ -60,7 +56,6 @@ struct Node : public base::Cast<Node> {
   }
 
   Scope *scope_ = nullptr;
-  StageRange stage_range_;
   TextSpan span;
 };
 }  // namespace AST

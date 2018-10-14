@@ -3,7 +3,6 @@
 #include <sstream>
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"
-#include "ast/stages.h"
 #include "ast/terminal.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
@@ -48,7 +47,6 @@ std::string FunctionLiteral::to_string(size_t n) const {
 }
 
 void FunctionLiteral::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   if (!fn_scope) {
     fn_scope         = scope->add_child<FnScope>();
@@ -60,8 +58,6 @@ void FunctionLiteral::assign_scope(Scope *scope) {
 }
 
 type::Type const *FunctionLiteral::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
   base::vector<const type::Type *> input_type_vec;
   input_type_vec.reserve(inputs.size());
   for (auto &input : inputs) {
@@ -133,7 +129,8 @@ type::Type const *FunctionLiteral::VerifyType(Context *ctx) {
 // TODO VerifyType has access to types of previous entries, but Validate
 // doesnt.
 void FunctionLiteral::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
+  if (validated_) return;
+  validated_ = true;
   for (auto &in : inputs) { in->Validate(ctx); }
   for (auto &out : outputs) { out->Validate(ctx); }
 
@@ -284,8 +281,6 @@ FunctionLiteral *FunctionLiteral::Clone() const {
 }
 
 base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
-  if (stage_range_.high < EmitStage) { return {}; }
-
   if (!ir_func_) {
     base::vector<std::pair<std::string, Expression *>> args;
     args.reserve(inputs.size());
@@ -307,12 +302,9 @@ void FunctionLiteral::CompleteBody(Module *mod) {
   completed_ = true;
 
   Context ctx(mod);
-  statements->VerifyType(&ctx);
-  statements->Validate(&ctx);
-  limit_to(statements);
-  stage_range_.low = EmitStage;
+  // TODO have validate return a bool distinguishing if there are errors and
+  // whether or not we can proceed.
 
-  if (stage_range_.high < EmitStage) { return; }
   auto *t = ctx.type_of(this);
   if (t == type::Err) { return; }
 

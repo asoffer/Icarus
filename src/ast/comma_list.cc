@@ -18,14 +18,11 @@ std::string CommaList::to_string(size_t n) const {
 }
 
 void CommaList::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
 type::Type const *CommaList::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
   base::vector<const type::Type *> expr_types;
   expr_types.reserve(exprs.size());
   for (auto &expr : exprs) {
@@ -48,7 +45,6 @@ type::Type const *CommaList::VerifyType(Context *ctx) {
 }
 
 void CommaList::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &expr : exprs) { expr->Validate(ctx); }
 }
 

@@ -14,15 +14,12 @@ std::string ArrayType::to_string(size_t n) const {
 }
 
 void ArrayType::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   length_->assign_scope(scope);
   data_type_->assign_scope(scope);
 }
 
 type::Type const *ArrayType::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
   auto *length_type = length_->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
   limit_to(length_);
@@ -41,7 +38,6 @@ type::Type const *ArrayType::VerifyType(Context *ctx) {
 }
 
 void ArrayType::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   length_->Validate(ctx);
   data_type_->Validate(ctx);
 }

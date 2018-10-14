@@ -2,7 +2,6 @@
 #define ICARUS_AST_VERIFY_MACROS_H
 
 #include "ast/declaration.h"
-#include "ast/stages.h"
 #include "context.h"
 
 #define HANDLE_CYCLIC_DEPENDENCIES                                             \
@@ -30,31 +29,12 @@
     return nullptr;                                                            \
   } while (false)
 
-// TODO this is probably not necessary if we treat this as a relatively pure
-// tree? We could likely just store the type of a declaration and nowhere else.
-#define VERIFY_STARTING_CHECK_EXPR                                             \
-  base::defer defer_##__LINE__(                                                \
-      [this]() { this->stage_range_.low = DoneTypeVerificationStage; });       \
-  if (stage_range_.high < StartTypeVerificationStage) { return nullptr; }      \
-  if (stage_range_.low >= DoneTypeVerificationStage) {                         \
-    return ASSERT_NOT_NULL(ctx->type_of(this));                                \
-  }                                                                            \
-  if (stage_range_.low == StartTypeVerificationStage) {                        \
-    ctx->cyc_dep_vec_ = ctx->error_log_.CyclicDependency();                    \
-    HANDLE_CYCLIC_DEPENDENCIES;                                                \
-  }                                                                            \
-  stage_range_.low = StartTypeVerificationStage
-
 #define VERIFY_OR_RETURN(expr_type, expr)                                      \
   type::Type const *expr_type = nullptr;                                       \
   do {                                                                         \
     expr_type = expr->VerifyType(ctx);                                         \
     HANDLE_CYCLIC_DEPENDENCIES;                                                \
-    if (expr_type == nullptr) {                                                \
-      /* TODO Maybe this should be Nothing() */                                \
-      limit_to(expr->stage_range_.high);                                       \
-      return nullptr;                                                          \
-    }                                                                          \
+    if (expr_type == nullptr) { return nullptr; }                              \
   } while (false)
 
 #define RETURN_IF_NULL(expr)                                                   \

@@ -11,7 +11,6 @@ std::string MatchDeclaration::to_string(size_t n) const {
 
 type::Type const *MatchDeclaration::VerifyType(Context *ctx) {
   {
-    VERIFY_STARTING_CHECK_EXPR;
     type_expr->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(type_expr);

@@ -23,8 +23,9 @@ Scope::AllDeclsWithId(std::string const &id, Context *ctx) {
        scope_ptr      = scope_ptr->parent) {
     auto iter = scope_ptr->decls_.find(id);
     if (iter == scope_ptr->decls_.end()) { continue; }
-    for (const auto &decl : iter->second) {
-      auto *t = decl->VerifyType(ctx);
+    for (auto *decl : iter->second) {
+      auto *t = ctx->type_of(decl);
+      if (t == nullptr) { t = decl->VerifyType(ctx); }
       (t == nullptr ? matching_error_decls : matching_decls)
           .emplace_back(t, decl);
     }

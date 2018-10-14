@@ -24,7 +24,6 @@ std::string Switch::to_string(size_t n) const {
 }
 
 void Switch::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   for (auto & [ expr, cond ] : cases_) {
     expr->assign_scope(scope);
@@ -33,7 +32,6 @@ void Switch::assign_scope(Scope *scope) {
 }
 
 type::Type const *Switch::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
   std::unordered_set<const type::Type *> types;
   for (auto & [ expr, cond ] : cases_) {
     auto *cond_type = cond->VerifyType(ctx);
@@ -55,8 +53,6 @@ type::Type const *Switch::VerifyType(Context *ctx) {
 }
 
 void Switch::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-
   for (auto & [ expr, cond ] : cases_) {
     expr->Validate(ctx);
     cond->Validate(ctx);

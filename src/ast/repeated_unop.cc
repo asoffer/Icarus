@@ -30,15 +30,11 @@ RepeatedUnop::RepeatedUnop(TextSpan const &text_span) {
 }
 
 void RepeatedUnop::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   args_.assign_scope(scope);
 }
 
-void RepeatedUnop::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-  args_.Validate(ctx);
-}
+void RepeatedUnop::Validate(Context *ctx) { args_.Validate(ctx); }
 
 void RepeatedUnop::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   args_.SaveReferences(scope, args);
@@ -69,14 +65,7 @@ RepeatedUnop *RepeatedUnop::Clone() const {
 }
 
 type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
-  if (stage_range_.high < StartTypeVerificationStage ||
-      stage_range_.low >= DoneTypeVerificationStage) {
-    return nullptr;
-  }
-  base::defer deferred(
-      [this]() { this->stage_range_.low = DoneTypeVerificationStage; });
-  stage_range_.low = StartTypeVerificationStage;
-
+  // TDODO don't make an assertion. propogate nulls (errors) out.
   auto *t = ASSERT_NOT_NULL(args_.VerifyType(ctx));
   std::vector<type::Type const *> arg_types =
       t->is<type::Tuple>() ? t->as<type::Tuple>().entries_

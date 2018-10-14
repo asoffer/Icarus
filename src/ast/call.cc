@@ -376,15 +376,12 @@ std::string Call::to_string(size_t n) const {
 }
 
 void Call::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   fn_->assign_scope(scope);
   args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
 }
 
 type::Type const *Call::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
   auto arg_types =
       args_.Transform([ctx, this](auto &arg) { return arg->VerifyType(ctx); });
   // TODO handle cyclic dependencies in call arguments.
@@ -480,7 +477,6 @@ type::Type const *Call::VerifyType(Context *ctx) {
 }
 
 void Call::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   fn_->Validate(ctx);
   args_.Apply([ctx](auto &arg) { arg->Validate(ctx); });
 }

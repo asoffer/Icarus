@@ -4,12 +4,10 @@
 
 namespace AST {
 Terminal::Terminal(const TextSpan &span, IR::Val val) : Expression(span) {
-  stage_range_.low = DoneBodyValidationStage;
-  value            = std::move(val);
+  value = std::move(val);
 }
 
 void Terminal::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   if (value.type != type::Type_) { return; }
 }

@@ -28,21 +28,17 @@ std::string StructLiteral::to_string(size_t n) const {
 }
 
 void StructLiteral::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_     = scope;
   type_scope = scope->add_child<DeclScope>();
   for (auto &f : fields_) { f->assign_scope(type_scope.get()); }
 }
 
 type::Type const *StructLiteral::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
   ctx->mod_->set_type(ctx->bound_constants_, this, type::Type_);
   return type::Type_;
 }
 
 void StructLiteral::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
-
   for (auto &field : fields_) {
     if (field->type_expr) { field->type_expr->VerifyType(ctx); }
     field->Validate(ctx);

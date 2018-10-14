@@ -56,8 +56,9 @@ struct FunctionLiteral : public Expression {
   Module *module_            = nullptr;
 
   IR::Func *ir_func_                = nullptr;
-  bool completed_                   = false;
   BoundConstants const *bound_args_ = nullptr;
+  bool validated_                   = false;
+  bool completed_                   = false;
 };
 }  // namespace AST
 

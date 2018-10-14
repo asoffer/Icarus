@@ -1,7 +1,6 @@
 #include "ast/import.h"
 
 #include <future>
-#include "ast/stages.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "base/guarded.h"
@@ -14,12 +13,7 @@ std::string Import::to_string(size_t n) const {
   return "import " + operand_->to_string(n);
 }
 void Import::assign_scope(Scope *scope) {
-  if (stage_range_.high < AssignScopeStage ||
-      stage_range_.low >= AssignScopeStage) {
-    return;
-  }
-  stage_range_.low = AssignScopeStage;
-  scope_           = scope;
+  scope_ = scope;
   operand_->assign_scope(scope);
 }
 

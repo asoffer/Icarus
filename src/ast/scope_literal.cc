@@ -20,21 +20,18 @@ std::string ScopeLiteral::to_string(size_t n) const {
 }
 
 void ScopeLiteral::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
   for (auto &decl : decls_) { decl.assign_scope(body_scope_.get()); }
 }
 
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
   ctx->mod_->set_type(ctx->bound_constants_, this, type::Scp({}));
   // TODO
   return type::Scp({});
 }
 
 void ScopeLiteral::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &decl : decls_) {
     decl.VerifyType(ctx);
     decl.Validate(ctx);

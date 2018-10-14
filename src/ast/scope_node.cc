@@ -7,7 +7,6 @@
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
 #include "ast/scope_literal.h"
-#include "ast/stages.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "context.h"
@@ -44,7 +43,6 @@ std::string ScopeNode::to_string(size_t n) const {
 }
 
 void ScopeNode::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   for (auto & [ block_expr, block_node ] : block_map_) {
     block_expr->assign_scope(scope);
@@ -57,8 +55,6 @@ void ScopeNode::assign_scope(Scope *scope) {
 }
 
 type::Type const *ScopeNode::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
   for (auto & [ block_expr, block_node ] : block_map_) {
     block_node.stmts_.VerifyType(ctx);
     limit_to(&block_node.stmts_);
@@ -77,7 +73,6 @@ type::Type const *ScopeNode::VerifyType(Context *ctx) {
 }
 
 void ScopeNode::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   // TODO
 }
 

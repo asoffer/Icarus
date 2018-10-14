@@ -10,9 +10,7 @@ namespace AST {
 // point this can be replaced with inheriting from Expression.
 struct Hole : public Identifier {
   Hole() = delete;
-  Hole(const TextSpan &span) : Identifier(span, "--") {
-    stage_range_.low = DoneBodyValidationStage;
-  }
+  Hole(const TextSpan &span) : Identifier(span, "--") {}
   ~Hole() override {}
 
   void assign_scope(Scope *scope) { scope_ = scope; }

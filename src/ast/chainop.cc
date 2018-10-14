@@ -146,13 +146,11 @@ std::string ChainOp::to_string(size_t n) const {
 }
 
 void ChainOp::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
 type::Type const *ChainOp::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
   bool found_err = false;
 
   std::vector<type::Type const *> expr_types;
@@ -296,7 +294,6 @@ not_blocks:
 }
 
 void ChainOp::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   for (auto &expr : exprs) { expr->Validate(ctx); }
 }
 

@@ -91,15 +91,12 @@ std::string Binop::to_string(size_t n) const {
 }
 
 void Binop::assign_scope(Scope *scope) {
-  STAGE_CHECK(AssignScopeStage, AssignScopeStage);
   scope_ = scope;
   lhs->assign_scope(scope);
   rhs->assign_scope(scope);
 }
 
 type::Type const *Binop::VerifyType(Context *ctx) {
-  VERIFY_STARTING_CHECK_EXPR;
-
   auto *lhs_type = lhs->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
   auto *rhs_type = rhs->VerifyType(ctx);
@@ -353,7 +350,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 }
 
 void Binop::Validate(Context *ctx) {
-  STAGE_CHECK(StartBodyValidationStage, DoneBodyValidationStage);
   lhs->Validate(ctx);
   rhs->Validate(ctx);
 }
