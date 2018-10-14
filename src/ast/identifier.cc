@@ -39,7 +39,7 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
       case 0:
         // TODO what if you find a bound constant and some errror decls?
         for (auto const & [ d, v ] : ctx->mod_->constants_.constants_) {
-          if (d->identifier->token == token) {
+          if (d->id_ == token) {
             ctx->mod_->set_type(ctx->bound_constants_, this, v.type);
             return v.type;
           }

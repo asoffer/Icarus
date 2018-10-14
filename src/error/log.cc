@@ -560,15 +560,16 @@ void Log::Dump() const {
   }
 
   for (const auto & [ decl, ids ] : out_of_order_decls_) {
-    std::cerr << "Declaration of '" << decl->identifier->token
+    std::cerr << "Declaration of '" << decl->id_
               << "' is used before it is defined (which is only allowed for "
                  "constants).\n\n";
 
     auto[iset, underlines] = LinesToShow(ids);
     iset.insert(Interval{decl->span.start.line_num - 1,
                          decl->span.finish.line_num + 2});
+    // TODO highlight just the identifier
     underlines.emplace_back(
-        decl->identifier->span,
+        decl->span,
         DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
 
     WriteSource(std::cerr, *ids.front()->span.source, iset,

@@ -89,7 +89,7 @@ void AST::StructLiteral::Complete(type::Struct *s) {
       // a subsequent call to CreateStructField.
       IR::CreateStructField(
           s, field->type_expr->EmitIR(&ctx)[0].reg_or<type::Type const *>());
-      IR::SetStructFieldName(s, field->identifier->token);
+      IR::SetStructFieldName(s, field->id_);
     }
     IR::ReturnJump();
   }

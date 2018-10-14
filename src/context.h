@@ -32,7 +32,7 @@ struct Context {
   // down here. That way, we can bubble up from the dependency until we see it
   // again, at each step adding the nodes to the error log involved in the
   // dependency. Once complete, we reset this to null
-  base::vector<AST::Identifier *> *cyc_dep_vec_ = nullptr;
+  base::vector<AST::Expression *> *cyc_dep_vec_ = nullptr;
 };
 
 #endif  // ICARUS_CONTEXT_H

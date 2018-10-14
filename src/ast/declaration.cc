@@ -151,7 +151,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
         auto *input_type = ctx->type_of(eval->inputs[i].get());
         metadata.push_back(ArgumentMetaData{
             /*        type = */ input_type,
-            /*        name = */ eval->inputs[i]->identifier->token,
+            /*        name = */ eval->inputs[i]->id_,
             /* has_default = */ !eval->inputs[i]->IsDefaultInitialized()});
       }
       // TODO Note the trickiness in names above. has_default if it isn't
@@ -180,7 +180,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
 
 std::string Declaration::to_string(size_t n) const {
   std::stringstream ss;
-  ss << identifier->to_string(n);
+  ss << id_;
   if (type_expr) {
     ss << (const_ ? " :: " : ": ") << type_expr->to_string(n);
     if (init_val) { ss << " = " << init_val->to_string(n); }
@@ -197,7 +197,6 @@ void Declaration::assign_scope(Scope *scope) {
   ASSERT(scope != nullptr);
   scope_ = scope;
   scope_->InsertDecl(this);
-  identifier->assign_scope(scope);
   if (type_expr) { type_expr->assign_scope(scope); }
   if (init_val) { init_val->assign_scope(scope); }
 }
@@ -212,8 +211,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 
   type::Type const *this_type = nullptr;
   {
-    identifier->decl = this;
-
     type::Type const *type_expr_type = nullptr;
     type::Type const *init_val_type  = nullptr;
     if (type_expr) {
@@ -231,7 +228,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
       } else {
         ctx->error_log_.NotAType(type_expr.get());
         limit_to(StageRange::Nothing());
-        identifier->limit_to(StageRange::Nothing());
       }
     }
 
@@ -244,7 +240,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         if (!Inferrable(init_val_type)) {
           ctx->error_log_.UninferrableType(init_val->span);
           limit_to(StageRange::Nothing());
-          identifier->limit_to(StageRange::Nothing());
 
         } else if (!type_expr) {
           this_type = init_val_type;
@@ -256,8 +251,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     if (type_expr && type_expr_type == type::Type_ && init_val &&
         !init_val->is<Hole>()) {
       if (!type::CanCastImplicitly(init_val_type, this_type)) {
-        ctx->error_log_.AssignmentTypeMismatch(identifier.get(),
-                                               init_val.get());
+        ctx->error_log_.AssignmentTypeMismatch(this, init_val.get());
         limit_to(StageRange::Nothing());
       }
     }
@@ -268,7 +262,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         if (init_val_type == nullptr) {
           this_type = nullptr;
           limit_to(StageRange::Nothing());
-          identifier->limit_to(StageRange::Nothing());
         }
 
       } else {  // I := --
@@ -276,7 +269,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         this_type = init_val_type = nullptr;
         limit_to(StageRange::Nothing());
         init_val->limit_to(StageRange::Nothing());
-        identifier->limit_to(StageRange::Nothing());
       }
     }
 
@@ -293,12 +285,13 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
       return nullptr;
     }
 
-    if (identifier->is<Hole>()) {
+    if (id_.empty()) {
       if (this_type == type::Module) {
         // TODO check shadowing against other modules?
         // TODO what if no init val is provded? what if not constant?
         ctx->mod_->embedded_modules_.insert(
             backend::EvaluateAs<const Module *>(init_val.get(), ctx));
+        return type::Module;
       } else {
         NOT_YET(this_type);
       }
@@ -308,9 +301,9 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
   base::vector<TypedDecl> decls_to_check;
   {
     auto[good_decls_to_check, error_decls_to_check] =
-        scope_->AllDeclsWithId(identifier->token, ctx);
+        scope_->AllDeclsWithId(id_, ctx);
     size_t num_total = good_decls_to_check.size() + error_decls_to_check.size();
-    auto iter        = scope_->child_decls_.find(identifier->token);
+    auto iter        = scope_->child_decls_.find(id_);
 
     bool has_children = (iter != scope_->child_decls_.end());
     if (has_children) { num_total += iter->second.size(); }
@@ -348,7 +341,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     // higher-up-the-scope-tree identifier as the shadow when something else on
     // a different branch could find it unambiguously. It's also just a hack
     // from the get-go so maybe we should just do it the right way.
-    scope_->shadowed_decls_.insert(identifier->token);
+    scope_->shadowed_decls_.insert(id_);
     limit_to(StageRange::Nothing());
     return nullptr;
   }
@@ -364,7 +357,6 @@ void Declaration::Validate(Context *ctx) {
 }
 
 void Declaration::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  identifier->SaveReferences(scope, args);
   if (type_expr) { type_expr->SaveReferences(scope, args); }
   if (init_val) { init_val->SaveReferences(scope, args); }
 }
@@ -372,9 +364,6 @@ void Declaration::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
 void Declaration::contextualize(
     const Node *correspondant,
     const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  identifier->contextualize(correspondant->as<Declaration>().identifier.get(),
-                            replacements);
-
   if (type_expr) {
     type_expr->contextualize(correspondant->as<Declaration>().type_expr.get(),
                              replacements);
@@ -400,7 +389,6 @@ void Declaration::CloneTo(Declaration *result) const {
   result->span       = span;
   result->const_     = const_;
   result->mod_       = mod_;
-  result->identifier = base::wrap_unique(identifier->Clone());
   result->type_expr =
       type_expr ? base::wrap_unique(type_expr->Clone()) : nullptr;
   result->init_val = init_val ? base::wrap_unique(init_val->Clone()) : nullptr;

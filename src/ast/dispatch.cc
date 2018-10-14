@@ -103,7 +103,7 @@ bool DispatchEntry::SetTypes(FunctionLiteral *fn, type::Function const *fn_type,
       call_arg_types_.pos_.at(i) = match;
     } else {
       if (bound_at_compile_time) {
-        auto iter = call_arg_types_.find(fn->inputs[i]->identifier->token);
+        auto iter = call_arg_types_.find(fn->inputs[i]->id_);
         ASSERT(iter != call_arg_types_.named_.end());
         iter->second = match;
       } else {
@@ -127,7 +127,6 @@ std::optional<DispatchEntry> DispatchEntry::Make(
           [](auto &&) -> Expression * { UNREACHABLE(); }},
       evaled_fn.at(0).value);
 
-  LOG << bound_fn;
   size_t binding_size;
   if (bound_fn->is<FunctionLiteral>()) {
     binding_size = std::max(bound_fn->as<FunctionLiteral>().lookup_.size(),
@@ -210,9 +209,8 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
   for (auto &decl : decls) {
     if (decl.type_ == nullptr) { return {}; }
     fn_types.push_back(decl.type_);
-    if (auto maybe_dispatch_entry =
-            DispatchEntry::Make(decl.decl_->identifier.get(),
-                                &decl.type_->as<type::Function>(), args, ctx)) {
+    if (auto maybe_dispatch_entry = DispatchEntry::Make(
+            decl.decl_, &decl.type_->as<type::Function>(), args, ctx)) {
       table.InsertEntry(std::move(maybe_dispatch_entry).value());
     }
   }

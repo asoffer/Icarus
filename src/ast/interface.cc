@@ -73,7 +73,7 @@ base::vector<IR::Val> AST::Interface::EmitIR(Context *ctx) {
   // }
   IR::Interface ifc;
   for (const auto &decl : decls_) {
-    ifc.field_map_.emplace(decl.identifier->token, ctx->type_of(&decl));
+    ifc.field_map_.emplace(decl.id_, ctx->type_of(&decl));
   }
   return {IR::Val::Interface(std::move(ifc))};
 }

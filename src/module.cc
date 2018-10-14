@@ -82,8 +82,7 @@ const type::Type *Module::GetType(const std::string &name) const {
 AST::Declaration *Module::GetDecl(const std::string &name) const {
   for (const auto &stmt : statements_.content_) {
     if (!stmt->is<AST::Declaration>()) { continue; }
-    const auto &id = stmt->as<AST::Declaration>().identifier->token;
-    if (id != name) { continue; }
+    if (stmt->as<AST::Declaration>().id_ != name) { continue; }
     return &stmt->as<AST::Declaration>();
   }
   return nullptr;
@@ -141,7 +140,7 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
   for (const auto &stmt : ctx.mod_->statements_.content_) {
     if (!stmt->is<AST::Declaration>()) { continue; }
     auto &decl = stmt->as<AST::Declaration>();
-    if (decl.identifier->token != "main") { continue; }
+    if (decl.id_ != "main") { continue; }
     auto f = backend::EvaluateAs<IR::AnyFunc>(decl.init_val.get(), &ctx);
     ASSERT(f.is_fn_);
     auto ir_fn = f.fn_;

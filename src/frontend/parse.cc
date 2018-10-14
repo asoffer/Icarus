@@ -397,12 +397,13 @@ static std::unique_ptr<Node> BuildArrayType(
 template <bool IsConst>
 static std::unique_ptr<Node> BuildDeclaration(
     base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  auto op                = nodes[1]->as<frontend::Token>().op;
-  auto decl              = std::make_unique<Declaration>(IsConst);
-  decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
-  decl->identifier       = move_as<Identifier>(nodes[0]);
-  decl->mod_             = ctx->mod_;
-  decl->identifier->decl = decl.get();
+  auto op    = nodes[1]->as<frontend::Token>().op;
+  auto decl  = std::make_unique<Declaration>(IsConst);
+  decl->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  if (nodes[0]->is<Identifier>()) {
+    decl->id_ = std::move(nodes[0]->as<Identifier>().token);
+  }
+  decl->mod_ = ctx->mod_;
 
   if (op == Language::Operator::Colon ||
       op == Language::Operator::DoubleColon) {
@@ -416,12 +417,13 @@ static std::unique_ptr<Node> BuildDeclaration(
 
 static std::unique_ptr<Node> BuildMatchDeclaration(
     base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  auto decl              = std::make_unique<AST::MatchDeclaration>();
-  decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
-  decl->identifier       = move_as<Identifier>(nodes[2]);
-  decl->identifier->decl = decl.get();
-  decl->mod_             = ctx->mod_;
-  decl->type_expr        = move_as<Expression>(nodes[0]);
+  auto decl  = std::make_unique<AST::MatchDeclaration>();
+  decl->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  if (nodes[2]->is<Identifier>()) {
+    decl->id_ = std::move(nodes[2]->as<Identifier>().token);
+  }
+  decl->mod_      = ctx->mod_;
+  decl->type_expr = move_as<Expression>(nodes[0]);
   return decl;
 }
 
@@ -471,9 +473,7 @@ static std::unique_ptr<Node> BuildFunctionLiteral(
   }
 
   size_t i = 0;
-  for (const auto &input : fn->inputs) {
-    fn->lookup_[input->identifier->token] = i++;
-  }
+  for (const auto &input : fn->inputs) { fn->lookup_[input->id_] = i++; }
 
   return fn;
 }
@@ -590,8 +590,8 @@ static std::unique_ptr<Node> BuildEmptyCodeBlock(
 namespace {
 std::unique_ptr<AST::Node> BuildScopeNode(
     base::vector<std::unique_ptr<AST::Node>> nodes, Context *ctx) {
-  auto scope_name  = move_as<AST::Expression>(nodes[0]);
-  auto stmts       = nodes[4]->as<AST::Statements>();
+  auto scope_name = move_as<AST::Expression>(nodes[0]);
+  auto &stmts      = nodes[4]->as<AST::Statements>();
   auto scope_node  = std::make_unique<AST::ScopeNode>();
   scope_node->span = TextSpan(scope_name->span, stmts.span);
   scope_node->blocks_.push_back(std::move(scope_name));
@@ -880,9 +880,9 @@ static std::unique_ptr<AST::Node> BuildBlock(
   for (auto &stmt : stmts->content_) {
     if (stmt->is<AST::Declaration>()) {
       auto decl = move_as<AST::Declaration>(stmt);
-      if (decl->identifier->token == "before") {
+      if (decl->id_ == "before") {
         block_expr->before_ = std::move(decl);
-      } else if (decl->identifier->token == "after") {
+      } else if (decl->id_ == "after") {
         block_expr->after_ = std::move(decl);
       }
     } else {

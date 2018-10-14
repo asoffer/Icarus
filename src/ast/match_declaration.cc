@@ -6,7 +6,7 @@
 
 namespace AST {
 std::string MatchDeclaration::to_string(size_t n) const {
-  return type_expr->to_string(n) + "``" + identifier->to_string(n);
+  return type_expr->to_string(n) + "``" + id_;
 }
 
 type::Type const *MatchDeclaration::VerifyType(Context *ctx) {
@@ -18,7 +18,6 @@ type::Type const *MatchDeclaration::VerifyType(Context *ctx) {
     // matter?
     ctx->mod_->set_type(ctx->bound_constants_, this, type::Interface);
   }
-  identifier->VerifyType(ctx);
   return type::Interface;
 }
 

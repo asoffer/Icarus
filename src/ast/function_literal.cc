@@ -285,7 +285,7 @@ base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
     base::vector<std::pair<std::string, Expression *>> args;
     args.reserve(inputs.size());
     for (const auto &input : inputs) {
-      args.emplace_back(input->as<Declaration>().identifier->token,
+      args.emplace_back(input->as<Declaration>().id_,
                         input->as<Declaration>().init_val.get());
     }
 

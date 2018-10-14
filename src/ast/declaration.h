@@ -2,7 +2,6 @@
 #define ICARUS_AST_DECLARATION_H
 
 #include "ast/expression.h"
-#include "ast/identifier.h"
 #include "ir/register.h"
 
 struct Module;
@@ -33,7 +32,7 @@ struct Declaration : public Expression {
   base::vector<IR::Val> EmitIR(Context *) override;
   base::vector<IR::Register> EmitLVal(Context *) override { UNREACHABLE(this); }
 
-  std::unique_ptr<Identifier> identifier;
+  std::string id_;
   std::unique_ptr<Expression> type_expr, init_val;
 
   // If it's an argument or return value, this points to the function for which

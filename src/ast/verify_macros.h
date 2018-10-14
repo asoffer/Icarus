@@ -7,22 +7,14 @@
 #define HANDLE_CYCLIC_DEPENDENCIES                                             \
   do {                                                                         \
     if (ctx->cyc_dep_vec_ == nullptr) { break; }                               \
-    if constexpr (std::is_same_v<decltype(this), Identifier *>) {              \
-      auto *this_as_id = reinterpret_cast<Identifier *>(this);                 \
-      if (!ctx->cyc_dep_vec_->empty() &&                                       \
-          this_as_id == ctx->cyc_dep_vec_->front()) {                          \
+    if constexpr (std::is_same_v<std::decay_t<decltype(this)>,                 \
+                                 Identifier *> ||                              \
+                  std::is_same_v<std::decay_t<decltype(this)>,                 \
+                                 Declaration *>) {                             \
+      if (!ctx->cyc_dep_vec_->empty() && this == ctx->cyc_dep_vec_->front()) { \
         ctx->cyc_dep_vec_ = nullptr;                                           \
       } else {                                                                 \
-        ctx->cyc_dep_vec_->push_back(this_as_id);                              \
-      }                                                                        \
-    } else if constexpr (std::is_same_v<decltype(this), Declaration *>) {      \
-      auto *this_as_decl =                                                     \
-          reinterpret_cast<Declaration *>(this)->identifier.get();             \
-      if (!ctx->cyc_dep_vec_->empty() &&                                       \
-          this_as_decl == ctx->cyc_dep_vec_->front()) {                        \
-        ctx->cyc_dep_vec_ = nullptr;                                           \
-      } else {                                                                 \
-        ctx->cyc_dep_vec_->push_back(this_as_decl);                            \
+        ctx->cyc_dep_vec_->push_back(this);                                    \
       }                                                                        \
     }                                                                          \
     limit_to(StageRange::Nothing());                                           \

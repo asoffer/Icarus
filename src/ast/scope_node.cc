@@ -155,8 +155,8 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     // TODO better search
 
     for (const auto &decl : scope_lit->decls_) {
-      if (decl.identifier->token != block_node_name &&
-          !(decl.identifier->token == "self" && expr == blocks_[0].get())) {
+      if (decl.id_ != block_node_name &&
+          !(decl.id_ == "self" && expr == blocks_[0].get())) {
         continue;
       }
       auto block_seq =
@@ -172,13 +172,13 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
       ASSERT(success);
       auto *block_data = &iter->second;
 
-      if (decl.identifier->token == "self") {
+      if (decl.id_ == "self") {
         // TODO check constness as part of type-checking
         IR::UncondJump(block_data->before);
         top_block_node_name = block_node_name;
         name_to_data.emplace(block_node_name, block_data);
       } else {
-        name_to_data.emplace(decl.identifier->token, block_data);
+        name_to_data.emplace(decl.id_, block_data);
       }
       break;
     }

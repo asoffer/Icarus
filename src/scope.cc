@@ -9,9 +9,9 @@
 #include "type/pointer.h"
 
 void Scope::InsertDecl(AST::Declaration *decl) {
-  decls_[decl->identifier->token].push_back(decl);
+  decls_[decl->id_].push_back(decl);
   for (auto *scope_ptr = parent; scope_ptr; scope_ptr = scope_ptr->parent) {
-    scope_ptr->child_decls_[decl->identifier->token].push_back(decl);
+    scope_ptr->child_decls_[decl->id_].push_back(decl);
   }
 }
 
