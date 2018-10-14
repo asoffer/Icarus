@@ -18,6 +18,8 @@ struct Context {
   void DumpErrors() { error_log_.Dump(); }
 
   type::Type const *type_of(AST::Expression const *expr) const;
+  void set_type(AST::Expression const *expr, type::Type const *t);
+
   IR::Register addr(AST::Declaration *decl) const;
   void set_addr(AST::Declaration *decl, IR::Register);
 

@@ -25,13 +25,12 @@ static std::optional<BoundConstants> ComputeBoundConstants(
 
   // TODO handle declaration order
   for (size_t i = 0; i < fn->inputs.size(); ++i) {
-    auto *input_type = fn->inputs[i]->VerifyType(ctx);
+    auto *input_type = ctx->type_of(fn->inputs[i].get());
     if (input_type == nullptr) { return std::nullopt; }
 
-    if ((binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) ||
-        (fn->inputs[i]->const_ && !binding->defaulted(i))) {
-      // TODO maybe send back an explanation of why this didn't match. Or
-      // perhaps continue to get better diagnostics?
+    if (binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) {
+      // Tried to call using a default argument, but the function did not
+      // provide a default.
       return std::nullopt;
     }
 
@@ -128,6 +127,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
           [](auto &&) -> Expression * { UNREACHABLE(); }},
       evaled_fn.at(0).value);
 
+  LOG << bound_fn;
   size_t binding_size;
   if (bound_fn->is<FunctionLiteral>()) {
     binding_size = std::max(bound_fn->as<FunctionLiteral>().lookup_.size(),
@@ -156,6 +156,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     auto bound_constants =
         ComputeBoundConstants(generic_fn, args, &dispatch_entry.binding_, ctx);
     if (!bound_constants) { return std::nullopt; }
+    dispatch_entry.bound_constants_ = *std::move(bound_constants);
 
     // TODO can generate fail? Probably
     dispatch_entry.binding_.fn_expr_ = generic_fn;

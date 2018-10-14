@@ -6,8 +6,9 @@
 #include <variant>
 #include "base/container/unordered_map.h"
 
+#include "ast/bound_constants.h"
+#include "ast/fn_args.h"
 #include "base/container/map.h"
-#include "fn_args.h"
 
 struct Context;
 struct Scope;
@@ -49,6 +50,7 @@ struct DispatchEntry {
                                            const FnArgs<Expression *> &args,
                                            Context *ctx);
 
+  BoundConstants bound_constants_;
   FnArgs<const type::Type *> call_arg_types_;
   Binding binding_;
 

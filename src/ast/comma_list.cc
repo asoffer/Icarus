@@ -26,7 +26,9 @@ type::Type const *CommaList::VerifyType(Context *ctx) {
   base::vector<const type::Type *> expr_types;
   expr_types.reserve(exprs.size());
   for (auto &expr : exprs) {
+    LOG << "---";
     auto *expr_type = expr->VerifyType(ctx);
+    LOG << this << ": " << expr_type << "(" << (uintptr_t)expr.get() << ")";
     HANDLE_CYCLIC_DEPENDENCIES;
     limit_to(expr);
     if (expr_type == nullptr) { return nullptr; }
