@@ -106,6 +106,10 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
       size_t offset  = 0;
       auto *fn_scope = ASSERT_NOT_NULL(scope_->ContainingFnScope());
       auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit);
+      LOG << fn_lit;
+      LOG << ctx->bound_constants_;
+      Context c(ctx->mod_);
+      LOG << c.type_of(fn_lit);
       auto *fn_type =
           &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
       for (size_t i = 0; i < args_.exprs.size(); ++i) {

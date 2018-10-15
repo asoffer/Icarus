@@ -400,7 +400,7 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
 
   if (const_) {
     if (is_arg_) {
-      NOT_YET();
+      return {ctx->bound_constants_.constants_.at(this)};
     } else {
       auto[iter, newly_inserted] =
           ctx->mod_->constants_.constants_.emplace(this, IR::Val::None());

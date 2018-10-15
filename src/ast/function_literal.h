@@ -40,7 +40,7 @@ struct FunctionLiteral : public Expression {
   base::vector<IR::Val> EmitIR(Context *) override;
   base::vector<IR::Register> EmitLVal(Context *) override;
 
-  void CompleteBody(Module *mod);
+  void CompleteBody(Context *ctx);
 
   std::unique_ptr<FnScope> fn_scope;
 
@@ -55,10 +55,8 @@ struct FunctionLiteral : public Expression {
   bool return_type_inferred_ = false;
   Module *module_            = nullptr;
 
-  IR::Func *ir_func_                = nullptr;
-  BoundConstants const *bound_args_ = nullptr;
-  bool validated_                   = false;
-  bool completed_                   = false;
+  IR::Func *ir_func_ = nullptr;
+  bool validated_    = false;
 };
 }  // namespace AST
 

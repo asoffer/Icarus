@@ -31,9 +31,11 @@ namespace backend {
 
 void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
              const base::vector<IR::Addr> &ret_slots,
-             backend::ExecContext *ctx) {
-  if (fn->gened_fn_) { fn->gened_fn_->CompleteBody(fn->mod_); }
-  ctx->call_stack.emplace(fn, arguments);
+             backend::ExecContext *exec_ctx) {
+  // TODO what about bound constants?
+  Context ctx(fn->mod_);
+  if (fn->gened_fn_) { fn->gened_fn_->CompleteBody(&ctx); }
+  exec_ctx->call_stack.emplace(fn, arguments);
 
   // TODO log an error if you're asked to execute a function that had an
   // error.
@@ -46,12 +48,12 @@ void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
   base::untyped_buffer ret_buffer(offset);
 
   while (true) {
-    auto block_index = ctx->ExecuteBlock(ret_slots);
+    auto block_index = exec_ctx->ExecuteBlock(ret_slots);
     if (block_index.is_default()) {
-      ctx->call_stack.pop();
+      exec_ctx->call_stack.pop();
       return;
     } else {
-      ctx->call_stack.top().MoveTo(block_index);
+      exec_ctx->call_stack.top().MoveTo(block_index);
     }
   }
 }

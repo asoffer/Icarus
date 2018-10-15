@@ -291,21 +291,16 @@ base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
 
     ir_func_ = ctx->mod_->AddFunc(
         this, &ctx->type_of(this)->as<type::Function>(), std::move(args));
-    ctx->mod_->to_complete_.push(this);
   }
 
   return {IR::Val::Func(ir_func_)};
 }
 
-void FunctionLiteral::CompleteBody(Module *mod) {
-  if (completed_) { return; }
-  completed_ = true;
-
-  Context ctx(mod);
+void FunctionLiteral::CompleteBody(Context *ctx) {
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
-  auto *t = ctx.type_of(this);
+  auto *t = ctx->type_of(this);
   if (t == type::Err) { return; }
 
   CURRENT_FUNC(ir_func_) {
@@ -317,19 +312,19 @@ void FunctionLiteral::CompleteBody(Module *mod) {
 
     // TODO arguments should be renumbered to not waste space on const values
     for (i32 i = 0; i < static_cast<i32>(inputs.size()); ++i) {
-      ctx.set_addr(inputs[i].get(), IR::Func::Current->Argument(i));
+      ctx->set_addr(inputs[i].get(), IR::Func::Current->Argument(i));
     }
 
     for (size_t i = 0; i < outputs.size(); ++i) {
       if (!outputs[i]->is<Declaration>()) { continue; }
 
-      ctx.set_addr(&outputs[i]->as<Declaration>(),
-                   IR::Func::Current->Argument(i));
+      ctx->set_addr(&outputs[i]->as<Declaration>(),
+                    IR::Func::Current->Argument(i));
     }
 
-    fn_scope->MakeAllStackAllocations(&ctx);
+    fn_scope->MakeAllStackAllocations(ctx);
 
-    statements->EmitIR(&ctx);
+    statements->EmitIR(ctx);
     if (t->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
       // between here and where you call SetReturn

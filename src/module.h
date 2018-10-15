@@ -53,7 +53,12 @@ struct Module {
 
   void Complete();
 
-  std::queue<AST::FunctionLiteral *> to_complete_;
+  std::map<AST::BoundConstants,
+           std::unordered_set<AST::FunctionLiteral const *>>
+      completed_;
+  std::queue<std::pair<AST::BoundConstants, AST::FunctionLiteral *>>
+      to_complete_;
+
   std::unique_ptr<DeclScope> global_;
 
   // Holds all constants defined in the module (both globals and scoped
