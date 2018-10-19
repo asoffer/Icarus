@@ -140,7 +140,6 @@ static std::pair<const Module *, std::string> GetQualifiedIdentifier(
 
 base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(blocks_[0].get(), ctx);
-
   auto land_block = IR::Func::Current->AddBlock();
 
   struct BlockData {
@@ -149,12 +148,12 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   base::unordered_map<AST::BlockLiteral *, BlockData> lit_to_data;
   base::unordered_map<std::string, BlockData *> name_to_data;
   std::string top_block_node_name;
-  for (const auto & [ expr, block_node ] : block_map_) {
+  for (auto const & [ expr, block_node ] : block_map_) {
     auto[mod, block_node_name] = GetQualifiedIdentifier(expr, ctx);
 
     // TODO better search
 
-    for (const auto &decl : scope_lit->decls_) {
+    for (auto const &decl : scope_lit->decls_) {
       if (decl.id_ != block_node_name &&
           !(decl.id_ == "self" && expr == blocks_[0].get())) {
         continue;
@@ -186,7 +185,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
 
   // TODO can we just store "self" in name_to_data to avoid this nonsense?
   base::unordered_map<BlockData *, BlockNode *> data_to_node;
-  for (const auto &block : blocks_) {
+  for (auto const &block : blocks_) {
     auto *block_data = block->is<Identifier>()
                            ? name_to_data.at(block->as<Identifier>().token)
                            : name_to_data.at(top_block_node_name);

@@ -65,7 +65,7 @@ RepeatedUnop *RepeatedUnop::Clone() const {
 }
 
 type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
-  // TDODO don't make an assertion. propogate nulls (errors) out.
+  // TODO don't make an assertion. propogate nulls (errors) out.
   auto *t = ASSERT_NOT_NULL(args_.VerifyType(ctx));
   std::vector<type::Type const *> arg_types =
       t->is<type::Tuple>() ? t->as<type::Tuple>().entries_
@@ -106,10 +106,10 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
       size_t offset  = 0;
       auto *fn_scope = ASSERT_NOT_NULL(scope_->ContainingFnScope());
       auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit);
-      LOG << fn_lit;
-      LOG << ctx->bound_constants_;
-      Context c(ctx->mod_);
-      LOG << c.type_of(fn_lit);
+      // LOG << fn_lit;
+      // LOG << ctx->bound_constants_;
+      // Context c(ctx->mod_);
+      // LOG << c.type_of(fn_lit);
       auto *fn_type =
           &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
       for (size_t i = 0; i < args_.exprs.size(); ++i) {

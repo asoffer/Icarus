@@ -27,15 +27,13 @@ void ScopeLiteral::assign_scope(Scope *scope) {
 
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
   ctx->mod_->set_type(ctx->bound_constants_, this, type::Scp({}));
+
   // TODO
   return type::Scp({});
 }
 
 void ScopeLiteral::Validate(Context *ctx) {
-  for (auto &decl : decls_) {
-    decl.VerifyType(ctx);
-    decl.Validate(ctx);
-  }
+  for (auto &decl : decls_) { decl.Validate(ctx); }
 }
 
 void ScopeLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {

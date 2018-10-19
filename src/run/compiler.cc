@@ -61,6 +61,7 @@ int RunCompiler() {
     // TODO make this an actual error?
     std::cerr << "No compiled module has a `main` function.\n";
   } else if (!found_errors) {
+    ASSERT(main_fn->mod_ != nullptr);
     backend::ExecContext exec_ctx;
     backend::Execute(main_fn, base::untyped_buffer(0), {}, &exec_ctx);
   }
