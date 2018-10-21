@@ -20,7 +20,7 @@
 #include "type/variant.h"
 
 namespace IR {
-Register Tup(base::vector<Val> const &entries);
+RegisterOr<type::Type const *> Tup(base::vector<Val> const &entries);
 }  // namespace IR
 
 namespace type {

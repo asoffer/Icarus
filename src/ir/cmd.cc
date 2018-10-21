@@ -275,7 +275,15 @@ DEFINE_CMD2(NeFlags, ne_flags_, FlagsVal, Bool, bool,
 DEFINE_CMD2(NeAddr, ne_addr_, Addr, Bool, bool, std::not_equal_to<Addr>{});
 DEFINE_CMD2(Arrow, arrow_, type::Type const *, Type_, type::Type const *,
             [](type::Type const *lhs, type::Type const *rhs) {
-              return type::Func({lhs}, {rhs});
+              base::vector<type::Type const *> ins =
+                  lhs->is<type::Tuple>()
+                      ? lhs->as<type::Tuple>().entries_
+                      : base::vector<type::Type const *>{lhs};
+              base::vector<type::Type const *> outs =
+                  rhs->is<type::Tuple>()
+                      ? rhs->as<type::Tuple>().entries_
+                      : base::vector<type::Type const *>{rhs};
+              return type::Func(std::move(ins), std::move(outs));
             });
 #undef DEFINE_CMD2
 
@@ -319,7 +327,17 @@ Register FinalizeTuple(Register r) {
   return cmd.result;
 }
 
-Register Tup(base::vector<Val> const &entries) {
+RegisterOr<type::Type const *> Tup(base::vector<Val> const &entries) {
+  if (std::all_of(entries.begin(), entries.end(), [](IR::Val const &v) {
+        return std::holds_alternative<type::Type const *>(v.value);
+      })) {
+    std::vector<type::Type const *> types;
+    for (auto const &val : entries) {
+      types.push_back(std::get<type::Type const *>(val.value));
+    }
+    return type::Tup(std::move(types));
+  }
+
   IR::Register tup = IR::CreateTuple();
   for (auto const &val : entries) {
     IR::AppendToTuple(tup, val.reg_or<type::Type const *>());

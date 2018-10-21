@@ -29,8 +29,6 @@ static std::optional<BoundConstants> ComputeBoundConstants(
       return std::nullopt; }
 
     if (binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) {
-      LOG << binding->exprs_[i];
-      LOG << fn->inputs[i];
       // Tried to call using a default argument, but the function did not
       // provide a default.
       return std::nullopt;
@@ -67,8 +65,6 @@ static std::optional<BoundConstants> ComputeBoundConstants(
       } else if (auto *match = type::Meet(
                      ctx->type_of(binding->exprs_[i].second), input_type);
                 match == nullptr) {
-LOG << binding->exprs_[i];
-        LOG << ctx->type_of(binding->exprs_[i].second) << " vs " << input_type;
         return std::nullopt;
       }
     }

@@ -1,10 +1,12 @@
 #include "backend/exec.h"
 
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <future>
 #include <iostream>
 #include <memory>
+#include <thread>
 
 #include "architecture.h"
 #include "ast/codeblock.h"
@@ -554,6 +556,9 @@ IR::BlockIndex ExecContext::ExecuteCmd(
           StoreValue(addr, ret_slots.at(0), &stack_);
         } else if (cmd.call_.fn_.val_.foreign_.name_ == "abs") {
           StoreValue(std::abs(call_buf.get<i32>(0)), ret_slots.at(0), &stack_);
+        } else if (cmd.call_.fn_.val_.foreign_.name_ == "sleep") {
+          std::this_thread::sleep_for(
+              std::chrono::seconds(call_buf.get<i32>(0)));
         } else {
           NOT_YET();
         }

@@ -1,4 +1,5 @@
 ping ::= scope {
+  state ::= int
   self ::= block {
     before ::= (s: *int) => self
     after ::= (s: *int) => pong
