@@ -115,42 +115,40 @@ bool DispatchEntry::SetTypes(FunctionLiteral *fn, type::Function const *fn_type,
 }
 
 std::optional<DispatchEntry> DispatchEntry::Make(
-    type::Typed<Expression *> fn_option, const FnArgs<Expression *> &args,
-    Context *ctx) {
-  Expression *bound_fn = nullptr;
-  auto evaled_fn       = backend::Evaluate(
-      fn_option.get(), &fn_option.type()->as<type::Function>(), ctx);
-  bound_fn = std::visit(
+    type::Typed<Expression *, type::Function> fn_option,
+    const FnArgs<Expression *> &args, Context *ctx) {
+  *fn_option = std::visit(
       base::overloaded{
           [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
           [](FunctionLiteral *fn) -> Expression * { return fn; },
           [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
           [](auto &&) -> Expression * { UNREACHABLE(); }},
-      evaled_fn.at(0).value);
+      backend::Evaluate(fn_option, ctx).at(0).value);
 
   size_t binding_size;
-  if (bound_fn->is<FunctionLiteral>()) {
-    binding_size = std::max(bound_fn->as<FunctionLiteral>().lookup_.size(),
-                            args.pos_.size() + args.named_.size());
+  if (fn_option.get()->is<FunctionLiteral>()) {
+    binding_size =
+        std::max(fn_option.get()->as<FunctionLiteral>().lookup_.size(),
+                 args.pos_.size() + args.named_.size());
   } else {
     // TODO must this be a builtin?
     // TODO is this 1 even right?
     binding_size = 1;
   }
-  Binding binding(bound_fn, &fn_option.type()->as<type::Function>(),
-                  binding_size);
+  Binding binding(fn_option, binding_size);
   binding.SetPositionalArgs(args);
 
-  if (bound_fn->is<FunctionLiteral>() &&
-      !binding.SetNamedArgs(args, bound_fn->as<FunctionLiteral>().lookup_)) {
+  if (auto *f = fn_option.get();
+      f->is<FunctionLiteral>() &&
+      !binding.SetNamedArgs(args, f->as<FunctionLiteral>().lookup_)) {
     return std::nullopt;
   }
 
   DispatchEntry dispatch_entry(std::move(binding));
   dispatch_entry.call_arg_types_.pos_.resize(args.pos_.size(), nullptr);
 
-  if (bound_fn->is<FunctionLiteral>()) {
-    auto *generic_fn = &bound_fn->as<FunctionLiteral>();
+  if (fn_option.get()->is<FunctionLiteral>()) {
+    auto *generic_fn = &fn_option.get()->as<FunctionLiteral>();
 
     // TODO these are being ignored, which is definitely wrong for generics, but
     // we need to redo those anyway.
@@ -161,32 +159,30 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     dispatch_entry.bound_constants_ = *std::move(bound_constants);
 
     // TODO can generate fail? Probably
-    dispatch_entry.binding_.fn_expr_ = generic_fn;
+    *dispatch_entry.binding_.fn_= generic_fn;
   }
 
   FunctionLiteral *fn = nullptr;
 
-  if (dispatch_entry.binding_.fn_expr_->is<FunctionLiteral>()) {
-    fn = &dispatch_entry.binding_.fn_expr_->as<FunctionLiteral>();
+  if (dispatch_entry.binding_.fn_.get()->is<FunctionLiteral>()) {
+    fn = &dispatch_entry.binding_.fn_.get()->as<FunctionLiteral>();
     for (const auto & [ key, val ] : fn->lookup_) {
       if (val < args.pos_.size()) { continue; }
       dispatch_entry.call_arg_types_.named_.emplace(key, nullptr);
     }
   }
 
-  if (!dispatch_entry.SetTypes(fn, &fn_option.type()->as<type::Function>(),
-                               ctx)) {
+  if (!dispatch_entry.SetTypes(fn, fn_option.type(), ctx)) {
     return std::nullopt;
   }
 
   return dispatch_entry;
 }
 
-static const type::Type *ComputeRetType(
-    base::vector<type::Type const *> const &fn_types) {
+static const type::Type *ComputeRetType(OverloadSet const &overload_set) {
   base::vector<base::vector<const type::Type *>> out_types;
-  for (auto *t : fn_types) {
-    out_types.push_back(t->as<type::Function>().output);
+  for (auto const &overload : overload_set) {
+    out_types.push_back(overload.type()->output);
   }
 
   ASSERT(!out_types.empty());
@@ -208,17 +204,17 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
     Context *ctx) {
   DispatchTable table;
   // TODO error decls?
-  base::vector<type::Type const *> fn_types;
-  fn_types.reserve(overload_set.size());
   for (auto &fn : overload_set) {
-    if (fn.type() == nullptr) { return {}; }
-    fn_types.push_back(fn.type());
+    if (fn.type() == nullptr) {
+      // TODO can this even happen?
+      return {};
+    }
     if (auto maybe_dispatch_entry = DispatchEntry::Make(fn, args, ctx)) {
       table.InsertEntry(std::move(maybe_dispatch_entry).value());
     }
   }
 
-  type::Type const *ret_type = ComputeRetType(fn_types);
+  type::Type const *ret_type = ComputeRetType(overload_set);
   return std::pair{std::move(table), ret_type};
 }
 

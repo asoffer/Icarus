@@ -31,13 +31,11 @@ struct Binding {
 
   bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
 
-  Binding(AST::Expression *fn_expr, type::Function const *fn_type, size_t n)
-      : fn_expr_(fn_expr),
-        fn_type_(fn_type),
+  Binding(type::Typed<Expression *, type::Function> fn, size_t n)
+      : fn_(fn),
         exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
 
-  Expression *fn_expr_           = nullptr;
-  type::Function const *fn_type_ = nullptr;
+  type::Typed<Expression *, type::Function> fn_;
   base::vector<std::pair<const type::Type *, Expression *>> exprs_;
 };
 
@@ -46,9 +44,9 @@ struct DispatchEntry {
   bool SetTypes(FunctionLiteral *fn, type::Function const *fn_type,
                 Context *ctx);
 
-  static std::optional<DispatchEntry> Make(type::Typed<Expression *> fn_option,
-                                           const FnArgs<Expression *> &args,
-                                           Context *ctx);
+  static std::optional<DispatchEntry> Make(
+      type::Typed<Expression *, type::Function> fn_option,
+      const FnArgs<Expression *> &args, Context *ctx);
 
   BoundConstants bound_constants_;
   FnArgs<const type::Type *> call_arg_types_;

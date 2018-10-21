@@ -159,7 +159,7 @@ static void EmitOneCallDispatch(
     const type::Type *ret_type, base::vector<IR::Val> *outgoing_regs,
     const base::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
-  auto callee = binding.fn_expr_->EmitIR(ctx)[0];
+  auto callee = binding.fn_.get()->EmitIR(ctx)[0];
   ASSERT(callee.type, Is<type::Function>());
 
   // After the last check, if you pass, you should dispatch
@@ -189,7 +189,7 @@ static void EmitOneCallDispatch(
 
   base::vector<IR::Val> results;
   IR::OutParams outs;
-  if (!binding.fn_type_->output.empty()) {
+  if (!binding.fn_.type()->output.empty()) {
     auto MakeRegister = [&](type::Type const *return_type,
                             type::Type const *expected_return_type,
                             IR::Val *out_reg) {
@@ -229,14 +229,14 @@ static void EmitOneCallDispatch(
 
     if (ret_type->is<type::Tuple>()) {
       ASSERT(ret_type->as<type::Tuple>().entries_.size() ==
-             binding.fn_type_->output.size());
-      for (size_t i = 0; i < binding.fn_type_->output.size(); ++i) {
-        MakeRegister(binding.fn_type_->output.at(i),
+             binding.fn_.type()->output.size());
+      for (size_t i = 0; i < binding.fn_.type()->output.size(); ++i) {
+        MakeRegister(binding.fn_.type()->output.at(i),
                      ret_type->as<type::Tuple>().entries_.at(i),
                      &outgoing_regs->at(i));
       }
     } else {
-      MakeRegister(binding.fn_type_->output.at(0), ret_type,
+      MakeRegister(binding.fn_.type()->output.at(0), ret_type,
                    &outgoing_regs->at(0));
     }
   }

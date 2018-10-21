@@ -13,11 +13,10 @@ void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
              const base::vector<IR::Addr> &ret_slots,
              backend::ExecContext *ctx);
 
-static std::unique_ptr<IR::Func> ExprFn(type::Type const *expr_type,
-                                        AST::Expression *expr, Context *ctx) {
-  ASSERT(expr_type != nullptr);
+static std::unique_ptr<IR::Func> ExprFn(
+    type::Typed<AST::Expression *> typed_expr, Context *ctx) {
   auto fn = std::make_unique<IR::Func>(
-      ctx->mod_, type::Func({}, {expr_type}),
+      ctx->mod_, type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
       base::vector<std::pair<std::string, AST::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
@@ -29,7 +28,7 @@ static std::unique_ptr<IR::Func> ExprFn(type::Type const *expr_type,
     auto start_block = IR::BasicBlock::Current = IR::Func::Current->AddBlock();
 
     ASSERT(ctx != nullptr);
-    auto vals = expr->EmitIR(ctx);
+    auto vals = typed_expr.get()->EmitIR(ctx);
     // TODO wrap this up into SetReturn(vector)
     for (size_t i = 0; i < vals.size(); ++i) {
       if (!vals[i].type) { LOG << vals[i]; }
@@ -43,12 +42,11 @@ static std::unique_ptr<IR::Func> ExprFn(type::Type const *expr_type,
   return fn;
 }
 
-base::untyped_buffer EvaluateToBuffer(AST::Expression *expr,
-                                      type::Type const *expr_type,
+base::untyped_buffer EvaluateToBuffer(type::Typed<AST::Expression *> typed_expr,
                                       Context *ctx) {
-  auto fn = ExprFn(expr_type, expr, ctx);
+  auto fn = ExprFn(typed_expr, ctx);
 
-  size_t bytes_needed = Architecture::InterprettingMachine().bytes(expr_type);
+  size_t bytes_needed = Architecture::InterprettingMachine().bytes(typed_expr.type());
   base::untyped_buffer ret_buf(bytes_needed);
   ret_buf.append_bytes(bytes_needed, 1);
   base::vector<IR::Addr> ret_slots;
@@ -62,8 +60,8 @@ base::untyped_buffer EvaluateToBuffer(AST::Expression *expr,
   return ret_buf;
 }
 
-base::vector<IR::Val> Evaluate(AST::Expression *expr,
-                               type::Type const *expr_type, Context *ctx) {
+base::vector<IR::Val> Evaluate(type::Typed<AST::Expression *> typed_expr,
+                               Context *ctx) {
   if (ctx->num_errors() != 0) {
     // TODO when is an appropriate time to surface these?
     ctx->DumpErrors();
@@ -71,12 +69,12 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr,
   }
 
   // TODO migrate to untyped_buffer
-  auto result_buf = EvaluateToBuffer(expr, expr_type, ctx);
+  auto result_buf = EvaluateToBuffer(typed_expr, ctx);
 
   base::vector<type::Type const *> types =
-      expr_type->is<type::Tuple>()
-          ? expr_type->as<type::Tuple>().entries_
-          : base::vector<type::Type const *>{expr_type};
+      typed_expr.type()->is<type::Tuple>()
+          ? typed_expr.type()->as<type::Tuple>().entries_
+          : base::vector<type::Type const *>{typed_expr.type()};
 
   base::vector<IR::Val> results;
   results.reserve(types.size());
@@ -126,6 +124,6 @@ base::vector<IR::Val> Evaluate(AST::Expression *expr,
 }
 
 base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
-  return Evaluate(expr, ctx->type_of(expr), ctx);
+  return Evaluate({expr, ctx->type_of(expr)}, ctx);
 }
 }  // namespace backend
