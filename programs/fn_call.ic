@@ -1,7 +1,0 @@
-f := (n : int) -> real {
-  return 3.14
-}
-
-main := void -> void {
-  print f(5)
-}

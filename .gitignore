@@ -7,10 +7,8 @@ build/
 
 *.pdf
 
-src/code
-
 *.o
 
-programs/test.ic
+examples/test.ic
 
 a.out

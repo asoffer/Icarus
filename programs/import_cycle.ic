@@ -1,6 +1,0 @@
-require "import_cycle.ic"
-
-main := void -> void {
-  print `x
-  print `n
-}

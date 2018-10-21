@@ -1,9 +1,0 @@
-collatz ::= (n: int) => switch {
-  n / 2       when  n % 2 == 0
-  3 * n + 1   when  n % 2 == 1
-}
-
-
-main := void -> void {
-  for i in 1 .. 50 { collatz(i) }
-}
