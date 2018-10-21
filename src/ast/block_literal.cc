@@ -11,18 +11,22 @@ BlockLiteral::BlockLiteral(bool required) : required_(required) {}
 
 std::string BlockLiteral::to_string(size_t n) const {
   std::stringstream ss;
-  ss << "block {\n"
-     << std::string(2 * (n + 1), ' ') << before_->to_string(n + 1) << "\n"
-     << std::string(2 * (n + 1), ' ') << after_->to_string(n + 1) << "\n"
-     << std::string(2 * n, ' ') << "}";
+  ss << "block {\n";
+  for (auto &b : before_) {
+    ss << std::string(2 * (n + 1), ' ') << b->to_string(n + 1) << "\n";
+  }
+  for (auto &a : after_) {
+    ss << std::string(2 * (n + 1), ' ') << a->to_string(n + 1) << "\n";
+  }
+  ss << std::string(2 * n, ' ') << "}";
   return ss.str();
 }
 
 void BlockLiteral::assign_scope(Scope *scope) {
   scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
-  before_->assign_scope(body_scope_.get());
-  after_->assign_scope(body_scope_.get());
+  for (auto &b : before_) { b->assign_scope(body_scope_.get()); }
+  for (auto &a : after_) { a->assign_scope(body_scope_.get()); }
 }
 
 type::Type const *BlockLiteral::VerifyType(Context *ctx) {
@@ -35,42 +39,53 @@ void BlockLiteral::Validate(Context *ctx) {
   [&]() -> type::Type const * {
     ctx->mod_->set_type(ctx->bound_constants_, this,
                         required_ ? type::Block : type::OptBlock);
-    [[maybe_unused]] VERIFY_OR_RETURN(before_type, before_);
-    [[maybe_unused]] VERIFY_OR_RETURN(after_type, after_);
+    std::vector<type::Type const *> before_types, after_types;
+    before_types.reserve(before_.size());
+    for (auto &b : before_) {
+      VERIFY_OR_RETURN(before_type, b);
+      before_types.push_back(before_type);
+    }
+    for (auto &a : after_) {
+      VERIFY_OR_RETURN(after_type, a);
+      after_types.push_back(after_type);
+    }
 
     // TODO type-check before/after functions.
-
-    before_->Validate(ctx);
-    after_->Validate(ctx);
+    for (auto &b : before_) { b->Validate(ctx); }
+    for (auto &a : after_) { a->Validate(ctx); }
     return required_ ? type::Block : type::OptBlock;
   }();
 }
 
 void BlockLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  before_->SaveReferences(scope, args);
-  after_->SaveReferences(scope, args);
+  for (auto &b : before_) { b->SaveReferences(scope, args); }
+  for (auto &a : after_) { a->SaveReferences(scope, args); }
 }
 
 void BlockLiteral::contextualize(
     const Node *correspondant,
     const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  before_->contextualize(correspondant->as<BlockLiteral>().before_.get(),
-                         replacements);
-  after_->contextualize(correspondant->as<BlockLiteral>().after_.get(),
-                        replacements);
+  for (size_t i = 0; i < before_.size(); ++i) {
+    before_[i]->contextualize(
+        correspondant->as<BlockLiteral>().before_[i].get(), replacements);
+  }
+  for (size_t  i = 0; i < after_.size(); ++i) {
+    after_[i]->contextualize(correspondant->as<BlockLiteral>().after_[i].get(),
+                             replacements);
+  }
 }
 
 void BlockLiteral::ExtractReturns(
     base::vector<const Expression *> *rets) const {
-  before_->ExtractReturns(rets);
-  after_->ExtractReturns(rets);
+  for (auto &b : before_) { b->ExtractReturns(rets); }
+  for (auto &a : after_) { a->ExtractReturns(rets); }
 }
 
 BlockLiteral *BlockLiteral::Clone() const {
-  auto *result    = new BlockLiteral(required_);
-  result->span    = span;
-  result->before_ = base::wrap_unique(before_->Clone());
-  result->after_  = base::wrap_unique(after_->Clone());
+  auto *result = new BlockLiteral(required_);
+  result->span = span;
+  for (auto &b : before_) { result->before_.emplace_back(b->Clone()); }
+  for (auto &a : after_) { result->after_.emplace_back(a->Clone()); }
   return result;
 }
 

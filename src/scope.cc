@@ -16,9 +16,11 @@ void Scope::InsertDecl(AST::Declaration *decl) {
 }
 
 // TODO error version will always have nullptr types.
-std::pair<base::vector<TypedDecl>, base::vector<TypedDecl>>
+std::pair<base::vector<type::Typed<AST::Declaration *>>,
+          base::vector<type::Typed<AST::Declaration *>>>
 Scope::AllDeclsWithId(std::string const &id, Context *ctx) {
-  base::vector<TypedDecl> matching_decls, matching_error_decls;
+  base::vector<type::Typed<AST::Declaration *>> matching_decls,
+      matching_error_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {
     auto iter = scope_ptr->decls_.find(id);
@@ -27,14 +29,14 @@ Scope::AllDeclsWithId(std::string const &id, Context *ctx) {
       auto *t = ctx->type_of(decl);
       if (t == nullptr) { t = decl->VerifyType(ctx); }
       (t == nullptr ? matching_error_decls : matching_decls)
-          .emplace_back(t, decl);
+          .emplace_back(decl, t);
     }
   }
 
   for (auto const *mod : ctx->mod_->embedded_modules_) {
     if (auto *decl = mod->GetDecl(id)) {
-      matching_decls.emplace_back(mod->type_of(AST::BoundConstants{}, decl),
-                                  decl);
+      matching_decls.emplace_back(decl,
+                                  mod->type_of(AST::BoundConstants{}, decl));
     }
   }
   return std::pair(std::move(matching_decls), std::move(matching_error_decls));

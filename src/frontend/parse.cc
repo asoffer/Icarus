@@ -881,9 +881,9 @@ static std::unique_ptr<AST::Node> BuildBlock(
     if (stmt->is<AST::Declaration>()) {
       auto decl = move_as<AST::Declaration>(stmt);
       if (decl->id_ == "before") {
-        block_expr->before_ = std::move(decl);
+        block_expr->before_.push_back(std::move(decl));
       } else if (decl->id_ == "after") {
-        block_expr->after_ = std::move(decl);
+        block_expr->after_.push_back(std::move(decl));
       }
     } else {
       NOT_YET();

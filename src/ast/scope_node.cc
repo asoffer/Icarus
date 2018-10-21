@@ -226,7 +226,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
       }
 
       auto[dispatch_table, result_type] =
-          DispatchTable::Make(expr_args, block_lit->before_.get(), ctx);
+          DispatchTable::Make(expr_args, block_lit->before_[0].get(), ctx);
 
       return EmitCallDispatch(args, dispatch_table, result_type, ctx)[0]
           .reg_or<IR::BlockSequence>();
@@ -255,7 +255,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
       expr_args.pos_.push_back(state_id);
 
       auto[dispatch_table, result_type] =
-          DispatchTable::Make(expr_args, block_lit->after_.get(), ctx);
+          DispatchTable::Make(expr_args, block_lit->after_[0].get(), ctx);
       return EmitCallDispatch(args, dispatch_table, result_type, ctx)[0]
           .reg_or<IR::BlockSequence>();
     }();

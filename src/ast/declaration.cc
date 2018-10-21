@@ -8,6 +8,7 @@
 #include "ir/func.h"
 #include "module.h"
 #include "type/all.h"
+#include "type/typed_value.h"
 
 namespace AST {
 namespace {
@@ -298,7 +299,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     }
   }
 
-  base::vector<TypedDecl> decls_to_check;
+  base::vector<type::Typed<Declaration *>> decls_to_check;
   {
     auto[good_decls_to_check, error_decls_to_check] =
         scope_->AllDeclsWithId(id_, ctx);
@@ -316,21 +317,21 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 
     if (has_children) {
       for (auto *decl : iter->second) {
-        decls_to_check.emplace_back(ctx->type_of(decl), decl);
+        decls_to_check.emplace_back(decl, ctx->type_of(decl));
       }
     }
   }
 
-  auto iter =
-      std::partition(decls_to_check.begin(), decls_to_check.end(),
-                     [this](TypedDecl const &td) { return this >= td.decl_; });
+  auto iter = std::partition(
+      decls_to_check.begin(), decls_to_check.end(),
+      [this](type::Typed<Declaration *> td) { return this >= td.get(); });
   bool failed_shadowing = false;
   while (iter != decls_to_check.end()) {
     auto typed_decl = *iter;
     HANDLE_CYCLIC_DEPENDENCIES;
-    if (Shadow(this, typed_decl.decl_, ctx)) {
+    if (Shadow(this, typed_decl.get(), ctx)) {
       failed_shadowing = true;
-      ctx->error_log_.ShadowingDeclaration(*this, *typed_decl.decl_);
+      ctx->error_log_.ShadowingDeclaration(*this, *typed_decl);
       limit_to(StageRange::NoEmitIR());
     }
     ++iter;

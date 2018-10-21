@@ -282,25 +282,25 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       save(resolve(cmd.eq_addr_.args_[0]) == resolve(cmd.eq_addr_.args_[1]));
       break;
     case IR::Op::NeChar:
-      save(resolve(cmd.ne_char_.args_[0]) == resolve(cmd.ne_char_.args_[1]));
+      save(resolve(cmd.ne_char_.args_[0]) != resolve(cmd.ne_char_.args_[1]));
       break;
     case IR::Op::NeInt:
-      save(resolve(cmd.ne_int_.args_[0]) == resolve(cmd.ne_int_.args_[1]));
+      save(resolve(cmd.ne_int_.args_[0]) != resolve(cmd.ne_int_.args_[1]));
       break;
     case IR::Op::NeReal:
-      save(resolve(cmd.ne_real_.args_[0]) == resolve(cmd.ne_real_.args_[1]));
+      save(resolve(cmd.ne_real_.args_[0]) != resolve(cmd.ne_real_.args_[1]));
       break;
     case IR::Op::NeEnum:
-      save(resolve(cmd.ne_enum_.args_[0]) == resolve(cmd.ne_enum_.args_[1]));
+      save(resolve(cmd.ne_enum_.args_[0]) != resolve(cmd.ne_enum_.args_[1]));
       break;
     case IR::Op::NeFlags:
-      save(resolve(cmd.ne_flags_.args_[0]) == resolve(cmd.ne_flags_.args_[1]));
+      save(resolve(cmd.ne_flags_.args_[0]) != resolve(cmd.ne_flags_.args_[1]));
       break;
     case IR::Op::NeType:
-      save(resolve(cmd.ne_type_.args_[0]) == resolve(cmd.ne_type_.args_[1]));
+      save(resolve(cmd.ne_type_.args_[0]) != resolve(cmd.ne_type_.args_[1]));
       break;
     case IR::Op::NeAddr:
-      save(resolve(cmd.ne_addr_.args_[0]) == resolve(cmd.ne_addr_.args_[1]));
+      save(resolve(cmd.ne_addr_.args_[0]) != resolve(cmd.ne_addr_.args_[1]));
       break;
     case IR::Op::XorBool:
       save(resolve(cmd.xor_bool_.args_[0]) ^ resolve(cmd.xor_bool_.args_[1]));

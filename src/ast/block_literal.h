@@ -21,7 +21,7 @@ struct BlockLiteral : public Expression {
   base::vector<IR::Register> EmitLVal(Context *) override;
   BlockLiteral *Clone() const override;
 
-  std::unique_ptr<Expression> before_, after_;
+  std::vector<std::unique_ptr<Expression>> before_, after_;
   std::unique_ptr<Scope> body_scope_;
   bool required_;
 };

@@ -9,6 +9,7 @@
 #include "ast/bound_constants.h"
 #include "ast/fn_args.h"
 #include "base/container/map.h"
+#include "type/typed_value.h"
 
 struct Context;
 struct Scope;
@@ -63,6 +64,11 @@ struct DispatchTable {
   // * Can/should this be balanced to find the right type-check sequence in a
   //   streaming manner?
   // * Add weights for PGO optimizations?
+
+  static std::pair<DispatchTable, const type::Type *> Make(
+      const FnArgs<Expression *> &args,
+      base::vector<type::Typed<Expression *>> const &overload_set,
+      Context *ctx);
 
   static std::pair<DispatchTable, const type::Type *> Make(
       const FnArgs<Expression *> &args, Expression *fn, Context *ctx);

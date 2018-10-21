@@ -5,8 +5,8 @@
 #include <unordered_set>
 #include "base/container/unordered_map.h"
 #include "base/container/vector.h"
-
 #include "base/util.h"
+#include "type/typed_value.h"
 
 struct Context;
 struct Module;
@@ -31,13 +31,6 @@ struct DeclScope;
 struct ExecScope;
 struct FnScope;
 
-struct TypedDecl {
-  TypedDecl(type::Type const *type, AST::Declaration *decl)
-      : type_(type), decl_(decl) {}
-  type::Type const *type_;
-  AST::Declaration *decl_;
-};
-
 struct Scope : public base::Cast<Scope> {
   Scope() = delete;
   Scope(Scope *parent) : parent(parent) {}
@@ -48,8 +41,9 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this);
   }
 
-  std::pair<base::vector<TypedDecl>, base::vector<TypedDecl>> AllDeclsWithId(
-      const std::string &id, Context *ctx);
+  std::pair<base::vector<type::Typed<AST::Declaration *>>,
+            base::vector<type::Typed<AST::Declaration *>>>
+  AllDeclsWithId(const std::string &id, Context *ctx);
 
   void InsertDecl(AST::Declaration *decl);
 

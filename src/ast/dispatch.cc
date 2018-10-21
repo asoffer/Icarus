@@ -202,17 +202,17 @@ static const type::Type *ComputeRetType(
 }
 
 std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
-    const FnArgs<Expression *> &args, const std::string &token, Scope *scope,
-    Context *ctx) {
+    const FnArgs<Expression *> &args,
+    base::vector<type::Typed<Expression *>> const &overload_set, Context *ctx) {
   DispatchTable table;
   // TODO error decls?
-  auto[decls, error_decls] = scope->AllDeclsWithId(token, ctx);
   base::vector<type::Type const *> fn_types;
-  for (auto &decl : decls) {
-    if (decl.type_ == nullptr) { return {}; }
-    fn_types.push_back(decl.type_);
+  fn_types.reserve(overload_set.size());
+  for (auto &fn : overload_set) {
+    if (fn.type() == nullptr) { return {}; }
+    fn_types.push_back(fn.type());
     if (auto maybe_dispatch_entry = DispatchEntry::Make(
-            decl.decl_, &decl.type_->as<type::Function>(), args, ctx)) {
+            fn.get(), &fn.type()->as<type::Function>(), args, ctx)) {
       table.InsertEntry(std::move(maybe_dispatch_entry).value());
     }
   }
@@ -222,19 +222,28 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
 }
 
 std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
+    const FnArgs<Expression *> &args, const std::string &token, Scope *scope,
+    Context *ctx) {
+  auto[decls, error_decls] = scope->AllDeclsWithId(token, ctx);
+  base::vector<type::Typed<Expression *>> exprs;
+  std::transform(decls.begin(), decls.end(), exprs.begin(),
+                 [](type::Typed<Declaration *> d) -> type::Typed<Expression *> {
+                   return d;
+                 });
+  return DispatchTable::Make(args, exprs, ctx);
+}
+
+std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
     const FnArgs<Expression *> &args, Expression *fn, Context *ctx) {
-  DispatchTable table;
+  // TODO should'nt have to do this here.
   auto *fn_type = ctx->type_of(fn);
   if (fn_type == nullptr) { fn_type = fn->VerifyType(ctx); }
   if (fn_type == nullptr) { return {}; }
 
-  base::vector<type::Type const *> fn_types = {fn_type};
-  if (auto maybe_dispatch_entry =
-          DispatchEntry::Make(fn, &fn_type->as<type::Function>(), args, ctx)) {
-    table.InsertEntry(std::move(maybe_dispatch_entry).value());
-  }
-  const type::Type *ret_type = ComputeRetType(fn_types);
-  return std::pair{std::move(table), ret_type};
+  return DispatchTable::Make(args,
+                             base::vector<type::Typed<Expression *>>{
+                                 type::Typed<Expression *>{fn, fn_type}},
+                             ctx);
 }
 
 void DispatchTable::InsertEntry(DispatchEntry entry) {
