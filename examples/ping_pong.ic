@@ -1,12 +1,12 @@
 ping ::= scope {
   self ::= block {
-    before ::= () => self
-    after ::= () => pong
+    before ::= (s: *int) => self
+    after ::= (s: *int) => pong
   }
 
   pong ::= block {
-    before ::= () => pong
-    after ::= () => self
+    before ::= (s: *int) => pong
+    after ::= (s: *int) => self
   }
 }
 

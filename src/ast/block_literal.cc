@@ -26,9 +26,6 @@ void BlockLiteral::assign_scope(Scope *scope) {
 }
 
 type::Type const *BlockLiteral::VerifyType(Context *ctx) {
-  before_->VerifyType(ctx);
-  after_->VerifyType(ctx);
-
   return required_ ? type::Block : type::OptBlock;
 }
 

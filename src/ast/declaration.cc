@@ -351,7 +351,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 void Declaration::Validate(Context *ctx) {
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   base::defer d([&] { ctx->mod_ = old_mod; });
-
   if (type_expr) { type_expr->Validate(ctx); }
   if (init_val) { init_val->Validate(ctx); }
 }

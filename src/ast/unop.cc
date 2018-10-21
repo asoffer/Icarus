@@ -263,7 +263,12 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
     case Language::Operator::Mul:
       return {IR::ValFrom(
           IR::Ptr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
-    case Language::Operator::At: return {operand->EmitIR(ctx)[0]};
+    case Language::Operator::At: {
+      auto *t = ctx->type_of(this);
+      return {IR::Val::Reg(
+          IR::Load(std::get<IR::Register>(operand->EmitIR(ctx)[0].value), t),
+          t)};
+    }
     case Language::Operator::Needs: {
       // TODO validate requirements are well-formed?
       IR::Func::Current->precondition_exprs_.push_back(operand.get());

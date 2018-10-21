@@ -13,6 +13,7 @@
 #include "ir/components.h"
 #include "ir/func.h"
 #include "scope.h"
+#include "type/pointer.h"
 #include "type/scope.h"
 #include "type/type.h"
 
@@ -56,7 +57,6 @@ void ScopeNode::assign_scope(Scope *scope) {
 
 type::Type const *ScopeNode::VerifyType(Context *ctx) {
   for (auto & [ block_expr, block_node ] : block_map_) {
-    block_node.stmts_.VerifyType(ctx);
     limit_to(&block_node.stmts_);
     if (block_node.arg_) {
       block_node.arg_->VerifyType(ctx);
@@ -68,11 +68,15 @@ type::Type const *ScopeNode::VerifyType(Context *ctx) {
 
   if (!block_type->is<type::Scope>()) { NOT_YET("not a scope", block_type); }
 
-  ctx->mod_->set_type(ctx->bound_constants_, this, type::Void());
+  ctx->set_type(this, type::Void());
   return type::Void();  // TODO can this evaluate to anything?
 }
 
 void ScopeNode::Validate(Context *ctx) {
+  for (auto & [ block_expr, block_node ] : block_map_) {
+    block_node.stmts_.VerifyType(ctx);
+    block_node.stmts_.Validate(ctx);
+  }
   // TODO
 }
 
@@ -202,15 +206,23 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     if (iter == data_to_node.end()) { continue; }
     auto *arg_expr = iter->second->arg_.get();
 
+    IR::Register alloc = IR::Alloca(type::Int);
+    // We need to keep this around for the life of module. It's possible we
+    // could kill it earlier, but it's probably not a huge deal either way.
+    auto *state_id = new Identifier(TextSpan{}, "<scope-state>");
+    ctx->set_type(state_id, type::Ptr(type::Int));
+
     auto call_enter_result = [&] {
       FnArgs<std::pair<Expression *, IR::Val>> args;
+      args.pos_.emplace_back(state_id,
+                             IR::Val::Reg(alloc, type::Ptr(type::Int)));
       FnArgs<Expression *> expr_args;
+      expr_args.pos_.push_back(state_id);
       if (arg_expr != nullptr) {
-        ForEachExpr(arg_expr,
-                    [ctx, &args, &expr_args](size_t, Expression *expr) {
-                      args.pos_.emplace_back(expr, expr->EmitIR(ctx)[0]);
-                      expr_args.pos_.push_back(expr);
-                    });
+        ForEachExpr(arg_expr, [&](size_t, Expression *expr) {
+          args.pos_.emplace_back(expr, expr->EmitIR(ctx)[0]);
+          expr_args.pos_.push_back(expr);
+        });
       }
 
       auto[dispatch_table, result_type] =
@@ -236,11 +248,15 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     IR::BasicBlock::Current = block_data.after;
 
     auto call_exit_result = [&] {
-      auto[dispatch_table, result_type] = DispatchTable::Make(
-          FnArgs<Expression *>{}, block_lit->after_.get(), ctx);
+      FnArgs<std::pair<Expression *, IR::Val>> args;
+      args.pos_.emplace_back(state_id,
+                             IR::Val::Reg(alloc, type::Ptr(type::Int)));
+      FnArgs<Expression *> expr_args;
+      expr_args.pos_.push_back(state_id);
 
-      return EmitCallDispatch(FnArgs<std::pair<Expression *, IR::Val>>{},
-                              dispatch_table, result_type, ctx)[0]
+      auto[dispatch_table, result_type] =
+          DispatchTable::Make(expr_args, block_lit->after_.get(), ctx);
+      return EmitCallDispatch(args, dispatch_table, result_type, ctx)[0]
           .reg_or<IR::BlockSequence>();
     }();
     for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {

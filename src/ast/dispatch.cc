@@ -22,13 +22,15 @@ static std::optional<BoundConstants> ComputeBoundConstants(
     FunctionLiteral *fn, const FnArgs<Expression *> &args, Binding *binding,
     Context *ctx) {
   BoundConstants bc;
-
   // TODO handle declaration order
   for (size_t i = 0; i < fn->inputs.size(); ++i) {
     auto *input_type = ctx->type_of(fn->inputs[i].get());
-    if (input_type == nullptr) { return std::nullopt; }
+    if (input_type == nullptr) {
+      return std::nullopt; }
 
     if (binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) {
+      LOG << binding->exprs_[i];
+      LOG << fn->inputs[i];
       // Tried to call using a default argument, but the function did not
       // provide a default.
       return std::nullopt;
@@ -64,7 +66,9 @@ static std::optional<BoundConstants> ComputeBoundConstants(
 
       } else if (auto *match = type::Meet(
                      ctx->type_of(binding->exprs_[i].second), input_type);
-                 match == nullptr) {
+                match == nullptr) {
+LOG << binding->exprs_[i];
+        LOG << ctx->type_of(binding->exprs_[i].second) << " vs " << input_type;
         return std::nullopt;
       }
     }
@@ -163,6 +167,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
   }
 
   FunctionLiteral *fn = nullptr;
+
   if (dispatch_entry.binding_.fn_expr_->is<FunctionLiteral>()) {
     fn = &dispatch_entry.binding_.fn_expr_->as<FunctionLiteral>();
     for (const auto & [ key, val ] : fn->lookup_) {
@@ -223,7 +228,8 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
 std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
     const FnArgs<Expression *> &args, Expression *fn, Context *ctx) {
   DispatchTable table;
-  auto *fn_type = fn->VerifyType(ctx);
+  auto *fn_type = ctx->type_of(fn);
+  if (fn_type == nullptr) { fn_type = fn->VerifyType(ctx); }
   if (fn_type == nullptr) { return {}; }
 
   base::vector<type::Type const *> fn_types = {fn_type};
