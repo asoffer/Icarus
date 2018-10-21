@@ -1,17 +1,20 @@
 #ifndef ICARUS_AST_OVERLOAD_SET_H
 #define ICARUS_AST_OVERLOAD_SET_H
 
+#include <string>
+
+#include "base/container/vector.h"
 #include "type/typed_value.h"
+
+struct Scope;
+struct Context;
 
 namespace AST {
 struct Expression;
 
 struct OverloadSet : public base::vector<type::Typed<Expression*>> {
   OverloadSet() = default;
-  template <typename T>
-  OverloadSet(base::vector<type::Typed<T*>> const& xs) {
-    for (auto const& x : xs) { emplace_back(x); }
-  }
+  OverloadSet(Scope *scope, std::string const &id, Context *ctx);
 };
 }  // namespace AST
 

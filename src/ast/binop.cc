@@ -228,8 +228,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       FnArgs<Expression *> args;                                                \
       args.pos_           = base::vector<Expression *>{{lhs.get(), rhs.get()}}; \
       type::Type const *t = nullptr;                                            \
-      std::tie(dispatch_table_, t) = DispatchTable::Make(                       \
-          args, OverloadSet{scope_->AllDeclsWithId(symbol, ctx).first}, ctx);   \
+      std::tie(dispatch_table_, t) =                                            \
+          DispatchTable::Make(args, OverloadSet(scope_, symbol, ctx), ctx);     \
       if (t == nullptr) {                                                       \
         ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
         limit_to(StageRange::Nothing());                                        \
@@ -262,8 +262,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) = DispatchTable::Make(
-            args, OverloadSet{scope_->AllDeclsWithId("+", ctx).first}, ctx);
+        std::tie(dispatch_table_, t) =
+            DispatchTable::Make(args, OverloadSet(scope_, "+", ctx), ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         // TODO should this be Err or nullptr?
         if (t == type::Err) {
@@ -284,8 +284,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) = DispatchTable::Make(
-            args, OverloadSet{scope_->AllDeclsWithId("+=", ctx).first}, ctx);
+        std::tie(dispatch_table_, t) =
+            DispatchTable::Make(args, OverloadSet(scope_, "+=", ctx), ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         // TODO should this be Err or nullptr?
         if (t == type::Err) { limit_to(StageRange::Nothing()); }
@@ -315,8 +315,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) = DispatchTable::Make(
-            args, OverloadSet{scope_->AllDeclsWithId("*", ctx).first}, ctx);
+        std::tie(dispatch_table_, t) =
+            DispatchTable::Make(args, OverloadSet(scope_, "*", ctx), ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         // TODO should this be Err or nullptr?
         if (t == type::Err) {

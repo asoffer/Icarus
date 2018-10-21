@@ -25,7 +25,7 @@ struct Typed {
 
   template <typename D>
   operator Typed<D>() const {
-    return Typed<D>{static_cast<D>(value_), type_};
+    return Typed<D>{static_cast<D const>(value_), type_};
   }
 
  private:

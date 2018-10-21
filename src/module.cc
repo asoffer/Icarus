@@ -93,11 +93,11 @@ void Module::Complete() {
     auto[bc, fn_lit] = to_complete_.front();
     // Need to copy bc because this needs to be set before we call CompleteBody.
     // TODO perhaps on ctx it could be a pointer?
-    if (!completed_[bc].emplace(fn_lit).second) { continue; }
-
-    Context ctx(this);
-    ctx.bound_constants_ = std::move(bc);
-    fn_lit->CompleteBody(&ctx);
+    if (completed_[bc].emplace(fn_lit).second) {
+      Context ctx(this);
+      ctx.bound_constants_ = std::move(bc);
+      fn_lit->CompleteBody(&ctx);
+    }
     to_complete_.pop();
   }
 }

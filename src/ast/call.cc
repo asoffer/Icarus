@@ -454,11 +454,9 @@ type::Type const *Call::VerifyType(Context *ctx) {
 
   OverloadSet overload_set = [&]() {
     if (fn_->is<Identifier>()) {
-      return OverloadSet{
-          scope_->AllDeclsWithId(fn_->as<Identifier>().token, ctx).first};
+      return OverloadSet(scope_, fn_->as<Identifier>().token, ctx);
     } else {
       auto t = fn_->VerifyType(ctx);
-      base::vector<type::Typed<Expression *>> exprs;
       OverloadSet os;
       os.emplace_back(fn_.get(), t);
       return os;

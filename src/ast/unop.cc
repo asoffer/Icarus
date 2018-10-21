@@ -155,8 +155,8 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) = DispatchTable::Make(
-            args, OverloadSet{scope_->AllDeclsWithId("-", ctx).first}, ctx);
+        std::tie(dispatch_table_, t) =
+            DispatchTable::Make(args, OverloadSet(scope_, "-", ctx), ctx);
         if (t == nullptr) {
           limit_to(StageRange::Nothing());
           return nullptr;
@@ -173,8 +173,8 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) = DispatchTable::Make(
-            args, OverloadSet{scope_->AllDeclsWithId("!", ctx).first}, ctx);
+        std::tie(dispatch_table_, t) =
+            DispatchTable::Make(args, OverloadSet(scope_, "!", ctx), ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
           limit_to(StageRange::Nothing());
