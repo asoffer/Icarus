@@ -83,11 +83,13 @@ void Access::contextualize(
 }
 
 base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
-  auto reg            = operand->EmitLVal(ctx)[0];
-  type::Type const *t = type::Ptr(ctx->type_of(operand.get()));
-  while (!t->as<type::Pointer>().pointee->is_big()) {
-    reg = IR::Load(reg, ctx->type_of(this));
-    t   = t->as<type::Pointer>().pointee;
+  auto reg   = operand->EmitLVal(ctx)[0];
+  auto *t    = ctx->type_of(operand.get());
+  auto *ptee = t->as<type::Pointer>().pointee;
+  while (ptee->is<type::Pointer>()) {
+    t    = ptee;
+    ptee = ptee->as<type::Pointer>().pointee;
+    reg  = IR::Load(reg, t);
   }
 
   auto *struct_type = &t->as<type::Pointer>().pointee->as<type::Struct>();

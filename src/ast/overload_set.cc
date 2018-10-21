@@ -4,6 +4,7 @@
 #include "scope.h"
 
 namespace AST {
+// TODO only hold functions?
 OverloadSet::OverloadSet(Scope *scope, std::string const &id, Context *ctx) {
   auto decls = scope->AllDeclsWithId(id, ctx).first;
   reserve(decls.size());

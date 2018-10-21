@@ -13,6 +13,7 @@
 #include "ir/components.h"
 #include "ir/func.h"
 #include "scope.h"
+#include "type/function.h"
 #include "type/pointer.h"
 #include "type/scope.h"
 #include "type/type.h"
@@ -206,16 +207,29 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     if (iter == data_to_node.end()) { continue; }
     auto *arg_expr = iter->second->arg_.get();
 
-    IR::Register alloc = IR::Alloca(type::Int);
+    std::unordered_set<type::Type const *> state_types;
+    OverloadSet os_before;
+    for (auto &b : block_lit->before_) {
+      auto *t = ctx->type_of(b.get());
+      os_before.emplace_back(b.get(), t);
+      state_types.insert(t->as<type::Function>().input[0]);
+    }
+
+    // TODO do this at type-checking
+    ASSERT(state_types.size() == 1u);
+    auto *state_ptr_type = *state_types.begin();
+    ASSERT(state_ptr_type, Is<type::Pointer>());
+
+    IR::Register alloc =
+        IR::Alloca(state_ptr_type->as<type::Pointer>().pointee);
     // We need to keep this around for the life of module. It's possible we
     // could kill it earlier, but it's probably not a huge deal either way.
     auto *state_id = new Identifier(TextSpan{}, "<scope-state>");
-    ctx->set_type(state_id, type::Ptr(type::Int));
+    ctx->set_type(state_id, state_ptr_type);
 
     auto call_enter_result = [&] {
       FnArgs<std::pair<Expression *, IR::Val>> args;
-      args.pos_.emplace_back(state_id,
-                             IR::Val::Reg(alloc, type::Ptr(type::Int)));
+      args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
       FnArgs<Expression *> expr_args;
       expr_args.pos_.push_back(state_id);
       if (arg_expr != nullptr) {
@@ -223,11 +237,6 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
           args.pos_.emplace_back(expr, expr->EmitIR(ctx)[0]);
           expr_args.pos_.push_back(expr);
         });
-      }
-
-      OverloadSet os_before;
-      for (auto &b : block_lit->before_) {
-        os_before.emplace_back(b.get(), ctx->type_of(b.get()));
       }
 
       auto[dispatch_table, result_type] =
@@ -254,8 +263,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
 
     auto call_exit_result = [&] {
       FnArgs<std::pair<Expression *, IR::Val>> args;
-      args.pos_.emplace_back(state_id,
-                             IR::Val::Reg(alloc, type::Ptr(type::Int)));
+      args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
       FnArgs<Expression *> expr_args;
       expr_args.pos_.push_back(state_id);
 
