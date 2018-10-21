@@ -39,23 +39,6 @@ struct Binding {
   base::vector<std::pair<const type::Type *, Expression *>> exprs_;
 };
 
-// Represents a row in the dispatch table.
-struct DispatchEntry {
-  bool SetTypes(FunctionLiteral *fn, type::Function const *fn_type,
-                Context *ctx);
-
-  static std::optional<DispatchEntry> Make(
-      type::Typed<Expression *, type::Function> fn_option,
-      const FnArgs<Expression *> &args, Context *ctx);
-
-  BoundConstants bound_constants_;
-  FnArgs<const type::Type *> call_arg_types_;
-  Binding binding_;
-
- private:
-  DispatchEntry(Binding b) : binding_(std::move(b)) {}
-};
-
 struct DispatchTable {
   // TODO come up with a good internal representaion.
   // * Can/should this be balanced to find the right type-check sequence in a
@@ -65,8 +48,6 @@ struct DispatchTable {
   static std::pair<DispatchTable, const type::Type *> Make(
       const FnArgs<Expression *> &args, OverloadSet const &overload_set,
       Context *ctx);
-
-  void InsertEntry(DispatchEntry entry);
 
   base::map<FnArgs<const type::Type *>, Binding> bindings_;
   size_t total_size_ = 0;

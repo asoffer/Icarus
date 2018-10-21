@@ -82,13 +82,31 @@ static std::optional<BoundConstants> ComputeBoundConstants(
   return bc;
 }
 
-bool DispatchEntry::SetTypes(FunctionLiteral *fn, type::Function const *fn_type,
+
+// Represents a row in the dispatch table.
+struct DispatchEntry {
+  bool SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
+                Context *ctx);
+
+  static std::optional<DispatchEntry> Make(
+      type::Typed<Expression *, type::Function> fn_option,
+      FnArgs<Expression *> const &args, Context *ctx);
+
+  BoundConstants bound_constants_;
+  FnArgs<const type::Type *> call_arg_types_;
+  Binding binding_;
+
+ private:
+  DispatchEntry(Binding b) : binding_(std::move(b)) {}
+};
+
+bool DispatchEntry::SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
                              Context *ctx) {
-  const auto &input_types    = fn_type->input;
-  bool bound_at_compile_time = (fn != nullptr);
+  auto const &input_types    = fn.type()->input;
+  bool bound_at_compile_time = (fn.get() != nullptr);
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
     if (bound_at_compile_time && binding_.defaulted(i)) {
-      if (fn->inputs[i]->IsDefaultInitialized()) { return false; }
+      if (fn.get()->inputs[i]->IsDefaultInitialized()) { return false; }
       binding_.exprs_.at(i).first = input_types.at(i);
       continue;
     }
@@ -103,7 +121,7 @@ bool DispatchEntry::SetTypes(FunctionLiteral *fn, type::Function const *fn_type,
       call_arg_types_.pos_.at(i) = match;
     } else {
       if (bound_at_compile_time) {
-        auto iter = call_arg_types_.find(fn->inputs[i]->id_);
+        auto iter = call_arg_types_.find(fn.get()->inputs[i]->id_);
         ASSERT(iter != call_arg_types_.named_.end());
         iter->second = match;
       } else {
@@ -172,9 +190,8 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     }
   }
 
-  if (!dispatch_entry.SetTypes(fn, fn_option.type(), ctx)) {
-    return std::nullopt;
-  }
+  auto f = type::Typed<FunctionLiteral *, type::Function>(fn, fn_option.type());
+  if (!dispatch_entry.SetTypes(f, ctx)) { return std::nullopt; }
 
   return dispatch_entry;
 }
@@ -210,25 +227,22 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
       return {};
     }
     if (auto maybe_dispatch_entry = DispatchEntry::Make(fn, args, ctx)) {
-      table.InsertEntry(std::move(maybe_dispatch_entry).value());
+      size_t expanded_size = 1;
+      maybe_dispatch_entry->call_arg_types_.Apply(
+          [&expanded_size](const type::Type *t) {
+            if (t->is<type::Variant>()) {
+              expanded_size *= t->as<type::Variant>().size();
+            }
+          });
+
+      table.total_size_ += expanded_size;
+      table.bindings_.emplace(std::move(maybe_dispatch_entry->call_arg_types_),
+                              std::move(maybe_dispatch_entry->binding_));
     }
   }
 
   type::Type const *ret_type = ComputeRetType(overload_set);
   return std::pair{std::move(table), ret_type};
-}
-
-void DispatchTable::InsertEntry(DispatchEntry entry) {
-  size_t expanded_size = 1;
-  entry.call_arg_types_.Apply([&expanded_size](const type::Type *t) {
-    if (t->is<type::Variant>()) {
-      expanded_size *= t->as<type::Variant>().size();
-    }
-  });
-
-  total_size_ += expanded_size;
-  bindings_.emplace(std::move(entry.call_arg_types_),
-                    std::move(entry.binding_));
 }
 
 void Binding::SetPositionalArgs(const FnArgs<Expression *> &args) {
