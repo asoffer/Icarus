@@ -1,6 +1,7 @@
 #include "ast/import.h"
 
 #include <future>
+#include "ast/overload_set.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "base/guarded.h"

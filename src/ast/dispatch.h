@@ -8,8 +8,8 @@
 
 #include "ast/bound_constants.h"
 #include "ast/fn_args.h"
+#include "ast/overload_set.h"
 #include "base/container/map.h"
-#include "type/typed_value.h"
 
 struct Context;
 struct Scope;
@@ -46,8 +46,7 @@ struct DispatchEntry {
   bool SetTypes(FunctionLiteral *fn, type::Function const *fn_type,
                 Context *ctx);
 
-  static std::optional<DispatchEntry> Make(Expression *fn_option,
-                                           type::Function const *fn_option_type,
+  static std::optional<DispatchEntry> Make(type::Typed<Expression *> fn_option,
                                            const FnArgs<Expression *> &args,
                                            Context *ctx);
 
@@ -66,14 +65,7 @@ struct DispatchTable {
   // * Add weights for PGO optimizations?
 
   static std::pair<DispatchTable, const type::Type *> Make(
-      const FnArgs<Expression *> &args,
-      base::vector<type::Typed<Expression *>> const &overload_set,
-      Context *ctx);
-
-  static std::pair<DispatchTable, const type::Type *> Make(
-      const FnArgs<Expression *> &args, Expression *fn, Context *ctx);
-  static std::pair<DispatchTable, const type::Type *> Make(
-      const FnArgs<Expression *> &args, const std::string &op, Scope *scope,
+      const FnArgs<Expression *> &args, OverloadSet const &overload_set,
       Context *ctx);
 
   void InsertEntry(DispatchEntry entry);

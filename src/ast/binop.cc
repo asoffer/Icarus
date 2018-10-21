@@ -2,6 +2,7 @@
 
 #include "ast/comma_list.h"
 #include "ast/fn_args.h"
+#include "ast/overload_set.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "base/check.h"
@@ -227,8 +228,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       FnArgs<Expression *> args;                                                \
       args.pos_           = base::vector<Expression *>{{lhs.get(), rhs.get()}}; \
       type::Type const *t = nullptr;                                            \
-      std::tie(dispatch_table_, t) =                                            \
-          DispatchTable::Make(args, symbol, scope_, ctx);                       \
+      std::tie(dispatch_table_, t) = DispatchTable::Make(                       \
+          args, OverloadSet{scope_->AllDeclsWithId(symbol, ctx).first}, ctx);   \
       if (t == nullptr) {                                                       \
         ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
         limit_to(StageRange::Nothing());                                        \
@@ -261,8 +262,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) =
-            DispatchTable::Make(args, "+", scope_, ctx);
+        std::tie(dispatch_table_, t) = DispatchTable::Make(
+            args, OverloadSet{scope_->AllDeclsWithId("+", ctx).first}, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         // TODO should this be Err or nullptr?
         if (t == type::Err) {
@@ -283,8 +284,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) =
-            DispatchTable::Make(args, "+=", scope_, ctx);
+        std::tie(dispatch_table_, t) = DispatchTable::Make(
+            args, OverloadSet{scope_->AllDeclsWithId("+=", ctx).first}, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         // TODO should this be Err or nullptr?
         if (t == type::Err) { limit_to(StageRange::Nothing()); }
@@ -314,8 +315,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) =
-            DispatchTable::Make(args, "*", scope_, ctx);
+        std::tie(dispatch_table_, t) = DispatchTable::Make(
+            args, OverloadSet{scope_->AllDeclsWithId("*", ctx).first}, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         // TODO should this be Err or nullptr?
         if (t == type::Err) {

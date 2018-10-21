@@ -24,7 +24,7 @@ struct Typed {
   type::Type const* type() const { return type_; }
 
   template <typename D>
-  operator Typed<D>() {
+  operator Typed<D>() const {
     return Typed<D>{static_cast<D>(value_), type_};
   }
 

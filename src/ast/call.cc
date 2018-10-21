@@ -451,10 +451,22 @@ type::Type const *Call::VerifyType(Context *ctx) {
       });
 
   type::Type const *ret_type = nullptr;
+
+  OverloadSet overload_set = [&]() {
+    if (fn_->is<Identifier>()) {
+      return OverloadSet{
+          scope_->AllDeclsWithId(fn_->as<Identifier>().token, ctx).first};
+    } else {
+      auto t = fn_->VerifyType(ctx);
+      base::vector<type::Typed<Expression *>> exprs;
+      OverloadSet os;
+      os.emplace_back(fn_.get(), t);
+      return os;
+    }
+  }();
+
   std::tie(dispatch_table_, ret_type) =
-      !fn_->is<Identifier>()
-          ? DispatchTable::Make(args, fn_.get(), ctx)
-          : DispatchTable::Make(args, fn_->as<Identifier>().token, scope_, ctx);
+      DispatchTable::Make(args, overload_set, ctx);
   ctx->set_type(this, ret_type);
 
   if (ret_type == nullptr) { limit_to(StageRange::Nothing()); }

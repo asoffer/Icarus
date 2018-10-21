@@ -1,6 +1,7 @@
 #include "ast/unop.h"
 
 #include "ast/fn_args.h"
+#include "ast/overload_set.h"
 #include "ast/terminal.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
@@ -154,8 +155,8 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) =
-            DispatchTable::Make(args, "-", scope_, ctx);
+        std::tie(dispatch_table_, t) = DispatchTable::Make(
+            args, OverloadSet{scope_->AllDeclsWithId("-", ctx).first}, ctx);
         if (t == nullptr) {
           limit_to(StageRange::Nothing());
           return nullptr;
@@ -172,8 +173,8 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) =
-            DispatchTable::Make(args, "!", scope_, ctx);
+        std::tie(dispatch_table_, t) = DispatchTable::Make(
+            args, OverloadSet{scope_->AllDeclsWithId("!", ctx).first}, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
           limit_to(StageRange::Nothing());

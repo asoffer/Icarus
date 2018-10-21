@@ -115,11 +115,12 @@ bool DispatchEntry::SetTypes(FunctionLiteral *fn, type::Function const *fn_type,
 }
 
 std::optional<DispatchEntry> DispatchEntry::Make(
-    Expression *fn_option, type::Function const *fn_option_type,
-    const FnArgs<Expression *> &args, Context *ctx) {
+    type::Typed<Expression *> fn_option, const FnArgs<Expression *> &args,
+    Context *ctx) {
   Expression *bound_fn = nullptr;
-  auto evaled_fn       = backend::Evaluate(fn_option, fn_option_type, ctx);
-  bound_fn             = std::visit(
+  auto evaled_fn       = backend::Evaluate(
+      fn_option.get(), &fn_option.type()->as<type::Function>(), ctx);
+  bound_fn = std::visit(
       base::overloaded{
           [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
           [](FunctionLiteral *fn) -> Expression * { return fn; },
@@ -136,7 +137,8 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     // TODO is this 1 even right?
     binding_size = 1;
   }
-  Binding binding(bound_fn, fn_option_type, binding_size);
+  Binding binding(bound_fn, &fn_option.type()->as<type::Function>(),
+                  binding_size);
   binding.SetPositionalArgs(args);
 
   if (bound_fn->is<FunctionLiteral>() &&
@@ -172,7 +174,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     }
   }
 
-  if (!dispatch_entry.SetTypes(fn, &fn_option_type->as<type::Function>(),
+  if (!dispatch_entry.SetTypes(fn, &fn_option.type()->as<type::Function>(),
                                ctx)) {
     return std::nullopt;
   }
@@ -202,8 +204,8 @@ static const type::Type *ComputeRetType(
 }
 
 std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
-    const FnArgs<Expression *> &args,
-    base::vector<type::Typed<Expression *>> const &overload_set, Context *ctx) {
+    const FnArgs<Expression *> &args, OverloadSet const &overload_set,
+    Context *ctx) {
   DispatchTable table;
   // TODO error decls?
   base::vector<type::Type const *> fn_types;
@@ -211,39 +213,13 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
   for (auto &fn : overload_set) {
     if (fn.type() == nullptr) { return {}; }
     fn_types.push_back(fn.type());
-    if (auto maybe_dispatch_entry = DispatchEntry::Make(
-            fn.get(), &fn.type()->as<type::Function>(), args, ctx)) {
+    if (auto maybe_dispatch_entry = DispatchEntry::Make(fn, args, ctx)) {
       table.InsertEntry(std::move(maybe_dispatch_entry).value());
     }
   }
 
   type::Type const *ret_type = ComputeRetType(fn_types);
   return std::pair{std::move(table), ret_type};
-}
-
-std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
-    const FnArgs<Expression *> &args, const std::string &token, Scope *scope,
-    Context *ctx) {
-  auto[decls, error_decls] = scope->AllDeclsWithId(token, ctx);
-  base::vector<type::Typed<Expression *>> exprs;
-  std::transform(decls.begin(), decls.end(), exprs.begin(),
-                 [](type::Typed<Declaration *> d) -> type::Typed<Expression *> {
-                   return d;
-                 });
-  return DispatchTable::Make(args, exprs, ctx);
-}
-
-std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
-    const FnArgs<Expression *> &args, Expression *fn, Context *ctx) {
-  // TODO should'nt have to do this here.
-  auto *fn_type = ctx->type_of(fn);
-  if (fn_type == nullptr) { fn_type = fn->VerifyType(ctx); }
-  if (fn_type == nullptr) { return {}; }
-
-  return DispatchTable::Make(args,
-                             base::vector<type::Typed<Expression *>>{
-                                 type::Typed<Expression *>{fn, fn_type}},
-                             ctx);
 }
 
 void DispatchTable::InsertEntry(DispatchEntry entry) {

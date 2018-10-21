@@ -3,6 +3,7 @@
 #include <numeric>
 
 #include "ast/fn_args.h"
+#include "ast/overload_set.h"
 #include "ast/verify_macros.h"
 #include "base/check.h"
 #include "context.h"
@@ -246,8 +247,8 @@ not_blocks:
               base::vector<Expression *>{{exprs[i].get(), exprs[i + 1].get()}};
           // TODO overwriting type a bunch of times?
           type::Type const *t = nullptr;
-          std::tie(dispatch_tables_.at(i), t) =
-              DispatchTable::Make(args, token, scope_, ctx);
+          std::tie(dispatch_tables_.at(i), t) = DispatchTable::Make(
+              args, OverloadSet{scope_->AllDeclsWithId(token, ctx).first}, ctx);
           ASSERT(t, Not(Is<type::Tuple>()));
           if (t == nullptr) {
             limit_to(StageRange::Nothing());

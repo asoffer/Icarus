@@ -2,6 +2,7 @@
 
 #include "ast/fn_args.h"
 #include "ast/function_literal.h"
+#include "ast/overload_set.h"
 #include "ast/verify_macros.h"
 #include "context.h"
 #include "ir/func.h"
@@ -83,8 +84,8 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_.push_back(arg.get());
         const type::Type *ret_type = nullptr;
-        std::tie(dispatch_tables_[i], ret_type) =
-            DispatchTable::Make(args, "print", scope_, ctx);
+        std::tie(dispatch_tables_[i], ret_type) = DispatchTable::Make(
+            args, OverloadSet{scope_->AllDeclsWithId("print", ctx).first}, ctx);
         if (ret_type != type::Void()) {
           NOT_YET("log an error: ", ret_type);
           limit_to(StageRange::Nothing());
