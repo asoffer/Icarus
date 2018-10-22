@@ -173,7 +173,6 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     auto bound_constants =
         ComputeBoundConstants(generic_fn, args, &dispatch_entry.binding_, ctx);
     if (!bound_constants) { return std::nullopt; }
-    ctx->mod_->to_complete_.emplace(*bound_constants, generic_fn);
     dispatch_entry.bound_constants_ = *std::move(bound_constants);
 
     // TODO can generate fail? Probably

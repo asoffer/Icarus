@@ -90,6 +90,8 @@ BlockLiteral *BlockLiteral::Clone() const {
 }
 
 base::vector<IR::Val> AST::BlockLiteral::EmitIR(Context *ctx) {
+  for (auto& b : before_) { b->EmitIR(ctx); }
+  for (auto& a : after_) { a->EmitIR(ctx); }
   return {IR::Val::Block(this)};
 }
 

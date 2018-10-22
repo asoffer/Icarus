@@ -35,8 +35,6 @@ void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
              const base::vector<IR::Addr> &ret_slots,
              backend::ExecContext *exec_ctx) {
   // TODO what about bound constants?
-  Context ctx(fn->mod_);
-  if (fn->gened_fn_) { fn->gened_fn_->CompleteBody(&ctx); }
   exec_ctx->call_stack.emplace(fn, arguments);
 
   // TODO log an error if you're asked to execute a function that had an

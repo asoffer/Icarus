@@ -58,11 +58,12 @@ ScopeLiteral *ScopeLiteral::Clone() const {
   auto *result = new ScopeLiteral;
   result->span = span;
   result->decls_.reserve(decls_.size());
-  for (const auto &decl : decls_) { result->decls_.emplace_back(decl.Clone()); }
+  for (auto const &decl : decls_) { result->decls_.emplace_back(decl.Clone()); }
   return result;
 }
 
 base::vector<IR::Val> AST::ScopeLiteral::EmitIR(Context *ctx) {
+  for (auto &decl : decls_) { decl.EmitIR(ctx); }
   return {IR::Val(this)};
 }
 base::vector<IR::Register> ScopeLiteral::EmitLVal(Context *) {

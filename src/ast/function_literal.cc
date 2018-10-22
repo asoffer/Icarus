@@ -282,6 +282,8 @@ FunctionLiteral *FunctionLiteral::Clone() const {
 
 base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
   if (!ir_func_) {
+    ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this);
+
     base::vector<std::pair<std::string, Expression *>> args;
     args.reserve(inputs.size());
     for (const auto &input : inputs) {
