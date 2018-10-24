@@ -1,19 +1,18 @@
-#ifndef ICARUS_AST_SCOPE_NODE_H
-#define ICARUS_AST_SCOPE_NODE_H
+#ifndef ICARUS_AST_BLOCK_NODE_H
+#define ICARUS_AST_BLOCK_NODE_H
 
 #include <memory>
-#include "ast/block_node.h"
 #include "ast/expression.h"
-#include "ast/fn_args.h"
 #include "ast/statements.h"
-#include "base/container/unordered_map.h"
 #include "scope.h"
 
-struct Context;
-
 namespace AST {
-struct ScopeNode : public Expression {
-  ~ScopeNode() override {}
+struct BlockNode : public Expression {
+  ~BlockNode() override {}
+
+  // TODO
+  template <typename... Args>
+  BlockNode(Args &&... args) {}
 
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
@@ -25,16 +24,17 @@ struct ScopeNode : public Expression {
       const Node *correspondant,
       const base::unordered_map<const Expression *, IR::Val> &) override;
 
-  ScopeNode *Clone() const override;
+  BlockNode *Clone() const override;
 
   base::vector<IR::Val> EmitIR(Context *) override;
   base::vector<IR::Register> EmitLVal(Context *) override;
 
+
   std::unique_ptr<Expression> name_;
-  FnArgs<std::unique_ptr<Expression>> args_;
-  // TODO store by value.
-  base::vector<std::unique_ptr<BlockNode>> blocks_;
+  Statements stmts_;
+  std::unique_ptr<Expression> arg_;
+  std::unique_ptr<ExecScope> block_scope_;
 };
 }  // namespace AST
 
-#endif  // ICARUS_AST_SCOPE_NODE_H
+#endif  // ICARUS_AST_BLOCK_NODE_H

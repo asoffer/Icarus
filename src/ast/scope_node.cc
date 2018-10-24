@@ -3,6 +3,7 @@
 #include <sstream>
 #include "ast/access.h"
 #include "ast/block_literal.h"
+#include "ast/block_node.h"
 #include "ast/fn_args.h"
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
@@ -31,106 +32,67 @@ using base::check::Is;
 
 std::string ScopeNode::to_string(size_t n) const {
   std::stringstream ss;
-  for (const auto &block : blocks_) {
-    ss << block->to_string(n);
-    const auto &block_node = block_map_.at(block.get());
-    if (block_node.arg_ != nullptr) {
-      ss << " (" << block_node.arg_->to_string(n) << ")";
-    }
-    ss << " {";
-    if (block_node.stmts_.content_.size() > 1) { ss << "\n"; }
-    ss << block_node.stmts_.to_string(n + 1) << "} ";
-  }
+  ss << name_->to_string(n) << " ";
+  if (!args_.empty()) { ss << "(" << args_.to_string(n) << ") "; }
+  for (auto const &block : blocks_) { ss << block->to_string(n); }
   return ss.str();
 }
 
 void ScopeNode::assign_scope(Scope *scope) {
   scope_ = scope;
-  for (auto & [ block_expr, block_node ] : block_map_) {
-    block_expr->assign_scope(scope);
-    block_node.block_scope_ = scope_->add_child<ExecScope>();
-    block_node.stmts_.assign_scope(block_node.block_scope_.get());
-    if (block_node.arg_) {
-      block_node.arg_->assign_scope(block_node.block_scope_.get());
-    }
-  }
+  name_->assign_scope(scope);
+  args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
+  for (auto &block : blocks_) { block->assign_scope(scope); }
 }
 
 type::Type const *ScopeNode::VerifyType(Context *ctx) {
-  for (auto & [ block_expr, block_node ] : block_map_) {
-    limit_to(&block_node.stmts_);
-    if (block_node.arg_) {
-      block_node.arg_->VerifyType(ctx);
-      limit_to(block_node.arg_);
+  for (auto &block : blocks_) {
+    limit_to(&block->stmts_);
+    if (block->arg_) {
+      block->arg_->VerifyType(ctx);
+      limit_to(block->arg_);
     }
   }
 
-  VERIFY_OR_RETURN(block_type, blocks_[0]);
-
-  if (!block_type->is<type::Scope>()) { NOT_YET("not a scope", block_type); }
+  // TODO check that all the blocks make sense and emit errors
 
   ctx->set_type(this, type::Void());
   return type::Void();  // TODO can this evaluate to anything?
 }
 
 void ScopeNode::Validate(Context *ctx) {
-  for (auto & [ block_expr, block_node ] : block_map_) {
-    block_node.stmts_.VerifyType(ctx);
-    block_node.stmts_.Validate(ctx);
+  for (auto &block_node : blocks_) {
+    block_node->stmts_.VerifyType(ctx);
+    block_node->stmts_.Validate(ctx);
   }
   // TODO
 }
 
 void ScopeNode::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto & [ block_expr, block_node ] : block_map_) {
-    block_expr->SaveReferences(scope, args);
-    block_node.stmts_.SaveReferences(scope, args);
-    if (block_node.arg_) { block_node.arg_->SaveReferences(scope, args); }
-  }
+  NOT_YET();
 }
 
 void ScopeNode::contextualize(
     const Node *correspondant,
     const base::unordered_map<const Expression *, IR::Val> &replacements) {
   const auto &corr = correspondant->as<ScopeNode>();
-  for (size_t i = 0; i < blocks_.size(); ++i) {
-    blocks_[i]->contextualize(corr.blocks_[i].get(), replacements);
-    block_map_[blocks_[i].get()].stmts_.contextualize(
-        &corr.block_map_.at(blocks_[i].get()).stmts_, replacements);
-    if (block_map_[blocks_[i].get()].arg_) {
-      block_map_[blocks_[i].get()].arg_->contextualize(
-          corr.block_map_.at(blocks_[i].get()).arg_.get(), replacements);
-    }
-  }
+  NOT_YET();
 }
 
 void ScopeNode::ExtractReturns(base::vector<const Expression *> *rets) const {
-  for (const auto & [ block_expr, block_node ] : block_map_) {
-    block_expr->ExtractReturns(rets);
-    block_node.stmts_.ExtractReturns(rets);
-    if (block_node.arg_) { block_node.arg_->ExtractReturns(rets); }
-  }
+  for (auto &block : blocks_) { block->ExtractReturns(rets); }
 }
 
 ScopeNode *ScopeNode::Clone() const {
   auto *result = new ScopeNode;
   result->span = span;
 
-  result->blocks_.reserve(blocks_.size());
-  for (const auto &block_expr : blocks_) {
-    result->blocks_.emplace_back(block_expr->Clone());
-    const auto &block_node = block_map_.at(block_expr.get());
-    result->block_map_[result->blocks_.back().get()] =
-        BlockNode{Statements{block_node.stmts_},
-                  block_node.arg_ == nullptr
-                      ? nullptr
-                      : base::wrap_unique(block_node.arg_->Clone()),
-                  nullptr};
-  }
+  NOT_YET();
   return result;
 }
 
-static std::pair<const Module *, std::string> GetQualifiedIdentifier(
+// TODO make static again
+/* static */ std::pair<const Module *, std::string> GetQualifiedIdentifier(
     Expression *expr, Context *ctx) {
   if (expr->is<Identifier>()) {
     const auto &token = expr->as<Identifier>().token;
@@ -144,9 +106,12 @@ static std::pair<const Module *, std::string> GetQualifiedIdentifier(
 }
 
 base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
-  auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(blocks_[0].get(), ctx);
-  auto land_block = IR::Func::Current->AddBlock();
+  // TODO
+  // auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(blocks_[0].get(), ctx);
+  // auto land_block = IR::Func::Current->AddBlock();
 
+  return {};
+  /*
   struct BlockData {
     IR::BlockIndex before, body, after;
   };
@@ -191,10 +156,10 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   // TODO can we just store "self" in name_to_data to avoid this nonsense?
   base::unordered_map<BlockData *, BlockNode *> data_to_node;
   for (auto const &block : blocks_) {
-    auto *block_data = block->is<Identifier>()
-                           ? name_to_data.at(block->as<Identifier>().token)
+    auto *block_data = block.is<Identifier>()
+                           ? name_to_data.at(block.as<Identifier>().token)
                            : name_to_data.at(top_block_node_name);
-    data_to_node.emplace(block_data, &block_map_.at(block.get()));
+    data_to_node.emplace(block_data, &block_map_.at(&block));
   }
   name_to_data.clear();
 
@@ -290,6 +255,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   IR::BasicBlock::Current = land_block;
 
   return {};
+  */
 }
 
 base::vector<IR::Register> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }

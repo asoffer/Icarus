@@ -34,9 +34,11 @@ enum Tag : u64 {
   eq             = 1ull << 24,
   comma          = 1ull << 25,
   op_bl          = 1ull << 26,
+  block_expr     = 1ull << 27,
   op_lt          = 1ull << 28,
   fn_arrow       = 1ull << 29,
-  kw_block       = 1ull << 30
+  kw_block       = 1ull << 30,
+  fn_call_expr   = 1ull << 31,
 };
 
 struct TaggedNode {

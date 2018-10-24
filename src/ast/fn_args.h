@@ -32,13 +32,17 @@ struct FnArgs {
     return result;
   }
 
-  std::string to_string() const {
+  template <typename... Args>
+  std::string to_string(Args &&... args) const {
     std::string result;
     for (auto &&val : pos_) {
-      result += (!val ? "null" : val->to_string()) + ", ";
+      result +=
+          (!val ? "null" : val->to_string(std::forward<Args>(args)...)) + ", ";
     }
     for (auto && [ key, val ] : named_) {
-      result += key + ": " + (!val ? "null" : val->to_string()) + ", ";
+      result += key + ": " +
+                (!val ? "null" : val->to_string(std::forward<Args>(args)...)) +
+                ", ";
     }
     return result;
   }
@@ -65,6 +69,9 @@ struct FnArgs {
     for (auto && [ key, val ] : named_) { result.named_.emplace(key, fn(val)); }
     return result;
   }
+
+  size_t size() const { return pos_.size() + named_.size(); }
+  bool empty() const { return this->size() == 0; }
 
   base::vector<T> pos_;
   base::unordered_map<std::string, T> named_;
