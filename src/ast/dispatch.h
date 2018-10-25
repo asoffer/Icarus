@@ -45,8 +45,8 @@ struct DispatchTable {
   //   streaming manner?
   // * Add weights for PGO optimizations?
 
-  static std::pair<DispatchTable, const type::Type *> Make(
-      const FnArgs<Expression *> &args, OverloadSet const &overload_set,
+  static std::pair<DispatchTable, type::Type const *> Make(
+      FnArgs<Expression *> const &args, OverloadSet const &overload_set,
       Context *ctx);
 
   base::map<FnArgs<const type::Type *>, Binding> bindings_;

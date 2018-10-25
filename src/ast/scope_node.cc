@@ -46,16 +46,18 @@ void ScopeNode::assign_scope(Scope *scope) {
 }
 
 type::Type const *ScopeNode::VerifyType(Context *ctx) {
-  for (auto &block : blocks_) {
-    limit_to(&block->stmts_);
-    if (block->arg_) {
-      block->arg_->VerifyType(ctx);
-      limit_to(block->arg_);
-    }
-  }
+  VERIFY_OR_RETURN(scope_type, name_);
+  // TODO check the scope type makes sense.
+
+  auto arg_types =
+      args_.Transform([ctx, this](auto &arg) { return arg->VerifyType(ctx); });
+  // TODO type check
+
+  for (auto &block : blocks_) { block->VerifyType(ctx); }
 
   // TODO check that all the blocks make sense and emit errors
 
+  // TODO compute what type this should return
   ctx->set_type(this, type::Void());
   return type::Void();  // TODO can this evaluate to anything?
 }
@@ -106,156 +108,109 @@ ScopeNode *ScopeNode::Clone() const {
 }
 
 base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
-  // TODO
-  // auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(blocks_[0].get(), ctx);
-  // auto land_block = IR::Func::Current->AddBlock();
+  auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
 
-  return {};
-  /*
-  struct BlockData {
-    IR::BlockIndex before, body, after;
-  };
-  base::unordered_map<AST::BlockLiteral *, BlockData> lit_to_data;
-  base::unordered_map<std::string, BlockData *> name_to_data;
-  std::string top_block_node_name;
-  for (auto const & [ expr, block_node ] : block_map_) {
-    auto[mod, block_node_name] = GetQualifiedIdentifier(expr, ctx);
-
-    // TODO better search
-
-    for (auto const &decl : scope_lit->decls_) {
-      if (decl.id_ != block_node_name &&
-          !(decl.id_ == "self" && expr == blocks_[0].get())) {
-        continue;
-      }
-      auto block_seq =
-          backend::EvaluateAs<IR::BlockSequence>(decl.init_val.get(), ctx);
-      ASSERT(block_seq.seq_->size() == 1u);
-      auto *block_lit = block_seq.seq_->front();
-      auto[iter, success] =
-          lit_to_data.emplace(block_lit, BlockData{
-                                             IR::Func::Current->AddBlock(),
-                                             IR::Func::Current->AddBlock(),
-                                             IR::Func::Current->AddBlock(),
-                                         });
-      ASSERT(success);
-      auto *block_data = &iter->second;
-
-      if (decl.id_ == "self") {
-        // TODO check constness as part of type-checking
-        IR::UncondJump(block_data->before);
-        top_block_node_name = block_node_name;
-        name_to_data.emplace(block_node_name, block_data);
-      } else {
-        name_to_data.emplace(decl.id_, block_data);
-      }
-      break;
+  OverloadSet init_os;
+  for (auto &decl : scope_lit->decls_) {
+    if (decl.id_ == "init") {
+      init_os.emplace_back(&decl, &ctx->type_of(&decl)->as<type::Function>());
     }
   }
 
-  // TODO can we just store "self" in name_to_data to avoid this nonsense?
-  base::unordered_map<BlockData *, BlockNode *> data_to_node;
-  for (auto const &block : blocks_) {
-    auto *block_data = block.is<Identifier>()
-                           ? name_to_data.at(block.as<Identifier>().token)
-                           : name_to_data.at(top_block_node_name);
-    data_to_node.emplace(block_data, &block_map_.at(&block));
-  }
-  name_to_data.clear();
+  auto[dispatch_table, result_type] = DispatchTable::Make(
+      args_.Transform(
+          [](std::unique_ptr<Expression> const &expr) { return expr.get(); }),
+      init_os, ctx);
+  auto block_seq =
+      EmitCallDispatch(
+          args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
+            return std::pair(const_cast<Expression *>(expr.get()),
+                             expr->EmitIR(ctx)[0]);
+          }),
+          dispatch_table, result_type, ctx)[0]
+          .reg_or<IR::BlockSequence>();
+  LOG << block_seq;
 
-  for (auto & [ block_lit, block_data ] : lit_to_data) {
-    IR::BasicBlock::Current = block_data.before;
-    // TODO the context for the before_ and after_ functions is wrong. Bound
-    // constants should not be for those in this scope but in the block literal
-    // scope.
-    auto iter = data_to_node.find(&block_data);
-    if (iter == data_to_node.end()) { continue; }
-    auto *arg_expr = iter->second->arg_.get();
+  std::unordered_map<std::string, Declaration *> name_lookup;
+  for (auto &decl : scope_lit->decls_) { name_lookup.emplace(decl.id_, &decl); }
 
-    std::unordered_set<type::Type const *> state_types;
+  struct BlockData {
+    OverloadSet before_os_, after_os_;
+    IR::BlockIndex index_;
+    BlockLiteral *lit_;
+  };
+
+  std::unordered_map<BlockNode *, BlockData> block_data;
+
+  std::unordered_set<type::Type const *> state_types;
+  for (auto &block : blocks_) {
+    // TODO for now do lookup assuming it's an identifier.
+    ASSERT(block->name_, Is<Identifier>());
+    auto *decl = name_lookup.at(block->name_->as<Identifier>().token);
+    auto &bseq = *backend::EvaluateAs<IR::BlockSequence>(decl, ctx).seq_;
+    ASSERT(bseq.size() == 1u);
+
     OverloadSet os_before;
-    for (auto &b : block_lit->before_) {
+    for (auto &b : bseq[0]->before_) {
       auto *t = ctx->type_of(b.get());
       os_before.emplace_back(b.get(), t);
       state_types.insert(t->as<type::Function>().input[0]);
     }
 
-    // TODO do this at type-checking
-    ASSERT(state_types.size() == 1u);
-    auto *state_ptr_type = *state_types.begin();
-    ASSERT(state_ptr_type, Is<type::Pointer>());
+    OverloadSet os_after;
+    for (auto &a : bseq[0]->after_) {
+      auto *t = ctx->type_of(a.get());
+      os_after.emplace_back(a.get(), t);
+      state_types.insert(t->as<type::Function>().input[0]);
+    }
 
-    IR::Register alloc =
-        IR::Alloca(state_ptr_type->as<type::Pointer>().pointee);
-    // We need to keep this around for the life of module. It's possible we
-    // could kill it earlier, but it's probably not a huge deal either way.
+    block_data[block.get()] = {std::move(os_before), std::move(os_after),
+                               IR::Func::Current->AddBlock(), bseq[0]};
+  }
+
+  ASSERT(state_types.size() == 1u);
+  auto *state_ptr_type = *state_types.begin();
+  ASSERT(state_ptr_type, Is<type::Pointer>());
+  IR::Register alloc = IR::Alloca(state_ptr_type->as<type::Pointer>().pointee);
+
+  for (auto &block : blocks_) {
+    auto &data              = block_data[block.get()];
+    IR::BasicBlock::Current = data.index_;
+
     auto *state_id = new Identifier(TextSpan{}, "<scope-state>");
     ctx->set_type(state_id, state_ptr_type);
 
-    auto call_enter_result = [&] {
-      FnArgs<std::pair<Expression *, IR::Val>> args;
-      args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
-      FnArgs<Expression *> expr_args;
-      expr_args.pos_.push_back(state_id);
-      if (arg_expr != nullptr) {
-        ForEachExpr(arg_expr, [&](size_t, Expression *expr) {
-          args.pos_.emplace_back(expr, expr->EmitIR(ctx)[0]);
-          expr_args.pos_.push_back(expr);
-        });
-      }
+    FnArgs<std::pair<Expression *, IR::Val>> args;
+    args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
 
-      auto[dispatch_table, result_type] =
-          DispatchTable::Make(expr_args, os_before, ctx);
+    FnArgs<Expression *> expr_args;
+    expr_args.pos_.push_back(state_id);
+    auto[dispatch_table, result_type] =
+        DispatchTable::Make(expr_args, data.before_os_, ctx);
 
-      return EmitCallDispatch(args, dispatch_table, result_type, ctx)[0]
-          .reg_or<IR::BlockSequence>();
-    }();
+    // TODO args?
+    EmitCallDispatch(args, dispatch_table, result_type, ctx);
+    block->stmts_.EmitIR(ctx);
 
-    for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
+    // TODO always same set of args for before and after?
+    std::tie(dispatch_table, result_type) =
+        DispatchTable::Make(expr_args, data.after_os_, ctx);
+    auto call_exit_result =
+        EmitCallDispatch(args, dispatch_table, result_type, ctx)[0]
+            .reg_or<IR::BlockSequence>();
+
+    for (auto & [ node, bd ] : block_data) {
       IR::BasicBlock::Current = IR::EarlyExitOn<true>(
-          jump_block_data.body,
-          IR::BlockSeqContains(call_enter_result, jump_block_lit));
-    }
-    // TODO we're not checking that this is an exit block but we probably
-    // should.
-    IR::UncondJump(land_block);
-
-    IR::BasicBlock::Current = block_data.body;
-    data_to_node.at(&block_data)->stmts_.EmitIR(ctx)[0];
-    IR::UncondJump(block_data.after);
-
-    IR::BasicBlock::Current = block_data.after;
-
-    auto call_exit_result = [&] {
-      FnArgs<std::pair<Expression *, IR::Val>> args;
-      args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
-      FnArgs<Expression *> expr_args;
-      expr_args.pos_.push_back(state_id);
-
-      OverloadSet os_after;
-      for (auto &a : block_lit->after_) {
-        os_after.emplace_back(a.get(), ctx->type_of(a.get()));
-      }
-      auto[dispatch_table, result_type] =
-          DispatchTable::Make(expr_args, os_after, ctx);
-      return EmitCallDispatch(args, dispatch_table, result_type, ctx)[0]
-          .reg_or<IR::BlockSequence>();
-    }();
-    for (auto & [ jump_block_lit, jump_block_data ] : lit_to_data) {
-      IR::BasicBlock::Current = IR::EarlyExitOn<true>(
-          jump_block_data.before,
-          IR::BlockSeqContains(call_exit_result, jump_block_lit));
+          bd.index_, IR::BlockSeqContains(call_exit_result, bd.lit_));
     }
 
-    // TODO we're not checking that this is an exit block but we probably
-    // should.
-    IR::UncondJump(land_block);
+    IR::UncondJump(block_data->before);
   }
+  LOG << IR::Func::Current;
 
-  IR::BasicBlock::Current = land_block;
+  // auto land_block = IR::Func::Current->AddBlock();
 
   return {};
-  */
 }
 
 base::vector<IR::Register> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }

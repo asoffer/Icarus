@@ -27,6 +27,10 @@ void ScopeLiteral::assign_scope(Scope *scope) {
 
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
   ctx->mod_->set_type(ctx->bound_constants_, this, type::Scp({}));
+  for (auto &decl : decls_) {
+    // TODO handle errors.
+    decl.VerifyType(ctx);
+  }
 
   // TODO
   return type::Scp({});

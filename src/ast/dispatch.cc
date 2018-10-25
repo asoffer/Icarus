@@ -25,8 +25,7 @@ static std::optional<BoundConstants> ComputeBoundConstants(
   // TODO handle declaration order
   for (size_t i = 0; i < fn->inputs.size(); ++i) {
     auto *input_type = ctx->type_of(fn->inputs[i].get());
-    if (input_type == nullptr) {
-      return std::nullopt; }
+    if (input_type == nullptr) { return std::nullopt; }
 
     if (binding->defaulted(i) && fn->inputs[i]->IsDefaultInitialized()) {
       // Tried to call using a default argument, but the function did not

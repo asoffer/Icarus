@@ -32,7 +32,7 @@ struct BlockNode : public Expression {
 
   std::unique_ptr<Expression> name_;
   Statements stmts_;
-  std::unique_ptr<Expression> arg_;
+  std::unique_ptr<Expression> arg_; // TODO used?
   std::unique_ptr<ExecScope> block_scope_;
 };
 }  // namespace AST
