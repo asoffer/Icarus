@@ -111,6 +111,8 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
 
   auto init_block = IR::Func::Current->AddBlock();
+  auto land_block = IR::Func::Current->AddBlock();
+
   IR::UncondJump(init_block);
   IR::BasicBlock::Current = init_block;
 
@@ -132,7 +134,8 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
 
   auto *jump_table =
       new std::unordered_map<AST::BlockLiteral const *, IR::BlockIndex>{
-          {reinterpret_cast<AST::BlockLiteral const *>(0x1), init_block}};
+          {reinterpret_cast<AST::BlockLiteral const *>(0x1), init_block},
+          {nullptr, land_block}};
 
   std::unordered_map<BlockNode *, BlockData> block_data;
   std::unordered_set<type::Type const *> state_types;
@@ -210,7 +213,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     IR::BlockSeqJump(call_exit_result, jump_table);
   }
 
-  // auto land_block = IR::Func::Current->AddBlock();
+  IR::BasicBlock::Current = land_block;
 
   return {};
 }

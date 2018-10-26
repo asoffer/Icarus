@@ -726,15 +726,14 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::ReturnJump: return IR::BlockIndex{-1};
     case IR::Op::BlockSeqJump: {
       auto bseq = resolve(cmd.block_seq_jump_.bseq_);
+
       for (auto *bl : *bseq.seq_) {
         auto iter = cmd.block_seq_jump_.jump_table_->find(bl);
         if (iter != cmd.block_seq_jump_.jump_table_->end()) {
           return iter->second;
         }
       }
-      // Is it an exit block?
-      if (bseq.seq_->back() == nullptr) { return IR::BlockIndex{-1}; }
-      NOT_YET();
+      NOT_YET(bseq.seq_);
     } break;
   }
   return IR::BlockIndex{-2};
