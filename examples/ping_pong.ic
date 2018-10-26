@@ -1,20 +1,21 @@
-ping ::= scope {
-  state ::= int
-  self ::= block {
-    before ::= (s: *int) => self
-    after ::= (s: *int) => pong
-  }
-
-  pong ::= block {
-    before ::= (s: *int) => pong
-    after ::= (s: *int) => self
-  }
-}
-
 main ::= () -> () {
-  ping {
+  foo () ping {
     print "sending..."
   } pong {
     print "received!\n"
   }
 }
+
+foo ::= scope {
+  init ::= () => ping
+  ping ::= block {
+    before ::= (state: *int) -> {}
+    after ::= (state: *int) => pong
+  }
+  pong ::= block {
+    before ::= (state: *int) -> {}
+    after ::= (state: *int) => ping
+  }
+}
+
+

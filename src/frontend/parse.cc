@@ -1077,7 +1077,7 @@ auto Rules = std::array{
     Rule(expr, {EXPR, op_l, RESERVED}, ErrMsg::NonBinopReserved<1, 2>),
     Rule(expr, {RESERVED, op_l, RESERVED}, ErrMsg::NonBinopBothReserved),
     Rule(fn_call_expr, {EXPR, l_paren, EXPR, r_paren}, AST::BuildCall),
-    Rule(expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
+    Rule(fn_call_expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
     Rule(expr, {l_paren, op_l | op_b | eq | op_bl, r_paren},
          BuildOperatorIdentifier),
     Rule(expr, {l_paren, r_paren}, AST::BuildEmptyCommaList),

@@ -9,7 +9,7 @@ factorial ::= (n: int) -> int {
 
 main ::= () -> () {
   n := 0
-  while (n <= 10) {
+  while (n <= 10) do {
     print n, "! = ", n'factorial, "\n"
     n += 1
   }

@@ -9,9 +9,11 @@
 #include <thread>
 
 #include "architecture.h"
+#include "ast/block_literal.h"
 #include "ast/codeblock.h"
 #include "ast/expression.h"
 #include "ast/function_literal.h"
+#include "ast/scope_node.h"
 #include "base/util.h"
 #include "context.h"
 #include "error/log.h"
@@ -722,6 +724,18 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];
     case IR::Op::UncondJump: return cmd.uncond_jump_.block_;
     case IR::Op::ReturnJump: return IR::BlockIndex{-1};
+    case IR::Op::BlockSeqJump: {
+      auto bseq = resolve(cmd.block_seq_jump_.bseq_);
+      for (auto *bl : *bseq.seq_) {
+        auto iter = cmd.block_seq_jump_.jump_table_->find(bl);
+        if (iter != cmd.block_seq_jump_.jump_table_->end()) {
+          return iter->second;
+        }
+      }
+      // Is it an exit block?
+      if (bseq.seq_->back() == nullptr) { return IR::BlockIndex{-1}; }
+      NOT_YET();
+    } break;
   }
   return IR::BlockIndex{-2};
 }

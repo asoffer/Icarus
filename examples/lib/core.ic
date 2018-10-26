@@ -1,30 +1,34 @@
 if ::= scope {
-  self ::= block {
-    before ::= (s: *int, b: bool) => switch {
-      self when b
-      else when !b
-    }
-    after ::= (s: *int) => exit
+  init ::= (b: bool) => switch {
+    then when b
+    else when !b
   }
-  else ::= block? {
-    before ::= (s: *int) => else
-    after ::= (s: *int) => exit
-  } 
+  then ::= block {
+    before ::= (state: *int) -> {}
+    after ::= (state: *int) => exit
+  }
+  else ::= block {
+    before ::= (state: *int) -> {}
+    after ::= (state: *int) => exit
+  }
 }
 
+/*
 forever ::= scope {
   self ::= block {
     before ::= (s: *int) => self
     after ::= (s: *int) => self
   }
 }
+*/
 
 while ::= scope {
-  self ::= block {
-    before ::= (s: *int, b: bool) => switch {
-      self when b
-      exit when !b
-    }
-    after ::= (s: *int) => self
+  init ::= (b: bool) => switch {
+    do when b
+    exit when !b
+  }
+  do ::= block {
+    before ::= (state: *int) -> {}
+    after ::= (state: *int) => start
   }
 }

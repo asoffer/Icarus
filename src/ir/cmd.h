@@ -17,6 +17,7 @@ struct Pointer;
 namespace AST {
 struct StructLiteral;
 struct ScopeLiteral;
+struct ScopeNode;
 struct Function;
 }  // namespace AST
 
@@ -275,6 +276,11 @@ struct Cmd {
   };
   CMD(UncondJump) { BlockIndex block_; };
   CMD(ReturnJump){};
+  CMD(BlockSeqJump) {
+    RegisterOr<BlockSequence> bseq_;
+    std::unordered_map<AST::BlockLiteral const *, IR::BlockIndex> const
+        *jump_table_;
+  };
 
   CMD(CastIntToReal) { Register reg_; };
   CMD(CastPtr) {
@@ -468,6 +474,7 @@ struct Cmd {
     CondJump cond_jump_;
     UncondJump uncond_jump_;
     ReturnJump return_jump_;
+    BlockSeqJump block_seq_jump_;
 
     Cmd::VariantType variant_type_;
     Cmd::VariantValue variant_value_;
@@ -616,6 +623,10 @@ void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
               BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();
+void BlockSeqJump(RegisterOr<BlockSequence> r,
+                  std::unordered_map<AST::BlockLiteral const *,
+                                     IR::BlockIndex> const *jump_table);
+
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                                   AST::BlockLiteral *lit);
 void SetReturnBool(size_t n, RegisterOr<bool> r);
@@ -631,6 +642,7 @@ void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r);
 void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r);
 void SetReturnModule(size_t n, RegisterOr<Module const *> r);
 void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r);
+
 
 Register Load(Register r, type::Type const *t);
 

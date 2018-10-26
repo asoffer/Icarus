@@ -86,7 +86,10 @@ TaggedNode NextWord(SourceLocation &loc) {
       {"foreign", IR::Val::BuiltinGeneric(ForeignFuncIndex)},
       {"bytes", BytesFunc()},
       {"alignment", AlignFunc()},
-      {"exit", IR::Val::Block(nullptr)}};
+      // TODO these are terrible. Make them reasonable. In particular, this is
+      // definitively UB.
+      {"exit", IR::Val::Block(nullptr)},
+      {"start", IR::Val::Block(reinterpret_cast<AST::BlockLiteral *>(0x1))}};
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     return TaggedNode::TerminalExpression(span, iter->second);
   }

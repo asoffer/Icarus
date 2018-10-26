@@ -781,6 +781,13 @@ void ReturnJump() {
   cmd.return_jump_ = Cmd::ReturnJump{};
 }
 
+void BlockSeqJump(RegisterOr<BlockSequence> bseq,
+                  std::unordered_map<AST::BlockLiteral const *,
+                                     IR::BlockIndex> const *jump_table) {
+  auto &cmd           = MakeCmd(nullptr, Op::BlockSeqJump);
+  cmd.block_seq_jump_ = Cmd::BlockSeqJump{{}, bseq, jump_table};
+}
+
 static std::ostream &operator<<(std::ostream &os, Register r) {
   return os << "reg." << r.value;
 }
@@ -941,6 +948,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
                 << " " << cmd.cond_jump_.blocks_[1];
     case Op::UncondJump: return os << cmd.uncond_jump_.block_;
     case Op::ReturnJump: return os;
+    case Op::BlockSeqJump: return os << cmd.block_seq_jump_.bseq_;
     case Op::Call:
       if (cmd.call_.fn_.is_reg_) {
         os << cmd.call_.fn_.reg_;

@@ -55,7 +55,8 @@ Val Val::CharBuf(const std::string &str) {
 
 Val Val::BlockSeq(BlockSequence b) {
   ASSERT(b.seq_->size() != 0u);
-  auto *t = (b.seq_->back() == nullptr)
+  auto *t = (b.seq_->back() == nullptr ||
+             b.seq_->back() == reinterpret_cast<AST::BlockLiteral *>(0x1))
                 ? type::Block
                 : b.seq_->back()->required_ ? type::Block : type::OptBlock;
   return Val(t, b);

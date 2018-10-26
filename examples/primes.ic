@@ -4,18 +4,18 @@ main ::= () -> () {
   num := 0
   upper ::= 1000//46_342
   n := 2
-  while (n <= upper) {
+  while (n <= upper) do {
     found_div := false
     test := 2
-    while (test * test <= n) {
-      if (n % test == 0) {
+    while (test * test <= n) do {
+      if (n % test == 0) then {
         found_div = true
         test = n // Force break
       }
       test += 1
     }
 
-    if (!found_div) { num += 1 }
+    if (!found_div) then { num += 1 }
     n += 1
   }
   print "There are ", num, " prime numbers less than or equal to ", upper, "\n"
