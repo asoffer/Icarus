@@ -168,7 +168,9 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   ASSERT(state_types.size() == 1u);
   auto *state_ptr_type = *state_types.begin();
   ASSERT(state_ptr_type, Is<type::Pointer>());
-  IR::Register alloc = IR::Alloca(state_ptr_type->as<type::Pointer>().pointee);
+  auto *state_type   = state_ptr_type->as<type::Pointer>().pointee;
+  IR::Register alloc = IR::Alloca(state_type);
+  state_type->EmitInit(alloc, ctx);
 
   auto[dispatch_table, result_type] = DispatchTable::Make(
       args_.Transform(
@@ -231,10 +233,11 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
 
     std::tie(dispatch_table, result_type) =
         DispatchTable::Make(expr_args, done_os, ctx);
-    auto call_exit_result =
-        EmitCallDispatch(args, dispatch_table, result_type, ctx)[0];
+    
+    auto results = EmitCallDispatch(args, dispatch_table, result_type, ctx);
+    state_type->EmitDestroy(alloc, ctx);
+    return results;
   }
-  return {};
 }
 
 base::vector<IR::Register> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
