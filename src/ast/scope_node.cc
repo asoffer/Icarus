@@ -184,12 +184,12 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
           .reg_or<IR::BlockSequence>();
   IR::BlockSeqJump(block_seq, jump_table);
 
+  auto *state_id = new Identifier(TextSpan{}, "<scope-state>");
+  ctx->set_type(state_id, state_ptr_type);
+
   for (auto &block : blocks_) {
     auto &data              = block_data[block.get()];
     IR::BasicBlock::Current = data.index_;
-
-    auto *state_id = new Identifier(TextSpan{}, "<scope-state>");
-    ctx->set_type(state_id, state_ptr_type);
 
     FnArgs<std::pair<Expression *, IR::Val>> args;
     args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
@@ -213,8 +213,27 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     IR::BlockSeqJump(call_exit_result, jump_table);
   }
 
-  IR::BasicBlock::Current = land_block;
+  {  // Landing block
+    OverloadSet done_os;
+    for (auto &decl : scope_lit->decls_) {
+      if (decl.id_ == "done") {
+        done_os.emplace_back(&decl, &ctx->type_of(&decl)->as<type::Function>());
+      }
+    }
 
+    IR::BasicBlock::Current = land_block;
+
+    FnArgs<std::pair<Expression *, IR::Val>> args;
+    args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
+
+    FnArgs<Expression *> expr_args;
+    expr_args.pos_.push_back(state_id);
+
+    std::tie(dispatch_table, result_type) =
+        DispatchTable::Make(expr_args, done_os, ctx);
+    auto call_exit_result =
+        EmitCallDispatch(args, dispatch_table, result_type, ctx)[0];
+  }
   return {};
 }
 
