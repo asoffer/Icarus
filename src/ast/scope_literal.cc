@@ -7,6 +7,7 @@
 #include "scope.h"
 #include "type/function.h"
 #include "type/scope.h"
+#include "type/pointer.h"
 
 namespace AST {
 std::string ScopeLiteral::to_string(size_t n) const {
@@ -25,11 +26,42 @@ void ScopeLiteral::assign_scope(Scope *scope) {
   for (auto &decl : decls_) { decl.assign_scope(body_scope_.get()); }
 }
 
+type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {
+  if (!t->is<type::Function>()) {
+    NOT_YET("log an error");
+    return nullptr;
+  }
+  auto &input_types = t->as<type::Function>().input;
+  if (input_types.empty()) {
+    NOT_YET("log an error");
+    return nullptr;
+  }
+  if (!input_types.at(0)->is<type::Pointer>()) {
+    NOT_YET("log an error");
+    return nullptr;
+  }
+  return &input_types.at(0)->as<type::Pointer>();
+}
+
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
   ctx->mod_->set_type(ctx->bound_constants_, this, type::Scp({}));
+
+  std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
+      state_types;
   for (auto &decl : decls_) {
     // TODO handle errors.
-    decl.VerifyType(ctx);
+    auto *t = decl.VerifyType(ctx);
+    if (decl.id_ == "done") {
+      state_types[StatePtrTypeOrLogError(t)].push_back(&decl);
+    } else if (t == type::Block || t == type::OptBlock || t == type::RepBlock) {
+      // TODO add these types to the state_types map.
+    }
+  }
+
+  switch (state_types.size()) {
+    case 0: NOT_YET("Stateless"); break;
+    case 1: break;
+    default: NOT_YET("Inconsistent"); break;
   }
 
   // TODO
