@@ -79,8 +79,10 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
                   IR::Register to_var, Context *ctx);
 
 const Type *Void();
-extern Type const *Err, *Bool, *Char, *Int, *Real, *Code, *Type_, *NullPtr,
-    *EmptyArray, *Generic, *Module, *Block, *OptBlock, *Interface;
+
+#define PRIMITIVE_MACRO(EnumName, name) extern Type const *EnumName;
+#include "type/primitive.xmacro.h"
+#undef PRIMITIVE_MACRO
 
 template <typename T>
 constexpr type::Type const *Get() {

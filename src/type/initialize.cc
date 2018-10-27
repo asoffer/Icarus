@@ -58,7 +58,7 @@ void Array::EmitInit(IR::Register id_reg, Context *ctx) const {
 void Primitive::EmitInit(IR::Register id_reg, Context *ctx) const {
   switch (type_) {
     case PrimType::Err: UNREACHABLE(this, ": Err");
-    case PrimType::Type: IR::StoreType(type::Void(), id_reg); break;
+    case PrimType::Type_: IR::StoreType(type::Void(), id_reg); break;
     case PrimType::NullPtr: UNREACHABLE();
     case PrimType::EmptyArray: UNREACHABLE();
     case PrimType::Code: {

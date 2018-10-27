@@ -1053,8 +1053,7 @@ static std::unique_ptr<AST::Node> BuildOperatorIdentifier(
 
 namespace frontend {
 static constexpr u64 OP_B = op_b | comma | colon | eq;
-static constexpr u64 EXPR =
-    expr | fn_expr | scope_expr | kw_block | fn_call_expr;
+static constexpr u64 EXPR = expr | fn_expr | scope_expr | fn_call_expr;
 // Used in error productions only!
 static constexpr u64 RESERVED = kw_block_head | op_lt;
 
@@ -1135,8 +1134,8 @@ auto Rules = std::array{
     Rule(expr, {l_paren, RESERVED, r_paren}, ErrMsg::Reserved<1, 1>),
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
     Rule(stmts, {stmts, (EXPR | stmts), newline}, AST::BuildMoreStatements),
-    Rule(expr, {kw_block_head | kw_block, braced_stmts}, BuildKWBlock),
-    Rule(expr, {kw_block, newline}, drop_all_but<0>),
+    Rule(expr, {kw_block_head, braced_stmts}, BuildKWBlock),
+    Rule(expr, {kw_block_head, newline}, drop_all_but<0>),
 
     Rule(expr, {(op_l | op_bl | op_lt), RESERVED}, ErrMsg::Reserved<0, 1>),
     Rule(expr, {RESERVED, op_l, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
@@ -1187,7 +1186,7 @@ struct ParseState {
       return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace && (get_type<1>() & kw_block) &&
+    if (ahead.tag_ == l_brace && (get_type<1>() & kw_block_head) &&
         (get_type<2>() == fn_arrow)) {
       return ShiftState::MustReduce;
     }
@@ -1197,8 +1196,7 @@ struct ParseState {
       return ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace &&
-        (get_type<1>() & (fn_expr | kw_block_head | kw_block))) {
+    if (ahead.tag_ == l_brace && (get_type<1>() & (fn_expr | kw_block_head))) {
       return ShiftState::NeedMore;
     }
 
@@ -1210,7 +1208,7 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<1>() & (kw_block_head | kw_block)) && ahead.tag_ == newline) {
+    if ((get_type<1>() & (kw_block_head)) && ahead.tag_ == newline) {
       return ShiftState::NeedMore;
     }
 

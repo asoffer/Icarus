@@ -24,13 +24,15 @@ size_t Architecture::alignment(const type::Type *t) const {
         return 8;  // TODO ???
       case type::PrimType::OptBlock:
         return 8;  // TODO ??
+      case type::PrimType::RepBlock:
+        return 8 ; // TODO ??
       case type::PrimType::Interface: NOT_YET();
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
       case type::PrimType::Char: return 1;
       case type::PrimType::Int: return 4;
       case type::PrimType::Real:
-      case type::PrimType::Type:
+      case type::PrimType::Type_:
       case type::PrimType::NullPtr:
       case type::PrimType::Code: return 8;
     }
@@ -88,13 +90,15 @@ size_t Architecture::bytes(const type::Type *t) const {
         return 8;  // TODO ???
       case type::PrimType::OptBlock:
         return 8;  // TODO ??
+      case type::PrimType::RepBlock:
+        return 8 ; // TODO ??
       case type::PrimType::Interface: NOT_YET();
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
       case type::PrimType::Char: return 1;
       case type::PrimType::Int: return 4;
       case type::PrimType::Real:
-      case type::PrimType::Type:
+      case type::PrimType::Type_:
       case type::PrimType::NullPtr:
       case type::PrimType::Code: return 8;
     }

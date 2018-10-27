@@ -5,9 +5,9 @@
 namespace type {
 size_t Primitive::string_size() const {
   switch (type_) {
-#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
+#define PRIMITIVE_MACRO(EnumName, name)                                        \
   case PrimType::EnumName:                                                     \
-    return sizeof(#name) - 1;
+    return sizeof(name) - 1;
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
     default: UNREACHABLE();
@@ -16,9 +16,9 @@ size_t Primitive::string_size() const {
 
 char *Primitive::WriteTo(char *buf) const {
   switch (type_) {
-#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
+#define PRIMITIVE_MACRO(EnumName, name)                                        \
   case PrimType::EnumName:                                                     \
-    return std::strcpy(buf, #name) + string_size();
+    return std::strcpy(buf, name) + string_size();
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
     default: UNREACHABLE();

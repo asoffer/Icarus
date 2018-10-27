@@ -13,8 +13,8 @@
 #include "module.h"
 
 namespace type {
-#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
-  Type const *GlobalName = new Primitive(PrimType::EnumName);
+#define PRIMITIVE_MACRO(EnumName, name)                                        \
+  Type const *EnumName = new Primitive(PrimType::EnumName);
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 

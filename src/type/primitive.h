@@ -8,7 +8,7 @@ struct Architecture;
 
 namespace type {
 enum class PrimType : char {
-#define PRIMITIVE_MACRO(GlobalName, EnumName, name) EnumName,
+#define PRIMITIVE_MACRO(EnumName, name) EnumName,
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 };

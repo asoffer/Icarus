@@ -52,7 +52,7 @@ void Primitive::EmitRepr(IR::Val const &val, Context *ctx) const {
     case PrimType::Bool: IR::PrintBool(val.reg_or<bool>()); break;
     case PrimType::Int: IR::PrintInt(val.reg_or<int>()); break;
     case PrimType::Real: IR::PrintReal(val.reg_or<double>()); break;
-    case PrimType::Type: IR::PrintType(val.reg_or<type::Type const *>()); break;
+    case PrimType::Type_: IR::PrintType(val.reg_or<type::Type const *>()); break;
     case PrimType::Code: NOT_YET();
     case PrimType::NullPtr:
     case PrimType::EmptyArray:
@@ -61,6 +61,7 @@ void Primitive::EmitRepr(IR::Val const &val, Context *ctx) const {
     case PrimType::Interface:
     case PrimType::Block:
     case PrimType::OptBlock:
+    case PrimType::RepBlock:
     case PrimType::Err: NOT_YET();
   }
 }

@@ -120,9 +120,13 @@ TaggedNode NextWord(SourceLocation &loc) {
       loc.Increment();
       span.finish = loc.cursor;
       t           = type::OptBlock;
+    } else if (*loc == '~') {
+      loc.Increment();
+      span.finish = loc.cursor;
+      t           = type::RepBlock;
     }
     return TaggedNode(std::make_unique<AST::Terminal>(span, IR::Val(t)),
-                      kw_block);
+                      kw_block_head);
   }
 
   return TaggedNode(std::make_unique<AST::Identifier>(span, token), expr);

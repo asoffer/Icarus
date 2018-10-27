@@ -207,7 +207,7 @@ void Primitive::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
   ASSERT(this == from_type);
   switch (this->type_) {
     case PrimType::Err: UNREACHABLE(this, ": Err");
-    case PrimType::Type:
+    case PrimType::Type_:
       IR::StoreType(from.reg_or<type::Type const *>(), to);
       break;
     case PrimType::NullPtr: UNREACHABLE();
