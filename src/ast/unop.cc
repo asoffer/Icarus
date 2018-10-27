@@ -121,6 +121,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         ctx->error_log_.WhichNonVariant(operand_type, span);
         limit_to(StageRange::NoEmitIR());
       }
+      ctx->mod_->set_type(ctx->bound_constants_, this, type::Type_);
       return type::Type_;
     case Language::Operator::At:
       if (operand_type->is<type::Pointer>()) {
