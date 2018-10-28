@@ -1075,18 +1075,19 @@ static constexpr u64 OP_B = op_b | comma | colon | eq;
 static constexpr u64 EXPR = expr | fn_expr | scope_expr | fn_call_expr;
 // Used in error productions only!
 static constexpr u64 RESERVED = kw_block_head | op_lt;
-
+static constexpr u64 KW_BLOCK = kw_block_head | kw_block;
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in the
 // list (second line of each rule). If so, then the function given in the third
 // line of each rule is applied, replacing the matched nodes. Lastly, the new
 // nodes type is set to the given type in the first line.
 auto Rules = std::array{
-    Rule(fn_expr, {EXPR, fn_arrow, EXPR}, BuildBinaryOperator),
+    Rule(fn_expr, {EXPR, fn_arrow, EXPR | kw_block}, BuildBinaryOperator),
     Rule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
     Rule(op_b, {colon, eq}, CombineColonEq),
     Rule(fn_expr, {EXPR, fn_arrow, RESERVED}, ErrMsg::Reserved<1, 2>),
-    Rule(fn_expr, {RESERVED, fn_arrow, EXPR}, ErrMsg::Reserved<1, 0>),
+    Rule(fn_expr, {RESERVED, fn_arrow, EXPR | kw_block},
+         ErrMsg::Reserved<1, 0>),
     Rule(fn_expr, {RESERVED, fn_arrow, RESERVED},
          ErrMsg::BothReserved<1, 0, 2>),
     Rule(expr, {EXPR, (OP_B | op_bl), RESERVED}, ErrMsg::Reserved<1, 2>),
@@ -1153,8 +1154,8 @@ auto Rules = std::array{
     Rule(expr, {l_paren, RESERVED, r_paren}, ErrMsg::Reserved<1, 1>),
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
     Rule(stmts, {stmts, (EXPR | stmts), newline}, AST::BuildMoreStatements),
-    Rule(expr, {kw_block_head, braced_stmts}, BuildKWBlock),
-    Rule(expr, {kw_block_head, newline}, drop_all_but<0>),
+    Rule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
+    Rule(expr, {KW_BLOCK, newline}, drop_all_but<0>),
 
     Rule(expr, {(op_l | op_bl | op_lt), RESERVED}, ErrMsg::Reserved<0, 1>),
     Rule(expr, {RESERVED, op_l, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
@@ -1173,7 +1174,8 @@ auto Rules = std::array{
     Rule(block_expr, {expr, braced_stmts}, AST::BuildBlockNode),
     Rule(scope_expr, {fn_call_expr, block_expr}, AST::BuildScopeNode),
     Rule(scope_expr, {scope_expr, block_expr}, AST::ExtendScopeNode),
-    Rule(scope_expr, {scope_expr, expr, scope_expr}, AST::SugaredExtendScopeNode),
+    Rule(scope_expr, {scope_expr, expr, scope_expr},
+         AST::SugaredExtendScopeNode),
 };
 
 TaggedNode NextToken(SourceLocation &loc, error::Log *error_log);
@@ -1206,8 +1208,8 @@ struct ParseState {
       return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace && (get_type<1>() & kw_block_head) &&
-        (get_type<2>() == fn_arrow)) {
+    if (ahead.tag_ == l_brace && (get_type<1>() & kw_block) &&
+        get_type<2>() == fn_arrow) {
       return ShiftState::MustReduce;
     }
 
@@ -1228,11 +1230,11 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<1>() & (kw_block_head)) && ahead.tag_ == newline) {
+    if ((get_type<1>() & kw_block_head) && ahead.tag_ == newline) {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<2>() & (kw_block_head)) && get_type<1>() == newline) {
+    if ((get_type<2>() & kw_block_head) && get_type<1>() == newline) {
       return ShiftState::NeedMore;
     }
 

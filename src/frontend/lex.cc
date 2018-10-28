@@ -97,16 +97,27 @@ TaggedNode NextWord(SourceLocation &loc) {
   static const base::unordered_map<std::string, Tag> KeywordMap = {
       {"which", op_l},          {"print", op_l},
       {"ensure", op_l},         {"needs", op_l},
-      {"import", op_l},         {"interface", kw_block_head},
+      {"import", op_l},         {"interface", kw_block},
       {"flags", kw_block_head}, {"enum", kw_block_head},
       {"generate", op_l},       {"struct", kw_block_head},
       {"return", op_lt},        {"yield", op_lt},
-      {"scope", kw_block_head}, {"switch", kw_block_head},
+      {"scope", kw_block},      {"switch", kw_block_head},
       {"when", op_b},           {"as", op_b}};
   if (auto iter = KeywordMap.find(token); iter != KeywordMap.end()) {
     return TaggedNode(span, iter->first, iter->second);
   }
 
+  // "block" is special because it is also the name of the type of such a block.
+  // That is, `block { ... }` has type `block`. This means that a function
+  // returning a block will look like `() -> block { ... }` and there is an
+  // ambiguity whereby we can't tell if this should be parsed as
+  // A: () -> (block { ... }), or
+  // B: (() -> block) { ... }
+  //
+  // We can fix this in the parser easily (by checking for a `->` beforehand
+  // and prefering (B). Users can specifically add parentheses to get (A), but
+  // this requires tagging "block" differently from the other block-head
+  // keywords.
   if (token == "block") {
     auto t = type::Block;
     if (*loc == '?') {
@@ -119,7 +130,7 @@ TaggedNode NextWord(SourceLocation &loc) {
       t           = type::RepBlock;
     }
     return TaggedNode(std::make_unique<AST::Terminal>(span, IR::Val(t)),
-                      kw_block_head);
+                      kw_block);
   }
 
   return TaggedNode(std::make_unique<AST::Identifier>(span, token), expr);
