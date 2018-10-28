@@ -1,5 +1,6 @@
 OPERATOR_MACRO(Import, "import", 0, non_assoc)
 OPERATOR_MACRO(Return, "return", 0, non_assoc)
+OPERATOR_MACRO(Yield, "yield", 0, non_assoc)
 OPERATOR_MACRO(When, "when", 0, non_assoc)
 OPERATOR_MACRO(Needs, "needs", 0, non_assoc)
 OPERATOR_MACRO(Ensure, "ensure", 0, non_assoc)

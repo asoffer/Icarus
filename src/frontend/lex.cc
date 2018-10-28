@@ -95,21 +95,14 @@ TaggedNode NextWord(SourceLocation &loc) {
   }
 
   static const base::unordered_map<std::string, Tag> KeywordMap = {
-      {"which", op_l},
-      {"print", op_l},
-      {"ensure", op_l},
-      {"needs", op_l},
-      {"import", op_l},
-      {"interface", kw_block_head},
-      {"flags", kw_block_head},
-      {"enum", kw_block_head},
-      {"generate", op_l},
-      {"struct", kw_block_head},
-      {"return", op_lt},
-      {"scope", kw_block_head},
-      {"switch", kw_block_head},
-      {"when", op_b},
-      {"as", op_b}};
+      {"which", op_l},          {"print", op_l},
+      {"ensure", op_l},         {"needs", op_l},
+      {"import", op_l},         {"interface", kw_block_head},
+      {"flags", kw_block_head}, {"enum", kw_block_head},
+      {"generate", op_l},       {"struct", kw_block_head},
+      {"return", op_lt},        {"yield", op_lt},
+      {"scope", kw_block_head}, {"switch", kw_block_head},
+      {"when", op_b},           {"as", op_b}};
   if (auto iter = KeywordMap.find(token); iter != KeywordMap.end()) {
     return TaggedNode(span, iter->first, iter->second);
   }

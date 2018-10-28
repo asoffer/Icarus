@@ -21,6 +21,7 @@ namespace AST {
 std::string RepeatedUnop::to_string(size_t n) const {
   switch (op_) {
     case Language::Operator::Return: return "return " + args_.to_string(n);
+    case Language::Operator::Yield: return "yield " + args_.to_string(n);
     case Language::Operator::Print: return "print " + args_.to_string(n);
     default: { UNREACHABLE(); }
   }
@@ -52,6 +53,7 @@ void RepeatedUnop::contextualize(
 void RepeatedUnop::ExtractReturns(
     base::vector<const Expression *> *rets) const {
   args_.ExtractReturns(rets);
+  // TODO yield as well?
   if (op_ == Language::Operator::Return) { rets->push_back(&args_); }
 }
 
@@ -115,6 +117,22 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
         IR::SetReturn(i, arg_vals[i]);
       }
       IR::ReturnJump();
+      return {};
+    }
+    case Language::Operator::Yield: {
+      // Can't return these because we need to pass them up at least through the
+      // containing statements node and maybe further if we allow labelling
+      // scopes to be yielded to.
+      ctx->yields_stack_.back().clear();
+      ctx->yields_stack_.back().reserve(arg_vals.size());
+      // TODO one problem with this setup is that we look things up in a context
+      // after returning, so the `after` method has access to a different
+      // (smaller) collection of bound constants. This can change the meaning of
+      // things or at least make them not compile if the `after` function takes
+      // a compile-time constant argument.
+      for (size_t i = 0; i < arg_vals.size(); ++i) {
+        ctx->yields_stack_.back().emplace_back(args_.exprs[i].get(), arg_vals[i]);
+      }
       return {};
     }
     case Language::Operator::Print:

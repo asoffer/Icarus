@@ -3,13 +3,9 @@
 
 #include "ast/node.h"
 
-namespace IR {
-void ReturnJump();
-}  // namespace IR
-
 namespace AST {
 struct Jump : public Node {
-  enum class Kind { Return };
+  enum class Kind { Return, Yield };
 
   Jump(const TextSpan &span, Kind jump_type)
       : Node(span), jump_type(jump_type) {}
@@ -18,6 +14,7 @@ struct Jump : public Node {
   std::string to_string(size_t n) const override {
     switch (jump_type) {
       case Kind::Return: return "return";
+      case Kind::Yield: return "yield";
     }
     UNREACHABLE();
   }

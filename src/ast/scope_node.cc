@@ -108,6 +108,9 @@ ScopeNode *ScopeNode::Clone() const {
 }
 
 base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
+  ctx->yields_stack_.emplace_back();
+  base::defer d([&]() { ctx->yields_stack_.pop_back(); });
+
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
 
   auto init_block = IR::Func::Current->AddBlock();
@@ -193,23 +196,35 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     auto &data              = block_data[block.get()];
     IR::BasicBlock::Current = data.index_;
 
-    FnArgs<std::pair<Expression *, IR::Val>> args;
-    args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
+    FnArgs<std::pair<Expression *, IR::Val>> before_args;
+    before_args.pos_.emplace_back(state_id,
+                                  IR::Val::Reg(alloc, state_ptr_type));
 
-    FnArgs<Expression *> expr_args;
-    expr_args.pos_.push_back(state_id);
+    FnArgs<Expression *> before_expr_args;
+    before_expr_args.pos_.push_back(state_id);
     auto[dispatch_table, result_type] =
-        DispatchTable::Make(expr_args, data.before_os_, ctx);
+        DispatchTable::Make(before_expr_args, data.before_os_, ctx);
 
     // TODO args?
-    EmitCallDispatch(args, dispatch_table, result_type, ctx);
-    block->stmts_.EmitIR(ctx);
+    EmitCallDispatch(before_args, dispatch_table, result_type, ctx);
 
-    // TODO always same set of args for before and after?
+    block->EmitIR(ctx);
+    auto yields = std::move(ctx->yields_stack_.back());
+
+    FnArgs<Expression *> after_expr_args;
+    after_expr_args.pos_.push_back(state_id);
+
+    FnArgs<std::pair<Expression *, IR::Val>> after_args;
+    after_args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
+    for (auto &yield : yields) { 
+      after_expr_args.pos_.push_back(yield.expr_);
+      after_args.pos_.emplace_back(yield.expr_, yield.val_);
+    }
+
     std::tie(dispatch_table, result_type) =
-        DispatchTable::Make(expr_args, data.after_os_, ctx);
+        DispatchTable::Make(after_expr_args, data.after_os_, ctx);
     auto call_exit_result =
-        EmitCallDispatch(args, dispatch_table, result_type, ctx)[0]
+        EmitCallDispatch(after_args, dispatch_table, result_type, ctx)[0]
             .reg_or<IR::BlockSequence>();
 
     IR::BlockSeqJump(call_exit_result, jump_table);

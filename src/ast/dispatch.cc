@@ -111,7 +111,7 @@ bool DispatchEntry::SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
     }
 
     const type::Type *match =
-        type::Meet(ctx->type_of(binding_.exprs_.at(i).second), input_types[i]);
+        type::Meet(ctx->type_of(binding_.exprs_.at(i).second), input_types.at(i));
     if (match == nullptr) { return false; }
 
     binding_.exprs_.at(i).first = input_types.at(i);

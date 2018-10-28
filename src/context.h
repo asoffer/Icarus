@@ -28,6 +28,17 @@ struct Context {
 
   AST::BoundConstants bound_constants_;
 
+  // TODO this looks useful in bindings too. maybe give it a better name and use
+  // it more frequently?
+  struct YieldResult {
+    YieldResult(AST::Expression *expr, IR::Val val)
+        : expr_(expr), val_(std::move(val)) {}
+
+    AST::Expression *expr_;
+    IR::Val val_;
+  };
+  base::vector<base::vector<YieldResult>> yields_stack_;
+
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it
   // again, at each step adding the nodes to the error log involved in the

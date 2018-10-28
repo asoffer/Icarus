@@ -135,10 +135,10 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
     auto import_node  = std::make_unique<Import>(move_as<Expression>(nodes[1]));
     import_node->span = TextSpan(nodes[0]->span, import_node->operand_->span);
     return import_node;
-  } else if (tk == "return") {
+  } else if (tk == "return" || tk == "yield") {
     auto unop = std::make_unique<RepeatedUnop>(
         TextSpan(nodes.front()->span, nodes.back()->span));
-    unop->op_ = Operator::Return;
+    unop->op_ = tk == "return" ? Operator::Return : Operator::Yield;
     if (nodes[1]->is<CommaList>()) {
       unop->args_ = std::move(nodes[1]->as<CommaList>());
     } else {
@@ -543,7 +543,7 @@ std::unique_ptr<Node> BuildMoreStatements(
 std::unique_ptr<Node> BuildJump(base::vector<std::unique_ptr<Node>> nodes,
                                 Context *ctx) {
   const static base::unordered_map<std::string, Jump::Kind> JumpKindMap = {
-      {"return", Jump::Kind::Return}};
+      {"return", Jump::Kind::Return}, {"yield", Jump::Kind::Yield}};
   auto iter = JumpKindMap.find(nodes[0]->as<frontend::Token>().token);
   ASSERT(iter != JumpKindMap.end());
 
