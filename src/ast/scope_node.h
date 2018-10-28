@@ -34,6 +34,7 @@ struct ScopeNode : public Expression {
   FnArgs<std::unique_ptr<Expression>> args_;
   // TODO store by value.
   base::vector<std::unique_ptr<BlockNode>> blocks_;
+  ScopeNode *sugared_ = nullptr;
 };
 }  // namespace AST
 

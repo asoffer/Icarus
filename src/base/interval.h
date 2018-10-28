@@ -1,6 +1,7 @@
 #ifndef ICARUS_BASE_INTERVAL_H
 #define ICARUS_BASE_INTERVAL_H
 
+#include "base/container/vector.h"
 #include <algorithm>
 
 namespace base {

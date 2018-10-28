@@ -62,25 +62,19 @@ square_norm ::= (z: complex) => z._re * z._re + z._im * z._im
 
 (print) ::= (z: complex) -> () {
   if ::= (import "examples/lib/core.ic").if
-  if (z._re != 0.0) {
+  if (z._re != 0.0) then {
     print z._re
-    if (z._im > 0.0) {
+    if (z._im > 0.0) then {
       print " + "
-      if (z._im != 1.0) { print z._im }
+      if (z._im != 1.0) then { print z._im }
       print "i"
-    } else {
-      if (z._im < 0.0) {
-        print " - "
-        if (z._im != -1.0) { print  -z._im }
-        print "i"
-      }
-    }
-  } else {
-    if (z._im == 0.0) {
-      print 0.0
-    } else {
-      if (z._im != 1.0) { print z._im  }
+    } else if (z._im < 0.0) then {
+      print " - "
+      if (z._im != -1.0) then { print  -z._im }
       print "i"
     }
-  }
+  } else if (z._im == 0.0) then {
+    print 0.0
+  } else if (z._im != 1.0) then { print z._im  }
+  print "i"
 }

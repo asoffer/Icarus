@@ -603,11 +603,10 @@ std::unique_ptr<Node> BuildScopeNode(base::vector<std::unique_ptr<Node>> nodes,
 
 std::unique_ptr<Node> BuildBlockNode(base::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
-  auto bn          = std::make_unique<BlockNode>();
-  bn->span         = TextSpan(nodes[0]->span, nodes[1]->span);
-  bn->name_        = move_as<Expression>(nodes[0]);
-  bn->stmts_       = std::move(nodes[1]->as<Statements>());
-  // TODO span
+  auto bn    = std::make_unique<BlockNode>();
+  bn->span   = TextSpan(nodes[0]->span, nodes[1]->span);
+  bn->name_  = move_as<Expression>(nodes[0]);
+  bn->stmts_ = std::move(nodes[1]->as<Statements>());
 
   return bn;
 }
@@ -615,9 +614,29 @@ std::unique_ptr<Node> BuildBlockNode(base::vector<std::unique_ptr<Node>> nodes,
 std::unique_ptr<Node> ExtendScopeNode(base::vector<std::unique_ptr<Node>> nodes,
                                       Context *ctx) {
   auto &scope_node = nodes[0]->as<ScopeNode>();
-  scope_node.blocks_.push_back(move_as<BlockNode>(nodes[1]));
+  scope_node.sugared_->blocks_.push_back(move_as<BlockNode>(nodes[1]));
   return std::move(nodes[0]);
 }
+
+std::unique_ptr<Node> SugaredExtendScopeNode(
+    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+  using base::check::Is;
+
+  auto *scope_node = &nodes[0]->as<ScopeNode>();
+  auto *extension_point = (scope_node->sugared_ != nullptr)
+                              ? scope_node->sugared_
+                              : &nodes[0]->as<ScopeNode>();
+
+  auto bn = std::make_unique<BlockNode>();
+  // TODO span
+  bn->name_ = move_as<Expression>(nodes[1]);
+  // TODO hook this up to a yield when it exists
+  scope_node->sugared_ = &nodes[2]->as<ScopeNode>();
+  bn->stmts_.content_.push_back(std::move(nodes[2]));
+  extension_point->blocks_.push_back(std::move(bn));
+  return std::move(nodes[0]);
+}
+
 }  // namespace
 }  // namespace AST
 
@@ -1154,6 +1173,7 @@ auto Rules = std::array{
     Rule(block_expr, {expr, braced_stmts}, AST::BuildBlockNode),
     Rule(scope_expr, {fn_call_expr, block_expr}, AST::BuildScopeNode),
     Rule(scope_expr, {scope_expr, block_expr}, AST::ExtendScopeNode),
+    Rule(scope_expr, {scope_expr, expr, scope_expr}, AST::SugaredExtendScopeNode),
 };
 
 TaggedNode NextToken(SourceLocation &loc, error::Log *error_log);
