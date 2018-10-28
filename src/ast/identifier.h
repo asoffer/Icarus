@@ -8,8 +8,8 @@ struct Declaration;
 
 struct Identifier : public Expression {
   Identifier() {}  // TODO needed?
-  Identifier(const TextSpan &span, const std::string &token)
-      : Expression(span), token(token) {}
+  Identifier(const TextSpan &span, std::string token)
+      : Expression(span), token(std::move(token)) {}
   ~Identifier() override {}
 
   std::string to_string(size_t n) const override { return token; }

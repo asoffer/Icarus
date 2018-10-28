@@ -5,6 +5,7 @@
 
 #include "ast/declaration.h"
 #include "ast/identifier.h"
+#include "base/interval.h"
 #include "frontend/source.h"
 #include "type/tuple.h"
 #include "type/type.h"
@@ -36,43 +37,6 @@ std::string LineToDisplay(size_t line_num, const frontend::Source::Line &line,
          std::to_string(line_num) + "| " + line + "\n";
 }
 
-// TODO templatize? and merge with texspan
-struct Interval {
-  size_t start = 0, past_end = 0;
-};
-
-struct IntervalSet {
-  IntervalSet() = default;
-  IntervalSet(std::initializer_list<Interval> intervals) {
-    for (const auto &interval : intervals) { insert(interval); }
-  }
-
-  void insert(const Interval &i) {
-    auto lower =
-        std::lower_bound(endpoints_.begin(), endpoints_.end(), i.start);
-    auto upper =
-        std::upper_bound(endpoints_.begin(), endpoints_.end(), i.past_end);
-
-    if (std::distance(lower, upper) == 0) {
-      auto entries = base::vector<size_t>{i.start, i.past_end};
-      endpoints_.insert(lower, entries.begin(), entries.end());
-      return;
-    }
-
-    if (std::distance(endpoints_.begin(), lower) % 2 == 0) {
-      *lower = i.start;
-      ++lower;
-    }
-    if (std::distance(endpoints_.begin(), upper) % 2 == 0) {
-      --upper;
-      *upper = i.past_end;
-    }
-    endpoints_.erase(lower, upper);
-  }
-
-  base::vector<size_t> endpoints_;
-};
-
 struct DisplayAttrs {
   enum Color : char {
     BLACK = '0',
@@ -94,8 +58,10 @@ std::ostream &operator<<(std::ostream &os, const DisplayAttrs &attrs) {
 
 void WriteSource(
     std::ostream &os, const frontend::Source &source,
-    const IntervalSet &line_intervals, size_t border_alignment,
+    base::IntervalSet<size_t> const &line_intervals,
     const base::vector<std::pair<TextSpan, DisplayAttrs>> &underlines) {
+  size_t border_alignment = NumDigits(line_intervals.endpoints_.back() - 1) + 2;
+
   auto iter = underlines.begin();
   for (size_t i = 0; i < line_intervals.endpoints_.size(); i += 2) {
     size_t line_num = line_intervals.endpoints_[i];
@@ -166,8 +132,8 @@ void Log::PostconditionNeedsBool(AST::Expression *expr) {
                                 // expr->type->to_string() << "\n\n";
   WriteSource(
       ss, *expr->span.source,
-      {Interval{expr->span.start.line_num, expr->span.finish.line_num + 1}},
-      NumDigits(expr->span.finish.line_num) + 2,
+      {base::Interval<size_t>{expr->span.start.line_num,
+                              expr->span.finish.line_num + 1}},
       {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -179,9 +145,7 @@ void Log::PreconditionNeedsBool(AST::Expression *expr) {
         "expression of type ";  // TODO pass in type or context too <<
                                 // expr->type->to_string() << "\n\n";
   WriteSource(
-      ss, *expr->span.source,
-      {Interval{expr->span.start.line_num, expr->span.finish.line_num + 1}},
-      NumDigits(expr->span.finish.line_num) + 2,
+      ss, *expr->span.source, {expr->span.lines()},
       {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -189,11 +153,10 @@ void Log::PreconditionNeedsBool(AST::Expression *expr) {
 
 template <typename ExprContainer>
 static auto LinesToShow(const ExprContainer &exprs) {
-  IntervalSet iset;
+  base::IntervalSet<size_t> iset;
   base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
   for (const auto &expr : exprs) {
-    iset.insert(Interval{expr->span.start.line_num - 1,
-                         expr->span.finish.line_num + 2});
+    iset.insert(expr->span.lines().expanded(1));
     underlines.emplace_back(
         expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE});
   }
@@ -206,9 +169,7 @@ static auto LinesToShow(const ExprContainer &exprs) {
     std::stringstream ss;                                                      \
     ss << msg "\n\n";                                                          \
     WriteSource(                                                               \
-        ss, *span.source,                                                      \
-        {Interval{span.start.line_num, span.finish.line_num + 1}},             \
-        NumDigits(span.finish.line_num) + 2,                                   \
+        ss, *span.source, {span.lines()},                                      \
         {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});   \
     ss << "\n\n";                                                              \
     errors_.push_back(ss.str());                                               \
@@ -226,10 +187,7 @@ void Log::DoubleDeclAssignment(const TextSpan &decl_span,
   ss << "Attempting to initialize an identifier that already has an initial "
         "value. Did you mean `==` instead of `=`?\n\n";
   WriteSource(
-      ss, *decl_span.source,
-      {Interval{decl_span.start.line_num, decl_span.finish.line_num + 1},
-       Interval{val_span.start.line_num, val_span.finish.line_num + 1}},
-      NumDigits(val_span.finish.line_num) + 2,
+      ss, *decl_span.source, {decl_span.lines(), val_span.lines()},
       {{decl_span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}},
        {val_span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
@@ -242,9 +200,7 @@ void Log::DeclarationUsedInUnop(const std::string &unop,
   ss << "Declarations cannot be used as argument to unary operator `" << unop
      << "`.\n\n";
   WriteSource(
-      ss, *decl_span.source,
-      {Interval{decl_span.start.line_num, decl_span.finish.line_num + 1}},
-      NumDigits(decl_span.finish.line_num) + 2,
+      ss, *decl_span.source, {decl_span.lines()},
       {{decl_span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -256,9 +212,7 @@ void Log::MissingMember(const TextSpan &span, const std::string &member_name,
   ss << "Expressions of type `" << t->to_string() << "` have no member named `"
      << member_name << "`.\n\n";
   WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
 
   ss << "\n\n";
@@ -281,8 +235,7 @@ void Log::ReturnTypeMismatch(const type::Type *expected_type,
   // TODO also show where the return type is specified?
   WriteSource(
       ss, *ASSERT_NOT_NULL(span.source),
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -294,9 +247,7 @@ void Log::NoMatchingOperator(const std::string &op, const type::Type *lhs,
   ss << "No matching operator (" << op << ") with arguments of type "
      << lhs->to_string() << " and " << rhs->to_string() << "\n\n";
   WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -310,9 +261,7 @@ void Log::NoReturnTypes(const AST::Expression *ret_expr) {
   auto &span = ret_expr->span;
   // TODO also show where the return type is specified?
   WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      ss, *span.source, {span.lines()}, 
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -332,8 +281,7 @@ void Log::ReturningWrongNumber(const AST::Expression *ret_expr,
   // TODO also show where the return type is specified?
   WriteSource(
       ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -354,8 +302,7 @@ void Log::IndexedReturnTypeMismatch(const type::Type *expected_type,
   // TODO also show where the return type is specified?
   WriteSource(
       ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -368,9 +315,7 @@ void Log::DereferencingNonPointer(const type::Type *type,
   ss << "Attempting to dereference an object of type `" << type->to_string()
      << "` which is not a pointer.\n\n";
   WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -381,9 +326,7 @@ void Log::WhichNonVariant(const type::Type *type, const TextSpan &span) {
   ss << "Attempting to call `which` an object of type `" << type->to_string()
      << "` which is not a variant.\n\n";
   WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      ss, *span.source, {span.lines()}, 
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -393,9 +336,7 @@ void Log::Reserved(const TextSpan &span, const std::string &token) {
   std::stringstream ss;
   ss << "Identifier '" << token << "' is a reserved keyword.\n\n";
   WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      ss, *span.source, {span.lines()}, 
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -405,9 +346,7 @@ void Log::NotBinary(const TextSpan &span, const std::string &token) {
   std::stringstream ss;
   ss << "Operator '" << token << "' is not a binary operator.\n\n";
   WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      ss, *span.source, {span.lines()}, 
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -419,9 +358,7 @@ void Log::NotAType(AST::Expression *expr) {
         "a(n) ";  // TODO pass in type or context too << expr->type->to_string()
                   // << ".\n\n";
   WriteSource(
-      ss, *expr->span.source,
-      {Interval{expr->span.start.line_num, expr->span.finish.line_num + 1}},
-      NumDigits(expr->span.finish.line_num) + 2,
+      ss, *expr->span.source, {expr->span.lines()},
       {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -434,10 +371,7 @@ void Log::AssignmentTypeMismatch(AST::Expression *lhs, AST::Expression *rhs) {
   //      << lhs->type->to_string() << ", but right-hand side has type "
   //      << rhs->type->to_string() << ".\n\n";
   WriteSource(
-      ss, *lhs->span.source,
-      {Interval{lhs->span.start.line_num, lhs->span.finish.line_num + 1},
-       Interval{rhs->span.start.line_num, rhs->span.finish.line_num + 1}},
-      NumDigits(rhs->span.finish.line_num) + 2,
+      ss, *lhs->span.source, {lhs->span.lines(), rhs->span.lines()},
       {{lhs->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}},
        {rhs->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
@@ -448,23 +382,23 @@ void Log::PositionalArgumentFollowingNamed(
     const base::vector<TextSpan> &pos_spans, const TextSpan &named_span) {
   std::stringstream ss;
   ss << "Positional function arguments cannot follow a named argument.\n\n";
-  IntervalSet iset;
+  base::IntervalSet<size_t> iset;
 
   base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
   // TODO do you also want to show the whole function call?
-  iset.insert(
-      Interval{named_span.start.line_num - 1, named_span.finish.line_num + 2});
+  iset.insert(base::Interval<size_t>{named_span.start.line_num - 1,
+                                     named_span.finish.line_num + 2});
   underlines.emplace_back(
       named_span, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
 
   for (const auto &span : pos_spans) {
-    iset.insert(Interval{span.start.line_num - 1, span.finish.line_num + 2});
+    iset.insert(base::Interval<size_t>{span.start.line_num - 1,
+                                       span.finish.line_num + 2});
     underlines.emplace_back(
         span, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
   }
 
-  WriteSource(ss, *named_span.source, iset,
-              NumDigits(pos_spans.back().finish.line_num) + 2, underlines);
+  WriteSource(ss, *named_span.source, iset, underlines);
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
@@ -474,12 +408,12 @@ void Log::UnknownParseError(const base::vector<TextSpan> &lines) {
   std::stringstream ss;
   ss << "Parse errors found in \"" << lines.front().source->name
      << "\" on the following lines:\n\n";
-  IntervalSet iset;
+  base::IntervalSet<size_t> iset;
   for (const auto &span : lines) {
-    iset.insert(Interval{span.start.line_num - 1, span.finish.line_num + 2});
+    iset.insert(base::Interval<size_t>{span.start.line_num - 1,
+                                       span.finish.line_num + 2});
   }
-  WriteSource(ss, *lines.front().source, iset,
-              NumDigits(lines.back().finish.line_num) + 2, {{}});
+  WriteSource(ss, *lines.front().source, iset, {{}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
@@ -540,11 +474,11 @@ void Log::Dump() const {
       decls.emplace(id->as<AST::Identifier>().decl, decls.size());
     }
 
-    IntervalSet iset;
+    base::IntervalSet<size_t> iset;
     base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
     for (const auto &id : *ids) {
-      iset.insert(
-          Interval{id->span.start.line_num - 1, id->span.finish.line_num + 2});
+      iset.insert(base::Interval<size_t>{id->span.start.line_num - 1,
+                                         id->span.finish.line_num + 2});
       // TODO handle case where it's 1 mod 7 and so adjacent entries show up
       // with the same color
       underlines.emplace_back(
@@ -554,8 +488,7 @@ void Log::Dump() const {
                                  DisplayAttrs::UNDERLINE});
     }
 
-    WriteSource(std::cerr, *ids->front()->span.source, iset,
-                NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
+    WriteSource(std::cerr, *ids->front()->span.source, iset, underlines);
     std::cerr << "\n\n";
   }
 
@@ -565,15 +498,13 @@ void Log::Dump() const {
                  "constants).\n\n";
 
     auto[iset, underlines] = LinesToShow(ids);
-    iset.insert(Interval{decl->span.start.line_num - 1,
-                         decl->span.finish.line_num + 2});
+    iset.insert(base::Interval<size_t>{decl->span.start.line_num - 1,
+                                       decl->span.finish.line_num + 2});
     // TODO highlight just the identifier
     underlines.emplace_back(
-        decl->span,
-        DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
+        decl->span, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
 
-    WriteSource(std::cerr, *ids.front()->span.source, iset,
-                NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
+    WriteSource(std::cerr, *ids.front()->span.source, iset, underlines);
     std::cerr << "\n\n";
   }
 
@@ -581,8 +512,7 @@ void Log::Dump() const {
     std::cerr << "Use of undeclared identifier '" << token << "':\n";
 
     auto[iset, underlines] = LinesToShow(ids);
-    WriteSource(std::cerr, *ids.front()->span.source, iset,
-                NumDigits(iset.endpoints_.back() - 1) + 2, underlines);
+    WriteSource(std::cerr, *ids.front()->span.source, iset, underlines);
     std::cerr << "\n\n";
   }
 
@@ -601,9 +531,7 @@ void Log::InvalidCharBufIndex(const TextSpan &span,
      << index_type->to_string() << ".";
 
   WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -616,9 +544,7 @@ void Log::NonIntegralArrayIndex(const TextSpan &span,
      << index_type->to_string() << ".";
 
   WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      ss, *span.source, {span.lines()}, 
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -629,9 +555,7 @@ void Log::IndexingNonArray(const TextSpan &span, const type::Type *t) {
   ss << "Cannot index into a non-array type. Indexed type is a `"
      << t->to_string() << "`.";
   WriteSource(
-      ss, *span.source,
-      {Interval{span.start.line_num, span.finish.line_num + 1}},
-      NumDigits(span.finish.line_num) + 2,
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());

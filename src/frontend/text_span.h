@@ -2,6 +2,7 @@
 #define ICARUS_FRONTEND_TEXT_SPAN_H
 
 #include "base/debug.h"
+#include "base/interval.h"
 #include "base/types.h"
 #include "frontend/source.h"
 
@@ -19,6 +20,10 @@ struct TextSpan {
     return source->lines[finish.line_num][finish.offset];
   }
   void Increment();
+
+  base::Interval<size_t> lines() const {
+    return base::Interval<size_t>{start.line_num, finish.line_num + 1};
+  }
 
   Cursor start;
   Cursor finish;
