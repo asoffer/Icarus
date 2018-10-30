@@ -483,4 +483,6 @@ Struct::Field const *Struct::field(std::string const &name) const {
   if (iter == field_indices_.end()) { return nullptr; }
   return &fields_[iter->second];
 }
+
+Type const *Generic = new GenericFunction;
 }  // namespace type

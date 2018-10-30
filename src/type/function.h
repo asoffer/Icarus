@@ -1,7 +1,9 @@
 #ifndef ICARUS_TYPE_FUNCTION_H
 #define ICARUS_TYPE_FUNCTION_H
 
-#include "type.h"
+#include <cstring>
+#include "ir/val.h"
+#include "type/type.h"
 
 #ifdef ICARUS_USE_LLVM
 namespace llvm {
@@ -10,7 +12,28 @@ class FunctionType;
 #endif  // ICARUS_USE_LLVM
 
 namespace type {
-struct Function : public Type {
+struct Callable : public Type {};
+
+struct GenericFunction : public Callable {
+  GenericFunction() {}
+  ~GenericFunction() override {}
+  char *WriteTo(char *buf) const override { 
+    return std::strcpy(buf, "generic") + string_size();
+  }
+  size_t string_size() const override { return sizeof("generic") - 1; }
+  void EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
+                  Context *ctx) const override {}
+  void EmitInit(IR::Register reg, Context *ctx) const override {}
+  void EmitDestroy(IR::Register reg, Context *ctx) const override {}
+  IR::Val PrepareArgument(const Type *t, const IR::Val &val,
+                          Context *ctx) const override {
+    NOT_YET();
+  }
+  void EmitRepr(IR::Val const &id_val, Context *ctx) const override {}
+  Cmp Comparator() const override { NOT_YET(); }
+};
+
+struct Function : public Callable {
   TYPE_FNS(Function);
   Function(base::vector<const Type *> in, base::vector<const Type *> out)
       : input(std::move(in)), output(std::move(out)) {

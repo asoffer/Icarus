@@ -15,8 +15,6 @@ IR::RegisterOr<i32> Architecture::ComputeArrayLength(
 size_t Architecture::alignment(const type::Type *t) const {
   if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
-      case type::PrimType::Generic:
-        return 8;  // TODO ???
       case type::PrimType::Module:
         return 8;  // TODO ???
       case type::PrimType::Err: NOT_YET();
@@ -52,7 +50,7 @@ size_t Architecture::alignment(const type::Type *t) const {
       alignment_val = std::max(alignment_val, this->alignment(field.type));
     }
     return alignment_val;
-  } else if (t->is<type::Function>()) {
+  } else if (t->is<type::Function>() || t == type::Generic) {
     return ptr_align_;
   } else if (t->is<type::Enum>()) {
     return 8;  // TODO
@@ -81,8 +79,6 @@ size_t Architecture::alignment(const type::Type *t) const {
 size_t Architecture::bytes(const type::Type *t) const {
   if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
-      case type::PrimType::Generic:
-        return 8;  // TODO ???
       case type::PrimType::Module:
         return 8;  // TODO ???
       case type::PrimType::Err: NOT_YET();
@@ -134,7 +130,7 @@ size_t Architecture::bytes(const type::Type *t) const {
     }
 
     return MoveForwardToAlignment(t, num_bytes);
-  } else if (t->is<type::Function>()) {
+  } else if (t->is<type::Function>() || t == type::Generic) {
     return sizeof(IR::AnyFunc);
     // TODO it's weird that this is 8 and not ptr_bytes_ which may be larger. On
     // the interpretting machinge, it seems like we aren't just returning a

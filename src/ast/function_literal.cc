@@ -60,6 +60,11 @@ void FunctionLiteral::assign_scope(Scope *scope) {
 type::Type const *FunctionLiteral::VerifyType(Context *ctx) {
   base::vector<const type::Type *> input_type_vec;
   input_type_vec.reserve(inputs.size());
+
+  if (std::any_of(inputs.begin(), inputs.end(),
+                  [](auto const &decl) { return decl->const_; })) {
+    return type::Generic;
+  }
   for (auto &input : inputs) {
     input_type_vec.push_back(input->VerifyType(ctx));
     HANDLE_CYCLIC_DEPENDENCIES;
@@ -281,6 +286,10 @@ FunctionLiteral *FunctionLiteral::Clone() const {
 }
 
 base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
+  if (std::any_of(inputs.begin(), inputs.end(),
+                  [](auto const &decl) { return decl->const_; })) {
+    return {IR::Val::Func(this)};
+  }
   if (!ir_func_) {
     ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this);
 

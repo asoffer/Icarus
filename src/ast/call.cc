@@ -189,7 +189,8 @@ static void EmitOneCallDispatch(
 
   base::vector<IR::Val> results;
   IR::OutParams outs;
-  if (!binding.fn_.type()->output.empty()) {
+  ASSERT(binding.fn_.type(), Is<type::Function>());
+  if (!binding.fn_.type()->as<type::Function>().output.empty()) {
     auto MakeRegister = [&](type::Type const *return_type,
                             type::Type const *expected_return_type,
                             IR::Val *out_reg) {
@@ -228,16 +229,18 @@ static void EmitOneCallDispatch(
     };
 
     if (ret_type->is<type::Tuple>()) {
+      ASSERT(binding.fn_.type(), Is<type::Function>());
       ASSERT(ret_type->as<type::Tuple>().entries_.size() ==
-             binding.fn_.type()->output.size());
-      for (size_t i = 0; i < binding.fn_.type()->output.size(); ++i) {
-        MakeRegister(binding.fn_.type()->output.at(i),
+             binding.fn_.type()->as<type::Function>().output.size());
+      for (size_t i = 0;
+           i < binding.fn_.type()->as<type::Function>().output.size(); ++i) {
+        MakeRegister(binding.fn_.type()->as<type::Function>().output.at(i),
                      ret_type->as<type::Tuple>().entries_.at(i),
                      &outgoing_regs->at(i));
       }
     } else {
-      MakeRegister(binding.fn_.type()->output.at(0), ret_type,
-                   &outgoing_regs->at(0));
+      MakeRegister(binding.fn_.type()->as<type::Function>().output.at(0),
+                   ret_type, &outgoing_regs->at(0));
     }
   }
 

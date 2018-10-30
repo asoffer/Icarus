@@ -31,11 +31,11 @@ struct Binding {
 
   bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
 
-  Binding(type::Typed<Expression *, type::Function> fn, size_t n)
+  Binding(type::Typed<Expression *, type::Callable> fn, size_t n)
       : fn_(fn),
         exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
 
-  type::Typed<Expression *, type::Function> fn_;
+  type::Typed<Expression *, type::Callable> fn_;
   base::vector<std::pair<const type::Type *, Expression *>> exprs_;
 };
 

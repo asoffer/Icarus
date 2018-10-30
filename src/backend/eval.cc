@@ -31,7 +31,6 @@ static std::unique_ptr<IR::Func> ExprFn(
     auto vals = typed_expr.get()->EmitIR(ctx);
     // TODO wrap this up into SetReturn(vector)
     for (size_t i = 0; i < vals.size(); ++i) {
-      if (!vals[i].type) { LOG << vals[i]; }
       IR::SetReturn(i, std::move(vals[i]));
     }
     IR::ReturnJump();
@@ -82,6 +81,7 @@ base::vector<IR::Val> Evaluate(type::Typed<AST::Expression *> typed_expr,
   auto arch     = Architecture::InterprettingMachine();
   size_t offset = 0;
   for (auto *t : types) {
+    LOG << t;
     offset = arch.MoveForwardToAlignment(ASSERT_NOT_NULL(t), offset);
     if (t == type::Bool) {
       results.emplace_back(result_buf.get<bool>(offset));

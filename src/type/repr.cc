@@ -56,7 +56,6 @@ void Primitive::EmitRepr(IR::Val const &val, Context *ctx) const {
     case PrimType::Code: NOT_YET();
     case PrimType::NullPtr:
     case PrimType::EmptyArray:
-    case PrimType::Generic:
     case PrimType::Module:
     case PrimType::Interface:
     case PrimType::Block:

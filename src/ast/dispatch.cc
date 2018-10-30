@@ -24,6 +24,7 @@ static std::optional<BoundConstants> ComputeBoundConstants(
   BoundConstants bc;
   // TODO handle declaration order
   for (size_t i = 0; i < fn->inputs.size(); ++i) {
+    LOG << fn->inputs[i];
     auto *input_type = ctx->type_of(fn->inputs[i].get());
     if (input_type == nullptr) { return std::nullopt; }
 
@@ -88,10 +89,9 @@ struct DispatchEntry {
                 Context *ctx);
 
   static std::optional<DispatchEntry> Make(
-      type::Typed<Expression *, type::Function> fn_option,
+      type::Typed<Expression *, type::Callable> fn_option,
       FnArgs<Expression *> const &args, Context *ctx);
 
-  BoundConstants bound_constants_;
   FnArgs<const type::Type *> call_arg_types_;
   Binding binding_;
 
@@ -101,7 +101,8 @@ struct DispatchEntry {
 
 bool DispatchEntry::SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
                              Context *ctx) {
-  auto const &input_types    = fn.type()->input;
+  ASSERT(fn.type(), Is<type::Function>());
+  auto const &input_types    = fn.type()->as<type::Function>().input;
   bool bound_at_compile_time = (fn.get() != nullptr);
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
     if (bound_at_compile_time && binding_.defaulted(i)) {
@@ -132,7 +133,7 @@ bool DispatchEntry::SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
 }
 
 std::optional<DispatchEntry> DispatchEntry::Make(
-    type::Typed<Expression *, type::Function> fn_option,
+    type::Typed<Expression *, type::Callable> fn_option,
     const FnArgs<Expression *> &args, Context *ctx) {
   *fn_option = std::visit(
       base::overloaded{
@@ -172,7 +173,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     auto bound_constants =
         ComputeBoundConstants(generic_fn, args, &dispatch_entry.binding_, ctx);
     if (!bound_constants) { return std::nullopt; }
-    dispatch_entry.bound_constants_ = *std::move(bound_constants);
+    ctx->mod_->to_complete_.emplace(*std::move(bound_constants), generic_fn);
 
     // TODO can generate fail? Probably
     *dispatch_entry.binding_.fn_= generic_fn;
@@ -197,7 +198,8 @@ std::optional<DispatchEntry> DispatchEntry::Make(
 static const type::Type *ComputeRetType(OverloadSet const &overload_set) {
   base::vector<base::vector<const type::Type *>> out_types;
   for (auto const &overload : overload_set) {
-    out_types.push_back(overload.type()->output);
+    ASSERT(overload.type(), Is<type::Function>());
+    out_types.push_back(overload.type()->as<type::Function>().output);
   }
 
   ASSERT(!out_types.empty());

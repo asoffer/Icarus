@@ -83,6 +83,7 @@ const Type *Void();
 #define PRIMITIVE_MACRO(EnumName, name) extern Type const *EnumName;
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
+extern Type const *Generic;
 
 template <typename T>
 constexpr type::Type const *Get() {
