@@ -77,7 +77,6 @@ llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
 }
 
 llvm::Type* CharBuffer::llvm(llvm::LLVMContext& ctx) const { NOT_YET(); }
-llvm::Type* Scope::llvm(llvm::LLVMContext& ctx) const { UNREACHABLE(); }
 llvm::Type* Struct::llvm(llvm::LLVMContext& ctx) const {
   base::vector<llvm::Type*> llvm_types;
   llvm_types.reserve(fields_.size());

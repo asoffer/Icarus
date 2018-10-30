@@ -24,7 +24,6 @@ Cmp Variant::Comparator() const {
   return static_cast<Cmp>(cmp);
 }
 
-Cmp Scope::Comparator() const { return Cmp::None; }
 Cmp Struct::Comparator() const { return Cmp::None; }
 Cmp CharBuffer::Comparator() const { return Cmp::Order; }
 

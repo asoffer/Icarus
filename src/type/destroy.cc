@@ -72,7 +72,6 @@ void CharBuffer::EmitDestroy(IR::Register, Context *ctx) const {}
 void Function::EmitDestroy(IR::Register, Context *ctx) const {}
 void Pointer::EmitDestroy(IR::Register, Context *ctx) const {}
 void Variant::EmitDestroy(IR::Register, Context *ctx) const { NOT_YET(); }
-void Scope::EmitDestroy(IR::Register, Context *ctx) const { UNREACHABLE(); }
 
 void Struct::EmitDestroy(IR::Register reg, Context *ctx) const {
   {

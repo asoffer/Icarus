@@ -6,7 +6,6 @@
 #include "ir/val.h"
 #include "scope.h"
 #include "type/function.h"
-#include "type/scope.h"
 #include "type/pointer.h"
 
 namespace AST {
@@ -44,7 +43,7 @@ type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {
 }
 
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
-  ctx->mod_->set_type(ctx->bound_constants_, this, type::Scp({}));
+  ctx->mod_->set_type(ctx->bound_constants_, this, type::Scope);
 
   std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
       state_types;
@@ -64,8 +63,7 @@ type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
     default: NOT_YET("Inconsistent"); break;
   }
 
-  // TODO
-  return type::Scp({});
+  return type::Scope;
 }
 
 void ScopeLiteral::Validate(Context *ctx) {

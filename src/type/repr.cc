@@ -53,7 +53,8 @@ void Primitive::EmitRepr(IR::Val const &val, Context *ctx) const {
     case PrimType::Int: IR::PrintInt(val.reg_or<int>()); break;
     case PrimType::Real: IR::PrintReal(val.reg_or<double>()); break;
     case PrimType::Type_: IR::PrintType(val.reg_or<type::Type const *>()); break;
-    case PrimType::Code: NOT_YET();
+    case PrimType::Scope:
+    case PrimType::Code:
     case PrimType::NullPtr:
     case PrimType::EmptyArray:
     case PrimType::Module:
@@ -133,7 +134,6 @@ void Enum::EmitRepr(IR::Val const &val, Context *ctx) const {
 void Flags::EmitRepr(IR::Val const &val, Context *ctx) const {
   IR::PrintFlags(val.reg_or<IR::FlagsVal>(), this);
 }
-void Scope::EmitRepr(IR::Val const &, Context *ctx) const { NOT_YET(); }
 void Variant::EmitRepr(IR::Val const &id_val, Context *ctx) const {
   // TODO design and build a jump table?
   // TODO repr_func_

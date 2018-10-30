@@ -16,7 +16,6 @@
 #include "scope.h"
 #include "type/function.h"
 #include "type/pointer.h"
-#include "type/scope.h"
 #include "type/type.h"
 
 base::vector<IR::Val> EmitCallDispatch(

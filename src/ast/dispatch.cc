@@ -24,7 +24,6 @@ static std::optional<BoundConstants> ComputeBoundConstants(
   BoundConstants bc;
   // TODO handle declaration order
   for (size_t i = 0; i < fn->inputs.size(); ++i) {
-    LOG << fn->inputs[i];
     auto *input_type = ctx->type_of(fn->inputs[i].get());
     if (input_type == nullptr) { return std::nullopt; }
 

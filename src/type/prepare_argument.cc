@@ -129,11 +129,6 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
   return IR::Val::Reg(alloc_reg, type::Ptr(this));
 }
 
-IR::Val Scope::PrepareArgument(const Type *from, const IR::Val &,
-                               Context *ctx) const {
-  NOT_YET(this, from);
-}
-
 IR::Val CharBuffer::PrepareArgument(const Type *from, const IR::Val &,
                                     Context *ctx) const {
   NOT_YET(this, from);

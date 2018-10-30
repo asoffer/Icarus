@@ -7,7 +7,6 @@ struct Enum;
 struct Flags;
 struct Function;
 struct Pointer;
-struct Scope;
 struct Struct;
 struct Type;
 struct Variant;
@@ -43,7 +42,6 @@ struct Identifier;
 #include "function.h"
 #include "pointer.h"
 #include "primitive.h"
-#include "scope.h"
 #include "struct.h"
 #include "tuple.h"
 #include "variant.h"

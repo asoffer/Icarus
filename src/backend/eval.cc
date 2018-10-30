@@ -81,7 +81,6 @@ base::vector<IR::Val> Evaluate(type::Typed<AST::Expression *> typed_expr,
   auto arch     = Architecture::InterprettingMachine();
   size_t offset = 0;
   for (auto *t : types) {
-    LOG << t;
     offset = arch.MoveForwardToAlignment(ASSERT_NOT_NULL(t), offset);
     if (t == type::Bool) {
       results.emplace_back(result_buf.get<bool>(offset));
@@ -93,6 +92,8 @@ base::vector<IR::Val> Evaluate(type::Typed<AST::Expression *> typed_expr,
       results.emplace_back(result_buf.get<double>(offset));
     } else if (t == type::Type_) {
       results.emplace_back(result_buf.get<type::Type const *>(offset));
+    } else if (t == type::Scope) {
+      results.emplace_back(result_buf.get<AST::ScopeLiteral *>(offset));
     } else if (t->is<type::CharBuffer>()) {
       results.push_back(IR::Val::CharBuf(
           std::string(result_buf.get<std::string_view>(offset))));
@@ -102,8 +103,6 @@ base::vector<IR::Val> Evaluate(type::Typed<AST::Expression *> typed_expr,
       results.push_back(any_func.is_fn_
                             ? IR::Val::Func(any_func.fn_)
                             : IR::Val::Foreign(t, any_func.foreign_));
-    } else if (t->is<type::Scope>()) {
-      results.emplace_back(result_buf.get<AST::ScopeLiteral *>(offset));
     } else if (t == type::Module) {
       results.emplace_back(result_buf.get<Module const *>(offset));
     } else if (t == type::Generic || t->is<type::Function>()) {

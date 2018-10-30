@@ -159,8 +159,6 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, IR::Val from_val,
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
     to_type->EmitAssign(from_type, from_val, to_var, ctx);
-  } else if (to_type->is<Scope>()) {
-    NOT_YET();
   } else {
     UNREACHABLE(to_type->to_string(), from_type->to_string());
   }
@@ -215,8 +213,6 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, IR::Val from_val,
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
     to_type->EmitAssign(from_type, from_val, to_var, ctx);
-  } else if (to_type->is<Scope>()) {
-    NOT_YET();
   }
 }
 
@@ -401,12 +397,6 @@ const Function *Func(base::vector<const Type *> in,
   return &(*funcs_.lock())[std::move(in)]
               .emplace(std::move(out), std::move(f))
               .first->second;
-}
-
-static base::guarded<base::map<base::vector<const Type *>, const Scope>>
-    scopes_;
-const Scope *Scp(const base::vector<const Type *> &types) {
-  return &scopes_.lock()->emplace(types, Scope(types)).first->second;
 }
 
 static base::guarded<base::map<base::vector<const Type *>, const Tuple>> tups_;

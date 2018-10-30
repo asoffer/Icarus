@@ -94,8 +94,6 @@ void Function::EmitInit(IR::Register id_reg, Context *ctx) const {
   UNREACHABLE();
 }
 
-void Scope::EmitInit(IR::Register, Context *ctx) const { UNREACHABLE(); }
-
 void CharBuffer::EmitInit(IR::Register id_reg, Context *ctx) const {
   NOT_YET();
 }

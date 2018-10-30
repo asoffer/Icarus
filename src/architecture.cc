@@ -32,6 +32,7 @@ size_t Architecture::alignment(const type::Type *t) const {
       case type::PrimType::Real:
       case type::PrimType::Type_:
       case type::PrimType::NullPtr:
+      case type::PrimType::Scope:
       case type::PrimType::Code: return 8;
     }
   } else if (t->is<type::CharBuffer>()) {
@@ -56,8 +57,6 @@ size_t Architecture::alignment(const type::Type *t) const {
     return 8;  // TODO
   } else if (t->is<type::Flags>()) {
     return 8;  // TODO
-  } else if (t->is<type::Scope>()) {
-    return 8;
   } else if (t->is<type::Variant>()) {
     size_t alignment_val = this->alignment(type::Type_);
     for (const type::Type *type : t->as<type::Variant>().variants_) {
@@ -96,6 +95,7 @@ size_t Architecture::bytes(const type::Type *t) const {
       case type::PrimType::Real:
       case type::PrimType::Type_:
       case type::PrimType::NullPtr:
+      case type::PrimType::Scope:
       case type::PrimType::Code: return 8;
     }
   } else if (t->is<type::CharBuffer>()) {
@@ -139,8 +139,6 @@ size_t Architecture::bytes(const type::Type *t) const {
     return 8;  // TODO
   } else if (t->is<type::Flags>()) {
     return 8;  // TODO
-  } else if (t->is<type::Scope>()) {
-    return 8;
   } else if (t->is<type::Variant>()) {
     size_t num_bytes = 0;
     for (const type::Type *type : t->as<type::Variant>().variants_) {

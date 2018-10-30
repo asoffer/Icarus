@@ -109,12 +109,6 @@ void Pointer::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
   IR::StoreAddr(from.reg_or<IR::Addr>(), to);
 }
 
-void Scope::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
-                       Context *ctx) const {
-  ASSERT(this == from_type);
-  NOT_YET();
-}
-
 void Enum::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
                       Context *ctx) const {
   ASSERT(this == from_type);

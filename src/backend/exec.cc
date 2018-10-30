@@ -498,6 +498,10 @@ IR::BlockIndex ExecContext::ExecuteCmd(
           call_buf.append(
               is_reg ? resolve<double>(long_args.get<IR::Register>(offset))
                      : long_args.get<double>(offset));
+        } else if (t == type::Scope) {
+          call_buf.append(is_reg ? resolve<AST::ScopeLiteral *>(
+                                       long_args.get<IR::Register>(offset))
+                                 : long_args.get<AST::ScopeLiteral *>(offset));
         } else if (t == type::Type_) {
           call_buf.append(is_reg ? resolve<type::Type const *>(
                                        long_args.get<IR::Register>(offset))
@@ -510,10 +514,6 @@ IR::BlockIndex ExecContext::ExecuteCmd(
           call_buf.append(
               is_reg ? resolve<IR::Func *>(long_args.get<IR::Register>(offset))
                      : long_args.get<IR::Func *>(offset));
-        } else if (t->is<type::Scope>()) {
-          call_buf.append(is_reg ? resolve<AST::ScopeLiteral *>(
-                                       long_args.get<IR::Register>(offset))
-                                 : long_args.get<AST::ScopeLiteral *>(offset));
         } else if (t == type::Module) {
           call_buf.append(is_reg ? resolve<Module const *>(
                                        long_args.get<IR::Register>(offset))

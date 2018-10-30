@@ -14,7 +14,6 @@
 #include "type/flags.h"
 #include "type/function.h"
 #include "type/pointer.h"
-#include "type/scope.h"
 #include "type/struct.h"
 
 namespace IR {
@@ -68,7 +67,7 @@ Val Val::Interface(IR::Interface ifc) {
 
 Val Val::Ref(AST::Expression *expr) { NOT_YET(); }
 
-Val::Val(AST::ScopeLiteral *scope_lit) : Val(type::Scp({}), scope_lit) {}
+Val::Val(AST::ScopeLiteral *scope_lit) : Val(type::Scope, scope_lit) {}
 
 Val Val::Enum(const type::Enum *enum_type, size_t integral_val) {
   return Val(enum_type, EnumVal{integral_val});

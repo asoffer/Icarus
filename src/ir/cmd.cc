@@ -569,7 +569,7 @@ void SetReturn(size_t n, Val const &v2) {
         },
         v2.value);
   }
-  if (v2.type->is<type::Scope>()) {
+  if (v2.type == type::Scope) {
     return SetReturnScope(n, v2.reg_or<AST::ScopeLiteral *>());
   }
   if (v2.type == type::Module) {
