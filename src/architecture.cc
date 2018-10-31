@@ -33,6 +33,7 @@ size_t Architecture::alignment(const type::Type *t) const {
       case type::PrimType::Type_:
       case type::PrimType::NullPtr:
       case type::PrimType::Scope:
+      case type::PrimType::StatefulScope:
       case type::PrimType::Code: return 8;
     }
   } else if (t->is<type::CharBuffer>()) {
@@ -96,6 +97,7 @@ size_t Architecture::bytes(const type::Type *t) const {
       case type::PrimType::Type_:
       case type::PrimType::NullPtr:
       case type::PrimType::Scope:
+      case type::PrimType::StatefulScope:
       case type::PrimType::Code: return 8;
     }
   } else if (t->is<type::CharBuffer>()) {

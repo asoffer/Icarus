@@ -54,6 +54,7 @@ void Primitive::EmitRepr(IR::Val const &val, Context *ctx) const {
     case PrimType::Real: IR::PrintReal(val.reg_or<double>()); break;
     case PrimType::Type_: IR::PrintType(val.reg_or<type::Type const *>()); break;
     case PrimType::Scope:
+    case PrimType::StatefulScope:
     case PrimType::Code:
     case PrimType::NullPtr:
     case PrimType::EmptyArray:

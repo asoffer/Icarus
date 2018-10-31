@@ -4,14 +4,14 @@ if ::= scope {
     else | exit when !b
   }
   then ::= block {
-    before ::= (state: *int) -> {}
-    after ::= (state: *int) => exit
+    before ::= () -> {}
+    after ::= () => exit
   }
   else ::= block? {
-    before ::= (state: *int) -> {}
-    after ::= (state: *int) => exit
+    before ::= () -> {}
+    after ::= () => exit
   }
-  done ::=(state: *int) -> {}
+  done ::=() -> {}
 }
 
 while ::= scope {
@@ -20,8 +20,8 @@ while ::= scope {
     exit when !b
   }
   do ::= block {
-    before ::= (state: *int) -> {}
-    after ::= (state: *int) => start
+    before ::= () -> {}
+    after ::= () => start
   }
-  done ::=(state: *int) -> {}
+  done ::= () -> {}
 }

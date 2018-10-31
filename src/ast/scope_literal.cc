@@ -11,7 +11,7 @@
 namespace AST {
 std::string ScopeLiteral::to_string(size_t n) const {
   std::stringstream ss;
-  ss << "scope {\n";
+  ss << "scope " << (stateful_ ? "!" : "") << "{\n";
   for (const auto &decl : decls_) {
     ss << std::string(n * 2, ' ') << decl.to_string(n) << "\n";
   }
@@ -45,23 +45,23 @@ type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
   ctx->mod_->set_type(ctx->bound_constants_, this, type::Scope);
 
-  std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
-      state_types;
+  // std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
+  //     state_types;
   for (auto &decl : decls_) {
     // TODO handle errors.
     auto *t = decl.VerifyType(ctx);
-    if (decl.id_ == "done") {
-      state_types[StatePtrTypeOrLogError(t)].push_back(&decl);
-    } else if (t == type::Block || t == type::OptBlock || t == type::RepBlock) {
-      // TODO add these types to the state_types map.
-    }
+    // if (decl.id_ == "done") {
+    //   state_types[StatePtrTypeOrLogError(t)].push_back(&decl);
+    // } else if (t == type::Block || t == type::OptBlock || t == type::RepBlock) {
+    //   // TODO add these types to the state_types map.
+    // }
   }
 
-  switch (state_types.size()) {
-    case 0: NOT_YET("Stateless"); break;
-    case 1: break;
-    default: NOT_YET("Inconsistent"); break;
-  }
+  // switch (state_types.size()) {
+  //   case 0: NOT_YET("Stateless"); break;
+  //   case 1: break;
+  //   default: NOT_YET("Inconsistent"); break;
+  // }
 
   return type::Scope;
 }
@@ -89,7 +89,7 @@ void ScopeLiteral::ExtractReturns(
 }
 
 ScopeLiteral *ScopeLiteral::Clone() const {
-  auto *result = new ScopeLiteral;
+  auto *result = new ScopeLiteral(stateful_);
   result->span = span;
   result->decls_.reserve(decls_.size());
   for (auto const &decl : decls_) { result->decls_.emplace_back(decl.Clone()); }

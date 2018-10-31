@@ -140,6 +140,8 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
           {nullptr, land_block}};
 
   std::unordered_map<BlockNode *, BlockData> block_data;
+  IR::Register alloc;
+  type::Type const *state_ptr_type, *state_type;
   std::unordered_set<type::Type const *> state_types;
   for (auto &block : blocks_) {
     // TODO for now do lookup assuming it's an identifier.
@@ -152,14 +154,19 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     for (auto &b : bseq[0]->before_) {
       auto *t = ctx->type_of(b.get());
       os_before.emplace_back(b.get(), t);
-      state_types.insert(t->as<type::Function>().input[0]);
+      if (scope_lit->stateful_) {
+        state_types.insert(t->as<type::Function>().input[0]);
+      }
     }
 
     OverloadSet os_after;
     for (auto &a : bseq[0]->after_) {
       auto *t = ctx->type_of(a.get());
       os_after.emplace_back(a.get(), t);
-      state_types.insert(t->as<type::Function>().input[0]);
+
+      if (scope_lit->stateful_) {
+        state_types.insert(t->as<type::Function>().input[0]);
+      }
     }
     auto block_index        = IR::Func::Current->AddBlock();
     block_data[block.get()] = {std::move(os_before), std::move(os_after),
@@ -167,12 +174,14 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     jump_table->emplace(bseq[0], block_index);
   }
 
-  ASSERT(state_types.size() == 1u);
-  auto *state_ptr_type = *state_types.begin();
-  ASSERT(state_ptr_type, Is<type::Pointer>());
-  auto *state_type   = state_ptr_type->as<type::Pointer>().pointee;
-  IR::Register alloc = IR::Alloca(state_type);
-  state_type->EmitInit(alloc, ctx);
+  if (scope_lit->stateful_) {
+    ASSERT(state_types.size() == 1u);
+    state_ptr_type = *state_types.begin();
+    ASSERT(state_ptr_type, Is<type::Pointer>());
+    state_type = state_ptr_type->as<type::Pointer>().pointee;
+    alloc      = IR::Alloca(state_type);
+    state_type->EmitInit(alloc, ctx);
+  }
 
   auto[dispatch_table, result_type] = DispatchTable::Make(
       args_.Transform(
@@ -188,19 +197,25 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
           .reg_or<IR::BlockSequence>();
   IR::BlockSeqJump(block_seq, jump_table);
 
-  auto *state_id = new Identifier(TextSpan{}, "<scope-state>");
-  ctx->set_type(state_id, state_ptr_type);
+  Identifier *state_id = nullptr;
+
+  if (scope_lit->stateful_) {
+    state_id = new Identifier(TextSpan{}, "<scope-state>");
+    ctx->set_type(state_id, state_ptr_type);
+  }
 
   for (auto &block : blocks_) {
     auto &data              = block_data[block.get()];
     IR::BasicBlock::Current = data.index_;
 
     FnArgs<std::pair<Expression *, IR::Val>> before_args;
-    before_args.pos_.emplace_back(state_id,
-                                  IR::Val::Reg(alloc, state_ptr_type));
-
     FnArgs<Expression *> before_expr_args;
-    before_expr_args.pos_.push_back(state_id);
+
+    if (scope_lit->stateful_) {
+      before_args.pos_.emplace_back(state_id,
+                                    IR::Val::Reg(alloc, state_ptr_type));
+      before_expr_args.pos_.push_back(state_id);
+    }
     auto[dispatch_table, result_type] =
         DispatchTable::Make(before_expr_args, data.before_os_, ctx);
 
@@ -211,10 +226,12 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     auto yields = std::move(ctx->yields_stack_.back());
 
     FnArgs<Expression *> after_expr_args;
-    after_expr_args.pos_.push_back(state_id);
-
     FnArgs<std::pair<Expression *, IR::Val>> after_args;
-    after_args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
+    if (scope_lit->stateful_) {
+      after_expr_args.pos_.push_back(state_id);
+      after_args.pos_.emplace_back(state_id,
+                                   IR::Val::Reg(alloc, state_ptr_type));
+    }
     for (auto &yield : yields) { 
       after_expr_args.pos_.push_back(yield.expr_);
       after_args.pos_.emplace_back(yield.expr_, yield.val_);
@@ -239,17 +256,17 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
 
     IR::BasicBlock::Current = land_block;
 
-    FnArgs<std::pair<Expression *, IR::Val>> args;
-    args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
-
     FnArgs<Expression *> expr_args;
-    expr_args.pos_.push_back(state_id);
-
+    FnArgs<std::pair<Expression *, IR::Val>> args;
+    if (scope_lit->stateful_) {
+      args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
+      expr_args.pos_.push_back(state_id);
+    }
     std::tie(dispatch_table, result_type) =
         DispatchTable::Make(expr_args, done_os, ctx);
     
     auto results = EmitCallDispatch(args, dispatch_table, result_type, ctx);
-    state_type->EmitDestroy(alloc, ctx);
+    if (scope_lit->stateful_) { state_type->EmitDestroy(alloc, ctx); }
     return results;
   }
 }

@@ -9,12 +9,12 @@ main ::= () -> () {
 foo ::= scope {
   init ::= () => ping
   ping ::= block {
-    before ::= (state: *int) -> {}
-    after ::= (state: *int) => pong
+    before ::= () -> {}
+    after ::= () => pong
   }
   pong ::= block {
-    before ::= (state: *int) -> {}
-    after ::= (state: *int) => ping
+    before ::= () -> {}
+    after ::= () => ping
   }
 }
 

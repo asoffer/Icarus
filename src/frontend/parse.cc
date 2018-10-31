@@ -867,8 +867,8 @@ static std::unique_ptr<AST::Node> BuildInterfaceLiteral(
 }
 
 static std::unique_ptr<AST::Node> BuildScopeLiteral(
-    std::unique_ptr<AST::Statements> stmts, Context *ctx) {
-  auto scope_lit  = std::make_unique<AST::ScopeLiteral>();
+    std::unique_ptr<AST::Statements> stmts, bool stateful, Context *ctx) {
+  auto scope_lit  = std::make_unique<AST::ScopeLiteral>(stateful);
   scope_lit->span = stmts->span;  // TODO it's really bigger than this because
                                   // it involves the keyword too.
   for (auto &stmt : stmts->content_) {
@@ -930,7 +930,7 @@ static std::unique_ptr<AST::Node> BuildSwitch(
 static std::unique_ptr<AST::Node> BuildKWBlock(
     base::vector<std::unique_ptr<AST::Node>> nodes, Context *ctx) {
   if (nodes[0]->is<frontend::Token>()) {
-    const std::string &tk = nodes[0]->as<frontend::Token>().token;
+    std::string const &tk = nodes[0]->as<frontend::Token>().token;
 
     if (bool is_enum = (tk == "enum"); is_enum || tk == "flags") {
       return BuildEnumOrFlagLiteral(std::move(nodes), is_enum, ctx);
@@ -939,7 +939,10 @@ static std::unique_ptr<AST::Node> BuildKWBlock(
       return BuildStructLiteral(std::move(nodes), ctx);
 
     } else if (tk == "scope") {
-      return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), ctx);
+      return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), false, ctx);
+
+    } else if (tk == "scope!") {
+      return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), true, ctx);
 
     } else if (tk == "interface") {
       return BuildInterfaceLiteral(move_as<AST::Statements>(nodes[1]), ctx);
@@ -963,7 +966,7 @@ static std::unique_ptr<AST::Node> BuildKWBlock(
       UNREACHABLE(t);
     }
   } else {
-    UNREACHABLE();
+    UNREACHABLE(nodes[0].get());
   }
 }
 

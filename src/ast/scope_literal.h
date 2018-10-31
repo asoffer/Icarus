@@ -6,6 +6,7 @@
 
 namespace AST {
 struct ScopeLiteral : public Expression {
+  ScopeLiteral(bool stateful) : stateful_(stateful) {}
   ~ScopeLiteral() override {}
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
@@ -24,6 +25,7 @@ struct ScopeLiteral : public Expression {
 
   base::vector<Declaration> decls_;
   std::unique_ptr<Scope> body_scope_;
+  bool stateful_ = false;
 };
 }  // namespace AST
 

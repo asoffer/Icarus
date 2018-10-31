@@ -92,7 +92,7 @@ base::vector<IR::Val> Evaluate(type::Typed<AST::Expression *> typed_expr,
       results.emplace_back(result_buf.get<double>(offset));
     } else if (t == type::Type_) {
       results.emplace_back(result_buf.get<type::Type const *>(offset));
-    } else if (t == type::Scope) {
+    } else if (t == type::Scope || t == type::StatefulScope) {
       results.emplace_back(result_buf.get<AST::ScopeLiteral *>(offset));
     } else if (t->is<type::CharBuffer>()) {
       results.push_back(IR::Val::CharBuf(
