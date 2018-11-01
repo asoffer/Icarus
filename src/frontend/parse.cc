@@ -867,10 +867,10 @@ static std::unique_ptr<AST::Node> BuildInterfaceLiteral(
 }
 
 static std::unique_ptr<AST::Node> BuildScopeLiteral(
-    std::unique_ptr<AST::Statements> stmts, bool stateful, Context *ctx) {
+    std::unique_ptr<AST::Statements> stmts, TextSpan span, bool stateful, Context *ctx) {
   auto scope_lit  = std::make_unique<AST::ScopeLiteral>(stateful);
-  scope_lit->span = stmts->span;  // TODO it's really bigger than this because
-                                  // it involves the keyword too.
+  scope_lit->span = std::move(span);  // TODO it's really bigger than this
+                                      // because it involves the keyword too.
   for (auto &stmt : stmts->content_) {
     if (stmt->is<AST::Declaration>()) {
       scope_lit->decls_.push_back(std::move(stmt->as<AST::Declaration>()));
@@ -939,10 +939,14 @@ static std::unique_ptr<AST::Node> BuildKWBlock(
       return BuildStructLiteral(std::move(nodes), ctx);
 
     } else if (tk == "scope") {
-      return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), false, ctx);
+      TextSpan span(nodes.front()->span, nodes.back()->span);
+      return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), span, false,
+                               ctx);
 
     } else if (tk == "scope!") {
-      return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), true, ctx);
+      TextSpan span(nodes.front()->span, nodes.back()->span);
+      return BuildScopeLiteral(move_as<AST::Statements>(nodes[1]), span, true,
+                               ctx);
 
     } else if (tk == "interface") {
       return BuildInterfaceLiteral(move_as<AST::Statements>(nodes[1]), ctx);

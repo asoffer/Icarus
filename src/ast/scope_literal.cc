@@ -31,10 +31,8 @@ type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {
     return nullptr;
   }
   auto &input_types = t->as<type::Function>().input;
-  if (input_types.empty()) {
-    NOT_YET("log an error");
-    return nullptr;
-  }
+  if (input_types.empty()) { return nullptr; }
+
   if (!input_types.at(0)->is<type::Pointer>()) {
     NOT_YET("log an error");
     return nullptr;
@@ -45,23 +43,34 @@ type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
   ctx->mod_->set_type(ctx->bound_constants_, this, type::Scope);
 
-  // std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
-  //     state_types;
-  for (auto &decl : decls_) {
-    // TODO handle errors.
-    auto *t = decl.VerifyType(ctx);
-    // if (decl.id_ == "done") {
-    //   state_types[StatePtrTypeOrLogError(t)].push_back(&decl);
-    // } else if (t == type::Block || t == type::OptBlock || t == type::RepBlock) {
-    //   // TODO add these types to the state_types map.
-    // }
+  if (stateful_) {
+    std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
+        state_types;
+    for (auto &decl : decls_) {
+      // TODO handle errors.
+      auto *t = decl.VerifyType(ctx);
+      if (decl.id_ == "done") {
+        auto *state_type = StatePtrTypeOrLogError(t);
+        if (state_type == nullptr) { continue; }
+        state_types[state_type].push_back(&decl);
+      } else if (t == type::Block || t == type::OptBlock ||
+                 t == type::RepBlock) {
+        // TODO add these types to the state_types map.
+      }
+    }
+    switch (state_types.size()) {
+      case 0: {
+        TextSpan block_title_span = span;
+        block_title_span.finish   = block_title_span.start;
+        block_title_span.finish.offset += sizeof("scope!") - 1;
+        ctx->error_log_.StatefulScopeWithoutStateArg(block_title_span);
+      } break;
+      case 1: break;
+      default: NOT_YET("Inconsistent"); break;
+    }
+  } else {
+    for (auto &decl : decls_) { decl.VerifyType(ctx); }
   }
-
-  // switch (state_types.size()) {
-  //   case 0: NOT_YET("Stateless"); break;
-  //   case 1: break;
-  //   default: NOT_YET("Inconsistent"); break;
-  // }
 
   return type::Scope;
 }
