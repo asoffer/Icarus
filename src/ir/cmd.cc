@@ -569,13 +569,18 @@ void SetReturn(size_t n, Val const &v2) {
         },
         v2.value);
   }
+  if (v2.type == type::Generic) {
+    return SetReturnGeneric(n, v2.reg_or<AST::FunctionLiteral *>());
+  }
+
   if (v2.type == type::Scope) {
     return SetReturnScope(n, v2.reg_or<AST::ScopeLiteral *>());
   }
   if (v2.type == type::Module) {
     return SetReturnModule(n, v2.reg_or<Module const *>());
   }
-  if (v2.type == type::Block || v2.type == type::OptBlock) {
+  if (v2.type == type::Block || v2.type == type::OptBlock ||
+      v2.type == type::RepBlock) {
     return SetReturnBlock(n, v2.reg_or<BlockSequence>());
   }
   UNREACHABLE(v2.type->to_string());
@@ -704,6 +709,11 @@ void SetReturnAddr(size_t n, RegisterOr<Addr> r) {
 void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r) {
   auto &cmd            = MakeCmd(nullptr, Op::SetReturnFunc);
   cmd.set_return_func_ = Cmd::SetReturnFunc::Make(n, r);
+}
+
+void SetReturnGeneric(size_t n, RegisterOr<AST::FunctionLiteral *> r) {
+  auto &cmd               = MakeCmd(nullptr, Op::SetReturnGeneric);
+  cmd.set_return_generic_ = Cmd::SetReturnGeneric::Make(n, r);
 }
 
 void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r) {
@@ -1007,6 +1017,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::SetReturnAddr: return os << cmd.set_return_addr_.val_;
     case Op::SetReturnFunc: return os << cmd.set_return_func_.val_;
     case Op::SetReturnScope: return os << cmd.set_return_scope_.val_;
+    case Op::SetReturnGeneric: return os << cmd.set_return_scope_.val_;
     case Op::SetReturnModule: return os << cmd.set_return_module_.val_;
     case Op::SetReturnBlock: return os << cmd.set_return_block_.val_;
     case Op::PhiBool: return os << cmd.phi_bool_.args_;

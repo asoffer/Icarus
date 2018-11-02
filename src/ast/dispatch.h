@@ -22,7 +22,16 @@ struct Function;
 namespace AST {
 struct FunctionLiteral;
 struct Expression;
-// Represents a particular call resolution.
+
+// Represents a particular call resolution. This means the precise callable
+// and arguments along with their types. the associated types may differ from
+// the type of the callable or arguments computed by VerifyType. This is
+// because, an argument which is a variant may be dispatched to more than one
+// place. So, for instance if there are functions `id :: bool -> bool` and 
+// `id ::= int -> int`, then calling `id` with a variant will produce two
+// bindings: One for bool and one for int. Simlarly, the type of `id` on it's
+// own is expressed as an overload set, but for each particular binding will be
+// either `int -> int` or `bool -> bool`.
 struct Binding {
   void SetPositionalArgs(const FnArgs<Expression *> &args);
   bool SetNamedArgs(

@@ -348,6 +348,11 @@ struct Cmd {
     RegisterOr<AST::ScopeLiteral *> val_;
   };
 
+  CMD(SetReturnGeneric) {
+    size_t ret_num_;
+    RegisterOr<AST::FunctionLiteral *> val_;
+  };
+
   CMD(SetReturnModule) {
     size_t ret_num_;
     RegisterOr<Module const *> val_;
@@ -503,6 +508,7 @@ struct Cmd {
     SetReturnAddr set_return_addr_;
     SetReturnFunc set_return_func_;
     SetReturnScope set_return_scope_;
+    SetReturnGeneric set_return_generic_;
     SetReturnModule set_return_module_;
     SetReturnBlock set_return_block_;
   };
@@ -640,6 +646,7 @@ void SetReturnCharBuf(size_t n, RegisterOr<std::string_view> r);
 void SetReturnAddr(size_t n, RegisterOr<Addr> r);
 void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r);
 void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r);
+void SetReturnGeneric(size_t n, RegisterOr<AST::FunctionLiteral *> r);
 void SetReturnModule(size_t n, RegisterOr<Module const *> r);
 void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r);
 

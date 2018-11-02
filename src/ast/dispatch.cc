@@ -100,8 +100,7 @@ struct DispatchEntry {
 
 bool DispatchEntry::SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
                              Context *ctx) {
-  ASSERT(fn.type(), Is<type::Function>());
-  auto const &input_types    = fn.type()->as<type::Function>().input;
+  auto const &input_types    = fn.type()->input;
   bool bound_at_compile_time = (fn.get() != nullptr);
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
     if (bound_at_compile_time && binding_.defaulted(i)) {
@@ -171,6 +170,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     // we need to redo those anyway.
     auto bound_constants =
         ComputeBoundConstants(generic_fn, args, &dispatch_entry.binding_, ctx);
+
     if (!bound_constants) { return std::nullopt; }
     ctx->mod_->to_complete_.emplace(*std::move(bound_constants), generic_fn);
 
@@ -188,6 +188,7 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     }
   }
 
+  ASSERT(fn_option.type(), Is<type::Function>());
   auto f = type::Typed<FunctionLiteral *, type::Function>(fn, fn_option.type());
   if (!dispatch_entry.SetTypes(f, ctx)) { return std::nullopt; }
 
