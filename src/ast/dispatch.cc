@@ -39,31 +39,10 @@ static std::optional<BoundConstants> ComputeBoundConstants(
         // TODO case where it is defaulted.
         // TODO expand all variants
         NOT_YET();
-        /*
-        auto ifc = backend::EvaluateAs<IR::Interface>(
-            fn->inputs[i]->type_expr.get(), ctx);
-        auto errs = ifc.MatchErrors(binding->exprs_[i].second->type);
-        if (!errs.empty()) {
-          for (auto err : errs) { LOG << err; }
-          return std::nullopt;
-        }
-        bc.interfaces_.emplace(fn->inputs[i].get(),
-                               binding->exprs_[i].second->type);
-        if (fn->inputs[i]->type_expr->is<MatchDeclaration>()) {
-          bc.constants_.emplace(fn->inputs[i]
-                                    ->type_expr->as<MatchDeclaration>()
-                                    .identifier->token,
-                                IR::Val(binding->exprs_[i].second->type));
-        }
-
-        */
-        // TODO using this for now to signify an interface when in reality we
-        // want something much more meaningful. 'Generic' is a weird catch-all
-        // type currently that needs to be deprecated.
 
       } else if (auto *match = type::Meet(
-                     ctx->type_of(binding->exprs_[i].second), input_type);
-                match == nullptr) {
+                     ctx->type_of(binding->exprs_.at(i).get()), input_type);
+                 match == nullptr) {
         return std::nullopt;
       }
     }
@@ -73,16 +52,16 @@ static std::optional<BoundConstants> ComputeBoundConstants(
           fn->inputs[i].get(),
           (binding->defaulted(i)
                ? backend::Evaluate(fn->inputs[i].get(), ctx)
-               : backend::Evaluate(binding->exprs_[i].second, ctx))[0]);
+               : backend::Evaluate(binding->exprs_.at(i).get(), ctx))[0]);
     }
 
-    binding->exprs_[i].first = input_type;
+    binding->exprs_.at(i).set_type(input_type);
   }
   return bc;
 }
 
 
-// Represents a row in the dispatch table.
+// Represents a row in the dispatch table. Each row contains information 
 struct DispatchEntry {
   bool SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
                 Context *ctx);
@@ -105,15 +84,15 @@ bool DispatchEntry::SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
     if (bound_at_compile_time && binding_.defaulted(i)) {
       if (fn.get()->inputs[i]->IsDefaultInitialized()) { return false; }
-      binding_.exprs_.at(i).first = input_types.at(i);
+      binding_.exprs_.at(i).set_type(input_types.at(i));
       continue;
     }
 
     const type::Type *match =
-        type::Meet(ctx->type_of(binding_.exprs_.at(i).second), input_types.at(i));
+        type::Meet(ctx->type_of(binding_.exprs_.at(i).get()), input_types.at(i));
     if (match == nullptr) { return false; }
 
-    binding_.exprs_.at(i).first = input_types.at(i);
+    binding_.exprs_.at(i).set_type(input_types.at(i));
 
     if (i < call_arg_types_.pos_.size()) {
       call_arg_types_.pos_.at(i) = match;
@@ -248,7 +227,7 @@ std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
 void Binding::SetPositionalArgs(const FnArgs<Expression *> &args) {
   ASSERT(exprs_.size() >= args.pos_.size());
   for (size_t i = 0; i < args.pos_.size(); ++i) {
-    exprs_[i] = std::pair(nullptr, args.pos_[i]);
+    exprs_[i] = type::Typed<Expression *>(args.pos_.at(i), nullptr);
   }
 }
 
@@ -260,7 +239,7 @@ bool Binding::SetNamedArgs(
     // was a missing named argument.
     auto iter = index_lookup.find(name);
     if (iter == index_lookup.end()) { return false; }
-    exprs_.at(iter->second) = std::pair(nullptr, expr);
+    exprs_.at(iter->second) = type::Typed<Expression *>(expr, nullptr);
   }
   return true;
 }

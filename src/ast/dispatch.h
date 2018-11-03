@@ -38,14 +38,13 @@ struct Binding {
       const FnArgs<Expression *> &args,
       const base::unordered_map<std::string, size_t> &index_lookup);
 
-  bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
+  bool defaulted(size_t i) const { return exprs_.at(i).get() == nullptr; }
 
   Binding(type::Typed<Expression *, type::Callable> fn, size_t n)
-      : fn_(fn),
-        exprs_(n, std::pair<type::Type *, Expression *>(nullptr, nullptr)) {}
+      : fn_(fn), exprs_(n, type::Typed<Expression *>(nullptr, nullptr)) {}
 
   type::Typed<Expression *, type::Callable> fn_;
-  base::vector<std::pair<const type::Type *, Expression *>> exprs_;
+  base::vector<type::Typed<Expression *>> exprs_;
 };
 
 struct DispatchTable {

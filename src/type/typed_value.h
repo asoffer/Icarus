@@ -10,7 +10,7 @@ struct Typed {
   // TODO: This does a weird thing where it upcasts and then downcasts. Probably
   // free but worth making sure or fixing it.
   Typed(V value, type::Type const* t)
-      : value_(std::move(value)), type_(&t->as<T>()) {}
+      : value_(std::move(value)), type_(t ? &t->as<T>() : nullptr) {}
 
   V& get() & { return value_; }
   V const& get() const & { return value_; }
@@ -24,6 +24,7 @@ struct Typed {
   V const& operator*() const & { return value_; }
 
   T const* type() const { return type_; }
+  void set_type(T const* t) { type_ = t; }
 
   template <typename D>
   operator Typed<D>() const {

@@ -171,15 +171,16 @@ static void EmitOneCallDispatch(
   base::vector<IR::Val> args;
   args.resize(binding.exprs_.size());
   for (size_t i = 0; i < args.size(); ++i) {
-    auto[bound_type, expr] = binding.exprs_[i];
-    if (expr == nullptr) {
-      ASSERT(bound_type != nullptr);
+    auto typed_expr = binding.exprs_[i];
+    if (typed_expr.get() == nullptr) {
       auto default_expr = (*ASSERT_NOT_NULL(const_args))[i].second;
-      args[i] = bound_type->PrepareArgument(ctx->type_of(default_expr),
-                                            default_expr->EmitIR(ctx)[0], ctx);
+      args[i] = ASSERT_NOT_NULL(typed_expr.type())
+                    ->PrepareArgument(ctx->type_of(default_expr),
+                                      default_expr->EmitIR(ctx)[0], ctx);
     } else {
-      args[i] = bound_type->PrepareArgument(ctx->type_of(expr),
-                                            *expr_map.at(expr), ctx);
+      args[i] = ASSERT_NOT_NULL(typed_expr.type())
+                    ->PrepareArgument(ctx->type_of(typed_expr.get()),
+                                      *expr_map.at(typed_expr.get()), ctx);
     }
   }
 
