@@ -63,6 +63,7 @@ type::Type const *FunctionLiteral::VerifyType(Context *ctx) {
 
   if (std::any_of(inputs.begin(), inputs.end(),
                   [](auto const &decl) { return decl->const_; })) {
+    ctx->set_type(this, type::Generic);
     return type::Generic;
   }
   for (auto &input : inputs) {
@@ -134,7 +135,7 @@ type::Type const *FunctionLiteral::VerifyType(Context *ctx) {
 // TODO VerifyType has access to types of previous entries, but Validate
 // doesnt.
 void FunctionLiteral::Validate(Context *ctx) {
-  if (validated_) return;
+  if (validated_ || ctx->type_of(this) == type::Generic) { return; }
   validated_ = true;
   for (auto &in : inputs) { in->Validate(ctx); }
   for (auto &out : outputs) { out->Validate(ctx); }
@@ -190,7 +191,8 @@ void FunctionLiteral::Validate(Context *ctx) {
       } break;
     }
   } else {
-    const auto &outs = ctx->type_of(this)->as<type::Function>().output;
+    auto const &outs =
+        ASSERT_NOT_NULL(ctx->type_of(this))->as<type::Function>().output;
     switch (outs.size()) {
       case 0: {
         for (auto *expr : rets) {

@@ -167,6 +167,19 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     }
   }
 
+  if (!fn) { NOT_YET(fn); }
+
+  if (fn_option.type() == type::Generic) {
+    base::vector<type::Type const *> inputs, outputs;
+    for (auto &in : fn->inputs) { inputs.push_back(ctx->type_of(in.get())); }
+    LOG << inputs;
+    for (auto &out : fn->outputs) {
+      outputs.push_back(ctx->type_of(out.get()));
+    }
+    LOG << outputs;
+    // LOG << bound_constants;
+  }
+
   ASSERT(fn_option.type(), Is<type::Function>());
   auto f = type::Typed<FunctionLiteral *, type::Function>(fn, fn_option.type());
   if (!dispatch_entry.SetTypes(f, ctx)) { return std::nullopt; }
