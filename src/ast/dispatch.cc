@@ -73,6 +73,13 @@ struct DispatchTableRow {
   bool const_;
 
  private:
+  static std::optional<DispatchTableRow> MakeConstant(
+      type::Typed<Expression *, type::Callable> fn_option,
+      FnArgs<Expression *> const &args, Context *ctx);
+  static std::optional<DispatchTableRow> MakeNonConstant(
+      type::Typed<Expression *, type::Function> fn_option,
+      FnArgs<Expression *> const &args, Context *ctx);
+
   DispatchTableRow(Binding b) : binding_(std::move(b)) {}
 };
 
@@ -87,8 +94,8 @@ bool DispatchTableRow::SetTypes(type::Typed<FunctionLiteral *, type::Function> f
       continue;
     }
 
-    const type::Type *match =
-        type::Meet(ctx->type_of(binding_.exprs_.at(i).get()), input_types.at(i));
+    type::Type const *match = type::Meet(
+        ctx->type_of(binding_.exprs_.at(i).get()), input_types.at(i));
     if (match == nullptr) { return false; }
 
     binding_.exprs_.at(i).set_type(input_types.at(i));
@@ -109,46 +116,70 @@ bool DispatchTableRow::SetTypes(type::Typed<FunctionLiteral *, type::Function> f
 }
 
 static bool IsConstant(Expression *e) {
-  return e->is<Declaration>() && e->as<Declaration>().const_;
+  return e->is<FunctionLiteral>() ||
+         (e->is<Declaration>() && e->as<Declaration>().const_);
+}
+
+std::optional<DispatchTableRow> DispatchTableRow::MakeNonConstant(
+    type::Typed<Expression *, type::Function> fn_option,
+    FnArgs<Expression *> const &args, Context *ctx) {
+  if (!args.named_.empty()) {
+    NOT_YET(
+        "Log an explanation for which this option was disregarded. (named "
+        "args)");
+  }
+  ASSERT(fn_option.type(), Is<type::Function>());
+  if (args.pos_.size() != fn_option.type()->as<type::Function>().input.size()) {
+    NOT_YET(
+        "Log an explanation for which this option was disregarded. (default "
+        "args)");
+  }
+
+  Binding binding(fn_option, args.pos_.size());
+  binding.SetPositionalArgs(args);
+  for (size_t i = 0; i < args.pos_.size(); ++i) {
+    binding.exprs_.at(i).set_type(ctx->type_of(args.pos_[i]));
+  }
+
+  binding.const_ = false;
+  DispatchTableRow dispatch_table_row(std::move(binding));
+  dispatch_table_row.call_arg_types_.pos_.reserve(args.pos_.size());
+  for (size_t i = 0; i < args.pos_.size(); ++i) {
+    dispatch_table_row.call_arg_types_.pos_.push_back(
+        fn_option.type()->input.at(i));
+  }
+
+  if (!dispatch_table_row.SetTypes(
+          type::Typed<FunctionLiteral *, type::Function>(nullptr,
+                                                         fn_option.type()),
+          ctx)) {
+    return {};
+  }
+  return dispatch_table_row;
 }
 
 std::optional<DispatchTableRow> DispatchTableRow::Make(
     type::Typed<Expression *, type::Callable> fn_option,
     FnArgs<Expression *> const &args, Context *ctx) {
   if (IsConstant(fn_option.get())) {
-
-    LOG << "const";
+    return MakeConstant(fn_option, args, ctx);
   } else {
-    ASSERT(args.named_.size() == 0u);
-    ASSERT(fn_option.type(), Is<type::Function>());
-    ASSERT(args.pos_.size() ==
-           fn_option.type()->as<type::Function>().input.size());
-
-    Binding binding(fn_option, args.pos_.size());
-    binding.SetPositionalArgs(args);
-    for (size_t i = 0; i < args.pos_.size(); ++i) {
-      binding.exprs_.at(i).set_type(ctx->type_of(args.pos_[i]));
-    }
-
-    binding.const_ = false;
-    DispatchTableRow dispatch_table_row(std::move(binding));
-    dispatch_table_row.call_arg_types_.pos_.resize(args.pos_.size(), nullptr);
-    for (size_t i = 0;i < args.pos_.size(); ++i) {
-      dispatch_table_row.call_arg_types_.pos_[i] = ctx->type_of(args.pos_[i]);
-    }
-    return dispatch_table_row;
+    return MakeNonConstant(
+        type::Typed<Expression *, type::Function>(
+            fn_option.get(), &fn_option.type()->as<type::Function>()),
+        args, ctx);
   }
+}
 
+std::optional<DispatchTableRow> DispatchTableRow::MakeConstant(
+    type::Typed<Expression *, type::Callable> fn_option,
+    FnArgs<Expression *> const &args, Context *ctx) {
   *fn_option = std::visit(
       base::overloaded{
-          [](IR::Func *fn) -> Expression * {
-    return fn->gened_fn_; },
-          [](FunctionLiteral *fn) -> Expression * {
-    return fn; },
-          [](IR::ForeignFn fn) -> Expression * {
-    return fn.expr_; },
-          [](auto &&) -> Expression * {
-    UNREACHABLE(); }},
+          [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
+          [](FunctionLiteral *fn) -> Expression * { return fn; },
+          [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
+          [](auto &&) -> Expression * { UNREACHABLE(); }},
       backend::Evaluate(fn_option, ctx).at(0).value);
 
   size_t binding_size;

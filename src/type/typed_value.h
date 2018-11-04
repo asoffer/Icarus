@@ -26,15 +26,18 @@ struct Typed {
   T const* type() const { return type_; }
   void set_type(T const* t) { type_ = t; }
 
-  template <typename D>
-  operator Typed<D>() const {
-    return Typed<D>{static_cast<D const>(value_), type_};
-  }
-
   template <typename... Args>
   std::string to_string(Args&&... args) const {
     return value_->to_string(std::forward<Args>(args)...) + ": " +
            type_->to_string();
+  }
+
+  template <typename D, typename U,
+            typename = std::enable_if_t<std::is_base_of_v<U, T> &&
+                                        !(std::is_same_v<U, T> &&
+                                          std::is_same_v<D, V>)>>
+  operator Typed<D, U>() const {
+    return Typed<D, U>(value_, type_);
   }
 
  private:

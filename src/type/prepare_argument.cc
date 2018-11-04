@@ -69,7 +69,6 @@ IR::Val Variant::PrepareArgument(const Type *from, const IR::Val &val,
                             ctx);
     // TODO this isn't exactly right because 'from' might not be the appropriate
     // type here.
-    NOT_YET();
     // TODO this is actually the wrong type to plug in to VariantValue. It needs
     // to be the precise type stored.
     from->EmitAssign(from, val, IR::VariantValue(from, alloc_reg), ctx);

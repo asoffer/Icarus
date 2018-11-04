@@ -141,7 +141,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
 
   std::unordered_map<BlockNode *, BlockData> block_data;
   IR::Register alloc;
-  type::Type const *state_ptr_type, *state_type;
+  type::Type const *state_ptr_type = nullptr, *state_type = nullptr;
   std::unordered_set<type::Type const *> state_types;
   for (auto &block : blocks_) {
     // TODO for now do lookup assuming it's an identifier.
