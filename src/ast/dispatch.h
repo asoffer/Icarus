@@ -45,6 +45,7 @@ struct Binding {
 
   type::Typed<Expression *, type::Callable> fn_;
   base::vector<type::Typed<Expression *>> exprs_;
+  bool const_ = false;
 };
 
 struct DispatchTable {
@@ -57,7 +58,7 @@ struct DispatchTable {
       FnArgs<Expression *> const &args, OverloadSet const &overload_set,
       Context *ctx);
 
-  base::map<FnArgs<const type::Type *>, Binding> bindings_;
+  base::map<FnArgs<type::Type const *>, Binding> bindings_;
   size_t total_size_ = 0;
 };
 

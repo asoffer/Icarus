@@ -31,6 +31,12 @@ struct Typed {
     return Typed<D>{static_cast<D const>(value_), type_};
   }
 
+  template <typename... Args>
+  std::string to_string(Args&&... args) const {
+    return value_->to_string(std::forward<Args>(args)...) + ": " +
+           type_->to_string();
+  }
+
  private:
   V value_;
   T const* type_;

@@ -181,6 +181,10 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::LoadAddr:
       save(LoadValue<IR::Addr>(resolve<IR::Addr>(cmd.load_addr_.arg_), stack_));
       break;
+    case IR::Op::LoadFunc:
+      save(LoadValue<IR::Func *>(resolve<IR::Addr>(cmd.load_func_.arg_),
+                                 stack_));
+      break;
     case IR::Op::AddInt:
       save(resolve(cmd.add_int_.args_[0]) + resolve(cmd.add_int_.args_[1]));
       break;
@@ -693,6 +697,10 @@ IR::BlockIndex ExecContext::ExecuteCmd(
     case IR::Op::StoreEnum:
       StoreValue(resolve(cmd.store_enum_.val_),
                  resolve<IR::Addr>(cmd.store_enum_.addr_), &stack_);
+      break;
+    case IR::Op::StoreFunc:
+      StoreValue(resolve(cmd.store_func_.val_),
+                 resolve<IR::Addr>(cmd.store_func_.addr_), &stack_);
       break;
     case IR::Op::StoreFlags:
       StoreValue(resolve(cmd.store_flags_.val_),

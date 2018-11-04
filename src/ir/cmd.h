@@ -101,6 +101,7 @@ struct Cmd {
   CMD(LoadEnum) { Register arg_; };
   CMD(LoadFlags) { Register arg_; };
   CMD(LoadAddr) { Register arg_; };
+  CMD(LoadFunc) { Register arg_; };
 
   CMD(StoreBool) {
     Register addr_;
@@ -125,6 +126,10 @@ struct Cmd {
   CMD(StoreEnum) {
     Register addr_;
     RegisterOr<EnumVal> val_;
+  };
+  CMD(StoreFunc) {
+    Register addr_;
+    RegisterOr<Func *> val_;
   };
   CMD(StoreFlags) {
     Register addr_;
@@ -385,6 +390,7 @@ struct Cmd {
     LoadEnum load_enum_;
     LoadFlags load_flags_;
     LoadAddr load_addr_;
+    LoadFunc load_func_;
 
     StoreBool store_bool_;
     StoreChar store_char_;
@@ -392,6 +398,7 @@ struct Cmd {
     StoreReal store_real_;
     StoreType store_type_;
     StoreEnum store_enum_;
+    StoreFunc store_func_;
     StoreFlags store_flags_;
     StoreAddr store_addr_;
 
@@ -533,12 +540,14 @@ Register LoadType(Register r);
 Register LoadEnum(Register r, type::Type const *t);
 Register LoadFlags(Register r, type::Type const *t);
 Register LoadAddr(Register r, type::Type const *t);
+Register LoadFunc(Register r, type::Type const *t);
 void StoreBool(RegisterOr<bool> val, Register loc);
 void StoreChar(RegisterOr<char> val, Register loc);
 void StoreInt(RegisterOr<i32> val, Register loc);
 void StoreReal(RegisterOr<double> val, Register loc);
 void StoreType(RegisterOr<type::Type const *> val, Register loc);
 void StoreEnum(RegisterOr<EnumVal> val, Register loc);
+void StoreFunc(RegisterOr<Func *> val, Register loc);
 void StoreFlags(RegisterOr<FlagsVal> val, Register loc);
 void StoreAddr(RegisterOr<IR::Addr> val, Register loc);
 RegisterOr<i32> AddInt(RegisterOr<i32> v1, RegisterOr<i32> v2);

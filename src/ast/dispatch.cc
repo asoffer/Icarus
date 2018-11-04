@@ -60,24 +60,23 @@ static std::optional<BoundConstants> ComputeBoundConstants(
   return bc;
 }
 
-
-// Represents a row in the dispatch table. Each row contains information 
-struct DispatchEntry {
+struct DispatchTableRow {
   bool SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
                 Context *ctx);
 
-  static std::optional<DispatchEntry> Make(
+  static std::optional<DispatchTableRow> Make(
       type::Typed<Expression *, type::Callable> fn_option,
       FnArgs<Expression *> const &args, Context *ctx);
 
-  FnArgs<const type::Type *> call_arg_types_;
+  FnArgs<type::Type const *> call_arg_types_;
   Binding binding_;
+  bool const_;
 
  private:
-  DispatchEntry(Binding b) : binding_(std::move(b)) {}
+  DispatchTableRow(Binding b) : binding_(std::move(b)) {}
 };
 
-bool DispatchEntry::SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
+bool DispatchTableRow::SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
                              Context *ctx) {
   auto const &input_types    = fn.type()->input;
   bool bound_at_compile_time = (fn.get() != nullptr);
@@ -109,15 +108,47 @@ bool DispatchEntry::SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
   return true;
 }
 
-std::optional<DispatchEntry> DispatchEntry::Make(
+static bool IsConstant(Expression *e) {
+  return e->is<Declaration>() && e->as<Declaration>().const_;
+}
+
+std::optional<DispatchTableRow> DispatchTableRow::Make(
     type::Typed<Expression *, type::Callable> fn_option,
-    const FnArgs<Expression *> &args, Context *ctx) {
+    FnArgs<Expression *> const &args, Context *ctx) {
+  if (IsConstant(fn_option.get())) {
+
+    LOG << "const";
+  } else {
+    ASSERT(args.named_.size() == 0u);
+    ASSERT(fn_option.type(), Is<type::Function>());
+    ASSERT(args.pos_.size() ==
+           fn_option.type()->as<type::Function>().input.size());
+
+    Binding binding(fn_option, args.pos_.size());
+    binding.SetPositionalArgs(args);
+    for (size_t i = 0; i < args.pos_.size(); ++i) {
+      binding.exprs_.at(i).set_type(ctx->type_of(args.pos_[i]));
+    }
+
+    binding.const_ = false;
+    DispatchTableRow dispatch_table_row(std::move(binding));
+    dispatch_table_row.call_arg_types_.pos_.resize(args.pos_.size(), nullptr);
+    for (size_t i = 0;i < args.pos_.size(); ++i) {
+      dispatch_table_row.call_arg_types_.pos_[i] = ctx->type_of(args.pos_[i]);
+    }
+    return dispatch_table_row;
+  }
+
   *fn_option = std::visit(
       base::overloaded{
-          [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
-          [](FunctionLiteral *fn) -> Expression * { return fn; },
-          [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
-          [](auto &&) -> Expression * { UNREACHABLE(); }},
+          [](IR::Func *fn) -> Expression * {
+    return fn->gened_fn_; },
+          [](FunctionLiteral *fn) -> Expression * {
+    return fn; },
+          [](IR::ForeignFn fn) -> Expression * {
+    return fn.expr_; },
+          [](auto &&) -> Expression * {
+    UNREACHABLE(); }},
       backend::Evaluate(fn_option, ctx).at(0).value);
 
   size_t binding_size;
@@ -139,31 +170,31 @@ std::optional<DispatchEntry> DispatchEntry::Make(
     return std::nullopt;
   }
 
-  DispatchEntry dispatch_entry(std::move(binding));
-  dispatch_entry.call_arg_types_.pos_.resize(args.pos_.size(), nullptr);
-
+  binding.const_ = true;
+  DispatchTableRow dispatch_table_row(std::move(binding));
+  dispatch_table_row.call_arg_types_.pos_.resize(args.pos_.size(), nullptr);
   if (fn_option.get()->is<FunctionLiteral>()) {
     auto *generic_fn = &fn_option.get()->as<FunctionLiteral>();
 
     // TODO these are being ignored, which is definitely wrong for generics, but
     // we need to redo those anyway.
     auto bound_constants =
-        ComputeBoundConstants(generic_fn, args, &dispatch_entry.binding_, ctx);
+        ComputeBoundConstants(generic_fn, args, &dispatch_table_row.binding_, ctx);
 
     if (!bound_constants) { return std::nullopt; }
     ctx->mod_->to_complete_.emplace(*std::move(bound_constants), generic_fn);
 
     // TODO can generate fail? Probably
-    *dispatch_entry.binding_.fn_= generic_fn;
+    *dispatch_table_row.binding_.fn_= generic_fn;
   }
 
   FunctionLiteral *fn = nullptr;
 
-  if (dispatch_entry.binding_.fn_.get()->is<FunctionLiteral>()) {
-    fn = &dispatch_entry.binding_.fn_.get()->as<FunctionLiteral>();
+  if (dispatch_table_row.binding_.fn_.get()->is<FunctionLiteral>()) {
+    fn = &dispatch_table_row.binding_.fn_.get()->as<FunctionLiteral>();
     for (const auto & [ key, val ] : fn->lookup_) {
       if (val < args.pos_.size()) { continue; }
-      dispatch_entry.call_arg_types_.named_.emplace(key, nullptr);
+      dispatch_table_row.call_arg_types_.named_.emplace(key, nullptr);
     }
   }
 
@@ -182,9 +213,9 @@ std::optional<DispatchEntry> DispatchEntry::Make(
 
   ASSERT(fn_option.type(), Is<type::Function>());
   auto f = type::Typed<FunctionLiteral *, type::Function>(fn, fn_option.type());
-  if (!dispatch_entry.SetTypes(f, ctx)) { return std::nullopt; }
+  if (!dispatch_table_row.SetTypes(f, ctx)) { return std::nullopt; }
 
-  return dispatch_entry;
+  return dispatch_table_row;
 }
 
 static const type::Type *ComputeRetType(OverloadSet const &overload_set) {
@@ -208,32 +239,34 @@ static const type::Type *ComputeRetType(OverloadSet const &overload_set) {
   return type::Tup(var_outs);
 }
 
-std::pair<DispatchTable, const type::Type *> DispatchTable::Make(
-    const FnArgs<Expression *> &args, OverloadSet const &overload_set,
+static size_t ComputeExpansion(
+    FnArgs<type::Type const *> const &call_arg_types) {
+  size_t expanded_size = 1;
+  call_arg_types.Apply([&expanded_size](const type::Type *t) {
+    if (t->is<type::Variant>()) {
+      expanded_size *= t->as<type::Variant>().size();
+    }
+  });
+  return expanded_size;
+}
+
+std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
+    FnArgs<Expression *> const &args, OverloadSet const &overload_set,
     Context *ctx) {
   DispatchTable table;
-  // TODO error decls?
-  for (auto &fn : overload_set) {
-    if (fn.type() == nullptr) {
-      // TODO can this even happen?
-      return {};
-    }
-    if (auto maybe_dispatch_entry = DispatchEntry::Make(fn, args, ctx)) {
-      size_t expanded_size = 1;
-      maybe_dispatch_entry->call_arg_types_.Apply(
-          [&expanded_size](const type::Type *t) {
-            if (t->is<type::Variant>()) {
-              expanded_size *= t->as<type::Variant>().size();
-            }
-          });
 
-      table.total_size_ += expanded_size;
-      table.bindings_.emplace(std::move(maybe_dispatch_entry->call_arg_types_),
-                              std::move(maybe_dispatch_entry->binding_));
-    }
+  for (auto &overload : overload_set) {
+    ASSERT(overload.type() != nullptr);
+    auto maybe_dispatch_table_row = DispatchTableRow::Make(overload, args, ctx);
+    if (!maybe_dispatch_table_row.has_value()) { continue; }
+    table.total_size_ +=
+        ComputeExpansion(maybe_dispatch_table_row->call_arg_types_);
+    table.bindings_.emplace(std::move(maybe_dispatch_table_row->call_arg_types_),
+                            std::move(maybe_dispatch_table_row->binding_));
   }
 
   type::Type const *ret_type = ComputeRetType(overload_set);
+
   return std::pair{std::move(table), ret_type};
 }
 

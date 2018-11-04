@@ -194,7 +194,7 @@ void Struct::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
 void Function::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
                           Context *ctx) const {
   ASSERT(this == from_type);
-  NOT_YET();
+  IR::StoreFunc(from.reg_or<IR::Func *>(), to);
 }
 void Primitive::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
                            Context *ctx) const {

@@ -178,6 +178,7 @@ DEFINE_CMD1(LoadType, load_type_, type::Type_);
 DEFINE_CMD1(LoadEnum, load_enum_);
 DEFINE_CMD1(LoadFlags, load_flags_);
 DEFINE_CMD1(LoadAddr, load_addr_);
+DEFINE_CMD1(LoadFunc, load_func_);
 #undef DEFINE_CMD1
 
 #define DEFINE_CMD1(Name, name, arg_type)                                      \
@@ -650,6 +651,11 @@ void StoreEnum(RegisterOr<EnumVal> val, Register loc) {
   cmd.store_enum_ = Cmd::StoreEnum::Make(loc, val);
 }
 
+void StoreFunc(RegisterOr<Func *> val, Register loc) {
+  auto &cmd       = MakeCmd(nullptr, Op::StoreFunc);
+  cmd.store_func_ = Cmd::StoreFunc::Make(loc, val);
+}
+
 void StoreFlags(RegisterOr<FlagsVal> val, Register loc) {
   auto &cmd        = MakeCmd(nullptr, Op::StoreFlags);
   cmd.store_flags_ = Cmd::StoreFlags::Make(loc, val);
@@ -740,6 +746,7 @@ Register Load(Register r, type::Type const *t) {
   if (t->is<type::Enum>()) { return LoadEnum(r, t); }
   if (t->is<type::Flags>()) { return LoadFlags(r, t); }
   if (t->is<type::Pointer>()) { return LoadAddr(r, t); }
+  if (t->is<type::Function>()) { return LoadFunc(r, t); }
   UNREACHABLE(t);
 }
 
@@ -866,6 +873,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::LoadEnum: return os << cmd.load_enum_.arg_;
     case Op::LoadFlags: return os << cmd.load_type_.arg_;
     case Op::LoadAddr: return os << cmd.load_addr_.arg_;
+    case Op::LoadFunc: return os << cmd.load_func_.arg_;
     case Op::PrintBool: return os << cmd.print_bool_.arg_;
     case Op::PrintChar: return os << cmd.print_char_.arg_;
     case Op::PrintInt: return os << cmd.print_int_.arg_;
@@ -1002,6 +1010,8 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
       }
     case Op::StoreEnum:
       return os << cmd.store_enum_.addr_ << " " << cmd.store_enum_.val_;
+    case Op::StoreFunc:
+      return os << cmd.store_func_.addr_ << " " << cmd.store_func_.val_;
     case Op::StoreFlags:
       return os << cmd.store_flags_.addr_ << " " << cmd.store_flags_.val_;
     case Op::StoreAddr:
