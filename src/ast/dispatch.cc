@@ -177,6 +177,10 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeConstant(
     FnArgs<Expression *> const &args, Context *ctx) {
   IR::Val fn_val = backend::Evaluate(fn_option, ctx).at(0);
   if (auto *ff = std::get_if<IR::ForeignFn>(&fn_val.value)) {
+    // TODO while all the behavior of MakeNonConst is what we want, the name is
+    // obviously incorrect. and we need to reset binding_.const_ to true. Fix
+    // the name here. Probably the error messages once we have them will be
+    // wrong too.
     auto result = MakeNonConstant(
         type::Typed<Expression *, type::Function>(
             fn_option.get(), &fn_option.type()->as<type::Function>()),
