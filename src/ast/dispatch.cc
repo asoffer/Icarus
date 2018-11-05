@@ -192,77 +192,56 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeConstant(
 
   *fn_option = std::visit(
       base::overloaded{
-          [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
-          [](FunctionLiteral *fn) -> Expression * { return fn; },
-          [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
-          [](auto &&) -> Expression * { UNREACHABLE(); }},
+          [](IR::Func *fn) -> FunctionLiteral * { return fn->gened_fn_; },
+          [](FunctionLiteral *fn) -> FunctionLiteral * { return fn; },
+          [](auto &&) -> FunctionLiteral * { UNREACHABLE(); }},
       fn_val.value);
+  auto *fn = &fn_option.get()->as<FunctionLiteral>();
 
-  size_t binding_size;
-  if (fn_option.get()->is<FunctionLiteral>()) {
-    binding_size =
-        std::max(fn_option.get()->as<FunctionLiteral>().lookup_.size(),
-                 args.pos_.size() + args.named_.size());
-  } else {
-    // TODO must this be a builtin?
-    // TODO is this 1 even right?
-    binding_size = 1;
-  }
+  size_t binding_size =
+      std::max(fn->lookup_.size(), args.pos_.size() + args.named_.size());
+
   Binding binding(fn_option, binding_size);
   binding.SetPositionalArgs(args);
 
-  if (auto *f = fn_option.get();
-      f->is<FunctionLiteral>() &&
-      !binding.SetNamedArgs(args, f->as<FunctionLiteral>().lookup_)) {
-    return std::nullopt;
-  }
+  if (!binding.SetNamedArgs(args, fn->lookup_)) { return {}; }
 
   binding.const_ = true;
   DispatchTableRow dispatch_table_row(std::move(binding));
   dispatch_table_row.call_arg_types_.pos_.resize(args.pos_.size(), nullptr);
-  if (fn_option.get()->is<FunctionLiteral>()) {
-    auto *generic_fn = &fn_option.get()->as<FunctionLiteral>();
 
-    // TODO these are being ignored, which is definitely wrong for generics, but
-    // we need to redo those anyway.
-    auto bound_constants =
-        ComputeBoundConstants(generic_fn, args, &dispatch_table_row.binding_, ctx);
+  // TODO these are being ignored, which is definitely wrong for generics, but
+  // we need to redo those anyway.
+  auto bound_constants =
+      ComputeBoundConstants(fn, args, &dispatch_table_row.binding_, ctx);
 
-    if (!bound_constants) { return std::nullopt; }
-    ctx->mod_->to_complete_.emplace(*std::move(bound_constants), generic_fn);
+  if (!bound_constants) { return std::nullopt; }
+  ctx->mod_->to_complete_.emplace(*std::move(bound_constants), fn);
 
-    // TODO can generate fail? Probably
-    *dispatch_table_row.binding_.fn_= generic_fn;
+  *dispatch_table_row.binding_.fn_ = fn;
+
+  for (const auto & [ key, val ] : fn->lookup_) {
+    if (val < args.pos_.size()) { continue; }
+    dispatch_table_row.call_arg_types_.named_.emplace(key, nullptr);
   }
 
-  if (dispatch_table_row.binding_.fn_.get()->is<FunctionLiteral>()) {
-    FunctionLiteral *fn =
-        &dispatch_table_row.binding_.fn_.get()->as<FunctionLiteral>();
-    for (const auto & [ key, val ] : fn->lookup_) {
-      if (val < args.pos_.size()) { continue; }
-      dispatch_table_row.call_arg_types_.named_.emplace(key, nullptr);
+  if (fn_option.type() == type::Generic) {
+    base::vector<type::Type const *> inputs, outputs;
+    for (auto &in : fn->inputs) { inputs.push_back(ctx->type_of(in.get())); }
+    LOG << inputs;
+    for (auto &out : fn->outputs) {
+      outputs.push_back(ctx->type_of(out.get()));
     }
+    LOG << outputs;
+    // LOG << bound_constants;
+  }
 
-    if (fn_option.type() == type::Generic) {
-      base::vector<type::Type const *> inputs, outputs;
-      for (auto &in : fn->inputs) { inputs.push_back(ctx->type_of(in.get())); }
-      LOG << inputs;
-      for (auto &out : fn->outputs) {
-        outputs.push_back(ctx->type_of(out.get()));
-      }
-      LOG << outputs;
-      // LOG << bound_constants;
-    }
-
-    ASSERT(fn_option.type(), Is<type::Function>());
-    if (!dispatch_table_row.SetTypes<true>(
-            type::Typed<Expression *, type::Function>(fn_option.get(),
-                                                      fn_option.type()),
-            ctx)) {
-      return {};
-    }
-  } else {
-    NOT_YET(fn_val);
+  ASSERT(fn_option.type(), Is<type::Function>());
+  if (!dispatch_table_row.SetTypes<true>(
+          type::Typed<Expression *, type::Function>(fn_option.get(),
+                                                    fn_option.type()),
+          ctx)) {
+    return {};
   }
 
   return dispatch_table_row;
