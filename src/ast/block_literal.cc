@@ -75,10 +75,9 @@ void BlockLiteral::contextualize(
   }
 }
 
-void BlockLiteral::ExtractReturns(
-    base::vector<const Expression *> *rets) const {
-  for (auto &b : before_) { b->ExtractReturns(rets); }
-  for (auto &a : after_) { a->ExtractReturns(rets); }
+void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
+  for (auto &b : before_) { b->ExtractJumps(rets); }
+  for (auto &a : after_) { a->ExtractJumps(rets); }
 }
 
 BlockLiteral *BlockLiteral::Clone() const {

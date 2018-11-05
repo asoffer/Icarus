@@ -311,8 +311,8 @@ void ChainOp::contextualize(
   }
 }
 
-void ChainOp::ExtractReturns(base::vector<const Expression *> *rets) const {
-  for (auto &expr : exprs) { expr->ExtractReturns(rets); }
+void ChainOp::ExtractJumps(JumpExprs *rets) const {
+  for (auto &expr : exprs) { expr->ExtractJumps(rets); }
 }
 
 base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {

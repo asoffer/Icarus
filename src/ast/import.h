@@ -19,7 +19,7 @@ struct Import : public Expression {
 
   // TODO what if the operand does a result/return thing in a scope? This feels
   // like it should be disallowed but maybe I need this to catch the error!
-  void ExtractReturns(base::vector<const Expression *> *) const override {}
+  void ExtractJumps(JumpExprs *) const override {}
   void contextualize(
       const Node *correspondant,
       const base::unordered_map<const Expression *, IR::Val> &) override;

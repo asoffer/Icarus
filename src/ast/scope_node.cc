@@ -19,8 +19,8 @@
 #include "type/type.h"
 
 base::vector<IR::Val> EmitCallDispatch(
-    const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
-    const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
+    AST::FnArgs<std::pair<AST::Expression *, IR::Val>> const &args,
+    AST::DispatchTable const &dispatch_table, type::Type const *ret_type,
     Context *ctx);
 
 void ForEachExpr(AST::Expression *expr,
@@ -80,8 +80,8 @@ void ScopeNode::contextualize(
   NOT_YET();
 }
 
-void ScopeNode::ExtractReturns(base::vector<const Expression *> *rets) const {
-  for (auto &block : blocks_) { block->ExtractReturns(rets); }
+void ScopeNode::ExtractJumps(JumpExprs *rets) const {
+  for (auto &block : blocks_) { block->ExtractJumps(rets); }
 }
 
 ScopeNode *ScopeNode::Clone() const {

@@ -542,8 +542,8 @@ std::unique_ptr<Node> BuildMoreStatements(
 
 std::unique_ptr<Node> BuildJump(base::vector<std::unique_ptr<Node>> nodes,
                                 Context *ctx) {
-  const static base::unordered_map<std::string, Jump::Kind> JumpKindMap = {
-      {"return", Jump::Kind::Return}, {"yield", Jump::Kind::Yield}};
+  const static base::unordered_map<std::string, JumpKind> JumpKindMap = {
+      {"return", JumpKind::Return}, {"yield", JumpKind::Yield}};
   auto iter = JumpKindMap.find(nodes[0]->as<frontend::Token>().token);
   ASSERT(iter != JumpKindMap.end());
 

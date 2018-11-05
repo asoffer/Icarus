@@ -92,9 +92,8 @@ void ScopeLiteral::contextualize(
   }
 }
 
-void ScopeLiteral::ExtractReturns(
-    base::vector<const Expression *> *rets) const {
-  for (auto &decl : decls_) { decl.ExtractReturns(rets); }
+void ScopeLiteral::ExtractJumps(JumpExprs *rets) const {
+  for (auto &decl : decls_) { decl.ExtractJumps(rets); }
 }
 
 ScopeLiteral *ScopeLiteral::Clone() const {

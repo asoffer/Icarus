@@ -43,8 +43,8 @@ void Statements::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   for (auto &stmt : content_) { stmt->SaveReferences(scope, args); }
 }
 
-void Statements::ExtractReturns(base::vector<const Expression *> *rets) const {
-  for (auto &stmt : content_) { stmt->ExtractReturns(rets); }
+void Statements::ExtractJumps(JumpExprs *rets) const {
+  for (auto &stmt : content_) { stmt->ExtractJumps(rets); }
 }
 
 base::vector<IR::Val> AST::Statements::EmitIR(Context *ctx) {

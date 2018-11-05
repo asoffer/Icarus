@@ -523,10 +523,10 @@ void Call::contextualize(
   }
 }
 
-void Call::ExtractReturns(base::vector<const Expression *> *rets) const {
-  fn_->ExtractReturns(rets);
-  for (const auto &val : args_.pos_) { val->ExtractReturns(rets); }
-  for (const auto & [ key, val ] : args_.named_) { val->ExtractReturns(rets); }
+void Call::ExtractJumps(JumpExprs *rets) const {
+  fn_->ExtractJumps(rets);
+  for (const auto &val : args_.pos_) { val->ExtractJumps(rets); }
+  for (const auto & [ key, val ] : args_.named_) { val->ExtractJumps(rets); }
 }
 
 Call *Call::Clone() const {

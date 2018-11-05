@@ -147,11 +147,11 @@ void FunctionLiteral::Validate(Context *ctx) {
     return nullptr;
   }();
 
-  base::vector<const Expression *> rets;
-  statements->ExtractReturns(&rets);
+  JumpExprs rets;
+  statements->ExtractJumps(&rets);
   statements->Validate(ctx);
-  std::set<const type::Type *> types;
-  for (auto *expr : rets) { types.insert(ctx->type_of(expr)); }
+  std::set<type::Type const *> types;
+  for (auto *expr : rets[JumpKind::Return]) { types.insert(ctx->type_of(expr)); }
 
   base::vector<const type::Type *> input_type_vec, output_type_vec;
   input_type_vec.reserve(inputs.size());
@@ -195,23 +195,23 @@ void FunctionLiteral::Validate(Context *ctx) {
         ASSERT_NOT_NULL(ctx->type_of(this))->as<type::Function>().output;
     switch (outs.size()) {
       case 0: {
-        for (auto *expr : rets) {
+        for (auto *expr : rets[JumpKind::Return]) {
           ctx->error_log_.NoReturnTypes(expr);
           limit_to(StageRange::NoEmitIR());
         }
       } break;
       case 1: {
-        for (auto *expr : rets) {
+        for (auto *expr : rets[JumpKind::Return]) {
           if (ctx->type_of(expr) == outs[0]) { continue; }
           limit_to(StageRange::NoEmitIR());
           ctx->error_log_.ReturnTypeMismatch(outs[0], expr);
         }
       } break;
       default: {
-        for (auto *expr : rets) {
+        for (auto *expr : rets[JumpKind::Return]) {
           auto *expr_type = ctx->type_of(expr);
           if (expr_type->is<type::Tuple>()) {
-            const auto &tup_entries = expr_type->as<type::Tuple>().entries_;
+            auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
               ctx->error_log_.ReturningWrongNumber(expr, outs.size());
               limit_to(StageRange::NoEmitIR());
@@ -261,10 +261,9 @@ void FunctionLiteral::contextualize(
       correspondant->as<FunctionLiteral>().statements.get(), replacements);
 }
 
-void FunctionLiteral::ExtractReturns(
-    base::vector<const Expression *> *rets) const {
-  for (auto &in : inputs) { in->ExtractReturns(rets); }
-  for (auto &out : outputs) { out->ExtractReturns(rets); }
+void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
+  for (auto &in : inputs) { in->ExtractJumps(rets); }
+  for (auto &out : outputs) { out->ExtractJumps(rets); }
 }
 
 FunctionLiteral *FunctionLiteral::Clone() const {

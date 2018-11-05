@@ -144,6 +144,7 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeNonConstant(
   binding.const_ = false;
   DispatchTableRow dispatch_table_row(std::move(binding));
   dispatch_table_row.call_arg_types_.pos_.reserve(args.pos_.size());
+
   for (size_t i = 0; i < args.pos_.size(); ++i) {
     dispatch_table_row.call_arg_types_.pos_.push_back(
         fn_option.type()->input.at(i));

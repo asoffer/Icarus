@@ -60,8 +60,8 @@ void CommaList::contextualize(
   }
 }
 
-void CommaList::ExtractReturns(base::vector<const Expression *> *rets) const {
-  for (auto &expr : exprs) { expr->ExtractReturns(rets); }
+void CommaList::ExtractJumps(JumpExprs *rets) const {
+  for (auto &expr : exprs) { expr->ExtractJumps(rets); }
 }
 
 CommaList *CommaList::Clone() const {

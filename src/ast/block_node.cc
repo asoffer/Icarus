@@ -26,8 +26,8 @@ void BlockNode::Validate(Context *) { NOT_YET(); }
 void BlockNode::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   NOT_YET();
 }
-void BlockNode::ExtractReturns(base::vector<const Expression *> *rets) const {
-  stmts_.ExtractReturns(rets);
+void BlockNode::ExtractJumps(JumpExprs *rets) const {
+  stmts_.ExtractJumps(rets);
 }
 void BlockNode::contextualize(
     const Node *correspondant,

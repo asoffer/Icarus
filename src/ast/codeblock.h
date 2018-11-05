@@ -36,7 +36,7 @@ struct CodeBlock : public Expression {
       const Node *,
       const base::unordered_map<const Expression *, IR::Val> &) override {}
 
-  void ExtractReturns(base::vector<const Expression *> *) const override {}
+  void ExtractJumps(JumpExprs *) const override {}
 
   std::variant<Statements, std::string> content_;
 

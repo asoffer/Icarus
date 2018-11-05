@@ -30,6 +30,10 @@ struct StageRange {
 };
 struct Expression;
 
+enum class JumpKind { Return, Yield };
+struct JumpExprs
+    : public base::unordered_map<JumpKind, base::vector<Expression const *>> {};
+
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const                          = 0;
   virtual void assign_scope(Scope *)                                     = 0;
@@ -41,7 +45,7 @@ struct Node : public base::Cast<Node> {
       const Node *correspondant,
       const base::unordered_map<const Expression *, IR::Val> &)         = 0;
   virtual Node *Clone() const                                           = 0;
-  virtual void ExtractReturns(base::vector<const Expression *> *) const = 0;
+  virtual void ExtractJumps(JumpExprs *) const                          = 0;
 
   template <typename T>
   void limit_to(T &&t) {}
@@ -58,5 +62,6 @@ struct Node : public base::Cast<Node> {
   Scope *scope_ = nullptr;
   TextSpan span;
 };
+
 }  // namespace AST
 #endif  // ICARUS_AST_NODE_H

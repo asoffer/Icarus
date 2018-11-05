@@ -78,9 +78,8 @@ void ArrayLiteral::contextualize(
   }
 }
 
-void ArrayLiteral::ExtractReturns(
-    base::vector<const Expression *> *rets) const {
-  for (auto &el : elems_) { el->ExtractReturns(rets); }
+void ArrayLiteral::ExtractJumps(JumpExprs *rets) const {
+  for (auto &el : elems_) { el->ExtractJumps(rets); }
 }
 
 ArrayLiteral *ArrayLiteral::Clone() const {

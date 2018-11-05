@@ -20,7 +20,7 @@ struct Hole : public Expression {
   void contextualize(const Node *,
                      const base::unordered_map<const Expression *, IR::Val> &) {
   }
-  void ExtractReturns(base::vector<const Expression *> *) const {}
+  void ExtractJumps(JumpExprs *) const {}
   type::Type const *VerifyType(Context *) { return nullptr; }
   void Validate(Context *ctx) {}
 

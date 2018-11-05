@@ -77,10 +77,10 @@ void Switch::contextualize(
   }
 }
 
-void Switch::ExtractReturns(base::vector<const Expression *> *rets) const {
+void Switch::ExtractJumps(JumpExprs *rets) const {
   for (auto & [ expr, cond ] : cases_) {
-    expr->ExtractReturns(rets);
-    cond->ExtractReturns(rets);
+    expr->ExtractJumps(rets);
+    cond->ExtractJumps(rets);
   }
 }
 

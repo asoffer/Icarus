@@ -79,10 +79,10 @@ base::vector<IR::Register> ArrayType::EmitLVal(Context *ct) {
   UNREACHABLE(*this);
 }
 
-void ArrayType::ExtractReturns(base::vector<const Expression *> *rets) const {
+void ArrayType::ExtractJumps(JumpExprs *rets) const {
   // TODO length_ needs to be constexpr so maybe we're safe here? and don't need
   // to check it? This happens in other places too!
-  length_->ExtractReturns(rets);
-  data_type_->ExtractReturns(rets);
+  length_->ExtractJumps(rets);
+  data_type_->ExtractJumps(rets);
 }
 }  // namespace AST

@@ -89,8 +89,8 @@ void Unop::contextualize(
   }
 }
 
-void Unop::ExtractReturns(base::vector<const Expression *> *rets) const {
-  operand->ExtractReturns(rets);
+void Unop::ExtractJumps(JumpExprs *rets) const {
+  operand->ExtractJumps(rets);
 }
 
 Unop *Unop::Clone() const {

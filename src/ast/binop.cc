@@ -367,9 +367,9 @@ void Binop::contextualize(
   rhs->contextualize(correspondant->as<Binop>().rhs.get(), replacements);
 }
 
-void Binop::ExtractReturns(base::vector<const Expression *> *rets) const {
-  lhs->ExtractReturns(rets);
-  rhs->ExtractReturns(rets);
+void Binop::ExtractJumps(JumpExprs *rets) const {
+  lhs->ExtractJumps(rets);
+  rhs->ExtractJumps(rets);
 }
 
 base::vector<IR::Val> AST::Binop::EmitIR(Context *ctx) {

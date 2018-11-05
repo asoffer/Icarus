@@ -11,7 +11,7 @@ struct Switch : public Expression {
   type::Type const *VerifyType(Context *) override;
   void Validate(Context *) override;
   void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
-  void ExtractReturns(base::vector<const Expression *> *rets) const override;
+  void ExtractJumps(JumpExprs *rets) const override;
   void contextualize(
       const Node *correspondant,
       const base::unordered_map<const Expression *, IR::Val> &) override;

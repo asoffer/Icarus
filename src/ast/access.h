@@ -18,8 +18,8 @@ struct Access : public Expression {
     operand->SaveReferences(scope, args);
   }
 
-  void ExtractReturns(base::vector<const Expression *> *rets) const override {
-    operand->ExtractReturns(rets);
+  void ExtractJumps(JumpExprs *rets) const override {
+    operand->ExtractJumps(rets);
   }
 
   void contextualize(

@@ -58,9 +58,8 @@ void StructLiteral::contextualize(
   }
 }
 
-void StructLiteral::ExtractReturns(
-    base::vector<const Expression *> *rets) const {
-  for (auto &f : fields_) { f->ExtractReturns(rets); }
+void StructLiteral::ExtractJumps(JumpExprs *rets) const {
+  for (auto &f : fields_) { f->ExtractJumps(rets); }
 }
 
 StructLiteral *StructLiteral::Clone() const {

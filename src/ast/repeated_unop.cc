@@ -50,11 +50,18 @@ void RepeatedUnop::contextualize(
   }
 }
 
-void RepeatedUnop::ExtractReturns(
-    base::vector<const Expression *> *rets) const {
-  args_.ExtractReturns(rets);
+void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
+  args_.ExtractJumps(rets);
   // TODO yield as well?
-  if (op_ == Language::Operator::Return) { rets->push_back(&args_); }
+  switch (op_) {
+    case Language::Operator::Return:
+      (*rets)[JumpKind::Return].push_back(&args_);
+      break;
+    case Language::Operator::Yield:
+      (*rets)[JumpKind::Yield].push_back(&args_);
+      break;
+    default: break;
+  }
 }
 
 RepeatedUnop *RepeatedUnop::Clone() const {

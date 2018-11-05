@@ -374,9 +374,9 @@ void Declaration::contextualize(
   }
 }
 
-void Declaration::ExtractReturns(base::vector<const Expression *> *rets) const {
-  if (type_expr) { type_expr->ExtractReturns(rets); }
-  if (init_val) { init_val->ExtractReturns(rets); }
+void Declaration::ExtractJumps(JumpExprs *rets) const {
+  if (type_expr) { type_expr->ExtractJumps(rets); }
+  if (init_val) { init_val->ExtractJumps(rets); }
 }
 
 Declaration *Declaration::Clone() const {

@@ -53,8 +53,8 @@ void Interface::contextualize(
   }
 }
 
-void Interface::ExtractReturns(base::vector<const Expression *> *rets) const {
-  for (auto &d : decls_) { d.ExtractReturns(rets); }
+void Interface::ExtractJumps(JumpExprs *rets) const {
+  for (auto &d : decls_) { d.ExtractJumps(rets); }
 }
 
 Interface *Interface::Clone() const {

@@ -29,9 +29,7 @@ struct Token : public AST::Node {
   Token *Clone() const override { UNREACHABLE(); }
   type::Type const *VerifyType(Context *) override { UNREACHABLE(); }
   void Validate(Context *) override { UNREACHABLE(); }
-  void ExtractReturns(base::vector<const AST::Expression *> *) const override {
-    UNREACHABLE();
-  }
+  void ExtractJumps(AST::JumpExprs *) const override { UNREACHABLE(); }
 
   void SaveReferences(Scope *, base::vector<IR::Val> *) override {
     UNREACHABLE();
