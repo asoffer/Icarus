@@ -61,8 +61,8 @@ static std::optional<BoundConstants> ComputeBoundConstants(
 }
 
 struct DispatchTableRow {
-  bool SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
-                Context *ctx);
+  template <bool BoundAtCompileTime>
+  bool SetTypes(type::Typed<Expression *, type::Function> fn, Context *ctx);
 
   static std::optional<DispatchTableRow> Make(
       type::Typed<Expression *, type::Callable> fn_option,
@@ -70,7 +70,6 @@ struct DispatchTableRow {
 
   FnArgs<type::Type const *> call_arg_types_;
   Binding binding_;
-  bool const_;
 
  private:
   static std::optional<DispatchTableRow> MakeConstant(
@@ -83,15 +82,19 @@ struct DispatchTableRow {
   DispatchTableRow(Binding b) : binding_(std::move(b)) {}
 };
 
-bool DispatchTableRow::SetTypes(type::Typed<FunctionLiteral *, type::Function> fn,
-                             Context *ctx) {
-  auto const &input_types    = fn.type()->input;
-  bool bound_at_compile_time = (fn.get() != nullptr);
+template <bool BoundAtCompileTime>
+bool DispatchTableRow::SetTypes(type::Typed<Expression *, type::Function> fn,
+                                Context *ctx) {
+  auto const &input_types = fn.type()->input;
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
-    if (bound_at_compile_time && binding_.defaulted(i)) {
-      if (fn.get()->inputs[i]->IsDefaultInitialized()) { return false; }
-      binding_.exprs_.at(i).set_type(input_types.at(i));
-      continue;
+    if constexpr (BoundAtCompileTime) {
+      if (binding_.defaulted(i)) {
+        if (fn.get()->as<FunctionLiteral>().inputs[i]->IsDefaultInitialized()) {
+          return false;
+        }
+        binding_.exprs_.at(i).set_type(input_types.at(i));
+        continue;
+      }
     }
 
     type::Type const *match = type::Meet(
@@ -103,8 +106,9 @@ bool DispatchTableRow::SetTypes(type::Typed<FunctionLiteral *, type::Function> f
     if (i < call_arg_types_.pos_.size()) {
       call_arg_types_.pos_.at(i) = match;
     } else {
-      if (bound_at_compile_time) {
-        auto iter = call_arg_types_.find(fn.get()->inputs[i]->id_);
+      if constexpr (BoundAtCompileTime) {
+        auto iter = call_arg_types_.find(
+            fn.get()->as<FunctionLiteral>().inputs[i]->id_);
         ASSERT(iter != call_arg_types_.named_.end());
         iter->second = match;
       } else {
@@ -112,6 +116,7 @@ bool DispatchTableRow::SetTypes(type::Typed<FunctionLiteral *, type::Function> f
       }
     }
   }
+
   return true;
 }
 
@@ -150,12 +155,7 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeNonConstant(
         fn_option.type()->input.at(i));
   }
 
-  if (!dispatch_table_row.SetTypes(
-          type::Typed<FunctionLiteral *, type::Function>(nullptr,
-                                                         fn_option.type()),
-          ctx)) {
-    return {};
-  }
+  if (!dispatch_table_row.SetTypes<false>(fn_option, ctx)) { return {}; }
   return dispatch_table_row;
 }
 
@@ -175,13 +175,24 @@ std::optional<DispatchTableRow> DispatchTableRow::Make(
 std::optional<DispatchTableRow> DispatchTableRow::MakeConstant(
     type::Typed<Expression *, type::Callable> fn_option,
     FnArgs<Expression *> const &args, Context *ctx) {
+  IR::Val fn_val = backend::Evaluate(fn_option, ctx).at(0);
+  if (auto *ff = std::get_if<IR::ForeignFn>(&fn_val.value)) {
+    auto result = MakeNonConstant(
+        type::Typed<Expression *, type::Function>(
+            fn_option.get(), &fn_option.type()->as<type::Function>()),
+        args, ctx);
+    if (!result) { return {}; }
+    result->binding_.const_ = true;
+    return result;
+  }
+
   *fn_option = std::visit(
       base::overloaded{
           [](IR::Func *fn) -> Expression * { return fn->gened_fn_; },
           [](FunctionLiteral *fn) -> Expression * { return fn; },
           [](IR::ForeignFn fn) -> Expression * { return fn.expr_; },
           [](auto &&) -> Expression * { UNREACHABLE(); }},
-      backend::Evaluate(fn_option, ctx).at(0).value);
+      fn_val.value);
 
   size_t binding_size;
   if (fn_option.get()->is<FunctionLiteral>()) {
@@ -220,32 +231,35 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeConstant(
     *dispatch_table_row.binding_.fn_= generic_fn;
   }
 
-  FunctionLiteral *fn = nullptr;
-
   if (dispatch_table_row.binding_.fn_.get()->is<FunctionLiteral>()) {
-    fn = &dispatch_table_row.binding_.fn_.get()->as<FunctionLiteral>();
+    FunctionLiteral *fn =
+        &dispatch_table_row.binding_.fn_.get()->as<FunctionLiteral>();
     for (const auto & [ key, val ] : fn->lookup_) {
       if (val < args.pos_.size()) { continue; }
       dispatch_table_row.call_arg_types_.named_.emplace(key, nullptr);
     }
-  }
 
-  if (!fn) { NOT_YET(fn); }
-
-  if (fn_option.type() == type::Generic) {
-    base::vector<type::Type const *> inputs, outputs;
-    for (auto &in : fn->inputs) { inputs.push_back(ctx->type_of(in.get())); }
-    LOG << inputs;
-    for (auto &out : fn->outputs) {
-      outputs.push_back(ctx->type_of(out.get()));
+    if (fn_option.type() == type::Generic) {
+      base::vector<type::Type const *> inputs, outputs;
+      for (auto &in : fn->inputs) { inputs.push_back(ctx->type_of(in.get())); }
+      LOG << inputs;
+      for (auto &out : fn->outputs) {
+        outputs.push_back(ctx->type_of(out.get()));
+      }
+      LOG << outputs;
+      // LOG << bound_constants;
     }
-    LOG << outputs;
-    // LOG << bound_constants;
-  }
 
-  ASSERT(fn_option.type(), Is<type::Function>());
-  auto f = type::Typed<FunctionLiteral *, type::Function>(fn, fn_option.type());
-  if (!dispatch_table_row.SetTypes(f, ctx)) { return std::nullopt; }
+    ASSERT(fn_option.type(), Is<type::Function>());
+    if (!dispatch_table_row.SetTypes<true>(
+            type::Typed<Expression *, type::Function>(fn_option.get(),
+                                                      fn_option.type()),
+            ctx)) {
+      return {};
+    }
+  } else {
+    NOT_YET(fn_val);
+  }
 
   return dispatch_table_row;
 }
