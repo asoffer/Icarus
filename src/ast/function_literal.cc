@@ -301,8 +301,8 @@ base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
                         input->as<Declaration>().init_val.get());
     }
 
-    ir_func_ = ctx->mod_->AddFunc(
-        this, &ctx->type_of(this)->as<type::Function>(), std::move(args));
+    ir_func_ = ctx->mod_->AddFunc(&ctx->type_of(this)->as<type::Function>(),
+                                  std::move(args));
   }
 
   return {IR::Val::Func(ir_func_)};

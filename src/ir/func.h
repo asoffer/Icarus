@@ -21,10 +21,6 @@ struct Function;
 
 struct Module;
 
-namespace AST {
-struct FunctionLiteral;
-}  // namespace AST
-
 namespace IR {
 struct CmdIndex {
   BlockIndex block;
@@ -45,8 +41,6 @@ struct Func {
   static thread_local Func *Current;
 
   Func(Module *mod, const type::Function *fn_type,
-       base::vector<std::pair<std::string, AST::Expression *>> args);
-  Func(Module *mod, AST::FunctionLiteral *fn_lit, type::Function const *fn_type,
        base::vector<std::pair<std::string, AST::Expression *>> args);
 
   Register Argument(u32 n) const;
@@ -86,9 +80,6 @@ struct Func {
 
   BlockIndex entry() const { return BlockIndex(0); }
 
-  // Is this needed? Or can it be determined from the containing
-  // FunctionLiteral object?
-  AST::FunctionLiteral *gened_fn_   = nullptr;
   const type::Function *const type_ = nullptr;
   base::vector<std::pair<std::string, AST::Expression *>> args_;
   bool has_default(size_t i) const { return args_[i].second != nullptr; }
@@ -103,6 +94,8 @@ struct Func {
 
   size_t reg_size_ = 0;
   base::unordered_map<i32, Register> reg_map_;
+
+  base::unordered_map<std::string, size_t> lookup_;
 
   base::vector<AST::Expression *> precondition_exprs_, postcondition_exprs_;
   base::vector<std::pair<IR::Func, prop::PropertyMap>> preconditions_,

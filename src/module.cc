@@ -40,23 +40,6 @@ Module::Module()
 Module::~Module() = default;
 
 IR::Func *Module::AddFunc(
-    AST::FunctionLiteral *fn_lit, type::Function const *fn_type,
-    base::vector<std::pair<std::string, AST::Expression *>> args) {
-  auto *result = fns_.emplace_back(std::make_unique<IR::Func>(
-                                       this, fn_lit, fn_type, std::move(args)))
-                     .get();
-
-#ifdef ICARUS_USE_LLVM
-  result->llvm_fn_ = llvm::Function::Create(
-      types_.at(fn_lit)->as<type::Function>().llvm_fn(*llvm_ctx_),
-      llvm::Function::ExternalLinkage, "", llvm_.get());
-  result->llvm_fn_->setName(fns_.back()->name());
-#endif  // ICARUS_USE_LLVM
-
-  return result;
-}
-
-IR::Func *Module::AddFunc(
     const type::Function *fn_type,
     base::vector<std::pair<std::string, AST::Expression *>> args) {
   auto *result = fns_.emplace_back(std::make_unique<IR::Func>(this, fn_type,

@@ -43,13 +43,10 @@ struct Module {
   static std::unique_ptr<Module> Compile(const frontend::Source::Name &src);
 
   IR::Func *AddFunc(
-      AST::FunctionLiteral *fn_lit, type::Function const *fn_type,
+      type::Function const *fn_type,
       base::vector<std::pair<std::string, AST::Expression *>> args);
-  IR::Func *AddFunc(
-      const type::Function *fn_type,
-      base::vector<std::pair<std::string, AST::Expression *>> args);
-  const type::Type *GetType(const std::string &name) const;
-  AST::Declaration *GetDecl(const std::string &name) const;
+  type::Type const *GetType(std::string const &name) const;
+  AST::Declaration *GetDecl(std::string const &name) const;
 
   void Complete();
 

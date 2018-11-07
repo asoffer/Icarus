@@ -20,40 +20,7 @@ Register Func::Return(u32 n) const {
   return Register(reg_map_.at(type_->input.size() + n));
 }
 
-// TODO there's no reason to take args because they can be computed from the
-// function literal.
-Func::Func(Module *mod, AST::FunctionLiteral *fn, type::Function const *fn_type,
-           base::vector<std::pair<std::string, AST::Expression *>> args)
-    : gened_fn_(fn),
-      type_(fn_type),
-      args_(std::move(args)),
-      num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
-      mod_(mod) {
-  // Set the references for arguments and returns
-  for (i32 i = -static_cast<i32>(type_->output.size());
-       i < static_cast<i32>(type_->input.size()); ++i) {
-    references_[Register{i}];
-  }
-
-  auto arch = Architecture::InterprettingMachine();
-  i32 i     = 0;
-  for (auto *t : type_->input) {
-    auto entry = arch.MoveForwardToAlignment(t, reg_size_);
-    reg_map_.emplace(i++, Register(entry));
-    reg_size_ = entry + arch.bytes(t);
-  }
-
-  // Return registers are just negative integers starting at -1 and decreasing
-  for (auto *t : type_->output) {
-    --neg_bound_;
-    reg_map_.emplace(neg_bound_, Register(neg_bound_));
-  }
-
-  ASSERT(args_.size() == type_->input.size());
-  blocks_.emplace_back(this);
-}
-
-Func::Func(Module *mod, const type::Function *fn_type,
+Func::Func(Module *mod, type::Function const *fn_type,
            base::vector<std::pair<std::string, AST::Expression *>> args)
     : type_(fn_type),
       args_(std::move(args)),
@@ -64,6 +31,8 @@ Func::Func(Module *mod, const type::Function *fn_type,
        i < static_cast<i32>(type_->input.size()); ++i) {
     references_[Register{i}];
   }
+
+  for (size_t i = 0; i < args_.size(); ++i) { lookup_[args_[i].first] = i; }
 
   auto arch = Architecture::InterprettingMachine();
   i32 i     = 0;

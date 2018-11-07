@@ -33,15 +33,18 @@ struct Expression;
 // own is expressed as an overload set, but for each particular binding will be
 // either `int -> int` or `bool -> bool`.
 struct Binding {
-  void SetPositionalArgs(const FnArgs<Expression *> &args);
+  void SetPositionalArgs(FnArgs<Expression *> const &args);
   bool SetNamedArgs(
-      const FnArgs<Expression *> &args,
-      const base::unordered_map<std::string, size_t> &index_lookup);
+      FnArgs<Expression *> const &args,
+      base::unordered_map<std::string, size_t> const &index_lookup);
 
   bool defaulted(size_t i) const { return exprs_.at(i).get() == nullptr; }
 
-  Binding(type::Typed<Expression *, type::Callable> fn, size_t n)
-      : fn_(fn), exprs_(n, type::Typed<Expression *>(nullptr, nullptr)) {}
+  Binding(type::Typed<Expression *, type::Callable> fn, size_t n,
+          bool constant = false)
+      : fn_(fn),
+        exprs_(n, type::Typed<Expression *>(nullptr, nullptr)),
+        const_(constant) {}
 
   type::Typed<Expression *, type::Callable> fn_;
   base::vector<type::Typed<Expression *>> exprs_;
