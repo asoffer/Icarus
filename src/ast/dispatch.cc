@@ -64,7 +64,8 @@ struct DispatchTableRow {
   bool SetTypes(type::Typed<Expression *, type::Function> fn, Context *ctx);
   bool SetTypes(IR::Func const &fn, FnArgs<Expression *> const &args,
                 Context *ctx);
-
+  bool SetTypes(FunctionLiteral const &fn, FnArgs<Expression *> const &args,
+                Context *ctx);
   static std::optional<DispatchTableRow> Make(
       type::Typed<Expression *, type::Callable> fn_option,
       FnArgs<Expression *> const &args, Context *ctx);
@@ -84,6 +85,10 @@ struct DispatchTableRow {
       type::Typed<Expression *, type::Callable> fn_option,
       IR::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx);
 
+  static std::optional<DispatchTableRow> MakeFromFnLit(
+      type::Typed<Expression *, type::Callable> fn_option,
+      FunctionLiteral *fn_lit, FnArgs<Expression *> const &args,
+      Context *ctx);
   DispatchTableRow(Binding b) : binding_(std::move(b)) {}
 };
 
@@ -102,6 +107,17 @@ bool DispatchTableRow::SetTypes(type::Typed<Expression *, type::Function> fn,
   }
 
   return true;
+}
+
+bool DispatchTableRow::SetTypes(FunctionLiteral const &fn,
+                                FnArgs<Expression *> const &args,
+                                Context *ctx) {
+  call_arg_types_.pos_.resize(args.pos_.size());
+  for (auto & [ name, expr ] : args.named_) {
+    call_arg_types_.named_.emplace(name, nullptr);
+  }
+
+  NOT_YET();
 }
 
 bool DispatchTableRow::SetTypes(IR::Func const &fn,
@@ -179,8 +195,12 @@ std::optional<DispatchTableRow> DispatchTableRow::Make(
 
   } else if (auto *ir_func = std::get_if<IR::Func *>(&fn_val.value)) {
     return MakeFromIrFunc(fn_option, **ir_func, args, ctx);
+
+  } else if (auto *fn = std::get_if<FunctionLiteral*>(&fn_val.value)) {
+    return MakeFromFnLit(fn_option, *fn, args, ctx);
+
   } else {
-    NOT_YET();
+    UNREACHABLE();
   }
 }
 
@@ -195,6 +215,32 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromForeignFunction(
   if (!result) { return {}; }
   result->binding_.const_ = true;
   return result;
+}
+
+std::optional<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
+    type::Typed<Expression *, type::Callable> fn_option,
+    FunctionLiteral *fn_lit, FnArgs<Expression *> const &args, Context *ctx) {
+  size_t binding_size =
+      std::max(fn_lit->inputs.size(), args.pos_.size() + args.named_.size());
+
+  Binding binding(fn_option, binding_size, true);
+  binding.SetPositionalArgs(args);
+  if (!binding.SetNamedArgs(args, fn_lit->lookup_)) { return {}; }
+
+  for (size_t i = 0; i < args.pos_.size(); ++i) {
+    if (!fn_lit->inputs[i]->const_) { continue; }
+    // TODO this is wrong because it needs to be removed outside the scope of
+    // this function.
+    ctx->bound_constants_.constants_.emplace(
+        fn_lit->inputs[i].get(), backend::Evaluate(args.pos_[i], ctx)[0]);
+  }
+  // TODO named arguments too.
+  fn_lit->VerifyTypeConcrete(ctx);
+  fn_lit->Validate(ctx);
+
+  DispatchTableRow dispatch_table_row(std::move(binding));
+  if (!dispatch_table_row.SetTypes(*fn_lit, args, ctx)) { return {}; }
+  return dispatch_table_row;
 }
 
 std::optional<DispatchTableRow> DispatchTableRow::MakeFromIrFunc(

@@ -9,14 +9,14 @@ namespace AST {
 struct Declaration;
 
 struct BoundConstants {
-  base::map<Declaration*, IR::Val> constants_;
+  base::map<Declaration const*, IR::Val> constants_;
 
   // TODO blah.
   std::string to_string() const {
     return base::internal::stringify(constants_);
   }
 
-  bool exntends(BoundConstants const& bc) const {
+  bool extends(BoundConstants const& bc) const {
     if (bc.constants_.size() > constants_.size()) { return false; }
     auto this_iter = constants_.begin();
     auto bc_iter   = bc.constants_.begin();

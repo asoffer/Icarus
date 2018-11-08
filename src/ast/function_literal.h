@@ -36,6 +36,8 @@ struct FunctionLiteral : public Expression {
       const Node *correspondant,
       const base::unordered_map<const Expression *, IR::Val> &) override;
 
+  type::Type const *VerifyTypeConcrete(Context *);
+
   FunctionLiteral *Clone() const override;
   base::vector<IR::Val> EmitIR(Context *) override;
   base::vector<IR::Register> EmitLVal(Context *) override;
