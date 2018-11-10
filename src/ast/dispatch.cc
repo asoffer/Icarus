@@ -208,10 +208,8 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
         fn_lit->inputs[i].get(), backend::Evaluate(args.pos_[i], ctx)[0]);
   }
   // TODO named arguments too.
-  LOG << ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx));
   auto *fn_type = &ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx))
                        ->as<type::Function>();
-  LOG << fn_type;
   fn_lit->Validate(&new_ctx);
   binding.fn_.set_type(fn_type);
 
@@ -277,9 +275,12 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
     if (!maybe_dispatch_table_row.has_value()) { continue; }
     table.total_size_ +=
         ComputeExpansion(maybe_dispatch_table_row->call_arg_types_);
+    maybe_dispatch_table_row->binding_.fn_.set_type(
+        maybe_dispatch_table_row->function_type_);
+    // TODO don't ned this as a field on the dispatchtablerow.
+    precise_function_types.push_back(maybe_dispatch_table_row->function_type_);
     table.bindings_.emplace(std::move(maybe_dispatch_table_row->call_arg_types_),
                             std::move(maybe_dispatch_table_row->binding_));
-    precise_function_types.push_back(maybe_dispatch_table_row->function_type_);
   }
 
   // TODO this won't work with generics. Need to get the info from the table

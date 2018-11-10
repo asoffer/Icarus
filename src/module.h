@@ -84,6 +84,9 @@ struct Module {
   std::map<AST::BoundConstants,
            base::unordered_map<AST::Declaration *, IR::Register>>
       addr_;
+  std::map<AST::BoundConstants,
+           std::unordered_set<AST::FunctionLiteral const *>>
+      validated_;
 };
 
 #endif  // ICARUS_MODULE_H

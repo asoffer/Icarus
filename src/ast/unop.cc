@@ -109,25 +109,25 @@ type::Type const *Unop::VerifyType(Context *ctx) {
   limit_to(operand);
   switch (op) {
     case Language::Operator::TypeOf:
-      ctx->mod_->set_type(ctx->bound_constants_, this, type::Type_);
+      ctx->set_type(this, type::Type_);
       return type::Type_;
     case Language::Operator::Eval:
-      ctx->mod_->set_type(ctx->bound_constants_, this, operand_type);
+      ctx->set_type(this, operand_type);
       return operand_type;
     case Language::Operator::Generate:
-      ctx->mod_->set_type(ctx->bound_constants_, this, type::Void());
+      ctx->set_type(this, type::Void());
       return type::Void();
     case Language::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
         ctx->error_log_.WhichNonVariant(operand_type, span);
         limit_to(StageRange::NoEmitIR());
       }
-      ctx->mod_->set_type(ctx->bound_constants_, this, type::Type_);
+      ctx->set_type(this, type::Type_);
       return type::Type_;
     case Language::Operator::At:
       if (operand_type->is<type::Pointer>()) {
         auto *t = operand_type->as<type::Pointer>().pointee;
-        ctx->mod_->set_type(ctx->bound_constants_, this, t);
+        ctx->set_type(this, t);
         return t;
       } else {
         ctx->error_log_.DereferencingNonPointer(operand_type, span);
@@ -136,7 +136,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       }
     case Language::Operator::And: {
       auto *t = type::Ptr(operand_type);
-      ctx->mod_->set_type(ctx->bound_constants_, this, t);
+      ctx->set_type(this, t);
       return t;
     }
     case Language::Operator::Mul:
@@ -146,12 +146,12 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         limit_to(StageRange::Nothing());
         return nullptr;
       } else {
-        ctx->mod_->set_type(ctx->bound_constants_, this, type::Type_);
+        ctx->set_type(this, type::Type_);
         return type::Type_;
       }
     case Language::Operator::Sub:
       if (operand_type == type::Int || operand_type == type::Real) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, operand_type);
+        ctx->set_type(this, operand_type);
         return operand_type;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
@@ -169,7 +169,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       return nullptr;
     case Language::Operator::Not:
       if (operand_type == type::Bool) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, type::Bool);
+        ctx->set_type(this, type::Bool);
         return type::Bool;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
@@ -189,21 +189,21 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         return nullptr;
       }
     case Language::Operator::Needs:
-      ctx->mod_->set_type(ctx->bound_constants_, this, type::Void());
+      ctx->set_type(this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PreconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
       }
       return type::Void();
     case Language::Operator::Ensure:
-      ctx->mod_->set_type(ctx->bound_constants_, this, type::Void());
+      ctx->set_type(this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PostconditionNeedsBool(operand.get());
         limit_to(StageRange::NoEmitIR());
       }
       return type::Void();
     case Language::Operator::Pass:
-      ctx->mod_->set_type(ctx->bound_constants_, this, operand_type);
+      ctx->set_type(this, operand_type);
       return operand_type;
     default: UNREACHABLE(*this);
   }

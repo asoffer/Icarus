@@ -13,7 +13,7 @@ void Terminal::assign_scope(Scope *scope) {
 }
 
 type::Type const *Terminal::VerifyType(Context *ctx) {
-  ctx->mod_->set_type(ctx->bound_constants_, this, value.type);
+  ctx->set_type(this, value.type);
   return value.type;
 }
 

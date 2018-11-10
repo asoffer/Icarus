@@ -40,7 +40,7 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
         // TODO what if you find a bound constant and some errror decls?
         for (auto const & [ d, v ] : ctx->mod_->constants_.constants_) {
           if (d->id_ == token) {
-            ctx->mod_->set_type(ctx->bound_constants_, this, v.type);
+            ctx->set_type(this, v.type);
             return v.type;
           }
         }
@@ -71,8 +71,14 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
     limit_to(StageRange::NoEmitIR());
   }
 
+  // TODO this is because we may have determined the declartaion previously with
+  // a different generic setup but not bound the type for this context. But this
+  // is wrong in the sense that the declaration bound is possibly dependent on
+  // the context.
+  if (t == nullptr) { t = ctx->type_of(decl); }
+
   if (t == nullptr) { return nullptr; }
-  ctx->mod_->set_type(ctx->bound_constants_, this, t);
+  ctx->set_type(this, t);
   return t;
 }
 

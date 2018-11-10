@@ -128,7 +128,7 @@ type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
     }
     if (err) { return nullptr; }
     auto *t = type::Func(std::move(input_type_vec), std::move(ret_types));
-    ctx->mod_->set_type(ctx->bound_constants_, this, t);
+    ctx->set_type(this, t);
     return t;
   } else {
     Validate(ctx);
@@ -139,8 +139,14 @@ type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
 // TODO VerifyType has access to types of previous entries, but Validate
 // doesnt.
 void FunctionLiteral::Validate(Context *ctx) {
-  if (validated_ || ctx->type_of(this) == type::Generic) { return; }
-  validated_ = true;
+  if (ctx->mod_->type_of(ctx->bound_constants_, this) == type::Generic) {
+    return;
+  }
+
+  auto &validated_fns = ctx->mod_->validated_[ctx->bound_constants_];
+  bool inserted = validated_fns.insert(this).second;
+  if (!inserted) { return; }
+
   for (auto &in : inputs) { in->Validate(ctx); }
   for (auto &out : outputs) { out->Validate(ctx); }
 
@@ -157,7 +163,7 @@ void FunctionLiteral::Validate(Context *ctx) {
   std::set<type::Type const *> types;
   for (auto *expr : rets[JumpKind::Return]) { types.insert(ctx->type_of(expr)); }
 
-  base::vector<const type::Type *> input_type_vec, output_type_vec;
+  base::vector<const type::Type *> input_type_vec;
   input_type_vec.reserve(inputs.size());
   for (const auto &input : inputs) {
     input_type_vec.push_back(ctx->type_of(input.get()));
@@ -166,8 +172,7 @@ void FunctionLiteral::Validate(Context *ctx) {
   if (return_type_inferred_) {
     switch (types.size()) {
       case 0:
-        ctx->mod_->set_type(ctx->bound_constants_, this,
-                            type::Func(std::move(input_type_vec), {}));
+        ctx->set_type(this, type::Func(std::move(input_type_vec), {}));
         break;
       case 1: {
         auto *one_type = *types.begin();
@@ -177,15 +182,13 @@ void FunctionLiteral::Validate(Context *ctx) {
             outputs.push_back(
                 std::make_unique<Terminal>(TextSpan(), IR::Val(entry)));
           }
-          ctx->mod_->set_type(ctx->bound_constants_, this,
-                              type::Func(std::move(input_type_vec), entries));
+          ctx->set_type(this, type::Func(std::move(input_type_vec), entries));
 
         } else {
           outputs.push_back(
               std::make_unique<Terminal>(TextSpan(), IR::Val(one_type)));
-          ctx->mod_->set_type(
-              ctx->bound_constants_, this,
-              type::Func(std::move(input_type_vec), {one_type}));
+          ctx->set_type(this,
+                        type::Func(std::move(input_type_vec), {one_type}));
         }
       } break;
       default: {

@@ -37,7 +37,7 @@ void BlockLiteral::Validate(Context *ctx) {
   // Because this returns void, we need to ignore the return value. Wrapping in
   // an immediately invoked lambda.
   [&]() -> type::Type const * {
-    ctx->mod_->set_type(ctx->bound_constants_, this,
+    ctx->set_type(this,
                         required_ ? type::Block : type::OptBlock);
     std::vector<type::Type const *> before_types, after_types;
     before_types.reserve(before_.size());

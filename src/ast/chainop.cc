@@ -185,7 +185,7 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
         expr_types.back() != type::OptBlock) {
       goto not_blocks;
     } else {
-      ctx->mod_->set_type(ctx->bound_constants_, this, expr_types.back());
+      ctx->set_type(this, expr_types.back());
       return expr_types.back();
     }
   }
@@ -207,7 +207,7 @@ not_blocks:
         }
       }
 
-      ctx->mod_->set_type(ctx->bound_constants_, this, expr_types[0]);
+      ctx->set_type(this, expr_types[0]);
 
       if (expr_types[0] != type::Bool &&
           !(expr_types[0] == type::Type_ && ops[0] == Language::Operator::Or) &&
@@ -288,7 +288,7 @@ not_blocks:
         }
       }
 
-      ctx->mod_->set_type(ctx->bound_constants_, this, type::Bool);
+      ctx->set_type(this, type::Bool);
       return type::Bool;
     }
   }

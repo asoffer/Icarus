@@ -154,7 +154,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
           limit_to(StageRange::NoEmitIR());
         }
-        ctx->mod_->set_type(ctx->bound_constants_, this, type::Char);
+        ctx->set_type(this, type::Char);
         return type::Char;
       } else if (!lhs_type->is<type::Array>()) {
         ctx->error_log_.IndexingNonArray(span, lhs_type);
@@ -162,7 +162,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         return nullptr;
       } else {
         auto *t = lhs_type->as<type::Array>().data_type;
-        ctx->mod_->set_type(ctx->bound_constants_, this, t);
+        ctx->set_type(this, t);
 
         if (rhs_type == type::Int) { break; }
         ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
@@ -174,15 +174,15 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       // TODO check that the type actually can be cast
       // correctly.
       auto *t = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
-      ctx->mod_->set_type(ctx->bound_constants_, this, t);
+      ctx->set_type(this, t);
       return t;
     }
     case Operator::XorEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, type::Bool);
+        ctx->set_type(this, type::Bool);
         return type::Bool;
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, lhs_type);
+        ctx->set_type(this, lhs_type);
         return lhs_type;
       } else {
         // TODO could be bool or enum.
@@ -192,10 +192,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     case Operator::AndEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, type::Bool);
+        ctx->set_type(this, type::Bool);
         return type::Bool;
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, lhs_type);
+        ctx->set_type(this, lhs_type);
         return lhs_type;
       } else {
         // TODO could be bool or enum.
@@ -205,10 +205,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     case Operator::OrEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, type::Bool);
+        ctx->set_type(this, type::Bool);
         return type::Bool;
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, lhs_type);
+        ctx->set_type(this, lhs_type);
         return lhs_type;
       } else {
         // TODO could be bool or enum.
@@ -222,7 +222,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     if ((lhs_type == type::Int && rhs_type == type::Int) ||                     \
         (lhs_type == type::Real && rhs_type == type::Real)) {                   \
       auto *t = (ret_type);                                                     \
-      ctx->mod_->set_type(ctx->bound_constants_, this, t);                      \
+      ctx->set_type(this, t);                      \
       return t;                                                                 \
     } else {                                                                    \
       FnArgs<Expression *> args;                                                \
@@ -250,13 +250,13 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
           (lhs_type == type::Real && rhs_type == type::Real) ||
           (lhs_type == type::Code && rhs_type == type::Code)) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, lhs_type);
+        ctx->set_type(this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::CharBuffer>() &&
                  rhs_type->is<type::CharBuffer>()) {
         auto *t = type::CharBuf(lhs_type->as<type::CharBuffer>().length_ +
                                 rhs_type->as<type::CharBuffer>().length_);
-        ctx->mod_->set_type(ctx->bound_constants_, this, t);
+        ctx->set_type(this, t);
         return t;
       } else {
         FnArgs<Expression *> args;
@@ -278,7 +278,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           (lhs_type == type::Code &&
            rhs_type == type::Code)) { /* TODO type::Code should only be valid
                                           for Add, not Sub, etc */
-        ctx->mod_->set_type(ctx->bound_constants_, this, type::Void());
+        ctx->set_type(this, type::Void());
         return type::Void();
       } else {
         FnArgs<Expression *> args;
@@ -295,7 +295,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     case Operator::Mul:
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
           (lhs_type == type::Real && rhs_type == type::Real)) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, lhs_type);
+        ctx->set_type(this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::Function>() &&
                  rhs_type->is<type::Function>()) {
@@ -303,7 +303,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         auto *rhs_fn = &rhs_type->as<type::Function>();
         if (rhs_fn->output == lhs_fn->input) {
           auto *t = type::Func({rhs_fn->input}, {lhs_fn->output});
-          ctx->mod_->set_type(ctx->bound_constants_, this, t);
+          ctx->set_type(this, t);
           return t;
         } else {
           ctx->error_log_.NonComposableFunctions(span);
@@ -339,7 +339,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
 
       if (t != nullptr) {
-        ctx->mod_->set_type(ctx->bound_constants_, this, type::Type_);
+        ctx->set_type(this, type::Type_);
       } else {
         limit_to(StageRange::Nothing());
       }

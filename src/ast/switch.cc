@@ -48,7 +48,7 @@ type::Type const *Switch::VerifyType(Context *ctx) {
     NOT_YET("handle type error");
     return nullptr;
   }
-  ctx->mod_->set_type(ctx->bound_constants_, this, t);
+  ctx->set_type(this, t);
   return t;
 }
 

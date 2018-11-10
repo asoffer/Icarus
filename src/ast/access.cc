@@ -38,7 +38,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on
       // assuming that this is an element of that enum type.
-      ctx->mod_->set_type(ctx->bound_constants_, this, evaled_type);
+      ctx->set_type(this, evaled_type);
       if (evaled_type->as<type::Enum>().IntValueOrFail(member_name) ==
           std::numeric_limits<size_t>::max()) {
         ctx->error_log_.MissingMember(span, member_name, evaled_type);
@@ -49,7 +49,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
   } else if (base_type->is<type::Struct>()) {
     const auto *member = base_type->as<type::Struct>().field(member_name);
     if (member != nullptr) {
-      ctx->mod_->set_type(ctx->bound_constants_, this, member->type);
+      ctx->set_type(this, member->type);
       return member->type;
 
     } else {
@@ -60,7 +60,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
   } else if (base_type == type::Module) {
     auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
                   ->GetType(member_name);
-    ctx->mod_->set_type(ctx->bound_constants_, this, t);
+    ctx->set_type(this, t);
     if (t == nullptr) {
       NOT_YET("log an error");
       limit_to(StageRange::Nothing());

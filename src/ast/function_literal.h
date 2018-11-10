@@ -58,7 +58,6 @@ struct FunctionLiteral : public Expression {
   Module *module_            = nullptr;
 
   IR::Func *ir_func_ = nullptr;
-  bool validated_    = false;
 };
 }  // namespace AST
 

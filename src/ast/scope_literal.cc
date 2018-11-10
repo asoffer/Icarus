@@ -41,7 +41,7 @@ type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {
 }
 
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
-  ctx->mod_->set_type(ctx->bound_constants_, this, type::Scope);
+  ctx->set_type(this, type::Scope);
 
   if (stateful_) {
     std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>

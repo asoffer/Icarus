@@ -29,7 +29,7 @@ std::string ArrayLiteral::to_string(size_t n) const {
 
 type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
   if (elems_.empty()) {
-    ctx->mod_->set_type(ctx->bound_constants_, this, type::EmptyArray);
+    ctx->set_type(this, type::EmptyArray);
     return type::EmptyArray;
   }
 
@@ -56,7 +56,7 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
     return nullptr;
   } else {
     auto *t = type::Arr(joined, elems_.size());
-    ctx->mod_->set_type(ctx->bound_constants_, this, t);
+    ctx->set_type(this, t);
     return t;
   }
 }

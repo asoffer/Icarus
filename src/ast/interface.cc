@@ -25,7 +25,7 @@ std::string Interface::to_string(size_t n) const {
 }
 
 type::Type const *Interface::VerifyType(Context *ctx) {
-  ctx->mod_->set_type(ctx->bound_constants_, this, type::Interface);
+  ctx->set_type(this, type::Interface);
 
   for (auto &decl : decls_) {
     decl.VerifyType(ctx);
