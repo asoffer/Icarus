@@ -75,13 +75,6 @@ type::Type const *Access::VerifyType(Context *ctx) {
 
 void Access::Validate(Context *ctx) { operand->Validate(ctx); }
 
-void Access::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  operand->contextualize(correspondant->as<Access>().operand.get(),
-                         replacements);
-}
-
 base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
   auto reg   = operand->EmitLVal(ctx)[0];
   auto *t    = ctx->type_of(operand.get());
@@ -109,14 +102,6 @@ base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
   } else {
     return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], this_type), this_type)};
   }
-}
-
-Access *Access::Clone() const {
-  auto *result        = new Access;
-  result->span        = span;
-  result->operand     = base::wrap_unique(operand->Clone());
-  result->member_name = member_name;
-  return result;
 }
 
 }  // namespace AST

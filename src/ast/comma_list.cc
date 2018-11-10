@@ -48,28 +48,8 @@ void CommaList::Validate(Context *ctx) {
   for (auto &expr : exprs) { expr->Validate(ctx); }
 }
 
-void CommaList::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto &expr : exprs) { expr->SaveReferences(scope, args); }
-}
-void CommaList::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < exprs.size(); ++i) {
-    exprs[i]->contextualize(correspondant->as<CommaList>().exprs[i].get(),
-                            replacements);
-  }
-}
-
 void CommaList::ExtractJumps(JumpExprs *rets) const {
   for (auto &expr : exprs) { expr->ExtractJumps(rets); }
-}
-
-CommaList *CommaList::Clone() const {
-  auto *result = new CommaList;
-  result->span = span;
-  result->exprs.reserve(exprs.size());
-  for (const auto &expr : exprs) { result->exprs.emplace_back(expr->Clone()); }
-  return result;
 }
 
 base::vector<IR::Val> CommaList::EmitIR(Context *ctx) {

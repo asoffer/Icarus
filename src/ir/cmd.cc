@@ -990,7 +990,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
 
     case Op::CastPtr: return os << cmd.cast_ptr_.type_;
 
-    case Op::AddCodeBlock: NOT_YET();
     case Op::Contextualize: NOT_YET();
 
     case Op::StoreBool:

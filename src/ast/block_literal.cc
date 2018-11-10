@@ -57,35 +57,9 @@ void BlockLiteral::Validate(Context *ctx) {
   }();
 }
 
-void BlockLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto &b : before_) { b->SaveReferences(scope, args); }
-  for (auto &a : after_) { a->SaveReferences(scope, args); }
-}
-
-void BlockLiteral::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < before_.size(); ++i) {
-    before_[i]->contextualize(
-        correspondant->as<BlockLiteral>().before_[i].get(), replacements);
-  }
-  for (size_t  i = 0; i < after_.size(); ++i) {
-    after_[i]->contextualize(correspondant->as<BlockLiteral>().after_[i].get(),
-                             replacements);
-  }
-}
-
 void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &b : before_) { b->ExtractJumps(rets); }
   for (auto &a : after_) { a->ExtractJumps(rets); }
-}
-
-BlockLiteral *BlockLiteral::Clone() const {
-  auto *result = new BlockLiteral(required_);
-  result->span = span;
-  for (auto &b : before_) { result->before_.emplace_back(b->Clone()); }
-  for (auto &a : after_) { result->after_.emplace_back(a->Clone()); }
-  return result;
 }
 
 base::vector<IR::Val> AST::BlockLiteral::EmitIR(Context *ctx) {

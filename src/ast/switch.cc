@@ -59,41 +59,11 @@ void Switch::Validate(Context *ctx) {
   }
 }
 
-void Switch::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto & [ expr, cond ] : cases_) {
-    expr->SaveReferences(scope, args);
-    cond->SaveReferences(scope, args);
-  }
-}
-
-void Switch::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < cases_.size(); ++i) {
-    cases_[i].first->contextualize(
-        correspondant->as<Switch>().cases_[i].first.get(), replacements);
-    cases_[i].second->contextualize(
-        correspondant->as<Switch>().cases_[i].second.get(), replacements);
-  }
-}
-
 void Switch::ExtractJumps(JumpExprs *rets) const {
   for (auto & [ expr, cond ] : cases_) {
     expr->ExtractJumps(rets);
     cond->ExtractJumps(rets);
   }
-}
-
-Switch *Switch::Clone() const {
-  auto *result = new Switch;
-  result->span = span;
-  result->cases_.reserve(cases_.size());
-  for (const auto & [ expr, cond ] : cases_) {
-    result->cases_.emplace_back(base::wrap_unique(expr->Clone()),
-                                base::wrap_unique(cond->Clone()));
-  }
-
-  return result;
 }
 
 base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {

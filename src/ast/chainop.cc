@@ -298,19 +298,6 @@ void ChainOp::Validate(Context *ctx) {
   for (auto &expr : exprs) { expr->Validate(ctx); }
 }
 
-void ChainOp::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto &expr : exprs) { expr->SaveReferences(scope, args); }
-}
-
-void ChainOp::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < exprs.size(); ++i) {
-    exprs[i]->contextualize(correspondant->as<ChainOp>().exprs[i].get(),
-                            replacements);
-  }
-}
-
 void ChainOp::ExtractJumps(JumpExprs *rets) const {
   for (auto &expr : exprs) { expr->ExtractJumps(rets); }
 }
@@ -432,16 +419,6 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
 
 base::vector<IR::Register> ChainOp::EmitLVal(Context *ctx) {
   UNREACHABLE(this);
-}
-
-ChainOp *ChainOp::Clone() const {
-  auto *result             = new ChainOp;
-  result->span             = span;
-  result->ops              = ops;
-  result->dispatch_tables_ = dispatch_tables_;
-  result->exprs.reserve(exprs.size());
-  for (const auto &expr : exprs) { result->exprs.emplace_back(expr->Clone()); }
-  return result;
 }
 
 }  // namespace AST

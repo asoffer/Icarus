@@ -40,29 +40,8 @@ void Interface::Validate(Context *ctx) {
   for (auto &decl : decls_) { decl.Validate(ctx); }
 }
 
-void Interface::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto &decl : decls_) { decl.SaveReferences(scope, args); }
-}
-
-void Interface::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < decls_.size(); ++i) {
-    decls_[i].contextualize(&correspondant->as<Interface>().decls_[i],
-                            replacements);
-  }
-}
-
 void Interface::ExtractJumps(JumpExprs *rets) const {
   for (auto &d : decls_) { d.ExtractJumps(rets); }
-}
-
-Interface *Interface::Clone() const {
-  auto *result = new Interface;
-  result->span = span;
-  result->decls_.reserve(decls_.size());
-  for (const auto &decl : decls_) { result->decls_.emplace_back(decl.Clone()); }
-  return result;
 }
 
 base::vector<IR::Val> AST::Interface::EmitIR(Context *ctx) {

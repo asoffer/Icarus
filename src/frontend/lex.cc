@@ -68,7 +68,6 @@ TaggedNode NextWord(SourceLocation &loc) {
   static base::unordered_map<std::string, IR::Val> Reserved{
       {"bool", IR::Val(type::Bool)},
       {"char", IR::Val(type::Char)},
-      {"code", IR::Val(type::Code)},
       {"int", IR::Val(type::Int)},
       {"real", IR::Val(type::Real)},
       {"type", IR::Val(type::Type_)},
@@ -314,21 +313,11 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
 
     case '{': {
       loc.Increment();
-      if (*loc == '{') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(span, "{{", l_double_brace);
-      }
       span.finish = loc.cursor;
       return TaggedNode(span, "{", l_brace);
     }
     case '}': {
       loc.Increment();
-      if (*loc == '}') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(span, "}}", r_double_brace);
-      }
       span.finish = loc.cursor;
       return TaggedNode(span, "}", r_brace);
     }

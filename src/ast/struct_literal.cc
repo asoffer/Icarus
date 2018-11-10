@@ -45,29 +45,8 @@ void StructLiteral::Validate(Context *ctx) {
   }
 }
 
-void StructLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto &f : fields_) { f->SaveReferences(scope, args); }
-}
-
-void StructLiteral::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < fields_.size(); ++i) {
-    fields_[i]->contextualize(
-        correspondant->as<StructLiteral>().fields_[i].get(), replacements);
-  }
-}
-
 void StructLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &f : fields_) { f->ExtractJumps(rets); }
-}
-
-StructLiteral *StructLiteral::Clone() const {
-  auto *result = new StructLiteral;
-  result->span = span;
-  result->fields_.reserve(fields_.size());
-  for (const auto &f : fields_) { result->fields_.emplace_back(f->Clone()); }
-  return result;
 }
 
 base::vector<IR::Val> AST::StructLiteral::EmitIR(Context *ctx) {

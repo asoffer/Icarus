@@ -30,19 +30,6 @@ void Statements::Validate(Context *ctx) {
   for (auto &stmt : content_) { stmt->Validate(ctx); }
 }
 
-void Statements::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < content_.size(); ++i) {
-    content_[i]->contextualize(
-        correspondant->as<Statements>().content_[i].get(), replacements);
-  }
-}
-
-void Statements::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto &stmt : content_) { stmt->SaveReferences(scope, args); }
-}
-
 void Statements::ExtractJumps(JumpExprs *rets) const {
   for (auto &stmt : content_) { stmt->ExtractJumps(rets); }
 }

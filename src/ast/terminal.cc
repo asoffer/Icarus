@@ -17,7 +17,6 @@ type::Type const *Terminal::VerifyType(Context *ctx) {
   return value.type;
 }
 
-Terminal *Terminal::Clone() const { return new Terminal(*this); }
 base::vector<IR::Val> Terminal::EmitIR(Context *) { return {value}; }
 base::vector<IR::Register> Terminal::EmitLVal(Context *ct) {
   UNREACHABLE(this);

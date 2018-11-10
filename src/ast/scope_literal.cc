@@ -79,29 +79,8 @@ void ScopeLiteral::Validate(Context *ctx) {
   for (auto &decl : decls_) { decl.Validate(ctx); }
 }
 
-void ScopeLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto &decl : decls_) { decl.SaveReferences(scope, args); }
-}
-
-void ScopeLiteral::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < decls_.size(); ++i) {
-    decls_[i].contextualize(&correspondant->as<ScopeLiteral>().decls_[i],
-                            replacements);
-  }
-}
-
 void ScopeLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &decl : decls_) { decl.ExtractJumps(rets); }
-}
-
-ScopeLiteral *ScopeLiteral::Clone() const {
-  auto *result = new ScopeLiteral(stateful_);
-  result->span = span;
-  result->decls_.reserve(decls_.size());
-  for (auto const &decl : decls_) { result->decls_.emplace_back(decl.Clone()); }
-  return result;
 }
 
 base::vector<IR::Val> AST::ScopeLiteral::EmitIR(Context *ctx) {

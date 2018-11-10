@@ -15,11 +15,6 @@ struct Hole : public Expression {
 
   void assign_scope(Scope *scope) { scope_ = scope; }
   std::string to_string(size_t n) const override { return "--"; }
-  Hole *Clone() const { return new Hole(*this); }
-  void SaveReferences(Scope *, base::vector<IR::Val> *) {}
-  void contextualize(const Node *,
-                     const base::unordered_map<const Expression *, IR::Val> &) {
-  }
   void ExtractJumps(JumpExprs *) const {}
   type::Type const *VerifyType(Context *) { return nullptr; }
   void Validate(Context *ctx) {}

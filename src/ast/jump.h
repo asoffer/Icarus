@@ -20,13 +20,8 @@ struct Jump : public Node {
   void assign_scope(Scope *scope) override { scope_ = scope; }
   type::Type const *VerifyType(Context *) override { return nullptr; }
   void Validate(Context *) override {}
-  void SaveReferences(Scope *scope, base::vector<IR::Val> *) override {}
   void ExtractJumps(JumpExprs *) const override{};
-  void contextualize(
-      const Node *,
-      const base::unordered_map<const Expression *, IR::Val> &) override {}
 
-  Jump *Clone() const override { return new Jump(*this); }
   base::vector<IR::Val> EmitIR(Context *) override { return {}; }
 
   ExecScope *scope;

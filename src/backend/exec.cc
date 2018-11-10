@@ -10,7 +10,6 @@
 
 #include "architecture.h"
 #include "ast/block_literal.h"
-#include "ast/codeblock.h"
 #include "ast/expression.h"
 #include "ast/function_literal.h"
 #include "ast/scope_node.h"
@@ -595,7 +594,6 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       save(static_cast<double>(resolve<i32>(cmd.cast_int_to_real_.reg_)));
       break;
     case IR::Op::CastPtr: save(resolve<IR::Addr>(cmd.cast_ptr_.reg_)); break;
-    case IR::Op::AddCodeBlock: NOT_YET();
     case IR::Op::CreateBlockSeq: {
       save(new base::vector<IR::BlockSequence>{});
     } break;

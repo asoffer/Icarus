@@ -1,7 +1,6 @@
 #include "type/all.h"
 
 #include "architecture.h"
-#include "ast/codeblock.h"
 #include "context.h"
 #include "ir/components.h"
 #include "ir/func.h"
@@ -61,11 +60,6 @@ void Primitive::EmitInit(IR::Register id_reg, Context *ctx) const {
     case PrimType::Type_: IR::StoreType(type::Void(), id_reg); break;
     case PrimType::NullPtr: UNREACHABLE();
     case PrimType::EmptyArray: UNREACHABLE();
-    case PrimType::Code: {
-      AST::CodeBlock block;
-      block.content_ = AST::Statements{};
-      NOT_YET();
-    }
     case PrimType::Bool: IR::StoreBool(false, id_reg); break;
     case PrimType::Char: IR::StoreChar('\0', id_reg); break;
     case PrimType::Int: IR::StoreInt(0, id_reg); break;

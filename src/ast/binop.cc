@@ -248,8 +248,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 #undef CASE
     case Operator::Add: {
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
-          (lhs_type == type::Real && rhs_type == type::Real) ||
-          (lhs_type == type::Code && rhs_type == type::Code)) {
+          (lhs_type == type::Real && rhs_type == type::Real)) {
         ctx->set_type(this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::CharBuffer>() &&
@@ -274,10 +273,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     } break;
     case Operator::AddEq: {
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
-          (lhs_type == type::Real && rhs_type == type::Real) ||
-          (lhs_type == type::Code &&
-           rhs_type == type::Code)) { /* TODO type::Code should only be valid
-                                          for Add, not Sub, etc */
+          (lhs_type == type::Real &&
+           rhs_type == type::Real)) {
         ctx->set_type(this, type::Void());
         return type::Void();
       } else {
@@ -353,18 +350,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 void Binop::Validate(Context *ctx) {
   lhs->Validate(ctx);
   rhs->Validate(ctx);
-}
-
-void Binop::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  lhs->SaveReferences(scope, args);
-  rhs->SaveReferences(scope, args);
-}
-
-void Binop::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  lhs->contextualize(correspondant->as<Binop>().lhs.get(), replacements);
-  rhs->contextualize(correspondant->as<Binop>().rhs.get(), replacements);
 }
 
 void Binop::ExtractJumps(JumpExprs *rets) const {
@@ -696,15 +681,6 @@ base::vector<IR::Register> AST::Binop::EmitLVal(Context *ctx) {
       [[fallthrough]];
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
-}
-
-Binop *Binop::Clone() const {
-  auto *result = new Binop;
-  result->span = span;
-  result->lhs  = base::wrap_unique(lhs->Clone());
-  result->rhs  = base::wrap_unique(rhs->Clone());
-  result->op   = op;
-  return result;
 }
 
 }  // namespace AST

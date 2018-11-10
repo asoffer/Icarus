@@ -12,7 +12,6 @@
 #include "ast/block_literal.h"
 #include "ast/call.h"
 #include "ast/chainop.h"
-#include "ast/codeblock.h"
 #include "ast/comma_list.h"
 #include "ast/declaration.h"
 #include "ast/function_literal.h"
@@ -554,39 +553,6 @@ std::unique_ptr<Node> BuildJump(base::vector<std::unique_ptr<Node>> nodes,
   return stmts;
 }
 
-std::unique_ptr<Node> BuildCodeBlockFromStatements(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  auto block      = std::make_unique<CodeBlock>();
-  block->span     = TextSpan(nodes[0]->span, nodes[2]->span);
-  block->content_ = std::move(*nodes[1]).as<Statements>();
-  return block;
-}
-
-std::unique_ptr<Node> BuildCodeBlockFromStatementsSameLineEnd(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  auto block  = std::make_unique<CodeBlock>();
-  block->span = TextSpan(nodes[0]->span, nodes[3]->span);
-  block->content_ =
-      BracedStatementsSameLineEnd(std::move(nodes), ctx)->as<Statements>();
-  return block;
-}
-
-std::unique_ptr<Node> BuildCodeBlockFromOneStatement(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  auto block      = std::make_unique<CodeBlock>();
-  block->span     = TextSpan(nodes[0]->span, nodes[2]->span);
-  block->content_ = OneBracedStatement(std::move(nodes), ctx)->as<Statements>();
-  return block;
-}
-
-std::unique_ptr<Node> BuildEmptyCodeBlock(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  auto block      = std::make_unique<CodeBlock>();
-  block->span     = TextSpan(nodes[0]->span, nodes[1]->span);
-  block->content_ = EmptyBraces(std::move(nodes), ctx)->as<Statements>();
-  return block;
-}
-
 std::unique_ptr<Node> BuildScopeNode(base::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
   auto scope_node  = std::make_unique<ScopeNode>();
@@ -1124,26 +1090,16 @@ auto Rules = std::array{
     Rule(r_paren, {newline, r_paren}, drop_all_but<1>),
     Rule(r_bracket, {newline, r_bracket}, drop_all_but<1>),
     Rule(r_brace, {newline, r_brace}, drop_all_but<1>),
-    Rule(r_double_brace, {newline, r_double_brace}, drop_all_but<1>),
     Rule(l_brace, {newline, l_brace}, drop_all_but<1>),
-    Rule(l_double_brace, {newline, l_double_brace}, drop_all_but<1>),
     Rule(stmts, {newline, stmts}, drop_all_but<1>),
     Rule(r_paren, {r_paren, newline}, drop_all_but<0>),
     Rule(r_bracket, {r_bracket, newline}, drop_all_but<0>),
     Rule(r_brace, {r_brace, newline}, drop_all_but<0>),
-    Rule(r_double_brace, {r_double_brace, newline}, drop_all_but<0>),
     Rule(braced_stmts, {l_brace, stmts, stmts | EXPR, r_brace},
          BracedStatementsSameLineEnd),
     Rule(braced_stmts, {l_brace, stmts, r_brace}, drop_all_but<1>),
     Rule(braced_stmts, {l_brace, r_brace}, EmptyBraces),
     Rule(braced_stmts, {l_brace, EXPR, r_brace}, OneBracedStatement),
-    Rule(expr, {l_double_brace, stmts, stmts | EXPR, r_double_brace},
-         AST::BuildCodeBlockFromStatementsSameLineEnd),
-    Rule(expr, {l_double_brace, stmts, r_double_brace},
-         AST::BuildCodeBlockFromStatements),
-    Rule(expr, {l_double_brace, r_double_brace}, AST::BuildEmptyCodeBlock),
-    Rule(expr, {l_double_brace, EXPR, r_double_brace},
-         AST::BuildCodeBlockFromOneStatement),
     Rule(expr, {fn_expr, braced_stmts}, AST::BuildNormalFunctionLiteral),
     Rule(expr, {expr, fn_arrow, braced_stmts},
          AST::BuildInferredFunctionLiteral),
@@ -1173,7 +1129,6 @@ auto Rules = std::array{
     Rule(l_paren, {l_paren, newline}, drop_all_but<0>),
     Rule(l_bracket, {l_bracket, newline}, drop_all_but<0>),
     Rule(l_brace, {l_brace, newline}, drop_all_but<0>),
-    Rule(l_double_brace, {l_double_brace, newline}, drop_all_but<0>),
     Rule(stmts, {stmts, newline}, drop_all_but<0>),
 
     Rule(expr, {EXPR, op_l, EXPR}, ErrMsg::NonBinop),
@@ -1336,11 +1291,11 @@ static void Shift(frontend::ParseState *ps) {
   ps->node_stack_.push_back(std::move(ahead.node_));
 
   auto tag_ahead = ps->Next().tag_;
-  if (tag_ahead & (frontend::l_paren | frontend::l_bracket | frontend::l_brace |
-                   frontend::l_double_brace)) {
+  if (tag_ahead &
+      (frontend::l_paren | frontend::l_bracket | frontend::l_brace)) {
     ++ps->brace_count;
-  } else if (tag_ahead & (frontend::r_paren | frontend::r_bracket |
-                          frontend::r_brace | frontend::r_double_brace)) {
+  } else if (tag_ahead &
+             (frontend::r_paren | frontend::r_bracket | frontend::r_brace)) {
     --ps->brace_count;
   }
 }

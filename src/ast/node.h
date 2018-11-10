@@ -35,17 +35,12 @@ struct JumpExprs
     : public base::unordered_map<JumpKind, base::vector<Expression const *>> {};
 
 struct Node : public base::Cast<Node> {
-  virtual std::string to_string(size_t n) const                          = 0;
-  virtual void assign_scope(Scope *)                                     = 0;
-  virtual type::Type const *VerifyType(Context *)                        = 0;
-  virtual void Validate(Context *)                                       = 0;
-  virtual base::vector<IR::Val> EmitIR(Context *)                        = 0;
-  virtual void SaveReferences(Scope *scope, base::vector<IR::Val> *args) = 0;
-  virtual void contextualize(
-      const Node *correspondant,
-      const base::unordered_map<const Expression *, IR::Val> &)         = 0;
-  virtual Node *Clone() const                                           = 0;
-  virtual void ExtractJumps(JumpExprs *) const                          = 0;
+  virtual std::string to_string(size_t n) const   = 0;
+  virtual void assign_scope(Scope *)              = 0;
+  virtual type::Type const *VerifyType(Context *) = 0;
+  virtual void Validate(Context *)                = 0;
+  virtual base::vector<IR::Val> EmitIR(Context *) = 0;
+  virtual void ExtractJumps(JumpExprs *) const    = 0;
 
   template <typename T>
   void limit_to(T &&t) {}

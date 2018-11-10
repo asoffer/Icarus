@@ -23,12 +23,6 @@ type::Type const *MatchDeclaration::VerifyType(Context *ctx) {
 
 void MatchDeclaration::Validate(Context *ctx) { type_expr->Validate(ctx); }
 
-MatchDeclaration *MatchDeclaration::Clone() const {
-  auto *result = new MatchDeclaration;
-  CloneTo(result);
-  return result;
-}
-
 base::vector<IR::Val> MatchDeclaration::EmitIR(Context *ctx) {
   // TODO build it
   return backend::Evaluate(type_expr.get(), ctx);

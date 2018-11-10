@@ -13,16 +13,10 @@ struct Unop : public Expression {
   void assign_scope(Scope *scope) override;
   type::Type const *VerifyType(Context *) override;
   void Validate(Context *) override;
-  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
   void ExtractJumps(JumpExprs *) const override;
-  void contextualize(
-      const Node *correspondant,
-      const base::unordered_map<const Expression *, IR::Val> &) override;
 
   base::vector<IR::Val> EmitIR(Context *) override;
   base::vector<IR::Register> EmitLVal(Context *) override;
-
-  Unop *Clone() const override;
 
   std::unique_ptr<Expression> operand;
   Language::Operator op;

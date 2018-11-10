@@ -129,5 +129,4 @@ OP_MACRO(PhiReal)
 OP_MACRO(PhiType)
 OP_MACRO(PhiBlock)
 OP_MACRO(PhiAddr)
-OP_MACRO(AddCodeBlock)  // TODO remove codeblock
 OP_MACRO(Contextualize)

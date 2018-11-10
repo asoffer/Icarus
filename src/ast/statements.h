@@ -8,36 +8,16 @@
 namespace AST {
 struct Statements : public Node {
   Statements() {}
-  Statements(const Statements &statements) : Node(statements.span) {
-    content_.reserve(statements.content_.size());
-    for (const auto &stmt : statements.content_) {
-      content_.emplace_back(stmt->Clone());
-    }
-  }
   ~Statements() override {}
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
-  Statements &operator=(const Statements &stmts) noexcept {
-    content_.reserve(stmts.content_.size());
-    content_.clear();
-    for (const auto &stmt : stmts.content_) {
-      content_.emplace_back(stmt->Clone());
-    }
-    return *this;
-  }
 
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
   type::Type const *VerifyType(Context *) override;
   void Validate(Context *) override;
-  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
   void ExtractJumps(JumpExprs *) const override;
-  void contextualize(
-      const Node *correspondant,
-      const base::unordered_map<const Expression *, IR::Val> &) override;
-
-  Statements *Clone() const { return new Statements(*this); }
-
+  
   base::vector<IR::Val> EmitIR(Context *) override;
 
   inline size_t size() const { return content_.size(); }

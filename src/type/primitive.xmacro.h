@@ -1,6 +1,5 @@
 PRIMITIVE_MACRO(Bool, "bool")
 PRIMITIVE_MACRO(Char, "char")
-PRIMITIVE_MACRO(Code, "code")
 PRIMITIVE_MACRO(Int, "int")
 PRIMITIVE_MACRO(Real, "real")
 PRIMITIVE_MACRO(Type_, "type")

@@ -23,19 +23,10 @@ type::Type const *BlockNode::VerifyType(Context *) {
   return type::Block;
 }
 void BlockNode::Validate(Context *) { NOT_YET(); }
-void BlockNode::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  NOT_YET();
-}
+
 void BlockNode::ExtractJumps(JumpExprs *rets) const {
   stmts_.ExtractJumps(rets);
 }
-void BlockNode::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &) {
-  NOT_YET();
-}
-
-BlockNode *BlockNode::Clone() const { NOT_YET(); }
 
 base::vector<IR::Val> BlockNode::EmitIR(Context *ctx) {
   stmts_.EmitIR(ctx);

@@ -26,19 +26,10 @@ struct Token : public AST::Node {
   std::string to_string(size_t) const override { return "[" + token + "]\n"; }
 
   void assign_scope(Scope *) override { UNREACHABLE(); }
-  Token *Clone() const override { UNREACHABLE(); }
   type::Type const *VerifyType(Context *) override { UNREACHABLE(); }
   void Validate(Context *) override { UNREACHABLE(); }
   void ExtractJumps(AST::JumpExprs *) const override { UNREACHABLE(); }
 
-  void SaveReferences(Scope *, base::vector<IR::Val> *) override {
-    UNREACHABLE();
-  }
-  void contextualize(
-      const Node *correspondant,
-      const base::unordered_map<const AST::Expression *, IR::Val> &) override {
-    UNREACHABLE();
-  }
   base::vector<IR::Val> EmitIR(Context *) override { UNREACHABLE(); }
 
   std::string token;

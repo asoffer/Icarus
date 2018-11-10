@@ -69,27 +69,8 @@ void ScopeNode::Validate(Context *ctx) {
   // TODO
 }
 
-void ScopeNode::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  NOT_YET();
-}
-
-void ScopeNode::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  const auto &corr = correspondant->as<ScopeNode>();
-  NOT_YET();
-}
-
 void ScopeNode::ExtractJumps(JumpExprs *rets) const {
   for (auto &block : blocks_) { block->ExtractJumps(rets); }
-}
-
-ScopeNode *ScopeNode::Clone() const {
-  auto *result = new ScopeNode;
-  result->span = span;
-
-  NOT_YET();
-  return result;
 }
 
 // TODO make static again

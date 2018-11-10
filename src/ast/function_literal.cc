@@ -245,52 +245,9 @@ void FunctionLiteral::Validate(Context *ctx) {
   }
 }
 
-void FunctionLiteral::SaveReferences(Scope *scope,
-                                     base::vector<IR::Val> *args) {
-  for (auto &input : inputs) { input->SaveReferences(scope, args); }
-  for (auto &output : outputs) { output->SaveReferences(scope, args); }
-  statements->SaveReferences(fn_scope.get(), args);
-}
-
-void FunctionLiteral::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    inputs[i]->contextualize(
-        correspondant->as<FunctionLiteral>().inputs[i].get(), replacements);
-  }
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i]->contextualize(
-        correspondant->as<FunctionLiteral>().outputs[i].get(), replacements);
-  }
-
-  statements->contextualize(
-      correspondant->as<FunctionLiteral>().statements.get(), replacements);
-}
-
 void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &in : inputs) { in->ExtractJumps(rets); }
   for (auto &out : outputs) { out->ExtractJumps(rets); }
-}
-
-FunctionLiteral *FunctionLiteral::Clone() const {
-  auto *result                  = new FunctionLiteral;
-  result->module_               = module_;
-  result->span                  = span;
-  result->statements            = base::wrap_unique(statements->Clone());
-  result->lookup_               = lookup_;
-  result->return_type_inferred_ = return_type_inferred_;
-  result->inputs.reserve(inputs.size());
-  for (const auto &input : inputs) {
-    result->inputs.emplace_back(input->Clone());
-  }
-  result->outputs.reserve(outputs.size());
-  for (const auto &output : outputs) {
-    result->outputs.emplace_back(output->Clone());
-  }
-
-  result->ir_func_ = nullptr;
-  return result;
 }
 
 base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {

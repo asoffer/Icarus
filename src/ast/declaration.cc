@@ -356,42 +356,9 @@ void Declaration::Validate(Context *ctx) {
   if (init_val) { init_val->Validate(ctx); }
 }
 
-void Declaration::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  if (type_expr) { type_expr->SaveReferences(scope, args); }
-  if (init_val) { init_val->SaveReferences(scope, args); }
-}
-
-void Declaration::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  if (type_expr) {
-    type_expr->contextualize(correspondant->as<Declaration>().type_expr.get(),
-                             replacements);
-  }
-  if (init_val) {
-    init_val->contextualize(correspondant->as<Declaration>().init_val.get(),
-                            replacements);
-  }
-}
-
 void Declaration::ExtractJumps(JumpExprs *rets) const {
   if (type_expr) { type_expr->ExtractJumps(rets); }
   if (init_val) { init_val->ExtractJumps(rets); }
-}
-
-Declaration *Declaration::Clone() const {
-  auto *result = new Declaration;
-  CloneTo(result);
-  return result;
-}
-
-void Declaration::CloneTo(Declaration *result) const {
-  result->span       = span;
-  result->const_     = const_;
-  result->mod_       = mod_;
-  result->type_expr =
-      type_expr ? base::wrap_unique(type_expr->Clone()) : nullptr;
-  result->init_val = init_val ? base::wrap_unique(init_val->Clone()) : nullptr;
 }
 
 base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {

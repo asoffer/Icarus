@@ -11,15 +11,10 @@ struct BlockLiteral : public Expression {
   void assign_scope(Scope *scope) override;
   type::Type const *VerifyType(Context *) override;
   void Validate(Context *) override;
-  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
   void ExtractJumps(JumpExprs *) const override;
-  void contextualize(
-      const Node *correspondant,
-      const base::unordered_map<const Expression *, IR::Val> &) override;
 
   base::vector<IR::Val> EmitIR(Context *) override;
   base::vector<IR::Register> EmitLVal(Context *) override;
-  BlockLiteral *Clone() const override;
 
   std::vector<std::unique_ptr<Expression>> before_, after_;
   std::unique_ptr<Scope> body_scope_;

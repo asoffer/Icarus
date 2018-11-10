@@ -15,15 +15,10 @@ struct Import : public Expression {
   void assign_scope(Scope *scope) override;
   type::Type const *VerifyType(Context *) override;
   void Validate(Context *) override {}
-  void SaveReferences(Scope *scope, base::vector<IR::Val> *args) override;
 
   // TODO what if the operand does a result/return thing in a scope? This feels
   // like it should be disallowed but maybe I need this to catch the error!
   void ExtractJumps(JumpExprs *) const override {}
-  void contextualize(
-      const Node *correspondant,
-      const base::unordered_map<const Expression *, IR::Val> &) override;
-  Import *Clone() const override;
 
   base::vector<IR::Val> EmitIR(Context *) override;
   base::vector<IR::Register> EmitLVal(Context *) override;

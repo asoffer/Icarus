@@ -65,31 +65,8 @@ void ArrayLiteral::Validate(Context *ctx) {
   for (auto &elem : elems_) { elem->Validate(ctx); }
 }
 
-void ArrayLiteral::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto &elem : elems_) { elem->SaveReferences(scope, args); }
-}
-
-void ArrayLiteral::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < elems_.size(); ++i) {
-    elems_[i]->contextualize(correspondant->as<ArrayLiteral>().elems_[i].get(),
-                             replacements);
-  }
-}
-
 void ArrayLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &el : elems_) { el->ExtractJumps(rets); }
-}
-
-ArrayLiteral *ArrayLiteral::Clone() const {
-  auto *result = new ArrayLiteral;
-  result->span = span;
-  result->elems_.reserve(elems_.size());
-  for (const auto &elem : elems_) {
-    result->elems_.emplace_back(elem->Clone());
-  }
-  return result;
 }
 
 base::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {

@@ -500,49 +500,10 @@ void Call::Validate(Context *ctx) {
   args_.Apply([ctx](auto &arg) { arg->Validate(ctx); });
 }
 
-void Call::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  for (auto &pos : args_.pos_) { pos->SaveReferences(scope, args); }
-  for (auto & [ name, expr ] : args_.named_) {
-    expr->SaveReferences(scope, args);
-  }
-}
-
-void Call::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  fn_->contextualize(correspondant->as<Call>().fn_.get(), replacements);
-
-  for (size_t i = 0; i < args_.pos_.size(); ++i) {
-    args_.pos_[i]->contextualize(correspondant->as<Call>().args_.pos_[i].get(),
-                                 replacements);
-  }
-  for (auto && [ name, expr ] : args_.named_) {
-    expr->contextualize(
-        correspondant->as<Call>().args_.named_.find(name)->second.get(),
-        replacements);
-  }
-}
-
 void Call::ExtractJumps(JumpExprs *rets) const {
   fn_->ExtractJumps(rets);
   for (const auto &val : args_.pos_) { val->ExtractJumps(rets); }
   for (const auto & [ key, val ] : args_.named_) { val->ExtractJumps(rets); }
-}
-
-Call *Call::Clone() const {
-  auto *result = new Call;
-  result->span = span;
-  result->fn_  = base::wrap_unique(fn_->Clone());
-  result->args_.pos_.reserve(args_.pos_.size());
-  for (const auto &val : args_.pos_) {
-    result->args_.pos_.emplace_back(val->Clone());
-  }
-  for (const auto & [ key, val ] : args_.named_) {
-    result->args_.named_.emplace(key, base::wrap_unique(val->Clone()));
-  }
-
-  result->dispatch_table_ = dispatch_table_;
-  return result;
 }
 
 base::vector<IR::Val> Call::EmitIR(Context *ctx) {

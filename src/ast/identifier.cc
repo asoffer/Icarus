@@ -16,13 +16,6 @@
 namespace AST {
 void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
 
-Identifier *Identifier::Clone() const {
-  auto *result  = new Identifier;
-  result->span  = span;
-  result->token = token;
-  return result;
-}
-
 type::Type const *Identifier::VerifyType(Context *ctx) {
   type::Type const *t = nullptr;
   if (decl == nullptr) {

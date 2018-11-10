@@ -206,7 +206,6 @@ void Primitive::EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
       break;
     case PrimType::NullPtr: UNREACHABLE();
     case PrimType::EmptyArray: UNREACHABLE();
-    case PrimType::Code: NOT_YET();
     case PrimType::Bool: IR::StoreBool(from.reg_or<bool>(), to); break;
     case PrimType::Char: IR::StoreChar(from.reg_or<char>(), to); break;
     case PrimType::Int: IR::StoreInt(from.reg_or<i32>(), to); break;

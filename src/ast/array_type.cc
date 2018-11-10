@@ -42,29 +42,6 @@ void ArrayType::Validate(Context *ctx) {
   data_type_->Validate(ctx);
 }
 
-void ArrayType::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  length_->SaveReferences(scope, args);
-  data_type_->SaveReferences(scope, args);
-}
-
-void ArrayType::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  length_->contextualize(
-      correspondant->as<std::decay_t<ArrayType>>().length_.get(), replacements);
-  data_type_->contextualize(
-      correspondant->as<std::decay_t<ArrayType>>().data_type_.get(),
-      replacements);
-}
-
-ArrayType *ArrayType::Clone() const {
-  auto *result       = new ArrayType;
-  result->span       = span;
-  result->length_    = base::wrap_unique(length_->Clone());
-  result->data_type_ = base::wrap_unique(data_type_->Clone());
-  return result;
-}
-
 base::vector<IR::Val> ArrayType::EmitIR(Context *ctx) {
   auto len_val       = length_->EmitIR(ctx)[0];
   auto data_type_reg = data_type_->EmitIR(ctx)[0].reg_or<type::Type const *>();

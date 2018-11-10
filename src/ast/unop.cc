@@ -55,52 +55,8 @@ void Unop::assign_scope(Scope *scope) {
 
 void Unop::Validate(Context *ctx) { operand->Validate(ctx); }
 
-void Unop::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  if (op == Language::Operator::Ref) {
-    // TODO need to extract the right module here
-    NOT_YET();
-    Context ctx(static_cast<Module *>(nullptr));
-    operand->assign_scope(scope);
-    operand->VerifyType(&ctx);
-    operand->Validate(&ctx);
-    auto val = operand->EmitIR(&ctx)[0];
-
-    args->push_back(val);
-    args->push_back(IR::Val::Ref(this));
-  } else {
-    operand->SaveReferences(scope, args);
-  }
-}
-
-void Unop::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  if (op == Language::Operator::Ref) {
-    auto iter = replacements.find(&correspondant->as<Unop>());
-    ASSERT(iter != replacements.end());
-    auto terminal    = std::make_unique<Terminal>();
-    terminal->scope_ = scope_;  // TODO Eh? Do I care?
-    terminal->span   = span;
-    terminal->value  = iter->second;
-    operand          = std::move(terminal);
-    op               = Language::Operator::Pass;
-  } else {
-    operand->contextualize(correspondant->as<Unop>().operand.get(),
-                           replacements);
-  }
-}
-
 void Unop::ExtractJumps(JumpExprs *rets) const {
   operand->ExtractJumps(rets);
-}
-
-Unop *Unop::Clone() const {
-  auto *result            = new Unop;
-  result->span            = span;
-  result->operand         = base::wrap_unique(operand->Clone());
-  result->op              = op;
-  result->dispatch_table_ = dispatch_table_;
-  return result;
 }
 
 type::Type const *Unop::VerifyType(Context *ctx) {

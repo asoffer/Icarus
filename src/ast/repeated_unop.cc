@@ -38,18 +38,6 @@ void RepeatedUnop::assign_scope(Scope *scope) {
 
 void RepeatedUnop::Validate(Context *ctx) { args_.Validate(ctx); }
 
-void RepeatedUnop::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
-  args_.SaveReferences(scope, args);
-}
-
-void RepeatedUnop::contextualize(
-    const Node *correspondant,
-    const base::unordered_map<const Expression *, IR::Val> &replacements) {
-  for (size_t i = 0; i < args_.exprs.size(); ++i) {
-    args_.contextualize(&correspondant->as<RepeatedUnop>().args_, replacements);
-  }
-}
-
 void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
   args_.ExtractJumps(rets);
   // TODO yield as well?
@@ -62,16 +50,6 @@ void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
       break;
     default: break;
   }
-}
-
-RepeatedUnop *RepeatedUnop::Clone() const {
-  auto *result = new RepeatedUnop(span);
-  for (const auto &arg : args_.exprs) {
-    result->args_.exprs.emplace_back(arg->Clone());
-  }
-  result->op_              = op_;
-  result->dispatch_tables_ = dispatch_tables_;
-  return result;
 }
 
 type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
