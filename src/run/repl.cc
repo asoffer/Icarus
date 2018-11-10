@@ -23,7 +23,8 @@ static void ReplEval(AST::Expression *expr) {
   CURRENT_FUNC(fn.get()) {
     IR::BasicBlock::Current = fn->entry();
     // TODO use the right module
-    Context ctx(nullptr);
+    Context ctx(static_cast<Module *>(nullptr));
+
     // TODO support multiple values computed simultaneously?
     auto expr_val = expr->EmitIR(&ctx)[0];
     if (ctx.num_errors() != 0) {

@@ -58,7 +58,8 @@ void Unop::Validate(Context *ctx) { operand->Validate(ctx); }
 void Unop::SaveReferences(Scope *scope, base::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
     // TODO need to extract the right module here
-    Context ctx(nullptr);
+    NOT_YET();
+    Context ctx(static_cast<Module *>(nullptr));
     operand->assign_scope(scope);
     operand->VerifyType(&ctx);
     operand->Validate(&ctx);

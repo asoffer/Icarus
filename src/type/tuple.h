@@ -6,7 +6,7 @@
 #include "ir/val.h"  // TODO pass by reference to avoid this include
 
 namespace type {
-const Type *Tup(base::vector<Type const *> entries);
+Type const *Tup(base::vector<Type const *> entries);
 
 struct Tuple : public Type {
   Tuple() = delete;

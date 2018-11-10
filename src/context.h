@@ -12,6 +12,9 @@ struct Type;
 }  // namespace type
 
 struct Context {
+  Context(Context const *parent)
+      : parent_(ASSERT_NOT_NULL(parent)), mod_(parent_->mod_) {}
+
   Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {}
 
   size_t num_errors() { return error_log_.size(); }
@@ -24,6 +27,7 @@ struct Context {
   void set_addr(AST::Declaration *decl, IR::Register);
 
   error::Log error_log_;
+  Context const *parent_ = nullptr;
   Module *mod_ = nullptr;
 
   AST::BoundConstants bound_constants_;

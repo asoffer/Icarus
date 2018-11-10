@@ -15,30 +15,6 @@ struct BoundConstants {
   std::string to_string() const {
     return base::internal::stringify(constants_);
   }
-
-  bool extends(BoundConstants const& bc) const {
-    if (bc.constants_.size() > constants_.size()) { return false; }
-    auto this_iter = constants_.begin();
-    auto bc_iter   = bc.constants_.begin();
-    while (true) {
-      if (this_iter == constants_.end()) {
-        return bc_iter == bc.constants_.end();
-      }
-      if (bc_iter == bc.constants_.end()) { return true; }
-
-      if (this_iter->first < bc_iter->first) {
-        ++this_iter;
-        continue;
-      } else if (this_iter->first == bc_iter->first) {
-        if (this_iter->second != bc_iter->second) { return false; }
-        ++this_iter;
-        ++bc_iter;
-        continue;
-      } else {
-        return false;
-      }
-    }
-  }
 };
 }  // namespace AST
 

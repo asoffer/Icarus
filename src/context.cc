@@ -1,7 +1,11 @@
 #include "context.h"
 
 type::Type const *Context::type_of(AST::Expression const *expr) const {
-  return mod_->type_of(bound_constants_, expr);
+  auto *bc     = &bound_constants_;
+  auto *result = mod_->type_of(bound_constants_, expr);
+  if (result) { return result; }
+  if (!parent_) { return nullptr; }
+  return parent_->type_of(expr);
 }
 
 void Context::set_type(AST::Expression const *expr, type::Type const *t) {
