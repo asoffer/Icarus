@@ -139,34 +139,34 @@ default_arguments ::= () -> () {
 }
 
 compile_time_arguments ::= () -> () {
-//   // So far we have only seen arguments to functions declared with a
-//   // single colon. Using `::` marks the argument as required to be known at
-//   // compile-time.
-//   compile_time_square ::= (n :: int) => n * n
-//   print compile_time_square(3), "\n"
-// 
-//   // Compile-time arguments do not need to be literals. They can also be
-//   // compile-time constants, or expressions known at compile-time.
-//   N ::= 17
-//   print compile_time_square(N), "\n"
-//   print compile_time_square(2 * N - 10), "\n"
-//   
-//   // Compile-time arguments work just as well with named or default arguments.
-//   f ::= (a: int, b ::= 2, c: int) -> () {
-//     print "f(a = ", a,", ",
-//           "b = ", b, ", ",
-//           "c = ", c, ")\n"
-//   }
+  // So far we have only seen arguments to functions declared with a
+  // single colon. Using `::` marks the argument as required to be known at
+  // compile-time.
+  compile_time_square ::= (n :: int) => n * n
+  print compile_time_square(3), "\n"
+
+  // Compile-time arguments do not need to be literals. They can also be
+  // compile-time constants, or expressions known at compile-time.
+  N ::= 17
+  print compile_time_square(N), "\n"
+  print compile_time_square(2 * N - 10), "\n"
+  
+  // Compile-time arguments work just as well with named or default arguments.
+  f ::= (a: int, b ::= 2, c: int) -> () {
+    print "f(a = ", a,", ",
+          "b = ", b, ", ",
+          "c = ", c, ")\n"
+  }
 //   f(1, c = 3)
 //   f(1, c = 30, b = 20)
-// 
-//   // One benefit of compile-time arguments is that they can be used in the
-//   // return type of a function.
-//   // default_int_array ::= (len :: int) -> [len; int] {
-//   //   result: [len; int]
-//   //   return result
-//   // }
-//   // TODO print default_int_array(3)
+
+  // One benefit of compile-time arguments is that they can be used in the
+  // return type of a function.
+  // default_int_array ::= (len :: int) -> [len; int] {
+  //   result: [len; int]
+  //   return result
+  // }
+  // TODO print default_int_array(3)
 }
 
 dynamic_dispatch ::= () -> () {

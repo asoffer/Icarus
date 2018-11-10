@@ -580,7 +580,8 @@ std::unique_ptr<Node> BuildBlockNode(base::vector<std::unique_ptr<Node>> nodes,
 std::unique_ptr<Node> ExtendScopeNode(base::vector<std::unique_ptr<Node>> nodes,
                                       Context *ctx) {
   auto &scope_node = nodes[0]->as<ScopeNode>();
-  scope_node.sugared_->blocks_.push_back(move_as<BlockNode>(nodes[1]));
+  (scope_node.sugared_ ? scope_node.sugared_ : &scope_node)
+      ->blocks_.push_back(move_as<BlockNode>(nodes[1]));
   return std::move(nodes[0]);
 }
 

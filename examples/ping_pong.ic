@@ -16,6 +16,7 @@ foo ::= scope {
     before ::= () -> {}
     after ::= () => ping
   }
+  done ::= () -> {}
 }
 
 
