@@ -49,6 +49,7 @@ struct Binding {
   type::Typed<Expression *, type::Callable> fn_;
   base::vector<type::Typed<Expression *>> exprs_;
   bool const_ = false;
+  AST::BoundConstants bound_constants_; // TDOO don't copy these. Use some sitting on a module.
 };
 
 struct DispatchTable {

@@ -370,7 +370,8 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
       return {ctx->bound_constants_.constants_.at(this)};
     } else {
       auto[iter, newly_inserted] =
-          ctx->mod_->constants_.constants_.emplace(this, IR::Val::None());
+          ctx->mod_->constants_[ctx->bound_constants_].constants_.emplace(
+              this, IR::Val::None());
       if (!newly_inserted) { return {iter->second}; }
 
       if (IsCustomInitialized()) {
@@ -379,7 +380,8 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
         return {iter->second};
       } else if (IsDefaultInitialized()) {
         if (is_arg_) {
-          return {ctx->mod_->constants_.constants_.at(this)};
+          return {
+              ctx->mod_->constants_[ctx->bound_constants_].constants_.at(this)};
         } else {
           NOT_YET(this);
         }

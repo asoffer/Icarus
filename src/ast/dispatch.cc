@@ -147,6 +147,8 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeNonConstant(
 
   Binding binding(fn_option, args.pos_.size(), false);
   binding.SetPositionalArgs(args);
+  binding.bound_constants_ = ctx->bound_constants_;
+
   DispatchTableRow dispatch_table_row(std::move(binding));
 
   if (!dispatch_table_row.SetTypes(fn_option, ctx)) { return {}; }
@@ -212,6 +214,7 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
                        ->as<type::Function>();
   fn_lit->Validate(&new_ctx);
   binding.fn_.set_type(fn_type);
+  binding.bound_constants_ = new_ctx.bound_constants_;
 
   DispatchTableRow dispatch_table_row(std::move(binding));
   dispatch_table_row.function_type_ = fn_type;
@@ -226,6 +229,7 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromIrFunc(
       std::max(ir_func.args_.size(), args.pos_.size() + args.named_.size());
 
   Binding binding(fn_option, binding_size, true);
+  binding.bound_constants_ = ctx->bound_constants_;
   binding.SetPositionalArgs(args);
   if (!binding.SetNamedArgs(args, ir_func.lookup_)) { return {}; }
   DispatchTableRow dispatch_table_row(std::move(binding));

@@ -251,11 +251,16 @@ void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
 }
 
 base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
-  if (std::any_of(inputs.begin(), inputs.end(),
-                  [](auto const &decl) { return decl->const_; })) {
+  if (std::any_of(inputs.begin(), inputs.end(), [&](auto const &decl) {
+        return decl->const_ &&
+               ctx->bound_constants_.constants_.find(decl.get()) ==
+                   ctx->bound_constants_.constants_.end();
+      })) {
     return {IR::Val::Func(this)};
   }
-  if (!ir_func_) {
+
+  IR::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
+  if (!ir_func) {
     ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this);
 
     base::vector<std::pair<std::string, Expression *>> args;
@@ -265,11 +270,11 @@ base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
                         input->as<Declaration>().init_val.get());
     }
 
-    ir_func_ = ctx->mod_->AddFunc(&ctx->type_of(this)->as<type::Function>(),
-                                  std::move(args));
+    ir_func = ctx->mod_->AddFunc(&ctx->type_of(this)->as<type::Function>(),
+                                 std::move(args));
   }
 
-  return {IR::Val::Func(ir_func_)};
+  return {IR::Val::Func(ir_func)};
 }
 
 void FunctionLiteral::CompleteBody(Context *ctx) {
@@ -279,8 +284,9 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
   auto *t = ctx->type_of(this);
   if (t == type::Err) { return; }
 
-  CURRENT_FUNC(ir_func_) {
-    IR::BasicBlock::Current = ir_func_->entry();
+  IR::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
+  CURRENT_FUNC(ir_func) {
+    IR::BasicBlock::Current = ir_func->entry();
     // Leave space for allocas that will come later (added to the entry
     // block).
     auto start_block        = IR::Func::Current->AddBlock();
@@ -307,7 +313,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
       IR::ReturnJump();
     }
 
-    IR::BasicBlock::Current = ir_func_->entry();
+    IR::BasicBlock::Current = ir_func->entry();
     IR::UncondJump(start_block);
   }
 }

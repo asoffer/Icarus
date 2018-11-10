@@ -159,7 +159,12 @@ static void EmitOneCallDispatch(
     const type::Type *ret_type, base::vector<IR::Val> *outgoing_regs,
     const base::unordered_map<AST::Expression *, const IR::Val *> &expr_map,
     const AST::Binding &binding, Context *ctx) {
-  auto callee = binding.fn_.get()->EmitIR(ctx)[0];
+  auto callee = [&] {
+    Context fn_ctx(ctx->mod_);  // TODO this might be the wrong module.
+    fn_ctx.bound_constants_ = binding.bound_constants_;
+    return binding.fn_.get()->EmitIR(&fn_ctx)[0];
+  }();
+
   if (!binding.const_) {
     callee = IR::Val::Reg(
         IR::LoadFunc(std::get<IR::Register>(callee.value), binding.fn_.type()),

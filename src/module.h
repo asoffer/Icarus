@@ -59,8 +59,13 @@ struct Module {
   std::unique_ptr<DeclScope> global_;
 
   // Holds all constants defined in the module (both globals and scoped
-  // constants).
-  AST::BoundConstants constants_;
+  // constants). These are the values in the map. They're keyed on conditional
+  // constants. So we have options for mulitple meanings of things depending on
+  // context. 
+  //
+  // TODO Almost surely this needs to be even deeper, treating it as a tree
+  // of arbitrary depth.
+  base::map<AST::BoundConstants, AST::BoundConstants> constants_;
 
   // TODO long-term this is not a good way to store these. We should probably
   // extract the declarations determine which are public, etc.
@@ -87,6 +92,9 @@ struct Module {
   std::map<AST::BoundConstants,
            std::unordered_set<AST::FunctionLiteral const *>>
       validated_;
+  std::map<AST::BoundConstants,
+           base::unordered_map<AST::FunctionLiteral const *, IR::Func *>>
+      ir_funcs_;
 };
 
 #endif  // ICARUS_MODULE_H

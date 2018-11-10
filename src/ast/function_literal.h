@@ -51,8 +51,6 @@ struct FunctionLiteral : public Expression {
   base::unordered_map<std::string, size_t> lookup_;
   bool return_type_inferred_ = false;
   Module *module_            = nullptr;
-
-  IR::Func *ir_func_ = nullptr;
 };
 }  // namespace AST
 
