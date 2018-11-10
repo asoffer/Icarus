@@ -74,6 +74,14 @@ bool DispatchTableRow::SetTypes(FunctionLiteral const &fn,
   }
 
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
+    if (binding_.defaulted(i)) {
+      // The naming here is super confusing but if a declaration
+      // "IsDefaultInitialized" that means it's of the form `foo: bar`, and so
+      // it doe NOT have a default value.
+      if (fn.inputs.at(i)->IsDefaultInitialized()) { return false; }
+      binding_.exprs_.at(i).set_type(ctx->type_of(binding_.exprs_.at(i).get()));
+      continue;
+    }
     // TODO defaulted arguments
     // TODO Meet with the argument
     type::Type const *match = ctx->type_of(fn.inputs.at(i).get());
@@ -208,6 +216,13 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
     // this function.
     new_ctx.bound_constants_.constants_.emplace(
         fn_lit->inputs[i].get(), backend::Evaluate(args.pos_[i], ctx)[0]);
+  }
+  for (auto & [ name, expr ] : args.named_) {
+    size_t index = fn_lit->lookup_[name];
+    auto *decl = fn_lit->inputs[index].get();
+    if (!decl->const_) { continue; }
+    new_ctx.bound_constants_.constants_.emplace(
+        decl, backend::Evaluate(expr, ctx)[0]);
   }
   // TODO named arguments too.
   auto *fn_type = &ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx))
