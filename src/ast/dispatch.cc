@@ -77,9 +77,17 @@ bool DispatchTableRow::SetTypes(FunctionLiteral const &fn,
     if (binding_.defaulted(i)) {
       // The naming here is super confusing but if a declaration
       // "IsDefaultInitialized" that means it's of the form `foo: bar`, and so
-      // it doe NOT have a default value.
+      // it does NOT have a default value.
       if (fn.inputs.at(i)->IsDefaultInitialized()) { return false; }
-      binding_.exprs_.at(i).set_type(ctx->type_of(binding_.exprs_.at(i).get()));
+      // TODO The order for evaluating these is wrong. Defaults may need to be
+      // intermixed with non-defaults.
+      fn.inputs.at(i).get()->VerifyType(ctx);
+      fn.inputs.at(i).get()->Validate(ctx);
+      ctx->bound_constants_.constants_.emplace(
+          fn.inputs.at(i).get(),
+          backend::Evaluate(fn.inputs.at(i)->init_val.get(), ctx)[0]);
+
+      binding_.exprs_.at(i).set_type(ctx->type_of(fn.inputs.at(i).get()));
       continue;
     }
     // TODO defaulted arguments
@@ -229,11 +237,12 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
                        ->as<type::Function>();
   fn_lit->Validate(&new_ctx);
   binding.fn_.set_type(fn_type);
-  binding.bound_constants_ = new_ctx.bound_constants_;
 
   DispatchTableRow dispatch_table_row(std::move(binding));
   dispatch_table_row.function_type_ = fn_type;
   if (!dispatch_table_row.SetTypes(*fn_lit, args, &new_ctx)) { return {}; }
+  dispatch_table_row.binding_.bound_constants_ =
+      std::move(new_ctx).bound_constants_;
   return dispatch_table_row;
 }
 
