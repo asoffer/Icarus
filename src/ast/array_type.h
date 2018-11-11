@@ -3,7 +3,7 @@
 
 #include "ast/expression.h"
 
-namespace AST {
+namespace ast {
 struct ArrayType : public Expression {
   ~ArrayType() override {}
   std::string to_string(size_t n) const override;
@@ -12,11 +12,11 @@ struct ArrayType : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *ct) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *ct) override;
 
   std::unique_ptr<Expression> length_, data_type_;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_ARRAY_TYPE_H

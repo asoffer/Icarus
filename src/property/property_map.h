@@ -11,16 +11,16 @@
 #include "property/property.h"
 #include "property/property_set.h"
 
-namespace IR {
+namespace ir {
 struct BasicBlock;
 struct Func;
-}  // namespace IR
+}  // namespace ir
 
 namespace prop {
 struct FnStateView {
-  FnStateView(IR::Func *fn);
+  FnStateView(ir::Func *fn);
 
-  base::unordered_map<IR::Register, PropertySet> view_;
+  base::unordered_map<ir::Register, PropertySet> view_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
@@ -29,11 +29,11 @@ inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
 
 // TODO rename me.
 struct Entry {
-  Entry(const IR::BasicBlock *viewing_block, IR::Register reg)
+  Entry(const ir::BasicBlock *viewing_block, ir::Register reg)
       : viewing_block_(viewing_block), reg_(reg) {}
 
-  const IR::BasicBlock *viewing_block_;
-  IR::Register reg_;
+  const ir::BasicBlock *viewing_block_;
+  ir::Register reg_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Entry &e) {
@@ -57,14 +57,14 @@ struct hash<prop::Entry> {
 namespace prop {
 struct PropertyMap {
   PropertyMap() = default;
-  PropertyMap(IR::Func *fn);
+  PropertyMap(ir::Func *fn);
   PropertyMap(const PropertyMap &p) = default;
   PropertyMap &operator=(const PropertyMap &p) = default;
   PropertyMap(PropertyMap &&p) noexcept        = default;
   PropertyMap &operator=(PropertyMap &&p) noexcept = default;
 
   // Make a copy of this map and set the arguments to the values passed in
-  PropertyMap with_args(IR::LongArgs const &, FnStateView const &) const;
+  PropertyMap with_args(ir::LongArgs const &, FnStateView const &) const;
 
   // TODO rename or delete me.
   BoolProp Returns() const;
@@ -77,17 +77,17 @@ struct PropertyMap {
     return view_.at(e.viewing_block_).view_.at(e.reg_);
   }
 
-  PropertySet const &lookup(IR::BasicBlock const *viewing_block,
-                            IR::Register reg) const {
+  PropertySet const &lookup(ir::BasicBlock const *viewing_block,
+                            ir::Register reg) const {
     return view_.at(viewing_block).view_.at(reg);
   }
 
-  PropertySet &lookup(IR::BasicBlock const *viewing_block, IR::Register reg) {
+  PropertySet &lookup(ir::BasicBlock const *viewing_block, ir::Register reg) {
     return view_.at(viewing_block).view_.at(reg);
   }
 
-  IR::Func *fn_ = nullptr;
-  base::unordered_map<const IR::BasicBlock *, FnStateView> view_;
+  ir::Func *fn_ = nullptr;
+  base::unordered_map<const ir::BasicBlock *, FnStateView> view_;
 
  private:
   void refresh(std::unordered_set<Entry> stale_up,

@@ -3,7 +3,7 @@
 
 #include "ast/declaration.h"
 
-namespace AST {
+namespace ast {
 struct MatchDeclaration : public Declaration {
   MatchDeclaration() {}
   MatchDeclaration(MatchDeclaration &&) noexcept = default;
@@ -14,8 +14,8 @@ struct MatchDeclaration : public Declaration {
   type::Type const *VerifyType(Context *) override;
   void Validate(Context *) override;
 
-  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_MATCH_DECLARATION_H

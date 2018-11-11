@@ -5,7 +5,7 @@
 
 #include "node.h"
 
-namespace AST {
+namespace ast {
 struct Statements : public Node {
   Statements() {}
   ~Statements() override {}
@@ -18,7 +18,7 @@ struct Statements : public Node {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
   
-  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
 
   inline size_t size() const { return content_.size(); }
 
@@ -41,5 +41,5 @@ struct Statements : public Node {
   base::vector<std::unique_ptr<Node>> content_;
 };
 
-}  // namespace AST
+}  // namespace ast
 #endif  // ICARUS_AST_STATEMENTS_H

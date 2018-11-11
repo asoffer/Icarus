@@ -9,7 +9,7 @@
 #include "run/run.h"
 #include "type/char_buffer.h"
 
-namespace AST {
+namespace ast {
 std::string Import::to_string(size_t n) const {
   return "import " + operand_->to_string(n);
 }
@@ -18,14 +18,14 @@ void Import::assign_scope(Scope *scope) {
   operand_->assign_scope(scope);
 }
 
-base::vector<IR::Val> Import::EmitIR(Context *ctx) {
+base::vector<ir::Val> Import::EmitIR(Context *ctx) {
   ASSERT(cache_.has_value());
   auto fut  = modules.lock()->at(*cache_);
   auto *mod = fut.get().get();
-  return {IR::Val(mod)};
+  return {ir::Val(mod)};
 }
 
-base::vector<IR::Register> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
+base::vector<ir::Register> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
 
 type::Type const *Import::VerifyType(Context *ctx) {
   VERIFY_OR_RETURN(operand_type, operand_);
@@ -41,4 +41,4 @@ type::Type const *Import::VerifyType(Context *ctx) {
   limit_to(operand_);
   return type::Module;
 }
-}  // namespace AST
+}  // namespace ast

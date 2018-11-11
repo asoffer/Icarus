@@ -5,11 +5,11 @@
 #include "ir/register.h"
 
 struct Module;
-namespace IR {
+namespace ir {
 struct Val;
-}  // namespace IR
+}  // namespace ir
 
-namespace AST {
+namespace ast {
 struct Declaration : public Expression {
   Declaration(bool is_const = false) : const_(is_const) {}
   Declaration(Declaration &&) noexcept = default;
@@ -22,8 +22,8 @@ struct Declaration : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override { UNREACHABLE(this); }
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override { UNREACHABLE(this); }
 
   std::string id_;
   std::unique_ptr<Expression> type_expr, init_val;
@@ -41,6 +41,6 @@ struct Declaration : public Expression {
   bool IsDefaultInitialized() const { return !init_val; }
   bool IsCustomInitialized() const;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_DECLARATION_H

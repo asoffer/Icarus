@@ -10,15 +10,15 @@
 #include "ir/func.h"
 #include "type/all.h"
 
-base::vector<IR::Val> EmitCallDispatch(
-    const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
-    const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
+base::vector<ir::Val> EmitCallDispatch(
+    const ast::FnArgs<std::pair<ast::Expression *, ir::Val>> &args,
+    const ast::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
 
-void ForEachExpr(AST::Expression *expr,
-                 const std::function<void(size_t, AST::Expression *)> &fn);
+void ForEachExpr(ast::Expression *expr,
+                 const std::function<void(size_t, ast::Expression *)> &fn);
 
-namespace AST {
+namespace ast {
 using base::check::Is;
 using base::check::Not;
 
@@ -165,37 +165,37 @@ type::Type const *Unop::VerifyType(Context *ctx) {
   }
 }
 
-base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
+base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   auto *operand_type = ctx->type_of(operand.get());
   if (operand_type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
     // TODO struct is not exactly right. we really mean user-defined
-    FnArgs<std::pair<Expression *, IR::Val>> args;
+    FnArgs<std::pair<Expression *, ir::Val>> args;
     args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx)[0])};
     return EmitCallDispatch(args, dispatch_table_, ctx->type_of(this), ctx);
   }
 
   switch (op) {
     case Language::Operator::Not:
-      return {IR::ValFrom(IR::Not(operand->EmitIR(ctx)[0].reg_or<bool>()))};
+      return {ir::ValFrom(ir::Not(operand->EmitIR(ctx)[0].reg_or<bool>()))};
     case Language::Operator::Sub: {
       auto *operand_type = ctx->type_of(operand.get());
       if (operand_type == type::Int) {
-        return {IR::ValFrom(IR::NegInt(operand->EmitIR(ctx)[0].reg_or<i32>()))};
+        return {ir::ValFrom(ir::NegInt(operand->EmitIR(ctx)[0].reg_or<i32>()))};
       } else if (operand_type == type::Real) {
         return {
-            IR::ValFrom(IR::NegReal(operand->EmitIR(ctx)[0].reg_or<double>()))};
+            ir::ValFrom(ir::NegReal(operand->EmitIR(ctx)[0].reg_or<double>()))};
       } else {
         UNREACHABLE();
       }
     }
     case Language::Operator::TypeOf:
-      return {IR::Val(ctx->type_of(operand.get()))};
+      return {ir::Val(ctx->type_of(operand.get()))};
     case Language::Operator::Which:
-      return {IR::Val::Reg(IR::LoadType(IR::VariantType(std::get<IR::Register>(
+      return {ir::Val::Reg(ir::LoadType(ir::VariantType(std::get<ir::Register>(
                                operand->EmitIR(ctx)[0].value))),
                            type::Type_)};
     case Language::Operator::And:
-      return {IR::Val::Reg(operand->EmitLVal(ctx)[0],
+      return {ir::Val::Reg(operand->EmitLVal(ctx)[0],
                            type::Ptr(ctx->type_of(this)))};
     case Language::Operator::Eval: {
       // TODO what if there's an error during evaluation?
@@ -206,13 +206,13 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       /*
       auto val = backend::Evaluate(operand.get(), ctx).at(0);
       ASSERT(val.type == type::Code);
-      auto block = std::get<AST::CodeBlock>(val.value);
+      auto block = std::get<ast::CodeBlock>(val.value);
       if (auto *err = std::get_if<std::string>(&block.content_)) {
         ctx->error_log_.UserDefinedError(*err);
         return {};
       }
 
-      auto *stmts = &std::get<AST::Statements>(block.content_);
+      auto *stmts = &std::get<ast::Statements>(block.content_);
       stmts->assign_scope(scope_);
       stmts->VerifyType(ctx);
       stmts->Validate(ctx);
@@ -220,22 +220,22 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
       */
     } break;
     case Language::Operator::Mul:
-      return {IR::ValFrom(
-          IR::Ptr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
+      return {ir::ValFrom(
+          ir::Ptr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
     case Language::Operator::At: {
       auto *t = ctx->type_of(this);
-      return {IR::Val::Reg(
-          IR::Load(std::get<IR::Register>(operand->EmitIR(ctx)[0].value), t),
+      return {ir::Val::Reg(
+          ir::Load(std::get<ir::Register>(operand->EmitIR(ctx)[0].value), t),
           t)};
     }
     case Language::Operator::Needs: {
       // TODO validate requirements are well-formed?
-      IR::Func::Current->precondition_exprs_.push_back(operand.get());
+      ir::Func::Current->precondition_exprs_.push_back(operand.get());
       return {};
     } break;
     case Language::Operator::Ensure: {
       // TODO validate requirements are well-formed?
-      IR::Func::Current->postcondition_exprs_.push_back(operand.get());
+      ir::Func::Current->postcondition_exprs_.push_back(operand.get());
       return {};
     } break;
     case Language::Operator::Pass: return operand->EmitIR(ctx);
@@ -243,8 +243,8 @@ base::vector<IR::Val> Unop::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<IR::Register> Unop::EmitLVal(Context *ctx) {
+base::vector<ir::Register> Unop::EmitLVal(Context *ctx) {
   ASSERT(op == Language::Operator::At);
-  return {std::get<IR::Register>(operand->EmitIR(ctx)[0].value)};
+  return {std::get<ir::Register>(operand->EmitIR(ctx)[0].value)};
 }
-}  // namespace AST
+}  // namespace ast

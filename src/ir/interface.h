@@ -6,15 +6,15 @@
 
 #include "base/container/map.h"
 
-namespace AST {
+namespace ast {
 struct BlockLiteral;
-}  // namespace AST
+}  // namespace ast
 
 namespace type {
 struct Type;
 }  // namespace type
 
-namespace IR {
+namespace ir {
 struct Interface {
   base::vector<std::string> MatchErrors(const type::Type*) const;
 
@@ -30,6 +30,6 @@ inline bool operator==(const Interface& lhs, const Interface& rhs) {
 inline bool operator<(const Interface& lhs, const Interface& rhs) {
   return lhs.field_map_ < rhs.field_map_;
 }
-}  // namespace IR
+}  // namespace ir
 
 #endif  // ICARUS_IR_INTERFACE_H

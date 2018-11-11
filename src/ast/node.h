@@ -19,11 +19,11 @@ namespace type {
 struct Type;
 }  // namespace type
 
-namespace IR {
+namespace ir {
 struct Val;
-}  // namespace IR
+}  // namespace ir
 
-namespace AST {
+namespace ast {
 struct StageRange {
   static int NoEmitIR() { return 1; }
   static int Nothing() { return 2; }
@@ -39,7 +39,7 @@ struct Node : public base::Cast<Node> {
   virtual void assign_scope(Scope *)              = 0;
   virtual type::Type const *VerifyType(Context *) = 0;
   virtual void Validate(Context *)                = 0;
-  virtual base::vector<IR::Val> EmitIR(Context *) = 0;
+  virtual base::vector<ir::Val> EmitIR(Context *) = 0;
   virtual void ExtractJumps(JumpExprs *) const    = 0;
 
   template <typename T>
@@ -58,5 +58,5 @@ struct Node : public base::Cast<Node> {
   TextSpan span;
 };
 
-}  // namespace AST
+}  // namespace ast
 #endif  // ICARUS_AST_NODE_H

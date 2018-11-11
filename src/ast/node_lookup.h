@@ -4,7 +4,7 @@
 #include "base/container/unordered_map.h"
 #include "base/container/vector.h"
 
-namespace AST {
+namespace ast {
 struct Node;
 struct Identifier;
 
@@ -25,6 +25,6 @@ struct NodeLookup {
 
   base::unordered_map<Node const *, T> data_;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_NODE_LOOKUP_H

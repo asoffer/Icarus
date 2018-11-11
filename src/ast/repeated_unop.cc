@@ -9,15 +9,15 @@
 #include "scope.h"
 #include "type/all.h"
 
-base::vector<IR::Val> EmitCallDispatch(
-    const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
-    const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
+base::vector<ir::Val> EmitCallDispatch(
+    const ast::FnArgs<std::pair<ast::Expression *, ir::Val>> &args,
+    const ast::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
 
-void ForEachExpr(AST::Expression *expr,
-                 const std::function<void(size_t, AST::Expression *)> &fn);
+void ForEachExpr(ast::Expression *expr,
+                 const std::function<void(size_t, ast::Expression *)> &fn);
 
-namespace AST {
+namespace ast {
 std::string RepeatedUnop::to_string(size_t n) const {
   switch (op_) {
     case Language::Operator::Return: return "return " + args_.to_string(n);
@@ -87,7 +87,7 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
   return nullptr;
 }
 
-base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
+base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
   auto arg_vals = args_.EmitIR(ctx);
   switch (op_) {
     case Language::Operator::Return: {
@@ -99,9 +99,9 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
           &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
       for (size_t i = 0; i < args_.exprs.size(); ++i) {
         // TODO return type maybe not the same as type actually returned?
-        IR::SetReturn(i, arg_vals[i]);
+        ir::SetReturn(i, arg_vals[i]);
       }
-      IR::ReturnJump();
+      ir::ReturnJump();
       return {};
     }
     case Language::Operator::Yield: {
@@ -125,11 +125,11 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
         // TODO unify with repr. is repr even a good idea?
         auto *t = ASSERT_NOT_NULL(ctx->type_of(args_.exprs[i].get()));
         if (t == type::Char) {
-          IR::PrintChar(arg_vals[i].reg_or<char>());
+          ir::PrintChar(arg_vals[i].reg_or<char>());
         } else if (t->is<type::Struct>()) {
           ASSERT(dispatch_tables_[i].total_size_ != 0u);
           // TODO struct is not exactly right. we really mean user-defined
-          FnArgs<std::pair<Expression *, IR::Val>> args;
+          FnArgs<std::pair<Expression *, ir::Val>> args;
           args.pos_ = {std::pair(args_.exprs[i].get(), arg_vals[i])};
           EmitCallDispatch(args, dispatch_tables_[i], type::Void(), ctx);
         } else {
@@ -140,4 +140,4 @@ base::vector<IR::Val> RepeatedUnop::EmitIR(Context *ctx) {
     default: UNREACHABLE("Operator is ", static_cast<int>(op_));
   }
 }
-}  // namespace AST
+}  // namespace ast

@@ -5,7 +5,7 @@
 #include "ast/verify_macros.h"
 #include "ir/cmd.h"
 
-namespace AST {
+namespace ast {
 std::string ArrayType::to_string(size_t n) const {
   ASSERT(length_ != nullptr);
   std::stringstream ss;
@@ -42,17 +42,17 @@ void ArrayType::Validate(Context *ctx) {
   data_type_->Validate(ctx);
 }
 
-base::vector<IR::Val> ArrayType::EmitIR(Context *ctx) {
+base::vector<ir::Val> ArrayType::EmitIR(Context *ctx) {
   auto len_val       = length_->EmitIR(ctx)[0];
   auto data_type_reg = data_type_->EmitIR(ctx)[0].reg_or<type::Type const *>();
-  IR::RegisterOr<type::Type const *> result =
-      (len_val == IR::Val::None())
-          ? IR::Array(data_type_reg)
-          : IR::Array(len_val.reg_or<i32>(), data_type_reg);
-  return {IR::ValFrom(result)};
+  ir::RegisterOr<type::Type const *> result =
+      (len_val == ir::Val::None())
+          ? ir::Array(data_type_reg)
+          : ir::Array(len_val.reg_or<i32>(), data_type_reg);
+  return {ir::ValFrom(result)};
 }
 
-base::vector<IR::Register> ArrayType::EmitLVal(Context *ct) {
+base::vector<ir::Register> ArrayType::EmitLVal(Context *ct) {
   UNREACHABLE(*this);
 }
 
@@ -62,4 +62,4 @@ void ArrayType::ExtractJumps(JumpExprs *rets) const {
   length_->ExtractJumps(rets);
   data_type_->ExtractJumps(rets);
 }
-}  // namespace AST
+}  // namespace ast

@@ -15,20 +15,20 @@
 #include "type/pointer.h"
 #include "type/struct.h"
 
-namespace IR {
+namespace ir {
 
 // TODO this stores way more than is needed. It'd be nice to have a way to say
 // when you're done with these. this could be done by code manually
 // incrementing/decrementing counters because this is compile-time only.
-static base::guarded<std::set<base::vector<AST::BlockLiteral *>>> seqs;
-Val Val::Block(AST::BlockLiteral *b) {
+static base::guarded<std::set<base::vector<ast::BlockLiteral *>>> seqs;
+Val Val::Block(ast::BlockLiteral *b) {
   auto handle         = seqs.lock();
-  auto[iter, success] = handle->insert(base::vector<AST::BlockLiteral *>{b});
+  auto[iter, success] = handle->insert(base::vector<ast::BlockLiteral *>{b});
   return Val::BlockSeq(BlockSequence{&*iter});
 }
 
-BlockSequence MakeBlockSeq(const base::vector<IR::BlockSequence> &blocks) {
-  base::vector<AST::BlockLiteral *> seq;
+BlockSequence MakeBlockSeq(const base::vector<ir::BlockSequence> &blocks) {
+  base::vector<ast::BlockLiteral *> seq;
   for (const auto &bseq : blocks) {
     seq.insert(seq.end(), bseq.seq_->begin(), bseq.seq_->end());
   }
@@ -53,19 +53,19 @@ Val Val::CharBuf(const std::string &str) {
 Val Val::BlockSeq(BlockSequence b) {
   ASSERT(b.seq_->size() != 0u);
   auto *t = (b.seq_->back() == nullptr ||
-             b.seq_->back() == reinterpret_cast<AST::BlockLiteral *>(0x1))
+             b.seq_->back() == reinterpret_cast<ast::BlockLiteral *>(0x1))
                 ? type::Block
                 : b.seq_->back()->required_ ? type::Block : type::OptBlock;
   return Val(t, b);
 }
 
-Val Val::Interface(IR::Interface ifc) {
+Val Val::Interface(ir::Interface ifc) {
   return Val(type::Interface, std::move(ifc));
 }
 
-Val Val::Ref(AST::Expression *expr) { NOT_YET(); }
+Val Val::Ref(ast::Expression *expr) { NOT_YET(); }
 
-Val::Val(AST::ScopeLiteral *scope_lit) : Val(type::Scope, scope_lit) {}
+Val::Val(ast::ScopeLiteral *scope_lit) : Val(type::Scope, scope_lit) {}
 
 Val Val::Enum(const type::Enum *enum_type, size_t integral_val) {
   return Val(enum_type, EnumVal{integral_val});
@@ -75,11 +75,11 @@ Val Val::Flags(const type::Flags *flags_type, FlagsVal val) {
   return Val(flags_type, val);
 }
 
-Val Val::Func(AST::FunctionLiteral *fn) { return Val(type::Generic, fn); }
-Val Val::Func(IR::Func *fn) { return Val(fn->type_, fn); }
+Val Val::Func(ast::FunctionLiteral *fn) { return Val(type::Generic, fn); }
+Val Val::Func(ir::Func *fn) { return Val(fn->type_, fn); }
 
 Val Val::Null(const type::Type *t) {
-  return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0});
+  return Val(Ptr(t), ir::Addr{Addr::Kind::Null, 0});
 }
 
 static std::string Escaped(std::string_view sv) {
@@ -104,7 +104,7 @@ std::string Val::to_string() const {
           [this](Register reg) -> std::string {
             return this->type->to_string() + " " + reg.to_string();
           },
-          [](IR::Addr addr) -> std::string { return addr.to_string(); },
+          [](ir::Addr addr) -> std::string { return addr.to_string(); },
           [this](bool b) -> std::string {
             // type::Bool is used to represent -- if the type is missing.
             return type ? (b ? "true" : "false") : "--";
@@ -126,16 +126,16 @@ std::string Val::to_string() const {
                        : this->type->as<type::Flags>().members_.at(f.value);
           },
           [](const type::Type *t) -> std::string { return t->to_string(); },
-          [](IR::Func *f) -> std::string {
+          [](ir::Func *f) -> std::string {
             ASSERT(f != nullptr);
             ASSERT(f->type_ != nullptr);
             return "fn." + f->name() + "-" + f->type_->to_string();
           },
-          [](AST::ScopeLiteral *s) -> std::string {
+          [](ast::ScopeLiteral *s) -> std::string {
             return "scope(" + std::to_string(reinterpret_cast<uintptr_t>(s)) +
                    ")";
           },
-          [](AST::Expression *) -> std::string { return "<expr>"; },
+          [](ast::Expression *) -> std::string { return "<expr>"; },
           [](BlockIndex b) -> std::string { return b.to_string(); },
           [](std::string_view sv) -> std::string {
             return "\"" + Escaped(sv) + "\"";
@@ -148,11 +148,11 @@ std::string Val::to_string() const {
             // TODO
             return "bs." + std::to_string(reinterpret_cast<uintptr_t>(bs.seq_));
           },
-          [](const IR::Interface &ifc) -> std::string {
+          [](const ir::Interface &ifc) -> std::string {
             // TODO
             return "Interface";
           },
-          [](IR::BuiltinGenericIndex n) -> std::string {
+          [](ir::BuiltinGenericIndex n) -> std::string {
             return "builtin(" + n.to_string() + ")";
           },
           [](ForeignFn f) -> std::string {
@@ -181,7 +181,7 @@ bool operator==(Addr lhs, Addr rhs) {
   UNREACHABLE();
 }
 
-bool operator<(const ::IR::Val &lhs, const ::IR::Val &rhs) {
+bool operator<(const ::ir::Val &lhs, const ::ir::Val &rhs) {
   auto lhs_index = lhs.value.index();
   auto rhs_index = rhs.value.index();
   if (lhs_index < rhs_index) { return true; }
@@ -198,8 +198,8 @@ Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t) {
   return r.is_reg_ ? Val::Reg(r.reg_, t) : Val::Flags(t, r.val_);
 }
 
-Val ValFrom(RegisterOr<IR::Addr> r, type::Pointer const *ptr_type) {
+Val ValFrom(RegisterOr<ir::Addr> r, type::Pointer const *ptr_type) {
   return r.is_reg_ ? Val::Reg(r.reg_, ptr_type) : Val(ptr_type, r.val_);
 }
 
-}  // namespace IR
+}  // namespace ir

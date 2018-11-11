@@ -13,13 +13,13 @@ namespace type {
 struct Type;
 }  // namespace type
 
-namespace AST {
+namespace ast {
 struct Declaration;
 struct Expression;
 struct Identifier;
 struct Node;
 struct Unop;
-}  // namespace AST
+}  // namespace ast
 
 namespace error {
 struct Log {
@@ -27,12 +27,12 @@ struct Log {
 #include "error/errors.xmacro.h"
 #undef MAKE_LOG_ERROR
 
-  void UndeclaredIdentifier(AST::Identifier *id);
-  void AmbiguousIdentifier(AST::Identifier *id);
-  void PreconditionNeedsBool(AST::Expression *expr);
-  void PostconditionNeedsBool(AST::Expression *expr);
-  void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
-  void AssignmentTypeMismatch(AST::Expression *lhs, AST::Expression *rhs);
+  void UndeclaredIdentifier(ast::Identifier *id);
+  void AmbiguousIdentifier(ast::Identifier *id);
+  void PreconditionNeedsBool(ast::Expression *expr);
+  void PostconditionNeedsBool(ast::Expression *expr);
+  void DeclOutOfOrder(ast::Declaration *decl, ast::Identifier *id);
+  void AssignmentTypeMismatch(ast::Expression *lhs, ast::Expression *rhs);
   void RunawayMultilineComment();
   void DoubleDeclAssignment(const TextSpan &decl_span,
                             const TextSpan &val_span);
@@ -41,9 +41,9 @@ struct Log {
   void UnknownParseError(const base::vector<TextSpan> &span);
   void PositionalArgumentFollowingNamed(const base::vector<TextSpan> &pos_spans,
                                         const TextSpan &named_span);
-  void NotAType(AST::Expression *expr);
-  void ShadowingDeclaration(const AST::Declaration &decl1,
-                            const AST::Declaration &decl2);
+  void NotAType(ast::Expression *expr);
+  void ShadowingDeclaration(const ast::Declaration &decl1,
+                            const ast::Declaration &decl2);
 
   // TODO include a source location/span/trace or whatever you decide to
   // include.
@@ -51,13 +51,13 @@ struct Log {
   void DereferencingNonPointer(const type::Type *type, const TextSpan &span);
   void WhichNonVariant(const type::Type *type, const TextSpan &span);
   void ReturnTypeMismatch(const type::Type *expected_type,
-                          const AST::Expression *ret_expr);
+                          const ast::Expression *ret_expr);
   void IndexedReturnTypeMismatch(const type::Type *expected_type,
-                                 const AST::Expression *ret_expr, size_t index);
-  void ReturningWrongNumber(const AST::Expression *ret_expr, size_t num_rets);
+                                 const ast::Expression *ret_expr, size_t index);
+  void ReturningWrongNumber(const ast::Expression *ret_expr, size_t num_rets);
   void NoMatchingOperator(const std::string &op, const type::Type *lhs,
                           const type::Type *rhs, const TextSpan &span);
-  void NoReturnTypes(const AST::Expression *ret_expr);
+  void NoReturnTypes(const ast::Expression *ret_expr);
   void DeclarationUsedInUnop(const std::string &unop,
                              const TextSpan &decl_span);
   void MissingMember(const TextSpan &span, const std::string &member_name,
@@ -67,7 +67,7 @@ struct Log {
                              const type::Type *index_type);
   void IndexingNonArray(const TextSpan &span, const type::Type *t);
 
-  base::vector<AST::Identifier *> *CyclicDependency();
+  base::vector<ast::Identifier *> *CyclicDependency();
 
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() +
@@ -78,11 +78,11 @@ struct Log {
   // TODO per source file splitting? Can't do this until you figure out the
   // module/multi-source-file story.
   using Token = std::string;
-  base::unordered_map<Token, base::vector<AST::Identifier *>> undeclared_ids_;
-  base::unordered_map<AST::Declaration *, base::vector<AST::Identifier *>>
+  base::unordered_map<Token, base::vector<ast::Identifier *>> undeclared_ids_;
+  base::unordered_map<ast::Declaration *, base::vector<ast::Identifier *>>
       out_of_order_decls_;
 
-  base::vector<std::unique_ptr<base::vector<AST::Identifier *>>> cyc_dep_vecs_;
+  base::vector<std::unique_ptr<base::vector<ast::Identifier *>>> cyc_dep_vecs_;
 
   base::vector<std::string> errors_;
 };

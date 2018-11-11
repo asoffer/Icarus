@@ -6,7 +6,7 @@
 #include "ast/node.h"
 #include "frontend/operators.h"
 
-namespace AST {
+namespace ast {
 struct RepeatedUnop : public Node {
   RepeatedUnop(TextSpan const &span);
   ~RepeatedUnop() override {}
@@ -17,11 +17,11 @@ struct RepeatedUnop : public Node {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<IR::Val> EmitIR(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
 
   Language::Operator op_;
   CommaList args_;
   base::vector<DispatchTable> dispatch_tables_;
 };
-}  // namespace AST
+}  // namespace ast
 #endif  // ICARUS_AST_REPEATED_UNOP_H

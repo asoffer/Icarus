@@ -5,24 +5,24 @@
 #include "base/string.h"
 #include "ir/val.h"
 
-namespace AST {
+namespace ast {
 struct Declaration;
 
 struct BoundConstants {
-  base::map<Declaration const*, IR::Val> constants_;
+  base::map<Declaration const*, ir::Val> constants_;
 
   // TODO blah.
   std::string to_string() const {
     return base::internal::stringify(constants_);
   }
 };
-}  // namespace AST
+}  // namespace ast
 
 namespace std {
 template <>
-struct less<AST::BoundConstants> {
-  bool operator()(const AST::BoundConstants& lhs,
-                  const AST::BoundConstants& rhs) const {
+struct less<ast::BoundConstants> {
+  bool operator()(const ast::BoundConstants& lhs,
+                  const ast::BoundConstants& rhs) const {
     return (lhs.constants_ < rhs.constants_);
   }
 };

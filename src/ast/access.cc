@@ -12,7 +12,7 @@
 #include "type/primitive.h"
 #include "type/struct.h"
 
-namespace AST {
+namespace ast {
 namespace {
 using base::check::Is;
 
@@ -75,21 +75,21 @@ type::Type const *Access::VerifyType(Context *ctx) {
 
 void Access::Validate(Context *ctx) { operand->Validate(ctx); }
 
-base::vector<IR::Register> AST::Access::EmitLVal(Context *ctx) {
+base::vector<ir::Register> ast::Access::EmitLVal(Context *ctx) {
   auto reg   = operand->EmitLVal(ctx)[0];
   auto *t    = ctx->type_of(operand.get());
   auto *ptee = t->as<type::Pointer>().pointee;
   while (ptee->is<type::Pointer>()) {
     t    = ptee;
     ptee = ptee->as<type::Pointer>().pointee;
-    reg  = IR::Load(reg, t);
+    reg  = ir::Load(reg, t);
   }
 
   auto *struct_type = &t->as<type::Pointer>().pointee->as<type::Struct>();
-  return {IR::Field(reg, struct_type, struct_type->index(member_name))};
+  return {ir::Field(reg, struct_type, struct_type->index(member_name))};
 }
 
-base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
+base::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {
   if (ctx->type_of(operand.get()) == type::Module) {
     return backend::EvaluateAs<Module const *>(operand.get(), ctx)
         ->GetDecl(member_name)
@@ -100,8 +100,8 @@ base::vector<IR::Val> AST::Access::EmitIR(Context *ctx) {
   if (this_type->is<type::Enum>()) {
     return {this_type->as<type::Enum>().EmitLiteral(member_name)};
   } else {
-    return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], this_type), this_type)};
+    return {ir::Val::Reg(ir::PtrFix(EmitLVal(ctx)[0], this_type), this_type)};
   }
 }
 
-}  // namespace AST
+}  // namespace ast

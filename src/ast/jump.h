@@ -3,7 +3,7 @@
 
 #include "ast/node.h"
 
-namespace AST {
+namespace ast {
 struct Jump : public Node {
   Jump(const TextSpan &span, JumpKind jump_type)
       : Node(span), jump_type(jump_type) {}
@@ -22,11 +22,11 @@ struct Jump : public Node {
   void Validate(Context *) override {}
   void ExtractJumps(JumpExprs *) const override{};
 
-  base::vector<IR::Val> EmitIR(Context *) override { return {}; }
+  base::vector<ir::Val> EmitIR(Context *) override { return {}; }
 
   ExecScope *scope;
   JumpKind jump_type;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_JUMP_H

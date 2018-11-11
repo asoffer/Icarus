@@ -10,7 +10,7 @@
 #include "ir/val.h"
 #include "type/all.h"
 
-namespace IR {
+namespace ir {
 using base::check::Is;
 BlockIndex BasicBlock::Current;
 
@@ -37,15 +37,15 @@ void LongArgs::append(Register reg) {
   args_.append(reg);
   is_reg_.push_back(true);
 }
-void LongArgs::append(const IR::Val &val) {
+void LongArgs::append(const ir::Val &val) {
   // TODO deal with alignment?
   std::visit(
       base::overloaded{
-          [](const IR::Interface &) { UNREACHABLE(); },
+          [](const ir::Interface &) { UNREACHABLE(); },
           [&](auto &&v) {
             args_.append(v);
             is_reg_.push_back(
-                std::is_same_v<IR::Register, std::decay_t<decltype(v)>>);
+                std::is_same_v<ir::Register, std::decay_t<decltype(v)>>);
           }},
       val.value);
 }
@@ -58,14 +58,14 @@ static Cmd &MakeCmd(const type::Type *t, Op op) {
 
 RegisterOr<double> CastIntToReal(RegisterOr<i32> r) {
   if (!r.is_reg_) { return static_cast<double>(r.val_); }
-  auto &cmd             = IR::MakeCmd(type::Real, Op::CastIntToReal);
-  cmd.cast_int_to_real_ = IR::Cmd::CastIntToReal{{}, r.reg_};
+  auto &cmd             = ir::MakeCmd(type::Real, Op::CastIntToReal);
+  cmd.cast_int_to_real_ = ir::Cmd::CastIntToReal{{}, r.reg_};
   return cmd.result;
 }
 
 Register CastPtr(Register r, type::Pointer const *t) {
-  auto &cmd     = IR::MakeCmd(t, Op::CastPtr);
-  cmd.cast_ptr_ = IR::Cmd::CastPtr{{}, r, t->pointee};
+  auto &cmd     = ir::MakeCmd(t, Op::CastPtr);
+  cmd.cast_ptr_ = ir::Cmd::CastPtr{{}, r, t->pointee};
   return cmd.result;
 }
 
@@ -192,7 +192,7 @@ DEFINE_CMD1(PrintChar, print_char_, char);
 DEFINE_CMD1(PrintInt, print_int_, i32);
 DEFINE_CMD1(PrintReal, print_real_, double);
 DEFINE_CMD1(PrintType, print_type_, type::Type const *);
-DEFINE_CMD1(PrintAddr, print_addr_, IR::Addr);
+DEFINE_CMD1(PrintAddr, print_addr_, ir::Addr);
 DEFINE_CMD1(PrintCharBuffer, print_char_buffer_, std::string_view);
 #undef DEFINE_CMD1
 
@@ -329,7 +329,7 @@ Register FinalizeTuple(Register r) {
 }
 
 RegisterOr<type::Type const *> Tup(base::vector<Val> const &entries) {
-  if (std::all_of(entries.begin(), entries.end(), [](IR::Val const &v) {
+  if (std::all_of(entries.begin(), entries.end(), [](ir::Val const &v) {
         return std::holds_alternative<type::Type const *>(v.value);
       })) {
     std::vector<type::Type const *> types;
@@ -339,11 +339,11 @@ RegisterOr<type::Type const *> Tup(base::vector<Val> const &entries) {
     return type::Tup(std::move(types));
   }
 
-  IR::Register tup = IR::CreateTuple();
+  ir::Register tup = ir::CreateTuple();
   for (auto const &val : entries) {
-    IR::AppendToTuple(tup, val.reg_or<type::Type const *>());
+    ir::AppendToTuple(tup, val.reg_or<type::Type const *>());
   }
-  return IR::FinalizeTuple(tup);
+  return ir::FinalizeTuple(tup);
 }
 
 Register CreateVariant() {
@@ -373,11 +373,11 @@ RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals) {
 
     return type::Var(std::move(types));
   }
-  IR::Register var = IR::CreateVariant();
+  ir::Register var = ir::CreateVariant();
   for (auto const &val : vals) {
-    IR::AppendToVariant(var, val.reg_or<type::Type const *>());
+    ir::AppendToVariant(var, val.reg_or<type::Type const *>());
   }
-  return IR::FinalizeVariant(var);
+  return ir::FinalizeVariant(var);
 }
 
 RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
@@ -431,14 +431,14 @@ Register OutParams::AppendReg(type::Type const *t) {
   return reg;
 }
 
-BlockSequence MakeBlockSeq(base::vector<IR::BlockSequence> const &blocks);
+BlockSequence MakeBlockSeq(base::vector<ir::BlockSequence> const &blocks);
 
 Register CreateBlockSeq() {
   return MakeCmd(type::Type_, Op::CreateBlockSeq).result;
 }
 
 void AppendToBlockSeq(Register block_seq,
-                      RegisterOr<IR::BlockSequence> more_block_seq) {
+                      RegisterOr<ir::BlockSequence> more_block_seq) {
   auto &cmd = MakeCmd(nullptr, Op::AppendToBlockSeq);
   cmd.append_to_block_seq_ =
       Cmd::AppendToBlockSeq::Make(block_seq, more_block_seq);
@@ -452,27 +452,27 @@ Register FinalizeBlockSeq(Register r) {
 
 // TODO replace Val with RegOr<BlockSequence>
 Val BlockSeq(const base::vector<Val> &blocks) {
-  if (std::all_of(blocks.begin(), blocks.end(), [](const IR::Val &v) {
-        return std::holds_alternative<IR::BlockSequence>(v.value);
+  if (std::all_of(blocks.begin(), blocks.end(), [](const ir::Val &v) {
+        return std::holds_alternative<ir::BlockSequence>(v.value);
       })) {
-    std::vector<IR::BlockSequence> block_seqs;
+    std::vector<ir::BlockSequence> block_seqs;
     block_seqs.reserve(blocks.size());
     for (const auto &val : blocks) {
-      block_seqs.push_back(std::get<IR::BlockSequence>(val.value));
+      block_seqs.push_back(std::get<ir::BlockSequence>(val.value));
     }
-    return IR::Val::BlockSeq(MakeBlockSeq(block_seqs));
+    return ir::Val::BlockSeq(MakeBlockSeq(block_seqs));
   }
 
   auto reg = CreateBlockSeq();
   for (auto const &val : blocks) {
-    IR::AppendToBlockSeq(reg, val.reg_or<IR::BlockSequence>());
+    ir::AppendToBlockSeq(reg, val.reg_or<ir::BlockSequence>());
   }
   // TODO can it be an opt block?
-  return IR::Val::Reg(IR::FinalizeBlockSeq(reg), type::Block);
+  return ir::Val::Reg(ir::FinalizeBlockSeq(reg), type::Block);
 }
 
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
-                                  AST::BlockLiteral *lit) {
+                                  ast::BlockLiteral *lit) {
   if (r.is_reg_) {
     auto &cmd               = MakeCmd(type::Bool, Op::BlockSeqContains);
     cmd.block_seq_contains_ = Cmd::BlockSeqContains{{}, r.reg_, lit};
@@ -480,10 +480,10 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
   }
 
   return std::any_of(r.val_.seq_->begin(), r.val_.seq_->end(),
-                     [lit](AST::BlockLiteral *l) { return lit == l; });
+                     [lit](ast::BlockLiteral *l) { return lit == l; });
 }
 
-Register CreateStruct(AST::StructLiteral *lit) {
+Register CreateStruct(ast::StructLiteral *lit) {
   auto &cmd          = MakeCmd(type::Type_, Op::CreateStruct);
   cmd.create_struct_ = Cmd::CreateStruct::Make(lit);
   return cmd.result;
@@ -553,16 +553,16 @@ void SetReturn(size_t n, Val const &v2) {
     return SetReturnCharBuf(n, v2.reg_or<std::string_view>());
   }
   if (v2.type->is<type::Pointer>()) {
-    return SetReturnAddr(n, v2.reg_or<IR::Addr>());
+    return SetReturnAddr(n, v2.reg_or<ir::Addr>());
   }
   if (v2.type->is<type::Function>()) {
     return std::visit(
         [&](auto &val) {
           using val_t = std::decay_t<decltype(val)>;
-          if constexpr (std::is_same_v<val_t, IR::Func *> ||
-                        std::is_same_v<val_t, IR::ForeignFn>) {
-            return SetReturnFunc(n, IR::AnyFunc{val});
-          } else if constexpr (std::is_same_v<val_t, IR::Register>) {
+          if constexpr (std::is_same_v<val_t, ir::Func *> ||
+                        std::is_same_v<val_t, ir::ForeignFn>) {
+            return SetReturnFunc(n, ir::AnyFunc{val});
+          } else if constexpr (std::is_same_v<val_t, ir::Register>) {
             return SetReturnFunc(n, val);
           } else {
             UNREACHABLE(val);
@@ -571,11 +571,11 @@ void SetReturn(size_t n, Val const &v2) {
         v2.value);
   }
   if (v2.type == type::Generic) {
-    return SetReturnGeneric(n, v2.reg_or<AST::FunctionLiteral *>());
+    return SetReturnGeneric(n, v2.reg_or<ast::FunctionLiteral *>());
   }
 
   if (v2.type == type::Scope) {
-    return SetReturnScope(n, v2.reg_or<AST::ScopeLiteral *>());
+    return SetReturnScope(n, v2.reg_or<ast::ScopeLiteral *>());
   }
   if (v2.type == type::Module) {
     return SetReturnModule(n, v2.reg_or<Module const *>());
@@ -661,7 +661,7 @@ void StoreFlags(RegisterOr<FlagsVal> val, Register loc) {
   cmd.store_flags_ = Cmd::StoreFlags::Make(loc, val);
 }
 
-void StoreAddr(RegisterOr<IR::Addr> val, Register loc) {
+void StoreAddr(RegisterOr<ir::Addr> val, Register loc) {
   auto &cmd       = MakeCmd(nullptr, Op::StoreAddr);
   cmd.store_addr_ = Cmd::StoreAddr::Make(loc, val);
 }
@@ -717,12 +717,12 @@ void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r) {
   cmd.set_return_func_ = Cmd::SetReturnFunc::Make(n, r);
 }
 
-void SetReturnGeneric(size_t n, RegisterOr<AST::FunctionLiteral *> r) {
+void SetReturnGeneric(size_t n, RegisterOr<ast::FunctionLiteral *> r) {
   auto &cmd               = MakeCmd(nullptr, Op::SetReturnGeneric);
   cmd.set_return_generic_ = Cmd::SetReturnGeneric::Make(n, r);
 }
 
-void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r) {
+void SetReturnScope(size_t n, RegisterOr<ast::ScopeLiteral *> r) {
   auto &cmd             = MakeCmd(nullptr, Op::SetReturnScope);
   cmd.set_return_scope_ = Cmd::SetReturnScope::Make(n, r);
 }
@@ -753,7 +753,7 @@ Register Load(Register r, type::Type const *t) {
 Register Index(type::Type const *t, Register array_ptr,
                RegisterOr<i32> offset) {
   auto *array_type = &t->as<type::Pointer>().pointee->as<type::Array>();
-  // TODO this works but generates worse IR (both here and in llvm). It's worth
+  // TODO this works but generates worse ir (both here and in llvm). It's worth
   // figuring out how to do this better.
   return PtrIncr(
       array_type->fixed_length
@@ -799,8 +799,8 @@ void ReturnJump() {
 }
 
 void BlockSeqJump(RegisterOr<BlockSequence> bseq,
-                  std::unordered_map<AST::BlockLiteral const *,
-                                     IR::BlockIndex> const *jump_table) {
+                  std::unordered_map<ast::BlockLiteral const *,
+                                     ir::BlockIndex> const *jump_table) {
   auto &cmd           = MakeCmd(nullptr, Op::BlockSeqJump);
   cmd.block_seq_jump_ = Cmd::BlockSeqJump{{}, bseq, jump_table};
 }
@@ -1041,4 +1041,4 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
   }
   UNREACHABLE();
 }
-}  // namespace IR
+}  // namespace ir

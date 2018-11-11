@@ -4,7 +4,7 @@
 #include "ast/declaration.h"
 #include "ast/expression.h"
 
-namespace AST {
+namespace ast {
 struct ScopeLiteral : public Expression {
   ScopeLiteral(bool stateful) : stateful_(stateful) {}
   ~ScopeLiteral() override {}
@@ -14,13 +14,13 @@ struct ScopeLiteral : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   base::vector<Declaration> decls_;
   std::unique_ptr<Scope> body_scope_;
   bool stateful_ = false;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_SCOPE_LITERAL_H

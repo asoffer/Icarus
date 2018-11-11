@@ -21,15 +21,15 @@ struct Variant;
 
 struct Context;
 
-namespace IR {
+namespace ir {
 struct Func;
-}  // namespace IR
+}  // namespace ir
 
-namespace AST {
+namespace ast {
 struct Declaration;
 struct Expression;
 struct Identifier;
-}  // namespace AST
+}  // namespace ast
 
 // TODO names for argumentss of built-in functions (repr, assign, destroy, etc)
 // should be better? Should be necessarily unnamed? Figure it out and be

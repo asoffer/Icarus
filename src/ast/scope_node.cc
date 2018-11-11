@@ -18,15 +18,15 @@
 #include "type/pointer.h"
 #include "type/type.h"
 
-base::vector<IR::Val> EmitCallDispatch(
-    AST::FnArgs<std::pair<AST::Expression *, IR::Val>> const &args,
-    AST::DispatchTable const &dispatch_table, type::Type const *ret_type,
+base::vector<ir::Val> EmitCallDispatch(
+    ast::FnArgs<std::pair<ast::Expression *, ir::Val>> const &args,
+    ast::DispatchTable const &dispatch_table, type::Type const *ret_type,
     Context *ctx);
 
-void ForEachExpr(AST::Expression *expr,
-                 const std::function<void(size_t, AST::Expression *)> &fn);
+void ForEachExpr(ast::Expression *expr,
+                 const std::function<void(size_t, ast::Expression *)> &fn);
 
-namespace AST {
+namespace ast {
 using base::check::Is;
 
 std::string ScopeNode::to_string(size_t n) const {
@@ -87,17 +87,17 @@ void ScopeNode::ExtractJumps(JumpExprs *rets) const {
   UNREACHABLE(expr->to_string(0));
 }
 
-base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
+base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
   ctx->yields_stack_.emplace_back();
   base::defer d([&]() { ctx->yields_stack_.pop_back(); });
 
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
 
-  auto init_block = IR::Func::Current->AddBlock();
-  auto land_block = IR::Func::Current->AddBlock();
+  auto init_block = ir::Func::Current->AddBlock();
+  auto land_block = ir::Func::Current->AddBlock();
 
-  IR::UncondJump(init_block);
-  IR::BasicBlock::Current = init_block;
+  ir::UncondJump(init_block);
+  ir::BasicBlock::Current = init_block;
 
   OverloadSet init_os;
   for (auto &decl : scope_lit->decls_) {
@@ -111,24 +111,24 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
 
   struct BlockData {
     OverloadSet before_os_, after_os_;
-    IR::BlockIndex index_;
+    ir::BlockIndex index_;
     BlockLiteral *lit_;
   };
 
   auto *jump_table =
-      new std::unordered_map<AST::BlockLiteral const *, IR::BlockIndex>{
-          {reinterpret_cast<AST::BlockLiteral const *>(0x1), init_block},
+      new std::unordered_map<ast::BlockLiteral const *, ir::BlockIndex>{
+          {reinterpret_cast<ast::BlockLiteral const *>(0x1), init_block},
           {nullptr, land_block}};
 
   std::unordered_map<BlockNode *, BlockData> block_data;
-  IR::Register alloc;
+  ir::Register alloc;
   type::Type const *state_ptr_type = nullptr, *state_type = nullptr;
   std::unordered_set<type::Type const *> state_types;
   for (auto &block : blocks_) {
     // TODO for now do lookup assuming it's an identifier.
     ASSERT(block->name_, Is<Identifier>());
     auto *decl = name_lookup.at(block->name_->as<Identifier>().token);
-    auto &bseq = *backend::EvaluateAs<IR::BlockSequence>(decl, ctx).seq_;
+    auto &bseq = *backend::EvaluateAs<ir::BlockSequence>(decl, ctx).seq_;
     ASSERT(bseq.size() == 1u);
 
     OverloadSet os_before;
@@ -149,7 +149,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
         state_types.insert(t->as<type::Function>().input[0]);
       }
     }
-    auto block_index        = IR::Func::Current->AddBlock();
+    auto block_index        = ir::Func::Current->AddBlock();
     block_data[block.get()] = {std::move(os_before), std::move(os_after),
                                block_index, bseq[0]};
     jump_table->emplace(bseq[0], block_index);
@@ -160,7 +160,7 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     state_ptr_type = *state_types.begin();
     ASSERT(state_ptr_type, Is<type::Pointer>());
     state_type = state_ptr_type->as<type::Pointer>().pointee;
-    alloc      = IR::Alloca(state_type);
+    alloc      = ir::Alloca(state_type);
     state_type->EmitInit(alloc, ctx);
   }
 
@@ -175,8 +175,8 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
                              expr->EmitIR(ctx)[0]);
           }),
           dispatch_table, result_type, ctx)[0]
-          .reg_or<IR::BlockSequence>();
-  IR::BlockSeqJump(block_seq, jump_table);
+          .reg_or<ir::BlockSequence>();
+  ir::BlockSeqJump(block_seq, jump_table);
 
   Identifier *state_id = nullptr;
 
@@ -187,14 +187,14 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
 
   for (auto &block : blocks_) {
     auto &data              = block_data[block.get()];
-    IR::BasicBlock::Current = data.index_;
+    ir::BasicBlock::Current = data.index_;
 
-    FnArgs<std::pair<Expression *, IR::Val>> before_args;
+    FnArgs<std::pair<Expression *, ir::Val>> before_args;
     FnArgs<Expression *> before_expr_args;
 
     if (scope_lit->stateful_) {
       before_args.pos_.emplace_back(state_id,
-                                    IR::Val::Reg(alloc, state_ptr_type));
+                                    ir::Val::Reg(alloc, state_ptr_type));
       before_expr_args.pos_.push_back(state_id);
     }
     auto[dispatch_table, result_type] =
@@ -207,11 +207,11 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
     auto yields = std::move(ctx->yields_stack_.back());
 
     FnArgs<Expression *> after_expr_args;
-    FnArgs<std::pair<Expression *, IR::Val>> after_args;
+    FnArgs<std::pair<Expression *, ir::Val>> after_args;
     if (scope_lit->stateful_) {
       after_expr_args.pos_.push_back(state_id);
       after_args.pos_.emplace_back(state_id,
-                                   IR::Val::Reg(alloc, state_ptr_type));
+                                   ir::Val::Reg(alloc, state_ptr_type));
     }
     for (auto &yield : yields) { 
       after_expr_args.pos_.push_back(yield.expr_);
@@ -222,9 +222,9 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
         DispatchTable::Make(after_expr_args, data.after_os_, ctx);
     auto call_exit_result =
         EmitCallDispatch(after_args, dispatch_table, result_type, ctx)[0]
-            .reg_or<IR::BlockSequence>();
+            .reg_or<ir::BlockSequence>();
 
-    IR::BlockSeqJump(call_exit_result, jump_table);
+    ir::BlockSeqJump(call_exit_result, jump_table);
   }
 
   {  // Landing block
@@ -235,12 +235,12 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
       }
     }
 
-    IR::BasicBlock::Current = land_block;
+    ir::BasicBlock::Current = land_block;
 
     FnArgs<Expression *> expr_args;
-    FnArgs<std::pair<Expression *, IR::Val>> args;
+    FnArgs<std::pair<Expression *, ir::Val>> args;
     if (scope_lit->stateful_) {
-      args.pos_.emplace_back(state_id, IR::Val::Reg(alloc, state_ptr_type));
+      args.pos_.emplace_back(state_id, ir::Val::Reg(alloc, state_ptr_type));
       expr_args.pos_.push_back(state_id);
     }
     std::tie(dispatch_table, result_type) =
@@ -252,5 +252,5 @@ base::vector<IR::Val> AST::ScopeNode::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<IR::Register> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
-}  // namespace AST
+base::vector<ir::Register> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
+}  // namespace ast

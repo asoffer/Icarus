@@ -24,7 +24,7 @@ struct Variant : public Type {
 
  private:
   mutable std::mutex mtx_;
-  mutable IR::Func *repr_func_ = nullptr;
+  mutable ir::Func *repr_func_ = nullptr;
 };
 
 }  // namespace type

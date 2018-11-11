@@ -3,7 +3,7 @@
 
 #include "ast/expression.h"
 
-namespace AST {
+namespace ast {
 struct ArrayLiteral : public Expression {
   ~ArrayLiteral() override {}
   std::string to_string(size_t n) const override;
@@ -12,12 +12,12 @@ struct ArrayLiteral : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   // TODO replace with a comma-list
   base::vector<std::unique_ptr<Expression>> elems_;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_ARRAY_LITERAL_H

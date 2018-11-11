@@ -12,13 +12,13 @@
 
 struct Architecture;
 
-namespace AST {
+namespace ast {
 struct StructLiteral;
-}  // namespace AST
+}  // namespace ast
 
-namespace IR {
+namespace ir {
 struct Func;
-}  // namespace IR
+}  // namespace ir
 
 namespace type {
 struct Struct : public Type {
@@ -27,7 +27,7 @@ struct Struct : public Type {
     // TODO make a string_view but deal with trickiness of moving
     std::string name;
     const Type *type = nullptr;
-    IR::Val init_val;
+    ir::Val init_val;
   };
 
   virtual ~Struct() {}
@@ -42,7 +42,7 @@ struct Struct : public Type {
                        [](Field const &f) { return f.type->needs_destroy(); });
   }
 
-  static Struct *Make(AST::StructLiteral *lit);
+  static Struct *Make(ast::StructLiteral *lit);
   void finalize();
 
   size_t offset(size_t n, Architecture const &arch) const;
@@ -61,11 +61,11 @@ struct Struct : public Type {
   base::unordered_map<std::string, size_t> field_indices_;
 
   mutable std::mutex mtx_;
-  mutable IR::Func *init_func_ = nullptr, *assign_func = nullptr,
+  mutable ir::Func *init_func_ = nullptr, *assign_func = nullptr,
                    *destroy_func_ = nullptr, *repr_func_ = nullptr;
   // TODO This probably doesn't need any thread safety guarantees, but I'm not
   // sure yet.
-  mutable std::atomic<AST::StructLiteral *> to_be_completed_ = nullptr;
+  mutable std::atomic<ast::StructLiteral *> to_be_completed_ = nullptr;
 };
 
 }  // namespace type

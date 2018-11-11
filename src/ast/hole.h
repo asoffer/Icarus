@@ -4,7 +4,7 @@
 #include "ast/expression.h"
 #include "ir/val.h"
 
-namespace AST {
+namespace ast {
 // TODO currently needs to be an identifier because Declaration::identifier has
 // that type. This will change when declarations support commalists too at which
 // point this can be replaced with inheriting from Expression.
@@ -19,9 +19,9 @@ struct Hole : public Expression {
   type::Type const *VerifyType(Context *) { return nullptr; }
   void Validate(Context *ctx) {}
 
-  base::vector<IR::Val> EmitIR(Context *) override { return {IR::Val::None()}; }
-  base::vector<IR::Register> EmitLVal(Context *) override { UNREACHABLE(); }
+  base::vector<ir::Val> EmitIR(Context *) override { return {ir::Val::None()}; }
+  base::vector<ir::Register> EmitLVal(Context *) override { UNREACHABLE(); }
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_HOLE_H

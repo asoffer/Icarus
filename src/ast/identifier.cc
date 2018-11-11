@@ -13,7 +13,7 @@
 #include "type/pointer.h"
 #include "type/type.h"
 
-namespace AST {
+namespace ast {
 void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
 
 type::Type const *Identifier::VerifyType(Context *ctx) {
@@ -78,21 +78,21 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
 
 void Identifier::Validate(Context *ctx) {}
 
-base::vector<IR::Val> AST::Identifier::EmitIR(Context *ctx) {
+base::vector<ir::Val> ast::Identifier::EmitIR(Context *ctx) {
   if (ASSERT_NOT_NULL(decl)->const_) {
     return decl->EmitIR(ctx);
   } else if (decl->is_arg_) {
-    return {IR::Val::Reg(ctx->addr(decl), ctx->type_of(this))};
+    return {ir::Val::Reg(ctx->addr(decl), ctx->type_of(this))};
   } else {
     auto *t = ASSERT_NOT_NULL(ctx->type_of(this));
-    return {IR::Val::Reg(IR::PtrFix(EmitLVal(ctx)[0], t), t)};
+    return {ir::Val::Reg(ir::PtrFix(EmitLVal(ctx)[0], t), t)};
   }
 }
 
-base::vector<IR::Register> AST::Identifier::EmitLVal(Context *ctx) {
+base::vector<ir::Register> ast::Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
   ASSERT(!decl->const_);
   return {ctx->addr(decl)};
 }
 
-}  // namespace AST
+}  // namespace ast

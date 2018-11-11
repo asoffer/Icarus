@@ -5,23 +5,23 @@
 #include "base/strong_types.h"
 #include "base/types.h"
 
-DEFINE_STRONG_INT(IR, BlockIndex, i32, -1);
-DEFINE_STRONG_INT(IR, EnumVal, size_t, 0);
-DEFINE_STRONG_INT(IR, FlagsVal, size_t, 0);
-DEFINE_STRONG_INT(IR, BuiltinGenericIndex, i32, -1);
+DEFINE_STRONG_INT(ir, BlockIndex, i32, -1);
+DEFINE_STRONG_INT(ir, EnumVal, size_t, 0);
+DEFINE_STRONG_INT(ir, FlagsVal, size_t, 0);
+DEFINE_STRONG_INT(ir, BuiltinGenericIndex, i32, -1);
 
-DEFINE_STRONG_INT(IR, Register, i32, std::numeric_limits<i32>::lowest());
+DEFINE_STRONG_INT(ir, Register, i32, std::numeric_limits<i32>::lowest());
 
-namespace AST {
+namespace ast {
 struct Expression;
 struct BlockLiteral;
-}  // namespace AST
+}  // namespace ast
 
-namespace IR {
+namespace ir {
 struct Func;
 
 struct BlockSequence {
-  base::vector<AST::BlockLiteral *> const *seq_;
+  base::vector<ast::BlockLiteral *> const *seq_;
 };
 inline std::ostream &operator<<(std::ostream &os, BlockSequence b) {
   return os << base::internal::stringify(*b.seq_);
@@ -39,7 +39,7 @@ inline bool operator<(const BlockSequence &lhs, const BlockSequence &rhs) {
 
 struct ForeignFn {
   std::string_view name_;
-  AST::Expression *expr_;
+  ast::Expression *expr_;
 };
 inline bool operator==(ForeignFn lhs, ForeignFn rhs) {
   return lhs.name_ == rhs.name_;
@@ -56,7 +56,7 @@ struct AnyFunc {
   AnyFunc(Func *fn = nullptr) : fn_(fn), is_fn_(true) {}
   AnyFunc(ForeignFn foreign) : foreign_(foreign), is_fn_(false) {}
   union {
-    IR::Func *fn_;
+    ir::Func *fn_;
     ForeignFn foreign_;
   };
   bool is_fn_;
@@ -117,6 +117,6 @@ struct RegisterOr {
   bool is_reg_;
 };
 
-}  // namespace IR
+}  // namespace ir
 
 #endif  // ICARUS_IR_REGISTER_H

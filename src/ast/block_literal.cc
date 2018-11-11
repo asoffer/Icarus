@@ -6,7 +6,7 @@
 #include "type/function.h"
 #include "type/primitive.h"
 
-namespace AST {
+namespace ast {
 BlockLiteral::BlockLiteral(bool required) : required_(required) {}
 
 std::string BlockLiteral::to_string(size_t n) const {
@@ -62,14 +62,14 @@ void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &a : after_) { a->ExtractJumps(rets); }
 }
 
-base::vector<IR::Val> AST::BlockLiteral::EmitIR(Context *ctx) {
+base::vector<ir::Val> ast::BlockLiteral::EmitIR(Context *ctx) {
   for (auto& b : before_) { b->EmitIR(ctx); }
   for (auto& a : after_) { a->EmitIR(ctx); }
-  return {IR::Val::Block(this)};
+  return {ir::Val::Block(this)};
 }
 
-base::vector<IR::Register> BlockLiteral::EmitLVal(Context *) {
+base::vector<ir::Register> BlockLiteral::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
 
-}  // namespace AST
+}  // namespace ast

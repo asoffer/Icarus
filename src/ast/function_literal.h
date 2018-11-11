@@ -14,11 +14,11 @@
 
 struct Module;
 
-namespace IR {
+namespace ir {
 struct Func;
-}  // namespace IR
+}  // namespace ir
 
-namespace AST {
+namespace ast {
 
 struct FunctionLiteral : public Expression {
   // Represents a function with all constants bound to some value.
@@ -34,8 +34,8 @@ struct FunctionLiteral : public Expression {
 
   type::Type const *VerifyTypeConcrete(Context *);
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   void CompleteBody(Context *ctx);
 
@@ -52,6 +52,6 @@ struct FunctionLiteral : public Expression {
   bool return_type_inferred_ = false;
   Module *module_            = nullptr;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_FUNCTION_LITERAL_H

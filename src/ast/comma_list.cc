@@ -3,7 +3,7 @@
 #include "ast/verify_macros.h"
 #include "type/tuple.h"
 
-namespace AST {
+namespace ast {
 std::string CommaList::to_string(size_t n) const {
   std::stringstream ss;
   if (exprs.empty()) { return "()"; }
@@ -52,18 +52,18 @@ void CommaList::ExtractJumps(JumpExprs *rets) const {
   for (auto &expr : exprs) { expr->ExtractJumps(rets); }
 }
 
-base::vector<IR::Val> CommaList::EmitIR(Context *ctx) {
-  base::vector<IR::Val> results;
+base::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
+  base::vector<ir::Val> results;
   results.reserve(exprs.size());
   for (auto &expr : exprs) { results.push_back(expr->EmitIR(ctx)[0]); }
   return results;
 }
 
-base::vector<IR::Register> CommaList::EmitLVal(Context *ctx) {
-  base::vector<IR::Register> results;
+base::vector<ir::Register> CommaList::EmitLVal(Context *ctx) {
+  base::vector<ir::Register> results;
   results.reserve(exprs.size());
   for (auto &expr : exprs) { results.push_back(expr->EmitLVal(ctx)[0]); }
   return results;
 }
 
-}  // namespace AST
+}  // namespace ast

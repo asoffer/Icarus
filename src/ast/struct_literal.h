@@ -8,7 +8,7 @@ namespace type {
 struct Struct;
 }  // namespace type
 
-namespace AST {
+namespace ast {
 struct StructLiteral : public Expression {
   StructLiteral()                          = default;
   StructLiteral(StructLiteral &&) noexcept = default;
@@ -24,14 +24,14 @@ struct StructLiteral : public Expression {
 
   void Complete(type::Struct *s);
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   std::unique_ptr<DeclScope> type_scope;
   // TODO declartaions directly. don't need unique_ptr indirection.
   base::vector<std::unique_ptr<Declaration>> fields_;
   Module *mod_ = nullptr;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_STRUCT_LITERAL_H

@@ -2,8 +2,8 @@
 
 #include "context.h"
 
-namespace AST {
-Terminal::Terminal(const TextSpan &span, IR::Val val) : Expression(span) {
+namespace ast {
+Terminal::Terminal(const TextSpan &span, ir::Val val) : Expression(span) {
   value = std::move(val);
 }
 
@@ -17,9 +17,9 @@ type::Type const *Terminal::VerifyType(Context *ctx) {
   return value.type;
 }
 
-base::vector<IR::Val> Terminal::EmitIR(Context *) { return {value}; }
-base::vector<IR::Register> Terminal::EmitLVal(Context *ct) {
+base::vector<ir::Val> Terminal::EmitIR(Context *) { return {value}; }
+base::vector<ir::Register> Terminal::EmitLVal(Context *ct) {
   UNREACHABLE(this);
 }
 
-}  // namespace AST
+}  // namespace ast

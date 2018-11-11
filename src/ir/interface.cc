@@ -2,7 +2,7 @@
 
 #include "type/all.h"
 
-namespace IR {
+namespace ir {
 base::vector<std::string> Interface::MatchErrors(const type::Type* t) const {
   base::vector<std::string> errors;
   if (!field_map_.empty()) {
@@ -37,4 +37,4 @@ base::vector<std::string> Interface::MatchErrors(const type::Type* t) const {
 
   return errors;
 }
-}  // namespace IR
+}  // namespace ir

@@ -9,9 +9,9 @@
 #include "ast/function_literal.h"
 #include "base/check.h"
 #include "ir/func.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Module.h"
+#include "llvm/ir/DerivedTypes.h"
+#include "llvm/ir/IRBuilder.h"
+#include "llvm/ir/Module.h"
 #include "type/all.h"
 
 // TODO remove dependence on printf, malloc, free
@@ -37,17 +37,17 @@ struct LlvmData {
   llvm::Function *fn;
   llvm::Module *module;
   llvm::IRBuilder<> *builder;
-  base::unordered_map<IR::Register, llvm::Value *> regs;
+  base::unordered_map<ir::Register, llvm::Value *> regs;
   base::vector<llvm::BasicBlock *> blocks;
   base::vector<llvm::Value *> rets;
 };
 }  // namespace
 
 static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
-                              const IR::Val &val) {
+                              const ir::Val &val) {
   return std::visit(
       base::overloaded{
-          [&](IR::Register reg) -> llvm::Value * {
+          [&](ir::Register reg) -> llvm::Value * {
             if (static_cast<size_t>(reg.value) < num_args) {
               return llvm_data->fn->arg_begin() + reg.value;
             }
@@ -55,15 +55,15 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             // TODO still need to be sure these are read in the correct order
             return llvm_data->regs.at(reg);
           },
-          [&](IR::Addr addr) -> llvm::Value * {
+          [&](ir::Addr addr) -> llvm::Value * {
             switch (addr.kind) {
-              case IR::Addr::Kind::Null:
+              case ir::Addr::Kind::Null:
                 ASSERT(val.type, Is<type::Pointer>());
                 return llvm::ConstantPointerNull::get(
                     val.type->as<type::Pointer>().llvm_ptr(
                         llvm_data->module->getContext()));
-              case IR::Addr::Kind::Stack: NOT_YET();
-              case IR::Addr::Kind::Heap: NOT_YET();
+              case ir::Addr::Kind::Stack: NOT_YET();
+              case ir::Addr::Kind::Heap: NOT_YET();
             }
             UNREACHABLE();
           },
@@ -83,11 +83,11 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             return llvm::ConstantInt::get(llvm_data->module->getContext(),
                                           llvm::APInt(32, n, true));
           },
-          [&](IR::EnumVal e) -> llvm::Value * {
+          [&](ir::EnumVal e) -> llvm::Value * {
             return llvm::ConstantInt::get(llvm_data->module->getContext(),
                                           llvm::APInt(32, e.value, true));
           },
-          [&](IR::FlagsVal e) -> llvm::Value * {
+          [&](ir::FlagsVal e) -> llvm::Value * {
             return llvm::ConstantInt::get(llvm_data->module->getContext(),
                                           llvm::APInt(32, e.value, true));
           },
@@ -97,27 +97,27 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
                 llvm_data->module->getContext(),
                 llvm::APInt(64, reinterpret_cast<uintptr_t>(t), false));
           },
-          [&](IR::Func *f) -> llvm::Value * {
+          [&](ir::Func *f) -> llvm::Value * {
             return llvm_data->module->getOrInsertFunction(
                 f->name(), f->type_->llvm_fn(llvm_data->module->getContext()));
           },
-          [&](AST::ScopeLiteral *s) -> llvm::Value * { NOT_YET(); },
-          [&](const AST::CodeBlock &c) -> llvm::Value * { NOT_YET(); },
-          [&](AST::Expression *e) -> llvm::Value * { NOT_YET(); },
-          [&](IR::Interface b) -> llvm::Value * { UNREACHABLE(); },
-          [&](IR::BlockIndex b) -> llvm::Value * { NOT_YET(); },
+          [&](ast::ScopeLiteral *s) -> llvm::Value * { NOT_YET(); },
+          [&](const ast::CodeBlock &c) -> llvm::Value * { NOT_YET(); },
+          [&](ast::Expression *e) -> llvm::Value * { NOT_YET(); },
+          [&](ir::Interface b) -> llvm::Value * { UNREACHABLE(); },
+          [&](ir::BlockIndex b) -> llvm::Value * { NOT_YET(); },
           [&](std::string_view s) -> llvm::Value * {
             // TODO this is wrong because strings aren't char*, but maybe it's
             // okay and we can do promotion later?
             return StringConstant(llvm_data->builder, s);
           },
-          [&](const IR::BlockSequence &bs) -> llvm::Value * { NOT_YET(); },
-          [&](const IR::BuiltinGenericIndex &bgi) -> llvm::Value * {
+          [&](const ir::BlockSequence &bs) -> llvm::Value * { NOT_YET(); },
+          [&](const ir::BuiltinGenericIndex &bgi) -> llvm::Value * {
             NOT_YET();
           },
-          [&](const IR::ForeignFn &f) -> llvm::Value * { NOT_YET(); }
+          [&](const ir::ForeignFn &f) -> llvm::Value * { NOT_YET(); }
           /*
-          [&](AST::FunctionLiteral *fn) -> llvm::Value * {
+          [&](ast::FunctionLiteral *fn) -> llvm::Value * {
             return llvm_data->module->getOrInsertFunction(
                 fn->ir_func_->name(), fn->ir_func_->type_->llvm_fn(
                                           llvm_data->module->getContext()));
@@ -127,25 +127,25 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
 }
 
 static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
-                            const IR::Cmd &cmd) {
+                            const ir::Cmd &cmd) {
   size_t num_args = fn_type->input.size();
   size_t num_rets = fn_type->output.size();
 
   auto &ctx = llvm_data->module->getContext();
   switch (cmd.op_code_) {
-    case IR::Op::Alloca:
+    case ir::Op::Alloca:
       return llvm_data->builder->CreateAlloca(cmd.alloca_.type_->llvm(ctx));
-    case IR::Op::Store:
+    case ir::Op::Store:
       // TODO in the case of a function, we are given the declaration but we
       // actually need to extract the corresponding function pointer.
       return llvm_data->builder->CreateStore(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           EmitValue(num_args, llvm_data, cmd.args[1]));
-    case IR::Op::Load:
+    case ir::Op::Load:
       return llvm_data->builder->CreateLoad(
           EmitValue(num_args, llvm_data, cmd.args[0]));
 #define ARITHMETIC_CASE(op, llvm_float, llvm_int)                              \
-  case IR::Op::op: {                                                           \
+  case ir::Op::op: {                                                           \
     auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);                   \
     auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);                   \
     if (cmd.type == type::Real) {                                              \
@@ -159,40 +159,40 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       ARITHMETIC_CASE(Mul, CreateFMul, CreateMul);
       ARITHMETIC_CASE(Div, CreateFDiv, CreateSDiv);
 #undef ARITHMETIC_CASE
-    case IR::Op::Mod:
+    case ir::Op::Mod:
       return llvm_data->builder->CreateSRem(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           EmitValue(num_args, llvm_data, cmd.args[1]));
     // TODO support fmod, or stop supporting elsewhere
-    case IR::Op::Not:
+    case ir::Op::Not:
       return llvm_data->builder->CreateNot(
           EmitValue(num_args, llvm_data, cmd.args[0]));
-    case IR::Op::NegInt:
-    case IR::Op::NegReal:
+    case ir::Op::NegInt:
+    case ir::Op::NegReal:
       return llvm_data->builder->CreateNeg(
           EmitValue(num_args, llvm_data, cmd.args[0]));
-    case IR::Op::Or:
+    case ir::Op::Or:
       return llvm_data->builder->CreateOr(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           EmitValue(num_args, llvm_data, cmd.args[1]));
-    case IR::Op::And:
+    case ir::Op::And:
       return llvm_data->builder->CreateAnd(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           EmitValue(num_args, llvm_data, cmd.args[1]));
-    case IR::Op::Xor:
+    case ir::Op::Xor:
       return llvm_data->builder->CreateXor(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           EmitValue(num_args, llvm_data, cmd.args[1]));
-    case IR::Op::UncondJump:
+    case ir::Op::UncondJump:
       // TODO use EmitValue?
       return llvm_data->builder->CreateBr(
-          llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[0].value).value]);
-    case IR::Op::CondJump:
+          llvm_data->blocks[std::get<ir::BlockIndex>(cmd.args[0].value).value]);
+    case ir::Op::CondJump:
       return llvm_data->builder->CreateCondBr(
           EmitValue(num_args, llvm_data, cmd.args[0]),
-          llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[1].value).value],
-          llvm_data->blocks[std::get<IR::BlockIndex>(cmd.args[2].value).value]);
-    case IR::Op::ReturnJump:
+          llvm_data->blocks[std::get<ir::BlockIndex>(cmd.args[1].value).value],
+          llvm_data->blocks[std::get<ir::BlockIndex>(cmd.args[2].value).value]);
+    case ir::Op::ReturnJump:
       if (num_rets == 1 && !fn_type->output.at(0)->is_big()) {
         llvm_data->builder->CreateRet(
             llvm_data->builder->CreateLoad(llvm_data->rets.at(0)));
@@ -200,15 +200,15 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
         llvm_data->builder->CreateRetVoid();
       }
       return nullptr;
-    case IR::Op::Trunc:
+    case ir::Op::Trunc:
       return llvm_data->builder->CreateTrunc(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           llvm::Type::getInt8Ty(ctx), "trunc");
-    case IR::Op::Extend:
+    case ir::Op::Extend:
       return llvm_data->builder->CreateTrunc(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           llvm::Type::getInt32Ty(ctx), "ext");
-    case IR::Op::Print: {
+    case ir::Op::Print: {
       auto *printf_fn = llvm_data->module->getOrInsertFunction(
           "printf",
           llvm::FunctionType::get(
@@ -256,7 +256,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
         }
       }
     } break;
-    case IR::Op::Malloc: {
+    case ir::Op::Malloc: {
       // TODO cast from void*?
       auto *malloc_fn = llvm_data->module->getOrInsertFunction(
           "malloc",
@@ -272,7 +272,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
                                    cmd.type->as<type::Pointer>().pointee),
                                false))});
     } break;
-    case IR::Op::Free: {
+    case ir::Op::Free: {
       // TODO cast to void* first?
       auto *free_fn = llvm_data->module->getOrInsertFunction(
           "free", llvm::FunctionType::get(
@@ -281,7 +281,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       return llvm_data->builder->CreateCall(
           free_fn, {EmitValue(num_args, llvm_data, cmd.args[0])});
     } break;
-    case IR::Op::Call: {
+    case ir::Op::Call: {
       base::vector<llvm::Value *> values;
       values.reserve(cmd.args.size());
       for (const auto &arg : cmd.args) {
@@ -291,7 +291,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       values.pop_back();
       return llvm_data->builder->CreateCall(fn, values);
     } break;
-    case IR::Op::Lt: {
+    case ir::Op::Lt: {
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
@@ -300,7 +300,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
                  ? llvm_data->builder->CreateFCmpOLT(lhs, rhs)
                  : llvm_data->builder->CreateICmpSLT(lhs, rhs);
     }
-    case IR::Op::Le: {
+    case ir::Op::Le: {
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
@@ -309,7 +309,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
                  ? llvm_data->builder->CreateFCmpOLE(lhs, rhs)
                  : llvm_data->builder->CreateICmpSLE(lhs, rhs);
     }
-    case IR::Op::Eq: {
+    case ir::Op::Eq: {
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
@@ -325,7 +325,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
         NOT_YET(cmd.args[0].type, " vs ", cmd.args[1].type);
       }
     }
-    case IR::Op::Ne: {
+    case ir::Op::Ne: {
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
@@ -341,7 +341,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
         NOT_YET(cmd.args[0].type, " vs ", cmd.args[1].type);
       }
     }
-    case IR::Op::Ge: {
+    case ir::Op::Ge: {
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
@@ -350,7 +350,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
                  ? llvm_data->builder->CreateFCmpOGE(lhs, rhs)
                  : llvm_data->builder->CreateICmpSGE(lhs, rhs);
     }
-    case IR::Op::Gt: {
+    case ir::Op::Gt: {
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
       // Correct for enum flags?
@@ -359,13 +359,13 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
                  ? llvm_data->builder->CreateFCmpOGT(lhs, rhs)
                  : llvm_data->builder->CreateICmpSGT(lhs, rhs);
     }
-    case IR::Op::ArrayLength:
+    case ir::Op::ArrayLength:
       // TODO use a struct gep on a generic array llvm struct type holding an
       // int and a void*.
       return llvm_data->builder->CreatePointerCast(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           llvm::Type::getInt32Ty(ctx)->getPointerTo(0));
-    case IR::Op::ArrayData:
+    case ir::Op::ArrayData:
       // TODO use a struct gep on a generic array llvm struct type holding an
       // int and a void*. Then cast to actual type.
       return llvm_data->builder->CreatePointerCast(
@@ -375,12 +375,12 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
                   llvm::Type::getInt32Ty(ctx)->getPointerTo(0)),
               llvm::ConstantInt::get(ctx, llvm::APInt(32, 1, false))),
           cmd.type->llvm(ctx));
-    case IR::Op::VariantType:
+    case ir::Op::VariantType:
       // TODO 64-bit int for type? Maybe more type-safety would be nice.
       return llvm_data->builder->CreatePointerCast(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           llvm::Type::getInt64Ty(ctx)->getPointerTo(0));
-    case IR::Op::VariantValue:
+    case ir::Op::VariantValue:
       // TODO use a struct gep on a generic array llvm struct type holding an
       // int and a void*. Then cast to actual type.
       return llvm_data->builder->CreatePointerCast(
@@ -390,12 +390,12 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
                   llvm::Type::getInt64Ty(ctx)->getPointerTo(0)),
               llvm::ConstantInt::get(ctx, llvm::APInt(64, 1, false))),
           cmd.type->llvm(ctx));
-    case IR::Op::Phi:
+    case ir::Op::Phi:
       // We have to skip the phi->addIncoming here because the values may not
       // yet have been seen from a future basic block.
       return llvm_data->builder->CreatePHI(cmd.type->llvm(ctx),
                                            cmd.args.size() / 2);
-    case IR::Op::Field:
+    case ir::Op::Field:
       return llvm_data->builder->CreateStructGEP(
           cmd.args[0]
               .type->as<type::Pointer>()
@@ -403,15 +403,15 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
               .llvm(ctx),
           EmitValue(num_args, llvm_data, cmd.args[0]),
           static_cast<u32>(std::get<i32>(cmd.args[1].value)));
-    case IR::Op::PtrIncr:
+    case ir::Op::PtrIncr:
       return llvm_data->builder->CreateGEP(
           EmitValue(num_args, llvm_data, cmd.args[0]),
           EmitValue(num_args, llvm_data, cmd.args[1]));
-    case IR::Op::SetReturn:
+    case ir::Op::SetReturn:
       return llvm_data->builder->CreateStore(
           EmitValue(num_args, llvm_data, cmd.args[1]),
           EmitValue(num_args, llvm_data, cmd.args[0]));
-    case IR::Op::Cast: {
+    case ir::Op::Cast: {
       if (cmd.args[0].type == cmd.type) {
         return EmitValue(num_args, llvm_data, cmd.args[0]);
       } else if (cmd.args[0].type == type::Int && cmd.type == type::Real) {
@@ -431,26 +431,26 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       }
       UNREACHABLE(cmd);
     } break;
-    case IR::Op::Align: UNREACHABLE();
-    case IR::Op::Bytes: UNREACHABLE();
-    case IR::Op::Tup: UNREACHABLE();
-    case IR::Op::BlockSeq: UNREACHABLE();
-    case IR::Op::BlockSeqContains: UNREACHABLE();
-    case IR::Op::CreateStruct: UNREACHABLE();
-    case IR::Op::CreateStructField: UNREACHABLE();
-    case IR::Op::SetStructFieldName: UNREACHABLE();
-    case IR::Op::FinalizeStruct: UNREACHABLE();
-    case IR::Op::Variant: UNREACHABLE();
-    case IR::Op::Arrow: UNREACHABLE();
-    case IR::Op::Array: UNREACHABLE();
-    case IR::Op::Ptr: UNREACHABLE();
-    case IR::Op::Err: UNREACHABLE();
-    case IR::Op::Contextualize: UNREACHABLE();
+    case ir::Op::Align: UNREACHABLE();
+    case ir::Op::Bytes: UNREACHABLE();
+    case ir::Op::Tup: UNREACHABLE();
+    case ir::Op::BlockSeq: UNREACHABLE();
+    case ir::Op::BlockSeqContains: UNREACHABLE();
+    case ir::Op::CreateStruct: UNREACHABLE();
+    case ir::Op::CreateStructField: UNREACHABLE();
+    case ir::Op::SetStructFieldName: UNREACHABLE();
+    case ir::Op::FinalizeStruct: UNREACHABLE();
+    case ir::Op::Variant: UNREACHABLE();
+    case ir::Op::Arrow: UNREACHABLE();
+    case ir::Op::Array: UNREACHABLE();
+    case ir::Op::Ptr: UNREACHABLE();
+    case ir::Op::Err: UNREACHABLE();
+    case ir::Op::Contextualize: UNREACHABLE();
   }
   UNREACHABLE();
 }
 
-void EmitAll(const base::vector<std::unique_ptr<IR::Func>> &fns,
+void EmitAll(const base::vector<std::unique_ptr<ir::Func>> &fns,
              llvm::Module *module) {
   auto &ctx = module->getContext();
   llvm::IRBuilder<> builder(ctx);
@@ -494,13 +494,13 @@ void EmitAll(const base::vector<std::unique_ptr<IR::Func>> &fns,
 
     for (size_t i = 0; i < fn->blocks_.size(); ++i) {
       for (const auto &cmd : fn->blocks_[i].cmds_) {
-        if (cmd.op_code_ != IR::Op::Phi) { continue; }
+        if (cmd.op_code_ != ir::Op::Phi) { continue; }
         llvm::Value *phi = llvm_data.regs[cmd.result];
         for (size_t i = 0; i < cmd.args.size(); i += 2) {
           llvm::cast<llvm::PHINode>(phi)->addIncoming(
               EmitValue(fn->type_->output.size(), &llvm_data, cmd.args[i + 1]),
               llvm_data
-                  .blocks[std::get<IR::BlockIndex>(cmd.args[i].value).value]);
+                  .blocks[std::get<ir::BlockIndex>(cmd.args[i].value).value]);
         }
       }
     }

@@ -7,7 +7,7 @@
 #include "type/array.h"
 #include "type/pointer.h"
 
-namespace AST {
+namespace ast {
 void ArrayLiteral::assign_scope(Scope *scope) {
   scope_ = scope;
   for (auto &el : elems_) { el->assign_scope(scope); }
@@ -69,21 +69,21 @@ void ArrayLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &el : elems_) { el->ExtractJumps(rets); }
 }
 
-base::vector<IR::Val> AST::ArrayLiteral::EmitIR(Context *ctx) {
+base::vector<ir::Val> ast::ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = ctx->type_of(this);
-  auto alloc      = IR::Alloca(this_type);
-  auto array_val  = IR::Val::Reg(alloc, type::Ptr(this_type));
+  auto alloc      = ir::Alloca(this_type);
+  auto array_val  = ir::Val::Reg(alloc, type::Ptr(this_type));
   auto *data_type = this_type->as<type::Array>().data_type;
   for (size_t i = 0; i < elems_.size(); ++i) {
     type::EmitMoveInit(
         data_type, data_type, elems_[i]->EmitIR(ctx)[0],
-        IR::Index(type::Ptr(this_type), alloc, static_cast<i32>(i)), ctx);
+        ir::Index(type::Ptr(this_type), alloc, static_cast<i32>(i)), ctx);
   }
   return {array_val};
 }
 
-base::vector<IR::Register> AST::ArrayLiteral::EmitLVal(Context *ctx) {
+base::vector<ir::Register> ast::ArrayLiteral::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
-}  // namespace AST
+}  // namespace ast

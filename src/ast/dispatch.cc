@@ -12,12 +12,12 @@
 #include "type/tuple.h"
 #include "type/variant.h"
 
-namespace AST {
+namespace ast {
 using base::check::Is;
 
 struct DispatchTableRow {
   bool SetTypes(type::Typed<Expression *, type::Function> fn, Context *ctx);
-  bool SetTypes(IR::Func const &fn, FnArgs<Expression *> const &args,
+  bool SetTypes(ir::Func const &fn, FnArgs<Expression *> const &args,
                 Context *ctx);
   bool SetTypes(FunctionLiteral const &fn, FnArgs<Expression *> const &args,
                 Context *ctx);
@@ -39,7 +39,7 @@ struct DispatchTableRow {
       FnArgs<Expression *> const &args, Context *ctx);
   static std::optional<DispatchTableRow> MakeFromIrFunc(
       type::Typed<Expression *, type::Callable> fn_option,
-      IR::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx);
+      ir::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx);
 
   static std::optional<DispatchTableRow> MakeFromFnLit(
       type::Typed<Expression *, type::Callable> fn_option,
@@ -99,7 +99,7 @@ bool DispatchTableRow::SetTypes(FunctionLiteral const &fn,
   return true;
 }
 
-bool DispatchTableRow::SetTypes(IR::Func const &fn,
+bool DispatchTableRow::SetTypes(ir::Func const &fn,
                                 FnArgs<Expression *> const &args,
                                 Context *ctx) {
   call_arg_types_.pos_.resize(args.pos_.size());
@@ -170,11 +170,11 @@ std::optional<DispatchTableRow> DispatchTableRow::Make(
     return MakeNonConstant(fn_option.as_type<type::Function>(), args, ctx);
   }
 
-  IR::Val fn_val = backend::Evaluate(fn_option, ctx).at(0);
-  if (auto *ff = std::get_if<IR::ForeignFn>(&fn_val.value)) {
+  ir::Val fn_val = backend::Evaluate(fn_option, ctx).at(0);
+  if (auto *ff = std::get_if<ir::ForeignFn>(&fn_val.value)) {
     return MakeFromForeignFunction(fn_option, args, ctx);
 
-  } else if (auto *ir_func = std::get_if<IR::Func *>(&fn_val.value)) {
+  } else if (auto *ir_func = std::get_if<ir::Func *>(&fn_val.value)) {
     return MakeFromIrFunc(fn_option, **ir_func, args, ctx);
 
   } else if (auto *fn = std::get_if<FunctionLiteral*>(&fn_val.value)) {
@@ -239,7 +239,7 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
 
 std::optional<DispatchTableRow> DispatchTableRow::MakeFromIrFunc(
     type::Typed<Expression *, type::Callable> fn_option,
-    IR::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx) {
+    ir::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx) {
   size_t binding_size =
       std::max(ir_func.args_.size(), args.pos_.size() + args.named_.size());
 
@@ -328,4 +328,4 @@ bool Binding::SetNamedArgs(
   }
   return true;
 }
-}  // namespace AST
+}  // namespace ast

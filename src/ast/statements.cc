@@ -2,7 +2,7 @@
 
 #include "ir/val.h"
 
-namespace AST {
+namespace ast {
 std::string Statements::to_string(size_t n) const {
   if (content_.empty()) { return ""; }
 
@@ -34,9 +34,9 @@ void Statements::ExtractJumps(JumpExprs *rets) const {
   for (auto &stmt : content_) { stmt->ExtractJumps(rets); }
 }
 
-base::vector<IR::Val> AST::Statements::EmitIR(Context *ctx) {
+base::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
   for (auto &stmt : content_) { stmt->EmitIR(ctx); }
   return {};
 }
 
-}  // namespace AST
+}  // namespace ast

@@ -6,7 +6,7 @@
 #include "ast/statements.h"
 #include "scope.h"
 
-namespace AST {
+namespace ast {
 struct BlockNode : public Expression {
   ~BlockNode() override {}
 
@@ -20,8 +20,8 @@ struct BlockNode : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
 
   std::unique_ptr<Expression> name_;
@@ -29,6 +29,6 @@ struct BlockNode : public Expression {
   std::unique_ptr<Expression> arg_; // TODO used?
   std::unique_ptr<ExecScope> block_scope_;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_BLOCK_NODE_H

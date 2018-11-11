@@ -21,15 +21,15 @@ struct GenericFunction : public Callable {
     return std::strcpy(buf, "generic") + string_size();
   }
   size_t string_size() const override { return sizeof("generic") - 1; }
-  void EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
+  void EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
                   Context *ctx) const override {}
-  void EmitInit(IR::Register reg, Context *ctx) const override {}
-  void EmitDestroy(IR::Register reg, Context *ctx) const override {}
-  IR::Val PrepareArgument(const Type *t, const IR::Val &val,
+  void EmitInit(ir::Register reg, Context *ctx) const override {}
+  void EmitDestroy(ir::Register reg, Context *ctx) const override {}
+  ir::Val PrepareArgument(const Type *t, const ir::Val &val,
                           Context *ctx) const override {
     NOT_YET();
   }
-  void EmitRepr(IR::Val const &id_val, Context *ctx) const override {}
+  void EmitRepr(ir::Val const &id_val, Context *ctx) const override {}
   Cmp Comparator() const override { NOT_YET(); }
 };
 

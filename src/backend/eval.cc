@@ -9,49 +9,49 @@
 #include "type/all.h"
 
 namespace backend {
-void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
-             const base::vector<IR::Addr> &ret_slots,
+void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
+             const base::vector<ir::Addr> &ret_slots,
              backend::ExecContext *ctx);
 
-static std::unique_ptr<IR::Func> ExprFn(
-    type::Typed<AST::Expression *> typed_expr, Context *ctx) {
-  auto fn = std::make_unique<IR::Func>(
+static std::unique_ptr<ir::Func> ExprFn(
+    type::Typed<ast::Expression *> typed_expr, Context *ctx) {
+  auto fn = std::make_unique<ir::Func>(
       ctx->mod_, type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
-      base::vector<std::pair<std::string, AST::Expression *>>{});
+      base::vector<std::pair<std::string, ast::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
     // Factor these out together.
-    IR::BasicBlock::Current = fn->entry();
+    ir::BasicBlock::Current = fn->entry();
     // Leave space for allocas that will come later (added to the entry
     // block).
 
-    auto start_block = IR::BasicBlock::Current = IR::Func::Current->AddBlock();
+    auto start_block = ir::BasicBlock::Current = ir::Func::Current->AddBlock();
 
     ASSERT(ctx != nullptr);
     auto vals = typed_expr.get()->EmitIR(ctx);
     // TODO wrap this up into SetReturn(vector)
     for (size_t i = 0; i < vals.size(); ++i) {
-      IR::SetReturn(i, std::move(vals[i]));
+      ir::SetReturn(i, std::move(vals[i]));
     }
-    IR::ReturnJump();
+    ir::ReturnJump();
 
-    IR::BasicBlock::Current = fn->entry();
-    IR::UncondJump(start_block);
+    ir::BasicBlock::Current = fn->entry();
+    ir::UncondJump(start_block);
   }
   return fn;
 }
 
-base::untyped_buffer EvaluateToBuffer(type::Typed<AST::Expression *> typed_expr,
+base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
                                       Context *ctx) {
   auto fn = ExprFn(typed_expr, ctx);
 
   size_t bytes_needed = Architecture::InterprettingMachine().bytes(typed_expr.type());
   base::untyped_buffer ret_buf(bytes_needed);
   ret_buf.append_bytes(bytes_needed, 1);
-  base::vector<IR::Addr> ret_slots;
+  base::vector<ir::Addr> ret_slots;
 
-  IR::Addr addr;
-  addr.kind    = IR::Addr::Kind::Heap;
+  ir::Addr addr;
+  addr.kind    = ir::Addr::Kind::Heap;
   addr.as_heap = ret_buf.raw(0);
   ret_slots.push_back(addr);
   backend::ExecContext exec_context;
@@ -59,7 +59,7 @@ base::untyped_buffer EvaluateToBuffer(type::Typed<AST::Expression *> typed_expr,
   return ret_buf;
 }
 
-base::vector<IR::Val> Evaluate(type::Typed<AST::Expression *> typed_expr,
+base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
                                Context *ctx) {
   if (ctx->num_errors() != 0) {
     // TODO when is an appropriate time to surface these?
@@ -75,7 +75,7 @@ base::vector<IR::Val> Evaluate(type::Typed<AST::Expression *> typed_expr,
           ? typed_expr.type()->as<type::Tuple>().entries_
           : base::vector<type::Type const *>{typed_expr.type()};
 
-  base::vector<IR::Val> results;
+  base::vector<ir::Val> results;
   results.reserve(types.size());
 
   auto arch     = Architecture::InterprettingMachine();
@@ -93,25 +93,25 @@ base::vector<IR::Val> Evaluate(type::Typed<AST::Expression *> typed_expr,
     } else if (t == type::Type_) {
       results.emplace_back(result_buf.get<type::Type const *>(offset));
     } else if (t == type::Scope || t == type::StatefulScope) {
-      results.emplace_back(result_buf.get<AST::ScopeLiteral *>(offset));
+      results.emplace_back(result_buf.get<ast::ScopeLiteral *>(offset));
     } else if (t->is<type::CharBuffer>()) {
-      results.push_back(IR::Val::CharBuf(
+      results.push_back(ir::Val::CharBuf(
           std::string(result_buf.get<std::string_view>(offset))));
     } else if (t->is<type::Function>()) {
       // TODO foreign func, etc?
-      auto any_func = result_buf.get<IR::AnyFunc>(offset);
+      auto any_func = result_buf.get<ir::AnyFunc>(offset);
       results.push_back(any_func.is_fn_
-                            ? IR::Val::Func(any_func.fn_)
-                            : IR::Val::Foreign(t, any_func.foreign_));
+                            ? ir::Val::Func(any_func.fn_)
+                            : ir::Val::Foreign(t, any_func.foreign_));
     } else if (t == type::Module) {
       results.emplace_back(result_buf.get<Module const *>(offset));
     } else if (t == type::Generic || t->is<type::Function>()) {
       // TODO mostly wrong.
       results.push_back(
-          IR::Val::Func(result_buf.get<AST::FunctionLiteral *>(offset)));
+          ir::Val::Func(result_buf.get<ast::FunctionLiteral *>(offset)));
     } else if (t == type::Block || t == type::OptBlock) {
       results.push_back(
-          IR::Val::BlockSeq(result_buf.get<IR::BlockSequence>(offset)));
+          ir::Val::BlockSeq(result_buf.get<ir::BlockSequence>(offset)));
     } else {
       NOT_YET(t->to_string());
     }
@@ -122,7 +122,7 @@ base::vector<IR::Val> Evaluate(type::Typed<AST::Expression *> typed_expr,
   return results;
 }
 
-base::vector<IR::Val> Evaluate(AST::Expression *expr, Context *ctx) {
+base::vector<ir::Val> Evaluate(ast::Expression *expr, Context *ctx) {
   return Evaluate({expr, ctx->type_of(expr)}, ctx);
 }
 }  // namespace backend

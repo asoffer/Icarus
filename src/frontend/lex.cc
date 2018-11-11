@@ -14,13 +14,13 @@
 // TODO audit every location where frontend::TaggedNode::Invalid is returned to
 // see if you need to log an error.
 
-IR::Val ErrorFunc();
-IR::Val AsciiFunc();
-IR::Val OrdFunc();
-IR::Val BytesFunc();
-IR::Val AlignFunc();
+ir::Val ErrorFunc();
+ir::Val AsciiFunc();
+ir::Val OrdFunc();
+ir::Val BytesFunc();
+ir::Val AlignFunc();
 #ifdef DBG
-IR::Val DebugIrFunc();
+ir::Val DebugIrFunc();
 #endif  // DBG
 
 extern i32 ResizeFuncIndex;
@@ -30,8 +30,8 @@ namespace frontend {
 TaggedNode::TaggedNode(const TextSpan &span, const std::string &token, Tag tag)
     : node_(std::make_unique<Token>(span, token)), tag_(tag) {}
 
-TaggedNode TaggedNode::TerminalExpression(const TextSpan &span, IR::Val val) {
-  return TaggedNode(std::make_unique<AST::Terminal>(span, std::move(val)),
+TaggedNode TaggedNode::TerminalExpression(const TextSpan &span, ir::Val val) {
+  return TaggedNode(std::make_unique<ast::Terminal>(span, std::move(val)),
                     expr);
 }
 
@@ -65,30 +65,30 @@ TaggedNode NextWord(SourceLocation &loc) {
   std::string token = loc.line().substr(span.start.offset,
                                         span.finish.offset - span.start.offset);
 
-  static base::unordered_map<std::string, IR::Val> Reserved{
-      {"bool", IR::Val(type::Bool)},
-      {"char", IR::Val(type::Char)},
-      {"int", IR::Val(type::Int)},
-      {"real", IR::Val(type::Real)},
-      {"type", IR::Val(type::Type_)},
-      {"module", IR::Val(type::Module)},
-      {"true", IR::Val(true)},
-      {"false", IR::Val(false)},
-      {"null", IR::Val(nullptr)},
+  static base::unordered_map<std::string, ir::Val> Reserved{
+      {"bool", ir::Val(type::Bool)},
+      {"char", ir::Val(type::Char)},
+      {"int", ir::Val(type::Int)},
+      {"real", ir::Val(type::Real)},
+      {"type", ir::Val(type::Type_)},
+      {"module", ir::Val(type::Module)},
+      {"true", ir::Val(true)},
+      {"false", ir::Val(false)},
+      {"null", ir::Val(nullptr)},
       {"ord", OrdFunc()},
       {"ascii", AsciiFunc()},
 #ifdef DBG
       {"debug_ir", DebugIrFunc()},
 #endif  // DBG
       {"error", ErrorFunc()},
-      {"resize", IR::Val::BuiltinGeneric(ResizeFuncIndex)},
-      {"foreign", IR::Val::BuiltinGeneric(ForeignFuncIndex)},
+      {"resize", ir::Val::BuiltinGeneric(ResizeFuncIndex)},
+      {"foreign", ir::Val::BuiltinGeneric(ForeignFuncIndex)},
       {"bytes", BytesFunc()},
       {"alignment", AlignFunc()},
       // TODO these are terrible. Make them reasonable. In particular, this is
       // definitively UB.
-      {"exit", IR::Val::Block(nullptr)},
-      {"start", IR::Val::Block(reinterpret_cast<AST::BlockLiteral *>(0x1))}};
+      {"exit", ir::Val::Block(nullptr)},
+      {"start", ir::Val::Block(reinterpret_cast<ast::BlockLiteral *>(0x1))}};
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     return TaggedNode::TerminalExpression(span, iter->second);
   }
@@ -137,7 +137,7 @@ TaggedNode NextWord(SourceLocation &loc) {
       t           = type::RepBlock;
       token       = "block~";
     }
-    return TaggedNode(std::make_unique<AST::Terminal>(span, IR::Val(t)),
+    return TaggedNode(std::make_unique<ast::Terminal>(span, ir::Val(t)),
                       kw_block);
   } else if (token == "scope") {
     if (*loc == '!') {
@@ -149,7 +149,7 @@ TaggedNode NextWord(SourceLocation &loc) {
   }
 
 
-  return TaggedNode(std::make_unique<AST::Identifier>(span, token), expr);
+  return TaggedNode(std::make_unique<ast::Identifier>(span, token), expr);
 }
 
 TaggedNode NextNumber(SourceLocation &loc) {
@@ -162,11 +162,11 @@ TaggedNode NextNumber(SourceLocation &loc) {
   span.finish = loc.cursor;
   return std::visit(base::overloaded{[&span](i32 n) {
                                        return TaggedNode::TerminalExpression(
-                                           span, IR::Val(n));
+                                           span, ir::Val(n));
                                      },
                                      [&span](double d) {
                                        return TaggedNode::TerminalExpression(
-                                           span, IR::Val(d));
+                                           span, ir::Val(d));
                                      },
                                      [&span](const std::string &err) {
                                        NOT_YET("log an error");
@@ -219,7 +219,7 @@ TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
   }
 
   span.finish = loc.cursor;
-  return TaggedNode::TerminalExpression(span, IR::Val::CharBuf(str_lit));
+  return TaggedNode::TerminalExpression(span, ir::Val::CharBuf(str_lit));
 }
 
 TaggedNode NextCharLiteral(SourceLocation &loc, error::Log *error_log) {
@@ -241,7 +241,7 @@ TaggedNode NextCharLiteral(SourceLocation &loc, error::Log *error_log) {
     case '\0':
       span.finish = loc.cursor;
       error_log->RunawayCharacterLiteral(span);
-      return TaggedNode::TerminalExpression(span, IR::Val('\0'));
+      return TaggedNode::TerminalExpression(span, ir::Val('\0'));
     case '\\': {
       loc.Increment();
       switch (*loc) {
@@ -272,7 +272,7 @@ TaggedNode NextCharLiteral(SourceLocation &loc, error::Log *error_log) {
   }
   loc.Increment();
   span.finish = loc.cursor;
-  return TaggedNode::TerminalExpression(span, IR::Val(result));
+  return TaggedNode::TerminalExpression(span, ir::Val(result));
 }
 
 TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
@@ -495,7 +495,7 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
       } else if (*loc == '-') {
         loc.Increment();
         span.finish = loc.cursor;
-        return TaggedNode(std::make_unique<AST::Hole>(span), expr);
+        return TaggedNode(std::make_unique<ast::Hole>(span), expr);
       } else {
         span.finish = loc.cursor;
         return TaggedNode(span, "-", op_bl);

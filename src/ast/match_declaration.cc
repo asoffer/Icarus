@@ -4,7 +4,7 @@
 #include "backend/eval.h"
 #include "type/primitive.h"
 
-namespace AST {
+namespace ast {
 std::string MatchDeclaration::to_string(size_t n) const {
   return type_expr->to_string(n) + "``" + id_;
 }
@@ -23,8 +23,8 @@ type::Type const *MatchDeclaration::VerifyType(Context *ctx) {
 
 void MatchDeclaration::Validate(Context *ctx) { type_expr->Validate(ctx); }
 
-base::vector<IR::Val> MatchDeclaration::EmitIR(Context *ctx) {
+base::vector<ir::Val> MatchDeclaration::EmitIR(Context *ctx) {
   // TODO build it
   return backend::Evaluate(type_expr.get(), ctx);
 }
-}  // namespace AST
+}  // namespace ast

@@ -25,15 +25,15 @@ using base::check::Is;
 // TODO compile-time failure. dump the stack trace and abort for Null address
 // kinds
 
-namespace IR {
+namespace ir {
 std::string_view SaveStringGlobally(std::string const &s);
-IR::BlockSequence MakeBlockSeq(const base::vector<IR::BlockSequence> &blocks);
-}  // namespace IR
+ir::BlockSequence MakeBlockSeq(const base::vector<ir::BlockSequence> &blocks);
+}  // namespace ir
 
 namespace backend {
 
-void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
-             const base::vector<IR::Addr> &ret_slots,
+void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
+             const base::vector<ir::Addr> &ret_slots,
              backend::ExecContext *exec_ctx) {
   // TODO what about bound constants?
   exec_ctx->call_stack.emplace(fn, arguments);
@@ -60,17 +60,17 @@ void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
 }
 
 template <typename T>
-T ExecContext::resolve(IR::Register val) const {
+T ExecContext::resolve(ir::Register val) const {
   return call_stack.top().regs_.get<T>(val.value);
 }
 
 ExecContext::ExecContext() : stack_(50u) {}
 
-IR::BasicBlock &ExecContext::current_block() {
+ir::BasicBlock &ExecContext::current_block() {
   return call_stack.top().fn_->block(call_stack.top().current_);
 }
 
-ExecContext::Frame::Frame(IR::Func *fn, const base::untyped_buffer &arguments)
+ExecContext::Frame::Frame(ir::Func *fn, const base::untyped_buffer &arguments)
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
@@ -78,75 +78,75 @@ ExecContext::Frame::Frame(IR::Func *fn, const base::untyped_buffer &arguments)
   regs_.write(0, arguments);
 }
 
-IR::BlockIndex ExecContext::ExecuteBlock(
-    const base::vector<IR::Addr> &ret_slots) {
-  IR::BlockIndex result;
+ir::BlockIndex ExecContext::ExecuteBlock(
+    const base::vector<ir::Addr> &ret_slots) {
+  ir::BlockIndex result;
   ASSERT(current_block().cmds_.size() > 0u);
   auto cmd_iter = current_block().cmds_.begin();
   do {
     result = ExecuteCmd(*cmd_iter++, ret_slots);
-  } while (result == IR::BlockIndex{-2});
+  } while (result == ir::BlockIndex{-2});
   return result;
 }
 
 template <typename T>
-static T LoadValue(IR::Addr addr, const base::untyped_buffer &stack) {
+static T LoadValue(ir::Addr addr, const base::untyped_buffer &stack) {
   switch (addr.kind) {
-    case IR::Addr::Kind::Null: UNREACHABLE();
-    case IR::Addr::Kind::Heap: return *static_cast<T *>(addr.as_heap); break;
-    case IR::Addr::Kind::Stack: return stack.get<T>(addr.as_stack); break;
+    case ir::Addr::Kind::Null: UNREACHABLE();
+    case ir::Addr::Kind::Heap: return *static_cast<T *>(addr.as_heap); break;
+    case ir::Addr::Kind::Stack: return stack.get<T>(addr.as_stack); break;
   }
   UNREACHABLE();
 }
 
 template <typename T>
-static void StoreValue(T val, IR::Addr addr, base::untyped_buffer *stack) {
+static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack) {
   switch (addr.kind) {
-    case IR::Addr::Kind::Null:
+    case ir::Addr::Kind::Null:
       // TODO compile-time failure. dump the stack trace and abort.
       UNREACHABLE();
-    case IR::Addr::Kind::Stack: stack->set(addr.as_stack, val); return;
-    case IR::Addr::Kind::Heap: *static_cast<T *>(addr.as_heap) = val;
+    case ir::Addr::Kind::Stack: stack->set(addr.as_stack, val); return;
+    case ir::Addr::Kind::Heap: *static_cast<T *>(addr.as_heap) = val;
   }
 }
 
-IR::BlockIndex ExecContext::ExecuteCmd(
-    const IR::Cmd &cmd, const base::vector<IR::Addr> &ret_slots) {
+ir::BlockIndex ExecContext::ExecuteCmd(
+    const ir::Cmd &cmd, const base::vector<ir::Addr> &ret_slots) {
   auto save = [&](auto val) {
     call_stack.top().regs_.set(cmd.result.value, val);
   };
 
   switch (cmd.op_code_) {
-    case IR::Op::Death: UNREACHABLE();
-    case IR::Op::Trunc:
+    case ir::Op::Death: UNREACHABLE();
+    case ir::Op::Trunc:
       save(static_cast<char>(resolve<i32>(cmd.trunc_.reg_)));
       break;
-    case IR::Op::Extend:
+    case ir::Op::Extend:
       save(static_cast<i32>(resolve<char>(cmd.extend_.reg_)));
       break;
-    case IR::Op::Bytes:
+    case ir::Op::Bytes:
       save(
           Architecture::InterprettingMachine().bytes(resolve(cmd.bytes_.arg_)));
       break;
-    case IR::Op::Align:
+    case ir::Op::Align:
       save(Architecture::InterprettingMachine().alignment(
           resolve(cmd.align_.arg_)));
       break;
-    case IR::Op::Not: save(!resolve<bool>(cmd.not_.reg_)); break;
-    case IR::Op::NegInt: save(-resolve<i32>(cmd.neg_int_.reg_)); break;
-    case IR::Op::NegReal: save(-resolve<double>(cmd.neg_real_.reg_)); break;
-    case IR::Op::ArrayLength:
-      save(resolve<IR::Addr>(cmd.array_data_.arg_));
+    case ir::Op::Not: save(!resolve<bool>(cmd.not_.reg_)); break;
+    case ir::Op::NegInt: save(-resolve<i32>(cmd.neg_int_.reg_)); break;
+    case ir::Op::NegReal: save(-resolve<double>(cmd.neg_real_.reg_)); break;
+    case ir::Op::ArrayLength:
+      save(resolve<ir::Addr>(cmd.array_data_.arg_));
       break;
-    case IR::Op::ArrayData: {
-      auto addr = resolve<IR::Addr>(cmd.array_data_.arg_);
+    case ir::Op::ArrayData: {
+      auto addr = resolve<ir::Addr>(cmd.array_data_.arg_);
       switch (addr.kind) {
-        case IR::Addr::Kind::Null: UNREACHABLE();
-        case IR::Addr::Kind::Stack:
+        case ir::Addr::Kind::Null: UNREACHABLE();
+        case ir::Addr::Kind::Stack:
           addr.as_stack +=
               Architecture::InterprettingMachine().bytes(type::Int);
           break;
-        case IR::Addr::Kind::Heap:
+        case ir::Addr::Kind::Heap:
           addr.as_heap = static_cast<void *>(
               static_cast<u8 *>(addr.as_heap) +
               Architecture::InterprettingMachine().bytes(type::Int));
@@ -155,191 +155,191 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       save(addr);
 
     } break;
-    case IR::Op::LoadBool:
-      save(LoadValue<bool>(resolve<IR::Addr>(cmd.load_bool_.arg_), stack_));
+    case ir::Op::LoadBool:
+      save(LoadValue<bool>(resolve<ir::Addr>(cmd.load_bool_.arg_), stack_));
       break;
-    case IR::Op::LoadChar:
-      save(LoadValue<char>(resolve<IR::Addr>(cmd.load_char_.arg_), stack_));
+    case ir::Op::LoadChar:
+      save(LoadValue<char>(resolve<ir::Addr>(cmd.load_char_.arg_), stack_));
       break;
-    case IR::Op::LoadInt:
-      save(LoadValue<i32>(resolve<IR::Addr>(cmd.load_int_.arg_), stack_));
+    case ir::Op::LoadInt:
+      save(LoadValue<i32>(resolve<ir::Addr>(cmd.load_int_.arg_), stack_));
       break;
-    case IR::Op::LoadReal:
-      save(LoadValue<double>(resolve<IR::Addr>(cmd.load_real_.arg_), stack_));
+    case ir::Op::LoadReal:
+      save(LoadValue<double>(resolve<ir::Addr>(cmd.load_real_.arg_), stack_));
       break;
-    case IR::Op::LoadType:
-      save(LoadValue<type::Type const *>(resolve<IR::Addr>(cmd.load_type_.arg_),
+    case ir::Op::LoadType:
+      save(LoadValue<type::Type const *>(resolve<ir::Addr>(cmd.load_type_.arg_),
                                          stack_));
       break;
-    case IR::Op::LoadEnum:
-      save(LoadValue<size_t>(resolve<IR::Addr>(cmd.load_enum_.arg_), stack_));
+    case ir::Op::LoadEnum:
+      save(LoadValue<size_t>(resolve<ir::Addr>(cmd.load_enum_.arg_), stack_));
       break;
-    case IR::Op::LoadFlags:
-      save(LoadValue<size_t>(resolve<IR::Addr>(cmd.load_flags_.arg_), stack_));
+    case ir::Op::LoadFlags:
+      save(LoadValue<size_t>(resolve<ir::Addr>(cmd.load_flags_.arg_), stack_));
       break;
-    case IR::Op::LoadAddr:
-      save(LoadValue<IR::Addr>(resolve<IR::Addr>(cmd.load_addr_.arg_), stack_));
+    case ir::Op::LoadAddr:
+      save(LoadValue<ir::Addr>(resolve<ir::Addr>(cmd.load_addr_.arg_), stack_));
       break;
-    case IR::Op::LoadFunc:
-      save(LoadValue<IR::Func *>(resolve<IR::Addr>(cmd.load_func_.arg_),
+    case ir::Op::LoadFunc:
+      save(LoadValue<ir::Func *>(resolve<ir::Addr>(cmd.load_func_.arg_),
                                  stack_));
       break;
-    case IR::Op::AddInt:
+    case ir::Op::AddInt:
       save(resolve(cmd.add_int_.args_[0]) + resolve(cmd.add_int_.args_[1]));
       break;
-    case IR::Op::AddReal:
+    case ir::Op::AddReal:
       save(resolve(cmd.add_real_.args_[0]) + resolve(cmd.add_real_.args_[1]));
       break;
-    case IR::Op::SubInt:
+    case ir::Op::SubInt:
       save(resolve(cmd.sub_int_.args_[0]) - resolve(cmd.sub_int_.args_[1]));
       break;
-    case IR::Op::SubReal:
+    case ir::Op::SubReal:
       save(resolve(cmd.sub_real_.args_[0]) - resolve(cmd.sub_real_.args_[1]));
       break;
-    case IR::Op::MulInt:
+    case ir::Op::MulInt:
       save(resolve(cmd.mul_int_.args_[0]) * resolve(cmd.mul_int_.args_[1]));
       break;
-    case IR::Op::MulReal:
+    case ir::Op::MulReal:
       save(resolve(cmd.mul_real_.args_[0]) * resolve(cmd.mul_real_.args_[1]));
       break;
-    case IR::Op::DivInt:
+    case ir::Op::DivInt:
       save(resolve(cmd.div_int_.args_[0]) / resolve(cmd.div_int_.args_[1]));
       break;
-    case IR::Op::DivReal:
+    case ir::Op::DivReal:
       save(resolve(cmd.div_real_.args_[0]) / resolve(cmd.div_real_.args_[1]));
       break;
-    case IR::Op::ModInt:
+    case ir::Op::ModInt:
       save(resolve(cmd.mod_int_.args_[0]) % resolve(cmd.mod_int_.args_[1]));
       break;
-    case IR::Op::ModReal:
+    case ir::Op::ModReal:
       save(std::fmod(resolve(cmd.mod_real_.args_[0]),
                      resolve(cmd.mod_real_.args_[1])));
       break;
-    case IR::Op::LtInt:
+    case ir::Op::LtInt:
       save(resolve(cmd.lt_int_.args_[0]) < resolve(cmd.lt_int_.args_[1]));
       break;
-    case IR::Op::LtReal:
+    case ir::Op::LtReal:
       save(resolve(cmd.lt_real_.args_[0]) < resolve(cmd.lt_real_.args_[1]));
       break;
-    case IR::Op::LtFlags: {
+    case ir::Op::LtFlags: {
       auto lhs = resolve(cmd.lt_flags_.args_[0]);
       auto rhs = resolve(cmd.lt_flags_.args_[1]);
       save(lhs.value != rhs.value && ((lhs.value | rhs.value) == rhs.value));
     } break;
-    case IR::Op::LeInt:
+    case ir::Op::LeInt:
       save(resolve(cmd.le_int_.args_[0]) <= resolve(cmd.le_int_.args_[1]));
       break;
-    case IR::Op::LeReal:
+    case ir::Op::LeReal:
       save(resolve(cmd.le_real_.args_[0]) <= resolve(cmd.le_real_.args_[1]));
       break;
-    case IR::Op::LeFlags: {
+    case ir::Op::LeFlags: {
       auto lhs = resolve(cmd.le_flags_.args_[0]);
       auto rhs = resolve(cmd.le_flags_.args_[1]);
       save((lhs.value | rhs.value) == rhs.value);
     } break;
-    case IR::Op::GtInt:
+    case ir::Op::GtInt:
       save(resolve(cmd.gt_int_.args_[0]) > resolve(cmd.gt_int_.args_[1]));
       break;
-    case IR::Op::GtReal:
+    case ir::Op::GtReal:
       save(resolve(cmd.gt_real_.args_[0]) > resolve(cmd.gt_real_.args_[1]));
       break;
-    case IR::Op::GtFlags: {
+    case ir::Op::GtFlags: {
       auto lhs = resolve(cmd.gt_flags_.args_[0]);
       auto rhs = resolve(cmd.gt_flags_.args_[1]);
       save(lhs.value != rhs.value && ((lhs.value | rhs.value) == lhs.value));
     } break;
-    case IR::Op::GeInt:
+    case ir::Op::GeInt:
       save(resolve(cmd.ge_int_.args_[0]) >= resolve(cmd.ge_int_.args_[1]));
       break;
-    case IR::Op::GeReal:
+    case ir::Op::GeReal:
       save(resolve(cmd.ge_real_.args_[0]) >= resolve(cmd.ge_real_.args_[1]));
       break;
-    case IR::Op::GeFlags: {
+    case ir::Op::GeFlags: {
       auto lhs = resolve(cmd.ge_flags_.args_[0]);
       auto rhs = resolve(cmd.ge_flags_.args_[1]);
       save((lhs.value | rhs.value) == lhs.value);
     } break;
-    case IR::Op::EqBool:
+    case ir::Op::EqBool:
       save(resolve<bool>(cmd.eq_bool_.args_[0]) ==
            resolve<bool>(cmd.eq_bool_.args_[1]));
       break;
-    case IR::Op::EqChar:
+    case ir::Op::EqChar:
       save(resolve(cmd.eq_char_.args_[0]) == resolve(cmd.eq_char_.args_[1]));
       break;
-    case IR::Op::EqInt:
+    case ir::Op::EqInt:
       save(resolve(cmd.eq_int_.args_[0]) == resolve(cmd.eq_int_.args_[1]));
       break;
-    case IR::Op::EqReal:
+    case ir::Op::EqReal:
       save(resolve(cmd.eq_real_.args_[0]) == resolve(cmd.eq_real_.args_[1]));
       break;
-    case IR::Op::EqEnum:
+    case ir::Op::EqEnum:
       save(resolve(cmd.eq_enum_.args_[0]) == resolve(cmd.eq_enum_.args_[1]));
       break;
-    case IR::Op::EqFlags:
+    case ir::Op::EqFlags:
       save(resolve(cmd.eq_flags_.args_[0]) == resolve(cmd.eq_flags_.args_[1]));
       break;
-    case IR::Op::EqType:
+    case ir::Op::EqType:
       save(resolve(cmd.eq_type_.args_[0]) == resolve(cmd.eq_type_.args_[1]));
       break;
-    case IR::Op::EqAddr:
+    case ir::Op::EqAddr:
       save(resolve(cmd.eq_addr_.args_[0]) == resolve(cmd.eq_addr_.args_[1]));
       break;
-    case IR::Op::NeChar:
+    case ir::Op::NeChar:
       save(resolve(cmd.ne_char_.args_[0]) != resolve(cmd.ne_char_.args_[1]));
       break;
-    case IR::Op::NeInt:
+    case ir::Op::NeInt:
       save(resolve(cmd.ne_int_.args_[0]) != resolve(cmd.ne_int_.args_[1]));
       break;
-    case IR::Op::NeReal:
+    case ir::Op::NeReal:
       save(resolve(cmd.ne_real_.args_[0]) != resolve(cmd.ne_real_.args_[1]));
       break;
-    case IR::Op::NeEnum:
+    case ir::Op::NeEnum:
       save(resolve(cmd.ne_enum_.args_[0]) != resolve(cmd.ne_enum_.args_[1]));
       break;
-    case IR::Op::NeFlags:
+    case ir::Op::NeFlags:
       save(resolve(cmd.ne_flags_.args_[0]) != resolve(cmd.ne_flags_.args_[1]));
       break;
-    case IR::Op::NeType:
+    case ir::Op::NeType:
       save(resolve(cmd.ne_type_.args_[0]) != resolve(cmd.ne_type_.args_[1]));
       break;
-    case IR::Op::NeAddr:
+    case ir::Op::NeAddr:
       save(resolve(cmd.ne_addr_.args_[0]) != resolve(cmd.ne_addr_.args_[1]));
       break;
-    case IR::Op::XorBool:
+    case ir::Op::XorBool:
       save(resolve(cmd.xor_bool_.args_[0]) ^ resolve(cmd.xor_bool_.args_[1]));
       break;
-    case IR::Op::XorFlags:
+    case ir::Op::XorFlags:
       save(resolve(cmd.xor_flags_.args_[0]) ^ resolve(cmd.xor_flags_.args_[1]));
       break;
-    case IR::Op::OrFlags:
+    case ir::Op::OrFlags:
       save(resolve(cmd.or_flags_.args_[0]) | resolve(cmd.or_flags_.args_[1]));
       break;
-    case IR::Op::AndFlags:
+    case ir::Op::AndFlags:
       save(resolve(cmd.and_flags_.args_[0]) & resolve(cmd.and_flags_.args_[1]));
       break;
-    case IR::Op::CreateStruct:
+    case ir::Op::CreateStruct:
       save(type::Struct::Make(cmd.create_struct_.lit_));
       break;
-    case IR::Op::CreateStructField: {
+    case ir::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
           resolve<type::Struct *>(cmd.create_struct_field_.struct_));
       struct_to_modify->add_field(resolve(cmd.create_struct_field_.type_));
     } break;
-    case IR::Op::SetStructFieldName: {
+    case ir::Op::SetStructFieldName: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
           resolve<type::Struct *>(cmd.set_struct_field_name_.struct_));
       struct_to_modify->set_last_name(cmd.set_struct_field_name_.name_);
     } break;
-    case IR::Op::FinalizeStruct:
+    case ir::Op::FinalizeStruct:
       // TODO remove me.
       break;
-    case IR::Op::DebugIr: LOG << call_stack.top().fn_; break;
-    case IR::Op::Malloc: save(malloc(resolve(cmd.malloc_.arg_))); break;
-    case IR::Op::Free: free(resolve<IR::Addr>(cmd.free_.reg_).as_heap); break;
-    case IR::Op::Alloca: {
-      IR::Addr addr;
+    case ir::Op::DebugIr: LOG << call_stack.top().fn_; break;
+    case ir::Op::Malloc: save(malloc(resolve(cmd.malloc_.arg_))); break;
+    case ir::Op::Free: free(resolve<ir::Addr>(cmd.free_.reg_).as_heap); break;
+    case ir::Op::Alloca: {
+      ir::Addr addr;
       addr.as_stack = stack_.size();
-      addr.kind     = IR::Addr::Kind::Stack;
+      addr.kind     = ir::Addr::Kind::Stack;
       save(addr);
 
       auto arch = Architecture::InterprettingMachine();
@@ -347,60 +347,60 @@ IR::BlockIndex ExecContext::ExecuteCmd(
                           arch.alignment(cmd.alloca_.type_));
 
     } break;
-    case IR::Op::Ptr:
+    case ir::Op::Ptr:
       save(type::Ptr(resolve<type::Type const *>(cmd.ptr_.reg_)));
       break;
-    case IR::Op::Arrow:
+    case ir::Op::Arrow:
       save(type::Func({resolve(cmd.arrow_.args_[0])},
                       {resolve(cmd.arrow_.args_[1])}));
       break;
-    case IR::Op::Array: {
+    case ir::Op::Array: {
       auto len = resolve(cmd.array_.len_);
       auto t   = resolve(cmd.array_.type_);
       save(len == -1 ? type::Arr(t) : type::Arr(t, len));
     } break;
-    case IR::Op::VariantType:
-      save(resolve<IR::Addr>(cmd.variant_type_.reg_));
+    case ir::Op::VariantType:
+      save(resolve<ir::Addr>(cmd.variant_type_.reg_));
       break;
-    case IR::Op::VariantValue: {
+    case ir::Op::VariantValue: {
       auto bytes = Architecture::InterprettingMachine().bytes(Ptr(type::Type_));
       auto bytes_fwd =
           Architecture::InterprettingMachine().MoveForwardToAlignment(
               Ptr(type::Type_), bytes);
-      auto addr = resolve<IR::Addr>(cmd.variant_value_.reg_);
+      auto addr = resolve<ir::Addr>(cmd.variant_value_.reg_);
       switch (addr.kind) {
-        case IR::Addr::Kind::Stack:
+        case ir::Addr::Kind::Stack:
           addr.as_stack += bytes_fwd;
           save(addr);
           break;
-        case IR::Addr::Kind::Heap:
+        case ir::Addr::Kind::Heap:
           addr.as_heap = static_cast<void *>(static_cast<char *>(addr.as_heap) +
                                              bytes_fwd);
           save(addr);
           break;
-        case IR::Addr::Kind::Null: NOT_YET();
+        case ir::Addr::Kind::Null: NOT_YET();
       }
     } break;
-    case IR::Op::PtrIncr: {
-      auto addr      = resolve<IR::Addr>(cmd.ptr_incr_.ptr_);
+    case ir::Op::PtrIncr: {
+      auto addr      = resolve<ir::Addr>(cmd.ptr_incr_.ptr_);
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
           resolve(cmd.ptr_incr_.incr_), cmd.ptr_incr_.pointee_type_);
       switch (addr.kind) {
-        case IR::Addr::Kind::Stack: save(addr.as_stack + bytes_fwd); break;
-        case IR::Addr::Kind::Heap:
+        case ir::Addr::Kind::Stack: save(addr.as_stack + bytes_fwd); break;
+        case ir::Addr::Kind::Heap:
           save(static_cast<char *>(addr.as_heap) + bytes_fwd);
           break;
-        case IR::Addr::Kind::Null: NOT_YET();
+        case ir::Addr::Kind::Null: NOT_YET();
       }
     } break;
-    case IR::Op::Field: {
-      auto addr = resolve<IR::Addr>(cmd.field_.ptr_);
+    case ir::Op::Field: {
+      auto addr = resolve<ir::Addr>(cmd.field_.ptr_);
       auto *struct_type =
           resolve<type::Struct const *>(cmd.field_.struct_type_);
       size_t offset = struct_type->offset(cmd.field_.num_,
                                           Architecture::InterprettingMachine());
 
-      if (addr.kind == IR::Addr::Kind::Stack) {
+      if (addr.kind == ir::Addr::Kind::Stack) {
         addr.as_stack += offset;
       } else {
         addr.as_heap =
@@ -408,21 +408,21 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       }
       save(addr);
     } break;
-    case IR::Op::PrintBool:
+    case ir::Op::PrintBool:
       std::cerr << (resolve(cmd.print_bool_.arg_) ? "true" : "false");
       break;
-    case IR::Op::PrintChar: std::cerr << resolve(cmd.print_char_.arg_); break;
-    case IR::Op::PrintInt: std::cerr << resolve(cmd.print_int_.arg_); break;
-    case IR::Op::PrintReal: std::cerr << resolve(cmd.print_real_.arg_); break;
-    case IR::Op::PrintType:
+    case ir::Op::PrintChar: std::cerr << resolve(cmd.print_char_.arg_); break;
+    case ir::Op::PrintInt: std::cerr << resolve(cmd.print_int_.arg_); break;
+    case ir::Op::PrintReal: std::cerr << resolve(cmd.print_real_.arg_); break;
+    case ir::Op::PrintType:
       std::cerr << resolve(cmd.print_type_.arg_)->to_string();
       break;
-    case IR::Op::PrintEnum:
+    case ir::Op::PrintEnum:
       NOT_YET();
       /*
       std::cerr << resolved[0].type->as<type::Enum>().members_[e.value];
       */
-    case IR::Op::PrintFlags:
+    case ir::Op::PrintFlags:
       NOT_YET();
       /*
       size_t val = f.value;
@@ -444,25 +444,25 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       }
       */
       break;
-    case IR::Op::PrintAddr:
+    case ir::Op::PrintAddr:
       std::cerr << resolve(cmd.print_addr_.arg_).to_string();
       break;
-    case IR::Op::PrintCharBuffer:
+    case ir::Op::PrintCharBuffer:
       std::cerr << resolve(cmd.print_char_buffer_.arg_);
       break;
-    case IR::Op::Call: {
+    case ir::Op::Call: {
       // NOTE: This is a hack using heap address slots to represent registers
       // since they are both void* and are used identically in the
       // interpretter.
-      base::vector<IR::Addr> ret_slots;
+      base::vector<ir::Addr> ret_slots;
       if (cmd.call_.outs_ != nullptr) {
         ret_slots.reserve(cmd.call_.outs_->outs_.size());
         for (const auto &out_param : cmd.call_.outs_->outs_) {
           if (out_param.is_loc_) {
-            ret_slots.push_back(resolve<IR::Addr>(out_param.reg_));
+            ret_slots.push_back(resolve<ir::Addr>(out_param.reg_));
           } else {
-            IR::Addr addr;
-            addr.kind    = IR::Addr::Kind::Heap;
+            ir::Addr addr;
+            addr.kind    = ir::Addr::Kind::Heap;
             addr.as_heap = call_stack.top().regs_.raw(out_param.reg_.value);
             ret_slots.push_back(addr);
           }
@@ -487,74 +487,74 @@ IR::BlockIndex ExecContext::ExecuteCmd(
 
         if (t == type::Bool) {
           call_buf.append(
-              is_reg ? resolve<bool>(long_args.get<IR::Register>(offset))
+              is_reg ? resolve<bool>(long_args.get<ir::Register>(offset))
                      : long_args.get<bool>(offset));
         } else if (t == type::Char) {
           call_buf.append(
-              is_reg ? resolve<char>(long_args.get<IR::Register>(offset))
+              is_reg ? resolve<char>(long_args.get<ir::Register>(offset))
                      : long_args.get<char>(offset));
         } else if (t == type::Int) {
           call_buf.append(
-              is_reg ? resolve<i32>(long_args.get<IR::Register>(offset))
+              is_reg ? resolve<i32>(long_args.get<ir::Register>(offset))
                      : long_args.get<i32>(offset));
         } else if (t == type::Real) {
           call_buf.append(
-              is_reg ? resolve<double>(long_args.get<IR::Register>(offset))
+              is_reg ? resolve<double>(long_args.get<ir::Register>(offset))
                      : long_args.get<double>(offset));
         } else if (t == type::Scope) {
-          call_buf.append(is_reg ? resolve<AST::ScopeLiteral *>(
-                                       long_args.get<IR::Register>(offset))
-                                 : long_args.get<AST::ScopeLiteral *>(offset));
+          call_buf.append(is_reg ? resolve<ast::ScopeLiteral *>(
+                                       long_args.get<ir::Register>(offset))
+                                 : long_args.get<ast::ScopeLiteral *>(offset));
         } else if (t == type::Type_) {
           call_buf.append(is_reg ? resolve<type::Type const *>(
-                                       long_args.get<IR::Register>(offset))
+                                       long_args.get<ir::Register>(offset))
                                  : long_args.get<type::Type const *>(offset));
         } else if (t->is<type::CharBuffer>()) {
           call_buf.append(is_reg ? resolve<std::string_view>(
-                                       long_args.get<IR::Register>(offset))
+                                       long_args.get<ir::Register>(offset))
                                  : long_args.get<std::string_view>(offset));
         } else if (t->is<type::Function>()) {
           call_buf.append(
-              is_reg ? resolve<IR::Func *>(long_args.get<IR::Register>(offset))
-                     : long_args.get<IR::Func *>(offset));
+              is_reg ? resolve<ir::Func *>(long_args.get<ir::Register>(offset))
+                     : long_args.get<ir::Func *>(offset));
         } else if (t == type::Module) {
           call_buf.append(is_reg ? resolve<Module const *>(
-                                       long_args.get<IR::Register>(offset))
+                                       long_args.get<ir::Register>(offset))
                                  : long_args.get<Module const *>(offset));
         } else if (t == type::Generic) {
           // TODO mostly wrong.
-          call_buf.append(is_reg ? resolve<AST::Function *>(
-                                       long_args.get<IR::Register>(offset))
-                                 : long_args.get<AST::Function *>(offset));
+          call_buf.append(is_reg ? resolve<ast::Function *>(
+                                       long_args.get<ir::Register>(offset))
+                                 : long_args.get<ast::Function *>(offset));
         } else if (t == type::Block || t == type::OptBlock) {
-          call_buf.append(is_reg ? resolve<IR::BlockSequence>(
-                                       long_args.get<IR::Register>(offset))
-                                 : long_args.get<IR::BlockSequence>(offset));
+          call_buf.append(is_reg ? resolve<ir::BlockSequence>(
+                                       long_args.get<ir::Register>(offset))
+                                 : long_args.get<ir::BlockSequence>(offset));
         } else if (t->is<type::Variant>()) {
           call_buf.append(
-              is_reg ? resolve<IR::Addr>(long_args.get<IR::Register>(offset))
-                     : long_args.get<IR::Addr>(offset));
+              is_reg ? resolve<ir::Addr>(long_args.get<ir::Register>(offset))
+                     : long_args.get<ir::Addr>(offset));
         } else if (t->is<type::Pointer>()) {
           ASSERT(is_reg);
           call_buf.append(
-              resolve<IR::Addr>(long_args.get<IR::Register>(offset)));
+              resolve<ir::Addr>(long_args.get<ir::Register>(offset)));
         } else {
           NOT_YET(t->to_string());
         }
 
-        offset += is_reg ? sizeof(IR::Register) : arch.bytes(t);
+        offset += is_reg ? sizeof(ir::Register) : arch.bytes(t);
       }
       // TODO you need to be able to determine how many args there are
       if (cmd.call_.fn_.is_reg_) {
         // TODO what if the register is a foerign fn?
-        backend::Execute(resolve<IR::Func *>(cmd.call_.fn_.reg_), call_buf,
+        backend::Execute(resolve<ir::Func *>(cmd.call_.fn_.reg_), call_buf,
                          ret_slots, this);
       } else if (cmd.call_.fn_.val_.is_fn_) {
         backend::Execute(cmd.call_.fn_.val_.fn_, call_buf, ret_slots, this);
       } else {
         if (cmd.call_.fn_.val_.foreign_.name_ == "malloc") {
-          IR::Addr addr;
-          addr.kind    = IR::Addr::Kind::Heap;
+          ir::Addr addr;
+          addr.kind    = ir::Addr::Kind::Heap;
           addr.as_heap = malloc(call_buf.get<i32>(0));
           StoreValue(addr, ret_slots.at(0), &stack_);
         } else if (cmd.call_.fn_.val_.foreign_.name_ == "abs") {
@@ -567,174 +567,174 @@ IR::BlockIndex ExecContext::ExecuteCmd(
         }
       }
     } break;
-    case IR::Op::CreateTuple: {
+    case ir::Op::CreateTuple: {
       save(new type::Tuple(base::vector<type::Type const *>{}));
     } break;
-    case IR::Op::AppendToTuple: {
+    case ir::Op::AppendToTuple: {
       auto *tuple_to_modify =
           ASSERT_NOT_NULL(resolve<type::Tuple *>(cmd.append_to_tuple_.tup_));
       tuple_to_modify->entries_.push_back(resolve(cmd.append_to_tuple_.arg_));
     } break;
-    case IR::Op::FinalizeTuple: {
+    case ir::Op::FinalizeTuple: {
       save(resolve<type::Tuple *>(cmd.finalize_tuple_.tup_)->finalize());
     } break;
-    case IR::Op::CreateVariant: {
+    case ir::Op::CreateVariant: {
       save(new type::Variant(base::vector<type::Type const *>{}));
     } break;
-    case IR::Op::AppendToVariant: {
+    case ir::Op::AppendToVariant: {
       auto *variant_to_modify = ASSERT_NOT_NULL(
           resolve<type::Variant *>(cmd.append_to_variant_.var_));
       variant_to_modify->variants_.push_back(
           resolve(cmd.append_to_variant_.arg_));
     } break;
-    case IR::Op::FinalizeVariant: {
+    case ir::Op::FinalizeVariant: {
       save(resolve<type::Variant *>(cmd.finalize_variant_.var_)->finalize());
     } break;
-    case IR::Op::CastIntToReal:
+    case ir::Op::CastIntToReal:
       save(static_cast<double>(resolve<i32>(cmd.cast_int_to_real_.reg_)));
       break;
-    case IR::Op::CastPtr: save(resolve<IR::Addr>(cmd.cast_ptr_.reg_)); break;
-    case IR::Op::CreateBlockSeq: {
-      save(new base::vector<IR::BlockSequence>{});
+    case ir::Op::CastPtr: save(resolve<ir::Addr>(cmd.cast_ptr_.reg_)); break;
+    case ir::Op::CreateBlockSeq: {
+      save(new base::vector<ir::BlockSequence>{});
     } break;
-    case IR::Op::AppendToBlockSeq: {
+    case ir::Op::AppendToBlockSeq: {
       auto *block_seq_to_modify =
-          ASSERT_NOT_NULL(resolve<base::vector<IR::BlockSequence> *>(
+          ASSERT_NOT_NULL(resolve<base::vector<ir::BlockSequence> *>(
               cmd.append_to_block_seq_.block_seq_));
       block_seq_to_modify->push_back(resolve(cmd.append_to_block_seq_.arg_));
     } break;
-    case IR::Op::FinalizeBlockSeq: {
-      auto *block_seq = resolve<base::vector<IR::BlockSequence> *>(
+    case ir::Op::FinalizeBlockSeq: {
+      auto *block_seq = resolve<base::vector<ir::BlockSequence> *>(
           cmd.finalize_block_seq_.block_seq_);
-      auto seq = IR::MakeBlockSeq(*block_seq);
+      auto seq = ir::MakeBlockSeq(*block_seq);
       delete block_seq;
       save(seq);
     } break;
-    case IR::Op::BlockSeqContains: {
-      auto *seq = resolve<IR::BlockSequence>(cmd.block_seq_contains_.reg_).seq_;
-      save(std::any_of(seq->begin(), seq->end(), [&](AST::BlockLiteral *lit) {
+    case ir::Op::BlockSeqContains: {
+      auto *seq = resolve<ir::BlockSequence>(cmd.block_seq_contains_.reg_).seq_;
+      save(std::any_of(seq->begin(), seq->end(), [&](ast::BlockLiteral *lit) {
         return lit == cmd.block_seq_contains_.lit_;
       }));
     } break;
-    case IR::Op::SetReturnBool:
+    case ir::Op::SetReturnBool:
       StoreValue(resolve(cmd.set_return_bool_.val_),
                  ret_slots.at(cmd.set_return_bool_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnChar:
+    case ir::Op::SetReturnChar:
       StoreValue(resolve(cmd.set_return_char_.val_),
                  ret_slots.at(cmd.set_return_char_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnInt:
+    case ir::Op::SetReturnInt:
       StoreValue(resolve(cmd.set_return_int_.val_),
                  ret_slots.at(cmd.set_return_int_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnReal:
+    case ir::Op::SetReturnReal:
       StoreValue(resolve(cmd.set_return_real_.val_),
                  ret_slots.at(cmd.set_return_real_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnType:
+    case ir::Op::SetReturnType:
       StoreValue(resolve(cmd.set_return_type_.val_),
                  ret_slots.at(cmd.set_return_type_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnCharBuf:
+    case ir::Op::SetReturnCharBuf:
       StoreValue(resolve(cmd.set_return_char_buf_.val_),
                  ret_slots.at(cmd.set_return_char_buf_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnAddr:
+    case ir::Op::SetReturnAddr:
       StoreValue(resolve(cmd.set_return_addr_.val_),
                  ret_slots.at(cmd.set_return_addr_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnEnum:
+    case ir::Op::SetReturnEnum:
       StoreValue(resolve(cmd.set_return_enum_.val_),
                  ret_slots.at(cmd.set_return_enum_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnFlags:
+    case ir::Op::SetReturnFlags:
       StoreValue(resolve(cmd.set_return_flags_.val_),
                  ret_slots.at(cmd.set_return_flags_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnFunc:
+    case ir::Op::SetReturnFunc:
       StoreValue(resolve(cmd.set_return_func_.val_),
                  ret_slots.at(cmd.set_return_func_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnScope:
+    case ir::Op::SetReturnScope:
       StoreValue(resolve(cmd.set_return_scope_.val_),
                  ret_slots.at(cmd.set_return_scope_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnGeneric:
+    case ir::Op::SetReturnGeneric:
       StoreValue(resolve(cmd.set_return_generic_.val_),
                  ret_slots.at(cmd.set_return_generic_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnModule:
+    case ir::Op::SetReturnModule:
       StoreValue(resolve(cmd.set_return_module_.val_),
                  ret_slots.at(cmd.set_return_module_.ret_num_), &stack_);
       break;
-    case IR::Op::SetReturnBlock:
+    case ir::Op::SetReturnBlock:
       StoreValue(resolve(cmd.set_return_block_.val_),
                  ret_slots.at(cmd.set_return_block_.ret_num_), &stack_);
       break;
-    case IR::Op::StoreBool:
+    case ir::Op::StoreBool:
       StoreValue(resolve(cmd.store_bool_.val_),
-                 resolve<IR::Addr>(cmd.store_bool_.addr_), &stack_);
+                 resolve<ir::Addr>(cmd.store_bool_.addr_), &stack_);
       break;
-    case IR::Op::StoreChar:
+    case ir::Op::StoreChar:
       StoreValue(resolve(cmd.store_char_.val_),
-                 resolve<IR::Addr>(cmd.store_char_.addr_), &stack_);
+                 resolve<ir::Addr>(cmd.store_char_.addr_), &stack_);
       break;
-    case IR::Op::StoreInt:
+    case ir::Op::StoreInt:
       StoreValue(resolve(cmd.store_int_.val_),
-                 resolve<IR::Addr>(cmd.store_int_.addr_), &stack_);
+                 resolve<ir::Addr>(cmd.store_int_.addr_), &stack_);
       break;
-    case IR::Op::StoreReal:
+    case ir::Op::StoreReal:
       StoreValue(resolve(cmd.store_real_.val_),
-                 resolve<IR::Addr>(cmd.store_real_.addr_), &stack_);
+                 resolve<ir::Addr>(cmd.store_real_.addr_), &stack_);
       break;
-    case IR::Op::StoreType:
+    case ir::Op::StoreType:
       StoreValue(resolve(cmd.store_type_.val_),
-                 resolve<IR::Addr>(cmd.store_type_.addr_), &stack_);
+                 resolve<ir::Addr>(cmd.store_type_.addr_), &stack_);
       break;
-    case IR::Op::StoreEnum:
+    case ir::Op::StoreEnum:
       StoreValue(resolve(cmd.store_enum_.val_),
-                 resolve<IR::Addr>(cmd.store_enum_.addr_), &stack_);
+                 resolve<ir::Addr>(cmd.store_enum_.addr_), &stack_);
       break;
-    case IR::Op::StoreFunc:
+    case ir::Op::StoreFunc:
       StoreValue(resolve(cmd.store_func_.val_),
-                 resolve<IR::Addr>(cmd.store_func_.addr_), &stack_);
+                 resolve<ir::Addr>(cmd.store_func_.addr_), &stack_);
       break;
-    case IR::Op::StoreFlags:
+    case ir::Op::StoreFlags:
       StoreValue(resolve(cmd.store_flags_.val_),
-                 resolve<IR::Addr>(cmd.store_flags_.addr_), &stack_);
+                 resolve<ir::Addr>(cmd.store_flags_.addr_), &stack_);
       break;
-    case IR::Op::StoreAddr:
+    case ir::Op::StoreAddr:
       StoreValue(resolve(cmd.store_addr_.val_),
-                 resolve<IR::Addr>(cmd.store_addr_.addr_), &stack_);
+                 resolve<ir::Addr>(cmd.store_addr_.addr_), &stack_);
       break;
-    case IR::Op::PhiBool:
+    case ir::Op::PhiBool:
       save(resolve(cmd.phi_bool_.args_->map_.at(call_stack.top().prev_)));
       break;
-    case IR::Op::PhiChar:
+    case ir::Op::PhiChar:
       save(resolve(cmd.phi_char_.args_->map_.at(call_stack.top().prev_)));
       break;
-    case IR::Op::PhiInt:
+    case ir::Op::PhiInt:
       save(resolve(cmd.phi_int_.args_->map_.at(call_stack.top().prev_)));
       break;
-    case IR::Op::PhiReal:
+    case ir::Op::PhiReal:
       save(resolve(cmd.phi_real_.args_->map_.at(call_stack.top().prev_)));
       break;
-    case IR::Op::PhiType:
+    case ir::Op::PhiType:
       save(resolve(cmd.phi_type_.args_->map_.at(call_stack.top().prev_)));
       break;
-    case IR::Op::PhiAddr:
+    case ir::Op::PhiAddr:
       save(resolve(cmd.phi_addr_.args_->map_.at(call_stack.top().prev_)));
       break;
-    case IR::Op::PhiBlock:
+    case ir::Op::PhiBlock:
       save(resolve(cmd.phi_block_.args_->map_.at(call_stack.top().prev_)));
       break;
-    case IR::Op::Contextualize: NOT_YET();
-    case IR::Op::CondJump:
+    case ir::Op::Contextualize: NOT_YET();
+    case ir::Op::CondJump:
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];
-    case IR::Op::UncondJump: return cmd.uncond_jump_.block_;
-    case IR::Op::ReturnJump: return IR::BlockIndex{-1};
-    case IR::Op::BlockSeqJump: {
+    case ir::Op::UncondJump: return cmd.uncond_jump_.block_;
+    case ir::Op::ReturnJump: return ir::BlockIndex{-1};
+    case ir::Op::BlockSeqJump: {
       auto bseq = resolve(cmd.block_seq_jump_.bseq_);
 
       for (auto *bl : *bseq.seq_) {
@@ -746,6 +746,6 @@ IR::BlockIndex ExecContext::ExecuteCmd(
       NOT_YET(bseq.seq_);
     } break;
   }
-  return IR::BlockIndex{-2};
+  return ir::BlockIndex{-2};
 }
 }  // namespace backend

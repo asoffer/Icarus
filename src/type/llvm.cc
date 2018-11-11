@@ -1,8 +1,8 @@
 #ifdef ICARUS_USE_LLVM
 #include "architecture.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Type.h"
+#include "llvm/ir/DerivedTypes.h"
+#include "llvm/ir/LLVMContext.h"
+#include "llvm/ir/Type.h"
 #include "type/all.h"
 
 namespace type {

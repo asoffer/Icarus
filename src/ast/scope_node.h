@@ -11,7 +11,7 @@
 
 struct Context;
 
-namespace AST {
+namespace ast {
 struct ScopeNode : public Expression {
   ~ScopeNode() override {}
 
@@ -21,8 +21,8 @@ struct ScopeNode : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
   
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   std::unique_ptr<Expression> name_;
   FnArgs<std::unique_ptr<Expression>> args_;
@@ -30,6 +30,6 @@ struct ScopeNode : public Expression {
   base::vector<std::unique_ptr<BlockNode>> blocks_;
   ScopeNode *sugared_ = nullptr;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_SCOPE_NODE_H

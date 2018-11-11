@@ -6,7 +6,7 @@
 
 #include "ast/expression.h"
 
-namespace AST {
+namespace ast {
 struct Import : public Expression {
   Import(std::unique_ptr<Expression> expr) : operand_(std::move(expr)) {}
   ~Import() override {}
@@ -20,13 +20,13 @@ struct Import : public Expression {
   // like it should be disallowed but maybe I need this to catch the error!
   void ExtractJumps(JumpExprs *) const override {}
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   // TODO optimization: if the operand_ is a string literal, schedule it
   // immediately.
   std::optional<std::string /* Source::Name */> cache_;
   std::unique_ptr<Expression> operand_;
 };
-}  // namespace AST
+}  // namespace ast
 #endif  // ICARUS_AST_IMPORT_H

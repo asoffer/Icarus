@@ -9,14 +9,14 @@
 #include "type/function.h"
 #include "type/struct.h"
 
-namespace IR {
-Register CreateStruct(AST::StructLiteral *lit);
+namespace ir {
+Register CreateStruct(ast::StructLiteral *lit);
 void CreateStructField(type::Struct *struct_type,
                        RegisterOr<type::Type const *> type);
 void SetStructFieldName(type::Struct *struct_type, std::string_view field_name);
-}  // namespace IR
+}  // namespace ir
 
-namespace AST {
+namespace ast {
 std::string StructLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "struct {\n";
@@ -49,15 +49,15 @@ void StructLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &f : fields_) { f->ExtractJumps(rets); }
 }
 
-base::vector<IR::Val> AST::StructLiteral::EmitIR(Context *ctx) {
-  return {IR::Val::Reg(IR::CreateStruct(this), type::Type_)};
+base::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
+  return {ir::Val::Reg(ir::CreateStruct(this), type::Type_)};
 }
 
-void AST::StructLiteral::Complete(type::Struct *s) {
-  IR::Func f(mod_, type::Func({}, {}), {});
+void ast::StructLiteral::Complete(type::Struct *s) {
+  ir::Func f(mod_, type::Func({}, {}), {});
   Context ctx(mod_);
   CURRENT_FUNC(&f) {
-    IR::BasicBlock::Current = f.entry();
+    ir::BasicBlock::Current = f.entry();
 
     for (const auto &field : fields_) {
       // TODO initial values? hashatgs?
@@ -65,18 +65,18 @@ void AST::StructLiteral::Complete(type::Struct *s) {
       // NOTE: CreateStructField may invalidate all other struct fields, so it's
       // not safe to access these registers returned by CreateStructField after
       // a subsequent call to CreateStructField.
-      IR::CreateStructField(
+      ir::CreateStructField(
           s, field->type_expr->EmitIR(&ctx)[0].reg_or<type::Type const *>());
-      IR::SetStructFieldName(s, field->id_);
+      ir::SetStructFieldName(s, field->id_);
     }
-    IR::ReturnJump();
+    ir::ReturnJump();
   }
 
   backend::ExecContext exec_ctx;
   backend::Execute(&f, base::untyped_buffer(0), {}, &exec_ctx);
 }
 
-base::vector<IR::Register> AST::StructLiteral::EmitLVal(Context *ctx) {
+base::vector<ir::Register> ast::StructLiteral::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
-}  // namespace AST
+}  // namespace ast

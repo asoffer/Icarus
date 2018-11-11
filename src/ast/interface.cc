@@ -6,7 +6,7 @@
 #include "ir/val.h"
 #include "type/type.h"
 
-namespace AST {
+namespace ast {
 void Interface::assign_scope(Scope *scope) {
   scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
@@ -44,20 +44,20 @@ void Interface::ExtractJumps(JumpExprs *rets) const {
   for (auto &d : decls_) { d.ExtractJumps(rets); }
 }
 
-base::vector<IR::Val> AST::Interface::EmitIR(Context *ctx) {
+base::vector<ir::Val> ast::Interface::EmitIR(Context *ctx) {
   // TODO this needs to be serialized as instructions so that we can evaluate
   // functions which return interfaces. For example,
   // HasFoo ::= (T: type) => interface {
   //   foo: T
   // }
-  IR::Interface ifc;
+  ir::Interface ifc;
   for (const auto &decl : decls_) {
     ifc.field_map_.emplace(decl.id_, ctx->type_of(&decl));
   }
-  return {IR::Val::Interface(std::move(ifc))};
+  return {ir::Val::Interface(std::move(ifc))};
 }
 
-base::vector<IR::Register> AST::Interface::EmitLVal(Context *ctx) {
+base::vector<ir::Register> ast::Interface::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
-}  // namespace AST
+}  // namespace ast

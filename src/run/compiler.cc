@@ -11,14 +11,14 @@
 
 #ifdef ICARUS_USE_LLVM
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/Module.h"
+#include "llvm/ir/Module.h"
 #include "llvm/Support/TargetSelect.h"
 #endif  // ICARUS_USE_LLVM
 
 base::vector<frontend::Source::Name> files;
 
 // TODO sad. don't use a global to do this.
-extern IR::Func *main_fn;
+extern ir::Func *main_fn;
 
 base::guarded<base::unordered_map<frontend::Source::Name,
                                   std::shared_future<std::unique_ptr<Module>>>>

@@ -8,9 +8,9 @@
 #include "ir/cmd.h"
 #include "ir/val.h"
 
-namespace IR {
+namespace ir {
 struct Func;
-}  // namespace IR
+}  // namespace ir
 
 namespace backend {
 struct ExecContext {
@@ -18,42 +18,42 @@ struct ExecContext {
 
   struct Frame {
     Frame() = delete;
-    Frame(IR::Func *fn, const base::untyped_buffer &arguments);
+    Frame(ir::Func *fn, const base::untyped_buffer &arguments);
 
-    void MoveTo(IR::BlockIndex block_index) {
+    void MoveTo(ir::BlockIndex block_index) {
       ASSERT(block_index.value >= 0);
       prev_    = current_;
       current_ = block_index;
     }
 
-    IR::Func *fn_ = nullptr;
-    IR::BlockIndex current_;
-    IR::BlockIndex prev_;
+    ir::Func *fn_ = nullptr;
+    ir::BlockIndex current_;
+    ir::BlockIndex prev_;
 
     base::untyped_buffer regs_;
   };
 
-  IR::BasicBlock &current_block();
+  ir::BasicBlock &current_block();
 
   std::stack<Frame> call_stack;
 
-  IR::BlockIndex ExecuteBlock(const base::vector<IR::Addr> &ret_slots);
-  IR::BlockIndex ExecuteCmd(const IR::Cmd &cmd,
-                            const base::vector<IR::Addr> &ret_slots);
+  ir::BlockIndex ExecuteBlock(const base::vector<ir::Addr> &ret_slots);
+  ir::BlockIndex ExecuteCmd(const ir::Cmd &cmd,
+                            const base::vector<ir::Addr> &ret_slots);
 
   template <typename T>
-  T resolve(IR::Register val) const;
+  T resolve(ir::Register val) const;
 
   template <typename T>
-  T resolve(IR::RegisterOr<T> val) const {
+  T resolve(ir::RegisterOr<T> val) const {
     return val.is_reg_ ? resolve<T>(val.reg_) : val.val_;
   }
 
   base::untyped_buffer stack_;
 };
 
-void Execute(IR::Func *fn, const base::untyped_buffer &arguments,
-             const base::vector<IR::Addr> &ret_slots,
+void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
+             const base::vector<ir::Addr> &ret_slots,
              backend::ExecContext *ctx);
 }  // namespace backend
 #endif  // ICARUS_BACKEND_EXEC_H

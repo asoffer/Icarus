@@ -14,17 +14,17 @@ struct Struct;
 struct Pointer;
 }  // namespace type
 
-namespace AST {
+namespace ast {
 struct StructLiteral;
 struct ScopeLiteral;
 struct ScopeNode;
 struct Function;
-}  // namespace AST
+}  // namespace ast
 
-namespace IR {
+namespace ir {
 struct LongArgs {
-  void append(const IR::Val &val);
-  void append(IR::Register reg);
+  void append(const ir::Val &val);
+  void append(ir::Register reg);
   std::string to_string() const;
 
   type::Function const *type_ = nullptr;
@@ -137,7 +137,7 @@ struct Cmd {
   };
   CMD(StoreAddr) {
     Register addr_;
-    RegisterOr<IR::Addr> val_;
+    RegisterOr<ir::Addr> val_;
   };
 
   CMD(PrintBool) { RegisterOr<bool> arg_; };
@@ -153,7 +153,7 @@ struct Cmd {
     RegisterOr<FlagsVal> arg_;
     type::Flags const *flags_type_;
   };
-  CMD(PrintAddr) { RegisterOr<IR::Addr> arg_; };
+  CMD(PrintAddr) { RegisterOr<ir::Addr> arg_; };
   CMD(PrintCharBuffer) { RegisterOr<std::string_view> arg_; };
 
   CMD(AddInt) { std::array<RegisterOr<i32>, 2> args_; };
@@ -186,14 +186,14 @@ struct Cmd {
   CMD(EqType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
   CMD(EqEnum) { std::array<RegisterOr<EnumVal>, 2> args_; };
   CMD(EqFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(EqAddr) { std::array<RegisterOr<IR::Addr>, 2> args_; };
+  CMD(EqAddr) { std::array<RegisterOr<ir::Addr>, 2> args_; };
   CMD(NeChar) { std::array<RegisterOr<char>, 2> args_; };
   CMD(NeInt) { std::array<RegisterOr<i32>, 2> args_; };
   CMD(NeReal) { std::array<RegisterOr<double>, 2> args_; };
   CMD(NeType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
   CMD(NeEnum) { std::array<RegisterOr<EnumVal>, 2> args_; };
   CMD(NeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(NeAddr) { std::array<RegisterOr<IR::Addr>, 2> args_; };
+  CMD(NeAddr) { std::array<RegisterOr<ir::Addr>, 2> args_; };
 
   CMD(XorBool) { std::array<RegisterOr<bool>, 2> args_; };
 
@@ -201,7 +201,7 @@ struct Cmd {
   CMD(OrFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
   CMD(AndFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
 
-  CMD(CreateStruct) { AST::StructLiteral *lit_; };
+  CMD(CreateStruct) { ast::StructLiteral *lit_; };
   CMD(CreateStructField) {
     type::Struct *struct_;
     RegisterOr<type::Type const *> type_;
@@ -240,7 +240,7 @@ struct Cmd {
   CMD(CreateBlockSeq){};
   CMD(AppendToBlockSeq) {
     Register block_seq_;
-    RegisterOr<IR::BlockSequence> arg_;
+    RegisterOr<ir::BlockSequence> arg_;
   };
   CMD(FinalizeBlockSeq) { Register block_seq_; };
 
@@ -273,7 +273,7 @@ struct Cmd {
   CMD(PhiReal) { PhiArgs<double> *args_; };
   CMD(PhiType) { PhiArgs<type::Type const *> *args_; };
   CMD(PhiBlock) { PhiArgs<BlockSequence> *args_; };
-  CMD(PhiAddr) { PhiArgs<IR::Addr> *args_; };
+  CMD(PhiAddr) { PhiArgs<ir::Addr> *args_; };
 
   CMD(CondJump) {
     Register cond_;
@@ -283,7 +283,7 @@ struct Cmd {
   CMD(ReturnJump){};
   CMD(BlockSeqJump) {
     RegisterOr<BlockSequence> bseq_;
-    std::unordered_map<AST::BlockLiteral const *, IR::BlockIndex> const
+    std::unordered_map<ast::BlockLiteral const *, ir::BlockIndex> const
         *jump_table_;
   };
 
@@ -295,7 +295,7 @@ struct Cmd {
 
   CMD(BlockSeqContains) {
     Register reg_;
-    AST::BlockLiteral *lit_;
+    ast::BlockLiteral *lit_;
   };
 
   CMD(SetReturnBool) {
@@ -335,7 +335,7 @@ struct Cmd {
 
   CMD(SetReturnAddr) {
     size_t ret_num_;
-    RegisterOr<IR::Addr> val_;
+    RegisterOr<ir::Addr> val_;
   };
 
   CMD(SetReturnCharBuf) {
@@ -345,17 +345,17 @@ struct Cmd {
 
   CMD(SetReturnFunc) {
     size_t ret_num_;
-    RegisterOr<IR::AnyFunc> val_;
+    RegisterOr<ir::AnyFunc> val_;
   };
 
   CMD(SetReturnScope) {
     size_t ret_num_;
-    RegisterOr<AST::ScopeLiteral *> val_;
+    RegisterOr<ast::ScopeLiteral *> val_;
   };
 
   CMD(SetReturnGeneric) {
     size_t ret_num_;
-    RegisterOr<AST::FunctionLiteral *> val_;
+    RegisterOr<ast::FunctionLiteral *> val_;
   };
 
   CMD(SetReturnModule) {
@@ -549,7 +549,7 @@ void StoreType(RegisterOr<type::Type const *> val, Register loc);
 void StoreEnum(RegisterOr<EnumVal> val, Register loc);
 void StoreFunc(RegisterOr<Func *> val, Register loc);
 void StoreFlags(RegisterOr<FlagsVal> val, Register loc);
-void StoreAddr(RegisterOr<IR::Addr> val, Register loc);
+void StoreAddr(RegisterOr<ir::Addr> val, Register loc);
 RegisterOr<i32> AddInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<double> AddReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<i32> SubInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
@@ -581,7 +581,7 @@ RegisterOr<bool> EqReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<bool> EqType(RegisterOr<type::Type const *> v1,
                         RegisterOr<type::Type const *> v2);
 // TODO can be just a register?
-RegisterOr<bool> EqAddr(RegisterOr<IR::Addr> v1, RegisterOr<IR::Addr> v2);
+RegisterOr<bool> EqAddr(RegisterOr<ir::Addr> v1, RegisterOr<ir::Addr> v2);
 RegisterOr<bool> NeChar(RegisterOr<char> v1, RegisterOr<char> v2);
 RegisterOr<bool> NeInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<bool> NeReal(RegisterOr<double> v1, RegisterOr<double> v2);
@@ -589,7 +589,7 @@ RegisterOr<bool> NeType(RegisterOr<type::Type const *> v1,
                         RegisterOr<type::Type const *> v2);
 RegisterOr<bool> NeEnum(RegisterOr<EnumVal> v1, RegisterOr<EnumVal> v2);
 RegisterOr<bool> NeFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
-RegisterOr<bool> NeAddr(RegisterOr<IR::Addr> v1, RegisterOr<IR::Addr> v2);
+RegisterOr<bool> NeAddr(RegisterOr<ir::Addr> v1, RegisterOr<ir::Addr> v2);
 RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2);
 RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &lhs,
@@ -624,7 +624,7 @@ void PrintReal(RegisterOr<double> r);
 void PrintType(RegisterOr<type::Type const *> r);
 void PrintEnum(RegisterOr<EnumVal> r, type::Enum const *);
 void PrintFlags(RegisterOr<FlagsVal> r, type::Flags const *);
-void PrintAddr(RegisterOr<IR::Addr> r);
+void PrintAddr(RegisterOr<ir::Addr> r);
 void PrintCharBuffer(RegisterOr<std::string_view> r);
 void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args);
 void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args, OutParams outs);
@@ -639,11 +639,11 @@ void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
 void UncondJump(BlockIndex block);
 void ReturnJump();
 void BlockSeqJump(RegisterOr<BlockSequence> r,
-                  std::unordered_map<AST::BlockLiteral const *,
-                                     IR::BlockIndex> const *jump_table);
+                  std::unordered_map<ast::BlockLiteral const *,
+                                     ir::BlockIndex> const *jump_table);
 
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
-                                  AST::BlockLiteral *lit);
+                                  ast::BlockLiteral *lit);
 void SetReturnBool(size_t n, RegisterOr<bool> r);
 void SetReturnChar(size_t n, RegisterOr<char> r);
 void SetReturnInt(size_t n, RegisterOr<i32> r);
@@ -654,8 +654,8 @@ void SetReturnFlags(size_t n, RegisterOr<FlagsVal> r);
 void SetReturnCharBuf(size_t n, RegisterOr<std::string_view> r);
 void SetReturnAddr(size_t n, RegisterOr<Addr> r);
 void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r);
-void SetReturnScope(size_t n, RegisterOr<AST::ScopeLiteral *> r);
-void SetReturnGeneric(size_t n, RegisterOr<AST::FunctionLiteral *> r);
+void SetReturnScope(size_t n, RegisterOr<ast::ScopeLiteral *> r);
+void SetReturnGeneric(size_t n, RegisterOr<ast::FunctionLiteral *> r);
 void SetReturnModule(size_t n, RegisterOr<Module const *> r);
 void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r);
 
@@ -671,5 +671,5 @@ Register Alloca(const type::Type *t);
 void SetReturn(size_t n, Val const &v2);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
-}  // namespace IR
+}  // namespace ir
 #endif  // ICARUS_IR_CMD_H

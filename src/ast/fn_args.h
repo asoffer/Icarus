@@ -4,7 +4,7 @@
 #include "base/container/unordered_map.h"
 #include "base/container/vector.h"
 
-namespace AST {
+namespace ast {
 template <typename T>
 struct FnArgs {
   auto find(const std::string &name) -> decltype(auto) {
@@ -97,6 +97,6 @@ bool operator<(const FnArgs<T> &lhs, const FnArgs<T> &rhs) {
   if (l_iter == lhs.named_.end()) { return false; }
   return *l_iter < *r_iter;
 }
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_FN_ARGS_H

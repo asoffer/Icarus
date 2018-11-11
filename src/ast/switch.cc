@@ -11,7 +11,7 @@
 #include "type/pointer.h"
 #include "type/type.h"
 
-namespace AST {
+namespace ast {
 std::string Switch::to_string(size_t n) const {
   std::stringstream ss;
   ss << "switch {\n";
@@ -66,36 +66,36 @@ void Switch::ExtractJumps(JumpExprs *rets) const {
   }
 }
 
-base::vector<IR::Val> AST::Switch::EmitIR(Context *ctx) {
-  base::unordered_map<IR::BlockIndex, IR::Val> phi_args;
-  auto land_block = IR::Func::Current->AddBlock();
+base::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
+  base::unordered_map<ir::BlockIndex, ir::Val> phi_args;
+  auto land_block = ir::Func::Current->AddBlock();
 
   // TODO handle a default value. for now, we're just not checking the very last
   // condition. This is very wrong.
   for (size_t i = 0; i < cases_.size() - 1; ++i) {
     auto & [ expr, cond ] = cases_[i];
-    auto expr_block       = IR::Func::Current->AddBlock();
+    auto expr_block       = ir::Func::Current->AddBlock();
     auto next_block =
-        IR::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx)[0].reg_or<bool>());
+        ir::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx)[0].reg_or<bool>());
 
-    IR::BasicBlock::Current           = expr_block;
+    ir::BasicBlock::Current           = expr_block;
     auto val                          = expr->EmitIR(ctx)[0];
-    phi_args[IR::BasicBlock::Current] = std::move(val);
-    IR::UncondJump(land_block);
+    phi_args[ir::BasicBlock::Current] = std::move(val);
+    ir::UncondJump(land_block);
 
-    IR::BasicBlock::Current = next_block;
+    ir::BasicBlock::Current = next_block;
   }
 
-  phi_args[IR::BasicBlock::Current] = cases_.back().first->EmitIR(ctx)[0];
-  IR::UncondJump(land_block);
+  phi_args[ir::BasicBlock::Current] = cases_.back().first->EmitIR(ctx)[0];
+  ir::UncondJump(land_block);
 
-  IR::BasicBlock::Current = land_block;
+  ir::BasicBlock::Current = land_block;
   auto *t                 = ctx->type_of(this);
-  return {IR::MakePhi(IR::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)};
+  return {ir::MakePhi(ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)};
 }
 
-base::vector<IR::Register> AST::Switch::EmitLVal(Context *ctx) {
+base::vector<ir::Register> ast::Switch::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
 
-}  // namespace AST
+}  // namespace ast

@@ -12,7 +12,7 @@
 struct Scope;
 struct Context;
 
-namespace AST {
+namespace ast {
 struct Binop : public Expression {
   ~Binop() override {}
   std::string to_string(size_t n) const override;
@@ -21,14 +21,14 @@ struct Binop : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   Language::Operator op;
   std::unique_ptr<Expression> lhs, rhs;
   DispatchTable dispatch_table_;
 };
 
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_BINOP_H

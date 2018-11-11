@@ -14,19 +14,19 @@ struct Tuple : public Type {
   Tuple(base::vector<Type const *> entries) : entries_(std::move(entries)) {}
   virtual char *WriteTo(char *buf) const;
   virtual size_t string_size() const;
-  virtual void EmitAssign(const Type *from_type, IR::Val from, IR::Register to,
+  virtual void EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
                           Context *ctx) const {
     UNREACHABLE();
   }
-  virtual void EmitInit(IR::Register reg, Context *ctx) const { UNREACHABLE(); }
-  virtual void EmitDestroy(IR::Register reg, Context *ctx) const {
+  virtual void EmitInit(ir::Register reg, Context *ctx) const { UNREACHABLE(); }
+  virtual void EmitDestroy(ir::Register reg, Context *ctx) const {
     UNREACHABLE();
   }
-  virtual IR::Val PrepareArgument(const Type *t, const IR::Val &val,
+  virtual ir::Val PrepareArgument(const Type *t, const ir::Val &val,
                                   Context *ctx) const {
     UNREACHABLE();
   }
-  virtual void EmitRepr(IR::Val const &id_val, Context *ctx) const {
+  virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const {
     UNREACHABLE();
   }
   virtual Cmp Comparator() const { UNREACHABLE(); }

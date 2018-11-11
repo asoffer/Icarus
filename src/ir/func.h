@@ -21,7 +21,7 @@ struct Function;
 
 struct Module;
 
-namespace IR {
+namespace ir {
 struct CmdIndex {
   BlockIndex block;
   i32 cmd;
@@ -41,7 +41,7 @@ struct Func {
   static thread_local Func *Current;
 
   Func(Module *mod, const type::Function *fn_type,
-       base::vector<std::pair<std::string, AST::Expression *>> args);
+       base::vector<std::pair<std::string, ast::Expression *>> args);
 
   Register Argument(u32 n) const;
   Register Return(u32 n) const;
@@ -81,7 +81,7 @@ struct Func {
   BlockIndex entry() const { return BlockIndex(0); }
 
   const type::Function *const type_ = nullptr;
-  base::vector<std::pair<std::string, AST::Expression *>> args_;
+  base::vector<std::pair<std::string, ast::Expression *>> args_;
   bool has_default(size_t i) const { return args_[i].second != nullptr; }
   i32 num_regs_  = 0;
   i32 neg_bound_ = 0;
@@ -97,8 +97,8 @@ struct Func {
 
   base::unordered_map<std::string, size_t> lookup_;
 
-  base::vector<AST::Expression *> precondition_exprs_, postcondition_exprs_;
-  base::vector<std::pair<IR::Func, prop::PropertyMap>> preconditions_,
+  base::vector<ast::Expression *> precondition_exprs_, postcondition_exprs_;
+  base::vector<std::pair<ir::Func, prop::PropertyMap>> preconditions_,
       postconditions_;
   base::unordered_map<Register, base::bag<Register>> references_;
   base::unordered_map<Register, CmdIndex> reg_to_cmd_;
@@ -107,7 +107,7 @@ struct Func {
                       std::unordered_set<BasicBlock const *>>
   GetIncomingBlocks() const;
 };
-std::ostream &operator<<(std::ostream &, IR::Func const &);
+std::ostream &operator<<(std::ostream &, ir::Func const &);
 
 namespace internal {
 struct FuncResetter {
@@ -124,8 +124,8 @@ struct FuncResetter {
   BlockIndex old_block_;
 };
 }  // namespace internal
-}  // namespace IR
+}  // namespace ir
 
-#define CURRENT_FUNC(fn) if (IR::internal::FuncResetter resetter(fn); true)
+#define CURRENT_FUNC(fn) if (ir::internal::FuncResetter resetter(fn); true)
 
 #endif  // ICARUS_IR_FUNC_H

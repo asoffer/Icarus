@@ -6,11 +6,11 @@
 
 struct Context;
 
-namespace IR {
+namespace ir {
 struct Val;
-}  // namespace IR
+}  // namespace ir
 
-namespace AST {
+namespace ast {
 struct Expression : public Node {
   Expression(const TextSpan &span = TextSpan()) : Node(span) {}
   virtual ~Expression(){};
@@ -18,9 +18,9 @@ struct Expression : public Node {
   virtual void assign_scope(Scope *scope)                                = 0;
   virtual type::Type const *VerifyType(Context *ctx)                     = 0;
   virtual void Validate(Context *ctx)                                    = 0;
-  virtual base::vector<IR::Val> EmitIR(Context *)                        = 0;
-  virtual base::vector<IR::Register> EmitLVal(Context *)                 = 0;
+  virtual base::vector<ir::Val> EmitIR(Context *)                        = 0;
+  virtual base::vector<ir::Register> EmitLVal(Context *)                 = 0;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_EXPRESSION_H

@@ -9,7 +9,7 @@
 
 struct Context;
 
-namespace AST {
+namespace ast {
 struct Statements;
 }
 
@@ -20,7 +20,7 @@ struct Source {
 
   virtual ~Source() {}
   virtual std::optional<Line> NextLine()                    = 0;
-  virtual std::unique_ptr<AST::Statements> Parse(Context *) = 0;
+  virtual std::unique_ptr<ast::Statements> Parse(Context *) = 0;
 
   base::vector<Line> lines{
       1};  // Start with one blank line because line numbers
@@ -40,7 +40,7 @@ struct Repl : public Source {
   Repl() : Source(Source::Name("")) {}
 
   std::optional<Source::Line> NextLine() final;
-  std::unique_ptr<AST::Statements> Parse(Context *) final;
+  std::unique_ptr<ast::Statements> Parse(Context *) final;
 
   bool first_entry = true;
 };
@@ -51,9 +51,9 @@ struct File : Source {
   ~File() final {}
 
   std::optional<Source::Line> NextLine() final;
-  std::unique_ptr<AST::Statements> Parse(Context *) final;
+  std::unique_ptr<ast::Statements> Parse(Context *) final;
 
-  AST::Statements *ast = nullptr;
+  ast::Statements *ast = nullptr;
   std::ifstream ifs;
 };
 }  // namespace frontend

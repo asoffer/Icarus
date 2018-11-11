@@ -16,24 +16,24 @@
 #include "type/struct.h"
 #include "type/tuple.h"
 
-base::vector<IR::Val> EmitCallDispatch(
-    const AST::FnArgs<std::pair<AST::Expression *, IR::Val>> &args,
-    const AST::DispatchTable &dispatch_table, const type::Type *ret_type,
+base::vector<ir::Val> EmitCallDispatch(
+    const ast::FnArgs<std::pair<ast::Expression *, ir::Val>> &args,
+    const ast::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
 
-namespace IR {
+namespace ir {
 Val BlockSeq(base::vector<Val> const &blocks);
 RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals);
-}  // namespace IR
+}  // namespace ir
 
-namespace AST {
+namespace ast {
 namespace {
 using base::check::Is;
 using base::check::Not;
 
-IR::RegisterOr<bool> EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
-                                     IR::Val const &lhs_ir,
-                                     IR::Val const &rhs_ir, Context *ctx) {
+ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
+                                     ir::Val const &lhs_ir,
+                                     ir::Val const &rhs_ir, Context *ctx) {
   auto *lhs_type = ctx->type_of(chain_op->exprs[index].get());
   auto *rhs_type = ctx->type_of(chain_op->exprs[index + 1].get());
   auto op        = chain_op->ops[index];
@@ -45,7 +45,7 @@ IR::RegisterOr<bool> EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
                                 op == Language::Operator::Eq, ctx)
         .reg_or<bool>();
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
-    FnArgs<std::pair<Expression *, IR::Val>> args;
+    FnArgs<std::pair<Expression *, ir::Val>> args;
     args.pos_.reserve(2);
     args.pos_.emplace_back(chain_op->exprs[index].get(), lhs_ir);
     args.pos_.emplace_back(chain_op->exprs[index + 1].get(), rhs_ir);
@@ -62,58 +62,58 @@ IR::RegisterOr<bool> EmitChainOpPair(AST::ChainOp *chain_op, size_t index,
   }
     switch (op) {
       case Language::Operator::Lt:
-        MAKE_OP(i32, == type::Int, IR::LtInt);
-        MAKE_OP(double, == type::Real, IR::LtReal);
-        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::LtFlags);
+        MAKE_OP(i32, == type::Int, ir::LtInt);
+        MAKE_OP(double, == type::Real, ir::LtReal);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::LtFlags);
         UNREACHABLE();
       case Language::Operator::Le:
-        MAKE_OP(i32, == type::Int, IR::LeInt);
-        MAKE_OP(double, == type::Real, IR::LeReal);
-        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::LeFlags);
+        MAKE_OP(i32, == type::Int, ir::LeInt);
+        MAKE_OP(double, == type::Real, ir::LeReal);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::LeFlags);
         UNREACHABLE();
       case Language::Operator::Eq:
-        MAKE_OP(bool, == type::Bool, IR::EqBool);
-        MAKE_OP(char, == type::Char, IR::EqChar);
-        MAKE_OP(i32, == type::Int, IR::EqInt);
-        MAKE_OP(double, == type::Real, IR::EqReal);
-        MAKE_OP(type::Type const *, == type::Type_, IR::EqType);
-        MAKE_OP(IR::EnumVal, ->is<type::Enum>(), IR::EqEnum);
-        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::EqFlags);
-        MAKE_OP(IR::Addr, ->is<type::Pointer>(), IR::EqAddr);
+        MAKE_OP(bool, == type::Bool, ir::EqBool);
+        MAKE_OP(char, == type::Char, ir::EqChar);
+        MAKE_OP(i32, == type::Int, ir::EqInt);
+        MAKE_OP(double, == type::Real, ir::EqReal);
+        MAKE_OP(type::Type const *, == type::Type_, ir::EqType);
+        MAKE_OP(ir::EnumVal, ->is<type::Enum>(), ir::EqEnum);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::EqFlags);
+        MAKE_OP(ir::Addr, ->is<type::Pointer>(), ir::EqAddr);
         {
-          IR::BlockSequence const *val1 =
-              std::get_if<IR::BlockSequence>(&lhs_ir.value);
-          IR::BlockSequence const *val2 =
-              std::get_if<IR::BlockSequence>(&rhs_ir.value);
+          ir::BlockSequence const *val1 =
+              std::get_if<ir::BlockSequence>(&lhs_ir.value);
+          ir::BlockSequence const *val2 =
+              std::get_if<ir::BlockSequence>(&rhs_ir.value);
           if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
         }
         UNREACHABLE();
       case Language::Operator::Ne:
-        MAKE_OP(bool, == type::Bool, IR::XorBool);
-        MAKE_OP(char, == type::Char, IR::NeChar);
-        MAKE_OP(i32, == type::Int, IR::NeInt);
-        MAKE_OP(double, == type::Real, IR::NeReal);
-        MAKE_OP(type::Type const *, == type::Type_, IR::NeType);
-        MAKE_OP(IR::EnumVal, ->is<type::Enum>(), IR::NeEnum);
-        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::NeFlags);
-        MAKE_OP(IR::Addr, ->is<type::Pointer>(), IR::NeAddr);
+        MAKE_OP(bool, == type::Bool, ir::XorBool);
+        MAKE_OP(char, == type::Char, ir::NeChar);
+        MAKE_OP(i32, == type::Int, ir::NeInt);
+        MAKE_OP(double, == type::Real, ir::NeReal);
+        MAKE_OP(type::Type const *, == type::Type_, ir::NeType);
+        MAKE_OP(ir::EnumVal, ->is<type::Enum>(), ir::NeEnum);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::NeFlags);
+        MAKE_OP(ir::Addr, ->is<type::Pointer>(), ir::NeAddr);
         {
-          IR::BlockSequence const *val1 =
-              std::get_if<IR::BlockSequence>(&lhs_ir.value);
-          IR::BlockSequence const *val2 =
-              std::get_if<IR::BlockSequence>(&rhs_ir.value);
+          ir::BlockSequence const *val1 =
+              std::get_if<ir::BlockSequence>(&lhs_ir.value);
+          ir::BlockSequence const *val2 =
+              std::get_if<ir::BlockSequence>(&rhs_ir.value);
           if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
         }
         UNREACHABLE();
       case Language::Operator::Ge:
-        MAKE_OP(i32, == type::Int, IR::GeInt);
-        MAKE_OP(double, == type::Real, IR::GeReal);
-        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::GeFlags);
+        MAKE_OP(i32, == type::Int, ir::GeInt);
+        MAKE_OP(double, == type::Real, ir::GeReal);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::GeFlags);
         UNREACHABLE();
       case Language::Operator::Gt:
-        MAKE_OP(i32, == type::Int, IR::GtInt);
-        MAKE_OP(double, == type::Real, IR::GtReal);
-        MAKE_OP(IR::FlagsVal, ->is<type::Flags>(), IR::GtFlags);
+        MAKE_OP(i32, == type::Int, ir::GtInt);
+        MAKE_OP(double, == type::Real, ir::GtReal);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::GtFlags);
         UNREACHABLE();
         // TODO case Language::Operator::And: cmp = lhs_ir; break;
       default: UNREACHABLE();
@@ -302,25 +302,25 @@ void ChainOp::ExtractJumps(JumpExprs *rets) const {
   for (auto &expr : exprs) { expr->ExtractJumps(rets); }
 }
 
-base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
+base::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
   auto *t = ctx->type_of(this);
   if (ops[0] == Language::Operator::Xor) {
     if (t == type::Bool) {
-      return {IR::ValFrom(std::accumulate(
-          exprs.begin(), exprs.end(), IR::RegisterOr<bool>(false),
-          [&](IR::RegisterOr<bool> acc, auto &expr) {
-            return IR::XorBool(acc,
+      return {ir::ValFrom(std::accumulate(
+          exprs.begin(), exprs.end(), ir::RegisterOr<bool>(false),
+          [&](ir::RegisterOr<bool> acc, auto &expr) {
+            return ir::XorBool(acc,
                                expr->EmitIR(ctx)[0].template reg_or<bool>());
           }))};
     } else if (t->is<type::Flags>()) {
-      return {IR::ValFrom(
+      return {ir::ValFrom(
           std::accumulate(
               exprs.begin(), exprs.end(),
-              IR::RegisterOr<IR::FlagsVal>(IR::FlagsVal{0}),
-              [&](IR::RegisterOr<IR::FlagsVal> acc, auto &expr) {
-                return IR::XorFlags(
+              ir::RegisterOr<ir::FlagsVal>(ir::FlagsVal{0}),
+              [&](ir::RegisterOr<ir::FlagsVal> acc, auto &expr) {
+                return ir::XorFlags(
                     &t->as<type::Flags>(), acc,
-                    expr->EmitIR(ctx)[0].template reg_or<IR::FlagsVal>());
+                    expr->EmitIR(ctx)[0].template reg_or<ir::FlagsVal>());
               }),
           &t->as<type::Flags>())};
     } else {
@@ -329,96 +329,96 @@ base::vector<IR::Val> ChainOp::EmitIR(Context *ctx) {
 
   } else if (ops[0] == Language::Operator::Or && t->is<type::Flags>()) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(ctx)[0].reg_or<IR::FlagsVal>();
+    auto val  = (*iter)->EmitIR(ctx)[0].reg_or<ir::FlagsVal>();
     while (++iter != exprs.end()) {
-      val = IR::OrFlags(&t->as<type::Flags>(), val,
-                        (*iter)->EmitIR(ctx)[0].reg_or<IR::FlagsVal>());
+      val = ir::OrFlags(&t->as<type::Flags>(), val,
+                        (*iter)->EmitIR(ctx)[0].reg_or<ir::FlagsVal>());
     }
-    return {IR::ValFrom(val, &t->as<type::Flags>())};
+    return {ir::ValFrom(val, &t->as<type::Flags>())};
   } else if (ops[0] == Language::Operator::And && t->is<type::Flags>()) {
     auto iter = exprs.begin();
-    auto val  = (*iter)->EmitIR(ctx)[0].reg_or<IR::FlagsVal>();
+    auto val  = (*iter)->EmitIR(ctx)[0].reg_or<ir::FlagsVal>();
     while (++iter != exprs.end()) {
-      val = IR::AndFlags(&t->as<type::Flags>(), val,
-                         (*iter)->EmitIR(ctx)[0].reg_or<IR::FlagsVal>());
+      val = ir::AndFlags(&t->as<type::Flags>(), val,
+                         (*iter)->EmitIR(ctx)[0].reg_or<ir::FlagsVal>());
     }
-    return {IR::ValFrom(val, &t->as<type::Flags>())};
+    return {ir::ValFrom(val, &t->as<type::Flags>())};
   } else if (ops[0] == Language::Operator::Or && t == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
-    base::vector<IR::Val> args;
+    base::vector<ir::Val> args;
     args.reserve(exprs.size());
     for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)[0]); }
-    auto reg_or_type = IR::Variant(args);
-    return {IR::ValFrom(reg_or_type)};
+    auto reg_or_type = ir::Variant(args);
+    return {ir::ValFrom(reg_or_type)};
   } else if (ops[0] == Language::Operator::Or &&
              (t == type::Block || t == type::OptBlock)) {
-    base::vector<IR::Val> vals;
+    base::vector<ir::Val> vals;
     vals.reserve(exprs.size());
     for (auto &expr : exprs) { vals.push_back(expr->EmitIR(ctx)[0]); }
-    return {IR::BlockSeq(vals)};
+    return {ir::BlockSeq(vals)};
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
-    auto land_block = IR::Func::Current->AddBlock();
+    auto land_block = ir::Func::Current->AddBlock();
 
-    base::unordered_map<IR::BlockIndex, IR::RegisterOr<bool>> phi_args;
+    base::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       auto val = exprs[i]->EmitIR(ctx)[0].reg_or<bool>();
 
-      auto next_block = IR::Func::Current->AddBlock();
-      IR::CondJump(val, is_or ? land_block : next_block,
+      auto next_block = ir::Func::Current->AddBlock();
+      ir::CondJump(val, is_or ? land_block : next_block,
                    is_or ? next_block : land_block);
-      phi_args.emplace(IR::BasicBlock::Current, is_or);
+      phi_args.emplace(ir::BasicBlock::Current, is_or);
 
-      IR::BasicBlock::Current = next_block;
+      ir::BasicBlock::Current = next_block;
     }
 
-    phi_args.emplace(IR::BasicBlock::Current,
+    phi_args.emplace(ir::BasicBlock::Current,
                      exprs.back()->EmitIR(ctx)[0].reg_or<bool>());
-    IR::UncondJump(land_block);
+    ir::UncondJump(land_block);
 
-    IR::BasicBlock::Current = land_block;
+    ir::BasicBlock::Current = land_block;
 
-    return {IR::ValFrom(IR::MakePhi<bool>(IR::Phi(type::Bool), phi_args))};
+    return {ir::ValFrom(ir::MakePhi<bool>(ir::Phi(type::Bool), phi_args))};
 
   } else {
     if (ops.size() == 1) {
       auto lhs_ir = exprs[0]->EmitIR(ctx)[0];
       auto rhs_ir = exprs[1]->EmitIR(ctx)[0];
-      return {IR::ValFrom(EmitChainOpPair(this, 0, lhs_ir, rhs_ir, ctx))};
+      return {ir::ValFrom(EmitChainOpPair(this, 0, lhs_ir, rhs_ir, ctx))};
 
     } else {
-      base::unordered_map<IR::BlockIndex, IR::RegisterOr<bool>> phi_args;
+      base::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
       auto lhs_ir     = exprs.front()->EmitIR(ctx)[0];
-      auto land_block = IR::Func::Current->AddBlock();
+      auto land_block = ir::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
         auto rhs_ir = exprs[i + 1]->EmitIR(ctx)[0];
         auto cmp    = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
 
-        phi_args.emplace(IR::BasicBlock::Current, false);
-        auto next_block = IR::Func::Current->AddBlock();
-        IR::CondJump(cmp, next_block, land_block);
-        IR::BasicBlock::Current = next_block;
+        phi_args.emplace(ir::BasicBlock::Current, false);
+        auto next_block = ir::Func::Current->AddBlock();
+        ir::CondJump(cmp, next_block, land_block);
+        ir::BasicBlock::Current = next_block;
         lhs_ir                  = rhs_ir;
       }
 
       // Once more for the last element, but don't do a conditional jump.
       auto rhs_ir = exprs.back()->EmitIR(ctx)[0];
       phi_args.emplace(
-          IR::BasicBlock::Current,
+          ir::BasicBlock::Current,
           EmitChainOpPair(this, exprs.size() - 2, lhs_ir, rhs_ir, ctx));
-      IR::UncondJump(land_block);
+      ir::UncondJump(land_block);
 
-      IR::BasicBlock::Current = land_block;
+      ir::BasicBlock::Current = land_block;
 
-      return {IR::ValFrom(IR::MakePhi<bool>(IR::Phi(type::Bool), phi_args))};
+      return {ir::ValFrom(ir::MakePhi<bool>(ir::Phi(type::Bool), phi_args))};
     }
   }
 }
 
-base::vector<IR::Register> ChainOp::EmitLVal(Context *ctx) {
+base::vector<ir::Register> ChainOp::EmitLVal(Context *ctx) {
   UNREACHABLE(this);
 }
 
-}  // namespace AST
+}  // namespace ast

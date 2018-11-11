@@ -3,7 +3,7 @@
 #include <sstream>
 #include "ir/val.h"
 
-namespace AST {
+namespace ast {
 std::string BlockNode::to_string(size_t n) const {
   std::stringstream ss;
   ss << name_->to_string(n) << " {\n"
@@ -28,10 +28,10 @@ void BlockNode::ExtractJumps(JumpExprs *rets) const {
   stmts_.ExtractJumps(rets);
 }
 
-base::vector<IR::Val> BlockNode::EmitIR(Context *ctx) {
+base::vector<ir::Val> BlockNode::EmitIR(Context *ctx) {
   stmts_.EmitIR(ctx);
   return {};
 }
-base::vector<IR::Register> BlockNode::EmitLVal(Context *) { UNREACHABLE(); }
+base::vector<ir::Register> BlockNode::EmitLVal(Context *) { UNREACHABLE(); }
 
-}  // namespace AST
+}  // namespace ast

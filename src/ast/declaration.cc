@@ -10,7 +10,7 @@
 #include "type/all.h"
 #include "type/typed_value.h"
 
-namespace AST {
+namespace ast {
 namespace {
 bool IsUninitialized(Declaration *decl) {
   return decl->init_val && decl->init_val->is<Hole>();
@@ -136,7 +136,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
     using eval_t = std::decay_t<decltype(eval)>;
     base::vector<ArgumentMetaData> metadata;
 
-    if constexpr (std::is_same_v<eval_t, IR::Func *>) {
+    if constexpr (std::is_same_v<eval_t, ir::Func *>) {
       metadata.reserve(eval->args_.size());
       for (size_t i = 0; i < eval->args_.size(); ++i) {
         metadata.push_back(ArgumentMetaData{
@@ -361,7 +361,7 @@ void Declaration::ExtractJumps(JumpExprs *rets) const {
   if (init_val) { init_val->ExtractJumps(rets); }
 }
 
-base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
+base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   base::defer d([&] { ctx->mod_ = old_mod; });
 
@@ -371,7 +371,7 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
     } else {
       auto[iter, newly_inserted] =
           ctx->mod_->constants_[ctx->bound_constants_].constants_.emplace(
-              this, IR::Val::None());
+              this, ir::Val::None());
       if (!newly_inserted) { return {iter->second}; }
 
       if (IsCustomInitialized()) {
@@ -406,7 +406,7 @@ base::vector<IR::Val> AST::Declaration::EmitIR(Context *ctx) {
     } else {
       t->EmitInit(addr, ctx);
     }
-    return {IR::Val::Reg(addr, t)};
+    return {ir::Val::Reg(addr, t)};
   }
 }
-}  // namespace AST
+}  // namespace ast

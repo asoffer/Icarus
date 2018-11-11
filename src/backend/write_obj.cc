@@ -3,9 +3,9 @@
 #include <string>
 #include <system_error>
 
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
+#include "llvm/ir/LLVMContext.h"
+#include "llvm/ir/LegacyPassManager.h"
+#include "llvm/ir/Module.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"

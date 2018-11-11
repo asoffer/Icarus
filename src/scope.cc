@@ -8,7 +8,7 @@
 #include "type/function.h"
 #include "type/pointer.h"
 
-void Scope::InsertDecl(AST::Declaration *decl) {
+void Scope::InsertDecl(ast::Declaration *decl) {
   decls_[decl->id_].push_back(decl);
   for (auto *scope_ptr = parent; scope_ptr; scope_ptr = scope_ptr->parent) {
     scope_ptr->child_decls_[decl->id_].push_back(decl);
@@ -16,10 +16,10 @@ void Scope::InsertDecl(AST::Declaration *decl) {
 }
 
 // TODO error version will always have nullptr types.
-std::pair<base::vector<type::Typed<AST::Declaration *>>,
-          base::vector<type::Typed<AST::Declaration *>>>
+std::pair<base::vector<type::Typed<ast::Declaration *>>,
+          base::vector<type::Typed<ast::Declaration *>>>
 Scope::AllDeclsWithId(std::string const &id, Context *ctx) {
-  base::vector<type::Typed<AST::Declaration *>> matching_decls,
+  base::vector<type::Typed<ast::Declaration *>> matching_decls,
       matching_error_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {
@@ -36,7 +36,7 @@ Scope::AllDeclsWithId(std::string const &id, Context *ctx) {
   for (auto const *mod : ctx->mod_->embedded_modules_) {
     if (auto *decl = mod->GetDecl(id)) {
       matching_decls.emplace_back(decl,
-                                  mod->type_of(AST::BoundConstants{}, decl));
+                                  mod->type_of(ast::BoundConstants{}, decl));
     }
   }
   return std::pair(std::move(matching_decls), std::move(matching_error_decls));
@@ -58,7 +58,7 @@ void FnScope::MakeAllStackAllocations(Context *ctx) {
         // TODO it's wrong to use a default BoundConstants, but it's even more
         // wrong to store the address on the declaration, so you can fix those
         // together.
-        ctx->set_addr(decl, IR::Alloca(ctx->type_of(decl)));
+        ctx->set_addr(decl, ir::Alloca(ctx->type_of(decl)));
       }
     }
   }

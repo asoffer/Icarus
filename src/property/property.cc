@@ -2,11 +2,11 @@
 
 namespace prop {
 // TODO deal with possibiltiy for overflow/underflow
-std::pair<IR::Register, base::owned_ptr<IntProp>> IntProp::Make(
-    IR::Cmd::LtInt const& lt_int, bool is_true) {
+std::pair<ir::Register, base::owned_ptr<IntProp>> IntProp::Make(
+    ir::Cmd::LtInt const& lt_int, bool is_true) {
   if (lt_int.args_[0].is_reg_) {
     if (lt_int.args_[1].is_reg_) {
-      return std::pair(IR::Register{-1}, nullptr);
+      return std::pair(ir::Register{-1}, nullptr);
     } else {
       auto int_prop    = base::make_owned<IntProp>();
       int_prop->lower_ = !is_true;
@@ -25,11 +25,11 @@ std::pair<IR::Register, base::owned_ptr<IntProp>> IntProp::Make(
   }
 }
 
-std::pair<IR::Register, base::owned_ptr<IntProp>> IntProp::Make(
-    IR::Cmd::LeInt const& le_int, bool is_true) {
+std::pair<ir::Register, base::owned_ptr<IntProp>> IntProp::Make(
+    ir::Cmd::LeInt const& le_int, bool is_true) {
   if (le_int.args_[0].is_reg_) {
     if (le_int.args_[1].is_reg_) {
-      return std::pair(IR::Register{-1}, nullptr);
+      return std::pair(ir::Register{-1}, nullptr);
     } else {
       auto int_prop    = base::make_owned<IntProp>();
       int_prop->lower_ = !is_true;
@@ -48,11 +48,11 @@ std::pair<IR::Register, base::owned_ptr<IntProp>> IntProp::Make(
   }
 }
 
-std::pair<IR::Register, base::owned_ptr<IntProp>> IntProp::Make(
-    IR::Cmd::GtInt const& gt_int, bool is_true) {
+std::pair<ir::Register, base::owned_ptr<IntProp>> IntProp::Make(
+    ir::Cmd::GtInt const& gt_int, bool is_true) {
   if (gt_int.args_[0].is_reg_) {
     if (gt_int.args_[1].is_reg_) {
-      return std::pair(IR::Register{-1}, nullptr);
+      return std::pair(ir::Register{-1}, nullptr);
     } else {
       auto int_prop    = base::make_owned<IntProp>();
       int_prop->lower_ = is_true;
@@ -71,11 +71,11 @@ std::pair<IR::Register, base::owned_ptr<IntProp>> IntProp::Make(
   }
 }
 
-std::pair<IR::Register, base::owned_ptr<IntProp>> IntProp::Make(
-    IR::Cmd::GeInt const& ge_int, bool is_true) {
+std::pair<ir::Register, base::owned_ptr<IntProp>> IntProp::Make(
+    ir::Cmd::GeInt const& ge_int, bool is_true) {
   if (ge_int.args_[0].is_reg_) {
     if (ge_int.args_[1].is_reg_) {
-      return std::pair(IR::Register{-1}, nullptr);
+      return std::pair(ir::Register{-1}, nullptr);
     } else {
       auto int_prop    = base::make_owned<IntProp>();
       int_prop->lower_ = is_true;

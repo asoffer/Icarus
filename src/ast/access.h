@@ -4,7 +4,7 @@
 #include <string>
 #include "ast/expression.h"
 
-namespace AST {
+namespace ast {
 struct Access : public Expression {
   ~Access() override {}
   std::string to_string(size_t n) const override {
@@ -19,13 +19,13 @@ struct Access : public Expression {
     operand->ExtractJumps(rets);
   }
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   std::string member_name;
   std::unique_ptr<Expression> operand;
 };
 
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_ACCESS_H

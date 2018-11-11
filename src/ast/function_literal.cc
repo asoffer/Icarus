@@ -14,7 +14,7 @@
 #include "type/tuple.h"
 #include "type/type.h"
 
-namespace AST {
+namespace ast {
 std::string FunctionLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "(";
@@ -88,7 +88,7 @@ type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   if (!return_type_inferred_) {
     bool err = false;
     // TODO should named return types be required?
-    base::vector<IR::Val> out_vals;
+    base::vector<ir::Val> out_vals;
     out_vals.reserve(outputs.size());
 
     for (const auto &out : outputs) {
@@ -110,7 +110,7 @@ type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
 
     for (size_t i = 0; i < out_vals.size(); ++i) {
       const auto &out = out_vals[i];
-      if (out == IR::Val::None() /* TODO Error() */) {
+      if (out == ir::Val::None() /* TODO Error() */) {
         ctx->error_log_.IndeterminantType(outputs[i]->span);
         limit_to(StageRange::Nothing());
       } else if (out.type != type::Type_) {
@@ -180,13 +180,13 @@ void FunctionLiteral::Validate(Context *ctx) {
           const auto &entries = one_type->as<type::Tuple>().entries_;
           for (auto *entry : entries) {
             outputs.push_back(
-                std::make_unique<Terminal>(TextSpan(), IR::Val(entry)));
+                std::make_unique<Terminal>(TextSpan(), ir::Val(entry)));
           }
           ctx->set_type(this, type::Func(std::move(input_type_vec), entries));
 
         } else {
           outputs.push_back(
-              std::make_unique<Terminal>(TextSpan(), IR::Val(one_type)));
+              std::make_unique<Terminal>(TextSpan(), ir::Val(one_type)));
           ctx->set_type(this,
                         type::Func(std::move(input_type_vec), {one_type}));
         }
@@ -250,16 +250,16 @@ void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &out : outputs) { out->ExtractJumps(rets); }
 }
 
-base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
+base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
   if (std::any_of(inputs.begin(), inputs.end(), [&](auto const &decl) {
         return decl->const_ &&
                ctx->bound_constants_.constants_.find(decl.get()) ==
                    ctx->bound_constants_.constants_.end();
       })) {
-    return {IR::Val::Func(this)};
+    return {ir::Val::Func(this)};
   }
 
-  IR::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
+  ir::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
   if (!ir_func) {
     ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this);
 
@@ -274,7 +274,7 @@ base::vector<IR::Val> FunctionLiteral::EmitIR(Context *ctx) {
                                  std::move(args));
   }
 
-  return {IR::Val::Func(ir_func)};
+  return {ir::Val::Func(ir_func)};
 }
 
 void FunctionLiteral::CompleteBody(Context *ctx) {
@@ -284,24 +284,24 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
   auto *t = ctx->type_of(this);
   if (t == type::Err) { return; }
 
-  IR::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
+  ir::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
   CURRENT_FUNC(ir_func) {
-    IR::BasicBlock::Current = ir_func->entry();
+    ir::BasicBlock::Current = ir_func->entry();
     // Leave space for allocas that will come later (added to the entry
     // block).
-    auto start_block        = IR::Func::Current->AddBlock();
-    IR::BasicBlock::Current = start_block;
+    auto start_block        = ir::Func::Current->AddBlock();
+    ir::BasicBlock::Current = start_block;
 
     // TODO arguments should be renumbered to not waste space on const values
     for (i32 i = 0; i < static_cast<i32>(inputs.size()); ++i) {
-      ctx->set_addr(inputs[i].get(), IR::Func::Current->Argument(i));
+      ctx->set_addr(inputs[i].get(), ir::Func::Current->Argument(i));
     }
 
     for (size_t i = 0; i < outputs.size(); ++i) {
       if (!outputs[i]->is<Declaration>()) { continue; }
 
       ctx->set_addr(&outputs[i]->as<Declaration>(),
-                    IR::Func::Current->Argument(i));
+                    ir::Func::Current->Argument(i));
     }
 
     fn_scope->MakeAllStackAllocations(ctx);
@@ -310,15 +310,15 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
     if (t->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
       // between here and where you call SetReturn
-      IR::ReturnJump();
+      ir::ReturnJump();
     }
 
-    IR::BasicBlock::Current = ir_func->entry();
-    IR::UncondJump(start_block);
+    ir::BasicBlock::Current = ir_func->entry();
+    ir::UncondJump(start_block);
   }
 }
 
-base::vector<IR::Register> FunctionLiteral::EmitLVal(Context *) {
+base::vector<ir::Register> FunctionLiteral::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
-}  // namespace AST
+}  // namespace ast

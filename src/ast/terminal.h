@@ -7,10 +7,10 @@
 
 struct Context;
 
-namespace AST {
+namespace ast {
 struct Terminal : public Expression {
   Terminal() = default;
-  Terminal(const TextSpan &span, IR::Val val);
+  Terminal(const TextSpan &span, ir::Val val);
 
   ~Terminal() override {}
 
@@ -22,11 +22,11 @@ struct Terminal : public Expression {
   void Validate(Context *) override {}
   void ExtractJumps(JumpExprs *) const override {}
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *ct) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *ct) override;
 
-  IR::Val value = IR::Val::None();
+  ir::Val value = ir::Val::None();
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_TERMINAL_H

@@ -27,13 +27,13 @@ void Debug(PropertyMap const &pm) {
 }
 
 template <typename Fn>
-void ForEachArgument(IR::Func const &f, Fn &&fn_to_call) {
+void ForEachArgument(ir::Func const &f, Fn &&fn_to_call) {
   auto arch     = Architecture::InterprettingMachine();
   size_t offset = 0;
 
   for (auto *t : f.type_->input) {
     offset = arch.MoveForwardToAlignment(t, offset);
-    fn_to_call(IR::Register{static_cast<int>(offset)});
+    fn_to_call(ir::Register{static_cast<int>(offset)});
     offset += arch.bytes(t);
   }
 }
@@ -83,7 +83,7 @@ PropertySet LtInt(PropertySet const &lhs, int rhs) {
 
 }  // namespace
 
-FnStateView::FnStateView(IR::Func *fn) {
+FnStateView::FnStateView(ir::Func *fn) {
   for (const auto & [ num, reg ] : fn->reg_map_) {
     view_.emplace(reg, PropertySet{});
   }
@@ -97,7 +97,7 @@ PropertyMap PropertyMap::AssumingReturnsTrue() const {
   std::unordered_set<Entry> stale_up;
   for (auto const &block : fn_->blocks_) {
     for (auto const &cmd : block.cmds_) {
-      if (cmd.op_code_ != IR::Op::SetReturnBool) { continue; }
+      if (cmd.op_code_ != ir::Op::SetReturnBool) { continue; }
 
       result.lookup(&block, cmd.result)
           .add(base::make_owned<prop::BoolProp>(true));
@@ -109,7 +109,7 @@ PropertyMap PropertyMap::AssumingReturnsTrue() const {
   return result;
 }
 
-PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
+PropertyMap::PropertyMap(ir::Func *fn) : fn_(fn) {
   // TODO copy fnstateview rather than creating it repeatedly?
   for (const auto &block : fn_->blocks_) {
     view_.emplace(&block, FnStateView(fn_));
@@ -118,7 +118,7 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
   for (auto const & [ f, pm ] : fn->preconditions_) {
     auto pm_copy = pm.AssumingReturnsTrue();
 
-    ForEachArgument(*fn_, [this, &pm_copy, &f](IR::Register arg) {
+    ForEachArgument(*fn_, [this, &pm_copy, &f](ir::Register arg) {
       lookup(&fn_->blocks_.at(0), arg)
           .add(pm_copy.lookup(&f.blocks_.at(0), arg));
     });
@@ -126,8 +126,8 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
 
   std::unordered_set<Entry> stale_down;
   auto *entry_block = &fn_->block(fn_->entry());
-  ForEachArgument(*fn_, [&stale_down, entry_block](IR::Register arg) {
-    stale_down.emplace(entry_block, IR::Register(0));
+  ForEachArgument(*fn_, [&stale_down, entry_block](ir::Register arg) {
+    stale_down.emplace(entry_block, ir::Register(0));
   });
 
   // This refresh is an optimization. Because it's likely that this gets called
@@ -139,20 +139,20 @@ PropertyMap::PropertyMap(IR::Func *fn) : fn_(fn) {
 // TODO no longer need to pass stale in as ptr.
 void PropertyMap::MarkReferencesStale(Entry const &e,
                                       std::unordered_set<Entry> *stale_down) {
-  for (IR::Register reg : fn_->references_.at(e.reg_)) {
+  for (ir::Register reg : fn_->references_.at(e.reg_)) {
     stale_down->emplace(e.viewing_block_, reg);
   }
 
   auto &last_cmd = e.viewing_block_->cmds_.back();
   switch (last_cmd.op_code_) {
-    case IR::Op::UncondJump:
+    case ir::Op::UncondJump:
       stale_down->emplace(&fn_->block(last_cmd.uncond_jump_.block_), e.reg_);
       break;
-    case IR::Op::CondJump:
+    case ir::Op::CondJump:
       stale_down->emplace(&fn_->block(last_cmd.cond_jump_.blocks_[0]), e.reg_);
       stale_down->emplace(&fn_->block(last_cmd.cond_jump_.blocks_[1]), e.reg_);
       break;
-    case IR::Op::ReturnJump: break;
+    case ir::Op::ReturnJump: break;
     default: UNREACHABLE();
   }
 }
@@ -179,15 +179,15 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
   auto &prop_set   = block_view.at(e.reg_);
 
   switch (cmd.op_code_) {
-    case IR::Op::UncondJump: return /* TODO */ false;
-    case IR::Op::CondJump: return /* TODO */ false;
-    case IR::Op::ReturnJump: return /* TODO */ false;
-    case IR::Op::Call: return /* TODO */ false;
-    case IR::Op::Not: return prop_set.add(Not(block_view.at(cmd.not_.reg_)));
-    case IR::Op::EqBool:
+    case ir::Op::UncondJump: return /* TODO */ false;
+    case ir::Op::CondJump: return /* TODO */ false;
+    case ir::Op::ReturnJump: return /* TODO */ false;
+    case ir::Op::Call: return /* TODO */ false;
+    case ir::Op::Not: return prop_set.add(Not(block_view.at(cmd.not_.reg_)));
+    case ir::Op::EqBool:
       return prop_set.add(EqBool(block_view.at(cmd.eq_bool_.args_[0]),
                                  block_view.at(cmd.eq_bool_.args_[1])));
-    case IR::Op::LtInt:
+    case ir::Op::LtInt:
       if (cmd.lt_int_.args_[0].is_reg_) {
         if (cmd.lt_int_.args_[1].is_reg_) {
           NOT_YET();
@@ -199,7 +199,7 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
         NOT_YET();
       }
 
-    case IR::Op::SetReturnBool:
+    case ir::Op::SetReturnBool:
       if (cmd.set_return_bool_.val_.is_reg_) {
         prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
         // TODO Do I need to mark stale upwards?
@@ -233,26 +233,26 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
     }                                                                          \
   }                                                                            \
   break
-    case IR::Op::SetReturnBool: DEFINE_CASE(set_return_bool_);
-    case IR::Op::SetReturnChar: DEFINE_CASE(set_return_char_);
-    case IR::Op::SetReturnInt: DEFINE_CASE(set_return_int_);
-    case IR::Op::SetReturnReal: DEFINE_CASE(set_return_real_);
-    case IR::Op::SetReturnType: DEFINE_CASE(set_return_type_);
-    case IR::Op::SetReturnEnum: DEFINE_CASE(set_return_enum_);
-    case IR::Op::SetReturnCharBuf: DEFINE_CASE(set_return_char_buf_);
-    case IR::Op::SetReturnFlags: DEFINE_CASE(set_return_flags_);
-    case IR::Op::SetReturnAddr: DEFINE_CASE(set_return_addr_);
-    case IR::Op::SetReturnFunc: DEFINE_CASE(set_return_func_);
-    case IR::Op::SetReturnScope: DEFINE_CASE(set_return_scope_);
-    case IR::Op::SetReturnModule: DEFINE_CASE(set_return_module_);
-    case IR::Op::SetReturnBlock: DEFINE_CASE(set_return_block_);
+    case ir::Op::SetReturnBool: DEFINE_CASE(set_return_bool_);
+    case ir::Op::SetReturnChar: DEFINE_CASE(set_return_char_);
+    case ir::Op::SetReturnInt: DEFINE_CASE(set_return_int_);
+    case ir::Op::SetReturnReal: DEFINE_CASE(set_return_real_);
+    case ir::Op::SetReturnType: DEFINE_CASE(set_return_type_);
+    case ir::Op::SetReturnEnum: DEFINE_CASE(set_return_enum_);
+    case ir::Op::SetReturnCharBuf: DEFINE_CASE(set_return_char_buf_);
+    case ir::Op::SetReturnFlags: DEFINE_CASE(set_return_flags_);
+    case ir::Op::SetReturnAddr: DEFINE_CASE(set_return_addr_);
+    case ir::Op::SetReturnFunc: DEFINE_CASE(set_return_func_);
+    case ir::Op::SetReturnScope: DEFINE_CASE(set_return_scope_);
+    case ir::Op::SetReturnModule: DEFINE_CASE(set_return_module_);
+    case ir::Op::SetReturnBlock: DEFINE_CASE(set_return_block_);
 #undef DEFINE_CASE
-    case IR::Op::Not: {
+    case ir::Op::Not: {
       // Not works in both directions. Huzzah!
       bool changed = view.at(cmd.not_.reg_).add(Not(view.at(e.reg_)));
       if (changed) { stale_up->emplace(e.viewing_block_, cmd.not_.reg_); }
     } break;
-    case IR::Op::LtInt: {
+    case ir::Op::LtInt: {
       auto &prop_set = view.at(e.reg_).props_;
       prop_set.for_each([&](base::owned_ptr<Property> *prop) {
         if (!(**prop).is<BoolProp>()) { return; }
@@ -264,7 +264,7 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
     } break;
-    case IR::Op::LeInt: {
+    case ir::Op::LeInt: {
       auto &prop_set = view.at(e.reg_).props_;
       prop_set.for_each([&](base::owned_ptr<Property> *prop) {
         if (!(**prop).is<BoolProp>()) { return; }
@@ -276,7 +276,7 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
     } break;
-    case IR::Op::GtInt: {
+    case ir::Op::GtInt: {
       auto &prop_set = view.at(e.reg_).props_;
       prop_set.for_each([&](base::owned_ptr<Property> *prop) {
         if (!(**prop).is<BoolProp>()) { return; }
@@ -288,7 +288,7 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
     } break;
-    case IR::Op::GeInt: {
+    case ir::Op::GeInt: {
       auto &prop_set = view.at(e.reg_).props_;
       prop_set.for_each([&](base::owned_ptr<Property> *prop) {
         if (!(**prop).is<BoolProp>()) { return; }
@@ -321,18 +321,18 @@ void PropertyMap::refresh(std::unordered_set<Entry> stale_up,
 // TODO this is not a great way to handle this. Probably should store all
 // set-rets first.
 BoolProp PropertyMap::Returns() const {
-  base::vector<IR::CmdIndex> rets;
-  base::vector<IR::Register> regs;
+  base::vector<ir::CmdIndex> rets;
+  base::vector<ir::Register> regs;
 
-  // This can be precompeted and stored on the actual IR::Func.
+  // This can be precompeted and stored on the actual ir::Func.
   i32 num_blocks = static_cast<i32>(fn_->blocks_.size());
   for (i32 i = 0; i < num_blocks; ++i) {
     const auto &block = fn_->blocks_[i];
     i32 num_cmds      = static_cast<i32>(block.cmds_.size());
     for (i32 j = 0; j < num_cmds; ++j) {
       const auto &cmd = block.cmds_[j];
-      if (cmd.op_code_ == IR::Op::SetReturnBool) {
-        rets.push_back(IR::CmdIndex{IR::BlockIndex{i}, j});
+      if (cmd.op_code_ == ir::Op::SetReturnBool) {
+        rets.push_back(ir::CmdIndex{ir::BlockIndex{i}, j});
         regs.push_back(cmd.result);
       }
     }
@@ -341,7 +341,7 @@ BoolProp PropertyMap::Returns() const {
   auto bool_ret = BoolProp::Bottom();
 
   for (size_t i = 0; i < rets.size(); ++i) {
-    IR::BasicBlock *block = &fn_->blocks_[rets.at(i).block.value];
+    ir::BasicBlock *block = &fn_->blocks_[rets.at(i).block.value];
     BoolProp acc;
     lookup(block, regs.at(i)).accumulate(&acc);
     bool_ret |= acc;
@@ -350,7 +350,7 @@ BoolProp PropertyMap::Returns() const {
   return bool_ret;
 }
 
-PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
+PropertyMap PropertyMap::with_args(ir::LongArgs const &args,
                                    FnStateView const &fn_state_view) const {
   auto copy         = *this;
   auto *entry_block = &fn_->block(fn_->entry());
@@ -371,23 +371,23 @@ PropertyMap PropertyMap::with_args(IR::LongArgs const &args,
     // be reasoned about, all of this should be figured out where it's known and
     // then passed in.
     if (args.is_reg_.at(index)) {
-      props.at(IR::Register(offset))
-          .add(fn_state_view.view_.at(args.args_.get<IR::Register>(offset)));
+      props.at(ir::Register(offset))
+          .add(fn_state_view.view_.at(args.args_.get<ir::Register>(offset)));
 
       // TODO only need to do this on the entry block, but we're not passing
       // info between block views yet.
       for (const auto &b : fn_->blocks_) {
-        stale_down.emplace(&b, IR::Register(offset));
+        stale_down.emplace(&b, ir::Register(offset));
       }
-      offset += sizeof(IR::Register);
+      offset += sizeof(ir::Register);
     } else {
       if (t == type::Bool) {
-        props.at(IR::Register(offset))
+        props.at(ir::Register(offset))
             .add(base::make_owned<BoolProp>(args.args_.get<bool>(offset)));
         // TODO only need to do this on the entry block, but we're not passing
         // info between block views yet.
         for (const auto &b : fn_->blocks_) {
-          stale_down.emplace(&b, IR::Register(offset));
+          stale_down.emplace(&b, ir::Register(offset));
         }
       }
       offset += arch.bytes(t);

@@ -121,11 +121,11 @@ void WriteSource(
 }
 }  // namespace
 namespace error {
-void Log::UndeclaredIdentifier(AST::Identifier *id) {
+void Log::UndeclaredIdentifier(ast::Identifier *id) {
   undeclared_ids_[id->token].push_back(id);
 }
 
-void Log::PostconditionNeedsBool(AST::Expression *expr) {
+void Log::PostconditionNeedsBool(ast::Expression *expr) {
   std::stringstream ss;
   ss << "Function postcondition must be of type bool, but you provided an "
         "expression of type ";  // TODO pass in type or context too <<
@@ -139,7 +139,7 @@ void Log::PostconditionNeedsBool(AST::Expression *expr) {
   errors_.push_back(ss.str());
 }
 
-void Log::PreconditionNeedsBool(AST::Expression *expr) {
+void Log::PreconditionNeedsBool(ast::Expression *expr) {
   std::stringstream ss;
   ss << "Function precondition must be of type bool, but you provided an "
         "expression of type ";  // TODO pass in type or context too <<
@@ -220,7 +220,7 @@ void Log::MissingMember(const TextSpan &span, const std::string &member_name,
 }
 
 void Log::ReturnTypeMismatch(const type::Type *expected_type,
-                             const AST::Expression *ret_expr) {
+                             const ast::Expression *ret_expr) {
   /* TODO pass in type or context too
   std::stringstream ss;
   if (ret_expr->type->is<type::Tuple>()) {
@@ -253,7 +253,7 @@ void Log::NoMatchingOperator(const std::string &op, const type::Type *lhs,
   errors_.push_back(ss.str());
 }
 
-void Log::NoReturnTypes(const AST::Expression *ret_expr) {
+void Log::NoReturnTypes(const ast::Expression *ret_expr) {
   std::stringstream ss;
   // TODO allow "return foo(...)" when foo: ??? -> ().
 
@@ -267,7 +267,7 @@ void Log::NoReturnTypes(const AST::Expression *ret_expr) {
   errors_.push_back(ss.str());
 }
 
-void Log::ReturningWrongNumber(const AST::Expression *ret_expr,
+void Log::ReturningWrongNumber(const ast::Expression *ret_expr,
                                size_t num_rets) {
   /* TODO pass in type or context too
   std::stringstream ss;
@@ -289,7 +289,7 @@ void Log::ReturningWrongNumber(const AST::Expression *ret_expr,
 }
 
 void Log::IndexedReturnTypeMismatch(const type::Type *expected_type,
-                                    const AST::Expression *ret_expr,
+                                    const ast::Expression *ret_expr,
                                     size_t index) {
   /* TODO Pass in type or context too
   std::stringstream ss;
@@ -352,7 +352,7 @@ void Log::NotBinary(const TextSpan &span, const std::string &token) {
   errors_.push_back(ss.str());
 }
 
-void Log::NotAType(AST::Expression *expr) {
+void Log::NotAType(ast::Expression *expr) {
   std::stringstream ss;
   ss << "Expression was expected to be a type or interface, but instead it was "
         "a(n) ";  // TODO pass in type or context too << expr->type->to_string()
@@ -364,7 +364,7 @@ void Log::NotAType(AST::Expression *expr) {
   errors_.push_back(ss.str());
 }
 
-void Log::AssignmentTypeMismatch(AST::Expression *lhs, AST::Expression *rhs) {
+void Log::AssignmentTypeMismatch(ast::Expression *lhs, ast::Expression *rhs) {
   std::stringstream ss;
   ss << "Invalid assignment. Left-hand side has type ";
   // TODO pass in type or context too
@@ -418,13 +418,13 @@ void Log::UnknownParseError(const base::vector<TextSpan> &lines) {
   errors_.push_back(ss.str());
 }
 
-base::vector<AST::Identifier *> *Log::CyclicDependency() {
-  cyc_dep_vecs_.push_back(std::make_unique<base::vector<AST::Identifier *>>());
+base::vector<ast::Identifier *> *Log::CyclicDependency() {
+  cyc_dep_vecs_.push_back(std::make_unique<base::vector<ast::Identifier *>>());
   return cyc_dep_vecs_.back().get();
 }
 
-void Log::ShadowingDeclaration(const AST::Declaration &decl1,
-                               const AST::Declaration &decl2) {
+void Log::ShadowingDeclaration(const ast::Declaration &decl1,
+                               const ast::Declaration &decl2) {
   // TODO migrate away from old display.
   auto line1     = decl1.span.source->lines.at(decl1.span.start.line_num);
   auto line2     = decl2.span.source->lines.at(decl2.span.start.line_num);
@@ -447,7 +447,7 @@ void Log::Dump() const {
     std::cerr << "Found a cyclic dependency:\n\n";
 
     std::sort(ids->begin(), ids->end(),
-              [](const AST::Identifier *lhs, const AST::Identifier *rhs) {
+              [](const ast::Identifier *lhs, const ast::Identifier *rhs) {
                 if (lhs->span.start.line_num < rhs->span.start.line_num) {
                   return true;
                 }
@@ -469,9 +469,9 @@ void Log::Dump() const {
                 return lhs->span.finish.offset < rhs->span.finish.offset;
               });
 
-    base::unordered_map<AST::Declaration *, size_t> decls;
+    base::unordered_map<ast::Declaration *, size_t> decls;
     for (const auto &id : *ids) {
-      decls.emplace(id->as<AST::Identifier>().decl, decls.size());
+      decls.emplace(id->as<ast::Identifier>().decl, decls.size());
     }
 
     base::IntervalSet<size_t> iset;
@@ -519,7 +519,7 @@ void Log::Dump() const {
   for (const auto &err : errors_) { std::cerr << err; }
 }
 
-void Log::DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id) {
+void Log::DeclOutOfOrder(ast::Declaration *decl, ast::Identifier *id) {
   out_of_order_decls_[decl].push_back(id);
 }
 

@@ -10,8 +10,8 @@ struct CharBuffer : public Type {
   TYPE_FNS(CharBuffer);
   CharBuffer(size_t len) : length_(len) {}
 
-  static IR::Val Compare(const CharBuffer *lhs_type, IR::Val lhs_ir,
-                         const CharBuffer *rhs_type, IR::Val rhs_ir,
+  static ir::Val Compare(const CharBuffer *lhs_type, ir::Val lhs_ir,
+                         const CharBuffer *rhs_type, ir::Val rhs_ir,
                          bool equality, Context *ctx);
 
   virtual bool needs_destroy() const { return false; }

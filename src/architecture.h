@@ -10,9 +10,9 @@ namespace type {
 struct Type;
 }  // namespace type
 
-namespace IR {
+namespace ir {
 struct Val;
-}  // namespace IR
+}  // namespace ir
 
 // We only support architectures on which a byte is 8 bits, and assume all
 // alignments are powers of two.
@@ -25,7 +25,7 @@ struct Architecture {
   }
 
   // TODO skip the last alignment requirement?
-  IR::RegisterOr<i32> ComputeArrayLength(IR::RegisterOr<i32> len,
+  ir::RegisterOr<i32> ComputeArrayLength(ir::RegisterOr<i32> len,
                                          const type::Type *t) const;
 
   i32 ComputeArrayLength(i32 len, const type::Type *t) const {
@@ -35,7 +35,7 @@ struct Architecture {
   // TODO pull Addr into it's own header so we can compute it's size and have
   // this be constexpr without pulling in all of val.h
   static constexpr Architecture InterprettingMachine() {
-    return Architecture{sizeof(IR::Addr), alignof(IR::Addr)};
+    return Architecture{sizeof(ir::Addr), alignof(ir::Addr)};
   }
 
   static constexpr Architecture CompilingMachine() {

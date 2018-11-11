@@ -6,9 +6,9 @@
 #include "frontend/operators.h"
 
 namespace frontend {
-// AST node used only for holding tokens which have been lexed but not yet
+// ast node used only for holding tokens which have been lexed but not yet
 // parsed.
-struct Token : public AST::Node {
+struct Token : public ast::Node {
   Token(const TextSpan &span = TextSpan(), std::string str = "")
       : Node(span), token(std::move(str)) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
@@ -28,9 +28,9 @@ struct Token : public AST::Node {
   void assign_scope(Scope *) override { UNREACHABLE(); }
   type::Type const *VerifyType(Context *) override { UNREACHABLE(); }
   void Validate(Context *) override { UNREACHABLE(); }
-  void ExtractJumps(AST::JumpExprs *) const override { UNREACHABLE(); }
+  void ExtractJumps(ast::JumpExprs *) const override { UNREACHABLE(); }
 
-  base::vector<IR::Val> EmitIR(Context *) override { UNREACHABLE(); }
+  base::vector<ir::Val> EmitIR(Context *) override { UNREACHABLE(); }
 
   std::string token;
   Language::Operator op;

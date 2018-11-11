@@ -5,7 +5,7 @@
 #include "ast/expression.h"
 #include "ast/fn_args.h"
 
-namespace AST {
+namespace ast {
 struct Call : public Expression {
   ~Call() override {}
   std::string to_string(size_t n) const override;
@@ -14,8 +14,8 @@ struct Call : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   std::unique_ptr<Expression> fn_;
   FnArgs<std::unique_ptr<Expression>> args_;
@@ -23,6 +23,6 @@ struct Call : public Expression {
   // Filled in after type verification
   DispatchTable dispatch_table_;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_CALL_H

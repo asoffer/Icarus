@@ -40,14 +40,14 @@ enum Tag : u64 {
 };
 
 struct TaggedNode {
-  std::unique_ptr<AST::Node> node_;
+  std::unique_ptr<ast::Node> node_;
   Tag tag_ = bof;
 
   TaggedNode() = default;
-  TaggedNode(std::unique_ptr<AST::Node> node, Tag tag)
+  TaggedNode(std::unique_ptr<ast::Node> node, Tag tag)
       : node_(std::move(node)), tag_(tag) {}
 
-  static TaggedNode TerminalExpression(const TextSpan &span, IR::Val val);
+  static TaggedNode TerminalExpression(const TextSpan &span, ir::Val val);
   TaggedNode(const TextSpan &span, const std::string &token, Tag tag);
 
   bool valid() const { return node_ != nullptr; }

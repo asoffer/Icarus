@@ -20,26 +20,26 @@ struct Context {
   size_t num_errors() { return error_log_.size(); }
   void DumpErrors() { error_log_.Dump(); }
 
-  type::Type const *type_of(AST::Expression const *expr) const;
-  void set_type(AST::Expression const *expr, type::Type const *t);
+  type::Type const *type_of(ast::Expression const *expr) const;
+  void set_type(ast::Expression const *expr, type::Type const *t);
 
-  IR::Register addr(AST::Declaration *decl) const;
-  void set_addr(AST::Declaration *decl, IR::Register);
+  ir::Register addr(ast::Declaration *decl) const;
+  void set_addr(ast::Declaration *decl, ir::Register);
 
   error::Log error_log_;
   Context const *parent_ = nullptr;
   Module *mod_ = nullptr;
 
-  AST::BoundConstants bound_constants_;
+  ast::BoundConstants bound_constants_;
 
   // TODO this looks useful in bindings too. maybe give it a better name and use
   // it more frequently?
   struct YieldResult {
-    YieldResult(AST::Expression *expr, IR::Val val)
+    YieldResult(ast::Expression *expr, ir::Val val)
         : expr_(expr), val_(std::move(val)) {}
 
-    AST::Expression *expr_;
-    IR::Val val_;
+    ast::Expression *expr_;
+    ir::Val val_;
   };
   base::vector<base::vector<YieldResult>> yields_stack_;
 
@@ -47,7 +47,7 @@ struct Context {
   // down here. That way, we can bubble up from the dependency until we see it
   // again, at each step adding the nodes to the error log involved in the
   // dependency. Once complete, we reset this to null
-  base::vector<AST::Expression *> *cyc_dep_vec_ = nullptr;
+  base::vector<ast::Expression *> *cyc_dep_vec_ = nullptr;
 };
 
 #endif  // ICARUS_CONTEXT_H

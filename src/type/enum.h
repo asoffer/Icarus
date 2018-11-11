@@ -10,7 +10,7 @@ struct Enum : public type::Type {
   Enum(const std::string &name, base::vector<std::string> members);
 
   size_t IntValueOrFail(const std::string &str) const;
-  IR::Val EmitLiteral(const std::string &member_name) const;
+  ir::Val EmitLiteral(const std::string &member_name) const;
 
   // TODO combine "members" and "int_values" to save the double allocation of
   // strings.

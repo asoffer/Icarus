@@ -6,125 +6,125 @@
 #include "ir/func.h"
 #include "module.h"
 
-namespace AST {
+namespace ast {
 struct Expression;
-}  // namespace AST
+}  // namespace ast
 
 namespace type {
-void Array::EmitInit(IR::Register id_reg, Context *ctx) const {
+void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
   if (!fixed_length) {
-    IR::StoreInt(0, IR::ArrayLength(id_reg));
-    IR::StoreAddr(IR::Malloc(data_type, 0), IR::ArrayData(id_reg, this));
+    ir::StoreInt(0, ir::ArrayLength(id_reg));
+    ir::StoreAddr(ir::Malloc(data_type, 0), ir::ArrayData(id_reg, this));
   }
 
   std::unique_lock lock(mtx_);
   if (!init_func_) {
     init_func_ = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),
-        base::vector<std::pair<std::string, AST::Expression *>>{
+        base::vector<std::pair<std::string, ast::Expression *>>{
             {"arg", nullptr}});
 
     CURRENT_FUNC(init_func_) {
-      IR::BasicBlock::Current = init_func_->entry();
+      ir::BasicBlock::Current = init_func_->entry();
 
-      auto ptr = IR::Index(type::Ptr(this), init_func_->Argument(0), 0);
+      auto ptr = ir::Index(type::Ptr(this), init_func_->Argument(0), 0);
       auto end_ptr =
-          IR::PtrIncr(ptr, static_cast<i32>(len), type::Ptr(data_type));
+          ir::PtrIncr(ptr, static_cast<i32>(len), type::Ptr(data_type));
 
-      using tup = std::tuple<IR::RegisterOr<IR::Addr>>;
-      IR::CreateLoop(
+      using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
+      ir::CreateLoop(
           [&](tup const &phis) {
-            return IR::EqAddr(std::get<0>(phis), end_ptr);
+            return ir::EqAddr(std::get<0>(phis), end_ptr);
           },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
             data_type->EmitInit(std::get<0>(phis).reg_, ctx);
             return tup{
-                IR::PtrIncr(std::get<0>(phis).reg_, 1, type::Ptr(data_type))};
+                ir::PtrIncr(std::get<0>(phis).reg_, 1, type::Ptr(data_type))};
           },
           std::tuple<type::Type const *>{type::Ptr(data_type)}, tup{ptr});
 
-      IR::ReturnJump();
+      ir::ReturnJump();
     }
   }
 
-  IR::LongArgs call_args;
+  ir::LongArgs call_args;
   call_args.append(id_reg);
   call_args.type_ = init_func_->type_;
-  IR::Call(IR::AnyFunc{init_func_}, std::move(call_args));
+  ir::Call(ir::AnyFunc{init_func_}, std::move(call_args));
 }
 
-void Primitive::EmitInit(IR::Register id_reg, Context *ctx) const {
+void Primitive::EmitInit(ir::Register id_reg, Context *ctx) const {
   switch (type_) {
     case PrimType::Err: UNREACHABLE(this, ": Err");
-    case PrimType::Type_: IR::StoreType(type::Void(), id_reg); break;
+    case PrimType::Type_: ir::StoreType(type::Void(), id_reg); break;
     case PrimType::NullPtr: UNREACHABLE();
     case PrimType::EmptyArray: UNREACHABLE();
-    case PrimType::Bool: IR::StoreBool(false, id_reg); break;
-    case PrimType::Char: IR::StoreChar('\0', id_reg); break;
-    case PrimType::Int: IR::StoreInt(0, id_reg); break;
-    case PrimType::Real: IR::StoreReal(0.0, id_reg); break;
+    case PrimType::Bool: ir::StoreBool(false, id_reg); break;
+    case PrimType::Char: ir::StoreChar('\0', id_reg); break;
+    case PrimType::Int: ir::StoreInt(0, id_reg); break;
+    case PrimType::Real: ir::StoreReal(0.0, id_reg); break;
     default: UNREACHABLE();
   }
 }
 
-void Enum::EmitInit(IR::Register id_reg, Context *ctx) const {
-  IR::StoreEnum(IR::EnumVal{0}, id_reg);
+void Enum::EmitInit(ir::Register id_reg, Context *ctx) const {
+  ir::StoreEnum(ir::EnumVal{0}, id_reg);
 }
 
-void Flags::EmitInit(IR::Register id_reg, Context *ctx) const {
-  IR::StoreFlags(IR::FlagsVal{0}, id_reg);
+void Flags::EmitInit(ir::Register id_reg, Context *ctx) const {
+  ir::StoreFlags(ir::FlagsVal{0}, id_reg);
 }
 
-void Variant::EmitInit(IR::Register, Context *ctx) const {
+void Variant::EmitInit(ir::Register, Context *ctx) const {
   UNREACHABLE("Variants must be initialized.");
 }
 
-void Pointer::EmitInit(IR::Register id_reg, Context *ctx) const {
-  IR::StoreAddr(IR::Addr::Null(), id_reg);
+void Pointer::EmitInit(ir::Register id_reg, Context *ctx) const {
+  ir::StoreAddr(ir::Addr::Null(), id_reg);
 }
 
-void Function::EmitInit(IR::Register id_reg, Context *ctx) const {
+void Function::EmitInit(ir::Register id_reg, Context *ctx) const {
   UNREACHABLE();
 }
 
-void CharBuffer::EmitInit(IR::Register id_reg, Context *ctx) const {
+void CharBuffer::EmitInit(ir::Register id_reg, Context *ctx) const {
   NOT_YET();
 }
 
-void Struct::EmitInit(IR::Register id_reg, Context *ctx) const {
+void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
   std::unique_lock lock(mtx_);
   if (!init_func_) {
     init_func_ = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),
-        base::vector<std::pair<std::string, AST::Expression *>>{
+        base::vector<std::pair<std::string, ast::Expression *>>{
             {"arg", nullptr}});
 
     CURRENT_FUNC(init_func_) {
-      IR::BasicBlock::Current = init_func_->entry();
+      ir::BasicBlock::Current = init_func_->entry();
 
       // TODO init expressions? Do these need to be verfied too?
       for (size_t i = 0; i < fields_.size(); ++i) {
-        if (fields_[i].init_val != IR::Val::None()) {
+        if (fields_[i].init_val != ir::Val::None()) {
           EmitCopyInit(
               /* from_type = */ fields_[i].type,
               /*   to_type = */ fields_[i].type,
               /*  from_val = */ fields_[i].init_val,
               /*    to_var = */
-              IR::Field(init_func_->Argument(0), this, i), ctx);
+              ir::Field(init_func_->Argument(0), this, i), ctx);
         } else {
           fields_.at(i).type->EmitInit(
-              IR::Field(init_func_->Argument(0), this, i), ctx);
+              ir::Field(init_func_->Argument(0), this, i), ctx);
         }
       }
 
-      IR::ReturnJump();
+      ir::ReturnJump();
     }
   }
 
-  IR::LongArgs call_args;
+  ir::LongArgs call_args;
   call_args.append(id_reg);
   call_args.type_ = init_func_->type_;
-  IR::Call(IR::AnyFunc{init_func_}, std::move(call_args));
+  ir::Call(ir::AnyFunc{init_func_}, std::move(call_args));
 }
 }  // namespace type

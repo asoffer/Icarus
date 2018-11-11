@@ -5,7 +5,7 @@
 #include "ast/expression.h"
 #include "frontend/operators.h"
 
-namespace AST {
+namespace ast {
 struct Unop : public Expression {
   ~Unop() override {}
 
@@ -15,12 +15,12 @@ struct Unop : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   std::unique_ptr<Expression> operand;
   Language::Operator op;
   DispatchTable dispatch_table_;
 };
-}  // namespace AST
+}  // namespace ast
 #endif  // ICARUS_AST_UNOP_H

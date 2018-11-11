@@ -13,8 +13,8 @@
 #include "type/function.h"
 
 #ifdef ICARUS_USE_LLVM
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
+#include "llvm/ir/LLVMContext.h"
+#include "llvm/ir/Module.h"
 
 namespace backend {
 std::string WriteObjectFile(const std::string &name, Module *mod);
@@ -23,10 +23,10 @@ std::string WriteObjectFile(const std::string &name, Module *mod);
 #endif  // ICARUS_USE_LLVM
 
 std::atomic<bool> found_errors = false;
-IR::Func *main_fn;
+ir::Func *main_fn;
 
 // Can't declare this in header because unique_ptr's destructor needs to know
-// the size of IR::Func which we want to forward declare.
+// the size of ir::Func which we want to forward declare.
 Module::Module()
     : global_(std::make_unique<DeclScope>(nullptr))
 #ifdef ICARUS_USE_LLVM
@@ -39,10 +39,10 @@ Module::Module()
 }
 Module::~Module() = default;
 
-IR::Func *Module::AddFunc(
+ir::Func *Module::AddFunc(
     const type::Function *fn_type,
-    base::vector<std::pair<std::string, AST::Expression *>> args) {
-  auto *result = fns_.emplace_back(std::make_unique<IR::Func>(this, fn_type,
+    base::vector<std::pair<std::string, ast::Expression *>> args) {
+  auto *result = fns_.emplace_back(std::make_unique<ir::Func>(this, fn_type,
                                                               std::move(args)))
                      .get();
 
@@ -59,14 +59,14 @@ IR::Func *Module::AddFunc(
 const type::Type *Module::GetType(const std::string &name) const {
   auto *decl = GetDecl(name);
   if (decl == nullptr) { return nullptr; }
-  return types_.at(AST::BoundConstants{}).at(decl);
+  return types_.at(ast::BoundConstants{}).at(decl);
 }
 
-AST::Declaration *Module::GetDecl(const std::string &name) const {
+ast::Declaration *Module::GetDecl(const std::string &name) const {
   for (const auto &stmt : statements_.content_) {
-    if (!stmt->is<AST::Declaration>()) { continue; }
-    if (stmt->as<AST::Declaration>().id_ != name) { continue; }
-    return &stmt->as<AST::Declaration>();
+    if (!stmt->is<ast::Declaration>()) { continue; }
+    if (stmt->as<ast::Declaration>().id_ != name) { continue; }
+    return &stmt->as<ast::Declaration>();
   }
   return nullptr;
 }
@@ -90,7 +90,7 @@ void Module::Complete() {
 // inside this function.
 std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
   auto mod = std::make_unique<Module>();
-  AST::BoundConstants bc;
+  ast::BoundConstants bc;
   Context ctx(mod.get());
   frontend::File f(src);
   auto file_stmts = f.Parse(&ctx);
@@ -127,10 +127,10 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
 #endif  // ICARUS_USE_LLVM
 
   for (const auto &stmt : ctx.mod_->statements_.content_) {
-    if (!stmt->is<AST::Declaration>()) { continue; }
-    auto &decl = stmt->as<AST::Declaration>();
+    if (!stmt->is<ast::Declaration>()) { continue; }
+    auto &decl = stmt->as<ast::Declaration>();
     if (decl.id_ != "main") { continue; }
-    auto f = backend::EvaluateAs<IR::AnyFunc>(decl.init_val.get(), &ctx);
+    auto f = backend::EvaluateAs<ir::AnyFunc>(decl.init_val.get(), &ctx);
     ASSERT(f.is_fn_);
     auto ir_fn = f.fn_;
 
@@ -155,8 +155,8 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
   return mod;
 }
 
-type::Type const *Module::type_of(AST::BoundConstants const &bc,
-                                  AST::Expression const *expr) const {
+type::Type const *Module::type_of(ast::BoundConstants const &bc,
+                                  ast::Expression const *expr) const {
   auto bc_iter = types_.find(bc);
   if (bc_iter != types_.end()) {
     auto iter = bc_iter->second.data_.find(expr);
@@ -175,12 +175,12 @@ type::Type const *Module::type_of(AST::BoundConstants const &bc,
   return nullptr;
 }
 
-IR::Register Module::addr(AST::BoundConstants const &bc,
-                          AST::Declaration *decl) const {
+ir::Register Module::addr(ast::BoundConstants const &bc,
+                          ast::Declaration *decl) const {
   return addr_.at(bc).at(decl);
 }
 
-void Module::set_type(AST::BoundConstants const &bc,
-                      AST::Expression const *expr, type::Type const *t) {
+void Module::set_type(ast::BoundConstants const &bc,
+                      ast::Expression const *expr, type::Type const *t) {
   types_[bc].emplace(expr, t);
 }

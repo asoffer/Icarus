@@ -10,7 +10,7 @@
 struct Scope;
 struct Context;
 
-namespace AST {
+namespace ast {
 struct Expression;
 
 struct OverloadSet
@@ -18,6 +18,6 @@ struct OverloadSet
   OverloadSet() = default;
   OverloadSet(Scope *scope, std::string const &id, Context *ctx);
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_OVERLOAD_SET_H

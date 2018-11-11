@@ -6,7 +6,7 @@
 
 #include "cmd.h"
 
-namespace IR {
+namespace ir {
 struct Func;
 
 struct BasicBlock {
@@ -36,5 +36,5 @@ inline std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
   for (const auto &cmd : b.cmds_) { os << "  " << cmd << "\n"; }
   return os;
 }
-}  // namespace IR
+}  // namespace ir
 #endif  // ICARUS_IR_BASIC_BLOCK_H

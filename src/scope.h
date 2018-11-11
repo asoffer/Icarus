@@ -11,16 +11,16 @@
 struct Context;
 struct Module;
 
-namespace IR {
+namespace ir {
 struct Val;
-}  // namespace IR
+}  // namespace ir
 
-namespace AST {
+namespace ast {
 struct Declaration;
 struct Expression;
 struct Identifier;
 struct FunctionLiteral;
-}  // namespace AST
+}  // namespace ast
 
 namespace type {
 struct Type;
@@ -41,16 +41,16 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this);
   }
 
-  std::pair<base::vector<type::Typed<AST::Declaration *>>,
-            base::vector<type::Typed<AST::Declaration *>>>
+  std::pair<base::vector<type::Typed<ast::Declaration *>>,
+            base::vector<type::Typed<ast::Declaration *>>>
   AllDeclsWithId(const std::string &id, Context *ctx);
 
-  void InsertDecl(AST::Declaration *decl);
+  void InsertDecl(ast::Declaration *decl);
 
   FnScope *ContainingFnScope();
   std::unordered_set<std::string> shadowed_decls_;
-  base::unordered_map<std::string, base::vector<AST::Declaration *>> decls_;
-  base::unordered_map<std::string, base::vector<AST::Declaration *>>
+  base::unordered_map<std::string, base::vector<ast::Declaration *>> decls_;
+  base::unordered_map<std::string, base::vector<ast::Declaration *>>
       child_decls_;
 
   Scope *parent = nullptr;
@@ -74,7 +74,7 @@ struct FnScope : public ExecScope {
   void MakeAllStackAllocations(Context *ctx);
 
   type::Function *fn_type      = nullptr;  // TODO deprecate?
-  AST::FunctionLiteral *fn_lit = nullptr;
+  ast::FunctionLiteral *fn_lit = nullptr;
   base::vector<ExecScope *> innards_{1, this};
 };
 

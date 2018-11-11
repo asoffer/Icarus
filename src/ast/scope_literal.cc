@@ -8,7 +8,7 @@
 #include "type/function.h"
 #include "type/pointer.h"
 
-namespace AST {
+namespace ast {
 std::string ScopeLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "scope " << (stateful_ ? "!" : "") << "{\n";
@@ -83,11 +83,11 @@ void ScopeLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &decl : decls_) { decl.ExtractJumps(rets); }
 }
 
-base::vector<IR::Val> AST::ScopeLiteral::EmitIR(Context *ctx) {
+base::vector<ir::Val> ast::ScopeLiteral::EmitIR(Context *ctx) {
   for (auto &decl : decls_) { decl.EmitIR(ctx); }
-  return {IR::Val(this)};
+  return {ir::Val(this)};
 }
-base::vector<IR::Register> ScopeLiteral::EmitLVal(Context *) {
+base::vector<ir::Register> ScopeLiteral::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
-}  // namespace AST
+}  // namespace ast

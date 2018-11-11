@@ -15,13 +15,13 @@
 #include "type/function.h"
 
 namespace backend {
-static void ReplEval(AST::Expression *expr) {
+static void ReplEval(ast::Expression *expr) {
   // TODO is nullptr for module okay here?
-  auto fn = std::make_unique<IR::Func>(
+  auto fn = std::make_unique<ir::Func>(
       nullptr, type::Func({}, {}),
-      base::vector<std::pair<std::string, AST::Expression *>>{});
+      base::vector<std::pair<std::string, ast::Expression *>>{});
   CURRENT_FUNC(fn.get()) {
-    IR::BasicBlock::Current = fn->entry();
+    ir::BasicBlock::Current = fn->entry();
     // TODO use the right module
     Context ctx(static_cast<Module *>(nullptr));
 
@@ -33,7 +33,7 @@ static void ReplEval(AST::Expression *expr) {
     }
     auto *expr_type = ctx.type_of(expr);
     if (expr_type != type::Void()) { expr_type->EmitRepr(expr_val, &ctx); }
-    IR::ReturnJump();
+    ir::ReturnJump();
   }
 
   ExecContext ctx;
@@ -56,8 +56,8 @@ repl_start : {
   }
 
   for (auto &stmt : stmts->content_) {
-    if (stmt->is<AST::Declaration>()) {
-      auto *decl = &stmt->as<AST::Declaration>();
+    if (stmt->is<ast::Declaration>()) {
+      auto *decl = &stmt->as<ast::Declaration>();
       decl->assign_scope(ctx.mod_->global_.get());
       decl->VerifyType(&ctx);
       decl->Validate(&ctx);
@@ -67,8 +67,8 @@ repl_start : {
         goto repl_start;
       }
 
-    } else if (stmt->is<AST::Expression>()) {
-      auto *expr = &stmt->as<AST::Expression>();
+    } else if (stmt->is<ast::Expression>()) {
+      auto *expr = &stmt->as<ast::Expression>();
       expr->assign_scope(ctx.mod_->global_.get());
       backend::ReplEval(expr);
       fprintf(stderr, "\n");

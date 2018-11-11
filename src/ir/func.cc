@@ -11,7 +11,7 @@ namespace type {
 Pointer const *Ptr(const Type *);
 }  // namespace type
 
-namespace IR {
+namespace ir {
 thread_local Func *Func::Current{nullptr};
 
 Register Func::Argument(u32 n) const { return Register(reg_map_.at(n)); }
@@ -21,7 +21,7 @@ Register Func::Return(u32 n) const {
 }
 
 Func::Func(Module *mod, type::Function const *fn_type,
-           base::vector<std::pair<std::string, AST::Expression *>> args)
+           base::vector<std::pair<std::string, ast::Expression *>> args)
     : type_(fn_type),
       args_(std::move(args)),
       num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
@@ -69,7 +69,7 @@ Func::GetIncomingBlocks() const {
         incoming[&block(last.cond_jump_.blocks_[1])].insert(&b);
         break;
       case Op::ReturnJump: /* Nothing to do */ break;
-      default: UNREACHABLE(IR::OpCodeStr(last.op_code_));
+      default: UNREACHABLE(ir::OpCodeStr(last.op_code_));
     }
   }
   return incoming;
@@ -81,9 +81,9 @@ Cmd const *Func::Command(Register reg) const {
   return &Command(iter->second);
 }
 
-static base::vector<std::pair<IR::Func, prop::PropertyMap>> InvariantsFor(
-    IR::Func *fn, const base::vector<AST::Expression *> &exprs) {
-  base::vector<std::pair<IR::Func, prop::PropertyMap>> result;
+static base::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
+    ir::Func *fn, const base::vector<ast::Expression *> &exprs) {
+  base::vector<std::pair<ir::Func, prop::PropertyMap>> result;
   // Resreve to guarantee pointer stability.
   for (const auto &expr : exprs) {
     auto & [ func, prop_map ] = result.emplace_back(
@@ -93,11 +93,11 @@ static base::vector<std::pair<IR::Func, prop::PropertyMap>> InvariantsFor(
         std::forward_as_tuple());
 
     CURRENT_FUNC(&func) {
-      IR::BasicBlock::Current = func.entry();
+      ir::BasicBlock::Current = func.entry();
       // TODO bound constants?
       Context ctx(fn->mod_);
-      IR::SetReturn(0, expr->EmitIR(&ctx)[0]);
-      IR::ReturnJump();
+      ir::SetReturn(0, expr->EmitIR(&ctx)[0]);
+      ir::ReturnJump();
     }
     prop_map = prop::PropertyMap(&func);
   }
@@ -110,7 +110,7 @@ void Func::ComputeInvariants() {
 }
 
 void Func::CheckInvariants() {
-  std::vector<std::pair<BasicBlock const *, IR::Cmd const *>> cmds;
+  std::vector<std::pair<BasicBlock const *, ir::Cmd const *>> cmds;
   for (const auto &block : blocks_) {
     for (const auto &cmd : block.cmds_) {
       if (cmd.op_code_ != Op::Call) { continue; }
@@ -146,7 +146,7 @@ void Func::CheckInvariants() {
   }
 }
 
-std::ostream &operator<<(std::ostream &os, IR::Func const &f) {
+std::ostream &operator<<(std::ostream &os, ir::Func const &f) {
   os << "\n" << f.name() << ": " << f.type_->to_string();
   for (size_t i = 0; i < f.blocks_.size(); ++i) {
     os << "\n block #" << i << "\n" << f.blocks_[i];
@@ -160,4 +160,4 @@ std::string Func::name() const {
   return ss.str();
 }
 
-}  // namespace IR
+}  // namespace ir

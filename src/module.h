@@ -24,14 +24,14 @@ struct Type;
 struct Function;
 }  // namespace type
 
-namespace IR {
+namespace ir {
 struct Func;
-}  // namespace IR
+}  // namespace ir
 
-namespace AST {
+namespace ast {
 struct Expression;
 struct FunctionLiteral;
-}  // namespace AST
+}  // namespace ast
 
 struct Module {
   Module();
@@ -42,18 +42,18 @@ struct Module {
 
   static std::unique_ptr<Module> Compile(const frontend::Source::Name &src);
 
-  IR::Func *AddFunc(
+  ir::Func *AddFunc(
       type::Function const *fn_type,
-      base::vector<std::pair<std::string, AST::Expression *>> args);
+      base::vector<std::pair<std::string, ast::Expression *>> args);
   type::Type const *GetType(std::string const &name) const;
-  AST::Declaration *GetDecl(std::string const &name) const;
+  ast::Declaration *GetDecl(std::string const &name) const;
 
   void Complete();
 
-  std::map<AST::BoundConstants,
-           std::unordered_set<AST::FunctionLiteral const *>>
+  std::map<ast::BoundConstants,
+           std::unordered_set<ast::FunctionLiteral const *>>
       completed_;
-  std::queue<std::pair<AST::BoundConstants, AST::FunctionLiteral *>>
+  std::queue<std::pair<ast::BoundConstants, ast::FunctionLiteral *>>
       to_complete_;
 
   std::unique_ptr<DeclScope> global_;
@@ -65,35 +65,35 @@ struct Module {
   //
   // TODO Almost surely this needs to be even deeper, treating it as a tree
   // of arbitrary depth.
-  base::map<AST::BoundConstants, AST::BoundConstants> constants_;
+  base::map<ast::BoundConstants, ast::BoundConstants> constants_;
 
   // TODO long-term this is not a good way to store these. We should probably
   // extract the declarations determine which are public, etc.
-  AST::Statements statements_;
+  ast::Statements statements_;
 
 #ifdef ICARUS_USE_LLVM
   std::unique_ptr<llvm::LLVMContext> llvm_ctx_;
   std::unique_ptr<llvm::Module> llvm_;
 #endif  // ICARUS_USE_LLVM
 
-  base::vector<std::unique_ptr<IR::Func>> fns_;
+  base::vector<std::unique_ptr<ir::Func>> fns_;
   std::unordered_set<const Module *> embedded_modules_;
 
-  void set_type(AST::BoundConstants const &bc, AST::Expression const *expr,
+  void set_type(ast::BoundConstants const &bc, ast::Expression const *expr,
                 type::Type const *);
-  type::Type const *type_of(AST::BoundConstants const &bc,
-                            AST::Expression const *expr) const;
-  IR::Register addr(AST::BoundConstants const &bc,
-                    AST::Declaration *decl) const;
-  std::map<AST::BoundConstants, AST::NodeLookup<type::Type const *>> types_;
-  std::map<AST::BoundConstants,
-           base::unordered_map<AST::Declaration *, IR::Register>>
+  type::Type const *type_of(ast::BoundConstants const &bc,
+                            ast::Expression const *expr) const;
+  ir::Register addr(ast::BoundConstants const &bc,
+                    ast::Declaration *decl) const;
+  std::map<ast::BoundConstants, ast::NodeLookup<type::Type const *>> types_;
+  std::map<ast::BoundConstants,
+           base::unordered_map<ast::Declaration *, ir::Register>>
       addr_;
-  std::map<AST::BoundConstants,
-           std::unordered_set<AST::FunctionLiteral const *>>
+  std::map<ast::BoundConstants,
+           std::unordered_set<ast::FunctionLiteral const *>>
       validated_;
-  std::map<AST::BoundConstants,
-           base::unordered_map<AST::FunctionLiteral const *, IR::Func *>>
+  std::map<ast::BoundConstants,
+           base::unordered_map<ast::FunctionLiteral const *, ir::Func *>>
       ir_funcs_;
 };
 

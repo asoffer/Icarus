@@ -3,7 +3,7 @@
 
 #include "ast/expression.h"
 
-namespace AST {
+namespace ast {
 struct Declaration;
 
 struct Identifier : public Expression {
@@ -20,12 +20,12 @@ struct Identifier : public Expression {
 
   void ExtractJumps(JumpExprs *) const override {}
 
-  base::vector<IR::Val> EmitIR(Context *) override;
-  base::vector<IR::Register> EmitLVal(Context *) override;
+  base::vector<ir::Val> EmitIR(Context *) override;
+  base::vector<ir::Register> EmitLVal(Context *) override;
 
   std::string token;
   Declaration *decl = nullptr;
 };
-}  // namespace AST
+}  // namespace ast
 
 #endif  // ICARUS_AST_IDENTIFIER_H

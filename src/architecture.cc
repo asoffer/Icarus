@@ -7,9 +7,9 @@
 // TODO a lot of stuff that can only be run at compile-time needs to have
 // values for size and alignment. Figure out the best way to handle this.
 
-IR::RegisterOr<i32> Architecture::ComputeArrayLength(
-    IR::RegisterOr<i32> len, const type::Type *t) const {
-  return IR::MulInt(len, static_cast<i32>(MoveForwardToAlignment(t, bytes(t))));
+ir::RegisterOr<i32> Architecture::ComputeArrayLength(
+    ir::RegisterOr<i32> len, const type::Type *t) const {
+  return ir::MulInt(len, static_cast<i32>(MoveForwardToAlignment(t, bytes(t))));
 }
 
 size_t Architecture::alignment(const type::Type *t) const {
@@ -131,10 +131,10 @@ size_t Architecture::bytes(const type::Type *t) const {
 
     return MoveForwardToAlignment(t, num_bytes);
   } else if (t->is<type::Function>() || t == type::Generic) {
-    return sizeof(IR::AnyFunc);
+    return sizeof(ir::AnyFunc);
     // TODO it's weird that this is 8 and not ptr_bytes_ which may be larger. On
     // the interpretting machinge, it seems like we aren't just returning a
-    // pointer type but sometimes an actual IR::Func* which is smaller.
+    // pointer type but sometimes an actual ir::Func* which is smaller.
   } else if (t->is<type::Enum>()) {
     return 8;  // TODO
   } else if (t->is<type::Flags>()) {
