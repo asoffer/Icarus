@@ -25,7 +25,6 @@ namespace ast {
 struct Expression;
 struct ScopeLiteral;
 struct BlockLiteral;
-struct CodeBlock;
 struct FunctionLiteral;
 }  // namespace ast
 
@@ -78,14 +77,12 @@ struct Val {
   }
   static Val Enum(const type::Enum *enum_type, size_t integral_val);
   static Val Flags(const type::Flags *flags_type, FlagsVal val);
-  static Val CodeBlock(const ast::CodeBlock &block);
   static Val Foreign(const type::Type *t, ForeignFn f) { return Val(t, f); }
   static Val Func(ir::Func *fn);  // TODO deprecate?
   static Val Func(ast::FunctionLiteral *fn);
   static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Block(ast::BlockLiteral *b);
   static Val BlockSeq(BlockSequence b);
-  static Val Null(const type::Type *t);
   static Val Interface(ir::Interface ifc);
 
   static Val CharBuf(const std::string &str);

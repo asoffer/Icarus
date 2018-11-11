@@ -81,7 +81,6 @@ type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   }
 
   if (ctx->num_errors() > 0) {
-    limit_to(StageRange::Nothing());
     return nullptr;
   }
 
@@ -112,15 +111,12 @@ type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
       const auto &out = out_vals[i];
       if (out == ir::Val::None() /* TODO Error() */) {
         ctx->error_log_.IndeterminantType(outputs[i]->span);
-        limit_to(StageRange::Nothing());
       } else if (out.type != type::Type_) {
         ctx->error_log_.NotAType(outputs[i].get());
-        limit_to(StageRange::Nothing());
         continue;
       } else if (auto *ret_type = std::get<const type::Type *>(out.value);
                  ret_type == nullptr) {
         err = true;
-        limit_to(StageRange::Nothing());
         continue;
       } else {
         ret_types.push_back(ret_type);
@@ -204,13 +200,11 @@ void FunctionLiteral::Validate(Context *ctx) {
       case 0: {
         for (auto *expr : rets[JumpKind::Return]) {
           ctx->error_log_.NoReturnTypes(expr);
-          limit_to(StageRange::NoEmitIR());
         }
       } break;
       case 1: {
         for (auto *expr : rets[JumpKind::Return]) {
           if (ctx->type_of(expr) == outs[0]) { continue; }
-          limit_to(StageRange::NoEmitIR());
           ctx->error_log_.ReturnTypeMismatch(outs[0], expr);
         }
       } break;
@@ -221,7 +215,6 @@ void FunctionLiteral::Validate(Context *ctx) {
             auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
               ctx->error_log_.ReturningWrongNumber(expr, outs.size());
-              limit_to(StageRange::NoEmitIR());
             } else {
               for (size_t i = 0; i < tup_entries.size(); ++i) {
                 // TODO compare with Join rather than direct comparison
@@ -231,13 +224,11 @@ void FunctionLiteral::Validate(Context *ctx) {
                   // values it's harder.
                   ctx->error_log_.IndexedReturnTypeMismatch(outs.at(i), expr,
                                                             i);
-                  limit_to(StageRange::NoEmitIR());
                 }
               }
             }
           } else {
             ctx->error_log_.ReturningWrongNumber(expr, outs.size());
-            limit_to(StageRange::NoEmitIR());
           }
         }
       } break;

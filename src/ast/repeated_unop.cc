@@ -75,7 +75,6 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
             DispatchTable::Make(args, OverloadSet(scope_, "print", ctx), ctx);
         if (ret_type != type::Void()) {
           NOT_YET("log an error: ", ret_type);
-          limit_to(StageRange::Nothing());
         }
       } else if (arg_type->is<type::Variant>()) {
         // TODO

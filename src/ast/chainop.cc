@@ -160,11 +160,9 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
     auto *expr_type = expr->VerifyType(ctx);
     expr_types.push_back(expr_type);
     HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(expr);
     if (expr_type == nullptr) { found_err = true; }
   }
   if (found_err) {
-    limit_to(StageRange::Nothing());
     return nullptr;
   }
 
@@ -214,7 +212,6 @@ not_blocks:
           (!expr_types[0]->is<type::Flags>())) {
         NOT_YET("log an error");
         if (failed) {
-          limit_to(StageRange::Nothing());
           return nullptr;
         }
       }
@@ -251,14 +248,12 @@ not_blocks:
               DispatchTable::Make(args, OverloadSet(scope_, token, ctx), ctx);
           ASSERT(t, Not(Is<type::Tuple>()));
           if (t == nullptr) {
-            limit_to(StageRange::Nothing());
             return nullptr;
           }
         } else {
           if (lhs_type != rhs_type) {
             // TODO better error.
             ctx->error_log_.NoMatchingOperator(token, lhs_type, rhs_type, span);
-            limit_to(StageRange::NoEmitIR());
 
           } else {
             auto cmp = lhs_type->Comparator();

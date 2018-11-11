@@ -45,7 +45,6 @@ static std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
 static void ValidateStatementSyntax(ast::Node *node, Context *ctx) {
   if (node->is<ast::CommaList>()) {
     ctx->error_log_.CommaListStatement(node->as<ast::CommaList>().span);
-    node->limit_to(ast::StageRange::NoEmitIR());
   }
 }
 
@@ -172,12 +171,11 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
   const static base::unordered_map<std::string, Operator> UnopMap{
-      {"*", Operator::Mul}, {"import", Operator::Import},
-      {"&", Operator::And}, {"generate", Operator::Generate},
-      {"-", Operator::Sub}, {"which", Operator::Which},
-      {"!", Operator::Not}, {"needs", Operator::Needs},
-      {"@", Operator::At},  {"ensure", Operator::Ensure},
-      {"$", Operator::Eval}};
+      {"*", Operator::Mul},         {"import", Operator::Import},
+      {"&", Operator::And},         {"-", Operator::Sub},
+      {"which", Operator::Which},   {"!", Operator::Not},
+      {"needs", Operator::Needs},   {"@", Operator::At},
+      {"ensure", Operator::Ensure}, {"$", Operator::Eval}};
   auto iter = UnopMap.find(tk);
   ASSERT(iter != UnopMap.end());
   unop->op = iter->second;

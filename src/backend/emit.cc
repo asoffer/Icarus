@@ -102,7 +102,6 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
                 f->name(), f->type_->llvm_fn(llvm_data->module->getContext()));
           },
           [&](ast::ScopeLiteral *s) -> llvm::Value * { NOT_YET(); },
-          [&](const ast::CodeBlock &c) -> llvm::Value * { NOT_YET(); },
           [&](ast::Expression *e) -> llvm::Value * { NOT_YET(); },
           [&](ir::Interface b) -> llvm::Value * { UNREACHABLE(); },
           [&](ir::BlockIndex b) -> llvm::Value * { NOT_YET(); },

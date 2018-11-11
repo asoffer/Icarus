@@ -31,7 +31,6 @@ type::Type const *Interface::VerifyType(Context *ctx) {
     decl.VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
     if (decl.init_val != nullptr) { NOT_YET(); }
-    limit_to(&decl);
   }
   return type::Interface;
 }

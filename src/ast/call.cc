@@ -406,7 +406,6 @@ type::Type const *Call::VerifyType(Context *ctx) {
                   [](std::pair<std::string, type::Type const *> const &p) {
                     return p.second == nullptr;
                   })) {
-    limit_to(StageRange::Nothing());
     return nullptr;
   }
 
@@ -481,7 +480,6 @@ type::Type const *Call::VerifyType(Context *ctx) {
       DispatchTable::Make(args, overload_set, ctx);
   ctx->set_type(this, ret_type);
 
-  if (ret_type == nullptr) { limit_to(StageRange::Nothing()); }
 
   u64 expanded_size = 1;
   arg_types.Apply([&expanded_size](type::Type const *arg_type) {
@@ -493,7 +491,6 @@ type::Type const *Call::VerifyType(Context *ctx) {
   if (dispatch_table_.total_size_ != expanded_size) {
     // TODO give a better error message here.
     ctx->error_log_.NoCallMatch(span);
-    limit_to(StageRange::Nothing());
     return nullptr;
   }
 

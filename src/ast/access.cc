@@ -42,7 +42,6 @@ type::Type const *Access::VerifyType(Context *ctx) {
       if (evaled_type->as<type::Enum>().IntValueOrFail(member_name) ==
           std::numeric_limits<size_t>::max()) {
         ctx->error_log_.MissingMember(span, member_name, evaled_type);
-        limit_to(StageRange::NoEmitIR());
       }
     }
     return evaled_type;
@@ -54,7 +53,6 @@ type::Type const *Access::VerifyType(Context *ctx) {
 
     } else {
       ctx->error_log_.MissingMember(span, member_name, base_type);
-      limit_to(StageRange::Nothing());
       return nullptr;
     }
   } else if (base_type == type::Module) {
@@ -63,12 +61,10 @@ type::Type const *Access::VerifyType(Context *ctx) {
     ctx->set_type(this, t);
     if (t == nullptr) {
       NOT_YET("log an error");
-      limit_to(StageRange::Nothing());
     }
     return t;
   } else {
     ctx->error_log_.MissingMember(span, member_name, base_type);
-    limit_to(StageRange::Nothing());
     return nullptr;
   }
 }

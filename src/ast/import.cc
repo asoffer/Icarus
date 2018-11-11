@@ -38,7 +38,6 @@ type::Type const *Import::VerifyType(Context *ctx) {
         backend::EvaluateAs<std::string_view>(operand_.get(), ctx)};
     ScheduleModule(*cache_);
   }
-  limit_to(operand_);
   return type::Module;
 }
 }  // namespace ast

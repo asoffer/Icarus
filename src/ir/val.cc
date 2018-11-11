@@ -78,10 +78,6 @@ Val Val::Flags(const type::Flags *flags_type, FlagsVal val) {
 Val Val::Func(ast::FunctionLiteral *fn) { return Val(type::Generic, fn); }
 Val Val::Func(ir::Func *fn) { return Val(fn->type_, fn); }
 
-Val Val::Null(const type::Type *t) {
-  return Val(Ptr(t), ir::Addr{Addr::Kind::Null, 0});
-}
-
 static std::string Escaped(std::string_view sv) {
   std::stringstream ss;
   for (char c : sv) {

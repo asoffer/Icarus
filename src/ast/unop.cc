@@ -33,7 +33,6 @@ std::string Unop::to_string(size_t n) const {
     case Language::Operator::Mul: ss << "*"; break;
     case Language::Operator::And: ss << "&"; break;
     case Language::Operator::Sub: ss << "-"; break;
-    case Language::Operator::Generate: ss << "generate "; break;
     case Language::Operator::Not: ss << "!"; break;
     case Language::Operator::At: ss << "@"; break;
     case Language::Operator::Eval: ss << "$"; break;
@@ -62,7 +61,6 @@ void Unop::ExtractJumps(JumpExprs *rets) const {
 type::Type const *Unop::VerifyType(Context *ctx) {
   VERIFY_OR_RETURN(operand_type, operand);
 
-  limit_to(operand);
   switch (op) {
     case Language::Operator::TypeOf:
       ctx->set_type(this, type::Type_);
@@ -70,13 +68,9 @@ type::Type const *Unop::VerifyType(Context *ctx) {
     case Language::Operator::Eval:
       ctx->set_type(this, operand_type);
       return operand_type;
-    case Language::Operator::Generate:
-      ctx->set_type(this, type::Void());
-      return type::Void();
     case Language::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
         ctx->error_log_.WhichNonVariant(operand_type, span);
-        limit_to(StageRange::NoEmitIR());
       }
       ctx->set_type(this, type::Type_);
       return type::Type_;
@@ -87,7 +81,6 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         return t;
       } else {
         ctx->error_log_.DereferencingNonPointer(operand_type, span);
-        limit_to(StageRange::Nothing());
         return nullptr;
       }
     case Language::Operator::And: {
@@ -96,10 +89,8 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       return t;
     }
     case Language::Operator::Mul:
-      limit_to(operand);
       if (operand_type != type::Type_) {
         NOT_YET("log an error");
-        limit_to(StageRange::Nothing());
         return nullptr;
       } else {
         ctx->set_type(this, type::Type_);
@@ -116,7 +107,6 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         std::tie(dispatch_table_, t) =
             DispatchTable::Make(args, OverloadSet(scope_, "-", ctx), ctx);
         if (t == nullptr) {
-          limit_to(StageRange::Nothing());
           return nullptr;
         }
         return t;
@@ -135,27 +125,23 @@ type::Type const *Unop::VerifyType(Context *ctx) {
             DispatchTable::Make(args, OverloadSet(scope_, "!", ctx), ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
-          limit_to(StageRange::Nothing());
           return nullptr;
         }
         return t;
       } else {
         NOT_YET("log an error");
-        limit_to(StageRange::Nothing());
         return nullptr;
       }
     case Language::Operator::Needs:
       ctx->set_type(this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PreconditionNeedsBool(operand.get());
-        limit_to(StageRange::NoEmitIR());
       }
       return type::Void();
     case Language::Operator::Ensure:
       ctx->set_type(this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PostconditionNeedsBool(operand.get());
-        limit_to(StageRange::NoEmitIR());
       }
       return type::Void();
     case Language::Operator::Pass:
@@ -201,24 +187,6 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
       // TODO what if there's an error during evaluation?
       return backend::Evaluate(operand.get(), ctx);
     }
-    case Language::Operator::Generate: {
-      NOT_YET();
-      /*
-      auto val = backend::Evaluate(operand.get(), ctx).at(0);
-      ASSERT(val.type == type::Code);
-      auto block = std::get<ast::CodeBlock>(val.value);
-      if (auto *err = std::get_if<std::string>(&block.content_)) {
-        ctx->error_log_.UserDefinedError(*err);
-        return {};
-      }
-
-      auto *stmts = &std::get<ast::Statements>(block.content_);
-      stmts->assign_scope(scope_);
-      stmts->VerifyType(ctx);
-      stmts->Validate(ctx);
-      return stmts->EmitIR(ctx);
-      */
-    } break;
     case Language::Operator::Mul:
       return {ir::ValFrom(
           ir::Ptr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};

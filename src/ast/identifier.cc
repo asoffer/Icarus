@@ -48,12 +48,10 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
           } break;
           default: NOT_YET();
         }
-        limit_to(StageRange::Nothing());
         return nullptr;
       default:
         // TODO Should we allow the overload?
         ctx->error_log_.UnspecifiedOverload(span);
-        limit_to(StageRange::Nothing());
         return nullptr;
     }
   }
@@ -62,7 +60,6 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
                         (span.start.line_num == decl->span.start.line_num &&
                          span.start.offset < decl->span.start.offset))) {
     ctx->error_log_.DeclOutOfOrder(decl, this);
-    limit_to(StageRange::NoEmitIR());
   }
 
   // TODO this is because we may have determined the declartaion previously with

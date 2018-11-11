@@ -42,9 +42,6 @@ struct Node : public base::Cast<Node> {
   virtual base::vector<ir::Val> EmitIR(Context *) = 0;
   virtual void ExtractJumps(JumpExprs *) const    = 0;
 
-  template <typename T>
-  void limit_to(T &&t) {}
-
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}
 

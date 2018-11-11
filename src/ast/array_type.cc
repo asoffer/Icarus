@@ -22,16 +22,13 @@ void ArrayType::assign_scope(Scope *scope) {
 type::Type const *ArrayType::VerifyType(Context *ctx) {
   auto *length_type = length_->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
-  limit_to(length_);
   data_type_->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
-  limit_to(data_type_);
 
   ctx->set_type(this, type::Type_);
 
   if (!length_->is<Hole>() && length_type != type::Int) {
     ctx->error_log_.ArrayIndexType(span);
-    limit_to(StageRange::NoEmitIR());
   }
 
   return type::Type_;

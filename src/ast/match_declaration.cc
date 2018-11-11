@@ -13,7 +13,6 @@ type::Type const *MatchDeclaration::VerifyType(Context *ctx) {
   {
     type_expr->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(type_expr);
     // TODO this is wrong. it's a type satisfying a given interface. does that
     // matter?
     ctx->set_type(this, type::Interface);

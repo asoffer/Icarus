@@ -17,7 +17,6 @@
         ctx->cyc_dep_vec_->push_back(this);                                    \
       }                                                                        \
     }                                                                          \
-    limit_to(StageRange::Nothing());                                           \
     return nullptr;                                                            \
   } while (false)
 

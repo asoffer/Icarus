@@ -103,8 +103,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
   auto *rhs_type = rhs->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
   if (lhs_type == nullptr || rhs_type == nullptr) {
-    limit_to(lhs);
-    limit_to(rhs);
     return nullptr;
   }
 
@@ -122,7 +120,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           for (size_t i = 0; i < lhs_entries_.size(); ++i) {
             if (!type::CanCastImplicitly(rhs_entries_[i], lhs_entries_[i])) {
               NOT_YET("log an error");
-              limit_to(StageRange::NoEmitIR());
             }
           }
         }
@@ -139,7 +136,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       } else {
         if (!type::CanCastImplicitly(rhs_type, lhs_type)) {
           NOT_YET("log an error");
-          limit_to(StageRange::NoEmitIR());
         }
       }
     }
@@ -152,13 +148,11 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       if (lhs_type->is<type::CharBuffer>()) {
         if (rhs_type != type::Int) {
           ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
-          limit_to(StageRange::NoEmitIR());
         }
         ctx->set_type(this, type::Char);
         return type::Char;
       } else if (!lhs_type->is<type::Array>()) {
         ctx->error_log_.IndexingNonArray(span, lhs_type);
-        limit_to(StageRange::NoEmitIR());
         return nullptr;
       } else {
         auto *t = lhs_type->as<type::Array>().data_type;
@@ -166,7 +160,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 
         if (rhs_type == type::Int) { break; }
         ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
-        limit_to(StageRange::NoEmitIR());
         return t;
       }
     } break;
@@ -187,7 +180,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       } else {
         // TODO could be bool or enum.
         ctx->error_log_.XorEqNeedsBool(span);
-        limit_to(StageRange::Nothing());
         return nullptr;
       }
     case Operator::AndEq:
@@ -200,7 +192,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       } else {
         // TODO could be bool or enum.
         ctx->error_log_.AndEqNeedsBool(span);
-        limit_to(StageRange::Nothing());
         return nullptr;
       }
     case Operator::OrEq:
@@ -213,7 +204,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       } else {
         // TODO could be bool or enum.
         ctx->error_log_.OrEqNeedsBool(span);
-        limit_to(StageRange::Nothing());
         return nullptr;
       }
 
@@ -232,7 +222,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           DispatchTable::Make(args, OverloadSet(scope_, symbol, ctx), ctx);     \
       if (t == nullptr) {                                                       \
         ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
-        limit_to(StageRange::Nothing());                                        \
       }                                                                         \
       ASSERT(t, Not(Is<type::Tuple>()));                                        \
     }                                                                           \
@@ -267,7 +256,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         // TODO should this be Err or nullptr?
         if (t == type::Err) {
           ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
-          limit_to(StageRange::Nothing());
         }
       }
     } break;
@@ -285,7 +273,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
             DispatchTable::Make(args, OverloadSet(scope_, "+=", ctx), ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         // TODO should this be Err or nullptr?
-        if (t == type::Err) { limit_to(StageRange::Nothing()); }
       }
     } break;
     // Mul is done separately because of the function composition
@@ -304,7 +291,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           return t;
         } else {
           ctx->error_log_.NonComposableFunctions(span);
-          limit_to(StageRange::Nothing());
           return nullptr;
         }
 
@@ -318,7 +304,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         // TODO should this be Err or nullptr?
         if (t == type::Err) {
           ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
-          limit_to(StageRange::Nothing());
           return nullptr;
         }
         return t;
@@ -338,7 +323,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       if (t != nullptr) {
         ctx->set_type(this, type::Type_);
       } else {
-        limit_to(StageRange::Nothing());
       }
       return t;
     }

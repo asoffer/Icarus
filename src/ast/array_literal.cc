@@ -37,7 +37,6 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
   for (auto &elem : elems_) {
     elem_types.push_back(elem->VerifyType(ctx));
     HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(elem);
   }
 
   const type::Type *joined = type::Err;
@@ -49,10 +48,8 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
   if (joined == nullptr) {
     // type::Types couldn't be joined. Emit an error
     ctx->error_log_.InconsistentArrayType(span);
-    limit_to(StageRange::Nothing());
     return nullptr;
   } else if (joined == type::Err) {
-    limit_to(StageRange::Nothing());
     return nullptr;
   } else {
     auto *t = type::Arr(joined, elems_.size());

@@ -217,7 +217,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     if (type_expr) {
       type_expr_type = type_expr->VerifyType(ctx);
       HANDLE_CYCLIC_DEPENDENCIES;
-      limit_to(type_expr);
 
       if (type_expr_type == type::Type_) {
         this_type =
@@ -228,19 +227,16 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         ctx->set_type(this, type::Generic);
       } else {
         ctx->error_log_.NotAType(type_expr.get());
-        limit_to(StageRange::Nothing());
       }
     }
 
     if (this->IsCustomInitialized()) {
       init_val_type = init_val->VerifyType(ctx);
       HANDLE_CYCLIC_DEPENDENCIES;
-      limit_to(init_val);
 
       if (init_val_type != nullptr) {
         if (!Inferrable(init_val_type)) {
           ctx->error_log_.UninferrableType(init_val->span);
-          limit_to(StageRange::Nothing());
 
         } else if (!type_expr) {
           this_type = init_val_type;
@@ -253,7 +249,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         !init_val->is<Hole>()) {
       if (!type::CanCastImplicitly(init_val_type, this_type)) {
         ctx->error_log_.AssignmentTypeMismatch(this, init_val.get());
-        limit_to(StageRange::Nothing());
       }
     }
 
@@ -262,27 +257,22 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
       if (!init_val->is<Hole>()) {  // I := V
         if (init_val_type == nullptr) {
           this_type = nullptr;
-          limit_to(StageRange::Nothing());
         }
 
       } else {  // I := --
         ctx->error_log_.InferringHole(span);
         this_type = init_val_type = nullptr;
-        limit_to(StageRange::Nothing());
-        init_val->limit_to(StageRange::Nothing());
       }
     }
 
     if (const_ && init_val) {
       if (init_val->is<Hole>()) {
         ctx->error_log_.UninitializedConstant(span);
-        limit_to(StageRange::Nothing());
         return nullptr;
       }
     }
 
     if (this_type == nullptr) {
-      limit_to(StageRange::Nothing());
       return nullptr;
     }
 
@@ -332,7 +322,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     if (Shadow(this, typed_decl.get(), ctx)) {
       failed_shadowing = true;
       ctx->error_log_.ShadowingDeclaration(*this, *typed_decl);
-      limit_to(StageRange::NoEmitIR());
     }
     ++iter;
   }
@@ -343,7 +332,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     // a different branch could find it unambiguously. It's also just a hack
     // from the get-go so maybe we should just do it the right way.
     scope_->shadowed_decls_.insert(id_);
-    limit_to(StageRange::Nothing());
     return nullptr;
   }
   return this_type;

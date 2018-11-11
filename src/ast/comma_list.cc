@@ -28,7 +28,6 @@ type::Type const *CommaList::VerifyType(Context *ctx) {
   for (auto &expr : exprs) {
     auto *expr_type = expr->VerifyType(ctx);
     HANDLE_CYCLIC_DEPENDENCIES;
-    limit_to(expr);
     if (expr_type == nullptr) { return nullptr; }
     expr_types.push_back(expr_type);
   }
