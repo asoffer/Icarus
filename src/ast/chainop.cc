@@ -62,14 +62,14 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
   }
     switch (op) {
       case Language::Operator::Lt:
-        MAKE_OP(i32, == type::Int, ir::LtInt);
-        MAKE_OP(double, == type::Real, ir::LtReal);
-        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::LtFlags);
+        MAKE_OP(i32, == type::Int, ir::Lt);
+        MAKE_OP(double, == type::Real, ir::Lt);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Lt);
         UNREACHABLE();
       case Language::Operator::Le:
-        MAKE_OP(i32, == type::Int, ir::LeInt);
-        MAKE_OP(double, == type::Real, ir::LeReal);
-        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::LeFlags);
+        MAKE_OP(i32, == type::Int, ir::Le);
+        MAKE_OP(double, == type::Real, ir::Le);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Le);
         UNREACHABLE();
       case Language::Operator::Eq:
         MAKE_OP(bool, == type::Bool, ir::Eq);
@@ -90,13 +90,13 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
         UNREACHABLE();
       case Language::Operator::Ne:
         MAKE_OP(bool, == type::Bool, ir::XorBool);
-        MAKE_OP(char, == type::Char, ir::NeChar);
-        MAKE_OP(i32, == type::Int, ir::NeInt);
-        MAKE_OP(double, == type::Real, ir::NeReal);
-        MAKE_OP(type::Type const *, == type::Type_, ir::NeType);
-        MAKE_OP(ir::EnumVal, ->is<type::Enum>(), ir::NeEnum);
-        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::NeFlags);
-        MAKE_OP(ir::Addr, ->is<type::Pointer>(), ir::NeAddr);
+        MAKE_OP(char, == type::Char, ir::Ne);
+        MAKE_OP(i32, == type::Int, ir::Ne);
+        MAKE_OP(double, == type::Real, ir::Ne);
+        MAKE_OP(type::Type const *, == type::Type_, ir::Ne);
+        MAKE_OP(ir::EnumVal, ->is<type::Enum>(), ir::Ne);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Ne);
+        MAKE_OP(ir::Addr, ->is<type::Pointer>(), ir::Ne);
         {
           ir::BlockSequence const *val1 =
               std::get_if<ir::BlockSequence>(&lhs_ir.value);
@@ -106,14 +106,14 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
         }
         UNREACHABLE();
       case Language::Operator::Ge:
-        MAKE_OP(i32, == type::Int, ir::GeInt);
-        MAKE_OP(double, == type::Real, ir::GeReal);
-        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::GeFlags);
+        MAKE_OP(i32, == type::Int, ir::Ge);
+        MAKE_OP(double, == type::Real, ir::Ge);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Ge);
         UNREACHABLE();
       case Language::Operator::Gt:
-        MAKE_OP(i32, == type::Int, ir::GtInt);
-        MAKE_OP(double, == type::Real, ir::GtReal);
-        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::GtFlags);
+        MAKE_OP(i32, == type::Int, ir::Gt);
+        MAKE_OP(double, == type::Real, ir::Gt);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Gt);
         UNREACHABLE();
         // TODO case Language::Operator::And: cmp = lhs_ir; break;
       default: UNREACHABLE();

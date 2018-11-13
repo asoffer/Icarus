@@ -206,42 +206,6 @@ DEFINE_CMD2(DivInt, div_int_, i32, Int, i32, std::divides<i32>{});
 DEFINE_CMD2(DivReal, div_real_, double, Real, double, std::divides<double>{});
 DEFINE_CMD2(ModInt, mod_int_, i32, Int, i32, std::modulus<i32>{});
 DEFINE_CMD2(ModReal, mod_real_, double, Real, double, std::fmod);
-DEFINE_CMD2(LtInt, lt_int_, i32, Bool, bool, std::less<i32>{});
-DEFINE_CMD2(LtReal, lt_real_, double, Bool, bool, std::less<double>{});
-DEFINE_CMD2(LtFlags, lt_flags_, FlagsVal, Bool, bool,
-            [](FlagsVal lhs, FlagsVal rhs) {
-              return lhs.value != rhs.value &&
-                     ((lhs.value | rhs.value) == rhs.value);
-            });
-DEFINE_CMD2(LeInt, le_int_, i32, Bool, bool, std::less_equal<i32>{});
-DEFINE_CMD2(LeReal, le_real_, double, Bool, bool, std::less_equal<double>{});
-DEFINE_CMD2(LeFlags, le_flags_, FlagsVal, Bool, bool,
-            [](FlagsVal lhs, FlagsVal rhs) {
-              return (lhs.value | rhs.value) == rhs.value;
-            });
-DEFINE_CMD2(GtInt, gt_int_, i32, Bool, bool, std::less<i32>{});
-DEFINE_CMD2(GtReal, gt_real_, double, Bool, bool, std::less<double>{});
-DEFINE_CMD2(GtFlags, gt_flags_, FlagsVal, Bool, bool,
-            [](FlagsVal lhs, FlagsVal rhs) {
-              return lhs.value != rhs.value &&
-                     ((lhs.value | rhs.value) == lhs.value);
-            });
-DEFINE_CMD2(GeInt, ge_int_, i32, Bool, bool, std::less_equal<i32>{});
-DEFINE_CMD2(GeReal, ge_real_, double, Bool, bool, std::less_equal<double>{});
-DEFINE_CMD2(GeFlags, ge_flags_, FlagsVal, Bool, bool,
-            [](FlagsVal lhs, FlagsVal rhs) {
-              return (lhs.value | rhs.value) == lhs.value;
-            });
-DEFINE_CMD2(NeChar, ne_char_, char, Bool, bool, std::not_equal_to<char>{});
-DEFINE_CMD2(NeInt, ne_int_, i32, Bool, bool, std::not_equal_to<i32>{});
-DEFINE_CMD2(NeReal, ne_real_, double, Bool, bool, std::not_equal_to<double>{});
-DEFINE_CMD2(NeType, ne_type_, const type::Type *, Bool, bool,
-            std::not_equal_to<const type::Type *>{});
-DEFINE_CMD2(NeEnum, ne_enum_, EnumVal, Bool, bool,
-            std::not_equal_to<EnumVal>{});
-DEFINE_CMD2(NeFlags, ne_flags_, FlagsVal, Bool, bool,
-            std::not_equal_to<FlagsVal>{});
-DEFINE_CMD2(NeAddr, ne_addr_, Addr, Bool, bool, std::not_equal_to<Addr>{});
 DEFINE_CMD2(Arrow, arrow_, type::Type const *, Type_, type::Type const *,
             [](type::Type const *lhs, type::Type const *rhs) {
               base::vector<type::Type const *> ins =

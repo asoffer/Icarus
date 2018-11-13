@@ -5,6 +5,38 @@
 #include "context.h"
 #include "val.h"
 
+namespace std {
+
+template <>
+struct less<ir::FlagsVal> {
+  bool operator()(ir::FlagsVal lhs, ir::FlagsVal rhs) const {
+    return lhs.value != rhs.value && ((lhs.value | rhs.value) == rhs.value);
+  }
+};
+
+template <>
+struct less_equal<ir::FlagsVal> {
+  bool operator()(ir::FlagsVal lhs, ir::FlagsVal rhs) const {
+    return (lhs.value | rhs.value) == rhs.value;
+  }
+};
+
+template <>
+struct greater<ir::FlagsVal> {
+  bool operator()(ir::FlagsVal lhs, ir::FlagsVal rhs) const {
+    return lhs.value != rhs.value && ((lhs.value | rhs.value) == lhs.value);
+  }
+};
+
+template <>
+struct greater_equal<ir::FlagsVal> {
+  bool operator()(ir::FlagsVal lhs, ir::FlagsVal rhs) const {
+    return (lhs.value | rhs.value) == lhs.value;
+  }
+};
+
+}  // namespace std
+
 namespace type {
 struct Function;
 struct Tuple;
@@ -372,6 +404,11 @@ struct Cmd {
   struct PrintTag;
   struct StoreTag;
   struct EqTag;
+  struct NeTag;
+  struct LtTag;
+  struct LeTag;
+  struct GtTag;
+  struct GeTag;
   template <typename Tag, typename T>
   static constexpr Op OpCode() {
     return static_cast<Op>(
@@ -404,7 +441,9 @@ struct Cmd {
       }
       if constexpr (std::is_same_v<T, EnumVal>) { return store_enum_; }
       if constexpr (std::is_same_v<T, FlagsVal>) { return store_flags_; }
-      if constexpr (std::is_same_v<T, Func *>) { return store_func_; } // TODO const
+      if constexpr (std::is_same_v<T, Func *>) {
+        return store_func_;
+      }  // TODO const
       if constexpr (std::is_same_v<T, Addr>) { return store_addr_; }
     }
     if constexpr (std::is_same_v<Tag, EqTag>) {
@@ -412,12 +451,39 @@ struct Cmd {
       if constexpr (std::is_same_v<T, char>) { return eq_char_; }
       if constexpr (std::is_same_v<T, i32>) { return eq_int_; }
       if constexpr (std::is_same_v<T, double>) { return eq_real_; }
-      if constexpr (std::is_same_v<T, type::Type const *>) {
-        return eq_type_;
-      }
+      if constexpr (std::is_same_v<T, type::Type const *>) { return eq_type_; }
       if constexpr (std::is_same_v<T, EnumVal>) { return eq_enum_; }
       if constexpr (std::is_same_v<T, FlagsVal>) { return eq_flags_; }
       if constexpr (std::is_same_v<T, Addr>) { return eq_addr_; }
+    }
+    if constexpr (std::is_same_v<Tag, NeTag>) {
+      if constexpr (std::is_same_v<T, char>) { return ne_char_; }
+      if constexpr (std::is_same_v<T, i32>) { return ne_int_; }
+      if constexpr (std::is_same_v<T, double>) { return ne_real_; }
+      if constexpr (std::is_same_v<T, type::Type const *>) { return ne_type_; }
+      if constexpr (std::is_same_v<T, EnumVal>) { return ne_enum_; }
+      if constexpr (std::is_same_v<T, FlagsVal>) { return ne_flags_; }
+      if constexpr (std::is_same_v<T, Addr>) { return ne_addr_; }
+    }
+    if constexpr (std::is_same_v<Tag, LtTag>) {
+      if constexpr (std::is_same_v<T, i32>) { return lt_int_; }
+      if constexpr (std::is_same_v<T, double>) { return lt_real_; }
+      if constexpr (std::is_same_v<T, FlagsVal>) { return lt_flags_; }
+    }
+    if constexpr (std::is_same_v<Tag, LeTag>) {
+      if constexpr (std::is_same_v<T, i32>) { return le_int_; }
+      if constexpr (std::is_same_v<T, double>) { return le_real_; }
+      if constexpr (std::is_same_v<T, FlagsVal>) { return le_flags_; }
+    }
+    if constexpr (std::is_same_v<Tag, GtTag>) {
+      if constexpr (std::is_same_v<T, i32>) { return gt_int_; }
+      if constexpr (std::is_same_v<T, double>) { return gt_real_; }
+      if constexpr (std::is_same_v<T, FlagsVal>) { return gt_flags_; }
+    }
+    if constexpr (std::is_same_v<Tag, GeTag>) {
+      if constexpr (std::is_same_v<T, i32>) { return ge_int_; }
+      if constexpr (std::is_same_v<T, double>) { return ge_real_; }
+      if constexpr (std::is_same_v<T, FlagsVal>) { return ge_flags_; }
     }
   }
 
@@ -610,26 +676,6 @@ RegisterOr<i32> DivInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<double> DivReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<i32> ModInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<double> ModReal(RegisterOr<double> v1, RegisterOr<double> v2);
-RegisterOr<bool> LtInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<bool> LtReal(RegisterOr<double> v1, RegisterOr<double> v2);
-RegisterOr<bool> LtFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
-RegisterOr<bool> LeInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<bool> LeReal(RegisterOr<double> v1, RegisterOr<double> v2);
-RegisterOr<bool> LeFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
-RegisterOr<bool> GeInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<bool> GeReal(RegisterOr<double> v1, RegisterOr<double> v2);
-RegisterOr<bool> GeFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
-RegisterOr<bool> GtInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<bool> GtReal(RegisterOr<double> v1, RegisterOr<double> v2);
-RegisterOr<bool> GtFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
-RegisterOr<bool> NeChar(RegisterOr<char> v1, RegisterOr<char> v2);
-RegisterOr<bool> NeInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<bool> NeReal(RegisterOr<double> v1, RegisterOr<double> v2);
-RegisterOr<bool> NeType(RegisterOr<type::Type const *> v1,
-                        RegisterOr<type::Type const *> v2);
-RegisterOr<bool> NeEnum(RegisterOr<EnumVal> v1, RegisterOr<EnumVal> v2);
-RegisterOr<bool> NeFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
-RegisterOr<bool> NeAddr(RegisterOr<ir::Addr> v1, RegisterOr<ir::Addr> v2);
 RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2);
 RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &lhs,
@@ -660,24 +706,25 @@ Register Field(Register r, type::Struct const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);
 
-template <typename Lhs, typename Rhs>
-RegisterOr<bool> Eq(Lhs lhs, Rhs rhs) {
+namespace internal {
+template <typename Tag, template <typename> typename F, typename Lhs,
+          typename Rhs>
+RegisterOr<bool> HandleBinop(Lhs lhs, Rhs rhs) {
   if constexpr (!IsRegOr<Lhs>::value) {
-    return Eq(RegisterOr<Lhs>(lhs), rhs);
+    return HandleBinop<Tag, F>(RegisterOr<Lhs>(lhs), rhs);
   } else if constexpr (!IsRegOr<Rhs>::value) {
-    return Eq(lhs, RegisterOr<Rhs>(rhs));
+    return HandleBinop<Tag, F>(lhs, RegisterOr<Rhs>(rhs));
   } else {
     static_assert(std::is_same_v<Lhs, Rhs>);
 
     if (!lhs.is_reg_ && !rhs.is_reg_) {
-      return std::equal_to<typename Lhs::type>{}(lhs.val_, rhs.val_);
+      return F<typename Lhs::type>{}(lhs.val_, rhs.val_);
     }
-    auto &cmd =
-        MakeCmd(type::Bool, Cmd::OpCode<Cmd::EqTag, typename Lhs::type>());
+    auto &cmd = MakeCmd(type::Bool, Cmd::OpCode<Tag, typename Lhs::type>());
     if constexpr (std::is_same_v<typename Lhs::type, bool>) {
-      cmd.template set<Cmd::EqTag, typename Lhs::type>(lhs.reg_, rhs.reg_);
+      cmd.template set<Tag, typename Lhs::type>(lhs.reg_, rhs.reg_);
     } else {
-      cmd.template set<Cmd::EqTag, typename Lhs::type>(lhs, rhs);
+      cmd.template set<Tag, typename Lhs::type>(lhs, rhs);
     }
     /* TODO reenable
     auto &refs = Func::Current->references_;
@@ -686,6 +733,35 @@ RegisterOr<bool> Eq(Lhs lhs, Rhs rhs) {
     */
     return cmd.result;
   }
+}
+}  // namespace internal
+
+template <typename Lhs, typename Rhs>
+RegisterOr<bool> Lt(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::LtTag, std::less>(lhs, rhs);
+}
+
+template <typename Lhs, typename Rhs>
+RegisterOr<bool> Gt(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::GtTag, std::greater>(lhs, rhs);
+}
+
+template <typename Lhs, typename Rhs>
+RegisterOr<bool> Le(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::LeTag, std::less>(lhs, rhs);
+}
+
+template <typename Lhs, typename Rhs>
+RegisterOr<bool> Ge(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::GeTag, std::greater>(lhs, rhs);
+}
+template <typename Lhs, typename Rhs>
+RegisterOr<bool> Eq(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::EqTag, std::equal_to>(lhs, rhs);
+}
+template <typename Lhs, typename Rhs>
+RegisterOr<bool> Ne(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::NeTag, std::not_equal_to>(lhs, rhs);
 }
 
 template <typename T, typename... Args>

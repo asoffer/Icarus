@@ -76,7 +76,9 @@ static ir::Func *ArrayInitializationWith(const Array *from_type,
       auto to_phi_reg = ir::Func::Current->Command(to_phi_index).result;
       type::Type const *to_phi_reg_type = type::Ptr(to_type->data_type);
 
-      ir::CondJump(ir::NeAddr(from_phi_reg, from_end), body_block, exit_block);
+      ir::CondJump(ir::Ne(ir::RegisterOr<ir::Addr>(from_phi_reg),
+                          ir::RegisterOr<ir::Addr>(from_end)),
+                   body_block, exit_block);
 
       ir::BasicBlock::Current = body_block;
       InitFn(from_type->data_type, to_type->data_type,

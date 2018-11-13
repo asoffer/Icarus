@@ -116,7 +116,7 @@ static ir::RegisterOr<i32> ComputeMin(ir::RegisterOr<i32> x,
   auto entry_block = ir::BasicBlock::Current;
   auto x_block     = ir::Func::Current->AddBlock();
   auto land_block  = ir::Func::Current->AddBlock();
-  ir::CondJump(ir::LtInt(x, y), x_block, land_block);
+  ir::CondJump(ir::Lt(x, y), x_block, land_block);
   ir::BasicBlock::Current = x_block;
   ir::UncondJump(land_block);
 
