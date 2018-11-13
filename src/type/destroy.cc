@@ -33,7 +33,8 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
       using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
       ir::CreateLoop(
           [&](tup const &phis) {
-            return ir::EqAddr(std::get<0>(phis), end_ptr);
+            return ir::Eq(ir::RegisterOr<ir::Addr>(std::get<0>(phis)),
+                          ir::RegisterOr<ir::Addr>(end_ptr));
           },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);

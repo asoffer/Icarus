@@ -102,9 +102,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
   HANDLE_CYCLIC_DEPENDENCIES;
   auto *rhs_type = rhs->VerifyType(ctx);
   HANDLE_CYCLIC_DEPENDENCIES;
-  if (lhs_type == nullptr || rhs_type == nullptr) {
-    return nullptr;
-  }
+  if (lhs_type == nullptr || rhs_type == nullptr) { return nullptr; }
 
   using Language::Operator;
   // TODO if lhs is reserved?
@@ -212,7 +210,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     if ((lhs_type == type::Int && rhs_type == type::Int) ||                     \
         (lhs_type == type::Real && rhs_type == type::Real)) {                   \
       auto *t = (ret_type);                                                     \
-      ctx->set_type(this, t);                      \
+      ctx->set_type(this, t);                                                   \
       return t;                                                                 \
     } else {                                                                    \
       FnArgs<Expression *> args;                                                \
@@ -261,8 +259,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     } break;
     case Operator::AddEq: {
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
-          (lhs_type == type::Real &&
-           rhs_type == type::Real)) {
+          (lhs_type == type::Real && rhs_type == type::Real)) {
         ctx->set_type(this, type::Void());
         return type::Void();
       } else {
@@ -498,10 +495,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto *this_type = ctx->type_of(this);
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        ir::StoreFlags(ir::OrFlags(&this_type->as<type::Flags>(),
-                                   ir::LoadFlags(lhs_lval, this_type),
-                                   rhs->EmitIR(ctx)[0].reg_or<ir::FlagsVal>()),
-                       lhs_lval);
+        ir::Store(ir::OrFlags(&this_type->as<type::Flags>(),
+                              ir::LoadFlags(lhs_lval, this_type),
+                              rhs->EmitIR(ctx)[0].reg_or<ir::FlagsVal>()),
+                  lhs_lval);
         return {};
       }
       auto land_block = ir::Func::Current->AddBlock();
@@ -526,10 +523,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto *this_type = ctx->type_of(this);
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        ir::StoreFlags(ir::AndFlags(&this_type->as<type::Flags>(),
-                                    ir::LoadFlags(lhs_lval, this_type),
-                                    rhs->EmitIR(ctx)[0].reg_or<ir::FlagsVal>()),
-                       lhs_lval);
+        ir::Store(ir::AndFlags(&this_type->as<type::Flags>(),
+                               ir::LoadFlags(lhs_lval, this_type),
+                               rhs->EmitIR(ctx)[0].reg_or<ir::FlagsVal>()),
+                  lhs_lval);
         return {};
       }
 
@@ -555,12 +552,11 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
-        ir::StoreInt(ir::AddInt(ir::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
-                     lhs_lval);
+        ir::Store(ir::AddInt(ir::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
+                  lhs_lval);
       } else if (rhs_ir.type == type::Real) {
-        ir::StoreReal(
-            ir::AddReal(ir::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
-            lhs_lval);
+        ir::Store(ir::AddReal(ir::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
+                  lhs_lval);
       } else if (rhs_ir.type->is<type::CharBuffer>()) {
         NOT_YET();
       } else {
@@ -572,12 +568,11 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
-        ir::StoreInt(ir::SubInt(ir::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
-                     lhs_lval);
+        ir::Store(ir::SubInt(ir::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
+                  lhs_lval);
       } else if (rhs_ir.type == type::Real) {
-        ir::StoreReal(
-            ir::SubReal(ir::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
-            lhs_lval);
+        ir::Store(ir::SubReal(ir::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
+                  lhs_lval);
       } else {
         UNREACHABLE(rhs_ir.type);
       }
@@ -587,12 +582,11 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
-        ir::StoreInt(ir::DivInt(ir::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
-                     lhs_lval);
+        ir::Store(ir::DivInt(ir::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
+                  lhs_lval);
       } else if (rhs_ir.type == type::Real) {
-        ir::StoreReal(
-            ir::DivReal(ir::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
-            lhs_lval);
+        ir::Store(ir::DivReal(ir::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
+                  lhs_lval);
       } else {
         UNREACHABLE(rhs_ir.type);
       }
@@ -602,12 +596,11 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
-        ir::StoreInt(ir::ModInt(ir::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
-                     lhs_lval);
+        ir::Store(ir::ModInt(ir::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
+                  lhs_lval);
       } else if (rhs_ir.type == type::Real) {
-        ir::StoreReal(
-            ir::ModReal(ir::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
-            lhs_lval);
+        ir::Store(ir::ModReal(ir::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
+                  lhs_lval);
       } else {
         UNREACHABLE(rhs_ir.type);
       }
@@ -617,12 +610,11 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
-        ir::StoreInt(ir::MulInt(ir::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
-                     lhs_lval);
+        ir::Store(ir::MulInt(ir::LoadInt(lhs_lval), rhs_ir.reg_or<i32>()),
+                  lhs_lval);
       } else if (rhs_ir.type == type::Real) {
-        ir::StoreReal(
-            ir::MulReal(ir::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
-            lhs_lval);
+        ir::Store(ir::MulReal(ir::LoadReal(lhs_lval), rhs_ir.reg_or<double>()),
+                  lhs_lval);
       } else {
         UNREACHABLE(rhs_ir.type);
       }
@@ -632,15 +624,14 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       if (lhs_type == type::Bool) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
         auto rhs_ir   = rhs->EmitIR(ctx)[0].reg_or<bool>();
-        ir::StoreBool(ir::XorBool(ir::LoadBool(lhs_lval), rhs_ir), lhs_lval);
+        ir::Store(ir::XorBool(ir::LoadBool(lhs_lval), rhs_ir), lhs_lval);
       } else if (lhs_type->is<type::Flags>()) {
         auto *flags_type = &lhs_type->as<type::Flags>();
         auto lhs_lval    = lhs->EmitLVal(ctx)[0];
         auto rhs_ir      = rhs->EmitIR(ctx)[0].reg_or<ir::FlagsVal>();
-        ir::StoreFlags(
-            ir::XorFlags(flags_type, ir::LoadFlags(lhs_lval, flags_type),
-                         rhs_ir),
-            lhs_lval);
+        ir::Store(ir::XorFlags(flags_type, ir::LoadFlags(lhs_lval, flags_type),
+                               rhs_ir),
+                  lhs_lval);
       } else {
         UNREACHABLE(lhs_type);
       }

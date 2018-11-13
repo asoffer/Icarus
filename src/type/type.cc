@@ -53,13 +53,13 @@ static ir::Func *ArrayInitializationWith(const Array *from_type,
       }();
 
       if (!to_type->fixed_length) {
-        ir::StoreInt(from_len, ir::ArrayLength(to_arg));
+        ir::Store(from_len, ir::ArrayLength(to_arg));
         // TODO Architecture dependence?
-        ir::StoreAddr(
-            ir::Malloc(from_type->data_type,
-                       Architecture::InterprettingMachine().ComputeArrayLength(
-                           from_len, from_type->data_type)),
-            ir::ArrayData(to_arg, type::Ptr(to_type)));
+        ir::Store(ir::RegisterOr<ir::Addr>(ir::Malloc(
+                      from_type->data_type,
+                      Architecture::InterprettingMachine().ComputeArrayLength(
+                          from_len, from_type->data_type))),
+                  ir::ArrayData(to_arg, type::Ptr(to_type)));
       }
 
       auto from_start = ir::Index(from_type, from_arg, 0);
@@ -184,18 +184,18 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, ir::Val from_val,
       call_args.type_ = f->type_;
       ir::Call(ir::AnyFunc{f}, std::move(call_args));
     } else {
-      ir::StoreInt(
-          ir::LoadInt(ir::ArrayLength(std::get<ir::Register>(from_val.value))),
-          ir::ArrayLength(to_var));
+      ir::Store(ir::RegisterOr<i32>(ir::LoadInt(
+                    ir::ArrayLength(std::get<ir::Register>(from_val.value)))),
+                ir::ArrayLength(to_var));
 
-      ir::StoreInt(ir::LoadInt(ir::ArrayData(
-                       std::get<ir::Register>(from_val.value), from_val.type)),
-                   ir::ArrayData(to_var, type::Ptr(to_type)));
+      ir::Store(ir::RegisterOr<i32>(ir::LoadInt(ir::ArrayData(
+                    std::get<ir::Register>(from_val.value), from_val.type))),
+                ir::ArrayData(to_var, type::Ptr(to_type)));
       // TODO if this move is to be destructive, this assignment to array
       // length is not necessary.
-      ir::StoreInt(0, ir::ArrayLength(std::get<ir::Register>(from_val.value)));
-      ir::StoreAddr(
-          ir::Malloc(from_array_type->data_type, 0),
+      ir::Store(0, ir::ArrayLength(std::get<ir::Register>(from_val.value)));
+      ir::Store(
+          ir::RegisterOr<ir::Addr>(ir::Malloc(from_array_type->data_type, 0)),
           ir::ArrayData(std::get<ir::Register>(from_val.value), from_val.type));
     }
   } else if (to_type->is<Struct>()) {

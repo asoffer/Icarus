@@ -13,8 +13,9 @@ struct Expression;
 namespace type {
 void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
   if (!fixed_length) {
-    ir::StoreInt(0, ir::ArrayLength(id_reg));
-    ir::StoreAddr(ir::Malloc(data_type, 0), ir::ArrayData(id_reg, this));
+    ir::Store(0, ir::ArrayLength(id_reg));
+    ir::Store(ir::RegisterOr<ir::Addr>(ir::Malloc(data_type, 0)),
+              ir::ArrayData(id_reg, this));
   }
 
   std::unique_lock lock(mtx_);
@@ -34,7 +35,8 @@ void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
       using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
       ir::CreateLoop(
           [&](tup const &phis) {
-            return ir::EqAddr(std::get<0>(phis), end_ptr);
+            return ir::Eq(ir::RegisterOr<ir::Addr>(std::get<0>(phis)),
+                          ir::RegisterOr<ir::Addr>(end_ptr));
           },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
@@ -57,23 +59,23 @@ void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
 void Primitive::EmitInit(ir::Register id_reg, Context *ctx) const {
   switch (type_) {
     case PrimType::Err: UNREACHABLE(this, ": Err");
-    case PrimType::Type_: ir::StoreType(type::Void(), id_reg); break;
+    case PrimType::Type_: ir::Store(type::Void(), id_reg); break;
     case PrimType::NullPtr: UNREACHABLE();
     case PrimType::EmptyArray: UNREACHABLE();
-    case PrimType::Bool: ir::StoreBool(false, id_reg); break;
-    case PrimType::Char: ir::StoreChar('\0', id_reg); break;
-    case PrimType::Int: ir::StoreInt(0, id_reg); break;
-    case PrimType::Real: ir::StoreReal(0.0, id_reg); break;
+    case PrimType::Bool: ir::Store(false, id_reg); break;
+    case PrimType::Char: ir::Store('\0', id_reg); break;
+    case PrimType::Int: ir::Store(0, id_reg); break;
+    case PrimType::Real: ir::Store(0.0, id_reg); break;
     default: UNREACHABLE();
   }
 }
 
 void Enum::EmitInit(ir::Register id_reg, Context *ctx) const {
-  ir::StoreEnum(ir::EnumVal{0}, id_reg);
+  ir::Store(ir::EnumVal{0}, id_reg);
 }
 
 void Flags::EmitInit(ir::Register id_reg, Context *ctx) const {
-  ir::StoreFlags(ir::FlagsVal{0}, id_reg);
+  ir::Store(ir::FlagsVal{0}, id_reg);
 }
 
 void Variant::EmitInit(ir::Register, Context *ctx) const {
@@ -81,7 +83,7 @@ void Variant::EmitInit(ir::Register, Context *ctx) const {
 }
 
 void Pointer::EmitInit(ir::Register id_reg, Context *ctx) const {
-  ir::StoreAddr(ir::Addr::Null(), id_reg);
+  ir::Store(ir::Addr::Null(), id_reg);
 }
 
 void Function::EmitInit(ir::Register id_reg, Context *ctx) const {

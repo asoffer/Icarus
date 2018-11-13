@@ -72,14 +72,14 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::LeFlags);
         UNREACHABLE();
       case Language::Operator::Eq:
-        MAKE_OP(bool, == type::Bool, ir::EqBool);
-        MAKE_OP(char, == type::Char, ir::EqChar);
-        MAKE_OP(i32, == type::Int, ir::EqInt);
-        MAKE_OP(double, == type::Real, ir::EqReal);
-        MAKE_OP(type::Type const *, == type::Type_, ir::EqType);
-        MAKE_OP(ir::EnumVal, ->is<type::Enum>(), ir::EqEnum);
-        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::EqFlags);
-        MAKE_OP(ir::Addr, ->is<type::Pointer>(), ir::EqAddr);
+        MAKE_OP(bool, == type::Bool, ir::Eq);
+        MAKE_OP(char, == type::Char, ir::Eq);
+        MAKE_OP(i32, == type::Int, ir::Eq);
+        MAKE_OP(double, == type::Real, ir::Eq);
+        MAKE_OP(type::Type const *, == type::Type_, ir::Eq);
+        MAKE_OP(ir::EnumVal, ->is<type::Enum>(), ir::Eq);
+        MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Eq);
+        MAKE_OP(ir::Addr, ->is<type::Pointer>(), ir::Eq);
         {
           ir::BlockSequence const *val1 =
               std::get_if<ir::BlockSequence>(&lhs_ir.value);

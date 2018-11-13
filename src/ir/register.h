@@ -104,6 +104,7 @@ inline bool operator>=(Addr lhs, Addr rhs) { return !(lhs < rhs); }
 
 template <typename T>
 struct RegisterOr {
+  using type = T;
   static_assert(!std::is_same_v<Register, T>);
   RegisterOr() : reg_(-1), is_reg_(true) {}
 

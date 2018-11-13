@@ -370,6 +370,8 @@ struct Cmd {
 #undef CMD
 
   struct PrintTag;
+  struct StoreTag;
+  struct EqTag;
   template <typename Tag, typename T>
   static constexpr Op OpCode() {
     return static_cast<Op>(
@@ -391,6 +393,31 @@ struct Cmd {
       if constexpr (std::is_same_v<T, FlagsVal>) { return print_flags_; }
       if constexpr (std::is_same_v<T, Addr>) { return print_addr_; }
       if constexpr (std::is_same_v<T, std::string_view>) { return print_char_buffer_; }
+    }
+    if constexpr (std::is_same_v<Tag, StoreTag>) {
+      if constexpr (std::is_same_v<T, bool>) { return store_bool_; }
+      if constexpr (std::is_same_v<T, char>) { return store_char_; }
+      if constexpr (std::is_same_v<T, i32>) { return store_int_; }
+      if constexpr (std::is_same_v<T, double>) { return store_real_; }
+      if constexpr (std::is_same_v<T, type::Type const *>) {
+        return store_type_;
+      }
+      if constexpr (std::is_same_v<T, EnumVal>) { return store_enum_; }
+      if constexpr (std::is_same_v<T, FlagsVal>) { return store_flags_; }
+      if constexpr (std::is_same_v<T, Func *>) { return store_func_; } // TODO const
+      if constexpr (std::is_same_v<T, Addr>) { return store_addr_; }
+    }
+    if constexpr (std::is_same_v<Tag, EqTag>) {
+      if constexpr (std::is_same_v<T, bool>) { return eq_bool_; }
+      if constexpr (std::is_same_v<T, char>) { return eq_char_; }
+      if constexpr (std::is_same_v<T, i32>) { return eq_int_; }
+      if constexpr (std::is_same_v<T, double>) { return eq_real_; }
+      if constexpr (std::is_same_v<T, type::Type const *>) {
+        return eq_type_;
+      }
+      if constexpr (std::is_same_v<T, EnumVal>) { return eq_enum_; }
+      if constexpr (std::is_same_v<T, FlagsVal>) { return eq_flags_; }
+      if constexpr (std::is_same_v<T, Addr>) { return eq_addr_; }
     }
   }
 
@@ -573,15 +600,6 @@ Register LoadEnum(Register r, type::Type const *t);
 Register LoadFlags(Register r, type::Type const *t);
 Register LoadAddr(Register r, type::Type const *t);
 Register LoadFunc(Register r, type::Type const *t);
-void StoreBool(RegisterOr<bool> val, Register loc);
-void StoreChar(RegisterOr<char> val, Register loc);
-void StoreInt(RegisterOr<i32> val, Register loc);
-void StoreReal(RegisterOr<double> val, Register loc);
-void StoreType(RegisterOr<type::Type const *> val, Register loc);
-void StoreEnum(RegisterOr<EnumVal> val, Register loc);
-void StoreFunc(RegisterOr<Func *> val, Register loc);
-void StoreFlags(RegisterOr<FlagsVal> val, Register loc);
-void StoreAddr(RegisterOr<ir::Addr> val, Register loc);
 RegisterOr<i32> AddInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<double> AddReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<i32> SubInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
@@ -604,16 +622,6 @@ RegisterOr<bool> GeFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
 RegisterOr<bool> GtInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<bool> GtReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<bool> GtFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
-RegisterOr<bool> EqBool(RegisterOr<bool> v1, RegisterOr<bool> v2);
-RegisterOr<bool> EqChar(RegisterOr<char> v1, RegisterOr<char> v2);
-RegisterOr<bool> EqInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<bool> EqEnum(RegisterOr<EnumVal> v1, RegisterOr<EnumVal> v2);
-RegisterOr<bool> EqFlags(RegisterOr<FlagsVal> v1, RegisterOr<FlagsVal> v2);
-RegisterOr<bool> EqReal(RegisterOr<double> v1, RegisterOr<double> v2);
-RegisterOr<bool> EqType(RegisterOr<type::Type const *> v1,
-                        RegisterOr<type::Type const *> v2);
-// TODO can be just a register?
-RegisterOr<bool> EqAddr(RegisterOr<ir::Addr> v1, RegisterOr<ir::Addr> v2);
 RegisterOr<bool> NeChar(RegisterOr<char> v1, RegisterOr<char> v2);
 RegisterOr<bool> NeInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<bool> NeReal(RegisterOr<double> v1, RegisterOr<double> v2);
@@ -650,20 +658,57 @@ Register VariantValue(const type::Type *t, Register r);
 Register PtrIncr(Register ptr, RegisterOr<i32> inc, type::Type const *t);
 Register Field(Register r, type::Struct const *t, size_t n);
 
-Cmd &MakeCmd(const type::Type *t, Op op);
+Cmd &MakeCmd(type::Type const *t, Op op);
 
-template <typename T, typename... Args,
-          typename = std::enable_if_t<!IsRegOr<std::decay_t<T>>::value>>
-void Print(T &&r, Args &&... args) {
-  return Print(RegisterOr<std::decay_t<T>>(std::forward<T>(r)),
-               std::forward<Args>(args)...);
+template <typename Lhs, typename Rhs>
+RegisterOr<bool> Eq(Lhs lhs, Rhs rhs) {
+  if constexpr (!IsRegOr<Lhs>::value) {
+    return Eq(RegisterOr<Lhs>(lhs), rhs);
+  } else if constexpr (!IsRegOr<Rhs>::value) {
+    return Eq(lhs, RegisterOr<Rhs>(rhs));
+  } else {
+    static_assert(std::is_same_v<Lhs, Rhs>);
+
+    if (!lhs.is_reg_ && !rhs.is_reg_) {
+      return std::equal_to<typename Lhs::type>{}(lhs.val_, rhs.val_);
+    }
+    auto &cmd =
+        MakeCmd(type::Bool, Cmd::OpCode<Cmd::EqTag, typename Lhs::type>());
+    if constexpr (std::is_same_v<typename Lhs::type, bool>) {
+      cmd.template set<Cmd::EqTag, typename Lhs::type>(lhs.reg_, rhs.reg_);
+    } else {
+      cmd.template set<Cmd::EqTag, typename Lhs::type>(lhs, rhs);
+    }
+    /* TODO reenable
+    auto &refs = Func::Current->references_;
+    if (lhs.is_reg_) { refs[lhs.reg_].insert(cmd.result); }
+    if (rhs.is_reg_) { refs[rhs.reg_].insert(cmd.result); }
+    */
+    return cmd.result;
+  }
 }
 
-template <typename T, typename... Args,
-          typename = std::enable_if_t<!IsRegOr<std::decay_t<T>>::value>>
-void Print(RegisterOr<T> r, Args &&... args) {
-  auto &cmd = MakeCmd(nullptr, Cmd::OpCode<Cmd::PrintTag, T>());
-  cmd.template set<Cmd::PrintTag, T>(r, std::forward<Args>(args)...);
+template <typename T, typename... Args>
+void Print(T r, Args &&... args) {
+  if constexpr (IsRegOr<T>::value) {
+    using type = typename T::type;
+    auto &cmd  = MakeCmd(nullptr, Cmd::OpCode<Cmd::PrintTag, type>());
+    cmd.template set<Cmd::PrintTag, type>(r, std::forward<Args>(args)...);
+  } else {
+    return Print(RegisterOr<T>(r), std::forward<Args>(args)...);
+  }
+}
+
+template <typename T, typename... Args>
+void Store(T r, Args &&... args) {
+  if constexpr (IsRegOr<T>::value) {
+    using type = typename T::type;
+    auto &cmd  = MakeCmd(nullptr, Cmd::OpCode<Cmd::StoreTag, type>());
+    // TODO reverse all call sites
+    cmd.template set<Cmd::StoreTag, type>(std::forward<Args>(args)..., r);
+  } else {
+    return Store(RegisterOr<T>(r), std::forward<Args>(args)...);
+  }
 }
 
 void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args);

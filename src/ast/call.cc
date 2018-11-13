@@ -107,8 +107,8 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
     for (const type::Type *v : haystack->as<type::Variant>().variants_) {
       phi_map.emplace(ir::BasicBlock::Current, true);
 
-      ir::BasicBlock::Current =
-          ir::EarlyExitOn<true>(landing, ir::EqType(v, runtime_type));
+      ir::BasicBlock::Current = ir::EarlyExitOn<true>(
+          landing, ir::Eq(v, ir::RegisterOr<type::Type const *>(runtime_type)));
     }
 
     phi_map.emplace(ir::BasicBlock::Current, false);
@@ -120,7 +120,7 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
 
   } else {
     // TODO actually just implicitly convertible to haystack
-    return ir::EqType(haystack, runtime_type);
+    return ir::Eq(haystack, ir::RegisterOr<type::Type const *>(runtime_type));
   }
 }
 
@@ -233,7 +233,7 @@ static void EmitOneCallDispatch(
       }
 
       ASSERT(expected_return_type, Is<type::Variant>());
-      ir::StoreType(return_type,
+      ir::Store(return_type,
                     ir::VariantType(std::get<ir::Register>(out_reg->value)));
       outs.AppendLoc(ir::VariantValue(return_type,
                                       std::get<ir::Register>(out_reg->value)));

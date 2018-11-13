@@ -27,8 +27,9 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
             auto special_block = repr_func_->AddBlock();
             auto next_block    = repr_func_->AddBlock();
 
-            ir::CondJump(ir::EqChar(repr_func_->Argument(0), c), special_block,
-                         next_block);
+            ir::CondJump(
+                ir::Eq(ir::RegisterOr<char>(repr_func_->Argument(0)), c),
+                special_block, next_block);
 
             ir::BasicBlock::Current = special_block;
             ir::Print('\\');
@@ -38,7 +39,7 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
             ir::BasicBlock::Current = next_block;
           }
 
-          ir::Print<char>(repr_func_->Argument(0));
+          ir::Print(ir::RegisterOr<char>(repr_func_->Argument(0)));
           ir::ReturnJump();
         }
       }
@@ -86,7 +87,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
         return ir::LoadInt(ir::ArrayLength(repr_func_->Argument(0)));
       }();
       ir::BasicBlock::Current =
-          ir::EarlyExitOn<true>(exit_block, ir::EqInt(length_var, 0));
+          ir::EarlyExitOn<true>(exit_block, ir::Eq(length_var, 0));
       auto ptr = ir::Index(type::Ptr(this), repr_func_->Argument(0), 0);
 
       data_type->EmitRepr(ir::Val::Reg(ir::PtrFix(ptr, data_type), data_type),
@@ -94,7 +95,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
 
       using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<i32>>;
       ir::CreateLoop(
-          [&](tup const &phis) { return ir::EqInt(std::get<1>(phis), 0); },
+          [&](tup const &phis) { return ir::Eq(std::get<1>(phis), 0); },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
             auto elem_ptr = ir::PtrIncr(std::get<0>(phis).reg_, 1,
@@ -162,8 +163,8 @@ void Variant::EmitRepr(ir::Val const &id_val, Context *ctx) const {
         ir::UncondJump(landing);
 
         ir::BasicBlock::Current = old_block;
-        ir::BasicBlock::Current =
-            ir::EarlyExitOn<true>(found_block, ir::EqType(type, v));
+        ir::BasicBlock::Current = ir::EarlyExitOn<true>(
+            found_block, ir::Eq(ir::RegisterOr<type::Type const *>(type), v));
       }
 
       ir::UncondJump(landing);

@@ -51,7 +51,7 @@ void LongArgs::append(const ir::Val &val) {
 }
 
 // TODO namespace appropriately
-Cmd &MakeCmd(const type::Type *t, Op op) {
+Cmd &MakeCmd(type::Type const *t, Op op) {
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
                   ->block(BasicBlock::Current)
                   .cmds_.emplace_back(t, op);
@@ -232,15 +232,6 @@ DEFINE_CMD2(GeFlags, ge_flags_, FlagsVal, Bool, bool,
             [](FlagsVal lhs, FlagsVal rhs) {
               return (lhs.value | rhs.value) == lhs.value;
             });
-DEFINE_CMD2(EqChar, eq_char_, char, Bool, bool, std::equal_to<char>{});
-DEFINE_CMD2(EqInt, eq_int_, i32, Bool, bool, std::equal_to<i32>{});
-DEFINE_CMD2(EqReal, eq_real_, double, Bool, bool, std::equal_to<double>{});
-DEFINE_CMD2(EqType, eq_type_, const type::Type *, Bool, bool,
-            std::equal_to<const type::Type *>{});
-DEFINE_CMD2(EqEnum, eq_enum_, EnumVal, Bool, bool, std::equal_to<EnumVal>{});
-DEFINE_CMD2(EqFlags, eq_flags_, FlagsVal, Bool, bool,
-            std::equal_to<FlagsVal>{});
-DEFINE_CMD2(EqAddr, eq_addr_, Addr, Bool, bool, std::equal_to<Addr>{});
 DEFINE_CMD2(NeChar, ne_char_, char, Bool, bool, std::not_equal_to<char>{});
 DEFINE_CMD2(NeInt, ne_int_, i32, Bool, bool, std::not_equal_to<i32>{});
 DEFINE_CMD2(NeReal, ne_real_, double, Bool, bool, std::not_equal_to<double>{});
@@ -264,14 +255,6 @@ DEFINE_CMD2(Arrow, arrow_, type::Type const *, Type_, type::Type const *,
               return type::Func(std::move(ins), std::move(outs));
             });
 #undef DEFINE_CMD2
-
-RegisterOr<bool> EqBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
-  if (!v1.is_reg_) { return v1.val_ ? v2 : Not(v2); }
-  if (!v2.is_reg_) { return v2.val_ ? v1 : Not(v1); }
-  auto &cmd    = MakeCmd(type::Bool, Op::EqBool);
-  cmd.eq_bool_ = Cmd::EqBool::Make(v1.reg_, v2.reg_);
-  return cmd.result;
-}
 
 RegisterOr<type::Type const *> Array(RegisterOr<type::Type const *> data_type) {
   if (!data_type.is_reg_) { return type::Arr(data_type.val_); }
@@ -596,51 +579,6 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
   auto &cmd      = MakeCmd(type, Op::AndFlags);
   cmd.and_flags_ = Cmd::AndFlags::Make(lhs, rhs);
   return cmd.result;
-}
-
-void StoreBool(RegisterOr<bool> val, Register loc) {
-  auto &cmd       = MakeCmd(nullptr, Op::StoreBool);
-  cmd.store_bool_ = Cmd::StoreBool::Make(loc, val);
-}
-
-void StoreChar(RegisterOr<char> val, Register loc) {
-  auto &cmd       = MakeCmd(nullptr, Op::StoreChar);
-  cmd.store_char_ = Cmd::StoreChar::Make(loc, val);
-}
-
-void StoreInt(RegisterOr<i32> val, Register loc) {
-  auto &cmd      = MakeCmd(nullptr, Op::StoreInt);
-  cmd.store_int_ = Cmd::StoreInt::Make(loc, val);
-}
-
-void StoreReal(RegisterOr<double> val, Register loc) {
-  auto &cmd       = MakeCmd(nullptr, Op::StoreReal);
-  cmd.store_real_ = Cmd::StoreReal::Make(loc, val);
-}
-
-void StoreType(RegisterOr<type::Type const *> val, Register loc) {
-  auto &cmd       = MakeCmd(nullptr, Op::StoreType);
-  cmd.store_type_ = Cmd::StoreType::Make(loc, val);
-}
-
-void StoreEnum(RegisterOr<EnumVal> val, Register loc) {
-  auto &cmd       = MakeCmd(nullptr, Op::StoreEnum);
-  cmd.store_enum_ = Cmd::StoreEnum::Make(loc, val);
-}
-
-void StoreFunc(RegisterOr<Func *> val, Register loc) {
-  auto &cmd       = MakeCmd(nullptr, Op::StoreFunc);
-  cmd.store_func_ = Cmd::StoreFunc::Make(loc, val);
-}
-
-void StoreFlags(RegisterOr<FlagsVal> val, Register loc) {
-  auto &cmd        = MakeCmd(nullptr, Op::StoreFlags);
-  cmd.store_flags_ = Cmd::StoreFlags::Make(loc, val);
-}
-
-void StoreAddr(RegisterOr<ir::Addr> val, Register loc) {
-  auto &cmd       = MakeCmd(nullptr, Op::StoreAddr);
-  cmd.store_addr_ = Cmd::StoreAddr::Make(loc, val);
 }
 
 void SetReturnBool(size_t n, RegisterOr<bool> r) {

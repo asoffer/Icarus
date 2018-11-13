@@ -52,8 +52,8 @@ void Array::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
         auto ptr = ir::Malloc(
             data_type, Architecture::InterprettingMachine().ComputeArrayLength(
                            len, data_type));
-        ir::StoreInt(len, ir::ArrayLength(var));
-        ir::StoreAddr(ptr, ir::ArrayData(var, type::Ptr(this)));
+        ir::Store(len, ir::ArrayLength(var));
+        ir::Store(ir::RegisterOr<ir::Addr>(ptr), ir::ArrayData(var, type::Ptr(this)));
       }
 
       auto *to_ptr_type   = type::Ptr(data_type);
@@ -64,7 +64,8 @@ void Array::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
       ir::CreateLoop(
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
-            return ir::EqAddr(std::get<0>(phis).reg_, from_end_ptr);
+            return ir::Eq(ir::RegisterOr<ir::Addr>(std::get<0>(phis).reg_),
+                          ir::RegisterOr<ir::Addr>(from_end_ptr));
           },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
@@ -106,19 +107,19 @@ void Array::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
 void Pointer::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
                          Context *ctx) const {
   ASSERT(this == from_type);
-  ir::StoreAddr(from.reg_or<ir::Addr>(), to);
+  ir::Store(from.reg_or<ir::Addr>(), to);
 }
 
 void Enum::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
                       Context *ctx) const {
   ASSERT(this == from_type);
-  ir::StoreEnum(from.reg_or<ir::EnumVal>(), to);
+  ir::Store(from.reg_or<ir::EnumVal>(), to);
 }
 
 void Flags::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
                        Context *ctx) const {
   ASSERT(this == from_type);
-  ir::StoreFlags(from.reg_or<ir::FlagsVal>(), to);
+  ir::Store(from.reg_or<ir::FlagsVal>(), to);
 }
 
 void Variant::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
@@ -132,9 +133,10 @@ void Variant::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
     auto landing = ir::Func::Current->AddBlock();
     for (const Type *v : from_type->as<Variant>().variants_) {
       auto next_block = ir::Func::Current->AddBlock();
-      ir::BasicBlock::Current =
-          ir::EarlyExitOn<false>(next_block, ir::EqType(actual_type, v));
-      ir::StoreType(v, ir::VariantType(to));
+      ir::BasicBlock::Current = ir::EarlyExitOn<false>(
+          next_block,
+          ir::Eq(ir::RegisterOr<type::Type const *>(actual_type), v));
+      ir::Store(v, ir::VariantType(to));
       v->EmitAssign(
           v,
           ir::Val::Reg(
@@ -148,7 +150,7 @@ void Variant::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
     ir::UncondJump(landing);
     ir::BasicBlock::Current = landing;
   } else {
-    ir::StoreType(from_type, ir::VariantType(to));
+    ir::Store(from_type, ir::VariantType(to));
     // TODO Find the best match amongst the variants available.
     const Type *best_match = from_type;
     best_match->EmitAssign(from_type, from, ir::VariantValue(best_match, to),
@@ -194,7 +196,7 @@ void Struct::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
 void Function::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
                           Context *ctx) const {
   ASSERT(this == from_type);
-  ir::StoreFunc(from.reg_or<ir::Func *>(), to);
+  ir::Store(from.reg_or<ir::Func *>(), to);
 }
 void Primitive::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
                            Context *ctx) const {
@@ -202,14 +204,14 @@ void Primitive::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
   switch (this->type_) {
     case PrimType::Err: UNREACHABLE(this, ": Err");
     case PrimType::Type_:
-      ir::StoreType(from.reg_or<type::Type const *>(), to);
+      ir::Store(from.reg_or<type::Type const *>(), to);
       break;
     case PrimType::NullPtr: UNREACHABLE();
     case PrimType::EmptyArray: UNREACHABLE();
-    case PrimType::Bool: ir::StoreBool(from.reg_or<bool>(), to); break;
-    case PrimType::Char: ir::StoreChar(from.reg_or<char>(), to); break;
-    case PrimType::Int: ir::StoreInt(from.reg_or<i32>(), to); break;
-    case PrimType::Real: ir::StoreReal(from.reg_or<double>(), to); break;
+    case PrimType::Bool: ir::Store(from.reg_or<bool>(), to); break;
+    case PrimType::Char: ir::Store(from.reg_or<char>(), to); break;
+    case PrimType::Int: ir::Store(from.reg_or<i32>(), to); break;
+    case PrimType::Real: ir::Store(from.reg_or<double>(), to); break;
     default: UNREACHABLE();
   }
 }

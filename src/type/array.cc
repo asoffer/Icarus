@@ -50,7 +50,7 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
       auto body_block      = ir::Func::Current->AddBlock();
       auto incr_block      = ir::Func::Current->AddBlock();
 
-      ir::CondJump(ir::EqInt(lhs_len, rhs_len), equal_len_block, false_block);
+      ir::CondJump(ir::Eq(lhs_len, rhs_len), equal_len_block, false_block);
 
       ir::BasicBlock::Current = true_block;
       ir::SetReturnBool(0, true);
@@ -73,12 +73,16 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
       auto lhs_phi_reg = ir::Func::Current->Command(lhs_phi_index).result;
       auto rhs_phi_reg = ir::Func::Current->Command(rhs_phi_index).result;
 
-      ir::CondJump(ir::EqAddr(lhs_phi_reg, lhs_end), true_block, body_block);
+      ir::CondJump(ir::Eq(ir::RegisterOr<ir::Addr>(lhs_phi_reg),
+                          ir::RegisterOr<ir::Addr>(lhs_end)),
+                   true_block, body_block);
 
       ir::BasicBlock::Current = body_block;
       // TODO what if data type is an array?
-      ir::CondJump(ir::EqAddr(ir::LoadAddr(lhs_phi_reg, lhs_type->data_type),
-                              ir::LoadAddr(rhs_phi_reg, rhs_type->data_type)),
+      ir::CondJump(ir::Eq(ir::RegisterOr<ir::Addr>(
+                              ir::LoadAddr(lhs_phi_reg, lhs_type->data_type)),
+                          ir::RegisterOr<ir::Addr>(
+                              ir::LoadAddr(rhs_phi_reg, rhs_type->data_type))),
                    incr_block, false_block);
 
       ir::BasicBlock::Current = incr_block;
@@ -154,7 +158,8 @@ void Array::EmitResize(ir::Val ptr_to_array, ir::Val new_size,
           std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
       auto finish_phis = ir::CreateLoop(
           [&](tup2 const &phis) {
-            return ir::EqAddr(std::get<0>(phis), end_ptr);
+            return ir::Eq(ir::RegisterOr<ir::Addr>(std::get<0>(phis)),
+                          ir::RegisterOr<ir::Addr>(end_ptr));
           },
           [&](tup2 const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
@@ -180,7 +185,8 @@ void Array::EmitResize(ir::Val ptr_to_array, ir::Val new_size,
         using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
         ir::CreateLoop(
             [&](tup const &phis) {
-              return ir::EqAddr(std::get<0>(phis), end_old_buf);
+              return ir::Eq(ir::RegisterOr<ir::Addr>(std::get<0>(phis)),
+                            ir::RegisterOr<ir::Addr>(end_old_buf));
             },
             [&](tup const &phis) {
               ASSERT(std::get<0>(phis).is_reg_);
@@ -194,7 +200,8 @@ void Array::EmitResize(ir::Val ptr_to_array, ir::Val new_size,
       using tup       = std::tuple<ir::RegisterOr<ir::Addr>>;
       ir::CreateLoop(
           [&](tup const &phis) {
-            return ir::EqAddr(std::get<0>(phis), end_to_ptr);
+            return ir::Eq(ir::RegisterOr<ir::Addr>(std::get<0>(phis)),
+                          ir::RegisterOr<ir::Addr>(end_to_ptr));
           },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
@@ -205,9 +212,9 @@ void Array::EmitResize(ir::Val ptr_to_array, ir::Val new_size,
           tup{std::get<1>(finish_phis)});
 
       auto old_buf = ir::ArrayData(arg, type::Ptr(this));
-      ir::StoreInt(size_arg, ir::ArrayLength(arg));
+      ir::Store(ir::RegisterOr<ir::Addr>(size_arg), ir::ArrayLength(arg));
       ir::Free(ir::LoadAddr(old_buf, data_type));
-      ir::StoreAddr(new_arr, old_buf);
+      ir::Store(ir::RegisterOr<ir::Addr>(new_arr), old_buf);
       ir::ReturnJump();
     }
   }
