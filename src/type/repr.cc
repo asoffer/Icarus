@@ -19,7 +19,7 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
         CURRENT_FUNC(repr_func_) {
           ir::BasicBlock::Current = repr_func_->entry();
 
-          ir::PrintChar('`');
+          ir::Print('`');
 
           for (auto[c, rep] : {std::pair('\a', 'a'), std::pair('\b', 'b'),
                                std::pair('\n', 'n'), std::pair('\r', 'r'),
@@ -31,14 +31,14 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
                          next_block);
 
             ir::BasicBlock::Current = special_block;
-            ir::PrintChar('\\');
-            ir::PrintChar(rep);
+            ir::Print('\\');
+            ir::Print(rep);
             ir::ReturnJump();
 
             ir::BasicBlock::Current = next_block;
           }
 
-          ir::PrintChar(repr_func_->Argument(0));
+          ir::Print<char>(repr_func_->Argument(0));
           ir::ReturnJump();
         }
       }
@@ -49,10 +49,10 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
       ir::Call(ir::AnyFunc{repr_func_}, std::move(call_args));
     } break;
 
-    case PrimType::Bool: ir::PrintBool(val.reg_or<bool>()); break;
-    case PrimType::Int: ir::PrintInt(val.reg_or<int>()); break;
-    case PrimType::Real: ir::PrintReal(val.reg_or<double>()); break;
-    case PrimType::Type_: ir::PrintType(val.reg_or<type::Type const *>()); break;
+    case PrimType::Bool: ir::Print(val.reg_or<bool>()); break;
+    case PrimType::Int: ir::Print(val.reg_or<int>()); break;
+    case PrimType::Real: ir::Print(val.reg_or<double>()); break;
+    case PrimType::Type_: ir::Print(val.reg_or<type::Type const *>()); break;
     case PrimType::Scope:
     case PrimType::StatefulScope:
     case PrimType::NullPtr:
@@ -79,7 +79,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
 
       auto exit_block = repr_func_->AddBlock();
 
-      ir::PrintChar('[');
+      ir::Print('[');
 
       auto length_var = [&]() -> ir::RegisterOr<i32> {
         if (fixed_length) { return static_cast<i32>(len); }
@@ -100,8 +100,8 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
             auto elem_ptr = ir::PtrIncr(std::get<0>(phis).reg_, 1,
                                         type::Ptr(this->data_type));
 
-            ir::PrintChar(',');
-            ir::PrintChar(' ');
+            ir::Print(',');
+            ir::Print(' ');
             data_type->EmitRepr(
                 ir::Val::Reg(ir::PtrFix(elem_ptr, data_type), data_type), ctx);
 
@@ -113,7 +113,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
       ir::UncondJump(exit_block);
 
       ir::BasicBlock::Current = exit_block;
-      ir::PrintChar(']');
+      ir::Print(']');
       ir::ReturnJump();
     }
   }
@@ -126,13 +126,13 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
 
 // TODO print something friendlier
 void Pointer::EmitRepr(ir::Val const &val, Context *ctx) const {
-  ir::PrintAddr(val.reg_or<ir::Addr>());
+  ir::Print(val.reg_or<ir::Addr>());
 }
 void Enum::EmitRepr(ir::Val const &val, Context *ctx) const {
-  ir::PrintEnum(val.reg_or<ir::EnumVal>(), this);
+  ir::Print(val.reg_or<ir::EnumVal>(), this);
 }
 void Flags::EmitRepr(ir::Val const &val, Context *ctx) const {
-  ir::PrintFlags(val.reg_or<ir::FlagsVal>(), this);
+  ir::Print(val.reg_or<ir::FlagsVal>(), this);
 }
 void Variant::EmitRepr(ir::Val const &id_val, Context *ctx) const {
   // TODO design and build a jump table?
@@ -182,6 +182,6 @@ void Function::EmitRepr(ir::Val const &, Context *ctx) const { UNREACHABLE(); }
 void Struct::EmitRepr(ir::Val const &val, Context *ctx) const { UNREACHABLE(); }
 
 void CharBuffer::EmitRepr(ir::Val const &val, Context *ctx) const {
-  ir::PrintCharBuffer(val.reg_or<std::string_view>());
+  ir::Print(val.reg_or<std::string_view>());
 }
 }  // namespace type

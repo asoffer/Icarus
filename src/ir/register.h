@@ -117,6 +117,10 @@ struct RegisterOr {
   bool is_reg_;
 };
 
+template <typename T>
+struct IsRegOr : public std::false_type {};
+template <typename T>
+struct IsRegOr<RegisterOr<T>> : public std::true_type {};
 }  // namespace ir
 
 #endif  // ICARUS_IR_REGISTER_H

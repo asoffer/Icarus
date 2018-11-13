@@ -49,7 +49,9 @@ void LongArgs::append(const ir::Val &val) {
           }},
       val.value);
 }
-static Cmd &MakeCmd(const type::Type *t, Op op) {
+
+// TODO namespace appropriately
+Cmd &MakeCmd(const type::Type *t, Op op) {
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
                   ->block(BasicBlock::Current)
                   .cmds_.emplace_back(t, op);
@@ -180,31 +182,6 @@ DEFINE_CMD1(LoadFlags, load_flags_);
 DEFINE_CMD1(LoadAddr, load_addr_);
 DEFINE_CMD1(LoadFunc, load_func_);
 #undef DEFINE_CMD1
-
-#define DEFINE_CMD1(Name, name, arg_type)                                      \
-  void Name(RegisterOr<arg_type> r) {                                          \
-    auto &cmd = MakeCmd(nullptr, Op::Name);                                    \
-    cmd.name  = Cmd::Name::Make(r);                                            \
-  }                                                                            \
-  struct AllowSemicolon
-DEFINE_CMD1(PrintBool, print_bool_, bool);
-DEFINE_CMD1(PrintChar, print_char_, char);
-DEFINE_CMD1(PrintInt, print_int_, i32);
-DEFINE_CMD1(PrintReal, print_real_, double);
-DEFINE_CMD1(PrintType, print_type_, type::Type const *);
-DEFINE_CMD1(PrintAddr, print_addr_, ir::Addr);
-DEFINE_CMD1(PrintCharBuffer, print_char_buffer_, std::string_view);
-#undef DEFINE_CMD1
-
-void PrintEnum(RegisterOr<EnumVal> r, type::Enum const *t) {
-  auto &cmd       = MakeCmd(nullptr, Op::PrintEnum);
-  cmd.print_enum_ = Cmd::PrintEnum::Make(r, t);
-}
-
-void PrintFlags(RegisterOr<FlagsVal> r, type::Flags const *t) {
-  auto &cmd        = MakeCmd(nullptr, Op::PrintFlags);
-  cmd.print_flags_ = Cmd::PrintFlags::Make(r, t);
-}
 
 #define DEFINE_CMD2(Name, name, arg_type, RetType, ret_type, fn)               \
   RegisterOr<ret_type> Name(RegisterOr<arg_type> v1,                           \

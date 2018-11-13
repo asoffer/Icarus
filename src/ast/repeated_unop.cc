@@ -124,7 +124,7 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
         // TODO unify with repr. is repr even a good idea?
         auto *t = ASSERT_NOT_NULL(ctx->type_of(args_.exprs[i].get()));
         if (t == type::Char) {
-          ir::PrintChar(arg_vals[i].reg_or<char>());
+          ir::Print(arg_vals[i].reg_or<char>());
         } else if (t->is<type::Struct>()) {
           ASSERT(dispatch_tables_[i].total_size_ != 0u);
           // TODO struct is not exactly right. we really mean user-defined

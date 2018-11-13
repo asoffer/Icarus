@@ -369,6 +369,38 @@ struct Cmd {
   };
 #undef CMD
 
+  struct PrintTag;
+  template <typename Tag, typename T>
+  static constexpr Op OpCode() {
+    return static_cast<Op>(
+        std::decay_t<decltype(
+            std::declval<Cmd>().template get<Tag, T>())>::index);
+  }
+
+  template <typename Tag, typename T>
+  constexpr auto &get() {
+    if constexpr (std::is_same_v<Tag, PrintTag>) {
+      if constexpr (std::is_same_v<T, bool>) { return print_bool_; }
+      if constexpr (std::is_same_v<T, char>) { return print_char_; }
+      if constexpr (std::is_same_v<T, i32>) { return print_int_; }
+      if constexpr (std::is_same_v<T, double>) { return print_real_; }
+      if constexpr (std::is_same_v<T, type::Type const *>) {
+        return print_type_;
+      }
+      if constexpr (std::is_same_v<T, EnumVal>) { return print_enum_; }
+      if constexpr (std::is_same_v<T, FlagsVal>) { return print_flags_; }
+      if constexpr (std::is_same_v<T, Addr>) { return print_addr_; }
+      if constexpr (std::is_same_v<T, std::string_view>) { return print_char_buffer_; }
+    }
+  }
+
+  template <typename Tag, typename T, typename... Args>
+  void set(Args &&... args) {
+    auto &cmd   = this->template get<Tag, T>();
+    using cmd_t = std::decay_t<decltype(cmd)>;
+    cmd         = cmd_t::Make(std::forward<Args>(args)...);
+  }
+
   Cmd(const type::Type *t, Op op);
   Op op_code_;
 
@@ -617,15 +649,23 @@ Register VariantValue(const type::Type *t, Register r);
 // Type repreesents the type of `ptr`
 Register PtrIncr(Register ptr, RegisterOr<i32> inc, type::Type const *t);
 Register Field(Register r, type::Struct const *t, size_t n);
-void PrintBool(RegisterOr<bool> r);
-void PrintChar(RegisterOr<char> r);
-void PrintInt(RegisterOr<i32> r);
-void PrintReal(RegisterOr<double> r);
-void PrintType(RegisterOr<type::Type const *> r);
-void PrintEnum(RegisterOr<EnumVal> r, type::Enum const *);
-void PrintFlags(RegisterOr<FlagsVal> r, type::Flags const *);
-void PrintAddr(RegisterOr<ir::Addr> r);
-void PrintCharBuffer(RegisterOr<std::string_view> r);
+
+Cmd &MakeCmd(const type::Type *t, Op op);
+
+template <typename T, typename... Args,
+          typename = std::enable_if_t<!IsRegOr<std::decay_t<T>>::value>>
+void Print(T &&r, Args &&... args) {
+  return Print(RegisterOr<std::decay_t<T>>(std::forward<T>(r)),
+               std::forward<Args>(args)...);
+}
+
+template <typename T, typename... Args,
+          typename = std::enable_if_t<!IsRegOr<std::decay_t<T>>::value>>
+void Print(RegisterOr<T> r, Args &&... args) {
+  auto &cmd = MakeCmd(nullptr, Cmd::OpCode<Cmd::PrintTag, T>());
+  cmd.template set<Cmd::PrintTag, T>(r, std::forward<Args>(args)...);
+}
+
 void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args);
 void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args, OutParams outs);
 Register CreateTuple();
