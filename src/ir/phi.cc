@@ -47,7 +47,9 @@ Val MakePhi(CmdIndex phi_index,
     return ir::ValFrom(MakePhi<char>(phi_index, ConvertMap<char>(val_map)));
   } else if (cmd_type == type::Int) {
     return ir::ValFrom(MakePhi<int>(phi_index, ConvertMap<int>(val_map)));
-  } else if (cmd_type == type::Real) {
+  } else if (cmd_type == type::Float32) {
+    return ir::ValFrom(MakePhi<float>(phi_index, ConvertMap<float>(val_map)));
+  } else if (cmd_type == type::Float64) {
     return ir::ValFrom(MakePhi<double>(phi_index, ConvertMap<double>(val_map)));
   } else if (cmd_type == type::Type_) {
     return ir::ValFrom(MakePhi<type::Type const *>(

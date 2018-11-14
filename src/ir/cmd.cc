@@ -58,10 +58,17 @@ Cmd &MakeCmd(type::Type const *t, Op op) {
   return cmd;
 }
 
-RegisterOr<double> CastIntToReal(RegisterOr<i32> r) {
+RegisterOr<float> CastIntToFloat32(RegisterOr<i32> r) {
+  if (!r.is_reg_) { return static_cast<float>(r.val_); }
+  auto &cmd                = ir::MakeCmd(type::Float32, Op::CastIntToFloat32);
+  cmd.cast_int_to_float32_ = ir::Cmd::CastIntToFloat32{{}, r.reg_};
+  return cmd.result;
+}
+
+RegisterOr<double> CastIntToFloat64(RegisterOr<i32> r) {
   if (!r.is_reg_) { return static_cast<double>(r.val_); }
-  auto &cmd             = ir::MakeCmd(type::Real, Op::CastIntToReal);
-  cmd.cast_int_to_real_ = ir::Cmd::CastIntToReal{{}, r.reg_};
+  auto &cmd                = ir::MakeCmd(type::Float64, Op::CastIntToFloat64);
+  cmd.cast_int_to_float64_ = ir::Cmd::CastIntToFloat64{{}, r.reg_};
   return cmd.result;
 }
 
@@ -116,22 +123,6 @@ TypedRegister<Addr> Malloc(const type::Type *t, RegisterOr<i32> r) {
 void Free(Register r) {
   auto &cmd = MakeCmd(nullptr, Op::Free);
   cmd.free_ = Cmd::Free::Make(r);
-}
-
-RegisterOr<i32> NegInt(RegisterOr<i32> r) {
-  if (!r.is_reg_) { return -r.val_; }
-  auto &cmd    = MakeCmd(type::Bool, Op::NegInt);
-  cmd.neg_int_ = Cmd::NegInt::Make(r.reg_);
-  Func::Current->references_[cmd.neg_int_.reg_].insert(cmd.result);
-  return cmd.result;
-}
-
-RegisterOr<double> NegReal(RegisterOr<double> r) {
-  if (!r.is_reg_) { return -r.val_; }
-  auto &cmd     = MakeCmd(type::Bool, Op::NegReal);
-  cmd.neg_real_ = Cmd::NegReal::Make(r.reg_);
-  Func::Current->references_[cmd.neg_real_.reg_].insert(cmd.result);
-  return cmd.result;
 }
 
 Register ArrayLength(Register r) {
@@ -426,7 +417,8 @@ void SetRet(size_t n, Val const &v) {
   if (v.type == type::Bool) { return SetRet(n, v.reg_or<bool>()); }
   if (v.type == type::Char) { return SetRet(n, v.reg_or<char>()); }
   if (v.type == type::Int) { return SetRet(n, v.reg_or<i32>()); }
-  if (v.type == type::Real) { return SetRet(n, v.reg_or<double>()); }
+  if (v.type == type::Float32) { return SetRet(n, v.reg_or<float>()); }
+  if (v.type == type::Float64) { return SetRet(n, v.reg_or<double>()); }
   if (v.type == type::Type_) {
     return SetRet(n, v.reg_or<type::Type const *>());
   }
@@ -506,7 +498,8 @@ Register Load(Register r, type::Type const *t) {
   if (t == type::Bool) { return Load<bool>(r); }
   if (t == type::Char) { return Load<char>(r); }
   if (t == type::Int) { return Load<i32>(r); }
-  if (t == type::Real) { return Load<double>(r); }
+  if (t == type::Float32) { return Load<float>(r); }
+  if (t == type::Float64) { return Load<double>(r); }
   if (t == type::Type_) { return Load<type::Type const*>(r); }
   if (t->is<type::Enum>()) { return Load<EnumVal>(r, t); }
   if (t->is<type::Flags>()) { return Load<FlagsVal>(r, t); }
@@ -626,14 +619,16 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::Align: return os << cmd.align_.arg_;
     case Op::Not: return os << cmd.not_.reg_;
     case Op::NegInt: return os << cmd.neg_int_.reg_;
-    case Op::NegReal: return os << cmd.neg_real_.reg_;
+    case Op::NegFloat32: return os << cmd.neg_float32_.reg_;
+    case Op::NegFloat64: return os << cmd.neg_float64_.reg_;
     case Op::ArrayLength: return os << cmd.array_length_.arg_;
     case Op::ArrayData: return os << cmd.array_data_.arg_;
     case Op::Ptr: return os << cmd.ptr_.reg_;
     case Op::LoadBool: return os << cmd.load_bool_.arg_;
     case Op::LoadChar: return os << cmd.load_char_.arg_;
     case Op::LoadInt: return os << cmd.load_int_.arg_;
-    case Op::LoadReal: return os << cmd.load_real_.arg_;
+    case Op::LoadFloat32: return os << cmd.load_float32_.arg_;
+    case Op::LoadFloat64: return os << cmd.load_float64_.arg_;
     case Op::LoadType: return os << cmd.load_type_.arg_;
     case Op::LoadEnum: return os << cmd.load_enum_.arg_;
     case Op::LoadFlags: return os << cmd.load_type_.arg_;
@@ -642,45 +637,56 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::PrintBool: return os << cmd.print_bool_.arg_;
     case Op::PrintChar: return os << cmd.print_char_.arg_;
     case Op::PrintInt: return os << cmd.print_int_.arg_;
-    case Op::PrintReal: return os << cmd.print_real_.arg_;
+    case Op::PrintFloat32: return os << cmd.print_float32_.arg_;
+    case Op::PrintFloat64: return os << cmd.print_float64_.arg_;
     case Op::PrintType: return os << cmd.print_type_.arg_;
     case Op::PrintEnum: return os << cmd.print_enum_.arg_;
     case Op::PrintFlags: return os << cmd.print_flags_.arg_;
     case Op::PrintAddr: return os << cmd.print_addr_.arg_;
     case Op::PrintCharBuffer: return os << cmd.print_char_buffer_.arg_;
     case Op::AddInt: return os << cmd.add_int_.args_;
-    case Op::AddReal: return os << cmd.add_real_.args_;
+    case Op::AddFloat32: return os << cmd.add_float32_.args_;
+    case Op::AddFloat64: return os << cmd.add_float64_.args_;
     case Op::SubInt: return os << cmd.sub_int_.args_;
-    case Op::SubReal: return os << cmd.sub_real_.args_;
+    case Op::SubFloat32: return os << cmd.sub_float32_.args_;
+    case Op::SubFloat64: return os << cmd.sub_float64_.args_;
     case Op::MulInt: return os << cmd.mul_int_.args_;
-    case Op::MulReal: return os << cmd.mul_real_.args_;
+    case Op::MulFloat32: return os << cmd.mul_float32_.args_;
+    case Op::MulFloat64: return os << cmd.mul_float64_.args_;
     case Op::DivInt: return os << cmd.div_int_.args_;
-    case Op::DivReal: return os << cmd.div_real_.args_;
+    case Op::DivFloat32: return os << cmd.div_float32_.args_;
+    case Op::DivFloat64: return os << cmd.div_float64_.args_;
     case Op::ModInt: return os << cmd.mod_int_.args_;
     case Op::LtInt: return os << cmd.lt_int_.args_;
-    case Op::LtReal: return os << cmd.lt_real_.args_;
+    case Op::LtFloat32: return os << cmd.lt_float32_.args_;
+    case Op::LtFloat64: return os << cmd.lt_float64_.args_;
     case Op::LtFlags: return os << cmd.lt_flags_.args_;
     case Op::LeInt: return os << cmd.le_int_.args_;
-    case Op::LeReal: return os << cmd.le_real_.args_;
+    case Op::LeFloat32: return os << cmd.le_float32_.args_;
+    case Op::LeFloat64: return os << cmd.le_float64_.args_;
     case Op::LeFlags: return os << cmd.le_flags_.args_;
     case Op::GtInt: return os << cmd.gt_int_.args_;
-    case Op::GtReal: return os << cmd.gt_real_.args_;
+    case Op::GtFloat32: return os << cmd.gt_float32_.args_;
+    case Op::GtFloat64: return os << cmd.gt_float64_.args_;
     case Op::GtFlags: return os << cmd.gt_flags_.args_;
     case Op::GeInt: return os << cmd.ge_int_.args_;
-    case Op::GeReal: return os << cmd.ge_real_.args_;
+    case Op::GeFloat32: return os << cmd.ge_float32_.args_;
+    case Op::GeFloat64: return os << cmd.ge_float64_.args_;
     case Op::GeFlags: return os << cmd.ge_flags_.args_;
     case Op::EqBool:
       return os << cmd.eq_bool_.args_[0] << " " << cmd.eq_bool_.args_[1];
     case Op::EqChar: return os << cmd.eq_char_.args_;
     case Op::EqInt: return os << cmd.eq_int_.args_;
-    case Op::EqReal: return os << cmd.eq_real_.args_;
+    case Op::EqFloat32: return os << cmd.eq_float32_.args_;
+    case Op::EqFloat64: return os << cmd.eq_float64_.args_;
     case Op::EqEnum: return os << cmd.eq_enum_.args_;
     case Op::EqFlags: return os << cmd.eq_flags_.args_;
     case Op::EqType: return os << cmd.eq_type_.args_;
     case Op::EqAddr: return os << cmd.eq_addr_.args_;
     case Op::NeChar: return os << cmd.ne_char_.args_;
     case Op::NeInt: return os << cmd.ne_int_.args_;
-    case Op::NeReal: return os << cmd.ne_real_.args_;
+    case Op::NeFloat32: return os << cmd.ne_float32_.args_;
+    case Op::NeFloat64: return os << cmd.ne_float64_.args_;
     case Op::NeEnum: return os << cmd.ne_enum_.args_;
     case Op::NeFlags: return os << cmd.ne_flags_.args_;
     case Op::NeType: return os << cmd.ne_type_.args_;
@@ -750,7 +756,8 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
       return os;
     case Op::BlockSeqContains: return os << cmd.block_seq_contains_.lit_;
 
-    case Op::CastIntToReal: return os << cmd.cast_int_to_real_.reg_;
+    case Op::CastIntToFloat32: return os << cmd.cast_int_to_float32_.reg_;
+    case Op::CastIntToFloat64: return os << cmd.cast_int_to_float64_.reg_;
 
     case Op::CastPtr: return os << cmd.cast_ptr_.type_;
 
@@ -762,8 +769,10 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
       return os << cmd.store_char_.addr_ << " " << cmd.store_char_.val_;
     case Op::StoreInt:
       return os << cmd.store_int_.addr_ << " " << cmd.store_int_.val_;
-    case Op::StoreReal:
-      return os << cmd.store_real_.addr_ << " " << cmd.store_real_.val_;
+    case Op::StoreFloat32:
+      return os << cmd.store_float32_.addr_ << " " << cmd.store_float32_.val_;
+    case Op::StoreFloat64:
+      return os << cmd.store_float64_.addr_ << " " << cmd.store_float64_.val_;
     case Op::StoreType:
       if (cmd.store_type_.val_.is_reg_) {
         return os << cmd.store_type_.addr_ << " " << cmd.store_type_.val_.reg_;
@@ -782,7 +791,8 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::SetRetBool: return os << cmd.set_ret_bool_.val_;
     case Op::SetRetChar: return os << cmd.set_ret_char_.val_;
     case Op::SetRetInt: return os << cmd.set_ret_int_.val_;
-    case Op::SetRetReal: return os << cmd.set_ret_real_.val_;
+    case Op::SetRetFloat32: return os << cmd.set_ret_float32_.val_;
+    case Op::SetRetFloat64: return os << cmd.set_ret_float64_.val_;
     case Op::SetRetType: return os << cmd.set_ret_type_.val_;
     case Op::SetRetEnum: return os << cmd.set_ret_enum_.val_;
     case Op::SetRetFlags: return os << cmd.set_ret_flags_.val_;
@@ -796,7 +806,8 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::PhiBool: return os << cmd.phi_bool_.args_;
     case Op::PhiChar: return os << cmd.phi_char_.args_;
     case Op::PhiInt: return os << cmd.phi_int_.args_;
-    case Op::PhiReal: return os << cmd.phi_real_.args_;
+    case Op::PhiFloat32: return os << cmd.phi_float32_.args_;
+    case Op::PhiFloat64: return os << cmd.phi_float64_.args_;
     case Op::PhiType: return os << cmd.phi_type_.args_;
     case Op::PhiBlock: return os << cmd.phi_block_.args_;
     case Op::PhiAddr: return os << cmd.phi_addr_.args_;

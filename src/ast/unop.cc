@@ -97,7 +97,8 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         return type::Type_;
       }
     case Language::Operator::Sub:
-      if (operand_type == type::Int || operand_type == type::Real) {
+      if (operand_type == type::Int || operand_type == type::Float32 ||
+          operand_type == type::Float64) {
         ctx->set_type(this, operand_type);
         return operand_type;
       } else if (operand_type->is<type::Struct>()) {
@@ -166,10 +167,11 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
     case Language::Operator::Sub: {
       auto *operand_type = ctx->type_of(operand.get());
       if (operand_type == type::Int) {
-        return {ir::ValFrom(ir::NegInt(operand->EmitIR(ctx)[0].reg_or<i32>()))};
-      } else if (operand_type == type::Real) {
-        return {
-            ir::ValFrom(ir::NegReal(operand->EmitIR(ctx)[0].reg_or<double>()))};
+        return {ir::ValFrom(ir::Neg(operand->EmitIR(ctx)[0].reg_or<i32>()))};
+      } else if (operand_type == type::Float32) {
+        return {ir::ValFrom(ir::Neg(operand->EmitIR(ctx)[0].reg_or<float>()))};
+      } else if (operand_type == type::Float64) {
+        return {ir::ValFrom(ir::Neg(operand->EmitIR(ctx)[0].reg_or<double>()))};
       } else {
         UNREACHABLE();
       }

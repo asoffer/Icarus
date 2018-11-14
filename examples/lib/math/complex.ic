@@ -1,6 +1,6 @@
 complex ::= struct {
-  _re: real
-  _im: real
+  _re: float64
+  _im: float64
 }
 
 (+) ::= (lhs: complex, rhs: complex) -> complex {
@@ -9,11 +9,11 @@ complex ::= struct {
   return lhs
 }
 
-(+) ::= (lhs: complex, rhs: real) -> complex {
+(+) ::= (lhs: complex, rhs: float64) -> complex {
   lhs._re += rhs
   return lhs
 }
-// (+) ::= (lhs: real, rhs: complex) => rhs + lhs
+// (+) ::= (lhs: float64, rhs: complex) => rhs + lhs
 
 (-) ::= (lhs: complex, rhs: complex) -> complex {
   lhs._re -= rhs._re
@@ -21,11 +21,11 @@ complex ::= struct {
   return lhs
 }
 
-// (-) ::= (lhs: complex, rhs: real) -> complex {
+// (-) ::= (lhs: complex, rhs: float64) -> complex {
 //   lhs._re -= rhs
 //   return lhs
 // }
-// (-) ::= (lhs: real, rhs: complex) => -(rhs - lhs)
+// (-) ::= (lhs: float64, rhs: complex) => -(rhs - lhs)
 
 (*) ::= (lhs: complex, rhs: complex) -> complex {
   result: complex
@@ -34,21 +34,21 @@ complex ::= struct {
   return result
 }
 
-// (*) ::= (lhs: complex, rhs: real) -> complex {
+// (*) ::= (lhs: complex, rhs: float64) -> complex {
 //   lhs._re *= rhs
 //   lhs._im *= rhs
 //   return lhs
 // }
-// (*) ::= (lhs: real, rhs: complex) => rhs * lhs
+// (*) ::= (lhs: float64, rhs: complex) => rhs * lhs
 
 // TODO: Ensure square_norm returns a non-zero value.
 // (/) ::= (lhs: complex, rhs: complex) => lhs * rhs'conjugate / rhs'square_norm
-// (/) ::= (lhs: complex, rhs: real) -> complex {
+// (/) ::= (lhs: complex, rhs: float64) -> complex {
 //   lhs._re /= rhs
 //   lhs._im /= rhs
 //   return lhs
 // }
-// (/) ::= (lhs: real, rhs: complex) => lhs * rhs'conjugate / rhs'square_norm
+// (/) ::= (lhs: float64, rhs: complex) => lhs * rhs'conjugate / rhs'square_norm
 
 conjugate ::= (z: complex) -> complex {
   z._im *= -1.0

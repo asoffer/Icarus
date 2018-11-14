@@ -210,8 +210,8 @@ dynamic_dispatch ::= () -> () {
   // type. The type of the result of a dynamic dispatch call will be a variant
   // of all possible return types.
   squared ::= (n: int) => n * n
-  squared ::= (r: real) => r * r
-  number: int | real = 17
+  squared ::= (r: float64) => r * r
+  number: int | float64 = 17
   print "17^2 = ", number'squared, "\n"
   number = 1.7
   print "1.7^2 = ", number'squared, "\n"
@@ -237,8 +237,8 @@ multiple_return_values ::= () -> () {
   g ::= (x: int) => (1, 1.5)
   g ::= (x: bool) => (1.5, 1)
 
-  arg1: real | int = 0
-  arg2: real | int = 0
+  arg1: float64 | int = 0
+  arg2: float64 | int = 0
   var: bool | int = true
   (arg1, arg2) = g(var)
   print "arg1 = ", arg1, " and arg2 = ", arg2, "\n"

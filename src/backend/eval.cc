@@ -88,7 +88,9 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
       results.emplace_back(result_buf.get<char>(offset));
     } else if (t == type::Int) {
       results.emplace_back(result_buf.get<i32>(offset));
-    } else if (t == type::Real) {
+    } else if (t == type::Float32) {
+      results.emplace_back(result_buf.get<float>(offset));
+    } else if (t == type::Float64) {
       results.emplace_back(result_buf.get<double>(offset));
     } else if (t == type::Type_) {
       results.emplace_back(result_buf.get<type::Type const *>(offset));

@@ -28,9 +28,12 @@ RegisterOr<T> MakePhi(CmdIndex phi_index,
   } else if constexpr (std::is_same_v<T, i32>) {
     cmd.op_code_ = Op::PhiInt;
     cmd.phi_int_ = Cmd::PhiInt::Make(phi_args.get());
+  } else if constexpr (std::is_same_v<T, float>) {
+    cmd.op_code_  = Op::PhiFloat32;
+    cmd.phi_float32_ = Cmd::PhiFloat32::Make(phi_args.get());
   } else if constexpr (std::is_same_v<T, double>) {
-    cmd.op_code_  = Op::PhiReal;
-    cmd.phi_real_ = Cmd::PhiReal::Make(phi_args.get());
+    cmd.op_code_  = Op::PhiFloat64;
+    cmd.phi_float64_ = Cmd::PhiFloat64::Make(phi_args.get());
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     cmd.op_code_  = Op::PhiType;
     cmd.phi_type_ = Cmd::PhiType::Make(phi_args.get());

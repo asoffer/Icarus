@@ -61,7 +61,8 @@ void Primitive::EmitInit(ir::Register id_reg, Context *ctx) const {
     case PrimType::Bool: ir::Store(false, id_reg); break;
     case PrimType::Char: ir::Store('\0', id_reg); break;
     case PrimType::Int: ir::Store(0, id_reg); break;
-    case PrimType::Real: ir::Store(0.0, id_reg); break;
+    case PrimType::Float32: ir::Store(0.0f, id_reg); break;
+    case PrimType::Float64: ir::Store(0.0, id_reg); break;
     default: UNREACHABLE();
   }
 }

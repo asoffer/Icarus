@@ -121,14 +121,16 @@ struct Cmd {
   CMD(Align) { RegisterOr<const type::Type *> arg_; };
   CMD(Not) { Register reg_; };
   CMD(NegInt) { Register reg_; };
-  CMD(NegReal) { Register reg_; };
+  CMD(NegFloat32) { Register reg_; };
+  CMD(NegFloat64) { Register reg_; };
   CMD(ArrayLength) { Register arg_; };
   CMD(ArrayData) { Register arg_; };
 
   CMD(LoadBool) { Register arg_; };
   CMD(LoadChar) { Register arg_; };
   CMD(LoadInt) { Register arg_; };
-  CMD(LoadReal) { Register arg_; };
+  CMD(LoadFloat32) { Register arg_; };
+  CMD(LoadFloat64) { Register arg_; };
   CMD(LoadType) { Register arg_; };
   CMD(LoadEnum) { Register arg_; };
   CMD(LoadFlags) { Register arg_; };
@@ -147,7 +149,11 @@ struct Cmd {
     Register addr_;
     RegisterOr<i32> val_;
   };
-  CMD(StoreReal) {
+  CMD(StoreFloat32) {
+    Register addr_;
+    RegisterOr<float> val_;
+  };
+  CMD(StoreFloat64) {
     Register addr_;
     RegisterOr<double> val_;
   };
@@ -175,7 +181,8 @@ struct Cmd {
   CMD(PrintBool) { RegisterOr<bool> arg_; };
   CMD(PrintChar) { RegisterOr<char> arg_; };
   CMD(PrintInt) { RegisterOr<i32> arg_; };
-  CMD(PrintReal) { RegisterOr<double> arg_; };
+  CMD(PrintFloat32) { RegisterOr<float> arg_; };
+  CMD(PrintFloat64) { RegisterOr<double> arg_; };
   CMD(PrintType) { RegisterOr<type::Type const *> arg_; };
   CMD(PrintEnum) {
     RegisterOr<EnumVal> arg_;
@@ -189,38 +196,48 @@ struct Cmd {
   CMD(PrintCharBuffer) { RegisterOr<std::string_view> arg_; };
 
   CMD(AddInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(AddReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(AddFloat32) { std::array<RegisterOr<float>, 2> args_; };
+  CMD(AddFloat64) { std::array<RegisterOr<double>, 2> args_; };
   CMD(SubInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(SubReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(SubFloat32) { std::array<RegisterOr<float>, 2> args_; };
+  CMD(SubFloat64) { std::array<RegisterOr<double>, 2> args_; };
   CMD(MulInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(MulReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(MulFloat32) { std::array<RegisterOr<float>, 2> args_; };
+  CMD(MulFloat64) { std::array<RegisterOr<double>, 2> args_; };
   CMD(DivInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(DivReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(DivFloat32) { std::array<RegisterOr<float>, 2> args_; };
+  CMD(DivFloat64) { std::array<RegisterOr<double>, 2> args_; };
   CMD(ModInt) { std::array<RegisterOr<i32>, 2> args_; };
 
   CMD(LtInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(LtReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(LtFloat32) { std::array<RegisterOr<float>, 2> args_; };
+  CMD(LtFloat64) { std::array<RegisterOr<double>, 2> args_; };
   CMD(LtFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
   CMD(LeInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(LeReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(LeFloat32) { std::array<RegisterOr<float>, 2> args_; };
+  CMD(LeFloat64) { std::array<RegisterOr<double>, 2> args_; };
   CMD(LeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
   CMD(GtInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(GtReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(GtFloat32) { std::array<RegisterOr<float>, 2> args_; };
+  CMD(GtFloat64) { std::array<RegisterOr<double>, 2> args_; };
   CMD(GtFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
   CMD(GeInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(GeReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(GeFloat32) { std::array<RegisterOr<float>, 2> args_; };
+  CMD(GeFloat64) { std::array<RegisterOr<double>, 2> args_; };
   CMD(GeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
   CMD(EqBool) { std::array<Register, 2> args_; };
   CMD(EqChar) { std::array<RegisterOr<char>, 2> args_; };
   CMD(EqInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(EqReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(EqFloat32) { std::array<RegisterOr<float>, 2> args_; };
+  CMD(EqFloat64) { std::array<RegisterOr<double>, 2> args_; };
   CMD(EqType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
   CMD(EqEnum) { std::array<RegisterOr<EnumVal>, 2> args_; };
   CMD(EqFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
   CMD(EqAddr) { std::array<RegisterOr<ir::Addr>, 2> args_; };
   CMD(NeChar) { std::array<RegisterOr<char>, 2> args_; };
   CMD(NeInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(NeReal) { std::array<RegisterOr<double>, 2> args_; };
+  CMD(NeFloat32) { std::array<RegisterOr<float>, 2> args_; };
+  CMD(NeFloat64) { std::array<RegisterOr<double>, 2> args_; };
   CMD(NeType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
   CMD(NeEnum) { std::array<RegisterOr<EnumVal>, 2> args_; };
   CMD(NeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
@@ -301,7 +318,8 @@ struct Cmd {
   CMD(PhiBool) { PhiArgs<bool> *args_; };
   CMD(PhiChar) { PhiArgs<char> *args_; };
   CMD(PhiInt) { PhiArgs<i32> *args_; };
-  CMD(PhiReal) { PhiArgs<double> *args_; };
+  CMD(PhiFloat32) { PhiArgs<float> *args_; };
+  CMD(PhiFloat64) { PhiArgs<double> *args_; };
   CMD(PhiType) { PhiArgs<type::Type const *> *args_; };
   CMD(PhiBlock) { PhiArgs<BlockSequence> *args_; };
   CMD(PhiAddr) { PhiArgs<ir::Addr> *args_; };
@@ -318,7 +336,8 @@ struct Cmd {
         *jump_table_;
   };
 
-  CMD(CastIntToReal) { Register reg_; };
+  CMD(CastIntToFloat32) { Register reg_; };
+  CMD(CastIntToFloat64) { Register reg_; };
   CMD(CastPtr) {
     Register reg_;
     type::Type const *type_;
@@ -344,7 +363,11 @@ struct Cmd {
     RegisterOr<i32> val_;
   };
 
-  CMD(SetRetReal) {
+  CMD(SetRetFloat32) {
+    size_t ret_num_;
+    RegisterOr<float> val_;
+  };
+  CMD(SetRetFloat64) {
     size_t ret_num_;
     RegisterOr<double> val_;
   };
@@ -414,6 +437,7 @@ struct Cmd {
   struct DivTag;
   struct LoadTag;
   struct SetRetTag;
+  struct NegTag;
   template <typename Tag, typename T>
   static constexpr Op OpCode() {
     return static_cast<Op>(
@@ -423,11 +447,16 @@ struct Cmd {
 
   template <typename Tag, typename T>
   constexpr auto &get() {
-    if constexpr (std::is_same_v<Tag, PrintTag>) {
+    if constexpr (std::is_same_v<Tag, NegTag>) {
+      if constexpr (std::is_same_v<T, i32>) { return neg_int_; }
+      if constexpr (std::is_same_v<T, float>) { return neg_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return neg_float64_; }
+    } else if constexpr (std::is_same_v<Tag, PrintTag>) {
       if constexpr (std::is_same_v<T, bool>) { return print_bool_; }
       if constexpr (std::is_same_v<T, char>) { return print_char_; }
       if constexpr (std::is_same_v<T, i32>) { return print_int_; }
-      if constexpr (std::is_same_v<T, double>) { return print_real_; }
+      if constexpr (std::is_same_v<T, float>) { return print_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return print_float64_; }
       if constexpr (std::is_same_v<T, type::Type const *>) {
         return print_type_;
       }
@@ -442,7 +471,8 @@ struct Cmd {
       if constexpr (std::is_same_v<T, bool>) { return store_bool_; }
       if constexpr (std::is_same_v<T, char>) { return store_char_; }
       if constexpr (std::is_same_v<T, i32>) { return store_int_; }
-      if constexpr (std::is_same_v<T, double>) { return store_real_; }
+      if constexpr (std::is_same_v<T, float>) { return store_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return store_float64_; }
       if constexpr (std::is_same_v<T, type::Type const *>) {
         return store_type_;
       }
@@ -457,7 +487,8 @@ struct Cmd {
       if constexpr (std::is_same_v<T, bool>) { return eq_bool_; }
       if constexpr (std::is_same_v<T, char>) { return eq_char_; }
       if constexpr (std::is_same_v<T, i32>) { return eq_int_; }
-      if constexpr (std::is_same_v<T, double>) { return eq_real_; }
+      if constexpr (std::is_same_v<T, float>) { return eq_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return eq_float64_; }
       if constexpr (std::is_same_v<T, type::Type const *>) { return eq_type_; }
       if constexpr (std::is_same_v<T, EnumVal>) { return eq_enum_; }
       if constexpr (std::is_same_v<T, FlagsVal>) { return eq_flags_; }
@@ -466,7 +497,8 @@ struct Cmd {
     if constexpr (std::is_same_v<Tag, NeTag>) {
       if constexpr (std::is_same_v<T, char>) { return ne_char_; }
       if constexpr (std::is_same_v<T, i32>) { return ne_int_; }
-      if constexpr (std::is_same_v<T, double>) { return ne_real_; }
+      if constexpr (std::is_same_v<T, float>) { return ne_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return ne_float64_; }
       if constexpr (std::is_same_v<T, type::Type const *>) { return ne_type_; }
       if constexpr (std::is_same_v<T, EnumVal>) { return ne_enum_; }
       if constexpr (std::is_same_v<T, FlagsVal>) { return ne_flags_; }
@@ -474,45 +506,54 @@ struct Cmd {
     }
     if constexpr (std::is_same_v<Tag, LtTag>) {
       if constexpr (std::is_same_v<T, i32>) { return lt_int_; }
-      if constexpr (std::is_same_v<T, double>) { return lt_real_; }
+      if constexpr (std::is_same_v<T, float>) { return lt_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return lt_float64_; }
       if constexpr (std::is_same_v<T, FlagsVal>) { return lt_flags_; }
     }
     if constexpr (std::is_same_v<Tag, LeTag>) {
       if constexpr (std::is_same_v<T, i32>) { return le_int_; }
-      if constexpr (std::is_same_v<T, double>) { return le_real_; }
+      if constexpr (std::is_same_v<T, float>) { return le_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return le_float64_; }
       if constexpr (std::is_same_v<T, FlagsVal>) { return le_flags_; }
     }
     if constexpr (std::is_same_v<Tag, GtTag>) {
       if constexpr (std::is_same_v<T, i32>) { return gt_int_; }
-      if constexpr (std::is_same_v<T, double>) { return gt_real_; }
+      if constexpr (std::is_same_v<T, float>) { return gt_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return gt_float64_; }
       if constexpr (std::is_same_v<T, FlagsVal>) { return gt_flags_; }
     }
     if constexpr (std::is_same_v<Tag, GeTag>) {
       if constexpr (std::is_same_v<T, i32>) { return ge_int_; }
-      if constexpr (std::is_same_v<T, double>) { return ge_real_; }
+      if constexpr (std::is_same_v<T, float>) { return ge_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return ge_float64_; }
       if constexpr (std::is_same_v<T, FlagsVal>) { return ge_flags_; }
     }
     if constexpr (std::is_same_v<Tag, AddTag>) {
       if constexpr (std::is_same_v<T, i32>) { return add_int_; }
-      if constexpr (std::is_same_v<T, double>) { return add_real_; }
+      if constexpr (std::is_same_v<T, float>) { return add_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return add_float64_; }
     }
     if constexpr (std::is_same_v<Tag, SubTag>) {
       if constexpr (std::is_same_v<T, i32>) { return sub_int_; }
-      if constexpr (std::is_same_v<T, double>) { return sub_real_; }
+      if constexpr (std::is_same_v<T, float>) { return sub_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return sub_float64_; }
     }
     if constexpr (std::is_same_v<Tag, MulTag>) {
       if constexpr (std::is_same_v<T, i32>) { return mul_int_; }
-      if constexpr (std::is_same_v<T, double>) { return mul_real_; }
+      if constexpr (std::is_same_v<T, float>) { return mul_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return mul_float64_; }
     }
     if constexpr (std::is_same_v<Tag, DivTag>) {
       if constexpr (std::is_same_v<T, i32>) { return div_int_; }
-      if constexpr (std::is_same_v<T, double>) { return div_real_; }
+      if constexpr (std::is_same_v<T, float>) { return div_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return div_float64_; }
     }
     if constexpr (std::is_same_v<Tag, SetRetTag>) {
       if constexpr (std::is_same_v<T, bool>) { return set_ret_bool_; }
       if constexpr (std::is_same_v<T, char>) { return set_ret_char_; }
       if constexpr (std::is_same_v<T, i32>) { return set_ret_int_; }
-      if constexpr (std::is_same_v<T, double>) { return set_ret_real_; }
+      if constexpr (std::is_same_v<T, float>) { return set_ret_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return set_ret_float64_; }
       if constexpr (std::is_same_v<T, type::Type const *>) {
         return set_ret_type_;
       }
@@ -538,7 +579,8 @@ struct Cmd {
       if constexpr (std::is_same_v<T, bool>) { return load_bool_; }
       if constexpr (std::is_same_v<T, char>) { return load_char_; }
       if constexpr (std::is_same_v<T, i32>) { return load_int_; }
-      if constexpr (std::is_same_v<T, double>) { return load_real_; }
+      if constexpr (std::is_same_v<T, float>) { return load_float32_; }
+      if constexpr (std::is_same_v<T, double>) { return load_float64_; }
       if constexpr (std::is_same_v<T, type::Type const *>) {
         return load_type_;
       }
@@ -566,13 +608,15 @@ struct Cmd {
     Align align_;
     Not not_;
     NegInt neg_int_;
-    NegReal neg_real_;
+    NegFloat32 neg_float32_;
+    NegFloat64 neg_float64_;
     ArrayLength array_length_;
     ArrayData array_data_;
     LoadBool load_bool_;
     LoadChar load_char_;
     LoadInt load_int_;
-    LoadReal load_real_;
+    LoadFloat32 load_float32_;
+    LoadFloat64 load_float64_;
     LoadType load_type_;
     LoadEnum load_enum_;
     LoadFlags load_flags_;
@@ -582,7 +626,8 @@ struct Cmd {
     StoreBool store_bool_;
     StoreChar store_char_;
     StoreInt store_int_;
-    StoreReal store_real_;
+    StoreFloat32 store_float32_;
+    StoreFloat64 store_float64_;
     StoreType store_type_;
     StoreEnum store_enum_;
     StoreFunc store_func_;
@@ -592,7 +637,8 @@ struct Cmd {
     PrintBool print_bool_;
     PrintChar print_char_;
     PrintInt print_int_;
-    PrintReal print_real_;
+    PrintFloat32 print_float32_;
+    PrintFloat64 print_float64_;
     PrintType print_type_;
     PrintEnum print_enum_;
     PrintFlags print_flags_;
@@ -600,38 +646,48 @@ struct Cmd {
     PrintCharBuffer print_char_buffer_;
 
     AddInt add_int_;
-    AddReal add_real_;
+    AddFloat32 add_float32_;
+    AddFloat64 add_float64_;
     SubInt sub_int_;
-    SubReal sub_real_;
+    SubFloat32 sub_float32_;
+    SubFloat64 sub_float64_;
     MulInt mul_int_;
-    MulReal mul_real_;
+    MulFloat32 mul_float32_;
+    MulFloat64 mul_float64_;
     DivInt div_int_;
-    DivReal div_real_;
+    DivFloat32 div_float32_;
+    DivFloat64 div_float64_;
     ModInt mod_int_;
 
     LtInt lt_int_;
-    LtReal lt_real_;
+    LtFloat32 lt_float32_;
+    LtFloat64 lt_float64_;
     LtFlags lt_flags_;
     LeInt le_int_;
-    LeReal le_real_;
+    LeFloat32 le_float32_;
+    LeFloat64 le_float64_;
     LeFlags le_flags_;
     GtInt gt_int_;
-    GtReal gt_real_;
+    GtFloat32 gt_float32_;
+    GtFloat64 gt_float64_;
     GtFlags gt_flags_;
     GeInt ge_int_;
-    GeReal ge_real_;
+    GeFloat32 ge_float32_;
+    GeFloat64 ge_float64_;
     GeFlags ge_flags_;
     EqBool eq_bool_;
     EqChar eq_char_;
     EqInt eq_int_;
-    EqReal eq_real_;
+    EqFloat32 eq_float32_;
+    EqFloat64 eq_float64_;
     EqType eq_type_;
     EqEnum eq_enum_;
     EqFlags eq_flags_;
     EqAddr eq_addr_;
     NeChar ne_char_;
     NeInt ne_int_;
-    NeReal ne_real_;
+    NeFloat32 ne_float32_;
+    NeFloat64 ne_float64_;
     NeType ne_type_;
     NeEnum ne_enum_;
     NeFlags ne_flags_;
@@ -678,12 +734,14 @@ struct Cmd {
     Cmd::VariantValue variant_value_;
 
     Call call_;
-    CastIntToReal cast_int_to_real_;
+    CastIntToFloat32 cast_int_to_float32_;
+    CastIntToFloat64 cast_int_to_float64_;
     CastPtr cast_ptr_;
     PhiBool phi_bool_;
     PhiChar phi_char_;
     PhiInt phi_int_;
-    PhiReal phi_real_;
+    PhiFloat32 phi_float32_;
+    PhiFloat64 phi_float64_;
     PhiType phi_type_;
     PhiBlock phi_block_;
     PhiAddr phi_addr_;
@@ -693,7 +751,8 @@ struct Cmd {
     SetRetBool set_ret_bool_;
     SetRetChar set_ret_char_;
     SetRetInt set_ret_int_;
-    SetRetReal set_ret_real_;
+    SetRetFloat32 set_ret_float32_;
+    SetRetFloat64 set_ret_float64_;
     SetRetType set_ret_type_;
     SetRetEnum set_ret_enum_;
     SetRetFlags set_ret_flags_;
@@ -714,8 +773,6 @@ RegisterOr<i32> Extend(RegisterOr<char> r);
 RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r);
 RegisterOr<i32> Align(RegisterOr<type::Type const *> r);
 RegisterOr<bool> Not(RegisterOr<bool> r);
-RegisterOr<i32> NegInt(RegisterOr<i32> r);
-RegisterOr<double> NegReal(RegisterOr<double> r);
 Register ArrayLength(Register r);
 Register ArrayData(Register r, type::Type const *t);
 RegisterOr<i32> ModInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
@@ -731,6 +788,15 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &rhs);
 
 void DebugIr();
+
+template <typename T>
+RegisterOr<T> Neg(RegisterOr<T> r) {
+  if (!r.is_reg_) { return -r.val_; }
+  auto &cmd = MakeCmd(type::Get<T>(), Cmd::OpCode<Cmd::NegTag, T>());
+  cmd.template set<Cmd::NegTag, T>(r.reg_);
+  // TODO reenable Func::Current->references_[cmd.neg_int_.reg_].insert(cmd.result);
+  return cmd.result;
+}
 
 template <typename T, typename... Args>
 TypedRegister<T> Load(Register r, type::Type const *t = type::Get<T>()) {
@@ -907,7 +973,8 @@ void BlockSeqJump(RegisterOr<BlockSequence> r,
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                                   ast::BlockLiteral *lit);
 
-RegisterOr<double> CastIntToReal(RegisterOr<i32> r);
+RegisterOr<float> CastIntToFloat32(RegisterOr<i32> r);
+RegisterOr<double> CastIntToFloat64(RegisterOr<i32> r);
 Register CastPtr(Register r, type::Pointer const *t);
 
 TypedRegister<Addr> Index(type::Type const *t, Register array_ptr,

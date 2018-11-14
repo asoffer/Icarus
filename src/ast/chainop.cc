@@ -63,19 +63,22 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
     switch (op) {
       case Language::Operator::Lt:
         MAKE_OP(i32, == type::Int, ir::Lt);
-        MAKE_OP(double, == type::Real, ir::Lt);
+        MAKE_OP(float, == type::Float32, ir::Lt);
+        MAKE_OP(double, == type::Float64, ir::Lt);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Lt);
         UNREACHABLE();
       case Language::Operator::Le:
         MAKE_OP(i32, == type::Int, ir::Le);
-        MAKE_OP(double, == type::Real, ir::Le);
+        MAKE_OP(float, == type::Float32, ir::Le);
+        MAKE_OP(double, == type::Float64, ir::Le);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Le);
         UNREACHABLE();
       case Language::Operator::Eq:
         MAKE_OP(bool, == type::Bool, ir::Eq);
         MAKE_OP(char, == type::Char, ir::Eq);
         MAKE_OP(i32, == type::Int, ir::Eq);
-        MAKE_OP(double, == type::Real, ir::Eq);
+        MAKE_OP(float, == type::Float32, ir::Eq);
+        MAKE_OP(double, == type::Float64, ir::Eq);
         MAKE_OP(type::Type const *, == type::Type_, ir::Eq);
         MAKE_OP(ir::EnumVal, ->is<type::Enum>(), ir::Eq);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Eq);
@@ -92,7 +95,8 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
         MAKE_OP(bool, == type::Bool, ir::XorBool);
         MAKE_OP(char, == type::Char, ir::Ne);
         MAKE_OP(i32, == type::Int, ir::Ne);
-        MAKE_OP(double, == type::Real, ir::Ne);
+        MAKE_OP(float, == type::Float32, ir::Ne);
+        MAKE_OP(double, == type::Float64, ir::Ne);
         MAKE_OP(type::Type const *, == type::Type_, ir::Ne);
         MAKE_OP(ir::EnumVal, ->is<type::Enum>(), ir::Ne);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Ne);
@@ -107,12 +111,14 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
         UNREACHABLE();
       case Language::Operator::Ge:
         MAKE_OP(i32, == type::Int, ir::Ge);
-        MAKE_OP(double, == type::Real, ir::Ge);
+        MAKE_OP(float, == type::Float32, ir::Ge);
+        MAKE_OP(double, == type::Float64, ir::Ge);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Ge);
         UNREACHABLE();
       case Language::Operator::Gt:
         MAKE_OP(i32, == type::Int, ir::Gt);
-        MAKE_OP(double, == type::Real, ir::Gt);
+        MAKE_OP(float, == type::Float32, ir::Gt);
+        MAKE_OP(double, == type::Float64, ir::Gt);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Gt);
         UNREACHABLE();
         // TODO case Language::Operator::And: cmp = lhs_ir; break;
@@ -302,7 +308,7 @@ base::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
   if (ops[0] == Language::Operator::Xor) {
     if (t == type::Bool) {
       return {ir::ValFrom(std::accumulate(
-          exprs.begin(), exprs.end(), false,
+          exprs.begin(), exprs.end(), ir::RegisterOr<bool>(false),
           [&](ir::RegisterOr<bool> acc, auto &expr) {
             return ir::XorBool(acc,
                                expr->EmitIR(ctx)[0].template reg_or<bool>());

@@ -52,7 +52,8 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
 
     case PrimType::Bool: ir::Print(val.reg_or<bool>()); break;
     case PrimType::Int: ir::Print(val.reg_or<int>()); break;
-    case PrimType::Real: ir::Print(val.reg_or<double>()); break;
+    case PrimType::Float32: ir::Print(val.reg_or<float>()); break;
+    case PrimType::Float64: ir::Print(val.reg_or<double>()); break;
     case PrimType::Type_: ir::Print(val.reg_or<type::Type const *>()); break;
     case PrimType::Scope:
     case PrimType::StatefulScope:

@@ -208,7 +208,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 #define CASE(OpName, symbol, ret_type)                                          \
   case Operator::OpName: {                                                      \
     if ((lhs_type == type::Int && rhs_type == type::Int) ||                     \
-        (lhs_type == type::Real && rhs_type == type::Real)) {                   \
+        (lhs_type == type::Float32 && rhs_type == type::Float32) ||                   \
+        (lhs_type == type::Float64 && rhs_type == type::Float64)) {                   \
       auto *t = (ret_type);                                                     \
       ctx->set_type(this, t);                                                   \
       return t;                                                                 \
@@ -235,7 +236,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 #undef CASE
     case Operator::Add: {
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
-          (lhs_type == type::Real && rhs_type == type::Real)) {
+          (lhs_type == type::Float32 && rhs_type == type::Float32) ||
+          (lhs_type == type::Float64 && rhs_type == type::Float64)) {
         ctx->set_type(this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::CharBuffer>() &&
@@ -259,7 +261,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     } break;
     case Operator::AddEq: {
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
-          (lhs_type == type::Real && rhs_type == type::Real)) {
+          (lhs_type == type::Float32 && rhs_type == type::Float32) ||
+          (lhs_type == type::Float64 && rhs_type == type::Float64)) {
         ctx->set_type(this, type::Void());
         return type::Void();
       } else {
@@ -275,7 +278,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     // Mul is done separately because of the function composition
     case Operator::Mul:
       if ((lhs_type == type::Int && rhs_type == type::Int) ||
-          (lhs_type == type::Real && rhs_type == type::Real)) {
+          (lhs_type == type::Float32 && rhs_type == type::Float32)||
+          (lhs_type == type::Float64 && rhs_type == type::Float64)) {
         ctx->set_type(this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::Function>() &&
@@ -360,7 +364,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       if (rhs_ir.type == type::Int) {
         return {
             ir::ValFrom(ir::Add(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
-      } else if (rhs_ir.type == type::Real) {
+      } else if (rhs_ir.type == type::Float32) {
+        return {ir::ValFrom(
+            ir::Add(lhs_ir.reg_or<float>(), rhs_ir.reg_or<float>()))};
+      } else if (rhs_ir.type == type::Float64) {
         return {ir::ValFrom(
             ir::Add(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
       } else if (rhs_ir.type->is<type::CharBuffer>()) {
@@ -375,7 +382,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       if (rhs_ir.type == type::Int) {
         return {ir::ValFrom(
             ir::Sub(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
-      } else if (rhs_ir.type == type::Real) {
+      } else if (rhs_ir.type == type::Float32) {
+        return {ir::ValFrom(
+            ir::Sub(lhs_ir.reg_or<float>(), rhs_ir.reg_or<float>()))};
+      } else if (rhs_ir.type == type::Float64) {
         return {ir::ValFrom(
             ir::Sub(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
       } else {
@@ -388,7 +398,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       if (rhs_ir.type == type::Int) {
         return {ir::ValFrom(
             ir::Mul(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
-      } else if (rhs_ir.type == type::Real) {
+      } else if (rhs_ir.type == type::Float32) {
+        return {ir::ValFrom(
+            ir::Mul(lhs_ir.reg_or<float>(), rhs_ir.reg_or<float>()))};
+      } else if (rhs_ir.type == type::Float64) {
         return {ir::ValFrom(
             ir::Mul(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
       } else {
@@ -401,7 +414,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       if (rhs_ir.type == type::Int) {
         return {
             ir::ValFrom(ir::Div(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
-      } else if (rhs_ir.type == type::Real) {
+      } else if (rhs_ir.type == type::Float32) {
+        return {ir::ValFrom(
+            ir::Div(lhs_ir.reg_or<float>(), rhs_ir.reg_or<float>()))};
+      } else if (rhs_ir.type == type::Float64) {
         return {ir::ValFrom(
             ir::Div(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
       } else {
@@ -424,7 +440,8 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       if (val.type == this_type) {
         return {val};
       } else if (i32 const *n = std::get_if<i32>(&val.value);
-                 n && this_type == type::Real) {
+                 n && this_type == type::Float64) {
+        // TODO other casts
         return {ir::Val(static_cast<double>(*n))};
       } else if (this_type->is<type::Variant>()) {
         auto alloc = ir::Alloca(this_type);
@@ -443,8 +460,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
         }
       }
 
-      if (this_type == type::Real && val.type == type::Int) {
-        return {ir::ValFrom(ir::CastIntToReal(val.reg_or<i32>()))};
+      if (this_type == type::Float32 && val.type == type::Int) {
+        return {ir::ValFrom(ir::CastIntToFloat32(val.reg_or<i32>()))};
+      } else if (this_type == type::Float64 && val.type == type::Int) {
+        return {ir::ValFrom(ir::CastIntToFloat64(val.reg_or<i32>()))};
       } else if (this_type->is<type::Pointer>()) {
         return {ir::Val::Reg(ir::CastPtr(std::get<ir::Register>(val.value),
                                          &this_type->as<type::Pointer>()),
@@ -551,7 +570,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       if (rhs_ir.type == type::Int) {
         ir::Store(ir::Add(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
                   lhs_lval);
-      } else if (rhs_ir.type == type::Real) {
+      } else if (rhs_ir.type == type::Float32) {
+        ir::Store(ir::Add(ir::Load<float>(lhs_lval), rhs_ir.reg_or<float>()),
+                  lhs_lval);
+      } else if (rhs_ir.type == type::Float64) {
         ir::Store(ir::Add(ir::Load<double>(lhs_lval), rhs_ir.reg_or<double>()),
                   lhs_lval);
       } else if (rhs_ir.type->is<type::CharBuffer>()) {
@@ -567,7 +589,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       if (rhs_ir.type == type::Int) {
         ir::Store(ir::Sub(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
                   lhs_lval);
-      } else if (rhs_ir.type == type::Real) {
+      } else if (rhs_ir.type == type::Float32) {
+        ir::Store(ir::Sub(ir::Load<float>(lhs_lval), rhs_ir.reg_or<float>()),
+                  lhs_lval);
+      } else if (rhs_ir.type == type::Float64) {
         ir::Store(ir::Sub(ir::Load<double>(lhs_lval), rhs_ir.reg_or<double>()),
                   lhs_lval);
       } else {
@@ -581,7 +606,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       if (rhs_ir.type == type::Int) {
         ir::Store(ir::Div(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
                   lhs_lval);
-      } else if (rhs_ir.type == type::Real) {
+      } else if (rhs_ir.type == type::Float32) {
+        ir::Store(ir::Div(ir::Load<float>(lhs_lval), rhs_ir.reg_or<float>()),
+                  lhs_lval);
+      } else if (rhs_ir.type == type::Float64) {
         ir::Store(ir::Div(ir::Load<double>(lhs_lval), rhs_ir.reg_or<double>()),
                   lhs_lval);
       } else {
@@ -606,7 +634,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       if (rhs_ir.type == type::Int) {
         ir::Store(ir::Mul(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
                   lhs_lval);
-      } else if (rhs_ir.type == type::Real) {
+      } else if (rhs_ir.type == type::Float32) {
+        ir::Store(ir::Mul(ir::Load<float>(lhs_lval), rhs_ir.reg_or<float>()),
+                  lhs_lval);
+      } else if (rhs_ir.type == type::Float64) {
         ir::Store(ir::Mul(ir::Load<double>(lhs_lval), rhs_ir.reg_or<double>()),
                   lhs_lval);
       } else {

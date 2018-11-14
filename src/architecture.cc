@@ -29,7 +29,8 @@ size_t Architecture::alignment(const type::Type *t) const {
       case type::PrimType::Bool:
       case type::PrimType::Char: return 1;
       case type::PrimType::Int: return 4;
-      case type::PrimType::Real:
+      case type::PrimType::Float32: return 4; // TODO can the alignment ever be different?
+      case type::PrimType::Float64: return 8;
       case type::PrimType::Type_:
       case type::PrimType::NullPtr:
       case type::PrimType::Scope:
@@ -92,7 +93,8 @@ size_t Architecture::bytes(const type::Type *t) const {
       case type::PrimType::Bool:
       case type::PrimType::Char: return 1;
       case type::PrimType::Int: return 4;
-      case type::PrimType::Real:
+      case type::PrimType::Float32: return 4;
+      case type::PrimType::Float64: return 8;
       case type::PrimType::Type_:
       case type::PrimType::NullPtr:
       case type::PrimType::Scope:

@@ -16,7 +16,9 @@ llvm::Type* Primitive::llvm(llvm::LLVMContext& ctx) const {
     case PrimType::Bool: return llvm::Type::getInt1Ty(ctx);
     case PrimType::Char: return llvm::Type::getInt8Ty(ctx);
     case PrimType::Int: return llvm::Type::getInt32Ty(ctx);
-    case PrimType::Real:
+    case PrimType::Float32:
+      return llvm::Type::getFloatTy(ctx);
+    case PrimType::Float64:
       return llvm::Type::getDoubleTy(ctx);
       // TODO make these impossible to reach.
     case PrimType::Block: return llvm::Type::getInt32Ty(ctx);

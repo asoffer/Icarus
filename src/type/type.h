@@ -93,8 +93,10 @@ constexpr type::Type const *Get() {
     return type::Char;
   } else if constexpr (std::is_same_v<T, i32>) {
     return type::Int;
+  } else if constexpr (std::is_same_v<T, float>) {
+    return type::Float32;
   } else if constexpr (std::is_same_v<T, double>) {
-    return type::Real;
+    return type::Float64;
   } else if constexpr (std::is_same_v<
                            std::decay_t<decltype(*std::declval<T>())>,
                            type::Type>) {

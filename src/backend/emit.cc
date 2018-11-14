@@ -147,7 +147,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
   case ir::Op::op: {                                                           \
     auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);                   \
     auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);                   \
-    if (cmd.type == type::Real) {                                              \
+    if (cmd.type == type::Float32 || cmd.type == type::Float64) {              \
       return llvm_data->builder->llvm_float(lhs, rhs);                         \
     } else {                                                                   \
       return llvm_data->builder->llvm_int(lhs, rhs);                           \
@@ -167,7 +167,8 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       return llvm_data->builder->CreateNot(
           EmitValue(num_args, llvm_data, cmd.args[0]));
     case ir::Op::NegInt:
-    case ir::Op::NegReal:
+    case ir::Op::NegFloat32:
+    case ir::Op::NegFloat64:
       return llvm_data->builder->CreateNeg(
           EmitValue(num_args, llvm_data, cmd.args[0]));
     case ir::Op::Or:
@@ -235,7 +236,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
               {StringConstant(llvm_data->builder, "%d"),
                EmitValue(num_args, llvm_data, arg)},
               "print");
-        } else if (arg.type == type::Real) {
+        } else if (arg.type == type::Float32 || arg.type == type::Float64) {
           return llvm_data->builder->CreateCall(
               printf_fn,
               {StringConstant(llvm_data->builder, "%f"),

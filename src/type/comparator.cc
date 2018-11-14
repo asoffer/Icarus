@@ -6,8 +6,11 @@ namespace type {
 Cmp Array::Comparator() const { return data_type->Comparator(); }
 
 Cmp Primitive::Comparator() const {
-  return (type_ == PrimType::Int || type_ == PrimType::Real) ? Cmp::Order
-                                                             : Cmp::Equality;
+  // TODO is this right for floating-point type?
+  return (type_ == PrimType::Int || type_ == PrimType::Float32 ||
+          type_ == PrimType::Float64)
+             ? Cmp::Order
+             : Cmp::Equality;
 }
 
 Cmp Pointer::Comparator() const { return Cmp::Equality; }

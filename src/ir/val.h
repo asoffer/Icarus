@@ -46,8 +46,8 @@ namespace ir {
 struct Val {
   const type::Type *type = nullptr;
   // TODO make trivial: interface
-  std::variant<Register, ir::Addr, bool, char, double, i32, EnumVal, FlagsVal,
-               const type::Type *, type::Struct *, ir::Func *,
+  std::variant<Register, ir::Addr, bool, char, float, double, i32, EnumVal,
+               FlagsVal, const type::Type *, type::Struct *, ir::Func *,
                ast::FunctionLiteral *, ast::ScopeLiteral *, ir::Interface,
                ast::Expression *, BlockIndex, std::string_view, const Module *,
                BlockSequence, BuiltinGenericIndex, ForeignFn>
