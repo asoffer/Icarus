@@ -38,8 +38,8 @@ void Array::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
       }();
 
       auto *from_ptr_type   = type::Ptr(from_type->as<type::Array>().data_type);
-      ir::Register from_ptr = ir::Index(from_type, val, 0);
-      ir::Register from_end_ptr = ir::PtrIncr(from_ptr, len, from_ptr_type);
+      auto from_ptr         = ir::Index(from_type, val, 0);
+      auto from_end_ptr     = ir::PtrIncr(from_ptr, len, from_ptr_type);
 
       if (!fixed_length) {
         ComputeDestroyWithoutLock(ctx);
@@ -53,7 +53,7 @@ void Array::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
             data_type, Architecture::InterprettingMachine().ComputeArrayLength(
                            len, data_type));
         ir::Store(len, ir::ArrayLength(var));
-        ir::Store(ir::RegisterOr<ir::Addr>(ptr), ir::ArrayData(var, type::Ptr(this)));
+        ir::Store(ptr, ir::ArrayData(var, type::Ptr(this)));
       }
 
       auto *to_ptr_type   = type::Ptr(data_type);
@@ -63,9 +63,7 @@ void Array::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
           std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
       ir::CreateLoop(
           [&](tup const &phis) {
-            ASSERT(std::get<0>(phis).is_reg_);
-            return ir::Eq(ir::RegisterOr<ir::Addr>(std::get<0>(phis).reg_),
-                          ir::RegisterOr<ir::Addr>(from_end_ptr));
+            return ir::Eq(std::get<0>(phis), from_end_ptr);
           },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
@@ -84,15 +82,12 @@ void Array::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
                          ir::Val::Reg(ptr_fixed_reg, ptr_fixed_type),
                          std::get<1>(phis).reg_, ctx);
             return std::make_tuple(
-                ir::RegisterOr<ir::Addr>{
-                    ir::PtrIncr(std::get<0>(phis).reg_, 1, from_ptr_type)},
-                ir::RegisterOr<ir::Addr>{
-                    ir::PtrIncr(std::get<1>(phis).reg_, 1, to_ptr_type)});
+                ir::PtrIncr(std::get<0>(phis).reg_, 1, from_ptr_type),
+                ir::PtrIncr(std::get<1>(phis).reg_, 1, to_ptr_type));
           },
           std::tuple<type::Type const *, type::Type const *>{from_ptr_type,
                                                              to_ptr_type},
-          tup{ir::RegisterOr<ir::Addr>{from_ptr},
-              ir::RegisterOr<ir::Addr>{to_ptr}});
+          tup{from_ptr, to_ptr});
       ir::ReturnJump();
     }
   }
@@ -133,9 +128,8 @@ void Variant::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
     auto landing = ir::Func::Current->AddBlock();
     for (const Type *v : from_type->as<Variant>().variants_) {
       auto next_block = ir::Func::Current->AddBlock();
-      ir::BasicBlock::Current = ir::EarlyExitOn<false>(
-          next_block,
-          ir::Eq(ir::RegisterOr<type::Type const *>(actual_type), v));
+      ir::BasicBlock::Current =
+          ir::EarlyExitOn<false>(next_block, ir::Eq(actual_type, v));
       ir::Store(v, ir::VariantType(to));
       v->EmitAssign(
           v,

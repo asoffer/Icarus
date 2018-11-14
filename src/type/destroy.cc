@@ -19,8 +19,8 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
     auto arg                = destroy_func_->Argument(0);
 
     if (data_type->needs_destroy()) {
-      ir::Register ptr = ir::Index(type::Ptr(this), arg, 0);
-      auto end_ptr     = ir::PtrIncr(ptr,
+      auto ptr     = ir::Index(type::Ptr(this), arg, 0);
+      auto end_ptr = ir::PtrIncr(ptr,
                                  [&]() -> ir::RegisterOr<i32> {
                                    if (fixed_length) {
                                      return static_cast<i32>(len);
@@ -32,10 +32,7 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
 
       using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
       ir::CreateLoop(
-          [&](tup const &phis) {
-            return ir::Eq(ir::RegisterOr<ir::Addr>(std::get<0>(phis)),
-                          ir::RegisterOr<ir::Addr>(end_ptr));
-          },
+          [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
             data_type->EmitDestroy(std::get<0>(phis).reg_, ctx);
@@ -43,7 +40,7 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
                 ir::PtrIncr(std::get<0>(phis).reg_, 1, type::Ptr(data_type))};
           },
           std::tuple<type::Type const *>{type::Ptr(data_type)},
-          tup{ir::RegisterOr<ir::Addr>(ptr)});
+          tup{ptr});
     }
 
     if (!fixed_length) {

@@ -14,8 +14,7 @@ namespace type {
 void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
   if (!fixed_length) {
     ir::Store(0, ir::ArrayLength(id_reg));
-    ir::Store(ir::RegisterOr<ir::Addr>(ir::Malloc(data_type, 0)),
-              ir::ArrayData(id_reg, this));
+    ir::Store(ir::Malloc(data_type, 0), ir::ArrayData(id_reg, this));
   }
 
   std::unique_lock lock(mtx_);
@@ -34,10 +33,7 @@ void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
 
       using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
       ir::CreateLoop(
-          [&](tup const &phis) {
-            return ir::Eq(ir::RegisterOr<ir::Addr>(std::get<0>(phis)),
-                          ir::RegisterOr<ir::Addr>(end_ptr));
-          },
+          [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
             data_type->EmitInit(std::get<0>(phis).reg_, ctx);

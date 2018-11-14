@@ -302,7 +302,7 @@ base::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
   if (ops[0] == Language::Operator::Xor) {
     if (t == type::Bool) {
       return {ir::ValFrom(std::accumulate(
-          exprs.begin(), exprs.end(), ir::RegisterOr<bool>(false),
+          exprs.begin(), exprs.end(), false,
           [&](ir::RegisterOr<bool> acc, auto &expr) {
             return ir::XorBool(acc,
                                expr->EmitIR(ctx)[0].template reg_or<bool>());

@@ -740,7 +740,7 @@ TypedRegister<T> Load(Register r, type::Type const *t = type::Get<T>()) {
 }
 Register Load(Register r, type::Type const *t);
 
-Register Malloc(const type::Type *t, RegisterOr<i32> r);
+TypedRegister<Addr> Malloc(const type::Type *t, RegisterOr<i32> r);
 void Free(Register r);
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
                                      RegisterOr<type::Type const *> out);
@@ -881,6 +881,8 @@ void Store(T r, Args &&... args) {
     auto &cmd  = MakeCmd(nullptr, Cmd::OpCode<Cmd::StoreTag, type>());
     // TODO reverse all call sites
     cmd.template set<Cmd::StoreTag, type>(std::forward<Args>(args)..., r);
+  } else if constexpr (IsTypedReg<T>::value) {
+    return Store(RegisterOr<typename T::type>(r), std::forward<Args>(args)...);
   } else {
     return Store(RegisterOr<T>(r), std::forward<Args>(args)...);
   }
@@ -908,8 +910,9 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
 RegisterOr<double> CastIntToReal(RegisterOr<i32> r);
 Register CastPtr(Register r, type::Pointer const *t);
 
-Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset);
-Register Alloca(const type::Type *t);
+TypedRegister<Addr> Index(type::Type const *t, Register array_ptr,
+                          RegisterOr<i32> offset);
+TypedRegister<Addr> Alloca(const type::Type *t);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
 }  // namespace ir

@@ -122,7 +122,7 @@ template <typename T>
 struct TypedRegister : public Register {
   using type = T;
   TypedRegister(Register r) : Register(r) {}
-  operator RegisterOr<T>() { return {*this}; }
+  operator RegisterOr<T>() const { return static_cast<Register>(*this); }
 };
 
 template <typename T>

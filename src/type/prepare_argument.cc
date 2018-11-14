@@ -74,7 +74,7 @@ ir::Val Variant::PrepareArgument(const Type *from, const ir::Val &val,
     from->EmitAssign(from, val, ir::VariantValue(from, alloc_reg), ctx);
   } else {
     auto *from_v = &from->as<Variant>();
-    ir::Register runtime_type = ir::Load<type::Type const *>(
+    auto runtime_type = ir::Load<type::Type const *>(
         ir::VariantType(std::get<ir::Register>(val.value)));
 
     // Because variants_ is sorted, we can find the intersection quickly:
@@ -120,8 +120,7 @@ ir::Val Variant::PrepareArgument(const Type *from, const ir::Val &val,
     ir::BasicBlock::Current = current;
     for (size_t i = 0; i < intersection.size() - 1; ++i) {
       ir::BasicBlock::Current = ir::EarlyExitOn<true>(
-          blocks[i], ir::Eq(ir::RegisterOr<type::Type const *>(runtime_type),
-                            intersection[i]));
+          blocks[i], ir::Eq(runtime_type, intersection[i]));
     }
     ir::UncondJump(blocks.back());
     ir::BasicBlock::Current = landing;

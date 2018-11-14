@@ -107,7 +107,7 @@ RegisterOr<bool> Not(RegisterOr<bool> r) {
 
 // TODO do you really want to support this? How can array allocation be
 // customized?
-Register Malloc(const type::Type *t, RegisterOr<i32> r) {
+TypedRegister<Addr> Malloc(const type::Type *t, RegisterOr<i32> r) {
   auto &cmd   = MakeCmd(type::Ptr(t), Op::Malloc);
   cmd.malloc_ = Cmd::Malloc::Make(r);
   return cmd.result;
@@ -410,7 +410,7 @@ void SetStructFieldName(type::Struct *struct_type,
       Cmd::SetStructFieldName::Make(struct_type, field_name);
 }
 
-Register Alloca(const type::Type *t) {
+TypedRegister<Addr> Alloca(const type::Type *t) {
   ASSERT(t, Not(Is<type::Tuple>()));
 
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
@@ -466,7 +466,8 @@ void SetRet(size_t n, Val const &v) {
   UNREACHABLE(v.type->to_string());
 }
 
-Register PtrIncr(Register ptr, RegisterOr<i32> inc, type::Type const *t) {
+TypedRegister<Addr> PtrIncr(Register ptr, RegisterOr<i32> inc,
+                            type::Type const *t) {
   // TODO type must be a pointer.
   if (!inc.is_reg_ && inc.val_ == 0) { return ptr; }
   auto &cmd     = MakeCmd(t, Op::PtrIncr);
@@ -514,8 +515,8 @@ Register Load(Register r, type::Type const *t) {
   UNREACHABLE(t);
 }
 
-Register Index(type::Type const *t, Register array_ptr,
-               RegisterOr<i32> offset) {
+TypedRegister<Addr> Index(type::Type const *t, Register array_ptr,
+                          RegisterOr<i32> offset) {
   auto *array_type = &t->as<type::Pointer>().pointee->as<type::Array>();
   // TODO this works but generates worse ir (both here and in llvm). It's worth
   // figuring out how to do this better.
