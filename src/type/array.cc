@@ -35,12 +35,12 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
 
       auto lhs_len = [&]() -> ir::RegisterOr<i32> {
         if (lhs_type->fixed_length) { return static_cast<i32>(lhs_type->len); }
-        return ir::LoadInt(ir::ArrayLength(fn->Argument(0)));
+        return ir::Load<i32>(ir::ArrayLength(fn->Argument(0)));
       }();
 
       auto rhs_len = [&]() -> ir::RegisterOr<i32> {
         if (rhs_type->fixed_length) { return static_cast<i32>(rhs_type->len); }
-        return ir::LoadInt(ir::ArrayLength(fn->Argument(1)));
+        return ir::Load<i32>(ir::ArrayLength(fn->Argument(1)));
       }();
 
       auto equal_len_block = ir::Func::Current->AddBlock();
@@ -53,11 +53,11 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
       ir::CondJump(ir::Eq(lhs_len, rhs_len), equal_len_block, false_block);
 
       ir::BasicBlock::Current = true_block;
-      ir::SetReturnBool(0, true);
+      ir::SetRet(0, true);
       ir::ReturnJump();
 
       ir::BasicBlock::Current = false_block;
-      ir::SetReturnBool(0, false);
+      ir::SetRet(0, false);
       ir::ReturnJump();
 
       ir::BasicBlock::Current = equal_len_block;
@@ -79,10 +79,8 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
 
       ir::BasicBlock::Current = body_block;
       // TODO what if data type is an array?
-      ir::CondJump(ir::Eq(ir::RegisterOr<ir::Addr>(
-                              ir::LoadAddr(lhs_phi_reg, lhs_type->data_type)),
-                          ir::RegisterOr<ir::Addr>(
-                              ir::LoadAddr(rhs_phi_reg, rhs_type->data_type))),
+      ir::CondJump(ir::Eq(ir::Load<ir::Addr>(lhs_phi_reg, lhs_type->data_type),
+                          ir::Load<ir::Addr>(rhs_phi_reg, rhs_type->data_type)),
                    incr_block, false_block);
 
       ir::BasicBlock::Current = incr_block;
@@ -141,25 +139,25 @@ void Array::EmitResize(ir::Val ptr_to_array, ir::Val new_size,
     CURRENT_FUNC(resize_func_) {
       ir::BasicBlock::Current = resize_func_->entry();
       auto arg                = resize_func_->Argument(0);
-      auto size_arg           = resize_func_->Argument(1);
+      auto size_arg = ir::TypedRegister<i32>(resize_func_->Argument(1));
 
       auto new_arr = ir::Malloc(
           data_type,
-          ir::MulInt(size_arg,
-                     Architecture::InterprettingMachine().bytes(data_type)));
+          ir::Mul(size_arg,
+                  static_cast<i32>(
+                      Architecture::InterprettingMachine().bytes(data_type))));
 
       auto *ptr_data_type   = type::Ptr(data_type);
       ir::Register from_ptr = ir::Index(type::Ptr(this), arg, 0);
       ir::RegisterOr<i32> min_val =
-          ComputeMin(ir::LoadInt(ir::ArrayLength(arg)), size_arg);
+          ComputeMin(ir::Load<i32>(ir::ArrayLength(arg)), size_arg);
       ir::Register end_ptr = ir::PtrIncr(from_ptr, min_val, ptr_data_type);
 
       using tup2 =
           std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
       auto finish_phis = ir::CreateLoop(
           [&](tup2 const &phis) {
-            return ir::Eq(ir::RegisterOr<ir::Addr>(std::get<0>(phis)),
-                          ir::RegisterOr<ir::Addr>(end_ptr));
+            return ir::Eq(std::get<0>(phis), ir::RegisterOr<ir::Addr>(end_ptr));
           },
           [&](tup2 const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
@@ -180,7 +178,7 @@ void Array::EmitResize(ir::Val ptr_to_array, ir::Val new_size,
       if (data_type->needs_destroy()) {
         auto end_old_buf =
             ir::PtrIncr(ir::ArrayData(arg, type::Ptr(this)),
-                        ir::LoadInt(ir::ArrayLength(arg)), type::Ptr(this));
+                        ir::Load<i32>(ir::ArrayLength(arg)), type::Ptr(this));
 
         using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
         ir::CreateLoop(
@@ -213,7 +211,7 @@ void Array::EmitResize(ir::Val ptr_to_array, ir::Val new_size,
 
       auto old_buf = ir::ArrayData(arg, type::Ptr(this));
       ir::Store(ir::RegisterOr<ir::Addr>(size_arg), ir::ArrayLength(arg));
-      ir::Free(ir::LoadAddr(old_buf, data_type));
+      ir::Free(ir::Load<ir::Addr>(old_buf, data_type));
       ir::Store(ir::RegisterOr<ir::Addr>(new_arr), old_buf);
       ir::ReturnJump();
     }

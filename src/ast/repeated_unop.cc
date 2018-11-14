@@ -98,7 +98,7 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
           &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
       for (size_t i = 0; i < args_.exprs.size(); ++i) {
         // TODO return type maybe not the same as type actually returned?
-        ir::SetReturn(i, arg_vals[i]);
+        ir::SetRet(i, arg_vals[i]);
       }
       ir::ReturnJump();
       return {};

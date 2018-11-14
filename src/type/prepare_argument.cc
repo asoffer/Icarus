@@ -74,8 +74,8 @@ ir::Val Variant::PrepareArgument(const Type *from, const ir::Val &val,
     from->EmitAssign(from, val, ir::VariantValue(from, alloc_reg), ctx);
   } else {
     auto *from_v = &from->as<Variant>();
-    ir::Register runtime_type =
-        ir::LoadType(ir::VariantType(std::get<ir::Register>(val.value)));
+    ir::Register runtime_type = ir::Load<type::Type const *>(
+        ir::VariantType(std::get<ir::Register>(val.value)));
 
     // Because variants_ is sorted, we can find the intersection quickly:
     base::vector<const Type *> intersection;

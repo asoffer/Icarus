@@ -97,7 +97,7 @@ PropertyMap PropertyMap::AssumingReturnsTrue() const {
   std::unordered_set<Entry> stale_up;
   for (auto const &block : fn_->blocks_) {
     for (auto const &cmd : block.cmds_) {
-      if (cmd.op_code_ != ir::Op::SetReturnBool) { continue; }
+      if (cmd.op_code_ != ir::Op::SetRetBool) { continue; }
 
       result.lookup(&block, cmd.result)
           .add(base::make_owned<prop::BoolProp>(true));
@@ -199,13 +199,13 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
         NOT_YET();
       }
 
-    case ir::Op::SetReturnBool:
-      if (cmd.set_return_bool_.val_.is_reg_) {
-        prop_set.add(block_view.at(cmd.set_return_bool_.val_.reg_));
+    case ir::Op::SetRetBool:
+      if (cmd.set_ret_bool_.val_.is_reg_) {
+        prop_set.add(block_view.at(cmd.set_ret_bool_.val_.reg_));
         // TODO Do I need to mark stale upwards?
       } else {
         prop_set.add(
-            base::make_owned<BoolProp>(cmd.set_return_bool_.val_.val_));
+            base::make_owned<BoolProp>(cmd.set_ret_bool_.val_.val_));
       }
       return false;
     default: NOT_YET(cmd.op_code_);
@@ -233,19 +233,19 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
     }                                                                          \
   }                                                                            \
   break
-    case ir::Op::SetReturnBool: DEFINE_CASE(set_return_bool_);
-    case ir::Op::SetReturnChar: DEFINE_CASE(set_return_char_);
-    case ir::Op::SetReturnInt: DEFINE_CASE(set_return_int_);
-    case ir::Op::SetReturnReal: DEFINE_CASE(set_return_real_);
-    case ir::Op::SetReturnType: DEFINE_CASE(set_return_type_);
-    case ir::Op::SetReturnEnum: DEFINE_CASE(set_return_enum_);
-    case ir::Op::SetReturnCharBuf: DEFINE_CASE(set_return_char_buf_);
-    case ir::Op::SetReturnFlags: DEFINE_CASE(set_return_flags_);
-    case ir::Op::SetReturnAddr: DEFINE_CASE(set_return_addr_);
-    case ir::Op::SetReturnFunc: DEFINE_CASE(set_return_func_);
-    case ir::Op::SetReturnScope: DEFINE_CASE(set_return_scope_);
-    case ir::Op::SetReturnModule: DEFINE_CASE(set_return_module_);
-    case ir::Op::SetReturnBlock: DEFINE_CASE(set_return_block_);
+    case ir::Op::SetRetBool: DEFINE_CASE(set_ret_bool_);
+    case ir::Op::SetRetChar: DEFINE_CASE(set_ret_char_);
+    case ir::Op::SetRetInt: DEFINE_CASE(set_ret_int_);
+    case ir::Op::SetRetReal: DEFINE_CASE(set_ret_real_);
+    case ir::Op::SetRetType: DEFINE_CASE(set_ret_type_);
+    case ir::Op::SetRetEnum: DEFINE_CASE(set_ret_enum_);
+    case ir::Op::SetRetCharBuf: DEFINE_CASE(set_ret_char_buf_);
+    case ir::Op::SetRetFlags: DEFINE_CASE(set_ret_flags_);
+    case ir::Op::SetRetAddr: DEFINE_CASE(set_ret_addr_);
+    case ir::Op::SetRetFunc: DEFINE_CASE(set_ret_func_);
+    case ir::Op::SetRetScope: DEFINE_CASE(set_ret_scope_);
+    case ir::Op::SetRetModule: DEFINE_CASE(set_ret_module_);
+    case ir::Op::SetRetBlock: DEFINE_CASE(set_ret_block_);
 #undef DEFINE_CASE
     case ir::Op::Not: {
       // Not works in both directions. Huzzah!
@@ -331,7 +331,7 @@ BoolProp PropertyMap::Returns() const {
     i32 num_cmds      = static_cast<i32>(block.cmds_.size());
     for (i32 j = 0; j < num_cmds; ++j) {
       const auto &cmd = block.cmds_[j];
-      if (cmd.op_code_ == ir::Op::SetReturnBool) {
+      if (cmd.op_code_ == ir::Op::SetRetBool) {
         rets.push_back(ir::CmdIndex{ir::BlockIndex{i}, j});
         regs.push_back(cmd.result);
       }

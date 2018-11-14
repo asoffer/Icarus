@@ -34,7 +34,7 @@ void Array::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
         if (from_array_type->fixed_length) {
           return static_cast<i32>(from_array_type->len);
         }
-        return ir::LoadInt(ir::ArrayLength(val));
+        return ir::Load<i32>(ir::ArrayLength(val));
       }();
 
       auto *from_ptr_type   = type::Ptr(from_type->as<type::Array>().data_type);
@@ -128,8 +128,8 @@ void Variant::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
     // TODO find the best match for variant types. For instance, we allow
     // assignments like:
     // [3; int] | [4; bool] -> [--; int] | [--; bool]
-    auto actual_type =
-        ir::LoadType(ir::VariantType(std::get<ir::Register>(from.value)));
+    auto actual_type = ir::Load<type::Type const *>(
+        ir::VariantType(std::get<ir::Register>(from.value)));
     auto landing = ir::Func::Current->AddBlock();
     for (const Type *v : from_type->as<Variant>().variants_) {
       auto next_block = ir::Func::Current->AddBlock();

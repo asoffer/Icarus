@@ -9,7 +9,7 @@
 
 ir::RegisterOr<i32> Architecture::ComputeArrayLength(
     ir::RegisterOr<i32> len, const type::Type *t) const {
-  return ir::MulInt(len, static_cast<i32>(MoveForwardToAlignment(t, bytes(t))));
+  return ir::Mul(len, static_cast<i32>(MoveForwardToAlignment(t, bytes(t))));
 }
 
 size_t Architecture::alignment(const type::Type *t) const {

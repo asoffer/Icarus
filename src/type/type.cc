@@ -49,7 +49,7 @@ static ir::Func *ArrayInitializationWith(const Array *from_type,
         if (from_type->fixed_length) {
           return static_cast<i32>(from_type->len);
         }
-        return ir::LoadInt(ir::ArrayLength(from_arg));
+        return ir::Load<i32>(ir::ArrayLength(from_arg));
       }();
 
       if (!to_type->fixed_length) {
@@ -186,11 +186,11 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, ir::Val from_val,
       call_args.type_ = f->type_;
       ir::Call(ir::AnyFunc{f}, std::move(call_args));
     } else {
-      ir::Store(ir::RegisterOr<i32>(ir::LoadInt(
+      ir::Store(ir::RegisterOr<i32>(ir::Load<i32>(
                     ir::ArrayLength(std::get<ir::Register>(from_val.value)))),
                 ir::ArrayLength(to_var));
 
-      ir::Store(ir::RegisterOr<i32>(ir::LoadInt(ir::ArrayData(
+      ir::Store(ir::RegisterOr<i32>(ir::Load<i32>(ir::ArrayData(
                     std::get<ir::Register>(from_val.value), from_val.type))),
                 ir::ArrayData(to_var, type::Ptr(to_type)));
       // TODO if this move is to be destructive, this assignment to array

@@ -197,7 +197,6 @@ struct Cmd {
   CMD(DivInt) { std::array<RegisterOr<i32>, 2> args_; };
   CMD(DivReal) { std::array<RegisterOr<double>, 2> args_; };
   CMD(ModInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(ModReal) { std::array<RegisterOr<double>, 2> args_; };
 
   CMD(LtInt) { std::array<RegisterOr<i32>, 2> args_; };
   CMD(LtReal) { std::array<RegisterOr<double>, 2> args_; };
@@ -330,72 +329,72 @@ struct Cmd {
     ast::BlockLiteral *lit_;
   };
 
-  CMD(SetReturnBool) {
+  CMD(SetRetBool) {
     size_t ret_num_;
     RegisterOr<bool> val_;
   };
 
-  CMD(SetReturnChar) {
+  CMD(SetRetChar) {
     size_t ret_num_;
     RegisterOr<char> val_;
   };
 
-  CMD(SetReturnInt) {
+  CMD(SetRetInt) {
     size_t ret_num_;
     RegisterOr<i32> val_;
   };
 
-  CMD(SetReturnReal) {
+  CMD(SetRetReal) {
     size_t ret_num_;
     RegisterOr<double> val_;
   };
 
-  CMD(SetReturnType) {
+  CMD(SetRetType) {
     size_t ret_num_;
     RegisterOr<type::Type const *> val_;
   };
 
-  CMD(SetReturnEnum) {
+  CMD(SetRetEnum) {
     size_t ret_num_;
     RegisterOr<EnumVal> val_;
   };
 
-  CMD(SetReturnFlags) {
+  CMD(SetRetFlags) {
     size_t ret_num_;
     RegisterOr<FlagsVal> val_;
   };
 
-  CMD(SetReturnAddr) {
+  CMD(SetRetAddr) {
     size_t ret_num_;
     RegisterOr<ir::Addr> val_;
   };
 
-  CMD(SetReturnCharBuf) {
+  CMD(SetRetCharBuf) {
     size_t ret_num_;
     RegisterOr<std::string_view> val_;
   };
 
-  CMD(SetReturnFunc) {
+  CMD(SetRetFunc) {
     size_t ret_num_;
     RegisterOr<ir::AnyFunc> val_;
   };
 
-  CMD(SetReturnScope) {
+  CMD(SetRetScope) {
     size_t ret_num_;
     RegisterOr<ast::ScopeLiteral *> val_;
   };
 
-  CMD(SetReturnGeneric) {
+  CMD(SetRetGeneric) {
     size_t ret_num_;
     RegisterOr<ast::FunctionLiteral *> val_;
   };
 
-  CMD(SetReturnModule) {
+  CMD(SetRetModule) {
     size_t ret_num_;
     RegisterOr<Module const *> val_;
   };
 
-  CMD(SetReturnBlock) {
+  CMD(SetRetBlock) {
     size_t ret_num_;
     RegisterOr<BlockSequence> val_;
   };
@@ -409,6 +408,12 @@ struct Cmd {
   struct LeTag;
   struct GtTag;
   struct GeTag;
+  struct AddTag;
+  struct SubTag;
+  struct MulTag;
+  struct DivTag;
+  struct LoadTag;
+  struct SetRetTag;
   template <typename Tag, typename T>
   static constexpr Op OpCode() {
     return static_cast<Op>(
@@ -429,7 +434,9 @@ struct Cmd {
       if constexpr (std::is_same_v<T, EnumVal>) { return print_enum_; }
       if constexpr (std::is_same_v<T, FlagsVal>) { return print_flags_; }
       if constexpr (std::is_same_v<T, Addr>) { return print_addr_; }
-      if constexpr (std::is_same_v<T, std::string_view>) { return print_char_buffer_; }
+      if constexpr (std::is_same_v<T, std::string_view>) {
+        return print_char_buffer_;
+      }
     }
     if constexpr (std::is_same_v<Tag, StoreTag>) {
       if constexpr (std::is_same_v<T, bool>) { return store_bool_; }
@@ -484,6 +491,61 @@ struct Cmd {
       if constexpr (std::is_same_v<T, i32>) { return ge_int_; }
       if constexpr (std::is_same_v<T, double>) { return ge_real_; }
       if constexpr (std::is_same_v<T, FlagsVal>) { return ge_flags_; }
+    }
+    if constexpr (std::is_same_v<Tag, AddTag>) {
+      if constexpr (std::is_same_v<T, i32>) { return add_int_; }
+      if constexpr (std::is_same_v<T, double>) { return add_real_; }
+    }
+    if constexpr (std::is_same_v<Tag, SubTag>) {
+      if constexpr (std::is_same_v<T, i32>) { return sub_int_; }
+      if constexpr (std::is_same_v<T, double>) { return sub_real_; }
+    }
+    if constexpr (std::is_same_v<Tag, MulTag>) {
+      if constexpr (std::is_same_v<T, i32>) { return mul_int_; }
+      if constexpr (std::is_same_v<T, double>) { return mul_real_; }
+    }
+    if constexpr (std::is_same_v<Tag, DivTag>) {
+      if constexpr (std::is_same_v<T, i32>) { return div_int_; }
+      if constexpr (std::is_same_v<T, double>) { return div_real_; }
+    }
+    if constexpr (std::is_same_v<Tag, SetRetTag>) {
+      if constexpr (std::is_same_v<T, bool>) { return set_ret_bool_; }
+      if constexpr (std::is_same_v<T, char>) { return set_ret_char_; }
+      if constexpr (std::is_same_v<T, i32>) { return set_ret_int_; }
+      if constexpr (std::is_same_v<T, double>) { return set_ret_real_; }
+      if constexpr (std::is_same_v<T, type::Type const *>) {
+        return set_ret_type_;
+      }
+      if constexpr (std::is_same_v<T, EnumVal>) { return set_ret_enum_; }
+      if constexpr (std::is_same_v<T, FlagsVal>) { return set_ret_flags_; }
+      if constexpr (std::is_same_v<T, Addr>) { return set_ret_addr_; }
+      if constexpr (std::is_same_v<T, std::string_view>) {
+        return set_ret_char_buf_;
+      }
+      if constexpr (std::is_same_v<T, AnyFunc>) { return set_ret_func_; }
+      if constexpr (std::is_same_v<T, BlockSequence>) { return set_ret_block_; }
+      if constexpr (std::is_same_v<T, Module const *>) {
+        return set_ret_module_;
+      }
+      if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
+        return set_ret_generic_;
+      }
+      if constexpr (std::is_same_v<T, ast::ScopeLiteral *>) {
+        return set_ret_scope_;
+      }
+    }
+    if constexpr (std::is_same_v<Tag, LoadTag>) {
+      if constexpr (std::is_same_v<T, bool>) { return load_bool_; }
+      if constexpr (std::is_same_v<T, char>) { return load_char_; }
+      if constexpr (std::is_same_v<T, i32>) { return load_int_; }
+      if constexpr (std::is_same_v<T, double>) { return load_real_; }
+      if constexpr (std::is_same_v<T, type::Type const *>) {
+        return load_type_;
+      }
+      if constexpr (std::is_same_v<T, EnumVal>) { return load_enum_; }
+      if constexpr (std::is_same_v<T, FlagsVal>) { return load_flags_; }
+      if constexpr (std::is_same_v<T, Addr>) { return load_addr_; }
+      if constexpr (std::is_same_v<T, AnyFunc>) { return load_func_; }
     }
   }
 
@@ -546,7 +608,6 @@ struct Cmd {
     DivInt div_int_;
     DivReal div_real_;
     ModInt mod_int_;
-    ModReal mod_real_;
 
     LtInt lt_int_;
     LtReal lt_real_;
@@ -629,20 +690,20 @@ struct Cmd {
 
     BlockSeqContains block_seq_contains_;
 
-    SetReturnBool set_return_bool_;
-    SetReturnChar set_return_char_;
-    SetReturnInt set_return_int_;
-    SetReturnReal set_return_real_;
-    SetReturnType set_return_type_;
-    SetReturnEnum set_return_enum_;
-    SetReturnFlags set_return_flags_;
-    SetReturnCharBuf set_return_char_buf_;
-    SetReturnAddr set_return_addr_;
-    SetReturnFunc set_return_func_;
-    SetReturnScope set_return_scope_;
-    SetReturnGeneric set_return_generic_;
-    SetReturnModule set_return_module_;
-    SetReturnBlock set_return_block_;
+    SetRetBool set_ret_bool_;
+    SetRetChar set_ret_char_;
+    SetRetInt set_ret_int_;
+    SetRetReal set_ret_real_;
+    SetRetType set_ret_type_;
+    SetRetEnum set_ret_enum_;
+    SetRetFlags set_ret_flags_;
+    SetRetCharBuf set_ret_char_buf_;
+    SetRetAddr set_ret_addr_;
+    SetRetFunc set_ret_func_;
+    SetRetScope set_ret_scope_;
+    SetRetGeneric set_ret_generic_;
+    SetRetModule set_ret_module_;
+    SetRetBlock set_ret_block_;
   };
 
   Register result;
@@ -650,32 +711,14 @@ struct Cmd {
 
 RegisterOr<char> Trunc(RegisterOr<i32> r);
 RegisterOr<i32> Extend(RegisterOr<char> r);
-Register Bytes(RegisterOr<type::Type const *> r);
-Register Align(RegisterOr<type::Type const *> r);
+RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r);
+RegisterOr<i32> Align(RegisterOr<type::Type const *> r);
 RegisterOr<bool> Not(RegisterOr<bool> r);
 RegisterOr<i32> NegInt(RegisterOr<i32> r);
 RegisterOr<double> NegReal(RegisterOr<double> r);
 Register ArrayLength(Register r);
 Register ArrayData(Register r, type::Type const *t);
-Register LoadBool(Register r);
-Register LoadChar(Register r);
-Register LoadInt(Register r);
-Register LoadReal(Register r);
-Register LoadType(Register r);
-Register LoadEnum(Register r, type::Type const *t);
-Register LoadFlags(Register r, type::Type const *t);
-Register LoadAddr(Register r, type::Type const *t);
-Register LoadFunc(Register r, type::Type const *t);
-RegisterOr<i32> AddInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<double> AddReal(RegisterOr<double> v1, RegisterOr<double> v2);
-RegisterOr<i32> SubInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<double> SubReal(RegisterOr<double> v1, RegisterOr<double> v2);
-RegisterOr<i32> MulInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<double> MulReal(RegisterOr<double> v1, RegisterOr<double> v2);
-RegisterOr<i32> DivInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<double> DivReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<i32> ModInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
-RegisterOr<double> ModReal(RegisterOr<double> v1, RegisterOr<double> v2);
 RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2);
 RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &lhs,
@@ -689,6 +732,14 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
 
 void DebugIr();
 
+template <typename T, typename... Args>
+TypedRegister<T> Load(Register r, type::Type const *t = type::Get<T>()) {
+  auto &cmd = MakeCmd(t, Cmd::OpCode<Cmd::LoadTag, T>());
+  cmd.template set<Cmd::LoadTag, T>(r);
+  return cmd.result;
+}
+Register Load(Register r, type::Type const *t);
+
 Register Malloc(const type::Type *t, RegisterOr<i32> r);
 void Free(Register r);
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
@@ -701,7 +752,8 @@ RegisterOr<type::Type const *> Array(RegisterOr<i32> len,
 Register VariantType(Register r);
 Register VariantValue(const type::Type *t, Register r);
 // Type repreesents the type of `ptr`
-Register PtrIncr(Register ptr, RegisterOr<i32> inc, type::Type const *t);
+TypedRegister<Addr> PtrIncr(Register ptr, RegisterOr<i32> inc,
+                            type::Type const *t);
 Register Field(Register r, type::Struct const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);
@@ -709,32 +761,57 @@ Cmd &MakeCmd(type::Type const *t, Op op);
 namespace internal {
 template <typename Tag, template <typename> typename F, typename Lhs,
           typename Rhs>
-RegisterOr<bool> HandleBinop(Lhs lhs, Rhs rhs) {
+auto HandleBinop(Lhs lhs, Rhs rhs) {
   if constexpr (!IsRegOr<Lhs>::value) {
-    return HandleBinop<Tag, F>(RegisterOr<Lhs>(lhs), rhs);
+    // Can't use std::conditional_t because it evaluates both sides and so
+    // calling ::type is no good. You get a cryptic error message "'foo' is not
+    // a class, struct, or union type."
+    if constexpr (IsTypedReg<Lhs>::value) {
+      return HandleBinop<Tag, F>(RegisterOr<typename Lhs::type>(lhs), rhs);
+    } else {
+      return HandleBinop<Tag, F>(RegisterOr<Lhs>(lhs), rhs);
+    }
   } else if constexpr (!IsRegOr<Rhs>::value) {
-    return HandleBinop<Tag, F>(lhs, RegisterOr<Rhs>(rhs));
+    return HandleBinop<Tag, F>(lhs, RegisterOr<typename Lhs::type>(rhs));
   } else {
     static_assert(std::is_same_v<Lhs, Rhs>);
-
-    if (!lhs.is_reg_ && !rhs.is_reg_) {
-      return F<typename Lhs::type>{}(lhs.val_, rhs.val_);
-    }
-    auto &cmd = MakeCmd(type::Bool, Cmd::OpCode<Tag, typename Lhs::type>());
-    if constexpr (std::is_same_v<typename Lhs::type, bool>) {
-      cmd.template set<Tag, typename Lhs::type>(lhs.reg_, rhs.reg_);
-    } else {
-      cmd.template set<Tag, typename Lhs::type>(lhs, rhs);
-    }
-    /* TODO reenable
-    auto &refs = Func::Current->references_;
-    if (lhs.is_reg_) { refs[lhs.reg_].insert(cmd.result); }
-    if (rhs.is_reg_) { refs[rhs.reg_].insert(cmd.result); }
-    */
-    return cmd.result;
+    using ret_type =
+        ir::RegisterOr<decltype(F<typename Lhs::type>{}(lhs.val_, rhs.val_))>;
+    return [&]() -> ret_type {
+      if (!lhs.is_reg_ && !rhs.is_reg_) {
+        return F<typename Lhs::type>{}(lhs.val_, rhs.val_);
+      }
+      auto &cmd = MakeCmd(type::Bool, Cmd::OpCode<Tag, typename Lhs::type>());
+      if constexpr (std::is_same_v<typename Lhs::type, bool>) {
+        cmd.template set<Tag, typename Lhs::type>(lhs.reg_, rhs.reg_);
+      } else {
+        cmd.template set<Tag, typename Lhs::type>(lhs, rhs);
+      }
+      /* TODO reenable
+      auto &refs = Func::Current->references_;
+      if (lhs.is_reg_) { refs[lhs.reg_].insert(cmd.result); }
+      if (rhs.is_reg_) { refs[rhs.reg_].insert(cmd.result); }
+      */
+      return cmd.result;
+    }();
   }
 }
+
 }  // namespace internal
+
+template <typename T>
+void SetRet(size_t n, T t) {
+  if constexpr (!IsRegOr<T>::value) {
+    return SetRet(n, RegisterOr<T>(t));
+  } else {
+    auto &cmd =
+        MakeCmd(nullptr, Cmd::OpCode<Cmd::SetRetTag, typename T::type>());
+    cmd.template set<Cmd::SetRetTag, typename T::type>(n, t);
+    // TODO reenable if (r.is_reg_) {
+    // Func::Current->references_[r.reg_].insert(cmd.result); }
+  }
+}
+void SetRet(size_t n, Val const &v2);
 
 template <typename Lhs, typename Rhs>
 RegisterOr<bool> Lt(Lhs lhs, Rhs rhs) {
@@ -755,13 +832,35 @@ template <typename Lhs, typename Rhs>
 RegisterOr<bool> Ge(Lhs lhs, Rhs rhs) {
   return internal::HandleBinop<Cmd::GeTag, std::greater>(lhs, rhs);
 }
+
 template <typename Lhs, typename Rhs>
 RegisterOr<bool> Eq(Lhs lhs, Rhs rhs) {
   return internal::HandleBinop<Cmd::EqTag, std::equal_to>(lhs, rhs);
 }
+
 template <typename Lhs, typename Rhs>
 RegisterOr<bool> Ne(Lhs lhs, Rhs rhs) {
   return internal::HandleBinop<Cmd::NeTag, std::not_equal_to>(lhs, rhs);
+}
+
+template <typename Lhs, typename Rhs>
+auto Add(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::AddTag, std::plus>(lhs, rhs);
+}
+
+template <typename Lhs, typename Rhs>
+auto Sub(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::SubTag, std::minus>(lhs, rhs);
+}
+
+template <typename Lhs, typename Rhs>
+auto Mul(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::MulTag, std::multiplies>(lhs, rhs);
+}
+
+template <typename Lhs, typename Rhs>
+auto Div(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::DivTag, std::divides>(lhs, rhs);
 }
 
 template <typename T, typename... Args>
@@ -805,31 +904,12 @@ void BlockSeqJump(RegisterOr<BlockSequence> r,
 
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                                   ast::BlockLiteral *lit);
-void SetReturnBool(size_t n, RegisterOr<bool> r);
-void SetReturnChar(size_t n, RegisterOr<char> r);
-void SetReturnInt(size_t n, RegisterOr<i32> r);
-void SetReturnReal(size_t n, RegisterOr<double> r);
-void SetReturnType(size_t n, RegisterOr<type::Type const *> r);
-void SetReturnEnum(size_t n, RegisterOr<EnumVal> r);
-void SetReturnFlags(size_t n, RegisterOr<FlagsVal> r);
-void SetReturnCharBuf(size_t n, RegisterOr<std::string_view> r);
-void SetReturnAddr(size_t n, RegisterOr<Addr> r);
-void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r);
-void SetReturnScope(size_t n, RegisterOr<ast::ScopeLiteral *> r);
-void SetReturnGeneric(size_t n, RegisterOr<ast::FunctionLiteral *> r);
-void SetReturnModule(size_t n, RegisterOr<Module const *> r);
-void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r);
-
-
-Register Load(Register r, type::Type const *t);
 
 RegisterOr<double> CastIntToReal(RegisterOr<i32> r);
 Register CastPtr(Register r, type::Pointer const *t);
 
 Register Index(type::Type const *t, Register array_ptr, RegisterOr<i32> offset);
 Register Alloca(const type::Type *t);
-
-void SetReturn(size_t n, Val const &v2);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
 }  // namespace ir

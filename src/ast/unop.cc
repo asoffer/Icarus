@@ -177,9 +177,10 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
     case Language::Operator::TypeOf:
       return {ir::Val(ctx->type_of(operand.get()))};
     case Language::Operator::Which:
-      return {ir::Val::Reg(ir::LoadType(ir::VariantType(std::get<ir::Register>(
-                               operand->EmitIR(ctx)[0].value))),
-                           type::Type_)};
+      return {ir::Val::Reg(
+          ir::Load<type::Type const *>(ir::VariantType(
+              std::get<ir::Register>(operand->EmitIR(ctx)[0].value))),
+          type::Type_)};
     case Language::Operator::And:
       return {ir::Val::Reg(operand->EmitLVal(ctx)[0],
                            type::Ptr(ctx->type_of(this)))};

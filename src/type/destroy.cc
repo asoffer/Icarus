@@ -25,7 +25,7 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
                                    if (fixed_length) {
                                      return static_cast<i32>(len);
                                    } else {
-                                     return ir::LoadInt(ir::ArrayLength(arg));
+                                     return ir::Load<i32>(ir::ArrayLength(arg));
                                    }
                                  }(),
                                  type::Ptr(data_type));
@@ -47,7 +47,7 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
     }
 
     if (!fixed_length) {
-      ir::Free(ir::LoadAddr(ir::ArrayData(arg, type::Ptr(this)), data_type));
+      ir::Free(ir::Load<ir::Addr>(ir::ArrayData(arg, type::Ptr(this)), data_type));
     }
     ir::ReturnJump();
   }

@@ -29,9 +29,9 @@ static std::unique_ptr<ir::Func> ExprFn(
 
     ASSERT(ctx != nullptr);
     auto vals = typed_expr.get()->EmitIR(ctx);
-    // TODO wrap this up into SetReturn(vector)
+    // TODO wrap this up into SetRet(vector)
     for (size_t i = 0; i < vals.size(); ++i) {
-      ir::SetReturn(i, std::move(vals[i]));
+      ir::SetRet(i, std::move(vals[i]));
     }
     ir::ReturnJump();
 

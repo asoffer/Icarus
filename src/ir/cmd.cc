@@ -85,13 +85,13 @@ RegisterOr<i32> Extend(RegisterOr<char> r) {
   return cmd.result;
 }
 
-Register Bytes(RegisterOr<type::Type const *> r) {
+RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r) {
   auto &cmd  = MakeCmd(type::Int, Op::Bytes);
   cmd.bytes_ = Cmd::Bytes::Make(r);
   return cmd.result;
 }
 
-Register Align(RegisterOr<type::Type const *> r) {
+RegisterOr<i32> Align(RegisterOr<type::Type const *> r) {
   auto &cmd  = MakeCmd(type::Int, Op::Align);
   cmd.align_ = Cmd::Align::Make(r);
   return cmd.result;
@@ -156,33 +156,6 @@ RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r) {
   return cmd.result;
 }
 
-#define DEFINE_CMD1(Name, name, t)                                             \
-  Register Name(Register r) {                                                  \
-    auto &cmd = MakeCmd(t, Op::Name);                                          \
-    cmd.name  = Cmd::Name::Make(r);                                            \
-    return cmd.result;                                                         \
-  }                                                                            \
-  struct AllowSemicolon
-DEFINE_CMD1(LoadBool, load_bool_, type::Bool);
-DEFINE_CMD1(LoadChar, load_char_, type::Char);
-DEFINE_CMD1(LoadInt, load_int_, type::Int);
-DEFINE_CMD1(LoadReal, load_real_, type::Real);
-DEFINE_CMD1(LoadType, load_type_, type::Type_);
-#undef DEFINE_CMD1
-
-#define DEFINE_CMD1(Name, name)                                                \
-  Register Name(Register r, type::Type const *t) {                             \
-    auto &cmd = MakeCmd(t, Op::Name);                                          \
-    cmd.name  = Cmd::Name::Make(r);                                            \
-    return cmd.result;                                                         \
-  }                                                                            \
-  struct AllowSemicolon
-DEFINE_CMD1(LoadEnum, load_enum_);
-DEFINE_CMD1(LoadFlags, load_flags_);
-DEFINE_CMD1(LoadAddr, load_addr_);
-DEFINE_CMD1(LoadFunc, load_func_);
-#undef DEFINE_CMD1
-
 #define DEFINE_CMD2(Name, name, arg_type, RetType, ret_type, fn)               \
   RegisterOr<ret_type> Name(RegisterOr<arg_type> v1,                           \
                             RegisterOr<arg_type> v2) {                         \
@@ -195,17 +168,7 @@ DEFINE_CMD1(LoadFunc, load_func_);
     return cmd.result;                                                         \
   }                                                                            \
   struct AllowSemicolon
-DEFINE_CMD2(AddInt, add_int_, i32, Int, i32, std::plus<i32>{});
-DEFINE_CMD2(AddReal, add_real_, double, Real, double, std::plus<double>{});
-DEFINE_CMD2(SubInt, sub_int_, i32, Int, i32, std::minus<i32>{});
-DEFINE_CMD2(SubReal, sub_real_, double, Real, double, std::minus<double>{});
-DEFINE_CMD2(MulInt, mul_int_, i32, Int, i32, std::multiplies<i32>{});
-DEFINE_CMD2(MulReal, mul_real_, double, Real, double,
-            std::multiplies<double>{});
-DEFINE_CMD2(DivInt, div_int_, i32, Int, i32, std::divides<i32>{});
-DEFINE_CMD2(DivReal, div_real_, double, Real, double, std::divides<double>{});
 DEFINE_CMD2(ModInt, mod_int_, i32, Int, i32, std::modulus<i32>{});
-DEFINE_CMD2(ModReal, mod_real_, double, Real, double, std::fmod);
 DEFINE_CMD2(Arrow, arrow_, type::Type const *, Type_, type::Type const *,
             [](type::Type const *lhs, type::Type const *rhs) {
               base::vector<type::Type const *> ins =
@@ -458,58 +421,51 @@ Register Alloca(const type::Type *t) {
   return cmd.result;
 }
 
-void SetReturn(size_t n, Val const &v2) {
-  ASSERT(v2.type != nullptr);
-  if (v2.type == type::Bool) { return SetReturnBool(n, v2.reg_or<bool>()); }
-  if (v2.type == type::Char) { return SetReturnChar(n, v2.reg_or<char>()); }
-  if (v2.type == type::Int) { return SetReturnInt(n, v2.reg_or<i32>()); }
-  if (v2.type == type::Real) { return SetReturnReal(n, v2.reg_or<double>()); }
-  if (v2.type == type::Type_) {
-    return SetReturnType(n, v2.reg_or<type::Type const *>());
+void SetRet(size_t n, Val const &v) {
+  ASSERT(v.type != nullptr);
+  if (v.type == type::Bool) { return SetRet(n, v.reg_or<bool>()); }
+  if (v.type == type::Char) { return SetRet(n, v.reg_or<char>()); }
+  if (v.type == type::Int) { return SetRet(n, v.reg_or<i32>()); }
+  if (v.type == type::Real) { return SetRet(n, v.reg_or<double>()); }
+  if (v.type == type::Type_) {
+    return SetRet(n, v.reg_or<type::Type const *>());
   }
-  if (v2.type->is<type::Enum>()) {
-    return SetReturnEnum(n, v2.reg_or<EnumVal>());
+  if (v.type->is<type::Enum>()) { return SetRet(n, v.reg_or<EnumVal>()); }
+  if (v.type->is<type::Flags>()) { return SetRet(n, v.reg_or<FlagsVal>()); }
+  if (v.type->is<type::CharBuffer>()) {
+    return SetRet(n, v.reg_or<std::string_view>());
   }
-  if (v2.type->is<type::Flags>()) {
-    return SetReturnFlags(n, v2.reg_or<FlagsVal>());
-  }
-  if (v2.type->is<type::CharBuffer>()) {
-    return SetReturnCharBuf(n, v2.reg_or<std::string_view>());
-  }
-  if (v2.type->is<type::Pointer>()) {
-    return SetReturnAddr(n, v2.reg_or<ir::Addr>());
-  }
-  if (v2.type->is<type::Function>()) {
+  if (v.type->is<type::Pointer>()) { return SetRet(n, v.reg_or<ir::Addr>()); }
+  if (v.type->is<type::Function>()) {
     return std::visit(
         [&](auto &val) {
           using val_t = std::decay_t<decltype(val)>;
           if constexpr (std::is_same_v<val_t, ir::Func *> ||
                         std::is_same_v<val_t, ir::ForeignFn>) {
-            return SetReturnFunc(n, ir::AnyFunc{val});
+            return SetRet(n, ir::AnyFunc{val});
           } else if constexpr (std::is_same_v<val_t, ir::Register>) {
-            return SetReturnFunc(n, val);
+            return SetRet(n, RegisterOr<AnyFunc>(val));
           } else {
             UNREACHABLE(val);
           }
         },
-        v2.value);
+        v.value);
   }
-  if (v2.type == type::Generic) {
-    return SetReturnGeneric(n, v2.reg_or<ast::FunctionLiteral *>());
+  if (v.type == type::Generic) {
+    return SetRet(n, v.reg_or<ast::FunctionLiteral *>());
   }
 
-  if (v2.type == type::Scope) {
-    return SetReturnScope(n, v2.reg_or<ast::ScopeLiteral *>());
+  if (v.type == type::Scope) {
+    return SetRet(n, v.reg_or<ast::ScopeLiteral *>());
   }
-  if (v2.type == type::Module) {
-    return SetReturnModule(n, v2.reg_or<Module const *>());
+  if (v.type == type::Module) { return SetRet(n, v.reg_or<Module const *>()); }
+  if (v.type == type::Block || v.type == type::OptBlock ||
+      v.type == type::RepBlock) {
+    return SetRet(n, v.reg_or<BlockSequence>());
   }
-  if (v2.type == type::Block || v2.type == type::OptBlock ||
-      v2.type == type::RepBlock) {
-    return SetReturnBlock(n, v2.reg_or<BlockSequence>());
-  }
-  UNREACHABLE(v2.type->to_string());
+  UNREACHABLE(v.type->to_string());
 }
+
 Register PtrIncr(Register ptr, RegisterOr<i32> inc, type::Type const *t) {
   // TODO type must be a pointer.
   if (!inc.is_reg_ && inc.val_ == 0) { return ptr; }
@@ -545,87 +501,16 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
   return cmd.result;
 }
 
-void SetReturnBool(size_t n, RegisterOr<bool> r) {
-  auto &cmd            = MakeCmd(nullptr, Op::SetReturnBool);
-  cmd.set_return_bool_ = Cmd::SetReturnBool::Make(n, r);
-  if (r.is_reg_) { Func::Current->references_[r.reg_].insert(cmd.result); }
-}
-
-void SetReturnChar(size_t n, RegisterOr<char> r) {
-  auto &cmd            = MakeCmd(nullptr, Op::SetReturnChar);
-  cmd.set_return_char_ = Cmd::SetReturnChar::Make(n, r);
-}
-
-void SetReturnInt(size_t n, RegisterOr<i32> r) {
-  auto &cmd           = MakeCmd(nullptr, Op::SetReturnInt);
-  cmd.set_return_int_ = Cmd::SetReturnInt::Make(n, r);
-}
-
-void SetReturnCharBuf(size_t n, RegisterOr<std::string_view> r) {
-  auto &cmd                = MakeCmd(nullptr, Op::SetReturnCharBuf);
-  cmd.set_return_char_buf_ = Cmd::SetReturnCharBuf::Make(n, r);
-}
-
-void SetReturnReal(size_t n, RegisterOr<double> r) {
-  auto &cmd            = MakeCmd(nullptr, Op::SetReturnReal);
-  cmd.set_return_real_ = Cmd::SetReturnReal::Make(n, r);
-}
-
-void SetReturnType(size_t n, RegisterOr<type::Type const *> r) {
-  auto &cmd            = MakeCmd(nullptr, Op::SetReturnType);
-  cmd.set_return_type_ = Cmd::SetReturnType::Make(n, r);
-}
-
-void SetReturnEnum(size_t n, RegisterOr<EnumVal> r) {
-  auto &cmd            = MakeCmd(nullptr, Op::SetReturnEnum);
-  cmd.set_return_enum_ = Cmd::SetReturnEnum::Make(n, r);
-}
-
-void SetReturnFlags(size_t n, RegisterOr<FlagsVal> r) {
-  auto &cmd             = MakeCmd(nullptr, Op::SetReturnFlags);
-  cmd.set_return_flags_ = Cmd::SetReturnFlags::Make(n, r);
-}
-
-void SetReturnAddr(size_t n, RegisterOr<Addr> r) {
-  auto &cmd            = MakeCmd(nullptr, Op::SetReturnAddr);
-  cmd.set_return_addr_ = Cmd::SetReturnAddr::Make(n, r);
-}
-
-void SetReturnFunc(size_t n, RegisterOr<AnyFunc> const &r) {
-  auto &cmd            = MakeCmd(nullptr, Op::SetReturnFunc);
-  cmd.set_return_func_ = Cmd::SetReturnFunc::Make(n, r);
-}
-
-void SetReturnGeneric(size_t n, RegisterOr<ast::FunctionLiteral *> r) {
-  auto &cmd               = MakeCmd(nullptr, Op::SetReturnGeneric);
-  cmd.set_return_generic_ = Cmd::SetReturnGeneric::Make(n, r);
-}
-
-void SetReturnScope(size_t n, RegisterOr<ast::ScopeLiteral *> r) {
-  auto &cmd             = MakeCmd(nullptr, Op::SetReturnScope);
-  cmd.set_return_scope_ = Cmd::SetReturnScope::Make(n, r);
-}
-
-void SetReturnModule(size_t n, RegisterOr<Module const *> r) {
-  auto &cmd              = MakeCmd(nullptr, Op::SetReturnModule);
-  cmd.set_return_module_ = Cmd::SetReturnModule::Make(n, r);
-}
-
-void SetReturnBlock(size_t n, RegisterOr<BlockSequence> r) {
-  auto &cmd             = MakeCmd(nullptr, Op::SetReturnBlock);
-  cmd.set_return_block_ = Cmd::SetReturnBlock::Make(n, r);
-}
-
 Register Load(Register r, type::Type const *t) {
-  if (t == type::Bool) { return LoadBool(r); }
-  if (t == type::Char) { return LoadChar(r); }
-  if (t == type::Int) { return LoadInt(r); }
-  if (t == type::Real) { return LoadReal(r); }
-  if (t == type::Type_) { return LoadType(r); }
-  if (t->is<type::Enum>()) { return LoadEnum(r, t); }
-  if (t->is<type::Flags>()) { return LoadFlags(r, t); }
-  if (t->is<type::Pointer>()) { return LoadAddr(r, t); }
-  if (t->is<type::Function>()) { return LoadFunc(r, t); }
+  if (t == type::Bool) { return Load<bool>(r); }
+  if (t == type::Char) { return Load<char>(r); }
+  if (t == type::Int) { return Load<i32>(r); }
+  if (t == type::Real) { return Load<double>(r); }
+  if (t == type::Type_) { return Load<type::Type const*>(r); }
+  if (t->is<type::Enum>()) { return Load<EnumVal>(r, t); }
+  if (t->is<type::Flags>()) { return Load<FlagsVal>(r, t); }
+  if (t->is<type::Pointer>()) { return Load<Addr>(r, t); }
+  if (t->is<type::Function>()) { return Load<AnyFunc>(r, t); }
   UNREACHABLE(t);
 }
 
@@ -771,7 +656,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::DivInt: return os << cmd.div_int_.args_;
     case Op::DivReal: return os << cmd.div_real_.args_;
     case Op::ModInt: return os << cmd.mod_int_.args_;
-    case Op::ModReal: return os << cmd.mod_real_.args_;
     case Op::LtInt: return os << cmd.lt_int_.args_;
     case Op::LtReal: return os << cmd.lt_real_.args_;
     case Op::LtFlags: return os << cmd.lt_flags_.args_;
@@ -894,20 +778,20 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
       return os << cmd.store_flags_.addr_ << " " << cmd.store_flags_.val_;
     case Op::StoreAddr:
       return os << cmd.store_addr_.addr_ << " " << cmd.store_addr_.val_;
-    case Op::SetReturnBool: return os << cmd.set_return_bool_.val_;
-    case Op::SetReturnChar: return os << cmd.set_return_char_.val_;
-    case Op::SetReturnInt: return os << cmd.set_return_int_.val_;
-    case Op::SetReturnReal: return os << cmd.set_return_real_.val_;
-    case Op::SetReturnType: return os << cmd.set_return_type_.val_;
-    case Op::SetReturnEnum: return os << cmd.set_return_enum_.val_;
-    case Op::SetReturnFlags: return os << cmd.set_return_flags_.val_;
-    case Op::SetReturnCharBuf: return os << cmd.set_return_char_buf_.val_;
-    case Op::SetReturnAddr: return os << cmd.set_return_addr_.val_;
-    case Op::SetReturnFunc: return os << cmd.set_return_func_.val_;
-    case Op::SetReturnScope: return os << cmd.set_return_scope_.val_;
-    case Op::SetReturnGeneric: return os << cmd.set_return_scope_.val_;
-    case Op::SetReturnModule: return os << cmd.set_return_module_.val_;
-    case Op::SetReturnBlock: return os << cmd.set_return_block_.val_;
+    case Op::SetRetBool: return os << cmd.set_ret_bool_.val_;
+    case Op::SetRetChar: return os << cmd.set_ret_char_.val_;
+    case Op::SetRetInt: return os << cmd.set_ret_int_.val_;
+    case Op::SetRetReal: return os << cmd.set_ret_real_.val_;
+    case Op::SetRetType: return os << cmd.set_ret_type_.val_;
+    case Op::SetRetEnum: return os << cmd.set_ret_enum_.val_;
+    case Op::SetRetFlags: return os << cmd.set_ret_flags_.val_;
+    case Op::SetRetCharBuf: return os << cmd.set_ret_char_buf_.val_;
+    case Op::SetRetAddr: return os << cmd.set_ret_addr_.val_;
+    case Op::SetRetFunc: return os << cmd.set_ret_func_.val_;
+    case Op::SetRetScope: return os << cmd.set_ret_scope_.val_;
+    case Op::SetRetGeneric: return os << cmd.set_ret_scope_.val_;
+    case Op::SetRetModule: return os << cmd.set_ret_module_.val_;
+    case Op::SetRetBlock: return os << cmd.set_ret_block_.val_;
     case Op::PhiBool: return os << cmd.phi_bool_.args_;
     case Op::PhiChar: return os << cmd.phi_char_.args_;
     case Op::PhiInt: return os << cmd.phi_int_.args_;

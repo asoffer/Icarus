@@ -119,9 +119,22 @@ struct RegisterOr {
 };
 
 template <typename T>
+struct TypedRegister : public Register {
+  using type = T;
+  TypedRegister(Register r) : Register(r) {}
+  operator RegisterOr<T>() { return {*this}; }
+};
+
+template <typename T>
 struct IsRegOr : public std::false_type {};
 template <typename T>
 struct IsRegOr<RegisterOr<T>> : public std::true_type {};
+
+template <typename T>
+struct IsTypedReg : public std::false_type {};
+template <typename T>
+struct IsTypedReg<TypedRegister<T>> : public std::true_type {};
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_REGISTER_H

@@ -211,10 +211,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::ModInt:
       save(resolve(cmd.mod_int_.args_[0]) % resolve(cmd.mod_int_.args_[1]));
       break;
-    case ir::Op::ModReal:
-      save(std::fmod(resolve(cmd.mod_real_.args_[0]),
-                     resolve(cmd.mod_real_.args_[1])));
-      break;
     case ir::Op::LtInt:
       save(resolve(cmd.lt_int_.args_[0]) < resolve(cmd.lt_int_.args_[1]));
       break;
@@ -616,61 +612,61 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         return lit == cmd.block_seq_contains_.lit_;
       }));
     } break;
-    case ir::Op::SetReturnBool:
-      StoreValue(resolve(cmd.set_return_bool_.val_),
-                 ret_slots.at(cmd.set_return_bool_.ret_num_), &stack_);
+    case ir::Op::SetRetBool:
+      StoreValue(resolve(cmd.set_ret_bool_.val_),
+                 ret_slots.at(cmd.set_ret_bool_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnChar:
-      StoreValue(resolve(cmd.set_return_char_.val_),
-                 ret_slots.at(cmd.set_return_char_.ret_num_), &stack_);
+    case ir::Op::SetRetChar:
+      StoreValue(resolve(cmd.set_ret_char_.val_),
+                 ret_slots.at(cmd.set_ret_char_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnInt:
-      StoreValue(resolve(cmd.set_return_int_.val_),
-                 ret_slots.at(cmd.set_return_int_.ret_num_), &stack_);
+    case ir::Op::SetRetInt:
+      StoreValue(resolve(cmd.set_ret_int_.val_),
+                 ret_slots.at(cmd.set_ret_int_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnReal:
-      StoreValue(resolve(cmd.set_return_real_.val_),
-                 ret_slots.at(cmd.set_return_real_.ret_num_), &stack_);
+    case ir::Op::SetRetReal:
+      StoreValue(resolve(cmd.set_ret_real_.val_),
+                 ret_slots.at(cmd.set_ret_real_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnType:
-      StoreValue(resolve(cmd.set_return_type_.val_),
-                 ret_slots.at(cmd.set_return_type_.ret_num_), &stack_);
+    case ir::Op::SetRetType:
+      StoreValue(resolve(cmd.set_ret_type_.val_),
+                 ret_slots.at(cmd.set_ret_type_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnCharBuf:
-      StoreValue(resolve(cmd.set_return_char_buf_.val_),
-                 ret_slots.at(cmd.set_return_char_buf_.ret_num_), &stack_);
+    case ir::Op::SetRetCharBuf:
+      StoreValue(resolve(cmd.set_ret_char_buf_.val_),
+                 ret_slots.at(cmd.set_ret_char_buf_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnAddr:
-      StoreValue(resolve(cmd.set_return_addr_.val_),
-                 ret_slots.at(cmd.set_return_addr_.ret_num_), &stack_);
+    case ir::Op::SetRetAddr:
+      StoreValue(resolve(cmd.set_ret_addr_.val_),
+                 ret_slots.at(cmd.set_ret_addr_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnEnum:
-      StoreValue(resolve(cmd.set_return_enum_.val_),
-                 ret_slots.at(cmd.set_return_enum_.ret_num_), &stack_);
+    case ir::Op::SetRetEnum:
+      StoreValue(resolve(cmd.set_ret_enum_.val_),
+                 ret_slots.at(cmd.set_ret_enum_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnFlags:
-      StoreValue(resolve(cmd.set_return_flags_.val_),
-                 ret_slots.at(cmd.set_return_flags_.ret_num_), &stack_);
+    case ir::Op::SetRetFlags:
+      StoreValue(resolve(cmd.set_ret_flags_.val_),
+                 ret_slots.at(cmd.set_ret_flags_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnFunc:
-      StoreValue(resolve(cmd.set_return_func_.val_),
-                 ret_slots.at(cmd.set_return_func_.ret_num_), &stack_);
+    case ir::Op::SetRetFunc:
+      StoreValue(resolve(cmd.set_ret_func_.val_),
+                 ret_slots.at(cmd.set_ret_func_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnScope:
-      StoreValue(resolve(cmd.set_return_scope_.val_),
-                 ret_slots.at(cmd.set_return_scope_.ret_num_), &stack_);
+    case ir::Op::SetRetScope:
+      StoreValue(resolve(cmd.set_ret_scope_.val_),
+                 ret_slots.at(cmd.set_ret_scope_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnGeneric:
-      StoreValue(resolve(cmd.set_return_generic_.val_),
-                 ret_slots.at(cmd.set_return_generic_.ret_num_), &stack_);
+    case ir::Op::SetRetGeneric:
+      StoreValue(resolve(cmd.set_ret_generic_.val_),
+                 ret_slots.at(cmd.set_ret_generic_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnModule:
-      StoreValue(resolve(cmd.set_return_module_.val_),
-                 ret_slots.at(cmd.set_return_module_.ret_num_), &stack_);
+    case ir::Op::SetRetModule:
+      StoreValue(resolve(cmd.set_ret_module_.val_),
+                 ret_slots.at(cmd.set_ret_module_.ret_num_), &stack_);
       break;
-    case ir::Op::SetReturnBlock:
-      StoreValue(resolve(cmd.set_return_block_.val_),
-                 ret_slots.at(cmd.set_return_block_.ret_num_), &stack_);
+    case ir::Op::SetRetBlock:
+      StoreValue(resolve(cmd.set_ret_block_.val_),
+                 ret_slots.at(cmd.set_ret_block_.ret_num_), &stack_);
       break;
     case ir::Op::StoreBool:
       StoreValue(resolve(cmd.store_bool_.val_),

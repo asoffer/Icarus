@@ -84,7 +84,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
 
       auto length_var = [&]() -> ir::RegisterOr<i32> {
         if (fixed_length) { return static_cast<i32>(len); }
-        return ir::LoadInt(ir::ArrayLength(repr_func_->Argument(0)));
+        return ir::Load<i32>(ir::ArrayLength(repr_func_->Argument(0)));
       }();
       ir::BasicBlock::Current =
           ir::EarlyExitOn<true>(exit_block, ir::Eq(length_var, 0));
@@ -106,11 +106,12 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
             data_type->EmitRepr(
                 ir::Val::Reg(ir::PtrFix(elem_ptr, data_type), data_type), ctx);
 
-            return std::make_tuple(elem_ptr, ir::SubInt(std::get<1>(phis), 1));
+            return std::make_tuple(
+                elem_ptr, ir::Sub(ir::RegisterOr<i32>(std::get<1>(phis)), 1));
           },
           std::tuple<type::Type const *, type::Type const *>{
               type::Ptr(this->data_type), type::Int},
-          tup{ptr, ir::SubInt(length_var, 1)});
+          tup{ptr, ir::Sub(length_var, 1)});
       ir::UncondJump(exit_block);
 
       ir::BasicBlock::Current = exit_block;
@@ -149,7 +150,8 @@ void Variant::EmitRepr(ir::Val const &id_val, Context *ctx) const {
     CURRENT_FUNC(repr_func_) {
       ir::BasicBlock::Current = repr_func_->entry();
       auto landing            = ir::Func::Current->AddBlock();
-      auto type = ir::LoadType(ir::VariantType(repr_func_->Argument(0)));
+      auto type               = ir::Load<type::Type const *>(
+          ir::VariantType(repr_func_->Argument(0)));
 
       for (const Type *v : variants_) {
         auto old_block   = ir::BasicBlock::Current;

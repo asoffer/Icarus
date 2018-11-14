@@ -37,7 +37,7 @@ ir::Val AsciiFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
-      ir::SetReturnInt(0, Trunc(fn->Argument(0)).reg_);
+      ir::SetRet(0, Trunc(fn->Argument(0)));
       ir::ReturnJump();
     }
     return fn;
@@ -57,7 +57,7 @@ ir::Val OrdFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
-      ir::SetReturnInt(0, Extend(fn->Argument(0)).reg_);
+      ir::SetRet(0, Extend(fn->Argument(0)));
       ir::ReturnJump();
     }
     return fn;
@@ -71,7 +71,7 @@ ir::Val BytesFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
-      ir::SetReturnInt(0, Bytes(fn->Argument(0)));
+      ir::SetRet(0, Bytes(fn->Argument(0)));
       ir::ReturnJump();
     }
     return fn;
@@ -85,7 +85,7 @@ ir::Val AlignFunc() {
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
-      ir::SetReturnInt(0, Align(fn->Argument(0)));
+      ir::SetRet(0, Align(fn->Argument(0)));
       ir::ReturnJump();
     }
     return fn;
@@ -95,7 +95,7 @@ ir::Val AlignFunc() {
 
 static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
                                              const type::Type *haystack) {
-  auto runtime_type = ir::LoadType(ir::VariantType(needle));
+  auto runtime_type = ir::Load<type::Type const *>(ir::VariantType(needle));
 
   if (haystack->is<type::Variant>()) {
     // TODO I'm fairly confident this will work, but it's also overkill because
@@ -107,8 +107,8 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
     for (const type::Type *v : haystack->as<type::Variant>().variants_) {
       phi_map.emplace(ir::BasicBlock::Current, true);
 
-      ir::BasicBlock::Current = ir::EarlyExitOn<true>(
-          landing, ir::Eq(v, ir::RegisterOr<type::Type const *>(runtime_type)));
+      ir::BasicBlock::Current =
+          ir::EarlyExitOn<true>(landing, ir::Eq(v, runtime_type));
     }
 
     phi_map.emplace(ir::BasicBlock::Current, false);
@@ -120,7 +120,7 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
 
   } else {
     // TODO actually just implicitly convertible to haystack
-    return ir::Eq(haystack, ir::RegisterOr<type::Type const *>(runtime_type));
+    return ir::Eq(haystack, runtime_type);
   }
 }
 
@@ -166,9 +166,10 @@ static void EmitOneCallDispatch(
   }();
 
   if (!binding.const_) {
-    callee = ir::Val::Reg(
-        ir::LoadFunc(std::get<ir::Register>(callee.value), binding.fn_.type()),
-        binding.fn_.type());
+    callee =
+        ir::Val::Reg(ir::Load<ir::AnyFunc>(std::get<ir::Register>(callee.value),
+                                           binding.fn_.type()),
+                     binding.fn_.type());
   }
   ASSERT(callee.type, Is<type::Function>());
 
