@@ -454,6 +454,9 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ctx->set_type(this, t);
       ASSERT(t, Is<type::Function>());
       return t;
+    } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {
+      // TODO might be optional.
+      return type::Block;
     } else {
       UNREACHABLE();
     }
@@ -551,7 +554,11 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
           ir::ForeignFn{
               backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx),
               this})};
+    } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {
+      // TODO might be optional.
+      return {fn_val};
     }
+
     UNREACHABLE();
   }
 
