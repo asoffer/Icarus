@@ -85,7 +85,7 @@ struct OutParams {
 };
 
 enum class Op : uint8_t {
-#define OP_MACRO(op) op,
+#define OP_MACRO(op, ...) op,
 #include "ir/op.xmacro.h"
 #undef OP_MACRO
 };
@@ -115,6 +115,7 @@ struct Cmd {
       : public CommandOpCode<name, static_cast<std::underlying_type_t<Op>>(    \
                                        Op::name)>
 
+  CMD(Death) {};
   CMD(Trunc) { Register reg_; };
   CMD(Extend) { Register reg_; };
   CMD(Bytes) { RegisterOr<const type::Type *> arg_; };
@@ -423,21 +424,10 @@ struct Cmd {
   };
 #undef CMD
 
-  struct PrintTag;
-  struct StoreTag;
-  struct EqTag;
-  struct NeTag;
-  struct LtTag;
-  struct LeTag;
-  struct GtTag;
-  struct GeTag;
-  struct AddTag;
-  struct SubTag;
-  struct MulTag;
-  struct DivTag;
-  struct LoadTag;
-  struct SetRetTag;
-  struct NegTag;
+
+#define OP_MACRO(op, tag, ...) struct tag##Tag;
+#include "ir/op.xmacro.h"
+#undef OP_MACRO
   template <typename Tag, typename T>
   static constexpr Op OpCode() {
     return static_cast<Op>(
@@ -447,148 +437,14 @@ struct Cmd {
 
   template <typename Tag, typename T>
   constexpr auto &get() {
-    if constexpr (std::is_same_v<Tag, NegTag>) {
-      if constexpr (std::is_same_v<T, i32>) { return neg_int_; }
-      if constexpr (std::is_same_v<T, float>) { return neg_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return neg_float64_; }
-    } else if constexpr (std::is_same_v<Tag, PrintTag>) {
-      if constexpr (std::is_same_v<T, bool>) { return print_bool_; }
-      if constexpr (std::is_same_v<T, char>) { return print_char_; }
-      if constexpr (std::is_same_v<T, i32>) { return print_int_; }
-      if constexpr (std::is_same_v<T, float>) { return print_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return print_float64_; }
-      if constexpr (std::is_same_v<T, type::Type const *>) {
-        return print_type_;
-      }
-      if constexpr (std::is_same_v<T, EnumVal>) { return print_enum_; }
-      if constexpr (std::is_same_v<T, FlagsVal>) { return print_flags_; }
-      if constexpr (std::is_same_v<T, Addr>) { return print_addr_; }
-      if constexpr (std::is_same_v<T, std::string_view>) {
-        return print_char_buffer_;
-      }
-    }
-    if constexpr (std::is_same_v<Tag, StoreTag>) {
-      if constexpr (std::is_same_v<T, bool>) { return store_bool_; }
-      if constexpr (std::is_same_v<T, char>) { return store_char_; }
-      if constexpr (std::is_same_v<T, i32>) { return store_int_; }
-      if constexpr (std::is_same_v<T, float>) { return store_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return store_float64_; }
-      if constexpr (std::is_same_v<T, type::Type const *>) {
-        return store_type_;
-      }
-      if constexpr (std::is_same_v<T, EnumVal>) { return store_enum_; }
-      if constexpr (std::is_same_v<T, FlagsVal>) { return store_flags_; }
-      if constexpr (std::is_same_v<T, Func *>) {
-        return store_func_;
-      }  // TODO const
-      if constexpr (std::is_same_v<T, Addr>) { return store_addr_; }
-    }
-    if constexpr (std::is_same_v<Tag, EqTag>) {
-      if constexpr (std::is_same_v<T, bool>) { return eq_bool_; }
-      if constexpr (std::is_same_v<T, char>) { return eq_char_; }
-      if constexpr (std::is_same_v<T, i32>) { return eq_int_; }
-      if constexpr (std::is_same_v<T, float>) { return eq_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return eq_float64_; }
-      if constexpr (std::is_same_v<T, type::Type const *>) { return eq_type_; }
-      if constexpr (std::is_same_v<T, EnumVal>) { return eq_enum_; }
-      if constexpr (std::is_same_v<T, FlagsVal>) { return eq_flags_; }
-      if constexpr (std::is_same_v<T, Addr>) { return eq_addr_; }
-    }
-    if constexpr (std::is_same_v<Tag, NeTag>) {
-      if constexpr (std::is_same_v<T, char>) { return ne_char_; }
-      if constexpr (std::is_same_v<T, i32>) { return ne_int_; }
-      if constexpr (std::is_same_v<T, float>) { return ne_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return ne_float64_; }
-      if constexpr (std::is_same_v<T, type::Type const *>) { return ne_type_; }
-      if constexpr (std::is_same_v<T, EnumVal>) { return ne_enum_; }
-      if constexpr (std::is_same_v<T, FlagsVal>) { return ne_flags_; }
-      if constexpr (std::is_same_v<T, Addr>) { return ne_addr_; }
-    }
-    if constexpr (std::is_same_v<Tag, LtTag>) {
-      if constexpr (std::is_same_v<T, i32>) { return lt_int_; }
-      if constexpr (std::is_same_v<T, float>) { return lt_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return lt_float64_; }
-      if constexpr (std::is_same_v<T, FlagsVal>) { return lt_flags_; }
-    }
-    if constexpr (std::is_same_v<Tag, LeTag>) {
-      if constexpr (std::is_same_v<T, i32>) { return le_int_; }
-      if constexpr (std::is_same_v<T, float>) { return le_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return le_float64_; }
-      if constexpr (std::is_same_v<T, FlagsVal>) { return le_flags_; }
-    }
-    if constexpr (std::is_same_v<Tag, GtTag>) {
-      if constexpr (std::is_same_v<T, i32>) { return gt_int_; }
-      if constexpr (std::is_same_v<T, float>) { return gt_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return gt_float64_; }
-      if constexpr (std::is_same_v<T, FlagsVal>) { return gt_flags_; }
-    }
-    if constexpr (std::is_same_v<Tag, GeTag>) {
-      if constexpr (std::is_same_v<T, i32>) { return ge_int_; }
-      if constexpr (std::is_same_v<T, float>) { return ge_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return ge_float64_; }
-      if constexpr (std::is_same_v<T, FlagsVal>) { return ge_flags_; }
-    }
-    if constexpr (std::is_same_v<Tag, AddTag>) {
-      if constexpr (std::is_same_v<T, i32>) { return add_int_; }
-      if constexpr (std::is_same_v<T, float>) { return add_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return add_float64_; }
-    }
-    if constexpr (std::is_same_v<Tag, SubTag>) {
-      if constexpr (std::is_same_v<T, i32>) { return sub_int_; }
-      if constexpr (std::is_same_v<T, float>) { return sub_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return sub_float64_; }
-    }
-    if constexpr (std::is_same_v<Tag, MulTag>) {
-      if constexpr (std::is_same_v<T, i32>) { return mul_int_; }
-      if constexpr (std::is_same_v<T, float>) { return mul_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return mul_float64_; }
-    }
-    if constexpr (std::is_same_v<Tag, DivTag>) {
-      if constexpr (std::is_same_v<T, i32>) { return div_int_; }
-      if constexpr (std::is_same_v<T, float>) { return div_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return div_float64_; }
-    }
-    if constexpr (std::is_same_v<Tag, SetRetTag>) {
-      if constexpr (std::is_same_v<T, bool>) { return set_ret_bool_; }
-      if constexpr (std::is_same_v<T, char>) { return set_ret_char_; }
-      if constexpr (std::is_same_v<T, i32>) { return set_ret_int_; }
-      if constexpr (std::is_same_v<T, float>) { return set_ret_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return set_ret_float64_; }
-      if constexpr (std::is_same_v<T, type::Type const *>) {
-        return set_ret_type_;
-      }
-      if constexpr (std::is_same_v<T, EnumVal>) { return set_ret_enum_; }
-      if constexpr (std::is_same_v<T, FlagsVal>) { return set_ret_flags_; }
-      if constexpr (std::is_same_v<T, Addr>) { return set_ret_addr_; }
-      if constexpr (std::is_same_v<T, std::string_view>) {
-        return set_ret_char_buf_;
-      }
-      if constexpr (std::is_same_v<T, AnyFunc>) { return set_ret_func_; }
-      if constexpr (std::is_same_v<T, BlockSequence>) { return set_ret_block_; }
-      if constexpr (std::is_same_v<T, Module const *>) {
-        return set_ret_module_;
-      }
-      if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
-        return set_ret_generic_;
-      }
-      if constexpr (std::is_same_v<T, ast::ScopeLiteral *>) {
-        return set_ret_scope_;
-      }
-    }
-    if constexpr (std::is_same_v<Tag, LoadTag>) {
-      if constexpr (std::is_same_v<T, bool>) { return load_bool_; }
-      if constexpr (std::is_same_v<T, char>) { return load_char_; }
-      if constexpr (std::is_same_v<T, i32>) { return load_int_; }
-      if constexpr (std::is_same_v<T, float>) { return load_float32_; }
-      if constexpr (std::is_same_v<T, double>) { return load_float64_; }
-      if constexpr (std::is_same_v<T, type::Type const *>) {
-        return load_type_;
-      }
-      if constexpr (std::is_same_v<T, EnumVal>) { return load_enum_; }
-      if constexpr (std::is_same_v<T, FlagsVal>) { return load_flags_; }
-      if constexpr (std::is_same_v<T, Addr>) { return load_addr_; }
-      if constexpr (std::is_same_v<T, AnyFunc>) { return load_func_; }
-    }
+    static_assert(!std::is_same_v<T, void>);
+#define OP_MACRO(op, tag, type, field)                                         \
+  if constexpr (std::is_same_v<Tag, tag##Tag> && std::is_same_v<T, type>) {    \
+    return field;                                                              \
+  }
+#include "ir/op.xmacro.h"
+#undef OP_MACRO
+    UNREACHABLE();
   }
 
   template <typename Tag, typename T, typename... Args>
@@ -602,167 +458,9 @@ struct Cmd {
   Op op_code_;
 
   union {
-    Trunc trunc_;
-    Extend extend_;
-    Bytes bytes_;
-    Align align_;
-    Not not_;
-    NegInt neg_int_;
-    NegFloat32 neg_float32_;
-    NegFloat64 neg_float64_;
-    ArrayLength array_length_;
-    ArrayData array_data_;
-    LoadBool load_bool_;
-    LoadChar load_char_;
-    LoadInt load_int_;
-    LoadFloat32 load_float32_;
-    LoadFloat64 load_float64_;
-    LoadType load_type_;
-    LoadEnum load_enum_;
-    LoadFlags load_flags_;
-    LoadAddr load_addr_;
-    LoadFunc load_func_;
-
-    StoreBool store_bool_;
-    StoreChar store_char_;
-    StoreInt store_int_;
-    StoreFloat32 store_float32_;
-    StoreFloat64 store_float64_;
-    StoreType store_type_;
-    StoreEnum store_enum_;
-    StoreFunc store_func_;
-    StoreFlags store_flags_;
-    StoreAddr store_addr_;
-
-    PrintBool print_bool_;
-    PrintChar print_char_;
-    PrintInt print_int_;
-    PrintFloat32 print_float32_;
-    PrintFloat64 print_float64_;
-    PrintType print_type_;
-    PrintEnum print_enum_;
-    PrintFlags print_flags_;
-    PrintAddr print_addr_;
-    PrintCharBuffer print_char_buffer_;
-
-    AddInt add_int_;
-    AddFloat32 add_float32_;
-    AddFloat64 add_float64_;
-    SubInt sub_int_;
-    SubFloat32 sub_float32_;
-    SubFloat64 sub_float64_;
-    MulInt mul_int_;
-    MulFloat32 mul_float32_;
-    MulFloat64 mul_float64_;
-    DivInt div_int_;
-    DivFloat32 div_float32_;
-    DivFloat64 div_float64_;
-    ModInt mod_int_;
-
-    LtInt lt_int_;
-    LtFloat32 lt_float32_;
-    LtFloat64 lt_float64_;
-    LtFlags lt_flags_;
-    LeInt le_int_;
-    LeFloat32 le_float32_;
-    LeFloat64 le_float64_;
-    LeFlags le_flags_;
-    GtInt gt_int_;
-    GtFloat32 gt_float32_;
-    GtFloat64 gt_float64_;
-    GtFlags gt_flags_;
-    GeInt ge_int_;
-    GeFloat32 ge_float32_;
-    GeFloat64 ge_float64_;
-    GeFlags ge_flags_;
-    EqBool eq_bool_;
-    EqChar eq_char_;
-    EqInt eq_int_;
-    EqFloat32 eq_float32_;
-    EqFloat64 eq_float64_;
-    EqType eq_type_;
-    EqEnum eq_enum_;
-    EqFlags eq_flags_;
-    EqAddr eq_addr_;
-    NeChar ne_char_;
-    NeInt ne_int_;
-    NeFloat32 ne_float32_;
-    NeFloat64 ne_float64_;
-    NeType ne_type_;
-    NeEnum ne_enum_;
-    NeFlags ne_flags_;
-    NeAddr ne_addr_;
-
-    XorBool xor_bool_;
-    XorFlags xor_flags_;
-    OrFlags or_flags_;
-    AndFlags and_flags_;
-
-    CreateStruct create_struct_;
-    CreateStructField create_struct_field_;
-    SetStructFieldName set_struct_field_name_;
-    FinalizeStruct finalize_struct_;
-
-    DebugIr debug_ir_;
-
-    Malloc malloc_;
-    Free free_;
-    Alloca alloca_;
-
-    PtrIncr ptr_incr_;
-    Field field_;
-
-    Cmd::Ptr ptr_;
-    Cmd::Arrow arrow_;
-    Cmd::Array array_;
-    CreateTuple create_tuple_;
-    AppendToTuple append_to_tuple_;
-    FinalizeTuple finalize_tuple_;
-    CreateVariant create_variant_;
-    AppendToVariant append_to_variant_;
-    FinalizeVariant finalize_variant_;
-    CreateBlockSeq create_block_seq_;
-    AppendToBlockSeq append_to_block_seq_;
-    FinalizeBlockSeq finalize_block_seq_;
-
-    CondJump cond_jump_;
-    UncondJump uncond_jump_;
-    ReturnJump return_jump_;
-    BlockSeqJump block_seq_jump_;
-
-    Cmd::VariantType variant_type_;
-    Cmd::VariantValue variant_value_;
-
-    Call call_;
-    CastIntToFloat32 cast_int_to_float32_;
-    CastIntToFloat64 cast_int_to_float64_;
-    CastPtr cast_ptr_;
-    PhiBool phi_bool_;
-    PhiChar phi_char_;
-    PhiInt phi_int_;
-    PhiFloat32 phi_float32_;
-    PhiFloat64 phi_float64_;
-    PhiType phi_type_;
-    PhiBlock phi_block_;
-    PhiAddr phi_addr_;
-
-    BlockSeqContains block_seq_contains_;
-
-    SetRetBool set_ret_bool_;
-    SetRetChar set_ret_char_;
-    SetRetInt set_ret_int_;
-    SetRetFloat32 set_ret_float32_;
-    SetRetFloat64 set_ret_float64_;
-    SetRetType set_ret_type_;
-    SetRetEnum set_ret_enum_;
-    SetRetFlags set_ret_flags_;
-    SetRetCharBuf set_ret_char_buf_;
-    SetRetAddr set_ret_addr_;
-    SetRetFunc set_ret_func_;
-    SetRetScope set_ret_scope_;
-    SetRetGeneric set_ret_generic_;
-    SetRetModule set_ret_module_;
-    SetRetBlock set_ret_block_;
+#define OP_MACRO(op, tag, type, field) Cmd::op field;
+#include "ir/op.xmacro.h"
+#undef OP_MACRO
   };
 
   Register result;

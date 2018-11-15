@@ -600,7 +600,7 @@ static std::ostream &operator<<(std::ostream &os,
 
 char const *OpCodeStr(Op op) {
   switch (op) {
-#define OP_MACRO(op)                                                           \
+#define OP_MACRO(op, ...)                                                      \
   case Op::op:                                                                 \
     return #op;
 #include "ir/op.xmacro.h"
@@ -760,8 +760,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::CastIntToFloat64: return os << cmd.cast_int_to_float64_.reg_;
 
     case Op::CastPtr: return os << cmd.cast_ptr_.type_;
-
-    case Op::Contextualize: NOT_YET();
 
     case Op::StoreBool:
       return os << cmd.store_bool_.addr_ << " " << cmd.store_bool_.val_;

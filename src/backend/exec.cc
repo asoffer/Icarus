@@ -790,7 +790,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PhiBlock:
       save(resolve(cmd.phi_block_.args_->map_.at(call_stack.top().prev_)));
       break;
-    case ir::Op::Contextualize: NOT_YET();
     case ir::Op::CondJump:
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];
     case ir::Op::UncondJump: return cmd.uncond_jump_.block_;
