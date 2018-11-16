@@ -428,8 +428,8 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
-        return {ir::ValFrom(
-            ir::ModInt(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
+        return {
+            ir::ValFrom(ir::Mod(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
       } else {
         UNREACHABLE(rhs_ir.type);
       }
@@ -621,7 +621,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type == type::Int) {
-        ir::Store(ir::ModInt(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
+        ir::Store(ir::Mod(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
                   lhs_lval);
       } else {
         UNREACHABLE(rhs_ir.type);

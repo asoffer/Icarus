@@ -53,6 +53,7 @@ struct BoolProp : public Property {
 };
 
 struct IntProp : public Property {
+  /*
   static std::pair<ir::Register, base::owned_ptr<IntProp>> Make(
       ir::Cmd::LtInt const &lt_int, bool is_true);
   static std::pair<ir::Register, base::owned_ptr<IntProp>> Make(
@@ -61,7 +62,7 @@ struct IntProp : public Property {
       ir::Cmd::GtInt const &lt_int, bool is_true);
   static std::pair<ir::Register, base::owned_ptr<IntProp>> Make(
       ir::Cmd::GeInt const &le_int, bool is_true);
-
+      */
   ~IntProp() override {}
 
   IntProp *Clone() const override {

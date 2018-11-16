@@ -86,7 +86,9 @@ struct OutParams {
 
 enum class Op : uint8_t {
 #define OP_MACRO(op, ...) op,
+#define OP_MACRO_(op, ...) op,
 #include "ir/op.xmacro.h"
+#undef OP_MACRO_
 #undef OP_MACRO
 };
 char const *OpCodeStr(Op op);
@@ -196,60 +198,6 @@ struct Cmd {
   CMD(PrintAddr) { RegisterOr<ir::Addr> arg_; };
   CMD(PrintCharBuffer) { RegisterOr<std::string_view> arg_; };
 
-  CMD(AddInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(AddFloat32) { std::array<RegisterOr<float>, 2> args_; };
-  CMD(AddFloat64) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(SubInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(SubFloat32) { std::array<RegisterOr<float>, 2> args_; };
-  CMD(SubFloat64) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(MulInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(MulFloat32) { std::array<RegisterOr<float>, 2> args_; };
-  CMD(MulFloat64) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(DivInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(DivFloat32) { std::array<RegisterOr<float>, 2> args_; };
-  CMD(DivFloat64) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(ModInt) { std::array<RegisterOr<i32>, 2> args_; };
-
-  CMD(LtInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(LtFloat32) { std::array<RegisterOr<float>, 2> args_; };
-  CMD(LtFloat64) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(LtFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(LeInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(LeFloat32) { std::array<RegisterOr<float>, 2> args_; };
-  CMD(LeFloat64) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(LeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(GtInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(GtFloat32) { std::array<RegisterOr<float>, 2> args_; };
-  CMD(GtFloat64) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(GtFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(GeInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(GeFloat32) { std::array<RegisterOr<float>, 2> args_; };
-  CMD(GeFloat64) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(GeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(EqBool) { std::array<Register, 2> args_; };
-  CMD(EqChar) { std::array<RegisterOr<char>, 2> args_; };
-  CMD(EqInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(EqFloat32) { std::array<RegisterOr<float>, 2> args_; };
-  CMD(EqFloat64) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(EqType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
-  CMD(EqEnum) { std::array<RegisterOr<EnumVal>, 2> args_; };
-  CMD(EqFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(EqAddr) { std::array<RegisterOr<ir::Addr>, 2> args_; };
-  CMD(NeChar) { std::array<RegisterOr<char>, 2> args_; };
-  CMD(NeInt) { std::array<RegisterOr<i32>, 2> args_; };
-  CMD(NeFloat32) { std::array<RegisterOr<float>, 2> args_; };
-  CMD(NeFloat64) { std::array<RegisterOr<double>, 2> args_; };
-  CMD(NeType) { std::array<RegisterOr<type::Type const *>, 2> args_; };
-  CMD(NeEnum) { std::array<RegisterOr<EnumVal>, 2> args_; };
-  CMD(NeFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(NeAddr) { std::array<RegisterOr<ir::Addr>, 2> args_; };
-
-  CMD(XorBool) { std::array<RegisterOr<bool>, 2> args_; };
-
-  CMD(XorFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(OrFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-  CMD(AndFlags) { std::array<RegisterOr<FlagsVal>, 2> args_; };
-
   CMD(CreateStruct) { ast::StructLiteral *lit_; };
   CMD(CreateStructField) {
     type::Struct *struct_;
@@ -262,6 +210,8 @@ struct Cmd {
   };
   CMD(FinalizeStruct) { Register reg_; };
 
+  CMD(EqBool) { std::array<Register, 2> args_; };
+
   CMD(DebugIr){};
 
   CMD(Malloc) { RegisterOr<i32> arg_; };
@@ -269,7 +219,6 @@ struct Cmd {
   CMD(Alloca) { type::Type const *type_; };
 
   CMD(Ptr) { Register reg_; };
-  CMD(Arrow) { std::array<RegisterOr<type::Type const *>, 2> args_; };
   CMD(Array) {
     RegisterOr<i32> len_;
     RegisterOr<type::Type const *> type_;
@@ -426,13 +375,24 @@ struct Cmd {
 
 
 #define OP_MACRO(op, tag, ...) struct tag##Tag;
+#define OP_MACRO_(op, tag, ...) struct tag##Tag;
 #include "ir/op.xmacro.h"
+#undef OP_MACRO_
 #undef OP_MACRO
   template <typename Tag, typename T>
   static constexpr Op OpCode() {
-    return static_cast<Op>(
-        std::decay_t<decltype(
-            std::declval<Cmd>().template get<Tag, T>())>::index);
+#define OP_MACRO(op, tag, type, field)                                         \
+  if constexpr (std::is_same_v<Tag, tag##Tag> && std::is_same_v<T, type>) {    \
+    return Op::op;                                                             \
+  }
+#define OP_MACRO_(op, tag, type, field)                                        \
+  if constexpr (std::is_same_v<Tag, tag##Tag> && std::is_same_v<T, type>) {    \
+    return Op::op;                                                             \
+  }
+#include "ir/op.xmacro.h"
+#undef OP_MACRO_
+#undef OP_MACRO
+    UNREACHABLE();
   }
 
   template <typename Tag, typename T>
@@ -442,7 +402,12 @@ struct Cmd {
   if constexpr (std::is_same_v<Tag, tag##Tag> && std::is_same_v<T, type>) {    \
     return field;                                                              \
   }
+#define OP_MACRO_(op, tag, type, field)                                        \
+  if constexpr (std::is_same_v<Tag, tag##Tag> && std::is_same_v<T, type>) {    \
+    return field;                                                              \
+  }
 #include "ir/op.xmacro.h"
+#undef OP_MACRO_
 #undef OP_MACRO
     UNREACHABLE();
   }
@@ -454,12 +419,34 @@ struct Cmd {
     cmd         = cmd_t::Make(std::forward<Args>(args)...);
   }
 
-  Cmd(const type::Type *t, Op op);
+  Cmd(type::Type const *t, Op op);
   Op op_code_;
 
+  template <typename T>
+  struct Args {
+    std::array<RegisterOr<T>, 2> args_;
+
+    template <typename Arg>
+    static Args Make(Arg && arg1, Arg&& arg2) {
+      return {std::forward<Arg>(arg1), std::forward<Arg>(arg2)};
+    }
+  };
+
   union {
-#define OP_MACRO(op, tag, type, field) Cmd::op field;
+    Args<bool> bool_args_;
+    Args<char> char_args_;
+    Args<i32> i32_args_;
+    Args<float> float32_args_;
+    Args<double> float64_args_;
+    Args<EnumVal> enum_args_;
+    Args<FlagsVal> flags_args_;
+    Args<type::Type const *> type_args_;
+    Args<Addr> addr_args_;
+
+#define OP_MACRO(...)
+#define OP_MACRO_(op, tag, type, field) Cmd::op field;
 #include "ir/op.xmacro.h"
+#undef OP_MACRO_
 #undef OP_MACRO
   };
 
@@ -610,6 +597,11 @@ RegisterOr<bool> Ne(Lhs lhs, Rhs rhs) {
 template <typename Lhs, typename Rhs>
 auto Add(Lhs lhs, Rhs rhs) {
   return internal::HandleBinop<Cmd::AddTag, std::plus>(lhs, rhs);
+}
+
+template <typename Lhs, typename Rhs>
+auto Mod(Lhs lhs, Rhs rhs) {
+  return internal::HandleBinop<Cmd::ModTag, std::modulus>(lhs, rhs);
 }
 
 template <typename Lhs, typename Rhs>

@@ -1,6 +1,7 @@
 #include "property/property.h"
 
 namespace prop {
+  /*
 // TODO deal with possibiltiy for overflow/underflow
 std::pair<ir::Register, base::owned_ptr<IntProp>> IntProp::Make(
     ir::Cmd::LtInt const& lt_int, bool is_true) {
@@ -93,4 +94,5 @@ std::pair<ir::Register, base::owned_ptr<IntProp>> IntProp::Make(
     }
   }
 }
+*/
 }  // namespace prop

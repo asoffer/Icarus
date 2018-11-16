@@ -195,100 +195,100 @@ ir::BlockIndex ExecContext::ExecuteCmd(
                                  stack_));
       break;
     case ir::Op::AddInt:
-      save(resolve(cmd.add_int_.args_[0]) + resolve(cmd.add_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) + resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::AddFloat32:
-      save(resolve(cmd.add_float32_.args_[0]) +
-           resolve(cmd.add_float32_.args_[1]));
+      save(resolve(cmd.float32_args_.args_[0]) +
+           resolve(cmd.float32_args_.args_[1]));
       break;
     case ir::Op::AddFloat64:
-      save(resolve(cmd.add_float64_.args_[0]) +
-           resolve(cmd.add_float64_.args_[1]));
+      save(resolve(cmd.float64_args_.args_[0]) +
+           resolve(cmd.float64_args_.args_[1]));
       break;
     case ir::Op::SubInt:
-      save(resolve(cmd.sub_int_.args_[0]) - resolve(cmd.sub_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) - resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::SubFloat32:
-      save(resolve(cmd.sub_float32_.args_[0]) - resolve(cmd.sub_float32_.args_[1]));
+      save(resolve(cmd.float32_args_.args_[0]) - resolve(cmd.float32_args_.args_[1]));
       break;
     case ir::Op::SubFloat64:
-      save(resolve(cmd.sub_float64_.args_[0]) - resolve(cmd.sub_float64_.args_[1]));
+      save(resolve(cmd.float64_args_.args_[0]) - resolve(cmd.float64_args_.args_[1]));
       break;
     case ir::Op::MulInt:
-      save(resolve(cmd.mul_int_.args_[0]) * resolve(cmd.mul_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) * resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::MulFloat32:
-      save(resolve(cmd.mul_float32_.args_[0]) * resolve(cmd.mul_float32_.args_[1]));
+      save(resolve(cmd.float32_args_.args_[0]) * resolve(cmd.float32_args_.args_[1]));
       break;
     case ir::Op::MulFloat64:
-      save(resolve(cmd.mul_float64_.args_[0]) * resolve(cmd.mul_float64_.args_[1]));
+      save(resolve(cmd.float64_args_.args_[0]) * resolve(cmd.float64_args_.args_[1]));
       break;
     case ir::Op::DivInt:
-      save(resolve(cmd.div_int_.args_[0]) / resolve(cmd.div_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) / resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::DivFloat32:
-      save(resolve(cmd.div_float32_.args_[0]) / resolve(cmd.div_float32_.args_[1]));
+      save(resolve(cmd.float32_args_.args_[0]) / resolve(cmd.float32_args_.args_[1]));
       break;
     case ir::Op::DivFloat64:
-      save(resolve(cmd.div_float64_.args_[0]) / resolve(cmd.div_float64_.args_[1]));
+      save(resolve(cmd.float64_args_.args_[0]) / resolve(cmd.float64_args_.args_[1]));
       break;
     case ir::Op::ModInt:
-      save(resolve(cmd.mod_int_.args_[0]) % resolve(cmd.mod_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) % resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::LtInt:
-      save(resolve(cmd.lt_int_.args_[0]) < resolve(cmd.lt_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) < resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::LtFloat32:
-      save(resolve(cmd.lt_float32_.args_[0]) < resolve(cmd.lt_float32_.args_[1]));
+      save(resolve(cmd.float32_args_.args_[0]) < resolve(cmd.float32_args_.args_[1]));
       break;
     case ir::Op::LtFloat64:
-      save(resolve(cmd.lt_float64_.args_[0]) < resolve(cmd.lt_float64_.args_[1]));
+      save(resolve(cmd.float64_args_.args_[0]) < resolve(cmd.float64_args_.args_[1]));
       break;
     case ir::Op::LtFlags: {
-      auto lhs = resolve(cmd.lt_flags_.args_[0]);
-      auto rhs = resolve(cmd.lt_flags_.args_[1]);
+      auto lhs = resolve(cmd.flags_args_.args_[0]);
+      auto rhs = resolve(cmd.flags_args_.args_[1]);
       save(lhs.value != rhs.value && ((lhs.value | rhs.value) == rhs.value));
     } break;
     case ir::Op::LeInt:
-      save(resolve(cmd.le_int_.args_[0]) <= resolve(cmd.le_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) <= resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::LeFloat32:
-      save(resolve(cmd.le_float32_.args_[0]) <= resolve(cmd.le_float32_.args_[1]));
+      save(resolve(cmd.float32_args_.args_[0]) <= resolve(cmd.float32_args_.args_[1]));
       break;
     case ir::Op::LeFloat64:
-      save(resolve(cmd.le_float64_.args_[0]) <= resolve(cmd.le_float64_.args_[1]));
+      save(resolve(cmd.float64_args_.args_[0]) <= resolve(cmd.float64_args_.args_[1]));
       break;
     case ir::Op::LeFlags: {
-      auto lhs = resolve(cmd.le_flags_.args_[0]);
-      auto rhs = resolve(cmd.le_flags_.args_[1]);
+      auto lhs = resolve(cmd.flags_args_.args_[0]);
+      auto rhs = resolve(cmd.flags_args_.args_[1]);
       save((lhs.value | rhs.value) == rhs.value);
     } break;
     case ir::Op::GtInt:
-      save(resolve(cmd.gt_int_.args_[0]) > resolve(cmd.gt_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) > resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::GtFloat32:
-      save(resolve(cmd.gt_float32_.args_[0]) > resolve(cmd.gt_float32_.args_[1]));
+      save(resolve(cmd.float32_args_.args_[0]) > resolve(cmd.float32_args_.args_[1]));
       break;
     case ir::Op::GtFloat64:
-      save(resolve(cmd.gt_float64_.args_[0]) > resolve(cmd.gt_float64_.args_[1]));
+      save(resolve(cmd.float64_args_.args_[0]) > resolve(cmd.float64_args_.args_[1]));
       break;
     case ir::Op::GtFlags: {
-      auto lhs = resolve(cmd.gt_flags_.args_[0]);
-      auto rhs = resolve(cmd.gt_flags_.args_[1]);
+      auto lhs = resolve(cmd.flags_args_.args_[0]);
+      auto rhs = resolve(cmd.flags_args_.args_[1]);
       save(lhs.value != rhs.value && ((lhs.value | rhs.value) == lhs.value));
     } break;
     case ir::Op::GeInt:
-      save(resolve(cmd.ge_int_.args_[0]) >= resolve(cmd.ge_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) >= resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::GeFloat32:
-      save(resolve(cmd.ge_float32_.args_[0]) >= resolve(cmd.ge_float32_.args_[1]));
+      save(resolve(cmd.float32_args_.args_[0]) >= resolve(cmd.float32_args_.args_[1]));
       break;
     case ir::Op::GeFloat64:
-      save(resolve(cmd.ge_float64_.args_[0]) >= resolve(cmd.ge_float64_.args_[1]));
+      save(resolve(cmd.float64_args_.args_[0]) >= resolve(cmd.float64_args_.args_[1]));
       break;
     case ir::Op::GeFlags: {
-      auto lhs = resolve(cmd.ge_flags_.args_[0]);
-      auto rhs = resolve(cmd.ge_flags_.args_[1]);
+      auto lhs = resolve(cmd.flags_args_.args_[0]);
+      auto rhs = resolve(cmd.flags_args_.args_[1]);
       save((lhs.value | rhs.value) == lhs.value);
     } break;
     case ir::Op::EqBool:
@@ -296,64 +296,64 @@ ir::BlockIndex ExecContext::ExecuteCmd(
            resolve<bool>(cmd.eq_bool_.args_[1]));
       break;
     case ir::Op::EqChar:
-      save(resolve(cmd.eq_char_.args_[0]) == resolve(cmd.eq_char_.args_[1]));
+      save(resolve(cmd.char_args_.args_[0]) == resolve(cmd.char_args_.args_[1]));
       break;
     case ir::Op::EqInt:
-      save(resolve(cmd.eq_int_.args_[0]) == resolve(cmd.eq_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) == resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::EqFloat32:
-      save(resolve(cmd.eq_float32_.args_[0]) == resolve(cmd.eq_float32_.args_[1]));
+      save(resolve(cmd.float32_args_.args_[0]) == resolve(cmd.float32_args_.args_[1]));
       break;
     case ir::Op::EqFloat64:
-      save(resolve(cmd.eq_float64_.args_[0]) == resolve(cmd.eq_float64_.args_[1]));
+      save(resolve(cmd.float64_args_.args_[0]) == resolve(cmd.float64_args_.args_[1]));
       break;
     case ir::Op::EqEnum:
-      save(resolve(cmd.eq_enum_.args_[0]) == resolve(cmd.eq_enum_.args_[1]));
+      save(resolve(cmd.enum_args_.args_[0]) == resolve(cmd.enum_args_.args_[1]));
       break;
     case ir::Op::EqFlags:
-      save(resolve(cmd.eq_flags_.args_[0]) == resolve(cmd.eq_flags_.args_[1]));
+      save(resolve(cmd.flags_args_.args_[0]) == resolve(cmd.flags_args_.args_[1]));
       break;
     case ir::Op::EqType:
-      save(resolve(cmd.eq_type_.args_[0]) == resolve(cmd.eq_type_.args_[1]));
+      save(resolve(cmd.type_args_.args_[0]) == resolve(cmd.type_args_.args_[1]));
       break;
     case ir::Op::EqAddr:
-      save(resolve(cmd.eq_addr_.args_[0]) == resolve(cmd.eq_addr_.args_[1]));
+      save(resolve(cmd.addr_args_.args_[0]) == resolve(cmd.addr_args_.args_[1]));
       break;
     case ir::Op::NeChar:
-      save(resolve(cmd.ne_char_.args_[0]) != resolve(cmd.ne_char_.args_[1]));
+      save(resolve(cmd.char_args_.args_[0]) != resolve(cmd.char_args_.args_[1]));
       break;
     case ir::Op::NeInt:
-      save(resolve(cmd.ne_int_.args_[0]) != resolve(cmd.ne_int_.args_[1]));
+      save(resolve(cmd.i32_args_.args_[0]) != resolve(cmd.i32_args_.args_[1]));
       break;
     case ir::Op::NeFloat32:
-      save(resolve(cmd.ne_float32_.args_[0]) != resolve(cmd.ne_float32_.args_[1]));
+      save(resolve(cmd.float32_args_.args_[0]) != resolve(cmd.float32_args_.args_[1]));
       break;
     case ir::Op::NeFloat64:
-      save(resolve(cmd.ne_float64_.args_[0]) != resolve(cmd.ne_float64_.args_[1]));
+      save(resolve(cmd.float64_args_.args_[0]) != resolve(cmd.float64_args_.args_[1]));
       break;
     case ir::Op::NeEnum:
-      save(resolve(cmd.ne_enum_.args_[0]) != resolve(cmd.ne_enum_.args_[1]));
+      save(resolve(cmd.enum_args_.args_[0]) != resolve(cmd.enum_args_.args_[1]));
       break;
     case ir::Op::NeFlags:
-      save(resolve(cmd.ne_flags_.args_[0]) != resolve(cmd.ne_flags_.args_[1]));
+      save(resolve(cmd.flags_args_.args_[0]) != resolve(cmd.flags_args_.args_[1]));
       break;
     case ir::Op::NeType:
-      save(resolve(cmd.ne_type_.args_[0]) != resolve(cmd.ne_type_.args_[1]));
+      save(resolve(cmd.type_args_.args_[0]) != resolve(cmd.type_args_.args_[1]));
       break;
     case ir::Op::NeAddr:
-      save(resolve(cmd.ne_addr_.args_[0]) != resolve(cmd.ne_addr_.args_[1]));
+      save(resolve(cmd.addr_args_.args_[0]) != resolve(cmd.addr_args_.args_[1]));
       break;
     case ir::Op::XorBool:
-      save(resolve(cmd.xor_bool_.args_[0]) ^ resolve(cmd.xor_bool_.args_[1]));
+      save(resolve(cmd.bool_args_.args_[0]) ^ resolve(cmd.bool_args_.args_[1]));
       break;
     case ir::Op::XorFlags:
-      save(resolve(cmd.xor_flags_.args_[0]) ^ resolve(cmd.xor_flags_.args_[1]));
+      save(resolve(cmd.flags_args_.args_[0]) ^ resolve(cmd.flags_args_.args_[1]));
       break;
     case ir::Op::OrFlags:
-      save(resolve(cmd.or_flags_.args_[0]) | resolve(cmd.or_flags_.args_[1]));
+      save(resolve(cmd.flags_args_.args_[0]) | resolve(cmd.flags_args_.args_[1]));
       break;
     case ir::Op::AndFlags:
-      save(resolve(cmd.and_flags_.args_[0]) & resolve(cmd.and_flags_.args_[1]));
+      save(resolve(cmd.flags_args_.args_[0]) & resolve(cmd.flags_args_.args_[1]));
       break;
     case ir::Op::CreateStruct:
       save(type::Struct::Make(cmd.create_struct_.lit_));
@@ -389,8 +389,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(type::Ptr(resolve<type::Type const *>(cmd.ptr_.reg_)));
       break;
     case ir::Op::Arrow:
-      save(type::Func({resolve(cmd.arrow_.args_[0])},
-                      {resolve(cmd.arrow_.args_[1])}));
+      save(type::Func({resolve(cmd.type_args_.args_[0])},
+                      {resolve(cmd.type_args_.args_[1])}));
       break;
     case ir::Op::Array: {
       auto len = resolve(cmd.array_.len_);

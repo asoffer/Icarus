@@ -147,32 +147,24 @@ RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r) {
   return cmd.result;
 }
 
-#define DEFINE_CMD2(Name, name, arg_type, RetType, ret_type, fn)               \
-  RegisterOr<ret_type> Name(RegisterOr<arg_type> v1,                           \
-                            RegisterOr<arg_type> v2) {                         \
-    if (!v1.is_reg_ && !v2.is_reg_) { return fn(v1.val_, v2.val_); }           \
-    auto &cmd  = MakeCmd(type::RetType, Op::Name);                             \
-    cmd.name   = Cmd::Name::Make(v1, v2);                                      \
-    auto &refs = Func::Current->references_;                                   \
-    if (v1.is_reg_) { refs[v1.reg_].insert(cmd.result); }                      \
-    if (v2.is_reg_) { refs[v2.reg_].insert(cmd.result); }                      \
-    return cmd.result;                                                         \
-  }                                                                            \
-  struct AllowSemicolon
-DEFINE_CMD2(ModInt, mod_int_, i32, Int, i32, std::modulus<i32>{});
-DEFINE_CMD2(Arrow, arrow_, type::Type const *, Type_, type::Type const *,
-            [](type::Type const *lhs, type::Type const *rhs) {
-              base::vector<type::Type const *> ins =
-                  lhs->is<type::Tuple>()
-                      ? lhs->as<type::Tuple>().entries_
-                      : base::vector<type::Type const *>{lhs};
-              base::vector<type::Type const *> outs =
-                  rhs->is<type::Tuple>()
-                      ? rhs->as<type::Tuple>().entries_
-                      : base::vector<type::Type const *>{rhs};
-              return type::Func(std::move(ins), std::move(outs));
-            });
-#undef DEFINE_CMD2
+RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
+                                     RegisterOr<type::Type const *> v2) {
+  if (!v1.is_reg_ && !v2.is_reg_) {
+    base::vector<type::Type const *> ins =
+        v1.val_->is<type::Tuple>() ? v1.val_->as<type::Tuple>().entries_
+                                   : base::vector<type::Type const *>{v1.val_};
+    base::vector<type::Type const *> outs =
+        v2.val_->is<type::Tuple>() ? v2.val_->as<type::Tuple>().entries_
+                                   : base::vector<type::Type const *>{v2.val_};
+    return type::Func(std::move(ins), std::move(outs));
+  }
+  auto &cmd = MakeCmd(type::Type_, Op::Arrow);
+  cmd.set<Cmd::ArrowTag, type::Type const*>(v1, v2);
+  auto &refs = Func::Current->references_;
+  if (v1.is_reg_) { refs[v1.reg_].insert(cmd.result); }
+  if (v2.is_reg_) { refs[v2.reg_].insert(cmd.result); }
+  return cmd.result;
+}
 
 RegisterOr<type::Type const *> Array(RegisterOr<type::Type const *> data_type) {
   if (!data_type.is_reg_) { return type::Arr(data_type.val_); }
@@ -261,8 +253,8 @@ RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals) {
 RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
   if (!v1.is_reg_) { return v1.val_ ? Not(v2) : v2; }
   if (!v2.is_reg_) { return v2.val_ ? Not(v1) : v1; }
-  auto &cmd     = MakeCmd(type::Bool, Op::XorBool);
-  cmd.xor_bool_ = Cmd::XorBool::Make(v1, v2);
+  auto &cmd = MakeCmd(type::Bool, Op::XorBool);
+  cmd.set<Cmd::XorTag, bool>(v1, v2);
   return cmd.result;
 }
 
@@ -472,7 +464,7 @@ RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &rhs) {
   if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ ^ rhs.val_; }
   auto &cmd      = MakeCmd(type, Op::XorFlags);
-  cmd.xor_flags_ = Cmd::XorFlags::Make(lhs, rhs);
+  cmd.set<Cmd::XorTag, FlagsVal>(lhs, rhs);
   return cmd.result;
 }
 
@@ -481,7 +473,7 @@ RegisterOr<FlagsVal> OrFlags(type::Flags const *type,
                              RegisterOr<FlagsVal> const &rhs) {
   if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ | rhs.val_; }
   auto &cmd     = MakeCmd(type, Op::OrFlags);
-  cmd.or_flags_ = Cmd::OrFlags::Make(lhs, rhs);
+  cmd.set<Cmd::XorTag, FlagsVal>(lhs, rhs);
   return cmd.result;
 }
 
@@ -490,7 +482,7 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &rhs) {
   if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ & rhs.val_; }
   auto &cmd      = MakeCmd(type, Op::AndFlags);
-  cmd.and_flags_ = Cmd::AndFlags::Make(lhs, rhs);
+  cmd.set<Cmd::XorTag, FlagsVal>(lhs, rhs);
   return cmd.result;
 }
 
@@ -601,9 +593,13 @@ static std::ostream &operator<<(std::ostream &os,
 char const *OpCodeStr(Op op) {
   switch (op) {
 #define OP_MACRO(op, ...)                                                      \
-  case Op::op:                                                                 \
-    return #op;
+  case Op::op: return #op;
+  //
+#define OP_MACRO_(op, ...)                                                     \
+  case Op::op: return #op;
+  //
 #include "ir/op.xmacro.h"
+#undef OP_MACRO_
 #undef OP_MACRO
   }
   __builtin_unreachable();
@@ -644,57 +640,57 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::PrintFlags: return os << cmd.print_flags_.arg_;
     case Op::PrintAddr: return os << cmd.print_addr_.arg_;
     case Op::PrintCharBuffer: return os << cmd.print_char_buffer_.arg_;
-    case Op::AddInt: return os << cmd.add_int_.args_;
-    case Op::AddFloat32: return os << cmd.add_float32_.args_;
-    case Op::AddFloat64: return os << cmd.add_float64_.args_;
-    case Op::SubInt: return os << cmd.sub_int_.args_;
-    case Op::SubFloat32: return os << cmd.sub_float32_.args_;
-    case Op::SubFloat64: return os << cmd.sub_float64_.args_;
-    case Op::MulInt: return os << cmd.mul_int_.args_;
-    case Op::MulFloat32: return os << cmd.mul_float32_.args_;
-    case Op::MulFloat64: return os << cmd.mul_float64_.args_;
-    case Op::DivInt: return os << cmd.div_int_.args_;
-    case Op::DivFloat32: return os << cmd.div_float32_.args_;
-    case Op::DivFloat64: return os << cmd.div_float64_.args_;
-    case Op::ModInt: return os << cmd.mod_int_.args_;
-    case Op::LtInt: return os << cmd.lt_int_.args_;
-    case Op::LtFloat32: return os << cmd.lt_float32_.args_;
-    case Op::LtFloat64: return os << cmd.lt_float64_.args_;
-    case Op::LtFlags: return os << cmd.lt_flags_.args_;
-    case Op::LeInt: return os << cmd.le_int_.args_;
-    case Op::LeFloat32: return os << cmd.le_float32_.args_;
-    case Op::LeFloat64: return os << cmd.le_float64_.args_;
-    case Op::LeFlags: return os << cmd.le_flags_.args_;
-    case Op::GtInt: return os << cmd.gt_int_.args_;
-    case Op::GtFloat32: return os << cmd.gt_float32_.args_;
-    case Op::GtFloat64: return os << cmd.gt_float64_.args_;
-    case Op::GtFlags: return os << cmd.gt_flags_.args_;
-    case Op::GeInt: return os << cmd.ge_int_.args_;
-    case Op::GeFloat32: return os << cmd.ge_float32_.args_;
-    case Op::GeFloat64: return os << cmd.ge_float64_.args_;
-    case Op::GeFlags: return os << cmd.ge_flags_.args_;
+    case Op::AddInt: return os << cmd.i32_args_.args_;
+    case Op::AddFloat32: return os << cmd.float32_args_.args_;
+    case Op::AddFloat64: return os << cmd.float64_args_.args_;
+    case Op::SubInt: return os << cmd.i32_args_.args_;
+    case Op::SubFloat32: return os << cmd.float32_args_.args_;
+    case Op::SubFloat64: return os << cmd.float64_args_.args_;
+    case Op::MulInt: return os << cmd.i32_args_.args_;
+    case Op::MulFloat32: return os << cmd.float32_args_.args_;
+    case Op::MulFloat64: return os << cmd.float64_args_.args_;
+    case Op::DivInt: return os << cmd.i32_args_.args_;
+    case Op::DivFloat32: return os << cmd.float32_args_.args_;
+    case Op::DivFloat64: return os << cmd.float64_args_.args_;
+    case Op::ModInt: return os << cmd.i32_args_.args_;
+    case Op::LtInt: return os << cmd.i32_args_.args_;
+    case Op::LtFloat32: return os << cmd.float32_args_.args_;
+    case Op::LtFloat64: return os << cmd.float64_args_.args_;
+    case Op::LtFlags: return os << cmd.flags_args_.args_;
+    case Op::LeInt: return os << cmd.i32_args_.args_;
+    case Op::LeFloat32: return os << cmd.float32_args_.args_;
+    case Op::LeFloat64: return os << cmd.float64_args_.args_;
+    case Op::LeFlags: return os << cmd.flags_args_.args_;
+    case Op::GtInt: return os << cmd.i32_args_.args_;
+    case Op::GtFloat32: return os << cmd.float32_args_.args_;
+    case Op::GtFloat64: return os << cmd.float64_args_.args_;
+    case Op::GtFlags: return os << cmd.flags_args_.args_;
+    case Op::GeInt: return os << cmd.i32_args_.args_;
+    case Op::GeFloat32: return os << cmd.float32_args_.args_;
+    case Op::GeFloat64: return os << cmd.float64_args_.args_;
+    case Op::GeFlags: return os << cmd.flags_args_.args_;
     case Op::EqBool:
       return os << cmd.eq_bool_.args_[0] << " " << cmd.eq_bool_.args_[1];
-    case Op::EqChar: return os << cmd.eq_char_.args_;
-    case Op::EqInt: return os << cmd.eq_int_.args_;
-    case Op::EqFloat32: return os << cmd.eq_float32_.args_;
-    case Op::EqFloat64: return os << cmd.eq_float64_.args_;
-    case Op::EqEnum: return os << cmd.eq_enum_.args_;
-    case Op::EqFlags: return os << cmd.eq_flags_.args_;
-    case Op::EqType: return os << cmd.eq_type_.args_;
-    case Op::EqAddr: return os << cmd.eq_addr_.args_;
-    case Op::NeChar: return os << cmd.ne_char_.args_;
-    case Op::NeInt: return os << cmd.ne_int_.args_;
-    case Op::NeFloat32: return os << cmd.ne_float32_.args_;
-    case Op::NeFloat64: return os << cmd.ne_float64_.args_;
-    case Op::NeEnum: return os << cmd.ne_enum_.args_;
-    case Op::NeFlags: return os << cmd.ne_flags_.args_;
-    case Op::NeType: return os << cmd.ne_type_.args_;
-    case Op::NeAddr: return os << cmd.ne_addr_.args_;
-    case Op::XorBool: return os << cmd.xor_bool_.args_;
-    case Op::XorFlags: return os << cmd.xor_flags_.args_;
-    case Op::OrFlags: return os << cmd.or_flags_.args_;
-    case Op::AndFlags: return os << cmd.and_flags_.args_;
+    case Op::EqChar: return os << cmd.char_args_.args_;
+    case Op::EqInt: return os << cmd.i32_args_.args_;
+    case Op::EqFloat32: return os << cmd.float32_args_.args_;
+    case Op::EqFloat64: return os << cmd.float64_args_.args_;
+    case Op::EqEnum: return os << cmd.enum_args_.args_;
+    case Op::EqFlags: return os << cmd.flags_args_.args_;
+    case Op::EqType: return os << cmd.type_args_.args_;
+    case Op::EqAddr: return os << cmd.addr_args_.args_;
+    case Op::NeChar: return os << cmd.char_args_.args_;
+    case Op::NeInt: return os << cmd.i32_args_.args_;
+    case Op::NeFloat32: return os << cmd.float32_args_.args_;
+    case Op::NeFloat64: return os << cmd.float64_args_.args_;
+    case Op::NeEnum: return os << cmd.enum_args_.args_;
+    case Op::NeFlags: return os << cmd.flags_args_.args_;
+    case Op::NeType: return os << cmd.type_args_.args_;
+    case Op::NeAddr: return os << cmd.addr_args_.args_;
+    case Op::XorBool: return os << cmd.bool_args_.args_;
+    case Op::XorFlags: return os << cmd.flags_args_.args_;
+    case Op::OrFlags: return os << cmd.flags_args_.args_;
+    case Op::AndFlags: return os << cmd.flags_args_.args_;
     case Op::CreateStruct: return os << cmd.create_struct_.lit_;
     case Op::CreateStructField:
       return os << cmd.create_struct_field_.struct_ << " "
@@ -707,7 +703,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::Malloc: return os << cmd.malloc_.arg_;
     case Op::Free: return os << cmd.free_.reg_;
     case Op::Alloca: return os << cmd.alloca_.type_->to_string();
-    case Op::Arrow: return os << cmd.arrow_.args_;
+    case Op::Arrow: return os << cmd.type_args_.args_;
     case Op::Array: return os << cmd.array_.type_;
     case Op::CreateTuple: return os;
     case Op::AppendToTuple:

@@ -188,12 +188,12 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
       return prop_set.add(EqBool(block_view.at(cmd.eq_bool_.args_[0]),
                                  block_view.at(cmd.eq_bool_.args_[1])));
     case ir::Op::LtInt:
-      if (cmd.lt_int_.args_[0].is_reg_) {
-        if (cmd.lt_int_.args_[1].is_reg_) {
+      if (cmd.i32_args_.args_[0].is_reg_) {
+        if (cmd.i32_args_.args_[1].is_reg_) {
           NOT_YET();
         } else {
-          return prop_set.add(LtInt(block_view.at(cmd.lt_int_.args_[0].reg_),
-                                    cmd.lt_int_.args_[1].val_));
+          return prop_set.add(LtInt(block_view.at(cmd.i32_args_.args_[0].reg_),
+                                    cmd.i32_args_.args_[1].val_));
         }
       } else {
         NOT_YET();
@@ -253,6 +253,7 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
       bool changed = view.at(cmd.not_.reg_).add(Not(view.at(e.reg_)));
       if (changed) { stale_up->emplace(e.viewing_block_, cmd.not_.reg_); }
     } break;
+                              /*
     case ir::Op::LtInt: {
       auto &prop_set = view.at(e.reg_).props_;
       prop_set.for_each([&](base::owned_ptr<Property> *prop) {
@@ -260,7 +261,7 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         auto &bool_prop = (**prop).as<BoolProp>();
         if (bool_prop.can_be_false_ && bool_prop.can_be_true_) { return; }
         auto[reg, int_prop] =
-            IntProp::Make(cmd.lt_int_, !bool_prop.can_be_false_);
+            IntProp::Make(cmd.i32_args_, !bool_prop.can_be_false_);
         bool changed = view.at(reg).add(std::move(int_prop));
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
@@ -272,7 +273,7 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         auto &bool_prop = (**prop).as<BoolProp>();
         if (bool_prop.can_be_false_ && bool_prop.can_be_true_) { return; }
         auto[reg, int_prop] =
-            IntProp::Make(cmd.le_int_, !bool_prop.can_be_false_);
+            IntProp::Make(cmd.i32_args_, !bool_prop.can_be_false_);
         bool changed = view.at(reg).add(std::move(int_prop));
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
@@ -284,7 +285,7 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         auto &bool_prop = (**prop).as<BoolProp>();
         if (bool_prop.can_be_false_ && bool_prop.can_be_true_) { return; }
         auto[reg, int_prop] =
-            IntProp::Make(cmd.gt_int_, !bool_prop.can_be_false_);
+            IntProp::Make(cmd.i32_args_, !bool_prop.can_be_false_);
         bool changed = view.at(reg).add(std::move(int_prop));
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
@@ -296,11 +297,12 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
         auto &bool_prop = (**prop).as<BoolProp>();
         if (bool_prop.can_be_false_ && bool_prop.can_be_true_) { return; }
         auto[reg, int_prop] =
-            IntProp::Make(cmd.ge_int_, !bool_prop.can_be_false_);
+            IntProp::Make(cmd.i32_args_, !bool_prop.can_be_false_);
         bool changed = view.at(reg).add(std::move(int_prop));
         if (changed) { stale_up->emplace(e.viewing_block_, reg); }
       });
     } break;
+    */
     default: NOT_YET(cmd);
   }
 }
