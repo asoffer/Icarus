@@ -183,7 +183,7 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
     case ir::Op::CondJump: return /* TODO */ false;
     case ir::Op::ReturnJump: return /* TODO */ false;
     case ir::Op::Call: return /* TODO */ false;
-    case ir::Op::Not: return prop_set.add(Not(block_view.at(cmd.not_.reg_)));
+    case ir::Op::Not: return prop_set.add(Not(block_view.at(cmd.reg_)));
     case ir::Op::EqBool:
       return prop_set.add(EqBool(block_view.at(cmd.eq_bool_.args_[0]),
                                  block_view.at(cmd.eq_bool_.args_[1])));
@@ -250,8 +250,8 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
 #undef DEFINE_CASE
     case ir::Op::Not: {
       // Not works in both directions. Huzzah!
-      bool changed = view.at(cmd.not_.reg_).add(Not(view.at(e.reg_)));
-      if (changed) { stale_up->emplace(e.viewing_block_, cmd.not_.reg_); }
+      bool changed = view.at(cmd.reg_).add(Not(view.at(e.reg_)));
+      if (changed) { stale_up->emplace(e.viewing_block_, cmd.reg_); }
     } break;
                               /*
     case ir::Op::LtInt: {

@@ -118,27 +118,10 @@ struct Cmd {
                                        Op::name)>
 
   CMD(Death) {};
-  CMD(Trunc) { Register reg_; };
-  CMD(Extend) { Register reg_; };
   CMD(Bytes) { RegisterOr<const type::Type *> arg_; };
   CMD(Align) { RegisterOr<const type::Type *> arg_; };
-  CMD(Not) { Register reg_; };
-  CMD(NegInt) { Register reg_; };
-  CMD(NegFloat32) { Register reg_; };
-  CMD(NegFloat64) { Register reg_; };
   CMD(ArrayLength) { Register arg_; };
   CMD(ArrayData) { Register arg_; };
-
-  CMD(LoadBool) { Register arg_; };
-  CMD(LoadChar) { Register arg_; };
-  CMD(LoadInt) { Register arg_; };
-  CMD(LoadFloat32) { Register arg_; };
-  CMD(LoadFloat64) { Register arg_; };
-  CMD(LoadType) { Register arg_; };
-  CMD(LoadEnum) { Register arg_; };
-  CMD(LoadFlags) { Register arg_; };
-  CMD(LoadAddr) { Register arg_; };
-  CMD(LoadFunc) { Register arg_; };
 
   CMD(StoreBool) {
     Register addr_;
@@ -208,17 +191,14 @@ struct Cmd {
     type::Struct *struct_;
     std::string_view name_;
   };
-  CMD(FinalizeStruct) { Register reg_; };
 
   CMD(EqBool) { std::array<Register, 2> args_; };
 
   CMD(DebugIr){};
 
   CMD(Malloc) { RegisterOr<i32> arg_; };
-  CMD(Free) { Register reg_; };
   CMD(Alloca) { type::Type const *type_; };
 
-  CMD(Ptr) { Register reg_; };
   CMD(Array) {
     RegisterOr<i32> len_;
     RegisterOr<type::Type const *> type_;
@@ -242,8 +222,6 @@ struct Cmd {
   };
   CMD(FinalizeBlockSeq) { Register block_seq_; };
 
-  CMD(VariantType) { Register reg_; };
-  CMD(VariantValue) { Register reg_; };
   CMD(PtrIncr) {
     // TODO maybe store the type here rather than on the cmd because most cmds
     // don't need it.
@@ -430,9 +408,13 @@ struct Cmd {
     static Args Make(Arg && arg1, Arg&& arg2) {
       return {std::forward<Arg>(arg1), std::forward<Arg>(arg2)};
     }
+    inline friend std::ostream &operator<<(std::ostream &os, Args const &a) {
+      return os << a.args_[0] << " " << a.args_[1];
+    }
   };
 
   union {
+    Register reg_;
     Args<bool> bool_args_;
     Args<char> char_args_;
     Args<i32> i32_args_;
@@ -478,7 +460,7 @@ template <typename T>
 RegisterOr<T> Neg(RegisterOr<T> r) {
   if (!r.is_reg_) { return -r.val_; }
   auto &cmd = MakeCmd(type::Get<T>(), Cmd::OpCode<Cmd::NegTag, T>());
-  cmd.template set<Cmd::NegTag, T>(r.reg_);
+  cmd.reg_ = r.reg_;
   // TODO reenable Func::Current->references_[cmd.neg_int_.reg_].insert(cmd.result);
   return cmd.result;
 }
@@ -486,7 +468,7 @@ RegisterOr<T> Neg(RegisterOr<T> r) {
 template <typename T, typename... Args>
 TypedRegister<T> Load(Register r, type::Type const *t = type::Get<T>()) {
   auto &cmd = MakeCmd(t, Cmd::OpCode<Cmd::LoadTag, T>());
-  cmd.template set<Cmd::LoadTag, T>(r);
+  cmd.reg_ = r;
   return cmd.result;
 }
 Register Load(Register r, type::Type const *t);
