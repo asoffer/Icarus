@@ -61,7 +61,7 @@ Val MakePhi(CmdIndex phi_index,
   } else if (cmd_type == type::Block || cmd_type == type::OptBlock) {
     auto phi_args  = MakePhiArgs<BlockSequence>(val_map);
     cmd.op_code_   = Op::PhiBlock;
-    cmd.phi_block_ = Cmd::PhiBlock::Make(phi_args.get());
+    cmd.phi_block_ = phi_args.get();
     ir::Func::Current->block(BasicBlock::Current)
         .phi_args_.push_back(std::move(phi_args));
   } else {

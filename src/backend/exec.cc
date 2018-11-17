@@ -121,22 +121,19 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::Trunc: save(static_cast<char>(resolve<i32>(cmd.reg_))); break;
     case ir::Op::Extend: save(static_cast<i32>(resolve<char>(cmd.reg_))); break;
     case ir::Op::Bytes:
-      save(
-          Architecture::InterprettingMachine().bytes(resolve(cmd.bytes_.arg_)));
+      save(Architecture::InterprettingMachine().bytes(resolve(cmd.type_arg_)));
       break;
     case ir::Op::Align:
       save(Architecture::InterprettingMachine().alignment(
-          resolve(cmd.align_.arg_)));
+          resolve(cmd.type_arg_)));
       break;
     case ir::Op::Not: save(!resolve<bool>(cmd.reg_)); break;
     case ir::Op::NegInt: save(-resolve<i32>(cmd.reg_)); break;
     case ir::Op::NegFloat32: save(-resolve<double>(cmd.reg_)); break;
     case ir::Op::NegFloat64: save(-resolve<double>(cmd.reg_)); break;
-    case ir::Op::ArrayLength:
-      save(resolve<ir::Addr>(cmd.array_data_.arg_));
-      break;
+    case ir::Op::ArrayLength: save(resolve<ir::Addr>(cmd.reg_)); break;
     case ir::Op::ArrayData: {
-      auto addr = resolve<ir::Addr>(cmd.array_data_.arg_);
+      auto addr = resolve<ir::Addr>(cmd.reg_);
       switch (addr.kind) {
         case ir::Addr::Kind::Null: UNREACHABLE();
         case ir::Addr::Kind::Stack:
@@ -433,18 +430,14 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(addr);
     } break;
     case ir::Op::PrintBool:
-      std::cerr << (resolve(cmd.print_bool_.arg_) ? "true" : "false");
+      std::cerr << (resolve(cmd.bool_arg_) ? "true" : "false");
       break;
-    case ir::Op::PrintChar: std::cerr << resolve(cmd.print_char_.arg_); break;
-    case ir::Op::PrintInt: std::cerr << resolve(cmd.print_int_.arg_); break;
-    case ir::Op::PrintFloat32:
-      std::cerr << resolve(cmd.print_float32_.arg_);
-      break;
-    case ir::Op::PrintFloat64:
-      std::cerr << resolve(cmd.print_float64_.arg_);
-      break;
+    case ir::Op::PrintChar: std::cerr << resolve(cmd.char_arg_); break;
+    case ir::Op::PrintInt: std::cerr << resolve(cmd.i32_arg_); break;
+    case ir::Op::PrintFloat32: std::cerr << resolve(cmd.float32_arg_); break;
+    case ir::Op::PrintFloat64: std::cerr << resolve(cmd.float64_arg_); break;
     case ir::Op::PrintType:
-      std::cerr << resolve(cmd.print_type_.arg_)->to_string();
+      std::cerr << resolve(cmd.type_arg_)->to_string();
       break;
     case ir::Op::PrintEnum:
       NOT_YET();
@@ -474,10 +467,10 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       */
       break;
     case ir::Op::PrintAddr:
-      std::cerr << resolve(cmd.print_addr_.arg_).to_string();
+      std::cerr << resolve(cmd.addr_arg_).to_string();
       break;
     case ir::Op::PrintCharBuffer:
-      std::cerr << resolve(cmd.print_char_buffer_.arg_);
+      std::cerr << resolve(cmd.char_buf_arg_);
       break;
     case ir::Op::Call: {
       // NOTE: This is a hack using heap address slots to represent registers
@@ -660,9 +653,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       StoreValue(resolve(cmd.set_ret_char_.val_),
                  ret_slots.at(cmd.set_ret_char_.ret_num_), &stack_);
       break;
-    case ir::Op::SetRetInt:
-      StoreValue(resolve(cmd.set_ret_int_.val_),
-                 ret_slots.at(cmd.set_ret_int_.ret_num_), &stack_);
+    case ir::Op::SetRetI32:
+      StoreValue(resolve(cmd.set_ret_i32_.val_),
+                 ret_slots.at(cmd.set_ret_i32_.ret_num_), &stack_);
       break;
     case ir::Op::SetRetFloat32:
       StoreValue(resolve(cmd.set_ret_float32_.val_),
@@ -720,9 +713,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       StoreValue(resolve(cmd.store_char_.val_),
                  resolve<ir::Addr>(cmd.store_char_.addr_), &stack_);
       break;
-    case ir::Op::StoreInt:
-      StoreValue(resolve(cmd.store_int_.val_),
-                 resolve<ir::Addr>(cmd.store_int_.addr_), &stack_);
+    case ir::Op::StoreI32:
+      StoreValue(resolve(cmd.store_i32_.val_),
+                 resolve<ir::Addr>(cmd.store_i32_.addr_), &stack_);
       break;
     case ir::Op::StoreFloat32:
       StoreValue(resolve(cmd.store_float32_.val_),
@@ -753,28 +746,28 @@ ir::BlockIndex ExecContext::ExecuteCmd(
                  resolve<ir::Addr>(cmd.store_addr_.addr_), &stack_);
       break;
     case ir::Op::PhiBool:
-      save(resolve(cmd.phi_bool_.args_->map_.at(call_stack.top().prev_)));
+      save(resolve(cmd.phi_bool_->map_.at(call_stack.top().prev_)));
       break;
     case ir::Op::PhiChar:
-      save(resolve(cmd.phi_char_.args_->map_.at(call_stack.top().prev_)));
+      save(resolve(cmd.phi_char_->map_.at(call_stack.top().prev_)));
       break;
-    case ir::Op::PhiInt:
-      save(resolve(cmd.phi_int_.args_->map_.at(call_stack.top().prev_)));
+    case ir::Op::PhiI32:
+      save(resolve(cmd.phi_i32_->map_.at(call_stack.top().prev_)));
       break;
     case ir::Op::PhiFloat32:
-      save(resolve(cmd.phi_float32_.args_->map_.at(call_stack.top().prev_)));
+      save(resolve(cmd.phi_float32_->map_.at(call_stack.top().prev_)));
       break;
     case ir::Op::PhiFloat64:
-      save(resolve(cmd.phi_float64_.args_->map_.at(call_stack.top().prev_)));
+      save(resolve(cmd.phi_float64_->map_.at(call_stack.top().prev_)));
       break;
     case ir::Op::PhiType:
-      save(resolve(cmd.phi_type_.args_->map_.at(call_stack.top().prev_)));
+      save(resolve(cmd.phi_type_->map_.at(call_stack.top().prev_)));
       break;
     case ir::Op::PhiAddr:
-      save(resolve(cmd.phi_addr_.args_->map_.at(call_stack.top().prev_)));
+      save(resolve(cmd.phi_addr_->map_.at(call_stack.top().prev_)));
       break;
     case ir::Op::PhiBlock:
-      save(resolve(cmd.phi_block_.args_->map_.at(call_stack.top().prev_)));
+      save(resolve(cmd.phi_block_->map_.at(call_stack.top().prev_)));
       break;
     case ir::Op::CondJump:
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];

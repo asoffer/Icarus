@@ -117,59 +117,36 @@ struct Cmd {
       : public CommandOpCode<name, static_cast<std::underlying_type_t<Op>>(    \
                                        Op::name)>
 
-  CMD(Death) {};
-  CMD(Bytes) { RegisterOr<const type::Type *> arg_; };
-  CMD(Align) { RegisterOr<const type::Type *> arg_; };
-  CMD(ArrayLength) { Register arg_; };
-  CMD(ArrayData) { Register arg_; };
+  template <typename T>
+  struct Store {
+    Register addr_;
+    RegisterOr<T> val_;
 
-  CMD(StoreBool) {
-    Register addr_;
-    RegisterOr<bool> val_;
-  };
-  CMD(StoreChar) {
-    Register addr_;
-    RegisterOr<char> val_;
-  };
-  CMD(StoreInt) {
-    Register addr_;
-    RegisterOr<i32> val_;
-  };
-  CMD(StoreFloat32) {
-    Register addr_;
-    RegisterOr<float> val_;
-  };
-  CMD(StoreFloat64) {
-    Register addr_;
-    RegisterOr<double> val_;
-  };
-  CMD(StoreType) {
-    Register addr_;
-    RegisterOr<type::Type const *> val_;
-  };
-  CMD(StoreEnum) {
-    Register addr_;
-    RegisterOr<EnumVal> val_;
-  };
-  CMD(StoreFunc) {
-    Register addr_;
-    RegisterOr<Func *> val_;
-  };
-  CMD(StoreFlags) {
-    Register addr_;
-    RegisterOr<FlagsVal> val_;
-  };
-  CMD(StoreAddr) {
-    Register addr_;
-    RegisterOr<ir::Addr> val_;
+    template <typename U>
+    static Store<T> Make(Register reg, U &&arg) {
+      return Store<T>{reg, std::forward<U>(arg)};
+    }
+
+    inline friend std::ostream &operator<<(std::ostream &os, Store const &s) {
+      return os << s.addr_.to_string() << " " << s.val_;
+    }
   };
 
-  CMD(PrintBool) { RegisterOr<bool> arg_; };
-  CMD(PrintChar) { RegisterOr<char> arg_; };
-  CMD(PrintInt) { RegisterOr<i32> arg_; };
-  CMD(PrintFloat32) { RegisterOr<float> arg_; };
-  CMD(PrintFloat64) { RegisterOr<double> arg_; };
-  CMD(PrintType) { RegisterOr<type::Type const *> arg_; };
+  template <typename T>
+  struct SetRet {
+    u32 ret_num_;
+    RegisterOr<T> val_;
+
+    template <typename U>
+    static SetRet<T> Make(u32 index, U &&arg) {
+      return SetRet<T>{index, std::forward<U>(arg)};
+    }
+
+    inline friend std::ostream &operator<<(std::ostream &os, SetRet const &s) {
+      return os << s.ret_num_ << " " << s.val_;
+    }
+  };
+
   CMD(PrintEnum) {
     RegisterOr<EnumVal> arg_;
     type::Enum const *enum_type_;
@@ -178,8 +155,6 @@ struct Cmd {
     RegisterOr<FlagsVal> arg_;
     type::Flags const *flags_type_;
   };
-  CMD(PrintAddr) { RegisterOr<ir::Addr> arg_; };
-  CMD(PrintCharBuffer) { RegisterOr<std::string_view> arg_; };
 
   CMD(CreateStruct) { ast::StructLiteral *lit_; };
   CMD(CreateStructField) {
@@ -193,8 +168,6 @@ struct Cmd {
   };
 
   CMD(EqBool) { std::array<Register, 2> args_; };
-
-  CMD(DebugIr){};
 
   CMD(Malloc) { RegisterOr<i32> arg_; };
   CMD(Alloca) { type::Type const *type_; };
@@ -243,15 +216,6 @@ struct Cmd {
     OutParams *outs_;
   };
 
-  CMD(PhiBool) { PhiArgs<bool> *args_; };
-  CMD(PhiChar) { PhiArgs<char> *args_; };
-  CMD(PhiInt) { PhiArgs<i32> *args_; };
-  CMD(PhiFloat32) { PhiArgs<float> *args_; };
-  CMD(PhiFloat64) { PhiArgs<double> *args_; };
-  CMD(PhiType) { PhiArgs<type::Type const *> *args_; };
-  CMD(PhiBlock) { PhiArgs<BlockSequence> *args_; };
-  CMD(PhiAddr) { PhiArgs<ir::Addr> *args_; };
-
   CMD(CondJump) {
     Register cond_;
     BlockIndex blocks_[2];
@@ -276,81 +240,7 @@ struct Cmd {
     ast::BlockLiteral *lit_;
   };
 
-  CMD(SetRetBool) {
-    size_t ret_num_;
-    RegisterOr<bool> val_;
-  };
-
-  CMD(SetRetChar) {
-    size_t ret_num_;
-    RegisterOr<char> val_;
-  };
-
-  CMD(SetRetInt) {
-    size_t ret_num_;
-    RegisterOr<i32> val_;
-  };
-
-  CMD(SetRetFloat32) {
-    size_t ret_num_;
-    RegisterOr<float> val_;
-  };
-  CMD(SetRetFloat64) {
-    size_t ret_num_;
-    RegisterOr<double> val_;
-  };
-
-  CMD(SetRetType) {
-    size_t ret_num_;
-    RegisterOr<type::Type const *> val_;
-  };
-
-  CMD(SetRetEnum) {
-    size_t ret_num_;
-    RegisterOr<EnumVal> val_;
-  };
-
-  CMD(SetRetFlags) {
-    size_t ret_num_;
-    RegisterOr<FlagsVal> val_;
-  };
-
-  CMD(SetRetAddr) {
-    size_t ret_num_;
-    RegisterOr<ir::Addr> val_;
-  };
-
-  CMD(SetRetCharBuf) {
-    size_t ret_num_;
-    RegisterOr<std::string_view> val_;
-  };
-
-  CMD(SetRetFunc) {
-    size_t ret_num_;
-    RegisterOr<ir::AnyFunc> val_;
-  };
-
-  CMD(SetRetScope) {
-    size_t ret_num_;
-    RegisterOr<ast::ScopeLiteral *> val_;
-  };
-
-  CMD(SetRetGeneric) {
-    size_t ret_num_;
-    RegisterOr<ast::FunctionLiteral *> val_;
-  };
-
-  CMD(SetRetModule) {
-    size_t ret_num_;
-    RegisterOr<Module const *> val_;
-  };
-
-  CMD(SetRetBlock) {
-    size_t ret_num_;
-    RegisterOr<BlockSequence> val_;
-  };
 #undef CMD
-
 
 #define OP_MACRO(op, tag, ...) struct tag##Tag;
 #define OP_MACRO_(op, tag, ...) struct tag##Tag;
@@ -415,6 +305,19 @@ struct Cmd {
 
   union {
     Register reg_;
+
+    // TODO names of these are easily mis-spellable and would lead to UB.
+    RegisterOr<bool> bool_arg_;
+    RegisterOr<char> char_arg_;
+    RegisterOr<i32> i32_arg_;
+    RegisterOr<float> float32_arg_;
+    RegisterOr<double> float64_arg_;
+    RegisterOr<EnumVal> enum_arg_;
+    RegisterOr<FlagsVal> flags_arg_;
+    RegisterOr<type::Type const *> type_arg_;
+    RegisterOr<std::string_view> char_buf_arg_;
+    RegisterOr<Addr> addr_arg_;
+
     Args<bool> bool_args_;
     Args<char> char_args_;
     Args<i32> i32_args_;
@@ -424,6 +327,42 @@ struct Cmd {
     Args<FlagsVal> flags_args_;
     Args<type::Type const *> type_args_;
     Args<Addr> addr_args_;
+
+    Store<bool> store_bool_;
+    Store<char> store_char_;
+    Store<i32> store_i32_;
+    Store<float> store_float32_;
+    Store<double> store_float64_;
+    Store<type::Type const*> store_type_;
+    Store<EnumVal> store_enum_;
+    Store<Func *> store_func_;
+    Store<FlagsVal> store_flags_;
+    Store<Addr> store_addr_;
+
+    SetRet<bool> set_ret_bool_;
+    SetRet<char> set_ret_char_;
+    SetRet<i32> set_ret_i32_;
+    SetRet<float> set_ret_float32_;
+    SetRet<double> set_ret_float64_;
+    SetRet<type::Type const*> set_ret_type_;
+    SetRet<EnumVal> set_ret_enum_;
+    SetRet<AnyFunc> set_ret_func_;
+    SetRet<FlagsVal> set_ret_flags_;
+    SetRet<Addr> set_ret_addr_;
+    SetRet<std::string_view> set_ret_char_buf_;
+    SetRet<ast::ScopeLiteral *> set_ret_scope_;
+    SetRet<ast::FunctionLiteral *> set_ret_generic_;
+    SetRet<Module const *> set_ret_module_;
+    SetRet<BlockSequence> set_ret_block_;
+
+    PhiArgs<bool> *phi_bool_;
+    PhiArgs<char> *phi_char_;
+    PhiArgs<i32> *phi_i32_;
+    PhiArgs<float> *phi_float32_;
+    PhiArgs<double> *phi_float64_;
+    PhiArgs<type::Type const *> *phi_type_;
+    PhiArgs<BlockSequence> *phi_block_;
+    PhiArgs<ir::Addr> *phi_addr_;
 
 #define OP_MACRO(...)
 #define OP_MACRO_(op, tag, type, field) Cmd::op field;
@@ -606,7 +545,12 @@ void Print(T r, Args &&... args) {
   if constexpr (IsRegOr<T>::value) {
     using type = typename T::type;
     auto &cmd  = MakeCmd(nullptr, Cmd::OpCode<Cmd::PrintTag, type>());
-    cmd.template set<Cmd::PrintTag, type>(r, std::forward<Args>(args)...);
+    if constexpr (std::is_same_v<type, EnumVal> || std::is_same_v<type, FlagsVal>) {
+      cmd.template set<Cmd::PrintTag, type>(r, std::forward<Args>(args)...);
+    } else {
+      static_assert(sizeof...(Args) == 0);
+      cmd.template get<Cmd::PrintTag, type>() = r;
+    }
   } else {
     return Print(RegisterOr<T>(r), std::forward<Args>(args)...);
   }

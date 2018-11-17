@@ -94,13 +94,13 @@ RegisterOr<i32> Extend(RegisterOr<char> r) {
 
 RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r) {
   auto &cmd  = MakeCmd(type::Int, Op::Bytes);
-  cmd.bytes_ = Cmd::Bytes::Make(r);
+  cmd.type_arg_ = r;
   return cmd.result;
 }
 
 RegisterOr<i32> Align(RegisterOr<type::Type const *> r) {
   auto &cmd  = MakeCmd(type::Int, Op::Align);
-  cmd.align_ = Cmd::Align::Make(r);
+  cmd.type_arg_ = r;
   return cmd.result;
 }
 
@@ -123,8 +123,8 @@ TypedRegister<Addr> Malloc(const type::Type *t, RegisterOr<i32> r) {
 void Free(Register r) { MakeCmd(nullptr, Op::Free).reg_ = r; }
 
 Register ArrayLength(Register r) {
-  auto &cmd         = MakeCmd(type::Ptr(type::Int), Op::ArrayLength);
-  cmd.array_length_ = Cmd::ArrayLength::Make(r);
+  auto &cmd = MakeCmd(type::Ptr(type::Int), Op::ArrayLength);
+  cmd.reg_  = r;
   return cmd.result;
 }
 
@@ -132,8 +132,8 @@ Register ArrayData(Register r, type::Type const *ptr) {
   auto *array_type = &ptr->as<type::Pointer>().pointee->as<type::Array>();
   ASSERT(!array_type->fixed_length);
 
-  auto &cmd       = MakeCmd(type::Ptr(array_type->data_type), Op::ArrayData);
-  cmd.array_data_ = Cmd::ArrayData::Make(r);
+  auto &cmd = MakeCmd(type::Ptr(array_type->data_type), Op::ArrayData);
+  cmd.reg_  = r;
   return cmd.result;
 }
 
@@ -606,20 +606,8 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
   if (cmd.result.value >= 0) { os << cmd.result << " = "; }
   os << OpCodeStr(cmd.op_code_) << " ";
   switch (cmd.op_code_) {
-    case Op::Bytes: return os << cmd.bytes_.arg_;
-    case Op::Align: return os << cmd.align_.arg_;
-    case Op::ArrayLength: return os << cmd.array_length_.arg_;
-    case Op::ArrayData: return os << cmd.array_data_.arg_;
-    case Op::PrintBool: return os << cmd.print_bool_.arg_;
-    case Op::PrintChar: return os << cmd.print_char_.arg_;
-    case Op::PrintInt: return os << cmd.print_int_.arg_;
-    case Op::PrintFloat32: return os << cmd.print_float32_.arg_;
-    case Op::PrintFloat64: return os << cmd.print_float64_.arg_;
-    case Op::PrintType: return os << cmd.print_type_.arg_;
     case Op::PrintEnum: return os << cmd.print_enum_.arg_;
     case Op::PrintFlags: return os << cmd.print_flags_.arg_;
-    case Op::PrintAddr: return os << cmd.print_addr_.arg_;
-    case Op::PrintCharBuffer: return os << cmd.print_char_buffer_.arg_;
 #define OP_MACRO(op, tag, type, field)                                         \
   case Op::op:                                                                 \
     return os << cmd.field;
@@ -689,57 +677,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
     case Op::CastIntToFloat64: return os << cmd.cast_int_to_float64_.reg_;
 
     case Op::CastPtr: return os << cmd.cast_ptr_.type_;
-
-    case Op::StoreBool:
-      return os << cmd.store_bool_.addr_ << " " << cmd.store_bool_.val_;
-    case Op::StoreChar:
-      return os << cmd.store_char_.addr_ << " " << cmd.store_char_.val_;
-    case Op::StoreInt:
-      return os << cmd.store_int_.addr_ << " " << cmd.store_int_.val_;
-    case Op::StoreFloat32:
-      return os << cmd.store_float32_.addr_ << " " << cmd.store_float32_.val_;
-    case Op::StoreFloat64:
-      return os << cmd.store_float64_.addr_ << " " << cmd.store_float64_.val_;
-    case Op::StoreType:
-      if (cmd.store_type_.val_.is_reg_) {
-        return os << cmd.store_type_.addr_ << " " << cmd.store_type_.val_.reg_;
-      } else {
-        return os << cmd.store_type_.addr_ << " "
-                  << cmd.store_type_.val_.val_->to_string();
-      }
-    case Op::StoreEnum:
-      return os << cmd.store_enum_.addr_ << " " << cmd.store_enum_.val_;
-    case Op::StoreFunc:
-      return os << cmd.store_func_.addr_ << " " << cmd.store_func_.val_;
-    case Op::StoreFlags:
-      return os << cmd.store_flags_.addr_ << " " << cmd.store_flags_.val_;
-    case Op::StoreAddr:
-      return os << cmd.store_addr_.addr_ << " " << cmd.store_addr_.val_;
-    case Op::SetRetBool: return os << cmd.set_ret_bool_.val_;
-    case Op::SetRetChar: return os << cmd.set_ret_char_.val_;
-    case Op::SetRetInt: return os << cmd.set_ret_int_.val_;
-    case Op::SetRetFloat32: return os << cmd.set_ret_float32_.val_;
-    case Op::SetRetFloat64: return os << cmd.set_ret_float64_.val_;
-    case Op::SetRetType: return os << cmd.set_ret_type_.val_;
-    case Op::SetRetEnum: return os << cmd.set_ret_enum_.val_;
-    case Op::SetRetFlags: return os << cmd.set_ret_flags_.val_;
-    case Op::SetRetCharBuf: return os << cmd.set_ret_char_buf_.val_;
-    case Op::SetRetAddr: return os << cmd.set_ret_addr_.val_;
-    case Op::SetRetFunc: return os << cmd.set_ret_func_.val_;
-    case Op::SetRetScope: return os << cmd.set_ret_scope_.val_;
-    case Op::SetRetGeneric: return os << cmd.set_ret_scope_.val_;
-    case Op::SetRetModule: return os << cmd.set_ret_module_.val_;
-    case Op::SetRetBlock: return os << cmd.set_ret_block_.val_;
-    case Op::PhiBool: return os << cmd.phi_bool_.args_;
-    case Op::PhiChar: return os << cmd.phi_char_.args_;
-    case Op::PhiInt: return os << cmd.phi_int_.args_;
-    case Op::PhiFloat32: return os << cmd.phi_float32_.args_;
-    case Op::PhiFloat64: return os << cmd.phi_float64_.args_;
-    case Op::PhiType: return os << cmd.phi_type_.args_;
-    case Op::PhiBlock: return os << cmd.phi_block_.args_;
-    case Op::PhiAddr: return os << cmd.phi_addr_.args_;
-    case Op::Death: return os;
-    case Op::DebugIr: return os;
   }
   UNREACHABLE();
 }

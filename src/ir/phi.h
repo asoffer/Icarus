@@ -21,25 +21,25 @@ RegisterOr<T> MakePhi(CmdIndex phi_index,
 
   if constexpr (std::is_same_v<T, bool>) {
     cmd.op_code_  = Op::PhiBool;
-    cmd.phi_bool_ = Cmd::PhiBool::Make(phi_args.get());
+    cmd.phi_bool_ = phi_args.get();
   } else if constexpr (std::is_same_v<T, char>) {
     cmd.op_code_  = Op::PhiChar;
-    cmd.phi_char_ = Cmd::PhiChar::Make(phi_args.get());
+    cmd.phi_char_ = phi_args.get();
   } else if constexpr (std::is_same_v<T, i32>) {
-    cmd.op_code_ = Op::PhiInt;
-    cmd.phi_int_ = Cmd::PhiInt::Make(phi_args.get());
+    cmd.op_code_ = Op::PhiI32;
+    cmd.phi_i32_ = phi_args.get();
   } else if constexpr (std::is_same_v<T, float>) {
-    cmd.op_code_  = Op::PhiFloat32;
-    cmd.phi_float32_ = Cmd::PhiFloat32::Make(phi_args.get());
+    cmd.op_code_     = Op::PhiFloat32;
+    cmd.phi_float32_ = phi_args.get();
   } else if constexpr (std::is_same_v<T, double>) {
-    cmd.op_code_  = Op::PhiFloat64;
-    cmd.phi_float64_ = Cmd::PhiFloat64::Make(phi_args.get());
+    cmd.op_code_     = Op::PhiFloat64;
+    cmd.phi_float64_ = phi_args.get();
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     cmd.op_code_  = Op::PhiType;
-    cmd.phi_type_ = Cmd::PhiType::Make(phi_args.get());
+    cmd.phi_type_ = phi_args.get();
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     cmd.op_code_  = Op::PhiAddr;
-    cmd.phi_addr_ = Cmd::PhiAddr::Make(phi_args.get());
+    cmd.phi_addr_ = phi_args.get();
   }
   ir::Func::Current->block(BasicBlock::Current)
       .phi_args_.push_back(std::move(phi_args));
