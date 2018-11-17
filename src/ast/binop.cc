@@ -207,9 +207,9 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 
 #define CASE(OpName, symbol, ret_type)                                          \
   case Operator::OpName: {                                                      \
-    if ((lhs_type == type::Int32 && rhs_type == type::Int32) ||                     \
-        (lhs_type == type::Float32 && rhs_type == type::Float32) ||                   \
-        (lhs_type == type::Float64 && rhs_type == type::Float64)) {                   \
+    if ((lhs_type == type::Int32 && rhs_type == type::Int32) ||                 \
+        (lhs_type == type::Float32 && rhs_type == type::Float32) ||             \
+        (lhs_type == type::Float64 && rhs_type == type::Float64)) {             \
       auto *t = (ret_type);                                                     \
       ctx->set_type(this, t);                                                   \
       return t;                                                                 \
@@ -361,78 +361,48 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Add: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int32) {
-        return {
-            ir::ValFrom(ir::Add(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
-      } else if (rhs_ir.type == type::Float32) {
-        return {ir::ValFrom(
-            ir::Add(lhs_ir.reg_or<float>(), rhs_ir.reg_or<float>()))};
-      } else if (rhs_ir.type == type::Float64) {
-        return {ir::ValFrom(
-            ir::Add(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
-      } else if (rhs_ir.type->is<type::CharBuffer>()) {
-        NOT_YET();
-      } else {
-        UNREACHABLE(rhs_ir.type);
-      }
+      if (rhs_ir.type->is<type::CharBuffer>()) { NOT_YET(); }
+      return {type::ApplyTypes<i8, i16, i32, i64, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(ir::Add(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+          })};
     } break;
     case Language::Operator::Sub: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int32) {
-        return {ir::ValFrom(
-            ir::Sub(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
-      } else if (rhs_ir.type == type::Float32) {
-        return {ir::ValFrom(
-            ir::Sub(lhs_ir.reg_or<float>(), rhs_ir.reg_or<float>()))};
-      } else if (rhs_ir.type == type::Float64) {
-        return {ir::ValFrom(
-            ir::Sub(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
-      } else {
-        UNREACHABLE(rhs_ir.type);
-      }
+      return {type::ApplyTypes<i8, i16, i32, i64, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(ir::Sub(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+          })};
     } break;
     case Language::Operator::Mul: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int32) {
-        return {ir::ValFrom(
-            ir::Mul(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
-      } else if (rhs_ir.type == type::Float32) {
-        return {ir::ValFrom(
-            ir::Mul(lhs_ir.reg_or<float>(), rhs_ir.reg_or<float>()))};
-      } else if (rhs_ir.type == type::Float64) {
-        return {ir::ValFrom(
-            ir::Mul(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
-      } else {
-        UNREACHABLE(rhs_ir.type);
-      }
+      return {type::ApplyTypes<i8, i16, i32, i64, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(ir::Mul(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+          })};
     } break;
     case Language::Operator::Div: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int32) {
-        return {
-            ir::ValFrom(ir::Div(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
-      } else if (rhs_ir.type == type::Float32) {
-        return {ir::ValFrom(
-            ir::Div(lhs_ir.reg_or<float>(), rhs_ir.reg_or<float>()))};
-      } else if (rhs_ir.type == type::Float64) {
-        return {ir::ValFrom(
-            ir::Div(lhs_ir.reg_or<double>(), rhs_ir.reg_or<double>()))};
-      } else {
-        UNREACHABLE(rhs_ir.type);
-      }
+      return {type::ApplyTypes<i8, i16, i32, i64, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(ir::Div(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+          })};
     } break;
     case Language::Operator::Mod: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int32) {
-        return {
-            ir::ValFrom(ir::Mod(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
-      } else {
-        UNREACHABLE(rhs_ir.type);
-      }
+      return {type::ApplyTypes<i8, i16, i32, i64>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(ir::Div(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+          })};
     } break;
     case Language::Operator::As: {
       auto *this_type = ctx->type_of(this);

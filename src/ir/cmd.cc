@@ -401,23 +401,7 @@ TypedRegister<Addr> Alloca(const type::Type *t) {
 
 void SetRet(size_t n, Val const &v) {
   ASSERT(v.type != nullptr);
-  if (v.type == type::Bool) { return SetRet(n, v.reg_or<bool>()); }
-  if (v.type == type::Char) { return SetRet(n, v.reg_or<char>()); }
-  if (v.type == type::Int8) { return SetRet(n, v.reg_or<i8>()); }
-  if (v.type == type::Int16) { return SetRet(n, v.reg_or<i16>()); }
-  if (v.type == type::Int32) { return SetRet(n, v.reg_or<i32>()); }
-  if (v.type == type::Int64) { return SetRet(n, v.reg_or<i64>()); }
-  if (v.type == type::Float32) { return SetRet(n, v.reg_or<float>()); }
-  if (v.type == type::Float64) { return SetRet(n, v.reg_or<double>()); }
-  if (v.type == type::Type_) {
-    return SetRet(n, v.reg_or<type::Type const *>());
-  }
-  if (v.type->is<type::Enum>()) { return SetRet(n, v.reg_or<EnumVal>()); }
-  if (v.type->is<type::Flags>()) { return SetRet(n, v.reg_or<FlagsVal>()); }
-  if (v.type->is<type::CharBuffer>()) {
-    return SetRet(n, v.reg_or<std::string_view>());
-  }
-  if (v.type->is<type::Pointer>()) { return SetRet(n, v.reg_or<ir::Addr>()); }
+
   if (v.type->is<type::Function>()) {
     return std::visit(
         [&](auto &val) {
@@ -445,6 +429,11 @@ void SetRet(size_t n, Val const &v) {
       v.type == type::RepBlock) {
     return SetRet(n, v.reg_or<BlockSequence>());
   }
+
+  return type::Apply(v.type, [&](auto type_holder) {
+    using T = typename decltype(type_holder)::type;
+    return SetRet(n, v.reg_or<T>());
+  });
   UNREACHABLE(v.type->to_string());
 }
 
@@ -485,20 +474,11 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
 }
 
 Register Load(Register r, type::Type const *t) {
-  if (t == type::Bool) { return Load<bool>(r); }
-  if (t == type::Char) { return Load<char>(r); }
-  if (t == type::Int8) { return Load<i8>(r); }
-  if (t == type::Int16) { return Load<i16>(r); }
-  if (t == type::Int32) { return Load<i32>(r); }
-  if (t == type::Int64) { return Load<i64>(r); }
-  if (t == type::Float32) { return Load<float>(r); }
-  if (t == type::Float64) { return Load<double>(r); }
-  if (t == type::Type_) { return Load<type::Type const*>(r); }
-  if (t->is<type::Enum>()) { return Load<EnumVal>(r, t); }
-  if (t->is<type::Flags>()) { return Load<FlagsVal>(r, t); }
-  if (t->is<type::Pointer>()) { return Load<Addr>(r, t); }
   if (t->is<type::Function>()) { return Load<AnyFunc>(r, t); }
-  UNREACHABLE(t);
+  return type::Apply(t, [&](auto type_holder) -> Register {
+    using T = typename decltype(type_holder)::type;
+    return Load<T>(r);
+  });
 }
 
 TypedRegister<Addr> Index(type::Type const *t, Register array_ptr,

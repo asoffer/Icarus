@@ -2,6 +2,9 @@
 
 #include "type/pointer.h"
 #include "type/struct.h"
+#include "type/enum.h"
+#include "type/flags.h"
+#include "type/char_buffer.h"
 
 namespace ir {
 template <typename T>
@@ -41,39 +44,23 @@ Val MakePhi(CmdIndex phi_index,
   auto &cmd      = ir::Func::Current->Command(phi_index);
   auto *cmd_type = val_map.begin()->second.type;
 
-  if (cmd_type == type::Bool) {
-    return ir::ValFrom(MakePhi<bool>(phi_index, ConvertMap<bool>(val_map)));
-  } else if (cmd_type == type::Char) {
-    return ir::ValFrom(MakePhi<char>(phi_index, ConvertMap<char>(val_map)));
-  } else if (cmd_type == type::Int8) {
-    return ir::ValFrom(MakePhi<i8>(phi_index, ConvertMap<i8>(val_map)));
-  } else if (cmd_type == type::Int16) {
-    return ir::ValFrom(MakePhi<i16>(phi_index, ConvertMap<i16>(val_map)));
-  } else if (cmd_type == type::Int32) {
-    return ir::ValFrom(MakePhi<i32>(phi_index, ConvertMap<i32>(val_map)));
-  } else if (cmd_type == type::Int64) {
-    return ir::ValFrom(MakePhi<i64>(phi_index, ConvertMap<i64>(val_map)));
-  } else if (cmd_type == type::Float32) {
-    return ir::ValFrom(MakePhi<float>(phi_index, ConvertMap<float>(val_map)));
-  } else if (cmd_type == type::Float64) {
-    return ir::ValFrom(MakePhi<double>(phi_index, ConvertMap<double>(val_map)));
-  } else if (cmd_type == type::Type_) {
-    return ir::ValFrom(MakePhi<type::Type const *>(
-        phi_index, ConvertMap<type::Type const *>(val_map)));
-  } else if (cmd_type->is<type::Pointer>()) {
-    return ir::ValFrom(
-        MakePhi<ir::Addr>(phi_index, ConvertMap<ir::Addr>(val_map)),
-        &cmd_type->as<type::Pointer>());
-  } else if (cmd_type == type::Block || cmd_type == type::OptBlock) {
-    auto phi_args  = MakePhiArgs<BlockSequence>(val_map);
-    cmd.op_code_   = Op::PhiBlock;
-    cmd.phi_block_ = phi_args.get();
-    ir::Func::Current->block(BasicBlock::Current)
-        .phi_args_.push_back(std::move(phi_args));
-  } else {
-    NOT_YET(cmd_type->to_string());
-  }
-  return ir::Val::Reg(cmd.result, val_map.begin()->second.type);
+  return type::Apply(cmd_type, [&](auto type_holder) {
+    using T = typename decltype(type_holder)::type;
+    if constexpr (std::is_same_v<T, ir::Addr>) {
+      return ir::ValFrom(
+          MakePhi<ir::Addr>(phi_index, ConvertMap<ir::Addr>(val_map)),
+          &cmd_type->as<type::Pointer>());
+    } else if constexpr (std::is_same_v<T, BlockSequence>) {
+      auto phi_args  = MakePhiArgs<BlockSequence>(val_map);
+      cmd.op_code_   = Op::PhiBlock;
+      cmd.phi_block_ = phi_args.get();
+      ir::Func::Current->block(BasicBlock::Current)
+          .phi_args_.push_back(std::move(phi_args));
+      return ir::Val::Reg(cmd.result, val_map.begin()->second.type);
+    } else {
+      return ir::ValFrom(MakePhi<T>(phi_index, ConvertMap<T>(val_map)));
+    }
+  });
 }
 
 }  // namespace ir

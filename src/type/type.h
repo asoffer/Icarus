@@ -19,6 +19,7 @@ class LLVMContext;
 struct Module;
 
 namespace ir {
+struct FlagsVal;
 struct Val;
 }  // namespace ir
 
@@ -78,6 +79,11 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, ir::Val from_val,
 void EmitMoveInit(const Type *from_type, const Type *to_type, ir::Val from_val,
                   ir::Register to_var, Context *ctx);
 
+struct Pointer;
+struct CharBuffer;
+struct Enum;
+struct Flags;
+
 const Type *Void();
 
 #define PRIMITIVE_MACRO(EnumName, name) extern Type const *EnumName;
@@ -103,6 +109,16 @@ constexpr type::Type const *Get() {
     return type::Float32;
   } else if constexpr (std::is_same_v<T, double>) {
     return type::Float64;
+  } else if constexpr (std::is_same_v<T, std::string_view>) {
+    UNREACHABLE();
+  } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
+    UNREACHABLE();
+  } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
+    UNREACHABLE();
+  } else if constexpr (std::is_same_v<T, ir::Addr>) {
+    UNREACHABLE();
+  } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
+    UNREACHABLE();
   } else if constexpr (std::is_same_v<
                            std::decay_t<decltype(*std::declval<T>())>,
                            type::Type>) {
@@ -114,6 +130,90 @@ constexpr type::Type const *Get() {
   } else {
     NOT_YET();
   }
+}
+
+template <typename T>
+struct TypeHolder {
+  using type = T;
+};
+
+
+namespace internal {
+template <typename T, typename... Ts>
+struct ConditionalApplicator {
+  template <typename Fn, typename... Args>
+  static auto Apply(type::Type const *t, Fn &&fn, Args &&... args) {
+    if constexpr (sizeof...(Ts) == 0) {
+      ASSERT(t == ::type::Get<T>());
+      return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
+                                  std::forward<Args>(args)...);
+    } else {
+      if (t == ::type::Get<T>()) {
+        return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
+                                    std::forward<Args>(args)...);
+      } else {
+        return ::type::internal::ConditionalApplicator<Ts...>::Apply(
+            t, std::forward<Fn>(fn), std::forward<Args>(args)...);
+      }
+    }
+  }
+};
+
+}  // namespace internal
+
+template <typename... Ts, typename Fn, typename... Args>
+auto ApplyTypes(Type const *t, Fn &&fn, Args &&... args) {
+  return ::type::internal::ConditionalApplicator<Ts...>::Apply(
+      t,
+      [&](auto type_holder, Args &&... as) {
+        return std::forward<Fn>(fn)(type_holder, std::forward<Args>(as)...);
+      },
+      std::forward<Args>(args)...);
+}
+
+template <typename Fn, typename... Args>
+auto Apply(Type const *t, Fn &&fn, Args &&... args) {
+  if (t == Bool) {
+    return std::forward<Fn>(fn)(TypeHolder<bool>{},
+                                std::forward<Args>(args)...);
+  } else if (t == Char) {
+    return std::forward<Fn>(fn)(TypeHolder<char>{},
+                                std::forward<Args>(args)...);
+  } else if (t == Int8) {
+    return std::forward<Fn>(fn)(TypeHolder<i8>{}, std::forward<Args>(args)...);
+  } else if (t == Int16) {
+    return std::forward<Fn>(fn)(TypeHolder<i16>{}, std::forward<Args>(args)...);
+  } else if (t == Int32) {
+    return std::forward<Fn>(fn)(TypeHolder<i32>{}, std::forward<Args>(args)...);
+  } else if (t == Int64) {
+    return std::forward<Fn>(fn)(TypeHolder<i64>{}, std::forward<Args>(args)...);
+  } else if (t == Float32) {
+    return std::forward<Fn>(fn)(TypeHolder<float>{},
+                                std::forward<Args>(args)...);
+  } else if (t == Float64) {
+    return std::forward<Fn>(fn)(TypeHolder<double>{},
+                                std::forward<Args>(args)...);
+  } else if (t ->is<type::Enum>()) {
+    return std::forward<Fn>(fn)(TypeHolder<ir::EnumVal>{},
+                                std::forward<Args>(args)...);
+  } else if (t ->is<type::Flags>()) {
+    return std::forward<Fn>(fn)(TypeHolder<ir::FlagsVal>{},
+                                std::forward<Args>(args)...);
+  } else if (t == Type_) {
+    return std::forward<Fn>(fn)(TypeHolder<Type const *>{},
+                                std::forward<Args>(args)...);
+  } else if (t->is<Pointer>()) {
+    return std::forward<Fn>(fn)(TypeHolder<ir::Addr>{},
+                                std::forward<Args>(args)...);
+  } else if (t == Block || t == OptBlock) {
+    return std::forward<Fn>(fn)(TypeHolder<ir::BlockSequence>{},
+                                std::forward<Args>(args)...);
+  } else if (t->is<CharBuffer>()) {
+    return std::forward<Fn>(fn)(TypeHolder<std::string_view>{},
+                                std::forward<Args>(args)...);
+  }
+
+  UNREACHABLE(t);
 }
 
 }  // namespace type
