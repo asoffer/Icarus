@@ -549,63 +549,43 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::SubEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int32) {
-        ir::Store(ir::Sub(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
-                  lhs_lval);
-      } else if (rhs_ir.type == type::Float32) {
-        ir::Store(ir::Sub(ir::Load<float>(lhs_lval), rhs_ir.reg_or<float>()),
-                  lhs_lval);
-      } else if (rhs_ir.type == type::Float64) {
-        ir::Store(ir::Sub(ir::Load<double>(lhs_lval), rhs_ir.reg_or<double>()),
-                  lhs_lval);
-      } else {
-        UNREACHABLE(rhs_ir.type);
-      }
+      type::ApplyTypes<i8, i16, i32, i64, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            ir::Store(ir::Sub(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
+                      lhs_lval);
+          });
       return {};
     } break;
     case Language::Operator::DivEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int32) {
-        ir::Store(ir::Div(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
-                  lhs_lval);
-      } else if (rhs_ir.type == type::Float32) {
-        ir::Store(ir::Div(ir::Load<float>(lhs_lval), rhs_ir.reg_or<float>()),
-                  lhs_lval);
-      } else if (rhs_ir.type == type::Float64) {
-        ir::Store(ir::Div(ir::Load<double>(lhs_lval), rhs_ir.reg_or<double>()),
-                  lhs_lval);
-      } else {
-        UNREACHABLE(rhs_ir.type);
-      }
+      type::ApplyTypes<i8, i16, i32, i64, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
+                      lhs_lval);
+          });
       return {};
     } break;
     case Language::Operator::ModEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int32) {
-        ir::Store(ir::Mod(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
-                  lhs_lval);
-      } else {
-        UNREACHABLE(rhs_ir.type);
-      }
+      type::ApplyTypes<i8, i16, i32, i64>(rhs_ir.type, [&](auto type_holder) {
+        using T = typename decltype(type_holder)::type;
+        ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()), lhs_lval);
+      });
       return {};
     } break;
     case Language::Operator::MulEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int32) {
-        ir::Store(ir::Mul(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
-                  lhs_lval);
-      } else if (rhs_ir.type == type::Float32) {
-        ir::Store(ir::Mul(ir::Load<float>(lhs_lval), rhs_ir.reg_or<float>()),
-                  lhs_lval);
-      } else if (rhs_ir.type == type::Float64) {
-        ir::Store(ir::Mul(ir::Load<double>(lhs_lval), rhs_ir.reg_or<double>()),
-                  lhs_lval);
-      } else {
-        UNREACHABLE(rhs_ir.type);
-      }
+      type::ApplyTypes<i8, i16, i32, i64, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            ir::Store(ir::Mul(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
+                      lhs_lval);
+          });
       return {};
     } break;
     case Language::Operator::XorEq: {
