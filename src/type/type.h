@@ -173,34 +173,11 @@ auto ApplyTypes(Type const *t, Fn &&fn, Args &&... args) {
 
 template <typename Fn, typename... Args>
 auto Apply(Type const *t, Fn &&fn, Args &&... args) {
-  if (t == Bool) {
-    return std::forward<Fn>(fn)(TypeHolder<bool>{},
-                                std::forward<Args>(args)...);
-  } else if (t == Char) {
-    return std::forward<Fn>(fn)(TypeHolder<char>{},
-                                std::forward<Args>(args)...);
-  } else if (t == Int8) {
-    return std::forward<Fn>(fn)(TypeHolder<i8>{}, std::forward<Args>(args)...);
-  } else if (t == Int16) {
-    return std::forward<Fn>(fn)(TypeHolder<i16>{}, std::forward<Args>(args)...);
-  } else if (t == Int32) {
-    return std::forward<Fn>(fn)(TypeHolder<i32>{}, std::forward<Args>(args)...);
-  } else if (t == Int64) {
-    return std::forward<Fn>(fn)(TypeHolder<i64>{}, std::forward<Args>(args)...);
-  } else if (t == Float32) {
-    return std::forward<Fn>(fn)(TypeHolder<float>{},
-                                std::forward<Args>(args)...);
-  } else if (t == Float64) {
-    return std::forward<Fn>(fn)(TypeHolder<double>{},
-                                std::forward<Args>(args)...);
-  } else if (t ->is<type::Enum>()) {
+  if (t->is<type::Enum>()) {
     return std::forward<Fn>(fn)(TypeHolder<ir::EnumVal>{},
                                 std::forward<Args>(args)...);
-  } else if (t ->is<type::Flags>()) {
+  } else if (t->is<type::Flags>()) {
     return std::forward<Fn>(fn)(TypeHolder<ir::FlagsVal>{},
-                                std::forward<Args>(args)...);
-  } else if (t == Type_) {
-    return std::forward<Fn>(fn)(TypeHolder<Type const *>{},
                                 std::forward<Args>(args)...);
   } else if (t->is<Pointer>()) {
     return std::forward<Fn>(fn)(TypeHolder<ir::Addr>{},
@@ -213,7 +190,9 @@ auto Apply(Type const *t, Fn &&fn, Args &&... args) {
                                 std::forward<Args>(args)...);
   }
 
-  UNREACHABLE(t);
+  return ApplyTypes<bool, char, i8, i16, i32, i64, float, double,
+                    type::Type const *>(t, std::forward<Fn>(fn),
+                                        std::forward<Args>(args)...);
 }
 
 }  // namespace type

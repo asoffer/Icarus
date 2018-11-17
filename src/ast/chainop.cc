@@ -62,24 +62,20 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
   }
     switch (op) {
       case Language::Operator::Lt:
-        MAKE_OP(i32, == type::Int32, ir::Lt);
-        MAKE_OP(float, == type::Float32, ir::Lt);
-        MAKE_OP(double, == type::Float64, ir::Lt);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Lt);
-        UNREACHABLE();
+        return type::ApplyTypes<i8, i16, i32, i64, float, double>(
+            lhs_ir.type, [&](auto type_holder) {
+              using T = typename decltype(type_holder)::type;
+              return ir::Lt(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
+            });
       case Language::Operator::Le:
-        MAKE_OP(i32, == type::Int32, ir::Le);
-        MAKE_OP(float, == type::Float32, ir::Le);
-        MAKE_OP(double, == type::Float64, ir::Le);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Le);
-        UNREACHABLE();
+        return type::ApplyTypes<i8, i16, i32, i64, float, double>(
+            lhs_ir.type, [&](auto type_holder) {
+              using T = typename decltype(type_holder)::type;
+              return ir::Le(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
+            });
       case Language::Operator::Eq:
-        MAKE_OP(bool, == type::Bool, ir::Eq);
-        MAKE_OP(char, == type::Char, ir::Eq);
-        MAKE_OP(i32, == type::Int32, ir::Eq);
-        MAKE_OP(float, == type::Float32, ir::Eq);
-        MAKE_OP(double, == type::Float64, ir::Eq);
-        MAKE_OP(type::Type const *, == type::Type_, ir::Eq);
         MAKE_OP(ir::EnumVal, ->is<type::Enum>(), ir::Eq);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Eq);
         MAKE_OP(ir::Addr, ->is<type::Pointer>(), ir::Eq);
@@ -90,14 +86,13 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
               std::get_if<ir::BlockSequence>(&rhs_ir.value);
           if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
         }
-        UNREACHABLE();
+        return type::ApplyTypes<bool, char, i8, i16, i32, i64, float, double,
+                                type::Type const *>(
+            lhs_ir.type, [&](auto type_holder) {
+              using T = typename decltype(type_holder)::type;
+              return ir::Eq(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
+            });
       case Language::Operator::Ne:
-        MAKE_OP(bool, == type::Bool, ir::XorBool);
-        MAKE_OP(char, == type::Char, ir::Ne);
-        MAKE_OP(i32, == type::Int32, ir::Ne);
-        MAKE_OP(float, == type::Float32, ir::Ne);
-        MAKE_OP(double, == type::Float64, ir::Ne);
-        MAKE_OP(type::Type const *, == type::Type_, ir::Ne);
         MAKE_OP(ir::EnumVal, ->is<type::Enum>(), ir::Ne);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Ne);
         MAKE_OP(ir::Addr, ->is<type::Pointer>(), ir::Ne);
@@ -108,19 +103,26 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
               std::get_if<ir::BlockSequence>(&rhs_ir.value);
           if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
         }
-        UNREACHABLE();
+        return type::ApplyTypes<char, i8, i16, i32, i64, float, double,
+                                type::Type const *>(
+            lhs_ir.type, [&](auto type_holder) {
+              using T = typename decltype(type_holder)::type;
+              return ir::Ne(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
+            });
       case Language::Operator::Ge:
-        MAKE_OP(i32, == type::Int32, ir::Ge);
-        MAKE_OP(float, == type::Float32, ir::Ge);
-        MAKE_OP(double, == type::Float64, ir::Ge);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Ge);
-        UNREACHABLE();
+        return type::ApplyTypes<i8, i16, i32, i64, float, double>(
+            lhs_ir.type, [&](auto type_holder) {
+              using T = typename decltype(type_holder)::type;
+              return ir::Ge(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
+            });
       case Language::Operator::Gt:
-        MAKE_OP(i32, == type::Int32, ir::Gt);
-        MAKE_OP(float, == type::Float32, ir::Gt);
-        MAKE_OP(double, == type::Float64, ir::Gt);
         MAKE_OP(ir::FlagsVal, ->is<type::Flags>(), ir::Gt);
-        UNREACHABLE();
+        return type::ApplyTypes<i8, i16, i32, i64, float, double>(
+            lhs_ir.type, [&](auto type_holder) {
+              using T = typename decltype(type_holder)::type;
+              return ir::Gt(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
+            });
         // TODO case Language::Operator::And: cmp = lhs_ir; break;
       default: UNREACHABLE();
     }
