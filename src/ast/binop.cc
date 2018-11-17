@@ -401,7 +401,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       return {type::ApplyTypes<i8, i16, i32, i64>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Div(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+            return ir::ValFrom(ir::Mod(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
           })};
     } break;
     case Language::Operator::As: {

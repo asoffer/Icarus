@@ -31,19 +31,19 @@ main ::= () -> () {
 basic_calls ::= () -> () {
   // There are several syntaxes for defining functions. The most verbose uses
   // the single arrow `->`.
-  squared ::= (n: int) -> int { return n * n }
+  squared ::= (n: int32) -> int32 { return n * n }
 
   // The shortest option is to use the double arrow `=>`. Using this syntax, the
   // return type is inferred, and the returned value is placed on the right-hand
   // side of the arrow. As with the previous example, because the return type is
   // inferred, the function must not be recursive.
-  cubed ::= (n: int) => n * n * n
+  cubed ::= (n: int32) => n * n * n
 
   // This means that the short option is not particularly useful for functions
   // that are more than a single expression. However, we also allow the return
   // type to be inferred for longer functions by simply not specifying the
   // return type:
-  print_sum ::= (x: int, y: int) -> {
+  print_sum ::= (x: int32, y: int32) -> {
     print "x + y = ", (x + y), "\n"
   }
 
@@ -61,15 +61,15 @@ basic_calls ::= () -> () {
   // There is nothing special here about giving functions a name. Function
   // literals (often referred to as "lambdas") can be called in exactly the same
   // way.
-  print "3^2 = ", ((n: int) => n * n)(3), "\n"
-  print "4^2 = ", 4'((n: int) => n * n), "\n"
+  print "3^2 = ", ((n: int32) => n * n)(3), "\n"
+  print "4^2 = ", 4'((n: int32) => n * n), "\n"
 }
 
 named_arguments ::= () -> () {
   // Functions which are compile-time constants can have their arguments called
   // with names. You may specify the names in any order, but once a named
   // argument is used, all further arguments must also be named.
-  f ::= (a: int, b: int, c: int, d: int, e: int) -> () {
+  f ::= (a: int32, b: int32, c: int32, d: int32, e: int32) -> () {
     print "f(a = ", a,", ",
             "b = ", b, ", ",
             "c = ", c, ", ",
@@ -88,7 +88,7 @@ named_arguments ::= () -> () {
 
   // Once again, there is nothing special about the fact that we gave a name to
   // the function f. We colud just as well have called a lambda:
-  (x: int, y: int) -> () {
+  (x: int32, y: int32) -> () {
     print "lambda called with x = ", x, " and y = ", y, "\n"
   }(y = 3, x = 4)
 
@@ -98,7 +98,7 @@ named_arguments ::= () -> () {
   // compilation error. This is because the function could be reassigned while
   // the program is running to a new value with different names for its
   // arguments.
-  g := (n: int) => n * n
+  g := (n: int32) => n * n
   // Uncomment the following line to get a compilation error:
   // print g(n = 3)
 }
@@ -110,7 +110,7 @@ default_arguments ::= () -> () {
   // value is provided. We can also infer the type of the argument as is done
   // with `c := 3`.
   // 5`.
-  f ::= (a: int, b: int = 2, c := 3) -> () {
+  f ::= (a: int32, b: int32 = 2, c := 3) -> () {
     print "f(a = ", a,", ",
             "b = ", b, ", ",
             "c = ", c, ")\n"
@@ -126,7 +126,7 @@ default_arguments ::= () -> () {
   // use the default if they have one, or be named. In the example below, only
   // `b` has a default, so if a value for `b` is not provided at the call site,
   // `c` must be explicitly named.
-  g ::= (a: int, b := 2, c: int) -> () {
+  g ::= (a: int32, b := 2, c: int32) -> () {
     print "g(a = ", a,", ",
             "b = ", b, ", ",
             "c = ", c, ")\n"
@@ -142,7 +142,7 @@ compile_time_arguments ::= () -> () {
   // So far we have only seen arguments to functions declared with a
   // single colon. Using `::` marks the argument as required to be known at
   // compile-time.
-  compile_time_square ::= (n :: int) => n * n
+  compile_time_square ::= (n :: int32) => n * n
   print compile_time_square(3), "\n"
 
   // Compile-time arguments do not need to be literals. They can also be
@@ -152,7 +152,7 @@ compile_time_arguments ::= () -> () {
   print compile_time_square(2 * N - 10), "\n"
   
   // Compile-time arguments work just as well with named or default arguments.
-  f ::= (a: int, b ::= 2, c: int) -> () {
+  f ::= (a: int32, b ::= 2, c: int32) -> () {
     print "f(a = ", a,", ",
           "b = ", b, ", ",
           "c = ", c, ")\n"
@@ -162,8 +162,8 @@ compile_time_arguments ::= () -> () {
 
   // One benefit of compile-time arguments is that they can be used in the
   // return type of a function.
-  // default_int_array ::= (len :: int) -> [len; int] {
-  //   result: [len; int]
+  // default_int_array ::= (len :: int32) -> [len; int32] {
+  //   result: [len; int32]
   //   return result
   // }
   // TODO print default_int_array(3)
@@ -175,43 +175,43 @@ dynamic_dispatch ::= () -> () {
   // dynamic dispatch with a variant type. If a variant is passed to a function,
   // a function of the given name need not actually exist, so long as the
   // function exists for any possible input type. For example,
-  f ::= (n: int) -> () { print "f(int)\n" }
+  f ::= (n: int32) -> () { print "f(int32)\n" }
   f ::= (x: bool | char) -> () { print "f(bool | char)\n" }
-  v: bool | int = true
+  v: bool | int32 = true
   f(v) // Calls the (bool | char) overload.
 
   v = 3
-  f(v) // Calls the int overload.
+  f(v) // Calls the int32 overload.
 
   // Note that in the above, there is no function named f that takes a value of
-  // type bool | int. Moreover, there is not even a function for each member of
-  // the variant. However, the int overload of `f` and the `bool | char`
+  // type bool | int32. Moreover, there is not even a function for each member of
+  // the variant. However, the int32 overload of `f` and the `bool | char`
   // overload of `f` together cover all possibilities for `v`, which enables the
   // compiler to add code which picks the correct overload to be called at
   // run-time.
 
   // Dynamic dispatch can be used simultaneously with multiple arguments.
   g ::= (x: bool, y: bool) -> () { print "g(x: bool, y: bool)\n" }
-  g ::= (x: bool, y: int) -> () { print "g(x: bool, y: int)\n" }
-  g ::= (x: int, y: int) -> () { print "g(x: int, y: int)\n" }
-  g ::= (x: int, y: bool) -> () { print "g(x: int, y: bool)\n" }
+  g ::= (x: bool, y: int32) -> () { print "g(x: bool, y: int32)\n" }
+  g ::= (x: int32, y: int32) -> () { print "g(x: int32, y: int32)\n" }
+  g ::= (x: int32, y: bool) -> () { print "g(x: int32, y: bool)\n" }
   g(v, v)
 
   // This works just as well with named arguments
   g(y = v, x = true)
 
   // And even with default arguments.
-  h ::= (x: bool = true, y: int) -> () { print "h(x: bool, y: int)\n" }
-  h ::= (x: int, y: int) -> () { print "h(x: int, y: int)\n" }
+  h ::= (x: bool = true, y: int32) -> () { print "h(x: bool, y: int32)\n" }
+  h ::= (x: int32, y: int32) -> () { print "h(x: int32, y: int32)\n" }
   h(v, 3)
   h(y = 3)
 
   // The functions used in a dynamic dispatch need not have the same return
   // type. The type of the result of a dynamic dispatch call will be a variant
   // of all possible return types.
-  squared ::= (n: int) => n * n
+  squared ::= (n: int32) => n * n
   squared ::= (r: float64) => r * r
-  number: int | float64 = 17
+  number: int32 | float64 = 17
   print "17^2 = ", number'squared, "\n"
   number = 1.7
   print "1.7^2 = ", number'squared, "\n"
@@ -220,10 +220,10 @@ dynamic_dispatch ::= () -> () {
 
 multiple_return_values ::= () -> () {
   // Functions can have multiple return values
-  f ::= (n: int) => (n, n * n)
+  f ::= (n: int32) => (n, n * n)
 
-  a: int
-  b: int
+  a: int32
+  b: int32
   (a, b) = f(3)
   print a, "^2 = ", b, "\n"
 
@@ -234,12 +234,12 @@ multiple_return_values ::= () -> () {
   // Regarding dynamic dispatch, all possible dispatches must have the same
   // number of arguments. When considering the resulting type of each argument,
   // each return value position is handled separately.
-  g ::= (x: int) => (1, 1.5)
+  g ::= (x: int32) => (1, 1.5)
   g ::= (x: bool) => (1.5, 1)
 
-  arg1: float64 | int = 0
-  arg2: float64 | int = 0
-  var: bool | int = true
+  arg1: float64 | int32 = 0
+  arg2: float64 | int32 = 0
+  var: bool | int32 = true
   (arg1, arg2) = g(var)
   print "arg1 = ", arg1, " and arg2 = ", arg2, "\n"
 

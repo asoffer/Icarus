@@ -6,7 +6,7 @@ main ::= () -> () {
   }
 }
 
-fibonacci ::= (n: int) -> int {
+fibonacci ::= (n: int32) -> int32 {
   if (n < 2) then { return n }
   return fibonacci(n - 1) + fibonacci(n - 2)
 }
