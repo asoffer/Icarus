@@ -44,6 +44,7 @@ struct Enum;
 struct Flags;
 struct Struct;
 struct Pointer;
+struct Variant;
 }  // namespace type
 
 namespace ast {
@@ -103,29 +104,10 @@ struct PhiArgs : GenericPhiArgs {
 };
 
 struct Cmd {
-  template <typename T, size_t Index>
-  struct CommandOpCode {
-    constexpr static size_t index = Index;
-
-    template <typename... Args>
-    static T Make(Args &&... args) {
-      return T{{}, std::forward<Args>(args)...};
-    }
-  };
-#define CMD(name)                                                              \
-  struct name                                                                  \
-      : public CommandOpCode<name, static_cast<std::underlying_type_t<Op>>(    \
-                                       Op::name)>
-
   template <typename T>
   struct Store {
     Register addr_;
     RegisterOr<T> val_;
-
-    template <typename U>
-    static Store<T> Make(Register reg, U &&arg) {
-      return Store<T>{reg, std::forward<U>(arg)};
-    }
 
     inline friend std::ostream &operator<<(std::ostream &os, Store const &s) {
       return os << s.addr_.to_string() << " " << s.val_;
@@ -134,81 +116,54 @@ struct Cmd {
 
   template <typename T>
   struct SetRet {
-    u32 ret_num_;
+    size_t ret_num_;
     RegisterOr<T> val_;
-
-    template <typename U>
-    static SetRet<T> Make(u32 index, U &&arg) {
-      return SetRet<T>{index, std::forward<U>(arg)};
-    }
 
     inline friend std::ostream &operator<<(std::ostream &os, SetRet const &s) {
       return os << s.ret_num_ << " " << s.val_;
     }
   };
 
-  CMD(PrintEnum) {
+  // TODO finish removing these
+  struct PrintEnum {
     RegisterOr<EnumVal> arg_;
     type::Enum const *enum_type_;
   };
-  CMD(PrintFlags) {
+  struct PrintFlags {
     RegisterOr<FlagsVal> arg_;
     type::Flags const *flags_type_;
   };
 
-  CMD(CreateStruct) { ast::StructLiteral *lit_; };
-  CMD(CreateStructField) {
+  struct CreateStruct { ast::StructLiteral *lit_; };
+  struct CreateStructField {
     type::Struct *struct_;
     RegisterOr<type::Type const *> type_;
   };
-  CMD(SetStructFieldName) {
+  struct SetStructFieldName {
     // Implicitly the last element.
     type::Struct *struct_;
     std::string_view name_;
   };
 
-  CMD(EqBool) { std::array<Register, 2> args_; };
-
-  CMD(Malloc) { RegisterOr<i32> arg_; };
-  CMD(Alloca) { type::Type const *type_; };
-
-  CMD(Array) {
+  struct Array {
     RegisterOr<i32> len_;
     RegisterOr<type::Type const *> type_;
   };
-  CMD(CreateTuple){};
-  CMD(AppendToTuple) {
-    Register tup_;
-    RegisterOr<type::Type const *> arg_;
-  };
-  CMD(FinalizeTuple) { Register tup_; };
-  CMD(CreateVariant){};
-  CMD(AppendToVariant) {
-    Register var_;
-    RegisterOr<type::Type const *> arg_;
-  };
-  CMD(FinalizeVariant) { Register var_; };
-  CMD(CreateBlockSeq){};
-  CMD(AppendToBlockSeq) {
-    Register block_seq_;
-    RegisterOr<ir::BlockSequence> arg_;
-  };
-  CMD(FinalizeBlockSeq) { Register block_seq_; };
 
-  CMD(PtrIncr) {
+  struct PtrIncr {
     // TODO maybe store the type here rather than on the cmd because most cmds
     // don't need it.
     Register ptr_;
     type::Type const *pointee_type_;
     RegisterOr<i32> incr_;
   };
-  CMD(Field) {
+  struct Field {
     Register ptr_;
     type::Struct const *struct_type_;
     size_t num_;
   };
 
-  CMD(Call) {
+  struct Call {
     Call(RegisterOr<AnyFunc> f, LongArgs * args, OutParams * outs)
         : fn_(f), long_args_(args), outs_(outs) {}
     RegisterOr<AnyFunc> fn_;
@@ -216,31 +171,22 @@ struct Cmd {
     OutParams *outs_;
   };
 
-  CMD(CondJump) {
+  struct CondJump {
     Register cond_;
     BlockIndex blocks_[2];
   };
-  CMD(UncondJump) { BlockIndex block_; };
-  CMD(ReturnJump){};
-  CMD(BlockSeqJump) {
+  struct UncondJump { BlockIndex block_; };
+  struct ReturnJump {};
+  struct BlockSeqJump {
     RegisterOr<BlockSequence> bseq_;
     std::unordered_map<ast::BlockLiteral const *, ir::BlockIndex> const
         *jump_table_;
   };
 
-  CMD(CastIntToFloat32) { Register reg_; };
-  CMD(CastIntToFloat64) { Register reg_; };
-  CMD(CastPtr) {
-    Register reg_;
-    type::Type const *type_;
-  };
-
-  CMD(BlockSeqContains) {
+  struct BlockSeqContains {
     Register reg_;
     ast::BlockLiteral *lit_;
   };
-
-#undef CMD
 
 #define OP_MACRO(op, tag, ...) struct tag##Tag;
 #define OP_MACRO_(op, tag, ...) struct tag##Tag;
@@ -284,7 +230,7 @@ struct Cmd {
   void set(Args &&... args) {
     auto &cmd   = this->template get<Tag, T>();
     using cmd_t = std::decay_t<decltype(cmd)>;
-    cmd         = cmd_t::Make(std::forward<Args>(args)...);
+    cmd         = cmd_t{std::forward<Args>(args)...};
   }
 
   Cmd(type::Type const *t, Op op);
@@ -294,17 +240,21 @@ struct Cmd {
   struct Args {
     std::array<RegisterOr<T>, 2> args_;
 
-    template <typename Arg>
-    static Args Make(Arg && arg1, Arg&& arg2) {
-      return {std::forward<Arg>(arg1), std::forward<Arg>(arg2)};
-    }
     inline friend std::ostream &operator<<(std::ostream &os, Args const &a) {
       return os << a.args_[0] << " " << a.args_[1];
     }
   };
 
+  struct Empty {
+    inline friend std::ostream &operator<<(std::ostream &os, Empty) {
+      return os;
+    }
+  };
+
   union {
+    Empty empty_;
     Register reg_;
+    type::Type const *type_;
 
     // TODO names of these are easily mis-spellable and would lead to UB.
     RegisterOr<bool> bool_arg_;
@@ -328,23 +278,26 @@ struct Cmd {
     Args<type::Type const *> type_args_;
     Args<Addr> addr_args_;
 
+    // TODO rename these since some of them are used for things other than
+    // storage (e.g., block appending).
     Store<bool> store_bool_;
     Store<char> store_char_;
     Store<i32> store_i32_;
     Store<float> store_float32_;
     Store<double> store_float64_;
-    Store<type::Type const*> store_type_;
+    Store<type::Type const *> store_type_;
     Store<EnumVal> store_enum_;
     Store<Func *> store_func_;
     Store<FlagsVal> store_flags_;
     Store<Addr> store_addr_;
+    Store<BlockSequence> store_block_;
 
     SetRet<bool> set_ret_bool_;
     SetRet<char> set_ret_char_;
     SetRet<i32> set_ret_i32_;
     SetRet<float> set_ret_float32_;
     SetRet<double> set_ret_float64_;
-    SetRet<type::Type const*> set_ret_type_;
+    SetRet<type::Type const *> set_ret_type_;
     SetRet<EnumVal> set_ret_enum_;
     SetRet<AnyFunc> set_ret_func_;
     SetRet<FlagsVal> set_ret_flags_;
@@ -364,6 +317,7 @@ struct Cmd {
     PhiArgs<BlockSequence> *phi_block_;
     PhiArgs<ir::Addr> *phi_addr_;
 
+    type::Typed<Register> typed_reg_;
 #define OP_MACRO(...)
 #define OP_MACRO_(op, tag, type, field) Cmd::op field;
 #include "ir/op.xmacro.h"

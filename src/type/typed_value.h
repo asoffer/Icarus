@@ -1,6 +1,7 @@
 #ifndef ICARUS_TYPE_TYPED_VALUE_H
 #define ICARUS_TYPE_TYPED_VALUE_H
 
+#include <iosfwd>
 #include <type_traits>
 #include "type/type.h"
 
@@ -47,5 +48,10 @@ struct Typed {
   V value_;
   T const* type_;
 };
+
+template <typename V>
+std::ostream& operator<<(std::ostream& os, Typed<V> const& t) {
+  return os << t.get() << ": " << t.type()->to_string();
+}
 }  // namespace type
 #endif  // ICARUS_TYPE_TYPED_VALUE_H

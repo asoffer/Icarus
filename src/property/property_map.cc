@@ -185,8 +185,8 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
     case ir::Op::Call: return /* TODO */ false;
     case ir::Op::Not: return prop_set.add(Not(block_view.at(cmd.reg_)));
     case ir::Op::EqBool:
-      return prop_set.add(EqBool(block_view.at(cmd.eq_bool_.args_[0]),
-                                 block_view.at(cmd.eq_bool_.args_[1])));
+      return prop_set.add(EqBool(block_view.at(cmd.bool_args_.args_[0].reg_),
+                                 block_view.at(cmd.bool_args_.args_[1].reg_)));
     case ir::Op::LtInt:
       if (cmd.i32_args_.args_[0].is_reg_) {
         if (cmd.i32_args_.args_[1].is_reg_) {

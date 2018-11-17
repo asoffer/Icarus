@@ -9,6 +9,7 @@
 #include "ir/phi.h"
 #include "ir/val.h"
 #include "type/all.h"
+#include "type/typed_value.h"
 
 namespace ir {
 using base::check::Is;
@@ -60,21 +61,22 @@ Cmd &MakeCmd(type::Type const *t, Op op) {
 
 RegisterOr<float> CastIntToFloat32(RegisterOr<i32> r) {
   if (!r.is_reg_) { return static_cast<float>(r.val_); }
-  auto &cmd                = ir::MakeCmd(type::Float32, Op::CastIntToFloat32);
-  cmd.cast_int_to_float32_ = ir::Cmd::CastIntToFloat32{{}, r.reg_};
+  auto &cmd = ir::MakeCmd(type::Float32, Op::CastIntToFloat32);
+  cmd.reg_  = r.reg_;
   return cmd.result;
 }
 
 RegisterOr<double> CastIntToFloat64(RegisterOr<i32> r) {
   if (!r.is_reg_) { return static_cast<double>(r.val_); }
-  auto &cmd                = ir::MakeCmd(type::Float64, Op::CastIntToFloat64);
-  cmd.cast_int_to_float64_ = ir::Cmd::CastIntToFloat64{{}, r.reg_};
+  auto &cmd = ir::MakeCmd(type::Float64, Op::CastIntToFloat64);
+  cmd.reg_  = r.reg_;
   return cmd.result;
 }
 
+// TODO pass atyped_reg? not sure that's right.
 Register CastPtr(Register r, type::Pointer const *t) {
   auto &cmd     = ir::MakeCmd(t, Op::CastPtr);
-  cmd.cast_ptr_ = ir::Cmd::CastPtr{{}, r, t->pointee};
+  cmd.typed_reg_ = type::Typed<Register>(r, t);
   return cmd.result;
 }
 
@@ -115,8 +117,8 @@ RegisterOr<bool> Not(RegisterOr<bool> r) {
 // TODO do you really want to support this? How can array allocation be
 // customized?
 TypedRegister<Addr> Malloc(const type::Type *t, RegisterOr<i32> r) {
-  auto &cmd   = MakeCmd(type::Ptr(t), Op::Malloc);
-  cmd.malloc_ = Cmd::Malloc::Make(r);
+  auto &cmd    = MakeCmd(type::Ptr(t), Op::Malloc);
+  cmd.i32_arg_ = r;
   return cmd.result;
 }
 
@@ -167,7 +169,7 @@ RegisterOr<type::Type const *> Array(RegisterOr<type::Type const *> data_type) {
   if (!data_type.is_reg_) { return type::Arr(data_type.val_); }
 
   auto &cmd  = MakeCmd(type::Type_, Op::Array);
-  cmd.array_ = Cmd::Array::Make(-1, data_type);
+  cmd.array_ = {-1, data_type};
   return cmd.result;
 }
 
@@ -178,15 +180,15 @@ RegisterOr<type::Type const *> Array(RegisterOr<i32> len,
   }
 
   auto &cmd  = MakeCmd(type::Type_, Op::Array);
-  cmd.array_ = Cmd::Array::Make(len, data_type);
+  cmd.array_ = {len, data_type};
   return cmd.result;
 }
 
 Register CreateTuple() { return MakeCmd(type::Type_, Op::CreateTuple).result; }
 
 void AppendToTuple(Register tup, RegisterOr<type::Type const *> entry) {
-  auto &cmd            = MakeCmd(nullptr, Op::AppendToTuple);
-  cmd.append_to_tuple_ = Cmd::AppendToTuple::Make(tup, entry);
+  auto &cmd       = MakeCmd(nullptr, Op::AppendToTuple);
+  cmd.store_type_ = {tup, entry};
 }
 
 Register FinalizeTuple(Register r) {
@@ -218,13 +220,13 @@ Register CreateVariant() {
 }
 
 void AppendToVariant(Register var, RegisterOr<type::Type const *> entry) {
-  auto &cmd              = MakeCmd(nullptr, Op::AppendToVariant);
-  cmd.append_to_variant_ = Cmd::AppendToVariant::Make(var, entry);
+  auto &cmd       = MakeCmd(nullptr, Op::AppendToVariant);
+  cmd.store_type_ = {var, entry};
 }
 
 Register FinalizeVariant(Register r) {
-  auto &cmd             = MakeCmd(type::Type_, Op::FinalizeVariant);
-  cmd.finalize_variant_ = Cmd::FinalizeVariant::Make(r);
+  auto &cmd = MakeCmd(type::Type_, Op::FinalizeVariant);
+  cmd.reg_  = r;
   return cmd.result;
 }
 
@@ -257,7 +259,7 @@ RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
 
 Register Field(Register r, type::Struct const *t, size_t n) {
   auto &cmd  = MakeCmd(type::Ptr(t->fields().at(n).type), Op::Field);
-  cmd.field_ = Cmd::Field::Make(r, t, n);
+  cmd.field_ = {r, t, n};
   return cmd.result;
 }
 
@@ -307,13 +309,12 @@ Register CreateBlockSeq() {
 void AppendToBlockSeq(Register block_seq,
                       RegisterOr<ir::BlockSequence> more_block_seq) {
   auto &cmd = MakeCmd(nullptr, Op::AppendToBlockSeq);
-  cmd.append_to_block_seq_ =
-      Cmd::AppendToBlockSeq::Make(block_seq, more_block_seq);
+  cmd.store_block_ = {block_seq, more_block_seq};
 }
 
 Register FinalizeBlockSeq(Register r) {
-  auto &cmd               = MakeCmd(type::Block, Op::FinalizeBlockSeq);
-  cmd.finalize_block_seq_ = Cmd::FinalizeBlockSeq::Make(r);
+  auto &cmd = MakeCmd(type::Block, Op::FinalizeBlockSeq);
+  cmd.reg_  = r;
   return cmd.result;
 }
 
@@ -342,7 +343,7 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                                   ast::BlockLiteral *lit) {
   if (r.is_reg_) {
     auto &cmd               = MakeCmd(type::Bool, Op::BlockSeqContains);
-    cmd.block_seq_contains_ = Cmd::BlockSeqContains{{}, r.reg_, lit};
+    cmd.block_seq_contains_ = Cmd::BlockSeqContains{r.reg_, lit};
     return cmd.result;
   }
 
@@ -352,7 +353,7 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
 
 Register CreateStruct(ast::StructLiteral *lit) {
   auto &cmd          = MakeCmd(type::Type_, Op::CreateStruct);
-  cmd.create_struct_ = Cmd::CreateStruct::Make(lit);
+  cmd.create_struct_ = {lit};
   return cmd.result;
 }
 
@@ -379,15 +380,13 @@ Register VariantValue(type::Type const *t, Register r) {
 void CreateStructField(type::Struct *struct_type,
                        RegisterOr<type::Type const *> type) {
   auto &cmd = MakeCmd(nullptr, Op::CreateStructField);
-  cmd.create_struct_field_ =
-      Cmd::CreateStructField::Make(struct_type, std::move(type));
+  cmd.create_struct_field_ = {struct_type, std::move(type)};
 }
 
 void SetStructFieldName(type::Struct *struct_type,
                         std::string_view field_name) {
   auto &cmd = MakeCmd(nullptr, Op::SetStructFieldName);
-  cmd.set_struct_field_name_ =
-      Cmd::SetStructFieldName::Make(struct_type, field_name);
+  cmd.set_struct_field_name_ = {struct_type, field_name};
 }
 
 TypedRegister<Addr> Alloca(const type::Type *t) {
@@ -396,8 +395,7 @@ TypedRegister<Addr> Alloca(const type::Type *t) {
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
                   ->block(Func::Current->entry())
                   .cmds_.emplace_back(type::Ptr(t), Op::Alloca);
-
-  cmd.alloca_ = Cmd::Alloca::Make(t);
+  cmd.type_ = t;
   return cmd.result;
 }
 
@@ -452,7 +450,7 @@ TypedRegister<Addr> PtrIncr(Register ptr, RegisterOr<i32> inc,
   // TODO type must be a pointer.
   if (!inc.is_reg_ && inc.val_ == 0) { return ptr; }
   auto &cmd     = MakeCmd(t, Op::PtrIncr);
-  cmd.ptr_incr_ = Cmd::PtrIncr::Make(ptr, t->as<type::Pointer>().pointee, inc);
+  cmd.ptr_incr_ = {ptr, t->as<type::Pointer>().pointee, inc};
   return cmd.result;
 }
 
@@ -532,12 +530,12 @@ void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
     return UncondJump(cond.val_ ? true_block : false_block);
   }
   auto &cmd      = MakeCmd(nullptr, Op::CondJump);
-  cmd.cond_jump_ = Cmd::CondJump{{}, cond.reg_, {false_block, true_block}};
+  cmd.cond_jump_ = Cmd::CondJump{cond.reg_, {false_block, true_block}};
 }
 
 void UncondJump(BlockIndex block) {
   auto &cmd        = MakeCmd(nullptr, Op::UncondJump);
-  cmd.uncond_jump_ = Cmd::UncondJump{{}, block};
+  cmd.uncond_jump_ = Cmd::UncondJump{block};
 }
 
 void ReturnJump() {
@@ -549,7 +547,7 @@ void BlockSeqJump(RegisterOr<BlockSequence> bseq,
                   std::unordered_map<ast::BlockLiteral const *,
                                      ir::BlockIndex> const *jump_table) {
   auto &cmd           = MakeCmd(nullptr, Op::BlockSeqJump);
-  cmd.block_seq_jump_ = Cmd::BlockSeqJump{{}, bseq, jump_table};
+  cmd.block_seq_jump_ = Cmd::BlockSeqJump{bseq, jump_table};
 }
 
 static std::ostream &operator<<(std::ostream &os, Register r) {
@@ -615,8 +613,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
 #include "ir/op.xmacro.h"
 #undef OP_MACRO_
 #undef OP_MACRO
-    case Op::EqBool:
-      return os << cmd.eq_bool_.args_[0] << " " << cmd.eq_bool_.args_[1];
     case Op::CreateStruct: return os << cmd.create_struct_.lit_;
     case Op::CreateStructField:
       return os << cmd.create_struct_field_.struct_ << " "
@@ -625,24 +621,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
       return os << cmd.set_struct_field_name_.struct_ << " "
                 << cmd.set_struct_field_name_.name_;
 
-    case Op::Malloc: return os << cmd.malloc_.arg_;
-    case Op::Alloca: return os << cmd.alloca_.type_->to_string();
     case Op::Array: return os << cmd.array_.type_;
-    case Op::CreateTuple: return os;
-    case Op::AppendToTuple:
-      return os << cmd.append_to_tuple_.tup_ << " "
-                << cmd.append_to_tuple_.arg_;
-    case Op::FinalizeTuple: return os << cmd.finalize_tuple_.tup_;
-    case Op::CreateVariant: return os;
-    case Op::AppendToVariant:
-      return os << cmd.append_to_variant_.var_ << " "
-                << cmd.append_to_variant_.arg_;
-    case Op::FinalizeVariant: return os << cmd.finalize_variant_.var_;
-    case Op::CreateBlockSeq: return os;
-    case Op::AppendToBlockSeq:
-      return os << cmd.append_to_block_seq_.block_seq_ << " "
-                << cmd.append_to_block_seq_.arg_;
-    case Op::FinalizeBlockSeq: return os << cmd.finalize_block_seq_.block_seq_;
     case Op::PtrIncr: return os << cmd.ptr_incr_.incr_;
     case Op::Field:
       return os << cmd.field_.ptr_ << " "
@@ -672,11 +651,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
 
       return os;
     case Op::BlockSeqContains: return os << cmd.block_seq_contains_.lit_;
-
-    case Op::CastIntToFloat32: return os << cmd.cast_int_to_float32_.reg_;
-    case Op::CastIntToFloat64: return os << cmd.cast_int_to_float64_.reg_;
-
-    case Op::CastPtr: return os << cmd.cast_ptr_.type_;
   }
   UNREACHABLE();
 }

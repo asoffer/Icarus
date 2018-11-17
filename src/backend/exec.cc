@@ -277,8 +277,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save((lhs.value | rhs.value) == lhs.value);
     } break;
     case ir::Op::EqBool:
-      save(resolve<bool>(cmd.eq_bool_.args_[0]) ==
-           resolve<bool>(cmd.eq_bool_.args_[1]));
+      save(resolve(cmd.bool_args_.args_[0]) == resolve(cmd.bool_args_.args_[1]));
       break;
     case ir::Op::EqChar:
       save(resolve(cmd.char_args_.args_[0]) == resolve(cmd.char_args_.args_[1]));
@@ -357,7 +356,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       // TODO remove me.
       break;
     case ir::Op::DebugIr: LOG << call_stack.top().fn_; break;
-    case ir::Op::Malloc: save(malloc(resolve(cmd.malloc_.arg_))); break;
+    case ir::Op::Malloc: save(malloc(resolve(cmd.i32_arg_))); break;
     case ir::Op::Free: free(resolve<ir::Addr>(cmd.reg_).as_heap); break;
     case ir::Op::Alloca: {
       ir::Addr addr;
@@ -366,8 +365,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(addr);
 
       auto arch = Architecture::InterprettingMachine();
-      stack_.append_bytes(arch.bytes(cmd.alloca_.type_),
-                          arch.alignment(cmd.alloca_.type_));
+      stack_.append_bytes(arch.bytes(cmd.type_),
+                          arch.alignment(cmd.type_));
 
     } break;
     case ir::Op::Ptr:
@@ -598,43 +597,40 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::AppendToTuple: {
       auto *tuple_to_modify =
-          ASSERT_NOT_NULL(resolve<type::Tuple *>(cmd.append_to_tuple_.tup_));
-      tuple_to_modify->entries_.push_back(resolve(cmd.append_to_tuple_.arg_));
+          ASSERT_NOT_NULL(resolve<type::Tuple *>(cmd.store_type_.addr_));
+      tuple_to_modify->entries_.push_back(resolve(cmd.store_type_.val_));
     } break;
-    case ir::Op::FinalizeTuple: {
-      save(resolve<type::Tuple *>(cmd.finalize_tuple_.tup_)->finalize());
-    } break;
+    case ir::Op::FinalizeTuple:
+      save(resolve<type::Tuple *>(cmd.reg_)->finalize());
+      break;
     case ir::Op::CreateVariant: {
       save(new type::Variant(base::vector<type::Type const *>{}));
     } break;
     case ir::Op::AppendToVariant: {
-      auto *variant_to_modify = ASSERT_NOT_NULL(
-          resolve<type::Variant *>(cmd.append_to_variant_.var_));
-      variant_to_modify->variants_.push_back(
-          resolve(cmd.append_to_variant_.arg_));
+      auto *variant_to_modify =
+          ASSERT_NOT_NULL(resolve<type::Variant *>(cmd.store_type_.addr_));
+      variant_to_modify->variants_.push_back(resolve(cmd.store_type_.val_));
     } break;
-    case ir::Op::FinalizeVariant: {
-      save(resolve<type::Variant *>(cmd.finalize_variant_.var_)->finalize());
-    } break;
+    case ir::Op::FinalizeVariant:
+      save(resolve<type::Variant *>(cmd.reg_)->finalize());
+      break;
     case ir::Op::CastIntToFloat32:
-      save(static_cast<float>(resolve<i32>(cmd.cast_int_to_float32_.reg_)));
+      save(static_cast<float>(resolve<i32>(cmd.reg_)));
       break;
     case ir::Op::CastIntToFloat64:
-      save(static_cast<double>(resolve<i32>(cmd.cast_int_to_float64_.reg_)));
+      save(static_cast<double>(resolve<i32>(cmd.reg_)));
       break;
-    case ir::Op::CastPtr: save(resolve<ir::Addr>(cmd.cast_ptr_.reg_)); break;
-    case ir::Op::CreateBlockSeq: {
+    case ir::Op::CastPtr: save(resolve<ir::Addr>(cmd.typed_reg_.get())); break;
+    case ir::Op::CreateBlockSeq:
       save(new base::vector<ir::BlockSequence>{});
-    } break;
+      break;
     case ir::Op::AppendToBlockSeq: {
-      auto *block_seq_to_modify =
-          ASSERT_NOT_NULL(resolve<base::vector<ir::BlockSequence> *>(
-              cmd.append_to_block_seq_.block_seq_));
-      block_seq_to_modify->push_back(resolve(cmd.append_to_block_seq_.arg_));
+      auto *block_seq_to_modify = ASSERT_NOT_NULL(
+          resolve<base::vector<ir::BlockSequence> *>(cmd.store_block_.addr_));
+      block_seq_to_modify->push_back(resolve(cmd.store_block_.val_));
     } break;
     case ir::Op::FinalizeBlockSeq: {
-      auto *block_seq = resolve<base::vector<ir::BlockSequence> *>(
-          cmd.finalize_block_seq_.block_seq_);
+      auto *block_seq = resolve<base::vector<ir::BlockSequence> *>(cmd.reg_);
       auto seq = ir::MakeBlockSeq(*block_seq);
       delete block_seq;
       save(seq);
