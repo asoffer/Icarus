@@ -537,20 +537,13 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::AddEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int32) {
-        ir::Store(ir::Add(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
-                  lhs_lval);
-      } else if (rhs_ir.type == type::Float32) {
-        ir::Store(ir::Add(ir::Load<float>(lhs_lval), rhs_ir.reg_or<float>()),
-                  lhs_lval);
-      } else if (rhs_ir.type == type::Float64) {
-        ir::Store(ir::Add(ir::Load<double>(lhs_lval), rhs_ir.reg_or<double>()),
-                  lhs_lval);
-      } else if (rhs_ir.type->is<type::CharBuffer>()) {
-        NOT_YET();
-      } else {
-        UNREACHABLE(rhs_ir.type);
-      }
+      if (rhs_ir.type->is<type::CharBuffer>()) { NOT_YET(); }
+      type::ApplyTypes<i8, i16, i32, i64, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            ir::Store(ir::Add(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
+                      lhs_lval);
+          });
       return {};
     } break;
     case Language::Operator::SubEq: {
