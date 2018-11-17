@@ -556,16 +556,70 @@ static std::ostream &operator<<(std::ostream &os,
 char const *OpCodeStr(Op op) {
   switch (op) {
 #define OP_MACRO(op, ...)                                                      \
-  case Op::op: return #op;
-  //
-#define OP_MACRO_(op, ...)                                                     \
-  case Op::op: return #op;
-  //
+  case Op::op:                                                                 \
+    return #op;
 #include "ir/op.xmacro.h"
-#undef OP_MACRO_
 #undef OP_MACRO
   }
   __builtin_unreachable();
+}
+
+template <typename T>
+static std::ostream &operator<<(std::ostream &os, Cmd::Store<T> const &s) {
+  return os << s.addr_.to_string() << " " << s.val_;
+}
+
+template <typename T>
+static std::ostream &operator<<(std::ostream &os, Cmd::SetRet<T> const &s) {
+  return os << s.ret_num_ << " " << s.val_;
+}
+
+static std::ostream &operator<<(std::ostream &os, Cmd::PrintEnum const &p) {
+  return os << p.arg_;
+}
+
+static std::ostream &operator<<(std::ostream &os, Cmd::PrintFlags const &p) {
+  return os << p.arg_;
+}
+
+static std::ostream &operator<<(std::ostream &os, Cmd::BlockSeqJump const &b) {
+  return os << b.bseq_;
+}
+
+static std::ostream &operator<<(std::ostream &os,
+                                Cmd::BlockSeqContains const &b) {
+  return os << b.lit_;
+}
+
+static std::ostream &operator<<(std::ostream &os, Cmd::PtrIncr const &p) {
+  return os << p.incr_;
+}
+
+static std::ostream &operator<<(std::ostream &os, Cmd::Array const &a) {
+  return os << a.type_;
+}
+
+static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {
+  return os << f.ptr_ << " " << f.struct_type_->to_string() << " " << f.num_;
+}
+
+static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
+  if (call.fn_.is_reg_) {
+    os << call.fn_.reg_;
+  } else if (call.fn_.val_.is_fn_) {
+    os << call.fn_.val_.fn_;
+  } else {
+    os << call.fn_.val_.foreign_.name_;
+  }
+  os << call.long_args_->to_string();
+  if (call.outs_) {
+    for (const auto &out : call.outs_->outs_) {
+      if (out.is_loc_) { os << "*"; }
+      os << out.reg_;
+    }
+  }
+
+  return os;
 }
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
@@ -575,34 +629,8 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
 #define OP_MACRO(op, tag, type, field)                                         \
   case Op::op:                                                                 \
     return os << cmd.field;
-#define OP_MACRO_(...)
 #include "ir/op.xmacro.h"
-#undef OP_MACRO_
 #undef OP_MACRO
-    case Op::Array: return os << cmd.array_.type_;
-    case Op::PtrIncr: return os << cmd.ptr_incr_.incr_;
-    case Op::Field:
-      return os << cmd.field_.ptr_ << " "
-                << cmd.field_.struct_type_->to_string() << " "
-                << cmd.field_.num_;
-    case Op::Call:
-      if (cmd.call_.fn_.is_reg_) {
-        os << cmd.call_.fn_.reg_;
-      } else if (cmd.call_.fn_.val_.is_fn_) {
-        os << cmd.call_.fn_.val_.fn_;
-      } else {
-        os << cmd.call_.fn_.val_.foreign_.name_;
-      }
-      os << cmd.call_.long_args_->to_string();
-      if (cmd.call_.outs_) {
-        for (const auto &out : cmd.call_.outs_->outs_) {
-          if (out.is_loc_) { os << "*"; }
-          os << out.reg_;
-        }
-      }
-
-      return os;
-    case Op::BlockSeqContains: return os << cmd.block_seq_contains_.lit_;
   }
   UNREACHABLE();
 }

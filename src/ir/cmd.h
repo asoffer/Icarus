@@ -87,9 +87,7 @@ struct OutParams {
 
 enum class Op : uint8_t {
 #define OP_MACRO(op, ...) op,
-#define OP_MACRO_(op, ...) op,
 #include "ir/op.xmacro.h"
-#undef OP_MACRO_
 #undef OP_MACRO
 };
 char const *OpCodeStr(Op op);
@@ -108,39 +106,22 @@ struct Cmd {
   struct Store {
     Register addr_;
     RegisterOr<T> val_;
-
-    inline friend std::ostream &operator<<(std::ostream &os, Store const &s) {
-      return os << s.addr_.to_string() << " " << s.val_;
-    }
   };
 
   template <typename T>
   struct SetRet {
     size_t ret_num_;
     RegisterOr<T> val_;
-
-    inline friend std::ostream &operator<<(std::ostream &os, SetRet const &s) {
-      return os << s.ret_num_ << " " << s.val_;
-    }
   };
 
   struct PrintEnum {
     RegisterOr<EnumVal> arg_;
     type::Enum const *enum_type_;
-
-    inline friend std::ostream &operator<<(std::ostream &os,
-                                           PrintEnum const &p) {
-      return os << p.arg_;
-    }
   };
+
   struct PrintFlags {
     RegisterOr<FlagsVal> arg_;
     type::Flags const *flags_type_;
-
-    inline friend std::ostream &operator<<(std::ostream &os,
-                                           PrintFlags const &p) {
-      return os << p.arg_;
-    }
   };
 
   struct Array {
@@ -175,9 +156,7 @@ struct Cmd {
   };
 
 #define OP_MACRO(op, tag, ...) struct tag##Tag;
-#define OP_MACRO_(op, tag, ...) struct tag##Tag;
 #include "ir/op.xmacro.h"
-#undef OP_MACRO_
 #undef OP_MACRO
   template <typename Tag, typename T>
   static constexpr Op OpCode() {
@@ -185,12 +164,7 @@ struct Cmd {
   if constexpr (std::is_same_v<Tag, tag##Tag> && std::is_same_v<T, type>) {    \
     return Op::op;                                                             \
   }
-#define OP_MACRO_(op, tag, type, field)                                        \
-  if constexpr (std::is_same_v<Tag, tag##Tag> && std::is_same_v<T, type>) {    \
-    return Op::op;                                                             \
-  }
 #include "ir/op.xmacro.h"
-#undef OP_MACRO_
 #undef OP_MACRO
     UNREACHABLE();
   }
@@ -202,12 +176,7 @@ struct Cmd {
   if constexpr (std::is_same_v<Tag, tag##Tag> && std::is_same_v<T, type>) {    \
     return field;                                                              \
   }
-#define OP_MACRO_(op, tag, type, field)                                        \
-  if constexpr (std::is_same_v<Tag, tag##Tag> && std::is_same_v<T, type>) {    \
-    return field;                                                              \
-  }
 #include "ir/op.xmacro.h"
-#undef OP_MACRO_
 #undef OP_MACRO
     UNREACHABLE();
   }
@@ -270,11 +239,6 @@ struct Cmd {
     RegisterOr<BlockSequence> bseq_;
     std::unordered_map<ast::BlockLiteral const *, ir::BlockIndex> const
         *jump_table_;
-
-    inline friend std::ostream &operator<<(std::ostream &os,
-                                           BlockSeqJump const &b) {
-      return os << b.bseq_;
-    }
   };
 
   union {
@@ -288,6 +252,11 @@ struct Cmd {
     CondJump cond_jump_;
     BlockIndex block_;
     BlockSeqJump block_seq_jump_;
+    Call call_;
+    PtrIncr ptr_incr_;
+    BlockSeqContains block_seq_contains_;
+    Cmd::Array array_;
+    Field field_;
 
     // TODO names of these are easily mis-spellable and would lead to UB.
     RegisterOr<bool> bool_arg_;
@@ -355,9 +324,7 @@ struct Cmd {
 
     type::Typed<Register> typed_reg_;
 #define OP_MACRO(...)
-#define OP_MACRO_(op, tag, type, field) Cmd::op field;
 #include "ir/op.xmacro.h"
-#undef OP_MACRO_
 #undef OP_MACRO
   };
 
