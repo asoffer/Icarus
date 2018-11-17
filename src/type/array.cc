@@ -118,7 +118,8 @@ static ir::RegisterOr<i32> ComputeMin(ir::RegisterOr<i32> x,
   ir::UncondJump(land_block);
 
   ir::BasicBlock::Current = land_block;
-  return ir::MakePhi<i32>(ir::Phi(type::Int), {{x_block, x}, {entry_block, y}});
+  return ir::MakePhi<i32>(ir::Phi(type::Int32),
+                          {{x_block, x}, {entry_block, y}});
 }
 
 // TODO resize shoud probably take a custom allocator
@@ -131,7 +132,7 @@ void Array::EmitResize(ir::Val ptr_to_array, ir::Val new_size,
     if (resize_func_ != nullptr) { goto call_fn; }
 
     resize_func_ = ctx->mod_->AddFunc(
-        type::Func({type::Ptr(this), type::Int}, {}),
+        type::Func({type::Ptr(this), type::Int64}, {}),
         base::vector<std::pair<std::string, ast::Expression *>>{
             {"arg", nullptr}, {"new_size", nullptr}});
 

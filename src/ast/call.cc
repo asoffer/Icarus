@@ -33,7 +33,7 @@ ir::Val ErrorFunc() {
 
 ir::Val AsciiFunc() {
   static ir::Func *ascii_func_ = []() {
-    auto fn = new ir::Func(nullptr, type::Func({type::Int}, {type::Char}),
+    auto fn = new ir::Func(nullptr, type::Func({type::Int8}, {type::Char}),
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
@@ -53,7 +53,7 @@ ir::Val DebugIrFunc() {
 
 ir::Val OrdFunc() {
   static ir::Func *ord_func_ = []() {
-    auto fn = new ir::Func(nullptr, type::Func({type::Char}, {type::Int}),
+    auto fn = new ir::Func(nullptr, type::Func({type::Char}, {type::Int8}),
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
@@ -67,7 +67,7 @@ ir::Val OrdFunc() {
 
 ir::Val BytesFunc() {
   static ir::Func *bytes_func_ = []() {
-    auto fn = new ir::Func(nullptr, type::Func({type::Type_}, {type::Int}),
+    auto fn = new ir::Func(nullptr, type::Func({type::Type_}, {type::Int64}),
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
@@ -81,7 +81,7 @@ ir::Val BytesFunc() {
 
 ir::Val AlignFunc() {
   static ir::Func *bytes_func_ = []() {
-    auto fn = new ir::Func(nullptr, type::Func({type::Type_}, {type::Int}),
+    auto fn = new ir::Func(nullptr, type::Func({type::Type_}, {type::Int64}),
                            {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
@@ -430,8 +430,8 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.size() == 1u);
       ASSERT(arg_types.pos_[0] == type::Type_);
-      ctx->set_type(this, type::Int);
-      return type::Int;
+      ctx->set_type(this, type::Int64);
+      return type::Int64;
     } else if (fn_val == ir::Val::BuiltinGeneric(ResizeFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
@@ -439,7 +439,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(args_.pos_.size() == 2u);
       ASSERT(arg_types.pos_[0], Is<type::Pointer>());
       ASSERT(arg_types.pos_[0]->as<type::Pointer>().pointee, Is<type::Array>());
-      ASSERT(arg_types.pos_[1] == type::Int);
+      ASSERT(arg_types.pos_[1] == type::Int64);
       ctx->set_type(this, type::Void());
       return type::Void();
     } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {

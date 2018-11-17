@@ -21,11 +21,7 @@
   inline bool operator==(type lhs, type rhs) {                                 \
     return lhs.value == rhs.value;                                             \
   }                                                                            \
-  inline bool operator<(type lhs, type rhs) { return lhs.value < rhs.value; }  \
   inline bool operator!=(type lhs, type rhs) { return !(lhs == rhs); }         \
-  inline bool operator<=(type lhs, type rhs) { return !(rhs < lhs); }          \
-  inline bool operator>(type lhs, type rhs) { return rhs < lhs; }              \
-  inline bool operator>=(type lhs, type rhs) { return !(lhs < rhs); }          \
   } /* namespace ns */                                                         \
                                                                                \
   namespace std {                                                              \

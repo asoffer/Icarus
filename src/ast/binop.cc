@@ -144,7 +144,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
   switch (op) {
     case Operator::Index: {
       if (lhs_type->is<type::CharBuffer>()) {
-        if (rhs_type != type::Int) {
+        if (rhs_type != type::Int32) {
           ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
         }
         ctx->set_type(this, type::Char);
@@ -156,7 +156,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         auto *t = lhs_type->as<type::Array>().data_type;
         ctx->set_type(this, t);
 
-        if (rhs_type == type::Int) { break; }
+        if (rhs_type == type::Int32) { break; }
         ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
         return t;
       }
@@ -207,7 +207,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 
 #define CASE(OpName, symbol, ret_type)                                          \
   case Operator::OpName: {                                                      \
-    if ((lhs_type == type::Int && rhs_type == type::Int) ||                     \
+    if ((lhs_type == type::Int32 && rhs_type == type::Int32) ||                     \
         (lhs_type == type::Float32 && rhs_type == type::Float32) ||                   \
         (lhs_type == type::Float64 && rhs_type == type::Float64)) {                   \
       auto *t = (ret_type);                                                     \
@@ -235,7 +235,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       CASE(ModEq, "%=", type::Void());
 #undef CASE
     case Operator::Add: {
-      if ((lhs_type == type::Int && rhs_type == type::Int) ||
+      if ((lhs_type == type::Int32 && rhs_type == type::Int32) ||
           (lhs_type == type::Float32 && rhs_type == type::Float32) ||
           (lhs_type == type::Float64 && rhs_type == type::Float64)) {
         ctx->set_type(this, lhs_type);
@@ -260,7 +260,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     } break;
     case Operator::AddEq: {
-      if ((lhs_type == type::Int && rhs_type == type::Int) ||
+      if ((lhs_type == type::Int32 && rhs_type == type::Int32) ||
           (lhs_type == type::Float32 && rhs_type == type::Float32) ||
           (lhs_type == type::Float64 && rhs_type == type::Float64)) {
         ctx->set_type(this, type::Void());
@@ -277,7 +277,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     } break;
     // Mul is done separately because of the function composition
     case Operator::Mul:
-      if ((lhs_type == type::Int && rhs_type == type::Int) ||
+      if ((lhs_type == type::Int32 && rhs_type == type::Int32) ||
           (lhs_type == type::Float32 && rhs_type == type::Float32)||
           (lhs_type == type::Float64 && rhs_type == type::Float64)) {
         ctx->set_type(this, lhs_type);
@@ -361,7 +361,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Add: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int) {
+      if (rhs_ir.type == type::Int32) {
         return {
             ir::ValFrom(ir::Add(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
       } else if (rhs_ir.type == type::Float32) {
@@ -379,7 +379,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Sub: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int) {
+      if (rhs_ir.type == type::Int32) {
         return {ir::ValFrom(
             ir::Sub(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
       } else if (rhs_ir.type == type::Float32) {
@@ -395,7 +395,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Mul: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int) {
+      if (rhs_ir.type == type::Int32) {
         return {ir::ValFrom(
             ir::Mul(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
       } else if (rhs_ir.type == type::Float32) {
@@ -411,7 +411,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Div: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int) {
+      if (rhs_ir.type == type::Int32) {
         return {
             ir::ValFrom(ir::Div(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
       } else if (rhs_ir.type == type::Float32) {
@@ -427,7 +427,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Mod: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int) {
+      if (rhs_ir.type == type::Int32) {
         return {
             ir::ValFrom(ir::Mod(lhs_ir.reg_or<i32>(), rhs_ir.reg_or<i32>()))};
       } else {
@@ -460,9 +460,9 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
         }
       }
 
-      if (this_type == type::Float32 && val.type == type::Int) {
+      if (this_type == type::Float32 && val.type == type::Int32) {
         return {ir::ValFrom(ir::CastIntToFloat32(val.reg_or<i32>()))};
-      } else if (this_type == type::Float64 && val.type == type::Int) {
+      } else if (this_type == type::Float64 && val.type == type::Int32) {
         return {ir::ValFrom(ir::CastIntToFloat64(val.reg_or<i32>()))};
       } else if (this_type->is<type::Pointer>()) {
         return {ir::Val::Reg(ir::CastPtr(std::get<ir::Register>(val.value),
@@ -567,7 +567,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::AddEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int) {
+      if (rhs_ir.type == type::Int32) {
         ir::Store(ir::Add(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
                   lhs_lval);
       } else if (rhs_ir.type == type::Float32) {
@@ -586,7 +586,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::SubEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int) {
+      if (rhs_ir.type == type::Int32) {
         ir::Store(ir::Sub(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
                   lhs_lval);
       } else if (rhs_ir.type == type::Float32) {
@@ -603,7 +603,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::DivEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int) {
+      if (rhs_ir.type == type::Int32) {
         ir::Store(ir::Div(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
                   lhs_lval);
       } else if (rhs_ir.type == type::Float32) {
@@ -620,7 +620,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::ModEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int) {
+      if (rhs_ir.type == type::Int32) {
         ir::Store(ir::Mod(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
                   lhs_lval);
       } else {
@@ -631,7 +631,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::MulEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type == type::Int) {
+      if (rhs_ir.type == type::Int32) {
         ir::Store(ir::Mul(ir::Load<i32>(lhs_lval), rhs_ir.reg_or<i32>()),
                   lhs_lval);
       } else if (rhs_ir.type == type::Float32) {

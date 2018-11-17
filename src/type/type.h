@@ -91,8 +91,14 @@ constexpr type::Type const *Get() {
     return type::Bool;
   } else if constexpr (std::is_same_v<T, char>) {
     return type::Char;
+  } else if constexpr (std::is_same_v<T, i8>) {
+    return type::Int8;
+  } else if constexpr (std::is_same_v<T, i16>) {
+    return type::Int16;
   } else if constexpr (std::is_same_v<T, i32>) {
-    return type::Int;
+    return type::Int32;
+  } else if constexpr (std::is_same_v<T, i64>) {
+    return type::Int64;
   } else if constexpr (std::is_same_v<T, float>) {
     return type::Float32;
   } else if constexpr (std::is_same_v<T, double>) {

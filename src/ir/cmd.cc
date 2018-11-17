@@ -89,19 +89,19 @@ RegisterOr<char> Trunc(RegisterOr<i32> r) {
 
 RegisterOr<i32> Extend(RegisterOr<char> r) {
   if (!r.is_reg_) { return static_cast<i32>(r.val_); }
-  auto &cmd = MakeCmd(type::Int, Op::Extend);
+  auto &cmd = MakeCmd(type::Int32, Op::Extend);
   cmd.reg_  = r.reg_;
   return cmd.result;
 }
 
 RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r) {
-  auto &cmd  = MakeCmd(type::Int, Op::Bytes);
+  auto &cmd  = MakeCmd(type::Int32, Op::Bytes);
   cmd.type_arg_ = r;
   return cmd.result;
 }
 
 RegisterOr<i32> Align(RegisterOr<type::Type const *> r) {
-  auto &cmd  = MakeCmd(type::Int, Op::Align);
+  auto &cmd  = MakeCmd(type::Int32, Op::Align);
   cmd.type_arg_ = r;
   return cmd.result;
 }
@@ -125,7 +125,7 @@ TypedRegister<Addr> Malloc(const type::Type *t, RegisterOr<i32> r) {
 void Free(Register r) { MakeCmd(nullptr, Op::Free).reg_ = r; }
 
 Register ArrayLength(Register r) {
-  auto &cmd = MakeCmd(type::Ptr(type::Int), Op::ArrayLength);
+  auto &cmd = MakeCmd(type::Ptr(type::Int64), Op::ArrayLength);
   cmd.reg_  = r;
   return cmd.result;
 }
@@ -403,7 +403,10 @@ void SetRet(size_t n, Val const &v) {
   ASSERT(v.type != nullptr);
   if (v.type == type::Bool) { return SetRet(n, v.reg_or<bool>()); }
   if (v.type == type::Char) { return SetRet(n, v.reg_or<char>()); }
-  if (v.type == type::Int) { return SetRet(n, v.reg_or<i32>()); }
+  if (v.type == type::Int8) { return SetRet(n, v.reg_or<i8>()); }
+  if (v.type == type::Int16) { return SetRet(n, v.reg_or<i16>()); }
+  if (v.type == type::Int32) { return SetRet(n, v.reg_or<i32>()); }
+  if (v.type == type::Int64) { return SetRet(n, v.reg_or<i64>()); }
   if (v.type == type::Float32) { return SetRet(n, v.reg_or<float>()); }
   if (v.type == type::Float64) { return SetRet(n, v.reg_or<double>()); }
   if (v.type == type::Type_) {
@@ -484,7 +487,10 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
 Register Load(Register r, type::Type const *t) {
   if (t == type::Bool) { return Load<bool>(r); }
   if (t == type::Char) { return Load<char>(r); }
-  if (t == type::Int) { return Load<i32>(r); }
+  if (t == type::Int8) { return Load<i8>(r); }
+  if (t == type::Int16) { return Load<i16>(r); }
+  if (t == type::Int32) { return Load<i32>(r); }
+  if (t == type::Int64) { return Load<i64>(r); }
   if (t == type::Float32) { return Load<float>(r); }
   if (t == type::Float64) { return Load<double>(r); }
   if (t == type::Type_) { return Load<type::Type const*>(r); }

@@ -97,7 +97,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         return type::Type_;
       }
     case Language::Operator::Sub:
-      if (operand_type == type::Int || operand_type == type::Float32 ||
+      if (operand_type == type::Int32 || operand_type == type::Float32 ||
           operand_type == type::Float64) {
         ctx->set_type(this, operand_type);
         return operand_type;
@@ -166,7 +166,7 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
       return {ir::ValFrom(ir::Not(operand->EmitIR(ctx)[0].reg_or<bool>()))};
     case Language::Operator::Sub: {
       auto *operand_type = ctx->type_of(operand.get());
-      if (operand_type == type::Int) {
+      if (operand_type == type::Int32) {
         return {ir::ValFrom(ir::Neg(operand->EmitIR(ctx)[0].reg_or<i32>()))};
       } else if (operand_type == type::Float32) {
         return {ir::ValFrom(ir::Neg(operand->EmitIR(ctx)[0].reg_or<float>()))};

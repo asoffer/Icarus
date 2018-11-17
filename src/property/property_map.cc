@@ -187,7 +187,7 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
     case ir::Op::EqBool:
       return prop_set.add(EqBool(block_view.at(cmd.bool_args_.args_[0].reg_),
                                  block_view.at(cmd.bool_args_.args_[1].reg_)));
-    case ir::Op::LtInt:
+    case ir::Op::LtInt32:
       if (cmd.i32_args_.args_[0].is_reg_) {
         if (cmd.i32_args_.args_[1].is_reg_) {
           NOT_YET();
@@ -235,7 +235,7 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
   break
     case ir::Op::SetRetBool: DEFINE_CASE(set_ret_bool_);
     case ir::Op::SetRetChar: DEFINE_CASE(set_ret_char_);
-    case ir::Op::SetRetI32: DEFINE_CASE(set_ret_i32_);
+    case ir::Op::SetRetInt32: DEFINE_CASE(set_ret_i32_);
     case ir::Op::SetRetFloat32: DEFINE_CASE(set_ret_float32_);
     case ir::Op::SetRetFloat64: DEFINE_CASE(set_ret_float64_);
     case ir::Op::SetRetType: DEFINE_CASE(set_ret_type_);

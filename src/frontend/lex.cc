@@ -68,7 +68,10 @@ TaggedNode NextWord(SourceLocation &loc) {
   static base::unordered_map<std::string, ir::Val> Reserved{
       {"bool", ir::Val(type::Bool)},
       {"char", ir::Val(type::Char)},
-      {"int", ir::Val(type::Int)},
+      {"int8", ir::Val(type::Int8)},
+      {"int16", ir::Val(type::Int16)},
+      {"int32", ir::Val(type::Int32)},
+      {"int64", ir::Val(type::Int64)},
       {"float32", ir::Val(type::Float32)},
       {"float64", ir::Val(type::Float64)},
       {"type", ir::Val(type::Type_)},

@@ -110,7 +110,10 @@ std::string Val::to_string() const {
           },
           [](float f) -> std::string { return std::to_string(f) + "_f32"; },
           [](double d) -> std::string { return std::to_string(d) + "_f64"; },
+          [](i8 n) -> std::string { return std::to_string(n); },
+          [](i16 n) -> std::string { return std::to_string(n); },
           [](i32 n) -> std::string { return std::to_string(n); },
+          [](i64 n) -> std::string { return std::to_string(n); },
           [this](EnumVal e) -> std::string {
             return e.value >= this->type->as<type::Enum>().members_.size()
                        ? this->type->as<type::Enum>().to_string() + ":END"

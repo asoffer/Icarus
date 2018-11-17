@@ -230,7 +230,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
               {StringConstant(llvm_data->builder, "%c"),
                EmitValue(num_args, llvm_data, arg)},
               "print");
-        } else if (arg.type == type::Int) {
+        } else if (arg.type == type::Int3232) {
           return llvm_data->builder->CreateCall(
               printf_fn,
               {StringConstant(llvm_data->builder, "%d"),
@@ -312,7 +312,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
     case ir::Op::Eq: {
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
-      if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
+      if (cmd.args[0].type == type::Int32 || cmd.args[0].type == type::Char ||
           cmd.args[0].type->is<type::Enum>() ||
           cmd.args[0].type->is<type::Flags>() ||
           cmd.args[0].type->is<type::Pointer>() ||
@@ -328,7 +328,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
     case ir::Op::Ne: {
       auto *lhs = EmitValue(num_args, llvm_data, cmd.args[0]);
       auto *rhs = EmitValue(num_args, llvm_data, cmd.args[1]);
-      if (cmd.args[0].type == type::Int || cmd.args[0].type == type::Char ||
+      if (cmd.args[0].type == type::Int32 || cmd.args[0].type == type::Char ||
           cmd.args[0].type->is<type::Enum>() ||
           cmd.args[0].type->is<type::Flags>() ||
           cmd.args[0].type->is<type::Pointer>() ||
@@ -414,7 +414,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
     case ir::Op::Cast: {
       if (cmd.args[0].type == cmd.type) {
         return EmitValue(num_args, llvm_data, cmd.args[0]);
-      } else if (cmd.args[0].type == type::Int && cmd.type == type::Real) {
+      } else if (cmd.args[0].type == type::Int32 && cmd.type == type::Real) {
         return llvm_data->builder->CreateSIToFP(
             EmitValue(num_args, llvm_data, cmd.args[0]), type::Real->llvm(ctx));
       } else if (cmd.args[0].type->is<type::Pointer>() &&

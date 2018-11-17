@@ -60,7 +60,10 @@ void Primitive::EmitInit(ir::Register id_reg, Context *ctx) const {
     case PrimType::EmptyArray: UNREACHABLE();
     case PrimType::Bool: ir::Store(false, id_reg); break;
     case PrimType::Char: ir::Store('\0', id_reg); break;
-    case PrimType::Int: ir::Store(0, id_reg); break;
+    case PrimType::Int8: ir::Store(static_cast<i8>(0), id_reg); break;
+    case PrimType::Int16: ir::Store(static_cast<i16>(0), id_reg); break;
+    case PrimType::Int32: ir::Store(static_cast<i32>(0), id_reg); break;
+    case PrimType::Int64: ir::Store(static_cast<i64>(0), id_reg); break;
     case PrimType::Float32: ir::Store(0.0f, id_reg); break;
     case PrimType::Float64: ir::Store(0.0, id_reg); break;
     default: UNREACHABLE();

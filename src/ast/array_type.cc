@@ -27,7 +27,7 @@ type::Type const *ArrayType::VerifyType(Context *ctx) {
 
   ctx->set_type(this, type::Type_);
 
-  if (!length_->is<Hole>() && length_type != type::Int) {
+  if (!length_->is<Hole>() && length_type != type::Int64) {
     ctx->error_log_.ArrayIndexType(span);
   }
 

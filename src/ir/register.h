@@ -7,10 +7,22 @@
 
 DEFINE_STRONG_INT(ir, BlockIndex, i32, -1);
 DEFINE_STRONG_INT(ir, EnumVal, size_t, 0);
-DEFINE_STRONG_INT(ir, FlagsVal, size_t, 0);
 DEFINE_STRONG_INT(ir, BuiltinGenericIndex, i32, -1);
 
 DEFINE_STRONG_INT(ir, Register, i32, std::numeric_limits<i32>::lowest());
+
+namespace ir {
+#define MAKE_CMP(type)                                                         \
+  inline bool operator<(type lhs, type rhs) { return lhs.value < rhs.value; }  \
+  inline bool operator<=(type lhs, type rhs) { return !(rhs < lhs); }          \
+  inline bool operator>(type lhs, type rhs) { return rhs < lhs; }              \
+  inline bool operator>=(type lhs, type rhs) { return !(lhs < rhs); }
+MAKE_CMP(BlockIndex)
+MAKE_CMP(EnumVal)
+MAKE_CMP(Register)
+MAKE_CMP(BuiltinGenericIndex)
+#undef MAKE_CMP
+}  // namespace ir
 
 namespace ast {
 struct Expression;
@@ -91,9 +103,7 @@ inline std::ostream &operator<<(std::ostream &os, Register r) {
 inline std::ostream &operator<<(std::ostream &os, Addr addr) {
   return os << addr.to_string();
 }
-inline std::ostream &operator<<(std::ostream &os, FlagsVal f) {
-  return os << f.value;
-}
+
 inline std::ostream &operator<<(std::ostream &os, EnumVal e) {
   return os << e.value;
 }

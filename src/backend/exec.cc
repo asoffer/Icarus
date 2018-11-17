@@ -128,7 +128,10 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           resolve(cmd.type_arg_)));
       break;
     case ir::Op::Not: save(!resolve<bool>(cmd.reg_)); break;
-    case ir::Op::NegInt: save(-resolve<i32>(cmd.reg_)); break;
+    case ir::Op::NegInt8: save(-resolve<i8>(cmd.reg_)); break;
+    case ir::Op::NegInt16: save(-resolve<i16>(cmd.reg_)); break;
+    case ir::Op::NegInt32: save(-resolve<i32>(cmd.reg_)); break;
+    case ir::Op::NegInt64: save(-resolve<i64>(cmd.reg_)); break;
     case ir::Op::NegFloat32: save(-resolve<double>(cmd.reg_)); break;
     case ir::Op::NegFloat64: save(-resolve<double>(cmd.reg_)); break;
     case ir::Op::ArrayLength: save(resolve<ir::Addr>(cmd.reg_)); break;
@@ -138,12 +141,12 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         case ir::Addr::Kind::Null: UNREACHABLE();
         case ir::Addr::Kind::Stack:
           addr.as_stack +=
-              Architecture::InterprettingMachine().bytes(type::Int);
+              Architecture::InterprettingMachine().bytes(type::Int64);
           break;
         case ir::Addr::Kind::Heap:
           addr.as_heap = static_cast<void *>(
               static_cast<u8 *>(addr.as_heap) +
-              Architecture::InterprettingMachine().bytes(type::Int));
+              Architecture::InterprettingMachine().bytes(type::Int64));
           break;
       }
       save(addr);
@@ -155,8 +158,17 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::LoadChar:
       save(LoadValue<char>(resolve<ir::Addr>(cmd.reg_), stack_));
       break;
-    case ir::Op::LoadInt:
+    case ir::Op::LoadInt8:
+      save(LoadValue<i8>(resolve<ir::Addr>(cmd.reg_), stack_));
+      break;
+    case ir::Op::LoadInt16:
+      save(LoadValue<i16>(resolve<ir::Addr>(cmd.reg_), stack_));
+      break;
+    case ir::Op::LoadInt32:
       save(LoadValue<i32>(resolve<ir::Addr>(cmd.reg_), stack_));
+      break;
+    case ir::Op::LoadInt64:
+      save(LoadValue<i64>(resolve<ir::Addr>(cmd.reg_), stack_));
       break;
     case ir::Op::LoadFloat32:
       save(LoadValue<double>(resolve<ir::Addr>(cmd.reg_), stack_));
@@ -179,157 +191,102 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::LoadFunc:
       save(LoadValue<ir::Func *>(resolve<ir::Addr>(cmd.reg_), stack_));
       break;
-    case ir::Op::AddInt:
-      save(resolve(cmd.i32_args_.args_[0]) + resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::AddFloat32:
-      save(resolve(cmd.float32_args_.args_[0]) +
-           resolve(cmd.float32_args_.args_[1]));
-      break;
-    case ir::Op::AddFloat64:
-      save(resolve(cmd.float64_args_.args_[0]) +
-           resolve(cmd.float64_args_.args_[1]));
-      break;
-    case ir::Op::SubInt:
-      save(resolve(cmd.i32_args_.args_[0]) - resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::SubFloat32:
-      save(resolve(cmd.float32_args_.args_[0]) - resolve(cmd.float32_args_.args_[1]));
-      break;
-    case ir::Op::SubFloat64:
-      save(resolve(cmd.float64_args_.args_[0]) - resolve(cmd.float64_args_.args_[1]));
-      break;
-    case ir::Op::MulInt:
-      save(resolve(cmd.i32_args_.args_[0]) * resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::MulFloat32:
-      save(resolve(cmd.float32_args_.args_[0]) * resolve(cmd.float32_args_.args_[1]));
-      break;
-    case ir::Op::MulFloat64:
-      save(resolve(cmd.float64_args_.args_[0]) * resolve(cmd.float64_args_.args_[1]));
-      break;
-    case ir::Op::DivInt:
-      save(resolve(cmd.i32_args_.args_[0]) / resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::DivFloat32:
-      save(resolve(cmd.float32_args_.args_[0]) / resolve(cmd.float32_args_.args_[1]));
-      break;
-    case ir::Op::DivFloat64:
-      save(resolve(cmd.float64_args_.args_[0]) / resolve(cmd.float64_args_.args_[1]));
-      break;
-    case ir::Op::ModInt:
-      save(resolve(cmd.i32_args_.args_[0]) % resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::LtInt:
-      save(resolve(cmd.i32_args_.args_[0]) < resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::LtFloat32:
-      save(resolve(cmd.float32_args_.args_[0]) < resolve(cmd.float32_args_.args_[1]));
-      break;
-    case ir::Op::LtFloat64:
-      save(resolve(cmd.float64_args_.args_[0]) < resolve(cmd.float64_args_.args_[1]));
-      break;
-    case ir::Op::LtFlags: {
-      auto lhs = resolve(cmd.flags_args_.args_[0]);
-      auto rhs = resolve(cmd.flags_args_.args_[1]);
-      save(lhs.value != rhs.value && ((lhs.value | rhs.value) == rhs.value));
-    } break;
-    case ir::Op::LeInt:
-      save(resolve(cmd.i32_args_.args_[0]) <= resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::LeFloat32:
-      save(resolve(cmd.float32_args_.args_[0]) <= resolve(cmd.float32_args_.args_[1]));
-      break;
-    case ir::Op::LeFloat64:
-      save(resolve(cmd.float64_args_.args_[0]) <= resolve(cmd.float64_args_.args_[1]));
-      break;
-    case ir::Op::LeFlags: {
-      auto lhs = resolve(cmd.flags_args_.args_[0]);
-      auto rhs = resolve(cmd.flags_args_.args_[1]);
-      save((lhs.value | rhs.value) == rhs.value);
-    } break;
-    case ir::Op::GtInt:
-      save(resolve(cmd.i32_args_.args_[0]) > resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::GtFloat32:
-      save(resolve(cmd.float32_args_.args_[0]) > resolve(cmd.float32_args_.args_[1]));
-      break;
-    case ir::Op::GtFloat64:
-      save(resolve(cmd.float64_args_.args_[0]) > resolve(cmd.float64_args_.args_[1]));
-      break;
-    case ir::Op::GtFlags: {
-      auto lhs = resolve(cmd.flags_args_.args_[0]);
-      auto rhs = resolve(cmd.flags_args_.args_[1]);
-      save(lhs.value != rhs.value && ((lhs.value | rhs.value) == lhs.value));
-    } break;
-    case ir::Op::GeInt:
-      save(resolve(cmd.i32_args_.args_[0]) >= resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::GeFloat32:
-      save(resolve(cmd.float32_args_.args_[0]) >= resolve(cmd.float32_args_.args_[1]));
-      break;
-    case ir::Op::GeFloat64:
-      save(resolve(cmd.float64_args_.args_[0]) >= resolve(cmd.float64_args_.args_[1]));
-      break;
-    case ir::Op::GeFlags: {
-      auto lhs = resolve(cmd.flags_args_.args_[0]);
-      auto rhs = resolve(cmd.flags_args_.args_[1]);
-      save((lhs.value | rhs.value) == lhs.value);
-    } break;
-    case ir::Op::EqBool:
-      save(resolve(cmd.bool_args_.args_[0]) == resolve(cmd.bool_args_.args_[1]));
-      break;
-    case ir::Op::EqChar:
-      save(resolve(cmd.char_args_.args_[0]) == resolve(cmd.char_args_.args_[1]));
-      break;
-    case ir::Op::EqInt:
-      save(resolve(cmd.i32_args_.args_[0]) == resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::EqFloat32:
-      save(resolve(cmd.float32_args_.args_[0]) == resolve(cmd.float32_args_.args_[1]));
-      break;
-    case ir::Op::EqFloat64:
-      save(resolve(cmd.float64_args_.args_[0]) == resolve(cmd.float64_args_.args_[1]));
-      break;
-    case ir::Op::EqEnum:
-      save(resolve(cmd.enum_args_.args_[0]) == resolve(cmd.enum_args_.args_[1]));
-      break;
-    case ir::Op::EqFlags:
-      save(resolve(cmd.flags_args_.args_[0]) == resolve(cmd.flags_args_.args_[1]));
-      break;
-    case ir::Op::EqType:
-      save(resolve(cmd.type_args_.args_[0]) == resolve(cmd.type_args_.args_[1]));
-      break;
-    case ir::Op::EqAddr:
-      save(resolve(cmd.addr_args_.args_[0]) == resolve(cmd.addr_args_.args_[1]));
-      break;
-    case ir::Op::NeChar:
-      save(resolve(cmd.char_args_.args_[0]) != resolve(cmd.char_args_.args_[1]));
-      break;
-    case ir::Op::NeInt:
-      save(resolve(cmd.i32_args_.args_[0]) != resolve(cmd.i32_args_.args_[1]));
-      break;
-    case ir::Op::NeFloat32:
-      save(resolve(cmd.float32_args_.args_[0]) != resolve(cmd.float32_args_.args_[1]));
-      break;
-    case ir::Op::NeFloat64:
-      save(resolve(cmd.float64_args_.args_[0]) != resolve(cmd.float64_args_.args_[1]));
-      break;
-    case ir::Op::NeEnum:
-      save(resolve(cmd.enum_args_.args_[0]) != resolve(cmd.enum_args_.args_[1]));
-      break;
-    case ir::Op::NeFlags:
-      save(resolve(cmd.flags_args_.args_[0]) != resolve(cmd.flags_args_.args_[1]));
-      break;
-    case ir::Op::NeType:
-      save(resolve(cmd.type_args_.args_[0]) != resolve(cmd.type_args_.args_[1]));
-      break;
-    case ir::Op::NeAddr:
-      save(resolve(cmd.addr_args_.args_[0]) != resolve(cmd.addr_args_.args_[1]));
-      break;
-    case ir::Op::XorBool:
-      save(resolve(cmd.bool_args_.args_[0]) ^ resolve(cmd.bool_args_.args_[1]));
-      break;
+#define CASE(op, member, fn)                                                   \
+  case op: {                                                                   \
+    save(fn(resolve(cmd.member.args_[0]), resolve(cmd.member.args_[1])));      \
+  } break
+      CASE(ir::Op::AddInt8, i8_args_, std::plus<i8>{});
+      CASE(ir::Op::AddInt16, i16_args_, std::plus<i16>{});
+      CASE(ir::Op::AddInt32, i32_args_, std::plus<i32>{});
+      CASE(ir::Op::AddInt64, i64_args_, std::plus<i64>{});
+      CASE(ir::Op::AddFloat32, float32_args_, std::plus<float>{});
+      CASE(ir::Op::AddFloat64, float64_args_, std::plus<double>{});
+
+      CASE(ir::Op::SubInt8, i8_args_, std::minus<i8>{});
+      CASE(ir::Op::SubInt16, i16_args_, std::minus<i16>{});
+      CASE(ir::Op::SubInt32, i32_args_, std::minus<i32>{});
+      CASE(ir::Op::SubInt64, i64_args_, std::minus<i64>{});
+      CASE(ir::Op::SubFloat32, float32_args_, std::minus<float>{});
+      CASE(ir::Op::SubFloat64, float64_args_, std::minus<double>{});
+
+      CASE(ir::Op::MulInt8, i8_args_, std::multiplies<i8>{});
+      CASE(ir::Op::MulInt16, i16_args_, std::multiplies<i16>{});
+      CASE(ir::Op::MulInt32, i32_args_, std::multiplies<i32>{});
+      CASE(ir::Op::MulInt64, i64_args_, std::multiplies<i64>{});
+      CASE(ir::Op::MulFloat32, float32_args_, std::multiplies<float>{});
+      CASE(ir::Op::MulFloat64, float64_args_, std::multiplies<double>{});
+
+      CASE(ir::Op::DivInt8, i8_args_, std::divides<i8>{});
+      CASE(ir::Op::DivInt16, i16_args_, std::divides<i16>{});
+      CASE(ir::Op::DivInt32, i32_args_, std::divides<i32>{});
+      CASE(ir::Op::DivInt64, i64_args_, std::divides<i64>{});
+      CASE(ir::Op::DivFloat32, float32_args_, std::divides<float>{});
+      CASE(ir::Op::DivFloat64, float64_args_, std::divides<double>{});
+
+      CASE(ir::Op::ModInt8, i8_args_, std::modulus<i8>{});
+      CASE(ir::Op::ModInt16, i16_args_, std::modulus<i16>{});
+      CASE(ir::Op::ModInt32, i32_args_, std::modulus<i32>{});
+      CASE(ir::Op::ModInt64, i64_args_, std::modulus<i64>{});
+
+      CASE(ir::Op::LtInt8, i8_args_, std::less<i8>{});
+      CASE(ir::Op::LtInt16, i16_args_, std::less<i16>{});
+      CASE(ir::Op::LtInt32, i32_args_, std::less<i32>{});
+      CASE(ir::Op::LtInt64, i64_args_, std::less<i64>{});
+      CASE(ir::Op::LtFloat32, float32_args_, std::less<float>{});
+      CASE(ir::Op::LtFloat64, float64_args_, std::less<double>{});
+      CASE(ir::Op::LtFlags, flags_args_, std::less<ir::FlagsVal>{});
+
+      CASE(ir::Op::LeInt8, i8_args_, std::less_equal<i8>{});
+      CASE(ir::Op::LeInt16, i16_args_, std::less_equal<i16>{});
+      CASE(ir::Op::LeInt32, i32_args_, std::less_equal<i32>{});
+      CASE(ir::Op::LeInt64, i64_args_, std::less_equal<i64>{});
+      CASE(ir::Op::LeFloat32, float32_args_, std::less_equal<float>{});
+      CASE(ir::Op::LeFloat64, float64_args_, std::less_equal<double>{});
+      CASE(ir::Op::LeFlags, flags_args_, std::less_equal<ir::FlagsVal>{});
+
+      CASE(ir::Op::GtInt8, i8_args_, std::greater<i8>{});
+      CASE(ir::Op::GtInt16, i16_args_, std::greater<i16>{});
+      CASE(ir::Op::GtInt32, i32_args_, std::greater<i32>{});
+      CASE(ir::Op::GtInt64, i64_args_, std::greater<i64>{});
+      CASE(ir::Op::GtFloat32, float32_args_, std::greater<float>{});
+      CASE(ir::Op::GtFloat64, float64_args_, std::greater<double>{});
+      CASE(ir::Op::GtFlags, flags_args_, std::greater<ir::FlagsVal>{});
+
+      CASE(ir::Op::GeInt8, i8_args_, std::greater_equal<i8>{});
+      CASE(ir::Op::GeInt16, i16_args_, std::greater_equal<i16>{});
+      CASE(ir::Op::GeInt32, i32_args_, std::greater_equal<i32>{});
+      CASE(ir::Op::GeInt64, i64_args_, std::greater_equal<i64>{});
+      CASE(ir::Op::GeFloat32, float32_args_, std::greater_equal<float>{});
+      CASE(ir::Op::GeFloat64, float64_args_, std::greater_equal<double>{});
+      CASE(ir::Op::GeFlags, flags_args_, std::greater_equal<ir::FlagsVal>{});
+
+      CASE(ir::Op::EqBool, bool_args_, std::equal_to<bool>{});
+      CASE(ir::Op::EqChar, char_args_, std::equal_to<char>{});
+      CASE(ir::Op::EqInt8, i8_args_, std::equal_to<i8>{});
+      CASE(ir::Op::EqInt16, i16_args_, std::equal_to<i16>{});
+      CASE(ir::Op::EqInt32, i32_args_, std::equal_to<i32>{});
+      CASE(ir::Op::EqInt64, i64_args_, std::equal_to<i64>{});
+      CASE(ir::Op::EqFloat32, float32_args_, std::equal_to<float>{});
+      CASE(ir::Op::EqFloat64, float64_args_, std::equal_to<double>{});
+      CASE(ir::Op::EqEnum, enum_args_, std::equal_to<ir::EnumVal>{});
+      CASE(ir::Op::EqFlags, flags_args_, std::equal_to<ir::FlagsVal>{});
+      CASE(ir::Op::EqType, type_args_, std::equal_to<type::Type const *>{});
+      CASE(ir::Op::EqAddr, addr_args_, std::equal_to<ir::Addr>{});
+
+      CASE(ir::Op::XorBool, bool_args_, std::not_equal_to<bool>{});
+      CASE(ir::Op::NeChar, char_args_, std::not_equal_to<char>{});
+      CASE(ir::Op::NeInt8, i8_args_, std::not_equal_to<i8>{});
+      CASE(ir::Op::NeInt16, i16_args_, std::not_equal_to<i16>{});
+      CASE(ir::Op::NeInt32, i32_args_, std::not_equal_to<i32>{});
+      CASE(ir::Op::NeInt64, i64_args_, std::not_equal_to<i64>{});
+      CASE(ir::Op::NeFloat32, float32_args_, std::not_equal_to<float>{});
+      CASE(ir::Op::NeFloat64, float64_args_, std::not_equal_to<double>{});
+      CASE(ir::Op::NeEnum, enum_args_, std::not_equal_to<ir::EnumVal>{});
+      CASE(ir::Op::NeFlags, flags_args_, std::not_equal_to<ir::FlagsVal>{});
+      CASE(ir::Op::NeType, type_args_, std::not_equal_to<type::Type const *>{});
+      CASE(ir::Op::NeAddr, addr_args_, std::not_equal_to<ir::Addr>{});
+#undef CASE
+
     case ir::Op::XorFlags:
       save(resolve(cmd.flags_args_.args_[0]) ^ resolve(cmd.flags_args_.args_[1]));
       break;
@@ -430,7 +387,10 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       std::cerr << (resolve(cmd.bool_arg_) ? "true" : "false");
       break;
     case ir::Op::PrintChar: std::cerr << resolve(cmd.char_arg_); break;
-    case ir::Op::PrintInt: std::cerr << resolve(cmd.i32_arg_); break;
+    case ir::Op::PrintInt8: std::cerr << resolve(cmd.i8_arg_); break;
+    case ir::Op::PrintInt16: std::cerr << resolve(cmd.i16_arg_); break;
+    case ir::Op::PrintInt32: std::cerr << resolve(cmd.i32_arg_); break;
+    case ir::Op::PrintInt64: std::cerr << resolve(cmd.i64_arg_); break;
     case ir::Op::PrintFloat32: std::cerr << resolve(cmd.float32_arg_); break;
     case ir::Op::PrintFloat64: std::cerr << resolve(cmd.float64_arg_); break;
     case ir::Op::PrintType:
@@ -512,7 +472,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           call_buf.append(
               is_reg ? resolve<char>(long_args.get<ir::Register>(offset))
                      : long_args.get<char>(offset));
-        } else if (t == type::Int) {
+        } else if (t == type::Int32) {
           call_buf.append(
               is_reg ? resolve<i32>(long_args.get<ir::Register>(offset))
                      : long_args.get<i32>(offset));
@@ -647,9 +607,21 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       StoreValue(resolve(cmd.set_ret_char_.val_),
                  ret_slots.at(cmd.set_ret_char_.ret_num_), &stack_);
       break;
-    case ir::Op::SetRetI32:
+    case ir::Op::SetRetInt8:
+      StoreValue(resolve(cmd.set_ret_i8_.val_),
+                 ret_slots.at(cmd.set_ret_i8_.ret_num_), &stack_);
+      break;
+    case ir::Op::SetRetInt16:
+      StoreValue(resolve(cmd.set_ret_i16_.val_),
+                 ret_slots.at(cmd.set_ret_i16_.ret_num_), &stack_);
+      break;
+    case ir::Op::SetRetInt32:
       StoreValue(resolve(cmd.set_ret_i32_.val_),
                  ret_slots.at(cmd.set_ret_i32_.ret_num_), &stack_);
+      break;
+    case ir::Op::SetRetInt64:
+      StoreValue(resolve(cmd.set_ret_i64_.val_),
+                 ret_slots.at(cmd.set_ret_i64_.ret_num_), &stack_);
       break;
     case ir::Op::SetRetFloat32:
       StoreValue(resolve(cmd.set_ret_float32_.val_),
@@ -707,9 +679,21 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       StoreValue(resolve(cmd.store_char_.val_),
                  resolve<ir::Addr>(cmd.store_char_.addr_), &stack_);
       break;
-    case ir::Op::StoreI32:
+    case ir::Op::StoreInt8:
+      StoreValue(resolve(cmd.store_i8_.val_),
+                 resolve<ir::Addr>(cmd.store_i8_.addr_), &stack_);
+      break;
+    case ir::Op::StoreInt16:
+      StoreValue(resolve(cmd.store_i16_.val_),
+                 resolve<ir::Addr>(cmd.store_i16_.addr_), &stack_);
+      break;
+    case ir::Op::StoreInt32:
       StoreValue(resolve(cmd.store_i32_.val_),
                  resolve<ir::Addr>(cmd.store_i32_.addr_), &stack_);
+      break;
+    case ir::Op::StoreInt64:
+      StoreValue(resolve(cmd.store_i64_.val_),
+                 resolve<ir::Addr>(cmd.store_i64_.addr_), &stack_);
       break;
     case ir::Op::StoreFloat32:
       StoreValue(resolve(cmd.store_float32_.val_),
@@ -745,8 +729,17 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PhiChar:
       save(resolve(cmd.phi_char_->map_.at(call_stack.top().prev_)));
       break;
-    case ir::Op::PhiI32:
+    case ir::Op::PhiInt8:
+      save(resolve(cmd.phi_i8_->map_.at(call_stack.top().prev_)));
+      break;
+    case ir::Op::PhiInt16:
+      save(resolve(cmd.phi_i16_->map_.at(call_stack.top().prev_)));
+      break;
+    case ir::Op::PhiInt32:
       save(resolve(cmd.phi_i32_->map_.at(call_stack.top().prev_)));
+      break;
+    case ir::Op::PhiInt64:
+      save(resolve(cmd.phi_i64_->map_.at(call_stack.top().prev_)));
       break;
     case ir::Op::PhiFloat32:
       save(resolve(cmd.phi_float32_->map_.at(call_stack.top().prev_)));

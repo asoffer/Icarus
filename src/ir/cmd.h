@@ -5,38 +5,6 @@
 #include "context.h"
 #include "val.h"
 
-namespace std {
-
-template <>
-struct less<ir::FlagsVal> {
-  bool operator()(ir::FlagsVal lhs, ir::FlagsVal rhs) const {
-    return lhs.value != rhs.value && ((lhs.value | rhs.value) == rhs.value);
-  }
-};
-
-template <>
-struct less_equal<ir::FlagsVal> {
-  bool operator()(ir::FlagsVal lhs, ir::FlagsVal rhs) const {
-    return (lhs.value | rhs.value) == rhs.value;
-  }
-};
-
-template <>
-struct greater<ir::FlagsVal> {
-  bool operator()(ir::FlagsVal lhs, ir::FlagsVal rhs) const {
-    return lhs.value != rhs.value && ((lhs.value | rhs.value) == lhs.value);
-  }
-};
-
-template <>
-struct greater_equal<ir::FlagsVal> {
-  bool operator()(ir::FlagsVal lhs, ir::FlagsVal rhs) const {
-    return (lhs.value | rhs.value) == lhs.value;
-  }
-};
-
-}  // namespace std
-
 namespace type {
 struct Function;
 struct Tuple;
@@ -261,7 +229,10 @@ struct Cmd {
     // TODO names of these are easily mis-spellable and would lead to UB.
     RegisterOr<bool> bool_arg_;
     RegisterOr<char> char_arg_;
+    RegisterOr<i8> i8_arg_;
+    RegisterOr<i16> i16_arg_;
     RegisterOr<i32> i32_arg_;
+    RegisterOr<i64> i64_arg_;
     RegisterOr<float> float32_arg_;
     RegisterOr<double> float64_arg_;
     RegisterOr<EnumVal> enum_arg_;
@@ -272,7 +243,10 @@ struct Cmd {
 
     Args<bool> bool_args_;
     Args<char> char_args_;
+    Args<i8> i8_args_;
+    Args<i16> i16_args_;
     Args<i32> i32_args_;
+    Args<i64> i64_args_;
     Args<float> float32_args_;
     Args<double> float64_args_;
     Args<EnumVal> enum_args_;
@@ -284,7 +258,10 @@ struct Cmd {
     // storage (e.g., block appending).
     Store<bool> store_bool_;
     Store<char> store_char_;
+    Store<i8> store_i8_;
+    Store<i16> store_i16_;
     Store<i32> store_i32_;
+    Store<i64> store_i64_;
     Store<float> store_float32_;
     Store<double> store_float64_;
     Store<type::Type const *> store_type_;
@@ -296,7 +273,10 @@ struct Cmd {
 
     SetRet<bool> set_ret_bool_;
     SetRet<char> set_ret_char_;
+    SetRet<i8> set_ret_i8_;
+    SetRet<i16> set_ret_i16_;
     SetRet<i32> set_ret_i32_;
+    SetRet<i64> set_ret_i64_;
     SetRet<float> set_ret_float32_;
     SetRet<double> set_ret_float64_;
     SetRet<type::Type const *> set_ret_type_;
@@ -312,7 +292,10 @@ struct Cmd {
 
     PhiArgs<bool> *phi_bool_;
     PhiArgs<char> *phi_char_;
+    PhiArgs<i8> *phi_i8_;
+    PhiArgs<i16> *phi_i16_;
     PhiArgs<i32> *phi_i32_;
+    PhiArgs<i64> *phi_i64_;
     PhiArgs<float> *phi_float32_;
     PhiArgs<double> *phi_float64_;
     PhiArgs<type::Type const *> *phi_type_;

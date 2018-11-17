@@ -51,7 +51,10 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
     } break;
 
     case PrimType::Bool: ir::Print(val.reg_or<bool>()); break;
-    case PrimType::Int: ir::Print(val.reg_or<int>()); break;
+    case PrimType::Int8: ir::Print(val.reg_or<i8>()); break;
+    case PrimType::Int16: ir::Print(val.reg_or<i16>()); break;
+    case PrimType::Int32: ir::Print(val.reg_or<i32>()); break;
+    case PrimType::Int64: ir::Print(val.reg_or<i64>()); break;
     case PrimType::Float32: ir::Print(val.reg_or<float>()); break;
     case PrimType::Float64: ir::Print(val.reg_or<double>()); break;
     case PrimType::Type_: ir::Print(val.reg_or<type::Type const *>()); break;
@@ -111,7 +114,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
                 elem_ptr, ir::Sub(ir::RegisterOr<i32>(std::get<1>(phis)), 1));
           },
           std::tuple<type::Type const *, type::Type const *>{
-              type::Ptr(this->data_type), type::Int},
+              type::Ptr(this->data_type), type::Int32},
           tup{ptr, ir::Sub(length_var, 1)});
       ir::UncondJump(exit_block);
 

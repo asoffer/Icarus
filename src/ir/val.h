@@ -8,6 +8,7 @@
 
 #include "base/strong_types.h"
 #include "base/types.h"
+#include "ir/flags_val.h"
 #include "ir/interface.h"
 #include "ir/register.h"
 #include "type/type.h"
@@ -46,11 +47,11 @@ namespace ir {
 struct Val {
   const type::Type *type = nullptr;
   // TODO make trivial: interface
-  std::variant<Register, ir::Addr, bool, char, float, double, i32, EnumVal,
-               FlagsVal, const type::Type *, type::Struct *, ir::Func *,
-               ast::FunctionLiteral *, ast::ScopeLiteral *, ir::Interface,
-               ast::Expression *, BlockIndex, std::string_view, const Module *,
-               BlockSequence, BuiltinGenericIndex, ForeignFn>
+  std::variant<Register, ir::Addr, bool, char, float, double, i8, i16, i32, i64,
+               EnumVal, FlagsVal, const type::Type *, type::Struct *,
+               ir::Func *, ast::FunctionLiteral *, ast::ScopeLiteral *,
+               ir::Interface, ast::Expression *, BlockIndex, std::string_view,
+               const Module *, BlockSequence, BuiltinGenericIndex, ForeignFn>
       value{false};
 
   template <typename T>
