@@ -146,7 +146,7 @@ void PropertyMap::MarkReferencesStale(Entry const &e,
   auto &last_cmd = e.viewing_block_->cmds_.back();
   switch (last_cmd.op_code_) {
     case ir::Op::UncondJump:
-      stale_down->emplace(&fn_->block(last_cmd.uncond_jump_.block_), e.reg_);
+      stale_down->emplace(&fn_->block(last_cmd.block_), e.reg_);
       break;
     case ir::Op::CondJump:
       stale_down->emplace(&fn_->block(last_cmd.cond_jump_.blocks_[0]), e.reg_);

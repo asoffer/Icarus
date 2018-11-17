@@ -61,9 +61,7 @@ Func::GetIncomingBlocks() const {
     ASSERT(b.cmds_.size() > 0u);
     const auto &last = b.cmds_.back();
     switch (last.op_code_) {
-      case Op::UncondJump:
-        incoming[&block(last.uncond_jump_.block_)].insert(&b);
-        break;
+      case Op::UncondJump: incoming[&block(last.block_)].insert(&b); break;
       case Op::CondJump:
         incoming[&block(last.cond_jump_.blocks_[0])].insert(&b);
         incoming[&block(last.cond_jump_.blocks_[1])].insert(&b);

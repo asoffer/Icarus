@@ -84,6 +84,24 @@ struct Addr {
   std::string to_string() const;
 };
 
+inline std::ostream &operator<<(std::ostream &os, Register r) {
+  return os << "reg." << r.value;
+}
+
+inline std::ostream &operator<<(std::ostream &os, Addr addr) {
+  return os << addr.to_string();
+}
+inline std::ostream &operator<<(std::ostream &os, FlagsVal f) {
+  return os << f.value;
+}
+inline std::ostream &operator<<(std::ostream &os, EnumVal e) {
+  return os << e.value;
+}
+
+inline std::ostream &operator<<(std::ostream &os, BlockIndex b) {
+  return os << "block." << b.value;
+}
+
 bool operator==(Addr lhs, Addr rhs);
 inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 inline bool operator<(Addr lhs, Addr rhs) {
@@ -116,6 +134,15 @@ struct RegisterOr {
     T val_;
   };
   bool is_reg_;
+
+  inline friend std::ostream &operator<<(std::ostream &os,
+                                         RegisterOr const &r) {
+    if (r.is_reg_) {
+      return os << r.reg_;
+    } else {
+      return os << r.val_;
+    }
+  }
 };
 
 template <typename T>

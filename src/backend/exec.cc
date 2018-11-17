@@ -339,9 +339,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::AndFlags:
       save(resolve(cmd.flags_args_.args_[0]) & resolve(cmd.flags_args_.args_[1]));
       break;
-    case ir::Op::CreateStruct:
-      save(type::Struct::Make(cmd.create_struct_.lit_));
-      break;
+    case ir::Op::CreateStruct: save(type::Struct::Make(cmd.struct_lit_)); break;
     case ir::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
           resolve<type::Struct *>(cmd.create_struct_field_.struct_));
@@ -767,7 +765,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       break;
     case ir::Op::CondJump:
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];
-    case ir::Op::UncondJump: return cmd.uncond_jump_.block_;
+    case ir::Op::UncondJump: return cmd.block_;
     case ir::Op::ReturnJump: return ir::BlockIndex{-1};
     case ir::Op::BlockSeqJump: {
       auto bseq = resolve(cmd.block_seq_jump_.bseq_);

@@ -352,8 +352,8 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
 }
 
 Register CreateStruct(ast::StructLiteral *lit) {
-  auto &cmd          = MakeCmd(type::Type_, Op::CreateStruct);
-  cmd.create_struct_ = {lit};
+  auto &cmd       = MakeCmd(type::Type_, Op::CreateStruct);
+  cmd.struct_lit_ = lit;
   return cmd.result;
 }
 
@@ -527,56 +527,24 @@ void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args, OutParams outs) {
 void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
               BlockIndex false_block) {
   if (!cond.is_reg_) {
-    return UncondJump(cond.val_ ? true_block : false_block);
+    UncondJump(cond.val_ ? true_block : false_block);
+    return;
   }
   auto &cmd      = MakeCmd(nullptr, Op::CondJump);
   cmd.cond_jump_ = Cmd::CondJump{cond.reg_, {false_block, true_block}};
 }
 
 void UncondJump(BlockIndex block) {
-  auto &cmd        = MakeCmd(nullptr, Op::UncondJump);
-  cmd.uncond_jump_ = Cmd::UncondJump{block};
+  MakeCmd(nullptr, Op::UncondJump).block_ = block;
 }
 
-void ReturnJump() {
-  auto &cmd        = MakeCmd(nullptr, Op::ReturnJump);
-  cmd.return_jump_ = Cmd::ReturnJump{};
-}
+void ReturnJump() { auto &cmd = MakeCmd(nullptr, Op::ReturnJump); }
 
 void BlockSeqJump(RegisterOr<BlockSequence> bseq,
                   std::unordered_map<ast::BlockLiteral const *,
                                      ir::BlockIndex> const *jump_table) {
   auto &cmd           = MakeCmd(nullptr, Op::BlockSeqJump);
   cmd.block_seq_jump_ = Cmd::BlockSeqJump{bseq, jump_table};
-}
-
-static std::ostream &operator<<(std::ostream &os, Register r) {
-  return os << "reg." << r.value;
-}
-
-static std::ostream &operator<<(std::ostream &os, Addr addr) {
-  return os << addr.to_string();
-}
-
-static std::ostream &operator<<(std::ostream &os, FlagsVal f) {
-  return os << f.value;
-}
-
-static std::ostream &operator<<(std::ostream &os, EnumVal e) {
-  return os << e.value;
-}
-
-static std::ostream &operator<<(std::ostream &os, BlockIndex b) {
-  return os << "block." << b.value;
-}
-
-template <typename T>
-static std::ostream &operator<<(std::ostream &os, RegisterOr<T> r) {
-  if (r.is_reg_) {
-    return os << r.reg_;
-  } else {
-    return os << r.val_;
-  }
 }
 
 template <typename T>
@@ -604,8 +572,6 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
   if (cmd.result.value >= 0) { os << cmd.result << " = "; }
   os << OpCodeStr(cmd.op_code_) << " ";
   switch (cmd.op_code_) {
-    case Op::PrintEnum: return os << cmd.print_enum_.arg_;
-    case Op::PrintFlags: return os << cmd.print_flags_.arg_;
 #define OP_MACRO(op, tag, type, field)                                         \
   case Op::op:                                                                 \
     return os << cmd.field;
@@ -613,26 +579,12 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
 #include "ir/op.xmacro.h"
 #undef OP_MACRO_
 #undef OP_MACRO
-    case Op::CreateStruct: return os << cmd.create_struct_.lit_;
-    case Op::CreateStructField:
-      return os << cmd.create_struct_field_.struct_ << " "
-                << cmd.create_struct_field_.type_;
-    case Op::SetStructFieldName:
-      return os << cmd.set_struct_field_name_.struct_ << " "
-                << cmd.set_struct_field_name_.name_;
-
     case Op::Array: return os << cmd.array_.type_;
     case Op::PtrIncr: return os << cmd.ptr_incr_.incr_;
     case Op::Field:
       return os << cmd.field_.ptr_ << " "
                 << cmd.field_.struct_type_->to_string() << " "
                 << cmd.field_.num_;
-    case Op::CondJump:
-      return os << cmd.cond_jump_.cond_ << " " << cmd.cond_jump_.blocks_[0]
-                << " " << cmd.cond_jump_.blocks_[1];
-    case Op::UncondJump: return os << cmd.uncond_jump_.block_;
-    case Op::ReturnJump: return os;
-    case Op::BlockSeqJump: return os << cmd.block_seq_jump_.bseq_;
     case Op::Call:
       if (cmd.call_.fn_.is_reg_) {
         os << cmd.call_.fn_.reg_;

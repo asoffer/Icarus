@@ -124,25 +124,23 @@ struct Cmd {
     }
   };
 
-  // TODO finish removing these
   struct PrintEnum {
     RegisterOr<EnumVal> arg_;
     type::Enum const *enum_type_;
+
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           PrintEnum const &p) {
+      return os << p.arg_;
+    }
   };
   struct PrintFlags {
     RegisterOr<FlagsVal> arg_;
     type::Flags const *flags_type_;
-  };
 
-  struct CreateStruct { ast::StructLiteral *lit_; };
-  struct CreateStructField {
-    type::Struct *struct_;
-    RegisterOr<type::Type const *> type_;
-  };
-  struct SetStructFieldName {
-    // Implicitly the last element.
-    type::Struct *struct_;
-    std::string_view name_;
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           PrintFlags const &p) {
+      return os << p.arg_;
+    }
   };
 
   struct Array {
@@ -169,18 +167,6 @@ struct Cmd {
     RegisterOr<AnyFunc> fn_;
     LongArgs *long_args_;
     OutParams *outs_;
-  };
-
-  struct CondJump {
-    Register cond_;
-    BlockIndex blocks_[2];
-  };
-  struct UncondJump { BlockIndex block_; };
-  struct ReturnJump {};
-  struct BlockSeqJump {
-    RegisterOr<BlockSequence> bseq_;
-    std::unordered_map<ast::BlockLiteral const *, ir::BlockIndex> const
-        *jump_table_;
   };
 
   struct BlockSeqContains {
@@ -251,10 +237,57 @@ struct Cmd {
     }
   };
 
+  struct CreateStructField {
+    type::Struct *struct_;
+    RegisterOr<type::Type const *> type_;
+
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           CreateStructField const &c) {
+      return os << c.struct_ << " " << c.type_;
+    }
+  };
+
+  struct SetStructFieldName {
+    // Implicitly the last element.
+    type::Struct *struct_;
+    std::string_view name_;
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           SetStructFieldName const &s) {
+      return os << s.struct_ << " " << s.name_;
+    };
+  };
+
+  struct CondJump {
+    Register cond_;
+    BlockIndex blocks_[2];
+
+    inline friend std::ostream &operator<<(std::ostream &os, CondJump const &j) {
+      return os << j.cond_ << " " << j.blocks_[0] << " " << j.blocks_[1];
+    }
+  };
+
+  struct BlockSeqJump {
+    RegisterOr<BlockSequence> bseq_;
+    std::unordered_map<ast::BlockLiteral const *, ir::BlockIndex> const
+        *jump_table_;
+
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           BlockSeqJump const &b) {
+      return os << b.bseq_;
+    }
+  };
+
   union {
     Empty empty_;
     Register reg_;
     type::Type const *type_;
+    ast::StructLiteral *struct_lit_;
+
+    CreateStructField create_struct_field_;
+    SetStructFieldName set_struct_field_name_;
+    CondJump cond_jump_;
+    BlockIndex block_;
+    BlockSeqJump block_seq_jump_;
 
     // TODO names of these are easily mis-spellable and would lead to UB.
     RegisterOr<bool> bool_arg_;
@@ -316,6 +349,9 @@ struct Cmd {
     PhiArgs<type::Type const *> *phi_type_;
     PhiArgs<BlockSequence> *phi_block_;
     PhiArgs<ir::Addr> *phi_addr_;
+
+    PrintEnum print_enum_;
+    PrintFlags print_flags_;
 
     type::Typed<Register> typed_reg_;
 #define OP_MACRO(...)
