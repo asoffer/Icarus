@@ -105,6 +105,14 @@ constexpr type::Type const *Get() {
     return type::Int32;
   } else if constexpr (std::is_same_v<T, i64>) {
     return type::Int64;
+  } else if constexpr (std::is_same_v<T, u8>) {
+    return type::Nat8;
+  } else if constexpr (std::is_same_v<T, u16>) {
+    return type::Nat16;
+  } else if constexpr (std::is_same_v<T, u32>) {
+    return type::Nat32;
+  } else if constexpr (std::is_same_v<T, u64>) {
+    return type::Nat64;
   } else if constexpr (std::is_same_v<T, float>) {
     return type::Float32;
   } else if constexpr (std::is_same_v<T, double>) {
@@ -137,6 +145,48 @@ struct TypeHolder {
   using type = T;
 };
 
+template <typename T>
+struct Compare {
+  bool operator()(::type::Type const *t) {
+    if constexpr (std::is_same_v<T, bool>) {
+      return t == ::type::Bool;
+    } else if constexpr (std::is_same_v<T, char>) {
+      return t == ::type::Char;
+    } else if constexpr (std::is_same_v<T, i8>) {
+      return t == ::type::Int8;
+    } else if constexpr (std::is_same_v<T, i16>) {
+      return t == ::type::Int16;
+    } else if constexpr (std::is_same_v<T, i32>) {
+      return t == ::type::Int32;
+    } else if constexpr (std::is_same_v<T, i64>) {
+      return t == ::type::Int64;
+    } else if constexpr (std::is_same_v<T, u8>) {
+      return t == ::type::Nat8;
+    } else if constexpr (std::is_same_v<T, u16>) {
+      return t == ::type::Nat16;
+    } else if constexpr (std::is_same_v<T, u32>) {
+      return t == ::type::Nat32;
+    } else if constexpr (std::is_same_v<T, u64>) {
+      return t == ::type::Nat64;
+    } else if constexpr (std::is_same_v<T, float>) {
+      return t == ::type::Float32;
+    } else if constexpr (std::is_same_v<T, double>) {
+      return t == ::type::Float64;
+    } else if constexpr (std::is_same_v<T, type::Type const *>) {
+      return t == ::type::Type_;
+    } else if constexpr (std::is_same_v<T, std::string_view>) {
+      return t->is<::type::CharBuffer>();
+    } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
+      return t->is<::type::Enum>();
+    } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
+      return t->is<::type::Flags>();
+    } else if constexpr (std::is_same_v<T, ir::Addr>) {
+      return t->is<::type::Pointer>();
+    } else {
+      UNREACHABLE(t);
+    }
+  }
+};
 
 namespace internal {
 template <typename T, typename... Ts>
@@ -144,11 +194,11 @@ struct ConditionalApplicator {
   template <typename Fn, typename... Args>
   static auto Apply(type::Type const *t, Fn &&fn, Args &&... args) {
     if constexpr (sizeof...(Ts) == 0) {
-      ASSERT(t == ::type::Get<T>());
+      ASSERT(::type::Compare<T>{}(t));
       return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
                                   std::forward<Args>(args)...);
     } else {
-      if (t == ::type::Get<T>()) {
+      if (::type::Compare<T>{}(t)) {
         return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
                                     std::forward<Args>(args)...);
       } else {
@@ -173,26 +223,22 @@ auto ApplyTypes(Type const *t, Fn &&fn, Args &&... args) {
 
 template <typename Fn, typename... Args>
 auto Apply(Type const *t, Fn &&fn, Args &&... args) {
-  if (t->is<type::Enum>()) {
-    return std::forward<Fn>(fn)(TypeHolder<ir::EnumVal>{},
-                                std::forward<Args>(args)...);
-  } else if (t->is<type::Flags>()) {
-    return std::forward<Fn>(fn)(TypeHolder<ir::FlagsVal>{},
-                                std::forward<Args>(args)...);
-  } else if (t->is<Pointer>()) {
-    return std::forward<Fn>(fn)(TypeHolder<ir::Addr>{},
-                                std::forward<Args>(args)...);
-  } else if (t == Block || t == OptBlock) {
+  if (t == Block || t == OptBlock) {
     return std::forward<Fn>(fn)(TypeHolder<ir::BlockSequence>{},
-                                std::forward<Args>(args)...);
-  } else if (t->is<CharBuffer>()) {
-    return std::forward<Fn>(fn)(TypeHolder<std::string_view>{},
                                 std::forward<Args>(args)...);
   }
 
-  return ApplyTypes<bool, char, i8, i16, i32, i64, float, double,
-                    type::Type const *>(t, std::forward<Fn>(fn),
-                                        std::forward<Args>(args)...);
+  return ApplyTypes<bool, char, i8, i16, i32, i64, u8, u16, u32, u64, float,
+                    double, type::Type const *, ir::EnumVal, ir::FlagsVal,
+                    ir::Addr, std::string_view>(t, std::forward<Fn>(fn),
+                                                std::forward<Args>(args)...);
+}
+
+inline bool IsNumeric(Type const *t) {
+  return t == type::Int8 || t == type::Int16 || t == type::Int32 ||
+         t == type::Int64 || t == type::Nat8 || t == type::Nat16 ||
+         t == type::Nat32 || t == type::Nat64 || t == type::Float32 ||
+         t == type::Float64;
 }
 
 }  // namespace type

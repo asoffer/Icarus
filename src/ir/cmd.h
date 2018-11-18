@@ -53,7 +53,7 @@ struct OutParams {
   base::vector<OutParam> outs_;
 };
 
-enum class Op : uint8_t {
+enum class Op : uint16_t {
 #define OP_MACRO(op, ...) op,
 #include "ir/op.xmacro.h"
 #undef OP_MACRO
@@ -233,6 +233,10 @@ struct Cmd {
     RegisterOr<i16> i16_arg_;
     RegisterOr<i32> i32_arg_;
     RegisterOr<i64> i64_arg_;
+    RegisterOr<u8> u8_arg_;
+    RegisterOr<u16> u16_arg_;
+    RegisterOr<u32> u32_arg_;
+    RegisterOr<u64> u64_arg_;
     RegisterOr<float> float32_arg_;
     RegisterOr<double> float64_arg_;
     RegisterOr<EnumVal> enum_arg_;
@@ -247,6 +251,10 @@ struct Cmd {
     Args<i16> i16_args_;
     Args<i32> i32_args_;
     Args<i64> i64_args_;
+    Args<u8> u8_args_;
+    Args<u16> u16_args_;
+    Args<u32> u32_args_;
+    Args<u64> u64_args_;
     Args<float> float32_args_;
     Args<double> float64_args_;
     Args<EnumVal> enum_args_;
@@ -262,6 +270,10 @@ struct Cmd {
     Store<i16> store_i16_;
     Store<i32> store_i32_;
     Store<i64> store_i64_;
+    Store<u8> store_u8_;
+    Store<u16> store_u16_;
+    Store<u32> store_u32_;
+    Store<u64> store_u64_;
     Store<float> store_float32_;
     Store<double> store_float64_;
     Store<type::Type const *> store_type_;
@@ -277,6 +289,10 @@ struct Cmd {
     SetRet<i16> set_ret_i16_;
     SetRet<i32> set_ret_i32_;
     SetRet<i64> set_ret_i64_;
+    SetRet<u8> set_ret_u8_;
+    SetRet<u16> set_ret_u16_;
+    SetRet<u32> set_ret_u32_;
+    SetRet<u64> set_ret_u64_;
     SetRet<float> set_ret_float32_;
     SetRet<double> set_ret_float64_;
     SetRet<type::Type const *> set_ret_type_;
@@ -296,6 +312,10 @@ struct Cmd {
     PhiArgs<i16> *phi_i16_;
     PhiArgs<i32> *phi_i32_;
     PhiArgs<i64> *phi_i64_;
+    PhiArgs<u8> *phi_u8_;
+    PhiArgs<u16> *phi_u16_;
+    PhiArgs<u32> *phi_u32_;
+    PhiArgs<u64> *phi_u64_;
     PhiArgs<float> *phi_float32_;
     PhiArgs<double> *phi_float64_;
     PhiArgs<type::Type const *> *phi_type_;
@@ -387,13 +407,14 @@ auto HandleBinop(Lhs lhs, Rhs rhs) {
     return HandleBinop<Tag, F>(lhs, RegisterOr<typename Lhs::type>(rhs));
   } else {
     static_assert(std::is_same_v<Lhs, Rhs>);
-    using ret_type =
-        ir::RegisterOr<decltype(F<typename Lhs::type>{}(lhs.val_, rhs.val_))>;
+    using result_type = decltype(F<typename Lhs::type>{}(lhs.val_, rhs.val_));
+    using ret_type =  ir::RegisterOr<result_type>;
     return [&]() -> ret_type {
       if (!lhs.is_reg_ && !rhs.is_reg_) {
         return F<typename Lhs::type>{}(lhs.val_, rhs.val_);
       }
-      auto &cmd = MakeCmd(type::Bool, Cmd::OpCode<Tag, typename Lhs::type>());
+      auto &cmd = MakeCmd(type::Get<result_type>(),
+                          Cmd::OpCode<Tag, typename Lhs::type>());
       if constexpr (std::is_same_v<typename Lhs::type, bool>) {
         cmd.template set<Tag, typename Lhs::type>(lhs.reg_, rhs.reg_);
       } else {

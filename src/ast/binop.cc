@@ -144,7 +144,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
   switch (op) {
     case Operator::Index: {
       if (lhs_type->is<type::CharBuffer>()) {
-        if (rhs_type != type::Int32) {
+        if (rhs_type != type::Int32) { // TODO other sizes
           ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
         }
         ctx->set_type(this, type::Char);
@@ -156,7 +156,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         auto *t = lhs_type->as<type::Array>().data_type;
         ctx->set_type(this, t);
 
-        if (rhs_type == type::Int32) { break; }
+        if (rhs_type == type::Int32) { break; } // TODO other sizes
         ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
         return t;
       }
@@ -207,9 +207,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 
 #define CASE(OpName, symbol, ret_type)                                          \
   case Operator::OpName: {                                                      \
-    if ((lhs_type == type::Int32 && rhs_type == type::Int32) ||                 \
-        (lhs_type == type::Float32 && rhs_type == type::Float32) ||             \
-        (lhs_type == type::Float64 && rhs_type == type::Float64)) {             \
+    if (lhs_type == rhs_type && type::IsNumeric(lhs_type)) {                    \
       auto *t = (ret_type);                                                     \
       ctx->set_type(this, t);                                                   \
       return t;                                                                 \
@@ -235,9 +233,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       CASE(ModEq, "%=", type::Void());
 #undef CASE
     case Operator::Add: {
-      if ((lhs_type == type::Int32 && rhs_type == type::Int32) ||
-          (lhs_type == type::Float32 && rhs_type == type::Float32) ||
-          (lhs_type == type::Float64 && rhs_type == type::Float64)) {
+      if (lhs_type == rhs_type && type::IsNumeric(lhs_type)) {
         ctx->set_type(this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::CharBuffer>() &&
@@ -259,12 +255,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         }
       }
     } break;
-    case Operator::AddEq: {
-      if ((lhs_type == type::Int32 && rhs_type == type::Int32) ||
-          (lhs_type == type::Float32 && rhs_type == type::Float32) ||
-          (lhs_type == type::Float64 && rhs_type == type::Float64)) {
-        ctx->set_type(this, type::Void());
-        return type::Void();
+   case Operator::AddEq: {
+     if (lhs_type == rhs_type && type::IsNumeric(lhs_type)) {
+       ctx->set_type(this, type::Void());
+       return type::Void();
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
@@ -277,9 +271,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     } break;
     // Mul is done separately because of the function composition
     case Operator::Mul:
-      if ((lhs_type == type::Int32 && rhs_type == type::Int32) ||
-          (lhs_type == type::Float32 && rhs_type == type::Float32)||
-          (lhs_type == type::Float64 && rhs_type == type::Float64)) {
+      if (lhs_type == rhs_type && type::IsNumeric(lhs_type)) {
         ctx->set_type(this, lhs_type);
         return lhs_type;
       } else if (lhs_type->is<type::Function>() &&
@@ -430,9 +422,9 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
         }
       }
 
-      if (this_type == type::Float32 && val.type == type::Int32) {
+      if (this_type == type::Float32 && val.type == type::Int32) { // TODO other sizes
         return {ir::ValFrom(ir::CastIntToFloat32(val.reg_or<i32>()))};
-      } else if (this_type == type::Float64 && val.type == type::Int32) {
+      } else if (this_type == type::Float64 && val.type == type::Int32) { // TODO other sizes
         return {ir::ValFrom(ir::CastIntToFloat64(val.reg_or<i32>()))};
       } else if (this_type->is<type::Pointer>()) {
         return {ir::Val::Reg(ir::CastPtr(std::get<ir::Register>(val.value),

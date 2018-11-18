@@ -82,25 +82,7 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
   size_t offset = 0;
   for (auto *t : types) {
     offset = arch.MoveForwardToAlignment(ASSERT_NOT_NULL(t), offset);
-    if (t == type::Bool) {
-      results.emplace_back(result_buf.get<bool>(offset));
-    } else if (t == type::Char) {
-      results.emplace_back(result_buf.get<char>(offset));
-    } else if (t == type::Int8) {
-      results.emplace_back(result_buf.get<i8>(offset));
-    } else if (t == type::Int16) {
-      results.emplace_back(result_buf.get<i16>(offset));
-    } else if (t == type::Int32) {
-      results.emplace_back(result_buf.get<i32>(offset));
-    } else if (t == type::Int64) {
-      results.emplace_back(result_buf.get<i64>(offset));
-    } else if (t == type::Float32) {
-      results.emplace_back(result_buf.get<float>(offset));
-    } else if (t == type::Float64) {
-      results.emplace_back(result_buf.get<double>(offset));
-    } else if (t == type::Type_) {
-      results.emplace_back(result_buf.get<type::Type const *>(offset));
-    } else if (t == type::Scope || t == type::StatefulScope) {
+    if (t == type::Scope || t == type::StatefulScope) {
       results.emplace_back(result_buf.get<ast::ScopeLiteral *>(offset));
     } else if (t->is<type::CharBuffer>()) {
       results.push_back(ir::Val::CharBuf(
@@ -121,7 +103,10 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
       results.push_back(
           ir::Val::BlockSeq(result_buf.get<ir::BlockSequence>(offset)));
     } else {
-      NOT_YET(t->to_string());
+      type::Apply(t, [&](auto type_holder) {
+        using T = typename decltype(type_holder)::type;
+        results.emplace_back(result_buf.get<T>(offset));
+      });
     }
 
     offset += arch.bytes(t);

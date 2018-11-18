@@ -19,13 +19,12 @@ llvm::Type* Primitive::llvm(llvm::LLVMContext& ctx) const {
     case PrimType::Int16: return llvm::Type::getInt16Ty(ctx);
     case PrimType::Int32: return llvm::Type::getInt32Ty(ctx);
     case PrimType::Int64: return llvm::Type::getInt64Ty(ctx);
-    case PrimType::Float32:
-      return llvm::Type::getFloatTy(ctx);
-    case PrimType::Float64:
-      return llvm::Type::getDoubleTy(ctx);
-      // TODO make these impossible to reach.
-    case PrimType::Block: return llvm::Type::getInt32Ty(ctx);
-    case PrimType::OptBlock: return llvm::Type::getInt32Ty(ctx);
+    case PrimType::Nat8: return llvm::Type::getInt8Ty(ctx);
+    case PrimType::Nat16: return llvm::Type::getInt16Ty(ctx);
+    case PrimType::Nat32: return llvm::Type::getInt32Ty(ctx);
+    case PrimType::Nat64: return llvm::Type::getInt64Ty(ctx);
+    case PrimType::Float32: return llvm::Type::getFloatTy(ctx);
+    case PrimType::Float64: return llvm::Type::getDoubleTy(ctx);
     default: UNREACHABLE(to_string());
   }
 }

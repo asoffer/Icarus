@@ -97,8 +97,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         return type::Type_;
       }
     case Language::Operator::Sub:
-      if (operand_type == type::Int32 || operand_type == type::Float32 ||
-          operand_type == type::Float64) {
+      if (type::IsNumeric(operand_type)) {
         ctx->set_type(this, operand_type);
         return operand_type;
       } else if (operand_type->is<type::Struct>()) {
@@ -165,17 +164,13 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
     case Language::Operator::Not:
       return {ir::ValFrom(ir::Not(operand->EmitIR(ctx)[0].reg_or<bool>()))};
     case Language::Operator::Sub: {
-      auto *operand_type = ctx->type_of(operand.get());
-      if (operand_type == type::Int32) {
-        return {ir::ValFrom(ir::Neg(operand->EmitIR(ctx)[0].reg_or<i32>()))};
-      } else if (operand_type == type::Float32) {
-        return {ir::ValFrom(ir::Neg(operand->EmitIR(ctx)[0].reg_or<float>()))};
-      } else if (operand_type == type::Float64) {
-        return {ir::ValFrom(ir::Neg(operand->EmitIR(ctx)[0].reg_or<double>()))};
-      } else {
-        UNREACHABLE();
-      }
-    }
+      auto operand_ir = operand->EmitIR(ctx)[0];
+      return {type::ApplyTypes<i8, i16, i32, i64, float, double>(
+          ctx->type_of(operand.get()), [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(ir::Neg(operand_ir.reg_or<T>()));
+          })};
+    } break;
     case Language::Operator::TypeOf:
       return {ir::Val(ctx->type_of(operand.get()))};
     case Language::Operator::Which:

@@ -55,6 +55,10 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
     case PrimType::Int16: ir::Print(val.reg_or<i16>()); break;
     case PrimType::Int32: ir::Print(val.reg_or<i32>()); break;
     case PrimType::Int64: ir::Print(val.reg_or<i64>()); break;
+    case PrimType::Nat8: ir::Print(val.reg_or<u8>()); break;
+    case PrimType::Nat16: ir::Print(val.reg_or<u16>()); break;
+    case PrimType::Nat32: ir::Print(val.reg_or<u32>()); break;
+    case PrimType::Nat64: ir::Print(val.reg_or<u64>()); break;
     case PrimType::Float32: ir::Print(val.reg_or<float>()); break;
     case PrimType::Float64: ir::Print(val.reg_or<double>()); break;
     case PrimType::Type_: ir::Print(val.reg_or<type::Type const *>()); break;

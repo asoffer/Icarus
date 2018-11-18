@@ -208,6 +208,10 @@ void Primitive::EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
     case PrimType::Int16: ir::Store(from.reg_or<i16>(), to); break;
     case PrimType::Int32: ir::Store(from.reg_or<i32>(), to); break;
     case PrimType::Int64: ir::Store(from.reg_or<i64>(), to); break;
+    case PrimType::Nat8: ir::Store(from.reg_or<u8>(), to); break;
+    case PrimType::Nat16: ir::Store(from.reg_or<u16>(), to); break;
+    case PrimType::Nat32: ir::Store(from.reg_or<u32>(), to); break;
+    case PrimType::Nat64: ir::Store(from.reg_or<u64>(), to); break;
     case PrimType::Float32: ir::Store(from.reg_or<float>(), to); break;
     case PrimType::Float64: ir::Store(from.reg_or<double>(), to); break;
     default: UNREACHABLE();
