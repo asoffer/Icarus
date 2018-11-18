@@ -58,6 +58,33 @@ namespace ast {
 using base::check::Is;
 using base::check::Not;
 
+static bool CanCast(type::Type const* from, type::Type const *to) {
+  if (from == to) {
+    return true;
+  } else if ((from == type::Nat8 || from == type::Int8) &&
+             (to == type::Nat8 || to == type::Int8 || to == type::Int16 ||
+              to == type::Int32 || to == type::Int64 || to == type::Nat16 ||
+              to == type::Nat32 || to == type::Nat64 || to == type::Float32 ||
+              to == type::Float64)) {
+    return true;
+  } else if ((from == type::Nat16 || from == type::Int16) &&
+             (to == type::Nat16 || to == type::Int16 || to == type::Int32 ||
+              to == type::Int64 || to == type::Nat32 || to == type::Nat64 ||
+              to == type::Float32 || to == type::Float64)) {
+    return true;
+  } else if ((from == type::Nat32 || from == type::Int32) &&
+             (to == type::Nat32 || to == type::Int32 || to == type::Int64 ||
+              to == type::Nat64 || to == type::Float64)) {
+    return true;
+  } else if ((from == type::Nat64 || from == type::Int64) &&
+             (to == type::Nat64 || to == type::Int64)) {
+    return true;
+  } else if (from == type::Float32 && to == type::Float64) {
+    return true;
+  }
+  return false;
+}
+
 std::string Binop::to_string(size_t n) const {
   std::stringstream ss;
   if (op == Language::Operator::Index) {
@@ -166,6 +193,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       // correctly.
       auto *t = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
       ctx->set_type(this, t);
+      if (!CanCast(lhs_type, t)) { NOT_YET("log an error", lhs_type, t); }
       return t;
     }
     case Operator::XorEq:
@@ -354,43 +382,51 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type->is<type::CharBuffer>()) { NOT_YET(); }
-      return {type::ApplyTypes<i8, i16, i32, i64, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Add(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-          })};
+      return {
+          type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+              rhs_ir.type, [&](auto type_holder) {
+                using T = typename decltype(type_holder)::type;
+                return ir::ValFrom(
+                    ir::Add(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+              })};
     } break;
     case Language::Operator::Sub: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<i8, i16, i32, i64, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Sub(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-          })};
+      return {
+          type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+              rhs_ir.type, [&](auto type_holder) {
+                using T = typename decltype(type_holder)::type;
+                return ir::ValFrom(
+                    ir::Sub(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+              })};
     } break;
     case Language::Operator::Mul: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<i8, i16, i32, i64, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Mul(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-          })};
+      return {
+          type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+              rhs_ir.type, [&](auto type_holder) {
+                using T = typename decltype(type_holder)::type;
+                return ir::ValFrom(
+                    ir::Mul(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+              })};
     } break;
     case Language::Operator::Div: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<i8, i16, i32, i64, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Div(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-          })};
+      return {
+          type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+              rhs_ir.type, [&](auto type_holder) {
+                using T = typename decltype(type_holder)::type;
+                return ir::ValFrom(
+                    ir::Div(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+              })};
     } break;
     case Language::Operator::Mod: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<i8, i16, i32, i64>(
+      return {type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             return ir::ValFrom(ir::Mod(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
@@ -399,42 +435,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::As: {
       auto *this_type = ctx->type_of(this);
       auto val        = lhs->EmitIR(ctx)[0];
-      if (val.type == this_type) {
-        return {val};
-      } else if (i32 const *n = std::get_if<i32>(&val.value);
-                 n && this_type == type::Float64) {
-        // TODO other casts
-        return {ir::Val(static_cast<double>(*n))};
-      } else if (this_type->is<type::Variant>()) {
-        auto alloc = ir::Alloca(this_type);
-        this_type->EmitAssign(val.type, std::move(val), alloc, ctx);
-        return {ir::Val::Reg(alloc, this_type)};
-      } else if (val.type->is<type::Pointer>()) {
-        auto *ptee_type = val.type->as<type::Pointer>().pointee;
-        if (ptee_type->is<type::Array>()) {
-          auto &array_type = ptee_type->as<type::Array>();
-          if (array_type.fixed_length &&
-              type::Ptr(array_type.data_type) == this_type) {
-            ir::Val v_copy = val;
-            v_copy.type    = this_type;
-            return {v_copy};
-          }
-        }
-      }
-
-      if (this_type == type::Float32 && val.type == type::Int32) { // TODO other sizes
-        return {ir::ValFrom(ir::CastIntToFloat32(val.reg_or<i32>()))};
-      } else if (this_type == type::Float64 && val.type == type::Int32) { // TODO other sizes
-        return {ir::ValFrom(ir::CastIntToFloat64(val.reg_or<i32>()))};
-      } else if (this_type->is<type::Pointer>()) {
-        return {ir::Val::Reg(ir::CastPtr(std::get<ir::Register>(val.value),
-                                         &this_type->as<type::Pointer>()),
-                             this_type)};
-
-      } else {
-        UNREACHABLE();
-      }
-
+      return {ir::Cast(val.type, this_type, val)};
     } break;
     case Language::Operator::Arrow: {
       auto reg_or_type =
@@ -530,7 +531,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       if (rhs_ir.type->is<type::CharBuffer>()) { NOT_YET(); }
-      type::ApplyTypes<i8, i16, i32, i64, float, double>(
+      type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Add(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -541,7 +542,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::SubEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<i8, i16, i32, i64, float, double>(
+      type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Sub(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -552,7 +553,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::DivEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<i8, i16, i32, i64, float, double>(
+      type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -563,16 +564,18 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::ModEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<i8, i16, i32, i64>(rhs_ir.type, [&](auto type_holder) {
-        using T = typename decltype(type_holder)::type;
-        ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()), lhs_lval);
-      });
+      type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
+                      lhs_lval);
+          });
       return {};
     } break;
     case Language::Operator::MulEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<i8, i16, i32, i64, float, double>(
+      type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Mul(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),

@@ -550,9 +550,7 @@ void BlockSeqJump(RegisterOr<BlockSequence> r,
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                                   ast::BlockLiteral *lit);
 
-RegisterOr<float> CastIntToFloat32(RegisterOr<i32> r);
-RegisterOr<double> CastIntToFloat64(RegisterOr<i32> r);
-Register CastPtr(Register r, type::Pointer const *t);
+Val Cast(type::Type const *from, type::Type const *to, Val const& val);
 
 TypedRegister<Addr> Index(type::Type const *t, Register array_ptr,
                           RegisterOr<i32> offset);

@@ -58,53 +58,57 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
   } else {
     switch (op) {
       case Language::Operator::Lt:
-        return type::ApplyTypes<i8, i16, i32, i64, float, double, ir::FlagsVal>(
+        return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float,
+                                double, ir::FlagsVal>(
             lhs_ir.type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;
               return ir::Lt(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
       case Language::Operator::Le:
-        return type::ApplyTypes<i8, i16, i32, i64, float, double, ir::FlagsVal>(
+        return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float,
+                                double, ir::FlagsVal>(
             lhs_ir.type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;
               return ir::Le(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
-      case Language::Operator::Eq:
-        {
-          ir::BlockSequence const *val1 =
-              std::get_if<ir::BlockSequence>(&lhs_ir.value);
-          ir::BlockSequence const *val2 =
-              std::get_if<ir::BlockSequence>(&rhs_ir.value);
-          if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
-        }
-        return type::ApplyTypes<bool, char, i8, i16, i32, i64, float, double,
-                                type::Type const *, ir::EnumVal, ir::FlagsVal,
-                                ir::Addr>(lhs_ir.type, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
-          return ir::Eq(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
-        });
-      case Language::Operator::Ne:
-        {
-          ir::BlockSequence const *val1 =
-              std::get_if<ir::BlockSequence>(&lhs_ir.value);
-          ir::BlockSequence const *val2 =
-              std::get_if<ir::BlockSequence>(&rhs_ir.value);
-          if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
-        }
-        return type::ApplyTypes<char, i8, i16, i32, i64, float, double,
-                                type::Type const *, ir::EnumVal, ir::FlagsVal,
-                                ir::Addr>(lhs_ir.type, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
-          return ir::Ne(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
-        });
+      case Language::Operator::Eq: {
+        ir::BlockSequence const *val1 =
+            std::get_if<ir::BlockSequence>(&lhs_ir.value);
+        ir::BlockSequence const *val2 =
+            std::get_if<ir::BlockSequence>(&rhs_ir.value);
+        if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
+      }
+        return type::ApplyTypes<bool, char, i8, i16, i32, i64, u8, u16, u32,
+                                u64, float, double, type::Type const *,
+                                ir::EnumVal, ir::FlagsVal, ir::Addr>(
+            lhs_ir.type, [&](auto type_holder) {
+              using T = typename decltype(type_holder)::type;
+              return ir::Eq(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
+            });
+      case Language::Operator::Ne: {
+        ir::BlockSequence const *val1 =
+            std::get_if<ir::BlockSequence>(&lhs_ir.value);
+        ir::BlockSequence const *val2 =
+            std::get_if<ir::BlockSequence>(&rhs_ir.value);
+        if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
+      }
+        return type::ApplyTypes<char, i8, i16, i32, i64, u8, u16, u32, u64,
+                                float, double, type::Type const *, ir::EnumVal,
+                                ir::FlagsVal, ir::Addr>(
+            lhs_ir.type, [&](auto type_holder) {
+              using T = typename decltype(type_holder)::type;
+              return ir::Ne(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
+            });
       case Language::Operator::Ge:
-        return type::ApplyTypes<i8, i16, i32, i64, float, double, ir::FlagsVal>(
+        return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float,
+                                double, ir::FlagsVal>(
             lhs_ir.type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;
               return ir::Ge(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
       case Language::Operator::Gt:
-        return type::ApplyTypes<i8, i16, i32, i64, float, double, ir::FlagsVal>(
+        return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float,
+                                double, ir::FlagsVal>(
             lhs_ir.type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;
               return ir::Gt(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());

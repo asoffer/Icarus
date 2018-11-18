@@ -524,6 +524,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         offset = arch.MoveForwardToAlignment(t, offset);
         call_buf.pad_to(offset);
 
+        // TODO figure out why type::ApplyTypes isn't compiling here (GCC
+        // compiler error).
         if (t == type::Bool) {
           call_buf.append(
               is_reg ? resolve<bool>(long_args.get<ir::Register>(offset))
@@ -532,10 +534,38 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           call_buf.append(
               is_reg ? resolve<char>(long_args.get<ir::Register>(offset))
                      : long_args.get<char>(offset));
+        } else if (t == type::Nat8) {
+          call_buf.append(
+              is_reg ? resolve<u8>(long_args.get<ir::Register>(offset))
+                     : long_args.get<u8>(offset));
+        } else if (t == type::Nat16) {
+          call_buf.append(
+              is_reg ? resolve<u16>(long_args.get<ir::Register>(offset))
+                     : long_args.get<u16>(offset));
+        } else if (t == type::Nat32) {
+          call_buf.append(
+              is_reg ? resolve<u32>(long_args.get<ir::Register>(offset))
+                     : long_args.get<u32>(offset));
+        } else if (t == type::Nat64) {
+          call_buf.append(
+              is_reg ? resolve<u64>(long_args.get<ir::Register>(offset))
+                     : long_args.get<u64>(offset));
+        } else if (t == type::Int8) {
+          call_buf.append(
+              is_reg ? resolve<i8>(long_args.get<ir::Register>(offset))
+                     : long_args.get<i8>(offset));
+        } else if (t == type::Int16) {
+          call_buf.append(
+              is_reg ? resolve<i16>(long_args.get<ir::Register>(offset))
+                     : long_args.get<i16>(offset));
         } else if (t == type::Int32) {
           call_buf.append(
               is_reg ? resolve<i32>(long_args.get<ir::Register>(offset))
                      : long_args.get<i32>(offset));
+        } else if (t == type::Int64) {
+          call_buf.append(
+              is_reg ? resolve<i64>(long_args.get<ir::Register>(offset))
+                     : long_args.get<i64>(offset));
         } else if (t == type::Float32) {
           call_buf.append(
               is_reg ? resolve<float>(long_args.get<ir::Register>(offset))

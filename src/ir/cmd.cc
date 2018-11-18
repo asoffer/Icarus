@@ -106,6 +106,67 @@ RegisterOr<i32> Align(RegisterOr<type::Type const *> r) {
   return cmd.result;
 }
 
+Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
+  if (from == to) { return val; }
+
+  if (std::get_if<Register>(&val.value)) { NOT_YET(); }
+
+  // TODO should these all support conversion to float/double? or only the ones
+  // small enough to definitely be representable correctly?
+  if (from == type::Int8) {
+    return type::ApplyTypes<i16, i32, i64, u8, u16, u32, u64, float, double>(
+        to, [&](auto type_holder) {
+          using T = typename decltype(type_holder)::type;
+          return ir::Val(static_cast<T>(std::get<i8>(val.value)));
+        });
+  } else if (from == type::Int16) {
+    return type::ApplyTypes<i32, i64, u16, u32, u64, float, double>(
+        to, [&](auto type_holder) {
+          using T = typename decltype(type_holder)::type;
+          return ir::Val(static_cast<T>(std::get<i16>(val.value)));
+        });
+  } else if (from == type::Int32) {
+    return type::ApplyTypes<i64, u32, u64, double>(to, [&](auto type_holder) {
+      using T = typename decltype(type_holder)::type;
+      return ir::Val(static_cast<T>(std::get<i32>(val.value)));
+    });
+  } else if (from == type::Int64) {
+    return type::ApplyTypes<u64>(to, [&](auto type_holder) {
+      using T = typename decltype(type_holder)::type;
+      return ir::Val(static_cast<T>(std::get<i64>(val.value)));
+    });
+  } else if (from == type::Nat8) {
+    return type::ApplyTypes<i8, i16, i32, i64, u16, u32, u64, float, double>(
+        to, [&](auto type_holder) {
+          using T = typename decltype(type_holder)::type;
+          return ir::Val(static_cast<T>(std::get<u8>(val.value)));
+        });
+  } else if (from == type::Nat16) {
+    return type::ApplyTypes<i16, i32, i64, u32, u64, float, double>(
+        to, [&](auto type_holder) {
+          using T = typename decltype(type_holder)::type;
+          return ir::Val(static_cast<T>(std::get<u16>(val.value)));
+        });
+  } else if (from == type::Nat32) {
+    return type::ApplyTypes<i32, i64, u64, double>(to, [&](auto type_holder) {
+      using T = typename decltype(type_holder)::type;
+      return ir::Val(static_cast<T>(std::get<u32>(val.value)));
+    });
+  } else if (from == type::Nat64) {
+    return type::ApplyTypes<i64>(to, [&](auto type_holder) {
+      using T = typename decltype(type_holder)::type;
+      return ir::Val(static_cast<T>(std::get<u64>(val.value)));
+    });
+  } else if (from == type::Float32) {
+    return type::ApplyTypes<double>(to, [&](auto type_holder) {
+      using T = typename decltype(type_holder)::type;
+      return ir::Val(static_cast<T>(std::get<float>(val.value)));
+    });
+  } else {
+    UNREACHABLE();
+  }
+}
+
 RegisterOr<bool> Not(RegisterOr<bool> r) {
   if (!r.is_reg_) { return !r.val_; }
   auto &cmd = MakeCmd(type::Bool, Op::Not);

@@ -146,47 +146,45 @@ struct TypeHolder {
 };
 
 template <typename T>
-struct Compare {
-  bool operator()(::type::Type const *t) {
-    if constexpr (std::is_same_v<T, bool>) {
-      return t == ::type::Bool;
-    } else if constexpr (std::is_same_v<T, char>) {
-      return t == ::type::Char;
-    } else if constexpr (std::is_same_v<T, i8>) {
-      return t == ::type::Int8;
-    } else if constexpr (std::is_same_v<T, i16>) {
-      return t == ::type::Int16;
-    } else if constexpr (std::is_same_v<T, i32>) {
-      return t == ::type::Int32;
-    } else if constexpr (std::is_same_v<T, i64>) {
-      return t == ::type::Int64;
-    } else if constexpr (std::is_same_v<T, u8>) {
-      return t == ::type::Nat8;
-    } else if constexpr (std::is_same_v<T, u16>) {
-      return t == ::type::Nat16;
-    } else if constexpr (std::is_same_v<T, u32>) {
-      return t == ::type::Nat32;
-    } else if constexpr (std::is_same_v<T, u64>) {
-      return t == ::type::Nat64;
-    } else if constexpr (std::is_same_v<T, float>) {
-      return t == ::type::Float32;
-    } else if constexpr (std::is_same_v<T, double>) {
-      return t == ::type::Float64;
-    } else if constexpr (std::is_same_v<T, type::Type const *>) {
-      return t == ::type::Type_;
-    } else if constexpr (std::is_same_v<T, std::string_view>) {
-      return t->is<::type::CharBuffer>();
-    } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
-      return t->is<::type::Enum>();
-    } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
-      return t->is<::type::Flags>();
-    } else if constexpr (std::is_same_v<T, ir::Addr>) {
-      return t->is<::type::Pointer>();
-    } else {
-      UNREACHABLE(t);
-    }
+bool Compare(::type::Type const *t) {
+  if constexpr (std::is_same_v<T, bool>) {
+    return t == ::type::Bool;
+  } else if constexpr (std::is_same_v<T, char>) {
+    return t == ::type::Char;
+  } else if constexpr (std::is_same_v<T, i8>) {
+    return t == ::type::Int8;
+  } else if constexpr (std::is_same_v<T, i16>) {
+    return t == ::type::Int16;
+  } else if constexpr (std::is_same_v<T, i32>) {
+    return t == ::type::Int32;
+  } else if constexpr (std::is_same_v<T, i64>) {
+    return t == ::type::Int64;
+  } else if constexpr (std::is_same_v<T, u8>) {
+    return t == ::type::Nat8;
+  } else if constexpr (std::is_same_v<T, u16>) {
+    return t == ::type::Nat16;
+  } else if constexpr (std::is_same_v<T, u32>) {
+    return t == ::type::Nat32;
+  } else if constexpr (std::is_same_v<T, u64>) {
+    return t == ::type::Nat64;
+  } else if constexpr (std::is_same_v<T, float>) {
+    return t == ::type::Float32;
+  } else if constexpr (std::is_same_v<T, double>) {
+    return t == ::type::Float64;
+  } else if constexpr (std::is_same_v<T, type::Type const *>) {
+    return t == ::type::Type_;
+  } else if constexpr (std::is_same_v<T, std::string_view>) {
+    return t->is<::type::CharBuffer>();
+  } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
+    return t->is<::type::Enum>();
+  } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
+    return t->is<::type::Flags>();
+  } else if constexpr (std::is_same_v<T, ir::Addr>) {
+    return t->is<::type::Pointer>();
+  } else {
+    UNREACHABLE(t);
   }
-};
+}
 
 namespace internal {
 template <typename T, typename... Ts>
@@ -194,11 +192,11 @@ struct ConditionalApplicator {
   template <typename Fn, typename... Args>
   static auto Apply(type::Type const *t, Fn &&fn, Args &&... args) {
     if constexpr (sizeof...(Ts) == 0) {
-      ASSERT(::type::Compare<T>{}(t));
+      ASSERT(::type::Compare<T>(t));
       return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
                                   std::forward<Args>(args)...);
     } else {
-      if (::type::Compare<T>{}(t)) {
+      if (::type::Compare<T>(t)) {
         return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
                                     std::forward<Args>(args)...);
       } else {

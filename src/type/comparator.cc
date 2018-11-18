@@ -9,6 +9,8 @@ Cmp Primitive::Comparator() const {
   // TODO is this right for floating-point type?
   return (type_ == PrimType::Int8 || type_ == PrimType::Int16 ||
           type_ == PrimType::Int32 || type_ == PrimType::Int64 ||
+          type_ == PrimType::Nat8 || type_ == PrimType::Nat16 ||
+          type_ == PrimType::Nat32 || type_ == PrimType::Nat64 ||
           type_ == PrimType::Float32 || type_ == PrimType::Float64)
              ? Cmp::Order
              : Cmp::Equality;
