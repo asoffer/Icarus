@@ -1,0 +1,44 @@
+main ::= () -> () {
+  // Enums are defined by simply listing the values without commas, one per
+  // line.
+  Suit ::= enum {
+    CLUB
+    DIAMOND
+    HEART
+    SPADE
+  }
+
+  // Remember that `\\` represents a line break, and sometimes this is easier to
+  // read.
+  Boolean ::= enum { TRUE \\ FALSE }
+
+  // Accessing an enumerator is done with the enum name followed by a dot.
+  print Suit.CLUB, "\n"
+
+  // Enums can be compared for (in)equality 
+  print "(CLUB == DIAMOND): ", Suit.CLUB == Suit.DIAMOND, "\n"
+
+  // However enumerators do not come with any particular ordering, so operators
+  // like (<) will not work.
+
+  // Flags are like enums but whereas enums can only hold one value at a time,
+  // flags can have each option set or unset.
+  Color ::= flags { RED \\ GREEN \\ BLUE }
+  print "My favorite color is ", Color.RED, "\n"
+
+  // To set more than one option, use the or-operator (|).
+  print "Yellow is just ", Color.RED | Color.GREEN, "\n"
+
+  // Enumerators can also be negated:
+  print "Cyan is ", !Color.RED, "\n"
+
+  // Lastly, enumerators can be intersected with the and-operator (&).
+  print "Green is ", !Color.RED & !Color.BLUE, "\n"
+  print "Green is ", (Color.RED | !Color.RED), "\n"
+
+  // Note that enumerator printing is purely for debugging purposes. Each
+  // Specifically with flags, this program may print "RED | GREEN" or "GREEN |
+  // RED". These are both valid. It is guaranteed that a compiled program will
+  // always use the same ordering. It is not guaranteed however that successive
+  // compilations will have the same ordering.
+}

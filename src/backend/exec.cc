@@ -1,11 +1,13 @@
 #include "backend/exec.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstring>
 #include <future>
 #include <iostream>
 #include <memory>
+#include <random>
 #include <thread>
 
 #include "architecture.h"
@@ -460,33 +462,34 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PrintType:
       std::cerr << resolve(cmd.type_arg_)->to_string();
       break;
-    case ir::Op::PrintEnum:
-      NOT_YET();
-      /*
-      std::cerr << resolved[0].type->as<type::Enum>().members_[e.value];
-      */
-    case ir::Op::PrintFlags:
-      NOT_YET();
-      /*
-      size_t val = f.value;
-      base::vector<std::string> vals;
-      const auto &members = resolved[0].type->as<type::Flags>().members_;
+    case ir::Op::PrintEnum: {
+      std::cerr << cmd.print_enum_.enum_type_->members_.at(
+          resolve(cmd.print_enum_.arg_).value);
+    } break;
+    case ir::Op::PrintFlags: {
+      size_t val = resolve(cmd.print_flags_.arg_).value;
+      base::vector<std::string_view> vals;
+
+      auto const &members = cmd.print_flags_.flags_type_->members_;
       size_t i            = 0;
       size_t pow          = 1;
       while (pow <= val) {
-        if (val & pow) { vals.push_back(members[i]); }
+        if (val & pow) { vals.emplace_back(members[i]); }
         ++i;
         pow <<= 1;
       }
       if (vals.empty()) {
         std::cerr << "(empty)";
       } else {
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(vals.begin(), vals.end(), g);
+
         auto iter = vals.begin();
         std::cerr << *iter++;
         while (iter != vals.end()) { std::cerr << " | " << *iter++; }
       }
-      */
-      break;
+    } break;
     case ir::Op::PrintAddr:
       std::cerr << resolve(cmd.addr_arg_).to_string();
       break;

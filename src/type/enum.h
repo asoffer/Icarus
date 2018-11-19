@@ -16,7 +16,7 @@ struct Enum : public type::Type {
   // strings.
   std::string bound_name;
   base::vector<std::string> members_;
-  base::unordered_map<std::string, size_t> int_values;
+  base::unordered_map<std::string, size_t> int_values; // TODO Return EnumVal?
 };
 }  // namespace type
 #endif  // ICARUS_TYPE_ENUM_H

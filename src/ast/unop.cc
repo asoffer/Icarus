@@ -117,6 +117,9 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       if (operand_type == type::Bool) {
         ctx->set_type(this, type::Bool);
         return type::Bool;
+      } else if (operand_type->is<type::Enum>()) {
+        ctx->set_type(this, operand_type);
+        return operand_type;
       } else if (operand_type->is<type::Flags>()) {
         ctx->set_type(this, operand_type);
         return operand_type;
