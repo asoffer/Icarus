@@ -117,6 +117,9 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       if (operand_type == type::Bool) {
         ctx->set_type(this, type::Bool);
         return type::Bool;
+      } else if (operand_type->is<type::Flags>()) {
+        ctx->set_type(this, operand_type);
+        return operand_type;
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
@@ -161,8 +164,20 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   }
 
   switch (op) {
-    case Language::Operator::Not:
-      return {ir::ValFrom(ir::Not(operand->EmitIR(ctx)[0].reg_or<bool>()))};
+    case Language::Operator::Not: {
+      auto *t = ctx->type_of(operand.get());
+      if (t == type::Bool) {
+        return {ir::ValFrom(ir::Not(operand->EmitIR(ctx)[0].reg_or<bool>()))};
+      } else if (t->is<type::Flags>()) {
+        auto *flags_type = &t->as<type::Flags>();
+        return {ir::ValFrom(
+            ir::Not(type::Typed<ir::RegisterOr<ir::FlagsVal>, type::Flags>(
+                operand->EmitIR(ctx)[0].reg_or<ir::FlagsVal>(), flags_type)),
+            flags_type)};
+      } else {
+        NOT_YET(); 
+      }
+    } break;
     case Language::Operator::Sub: {
       auto operand_ir = operand->EmitIR(ctx)[0];
       return {type::ApplyTypes<i8, i16, i32, i64, float, double>(

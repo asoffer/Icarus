@@ -36,6 +36,7 @@
 #include "frontend/tagged_node.h"
 #include "frontend/token.h"
 #include "type/enum.h"
+#include "type/flags.h"
 
 template <typename To, typename From>
 static std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
@@ -791,9 +792,9 @@ static std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
   } else {
     auto term = std::make_unique<ast::Terminal>(
         TextSpan(nodes[0]->span, nodes[1]->span),
-        ir::Val(
-            new type::Enum("__anon.enum" + std::to_string(anon_enum_counter++),
-                           std::move(members_vec))));
+        ir::Val(new type::Flags(
+            "__anon.flags" + std::to_string(anon_enum_counter++),
+            std::move(members_vec))));
     return term;
   }
 }

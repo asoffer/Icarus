@@ -57,32 +57,30 @@ void ForEachExpr(ast::Expression *expr,
 namespace ast {
 using base::check::Is;
 using base::check::Not;
+static u8 CastMask(type::Type const *t) {
+  //              f32 (0x31) -> f64 (0x33)
+  //               ^             ^
+  // i8 (0x10) -> i16 (0x11) -> i32 (0x13) -> i64 (0x17)
+  //               ^             ^             ^
+  //              u8  (0x01) -> u16 (0x03) -> u32 (0x07) -> u64 (0x0f)
+  if (t == type::Nat8) { return 0x01; }
+  if (t == type::Nat16) { return 0x03; }
+  if (t == type::Nat32) { return 0x07; }
+  if (t == type::Nat64) { return 0x1f; }
+  if (t == type::Int8) { return 0x10; }
+  if (t == type::Int16) { return 0x11; }
+  if (t == type::Int32) { return 0x13; }
+  if (t == type::Int64) { return 0x17; }
+  if (t == type::Float32) { return 0x31; }
+  if (t == type::Float64) { return 0x33; }
+  UNREACHABLE();
+}
 
 static bool CanCast(type::Type const* from, type::Type const *to) {
-  if (from == to) {
-    return true;
-  } else if ((from == type::Nat8 || from == type::Int8) &&
-             (to == type::Nat8 || to == type::Int8 || to == type::Int16 ||
-              to == type::Int32 || to == type::Int64 || to == type::Nat16 ||
-              to == type::Nat32 || to == type::Nat64 || to == type::Float32 ||
-              to == type::Float64)) {
-    return true;
-  } else if ((from == type::Nat16 || from == type::Int16) &&
-             (to == type::Nat16 || to == type::Int16 || to == type::Int32 ||
-              to == type::Int64 || to == type::Nat32 || to == type::Nat64 ||
-              to == type::Float32 || to == type::Float64)) {
-    return true;
-  } else if ((from == type::Nat32 || from == type::Int32) &&
-             (to == type::Nat32 || to == type::Int32 || to == type::Int64 ||
-              to == type::Nat64 || to == type::Float64)) {
-    return true;
-  } else if ((from == type::Nat64 || from == type::Int64) &&
-             (to == type::Nat64 || to == type::Int64)) {
-    return true;
-  } else if (from == type::Float32 && to == type::Float64) {
-    return true;
-  }
-  return false;
+  if (from == to) { return true; }
+  auto from_mask = CastMask(from);
+  auto to_mask   = CastMask(to);
+  return (from_mask & to_mask) == from_mask;
 }
 
 std::string Binop::to_string(size_t n) const {

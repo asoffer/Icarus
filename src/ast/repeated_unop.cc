@@ -65,7 +65,8 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
       auto &arg      = args_.exprs[i];
       auto *arg_type = arg_types[i];
       if (arg_type->is<type::Primitive>() || arg_type->is<type::Pointer>() ||
-          arg_type->is<type::CharBuffer>()) {
+          arg_type->is<type::CharBuffer>() || arg_type->is<type::Enum>() ||
+          arg_type->is<type::Flags>()) {
         continue;
       } else if (arg_type->is<type::Struct>()) {
         FnArgs<Expression *> args;

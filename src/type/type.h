@@ -127,9 +127,9 @@ constexpr type::Type const *Get() {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
     UNREACHABLE();
-  } else if constexpr (std::is_same_v<
-                           std::decay_t<decltype(*std::declval<T>())>,
-                           type::Type>) {
+  } else if constexpr (std::is_base_of_v<
+                           type::Type,
+                           std::decay_t<decltype(*std::declval<T>())>>) {
     return type::Type_;
   } else if constexpr (std::is_same_v<
                            std::decay_t<decltype(*std::declval<T>())>,

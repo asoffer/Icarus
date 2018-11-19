@@ -59,20 +59,6 @@ Cmd &MakeCmd(type::Type const *t, Op op) {
   return cmd;
 }
 
-RegisterOr<float> CastIntToFloat32(RegisterOr<i32> r) {
-  if (!r.is_reg_) { return static_cast<float>(r.val_); }
-  auto &cmd = ir::MakeCmd(type::Float32, Op::CastIntToFloat32);
-  cmd.reg_  = r.reg_;
-  return cmd.result;
-}
-
-RegisterOr<double> CastIntToFloat64(RegisterOr<i32> r) {
-  if (!r.is_reg_) { return static_cast<double>(r.val_); }
-  auto &cmd = ir::MakeCmd(type::Float64, Op::CastIntToFloat64);
-  cmd.reg_  = r.reg_;
-  return cmd.result;
-}
-
 // TODO pass atyped_reg? not sure that's right.
 Register CastPtr(Register r, type::Pointer const *t) {
   auto &cmd     = ir::MakeCmd(t, Op::CastPtr);
@@ -106,72 +92,53 @@ RegisterOr<i32> Align(RegisterOr<type::Type const *> r) {
   return cmd.result;
 }
 
+template <typename T>
+Val CastTo(type::Type const *from, Val const &val, Op op) {
+  if (auto *r = std::get_if<Register>(&val.value)) {
+    auto *to       = type::Get<T>();
+    auto &cmd      = MakeCmd(to, op);
+    cmd.typed_reg_ = type::Typed<Register>(*r, from);
+    return ir::Val::Reg(cmd.result, to);
+  } else {
+    return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float>(
+        from, [&](auto type_holder) {
+          using FromType = typename decltype(type_holder)::type;
+          return ir::Val(static_cast<T>(std::get<FromType>(val.value)));
+        });
+  }
+  UNREACHABLE("To ", type::Get<T>(), " from ", from);
+}
+
 Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
   if (from == to) { return val; }
-
-  if (std::get_if<Register>(&val.value)) { NOT_YET(); }
-
-  // TODO should these all support conversion to float/double? or only the ones
-  // small enough to definitely be representable correctly?
-  if (from == type::Int8) {
-    return type::ApplyTypes<i16, i32, i64, u8, u16, u32, u64, float, double>(
-        to, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
-          return ir::Val(static_cast<T>(std::get<i8>(val.value)));
-        });
-  } else if (from == type::Int16) {
-    return type::ApplyTypes<i32, i64, u16, u32, u64, float, double>(
-        to, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
-          return ir::Val(static_cast<T>(std::get<i16>(val.value)));
-        });
-  } else if (from == type::Int32) {
-    return type::ApplyTypes<i64, u32, u64, double>(to, [&](auto type_holder) {
-      using T = typename decltype(type_holder)::type;
-      return ir::Val(static_cast<T>(std::get<i32>(val.value)));
-    });
-  } else if (from == type::Int64) {
-    return type::ApplyTypes<u64>(to, [&](auto type_holder) {
-      using T = typename decltype(type_holder)::type;
-      return ir::Val(static_cast<T>(std::get<i64>(val.value)));
-    });
-  } else if (from == type::Nat8) {
-    return type::ApplyTypes<i8, i16, i32, i64, u16, u32, u64, float, double>(
-        to, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
-          return ir::Val(static_cast<T>(std::get<u8>(val.value)));
-        });
-  } else if (from == type::Nat16) {
-    return type::ApplyTypes<i16, i32, i64, u32, u64, float, double>(
-        to, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
-          return ir::Val(static_cast<T>(std::get<u16>(val.value)));
-        });
-  } else if (from == type::Nat32) {
-    return type::ApplyTypes<i32, i64, u64, double>(to, [&](auto type_holder) {
-      using T = typename decltype(type_holder)::type;
-      return ir::Val(static_cast<T>(std::get<u32>(val.value)));
-    });
-  } else if (from == type::Nat64) {
-    return type::ApplyTypes<i64>(to, [&](auto type_holder) {
-      using T = typename decltype(type_holder)::type;
-      return ir::Val(static_cast<T>(std::get<u64>(val.value)));
-    });
-  } else if (from == type::Float32) {
-    return type::ApplyTypes<double>(to, [&](auto type_holder) {
-      using T = typename decltype(type_holder)::type;
-      return ir::Val(static_cast<T>(std::get<float>(val.value)));
-    });
-  } else {
-    UNREACHABLE();
+  // TODO Shouldn't be any reason we need to pass the opcode in.
+  if (to == type::Int16) { return CastTo<i16>(from, val, Op::CastToInt16); }
+  if (to == type::Nat16) { return CastTo<u16>(from, val, Op::CastToNat16); }
+  if (to == type::Int32) { return CastTo<i32>(from, val, Op::CastToInt32); }
+  if (to == type::Nat32) { return CastTo<u32>(from, val, Op::CastToNat32); }
+  if (to == type::Int64) { return CastTo<i64>(from, val, Op::CastToInt64); }
+  if (to == type::Nat64) { return CastTo<u64>(from, val, Op::CastToNat64); }
+  if (to == type::Float32) {
+    return CastTo<float>(from, val, Op::CastToFloat32);
   }
+  if (to == type::Float64) {
+    return CastTo<double>(from, val, Op::CastToFloat64);
+  }
+  UNREACHABLE();
 }
 
 RegisterOr<bool> Not(RegisterOr<bool> r) {
   if (!r.is_reg_) { return !r.val_; }
-  auto &cmd = MakeCmd(type::Bool, Op::Not);
+  auto &cmd = MakeCmd(type::Bool, Op::NotBool);
   cmd.reg_ = r.reg_;
   Func::Current->references_[cmd.reg_].insert(cmd.result);
+  return cmd.result;
+}
+
+RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r) {
+  if (!r->is_reg_) { return NotFlags(r->val_, r.type()); }
+  auto &cmd      = MakeCmd(r.type(), Op::NotFlags);
+  cmd.typed_reg_ = type::Typed<Register>(r->reg_, r.type());
   return cmd.result;
 }
 
@@ -511,6 +478,8 @@ RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &lhs,
                               RegisterOr<FlagsVal> const &rhs) {
   if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ ^ rhs.val_; }
+  // TODO could do a tiny bit more constant propogation for empty and full flag
+  // sets here. And on OrFlags and AndFlags
   auto &cmd      = MakeCmd(type, Op::XorFlags);
   cmd.set<Cmd::XorTag, FlagsVal>(lhs, rhs);
   return cmd.result;

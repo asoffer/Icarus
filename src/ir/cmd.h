@@ -339,6 +339,7 @@ RegisterOr<i32> Extend(RegisterOr<char> r);
 RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r);
 RegisterOr<i32> Align(RegisterOr<type::Type const *> r);
 RegisterOr<bool> Not(RegisterOr<bool> r);
+RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r);
 Register ArrayLength(Register r);
 Register ArrayData(Register r, type::Type const *t);
 RegisterOr<i32> ModInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
