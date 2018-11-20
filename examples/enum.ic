@@ -76,8 +76,8 @@ basic_flags ::= () -> () {
   // Note that enumerator printing is intended purely for debugging purposes.
   // Specifically with flags, this program may print "RED | GREEN" or
   // "GREEN | RED". These are both valid. It is guaranteed that a compiled
-  // program will always use the same ordering. It is guaranteed however that
-  // successive compilations will have the same ordering:
+  // program will always use the same ordering. It is not guaranteed however
+  // that successive compilations will have the same ordering:
   print "Magenta is ", Color.RED | Color.BLUE, "\n"
   print "Magenta is ", Color.RED | Color.BLUE, "\n"
   print "Magenta is ", Color.RED | Color.BLUE, "\n"
