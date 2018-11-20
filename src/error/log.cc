@@ -7,8 +7,10 @@
 #include "ast/identifier.h"
 #include "base/interval.h"
 #include "frontend/source.h"
+#include "type/enum.h"
 #include "type/tuple.h"
 #include "type/type.h"
+#include "type/variant.h"
 
 extern type::Type *Err;
 
@@ -59,7 +61,7 @@ std::ostream &operator<<(std::ostream &os, const DisplayAttrs &attrs) {
 void WriteSource(
     std::ostream &os, const frontend::Source &source,
     base::IntervalSet<size_t> const &line_intervals,
-    const base::vector<std::pair<TextSpan, DisplayAttrs>> &underlines) {
+    base::vector<std::pair<TextSpan, DisplayAttrs>> const &underlines) {
   size_t border_alignment = NumDigits(line_intervals.endpoints_.back() - 1) + 2;
 
   auto iter = underlines.begin();
@@ -165,7 +167,7 @@ static auto LinesToShow(const ExprContainer &exprs) {
 }
 
 #define MAKE_LOG_ERROR(fn_name, msg)                                           \
-  void Log::fn_name(const TextSpan &span) {                                    \
+  void Log::fn_name(TextSpan const &span) {                                    \
     std::stringstream ss;                                                      \
     ss << msg "\n\n";                                                          \
     WriteSource(                                                               \
@@ -181,8 +183,8 @@ void Log::RunawayMultilineComment() {
   errors_.push_back("Finished reading file during multi-line comment.\n\n");
 }
 
-void Log::DoubleDeclAssignment(const TextSpan &decl_span,
-                               const TextSpan &val_span) {
+void Log::DoubleDeclAssignment(TextSpan const &decl_span,
+                               TextSpan const &val_span) {
   std::stringstream ss;
   ss << "Attempting to initialize an identifier that already has an initial "
         "value. Did you mean `==` instead of `=`?\n\n";
@@ -194,8 +196,8 @@ void Log::DoubleDeclAssignment(const TextSpan &decl_span,
   errors_.push_back(ss.str());
 }
 
-void Log::DeclarationUsedInUnop(const std::string &unop,
-                                const TextSpan &decl_span) {
+void Log::DeclarationUsedInUnop(std::string const &unop,
+                                TextSpan const &decl_span) {
   std::stringstream ss;
   ss << "Declarations cannot be used as argument to unary operator `" << unop
      << "`.\n\n";
@@ -206,8 +208,8 @@ void Log::DeclarationUsedInUnop(const std::string &unop,
   errors_.push_back(ss.str());
 }
 
-void Log::MissingMember(const TextSpan &span, const std::string &member_name,
-                        const type::Type *t) {
+void Log::MissingMember(TextSpan const &span, std::string const &member_name,
+                        type::Type const *t) {
   std::stringstream ss;
   ss << "Expressions of type `" << t->to_string() << "` have no member named `"
      << member_name << "`.\n\n";
@@ -219,8 +221,8 @@ void Log::MissingMember(const TextSpan &span, const std::string &member_name,
   errors_.push_back(ss.str());
 }
 
-void Log::ReturnTypeMismatch(const type::Type *expected_type,
-                             const ast::Expression *ret_expr) {
+void Log::ReturnTypeMismatch(type::Type const *expected_type,
+                             ast::Expression const *ret_expr) {
   /* TODO pass in type or context too
   std::stringstream ss;
   if (ret_expr->type->is<type::Tuple>()) {
@@ -241,8 +243,8 @@ void Log::ReturnTypeMismatch(const type::Type *expected_type,
   errors_.push_back(ss.str());
   */
 }
-void Log::NoMatchingOperator(const std::string &op, const type::Type *lhs,
-                             const type::Type *rhs, const TextSpan &span) {
+void Log::NoMatchingOperator(std::string const &op, type::Type const *lhs,
+                             type::Type const *rhs, TextSpan const &span) {
   std::stringstream ss;
   ss << "No matching operator (" << op << ") with arguments of type "
      << lhs->to_string() << " and " << rhs->to_string() << "\n\n";
@@ -253,7 +255,7 @@ void Log::NoMatchingOperator(const std::string &op, const type::Type *lhs,
   errors_.push_back(ss.str());
 }
 
-void Log::NoReturnTypes(const ast::Expression *ret_expr) {
+void Log::NoReturnTypes(ast::Expression const *ret_expr) {
   std::stringstream ss;
   // TODO allow "return foo(...)" when foo: ??? -> ().
 
@@ -261,13 +263,13 @@ void Log::NoReturnTypes(const ast::Expression *ret_expr) {
   auto &span = ret_expr->span;
   // TODO also show where the return type is specified?
   WriteSource(
-      ss, *span.source, {span.lines()}, 
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
 
-void Log::ReturningWrongNumber(const ast::Expression *ret_expr,
+void Log::ReturningWrongNumber(ast::Expression const *ret_expr,
                                size_t num_rets) {
   /* TODO pass in type or context too
   std::stringstream ss;
@@ -288,8 +290,8 @@ void Log::ReturningWrongNumber(const ast::Expression *ret_expr,
   */
 }
 
-void Log::IndexedReturnTypeMismatch(const type::Type *expected_type,
-                                    const ast::Expression *ret_expr,
+void Log::IndexedReturnTypeMismatch(type::Type const *expected_type,
+                                    ast::Expression const *ret_expr,
                                     size_t index) {
   /* TODO Pass in type or context too
   std::stringstream ss;
@@ -309,8 +311,8 @@ void Log::IndexedReturnTypeMismatch(const type::Type *expected_type,
   */
 }
 
-void Log::DereferencingNonPointer(const type::Type *type,
-                                  const TextSpan &span) {
+void Log::DereferencingNonPointer(type::Type const *type,
+                                  TextSpan const &span) {
   std::stringstream ss;
   ss << "Attempting to dereference an object of type `" << type->to_string()
      << "` which is not a pointer.\n\n";
@@ -321,32 +323,32 @@ void Log::DereferencingNonPointer(const type::Type *type,
   errors_.push_back(ss.str());
 }
 
-void Log::WhichNonVariant(const type::Type *type, const TextSpan &span) {
+void Log::WhichNonVariant(type::Type const *type, TextSpan const &span) {
   std::stringstream ss;
   ss << "Attempting to call `which` an object of type `" << type->to_string()
      << "` which is not a variant.\n\n";
   WriteSource(
-      ss, *span.source, {span.lines()}, 
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
 
-void Log::Reserved(const TextSpan &span, const std::string &token) {
+void Log::Reserved(TextSpan const &span, std::string const &token) {
   std::stringstream ss;
   ss << "Identifier '" << token << "' is a reserved keyword.\n\n";
   WriteSource(
-      ss, *span.source, {span.lines()}, 
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
 
-void Log::NotBinary(const TextSpan &span, const std::string &token) {
+void Log::NotBinary(TextSpan const &span, std::string const &token) {
   std::stringstream ss;
   ss << "Operator '" << token << "' is not a binary operator.\n\n";
   WriteSource(
-      ss, *span.source, {span.lines()}, 
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -379,7 +381,7 @@ void Log::AssignmentTypeMismatch(ast::Expression *lhs, ast::Expression *rhs) {
 }
 
 void Log::PositionalArgumentFollowingNamed(
-    const base::vector<TextSpan> &pos_spans, const TextSpan &named_span) {
+    base::vector<TextSpan> const &pos_spans, TextSpan const &named_span) {
   std::stringstream ss;
   ss << "Positional function arguments cannot follow a named argument.\n\n";
   base::IntervalSet<size_t> iset;
@@ -403,7 +405,7 @@ void Log::PositionalArgumentFollowingNamed(
   errors_.push_back(ss.str());
 }
 
-void Log::UnknownParseError(const base::vector<TextSpan> &lines) {
+void Log::UnknownParseError(base::vector<TextSpan> const &lines) {
   // TODO there's something seriously wrong with this
   std::stringstream ss;
   ss << "Parse errors found in \"" << lines.front().source->name
@@ -423,8 +425,8 @@ base::vector<ast::Identifier *> *Log::CyclicDependency() {
   return cyc_dep_vecs_.back().get();
 }
 
-void Log::ShadowingDeclaration(const ast::Declaration &decl1,
-                               const ast::Declaration &decl2) {
+void Log::ShadowingDeclaration(ast::Declaration const &decl1,
+                               ast::Declaration const &decl2) {
   // TODO migrate away from old display.
   auto line1     = decl1.span.source->lines.at(decl1.span.start.line_num);
   auto line2     = decl2.span.source->lines.at(decl2.span.start.line_num);
@@ -437,7 +439,7 @@ void Log::ShadowingDeclaration(const ast::Declaration &decl1,
             << LineToDisplay(line_num2, line2, align) << '\n';
 }
 
-void Log::UserDefinedError(const std::string &err) {
+void Log::UserDefinedError(std::string const &err) {
   errors_.push_back(err + "\n\n");
 }
 
@@ -447,7 +449,7 @@ void Log::Dump() const {
     std::cerr << "Found a cyclic dependency:\n\n";
 
     std::sort(ids->begin(), ids->end(),
-              [](const ast::Identifier *lhs, const ast::Identifier *rhs) {
+              [](ast::Identifier const *lhs, ast::Identifier const *rhs) {
                 if (lhs->span.start.line_num < rhs->span.start.line_num) {
                   return true;
                 }
@@ -523,8 +525,8 @@ void Log::DeclOutOfOrder(ast::Declaration *decl, ast::Identifier *id) {
   out_of_order_decls_[decl].push_back(id);
 }
 
-void Log::InvalidCharBufIndex(const TextSpan &span,
-                              const type::Type *index_type) {
+void Log::InvalidCharBufIndex(TextSpan const &span,
+                              type::Type const *index_type) {
   std::stringstream ss;
   ss << "Character buffer indexed by an invalid type. Expected an int or uint, "
         "but encountered a "
@@ -537,23 +539,41 @@ void Log::InvalidCharBufIndex(const TextSpan &span,
   errors_.push_back(ss.str());
 }
 
-void Log::NonIntegralArrayIndex(const TextSpan &span,
-                                const type::Type *index_type) {
+void Log::NonIntegralArrayIndex(TextSpan const &span,
+                                type::Type const *index_type) {
   std::stringstream ss;
   ss << "Array is being indexed by an expression of type "
      << index_type->to_string() << ".";
 
   WriteSource(
-      ss, *span.source, {span.lines()}, 
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
 
-void Log::IndexingNonArray(const TextSpan &span, const type::Type *t) {
+void Log::IndexingNonArray(TextSpan const &span, type::Type const *t) {
   std::stringstream ss;
   ss << "Cannot index into a non-array type. Indexed type is a `"
      << t->to_string() << "`.";
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::TypeMustBeInitialized(TextSpan const &span, type::Type const *t) {
+  std::stringstream ss;
+  if (t->is<type::Enum>()) {
+    ss << "Enums have no default initial value and must be explicitly "
+          "initialized.\n\n";
+  } else if (t->is<type::Variant>()) {
+    ss << "Variants have no default initial value and must be explicitly "
+          "initialized.\n\n";
+  } else {
+    NOT_YET(t);
+  }
   WriteSource(
       ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});

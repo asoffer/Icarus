@@ -274,6 +274,12 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 
     if (this_type == nullptr) {
       return nullptr;
+    } else if (!init_val) {
+      if (!this_type->IsDefaultInitializable()) {
+        // TODO what about an uninitialized constant. do we show both?
+        ctx->error_log_.TypeMustBeInitialized(span, this_type);
+        return nullptr;
+      }
     }
 
     if (id_.empty()) {
@@ -281,7 +287,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         // TODO check shadowing against other modules?
         // TODO what if no init val is provded? what if not constant?
         ctx->mod_->embedded_modules_.insert(
-            backend::EvaluateAs<const Module *>(init_val.get(), ctx));
+            backend::EvaluateAs<Module const *>(init_val.get(), ctx));
         return type::Module;
       } else {
         NOT_YET(this_type);

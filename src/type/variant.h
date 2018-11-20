@@ -20,6 +20,7 @@ struct Variant : public Type {
     return result;
   }
 
+  bool IsDefaultInitializable() const override { return false; }
   base::vector<Type const *> variants_;
 
  private:

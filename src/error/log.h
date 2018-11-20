@@ -23,7 +23,7 @@ struct Unop;
 
 namespace error {
 struct Log {
-#define MAKE_LOG_ERROR(fn_name, msg) void fn_name(const TextSpan &span);
+#define MAKE_LOG_ERROR(fn_name, msg) void fn_name(TextSpan const &span);
 #include "error/errors.xmacro.h"
 #undef MAKE_LOG_ERROR
 
@@ -34,38 +34,40 @@ struct Log {
   void DeclOutOfOrder(ast::Declaration *decl, ast::Identifier *id);
   void AssignmentTypeMismatch(ast::Expression *lhs, ast::Expression *rhs);
   void RunawayMultilineComment();
-  void DoubleDeclAssignment(const TextSpan &decl_span,
-                            const TextSpan &val_span);
-  void Reserved(const TextSpan &span, const std::string &token);
-  void NotBinary(const TextSpan &span, const std::string &token);
-  void UnknownParseError(const base::vector<TextSpan> &span);
-  void PositionalArgumentFollowingNamed(const base::vector<TextSpan> &pos_spans,
-                                        const TextSpan &named_span);
+  void DoubleDeclAssignment(TextSpan const &decl_span,
+                            TextSpan const &val_span);
+  void Reserved(TextSpan const &span, std::string const &token);
+  void NotBinary(TextSpan const &span, std::string const &token);
+  void UnknownParseError(base::vector<TextSpan> const &span);
+  void PositionalArgumentFollowingNamed(base::vector<TextSpan> const &pos_spans,
+                                        TextSpan const &named_span);
   void NotAType(ast::Expression *expr);
-  void ShadowingDeclaration(const ast::Declaration &decl1,
-                            const ast::Declaration &decl2);
+  void ShadowingDeclaration(ast::Declaration const &decl1,
+                            ast::Declaration const &decl2);
 
   // TODO include a source location/span/trace or whatever you decide to
   // include.
-  void UserDefinedError(const std::string &err);
-  void DereferencingNonPointer(const type::Type *type, const TextSpan &span);
-  void WhichNonVariant(const type::Type *type, const TextSpan &span);
-  void ReturnTypeMismatch(const type::Type *expected_type,
-                          const ast::Expression *ret_expr);
-  void IndexedReturnTypeMismatch(const type::Type *expected_type,
-                                 const ast::Expression *ret_expr, size_t index);
-  void ReturningWrongNumber(const ast::Expression *ret_expr, size_t num_rets);
-  void NoMatchingOperator(const std::string &op, const type::Type *lhs,
-                          const type::Type *rhs, const TextSpan &span);
-  void NoReturnTypes(const ast::Expression *ret_expr);
-  void DeclarationUsedInUnop(const std::string &unop,
-                             const TextSpan &decl_span);
-  void MissingMember(const TextSpan &span, const std::string &member_name,
-                     const type::Type *t);
-  void InvalidCharBufIndex(const TextSpan &span, const type::Type *index_type);
-  void NonIntegralArrayIndex(const TextSpan &span,
-                             const type::Type *index_type);
-  void IndexingNonArray(const TextSpan &span, const type::Type *t);
+  void UserDefinedError(std::string const &err);
+  void DereferencingNonPointer(type::Type const *type, TextSpan const &span);
+  void WhichNonVariant(type::Type const *type, TextSpan const &span);
+  void ReturnTypeMismatch(type::Type const *expected_type,
+                          ast::Expression const *ret_expr);
+  void IndexedReturnTypeMismatch(type::Type const *expected_type,
+                                 ast::Expression const *ret_expr, size_t index);
+  void ReturningWrongNumber(ast::Expression const *ret_expr, size_t num_rets);
+  void NoMatchingOperator(std::string const &op, type::Type const *lhs,
+                          type::Type const *rhs, TextSpan const &span);
+  void NoReturnTypes(ast::Expression const *ret_expr);
+  void DeclarationUsedInUnop(std::string const &unop,
+                             TextSpan const &decl_span);
+  void MissingMember(TextSpan const &span, std::string const &member_name,
+                     type::Type const *t);
+  void InvalidCharBufIndex(TextSpan const &span, type::Type const *index_type);
+  void NonIntegralArrayIndex(TextSpan const &span,
+                             type::Type const *index_type);
+  void IndexingNonArray(TextSpan const &span, type::Type const *t);
+
+  void TypeMustBeInitialized(TextSpan const &span, type::Type const *t);
 
   base::vector<ast::Identifier *> *CyclicDependency();
 

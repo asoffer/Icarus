@@ -2,8 +2,7 @@
 #include "ir/val.h"
 
 namespace type {
-Flags::Flags(const std::string &name, base::vector<std::string> members)
-    : bound_name(name), members_(std::move(members)) {
+Flags::Flags(base::vector<std::string> members) : members_(std::move(members)) {
   auto num_members = members_.size();
   for (size_t i = 0; i < num_members; ++i) { int_values[members_[i]] = 1 << i; }
 }

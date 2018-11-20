@@ -68,6 +68,7 @@ struct Type : public base::Cast<Type> {
 
   bool is_big() const;
   virtual bool needs_destroy() const { return false; }
+  virtual bool IsDefaultInitializable() const { return true; }
 };
 
 const Type *Meet(const Type *lhs, const Type *rhs);

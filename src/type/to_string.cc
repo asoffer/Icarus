@@ -79,14 +79,23 @@ char *Struct::WriteTo(char *buf) const {
   return buf;
 }
 
-size_t Enum::string_size() const { return bound_name.size(); }
-char *Enum::WriteTo(char *buf) const {
-  return std::strcpy(buf, bound_name.c_str()) + string_size();
+size_t Enum::string_size() const {
+  return 5 + std::to_string(reinterpret_cast<uintptr_t>(this)).size();
 }
 
-size_t Flags::string_size() const { return bound_name.size(); }
+char *Enum::WriteTo(char *buf) const {
+  buf      = std::strcpy(buf, "enum.") + 5;
+  auto str = std::to_string(reinterpret_cast<uintptr_t>(this));
+  return std::strcpy(buf, str.c_str()) + str.size();
+}
+
+size_t Flags::string_size() const {
+  return 6 + std::to_string(reinterpret_cast<uintptr_t>(this)).size();
+}
 char *Flags::WriteTo(char *buf) const {
-  return std::strcpy(buf, bound_name.c_str()) + string_size();
+  buf = std::strcpy(buf, "flags.") + 6;
+  auto str = std::to_string(reinterpret_cast<uintptr_t>(this));
+  return std::strcpy(buf, str.c_str()) + str.size();
 }
 
 size_t Pointer::string_size() const {

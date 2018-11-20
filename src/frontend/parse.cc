@@ -777,25 +777,17 @@ static std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     }
   }
 
-  static size_t anon_enum_counter = 0;
   base::vector<std::string> members_vec(
       std::make_move_iterator(members.begin()),
       std::make_move_iterator(members.end()));
   if (is_enum) {
-    auto term = std::make_unique<ast::Terminal>(
+    return std::make_unique<ast::Terminal>(
         TextSpan(nodes[0]->span, nodes[1]->span),
-        ir::Val(
-            new type::Enum("__anon.enum" + std::to_string(anon_enum_counter++),
-                           std::move(members_vec))));
-    return term;
-
+        ir::Val(new type::Enum(std::move(members_vec))));
   } else {
-    auto term = std::make_unique<ast::Terminal>(
+    return std::make_unique<ast::Terminal>(
         TextSpan(nodes[0]->span, nodes[1]->span),
-        ir::Val(new type::Flags(
-            "__anon.flags" + std::to_string(anon_enum_counter++),
-            std::move(members_vec))));
-    return term;
+        ir::Val(new type::Flags(std::move(members_vec))));
   }
 }
 
