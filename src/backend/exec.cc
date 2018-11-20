@@ -481,9 +481,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       if (vals.empty()) {
         std::cerr << "(empty)";
       } else {
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(vals.begin(), vals.end(), g);
+        static auto seed = std::random_device{}();
+        std::mt19937 gen(seed);
+        std::shuffle(vals.begin(), vals.end(), gen);
 
         auto iter = vals.begin();
         std::cerr << *iter++;

@@ -105,7 +105,15 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
     } else {
       type::Apply(t, [&](auto type_holder) {
         using T = typename decltype(type_holder)::type;
-        results.emplace_back(result_buf.get<T>(offset));
+        if constexpr (std::is_same_v<T, ir::EnumVal>) {
+          results.push_back(ir::Val::Enum(&t->as<type::Enum>(),
+                                          result_buf.get<size_t>(offset)));
+        } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
+          results.push_back(ir::Val::Flags(
+              &t->as<type::Flags>(), result_buf.get<ir::FlagsVal>(offset)));
+        } else {
+          results.emplace_back(result_buf.get<T>(offset));
+        }
       });
     }
 

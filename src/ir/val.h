@@ -77,6 +77,7 @@ struct Val {
   static Val BuiltinGeneric(i32 n) {
     return Val(type::Generic, BuiltinGenericIndex{n});
   }
+  // TODO take an EnumVal.
   static Val Enum(const type::Enum *enum_type, size_t integral_val);
   static Val Flags(const type::Flags *flags_type, FlagsVal val);
   static Val Foreign(const type::Type *t, ForeignFn f) { return Val(t, f); }

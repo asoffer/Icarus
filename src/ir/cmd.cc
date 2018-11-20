@@ -507,7 +507,12 @@ Register Load(Register r, type::Type const *t) {
   if (t->is<type::Function>()) { return Load<AnyFunc>(r, t); }
   return type::Apply(t, [&](auto type_holder) -> Register {
     using T = typename decltype(type_holder)::type;
-    return Load<T>(r);
+    if constexpr (std::is_same_v<T, ir::EnumVal> ||
+                  std::is_same_v<T, ir::FlagsVal>) {
+      return Load<T>(r, t);
+    } else {
+      return Load<T>(r);
+    }
   });
 }
 

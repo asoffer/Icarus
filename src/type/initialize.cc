@@ -75,7 +75,7 @@ void Primitive::EmitInit(ir::Register id_reg, Context *ctx) const {
 }
 
 void Enum::EmitInit(ir::Register id_reg, Context *ctx) const {
-  ir::Store(ir::EnumVal{0}, id_reg);
+  UNREACHABLE("Enums must be initialized");
 }
 
 void Flags::EmitInit(ir::Register id_reg, Context *ctx) const {
