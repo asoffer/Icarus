@@ -25,7 +25,7 @@ RegisterOr<type::Type const *> Tup(base::vector<Val> const &entries);
 }  // namespace ir
 
 namespace type {
-const Pointer *Ptr(const Type *);
+const Pointer *Ptr(Type const *);
 }  // namespace type
 
 namespace {
@@ -39,15 +39,15 @@ bool IsTypeOrTupleOfTypes(type::Type const *t) {
 }  // namespace
 
 base::vector<ir::Val> EmitCallDispatch(
-    const ast::FnArgs<std::pair<ast::Expression *, ir::Val>> &args,
-    const ast::DispatchTable &dispatch_table, const type::Type *ret_type,
+    ast::FnArgs<std::pair<ast::Expression *, ir::Val>> const &args,
+    ast::DispatchTable &dispatch_table, const type::Type const *ret_type,
     Context *ctx);
 
 // TODO move this to some weird util lib?
 void ForEachExpr(ast::Expression *expr,
-                 const std::function<void(size_t, ast::Expression *)> &fn) {
+                 std::function<void(size_t, ast::Expression *)> const &fn) {
   if (expr->is<ast::CommaList>()) {
-    const auto &exprs = expr->as<ast::CommaList>().exprs;
+    auto const &exprs = expr->as<ast::CommaList>().exprs;
     for (size_t i = 0; i < exprs.size(); ++i) { fn(i, exprs[i].get()); }
   } else {
     fn(0, expr);
@@ -189,9 +189,11 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     case Operator::As: {
       // TODO check that the type actually can be cast
       // correctly.
-      auto *t = backend::EvaluateAs<const type::Type *>(rhs.get(), ctx);
+      auto *t = backend::EvaluateAs<type::Type const *>(rhs.get(), ctx);
       ctx->set_type(this, t);
-      if (!CanCast(lhs_type, t)) { NOT_YET("log an error", lhs_type, t); }
+      if (!CanCast(lhs_type, t)) {
+        LOG << this;
+        NOT_YET("log an error", lhs_type, t); }
       return t;
     }
     case Operator::XorEq:
@@ -441,7 +443,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       return {ir::ValFrom(reg_or_type)};
     } break;
     case Language::Operator::Assign: {
-      base::vector<const type::Type *> lhs_types, rhs_types;
+      base::vector<type::Type const *> lhs_types, rhs_types;
       ForEachExpr(rhs.get(), [&ctx, &rhs_types](size_t, Expression *expr) {
         auto *expr_type = ctx->type_of(expr);
         if (expr_type->is<type::Tuple>()) {

@@ -84,14 +84,13 @@ void Access::Validate(Context *ctx) { operand->Validate(ctx); }
 base::vector<ir::Register> ast::Access::EmitLVal(Context *ctx) {
   auto reg   = operand->EmitLVal(ctx)[0];
   auto *t    = ctx->type_of(operand.get());
-  auto *ptee = t->as<type::Pointer>().pointee;
-  while (ptee->is<type::Pointer>()) {
-    t    = ptee;
-    ptee = ptee->as<type::Pointer>().pointee;
-    reg  = ir::Load(reg, t);
+  while (t->is<type::Pointer>()) {
+    t   = t->as<type::Pointer>().pointee;
+    reg = ir::Load<ir::Addr>(reg, t);
   }
 
-  auto *struct_type = &t->as<type::Pointer>().pointee->as<type::Struct>();
+  ASSERT(t, Is<type::Struct>());
+  auto *struct_type = &t->as<type::Struct>();
   return {ir::Field(reg, struct_type, struct_type->index(member_name))};
 }
 

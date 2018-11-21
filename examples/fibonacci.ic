@@ -1,14 +1,14 @@
 main ::= () -> () {
-  n := 0 as nat32
-  while (n <= (10 as nat32)) do {
+  n := 0 as nat64
+  while (n <= (10 as nat64)) do {
     print "fib(", n, ") = ", fibonacci(n), "\n"
-    n += 1 as nat32
+    n += 1 as nat64
   }
 }
 
-fibonacci ::= (n: nat32) -> nat32 {
-  if (n < (2 as nat32)) then { return n }
-  return fibonacci(n - (1 as nat32)) + fibonacci(n - (2 as nat32))
+fibonacci ::= (n: nat64) -> nat64 {
+  if (n < (2 as nat64)) then { return n }
+  return fibonacci(n - (1 as nat64)) + fibonacci(n - (2 as nat64))
 }
 
 -- ::= import "examples/lib/core.ic"
