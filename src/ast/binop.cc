@@ -40,7 +40,7 @@ bool IsTypeOrTupleOfTypes(type::Type const *t) {
 
 base::vector<ir::Val> EmitCallDispatch(
     ast::FnArgs<std::pair<ast::Expression *, ir::Val>> const &args,
-    ast::DispatchTable &dispatch_table, const type::Type const *ret_type,
+    ast::DispatchTable const &dispatch_table, const type::Type *ret_type,
     Context *ctx);
 
 // TODO move this to some weird util lib?

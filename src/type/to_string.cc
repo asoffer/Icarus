@@ -73,10 +73,13 @@ char *Array::WriteTo(char *buf) const {
   return buf;
 }
 
-size_t Struct::string_size() const { return 9; }
+size_t Struct::string_size() const {
+  return 7 + std::to_string(reinterpret_cast<uintptr_t>(this)).size();
+}
 char *Struct::WriteTo(char *buf) const {
-  buf = std::strcpy(buf, "struct {}") + 9;
-  return buf;
+  buf = std::strcpy(buf, "struct.") + 7;
+  auto str = std::to_string(reinterpret_cast<uintptr_t>(this));
+  return std::strcpy(buf, str.c_str()) + str.size();
 }
 
 size_t Enum::string_size() const {

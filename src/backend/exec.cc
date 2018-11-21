@@ -531,97 +531,28 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         offset = arch.MoveForwardToAlignment(t, offset);
         call_buf.pad_to(offset);
 
-        // TODO figure out why type::ApplyTypes isn't compiling here (GCC
-        // compiler error).
-        if (t == type::Bool) {
-          call_buf.append(
-              is_reg ? resolve<bool>(long_args.get<ir::Register>(offset))
-                     : long_args.get<bool>(offset));
-        } else if (t == type::Char) {
-          call_buf.append(
-              is_reg ? resolve<char>(long_args.get<ir::Register>(offset))
-                     : long_args.get<char>(offset));
-        } else if (t == type::Nat8) {
-          call_buf.append(
-              is_reg ? resolve<u8>(long_args.get<ir::Register>(offset))
-                     : long_args.get<u8>(offset));
-        } else if (t == type::Nat16) {
-          call_buf.append(
-              is_reg ? resolve<u16>(long_args.get<ir::Register>(offset))
-                     : long_args.get<u16>(offset));
-        } else if (t == type::Nat32) {
-          call_buf.append(
-              is_reg ? resolve<u32>(long_args.get<ir::Register>(offset))
-                     : long_args.get<u32>(offset));
-        } else if (t == type::Nat64) {
-          call_buf.append(
-              is_reg ? resolve<u64>(long_args.get<ir::Register>(offset))
-                     : long_args.get<u64>(offset));
-        } else if (t == type::Int8) {
-          call_buf.append(
-              is_reg ? resolve<i8>(long_args.get<ir::Register>(offset))
-                     : long_args.get<i8>(offset));
-        } else if (t == type::Int16) {
-          call_buf.append(
-              is_reg ? resolve<i16>(long_args.get<ir::Register>(offset))
-                     : long_args.get<i16>(offset));
-        } else if (t == type::Int32) {
-          call_buf.append(
-              is_reg ? resolve<i32>(long_args.get<ir::Register>(offset))
-                     : long_args.get<i32>(offset));
-        } else if (t == type::Int64) {
-          call_buf.append(
-              is_reg ? resolve<i64>(long_args.get<ir::Register>(offset))
-                     : long_args.get<i64>(offset));
-        } else if (t == type::Float32) {
-          call_buf.append(
-              is_reg ? resolve<float>(long_args.get<ir::Register>(offset))
-                     : long_args.get<float>(offset));
-        } else if (t == type::Float64) {
-          call_buf.append(
-              is_reg ? resolve<double>(long_args.get<ir::Register>(offset))
-                     : long_args.get<double>(offset));
-        } else if (t == type::Scope) {
-          call_buf.append(is_reg ? resolve<ast::ScopeLiteral *>(
-                                       long_args.get<ir::Register>(offset))
-                                 : long_args.get<ast::ScopeLiteral *>(offset));
-        } else if (t == type::Type_) {
-          call_buf.append(is_reg ? resolve<type::Type const *>(
-                                       long_args.get<ir::Register>(offset))
-                                 : long_args.get<type::Type const *>(offset));
-        } else if (t->is<type::CharBuffer>()) {
-          call_buf.append(is_reg ? resolve<std::string_view>(
-                                       long_args.get<ir::Register>(offset))
-                                 : long_args.get<std::string_view>(offset));
-        } else if (t->is<type::Function>()) {
-          call_buf.append(
-              is_reg ? resolve<ir::Func *>(long_args.get<ir::Register>(offset))
-                     : long_args.get<ir::Func *>(offset));
-        } else if (t == type::Module) {
-          call_buf.append(is_reg ? resolve<Module const *>(
-                                       long_args.get<ir::Register>(offset))
-                                 : long_args.get<Module const *>(offset));
-        } else if (t == type::Generic) {
-          // TODO mostly wrong.
-          call_buf.append(is_reg ? resolve<ast::Function *>(
-                                       long_args.get<ir::Register>(offset))
-                                 : long_args.get<ast::Function *>(offset));
-        } else if (t == type::Block || t == type::OptBlock) {
-          call_buf.append(is_reg ? resolve<ir::BlockSequence>(
-                                       long_args.get<ir::Register>(offset))
-                                 : long_args.get<ir::BlockSequence>(offset));
-        } else if (t->is<type::Variant>()) {
-          call_buf.append(
-              is_reg ? resolve<ir::Addr>(long_args.get<ir::Register>(offset))
-                     : long_args.get<ir::Addr>(offset));
-        } else if (t->is<type::Pointer>()) {
-          ASSERT(is_reg);
-          call_buf.append(
-              resolve<ir::Addr>(long_args.get<ir::Register>(offset)));
-        } else {
-          NOT_YET(t->to_string());
-        }
+        type::ApplyTypes<bool, char, u8, u16, u32, u64, i8, i16, i32, i64,
+                         float, double, ast::ScopeLiteral *, type::Type const *,
+                         std::string_view, ir::Func *, Module const *, ir::Addr,
+                         ir::BlockSequence, type::Struct const *,
+                         ast::Function *>(t, [&](auto type_holder) {
+          using T = typename decltype(type_holder)::type;
+          // NOTE: the use of call_stack.top()... is the same as in resolve<T>,
+          // but that's apparently uncapturable due to a GCC bug.
+          if constexpr (std::is_same_v<T, type::Struct const *>) {
+            call_buf.append(is_reg
+                                ? call_stack.top().regs_.get<ir::Addr>(
+                                      long_args.get<ir::Register>(offset).value)
+                                : long_args.get<ir::Addr>(offset));
+          } else {
+            call_buf.append(is_reg
+                                ? call_stack.top().regs_.get<T>(
+                                      long_args.get<ir::Register>(offset).value)
+                                : long_args.get<T>(offset));
+          }
+        });
 
+        LOG << DUMP(t) << DUMP(is_reg) << DUMP(sizeof(ir::Register));
         offset += is_reg ? sizeof(ir::Register) : arch.bytes(t);
       }
       // TODO you need to be able to determine how many args there are

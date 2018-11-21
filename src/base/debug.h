@@ -14,6 +14,13 @@
     }                                                                          \
   } while (false)
 
+#define DUMP(...)                                                              \
+  [&]() {                                                                      \
+    std::string result = #__VA_ARGS__ " = ";                                   \
+    result += ::base::internal::stringify(__VA_ARGS__) + "\n";                 \
+    return result;                                                             \
+  }()
+
 #define ASSERT_NOT_NULL(expr)                                                  \
   ([](auto &&ptr) {                                                            \
     if (ptr == nullptr) {                                                      \
@@ -35,7 +42,7 @@
 #define ASSERT(...)
 #define ASSERT_NOT_NULL(...) __VA_ARGS__
 #define UNREACHABLE(...) __builtin_unreachable();
-
+#define DUMP(...) ""
 #endif
 
 #define NOT_YET(...)                                                           \

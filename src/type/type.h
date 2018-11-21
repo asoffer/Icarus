@@ -18,6 +18,11 @@ class LLVMContext;
 
 struct Module;
 
+namespace ast {
+struct ScopeLiteral;
+struct Function;
+}  // namespace ast
+
 namespace ir {
 struct FlagsVal;
 struct Val;
@@ -50,6 +55,9 @@ struct Val;
 #endif
 
 namespace type {
+struct Function;
+struct Struct;
+
 // Note: the order of these is meaningful and relied upon!
 enum class Cmp : u8 { None, Equality, Order };
 
@@ -182,8 +190,20 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Flags>();
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     return t->is<::type::Pointer>();
+  } else if constexpr (std::is_same_v<T, ast::ScopeLiteral *>) {
+    return t == type::Scope;
+  } else if constexpr (std::is_same_v<T, type::Struct const *>) {
+    return t->is<type::Struct>();
+  } else if constexpr (std::is_same_v<T, ir::Func *>) {
+    return t->is<type::Function>();
+  } else if constexpr (std::is_same_v<T, ast::Function *>) {
+    return t == type::Generic;
+  } else if constexpr (std::is_same_v<T, ::Module const *>) {
+    return t == type::Module;
+  } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
+    return t == type::OptBlock || t == type::Block;
   } else {
-    UNREACHABLE(t);
+    UNREACHABLE(t->to_string(), " vs ", typeid(T).name());
   }
 }
 
