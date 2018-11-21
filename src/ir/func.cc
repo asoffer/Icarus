@@ -2,6 +2,7 @@
 
 #include "architecture.h"
 #include "ast/function_literal.h"
+#include "ir/arguments.h"
 #include "property/property.h"
 #include "property/property_map.h"
 #include "type/function.h"
@@ -129,7 +130,7 @@ void Func::CheckInvariants() {
   for (auto const & [ block, cmd ] : cmds) {
     for (const auto & [ precond, precond_prop_map ] :
          cmd->call_.fn_.val_.fn_->preconditions_) {
-      auto prop_copy = precond_prop_map.with_args(*cmd->call_.long_args_,
+      auto prop_copy = precond_prop_map.with_args(*cmd->call_.arguments_,
                                                   prop_map.view_.at(block));
 
       prop::BoolProp prop = prop_copy.Returns();

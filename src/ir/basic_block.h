@@ -3,6 +3,7 @@
 #include <list>
 #include "base/container/vector.h"
 #include "base/untyped_buffer.h"
+#include "ir/arguments.h"
 
 #include "cmd.h"
 
@@ -27,7 +28,7 @@ struct BasicBlock {
   // elments so we never traverse. We just need pointer stabiltiy. In the long
   // term a single allocation is probably better but that's not easy with the
   // current setup.
-  std::list<LongArgs> long_args_;
+  std::list<Arguments> arguments_;
   std::list<OutParams> outs_;
   std::vector<std::unique_ptr<GenericPhiArgs>> phi_args_;
 };

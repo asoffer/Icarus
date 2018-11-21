@@ -7,6 +7,7 @@
 #include "base/container/unordered_map.h"
 #include "base/guarded.h"
 #include "context.h"
+#include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
@@ -137,7 +138,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, ir::Val from_val,
     ASSERT(to_type == from_type);
     to_type->EmitAssign(from_type, from_val, to_var, ctx);
   } else if (to_type->is<Array>()) {
-    ir::LongArgs call_args;
+    ir::Arguments call_args;
     call_args.append(from_val);
     call_args.append(to_var);
     ir::Func *f = ArrayInitializationWith<EmitCopyInit>(
@@ -148,7 +149,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, ir::Val from_val,
   } else if (to_type->is<Struct>()) {
     ASSERT(to_type == from_type);
 
-    ir::LongArgs call_args;
+    ir::Arguments call_args;
     call_args.append(from_val);
     call_args.append(to_var);
     ir::Func *f =
@@ -176,7 +177,7 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, ir::Val from_val,
     auto *from_array_type = &from_type->as<Array>();
 
     if (to_array_type->fixed_length || from_array_type->fixed_length) {
-      ir::LongArgs call_args;
+      ir::Arguments call_args;
       call_args.append(from_val);
       call_args.append(to_var);
       ir::Func *f = ArrayInitializationWith<EmitMoveInit>(
@@ -201,7 +202,7 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, ir::Val from_val,
   } else if (to_type->is<Struct>()) {
     ASSERT(to_type == from_type);
 
-    ir::LongArgs call_args;
+    ir::Arguments call_args;
     call_args.append(from_val);
     call_args.append(to_var);
     ir::Func *f =

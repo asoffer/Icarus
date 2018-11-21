@@ -3,6 +3,7 @@
 #include "architecture.h"
 #include "base/guarded.h"
 #include "context.h"
+#include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
@@ -96,7 +97,7 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
     }
   }
 
-  ir::LongArgs call_args;
+  ir::Arguments call_args;
   call_args.append(lhs_ir);
   call_args.append(rhs_ir);
   call_args.type_ = iter->second->type_;
@@ -215,7 +216,7 @@ void Array::EmitResize(ir::Val ptr_to_array, ir::Val new_size,
 
 call_fn:
   ASSERT(ir::Func::Current != nullptr);
-  ir::LongArgs call_args;
+  ir::Arguments call_args;
   call_args.append(ptr_to_array);
   call_args.append(new_size);
   call_args.type_ = ASSERT_NOT_NULL(resize_func_)->type_;

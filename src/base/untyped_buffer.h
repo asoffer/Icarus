@@ -42,6 +42,11 @@ struct untyped_buffer {
     return data_ + offset;
   }
 
+  void const *raw(size_t offset) const {
+    ASSERT(offset <= size_);
+    return data_ + offset;
+  }
+
   template <typename T>
   void set(size_t offset, const T &t) {
     static_assert(std::is_trivially_copyable_v<T>);
@@ -78,7 +83,7 @@ struct untyped_buffer {
   }
 
 #ifdef DBG
-  std::string DebugString() {
+  std::string DebugString() const {
     constexpr char char_lookup[32] =
         "0\0001\0002\0003\0004\0005\0006\0007\000"
         "8\0009\000a\000b\000c\000d\000e\000f";

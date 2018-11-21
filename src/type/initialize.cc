@@ -2,6 +2,7 @@
 
 #include "architecture.h"
 #include "context.h"
+#include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "module.h"
@@ -46,7 +47,7 @@ void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
     }
   }
 
-  ir::LongArgs call_args;
+  ir::Arguments call_args;
   call_args.append(id_reg);
   call_args.type_ = init_func_->type_;
   ir::Call(ir::AnyFunc{init_func_}, std::move(call_args));
@@ -128,7 +129,7 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
     }
   }
 
-  ir::LongArgs call_args;
+  ir::Arguments call_args;
   call_args.append(id_reg);
   call_args.type_ = init_func_->type_;
   ir::Call(ir::AnyFunc{init_func_}, std::move(call_args));

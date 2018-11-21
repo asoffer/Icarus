@@ -1,6 +1,7 @@
 #include "type/all.h"
 
 #include "context.h"
+#include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "module.h"
@@ -44,7 +45,7 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
         }
       }
 
-      ir::LongArgs call_args;
+      ir::Arguments call_args;
       call_args.append(val);
       call_args.type_ = repr_func_->type_;
       ir::Call(ir::AnyFunc{repr_func_}, std::move(call_args));
@@ -128,7 +129,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
     }
   }
 
-  ir::LongArgs call_args;
+  ir::Arguments call_args;
   call_args.append(val);
   call_args.type_ = repr_func_->type_;
   ir::Call(ir::AnyFunc{repr_func_}, std::move(call_args));
@@ -183,7 +184,7 @@ void Variant::EmitRepr(ir::Val const &id_val, Context *ctx) const {
     }
   }
 
-  ir::LongArgs call_args;
+  ir::Arguments call_args;
   call_args.append(id_val);
   call_args.type_ = repr_func_->type_;
   ir::Call(ir::AnyFunc{repr_func_}, std::move(call_args));

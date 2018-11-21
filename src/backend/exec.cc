@@ -18,6 +18,7 @@
 #include "base/util.h"
 #include "context.h"
 #include "error/log.h"
+#include "ir/arguments.h"
 #include "ir/func.h"
 #include "module.h"
 #include "type/all.h"
@@ -436,7 +437,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           resolve<type::Struct const *>(cmd.field_.struct_type_);
       size_t offset = struct_type->offset(cmd.field_.num_,
                                           Architecture::InterprettingMachine());
-
       if (addr.kind == ir::Addr::Kind::Stack) {
         addr.as_stack += offset;
       } else {
@@ -515,46 +515,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         }
       }
 
-      // TODO we can compute the exact required size.
-      base::untyped_buffer call_buf(32);
+      auto call_buf =
+          cmd.call_.arguments_->PrepareCallBuffer(call_stack.top().regs_);
 
-      size_t offset   = 0;
-      auto arch       = Architecture::InterprettingMachine();
-      auto &long_args = cmd.call_.long_args_->args_;
-      for (size_t i = 0; i < cmd.call_.long_args_->is_reg_.size(); ++i) {
-        bool is_reg = cmd.call_.long_args_->is_reg_[i];
-        auto *t     = (i < cmd.call_.long_args_->type_->input.size())
-                      ? cmd.call_.long_args_->type_->input.at(i)
-                      : cmd.call_.long_args_->type_->output.at(
-                            i - cmd.call_.long_args_->type_->input.size());
-
-        offset = arch.MoveForwardToAlignment(t, offset);
-        call_buf.pad_to(offset);
-
-        type::ApplyTypes<bool, char, u8, u16, u32, u64, i8, i16, i32, i64,
-                         float, double, ast::ScopeLiteral *, type::Type const *,
-                         std::string_view, ir::Func *, Module const *, ir::Addr,
-                         ir::BlockSequence, type::Struct const *,
-                         ast::Function *>(t, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
-          // NOTE: the use of call_stack.top()... is the same as in resolve<T>,
-          // but that's apparently uncapturable due to a GCC bug.
-          if constexpr (std::is_same_v<T, type::Struct const *>) {
-            call_buf.append(is_reg
-                                ? call_stack.top().regs_.get<ir::Addr>(
-                                      long_args.get<ir::Register>(offset).value)
-                                : long_args.get<ir::Addr>(offset));
-          } else {
-            call_buf.append(is_reg
-                                ? call_stack.top().regs_.get<T>(
-                                      long_args.get<ir::Register>(offset).value)
-                                : long_args.get<T>(offset));
-          }
-        });
-
-        LOG << DUMP(t) << DUMP(is_reg) << DUMP(sizeof(ir::Register));
-        offset += is_reg ? sizeof(ir::Register) : arch.bytes(t);
-      }
       // TODO you need to be able to determine how many args there are
       if (cmd.call_.fn_.is_reg_) {
         // TODO what if the register is a foerign fn?

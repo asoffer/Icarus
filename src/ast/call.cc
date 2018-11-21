@@ -6,6 +6,7 @@
 #include "ast/terminal.h"
 #include "ast/verify_macros.h"
 #include "backend/eval.h"
+#include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
@@ -195,7 +196,7 @@ static void EmitOneCallDispatch(
     }
   }
 
-  ir::LongArgs call_args;
+  ir::Arguments call_args;
   call_args.type_ = &callee.type->as<type::Function>();
   for (const auto &arg : args) { call_args.append(arg); }
 
@@ -524,7 +525,7 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
 #endif  // DBG
     if (fn_val == OrdFunc() || fn_val == AsciiFunc() || fn_val == ErrorFunc() ||
         fn_val == BytesFunc() || fn_val == AlignFunc()) {
-      ir::LongArgs call_args;
+      ir::Arguments call_args;
       for (const auto &arg : args_.pos_[0]->EmitIR(ctx)) {
         call_args.append(arg);
       }

@@ -1,4 +1,5 @@
 #include "context.h"
+#include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "module.h"
@@ -58,7 +59,7 @@ void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
     ComputeDestroyWithoutLock(ctx);
   }
 
-  ir::LongArgs call_args;
+  ir::Arguments call_args;
   call_args.append(reg);
   call_args.type_ = destroy_func_->type_;
   ir::Call(ir::AnyFunc{destroy_func_}, std::move(call_args));
@@ -90,7 +91,7 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
       }
     }
   }
-  ir::LongArgs call_args;
+  ir::Arguments call_args;
   call_args.append(reg);
   call_args.type_ = destroy_func_->type_;
   ir::Call(ir::AnyFunc{destroy_func_}, std::move(call_args));

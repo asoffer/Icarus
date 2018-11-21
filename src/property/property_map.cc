@@ -1,6 +1,7 @@
 #include "property/property_map.h"
 
 #include "architecture.h"
+#include "ir/arguments.h"
 #include "ir/func.h"
 #include "property/property.h"
 #include "type/function.h"
@@ -353,7 +354,7 @@ BoolProp PropertyMap::Returns() const {
   return bool_ret;
 }
 
-PropertyMap PropertyMap::with_args(ir::LongArgs const &args,
+PropertyMap PropertyMap::with_args(ir::Arguments const &args,
                                    FnStateView const &fn_state_view) const {
   auto copy         = *this;
   auto *entry_block = &fn_->block(fn_->entry());

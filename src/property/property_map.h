@@ -12,6 +12,7 @@
 #include "property/property_set.h"
 
 namespace ir {
+struct Arguments;
 struct BasicBlock;
 struct Func;
 }  // namespace ir
@@ -64,7 +65,7 @@ struct PropertyMap {
   PropertyMap &operator=(PropertyMap &&p) noexcept = default;
 
   // Make a copy of this map and set the arguments to the values passed in
-  PropertyMap with_args(ir::LongArgs const &, FnStateView const &) const;
+  PropertyMap with_args(ir::Arguments const &, FnStateView const &) const;
 
   // TODO rename or delete me.
   BoolProp Returns() const;

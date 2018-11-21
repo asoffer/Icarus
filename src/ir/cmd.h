@@ -23,16 +23,7 @@ struct Function;
 }  // namespace ast
 
 namespace ir {
-struct LongArgs {
-  void append(const ir::Val &val);
-  void append(ir::Register reg);
-  std::string to_string() const;
-
-  type::Function const *type_ = nullptr;
-  base::vector<bool> is_reg_;
-  base::untyped_buffer args_{0};
-};
-
+struct Arguments;
 // Represents an output parameter. The boolean value denotes whether the
 // register is a register to be filled with the value, or it is the address to
 // which the value should be written.
@@ -111,10 +102,10 @@ struct Cmd {
   };
 
   struct Call {
-    Call(RegisterOr<AnyFunc> f, LongArgs * args, OutParams * outs)
-        : fn_(f), long_args_(args), outs_(outs) {}
+    Call(RegisterOr<AnyFunc> f, Arguments * args, OutParams * outs)
+        : fn_(f), arguments_(args), outs_(outs) {}
     RegisterOr<AnyFunc> fn_;
-    LongArgs *long_args_;
+    Arguments *arguments_;
     OutParams *outs_;
   };
 
@@ -532,8 +523,8 @@ void Store(T r, Args &&... args) {
   }
 }
 
-void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args);
-void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args, OutParams outs);
+void Call(RegisterOr<AnyFunc> const &f, Arguments arguments);
+void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs);
 Register CreateTuple();
 void AppendToTuple(Register tup, RegisterOr<type::Type const *> entry);
 Register FinalizeTuple(Register tup);

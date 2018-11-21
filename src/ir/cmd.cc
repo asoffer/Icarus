@@ -15,42 +15,6 @@ namespace ir {
 using base::check::Is;
 BlockIndex BasicBlock::Current;
 
-std::string LongArgs::to_string() const {
-  std::stringstream ss;
-  auto arch     = Architecture::InterprettingMachine();
-  size_t offset = 0;
-  size_t i      = 0;
-  for (auto *t : type_->input) {
-    offset = arch.MoveForwardToAlignment(t, offset);
-    if (is_reg_[i]) {
-      ss << " " << args_.get<Register>(offset).to_string();
-      offset += sizeof(Register);
-    } else {
-      ss << " [??]";
-      offset += arch.bytes(t);
-    }
-    ++i;
-  }
-  return ss.str();
-}
-
-void LongArgs::append(Register reg) {
-  args_.append(reg);
-  is_reg_.push_back(true);
-}
-void LongArgs::append(const ir::Val &val) {
-  // TODO deal with alignment?
-  std::visit(
-      base::overloaded{
-          [](const ir::Interface &) { UNREACHABLE(); },
-          [&](auto &&v) {
-            args_.append(v);
-            is_reg_.push_back(
-                std::is_same_v<ir::Register, std::decay_t<decltype(v)>>);
-          }},
-      val.value);
-}
-
 // TODO namespace appropriately
 Cmd &MakeCmd(type::Type const *t, Op op) {
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
@@ -528,17 +492,17 @@ TypedRegister<Addr> Index(type::Type const *t, Register array_ptr,
       offset, type::Ptr(array_type->data_type));
 }
 
-void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args) {
-  auto &block    = Func::Current->block(BasicBlock::Current);
-  LongArgs *args = &block.long_args_.emplace_back(std::move(long_args));
+void Call(RegisterOr<AnyFunc> const &f, Arguments arguments) {
+  auto &block     = Func::Current->block(BasicBlock::Current);
+  Arguments *args = &block.arguments_.emplace_back(std::move(arguments));
 
   auto &cmd = MakeCmd(nullptr, Op::Call);
   cmd.call_ = Cmd::Call(f, args, nullptr);
 }
 
-void Call(RegisterOr<AnyFunc> const &f, LongArgs long_args, OutParams outs) {
+void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs) {
   auto &block    = Func::Current->block(BasicBlock::Current);
-  auto *args     = &block.long_args_.emplace_back(std::move(long_args));
+  auto *args     = &block.arguments_.emplace_back(std::move(arguments));
   auto *outs_ptr = &block.outs_.emplace_back(std::move(outs));
 
   auto &cmd = MakeCmd(nullptr, Op::Call);
@@ -632,7 +596,7 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
   } else {
     os << call.fn_.val_.foreign_.name_;
   }
-  os << call.long_args_->to_string();
+  os << call.arguments_->to_string();
   if (call.outs_) {
     for (const auto &out : call.outs_->outs_) {
       if (out.is_loc_) { os << "*"; }

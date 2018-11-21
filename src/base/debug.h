@@ -14,12 +14,24 @@
     }                                                                          \
   } while (false)
 
+#define NUM_ARGS(...)                                                          \
+  INTERNAL_NUM_ARGS(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#define INTERNAL_NUM_ARGS(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, num, ...) num
+
 #define DUMP(...)                                                              \
-  [&]() {                                                                      \
-    std::string result = #__VA_ARGS__ " = ";                                   \
-    result += ::base::internal::stringify(__VA_ARGS__) + "\n";                 \
-    return result;                                                             \
-  }()
+  [&](auto &&... args) {                                                       \
+    return (std::string{} + ... + args);                                       \
+  }(FOR_EACH(DUMP_, NUM_ARGS(__VA_ARGS__), __VA_ARGS__) "")
+#define DUMP_(arg) #arg " = " + ::base::internal::stringify(arg) + ", ",
+
+#define FOR_EACH(name, num, ...) BASE_INTERNAL_FOR_EACH(name, num, __VA_ARGS__)
+#define BASE_INTERNAL_FOR_EACH(name, num, ...) BASE_APPLY_##num(name, __VA_ARGS__)
+#define BASE_APPLY_1(macro, a) macro(a)
+#define BASE_APPLY_2(macro, a, ...) macro(a) BASE_APPLY_1(macro, __VA_ARGS__)
+#define BASE_APPLY_3(macro, a, ...) macro(a) BASE_APPLY_2(macro, __VA_ARGS__)
+#define BASE_APPLY_4(macro, a, ...) macro(a) BASE_APPLY_3(macro, __VA_ARGS__)
+#define BASE_APPLY_5(macro, a, ...) macro(a) BASE_APPLY_4(macro, __VA_ARGS__)
+#define BASE_APPLY_6(macro, a, ...) macro(a) BASE_APPLY_5(macro, __VA_ARGS__)
 
 #define ASSERT_NOT_NULL(expr)                                                  \
   ([](auto &&ptr) {                                                            \
