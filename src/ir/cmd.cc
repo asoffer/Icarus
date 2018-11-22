@@ -409,22 +409,15 @@ void SetRet(size_t n, Val const &v) {
         },
         v.value);
   }
-  if (v.type == type::Generic) {
-    return SetRet(n, v.reg_or<ast::FunctionLiteral *>());
-  }
-
-  if (v.type == type::Scope) {
-    return SetRet(n, v.reg_or<ast::ScopeLiteral *>());
-  }
-  if (v.type == type::Module) { return SetRet(n, v.reg_or<Module const *>()); }
-  if (v.type == type::Block || v.type == type::OptBlock ||
-      v.type == type::RepBlock) {
-    return SetRet(n, v.reg_or<BlockSequence>());
-  }
 
   return type::Apply(v.type, [&](auto type_holder) {
     using T = typename decltype(type_holder)::type;
-    return SetRet(n, v.reg_or<T>());
+    if constexpr (std::is_same_v<T, type::Struct const *>) {
+      LOG << ir::Func::Current;
+      NOT_YET("copy to out-param");
+    } else {
+      SetRet(n, v.reg_or<T>());
+    }
   });
   UNREACHABLE(v.type->to_string());
 }

@@ -137,7 +137,6 @@ bool DispatchTableRow::SetTypes(ir::Func const &fn,
       iter->second = match;
     }
   }
-
   return true;
 }
 
@@ -168,6 +167,9 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeNonConstant(
   DispatchTableRow dispatch_table_row(std::move(binding));
 
   if (!dispatch_table_row.SetTypes(fn_option, ctx)) { return {}; }
+  dispatch_table_row.function_type_ =
+      &ctx->type_of(fn_option.get())->as<type::Function>();
+
   return dispatch_table_row;
 }
 
@@ -204,6 +206,7 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromForeignFunction(
   if (!result) { return {}; }
   result->binding_.const_ = true;
   result->function_type_  = &fn_option.type()->as<type::Function>();
+  ASSERT(result->function_type_ != nullptr);
   return result;
 }
 
@@ -240,6 +243,7 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
 
   DispatchTableRow dispatch_table_row(std::move(binding));
   dispatch_table_row.function_type_ = fn_type;
+  ASSERT(dispatch_table_row.function_type_ != nullptr);
   if (!dispatch_table_row.SetTypes(*fn_lit, args, &new_ctx)) { return {}; }
   dispatch_table_row.binding_.bound_constants_ =
       std::move(new_ctx).bound_constants_;
@@ -259,6 +263,7 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromIrFunc(
   DispatchTableRow dispatch_table_row(std::move(binding));
   if (!dispatch_table_row.SetTypes(ir_func, args, ctx)) { return {}; }
   dispatch_table_row.function_type_ = &fn_option.type()->as<type::Function>();
+  ASSERT(dispatch_table_row.function_type_ != nullptr);
   return dispatch_table_row;
 }
 
@@ -266,9 +271,11 @@ static const type::Type *ComputeRetType(
     base::vector<type::Function const *> const &fn_types) {
   ASSERT(!fn_types.empty());
   size_t num_outs = fn_types[0]->output.size();
+  ASSERT(fn_types[0] != nullptr);
   base::vector<base::vector<type::Type const *>> out_types(num_outs);
   for (size_t i = 0; i < fn_types.size(); ++i) {
     auto *fn_type = fn_types.at(i);
+    ASSERT(fn_type != nullptr);
     ASSERT(fn_type->output.size() == num_outs);
     for (size_t j = 0; j < num_outs; ++j) {
       out_types[j].push_back(fn_type->output[j]);

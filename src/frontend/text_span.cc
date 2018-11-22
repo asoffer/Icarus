@@ -18,7 +18,7 @@ static void IncrementCursor(frontend::Source *source, Cursor *cursor) {
   }
 }
 
-TextSpan::TextSpan(const TextSpan &s, const TextSpan &f)
+TextSpan::TextSpan(TextSpan const &s, TextSpan const &f)
     : start(s.start), finish(f.finish), source(ASSERT_NOT_NULL(s.source)) {
   ASSERT(s.source == f.source);
 }

@@ -6,11 +6,20 @@
 
 namespace base {
 struct Logger {
-  ~Logger() { fprintf(stderr, "\n"); }
+  Logger() = default;
+  Logger(void (*fn)()) : fn_(fn) {}
+
+  operator bool () const { return true; }
+
+  ~Logger() {
+    fprintf(stderr, "\n");
+    if (fn_) { fn_(); }
+  }
+  void (*fn_)() = nullptr;
 };
 
 template <typename T>
-const Logger &operator<<(const Logger &l, const T &t) {
+Logger const &operator<<(Logger const &l, T const &t) {
   fprintf(stderr, "%s", internal::stringify(t).c_str());
   return l;
 }
@@ -18,6 +27,6 @@ const Logger &operator<<(const Logger &l, const T &t) {
 }  // namespace base
 
 #define LOG                                                                    \
-  base::Logger{} << __FILE__ << ':' << __LINE__ << ' ' << __func__ << "] "
+  ::base::Logger{} << __FILE__ << ':' << __LINE__ << ' ' << __func__ << "] "
 
 #endif  // ICARUS_BASE_LOG_H

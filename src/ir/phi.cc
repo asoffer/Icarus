@@ -1,10 +1,11 @@
 #include "ir/phi.h"
 
-#include "type/pointer.h"
-#include "type/struct.h"
+#include "type/char_buffer.h"
 #include "type/enum.h"
 #include "type/flags.h"
-#include "type/char_buffer.h"
+#include "type/function.h"
+#include "type/pointer.h"
+#include "type/struct.h"
 
 namespace ir {
 template <typename T>
@@ -46,7 +47,10 @@ Val MakePhi(CmdIndex phi_index,
 
   return type::Apply(cmd_type, [&](auto type_holder) {
     using T = typename decltype(type_holder)::type;
-    if constexpr (std::is_same_v<T, ir::Addr>) {
+    if constexpr (std::is_same_v<T, type::Struct const *>) {
+      NOT_YET();
+      return ir::Val();
+    } else if constexpr (std::is_same_v<T, ir::Addr>) {
       return ir::ValFrom(
           MakePhi<ir::Addr>(phi_index, ConvertMap<ir::Addr>(val_map)),
           &cmd_type->as<type::Pointer>());

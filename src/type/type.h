@@ -20,7 +20,7 @@ struct Module;
 
 namespace ast {
 struct ScopeLiteral;
-struct Function;
+struct FunctionLiteral;
 }  // namespace ast
 
 namespace ir {
@@ -136,14 +136,14 @@ constexpr type::Type const *Get() {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
     UNREACHABLE();
-  } else if constexpr (std::is_base_of_v<
-                           type::Type,
-                           std::decay_t<decltype(*std::declval<T>())>>) {
+  } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return type::Type_;
-  } else if constexpr (std::is_same_v<
-                           std::decay_t<decltype(*std::declval<T>())>,
-                           ::Module>) {
+  } else if constexpr (std::is_same_v<T, ::Module const *>) {
     return type::Module;
+  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
+    return type::Generic;
+  } else if constexpr (std::is_same_v<T, ast::ScopeLiteral *>) {
+    return type::Scope;
   } else {
     NOT_YET();
   }
@@ -182,6 +182,8 @@ bool Compare(::type::Type const *t) {
     return t == ::type::Float64;
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return t == ::type::Type_;
+  } else if constexpr (std::is_same_v<T, type::Struct const *>) {
+    return t->is<type::Struct>();
   } else if constexpr (std::is_same_v<T, std::string_view>) {
     return t->is<::type::CharBuffer>();
   } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
@@ -196,12 +198,12 @@ bool Compare(::type::Type const *t) {
     return t->is<type::Struct>();
   } else if constexpr (std::is_same_v<T, ir::Func *>) {
     return t->is<type::Function>();
-  } else if constexpr (std::is_same_v<T, ast::Function *>) {
+  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
     return t == type::Generic;
   } else if constexpr (std::is_same_v<T, ::Module const *>) {
     return t == type::Module;
   } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
-    return t == type::OptBlock || t == type::Block;
+    return t == type::OptBlock || t == type::Block || t == type::RepBlock;
   } else {
     UNREACHABLE(t->to_string(), " vs ", typeid(T).name());
   }
@@ -213,7 +215,7 @@ struct ConditionalApplicator {
   template <typename Fn, typename... Args>
   static auto Apply(type::Type const *t, Fn &&fn, Args &&... args) {
     if constexpr (sizeof...(Ts) == 0) {
-      ASSERT(::type::Compare<T>(t));
+      ASSERT(::type::Compare<T>(t)) << DUMP(t, typeid(T).name());
       return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
                                   std::forward<Args>(args)...);
     } else {
@@ -242,15 +244,12 @@ auto ApplyTypes(Type const *t, Fn &&fn, Args &&... args) {
 
 template <typename Fn, typename... Args>
 auto Apply(Type const *t, Fn &&fn, Args &&... args) {
-  if (t == Block || t == OptBlock) {
-    return std::forward<Fn>(fn)(TypeHolder<ir::BlockSequence>{},
-                                std::forward<Args>(args)...);
-  }
-
   return ApplyTypes<bool, char, i8, i16, i32, i64, u8, u16, u32, u64, float,
                     double, type::Type const *, ir::EnumVal, ir::FlagsVal,
-                    ir::Addr, std::string_view>(t, std::forward<Fn>(fn),
-                                                std::forward<Args>(args)...);
+                    ir::Addr, std::string_view, ::Module const *,
+                    type::Struct const *, ast::ScopeLiteral *,
+                    ir::BlockSequence, ast::FunctionLiteral *>(
+      t, std::forward<Fn>(fn), std::forward<Args>(args)...);
 }
 
 inline bool IsNumeric(Type const *t) {

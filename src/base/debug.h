@@ -6,13 +6,10 @@
 
 #ifdef DBG
 #define ASSERT(...)                                                            \
-  do {                                                                         \
-    if (!(::base::check::internal::LhsStealer(__FILE__, __LINE__,              \
-                                              #__VA_ARGS__)                    \
-          << __VA_ARGS__)) {                                                   \
-      std::abort();                                                            \
-    }                                                                          \
-  } while (false)
+  static_cast<bool>(                                                           \
+      ::base::check::internal::LhsStealer(__FILE__, __LINE__, #__VA_ARGS__)    \
+      << __VA_ARGS__) ||                                                       \
+      base::Logger(std::abort)
 
 #define NUM_ARGS(...)                                                          \
   INTERNAL_NUM_ARGS(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
