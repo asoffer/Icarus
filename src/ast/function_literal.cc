@@ -80,9 +80,10 @@ type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
     HANDLE_CYCLIC_DEPENDENCIES;
   }
 
-  if (ctx->num_errors() > 0) {
-    return nullptr;
-  }
+  // TODO need a better way to say if there was an error recorded in a
+  // particular section of compilation. Right now we just have the grad total
+  // count.
+  if (ctx->num_errors() > 0) { return nullptr; }
 
   if (!return_type_inferred_) {
     bool err = false;

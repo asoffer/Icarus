@@ -68,6 +68,7 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
       using T = typename decltype(type_holder)::type;
       // NOTE: the use of call_stack.top()... is the same as in resolve<T>,
       // but that's apparently uncapturable due to a GCC bug.
+
       if constexpr (std::is_same_v<T, type::Struct const *>) {
         call_buf.append(
             is_reg ? regs.get<ir::Addr>(args_.get<ir::Register>(offset).value)

@@ -132,6 +132,8 @@ constexpr type::Type const *Get() {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
     UNREACHABLE();
+  } else if constexpr (std::is_same_v<T, ir::Func *>) {
+    UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
@@ -192,6 +194,8 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Flags>();
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     return t->is<::type::Pointer>();
+  } else if constexpr (std::is_same_v<T, ir::Func *>) {
+    return t->is<::type::Function>();
   } else if constexpr (std::is_same_v<T, ast::ScopeLiteral *>) {
     return t == type::Scope;
   } else if constexpr (std::is_same_v<T, type::Struct const *>) {
@@ -247,7 +251,7 @@ auto Apply(Type const *t, Fn &&fn, Args &&... args) {
   return ApplyTypes<bool, char, i8, i16, i32, i64, u8, u16, u32, u64, float,
                     double, type::Type const *, ir::EnumVal, ir::FlagsVal,
                     ir::Addr, std::string_view, ::Module const *,
-                    type::Struct const *, ast::ScopeLiteral *,
+                    type::Struct const *, ast::ScopeLiteral *, ir::Func *,
                     ir::BlockSequence, ast::FunctionLiteral *>(
       t, std::forward<Fn>(fn), std::forward<Args>(args)...);
 }

@@ -398,7 +398,7 @@ base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
       type::EmitCopyInit(ctx->type_of(init_val.get()), t,
                          init_val->EmitIR(ctx)[0], addr, ctx);
     } else {
-      t->EmitInit(addr, ctx);
+      if (!is_arg_) { t->EmitInit(addr, ctx); }
     }
     return {ir::Val::Reg(addr, t)};
   }

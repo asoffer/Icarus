@@ -412,14 +412,15 @@ void SetRet(size_t n, Val const &v) {
 
   return type::Apply(v.type, [&](auto type_holder) {
     using T = typename decltype(type_holder)::type;
-    if constexpr (std::is_same_v<T, type::Struct const *>) {
+    if constexpr (std::is_same_v<T, ir::Func *>) {
+      NOT_YET(v.type->to_string());
+    } else if constexpr (std::is_same_v<T, type::Struct const *>) {
       LOG << ir::Func::Current;
       NOT_YET("copy to out-param");
     } else {
       SetRet(n, v.reg_or<T>());
     }
   });
-  UNREACHABLE(v.type->to_string());
 }
 
 TypedRegister<Addr> PtrIncr(Register ptr, RegisterOr<i32> inc,
