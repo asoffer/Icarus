@@ -99,7 +99,7 @@ static T LoadValue(ir::Addr addr, const base::untyped_buffer &stack) {
     case ir::Addr::Kind::Heap: return *static_cast<T *>(addr.as_heap); break;
     case ir::Addr::Kind::Stack: return stack.get<T>(addr.as_stack); break;
   }
-  UNREACHABLE();
+  UNREACHABLE(DUMP(static_cast<int>(addr.kind)));
 }
 
 template <typename T>
@@ -208,7 +208,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(LoadValue<ir::Addr>(resolve<ir::Addr>(cmd.reg_), stack_));
       break;
     case ir::Op::LoadFunc:
-      save(LoadValue<ir::Func *>(resolve<ir::Addr>(cmd.reg_), stack_));
+      save(LoadValue<ir::AnyFunc>(resolve<ir::Addr>(cmd.reg_), stack_));
       break;
 #define CASE(op, member, fn)                                                   \
   case op: {                                                                   \
