@@ -255,7 +255,7 @@ Register Field(Register r, type::Struct const *t, size_t n) {
   return cmd.result;
 }
 
-static Register Reserve(type::Type const *t, bool incr_num_regs = true) {
+Register Reserve(type::Type const *t, bool incr_num_regs = true) {
   auto arch    = Architecture::InterprettingMachine();
   auto reg_val = arch.MoveForwardToAlignment(t, Func::Current->reg_size_);
   auto result  = Register(reg_val);
@@ -284,12 +284,6 @@ Cmd::Cmd(const type::Type *t, Op op) : op_code_(op) {
   Func::Current->references_[result];  // Guarantee it exists.
   // TODO for implicitly declared out-params of a Call, map them to the call.
   Func::Current->reg_to_cmd_.emplace(result, cmd_index);
-}
-
-Register OutParams::AppendReg(type::Type const *t) {
-  auto reg = Reserve(t, false);
-  outs_.emplace_back(reg, false);
-  return reg;
 }
 
 BlockSequence MakeBlockSeq(base::vector<ir::BlockSequence> const &blocks);
@@ -391,28 +385,19 @@ TypedRegister<Addr> Alloca(const type::Type *t) {
   return cmd.result;
 }
 
-void SetRet(size_t n, Val const &v) {
-  ASSERT(v.type != nullptr);
+static TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
+  ASSERT(t->is_big());
+  auto &cmd    = MakeCmd(type::Ptr(t), Op::GetRet);
+  cmd.get_ret_ = n;
+  return cmd.result;
+}
 
-  if (v.type->is<type::Function>()) {
-    return std::visit(
-        [&](auto &val) {
-          using val_t = std::decay_t<decltype(val)>;
-          if constexpr (std::is_same_v<val_t, ir::Register> ||
-                        std::is_same_v<val_t, ir::AnyFunc>) {
-            return SetRet(n, RegisterOr<AnyFunc>(val));
-          } else {
-            UNREACHABLE(val);
-          }
-        },
-        v.value);
-  }
-
-  return type::Apply(v.type, [&](auto type_holder) {
+void SetRet(size_t n, Val const &v, Context *ctx) {
+  return type::Apply(ASSERT_NOT_NULL(v.type), [&](auto type_holder) {
     using T = typename decltype(type_holder)::type;
     if constexpr (std::is_same_v<T, type::Struct const *>) {
-      LOG << ir::Func::Current;
-      NOT_YET("copy to out-param");
+      auto *t = ir::Func::Current->type_->output[n];
+      t->EmitAssign(t, v, GetRet(n, t), ctx);
     } else {
       SetRet(n, v.reg_or<T>());
     }
@@ -587,10 +572,11 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
     os << call.fn_.val_.foreign().name();
   }
   os << call.arguments_->to_string();
+
   if (call.outs_) {
-    for (const auto &out : call.outs_->outs_) {
-      if (out.is_loc_) { os << "*"; }
-      os << out.reg_;
+    for (size_t i = 0; i < call.outs_->size(); ++i) {
+      if (call.outs_->is_loc_[i]) { os << "*"; }
+      os << call.outs_->regs_[i];
     }
   }
 

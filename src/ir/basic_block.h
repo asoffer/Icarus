@@ -4,6 +4,7 @@
 #include "base/container/vector.h"
 #include "base/untyped_buffer.h"
 #include "ir/arguments.h"
+#include "ir/out_params.h"
 
 #include "cmd.h"
 

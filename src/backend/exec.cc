@@ -500,38 +500,38 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       // NOTE: This is a hack using heap address slots to represent registers
       // since they are both void* and are used identically in the
       // interpretter.
-      base::vector<ir::Addr> ret_slots;
+      base::vector<ir::Addr> return_slots;
       if (cmd.call_.outs_ != nullptr) {
-        ret_slots.reserve(cmd.call_.outs_->outs_.size());
-        for (const auto &out_param : cmd.call_.outs_->outs_) {
-          if (out_param.is_loc_) {
-            ret_slots.push_back(resolve<ir::Addr>(out_param.reg_));
+        return_slots.reserve(cmd.call_.outs_->size());
+        for (size_t i = 0; i < cmd.call_.outs_->size(); ++i) {
+          if (cmd.call_.outs_->is_loc_[i]) {
+            return_slots.push_back(resolve<ir::Addr>(cmd.call_.outs_->regs_[i]));
           } else {
             ir::Addr addr;
             addr.kind    = ir::Addr::Kind::Heap;
-            addr.as_heap = call_stack.top().regs_.raw(out_param.reg_.value);
-            ret_slots.push_back(addr);
+            addr.as_heap =
+                call_stack.top().regs_.raw(cmd.call_.outs_->regs_[i].value);
+            return_slots.push_back(addr);
           }
         }
       }
 
       auto call_buf =
           cmd.call_.arguments_->PrepareCallBuffer(call_stack.top().regs_);
-
       ir::AnyFunc f = resolve(cmd.call_.fn_);
 
       // TODO you need to be able to determine how many args there are
       if (f.is_fn()) {
-        backend::Execute(f.func(), call_buf, ret_slots, this);
+        backend::Execute(f.func(), call_buf, return_slots, this);
       } else {
         auto ff = f.foreign();
         if (ff.name() == "malloc") {
           ir::Addr addr;
           addr.kind    = ir::Addr::Kind::Heap;
           addr.as_heap = malloc(call_buf.get<i32>(0));
-          StoreValue(addr, ret_slots.at(0), &stack_);
+          StoreValue(addr, return_slots.at(0), &stack_);
         } else if (ff.name() == "abs") {
-          StoreValue(std::abs(call_buf.get<i32>(0)), ret_slots.at(0), &stack_);
+          StoreValue(std::abs(call_buf.get<i32>(0)), return_slots.at(0), &stack_);
         } else if (ff.name() == "sleep") {
           std::this_thread::sleep_for(
               std::chrono::seconds(call_buf.get<i32>(0)));
@@ -679,6 +679,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         return lit == cmd.block_seq_contains_.lit_;
       }));
     } break;
+    case ir::Op::GetRet: save(ret_slots.at(cmd.get_ret_)); break;
     case ir::Op::SetRetBool:
       StoreValue(resolve(cmd.set_ret_bool_.val_),
                  ret_slots.at(cmd.set_ret_bool_.ret_num_), &stack_);

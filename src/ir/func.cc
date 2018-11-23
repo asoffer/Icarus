@@ -58,9 +58,9 @@ Func::GetIncomingBlocks() const {
   base::unordered_map<BasicBlock const *,
                       std::unordered_set<BasicBlock const *>>
       incoming;
-  for (const auto &b : blocks_) {
+  for (auto const &b : blocks_) {
     ASSERT(b.cmds_.size() > 0u);
-    const auto &last = b.cmds_.back();
+    auto const &last = b.cmds_.back();
     switch (last.op_code_) {
       case Op::UncondJump: incoming[&block(last.block_)].insert(&b); break;
       case Op::CondJump:
@@ -81,10 +81,10 @@ Cmd const *Func::Command(Register reg) const {
 }
 
 static base::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
-    ir::Func *fn, const base::vector<ast::Expression *> &exprs) {
+    ir::Func *fn, base::vector<ast::Expression *> const &exprs) {
   base::vector<std::pair<ir::Func, prop::PropertyMap>> result;
   // Resreve to guarantee pointer stability.
-  for (const auto &expr : exprs) {
+  for (auto const &expr : exprs) {
     auto & [ func, prop_map ] = result.emplace_back(
         std::piecewise_construct,
         std::forward_as_tuple(
@@ -95,7 +95,7 @@ static base::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
       ir::BasicBlock::Current = func.entry();
       // TODO bound constants?
       Context ctx(fn->mod_);
-      ir::SetRet(0, expr->EmitIR(&ctx)[0]);
+      ir::SetRet(0, expr->EmitIR(&ctx)[0], &ctx);
       ir::ReturnJump();
     }
     prop_map = prop::PropertyMap(&func);
@@ -129,7 +129,7 @@ void Func::CheckInvariants() {
 
   for (auto const & [ block, cmd ] : cmds) {
     // TODO can preconditions be foreign functions?!
-    for (const auto & [ precond, precond_prop_map ] :
+    for (auto const & [ precond, precond_prop_map ] :
          cmd->call_.fn_.val_.func()->preconditions_) {
       auto prop_copy = precond_prop_map.with_args(*cmd->call_.arguments_,
                                                   prop_map.view_.at(block));

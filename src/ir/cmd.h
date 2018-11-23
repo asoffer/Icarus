@@ -24,25 +24,7 @@ struct Function;
 
 namespace ir {
 struct Arguments;
-// Represents an output parameter. The boolean value denotes whether the
-// register is a register to be filled with the value, or it is the address to
-// which the value should be written.
-struct OutParam {
-  OutParam(Register reg, bool is_loc) : reg_(reg), is_loc_(is_loc) {}
-  OutParam(const OutParam &) noexcept = default;
-  OutParam(OutParam &&) noexcept      = default;
-  OutParam &operator=(const OutParam &) noexcept = default;
-  OutParam &operator=(OutParam &&) noexcept = default;
-
-  Register reg_;
-  bool is_loc_;
-};
-
-struct OutParams {
-  Register AppendReg(type::Type const *);
-  void AppendLoc(Register reg) { outs_.emplace_back(reg, true); }
-  base::vector<OutParam> outs_;
-};
+struct OutParams;
 
 enum class Op : uint16_t {
 #define OP_MACRO(op, ...) op,
@@ -203,6 +185,7 @@ struct Cmd {
   union {
     Empty empty_;
     Register reg_;
+    size_t get_ret_;
     type::Type const *type_;
     ast::StructLiteral *struct_lit_;
 
@@ -436,7 +419,7 @@ void SetRet(size_t n, T t) {
     // Func::Current->references_[r.reg_].insert(cmd.result); }
   }
 }
-void SetRet(size_t n, Val const &v2);
+void SetRet(size_t n, Val const &v2, Context *ctx = nullptr);
 
 template <typename Lhs, typename Rhs>
 RegisterOr<bool> Lt(Lhs lhs, Rhs rhs) {
