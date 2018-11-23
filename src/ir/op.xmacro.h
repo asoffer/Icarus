@@ -44,7 +44,7 @@ OP_MACRO(StoreFloat32,         Store,               float,                store_
 OP_MACRO(StoreFloat64,         Store,               double,               store_float64_)
 OP_MACRO(StoreType,            Store,               type::Type            const*,                  store_type_)
 OP_MACRO(StoreEnum,            Store,               EnumVal,              store_enum_)
-OP_MACRO(StoreFunc,            Store,               ir::Func*,            store_func_)
+OP_MACRO(StoreFunc,            Store,               ir::AnyFunc,          store_func_)
 OP_MACRO(StoreFlags,           Store,               FlagsVal,             store_flags_)
 OP_MACRO(StoreAddr,            Store,               ir::Addr,             store_addr_)
 OP_MACRO(PrintBool,            Print,               bool,                 bool_arg_)

@@ -181,13 +181,11 @@ std::optional<DispatchTableRow> DispatchTableRow::Make(
   }
 
   ir::Val fn_val = backend::Evaluate(fn_option, ctx).at(0);
-  if (auto *ff = std::get_if<ir::ForeignFn>(&fn_val.value)) {
-    return MakeFromForeignFunction(fn_option, args, ctx);
+  if (auto *f = std::get_if<ir::AnyFunc>(&fn_val.value)) {
+    return f->is_fn() ? MakeFromIrFunc(fn_option, *f->func(), args, ctx)
+                      : MakeFromForeignFunction(fn_option, args, ctx);
 
-  } else if (auto *ir_func = std::get_if<ir::Func *>(&fn_val.value)) {
-    return MakeFromIrFunc(fn_option, **ir_func, args, ctx);
-
-  } else if (auto *fn = std::get_if<FunctionLiteral*>(&fn_val.value)) {
+  } else if (auto *fn = std::get_if<FunctionLiteral *>(&fn_val.value)) {
     return MakeFromFnLit(fn_option, *fn, args, ctx);
 
   } else {

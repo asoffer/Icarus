@@ -132,7 +132,7 @@ constexpr type::Type const *Get() {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
     UNREACHABLE();
-  } else if constexpr (std::is_same_v<T, ir::Func *>) {
+  } else if constexpr (std::is_same_v<T, ir::AnyFunc>) {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     UNREACHABLE();
@@ -182,10 +182,10 @@ bool Compare(::type::Type const *t) {
     return t == ::type::Float32;
   } else if constexpr (std::is_same_v<T, double>) {
     return t == ::type::Float64;
-  } else if constexpr (std::is_same_v<T, type::Type const *>) {
+  } else if constexpr (std::is_same_v<T, ::type::Type const *>) {
     return t == ::type::Type_;
-  } else if constexpr (std::is_same_v<T, type::Struct const *>) {
-    return t->is<type::Struct>();
+  } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
+    return t->is<::type::Struct>();
   } else if constexpr (std::is_same_v<T, std::string_view>) {
     return t->is<::type::CharBuffer>();
   } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
@@ -194,20 +194,18 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Flags>();
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     return t->is<::type::Pointer>();
-  } else if constexpr (std::is_same_v<T, ir::Func *>) {
-    return t->is<::type::Function>();
   } else if constexpr (std::is_same_v<T, ast::ScopeLiteral *>) {
-    return t == type::Scope;
-  } else if constexpr (std::is_same_v<T, type::Struct const *>) {
-    return t->is<type::Struct>();
-  } else if constexpr (std::is_same_v<T, ir::Func *>) {
-    return t->is<type::Function>();
+    return t == ::type::Scope;
+  } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
+    return t->is<::type::Struct>();
+  } else if constexpr (std::is_same_v<T, ir::AnyFunc>) {
+    return t->is<::type::Function>();
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
-    return t == type::Generic;
+    return t == ::type::Generic;
   } else if constexpr (std::is_same_v<T, ::Module const *>) {
-    return t == type::Module;
+    return t == ::type::Module;
   } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
-    return t == type::OptBlock || t == type::Block || t == type::RepBlock;
+    return t == ::type::OptBlock || t == ::type::Block || t == ::type::RepBlock;
   } else {
     UNREACHABLE(t->to_string(), " vs ", typeid(T).name());
   }
@@ -251,7 +249,7 @@ auto Apply(Type const *t, Fn &&fn, Args &&... args) {
   return ApplyTypes<bool, char, i8, i16, i32, i64, u8, u16, u32, u64, float,
                     double, type::Type const *, ir::EnumVal, ir::FlagsVal,
                     ir::Addr, std::string_view, ::Module const *,
-                    type::Struct const *, ast::ScopeLiteral *, ir::Func *,
+                    type::Struct const *, ast::ScopeLiteral *, ir::AnyFunc,
                     ir::BlockSequence, ast::FunctionLiteral *>(
       t, std::forward<Fn>(fn), std::forward<Args>(args)...);
 }

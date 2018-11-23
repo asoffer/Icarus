@@ -4,6 +4,7 @@
 #include "base/container/vector.h"
 #include "base/strong_types.h"
 #include "base/types.h"
+#include "ir/any_func.h"
 
 DEFINE_STRONG_INT(ir, BlockIndex, i32, -1);
 DEFINE_STRONG_INT(ir, EnumVal, size_t, 0);
@@ -47,36 +48,6 @@ inline bool operator==(const BlockSequence &lhs, const BlockSequence &rhs) {
 // TODO not really comparable. just for variant? :(
 inline bool operator<(const BlockSequence &lhs, const BlockSequence &rhs) {
   return lhs.seq_ < rhs.seq_;
-}
-
-struct ForeignFn {
-  std::string_view name_;
-  ast::Expression *expr_;
-};
-inline bool operator==(ForeignFn lhs, ForeignFn rhs) {
-  return lhs.name_ == rhs.name_;
-}
-inline bool operator<(ForeignFn lhs, ForeignFn rhs) {
-  return lhs.name_ < rhs.name_;
-}
-inline bool operator>(ForeignFn lhs, ForeignFn rhs) {
-  return rhs.name_ < lhs.name_;
-}
-
-// TODO This is a terrible name. Pick something better.
-struct AnyFunc {
-  AnyFunc(Func *fn = nullptr) : fn_(fn), is_fn_(true) {}
-  AnyFunc(ForeignFn foreign) : foreign_(foreign), is_fn_(false) {}
-  union {
-    ir::Func *fn_;
-    ForeignFn foreign_;
-  };
-  bool is_fn_;
-};
-
-inline std::ostream &operator<<(std::ostream &os, AnyFunc a) {
-  if (a.is_fn_) { return os << a.fn_; }
-  return os << a.foreign_;
 }
 
 struct Addr {

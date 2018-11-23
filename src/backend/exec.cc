@@ -518,22 +518,21 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       auto call_buf =
           cmd.call_.arguments_->PrepareCallBuffer(call_stack.top().regs_);
 
+      ir::AnyFunc f = resolve(cmd.call_.fn_);
+
       // TODO you need to be able to determine how many args there are
-      if (cmd.call_.fn_.is_reg_) {
-        // TODO what if the register is a foerign fn?
-        backend::Execute(resolve<ir::Func *>(cmd.call_.fn_.reg_), call_buf,
-                         ret_slots, this);
-      } else if (cmd.call_.fn_.val_.is_fn_) {
-        backend::Execute(cmd.call_.fn_.val_.fn_, call_buf, ret_slots, this);
+      if (f.is_fn()) {
+        backend::Execute(f.func(), call_buf, ret_slots, this);
       } else {
-        if (cmd.call_.fn_.val_.foreign_.name_ == "malloc") {
+        auto ff = f.foreign();
+        if (ff.name() == "malloc") {
           ir::Addr addr;
           addr.kind    = ir::Addr::Kind::Heap;
           addr.as_heap = malloc(call_buf.get<i32>(0));
           StoreValue(addr, ret_slots.at(0), &stack_);
-        } else if (cmd.call_.fn_.val_.foreign_.name_ == "abs") {
+        } else if (ff.name() == "abs") {
           StoreValue(std::abs(call_buf.get<i32>(0)), ret_slots.at(0), &stack_);
-        } else if (cmd.call_.fn_.val_.foreign_.name_ == "sleep") {
+        } else if (ff.name() == "sleep") {
           std::this_thread::sleep_for(
               std::chrono::seconds(call_buf.get<i32>(0)));
         } else {

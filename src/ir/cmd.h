@@ -269,7 +269,7 @@ struct Cmd {
     Store<double> store_float64_;
     Store<type::Type const *> store_type_;
     Store<EnumVal> store_enum_;
-    Store<Func *> store_func_;
+    Store<AnyFunc> store_func_;
     Store<FlagsVal> store_flags_;
     Store<Addr> store_addr_;
     Store<BlockSequence> store_block_;

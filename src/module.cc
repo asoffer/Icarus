@@ -131,8 +131,8 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
     auto &decl = stmt->as<ast::Declaration>();
     if (decl.id_ != "main") { continue; }
     auto f = backend::EvaluateAs<ir::AnyFunc>(decl.init_val.get(), &ctx);
-    ASSERT(f.is_fn_);
-    auto ir_fn = f.fn_;
+    ASSERT(f.is_fn());
+    auto ir_fn = f.func();
 
     // TODO check more than one?
 

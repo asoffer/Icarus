@@ -76,7 +76,6 @@ Val Val::Flags(const type::Flags *flags_type, FlagsVal val) {
 }
 
 Val Val::Func(ast::FunctionLiteral *fn) { return Val(type::Generic, fn); }
-Val Val::Func(ir::Func *fn) { return Val(fn->type_, fn); }
 
 static std::string Escaped(std::string_view sv) {
   std::stringstream ss;
@@ -130,10 +129,10 @@ std::string Val::to_string() const {
                        : this->type->as<type::Flags>().members_.at(f.value);
           },
           [](const type::Type *t) -> std::string { return t->to_string(); },
-          [](ir::Func *f) -> std::string {
-            ASSERT(f != nullptr);
-            ASSERT(f->type_ != nullptr);
-            return "fn." + f->name() + "-" + f->type_->to_string();
+          [](AnyFunc a) -> std::string {
+            std::stringstream ss;
+            ss << a;
+            return ss.str();
           },
           [](ast::ScopeLiteral *s) -> std::string {
             return "scope(" + std::to_string(reinterpret_cast<uintptr_t>(s)) +
@@ -160,7 +159,7 @@ std::string Val::to_string() const {
             return "builtin(" + n.to_string() + ")";
           },
           [](ForeignFn f) -> std::string {
-            return "foreign(" + std::string(f.name_) + ")";
+            return "foreign(" + std::string(f.name()) + ")";
           }},
       value);
 }

@@ -90,9 +90,7 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
     } else if (t->is<type::Function>()) {
       // TODO foreign func, etc?
       auto any_func = result_buf.get<ir::AnyFunc>(offset);
-      results.push_back(any_func.is_fn_
-                            ? ir::Val::Func(any_func.fn_)
-                            : ir::Val::Foreign(t, any_func.foreign_));
+      results.push_back(ir::Val::Func(t, any_func));
     } else if (t == type::Module) {
       results.emplace_back(result_buf.get<Module const *>(offset));
     } else if (t == type::Generic || t->is<type::Function>()) {

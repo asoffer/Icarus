@@ -33,9 +33,9 @@ ir::Val ErrorFunc() {
 }
 
 ir::Val AsciiFunc() {
-  static ir::Func *ascii_func_ = []() {
-    auto fn = new ir::Func(nullptr, type::Func({type::Int8}, {type::Char}),
-                           {{"", nullptr}});
+  auto *fn_type                = type::Func({type::Int8}, {type::Char});
+  static ir::Func *ascii_func_ = [&]() {
+    auto fn = new ir::Func(nullptr, fn_type, {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
       ir::SetRet(0, Trunc(fn->Argument(0)));
@@ -43,19 +43,19 @@ ir::Val AsciiFunc() {
     }
     return fn;
   }();
-  return ir::Val::Func(ascii_func_);
+  return ir::Val::Func(fn_type, ascii_func_);
 }
 
 ir::Val DebugIrFunc() {
-  static ir::Func *debug_ir_func_ =
-      new ir::Func(nullptr, type::Func({}, {}), {});
-  return ir::Val::Func(debug_ir_func_);
+  auto *fn_type                   = type::Func({}, {});
+  static ir::Func *debug_ir_func_ = new ir::Func(nullptr, fn_type, {});
+  return ir::Val::Func(fn_type, debug_ir_func_);
 }
 
 ir::Val OrdFunc() {
-  static ir::Func *ord_func_ = []() {
-    auto fn = new ir::Func(nullptr, type::Func({type::Char}, {type::Int8}),
-                           {{"", nullptr}});
+  auto *fn_type              = type::Func({type::Char}, {type::Int8});
+  static ir::Func *ord_func_ = [&]() {
+    auto fn = new ir::Func(nullptr, fn_type, {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
       ir::SetRet(0, Extend(fn->Argument(0)));
@@ -63,13 +63,13 @@ ir::Val OrdFunc() {
     }
     return fn;
   }();
-  return ir::Val::Func(ord_func_);
+  return ir::Val::Func(fn_type, ord_func_);
 }
 
 ir::Val BytesFunc() {
-  static ir::Func *bytes_func_ = []() {
-    auto fn = new ir::Func(nullptr, type::Func({type::Type_}, {type::Int64}),
-                           {{"", nullptr}});
+  auto *fn_type                = type::Func({type::Type_}, {type::Int64});
+  static ir::Func *bytes_func_ = [&]() {
+    auto fn = new ir::Func(nullptr, fn_type, {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
       ir::SetRet(0, Bytes(fn->Argument(0)));
@@ -77,13 +77,13 @@ ir::Val BytesFunc() {
     }
     return fn;
   }();
-  return ir::Val::Func(bytes_func_);
+  return ir::Val::Func(fn_type, bytes_func_);
 }
 
 ir::Val AlignFunc() {
-  static ir::Func *bytes_func_ = []() {
-    auto fn = new ir::Func(nullptr, type::Func({type::Type_}, {type::Int64}),
-                           {{"", nullptr}});
+  auto *fn_type                = type::Func({type::Type_}, {type::Int64});
+  static ir::Func *bytes_func_ = [&]() {
+    auto fn = new ir::Func(nullptr, fn_type, {{"", nullptr}});
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
       ir::SetRet(0, Align(fn->Argument(0)));
@@ -91,7 +91,7 @@ ir::Val AlignFunc() {
     }
     return fn;
   }();
-  return ir::Val::Func(bytes_func_);
+  return ir::Val::Func(fn_type, bytes_func_);
 }
 
 static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
@@ -176,8 +176,9 @@ static void EmitOneCallDispatch(
 
   // After the last check, if you pass, you should dispatch
   base::vector<std::pair<std::string, ast::Expression *>> *const_args = nullptr;
-  if (auto **fn_to_call = std::get_if<ir::Func *>(&callee.value)) {
-    const_args = &((**fn_to_call).args_);
+  if (auto *fn_to_call = std::get_if<ir::AnyFunc>(&callee.value)) {
+    ASSERT(fn_to_call->is_fn());
+    const_args = &(fn_to_call->func()->args_);
   }
 
   base::vector<ir::Val> args;
@@ -257,19 +258,9 @@ static void EmitOneCallDispatch(
     }
   }
 
-  std::visit(
-      [&](auto &val) {
-        using val_t = std::decay_t<decltype(val)>;
-        if constexpr (std::is_same_v<val_t, ir::Func *> ||
-                      std::is_same_v<val_t, ir::ForeignFn>) {
-          ir::Call(ir::AnyFunc{val}, std::move(call_args), std::move(outs));
-        } else if constexpr (std::is_same_v<val_t, ir::Register>) {
-          ir::Call(val, std::move(call_args), std::move(outs));
-        } else {
-          UNREACHABLE(val);
-        }
-      },
-      callee.value);
+  ASSERT(std::holds_alternative<ir::Register>(callee.value) ||
+         std::holds_alternative<ir::AnyFunc>(callee.value));
+  ir::Call(callee.reg_or<ir::AnyFunc>(), std::move(call_args), std::move(outs));
 }
 
 base::vector<ir::Val> EmitCallDispatch(
@@ -536,8 +527,8 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
 
       ir::OutParams outs;
       auto reg = outs.AppendReg(out_type);
-      ir::Call(ir::AnyFunc{std::get<ir::Func *>(fn_val.value)},
-               std::move(call_args), std::move(outs));
+      ir::Call(std::get<ir::AnyFunc>(fn_val.value), std::move(call_args),
+               std::move(outs));
 
       return {ir::Val::Reg(reg, out_type)};
 
@@ -550,7 +541,7 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
 
       return {};
     } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {
-      return {ir::Val::Foreign(
+      return {ir::Val::Func(
           backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx),
           ir::ForeignFn{
               backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx),

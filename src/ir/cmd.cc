@@ -398,10 +398,8 @@ void SetRet(size_t n, Val const &v) {
     return std::visit(
         [&](auto &val) {
           using val_t = std::decay_t<decltype(val)>;
-          if constexpr (std::is_same_v<val_t, ir::Func *> ||
-                        std::is_same_v<val_t, ir::ForeignFn>) {
-            return SetRet(n, ir::AnyFunc{val});
-          } else if constexpr (std::is_same_v<val_t, ir::Register>) {
+          if constexpr (std::is_same_v<val_t, ir::Register> ||
+                        std::is_same_v<val_t, ir::AnyFunc>) {
             return SetRet(n, RegisterOr<AnyFunc>(val));
           } else {
             UNREACHABLE(val);
@@ -412,9 +410,7 @@ void SetRet(size_t n, Val const &v) {
 
   return type::Apply(v.type, [&](auto type_holder) {
     using T = typename decltype(type_holder)::type;
-    if constexpr (std::is_same_v<T, ir::Func *>) {
-      NOT_YET(v.type->to_string());
-    } else if constexpr (std::is_same_v<T, type::Struct const *>) {
+    if constexpr (std::is_same_v<T, type::Struct const *>) {
       LOG << ir::Func::Current;
       NOT_YET("copy to out-param");
     } else {
@@ -585,10 +581,10 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {
 static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
   if (call.fn_.is_reg_) {
     os << call.fn_.reg_;
-  } else if (call.fn_.val_.is_fn_) {
-    os << call.fn_.val_.fn_;
+  } else if (call.fn_.val_.is_fn()) {
+    os << call.fn_.val_.func();
   } else {
-    os << call.fn_.val_.foreign_.name_;
+    os << call.fn_.val_.foreign().name();
   }
   os << call.arguments_->to_string();
   if (call.outs_) {

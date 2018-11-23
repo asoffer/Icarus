@@ -29,6 +29,10 @@ struct Expr<bool> {
 
   LhsStealer stealer;
   bool val;
+
+  Expr<bool> operator||(bool b) const { return Expr<bool>(stealer, val || b); }
+  Expr<bool> operator&&(bool b) const { return Expr<bool>(stealer, val || b); }
+
   operator bool() {
     if (val) { return true; }
     std::cerr << "Expectation failed (" << stealer.file << ", line #"

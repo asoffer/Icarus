@@ -266,7 +266,7 @@ base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
                                  std::move(args));
   }
 
-  return {ir::Val::Func(ir_func)};
+  return {ir::Val::Func(ir_func->type_, ir_func)};
 }
 
 void FunctionLiteral::CompleteBody(Context *ctx) {

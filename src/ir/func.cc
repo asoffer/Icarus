@@ -118,8 +118,8 @@ void Func::CheckInvariants() {
       // allow preconditions. This can be handled correctly by declaring the
       // foreign function locally and wrapping it.
       if (cmd.call_.fn_.is_reg_) { continue; }
-      if (!cmd.call_.fn_.val_.is_fn_) { continue; }
-      if (cmd.call_.fn_.val_.fn_->preconditions_.empty()) { continue; }
+      if (!cmd.call_.fn_.val_.is_fn()) { continue; }
+      if (cmd.call_.fn_.val_.func()->preconditions_.empty()) { continue; }
       cmds.emplace_back(&block, &cmd);
     }
   }
@@ -128,8 +128,9 @@ void Func::CheckInvariants() {
   auto prop_map = prop::PropertyMap(this);
 
   for (auto const & [ block, cmd ] : cmds) {
+    // TODO can preconditions be foreign functions?!
     for (const auto & [ precond, precond_prop_map ] :
-         cmd->call_.fn_.val_.fn_->preconditions_) {
+         cmd->call_.fn_.val_.func()->preconditions_) {
       auto prop_copy = precond_prop_map.with_args(*cmd->call_.arguments_,
                                                   prop_map.view_.at(block));
 

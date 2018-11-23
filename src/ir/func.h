@@ -107,6 +107,9 @@ struct Func {
                       std::unordered_set<BasicBlock const *>>
   GetIncomingBlocks() const;
 };
+
+static_assert(alignof(Func) > 1);
+
 std::ostream &operator<<(std::ostream &, ir::Func const &);
 
 namespace internal {

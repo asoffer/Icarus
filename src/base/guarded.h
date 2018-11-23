@@ -1,6 +1,8 @@
 #ifndef ICARUS_BASE_GUARDED_H
 #define ICARUS_BASE_GUARDED_H
+
 #include <mutex>
+#include <memory>
 
 namespace base {
 template <typename T>

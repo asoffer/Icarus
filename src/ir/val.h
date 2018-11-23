@@ -8,6 +8,7 @@
 
 #include "base/strong_types.h"
 #include "base/types.h"
+#include "ir/any_func.h"
 #include "ir/flags_val.h"
 #include "ir/interface.h"
 #include "ir/register.h"
@@ -40,7 +41,6 @@ inline FlagsVal operator&(FlagsVal lhs, FlagsVal rhs) {
   return FlagsVal{lhs.value & rhs.value};
 }
 
-struct Func;
 }  // namespace ir
 
 namespace ir {
@@ -49,10 +49,10 @@ struct Val {
   // TODO make trivial: interface
   std::variant<Register, ir::Addr, bool, char, float, double, i8, i16, i32, i64,
                u8, u16, u32, u64, EnumVal, FlagsVal, const type::Type *,
-               type::Struct *, ir::Func *, ast::FunctionLiteral *,
+               type::Struct *, AnyFunc, ast::FunctionLiteral *,
                ast::ScopeLiteral *, ir::Interface, ast::Expression *,
                BlockIndex, std::string_view, const Module *, BlockSequence,
-               BuiltinGenericIndex, ForeignFn>
+               BuiltinGenericIndex>
       value{false};
 
   template <typename T>
@@ -78,11 +78,11 @@ struct Val {
     return Val(type::Generic, BuiltinGenericIndex{n});
   }
   // TODO take an EnumVal.
-  static Val Enum(const type::Enum *enum_type, size_t integral_val);
-  static Val Flags(const type::Flags *flags_type, FlagsVal val);
-  static Val Foreign(const type::Type *t, ForeignFn f) { return Val(t, f); }
-  static Val Func(ir::Func *fn);  // TODO deprecate?
-  static Val Func(ast::FunctionLiteral *fn);
+  static Val Enum(type::Enum const *enum_type, size_t integral_val);
+  static Val Flags(type::Flags const *flags_type, FlagsVal val);
+  static Val Func(type::Type const *t, AnyFunc f) { return Val(t, f); }
+  static Val Func(
+      ast::FunctionLiteral *fn);  // TODO call this a generic funciton
   static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Block(ast::BlockLiteral *b);
   static Val BlockSeq(BlockSequence b);
