@@ -169,10 +169,10 @@ static void EmitOneCallDispatch(
   if (!binding.const_) {
     if (!binding.fn_.get()->is<ast::Declaration>() ||
         !binding.fn_.get()->as<ast::Declaration>().is_arg_) {
-      callee = ir::Val::Reg(
-          ir::Load<ir::AnyFunc>(std::get<ir::Register>(callee.value),
-                                binding.fn_.type()),
-          binding.fn_.type());
+      if (auto *reg = std::get_if<ir::Register>(&callee.value)) {
+        callee = ir::Val::Reg(ir::Load<ir::AnyFunc>(*reg, binding.fn_.type()),
+                              binding.fn_.type());
+      }
     }
   }
   ASSERT(callee.type, Is<type::Function>());

@@ -61,7 +61,7 @@ square_norm ::= (z: complex) => z._re * z._re + z._im * z._im
 (!=) ::= (lhs: complex, rhs: complex) => !(lhs == rhs)
 
 (print) ::= (z: complex) -> () {
-  if ::= (import "examples/lib/core.ic").if
+  -- ::= import "examples/lib/core.ic"
   if (z._re != 0.0) then {
     print z._re
     if (z._im > 0.0) then {

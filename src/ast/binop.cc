@@ -247,8 +247,11 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           DispatchTable::Make(args, OverloadSet(scope_, symbol, ctx), ctx);     \
       if (t == nullptr) {                                                       \
         ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
+      } else {                                                                  \
+        ctx->set_type(this, t);                                                 \
+        ASSERT(t, Not(Is<type::Tuple>()));                                      \
       }                                                                         \
-      ASSERT(t, Not(Is<type::Tuple>()));                                        \
+      return t;                                                                 \
     }                                                                           \
   } break;
 
@@ -277,10 +280,12 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         std::tie(dispatch_table_, t) =
             DispatchTable::Make(args, OverloadSet(scope_, "+", ctx), ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
-        // TODO should this be Err or nullptr?
-        if (t == type::Err) {
+        if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
+        } else {
+          ctx->set_type(this, t);
         }
+        return t;
       }
     } break;
    case Operator::AddEq: {
@@ -323,9 +328,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
             DispatchTable::Make(args, OverloadSet(scope_, "*", ctx), ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         // TODO should this be Err or nullptr?
-        if (t == type::Err) {
+        if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
-          return nullptr;
+        } else {
+          ctx->set_type(this, t);
         }
         return t;
       }
@@ -349,7 +355,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     }
     default: UNREACHABLE();
   }
-  UNREACHABLE();
+  UNREACHABLE(static_cast<int>(op));
 }
 
 void Binop::Validate(Context *ctx) {
