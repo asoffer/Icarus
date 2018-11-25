@@ -41,9 +41,8 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this);
   }
 
-  std::pair<base::vector<type::Typed<ast::Declaration *>>,
-            base::vector<type::Typed<ast::Declaration *>>>
-  AllDeclsWithId(const std::string &id, Context *ctx);
+  base::vector<type::Typed<ast::Declaration *>> AllDeclsWithId(
+      std::string const &id, Context *ctx);
 
   void InsertDecl(ast::Declaration *decl);
 

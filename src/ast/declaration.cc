@@ -22,7 +22,7 @@ struct ArgumentMetaData {
 };
 
 // TODO return a reason why this is not inferrable for better error messages.
-bool Inferrable(const type::Type *t) {
+bool Inferrable(type::Type const *t) {
   if (t == type::NullPtr || t == type::EmptyArray) {
     return false;
   } else if (t->is<type::Array>()) {
@@ -206,8 +206,22 @@ bool Declaration::IsCustomInitialized() const {
 }
 
 type::Type const *Declaration::VerifyType(Context *ctx) {
+  for (auto iter = ctx->cyc_deps_.begin(); iter != ctx->cyc_deps_.end();
+       ++iter) {
+    if (*iter == this) {
+      ctx->error_log_.CyclicDependency(
+          std::vector<ast::Declaration const *>(iter, ctx->cyc_deps_.end()));
+      return nullptr;
+    }
+  }
+  ctx->cyc_deps_.push_back(this);
+
   Module *old_mod = std::exchange(ctx->mod_, mod_);
-  base::defer d([&] { ctx->mod_ = old_mod; });
+  base::defer d([&] {
+    ctx->mod_ = old_mod;
+    ctx->cyc_deps_.pop_back();
+  });
+
 
   type::Type const *this_type = nullptr;
   {
@@ -292,12 +306,12 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     }
   }
 
+  // TODO simplify now that you don't have error decls.
   base::vector<type::Typed<Declaration *>> decls_to_check;
   {
-    auto[good_decls_to_check, error_decls_to_check] =
-        scope_->AllDeclsWithId(id_, ctx);
-    size_t num_total = good_decls_to_check.size() + error_decls_to_check.size();
-    auto iter        = scope_->child_decls_.find(id_);
+    auto good_decls_to_check = scope_->AllDeclsWithId(id_, ctx);
+    size_t num_total         = good_decls_to_check.size();
+    auto iter                = scope_->child_decls_.find(id_);
 
     bool has_children = (iter != scope_->child_decls_.end());
     if (has_children) { num_total += iter->second.size(); }
@@ -305,8 +319,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     decls_to_check.reserve(num_total);
     decls_to_check.insert(decls_to_check.end(), good_decls_to_check.begin(),
                           good_decls_to_check.end());
-    decls_to_check.insert(decls_to_check.end(), error_decls_to_check.begin(),
-                          error_decls_to_check.end());
 
     if (has_children) {
       for (auto *decl : iter->second) {

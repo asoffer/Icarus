@@ -6,7 +6,7 @@
 namespace ast {
 // TODO only hold functions?
 OverloadSet::OverloadSet(Scope *scope, std::string const &id, Context *ctx) {
-  auto decls = scope->AllDeclsWithId(id, ctx).first;
+  auto decls = scope->AllDeclsWithId(id, ctx);
   reserve(decls.size());
   for (auto const &decl : decls) { emplace_back(decl.get(), decl.type()); }
 }

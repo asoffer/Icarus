@@ -19,16 +19,20 @@ void ArrayType::assign_scope(Scope *scope) {
 }
 
 type::Type const *ArrayType::VerifyType(Context *ctx) {
+  bool failed       = false;
   auto *length_type = length_->VerifyType(ctx);
   if (!length_->is<Hole>() && length_type != type::Int64) {
     ctx->error_log_.ArrayIndexType(span);
+    failed = true;
   }
 
   auto *data_type_type = data_type_->VerifyType(ctx);
   if (data_type_type != type::Type_) {
     ctx->error_log_.ArrayDataTypeNotAType(data_type_->span);
+    failed = true;
   }
 
+  if (failed) return type::Type_;
   return ctx->set_type(this, type::Type_);
 }
 

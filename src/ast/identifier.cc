@@ -18,8 +18,7 @@ void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
 type::Type const *Identifier::VerifyType(Context *ctx) {
   type::Type const *t = nullptr;
   if (decl == nullptr) {
-    auto[potential_decls, potential_error_decls] =
-        scope_->AllDeclsWithId(token, ctx);
+    auto potential_decls = scope_->AllDeclsWithId(token, ctx);
     switch (potential_decls.size()) {
       case 1: {
         // TODO could it be that evn though there is only one declaration,
@@ -32,20 +31,9 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
         // TODO what if you find a bound constant and some errror decls?
         for (auto const & [ d, v ] :
              ctx->mod_->constants_[ctx->bound_constants_].constants_) {
-          if (d->id_ == token) {
-            ctx->set_type(this, v.type);
-            return v.type;
-          }
+          if (d->id_ == token) { return ctx->set_type(this, v.type); }
         }
 
-        switch (potential_error_decls.size()) {
-          case 0: ctx->error_log_.UndeclaredIdentifier(this); break;
-          case 1: {
-            t    = potential_decls[0].type();
-            decl = potential_decls[0].get();
-          } break;
-          default: NOT_YET();
-        }
         return nullptr;
       default:
         // TODO Should we allow the overload?
