@@ -101,17 +101,17 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
       results.push_back(
           ir::Val::BlockSeq(result_buf.get<ir::BlockSequence>(offset)));
     } else {
-      type::Apply(t, [&](auto type_holder) {
+      type::Apply(t, [&](auto type_holder) -> void {
         using T = typename decltype(type_holder)::type;
         if constexpr (std::is_same_v<T, ir::EnumVal>) {
-          results.push_back(ir::Val::Enum(&t->as<type::Enum>(),
-                                          result_buf.get<size_t>(offset)));
+          results.emplace_back(type::Typed<ir::EnumVal, type::Enum>(
+              result_buf.get<ir::EnumVal>(offset), &t->as<type::Enum>()));
         } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
-          results.push_back(ir::Val::Flags(
-              &t->as<type::Flags>(), result_buf.get<ir::FlagsVal>(offset)));
+          results.emplace_back(type::Typed<ir::FlagsVal, type::Flags>(
+              result_buf.get<ir::FlagsVal>(offset), &t->as<type::Flags>()));
         } else {
           results.emplace_back(result_buf.get<T>(offset));
-        }
+       }
       });
     }
 

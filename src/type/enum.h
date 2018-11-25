@@ -1,23 +1,42 @@
 #ifndef ICARUS_TYPE_ENUM_H
 #define ICARUS_TYPE_ENUM_H
 
+#include <optional>
 #include "base/container/unordered_map.h"
+#include "ir/register.h"
 #include "type.h"
+#include "typed_value.h"
 
 namespace type {
 struct Enum : public type::Type {
   TYPE_FNS(Enum);
-  Enum(base::vector<std::string> members);
 
-  size_t IntValueOrFail(const std::string &str) const;
-  ir::Val EmitLiteral(const std::string &member_name) const;
+  Enum(base::vector<std::string> members) : members_(std::move(members)) {
+    auto num_members = members_.size();
+    for (size_t i = 0; i < num_members; ++i) {
+      vals_[members_[i]] = ir::EnumVal{i};
+    }
+  }
 
   bool IsDefaultInitializable() const override { return false; }
 
-  // TODO combine "members" and "int_values" to save the double allocation of
-  // strings.
+  std::optional<ir::EnumVal> Get(const std::string& str) const {
+    if (auto iter = vals_.find(str); iter != vals_.end()) {
+      return iter->second;
+    }
+    return std::nullopt;
+  }
+
+  Typed<ir::EnumVal, Enum> EmitLiteral(std::string const& member_name) const {
+    return Typed<ir::EnumVal, Enum>(vals_.at(member_name), this);
+  }
+
+  // TODO privatize
   base::vector<std::string> members_;
-  base::unordered_map<std::string, size_t> int_values; // TODO Return EnumVal?
+ private:
+  // TODO combine these into a single bidirectional map?
+  base::unordered_map<std::string, ir::EnumVal> vals_;
 };
 }  // namespace type
+
 #endif  // ICARUS_TYPE_ENUM_H

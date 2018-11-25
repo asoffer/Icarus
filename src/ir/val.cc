@@ -67,14 +67,6 @@ Val Val::Ref(ast::Expression *expr) { NOT_YET(); }
 
 Val::Val(ast::ScopeLiteral *scope_lit) : Val(type::Scope, scope_lit) {}
 
-Val Val::Enum(const type::Enum *enum_type, size_t integral_val) {
-  return Val(enum_type, EnumVal{integral_val});
-}
-
-Val Val::Flags(const type::Flags *flags_type, FlagsVal val) {
-  return Val(flags_type, val);
-}
-
 Val Val::Func(ast::FunctionLiteral *fn) { return Val(type::Generic, fn); }
 
 static std::string Escaped(std::string_view sv) {
@@ -198,7 +190,8 @@ bool operator<(const ::ir::Val &lhs, const ::ir::Val &rhs) {
 }
 
 Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t) {
-  return r.is_reg_ ? Val::Reg(r.reg_, t) : Val::Flags(t, r.val_);
+  return r.is_reg_ ? Val::Reg(r.reg_, t)
+                   : Val(type::Typed<ir::FlagsVal, type::Flags>(r.val_, t));
 }
 
 Val ValFrom(RegisterOr<ir::Addr> r, type::Pointer const *ptr_type) {

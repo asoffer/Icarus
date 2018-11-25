@@ -9,6 +9,7 @@
 #include <utility>
 #include "base/container/unordered_map.h"
 #include "base/container/vector.h"
+#include "base/untyped_buffer.h"
 
 #include "base/util.h"
 #include "frontend/text_span.h"
@@ -24,10 +25,6 @@ struct Val;
 }  // namespace ir
 
 namespace ast {
-struct StageRange {
-  static int NoEmitIR() { return 1; }
-  static int Nothing() { return 2; }
-};
 struct Expression;
 
 enum class JumpKind { Return, Yield };

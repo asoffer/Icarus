@@ -12,7 +12,9 @@
 #include "ir/flags_val.h"
 #include "ir/interface.h"
 #include "ir/register.h"
+#include "type/flags.h"
 #include "type/type.h"
+#include "type/typed_value.h"
 
 struct Module;
 
@@ -29,19 +31,6 @@ struct ScopeLiteral;
 struct BlockLiteral;
 struct FunctionLiteral;
 }  // namespace ast
-
-namespace ir {
-inline FlagsVal operator|(FlagsVal lhs, FlagsVal rhs) {
-  return FlagsVal{lhs.value | rhs.value};
-}
-inline FlagsVal operator^(FlagsVal lhs, FlagsVal rhs) {
-  return FlagsVal{lhs.value ^ rhs.value};
-}
-inline FlagsVal operator&(FlagsVal lhs, FlagsVal rhs) {
-  return FlagsVal{lhs.value & rhs.value};
-}
-
-}  // namespace ir
 
 namespace ir {
 struct Val {
@@ -66,8 +55,15 @@ struct Val {
 
   template <typename T,
             typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Val>>>
-  explicit Val(T &&val)
-      : Val(::type::Get<std::decay_t<T>>(), std::forward<T>(val)) {}
+  explicit Val(T &&val) {
+    if constexpr (type::IsTyped<std::decay_t<T>>::value) {
+      type  = val.type();
+      value = val.get();
+    } else {
+      type  = ::type::Get<std::decay_t<T>>();
+      value = std::forward<T>(val);
+    }
+  }
 
   explicit Val(std::nullptr_t)
       : Val(type::NullPtr, ir::Addr{Addr::Kind::Null, 0}) {}
@@ -79,7 +75,6 @@ struct Val {
   }
   // TODO take an EnumVal.
   static Val Enum(type::Enum const *enum_type, size_t integral_val);
-  static Val Flags(type::Flags const *flags_type, FlagsVal val);
   static Val Func(type::Type const *t, AnyFunc f) { return Val(t, f); }
   static Val Func(
       ast::FunctionLiteral *fn);  // TODO call this a generic funciton
@@ -105,7 +100,7 @@ struct Val {
   friend Val ValFrom(RegisterOr<ir::Addr> r, type::Pointer const *ptr_type);
 
   template <typename T>
-  Val(const type::Type *t, T &&val) : type(t), value(std::forward<T>(val)) {}
+  Val(type::Type const *t, T &&val) : type(t), value(std::forward<T>(val)) {}
 };
 
 template <typename T>

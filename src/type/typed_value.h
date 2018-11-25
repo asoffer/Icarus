@@ -53,5 +53,10 @@ template <typename V>
 std::ostream& operator<<(std::ostream& os, Typed<V> const& t) {
   return os << t.get() << ": " << t.type()->to_string();
 }
+
+template <typename T>
+struct IsTyped : public std::false_type {};
+template <typename T, typename V>
+struct IsTyped<Typed<T, V>> : public std::true_type {};
 }  // namespace type
 #endif  // ICARUS_TYPE_TYPED_VALUE_H
