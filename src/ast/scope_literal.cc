@@ -1,7 +1,7 @@
 #include "ast/scope_literal.h"
 
 #include "ast/declaration.h"
-#include "ast/verify_macros.h"
+#include "context.h"
 #include "error/log.h"
 #include "ir/val.h"
 #include "scope.h"

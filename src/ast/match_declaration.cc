@@ -1,6 +1,5 @@
 #include "ast/match_declaration.h"
 
-#include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "type/primitive.h"
 
@@ -10,14 +9,10 @@ std::string MatchDeclaration::to_string(size_t n) const {
 }
 
 type::Type const *MatchDeclaration::VerifyType(Context *ctx) {
-  {
-    type_expr->VerifyType(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    // TODO this is wrong. it's a type satisfying a given interface. does that
-    // matter?
-    ctx->set_type(this, type::Interface);
-  }
-  return type::Interface;
+  if (!type_expr->VerifyType(ctx)) { return nullptr; }
+  // TODO this is wrong. it's a type satisfying a given interface. does that
+  // matter?
+  return ctx->set_type(this, type::Interface);
 }
 
 void MatchDeclaration::Validate(Context *ctx) { type_expr->Validate(ctx); }

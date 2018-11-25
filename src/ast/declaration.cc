@@ -3,7 +3,6 @@
 #include <sstream>
 #include "ast/function_literal.h"
 #include "ast/hole.h"
-#include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "ir/func.h"
 #include "module.h"
@@ -216,7 +215,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     type::Type const *init_val_type  = nullptr;
     if (type_expr) {
       type_expr_type = type_expr->VerifyType(ctx);
-      HANDLE_CYCLIC_DEPENDENCIES;
 
       if (type_expr_type == type::Type_) {
         this_type =
@@ -232,7 +230,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 
     if (this->IsCustomInitialized()) {
       init_val_type = init_val->VerifyType(ctx);
-      HANDLE_CYCLIC_DEPENDENCIES;
 
       if (init_val_type != nullptr) {
         if (!Inferrable(init_val_type)) {
@@ -324,7 +321,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
   bool failed_shadowing = false;
   while (iter != decls_to_check.end()) {
     auto typed_decl = *iter;
-    HANDLE_CYCLIC_DEPENDENCIES;
     if (Shadow(this, typed_decl.get(), ctx)) {
       failed_shadowing = true;
       ctx->error_log_.ShadowingDeclaration(*this, *typed_decl);

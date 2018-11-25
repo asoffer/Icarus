@@ -2,7 +2,6 @@
 
 #include <sstream>
 #include "ast/hole.h"
-#include "ast/verify_macros.h"
 #include "ir/cmd.h"
 
 namespace ast {
@@ -21,17 +20,16 @@ void ArrayType::assign_scope(Scope *scope) {
 
 type::Type const *ArrayType::VerifyType(Context *ctx) {
   auto *length_type = length_->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
-  data_type_->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
-
-  ctx->set_type(this, type::Type_);
-
   if (!length_->is<Hole>() && length_type != type::Int64) {
     ctx->error_log_.ArrayIndexType(span);
   }
 
-  return type::Type_;
+  auto *data_type_type = data_type_->VerifyType(ctx);
+  if (data_type_type != type::Type_) {
+    ctx->error_log_.ArrayDataTypeNotAType(data_type_->span);
+  }
+
+  return ctx->set_type(this, type::Type_);
 }
 
 void ArrayType::Validate(Context *ctx) {

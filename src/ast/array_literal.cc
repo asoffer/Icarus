@@ -1,6 +1,5 @@
 #include "ast/array_literal.h"
 
-#include "ast/verify_macros.h"
 #include "context.h"
 #include "error/log.h"
 #include "ir/cmd.h"
@@ -34,9 +33,11 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
   }
 
   std::vector<type::Type const *> elem_types;
-  for (auto &elem : elems_) {
-    elem_types.push_back(elem->VerifyType(ctx));
-    HANDLE_CYCLIC_DEPENDENCIES;
+  elem_types.reserve(elems_.size());
+  for (auto &elem : elems_) { elem_types.push_back(elem->VerifyType(ctx)); }
+  if (std::any_of(elem_types.begin(), elem_types.end(),
+                  [](type::Type const *t) { return t == nullptr; })) {
+    return nullptr;
   }
 
   const type::Type *joined = type::Err;
@@ -52,9 +53,7 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
   } else if (joined == type::Err) {
     return nullptr;
   } else {
-    auto *t = type::Arr(joined, elems_.size());
-    ctx->set_type(this, t);
-    return t;
+    return ctx->set_type(this, type::Arr(joined, elems_.size()));
   }
 }
 

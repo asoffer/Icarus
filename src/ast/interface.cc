@@ -1,6 +1,5 @@
 #include "ast/interface.h"
 
-#include "ast/verify_macros.h"
 #include "context.h"
 #include "error/log.h"
 #include "ir/val.h"
@@ -25,14 +24,11 @@ std::string Interface::to_string(size_t n) const {
 }
 
 type::Type const *Interface::VerifyType(Context *ctx) {
-  ctx->set_type(this, type::Interface);
-
   for (auto &decl : decls_) {
     decl.VerifyType(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
     if (decl.init_val != nullptr) { NOT_YET(); }
   }
-  return type::Interface;
+  return ctx->set_type(this, type::Interface);
 }
 
 void Interface::Validate(Context *ctx) {

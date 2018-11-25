@@ -4,7 +4,6 @@
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"
 #include "ast/terminal.h"
-#include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "context.h"
 #include "error/log.h"
@@ -69,15 +68,21 @@ type::Type const *FunctionLiteral::VerifyType(Context *ctx) {
 type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   base::vector<const type::Type *> input_type_vec;
   input_type_vec.reserve(inputs.size());
-
   for (auto &input : inputs) {
     input_type_vec.push_back(input->VerifyType(ctx));
-    HANDLE_CYCLIC_DEPENDENCIES;
   }
 
+  base::vector<const type::Type *> output_type_vec;
+  output_type_vec.reserve(outputs.size());
   for (auto &output : outputs) {
-    output->VerifyType(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
+    output_type_vec.push_back(output->VerifyType(ctx));
+  }
+
+  if (std::any_of(input_type_vec.begin(), input_type_vec.end(),
+                  [](type::Type const *t) { return t == nullptr; }) ||
+      std::any_of(output_type_vec.begin(), output_type_vec.end(),
+                  [](type::Type const *t) { return t == nullptr; })) {
+    return nullptr;
   }
 
   // TODO need a better way to say if there was an error recorded in a
@@ -149,10 +154,7 @@ void FunctionLiteral::Validate(Context *ctx) {
 
   // NOTE! Type verifcation on statements first!
   statements->VerifyType(ctx);
-  [&]() {
-    HANDLE_CYCLIC_DEPENDENCIES;
-    return nullptr;
-  }();
+  // TODO propogate cyclic dependencies.
 
   JumpExprs rets;
   statements->ExtractJumps(&rets);

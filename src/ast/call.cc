@@ -4,7 +4,6 @@
 
 #include "ast/function_literal.h"
 #include "ast/terminal.h"
-#include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "ir/arguments.h"
 #include "ir/components.h"

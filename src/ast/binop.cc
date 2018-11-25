@@ -3,7 +3,6 @@
 #include "ast/comma_list.h"
 #include "ast/fn_args.h"
 #include "ast/overload_set.h"
-#include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "base/check.h"
 #include "context.h"
@@ -124,9 +123,7 @@ void Binop::assign_scope(Scope *scope) {
 
 type::Type const *Binop::VerifyType(Context *ctx) {
   auto *lhs_type = lhs->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
   auto *rhs_type = rhs->VerifyType(ctx);
-  HANDLE_CYCLIC_DEPENDENCIES;
   if (lhs_type == nullptr || rhs_type == nullptr) { return nullptr; }
 
   using Language::Operator;

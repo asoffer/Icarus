@@ -1,7 +1,7 @@
 #include "ast/struct_literal.h"
 
 #include <sstream>
-#include "ast/verify_macros.h"
+#include "ast/declaration.h"
 #include "backend/exec.h"
 #include "base/untyped_buffer.h"
 #include "ir/func.h"

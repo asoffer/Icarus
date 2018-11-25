@@ -3,7 +3,6 @@
 #include "ast/fn_args.h"
 #include "ast/overload_set.h"
 #include "ast/terminal.h"
-#include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "base/check.h"
 #include "context.h"
@@ -59,7 +58,8 @@ void Unop::ExtractJumps(JumpExprs *rets) const {
 }
 
 type::Type const *Unop::VerifyType(Context *ctx) {
-  VERIFY_OR_RETURN(operand_type, operand);
+  auto *operand_type = operand->VerifyType(ctx);
+  if (operand_type == nullptr) { return nullptr; }
 
   switch (op) {
     case Language::Operator::TypeOf:

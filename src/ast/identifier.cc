@@ -2,7 +2,6 @@
 
 #include "ast/declaration.h"
 #include "ast/function_literal.h"
-#include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "context.h"
 #include "error/log.h"
@@ -44,7 +43,6 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
           case 1: {
             t    = potential_decls[0].type();
             decl = potential_decls[0].get();
-            HANDLE_CYCLIC_DEPENDENCIES;
           } break;
           default: NOT_YET();
         }

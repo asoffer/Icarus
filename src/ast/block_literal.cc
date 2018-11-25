@@ -1,6 +1,6 @@
 #include "ast/block_literal.h"
 
-#include "ast/verify_macros.h"
+#include "context.h"
 #include "ir/val.h"
 #include "scope.h"
 #include "type/function.h"
@@ -42,11 +42,13 @@ void BlockLiteral::Validate(Context *ctx) {
     std::vector<type::Type const *> before_types, after_types;
     before_types.reserve(before_.size());
     for (auto &b : before_) {
-      VERIFY_OR_RETURN(before_type, b);
+      auto *before_type = b->VerifyType(ctx);
+      if (before_type == nullptr) { return nullptr; }
       before_types.push_back(before_type);
     }
     for (auto &a : after_) {
-      VERIFY_OR_RETURN(after_type, a);
+      auto *after_type = a->VerifyType(ctx);
+      if (after_type == nullptr) { return nullptr; }
       after_types.push_back(after_type);
     }
 

@@ -1,6 +1,6 @@
 #include "ast/access.h"
 
-#include "ast/verify_macros.h"
+#include "ast/declaration.h"
 #include "backend/eval.h"
 #include "ir/cmd.h"
 #include "ir/components.h"
@@ -29,7 +29,8 @@ void Access::assign_scope(Scope *scope) {
 }
 
 type::Type const *Access::VerifyType(Context *ctx) {
-  VERIFY_OR_RETURN(operand_type, operand);
+  auto *operand_type = operand->VerifyType(ctx);
+  if (operand_type == nullptr) { return nullptr; }
 
   auto base_type = DereferenceAll(operand_type);
   if (base_type == type::Type_) {

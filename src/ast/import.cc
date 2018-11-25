@@ -2,9 +2,9 @@
 
 #include <future>
 #include "ast/overload_set.h"
-#include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "base/guarded.h"
+#include "context.h"
 #include "ir/val.h"
 #include "run/run.h"
 #include "type/char_buffer.h"
@@ -28,8 +28,8 @@ base::vector<ir::Val> Import::EmitIR(Context *ctx) {
 base::vector<ir::Register> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
 
 type::Type const *Import::VerifyType(Context *ctx) {
-  VERIFY_OR_RETURN(operand_type, operand_);
-  ctx->set_type(this, type::Module);
+  auto *operand_type = operand_->VerifyType(ctx);
+  if (operand_type == nullptr) { return nullptr; }
 
   if (!operand_type->is<type::CharBuffer>()) {
     ctx->error_log_.InvalidImport(operand_->span);
@@ -38,6 +38,6 @@ type::Type const *Import::VerifyType(Context *ctx) {
         backend::EvaluateAs<std::string_view>(operand_.get(), ctx)};
     ScheduleModule(*cache_);
   }
-  return type::Module;
+  return ctx->set_type(this, type::Module);
 }
 }  // namespace ast

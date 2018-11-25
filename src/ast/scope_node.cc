@@ -8,7 +8,6 @@
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
 #include "ast/scope_literal.h"
-#include "ast/verify_macros.h"
 #include "backend/eval.h"
 #include "context.h"
 #include "ir/components.h"
@@ -45,7 +44,8 @@ void ScopeNode::assign_scope(Scope *scope) {
 }
 
 type::Type const *ScopeNode::VerifyType(Context *ctx) {
-  VERIFY_OR_RETURN(scope_type, name_);
+  type::Type const *scope_type = name_->VerifyType(ctx);
+  if (scope_type == nullptr) { return nullptr; }
   // TODO check the scope type makes sense.
 
   auto arg_types =

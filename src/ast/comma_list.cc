@@ -1,6 +1,6 @@
 #include "ast/comma_list.h"
 
-#include "ast/verify_macros.h"
+#include "context.h"
 #include "type/tuple.h"
 
 namespace ast {
@@ -27,7 +27,6 @@ type::Type const *CommaList::VerifyType(Context *ctx) {
   expr_types.reserve(exprs.size());
   for (auto &expr : exprs) {
     auto *expr_type = expr->VerifyType(ctx);
-    HANDLE_CYCLIC_DEPENDENCIES;
     if (expr_type == nullptr) { return nullptr; }
     expr_types.push_back(expr_type);
   }

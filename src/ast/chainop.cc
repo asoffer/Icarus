@@ -4,7 +4,6 @@
 
 #include "ast/fn_args.h"
 #include "ast/overload_set.h"
-#include "ast/verify_macros.h"
 #include "base/check.h"
 #include "context.h"
 #include "ir/func.h"

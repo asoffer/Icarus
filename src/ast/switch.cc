@@ -3,7 +3,7 @@
 #include <numeric>
 #include <sstream>
 #include <unordered_set>
-#include "ast/verify_macros.h"
+
 #include "base/util.h"
 #include "ir/components.h"
 #include "ir/func.h"
