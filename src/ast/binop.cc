@@ -191,10 +191,29 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       // correctly.
       auto *t = backend::EvaluateAs<type::Type const *>(rhs.get(), ctx);
       ctx->set_type(this, t);
-      if (!CanCast(lhs_type, t)) {
-        LOG << this;
-        NOT_YET("log an error", lhs_type, t); }
-      return t;
+      if (t->is<type::Struct>()) {
+        FnArgs<Expression *> args;
+        args.pos_           = base::vector<Expression *>{{lhs.get()}};
+        type::Type const *ret_type = nullptr;
+        OverloadSet overload_set(scope_, "as", ctx);
+        overload_set.keep_return(t);
+
+        std::tie(dispatch_table_, t) =
+            DispatchTable::Make(args, overload_set, ctx);
+        ASSERT(t, Not(Is<type::Tuple>()));
+        if (t == nullptr) {
+          ctx->error_log_.NoMatchingOperator("as", lhs_type, rhs_type, span);
+        } else {
+          ctx->set_type(this, t);
+        }
+        return t;
+      } else {
+        if (!CanCast(lhs_type, t)) {
+          LOG << this;
+          NOT_YET("log an error", lhs_type, t);
+        }
+        return t;
+      }
     }
     case Operator::XorEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
@@ -349,7 +368,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 
       if (t != nullptr) {
         ctx->set_type(this, type::Type_);
-      } else {
       }
       return t;
     }
@@ -371,8 +389,7 @@ void Binop::ExtractJumps(JumpExprs *rets) const {
 base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
   auto *lhs_type = ctx->type_of(lhs.get());
   auto *rhs_type = ctx->type_of(rhs.get());
-  if (op != Language::Operator::Assign &&
-      (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>())) {
+  if (dispatch_table_.total_size_ != 0) {
     // TODO struct is not exactly right. we really mean user-defined
     ast::FnArgs<std::pair<ast::Expression *, ir::Val>> args;
     args.pos_.reserve(2);

@@ -14,11 +14,11 @@ main ::= () -> () {
   print z, `\n
   z._im = -1.2
 
-  print z, `\n,
-        z != z, `\n,
-        z + z, `\n,
-        z - z, `\n,
-        z * z, `\n,
-        z'math.conjugate, `\n,
+  print "               z: ", z, `\n,
+        "          z != z: ", z != z, `\n,
+        "           z + z: ", z + z, `\n,
+        "           z - z: ", z - z, `\n,
+        "           z * z: ", z * z, `\n,
+        "z'math.conjugate: ", z'math.conjugate, `\n,
         z'math.square_norm, " == ", z * z'math.conjugate, `\n
 }

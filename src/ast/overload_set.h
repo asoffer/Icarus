@@ -17,6 +17,8 @@ struct OverloadSet
     : public base::vector<type::Typed<Expression *, type::Callable>> {
   OverloadSet() = default;
   OverloadSet(Scope *scope, std::string const &id, Context *ctx);
+
+  void keep_return(type::Type const *t);
 };
 }  // namespace ast
 

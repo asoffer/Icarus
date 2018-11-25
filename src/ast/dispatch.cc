@@ -323,7 +323,7 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
   return std::pair{std::move(table), ret_type};
 }
 
-void Binding::SetPositionalArgs(const FnArgs<Expression *> &args) {
+void Binding::SetPositionalArgs(FnArgs<Expression *> const &args) {
   ASSERT(exprs_.size() >= args.pos_.size());
   for (size_t i = 0; i < args.pos_.size(); ++i) {
     exprs_[i] = type::Typed<Expression *>(args.pos_.at(i), nullptr);
