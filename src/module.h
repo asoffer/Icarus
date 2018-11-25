@@ -79,8 +79,8 @@ struct Module {
   base::vector<std::unique_ptr<ir::Func>> fns_;
   std::unordered_set<const Module *> embedded_modules_;
 
-  void set_type(ast::BoundConstants const &bc, ast::Expression const *expr,
-                type::Type const *);
+  type::Type const *set_type(ast::BoundConstants const &bc,
+                             ast::Expression const *expr, type::Type const *);
   type::Type const *type_of(ast::BoundConstants const &bc,
                             ast::Expression const *expr) const;
   ir::Register addr(ast::BoundConstants const &bc,

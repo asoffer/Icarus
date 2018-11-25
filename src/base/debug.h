@@ -48,7 +48,7 @@
 
 #else
 
-#define ASSERT(...)
+#define ASSERT(...) false && base::Logger(nullptr)
 #define ASSERT_NOT_NULL(...) __VA_ARGS__
 #define UNREACHABLE(...) __builtin_unreachable();
 #define DUMP(...) ""

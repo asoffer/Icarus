@@ -172,8 +172,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         if (rhs_type != type::Int32) { // TODO other sizes
           ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
         }
-        ctx->set_type(this, type::Char);
-        return type::Char;
+        return ctx->set_type(this, type::Char);
       } else if (!lhs_type->is<type::Array>()) {
         ctx->error_log_.IndexingNonArray(span, lhs_type);
         return nullptr;
@@ -203,10 +202,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("as", lhs_type, rhs_type, span);
+          return nullptr;
         } else {
-          ctx->set_type(this, t);
+          return ctx->set_type(this, t);
         }
-        return t;
       } else {
         if (!CanCast(lhs_type, t)) {
           LOG << this;
@@ -217,11 +216,9 @@ type::Type const *Binop::VerifyType(Context *ctx) {
     }
     case Operator::XorEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->set_type(this, type::Bool);
-        return type::Bool;
+        return ctx->set_type(this, type::Bool);
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->set_type(this, lhs_type);
-        return lhs_type;
+        return ctx->set_type(this, lhs_type);
       } else {
         // TODO could be bool or enum.
         ctx->error_log_.XorEqNeedsBool(span);
@@ -229,11 +226,9 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     case Operator::AndEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->set_type(this, type::Bool);
-        return type::Bool;
+        return ctx->set_type(this, type::Bool);
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->set_type(this, lhs_type);
-        return lhs_type;
+        return ctx->set_type(this, lhs_type);
       } else {
         // TODO could be bool or enum.
         ctx->error_log_.AndEqNeedsBool(span);
@@ -241,11 +236,9 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     case Operator::OrEq:
       if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        ctx->set_type(this, type::Bool);
-        return type::Bool;
+        return ctx->set_type(this, type::Bool);
       } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
-        ctx->set_type(this, lhs_type);
-        return lhs_type;
+        return ctx->set_type(this, lhs_type);
       } else {
         // TODO could be bool or enum.
         ctx->error_log_.OrEqNeedsBool(span);
@@ -254,10 +247,14 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 
 #define CASE(OpName, symbol, ret_type)                                          \
   case Operator::OpName: {                                                      \
-    if (lhs_type == rhs_type && type::IsNumeric(lhs_type)) {                    \
-      auto *t = (ret_type);                                                     \
-      ctx->set_type(this, t);                                                   \
-      return t;                                                                 \
+    if (type::IsNumeric(lhs_type) && type::IsNumeric(rhs_type)) {               \
+      if (lhs_type == rhs_type) {                                               \
+        auto *t = (ret_type);                                                   \
+        return ctx->set_type(this, t);                                          \
+      } else {                                                                  \
+        ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
+        return nullptr;                                                         \
+      }                                                                         \
     } else {                                                                    \
       FnArgs<Expression *> args;                                                \
       args.pos_           = base::vector<Expression *>{{lhs.get(), rhs.get()}}; \
@@ -266,11 +263,11 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           DispatchTable::Make(args, OverloadSet(scope_, symbol, ctx), ctx);     \
       if (t == nullptr) {                                                       \
         ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
+        return nullptr;                                                         \
       } else {                                                                  \
-        ctx->set_type(this, t);                                                 \
         ASSERT(t, Not(Is<type::Tuple>()));                                      \
+        return ctx->set_type(this, t);                                          \
       }                                                                         \
-      return t;                                                                 \
     }                                                                           \
   } break;
 
@@ -283,15 +280,18 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       CASE(ModEq, "%=", type::Void());
 #undef CASE
     case Operator::Add: {
-      if (lhs_type == rhs_type && type::IsNumeric(lhs_type)) {
-        ctx->set_type(this, lhs_type);
-        return lhs_type;
+      if (type::IsNumeric(lhs_type) && type::IsNumeric(rhs_type)) {
+        if (lhs_type == rhs_type) {
+          return ctx->set_type(this, lhs_type);
+        } else {
+          ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
+          return nullptr;
+        }
       } else if (lhs_type->is<type::CharBuffer>() &&
                  rhs_type->is<type::CharBuffer>()) {
         auto *t = type::CharBuf(lhs_type->as<type::CharBuffer>().length_ +
                                 rhs_type->as<type::CharBuffer>().length_);
-        ctx->set_type(this, t);
-        return t;
+        return ctx->set_type(this, t);
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
@@ -302,15 +302,19 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
         } else {
-          ctx->set_type(this, t);
+          return ctx->set_type(this, t);
         }
         return t;
       }
     } break;
-   case Operator::AddEq: {
-     if (lhs_type == rhs_type && type::IsNumeric(lhs_type)) {
-       ctx->set_type(this, type::Void());
-       return type::Void();
+    case Operator::AddEq: {
+      if (type::IsNumeric(lhs_type) && type::IsNumeric(rhs_type)) {
+        if (lhs_type == rhs_type) {
+          return ctx->set_type(this, type::Void());
+        } else {
+          ctx->error_log_.NoMatchingOperator("+=", lhs_type, rhs_type, span);
+          return nullptr;
+        }
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
@@ -318,27 +322,28 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         std::tie(dispatch_table_, t) =
             DispatchTable::Make(args, OverloadSet(scope_, "+=", ctx), ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
-        // TODO should this be Err or nullptr?
       }
     } break;
     // Mul is done separately because of the function composition
     case Operator::Mul:
-      if (lhs_type == rhs_type && type::IsNumeric(lhs_type)) {
-        ctx->set_type(this, lhs_type);
-        return lhs_type;
+      if (type::IsNumeric(lhs_type) && type::IsNumeric(rhs_type)) {
+        if (lhs_type == rhs_type) {
+          return ctx->set_type(this, lhs_type);
+        } else {
+          ctx->error_log_.NoMatchingOperator("*", lhs_type, rhs_type, span);
+          return nullptr;
+        }
       } else if (lhs_type->is<type::Function>() &&
                  rhs_type->is<type::Function>()) {
         auto *lhs_fn = &lhs_type->as<type::Function>();
         auto *rhs_fn = &rhs_type->as<type::Function>();
         if (rhs_fn->output == lhs_fn->input) {
           auto *t = type::Func({rhs_fn->input}, {lhs_fn->output});
-          ctx->set_type(this, t);
-          return t;
+          return ctx->set_type(this, t);
         } else {
           ctx->error_log_.NonComposableFunctions(span);
           return nullptr;
         }
-
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
@@ -346,13 +351,12 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         std::tie(dispatch_table_, t) =
             DispatchTable::Make(args, OverloadSet(scope_, "*", ctx), ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
-        // TODO should this be Err or nullptr?
         if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
+          return nullptr;
         } else {
-          ctx->set_type(this, t);
+          return ctx->set_type(this, t);
         }
-        return t;
       }
     case Operator::Arrow: {
       type::Type const *t = type::Type_;
@@ -366,9 +370,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         ctx->error_log_.NonTypeFunctionOutput(span);
       }
 
-      if (t != nullptr) {
-        ctx->set_type(this, type::Type_);
-      }
+      if (t != nullptr) { ctx->set_type(this, type::Type_); }
       return t;
     }
     default: UNREACHABLE();

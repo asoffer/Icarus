@@ -8,7 +8,8 @@ type::Type const *Context::type_of(ast::Expression const *expr) const {
   return parent_->type_of(expr);
 }
 
-void Context::set_type(ast::Expression const *expr, type::Type const *t) {
+type::Type const *Context::set_type(ast::Expression const *expr,
+                                    type::Type const *t) {
   return mod_->set_type(bound_constants_, expr, t);
 }
 

@@ -12,8 +12,6 @@
 #include "type/type.h"
 #include "type/variant.h"
 
-extern type::Type *Err;
-
 using LineNum = size_t;
 using FileToLineNumMap =
     base::unordered_map<frontend::Source::Name, base::vector<LineNum>>;
@@ -574,6 +572,18 @@ void Log::TypeMustBeInitialized(TextSpan const &span, type::Type const *t) {
   } else {
     NOT_YET(t);
   }
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::ComparingIncomparables(type::Type const *lhs, type::Type const *rhs,
+                                 TextSpan const &span) {
+  std::stringstream ss;
+  ss << "Values of type `" << lhs->to_string() << "` and `" << rhs->to_string()
+     << "` are being compared but no such comparison is allowed:\n\n";
   WriteSource(
       ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});

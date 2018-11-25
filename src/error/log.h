@@ -69,6 +69,8 @@ struct Log {
 
   void TypeMustBeInitialized(TextSpan const &span, type::Type const *t);
 
+  void ComparingIncomparables(type::Type const *lhs, type::Type const *rhs,
+                              TextSpan const &span);
   base::vector<ast::Identifier *> *CyclicDependency();
 
   size_t size() const {

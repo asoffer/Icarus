@@ -149,17 +149,11 @@ void ChainOp::assign_scope(Scope *scope) {
 }
 
 type::Type const *ChainOp::VerifyType(Context *ctx) {
-  bool found_err = false;
-
   std::vector<type::Type const *> expr_types;
   expr_types.reserve(exprs.size());
-  for (auto &expr : exprs) {
-    auto *expr_type = expr->VerifyType(ctx);
-    expr_types.push_back(expr_type);
-    HANDLE_CYCLIC_DEPENDENCIES;
-    if (expr_type == nullptr) { found_err = true; }
-  }
-  if (found_err) {
+  for (auto &expr : exprs) { expr_types.push_back(expr->VerifyType(ctx)); }
+  if (std::any_of(expr_types.begin(), expr_types.end(),
+                  [](type::Type const *t) { return t == nullptr; })) {
     return nullptr;
   }
 
@@ -176,12 +170,11 @@ type::Type const *ChainOp::VerifyType(Context *ctx) {
       }
     }
     if (found_err) { return nullptr; }
-    if (expr_types.back() != type::Block &&
-        expr_types.back() != type::OptBlock) {
+    type::Type const *last = expr_types.back();
+    if (last != type::Block && last != type::OptBlock) {
       goto not_blocks;
     } else {
-      ctx->set_type(this, expr_types.back());
-      return expr_types.back();
+      return ctx->set_type(this, last);
     }
   }
 not_blocks:
@@ -194,26 +187,28 @@ not_blocks:
     case Language::Operator::Or:
     case Language::Operator::And:
     case Language::Operator::Xor: {
-      bool failed = false;
-      for (const auto &expr_type : expr_types) {
-        if (expr_type != expr_types[0]) {
-          NOT_YET("log an error");
+      bool failed                       = false;
+      type::Type const *first_expr_type = expr_types[0];
+
+      for (auto *expr_type : expr_types) {
+        // TODO this collection of error messages could be greatly improved.
+        if (expr_type != first_expr_type) {
+          auto op_str = [this] {
+            switch (ops[0]) {
+              case Language::Operator::Or: return "|";
+              case Language::Operator::And: return "&";
+              case Language::Operator::Xor: return "^";
+              default: UNREACHABLE();
+            }
+          }();
+          ctx->error_log_.NoMatchingOperator(op_str, first_expr_type, expr_type,
+                                             span);
           failed = true;
         }
       }
 
-      ctx->set_type(this, expr_types[0]);
-
-      if (expr_types[0] != type::Bool &&
-          !(expr_types[0] == type::Type_ && ops[0] == Language::Operator::Or) &&
-          (!expr_types[0]->is<type::Flags>())) {
-        NOT_YET("log an error");
-        if (failed) {
-          return nullptr;
-        }
-      }
-
-      return expr_types[0];
+      if (failed) { return nullptr; }
+      return ctx->set_type(this, first_expr_type);
     } break;
     default: {
       ASSERT(exprs.size() >= 2u);
@@ -244,9 +239,7 @@ not_blocks:
           std::tie(dispatch_tables_.at(i), t) =
               DispatchTable::Make(args, OverloadSet(scope_, token, ctx), ctx);
           ASSERT(t, Not(Is<type::Tuple>()));
-          if (t == nullptr) {
-            return nullptr;
-          }
+          if (t == nullptr) { return nullptr; }
         } else {
           if (lhs_type != rhs_type) {
             // TODO better error.
@@ -261,7 +254,11 @@ not_blocks:
                 switch (cmp) {
                   case type::Cmp::Order:
                   case type::Cmp::Equality: continue;
-                  case type::Cmp::None: NOT_YET("log an error"); return nullptr;
+                  case type::Cmp::None:
+                    ctx->error_log_.ComparingIncomparables(
+                        lhs_type, rhs_type,
+                        TextSpan(exprs[i]->span, exprs[i + 1]->span));
+                    return nullptr;
                 }
               } break;
               case Language::Operator::Lt:
@@ -271,7 +268,11 @@ not_blocks:
                 switch (cmp) {
                   case type::Cmp::Order: continue;
                   case type::Cmp::Equality:
-                  case type::Cmp::None: NOT_YET("log an error"); return nullptr;
+                  case type::Cmp::None:
+                    ctx->error_log_.ComparingIncomparables(
+                        lhs_type, rhs_type,
+                        TextSpan(exprs[i]->span, exprs[i + 1]->span));
+                    return nullptr;
                 }
               } break;
               default: UNREACHABLE("Expecting a ChainOp operator type.");
@@ -280,8 +281,7 @@ not_blocks:
         }
       }
 
-      ctx->set_type(this, type::Bool);
-      return type::Bool;
+      return ctx->set_type(this, type::Bool);
     }
   }
 }

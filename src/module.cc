@@ -180,7 +180,9 @@ ir::Register Module::addr(ast::BoundConstants const &bc,
   return addr_.at(bc).at(decl);
 }
 
-void Module::set_type(ast::BoundConstants const &bc,
-                      ast::Expression const *expr, type::Type const *t) {
+type::Type const *Module::set_type(ast::BoundConstants const &bc,
+                                   ast::Expression const *expr,
+                                   type::Type const *t) {
   types_[bc].emplace(expr, t);
+  return t;
 }
