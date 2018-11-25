@@ -72,7 +72,7 @@ struct Log {
 
   void ComparingIncomparables(type::Type const *lhs, type::Type const *rhs,
                               TextSpan const &span);
-  void CyclicDependency(base::vector<ast::Declaration const *> cyc_deps);
+  void CyclicDependency(base::vector<ast::Identifier const *> cyc_deps);
 
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() +
@@ -87,7 +87,7 @@ struct Log {
   base::unordered_map<ast::Declaration *, base::vector<ast::Identifier *>>
       out_of_order_decls_;
 
-  base::vector<base::vector<ast::Declaration const *>> cyc_dep_vecs_;
+  base::vector<base::vector<ast::Identifier const *>> cyc_dep_vecs_;
 
   base::vector<std::string> errors_;
 };

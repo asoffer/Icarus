@@ -16,6 +16,17 @@ namespace ast {
 void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
 
 type::Type const *Identifier::VerifyType(Context *ctx) {
+  for (auto iter = ctx->cyc_deps_.begin(); iter != ctx->cyc_deps_.end();
+       ++iter) {
+    if (*iter == this) {
+      ctx->error_log_.CyclicDependency(
+          std::vector<ast::Identifier const *>(iter, ctx->cyc_deps_.end()));
+      return nullptr;
+    }
+  }
+  ctx->cyc_deps_.push_back(this);
+  base::defer d([&] { ctx->cyc_deps_.pop_back(); });
+
   type::Type const *t = nullptr;
   if (decl == nullptr) {
     auto potential_decls = scope_->AllDeclsWithId(token, ctx);

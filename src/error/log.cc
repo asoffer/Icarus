@@ -418,7 +418,7 @@ void Log::UnknownParseError(base::vector<TextSpan> const &lines) {
   errors_.push_back(ss.str());
 }
 
-void Log::CyclicDependency(base::vector<ast::Declaration const *> cyc_deps) {
+void Log::CyclicDependency(base::vector<ast::Identifier const *> cyc_deps) {
   cyc_dep_vecs_.push_back(std::move(cyc_deps));
 }
 
@@ -441,48 +441,58 @@ void Log::UserDefinedError(std::string const &err) {
 }
 
 void Log::Dump() const {
-  for (auto &cycle : cyc_dep_vecs_) {
+  for (auto& cycle : cyc_dep_vecs_) {
     // TODO make cyc_dep_vec just identifiers
     std::cerr << "Found a cyclic dependency:\n\n";
 
-    // std::sort(cycle.begin(), cycle.end(),
-    //           [](ast::Declaration const *lhs, ast::Declaration const *rhs) {
-    //             if (lhs->span.start.line_num < rhs->span.start.line_num) {
-    //               return true;
-    //             }
-    //             if (lhs->span.start.line_num > rhs->span.start.line_num) {
-    //               return false;
-    //             }
-    //             if (lhs->span.start.offset < rhs->span.start.offset) {
-    //               return true;
-    //             }
-    //             if (lhs->span.start.offset > rhs->span.start.offset) {
-    //               return false;
-    //             }
-    //             if (lhs->span.finish.line_num < rhs->span.finish.line_num) {
-    //               return true;
-    //             }
-    //             if (lhs->span.finish.line_num > rhs->span.finish.line_num) {
-    //               return false;
-    //             }
-    //             return lhs->span.finish.offset < rhs->span.finish.offset;
-    //           });
+    base::unordered_map<ast::Declaration const *, size_t> decls;
+    for (auto const *id : cycle) { decls.emplace(id->decl, decls.size()); }
 
     base::IntervalSet<size_t> iset;
     base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
-    size_t i = 0;
-    for (const auto *decl : cycle) {
-      iset.insert(base::Interval<size_t>{decl->span.start.line_num - 1,
-                                         decl->span.finish.line_num + 2});
+    for (const auto *id : cycle) {
+      iset.insert(base::Interval<size_t>{id->span.start.line_num - 1,
+                                         id->span.finish.line_num + 2});
       // TODO handle case where it's 1 mod 7 and so adjacent entries show up
       // with the same color
+
+      TextSpan decl_id_span = id->decl->span;
+      decl_id_span.finish.offset = decl_id_span.start.offset + id->token.size();
       underlines.emplace_back(
-          decl->span,
-          DisplayAttrs{static_cast<DisplayAttrs::Color>(DisplayAttrs::RED +
-                                                        static_cast<char>(i)),
+          decl_id_span,
+          DisplayAttrs{static_cast<DisplayAttrs::Color>(
+                           DisplayAttrs::RED +
+                           static_cast<char>(decls.at(id->decl) % 7)),
                        DisplayAttrs::UNDERLINE});
-      i = (i == 6) ? 0 : i + 1;
+      underlines.emplace_back(
+          id->span, DisplayAttrs{static_cast<DisplayAttrs::Color>(
+                                     DisplayAttrs::RED +
+                                     static_cast<char>(decls.at(id->decl) % 7)),
+                                 DisplayAttrs::UNDERLINE});
     }
+
+    std::sort(underlines.begin(), underlines.end(),
+              [](auto const &lhs, auto const &rhs) {
+                if (lhs.first.start.line_num < rhs.first.start.line_num) {
+                  return true;
+                }
+                if (lhs.first.start.line_num > rhs.first.start.line_num) {
+                  return false;
+                }
+                if (lhs.first.start.offset < rhs.first.start.offset) {
+                  return true;
+                }
+                if (lhs.first.start.offset > rhs.first.start.offset) {
+                  return false;
+                }
+                if (lhs.first.finish.line_num < rhs.first.finish.line_num) {
+                  return true;
+                }
+                if (lhs.first.finish.line_num > rhs.first.finish.line_num) {
+                  return false;
+                }
+                return lhs.first.finish.offset < rhs.first.finish.offset;
+              });
 
     WriteSource(std::cerr, *cycle.front()->span.source, iset, underlines);
     std::cerr << "\n\n";

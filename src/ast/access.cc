@@ -68,9 +68,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
     auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
                   ->GetType(member_name);
     ctx->set_type(this, t);
-    if (t == nullptr) {
-      NOT_YET("log an error");
-    }
+    if (t == nullptr) { NOT_YET("log an error"); }
     return t;
   } else {
     ctx->error_log_.MissingMember(span, member_name, base_type);

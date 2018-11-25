@@ -206,22 +206,8 @@ bool Declaration::IsCustomInitialized() const {
 }
 
 type::Type const *Declaration::VerifyType(Context *ctx) {
-  for (auto iter = ctx->cyc_deps_.begin(); iter != ctx->cyc_deps_.end();
-       ++iter) {
-    if (*iter == this) {
-      ctx->error_log_.CyclicDependency(
-          std::vector<ast::Declaration const *>(iter, ctx->cyc_deps_.end()));
-      return nullptr;
-    }
-  }
-  ctx->cyc_deps_.push_back(this);
-
   Module *old_mod = std::exchange(ctx->mod_, mod_);
-  base::defer d([&] {
-    ctx->mod_ = old_mod;
-    ctx->cyc_deps_.pop_back();
-  });
-
+  base::defer d([&] { ctx->mod_ = old_mod; });
 
   type::Type const *this_type = nullptr;
   {
