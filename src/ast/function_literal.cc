@@ -274,7 +274,6 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
   // whether or not we can proceed.
 
   auto *t = ctx->type_of(this);
-  if (t == type::Err) { return; }
 
   ir::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
   CURRENT_FUNC(ir_func) {

@@ -452,8 +452,6 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
     case ir::Op::Arrow: UNREACHABLE();
     case ir::Op::Array: UNREACHABLE();
     case ir::Op::Ptr: UNREACHABLE();
-    case ir::Op::Err: UNREACHABLE();
-    case ir::Op::Contextualize: UNREACHABLE();
   }
   UNREACHABLE();
 }

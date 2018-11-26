@@ -19,7 +19,7 @@ namespace type {
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
-using InitFnType = void (*)(const Type *, const Type *, ir::Val, ir::Register,
+using InitFnType = void (*)(Type const *, Type const *, ir::Val, ir::Register,
                             Context *ctx);
 
 template <InitFnType InitFn>
@@ -131,7 +131,7 @@ static ir::Func *StructInitializationWith(const Struct *struct_type,
   return iter->second;
 }
 
-void EmitCopyInit(const Type *from_type, const Type *to_type, ir::Val from_val,
+void EmitCopyInit(Type const *from_type, Type const *to_type, ir::Val from_val,
                   ir::Register to_var, Context *ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>() || to_type->is<Function>()) {
@@ -165,7 +165,7 @@ void EmitCopyInit(const Type *from_type, const Type *to_type, ir::Val from_val,
   }
 }
 
-void EmitMoveInit(const Type *from_type, const Type *to_type, ir::Val from_val,
+void EmitMoveInit(Type const *from_type, Type const *to_type, ir::Val from_val,
                   ir::Register to_var, Context *ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>()) {
@@ -219,10 +219,9 @@ void EmitMoveInit(const Type *from_type, const Type *to_type, ir::Val from_val,
 
 // TODO optimize (early exists. don't check lhs->is<> && rhs->is<>. If they
 // don't match you can early exit.
-const Type *Meet(const Type *lhs, const Type *rhs) {
+Type const *Meet(Type const *lhs, Type const *rhs) {
   if (lhs == rhs) { return lhs; }
-  if (lhs == Err) { return rhs; }  // Ignore errors
-  if (rhs == Err) { return lhs; }  // Ignore errors
+  if (lhs == nullptr || rhs == nullptr) { return nullptr; }
   if (lhs == NullPtr || rhs == NullPtr) {
     // TODO It's not obvious to me that this is what I want to do.
     return nullptr;
@@ -232,7 +231,7 @@ const Type *Meet(const Type *lhs, const Type *rhs) {
                                          rhs->as<Pointer>().pointee))
                               : nullptr;
   } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    const Type *result = nullptr;
+    Type const *result = nullptr;
     if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
       if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
       result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
@@ -251,26 +250,26 @@ const Type *Meet(const Type *lhs, const Type *rhs) {
     return Arr(rhs->as<Array>().data_type, 0);
   } else if (lhs->is<Variant>()) {
     // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
-    base::vector<const Type *> results;
+    base::vector<Type const *> results;
     if (rhs->is<Variant>()) {
-      for (const Type *l_type : lhs->as<Variant>().variants_) {
-        for (const Type *r_type : rhs->as<Variant>().variants_) {
-          const Type *result = Meet(l_type, r_type);
+      for (Type const *l_type : lhs->as<Variant>().variants_) {
+        for (Type const *r_type : rhs->as<Variant>().variants_) {
+          Type const *result = Meet(l_type, r_type);
           if (result != nullptr) { results.push_back(result); }
         }
       }
     } else {
-      for (const Type *t : lhs->as<Variant>().variants_) {
-        if (const Type *result = Meet(t, rhs)) { results.push_back(result); }
+      for (Type const *t : lhs->as<Variant>().variants_) {
+        if (Type const *result = Meet(t, rhs)) { results.push_back(result); }
       }
     }
     return results.empty() ? nullptr : Var(std::move(results));
   } else if (rhs->is<Variant>()) {  // lhs is not a variant
     // TODO faster lookups? maybe not represented as a vector. at least give a
     // better interface.
-    base::vector<const Type *> results;
-    for (const Type *t : rhs->as<Variant>().variants_) {
-      if (const Type *result = Meet(t, lhs)) { results.push_back(result); }
+    base::vector<Type const *> results;
+    for (Type const *t : rhs->as<Variant>().variants_) {
+      if (Type const *result = Meet(t, lhs)) { results.push_back(result); }
     }
     return results.empty() ? nullptr : Var(std::move(results));
   }
@@ -278,10 +277,10 @@ const Type *Meet(const Type *lhs, const Type *rhs) {
   return nullptr;
 }
 
-const Type *Join(const Type *lhs, const Type *rhs) {
+Type const *Join(Type const *lhs, Type const *rhs) {
   if (lhs == rhs) { return lhs; }
-  if (lhs == Err) { return rhs; }  // Ignore errors
-  if (rhs == Err) { return lhs; }  // Ignore errors
+  if (lhs == nullptr) { return rhs; }  // Ignore errors
+  if (rhs == nullptr) { return lhs; }  // Ignore errors
   if ((lhs == Block && rhs == OptBlock) || (lhs == OptBlock && rhs == Block)) {
     return Block;
   }
@@ -293,7 +292,7 @@ const Type *Join(const Type *lhs, const Type *rhs) {
   if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
     return Join(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee);
   } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    const Type *result = nullptr;
+    Type const *result = nullptr;
     if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
       if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
       result = Join(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
@@ -309,7 +308,7 @@ const Type *Join(const Type *lhs, const Type *rhs) {
              !rhs->as<Array>().fixed_length) {
     return rhs;
   } else if (lhs->is<Variant>()) {
-    base::vector<const Type *> rhs_types;
+    base::vector<Type const *> rhs_types;
     if (rhs->is<Variant>()) {
       rhs_types = rhs->as<Variant>().variants_;
     } else {
@@ -322,7 +321,7 @@ const Type *Join(const Type *lhs, const Type *rhs) {
   } else if (rhs->is<Variant>()) {  // lhs is not a variant
     // TODO faster lookups? maybe not represented as a vector. at least give
     // a better interface.
-    for (const Type *v : rhs->as<Variant>().variants_) {
+    for (Type const *v : rhs->as<Variant>().variants_) {
       if (lhs == v) { return rhs; }
     }
     return nullptr;
@@ -331,25 +330,25 @@ const Type *Join(const Type *lhs, const Type *rhs) {
 }
 
 static base::guarded<
-    base::unordered_map<const Type *, base::unordered_map<size_t, Array>>>
+    base::unordered_map<Type const *, base::unordered_map<size_t, Array>>>
     fixed_arrays_;
-const Array *Arr(const Type *t, size_t len) {
+const Array *Arr(Type const *t, size_t len) {
   auto handle = fixed_arrays_.lock();
   return &(*handle)[t]
               .emplace(std::piecewise_construct, std::forward_as_tuple(len),
                        std::forward_as_tuple(t, len))
               .first->second;
 }
-static base::guarded<base::unordered_map<const Type *, Array>> arrays_;
-const Array *Arr(const Type *t) {
+static base::guarded<base::unordered_map<Type const *, Array>> arrays_;
+const Array *Arr(Type const *t) {
   return &arrays_.lock()
               ->emplace(std::piecewise_construct, std::forward_as_tuple(t),
                         std::forward_as_tuple(t))
               .first->second;
 }
 
-static base::guarded<base::map<base::vector<const Type *>, Variant>> variants_;
-const Type *Var(base::vector<const Type *> variants) {
+static base::guarded<base::map<base::vector<Type const *>, Variant>> variants_;
+Type const *Var(base::vector<Type const *> variants) {
   if (variants.empty()) { return type::Void(); }
   if (variants.size() == 1) { return variants[0]; }
 
@@ -382,17 +381,17 @@ const Type *Var(base::vector<const Type *> variants) {
               .first->second;
 }
 
-static base::guarded<base::unordered_map<const Type *, const Pointer>>
+static base::guarded<base::unordered_map<Type const *, const Pointer>>
     pointers_;
-const Pointer *Ptr(const Type *t) {
+const Pointer *Ptr(Type const *t) {
   return &pointers_.lock()->emplace(t, Pointer(t)).first->second;
 }
 
-static base::guarded<base::map<base::vector<const Type *>,
-                               base::map<base::vector<const Type *>, Function>>>
+static base::guarded<base::map<base::vector<Type const *>,
+                               base::map<base::vector<Type const *>, Function>>>
     funcs_;
-const Function *Func(base::vector<const Type *> in,
-                     base::vector<const Type *> out) {
+const Function *Func(base::vector<Type const *> in,
+                     base::vector<Type const *> out) {
   // TODO if void is unit in some way we shouldn't do this.
   auto f = Function(in, out);
   return &(*funcs_.lock())[std::move(in)]
@@ -400,8 +399,8 @@ const Function *Func(base::vector<const Type *> in,
               .first->second;
 }
 
-static base::guarded<base::map<base::vector<const Type *>, const Tuple>> tups_;
-const Type *Tup(base::vector<const Type *> entries) {
+static base::guarded<base::map<base::vector<Type const *>, const Tuple>> tups_;
+Type const *Tup(base::vector<Type const *> entries) {
   if (entries.size() == 1) { return entries[0]; }
   Tuple tup(entries);
   auto[iter, success] =
@@ -409,7 +408,7 @@ const Type *Tup(base::vector<const Type *> entries) {
   return &iter->second;
 }
 
-const Type *Void() { return Tup({}); }
+Type const *Void() { return Tup({}); }
 
 bool Type::is_big() const {
   return is<Array>() || is<Struct>() || is<Variant>() || is<Tuple>();

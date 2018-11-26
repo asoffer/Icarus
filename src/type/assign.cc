@@ -197,7 +197,6 @@ void Primitive::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
                            Context *ctx) const {
   ASSERT(this == from_type);
   switch (this->type_) {
-    case PrimType::Err: UNREACHABLE(this, ": Err");
     case PrimType::Type_:
       ir::Store(from.reg_or<type::Type const *>(), to);
       break;

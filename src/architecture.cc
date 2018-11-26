@@ -17,7 +17,6 @@ size_t Architecture::alignment(const type::Type *t) const {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Module:
         return 8;  // TODO ???
-      case type::PrimType::Err: NOT_YET();
       case type::PrimType::Block:
         return 8;  // TODO ???
       case type::PrimType::OptBlock:
@@ -88,7 +87,6 @@ size_t Architecture::bytes(const type::Type *t) const {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Module:
         return 8;  // TODO ???
-      case type::PrimType::Err: NOT_YET();
       case type::PrimType::Block:
         return 8;  // TODO ???
       case type::PrimType::OptBlock:

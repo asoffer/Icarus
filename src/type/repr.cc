@@ -71,8 +71,7 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
     case PrimType::Interface:
     case PrimType::Block:
     case PrimType::OptBlock:
-    case PrimType::RepBlock:
-    case PrimType::Err: NOT_YET();
+    case PrimType::RepBlock: NOT_YET();
   }
 }
 

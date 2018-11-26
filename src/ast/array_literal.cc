@@ -40,17 +40,12 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
     return nullptr;
   }
 
-  const type::Type *joined = type::Err;
-  for (auto &elem_type : elem_types) {
-    joined = type::Join(joined, elem_type);
-    if (joined == nullptr) { break; }
-  }
+  const type::Type *joined = nullptr;
+  for (auto *elem_type : elem_types) { joined = type::Join(joined, elem_type); }
 
   if (joined == nullptr) {
     // type::Types couldn't be joined. Emit an error
     ctx->error_log_.InconsistentArrayType(span);
-    return nullptr;
-  } else if (joined == type::Err) {
     return nullptr;
   } else {
     return ctx->set_type(this, type::Arr(joined, elems_.size()));
