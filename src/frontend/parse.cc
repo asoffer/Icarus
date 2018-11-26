@@ -934,16 +934,7 @@ static std::unique_ptr<ast::Node> BuildKWBlock(
 
 static std::unique_ptr<ast::Node> Parenthesize(
     base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  auto expr = move_as<ast::Expression>(nodes[1]);
-  if (nodes[0]->as<frontend::Token>().token != "\\(") {
-    return expr;
-  } else {
-    auto unop     = std::make_unique<ast::Unop>();
-    unop->operand = std::move(expr);
-    unop->span    = TextSpan(nodes[0]->span, nodes[2]->span);
-    unop->op      = Language::Operator::Ref;
-    return unop;
-  }
+  return std::move(nodes[1]);
 }
 
 static std::unique_ptr<ast::Node> BuildEmptyParen(

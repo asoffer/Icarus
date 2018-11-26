@@ -63,8 +63,6 @@ Val Val::Interface(ir::Interface ifc) {
   return Val(type::Interface, std::move(ifc));
 }
 
-Val Val::Ref(ast::Expression *expr) { NOT_YET(); }
-
 Val::Val(ast::ScopeLiteral *scope_lit) : Val(type::Scope, scope_lit) {}
 
 Val Val::Func(ast::FunctionLiteral *fn) { return Val(type::Generic, fn); }

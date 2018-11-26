@@ -84,7 +84,6 @@ struct Val {
   static Val Interface(ir::Interface ifc);
 
   static Val CharBuf(const std::string &str);
-  static Val Ref(ast::Expression *expr);
   static Val None() { return Val(); }
 
   std::string to_string() const;

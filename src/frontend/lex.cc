@@ -358,11 +358,6 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
           span.finish = loc.cursor;
           return TaggedNode(span, "", newline);
           break;
-        case '(':
-          loc.Increment();
-          span.finish = loc.cursor;
-          return TaggedNode(span, "\\(", l_ref);
-          break;
         case '\0':
           // Ignore the following newline and retry
           loc.Increment();

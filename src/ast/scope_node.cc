@@ -57,8 +57,8 @@ type::Type const *ScopeNode::VerifyType(Context *ctx) {
   // TODO check that all the blocks make sense and emit errors
 
   // TODO compute what type this should return
-  ctx->set_type(this, type::Void());
-  return type::Void();  // TODO can this evaluate to anything?
+  return ctx->set_type(this,
+                       type::Void());  // TODO can this evaluate to anything?
 }
 
 void ScopeNode::Validate(Context *ctx) {

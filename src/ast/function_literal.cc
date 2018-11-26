@@ -59,8 +59,7 @@ void FunctionLiteral::assign_scope(Scope *scope) {
 type::Type const *FunctionLiteral::VerifyType(Context *ctx) {
   if (std::any_of(inputs.begin(), inputs.end(),
                   [](auto const &decl) { return decl->const_; })) {
-    ctx->set_type(this, type::Generic);
-    return type::Generic;
+    return ctx->set_type(this, type::Generic);
   }
   return VerifyTypeConcrete(ctx);
 }
@@ -130,8 +129,7 @@ type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
     }
     if (err) { return nullptr; }
     auto *t = type::Func(std::move(input_type_vec), std::move(ret_types));
-    ctx->set_type(this, t);
-    return t;
+    return ctx->set_type(this, t);
   } else {
     Validate(ctx);
     return ctx->type_of(this);

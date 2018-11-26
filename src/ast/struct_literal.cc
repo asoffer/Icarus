@@ -34,8 +34,7 @@ void StructLiteral::assign_scope(Scope *scope) {
 }
 
 type::Type const *StructLiteral::VerifyType(Context *ctx) {
-  ctx->set_type(this, type::Type_);
-  return type::Type_;
+  return ctx->set_type(this, type::Type_);
 }
 
 void StructLiteral::Validate(Context *ctx) {

@@ -35,10 +35,8 @@ std::string Unop::to_string(size_t n) const {
     case Language::Operator::Not: ss << "!"; break;
     case Language::Operator::At: ss << "@"; break;
     case Language::Operator::Eval: ss << "$"; break;
-    case Language::Operator::Ref: ss << "\\"; break;
     case Language::Operator::Needs: ss << "needs "; break;
     case Language::Operator::Ensure: ss << "ensure "; break;
-    case Language::Operator::Pass: break;
     default: { UNREACHABLE(); }
   }
 
@@ -62,44 +60,32 @@ type::Type const *Unop::VerifyType(Context *ctx) {
   if (operand_type == nullptr) { return nullptr; }
 
   switch (op) {
-    case Language::Operator::TypeOf:
-      ctx->set_type(this, type::Type_);
-      return type::Type_;
-    case Language::Operator::Eval:
-      ctx->set_type(this, operand_type);
-      return operand_type;
+    case Language::Operator::TypeOf: return ctx->set_type(this, type::Type_);
+    case Language::Operator::Eval: return ctx->set_type(this, operand_type);
     case Language::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
         ctx->error_log_.WhichNonVariant(operand_type, span);
       }
-      ctx->set_type(this, type::Type_);
-      return type::Type_;
+      return ctx->set_type(this, type::Type_);
     case Language::Operator::At:
       if (operand_type->is<type::Pointer>()) {
-        auto *t = operand_type->as<type::Pointer>().pointee;
-        ctx->set_type(this, t);
-        return t;
+        return ctx->set_type(this, operand_type->as<type::Pointer>().pointee);
       } else {
         ctx->error_log_.DereferencingNonPointer(operand_type, span);
         return nullptr;
       }
-    case Language::Operator::And: {
-      auto *t = type::Ptr(operand_type);
-      ctx->set_type(this, t);
-      return t;
-    }
+    case Language::Operator::And:
+      return ctx->set_type(this, type::Ptr(operand_type));
     case Language::Operator::Mul:
       if (operand_type != type::Type_) {
         NOT_YET("log an error");
         return nullptr;
       } else {
-        ctx->set_type(this, type::Type_);
-        return type::Type_;
+        return ctx->set_type(this, type::Type_);
       }
     case Language::Operator::Sub:
       if (type::IsNumeric(operand_type)) {
-        ctx->set_type(this, operand_type);
-        return operand_type;
+        return ctx->set_type(this, operand_type);
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
@@ -115,14 +101,11 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       return nullptr;
     case Language::Operator::Not:
       if (operand_type == type::Bool) {
-        ctx->set_type(this, type::Bool);
-        return type::Bool;
+        return ctx->set_type(this, type::Bool);
       } else if (operand_type->is<type::Enum>()) {
-        ctx->set_type(this, operand_type);
-        return operand_type;
+        return ctx->set_type(this, operand_type);
       } else if (operand_type->is<type::Flags>()) {
-        ctx->set_type(this, operand_type);
-        return operand_type;
+        return ctx->set_type(this, operand_type);
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
@@ -139,20 +122,15 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         return nullptr;
       }
     case Language::Operator::Needs:
-      ctx->set_type(this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PreconditionNeedsBool(operand.get());
       }
-      return type::Void();
+      return ctx->set_type(this, type::Void());
     case Language::Operator::Ensure:
-      ctx->set_type(this, type::Void());
       if (operand_type != type::Bool) {
         ctx->error_log_.PostconditionNeedsBool(operand.get());
       }
-      return type::Void();
-    case Language::Operator::Pass:
-      ctx->set_type(this, operand_type);
-      return operand_type;
+      return ctx->set_type(this, type::Void());
     default: UNREACHABLE(*this);
   }
 }
@@ -222,7 +200,6 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
       ir::Func::Current->postcondition_exprs_.push_back(operand.get());
       return {};
     } break;
-    case Language::Operator::Pass: return operand->EmitIR(ctx);
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }

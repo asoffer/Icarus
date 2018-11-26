@@ -13,8 +13,7 @@ void Terminal::assign_scope(Scope *scope) {
 }
 
 type::Type const *Terminal::VerifyType(Context *ctx) {
-  ctx->set_type(this, value.type);
-  return value.type;
+  return ctx->set_type(this, value.type);
 }
 
 base::vector<ir::Val> Terminal::EmitIR(Context *) { return {value}; }

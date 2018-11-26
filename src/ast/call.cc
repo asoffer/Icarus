@@ -424,8 +424,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.size() == 1u);
       ASSERT(arg_types.pos_[0] == type::Type_);
-      ctx->set_type(this, type::Int64);
-      return type::Int64;
+      return ctx->set_type(this, type::Int64);
     } else if (fn_val == ir::Val::BuiltinGeneric(ResizeFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
@@ -434,8 +433,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(arg_types.pos_[0], Is<type::Pointer>());
       ASSERT(arg_types.pos_[0]->as<type::Pointer>().pointee, Is<type::Array>());
       ASSERT(arg_types.pos_[1] == type::Int64);
-      ctx->set_type(this, type::Void());
-      return type::Void();
+      return ctx->set_type(this, type::Void());
     } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
@@ -445,8 +443,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(arg_types.pos_[1] == type::Type_);
       auto *t =
           backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx);
-      ctx->set_type(this, t);
-      ASSERT(t, Is<type::Function>());
+      return ctx->set_type(this, t);
       return t;
     } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {
       // TODO might be optional.
@@ -476,8 +473,6 @@ type::Type const *Call::VerifyType(Context *ctx) {
 
   std::tie(dispatch_table_, ret_type) =
       DispatchTable::Make(args, overload_set, ctx);
-  ctx->set_type(this, ret_type);
-
 
   u64 expanded_size = 1;
   arg_types.Apply([&expanded_size](type::Type const *arg_type) {
@@ -492,7 +487,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
     return nullptr;
   }
 
-  return ret_type;
+  return ctx->set_type(this, ret_type);
 }
 
 void Call::Validate(Context *ctx) {

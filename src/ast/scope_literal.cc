@@ -41,8 +41,6 @@ type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {
 }
 
 type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
-  ctx->set_type(this, type::Scope);
-
   if (stateful_) {
     std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
         state_types;
@@ -71,8 +69,7 @@ type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
   } else {
     for (auto &decl : decls_) { decl.VerifyType(ctx); }
   }
-
-  return type::Scope;
+  return ctx->set_type(this, type::Scope);
 }
 
 void ScopeLiteral::Validate(Context *ctx) {

@@ -35,41 +35,37 @@ type::Type const *Access::VerifyType(Context *ctx) {
   auto base_type = DereferenceAll(operand_type);
   if (base_type == type::Type_) {
     auto *evaled_type =
-        backend::EvaluateAs<const type::Type *>(operand.get(), ctx);
+        backend::EvaluateAs<type::Type const *>(operand.get(), ctx);
     if (evaled_type->is<type::Enum>()) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on
       // assuming that this is an element of that enum type.
-      ctx->set_type(this, evaled_type);
       if (!evaled_type->as<type::Enum>().Get(member_name).has_value()) {
         ctx->error_log_.MissingMember(span, member_name, evaled_type);
       }
+      return ctx->set_type(this, evaled_type);
     } else if (evaled_type->is<type::Flags>()) {
       // Regardless of whether we can get the value, it's clear that this is
       // supposed to be a member so we should emit an error but carry on
       // assuming that this is an element of that enum type.
-      ctx->set_type(this, evaled_type);
       if (!evaled_type->as<type::Flags>().Get(member_name).has_value()) {
         ctx->error_log_.MissingMember(span, member_name, evaled_type);
       }
+      return ctx->set_type(this, evaled_type);
+    } else {
+      NOT_YET();
     }
-    return evaled_type;
+
   } else if (base_type->is<type::Struct>()) {
     const auto *member = base_type->as<type::Struct>().field(member_name);
-    if (member != nullptr) {
-      ctx->set_type(this, member->type);
-      return member->type;
-
-    } else {
-      ctx->error_log_.MissingMember(span, member_name, base_type);
-      return nullptr;
-    }
+    if (member != nullptr) { return ctx->set_type(this, member->type); }
+    ctx->error_log_.MissingMember(span, member_name, base_type);
+    return nullptr;
   } else if (base_type == type::Module) {
     auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
                   ->GetType(member_name);
-    ctx->set_type(this, t);
     if (t == nullptr) { NOT_YET("log an error"); }
-    return t;
+    return ctx->set_type(this, t);
   } else {
     ctx->error_log_.MissingMember(span, member_name, base_type);
     return nullptr;

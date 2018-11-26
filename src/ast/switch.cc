@@ -48,8 +48,7 @@ type::Type const *Switch::VerifyType(Context *ctx) {
     NOT_YET("handle type error");
     return nullptr;
   }
-  ctx->set_type(this, t);
-  return t;
+  return ctx->set_type(this, t);
 }
 
 void Switch::Validate(Context *ctx) {
