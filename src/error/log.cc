@@ -609,4 +609,15 @@ void Log::MismatchedAssignmentSize(TextSpan const &span, size_t lhs,
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
+
+void Log::InvalidNumber(TextSpan const &span, std::string_view err) {
+  std::stringstream ss;
+  ss << err << "\n\n";
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
 }  // namespace error

@@ -76,6 +76,8 @@ struct Log {
 
   void MismatchedAssignmentSize(TextSpan const &span, size_t lhs, size_t rhs);
 
+  void InvalidNumber(TextSpan const& span, std::string_view err);
+
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() +
            errors_.size() + cyc_dep_vecs_.size();

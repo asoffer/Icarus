@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "base/debug.h"
 
+namespace frontend {
 namespace {
 template <int Base>
 i32 DigitInBase(char c);
@@ -106,7 +107,7 @@ NumberOrError ParseNumberInBase(std::string_view sv) {
   switch (num_dots) {
     case 0: return ParseIntInBase<Base>(copy);
     case 1: return ParseRealInBase<Base>(copy, first_dot);
-    default: NOT_YET();
+    default: return "Too many `.` characters in numeric literal.";
   }
   UNREACHABLE();
 }
@@ -122,9 +123,10 @@ NumberOrError ParseNumber(std::string_view sv) {
       case 'o': return ParseNumberInBase<8>(sv);
       case 'd': return ParseNumberInBase<10>(sv);
       case 'x': return ParseNumberInBase<16>(sv);
-      default: NOT_YET(base);
+      default: return "Base must be one of `b`, `o`, `d`, or `x`.";
     }
   } else {
     return ParseNumberInBase<10>(sv);
   }
 }
+}  // namespace frontend

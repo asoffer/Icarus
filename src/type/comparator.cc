@@ -20,7 +20,7 @@ Cmp Pointer::Comparator() const { return Cmp::Equality; }
 Cmp Function::Comparator() const { return Cmp::None; }
 Cmp Enum::Comparator() const { return Cmp::Equality; }
 Cmp Flags::Comparator() const { return Cmp::Order; }
-Cmp GenericFunction::Comparator() const { Cmp::None; }
+Cmp GenericFunction::Comparator() const { return Cmp::None; }
 
 Cmp Variant::Comparator() const {
   using cmp_t = std::underlying_type_t<Cmp>;

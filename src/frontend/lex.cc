@@ -14,7 +14,6 @@
 // TODO audit every location where frontend::TaggedNode::Invalid is returned to
 // see if you need to log an error.
 
-ir::Val ErrorFunc();
 ir::Val AsciiFunc();
 ir::Val OrdFunc();
 ir::Val BytesFunc();
@@ -88,7 +87,6 @@ TaggedNode NextWord(SourceLocation &loc) {
 #ifdef DBG
       {"debug_ir", DebugIrFunc()},
 #endif  // DBG
-      {"error", ErrorFunc()},
       {"resize", ir::Val::BuiltinGeneric(ResizeFuncIndex)},
       {"foreign", ir::Val::BuiltinGeneric(ForeignFuncIndex)},
       {"bytes", BytesFunc()},
@@ -160,7 +158,7 @@ TaggedNode NextWord(SourceLocation &loc) {
   return TaggedNode(std::make_unique<ast::Identifier>(span, token), expr);
 }
 
-TaggedNode NextNumber(SourceLocation &loc) {
+TaggedNode NextNumber(SourceLocation &loc, error::Log *error_log) {
   auto span         = loc.ToSpan();
   const char *start = &*loc;
   while (*loc == 'b' || *loc == 'o' || *loc == 'd' || *loc == 'x' ||
@@ -168,19 +166,16 @@ TaggedNode NextNumber(SourceLocation &loc) {
     loc.Increment();
   }
   span.finish = loc.cursor;
-  return std::visit(base::overloaded{[&span](i32 n) {
-                                       return TaggedNode::TerminalExpression(
-                                           span, ir::Val(n));
-                                     },
-                                     [&span](double d) {
-                                       return TaggedNode::TerminalExpression(
-                                           span, ir::Val(d));
-                                     },
-                                     [&span](const std::string &err) {
-                                       NOT_YET("log an error");
-                                       return TaggedNode{};
-                                     }},
-                    ParseNumber(std::string_view(start, &*loc - start)));
+  return TaggedNode::TerminalExpression(
+      span, std::visit(base::overloaded{[](i32 n) { return ir::Val(n); },
+                                        [](double d) { return ir::Val(d); },
+                                        [&](std::string_view err) {
+                                          error_log->InvalidNumber(span, err);
+                                          // TODO should you do something with
+                                          // guessing the type?
+                                          return ir::Val(0);
+                                        }},
+                       ParseNumber(std::string_view(start, &*loc - start))));
 }
 
 TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
@@ -338,7 +333,7 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
       if (num_dots == 1) {
         if (IsDigit(*loc)) {
           loc.BackUp();
-          return NextNumber(loc);
+          return NextNumber(loc, error_log);
         }
       } else {
         error_log->TooManyDots(span);
@@ -591,7 +586,7 @@ restart:
   } else if (IsAlphaOrUnderscore(*loc)) {
     return NextWord(loc);
   } else if (IsDigit(*loc)) {
-    return NextNumber(loc);
+    return NextNumber(loc, error_log);
   }
 
   TaggedNode tagged_node = TaggedNode::Invalid();
