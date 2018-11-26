@@ -53,7 +53,10 @@ type::Type const *Access::VerifyType(Context *ctx) {
       }
       return ctx->set_type(this, evaled_type);
     } else {
-      NOT_YET();
+      // TODO what about structs?
+      // TODO split this around the operand and the member separately.
+      ctx->error_log_.TypeHasNoMembers(span);
+      return nullptr;
     }
 
   } else if (base_type->is<type::Struct>()) {
@@ -64,7 +67,10 @@ type::Type const *Access::VerifyType(Context *ctx) {
   } else if (base_type == type::Module) {
     auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
                   ->GetType(member_name);
-    if (t == nullptr) { NOT_YET("log an error"); }
+    if (t == nullptr) {
+      ctx->error_log_.NoExportedSymbol(span);
+      return nullptr;
+    }
     return ctx->set_type(this, t);
   } else {
     ctx->error_log_.MissingMember(span, member_name, base_type);

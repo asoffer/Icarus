@@ -30,7 +30,7 @@ struct GenericFunction : public Callable {
     NOT_YET();
   }
   void EmitRepr(ir::Val const &id_val, Context *ctx) const override {}
-  Cmp Comparator() const override { NOT_YET(); }
+  Cmp Comparator() const override;
 };
 
 struct Function : public Callable {

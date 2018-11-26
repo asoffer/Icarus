@@ -44,6 +44,8 @@ struct Architecture {
 
   size_t ptr_bytes_;
   size_t ptr_align_;
+  constexpr static size_t local_ptr_bytes_ = sizeof(void *);
+  constexpr static size_t local_ptr_align_ = alignof(void *);
 };
 
 #endif  // ICARUS_ARCHITECTURE_H

@@ -416,7 +416,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
                                              bytes_fwd);
           save(addr);
           break;
-        case ir::Addr::Kind::Null: NOT_YET();
+        case ir::Addr::Kind::Null: UNREACHABLE();
       }
     } break;
     case ir::Op::PtrIncr: {
@@ -428,7 +428,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         case ir::Addr::Kind::Heap:
           save(static_cast<char *>(addr.as_heap) + bytes_fwd);
           break;
-        case ir::Addr::Kind::Null: NOT_YET();
+        case ir::Addr::Kind::Null: UNREACHABLE();
       }
     } break;
     case ir::Op::Field: {

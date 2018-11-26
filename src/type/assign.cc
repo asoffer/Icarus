@@ -220,7 +220,6 @@ void Primitive::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
 
 void CharBuffer::EmitAssign(Type const *from_type, ir::Val from,
                             ir::Register to, Context *ctx) const {
-  // TODO Only callable at compile-time?
-  NOT_YET();
+  UNREACHABLE();
 }
 }  // namespace type

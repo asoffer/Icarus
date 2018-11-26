@@ -130,29 +130,32 @@ type::Type const *Binop::VerifyType(Context *ctx) {
   // TODO if lhs is reserved?
   if (op == Operator::Assign) {
     if (lhs_type->is<type::Tuple>()) {
+      const auto &lhs_entries_ = lhs_type->as<type::Tuple>().entries_;
       if (rhs_type->is<type::Tuple>()) {
-        const auto &lhs_entries_ = lhs_type->as<type::Tuple>().entries_;
         const auto &rhs_entries_ = rhs_type->as<type::Tuple>().entries_;
 
         if (lhs_entries_.size() != rhs_entries_.size()) {
-          NOT_YET("error message");
-        } else {
-          for (size_t i = 0; i < lhs_entries_.size(); ++i) {
-            if (!type::CanCastImplicitly(rhs_entries_[i], lhs_entries_[i])) {
-              NOT_YET("log an error");
-            }
+          ctx->error_log_.MismatchedAssignmentSize(span, lhs_entries_.size(),
+                                                   rhs_entries_.size());
+          return nullptr;
+        }
+
+        for (size_t i = 0; i < lhs_entries_.size(); ++i) {
+          if (!type::CanCastImplicitly(rhs_entries_[i], lhs_entries_[i])) {
+            NOT_YET("log an error");
           }
         }
       } else {
-        LOG << lhs;
-        LOG << rhs;
-        NOT_YET("error message");
+        // TOD should you allow this for struct user-defined types?
+        // z: complex
+        // z = (3, 4) // Interpretted as (=)(&z, 3, 4)?
+        ctx->error_log_.MismatchedAssignmentSize(span, lhs_entries_.size(), 1);
+        return nullptr;
       }
     } else {
       if (rhs_type->is<type::Tuple>()) {
-        LOG << lhs;
-        LOG << rhs;
-        NOT_YET("error message");
+        size_t rhs_size = rhs_type->as<type::Tuple>().entries_.size();
+        ctx->error_log_.MismatchedAssignmentSize(span, 1 , rhs_size);
       } else {
         if (!type::CanCastImplicitly(rhs_type, lhs_type)) {
           NOT_YET("log an error");
@@ -403,7 +406,6 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Add: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type->is<type::CharBuffer>()) { NOT_YET(); }
       return {
           type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
               rhs_ir.type, [&](auto type_holder) {
@@ -552,7 +554,6 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::AddEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      if (rhs_ir.type->is<type::CharBuffer>()) { NOT_YET(); }
       type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;

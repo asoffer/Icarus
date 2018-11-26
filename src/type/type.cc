@@ -210,7 +210,7 @@ void EmitMoveInit(Type const *from_type, Type const *to_type, ir::Val from_val,
     call_args.type_ = f->type_;
     ir::Call(ir::AnyFunc{f}, std::move(call_args));
   } else if (to_type->is<Function>()) {
-    NOT_YET();
+    to_type->EmitAssign(from_type, from_val, to_var, ctx);
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
     to_type->EmitAssign(from_type, from_val, to_var, ctx);

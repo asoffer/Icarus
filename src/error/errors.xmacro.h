@@ -92,7 +92,9 @@ MAKE_LOG_ERROR(StatefulScopeWithoutStateArg,
                "Stateful scope has no handlers whose first argument is a "
                "pointer (to the state object). Did you mean to make this "
                "stateless?")
-
 MAKE_LOG_ERROR(ArrayDataTypeNotAType,
                "Array type has underlying data type specified as a value which "
                "is not a type.")
+MAKE_LOG_ERROR(NoExportedSymbol,
+               "No exported symbol of given name in this module.")
+MAKE_LOG_ERROR(TypeHasNoMembers, "Cannot access a member of a type.")

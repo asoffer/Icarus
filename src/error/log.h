@@ -74,6 +74,8 @@ struct Log {
                               TextSpan const &span);
   void CyclicDependency(base::vector<ast::Identifier const *> cyc_deps);
 
+  void MismatchedAssignmentSize(TextSpan const &span, size_t lhs, size_t rhs);
+
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() +
            errors_.size() + cyc_dep_vecs_.size();

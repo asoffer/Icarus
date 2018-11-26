@@ -576,7 +576,7 @@ void Log::TypeMustBeInitialized(TextSpan const &span, type::Type const *t) {
     ss << "Variants have no default initial value and must be explicitly "
           "initialized.\n\n";
   } else {
-    NOT_YET(t);
+    UNREACHABLE();
   }
   WriteSource(
       ss, *span.source, {span.lines()},
@@ -597,4 +597,16 @@ void Log::ComparingIncomparables(type::Type const *lhs, type::Type const *rhs,
   errors_.push_back(ss.str());
 }
 
+void Log::MismatchedAssignmentSize(TextSpan const &span, size_t lhs,
+                                   size_t rhs) {
+  std::stringstream ss;
+  ss << "Assigning multiple values but left- and right-hand side have "
+        "different numbers of elements  ("
+     << lhs << " vs " << rhs << ").\n\n";
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
 }  // namespace error

@@ -26,11 +26,6 @@ extern Type const *Code, *Int, *Char;
 i32 ResizeFuncIndex  = 0;
 i32 ForeignFuncIndex = 1;
 
-ir::Val ErrorFunc() {
-  // TODO implement me
-  return ir::Val(123.456);
-}
-
 ir::Val AsciiFunc() {
   auto *fn_type                = type::Func({type::Int8}, {type::Char});
   static ir::Func *ascii_func_ = [&]() {
@@ -409,15 +404,13 @@ type::Type const *Call::VerifyType(Context *ctx) {
     // TODO can these be overloaded?
     auto fn_val = fn_->as<Terminal>().value;
     if (fn_val == OrdFunc()) {
-      NOT_YET();
+      return fn_val.type;
     } else if (fn_val == AsciiFunc()) {
-      NOT_YET();
+      return fn_val.type;
 #ifdef DBG
     } else if (fn_val == DebugIrFunc()) {
       return type::Func({}, {});
 #endif  // DBG
-    } else if (fn_val == ErrorFunc()) {
-      NOT_YET();
     } else if (fn_val == BytesFunc() || fn_val == AlignFunc()) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
@@ -511,8 +504,8 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
       return {};
     }
 #endif  // DBG
-    if (fn_val == OrdFunc() || fn_val == AsciiFunc() || fn_val == ErrorFunc() ||
-        fn_val == BytesFunc() || fn_val == AlignFunc()) {
+    if (fn_val == OrdFunc() || fn_val == AsciiFunc() || fn_val == BytesFunc() ||
+        fn_val == AlignFunc()) {
       ir::Arguments call_args;
       for (const auto &arg : args_.pos_[0]->EmitIR(ctx)) {
         call_args.append(arg);

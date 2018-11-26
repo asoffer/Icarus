@@ -147,7 +147,7 @@ constexpr type::Type const *Get() {
   } else if constexpr (std::is_same_v<T, ast::ScopeLiteral *>) {
     return type::Scope;
   } else {
-    NOT_YET();
+    UNREACHABLE();
   }
 }
 

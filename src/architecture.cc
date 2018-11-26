@@ -15,15 +15,11 @@ ir::RegisterOr<i32> Architecture::ComputeArrayLength(
 size_t Architecture::alignment(const type::Type *t) const {
   if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
-      case type::PrimType::Module:
-        return 8;  // TODO ???
-      case type::PrimType::Block:
-        return 8;  // TODO ???
-      case type::PrimType::OptBlock:
-        return 8;  // TODO ??
-      case type::PrimType::RepBlock:
-        return 8 ; // TODO ??
-      case type::PrimType::Interface: NOT_YET();
+      case type::PrimType::Module: return local_ptr_align_;
+      case type::PrimType::Block: return local_ptr_align_;
+      case type::PrimType::OptBlock: return local_ptr_align_;
+      case type::PrimType::RepBlock: return local_ptr_align_;
+      case type::PrimType::Interface: return local_ptr_align_;
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
       case type::PrimType::Char: return 1;
@@ -42,6 +38,7 @@ size_t Architecture::alignment(const type::Type *t) const {
       case type::PrimType::Scope:
       case type::PrimType::StatefulScope: return 8;
     }
+    UNREACHABLE();
   } else if (t->is<type::CharBuffer>()) {
     // TODO what about utf-16 or utf-32 buffers?
     return alignof(std::string_view);
@@ -77,23 +74,18 @@ size_t Architecture::alignment(const type::Type *t) const {
     }
     return alignment_val;
   } else {
-    NOT_YET(t->to_string());
+    UNREACHABLE();
   }
-  UNREACHABLE();
 }
 
 size_t Architecture::bytes(const type::Type *t) const {
   if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
-      case type::PrimType::Module:
-        return 8;  // TODO ???
-      case type::PrimType::Block:
-        return 8;  // TODO ???
-      case type::PrimType::OptBlock:
-        return 8;  // TODO ??
-      case type::PrimType::RepBlock:
-        return 8 ; // TODO ??
-      case type::PrimType::Interface: NOT_YET();
+      case type::PrimType::Module: return local_ptr_bytes_;
+      case type::PrimType::Block: return local_ptr_bytes_;
+      case type::PrimType::OptBlock: return local_ptr_bytes_;
+      case type::PrimType::RepBlock: return local_ptr_bytes_;
+      case type::PrimType::Interface: return local_ptr_bytes_;
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
       case type::PrimType::Char: return 1;
@@ -112,6 +104,8 @@ size_t Architecture::bytes(const type::Type *t) const {
       case type::PrimType::Scope:
       case type::PrimType::StatefulScope: return 8;
     }
+
+    UNREACHABLE();
   } else if (t->is<type::CharBuffer>()) {
     return sizeof(
         std::string_view);  // TODO fix me t->as<type::CharBuffer>().length_;
@@ -160,7 +154,6 @@ size_t Architecture::bytes(const type::Type *t) const {
     }
     return num_bytes + ptr_bytes_;
   } else {
-    NOT_YET(t);
+    UNREACHABLE();
   }
-  UNREACHABLE();
 }
