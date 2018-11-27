@@ -141,11 +141,11 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
     if (nodes[1]->is<CommaList>()) {
       unop->args_ = std::move(nodes[1]->as<CommaList>());
     } else {
-      unop->args_.exprs.push_back(move_as<Expression>(nodes[1]));
-      unop->args_.span = TextSpan(unop->args_.exprs.front()->span,
-                                  unop->args_.exprs.back()->span);
+      unop->args_.exprs_.push_back(move_as<Expression>(nodes[1]));
+      unop->args_.span = TextSpan(unop->args_.exprs_.front()->span,
+                                  unop->args_.exprs_.back()->span);
     }
-    unop->dispatch_tables_.resize(unop->args_.exprs.size());
+    unop->dispatch_tables_.resize(unop->args_.exprs_.size());
     ASSERT_NOT_NULL(unop->span.source);
     return unop;
   } else if (tk == "print") {
@@ -158,11 +158,11 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
     } else {
       ASSERT_NOT_NULL(nodes[1]->span.source);
       unop = std::make_unique<RepeatedUnop>(nodes[1]->span);
-      unop->args_.exprs.push_back(move_as<Expression>(nodes[1]));
+      unop->args_.exprs_.push_back(move_as<Expression>(nodes[1]));
       ASSERT_NOT_NULL(unop->span.source);
     }
     unop->op_ = Operator::Print;
-    unop->dispatch_tables_.resize(unop->args_.exprs.size());
+    unop->dispatch_tables_.resize(unop->args_.exprs_.size());
     ASSERT_NOT_NULL(unop->span.source);
     return unop;
   }
@@ -223,11 +223,11 @@ std::unique_ptr<Node> BuildCommaList(base::vector<std::unique_ptr<Node>> nodes,
   } else {
     comma_list       = std::make_unique<CommaList>();
     comma_list->span = TextSpan(nodes[0]->span, nodes[2]->span);
-    comma_list->exprs.push_back(move_as<Expression>(nodes[0]));
+    comma_list->exprs_.push_back(move_as<Expression>(nodes[0]));
   }
 
-  comma_list->exprs.push_back(move_as<Expression>(nodes[2]));
-  comma_list->span.finish = comma_list->exprs.back()->span.finish;
+  comma_list->exprs_.push_back(move_as<Expression>(nodes[2]));
+  comma_list->span.finish = comma_list->exprs_.back()->span.finish;
   return comma_list;
 }
 
@@ -271,7 +271,7 @@ std::unique_ptr<Node> BuildCall(base::vector<std::unique_ptr<Node>> nodes,
     std::optional<TextSpan> last_named_span_before_error = std::nullopt;
     base::vector<TextSpan> positional_error_spans;
 
-    for (auto &expr : nodes[2]->as<CommaList>().exprs) {
+    for (auto &expr : nodes[2]->as<CommaList>().exprs_) {
       if (expr->is<Binop>() &&
           expr->as<Binop>().op == Language::Operator::Assign) {
         if (positional_error_spans.empty()) {
@@ -358,9 +358,9 @@ std::unique_ptr<Node> BuildArrayLiteral(
   array_lit->span = nodes[0]->span;
 
   if (nodes[1]->is<CommaList>()) {
-    array_lit->elems_ = std::move(nodes[1]->as<CommaList>().exprs);
+    array_lit->exprs_ = std::move(nodes[1]->as<CommaList>().exprs_);
   } else {
-    array_lit->elems_.push_back(move_as<Expression>(nodes[1]));
+    array_lit->exprs_.push_back(move_as<Expression>(nodes[1]));
   }
 
   return array_lit;
@@ -370,13 +370,13 @@ std::unique_ptr<Node> BuildArrayType(base::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
   if (nodes[1]->is<CommaList>()) {
     auto *length_chain = &nodes[1]->as<CommaList>();
-    int i              = static_cast<int>(length_chain->exprs.size() - 1);
+    int i              = static_cast<int>(length_chain->exprs_.size() - 1);
     auto prev          = move_as<Expression>(nodes[3]);
 
     while (i >= 0) {
       auto array_type        = std::make_unique<ast::ArrayType>();
-      array_type->span       = length_chain->exprs[i]->span;
-      array_type->length_    = std::move(length_chain->exprs[i]);
+      array_type->span       = length_chain->exprs_[i]->span;
+      array_type->length_    = std::move(length_chain->exprs_[i]);
       array_type->data_type_ = std::move(prev);
       prev                   = std::move(array_type);
       i -= 1;
@@ -434,9 +434,9 @@ base::vector<std::unique_ptr<Declaration>> ExtractInputs(
 
   } else if (args->is<CommaList>()) {
     auto *decls = &args->as<CommaList>();
-    inputs.reserve(decls->exprs.size());
+    inputs.reserve(decls->exprs_.size());
 
-    for (auto &expr : decls->exprs) {
+    for (auto &expr : decls->exprs_) {
       inputs.push_back(move_as<Declaration>(expr));
     }
   } else {
@@ -460,7 +460,7 @@ std::unique_ptr<Node> BuildFunctionLiteral(
   if (output == nullptr) {
     fn->return_type_inferred_ = true;
   } else if (output->is<CommaList>()) {
-    for (auto &expr : output->as<CommaList>().exprs) {
+    for (auto &expr : output->as<CommaList>().exprs_) {
       fn->outputs.push_back(std::move(expr));
     }
   } else {
@@ -503,17 +503,17 @@ std::unique_ptr<Node> BuildShortFunctionLiteral(
   std::unique_ptr<RepeatedUnop> ret;
   if (body->is<CommaList>()) {
     ret = std::make_unique<RepeatedUnop>(
-        TextSpan(body->as<CommaList>().exprs.front()->span,
-                 body->as<CommaList>().exprs.back()->span));
+        TextSpan(body->as<CommaList>().exprs_.front()->span,
+                 body->as<CommaList>().exprs_.back()->span));
     ret->op_   = Language::Operator::Return;
     ret->args_ = std::move(body->as<CommaList>());
   } else {
     ret      = std::make_unique<RepeatedUnop>(body->span);
     ret->op_ = Language::Operator::Return;
-    ret->args_.exprs.push_back(std::move(body));
+    ret->args_.exprs_.push_back(std::move(body));
   }
 
-  ret->dispatch_tables_.resize(ret->args_.exprs.size());
+  ret->dispatch_tables_.resize(ret->args_.exprs_.size());
 
   auto stmts = std::make_unique<Statements>();
   stmts->content_.push_back(std::move(ret));

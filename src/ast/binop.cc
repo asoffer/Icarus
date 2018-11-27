@@ -35,23 +35,23 @@ bool IsTypeOrTupleOfTypes(type::Type const *t) {
   return std::all_of(entries.begin(), entries.end(),
                      +[](type::Type const *ty) { return ty == type::Type_; });
 }
+
+void ForEachExpr(ast::Expression *expr,
+                 std::function<void(ast::Expression *)> const &fn) {
+  if (expr->is<ast::CommaList>()) {
+    auto const &exprs = expr->as<ast::CommaList>().exprs_;
+    for (size_t i = 0; i < exprs.size(); ++i) { fn(exprs[i].get()); }
+  } else {
+    fn(expr);
+  }
+}
+
 }  // namespace
 
 base::vector<ir::Val> EmitCallDispatch(
     ast::FnArgs<std::pair<ast::Expression *, ir::Val>> const &args,
     ast::DispatchTable const &dispatch_table, const type::Type *ret_type,
     Context *ctx);
-
-// TODO move this to some weird util lib?
-void ForEachExpr(ast::Expression *expr,
-                 std::function<void(size_t, ast::Expression *)> const &fn) {
-  if (expr->is<ast::CommaList>()) {
-    auto const &exprs = expr->as<ast::CommaList>().exprs;
-    for (size_t i = 0; i < exprs.size(); ++i) { fn(i, exprs[i].get()); }
-  } else {
-    fn(0, expr);
-  }
-}
 
 namespace ast {
 using base::check::Is;
@@ -146,7 +146,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           }
         }
       } else {
-        // TOD should you allow this for struct user-defined types?
+        // TODO should you allow this for struct user-defined types?
         // z: complex
         // z = (3, 4) // Interpretted as (=)(&z, 3, 4)?
         ctx->error_log_.MismatchedAssignmentSize(span, lhs_entries_.size(), 1);
@@ -186,8 +186,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     } break;
     case Operator::As: {
-      // TODO check that the type actually can be cast
-      // correctly.
       auto *t = backend::EvaluateAs<type::Type const *>(rhs.get(), ctx);
       ctx->set_type(this, t);
       if (t->is<type::Struct>()) {
@@ -215,33 +213,27 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       }
     }
     case Operator::XorEq:
-      if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        return ctx->set_type(this, type::Bool);
-      } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
+      if (lhs_type == rhs_type &&
+          (lhs_type == type::Bool || lhs_type->is<type::Flags>())) {
         return ctx->set_type(this, lhs_type);
       } else {
-        // TODO could be bool or enum.
-        ctx->error_log_.XorEqNeedsBool(span);
+        ctx->error_log_.XorEqNeedsBoolOrFlags(span);
         return nullptr;
       }
     case Operator::AndEq:
-      if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        return ctx->set_type(this, type::Bool);
-      } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
+      if (lhs_type == rhs_type &&
+          (lhs_type == type::Bool || lhs_type->is<type::Flags>())) {
         return ctx->set_type(this, lhs_type);
       } else {
-        // TODO could be bool or enum.
-        ctx->error_log_.AndEqNeedsBool(span);
+        ctx->error_log_.AndEqNeedsBoolOrFlags(span);
         return nullptr;
       }
     case Operator::OrEq:
-      if (lhs_type == type::Bool && rhs_type == type::Bool) {
-        return ctx->set_type(this, type::Bool);
-      } else if (lhs_type->is<type::Flags>() && rhs_type == lhs_type) {
+      if (lhs_type == rhs_type &&
+          (lhs_type == type::Bool || lhs_type->is<type::Flags>())) {
         return ctx->set_type(this, lhs_type);
       } else {
-        // TODO could be bool or enum.
-        ctx->error_log_.OrEqNeedsBool(span);
+        ctx->error_log_.OrEqNeedsBoolOrFlags(span);
         return nullptr;
       }
 
@@ -468,7 +460,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     } break;
     case Language::Operator::Assign: {
       base::vector<type::Type const *> lhs_types, rhs_types;
-      ForEachExpr(rhs.get(), [&ctx, &rhs_types](size_t, Expression *expr) {
+      ForEachExpr(rhs.get(), [&ctx, &rhs_types](Expression *expr) {
         auto *expr_type = ctx->type_of(expr);
         if (expr_type->is<type::Tuple>()) {
           rhs_types.insert(rhs_types.end(),
@@ -481,7 +473,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto rhs_vals = rhs->EmitIR(ctx);
 
       // TODO types can be retrieved from the values?
-      ForEachExpr(lhs.get(), [&ctx, &lhs_types](size_t, ast::Expression *expr) {
+      ForEachExpr(lhs.get(), [&ctx, &lhs_types](ast::Expression *expr) {
         lhs_types.push_back(ctx->type_of(expr));
       });
       auto lhs_lvals = lhs->EmitLVal(ctx);

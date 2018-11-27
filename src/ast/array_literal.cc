@@ -7,18 +7,13 @@
 #include "type/pointer.h"
 
 namespace ast {
-void ArrayLiteral::assign_scope(Scope *scope) {
-  scope_ = scope;
-  for (auto &el : elems_) { el->assign_scope(scope); }
-}
-
 std::string ArrayLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "[";
-  auto iter = elems_.begin();
+  auto iter = exprs_.begin();
   ss << (*iter)->to_string(n);
   ++iter;
-  while (iter != elems_.end()) {
+  while (iter != exprs_.end()) {
     ss << ", " << (*iter)->to_string(n);
     ++iter;
   }
@@ -27,14 +22,15 @@ std::string ArrayLiteral::to_string(size_t n) const {
 }
 
 type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
-  if (elems_.empty()) {
+  if (exprs_.empty()) {
     ctx->set_type(this, type::EmptyArray);
     return type::EmptyArray;
   }
 
+  // TODO combine with CommaList::VerifyType
   std::vector<type::Type const *> elem_types;
-  elem_types.reserve(elems_.size());
-  for (auto &elem : elems_) { elem_types.push_back(elem->VerifyType(ctx)); }
+  elem_types.reserve(exprs_.size());
+  for (auto &elem : exprs_) { elem_types.push_back(elem->VerifyType(ctx)); }
   if (std::any_of(elem_types.begin(), elem_types.end(),
                   [](type::Type const *t) { return t == nullptr; })) {
     return nullptr;
@@ -48,16 +44,8 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
     ctx->error_log_.InconsistentArrayType(span);
     return nullptr;
   } else {
-    return ctx->set_type(this, type::Arr(joined, elems_.size()));
+    return ctx->set_type(this, type::Arr(joined, exprs_.size()));
   }
-}
-
-void ArrayLiteral::Validate(Context *ctx) {
-  for (auto &elem : elems_) { elem->Validate(ctx); }
-}
-
-void ArrayLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &el : elems_) { el->ExtractJumps(rets); }
 }
 
 base::vector<ir::Val> ast::ArrayLiteral::EmitIR(Context *ctx) {
@@ -66,9 +54,9 @@ base::vector<ir::Val> ast::ArrayLiteral::EmitIR(Context *ctx) {
   auto alloc      = ir::Alloca(this_type);
   auto array_val  = ir::Val::Reg(alloc, type::Ptr(this_type));
   auto *data_type = this_type->as<type::Array>().data_type;
-  for (size_t i = 0; i < elems_.size(); ++i) {
+  for (size_t i = 0; i < exprs_.size(); ++i) {
     type::EmitMoveInit(
-        data_type, data_type, elems_[i]->EmitIR(ctx)[0],
+        data_type, data_type, exprs_[i]->EmitIR(ctx)[0],
         ir::Index(type::Ptr(this_type), alloc, static_cast<i32>(i)), ctx);
   }
   return {array_val};

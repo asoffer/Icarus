@@ -11,8 +11,8 @@ struct CommaList : public Expression {
 
   CommaList &operator=(CommaList &&) noexcept = default;
 
-  std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
+  std::string to_string(size_t n) const override;
   type::Type const *VerifyType(Context *) override;
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
@@ -20,7 +20,7 @@ struct CommaList : public Expression {
   base::vector<ir::Val> EmitIR(Context *) override;
   base::vector<ir::Register> EmitLVal(Context *) override;
 
-  base::vector<std::unique_ptr<Expression>> exprs;
+  base::vector<std::unique_ptr<Expression>> exprs_;
 };
 }  // namespace ast
 

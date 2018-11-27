@@ -4,15 +4,12 @@
 #include "ir/cmd.h"
 #include "type/all.h"
 
-// TODO a lot of stuff that can only be run at compile-time needs to have
-// values for size and alignment. Figure out the best way to handle this.
-
 ir::RegisterOr<i32> Architecture::ComputeArrayLength(
-    ir::RegisterOr<i32> len, const type::Type *t) const {
+    ir::RegisterOr<i32> len, type::Type const *t) const {
   return ir::Mul(len, static_cast<i32>(MoveForwardToAlignment(t, bytes(t))));
 }
 
-size_t Architecture::alignment(const type::Type *t) const {
+size_t Architecture::alignment(type::Type const *t) const {
   if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Module: return local_ptr_align_;
@@ -63,13 +60,13 @@ size_t Architecture::alignment(const type::Type *t) const {
     return 8;  // TODO
   } else if (t->is<type::Variant>()) {
     size_t alignment_val = this->alignment(type::Type_);
-    for (const type::Type *type : t->as<type::Variant>().variants_) {
+    for (type::Type const *type : t->as<type::Variant>().variants_) {
       alignment_val = std::max(alignment_val, this->alignment(type));
     }
     return alignment_val;
   } else if (t->is<type::Tuple>()) {
     size_t alignment_val = 1;
-    for (const type::Type *type : t->as<type::Tuple>().entries_) {
+    for (type::Type const *type : t->as<type::Tuple>().entries_) {
       alignment_val = std::max(alignment_val, this->alignment(type));
     }
     return alignment_val;
@@ -78,7 +75,7 @@ size_t Architecture::alignment(const type::Type *t) const {
   }
 }
 
-size_t Architecture::bytes(const type::Type *t) const {
+size_t Architecture::bytes(type::Type const *t) const {
   if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Module: return local_ptr_bytes_;
@@ -114,6 +111,7 @@ size_t Architecture::bytes(const type::Type *t) const {
   } else if (t->is<type::Array>()) {
     auto *array_type = &t->as<type::Array>();
     if (array_type->fixed_length) {
+      // TODO skip the last alignment requirement?
       return array_type->len *
              MoveForwardToAlignment(array_type->data_type,
                                     bytes(array_type->data_type));
@@ -132,7 +130,7 @@ size_t Architecture::bytes(const type::Type *t) const {
   } else if (t->is<type::Tuple>()) {
     auto *tuple_type = &t->as<type::Tuple>();
     size_t num_bytes = 0;
-    for (const auto &entry_type : tuple_type->entries_) {
+    for (auto const &entry_type : tuple_type->entries_) {
       num_bytes += this->bytes(entry_type);
       num_bytes = this->MoveForwardToAlignment(entry_type, num_bytes);
     }
@@ -149,7 +147,7 @@ size_t Architecture::bytes(const type::Type *t) const {
     return 8;  // TODO
   } else if (t->is<type::Variant>()) {
     size_t num_bytes = 0;
-    for (const type::Type *type : t->as<type::Variant>().variants_) {
+    for (type::Type const *type : t->as<type::Variant>().variants_) {
       num_bytes = std::max(num_bytes, this->bytes(type));
     }
     return num_bytes + ptr_bytes_;

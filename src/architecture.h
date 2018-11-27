@@ -4,36 +4,36 @@
 #include <cstddef>
 
 #include "base/types.h"
-#include "ir/val.h"
+#include "ir/addr.h"
+#include "ir/register.h"
+
+// Many objects here are only callable at compile-time and so while their size
+// and alignment make sense as questions with answers at compile-time, they
+// should not be accessed at run-time. This is a restriction that should be made
+// on calls to `bytes` or `alignment` rather than checked here. Any attempt to
+// use the Architecture structure assumes the uses is valid.
 
 namespace type {
 struct Type;
 }  // namespace type
 
-namespace ir {
-struct Val;
-}  // namespace ir
-
 // We only support architectures on which a byte is 8 bits, and assume all
 // alignments are powers of two.
 struct Architecture {
-  size_t alignment(const type::Type *t) const;
-  size_t bytes(const type::Type *t) const;
+  size_t alignment(type::Type const *t) const;
+  size_t bytes(type::Type const *t) const;
 
-  size_t MoveForwardToAlignment(const type::Type *t, size_t index) const {
+  size_t MoveForwardToAlignment(type::Type const *t, size_t index) const {
     return ((index - 1) | (alignment(t) - 1)) + 1;
   }
 
-  // TODO skip the last alignment requirement?
   ir::RegisterOr<i32> ComputeArrayLength(ir::RegisterOr<i32> len,
-                                         const type::Type *t) const;
+                                         type::Type const *t) const;
 
-  i32 ComputeArrayLength(i32 len, const type::Type *t) const {
+  i32 ComputeArrayLength(i32 len, type::Type const *t) const {
     return len * static_cast<i32>(MoveForwardToAlignment(t, bytes(t)));
   }
 
-  // TODO pull Addr into it's own header so we can compute it's size and have
-  // this be constexpr without pulling in all of val.h
   static constexpr Architecture InterprettingMachine() {
     return Architecture{sizeof(ir::Addr), alignof(ir::Addr)};
   }

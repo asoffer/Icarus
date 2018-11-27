@@ -154,26 +154,6 @@ std::string Val::to_string() const {
       value);
 }
 
-std::string Addr::to_string() const {
-  std::stringstream ss;
-  switch (kind) {
-    case Kind::Null: ss << "null"; break;
-    case Kind::Stack: ss << "s." << as_stack; break;
-    case Kind::Heap: ss << "h." << as_heap; break;
-  }
-  return ss.str();
-}
-
-bool operator==(Addr lhs, Addr rhs) {
-  if (lhs.kind != rhs.kind) { return false; }
-  switch (lhs.kind) {
-    case Addr::Kind::Null: return true;
-    case Addr::Kind::Stack: return lhs.as_stack == rhs.as_stack;
-    case Addr::Kind::Heap: return lhs.as_heap == rhs.as_heap;
-  }
-  UNREACHABLE();
-}
-
 bool operator<(const ::ir::Val &lhs, const ::ir::Val &rhs) {
   auto lhs_index = lhs.value.index();
   auto rhs_index = rhs.value.index();

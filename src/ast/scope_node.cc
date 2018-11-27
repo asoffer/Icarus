@@ -22,9 +22,6 @@ base::vector<ir::Val> EmitCallDispatch(
     ast::DispatchTable const &dispatch_table, type::Type const *ret_type,
     Context *ctx);
 
-void ForEachExpr(ast::Expression *expr,
-                 const std::function<void(size_t, ast::Expression *)> &fn);
-
 namespace ast {
 using base::check::Is;
 

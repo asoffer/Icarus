@@ -5,7 +5,7 @@
 #include "base/strong_types.h"
 #include "base/types.h"
 #include "ir/any_func.h"
-
+#include "ir/addr.h" // TODO remove and include explicitly.
 DEFINE_STRONG_INT(ir, BlockIndex, i32, -1);
 DEFINE_STRONG_INT(ir, EnumVal, size_t, 0);
 DEFINE_STRONG_INT(ir, BuiltinGenericIndex, i32, -1);
@@ -50,29 +50,8 @@ inline bool operator<(const BlockSequence &lhs, const BlockSequence &rhs) {
   return lhs.seq_ < rhs.seq_;
 }
 
-struct Addr {
-  enum class Kind : u8 { Null, Stack, Heap } kind;
-
-  constexpr static Addr Null() {
-    Addr result{};
-    result.kind = Kind::Null;
-    return result;
-  }
-
-  union {
-    u64 as_stack;
-    void *as_heap;
-  };
-
-  std::string to_string() const;
-};
-
 inline std::ostream &operator<<(std::ostream &os, Register r) {
   return os << "reg." << r.value;
-}
-
-inline std::ostream &operator<<(std::ostream &os, Addr addr) {
-  return os << addr.to_string();
 }
 
 inline std::ostream &operator<<(std::ostream &os, EnumVal e) {
@@ -82,24 +61,6 @@ inline std::ostream &operator<<(std::ostream &os, EnumVal e) {
 inline std::ostream &operator<<(std::ostream &os, BlockIndex b) {
   return os << "block." << b.value;
 }
-
-bool operator==(Addr lhs, Addr rhs);
-inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
-inline bool operator<(Addr lhs, Addr rhs) {
-  u8 lhs_kind = static_cast<u8>(lhs.kind);
-  u8 rhs_kind = static_cast<u8>(rhs.kind);
-  if (lhs_kind < rhs_kind) { return true; }
-  if (lhs_kind > rhs_kind) { return false; }
-  switch (lhs.kind) {
-    case Addr::Kind::Null: return false;
-    case Addr::Kind::Stack: return lhs.as_stack < rhs.as_stack;
-    case Addr::Kind::Heap: return lhs.as_heap < rhs.as_heap;
-  }
-  UNREACHABLE();
-}
-inline bool operator<=(Addr lhs, Addr rhs) { return !(rhs < lhs); }
-inline bool operator>(Addr lhs, Addr rhs) { return rhs < lhs; }
-inline bool operator>=(Addr lhs, Addr rhs) { return !(lhs < rhs); }
 
 template <typename T>
 struct RegisterOr {

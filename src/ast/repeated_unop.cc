@@ -13,9 +13,6 @@ base::vector<ir::Val> EmitCallDispatch(
     const ast::DispatchTable &dispatch_table, const type::Type *ret_type,
     Context *ctx);
 
-void ForEachExpr(ast::Expression *expr,
-                 const std::function<void(size_t, ast::Expression *)> &fn);
-
 namespace ast {
 std::string RepeatedUnop::to_string(size_t n) const {
   switch (op_) {
@@ -60,9 +57,9 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
                            : base::vector<type::Type const *>{t};
 
   if (op_ == Language::Operator::Print) {
-    ASSERT(dispatch_tables_.size() == args_.exprs.size());
-    for (size_t i = 0; i < args_.exprs.size(); ++i) {
-      auto &arg      = args_.exprs[i];
+    ASSERT(dispatch_tables_.size() == args_.exprs_.size());
+    for (size_t i = 0; i < args_.exprs_.size(); ++i) {
+      auto &arg      = args_.exprs_[i];
       auto *arg_type = arg_types[i];
       if (arg_type->is<type::Primitive>() || arg_type->is<type::Pointer>() ||
           arg_type->is<type::CharBuffer>() || arg_type->is<type::Enum>() ||
@@ -97,7 +94,7 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
 
       auto *fn_type =
           &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
-      for (size_t i = 0; i < args_.exprs.size(); ++i) {
+      for (size_t i = 0; i < args_.exprs_.size(); ++i) {
         // TODO return type maybe not the same as type actually returned?
         ir::SetRet(i, arg_vals[i], ctx);
       }
@@ -116,21 +113,21 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
       // things or at least make them not compile if the `after` function takes
       // a compile-time constant argument.
       for (size_t i = 0; i < arg_vals.size(); ++i) {
-        ctx->yields_stack_.back().emplace_back(args_.exprs[i].get(), arg_vals[i]);
+        ctx->yields_stack_.back().emplace_back(args_.exprs_[i].get(), arg_vals[i]);
       }
       return {};
     }
     case Language::Operator::Print:
-      for (size_t i = 0; i < args_.exprs.size(); ++i) {
+      for (size_t i = 0; i < args_.exprs_.size(); ++i) {
         // TODO unify with repr. is repr even a good idea?
-        auto *t = ASSERT_NOT_NULL(ctx->type_of(args_.exprs[i].get()));
+        auto *t = ASSERT_NOT_NULL(ctx->type_of(args_.exprs_[i].get()));
         if (t == type::Char) {
           ir::Print(arg_vals[i].reg_or<char>());
         } else if (t->is<type::Struct>()) {
           ASSERT(dispatch_tables_[i].total_size_ != 0u);
           // TODO struct is not exactly right. we really mean user-defined
           FnArgs<std::pair<Expression *, ir::Val>> args;
-          args.pos_ = {std::pair(args_.exprs[i].get(), arg_vals[i])};
+          args.pos_ = {std::pair(args_.exprs_[i].get(), arg_vals[i])};
           EmitCallDispatch(args, dispatch_tables_[i], type::Void(), ctx);
         } else {
           t->EmitRepr(arg_vals[i], ctx);

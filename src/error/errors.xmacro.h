@@ -74,11 +74,12 @@ MAKE_LOG_ERROR(InconsistentArrayType,
 MAKE_LOG_ERROR(ArrayIndexType, "Array length indexed by non-integral type")
 MAKE_LOG_ERROR(JumpOutsideLoop, "statement must be contained inside a loop.")
 MAKE_LOG_ERROR(IndeterminantType, "Cannot determine type from in declaration.")
-MAKE_LOG_ERROR(XorEqNeedsBool,
-               "Operator '^=' must take arguments of type bool.")
-MAKE_LOG_ERROR(AndEqNeedsBool,
-               "Operator '&=' must take arguments of type bool.")
-MAKE_LOG_ERROR(OrEqNeedsBool, "Operator '|=' must take arguments of type bool.")
+MAKE_LOG_ERROR(XorEqNeedsBoolOrFlags,
+               "Operator '^=' must take boolean or flags arguments.")
+MAKE_LOG_ERROR(AndEqNeedsBoolOrFlags,
+               "Operator '&=' must take boolean or flags arguments.")
+MAKE_LOG_ERROR(OrEqNeedsBoolOrFlags,
+               "Operator '|=' must take boolean or flags arguments.")
 MAKE_LOG_ERROR(PrintingVoid, "Attempting to print an object of type void")
 MAKE_LOG_ERROR(EarlyRequiredBlock,
                "Required block appears on the left-hand side of `|` operator.")
