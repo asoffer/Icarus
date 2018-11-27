@@ -4,6 +4,7 @@
 #include "error/log.h"
 #include "ir/cmd.h"
 #include "type/array.h"
+#include "type/cast.h"
 #include "type/pointer.h"
 
 namespace ast {
@@ -36,15 +37,11 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
     return nullptr;
   }
 
-  const type::Type *joined = nullptr;
-  for (auto *elem_type : elem_types) { joined = type::Join(joined, elem_type); }
-
-  if (joined == nullptr) {
-    // type::Types couldn't be joined. Emit an error
+  if (auto *joined = type::JoinAll(elem_types)) {
+    return ctx->set_type(this, type::Arr(joined, exprs_.size()));
+  } else {
     ctx->error_log_.InconsistentArrayType(span);
     return nullptr;
-  } else {
-    return ctx->set_type(this, type::Arr(joined, exprs_.size()));
   }
 }
 

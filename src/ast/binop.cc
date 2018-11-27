@@ -10,6 +10,7 @@
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "type/array.h"
+#include "type/cast.h"
 #include "type/char_buffer.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -56,31 +57,6 @@ base::vector<ir::Val> EmitCallDispatch(
 namespace ast {
 using base::check::Is;
 using base::check::Not;
-static u8 CastMask(type::Type const *t) {
-  //              f32 (0x31) -> f64 (0x33)
-  //               ^             ^
-  // i8 (0x10) -> i16 (0x11) -> i32 (0x13) -> i64 (0x17)
-  //               ^             ^             ^
-  //              u8  (0x01) -> u16 (0x03) -> u32 (0x07) -> u64 (0x0f)
-  if (t == type::Nat8) { return 0x01; }
-  if (t == type::Nat16) { return 0x03; }
-  if (t == type::Nat32) { return 0x07; }
-  if (t == type::Nat64) { return 0x1f; }
-  if (t == type::Int8) { return 0x10; }
-  if (t == type::Int16) { return 0x11; }
-  if (t == type::Int32) { return 0x13; }
-  if (t == type::Int64) { return 0x17; }
-  if (t == type::Float32) { return 0x31; }
-  if (t == type::Float64) { return 0x33; }
-  UNREACHABLE();
-}
-
-static bool CanCast(type::Type const* from, type::Type const *to) {
-  if (from == to) { return true; }
-  auto from_mask = CastMask(from);
-  auto to_mask   = CastMask(to);
-  return (from_mask & to_mask) == from_mask;
-}
 
 std::string Binop::to_string(size_t n) const {
   std::stringstream ss;
@@ -205,7 +181,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           return ctx->set_type(this, t);
         }
       } else {
-        if (!CanCast(lhs_type, t)) {
+        if (!type::CanCast(lhs_type, t)) {
           LOG << this;
           NOT_YET("log an error", lhs_type, t);
         }

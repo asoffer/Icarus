@@ -79,10 +79,6 @@ struct Type : public base::Cast<Type> {
   virtual bool IsDefaultInitializable() const { return true; }
 };
 
-const Type *Meet(const Type *lhs, const Type *rhs);
-const Type *Join(const Type *lhs, const Type *rhs);
-bool CanCastImplicitly(const type::Type *from, const type::Type *to);
-
 void EmitCopyInit(const Type *from_type, const Type *to_type, ir::Val from_val,
                   ir::Register to_var, Context *ctx);
 void EmitMoveInit(const Type *from_type, const Type *to_type, ir::Val from_val,

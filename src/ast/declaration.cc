@@ -7,6 +7,7 @@
 #include "ir/func.h"
 #include "module.h"
 #include "type/all.h"
+#include "type/cast.h"
 #include "type/typed_value.h"
 
 namespace ast {

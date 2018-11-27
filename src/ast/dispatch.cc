@@ -8,6 +8,7 @@
 #include "ir/func.h"
 #include "module.h"
 #include "scope.h"
+#include "type/cast.h"
 #include "type/function.h"
 #include "type/tuple.h"
 #include "type/variant.h"

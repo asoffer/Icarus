@@ -8,6 +8,7 @@
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
+#include "type/cast.h"
 #include "type/pointer.h"
 #include "type/type.h"
 
@@ -42,13 +43,12 @@ type::Type const *Switch::VerifyType(Context *ctx) {
     types.insert(expr_type);
   }
   if (types.empty()) { NOT_YET("handle type error"); }
-  auto *t =
-      std::accumulate(types.begin(), types.end(), *types.begin(), type::Join);
-  if (t == nullptr) {
+  if (auto *t = type::JoinAll(types)) {
+    return ctx->set_type(this, t);
+  } else {
     NOT_YET("handle type error");
     return nullptr;
   }
-  return ctx->set_type(this, t);
 }
 
 void Switch::Validate(Context *ctx) {

@@ -217,118 +217,6 @@ void EmitMoveInit(Type const *from_type, Type const *to_type, ir::Val from_val,
   }
 }
 
-// TODO optimize (early exists. don't check lhs->is<> && rhs->is<>. If they
-// don't match you can early exit.
-Type const *Meet(Type const *lhs, Type const *rhs) {
-  if (lhs == rhs) { return lhs; }
-  if (lhs == nullptr || rhs == nullptr) { return nullptr; }
-  if (lhs == NullPtr || rhs == NullPtr) {
-    // TODO It's not obvious to me that this is what I want to do.
-    return nullptr;
-  }
-  if (lhs->is<Pointer>()) {
-    return rhs->is<Pointer>() ? Ptr(Meet(lhs->as<Pointer>().pointee,
-                                         rhs->as<Pointer>().pointee))
-                              : nullptr;
-  } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    Type const *result = nullptr;
-    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
-      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
-      result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result, lhs->as<Array>().len) : result;
-    } else {
-      result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result,
-                          std::max(lhs->as<Array>().len, rhs->as<Array>().len))
-                    : result;
-    }
-  } else if (lhs->is<Array>() && rhs == EmptyArray &&
-             !lhs->as<Array>().fixed_length) {
-    return Arr(lhs->as<Array>().data_type, 0);
-  } else if (rhs->is<Array>() && lhs == EmptyArray &&
-             !rhs->as<Array>().fixed_length) {
-    return Arr(rhs->as<Array>().data_type, 0);
-  } else if (lhs->is<Variant>()) {
-    // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
-    base::vector<Type const *> results;
-    if (rhs->is<Variant>()) {
-      for (Type const *l_type : lhs->as<Variant>().variants_) {
-        for (Type const *r_type : rhs->as<Variant>().variants_) {
-          Type const *result = Meet(l_type, r_type);
-          if (result != nullptr) { results.push_back(result); }
-        }
-      }
-    } else {
-      for (Type const *t : lhs->as<Variant>().variants_) {
-        if (Type const *result = Meet(t, rhs)) { results.push_back(result); }
-      }
-    }
-    return results.empty() ? nullptr : Var(std::move(results));
-  } else if (rhs->is<Variant>()) {  // lhs is not a variant
-    // TODO faster lookups? maybe not represented as a vector. at least give a
-    // better interface.
-    base::vector<Type const *> results;
-    for (Type const *t : rhs->as<Variant>().variants_) {
-      if (Type const *result = Meet(t, lhs)) { results.push_back(result); }
-    }
-    return results.empty() ? nullptr : Var(std::move(results));
-  }
-
-  return nullptr;
-}
-
-Type const *Join(Type const *lhs, Type const *rhs) {
-  if (lhs == rhs) { return lhs; }
-  if (lhs == nullptr) { return rhs; }  // Ignore errors
-  if (rhs == nullptr) { return lhs; }  // Ignore errors
-  if ((lhs == Block && rhs == OptBlock) || (lhs == OptBlock && rhs == Block)) {
-    return Block;
-  }
-  if (lhs->is<Primitive>() && rhs->is<Primitive>()) {
-    return lhs == rhs ? lhs : nullptr;
-  }
-  if (lhs == NullPtr && rhs->is<Pointer>()) { return rhs; }
-  if (rhs == NullPtr && lhs->is<Pointer>()) { return lhs; }
-  if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
-    return Join(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee);
-  } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    Type const *result = nullptr;
-    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
-      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
-      result = Join(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result, lhs->as<Array>().len) : result;
-    } else {
-      result = Join(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result) : result;
-    }
-  } else if (lhs->is<Array>() && rhs == EmptyArray &&
-             !lhs->as<Array>().fixed_length) {
-    return lhs;
-  } else if (rhs->is<Array>() && lhs == EmptyArray &&
-             !rhs->as<Array>().fixed_length) {
-    return rhs;
-  } else if (lhs->is<Variant>()) {
-    base::vector<Type const *> rhs_types;
-    if (rhs->is<Variant>()) {
-      rhs_types = rhs->as<Variant>().variants_;
-    } else {
-      rhs_types = {rhs};
-    }
-
-    auto vars = lhs->as<Variant>().variants_;
-    vars.insert(vars.end(), rhs_types.begin(), rhs_types.end());
-    return Var(std::move(vars));
-  } else if (rhs->is<Variant>()) {  // lhs is not a variant
-    // TODO faster lookups? maybe not represented as a vector. at least give
-    // a better interface.
-    for (Type const *v : rhs->as<Variant>().variants_) {
-      if (lhs == v) { return rhs; }
-    }
-    return nullptr;
-  }
-  UNREACHABLE(lhs, rhs);
-}
-
 static base::guarded<
     base::unordered_map<Type const *, base::unordered_map<size_t, Array>>>
     fixed_arrays_;
@@ -412,10 +300,6 @@ Type const *Void() { return Tup({}); }
 
 bool Type::is_big() const {
   return is<Array>() || is<Struct>() || is<Variant>() || is<Tuple>();
-}
-
-bool CanCastImplicitly(const type::Type *from, const type::Type *to) {
-  return Join(from, to) == to;
 }
 
 static base::guarded<base::unordered_map<size_t, CharBuffer>> char_bufs_;
