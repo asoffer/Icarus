@@ -73,9 +73,9 @@ static ir::Func *ArrayInitializationWith(const Array *from_type,
       auto from_phi_index     = ir::Phi(type::Ptr(from_type->data_type));
       auto to_phi_index       = ir::Phi(type::Ptr(from_type->data_type));
       auto from_phi_reg = ir::Func::Current->Command(from_phi_index).result;
-      type::Type const *from_phi_reg_type = type::Ptr(from_type->data_type);
+      type::Pointer const *from_phi_reg_type = type::Ptr(from_type->data_type);
       auto to_phi_reg = ir::Func::Current->Command(to_phi_index).result;
-      type::Type const *to_phi_reg_type = type::Ptr(to_type->data_type);
+      type::Pointer const *to_phi_reg_type = type::Ptr(to_type->data_type);
 
       ir::CondJump(ir::Ne(from_end, from_phi_reg), body_block, exit_block);
 
@@ -320,7 +320,7 @@ void Struct::finalize() {
 }
 
 base::vector<Struct::Field> const &Struct::fields() const {
-  // TODO is doing this lazily a good idea?
+  // TODO is doing this eazily a good idea?
   // TODO remove this const_cast
   const_cast<type::Struct *>(this)->finalize();
   return fields_;

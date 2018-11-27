@@ -360,7 +360,7 @@ Register VariantType(Register r);
 Register VariantValue(const type::Type *t, Register r);
 // Type repreesents the type of `ptr`
 TypedRegister<Addr> PtrIncr(Register ptr, RegisterOr<i32> inc,
-                            type::Type const *t);
+                            type::Pointer const *t);
 Register Field(Register r, type::Struct const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);

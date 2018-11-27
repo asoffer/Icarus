@@ -57,10 +57,10 @@ RegisterOr<i32> Align(RegisterOr<type::Type const *> r) {
 }
 
 template <typename T>
-Val CastTo(type::Type const *from, Val const &val, Op op) {
+static Val CastTo(type::Type const *from, Val const &val) {
   if (auto *r = std::get_if<Register>(&val.value)) {
     auto *to       = type::Get<T>();
-    auto &cmd      = MakeCmd(to, op);
+    auto &cmd      = MakeCmd(to, Cmd::OpCode<Cmd::CastTag, T>());
     cmd.typed_reg_ = type::Typed<Register>(*r, from);
     return ir::Val::Reg(cmd.result, to);
   } else {
@@ -74,21 +74,11 @@ Val CastTo(type::Type const *from, Val const &val, Op op) {
 }
 
 Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
-  if (from == to) { return val; }
-  // TODO Shouldn't be any reason we need to pass the opcode in.
-  if (to == type::Int16) { return CastTo<i16>(from, val, Op::CastToInt16); }
-  if (to == type::Nat16) { return CastTo<u16>(from, val, Op::CastToNat16); }
-  if (to == type::Int32) { return CastTo<i32>(from, val, Op::CastToInt32); }
-  if (to == type::Nat32) { return CastTo<u32>(from, val, Op::CastToNat32); }
-  if (to == type::Int64) { return CastTo<i64>(from, val, Op::CastToInt64); }
-  if (to == type::Nat64) { return CastTo<u64>(from, val, Op::CastToNat64); }
-  if (to == type::Float32) {
-    return CastTo<float>(from, val, Op::CastToFloat32);
-  }
-  if (to == type::Float64) {
-    return CastTo<double>(from, val, Op::CastToFloat64);
-  }
-  UNREACHABLE();
+  return type::ApplyTypes<i16, i32, i64, u16, u32, u64, float, double>(
+      to, [&](auto type_holder) {
+        using ToType = typename decltype(type_holder)::type;
+        return CastTo<ToType>(from, val);
+      });
 }
 
 RegisterOr<bool> Not(RegisterOr<bool> r) {
@@ -405,8 +395,7 @@ void SetRet(size_t n, Val const &v, Context *ctx) {
 }
 
 TypedRegister<Addr> PtrIncr(Register ptr, RegisterOr<i32> inc,
-                            type::Type const *t) {
-  // TODO type must be a pointer.
+                            type::Pointer const *t) {
   if (!inc.is_reg_ && inc.val_ == 0) { return ptr; }
   auto &cmd     = MakeCmd(t, Op::PtrIncr);
   cmd.ptr_incr_ = {ptr, t->as<type::Pointer>().pointee, inc};
@@ -417,9 +406,21 @@ RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &lhs,
                               RegisterOr<FlagsVal> const &rhs) {
   if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ ^ rhs.val_; }
-  // TODO could do a tiny bit more constant propogation for empty and full flag
-  // sets here. And on OrFlags and AndFlags
-  auto &cmd      = MakeCmd(type, Op::XorFlags);
+  if (!lhs.is_reg_) {
+    if (lhs.val_.value == 0) { return rhs; }
+    if (lhs.val_.value == (1ull << type->members_.size()) - 1) {
+      return Not(type::Typed<RegisterOr<FlagsVal>, type::Flags>(rhs, type));
+    }
+  }
+
+  if (!rhs.is_reg_) {
+    if (rhs.val_.value == 0) { return rhs; }
+    if (rhs.val_.value == (1ull << type->members_.size()) - 1) {
+      return Not(type::Typed<RegisterOr<FlagsVal>, type::Flags>(lhs, type));
+    }
+  }
+
+  auto &cmd = MakeCmd(type, Op::XorFlags);
   cmd.set<Cmd::XorTag, FlagsVal>(lhs, rhs);
   return cmd.result;
 }
@@ -428,7 +429,21 @@ RegisterOr<FlagsVal> OrFlags(type::Flags const *type,
                              RegisterOr<FlagsVal> const &lhs,
                              RegisterOr<FlagsVal> const &rhs) {
   if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ | rhs.val_; }
-  auto &cmd     = MakeCmd(type, Op::OrFlags);
+  if (!lhs.is_reg_) {
+    if (lhs.val_.value == 0) { return rhs; }
+    if (lhs.val_.value == (1ull << type->members_.size()) - 1) {
+      return FlagsVal{(1ull << type->members_.size()) - 1};
+    }
+  }
+
+  if (!rhs.is_reg_) {
+    if (rhs.val_.value == 0) { return lhs; }
+    if (rhs.val_.value == (1ull << type->members_.size()) - 1) {
+      return FlagsVal{(1ull << type->members_.size()) - 1};
+    }
+  }
+
+  auto &cmd = MakeCmd(type, Op::OrFlags);
   cmd.set<Cmd::XorTag, FlagsVal>(lhs, rhs);
   return cmd.result;
 }
@@ -437,7 +452,17 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &lhs,
                               RegisterOr<FlagsVal> const &rhs) {
   if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ & rhs.val_; }
-  auto &cmd      = MakeCmd(type, Op::AndFlags);
+  if (!lhs.is_reg_) {
+    if (lhs.val_.value == 0) { return FlagsVal{0}; }
+    if (lhs.val_.value == (1ull << type->members_.size()) - 1) { return rhs; }
+  }
+
+  if (!rhs.is_reg_) {
+    if (rhs.val_.value == 0) { return FlagsVal{0}; }
+    if (rhs.val_.value == (1ull << type->members_.size()) - 1) { return lhs; }
+  }
+
+  auto &cmd = MakeCmd(type, Op::AndFlags);
   cmd.set<Cmd::XorTag, FlagsVal>(lhs, rhs);
   return cmd.result;
 }
