@@ -45,6 +45,7 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
           if (d->id_ == token) { return ctx->set_type(this, v.type); }
         }
 
+        ctx->error_log_.UndeclaredIdentifier(this);
         return nullptr;
       default:
         // TODO Should we allow the overload?

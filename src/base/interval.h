@@ -14,6 +14,10 @@ struct Interval {
   Interval expanded(U &&val) {
     return Interval{start_ - std::forward<U>(val), end_ + std::forward<U>(val)};
   }
+
+  Interval clamped_below(T &&val) {
+    return Interval{std::max<T>(std::forward<T>(val), start_), end_};
+  }
 };
 
 template <typename T>

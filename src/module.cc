@@ -102,6 +102,12 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
 
   file_stmts->assign_scope(ctx.mod_->global_.get());
   file_stmts->VerifyType(&ctx);
+  if (ctx.num_errors() != 0) {
+    ctx.DumpErrors();
+    found_errors = true;
+    return mod;
+  }
+
   file_stmts->Validate(&ctx);
   if (ctx.num_errors() != 0) {
     ctx.DumpErrors();

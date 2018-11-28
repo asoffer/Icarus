@@ -212,12 +212,14 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 
   type::Type const *this_type = nullptr;
   {
+    bool found_error = false;
     type::Type const *type_expr_type = nullptr;
     type::Type const *init_val_type  = nullptr;
     if (type_expr) {
       type_expr_type = type_expr->VerifyType(ctx);
-
-      if (type_expr_type == type::Type_) {
+      if (type_expr_type == nullptr) {
+        found_error = true;
+      } else if (type_expr_type == type::Type_) {
         this_type =
             backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx);
         ctx->set_type(this, this_type);
@@ -226,15 +228,18 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         ctx->set_type(this, type::Generic);
       } else {
         ctx->error_log_.NotAType(type_expr.get());
+        found_error = true;
       }
     }
 
     if (this->IsCustomInitialized()) {
       init_val_type = init_val->VerifyType(ctx);
-
-      if (init_val_type != nullptr) {
+      if (init_val_type == nullptr) {
+        found_error = true;
+      } else {
         if (!Inferrable(init_val_type)) {
           ctx->error_log_.UninferrableType(init_val->span);
+          found_error = true;
 
         } else if (!type_expr) {
           this_type = init_val_type;
@@ -242,6 +247,8 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         }
       }
     }
+
+    if (found_error) { return nullptr; }
 
     if (type_expr && type_expr_type == type::Type_ && init_val &&
         !init_val->is<Hole>()) {

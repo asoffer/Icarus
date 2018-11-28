@@ -156,7 +156,7 @@ static auto LinesToShow(const ExprContainer &exprs) {
   base::IntervalSet<size_t> iset;
   base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
   for (const auto &expr : exprs) {
-    iset.insert(expr->span.lines().expanded(1));
+    iset.insert(expr->span.lines().expanded(1).clamped_below(1));
     underlines.emplace_back(
         expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE});
   }
@@ -334,7 +334,7 @@ void Log::WhichNonVariant(type::Type const *type, TextSpan const &span) {
 
 void Log::Reserved(TextSpan const &span, std::string const &token) {
   std::stringstream ss;
-  ss << "Identifier '" << token << "' is a reserved keyword.\n\n";
+  ss << "Identifier `" << token << "` is a reserved keyword.\n\n";
   WriteSource(
       ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -344,7 +344,7 @@ void Log::Reserved(TextSpan const &span, std::string const &token) {
 
 void Log::NotBinary(TextSpan const &span, std::string const &token) {
   std::stringstream ss;
-  ss << "Operator '" << token << "' is not a binary operator.\n\n";
+  ss << "Operator `" << token << "` is not a binary operator.\n\n";
   WriteSource(
       ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -499,8 +499,8 @@ void Log::Dump() const {
   }
 
   for (const auto & [ decl, ids ] : out_of_order_decls_) {
-    std::cerr << "Declaration of '" << decl->id_
-              << "' is used before it is defined (which is only allowed for "
+    std::cerr << "Declaration of `" << decl->id_
+              << "` is used before it is defined (which is only allowed for "
                  "constants).\n\n";
 
     auto[iset, underlines] = LinesToShow(ids);
@@ -515,7 +515,7 @@ void Log::Dump() const {
   }
 
   for (const auto & [ token, ids ] : undeclared_ids_) {
-    std::cerr << "Use of undeclared identifier '" << token << "':\n";
+    std::cerr << "Use of undeclared identifier `" << token << "`:\n\n";
 
     auto[iset, underlines] = LinesToShow(ids);
     WriteSource(std::cerr, *ids.front()->span.source, iset, underlines);

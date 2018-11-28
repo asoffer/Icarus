@@ -160,10 +160,10 @@ void FunctionLiteral::Validate(Context *ctx) {
   std::set<type::Type const *> types;
   for (auto *expr : rets[JumpKind::Return]) { types.insert(ctx->type_of(expr)); }
 
-  base::vector<const type::Type *> input_type_vec;
+  base::vector<type::Type const *> input_type_vec;
   input_type_vec.reserve(inputs.size());
-  for (const auto &input : inputs) {
-    input_type_vec.push_back(ctx->type_of(input.get()));
+  for (auto const &input : inputs) {
+    input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input.get())));
   }
 
   if (return_type_inferred_) {
