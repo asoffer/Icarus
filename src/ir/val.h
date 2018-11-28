@@ -8,6 +8,7 @@
 
 #include "base/strong_types.h"
 #include "base/types.h"
+#include "ir/addr.h"
 #include "ir/any_func.h"
 #include "ir/flags_val.h"
 #include "ir/interface.h"

@@ -5,7 +5,7 @@
 #include "base/strong_types.h"
 #include "base/types.h"
 #include "ir/any_func.h"
-#include "ir/addr.h" // TODO remove and include explicitly.
+
 DEFINE_STRONG_INT(ir, BlockIndex, i32, -1);
 DEFINE_STRONG_INT(ir, EnumVal, size_t, 0);
 DEFINE_STRONG_INT(ir, BuiltinGenericIndex, i32, -1);

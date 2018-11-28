@@ -26,6 +26,7 @@ struct FunctionLiteral;
 namespace ir {
 struct FlagsVal;
 struct Val;
+struct Addr;
 }  // namespace ir
 
 #define TYPE_FNS(name)                                                         \
