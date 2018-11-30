@@ -530,11 +530,13 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
 
       return {};
     } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {
+      auto name =
+          backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx);
+      // TODO can I evaluate as type::Function const *?
+      auto *fn_type =
+          backend::EvaluateAs<type::Type const *>(args_.pos_[1].get(), ctx);
       return {ir::Val::Func(
-          backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx),
-          ir::ForeignFn{
-              backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx),
-              this})};
+          fn_type, ir::ForeignFn{name, this, &fn_type->as<type::Function>()})};
     } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {
       // TODO might be optional.
       return {fn_val};

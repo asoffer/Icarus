@@ -1,5 +1,6 @@
 #include "backend/exec.h"
 
+#include <dlfcn.h>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -16,7 +17,6 @@
 #include "ast/function_literal.h"
 #include "ast/scope_node.h"
 #include "base/util.h"
-#include "context.h"
 #include "error/log.h"
 #include "ir/arguments.h"
 #include "ir/func.h"
@@ -112,6 +112,42 @@ static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack) {
     case ir::Addr::Kind::Heap: *static_cast<T *>(addr.as_heap) = val;
   }
 }
+
+void CallForeignFn(ir::ForeignFn const &f,
+                   base::untyped_buffer const &arguments, base::vector<ir::Addr> ret_slots,
+                   base::untyped_buffer *stack) {
+  // TODO handle failures gracefully.
+  // TODO Consider caching these.
+  // TODO Handle a bunch more function types in a coherent way.
+  if (f.type() == type::Func({type::Int32}, {type::Int32})) {
+    using fn_t = i32 (*)(i32);
+    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+    StoreValue(fn(arguments.get<i32>(0)), ret_slots.at(0), stack);
+  } else if (f.type() == type::Func({type::Int32}, {})) {
+    using fn_t = void (*)(i32);
+    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+    fn(arguments.get<i32>(0));
+  } else if (f.type() == type::Func({type::Float64}, {type::Float64})) {
+    using fn_t = double (*)(double);
+    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+    StoreValue(fn(arguments.get<double>(0)), ret_slots.at(0), stack);
+  } else if (f.type() == type::Func({type::Float32}, {type::Float32})) {
+    using fn_t = float (*)(float);
+    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+    StoreValue(fn(arguments.get<float>(0)), ret_slots.at(0), stack);
+  }
+
+  /*
+  if (ff.name() == "malloc") {
+    ir::Addr addr;
+    addr.kind    = ir::Addr::Kind::Heap;
+    addr.as_heap = malloc(call_buf.get<i32>(0));
+    StoreValue(addr, ret_slot, stack);
+  }
+  */
+}
+
+
 
 ir::BlockIndex ExecContext::ExecuteCmd(
     const ir::Cmd &cmd, const base::vector<ir::Addr> &ret_slots) {
@@ -524,20 +560,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       if (f.is_fn()) {
         backend::Execute(f.func(), call_buf, return_slots, this);
       } else {
-        auto ff = f.foreign();
-        if (ff.name() == "malloc") {
-          ir::Addr addr;
-          addr.kind    = ir::Addr::Kind::Heap;
-          addr.as_heap = malloc(call_buf.get<i32>(0));
-          StoreValue(addr, return_slots.at(0), &stack_);
-        } else if (ff.name() == "abs") {
-          StoreValue(std::abs(call_buf.get<i32>(0)), return_slots.at(0), &stack_);
-        } else if (ff.name() == "sleep") {
-          std::this_thread::sleep_for(
-              std::chrono::seconds(call_buf.get<i32>(0)));
-        } else {
-          NOT_YET();
-        }
+        CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
       }
     } break;
     case ir::Op::CreateTuple: {

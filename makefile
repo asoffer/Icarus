@@ -12,7 +12,7 @@ BUILD_FLAGS := -g -O0 -DDBG -rdynamic
 STDS = -std=c++17
 WARN = -Wno-unused-but-set-parameter -Wno-unused-variable -Wall -Wextra -Werror -Wuninitialized -Wpedantic -Wno-unused-parameter #-Weffc++
 OPTS = -iquote$(shell pwd)/src -fno-exceptions
-LINK_FLAGS = -rdynamic -pthread
+LINK_FLAGS = -rdynamic -pthread -ldl
 
 
 all: $(TARGET)
@@ -38,7 +38,7 @@ build/%.o: src/%.cc
 $(TARGET): $(SRC_OBJS)
 	@echo -n Linking...
 	@mkdir -p `dirname $(TARGET)`
-	@$(COMPILER) $(LINK_FLAGS) $(SRC_OBJS) $(LLVM_LINK) -o $@
+	@$(COMPILER) $(SRC_OBJS) $(LLVM_LINK) $(LINK_FLAGS) -o $@
 	@echo Done.
 
 .PHONY: number_test 

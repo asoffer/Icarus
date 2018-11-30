@@ -1,10 +1,12 @@
 #include "run/run.h"
 
 #include <future>
+#include <dlfcn.h>
 
 #include "backend/exec.h"
 #include "base/container/vector.h"
 #include "base/untyped_buffer.h"
+#include "base/util.h"
 #include "context.h"
 #include "ir/func.h"
 #include "module.h"
@@ -35,6 +37,10 @@ void ScheduleModule(const frontend::Source::Name &src) {
 }
 
 int RunCompiler() {
+  void *libc_handle = dlopen("/lib/x86_64-linux-gnu/libc.so.6", RTLD_LAZY);
+  ASSERT(libc_handle != nullptr);
+  base::defer d([libc_handle] { dlclose(libc_handle); });
+
 #ifdef ICARUS_USE_LLVM
   llvm::InitializeAllTargetInfos();
   llvm::InitializeAllTargets();
@@ -42,7 +48,8 @@ int RunCompiler() {
   llvm::InitializeAllAsmParsers();
   llvm::InitializeAllAsmPrinters();
 #endif  // ICARUS_USE_LLVM
-  for (const auto &src : files) { ScheduleModule(src); }
+  for (const auto &src : files) {
+    ScheduleModule(src); }
 
   size_t current_size = 0;
   do {

@@ -3,6 +3,10 @@
 
 #include <string_view>
 
+namespace type {
+struct Function;
+}  // namespace type
+
 namespace ast {
 struct Expression;
 }  // namespace ast
@@ -10,14 +14,21 @@ struct Expression;
 namespace ir {
 
 struct ForeignFn {
-  explicit ForeignFn(std::string_view name, ast::Expression const *expr);
-
+  explicit ForeignFn(std::string_view name, ast::Expression const *expr,
+                     type::Function const *t);
   std::string_view name() const { return handle_->first; }
+  type::Function const *type() const { return handle_->second.type_; }
+
+  struct Data {
+    ast::Expression const *expr_ = nullptr;
+    type::Function const *type_  = nullptr;
+  };
 
  private:
   friend struct AnyFunc;
-  ForeignFn() = default;
-  std::pair<std::string_view const, ast::Expression const *> const *handle_ = nullptr;
+
+  ForeignFn()                                            = default;
+  std::pair<std::string_view const, Data> const *handle_ = nullptr;
 };
 
 inline bool operator==(ForeignFn lhs, ForeignFn rhs) {
