@@ -38,7 +38,7 @@ struct Addr;
 #define BASIC_METHODS_WITHOUT_LLVM                                             \
   virtual char *WriteTo(char *buf) const ENDING;                               \
   virtual size_t string_size() const ENDING;                                   \
-  virtual void EmitAssign(const Type *from_type, ir::Val from,                 \
+  virtual void EmitAssign(const Type *from_type, ir::Val const &from,          \
                           ir::Register to, Context *ctx) const ENDING;         \
   virtual void EmitInit(ir::Register reg, Context *ctx) const ENDING;          \
   virtual void EmitDestroy(ir::Register reg, Context *ctx) const ENDING;       \
@@ -80,10 +80,10 @@ struct Type : public base::Cast<Type> {
   virtual bool IsDefaultInitializable() const { return true; }
 };
 
-void EmitCopyInit(const Type *from_type, const Type *to_type, ir::Val from_val,
-                  ir::Register to_var, Context *ctx);
-void EmitMoveInit(const Type *from_type, const Type *to_type, ir::Val from_val,
-                  ir::Register to_var, Context *ctx);
+void EmitCopyInit(const Type *from_type, const Type *to_type,
+                  ir::Val const &from_val, ir::Register to_var, Context *ctx);
+void EmitMoveInit(const Type *from_type, const Type *to_type,
+                  ir::Val const &from_val, ir::Register to_var, Context *ctx);
 
 struct Pointer;
 struct CharBuffer;

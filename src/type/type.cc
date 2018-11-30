@@ -19,8 +19,8 @@ namespace type {
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
-using InitFnType = void (*)(Type const *, Type const *, ir::Val, ir::Register,
-                            Context *ctx);
+using InitFnType = void (*)(Type const *, Type const *, ir::Val const &,
+                            ir::Register, Context *ctx);
 
 template <InitFnType InitFn>
 static ir::Func *ArrayInitializationWith(const Array *from_type,
@@ -131,8 +131,8 @@ static ir::Func *StructInitializationWith(const Struct *struct_type,
   return iter->second;
 }
 
-void EmitCopyInit(Type const *from_type, Type const *to_type, ir::Val from_val,
-                  ir::Register to_var, Context *ctx) {
+void EmitCopyInit(Type const *from_type, Type const *to_type,
+                  ir::Val const &from_val, ir::Register to_var, Context *ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>() || to_type->is<Function>()) {
     ASSERT(to_type == from_type);
@@ -165,8 +165,8 @@ void EmitCopyInit(Type const *from_type, Type const *to_type, ir::Val from_val,
   }
 }
 
-void EmitMoveInit(Type const *from_type, Type const *to_type, ir::Val from_val,
-                  ir::Register to_var, Context *ctx) {
+void EmitMoveInit(Type const *from_type, Type const *to_type,
+                  ir::Val const &from_val, ir::Register to_var, Context *ctx) {
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>()) {
     ASSERT(to_type == from_type);
@@ -359,4 +359,10 @@ Struct::Field const *Struct::field(std::string const &name) const {
 }
 
 Type const *Generic = new GenericFunction;
+
+ir::Val Tuple::PrepareArgument(Type const *t, ir::Val const &val,
+                               Context *ctx) const {
+  UNREACHABLE();
+}
+
 }  // namespace type

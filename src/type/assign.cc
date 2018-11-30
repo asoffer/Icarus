@@ -13,8 +13,8 @@
 
 namespace type {
 using base::check::Is;
-void Array::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
-                       Context *ctx) const {
+void Array::EmitAssign(Type const *from_type, ir::Val const &from,
+                       ir::Register to, Context *ctx) const {
   ASSERT(from_type, Is<Array>());
   auto *from_array_type = &from_type->as<Array>();
 
@@ -100,26 +100,26 @@ void Array::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
   ir::Call(ir::AnyFunc{fn}, std::move(call_args));
 }
 
-void Pointer::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
-                         Context *ctx) const {
+void Pointer::EmitAssign(Type const *from_type, ir::Val const &from,
+                         ir::Register to, Context *ctx) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::Addr>(), to);
 }
 
-void Enum::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
-                      Context *ctx) const {
+void Enum::EmitAssign(Type const *from_type, ir::Val const &from,
+                      ir::Register to, Context *ctx) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::EnumVal>(), to);
 }
 
-void Flags::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
-                       Context *ctx) const {
+void Flags::EmitAssign(Type const *from_type, ir::Val const &from,
+                       ir::Register to, Context *ctx) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::FlagsVal>(), to);
 }
 
-void Variant::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
-                         Context *ctx) const {
+void Variant::EmitAssign(Type const *from_type, ir::Val const &from,
+                         ir::Register to, Context *ctx) const {
   if (from_type->is<Variant>()) {
     // TODO find the best match for variant types. For instance, we allow
     // assignments like:
@@ -153,8 +153,8 @@ void Variant::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
   }
 }
 
-void Struct::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
-                        Context *ctx) const {
+void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
+                        ir::Register to, Context *ctx) const {
   std::unique_lock lock(mtx_);
   ASSERT(this == from_type);
   if (!assign_func) {
@@ -188,13 +188,13 @@ void Struct::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
   ir::Call(ir::AnyFunc{assign_func}, std::move(call_args));
 }
 
-void Function::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
-                          Context *ctx) const {
+void Function::EmitAssign(Type const *from_type, ir::Val const &from,
+                          ir::Register to, Context *ctx) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::AnyFunc>(), to);
 }
-void Primitive::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
-                           Context *ctx) const {
+void Primitive::EmitAssign(Type const *from_type, ir::Val const &from,
+                           ir::Register to, Context *ctx) const {
   ASSERT(this == from_type);
   switch (this->type_) {
     case PrimType::Type_:
@@ -218,7 +218,7 @@ void Primitive::EmitAssign(Type const *from_type, ir::Val from, ir::Register to,
   }
 }
 
-void CharBuffer::EmitAssign(Type const *from_type, ir::Val from,
+void CharBuffer::EmitAssign(Type const *from_type, ir::Val const &from,
                             ir::Register to, Context *ctx) const {
   UNREACHABLE();
 }

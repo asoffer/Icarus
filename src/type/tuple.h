@@ -3,8 +3,6 @@
 
 #include "type.h"
 
-#include "ir/val.h"  // TODO pass by reference to avoid this include
-
 namespace type {
 Type const *Tup(base::vector<Type const *> entries);
 
@@ -14,18 +12,17 @@ struct Tuple : public Type {
   Tuple(base::vector<Type const *> entries) : entries_(std::move(entries)) {}
   virtual char *WriteTo(char *buf) const;
   virtual size_t string_size() const;
-  virtual void EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
-                          Context *ctx) const {
+  virtual void EmitAssign(Type const *from_type, ir::Val const &from,
+                          ir::Register to, Context *ctx) const {
     UNREACHABLE();
   }
   virtual void EmitInit(ir::Register reg, Context *ctx) const { UNREACHABLE(); }
   virtual void EmitDestroy(ir::Register reg, Context *ctx) const {
     UNREACHABLE();
   }
-  virtual ir::Val PrepareArgument(const Type *t, const ir::Val &val,
-                                  Context *ctx) const {
-    UNREACHABLE();
-  }
+  virtual ir::Val PrepareArgument(Type const *t, ir::Val const &val,
+                                  Context *ctx) const;
+
   virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const {
     UNREACHABLE();
   }

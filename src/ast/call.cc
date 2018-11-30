@@ -174,8 +174,7 @@ static void EmitOneCallDispatch(
   // After the last check, if you pass, you should dispatch
   base::vector<std::pair<std::string, ast::Expression *>> *const_args = nullptr;
   if (auto *fn_to_call = std::get_if<ir::AnyFunc>(&callee.value)) {
-    ASSERT(fn_to_call->is_fn());
-    const_args = &(fn_to_call->func()->args_);
+    if (fn_to_call->is_fn()) { const_args = &(fn_to_call->func()->args_); }
   }
 
   base::vector<ir::Val> args;

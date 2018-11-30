@@ -21,7 +21,7 @@ struct GenericFunction : public Callable {
     return std::strcpy(buf, "generic") + string_size();
   }
   size_t string_size() const override { return sizeof("generic") - 1; }
-  void EmitAssign(const Type *from_type, ir::Val from, ir::Register to,
+  void EmitAssign(const Type *from_type, ir::Val const &from, ir::Register to,
                   Context *ctx) const override {}
   void EmitInit(ir::Register reg, Context *ctx) const override {}
   void EmitDestroy(ir::Register reg, Context *ctx) const override {}
