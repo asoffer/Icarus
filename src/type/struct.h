@@ -61,7 +61,7 @@ struct Struct : public Type {
   base::unordered_map<std::string, size_t> field_indices_;
 
   mutable std::mutex mtx_;
-  mutable ir::Func *init_func_ = nullptr, *assign_func = nullptr,
+  mutable ir::Func *init_func_ = nullptr, *assign_func_ = nullptr,
                    *destroy_func_ = nullptr, *repr_func_ = nullptr;
   // TODO This probably doesn't need any thread safety guarantees, but I'm not
   // sure yet.

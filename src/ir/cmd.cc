@@ -239,6 +239,12 @@ RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
   return cmd.result;
 }
 
+Register Field(Register r, type::Tuple const *t, size_t n) {
+  auto &cmd  = MakeCmd(type::Ptr(t->entries_.at(n)), Op::Field);
+  cmd.field_ = {r, t, n};
+  return cmd.result;
+}
+
 Register Field(Register r, type::Struct const *t, size_t n) {
   auto &cmd  = MakeCmd(type::Ptr(t->fields().at(n).type), Op::Field);
   cmd.field_ = {r, t, n};
@@ -366,8 +372,6 @@ void SetStructFieldName(type::Struct *struct_type,
 }
 
 TypedRegister<Addr> Alloca(const type::Type *t) {
-  ASSERT(t, Not(Is<type::Tuple>()));
-
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
                   ->block(Func::Current->entry())
                   .cmds_.emplace_back(type::Ptr(t), Op::Alloca);
@@ -585,7 +589,7 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Array const &a) {
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {
-  return os << f.ptr_ << " " << f.struct_type_->to_string() << " " << f.num_;
+  return os << f.ptr_ << " " << f.type_->to_string() << " " << f.num_;
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {

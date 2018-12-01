@@ -153,41 +153,6 @@ void Variant::EmitAssign(Type const *from_type, ir::Val const &from,
   }
 }
 
-void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
-                        ir::Register to, Context *ctx) const {
-  std::unique_lock lock(mtx_);
-  ASSERT(this == from_type);
-  if (!assign_func) {
-    assign_func = ctx->mod_->AddFunc(
-        type::Func({from_type, type::Ptr(this)}, {}),
-        base::vector<std::pair<std::string, ast::Expression *>>{
-            {"from", nullptr}, {"to", nullptr}});
-
-    CURRENT_FUNC(assign_func) {
-      ir::BasicBlock::Current = assign_func->entry();
-      auto val                = assign_func->Argument(0);
-      auto var                = assign_func->Argument(1);
-
-      for (size_t i = 0; i < fields_.size(); ++i) {
-        auto *field_type = from_type->as<type::Struct>().fields_.at(i).type;
-        fields_[i].type->EmitAssign(
-            fields_[i].type,
-            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), field_type),
-                         field_type),
-            ir::Field(var, this, i), ctx);
-      }
-
-      ir::ReturnJump();
-    }
-  }
-  ASSERT(assign_func != nullptr);
-  ir::Arguments call_args;
-  call_args.append(from);
-  call_args.append(to);
-  call_args.type_ = assign_func->type_;
-  ir::Call(ir::AnyFunc{assign_func}, std::move(call_args));
-}
-
 void Function::EmitAssign(Type const *from_type, ir::Val const &from,
                           ir::Register to, Context *ctx) const {
   ASSERT(this == from_type);

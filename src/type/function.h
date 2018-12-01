@@ -48,8 +48,8 @@ struct Function : public Callable {
   base::vector<const Type *> input, output;
 };
 
-const Function *Func(base::vector<const Type *> in,
-                     base::vector<const Type *> out);
+Function const *Func(base::vector<Type const *> in,
+                     base::vector<Type const *> out);
 
 }  // namespace type
 

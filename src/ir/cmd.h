@@ -79,7 +79,7 @@ struct Cmd {
   };
   struct Field {
     Register ptr_;
-    type::Struct const *struct_type_;
+    type::Type const *type_;  // Struct or Tuple
     size_t num_;
   };
 
@@ -362,6 +362,7 @@ Register VariantValue(const type::Type *t, Register r);
 TypedRegister<Addr> PtrIncr(Register ptr, RegisterOr<i32> inc,
                             type::Pointer const *t);
 Register Field(Register r, type::Struct const *t, size_t n);
+Register Field(Register r, type::Tuple const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);
 

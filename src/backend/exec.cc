@@ -469,10 +469,16 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::Field: {
       auto addr = resolve<ir::Addr>(cmd.field_.ptr_);
-      auto *struct_type =
-          resolve<type::Struct const *>(cmd.field_.struct_type_);
-      size_t offset = struct_type->offset(cmd.field_.num_,
-                                          Architecture::InterprettingMachine());
+      size_t offset = 0;
+      if (cmd.field_.type_->is<type::Struct>()) {
+        offset = cmd.field_.type_->as<type::Struct>().offset(
+            cmd.field_.num_, Architecture::InterprettingMachine());
+      } else if (cmd.field_.type_->is<type::Tuple>()) {
+        offset = cmd.field_.type_->as<type::Tuple>().offset(
+            cmd.field_.num_, Architecture::InterprettingMachine());
+      } else {
+        UNREACHABLE();
+      }
       if (addr.kind == ir::Addr::Kind::Stack) {
         addr.as_stack += offset;
       } else {

@@ -3,19 +3,18 @@
 
 #include "type.h"
 
-namespace type {
-Type const *Tup(base::vector<Type const *> entries);
+struct Architecture;
 
+namespace type {
 struct Tuple : public Type {
   Tuple() = delete;
   ~Tuple() {}
   Tuple(base::vector<Type const *> entries) : entries_(std::move(entries)) {}
   virtual char *WriteTo(char *buf) const;
   virtual size_t string_size() const;
-  virtual void EmitAssign(Type const *from_type, ir::Val const &from,
-                          ir::Register to, Context *ctx) const {
-    UNREACHABLE();
-  }
+
+  void EmitAssign(Type const *from_type, ir::Val const &from, ir::Register to,
+                  Context *ctx) const;
   virtual void EmitInit(ir::Register reg, Context *ctx) const { UNREACHABLE(); }
   virtual void EmitDestroy(ir::Register reg, Context *ctx) const {
     UNREACHABLE();
@@ -23,23 +22,26 @@ struct Tuple : public Type {
   virtual ir::Val PrepareArgument(Type const *t, ir::Val const &val,
                                   Context *ctx) const;
 
-  virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const {
-    UNREACHABLE();
-  }
+  virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const;
+
   virtual Cmp Comparator() const { UNREACHABLE(); }
 
-  Type const *finalize() {
-    auto *result = Tup(std::move(entries_));
-    ASSERT(this != result);
-    delete this;
-    return result;
-  }
+  size_t offset(size_t n, Architecture const &arch) const;
+
+  Type const *finalize();
+
 #ifdef ICARUS_USE_LLVM
   virtual llvm::Type *llvm(llvm::LLVMContext &) const { UNREACHABLE(); }
 #endif  // ICARUS_USE_LLVM
 
   base::vector<Type const *> entries_;
-};  // namespace type
+
+  mutable ir::Func *init_func_ = nullptr, *assign_func_ = nullptr,
+                   *destroy_func_ = nullptr, *repr_func_ = nullptr;
+};
+
+Type const *Tup(base::vector<Type const *> entries);
+
 }  // namespace type
 
 #endif  // ICARUS_TYPE_TUPLE_H
