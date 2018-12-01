@@ -620,4 +620,21 @@ void Log::InvalidNumber(TextSpan const &span, std::string_view err) {
   errors_.push_back(ss.str());
 }
 
+void Log::NoCallMatch(TextSpan const &span,
+                      base::unordered_map<ast::Expression const *,
+                                          std::string> const &failure_reasons) {
+  std::stringstream ss;
+  ss << "Failed to find amatching function signature to call.\n\n";
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  for (auto const &[expr, reason] : failure_reasons) {
+    ss << "\n  * " << reason << ":\n\n";
+    WriteSource(ss, *expr->span.source, {expr->span.lines()}, {});
+  }
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
 }  // namespace error

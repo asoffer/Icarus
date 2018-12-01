@@ -22,7 +22,7 @@ struct DispatchTableRow {
                 Context *ctx);
   bool SetTypes(FunctionLiteral const &fn, FnArgs<Expression *> const &args,
                 Context *ctx);
-  static std::optional<DispatchTableRow> Make(
+  static base::expected<DispatchTableRow> Make(
       type::Typed<Expression *, type::Callable> fn_option,
       FnArgs<Expression *> const &args, Context *ctx);
 
@@ -31,21 +31,20 @@ struct DispatchTableRow {
   Binding binding_;
 
  private:
-  static std::optional<DispatchTableRow> MakeNonConstant(
+  static base::expected<DispatchTableRow> MakeNonConstant(
       type::Typed<Expression *, type::Function> fn_option,
       FnArgs<Expression *> const &args, Context *ctx);
 
-  static std::optional<DispatchTableRow> MakeFromForeignFunction(
+  static base::expected<DispatchTableRow> MakeFromForeignFunction(
       type::Typed<Expression *, type::Callable> fn_option,
       FnArgs<Expression *> const &args, Context *ctx);
-  static std::optional<DispatchTableRow> MakeFromIrFunc(
+  static base::expected<DispatchTableRow> MakeFromIrFunc(
       type::Typed<Expression *, type::Callable> fn_option,
       ir::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx);
 
-  static std::optional<DispatchTableRow> MakeFromFnLit(
+  static base::expected<DispatchTableRow> MakeFromFnLit(
       type::Typed<Expression *, type::Callable> fn_option,
-      FunctionLiteral *fn_lit, FnArgs<Expression *> const &args,
-      Context *ctx);
+      FunctionLiteral *fn_lit, FnArgs<Expression *> const &args, Context *ctx);
   DispatchTableRow(Binding b) : binding_(std::move(b)) {}
 };
 
@@ -146,19 +145,20 @@ static bool IsConstant(Expression *e) {
          (e->is<Declaration>() && e->as<Declaration>().const_);
 }
 
-std::optional<DispatchTableRow> DispatchTableRow::MakeNonConstant(
+base::expected<DispatchTableRow> DispatchTableRow::MakeNonConstant(
     type::Typed<Expression *, type::Function> fn_option,
     FnArgs<Expression *> const &args, Context *ctx) {
   if (!args.named_.empty()) {
-    NOT_YET(
-        "Log an explanation for which this option was disregarded. (named "
-        "args)");
+    // TODO Describe `fn_option` explicitly.
+    return base::unexpected(
+        "Overload candidate ignored because non-constants cannot be called "
+        "with named arguments");
   }
 
   if (args.pos_.size() != fn_option.type()->input.size()) {
-    NOT_YET(
-        "Log an explanation for which this option was disregarded. (default "
-        "args)");
+    return base::unexpected(
+        "Overload candidate ignored because non-constants cannot be called "
+        "with default arguments");
   }
 
   Binding binding(fn_option, args.pos_.size(), false);
@@ -167,14 +167,16 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeNonConstant(
 
   DispatchTableRow dispatch_table_row(std::move(binding));
 
-  if (!dispatch_table_row.SetTypes(fn_option, ctx)) { return {}; }
+  if (!dispatch_table_row.SetTypes(fn_option, ctx)) {
+    return base::unexpected("TODO");
+  }
   dispatch_table_row.function_type_ =
       &ctx->type_of(fn_option.get())->as<type::Function>();
 
   return dispatch_table_row;
 }
 
-std::optional<DispatchTableRow> DispatchTableRow::Make(
+base::expected<DispatchTableRow> DispatchTableRow::Make(
     type::Typed<Expression *, type::Callable> fn_option,
     FnArgs<Expression *> const &args, Context *ctx) {
   if (!IsConstant(fn_option.get())) {
@@ -194,7 +196,7 @@ std::optional<DispatchTableRow> DispatchTableRow::Make(
   }
 }
 
-std::optional<DispatchTableRow> DispatchTableRow::MakeFromForeignFunction(
+base::expected<DispatchTableRow> DispatchTableRow::MakeFromForeignFunction(
     type::Typed<Expression *, type::Callable> fn_option,
     FnArgs<Expression *> const &args, Context *ctx) {
   // TODO while all the behavior of MakeNonConst is what we want, the name is
@@ -202,14 +204,14 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromForeignFunction(
   // the name here. Probably the error messages once we have them will be
   // wrong too.
   auto result = MakeNonConstant(fn_option.as_type<type::Function>(), args, ctx);
-  if (!result) { return {}; }
+  if (!result.has_value()) { return base::unexpected("TODO"); }
   result->binding_.const_ = true;
   result->function_type_  = &fn_option.type()->as<type::Function>();
   ASSERT(result->function_type_ != nullptr);
   return result;
 }
 
-std::optional<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
+base::expected<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
     type::Typed<Expression *, type::Callable> fn_option,
     FunctionLiteral *fn_lit, FnArgs<Expression *> const &args, Context *ctx) {
   size_t binding_size =
@@ -217,7 +219,9 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
 
   Binding binding(fn_option, binding_size, true);
   binding.SetPositionalArgs(args);
-  if (!binding.SetNamedArgs(args, fn_lit->lookup_)) { return {}; }
+  if (!binding.SetNamedArgs(args, fn_lit->lookup_)) {
+    return base::unexpected("TODO");
+  }
 
   Context new_ctx(ctx);
   for (size_t i = 0; i < args.pos_.size(); ++i) {
@@ -243,13 +247,15 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
   DispatchTableRow dispatch_table_row(std::move(binding));
   dispatch_table_row.function_type_ = fn_type;
   ASSERT(dispatch_table_row.function_type_ != nullptr);
-  if (!dispatch_table_row.SetTypes(*fn_lit, args, &new_ctx)) { return {}; }
+  if (!dispatch_table_row.SetTypes(*fn_lit, args, &new_ctx)) {
+    return base::unexpected("TODO");
+  }
   dispatch_table_row.binding_.bound_constants_ =
       std::move(new_ctx).bound_constants_;
   return dispatch_table_row;
 }
 
-std::optional<DispatchTableRow> DispatchTableRow::MakeFromIrFunc(
+base::expected<DispatchTableRow> DispatchTableRow::MakeFromIrFunc(
     type::Typed<Expression *, type::Callable> fn_option,
     ir::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx) {
   size_t binding_size =
@@ -258,9 +264,13 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromIrFunc(
   Binding binding(fn_option, binding_size, true);
   binding.bound_constants_ = ctx->bound_constants_;
   binding.SetPositionalArgs(args);
-  if (!binding.SetNamedArgs(args, ir_func.lookup_)) { return {}; }
+  if (!binding.SetNamedArgs(args, ir_func.lookup_)) {
+    return base::unexpected("TODO");
+  }
   DispatchTableRow dispatch_table_row(std::move(binding));
-  if (!dispatch_table_row.SetTypes(ir_func, args, ctx)) { return {}; }
+  if (!dispatch_table_row.SetTypes(ir_func, args, ctx)) {
+    return base::unexpected("TODO");
+  }
   dispatch_table_row.function_type_ = &fn_option.type()->as<type::Function>();
   ASSERT(dispatch_table_row.function_type_ != nullptr);
   return dispatch_table_row;
@@ -268,7 +278,7 @@ std::optional<DispatchTableRow> DispatchTableRow::MakeFromIrFunc(
 
 static const type::Type *ComputeRetType(
     base::vector<type::Function const *> const &fn_types) {
-  ASSERT(!fn_types.empty());
+  if (fn_types.empty()) { return nullptr; }
   size_t num_outs = fn_types[0]->output.size();
   ASSERT(fn_types[0] != nullptr);
   base::vector<base::vector<type::Type const *>> out_types(num_outs);
@@ -306,7 +316,12 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
   for (auto &overload : overload_set) {
     ASSERT(overload.type() != nullptr);
     auto maybe_dispatch_table_row = DispatchTableRow::Make(overload, args, ctx);
-    if (!maybe_dispatch_table_row.has_value()) { continue; }
+    if (!maybe_dispatch_table_row.has_value()) {
+      table.failure_reasons_.emplace(
+          overload.get(), maybe_dispatch_table_row.error().to_string());
+      continue;
+    }
+
     table.total_size_ +=
         ComputeExpansion(maybe_dispatch_table_row->call_arg_types_);
     maybe_dispatch_table_row->binding_.fn_.set_type(

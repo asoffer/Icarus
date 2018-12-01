@@ -83,8 +83,6 @@ MAKE_LOG_ERROR(OrEqNeedsBoolOrFlags,
 MAKE_LOG_ERROR(PrintingVoid, "Attempting to print an object of type void")
 MAKE_LOG_ERROR(EarlyRequiredBlock,
                "Required block appears on the left-hand side of `|` operator.")
-MAKE_LOG_ERROR(NoCallMatch,
-               "Failed to find a matching function signature to call.")
 
 MAKE_LOG_ERROR(UnspecifiedOverload,
                "Attempting to access an overloaded function by name.")

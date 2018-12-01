@@ -78,6 +78,10 @@ struct Log {
 
   void InvalidNumber(TextSpan const& span, std::string_view err);
 
+  void NoCallMatch(TextSpan const &span,
+                   base::unordered_map<ast::Expression const *,
+                                       std::string> const &failure_reasons);
+
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() +
            errors_.size() + cyc_dep_vecs_.size();

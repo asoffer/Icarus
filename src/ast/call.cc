@@ -474,8 +474,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
   });
 
   if (dispatch_table_.total_size_ != expanded_size) {
-    // TODO give a better error message here.
-    ctx->error_log_.NoCallMatch(span);
+    ctx->error_log_.NoCallMatch(span, dispatch_table_.failure_reasons_);
     return nullptr;
   }
 

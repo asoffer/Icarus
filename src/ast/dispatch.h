@@ -1,15 +1,15 @@
 #ifndef ICARUS_AST_DISPATCH_H
 #define ICARUS_AST_DISPATCH_H
 
-#include <optional>
 #include <string>
 #include <variant>
-#include "base/container/unordered_map.h"
 
 #include "ast/bound_constants.h"
 #include "ast/fn_args.h"
 #include "ast/overload_set.h"
 #include "base/container/map.h"
+#include "base/container/unordered_map.h"
+#include "base/expected.h"
 
 struct Context;
 struct Scope;
@@ -63,6 +63,7 @@ struct DispatchTable {
       Context *ctx);
 
   base::map<FnArgs<type::Type const *>, Binding> bindings_;
+  std::unordered_map<Expression const *, std::string> failure_reasons_;
   size_t total_size_ = 0;
 };
 

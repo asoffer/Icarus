@@ -1,0 +1,33 @@
+angle ::= struct {
+  _val: float64 // in radians 
+}
+
+(+) ::= (a: angle, b: angle) -> angle {
+  result := a
+  result._val += b._val
+  return result
+}
+
+radians ::= (x: float64) -> angle {
+  a: angle
+  a._val = x
+  return a
+}
+
+pi ::= 3.141592653589
+
+degrees ::= (x: float64) -> angle {
+  a: angle
+  a._val = pi * x / 180.
+  return a
+}
+
+AsDegrees ::= (a: angle) => a._val * 180. / pi
+AsRadians ::= (a: angle) => a._val
+
+sin ::= (a: angle) => foreign("sin", float64 -> float64)(a._val)
+cos ::= (a: angle) => foreign("cos", float64 -> float64)(a._val)
+tan ::= (a: angle) => foreign("tan", float64 -> float64)(a._val)
+asin ::= (x: float64) => foreign("asin", float64 -> float64)(x)'radians
+acos ::= (x: float64) => foreign("acos", float64 -> float64)(x)'radians
+atan ::= (x: float64) => foreign("atan", float64 -> float64)(x)'radians
