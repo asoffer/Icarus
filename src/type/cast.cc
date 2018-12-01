@@ -24,6 +24,11 @@ static u8 CastMask(type::Type const *t) {
 
 bool CanCast(type::Type const *from, type::Type const *to) {
   if (from == to) { return true; }
+  if (from->is<type::Tuple>() && to == type::Type_) {
+    auto const &entries = from->as<type::Tuple>().entries_;
+    return std::all_of(entries.begin(), entries.end(),
+                       [](type::Type const *t) { return t == type::Type_; });
+  }
   auto from_mask = CastMask(from);
   auto to_mask   = CastMask(to);
   return ((from_mask & to_mask) == from_mask) || CanCastImplicitly(from, to);

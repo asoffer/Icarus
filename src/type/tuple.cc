@@ -31,6 +31,12 @@ void Tuple::EmitAssign(Type const *from_type, ir::Val const &from,
   }
 }
 
+void Tuple::EmitInit(ir::Register reg, Context *ctx) const {
+  for (size_t i= 0; i < entries_.size(); ++i) {
+    entries_[i]->EmitInit(ir::Field(reg, this, i), ctx);
+  }
+}
+
 void Tuple::EmitRepr(ir::Val const &id_val, Context *ctx) const {
   auto reg = std::get<ir::Register>(id_val.value);
   ir::Print('(');

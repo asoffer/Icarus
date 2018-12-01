@@ -15,7 +15,7 @@ struct Tuple : public Type {
 
   void EmitAssign(Type const *from_type, ir::Val const &from, ir::Register to,
                   Context *ctx) const;
-  virtual void EmitInit(ir::Register reg, Context *ctx) const { UNREACHABLE(); }
+  virtual void EmitInit(ir::Register reg, Context *ctx) const;
   virtual void EmitDestroy(ir::Register reg, Context *ctx) const {
     UNREACHABLE();
   }

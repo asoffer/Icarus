@@ -426,8 +426,17 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     } break;
     case Language::Operator::As: {
       auto *this_type = ctx->type_of(this);
-      auto val        = lhs->EmitIR(ctx)[0];
-      return {ir::Cast(val.type, this_type, val)};
+      auto vals        = lhs->EmitIR(ctx);
+      if (this_type == type::Type_) {
+        base::vector<type::Type const *> entries;
+        entries.reserve(vals.size());
+        for (auto const& val : vals) {
+          // TODO what about incomplete structs?
+          entries.push_back(std::get<type::Type const*>(val.value));
+        }
+        return {ir::Val(type::Tup(entries))};
+      }
+      return {ir::Cast(vals[0].type, this_type, vals[0])};
     } break;
     case Language::Operator::Arrow: {
       auto reg_or_type =
