@@ -399,20 +399,8 @@ base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
     auto *t   = ctx->type_of(this);
     auto addr = ctx->addr(this);
     if (IsCustomInitialized()) {
-      type::Type const *from_type = ctx->type_of(init_val.get());
-      if (from_type->is<type::Tuple>()) {
-        type::Tuple const *from_tuple_type = &from_type->as<type::Tuple>();
-        auto init_vals = init_val->EmitIR(ctx);
-        ASSERT(from_tuple_type->entries_.size() == init_vals.size());
-        ASSERT(from_tuple_type == t) << DUMP(from_tuple_type, t);
-        for (size_t i = 0; i < init_vals.size(); ++i) {
-          type::EmitCopyInit(from_tuple_type->entries_[i],
-                             from_tuple_type->entries_[i], init_vals[i],
-                             ir::Field(addr, from_tuple_type, i), ctx);
-        }
-      } else {
-        type::EmitCopyInit(from_type, t, init_val->EmitIR(ctx)[0], addr, ctx);
-      }
+      type::EmitCopyInit(ctx->type_of(init_val.get()), t,
+                         init_val->EmitIR(ctx)[0], addr, ctx);
     } else {
       if (!is_arg_) { t->EmitInit(addr, ctx); }
     }

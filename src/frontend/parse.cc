@@ -138,7 +138,7 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
     auto unop = std::make_unique<RepeatedUnop>(
         TextSpan(nodes.front()->span, nodes.back()->span));
     unop->op_ = tk == "return" ? Operator::Return : Operator::Yield;
-    if (nodes[1]->is<CommaList>()) {
+    if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().closed_) {
       unop->args_ = std::move(nodes[1]->as<CommaList>());
     } else {
       unop->args_.exprs_.push_back(move_as<Expression>(nodes[1]));
@@ -151,7 +151,7 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
   } else if (tk == "print") {
     // TODO Copy of above.
     std::unique_ptr<RepeatedUnop> unop;
-    if (nodes[1]->is<CommaList>()) {
+    if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().closed_) {
       unop = std::make_unique<RepeatedUnop>(
           TextSpan(nodes.front()->span, nodes.back()->span));
       unop->args_ = std::move(nodes[1]->as<CommaList>());
@@ -216,16 +216,14 @@ std::unique_ptr<Node> BuildChainOp(base::vector<std::unique_ptr<Node>> nodes,
 
 std::unique_ptr<Node> BuildCommaList(base::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
-  std::unique_ptr<CommaList> comma_list;
-
-  if (nodes[0]->is<CommaList>()) {
+  std::unique_ptr<CommaList> comma_list = nullptr;
+  if (nodes[0]->is<CommaList>() && !nodes[0]->as<CommaList>().closed_) {
     comma_list = move_as<CommaList>(nodes[0]);
   } else {
-    comma_list       = std::make_unique<CommaList>();
+    comma_list = std::make_unique<CommaList>();
     comma_list->span = TextSpan(nodes[0]->span, nodes[2]->span);
     comma_list->exprs_.push_back(move_as<Expression>(nodes[0]));
   }
-
   comma_list->exprs_.push_back(move_as<Expression>(nodes[2]));
   comma_list->span.finish = comma_list->exprs_.back()->span.finish;
   return comma_list;
@@ -357,7 +355,7 @@ std::unique_ptr<Node> BuildArrayLiteral(
   auto array_lit  = std::make_unique<ArrayLiteral>();
   array_lit->span = nodes[0]->span;
 
-  if (nodes[1]->is<CommaList>()) {
+  if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().closed_) {
     array_lit->exprs_ = std::move(nodes[1]->as<CommaList>().exprs_);
   } else {
     array_lit->exprs_.push_back(move_as<Expression>(nodes[1]));
@@ -368,7 +366,7 @@ std::unique_ptr<Node> BuildArrayLiteral(
 
 std::unique_ptr<Node> BuildArrayType(base::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
-  if (nodes[1]->is<CommaList>()) {
+  if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().closed_) {
     auto *length_chain = &nodes[1]->as<CommaList>();
     int i              = static_cast<int>(length_chain->exprs_.size() - 1);
     auto prev          = move_as<Expression>(nodes[3]);
@@ -934,7 +932,11 @@ static std::unique_ptr<ast::Node> BuildKWBlock(
 
 static std::unique_ptr<ast::Node> Parenthesize(
     base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  return std::move(nodes[1]);
+  auto result = std::move(nodes[1]);
+  if (result->is<ast::CommaList>()) {
+    result->as<ast::CommaList>().closed_ = true;
+  }
+  return result;
 }
 
 static std::unique_ptr<ast::Node> BuildEmptyParen(

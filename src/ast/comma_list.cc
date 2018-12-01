@@ -1,12 +1,14 @@
 #include "ast/comma_list.h"
 
 #include "context.h"
+#include "ir/cmd.h"
 #include "type/tuple.h"
 
 namespace ast {
 std::string CommaList::to_string(size_t n) const {
   std::stringstream ss;
   if (exprs_.empty()) { return "()"; }
+  if (closed_) { ss << "("; }
   auto iter = exprs_.begin();
   ss << (*iter)->to_string(n);
   ++iter;
@@ -14,6 +16,7 @@ std::string CommaList::to_string(size_t n) const {
     ss << ", " << (*iter)->to_string(n);
     ++iter;
   }
+  if (closed_) { ss << ")"; }
   return ss.str();
 }
 
@@ -31,13 +34,7 @@ type::Type const *CommaList::VerifyType(Context *ctx) {
     return nullptr;
   }
 
-  if (expr_types.empty()) {
-    // TODO This is a hack and definitely not always accurate. Especially when
-    // ArrayLiteral calls this code.
-    return ctx->set_type(this, type::Type_);
-  } else {
-    return ctx->set_type(this, type::Tup(std::move(expr_types)));
-  }
+  return ctx->set_type(this, type::Tup(std::move(expr_types)));
 }
 
 void CommaList::Validate(Context *ctx) {
@@ -49,10 +46,16 @@ void CommaList::ExtractJumps(JumpExprs *rets) const {
 }
 
 base::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
+  if (exprs_.size() == 1) { return {exprs_[0]->EmitIR(ctx)}; }
   base::vector<ir::Val> results;
-  results.reserve(exprs_.size());
-  for (auto &expr : exprs_) { results.push_back(expr->EmitIR(ctx)[0]); }
-  return results;
+  auto *tuple_type = &ctx->type_of(this)->as<type::Tuple>();
+  auto tuple_alloc = ir::Alloca(tuple_type);
+  for (size_t i = 0; i < tuple_type->entries_.size(); ++i) {
+    type::EmitCopyInit(tuple_type->entries_[i], tuple_type->entries_[i],
+                       exprs_[i]->EmitIR(ctx)[0],
+                       ir::Field(tuple_alloc, tuple_type, i), ctx);
+  }
+  return {ir::Val::Reg(tuple_alloc, tuple_type)};
 }
 
 base::vector<ir::Register> CommaList::EmitLVal(Context *ctx) {

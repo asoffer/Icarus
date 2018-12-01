@@ -75,7 +75,9 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
           NOT_YET("log an error: ", ret_type);
         }
       } else if (arg_type->is<type::Variant>()) {
-        // TODO
+        // TODO check that any variant can be printed
+      } else if (arg_type->is<type::Tuple>()) {
+        // TODO check that all tuple members can be printed.
       } else {
         NOT_YET(arg_type);
       }
@@ -85,7 +87,14 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
 }
 
 base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
-  auto arg_vals = args_.EmitIR(ctx);
+  base::vector<ir::Val> arg_vals;
+  if (args_.closed_) {
+    arg_vals.push_back(args_.EmitIR(ctx)[0]);
+  } else {
+    for (auto &expr : args_.exprs_) {
+      arg_vals.push_back(expr->EmitIR(ctx)[0]);
+    }
+  }
   switch (op_) {
     case Language::Operator::Return: {
       size_t offset  = 0;
