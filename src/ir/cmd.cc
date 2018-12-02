@@ -554,13 +554,36 @@ char const *OpCodeStr(Op op) {
 }
 
 template <typename T>
+static auto Stringify(T&& val) {
+  if constexpr (std::is_same_v<std::decay_t<T>, type::Type const *>) {
+    return val->to_string();
+  } else if constexpr (std::is_same_v<std::decay_t<T>,
+                                      RegisterOr<type::Type const *>>) {
+    std::stringstream ss;
+    if (val.is_reg_) {
+      ss << val.reg_;
+    } else {
+      ss << val.val_->to_string();
+    }
+    return ss.str();
+  } else {
+    return val;
+  }
+}
+
+template <typename T>
 static std::ostream &operator<<(std::ostream &os, Cmd::Store<T> const &s) {
-  return os << s.addr_.to_string() << " " << s.val_;
+  return os << s.addr_.to_string() << " " << Stringify(s.val_);
+}
+
+template <typename T>
+std::ostream &operator<<(std::ostream &os, Cmd::Args<T> const &a) {
+  return os << Stringify(a.args_[0]) << " " << Stringify(a.args_[1]);
 }
 
 template <typename T>
 static std::ostream &operator<<(std::ostream &os, Cmd::SetRet<T> const &s) {
-  return os << s.ret_num_ << " " << s.val_;
+  return os << s.ret_num_ << " " << Stringify(s.val_);
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::PrintEnum const &p) {
@@ -592,6 +615,11 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {
   return os << f.ptr_ << " " << f.type_->to_string() << " " << f.num_;
 }
 
+static std::ostream &operator<<(std::ostream &os, Cmd::CondJump const &j) {
+  return os << j.cond_ << " false -> " << j.blocks_[0] << " true -> "
+            << j.blocks_[1];
+}
+
 static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
   if (call.fn_.is_reg_) {
     os << call.fn_.reg_;
@@ -618,7 +646,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
   switch (cmd.op_code_) {
 #define OP_MACRO(op, tag, type, field)                                         \
   case Op::op:                                                                 \
-    return os << cmd.field;
+    return os << Stringify(cmd.field);
 #include "ir/op.xmacro.h"
 #undef OP_MACRO
   }

@@ -24,17 +24,13 @@ namespace ir {
 RegisterOr<type::Type const *> Tup(base::vector<Val> const &entries);
 }  // namespace ir
 
-namespace type {
-const Pointer *Ptr(Type const *);
-}  // namespace type
-
 namespace {
 bool IsTypeOrTupleOfTypes(type::Type const *t) {
   if (t == type::Type_) { return true; }
   if (!t->is<type::Tuple>()) { return false; }
   auto &entries = t->as<type::Tuple>().entries_;
   return std::all_of(entries.begin(), entries.end(),
-                     +[](type::Type const *ty) { return ty == type::Type_; });
+                     [](type::Type const *ty) { return ty == type::Type_; });
 }
 
 void ForEachExpr(ast::Expression *expr,

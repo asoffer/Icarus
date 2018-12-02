@@ -238,6 +238,19 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
     new_ctx.bound_constants_.constants_.emplace(
         decl, backend::Evaluate(expr, ctx)[0]);
   }
+
+  // TODO order these by their dependencies
+  for (auto & [name, index] : fn_lit->lookup_) {
+    if (index < args.pos_.size()) { continue; }
+    auto iter = args.named_.find(name);
+    if (iter != args.named_.end()) { continue; }
+    auto *decl = fn_lit->inputs[index].get();
+    decl->init_val->VerifyType(&new_ctx);
+    decl->init_val->Validate(&new_ctx);
+    new_ctx.bound_constants_.constants_.emplace(
+        decl, backend::Evaluate(decl->init_val.get(), &new_ctx)[0]);
+  }
+
   // TODO named arguments too.
   auto *fn_type = &ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx))
                        ->as<type::Function>();

@@ -100,7 +100,7 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
     auto landing = ir::Func::Current->AddBlock();
 
     base::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_map;
-    for (const type::Type *v : haystack->as<type::Variant>().variants_) {
+    for (type::Type const *v : haystack->as<type::Variant>().variants_) {
       phi_map.emplace(ir::BasicBlock::Current, true);
 
       ir::BasicBlock::Current =
@@ -317,7 +317,7 @@ base::vector<ir::Val> EmitCallDispatch(
     ir::UncondJump(landing_block);
     ir::BasicBlock::Current = next_binding;
   }
-
+  
   const auto & [ call_arg_type, binding ] = *iter;
   size_t j                                = 0;
   EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);

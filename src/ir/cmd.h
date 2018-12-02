@@ -135,10 +135,6 @@ struct Cmd {
   template <typename T>
   struct Args {
     std::array<RegisterOr<T>, 2> args_;
-
-    inline friend std::ostream &operator<<(std::ostream &os, Args const &a) {
-      return os << a.args_[0] << " " << a.args_[1];
-    }
   };
 
   struct Empty {
@@ -170,10 +166,6 @@ struct Cmd {
   struct CondJump {
     Register cond_;
     BlockIndex blocks_[2];
-
-    inline friend std::ostream &operator<<(std::ostream &os, CondJump const &j) {
-      return os << j.cond_ << " " << j.blocks_[0] << " " << j.blocks_[1];
-    }
   };
 
   struct BlockSeqJump {

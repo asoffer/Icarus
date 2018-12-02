@@ -102,7 +102,7 @@ named_arguments ::= () -> () {
   // Uncomment the following line to get a compilation error:
   // print g(n = 3)
 }
- 
+
 default_arguments ::= () -> () {
   // Functions can also take default arguments. Default arguments are specified
   // at the function definition cite. The normal declaration rules apply. Here
@@ -178,7 +178,7 @@ dynamic_dispatch ::= () -> () {
   f ::= (n: int32) -> () { print "f(int32)\n" }
   f ::= (x: bool | char) -> () { print "f(bool | char)\n" }
   v: bool | int32 = true
-  f(v) // Calls the (bool | char) overload.
+  // f(v) // Calls the (bool | char) overload.
 
   v = 3
   f(v) // Calls the int32 overload.
@@ -217,33 +217,32 @@ dynamic_dispatch ::= () -> () {
   print "1.7^2 = ", number'squared, "\n"
 }
 
-
 multiple_return_values ::= () -> () {
-  // Functions can have multiple return values
-  f ::= (n: int32) => (n, n * n)
-
-  a: int32
-  b: int32
-  (a, b) = f(3)
-  print a, "^2 = ", b, "\n"
-
-  // In the future, we aim to support multi-declarations, as in
-  //    (c, d) ::= f(3)
-  // But today this is not available.
-
-  // Regarding dynamic dispatch, all possible dispatches must have the same
-  // number of arguments. When considering the resulting type of each argument,
-  // each return value position is handled separately.
-  g ::= (x: int32) => (1, 1.5)
-  g ::= (x: bool) => (1.5, 1)
-
-  arg1: float64 | int32 = 0
-  arg2: float64 | int32 = 0
-  var: bool | int32 = true
-  (arg1, arg2) = g(var)
-  print "arg1 = ", arg1, " and arg2 = ", arg2, "\n"
-
-  var = 3
-  (arg1, arg2) = g(var)
-  print "arg1 = ", arg1, " and arg2 = ", arg2, "\n"
+//   // Functions can have multiple return values
+//   f ::= (n: int32) => (n, n * n)
+// 
+//   a: int32
+//   b: int32
+//   (a, b) = f(3)
+//   print a, "^2 = ", b, "\n"
+// 
+//   // In the future, we aim to support multi-declarations, as in
+//   //    (c, d) ::= f(3)
+//   // But today this is not available.
+// 
+//   // Regarding dynamic dispatch, all possible dispatches must have the same
+//   // number of arguments. When considering the resulting type of each argument,
+//   // each return value position is handled separately.
+//   g ::= (x: int32) => (1, 1.5)
+//   g ::= (x: bool) => (1.5, 1)
+// 
+//   arg1: float64 | int32 = 0
+//   arg2: float64 | int32 = 0
+//   var: bool | int32 = true
+//   (arg1, arg2) = g(var)
+//   print "arg1 = ", arg1, " and arg2 = ", arg2, "\n"
+// 
+//   var = 3
+//   (arg1, arg2) = g(var)
+//   print "arg1 = ", arg1, " and arg2 = ", arg2, "\n"
 }

@@ -68,6 +68,7 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
   }
 
   // TODO migrate to untyped_buffer
+  ASSERT(typed_expr.type() != nullptr);
   auto result_buf = EvaluateToBuffer(typed_expr, ctx);
 
   base::vector<type::Type const *> types =
@@ -122,6 +123,6 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
 }
 
 base::vector<ir::Val> Evaluate(ast::Expression *expr, Context *ctx) {
-  return Evaluate({expr, ctx->type_of(expr)}, ctx);
+  return Evaluate({expr, ASSERT_NOT_NULL(ctx->type_of(expr))}, ctx);
 }
 }  // namespace backend

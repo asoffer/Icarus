@@ -64,21 +64,28 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
     }
     call_buf.pad_to(offset);
 
-    type::Apply(t, [&](auto type_holder) {
-      using T = typename decltype(type_holder)::type;
-      // NOTE: the use of call_stack.top()... is the same as in resolve<T>,
-      // but that's apparently uncapturable due to a GCC bug.
+    // TODO generecially is_big()?
+    if (t->is<type::Variant>()) {
+      call_buf.append(
+          is_reg ? regs.get<ir::Addr>(args_.get<ir::Register>(offset).value)
+                 : args_.get<ir::Addr>(offset));
+    } else {
+      type::Apply(t, [&](auto type_holder) {
+        using T = typename decltype(type_holder)::type;
+        // NOTE: the use of call_stack.top()... is the same as in resolve<T>,
+        // but that's apparently uncapturable due to a GCC bug.
 
-      if constexpr (std::is_same_v<T, type::Struct const *>) {
-        call_buf.append(
-            is_reg ? regs.get<ir::Addr>(args_.get<ir::Register>(offset).value)
-                   : args_.get<ir::Addr>(offset));
-      } else {
-        call_buf.append(is_reg
-                            ? regs.get<T>(args_.get<ir::Register>(offset).value)
-                            : args_.get<T>(offset));
-      }
-    });
+        if constexpr (std::is_same_v<T, type::Struct const *>) {
+          call_buf.append(
+              is_reg ? regs.get<ir::Addr>(args_.get<ir::Register>(offset).value)
+                     : args_.get<ir::Addr>(offset));
+        } else {
+          call_buf.append(
+              is_reg ? regs.get<T>(args_.get<ir::Register>(offset).value)
+                     : args_.get<T>(offset));
+        }
+      });
+    }
 
     offset += is_reg ? sizeof(ir::Register) : arch.bytes(t);
   }
