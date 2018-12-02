@@ -520,6 +520,15 @@ std::unique_ptr<Node> BuildShortFunctionLiteral(
                               std::move(stmts), ctx);
 }
 
+std::unique_ptr<Node> BuildOneElementCommaList(
+    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+  auto comma_list  = std::make_unique<CommaList>();
+  comma_list->span = TextSpan(nodes[0]->span, nodes[3]->span);
+  comma_list->exprs_.push_back(move_as<Expression>(nodes[1]));
+  comma_list->parenthesized_ = true;
+  return comma_list;
+}
+
 std::unique_ptr<Node> BuildOneStatement(
     base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto stmts  = std::make_unique<Statements>();
@@ -1109,6 +1118,7 @@ auto Rules = std::array{
     // TODO does this rule prevent chained scope blocks on new lines or is it
     // preceeded by a shift rule that eats newlines after a right-brace?
     Rule(stmts, {EXPR, (newline | eof)}, ast::BuildOneStatement),
+    Rule(expr, {l_paren, EXPR, comma, r_paren}, ast::BuildOneElementCommaList),
     Rule(comma, {comma, newline}, drop_all_but<0>),
     Rule(l_paren, {l_paren, newline}, drop_all_but<0>),
     Rule(l_bracket, {l_bracket, newline}, drop_all_but<0>),

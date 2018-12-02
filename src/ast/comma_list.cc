@@ -54,7 +54,6 @@ void CommaList::ExtractJumps(JumpExprs *rets) const {
 }
 
 base::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
-  if (exprs_.size() == 1) { return {exprs_[0]->EmitIR(ctx)}; }
   base::vector<ir::Val> results;
   auto *tuple_type = &ctx->type_of(this)->as<type::Tuple>();
   auto tuple_alloc = ir::Alloca(tuple_type);
