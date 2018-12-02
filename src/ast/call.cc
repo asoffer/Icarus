@@ -4,6 +4,7 @@
 
 #include "ast/function_literal.h"
 #include "ast/terminal.h"
+#include "ast/unop.h"
 #include "backend/eval.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
@@ -385,12 +386,29 @@ void Call::assign_scope(Scope *scope) {
 }
 
 type::Type const *Call::VerifyType(Context *ctx) {
-  auto arg_types =
-      args_.Transform([ctx, this](auto &arg) { return arg->VerifyType(ctx); });
+  FnArgs<type::Type const *> arg_types;
+  for (auto const &expr : args_.pos_) {
+    type::Type const *expr_type = expr->VerifyType(ctx);
+    if (!expr->parenthesized_ && expr->is<Unop>() &&
+        expr->as<Unop>().op == Language::Operator::Expand &&
+        expr_type->is<type::Tuple>()) {
+      auto &entries = expr_type->as<type::Tuple>().entries_;
+      arg_types.pos_.insert(arg_types.pos_.end(),
+                            std::make_move_iterator(entries.begin()),
+                            std::make_move_iterator(entries.end()));
+    } else {
+      arg_types.pos_.push_back(expr_type);
+    }
+  }
+
+  for (auto const& [name, expr] : args_.named_) {
+    arg_types.named_.emplace(name, expr->VerifyType(ctx));
+  }
+
   // TODO handle cyclic dependencies in call arguments.
 
   if (std::any_of(arg_types.pos_.begin(), arg_types.pos_.end(),
-                  +[](type::Type const *t) { return t == nullptr; }) ||
+                  [](type::Type const *t) { return t == nullptr; }) ||
       std::any_of(arg_types.named_.begin(), arg_types.named_.end(),
                   [](std::pair<std::string, type::Type const *> const &p) {
                     return p.second == nullptr;
@@ -446,7 +464,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
   }
 
   FnArgs<Expression *> args =
-      args_.Transform([](const std::unique_ptr<Expression> &arg) {
+      args_.Transform([](std::unique_ptr<Expression> const &arg) {
         return const_cast<Expression *>(arg.get());
       });
 

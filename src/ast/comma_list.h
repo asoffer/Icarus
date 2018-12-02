@@ -21,14 +21,6 @@ struct CommaList : public Expression {
   base::vector<ir::Register> EmitLVal(Context *) override;
 
   base::vector<std::unique_ptr<Expression>> exprs_;
-  // Only to be used during. Essentially, the parser builds up a comma-list
-  // element by element, so when it sees <comma-list> <comma> <expression>, it
-  // needs to know if the expression should be appended to the comma-list or it
-  // should be a new two-element comma-list whose first element is a comma-list.
-  // That is, it needs to distinguish between (1, 2, 3) and ((1, 2), 3). Because
-  // we shed parentheses at parse-time, this boolean flag allows us to determine
-  // the difference.
-  bool closed_ = false;
 };
 }  // namespace ast
 

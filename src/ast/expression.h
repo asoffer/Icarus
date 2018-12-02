@@ -14,12 +14,15 @@ namespace ast {
 struct Expression : public Node {
   Expression(const TextSpan &span = TextSpan()) : Node(span) {}
   virtual ~Expression(){};
-  virtual std::string to_string(size_t n) const                          = 0;
-  virtual void assign_scope(Scope *scope)                                = 0;
-  virtual type::Type const *VerifyType(Context *ctx)                     = 0;
-  virtual void Validate(Context *ctx)                                    = 0;
-  virtual base::vector<ir::Val> EmitIR(Context *)                        = 0;
-  virtual base::vector<ir::Register> EmitLVal(Context *)                 = 0;
+  virtual std::string to_string(size_t n) const          = 0;
+  virtual void assign_scope(Scope *scope)                = 0;
+  virtual type::Type const *VerifyType(Context *ctx)     = 0;
+  virtual void Validate(Context *ctx)                    = 0;
+  virtual base::vector<ir::Val> EmitIR(Context *)        = 0;
+  virtual base::vector<ir::Register> EmitLVal(Context *) = 0;
+
+  virtual bool needs_expansion() const { return false; }
+  bool parenthesized_ = false;
 };
 }  // namespace ast
 

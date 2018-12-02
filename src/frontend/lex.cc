@@ -379,7 +379,6 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
 
     case '+':
     case '%':
-    case '<':
     case '>':
     case '|':
     case '^': {
@@ -397,7 +396,26 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
       span.finish = loc.cursor;
       return TaggedNode(span, token, op_b);
     } break;
+    case '<': {
+      char first_char = *loc;
+      loc.Increment();
 
+      std::string token;
+      Tag tag = op_b;
+      if (*loc == '=') {
+        loc.Increment();
+        token = "<=";
+      } else if (*loc == '<') {
+        loc.Increment();
+        token = "<<";
+        tag   = op_l;
+      } else {
+        token = "<";
+      }
+
+      span.finish = loc.cursor;
+      return TaggedNode(span, token, tag);
+    }
     case '*':
       loc.Increment();
       if (*loc == '/') {

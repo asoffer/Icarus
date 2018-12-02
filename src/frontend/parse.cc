@@ -138,7 +138,7 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
     auto unop = std::make_unique<RepeatedUnop>(
         TextSpan(nodes.front()->span, nodes.back()->span));
     unop->op_ = tk == "return" ? Operator::Return : Operator::Yield;
-    if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().closed_) {
+    if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().parenthesized_) {
       unop->args_ = std::move(nodes[1]->as<CommaList>());
     } else {
       unop->args_.exprs_.push_back(move_as<Expression>(nodes[1]));
@@ -151,7 +151,7 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
   } else if (tk == "print") {
     // TODO Copy of above.
     std::unique_ptr<RepeatedUnop> unop;
-    if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().closed_) {
+    if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().parenthesized_) {
       unop = std::make_unique<RepeatedUnop>(
           TextSpan(nodes.front()->span, nodes.back()->span));
       unop->args_ = std::move(nodes[1]->as<CommaList>());
@@ -172,11 +172,12 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
   const static base::unordered_map<std::string, Operator> UnopMap{
-      {"*", Operator::Mul},         {"import", Operator::Import},
-      {"&", Operator::And},         {"-", Operator::Sub},
-      {"which", Operator::Which},   {"!", Operator::Not},
-      {"needs", Operator::Needs},   {"@", Operator::At},
-      {"ensure", Operator::Ensure}, {"$", Operator::Eval}};
+      {"*", Operator::Mul},       {"import", Operator::Import},
+      {"&", Operator::And},       {"-", Operator::Sub},
+      {"which", Operator::Which}, {"!", Operator::Not},
+      {"needs", Operator::Needs}, {"@", Operator::At},
+      {"<<", Operator::Expand},   {"ensure", Operator::Ensure},
+      {"$", Operator::Eval}};
   auto iter = UnopMap.find(tk);
   ASSERT(iter != UnopMap.end());
   unop->op = iter->second;
@@ -217,7 +218,7 @@ std::unique_ptr<Node> BuildChainOp(base::vector<std::unique_ptr<Node>> nodes,
 std::unique_ptr<Node> BuildCommaList(base::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
   std::unique_ptr<CommaList> comma_list = nullptr;
-  if (nodes[0]->is<CommaList>() && !nodes[0]->as<CommaList>().closed_) {
+  if (nodes[0]->is<CommaList>() && !nodes[0]->as<CommaList>().parenthesized_) {
     comma_list = move_as<CommaList>(nodes[0]);
   } else {
     comma_list = std::make_unique<CommaList>();
@@ -355,7 +356,7 @@ std::unique_ptr<Node> BuildArrayLiteral(
   auto array_lit  = std::make_unique<ArrayLiteral>();
   array_lit->span = nodes[0]->span;
 
-  if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().closed_) {
+  if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().parenthesized_) {
     array_lit->exprs_ = std::move(nodes[1]->as<CommaList>().exprs_);
   } else {
     array_lit->exprs_.push_back(move_as<Expression>(nodes[1]));
@@ -366,7 +367,7 @@ std::unique_ptr<Node> BuildArrayLiteral(
 
 std::unique_ptr<Node> BuildArrayType(base::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
-  if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().closed_) {
+  if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().parenthesized_) {
     auto *length_chain = &nodes[1]->as<CommaList>();
     int i              = static_cast<int>(length_chain->exprs_.size() - 1);
     auto prev          = move_as<Expression>(nodes[3]);
@@ -932,10 +933,8 @@ static std::unique_ptr<ast::Node> BuildKWBlock(
 
 static std::unique_ptr<ast::Node> Parenthesize(
     base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  auto result = std::move(nodes[1]);
-  if (result->is<ast::CommaList>()) {
-    result->as<ast::CommaList>().closed_ = true;
-  }
+  auto result            = move_as<ast::Expression>(nodes[1]);
+  result->parenthesized_ = true;
   return result;
 }
 

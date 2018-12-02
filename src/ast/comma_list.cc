@@ -8,7 +8,7 @@ namespace ast {
 std::string CommaList::to_string(size_t n) const {
   std::stringstream ss;
   if (exprs_.empty()) { return "()"; }
-  if (closed_) { ss << "("; }
+  if (parenthesized_) { ss << "("; }
   auto iter = exprs_.begin();
   ss << (*iter)->to_string(n);
   ++iter;
@@ -16,7 +16,7 @@ std::string CommaList::to_string(size_t n) const {
     ss << ", " << (*iter)->to_string(n);
     ++iter;
   }
-  if (closed_) { ss << ")"; }
+  if (parenthesized_) { ss << ")"; }
   return ss.str();
 }
 
@@ -28,7 +28,15 @@ void CommaList::assign_scope(Scope *scope) {
 type::Type const *CommaList::VerifyType(Context *ctx) {
   base::vector<const type::Type *> expr_types;
   expr_types.reserve(exprs_.size());
-  for (auto &expr : exprs_) { expr_types.push_back(expr->VerifyType(ctx)); }
+  for (auto &expr : exprs_) {
+    auto *t = expr->VerifyType(ctx);
+    if (expr->needs_expansion()) {
+      auto &entries = t->as<type::Tuple>().entries_;
+      expr_types.insert(expr_types.end(), entries.begin(), entries.end());
+    } else {
+      expr_types.push_back(t);
+    }
+  }
   if (std::any_of(expr_types.begin(), expr_types.end(),
                   [](type::Type const *t) { return t == nullptr; })) {
     return nullptr;
@@ -50,10 +58,22 @@ base::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
   base::vector<ir::Val> results;
   auto *tuple_type = &ctx->type_of(this)->as<type::Tuple>();
   auto tuple_alloc = ir::Alloca(tuple_type);
-  for (size_t i = 0; i < tuple_type->entries_.size(); ++i) {
-    type::EmitCopyInit(tuple_type->entries_[i], tuple_type->entries_[i],
-                       exprs_[i]->EmitIR(ctx)[0],
-                       ir::Field(tuple_alloc, tuple_type, i), ctx);
+
+  size_t index = 0;
+  for (auto &expr : exprs_) {
+    if (expr->needs_expansion()) {
+      for (auto const &val : expr->EmitIR(ctx)) {
+        type::EmitCopyInit(tuple_type->entries_[index],
+                           tuple_type->entries_[index], val,
+                           ir::Field(tuple_alloc, tuple_type, index), ctx);
+        ++index;
+      }
+    } else {
+      type::EmitCopyInit(tuple_type->entries_[index],
+                         tuple_type->entries_[index], expr->EmitIR(ctx)[0],
+                         ir::Field(tuple_alloc, tuple_type, index), ctx);
+      ++index;
+    }
   }
   return {ir::Val::Reg(tuple_alloc, tuple_type)};
 }

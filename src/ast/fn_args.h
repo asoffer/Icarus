@@ -22,16 +22,6 @@ struct FnArgs {
     return iter;
   }
 
-  FnArgs<T> *Clone() {
-    auto *result = new FnArgs<T>;
-    result.pos_.reserve(pos_.size());
-    for (const auto &val : pos_) { result.pos_.emplace_back(val->Clone()); }
-    for (auto && [ key, val ] : named_) {
-      result.named_.emplace(key, T{val->Clone()});
-    }
-    return result;
-  }
-
   template <typename... Args>
   std::string to_string(Args &&... args) const {
     std::string result;

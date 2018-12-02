@@ -18,6 +18,10 @@ struct Unop : public Expression {
   base::vector<ir::Val> EmitIR(Context *) override;
   base::vector<ir::Register> EmitLVal(Context *) override;
 
+  bool needs_expansion() const override {
+    return !parenthesized_ && op == Language::Operator::Expand;
+  }
+
   std::unique_ptr<Expression> operand;
   Language::Operator op;
   DispatchTable dispatch_table_;

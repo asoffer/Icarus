@@ -47,7 +47,13 @@ struct Binding {
         const_(constant) {}
 
   type::Typed<Expression *, type::Callable> fn_;
+
+  // It's important to remember that some expressions may be tuple expansions,
+  // and so a lot of seemingly obvious things don't hold. For instance,
+  // exprs_.size() may not be the same the number of arguments passed in to the
+  // function call.
   base::vector<type::Typed<Expression *>> exprs_;
+
   bool const_ = false;
   ast::BoundConstants bound_constants_; // TDOO don't copy these. Use some sitting on a module.
 };

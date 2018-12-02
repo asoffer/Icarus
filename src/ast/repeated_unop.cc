@@ -88,13 +88,16 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
 
 base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
   base::vector<ir::Val> arg_vals;
-  if (args_.closed_) {
+  if (args_.parenthesized_) {
     arg_vals.push_back(args_.EmitIR(ctx)[0]);
   } else {
     for (auto &expr : args_.exprs_) {
-      arg_vals.push_back(expr->EmitIR(ctx)[0]);
+      auto vals = expr->EmitIR(ctx);
+      arg_vals.insert(arg_vals.end(), std::make_move_iterator(vals.begin()),
+                      std::make_move_iterator(vals.end()));
     }
   }
+
   switch (op_) {
     case Language::Operator::Return: {
       size_t offset  = 0;
@@ -127,19 +130,11 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
       return {};
     }
     case Language::Operator::Print:
-      for (size_t i = 0; i < args_.exprs_.size(); ++i) {
-        // TODO unify with repr. is repr even a good idea?
-        auto *t = ASSERT_NOT_NULL(ctx->type_of(args_.exprs_[i].get()));
-        if (t == type::Char) {
-          ir::Print(arg_vals[i].reg_or<char>());
-        } else if (t->is<type::Struct>()) {
-          ASSERT(dispatch_tables_[i].total_size_ != 0u);
-          // TODO struct is not exactly right. we really mean user-defined
-          FnArgs<std::pair<Expression *, ir::Val>> args;
-          args.pos_ = {std::pair(args_.exprs_[i].get(), arg_vals[i])};
-          EmitCallDispatch(args, dispatch_tables_[i], type::Void(), ctx);
+      for (auto &val : arg_vals) {
+        if (val.type == type::Char) {
+          ir::Print(val.reg_or<char>());
         } else {
-          t->EmitRepr(arg_vals[i], ctx);
+          val.type->EmitRepr(val, ctx);
         }
       }
       return {};

@@ -34,6 +34,7 @@ std::string Unop::to_string(size_t n) const {
     case Language::Operator::Eval: ss << "$"; break;
     case Language::Operator::Needs: ss << "needs "; break;
     case Language::Operator::Ensure: ss << "ensure "; break;
+    case Language::Operator::Expand: ss << "<< "; break;
     default: { UNREACHABLE(); }
   }
 
@@ -96,6 +97,17 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       }
       NOT_YET();
       return nullptr;
+    case Language::Operator::Expand:
+      // NOTE: It doesn't really make sense to ask for the type of an expanded
+      // argument, but since we consider the type of the result of a function
+      // call returning multiple arguments to be a tuple, we do the same here.
+      //
+      if (operand_type->is<type::Tuple>()) {
+        // TODO there should be a way to avoid copying over any of entire type
+        return ctx->set_type(this, operand_type);
+      } else {
+        NOT_YET();  // Log an error. can't expand a non-tuple.
+      }
     case Language::Operator::Not:
       if (operand_type == type::Bool) {
         return ctx->set_type(this, type::Bool);
@@ -197,6 +209,24 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
       ir::Func::Current->postcondition_exprs_.push_back(operand.get());
       return {};
     } break;
+    case Language::Operator::Expand: {
+      ir::Val tuple_val             = operand->EmitIR(ctx)[0];
+      ir::Register tuple_reg        = std::get<ir::Register>(tuple_val.value);
+      type::Tuple const *tuple_type = &tuple_val.type->as<type::Tuple>();
+      base::vector<ir::Val> results;
+      results.reserve(tuple_type->entries_.size());
+      for (size_t i = 0; i < tuple_type->entries_.size(); ++i) {
+        if (tuple_type->entries_[i]->is_big()) {
+          NOT_YET(operand);
+        } else {
+          results.push_back(
+              ir::Val::Reg(ir::Load(ir::Field(tuple_reg, tuple_type, i),
+                                    tuple_type->entries_[i]),
+                           tuple_type->entries_[i]));
+        }
+      }
+      return results;
+    }
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
