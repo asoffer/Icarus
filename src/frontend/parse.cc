@@ -119,6 +119,62 @@ std::unique_ptr<Node> BuildRightUnop(base::vector<std::unique_ptr<Node>> nodes,
   }
 }
 
+// Input guarantees
+// [expr] [l_paren] [expr] [r_paren]
+//
+// Internal checks:
+// LHS is not a declaration
+// RHS is not a declaration
+std::unique_ptr<Node> BuildCall(base::vector<std::unique_ptr<Node>> nodes,
+                                Context *ctx) {
+  auto call  = std::make_unique<Call>();
+  call->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  call->fn_  = move_as<Expression>(nodes[0]);
+
+  if (nodes[2]->is<CommaList>()) {
+    std::optional<TextSpan> last_named_span_before_error = std::nullopt;
+    base::vector<TextSpan> positional_error_spans;
+
+    for (auto &expr : nodes[2]->as<CommaList>().exprs_) {
+      if (expr->is<Binop>() &&
+          expr->as<Binop>().op == Language::Operator::Assign) {
+        if (positional_error_spans.empty()) {
+          last_named_span_before_error = expr->as<Binop>().lhs->span;
+        }
+        call->args_.named_.emplace(
+            std::move(expr->as<Binop>().lhs->as<Identifier>().token),
+            std::move(expr->as<Binop>().rhs));
+      } else {
+        if (last_named_span_before_error.has_value()) {
+          positional_error_spans.push_back(expr->span);
+        }
+        call->args_.pos_.push_back(std::move(expr));
+      }
+    }
+
+    if (!positional_error_spans.empty()) {
+      ctx->error_log_.PositionalArgumentFollowingNamed(
+          positional_error_spans, *last_named_span_before_error);
+    }
+  } else {
+    if (nodes[2]->is<Binop>() &&
+        nodes[2]->as<Binop>().op == Language::Operator::Assign) {
+      call->args_.named_.emplace(
+          std::move(nodes[2]->as<Binop>().lhs->as<Identifier>().token),
+          std::move(nodes[2]->as<Binop>().rhs));
+    } else {
+      call->args_.pos_.push_back(move_as<Expression>(nodes[2]));
+    }
+  }
+
+  if (call->fn_->is<Declaration>()) {
+    ctx->error_log_.CallingDeclaration(call->fn_->span);
+  }
+  return call;
+}
+
+
+
 // Input guarantees:
 // [unop] [expression]
 //
@@ -165,6 +221,11 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
     unop->dispatch_tables_.resize(unop->args_.exprs_.size());
     ASSERT_NOT_NULL(unop->span.source);
     return unop;
+  } else if (tk == "'") {
+    std::swap(nodes[0], nodes[1]);
+    nodes.push_back(std::make_unique<ast::CommaList>());
+    nodes.back()->span = nodes[0]->span;
+    return ast::BuildCall(std::move(nodes), ctx);
   }
 
   auto unop     = std::make_unique<Unop>();
@@ -252,60 +313,6 @@ std::unique_ptr<Node> BuildAccess(base::vector<std::unique_ptr<Node>> nodes,
     access->member_name = std::move(nodes[2]->as<Identifier>().token);
   }
   return access;
-}
-
-// Input guarantees
-// [expr] [l_paren] [expr] [r_paren]
-//
-// Internal checks:
-// LHS is not a declaration
-// RHS is not a declaration
-std::unique_ptr<Node> BuildCall(base::vector<std::unique_ptr<Node>> nodes,
-                                Context *ctx) {
-  auto call  = std::make_unique<Call>();
-  call->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  call->fn_  = move_as<Expression>(nodes[0]);
-
-  if (nodes[2]->is<CommaList>()) {
-    std::optional<TextSpan> last_named_span_before_error = std::nullopt;
-    base::vector<TextSpan> positional_error_spans;
-
-    for (auto &expr : nodes[2]->as<CommaList>().exprs_) {
-      if (expr->is<Binop>() &&
-          expr->as<Binop>().op == Language::Operator::Assign) {
-        if (positional_error_spans.empty()) {
-          last_named_span_before_error = expr->as<Binop>().lhs->span;
-        }
-        call->args_.named_.emplace(
-            std::move(expr->as<Binop>().lhs->as<Identifier>().token),
-            std::move(expr->as<Binop>().rhs));
-      } else {
-        if (last_named_span_before_error.has_value()) {
-          positional_error_spans.push_back(expr->span);
-        }
-        call->args_.pos_.push_back(std::move(expr));
-      }
-    }
-
-    if (!positional_error_spans.empty()) {
-      ctx->error_log_.PositionalArgumentFollowingNamed(
-          positional_error_spans, *last_named_span_before_error);
-    }
-  } else {
-    if (nodes[2]->is<Binop>() &&
-        nodes[2]->as<Binop>().op == Language::Operator::Assign) {
-      call->args_.named_.emplace(
-          std::move(nodes[2]->as<Binop>().lhs->as<Identifier>().token),
-          std::move(nodes[2]->as<Binop>().rhs));
-    } else {
-      call->args_.pos_.push_back(move_as<Expression>(nodes[2]));
-    }
-  }
-
-  if (call->fn_->is<Declaration>()) {
-    ctx->error_log_.CallingDeclaration(call->fn_->span);
-  }
-  return call;
 }
 
 // Input guarantees
