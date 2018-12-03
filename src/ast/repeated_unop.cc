@@ -132,15 +132,16 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
     case Language::Operator::Print: {
       size_t index = 0;
       for (auto &val : arg_vals) {
-        if (val.type == type::Char) {
+        type::Type const *t = ctx->type_of(args_.exprs_[index].get());
+        if (t == type::Char) {
           ir::Print(val.reg_or<char>());
-        } else if (val.type->is<type::Struct>()) {
+        } else if (t->is<type::Struct>()) {
           ast::FnArgs<std::pair<ast::Expression *, ir::Val>> args;
           args.pos_.emplace_back(args_.exprs_[index].get(), std::move(val));
           return EmitCallDispatch(args, dispatch_tables_.at(index),
                                   type::Void(), ctx);
         } else {
-          val.type->EmitRepr(val, ctx);
+          t->EmitRepr(val, ctx);
         }
         ++index;
       }
