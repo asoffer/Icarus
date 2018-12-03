@@ -52,6 +52,7 @@ struct Scope : public base::Cast<Scope> {
   base::unordered_map<std::string, base::vector<ast::Declaration *>>
       child_decls_;
 
+  std::unordered_set<Module const *> embedded_modules_;
   Scope *parent = nullptr;
 };
 

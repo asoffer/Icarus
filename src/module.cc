@@ -169,15 +169,6 @@ type::Type const *Module::type_of(ast::BoundConstants const &bc,
     if (iter != bc_iter->second.data_.end()) { return iter->second; }
   }
 
-  // TODO figure out why this is necessary. It shouldn't be because you should
-  // be able to find the expression in this module (even if the declaration is
-  // in another.
-  for (Module const *mod : embedded_modules_) {
-    bc_iter = mod->types_.find(bc);
-    if (bc_iter == mod->types_.end()) { continue; }
-    auto iter = bc_iter->second.data_.find(expr);
-    if (iter != bc_iter->second.data_.end()) { return iter->second; }
-  }
   return nullptr;
 }
 

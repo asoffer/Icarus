@@ -22,6 +22,8 @@ degrees ::= (x: float64) -> angle {
   return a
 }
 
+(print) ::= (a: angle) -> { print a._val, " radians" }
+
 AsDegrees ::= (a: angle) => a._val * 180. / pi
 AsRadians ::= (a: angle) => a._val
 

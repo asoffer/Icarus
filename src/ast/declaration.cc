@@ -291,7 +291,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
       if (this_type == type::Module) {
         // TODO check shadowing against other modules?
         // TODO what if no init val is provded? what if not constant?
-        ctx->mod_->embedded_modules_.insert(
+        scope_->embedded_modules_.insert(
             backend::EvaluateAs<Module const *>(init_val.get(), ctx));
         return type::Module;
       } else if (this_type->is<type::Tuple>()) {

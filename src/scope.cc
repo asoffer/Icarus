@@ -22,18 +22,19 @@ base::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {
     auto iter = scope_ptr->decls_.find(id);
-    if (iter == scope_ptr->decls_.end()) { continue; }
-    for (auto *decl : iter->second) {
-      auto *t = ctx->type_of(decl);
-      if (t == nullptr) { t = decl->VerifyType(ctx); }
-      matching_decls.emplace_back(decl, t);
+    if (iter != scope_ptr->decls_.end()) {
+      for (auto *decl : iter->second) {
+        auto *t = ctx->type_of(decl);
+        if (t == nullptr) { t = decl->VerifyType(ctx); }
+        matching_decls.emplace_back(decl, t);
+      }
     }
-  }
 
-  for (auto const *mod : ctx->mod_->embedded_modules_) {
-    if (auto *decl = mod->GetDecl(id)) {
-      matching_decls.emplace_back(decl,
-                                  mod->type_of(ast::BoundConstants{}, decl));
+    for (auto const *mod : scope_ptr->embedded_modules_) {
+      if (auto *decl = mod->GetDecl(id)) {
+        matching_decls.emplace_back(decl,
+                                    mod->type_of(ast::BoundConstants{}, decl));
+      }
     }
   }
   return matching_decls;
