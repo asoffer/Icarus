@@ -798,11 +798,13 @@ static std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
   if (is_enum) {
     return std::make_unique<ast::Terminal>(
         TextSpan(nodes[0]->span, nodes[1]->span),
-        ir::Val(new type::Enum(std::move(members_vec))));
+        ir::Val(static_cast<type::Type const *>(
+            new type::Enum(std::move(members_vec)))));
   } else {
     return std::make_unique<ast::Terminal>(
         TextSpan(nodes[0]->span, nodes[1]->span),
-        ir::Val(new type::Flags(std::move(members_vec))));
+        ir::Val(static_cast<type::Type const *>(
+            new type::Flags(std::move(members_vec)))));
   }
 }
 

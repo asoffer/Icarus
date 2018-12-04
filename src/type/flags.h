@@ -14,7 +14,7 @@ struct Flags : public type::Type {
   Flags(base::vector<std::string> members) : members_(std::move(members)) {
     auto num_members = members_.size();
     for (size_t i = 0; i < num_members; ++i) {
-      vals_[members_[i]] = ir::FlagsVal{size_t{i} << i};
+      vals_[members_[i]] = ir::FlagsVal{size_t{1} << i};
     }
   }
 

@@ -29,7 +29,6 @@ using base::check::Is;
 // kinds
 
 namespace ir {
-std::string_view SaveStringGlobally(std::string const &s);
 ir::BlockSequence MakeBlockSeq(const base::vector<ir::BlockSequence> &blocks);
 }  // namespace ir
 

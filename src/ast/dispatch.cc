@@ -179,6 +179,7 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeNonConstant(
 base::expected<DispatchTableRow> DispatchTableRow::Make(
     type::Typed<Expression *, type::Callable> fn_option,
     FnArgs<Expression *> const &args, Context *ctx) {
+  if (fn_option.type() == nullptr) { NOT_YET(); }
   if (!IsConstant(fn_option.get())) {
     return MakeNonConstant(fn_option.as_type<type::Function>(), args, ctx);
   }
@@ -327,7 +328,18 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
 
   base::vector<type::Function const *> precise_function_types;
   for (auto &overload : overload_set) {
-    ASSERT(overload.type() != nullptr);
+    // It is possible for elements of overload_set to be null. The example that
+    // brought this to my attention was
+    //
+    // (*) ::= (lhs: Foo, rhs: int32) -> Foo { ... }
+    // (*) ::= (lhs: int32, rhs: Foo) => rhs * lhs
+    //
+    // The intention is for the latter version to call the former as a means to
+    // only implement the real logic once. But notice that in the second example
+    // the type of the operator depends on knowing the type of the expression
+    // `rhs * lhs`. But of course, to determine that means we need to do call
+    // resolution and one of the overload set elments is the element that has
+    // yet to be resolved.
     auto maybe_dispatch_table_row = DispatchTableRow::Make(overload, args, ctx);
     if (!maybe_dispatch_table_row.has_value()) {
       table.failure_reasons_.emplace(

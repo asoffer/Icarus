@@ -2,12 +2,6 @@ angle ::= struct {
   _val: float64 // in radians 
 }
 
-(+) ::= (a: angle, b: angle) -> angle {
-  result := a
-  result._val += b._val
-  return result
-}
-
 radians ::= (x: float64) -> angle {
   a: angle
   a._val = x
@@ -21,6 +15,37 @@ degrees ::= (x: float64) -> angle {
   a._val = pi * x / 180.
   return a
 }
+
+(+) ::= (a: angle, b: angle) -> angle {
+  result := a
+  result._val += b._val
+  return result
+}
+
+(-) ::= (a: angle, b: angle) -> angle {
+  result := a
+  result._val -= b._val
+  return result
+}
+
+(-) ::= (a: angle) -> angle {
+  result: angle
+  result._val = -a._val
+  return result
+}
+
+(*) ::= (a: angle, x: float64) -> angle {
+  result := a
+  result._val *= x
+  return result
+}
+
+(/) ::= (a: angle, x: float64) -> angle {
+  result := a
+  result._val /= x
+  return result
+}
+
 
 (print) ::= (a: angle) -> { print a._val, " radians" }
 

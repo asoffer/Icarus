@@ -18,11 +18,15 @@ std::string Arguments::to_string() const {
       offset += sizeof(Register);
     } else {
       offset = arch.MoveForwardToAlignment(t, offset);
-      ss << " [??]";
+      type::Apply(t, [&](auto type_holder) {
+        using T = typename decltype(type_holder)::type;
+        ss << " " << args_.get<T>(offset);
+      });
       offset += arch.bytes(t);
     }
     ++i;
   }
+  ss << ": ";
   return ss.str();
 }
 

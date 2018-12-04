@@ -38,9 +38,14 @@ Func::Func(Module *mod, type::Function const *fn_type,
   auto arch = Architecture::InterprettingMachine();
   i32 i     = 0;
   for (auto *t : type_->input) {
-    auto entry = arch.MoveForwardToAlignment(t, reg_size_);
+    size_t entry;
+    if (t->is_big()) {
+      entry = ((reg_size_ - 1) | (alignof(Addr) - 1)) + 1;
+    } else {
+      entry = arch.MoveForwardToAlignment(t, reg_size_);
+    }
     reg_map_.emplace(i++, Register(entry));
-    reg_size_ = entry + arch.bytes(t);
+    reg_size_ = entry + (t->is_big() ? sizeof(Addr) : arch.bytes(t));
   }
 
   // Return registers are just negative integers starting at -1 and decreasing
