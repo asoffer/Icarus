@@ -12,14 +12,23 @@ class PointerType;
 namespace type {
 struct Pointer : public Type {
   TYPE_FNS(Pointer);
-  Pointer(const Type *t) : pointee(t) {}
-  const Type *pointee;
+  Pointer(Type const *t) : pointee(t) {}
+  Type const *pointee;
 
 #ifdef ICARUS_USE_LLVM
   llvm::PointerType *llvm_ptr(llvm::LLVMContext &) const;
 #endif  // ICARUS_USE_LLVM
 };
 
-const Pointer *Ptr(const Type *t);
+// Like Pointer but allows indexing and pointer arithmetic.
+struct BufferPointer : public Pointer {
+  BufferPointer() = delete;
+  char *WriteTo(char *buf) const override;
+  size_t string_size() const override;
+  BufferPointer(Type const *t) : Pointer(t) {}
+};
+
+Pointer const *Ptr(Type const *t);
+BufferPointer const *BufPtr(Type const *t);
 }  // namespace type
 #endif  // ICARUS_TYPE_POINTER_H

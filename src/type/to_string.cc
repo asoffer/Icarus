@@ -101,6 +101,15 @@ char *Flags::WriteTo(char *buf) const {
   return std::strcpy(buf, str.c_str()) + str.size();
 }
 
+size_t BufferPointer::string_size() const {
+  return ((pointee->is<Struct>() || pointee->is<Primitive>() ||
+           pointee->is<Enum>() || pointee->is<Flags>() ||
+           pointee->is<Array>() || pointee->is<Pointer>())
+              ? 3
+              : 5) +
+         pointee->string_size();
+}
+
 size_t Pointer::string_size() const {
   return ((pointee->is<Struct>() || pointee->is<Primitive>() ||
            pointee->is<Enum>() || pointee->is<Flags>() ||
@@ -109,6 +118,21 @@ size_t Pointer::string_size() const {
               : 3) +
          pointee->string_size();
 }
+
+char *BufferPointer::WriteTo(char *buf) const {
+  if (pointee->is<Struct>() || pointee->is<Primitive>() ||
+      pointee->is<Enum>() || pointee->is<Flags>() || pointee->is<Array>() ||
+      pointee->is<Pointer>()) {
+    buf = std::strcpy(buf, "[*]") + 3;
+    buf = pointee->WriteTo(buf);
+  } else {
+    buf = std::strcpy(buf, "[*](") + 2;
+    buf = pointee->WriteTo(buf);
+    buf = std::strcpy(buf, ")") + 1;
+  }
+  return buf;
+}
+
 char *Pointer::WriteTo(char *buf) const {
   if (pointee->is<Struct>() || pointee->is<Primitive>() ||
       pointee->is<Enum>() || pointee->is<Flags>() || pointee->is<Array>() ||

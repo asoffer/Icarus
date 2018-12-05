@@ -148,10 +148,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       } else if (!lhs_type->is<type::Array>()) {
         ctx->error_log_.IndexingNonArray(span, lhs_type);
         return nullptr;
+      } else if (lhs_type->is<type::BufferPointer>()) {
+        NOT_YET();
       } else {
-        auto *t = lhs_type->as<type::Array>().data_type;
-        ctx->set_type(this, t);
-
+        auto *t = ctx->set_type(this, lhs_type->as<type::Array>().data_type);
         if (rhs_type == type::Int32) { break; } // TODO other sizes
         ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
         return t;
@@ -607,10 +607,14 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
 base::vector<ir::Register> ast::Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::As: NOT_YET();
-    case Language::Operator::Index:
-      if (ctx->type_of(lhs.get())->is<type::Array>()) {
+    case Language::Operator::Index: 
+      if (auto *t = ctx->type_of(lhs.get()); t->is<type::Array>()) {
         return {ir::Index(type::Ptr(ctx->type_of(this)), lhs->EmitLVal(ctx)[0],
                           rhs->EmitIR(ctx)[0].reg_or<i32>())};
+      } else if (t->is<type::BufferPointer>()) {
+        return {PtrIncr(std::get<ir::Register>(lhs->EmitIR(ctx)[0].value),
+                        rhs->EmitIR(ctx)[0].reg_or<i32>(),
+                        type::Ptr(t->as<type::BufferPointer>().pointee))};
       }
       [[fallthrough]];
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
