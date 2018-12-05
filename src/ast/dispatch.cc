@@ -156,6 +156,9 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeNonConstant(
   }
 
   if (args.pos_.size() != fn_option.type()->input.size()) {
+    // TODO if you call with the wrong number of arguments, even if no default
+    // is available, this error occurs and that's technically a valid assessment
+    // but still super misleading.
     return base::unexpected(
         "Overload candidate ignored because non-constants cannot be called "
         "with default arguments");

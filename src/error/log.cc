@@ -624,7 +624,7 @@ void Log::NoCallMatch(TextSpan const &span,
                       base::unordered_map<ast::Expression const *,
                                           std::string> const &failure_reasons) {
   std::stringstream ss;
-  ss << "Failed to find amatching function signature to call.\n\n";
+  ss << "Failed to find a matching function signature to call.\n\n";
   WriteSource(
       ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});

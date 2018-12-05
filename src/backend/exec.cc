@@ -134,16 +134,25 @@ void CallForeignFn(ir::ForeignFn const &f,
     using fn_t = float (*)(float);
     fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
     StoreValue(fn(arguments.get<float>(0)), ret_slots.at(0), stack);
-  }
-
-  /*
-  if (ff.name() == "malloc") {
+  } else if (f.type() == type::Func({type::Int32}, {type::Ptr(type::Int32)})) {
+    using fn_t = void *(*)(i32);
+    fn_t fn = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
     ir::Addr addr;
-    addr.kind    = ir::Addr::Kind::Heap;
-    addr.as_heap = malloc(call_buf.get<i32>(0));
-    StoreValue(addr, ret_slot, stack);
+
+    auto start  = reinterpret_cast<uintptr_t>(stack->raw(0));
+    auto end    = reinterpret_cast<uintptr_t>(stack->raw(stack->size() - 1));
+    auto fn_val = reinterpret_cast<uintptr_t>(fn(arguments.get<i32>(0)));
+    if (start <= fn_val && fn_val <= end) {
+      addr.kind     = ir::Addr::Kind::Stack;
+      addr.as_stack = fn_val - start;
+    } else {
+      addr.kind    = ir::Addr::Kind::Heap;
+      addr.as_heap = fn(arguments.get<i32>(0));
+    }
+    StoreValue(addr, ret_slots.at(0), stack);
+  } else {
+    UNREACHABLE();
   }
-  */
 }
 
 
