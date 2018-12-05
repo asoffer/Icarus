@@ -94,9 +94,9 @@ ir::BlockIndex ExecContext::ExecuteBlock(
 template <typename T>
 static T LoadValue(ir::Addr addr, const base::untyped_buffer &stack) {
   switch (addr.kind) {
-    case ir::Addr::Kind::Null: UNREACHABLE();
-    case ir::Addr::Kind::Heap: return *static_cast<T *>(addr.as_heap); break;
-    case ir::Addr::Kind::Stack: return stack.get<T>(addr.as_stack); break;
+    case ir::Addr::Kind::Heap:
+      return *ASSERT_NOT_NULL(static_cast<T *>(addr.as_heap));
+    case ir::Addr::Kind::Stack: return stack.get<T>(addr.as_stack);
   }
   UNREACHABLE(DUMP(static_cast<int>(addr.kind)));
 }
@@ -104,11 +104,9 @@ static T LoadValue(ir::Addr addr, const base::untyped_buffer &stack) {
 template <typename T>
 static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack) {
   switch (addr.kind) {
-    case ir::Addr::Kind::Null:
-      // TODO compile-time failure. dump the stack trace and abort.
-      UNREACHABLE();
     case ir::Addr::Kind::Stack: stack->set(addr.as_stack, val); return;
-    case ir::Addr::Kind::Heap: *static_cast<T *>(addr.as_heap) = val;
+    case ir::Addr::Kind::Heap:
+      *ASSERT_NOT_NULL(static_cast<T *>(addr.as_heap)) = val;
   }
 }
 
@@ -189,7 +187,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::ArrayData: {
       auto addr = resolve<ir::Addr>(cmd.reg_);
       switch (addr.kind) {
-        case ir::Addr::Kind::Null: UNREACHABLE();
         case ir::Addr::Kind::Stack:
           addr.as_stack +=
               Architecture::InterprettingMachine().bytes(type::Int64);
@@ -460,7 +457,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
                                              bytes_fwd);
           save(addr);
           break;
-        case ir::Addr::Kind::Null: UNREACHABLE();
       }
     } break;
     case ir::Op::PtrIncr: {
@@ -472,7 +468,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         case ir::Addr::Kind::Heap:
           save(static_cast<char *>(addr.as_heap) + bytes_fwd);
           break;
-        case ir::Addr::Kind::Null: UNREACHABLE();
       }
     } break;
     case ir::Op::Field: {

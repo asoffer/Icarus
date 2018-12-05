@@ -12,7 +12,6 @@ bool operator<(Addr lhs, Addr rhs) {
   if (lhs_kind < rhs_kind) { return true; }
   if (lhs_kind > rhs_kind) { return false; }
   switch (lhs.kind) {
-    case Addr::Kind::Null: return false;
     case Addr::Kind::Stack: return lhs.as_stack < rhs.as_stack;
     case Addr::Kind::Heap: return lhs.as_heap < rhs.as_heap;
   }
@@ -22,7 +21,6 @@ bool operator<(Addr lhs, Addr rhs) {
 std::string Addr::to_string() const {
   std::stringstream ss;
   switch (kind) {
-    case Kind::Null: ss << "null"; break;
     case Kind::Stack: ss << "s." << as_stack; break;
     case Kind::Heap: ss << "h." << as_heap; break;
   }
@@ -32,7 +30,6 @@ std::string Addr::to_string() const {
 bool operator==(Addr lhs, Addr rhs) {
   if (lhs.kind != rhs.kind) { return false; }
   switch (lhs.kind) {
-    case Addr::Kind::Null: return true;
     case Addr::Kind::Stack: return lhs.as_stack == rhs.as_stack;
     case Addr::Kind::Heap: return lhs.as_heap == rhs.as_heap;
   }

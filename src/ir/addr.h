@@ -7,13 +7,10 @@
 
 namespace ir {
 struct Addr {
-  enum class Kind : u8 { Null, Stack, Heap } kind;
+  enum class Kind : u8 { Heap, Stack } kind;
 
-  constexpr static Addr Null() {
-    Addr result{};
-    result.kind = Kind::Null;
-    return result;
-  }
+  constexpr Addr() : kind(Kind::Heap), as_heap(nullptr) {}
+  constexpr static Addr Null() { return Addr{}; }
 
   union {
     u64 as_stack;

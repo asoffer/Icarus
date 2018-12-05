@@ -66,8 +66,7 @@ struct Val {
     }
   }
 
-  explicit Val(std::nullptr_t)
-      : Val(type::NullPtr, ir::Addr{Addr::Kind::Null, 0}) {}
+  explicit Val(std::nullptr_t) : Val(type::NullPtr, ir::Addr{}) {}
   explicit Val(ast::ScopeLiteral *scope_lit);
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
