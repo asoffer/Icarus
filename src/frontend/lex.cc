@@ -301,10 +301,22 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
       loc.Increment();
       span.finish = loc.cursor;
       return TaggedNode(span, ")", r_paren);
-    case '[':
+    case '[': {
       loc.Increment();
+      auto original = loc;
+      if (*loc == '*') {
+        loc.Increment();
+        if (*loc == ']') {
+          loc.Increment();
+          span.finish = loc.cursor;
+          return TaggedNode(span, "[*]", op_l);
+        } else {
+          loc = original;
+        }
+      }
       span.finish = loc.cursor;
       return TaggedNode(span, "[", l_bracket);
+    } break;
     case ']':
       loc.Increment();
       span.finish = loc.cursor;

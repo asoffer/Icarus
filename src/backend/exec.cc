@@ -132,7 +132,9 @@ void CallForeignFn(ir::ForeignFn const &f,
     using fn_t = float (*)(float);
     fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
     StoreValue(fn(arguments.get<float>(0)), ret_slots.at(0), stack);
-  } else if (f.type() == type::Func({type::Int32}, {type::Ptr(type::Int32)})) {
+  } else if (f.type() == type::Func({type::Int32}, {type::Ptr(type::Int32)}) ||
+             f.type() ==
+                 type::Func({type::Int32}, {type::BufPtr(type::Int32)})) {
     using fn_t = void *(*)(i32);
     fn_t fn = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
     ir::Addr addr;
@@ -431,6 +433,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::Ptr:
       save(type::Ptr(resolve<type::Type const *>(cmd.reg_)));
       break;
+    case ir::Op::BufPtr:
+      save(type::BufPtr(resolve<type::Type const *>(cmd.reg_)));
+      break;
     case ir::Op::Arrow:
       save(type::Func({resolve(cmd.type_args_.args_[0])},
                       {resolve(cmd.type_args_.args_[1])}));
@@ -464,11 +469,12 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
           resolve(cmd.ptr_incr_.incr_), cmd.ptr_incr_.pointee_type_);
       switch (addr.kind) {
-        case ir::Addr::Kind::Stack: save(addr.as_stack + bytes_fwd); break;
+        case ir::Addr::Kind::Stack: addr.as_stack += bytes_fwd; break;
         case ir::Addr::Kind::Heap:
-          save(static_cast<char *>(addr.as_heap) + bytes_fwd);
+          addr.as_heap = static_cast<char *>(addr.as_heap) + bytes_fwd;
           break;
       }
+      save(addr);
     } break;
     case ir::Op::Field: {
       auto addr = resolve<ir::Addr>(cmd.field_.ptr_);

@@ -71,10 +71,16 @@ Type const *Var(base::vector<Type const *> variants) {
               .first->second;
 }
 
-static base::guarded<base::unordered_map<Type const *, const Pointer>>
+static base::guarded<base::unordered_map<Type const *, Pointer const >>
     pointers_;
-const Pointer *Ptr(Type const *t) {
+Pointer const *Ptr(Type const *t) {
   return &pointers_.lock()->emplace(t, Pointer(t)).first->second;
+}
+
+static base::guarded<base::unordered_map<Type const *, BufferPointer const >>
+    buffer_pointers_;
+BufferPointer const *BufPtr(Type const *t) {
+  return &buffer_pointers_.lock()->emplace(t, BufferPointer(t)).first->second;
 }
 
 static base::guarded<base::map<base::vector<Type const *>,

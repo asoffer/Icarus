@@ -35,6 +35,7 @@ std::string Unop::to_string(size_t n) const {
     case Language::Operator::Needs: ss << "needs "; break;
     case Language::Operator::Ensure: ss << "ensure "; break;
     case Language::Operator::Expand: ss << "<< "; break;
+    case Language::Operator::BufPtr: ss << "[*]"; break;
     default: { UNREACHABLE(); }
   }
 
@@ -58,6 +59,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
   if (operand_type == nullptr) { return nullptr; }
 
   switch (op) {
+    case Language::Operator::BufPtr: return ctx->set_type(this, type::Type_);
     case Language::Operator::TypeOf: return ctx->set_type(this, type::Type_);
     case Language::Operator::Eval: return ctx->set_type(this, operand_type);
     case Language::Operator::Which:
@@ -154,6 +156,9 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   }
 
   switch (op) {
+    case Language::Operator::BufPtr:
+      return {ir::ValFrom(
+          ir::BufPtr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
     case Language::Operator::Not: {
       auto *t = ctx->type_of(operand.get());
       if (t == type::Bool) {

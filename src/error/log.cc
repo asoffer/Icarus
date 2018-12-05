@@ -556,9 +556,9 @@ void Log::NonIntegralArrayIndex(TextSpan const &span,
   errors_.push_back(ss.str());
 }
 
-void Log::IndexingNonArray(TextSpan const &span, type::Type const *t) {
+void Log::InvalidIndexing(TextSpan const &span, type::Type const *t) {
   std::stringstream ss;
-  ss << "Cannot index into a non-array type. Indexed type is a `"
+  ss << "Cannot index into a non-array, non-buffer type. Indexed type is a `"
      << t->to_string() << "`.";
   WriteSource(
       ss, *span.source, {span.lines()},

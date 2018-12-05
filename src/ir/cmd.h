@@ -344,6 +344,7 @@ void Free(Register r);
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
                                      RegisterOr<type::Type const *> out);
 RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r);
+RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r);
 
 RegisterOr<type::Type const *> Array(RegisterOr<type::Type const *> data_type);
 RegisterOr<type::Type const *> Array(RegisterOr<i32> len,

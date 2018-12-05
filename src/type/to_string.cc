@@ -126,7 +126,7 @@ char *BufferPointer::WriteTo(char *buf) const {
     buf = std::strcpy(buf, "[*]") + 3;
     buf = pointee->WriteTo(buf);
   } else {
-    buf = std::strcpy(buf, "[*](") + 2;
+    buf = std::strcpy(buf, "[*](") + 4;
     buf = pointee->WriteTo(buf);
     buf = std::strcpy(buf, ")") + 1;
   }

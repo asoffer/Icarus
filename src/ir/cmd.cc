@@ -128,6 +128,13 @@ RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r) {
   return cmd.result;
 }
 
+RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r) {
+  if (!r.is_reg_) { return type::BufPtr(r.val_); }
+  auto &cmd = MakeCmd(type::Type_, Op::BufPtr);
+  cmd.reg_ = r.reg_;
+  return cmd.result;
+}
+
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
                                      RegisterOr<type::Type const *> v2) {
   if (!v1.is_reg_ && !v2.is_reg_) {

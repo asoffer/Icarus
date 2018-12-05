@@ -66,7 +66,7 @@ struct Log {
   // TODO is this the same as `ArrayIndexType`?
   void NonIntegralArrayIndex(TextSpan const &span,
                              type::Type const *index_type);
-  void IndexingNonArray(TextSpan const &span, type::Type const *t);
+  void InvalidIndexing(TextSpan const &span, type::Type const *t);
 
   void TypeMustBeInitialized(TextSpan const &span, type::Type const *t);
 

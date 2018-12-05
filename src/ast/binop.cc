@@ -145,16 +145,22 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
         }
         return ctx->set_type(this, type::Char);
-      } else if (!lhs_type->is<type::Array>()) {
-        ctx->error_log_.IndexingNonArray(span, lhs_type);
-        return nullptr;
-      } else if (lhs_type->is<type::BufferPointer>()) {
-        NOT_YET();
-      } else {
+      } else if (lhs_type->is<type::Array>()) {
         auto *t = ctx->set_type(this, lhs_type->as<type::Array>().data_type);
-        if (rhs_type == type::Int32) { break; } // TODO other sizes
-        ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
+        if (rhs_type == type::Int32) {  // TODO other sizes
+          ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
+        }
         return t;
+      } else if (lhs_type->is<type::BufferPointer>()) {
+        auto *t =
+            ctx->set_type(this, lhs_type->as<type::BufferPointer>().pointee);
+        if (rhs_type != type::Int32) {  // TODO other sizes
+          ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
+        }
+        return t;
+      } else {
+        ctx->error_log_.InvalidIndexing(span, lhs_type);
+        return nullptr;
       }
     } break;
     case Operator::As: {
