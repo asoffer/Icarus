@@ -25,12 +25,12 @@ struct Token : public ast::Node {
 
   std::string to_string(size_t) const override { return "[" + token + "]\n"; }
 
-  void assign_scope(Scope *) override { UNREACHABLE(); }
-  type::Type const *VerifyType(Context *) override { UNREACHABLE(); }
-  void Validate(Context *) override { UNREACHABLE(); }
-  void ExtractJumps(ast::JumpExprs *) const override { UNREACHABLE(); }
+  void assign_scope(Scope *) override { UNREACHABLE(token); }
+  type::Type const *VerifyType(Context *) override { UNREACHABLE(token); }
+  void Validate(Context *) override { UNREACHABLE(token); }
+  void ExtractJumps(ast::JumpExprs *) const override { UNREACHABLE(token); }
 
-  base::vector<ir::Val> EmitIR(Context *) override { UNREACHABLE(); }
+  base::vector<ir::Val> EmitIR(Context *) override { UNREACHABLE(token); }
 
   std::string token;
   Language::Operator op;

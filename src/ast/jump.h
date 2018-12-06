@@ -2,6 +2,7 @@
 #define ICARUS_AST_JUMP_H
 
 #include "ast/node.h"
+#include "scope.h"
 
 namespace ast {
 struct Jump : public Node {
@@ -22,7 +23,7 @@ struct Jump : public Node {
   void Validate(Context *) override {}
   void ExtractJumps(JumpExprs *) const override{};
 
-  base::vector<ir::Val> EmitIR(Context *) override { return {}; }
+  base::vector<ir::Val> EmitIR(Context *ctx);
 
   ExecScope *scope;
   JumpKind jump_type;

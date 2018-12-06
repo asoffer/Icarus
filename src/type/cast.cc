@@ -29,6 +29,9 @@ bool CanCast(type::Type const *from, type::Type const *to) {
     return std::all_of(entries.begin(), entries.end(),
                        [](type::Type const *t) { return t == type::Type_; });
   }
+  if (from->is<type::BufferPointer>() && to->is<type::Pointer>()) {
+    return to == from;
+  }
   auto from_mask = CastMask(from);
   auto to_mask   = CastMask(to);
   return ((from_mask & to_mask) == from_mask) || CanCastImplicitly(from, to);

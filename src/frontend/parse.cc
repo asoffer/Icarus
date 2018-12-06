@@ -82,6 +82,19 @@ static std::unique_ptr<ast::Node> EmptyBraces(
   return stmts;
 }
 
+static std::unique_ptr<ast::Statements> BuildJump(std::unique_ptr<ast::Node> node) {
+  const static base::unordered_map<std::string, ast::JumpKind> JumpKindMap = {
+      {"return", ast::JumpKind::Return}, {"yield", ast::JumpKind::Yield}};
+  auto iter = JumpKindMap.find(node->as<frontend::Token>().token);
+  ASSERT(iter != JumpKindMap.end());
+
+  auto stmts  = std::make_unique<ast::Statements>();
+  stmts->span = node->span;
+  stmts->content_.push_back(
+      std::make_unique<ast::Jump>(node->span, iter->second));
+  return stmts;
+}
+
 static std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
     base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto stmts  = move_as<ast::Statements>(nodes[1]);
@@ -96,6 +109,12 @@ static std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
     ValidateStatementSyntax(stmts->content_.back().get(), ctx);
   }
   return stmts;
+}
+
+static std::unique_ptr<ast::Node> BracedStatementsJumpSameLineEnd(
+    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+  nodes[2] = BuildJump(std::move(nodes[2]));
+  return BracedStatementsSameLineEnd(std::move(nodes), ctx);
 }
 
 namespace ast {
@@ -553,18 +572,18 @@ std::unique_ptr<Node> BuildMoreStatements(
   return stmts;
 }
 
-std::unique_ptr<Node> BuildJump(base::vector<std::unique_ptr<Node>> nodes,
-                                Context *ctx) {
-  const static base::unordered_map<std::string, JumpKind> JumpKindMap = {
-      {"return", JumpKind::Return}, {"yield", JumpKind::Yield}};
-  auto iter = JumpKindMap.find(nodes[0]->as<frontend::Token>().token);
-  ASSERT(iter != JumpKindMap.end());
-
-  auto stmts  = std::make_unique<Statements>();
-  stmts->span = nodes[0]->span;
-  stmts->content_.push_back(
-      std::make_unique<Jump>(nodes[0]->span, iter->second));
+std::unique_ptr<Node> OneBracedJump(base::vector<std::unique_ptr<Node>> nodes,
+                                    Context *ctx) {
+  auto stmts  = std::make_unique<ast::Statements>();
+  stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  stmts->content_.push_back(BuildJump(std::move(nodes[1])));
+  ValidateStatementSyntax(stmts->content_.back().get(), ctx);
   return stmts;
+}
+
+std::unique_ptr<Node> BuildJump(base::vector<std::unique_ptr<Node>> nodes,
+                                Context *) {
+  return ::BuildJump(std::move(nodes[0]));
 }
 
 std::unique_ptr<Node> BuildScopeNode(base::vector<std::unique_ptr<Node>> nodes,
@@ -1099,9 +1118,12 @@ auto Rules = std::array{
     Rule(r_brace, {r_brace, newline}, drop_all_but<0>),
     Rule(braced_stmts, {l_brace, stmts, stmts | EXPR, r_brace},
          BracedStatementsSameLineEnd),
+    Rule(braced_stmts, {l_brace, stmts, op_lt, r_brace},
+         BracedStatementsJumpSameLineEnd),
     Rule(braced_stmts, {l_brace, stmts, r_brace}, drop_all_but<1>),
     Rule(braced_stmts, {l_brace, r_brace}, EmptyBraces),
     Rule(braced_stmts, {l_brace, EXPR, r_brace}, OneBracedStatement),
+    Rule(braced_stmts, {l_brace, op_lt, r_brace}, ast::OneBracedJump),
     Rule(expr, {fn_expr, braced_stmts}, ast::BuildNormalFunctionLiteral),
     Rule(expr, {expr, fn_arrow, braced_stmts},
          ast::BuildInferredFunctionLiteral),
