@@ -56,6 +56,10 @@ void CommaList::ExtractJumps(JumpExprs *rets) const {
 base::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
   base::vector<ir::Val> results;
   auto *tuple_type = &ctx->type_of(this)->as<type::Tuple>();
+  // TODO this is a hack. I'm still not sure what counts as a tuple and what
+  // counts as atype
+  if (tuple_type->entries_.empty()) { return {ir::Val(type::Tup({}))}; }
+
   auto tuple_alloc = ir::Alloca(tuple_type);
 
   size_t index = 0;

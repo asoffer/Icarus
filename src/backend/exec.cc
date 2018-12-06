@@ -150,6 +150,18 @@ void CallForeignFn(ir::ForeignFn const &f,
       addr.as_heap = fn(arguments.get<i32>(0));
     }
     StoreValue(addr, ret_slots.at(0), stack);
+  } else if (f.type() == type::Func({type::Ptr(type::Int32)}, {}) ||
+             f.type() == type::Func({type::BufPtr(type::Int32)}, {})) {
+    using fn_t = void (*)(i32 *);
+    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+    auto addr = arguments.get<ir::Addr>(0);
+    void * ptr = nullptr;
+    switch (addr.kind) {
+      case ir::Addr::Kind::Stack: ptr = stack->raw(addr.as_stack); break;
+      case ir::Addr::Kind::Heap: ptr = addr.as_heap; break;
+    }
+    fn(static_cast<i32*>(ptr));
+
   } else {
     UNREACHABLE();
   }
@@ -587,6 +599,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       tuple_to_modify->entries_.push_back(resolve(cmd.store_type_.val_));
     } break;
     case ir::Op::FinalizeTuple:
+      LOG << call_stack.top().fn_;
       save(resolve<type::Tuple *>(cmd.reg_)->finalize());
       break;
     case ir::Op::CreateVariant: {
