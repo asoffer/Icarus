@@ -35,8 +35,7 @@ ir::BlockSequence MakeBlockSeq(const base::vector<ir::BlockSequence> &blocks);
 namespace backend {
 
 void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
-             const base::vector<ir::Addr> &ret_slots,
-             backend::ExecContext *exec_ctx) {
+             const base::vector<ir::Addr> &ret_slots, ExecContext *exec_ctx) {
   // TODO what about bound constants?
   exec_ctx->call_stack.emplace(fn, arguments);
 
@@ -83,7 +82,7 @@ ExecContext::Frame::Frame(ir::Func *fn, const base::untyped_buffer &arguments)
 ir::BlockIndex ExecContext::ExecuteBlock(
     const base::vector<ir::Addr> &ret_slots) {
   ir::BlockIndex result;
-  ASSERT(current_block().cmds_.size() > 0u);
+  ASSERT(current_block().cmds_.size() > 0u) << call_stack.top().fn_;
   auto cmd_iter = current_block().cmds_.begin();
   do {
     result = ExecuteCmd(*cmd_iter++, ret_slots);
@@ -167,8 +166,6 @@ void CallForeignFn(ir::ForeignFn const &f,
   }
 }
 
-
-
 ir::BlockIndex ExecContext::ExecuteCmd(
     const ir::Cmd &cmd, const base::vector<ir::Addr> &ret_slots) {
   auto save = [&](auto val) {
@@ -197,57 +194,27 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::NegInt64: save(-resolve<i64>(cmd.reg_)); break;
     case ir::Op::NegFloat32: save(-resolve<double>(cmd.reg_)); break;
     case ir::Op::NegFloat64: save(-resolve<double>(cmd.reg_)); break;
-    case ir::Op::LoadBool:
-      save(LoadValue<bool>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadChar:
-      save(LoadValue<char>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadInt8:
-      save(LoadValue<i8>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadInt16:
-      save(LoadValue<i16>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadInt32:
-      save(LoadValue<i32>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadInt64:
-      save(LoadValue<i64>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadNat8:
-      save(LoadValue<u8>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadNat16:
-      save(LoadValue<u16>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadNat32:
-      save(LoadValue<u32>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadNat64:
-      save(LoadValue<u64>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadFloat32:
-      save(LoadValue<double>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadFloat64:
-      save(LoadValue<double>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadType:
-      save(LoadValue<type::Type const *>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadEnum:
-      save(LoadValue<size_t>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadFlags:
-      save(LoadValue<size_t>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadAddr:
-      save(LoadValue<ir::Addr>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
-    case ir::Op::LoadFunc:
-      save(LoadValue<ir::AnyFunc>(resolve<ir::Addr>(cmd.reg_), stack_));
-      break;
+#define CASE(op, ty)                                                           \
+  case op: save(LoadValue<ty>(resolve<ir::Addr>(cmd.reg_), stack_)); break
+      CASE(ir::Op::LoadBool, bool);
+      CASE(ir::Op::LoadChar, char);
+      CASE(ir::Op::LoadInt8, i8);
+      CASE(ir::Op::LoadInt16, i16);
+      CASE(ir::Op::LoadInt32, i32);
+      CASE(ir::Op::LoadInt64, i64);
+      CASE(ir::Op::LoadNat8, u8);
+      CASE(ir::Op::LoadNat16, u16);
+      CASE(ir::Op::LoadNat32, u32);
+      CASE(ir::Op::LoadNat64, u64);
+      CASE(ir::Op::LoadFloat32, float);
+      CASE(ir::Op::LoadFloat64, double);
+      CASE(ir::Op::LoadType, type::Type const *);
+      CASE(ir::Op::LoadEnum, size_t);
+      CASE(ir::Op::LoadFlags, size_t);
+      CASE(ir::Op::LoadAddr, ir::Addr);
+      CASE(ir::Op::LoadFunc, ir::AnyFunc);
+#undef CASE
+
 #define CASE(op, member, fn)                                                   \
   case op: {                                                                   \
     save(fn(resolve(cmd.member.args_[0]), resolve(cmd.member.args_[1])));      \
@@ -317,11 +284,11 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       CASE(ir::Op::LtFloat64, float64_args_, std::less<double>{});
       CASE(ir::Op::LtFlags, flags_args_, std::less<ir::FlagsVal>{});
 
-       CASE(ir::Op::LeInt8, i8_args_, std::less_equal<i8>{});
+      CASE(ir::Op::LeInt8, i8_args_, std::less_equal<i8>{});
       CASE(ir::Op::LeInt16, i16_args_, std::less_equal<i16>{});
       CASE(ir::Op::LeInt32, i32_args_, std::less_equal<i32>{});
       CASE(ir::Op::LeInt64, i64_args_, std::less_equal<i64>{});
-     CASE(ir::Op::LeNat8, u8_args_, std::less_equal<u8>{});
+      CASE(ir::Op::LeNat8, u8_args_, std::less_equal<u8>{});
       CASE(ir::Op::LeNat16, u16_args_, std::less_equal<u16>{});
       CASE(ir::Op::LeNat32, u32_args_, std::less_equal<u32>{});
       CASE(ir::Op::LeNat64, u64_args_, std::less_equal<u64>{});
@@ -329,11 +296,11 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       CASE(ir::Op::LeFloat64, float64_args_, std::less_equal<double>{});
       CASE(ir::Op::LeFlags, flags_args_, std::less_equal<ir::FlagsVal>{});
 
-       CASE(ir::Op::GtInt8, i8_args_, std::greater<i8>{});
+      CASE(ir::Op::GtInt8, i8_args_, std::greater<i8>{});
       CASE(ir::Op::GtInt16, i16_args_, std::greater<i16>{});
       CASE(ir::Op::GtInt32, i32_args_, std::greater<i32>{});
       CASE(ir::Op::GtInt64, i64_args_, std::greater<i64>{});
-     CASE(ir::Op::GtNat8, u8_args_, std::greater<u8>{});
+      CASE(ir::Op::GtNat8, u8_args_, std::greater<u8>{});
       CASE(ir::Op::GtNat16, u16_args_, std::greater<u16>{});
       CASE(ir::Op::GtNat32, u32_args_, std::greater<u32>{});
       CASE(ir::Op::GtNat64, u64_args_, std::greater<u64>{});
@@ -341,11 +308,11 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       CASE(ir::Op::GtFloat64, float64_args_, std::greater<double>{});
       CASE(ir::Op::GtFlags, flags_args_, std::greater<ir::FlagsVal>{});
 
-       CASE(ir::Op::GeInt8, i8_args_, std::greater_equal<i8>{});
+      CASE(ir::Op::GeInt8, i8_args_, std::greater_equal<i8>{});
       CASE(ir::Op::GeInt16, i16_args_, std::greater_equal<i16>{});
       CASE(ir::Op::GeInt32, i32_args_, std::greater_equal<i32>{});
       CASE(ir::Op::GeInt64, i64_args_, std::greater_equal<i64>{});
-     CASE(ir::Op::GeNat8, u8_args_, std::greater_equal<u8>{});
+      CASE(ir::Op::GeNat8, u8_args_, std::greater_equal<u8>{});
       CASE(ir::Op::GeNat16, u16_args_, std::greater_equal<u16>{});
       CASE(ir::Op::GeNat32, u32_args_, std::greater_equal<u32>{});
       CASE(ir::Op::GeNat64, u64_args_, std::greater_equal<u64>{});
@@ -386,17 +353,16 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       CASE(ir::Op::NeFlags, flags_args_, std::not_equal_to<ir::FlagsVal>{});
       CASE(ir::Op::NeType, type_args_, std::not_equal_to<type::Type const *>{});
       CASE(ir::Op::NeAddr, addr_args_, std::not_equal_to<ir::Addr>{});
+
+      CASE(ir::Op::XorFlags, flags_args_, std::bit_xor{});
+      CASE(ir::Op::OrFlags, flags_args_, std::bit_or{});
+      CASE(ir::Op::AndFlags, flags_args_, std::bit_and{});
+      CASE(ir::Op::Arrow, type_args_, [](auto &&lhs, auto &&rhs) {
+        return type::Func({std::forward<std::decay_t<decltype(lhs)>>(lhs)},
+                          {std::forward<std::decay_t<decltype(rhs)>>(rhs)});
+      });
 #undef CASE
 
-    case ir::Op::XorFlags:
-      save(resolve(cmd.flags_args_.args_[0]) ^ resolve(cmd.flags_args_.args_[1]));
-      break;
-    case ir::Op::OrFlags:
-      save(resolve(cmd.flags_args_.args_[0]) | resolve(cmd.flags_args_.args_[1]));
-      break;
-    case ir::Op::AndFlags:
-      save(resolve(cmd.flags_args_.args_[0]) & resolve(cmd.flags_args_.args_[1]));
-      break;
     case ir::Op::CreateStruct: save(type::Struct::Make(cmd.struct_lit_)); break;
     case ir::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
@@ -428,10 +394,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       break;
     case ir::Op::BufPtr:
       save(type::BufPtr(resolve<type::Type const *>(cmd.reg_)));
-      break;
-    case ir::Op::Arrow:
-      save(type::Func({resolve(cmd.type_args_.args_[0])},
-                      {resolve(cmd.type_args_.args_[1])}));
       break;
     case ir::Op::Array: {
       save(type::Arr(resolve(cmd.array_.type_), resolve(cmd.array_.len_)));
@@ -564,7 +526,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
 
       // TODO you need to be able to determine how many args there are
       if (f.is_fn()) {
-        backend::Execute(f.func(), call_buf, return_slots, this);
+        Execute(f.func(), call_buf, return_slots, this);
       } else {
         CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
       }
@@ -578,7 +540,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       tuple_to_modify->entries_.push_back(resolve(cmd.store_type_.val_));
     } break;
     case ir::Op::FinalizeTuple:
-      LOG << call_stack.top().fn_;
       save(resolve<type::Tuple *>(cmd.reg_)->finalize());
       break;
     case ir::Op::CreateVariant: {

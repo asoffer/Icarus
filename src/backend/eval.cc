@@ -50,10 +50,7 @@ base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
   ret_buf.append_bytes(bytes_needed, 1);
   base::vector<ir::Addr> ret_slots;
 
-  ir::Addr addr;
-  addr.kind    = ir::Addr::Kind::Heap;
-  addr.as_heap = ret_buf.raw(0);
-  ret_slots.push_back(addr);
+  ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
   backend::ExecContext exec_context;
   Execute(fn.get(), base::untyped_buffer(0), ret_slots, &exec_context);
   return ret_buf;

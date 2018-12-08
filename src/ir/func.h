@@ -51,7 +51,7 @@ struct Func {
 
   std::string name() const;
 
-  const BasicBlock &block(BlockIndex index) const {
+  BasicBlock const &block(BlockIndex index) const {
     ASSERT(blocks_.size() > static_cast<size_t>(index.value));
     return blocks_.at(index.value);
   }
@@ -60,7 +60,7 @@ struct Func {
         static_cast<const Func *>(this)->block(index));
   }
 
-  const Cmd &Command(CmdIndex cmd_index) const {
+  Cmd const &Command(CmdIndex cmd_index) const {
     return blocks_.at(cmd_index.block.value).cmds_.at(cmd_index.cmd);
   }
 
@@ -80,7 +80,7 @@ struct Func {
 
   BlockIndex entry() const { return BlockIndex(0); }
 
-  const type::Function *const type_ = nullptr;
+  type::Function const *const type_ = nullptr;
   base::vector<std::pair<std::string, ast::Expression *>> args_;
   bool has_default(size_t i) const { return args_[i].second != nullptr; }
   i32 num_regs_  = 0;

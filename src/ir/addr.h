@@ -4,6 +4,7 @@
 #include <iosfwd>
 
 #include "base/types.h"
+#include "base/untyped_buffer.h"
 
 namespace ir {
 struct Addr {
@@ -12,6 +13,20 @@ struct Addr {
   constexpr Addr() : kind(Kind::Heap), as_heap(nullptr) {}
   constexpr static Addr Null() { return Addr{}; }
 
+  constexpr static Addr Heap(void *ptr) {
+    Addr addr;
+    addr.kind    = Kind::Heap;
+    addr.as_heap = ptr;
+    return addr;
+  }
+
+  constexpr static Addr Stack(u64 index) {
+    Addr addr;
+    addr.kind     = Kind::Stack;
+    addr.as_stack = index;
+    return addr;
+  }
+
   union {
     u64 as_stack;
     void *as_heap;
@@ -19,7 +34,6 @@ struct Addr {
 
   std::string to_string() const;
 };
-
 
 std::ostream &operator<<(std::ostream &os, Addr addr);
 
