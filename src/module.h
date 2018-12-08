@@ -48,13 +48,23 @@ struct Module {
   type::Type const *GetType(std::string const &name) const;
   ast::Declaration *GetDecl(std::string const &name) const;
 
-  void Complete();
-
   std::map<ast::BoundConstants,
            std::unordered_set<ast::FunctionLiteral const *>>
       completed_;
-  std::queue<std::pair<ast::BoundConstants, ast::FunctionLiteral *>>
-      to_complete_;
+
+  struct CompilationWorkItem {
+    CompilationWorkItem(ast::BoundConstants bc, ast::FunctionLiteral *f,
+                        Module *mod)
+        : bound_constants_(std::move(bc)), fn_lit_(f), mod_(mod) {}
+
+    void Complete();
+
+    ast::BoundConstants bound_constants_;
+    ast::FunctionLiteral *fn_lit_;
+    Module *mod_;
+  };
+  std::queue<CompilationWorkItem> to_complete_;
+  void CompleteAll();
 
   std::unique_ptr<DeclScope> global_;
 

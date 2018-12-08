@@ -86,6 +86,7 @@ struct Func {
   i32 num_regs_  = 0;
   i32 neg_bound_ = 0;
   base::vector<BasicBlock> blocks_;
+  Module::CompilationWorkItem *work_item = nullptr;
 #ifdef ICARUS_USE_LLVM
   llvm::Function *llvm_fn_ = nullptr;
 #endif  // ICARUS_USE_LLVM

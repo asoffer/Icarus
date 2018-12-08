@@ -253,7 +253,8 @@ base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
 
   ir::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
   if (!ir_func) {
-    ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this);
+    auto &work_item =
+        ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this, ctx->mod_);
 
     base::vector<std::pair<std::string, Expression *>> args;
     args.reserve(inputs.size());
@@ -264,6 +265,7 @@ base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
 
     ir_func = ctx->mod_->AddFunc(&ctx->type_of(this)->as<type::Function>(),
                                  std::move(args));
+    ir_func->work_item = &work_item;
   }
 
   return {ir::Val::Func(ir_func->type_, ir_func)};
@@ -306,6 +308,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
 
     ir::BasicBlock::Current = ir_func->entry();
     ir::UncondJump(start_block);
+    ir_func->work_item = nullptr;
   }
 }
 

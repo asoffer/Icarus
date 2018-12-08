@@ -36,6 +36,14 @@ namespace backend {
 
 void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
              const base::vector<ir::Addr> &ret_slots, ExecContext *exec_ctx) {
+  // TODO: Understand why and how work-items may not be complete and add an
+  // explanation here. I'm quite confident this is really possible with the
+  // generics model I have, but I can't quite articulate exactly why it only
+  // happens for generics and nothing else.
+  if (fn->work_item != nullptr) {
+    std::exchange(fn->work_item, nullptr)->Complete();
+  }
+
   // TODO what about bound constants?
   exec_ctx->call_stack.emplace(fn, arguments);
 

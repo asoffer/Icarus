@@ -17,7 +17,7 @@
 #include "llvm/ir/Module.h"
 
 namespace backend {
-std::string WriteObjectFile(const std::string &name, Module *mod);
+std::string WriteObjectFile(std::string const &name, Module *mod);
 }  // namespace backend
 
 #endif  // ICARUS_USE_LLVM
@@ -56,14 +56,14 @@ ir::Func *Module::AddFunc(
   return result;
 }
 
-const type::Type *Module::GetType(const std::string &name) const {
+type::Type const *Module::GetType(std::string const &name) const {
   auto *decl = GetDecl(name);
   if (decl == nullptr) { return nullptr; }
   return types_.at(ast::BoundConstants{}).at(decl);
 }
 
-ast::Declaration *Module::GetDecl(const std::string &name) const {
-  for (const auto &stmt : statements_.content_) {
+ast::Declaration *Module::GetDecl(std::string const &name) const {
+  for (auto const &stmt : statements_.content_) {
     if (!stmt->is<ast::Declaration>()) { continue; }
     if (stmt->as<ast::Declaration>().id_ != name) { continue; }
     return &stmt->as<ast::Declaration>();
@@ -71,24 +71,28 @@ ast::Declaration *Module::GetDecl(const std::string &name) const {
   return nullptr;
 }
 
-void Module::Complete() {
+void Module::CompilationWorkItem::Complete() {
+  // Need to copy bc because this needs to be set before we call CompleteBody.
+  // TODO perhaps on ctx it could be a pointer?
+  if (mod_->completed_[bound_constants_].emplace(fn_lit_).second) {
+    Context ctx(mod_);
+    ctx.bound_constants_ = bound_constants_;
+    fn_lit_->CompleteBody(&ctx);
+  }
+}
+
+void Module::CompleteAll() {
   while (!to_complete_.empty()) {
-    auto[bc, fn_lit] = to_complete_.front();
-    // Need to copy bc because this needs to be set before we call CompleteBody.
-    // TODO perhaps on ctx it could be a pointer?
-    if (completed_[bc].emplace(fn_lit).second) {
-      Context ctx(this);
-      ctx.bound_constants_ = std::move(bc);
-      fn_lit->CompleteBody(&ctx);
-    }
+    auto work = std::move(to_complete_.front());
     to_complete_.pop();
+    work.Complete();
   }
 }
 
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
 // inside this function.
-std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
+std::unique_ptr<Module> Module::Compile(frontend::Source::Name const &src) {
   auto mod = std::make_unique<Module>();
   ast::BoundConstants bc;
   Context ctx(mod.get());
@@ -123,7 +127,7 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
   }
 
   ctx.mod_->statements_ = std::move(*file_stmts);
-  ctx.mod_->Complete();
+  ctx.mod_->CompleteAll();
 
   for (auto &fn : ctx.mod_->fns_) { fn->ComputeInvariants(); }
   for (auto &fn : ctx.mod_->fns_) { fn->CheckInvariants(); }
@@ -132,7 +136,7 @@ std::unique_ptr<Module> Module::Compile(const frontend::Source::Name &src) {
   backend::EmitAll(ctx.mod_->fns_, ctx.mod_->llvm_.get());
 #endif  // ICARUS_USE_LLVM
 
-  for (const auto &stmt : ctx.mod_->statements_.content_) {
+  for (auto const &stmt : ctx.mod_->statements_.content_) {
     if (!stmt->is<ast::Declaration>()) { continue; }
     auto &decl = stmt->as<ast::Declaration>();
     if (decl.id_ != "main") { continue; }

@@ -99,4 +99,39 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
   ir::Call(ir::AnyFunc{init_func_}, std::move(call_args));
 }
 
+void Struct::finalize() {
+  auto *ptr = to_be_completed_.exchange(nullptr);
+  if (ptr != nullptr) { ptr->Complete(this); }
+}
+
+base::vector<Struct::Field> const &Struct::fields() const {
+  // TODO is doing this eazily a good idea?
+  // TODO remove this const_cast
+  const_cast<type::Struct *>(this)->finalize();
+  return fields_;
+}
+
+void Struct::set_last_name(std::string_view s) {
+  fields_.back().name = std::string(s);
+  auto[iter, success] =
+      field_indices_.emplace(fields_.back().name, fields_.size() - 1);
+  ASSERT(success);
+}
+size_t Struct::index(std::string const &name) const {
+  // TODO is doing this lazily a good idea?
+  // TODO remove this const_cast
+  const_cast<type::Struct *>(this)->finalize();
+  return field_indices_.at(name);
+}
+
+Struct::Field const *Struct::field(std::string const &name) const {
+  // TODO is doing this lazily a good idea?
+  // TODO remove this const_cast
+  const_cast<type::Struct *>(this)->finalize();
+
+  auto iter = field_indices_.find(name);
+  if (iter == field_indices_.end()) { return nullptr; }
+  return &fields_[iter->second];
+}
+
 }  // namespace type
