@@ -35,12 +35,12 @@ static size_t NumDigits(size_t num) {
 }
 
 size_t Array::string_size() const {
-  size_t result = 1 + (fixed_length ? NumDigits(len) : 2);
+  size_t result = 1 + NumDigits(len);
 
   const Type *const *type_ptr_ptr = &data_type;
   while ((*type_ptr_ptr)->is<Array>()) {
     auto array_ptr = &(*type_ptr_ptr)->as<const Array>();
-    result += 2 + ((array_ptr->fixed_length) ? NumDigits(array_ptr->len) : 2);
+    result += 2 + NumDigits(array_ptr->len);
     type_ptr_ptr = &array_ptr->data_type;
   }
   return result + 3 + (*type_ptr_ptr)->string_size();
@@ -48,23 +48,15 @@ size_t Array::string_size() const {
 
 char *Array::WriteTo(char *buf) const {
   buf = std::strcpy(buf, "[") + 1;
-  if (fixed_length) {
-    buf = std::strcpy(buf, std::to_string(len).c_str()) + NumDigits(len);
-  } else {
-    buf = std::strcpy(buf, "--") + 2;
-  }
+  buf = std::strcpy(buf, std::to_string(len).c_str()) + NumDigits(len);
 
   const Type *const *type_ptr_ptr = &data_type;
   while ((*type_ptr_ptr)->is<Array>()) {
     auto array_ptr = &(*type_ptr_ptr)->as<const Array>();
 
-    if (array_ptr->fixed_length) {
-      buf = std::strcpy(buf, ", ") + 2;
-      buf = std::strcpy(buf, std::to_string(array_ptr->len).c_str()) +
-            NumDigits(array_ptr->len);
-    } else {
-      buf = std::strcpy(buf, ", --") + 4;
-    }
+    buf = std::strcpy(buf, ", ") + 2;
+    buf = std::strcpy(buf, std::to_string(array_ptr->len).c_str()) +
+          NumDigits(array_ptr->len);
     type_ptr_ptr = &array_ptr->data_type;
   }
   buf = std::strcpy(buf, "; ") + 2;

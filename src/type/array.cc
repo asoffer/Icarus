@@ -18,6 +18,7 @@ static base::guarded<base::unordered_map<
 static base::guarded<base::unordered_map<
     const Array *, base::unordered_map<const Array *, ir::Func *>>>
     ne_funcs;
+// TODO this should early exit if the types aren't equal.
 ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
                        const Array *rhs_type, ir::Val rhs_ir, bool equality,
                        Context *ctx) {
@@ -34,16 +35,6 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
 
-      auto lhs_len = [&]() -> ir::RegisterOr<i32> {
-        if (lhs_type->fixed_length) { return static_cast<i32>(lhs_type->len); }
-        return ir::Load<i32>(ir::ArrayLength(fn->Argument(0)));
-      }();
-
-      auto rhs_len = [&]() -> ir::RegisterOr<i32> {
-        if (rhs_type->fixed_length) { return static_cast<i32>(rhs_type->len); }
-        return ir::Load<i32>(ir::ArrayLength(fn->Argument(1)));
-      }();
-
       auto equal_len_block = ir::Func::Current->AddBlock();
       auto true_block      = ir::Func::Current->AddBlock();
       auto false_block     = ir::Func::Current->AddBlock();
@@ -51,7 +42,7 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
       auto body_block      = ir::Func::Current->AddBlock();
       auto incr_block      = ir::Func::Current->AddBlock();
 
-      ir::CondJump(ir::Eq(lhs_len, rhs_len), equal_len_block, false_block);
+      ir::CondJump(ir::Eq(lhs_type->len, rhs_type->len), equal_len_block, false_block);
 
       ir::BasicBlock::Current = true_block;
       ir::SetRet(0, true);
@@ -65,7 +56,7 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
       auto lhs_start = ir::Index(type::Ptr(lhs_type), fn->Argument(0), 0);
       auto rhs_start = ir::Index(type::Ptr(rhs_type), fn->Argument(1), 0);
       auto lhs_end =
-          ir::PtrIncr(lhs_start, lhs_len, type::Ptr(rhs_type->data_type));
+          ir::PtrIncr(lhs_start, lhs_type->len, type::Ptr(rhs_type->data_type));
       ir::UncondJump(phi_block);
 
       ir::BasicBlock::Current = phi_block;
@@ -109,117 +100,14 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
   return {ir::Val::Reg(result, type::Bool)};
 }
 
-static ir::RegisterOr<i32> ComputeMin(ir::RegisterOr<i32> x,
-                                      ir::RegisterOr<i32> y) {
-  auto entry_block = ir::BasicBlock::Current;
-  auto x_block     = ir::Func::Current->AddBlock();
-  auto land_block  = ir::Func::Current->AddBlock();
-  ir::CondJump(ir::Lt(x, y), x_block, land_block);
-  ir::BasicBlock::Current = x_block;
-  ir::UncondJump(land_block);
-
-  ir::BasicBlock::Current = land_block;
-  return ir::MakePhi<i32>(ir::Phi(type::Int32),
-                          {{x_block, x}, {entry_block, y}});
-}
-
-// TODO resize shoud probably take a custom allocator
-void Array::EmitResize(ir::Val ptr_to_array, ir::Val new_size,
-                       Context *ctx) const {
-  // TODO these could maybe be moved into separate structs, or templated
-  ASSERT(!fixed_length);
-  {
-    std::unique_lock lock(mtx_);
-    if (resize_func_ != nullptr) { goto call_fn; }
-
-    resize_func_ = ctx->mod_->AddFunc(
-        type::Func({type::Ptr(this), type::Int64}, {}),
-        base::vector<std::pair<std::string, ast::Expression *>>{
-            {"arg", nullptr}, {"new_size", nullptr}});
-
-    CURRENT_FUNC(resize_func_) {
-      ir::BasicBlock::Current = resize_func_->entry();
-      auto arg                = resize_func_->Argument(0);
-      auto size_arg = ir::TypedRegister<i32>(resize_func_->Argument(1));
-
-      auto new_arr = ir::Malloc(
-          data_type,
-          ir::Mul(size_arg,
-                  static_cast<i32>(
-                      Architecture::InterprettingMachine().bytes(data_type))));
-
-      auto *ptr_data_type   = type::Ptr(data_type);
-      auto from_ptr         = ir::Index(type::Ptr(this), arg, 0);
-      ir::RegisterOr<i32> min_val =
-          ComputeMin(ir::Load<i32>(ir::ArrayLength(arg)), size_arg);
-      auto end_ptr = ir::PtrIncr(from_ptr, min_val, ptr_data_type);
-
-      using tup2 =
-          std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
-      auto finish_phis = ir::CreateLoop(
-          [&](tup2 const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
-          [&](tup2 const &phis) {
-            ASSERT(std::get<0>(phis).is_reg_);
-            ASSERT(std::get<1>(phis).is_reg_);
-            data_type->EmitAssign(
-                data_type,
-                ir::Val::Reg(ir::PtrFix(std::get<0>(phis).reg_, data_type),
-                             data_type),
-                std::get<1>(phis).reg_, ctx);
-            data_type->EmitDestroy(std::get<0>(phis).reg_, ctx);
-            return tup2{ir::PtrIncr(std::get<0>(phis).reg_, 1, ptr_data_type),
-                        ir::PtrIncr(std::get<1>(phis).reg_, 1, ptr_data_type)};
-          },
-          std::tuple<type::Type const *, type::Type const *>{ptr_data_type,
-                                                             ptr_data_type},
-          tup2{from_ptr, new_arr});
-
-      if (data_type->needs_destroy()) {
-        auto end_old_buf =
-            ir::PtrIncr(ir::ArrayData(arg, type::Ptr(this)),
-                        ir::Load<i32>(ir::ArrayLength(arg)), type::Ptr(this));
-
-        using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
-        ir::CreateLoop(
-            [&](tup const &phis) {
-              return ir::Eq(std::get<0>(phis), end_old_buf);
-            },
-            [&](tup const &phis) {
-              ASSERT(std::get<0>(phis).is_reg_);
-              data_type->EmitDestroy(std::get<0>(phis).reg_, ctx);
-              return tup{ir::PtrIncr(std::get<0>(phis).reg_, 1, ptr_data_type)};
-            },
-            std::tuple<type::Type const *>{ptr_data_type}, tup{end_ptr});
-      }
-
-      auto end_to_ptr = ir::PtrIncr(new_arr, size_arg, ptr_data_type);
-      using tup       = std::tuple<ir::RegisterOr<ir::Addr>>;
-      ir::CreateLoop(
-          [&](tup const &phis) {
-            return ir::Eq(std::get<0>(phis), end_to_ptr);
-          },
-          [&](tup const &phis) {
-            ASSERT(std::get<0>(phis).is_reg_);
-            data_type->EmitInit(std::get<0>(phis).reg_, ctx);
-            return tup{ir::PtrIncr(std::get<0>(phis).reg_, 1, ptr_data_type)};
-          },
-          std::tuple<type::Type const *>{ptr_data_type},
-          tup{std::get<1>(finish_phis)});
-
-      auto old_buf = ir::ArrayData(arg, type::Ptr(this));
-      ir::Store(size_arg, ir::ArrayLength(arg));
-      ir::Free(ir::Load<ir::Addr>(old_buf, data_type));
-      ir::Store(new_arr, old_buf);
-      ir::ReturnJump();
-    }
-  }
-
-call_fn:
-  ASSERT(ir::Func::Current != nullptr);
-  ir::Arguments call_args;
-  call_args.append(ptr_to_array);
-  call_args.append(new_size);
-  call_args.type_ = ASSERT_NOT_NULL(resize_func_)->type_;
-  ir::Call(ir::AnyFunc{resize_func_}, std::move(call_args));
+static base::guarded<
+    base::unordered_map<Type const *, base::unordered_map<size_t, Array>>>
+    fixed_arrays_;
+const Array *Arr(Type const *t, size_t len) {
+  auto handle = fixed_arrays_.lock();
+  return &(*handle)[t]
+              .emplace(std::piecewise_construct, std::forward_as_tuple(len),
+                       std::forward_as_tuple(t, len))
+              .first->second;
 }
 }  // namespace type

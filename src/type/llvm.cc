@@ -28,12 +28,7 @@ llvm::Type* Primitive::llvm(llvm::LLVMContext& ctx) const {
   }
 }
 llvm::Type* Array::llvm(llvm::LLVMContext& ctx) const {
-  if (fixed_length) {
-    return llvm::ArrayType::get(data_type->llvm(ctx), len);
-  } else {
-    return llvm::StructType::get(ctx, {llvm::Type::getInt64Ty(ctx),
-                                       data_type->llvm(ctx)->getPointerTo(0)});
-  }
+  return llvm::ArrayType::get(data_type->llvm(ctx), len);
 }
 
 llvm::Type* Enum::llvm(llvm::LLVMContext& ctx) const {

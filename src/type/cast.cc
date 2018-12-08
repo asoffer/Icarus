@@ -56,21 +56,9 @@ Type const *Join(Type const *lhs, Type const *rhs) {
   if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
     return Join(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee);
   } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    Type const *result = nullptr;
-    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
-      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
-      result = Join(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result, lhs->as<Array>().len) : result;
-    } else {
-      result = Join(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result) : result;
-    }
-  } else if (lhs->is<Array>() && rhs == EmptyArray &&
-             !lhs->as<Array>().fixed_length) {
-    return lhs;
-  } else if (rhs->is<Array>() && lhs == EmptyArray &&
-             !rhs->as<Array>().fixed_length) {
-    return rhs;
+    if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
+    auto *result = Join(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+    return result ? Arr(result, lhs->as<Array>().len) : result;
   } else if (lhs->is<Variant>()) {
     base::vector<Type const *> rhs_types;
     if (rhs->is<Variant>()) {
@@ -108,23 +96,9 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
                                          rhs->as<Pointer>().pointee))
                               : nullptr;
   } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    Type const *result = nullptr;
-    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
-      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
-      result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result, lhs->as<Array>().len) : result;
-    } else {
-      result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result,
-                          std::max(lhs->as<Array>().len, rhs->as<Array>().len))
-                    : result;
-    }
-  } else if (lhs->is<Array>() && rhs == EmptyArray &&
-             !lhs->as<Array>().fixed_length) {
-    return Arr(lhs->as<Array>().data_type, 0);
-  } else if (rhs->is<Array>() && lhs == EmptyArray &&
-             !rhs->as<Array>().fixed_length) {
-    return Arr(rhs->as<Array>().data_type, 0);
+    if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
+    auto *result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+    return result ? Arr(result, lhs->as<Array>().len) : result;
   } else if (lhs->is<Variant>()) {
     // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
     base::vector<Type const *> results;

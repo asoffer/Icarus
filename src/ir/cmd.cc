@@ -96,31 +96,6 @@ RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r) {
   return cmd.result;
 }
 
-// TODO do you really want to support this? How can array allocation be
-// customized?
-TypedRegister<Addr> Malloc(const type::Type *t, RegisterOr<i32> r) {
-  auto &cmd    = MakeCmd(type::Ptr(t), Op::Malloc);
-  cmd.i32_arg_ = r;
-  return cmd.result;
-}
-
-void Free(Register r) { MakeCmd(nullptr, Op::Free).reg_ = r; }
-
-Register ArrayLength(Register r) {
-  auto &cmd = MakeCmd(type::Ptr(type::Int64), Op::ArrayLength);
-  cmd.reg_  = r;
-  return cmd.result;
-}
-
-Register ArrayData(Register r, type::Type const *ptr) {
-  auto *array_type = &ptr->as<type::Pointer>().pointee->as<type::Array>();
-  ASSERT(!array_type->fixed_length);
-
-  auto &cmd = MakeCmd(type::Ptr(array_type->data_type), Op::ArrayData);
-  cmd.reg_  = r;
-  return cmd.result;
-}
-
 RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r) {
   if (!r.is_reg_) { return type::Ptr(r.val_); }
   auto &cmd = MakeCmd(type::Type_, Op::Ptr);
@@ -151,14 +126,6 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
   auto &refs = Func::Current->references_;
   if (v1.is_reg_) { refs[v1.reg_].insert(cmd.result); }
   if (v2.is_reg_) { refs[v2.reg_].insert(cmd.result); }
-  return cmd.result;
-}
-
-RegisterOr<type::Type const *> Array(RegisterOr<type::Type const *> data_type) {
-  if (!data_type.is_reg_) { return type::Arr(data_type.val_); }
-
-  auto &cmd  = MakeCmd(type::Type_, Op::Array);
-  cmd.array_ = {-1, data_type};
   return cmd.result;
 }
 
@@ -496,12 +463,9 @@ TypedRegister<Addr> Index(type::Type const *t, Register array_ptr,
                           RegisterOr<i32> offset) {
   auto *array_type = &t->as<type::Pointer>().pointee->as<type::Array>();
   // TODO this works but generates worse ir (both here and in llvm). It's worth
-  // figuring out how to do this better.
-  return PtrIncr(
-      array_type->fixed_length
-          ? array_ptr
-          : Load(ArrayData(array_ptr, t), type::Ptr(array_type->data_type)),
-      offset, type::Ptr(array_type->data_type));
+  // figuring out how to do this better. Is this still true without
+  // variable-length arrays?
+  return PtrIncr(array_ptr, offset, type::Ptr(array_type->data_type));
 }
 
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments) {

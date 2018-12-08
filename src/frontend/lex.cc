@@ -22,7 +22,6 @@ ir::Val AlignFunc();
 ir::Val DebugIrFunc();
 #endif  // DBG
 
-extern i32 ResizeFuncIndex;
 extern i32 ForeignFuncIndex;
 
 namespace frontend {
@@ -87,7 +86,6 @@ TaggedNode NextWord(SourceLocation &loc) {
 #ifdef DBG
       {"debug_ir", DebugIrFunc()},
 #endif  // DBG
-      {"resize", ir::Val::BuiltinGeneric(ResizeFuncIndex)},
       {"foreign", ir::Val::BuiltinGeneric(ForeignFuncIndex)},
       {"bytes", BytesFunc()},
       {"alignment", AlignFunc()},

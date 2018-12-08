@@ -9,14 +9,10 @@ ir::Val Array::PrepareArgument(const Type *from, const ir::Val &val,
     NOT_YET(this, from);
   } else {
     ASSERT(from == this);
-    if (fixed_length) {
-      // TODO Copy may be overkill. Think about value category.
-      auto arg = ir::Alloca(from);
-      from->EmitAssign(from, val, arg, ctx);
-      return ir::Val::Reg(arg, type::Ptr(from));
-    } else {
-      NOT_YET();
-    }
+    // TODO Copy may be overkill. Think about value category.
+    auto arg = ir::Alloca(from);
+    from->EmitAssign(from, val, arg, ctx);
+    return ir::Val::Reg(arg, type::Ptr(from));
   }
 }
 

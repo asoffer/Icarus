@@ -90,12 +90,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
 
       ir::Print('[');
 
-      auto length_var = [&]() -> ir::RegisterOr<i32> {
-        if (fixed_length) { return static_cast<i32>(len); }
-        return ir::Load<i32>(ir::ArrayLength(repr_func_->Argument(0)));
-      }();
-      ir::BasicBlock::Current =
-          ir::EarlyExitOn<true>(exit_block, ir::Eq(length_var, 0));
+      ir::BasicBlock::Current = ir::EarlyExitOn<true>(exit_block, len == 0);
       auto ptr = ir::Index(type::Ptr(this), repr_func_->Argument(0), 0);
 
       data_type->EmitRepr(ir::Val::Reg(ir::PtrFix(ptr, data_type), data_type),
@@ -119,7 +114,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
           },
           std::tuple<type::Type const *, type::Type const *>{
               type::Ptr(this->data_type), type::Int32},
-          tup{ptr, ir::Sub(length_var, 1)});
+          tup{ptr, len - 1});
       ir::UncondJump(exit_block);
 
       ir::BasicBlock::Current = exit_block;

@@ -31,32 +31,10 @@ void Array::EmitAssign(Type const *from_type, ir::Val const &from,
       auto val                = fn->Argument(0);
       auto var                = fn->Argument(1);
 
-      auto len = [&]() -> ir::RegisterOr<i32> {
-        if (from_array_type->fixed_length) {
-          return static_cast<i32>(from_array_type->len);
-        }
-        return ir::Load<i32>(ir::ArrayLength(val));
-      }();
-
       auto *from_ptr_type = type::Ptr(from_type->as<type::Array>().data_type);
       auto from_ptr       = ir::Index(from_type, val, 0);
-      auto from_end_ptr   = ir::PtrIncr(from_ptr, len, from_ptr_type);
-
-      if (!fixed_length) {
-        ComputeDestroyWithoutLock(ctx);
-        ir::Arguments call_args;
-        call_args.append(var);
-        call_args.type_ = destroy_func_->type_;
-        ir::Call(ir::AnyFunc{destroy_func_}, std::move(call_args));
-
-        // TODO Architecture dependence?
-        auto ptr = ir::Malloc(
-            data_type, Architecture::InterprettingMachine().ComputeArrayLength(
-                           len, data_type));
-        ir::Store(len, ir::ArrayLength(var));
-        ir::Store(ptr, ir::ArrayData(var, type::Ptr(this)));
-      }
-
+      auto from_end_ptr =
+          ir::PtrIncr(from_ptr, from_array_type->len, from_ptr_type);
       auto *to_ptr_type   = type::Ptr(data_type);
       ir::Register to_ptr = ir::Index(type::Ptr(this), var, 0);
 

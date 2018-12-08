@@ -21,15 +21,7 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
 
     if (data_type->needs_destroy()) {
       auto ptr     = ir::Index(type::Ptr(this), arg, 0);
-      auto end_ptr = ir::PtrIncr(ptr,
-                                 [&]() -> ir::RegisterOr<i32> {
-                                   if (fixed_length) {
-                                     return static_cast<i32>(len);
-                                   } else {
-                                     return ir::Load<i32>(ir::ArrayLength(arg));
-                                   }
-                                 }(),
-                                 type::Ptr(data_type));
+      auto end_ptr = ir::PtrIncr(ptr, len, type::Ptr(data_type));
 
       using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
       ir::CreateLoop(
@@ -44,9 +36,6 @@ void Array::ComputeDestroyWithoutLock(Context *ctx) const {
           tup{ptr});
     }
 
-    if (!fixed_length) {
-      ir::Free(ir::Load<ir::Addr>(ir::ArrayData(arg, type::Ptr(this)), data_type));
-    }
     ir::ReturnJump();
   }
 }

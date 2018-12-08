@@ -21,7 +21,7 @@ void ArrayType::assign_scope(Scope *scope) {
 type::Type const *ArrayType::VerifyType(Context *ctx) {
   bool failed       = false;
   auto *length_type = length_->VerifyType(ctx);
-  if (!length_->is<Hole>() && length_type != type::Int64) {
+  if (length_type != type::Int64) {
     ctx->error_log_.ArrayIndexType(span);
     failed = true;
   }
@@ -42,13 +42,9 @@ void ArrayType::Validate(Context *ctx) {
 }
 
 base::vector<ir::Val> ArrayType::EmitIR(Context *ctx) {
-  auto len_val       = length_->EmitIR(ctx)[0];
-  auto data_type_reg = data_type_->EmitIR(ctx)[0].reg_or<type::Type const *>();
-  ir::RegisterOr<type::Type const *> result =
-      (len_val == ir::Val::None())
-          ? ir::Array(data_type_reg)
-          : ir::Array(len_val.reg_or<i32>(), data_type_reg);
-  return {ir::ValFrom(result)};
+  return {ir::ValFrom(
+      ir::Array(length_->EmitIR(ctx)[0].reg_or<i32>(),
+                data_type_->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
 }
 
 base::vector<ir::Register> ArrayType::EmitLVal(Context *ct) {

@@ -197,23 +197,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::NegInt64: save(-resolve<i64>(cmd.reg_)); break;
     case ir::Op::NegFloat32: save(-resolve<double>(cmd.reg_)); break;
     case ir::Op::NegFloat64: save(-resolve<double>(cmd.reg_)); break;
-    case ir::Op::ArrayLength: save(resolve<ir::Addr>(cmd.reg_)); break;
-    case ir::Op::ArrayData: {
-      auto addr = resolve<ir::Addr>(cmd.reg_);
-      switch (addr.kind) {
-        case ir::Addr::Kind::Stack:
-          addr.as_stack +=
-              Architecture::InterprettingMachine().bytes(type::Int64);
-          break;
-        case ir::Addr::Kind::Heap:
-          addr.as_heap = static_cast<void *>(
-              static_cast<u8 *>(addr.as_heap) +
-              Architecture::InterprettingMachine().bytes(type::Int64));
-          break;
-      }
-      save(addr);
-
-    } break;
     case ir::Op::LoadBool:
       save(LoadValue<bool>(resolve<ir::Addr>(cmd.reg_), stack_));
       break;
@@ -429,8 +412,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       // TODO remove me.
       break;
     case ir::Op::DebugIr: LOG << call_stack.top().fn_; break;
-    case ir::Op::Malloc: save(malloc(resolve(cmd.i32_arg_))); break;
-    case ir::Op::Free: free(resolve<ir::Addr>(cmd.reg_).as_heap); break;
     case ir::Op::Alloca: {
       ir::Addr addr;
       addr.as_stack = stack_.size();
@@ -453,9 +434,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
                       {resolve(cmd.type_args_.args_[1])}));
       break;
     case ir::Op::Array: {
-      auto len = resolve(cmd.array_.len_);
-      auto t   = resolve(cmd.array_.type_);
-      save(len == -1 ? type::Arr(t) : type::Arr(t, len));
+      save(type::Arr(resolve(cmd.array_.type_), resolve(cmd.array_.len_)));
     } break;
     case ir::Op::VariantType: save(resolve<ir::Addr>(cmd.reg_)); break;
     case ir::Op::VariantValue: {

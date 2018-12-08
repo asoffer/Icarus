@@ -256,31 +256,6 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
         }
       }
     } break;
-    case ir::Op::Malloc: {
-      // TODO cast from void*?
-      auto *malloc_fn = llvm_data->module->getOrInsertFunction(
-          "malloc",
-          llvm::FunctionType::get(llvm::Type::getVoidTy(ctx)->getPointerTo(0),
-                                  llvm::Type::getInt32Ty(ctx), false));
-      // TODO this is wrong for cross-compilation
-      auto target_architecture = Architecture::CompilingMachine();
-      return llvm_data->builder->CreateCall(
-          malloc_fn,
-          {llvm::ConstantInt::get(
-              ctx, llvm::APInt(64,
-                               target_architecture.bytes(
-                                   cmd.type->as<type::Pointer>().pointee),
-                               false))});
-    } break;
-    case ir::Op::Free: {
-      // TODO cast to void* first?
-      auto *free_fn = llvm_data->module->getOrInsertFunction(
-          "free", llvm::FunctionType::get(
-                      llvm::Type::getVoidTy(ctx),
-                      llvm::Type::getVoidTy(ctx)->getPointerTo(0), false));
-      return llvm_data->builder->CreateCall(
-          free_fn, {EmitValue(num_args, llvm_data, cmd.args[0])});
-    } break;
     case ir::Op::Call: {
       base::vector<llvm::Value *> values;
       values.reserve(cmd.args.size());
@@ -367,22 +342,6 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
                  ? llvm_data->builder->CreateFCmpOGT(lhs, rhs)
                  : llvm_data->builder->CreateICmpSGT(lhs, rhs);
     }
-    case ir::Op::ArrayLength:
-      // TODO use a struct gep on a generic array llvm struct type holding an
-      // int and a void*.
-      return llvm_data->builder->CreatePointerCast(
-          EmitValue(num_args, llvm_data, cmd.args[0]),
-          llvm::Type::getInt32Ty(ctx)->getPointerTo(0));
-    case ir::Op::ArrayData:
-      // TODO use a struct gep on a generic array llvm struct type holding an
-      // int and a void*. Then cast to actual type.
-      return llvm_data->builder->CreatePointerCast(
-          llvm_data->builder->CreateGEP(
-              llvm_data->builder->CreatePointerCast(
-                  EmitValue(num_args, llvm_data, cmd.args[0]),
-                  llvm::Type::getInt32Ty(ctx)->getPointerTo(0)),
-              llvm::ConstantInt::get(ctx, llvm::APInt(32, 1, false))),
-          cmd.type->llvm(ctx));
     case ir::Op::VariantType:
       // TODO 64-bit int for type? Maybe more type-safety would be nice.
       return llvm_data->builder->CreatePointerCast(

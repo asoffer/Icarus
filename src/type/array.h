@@ -10,35 +10,28 @@ struct Context;
 namespace type {
 struct Array : public Type {
   TYPE_FNS(Array);
-  Array(const Type *t) : data_type(t), len(0), fixed_length(false) {}
-  Array(const Type *t, size_t l) : data_type(t), len(l), fixed_length(true) {}
+  Array(Type const *t, size_t l) : data_type(t), len(l) {}
 
-  static ir::Val Compare(const Array *lhs_type, ir::Val lhs_ir,
-                         const Array *rhs_type, ir::Val rhs_ir, bool equality,
+  static ir::Val Compare(Array const *lhs_type, ir::Val lhs_ir,
+                         Array const *rhs_type, ir::Val rhs_ir, bool equality,
                          Context *ctx);
 
-  virtual bool needs_destroy() const {
-    return !fixed_length || data_type->needs_destroy();
-  }
+  virtual bool needs_destroy() const { return data_type->needs_destroy(); }
 
-  void EmitResize(ir::Val ptr_to_array, ir::Val new_size, Context *ctx) const;
-
-  const Type *data_type;
+  Type const *data_type;
   size_t len;
-  bool fixed_length;
 
  private:
   void ComputeDestroyWithoutLock(Context *ctx) const;
   mutable std::mutex mtx_;
-  mutable base::unordered_map<const Array *, ir::Func *> assign_fns_;
+  mutable base::unordered_map<Array const *, ir::Func *> assign_fns_;
   mutable ir::Func *destroy_func_ = nullptr;
   mutable ir::Func *repr_func_    = nullptr;
   mutable ir::Func *init_func_    = nullptr;
   mutable ir::Func *resize_func_  = nullptr;
 };
 
-const Array *Arr(const Type *t);
-const Array *Arr(const Type *t, size_t len);
+Array const *Arr(Type const *t, size_t len);
 
 }  // namespace type
 #endif  // ICARUS_TYPE_ARRAY_H

@@ -44,8 +44,7 @@ size_t Architecture::alignment(type::Type const *t) const {
     return ptr_bytes_;
   } else if (t->is<type::Array>()) {
     auto *array_type = &t->as<type::Array>();
-    return array_type->fixed_length ? this->alignment(array_type->data_type)
-                                    : ptr_align_;
+    return this->alignment(array_type->data_type);
   } else if (t->is<type::Struct>()) {
     size_t alignment_val = 1;
     for (auto const &field : t->as<type::Struct>().fields()) {
@@ -110,14 +109,10 @@ size_t Architecture::bytes(type::Type const *t) const {
     return ptr_bytes_;
   } else if (t->is<type::Array>()) {
     auto *array_type = &t->as<type::Array>();
-    if (array_type->fixed_length) {
-      // TODO skip the last alignment requirement?
-      return array_type->len *
-             MoveForwardToAlignment(array_type->data_type,
-                                    bytes(array_type->data_type));
-    } else {
-      return 2 * ptr_bytes_;
-    }
+    // TODO skip the last alignment requirement?
+    return array_type->len *
+           MoveForwardToAlignment(array_type->data_type,
+                                  bytes(array_type->data_type));
   } else if (t->is<type::Struct>()) {
     auto *struct_type = &t->as<type::Struct>();
     size_t num_bytes  = 0;

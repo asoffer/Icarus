@@ -19,23 +19,6 @@ namespace type {
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
-static base::guarded<
-    base::unordered_map<Type const *, base::unordered_map<size_t, Array>>>
-    fixed_arrays_;
-const Array *Arr(Type const *t, size_t len) {
-  auto handle = fixed_arrays_.lock();
-  return &(*handle)[t]
-              .emplace(std::piecewise_construct, std::forward_as_tuple(len),
-                       std::forward_as_tuple(t, len))
-              .first->second;
-}
-static base::guarded<base::unordered_map<Type const *, Array>> arrays_;
-const Array *Arr(Type const *t) {
-  return &arrays_.lock()
-              ->emplace(std::piecewise_construct, std::forward_as_tuple(t),
-                        std::forward_as_tuple(t))
-              .first->second;
-}
 
 static base::guarded<base::map<base::vector<Type const *>, Variant>> variants_;
 Type const *Var(base::vector<Type const *> variants) {

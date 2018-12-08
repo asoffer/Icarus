@@ -24,8 +24,7 @@ namespace type {
 extern Type const *Code, *Int, *Char;
 }  // namespace type
 
-i32 ResizeFuncIndex  = 0;
-i32 ForeignFuncIndex = 1;
+i32 ForeignFuncIndex = 0;
 
 ir::Val AsciiFunc() {
   auto *fn_type                = type::Func({type::Int8}, {type::Char});
@@ -435,15 +434,6 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(args_.pos_.size() == 1u);
       ASSERT(arg_types.pos_[0] == type::Type_);
       return ctx->set_type(this, type::Int64);
-    } else if (fn_val == ir::Val::BuiltinGeneric(ResizeFuncIndex)) {
-      // TODO turn assert into actual checks with error logging. Or maybe allow
-      // named args here?
-      ASSERT(args_.named_.size() == 0u);
-      ASSERT(args_.pos_.size() == 2u);
-      ASSERT(arg_types.pos_[0], Is<type::Pointer>());
-      ASSERT(arg_types.pos_[0]->as<type::Pointer>().pointee, Is<type::Array>());
-      ASSERT(arg_types.pos_[1] == type::Int64);
-      return ctx->set_type(this, type::Void());
     } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
@@ -538,14 +528,6 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
 
       return {ir::Val::Reg(reg, out_type)};
 
-    } else if (fn_val == ir::Val::BuiltinGeneric(ResizeFuncIndex)) {
-      ctx->type_of(args_.pos_[0].get())
-          ->as<type::Pointer>()
-          .pointee->as<type::Array>()
-          .EmitResize(args_.pos_[0]->EmitIR(ctx)[0],
-                      args_.pos_[1]->EmitIR(ctx)[0], ctx);
-
-      return {};
     } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {
       auto name =
           backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx);

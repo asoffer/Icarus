@@ -306,8 +306,6 @@ RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r);
 RegisterOr<i32> Align(RegisterOr<type::Type const *> r);
 RegisterOr<bool> Not(RegisterOr<bool> r);
 RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r);
-Register ArrayLength(Register r);
-Register ArrayData(Register r, type::Type const *t);
 RegisterOr<i32> ModInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
 RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2);
 RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
@@ -339,14 +337,11 @@ TypedRegister<T> Load(Register r, type::Type const *t = type::Get<T>()) {
 }
 Register Load(Register r, type::Type const *t);
 
-TypedRegister<Addr> Malloc(const type::Type *t, RegisterOr<i32> r);
-void Free(Register r);
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
                                      RegisterOr<type::Type const *> out);
 RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r);
 RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r);
 
-RegisterOr<type::Type const *> Array(RegisterOr<type::Type const *> data_type);
 RegisterOr<type::Type const *> Array(RegisterOr<i32> len,
                                      RegisterOr<type::Type const *> data_type);
 Register VariantType(Register r);
