@@ -28,10 +28,11 @@ void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
       auto val                = assign_func_->Argument(0);
       auto var                = assign_func_->Argument(1);
 
-      for (size_t i = 0; i < fields_.size(); ++i) {
-        auto *field_type = from_type->as<type::Struct>().fields_.at(i).type;
-        fields_[i].type->EmitAssign(
-            fields_[i].type,
+      for (size_t i = 0; i < data_.fields_.size(); ++i) {
+        auto *field_type =
+            from_type->as<type::Struct>().data_.fields_.at(i).type;
+        data_.fields_[i].type->EmitAssign(
+            data_.fields_[i].type,
             ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), field_type),
                          field_type),
             ir::Field(var, this, i), ctx);
@@ -48,17 +49,11 @@ void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
   ir::Call(ir::AnyFunc{assign_func_}, std::move(call_args));
 }
 
-Struct *Struct::Make(ast::StructLiteral *lit) {
-  auto *s             = new Struct;
-  s->to_be_completed_ = lit;
-  return s;
-}
-
 size_t Struct::offset(size_t field_num, Architecture const &arch) const {
   size_t offset = 0;
   for (size_t i = 0; i < field_num; ++i) {
-    offset += arch.bytes(fields_.at(i).type);
-    offset = arch.MoveForwardToAlignment(fields_.at(i + 1).type, offset);
+    offset += arch.bytes(data_.fields_.at(i).type);
+    offset = arch.MoveForwardToAlignment(data_.fields_.at(i + 1).type, offset);
   }
   return offset;
 }
@@ -75,16 +70,16 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
       ir::BasicBlock::Current = init_func_->entry();
 
       // TODO init expressions? Do these need to be verfied too?
-      for (size_t i = 0; i < fields_.size(); ++i) {
-        if (fields_[i].init_val != ir::Val::None()) {
+      for (size_t i = 0; i < data_.fields_.size(); ++i) {
+        if (data_.fields_[i].init_val != ir::Val::None()) {
           EmitCopyInit(
-              /* from_type = */ fields_[i].type,
-              /*   to_type = */ fields_[i].type,
-              /*  from_val = */ fields_[i].init_val,
+              /* from_type = */ data_.fields_[i].type,
+              /*   to_type = */ data_.fields_[i].type,
+              /*  from_val = */ data_.fields_[i].init_val,
               /*    to_var = */
               ir::Field(init_func_->Argument(0), this, i), ctx);
         } else {
-          fields_.at(i).type->EmitInit(
+          data_.fields_.at(i).type->EmitInit(
               ir::Field(init_func_->Argument(0), this, i), ctx);
         }
       }
@@ -99,39 +94,38 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
   ir::Call(ir::AnyFunc{init_func_}, std::move(call_args));
 }
 
-void Struct::finalize() {
-  auto *ptr = to_be_completed_.exchange(nullptr);
-  if (ptr != nullptr) { ptr->Complete(this); }
-}
-
-base::vector<Struct::Field> const &Struct::fields() const {
-  // TODO is doing this eazily a good idea?
-  // TODO remove this const_cast
-  const_cast<type::Struct *>(this)->finalize();
-  return fields_;
-}
-
-void Struct::set_last_name(std::string_view s) {
-  fields_.back().name = std::string(s);
-  auto[iter, success] =
-      field_indices_.emplace(fields_.back().name, fields_.size() - 1);
-  ASSERT(success);
-}
 size_t Struct::index(std::string const &name) const {
-  // TODO is doing this lazily a good idea?
-  // TODO remove this const_cast
-  const_cast<type::Struct *>(this)->finalize();
-  return field_indices_.at(name);
+  return data_.field_indices_.at(name);
 }
 
 Struct::Field const *Struct::field(std::string const &name) const {
-  // TODO is doing this lazily a good idea?
-  // TODO remove this const_cast
-  const_cast<type::Struct *>(this)->finalize();
-
-  auto iter = field_indices_.find(name);
-  if (iter == field_indices_.end()) { return nullptr; }
-  return &fields_[iter->second];
+  auto iter = data_.field_indices_.find(name);
+  if (iter == data_.field_indices_.end()) { return nullptr; }
+  return &data_.fields_[iter->second];
 }
 
+void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
+  {
+    std::unique_lock lock(mtx_);
+    if (destroy_func_ == nullptr) {
+      destroy_func_ = ctx->mod_->AddFunc(
+          type::Func({type::Ptr(this)}, {}),
+          base::vector<std::pair<std::string, ast::Expression *>>{
+              {"arg", nullptr}});
+
+      CURRENT_FUNC(destroy_func_) {
+        ir::BasicBlock::Current = destroy_func_->entry();
+        for (size_t i = 0; i < data_.fields_.size(); ++i) {
+          data_.fields_[i].type->EmitDestroy(
+              ir::Field(destroy_func_->Argument(0), this, i), ctx);
+        }
+        ir::ReturnJump();
+      }
+    }
+  }
+  ir::Arguments call_args;
+  call_args.append(reg);
+  call_args.type_ = destroy_func_->type_;
+  ir::Call(ir::AnyFunc{destroy_func_}, std::move(call_args));
+}
 }  // namespace type

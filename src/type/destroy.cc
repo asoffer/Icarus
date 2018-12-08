@@ -61,28 +61,4 @@ void Function::EmitDestroy(ir::Register, Context *ctx) const {}
 void Pointer::EmitDestroy(ir::Register, Context *ctx) const {}
 void Variant::EmitDestroy(ir::Register, Context *ctx) const { NOT_YET(); }
 
-void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
-  {
-    std::unique_lock lock(mtx_);
-    if (destroy_func_ == nullptr) {
-      destroy_func_ = ctx->mod_->AddFunc(
-          type::Func({type::Ptr(this)}, {}),
-          base::vector<std::pair<std::string, ast::Expression *>>{
-              {"arg", nullptr}});
-
-      CURRENT_FUNC(destroy_func_) {
-        ir::BasicBlock::Current = destroy_func_->entry();
-        for (size_t i = 0; i < fields_.size(); ++i) {
-          fields_[i].type->EmitDestroy(
-              ir::Field(destroy_func_->Argument(0), this, i), ctx);
-        }
-        ir::ReturnJump();
-      }
-    }
-  }
-  ir::Arguments call_args;
-  call_args.append(reg);
-  call_args.type_ = destroy_func_->type_;
-  ir::Call(ir::AnyFunc{destroy_func_}, std::move(call_args));
-}
 }  // namespace type

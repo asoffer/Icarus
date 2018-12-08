@@ -308,9 +308,7 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
 }
 
 Register CreateStruct(ast::StructLiteral *lit) {
-  auto &cmd       = MakeCmd(type::Type_, Op::CreateStruct);
-  cmd.struct_lit_ = lit;
-  return cmd.result;
+  return MakeCmd(type::Type_, Op::CreateStruct).result;
 }
 
 Register FinalizeStruct(Register r) {
@@ -333,15 +331,14 @@ Register VariantValue(type::Type const *t, Register r) {
   return cmd.result;
 }
 
-void CreateStructField(type::Struct *struct_type,
+void CreateStructField(Register struct_type,
                        RegisterOr<type::Type const *> type) {
-  auto &cmd = MakeCmd(nullptr, Op::CreateStructField);
+  auto &cmd                = MakeCmd(nullptr, Op::CreateStructField);
   cmd.create_struct_field_ = {struct_type, std::move(type)};
 }
 
-void SetStructFieldName(type::Struct *struct_type,
-                        std::string_view field_name) {
-  auto &cmd = MakeCmd(nullptr, Op::SetStructFieldName);
+void SetStructFieldName(Register struct_type, std::string_view field_name) {
+  auto &cmd                  = MakeCmd(nullptr, Op::SetStructFieldName);
   cmd.set_struct_field_name_ = {struct_type, field_name};
 }
 

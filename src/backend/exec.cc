@@ -371,20 +371,23 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       });
 #undef CASE
 
-    case ir::Op::CreateStruct: save(type::Struct::Make(cmd.struct_lit_)); break;
+    case ir::Op::CreateStruct: save(new type::IncompleteStruct); break;
     case ir::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
-          resolve<type::Struct *>(cmd.create_struct_field_.struct_));
+          resolve<type::IncompleteStruct *>(cmd.create_struct_field_.struct_));
       struct_to_modify->add_field(resolve(cmd.create_struct_field_.type_));
     } break;
     case ir::Op::SetStructFieldName: {
-      auto *struct_to_modify = ASSERT_NOT_NULL(
-          resolve<type::Struct *>(cmd.set_struct_field_name_.struct_));
+      auto *struct_to_modify =
+          ASSERT_NOT_NULL(resolve<type::IncompleteStruct *>(
+              cmd.set_struct_field_name_.struct_));
       struct_to_modify->set_last_name(cmd.set_struct_field_name_.name_);
     } break;
-    case ir::Op::FinalizeStruct:
-      // TODO remove me.
-      break;
+    case ir::Op::FinalizeStruct: {
+      auto *s = resolve<type::IncompleteStruct *>(cmd.reg_);
+      save(std::move(*s).finalize());
+      delete s;
+    } break;
     case ir::Op::DebugIr: LOG << call_stack.top().fn_; break;
     case ir::Op::Alloca: {
       ir::Addr addr;

@@ -6,6 +6,7 @@ struct Array;
 struct Enum;
 struct Flags;
 struct Function;
+struct IncompleteStruct;
 struct Pointer;
 struct Struct;
 struct Type;
@@ -42,6 +43,7 @@ struct Identifier;
 #include "function.h"
 #include "pointer.h"
 #include "primitive.h"
+#include "incomplete_struct.h"
 #include "struct.h"
 #include "tuple.h"
 #include "variant.h"

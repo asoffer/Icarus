@@ -144,7 +144,7 @@ struct Cmd {
   };
 
   struct CreateStructField {
-    type::Struct *struct_;
+    Register struct_;
     RegisterOr<type::Type const *> type_;
 
     inline friend std::ostream &operator<<(std::ostream &os,
@@ -155,7 +155,7 @@ struct Cmd {
 
   struct SetStructFieldName {
     // Implicitly the last element.
-    type::Struct *struct_;
+    Register struct_;
     std::string_view name_;
     inline friend std::ostream &operator<<(std::ostream &os,
                                            SetStructFieldName const &s) {
@@ -179,7 +179,6 @@ struct Cmd {
     Register reg_;
     size_t get_ret_;
     type::Type const *type_;
-    ast::StructLiteral *struct_lit_;
 
     CreateStructField create_struct_field_;
     SetStructFieldName set_struct_field_name_;

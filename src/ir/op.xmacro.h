@@ -189,7 +189,7 @@ OP_MACRO(XorBool,              Xor,                 bool,                    boo
 OP_MACRO(XorFlags,             Xor,                 FlagsVal,                flags_args_)
 OP_MACRO(OrFlags,              Or,                  FlagsVal,                flags_args_)
 OP_MACRO(AndFlags,             And,                 FlagsVal,                flags_args_)
-OP_MACRO(CreateStruct,         CreateStruct,        void,                    struct_lit_)
+OP_MACRO(CreateStruct,         CreateStruct,        void,                    empty_)
 OP_MACRO(CreateStructField,    CreateStructField,   void,                    create_struct_field_)
 OP_MACRO(SetStructFieldName,   SetStructFieldName,  void,                    set_struct_field_name_)
 OP_MACRO(FinalizeStruct,       Finalize,            type::Struct const*,     reg_)
