@@ -1,6 +1,7 @@
 #ifndef ICARUS_AST_STRUCT_LITERAL_H
 #define ICARUS_AST_STRUCT_LITERAL_H
 
+#include "ast/comma_list.h"
 #include "ast/expression.h"
 #include "scope.h"
 
@@ -30,6 +31,7 @@ struct StructLiteral : public Expression {
   std::unique_ptr<DeclScope> type_scope;
   // TODO declartaions directly. don't need unique_ptr indirection.
   base::vector<std::unique_ptr<Declaration>> fields_;
+  CommaList args_;
   Module *mod_ = nullptr;
 };
 }  // namespace ast

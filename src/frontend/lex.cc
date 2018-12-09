@@ -107,7 +107,7 @@ TaggedNode NextWord(SourceLocation &loc) {
       {"flags", kw_block_head},
       {"enum", kw_block_head},
       {"generate", op_l},
-      {"struct", kw_block_head},
+      {"struct", kw_struct},
       {"return", op_lt},
       {"yield", op_lt},
       {"switch", kw_block_head},

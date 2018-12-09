@@ -25,6 +25,7 @@ enum Tag : u64 {
   l_ref         = 1ull << 15,
   semicolon     = 1ull << 16,
   kw_block_head = 1ull << 17,
+  kw_struct     = 1ull << 18,
   op_r          = 1ull << 20,
   op_l          = 1ull << 21,
   op_b          = 1ull << 22,

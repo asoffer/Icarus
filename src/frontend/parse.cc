@@ -25,6 +25,7 @@
 #include "ast/scope_node.h"
 #include "ast/statements.h"
 #include "ast/struct_literal.h"
+#include "ast/struct_type.h"
 #include "ast/switch.h"
 #include "ast/terminal.h"
 #include "ast/unop.h"
@@ -389,6 +390,19 @@ std::unique_ptr<Node> BuildArrayLiteral(
   }
 
   return array_lit;
+}
+
+std::unique_ptr<Node> BuildGenericStructType(base::vector<std::unique_ptr<Node>> nodes,
+                                     Context *ctx) {
+  auto result = std::make_unique<StructType>(
+      TextSpan(nodes.front()->span, nodes.back()->span));
+  if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().parenthesized_) {
+    result->args_ = std::move(nodes[1]->as<CommaList>().exprs_);
+  } else {
+    result->args_.push_back(move_as<Expression>(nodes[1]));
+  }
+
+  return result;
 }
 
 std::unique_ptr<Node> BuildArrayType(base::vector<std::unique_ptr<Node>> nodes,
@@ -827,23 +841,6 @@ static std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
   }
 }
 
-static std::unique_ptr<ast::Node> BuildStructLiteral(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  auto struct_lit  = std::make_unique<ast::StructLiteral>();
-  struct_lit->mod_ = ctx->mod_;
-  struct_lit->span = TextSpan(nodes.front()->span, nodes.back()->span);
-  for (auto &stmt : nodes[1]->as<ast::Statements>().content_) {
-    if (stmt->is<ast::Declaration>()) {
-      struct_lit->fields_.push_back(move_as<ast::Declaration>(stmt));
-    } else {
-      ctx->error_log_.NonDeclarationInStructDeclaration(stmt->span);
-      // TODO show the entire struct declaration and point to the problematic
-      // lines.
-    }
-  }
-  return struct_lit;
-}
-
 static std::unique_ptr<ast::Node> BuildInterfaceLiteral(
     std::unique_ptr<ast::Statements> stmts, Context *ctx) {
   auto interface_lit = std::make_unique<ast::Interface>();
@@ -921,6 +918,43 @@ static std::unique_ptr<ast::Node> BuildSwitch(
   return switch_expr;
 }
 
+static std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
+    ast::Statements &&stmts, TextSpan span, Context *ctx) {
+  auto struct_lit  = std::make_unique<ast::StructLiteral>();
+  struct_lit->mod_ = ctx->mod_;
+  struct_lit->span = std::move(span);
+  for (auto &&stmt : std::move(stmts).content_) {
+    if (stmt->is<ast::Declaration>()) {
+      struct_lit->fields_.push_back(move_as<ast::Declaration>(stmt));
+    } else {
+      ctx->error_log_.NonDeclarationInStructDeclaration(stmt->span);
+      // TODO show the entire struct declaration and point to the problematic
+      // lines.
+    }
+  }
+  return struct_lit;
+}
+
+static std::unique_ptr<ast::Node> BuildGenericStruct(
+    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+  auto result = BuildStructLiteral(
+      std::move(nodes[4]->as<ast::Statements>()),
+      TextSpan(nodes.front()->span, nodes.back()->span), ctx);
+  if (nodes[1]->is<ast::CommaList>()) {
+    result->args_ = std::move(nodes[2]->as<ast::CommaList>());
+  } else {
+    result->args_.exprs_.push_back(move_as<ast::Expression>(nodes[2]));
+  }
+  return result;
+}
+
+static std::unique_ptr<ast::Node> BuildConcreteStruct(
+    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+  return BuildStructLiteral(std::move(nodes[1]->as<ast::Statements>()),
+                            TextSpan(nodes.front()->span, nodes.back()->span),
+                            ctx);
+}
+
 static std::unique_ptr<ast::Node> BuildKWBlock(
     base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   if (nodes[0]->is<frontend::Token>()) {
@@ -930,7 +964,7 @@ static std::unique_ptr<ast::Node> BuildKWBlock(
       return BuildEnumOrFlagLiteral(std::move(nodes), is_enum, ctx);
 
     } else if (tk == "struct") {
-      return BuildStructLiteral(std::move(nodes), ctx);
+      return BuildConcreteStruct(std::move(nodes), ctx);
 
     } else if (tk == "scope") {
       TextSpan span(nodes.front()->span, nodes.back()->span);
@@ -1068,8 +1102,8 @@ namespace frontend {
 static constexpr u64 OP_B = op_b | comma | colon | eq;
 static constexpr u64 EXPR = expr | fn_expr | scope_expr | fn_call_expr;
 // Used in error productions only!
-static constexpr u64 RESERVED = kw_block_head | op_lt;
-static constexpr u64 KW_BLOCK = kw_block_head | kw_block;
+static constexpr u64 RESERVED = kw_struct | kw_block_head | op_lt;
+static constexpr u64 KW_BLOCK = kw_struct | kw_block_head | kw_block;
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in the
 // list (second line of each rule). If so, then the function given in the third
@@ -1098,6 +1132,8 @@ auto Rules = std::array{
     Rule(expr, {l_bracket, r_bracket}, ast::BuildEmptyArray),
     Rule(expr, {l_bracket, EXPR, semicolon, EXPR, r_bracket},
          ast::BuildArrayType),
+    Rule(expr, {l_bracket, EXPR, semicolon, kw_struct, r_bracket},
+         ast::BuildGenericStructType),
     Rule(expr, {l_bracket, EXPR, semicolon, RESERVED, r_bracket},
          ErrMsg::Reserved<0, 3>),
     Rule(expr, {l_bracket, RESERVED, semicolon, EXPR, r_bracket},
@@ -1141,6 +1177,7 @@ auto Rules = std::array{
     Rule(expr, {l_paren, RESERVED, r_paren}, ErrMsg::Reserved<1, 1>),
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
     Rule(stmts, {stmts, (EXPR | stmts), newline}, ast::BuildMoreStatements),
+    Rule(expr, {kw_struct, l_paren, expr, r_paren, braced_stmts}, BuildGenericStruct),
     Rule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
     Rule(expr, {KW_BLOCK, newline}, drop_all_but<0>),
 
@@ -1205,7 +1242,8 @@ struct ParseState {
       return ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace && (get_type<1>() & (fn_expr | kw_block_head))) {
+    if (ahead.tag_ == l_brace &&
+        (get_type<1>() & (fn_expr | kw_block_head | kw_struct))) {
       return ShiftState::NeedMore;
     }
 
@@ -1217,11 +1255,11 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<1>() & kw_block_head) && ahead.tag_ == newline) {
+    if ((get_type<1>() & (kw_block_head | kw_struct)) && ahead.tag_ == newline) {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<2>() & kw_block_head) && get_type<1>() == newline) {
+    if ((get_type<2>() & (kw_block_head | kw_struct)) && get_type<1>() == newline) {
       return ShiftState::NeedMore;
     }
 

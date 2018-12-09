@@ -20,7 +20,7 @@ Register FinalizeStruct(Register r);
 namespace ast {
 std::string StructLiteral::to_string(size_t n) const {
   std::stringstream ss;
-  ss << "struct {\n";
+  ss << "struct " << args_.to_string(n) << "{\n";
   for (const auto &f : fields_) {
     ss << std::string((n + 1) * 2, ' ') << f->to_string(n) << "\n";
   }
