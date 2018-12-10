@@ -3,6 +3,7 @@
 #include <cstring>
 
 namespace type {
+
 size_t Primitive::string_size() const {
   switch (type_) {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \
@@ -37,7 +38,7 @@ static size_t NumDigits(size_t num) {
 size_t Array::string_size() const {
   size_t result = 1 + NumDigits(len);
 
-  const Type *const *type_ptr_ptr = &data_type;
+  Type const *const *type_ptr_ptr = &data_type;
   while ((*type_ptr_ptr)->is<Array>()) {
     auto array_ptr = &(*type_ptr_ptr)->as<const Array>();
     result += 2 + NumDigits(array_ptr->len);
@@ -50,7 +51,7 @@ char *Array::WriteTo(char *buf) const {
   buf = std::strcpy(buf, "[") + 1;
   buf = std::strcpy(buf, std::to_string(len).c_str()) + NumDigits(len);
 
-  const Type *const *type_ptr_ptr = &data_type;
+  Type const *const *type_ptr_ptr = &data_type;
   while ((*type_ptr_ptr)->is<Array>()) {
     auto array_ptr = &(*type_ptr_ptr)->as<const Array>();
 
@@ -72,6 +73,29 @@ char *Struct::WriteTo(char *buf) const {
   buf = std::strcpy(buf, "struct.") + 7;
   auto str = std::to_string(reinterpret_cast<uintptr_t>(this));
   return std::strcpy(buf, str.c_str()) + str.size();
+}
+
+size_t GenericStruct::string_size() const {
+  if (deps_.empty()) { return 10; }
+  size_t result = 2 * deps_.size() + 8;
+  for (Type const *t : deps_) { result += t->string_size(); }
+  return result;
+}
+
+char *GenericStruct::WriteTo(char *buf) const {
+  auto x = buf;
+  if (deps_.empty()) {
+    buf = std::strcpy(buf, "[; struct]") + 10;
+    return buf;
+  }
+  buf = std::strcpy(buf, "[") + 1;
+  buf = deps_[0]->WriteTo(buf);
+  for (size_t i = 1; i < deps_.size(); ++i) {
+    buf = std::strcpy(buf, ", ") + 2;
+    buf = deps_[i]->WriteTo(buf);
+  }
+  buf = std::strcpy(buf, "; struct]") + 9;
+  return buf;
 }
 
 size_t Enum::string_size() const {
@@ -140,8 +164,8 @@ char *Pointer::WriteTo(char *buf) const {
 }
 size_t Function::string_size() const {
   size_t acc = 0;
-  for (const Type *t : input) { acc += t->string_size(); }
-  for (const Type *t : output) { acc += t->string_size(); }
+  for (Type const *t : input) { acc += t->string_size(); }
+  for (Type const *t : output) { acc += t->string_size(); }
   acc += 2 * (input.size() - 1) +        // space between inputs
          (input.size() == 1 ? 0 : 2) +   // Parens
          (input.empty() ? 4 : 0) +       // void
@@ -189,7 +213,7 @@ char *Function::WriteTo(char *buf) const {
 
 size_t Variant::string_size() const {
   size_t result = (variants_.size() - 1) * 3;
-  for (const Type *v : variants_) {
+  for (Type const *v : variants_) {
     result += v->string_size() + (v->is<Struct>() || v->is<Primitive>() ||
                                           v->is<Enum>() || v->is<Flags>() ||
                                           v->is<Pointer>() ||
@@ -231,7 +255,7 @@ char *Variant::WriteTo(char *buf) const {
 
 size_t Tuple::string_size() const {
   size_t result = std::max<size_t>(2, 2 * entries_.size());
-  for (const Type *t : entries_) { result += t->string_size(); }
+  for (Type const *t : entries_) { result += t->string_size(); }
   return result;
 }
 

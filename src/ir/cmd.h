@@ -96,6 +96,12 @@ struct Cmd {
     ast::BlockLiteral *lit_;
   };
 
+  struct CacheLookup {
+    ast::StructLiteral *struct_literal_;
+    type::Type const* type_;
+    Register ret_slot_;
+  };
+
 #define OP_MACRO(op, tag, ...) struct tag##Tag;
 #include "ir/op.xmacro.h"
 #undef OP_MACRO
@@ -179,6 +185,8 @@ struct Cmd {
     Register reg_;
     size_t get_ret_;
     type::Type const *type_;
+
+    CacheLookup cache_lookup_;
 
     CreateStructField create_struct_field_;
     SetStructFieldName set_struct_field_name_;
@@ -514,6 +522,9 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                                   ast::BlockLiteral *lit);
 
 Val Cast(type::Type const *from, type::Type const *to, Val const& val);
+
+Register CacheLookup(ast::StructLiteral *sl, type::Type const *t,
+                     ir::Register result_slot_alloc);
 
 TypedRegister<Addr> Index(type::Type const *t, Register array_ptr,
                           RegisterOr<i32> offset);

@@ -4,6 +4,7 @@
 #include <cstring>
 #include "ir/val.h"
 #include "type/type.h"
+#include "type/callable.h"
 
 #ifdef ICARUS_USE_LLVM
 namespace llvm {
@@ -12,8 +13,6 @@ class FunctionType;
 #endif  // ICARUS_USE_LLVM
 
 namespace type {
-struct Callable : public Type {};
-
 struct GenericFunction : public Callable {
   GenericFunction() {}
   ~GenericFunction() override {}

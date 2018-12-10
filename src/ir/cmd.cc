@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "architecture.h"
+#include "ast/struct_literal.h"
 #include "base/container/vector.h"
 #include "ir/func.h"
 #include "ir/phi.h"
@@ -23,9 +24,16 @@ Cmd &MakeCmd(type::Type const *t, Op op) {
   return cmd;
 }
 
+Register CacheLookup(ast::StructLiteral *sl, type::Type const *t,
+                     Register result_slot_alloc) {
+  auto &cmd         = MakeCmd(t, Op::CacheLookup);
+  cmd.cache_lookup_ = Cmd::CacheLookup{sl, t, result_slot_alloc};
+  return cmd.result;
+}
+
 // TODO pass atyped_reg? not sure that's right.
 Register CastPtr(Register r, type::Pointer const *t) {
-  auto &cmd     = ir::MakeCmd(t, Op::CastPtr);
+  auto &cmd      = MakeCmd(t, Op::CastPtr);
   cmd.typed_reg_ = type::Typed<Register>(r, t);
   return cmd.result;
 }
@@ -45,13 +53,13 @@ RegisterOr<i32> Extend(RegisterOr<char> r) {
 }
 
 RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r) {
-  auto &cmd  = MakeCmd(type::Int32, Op::Bytes);
+  auto &cmd     = MakeCmd(type::Int32, Op::Bytes);
   cmd.type_arg_ = r;
   return cmd.result;
 }
 
 RegisterOr<i32> Align(RegisterOr<type::Type const *> r) {
-  auto &cmd  = MakeCmd(type::Int32, Op::Align);
+  auto &cmd     = MakeCmd(type::Int32, Op::Align);
   cmd.type_arg_ = r;
   return cmd.result;
 }
@@ -62,12 +70,12 @@ static Val CastTo(type::Type const *from, Val const &val) {
     auto *to       = type::Get<T>();
     auto &cmd      = MakeCmd(to, Cmd::OpCode<Cmd::CastTag, T>());
     cmd.typed_reg_ = type::Typed<Register>(*r, from);
-    return ir::Val::Reg(cmd.result, to);
+    return Val::Reg(cmd.result, to);
   } else {
     return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float>(
         from, [&](auto type_holder) {
           using FromType = typename decltype(type_holder)::type;
-          return ir::Val(static_cast<T>(std::get<FromType>(val.value)));
+          return Val(static_cast<T>(std::get<FromType>(val.value)));
         });
   }
   UNREACHABLE("To ", type::Get<T>(), " from ", from);
@@ -84,7 +92,7 @@ Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
 RegisterOr<bool> Not(RegisterOr<bool> r) {
   if (!r.is_reg_) { return !r.val_; }
   auto &cmd = MakeCmd(type::Bool, Op::NotBool);
-  cmd.reg_ = r.reg_;
+  cmd.reg_  = r.reg_;
   Func::Current->references_[cmd.reg_].insert(cmd.result);
   return cmd.result;
 }
@@ -99,14 +107,14 @@ RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r) {
 RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r) {
   if (!r.is_reg_) { return type::Ptr(r.val_); }
   auto &cmd = MakeCmd(type::Type_, Op::Ptr);
-  cmd.reg_ = r.reg_;
+  cmd.reg_  = r.reg_;
   return cmd.result;
 }
 
 RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r) {
   if (!r.is_reg_) { return type::BufPtr(r.val_); }
   auto &cmd = MakeCmd(type::Type_, Op::BufPtr);
-  cmd.reg_ = r.reg_;
+  cmd.reg_  = r.reg_;
   return cmd.result;
 }
 
@@ -122,7 +130,7 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
     return type::Func(std::move(ins), std::move(outs));
   }
   auto &cmd = MakeCmd(type::Type_, Op::Arrow);
-  cmd.set<Cmd::ArrowTag, type::Type const*>(v1, v2);
+  cmd.set<Cmd::ArrowTag, type::Type const *>(v1, v2);
   auto &refs = Func::Current->references_;
   if (v1.is_reg_) { refs[v1.reg_].insert(cmd.result); }
   if (v2.is_reg_) { refs[v2.reg_].insert(cmd.result); }
@@ -148,8 +156,8 @@ void AppendToTuple(Register tup, RegisterOr<type::Type const *> entry) {
 }
 
 Register FinalizeTuple(Register r) {
-  auto &cmd           = MakeCmd(type::Type_, Op::FinalizeTuple);
-  cmd.reg_ = r;
+  auto &cmd = MakeCmd(type::Type_, Op::FinalizeTuple);
+  cmd.reg_  = r;
   return cmd.result;
 }
 
@@ -342,7 +350,7 @@ void SetStructFieldName(Register struct_type, std::string_view field_name) {
   cmd.set_struct_field_name_ = {struct_type, field_name};
 }
 
-TypedRegister<Addr> Alloca(const type::Type *t) {
+TypedRegister<Addr> Alloca(type::Type const *t) {
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
                   ->block(Func::Current->entry())
                   .cmds_.emplace_back(type::Ptr(t), Op::Alloca);
@@ -358,6 +366,9 @@ static TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
 }
 
 void SetRet(size_t n, Val const &v, Context *ctx) {
+  if (v.type->is<type::GenericStruct>()) {
+    return SetRet(n, v.reg_or<AnyFunc>());
+  }
   return type::Apply(ASSERT_NOT_NULL(v.type), [&](auto type_holder) {
     using T = typename decltype(type_holder)::type;
     if constexpr (std::is_same_v<T, type::Struct const *>) {
@@ -587,6 +598,11 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {
 static std::ostream &operator<<(std::ostream &os, Cmd::CondJump const &j) {
   return os << j.cond_ << " false -> " << j.blocks_[0] << " true -> "
             << j.blocks_[1];
+}
+
+static std::ostream &operator<<(std::ostream &os, Cmd::CacheLookup const &cl) {
+  return os << cl.struct_literal_->to_string(0) << " " << cl.type_->to_string()
+            << " " << cl.ret_slot_;
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {

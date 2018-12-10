@@ -35,7 +35,9 @@ size_t Architecture::alignment(type::Type const *t) const {
       case type::PrimType::Scope:
       case type::PrimType::StatefulScope: return 8;
     }
-    UNREACHABLE();
+    UNREACHABLE(t);
+  } else if (t->is<type::GenericStruct>()) {
+    return local_ptr_align_;
   } else if (t->is<type::CharBuffer>()) {
     // TODO what about utf-16 or utf-32 buffers?
     return alignof(std::string_view);
@@ -70,7 +72,7 @@ size_t Architecture::alignment(type::Type const *t) const {
     }
     return alignment_val;
   } else {
-    UNREACHABLE();
+    UNREACHABLE(t);
   }
 }
 
@@ -101,7 +103,9 @@ size_t Architecture::bytes(type::Type const *t) const {
       case type::PrimType::StatefulScope: return 8;
     }
 
-    UNREACHABLE();
+    UNREACHABLE(t);
+  } else if (t->is<type::GenericStruct>()) {
+    return local_ptr_bytes_;
   } else if (t->is<type::CharBuffer>()) {
     return sizeof(
         std::string_view);  // TODO fix me t->as<type::CharBuffer>().length_;
@@ -147,6 +151,6 @@ size_t Architecture::bytes(type::Type const *t) const {
     }
     return num_bytes + ptr_bytes_;
   } else {
-    UNREACHABLE();
+    UNREACHABLE(t);
   }
 }

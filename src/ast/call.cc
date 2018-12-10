@@ -14,6 +14,7 @@
 #include "type/array.h"
 #include "type/char_buffer.h"
 #include "type/function.h"
+#include "type/generic_struct.h"
 #include "type/pointer.h"
 #include "type/tuple.h"
 #include "type/variant.h"
@@ -169,7 +170,7 @@ static void EmitOneCallDispatch(
       }
     }
   }
-  ASSERT(callee.type, Is<type::Function>());
+  ASSERT(callee.type, Is<type::Callable>());
 
   // After the last check, if you pass, you should dispatch
   base::vector<std::pair<std::string, ast::Expression *>> *const_args = nullptr;
@@ -194,13 +195,23 @@ static void EmitOneCallDispatch(
   }
 
   ir::Arguments call_args;
-  call_args.type_ = &callee.type->as<type::Function>();
+  call_args.type_ = &callee.type->as<type::Callable>();
   for (const auto &arg : args) { call_args.append(arg); }
 
   base::vector<ir::Val> results;
   ir::OutParams outs;
-  ASSERT(binding.fn_.type(), Is<type::Function>());
-  if (!binding.fn_.type()->as<type::Function>().output.empty()) {
+  
+  // TODO don't copy the vector.
+  base::vector<type::Type const *> out_types;
+  if (binding.fn_.type()->is<type::Function>()) {
+    out_types = binding.fn_.type()->as<type::Function>().output;
+  } else if (binding.fn_.type()->is<type::GenericStruct>()) {
+    out_types.push_back(type::Type_);
+  } else {
+    UNREACHABLE();
+  }
+
+  if (!out_types.empty()) {
     auto MakeRegister = [&](type::Type const *return_type,
                             type::Type const *expected_return_type,
                             ir::Val *out_reg) {
@@ -239,18 +250,14 @@ static void EmitOneCallDispatch(
     };
 
     if (ret_type->is<type::Tuple>()) {
-      ASSERT(binding.fn_.type(), Is<type::Function>());
-      ASSERT(ret_type->as<type::Tuple>().entries_.size() ==
-             binding.fn_.type()->as<type::Function>().output.size());
-      for (size_t i = 0;
-           i < binding.fn_.type()->as<type::Function>().output.size(); ++i) {
-        MakeRegister(binding.fn_.type()->as<type::Function>().output.at(i),
+      ASSERT(ret_type->as<type::Tuple>().entries_.size() == out_types.size());
+      for (size_t i = 0; i < out_types.size(); ++i) {
+        MakeRegister(out_types.at(i),
                      ret_type->as<type::Tuple>().entries_.at(i),
                      &outgoing_regs->at(i));
       }
     } else {
-      MakeRegister(binding.fn_.type()->as<type::Function>().output.at(0),
-                   ret_type, &outgoing_regs->at(0));
+      MakeRegister(out_types.at(0), ret_type, &outgoing_regs->at(0));
     }
   }
 

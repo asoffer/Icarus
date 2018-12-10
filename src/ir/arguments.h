@@ -5,6 +5,7 @@
 #include "base/container/vector.h"
 #include "base/untyped_buffer.h"
 #include "ir/register.h"
+#include "type/callable.h"
 
 namespace type {
 struct Function;
@@ -19,7 +20,7 @@ struct Arguments {
   std::string to_string() const;
   base::untyped_buffer PrepareCallBuffer(base::untyped_buffer const &regs);
 
-  type::Function const *type_ = nullptr;
+  type::Callable const *type_ = nullptr;
   base::vector<bool> is_reg_;
   base::untyped_buffer args_{0};
 };

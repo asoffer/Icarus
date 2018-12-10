@@ -146,4 +146,9 @@ ir::Val Struct::PrepareArgument(const Type *from, const ir::Val &val,
   return ir::Val::Reg(arg, type::Ptr(this));
 }
 
+ir::Val GenericStruct::PrepareArgument(const Type *from, const ir::Val &val,
+                                       Context *ctx) const {
+  NOT_YET(this, from);
+}
+
 }  // namespace type

@@ -10,6 +10,7 @@
 #include "scope.h"
 #include "type/cast.h"
 #include "type/function.h"
+#include "type/generic_struct.h"
 #include "type/tuple.h"
 #include "type/variant.h"
 
@@ -27,7 +28,7 @@ struct DispatchTableRow {
       FnArgs<Expression *> const &args, Context *ctx);
 
   FnArgs<type::Type const *> call_arg_types_;
-  type::Function const *function_type_ = nullptr;
+  type::Callable const *callable_type_ = nullptr;
   Binding binding_;
 
  private:
@@ -173,8 +174,8 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeNonConstant(
   if (!dispatch_table_row.SetTypes(fn_option, ctx)) {
     return base::unexpected("TODO");
   }
-  dispatch_table_row.function_type_ =
-      &ctx->type_of(fn_option.get())->as<type::Function>();
+  dispatch_table_row.callable_type_ =
+      &ctx->type_of(fn_option.get())->as<type::Callable>();
 
   return dispatch_table_row;
 }
@@ -210,8 +211,8 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeFromForeignFunction(
   auto result = MakeNonConstant(fn_option.as_type<type::Function>(), args, ctx);
   if (!result.has_value()) { return base::unexpected("TODO"); }
   result->binding_.const_ = true;
-  result->function_type_  = &fn_option.type()->as<type::Function>();
-  ASSERT(result->function_type_ != nullptr);
+  result->callable_type_  = fn_option.type();
+  ASSERT(result->callable_type_ != nullptr);
   return result;
 }
 
@@ -257,13 +258,13 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
 
   // TODO named arguments too.
   auto *fn_type = &ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx))
-                       ->as<type::Function>();
+                       ->as<type::Callable>();
   fn_lit->Validate(&new_ctx);
   binding.fn_.set_type(fn_type);
 
   DispatchTableRow dispatch_table_row(std::move(binding));
-  dispatch_table_row.function_type_ = fn_type;
-  ASSERT(dispatch_table_row.function_type_ != nullptr);
+  dispatch_table_row.callable_type_ = fn_type;
+  ASSERT(dispatch_table_row.callable_type_ != nullptr);
   if (!dispatch_table_row.SetTypes(*fn_lit, args, &new_ctx)) {
     return base::unexpected("TODO");
   }
@@ -288,23 +289,44 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeFromIrFunc(
   if (!dispatch_table_row.SetTypes(ir_func, args, ctx)) {
     return base::unexpected("TODO");
   }
-  dispatch_table_row.function_type_ = &fn_option.type()->as<type::Function>();
-  ASSERT(dispatch_table_row.function_type_ != nullptr);
+
+  // Could be a function or a generic struct.
+  dispatch_table_row.callable_type_ = fn_option.type();
+  ASSERT(dispatch_table_row.callable_type_ != nullptr);
   return dispatch_table_row;
 }
 
 static const type::Type *ComputeRetType(
-    base::vector<type::Function const *> const &fn_types) {
-  if (fn_types.empty()) { return nullptr; }
-  size_t num_outs = fn_types[0]->output.size();
-  ASSERT(fn_types[0] != nullptr);
+    base::vector<type::Callable const *> const &callable_types) {
+  if (callable_types.empty()) { return nullptr; }
+  std::unordered_set<size_t> sizes;
+  for (auto *callable_type : callable_types) {
+    if (callable_type->is<type::Function>()) {
+      sizes.insert(callable_type->as<type::Function>().output.size());
+    } else if (callable_type->is<type::GenericStruct>()) {
+      sizes.insert(1);
+    } else {
+      UNREACHABLE(callable_type);
+    }
+  }
+  if (sizes.size() != 1) {
+    // TODO log an error
+    return nullptr;
+  }
+
+  size_t num_outs = *sizes.begin();
   base::vector<base::vector<type::Type const *>> out_types(num_outs);
-  for (size_t i = 0; i < fn_types.size(); ++i) {
-    auto *fn_type = fn_types.at(i);
-    ASSERT(fn_type != nullptr);
-    ASSERT(fn_type->output.size() == num_outs);
-    for (size_t j = 0; j < num_outs; ++j) {
-      out_types[j].push_back(fn_type->output[j]);
+  for (size_t i = 0; i < callable_types.size(); ++i) {
+    auto *callable_type = callable_types.at(i);
+    ASSERT(callable_type != nullptr);
+    if (callable_type->is<type::Function>()) {
+      for (size_t j = 0; j < num_outs; ++j) {
+        out_types[j].push_back(callable_type->as<type::Function>().output[j]);
+      }
+    } else if (callable_type->is<type::GenericStruct>()) {
+      out_types[0].push_back(type::Type_);
+    } else {
+      UNREACHABLE();
     }
   }
   base::vector<type::Type const *> combined_outputs;
@@ -329,7 +351,7 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
     Context *ctx) {
   DispatchTable table;
 
-  base::vector<type::Function const *> precise_function_types;
+  base::vector<type::Callable const *> precise_callable_types;
   for (auto &overload : overload_set) {
     // It is possible for elements of overload_set to be null. The example that
     // brought this to my attention was
@@ -353,16 +375,16 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
     table.total_size_ +=
         ComputeExpansion(maybe_dispatch_table_row->call_arg_types_);
     maybe_dispatch_table_row->binding_.fn_.set_type(
-        maybe_dispatch_table_row->function_type_);
+        maybe_dispatch_table_row->callable_type_);
     // TODO don't ned this as a field on the dispatchtablerow.
-    precise_function_types.push_back(maybe_dispatch_table_row->function_type_);
+    precise_callable_types.push_back(maybe_dispatch_table_row->callable_type_);
     table.bindings_.emplace(std::move(maybe_dispatch_table_row->call_arg_types_),
                             std::move(maybe_dispatch_table_row->binding_));
   }
 
   // TODO this won't work with generics. Need to get the info from the table
   // itself. Probably put in in a row.
-  type::Type const *ret_type = ComputeRetType(precise_function_types);
+  type::Type const *ret_type = ComputeRetType(precise_callable_types);
 
   return std::pair{std::move(table), ret_type};
 }

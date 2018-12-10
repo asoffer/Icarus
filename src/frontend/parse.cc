@@ -940,10 +940,14 @@ static std::unique_ptr<ast::Node> BuildGenericStruct(
   auto result = BuildStructLiteral(
       std::move(nodes[4]->as<ast::Statements>()),
       TextSpan(nodes.front()->span, nodes.back()->span), ctx);
-  if (nodes[1]->is<ast::CommaList>()) {
-    result->args_ = std::move(nodes[2]->as<ast::CommaList>());
+  if (nodes[2]->is<ast::CommaList>()) {
+    using base::check::Is;
+    for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
+      ASSERT(expr, Is<ast::Declaration>());  // TODO handle failure
+      result->args_.push_back(move_as<ast::Declaration>(expr));
+    }
   } else {
-    result->args_.exprs_.push_back(move_as<ast::Expression>(nodes[2]));
+    result->args_.push_back(move_as<ast::Declaration>(nodes[2]));
   }
   return result;
 }

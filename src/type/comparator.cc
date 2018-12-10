@@ -32,6 +32,7 @@ Cmp Variant::Comparator() const {
 }
 
 Cmp Struct::Comparator() const { return Cmp::None; }
+Cmp GenericStruct::Comparator() const { return Cmp::None; }
 Cmp CharBuffer::Comparator() const { return Cmp::Order; }
 
 }  // namespace type

@@ -5,6 +5,7 @@
 #include "ir/func.h"
 #include "property/property.h"
 #include "type/function.h"
+#include "type/generic_struct.h"
 
 namespace debug {
 extern bool validation;
@@ -367,8 +368,18 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
   // so figure out why.
 
   std::unordered_set<Entry> stale_down;
-  while (index < args.type_->input.size()) {
-    auto *t = args.type_->input.at(index);
+  base::vector<type::Type const *> const &ins = [&] {
+    if (args.type_->is<type::Function>()) {
+      return args.type_->as<type::Function>().input;
+    } else if (args.type_->is<type::GenericStruct>()) {
+      return args.type_->as<type::GenericStruct>().deps_;
+    } else {
+      UNREACHABLE();
+    }
+  }();
+
+  while (index < ins.size()) {
+    auto *t = ins.at(index);
     offset  = arch.MoveForwardToAlignment(t, offset);
     // TODO instead of looking for non-register args, this should be moved out
     // to the caller. because registers might also have some properties that can

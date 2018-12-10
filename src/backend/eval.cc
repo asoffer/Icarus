@@ -85,7 +85,7 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
     } else if (t->is<type::CharBuffer>()) {
       results.push_back(ir::Val::CharBuf(
           std::string(result_buf.get<std::string_view>(offset))));
-    } else if (t->is<type::Function>()) {
+    } else if (t->is<type::Function>() || t->is<type::GenericStruct>()) {
       // TODO foreign func, etc?
       auto any_func = result_buf.get<ir::AnyFunc>(offset);
       results.push_back(ir::Val::Func(t, any_func));

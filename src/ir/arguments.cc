@@ -10,7 +10,16 @@ std::string Arguments::to_string() const {
   auto arch     = Architecture::InterprettingMachine();
   size_t offset = 0;
   size_t i      = 0;
-  for (auto *t : type_->input) {
+  base::vector<type::Type const *> const &ts = [&] {
+    if (type_->is<type::Function>()) {
+      return type_->as<type::Function>().input;
+    } else if (type_->is<type::GenericStruct>()) {
+      return type_->as<type::GenericStruct>().deps_;
+    } else {
+      UNREACHABLE();
+    }
+  }();
+  for (auto *t : ts) {
     if (is_reg_[i]) {
       // TODO wrap this up somewhere.
       offset = ((offset - 1) | (alignof(Register) - 1)) + 1;
@@ -55,11 +64,30 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
 
   size_t offset   = 0;
   auto arch       = Architecture::InterprettingMachine();
+
+  base::vector<type::Type const *> const &ins = [&] {
+    if (type_->is<type::Function>()) {
+      return type_->as<type::Function>().input;
+    } else if (type_->is<type::GenericStruct>()) {
+      return type_->as<type::GenericStruct>().deps_;
+    } else {
+      UNREACHABLE();
+    }
+  }();
+
+  auto outs = [&] {
+    if (type_->is<type::Function>()) {
+      return type_->as<type::Function>().output;
+    } else if (type_->is<type::GenericStruct>()) {
+      return base::vector<type::Type const *>{type::Type_};
+    } else {
+      UNREACHABLE();
+    }
+  }();
+
   for (size_t i = 0; i < is_reg_.size(); ++i) {
     bool is_reg = is_reg_[i];
-    auto *t     = (i < type_->input.size())
-                  ? type_->input.at(i)
-                  : type_->output.at(i - type_->input.size());
+    auto *t = (i < ins.size()) ? ins.at(i) : outs.at(i - ins.size());
 
     if (is_reg) {
       offset = ((offset - 1) | (alignof(ir::Register) - 1)) + 1;

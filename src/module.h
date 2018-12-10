@@ -48,19 +48,17 @@ struct Module {
   type::Type const *GetType(std::string const &name) const;
   ast::Declaration *GetDecl(std::string const &name) const;
 
-  std::map<ast::BoundConstants,
-           std::unordered_set<ast::FunctionLiteral const *>>
+  std::map<ast::BoundConstants, std::unordered_set<ast::Expression const *>>
       completed_;
 
   struct CompilationWorkItem {
-    CompilationWorkItem(ast::BoundConstants bc, ast::FunctionLiteral *f,
-                        Module *mod)
-        : bound_constants_(std::move(bc)), fn_lit_(f), mod_(mod) {}
+    CompilationWorkItem(ast::BoundConstants bc, ast::Expression *e, Module *mod)
+        : bound_constants_(std::move(bc)), expr_(e), mod_(mod) {}
 
     void Complete();
 
     ast::BoundConstants bound_constants_;
-    ast::FunctionLiteral *fn_lit_;
+    ast::Expression *expr_;
     Module *mod_;
   };
   std::queue<CompilationWorkItem> to_complete_;
@@ -71,7 +69,7 @@ struct Module {
   // Holds all constants defined in the module (both globals and scoped
   // constants). These are the values in the map. They're keyed on conditional
   // constants. So we have options for mulitple meanings of things depending on
-  // context. 
+  // context.
   //
   // TODO Almost surely this needs to be even deeper, treating it as a tree
   // of arbitrary depth.
@@ -102,7 +100,7 @@ struct Module {
            std::unordered_set<ast::FunctionLiteral const *>>
       validated_;
   std::map<ast::BoundConstants,
-           base::unordered_map<ast::FunctionLiteral const *, ir::Func *>>
+           base::unordered_map<ast::Expression const *, ir::Func *>>
       ir_funcs_;
 };
 

@@ -265,3 +265,4 @@ OP_MACRO(SetRetScope,          SetRet,              ast::ScopeLiteral*,      set
 OP_MACRO(SetRetGeneric,        SetRet,              ast::FunctionLiteral  *, set_ret_generic_)
 OP_MACRO(SetRetModule,         SetRet,              Module const*,           set_ret_module_)
 OP_MACRO(SetRetBlock,          SetRet,              BlockSequence,           set_ret_block_)
+OP_MACRO(CacheLookup,          CacheLookup,         void,                    cache_lookup_)

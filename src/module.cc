@@ -5,6 +5,7 @@
 #include "ast/declaration.h"
 #include "ast/expression.h"
 #include "ast/function_literal.h"
+#include "ast/struct_literal.h"
 #include "backend/emit.h"
 #include "backend/eval.h"
 #include "base/guarded.h"
@@ -74,10 +75,16 @@ ast::Declaration *Module::GetDecl(std::string const &name) const {
 void Module::CompilationWorkItem::Complete() {
   // Need to copy bc because this needs to be set before we call CompleteBody.
   // TODO perhaps on ctx it could be a pointer?
-  if (mod_->completed_[bound_constants_].emplace(fn_lit_).second) {
+  if (mod_->completed_[bound_constants_].emplace(expr_).second) {
     Context ctx(mod_);
     ctx.bound_constants_ = bound_constants_;
-    fn_lit_->CompleteBody(&ctx);
+    if (expr_->is<ast::FunctionLiteral>()) {
+      expr_->as<ast::FunctionLiteral>().CompleteBody(&ctx);
+    } else if (expr_->is<ast::StructLiteral>()) {
+      expr_->as<ast::StructLiteral>().CompleteBody(&ctx);
+    } else {
+      UNREACHABLE(expr_);
+    }
   }
 }
 

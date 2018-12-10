@@ -58,6 +58,7 @@ struct Addr;
 namespace type {
 struct Function;
 struct Struct;
+struct GenericStruct;
 
 // Note: the order of these is meaningful and relied upon!
 enum class Cmp : u8 { None, Equality, Order };
