@@ -45,8 +45,8 @@ struct Typed {
   }
 
  private:
-  V value_;
-  T const* type_;
+  V value_{};
+  T const* type_ = nullptr;
 };
 
 template <typename V>

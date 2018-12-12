@@ -8,11 +8,6 @@
 #include "scope.h"
 #include "type/all.h"
 
-base::vector<ir::Val> EmitCallDispatch(
-    const ast::FnArgs<std::pair<ast::Expression *, ir::Val>> &args,
-    const ast::DispatchTable &dispatch_table, const type::Type *ret_type,
-    Context *ctx);
-
 namespace ast {
 std::string RepeatedUnop::to_string(size_t n) const {
   switch (op_) {
@@ -138,8 +133,7 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
         } else if (t->is<type::Struct>()) {
           ast::FnArgs<std::pair<ast::Expression *, ir::Val>> args;
           args.pos_.emplace_back(args_.exprs_[index].get(), std::move(val));
-          return EmitCallDispatch(args, dispatch_tables_.at(index),
-                                  type::Void(), ctx);
+          return dispatch_tables_.at(index).EmitCall(args, type::Void(), ctx);
         } else {
           t->EmitRepr(val, ctx);
         }

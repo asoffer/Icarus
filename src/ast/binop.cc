@@ -45,11 +45,6 @@ void ForEachExpr(ast::Expression *expr,
 
 }  // namespace
 
-base::vector<ir::Val> EmitCallDispatch(
-    ast::FnArgs<std::pair<ast::Expression *, ir::Val>> const &args,
-    ast::DispatchTable const &dispatch_table, const type::Type *ret_type,
-    Context *ctx);
-
 namespace ast {
 using base::check::Is;
 using base::check::Not;
@@ -368,8 +363,8 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     args.pos_.emplace_back(lhs.get(), lhs->EmitIR(ctx)[0]);
     args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx)[0]);
 
-    return EmitCallDispatch(args, dispatch_table_,
-                            ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
+    return dispatch_table_.EmitCall(args, ASSERT_NOT_NULL(ctx->type_of(this)),
+                                    ctx);
   }
 
   switch (op) {

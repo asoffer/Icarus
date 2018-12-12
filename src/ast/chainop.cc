@@ -15,11 +15,6 @@
 #include "type/struct.h"
 #include "type/tuple.h"
 
-base::vector<ir::Val> EmitCallDispatch(
-    const ast::FnArgs<std::pair<ast::Expression *, ir::Val>> &args,
-    const ast::DispatchTable &dispatch_table, const type::Type *ret_type,
-    Context *ctx);
-
 namespace ir {
 Val BlockSeq(base::vector<Val> const &blocks);
 RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals);
@@ -49,8 +44,8 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
     args.pos_.emplace_back(chain_op->exprs[index].get(), lhs_ir);
     args.pos_.emplace_back(chain_op->exprs[index + 1].get(), rhs_ir);
 
-    auto results = EmitCallDispatch(args, chain_op->dispatch_tables_[index],
-                                    type::Bool, ctx);
+    auto results =
+        chain_op->dispatch_tables_[index].EmitCall(args, type::Bool, ctx);
     ASSERT(results.size() == 1u);
     return results[0].reg_or<bool>();
 

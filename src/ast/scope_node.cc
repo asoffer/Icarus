@@ -17,11 +17,6 @@
 #include "type/pointer.h"
 #include "type/type.h"
 
-base::vector<ir::Val> EmitCallDispatch(
-    ast::FnArgs<std::pair<ast::Expression *, ir::Val>> const &args,
-    ast::DispatchTable const &dispatch_table, type::Type const *ret_type,
-    Context *ctx);
-
 namespace ast {
 using base::check::Is;
 
@@ -166,12 +161,13 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
           [](std::unique_ptr<Expression> const &expr) { return expr.get(); }),
       init_os, ctx);
   auto block_seq =
-      EmitCallDispatch(
-          args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
-            return std::pair(const_cast<Expression *>(expr.get()),
-                             expr->EmitIR(ctx)[0]);
-          }),
-          dispatch_table, result_type, ctx)[0]
+      dispatch_table
+          .EmitCall(
+              args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
+                return std::pair(const_cast<Expression *>(expr.get()),
+                                 expr->EmitIR(ctx)[0]);
+              }),
+              result_type, ctx)[0]
           .reg_or<ir::BlockSequence>();
   ir::BlockSeqJump(block_seq, jump_table);
 
@@ -198,7 +194,7 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
         DispatchTable::Make(before_expr_args, data.before_os_, ctx);
 
     // TODO args?
-    EmitCallDispatch(before_args, dispatch_table, result_type, ctx);
+    dispatch_table.EmitCall(before_args, result_type, ctx);
 
     block->EmitIR(ctx);
     auto yields = std::move(ctx->yields_stack_.back());
@@ -218,7 +214,7 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     std::tie(dispatch_table, result_type) =
         DispatchTable::Make(after_expr_args, data.after_os_, ctx);
     auto call_exit_result =
-        EmitCallDispatch(after_args, dispatch_table, result_type, ctx)[0]
+        dispatch_table.EmitCall(after_args, result_type, ctx)[0]
             .reg_or<ir::BlockSequence>();
 
     ir::BlockSeqJump(call_exit_result, jump_table);
@@ -243,7 +239,7 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     std::tie(dispatch_table, result_type) =
         DispatchTable::Make(expr_args, done_os, ctx);
     
-    auto results = EmitCallDispatch(args, dispatch_table, result_type, ctx);
+    auto results = dispatch_table.EmitCall(args, result_type, ctx);
     if (scope_lit->stateful_) { state_type->EmitDestroy(alloc, ctx); }
     return results;
   }

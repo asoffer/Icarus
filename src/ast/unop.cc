@@ -9,11 +9,6 @@
 #include "ir/func.h"
 #include "type/all.h"
 
-base::vector<ir::Val> EmitCallDispatch(
-    const ast::FnArgs<std::pair<ast::Expression *, ir::Val>> &args,
-    const ast::DispatchTable &dispatch_table, const type::Type *ret_type,
-    Context *ctx);
-
 namespace ast {
 using base::check::Is;
 using base::check::Not;
@@ -152,7 +147,7 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
     // TODO struct is not exactly right. we really mean user-defined
     FnArgs<std::pair<Expression *, ir::Val>> args;
     args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx)[0])};
-    return EmitCallDispatch(args, dispatch_table_, ctx->type_of(this), ctx);
+    return dispatch_table_.EmitCall(args, ctx->type_of(this), ctx);
   }
 
   switch (op) {

@@ -31,8 +31,10 @@ struct expected {
 
   T *operator->() { return std::get_if<T>(&val_); }
   T const *operator->() const { return std::get_if<T>(&val_); }
-  T *operator*() { return std::get<T>(val_); }
-  T const *operator*() const { return std::get<T>(&val_); }
+
+  T &operator*() & { return std::get<T>(val_); }
+  T const &operator*() const & { return std::get<T>(val_); }
+  T &&operator*() && { return std::get<T>(std::move(val_)); }
 
   bool has_value() { return std::holds_alternative<T>(val_); }
   unexpected error() { return std::get<unexpected>(val_); }

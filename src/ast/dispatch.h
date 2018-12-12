@@ -27,16 +27,20 @@ struct Expression;
 // and arguments along with their types. the associated types may differ from
 // the type of the callable or arguments computed by VerifyType. This is
 // because, an argument which is a variant may be dispatched to more than one
-// place. So, for instance if there are functions `id :: bool -> bool` and 
+// place. So, for instance if there are functions `id :: bool -> bool` and
 // `id ::= int -> int`, then calling `id` with a variant will produce two
 // bindings: One for bool and one for int. Simlarly, the type of `id` on it's
 // own is expressed as an overload set, but for each particular binding will be
 // either `int -> int` or `bool -> bool`.
 struct Binding {
   void SetPositionalArgs(FnArgs<Expression *> const &args);
-  bool SetNamedArgs(
-      FnArgs<Expression *> const &args,
-      base::unordered_map<std::string, size_t> const &index_lookup);
+
+  bool SetArgs(FnArgs<Expression *> const &args,
+               base::unordered_map<std::string, size_t> const &index_lookup);
+  static base::expected<Binding> Make(
+      type::Typed<Expression *, type::Callable> fn,
+      FnArgs<Expression *> const &args, size_t n,
+      base::unordered_map<std::string, size_t> const *index_lookup = nullptr);
 
   bool defaulted(size_t i) const { return exprs_.at(i).get() == nullptr; }
 
@@ -55,7 +59,8 @@ struct Binding {
   base::vector<type::Typed<Expression *>> exprs_;
 
   bool const_ = false;
-  ast::BoundConstants bound_constants_; // TDOO don't copy these. Use some sitting on a module.
+  BoundConstants
+      bound_constants_;  // TODO don't copy these. Use some sitting on a module.
 };
 
 struct DispatchTable {
@@ -67,6 +72,10 @@ struct DispatchTable {
   static std::pair<DispatchTable, type::Type const *> Make(
       FnArgs<Expression *> const &args, OverloadSet const &overload_set,
       Context *ctx);
+
+  base::vector<ir::Val> EmitCall(
+      ast::FnArgs<std::pair<ast::Expression *, ir::Val>> const &args,
+      type::Type const *ret_type, Context *ctx) const;
 
   base::map<FnArgs<type::Type const *>, Binding> bindings_;
   std::unordered_map<Expression const *, std::string> failure_reasons_;
