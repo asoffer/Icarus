@@ -71,7 +71,7 @@ void StructLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &f : fields_) { f->ExtractJumps(rets); }
 }
 
-ir::Register GenerateStruct(StructLiteral *sl, Context *ctx) {
+static ir::Register GenerateStruct(StructLiteral *sl, Context *ctx) {
   ir::Register r = ir::CreateStruct(sl);
   for (auto const &field : sl->fields_) {
     // TODO initial values? hashatgs?
@@ -124,22 +124,9 @@ void StructLiteral::CompleteBody(Context *ctx) {
 
   ir::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
   CURRENT_FUNC(ir_func) {
-    ir::BasicBlock::Current        = ir_func->entry();
-    ir::Register result_slot_alloc = ir::Alloca(type::Ptr(type::Type_));
-    ir::Register cache_hit = ir::CacheLookup(this, t, result_slot_alloc);
-
-    auto landing            = ir::Func::Current->AddBlock();
-    ir::BasicBlock::Current = ir::EarlyExitOn<true>(landing, cache_hit);
-
-    ir::Register result_slot =
-        ir::Load(result_slot_alloc, type::Ptr(type::Type_));
-    ir::Store(ir::RegisterOr<type::Type const *>(GenerateStruct(this, ctx)),
-              result_slot);
-    ir::UncondJump(landing);
-
-    ir::BasicBlock::Current = landing;
-    ir::SetRet(0, ir::RegisterOr<type::Type const *>(
-                      ir::Load<type::Type const *>(result_slot)));
+    ir::BasicBlock::Current = ir_func->entry();
+    ir::SetRet(0, ir::GenerateStruct(this));
+    ir::ReturnJump();
   }
 }
 }  // namespace ast

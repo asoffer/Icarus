@@ -24,10 +24,9 @@ Cmd &MakeCmd(type::Type const *t, Op op) {
   return cmd;
 }
 
-Register CacheLookup(ast::StructLiteral *sl, type::Type const *t,
-                     Register result_slot_alloc) {
-  auto &cmd         = MakeCmd(t, Op::CacheLookup);
-  cmd.cache_lookup_ = Cmd::CacheLookup{sl, t, result_slot_alloc};
+RegisterOr<type::Type const *> GenerateStruct(ast::StructLiteral *sl) {
+  auto &cmd            = MakeCmd(type::Type_, Op::GenerateStruct);
+  cmd.generate_struct_ = sl;
   return cmd.result;
 }
 
@@ -598,11 +597,6 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {
 static std::ostream &operator<<(std::ostream &os, Cmd::CondJump const &j) {
   return os << j.cond_ << " false -> " << j.blocks_[0] << " true -> "
             << j.blocks_[1];
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::CacheLookup const &cl) {
-  return os << cl.struct_literal_->to_string(0) << " " << cl.type_->to_string()
-            << " " << cl.ret_slot_;
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
