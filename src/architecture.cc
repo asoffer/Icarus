@@ -19,7 +19,6 @@ size_t Architecture::alignment(type::Type const *t) const {
       case type::PrimType::Interface: return local_ptr_align_;
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
-      case type::PrimType::Char: return 1;
       case type::PrimType::Int8: return 1;
       case type::PrimType::Int16: return 2;
       case type::PrimType::Int32: return 4;
@@ -41,7 +40,6 @@ size_t Architecture::alignment(type::Type const *t) const {
   } else if (t->is<type::CharBuffer>()) {
     // TODO what about utf-16 or utf-32 buffers?
     return alignof(std::string_view);
-    // alignment(type::Char);
   } else if (t->is<type::Pointer>()) {
     return ptr_bytes_;
   } else if (t->is<type::Array>()) {
@@ -86,7 +84,6 @@ size_t Architecture::bytes(type::Type const *t) const {
       case type::PrimType::Interface: return local_ptr_bytes_;
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
-      case type::PrimType::Char: return 1;
       case type::PrimType::Int8: return 1;
       case type::PrimType::Int16: return 2;
       case type::PrimType::Int32: return 4;

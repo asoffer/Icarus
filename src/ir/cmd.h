@@ -195,7 +195,6 @@ struct Cmd {
 
     // TODO names of these are easily mis-spellable and would lead to UB.
     RegisterOr<bool> bool_arg_;
-    RegisterOr<char> char_arg_;
     RegisterOr<i8> i8_arg_;
     RegisterOr<i16> i16_arg_;
     RegisterOr<i32> i32_arg_;
@@ -213,7 +212,6 @@ struct Cmd {
     RegisterOr<Addr> addr_arg_;
 
     Args<bool> bool_args_;
-    Args<char> char_args_;
     Args<i8> i8_args_;
     Args<i16> i16_args_;
     Args<i32> i32_args_;
@@ -232,7 +230,6 @@ struct Cmd {
     // TODO rename these since some of them are used for things other than
     // storage (e.g., block appending).
     Store<bool> store_bool_;
-    Store<char> store_char_;
     Store<i8> store_i8_;
     Store<i16> store_i16_;
     Store<i32> store_i32_;
@@ -251,7 +248,6 @@ struct Cmd {
     Store<BlockSequence> store_block_;
 
     SetRet<bool> set_ret_bool_;
-    SetRet<char> set_ret_char_;
     SetRet<i8> set_ret_i8_;
     SetRet<i16> set_ret_i16_;
     SetRet<i32> set_ret_i32_;
@@ -274,7 +270,6 @@ struct Cmd {
     SetRet<BlockSequence> set_ret_block_;
 
     PhiArgs<bool> *phi_bool_;
-    PhiArgs<char> *phi_char_;
     PhiArgs<i8> *phi_i8_;
     PhiArgs<i16> *phi_i16_;
     PhiArgs<i32> *phi_i32_;
@@ -301,8 +296,6 @@ struct Cmd {
   Register result;
 };
 
-RegisterOr<char> Trunc(RegisterOr<i32> r);
-RegisterOr<i32> Extend(RegisterOr<char> r);
 RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r);
 RegisterOr<i32> Align(RegisterOr<type::Type const *> r);
 RegisterOr<bool> Not(RegisterOr<bool> r);

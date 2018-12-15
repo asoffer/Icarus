@@ -138,7 +138,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         if (rhs_type != type::Int32) { // TODO other sizes
           ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
         }
-        return ctx->set_type(this, type::Char);
+        return ctx->set_type(this, type::Nat8); // TODO is nat8 what I want?
       } else if (auto *lhs_array_type = lhs_type->if_as<type::Array>()) {
         auto *t = ctx->set_type(this, lhs_array_type->data_type);
         if (rhs_type == type::Int32) {  // TODO other sizes

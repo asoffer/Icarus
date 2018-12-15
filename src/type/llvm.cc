@@ -13,7 +13,6 @@ llvm::Type* Primitive::llvm(llvm::LLVMContext& ctx) const {
     case PrimType::EmptyArray: UNREACHABLE();
     case PrimType::Code: UNREACHABLE();
     case PrimType::Bool: return llvm::Type::getInt1Ty(ctx);
-    case PrimType::Char: return llvm::Type::getInt8Ty(ctx);
     case PrimType::Int8: return llvm::Type::getInt8Ty(ctx);
     case PrimType::Int16: return llvm::Type::getInt16Ty(ctx);
     case PrimType::Int32: return llvm::Type::getInt32Ty(ctx);

@@ -72,9 +72,9 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
             std::get_if<ir::BlockSequence>(&rhs_ir.value);
         if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
       }
-        return type::ApplyTypes<bool, char, i8, i16, i32, i64, u8, u16, u32,
-                                u64, float, double, type::Type const *,
-                                ir::EnumVal, ir::FlagsVal, ir::Addr>(
+        return type::ApplyTypes<bool, i8, i16, i32, i64, u8, u16, u32, u64,
+                                float, double, type::Type const *, ir::EnumVal,
+                                ir::FlagsVal, ir::Addr>(
             lhs_ir.type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;
               return ir::Eq(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
@@ -86,8 +86,8 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
             std::get_if<ir::BlockSequence>(&rhs_ir.value);
         if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
       }
-        return type::ApplyTypes<char, i8, i16, i32, i64, u8, u16, u32, u64,
-                                float, double, type::Type const *, ir::EnumVal,
+        return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float,
+                                double, type::Type const *, ir::EnumVal,
                                 ir::FlagsVal, ir::Addr>(
             lhs_ir.type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;

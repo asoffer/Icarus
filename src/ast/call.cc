@@ -21,44 +21,12 @@
 
 using base::check::Is;
 
-namespace type {
-extern Type const *Code, *Int, *Char;
-}  // namespace type
-
 i32 ForeignFuncIndex = 0;
-
-ir::Val AsciiFunc() {
-  auto *fn_type                = type::Func({type::Int8}, {type::Char});
-  static ir::Func *ascii_func_ = [&]() {
-    auto fn = new ir::Func(nullptr, fn_type, {{"", nullptr}});
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = fn->entry();
-      ir::SetRet(0, Trunc(fn->Argument(0)));
-      ir::ReturnJump();
-    }
-    return fn;
-  }();
-  return ir::Val::Func(fn_type, ascii_func_);
-}
 
 ir::Val DebugIrFunc() {
   auto *fn_type                   = type::Func({}, {});
   static ir::Func *debug_ir_func_ = new ir::Func(nullptr, fn_type, {});
   return ir::Val::Func(fn_type, debug_ir_func_);
-}
-
-ir::Val OrdFunc() {
-  auto *fn_type              = type::Func({type::Char}, {type::Int8});
-  static ir::Func *ord_func_ = [&]() {
-    auto fn = new ir::Func(nullptr, fn_type, {{"", nullptr}});
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = fn->entry();
-      ir::SetRet(0, Extend(fn->Argument(0)));
-      ir::ReturnJump();
-    }
-    return fn;
-  }();
-  return ir::Val::Func(fn_type, ord_func_);
 }
 
 ir::Val BytesFunc() {
@@ -144,24 +112,20 @@ type::Type const *Call::VerifyType(Context *ctx) {
   }
 
   if (fn_->is<Terminal>()) {
-    // Special case for error/ord/ascii/etc.
+    // Special case for error, etc.
     // TODO can these be overloaded?
     auto fn_val = fn_->as<Terminal>().value;
-    if (fn_val == OrdFunc()) {
-      return fn_val.type;
-    } else if (fn_val == AsciiFunc()) {
-      return fn_val.type;
-#ifdef DBG
-    } else if (fn_val == DebugIrFunc()) {
-      return type::Func({}, {});
-#endif  // DBG
-    } else if (fn_val == BytesFunc() || fn_val == AlignFunc()) {
+    if (fn_val == BytesFunc() || fn_val == AlignFunc()) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.size() == 1u);
       ASSERT(arg_types.pos_[0] == type::Type_);
       return ctx->set_type(this, type::Int64);
+#ifdef DBG
+    } else if (fn_val == DebugIrFunc()) {
+      return type::Func({}, {});
+#endif  // DBG
     } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
@@ -230,7 +194,6 @@ void Call::ExtractJumps(JumpExprs *rets) const {
 
 base::vector<ir::Val> Call::EmitIR(Context *ctx) {
   if (fn_->is<Terminal>()) {
-    // Special case for error/ord/ascii
     auto fn_val = fn_->as<Terminal>().value;
 #ifdef DBG
     if (fn_val == DebugIrFunc()) {
@@ -238,8 +201,7 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
       return {};
     }
 #endif  // DBG
-    if (fn_val == OrdFunc() || fn_val == AsciiFunc() || fn_val == BytesFunc() ||
-        fn_val == AlignFunc()) {
+    if (fn_val == BytesFunc() || fn_val == AlignFunc()) {
       ir::Arguments call_args;
       for (const auto &arg : args_.pos_[0]->EmitIR(ctx)) {
         call_args.append(arg);

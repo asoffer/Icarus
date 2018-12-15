@@ -22,9 +22,6 @@ RegisterOr<T> MakePhi(CmdIndex phi_index,
   if constexpr (std::is_same_v<T, bool>) {
     cmd.op_code_  = Op::PhiBool;
     cmd.phi_bool_ = phi_args.get();
-  } else if constexpr (std::is_same_v<T, char>) {
-    cmd.op_code_  = Op::PhiChar;
-    cmd.phi_char_ = phi_args.get();
   } else if constexpr (std::is_same_v<T, i8>) {
     cmd.op_code_ = Op::PhiInt8;
     cmd.phi_i8_ = phi_args.get();

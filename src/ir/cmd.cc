@@ -37,20 +37,6 @@ Register CastPtr(Register r, type::Pointer const *t) {
   return cmd.result;
 }
 
-RegisterOr<char> Trunc(RegisterOr<i32> r) {
-  if (!r.is_reg_) { return static_cast<char>(r.val_); }
-  auto &cmd = MakeCmd(type::Char, Op::Trunc);
-  cmd.reg_  = r.reg_;
-  return cmd.result;
-}
-
-RegisterOr<i32> Extend(RegisterOr<char> r) {
-  if (!r.is_reg_) { return static_cast<i32>(r.val_); }
-  auto &cmd = MakeCmd(type::Int32, Op::Extend);
-  cmd.reg_  = r.reg_;
-  return cmd.result;
-}
-
 RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r) {
   auto &cmd     = MakeCmd(type::Int32, Op::Bytes);
   cmd.type_arg_ = r;

@@ -14,8 +14,6 @@
 // TODO audit every location where frontend::TaggedNode::Invalid is returned to
 // see if you need to log an error.
 
-ir::Val AsciiFunc();
-ir::Val OrdFunc();
 ir::Val BytesFunc();
 ir::Val AlignFunc();
 #ifdef DBG
@@ -65,7 +63,6 @@ TaggedNode NextWord(SourceLocation &loc) {
 
   static base::unordered_map<std::string, ir::Val> Reserved{
       {"bool", ir::Val(type::Bool)},
-      {"char", ir::Val(type::Char)},
       {"int8", ir::Val(type::Int8)},
       {"int16", ir::Val(type::Int16)},
       {"int32", ir::Val(type::Int32)},
@@ -81,8 +78,6 @@ TaggedNode NextWord(SourceLocation &loc) {
       {"true", ir::Val(true)},
       {"false", ir::Val(false)},
       {"null", ir::Val(nullptr)},
-      {"ord", OrdFunc()},
-      {"ascii", AsciiFunc()},
 #ifdef DBG
       {"debug_ir", DebugIrFunc()},
 #endif  // DBG

@@ -102,8 +102,6 @@ template <typename T>
 constexpr type::Type const *Get() {
   if constexpr (std::is_same_v<T, bool>) {
     return type::Bool;
-  } else if constexpr (std::is_same_v<T, char>) {
-    return type::Char;
   } else if constexpr (std::is_same_v<T, i8>) {
     return type::Int8;
   } else if constexpr (std::is_same_v<T, i16>) {
@@ -158,8 +156,6 @@ template <typename T>
 bool Compare(::type::Type const *t) {
   if constexpr (std::is_same_v<T, bool>) {
     return t == ::type::Bool;
-  } else if constexpr (std::is_same_v<T, char>) {
-    return t == ::type::Char;
   } else if constexpr (std::is_same_v<T, i8>) {
     return t == ::type::Int8;
   } else if constexpr (std::is_same_v<T, i16>) {
@@ -244,12 +240,12 @@ auto ApplyTypes(Type const *t, Fn &&fn, Args &&... args) {
 
 template <typename Fn, typename... Args>
 auto Apply(Type const *t, Fn &&fn, Args &&... args) {
-  return ApplyTypes<bool, char, i8, i16, i32, i64, u8, u16, u32, u64, float,
-                    double, type::Type const *, ir::EnumVal, ir::FlagsVal,
-                    ir::Addr, std::string_view, ::Module const *,
-                    type::Struct const *, ast::ScopeLiteral *, ir::AnyFunc,
-                    ir::BlockSequence, ast::FunctionLiteral *>(
-      t, std::forward<Fn>(fn), std::forward<Args>(args)...);
+  return ApplyTypes<bool, i8, i16, i32, i64, u8, u16, u32, u64, float, double,
+                    type::Type const *, ir::EnumVal, ir::FlagsVal, ir::Addr,
+                    std::string_view, ::Module const *, type::Struct const *,
+                    ast::ScopeLiteral *, ir::AnyFunc, ir::BlockSequence,
+                    ast::FunctionLiteral *>(t, std::forward<Fn>(fn),
+                                            std::forward<Args>(args)...);
 }
 
 inline bool IsNumeric(Type const *t) {

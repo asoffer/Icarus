@@ -9,48 +9,6 @@
 namespace type {
 void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
   switch (type_) {
-    case PrimType::Char: {
-      std::unique_lock lock(mtx_);
-      if (!repr_func_) {
-        repr_func_ = ctx->mod_->AddFunc(
-            Func({this}, {}),
-            base::vector<std::pair<std::string, ast::Expression *>>{
-                {"arg", nullptr}});
-
-        CURRENT_FUNC(repr_func_) {
-          ir::BasicBlock::Current = repr_func_->entry();
-
-          ir::Print('`');
-
-          for (auto[c, rep] : {std::pair('\a', 'a'), std::pair('\b', 'b'),
-                               std::pair('\n', 'n'), std::pair('\r', 'r'),
-                               std::pair('\t', 't'), std::pair('\v', 'v')}) {
-            auto special_block = repr_func_->AddBlock();
-            auto next_block    = repr_func_->AddBlock();
-
-            ir::CondJump(
-                ir::Eq(ir::RegisterOr<char>(repr_func_->Argument(0)), c),
-                special_block, next_block);
-
-            ir::BasicBlock::Current = special_block;
-            ir::Print('\\');
-            ir::Print(rep);
-            ir::ReturnJump();
-
-            ir::BasicBlock::Current = next_block;
-          }
-
-          ir::Print(ir::RegisterOr<char>(repr_func_->Argument(0)));
-          ir::ReturnJump();
-        }
-      }
-
-      ir::Arguments call_args;
-      call_args.append(val);
-      call_args.type_ = repr_func_->type_;
-      ir::Call(ir::AnyFunc{repr_func_}, std::move(call_args));
-    } break;
-
     case PrimType::Bool: ir::Print(val.reg_or<bool>()); break;
     case PrimType::Int8: ir::Print(val.reg_or<i8>()); break;
     case PrimType::Int16: ir::Print(val.reg_or<i16>()); break;
@@ -88,7 +46,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
 
       auto exit_block = repr_func_->AddBlock();
 
-      ir::Print('[');
+      ir::Print(std::string_view{"["});
 
       ir::BasicBlock::Current = ir::EarlyExitOn<true>(exit_block, len == 0);
       auto ptr = ir::Index(type::Ptr(this), repr_func_->Argument(0), 0);
@@ -104,8 +62,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
             auto elem_ptr = ir::PtrIncr(std::get<0>(phis).reg_, 1,
                                         type::Ptr(this->data_type));
 
-            ir::Print(',');
-            ir::Print(' ');
+            ir::Print(std::string_view{", "});
             data_type->EmitRepr(
                 ir::Val::Reg(ir::PtrFix(elem_ptr, data_type), data_type), ctx);
 
@@ -118,7 +75,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
       ir::UncondJump(exit_block);
 
       ir::BasicBlock::Current = exit_block;
-      ir::Print(']');
+      ir::Print(std::string_view{"]"});
       ir::ReturnJump();
     }
   }

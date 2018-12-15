@@ -200,14 +200,6 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
         llvm_data->builder->CreateRetVoid();
       }
       return nullptr;
-    case ir::Op::Trunc:
-      return llvm_data->builder->CreateTrunc(
-          EmitValue(num_args, llvm_data, cmd.args[0]),
-          llvm::Type::getInt8Ty(ctx), "trunc");
-    case ir::Op::Extend:
-      return llvm_data->builder->CreateTrunc(
-          EmitValue(num_args, llvm_data, cmd.args[0]),
-          llvm::Type::getInt32Ty(ctx), "ext");
     case ir::Op::Print: {
       auto *printf_fn = llvm_data->module->getOrInsertFunction(
           "printf",
@@ -223,12 +215,6 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
                    EmitValue(num_args, llvm_data, arg),
                    StringConstant(llvm_data->builder, "true"),
                    StringConstant(llvm_data->builder, "false"))},
-              "print");
-        } else if (arg.type == type::Char) {
-          return llvm_data->builder->CreateCall(
-              printf_fn,
-              {StringConstant(llvm_data->builder, "%c"),
-               EmitValue(num_args, llvm_data, arg)},
               "print");
         } else if (arg.type == type::Int32) {
           return llvm_data->builder->CreateCall(
@@ -291,7 +277,6 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
           cmd.args[0].type == type::Int32 || cmd.args[0].type == type::Int64 ||
           cmd.args[0].type == type::Nat8 || cmd.args[0].type == type::Nat16 ||
           cmd.args[0].type == type::Nat32 || cmd.args[0].type == type::Nat64 ||
-          cmd.args[0].type == type::Char ||
           cmd.args[0].type->is<type::Enum>() ||
           cmd.args[0].type->is<type::Flags>() ||
           cmd.args[0].type->is<type::Pointer>() ||
@@ -311,7 +296,6 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
           cmd.args[0].type == type::Int32 || cmd.args[0].type == type::Int64 ||
           cmd.args[0].type == type::Nat8 || cmd.args[0].type == type::Nat16 ||
           cmd.args[0].type == type::Nat32 || cmd.args[0].type == type::Nat64 ||
-          cmd.args[0].type == type::Char ||
           cmd.args[0].type->is<type::Enum>() ||
           cmd.args[0].type->is<type::Flags>() ||
           cmd.args[0].type->is<type::Pointer>() ||

@@ -39,14 +39,13 @@ void Tuple::EmitInit(ir::Register reg, Context *ctx) const {
 
 void Tuple::EmitRepr(ir::Val const &id_val, Context *ctx) const {
   auto reg = std::get<ir::Register>(id_val.value);
-  ir::Print('(');
+  ir::Print(std::string_view{"("});
   for (int i = 0; i < static_cast<int>(entries_.size()) - 1; ++i) {
     entries_[i]->EmitRepr(
         ir::Val::Reg(ir::PtrFix(ir::Field(reg, this, i), entries_[i]),
                      entries_[i]),
         ctx);
-    ir::Print(',');
-    ir::Print(' ');
+    ir::Print(std::string_view{", "});
   }
 
   if (!entries_.empty()) {
@@ -56,7 +55,7 @@ void Tuple::EmitRepr(ir::Val const &id_val, Context *ctx) const {
                      entries_.back()),
         ctx);
   }
-  ir::Print(')');
+  ir::Print(std::string_view{")"});
 }
 
 static base::guarded<base::map<base::vector<Type const *>, Tuple const>> tups_;

@@ -176,16 +176,16 @@ dynamic_dispatch ::= () -> () {
   // a function of the given name need not actually exist, so long as the
   // function exists for any possible input type. For example,
   f ::= (n: int32) -> () { print "f(int32)\n" }
-  f ::= (x: bool | char) -> () { print "f(bool | char)\n" }
+  f ::= (x: bool | float32) -> () { print "f(bool | float32)\n" }
   v: bool | int32 = true
-  // f(v) // Calls the (bool | char) overload.
+  // f(v) // Calls the (bool | float32) overload.
 
   v = 3
   f(v) // Calls the int32 overload.
 
   // Note that in the above, there is no function named f that takes a value of
   // type bool | int32. Moreover, there is not even a function for each member of
-  // the variant. However, the int32 overload of `f` and the `bool | char`
+  // the variant. However, the int32 overload of `f` and the `bool | float32`
   // overload of `f` together cover all possibilities for `v`, which enables the
   // compiler to add code which picks the correct overload to be called at
   // run-time.
