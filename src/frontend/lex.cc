@@ -218,59 +218,6 @@ TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
   return TaggedNode::TerminalExpression(span, ir::Val::CharBuf(str_lit));
 }
 
-TaggedNode NextCharLiteral(SourceLocation &loc, error::Log *error_log) {
-  auto span = loc.ToSpan();
-  loc.Increment();
-  span.finish = loc.cursor;
-  char result;
-
-  switch (*loc) {
-    case '\t':
-      error_log->TabInCharacterLiteral(span);
-      result = '\t';
-      break;
-    case ' ':
-      ++span.finish.offset;
-      error_log->SpaceInCharacterLiteral(span);
-      result = '\0';
-      break;
-    case '\0':
-      span.finish = loc.cursor;
-      error_log->RunawayCharacterLiteral(span);
-      return TaggedNode::TerminalExpression(span, ir::Val('\0'));
-    case '\\': {
-      loc.Increment();
-      switch (*loc) {
-        case '\"': {
-          result      = '"';
-          span.finish = loc.cursor;
-          ++span.finish.offset;
-          error_log->EscapedDoubleQuoteInCharacterLiteral(span);
-        } break;
-        case '\\': result = '\\'; break;
-        case 'a': result = '\a'; break;
-        case 'b': result = '\b'; break;
-        case 'f': result = '\f'; break;
-        case 'n': result = '\n'; break;
-        case 'r': result = '\r'; break;
-        case 's': result = ' '; break;
-        case 't': result = '\t'; break;
-        case 'v': result = '\v'; break;
-        default:
-          span.finish = loc.cursor;
-          ++span.finish.offset;
-          error_log->InvalidEscapedCharacterInCharacterLiteral(span);
-          result = *loc;
-      }
-      break;
-    }
-    default: { result = *loc; } break;
-  }
-  loc.Increment();
-  span.finish = loc.cursor;
-  return TaggedNode::TerminalExpression(span, ir::Val(result));
-}
-
 TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
   auto span = loc.ToSpan();
   switch (*loc) {
@@ -616,15 +563,8 @@ restart:
   switch (*loc) {
     case '`': {
       loc.Increment();
-      if (*loc == '`') {
-        auto span = loc.ToSpan();
-        loc.Increment();
-        span.finish = loc.cursor;
-        tagged_node = TaggedNode(span, "``", op_b);
-      } else {
-        loc.BackUp();
-        tagged_node = NextCharLiteral(loc, error_log);
-      }
+      auto span   = loc.ToSpan();
+      tagged_node = TaggedNode(span, "`", op_b);
     } break;
     case '"': tagged_node = NextStringLiteral(loc, error_log); break;
     case '/': tagged_node = NextSlashInitiatedToken(loc, error_log); break;

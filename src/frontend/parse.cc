@@ -737,7 +737,7 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
   if (tk == ".") {
     return ast::BuildAccess(std::move(nodes), ctx);
 
-  } else if (tk == "``") {
+  } else if (tk == "`") {
     return ast::BuildMatchDeclaration(std::move(nodes), ctx);
 
   } else if (tk == ":" || tk == ":=") {
