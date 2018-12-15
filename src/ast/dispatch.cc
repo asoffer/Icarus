@@ -160,17 +160,14 @@ bool DispatchTableRow::SetTypes(ir::Func const &fn,
   auto const &input_types = fn.type_->input;
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
     if (binding_.defaulted(i)) {
-      LOG << binding_.exprs_.at(i).get();
-      LOG << fn.args_;
-      LOG << i;
-      if (fn.args_.at(i).second == nullptr) { LOG << "**";return false; }
+      if (fn.args_.at(i).second == nullptr) { return false; }
       binding_.exprs_.at(i).set_type(input_types.at(i));
       continue;
     }
 
     type::Type const *match = type::Meet(
         ctx->type_of(binding_.exprs_.at(i).get()), input_types.at(i));
-    if (match == nullptr) {LOG << "**"; return false; }
+    if (match == nullptr) { return false; }
 
     binding_.exprs_.at(i).set_type(input_types.at(i));
 

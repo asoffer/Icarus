@@ -238,7 +238,7 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     }
     std::tie(dispatch_table, result_type) =
         DispatchTable::Make(expr_args, done_os, ctx);
-    
+
     auto results = dispatch_table.EmitCall(args, result_type, ctx);
     if (scope_lit->stateful_) { state_type->EmitDestroy(alloc, ctx); }
     return results;

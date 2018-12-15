@@ -383,7 +383,7 @@ TypedRegister<Addr> PtrIncr(Register ptr, RegisterOr<i32> inc,
                             type::Pointer const *t) {
   if (!inc.is_reg_ && inc.val_ == 0) { return ptr; }
   auto &cmd     = MakeCmd(t, Op::PtrIncr);
-  cmd.ptr_incr_ = {ptr, t->as<type::Pointer>().pointee, inc};
+  cmd.ptr_incr_ = {ptr, t->pointee, inc};
   return cmd.result;
 }
 
@@ -466,9 +466,9 @@ Register Load(Register r, type::Type const *t) {
   });
 }
 
-TypedRegister<Addr> Index(type::Type const *t, Register array_ptr,
+TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
                           RegisterOr<i32> offset) {
-  auto *array_type = &t->as<type::Pointer>().pointee->as<type::Array>();
+  auto *array_type = &t->pointee->as<type::Array>();
   // TODO this works but generates worse ir (both here and in llvm). It's worth
   // figuring out how to do this better. Is this still true without
   // variable-length arrays?

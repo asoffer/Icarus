@@ -31,16 +31,25 @@ struct Cast {
   template <typename T>
   bool is() const {
     STATIC_ASSERT_RELATED(Base, T);
-    return dynamic_cast<const T *>(reinterpret_cast<const Base *>(this)) !=
-           nullptr;
+    return dynamic_cast<T const *>(base()) != nullptr;
   }
 
   template <typename T>
   T &as() & {
     STATIC_ASSERT_RELATED(Base, T);
     return const_cast<T &>(
-        static_cast<const std::remove_reference_t<decltype(*this)> *>(this)
-            ->template as<const T>());
+        static_cast<std::remove_reference_t<decltype(*this)> const *>(this)
+            ->template as<T const>());
+  }
+
+  template <typename T>
+  T *if_as() {
+    return dynamic_cast<T *>(base());
+  }
+
+  template <typename T>
+  T const *if_as() const {
+    return dynamic_cast<T const *>(base());
   }
 
   template <typename T>
@@ -48,24 +57,26 @@ struct Cast {
     STATIC_ASSERT_RELATED(Base, T);
 
 #ifdef DBG
-    return std::move(
-        *ASSERT_NOT_NULL(dynamic_cast<T *>(reinterpret_cast<Base *>(this))));
+    return std::move(*ASSERT_NOT_NULL(dynamic_cast<T *>(base())));
 #else
     return std::move(*reinterpret_cast<T *>(this));
 #endif
   }
 
   template <typename T>
-  const T &as() const {
+  T const &as() const {
     STATIC_ASSERT_RELATED(Base, T);
 
 #ifdef DBG
-    return *ASSERT_NOT_NULL(
-        dynamic_cast<const T *>(reinterpret_cast<const Base *>(this)));
+    return *ASSERT_NOT_NULL(dynamic_cast<T const *>(base()));
 #else
-    return *reinterpret_cast<const T *>(this);
+    return *reinterpret_cast<T const *>(this);
 #endif
   }
+
+ private:
+  Base *base() { return static_cast<Base *>(this); }
+  Base const *base() const { return static_cast<Base const *>(this); }
 };
 
 template <typename T>

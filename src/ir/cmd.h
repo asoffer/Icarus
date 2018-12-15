@@ -519,7 +519,7 @@ Val Cast(type::Type const *from, type::Type const *to, Val const& val);
 
 RegisterOr<type::Type const *> GenerateStruct(ast::StructLiteral *sl);
 
-TypedRegister<Addr> Index(type::Type const *t, Register array_ptr,
+TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
                           RegisterOr<i32> offset);
 TypedRegister<Addr> Alloca(const type::Type *t);
 

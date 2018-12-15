@@ -120,7 +120,7 @@ static ir::Func *ArrayInitializationWith(const Array *from_type,
       auto phi_block          = ir::Func::Current->AddBlock();
       auto body_block         = ir::Func::Current->AddBlock();
       auto exit_block         = ir::Func::Current->AddBlock();
-      auto from_start         = ir::Index(from_type, from_arg, 0);
+      auto from_start         = ir::Index(type::Ptr(from_type), from_arg, 0);
       auto to_start           = ir::Index(type::Ptr(to_type), to_arg, 0);
       auto from_end           = ir::PtrIncr(from_start, from_type->len,
                                   type::Ptr(from_type->data_type));

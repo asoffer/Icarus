@@ -32,16 +32,13 @@ bool Inferrable(type::Type const *t) {
     return Inferrable(t->as<type::Pointer>().pointee);
   } else if (t->is<type::Function>()) {
     const auto &f = t->as<type::Function>();
-    for (auto *t : f.input) {
-      if (!Inferrable(t)) { return false; }
-    }
-    for (auto *t : f.output) {
-      if (!Inferrable(t)) { return false; }
-    }
+    return std::all_of(f.input.begin(), f.input.end(), Inferrable) ||
+           std::all_of(f.output.begin(), f.output.end(), Inferrable);
   }
   // TODO higher order types?
   return true;
 }
+
 // TODO: This algorithm is sufficiently complicated you should combine it
 // with proof of correctness and good explanation of what it does.
 bool CommonAmbiguousFunctionCall(const base::vector<ArgumentMetaData> &data1,
@@ -280,7 +277,6 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     if (this_type == nullptr) {
       return nullptr;
     } else if (!init_val) {
-      LOG << this_type;
       if (!is_arg_ && !this_type->IsDefaultInitializable()) {
         // TODO what about an uninitialized constant. do we show both?
         ctx->error_log_.TypeMustBeInitialized(span, this_type);

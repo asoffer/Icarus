@@ -31,8 +31,8 @@ void Array::EmitAssign(Type const *from_type, ir::Val const &from,
       auto val                = fn->Argument(0);
       auto var                = fn->Argument(1);
 
-      auto *from_ptr_type = type::Ptr(from_type->as<type::Array>().data_type);
-      auto from_ptr       = ir::Index(from_type, val, 0);
+      auto *from_ptr_type = type::Ptr(from_array_type->data_type);
+      auto from_ptr       = ir::Index(type::Ptr(from_type), val, 0);
       auto from_end_ptr =
           ir::PtrIncr(from_ptr, from_array_type->len, from_ptr_type);
       auto *to_ptr_type   = type::Ptr(data_type);
@@ -49,13 +49,12 @@ void Array::EmitAssign(Type const *from_type, ir::Val const &from,
             ASSERT(std::get<1>(phis).is_reg_);
 
             ir::Register ptr_fixed_reg =
-                from_type->as<type::Array>().data_type->is_big()
+                from_array_type->data_type->is_big()
                     ? std::get<0>(phis).reg_
                     : ir::Load(std::get<0>(phis).reg_, data_type);
-            auto ptr_fixed_type =
-                !from_type->as<type::Array>().data_type->is_big()
-                    ? from_type->as<type::Array>().data_type
-                    : type::Ptr(from_type->as<type::Array>().data_type);
+            auto ptr_fixed_type = from_array_type->data_type->is_big()
+                                      ? from_array_type->data_type
+                                      : type::Ptr(from_array_type->data_type);
 
             EmitCopyInit(from_array_type->data_type, data_type,
                          ir::Val::Reg(ptr_fixed_reg, ptr_fixed_type),

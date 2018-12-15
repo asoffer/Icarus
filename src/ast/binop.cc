@@ -96,19 +96,17 @@ type::Type const *Binop::VerifyType(Context *ctx) {
   using Language::Operator;
   // TODO if lhs is reserved?
   if (op == Operator::Assign) {
-    if (lhs_type->is<type::Tuple>()) {
-      const auto &lhs_entries_ = lhs_type->as<type::Tuple>().entries_;
-      if (rhs_type->is<type::Tuple>()) {
-        const auto &rhs_entries_ = rhs_type->as<type::Tuple>().entries_;
-
-        if (lhs_entries_.size() != rhs_entries_.size()) {
-          ctx->error_log_.MismatchedAssignmentSize(span, lhs_entries_.size(),
-                                                   rhs_entries_.size());
+    if (auto *lhs_tup = lhs_type->if_as<type::Tuple>()) {
+      if (auto *rhs_tup = rhs_type->if_as<type::Tuple>()) {
+        if (lhs_tup->entries_.size() != rhs_tup->entries_.size()) {
+          ctx->error_log_.MismatchedAssignmentSize(
+              span, lhs_tup->entries_.size(), rhs_tup->entries_.size());
           return nullptr;
         }
 
-        for (size_t i = 0; i < lhs_entries_.size(); ++i) {
-          if (!type::CanCastImplicitly(rhs_entries_[i], lhs_entries_[i])) {
+        for (size_t i = 0; i < lhs_tup->entries_.size(); ++i) {
+          if (!type::CanCastImplicitly(rhs_tup->entries_[i],
+                                       lhs_tup->entries_[i])) {
             NOT_YET("log an error");
           }
         }
@@ -116,13 +114,14 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         // TODO should you allow this for struct user-defined types?
         // z: complex
         // z = (3, 4) // Interpretted as (=)(&z, 3, 4)?
-        ctx->error_log_.MismatchedAssignmentSize(span, lhs_entries_.size(), 1);
+        ctx->error_log_.MismatchedAssignmentSize(span, lhs_tup->entries_.size(),
+                                                 1);
         return nullptr;
       }
     } else {
-      if (rhs_type->is<type::Tuple>()) {
-        size_t rhs_size = rhs_type->as<type::Tuple>().entries_.size();
-        ctx->error_log_.MismatchedAssignmentSize(span, 1 , rhs_size);
+      if (auto*rhs_tup = rhs_type->if_as<type::Tuple>()) {
+        ctx->error_log_.MismatchedAssignmentSize(span, 1,
+                                                 rhs_tup->entries_.size());
       } else {
         if (!type::CanCastImplicitly(rhs_type, lhs_type)) {
           NOT_YET("log an error");
@@ -140,15 +139,15 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
         }
         return ctx->set_type(this, type::Char);
-      } else if (lhs_type->is<type::Array>()) {
-        auto *t = ctx->set_type(this, lhs_type->as<type::Array>().data_type);
+      } else if (auto *lhs_array_type = lhs_type->if_as<type::Array>()) {
+        auto *t = ctx->set_type(this, lhs_array_type->data_type);
         if (rhs_type == type::Int32) {  // TODO other sizes
           ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
         }
         return t;
-      } else if (lhs_type->is<type::BufferPointer>()) {
+      } else if (auto *lhs_buf_type = lhs_type->if_as<type::BufferPointer>()) {
         auto *t =
-            ctx->set_type(this, lhs_type->as<type::BufferPointer>().pointee);
+            ctx->set_type(this, lhs_buf_type->pointee);
         if (rhs_type != type::Int32) {  // TODO other sizes
           ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
         }

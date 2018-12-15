@@ -47,9 +47,9 @@ size_t Architecture::alignment(type::Type const *t) const {
   } else if (t->is<type::Array>()) {
     auto *array_type = &t->as<type::Array>();
     return this->alignment(array_type->data_type);
-  } else if (t->is<type::Struct>()) {
+  } else if (auto *s = t->if_as<type::Struct>()) {
     size_t alignment_val = 1;
-    for (auto const &field : t->as<type::Struct>().fields()) {
+    for (auto const &field : s->fields()) {
       alignment_val = std::max(alignment_val, this->alignment(field.type));
     }
     return alignment_val;
@@ -59,15 +59,15 @@ size_t Architecture::alignment(type::Type const *t) const {
     return 8;  // TODO
   } else if (t->is<type::Flags>()) {
     return 8;  // TODO
-  } else if (t->is<type::Variant>()) {
+  } else if (auto *v = t->if_as<type::Variant>()) {
     size_t alignment_val = this->alignment(type::Type_);
-    for (type::Type const *type : t->as<type::Variant>().variants_) {
+    for (type::Type const *type : v->variants_) {
       alignment_val = std::max(alignment_val, this->alignment(type));
     }
     return alignment_val;
-  } else if (t->is<type::Tuple>()) {
+  } else if (auto *tup = t->if_as<type::Tuple>()) {
     size_t alignment_val = 1;
-    for (type::Type const *type : t->as<type::Tuple>().entries_) {
+    for (type::Type const *type : tup->entries_) {
       alignment_val = std::max(alignment_val, this->alignment(type));
     }
     return alignment_val;
@@ -111,14 +111,12 @@ size_t Architecture::bytes(type::Type const *t) const {
         std::string_view);  // TODO fix me t->as<type::CharBuffer>().length_;
   } else if (t->is<type::Pointer>()) {
     return ptr_bytes_;
-  } else if (t->is<type::Array>()) {
-    auto *array_type = &t->as<type::Array>();
+  } else if (auto *array_type = t->if_as<type::Array>()) {
     // TODO skip the last alignment requirement?
     return array_type->len *
            MoveForwardToAlignment(array_type->data_type,
                                   bytes(array_type->data_type));
-  } else if (t->is<type::Struct>()) {
-    auto *struct_type = &t->as<type::Struct>();
+  } else if (auto *struct_type = t->if_as<type::Struct>()) {
     size_t num_bytes  = 0;
     for (auto const &field : struct_type->fields()) {
       num_bytes += this->bytes(field.type);
@@ -126,8 +124,7 @@ size_t Architecture::bytes(type::Type const *t) const {
     }
 
     return MoveForwardToAlignment(struct_type, num_bytes);
-  } else if (t->is<type::Tuple>()) {
-    auto *tuple_type = &t->as<type::Tuple>();
+  } else if (auto *tuple_type = t->if_as<type::Tuple>()) {
     size_t num_bytes = 0;
     for (auto const &entry_type : tuple_type->entries_) {
       num_bytes += this->bytes(entry_type);
@@ -144,9 +141,9 @@ size_t Architecture::bytes(type::Type const *t) const {
     return 8;  // TODO
   } else if (t->is<type::Flags>()) {
     return 8;  // TODO
-  } else if (t->is<type::Variant>()) {
+  } else if (auto *v = t->if_as<type::Variant>()) {
     size_t num_bytes = 0;
-    for (type::Type const *type : t->as<type::Variant>().variants_) {
+    for (type::Type const *type : v->variants_) {
       num_bytes = std::max(num_bytes, this->bytes(type));
     }
     return num_bytes + ptr_bytes_;

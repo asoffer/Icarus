@@ -11,13 +11,9 @@ std::string Arguments::to_string() const {
   size_t offset = 0;
   size_t i      = 0;
   base::vector<type::Type const *> const &ts = [&] {
-    if (type_->is<type::Function>()) {
-      return type_->as<type::Function>().input;
-    } else if (type_->is<type::GenericStruct>()) {
-      return type_->as<type::GenericStruct>().deps_;
-    } else {
-      UNREACHABLE();
-    }
+    if (auto *f = type_->if_as<type::Function>()) { return f->input; }
+    if (auto *g = type_->if_as<type::GenericStruct>()) { return g->deps_; }
+    UNREACHABLE();
   }();
   for (auto *t : ts) {
     if (is_reg_[i]) {
@@ -66,23 +62,17 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
   auto arch       = Architecture::InterprettingMachine();
 
   base::vector<type::Type const *> const &ins = [&] {
-    if (type_->is<type::Function>()) {
-      return type_->as<type::Function>().input;
-    } else if (type_->is<type::GenericStruct>()) {
-      return type_->as<type::GenericStruct>().deps_;
-    } else {
-      UNREACHABLE();
-    }
+    if (auto *f = type_->if_as<type::Function>()) { return f->input; }
+    if (auto *g = type_->if_as<type::GenericStruct>()) { return g->deps_; }
+    UNREACHABLE();
   }();
 
   auto outs = [&] {
-    if (type_->is<type::Function>()) {
-      return type_->as<type::Function>().output;
-    } else if (type_->is<type::GenericStruct>()) {
+    if (auto *f = type_->if_as<type::Function>()) { return f->output; }
+    if (auto *g = type_->if_as<type::GenericStruct>()) {
       return base::vector<type::Type const *>{type::Type_};
-    } else {
-      UNREACHABLE();
     }
+    UNREACHABLE();
   }();
 
   for (size_t i = 0; i < is_reg_.size(); ++i) {
