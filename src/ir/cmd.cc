@@ -67,7 +67,9 @@ static Val CastTo(type::Type const *from, Val const &val) {
 }
 
 Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
-  return type::ApplyTypes<i16, i32, i64, u16, u32, u64, float, double>(
+  // TODO We only need to include i8 and u8 here for supporting loose casting.
+  // If that disappears, we can remove those types.
+  return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
       to, [&](auto type_holder) {
         using ToType = typename decltype(type_holder)::type;
         return CastTo<ToType>(from, val);

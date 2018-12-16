@@ -1,0 +1,9 @@
+ascii ::= struct { _val: nat8 }
+
+asc ::= (val: nat8) -> ascii {
+  c: ascii
+  c._val = val
+  return c
+}
+
+(print) ::= (c: ascii) -> { foreign("putchar", nat8 -> int32)(c._val) }

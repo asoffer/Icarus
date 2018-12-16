@@ -9,6 +9,10 @@ bool parser     = false;
 bool validation = false;
 }  // namespace debug
 
+namespace feature {
+bool loose_casting = false;
+}  // namespace feature
+
 extern base::vector<frontend::Source::Name> files;
 
 #ifdef ICARUS_USE_LLVM
@@ -20,6 +24,12 @@ extern char const *output_file;
 void cli::Usage() {
   Flag("help") << "Show usage information."
                << []() { execute = cli::ShowUsage; };
+
+  Flag("loose-casting", "l")
+      << "Allow casting between any integral types or between floating-point "
+         "types, or from integral to floating-point, even if it results in a "
+         "loss of precision."
+      << [](bool b = false) { feature::loose_casting = b; };
 
 #ifdef DBG
   Flag("debug-parser") << "Step through the parser step-by-step for debugging."

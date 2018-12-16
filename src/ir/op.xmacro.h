@@ -210,6 +210,8 @@ OP_MACRO(BlockSeqJump,         Jump,                BlockSequence,           blo
 OP_MACRO(VariantType,          VariantType,         void,                    reg_)
 OP_MACRO(VariantValue,         VariantValue,        void,                    reg_)
 OP_MACRO(Call,                 Call,                void,                    call_)
+OP_MACRO(CastToInt8,           Cast,                i8,                      typed_reg_)
+OP_MACRO(CastToNat8,           Cast,                u8,                      typed_reg_)
 OP_MACRO(CastToInt16,          Cast,                i16,                     typed_reg_)
 OP_MACRO(CastToNat16,          Cast,                u16,                     typed_reg_)
 OP_MACRO(CastToInt32,          Cast,                i32,                     typed_reg_)

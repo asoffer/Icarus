@@ -142,6 +142,10 @@ void CallForeignFn(ir::ForeignFn const &f,
     using fn_t = float (*)(float);
     fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
     StoreValue(fn(arguments.get<float>(0)), ret_slots.at(0), stack);
+  } else if (f.type() == type::Func({type::Nat8}, {type::Int32})) {
+    using fn_t = i32 (*)(u8);
+    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+    StoreValue(fn(arguments.get<u8>(0)), ret_slots.at(0), stack);
   } else if (f.type() == type::Func({type::Int32}, {type::Ptr(type::Int32)}) ||
              f.type() ==
                  type::Func({type::Int32}, {type::BufPtr(type::Int32)})) {
@@ -561,101 +565,35 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::FinalizeVariant:
       save(resolve<type::Variant *>(cmd.reg_)->finalize());
       break;
+    case ir::Op::CastToInt8: {
+      save(static_cast<i8>(resolve<i8>(cmd.typed_reg_.get())));
+    } break;
+    case ir::Op::CastToNat8: {
+      save(static_cast<u8>(resolve<i8>(cmd.typed_reg_.get())));
+    } break;
     case ir::Op::CastToInt16: {
-      if (cmd.typed_reg_.type() == type::Int8) {
-        save(static_cast<u16>(resolve<i8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat8) {
-        save(static_cast<u16>(resolve<u8>(cmd.typed_reg_.get())));
-      } else {
-        UNREACHABLE();
-      }
+      save(static_cast<u16>(resolve<i8>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToNat16: {
-      if (cmd.typed_reg_.type() == type::Nat8) {
-        save(static_cast<u16>(resolve<u8>(cmd.typed_reg_.get())));
-      } else {
-        UNREACHABLE();
-      }
+      save(static_cast<u16>(resolve<u8>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToInt32: {
-      if (cmd.typed_reg_.type() == type::Int8) {
-        save(static_cast<i32>(resolve<i8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat8) {
-        save(static_cast<i32>(resolve<u8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Int16) {
-        save(static_cast<i32>(resolve<i16>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat16) {
-        save(static_cast<i32>(resolve<u16>(cmd.typed_reg_.get())));
-      } else {
-        UNREACHABLE();
-      }
+      save(static_cast<i32>(resolve<i8>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToNat32: {
-      if (cmd.typed_reg_.type() == type::Nat8) {
-        save(static_cast<u32>(resolve<u8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat16) {
-        save(static_cast<u32>(resolve<u16>(cmd.typed_reg_.get())));
-      } else {
-        UNREACHABLE();
-      }
+      save(static_cast<u32>(resolve<u8>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToInt64: {
-      if (cmd.typed_reg_.type() == type::Int8) {
-        save(static_cast<i64>(resolve<i8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat8) {
-        save(static_cast<i64>(resolve<u8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Int16) {
-        save(static_cast<i64>(resolve<i16>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat16) {
-        save(static_cast<i64>(resolve<u16>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Int32) {
-        save(static_cast<i64>(resolve<i32>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat32) {
-        save(static_cast<i64>(resolve<i32>(cmd.typed_reg_.get())));
-      } else {
-        UNREACHABLE();
-      }
+      save(static_cast<i64>(resolve<i8>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToNat64: {
-      if (cmd.typed_reg_.type() == type::Nat8) {
-        save(static_cast<u64>(resolve<u8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat16) {
-        save(static_cast<u64>(resolve<u16>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat32) {
-        save(static_cast<u64>(resolve<i32>(cmd.typed_reg_.get())));
-      } else {
-        UNREACHABLE();
-      }
+      save(static_cast<u64>(resolve<u8>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToFloat32: {
-      if (cmd.typed_reg_.type() == type::Int8) {
-        save(static_cast<float>(resolve<i8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat8) {
-        save(static_cast<float>(resolve<u8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Int16) {
-        save(static_cast<float>(resolve<i16>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat16) {
-        save(static_cast<float>(resolve<u16>(cmd.typed_reg_.get())));
-      } else {
-        UNREACHABLE();
-      }
+      save(static_cast<float>(resolve<i8>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToFloat64: {
-       if (cmd.typed_reg_.type() == type::Int8) {
-        save(static_cast<double>(resolve<i8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat8) {
-        save(static_cast<double>(resolve<u8>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Int16) {
-        save(static_cast<double>(resolve<i16>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat16) {
-        save(static_cast<double>(resolve<u16>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Int32) {
-        save(static_cast<double>(resolve<i32>(cmd.typed_reg_.get())));
-      } else if (cmd.typed_reg_.type() == type::Nat32) {
-        save(static_cast<double>(resolve<u32>(cmd.typed_reg_.get())));
-      } else {
-        UNREACHABLE();
-      }
+      save(static_cast<double>(resolve<i8>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastPtr: save(resolve<ir::Addr>(cmd.typed_reg_.get())); break;
     case ir::Op::CreateBlockSeq:
