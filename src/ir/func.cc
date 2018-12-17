@@ -8,10 +8,6 @@
 #include "type/function.h"
 #include "type/pointer.h"
 
-namespace type {
-Pointer const *Ptr(const Type *);
-}  // namespace type
-
 namespace ir {
 thread_local Func *Func::Current{nullptr};
 

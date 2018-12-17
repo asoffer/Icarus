@@ -1,9 +1,16 @@
-ascii ::= struct { _val: nat8 }
+Ascii ::= struct { _val: nat8 }
 
-asc ::= (val: nat8) -> ascii {
-  c: ascii
+ascii ::= (val: nat8) -> Ascii {
+  c: Ascii
   c._val = val
   return c
 }
 
-(print) ::= (c: ascii) -> { foreign("putchar", nat8 -> int32)(c._val) }
+(print) ::= (c: Ascii) -> { foreign("putchar", nat8 -> int32)(c._val) }
+
+is_eof ::= (c: Ascii) => c._val == 255 as nat8
+
+read ::= () -> Ascii {
+  c := ascii(foreign("getchar", () -> int32)() as nat8)
+  return c
+}

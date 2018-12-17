@@ -142,6 +142,10 @@ void CallForeignFn(ir::ForeignFn const &f,
     using fn_t = float (*)(float);
     fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
     StoreValue(fn(arguments.get<float>(0)), ret_slots.at(0), stack);
+  } else if (f.type() == type::Func({}, {type::Int32})) {
+    using fn_t = i32 (*)();
+    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+    StoreValue(fn(), ret_slots.at(0), stack);
   } else if (f.type() == type::Func({type::Nat8}, {type::Int32})) {
     using fn_t = i32 (*)(u8);
     fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
@@ -465,11 +469,15 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PrintBool:
       std::cerr << (resolve(cmd.bool_arg_) ? "true" : "false");
       break;
-    case ir::Op::PrintInt8: std::cerr << resolve(cmd.i8_arg_); break;
+    case ir::Op::PrintInt8:
+      std::cerr << static_cast<i32>(resolve(cmd.i8_arg_));
+      break;
     case ir::Op::PrintInt16: std::cerr << resolve(cmd.i16_arg_); break;
     case ir::Op::PrintInt32: std::cerr << resolve(cmd.i32_arg_); break;
     case ir::Op::PrintInt64: std::cerr << resolve(cmd.i64_arg_); break;
-    case ir::Op::PrintNat8: std::cerr << resolve(cmd.u8_arg_); break;
+    case ir::Op::PrintNat8:
+      std::cerr << static_cast<i32>(resolve(cmd.u8_arg_));
+      break;
     case ir::Op::PrintNat16: std::cerr << resolve(cmd.u16_arg_); break;
     case ir::Op::PrintNat32: std::cerr << resolve(cmd.u32_arg_); break;
     case ir::Op::PrintNat64: std::cerr << resolve(cmd.u64_arg_); break;

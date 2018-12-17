@@ -40,7 +40,7 @@ inline bool operator<(CmdIndex lhs, CmdIndex rhs) {
 struct Func {
   static thread_local Func *Current;
 
-  Func(Module *mod, const type::Function *fn_type,
+  Func(Module *mod, type::Function const *fn_type,
        base::vector<std::pair<std::string, ast::Expression *>> args);
 
   Register Argument(u32 n) const;

@@ -81,8 +81,11 @@ type::Type const *Access::VerifyType(Context *ctx) {
 void Access::Validate(Context *ctx) { operand->Validate(ctx); }
 
 base::vector<ir::Register> ast::Access::EmitLVal(Context *ctx) {
-  auto reg   = operand->EmitLVal(ctx)[0];
-  auto *t    = ctx->type_of(operand.get());
+  // TODO this is buggy... 
+  // x: *MyStruct
+  // x.some_field <-- does a problematic load.
+  auto reg = operand->EmitLVal(ctx)[0];
+  auto *t  = ctx->type_of(operand.get());
   while (t->is<type::Pointer>()) {
     t   = t->as<type::Pointer>().pointee;
     reg = ir::Load<ir::Addr>(reg, t);

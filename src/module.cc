@@ -41,7 +41,7 @@ Module::Module()
 Module::~Module() = default;
 
 ir::Func *Module::AddFunc(
-    const type::Function *fn_type,
+    type::Function const *fn_type,
     base::vector<std::pair<std::string, ast::Expression *>> args) {
   auto *result = fns_.emplace_back(std::make_unique<ir::Func>(this, fn_type,
                                                               std::move(args)))

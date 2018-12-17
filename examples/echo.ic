@@ -1,0 +1,11 @@
+-- ::= import "examples/lib/core.ic"
+char ::= import "examples/lib/char.ic"
+
+main ::= () -> () {
+  c: char.Ascii
+  while (!c'char.is_eof) do {
+    c = char.read()
+    (print) := char.(print)
+    print c
+  }
+}
