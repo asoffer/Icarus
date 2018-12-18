@@ -415,13 +415,13 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::Array: {
       save(type::Arr(resolve(cmd.array_.type_), resolve(cmd.array_.len_)));
     } break;
-    case ir::Op::VariantType: save(resolve<ir::Addr>(cmd.reg_)); break;
+    case ir::Op::VariantType: save(resolve(cmd.addr_arg_)); break;
     case ir::Op::VariantValue: {
       auto bytes = Architecture::InterprettingMachine().bytes(Ptr(type::Type_));
       auto bytes_fwd =
           Architecture::InterprettingMachine().MoveForwardToAlignment(
               Ptr(type::Type_), bytes);
-      auto addr = resolve<ir::Addr>(cmd.reg_);
+      auto addr = resolve(cmd.addr_arg_);
       switch (addr.kind) {
         case ir::Addr::Kind::Stack:
           addr.as_stack += bytes_fwd;
@@ -435,7 +435,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       }
     } break;
     case ir::Op::PtrIncr: {
-      auto addr      = resolve<ir::Addr>(cmd.ptr_incr_.ptr_);
+      auto addr      = resolve(cmd.ptr_incr_.ptr_);
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
           resolve(cmd.ptr_incr_.incr_), cmd.ptr_incr_.pointee_type_);
       switch (addr.kind) {
@@ -447,7 +447,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(addr);
     } break;
     case ir::Op::Field: {
-      auto addr = resolve<ir::Addr>(cmd.field_.ptr_);
+      auto addr = resolve(cmd.field_.ptr_);
       size_t offset = 0;
       if (cmd.field_.type_->is<type::Struct>()) {
         offset = cmd.field_.type_->as<type::Struct>().offset(
@@ -556,7 +556,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::AppendToTuple: {
       auto *tuple_to_modify =
-          ASSERT_NOT_NULL(resolve<type::Tuple *>(cmd.store_type_.addr_));
+          ASSERT_NOT_NULL(resolve<type::Tuple *>(cmd.store_type_.addr_.reg_));
       tuple_to_modify->entries_.push_back(resolve(cmd.store_type_.val_));
     } break;
     case ir::Op::FinalizeTuple:
@@ -567,7 +567,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::AppendToVariant: {
       auto *variant_to_modify =
-          ASSERT_NOT_NULL(resolve<type::Variant *>(cmd.store_type_.addr_));
+          ASSERT_NOT_NULL(resolve<type::Variant *>(cmd.store_type_.addr_.reg_));
       variant_to_modify->variants_.push_back(resolve(cmd.store_type_.val_));
     } break;
     case ir::Op::FinalizeVariant:
@@ -608,8 +608,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(new base::vector<ir::BlockSequence>{});
       break;
     case ir::Op::AppendToBlockSeq: {
-      auto *block_seq_to_modify = ASSERT_NOT_NULL(
-          resolve<base::vector<ir::BlockSequence> *>(cmd.store_block_.addr_));
+      auto *block_seq_to_modify =
+          ASSERT_NOT_NULL(resolve<base::vector<ir::BlockSequence> *>(
+              cmd.store_block_.addr_.reg_));
       block_seq_to_modify->push_back(resolve(cmd.store_block_.val_));
     } break;
     case ir::Op::FinalizeBlockSeq: {

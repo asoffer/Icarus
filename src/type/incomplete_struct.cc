@@ -6,7 +6,7 @@ namespace type {
 char *IncompleteStruct::WriteTo(char *buf) const { NOT_YET(); }
 size_t IncompleteStruct::string_size() const { NOT_YET(); }
 void IncompleteStruct::EmitAssign(const Type *from_type, ir::Val const &from,
-                                  ir::Register to, Context *ctx) const {
+                                  ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   UNREACHABLE();
 }
 void IncompleteStruct::EmitInit(ir::Register reg, Context *ctx) const {

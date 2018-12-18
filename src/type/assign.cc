@@ -14,7 +14,7 @@
 namespace type {
 using base::check::Is;
 void Array::EmitAssign(Type const *from_type, ir::Val const &from,
-                       ir::Register to, Context *ctx) const {
+                       ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(from_type, Is<Array>());
   auto *from_array_type = &from_type->as<Array>();
 
@@ -36,7 +36,7 @@ void Array::EmitAssign(Type const *from_type, ir::Val const &from,
       auto from_end_ptr =
           ir::PtrIncr(from_ptr, from_array_type->len, from_ptr_type);
       auto *to_ptr_type   = type::Ptr(data_type);
-      ir::Register to_ptr = ir::Index(type::Ptr(this), var, 0);
+      ir::RegisterOr<ir::Addr> to_ptr = ir::Index(type::Ptr(this), var, 0);
 
       using tup =
           std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
@@ -78,25 +78,25 @@ void Array::EmitAssign(Type const *from_type, ir::Val const &from,
 }
 
 void Pointer::EmitAssign(Type const *from_type, ir::Val const &from,
-                         ir::Register to, Context *ctx) const {
+                         ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::Addr>(), to);
 }
 
 void Enum::EmitAssign(Type const *from_type, ir::Val const &from,
-                      ir::Register to, Context *ctx) const {
+                      ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::EnumVal>(), to);
 }
 
 void Flags::EmitAssign(Type const *from_type, ir::Val const &from,
-                       ir::Register to, Context *ctx) const {
+                       ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::FlagsVal>(), to);
 }
 
 void Variant::EmitAssign(Type const *from_type, ir::Val const &from,
-                         ir::Register to, Context *ctx) const {
+                         ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   if (from_type->is<Variant>()) {
     // TODO find the best match for variant types. For instance, we allow
     // assignments like:
@@ -131,12 +131,12 @@ void Variant::EmitAssign(Type const *from_type, ir::Val const &from,
 }
 
 void Function::EmitAssign(Type const *from_type, ir::Val const &from,
-                          ir::Register to, Context *ctx) const {
+                          ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::AnyFunc>(), to);
 }
 void Primitive::EmitAssign(Type const *from_type, ir::Val const &from,
-                           ir::Register to, Context *ctx) const {
+                           ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(this == from_type);
   switch (this->type_) {
     case PrimType::Type_:
@@ -160,7 +160,7 @@ void Primitive::EmitAssign(Type const *from_type, ir::Val const &from,
 }
 
 void CharBuffer::EmitAssign(Type const *from_type, ir::Val const &from,
-                            ir::Register to, Context *ctx) const {
+                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   UNREACHABLE();
 }
 }  // namespace type

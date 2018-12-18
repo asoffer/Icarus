@@ -13,8 +13,8 @@ struct Tuple : public Type {
   virtual char *WriteTo(char *buf) const;
   virtual size_t string_size() const;
 
-  void EmitAssign(Type const *from_type, ir::Val const &from, ir::Register to,
-                  Context *ctx) const;
+  void EmitAssign(Type const *from_type, ir::Val const &from,
+                  ir::RegisterOr<ir::Addr> to, Context *ctx) const;
   virtual void EmitInit(ir::Register reg, Context *ctx) const;
   virtual void EmitDestroy(ir::Register reg, Context *ctx) const {
     UNREACHABLE();

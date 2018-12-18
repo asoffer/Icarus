@@ -5,6 +5,7 @@
 
 #include "base/debug.h"
 #include "base/util.h"
+#include "ir/addr.h"
 #include "ir/register.h"
 
 struct Context;
@@ -26,7 +27,6 @@ struct FunctionLiteral;
 namespace ir {
 struct FlagsVal;
 struct Val;
-struct Addr;
 }  // namespace ir
 
 #define TYPE_FNS(name)                                                         \
@@ -39,7 +39,8 @@ struct Addr;
   virtual char *WriteTo(char *buf) const ENDING;                               \
   virtual size_t string_size() const ENDING;                                   \
   virtual void EmitAssign(const Type *from_type, ir::Val const &from,          \
-                          ir::Register to, Context *ctx) const ENDING;         \
+                          ir::RegisterOr<ir::Addr> to, Context *ctx)           \
+      const ENDING;                                                            \
   virtual void EmitInit(ir::Register reg, Context *ctx) const ENDING;          \
   virtual void EmitDestroy(ir::Register reg, Context *ctx) const ENDING;       \
   virtual ir::Val PrepareArgument(const Type *t, const ir::Val &val,           \

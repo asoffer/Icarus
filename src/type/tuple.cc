@@ -17,7 +17,7 @@
 namespace type {
 static std::mutex mtx_;
 void Tuple::EmitAssign(Type const *from_type, ir::Val const &from,
-                       ir::Register to, Context *ctx) const {
+                       ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(this == from_type);
   for (size_t i = 0; i < entries_.size(); ++i) {
     auto *entry_type = from_type->as<type::Tuple>().entries_.at(i);

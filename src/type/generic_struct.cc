@@ -2,7 +2,7 @@
 
 namespace type {
 void GenericStruct::EmitAssign(Type const *from_type, ir::Val const &from,
-                        ir::Register to, Context *ctx) const {
+                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   NOT_YET();
 }
 

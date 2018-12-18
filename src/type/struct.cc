@@ -14,7 +14,7 @@
 
 namespace type {
 void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
-                        ir::Register to, Context *ctx) const {
+                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   std::unique_lock lock(mtx_);
   ASSERT(this == from_type);
   if (!assign_func_) {

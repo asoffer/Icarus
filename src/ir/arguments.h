@@ -15,8 +15,8 @@ namespace ir {
 struct Val;
 
 struct Arguments {
-  void append(ir::Val const &val);
-  void append(ir::Register reg);
+  void append(Val const &val);
+  void append(RegisterOr<Addr> reg);
   std::string to_string() const;
   base::untyped_buffer PrepareCallBuffer(base::untyped_buffer const &regs);
 

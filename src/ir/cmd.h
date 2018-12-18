@@ -45,7 +45,7 @@ struct PhiArgs : GenericPhiArgs {
 struct Cmd {
   template <typename T>
   struct Store {
-    Register addr_;
+    RegisterOr<Addr> addr_;
     RegisterOr<T> val_;
   };
 
@@ -73,12 +73,12 @@ struct Cmd {
   struct PtrIncr {
     // TODO maybe store the type here rather than on the cmd because most cmds
     // don't need it.
-    Register ptr_;
+    RegisterOr<Addr> ptr_;
     type::Type const *pointee_type_;
     RegisterOr<i32> incr_;
   };
   struct Field {
-    Register ptr_;
+    RegisterOr<Addr> ptr_;
     type::Type const *type_;  // Struct or Tuple
     size_t num_;
   };
@@ -324,12 +324,13 @@ RegisterOr<T> Neg(RegisterOr<T> r) {
 }
 
 template <typename T, typename... Args>
-TypedRegister<T> Load(Register r, type::Type const *t = type::Get<T>()) {
+TypedRegister<T> Load(RegisterOr<Addr> r,
+                      type::Type const *t = type::Get<T>()) {
   auto &cmd = MakeCmd(t, Cmd::OpCode<Cmd::LoadTag, T>());
-  cmd.reg_ = r;
+  cmd.addr_arg_ = r;
   return cmd.result;
 }
-Register Load(Register r, type::Type const *t);
+Register Load(RegisterOr<Addr> r, type::Type const *t);
 
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
                                      RegisterOr<type::Type const *> out);
@@ -338,13 +339,13 @@ RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r);
 
 RegisterOr<type::Type const *> Array(RegisterOr<i32> len,
                                      RegisterOr<type::Type const *> data_type);
-Register VariantType(Register r);
-Register VariantValue(const type::Type *t, Register r);
+Register VariantType(RegisterOr<Addr> r);
+Register VariantValue(const type::Type *t, RegisterOr<Addr> r);
 // Type repreesents the type of `ptr`
-TypedRegister<Addr> PtrIncr(Register ptr, RegisterOr<i32> inc,
+TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<i32> inc,
                             type::Pointer const *t);
-Register Field(Register r, type::Struct const *t, size_t n);
-Register Field(Register r, type::Tuple const *t, size_t n);
+Register Field(RegisterOr<Addr> r, type::Struct const *t, size_t n);
+Register Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);
 

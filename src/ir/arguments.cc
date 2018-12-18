@@ -35,9 +35,13 @@ std::string Arguments::to_string() const {
   return ss.str();
 }
 
-void Arguments::append(Register reg) {
-  args_.append(reg);
-  is_reg_.push_back(true);
+void Arguments::append(RegisterOr<Addr> r) {
+  is_reg_.push_back(r.is_reg_);
+  if (r.is_reg_) {
+    args_.append(r.reg_);
+  } else {
+    args_.append(r.val_);
+  }
 }
 
 void Arguments::append(const ir::Val &val) {

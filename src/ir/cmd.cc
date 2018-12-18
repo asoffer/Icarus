@@ -208,13 +208,13 @@ RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
   return cmd.result;
 }
 
-Register Field(Register r, type::Tuple const *t, size_t n) {
+Register Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n) {
   auto &cmd  = MakeCmd(type::Ptr(t->entries_.at(n)), Op::Field);
   cmd.field_ = {r, t, n};
   return cmd.result;
 }
 
-Register Field(Register r, type::Struct const *t, size_t n) {
+Register Field(RegisterOr<Addr> r, type::Struct const *t, size_t n) {
   auto &cmd  = MakeCmd(type::Ptr(t->fields().at(n).type), Op::Field);
   cmd.field_ = {r, t, n};
   return cmd.result;
@@ -314,15 +314,15 @@ Register FinalizeStruct(Register r) {
 
 void DebugIr() { MakeCmd(nullptr, Op::DebugIr); }
 
-Register VariantType(Register r) {
+Register VariantType(RegisterOr<Addr> r) {
   auto &cmd = MakeCmd(Ptr(type::Type_), Op::VariantType);
-  cmd.reg_  = r;
+  cmd.addr_arg_ = r;
   return cmd.result;
 }
 
-Register VariantValue(type::Type const *t, Register r) {
+Register VariantValue(type::Type const *t, RegisterOr<Addr> r) {
   auto &cmd = MakeCmd(type::Ptr(t), Op::VariantValue);
-  cmd.reg_  = r;
+  cmd.addr_arg_ = r;
   return cmd.result;
 }
 
@@ -367,9 +367,8 @@ void SetRet(size_t n, Val const &v, Context *ctx) {
   });
 }
 
-TypedRegister<Addr> PtrIncr(Register ptr, RegisterOr<i32> inc,
+TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<i32> inc,
                             type::Pointer const *t) {
-  if (!inc.is_reg_ && inc.val_ == 0) { return ptr; }
   auto &cmd     = MakeCmd(t, Op::PtrIncr);
   cmd.ptr_incr_ = {ptr, t->pointee, inc};
   return cmd.result;
@@ -440,7 +439,7 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
   return cmd.result;
 }
 
-Register Load(Register r, type::Type const *t) {
+Register Load(RegisterOr<Addr> r, type::Type const *t) {
   if (t->is<type::Function>()) { return Load<AnyFunc>(r, t); }
   return type::Apply(t, [&](auto type_holder) -> Register {
     using T = typename decltype(type_holder)::type;
@@ -540,7 +539,7 @@ static auto Stringify(T&& val) {
 
 template <typename T>
 static std::ostream &operator<<(std::ostream &os, Cmd::Store<T> const &s) {
-  return os << s.addr_.to_string() << " " << Stringify(s.val_);
+  return os << s.addr_ << " " << Stringify(s.val_);
 }
 
 template <typename T>
