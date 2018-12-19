@@ -20,7 +20,7 @@ struct Hole : public Expression {
   void Validate(Context *ctx) {}
 
   base::vector<ir::Val> EmitIR(Context *) override { return {ir::Val::None()}; }
-  base::vector<ir::Register> EmitLVal(Context *) override { UNREACHABLE(); }
+  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override { UNREACHABLE(); }
 };
 }  // namespace ast
 

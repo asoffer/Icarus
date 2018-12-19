@@ -403,7 +403,7 @@ base::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<ir::Register> ChainOp::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> ChainOp::EmitLVal(Context *ctx) {
   UNREACHABLE(this);
 }
 

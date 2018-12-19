@@ -32,6 +32,6 @@ base::vector<ir::Val> BlockNode::EmitIR(Context *ctx) {
   stmts_.EmitIR(ctx);
   return {};
 }
-base::vector<ir::Register> BlockNode::EmitLVal(Context *) { UNREACHABLE(); }
+base::vector<ir::RegisterOr<ir::Addr>> BlockNode::EmitLVal(Context *) { UNREACHABLE(); }
 
 }  // namespace ast

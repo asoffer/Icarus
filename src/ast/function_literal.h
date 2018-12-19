@@ -35,7 +35,7 @@ struct FunctionLiteral : public Expression {
   type::Type const *VerifyTypeConcrete(Context *);
 
   base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::Register> EmitLVal(Context *) override;
+  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   void CompleteBody(Context *ctx);
 

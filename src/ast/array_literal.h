@@ -10,7 +10,7 @@ struct ArrayLiteral : public CommaList {
   type::Type const *VerifyType(Context *) override;
 
   base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::Register> EmitLVal(Context *) override;
+  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 };
 }  // namespace ast
 

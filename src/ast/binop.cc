@@ -598,18 +598,22 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     } break;
     case Language::Operator::Index: {
       auto *this_type = ctx->type_of(this);
-      return {ir::Val::Reg(ir::PtrFix(EmitLVal(ctx)[0], this_type), this_type)};
+      auto lval       = EmitLVal(ctx)[0];
+      if (lval.is_reg_) { NOT_YET(); }
+      return {ir::Val::Reg(ir::PtrFix(lval.reg_, this_type), this_type)};
     } break;
     default: UNREACHABLE(*this);
   }
 }
 
-base::vector<ir::Register> ast::Binop::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> ast::Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::As: NOT_YET();
     case Language::Operator::Index: 
       if (auto *t = ctx->type_of(lhs.get()); t->is<type::Array>()) {
-        return {ir::Index(type::Ptr(ctx->type_of(this)), lhs->EmitLVal(ctx)[0],
+        auto lval = lhs->EmitLVal(ctx)[0];
+        if (lval.is_reg_) { NOT_YET(); }
+        return {ir::Index(type::Ptr(ctx->type_of(this)), lval.reg_,
                           rhs->EmitIR(ctx)[0].reg_or<i32>())};
       } else if (t->is<type::BufferPointer>()) {
         return {PtrIncr(std::get<ir::Register>(lhs->EmitIR(ctx)[0].value),

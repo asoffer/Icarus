@@ -15,7 +15,7 @@ struct Call : public Expression {
   void ExtractJumps(JumpExprs *) const override;
 
   base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::Register> EmitLVal(Context *) override;
+  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::unique_ptr<Expression> fn_;
   FnArgs<std::unique_ptr<Expression>> args_;

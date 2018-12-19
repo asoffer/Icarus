@@ -52,7 +52,7 @@ base::vector<ir::Val> ast::Interface::EmitIR(Context *ctx) {
   return {ir::Val::Interface(std::move(ifc))};
 }
 
-base::vector<ir::Register> ast::Interface::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> ast::Interface::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
 }  // namespace ast

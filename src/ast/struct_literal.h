@@ -27,7 +27,7 @@ struct StructLiteral : public Expression {
   void CompleteBody(Context *ctx);
 
   base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::Register> EmitLVal(Context *) override;
+  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::unique_ptr<DeclScope> type_scope;
   // TODO declartaions directly. don't need unique_ptr indirection.

@@ -84,7 +84,7 @@ base::vector<ir::Val> ast::ScopeLiteral::EmitIR(Context *ctx) {
   for (auto &decl : decls_) { decl.EmitIR(ctx); }
   return {ir::Val(this)};
 }
-base::vector<ir::Register> ScopeLiteral::EmitLVal(Context *) {
+base::vector<ir::RegisterOr<ir::Addr>> ScopeLiteral::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
 }  // namespace ast

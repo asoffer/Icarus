@@ -112,7 +112,7 @@ base::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<ir::Register> ast::StructLiteral::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> ast::StructLiteral::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
 

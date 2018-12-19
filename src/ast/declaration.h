@@ -23,7 +23,7 @@ struct Declaration : public Expression {
   void ExtractJumps(JumpExprs *) const override;
 
   base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::Register> EmitLVal(Context *) override { UNREACHABLE(this); }
+  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override { UNREACHABLE(this); }
 
   std::string id_;
   std::unique_ptr<Expression> type_expr, init_val;

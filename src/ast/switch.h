@@ -13,7 +13,7 @@ struct Switch : public Expression {
   void ExtractJumps(JumpExprs *rets) const override;
 
   base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::Register> EmitLVal(Context *) override;
+  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   base::vector<
       std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>>>

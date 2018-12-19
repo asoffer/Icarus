@@ -47,7 +47,7 @@ base::vector<ir::Val> ArrayType::EmitIR(Context *ctx) {
                 data_type_->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
 }
 
-base::vector<ir::Register> ArrayType::EmitLVal(Context *) {
+base::vector<ir::RegisterOr<ir::Addr>> ArrayType::EmitLVal(Context *) {
   UNREACHABLE(*this);
 }
 

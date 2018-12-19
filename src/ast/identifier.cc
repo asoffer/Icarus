@@ -80,11 +80,13 @@ base::vector<ir::Val> ast::Identifier::EmitIR(Context *ctx) {
     return {ir::Val::Reg(ctx->addr(decl), ctx->type_of(this))};
   } else {
     auto *t = ASSERT_NOT_NULL(ctx->type_of(this));
-    return {ir::Val::Reg(ir::PtrFix(EmitLVal(ctx)[0], t), t)};
+    auto lval = EmitLVal(ctx)[0];
+    if (!lval.is_reg_) { NOT_YET(); }
+    return {ir::Val::Reg(ir::PtrFix(lval.reg_, t), t)};
   }
 }
 
-base::vector<ir::Register> ast::Identifier::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> ast::Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
   ASSERT(!decl->const_);
   return {ctx->addr(decl)};

@@ -312,7 +312,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
   }
 }
 
-base::vector<ir::Register> FunctionLiteral::EmitLVal(Context *) {
+base::vector<ir::RegisterOr<ir::Addr>> FunctionLiteral::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
 }  // namespace ast

@@ -30,7 +30,7 @@ void StructType::Validate(Context *ctx) {
 
 base::vector<ir::Val> StructType::EmitIR(Context *ctx) { NOT_YET(); }
 
-base::vector<ir::Register> StructType::EmitLVal(Context *) {
+base::vector<ir::RegisterOr<ir::Addr>> StructType::EmitLVal(Context *) {
   UNREACHABLE(*this);
 }
 

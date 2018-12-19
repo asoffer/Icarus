@@ -184,8 +184,8 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
               std::get<ir::Register>(operand->EmitIR(ctx)[0].value))),
           type::Type_)};
     case Language::Operator::And:
-      return {ir::Val::Reg(operand->EmitLVal(ctx)[0],
-                           type::Ptr(ctx->type_of(this)))};
+      return {ir::ValFrom(operand->EmitLVal(ctx)[0],
+                          type::Ptr(ctx->type_of(this)))};
     case Language::Operator::Eval: {
       // TODO what if there's an error during evaluation?
       return backend::Evaluate(operand.get(), ctx);
@@ -231,7 +231,7 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<ir::Register> Unop::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> Unop::EmitLVal(Context *ctx) {
   ASSERT(op == Language::Operator::At);
   return {std::get<ir::Register>(operand->EmitIR(ctx)[0].value)};
 }

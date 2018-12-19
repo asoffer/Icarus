@@ -14,7 +14,7 @@ struct StructType : public Expression {
   void ExtractJumps(JumpExprs *) const override;
 
   base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::Register> EmitLVal(Context *ct) override;
+  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *ct) override;
 
   std::vector<std::unique_ptr<Expression>> args_;
 };

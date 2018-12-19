@@ -2,6 +2,7 @@
 #define ICARUS_AST_EXPRESSION_H
 
 #include "ast/node.h"
+#include "ir/addr.h"
 #include "ir/register.h"
 
 struct Context;
@@ -19,7 +20,7 @@ struct Expression : public Node {
   virtual type::Type const *VerifyType(Context *ctx)     = 0;
   virtual void Validate(Context *ctx)                    = 0;
   virtual base::vector<ir::Val> EmitIR(Context *)        = 0;
-  virtual base::vector<ir::Register> EmitLVal(Context *) = 0;
+  virtual base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
 
   virtual bool needs_expansion() const { return false; }
   bool parenthesized_ = false;

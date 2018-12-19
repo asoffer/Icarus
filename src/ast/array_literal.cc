@@ -59,7 +59,7 @@ base::vector<ir::Val> ast::ArrayLiteral::EmitIR(Context *ctx) {
   return {array_val};
 }
 
-base::vector<ir::Register> ast::ArrayLiteral::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> ast::ArrayLiteral::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
 }  // namespace ast

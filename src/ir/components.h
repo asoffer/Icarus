@@ -62,8 +62,8 @@ auto CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
   return phi_vals;
 }
 
-inline Register PtrFix(Register reg, type::Type const *desired_type) {
-  return desired_type->is_big() ? reg : Load(reg, desired_type);
+inline Register PtrFix(Register r, type::Type const *desired_type) {
+  return desired_type->is_big() ? r : Load(r, desired_type);
 }
 }  // namespace ir
 

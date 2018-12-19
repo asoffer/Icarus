@@ -25,7 +25,7 @@ base::vector<ir::Val> Import::EmitIR(Context *ctx) {
   return {ir::Val(mod)};
 }
 
-base::vector<ir::Register> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
+base::vector<ir::RegisterOr<ir::Addr>> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
 
 type::Type const *Import::VerifyType(Context *ctx) {
   auto *operand_type = operand_->VerifyType(ctx);

@@ -18,7 +18,7 @@ struct ChainOp : public Expression {
   void ExtractJumps(JumpExprs *) const override;
 
   base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::Register> EmitLVal(Context *) override;
+  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   base::vector<Language::Operator> ops;
   base::vector<std::unique_ptr<Expression>> exprs;

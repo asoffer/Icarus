@@ -93,7 +93,7 @@ base::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
   return {ir::MakePhi(ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)};
 }
 
-base::vector<ir::Register> ast::Switch::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> ast::Switch::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
 

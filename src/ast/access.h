@@ -20,7 +20,7 @@ struct Access : public Expression {
   }
 
   base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::Register> EmitLVal(Context *) override;
+  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::string member_name;
   std::unique_ptr<Expression> operand;

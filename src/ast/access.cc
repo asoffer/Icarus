@@ -80,7 +80,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
 
 void Access::Validate(Context *ctx) { operand->Validate(ctx); }
 
-base::vector<ir::Register> ast::Access::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
   // TODO this is buggy... 
   // x: *MyStruct
   // x.some_field <-- does a problematic load.
@@ -111,7 +111,9 @@ base::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {
     auto lit = this_type->as<type::Flags>().EmitLiteral(member_name);
     return {ir::Val(lit)};
   } else {
-    return {ir::Val::Reg(ir::PtrFix(EmitLVal(ctx)[0], this_type), this_type)};
+    auto lval = EmitLVal(ctx)[0];
+    if (lval.is_reg_) { NOT_YET(); }
+    return {ir::Val::Reg(ir::PtrFix(lval.reg_, this_type), this_type)};
   }
 }
 

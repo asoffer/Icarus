@@ -69,7 +69,7 @@ base::vector<ir::Val> ast::BlockLiteral::EmitIR(Context *ctx) {
   return {ir::Val::Block(this)};
 }
 
-base::vector<ir::Register> BlockLiteral::EmitLVal(Context *) {
+base::vector<ir::RegisterOr<ir::Addr>> BlockLiteral::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
 

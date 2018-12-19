@@ -81,8 +81,8 @@ base::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
   return {ir::Val::Reg(tuple_alloc, tuple_type)};
 }
 
-base::vector<ir::Register> CommaList::EmitLVal(Context *ctx) {
-  base::vector<ir::Register> results;
+base::vector<ir::RegisterOr<ir::Addr>> CommaList::EmitLVal(Context *ctx) {
+  base::vector<ir::RegisterOr<ir::Addr>> results;
   results.reserve(exprs_.size());
   for (auto &expr : exprs_) { results.push_back(expr->EmitLVal(ctx)[0]); }
   return results;
