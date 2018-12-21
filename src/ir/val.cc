@@ -3,6 +3,7 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "architecture.h"
 #include "ast/block_literal.h"
 #include "ast/function_literal.h"
 #include "ast/scope_literal.h"
@@ -14,6 +15,10 @@
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/struct.h"
+
+namespace backend {
+extern base::untyped_buffer ReadOnlyData;
+}  // namespace backend
 
 namespace ir {
 
@@ -38,16 +43,25 @@ BlockSequence MakeBlockSeq(const base::vector<ir::BlockSequence> &blocks) {
   return BlockSequence{&*iter};
 }
 
-static base::guarded<std::unordered_set<std::string>> GlobalStringSet;
+// TODO avoid double-storing the string.
+static base::guarded<std::unordered_map<std::string, Addr>> GlobalStringSet;
 std::string_view SaveStringGlobally(std::string const &str) {
   auto handle         = GlobalStringSet.lock();
-  auto[iter, success] = handle->insert(str);
-  return std::string_view(*iter);
+  auto[iter, success] = handle->emplace(str, Addr::ReadOnly(0));
+  if (!success) { return iter->first; }
+
+  size_t buf_end = backend::ReadOnlyData.size();
+  backend::ReadOnlyData.append_bytes(
+      str.size() + 1,  // +1 for the null terminator.
+      Architecture::InterprettingMachine().alignment(type::Nat8));
+  std::memcpy(backend::ReadOnlyData.raw(buf_end), str.data(), str.size() + 1);
+  iter->second = Addr::ReadOnly(buf_end);
+
+  return iter->first;
 }
 
-Val Val::CharBuf(const std::string &str) {
-  auto sv = SaveStringGlobally(str);
-  return Val(type::CharBuf(sv.size()), sv);
+Addr GetString(std::string const &str) {
+  return GlobalStringSet.lock()->find(str)->second;
 }
 
 Val Val::BlockSeq(BlockSequence b) {

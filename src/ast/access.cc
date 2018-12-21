@@ -112,7 +112,6 @@ base::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {
     return {ir::Val(lit)};
   } else {
     auto lval = EmitLVal(ctx)[0];
-    if (lval.is_reg_) { NOT_YET(); }
     return {ir::Val::Reg(ir::PtrFix(lval.reg_, this_type), this_type)};
   }
 }

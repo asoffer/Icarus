@@ -48,14 +48,14 @@ struct untyped_buffer {
   }
 
   template <typename T>
-  void set(size_t offset, const T &t) {
+  void set(size_t offset, T const &t) {
     static_assert(std::is_trivially_copyable_v<T>);
     ASSERT(offset + sizeof(T) <= size_);
     std::memcpy(data_ + offset, &t, sizeof(T));
   }
 
   template <typename T>
-  void append(const T &t) {
+  void append(T const &t) {
     size_t old_size = size_;
 
     append_bytes(sizeof(T), alignof(T));
@@ -63,7 +63,7 @@ struct untyped_buffer {
     set(old_size_with_alignment, t);
   }
 
-  void write(size_t offset, const base::untyped_buffer &buf) {
+  void write(size_t offset, base::untyped_buffer const &buf) {
     append_bytes(buf.size(), 1);
     std::memcpy(data_ + offset, buf.data_, buf.size_);
   }
@@ -83,7 +83,7 @@ struct untyped_buffer {
   }
 
 #ifdef DBG
-  std::string DebugString() const ;
+  std::string DebugString() const;
 #endif
 
  private:

@@ -36,6 +36,7 @@ ir::BlockSequence MakeBlockSeq(const base::vector<ir::BlockSequence> &blocks);
 }  // namespace ir
 
 namespace backend {
+base::untyped_buffer ReadOnlyData(0);
 
 void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
              const base::vector<ir::Addr> &ret_slots, ExecContext *exec_ctx) {
@@ -102,26 +103,30 @@ ir::BlockIndex ExecContext::ExecuteBlock(
 }
 
 template <typename T>
-static T LoadValue(ir::Addr addr, const base::untyped_buffer &stack) {
+static T LoadValue(ir::Addr addr, base::untyped_buffer const &stack) {
   switch (addr.kind) {
     case ir::Addr::Kind::Heap:
       return *ASSERT_NOT_NULL(static_cast<T *>(addr.as_heap));
     case ir::Addr::Kind::Stack: return stack.get<T>(addr.as_stack);
+    case ir::Addr::Kind::ReadOnly: return ReadOnlyData.get<T>(addr.as_rodata);
   }
   UNREACHABLE(DUMP(static_cast<int>(addr.kind)));
 }
 
 template <typename T>
-static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack) {
+static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack
+) {
   switch (addr.kind) {
     case ir::Addr::Kind::Stack: stack->set(addr.as_stack, val); return;
+    case ir::Addr::Kind::ReadOnly: ReadOnlyData.set(addr.as_rodata, val); return;
     case ir::Addr::Kind::Heap:
       *ASSERT_NOT_NULL(static_cast<T *>(addr.as_heap)) = val;
   }
 }
 
 void CallForeignFn(ir::ForeignFn const &f,
-                   base::untyped_buffer const &arguments, base::vector<ir::Addr> ret_slots,
+                   base::untyped_buffer const &arguments,
+                   base::vector<ir::Addr> ret_slots,
                    base::untyped_buffer *stack) {
   // TODO handle failures gracefully.
   // TODO Consider caching these.
@@ -146,15 +151,71 @@ void CallForeignFn(ir::ForeignFn const &f,
     using fn_t = i32 (*)();
     fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
     StoreValue(fn(), ret_slots.at(0), stack);
+  } else if (f.type() == type::Func({type::Ptr(type::Int32)}, {type::Int32})) {
+    using fn_t = i32 (*)(i32 *);
+    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+    auto arg   = arguments.get<ir::Addr>(0);
+    i32 *arg_val = [&]() -> i32 * {
+      switch (arg.kind) {
+        case ir::Addr::Kind::Stack: NOT_YET();
+        case ir::Addr::Kind::Heap: return reinterpret_cast<i32 *>(arg.as_heap);
+        case ir::Addr::Kind::ReadOnly: NOT_YET();
+        default: UNREACHABLE();
+      }
+    }();
+
+    StoreValue(fn(arg_val), ret_slots.at(0), stack);
   } else if (f.type() == type::Func({type::Nat8}, {type::Int32})) {
     using fn_t = i32 (*)(u8);
     fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
     StoreValue(fn(arguments.get<u8>(0)), ret_slots.at(0), stack);
+  } else if (f.type() ==
+             type::Func({type::Ptr(type::Nat8), type::Ptr(type::Nat8)},
+                        {type::Ptr(type::Int32)})) {
+    using fn_t = i32 *(*)(u8 *, u8 *);
+    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+
+    // TODO do sizeof with correct padding, etc.
+    // TODO avoid reinterpret_cast?
+    auto arg0        = arguments.get<ir::Addr>(0);
+    u8 *arg_value0 = [&]() -> u8 * {
+      switch (arg0.kind) {
+        case ir::Addr::Kind::Stack: NOT_YET();
+        case ir::Addr::Kind::Heap: NOT_YET();
+        case ir::Addr::Kind::ReadOnly:
+          return reinterpret_cast<u8 *>(ReadOnlyData.raw(arg0.as_rodata));
+        default: UNREACHABLE();
+      }
+    }();
+    auto arg1      = arguments.get<ir::Addr>(sizeof(ir::Addr));
+    u8 *arg_value1 = [&]() -> u8 * {
+      switch (arg1.kind) {
+        case ir::Addr::Kind::Stack: NOT_YET();
+        case ir::Addr::Kind::Heap: NOT_YET();
+        case ir::Addr::Kind::ReadOnly:
+          return reinterpret_cast<u8 *>(ReadOnlyData.raw(arg1.as_rodata));
+        default: UNREACHABLE();
+      }
+    }();
+
+    ir::Addr addr;
+
+    auto start  = reinterpret_cast<uintptr_t>(stack->raw(0));
+    auto end    = reinterpret_cast<uintptr_t>(stack->raw(stack->size() - 1));
+    auto fn_val = reinterpret_cast<uintptr_t>(fn(arg_value0, arg_value1));
+    if (start <= fn_val && fn_val <= end) {
+      addr.kind     = ir::Addr::Kind::Stack;
+      addr.as_stack = fn_val - start;
+    } else {
+      addr.kind    = ir::Addr::Kind::Heap;
+      addr.as_heap = reinterpret_cast<void *>(fn_val);
+    }
+    StoreValue(addr, ret_slots.at(0), stack);
   } else if (f.type() == type::Func({type::Int32}, {type::Ptr(type::Int32)}) ||
              f.type() ==
                  type::Func({type::Int32}, {type::BufPtr(type::Int32)})) {
     using fn_t = void *(*)(i32);
-    fn_t fn = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
     ir::Addr addr;
 
     auto start  = reinterpret_cast<uintptr_t>(stack->raw(0));
@@ -165,20 +226,21 @@ void CallForeignFn(ir::ForeignFn const &f,
       addr.as_stack = fn_val - start;
     } else {
       addr.kind    = ir::Addr::Kind::Heap;
-      addr.as_heap = fn(arguments.get<i32>(0));
+      addr.as_heap = reinterpret_cast<void *>(fn_val);
     }
     StoreValue(addr, ret_slots.at(0), stack);
   } else if (f.type() == type::Func({type::Ptr(type::Int32)}, {}) ||
              f.type() == type::Func({type::BufPtr(type::Int32)}, {})) {
     using fn_t = void (*)(i32 *);
     fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-    auto addr = arguments.get<ir::Addr>(0);
-    void * ptr = nullptr;
+    auto addr  = arguments.get<ir::Addr>(0);
+    void *ptr  = nullptr;
     switch (addr.kind) {
       case ir::Addr::Kind::Stack: ptr = stack->raw(addr.as_stack); break;
       case ir::Addr::Kind::Heap: ptr = addr.as_heap; break;
+      case ir::Addr::Kind::ReadOnly: ptr = ReadOnlyData.raw(addr.as_rodata); break;
     }
-    fn(static_cast<i32*>(ptr));
+    fn(static_cast<i32 *>(ptr));
 
   } else {
     UNREACHABLE();
@@ -192,7 +254,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
   };
 
   switch (cmd.op_code_) {
-    case ir::Op::Death: UNREACHABLE();
+    case ir::Op::Death: UNREACHABLE(call_stack.top().fn_);
     case ir::Op::Bytes:
       save(Architecture::InterprettingMachine().bytes(resolve(cmd.type_arg_)));
       break;
@@ -432,6 +494,10 @@ ir::BlockIndex ExecContext::ExecuteCmd(
                                              bytes_fwd);
           save(addr);
           break;
+        case ir::Addr::Kind::ReadOnly:
+          addr.as_rodata += bytes_fwd;
+          save(addr);
+          break;
       }
     } break;
     case ir::Op::PtrIncr: {
@@ -442,7 +508,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         case ir::Addr::Kind::Stack: addr.as_stack += bytes_fwd; break;
         case ir::Addr::Kind::Heap:
           addr.as_heap = static_cast<char *>(addr.as_heap) + bytes_fwd;
-          break;
+         break;
+        case ir::Addr::Kind::ReadOnly: addr.as_rodata += bytes_fwd; break;
       }
       save(addr);
     } break;

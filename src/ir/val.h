@@ -13,6 +13,7 @@
 #include "ir/flags_val.h"
 #include "ir/interface.h"
 #include "ir/register.h"
+#include "type/char_buffer.h"
 #include "type/flags.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -34,14 +35,16 @@ struct FunctionLiteral;
 }  // namespace ast
 
 namespace ir {
+std::string_view SaveStringGlobally(std::string const &str);
+
 struct Val {
   const type::Type *type = nullptr;
   // TODO make trivial: interface
   std::variant<Register, ir::Addr, bool, float, double, i8, i16, i32, i64, u8,
-               u16, u32, u64, EnumVal, FlagsVal, const type::Type *,
+               u16, u32, u64, EnumVal, FlagsVal, type::Type const *,
                type::Struct *, AnyFunc, ast::FunctionLiteral *,
-               ast::ScopeLiteral *, ir::Interface, ast::Expression *,
-               BlockIndex, std::string_view, const Module *, BlockSequence,
+               std::string_view, ast::ScopeLiteral *, ir::Interface,
+               ast::Expression *, BlockIndex, Module const *, BlockSequence,
                BuiltinGenericIndex>
       value{false};
 
@@ -57,9 +60,16 @@ struct Val {
   template <typename T,
             typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Val>>>
   explicit Val(T &&val) {
-    if constexpr (type::IsTyped<std::decay_t<T>>::value) {
+    using decayed = std::decay_t<T>;
+    if constexpr (type::IsTyped<decayed>::value) {
       type  = val.type();
       value = val.get();
+    } else if constexpr (std::is_same_v<decayed, std::string_view>) {
+      type  = type::CharBuf(val.size());
+      value = SaveStringGlobally(std::string(val));
+    } else if constexpr (std::is_same_v<decayed, std::string>) {
+      type  = type::CharBuf(val.size());
+      value = SaveStringGlobally(val);
     } else {
       type  = ::type::Get<std::decay_t<T>>();
       value = std::forward<T>(val);
@@ -83,7 +93,6 @@ struct Val {
   static Val BlockSeq(BlockSequence b);
   static Val Interface(ir::Interface ifc);
 
-  static Val CharBuf(const std::string &str);
   static Val None() { return Val(); }
 
   std::string to_string() const;
@@ -115,6 +124,9 @@ inline bool operator==(const Val &lhs, const Val &rhs) {
 }
 inline bool operator!=(const Val &lhs, const Val &rhs) { return !(lhs == rhs); }
 bool operator<(const ::ir::Val &lhs, const ::ir::Val &rhs);
+
+Addr GetString(std::string const &str);
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_VAL_H

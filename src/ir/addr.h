@@ -8,10 +8,17 @@
 
 namespace ir {
 struct Addr {
-  enum class Kind : u8 { Heap, Stack } kind;
+  enum class Kind : u8 { Heap, Stack, ReadOnly } kind;
 
   constexpr Addr() : kind(Kind::Heap), as_heap(nullptr) {}
   constexpr static Addr Null() { return Addr{}; }
+
+  constexpr static Addr ReadOnly(u64 index) {
+    Addr addr;
+    addr.kind      = Kind::ReadOnly;
+    addr.as_rodata = index;
+    return addr;
+  }
 
   constexpr static Addr Heap(void *ptr) {
     Addr addr;
@@ -30,6 +37,7 @@ struct Addr {
   union {
     u64 as_stack;
     void *as_heap;
+    u64 as_rodata;
   };
 
   std::string to_string() const;

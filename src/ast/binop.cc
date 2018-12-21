@@ -124,7 +124,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
                                                  rhs_tup->entries_.size());
       } else {
         if (!type::CanCastImplicitly(rhs_type, lhs_type)) {
-          NOT_YET("log an error");
+          NOT_YET("log an error", rhs_type, lhs_type);
         }
       }
     }
@@ -435,8 +435,20 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       return {ir::Cast(vals[0].type, this_type, vals[0])};
     } break;
     case Language::Operator::Arrow: {
-      auto reg_or_type =
-          ir::Arrow(ir::Tup(lhs->EmitIR(ctx)), ir::Tup(rhs->EmitIR(ctx)));
+      // TODO ugly hack.
+      std::vector<ir::Val> lhs_vals, rhs_vals;
+      if (auto *l = lhs->if_as<CommaList>()) {
+        for (auto &e : l->exprs_) { lhs_vals.push_back(e->EmitIR(ctx)[0]); }
+      } else {
+        lhs_vals.push_back(lhs->EmitIR(ctx)[0]);
+      }
+      if (auto *r = rhs->if_as<CommaList>()) {
+        for (auto &e : r->exprs_) { rhs_vals.push_back(e->EmitIR(ctx)[0]); }
+      } else {
+        rhs_vals.push_back(rhs->EmitIR(ctx)[0]);
+      }
+
+      auto reg_or_type = ir::Arrow(ir::Tup(lhs_vals), ir::Tup(rhs_vals));
       return {ir::ValFrom(reg_or_type)};
     } break;
     case Language::Operator::Assign: {
@@ -599,7 +611,6 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
     case Language::Operator::Index: {
       auto *this_type = ctx->type_of(this);
       auto lval       = EmitLVal(ctx)[0];
-      if (lval.is_reg_) { NOT_YET(); }
       return {ir::Val::Reg(ir::PtrFix(lval.reg_, this_type), this_type)};
     } break;
     default: UNREACHABLE(*this);
@@ -616,9 +627,16 @@ base::vector<ir::RegisterOr<ir::Addr>> ast::Binop::EmitLVal(Context *ctx) {
         return {ir::Index(type::Ptr(ctx->type_of(this)), lval.reg_,
                           rhs->EmitIR(ctx)[0].reg_or<i32>())};
       } else if (t->is<type::BufferPointer>()) {
-        return {PtrIncr(std::get<ir::Register>(lhs->EmitIR(ctx)[0].value),
-                        rhs->EmitIR(ctx)[0].reg_or<i32>(),
-                        type::Ptr(t->as<type::BufferPointer>().pointee))};
+        return {ir::PtrIncr(std::get<ir::Register>(lhs->EmitIR(ctx)[0].value),
+                            rhs->EmitIR(ctx)[0].reg_or<i32>(),
+                            type::Ptr(t->as<type::BufferPointer>().pointee))};
+      } else if (t->is<type::CharBuffer>()) {
+        // TODO interim until you remove string_view and replace it with Addr
+        // entirely.
+        return {ir::PtrIncr(
+            ir::GetString(std::string(
+                std::get<std::string_view>(lhs->EmitIR(ctx)[0].value))),
+            rhs->EmitIR(ctx)[0].reg_or<i32>(), type::Ptr(type::Nat8))};
       }
       [[fallthrough]];
     default: UNREACHABLE("Operator is ", static_cast<int>(op));

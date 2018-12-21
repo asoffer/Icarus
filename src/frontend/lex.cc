@@ -215,7 +215,7 @@ TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
   }
 
   span.finish = loc.cursor;
-  return TaggedNode::TerminalExpression(span, ir::Val::CharBuf(str_lit));
+  return TaggedNode::TerminalExpression(span, ir::Val(str_lit));
 }
 
 TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {

@@ -134,9 +134,8 @@ type::Type const *Call::VerifyType(Context *ctx) {
       ASSERT(arg_types.pos_[0], Is<type::CharBuffer>());
       ASSERT(arg_types.pos_[1] == type::Type_);
       auto *t =
-          backend::EvaluateAs<const type::Type *>(args_.pos_[1].get(), ctx);
+          backend::EvaluateAs<type::Type const *>(args_.pos_[1].get(), ctx);
       return ctx->set_type(this, t);
-      return t;
     } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {
       // TODO might be optional.
       return type::Block;
