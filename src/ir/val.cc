@@ -162,8 +162,9 @@ std::string Val::to_string() const {
           [](ir::BuiltinGenericIndex n) -> std::string {
             return "builtin(" + n.to_string() + ")";
           },
-          [](ForeignFn f) -> std::string {
-            return "foreign(" + std::string(f.name()) + ")";
+          [](Foreign f) -> std::string {
+            return "foreign(" +
+                   std::to_string(reinterpret_cast<uintptr_t>(f.get())) + ")";
           }},
       value);
 }

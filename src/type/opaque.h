@@ -2,6 +2,7 @@
 #define ICARUS_TYPE_OPAQUE_H
 
 #include "base/debug.h"
+#include "ir/val.h"
 #include "type/type.h"
 
 namespace type {

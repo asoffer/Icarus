@@ -26,7 +26,7 @@
 #include "type/all.h"
 #include "type/type.h"
 
-using base::check::Is;
+using ::base::check::Is;
 
 // TODO compile-time failure. dump the stack trace and abort for Null address
 // kinds
@@ -114,13 +114,26 @@ static T LoadValue(ir::Addr addr, base::untyped_buffer const &stack) {
 }
 
 template <typename T>
-static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack
-) {
-  switch (addr.kind) {
-    case ir::Addr::Kind::Stack: stack->set(addr.as_stack, val); return;
-    case ir::Addr::Kind::ReadOnly: ReadOnlyData.set(addr.as_rodata, val); return;
-    case ir::Addr::Kind::Heap:
-      *ASSERT_NOT_NULL(static_cast<T *>(addr.as_heap)) = val;
+static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack) {
+  if constexpr (std::is_same_v<std::decay_t<T>, void *>) {
+    auto start  = reinterpret_cast<uintptr_t>(stack->raw(0));
+    auto end    = reinterpret_cast<uintptr_t>(stack->raw(stack->size() - 1));
+    auto result = reinterpret_cast<uintptr_t>(val);
+    if (start <= result && result <= end) {
+      StoreValue(ir::Addr::Stack(result - start), addr, stack);
+    } else {
+      StoreValue(ir::Addr::Heap(val), addr, stack);
+    }
+    // TODO readonly data
+  } else {
+    switch (addr.kind) {
+      case ir::Addr::Kind::Stack: stack->set(addr.as_stack, val); return;
+      case ir::Addr::Kind::ReadOnly:
+        ReadOnlyData.set(addr.as_rodata, val);
+        return;
+      case ir::Addr::Kind::Heap:
+        *ASSERT_NOT_NULL(static_cast<T *>(addr.as_heap)) = val;
+    }
   }
 }
 
@@ -133,14 +146,12 @@ struct RetrieveArgs<N, T, Ts...> {
   template <typename OutTup>
   void operator()(base::untyped_buffer const &arguments, size_t *index,
                   OutTup *out_tup) {
-    auto arch = Architecture::InterprettingMachine();
     if constexpr (std::is_same_v<T, void *>) {
       // Any pointer-type alignment is fine. (TODO they're always the same,
       // right?)
-      auto *t   = type::Ptr(type::Int32);
-      *index    = arch.MoveForwardToAlignment(t, *index);
+      *index = ((*index - 1) | (alignof(ir::Addr) - 1)) + 1;
       auto addr = arguments.get<ir::Addr>(*index);
-      void*ptr = nullptr;
+      void *ptr = nullptr;
       switch (addr.kind) {
         case ir::Addr::Kind::Stack: NOT_YET();
         case ir::Addr::Kind::Heap:
@@ -152,9 +163,10 @@ struct RetrieveArgs<N, T, Ts...> {
         default: UNREACHABLE(static_cast<int>(addr.kind));
       }
       std::get<N>(*out_tup) = ptr;
-      *index += arch.bytes(t);
+      *index += sizeof(ir::Addr);
       RetrieveArgs<N + 1, Ts...>{}(arguments, index, out_tup);
     } else {
+      auto arch             = Architecture::InterprettingMachine();
       auto t                = type::Get<T>();
       *index                = arch.MoveForwardToAlignment(t, *index);
       std::get<N>(*out_tup) = arguments.get<T>(*index);
@@ -181,74 +193,61 @@ std::tuple<Ts...> MakeTupleArgs(base::untyped_buffer const &arguments) {
 
 // TODO Generalize this based on calling convention.
 template <typename Out, typename... Ins>
-void FfiCall(ir::ForeignFn const &f, base::untyped_buffer const &arguments,
+void FfiCall(ir::Foreign const &f, base::untyped_buffer const &arguments,
              base::vector<ir::Addr> *ret_slots, base::untyped_buffer *stack) {
   using fn_t = Out (*)(Ins...);
-  fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+  fn_t fn    = (fn_t)(f.get());
 
   if constexpr (std::is_same_v<Out, void>) {
     std::apply(fn, MakeTupleArgs<Ins...>(arguments));
-  } else if constexpr (std::is_same_v<Out, void *>) {
-    void *result = std::apply(fn, MakeTupleArgs<Ins...>(arguments));
-
-    ir::Addr addr;
-    auto start  = reinterpret_cast<uintptr_t>(stack->raw(0));
-    auto end    = reinterpret_cast<uintptr_t>(stack->raw(stack->size() - 1));
-    auto fn_val = reinterpret_cast<uintptr_t>(result);
-    if (start <= fn_val && fn_val <= end) {
-      addr.kind     = ir::Addr::Kind::Stack;
-      addr.as_stack = fn_val - start;
-    } else {
-      addr.kind    = ir::Addr::Kind::Heap;
-      addr.as_heap = reinterpret_cast<void *>(fn_val);
-    }
-    // TODO readonly data
-    StoreValue(addr, ret_slots->at(0), stack);
   } else {
     StoreValue(std::apply(fn, MakeTupleArgs<Ins...>(arguments)),
                ret_slots->at(0), stack);
   }
 }
 
-void CallForeignFn(ir::ForeignFn const &f,
-                   base::untyped_buffer const &arguments,
+void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
                    base::vector<ir::Addr> ret_slots,
                    base::untyped_buffer *stack) {
   // TODO handle failures gracefully.
   // TODO Consider caching these.
   // TODO Handle a bunch more function types in a coherent way.
-  if (f.type() == type::Func({type::Int32}, {type::Int32})) {
+  auto *fn_type = &f.type()->as<type::Function>();
+  if (fn_type == type::Func({type::Int32}, {type::Int32})) {
     FfiCall<i32, i32>(f, arguments, &ret_slots, stack);
-  } else if (f.type() == type::Func({type::Int32}, {})) {
+  } else if (fn_type == type::Func({type::Int32}, {})) {
     FfiCall<void, i32>(f, arguments, &ret_slots, stack);
-  } else if (f.type() == type::Func({type::Float64}, {type::Float64})) {
+  } else if (fn_type == type::Func({type::Float64}, {type::Float64})) {
     FfiCall<double, double>(f, arguments, &ret_slots, stack);
-  } else if (f.type() == type::Func({type::Float32}, {type::Float32})) {
+  } else if (fn_type == type::Func({type::Float32}, {type::Float32})) {
     FfiCall<float, float>(f, arguments, &ret_slots, stack);
-  } else if (f.type() == type::Func({}, {type::Int32})) {
+  } else if (fn_type == type::Func({}, {type::Int32})) {
     FfiCall<i32>(f, arguments, &ret_slots, stack);
-  } else if (f.type() == type::Func({type::Nat8}, {type::Int32})) {
+  } else if (fn_type == type::Func({type::Nat8}, {type::Int32})) {
     FfiCall<i32, u8>(f, arguments, &ret_slots, stack);
-  } else if (f.type()->input.size() == 1 &&
-             f.type()->input[0]->is<type::Pointer>() &&
-             f.type()->output.size() == 1 &&
-             f.type()->output[0] == type::Int32) {
+  } else if (fn_type->input.size() == 1 &&
+             fn_type->input[0]->is<type::Pointer>() &&
+             fn_type->output.size() == 1 && fn_type->output[0] == type::Int32) {
     FfiCall<i32, void *>(f, arguments, &ret_slots, stack);
-  } else if (f.type()->input.size() == 2 &&
-             f.type()->input[0]->is<type::Pointer>() &&
-             f.type()->input[1]->is<type::Pointer>() &&
-             f.type()->output.size() == 1 &&
-             f.type()->output[0]->is<type::Pointer>()) {
+  } else if (fn_type->input.size() == 2 &&
+             fn_type->input[0]->is<type::Pointer>() &&
+             fn_type->input[1]->is<type::Pointer>() &&
+             fn_type->output.size() == 1 &&
+             fn_type->output[0]->is<type::Pointer>()) {
     FfiCall<void *, void *, void *>(f, arguments, &ret_slots, stack);
-  } else if (f.type()->input.size() == 1 && f.type()->input[0] == type::Int32 &&
-             f.type()->output.size() == 1 &&
-             f.type()->output[0]->is<type::Pointer>()) {
+  } else if (fn_type->input.size() == 2 && fn_type->input[0] == type::Int32 &&
+             fn_type->input[1]->is<type::Pointer>() &&
+             fn_type->output.size() == 1 && fn_type->output[0] == type::Int32) {
+    FfiCall<i32, i32, void *>(f, arguments, &ret_slots, stack);
+  } else if (fn_type->input.size() == 1 && fn_type->input[0] == type::Int32 &&
+             fn_type->output.size() == 1 &&
+             fn_type->output[0]->is<type::Pointer>()) {
     FfiCall<void *, i32>(f, arguments, &ret_slots, stack);
-  } else if (f.type() == type::Func({type::Ptr(type::Int32)}, {}) ||
-             f.type() == type::Func({type::BufPtr(type::Int32)}, {})) {
+  } else if (fn_type == type::Func({type::Ptr(type::Int32)}, {}) ||
+             fn_type == type::Func({type::BufPtr(type::Int32)}, {})) {
     FfiCall<void, i32 *>(f, arguments, &ret_slots, stack);
   } else {
-    UNREACHABLE(f.type());
+    UNREACHABLE(fn_type);
   }
 }
 
@@ -625,6 +624,22 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::NewOpaqueType: {
       save(new type::Opaque);
+    } break;
+    case ir::Op::LoadSymbol: {
+      void *sym = [&]() -> void * {
+        // TODO: this is a hack for now untill we figure out why we can load
+        // stderr as a symbol but not write to it.
+        if (cmd.load_sym_.name_ == "stderr") { return stderr; }
+        if (cmd.load_sym_.name_ == "stdout") { return stdout; }
+        return ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, cmd.load_sym_.name_.data()));
+      }();
+      if (cmd.load_sym_.type_->is<type::Function>()) {
+        save(ir::AnyFunc{ir::Foreign(sym, cmd.load_sym_.type_)});
+      } else if (cmd.load_sym_.type_->is<type::Pointer>()) {
+        save(ir::Addr::Heap(sym));
+      } else {
+        NOT_YET(cmd.load_sym_.type_);
+      }
     } break;
     case ir::Op::CreateTuple: {
       save(new type::Tuple(base::vector<type::Type const *>{}));

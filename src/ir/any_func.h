@@ -4,15 +4,20 @@
 #include <cstring>
 #include "base/debug.h"
 #include "ir/foreign.h"
+#include "type/function.h"
 
 namespace ir {
+using ::base::check::Is;
+
 struct Func;
 
 // TODO This is a terrible name. Pick something better.
 struct AnyFunc {
   AnyFunc(Func *fn = nullptr) { std::memcpy(&data_, &fn, sizeof(fn)); }
-  AnyFunc(ForeignFn foreign) {
-    std::memcpy(&data_, &foreign.handle_, sizeof(foreign.handle_));
+  AnyFunc(Foreign foreign) {
+    ASSERT(foreign.type(), Is<type::Function>());
+    void *obj = foreign.get();
+    std::memcpy(&data_, &obj, sizeof(void *));
     data_ |= 0x1u;
   }
 
@@ -23,11 +28,11 @@ struct AnyFunc {
     return f;
   }
 
-  ForeignFn foreign() const {
+  Foreign foreign() const {
     ASSERT((data_ & 0x1u) == 1u);
-    ForeignFn f;
+    Foreign f;
     uintptr_t data = data_ - 1;
-    std::memcpy(&f.handle_, &data, sizeof(ForeignFn));
+    std::memcpy(&f.obj_, &data, sizeof(void *));
     return f;
   }
 

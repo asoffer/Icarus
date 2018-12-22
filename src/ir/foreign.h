@@ -1,44 +1,35 @@
 #ifndef ICARUS_IR_FOREIGN_H
 #define ICARUS_IR_FOREIGN_H
 
-#include <string_view>
-
 namespace type {
-struct Function;
+struct Type;
 }  // namespace type
 
-namespace ast {
-struct Expression;
-}  // namespace ast
-
 namespace ir {
+struct AnyFunc;
 
-struct ForeignFn {
-  explicit ForeignFn(std::string_view name, ast::Expression const *expr,
-                     type::Function const *t);
-  std::string_view name() const { return handle_->first; }
-  type::Function const *type() const { return handle_->second.type_; }
+struct Foreign {
+  Foreign(void *obj, type::Type const *t);
 
-  struct Data {
-    ast::Expression const *expr_ = nullptr;
-    type::Function const *type_  = nullptr;
-  };
+  void *get() const { return obj_; }
+  type::Type const *type() const;
 
  private:
+  Foreign() {}
+
   friend struct AnyFunc;
 
-  ForeignFn()                                            = default;
-  std::pair<std::string_view const, Data> const *handle_ = nullptr;
+  void *obj_ = nullptr;
 };
 
-inline bool operator==(ForeignFn lhs, ForeignFn rhs) {
-  return lhs.name() == rhs.name();
+inline bool operator==(Foreign lhs, Foreign rhs) {
+  return lhs.get() == rhs.get();
 }
-inline bool operator<(ForeignFn lhs, ForeignFn rhs) {
-  return lhs.name() < rhs.name();
+inline bool operator<(Foreign lhs, Foreign rhs) {
+  return lhs.get() < rhs.get();
 }
-inline bool operator>(ForeignFn lhs, ForeignFn rhs) {
-  return rhs.name() < lhs.name();
+inline bool operator>(Foreign lhs, Foreign rhs) {
+  return rhs.get() < lhs.get();
 }
 
 }  // namespace ir

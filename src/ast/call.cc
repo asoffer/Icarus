@@ -228,10 +228,10 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
       auto name =
           backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx);
       // TODO can I evaluate as type::Function const *?
-      auto *fn_type =
+      auto *foreign_type =
           backend::EvaluateAs<type::Type const *>(args_.pos_[1].get(), ctx);
-      return {ir::Val::Func(
-          fn_type, ir::ForeignFn{name, this, &fn_type->as<type::Function>()})};
+      return {ir::Val(ir::LoadSymbol(name, foreign_type))};
+
     } else if (fn_val == ir::Val::BuiltinGeneric(OpaqueFuncIndex)) {
       return {ir::Val(ir::NewOpaqueType())};
     } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {

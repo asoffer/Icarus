@@ -114,7 +114,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
           [&](const ir::BuiltinGenericIndex &bgi) -> llvm::Value * {
             NOT_YET();
           },
-          [&](const ir::ForeignFn &f) -> llvm::Value * { NOT_YET(); }
+          [&](const ir::Foreign &f) -> llvm::Value * { NOT_YET(); }
           /*
           [&](ast::FunctionLiteral *fn) -> llvm::Value * {
             return llvm_data->module->getOrInsertFunction(

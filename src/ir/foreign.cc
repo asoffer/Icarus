@@ -5,13 +5,15 @@
 #include "type/type.h"
 
 namespace ir {
-static base::guarded<base::unordered_map<std::string_view, ForeignFn::Data>>
-    foreign_fns;
+static base::guarded<base::unordered_map<void *, type::Type const *>>
+    foreign_objs;
 
-ForeignFn::ForeignFn(std::string_view name, ast::Expression const *expr,
-                     type::Function const *t)
-    : handle_(
-          &*foreign_fns.lock()->emplace(name, ForeignFn::Data{expr, t}).first) {
+Foreign::Foreign(void *obj, type::Type const *t) : obj_(obj) {
+  // TODO what if two calls to foreign claim it's a different type? Should this
+  // be allowed? Is it already checked?
+  foreign_objs.lock()->emplace(obj, t);
 }
+
+type::Type const *Foreign::type() const { return foreign_objs.lock()->at(obj_); }
 
 }  // namespace ir

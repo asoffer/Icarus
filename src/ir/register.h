@@ -4,7 +4,6 @@
 #include "base/container/vector.h"
 #include "base/strong_types.h"
 #include "base/types.h"
-#include "ir/any_func.h"
 
 DEFINE_STRONG_INT(ir, BlockIndex, i32, -1);
 DEFINE_STRONG_INT(ir, EnumVal, size_t, 0);

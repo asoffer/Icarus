@@ -2,7 +2,6 @@
 #define ICARUS_TYPE_FUNCTION_H
 
 #include <cstring>
-#include "ir/val.h"
 #include "type/type.h"
 #include "type/callable.h"
 
@@ -12,23 +11,25 @@ class FunctionType;
 }  // namespace llvm
 #endif  // ICARUS_USE_LLVM
 
+namespace ir {
+struct Val;
+}  // namespace ir
+
 namespace type {
 struct GenericFunction : public Callable {
   GenericFunction() {}
   ~GenericFunction() override {}
-  char *WriteTo(char *buf) const override { 
+  char *WriteTo(char *buf) const override {
     return std::strcpy(buf, "generic") + string_size();
   }
   size_t string_size() const override { return sizeof("generic") - 1; }
   void EmitAssign(const Type *from_type, ir::Val const &from,
-                  ir::RegisterOr<ir::Addr> to, Context *ctx) const override {}
-  void EmitInit(ir::Register reg, Context *ctx) const override {}
-  void EmitDestroy(ir::Register reg, Context *ctx) const override {}
+                  ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
+  void EmitInit(ir::Register reg, Context *ctx) const override;
+  void EmitDestroy(ir::Register reg, Context *ctx) const override;
   ir::Val PrepareArgument(const Type *t, const ir::Val &val,
-                          Context *ctx) const override {
-    NOT_YET();
-  }
-  void EmitRepr(ir::Val const &id_val, Context *ctx) const override {}
+                          Context *ctx) const override;
+  void EmitRepr(ir::Val const &id_val, Context *ctx) const override;
   Cmp Comparator() const override;
 };
 

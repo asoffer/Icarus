@@ -174,6 +174,11 @@ struct Cmd {
         *jump_table_;
   };
 
+  struct LoadSymbol {
+    std::string_view name_;
+    type::Type const *type_;
+  };
+
   union {
     Empty empty_;
     Register reg_;
@@ -181,6 +186,7 @@ struct Cmd {
     type::Type const *type_;
 
     ast::StructLiteral *generate_struct_;
+    LoadSymbol load_sym_;
 
     CreateStructField create_struct_field_;
     SetStructFieldName set_struct_field_name_;
@@ -519,6 +525,8 @@ RegisterOr<type::Type const *> GenerateStruct(ast::StructLiteral *sl);
 TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
                           RegisterOr<i32> offset);
 TypedRegister<Addr> Alloca(const type::Type *t);
+
+type::Typed<Register> LoadSymbol(std::string_view name, type::Type const *type);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
 }  // namespace ir

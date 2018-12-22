@@ -30,6 +30,12 @@ RegisterOr<type::Type const *> GenerateStruct(ast::StructLiteral *sl) {
   return cmd.result;
 }
 
+type::Typed<Register> LoadSymbol(std::string_view name, type::Type const *t) {
+  auto &cmd     = MakeCmd(t, Op::LoadSymbol);
+  cmd.load_sym_ = {name, t};
+  return type::Typed<Register>{cmd.result, t};
+}
+
 // TODO pass atyped_reg? not sure that's right.
 Register CastPtr(Register r, type::Pointer const *t) {
   auto &cmd      = MakeCmd(t, Op::CastPtr);
@@ -590,13 +596,18 @@ static std::ostream &operator<<(std::ostream &os, Cmd::CondJump const &j) {
             << j.blocks_[1];
 }
 
+static std::ostream &operator<<(std::ostream &os, Cmd::LoadSymbol const &ls) {
+  return os << ls.name_ << ": " << ASSERT_NOT_NULL(ls.type_)->to_string();
+}
+
 static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
   if (call.fn_.is_reg_) {
     os << call.fn_.reg_;
   } else if (call.fn_.val_.is_fn()) {
     os << call.fn_.val_.func();
   } else {
-    os << call.fn_.val_.foreign().name();
+    os << "foreign("
+       << reinterpret_cast<uintptr_t>(call.fn_.val_.foreign().get()) << ")";
   }
   os << call.arguments_->to_string();
 

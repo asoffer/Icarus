@@ -260,3 +260,4 @@ OP_MACRO(SetRetModule,         SetRet,              Module const*,           set
 OP_MACRO(SetRetBlock,          SetRet,              BlockSequence,           set_ret_block_)
 OP_MACRO(GenerateStruct,       GenerateStruct,      void,                    generate_struct_)
 OP_MACRO(NewOpaqueType,        NewOpaqueType,       void,                    reg_)
+OP_MACRO(LoadSymbol,           LoadSymbol,          void,                    load_sym_)
