@@ -42,6 +42,7 @@ struct Identifier;
 #include "enum.h"
 #include "flags.h"
 #include "function.h"
+#include "opaque.h"
 #include "generic_struct.h"
 #include "incomplete_struct.h"
 #include "pointer.h"

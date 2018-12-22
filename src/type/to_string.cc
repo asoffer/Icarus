@@ -276,6 +276,11 @@ char *Tuple::WriteTo(char *buf) const {
   return buf;
 }
 
+char *Opaque::WriteTo(char *buf) const {
+  return std::strcpy(buf, "<opaque>") + 8;
+}
+size_t Opaque::string_size() const { return 8; }
+
 char *CharBuffer::WriteTo(char *buf) const {
   buf = std::strcpy(buf, "char_buffer(") + 12;
   buf = std::strcpy(buf, std::to_string(length_).c_str()) + NumDigits(length_);

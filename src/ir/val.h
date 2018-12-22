@@ -64,6 +64,9 @@ struct Val {
     if constexpr (type::IsTyped<decayed>::value) {
       type  = val.type();
       value = val.get();
+    } else if constexpr (IsTypedReg<decayed>::value) {
+      type = type::Get<typename decayed::type>();
+      value = static_cast<Register>(val);
     } else if constexpr (std::is_same_v<decayed, std::string_view>) {
       type  = type::CharBuf(val.size());
       value = SaveStringGlobally(std::string(val));

@@ -73,7 +73,7 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       return ctx->set_type(this, type::Ptr(operand_type));
     case Language::Operator::Mul:
       if (operand_type != type::Type_) {
-        NOT_YET("log an error");
+        NOT_YET("log an error, ", operand_type, this);
         return nullptr;
       } else {
         return ctx->set_type(this, type::Type_);

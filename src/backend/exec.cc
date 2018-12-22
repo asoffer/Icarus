@@ -124,6 +124,92 @@ static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack
   }
 }
 
+
+template <size_t N, typename... Ts>
+struct RetrieveArgs;
+
+template <size_t N, typename T, typename... Ts>
+struct RetrieveArgs<N, T, Ts...> {
+  template <typename OutTup>
+  void operator()(base::untyped_buffer const &arguments, size_t *index,
+                  OutTup *out_tup) {
+    auto arch = Architecture::InterprettingMachine();
+    if constexpr (std::is_same_v<T, void *>) {
+      // Any pointer-type alignment is fine. (TODO they're always the same,
+      // right?)
+      auto *t   = type::Ptr(type::Int32);
+      *index    = arch.MoveForwardToAlignment(t, *index);
+      auto addr = arguments.get<ir::Addr>(*index);
+      void*ptr = nullptr;
+      switch (addr.kind) {
+        case ir::Addr::Kind::Stack: NOT_YET();
+        case ir::Addr::Kind::Heap:
+          ptr = static_cast<void *>(addr.as_heap);
+          break;
+        case ir::Addr::Kind::ReadOnly:
+          ptr = static_cast<void *>(ReadOnlyData.raw(addr.as_rodata));
+          break;
+        default: UNREACHABLE(static_cast<int>(addr.kind));
+      }
+      std::get<N>(*out_tup) = ptr;
+      *index += arch.bytes(t);
+      RetrieveArgs<N + 1, Ts...>{}(arguments, index, out_tup);
+    } else {
+      auto t                = type::Get<T>();
+      *index                = arch.MoveForwardToAlignment(t, *index);
+      std::get<N>(*out_tup) = arguments.get<T>(*index);
+      *index += arch.bytes(t);
+      RetrieveArgs<N + 1, Ts...>{}(arguments, index, out_tup);
+    }
+  }
+};
+
+template <size_t N>
+struct RetrieveArgs<N> {
+  template <typename OutTup>
+  void operator()(base::untyped_buffer const &arguments, size_t *index,
+                  OutTup *out_tup) {}
+};
+
+template <typename... Ts>
+std::tuple<Ts...> MakeTupleArgs(base::untyped_buffer const &arguments) {
+  std::tuple<Ts...> results;
+  size_t index = 0;
+  RetrieveArgs<0, Ts...>{}(arguments, &index, &results);
+  return results;
+}
+
+// TODO Generalize this based on calling convention.
+template <typename Out, typename... Ins>
+void FfiCall(ir::ForeignFn const &f, base::untyped_buffer const &arguments,
+             base::vector<ir::Addr> *ret_slots, base::untyped_buffer *stack) {
+  using fn_t = Out (*)(Ins...);
+  fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
+
+  if constexpr (std::is_same_v<Out, void>) {
+    std::apply(fn, MakeTupleArgs<Ins...>(arguments));
+  } else if constexpr (std::is_same_v<Out, void *>) {
+    void *result = std::apply(fn, MakeTupleArgs<Ins...>(arguments));
+
+    ir::Addr addr;
+    auto start  = reinterpret_cast<uintptr_t>(stack->raw(0));
+    auto end    = reinterpret_cast<uintptr_t>(stack->raw(stack->size() - 1));
+    auto fn_val = reinterpret_cast<uintptr_t>(result);
+    if (start <= fn_val && fn_val <= end) {
+      addr.kind     = ir::Addr::Kind::Stack;
+      addr.as_stack = fn_val - start;
+    } else {
+      addr.kind    = ir::Addr::Kind::Heap;
+      addr.as_heap = reinterpret_cast<void *>(fn_val);
+    }
+    // TODO readonly data
+    StoreValue(addr, ret_slots->at(0), stack);
+  } else {
+    StoreValue(std::apply(fn, MakeTupleArgs<Ins...>(arguments)),
+               ret_slots->at(0), stack);
+  }
+}
+
 void CallForeignFn(ir::ForeignFn const &f,
                    base::untyped_buffer const &arguments,
                    base::vector<ir::Addr> ret_slots,
@@ -132,118 +218,37 @@ void CallForeignFn(ir::ForeignFn const &f,
   // TODO Consider caching these.
   // TODO Handle a bunch more function types in a coherent way.
   if (f.type() == type::Func({type::Int32}, {type::Int32})) {
-    using fn_t = i32 (*)(i32);
-    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-    StoreValue(fn(arguments.get<i32>(0)), ret_slots.at(0), stack);
+    FfiCall<i32, i32>(f, arguments, &ret_slots, stack);
   } else if (f.type() == type::Func({type::Int32}, {})) {
-    using fn_t = void (*)(i32);
-    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-    fn(arguments.get<i32>(0));
+    FfiCall<void, i32>(f, arguments, &ret_slots, stack);
   } else if (f.type() == type::Func({type::Float64}, {type::Float64})) {
-    using fn_t = double (*)(double);
-    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-    StoreValue(fn(arguments.get<double>(0)), ret_slots.at(0), stack);
+    FfiCall<double, double>(f, arguments, &ret_slots, stack);
   } else if (f.type() == type::Func({type::Float32}, {type::Float32})) {
-    using fn_t = float (*)(float);
-    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-    StoreValue(fn(arguments.get<float>(0)), ret_slots.at(0), stack);
+    FfiCall<float, float>(f, arguments, &ret_slots, stack);
   } else if (f.type() == type::Func({}, {type::Int32})) {
-    using fn_t = i32 (*)();
-    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-    StoreValue(fn(), ret_slots.at(0), stack);
-  } else if (f.type() == type::Func({type::Ptr(type::Int32)}, {type::Int32})) {
-    using fn_t = i32 (*)(i32 *);
-    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-    auto arg   = arguments.get<ir::Addr>(0);
-    i32 *arg_val = [&]() -> i32 * {
-      switch (arg.kind) {
-        case ir::Addr::Kind::Stack: NOT_YET();
-        case ir::Addr::Kind::Heap: return reinterpret_cast<i32 *>(arg.as_heap);
-        case ir::Addr::Kind::ReadOnly: NOT_YET();
-        default: UNREACHABLE();
-      }
-    }();
-
-    StoreValue(fn(arg_val), ret_slots.at(0), stack);
+    FfiCall<i32>(f, arguments, &ret_slots, stack);
   } else if (f.type() == type::Func({type::Nat8}, {type::Int32})) {
-    using fn_t = i32 (*)(u8);
-    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-    StoreValue(fn(arguments.get<u8>(0)), ret_slots.at(0), stack);
-  } else if (f.type() ==
-             type::Func({type::Ptr(type::Nat8), type::Ptr(type::Nat8)},
-                        {type::Ptr(type::Int32)})) {
-    using fn_t = i32 *(*)(u8 *, u8 *);
-    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-
-    // TODO do sizeof with correct padding, etc.
-    // TODO avoid reinterpret_cast?
-    auto arg0        = arguments.get<ir::Addr>(0);
-    u8 *arg_value0 = [&]() -> u8 * {
-      switch (arg0.kind) {
-        case ir::Addr::Kind::Stack: NOT_YET();
-        case ir::Addr::Kind::Heap: NOT_YET();
-        case ir::Addr::Kind::ReadOnly:
-          return reinterpret_cast<u8 *>(ReadOnlyData.raw(arg0.as_rodata));
-        default: UNREACHABLE();
-      }
-    }();
-    auto arg1      = arguments.get<ir::Addr>(sizeof(ir::Addr));
-    u8 *arg_value1 = [&]() -> u8 * {
-      switch (arg1.kind) {
-        case ir::Addr::Kind::Stack: NOT_YET();
-        case ir::Addr::Kind::Heap: NOT_YET();
-        case ir::Addr::Kind::ReadOnly:
-          return reinterpret_cast<u8 *>(ReadOnlyData.raw(arg1.as_rodata));
-        default: UNREACHABLE();
-      }
-    }();
-
-    ir::Addr addr;
-
-    auto start  = reinterpret_cast<uintptr_t>(stack->raw(0));
-    auto end    = reinterpret_cast<uintptr_t>(stack->raw(stack->size() - 1));
-    auto fn_val = reinterpret_cast<uintptr_t>(fn(arg_value0, arg_value1));
-    if (start <= fn_val && fn_val <= end) {
-      addr.kind     = ir::Addr::Kind::Stack;
-      addr.as_stack = fn_val - start;
-    } else {
-      addr.kind    = ir::Addr::Kind::Heap;
-      addr.as_heap = reinterpret_cast<void *>(fn_val);
-    }
-    StoreValue(addr, ret_slots.at(0), stack);
-  } else if (f.type() == type::Func({type::Int32}, {type::Ptr(type::Int32)}) ||
-             f.type() ==
-                 type::Func({type::Int32}, {type::BufPtr(type::Int32)})) {
-    using fn_t = void *(*)(i32);
-    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-    ir::Addr addr;
-
-    auto start  = reinterpret_cast<uintptr_t>(stack->raw(0));
-    auto end    = reinterpret_cast<uintptr_t>(stack->raw(stack->size() - 1));
-    auto fn_val = reinterpret_cast<uintptr_t>(fn(arguments.get<i32>(0)));
-    if (start <= fn_val && fn_val <= end) {
-      addr.kind     = ir::Addr::Kind::Stack;
-      addr.as_stack = fn_val - start;
-    } else {
-      addr.kind    = ir::Addr::Kind::Heap;
-      addr.as_heap = reinterpret_cast<void *>(fn_val);
-    }
-    StoreValue(addr, ret_slots.at(0), stack);
+    FfiCall<i32, u8>(f, arguments, &ret_slots, stack);
+  } else if (f.type()->input.size() == 1 &&
+             f.type()->input[0]->is<type::Pointer>() &&
+             f.type()->output.size() == 1 &&
+             f.type()->output[0] == type::Int32) {
+    FfiCall<i32, void *>(f, arguments, &ret_slots, stack);
+  } else if (f.type()->input.size() == 2 &&
+             f.type()->input[0]->is<type::Pointer>() &&
+             f.type()->input[1]->is<type::Pointer>() &&
+             f.type()->output.size() == 1 &&
+             f.type()->output[0]->is<type::Pointer>()) {
+    FfiCall<void *, void *, void *>(f, arguments, &ret_slots, stack);
+  } else if (f.type()->input.size() == 1 && f.type()->input[0] == type::Int32 &&
+             f.type()->output.size() == 1 &&
+             f.type()->output[0]->is<type::Pointer>()) {
+    FfiCall<void *, i32>(f, arguments, &ret_slots, stack);
   } else if (f.type() == type::Func({type::Ptr(type::Int32)}, {}) ||
              f.type() == type::Func({type::BufPtr(type::Int32)}, {})) {
-    using fn_t = void (*)(i32 *);
-    fn_t fn    = (fn_t)(ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, f.name().data())));
-    auto addr  = arguments.get<ir::Addr>(0);
-    void *ptr  = nullptr;
-    switch (addr.kind) {
-      case ir::Addr::Kind::Stack: ptr = stack->raw(addr.as_stack); break;
-      case ir::Addr::Kind::Heap: ptr = addr.as_heap; break;
-      case ir::Addr::Kind::ReadOnly: ptr = ReadOnlyData.raw(addr.as_rodata); break;
-    }
-    fn(static_cast<i32 *>(ptr));
-
+    FfiCall<void, i32 *>(f, arguments, &ret_slots, stack);
   } else {
-    UNREACHABLE();
+    UNREACHABLE(f.type());
   }
 }
 
@@ -617,6 +622,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       } else {
         CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
       }
+    } break;
+    case ir::Op::NewOpaqueType: {
+      save(new type::Opaque);
     } break;
     case ir::Op::CreateTuple: {
       save(new type::Tuple(base::vector<type::Type const *>{}));

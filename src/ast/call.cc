@@ -22,6 +22,7 @@
 using base::check::Is;
 
 i32 ForeignFuncIndex = 0;
+i32 OpaqueFuncIndex = 1;
 
 ir::Val DebugIrFunc() {
   auto *fn_type                   = type::Func({}, {});
@@ -136,6 +137,12 @@ type::Type const *Call::VerifyType(Context *ctx) {
       auto *t =
           backend::EvaluateAs<type::Type const *>(args_.pos_[1].get(), ctx);
       return ctx->set_type(this, t);
+    } else if (fn_val == ir::Val::BuiltinGeneric(OpaqueFuncIndex)) {
+      // TODO turn assert into actual checks with error logging. Or maybe allow
+      // named args here?
+      ASSERT(args_.named_.size() == 0u);
+      ASSERT(args_.pos_.empty());
+      return ctx->set_type(this, type::Type_);
     } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {
       // TODO might be optional.
       return type::Block;
@@ -225,6 +232,8 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
           backend::EvaluateAs<type::Type const *>(args_.pos_[1].get(), ctx);
       return {ir::Val::Func(
           fn_type, ir::ForeignFn{name, this, &fn_type->as<type::Function>()})};
+    } else if (fn_val == ir::Val::BuiltinGeneric(OpaqueFuncIndex)) {
+      return {ir::Val(ir::NewOpaqueType())};
     } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {
       // TODO might be optional.
       return {fn_val};

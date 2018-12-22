@@ -21,6 +21,7 @@ ir::Val DebugIrFunc();
 #endif  // DBG
 
 extern i32 ForeignFuncIndex;
+extern i32 OpaqueFuncIndex;
 
 namespace frontend {
 TaggedNode::TaggedNode(const TextSpan &span, const std::string &token, Tag tag)
@@ -82,6 +83,7 @@ TaggedNode NextWord(SourceLocation &loc) {
       {"debug_ir", DebugIrFunc()},
 #endif  // DBG
       {"foreign", ir::Val::BuiltinGeneric(ForeignFuncIndex)},
+      {"opaque", ir::Val::BuiltinGeneric(OpaqueFuncIndex)},
       {"bytes", BytesFunc()},
       {"alignment", AlignFunc()},
       // TODO these are terrible. Make them reasonable. In particular, this is

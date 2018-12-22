@@ -502,6 +502,9 @@ void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
               BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();
+
+TypedRegister<type::Type const *> NewOpaqueType();
+
 void BlockSeqJump(RegisterOr<BlockSequence> r,
                   std::unordered_map<ast::BlockLiteral const *,
                                      ir::BlockIndex> const *jump_table);
