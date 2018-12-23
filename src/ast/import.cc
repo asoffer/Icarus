@@ -7,7 +7,7 @@
 #include "context.h"
 #include "ir/val.h"
 #include "run/run.h"
-#include "type/char_buffer.h"
+#include "type/primitive.h"
 
 namespace ast {
 std::string Import::to_string(size_t n) const {
@@ -31,7 +31,7 @@ type::Type const *Import::VerifyType(Context *ctx) {
   auto *operand_type = operand_->VerifyType(ctx);
   if (operand_type == nullptr) { return nullptr; }
 
-  if (!operand_type->is<type::CharBuffer>()) {
+  if (operand_type != type::ByteView) {
     ctx->error_log_.InvalidImport(operand_->span);
   } else {
     cache_ = frontend::Source::Name{

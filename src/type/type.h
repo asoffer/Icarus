@@ -89,7 +89,6 @@ void EmitMoveInit(const Type *from_type, const Type *to_type,
                   ir::Val const &from_val, ir::Register to_var, Context *ctx);
 
 struct Pointer;
-struct CharBuffer;
 struct Enum;
 struct Flags;
 
@@ -183,7 +182,7 @@ bool Compare(::type::Type const *t) {
   } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
     return t->is<::type::Struct>();
   } else if constexpr (std::is_same_v<T, std::string_view>) {
-    return t->is<::type::CharBuffer>();
+    return t == type::ByteView;
   } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
     return t->is<::type::Enum>();
   } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {

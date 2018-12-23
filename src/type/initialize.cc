@@ -89,10 +89,6 @@ void Function::EmitInit(ir::Register id_reg, Context *ctx) const {
   UNREACHABLE();
 }
 
-void CharBuffer::EmitInit(ir::Register id_reg, Context *ctx) const {
-  UNREACHABLE();
-}
-
 using InitFnType = void (*)(Type const *, Type const *, ir::Val const &,
                             ir::Register, Context *ctx);
 

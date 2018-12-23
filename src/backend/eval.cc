@@ -82,7 +82,7 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
     offset = arch.MoveForwardToAlignment(ASSERT_NOT_NULL(t), offset);
     if (t == type::Scope || t == type::StatefulScope) {
       results.emplace_back(result_buf.get<ast::ScopeLiteral *>(offset));
-    } else if (t->is<type::CharBuffer>()) {
+    } else if (t == type::ByteView) {
       results.emplace_back(result_buf.get<std::string_view>(offset));
     } else if (t->is<type::Function>() || t->is<type::GenericStruct>()) {
       // TODO foreign func, etc?

@@ -1,6 +1,5 @@
 #include "ir/phi.h"
 
-#include "type/char_buffer.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"

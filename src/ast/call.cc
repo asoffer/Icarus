@@ -12,7 +12,6 @@
 #include "ir/phi.h"
 #include "scope.h"
 #include "type/array.h"
-#include "type/char_buffer.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
 #include "type/pointer.h"
@@ -132,7 +131,9 @@ type::Type const *Call::VerifyType(Context *ctx) {
       // named args here?
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.size() == 2u);
-      ASSERT(arg_types.pos_[0], Is<type::CharBuffer>());
+      // TODO should turn this into some sort of interface requiremnet of being
+      // string-like
+      ASSERT(arg_types.pos_[0] == type::ByteView);
       ASSERT(arg_types.pos_[1] == type::Type_);
       auto *t =
           backend::EvaluateAs<type::Type const *>(args_.pos_[1].get(), ctx);

@@ -214,7 +214,7 @@ struct Cmd {
     RegisterOr<EnumVal> enum_arg_;
     RegisterOr<FlagsVal> flags_arg_;
     RegisterOr<type::Type const *> type_arg_;
-    RegisterOr<std::string_view> char_buf_arg_;
+    RegisterOr<std::string_view> byte_view_arg_;
     RegisterOr<Addr> addr_arg_;
 
     Args<bool> bool_args_;
@@ -269,7 +269,7 @@ struct Cmd {
     SetRet<AnyFunc> set_ret_func_;
     SetRet<FlagsVal> set_ret_flags_;
     SetRet<Addr> set_ret_addr_;
-    SetRet<std::string_view> set_ret_char_buf_;
+    SetRet<std::string_view> set_ret_byte_view_;
     SetRet<ast::ScopeLiteral *> set_ret_scope_;
     SetRet<ast::FunctionLiteral *> set_ret_generic_;
     SetRet<Module const *> set_ret_module_;

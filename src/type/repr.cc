@@ -30,6 +30,7 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
     case PrimType::Block:
     case PrimType::OptBlock:
     case PrimType::RepBlock: UNREACHABLE();
+    case PrimType::ByteView: ir::Print(val.reg_or<std::string_view>()); break;
   }
 }
 
@@ -144,8 +145,4 @@ void Variant::EmitRepr(ir::Val const &id_val, Context *ctx) const {
 void Function::EmitRepr(ir::Val const &, Context *ctx) const { UNREACHABLE(); }
 void Struct::EmitRepr(ir::Val const &val, Context *ctx) const { UNREACHABLE(); }
 void GenericStruct::EmitRepr(ir::Val const &val, Context *ctx) const { UNREACHABLE(); }
-
-void CharBuffer::EmitRepr(ir::Val const &val, Context *ctx) const {
-  ir::Print(val.reg_or<std::string_view>());
-}
 }  // namespace type

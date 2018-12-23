@@ -9,7 +9,6 @@
 #include "ast/scope_literal.h"
 #include "base/guarded.h"
 #include "ir/func.h"
-#include "type/char_buffer.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"

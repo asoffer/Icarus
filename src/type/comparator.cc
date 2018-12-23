@@ -6,6 +6,7 @@ namespace type {
 Cmp Array::Comparator() const { return data_type->Comparator(); }
 
 Cmp Primitive::Comparator() const {
+  if (type_ == PrimType::ByteView) { return Cmp::None; }
   // TODO is this right for floating-point type?
   return (type_ == PrimType::Int8 || type_ == PrimType::Int16 ||
           type_ == PrimType::Int32 || type_ == PrimType::Int64 ||
@@ -33,6 +34,5 @@ Cmp Variant::Comparator() const {
 
 Cmp Struct::Comparator() const { return Cmp::None; }
 Cmp GenericStruct::Comparator() const { return Cmp::None; }
-Cmp CharBuffer::Comparator() const { return Cmp::Order; }
 
 }  // namespace type

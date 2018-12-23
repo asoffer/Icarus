@@ -84,12 +84,6 @@ bool Type::is_big() const {
   return is<Array>() || is<Struct>() || is<Variant>() || is<Tuple>();
 }
 
-static base::guarded<base::unordered_map<size_t, CharBuffer>> char_bufs_;
-const CharBuffer *CharBuf(size_t len) {
-  auto[iter, success] = char_bufs_.lock()->emplace(len, CharBuffer(len));
-  return &iter->second;
-}
-
 Type const *Generic = new GenericFunction;
 
 ir::Val Tuple::PrepareArgument(Type const *t, ir::Val const &val,

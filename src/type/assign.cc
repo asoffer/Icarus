@@ -159,8 +159,4 @@ void Primitive::EmitAssign(Type const *from_type, ir::Val const &from,
   }
 }
 
-void CharBuffer::EmitAssign(Type const *from_type, ir::Val const &from,
-                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  UNREACHABLE();
-}
 }  // namespace type

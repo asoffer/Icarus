@@ -241,7 +241,7 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
     case ir::Op::SetRetFloat64: DEFINE_CASE(set_ret_float64_);
     case ir::Op::SetRetType: DEFINE_CASE(set_ret_type_);
     case ir::Op::SetRetEnum: DEFINE_CASE(set_ret_enum_);
-    case ir::Op::SetRetCharBuf: DEFINE_CASE(set_ret_char_buf_);
+    case ir::Op::SetRetByteView: DEFINE_CASE(set_ret_byte_view_);
     case ir::Op::SetRetFlags: DEFINE_CASE(set_ret_flags_);
     case ir::Op::SetRetAddr: DEFINE_CASE(set_ret_addr_);
     case ir::Op::SetRetFunc: DEFINE_CASE(set_ret_func_);

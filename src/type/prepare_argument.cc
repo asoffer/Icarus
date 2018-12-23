@@ -124,11 +124,6 @@ ir::Val Variant::PrepareArgument(const Type *from, const ir::Val &val,
   return ir::Val::Reg(alloc_reg, type::Ptr(this));
 }
 
-ir::Val CharBuffer::PrepareArgument(const Type *from, const ir::Val &,
-                                    Context *ctx) const {
-  NOT_YET(this, from);
-}
-
 ir::Val Struct::PrepareArgument(const Type *from, const ir::Val &val,
                                 Context *ctx) const {
   auto arg = ir::Alloca(this);

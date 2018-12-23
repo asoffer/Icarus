@@ -588,8 +588,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PrintAddr:
       std::cerr << resolve(cmd.addr_arg_).to_string();
       break;
-    case ir::Op::PrintCharBuffer:
-      std::cerr << resolve(cmd.char_buf_arg_);
+    case ir::Op::PrintByteView:
+      std::cerr << resolve(cmd.byte_view_arg_);
       break;
     case ir::Op::Call: {
       // NOTE: This is a hack using heap address slots to represent registers
@@ -764,9 +764,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       StoreValue(resolve(cmd.set_ret_type_.val_),
                  ret_slots.at(cmd.set_ret_type_.ret_num_), &stack_);
       break;
-    case ir::Op::SetRetCharBuf:
-      StoreValue(resolve(cmd.set_ret_char_buf_.val_),
-                 ret_slots.at(cmd.set_ret_char_buf_.ret_num_), &stack_);
+    case ir::Op::SetRetByteView:
+      StoreValue(resolve(cmd.set_ret_byte_view_.val_),
+                 ret_slots.at(cmd.set_ret_byte_view_.ret_num_), &stack_);
       break;
     case ir::Op::SetRetAddr:
       StoreValue(resolve(cmd.set_ret_addr_.val_),

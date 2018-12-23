@@ -11,7 +11,6 @@
 #include "ir/phi.h"
 #include "type/array.h"
 #include "type/cast.h"
-#include "type/char_buffer.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
@@ -134,9 +133,9 @@ type::Type const *Binop::VerifyType(Context *ctx) {
 
   switch (op) {
     case Operator::Index: {
-      if (lhs_type->is<type::CharBuffer>()) {
+      if (lhs_type == type::ByteView) {
         if (rhs_type != type::Int32) { // TODO other sizes
-          ctx->error_log_.InvalidCharBufIndex(span, rhs_type);
+          ctx->error_log_.InvalidByteViewIndex(span, rhs_type);
         }
         return ctx->set_type(this, type::Nat8); // TODO is nat8 what I want?
       } else if (auto *lhs_array_type = lhs_type->if_as<type::Array>()) {
@@ -251,11 +250,6 @@ type::Type const *Binop::VerifyType(Context *ctx) {
           ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
           return nullptr;
         }
-      } else if (lhs_type->is<type::CharBuffer>() &&
-                 rhs_type->is<type::CharBuffer>()) {
-        auto *t = type::CharBuf(lhs_type->as<type::CharBuffer>().length_ +
-                                rhs_type->as<type::CharBuffer>().length_);
-        return ctx->set_type(this, t);
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
@@ -630,7 +624,7 @@ base::vector<ir::RegisterOr<ir::Addr>> ast::Binop::EmitLVal(Context *ctx) {
         return {ir::PtrIncr(std::get<ir::Register>(lhs->EmitIR(ctx)[0].value),
                             rhs->EmitIR(ctx)[0].reg_or<i32>(),
                             type::Ptr(t->as<type::BufferPointer>().pointee))};
-      } else if (t->is<type::CharBuffer>()) {
+      } else if (t == type::ByteView) {
         // TODO interim until you remove string_view and replace it with Addr
         // entirely.
         return {ir::PtrIncr(

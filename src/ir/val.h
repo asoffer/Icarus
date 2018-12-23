@@ -13,7 +13,6 @@
 #include "ir/flags_val.h"
 #include "ir/interface.h"
 #include "ir/register.h"
-#include "type/char_buffer.h"
 #include "type/flags.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -68,10 +67,10 @@ struct Val {
       type = type::Get<typename decayed::type>();
       value = static_cast<Register>(val);
     } else if constexpr (std::is_same_v<decayed, std::string_view>) {
-      type  = type::CharBuf(val.size());
+      type  = type::ByteView;
       value = SaveStringGlobally(std::string(val));
     } else if constexpr (std::is_same_v<decayed, std::string>) {
-      type  = type::CharBuf(val.size());
+      type  = type::ByteView;
       value = SaveStringGlobally(val);
     } else {
       type  = ::type::Get<std::decay_t<T>>();

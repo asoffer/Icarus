@@ -88,6 +88,7 @@ TaggedNode NextWord(SourceLocation &loc) {
 #endif  // DBG
       {"foreign", ir::Val::BuiltinGeneric(ForeignFuncIndex)},
       {"opaque", ir::Val::BuiltinGeneric(OpaqueFuncIndex)},
+      {"byte_view", ir::Val(type::ByteView)},
       {"bytes", BytesFunc()},
       {"alignment", AlignFunc()},
       // TODO these are terrible. Make them reasonable. In particular, this is

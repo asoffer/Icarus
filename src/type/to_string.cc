@@ -281,12 +281,4 @@ char *Opaque::WriteTo(char *buf) const {
 }
 size_t Opaque::string_size() const { return 8; }
 
-char *CharBuffer::WriteTo(char *buf) const {
-  buf = std::strcpy(buf, "char_buffer(") + 12;
-  buf = std::strcpy(buf, std::to_string(length_).c_str()) + NumDigits(length_);
-  buf = std::strcpy(buf, ")") + 1;
-  return buf;
-}
-
-size_t CharBuffer::string_size() const { return 13 + NumDigits(length_); }
 }  // namespace type
