@@ -21,7 +21,7 @@ Open ::= (filename: *nat8, m: Mode) -> File {
   return f
 }
 
-Read ::= (f: File) -> int32 {
+ReadChar ::= (f: File) -> int32 {
   fgetc ::= foreign("fgetc", *C_FILE -> int32)
   n := fgetc(f._handle)
 

@@ -66,7 +66,7 @@ struct Cmd {
   };
 
   struct Array {
-    RegisterOr<i32> len_;
+    RegisterOr<i64> len_;
     RegisterOr<type::Type const *> type_;
   };
 
@@ -343,7 +343,7 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
 RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r);
 RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r);
 
-RegisterOr<type::Type const *> Array(RegisterOr<i32> len,
+RegisterOr<type::Type const *> Array(RegisterOr<i64> len,
                                      RegisterOr<type::Type const *> data_type);
 Register VariantType(RegisterOr<Addr> r);
 Register VariantValue(const type::Type *t, RegisterOr<Addr> r);

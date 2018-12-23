@@ -141,7 +141,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         return ctx->set_type(this, type::Nat8); // TODO is nat8 what I want?
       } else if (auto *lhs_array_type = lhs_type->if_as<type::Array>()) {
         auto *t = ctx->set_type(this, lhs_array_type->data_type);
-        if (rhs_type == type::Int32) {  // TODO other sizes
+        if (rhs_type != type::Int32) {  // TODO other sizes
           ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
         }
         return t;
@@ -623,7 +623,7 @@ base::vector<ir::RegisterOr<ir::Addr>> ast::Binop::EmitLVal(Context *ctx) {
     case Language::Operator::Index: 
       if (auto *t = ctx->type_of(lhs.get()); t->is<type::Array>()) {
         auto lval = lhs->EmitLVal(ctx)[0];
-        if (lval.is_reg_) { NOT_YET(); }
+        if (lval.is_reg_) { NOT_YET(this, ctx->type_of(this)); }
         return {ir::Index(type::Ptr(ctx->type_of(this)), lval.reg_,
                           rhs->EmitIR(ctx)[0].reg_or<i32>())};
       } else if (t->is<type::BufferPointer>()) {

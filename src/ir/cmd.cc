@@ -135,7 +135,7 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Array(RegisterOr<i32> len,
+RegisterOr<type::Type const *> Array(RegisterOr<i64> len,
                                      RegisterOr<type::Type const *> data_type) {
   if (!data_type.is_reg_ && !len.is_reg_) {
     return type::Arr(data_type.val_, len.val_);

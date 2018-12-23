@@ -43,7 +43,7 @@ void ArrayType::Validate(Context *ctx) {
 
 base::vector<ir::Val> ArrayType::EmitIR(Context *ctx) {
   return {ir::ValFrom(
-      ir::Array(length_->EmitIR(ctx)[0].reg_or<i32>(),
+      ir::Array(length_->EmitIR(ctx)[0].reg_or<i64>(),
                 data_type_->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
 }
 
