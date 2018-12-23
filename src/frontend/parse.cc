@@ -280,7 +280,8 @@ std::unique_ptr<Node> BuildChainOp(base::vector<std::unique_ptr<Node>> nodes,
 
   // Add to a chain so long as the precedence levels match. The only thing at
   // that precedence level should be the operators which can be chained.
-  if (nodes[0]->is<ChainOp>() && nodes[0]->as<ChainOp>().ops.front() == op) {
+  if (nodes[0]->is<ChainOp>() &&
+      precedence(nodes[0]->as<ChainOp>().ops.front()) == precedence(op)) {
     chain = move_as<ChainOp>(nodes[0]);
 
   } else {

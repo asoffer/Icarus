@@ -6,11 +6,15 @@ ascii ::= (val: nat8) -> Ascii {
   return c
 }
 
-(print) ::= (c: Ascii) -> { foreign("putchar", nat8 -> int32)(c._val) }
+(print) ::= (c: Ascii) -> {
+  putchar ::= foreign("putchar", nat8 -> int32)
+  putchar(c._val)
+}
 
 is_eof ::= (c: Ascii) => c._val == 255 as nat8
 
 read ::= () -> Ascii {
-  c := ascii(foreign("getchar", () -> int32)() as nat8)
+  getchar ::= foreign("getchar", () -> int32)
+  c := ascii(getchar() as nat8)
   return c
 }

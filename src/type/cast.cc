@@ -7,19 +7,18 @@ extern bool loose_casting;
 }  // namespace feature
 
 namespace type {
-static u8 CastMask(type::Type const *t) {
+static u8 CastMask(Type const *t) {
   if (feature::loose_casting) {
     // Loose casting enables casting between any integral types, and between any
     // floating-point types, and from integral to floating-point, even if it
     // results in precision loss.
-    if (t == type::Nat8 || t == type::Nat16 || t == type::Nat32 ||
-        t == type::Nat64 || t == type::Int8 || t == type::Int16 ||
-        t == type::Int32 || t == type::Int64) {
+    if (t == Nat8 || t == Nat16 || t == Nat32 || t == Nat64 || t == Int8 ||
+        t == Int16 || t == Int32 || t == Int64) {
       return 0x00;
-    } else if (t == type::Float32 || t == type::Float64) {
+    } else if (t == Float32 || t == Float64) {
       return 0x01;
     } else {
-      UNREACHABLE();
+      UNREACHABLE(t);
     }
 
   } else {
@@ -28,30 +27,31 @@ static u8 CastMask(type::Type const *t) {
     // i8 (0x10) -> i16 (0x11) -> i32 (0x13) -> i64 (0x17)
     //               ^             ^             ^
     //              u8  (0x01) -> u16 (0x03) -> u32 (0x07) -> u64 (0x0f)
-    if (t == type::Nat8) { return 0x01; }
-    if (t == type::Nat16) { return 0x03; }
-    if (t == type::Nat32) { return 0x07; }
-    if (t == type::Nat64) { return 0x1f; }
-    if (t == type::Int8) { return 0x10; }
-    if (t == type::Int16) { return 0x11; }
-    if (t == type::Int32) { return 0x13; }
-    if (t == type::Int64) { return 0x17; }
-    if (t == type::Float32) { return 0x31; }
-    if (t == type::Float64) { return 0x33; }
+    if (t == Nat8) { return 0x01; }
+    if (t == Nat16) { return 0x03; }
+    if (t == Nat32) { return 0x07; }
+    if (t == Nat64) { return 0x1f; }
+    if (t == Int8) { return 0x10; }
+    if (t == Int16) { return 0x11; }
+    if (t == Int32) { return 0x13; }
+    if (t == Int64) { return 0x17; }
+    if (t == Float32) { return 0x31; }
+    if (t == Float64) { return 0x33; }
     UNREACHABLE();
   }
 }
 
-bool CanCast(type::Type const *from, type::Type const *to) {
+bool CanCast(Type const *from, Type const *to) {
   if (from == to) { return true; }
-  if (from->is<type::Tuple>() && to == type::Type_) {
-    auto const &entries = from->as<type::Tuple>().entries_;
+  if (from->is<Tuple>() && to == Type_) {
+    auto const &entries = from->as<Tuple>().entries_;
     return std::all_of(entries.begin(), entries.end(),
-                       [](type::Type const *t) { return t == type::Type_; });
+                       [](Type const *t) { return t == Type_; });
   }
-  if (from->is<type::BufferPointer>() && to->is<type::Pointer>()) {
-    return to == from;
+  if (from->is<BufferPointer>() && to->is<Pointer>()) {
+    return to->as<BufferPointer>().pointee == from->as<Pointer>().pointee;
   }
+  if (from == NullPtr && to->is<Pointer>()) { return true; }
 
   auto from_mask = CastMask(from);
   auto to_mask   = CastMask(to);
