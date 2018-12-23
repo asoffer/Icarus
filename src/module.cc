@@ -67,6 +67,11 @@ ast::Declaration *Module::GetDecl(std::string const &name) const {
   for (auto const &stmt : statements_.content_) {
     if (!stmt->is<ast::Declaration>()) { continue; }
     if (stmt->as<ast::Declaration>().id_ != name) { continue; }
+    auto &hashtags = stmt->as<ast::Declaration>().hashtags_;
+    bool exported  = std::any_of(
+        hashtags.begin(), hashtags.end(),
+        [](ast::Hashtag h) { return h.kind_ == ast::Hashtag::Builtin::Export; });
+    if (!exported) { continue; }
     return &stmt->as<ast::Declaration>();
   }
   return nullptr;
