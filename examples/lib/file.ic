@@ -1,13 +1,17 @@
 -- ::= import "examples/lib/core.ic"
+errno ::= import "examples/lib/errno.ic"
 
 C_FILE ::= 'opaque
 
+#{export}
 File ::= struct {
   _handle: *C_FILE
 }
 
+#{export}
 Mode ::= flags { Read \\ Write }
 
+#{export}
 Open ::= (filename: *nat8, m: Mode) -> File {
   fopen ::= foreign("fopen", (*nat8, *nat8) -> *C_FILE)
 
@@ -18,9 +22,17 @@ Open ::= (filename: *nat8, m: Mode) -> File {
   }
   f: File
   f._handle = fopen(filename, mode_str)
+  err := errno.get()
+  if (err == 0) then { return f }
+  if (err == errno.ENOENT) then {
+    print "[No such file]"
+  } else {
+    print "[Unknown error]"
+  }
   return f
 }
 
+#{export}
 ReadChar ::= (f: File) -> int32 {
   fgetc ::= foreign("fgetc", *C_FILE -> int32)
   n := fgetc(f._handle)
@@ -29,6 +41,7 @@ ReadChar ::= (f: File) -> int32 {
 }
 
 // TODO: unwrap int32 return value as an error code
+#{export}
 Close ::= (f: File) -> int32 {
   fclose ::= foreign("fclose", *C_FILE -> int32)
   return fclose(f._handle)

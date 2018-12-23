@@ -1,0 +1,36 @@
+#{export} EPERM   ::=  1  // Operation not permitted
+#{export} ENOENT  ::=  2  // No such file or directory
+#{export} ESRCH   ::=  3  // No such process
+#{export} EINTR   ::=  4  // Interrupted system call
+#{export} EIO     ::=  5  // I/O error
+#{export} ENXIO   ::=  6  // No such device or address
+#{export} E2BIG   ::=  7  // Argument list too long
+#{export} ENOEXEC ::=  8  // Exec format error
+#{export} EBADF   ::=  9  // Bad file number
+#{export} ECHILD  ::= 10  // No child processes
+#{export} EAGAIN  ::= 11  // Try again
+#{export} ENOMEM  ::= 12  // Out of memory
+#{export} EACCES  ::= 13  // Permission denied
+#{export} EFAULT  ::= 14  // Bad address
+#{export} ENOTBLK ::= 15  // Block device required
+#{export} EBUSY   ::= 16  // Device or resource busy
+#{export} EEXIST  ::= 17  // File exists
+#{export} EXDEV   ::= 18  // Cross-device link
+#{export} ENODEV  ::= 19  // No such device
+#{export} ENOTDIR ::= 20  // Not a directory
+#{export} EISDIR  ::= 21  // Is a directory
+#{export} EINVAL  ::= 22  // Invalid argument
+#{export} ENFILE  ::= 23  // File table overflow
+#{export} EMFILE  ::= 24  // Too many open files
+#{export} ENOTTY  ::= 25  // Not a typewriter
+#{export} ETXTBSY ::= 26  // Text file busy
+#{export} EFBIG   ::= 27  // File too large
+#{export} ENOSPC  ::= 28  // No space left on device
+#{export} ESPIPE  ::= 29  // Illegal seek
+#{export} EROFS   ::= 30  // Read-only file system
+#{export} EMLINK  ::= 31  // Too many links
+#{export} EPIPE   ::= 32  // Broken pipe
+#{export} EDOM    ::= 33  // Math argument out of domain of func
+#{export} ERANGE  ::= 34  // Math result not representable
+
+#{export} get ::= () => @foreign("errno", *int32)

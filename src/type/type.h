@@ -124,7 +124,7 @@ constexpr type::Type const *Get() {
   } else if constexpr (std::is_same_v<T, double>) {
     return type::Float64;
   } else if constexpr (std::is_same_v<T, std::string_view>) {
-    UNREACHABLE();
+    return type::ByteView;
   } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
