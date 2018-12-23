@@ -67,6 +67,17 @@ static constexpr size_t precedence(Language::Operator op) {
   __builtin_unreachable();
 }
 
+static std::unique_ptr<ast::Node> AddHashtag(
+    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+  auto expr = move_as<ast::Expression>(nodes[1]);
+  if (nodes[0]->as<frontend::Token>().token == "{export}") {
+    expr->hashtags_.emplace_back(ast::Hashtag::Builtin::Export);
+  } else {
+    NOT_YET(nodes[0]->as<frontend::Token>().token);
+  }
+  return expr;
+}
+
 static std::unique_ptr<ast::Node> OneBracedStatement(
     base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto stmts  = std::make_unique<ast::Statements>();
@@ -1168,6 +1179,8 @@ auto Rules = std::array{
     Rule(expr, {fn_expr, braced_stmts}, ast::BuildNormalFunctionLiteral),
     Rule(expr, {expr, fn_arrow, braced_stmts},
          ast::BuildInferredFunctionLiteral),
+    Rule(hashtag, {hashtag, newline}, drop_all_but<0>),
+    Rule(expr, {hashtag, expr}, AddHashtag),
 
     // Call and index operator with reserved words. We can't put reserved words
     // in the first slot because that might conflict with a real use case.
@@ -1280,8 +1293,8 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    constexpr u64 OP =
-        op_r | op_l | op_b | colon | eq | comma | op_bl | op_lt | fn_arrow;
+    constexpr u64 OP = hashtag | op_r | op_l | op_b | colon | eq | comma |
+                       op_bl | op_lt | fn_arrow;
     if (get_type<2>() & OP) {
       if (get_type<1>() == r_paren) {
         // TODO this feels like a hack, but maybe this whole function is.
@@ -1299,7 +1312,6 @@ struct ParseState {
       } else {
         return ShiftState::MustReduce;
       }
-
       return (left_prec < right_prec) ||
                      (left_prec == right_prec &&
                       (left_prec & assoc_mask) == right_assoc)

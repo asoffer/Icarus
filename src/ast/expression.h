@@ -1,6 +1,7 @@
 #ifndef ICARUS_AST_EXPRESSION_H
 #define ICARUS_AST_EXPRESSION_H
 
+#include "ast/hashtag.h"
 #include "ast/node.h"
 #include "ir/addr.h"
 #include "ir/register.h"
@@ -14,6 +15,12 @@ struct Val;
 namespace ast {
 struct Expression : public Node {
   Expression(const TextSpan &span = TextSpan()) : Node(span) {}
+
+  Expression(Expression &&) noexcept      = default;
+  Expression(Expression const &) noexcept = default;
+  Expression &operator=(Expression &&) noexcept = default;
+  Expression &operator=(Expression const &) noexcept = default;
+
   virtual ~Expression(){};
   virtual std::string to_string(size_t n) const          = 0;
   virtual void assign_scope(Scope *scope)                = 0;
@@ -23,6 +30,7 @@ struct Expression : public Node {
   virtual base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
 
   virtual bool needs_expansion() const { return false; }
+  std::vector<Hashtag> hashtags_;
   bool parenthesized_ = false;
 };
 }  // namespace ast

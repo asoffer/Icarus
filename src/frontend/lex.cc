@@ -25,7 +25,7 @@ extern i32 OpaqueFuncIndex;
 
 namespace frontend {
 TaggedNode::TaggedNode(const TextSpan &span, const std::string &token, Tag tag)
-    : node_(std::make_unique<Token>(span, token)), tag_(tag) {}
+    : node_(std::make_unique<Token>(span, token, tag == hashtag)), tag_(tag) {}
 
 TaggedNode TaggedNode::TerminalExpression(const TextSpan &span, ir::Val val) {
   return TaggedNode(std::make_unique<ast::Terminal>(span, std::move(val)),
@@ -52,13 +52,17 @@ constexpr inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
 
+TextSpan NextSimpleWord(SourceLocation &loc) {
+  auto span = loc.ToSpan();
+  while (IsAlphaNumericOrUnderscore(*loc)) { loc.Increment(); }
+  span.finish = loc.cursor;
+  return span;
+}
+
 TaggedNode NextWord(SourceLocation &loc) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
   // We have already matched the first character
-  auto span = loc.ToSpan();
-  do { loc.Increment(); } while (IsAlphaNumericOrUnderscore(*loc));
-  span.finish = loc.cursor;
-
+  auto span         = NextSimpleWord(loc);
   std::string token = loc.line().substr(span.start.offset,
                                         span.finish.offset - span.start.offset);
 
@@ -220,6 +224,26 @@ TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
   return TaggedNode::TerminalExpression(span, ir::Val(str_lit));
 }
 
+TaggedNode NextHashtag(SourceLocation &loc, error::Log *error_log) {
+  loc.Increment();
+  TextSpan span;
+  if (*loc == '{') {
+    loc.Increment();
+    span = NextSimpleWord(loc);
+    // TODO log an error if this fails.
+    ASSERT(*loc == '}');
+    loc.Increment();
+    --span.start.offset;
+    ++span.finish.offset;
+  } else {
+    span = NextSimpleWord(loc);
+  }
+  std::string token = loc.line().substr(span.start.offset,
+                                        span.finish.offset - span.start.offset);
+  auto t            = TaggedNode(span, token, hashtag);
+  return t;
+}
+
 TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
   auto span = loc.ToSpan();
   switch (*loc) {
@@ -330,7 +354,7 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
           return TaggedNode::Invalid();
       }
     } break;
-
+    case '#': return NextHashtag(loc, error_log);
     case '+':
     case '%':
     case '>':

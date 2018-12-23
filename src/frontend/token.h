@@ -9,8 +9,12 @@ namespace frontend {
 // ast node used only for holding tokens which have been lexed but not yet
 // parsed.
 struct Token : public ast::Node {
-  Token(const TextSpan &span = TextSpan(), std::string str = "")
+  Token(const TextSpan &span = TextSpan(), std::string str = "",
+        bool is_hashtag = false)
       : Node(span), token(std::move(str)) {
+    if (is_hashtag) {
+      op = Language::Operator::Hashtag;
+    } else {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
   if (token == symbol) {                                                       \
     op = Language::Operator::name;                                             \
@@ -18,7 +22,8 @@ struct Token : public ast::Node {
   }
 #include "operators.xmacro.h"
 #undef OPERATOR_MACRO
-    op = Language::Operator::NotAnOperator;
+      op = Language::Operator::NotAnOperator;
+    }
   }
 
   ~Token() override {}

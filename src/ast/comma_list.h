@@ -5,10 +5,12 @@
 
 namespace ast {
 struct CommaList : public Expression {
-  CommaList()                      = default;
-  CommaList(CommaList &&) noexcept = default;
+  CommaList() = default;
   ~CommaList() override {}
 
+  CommaList(CommaList const &) noexcept = default;
+  CommaList(CommaList &&) noexcept      = default;
+  CommaList &operator=(CommaList const &) noexcept = default;
   CommaList &operator=(CommaList &&) noexcept = default;
 
   void assign_scope(Scope *scope) override;
