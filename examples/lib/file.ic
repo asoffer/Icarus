@@ -1,0 +1,35 @@
+-- ::= import "examples/lib/core.ic"
+
+C_FILE ::= 'opaque
+
+File ::= struct {
+  _handle: *C_FILE
+}
+
+Mode ::= flags { Read \\ Write }
+
+Open ::= (filename: *nat8, m: Mode) -> File {
+  fopen ::= foreign("fopen", (*nat8, *nat8) -> *C_FILE)
+
+  mode_str := switch {
+    &"r"[0]  when m == Mode.Read
+    &"w"[0]  when m == Mode.Write
+    &"r+"[0] when m == (Mode.Read | Mode.Write)
+  }
+  f: File
+  f._handle = fopen(filename, mode_str)
+  return f
+}
+
+Read ::= (f: File) -> int32 {
+  fgetc ::= foreign("fgetc", *C_FILE -> int32)
+  n := fgetc(f._handle)
+
+  return n
+}
+
+// TODO: unwrap int32 return value as an error code
+Close ::= (f: File) -> int32 {
+  fclose ::= foreign("fclose", *C_FILE -> int32)
+  return fclose(f._handle)
+}
