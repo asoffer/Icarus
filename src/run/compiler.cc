@@ -1,7 +1,5 @@
-#include "run/run.h"
-
-#include <future>
 #include <dlfcn.h>
+#include <filesystem>
 
 #include "backend/exec.h"
 #include "base/container/vector.h"
@@ -22,19 +20,7 @@ base::vector<frontend::Source::Name> files;
 // TODO sad. don't use a global to do this.
 extern ir::Func *main_fn;
 
-base::guarded<base::unordered_map<frontend::Source::Name,
-                                  std::shared_future<std::unique_ptr<Module>>>>
-    modules;
-
 extern std::atomic<bool> found_errors;
-
-void ScheduleModule(const frontend::Source::Name &src) {
-  auto handle = modules.lock();
-  auto iter   = handle->find(src);
-  if (iter != handle->end()) { return; }
-  handle->emplace(src, std::shared_future<std::unique_ptr<Module>>(std::async(
-                           std::launch::async, Module::Compile, src)));
-}
 
 int RunCompiler() {
   void *libc_handle = dlopen("/lib/x86_64-linux-gnu/libc.so.6", RTLD_LAZY);
@@ -48,19 +34,11 @@ int RunCompiler() {
   llvm::InitializeAllAsmParsers();
   llvm::InitializeAllAsmPrinters();
 #endif  // ICARUS_USE_LLVM
-  for (const auto &src : files) {
-    ScheduleModule(src); }
 
-  size_t current_size = 0;
-  do {
-    base::vector<std::shared_future<std::unique_ptr<Module>> *> future_ptrs;
-    {
-      auto handle  = modules.lock();
-      current_size = handle->size();
-      for (auto & [ src, module ] : *handle) { future_ptrs.push_back(&module); }
-    }
-    for (auto *future : future_ptrs) { future->wait(); }
-  } while (current_size != modules.lock()->size());
+  for (const auto &src : files) {
+    Module::Schedule(std::filesystem::path{src});
+  }
+  AwaitAllModulesTransitively();
 
 #ifndef ICARUS_USE_LLVM
 

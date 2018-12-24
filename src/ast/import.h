@@ -5,6 +5,7 @@
 #include <optional>
 
 #include "ast/expression.h"
+#include "module.h"
 
 namespace ast {
 struct Import : public Expression {
@@ -18,14 +19,16 @@ struct Import : public Expression {
 
   // TODO what if the operand does a result/return thing in a scope? This feels
   // like it should be disallowed but maybe I need this to catch the error!
-  void ExtractJumps(JumpExprs *) const override {}
+  void ExtractJumps(JumpExprs *rets) const override {
+    operand_->ExtractJumps(rets);
+  }
 
   base::vector<ir::Val> EmitIR(Context *) override;
   base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   // TODO optimization: if the operand_ is a string literal, schedule it
   // immediately.
-  std::optional<std::string /* Source::Name */> cache_;
+  PendingModule module_;
   std::unique_ptr<Expression> operand_;
 };
 }  // namespace ast

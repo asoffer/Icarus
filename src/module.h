@@ -1,15 +1,18 @@
 #ifndef ICARUS_MODULE_H
 #define ICARUS_MODULE_H
 
+#include <filesystem>
+#include <future>
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <string>
 #include <unordered_set>
-#include "base/container/vector.h"
 
 #include "ast/bound_constants.h"
 #include "ast/node_lookup.h"
 #include "ast/statements.h"
+#include "base/container/vector.h"
 #include "scope.h"
 
 #ifdef ICARUS_USE_LLVM
@@ -33,6 +36,8 @@ struct Expression;
 struct FunctionLiteral;
 }  // namespace ast
 
+struct PendingModule;
+
 struct Module {
   Module();
   ~Module();
@@ -40,7 +45,9 @@ struct Module {
   // We take pointers to the module, so it cannot be moved.
   Module(Module &&) = delete;
 
-  static std::unique_ptr<Module> Compile(const frontend::Source::Name &src);
+  static PendingModule Schedule(
+      std::filesystem::path const &src,
+      std::filesystem::path const &requestor = std::filesystem::path{""});
 
   ir::Func *AddFunc(
       type::Function const *fn_type,
@@ -102,6 +109,25 @@ struct Module {
   std::map<ast::BoundConstants,
            base::unordered_map<ast::Expression const *, ir::Func *>>
       ir_funcs_;
+
+  std::filesystem::path const *path_ = nullptr;
 };
 
+void AwaitAllModulesTransitively();
+
+struct PendingModule {
+ public:
+  PendingModule() = default;
+  explicit PendingModule(Module const *mod)
+      : data_(reinterpret_cast<uintptr_t>(mod)) {}
+  explicit PendingModule(std::shared_future<Module const *> *mod)
+      : data_(reinterpret_cast<uintptr_t>(mod) | 0x01) {}
+
+  // Returns the compiled module, possibly blocking if `get` is called before
+  // the module has finished compiling.
+  Module const *get();
+
+ private:
+  uintptr_t data_ = 0;
+};
 #endif  // ICARUS_MODULE_H

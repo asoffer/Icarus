@@ -12,7 +12,7 @@ namespace ir {
 struct Func;
 
 struct BasicBlock {
-  static BlockIndex Current;
+  static thread_local BlockIndex Current;
   BasicBlock()                    = delete;
   BasicBlock(const BasicBlock &&) = delete;
   BasicBlock(BasicBlock &&)       = default;

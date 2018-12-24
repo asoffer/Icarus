@@ -7,7 +7,7 @@ namespace init {
 void InstallSignalHandlers() {
 #ifdef DBG
   std::signal(SIGABRT, +[](int) {
-    constexpr unsigned int max_frames = 20;
+    constexpr unsigned int max_frames = 40;
     fprintf(stderr, "stack trace:\n");
     void *addrlist[max_frames + 1];
     int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void *));

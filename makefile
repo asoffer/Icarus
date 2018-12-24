@@ -7,12 +7,12 @@ SRCS := $(shell find src -name *.cc ! -name *_test.cc 2>/dev/null)
 SRC_OBJS := $(patsubst src/%.cc,build/%.o,$(SRCS))
 TARGET := bin/$(shell basename `pwd`)
 
-COMPILER := g++-7
+COMPILER := g++-8
 BUILD_FLAGS := -g -O0 -DDBG -rdynamic
 STDS = -std=c++17
 WARN = -Wno-unused-but-set-parameter -Wno-unused-variable -Wall -Wextra -Werror -Wuninitialized -Wpedantic -Wno-unused-parameter #-Weffc++
 OPTS = -iquote$(shell pwd)/src -fno-exceptions
-LINK_FLAGS = -rdynamic -pthread -ldl
+LINK_FLAGS = -rdynamic -pthread -ldl -lstdc++fs
 
 
 all: $(TARGET)

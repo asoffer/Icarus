@@ -1,12 +1,12 @@
 #include "ast/import.h"
 
-#include <future>
+#include <filesystem>
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "base/guarded.h"
 #include "context.h"
 #include "ir/val.h"
-#include "run/run.h"
+#include "module.h"
 #include "type/primitive.h"
 
 namespace ast {
@@ -19,10 +19,7 @@ void Import::assign_scope(Scope *scope) {
 }
 
 base::vector<ir::Val> Import::EmitIR(Context *ctx) {
-  ASSERT(cache_.has_value());
-  auto fut  = modules.lock()->at(*cache_);
-  auto const *mod = fut.get().get();
-  return {ir::Val(mod)};
+  return {ir::Val(module_.get())};
 }
 
 base::vector<ir::RegisterOr<ir::Addr>> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
@@ -34,9 +31,10 @@ type::Type const *Import::VerifyType(Context *ctx) {
   if (operand_type != type::ByteView) {
     ctx->error_log_.InvalidImport(operand_->span);
   } else {
-    cache_ = frontend::Source::Name{
-        backend::EvaluateAs<std::string_view>(operand_.get(), ctx)};
-    ScheduleModule(*cache_);
+    module_ = Module::Schedule(
+        std::filesystem::path{
+            backend::EvaluateAs<std::string_view>(operand_.get(), ctx)},
+        *ctx->mod_->path_);
   }
   return ctx->set_type(this, type::Module);
 }

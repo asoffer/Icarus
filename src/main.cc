@@ -2,7 +2,6 @@
 #include "frontend/source.h"
 #include "init/cli.h"
 #include "init/signal.h"
-#include "run/run.h"
 
 namespace debug {
 bool parser     = false;
@@ -14,6 +13,9 @@ bool loose_casting = false;
 }  // namespace feature
 
 extern base::vector<frontend::Source::Name> files;
+
+int RunRepl();
+int RunCompiler();
 
 #ifdef ICARUS_USE_LLVM
 namespace backend {

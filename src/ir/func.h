@@ -52,7 +52,7 @@ struct Func {
   std::string name() const;
 
   BasicBlock const &block(BlockIndex index) const {
-    ASSERT(blocks_.size() > static_cast<size_t>(index.value));
+    ASSERT(blocks_.size() > static_cast<size_t>(index.value)) << Current;
     return blocks_.at(index.value);
   }
   BasicBlock &block(BlockIndex index) {

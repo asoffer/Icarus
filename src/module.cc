@@ -1,6 +1,6 @@
 #include "module.h"
 
-#include <future>
+#include <list>
 
 #include "ast/declaration.h"
 #include "ast/expression.h"
@@ -10,6 +10,7 @@
 #include "backend/eval.h"
 #include "base/guarded.h"
 #include "frontend/source.h"
+#include "import_graph.h"
 #include "ir/func.h"
 #include "type/function.h"
 
@@ -22,6 +23,14 @@ std::string WriteObjectFile(std::string const &name, Module *mod);
 }  // namespace backend
 
 #endif  // ICARUS_USE_LLVM
+
+static std::mutex mtx;
+static ImportGraph import_graph;
+static std::list<std::shared_future<Module const*>> pending_module_futures;
+static base::unordered_map<
+    std::filesystem::path const *,
+    std::pair<std::shared_future<Module const *> *, Module>>
+    modules;
 
 std::atomic<bool> found_errors = false;
 ir::Func *main_fn;
@@ -104,11 +113,10 @@ void Module::CompleteAll() {
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
 // inside this function.
-std::unique_ptr<Module> Module::Compile(frontend::Source::Name const &src) {
-  auto mod = std::make_unique<Module>();
+static Module const *CompileModule(Module *mod) {
   ast::BoundConstants bc;
-  Context ctx(mod.get());
-  frontend::File f(src);
+  Context ctx(mod);
+  frontend::File f(ASSERT_NOT_NULL(mod->path_)->string());
   auto file_stmts = f.Parse(&ctx);
   if (ctx.num_errors() > 0) {
     ctx.DumpErrors();
@@ -198,4 +206,52 @@ type::Type const *Module::set_type(ast::BoundConstants const &bc,
                                    type::Type const *t) {
   types_[bc].emplace(expr, t);
   return t;
+}
+
+PendingModule Module::Schedule(std::filesystem::path const &src,
+                               std::filesystem::path const &requestor) {
+  std::lock_guard lock(mtx);
+  auto[src_ptr, newly_inserted] = import_graph.node(src);
+  ASSERT(src_ptr != nullptr);
+
+  // Need to add dependencies even if the node was already scheduled (hence the
+  // "already scheduled" check is done after this).
+  if (requestor != std::filesystem::path{""}) {
+    ASSERT(import_graph.AddDependency(
+        src_ptr, ASSERT_NOT_NULL(import_graph.node(requestor).first)));
+  }
+
+  if (!newly_inserted) {
+    return PendingModule{ASSERT_NOT_NULL(modules[src_ptr].first)};
+  }
+
+  auto & [ fut, mod ] = modules[src_ptr];
+  ASSERT(fut == nullptr);
+  mod.path_ = src_ptr;
+  fut       = &pending_module_futures.emplace_back(
+      std::async(std::launch::async, CompileModule, &mod));
+  return PendingModule{fut};
+}
+
+Module const *PendingModule::get() {
+  if ((data_ & 1) == 0) { return reinterpret_cast<Module const *>(data_); }
+  Module const *result =
+      reinterpret_cast<std::shared_future<Module const *> *>(data_ - 1)->get();
+  *this = PendingModule{result};
+  return result;
+}
+
+void AwaitAllModulesTransitively() {
+  decltype(pending_module_futures)::iterator iter, end_iter;
+  {
+    std::lock_guard lock(mtx);
+    iter     = pending_module_futures.begin();
+    end_iter = pending_module_futures.end();
+  }
+
+  while (iter != end_iter) {
+    iter->wait();
+    std::lock_guard lock(mtx);
+    ++iter;
+  }
 }

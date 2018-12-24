@@ -14,9 +14,8 @@
 
 namespace ir {
 using base::check::Is;
-BlockIndex BasicBlock::Current;
+thread_local BlockIndex BasicBlock::Current;
 
-// TODO namespace appropriately
 Cmd &MakeCmd(type::Type const *t, Op op) {
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
                   ->block(BasicBlock::Current)
