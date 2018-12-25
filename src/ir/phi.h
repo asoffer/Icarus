@@ -46,6 +46,12 @@ RegisterOr<T> MakePhi(CmdIndex phi_index,
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     cmd.op_code_  = Op::PhiAddr;
     cmd.phi_addr_ = phi_args.get();
+  } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
+    cmd.op_code_  = Op::PhiEnum;
+    cmd.phi_enum_ = phi_args.get();
+  } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
+    cmd.op_code_   = Op::PhiFlags;
+    cmd.phi_flags_ = phi_args.get();
   }
   ir::Func::Current->block(BasicBlock::Current)
       .phi_args_.push_back(std::move(phi_args));

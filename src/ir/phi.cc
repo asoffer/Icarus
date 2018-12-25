@@ -9,10 +9,10 @@
 namespace ir {
 template <typename T>
 static std::unordered_map<BlockIndex, RegisterOr<T>> ConvertMap(
-    const std::unordered_map<BlockIndex, Val> &val_map) {
+    std::unordered_map<BlockIndex, Val> const &val_map) {
   std::unordered_map<BlockIndex, RegisterOr<T>> result;
 
-  for (const auto & [ block, val ] : val_map) {
+  for (auto const & [ block, val ] : val_map) {
     result.emplace(block, val.template reg_or<T>());
   }
 
@@ -21,9 +21,9 @@ static std::unordered_map<BlockIndex, RegisterOr<T>> ConvertMap(
 
 template <typename T>
 static std::unique_ptr<PhiArgs<T>> MakePhiArgs(
-    const std::unordered_map<BlockIndex, ir::Val> &val_map) {
+    std::unordered_map<BlockIndex, ir::Val> const &val_map) {
   auto phi_args = std::make_unique<PhiArgs<T>>();
-  for (const auto & [ block, val ] : val_map) {
+  for (auto const & [ block, val ] : val_map) {
     phi_args->map_.emplace(block, val.template reg_or<T>());
   }
   return phi_args;
@@ -40,7 +40,7 @@ CmdIndex Phi(type::Type const *t) {
 }
 
 Val MakePhi(CmdIndex phi_index,
-            const std::unordered_map<BlockIndex, ir::Val> &val_map) {
+            std::unordered_map<BlockIndex, ir::Val> const &val_map) {
   auto &cmd      = ir::Func::Current->Command(phi_index);
   auto *cmd_type = val_map.begin()->second.type;
 
@@ -53,6 +53,14 @@ Val MakePhi(CmdIndex phi_index,
       return ir::ValFrom(
           MakePhi<ir::Addr>(phi_index, ConvertMap<ir::Addr>(val_map)),
           &cmd_type->as<type::Pointer>());
+    } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
+      ASSERT(!val_map.empty());
+      return ir::ValFrom(MakePhi<T>(phi_index, ConvertMap<T>(val_map)),
+                         &val_map.begin()->second.type->as<type::Enum>());
+    } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
+      ASSERT(!val_map.empty());
+      return ir::ValFrom(MakePhi<T>(phi_index, ConvertMap<T>(val_map)),
+                         &val_map.begin()->second.type->as<type::Flags>());
     } else if constexpr (std::is_same_v<T, BlockSequence>) {
       auto phi_args  = MakePhiArgs<BlockSequence>(val_map);
       cmd.op_code_   = Op::PhiBlock;

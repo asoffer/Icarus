@@ -1,5 +1,4 @@
 -- ::= import "examples/lib/core.ic"
-errno ::= import "examples/lib/errno.ic"
 
 C_FILE ::= 'opaque
 
@@ -22,13 +21,6 @@ Open ::= (filename: *nat8, m: Mode) -> File {
   }
   f: File
   f._handle = fopen(filename, mode_str)
-  err := errno.get()
-  if (err == 0) then { return f }
-  if (err == errno.ENOENT) then {
-    print "[No such file]"
-  } else {
-    print "[Unknown error]"
-  }
   return f
 }
 

@@ -181,6 +181,11 @@ bool operator<(const ::ir::Val &lhs, const ::ir::Val &rhs) {
       lhs.value);
 }
 
+Val ValFrom(RegisterOr<EnumVal> r, type::Enum const *t) {
+  return r.is_reg_ ? Val::Reg(r.reg_, t)
+                   : Val(type::Typed<ir::EnumVal, type::Enum>(r.val_, t));
+}
+
 Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t) {
   return r.is_reg_ ? Val::Reg(r.reg_, t)
                    : Val(type::Typed<ir::FlagsVal, type::Flags>(r.val_, t));

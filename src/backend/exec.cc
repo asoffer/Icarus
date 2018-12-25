@@ -906,6 +906,12 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PhiBlock:
       save(resolve(cmd.phi_block_->map_.at(call_stack.top().prev_)));
       break;
+    case ir::Op::PhiEnum:
+      save(resolve(cmd.phi_enum_->map_.at(call_stack.top().prev_)));
+      break;
+    case ir::Op::PhiFlags:
+      save(resolve(cmd.phi_flags_->map_.at(call_stack.top().prev_)));
+      break;
     case ir::Op::GenerateStruct: {
       Context ctx(cmd.generate_struct_->mod_);
       size_t reg_index = 0;

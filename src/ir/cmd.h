@@ -289,6 +289,8 @@ struct Cmd {
     PhiArgs<type::Type const *> *phi_type_;
     PhiArgs<BlockSequence> *phi_block_;
     PhiArgs<ir::Addr> *phi_addr_;
+    PhiArgs<ir::EnumVal> *phi_enum_;
+    PhiArgs<ir::FlagsVal> *phi_flags_;
 
     PrintEnum print_enum_;
     PrintFlags print_flags_;

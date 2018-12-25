@@ -118,6 +118,7 @@ inline Val ValFrom(RegisterOr<T> r) {
   return r.is_reg_ ? Val::Reg(r.reg_, type::Get<T>()) : Val(r.val_);
 }
 
+Val ValFrom(RegisterOr<EnumVal> r, type::Enum const *t);
 Val ValFrom(RegisterOr<FlagsVal> r, type::Flags const *t);
 Val ValFrom(RegisterOr<ir::Addr> r, type::Pointer const *ptr_type);
 
