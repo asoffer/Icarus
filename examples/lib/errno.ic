@@ -80,7 +80,7 @@ error ::= enum {
 // }
 
 #{export} get ::= () -> {
- val := @foreign("errno", *int32)
+  val := @foreign("errno", *int32)
   return switch {
     error.SUCCESS when val == 0
     error.EPERM   when val == EPERM

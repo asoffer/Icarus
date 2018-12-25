@@ -1,5 +1,6 @@
 #include "ast/dispatch.h"
 
+#include "ast/call.h"
 #include "ast/function_literal.h"
 #include "ast/match_declaration.h"
 #include "ast/terminal.h"
@@ -17,6 +18,8 @@
 #include "type/pointer.h"
 #include "type/tuple.h"
 #include "type/variant.h"
+
+extern i32 ForeignFuncIndex;
 
 namespace ast {
 using base::check::Is;
@@ -183,7 +186,15 @@ bool DispatchTableRow::SetTypes(ir::Func const &fn,
 }
 
 static bool IsConstant(Expression *e) {
-  return e->is<FunctionLiteral>() ||
+  if (e->is<Call>()) {
+    if (auto *c = &e->as<Call>(); c->fn_->is<Terminal>()) {
+      auto *bgi = std::get_if<ir::BuiltinGenericIndex>(
+          &c->fn_->as<Terminal>().value.value);
+      return bgi != nullptr &&
+             *bgi == ir::BuiltinGenericIndex{ForeignFuncIndex};
+    }
+  }
+  return  e->is<FunctionLiteral>() ||
          (e->is<Declaration>() && e->as<Declaration>().const_);
 }
 
@@ -230,6 +241,7 @@ base::expected<DispatchTableRow> DispatchTableRow::Make(
   }
 
   ir::Val fn_val = backend::Evaluate(fn_option, ctx).at(0);
+
   if (auto *f = std::get_if<ir::AnyFunc>(&fn_val.value)) {
     return f->is_fn() ? MakeFromIrFunc(fn_option, *f->func(), args, ctx)
                       : MakeFromForeignFunction(fn_option, args, ctx);
@@ -445,6 +457,8 @@ static void EmitOneCallDispatch(
     if (!binding.fn_.get()->is<Declaration>() ||
         !binding.fn_.get()->as<Declaration>().is_arg_) {
       if (auto *reg = std::get_if<ir::Register>(&callee.value)) {
+        // TODO this feels like a hack, there should be a better way to
+        // determine if the function
         callee = ir::Val::Reg(ir::Load<ir::AnyFunc>(*reg, binding.fn_.type()),
                               binding.fn_.type());
       }
