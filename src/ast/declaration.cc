@@ -277,7 +277,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     if (this_type == nullptr) {
       return nullptr;
     } else if (!init_val) {
-      if (!is_arg_ && !this_type->IsDefaultInitializable()) {
+      if (!is_fn_param_ && !this_type->IsDefaultInitializable()) {
         // TODO what about an uninitialized constant. do we show both?
         ctx->error_log_.TypeMustBeInitialized(span, this_type);
         return nullptr;
@@ -361,7 +361,7 @@ base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
   base::defer d([&] { ctx->mod_ = old_mod; });
 
   if (const_) {
-    if (is_arg_) {
+    if (is_fn_param_) {
       return {ctx->bound_constants_.constants_.at(this)};
     } else {
       auto[iter, newly_inserted] =
@@ -374,7 +374,7 @@ base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
         if (ctx->num_errors()) { return {}; }
         return {iter->second};
       } else if (IsDefaultInitialized()) {
-        if (is_arg_) {
+        if (is_fn_param_) {
           return {
               ctx->mod_->constants_[ctx->bound_constants_].constants_.at(this)};
         } else {
@@ -399,7 +399,7 @@ base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
       type::EmitCopyInit(ctx->type_of(init_val.get()), t,
                          init_val->EmitIR(ctx)[0], addr, ctx);
     } else {
-      if (!is_arg_) { t->EmitInit(addr, ctx); }
+      if (!is_fn_param_) { t->EmitInit(addr, ctx); }
     }
     return {ir::Val::Reg(addr, t)};
   }

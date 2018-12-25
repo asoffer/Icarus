@@ -530,6 +530,8 @@ TypedRegister<Addr> Alloca(const type::Type *t);
 
 type::Typed<Register> LoadSymbol(std::string_view name, type::Type const *type);
 
+TypedRegister<Addr> GetRet(size_t n, type::Type const *t);
+
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

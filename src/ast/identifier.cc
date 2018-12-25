@@ -76,8 +76,13 @@ void Identifier::Validate(Context *ctx) {}
 base::vector<ir::Val> ast::Identifier::EmitIR(Context *ctx) {
   if (ASSERT_NOT_NULL(decl)->const_) {
     return decl->EmitIR(ctx);
-  } else if (decl->is_arg_) {
-    return {ir::Val::Reg(ctx->addr(decl), ctx->type_of(this))};
+  } else if (decl->is_fn_param_) {
+    auto *t = ctx->type_of(this);
+    if (decl->is_output_ && !t->is_big()) {
+      return {ir::Val::Reg(ir::Load(ctx->addr(decl), t), t)};
+    } else {
+      return {ir::Val::Reg(ctx->addr(decl), t)};
+    }
   } else {
     auto *t = ASSERT_NOT_NULL(ctx->type_of(this));
     auto lval = EmitLVal(ctx)[0];

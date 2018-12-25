@@ -51,7 +51,7 @@ void FnScope::MakeAllStackAllocations(Context *ctx) {
   for (auto *scope : innards_) {
     for (const auto & [ key, val ] : scope->decls_) {
       for (auto *decl : val) {
-        if (decl->const_ || decl->is_arg_) { continue; }
+        if (decl->const_ || decl->is_fn_param_) { continue; }
 
         // TODO it's wrong to use a default BoundConstants, but it's even more
         // wrong to store the address on the declaration, so you can fix those

@@ -455,7 +455,7 @@ static void EmitOneCallDispatch(
 
   if (!binding.const_) {
     if (!binding.fn_.get()->is<Declaration>() ||
-        !binding.fn_.get()->as<Declaration>().is_arg_) {
+        !binding.fn_.get()->as<Declaration>().is_fn_param_) {
       if (auto *reg = std::get_if<ir::Register>(&callee.value)) {
         // TODO this feels like a hack, there should be a better way to
         // determine if the function

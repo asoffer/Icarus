@@ -355,7 +355,7 @@ TypedRegister<Addr> Alloca(type::Type const *t) {
   return cmd.result;
 }
 
-static TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
+TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
   ASSERT(t->is_big());
   auto &cmd    = MakeCmd(type::Ptr(t), Op::GetRet);
   cmd.get_ret_ = n;

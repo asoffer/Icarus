@@ -502,7 +502,7 @@ std::unique_ptr<Node> BuildFunctionLiteral(
     Context *ctx) {
   auto fn     = std::make_unique<ast::FunctionLiteral>();
   fn->module_ = ASSERT_NOT_NULL(ctx->mod_);
-  for (auto &input : inputs) { input->is_arg_ = fn.get(); }
+  for (auto &input : inputs) { input->is_fn_param_ = true; }
 
   fn->span       = std::move(span);
   fn->inputs     = std::move(inputs);
@@ -512,14 +512,18 @@ std::unique_ptr<Node> BuildFunctionLiteral(
     fn->return_type_inferred_ = true;
   } else if (output->is<CommaList>()) {
     for (auto &expr : output->as<CommaList>().exprs_) {
+      if (auto *decl = expr->if_as<Declaration>()) {
+        decl->is_fn_param_ = true;
+        decl->is_output_   = true;
+      }
       fn->outputs.push_back(std::move(expr));
     }
   } else {
+    if (auto decl = output->if_as<Declaration>()) {
+      decl->is_fn_param_ = true;
+      decl->is_output_   = true;
+    }
     fn->outputs.push_back(std::move(output));
-  }
-
-  for (auto &expr : fn->outputs) {
-    if (expr->is<Declaration>()) { expr->as<Declaration>().is_arg_ = fn.get(); }
   }
 
   size_t i = 0;

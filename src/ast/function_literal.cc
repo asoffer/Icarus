@@ -90,46 +90,18 @@ type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   if (ctx->num_errors() > 0) { return nullptr; }
 
   if (!return_type_inferred_) {
-    bool err = false;
-    // TODO should named return types be required?
-    base::vector<ir::Val> out_vals;
-    out_vals.reserve(outputs.size());
-
-    for (const auto &out : outputs) {
-      auto result = backend::Evaluate(
-          [&]() {
-            if (!out->is<Declaration>()) { return out.get(); }
-
-            auto *out_decl = &out->as<Declaration>();
-            if (out_decl->IsInferred()) { NOT_YET(); }
-            return out_decl->type_expr.get();
-          }(),
-          ctx);
-      ASSERT(result.size() == 1u);
-      out_vals.push_back(std::move(result)[0]);
-    }
-
-    base::vector<const type::Type *> ret_types;
-    ret_types.reserve(out_vals.size());
-
-    for (size_t i = 0; i < out_vals.size(); ++i) {
-      const auto &out = out_vals[i];
-      if (out == ir::Val::None() /* TODO Error() */) {
-        ctx->error_log_.IndeterminantType(outputs[i]->span);
-      } else if (out.type != type::Type_) {
-        ctx->error_log_.NotAType(outputs[i].get());
-        continue;
-      } else if (auto *ret_type = std::get<const type::Type *>(out.value);
-                 ret_type == nullptr) {
-        err = true;
-        continue;
+    for (size_t i = 0; i < output_type_vec.size(); ++i) {
+      if (outputs.at(i)->is<Declaration>()) {
+        output_type_vec.at(i) = ctx->type_of(&outputs[i]->as<Declaration>());
       } else {
-        ret_types.push_back(ret_type);
+        ASSERT(output_type_vec.at(i) == type::Type_);
+        output_type_vec.at(i) =
+            backend::EvaluateAs<type::Type const *>(outputs.at(i).get(), ctx);
       }
     }
-    if (err) { return nullptr; }
-    auto *t = type::Func(std::move(input_type_vec), std::move(ret_types));
-    return ctx->set_type(this, t);
+
+    return ctx->set_type(this, type::Func(std::move(input_type_vec),
+                                          std::move(output_type_vec)));
   } else {
     Validate(ctx);
     return ctx->type_of(this);
@@ -290,14 +262,23 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
       ctx->set_addr(inputs[i].get(), ir::Func::Current->Argument(i));
     }
 
+    fn_scope->MakeAllStackAllocations(ctx);
+
     for (size_t i = 0; i < outputs.size(); ++i) {
       if (!outputs[i]->is<Declaration>()) { continue; }
+      auto *out_decl      = &outputs[i]->as<Declaration>();
+      auto *out_decl_type = ASSERT_NOT_NULL(ctx->type_of(out_decl));
+      auto alloc = out_decl_type->is_big() ? ir::GetRet(i, out_decl_type)
+                                           : ir::Alloca(out_decl_type);
 
-      ctx->set_addr(&outputs[i]->as<Declaration>(),
-                    ir::Func::Current->Argument(i));
+      ctx->set_addr(out_decl, alloc);
+      if (out_decl->IsDefaultInitialized()) {
+        out_decl_type->EmitInit(alloc, ctx);
+      } else {
+        out_decl_type->EmitAssign(
+            out_decl_type, out_decl->init_val->EmitIR(ctx)[0], alloc, ctx);
+      }
     }
-
-    fn_scope->MakeAllStackAllocations(ctx);
 
     statements->EmitIR(ctx);
     if (t->as<type::Function>().output.empty()) {

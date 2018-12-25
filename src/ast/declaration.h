@@ -28,11 +28,12 @@ struct Declaration : public Expression {
   std::string id_;
   std::unique_ptr<Expression> type_expr, init_val;
 
-  // If it's an argument or return value, this points to the function for which
-  // it's an argument. Otherwise this field is null.
   Module *mod_ = nullptr;
-  bool is_arg_ = false;
-  bool const_  = false;
+
+  // Field in a function, whether or not it's an input our output.
+  bool is_fn_param_ = false;
+  bool is_output_   = false;
+  bool const_       = false;
 
   // These functions are confusingly named. They look correct in normal
   // declarations, but in function arguments, IsDefaultInitialized() is true iff
