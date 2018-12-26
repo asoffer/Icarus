@@ -83,14 +83,14 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
 
 base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
   base::vector<ir::Val> arg_vals;
-  if (args_.parenthesized_) {
-    arg_vals.push_back(args_.EmitIR(ctx)[0]);
-  } else {
+  if (args_.needs_expansion()) {
     for (auto &expr : args_.exprs_) {
       auto vals = expr->EmitIR(ctx);
       arg_vals.insert(arg_vals.end(), std::make_move_iterator(vals.begin()),
                       std::make_move_iterator(vals.end()));
     }
+  } else {
+    arg_vals.push_back(args_.EmitIR(ctx)[0]);
   }
 
   switch (op_) {
@@ -101,7 +101,7 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
 
       auto *fn_type =
           &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
-      for (size_t i = 0; i < args_.exprs_.size(); ++i) {
+      for (size_t i = 0; i < arg_vals.size(); ++i) {
         // TODO return type maybe not the same as type actually returned?
         ir::SetRet(i, arg_vals[i], ctx);
       }
@@ -127,13 +127,12 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
     case Language::Operator::Print: {
       size_t index = 0;
       for (auto &val : arg_vals) {
-        type::Type const *t = ctx->type_of(args_.exprs_[index].get());
-        if (t->is<type::Struct>()) {
+        if (val.type->is<type::Struct>()) {
           ast::FnArgs<std::pair<ast::Expression *, ir::Val>> args;
           args.pos_.emplace_back(args_.exprs_[index].get(), std::move(val));
           return dispatch_tables_.at(index).EmitCall(args, type::Void(), ctx);
         } else {
-          t->EmitRepr(val, ctx);
+          val.type->EmitRepr(val, ctx);
         }
         ++index;
       }

@@ -33,6 +33,7 @@ struct Expression : public Node {
   std::vector<Hashtag> hashtags_;
   bool parenthesized_ = false;
 };
+
 }  // namespace ast
 
 #endif  // ICARUS_AST_EXPRESSION_H
