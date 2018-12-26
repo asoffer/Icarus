@@ -36,6 +36,8 @@ struct Struct : public Type {
                        [](Field const &f) { return f.type->needs_destroy(); });
   }
 
+  ::Module const *defining_module() const { return data_.mod_; }
+
   size_t offset(size_t n, Architecture const &arch) const;
 
   base::vector<Field> const &fields() const { return data_.fields_; }

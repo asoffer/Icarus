@@ -60,10 +60,21 @@ type::Type const *Access::VerifyType(Context *ctx) {
     }
 
   } else if (base_type->is<type::Struct>()) {
-    const auto *member = base_type->as<type::Struct>().field(member_name);
-    if (member != nullptr) { return ctx->set_type(this, member->type); }
-    ctx->error_log_.MissingMember(span, member_name, base_type);
-    return nullptr;
+    auto const *member = base_type->as<type::Struct>().field(member_name);
+    if (member == nullptr) {
+      ctx->error_log_.MissingMember(span, member_name, base_type);
+      return nullptr;
+    }
+
+    if (ctx->mod_ != base_type->as<type::Struct>().defining_module() &&
+        std::none_of(member->hashtags_.begin(), member->hashtags_.end(),
+                     [](ast::Hashtag h) {
+                       return h.kind_ == ast::Hashtag::Builtin::Export;
+                     })) {
+      ctx->error_log_.NonExportedMember(span, member_name, base_type);
+    }
+    return ctx->set_type(this, member->type);
+
   } else if (base_type == type::Module) {
     auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
                   ->GetType(member_name);

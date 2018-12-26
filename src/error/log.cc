@@ -219,6 +219,21 @@ void Log::MissingMember(TextSpan const &span, std::string const &member_name,
   errors_.push_back(ss.str());
 }
 
+void Log::NonExportedMember(TextSpan const &span,
+                            std::string const &member_name,
+                            type::Type const *t) {
+  std::stringstream ss;
+  ss << "Expressions of type `" << t->to_string() << "` do not export the member `"
+     << member_name << "`.\n\n";
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+
 void Log::ReturnTypeMismatch(type::Type const *expected_type,
                              ast::Expression const *ret_expr) {
   /* TODO pass in type or context too

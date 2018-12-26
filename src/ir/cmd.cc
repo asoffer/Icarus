@@ -312,8 +312,10 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                      [lit](ast::BlockLiteral *l) { return lit == l; });
 }
 
-Register CreateStruct(ast::StructLiteral *lit) {
-  return MakeCmd(type::Type_, Op::CreateStruct).result;
+Register CreateStruct(::Module const *mod) {
+  auto &cmd = MakeCmd(type::Type_, Op::CreateStruct);
+  cmd.mod_  = mod;
+  return cmd.result;
 }
 
 Register FinalizeStruct(Register r) {
@@ -345,6 +347,11 @@ void CreateStructField(Register struct_type,
 void SetStructFieldName(Register struct_type, std::string_view field_name) {
   auto &cmd                  = MakeCmd(nullptr, Op::SetStructFieldName);
   cmd.set_struct_field_name_ = {struct_type, field_name};
+}
+
+void AddHashtagToField(Register struct_type, ast::Hashtag hashtag) {
+  auto &cmd                 = MakeCmd(nullptr, Op::AddHashtagToField);
+  cmd.add_hashtag_to_field_ = {struct_type, hashtag};
 }
 
 TypedRegister<Addr> Alloca(type::Type const *t) {

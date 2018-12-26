@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_CMD_H
 #define ICARUS_IR_CMD_H
 
+#include "ast/hashtag.h"
 #include "base/untyped_buffer.h"
 #include "context.h"
 #include "val.h"
@@ -163,6 +164,17 @@ struct Cmd {
     };
   };
 
+  struct AddHashtagToField {
+    Register struct_;
+    ast::Hashtag hashtag_;
+
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           AddHashtagToField const &a) {
+      return os << a.struct_ << " " << static_cast<int>(a.hashtag_.kind_);
+    }
+
+  };
+
   struct CondJump {
     Register cond_;
     BlockIndex blocks_[2];
@@ -190,6 +202,7 @@ struct Cmd {
 
     CreateStructField create_struct_field_;
     SetStructFieldName set_struct_field_name_;
+    AddHashtagToField add_hashtag_to_field_;
     CondJump cond_jump_;
     BlockIndex block_;
     BlockSeqJump block_seq_jump_;
@@ -198,6 +211,7 @@ struct Cmd {
     BlockSeqContains block_seq_contains_;
     Cmd::Array array_;
     Field field_;
+    Module const *mod_;
 
     // TODO names of these are easily mis-spellable and would lead to UB.
     RegisterOr<bool> bool_arg_;

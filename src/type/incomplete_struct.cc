@@ -3,6 +3,7 @@
 #include "type/struct.h"
 
 namespace type {
+
 char *IncompleteStruct::WriteTo(char *buf) const { NOT_YET(); }
 size_t IncompleteStruct::string_size() const { NOT_YET(); }
 void IncompleteStruct::EmitAssign(const Type *from_type, ir::Val const &from,
@@ -29,6 +30,10 @@ void IncompleteStruct::set_last_name(std::string_view s) {
   auto[iter, success] = data_.field_indices_.emplace(data_.fields_.back().name,
                                                      data_.fields_.size() - 1);
   ASSERT(success);
+}
+
+void IncompleteStruct::add_hashtag_to_last_field(ast::Hashtag hashtag) {
+  data_.fields_.back().hashtags_.push_back(hashtag);
 }
 
 void IncompleteStruct::add_field(type::Type const *t) {

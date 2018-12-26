@@ -14,10 +14,16 @@
 #include "type/tuple.h"
 
 namespace ir {
-Register CreateStruct(ast::StructLiteral *lit);
+// TODO: The functions here that modify struct fields typically do so by
+// modifying the last field, since we always build them in order. This saves us
+// from having to pass extra information and thereby bloating all commands. At
+// some point we should switch to a buffer-chunk system so that one won't bloat
+// another.
+Register CreateStruct(Module const *mod);
 void CreateStructField(Register struct_type,
                        RegisterOr<type::Type const *> type);
 void SetStructFieldName(Register struct_type, std::string_view field_name);
+void AddHashtagToField(Register struct_type, ast::Hashtag hashtag);
 Register FinalizeStruct(Register r);
 }  // namespace ir
 
@@ -72,7 +78,7 @@ void StructLiteral::ExtractJumps(JumpExprs *rets) const {
 }
 
 static ir::Register GenerateStruct(StructLiteral *sl, Context *ctx) {
-  ir::Register r = ir::CreateStruct(sl);
+  ir::Register r = ir::CreateStruct(ctx->mod_);
   for (auto const &field : sl->fields_) {
     // TODO initial values? hashatgs?
 
@@ -82,6 +88,9 @@ static ir::Register GenerateStruct(StructLiteral *sl, Context *ctx) {
     ir::CreateStructField(
         r, field->type_expr->EmitIR(ctx)[0].reg_or<type::Type const *>());
     ir::SetStructFieldName(r, field->id_);
+    for (auto const &hashtag : field->hashtags_) {
+      ir::AddHashtagToField(r, hashtag);
+    }
   }
   return ir::FinalizeStruct(r);
 }

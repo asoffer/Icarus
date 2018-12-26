@@ -62,6 +62,8 @@ struct Log {
                              TextSpan const &decl_span);
   void MissingMember(TextSpan const &span, std::string const &member_name,
                      type::Type const *t);
+  void NonExportedMember(TextSpan const &span, std::string const &member_name,
+                         type::Type const *t);
   void InvalidByteViewIndex(TextSpan const &span, type::Type const *index_type);
   // TODO is this the same as `ArrayIndexType`?
   void NonIntegralArrayIndex(TextSpan const &span,

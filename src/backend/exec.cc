@@ -443,17 +443,23 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       });
 #undef CASE
 
-    case ir::Op::CreateStruct: save(new type::IncompleteStruct); break;
+    case ir::Op::CreateStruct:
+      save(new type::IncompleteStruct(cmd.mod_));
+      break;
     case ir::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
           resolve<type::IncompleteStruct *>(cmd.create_struct_field_.struct_));
       struct_to_modify->add_field(resolve(cmd.create_struct_field_.type_));
     } break;
     case ir::Op::SetStructFieldName: {
-      auto *struct_to_modify =
-          ASSERT_NOT_NULL(resolve<type::IncompleteStruct *>(
-              cmd.set_struct_field_name_.struct_));
-      struct_to_modify->set_last_name(cmd.set_struct_field_name_.name_);
+      ASSERT_NOT_NULL(
+          resolve<type::IncompleteStruct *>(cmd.set_struct_field_name_.struct_))
+          ->set_last_name(cmd.set_struct_field_name_.name_);
+    } break;
+    case ir::Op::AddHashtagToField: {
+      ASSERT_NOT_NULL(
+          resolve<type::IncompleteStruct *>(cmd.add_hashtag_to_field_.struct_))
+          ->add_hashtag_to_last_field(cmd.add_hashtag_to_field_.hashtag_);
     } break;
     case ir::Op::FinalizeStruct: {
       auto *s = resolve<type::IncompleteStruct *>(cmd.reg_);
