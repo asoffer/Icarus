@@ -69,11 +69,11 @@ static constexpr size_t precedence(Language::Operator op) {
 
 static std::unique_ptr<ast::Node> AddHashtag(
     base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  auto expr = move_as<ast::Expression>(nodes[1]);
-  if (nodes[0]->as<frontend::Token>().token == "{export}") {
+  auto expr = move_as<ast::Expression>(nodes.back());
+  if (nodes.front()->as<frontend::Token>().token == "{export}") {
     expr->hashtags_.emplace_back(ast::Hashtag::Builtin::Export);
   } else {
-    NOT_YET(nodes[0]->as<frontend::Token>().token);
+    NOT_YET(nodes.front()->as<frontend::Token>().token);
   }
   return expr;
 }
@@ -1199,7 +1199,8 @@ auto Rules = std::array{
     Rule(expr, {l_paren, RESERVED, r_paren}, ErrMsg::Reserved<1, 1>),
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
     Rule(stmts, {stmts, (EXPR | stmts), newline}, ast::BuildMoreStatements),
-    Rule(expr, {kw_struct, l_paren, expr, r_paren, braced_stmts}, BuildGenericStruct),
+    Rule(expr, {kw_struct, l_paren, expr, r_paren, braced_stmts},
+         BuildGenericStruct),
     Rule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
     Rule(expr, {KW_BLOCK, newline}, drop_all_but<0>),
 
@@ -1312,6 +1313,18 @@ struct ParseState {
         right_prec = precedence(Operator::Index);
 
       } else if (ahead.tag_ == l_paren) {
+        // TODO this might be a hack. To get the following example to parse
+        // correctly:
+        //
+        //    #tag
+        //    (+) ::= ...
+        //
+        // As it stands we're assuming there's some expression being called
+        // between the tag and the paren where the newline actually is. We can
+        // get around this here by just explicitly checking that case, but
+        // perhaps we should actually just lex "(+)" as it's own symbol with
+        // it's own tag type. That might be more robust.
+        if (get_type<1>() == newline) { return ShiftState::MustReduce; }
         right_prec = precedence(Operator::Call);
       } else {
         return ShiftState::MustReduce;
