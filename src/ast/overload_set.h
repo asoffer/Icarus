@@ -18,6 +18,8 @@ struct OverloadSet
   OverloadSet() = default;
   OverloadSet(Scope *scope, std::string const &id, Context *ctx);
 
+  void add_adl(std::string const &id, type::Type const *t);
+
   void keep_return(type::Type const *t);
 };
 }  // namespace ast

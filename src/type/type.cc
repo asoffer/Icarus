@@ -91,4 +91,27 @@ ir::Val Tuple::PrepareArgument(Type const *t, ir::Val const &val,
   UNREACHABLE();
 }
 
+void Pointer::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {
+  pointee->defining_modules(modules);
+}
+
+void Primitive::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {}
+
+void Variant::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {
+  for (auto *v : variants_) { v->defining_modules(modules); }
+}
+
+void Enum::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {
+  NOT_YET();
+}
+
+void Flags::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {
+  NOT_YET();
+}
+
 }  // namespace type

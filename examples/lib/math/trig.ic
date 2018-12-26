@@ -18,8 +18,9 @@ degrees ::= (x: float64) -> (a: angle) {
 }
 
 #{export}
-(+) ::= (a: angle, b: angle) -> (result: angle) {
-  result._val += b._val
+(+) ::= (a: angle, b: angle) -> angle {
+  result: angle
+  result._val = a._val + b._val
   return result
 }
 

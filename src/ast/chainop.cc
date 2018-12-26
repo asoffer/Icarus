@@ -230,8 +230,11 @@ not_blocks:
               base::vector<Expression *>{{exprs[i].get(), exprs[i + 1].get()}};
           // TODO overwriting type a bunch of times?
           type::Type const *t = nullptr;
+          OverloadSet os(scope_, token, ctx);
+          os.add_adl(token, lhs_type);
+          os.add_adl(token, rhs_type);
           std::tie(dispatch_tables_.at(i), t) =
-              DispatchTable::Make(args, OverloadSet(scope_, token, ctx), ctx);
+              DispatchTable::Make(args, os, ctx);
           ASSERT(t, Not(Is<type::Tuple>()));
           if (t == nullptr) { return nullptr; }
         } else {

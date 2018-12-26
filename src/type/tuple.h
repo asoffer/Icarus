@@ -26,6 +26,9 @@ struct Tuple : public Type {
 
   virtual Cmp Comparator() const { UNREACHABLE(); }
 
+  virtual void defining_modules(
+      std::unordered_set<::Module const *> *modules) const;
+
   size_t offset(size_t n, Architecture const &arch) const;
 
   Type const *finalize();

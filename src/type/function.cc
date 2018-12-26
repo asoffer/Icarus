@@ -14,4 +14,14 @@ ir::Val GenericFunction::PrepareArgument(const Type *t, const ir::Val &val,
 }
 void GenericFunction::EmitRepr(ir::Val const &id_val, Context *ctx) const {}
 
+void GenericFunction::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {
+  NOT_YET();
+}
+
+void Function::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {
+  NOT_YET();
+}
+
 }  // namespace type

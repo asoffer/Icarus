@@ -2,6 +2,7 @@
 #define ICARUS_TYPE_TYPE_H
 
 #include <string>
+#include <unordered_set>
 
 #include "base/debug.h"
 #include "base/util.h"
@@ -47,6 +48,8 @@ struct AnyFunc;
   virtual ir::Val PrepareArgument(const Type *t, const ir::Val &val,           \
                                   Context *ctx) const ENDING;                  \
   virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const ENDING;     \
+  virtual void defining_modules(std::unordered_set<::Module const *> *modules) \
+      const ENDING;                                                            \
   virtual Cmp Comparator() const ENDING
 
 #ifdef ICARUS_USE_LLVM

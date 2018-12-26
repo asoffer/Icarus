@@ -128,4 +128,10 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
   call_args.type_ = destroy_func_->type_;
   ir::Call(ir::AnyFunc{destroy_func_}, std::move(call_args));
 }
+void Struct::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {
+  modules->insert(defining_module());
+}
+
+
 }  // namespace type

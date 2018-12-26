@@ -82,4 +82,9 @@ size_t Tuple::offset(size_t field_num, Architecture const &arch) const {
   return offset;
 }
 
+void Tuple::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {
+  for (auto *entry : entries_) { entry->defining_modules(modules); }
+}
+
 }  // namespace type

@@ -30,6 +30,8 @@ struct GenericFunction : public Callable {
   ir::Val PrepareArgument(const Type *t, const ir::Val &val,
                           Context *ctx) const override;
   void EmitRepr(ir::Val const &id_val, Context *ctx) const override;
+  void defining_modules(
+      std::unordered_set<::Module const *> *modules) const override;
   Cmp Comparator() const override;
 };
 

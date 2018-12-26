@@ -64,8 +64,10 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_.push_back(arg.get());
         const type::Type *ret_type = nullptr;
+        OverloadSet os(scope_, "print", ctx);
+        os.add_adl("print", arg_type);
         std::tie(dispatch_tables_[i], ret_type) =
-            DispatchTable::Make(args, OverloadSet(scope_, "print", ctx), ctx);
+            DispatchTable::Make(args, os, ctx);
         if (ret_type != type::Void()) {
           NOT_YET("log an error: ", ret_type);
         }

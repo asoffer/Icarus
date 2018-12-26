@@ -161,11 +161,15 @@ type::Type const *Call::VerifyType(Context *ctx) {
 
   OverloadSet overload_set = [&]() {
     if (fn_->is<Identifier>()) {
-      return OverloadSet(scope_, fn_->as<Identifier>().token, ctx);
+      auto &token = fn_->as<Identifier>().token;
+      OverloadSet os(scope_, token, ctx);
+      arg_types.Apply([&](type::Type const *t) { os.add_adl(token, t); });
+      return os;
     } else {
       auto t = fn_->VerifyType(ctx);
       OverloadSet os;
       os.emplace_back(fn_.get(), t);
+      // TODO ADL for this?
       return os;
     }
   }();

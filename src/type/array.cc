@@ -110,4 +110,10 @@ const Array *Arr(Type const *t, size_t len) {
                        std::forward_as_tuple(t, len))
               .first->second;
 }
+
+void Array::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {
+  data_type->defining_modules(modules);
+}
+
 }  // namespace type

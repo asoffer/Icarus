@@ -162,12 +162,12 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       if (t->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{{lhs.get()}};
-        type::Type const *ret_type = nullptr;
-        OverloadSet overload_set(scope_, "as", ctx);
-        overload_set.keep_return(t);
+        OverloadSet os(scope_, "as", ctx);
+        os.add_adl("as", t);
+        os.add_adl("as", lhs_type);
+        os.keep_return(t);
 
-        std::tie(dispatch_table_, t) =
-            DispatchTable::Make(args, overload_set, ctx);
+        std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("as", lhs_type, rhs_type, span);
@@ -222,8 +222,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       FnArgs<Expression *> args;                                                \
       args.pos_           = base::vector<Expression *>{{lhs.get(), rhs.get()}}; \
       type::Type const *t = nullptr;                                            \
-      std::tie(dispatch_table_, t) =                                            \
-          DispatchTable::Make(args, OverloadSet(scope_, symbol, ctx), ctx);     \
+      OverloadSet os(scope_, symbol, ctx);                                      \
+      os.add_adl(symbol, lhs_type);                                             \
+      os.add_adl(symbol, rhs_type);                                             \
+      std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);        \
       if (t == nullptr) {                                                       \
         ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
         return nullptr;                                                         \
@@ -254,8 +256,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) =
-            DispatchTable::Make(args, OverloadSet(scope_, "+", ctx), ctx);
+        OverloadSet os(scope_, "+", ctx);
+        os.add_adl("+", lhs_type);
+        os.add_adl("+", rhs_type);
+        std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
@@ -277,8 +281,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) =
-            DispatchTable::Make(args, OverloadSet(scope_, "+=", ctx), ctx);
+        OverloadSet os(scope_, "+=", ctx);
+        os.add_adl("+=", lhs_type);
+        os.add_adl("+=", rhs_type);
+        std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
       }
     } break;
@@ -306,11 +312,13 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
-        std::tie(dispatch_table_, t) =
-            DispatchTable::Make(args, OverloadSet(scope_, "*", ctx), ctx);
+        OverloadSet os(scope_, "*", ctx);
+        os.add_adl("*", lhs_type);
+        os.add_adl("*", rhs_type);
+        std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
-          ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
+          ctx->error_log_.NoMatchingOperator("*", lhs_type, rhs_type, span);
           return nullptr;
         } else {
           return ctx->set_type(this, t);

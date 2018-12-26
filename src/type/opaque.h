@@ -27,6 +27,12 @@ struct Opaque : public Type {
   void EmitRepr(ir::Val const &id_val, Context *ctx) const override {
     UNREACHABLE();
   }
+
+  void defining_modules(
+      std::unordered_set<::Module const *> *modules) const override {
+    NOT_YET();
+  }
+
   Cmp Comparator() const override { UNREACHABLE(); }
 };
 

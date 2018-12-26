@@ -44,4 +44,9 @@ Struct const *IncompleteStruct::finalize() && {
   return new Struct(std::move(data_));
 }
 
+void IncompleteStruct::defining_modules(
+    std::unordered_set<::Module const *> *modules) const {
+  UNREACHABLE();
+}
+
 }  // namespace type
