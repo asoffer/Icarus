@@ -579,17 +579,10 @@ ir::BlockIndex ExecContext::ExecuteCmd(
 
       while (val != 0) {
         size_t mask = (val & ((~val) + 1));
-        size_t bit = 0;
-        if (mask & 0xffffffff00000000ull) { bit += 32; }
-        if (mask & 0xffff0000ffff0000ull) { bit += 16; }
-        if (mask & 0xff00ff00ff00ff00ull) { bit += 8; }
-        if (mask & 0xf0f0f0f0f0f0f0f0ull) { bit += 4; }
-        if (mask & 0xccccccccccccccccull) { bit += 2; }
-        if (mask & 0xaaaaaaaaaaaaaaaaull) { bit += 1; }
         val -= mask;
-        auto iter = members.find(bit);
+        auto iter = members.find(mask);
         if (iter == members.end()) {
-          vals.emplace_back(std::to_string(bit));
+          vals.emplace_back(std::to_string(mask));
         } else {
           vals.emplace_back(iter->second);
         }

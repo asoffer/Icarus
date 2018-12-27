@@ -18,7 +18,7 @@ struct Flags : public type::Type {
     std::unordered_set<i32> taken;
     for (auto const & [ s, v ] : members) {
       if (v.has_value()) {
-        vals_.emplace(s, ir::FlagsVal(*v));
+        vals_.emplace(s, ir::FlagsVal(size_t{1} << *v));
         members_.emplace(size_t{1} << *v, s);
         All |= (size_t{1} << *v);
       }
@@ -39,7 +39,7 @@ struct Flags : public type::Type {
       }
       vals_.emplace(s, ir::FlagsVal(size_t{1} << x));
       All |= (size_t{1} << x);
-      members_.emplace(x, s);
+      members_.emplace(size_t{1} << x, s);
     }
   }
 
@@ -55,7 +55,7 @@ struct Flags : public type::Type {
   }
 
   // TODO privatize
-  base::unordered_map<i32, std::string> members_;
+  base::unordered_map<size_t, std::string> members_;
 
   size_t All = 0;
 
