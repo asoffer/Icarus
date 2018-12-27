@@ -824,36 +824,46 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
 static std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     base::vector<std::unique_ptr<ast::Node>> nodes, bool is_enum,
     Context *ctx) {
-  std::unordered_set<std::string> members;
+  base::unordered_map<std::string, std::optional<i32>> members;
   if (nodes[1]->is<ast::Statements>()) {
+    // TODO if you want these values to depend on compile-time parameters,
+    // you'll need to actually build the AST nodes.
     for (auto &stmt : nodes[1]->as<ast::Statements>().content_) {
-      if (!stmt->is<ast::Identifier>()) {
-        ctx->error_log_.EnumNeedsIds(stmt->span);
-        continue;
-      }
-      // Quadratic but we need it as a vector eventually anyway because we do
-      // care about the order the user put it in.
-      auto &token = stmt->as<ast::Identifier>().token;
-      if (auto[iter, success] = members.insert(token); !success) {
-        // TODO this span is wrong.
-        ctx->error_log_.RepeatedEnumName(stmt->span);
+      if (stmt->is<ast::Identifier>()) {
+        if (auto[iter, success] = members.emplace(
+                stmt->as<ast::Identifier>().token, std::nullopt);
+            !success) {
+          // TODO this span is wrong.
+          ctx->error_log_.RepeatedEnumName(stmt->span);
+        }
+      } else if (stmt->is<ast::Declaration>() &&
+                 stmt->as<ast::Declaration>().const_) {
+        // TODO Assuming the value is a numeric literal for now.
+        // TODO also not checking that no type is specified.
+        auto &decl = stmt->as<ast::Declaration>();
+        if (auto[iter, success] = members.emplace(
+                decl.id_,
+                std::get<i32>(decl.init_val->as<ast::Terminal>().value.value));
+            !success) {
+          // TODO this span is wrong.
+          ctx->error_log_.RepeatedEnumName(stmt->span);
+        }
+      } else {
+        ctx->error_log_.EnumNeedsIdsOrConstDecls(stmt->span);
       }
     }
   }
 
-  base::vector<std::string> members_vec(
-      std::make_move_iterator(members.begin()),
-      std::make_move_iterator(members.end()));
   if (is_enum) {
     return std::make_unique<ast::Terminal>(
         TextSpan(nodes[0]->span, nodes[1]->span),
         ir::Val(static_cast<type::Type const *>(
-            new type::Enum(std::move(members_vec)))));
+            new type::Enum(std::move(members)))));
   } else {
     return std::make_unique<ast::Terminal>(
         TextSpan(nodes[0]->span, nodes[1]->span),
         ir::Val(static_cast<type::Type const *>(
-            new type::Flags(std::move(members_vec)))));
+            new type::Flags(std::move(members)))));
   }
 }
 

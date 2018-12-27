@@ -2,6 +2,9 @@
 #define ICARUS_TYPE_FLAGS_H
 
 #include <optional>
+#include <random>
+#include <unordered_set>
+
 #include "base/container/unordered_map.h"
 #include "ir/flags_val.h"
 #include "type.h"
@@ -11,10 +14,32 @@ namespace type {
 struct Flags : public type::Type {
   TYPE_FNS(Flags);
 
-  Flags(base::vector<std::string> members) : members_(std::move(members)) {
-    auto num_members = members_.size();
-    for (size_t i = 0; i < num_members; ++i) {
-      vals_[members_[i]] = ir::FlagsVal{size_t{1} << i};
+  Flags(base::unordered_map<std::string, std::optional<i32>> const& members) {
+    std::unordered_set<i32> taken;
+    for (auto const & [ s, v ] : members) {
+      if (v.has_value()) {
+        vals_.emplace(s, ir::FlagsVal(*v));
+        members_.emplace(size_t{1} << *v, s);
+        All |= (size_t{1} << *v);
+      }
+      taken.insert(*v);
+    }
+    // TODO we can highly optimize this in a number of ways. One simple thing is
+    // removing members as we used them above.
+    for (auto const & [ s, v ] : members) {
+      if (v.has_value()) { continue; }
+      std::random_device rd;
+      std::uniform_int_distribution<int> dist(0, 31);
+      i32 x;
+      {
+      try_again:
+        x            = dist(rd);
+        bool success = taken.insert(x).second;
+        if (!success) { goto try_again; }
+      }
+      vals_.emplace(s, ir::FlagsVal(size_t{1} << x));
+      All |= (size_t{1} << x);
+      members_.emplace(x, s);
     }
   }
 
@@ -30,7 +55,10 @@ struct Flags : public type::Type {
   }
 
   // TODO privatize
-  base::vector<std::string> members_;
+  base::unordered_map<i32, std::string> members_;
+
+  size_t All = 0;
+
  private:
   // TODO combine these into a single bidirectional map?
   base::unordered_map<std::string, ir::FlagsVal> vals_;

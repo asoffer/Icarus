@@ -77,6 +77,29 @@ Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
     copy.type = to;
     return copy;
   }
+
+  if (to->is<type::Enum>()) {
+    ASSERT(from == type::Int32);
+    auto x = val.reg_or<i32>();
+    if (x.is_reg_) {
+      auto &cmd = MakeCmd(to, Op::CastToEnum);
+      cmd.reg_  = x.reg_;
+      return Val::Reg(cmd.result, to);
+    } else {
+      return ValFrom(EnumVal(x.val_), &to->as<type::Enum>());
+    }
+  } else if (to->is<type::Flags>()) {
+    ASSERT(from == type::Int32);
+    auto x = val.reg_or<i32>();
+    if (x.is_reg_) {
+      auto &cmd = MakeCmd(to, Op::CastToFlags);
+      cmd.reg_  = x.reg_;
+      return Val::Reg(cmd.result, to);
+    } else {
+      return ValFrom(FlagsVal(x.val_), &to->as<type::Flags>());
+    }
+  }
+
   // TODO We only need to include i8 and u8 here for supporting loose casting.
   // If that disappears, we can remove those types.
   return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(

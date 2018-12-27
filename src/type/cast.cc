@@ -53,6 +53,9 @@ bool CanCast(Type const *from, Type const *to) {
   }
   if (from == NullPtr && to->is<Pointer>()) { return true; }
 
+  // TODO other integer types.
+  if (from == Int32 && (to->is<Enum>() || to->is<Flags>())) { return true; }
+
   auto from_mask = CastMask(from);
   auto to_mask   = CastMask(to);
   return ((from_mask & to_mask) == from_mask) || CanCastImplicitly(from, to);

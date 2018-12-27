@@ -40,7 +40,8 @@ MAKE_LOG_ERROR(
 // TODO handle case where a value is repeated multiple times. build a set and
 // highlight them accordingly.
 MAKE_LOG_ERROR(RepeatedEnumName, "Repeated enum member.")
-MAKE_LOG_ERROR(EnumNeedsIds, "Enum members must be identifiers.")
+MAKE_LOG_ERROR(EnumNeedsIdsOrConstDecls,
+               "Enum members must be identifiers or constant declarations.")
 MAKE_LOG_ERROR(CallingDeclaration, "Declarations cannot be called.")
 MAKE_LOG_ERROR(IndexingDeclaration, "Declaration cannot be indexed")
 MAKE_LOG_ERROR(DeclarationInIndex, "Declarations cannot appear inside an index")

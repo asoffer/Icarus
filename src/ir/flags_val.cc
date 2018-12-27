@@ -19,8 +19,7 @@ bool operator>=(FlagsVal lhs, FlagsVal rhs) {
 }
 
 FlagsVal NotFlags(FlagsVal f, type::Flags const *t) {
-  return FlagsVal{((static_cast<size_t>(1) << t->members_.size()) - 1) ^
-                  f.value};
+  return FlagsVal{t->All ^ f.value};
 }
 
 std::ostream &operator<<(std::ostream &os, FlagsVal f) { return os << f.value; }

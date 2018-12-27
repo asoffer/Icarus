@@ -8,7 +8,6 @@
 #include <future>
 #include <iostream>
 #include <memory>
-#include <random>
 #include <thread>
 
 #include "architecture.h"
@@ -564,28 +563,41 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       std::cerr << resolve(cmd.type_arg_)->to_string();
       break;
     case ir::Op::PrintEnum: {
-      std::cerr << cmd.print_enum_.enum_type_->members_.at(
-          resolve(cmd.print_enum_.arg_).value);
+      auto numeric_value = resolve(cmd.print_enum_.arg_).value;
+      auto iter = cmd.print_enum_.enum_type_->members_.find(numeric_value);
+      if (iter == cmd.print_enum_.enum_type_->members_.end()) {
+        std::cerr << numeric_value;
+      } else {
+        std::cerr << iter->second;
+      }
     } break;
     case ir::Op::PrintFlags: {
       size_t val = resolve(cmd.print_flags_.arg_).value;
-      base::vector<std::string_view> vals;
+      base::vector<std::string> vals;
 
       auto const &members = cmd.print_flags_.flags_type_->members_;
-      size_t i            = 0;
-      size_t pow          = 1;
-      while (pow <= val) {
-        if (val & pow) { vals.emplace_back(members[i]); }
-        ++i;
-        pow <<= 1;
+
+      while (val != 0) {
+        size_t mask = (val & ((~val) + 1));
+        size_t bit = 0;
+        if (mask & 0xffffffff00000000ull) { bit += 32; }
+        if (mask & 0xffff0000ffff0000ull) { bit += 16; }
+        if (mask & 0xff00ff00ff00ff00ull) { bit += 8; }
+        if (mask & 0xf0f0f0f0f0f0f0f0ull) { bit += 4; }
+        if (mask & 0xccccccccccccccccull) { bit += 2; }
+        if (mask & 0xaaaaaaaaaaaaaaaaull) { bit += 1; }
+        val -= mask;
+        auto iter = members.find(bit);
+        if (iter == members.end()) {
+          vals.emplace_back(std::to_string(bit));
+        } else {
+          vals.emplace_back(iter->second);
+        }
       }
+
       if (vals.empty()) {
         std::cerr << "(empty)";
       } else {
-        static auto seed = std::random_device{}();
-        std::mt19937 gen(seed);
-        std::shuffle(vals.begin(), vals.end(), gen);
-
         auto iter = vals.begin();
         std::cerr << *iter++;
         while (iter != vals.end()) { std::cerr << " | " << *iter++; }
@@ -699,6 +711,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::CastToFloat64: {
       save(static_cast<double>(resolve<i8>(cmd.typed_reg_.get())));
     } break;
+    case ir::Op::CastToEnum: save(ir::EnumVal(resolve<i32>(cmd.reg_))); break;
+    case ir::Op::CastToFlags: save(ir::FlagsVal(resolve<i32>(cmd.reg_))); break;
     case ir::Op::CastPtr: save(resolve<ir::Addr>(cmd.typed_reg_.get())); break;
     case ir::Op::CreateBlockSeq:
       save(new base::vector<ir::BlockSequence>{});

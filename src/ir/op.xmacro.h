@@ -221,6 +221,8 @@ OP_MACRO(CastToInt64,          Cast,                i64,                     typ
 OP_MACRO(CastToNat64,          Cast,                u64,                     typed_reg_)
 OP_MACRO(CastToFloat32,        Cast,                float,                   typed_reg_)
 OP_MACRO(CastToFloat64,        Cast,                double,                  typed_reg_)
+OP_MACRO(CastToEnum,           Cast,                type::Enum const *,      reg_)
+OP_MACRO(CastToFlags,          Cast,                type::Flags const *,     reg_)
 OP_MACRO(CastPtr,              CastPtr,             type::Type const*,       typed_reg_)
 OP_MACRO(PhiBool,              Phi,                 bool,                    phi_bool_)
 OP_MACRO(PhiInt8,              Phi,                 i8,                      phi_i8_)
