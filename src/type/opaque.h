@@ -33,6 +33,8 @@ struct Opaque : public Type {
     NOT_YET();
   }
 
+  bool IsDefaultInitializable() const override { return false; }
+
   Cmp Comparator() const override { UNREACHABLE(); }
 };
 

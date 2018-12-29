@@ -276,6 +276,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     } else if (!init_val) {
       if (!is_fn_param_ && !this_type->IsDefaultInitializable()) {
         // TODO what about an uninitialized constant. do we show both?
+        LOG << this;
         ctx->error_log_.TypeMustBeInitialized(span, this_type);
         return nullptr;
       }

@@ -8,6 +8,7 @@
 #include "base/interval.h"
 #include "frontend/source.h"
 #include "type/enum.h"
+#include "type/opaque.h"
 #include "type/tuple.h"
 #include "type/type.h"
 #include "type/variant.h"
@@ -587,6 +588,8 @@ void Log::TypeMustBeInitialized(TextSpan const &span, type::Type const *t) {
   if (t->is<type::Enum>()) {
     ss << "Enums have no default initial value and must be explicitly "
           "initialized.\n\n";
+  } else if (t->is<type::Opaque>()) {
+    ss << "Opaque types cannot be initialized.\n\n";
   } else if (t->is<type::Variant>()) {
     ss << "Variants have no default initial value and must be explicitly "
           "initialized.\n\n";
