@@ -174,6 +174,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
   return CommonAmbiguousFunctionCall(metadata1, metadata2);
 }
 
+enum DeclKind { INFER = 1, CUSTOM_INIT = 2, UNINITIALIZED = 4 };
 }  // namespace
 
 std::string Declaration::to_string(size_t n) const {
@@ -203,83 +204,111 @@ bool Declaration::IsCustomInitialized() const {
   return init_val && !init_val->is<Hole>();
 }
 
+#define ASSIGN_OR(action, var, expr)                                           \
+  ASSIGN_OR_(action, var, expr, expr__##__LINE__##__)
+#define ASSIGN_OR_(action, var, expr, temp)                                    \
+  auto &&temp = (expr);                                                        \
+  if (!temp) {                                                                 \
+    auto &&_ = temp;                                                           \
+    action;                                                                    \
+  }                                                                            \
+  var = std::move(expr)
+
 type::Type const *Declaration::VerifyType(Context *ctx) {
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   base::defer d([&] { ctx->mod_ = old_mod; });
 
+  int dk = 0;
+  if (!type_expr) { dk = INFER; }
+  if (init_val && init_val->is<Hole>()) {
+    dk |= UNINITIALIZED;
+  } else if (init_val) {
+    dk |= CUSTOM_INIT;
+  }
+
   type::Type const *this_type = nullptr;
   {
-    bool found_error = false;
     type::Type const *type_expr_type = nullptr;
     type::Type const *init_val_type  = nullptr;
-    if (type_expr) {
-      type_expr_type = type_expr->VerifyType(ctx);
-      if (type_expr_type == nullptr) {
-        found_error = true;
-      } else if (type_expr_type == type::Type_) {
-        this_type = ctx->set_type(this, backend::EvaluateAs<type::Type const *>(
-                                            type_expr.get(), ctx));
-      } else if (type_expr_type == type::Interface) {
-        this_type = ctx->set_type(this, type::Generic);
-      } else {
-        ctx->error_log_.NotAType(type_expr.get());
-        found_error = true;
-      }
-    }
 
-    if (this->IsCustomInitialized()) {
-      init_val_type = init_val->VerifyType(ctx);
-      if (init_val_type == nullptr) {
-        found_error = true;
-      } else {
+    switch (dk) {
+      case 0 /* Default initailization */: {
+        ASSIGN_OR(return nullptr, type_expr_type, type_expr->VerifyType(ctx));
+        if (type_expr_type == type::Type_) {
+          LOG << this;
+          LOG << ctx->bound_constants_;
+          this_type = ctx->set_type(
+              this,
+              backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
+        } else if (type_expr_type == type::Interface) {
+          NOT_YET();
+        } else {
+          ctx->error_log_.NotAType(type_expr.get());
+          return nullptr;
+        }
+      } break;
+      case INFER: UNREACHABLE(); break;
+      case INFER | CUSTOM_INIT: {
+        ASSIGN_OR(return nullptr, init_val_type, init_val->VerifyType(ctx));
         if (!Inferrable(init_val_type)) {
           ctx->error_log_.UninferrableType(init_val->span);
-          found_error = true;
-
-        } else if (!type_expr) {
-          this_type = ctx->set_type(this, init_val_type);
+          return nullptr;
         }
-      }
-    }
+        this_type = ctx->set_type(this, init_val_type);
 
-    if (found_error) { return nullptr; }
-
-    if (type_expr && type_expr_type == type::Type_ && init_val &&
-        !init_val->is<Hole>()) {
-      if (!type::CanCastImplicitly(init_val_type, this_type)) {
-        ctx->error_log_.AssignmentTypeMismatch(this, init_val.get());
-      }
-    }
-
-    if (!type_expr) {
-      ASSERT(init_val.get() != nullptr);
-      if (!init_val->is<Hole>()) {  // I := V
-        if (init_val_type == nullptr) {
-          this_type = nullptr;
-        }
-
-      } else {  // I := --
+      } break;
+      case INFER | UNINITIALIZED: {
         ctx->error_log_.InferringHole(span);
-        this_type = init_val_type = nullptr;
-      }
-    }
-
-    if (const_ && init_val) {
-      if (init_val->is<Hole>()) {
-        ctx->error_log_.UninitializedConstant(span);
+        if (const_) { ctx->error_log_.UninitializedConstant(span); }
         return nullptr;
-      }
-    }
+      } break;
+      case CUSTOM_INIT: {  // Use this_type == nullptr to indicate an error.
+        init_val_type  = init_val->VerifyType(ctx);
+        if (init_val_type && !Inferrable(init_val_type)) {
+          ctx->error_log_.UninferrableType(init_val->span);
+        }
 
-    if (this_type == nullptr) {
-      return nullptr;
-    } else if (!init_val) {
-      if (!is_fn_param_ && !this_type->IsDefaultInitializable()) {
-        // TODO what about an uninitialized constant. do we show both?
-        LOG << this;
-        ctx->error_log_.TypeMustBeInitialized(span, this_type);
-        return nullptr;
-      }
+        ASSIGN_OR(return nullptr, type_expr_type, type_expr->VerifyType(ctx));
+
+        if (type_expr_type == type::Type_) {
+          this_type = ctx->set_type(
+              this,
+              backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
+
+          if (init_val_type == nullptr) { return nullptr; }
+          if (!type::CanCastImplicitly(init_val_type, this_type)) {
+            ctx->error_log_.AssignmentTypeMismatch(this, init_val.get());
+            return nullptr;
+          }
+        } else if (type_expr_type == type::Interface) {
+          this_type = ctx->set_type(this, type::Generic);
+        } else {
+          ctx->error_log_.NotAType(type_expr.get());
+          return nullptr;
+        }
+
+        if (init_val_type == nullptr) { return nullptr; }
+      } break;
+      case UNINITIALIZED: {
+        ASSIGN_OR(return nullptr, type_expr_type, type_expr->VerifyType(ctx));
+        if (type_expr_type == type::Type_) {
+          this_type = ctx->set_type(
+              this,
+              backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
+        } else if (type_expr_type == type::Interface) {
+          this_type = ctx->set_type(this, type::Generic);
+        } else {
+          ctx->error_log_.NotAType(type_expr.get());
+          return nullptr;
+        }
+
+        if (const_) {
+          ctx->error_log_.UninitializedConstant(span);
+          return nullptr;
+        }
+
+      } break;
+      default: UNREACHABLE(dk);
     }
 
     if (id_.empty()) {
@@ -358,6 +387,14 @@ base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   base::defer d([&] { ctx->mod_ = old_mod; });
 
+  static bool xx = false;
+  if (id_ == "array") {
+    ASSERT(!xx);
+    xx = true;
+  }
+
+  LOG << this;
+  LOG << ctx->bound_constants_;
   if (const_) {
     if (is_fn_param_) {
       return {ctx->bound_constants_.constants_.at(this)};
