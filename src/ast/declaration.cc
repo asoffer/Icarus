@@ -159,7 +159,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
       // something" part the default.
       return metadata;
     } else {
-      UNREACHABLE();
+      UNREACHABLE(typeid(eval_t).name());
     }
   };
 
@@ -217,12 +217,10 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
       if (type_expr_type == nullptr) {
         found_error = true;
       } else if (type_expr_type == type::Type_) {
-        this_type =
-            backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx);
-        ctx->set_type(this, this_type);
+        this_type = ctx->set_type(this, backend::EvaluateAs<type::Type const *>(
+                                            type_expr.get(), ctx));
       } else if (type_expr_type == type::Interface) {
-        this_type = type::Generic;
-        ctx->set_type(this, type::Generic);
+        this_type = ctx->set_type(this, type::Generic);
       } else {
         ctx->error_log_.NotAType(type_expr.get());
         found_error = true;
@@ -239,8 +237,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
           found_error = true;
 
         } else if (!type_expr) {
-          this_type = init_val_type;
-          ctx->set_type(this, init_val_type);
+          this_type = ctx->set_type(this, init_val_type);
         }
       }
     }

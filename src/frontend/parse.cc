@@ -14,6 +14,7 @@
 #include "ast/chainop.h"
 #include "ast/comma_list.h"
 #include "ast/declaration.h"
+#include "ast/enum_literal.h"
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
 #include "ast/import.h"
@@ -821,50 +822,22 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
   }
 }
 
+using ::base::check::Is;
 static std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     base::vector<std::unique_ptr<ast::Node>> nodes, bool is_enum,
     Context *ctx) {
-  base::unordered_map<std::string, std::optional<i32>> members;
+  std::vector<std::unique_ptr<ast::Expression>> elems;
   if (nodes[1]->is<ast::Statements>()) {
     // TODO if you want these values to depend on compile-time parameters,
     // you'll need to actually build the AST nodes.
     for (auto &stmt : nodes[1]->as<ast::Statements>().content_) {
-      if (stmt->is<ast::Identifier>()) {
-        if (auto[iter, success] = members.emplace(
-                stmt->as<ast::Identifier>().token, std::nullopt);
-            !success) {
-          // TODO this span is wrong.
-          ctx->error_log_.RepeatedEnumName(stmt->span);
-        }
-      } else if (stmt->is<ast::Declaration>() &&
-                 stmt->as<ast::Declaration>().const_) {
-        // TODO Assuming the value is a numeric literal for now.
-        // TODO also not checking that no type is specified.
-        auto &decl = stmt->as<ast::Declaration>();
-        if (auto[iter, success] = members.emplace(
-                decl.id_,
-                std::get<i32>(decl.init_val->as<ast::Terminal>().value.value));
-            !success) {
-          // TODO this span is wrong.
-          ctx->error_log_.RepeatedEnumName(stmt->span);
-        }
-      } else {
-        ctx->error_log_.EnumNeedsIdsOrConstDecls(stmt->span);
-      }
+      ASSERT(stmt, Is<ast::Expression>());
+      elems.push_back(move_as<ast::Expression>(stmt));
     }
   }
 
-  if (is_enum) {
-    return std::make_unique<ast::Terminal>(
-        TextSpan(nodes[0]->span, nodes[1]->span),
-        ir::Val(static_cast<type::Type const *>(
-            new type::Enum(std::move(members)))));
-  } else {
-    return std::make_unique<ast::Terminal>(
-        TextSpan(nodes[0]->span, nodes[1]->span),
-        ir::Val(static_cast<type::Type const *>(
-            new type::Flags(std::move(members)))));
-  }
+  return std::make_unique<ast::EnumLiteral>(
+      std::move(elems), TextSpan(nodes[0]->span, nodes[1]->span), is_enum);
 }
 
 static std::unique_ptr<ast::Node> BuildInterfaceLiteral(

@@ -191,6 +191,16 @@ struct Cmd {
     type::Type const *type_;
   };
 
+  struct AddEnumerator {
+    Register enum_;
+    std::string_view name_;
+  };
+
+  struct SetEnumerator {
+    Register enum_;
+    RegisterOr<i32> val_;
+  };
+
   union {
     Empty empty_;
     Register reg_;
@@ -203,6 +213,8 @@ struct Cmd {
     CreateStructField create_struct_field_;
     SetStructFieldName set_struct_field_name_;
     AddHashtagToField add_hashtag_to_field_;
+    AddEnumerator add_enumerator_;
+    SetEnumerator set_enumerator_;
     CondJump cond_jump_;
     BlockIndex block_;
     BlockSeqJump block_seq_jump_;

@@ -655,6 +655,14 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
   return os;
 }
 
+static std::ostream &operator<<(std::ostream &os, Cmd::AddEnumerator const &s) {
+  return os << s.enum_ << " " << s.name_;
+}
+
+static std::ostream &operator<<(std::ostream &os, Cmd::SetEnumerator const &s) {
+  return os << s.enum_ << " " << s.val_;
+}
+
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
   if (cmd.result.value >= 0) { os << cmd.result << " = "; }
   os << OpCodeStr(cmd.op_code_) << " ";

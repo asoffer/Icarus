@@ -14,6 +14,8 @@ namespace type {
 struct Flags : public type::Type {
   TYPE_FNS(Flags);
 
+  Flags(::Module const* mod) : mod_(mod) {}
+
   Flags(base::unordered_map<std::string, std::optional<i32>> const& members) {
     std::unordered_set<i32> taken;
     for (auto const & [ s, v ] : members) {
@@ -60,6 +62,9 @@ struct Flags : public type::Type {
   size_t All = 0;
 
  private:
+  friend struct IncompleteFlags;
+
+  ::Module const *mod_;
   // TODO combine these into a single bidirectional map?
   base::unordered_map<std::string, ir::FlagsVal> vals_;
 };
