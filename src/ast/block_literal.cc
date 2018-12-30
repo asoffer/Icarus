@@ -41,12 +41,12 @@ void BlockLiteral::Validate(Context *ctx) {
     std::vector<type::Type const *> before_types, after_types;
     before_types.reserve(before_.size());
     for (auto &b : before_) {
-      ASSIGN_OR(return nullptr, auto *before_type, b->VerifyType(ctx));
-      before_types.push_back(before_type);
+      ASSIGN_OR(return nullptr, auto &before_type, b->VerifyType(ctx));
+      before_types.push_back(&before_type);
     }
     for (auto &a : after_) {
-      ASSIGN_OR(return nullptr, auto *after_type, a->VerifyType(ctx));
-      after_types.push_back(after_type);
+      ASSIGN_OR(return nullptr, auto &after_type, a->VerifyType(ctx));
+      after_types.push_back(&after_type);
     }
 
     // TODO type-check before/after functions.

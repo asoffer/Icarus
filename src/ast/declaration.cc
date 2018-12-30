@@ -218,19 +218,15 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
 
   type::Type const *this_type = nullptr;
   {
-    type::Type const *type_expr_type = nullptr;
-    type::Type const *init_val_type  = nullptr;
-
     switch (dk) {
       case 0 /* Default initailization */: {
-        ASSIGN_OR(return nullptr, type_expr_type, type_expr->VerifyType(ctx));
-        if (type_expr_type == type::Type_) {
-          LOG << this;
-          LOG << ctx->bound_constants_;
+        ASSIGN_OR(return nullptr, auto &type_expr_type,
+                         type_expr->VerifyType(ctx));
+        if (&type_expr_type == type::Type_) {
           this_type = ctx->set_type(
               this,
               backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
-        } else if (type_expr_type == type::Interface) {
+        } else if (&type_expr_type == type::Interface) {
           NOT_YET();
         } else {
           ctx->error_log_.NotAType(type_expr.get());
@@ -239,12 +235,13 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
       } break;
       case INFER: UNREACHABLE(); break;
       case INFER | CUSTOM_INIT: {
-        ASSIGN_OR(return nullptr, init_val_type, init_val->VerifyType(ctx));
-        if (!Inferrable(init_val_type)) {
+        ASSIGN_OR(return nullptr, auto &init_val_type,
+                         init_val->VerifyType(ctx));
+        if (!Inferrable(&init_val_type)) {
           ctx->error_log_.UninferrableType(init_val->span);
           return nullptr;
         }
-        this_type = ctx->set_type(this, init_val_type);
+        this_type = ctx->set_type(this, &init_val_type);
 
       } break;
       case INFER | UNINITIALIZED: {
@@ -253,14 +250,15 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         return nullptr;
       } break;
       case CUSTOM_INIT: {  // Use this_type == nullptr to indicate an error.
-        init_val_type  = init_val->VerifyType(ctx);
+        auto *init_val_type = init_val->VerifyType(ctx);
         if (init_val_type && !Inferrable(init_val_type)) {
           ctx->error_log_.UninferrableType(init_val->span);
         }
 
-        ASSIGN_OR(return nullptr, type_expr_type, type_expr->VerifyType(ctx));
+        ASSIGN_OR(return nullptr, auto &type_expr_type,
+                         type_expr->VerifyType(ctx));
 
-        if (type_expr_type == type::Type_) {
+        if (&type_expr_type == type::Type_) {
           this_type = ctx->set_type(
               this,
               backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
@@ -270,7 +268,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
             ctx->error_log_.AssignmentTypeMismatch(this, init_val.get());
             return nullptr;
           }
-        } else if (type_expr_type == type::Interface) {
+        } else if (&type_expr_type == type::Interface) {
           this_type = ctx->set_type(this, type::Generic);
         } else {
           ctx->error_log_.NotAType(type_expr.get());
@@ -280,12 +278,13 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         if (init_val_type == nullptr) { return nullptr; }
       } break;
       case UNINITIALIZED: {
-        ASSIGN_OR(return nullptr, type_expr_type, type_expr->VerifyType(ctx));
-        if (type_expr_type == type::Type_) {
+        ASSIGN_OR(return nullptr, auto &type_expr_type,
+                         type_expr->VerifyType(ctx));
+        if (&type_expr_type == type::Type_) {
           this_type = ctx->set_type(
               this,
               backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
-        } else if (type_expr_type == type::Interface) {
+        } else if (&type_expr_type == type::Interface) {
           this_type = ctx->set_type(this, type::Generic);
         } else {
           ctx->error_log_.NotAType(type_expr.get());
@@ -377,14 +376,6 @@ base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   base::defer d([&] { ctx->mod_ = old_mod; });
 
-  static bool xx = false;
-  if (id_ == "array") {
-    ASSERT(!xx);
-    xx = true;
-  }
-
-  LOG << this;
-  LOG << ctx->bound_constants_;
   if (const_) {
     if (is_fn_param_) {
       return {ctx->bound_constants_.constants_.at(this)};

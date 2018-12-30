@@ -67,20 +67,21 @@ ir::Func *Module::AddFunc(
 }
 
 type::Type const *Module::GetType(std::string const &name) const {
-  ASSIGN_OR(return nullptr, auto *decl, GetDecl(name));
-  return types_.at(ast::BoundConstants{}).at(decl);
+  ASSIGN_OR(return nullptr, auto &decl, GetDecl(name));
+  return types_.at(ast::BoundConstants{}).at(&decl);
 }
 
 ast::Declaration *Module::GetDecl(std::string const &name) const {
   for (auto const &stmt : statements_.content_) {
-    if (!stmt->is<ast::Declaration>()) { continue; }
-    if (stmt->as<ast::Declaration>().id_ != name) { continue; }
-    auto &hashtags = stmt->as<ast::Declaration>().hashtags_;
-    bool exported  = std::any_of(
-        hashtags.begin(), hashtags.end(),
-        [](ast::Hashtag h) { return h.kind_ == ast::Hashtag::Builtin::Export; });
+    ASSIGN_OR(continue, auto &decl, stmt->if_as<ast::Declaration>());
+    if (decl.id_ != name) { continue; }
+    auto &hashtags = decl.hashtags_;
+    bool exported =
+        std::any_of(hashtags.begin(), hashtags.end(), [](ast::Hashtag h) {
+          return h.kind_ == ast::Hashtag::Builtin::Export;
+        });
     if (!exported) { continue; }
-    return &stmt->as<ast::Declaration>();
+    return &decl;
   }
   return nullptr;
 }

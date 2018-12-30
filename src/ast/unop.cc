@@ -50,42 +50,42 @@ void Unop::ExtractJumps(JumpExprs *rets) const {
 }
 
 type::Type const *Unop::VerifyType(Context *ctx) {
-  ASSIGN_OR(return nullptr, auto *operand_type, operand->VerifyType(ctx));
+  ASSIGN_OR(return nullptr, auto &operand_type, operand->VerifyType(ctx));
 
   switch (op) {
     case Language::Operator::BufPtr: return ctx->set_type(this, type::Type_);
     case Language::Operator::TypeOf: return ctx->set_type(this, type::Type_);
-    case Language::Operator::Eval: return ctx->set_type(this, operand_type);
+    case Language::Operator::Eval: return ctx->set_type(this, &operand_type);
     case Language::Operator::Which:
-      if (!operand_type->is<type::Variant>()) {
-        ctx->error_log_.WhichNonVariant(operand_type, span);
+      if (!operand_type.is<type::Variant>()) {
+        ctx->error_log_.WhichNonVariant(&operand_type, span);
       }
       return ctx->set_type(this, type::Type_);
     case Language::Operator::At:
-      if (operand_type->is<type::Pointer>()) {
-        return ctx->set_type(this, operand_type->as<type::Pointer>().pointee);
+      if (operand_type.is<type::Pointer>()) {
+        return ctx->set_type(this, operand_type.as<type::Pointer>().pointee);
       } else {
-        ctx->error_log_.DereferencingNonPointer(operand_type, span);
+        ctx->error_log_.DereferencingNonPointer(&operand_type, span);
         return nullptr;
       }
     case Language::Operator::And:
-      return ctx->set_type(this, type::Ptr(operand_type));
+      return ctx->set_type(this, type::Ptr(&operand_type));
     case Language::Operator::Mul:
-      if (operand_type != type::Type_) {
-        NOT_YET("log an error, ", operand_type, this);
+      if (&operand_type != type::Type_) {
+        NOT_YET("log an error, ", &operand_type, this);
         return nullptr;
       } else {
         return ctx->set_type(this, type::Type_);
       }
     case Language::Operator::Sub:
-      if (type::IsNumeric(operand_type)) {
-        return ctx->set_type(this, operand_type);
-      } else if (operand_type->is<type::Struct>()) {
+      if (type::IsNumeric(&operand_type)) {
+        return ctx->set_type(this, &operand_type);
+      } else if (operand_type.is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
         type::Type const *t = nullptr;
         OverloadSet os(scope_, "-", ctx);
-        os.add_adl("-", operand_type);
+        os.add_adl("-", &operand_type);
         std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
         return t;
       }
@@ -96,23 +96,23 @@ type::Type const *Unop::VerifyType(Context *ctx) {
       // argument, but since we consider the type of the result of a function
       // call returning multiple arguments to be a tuple, we do the same here.
       //
-      if (operand_type->is<type::Tuple>()) {
+      if (operand_type.is<type::Tuple>()) {
         // TODO there should be a way to avoid copying over any of entire type
-        return ctx->set_type(this, operand_type);
+        return ctx->set_type(this, &operand_type);
       } else {
         NOT_YET();  // Log an error. can't expand a non-tuple.
       }
     case Language::Operator::Not:
-      if (operand_type == type::Bool || operand_type->is<type::Enum>() ||
-          operand_type->is<type::Flags>()) {
-        return ctx->set_type(this, operand_type);
+      if (&operand_type == type::Bool || operand_type.is<type::Enum>() ||
+          operand_type.is<type::Flags>()) {
+        return ctx->set_type(this, &operand_type);
       }
-      if (operand_type->is<type::Struct>()) {
+      if (operand_type.is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
         type::Type const *t = nullptr;
         OverloadSet os(scope_, "!", ctx);
-        os.add_adl("!", operand_type);
+        os.add_adl("!", &operand_type);
         std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         return t;
@@ -121,12 +121,12 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         return nullptr;
       }
     case Language::Operator::Needs:
-      if (operand_type != type::Bool) {
+      if (&operand_type != type::Bool) {
         ctx->error_log_.PreconditionNeedsBool(operand.get());
       }
       return ctx->set_type(this, type::Void());
     case Language::Operator::Ensure:
-      if (operand_type != type::Bool) {
+      if (&operand_type != type::Bool) {
         ctx->error_log_.PostconditionNeedsBool(operand.get());
       }
       return ctx->set_type(this, type::Void());

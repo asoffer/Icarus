@@ -19,7 +19,7 @@
     auto &&_ = std::move(temp);                                                \
     action;                                                                    \
   }                                                                            \
-  var = std::move(temp)
+  var = *std::move(temp)
 
 #define STATIC_ASSERT_RELATED(base, derived)                                   \
   static_assert(                                                               \

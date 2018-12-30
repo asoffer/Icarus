@@ -29,9 +29,9 @@ void Access::assign_scope(Scope *scope) {
 }
 
 type::Type const *Access::VerifyType(Context *ctx) {
-  ASSIGN_OR(return nullptr, auto *operand_type, operand->VerifyType(ctx));
+  ASSIGN_OR(return nullptr, auto &operand_type, operand->VerifyType(ctx));
 
-  auto base_type = DereferenceAll(operand_type);
+  auto base_type = DereferenceAll(&operand_type);
   if (base_type == type::Type_) {
     auto *evaled_type =
         backend::EvaluateAs<type::Type const *>(operand.get(), ctx);

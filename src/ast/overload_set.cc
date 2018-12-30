@@ -39,14 +39,14 @@ void OverloadSet::add_adl(std::string const &id, type::Type const *t) {
   t->defining_modules(&modules);
 
   for (auto *mod : modules) {
-    ASSIGN_OR(continue, auto *d, mod->GetDecl(id));
-    ASSIGN_OR(continue, auto *t, mod->GetType(id));
+    ASSIGN_OR(continue, auto &d, mod->GetDecl(id));
+    ASSIGN_OR(continue, auto &t, mod->GetType(id));
     // TODO handle this case. I think it's safe to just discard it.
-    ASSERT(t, Is<type::Callable>());
+    ASSERT(&t, Is<type::Callable>());
 
     if (std::none_of(this->begin(), this->end(),
-                    [d](auto const &expr) { return d == expr.get(); })) {
-      emplace_back(d, t);
+                     [&d](auto const &expr) { return &d == expr.get(); })) {
+      emplace_back(&d, &t);
     }
   }
 }

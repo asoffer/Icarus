@@ -36,8 +36,10 @@ struct expected {
   T const &operator*() const & { return std::get<T>(val_); }
   T &&operator*() && { return std::get<T>(std::move(val_)); }
 
-  bool has_value() { return std::holds_alternative<T>(val_); }
-  unexpected error() { return std::get<unexpected>(val_); }
+  bool has_value() const { return std::holds_alternative<T>(val_); }
+  unexpected error() const { return std::get<unexpected>(val_); }
+
+  explicit operator bool() const { return has_value(); }
 
  private:
   std::variant<T, unexpected> val_;

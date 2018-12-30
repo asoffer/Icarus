@@ -99,12 +99,12 @@ bool DispatchTableRow::SetTypes(type::Typed<Expression *, type::Function> fn,
   call_arg_types_.pos_.resize(fn.type()->input.size());
   auto const &input_types = fn.type()->input;
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
-    type::Type const *match = type::Meet(
-        ctx->type_of(binding_.exprs_.at(i).get()), input_types.at(i));
-    if (match == nullptr) { return false; }
+    ASSIGN_OR(return false, auto &match,
+                     type::Meet(ctx->type_of(binding_.exprs_.at(i).get()),
+                                input_types.at(i)));
 
     binding_.exprs_.at(i).set_type(input_types.at(i));
-    call_arg_types_.pos_.at(i) = match;
+    call_arg_types_.pos_.at(i) = &match;
   }
 
   return true;
@@ -168,18 +168,18 @@ bool DispatchTableRow::SetTypes(ir::Func const &fn,
       continue;
     }
 
-    type::Type const *match = type::Meet(
-        ctx->type_of(binding_.exprs_.at(i).get()), input_types.at(i));
-    if (match == nullptr) { return false; }
+    ASSIGN_OR(return false, auto &match,
+                     type::Meet(ctx->type_of(binding_.exprs_.at(i).get()),
+                                input_types.at(i)));
 
     binding_.exprs_.at(i).set_type(input_types.at(i));
 
     if (i < call_arg_types_.pos_.size()) {
-      call_arg_types_.pos_.at(i) = match;
+      call_arg_types_.pos_.at(i) = &match;
     } else {
       auto iter = call_arg_types_.find(fn.args_.at(i).first);
       ASSERT(iter != call_arg_types_.named_.end());
-      iter->second = match;
+      iter->second = &match;
     }
   }
   return true;
@@ -188,10 +188,10 @@ bool DispatchTableRow::SetTypes(ir::Func const &fn,
 static bool IsConstant(Expression *e) {
   if (e->is<Call>()) {
     if (auto *c = &e->as<Call>(); c->fn_->is<Terminal>()) {
-      auto *bgi = std::get_if<ir::BuiltinGenericIndex>(
-          &c->fn_->as<Terminal>().value.value);
-      return bgi != nullptr &&
-             *bgi == ir::BuiltinGenericIndex{ForeignFuncIndex};
+      ASSIGN_OR(return false, auto &bgi,
+                       std::get_if<ir::BuiltinGenericIndex>(
+                           &c->fn_->as<Terminal>().value.value));
+      return bgi == ir::BuiltinGenericIndex{ForeignFuncIndex};
     }
   }
   return  e->is<FunctionLiteral>() ||
@@ -217,11 +217,11 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeNonConstant(
         "with default arguments");
   }
 
-  auto binding = Binding::Make(fn_option, args, args.pos_.size());
-  if (!binding.has_value()) { return binding.error(); }
-  binding->bound_constants_ = ctx->bound_constants_;
+  ASSIGN_OR(return _.error(), auto binding,
+                   Binding::Make(fn_option, args, args.pos_.size()));
+  binding.bound_constants_ = ctx->bound_constants_;
 
-  DispatchTableRow dispatch_table_row(*std::move(binding));
+  DispatchTableRow dispatch_table_row(std::move(binding));
 
   if (!dispatch_table_row.SetTypes(fn_option, ctx)) {
     return base::unexpected("TODO-A");
@@ -272,11 +272,10 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeFromForeignFunction(
 base::expected<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
     type::Typed<Expression *, type::Callable> fn_option,
     FunctionLiteral *fn_lit, FnArgs<Expression *> const &args, Context *ctx) {
-  auto binding = Binding::Make(
-      fn_option, args,
-      std::max(fn_lit->inputs.size(), args.pos_.size() + args.named_.size()),
-      &fn_lit->lookup_);
-  if (!binding.has_value()) { return binding.error(); }
+  size_t num =
+      std::max(fn_lit->inputs.size(), args.pos_.size() + args.named_.size());
+  ASSIGN_OR(return _.error(), auto binding,
+                   Binding::Make(fn_option, args, num, &fn_lit->lookup_));
 
   Context new_ctx(ctx);
   for (size_t i = 0; i < args.pos_.size(); ++i) {
@@ -310,9 +309,9 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
   auto *fn_type = &ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx))
                        ->as<type::Callable>();
   fn_lit->Validate(&new_ctx);
-  binding->fn_.set_type(fn_type);
+  binding.fn_.set_type(fn_type);
 
-  DispatchTableRow dispatch_table_row(std::move(*binding));
+  DispatchTableRow dispatch_table_row(std::move(binding));
   dispatch_table_row.callable_type_ = fn_type;
   ASSERT(dispatch_table_row.callable_type_ != nullptr);
   if (!dispatch_table_row.SetTypes(*fn_lit, args, &new_ctx)) {
@@ -326,14 +325,13 @@ base::expected<DispatchTableRow> DispatchTableRow::MakeFromFnLit(
 base::expected<DispatchTableRow> DispatchTableRow::MakeFromIrFunc(
     type::Typed<Expression *, type::Callable> fn_option,
     ir::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx) {
-  auto binding = Binding::Make(
-      fn_option, args,
-      std::max(ir_func.args_.size(), args.pos_.size() + args.named_.size()),
-      &ir_func.lookup_);
-  if (!binding.has_value()) { return binding.error(); }
-  binding->bound_constants_ = ctx->bound_constants_;
+  size_t num =
+      std::max(ir_func.args_.size(), args.pos_.size() + args.named_.size());
+  ASSIGN_OR(return _.error(), auto binding,
+                   Binding::Make(fn_option, args, num, &ir_func.lookup_));
+  binding.bound_constants_ = ctx->bound_constants_;
 
-  DispatchTableRow dispatch_table_row(*std::move(binding));
+  DispatchTableRow dispatch_table_row(std::move(binding));
   if (!dispatch_table_row.SetTypes(ir_func, args, ctx)) {
     return base::unexpected("TODO-D");
   }

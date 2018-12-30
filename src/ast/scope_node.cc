@@ -36,7 +36,7 @@ void ScopeNode::assign_scope(Scope *scope) {
 }
 
 type::Type const *ScopeNode::VerifyType(Context *ctx) {
-  ASSIGN_OR(return nullptr, auto *scope_type, name_->VerifyType(ctx));
+  if (!name_->VerifyType(ctx)) { return nullptr; }
   // TODO check the scope type makes sense.
 
   auto arg_types =

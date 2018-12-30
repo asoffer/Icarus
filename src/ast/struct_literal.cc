@@ -100,7 +100,6 @@ base::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
     return {ir::Val::Reg(GenerateStruct(this, ctx), type::Type_)};
 
   } else {
-    LOG << ctx->bound_constants_;
     ir::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
     if (!ir_func) {
       auto &work_item = ctx->mod_->to_complete_.emplace(ctx->bound_constants_,
