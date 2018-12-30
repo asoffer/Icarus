@@ -959,25 +959,11 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PhiFlags:
       save(resolve(cmd.phi_flags_->map_.at(call_stack.top().prev_)));
       break;
-    case ir::Op::GenerateStruct: {
-      Context ctx(cmd.generate_struct_->mod_);
-      size_t reg_index = 0;
-      auto arch        = Architecture::InterprettingMachine();
-      for (size_t i = 0; i < call_stack.top().fn_->type_->input.size(); ++i) {
-        auto *t   = call_stack.top().fn_->type_->input.at(i);
-        reg_index = arch.MoveForwardToAlignment(t, reg_index);
-        type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double,
-                         type::Type const *>(t, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
-          ctx.bound_constants_.constants_.emplace(
-              cmd.generate_struct_->args_.at(i).get(),
-              call_stack.top().regs_.get<T>(reg_index));
-        });
-        reg_index += arch.bytes(t);
-      }
-      cmd.generate_struct_->VerifyType(&ctx);
-      cmd.generate_struct_->Validate(&ctx);
-      save(EvaluateAs<type::Type const *>(cmd.generate_struct_, &ctx));
+    case ir::Op::ArgumentCache: {
+      auto &cache = cmd.sl_->mod_->generic_struct_cache_;
+      type::Type const **cache_slot =
+          &cache[resolve<type::Type const *>(ir::Register{0})];
+      save(ir::Addr::Heap(cache_slot));
     } break;
     case ir::Op::CondJump:
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];
@@ -995,6 +981,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       NOT_YET(bseq.seq_);
     } break;
   }
+
   return ir::BlockIndex{-2};
 }
 }  // namespace backend

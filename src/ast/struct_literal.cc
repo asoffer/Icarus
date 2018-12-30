@@ -25,6 +25,8 @@ void CreateStructField(Register struct_type,
 void SetStructFieldName(Register struct_type, std::string_view field_name);
 void AddHashtagToField(Register struct_type, ast::Hashtag hashtag);
 Register FinalizeStruct(Register r);
+
+Register ArgumentCache(ast::StructLiteral *sl);
 }  // namespace ir
 
 namespace ast {
@@ -77,8 +79,8 @@ void StructLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &f : fields_) { f->ExtractJumps(rets); }
 }
 
-static ir::Register GenerateStruct(StructLiteral *sl, Context *ctx) {
-  ir::Register r = ir::CreateStruct(ctx->mod_);
+static ir::TypedRegister<type::Type const *> GenerateStruct(
+    StructLiteral *sl, ir::Register struct_reg, Context *ctx) {
   for (auto const &field : sl->fields_) {
     // TODO initial values? hashatgs?
 
@@ -86,55 +88,80 @@ static ir::Register GenerateStruct(StructLiteral *sl, Context *ctx) {
     // not safe to access these registers returned by CreateStructField after
     // a subsequent call to CreateStructField.
     ir::CreateStructField(
-        r, field->type_expr->EmitIR(ctx)[0].reg_or<type::Type const *>());
-    ir::SetStructFieldName(r, field->id_);
+        struct_reg,
+        field->type_expr->EmitIR(ctx)[0].reg_or<type::Type const *>());
+    ir::SetStructFieldName(struct_reg, field->id_);
     for (auto const &hashtag : field->hashtags_) {
-      ir::AddHashtagToField(r, hashtag);
+      ir::AddHashtagToField(struct_reg, hashtag);
     }
   }
-  return ir::FinalizeStruct(r);
+  return ir::FinalizeStruct(struct_reg);
 }
 
 base::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
   if (args_.empty()) {
-    return {ir::Val::Reg(GenerateStruct(this, ctx), type::Type_)};
-
-  } else {
-    ir::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
-    if (!ir_func) {
-      auto &work_item = ctx->mod_->to_complete_.emplace(ctx->bound_constants_,
-                                                        this, ctx->mod_);
-
-      base::vector<std::pair<std::string, Expression *>> args;
-      args.reserve(args_.size());
-      for (auto const &d : args_) {
-        args.emplace_back(d->id_, d->init_val.get());
-      }
-      ir_func = ctx->mod_->AddFunc(
-          type::Func(ctx->type_of(this)->as<type::GenericStruct>().deps_,
-                     {type::Type_}),
-          std::move(args));
-      ir_func->work_item = &work_item;
-    }
-    return {ir::Val::Func(ir_func->type_, ir_func)};
+    return {ir::Val(GenerateStruct(this, ir::CreateStruct(mod_), ctx))};
   }
+
+  // TODO A bunch of things need to be fixed here.
+  // * Lock access during creation so two requestors don't clobber each other.
+  // * Add a way way for one requestor to wait for another to have created the
+  // object and be notified.
+  //
+  // For now, it's safe to do this from within a single module compilation
+  // (which is single-threaded).
+  ir::Func *&ir_func = mod_->ir_funcs_[ctx->bound_constants_][this];
+  if (!ir_func) {
+    base::vector<std::pair<std::string, Expression *>> args;
+    args.reserve(args_.size());
+    for (auto const &d : args_) {
+      args.emplace_back(d->id_, d->init_val.get());
+    }
+
+    ir_func = mod_->AddFunc(
+        type::Func(ctx->type_of(this)->as<type::GenericStruct>().deps_,
+                   {type::Type_}),
+        std::move(args));
+
+    for (size_t i = 0; i < args_.size(); ++i) {
+      ctx->set_addr(args_[i].get(), ir_func->Argument(i));
+    }
+
+    CURRENT_FUNC(ir_func) {
+      ir::BasicBlock::Current = ir_func->entry();
+      auto cache_slot_addr    = ir::ArgumentCache(this);
+      auto cache_slot         = ir::Load<type::Type const *>(cache_slot_addr);
+
+      auto land_block = ir::Func::Current->AddBlock();
+      ir::BasicBlock::Current = ir::EarlyExitOn<false>(
+          land_block,
+          ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
+      auto struct_reg = ir::CreateStruct(mod_);
+
+      // TODO why isn't implicit TypedRegister -> RegisterOr cast working on
+      // either of these? On the first it's clear because we don't even return a
+      // typedRegister, but this is a note to remind you to make that work. On
+      // the second... I don't know.
+      ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(struct_reg),
+                cache_slot_addr);
+      auto result = GenerateStruct(this, struct_reg, ctx);
+      ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(result));
+      ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(result),
+                cache_slot_addr);
+
+      ir::ReturnJump();
+
+      ir::BasicBlock::Current = land_block;
+      ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(cache_slot));
+      ir::ReturnJump();
+    }
+  }
+  return {ir::Val::Func(ir_func->type_, ir_func)};
 }
 
 base::vector<ir::RegisterOr<ir::Addr>> ast::StructLiteral::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
 
-void StructLiteral::CompleteBody(Context *ctx) {
-  // TODO have validate return a bool distinguishing if there are errors and
-  // whether or not we can proceed.
-
-  auto *t = ctx->type_of(this);
-
-  ir::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
-  CURRENT_FUNC(ir_func) {
-    ir::BasicBlock::Current = ir_func->entry();
-    ir::SetRet(0, ir::GenerateStruct(this));
-    ir::ReturnJump();
-  }
-}
+void StructLiteral::CompleteBody(Context *ctx) { NOT_YET(); }
 }  // namespace ast

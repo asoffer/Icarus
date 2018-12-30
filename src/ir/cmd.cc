@@ -23,12 +23,6 @@ Cmd &MakeCmd(type::Type const *t, Op op) {
   return cmd;
 }
 
-RegisterOr<type::Type const *> GenerateStruct(ast::StructLiteral *sl) {
-  auto &cmd            = MakeCmd(type::Type_, Op::GenerateStruct);
-  cmd.generate_struct_ = sl;
-  return cmd.result;
-}
-
 type::Typed<Register> LoadSymbol(std::string_view name, type::Type const *t) {
   auto &cmd     = MakeCmd(t, Op::LoadSymbol);
   cmd.load_sym_ = {name, t};
@@ -341,6 +335,12 @@ Register CreateStruct(::Module const *mod) {
   return cmd.result;
 }
 
+Register ArgumentCache(ast::StructLiteral *sl) {
+  auto &cmd = MakeCmd(type::Ptr(type::Type_), Op::ArgumentCache);
+  cmd.sl_ = sl;
+  return cmd.result;
+}
+
 Register FinalizeStruct(Register r) {
   auto &cmd = MakeCmd(type::Type_, Op::FinalizeStruct);
   cmd.reg_  = r;
@@ -573,7 +573,11 @@ static auto Stringify(T&& val) {
     if (val.is_reg_) {
       ss << val.reg_;
     } else {
-      ss << val.val_->to_string();
+      if (val.val_ == nullptr) {
+        ss << "0x0";
+      } else {
+        ss << val.val_->to_string();
+      }
     }
     return ss.str();
   } else {
@@ -583,7 +587,7 @@ static auto Stringify(T&& val) {
 
 template <typename T>
 static std::ostream &operator<<(std::ostream &os, Cmd::Store<T> const &s) {
-  return os << s.addr_ << " " << Stringify(s.val_);
+  return os << s.addr_ << " <- " << Stringify(s.val_);
 }
 
 template <typename T>

@@ -150,7 +150,11 @@ struct Cmd {
 
     inline friend std::ostream &operator<<(std::ostream &os,
                                            CreateStructField const &c) {
-      return os << c.struct_ << " " << c.type_;
+      if (c.type_.is_reg_) {
+        return os << c.struct_ << " " << c.type_.reg_;
+      } else {
+        return os << c.struct_ << " " << c.type_.val_->to_string();
+      }
     }
   };
 
@@ -206,8 +210,7 @@ struct Cmd {
     Register reg_;
     size_t get_ret_;
     type::Type const *type_;
-
-    ast::StructLiteral *generate_struct_;
+    ast::StructLiteral *sl_;
     LoadSymbol load_sym_;
 
     CreateStructField create_struct_field_;
@@ -547,8 +550,6 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                                   ast::BlockLiteral *lit);
 
 Val Cast(type::Type const *from, type::Type const *to, Val const& val);
-
-RegisterOr<type::Type const *> GenerateStruct(ast::StructLiteral *sl);
 
 TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
                           RegisterOr<i32> offset);

@@ -224,8 +224,9 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
                          type_expr->VerifyType(ctx));
         if (&type_expr_type == type::Type_) {
           this_type = ctx->set_type(
-              this,
-              backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
+              this, ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
+                        type_expr.get(), ctx)));
+
         } else if (&type_expr_type == type::Interface) {
           NOT_YET();
         } else {
@@ -316,6 +317,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
   }
 
   // TODO simplify now that you don't have error decls.
+  ASSERT(this_type != nullptr) << this;
   base::vector<type::Typed<Declaration *>> decls_to_check;
   {
     auto good_decls_to_check = scope_->AllDeclsWithId(id_, ctx);

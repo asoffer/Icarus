@@ -110,6 +110,9 @@ struct Module {
            base::unordered_map<ast::Expression const *, ir::Func *>>
       ir_funcs_;
 
+  // TODO support more than just a single type argument to generic structs.
+  std::map<type::Type const*, type::Type const*> generic_struct_cache_;
+
   std::filesystem::path const *path_ = nullptr;
 };
 

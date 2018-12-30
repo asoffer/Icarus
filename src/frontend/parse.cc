@@ -943,10 +943,14 @@ static std::unique_ptr<ast::Node> BuildGenericStruct(
     using base::check::Is;
     for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
       ASSERT(expr, Is<ast::Declaration>());  // TODO handle failure
-      result->args_.push_back(move_as<ast::Declaration>(expr));
+      auto decl          = move_as<ast::Declaration>(expr);
+      decl->is_fn_param_ = true;
+      result->args_.push_back(std::move(decl));
     }
   } else {
-    result->args_.push_back(move_as<ast::Declaration>(nodes[2]));
+    auto decl          = move_as<ast::Declaration>(nodes[2]);
+    decl->is_fn_param_ = true;
+    result->args_.push_back(std::move(decl));
   }
   return result;
 }
