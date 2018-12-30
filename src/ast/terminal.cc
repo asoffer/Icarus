@@ -7,10 +7,7 @@ Terminal::Terminal(const TextSpan &span, ir::Val val) : Expression(span) {
   value = std::move(val);
 }
 
-void Terminal::assign_scope(Scope *scope) {
-  scope_ = scope;
-  if (value.type != type::Type_) { return; }
-}
+void Terminal::assign_scope(Scope *scope) { scope_ = scope; }
 
 type::Type const *Terminal::VerifyType(Context *ctx) {
   return ctx->set_type(this, value.type);

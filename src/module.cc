@@ -67,8 +67,7 @@ ir::Func *Module::AddFunc(
 }
 
 type::Type const *Module::GetType(std::string const &name) const {
-  auto *decl = GetDecl(name);
-  if (decl == nullptr) { return nullptr; }
+  ASSIGN_OR(return nullptr, auto *decl, GetDecl(name));
   return types_.at(ast::BoundConstants{}).at(decl);
 }
 

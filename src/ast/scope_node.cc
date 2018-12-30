@@ -36,8 +36,7 @@ void ScopeNode::assign_scope(Scope *scope) {
 }
 
 type::Type const *ScopeNode::VerifyType(Context *ctx) {
-  type::Type const *scope_type = name_->VerifyType(ctx);
-  if (scope_type == nullptr) { return nullptr; }
+  ASSIGN_OR(return nullptr, auto *scope_type, name_->VerifyType(ctx));
   // TODO check the scope type makes sense.
 
   auto arg_types =
@@ -49,8 +48,8 @@ type::Type const *ScopeNode::VerifyType(Context *ctx) {
   // TODO check that all the blocks make sense and emit errors
 
   // TODO compute what type this should return
-  return ctx->set_type(this,
-                       type::Void());  // TODO can this evaluate to anything?
+  // TODO can this evaluate to anything?
+  return ctx->set_type(this, type::Void());
 }
 
 void ScopeNode::Validate(Context *ctx) {

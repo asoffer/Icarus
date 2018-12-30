@@ -204,16 +204,6 @@ bool Declaration::IsCustomInitialized() const {
   return init_val && !init_val->is<Hole>();
 }
 
-#define ASSIGN_OR(action, var, expr)                                           \
-  ASSIGN_OR_(action, var, expr, expr__##__LINE__##__)
-#define ASSIGN_OR_(action, var, expr, temp)                                    \
-  auto &&temp = (expr);                                                        \
-  if (!temp) {                                                                 \
-    auto &&_ = temp;                                                           \
-    action;                                                                    \
-  }                                                                            \
-  var = std::move(expr)
-
 type::Type const *Declaration::VerifyType(Context *ctx) {
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   base::defer d([&] { ctx->mod_ = old_mod; });

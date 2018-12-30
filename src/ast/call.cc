@@ -135,9 +135,8 @@ type::Type const *Call::VerifyType(Context *ctx) {
       // string-like
       ASSERT(arg_types.pos_[0] == type::ByteView);
       ASSERT(arg_types.pos_[1] == type::Type_);
-      auto *t =
-          backend::EvaluateAs<type::Type const *>(args_.pos_[1].get(), ctx);
-      return ctx->set_type(this, t);
+      return ctx->set_type(this, backend::EvaluateAs<type::Type const *>(
+                                     args_.pos_[1].get(), ctx));
     } else if (fn_val == ir::Val::BuiltinGeneric(OpaqueFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?

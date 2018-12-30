@@ -50,8 +50,7 @@ void Unop::ExtractJumps(JumpExprs *rets) const {
 }
 
 type::Type const *Unop::VerifyType(Context *ctx) {
-  auto *operand_type = operand->VerifyType(ctx);
-  if (operand_type == nullptr) { return nullptr; }
+  ASSIGN_OR(return nullptr, auto *operand_type, operand->VerifyType(ctx));
 
   switch (op) {
     case Language::Operator::BufPtr: return ctx->set_type(this, type::Type_);
@@ -88,9 +87,6 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         OverloadSet os(scope_, "-", ctx);
         os.add_adl("-", operand_type);
         std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
-        if (t == nullptr) {
-          return nullptr;
-        }
         return t;
       }
       NOT_YET();
@@ -107,13 +103,11 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         NOT_YET();  // Log an error. can't expand a non-tuple.
       }
     case Language::Operator::Not:
-      if (operand_type == type::Bool) {
-        return ctx->set_type(this, type::Bool);
-      } else if (operand_type->is<type::Enum>()) {
+      if (operand_type == type::Bool || operand_type->is<type::Enum>() ||
+          operand_type->is<type::Flags>()) {
         return ctx->set_type(this, operand_type);
-      } else if (operand_type->is<type::Flags>()) {
-        return ctx->set_type(this, operand_type);
-      } else if (operand_type->is<type::Struct>()) {
+      }
+      if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
         type::Type const *t = nullptr;
@@ -121,9 +115,6 @@ type::Type const *Unop::VerifyType(Context *ctx) {
         os.add_adl("!", operand_type);
         std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
-        if (t == nullptr) {
-          return nullptr;
-        }
         return t;
       } else {
         NOT_YET("log an error");

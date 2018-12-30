@@ -44,8 +44,7 @@ void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
 }
 
 type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
-  auto *t = args_.VerifyType(ctx);
-  if (t == nullptr) { return nullptr; }
+  ASSIGN_OR(return nullptr, auto *t, args_.VerifyType(ctx));
 
   std::vector<type::Type const *> arg_types =
       t->is<type::Tuple>() ? t->as<type::Tuple>().entries_

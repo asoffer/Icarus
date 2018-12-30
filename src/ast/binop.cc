@@ -145,8 +145,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         }
         return t;
       } else if (auto *lhs_buf_type = lhs_type->if_as<type::BufferPointer>()) {
-        auto *t =
-            ctx->set_type(this, lhs_buf_type->pointee);
+        auto *t = ctx->set_type(this, lhs_buf_type->pointee);
         if (rhs_type != type::Int32) {  // TODO other sizes
           ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
         }
@@ -263,10 +262,10 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
+          return nullptr;
         } else {
           return ctx->set_type(this, t);
         }
-        return t;
       }
     } break;
     case Operator::AddEq: {
@@ -302,8 +301,8 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         auto *lhs_fn = &lhs_type->as<type::Function>();
         auto *rhs_fn = &rhs_type->as<type::Function>();
         if (rhs_fn->output == lhs_fn->input) {
-          auto *t = type::Func({rhs_fn->input}, {lhs_fn->output});
-          return ctx->set_type(this, t);
+          return ctx->set_type(this,
+                               type::Func({rhs_fn->input}, {lhs_fn->output}));
         } else {
           ctx->error_log_.NonComposableFunctions(span);
           return nullptr;

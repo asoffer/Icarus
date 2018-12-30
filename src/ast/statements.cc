@@ -19,9 +19,7 @@ void Statements::assign_scope(Scope *scope) {
 }
 
 type::Type const *Statements::VerifyType(Context *ctx) {
-  for (auto &stmt : content_) {
-    stmt->VerifyType(ctx);
-  }
+  for (auto &stmt : content_) { stmt->VerifyType(ctx); }
   return nullptr;
 }
 

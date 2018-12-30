@@ -29,8 +29,7 @@ void Access::assign_scope(Scope *scope) {
 }
 
 type::Type const *Access::VerifyType(Context *ctx) {
-  auto *operand_type = operand->VerifyType(ctx);
-  if (operand_type == nullptr) { return nullptr; }
+  ASSIGN_OR(return nullptr, auto *operand_type, operand->VerifyType(ctx));
 
   auto base_type = DereferenceAll(operand_type);
   if (base_type == type::Type_) {
@@ -82,6 +81,7 @@ type::Type const *Access::VerifyType(Context *ctx) {
       ctx->error_log_.NoExportedSymbol(span);
       return nullptr;
     }
+
     return ctx->set_type(this, t);
   } else {
     ctx->error_log_.MissingMember(span, member_name, base_type);
