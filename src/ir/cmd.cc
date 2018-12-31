@@ -373,8 +373,13 @@ void SetStructFieldName(Register struct_type, std::string_view field_name) {
 }
 
 void AddHashtagToField(Register struct_type, ast::Hashtag hashtag) {
-  auto &cmd                 = MakeCmd(nullptr, Op::AddHashtagToField);
-  cmd.add_hashtag_to_field_ = {struct_type, hashtag};
+  auto &cmd        = MakeCmd(nullptr, Op::AddHashtagToField);
+  cmd.add_hashtag_ = {struct_type, hashtag};
+}
+
+void AddHashtagToStruct(Register struct_type, ast::Hashtag hashtag) {
+  auto &cmd        = MakeCmd(nullptr, Op::AddHashtagToStruct);
+  cmd.add_hashtag_ = {struct_type, hashtag};
 }
 
 TypedRegister<Addr> Alloca(type::Type const *t) {

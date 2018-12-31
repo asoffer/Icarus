@@ -24,6 +24,7 @@ void CreateStructField(Register struct_type,
                        RegisterOr<type::Type const *> type);
 void SetStructFieldName(Register struct_type, std::string_view field_name);
 void AddHashtagToField(Register struct_type, ast::Hashtag hashtag);
+void AddHashtagToStruct(Register struct_type, ast::Hashtag hashtag);
 Register FinalizeStruct(Register r);
 
 Register ArgumentCache(ast::StructLiteral *sl);
@@ -94,6 +95,10 @@ static ir::TypedRegister<type::Type const *> GenerateStruct(
     for (auto const &hashtag : field->hashtags_) {
       ir::AddHashtagToField(struct_reg, hashtag);
     }
+  }
+
+  for (auto hashtag : sl->hashtags_) {
+    ir::AddHashtagToStruct(struct_reg, hashtag);
   }
   return ir::FinalizeStruct(struct_reg);
 }

@@ -464,9 +464,12 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           ->set_last_name(cmd.set_struct_field_name_.name_);
     } break;
     case ir::Op::AddHashtagToField: {
-      ASSERT_NOT_NULL(
-          resolve<type::Struct *>(cmd.add_hashtag_to_field_.struct_))
-          ->add_hashtag_to_last_field(cmd.add_hashtag_to_field_.hashtag_);
+      ASSERT_NOT_NULL(resolve<type::Struct *>(cmd.add_hashtag_.struct_))
+          ->add_hashtag_to_last_field(cmd.add_hashtag_.hashtag_);
+    } break;
+    case ir::Op::AddHashtagToStruct: {
+      ASSERT_NOT_NULL(resolve<type::Struct *>(cmd.add_hashtag_.struct_))
+          ->add_hashtag(cmd.add_hashtag_.hashtag_);
     } break;
     case ir::Op::FinalizeStruct: {
       save(resolve<type::Struct *>(cmd.reg_));

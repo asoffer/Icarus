@@ -140,10 +140,21 @@ void Struct::set_last_name(std::string_view s) {
   ASSERT(success);
 }
 
+void Struct::add_hashtag(ast::Hashtag hashtag) {
+  data_.hashtags_.push_back(hashtag);
+}
+
 void Struct::add_hashtag_to_last_field(ast::Hashtag hashtag) {
   data_.fields_.back().hashtags_.push_back(hashtag);
 }
 
 void Struct::add_field(type::Type const *t) { data_.fields_.emplace_back(t); }
 
+bool Struct::IsDefaultInitializable() const {
+  // TODO check that all sub-fields also have this requirement.
+  return std::any_of(data_.hashtags_.begin(), data_.hashtags_.end(),
+                     [](ast::Hashtag tag) {
+                       return tag.kind_ == ast::Hashtag::Builtin::NoDefault;
+                     });
+}
 }  // namespace type

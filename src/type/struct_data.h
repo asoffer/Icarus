@@ -23,6 +23,7 @@ struct StructData {
   };
 
   ::Module const *mod_ = nullptr;
+  base::vector<ast::Hashtag> hashtags_;
   base::vector<Field> fields_;
   base::unordered_map<std::string, size_t> field_indices_;
 };

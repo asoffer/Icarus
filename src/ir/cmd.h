@@ -168,12 +168,12 @@ struct Cmd {
     };
   };
 
-  struct AddHashtagToField {
+  struct AddHashtag {
     Register struct_;
     ast::Hashtag hashtag_;
 
     inline friend std::ostream &operator<<(std::ostream &os,
-                                           AddHashtagToField const &a) {
+                                           AddHashtag const &a) {
       return os << a.struct_ << " " << static_cast<int>(a.hashtag_.kind_);
     }
 
@@ -215,7 +215,7 @@ struct Cmd {
 
     CreateStructField create_struct_field_;
     SetStructFieldName set_struct_field_name_;
-    AddHashtagToField add_hashtag_to_field_;
+    AddHashtag add_hashtag_;
     AddEnumerator add_enumerator_;
     SetEnumerator set_enumerator_;
     CondJump cond_jump_;

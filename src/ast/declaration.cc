@@ -227,6 +227,10 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
               this, ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
                         type_expr.get(), ctx)));
 
+          if (!is_fn_param_ && !this_type->IsDefaultInitializable()) {
+            ctx->error_log_.TypeMustBeInitialized(span, this_type);
+          }
+
         } else if (&type_expr_type == type::Interface) {
           NOT_YET();
         } else {

@@ -68,10 +68,15 @@ static constexpr size_t precedence(Language::Operator op) {
   __builtin_unreachable();
 }
 
+static std::map<std::string, ast::Hashtag::Builtin> const BuiltinHashtagMap = {
+    {"{export}", ast::Hashtag::Builtin::Export},
+    {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
 static std::unique_ptr<ast::Node> AddHashtag(
     base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto expr = move_as<ast::Expression>(nodes.back());
-  if (nodes.front()->as<frontend::Token>().token == "{export}") {
+  auto iter =
+      BuiltinHashtagMap.find(nodes.front()->as<frontend::Token>().token);
+  if (iter != BuiltinHashtagMap.end()) {
     expr->hashtags_.emplace_back(ast::Hashtag::Builtin::Export);
   } else {
     NOT_YET(nodes.front()->as<frontend::Token>().token);
