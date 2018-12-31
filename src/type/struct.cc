@@ -133,5 +133,17 @@ void Struct::defining_modules(
   modules->insert(defining_module());
 }
 
+void Struct::set_last_name(std::string_view s) {
+  data_.fields_.back().name = std::string(s);
+  auto[iter, success] = data_.field_indices_.emplace(data_.fields_.back().name,
+                                                     data_.fields_.size() - 1);
+  ASSERT(success);
+}
+
+void Struct::add_hashtag_to_last_field(ast::Hashtag hashtag) {
+  data_.fields_.back().hashtags_.push_back(hashtag);
+}
+
+void Struct::add_field(type::Type const *t) { data_.fields_.emplace_back(t); }
 
 }  // namespace type

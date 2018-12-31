@@ -43,9 +43,9 @@ std::string StructLiteral::to_string(size_t n) const {
 }
 
 void StructLiteral::assign_scope(Scope *scope) {
-  for (auto &a : args_) { a->assign_scope(scope); }
   scope_     = scope;
   type_scope = scope->add_child<DeclScope>();
+  for (auto &a : args_) { a->assign_scope(type_scope.get()); }
   for (auto &f : fields_) { f->assign_scope(type_scope.get()); }
 }
 
@@ -112,6 +112,9 @@ base::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
   // (which is single-threaded).
   ir::Func *&ir_func = mod_->ir_funcs_[ctx->bound_constants_][this];
   if (!ir_func) {
+    auto &work_item =
+        ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this, ctx->mod_);
+
     base::vector<std::pair<std::string, Expression *>> args;
     args.reserve(args_.size());
     for (auto const &d : args_) {
@@ -123,39 +126,9 @@ base::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
                    {type::Type_}),
         std::move(args));
 
-    for (size_t i = 0; i < args_.size(); ++i) {
-      ctx->set_addr(args_[i].get(), ir_func->Argument(i));
-    }
-
-    CURRENT_FUNC(ir_func) {
-      ir::BasicBlock::Current = ir_func->entry();
-      auto cache_slot_addr    = ir::ArgumentCache(this);
-      auto cache_slot         = ir::Load<type::Type const *>(cache_slot_addr);
-
-      auto land_block = ir::Func::Current->AddBlock();
-      ir::BasicBlock::Current = ir::EarlyExitOn<false>(
-          land_block,
-          ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
-      auto struct_reg = ir::CreateStruct(mod_);
-
-      // TODO why isn't implicit TypedRegister -> RegisterOr cast working on
-      // either of these? On the first it's clear because we don't even return a
-      // typedRegister, but this is a note to remind you to make that work. On
-      // the second... I don't know.
-      ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(struct_reg),
-                cache_slot_addr);
-      auto result = GenerateStruct(this, struct_reg, ctx);
-      ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(result));
-      ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(result),
-                cache_slot_addr);
-
-      ir::ReturnJump();
-
-      ir::BasicBlock::Current = land_block;
-      ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(cache_slot));
-      ir::ReturnJump();
-    }
+    ir_func->work_item = &work_item;
   }
+
   return {ir::Val::Func(ir_func->type_, ir_func)};
 }
 
@@ -163,5 +136,39 @@ base::vector<ir::RegisterOr<ir::Addr>> ast::StructLiteral::EmitLVal(Context *ctx
   UNREACHABLE(*this);
 }
 
-void StructLiteral::CompleteBody(Context *ctx) { NOT_YET(); }
+void StructLiteral::CompleteBody(Context *ctx) {
+  ir::Func *&ir_func = mod_->ir_funcs_[ctx->bound_constants_][this];
+  for (size_t i = 0; i < args_.size(); ++i) {
+    ctx->set_addr(args_[i].get(), ir_func->Argument(i));
+  }
+
+  CURRENT_FUNC(ir_func) {
+    ir::BasicBlock::Current = ir_func->entry();
+    auto cache_slot_addr    = ir::ArgumentCache(this);
+    auto cache_slot         = ir::Load<type::Type const *>(cache_slot_addr);
+
+    auto land_block         = ir::Func::Current->AddBlock();
+    ir::BasicBlock::Current = ir::EarlyExitOn<false>(
+        land_block,
+        ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
+    auto struct_reg = ir::CreateStruct(mod_);
+
+    // TODO why isn't implicit TypedRegister -> RegisterOr cast working on
+    // either of these? On the first it's clear because we don't even return a
+    // typedRegister, but this is a note to remind you to make that work. On the
+    // second... I don't know.
+    ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(struct_reg),
+              cache_slot_addr);
+    auto result = GenerateStruct(this, struct_reg, ctx);
+    ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(result));
+    ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(result),
+              cache_slot_addr);
+
+    ir::ReturnJump();
+
+    ir::BasicBlock::Current = land_block;
+    ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(cache_slot));
+    ir::ReturnJump();
+  }
+}
 }  // namespace ast

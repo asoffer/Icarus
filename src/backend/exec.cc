@@ -248,6 +248,10 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
              fn_type->output.size() == 1 &&
              fn_type->output[0]->is<type::Pointer>()) {
     FfiCall<void *, i32>(f, arguments, &ret_slots, stack);
+  } else if (fn_type->input.size() == 1 && fn_type->input[0] == type::Nat64 &&
+             fn_type->output.size() == 1 &&
+             fn_type->output[0]->is<type::Pointer>()) {
+    FfiCall<void *, u64>(f, arguments, &ret_slots, stack);
   } else if (fn_type == type::Func({type::Ptr(type::Int32)}, {}) ||
              fn_type == type::Func({type::BufPtr(type::Int32)}, {})) {
     FfiCall<void, i32 *>(f, arguments, &ret_slots, stack);
@@ -448,28 +452,24 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       });
 #undef CASE
 
-    case ir::Op::CreateStruct:
-      save(new type::IncompleteStruct(cmd.mod_));
-      break;
+    case ir::Op::CreateStruct: save(new type::Struct(cmd.mod_)); break;
     case ir::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
-          resolve<type::IncompleteStruct *>(cmd.create_struct_field_.struct_));
+          resolve<type::Struct *>(cmd.create_struct_field_.struct_));
       struct_to_modify->add_field(resolve(cmd.create_struct_field_.type_));
     } break;
     case ir::Op::SetStructFieldName: {
       ASSERT_NOT_NULL(
-          resolve<type::IncompleteStruct *>(cmd.set_struct_field_name_.struct_))
+          resolve<type::Struct *>(cmd.set_struct_field_name_.struct_))
           ->set_last_name(cmd.set_struct_field_name_.name_);
     } break;
     case ir::Op::AddHashtagToField: {
       ASSERT_NOT_NULL(
-          resolve<type::IncompleteStruct *>(cmd.add_hashtag_to_field_.struct_))
+          resolve<type::Struct *>(cmd.add_hashtag_to_field_.struct_))
           ->add_hashtag_to_last_field(cmd.add_hashtag_to_field_.hashtag_);
     } break;
     case ir::Op::FinalizeStruct: {
-      auto *s = resolve<type::IncompleteStruct *>(cmd.reg_);
-      save(std::move(*s).finalize());
-      delete s;
+      save(resolve<type::Struct *>(cmd.reg_));
     } break;
     case ir::Op::DebugIr: LOG << call_stack.top().fn_; break;
     case ir::Op::Alloca: {
@@ -960,7 +960,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(resolve(cmd.phi_flags_->map_.at(call_stack.top().prev_)));
       break;
     case ir::Op::ArgumentCache: {
-      auto &cache = cmd.sl_->mod_->generic_struct_cache_;
+      auto &cache = cmd.sl_->mod_->generic_struct_cache_[cmd.sl_];
       type::Type const **cache_slot =
           &cache[resolve<type::Type const *>(ir::Register{0})];
       save(ir::Addr::Heap(cache_slot));

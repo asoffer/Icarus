@@ -74,15 +74,13 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
 void Identifier::Validate(Context *ctx) {}
 
 base::vector<ir::Val> ast::Identifier::EmitIR(Context *ctx) {
-  if (ASSERT_NOT_NULL(decl)->const_) {
-    return decl->EmitIR(ctx);
-  } else if (decl->is_fn_param_) {
+  ASSERT(decl != nullptr) << this;
+  if (decl->const_) { return decl->EmitIR(ctx); }
+  if (decl->is_fn_param_) {
     auto *t = ctx->type_of(this);
-    if (decl->is_output_ && !t->is_big()) {
-      return {ir::Val::Reg(ir::Load(ctx->addr(decl), t), t)};
-    } else {
-      return {ir::Val::Reg(ctx->addr(decl), t)};
-    }
+    return {decl->is_output_ && !t->is_big()
+                ? ir::Val::Reg(ir::Load(ctx->addr(decl), t), t)
+                : ir::Val::Reg(ctx->addr(decl), t)};
   } else {
     auto *t = ASSERT_NOT_NULL(ctx->type_of(this));
     auto lval = EmitLVal(ctx)[0];

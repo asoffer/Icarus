@@ -7,7 +7,6 @@ struct Enum;
 struct Flags;
 struct Function;
 struct GenericStruct;
-struct IncompleteStruct;
 struct Pointer;
 struct Struct;
 struct Type;
@@ -43,7 +42,6 @@ struct Identifier;
 #include "function.h"
 #include "opaque.h"
 #include "generic_struct.h"
-#include "incomplete_struct.h"
 #include "pointer.h"
 #include "primitive.h"
 #include "struct.h"

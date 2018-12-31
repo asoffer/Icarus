@@ -20,13 +20,17 @@ struct Func;
 }  // namespace ir
 
 namespace type {
-struct IncompleteStruct;
 
 struct Struct : public Type {
   using Field = StructData::Field;
 
+  Struct(::Module const *mod) : data_(mod) {}
   ~Struct() override {}
   BASIC_METHODS;
+
+  void set_last_name(std::string_view s);
+  void add_hashtag_to_last_field(ast::Hashtag hashtag);
+  void add_field(type::Type const *t);
 
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string const &name) const;
@@ -44,9 +48,6 @@ struct Struct : public Type {
   size_t index(std::string const &name) const;
 
  private:
-  friend struct IncompleteStruct;
-  Struct(StructData &&data) : data_(std::move(data)) {}
-
   StructData data_;
   mutable std::mutex mtx_;
   mutable ir::Func *init_func_ = nullptr, *assign_func_ = nullptr,
