@@ -47,9 +47,9 @@ std::string FunctionLiteral::to_string(size_t n) const {
 
 void FunctionLiteral::assign_scope(Scope *scope) {
   scope_ = scope;
-  if (!fn_scope) {
-    fn_scope         = scope->add_child<FnScope>();
-    fn_scope->fn_lit = this;
+  if (!fn_scope) { // TODO can this ever be null? 
+    fn_scope          = scope->add_child<FnScope>();
+    fn_scope->fn_lit_ = this;
   }
   for (auto &in : inputs) { in->assign_scope(fn_scope.get()); }
   for (auto &out : outputs) { out->assign_scope(fn_scope.get()); }
@@ -281,6 +281,10 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
     }
 
     statements->EmitIR(ctx);
+
+    fn_scope->MakeAllDestructions(ctx);
+
+
     if (t->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
       // between here and where you call SetReturn

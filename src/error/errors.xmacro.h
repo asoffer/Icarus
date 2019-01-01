@@ -28,7 +28,6 @@ MAKE_LOG_ERROR(TooManyDots,
 MAKE_LOG_ERROR(InvalidCharacterQuestionMark,
                "Question mark characters are not valid syntax by themselves. "
                "Did you mean \":?\"?")
-MAKE_LOG_ERROR(InvalidCharacterTilde, "Tildes (~) are not valid Icarus syntax.")
 MAKE_LOG_ERROR(
     NonWhitespaceAfterNewlineEscape,
     "Found a non-whitespace character following a line-continuation ('\\').")

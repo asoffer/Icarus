@@ -30,6 +30,7 @@ void BlockNode::ExtractJumps(JumpExprs *rets) const {
 
 base::vector<ir::Val> BlockNode::EmitIR(Context *ctx) {
   stmts_.EmitIR(ctx);
+  block_scope_->MakeAllDestructions(ctx);
   return {};
 }
 base::vector<ir::RegisterOr<ir::Addr>> BlockNode::EmitLVal(Context *) { UNREACHABLE(); }

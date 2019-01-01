@@ -28,7 +28,7 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
   base::defer d([&] { ctx->cyc_deps_.pop_back(); });
 
   type::Type const *t = nullptr;
-  if (decl == nullptr) {
+  if (decl == nullptr) { // TODO I think this is necessarily null
     auto potential_decls = scope_->AllDeclsWithId(token, ctx);
     switch (potential_decls.size()) {
       case 1: {

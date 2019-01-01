@@ -77,7 +77,7 @@ static std::unique_ptr<ast::Node> AddHashtag(
   auto iter =
       BuiltinHashtagMap.find(nodes.front()->as<frontend::Token>().token);
   if (iter != BuiltinHashtagMap.end()) {
-    expr->hashtags_.emplace_back(ast::Hashtag::Builtin::Export);
+    expr->hashtags_.emplace_back(iter->second);
   } else {
     NOT_YET(nodes.front()->as<frontend::Token>().token);
   }

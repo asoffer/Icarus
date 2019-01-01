@@ -17,6 +17,7 @@ void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
                         ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   std::unique_lock lock(mtx_);
   ASSERT(this == from_type);
+
   if (!assign_func_) {
     assign_func_ = ctx->mod_->AddFunc(
         type::Func({from_type, type::Ptr(this)}, {}),
@@ -105,28 +106,36 @@ Struct::Field const *Struct::field(std::string const &name) const {
 }
 
 void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
+  // TODO where do we check that dtors are only defined in the same module?
   {
     std::unique_lock lock(mtx_);
     if (destroy_func_ == nullptr) {
-      destroy_func_ = ctx->mod_->AddFunc(
+      for (auto &decl : data_.mod_->global_->AllDeclsWithId("~", ctx)) {
+        ASSIGN_OR(continue, auto &fn_type, decl.type()->if_as<Function>());
+        destroy_func_ = std::get<ir::AnyFunc>(decl.get()->EmitIR(ctx)[0].value);
+        goto call_it;
+      }
+
+      destroy_func_ = ir::AnyFunc{ctx->mod_->AddFunc(
           type::Func({type::Ptr(this)}, {}),
           base::vector<std::pair<std::string, ast::Expression *>>{
-              {"arg", nullptr}});
+              {"arg", nullptr}})};
 
-      CURRENT_FUNC(destroy_func_) {
-        ir::BasicBlock::Current = destroy_func_->entry();
+      CURRENT_FUNC(destroy_func_.func()) {
+        ir::BasicBlock::Current = destroy_func_.func()->entry();
         for (size_t i = 0; i < data_.fields_.size(); ++i) {
           data_.fields_[i].type->EmitDestroy(
-              ir::Field(destroy_func_->Argument(0), this, i), ctx);
+              ir::Field(destroy_func_.func()->Argument(0), this, i), ctx);
         }
         ir::ReturnJump();
       }
     }
   }
+call_it:
   ir::Arguments call_args;
   call_args.append(reg);
-  call_args.type_ = destroy_func_->type_;
-  ir::Call(ir::AnyFunc{destroy_func_}, std::move(call_args));
+  call_args.type_ = destroy_func_.func()->type_;
+  ir::Call(destroy_func_, std::move(call_args));
 }
 void Struct::defining_modules(
     std::unordered_set<::Module const *> *modules) const {
@@ -152,9 +161,16 @@ void Struct::add_field(type::Type const *t) { data_.fields_.emplace_back(t); }
 
 bool Struct::IsDefaultInitializable() const {
   // TODO check that all sub-fields also have this requirement.
-  return std::any_of(data_.hashtags_.begin(), data_.hashtags_.end(),
-                     [](ast::Hashtag tag) {
-                       return tag.kind_ == ast::Hashtag::Builtin::NoDefault;
-                     });
+  return std::none_of(data_.hashtags_.begin(), data_.hashtags_.end(),
+                      [](ast::Hashtag tag) {
+                        return tag.kind_ == ast::Hashtag::Builtin::NoDefault;
+                      });
 }
+
+bool Struct::needs_destroy() const {
+  return true;
+//   return std::any_of(data_.fields_.begin(), data_.fields_.end(),
+//                      [](Field const &f) { return f.type->needs_destroy(); });
+}
+
 }  // namespace type

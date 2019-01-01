@@ -522,8 +522,7 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
     case '~':
       loc.Increment();
       span.finish = loc.cursor;
-      error_log->InvalidCharacterTilde(span);
-      return TaggedNode::Invalid();
+      return TaggedNode(span, "~", op_l);
     case '\'':
       loc.Increment();
       span.finish = loc.cursor;

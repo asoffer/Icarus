@@ -45,6 +45,7 @@ struct Scope : public base::Cast<Scope> {
       std::string const &id, Context *ctx);
 
   void InsertDecl(ast::Declaration *decl);
+  void MakeAllDestructions(Context *ctx);
 
   FnScope *ContainingFnScope();
   std::unordered_set<std::string> shadowed_decls_;
@@ -69,12 +70,11 @@ struct ExecScope : public Scope {
 
 struct FnScope : public ExecScope {
   FnScope(Scope *parent) : ExecScope(parent) {}
-  ~FnScope() final {}
+  ~FnScope() override {}
 
   void MakeAllStackAllocations(Context *ctx);
 
-  type::Function *fn_type      = nullptr;  // TODO deprecate?
-  ast::FunctionLiteral *fn_lit = nullptr;
+  ast::FunctionLiteral *fn_lit_ = nullptr;
   base::vector<ExecScope *> innards_{1, this};
 };
 

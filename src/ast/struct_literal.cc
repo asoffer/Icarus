@@ -60,7 +60,7 @@ type::Type const *StructLiteral::VerifyType(Context *ctx) {
   }
 
   if (args_.empty()) {
-    for (auto &field : fields_) { field->VerifyType(ctx); }
+    Validate(ctx);
     return ctx->set_type(this, type::Type_);
   } else {
     return ctx->set_type(this, type::GenStruct(std::move(ts)));
@@ -70,7 +70,7 @@ type::Type const *StructLiteral::VerifyType(Context *ctx) {
 void StructLiteral::Validate(Context *ctx) {
   for (auto &a : args_) { a->Validate(ctx); }
   for (auto &field : fields_) {
-    if (field->type_expr) { field->type_expr->VerifyType(ctx); }
+    field->VerifyType(ctx);
     field->Validate(ctx);
   }
 }

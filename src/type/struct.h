@@ -38,10 +38,7 @@ struct Struct : public Type {
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string const &name) const;
 
-  bool needs_destroy() const override {
-    return std::any_of(data_.fields_.begin(), data_.fields_.end(),
-                       [](Field const &f) { return f.type->needs_destroy(); });
-  }
+  bool needs_destroy() const override;
 
   ::Module const *defining_module() const { return data_.mod_; }
 
@@ -54,7 +51,8 @@ struct Struct : public Type {
   StructData data_;
   mutable std::mutex mtx_;
   mutable ir::Func *init_func_ = nullptr, *assign_func_ = nullptr,
-                   *destroy_func_ = nullptr, *repr_func_ = nullptr;
+                   *repr_func_ = nullptr;
+  mutable ir::AnyFunc destroy_func_{nullptr};
 };
 
 }  // namespace type

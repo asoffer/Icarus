@@ -98,7 +98,7 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
     case Language::Operator::Return: {
       size_t offset  = 0;
       auto *fn_scope = ASSERT_NOT_NULL(scope_->ContainingFnScope());
-      auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit);
+      auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit_);
 
       auto *fn_type =
           &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
