@@ -106,10 +106,21 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
         // TODO return type maybe not the same as type actually returned?
         ir::SetRet(i, arg_vals[i], ctx);
       }
+
+      auto *scope = scope_;
+      while (scope != nullptr) {
+        scope->MakeAllDestructions(ctx);
+        if (scope->is<FnScope>()) { break; }
+        scope = scope->parent;
+      }
+
       ir::ReturnJump();
       return {};
     }
     case Language::Operator::Yield: {
+      scope_->MakeAllDestructions(ctx);
+      // TODO pretty sure this is all wrong.
+
       // Can't return these because we need to pass them up at least through the
       // containing statements node and maybe further if we allow labelling
       // scopes to be yielded to.

@@ -47,6 +47,11 @@ struct Context {
   };
   base::vector<base::vector<YieldResult>> yields_stack_;
 
+  // Temporaries need to be destroyed at the end of each statement.
+  // This is a pointer to a buffer where temporary allocations can register
+  // themselves for deletion.
+  base::vector<type::Typed<ir::Register>> *temporaries_to_destroy_ = nullptr;
+
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it
   // again, at each step adding the nodes to the error log involved in the
