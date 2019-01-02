@@ -553,7 +553,8 @@ Val Cast(type::Type const *from, type::Type const *to, Val const& val);
 
 TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
                           RegisterOr<i32> offset);
-TypedRegister<Addr> Alloca(const type::Type *t);
+TypedRegister<Addr> Alloca(type::Type const *t);
+TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx);
 
 type::Typed<Register> LoadSymbol(std::string_view name, type::Type const *type);
 

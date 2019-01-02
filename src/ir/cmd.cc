@@ -390,6 +390,12 @@ TypedRegister<Addr> Alloca(type::Type const *t) {
   return cmd.result;
 }
 
+TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx) {
+  auto reg = Alloca(t);
+  ctx->temporaries_to_destroy_->emplace_back(reg, t);
+  return reg;
+}
+
 TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
   ASSERT(t->is_big());
   auto &cmd    = MakeCmd(type::Ptr(t), Op::GetRet);

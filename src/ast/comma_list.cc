@@ -60,7 +60,7 @@ base::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
   // counts as atype
   if (tuple_type->entries_.empty()) { return {ir::Val(type::Tup({}))}; }
 
-  auto tuple_alloc = ir::Alloca(tuple_type);
+  auto tuple_alloc = ir::TmpAlloca(tuple_type, ctx);
 
   size_t index = 0;
   for (auto &expr : exprs_) {

@@ -13,6 +13,8 @@
 #include "type/pointer.h"
 
 namespace type {
+using base::check::Is;
+
 void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
                         ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   std::unique_lock lock(mtx_);
@@ -112,6 +114,11 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
     if (destroy_func_ == nullptr) {
       for (auto &decl : data_.mod_->global_->AllDeclsWithId("~", ctx)) {
         ASSIGN_OR(continue, auto &fn_type, decl.type()->if_as<Function>());
+        // Should have already been part of type-checking.
+        ASSERT(fn_type.input.size() == 1u);
+        ASSERT(fn_type.input[0], Is<Pointer>());
+        auto *ptee    = fn_type.input[0]->as<Pointer>().pointee;
+        if (ptee != this) { continue; }
         destroy_func_ = std::get<ir::AnyFunc>(decl.get()->EmitIR(ctx)[0].value);
         goto call_it;
       }

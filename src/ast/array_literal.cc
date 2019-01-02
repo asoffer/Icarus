@@ -48,7 +48,7 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
 base::vector<ir::Val> ast::ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = ctx->type_of(this);
-  auto alloc      = ir::Alloca(this_type);
+  auto alloc      = ir::TmpAlloca(this_type, ctx);
   auto array_val  = ir::Val::Reg(alloc, type::Ptr(this_type));
   auto *data_type = this_type->as<type::Array>().data_type;
   for (size_t i = 0; i < exprs_.size(); ++i) {

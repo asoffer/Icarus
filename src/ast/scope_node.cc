@@ -151,7 +151,7 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     state_ptr_type = *state_types.begin();
     ASSERT(state_ptr_type, Is<type::Pointer>());
     state_type = state_ptr_type->as<type::Pointer>().pointee;
-    alloc      = ir::Alloca(state_type);
+    alloc      = ir::TmpAlloca(state_type, ctx);
     state_type->EmitInit(alloc, ctx);
   }
 
