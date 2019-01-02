@@ -329,9 +329,9 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                      [lit](ast::BlockLiteral *l) { return lit == l; });
 }
 
-Register CreateStruct(::Module const *mod) {
-  auto &cmd = MakeCmd(type::Type_, Op::CreateStruct);
-  cmd.mod_  = mod;
+Register CreateStruct(::Scope const *scope) {
+  auto &cmd  = MakeCmd(type::Type_, Op::CreateStruct);
+  cmd.scope_ = scope;
   return cmd.result;
 }
 

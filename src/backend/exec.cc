@@ -452,7 +452,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       });
 #undef CASE
 
-    case ir::Op::CreateStruct: save(new type::Struct(cmd.mod_)); break;
+    case ir::Op::CreateStruct:
+      save(new type::Struct(cmd.scope_, cmd.scope_->module()));
+      break;
     case ir::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
           resolve<type::Struct *>(cmd.create_struct_field_.struct_));

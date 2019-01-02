@@ -15,9 +15,14 @@ void Scope::InsertDecl(ast::Declaration *decl) {
   }
 }
 
+Module const *Scope::module() const {
+  if (auto *ds = this->if_as<DeclScope>()) { return ds->module_; }
+  return parent->module();
+}
+
 // TODO error version will always have nullptr types.
 base::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
-    std::string const &id, Context *ctx) {
+    std::string const &id, Context *ctx) const {
   base::vector<type::Typed<ast::Declaration *>> matching_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {

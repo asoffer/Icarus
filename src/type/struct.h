@@ -4,9 +4,10 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include "ast/hashtag.h"
 #include "base/container/vector.h"
 #include "ir/val.h"
-#include "type/struct_data.h"
+#include "scope.h"
 #include "type/type.h"
 
 struct Architecture;
@@ -22,9 +23,17 @@ struct Func;
 namespace type {
 
 struct Struct : public Type {
-  using Field = StructData::Field;
+  struct Field {
+    Field(type::Type const *t) : type(t) {}
+    // TODO make a string_view but deal with trickiness of moving
+    std::string name;
+    Type const *type = nullptr;
+    ir::Val init_val;
+    base::vector<ast::Hashtag> hashtags_;
+  };
 
-  Struct(::Module const *mod) : data_(mod) {}
+  Struct(::Scope const *scope, ::Module const *mod)
+      : scope_(scope), mod_(mod) {}
   ~Struct() override {}
   BASIC_METHODS;
 
@@ -40,15 +49,20 @@ struct Struct : public Type {
 
   bool needs_destroy() const override;
 
-  ::Module const *defining_module() const { return data_.mod_; }
+  ::Module const *defining_module() const { return mod_; }
 
   size_t offset(size_t n, Architecture const &arch) const;
 
-  base::vector<Field> const &fields() const { return data_.fields_; }
+  base::vector<Field> const &fields() const { return fields_; }
   size_t index(std::string const &name) const;
 
  private:
-  StructData data_;
+  ::Scope const *scope_ = nullptr;
+  ::Module const *mod_ = nullptr;
+  base::vector<ast::Hashtag> hashtags_;
+  base::vector<Field> fields_;
+  base::unordered_map<std::string, size_t> field_indices_;
+
   mutable std::mutex mtx_;
   mutable ir::Func *init_func_ = nullptr, *assign_func_ = nullptr,
                    *repr_func_ = nullptr;

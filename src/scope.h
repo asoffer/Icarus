@@ -42,7 +42,9 @@ struct Scope : public base::Cast<Scope> {
   }
 
   base::vector<type::Typed<ast::Declaration *>> AllDeclsWithId(
-      std::string const &id, Context *ctx);
+      std::string const &id, Context *ctx) const;
+
+  Module const *module() const;
 
   void InsertDecl(ast::Declaration *decl);
   void MakeAllDestructions(Context *ctx);

@@ -31,11 +31,11 @@ void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
       auto val                = assign_func_->Argument(0);
       auto var                = assign_func_->Argument(1);
 
-      for (size_t i = 0; i < data_.fields_.size(); ++i) {
+      for (size_t i = 0; i < fields_.size(); ++i) {
         auto *field_type =
-            from_type->as<type::Struct>().data_.fields_.at(i).type;
-        data_.fields_[i].type->EmitAssign(
-            data_.fields_[i].type,
+            from_type->as<type::Struct>().fields_.at(i).type;
+        fields_[i].type->EmitAssign(
+            fields_[i].type,
             ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), field_type),
                          field_type),
             ir::Field(var, this, i), ctx);
@@ -55,8 +55,8 @@ void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
 size_t Struct::offset(size_t field_num, Architecture const &arch) const {
   size_t offset = 0;
   for (size_t i = 0; i < field_num; ++i) {
-    offset += arch.bytes(data_.fields_.at(i).type);
-    offset = arch.MoveForwardToAlignment(data_.fields_.at(i + 1).type, offset);
+    offset += arch.bytes(fields_.at(i).type);
+    offset = arch.MoveForwardToAlignment(fields_.at(i + 1).type, offset);
   }
   return offset;
 }
@@ -73,16 +73,15 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
       ir::BasicBlock::Current = init_func_->entry();
 
       // TODO init expressions? Do these need to be verfied too?
-      for (size_t i = 0; i < data_.fields_.size(); ++i) {
-        if (data_.fields_[i].init_val != ir::Val::None()) {
-          EmitCopyInit(
-              /* from_type = */ data_.fields_[i].type,
-              /*   to_type = */ data_.fields_[i].type,
-              /*  from_val = */ data_.fields_[i].init_val,
-              /*    to_var = */
-              ir::Field(init_func_->Argument(0), this, i), ctx);
+      for (size_t i = 0; i < fields_.size(); ++i) {
+        if (fields_[i].init_val != ir::Val::None()) {
+          EmitCopyInit(/* from_type = */ fields_[i].type,
+                       /*   to_type = */ fields_[i].type,
+                       /*  from_val = */ fields_[i].init_val,
+                       /*    to_var = */
+                       ir::Field(init_func_->Argument(0), this, i), ctx);
         } else {
-          data_.fields_.at(i).type->EmitInit(
+          fields_.at(i).type->EmitInit(
               ir::Field(init_func_->Argument(0), this, i), ctx);
         }
       }
@@ -98,13 +97,13 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
 }
 
 size_t Struct::index(std::string const &name) const {
-  return data_.field_indices_.at(name);
+  return field_indices_.at(name);
 }
 
 Struct::Field const *Struct::field(std::string const &name) const {
-  auto iter = data_.field_indices_.find(name);
-  if (iter == data_.field_indices_.end()) { return nullptr; }
-  return &data_.fields_[iter->second];
+  auto iter = field_indices_.find(name);
+  if (iter == field_indices_.end()) { return nullptr; }
+  return &fields_[iter->second];
 }
 
 void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
@@ -112,7 +111,7 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
   {
     std::unique_lock lock(mtx_);
     if (destroy_func_ == nullptr) {
-      for (auto &decl : data_.mod_->global_->AllDeclsWithId("~", ctx)) {
+      for (auto &decl : scope_->AllDeclsWithId("~", ctx)) {
         ASSIGN_OR(continue, auto &fn_type, decl.type()->if_as<Function>());
         // Should have already been part of type-checking.
         ASSERT(fn_type.input.size() == 1u);
@@ -130,8 +129,8 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
 
       CURRENT_FUNC(destroy_func_.func()) {
         ir::BasicBlock::Current = destroy_func_.func()->entry();
-        for (size_t i = 0; i < data_.fields_.size(); ++i) {
-          data_.fields_[i].type->EmitDestroy(
+        for (size_t i = 0; i < fields_.size(); ++i) {
+          fields_[i].type->EmitDestroy(
               ir::Field(destroy_func_.func()->Argument(0), this, i), ctx);
         }
         ir::ReturnJump();
@@ -150,34 +149,32 @@ void Struct::defining_modules(
 }
 
 void Struct::set_last_name(std::string_view s) {
-  data_.fields_.back().name = std::string(s);
-  auto[iter, success] = data_.field_indices_.emplace(data_.fields_.back().name,
-                                                     data_.fields_.size() - 1);
+  fields_.back().name = std::string(s);
+  auto[iter, success] =
+      field_indices_.emplace(fields_.back().name, fields_.size() - 1);
   ASSERT(success);
 }
 
-void Struct::add_hashtag(ast::Hashtag hashtag) {
-  data_.hashtags_.push_back(hashtag);
-}
+void Struct::add_hashtag(ast::Hashtag hashtag) { hashtags_.push_back(hashtag); }
 
 void Struct::add_hashtag_to_last_field(ast::Hashtag hashtag) {
-  data_.fields_.back().hashtags_.push_back(hashtag);
+  fields_.back().hashtags_.push_back(hashtag);
 }
 
-void Struct::add_field(type::Type const *t) { data_.fields_.emplace_back(t); }
+void Struct::add_field(type::Type const *t) { fields_.emplace_back(t); }
 
 bool Struct::IsDefaultInitializable() const {
   // TODO check that all sub-fields also have this requirement.
-  return std::none_of(data_.hashtags_.begin(), data_.hashtags_.end(),
-                      [](ast::Hashtag tag) {
-                        return tag.kind_ == ast::Hashtag::Builtin::NoDefault;
-                      });
+  return std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
+    return tag.kind_ == ast::Hashtag::Builtin::NoDefault;
+  });
 }
 
 bool Struct::needs_destroy() const {
   return true;
-//   return std::any_of(data_.fields_.begin(), data_.fields_.end(),
-//                      [](Field const &f) { return f.type->needs_destroy(); });
+  //   return std::any_of(fields_.begin(), fields_.end(),
+  //                      [](Field const &f) { return f.type->needs_destroy();
+  //                      });
 }
 
 }  // namespace type

@@ -226,7 +226,8 @@ struct Cmd {
     BlockSeqContains block_seq_contains_;
     Cmd::Array array_;
     Field field_;
-    Module const *mod_;
+    ::Module const *mod_;
+    ::Scope const *scope_;
 
     // TODO names of these are easily mis-spellable and would lead to UB.
     RegisterOr<bool> bool_arg_;
