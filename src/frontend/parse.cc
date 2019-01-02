@@ -100,17 +100,13 @@ static std::unique_ptr<ast::Node> EmptyBraces(
   return stmts;
 }
 
-static std::unique_ptr<ast::Statements> BuildJump(std::unique_ptr<ast::Node> node) {
+static std::unique_ptr<ast::Node> BuildJump(std::unique_ptr<ast::Node> node) {
   const static base::unordered_map<std::string, ast::JumpKind> JumpKindMap = {
       {"return", ast::JumpKind::Return}, {"yield", ast::JumpKind::Yield}};
   auto iter = JumpKindMap.find(node->as<frontend::Token>().token);
   ASSERT(iter != JumpKindMap.end());
 
-  auto stmts  = std::make_unique<ast::Statements>();
-  stmts->span = node->span;
-  stmts->content_.push_back(
-      std::make_unique<ast::Jump>(node->span, iter->second));
-  return stmts;
+  return std::make_unique<ast::Jump>(node->span, iter->second);
 }
 
 static std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(

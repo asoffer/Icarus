@@ -46,6 +46,7 @@ struct Context {
     ir::Val val_;
   };
   base::vector<base::vector<YieldResult>> yields_stack_;
+  bool more_stmts_allowed_ = true;
 
   // Temporaries need to be destroyed at the end of each statement.
   // This is a pointer to a buffer where temporary allocations can register

@@ -35,9 +35,19 @@ void Statements::ExtractJumps(JumpExprs *rets) const {
 base::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
   base::vector<type::Typed<ir::Register>> to_destroy;
   auto *old_tmp_ptr = std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
-  base::defer d([&] { ctx->temporaries_to_destroy_ = old_tmp_ptr; });
+  bool old_more_stmts_allowed = std::exchange(ctx->more_stmts_allowed_, true);
+  base::defer d([&] {
+    ctx->temporaries_to_destroy_ = old_tmp_ptr;
+    ctx->more_stmts_allowed_     = old_more_stmts_allowed;
+  });
 
   for (auto &stmt : content_) {
+    if (!ctx->more_stmts_allowed_) {
+      ctx->error_log_.StatementsFollowingJump(span);
+
+      // Allow it again so we can repeated bugs in the same block.
+      ctx->more_stmts_allowed_ = true;
+    }
     stmt->EmitIR(ctx);
     for (int i = to_destroy.size() - 1; i >= 0; ++i) {
       auto &reg = to_destroy.at(i);

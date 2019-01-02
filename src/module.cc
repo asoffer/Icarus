@@ -99,6 +99,12 @@ void Module::CompilationWorkItem::Complete() {
     } else {
       UNREACHABLE(expr_);
     }
+
+    if (ctx.num_errors() > 0) {
+      // TODO Is this right?
+      ctx.DumpErrors();
+      found_errors = true;
+    }
   }
 }
 
@@ -148,6 +154,12 @@ static Module const *CompileModule(Module *mod) {
 
   ctx.mod_->statements_ = std::move(*file_stmts);
   ctx.mod_->CompleteAll();
+
+  if (ctx.num_errors() != 0) {
+    ctx.DumpErrors();
+    found_errors = true;
+    return mod;
+  }
 
   for (auto &fn : ctx.mod_->fns_) { fn->ComputeInvariants(); }
   for (auto &fn : ctx.mod_->fns_) { fn->CheckInvariants(); }

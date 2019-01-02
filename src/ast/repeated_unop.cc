@@ -114,6 +114,7 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
         scope = scope->parent;
       }
 
+      ctx->more_stmts_allowed_ = false;
       ir::ReturnJump();
       return {};
     }
@@ -134,6 +135,7 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
       for (size_t i = 0; i < arg_vals.size(); ++i) {
         ctx->yields_stack_.back().emplace_back(args_.exprs_[i].get(), arg_vals[i]);
       }
+      ctx->more_stmts_allowed_ = false;
       return {};
     }
     case Language::Operator::Print: {
