@@ -32,6 +32,17 @@ void Statements::ExtractJumps(JumpExprs *rets) const {
   for (auto &stmt : content_) { stmt->ExtractJumps(rets); }
 }
 
+void Statements::append(std::unique_ptr<Node> &&node) {
+  if (node->is<Statements>()) {
+    content_.insert(
+        content_.end(),
+        std::make_move_iterator(node->as<Statements>().content_.begin()),
+        std::make_move_iterator(node->as<Statements>().content_.end()));
+  } else {
+    content_.push_back(std::move(node));
+  }
+}
+
 base::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
   base::vector<type::Typed<ir::Register>> to_destroy;
   auto *old_tmp_ptr = std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
@@ -42,8 +53,10 @@ base::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
   });
 
   for (auto &stmt : content_) {
+    using ::base::check::Is;
+    ASSERT(stmt, Not(Is<Statements>()));
     if (!ctx->more_stmts_allowed_) {
-      ctx->error_log_.StatementsFollowingJump(span);
+      ctx->error_log_.StatementsFollowingJump(stmt->span);
 
       // Allow it again so we can repeated bugs in the same block.
       ctx->more_stmts_allowed_ = true;

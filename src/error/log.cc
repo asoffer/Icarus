@@ -154,10 +154,10 @@ void Log::PreconditionNeedsBool(ast::Expression *expr) {
 }
 
 template <typename ExprContainer>
-static auto LinesToShow(const ExprContainer &exprs) {
+static auto LinesToShow(ExprContainer const &exprs) {
   base::IntervalSet<size_t> iset;
   base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
-  for (const auto &expr : exprs) {
+  for (auto const &expr : exprs) {
     iset.insert(expr->span.lines().expanded(1).clamped_below(1));
     underlines.emplace_back(
         expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE});
@@ -178,6 +178,16 @@ static auto LinesToShow(const ExprContainer &exprs) {
   }
 #include "error/errors.xmacro.h"
 #undef MAKE_LOG_ERROR
+
+void Log::StatementsFollowingJump(TextSpan const &span) {
+  std::stringstream ss;
+  ss << "Statements cannot follow a `return` or `yield` statement.\n\n";
+  WriteSource(
+      ss, *span.source, {span.lines().expanded(1).clamped_below(1)},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
 
 void Log::RunawayMultilineComment() {
   errors_.push_back("Finished reading file during multi-line comment.\n\n");

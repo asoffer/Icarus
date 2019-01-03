@@ -40,8 +40,10 @@
 #include "type/enum.h"
 #include "type/flags.h"
 
+using ::base::check::Is;
 template <typename To, typename From>
 static std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
+  ASSERT(val, Is<To>());
   return std::unique_ptr<To>(static_cast<To *>(val.release()));
 }
 
@@ -88,7 +90,7 @@ static std::unique_ptr<ast::Node> OneBracedStatement(
     base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto stmts  = std::make_unique<ast::Statements>();
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  stmts->content_.push_back(std::move(nodes[1]));
+  stmts->append(std::move(nodes[1]));
   ValidateStatementSyntax(stmts->content_.back().get(), ctx);
   return stmts;
 }
@@ -106,7 +108,10 @@ static std::unique_ptr<ast::Node> BuildJump(std::unique_ptr<ast::Node> node) {
   auto iter = JumpKindMap.find(node->as<frontend::Token>().token);
   ASSERT(iter != JumpKindMap.end());
 
-  return std::make_unique<ast::Jump>(node->span, iter->second);
+  auto stmts = std::make_unique<ast::Statements>();
+  stmts->append(std::make_unique<ast::Jump>(node->span, iter->second));
+  stmts->span = node->span;
+  return stmts;
 }
 
 static std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
@@ -115,11 +120,11 @@ static std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
   if (nodes[2]->is<ast::Statements>()) {
     for (auto &stmt : nodes[2]->as<ast::Statements>().content_) {
-      stmts->content_.push_back(std::move(stmt));
+      stmts->append(std::move(stmt));
       ValidateStatementSyntax(stmts->content_.back().get(), ctx);
     }
   } else {
-    stmts->content_.push_back(std::move(nodes[2]));
+    stmts->append(std::move(nodes[2]));
     ValidateStatementSyntax(stmts->content_.back().get(), ctx);
   }
   return stmts;
@@ -573,7 +578,7 @@ std::unique_ptr<Node> BuildShortFunctionLiteral(
   ret->dispatch_tables_.resize(ret->args_.exprs_.size());
 
   auto stmts = std::make_unique<Statements>();
-  stmts->content_.push_back(std::move(ret));
+  stmts->append(std::move(ret));
   return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
                               std::move(stmts), ctx);
 }
@@ -591,15 +596,15 @@ std::unique_ptr<Node> BuildOneStatement(
     base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = nodes[0]->span;
-  stmts->content_.push_back(std::move(nodes[0]));
+  stmts->append(std::move(nodes[0]));
   ValidateStatementSyntax(stmts->content_.back().get(), ctx);
   return stmts;
 }
 
 std::unique_ptr<Node> BuildMoreStatements(
     base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  auto stmts = move_as<Statements>(nodes[0]);
-  stmts->content_.push_back(std::move(nodes[1]));
+  std::unique_ptr<Statements> stmts = move_as<Statements>(nodes[0]);
+  stmts->append(std::move(nodes[1]));
   ValidateStatementSyntax(stmts->content_.back().get(), ctx);
   return stmts;
 }
@@ -608,7 +613,7 @@ std::unique_ptr<Node> OneBracedJump(base::vector<std::unique_ptr<Node>> nodes,
                                     Context *ctx) {
   auto stmts  = std::make_unique<ast::Statements>();
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  stmts->content_.push_back(BuildJump(std::move(nodes[1])));
+  stmts->append(BuildJump(std::move(nodes[1])));
   ValidateStatementSyntax(stmts->content_.back().get(), ctx);
   return stmts;
 }
@@ -652,8 +657,6 @@ std::unique_ptr<Node> ExtendScopeNode(base::vector<std::unique_ptr<Node>> nodes,
 
 std::unique_ptr<Node> SugaredExtendScopeNode(
     base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  using base::check::Is;
-
   auto *scope_node = &nodes[0]->as<ScopeNode>();
   auto *extension_point = (scope_node->sugared_ != nullptr)
                               ? scope_node->sugared_
@@ -664,7 +667,7 @@ std::unique_ptr<Node> SugaredExtendScopeNode(
   bn->name_ = move_as<Expression>(nodes[1]);
   // TODO hook this up to a yield when it exists
   scope_node->sugared_ = &nodes[2]->as<ScopeNode>();
-  bn->stmts_.content_.push_back(std::move(nodes[2]));
+  bn->stmts_.append(std::move(nodes[2]));
   extension_point->blocks_.push_back(std::move(bn));
   return std::move(nodes[0]);
 }
@@ -823,7 +826,6 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
   }
 }
 
-using ::base::check::Is;
 static std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     base::vector<std::unique_ptr<ast::Node>> nodes, bool is_enum,
     Context *ctx) {
@@ -941,7 +943,6 @@ static std::unique_ptr<ast::Node> BuildGenericStruct(
       std::move(nodes[4]->as<ast::Statements>()),
       TextSpan(nodes.front()->span, nodes.back()->span), ctx);
   if (nodes[2]->is<ast::CommaList>()) {
-    using base::check::Is;
     for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
       ASSERT(expr, Is<ast::Declaration>());  // TODO handle failure
       auto decl          = move_as<ast::Declaration>(expr);

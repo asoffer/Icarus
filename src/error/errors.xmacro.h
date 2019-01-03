@@ -94,5 +94,3 @@ MAKE_LOG_ERROR(ArrayDataTypeNotAType,
 MAKE_LOG_ERROR(NoExportedSymbol,
                "No exported symbol of given name in this module.")
 MAKE_LOG_ERROR(TypeHasNoMembers, "Cannot access a member of a type.")
-MAKE_LOG_ERROR(StatementsFollowingJump,
-               "Statements cannot follow a `return` or `yield` statement.")

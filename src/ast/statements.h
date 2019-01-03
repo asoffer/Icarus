@@ -38,6 +38,8 @@ struct Statements : public Node {
     return result;
   }
 
+  void append(std::unique_ptr<Node>&& node);
+
   base::vector<std::unique_ptr<Node>> content_;
 };
 
