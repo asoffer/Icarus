@@ -9,6 +9,7 @@
 #include "error/log.h"
 #include "ir/func.h"
 #include "module.h"
+#include "repeated_unop.h"
 #include "type/function.h"
 #include "type/tuple.h"
 #include "type/type.h"
@@ -172,7 +173,9 @@ void FunctionLiteral::Validate(Context *ctx) {
     switch (outs.size()) {
       case 0: {
         for (auto *expr : rets[JumpKind::Return]) {
-          ctx->error_log_.NoReturnTypes(expr);
+          if (!expr->as<CommaList>().exprs_.empty()) {
+            ctx->error_log_.NoReturnTypes(expr);
+          }
         }
       } break;
       case 1: {

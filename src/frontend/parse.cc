@@ -19,7 +19,6 @@
 #include "ast/identifier.h"
 #include "ast/import.h"
 #include "ast/interface.h"
-#include "ast/jump.h"
 #include "ast/match_declaration.h"
 #include "ast/repeated_unop.h"
 #include "ast/scope_literal.h"
@@ -103,13 +102,12 @@ static std::unique_ptr<ast::Node> EmptyBraces(
 }
 
 static std::unique_ptr<ast::Node> BuildJump(std::unique_ptr<ast::Node> node) {
-  const static base::unordered_map<std::string, ast::JumpKind> JumpKindMap = {
-      {"return", ast::JumpKind::Return}, {"yield", ast::JumpKind::Yield}};
-  auto iter = JumpKindMap.find(node->as<frontend::Token>().token);
-  ASSERT(iter != JumpKindMap.end());
-
+  using ::Language::Operator;
+  auto &tk   = node->as<frontend::Token>().token;
+  auto jmp   = std::make_unique<ast::RepeatedUnop>(node->span);
+  jmp->op_   = tk == "return" ? Operator::Return : Operator::Yield;
   auto stmts = std::make_unique<ast::Statements>();
-  stmts->append(std::make_unique<ast::Jump>(node->span, iter->second));
+  stmts->append(std::move(jmp));
   stmts->span = node->span;
   return stmts;
 }
