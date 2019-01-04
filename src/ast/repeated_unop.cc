@@ -140,13 +140,15 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
     }
     case Language::Operator::Print: {
       size_t index = 0;
+      // TODO this is wrong if you use the <<(...) spread operator.
       for (auto &val : arg_vals) {
-        if (val.type->is<type::Struct>()) {
+        auto *t = ctx->type_of(args_.exprs_.at(index).get());
+        if (t->is<type::Struct>()) {
           ast::FnArgs<std::pair<ast::Expression *, ir::Val>> args;
           args.pos_.emplace_back(args_.exprs_[index].get(), std::move(val));
-          return dispatch_tables_.at(index).EmitCall(args, type::Void(), ctx);
+          dispatch_tables_.at(index).EmitCall(args, type::Void(), ctx);
         } else {
-          val.type->EmitRepr(val, ctx);
+          t->EmitRepr(val, ctx);
         }
         ++index;
       }
