@@ -269,8 +269,9 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
               backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
 
           if (init_val_type == nullptr) { return nullptr; }
-          if (!type::CanCastImplicitly(init_val_type, this_type)) {
-            ctx->error_log_.AssignmentTypeMismatch(this, init_val.get());
+            // TODO initialization, not assignment. Error messages will be
+            // wrong.
+          if (!VerifyAssignment(span, this_type, init_val_type, ctx)) {
             return nullptr;
           }
         } else if (&type_expr_type == type::Interface) {

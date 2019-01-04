@@ -58,51 +58,7 @@ bool CanCast(Type const *from, Type const *to) {
 
   auto from_mask = CastMask(from);
   auto to_mask   = CastMask(to);
-  return ((from_mask & to_mask) == from_mask) || CanCastImplicitly(from, to);
-}
-
-bool CanCastImplicitly(type::Type const *from, type::Type const *to) {
-  return Join(from, to) == to;
-}
-
-Type const *Join(Type const *lhs, Type const *rhs) {
-  if (lhs == rhs) { return lhs; }
-  if (lhs == nullptr) { return rhs; }  // Ignore errors
-  if (rhs == nullptr) { return lhs; }  // Ignore errors
-  if ((lhs == Block && rhs == OptBlock) || (lhs == OptBlock && rhs == Block)) {
-    return Block;
-  }
-  if (lhs->is<Primitive>() && rhs->is<Primitive>()) {
-    return lhs == rhs ? lhs : nullptr;
-  }
-  if (lhs == NullPtr && rhs->is<Pointer>()) { return rhs; }
-  if (rhs == NullPtr && lhs->is<Pointer>()) { return lhs; }
-  if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
-    return Join(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee);
-  } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
-    auto *result = Join(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-    return result ? Arr(result, lhs->as<Array>().len) : result;
-  } else if (lhs->is<Variant>()) {
-    base::vector<Type const *> rhs_types;
-    if (rhs->is<Variant>()) {
-      rhs_types = rhs->as<Variant>().variants_;
-    } else {
-      rhs_types = {rhs};
-    }
-
-    auto vars = lhs->as<Variant>().variants_;
-    vars.insert(vars.end(), rhs_types.begin(), rhs_types.end());
-    return Var(std::move(vars));
-  } else if (rhs->is<Variant>()) {  // lhs is not a variant
-    // TODO faster lookups? maybe not represented as a vector. at least give
-    // a better interface.
-    for (Type const *v : rhs->as<Variant>().variants_) {
-      if (lhs == v) { return rhs; }
-    }
-    return nullptr;
-  }
-  UNREACHABLE(lhs, rhs);
+  return ((from_mask & to_mask) == from_mask);
 }
 
 // TODO optimize (early exists. don't check lhs->is<> && rhs->is<>. If they

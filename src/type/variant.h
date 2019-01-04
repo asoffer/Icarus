@@ -20,12 +20,18 @@ struct Variant : public Type {
     return result;
   }
 
+  bool needs_destroy() const override;
+
+  // TODO can do better with a pair of iterators and checking if one is a subset
+  // of the other.
+  bool contains(type::Type const *t) const;
+
   bool IsDefaultInitializable() const override { return false; }
   base::vector<Type const *> variants_;
 
  private:
   mutable std::mutex mtx_;
-  mutable ir::Func *repr_func_ = nullptr;
+  mutable ir::Func *repr_func_ = nullptr, *destroy_func_ = nullptr;
 };
 
 }  // namespace type

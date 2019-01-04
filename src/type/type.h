@@ -10,6 +10,7 @@
 #include "ir/register.h"
 
 struct Context;
+struct TextSpan;
 
 #ifdef ICARUS_USE_LLVM
 namespace llvm {
@@ -258,6 +259,9 @@ inline bool IsNumeric(Type const *t) {
          t == type::Nat32 || t == type::Nat64 || t == type::Float32 ||
          t == type::Float64;
 }
+
+bool VerifyAssignment(TextSpan const &span, type::Type const *to,
+                      type::Type const *from, Context *ctx);
 
 }  // namespace type
 

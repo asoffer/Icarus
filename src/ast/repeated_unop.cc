@@ -114,7 +114,6 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
         scope = scope->parent;
       }
 
-      LOG << "***";
       ctx->more_stmts_allowed_ = false;
       ir::ReturnJump();
       return {};

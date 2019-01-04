@@ -25,7 +25,8 @@ void CommaList::assign_scope(Scope *scope) {
   for (auto &expr : exprs_) { expr->assign_scope(scope); }
 }
 
-type::Type const *CommaList::VerifyType(Context *ctx) {
+std::optional<std::vector<type::Type const *>> CommaList::VerifyWithoutSetting(
+    Context *ctx) {
   base::vector<const type::Type *> expr_types;
   expr_types.reserve(exprs_.size());
   for (auto &expr : exprs_) {
@@ -39,9 +40,13 @@ type::Type const *CommaList::VerifyType(Context *ctx) {
   }
   if (std::any_of(expr_types.begin(), expr_types.end(),
                   [](type::Type const *t) { return t == nullptr; })) {
-    return nullptr;
+    return std::nullopt;
   }
+  return expr_types;
+}
 
+type::Type const *CommaList::VerifyType(Context *ctx) {
+  ASSIGN_OR(return nullptr, auto expr_types, VerifyWithoutSetting(ctx));
   return ctx->set_type(this, type::Tup(std::move(expr_types)));
 }
 

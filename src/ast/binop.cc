@@ -95,39 +95,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
   using Language::Operator;
   // TODO if lhs is reserved?
   if (op == Operator::Assign) {
-    if (auto *lhs_tup = lhs_type->if_as<type::Tuple>()) {
-      if (auto *rhs_tup = rhs_type->if_as<type::Tuple>()) {
-        if (lhs_tup->entries_.size() != rhs_tup->entries_.size()) {
-          ctx->error_log_.MismatchedAssignmentSize(
-              span, lhs_tup->entries_.size(), rhs_tup->entries_.size());
-          return nullptr;
-        }
-
-        for (size_t i = 0; i < lhs_tup->entries_.size(); ++i) {
-          if (!type::CanCastImplicitly(rhs_tup->entries_[i],
-                                       lhs_tup->entries_[i])) {
-            NOT_YET("log an error");
-          }
-        }
-      } else {
-        // TODO should you allow this for struct user-defined types?
-        // z: complex
-        // z = (3, 4) // Interpretted as (=)(&z, 3, 4)?
-        ctx->error_log_.MismatchedAssignmentSize(span, lhs_tup->entries_.size(),
-                                                 1);
-        return nullptr;
-      }
-    } else {
-      if (auto*rhs_tup = rhs_type->if_as<type::Tuple>()) {
-        ctx->error_log_.MismatchedAssignmentSize(span, 1,
-                                                 rhs_tup->entries_.size());
-      } else {
-        if (!type::CanCastImplicitly(rhs_type, lhs_type)) {
-          NOT_YET("log an error", rhs_type, lhs_type);
-        }
-      }
-    }
-
+    if (!VerifyAssignment(span, lhs_type, rhs_type, ctx)) { return nullptr; }
     return type::Void();
   }
 

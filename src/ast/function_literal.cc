@@ -193,7 +193,6 @@ void FunctionLiteral::Validate(Context *ctx) {
               ctx->error_log_.ReturningWrongNumber(expr, outs.size());
             } else {
               for (size_t i = 0; i < tup_entries.size(); ++i) {
-                // TODO compare with Join rather than direct comparison
                 if (tup_entries.at(i) != outs.at(i)) {
                   // TODO if this is a commalist we can point to it more
                   // carefully but if we're just passing on multiple return

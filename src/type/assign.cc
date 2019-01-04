@@ -2,6 +2,7 @@
 
 #include "architecture.h"
 #include "context.h"
+#include "frontend/text_span.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
@@ -97,10 +98,12 @@ void Flags::EmitAssign(Type const *from_type, ir::Val const &from,
 
 void Variant::EmitAssign(Type const *from_type, ir::Val const &from,
                          ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+  // TODO full destruction is only necessary if the type is changing.
+  ASSERT(to.is_reg_);
+  // TODO have EmitDestroy take RegistorOr<Addr>
+  EmitDestroy(to.reg_, ctx);
+
   if (from_type->is<Variant>()) {
-    // TODO find the best match for variant types. For instance, we allow
-    // assignments like:
-    // [3; int] | [4; bool] -> [--; int] | [--; bool]
     auto actual_type = ir::Load<type::Type const *>(
         ir::VariantType(std::get<ir::Register>(from.value)));
     auto landing = ir::Func::Current->AddBlock();
@@ -156,6 +159,52 @@ void Primitive::EmitAssign(Type const *from_type, ir::Val const &from,
     case PrimType::Float32: ir::Store(from.reg_or<float>(), to); break;
     case PrimType::Float64: ir::Store(from.reg_or<double>(), to); break;
     default: UNREACHABLE();
+  }
+}
+
+bool VerifyAssignment(TextSpan const &span, type::Type const *to,
+                      type::Type const *from, Context *ctx) {
+  auto to_tup   = to->if_as<type::Tuple>();
+  auto from_tup = from->if_as<type::Tuple>();
+  if (to_tup && from_tup) {
+    if (to_tup->entries_.size() != from_tup->entries_.size()) {
+      ctx->error_log_.MismatchedAssignmentSize(span, to_tup->entries_.size(),
+                                               from_tup->entries_.size());
+      return false;
+    }
+
+    bool result = true;
+    for (size_t i = 0; i < to_tup->entries_.size(); ++i) {
+      result &= VerifyAssignment(span, to_tup->entries_.at(i),
+                                 from_tup->entries_.at(i), ctx);
+    }
+    return result;
+  }
+
+  if (auto to_var = to->if_as<type::Variant>()) {
+    if (auto from_var = from->if_as<type::Variant>()) {
+      for (auto fvar : from_var->variants_) {
+        if (!to_var->contains(fvar)) {
+          NOT_YET("log an error", from, to);
+          return false;
+        }
+      }
+      return true;
+    } else {
+      if (!to_var->contains(from)) {
+        NOT_YET("log an error", from, to);
+        return false;
+      }
+
+      return true;
+    }
+  } else {
+    if (to == from) {
+      return true;
+    } else {
+      NOT_YET("log an error", from, to);
+      return false;
+    }
   }
 }
 

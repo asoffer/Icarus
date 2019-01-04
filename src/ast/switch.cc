@@ -43,8 +43,10 @@ type::Type const *Switch::VerifyType(Context *ctx) {
     types.insert(expr_type);
   }
   if (types.empty()) { NOT_YET("handle type error"); }
-  if (auto *t = type::JoinAll(types)) {
-    return ctx->set_type(this, t);
+  auto some_type = *types.begin();
+  if (std::all_of(types.begin(), types.end(),
+                  [&](type::Type const *t) { return t == some_type; })) {
+    return ctx->set_type(this, some_type);
   } else {
     NOT_YET("handle type error");
     return nullptr;

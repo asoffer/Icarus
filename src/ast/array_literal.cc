@@ -28,17 +28,10 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
     return type::EmptyArray;
   }
 
-  // TODO combine with CommaList::VerifyType
-  std::vector<type::Type const *> elem_types;
-  elem_types.reserve(exprs_.size());
-  for (auto &elem : exprs_) { elem_types.push_back(elem->VerifyType(ctx)); }
-  if (std::any_of(elem_types.begin(), elem_types.end(),
-                  [](type::Type const *t) { return t == nullptr; })) {
-    return nullptr;
-  }
-
-  if (auto *joined = type::JoinAll(elem_types)) {
-    return ctx->set_type(this, type::Arr(joined, exprs_.size()));
+  ASSIGN_OR(return nullptr, auto expr_types, VerifyWithoutSetting(ctx));
+  if (std::all_of(expr_types.begin(), expr_types.end(),
+                  [&](type::Type const *t) { return t == expr_types.front(); })) {
+    return ctx->set_type(this, type::Arr(expr_types.front(), exprs_.size()));
   } else {
     ctx->error_log_.InconsistentArrayType(span);
     return nullptr;

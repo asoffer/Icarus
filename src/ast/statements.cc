@@ -62,7 +62,7 @@ base::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
       ctx->more_stmts_allowed_ = true;
     }
     stmt->EmitIR(ctx);
-    for (int i = to_destroy.size() - 1; i >= 0; ++i) {
+    for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
       auto &reg = to_destroy.at(i);
       reg.type()->EmitDestroy(reg.get(), ctx);
     }

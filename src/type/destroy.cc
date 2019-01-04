@@ -58,6 +58,4 @@ void Enum::EmitDestroy(ir::Register, Context *ctx) const {}
 void Flags::EmitDestroy(ir::Register, Context *ctx) const {}
 void Function::EmitDestroy(ir::Register, Context *ctx) const {}
 void Pointer::EmitDestroy(ir::Register, Context *ctx) const {}
-void Variant::EmitDestroy(ir::Register, Context *ctx) const { NOT_YET(); }
-
 }  // namespace type

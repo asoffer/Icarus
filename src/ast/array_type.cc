@@ -47,8 +47,6 @@ base::vector<ir::RegisterOr<ir::Addr>> ArrayType::EmitLVal(Context *) {
 }
 
 void ArrayType::ExtractJumps(JumpExprs *rets) const {
-  // TODO length_ needs to be constexpr so maybe we're safe here? and don't need
-  // to check it? This happens in other places too!
   length_->ExtractJumps(rets);
   data_type_->ExtractJumps(rets);
 }

@@ -19,42 +19,7 @@ namespace type {
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
-
-static base::guarded<base::map<base::vector<Type const *>, Variant>> variants_;
-Type const *Var(base::vector<Type const *> variants) {
-  if (variants.empty()) { return type::Void(); }
-  if (variants.size() == 1) { return variants[0]; }
-
-  size_t end = variants.size();
-  size_t i   = 0;
-  while (i < end) {
-    if (variants[i]->is<Variant>()) {
-      const Variant *var = &variants[i]->as<Variant>();
-      variants[i]        = variants.back();
-      variants.pop_back();
-      variants.insert(variants.end(), var->variants_.begin(),
-                      var->variants_.end());
-    } else {
-      ++i;
-    }
-  }
-
-  // TODO This sort order should be deterministic to allow interoperability
-  // between multiple runs of the compiler.
-
-  std::sort(variants.begin(), variants.end());
-  variants.erase(std::unique(variants.begin(), variants.end()), variants.end());
-
-  if (variants.size() == 1) { return variants.front(); }
-
-  return &variants_.lock()
-              ->emplace(std::piecewise_construct,
-                        std::forward_as_tuple(variants),
-                        std::forward_as_tuple(variants))
-              .first->second;
-}
-
-static base::guarded<base::unordered_map<Type const *, Pointer const >>
+static base::guarded<base::unordered_map<Type const *, Pointer const>>
     pointers_;
 Pointer const *Ptr(Type const *t) {
   return &pointers_.lock()->emplace(t, Pointer(t)).first->second;
