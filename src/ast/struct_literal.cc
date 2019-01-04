@@ -63,7 +63,7 @@ type::Type const *StructLiteral::VerifyType(Context *ctx) {
     Validate(ctx);
     return ctx->set_type(this, type::Type_);
   } else {
-    return ctx->set_type(this, type::GenStruct(std::move(ts)));
+    return ctx->set_type(this, type::GenStruct(scope_, std::move(ts)));
   }
 }
 

@@ -2,6 +2,8 @@
 #define ICARUS_TYPE_GENERIC_STRUCT_H
 
 #include "base/container/vector.h"
+#include "module.h"
+#include "scope.h"
 #include "type/callable.h"
 #include "type/type.h"
 
@@ -10,14 +12,17 @@ struct Context;
 namespace type {
 struct GenericStruct : public Callable {
   TYPE_FNS(GenericStruct);
-  GenericStruct(Type const *t) : deps_({t}) {}
-  GenericStruct(base::vector<Type const *> ts) : deps_(std::move(ts)) {}
+  GenericStruct(::Scope const *scope, base::vector<Type const *> ts)
+      : scope_(scope), mod_(scope->module()), deps_(std::move(ts)) {}
 
-  base::vector<Type const*> deps_;
+  ::Module const *defining_module() const { return mod_; }
+
+  ::Scope const *scope_ = nullptr;
+  ::Module const *mod_  = nullptr;
+  base::vector<Type const *> deps_;
 };
 
-GenericStruct *GenStruct(Type const *t);
-GenericStruct *GenStruct(base::vector<Type const *> ts);
+GenericStruct *GenStruct(::Scope const *scope, base::vector<Type const *> ts);
 }  // namespace type
 
 #endif  // ICARUS_TYPE_GENERIC_STRUCT_H
