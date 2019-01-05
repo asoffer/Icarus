@@ -57,7 +57,7 @@ type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
       auto *arg_type = arg_types[i];
       if (arg_type->is<type::Primitive>() || arg_type->is<type::Pointer>() ||
           arg_type == type::ByteView || arg_type->is<type::Enum>() ||
-          arg_type->is<type::Flags>()) {
+          arg_type->is<type::Flags>() || arg_type->is<type::Array>()) {
         continue;
       } else if (arg_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
@@ -107,6 +107,8 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
         ir::SetRet(i, arg_vals[i], ctx);
       }
 
+      // Rather than doing this on each block it'd be better to have each
+      // scope's destructors jump you to the correct next block for destruction.
       auto *scope = scope_;
       while (scope != nullptr) {
         scope->MakeAllDestructions(ctx);

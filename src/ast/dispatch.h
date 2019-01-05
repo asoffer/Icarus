@@ -35,13 +35,6 @@ struct Expression;
 struct Binding {
   void SetPositionalArgs(FnArgs<Expression *> const &args);
 
-  bool SetArgs(FnArgs<Expression *> const &args,
-               base::unordered_map<std::string, size_t> const &index_lookup);
-  static base::expected<Binding> Make(
-      type::Typed<Expression *, type::Callable> fn,
-      FnArgs<Expression *> const &args, size_t n,
-      base::unordered_map<std::string, size_t> const *index_lookup = nullptr);
-
   bool defaulted(size_t i) const { return exprs_.at(i).get() == nullptr; }
 
   Binding(type::Typed<Expression *, type::Callable> fn, size_t n,

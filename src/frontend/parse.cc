@@ -164,7 +164,7 @@ std::unique_ptr<Node> BuildRightUnop(base::vector<std::unique_ptr<Node>> nodes,
 std::unique_ptr<Node> BuildCall(base::vector<std::unique_ptr<Node>> nodes,
                                 Context *ctx) {
   auto call  = std::make_unique<Call>();
-  call->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  call->span = TextSpan(nodes.front()->span, nodes.back()->span);
   call->fn_  = move_as<Expression>(nodes[0]);
 
   if (nodes[2]->is<CommaList>()) {
@@ -384,7 +384,7 @@ std::unique_ptr<Node> BuildIndexOperator(
 std::unique_ptr<Node> BuildEmptyArray(base::vector<std::unique_ptr<Node>> nodes,
                                       Context *ctx) {
   auto array_lit  = std::make_unique<ArrayLiteral>();
-  array_lit->span = TextSpan(nodes[0]->span, nodes[1]->span);
+  array_lit->span = TextSpan(nodes[0]->span, nodes[2]->span);
   return array_lit;
 }
 
@@ -401,9 +401,9 @@ std::unique_ptr<Node> BuildArrayLiteral(
   array_lit->span = nodes[0]->span;
 
   if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().parenthesized_) {
-    array_lit->exprs_ = std::move(nodes[1]->as<CommaList>().exprs_);
+    array_lit->cl_.exprs_ = std::move(nodes[1]->as<CommaList>().exprs_);
   } else {
-    array_lit->exprs_.push_back(move_as<Expression>(nodes[1]));
+    array_lit->cl_.exprs_.push_back(move_as<Expression>(nodes[1]));
   }
 
   return array_lit;
@@ -496,7 +496,7 @@ base::vector<std::unique_ptr<Declaration>> ExtractInputs(
       inputs.push_back(move_as<Declaration>(expr));
     }
   } else {
-    NOT_YET("log an error");
+    NOT_YET("log an error: ", args);
   }
   return inputs;
 }

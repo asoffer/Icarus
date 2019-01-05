@@ -19,15 +19,15 @@ struct unexpected {
   std::string reason_;
 };
 
-template <typename T>
+template <typename T, typename E = unexpected>
 struct expected {
-  static_assert(!std::is_same_v<T, unexpected>);
+  static_assert(!std::is_same_v<T, E>);
 
   expected(T &&val) : val_(std::forward<T>(val)) {}
 
   template <typename... Args>
   explicit expected(Args &&... args) : val_(T{std::forward<Args>(args)...}) {}
-  expected(unexpected u) : val_(std::move(u)) {}
+  expected(E e) : val_(std::move(e)) {}
 
   T *operator->() { return std::get_if<T>(&val_); }
   T const *operator->() const { return std::get_if<T>(&val_); }
@@ -37,11 +37,12 @@ struct expected {
   T &&operator*() && { return std::get<T>(std::move(val_)); }
 
   bool has_value() const { return std::holds_alternative<T>(val_); }
-  unexpected error() const { return std::get<unexpected>(val_); }
+  E error() const & { return std::get<E>(val_); }
+  E &&error() && { return std::get<E>(std::move(val_)); }
 
   explicit operator bool() const { return has_value(); }
 
  private:
-  std::variant<T, unexpected> val_;
+  std::variant<T, E> val_;
 };
 }  // namespace base
