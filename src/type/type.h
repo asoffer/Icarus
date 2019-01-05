@@ -39,8 +39,7 @@ struct AnyFunc;
 
 #define ENDING = 0
 #define BASIC_METHODS_WITHOUT_LLVM                                             \
-  virtual char *WriteTo(char *buf) const ENDING;                               \
-  virtual size_t string_size() const ENDING;                                   \
+  virtual void WriteTo(std::string *buf) const ENDING;                         \
   virtual void EmitAssign(const Type *from_type, ir::Val const &from,          \
                           ir::RegisterOr<ir::Addr> to, Context *ctx)           \
       const ENDING;                                                            \
@@ -76,9 +75,8 @@ struct Type : public base::Cast<Type> {
   BASIC_METHODS;
 
   std::string to_string() const {
-    std::string result(string_size(), '\0');
-    char *end_buf = WriteTo(result.data());
-    ASSERT(static_cast<size_t>(end_buf - result.data()) == result.size());
+    std::string result;
+    WriteTo(&result);
     return result;
   }
 

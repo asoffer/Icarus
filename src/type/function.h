@@ -19,10 +19,9 @@ namespace type {
 struct GenericFunction : public Callable {
   GenericFunction() {}
   ~GenericFunction() override {}
-  char *WriteTo(char *buf) const override {
-    return std::strcpy(buf, "generic") + string_size();
+  void WriteTo(std::string *result) const override {
+    result->append("generic");
   }
-  size_t string_size() const override { return sizeof("generic") - 1; }
   void EmitAssign(const Type *from_type, ir::Val const &from,
                   ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
   void EmitInit(ir::Register reg, Context *ctx) const override;

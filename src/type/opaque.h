@@ -8,8 +8,7 @@
 namespace type {
 struct Opaque : public Type {
   ~Opaque() override {}
-  char *WriteTo(char *buf) const override;
-  size_t string_size() const override;
+  void WriteTo(std::string *result) const override;
   void EmitAssign(const Type *from_type, ir::Val const &from,
                   ir::RegisterOr<ir::Addr> to, Context *ctx) const override {
     UNREACHABLE();

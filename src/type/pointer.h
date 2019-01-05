@@ -23,8 +23,7 @@ struct Pointer : public Type {
 // Like Pointer but allows indexing and pointer arithmetic.
 struct BufferPointer : public Pointer {
   BufferPointer() = delete;
-  char *WriteTo(char *buf) const override;
-  size_t string_size() const override;
+  void WriteTo(std::string *result) const override;
   BufferPointer(Type const *t) : Pointer(t) {}
 };
 

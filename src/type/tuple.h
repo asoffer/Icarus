@@ -10,8 +10,7 @@ struct Tuple : public Type {
   Tuple() = delete;
   ~Tuple() {}
   Tuple(base::vector<Type const *> entries) : entries_(std::move(entries)) {}
-  virtual char *WriteTo(char *buf) const;
-  virtual size_t string_size() const;
+  void WriteTo(std::string *result) const override;
 
   void EmitAssign(Type const *from_type, ir::Val const &from,
                   ir::RegisterOr<ir::Addr> to, Context *ctx) const;
