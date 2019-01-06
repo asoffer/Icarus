@@ -142,13 +142,13 @@ void ChainOp::assign_scope(Scope *scope) {
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
-type::Type const *ChainOp::VerifyType(Context *ctx) {
+VerifyResult ChainOp::VerifyType(Context *ctx) {
   std::vector<type::Type const *> expr_types;
   expr_types.reserve(exprs.size());
-  for (auto &expr : exprs) { expr_types.push_back(expr->VerifyType(ctx)); }
+  for (auto &expr : exprs) { expr_types.push_back(expr->VerifyType(ctx).type_); }
   if (std::any_of(expr_types.begin(), expr_types.end(),
                   [](type::Type const *t) { return t == nullptr; })) {
-    return nullptr;
+    return VerifyResult::Error();
   }
 
   if (ops[0] == Language::Operator::Or) {

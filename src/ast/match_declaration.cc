@@ -8,7 +8,7 @@ std::string MatchDeclaration::to_string(size_t n) const {
   return type_expr->to_string(n) + "`" + id_;
 }
 
-type::Type const *MatchDeclaration::VerifyType(Context *ctx) {
+VerifyResult MatchDeclaration::VerifyType(Context *ctx) {
   if (!type_expr->VerifyType(ctx)) { return nullptr; }
   // TODO this is wrong. it's a type satisfying a given interface. does that
   // matter?

@@ -24,11 +24,10 @@ base::vector<ir::Val> Import::EmitIR(Context *ctx) {
 
 base::vector<ir::RegisterOr<ir::Addr>> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
 
-type::Type const *Import::VerifyType(Context *ctx) {
-  auto *operand_type = operand_->VerifyType(ctx);
-  if (operand_type == nullptr) { return nullptr; }
-
-  if (operand_type != type::ByteView) {
+VerifyResult Import::VerifyType(Context *ctx) {
+  ASSIGN_OR(return VerifyResult::Error(), auto result,
+                   operand_->VerifyType(ctx));
+  if (result.type_ != type::ByteView) {
     ctx->error_log_.InvalidImport(operand_->span);
   } else {
     module_ = Module::Schedule(
@@ -36,6 +35,6 @@ type::Type const *Import::VerifyType(Context *ctx) {
             backend::EvaluateAs<std::string_view>(operand_.get(), ctx)},
         *ctx->mod_->path_);
   }
-  return ctx->set_type(this, type::Module);
+  return VerifyResult::Constant(ctx->set_type(this, type::Module));
 }
 }  // namespace ast

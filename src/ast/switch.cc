@@ -32,11 +32,11 @@ void Switch::assign_scope(Scope *scope) {
   }
 }
 
-type::Type const *Switch::VerifyType(Context *ctx) {
+VerifyResult Switch::VerifyType(Context *ctx) {
   std::unordered_set<const type::Type *> types;
   for (auto & [ expr, cond ] : cases_) {
-    auto *cond_type = cond->VerifyType(ctx);
-    auto *expr_type = expr->VerifyType(ctx);
+    auto *cond_type = cond->VerifyType(ctx).type_;
+    auto *expr_type = expr->VerifyType(ctx).type_;
     if (cond_type != type::Bool) { NOT_YET("handle type error"); }
     // TODO if there's an error, an unorderded_set is not helpful for giving
     // good error messages.

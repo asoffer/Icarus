@@ -8,7 +8,7 @@ struct Switch : public Expression {
   ~Switch() override {}
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
-  type::Type const *VerifyType(Context *) override;
+  VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *rets) const override;
 

@@ -27,6 +27,25 @@ struct Val;
 namespace ast {
 struct Expression;
 
+struct VerifyResult {
+  type::Type const *type_;
+  bool const_;
+
+  constexpr VerifyResult(type::Type const *t) : type_(t), const_(false) {}
+  constexpr VerifyResult(std::nullptr_t np = nullptr)
+      : type_(nullptr), const_(false) {}
+  constexpr VerifyResult(type::Type const *t, bool b) : type_(t), const_(b) {}
+
+  static constexpr VerifyResult Error() { return VerifyResult{nullptr, false}; }
+  static constexpr VerifyResult Constant(type::Type const *t) {
+    return VerifyResult{t, true};
+  }
+
+  explicit operator bool() const { return type_ != nullptr; }
+  bool ok() const { return type_ != nullptr; }
+  VerifyResult operator*() const { return *this; }
+};
+
 enum class JumpKind { Return, Yield };
 struct JumpExprs
     : public base::unordered_map<JumpKind, base::vector<Expression const *>> {};
@@ -34,7 +53,7 @@ struct JumpExprs
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const   = 0;
   virtual void assign_scope(Scope *)              = 0;
-  virtual type::Type const *VerifyType(Context *) = 0;
+  virtual VerifyResult VerifyType(Context *)      = 0;
   virtual void Validate(Context *)                = 0;
   virtual base::vector<ir::Val> EmitIR(Context *) = 0;
   virtual void ExtractJumps(JumpExprs *) const    = 0;

@@ -28,11 +28,11 @@ struct FunctionLiteral : public Expression {
 
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
-  type::Type const *VerifyType(Context *) override;
+  VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  type::Type const *VerifyTypeConcrete(Context *);
+  VerifyResult VerifyTypeConcrete(Context *);
 
   base::vector<ir::Val> EmitIR(Context *) override;
   base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;

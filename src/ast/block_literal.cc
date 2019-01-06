@@ -29,31 +29,20 @@ void BlockLiteral::assign_scope(Scope *scope) {
   for (auto &a : after_) { a->assign_scope(body_scope_.get()); }
 }
 
-type::Type const *BlockLiteral::VerifyType(Context *ctx) {
+VerifyResult BlockLiteral::VerifyType(Context *ctx) {
   return required_ ? type::Block : type::OptBlock;
 }
 
 void BlockLiteral::Validate(Context *ctx) {
-  // Because this returns void, we need to ignore the return value. Wrapping in
-  // an immediately invoked lambda.
-  [&]() -> type::Type const * {
-    ctx->set_type(this, required_ ? type::Block : type::OptBlock);
-    std::vector<type::Type const *> before_types, after_types;
-    before_types.reserve(before_.size());
-    for (auto &b : before_) {
-      ASSIGN_OR(return nullptr, auto &before_type, b->VerifyType(ctx));
-      before_types.push_back(&before_type);
-    }
-    for (auto &a : after_) {
-      ASSIGN_OR(return nullptr, auto &after_type, a->VerifyType(ctx));
-      after_types.push_back(&after_type);
-    }
+  ctx->set_type(this, required_ ? type::Block : type::OptBlock);
+  bool err = false;
+  for (auto &b : before_) { err |= !b->VerifyType(ctx).ok(); }
+  for (auto &a : after_) { err |= !a->VerifyType(ctx).ok(); }
+  if (err) { return; }
 
-    // TODO type-check before/after functions.
-    for (auto &b : before_) { b->Validate(ctx); }
-    for (auto &a : after_) { a->Validate(ctx); }
-    return required_ ? type::Block : type::OptBlock;
-  }();
+  // TODO type-check before/after functions.
+  for (auto &b : before_) { b->Validate(ctx); }
+  for (auto &a : after_) { a->Validate(ctx); }
 }
 
 void BlockLiteral::ExtractJumps(JumpExprs *rets) const {

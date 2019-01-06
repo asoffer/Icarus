@@ -17,8 +17,8 @@ namespace ast {
 namespace {
 using base::check::Is;
 
-const type::Type *DereferenceAll(const type::Type *t) {
-  while (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
+const type::Type *DereferenceAll(type::Type const *t) {
+  while (auto *p = t->if_as<type::Pointer>()) { t = p->pointee; }
   return t;
 }
 }  // namespace
@@ -28,11 +28,16 @@ void Access::assign_scope(Scope *scope) {
   operand->assign_scope(scope);
 }
 
-type::Type const *Access::VerifyType(Context *ctx) {
-  ASSIGN_OR(return nullptr, auto &operand_type, operand->VerifyType(ctx));
+VerifyResult Access::VerifyType(Context *ctx) {
+  ASSIGN_OR(return VerifyResult::Error(), auto operand_result,
+                   operand->VerifyType(ctx));
 
-  auto base_type = DereferenceAll(&operand_type);
+  auto base_type = DereferenceAll(operand_result.type_);
   if (base_type == type::Type_) {
+    if (!operand_result.const_) {
+      ctx->error_log_.NonConstTypeMemberAccess(span);
+      return VerifyResult::Error();
+    }
     // TODO We may not be allowed to evaluate this:
     //    f ::= (T: type) => T.key
     // We need to know that T is const
@@ -46,24 +51,24 @@ type::Type const *Access::VerifyType(Context *ctx) {
       if (!e->Get(member_name).has_value()) {
         ctx->error_log_.MissingMember(span, member_name, evaled_type);
       }
-      return ctx->set_type(this, evaled_type);
+      return VerifyResult::Constant(ctx->set_type(this, evaled_type));
     } else if (auto *f = evaled_type->if_as<type::Flags>()) {
       if (!f->Get(member_name).has_value()) {
         ctx->error_log_.MissingMember(span, member_name, evaled_type);
       }
-      return ctx->set_type(this, evaled_type);
+      return VerifyResult::Constant(ctx->set_type(this, evaled_type));
     } else {
       // TODO what about structs? Can structs have constant members we're
       // allowed to access?
       ctx->error_log_.TypeHasNoMembers(span);
-      return nullptr;
+      return VerifyResult::Error();
     }
 
   } else if (auto *s = base_type->if_as<type::Struct>()) {
     auto const *member = s->field(member_name);
     if (member == nullptr) {
       ctx->error_log_.MissingMember(span, member_name, s);
-      return nullptr;
+      return VerifyResult::Error();
     }
 
     if (ctx->mod_ != s->defining_module() &&
@@ -80,13 +85,14 @@ type::Type const *Access::VerifyType(Context *ctx) {
                   ->GetType(member_name);
     if (t == nullptr) {
       ctx->error_log_.NoExportedSymbol(span);
-      return nullptr;
+      return VerifyResult::Error();
     }
 
-    return ctx->set_type(this, t);
+    // TODO is this right?
+    return VerifyResult::Constant(ctx->set_type(this, t));
   } else {
     ctx->error_log_.MissingMember(span, member_name, base_type);
-    return nullptr;
+    return VerifyResult::Error();
   }
 }
 

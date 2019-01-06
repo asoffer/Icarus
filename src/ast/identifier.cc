@@ -15,7 +15,7 @@
 namespace ast {
 void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
 
-type::Type const *Identifier::VerifyType(Context *ctx) {
+VerifyResult Identifier::VerifyType(Context *ctx) {
   for (auto iter = ctx->cyc_deps_.begin(); iter != ctx->cyc_deps_.end();
        ++iter) {
     if (*iter == this) {
@@ -46,11 +46,11 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
         }
 
         ctx->error_log_.UndeclaredIdentifier(this);
-        return nullptr;
+        return VerifyResult::Error();
       default:
         // TODO Should we allow the overload?
         ctx->error_log_.UnspecifiedOverload(span);
-        return nullptr;
+        return VerifyResult::Error();
     }
   }
 
@@ -66,9 +66,9 @@ type::Type const *Identifier::VerifyType(Context *ctx) {
   // the context.
   if (t == nullptr) { t = ctx->type_of(decl); }
 
-  if (t == nullptr) { return nullptr; }
+  if (t == nullptr) { return VerifyResult::Error(); }
   ctx->set_type(this, t);
-  return t;
+  return VerifyResult(t, decl->const_);
 }
 
 void Identifier::Validate(Context *ctx) {}

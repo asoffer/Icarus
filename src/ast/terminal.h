@@ -17,7 +17,7 @@ struct Terminal : public Expression {
   void assign_scope(Scope *scope) override;
   std::string to_string(size_t) const override { return value.to_string(); }
 
-  type::Type const *VerifyType(Context *ctx) override;
+  VerifyResult VerifyType(Context *ctx) override;
 
   void Validate(Context *) override {}
   void ExtractJumps(JumpExprs *) const override {}

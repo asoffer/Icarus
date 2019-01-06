@@ -83,14 +83,14 @@ void EnumLiteral::assign_scope(Scope *scope) {
   for (auto &elem : elems_) { elem->assign_scope(enum_scope_.get()); }
 }
 
-type::Type const *EnumLiteral::VerifyType(Context *ctx) {
+VerifyResult EnumLiteral::VerifyType(Context *ctx) {
   return ctx->set_type(this, type::Type_);
 }
 
 void EnumLiteral::Validate(Context *ctx) {
   for (auto &elem : elems_) {
     if (auto *decl = elem->if_as<Declaration>()) {
-      auto *t = decl->init_val->VerifyType(ctx);
+      auto *t = decl->init_val->VerifyType(ctx).type_;
       ASSERT(t == type::Int32);
       // TODO determine what is allowed here and how to generate errors.
       elem->as<Declaration>().init_val->Validate(ctx);

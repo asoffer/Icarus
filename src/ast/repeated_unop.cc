@@ -43,12 +43,13 @@ void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
   }
 }
 
-type::Type const *RepeatedUnop::VerifyType(Context *ctx) {
-  ASSIGN_OR(return nullptr, auto &t, args_.VerifyType(ctx));
+VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
+  ASSIGN_OR(return VerifyResult::Error(), auto result, args_.VerifyType(ctx));
 
   std::vector<type::Type const *> arg_types =
-      t.is<type::Tuple>() ? t.as<type::Tuple>().entries_
-                          : base::vector<type::Type const *>{&t};
+      result.type_->is<type::Tuple>()
+          ? result.type_->as<type::Tuple>().entries_
+          : base::vector<type::Type const *>{result.type_};
 
   if (op_ == Language::Operator::Print) {
     ASSERT(dispatch_tables_.size() == args_.exprs_.size());

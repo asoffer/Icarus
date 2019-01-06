@@ -204,7 +204,7 @@ bool Declaration::IsCustomInitialized() const {
   return init_val && !init_val->is<Hole>();
 }
 
-type::Type const *Declaration::VerifyType(Context *ctx) {
+VerifyResult Declaration::VerifyType(Context *ctx) {
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   base::defer d([&] { ctx->mod_ = old_mod; });
 
@@ -220,9 +220,10 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
   {
     switch (dk) {
       case 0 /* Default initailization */: {
-        ASSIGN_OR(return nullptr, auto &type_expr_type,
+        ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
                          type_expr->VerifyType(ctx));
-        if (&type_expr_type == type::Type_) {
+        auto *type_expr_type = type_expr_result.type_;
+        if (type_expr_type == type::Type_) {
           this_type = ctx->set_type(
               this, ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
                         type_expr.get(), ctx)));
@@ -231,75 +232,78 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
             ctx->error_log_.TypeMustBeInitialized(span, this_type);
           }
 
-        } else if (&type_expr_type == type::Interface) {
+        } else if (type_expr_type == type::Interface) {
           NOT_YET();
         } else {
           ctx->error_log_.NotAType(type_expr.get());
-          return nullptr;
+          return VerifyResult::Error();
         }
       } break;
       case INFER: UNREACHABLE(); break;
       case INFER | CUSTOM_INIT: {
-        ASSIGN_OR(return nullptr, auto &init_val_type,
+        ASSIGN_OR(return VerifyResult::Error(), auto init_val_result,
                          init_val->VerifyType(ctx));
-        if (!Inferrable(&init_val_type)) {
+        auto *init_val_type = init_val_result.type_;
+        if (!Inferrable(init_val_type)) {
           ctx->error_log_.UninferrableType(init_val->span);
-          return nullptr;
+          return VerifyResult::Error();
         }
-        this_type = ctx->set_type(this, &init_val_type);
+        this_type = ctx->set_type(this, init_val_type);
 
       } break;
       case INFER | UNINITIALIZED: {
         ctx->error_log_.InferringHole(span);
         if (const_) { ctx->error_log_.UninitializedConstant(span); }
-        return nullptr;
+        return VerifyResult::Error();
       } break;
       case CUSTOM_INIT: {  // Use this_type == nullptr to indicate an error.
-        auto *init_val_type = init_val->VerifyType(ctx);
+        auto *init_val_type = init_val->VerifyType(ctx).type_;
         if (init_val_type && !Inferrable(init_val_type)) {
           ctx->error_log_.UninferrableType(init_val->span);
         }
 
-        ASSIGN_OR(return nullptr, auto &type_expr_type,
+        ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
                          type_expr->VerifyType(ctx));
+        auto *type_expr_type = type_expr_result.type_;
 
-        if (&type_expr_type == type::Type_) {
+        if (type_expr_type == type::Type_) {
           this_type = ctx->set_type(
               this,
               backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
 
-          if (init_val_type == nullptr) { return nullptr; }
+          if (init_val_type == nullptr) { return VerifyResult::Error(); }
             // TODO initialization, not assignment. Error messages will be
             // wrong.
-          if (!VerifyAssignment(span, this_type, init_val_type, ctx)) {
-            return nullptr;
+          if (!type::VerifyAssignment(span, this_type, init_val_type, ctx)) {
+            return VerifyResult::Error();
           }
-        } else if (&type_expr_type == type::Interface) {
+        } else if (type_expr_type == type::Interface) {
           this_type = ctx->set_type(this, type::Generic);
         } else {
           ctx->error_log_.NotAType(type_expr.get());
-          return nullptr;
+          return VerifyResult::Error();
         }
 
-        if (init_val_type == nullptr) { return nullptr; }
+        if (init_val_type == nullptr) { return VerifyResult::Error(); }
       } break;
       case UNINITIALIZED: {
-        ASSIGN_OR(return nullptr, auto &type_expr_type,
+        ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
                          type_expr->VerifyType(ctx));
-        if (&type_expr_type == type::Type_) {
+        auto *type_expr_type = type_expr_result.type_;
+        if (type_expr_type == type::Type_) {
           this_type = ctx->set_type(
               this,
               backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
-        } else if (&type_expr_type == type::Interface) {
+        } else if (type_expr_type == type::Interface) {
           this_type = ctx->set_type(this, type::Generic);
         } else {
           ctx->error_log_.NotAType(type_expr.get());
-          return nullptr;
+          return VerifyResult::Error();
         }
 
         if (const_) {
           ctx->error_log_.UninitializedConstant(span);
-          return nullptr;
+          return VerifyResult::Error();
         }
 
       } break;
@@ -312,7 +316,7 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
         // TODO what if no init val is provded? what if not constant?
         scope_->embedded_modules_.insert(
             backend::EvaluateAs<Module const *>(init_val.get(), ctx));
-        return type::Module;
+        return VerifyResult::Constant(type::Module);
       } else if (this_type->is<type::Tuple>()) {
         NOT_YET(this_type);
       } else {
@@ -362,9 +366,9 @@ type::Type const *Declaration::VerifyType(Context *ctx) {
     // a different branch could find it unambiguously. It's also just a hack
     // from the get-go so maybe we should just do it the right way.
     scope_->shadowed_decls_.insert(id_);
-    return nullptr;
+    return VerifyResult::Error();
   }
-  return this_type;
+  return VerifyResult(this_type, const_);
 }
 
 void Declaration::Validate(Context *ctx) {

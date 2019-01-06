@@ -23,7 +23,7 @@ std::string Interface::to_string(size_t n) const {
   return ss.str();
 }
 
-type::Type const *Interface::VerifyType(Context *ctx) {
+VerifyResult Interface::VerifyType(Context *ctx) {
   for (auto &decl : decls_) {
     decl.VerifyType(ctx);
     if (decl.init_val != nullptr) { NOT_YET(); }

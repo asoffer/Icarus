@@ -31,7 +31,7 @@ struct Token : public ast::Node {
   std::string to_string(size_t) const override { return "[" + token + "]\n"; }
 
   void assign_scope(Scope *) override { UNREACHABLE(token); }
-  type::Type const *VerifyType(Context *) override { UNREACHABLE(token); }
+  ast::VerifyResult VerifyType(Context *) override { UNREACHABLE(token); }
   void Validate(Context *) override { UNREACHABLE(token); }
   void ExtractJumps(ast::JumpExprs *) const override { UNREACHABLE(token); }
 

@@ -87,15 +87,20 @@ void Binop::assign_scope(Scope *scope) {
   rhs->assign_scope(scope);
 }
 
-type::Type const *Binop::VerifyType(Context *ctx) {
-  auto *lhs_type = lhs->VerifyType(ctx);
-  auto *rhs_type = rhs->VerifyType(ctx);
-  if (lhs_type == nullptr || rhs_type == nullptr) { return nullptr; }
+VerifyResult Binop::VerifyType(Context *ctx) {
+  auto lhs_result = lhs->VerifyType(ctx);
+  auto rhs_result = rhs->VerifyType(ctx);
+  if (!lhs_result.ok() || !rhs_result.ok()) { return VerifyResult::Error(); }
+
+  auto lhs_type = lhs_result.type_;
+  auto rhs_type = rhs_result.type_;
 
   using Language::Operator;
   // TODO if lhs is reserved?
   if (op == Operator::Assign) {
-    if (!VerifyAssignment(span, lhs_type, rhs_type, ctx)) { return nullptr; }
+    if (!type::VerifyAssignment(span, lhs_type, rhs_type, ctx)) {
+      return VerifyResult::Error();
+    }
     return type::Void();
   }
 
@@ -120,7 +125,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         return t;
       } else {
         ctx->error_log_.InvalidIndexing(span, lhs_type);
-        return nullptr;
+        return VerifyResult::Error();
       }
     } break;
     case Operator::As: {
@@ -128,7 +133,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
       ctx->set_type(this, t);
       if (t->is<type::Struct>()) {
         FnArgs<Expression *> args;
-        args.pos_           = base::vector<Expression *>{{lhs.get()}};
+        args.pos_ = base::vector<Expression *>{{lhs.get()}};
         OverloadSet os(scope_, "as", ctx);
         os.add_adl("as", t);
         os.add_adl("as", lhs_type);
@@ -138,7 +143,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("as", lhs_type, rhs_type, span);
-          return nullptr;
+          return VerifyResult::Error();
         } else {
           return ctx->set_type(this, t);
         }
@@ -156,7 +161,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         return ctx->set_type(this, lhs_type);
       } else {
         ctx->error_log_.XorEqNeedsBoolOrFlags(span);
-        return nullptr;
+        return VerifyResult::Error();
       }
     case Operator::AndEq:
       if (lhs_type == rhs_type &&
@@ -164,7 +169,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         return ctx->set_type(this, lhs_type);
       } else {
         ctx->error_log_.AndEqNeedsBoolOrFlags(span);
-        return nullptr;
+        return VerifyResult::Error();
       }
     case Operator::OrEq:
       if (lhs_type == rhs_type &&
@@ -172,7 +177,7 @@ type::Type const *Binop::VerifyType(Context *ctx) {
         return ctx->set_type(this, lhs_type);
       } else {
         ctx->error_log_.OrEqNeedsBoolOrFlags(span);
-        return nullptr;
+        return VerifyResult::Error();
       }
 
 #define CASE(OpName, symbol, ret_type)                                          \

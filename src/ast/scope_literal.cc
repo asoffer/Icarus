@@ -40,13 +40,13 @@ type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {
   return &input_types.at(0)->as<type::Pointer>();
 }
 
-type::Type const *ScopeLiteral::VerifyType(Context *ctx) {
+VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
   if (stateful_) {
     std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
         state_types;
     for (auto &decl : decls_) {
       // TODO handle errors.
-      auto *t = decl.VerifyType(ctx);
+      auto *t = decl.VerifyType(ctx).type_;
       if (decl.id_ == "done") {
         auto *state_type = StatePtrTypeOrLogError(t);
         if (state_type == nullptr) { continue; }

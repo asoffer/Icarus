@@ -80,10 +80,10 @@ void Call::assign_scope(Scope *scope) {
   args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
 }
 
-type::Type const *Call::VerifyType(Context *ctx) {
+VerifyResult Call::VerifyType(Context *ctx) {
   FnArgs<type::Type const *> arg_types;
   for (auto const &expr : args_.pos_) {
-    type::Type const *expr_type = expr->VerifyType(ctx);
+    type::Type const *expr_type = expr->VerifyType(ctx).type_;
     if (!expr->parenthesized_ && expr->is<Unop>() &&
         expr->as<Unop>().op == Language::Operator::Expand &&
         expr_type->is<type::Tuple>()) {
@@ -97,7 +97,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
   }
 
   for (auto const& [name, expr] : args_.named_) {
-    arg_types.named_.emplace(name, expr->VerifyType(ctx));
+    arg_types.named_.emplace(name, expr->VerifyType(ctx).type_);
   }
 
   // TODO handle cyclic dependencies in call arguments.
@@ -165,7 +165,7 @@ type::Type const *Call::VerifyType(Context *ctx) {
       arg_types.Apply([&](type::Type const *t) { os.add_adl(token, t); });
       return os;
     } else {
-      auto t = fn_->VerifyType(ctx);
+      auto t = fn_->VerifyType(ctx).type_;
       OverloadSet os;
       os.emplace_back(fn_.get(), t);
       // TODO ADL for this?

@@ -57,7 +57,7 @@ void FunctionLiteral::assign_scope(Scope *scope) {
   statements->assign_scope(fn_scope.get());
 }
 
-type::Type const *FunctionLiteral::VerifyType(Context *ctx) {
+VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
   if (std::any_of(inputs.begin(), inputs.end(),
                   [](auto const &decl) { return decl->const_; })) {
     return ctx->set_type(this, type::Generic);
@@ -65,17 +65,17 @@ type::Type const *FunctionLiteral::VerifyType(Context *ctx) {
   return VerifyTypeConcrete(ctx);
 }
 
-type::Type const *FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
+VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   base::vector<const type::Type *> input_type_vec;
   input_type_vec.reserve(inputs.size());
   for (auto &input : inputs) {
-    input_type_vec.push_back(input->VerifyType(ctx));
+    input_type_vec.push_back(input->VerifyType(ctx).type_);
   }
 
   base::vector<const type::Type *> output_type_vec;
   output_type_vec.reserve(outputs.size());
   for (auto &output : outputs) {
-    output_type_vec.push_back(output->VerifyType(ctx));
+    output_type_vec.push_back(output->VerifyType(ctx).type_);
   }
 
   if (std::any_of(input_type_vec.begin(), input_type_vec.end(),

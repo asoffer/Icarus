@@ -19,7 +19,7 @@ void StructType::assign_scope(Scope *scope) {
   for (auto &arg : args_) { arg->assign_scope(scope); }
 }
 
-type::Type const *StructType::VerifyType(Context *ctx) {
+VerifyResult StructType::VerifyType(Context *ctx) {
   for (auto &arg : args_) { arg->VerifyType(ctx); }
   return ctx->set_type(this, type::Type_);
 }

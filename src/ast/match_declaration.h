@@ -11,7 +11,7 @@ struct MatchDeclaration : public Declaration {
   ~MatchDeclaration() override {}
 
   std::string to_string(size_t n) const override;
-  type::Type const *VerifyType(Context *) override;
+  VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
 
   base::vector<ir::Val> EmitIR(Context *) override;

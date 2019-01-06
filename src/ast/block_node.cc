@@ -18,7 +18,7 @@ void BlockNode::assign_scope(Scope *scope) {
   stmts_.assign_scope(block_scope_.get());
 }
 
-type::Type const *BlockNode::VerifyType(Context *) {
+VerifyResult BlockNode::VerifyType(Context *) {
   // TODO
   return type::Block;
 }

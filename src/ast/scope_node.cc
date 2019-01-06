@@ -35,7 +35,7 @@ void ScopeNode::assign_scope(Scope *scope) {
   for (auto &block : blocks_) { block->assign_scope(scope); }
 }
 
-type::Type const *ScopeNode::VerifyType(Context *ctx) {
+VerifyResult ScopeNode::VerifyType(Context *ctx) {
   if (!name_->VerifyType(ctx)) { return nullptr; }
   // TODO check the scope type makes sense.
 

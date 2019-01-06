@@ -50,10 +50,10 @@ void StructLiteral::assign_scope(Scope *scope) {
   for (auto &f : fields_) { f->assign_scope(type_scope.get()); }
 }
 
-type::Type const *StructLiteral::VerifyType(Context *ctx) {
+VerifyResult StructLiteral::VerifyType(Context *ctx) {
   base::vector<type::Type const *> ts;
   ts.reserve(args_.size());
-  for (auto &a : args_) { ts.push_back(a->VerifyType(ctx)); }
+  for (auto &a : args_) { ts.push_back(a->VerifyType(ctx).type_); }
   if (std::any_of(ts.begin(), ts.end(),
                   [](type::Type const *t) { return t == nullptr; })) {
     return nullptr;

@@ -30,7 +30,7 @@ std::optional<std::vector<type::Type const *>> CommaList::VerifyWithoutSetting(
   base::vector<const type::Type *> expr_types;
   expr_types.reserve(exprs_.size());
   for (auto &expr : exprs_) {
-    auto *t = expr->VerifyType(ctx);
+    auto *t = expr->VerifyType(ctx).type_;
     if (expr->needs_expansion()) {
       auto &entries = t->as<type::Tuple>().entries_;
       expr_types.insert(expr_types.end(), entries.begin(), entries.end());
@@ -45,8 +45,9 @@ std::optional<std::vector<type::Type const *>> CommaList::VerifyWithoutSetting(
   return expr_types;
 }
 
-type::Type const *CommaList::VerifyType(Context *ctx) {
-  ASSIGN_OR(return nullptr, auto expr_types, VerifyWithoutSetting(ctx));
+VerifyResult CommaList::VerifyType(Context *ctx) {
+  ASSIGN_OR(return VerifyResult::Error(), auto expr_types,
+                   VerifyWithoutSetting(ctx));
   return ctx->set_type(this, type::Tup(std::move(expr_types)));
 }
 

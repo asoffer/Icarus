@@ -30,7 +30,7 @@ base::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
     if (iter != scope_ptr->decls_.end()) {
       for (auto *decl : iter->second) {
         auto *t = ctx->type_of(decl);
-        if (t == nullptr) { t = decl->VerifyType(ctx); }
+        if (t == nullptr) { t = decl->VerifyType(ctx).type_; }
         matching_decls.emplace_back(decl, t);
       }
     }

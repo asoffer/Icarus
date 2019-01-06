@@ -24,7 +24,7 @@ struct Expression : public Node {
   virtual ~Expression(){};
   virtual std::string to_string(size_t n) const          = 0;
   virtual void assign_scope(Scope *scope)                = 0;
-  virtual type::Type const *VerifyType(Context *ctx)     = 0;
+  virtual VerifyResult VerifyType(Context *ctx)     = 0;
   virtual void Validate(Context *ctx)                    = 0;
   virtual base::vector<ir::Val> EmitIR(Context *)        = 0;
   virtual base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;

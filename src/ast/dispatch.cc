@@ -397,7 +397,7 @@ DispatchTableRow::MakeFromFnLit(
   }
 
   // TODO named arguments too.
-  auto *fn_type = &ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx))
+  auto *fn_type = &ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx).type_)
                        ->as<type::Callable>();
   fn_lit->Validate(&new_ctx);
   binding.fn_.set_type(fn_type);

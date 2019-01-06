@@ -9,7 +9,7 @@ Terminal::Terminal(const TextSpan &span, ir::Val val) : Expression(span) {
 
 void Terminal::assign_scope(Scope *scope) { scope_ = scope; }
 
-type::Type const *Terminal::VerifyType(Context *ctx) {
+VerifyResult Terminal::VerifyType(Context *ctx) {
   return ctx->set_type(this, value.type);
 }
 

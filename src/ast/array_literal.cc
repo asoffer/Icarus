@@ -22,13 +22,13 @@ std::string ArrayLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
+VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
   if (cl_.exprs_.empty()) {
-    ctx->set_type(this, type::EmptyArray);
-    return type::EmptyArray;
+    return VerifyResult::Constant(ctx->set_type(this, type::EmptyArray));
   }
 
-  ASSIGN_OR(return nullptr, auto expr_types, cl_.VerifyWithoutSetting(ctx));
+  ASSIGN_OR(return VerifyResult::Error(), auto expr_types,
+                   cl_.VerifyWithoutSetting(ctx));
   if (std::all_of(
           expr_types.begin(), expr_types.end(),
           [&](type::Type const *t) { return t == expr_types.front(); })) {
@@ -36,7 +36,7 @@ type::Type const *ArrayLiteral::VerifyType(Context *ctx) {
                          type::Arr(expr_types.front(), cl_.exprs_.size()));
   } else {
     ctx->error_log_.InconsistentArrayType(span);
-    return nullptr;
+    return VerifyResult::Error();
   }
 }
 
