@@ -30,7 +30,7 @@ void BlockLiteral::assign_scope(Scope *scope) {
 }
 
 VerifyResult BlockLiteral::VerifyType(Context *ctx) {
-  return required_ ? type::Block : type::OptBlock;
+  return VerifyResult::Constant(required_ ? type::Block : type::OptBlock);
 }
 
 void BlockLiteral::Validate(Context *ctx) {

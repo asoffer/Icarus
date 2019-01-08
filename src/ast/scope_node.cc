@@ -9,6 +9,7 @@
 #include "ast/identifier.h"
 #include "ast/scope_literal.h"
 #include "backend/eval.h"
+#include "base/util.h"
 #include "context.h"
 #include "ir/components.h"
 #include "ir/func.h"
@@ -36,7 +37,8 @@ void ScopeNode::assign_scope(Scope *scope) {
 }
 
 VerifyResult ScopeNode::VerifyType(Context *ctx) {
-  if (!name_->VerifyType(ctx)) { return nullptr; }
+  ASSIGN_OR(return VerifyResult::Error(), [[maybe_unused]] auto result,
+                   name_->VerifyType(ctx));
   // TODO check the scope type makes sense.
 
   auto arg_types =
@@ -49,7 +51,8 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
 
   // TODO compute what type this should return
   // TODO can this evaluate to anything?
-  return ctx->set_type(this, type::Void());
+  // TODO constant is wrong.
+  return VerifyResult::Constant(ctx->set_type(this, type::Void()));
 }
 
 void ScopeNode::Validate(Context *ctx) {

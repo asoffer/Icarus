@@ -21,7 +21,7 @@ void Statements::assign_scope(Scope *scope) {
 
 VerifyResult Statements::VerifyType(Context *ctx) {
   for (auto &stmt : content_) { stmt->VerifyType(ctx); }
-  return nullptr;
+  return VerifyResult::NonConstant(type::Void());
 }
 
 void Statements::Validate(Context *ctx) {

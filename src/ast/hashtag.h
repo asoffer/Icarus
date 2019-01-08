@@ -18,4 +18,4 @@ struct Hashtag {
 };
 }  // namespace ast
 
-#endif // ICARUS_AST_HASHTAG_H
+#endif  // ICARUS_AST_HASHTAG_H

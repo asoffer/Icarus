@@ -19,8 +19,8 @@ void BlockNode::assign_scope(Scope *scope) {
 }
 
 VerifyResult BlockNode::VerifyType(Context *) {
-  // TODO
-  return type::Block;
+  // TODO Is this always constant?
+  return VerifyResult::Constant(type::Block);
 }
 void BlockNode::Validate(Context *) { NOT_YET(); }
 

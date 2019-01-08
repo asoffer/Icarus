@@ -21,7 +21,7 @@ void StructType::assign_scope(Scope *scope) {
 
 VerifyResult StructType::VerifyType(Context *ctx) {
   for (auto &arg : args_) { arg->VerifyType(ctx); }
-  return ctx->set_type(this, type::Type_);
+  return VerifyResult::Constant(ctx->set_type(this, type::Type_));
 }
 
 void StructType::Validate(Context *ctx) {

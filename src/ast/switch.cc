@@ -34,22 +34,25 @@ void Switch::assign_scope(Scope *scope) {
 
 VerifyResult Switch::VerifyType(Context *ctx) {
   std::unordered_set<const type::Type *> types;
+  bool is_const = true;
   for (auto & [ expr, cond ] : cases_) {
-    auto *cond_type = cond->VerifyType(ctx).type_;
-    auto *expr_type = expr->VerifyType(ctx).type_;
-    if (cond_type != type::Bool) { NOT_YET("handle type error"); }
+    auto cond_result = cond->VerifyType(ctx);
+    auto expr_result = expr->VerifyType(ctx);
+    is_const &= cond_result.const_ && expr_result.const_;
+    if (cond_result.type_ != type::Bool) { NOT_YET("handle type error"); }
     // TODO if there's an error, an unorderded_set is not helpful for giving
     // good error messages.
-    types.insert(expr_type);
+    types.insert(expr_result.type_);
   }
   if (types.empty()) { NOT_YET("handle type error"); }
   auto some_type = *types.begin();
   if (std::all_of(types.begin(), types.end(),
                   [&](type::Type const *t) { return t == some_type; })) {
-    return ctx->set_type(this, some_type);
+    // TODO this might be a constant.
+    return VerifyResult(ctx->set_type(this, some_type), is_const);
   } else {
     NOT_YET("handle type error");
-    return nullptr;
+    return VerifyResult::Error();
   }
 }
 

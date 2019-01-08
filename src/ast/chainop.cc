@@ -143,32 +143,38 @@ void ChainOp::assign_scope(Scope *scope) {
 }
 
 VerifyResult ChainOp::VerifyType(Context *ctx) {
-  std::vector<type::Type const *> expr_types;
-  expr_types.reserve(exprs.size());
-  for (auto &expr : exprs) { expr_types.push_back(expr->VerifyType(ctx).type_); }
-  if (std::any_of(expr_types.begin(), expr_types.end(),
-                  [](type::Type const *t) { return t == nullptr; })) {
+  std::vector<VerifyResult> results;
+  results.reserve(exprs.size());
+  for (auto &expr : exprs) { results.push_back(expr->VerifyType(ctx)); }
+  if (std::any_of(results.begin(), results.end(),
+                  [](VerifyResult const &v) { return !v.ok(); })) {
     return VerifyResult::Error();
   }
 
   if (ops[0] == Language::Operator::Or) {
     bool found_err = false;
-    for (size_t i = 0; i < exprs.size() - 1; ++i) {
-      if (expr_types[i] == type::Block) {
+    for (size_t i = 0; i < results.size() - 1; ++i) {
+      if (results[i].type_ == type::Block) {
+        if (!results[i].const_) { NOT_YET("log an error: non const block"); }
+
         ctx->error_log_.EarlyRequiredBlock(exprs[i]->span);
         found_err = true;
-      } else if (expr_types[i] == type::OptBlock) {
+      } else if (results[i].type_ == type::OptBlock) {
+        if (!results[i].const_) { NOT_YET("log an error: non const block"); }
+
         continue;
       } else {
         goto not_blocks;
       }
     }
-    if (found_err) { return nullptr; }
-    type::Type const *last = expr_types.back();
-    if (last != type::Block && last != type::OptBlock) {
+    if (found_err) { return VerifyResult::Error(); }
+    auto &last = results.back();
+    if (last.type_ != type::Block && last.type_ != type::OptBlock) {
       goto not_blocks;
+    } else if (!results.back().const_) {
+      NOT_YET("log an error: non const block");
     } else {
-      return ctx->set_type(this, last);
+      return VerifyResult::Constant(ctx->set_type(this, last.type_));
     }
   }
 not_blocks:
@@ -182,11 +188,12 @@ not_blocks:
     case Language::Operator::And:
     case Language::Operator::Xor: {
       bool failed                       = false;
-      type::Type const *first_expr_type = expr_types[0];
+      bool is_const                     = true;
+      type::Type const *first_expr_type = results[0].type_;
 
-      for (auto *expr_type : expr_types) {
+      for (auto &result : results) {
         // TODO this collection of error messages could be greatly improved.
-        if (expr_type != first_expr_type) {
+        if (result.type_ != first_expr_type) {
           auto op_str = [this] {
             switch (ops[0]) {
               case Language::Operator::Or: return "|";
@@ -195,20 +202,23 @@ not_blocks:
               default: UNREACHABLE();
             }
           }();
-          ctx->error_log_.NoMatchingOperator(op_str, first_expr_type, expr_type,
-                                             span);
+          ctx->error_log_.NoMatchingOperator(op_str, first_expr_type,
+                                             result.type_, span);
+          is_const &= result.const_;
           failed = true;
         }
       }
 
-      if (failed) { return nullptr; }
-      return ctx->set_type(this, first_expr_type);
+      if (failed) { return VerifyResult::Error(); }
+      return VerifyResult(ctx->set_type(this, first_expr_type), is_const);
     } break;
     default: {
+      bool is_const = results[0].const_;
       ASSERT(exprs.size() >= 2u);
       for (size_t i = 0; i < exprs.size() - 1; ++i) {
-        const type::Type *lhs_type = expr_types[i];
-        const type::Type *rhs_type = expr_types[i + 1];
+        VerifyResult const &lhs_result = results[i];
+        VerifyResult const &rhs_result = results[i + 1];
+        is_const &= rhs_result.const_;
 
         // TODO struct is wrong. generally user-defined (could be array of
         // struct too, or perhaps a variant containing a struct?) need to
@@ -224,26 +234,27 @@ not_blocks:
           default: UNREACHABLE();
         }
 
-        if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
+        if (lhs_result.type_->is<type::Struct>() || lhs_result.type_->is<type::Struct>()) {
           FnArgs<Expression *> args;
           args.pos_ =
               base::vector<Expression *>{{exprs[i].get(), exprs[i + 1].get()}};
           // TODO overwriting type a bunch of times?
           type::Type const *t = nullptr;
           OverloadSet os(scope_, token, ctx);
-          os.add_adl(token, lhs_type);
-          os.add_adl(token, rhs_type);
+          os.add_adl(token, lhs_result.type_);
+          os.add_adl(token, rhs_result.type_);
           std::tie(dispatch_tables_.at(i), t) =
               DispatchTable::Make(args, os, ctx);
-          ASSERT(t, Not(Is<type::Tuple>()));
-          if (t == nullptr) { return nullptr; }
+          ASSERT(t, Not(Is<type::Tuple>())); // TODO handle this case.
+          if (t == nullptr) { return VerifyResult::Error(); }
         } else {
-          if (lhs_type != rhs_type) {
+          if (lhs_result.type_!= rhs_result.type_) {
             // TODO better error.
-            ctx->error_log_.NoMatchingOperator(token, lhs_type, rhs_type, span);
+            ctx->error_log_.NoMatchingOperator(token, lhs_result.type_,
+                                               rhs_result.type_, span);
 
           } else {
-            auto cmp = lhs_type->Comparator();
+            auto cmp = lhs_result.type_->Comparator();
 
             switch (ops[i]) {
               case Language::Operator::Eq:
@@ -253,9 +264,9 @@ not_blocks:
                   case type::Cmp::Equality: continue;
                   case type::Cmp::None:
                     ctx->error_log_.ComparingIncomparables(
-                        lhs_type, rhs_type,
+                        lhs_result.type_, rhs_result.type_,
                         TextSpan(exprs[i]->span, exprs[i + 1]->span));
-                    return nullptr;
+                    return VerifyResult::Error();
                 }
               } break;
               case Language::Operator::Lt:
@@ -267,9 +278,9 @@ not_blocks:
                   case type::Cmp::Equality:
                   case type::Cmp::None:
                     ctx->error_log_.ComparingIncomparables(
-                        lhs_type, rhs_type,
+                        lhs_result.type_, rhs_result.type_,
                         TextSpan(exprs[i]->span, exprs[i + 1]->span));
-                    return nullptr;
+                    return VerifyResult::Error();
                 }
               } break;
               default: UNREACHABLE("Expecting a ChainOp operator type.");
@@ -278,7 +289,7 @@ not_blocks:
         }
       }
 
-      return ctx->set_type(this, type::Bool);
+      return VerifyResult(ctx->set_type(this, type::Bool), is_const);
     }
   }
 }

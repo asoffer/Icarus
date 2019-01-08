@@ -56,14 +56,15 @@ VerifyResult StructLiteral::VerifyType(Context *ctx) {
   for (auto &a : args_) { ts.push_back(a->VerifyType(ctx).type_); }
   if (std::any_of(ts.begin(), ts.end(),
                   [](type::Type const *t) { return t == nullptr; })) {
-    return nullptr;
+    return VerifyResult::Error();
   }
 
   if (args_.empty()) {
     Validate(ctx);
-    return ctx->set_type(this, type::Type_);
+    return VerifyResult::Constant(ctx->set_type(this, type::Type_));
   } else {
-    return ctx->set_type(this, type::GenStruct(scope_, std::move(ts)));
+    return VerifyResult::Constant(
+        ctx->set_type(this, type::GenStruct(scope_, std::move(ts))));
   }
 }
 

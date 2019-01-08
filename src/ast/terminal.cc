@@ -10,7 +10,7 @@ Terminal::Terminal(const TextSpan &span, ir::Val val) : Expression(span) {
 void Terminal::assign_scope(Scope *scope) { scope_ = scope; }
 
 VerifyResult Terminal::VerifyType(Context *ctx) {
-  return ctx->set_type(this, value.type);
+  return VerifyResult::Constant(ctx->set_type(this, value.type));
 }
 
 base::vector<ir::Val> Terminal::EmitIR(Context *) { return {value}; }

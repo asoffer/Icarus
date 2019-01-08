@@ -16,7 +16,7 @@ struct Hole : public Expression {
   void assign_scope(Scope *scope) { scope_ = scope; }
   std::string to_string(size_t n) const override { return "--"; }
   void ExtractJumps(JumpExprs *) const {}
-  VerifyResult VerifyType(Context *) { return nullptr; }
+  VerifyResult VerifyType(Context *) { return VerifyResult::Error(); }
   void Validate(Context *ctx) {}
 
   base::vector<ir::Val> EmitIR(Context *) override { return {ir::Val::None()}; }

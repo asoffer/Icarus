@@ -55,33 +55,49 @@ VerifyResult Unop::VerifyType(Context *ctx) {
   auto *operand_type = result.type_;
 
   switch (op) {
-    case Language::Operator::BufPtr: return ctx->set_type(this, type::Type_);
-    case Language::Operator::TypeOf: return ctx->set_type(this, type::Type_);
-    case Language::Operator::Eval: return ctx->set_type(this, operand_type);
+    case Language::Operator::BufPtr:
+      return VerifyResult(ctx->set_type(this, type::Type_), result.const_);
+    case Language::Operator::TypeOf:
+      return VerifyResult(ctx->set_type(this, type::Type_), result.const_);
+    case Language::Operator::Eval:
+      if (!result.const_) {
+        // TODO here you could return a correct type and just have there
+        // be an error regarding constness. When you do this probably worth a
+        // full pass over all verification code.
+        NOT_YET("log an error -- not constant but called $");
+      } else {
+        return VerifyResult(ctx->set_type(this, operand_type), result.const_);
+      }
     case Language::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
         ctx->error_log_.WhichNonVariant(operand_type, span);
       }
-      return ctx->set_type(this, type::Type_);
+      return VerifyResult(ctx->set_type(this, type::Type_), result.const_);
     case Language::Operator::At:
       if (operand_type->is<type::Pointer>()) {
-        return ctx->set_type(this, operand_type->as<type::Pointer>().pointee);
+        return VerifyResult(
+            ctx->set_type(this, operand_type->as<type::Pointer>().pointee),
+            result.const_);
       } else {
         ctx->error_log_.DereferencingNonPointer(operand_type, span);
-        return nullptr;
+        return VerifyResult::Error();
       }
     case Language::Operator::And:
-      return ctx->set_type(this, type::Ptr(operand_type));
+      // TODO  does it make sense to take the address of a constant? I think it
+      // has to but it also has to have some special meaning. Things we take the
+      // address of in run-time code need to be made available at run-time.
+      return VerifyResult(ctx->set_type(this, type::Ptr(operand_type)),
+                          result.const_);
     case Language::Operator::Mul:
       if (operand_type != type::Type_) {
         NOT_YET("log an error, ", operand_type, this);
-        return nullptr;
+        return VerifyResult::Error();
       } else {
-        return ctx->set_type(this, type::Type_);
+        return VerifyResult(ctx->set_type(this, type::Type_), result.const_);
       }
     case Language::Operator::Sub:
       if (type::IsNumeric(operand_type)) {
-        return ctx->set_type(this, operand_type);
+        return VerifyResult(ctx->set_type(this, operand_type), result.const_);
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
@@ -89,10 +105,10 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         OverloadSet os(scope_, "-", ctx);
         os.add_adl("-", operand_type);
         std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
-        return t;
+        return VerifyResult(t, result.const_);
       }
       NOT_YET();
-      return nullptr;
+      return VerifyResult::Error();
     case Language::Operator::Expand:
       // NOTE: It doesn't really make sense to ask for the type of an expanded
       // argument, but since we consider the type of the result of a function
@@ -100,14 +116,14 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       //
       if (operand_type->is<type::Tuple>()) {
         // TODO there should be a way to avoid copying over any of entire type
-        return ctx->set_type(this, operand_type);
+        return VerifyResult(ctx->set_type(this, operand_type), result.const_);
       } else {
         NOT_YET();  // Log an error. can't expand a non-tuple.
       }
     case Language::Operator::Not:
       if (operand_type == type::Bool || operand_type->is<type::Enum>() ||
           operand_type->is<type::Flags>()) {
-        return ctx->set_type(this, operand_type);
+        return VerifyResult(ctx->set_type(this, operand_type), result.const_);
       }
       if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
@@ -117,21 +133,23 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         os.add_adl("!", operand_type);
         std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
-        return t;
+        return VerifyResult(t, result.const_);
       } else {
         NOT_YET("log an error");
-        return nullptr;
+        return VerifyResult::Error();
       }
     case Language::Operator::Needs:
       if (operand_type != type::Bool) {
         ctx->error_log_.PreconditionNeedsBool(operand.get());
       }
-      return ctx->set_type(this, type::Void());
+      if (!result.const_) { NOT_YET(); }
+      return VerifyResult::Constant(ctx->set_type(this, type::Void()));
     case Language::Operator::Ensure:
       if (operand_type != type::Bool) {
         ctx->error_log_.PostconditionNeedsBool(operand.get());
       }
-      return ctx->set_type(this, type::Void());
+      if (!result.const_) { NOT_YET(); }
+      return VerifyResult::Constant(ctx->set_type(this, type::Void()));
     default: UNREACHABLE(*this);
   }
 }

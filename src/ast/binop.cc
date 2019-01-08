@@ -92,89 +92,104 @@ VerifyResult Binop::VerifyType(Context *ctx) {
   auto rhs_result = rhs->VerifyType(ctx);
   if (!lhs_result.ok() || !rhs_result.ok()) { return VerifyResult::Error(); }
 
-  auto lhs_type = lhs_result.type_;
-  auto rhs_type = rhs_result.type_;
-
   using Language::Operator;
   // TODO if lhs is reserved?
   if (op == Operator::Assign) {
-    if (!type::VerifyAssignment(span, lhs_type, rhs_type, ctx)) {
+    if (!type::VerifyAssignment(span, lhs_result.type_, rhs_result.type_, ctx)) {
       return VerifyResult::Error();
     }
-    return type::Void();
+    return VerifyResult::NonConstant(type::Void());
   }
 
   switch (op) {
     case Operator::Index: {
-      if (lhs_type == type::ByteView) {
-        if (rhs_type != type::Int32) { // TODO other sizes
-          ctx->error_log_.InvalidByteViewIndex(span, rhs_type);
+      if (lhs_result.type_ == type::ByteView) {
+        if (rhs_result.type_ != type::Int32) {  // TODO other sizes
+          ctx->error_log_.InvalidByteViewIndex(span, rhs_result.type_);
         }
-        return ctx->set_type(this, type::Nat8); // TODO is nat8 what I want?
-      } else if (auto *lhs_array_type = lhs_type->if_as<type::Array>()) {
+        return VerifyResult(ctx->set_type(this, type::Nat8),
+                            rhs_result.const_);  // TODO is nat8 what I want?
+      } else if (auto *lhs_array_type =
+                     lhs_result.type_->if_as<type::Array>()) {
         auto *t = ctx->set_type(this, lhs_array_type->data_type);
-        if (rhs_type != type::Int32) {  // TODO other sizes
-          ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
+        if (rhs_result.type_ != type::Int32) {  // TODO other sizes
+          ctx->error_log_.NonIntegralArrayIndex(span, rhs_result.type_);
         }
-        return t;
-      } else if (auto *lhs_buf_type = lhs_type->if_as<type::BufferPointer>()) {
+        return VerifyResult(t, rhs_result.const_);
+      } else if (auto *lhs_buf_type =
+                     lhs_result.type_->if_as<type::BufferPointer>()) {
         auto *t = ctx->set_type(this, lhs_buf_type->pointee);
-        if (rhs_type != type::Int32) {  // TODO other sizes
-          ctx->error_log_.NonIntegralArrayIndex(span, rhs_type);
+        if (rhs_result.type_ != type::Int32) {  // TODO other sizes
+          ctx->error_log_.NonIntegralArrayIndex(span, rhs_result.type_);
         }
-        return t;
+        return VerifyResult(t, rhs_result.const_);
       } else {
-        ctx->error_log_.InvalidIndexing(span, lhs_type);
+        ctx->error_log_.InvalidIndexing(span, lhs_result.type_);
         return VerifyResult::Error();
       }
     } break;
     case Operator::As: {
-      auto *t = backend::EvaluateAs<type::Type const *>(rhs.get(), ctx);
-      ctx->set_type(this, t);
+      if (rhs_result.type_ != type::Type_) {
+        ctx->error_log_.CastToNonType(span);
+        return VerifyResult::Error();
+      }
+      if (!rhs_result.const_) {
+        ctx->error_log_.CastToNonConstantType(span);
+        return VerifyResult::Error();
+      }
+      auto *t = ctx->set_type(
+          this, backend::EvaluateAs<type::Type const *>(rhs.get(), ctx));
       if (t->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get()}};
         OverloadSet os(scope_, "as", ctx);
         os.add_adl("as", t);
-        os.add_adl("as", lhs_type);
+        os.add_adl("as", lhs_result.type_);
         os.keep_return(t);
 
         std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
-        ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
-          ctx->error_log_.NoMatchingOperator("as", lhs_type, rhs_type, span);
+          ctx->error_log_.NoMatchingOperator("as", lhs_result.type_,
+                                             rhs_result.type_, span);
           return VerifyResult::Error();
         } else {
-          return ctx->set_type(this, t);
+          if (t->is<type::Tuple>()) { NOT_YET(); }
+          return VerifyResult(ctx->set_type(this, t), lhs_result.const_);
         }
       } else {
-        if (!type::CanCast(lhs_type, t)) {
+        if (!type::CanCast(lhs_result.type_, t)) {
           LOG << this;
-          NOT_YET("log an error", lhs_type, t);
+          NOT_YET("log an error", lhs_result.type_, t);
         }
-        return t;
+        return VerifyResult::NonConstant(t);
       }
     }
     case Operator::XorEq:
-      if (lhs_type == rhs_type &&
-          (lhs_type == type::Bool || lhs_type->is<type::Flags>())) {
-        return ctx->set_type(this, lhs_type);
+      if (lhs_result.type_ == rhs_result.type_ &&
+          (lhs_result.type_ == type::Bool ||
+           lhs_result.type_->is<type::Flags>())) {
+        ctx->set_type(this, lhs_result.type_);
+        return lhs_result;
       } else {
         ctx->error_log_.XorEqNeedsBoolOrFlags(span);
         return VerifyResult::Error();
       }
     case Operator::AndEq:
-      if (lhs_type == rhs_type &&
-          (lhs_type == type::Bool || lhs_type->is<type::Flags>())) {
-        return ctx->set_type(this, lhs_type);
+      if (lhs_result.type_ == rhs_result.type_ &&
+          (lhs_result.type_ == type::Bool ||
+           lhs_result.type_->is<type::Flags>())) {
+        ctx->set_type(this, lhs_result.type_);
+        return lhs_result;
       } else {
         ctx->error_log_.AndEqNeedsBoolOrFlags(span);
         return VerifyResult::Error();
       }
     case Operator::OrEq:
-      if (lhs_type == rhs_type &&
-          (lhs_type == type::Bool || lhs_type->is<type::Flags>())) {
-        return ctx->set_type(this, lhs_type);
+      if (lhs_result.type_ == rhs_result.type_ &&
+          (lhs_result.type_ == type::Bool ||
+           lhs_result.type_->is<type::Flags>())) {
+        ctx->set_type(this, lhs_result.type_);
+        return lhs_result;
       } else {
         ctx->error_log_.OrEqNeedsBoolOrFlags(span);
         return VerifyResult::Error();
@@ -182,134 +197,110 @@ VerifyResult Binop::VerifyType(Context *ctx) {
 
 #define CASE(OpName, symbol, ret_type)                                          \
   case Operator::OpName: {                                                      \
-    if (type::IsNumeric(lhs_type) && type::IsNumeric(rhs_type)) {               \
-      if (lhs_type == rhs_type) {                                               \
-        auto *t = (ret_type);                                                   \
-        return ctx->set_type(this, t);                                          \
+    bool is_const = lhs_result.const_ && rhs_result.const_;                     \
+    if (type::IsNumeric(lhs_result.type_) &&                                    \
+        type::IsNumeric(rhs_result.type_)) {                                    \
+      if (lhs_result.type_ == rhs_result.type_) {                               \
+        return VerifyResult(ctx->set_type(this, (ret_type)), is_const);         \
       } else {                                                                  \
-        ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
-        return nullptr;                                                         \
+        ctx->error_log_.NoMatchingOperator(symbol, lhs_result.type_,            \
+                                           rhs_result.type_, span);             \
+        return VerifyResult::Error();                                           \
       }                                                                         \
     } else {                                                                    \
       FnArgs<Expression *> args;                                                \
       args.pos_           = base::vector<Expression *>{{lhs.get(), rhs.get()}}; \
       type::Type const *t = nullptr;                                            \
       OverloadSet os(scope_, symbol, ctx);                                      \
-      os.add_adl(symbol, lhs_type);                                             \
-      os.add_adl(symbol, rhs_type);                                             \
+      os.add_adl(symbol, lhs_result.type_);                                     \
+      os.add_adl(symbol, rhs_result.type_);                                     \
       std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);        \
       if (t == nullptr) {                                                       \
-        ctx->error_log_.NoMatchingOperator(symbol, lhs_type, rhs_type, span);   \
-        return nullptr;                                                         \
+        ctx->error_log_.NoMatchingOperator(symbol, lhs_result.type_,            \
+                                           rhs_result.type_, span);             \
+        return VerifyResult::Error();                                           \
       } else {                                                                  \
-        ASSERT(t, Not(Is<type::Tuple>()));                                      \
-        return ctx->set_type(this, t);                                          \
+        if (t->is<type::Tuple>()) { NOT_YET(); }                                \
+        return VerifyResult(ctx->set_type(this, t), lhs_result.const_);         \
       }                                                                         \
     }                                                                           \
   } break;
-
-      CASE(Sub, "-", lhs_type);
-      CASE(Div, "/", lhs_type);
-      CASE(Mod, "%", lhs_type);
+      CASE(Sub, "-", lhs_result.type_);
+      CASE(Mul, "-", lhs_result.type_);
+      CASE(Div, "/", lhs_result.type_);
+      CASE(Mod, "%", lhs_result.type_);
       CASE(SubEq, "-=", type::Void());
       CASE(MulEq, "*=", type::Void());
       CASE(DivEq, "/=", type::Void());
       CASE(ModEq, "%=", type::Void());
 #undef CASE
     case Operator::Add: {
-      if (type::IsNumeric(lhs_type) && type::IsNumeric(rhs_type)) {
-        if (lhs_type == rhs_type) {
-          return ctx->set_type(this, lhs_type);
+      bool is_const = lhs_result.const_ && rhs_result.const_;
+      if (type::IsNumeric(lhs_result.type_) &&
+          type::IsNumeric(rhs_result.type_)) {
+        if (lhs_result.type_ == rhs_result.type_) {
+          return VerifyResult(ctx->set_type(this, lhs_result.type_), is_const);
         } else {
-          ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
-          return nullptr;
+          ctx->error_log_.NoMatchingOperator("+", lhs_result.type_,
+                                             rhs_result.type_, span);
+          return VerifyResult::Error();
         }
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
         OverloadSet os(scope_, "+", ctx);
-        os.add_adl("+", lhs_type);
-        os.add_adl("+", rhs_type);
+        os.add_adl("+", lhs_result.type_);
+        os.add_adl("+", rhs_result.type_);
         std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
-          ctx->error_log_.NoMatchingOperator("+", lhs_type, rhs_type, span);
-          return nullptr;
+          ctx->error_log_.NoMatchingOperator("+", lhs_result.type_,
+                                             rhs_result.type_, span);
+          return VerifyResult::Error();
         } else {
-          return ctx->set_type(this, t);
+          return VerifyResult(ctx->set_type(this, t), is_const);
         }
       }
     } break;
-    case Operator::AddEq: {
-      if (type::IsNumeric(lhs_type) && type::IsNumeric(rhs_type)) {
-        if (lhs_type == rhs_type) {
-          return ctx->set_type(this, type::Void());
+   case Operator::AddEq: {
+       bool is_const = lhs_result.const_ && rhs_result.const_;
+      if (type::IsNumeric(lhs_result.type_) &&
+          type::IsNumeric(rhs_result.type_)) {
+        if (lhs_result.type_ == rhs_result.type_) {
+          return VerifyResult(ctx->set_type(this, type::Void()), is_const);
         } else {
-          ctx->error_log_.NoMatchingOperator("+=", lhs_type, rhs_type, span);
-          return nullptr;
+          ctx->error_log_.NoMatchingOperator("+=", lhs_result.type_,
+                                             rhs_result.type_, span);
+          return VerifyResult::Error();
         }
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
         type::Type const *t = nullptr;
         OverloadSet os(scope_, "+=", ctx);
-        os.add_adl("+=", lhs_type);
-        os.add_adl("+=", rhs_type);
+        os.add_adl("+=", lhs_result.type_);
+        os.add_adl("+=", rhs_result.type_);
         std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
-        ASSERT(t, Not(Is<type::Tuple>()));
+        if (t->is<type::Tuple>()) { NOT_YET(); }
       }
     } break;
-    // Mul is done separately because of the function composition
-    case Operator::Mul:
-      if (type::IsNumeric(lhs_type) && type::IsNumeric(rhs_type)) {
-        if (lhs_type == rhs_type) {
-          return ctx->set_type(this, lhs_type);
-        } else {
-          ctx->error_log_.NoMatchingOperator("*", lhs_type, rhs_type, span);
-          return nullptr;
-        }
-      } else if (lhs_type->is<type::Function>() &&
-                 rhs_type->is<type::Function>()) {
-        auto *lhs_fn = &lhs_type->as<type::Function>();
-        auto *rhs_fn = &rhs_type->as<type::Function>();
-        if (rhs_fn->output == lhs_fn->input) {
-          return ctx->set_type(this,
-                               type::Func({rhs_fn->input}, {lhs_fn->output}));
-        } else {
-          ctx->error_log_.NonComposableFunctions(span);
-          return nullptr;
-        }
-      } else {
-        FnArgs<Expression *> args;
-        args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
-        type::Type const *t = nullptr;
-        OverloadSet os(scope_, "*", ctx);
-        os.add_adl("*", lhs_type);
-        os.add_adl("*", rhs_type);
-        std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
-        ASSERT(t, Not(Is<type::Tuple>()));
-        if (t == nullptr) {
-          ctx->error_log_.NoMatchingOperator("*", lhs_type, rhs_type, span);
-          return nullptr;
-        } else {
-          return ctx->set_type(this, t);
-        }
-      }
     case Operator::Arrow: {
       type::Type const *t = type::Type_;
-      if (!IsTypeOrTupleOfTypes(lhs_type)) {
+      if (!IsTypeOrTupleOfTypes(lhs_result.type_)) {
         t = nullptr;
         ctx->error_log_.NonTypeFunctionInput(span);
       }
 
-      if (!IsTypeOrTupleOfTypes(rhs_type)) {
+      if (!IsTypeOrTupleOfTypes(rhs_result.type_)) {
         t = nullptr;
         ctx->error_log_.NonTypeFunctionOutput(span);
       }
 
-      if (t != nullptr) { ctx->set_type(this, type::Type_); }
-      return t;
+      if (t == nullptr) { return VerifyResult::Error(); }
+
+      return VerifyResult(ctx->set_type(this, type::Type_),
+                          lhs_result.const_ && rhs_result.const_);
     }
     default: UNREACHABLE();
   }

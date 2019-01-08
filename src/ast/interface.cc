@@ -28,7 +28,7 @@ VerifyResult Interface::VerifyType(Context *ctx) {
     decl.VerifyType(ctx);
     if (decl.init_val != nullptr) { NOT_YET(); }
   }
-  return ctx->set_type(this, type::Interface);
+  return VerifyResult::Constant(ctx->set_type(this, type::Interface));
 }
 
 void Interface::Validate(Context *ctx) {

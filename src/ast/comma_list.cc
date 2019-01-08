@@ -25,30 +25,37 @@ void CommaList::assign_scope(Scope *scope) {
   for (auto &expr : exprs_) { expr->assign_scope(scope); }
 }
 
-std::optional<std::vector<type::Type const *>> CommaList::VerifyWithoutSetting(
+std::optional<std::vector<VerifyResult>> CommaList::VerifyWithoutSetting(
     Context *ctx) {
-  base::vector<const type::Type *> expr_types;
-  expr_types.reserve(exprs_.size());
+  base::vector<VerifyResult> results;
+  results.reserve(exprs_.size());
   for (auto &expr : exprs_) {
-    auto *t = expr->VerifyType(ctx).type_;
+    auto r = expr->VerifyType(ctx);
     if (expr->needs_expansion()) {
-      auto &entries = t->as<type::Tuple>().entries_;
-      expr_types.insert(expr_types.end(), entries.begin(), entries.end());
+      auto &entries = r.type_->as<type::Tuple>().entries_;
+      for (auto *t : entries) { results.emplace_back(t, r.const_); }
     } else {
-      expr_types.push_back(t);
+      results.push_back(r);
     }
   }
-  if (std::any_of(expr_types.begin(), expr_types.end(),
-                  [](type::Type const *t) { return t == nullptr; })) {
+  if (std::any_of(results.begin(), results.end(),
+                  [](VerifyResult const &r) { return !r.ok(); })) {
     return std::nullopt;
   }
-  return expr_types;
+  return results;
 }
 
 VerifyResult CommaList::VerifyType(Context *ctx) {
-  ASSIGN_OR(return VerifyResult::Error(), auto expr_types,
+  ASSIGN_OR(return VerifyResult::Error(), auto results,
                    VerifyWithoutSetting(ctx));
-  return ctx->set_type(this, type::Tup(std::move(expr_types)));
+  base::vector<type::Type const *> ts;
+  ts.reserve(results.size());
+  bool is_const = true;
+  for (auto const &r : results) {
+    ts.push_back(r.type_);
+    is_const &= r.const_;
+  }
+  return VerifyResult(ctx->set_type(this, type::Tup(std::move(ts))), is_const);
 }
 
 void CommaList::Validate(Context *ctx) {

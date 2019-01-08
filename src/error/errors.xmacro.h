@@ -96,3 +96,6 @@ MAKE_LOG_ERROR(NoExportedSymbol,
 MAKE_LOG_ERROR(TypeHasNoMembers, "Cannot access a member of a type.")
 MAKE_LOG_ERROR(NonConstTypeMemberAccess,
                "Cannot access a member of a non-constant type.")
+MAKE_LOG_ERROR(CastToNonConstantType,
+               "Cannot cast to a type which is not declared constant.")
+MAKE_LOG_ERROR(CastToNonType, "Cannot cast to a non-type.")

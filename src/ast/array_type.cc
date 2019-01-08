@@ -19,16 +19,16 @@ void ArrayType::assign_scope(Scope *scope) {
 }
 
 VerifyResult ArrayType::VerifyType(Context *ctx) {
-  bool failed       = false;
-  auto length_type = length_->VerifyType(ctx);
-  if (length_type.type_ != type::Int64) { ctx->error_log_.ArrayIndexType(span); }
+  auto length_result = length_->VerifyType(ctx);
+  if (length_result.type_ != type::Int64) { ctx->error_log_.ArrayIndexType(span); }
 
-  auto data_type_type = data_type_->VerifyType(ctx);
-  if (data_type_type.type_ != type::Type_) {
+  auto data_type_result = data_type_->VerifyType(ctx);
+  if (data_type_result.type_ != type::Type_) {
     ctx->error_log_.ArrayDataTypeNotAType(data_type_->span);
   }
 
-  return ctx->set_type(this, type::Type_);
+  return VerifyResult(ctx->set_type(this, type::Type_),
+                      data_type_result.const_ && length_result.const_);
 }
 
 void ArrayType::Validate(Context *ctx) {

@@ -84,7 +84,7 @@ void EnumLiteral::assign_scope(Scope *scope) {
 }
 
 VerifyResult EnumLiteral::VerifyType(Context *ctx) {
-  return ctx->set_type(this, type::Type_);
+  return VerifyResult::Constant(ctx->set_type(this, type::Type_));
 }
 
 void EnumLiteral::Validate(Context *ctx) {

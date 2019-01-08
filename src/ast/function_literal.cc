@@ -60,7 +60,7 @@ void FunctionLiteral::assign_scope(Scope *scope) {
 VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
   if (std::any_of(inputs.begin(), inputs.end(),
                   [](auto const &decl) { return decl->const_; })) {
-    return ctx->set_type(this, type::Generic);
+    return VerifyResult::Constant(ctx->set_type(this, type::Generic));
   }
   return VerifyTypeConcrete(ctx);
 }
@@ -82,13 +82,13 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
                   [](type::Type const *t) { return t == nullptr; }) ||
       std::any_of(output_type_vec.begin(), output_type_vec.end(),
                   [](type::Type const *t) { return t == nullptr; })) {
-    return nullptr;
+    return VerifyResult::Error();
   }
 
   // TODO need a better way to say if there was an error recorded in a
   // particular section of compilation. Right now we just have the grad total
   // count.
-  if (ctx->num_errors() > 0) { return nullptr; }
+  if (ctx->num_errors() > 0) { return VerifyResult::Error(); }
 
   if (!return_type_inferred_) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
@@ -101,11 +101,12 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
       }
     }
 
-    return ctx->set_type(this, type::Func(std::move(input_type_vec),
-                                          std::move(output_type_vec)));
+    return VerifyResult::Constant(ctx->set_type(
+        this,
+        type::Func(std::move(input_type_vec), std::move(output_type_vec))));
   } else {
     Validate(ctx);
-    return ctx->type_of(this);
+    return VerifyResult::Constant(ctx->type_of(this));
   }
 }
 

@@ -21,7 +21,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
     if (*iter == this) {
       ctx->error_log_.CyclicDependency(
           std::vector<ast::Identifier const *>(iter, ctx->cyc_deps_.end()));
-      return nullptr;
+      return VerifyResult::Error();
     }
   }
   ctx->cyc_deps_.push_back(this);
@@ -42,7 +42,9 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
         // TODO what if you find a bound constant and some errror decls?
         for (auto const & [ d, v ] :
              ctx->mod_->constants_[ctx->bound_constants_].constants_) {
-          if (d->id_ == token) { return ctx->set_type(this, v.type); }
+          if (d->id_ == token) {
+            return VerifyResult(ctx->set_type(this, v.type), d->const_);
+          }
         }
 
         ctx->error_log_.UndeclaredIdentifier(this);

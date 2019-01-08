@@ -27,17 +27,18 @@ VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
     return VerifyResult::Constant(ctx->set_type(this, type::EmptyArray));
   }
 
-  ASSIGN_OR(return VerifyResult::Error(), auto expr_types,
+  ASSIGN_OR(return VerifyResult::Error(), auto expr_results,
                    cl_.VerifyWithoutSetting(ctx));
-  if (std::all_of(
-          expr_types.begin(), expr_types.end(),
-          [&](type::Type const *t) { return t == expr_types.front(); })) {
-    return ctx->set_type(this,
-                         type::Arr(expr_types.front(), cl_.exprs_.size()));
-  } else {
-    ctx->error_log_.InconsistentArrayType(span);
-    return VerifyResult::Error();
+  VerifyResult result;
+  result.type_ = expr_results.front().type_;
+  for (auto expr_result : expr_results) {
+    result.const_ &= expr_result.const_;
+    if (expr_result.type_ != result.type_) {
+      ctx->error_log_.InconsistentArrayType(span);
+      return VerifyResult::Error();
+    }
   }
+  return result;
 }
 
 base::vector<ir::Val> ast::ArrayLiteral::EmitIR(Context *ctx) {

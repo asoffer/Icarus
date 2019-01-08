@@ -80,7 +80,8 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
       }
     }
   }
-  return nullptr;
+
+  return VerifyResult(type::Void(), result.const_);
 }
 
 base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {

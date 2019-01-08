@@ -48,9 +48,8 @@ VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
       // TODO handle errors.
       auto *t = decl.VerifyType(ctx).type_;
       if (decl.id_ == "done") {
-        auto *state_type = StatePtrTypeOrLogError(t);
-        if (state_type == nullptr) { continue; }
-        state_types[state_type].push_back(&decl);
+        ASSIGN_OR(continue, auto &state_type, StatePtrTypeOrLogError(t));
+        state_types[&state_type].push_back(&decl);
       } else if (t == type::Block || t == type::OptBlock ||
                  t == type::RepBlock) {
         // TODO add these types to the state_types map.
@@ -69,7 +68,7 @@ VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
   } else {
     for (auto &decl : decls_) { decl.VerifyType(ctx); }
   }
-  return ctx->set_type(this, type::Scope);
+  return VerifyResult::Constant(ctx->set_type(this, type::Scope));
 }
 
 void ScopeLiteral::Validate(Context *ctx) {

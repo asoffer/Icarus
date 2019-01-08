@@ -78,7 +78,8 @@ VerifyResult Access::VerifyType(Context *ctx) {
                      })) {
       ctx->error_log_.NonExportedMember(span, member_name, s);
     }
-    return ctx->set_type(this, member->type);
+    return VerifyResult(ctx->set_type(this, member->type),
+                        operand_result.const_);
 
   } else if (base_type == type::Module) {
     auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)

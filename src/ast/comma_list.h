@@ -19,8 +19,7 @@ struct CommaList : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  std::optional<std::vector<type::Type const *>> VerifyWithoutSetting(
-      Context *ctx);
+  std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(Context *ctx);
 
   bool needs_expansion() const override { return !parenthesized_; }
 

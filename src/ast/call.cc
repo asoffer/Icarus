@@ -81,34 +81,34 @@ void Call::assign_scope(Scope *scope) {
 }
 
 VerifyResult Call::VerifyType(Context *ctx) {
-  FnArgs<type::Type const *> arg_types;
+  FnArgs<VerifyResult> arg_results;
   for (auto const &expr : args_.pos_) {
-    type::Type const *expr_type = expr->VerifyType(ctx).type_;
+    auto expr_result = expr->VerifyType(ctx);
     if (!expr->parenthesized_ && expr->is<Unop>() &&
         expr->as<Unop>().op == Language::Operator::Expand &&
-        expr_type->is<type::Tuple>()) {
-      auto &entries = expr_type->as<type::Tuple>().entries_;
-      arg_types.pos_.insert(arg_types.pos_.end(),
-                            std::make_move_iterator(entries.begin()),
-                            std::make_move_iterator(entries.end()));
+        expr_result.type_->is<type::Tuple>()) {
+      auto const &entries = expr_result.type_->as<type::Tuple>().entries_;
+      for (type::Type const *entry : entries) {
+        arg_results.pos_.emplace_back(entry, expr_result.const_);
+      }
     } else {
-      arg_types.pos_.push_back(expr_type);
+      arg_results.pos_.push_back(expr_result);
     }
   }
 
   for (auto const& [name, expr] : args_.named_) {
-    arg_types.named_.emplace(name, expr->VerifyType(ctx).type_);
+    arg_results.named_.emplace(name, expr->VerifyType(ctx));
   }
 
   // TODO handle cyclic dependencies in call arguments.
 
-  if (std::any_of(arg_types.pos_.begin(), arg_types.pos_.end(),
-                  [](type::Type const *t) { return t == nullptr; }) ||
-      std::any_of(arg_types.named_.begin(), arg_types.named_.end(),
-                  [](std::pair<std::string, type::Type const *> const &p) {
-                    return p.second == nullptr;
+  if (std::any_of(arg_results.pos_.begin(), arg_results.pos_.end(),
+                  [](VerifyResult const &v) { return !v.ok(); }) ||
+      std::any_of(arg_results.named_.begin(), arg_results.named_.end(),
+                  [](std::pair<std::string, VerifyResult> const &p) {
+                    return !p.second.ok();
                   })) {
-    return nullptr;
+    return VerifyResult::Error();
   }
 
   if (fn_->is<Terminal>()) {
@@ -120,11 +120,12 @@ VerifyResult Call::VerifyType(Context *ctx) {
       // named args here?
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.size() == 1u);
-      ASSERT(arg_types.pos_[0] == type::Type_);
-      return ctx->set_type(this, type::Int64);
+      ASSERT(arg_results.pos_[0].type_ == type::Type_);
+      return VerifyResult(ctx->set_type(this, type::Int64),
+                          arg_results.pos_[0].const_);
 #ifdef DBG
     } else if (fn_val == DebugIrFunc()) {
-      return type::Func({}, {});
+      return VerifyResult::Constant(type::Func({}, {}));
 #endif  // DBG
     } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
@@ -133,19 +134,22 @@ VerifyResult Call::VerifyType(Context *ctx) {
       ASSERT(args_.pos_.size() == 2u);
       // TODO should turn this into some sort of interface requiremnet of being
       // string-like
-      ASSERT(arg_types.pos_[0] == type::ByteView);
-      ASSERT(arg_types.pos_[1] == type::Type_);
-      return ctx->set_type(this, backend::EvaluateAs<type::Type const *>(
-                                     args_.pos_[1].get(), ctx));
+      ASSERT(arg_results.pos_[0].type_ == type::ByteView);
+      ASSERT(arg_results.pos_[1].type_ == type::Type_);
+      return VerifyResult(
+          ctx->set_type(this, backend::EvaluateAs<type::Type const *>(
+                                  args_.pos_[1].get(), ctx)),
+          arg_results.pos_[0].const_ && arg_results.pos_[1].const_);
     } else if (fn_val == ir::Val::BuiltinGeneric(OpaqueFuncIndex)) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
       ASSERT(args_.named_.size() == 0u);
       ASSERT(args_.pos_.empty());
-      return ctx->set_type(this, type::Type_);
+      return VerifyResult::Constant(ctx->set_type(this, type::Type_));
     } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {
       // TODO might be optional.
-      return type::Block;
+      // TODO what about set_type?
+      return VerifyResult::Constant(type::Block);
     } else {
       UNREACHABLE();
     }
@@ -162,7 +166,8 @@ VerifyResult Call::VerifyType(Context *ctx) {
     if (fn_->is<Identifier>()) {
       auto &token = fn_->as<Identifier>().token;
       OverloadSet os(scope_, token, ctx);
-      arg_types.Apply([&](type::Type const *t) { os.add_adl(token, t); });
+      arg_results.Apply(
+          [&](VerifyResult const &v) { os.add_adl(token, v.type_); });
       return os;
     } else {
       auto t = fn_->VerifyType(ctx).type_;
@@ -177,18 +182,19 @@ VerifyResult Call::VerifyType(Context *ctx) {
       DispatchTable::Make(args, overload_set, ctx);
 
   u64 expanded_size = 1;
-  arg_types.Apply([&expanded_size](type::Type const *arg_type) {
-    if (arg_type->is<type::Variant>()) {
-      expanded_size *= arg_type->as<type::Variant>().size();
+  arg_results.Apply([&expanded_size](VerifyResult const &r) {
+    if (auto *v = r.type_->if_as<type::Variant>()) {
+      expanded_size *= v->size();
     }
   });
 
   if (dispatch_table_.total_size_ != expanded_size) {
     ctx->error_log_.NoCallMatch(span, dispatch_table_.failure_reasons_);
-    return nullptr;
+    return VerifyResult::Error();
   }
 
-  return ctx->set_type(this, ret_type);
+  // TODO but this may be computable at compile-time.
+  return VerifyResult::NonConstant(ctx->set_type(this, ret_type));
 }
 
 void Call::Validate(Context *ctx) {
