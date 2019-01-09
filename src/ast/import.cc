@@ -27,14 +27,24 @@ base::vector<ir::RegisterOr<ir::Addr>> Import::EmitLVal(Context *ctx) { UNREACHA
 VerifyResult Import::VerifyType(Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), auto result,
                    operand_->VerifyType(ctx));
+  bool err = false;
   if (result.type_ != type::ByteView) {
+    // TODO allow (import) overload
     ctx->error_log_.InvalidImport(operand_->span);
-  } else {
-    module_ = Module::Schedule(
-        std::filesystem::path{
-            backend::EvaluateAs<std::string_view>(operand_.get(), ctx)},
-        *ctx->mod_->path_);
+    err = true;
   }
+
+  if (!result.const_) {
+    ctx->error_log_.NonConstantImport(operand_->span);
+    err = true;
+  }
+
+  if (err) { return VerifyResult::Error(); }
+  // TODO storing this might not be safe.
+  module_ = Module::Schedule(
+      std::filesystem::path{
+          backend::EvaluateAs<std::string_view>(operand_.get(), ctx)},
+      *ctx->mod_->path_);
   return VerifyResult::Constant(ctx->set_type(this, type::Module));
 }
 }  // namespace ast

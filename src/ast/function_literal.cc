@@ -74,11 +74,20 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
 
   base::vector<const type::Type *> output_type_vec;
   output_type_vec.reserve(outputs.size());
+  bool error = false;
   for (auto &output : outputs) {
-    output_type_vec.push_back(output->VerifyType(ctx).type_);
+    auto result = output->VerifyType(ctx);
+    output_type_vec.push_back(result.type_);
+    if (result.type_ != nullptr && !result.const_) {
+      // TODO this feels wrong because output could be a decl. And that decl
+      // being a const decl isn't what I care about.
+      NOT_YET("log an error");
+      error = true;
+    }
   }
 
-  if (std::any_of(input_type_vec.begin(), input_type_vec.end(),
+  if (error ||
+      std::any_of(input_type_vec.begin(), input_type_vec.end(),
                   [](type::Type const *t) { return t == nullptr; }) ||
       std::any_of(output_type_vec.begin(), output_type_vec.end(),
                   [](type::Type const *t) { return t == nullptr; })) {
@@ -88,7 +97,8 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   // TODO need a better way to say if there was an error recorded in a
   // particular section of compilation. Right now we just have the grad total
   // count.
-  if (ctx->num_errors() > 0) { return VerifyResult::Error(); }
+  if (ctx->num_errors() > 0) {
+    return VerifyResult::Error(); }
 
   if (!return_type_inferred_) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {

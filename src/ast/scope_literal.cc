@@ -44,17 +44,28 @@ VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
   if (stateful_) {
     std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
         state_types;
+    bool error = false;
     for (auto &decl : decls_) {
       // TODO handle errors.
-      auto *t = decl.VerifyType(ctx).type_;
+      auto result = decl.VerifyType(ctx);
       if (decl.id_ == "done") {
-        ASSIGN_OR(continue, auto &state_type, StatePtrTypeOrLogError(t));
+        ASSIGN_OR(continue, auto &state_type,
+                  StatePtrTypeOrLogError(result.type_));
         state_types[&state_type].push_back(&decl);
-      } else if (t == type::Block || t == type::OptBlock ||
-                 t == type::RepBlock) {
+      } else if (result.type_ == type::Block ||
+                 result.type_ == type::OptBlock ||
+                 result.type_ == type::RepBlock) {
         // TODO add these types to the state_types map.
       }
+
+      if (!result.const_) {
+        error = true;
+        NOT_YET("log an error");
+      }
     }
+
+    if (error) { return VerifyResult::Error(); }
+
     switch (state_types.size()) {
       case 0: {
         TextSpan block_title_span = span;
@@ -66,7 +77,15 @@ VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
       default: NOT_YET("Inconsistent"); break;
     }
   } else {
-    for (auto &decl : decls_) { decl.VerifyType(ctx); }
+    bool error = false;
+    for (auto &decl : decls_) {
+      auto result = decl.VerifyType(ctx);
+      if (!result.const_) {
+        error = true;
+        NOT_YET("log an error");
+      }
+    }
+    if (error) { return VerifyResult::Error(); }
   }
   return VerifyResult::Constant(ctx->set_type(this, type::Scope));
 }

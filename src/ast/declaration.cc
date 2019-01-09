@@ -163,6 +163,8 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
     }
   };
 
+  // TODO are val1 and val2 necessarily const? Do we actually need to evaluate
+  // them?
   auto val1 = backend::Evaluate(decl1->init_val.get(), ctx)[0];
   if (val1.type == nullptr) { return false; }
   auto metadata1 = std::visit(ExtractMetaData, val1.value);
@@ -222,6 +224,10 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
       case 0 /* Default initailization */: {
         ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
                          type_expr->VerifyType(ctx));
+        if (!type_expr_result.const_) {
+          NOT_YET("log an error");
+          return VerifyResult::Error();
+        }
         auto *type_expr_type = type_expr_result.type_;
         if (type_expr_type == type::Type_) {
           this_type = ctx->set_type(
@@ -256,41 +262,53 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
         if (const_) { ctx->error_log_.UninitializedConstant(span); }
         return VerifyResult::Error();
       } break;
-      case CUSTOM_INIT: {  // Use this_type == nullptr to indicate an error.
+      case CUSTOM_INIT: {
+        auto init_val_result = init_val->VerifyType(ctx);
+        bool error           = !init_val_result.ok();
+
         auto *init_val_type = init_val->VerifyType(ctx).type_;
         if (init_val_type && !Inferrable(init_val_type)) {
           ctx->error_log_.UninferrableType(init_val->span);
+          error = true;
         }
 
-        ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
-                         type_expr->VerifyType(ctx));
+        auto type_expr_result = type_expr->VerifyType(ctx);
         auto *type_expr_type = type_expr_result.type_;
 
         if (type_expr_type == type::Type_) {
-          this_type = ctx->set_type(
-              this,
-              backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
+          if (!type_expr_result.const_) {
+            NOT_YET("log an error");
+            error = true;
+          } else {
+            this_type = ctx->set_type(
+                this,
+                backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
+          }
 
-          if (init_val_type == nullptr) { return VerifyResult::Error(); }
-            // TODO initialization, not assignment. Error messages will be
-            // wrong.
-          if (!type::VerifyAssignment(span, this_type, init_val_type, ctx)) {
-            return VerifyResult::Error();
+          // TODO initialization, not assignment. Error messages will be
+          // wrong.
+          if (this_type != nullptr && init_val_type != nullptr) {
+            error |=
+                !type::VerifyAssignment(span, this_type, init_val_type, ctx);
           }
         } else if (type_expr_type == type::Interface) {
           this_type = ctx->set_type(this, type::Generic);
         } else {
           ctx->error_log_.NotAType(type_expr.get());
-          return VerifyResult::Error();
+          error = true;
         }
 
-        if (init_val_type == nullptr) { return VerifyResult::Error(); }
+        if (error) { return VerifyResult::Error(); }
       } break;
       case UNINITIALIZED: {
         ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
                          type_expr->VerifyType(ctx));
         auto *type_expr_type = type_expr_result.type_;
         if (type_expr_type == type::Type_) {
+          if (!type_expr_result.const_) {
+            NOT_YET("log an error");
+            return VerifyResult::Error();
+          }
           this_type = ctx->set_type(
               this,
               backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));

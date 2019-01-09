@@ -50,6 +50,10 @@ struct CallObstruction {
         TypeMismatchData{pos, std::move(bound), std::move(input)});
   }
 
+  static CallObstruction CascadingError() {
+    return CallObstruction(CascadingErrorData{});
+  }
+
   constexpr bool obstructed() const {
     return !std::holds_alternative<NoneData>(data_);
   }
@@ -80,14 +84,14 @@ struct CallObstruction {
             [](NonConstantDefaultsData) -> std::string {
               return "Overload candidate ignored because non-constants cannot "
                      "be called with default arguments";
-            }},
+            },
+            [](CascadingErrorData) -> std::string { UNREACHABLE(); }},
         data_);
   }
 
- private:
-  template <typename T>
-  CallObstruction(T &&data) : data_(std::forward<T>(data)) {}
-
+  template <typename T> bool is() const {
+    return std::holds_alternative<T>(data_);
+  }
 
   struct NoneData {};
   struct NoParameterNamedData {
@@ -103,9 +107,15 @@ struct CallObstruction {
   };
   struct NonConstantNamedArgumentsData {};
   struct NonConstantDefaultsData {};
+  struct CascadingErrorData {};
+
+ private:
+  template <typename T>
+  CallObstruction(T &&data) : data_(std::forward<T>(data)) {}
 
   std::variant<NoneData, NoParameterNamedData, TypeMismatchData, NoDefaultData,
-               NonConstantNamedArgumentsData, NonConstantDefaultsData>
+               NonConstantNamedArgumentsData, NonConstantDefaultsData,
+               CascadingErrorData>
       data_;
 };
 }  // namespace
@@ -214,7 +224,10 @@ CallObstruction DispatchTableRow::SetTypes(FunctionLiteral const &fn,
       }
       // TODO The order for evaluating these is wrong. Defaults may need to be
       // intermixed with non-defaults.
-      fn.inputs.at(i).get()->VerifyType(ctx);
+      auto result = fn.inputs.at(i).get()->VerifyType(ctx);
+      // TODO deal with the case where the initial value isn't a constant.
+      if (!result.const_) { NOT_YET("log an error."); }
+
       fn.inputs.at(i).get()->Validate(ctx);
       ctx->bound_constants_.constants_.emplace(
           fn.inputs.at(i).get(),
@@ -328,7 +341,14 @@ base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::Make(
     return MakeNonConstant(fn_option.as_type<type::Function>(), args, ctx);
   }
 
-  ir::Val fn_val = backend::Evaluate(fn_option, ctx).at(0);
+  // TODO the caller needs to ensure evaluation here is correct/safe and I
+  // haven't done that yet.
+  auto results   = backend::Evaluate(fn_option, ctx);
+  if (results.empty()) {  // Meaning there was an error in ctx earlier
+    return CallObstruction::CascadingError();
+  }
+
+  ir::Val fn_val = results.at(0);
 
   if (auto *f = std::get_if<ir::AnyFunc>(&fn_val.value)) {
     return f->is_fn() ? MakeFromIrFunc(fn_option, *f->func(), args, ctx)
@@ -373,6 +393,9 @@ DispatchTableRow::MakeFromFnLit(
     if (!fn_lit->inputs[i]->const_) { continue; }
     // TODO this is wrong because it needs to be removed outside the scope of
     // this function.
+    // TODO what if this isn't evaluable? i.e., what if args.pos_[i] isn't a
+    // constant. Is that a hard error or do we just ignore this case? Similarly
+    // below for named and default arguments.
     new_ctx.bound_constants_.constants_.emplace(
         fn_lit->inputs[i].get(), backend::Evaluate(args.pos_[i], ctx)[0]);
   }
@@ -509,6 +532,12 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
     // yet to be resolved.
     auto maybe_dispatch_table_row = DispatchTableRow::Make(overload, args, ctx);
     if (!maybe_dispatch_table_row.has_value()) {
+      if (maybe_dispatch_table_row.error()
+              .is<CallObstruction::CascadingErrorData>()) {
+        // TODO return from this function by some mechanism indicating that we
+        // gave up because there were errors resolving the call.
+        return {};
+      }
       table.failure_reasons_.emplace(
           overload.get(), maybe_dispatch_table_row.error().to_string());
       continue;

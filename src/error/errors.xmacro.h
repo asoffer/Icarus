@@ -94,8 +94,14 @@ MAKE_LOG_ERROR(ArrayDataTypeNotAType,
 MAKE_LOG_ERROR(NoExportedSymbol,
                "No exported symbol of given name in this module.")
 MAKE_LOG_ERROR(TypeHasNoMembers, "Cannot access a member of a type.")
-MAKE_LOG_ERROR(NonConstTypeMemberAccess,
+MAKE_LOG_ERROR(NonConstantTypeMemberAccess,
                "Cannot access a member of a non-constant type.")
+MAKE_LOG_ERROR(NonConstantModuleMemberAccess,
+               "Cannot access a member of a non-constant module.")
 MAKE_LOG_ERROR(CastToNonConstantType,
                "Cannot cast to a type which is not declared constant.")
 MAKE_LOG_ERROR(CastToNonType, "Cannot cast to a non-type.")
+MAKE_LOG_ERROR(NonConstantEvaluation,
+               "Cannot evaluate a non-constant at compile-time.")
+MAKE_LOG_ERROR(NonConstantImport, "Cannot import a non-constant module.")
+MAKE_LOG_ERROR(NonConstantScopeName, "Scope names must be constant.")

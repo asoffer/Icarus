@@ -35,7 +35,7 @@ VerifyResult Access::VerifyType(Context *ctx) {
   auto base_type = DereferenceAll(operand_result.type_);
   if (base_type == type::Type_) {
     if (!operand_result.const_) {
-      ctx->error_log_.NonConstTypeMemberAccess(span);
+      ctx->error_log_.NonConstantTypeMemberAccess(span);
       return VerifyResult::Error();
     }
     // TODO We may not be allowed to evaluate this:
@@ -82,6 +82,11 @@ VerifyResult Access::VerifyType(Context *ctx) {
                         operand_result.const_);
 
   } else if (base_type == type::Module) {
+    if (!operand_result.const_) {
+      ctx->error_log_.NonConstantModuleMemberAccess(span);
+      return VerifyResult::Error();
+    }
+
     auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
                   ->GetType(member_name);
     if (t == nullptr) {
@@ -115,6 +120,8 @@ base::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
 
 base::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {
   if (ctx->type_of(operand.get()) == type::Module) {
+    // TODO we already did this evaluation in type verification. Can't we just
+    // save and reuse it?
     return backend::EvaluateAs<Module const *>(operand.get(), ctx)
         ->GetDecl(member_name)
         ->EmitIR(ctx);

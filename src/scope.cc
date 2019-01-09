@@ -30,12 +30,15 @@ base::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
     if (iter != scope_ptr->decls_.end()) {
       for (auto *decl : iter->second) {
         auto *t = ctx->type_of(decl);
+        // TODO This will call VerifyType once if it's correct, but *every* time
+        // if it's incorrect. Fix this.
         if (t == nullptr) { t = decl->VerifyType(ctx).type_; }
         matching_decls.emplace_back(decl, t);
       }
     }
 
     for (auto const *mod : scope_ptr->embedded_modules_) {
+      // TODO use the right bound constants? or kill bound constants?
       if (auto *decl = mod->GetDecl(id)) {
         matching_decls.emplace_back(decl,
                                     mod->type_of(ast::BoundConstants{}, decl));

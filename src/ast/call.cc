@@ -135,7 +135,9 @@ VerifyResult Call::VerifyType(Context *ctx) {
       // TODO should turn this into some sort of interface requiremnet of being
       // string-like
       ASSERT(arg_results.pos_[0].type_ == type::ByteView);
+      ASSERT(arg_results.pos_[0].const_);
       ASSERT(arg_results.pos_[1].type_ == type::Type_);
+      ASSERT(arg_results.pos_[1].const_);
       return VerifyResult(
           ctx->set_type(this, backend::EvaluateAs<type::Type const *>(
                                   args_.pos_[1].get(), ctx)),
@@ -193,8 +195,11 @@ VerifyResult Call::VerifyType(Context *ctx) {
     return VerifyResult::Error();
   }
 
-  // TODO but this may be computable at compile-time.
-  return VerifyResult::NonConstant(ctx->set_type(this, ret_type));
+  // TODO returning const is overly optimistic. This should be const if and only
+  // if all arguments are const, all possible dispatched-to functions are const.
+  // Default arguments are already required to be const, so we don't need to
+  // check those.
+  return VerifyResult::Constant(ctx->set_type(this, ret_type));
 }
 
 void Call::Validate(Context *ctx) {
@@ -235,6 +240,7 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
       return {ir::Val::Reg(reg, out_type)};
 
     } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {
+      // Note: verified as constants in VerifyType.
       auto name =
           backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx);
       // TODO can I evaluate as type::Function const *?

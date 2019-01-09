@@ -37,15 +37,20 @@ void ScopeNode::assign_scope(Scope *scope) {
 }
 
 VerifyResult ScopeNode::VerifyType(Context *ctx) {
-  ASSIGN_OR(return VerifyResult::Error(), [[maybe_unused]] auto result,
-                   name_->VerifyType(ctx));
-  // TODO check the scope type makes sense.
+  ASSIGN_OR(return VerifyResult::Error(), auto name_result, name_->VerifyType(ctx));
 
   auto arg_types =
       args_.Transform([ctx, this](auto &arg) { return arg->VerifyType(ctx); });
   // TODO type check
 
   for (auto &block : blocks_) { block->VerifyType(ctx); }
+
+  // TODO check the scope type makes sense.
+  if (!name_result.const_) {
+    ctx->error_log_.NonConstantScopeName(name_->span);
+    return VerifyResult::Error();
+  }
+
 
   // TODO check that all the blocks make sense and emit errors
 
@@ -65,20 +70,6 @@ void ScopeNode::Validate(Context *ctx) {
 
 void ScopeNode::ExtractJumps(JumpExprs *rets) const {
   for (auto &block : blocks_) { block->ExtractJumps(rets); }
-}
-
-// TODO make static again
-/* static */ std::pair<const Module *, std::string> GetQualifiedIdentifier(
-    Expression *expr, Context *ctx) {
-  if (expr->is<Identifier>()) {
-    const auto &token = expr->as<Identifier>().token;
-    return std::pair{ctx->mod_, token};
-  } else if (expr->is<Access>()) {
-    auto *access = &expr->as<Access>();
-    auto *mod = backend::EvaluateAs<const Module *>(access->operand.get(), ctx);
-    return std::pair{mod, access->member_name};
-  }
-  UNREACHABLE(expr->to_string(0));
 }
 
 base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
@@ -122,6 +113,8 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     // TODO for now do lookup assuming it's an identifier.
     ASSERT(block->name_, Is<Identifier>());
     auto *decl = name_lookup.at(block->name_->as<Identifier>().token);
+    // Guarnteed to be constant because all declarations inside a scope literal
+    // are guaranteed to be constant.
     auto &bseq = *backend::EvaluateAs<ir::BlockSequence>(decl, ctx).seq_;
     ASSERT(bseq.size() == 1u);
 

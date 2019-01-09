@@ -64,7 +64,8 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         // TODO here you could return a correct type and just have there
         // be an error regarding constness. When you do this probably worth a
         // full pass over all verification code.
-        NOT_YET("log an error -- not constant but called $");
+        ctx->error_log_.NonConstantEvaluation(operand->span);
+        return VerifyResult::Error();
       } else {
         return VerifyResult(ctx->set_type(this, operand_type), result.const_);
       }
@@ -200,6 +201,7 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
       return {ir::ValFrom(operand->EmitLVal(ctx)[0],
                           type::Ptr(ctx->type_of(this)))};
     case Language::Operator::Eval: {
+      // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?
       return backend::Evaluate(operand.get(), ctx);
     }
