@@ -5,6 +5,11 @@
 #include "ir/val.h"
 #include "type/type.h"
 
+namespace ir {
+TypedRegister<type::Interface const *> CreateInterface(::Scope const *scope);
+ir::TypedRegister<type::Interface const *> FinalizeInterface(Register r);
+}
+
 namespace ast {
 void Interface::assign_scope(Scope *scope) {
   scope_      = scope;
@@ -28,7 +33,7 @@ VerifyResult Interface::VerifyType(Context *ctx) {
     decl.VerifyType(ctx);
     if (decl.init_val != nullptr) { NOT_YET(); }
   }
-  return VerifyResult::Constant(ctx->set_type(this, type::Interface));
+  return VerifyResult::Constant(ctx->set_type(this, type::Intf));
 }
 
 void Interface::Validate(Context *ctx) {
@@ -45,11 +50,7 @@ base::vector<ir::Val> ast::Interface::EmitIR(Context *ctx) {
   // HasFoo ::= (T: type) => interface {
   //   foo: T
   // }
-  ir::Interface ifc;
-  for (const auto &decl : decls_) {
-    ifc.field_map_.emplace(decl.id_, ctx->type_of(&decl));
-  }
-  return {ir::Val::Interface(std::move(ifc))};
+  return {ir::Val(ir::FinalizeInterface(ir::CreateInterface(scope_)))};
 }
 
 base::vector<ir::RegisterOr<ir::Addr>> ast::Interface::EmitLVal(Context *ctx) {

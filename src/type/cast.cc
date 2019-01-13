@@ -67,6 +67,15 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
   if (lhs == rhs) { return lhs; }
   if (lhs == nullptr || rhs == nullptr) { return nullptr; }
 
+  // TODO should this be a part of Meet or done externally first?
+  if (auto *intf = rhs->if_as<type::Interface>()) {
+    if (intf->matches(lhs)) {
+      return lhs;
+    } else {
+      return nullptr;
+    }
+  }
+
   if (lhs == NullPtr || rhs == NullPtr) {
     // TODO It's not obvious to me that this is what I want to do.
     return nullptr;

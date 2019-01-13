@@ -64,6 +64,7 @@ namespace type {
 struct Function;
 struct Struct;
 struct GenericStruct;
+struct Interface;
 
 // Note: the order of these is meaningful and relied upon!
 enum class Cmp : u8 { None, Equality, Order };
@@ -139,6 +140,8 @@ constexpr type::Type const *Get() {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return type::Type_;
+  } else if constexpr (std::is_same_v<T, type::Interface const *>) {
+    return type::Intf;
   } else if constexpr (std::is_same_v<T, ::Module const *>) {
     return type::Module;
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
@@ -193,6 +196,8 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Pointer>();
   } else if constexpr (std::is_same_v<T, ast::ScopeLiteral *>) {
     return t == ::type::Scope;
+  } else if constexpr (std::is_same_v<T, ::type::Interface const *>) {
+    return t == ::type::Intf;
   } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
     return t->is<::type::Struct>();
   } else if constexpr (std::is_same_v<T, ir::AnyFunc>) {
@@ -247,8 +252,8 @@ auto Apply(Type const *t, Fn &&fn, Args &&... args) {
                     type::Type const *, ir::EnumVal, ir::FlagsVal, ir::Addr,
                     std::string_view, ::Module const *, type::Struct const *,
                     ast::ScopeLiteral *, ir::AnyFunc, ir::BlockSequence,
-                    ast::FunctionLiteral *>(t, std::forward<Fn>(fn),
-                                            std::forward<Args>(args)...);
+                    type::Interface const *, ast::FunctionLiteral *>(
+      t, std::forward<Fn>(fn), std::forward<Args>(args)...);
 }
 
 inline bool IsNumeric(Type const *t) {

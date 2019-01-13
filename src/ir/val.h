@@ -11,7 +11,6 @@
 #include "ir/addr.h"
 #include "ir/any_func.h"
 #include "ir/flags_val.h"
-#include "ir/interface.h"
 #include "ir/register.h"
 #include "type/flags.h"
 #include "type/type.h"
@@ -38,11 +37,10 @@ std::string_view SaveStringGlobally(std::string const &str);
 
 struct Val {
   const type::Type *type = nullptr;
-  // TODO make trivial: interface
   std::variant<Register, ir::Addr, bool, float, double, i8, i16, i32, i64, u8,
                u16, u32, u64, EnumVal, FlagsVal, type::Type const *,
                type::Struct *, AnyFunc, ast::FunctionLiteral *,
-               std::string_view, ast::ScopeLiteral *, ir::Interface,
+               std::string_view, ast::ScopeLiteral *, type::Interface const *,
                ast::Expression *, BlockIndex, Module const *, BlockSequence,
                BuiltinGenericIndex>
       value{false};
@@ -60,17 +58,17 @@ struct Val {
             typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Val>>>
   explicit Val(T &&val) {
     using decayed = std::decay_t<T>;
-    if constexpr (type::IsTyped<decayed>::value) {
+    if constexpr (::type::IsTyped<decayed>::value) {
       type  = val.type();
       value = val.get();
     } else if constexpr (IsTypedReg<decayed>::value) {
-      type = type::Get<typename decayed::type>();
+      type = ::type::Get<typename decayed::type>();
       value = static_cast<Register>(val);
     } else if constexpr (std::is_same_v<decayed, std::string_view>) {
-      type  = type::ByteView;
+      type  = ::type::ByteView;
       value = SaveStringGlobally(std::string(val));
     } else if constexpr (std::is_same_v<decayed, std::string>) {
-      type  = type::ByteView;
+      type  = ::type::ByteView;
       value = SaveStringGlobally(val);
     } else {
       type  = ::type::Get<std::decay_t<T>>();
@@ -93,7 +91,6 @@ struct Val {
   static Val BasicBlock(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Block(ast::BlockLiteral *b);
   static Val BlockSeq(BlockSequence b);
-  static Val Interface(ir::Interface ifc);
 
   static Val None() { return Val(); }
 

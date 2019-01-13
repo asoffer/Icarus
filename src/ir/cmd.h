@@ -246,6 +246,7 @@ struct Cmd {
     RegisterOr<type::Type const *> type_arg_;
     RegisterOr<std::string_view> byte_view_arg_;
     RegisterOr<Addr> addr_arg_;
+    RegisterOr<type::Interface const *> intf_arg_;
 
     Args<bool> bool_args_;
     Args<i8> i8_args_;
@@ -304,6 +305,7 @@ struct Cmd {
     SetRet<ast::FunctionLiteral *> set_ret_generic_;
     SetRet<Module const *> set_ret_module_;
     SetRet<BlockSequence> set_ret_block_;
+    SetRet<type::Interface const *> set_ret_intf_;
 
     PhiArgs<bool> *phi_bool_;
     PhiArgs<i8> *phi_i8_;

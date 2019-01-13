@@ -16,7 +16,7 @@ size_t Architecture::alignment(type::Type const *t) const {
       case type::PrimType::Block: return local_ptr_align_;
       case type::PrimType::OptBlock: return local_ptr_align_;
       case type::PrimType::RepBlock: return local_ptr_align_;
-      case type::PrimType::Interface: return local_ptr_align_;
+      case type::PrimType::Intf: return local_ptr_align_;
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
       case type::PrimType::Int8: return 1;
@@ -49,7 +49,7 @@ size_t Architecture::alignment(type::Type const *t) const {
       alignment_val = std::max(alignment_val, this->alignment(field.type));
     }
     return alignment_val;
-  } else if (t->is<type::Function>() || t == type::Generic) {
+  } else if (t->is<type::Callable>()) {
     return ptr_align_;
   } else if (t->is<type::Enum>()) {
     return 8;  // TODO
@@ -67,6 +67,8 @@ size_t Architecture::alignment(type::Type const *t) const {
       alignment_val = std::max(alignment_val, this->alignment(type));
     }
     return alignment_val;
+  } else if (auto *intf = t->if_as<type::Interface>()) {
+    return ptr_align_; // TODO is this right?
   } else {
     UNREACHABLE(t);
   }
@@ -79,7 +81,7 @@ size_t Architecture::bytes(type::Type const *t) const {
       case type::PrimType::Block: return local_ptr_bytes_;
       case type::PrimType::OptBlock: return local_ptr_bytes_;
       case type::PrimType::RepBlock: return local_ptr_bytes_;
-      case type::PrimType::Interface: return local_ptr_bytes_;
+      case type::PrimType::Intf: return local_ptr_bytes_;
       case type::PrimType::EmptyArray:
       case type::PrimType::Bool:
       case type::PrimType::Int8: return 1;
@@ -125,7 +127,7 @@ size_t Architecture::bytes(type::Type const *t) const {
     }
 
     return MoveForwardToAlignment(t, num_bytes);
-  } else if (t->is<type::Function>() || t == type::Generic) {
+  } else if (t->is<type::Callable>()) {
     return sizeof(ir::AnyFunc);
     // TODO it's weird that this is 8 and not ptr_bytes_ which may be larger. On
     // the interpretting machinge, it seems like we aren't just returning a
@@ -140,6 +142,8 @@ size_t Architecture::bytes(type::Type const *t) const {
       num_bytes = std::max(num_bytes, this->bytes(type));
     }
     return num_bytes + ptr_bytes_;
+  } else if (auto *intf = t->if_as<type::Interface>()) {
+    return ptr_bytes_; // TODO is this right
   } else {
     UNREACHABLE(t);
   }

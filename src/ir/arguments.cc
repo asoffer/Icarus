@@ -48,7 +48,6 @@ void Arguments::append(const ir::Val &val) {
   // TODO deal with alignment?
   std::visit(
       base::overloaded{
-          [](const ir::Interface &) { UNREACHABLE(); },
           [&](auto &&v) {
             args_.append(v);
             is_reg_.push_back(

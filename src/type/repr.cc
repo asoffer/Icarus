@@ -26,10 +26,12 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
     case PrimType::NullPtr:
     case PrimType::EmptyArray:
     case PrimType::Module:
-    case PrimType::Interface:
     case PrimType::Block:
     case PrimType::OptBlock:
     case PrimType::RepBlock: UNREACHABLE();
+    case PrimType::Intf:
+      ir::Print(val.reg_or<type::Interface const *>());
+      break;
     case PrimType::ByteView: ir::Print(val.reg_or<std::string_view>()); break;
   }
 }

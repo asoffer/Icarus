@@ -335,14 +335,26 @@ Register CreateStruct(::Scope const *scope) {
   return cmd.result;
 }
 
+Register CreateInterface(::Scope const *scope) {
+  auto &cmd  = MakeCmd(type::Type_, Op::CreateInterface);
+  cmd.scope_ = scope;
+  return cmd.result;
+}
+
 Register ArgumentCache(ast::StructLiteral *sl) {
   auto &cmd = MakeCmd(type::Ptr(type::Type_), Op::ArgumentCache);
   cmd.sl_ = sl;
   return cmd.result;
 }
 
-Register FinalizeStruct(Register r) {
+TypedRegister<type::Interface const *> FinalizeStruct(Register r) {
   auto &cmd = MakeCmd(type::Type_, Op::FinalizeStruct);
+  cmd.reg_  = r;
+  return cmd.result;
+}
+
+Register FinalizeInterface(Register r) {
+  auto &cmd = MakeCmd(type::Type_, Op::FinalizeInterface);
   cmd.reg_  = r;
   return cmd.result;
 }

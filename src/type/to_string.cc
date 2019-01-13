@@ -154,4 +154,9 @@ void Tuple::WriteTo(std::string *result) const {
 
 void Opaque::WriteTo(std::string *result) const { result->append("<opaque>"); }
 
+void Interface::WriteTo(std::string *result) const {
+  result->append("intf.");
+  result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
+}
+
 }  // namespace type

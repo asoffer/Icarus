@@ -31,18 +31,6 @@ BufferPointer const *BufPtr(Type const *t) {
   return &buffer_pointers_.lock()->emplace(t, BufferPointer(t)).first->second;
 }
 
-static base::guarded<base::map<base::vector<Type const *>,
-                               base::map<base::vector<Type const *>, Function>>>
-    funcs_;
-const Function *Func(base::vector<Type const *> in,
-                     base::vector<Type const *> out) {
-  // TODO if void is unit in some way we shouldn't do this.
-  auto f = Function(in, out);
-  return &(*funcs_.lock())[std::move(in)]
-              .emplace(std::move(out), std::move(f))
-              .first->second;
-}
-
 Type const *Void() { return Tup({}); }
 
 bool Type::is_big() const {

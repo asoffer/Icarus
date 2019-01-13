@@ -73,9 +73,9 @@ struct CallObstruction {
               // TODO clarify that this is zero-indexed?
               return "Overload candidate ignored because parameter " +
                      std::to_string(d.position_) + " has type " +
-                     d.bound_->to_string() +
-                     " which does not match the what you provided (" +
-                     d.input_->to_string() + ")";
+                     d.input_->to_string() +
+                     " which does not match what you provided (" +
+                     d.bound_->to_string() + ")";
             },
             [](NonConstantNamedArgumentsData) -> std::string {
               return "Overload candidate ignored because non-constants cannot "

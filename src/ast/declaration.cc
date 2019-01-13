@@ -238,8 +238,15 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
             ctx->error_log_.TypeMustBeInitialized(span, this_type);
           }
 
-        } else if (type_expr_type == type::Interface) {
-          NOT_YET();
+        } else if (type_expr_type == type::Intf) {
+          if (!type_expr_result.const_) {
+            NOT_YET("log an error");
+            return VerifyResult::Error();
+          } else {
+            this_type = ctx->set_type(
+                this, backend::EvaluateAs<type::Interface const *>(
+                          type_expr.get(), ctx));
+          }
         } else {
           ctx->error_log_.NotAType(type_expr.get());
           return VerifyResult::Error();
@@ -291,7 +298,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
             error |=
                 !type::VerifyAssignment(span, this_type, init_val_type, ctx);
           }
-        } else if (type_expr_type == type::Interface) {
+        } else if (type_expr_type == type::Intf) {
           this_type = ctx->set_type(this, type::Generic);
         } else {
           ctx->error_log_.NotAType(type_expr.get());
@@ -312,7 +319,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
           this_type = ctx->set_type(
               this,
               backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
-        } else if (type_expr_type == type::Interface) {
+        } else if (type_expr_type == type::Intf) {
           this_type = ctx->set_type(this, type::Generic);
         } else {
           ctx->error_log_.NotAType(type_expr.get());

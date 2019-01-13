@@ -1,6 +1,7 @@
 #include "ast/match_declaration.h"
 
 #include "backend/eval.h"
+#include "type/interface.h"
 #include "type/primitive.h"
 
 namespace ast {
@@ -14,13 +15,13 @@ VerifyResult MatchDeclaration::VerifyType(Context *ctx) {
   // TODO this is wrong. it's a type satisfying a given interface. does that
   // matter?
   // TODO is this always constant? does that make sense?
-  return VerifyResult::Constant(ctx->set_type(this, type::Interface));
+  return VerifyResult::Constant(ctx->set_type(this, type::Intf));
 }
 
 void MatchDeclaration::Validate(Context *ctx) { type_expr->Validate(ctx); }
 
 base::vector<ir::Val> MatchDeclaration::EmitIR(Context *ctx) {
-  // TODO build it
-  return backend::Evaluate(type_expr.get(), ctx);
+  return {ir::Val(
+      backend::EvaluateAs<type::Interface const *>(type_expr.get(), ctx))};
 }
 }  // namespace ast

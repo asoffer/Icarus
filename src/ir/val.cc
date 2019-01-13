@@ -72,10 +72,6 @@ Val Val::BlockSeq(BlockSequence b) {
   return Val(t, b);
 }
 
-Val Val::Interface(ir::Interface ifc) {
-  return Val(type::Interface, std::move(ifc));
-}
-
 Val::Val(ast::ScopeLiteral *scope_lit) : Val(type::Scope, scope_lit) {}
 
 Val Val::Func(ast::FunctionLiteral *fn) { return Val(type::Generic, fn); }
@@ -154,9 +150,8 @@ std::string Val::to_string() const {
             // TODO
             return "bs." + std::to_string(reinterpret_cast<uintptr_t>(bs.seq_));
           },
-          [](const ir::Interface &ifc) -> std::string {
-            // TODO
-            return "Interface";
+          [](type::Interface const *intf) -> std::string {
+            return "intf." + std::to_string(reinterpret_cast<uintptr_t>(intf));
           },
           [](ir::BuiltinGenericIndex n) -> std::string {
             return "builtin(" + n.to_string() + ")";
