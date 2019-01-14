@@ -137,7 +137,7 @@ std::string Val::to_string() const {
             return "scope(" + std::to_string(reinterpret_cast<uintptr_t>(s)) +
                    ")";
           },
-          [](ast::Expression *) -> std::string { return "<expr>"; },
+          [](ast::Expression *e) -> std::string { return "<expr> " + e->to_string(0); },
           [](BlockIndex b) -> std::string { return b.to_string(); },
           [](std::string_view sv) -> std::string {
             return "\"" + Escaped(sv) + "\"";

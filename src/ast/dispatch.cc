@@ -198,7 +198,7 @@ CallObstruction DispatchTableRow::SetTypes(
     ASSIGN_OR(return CallObstruction::TypeMismatch(i, bound_type, input_type),
                      auto &match, type::Meet(bound_type, input_type));
 
-    binding_.exprs_.at(i).set_type(input_types.at(i));
+    binding_.exprs_.at(i).set_type(input_type);
     call_arg_types_.pos_.at(i) = &match;
   }
 
@@ -276,7 +276,7 @@ CallObstruction DispatchTableRow::SetTypes(ir::Func const &fn,
     ASSIGN_OR(return CallObstruction::TypeMismatch(i, bound_type, input_type),
                      auto &match, type::Meet(bound_type, input_type));
 
-    binding_.exprs_.at(i).set_type(input_types.at(i));
+    binding_.exprs_.at(i).set_type(input_type);
 
     if (i < call_arg_types_.pos_.size()) {
       call_arg_types_.pos_.at(i) = &match;
@@ -390,14 +390,27 @@ DispatchTableRow::MakeFromFnLit(
 
   Context new_ctx(ctx);
   for (size_t i = 0; i < args.pos_.size(); ++i) {
-    if (!fn_lit->inputs[i]->const_) { continue; }
+    // TODO wrong. this may not directly be a matchdecl but could be something
+    // like an array-type of them.
+    bool needs_match_decl =
+        fn_lit->inputs[i]->type_expr != nullptr &&
+        fn_lit->inputs[i]->type_expr->is<MatchDeclaration>();
+    if (!fn_lit->inputs[i]->const_ && !needs_match_decl) { continue; }
     // TODO this is wrong because it needs to be removed outside the scope of
     // this function.
     // TODO what if this isn't evaluable? i.e., what if args.pos_[i] isn't a
     // constant. Is that a hard error or do we just ignore this case? Similarly
     // below for named and default arguments.
-    new_ctx.bound_constants_.constants_.emplace(
-        fn_lit->inputs[i].get(), backend::Evaluate(args.pos_[i], ctx)[0]);
+    if (needs_match_decl) {
+      new_ctx.bound_constants_.constants_.emplace(
+          &fn_lit->inputs[i]->type_expr->as<MatchDeclaration>(),
+          ir::Val(ctx->type_of(args.pos_[i])));
+    }
+
+    if (fn_lit->inputs[i]->const_) {
+      new_ctx.bound_constants_.constants_.emplace(
+          fn_lit->inputs[i].get(), backend::Evaluate(args.pos_[i], ctx)[0]);
+    }
   }
   for (auto & [ name, expr ] : args.named_) {
     size_t index = fn_lit->lookup_[name];
@@ -405,6 +418,7 @@ DispatchTableRow::MakeFromFnLit(
     if (!decl->const_) { continue; }
     new_ctx.bound_constants_.constants_.emplace(
         decl, backend::Evaluate(expr, ctx)[0]);
+    // TODO Match decls?
   }
 
   // TODO order these by their dependencies
@@ -418,6 +432,7 @@ DispatchTableRow::MakeFromFnLit(
     new_ctx.bound_constants_.constants_.emplace(
         decl, backend::Evaluate(decl->init_val.get(), &new_ctx)[0]);
   }
+
 
   // TODO named arguments too.
   auto *fn_type = &ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx).type_)

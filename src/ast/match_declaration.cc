@@ -21,7 +21,12 @@ VerifyResult MatchDeclaration::VerifyType(Context *ctx) {
 void MatchDeclaration::Validate(Context *ctx) { type_expr->Validate(ctx); }
 
 base::vector<ir::Val> MatchDeclaration::EmitIR(Context *ctx) {
+  if (auto iter = ctx->bound_constants_.constants_.find(this);
+      iter != ctx->bound_constants_.constants_.end()) {
+    return {iter->second};
+  } else {
   return {ir::Val(
       backend::EvaluateAs<type::Interface const *>(type_expr.get(), ctx))};
+  }
 }
 }  // namespace ast

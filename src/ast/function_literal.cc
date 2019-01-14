@@ -3,6 +3,7 @@
 #include <sstream>
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"
+#include "ast/match_declaration.h"
 #include "ast/terminal.h"
 #include "backend/eval.h"
 #include "context.h"
@@ -58,8 +59,11 @@ void FunctionLiteral::assign_scope(Scope *scope) {
 }
 
 VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
-  if (std::any_of(inputs.begin(), inputs.end(),
-                  [](auto const &decl) { return decl->const_; })) {
+  if (std::any_of(inputs.begin(), inputs.end(), [](auto const &decl) {
+        return decl->const_ ||
+               (decl->type_expr != nullptr &&
+                decl->type_expr->template is<MatchDeclaration>());
+      })) {
     return VerifyResult::Constant(ctx->set_type(this, type::Generic));
   }
   return VerifyTypeConcrete(ctx);
@@ -229,9 +233,17 @@ void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
 
 base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
   if (std::any_of(inputs.begin(), inputs.end(), [&](auto const &decl) {
-        return decl->const_ &&
-               ctx->bound_constants_.constants_.find(decl.get()) ==
-                   ctx->bound_constants_.constants_.end();
+        // TODO this is wrong... it may not directly be a match-decl, but
+        // something that's "extractable" like a pointer to or an array of
+        // match-decls.
+        return ((decl->const_ &&
+                 ctx->bound_constants_.constants_.find(decl.get()) ==
+                     ctx->bound_constants_.constants_.end()) ||
+                (decl->type_expr != nullptr &&
+                 decl->type_expr->template is<MatchDeclaration>() &&
+                 ctx->bound_constants_.constants_.find(
+                     &decl->type_expr->template as<MatchDeclaration>()) ==
+                     ctx->bound_constants_.constants_.end()));
       })) {
     return {ir::Val::Func(this)};
   }

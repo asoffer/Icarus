@@ -244,8 +244,8 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
             return VerifyResult::Error();
           } else {
             this_type = ctx->set_type(
-                this, backend::EvaluateAs<type::Interface const *>(
-                          type_expr.get(), ctx));
+                this,
+                backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
           }
         } else {
           ctx->error_log_.NotAType(type_expr.get());
