@@ -162,7 +162,6 @@ VerifyResult Call::VerifyType(Context *ctx) {
         return const_cast<Expression *>(arg.get());
       });
 
-  type::Type const *ret_type = nullptr;
 
   OverloadSet overload_set = [&]() {
     if (fn_->is<Identifier>()) {
@@ -180,8 +179,8 @@ VerifyResult Call::VerifyType(Context *ctx) {
     }
   }();
 
-  std::tie(dispatch_table_, ret_type) =
-      DispatchTable::Make(args, overload_set, ctx);
+  auto[table, ret_type] = DispatchTable::Make(args, overload_set, ctx);
+  ctx->set_dispatch_table(this, std::move(table));
 
   u64 expanded_size = 1;
   arg_results.Apply([&expanded_size](VerifyResult const &r) {
@@ -190,8 +189,8 @@ VerifyResult Call::VerifyType(Context *ctx) {
     }
   });
 
-  if (dispatch_table_.total_size_ != expanded_size) {
-    ctx->error_log_.NoCallMatch(span, dispatch_table_.failure_reasons_);
+  if (table.total_size_ != expanded_size) {
+    ctx->error_log_.NoCallMatch(span, table.failure_reasons_);
     return VerifyResult::Error();
   }
 
@@ -257,7 +256,7 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
     UNREACHABLE();
   }
 
-  ASSERT(dispatch_table_.bindings_.size() > 0u);
+  auto const &dispatch_table = *ASSERT_NOT_NULL(ctx->dispatch_table(this));
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching
   // insanity.
@@ -266,7 +265,7 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
 
-  return dispatch_table_.EmitCall(
+  return dispatch_table.EmitCall(
       args_.Transform([ctx](const std::unique_ptr<Expression> &expr) {
         return std::pair(const_cast<Expression *>(expr.get()),
                          expr->EmitIR(ctx)[0]);

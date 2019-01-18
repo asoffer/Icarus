@@ -19,9 +19,6 @@ struct Call : public Expression {
 
   std::unique_ptr<Expression> fn_;
   FnArgs<std::unique_ptr<Expression>> args_;
-
-  // Filled in after type verification
-  DispatchTable dispatch_table_;
 };
 }  // namespace ast
 

@@ -343,7 +343,7 @@ base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::Make(
 
   // TODO the caller needs to ensure evaluation here is correct/safe and I
   // haven't done that yet.
-  auto results   = backend::Evaluate(fn_option, ctx);
+  auto results = backend::Evaluate(fn_option, ctx);
   if (results.empty()) {  // Meaning there was an error in ctx earlier
     return CallObstruction::CascadingError();
   }

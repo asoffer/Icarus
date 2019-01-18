@@ -10,8 +10,10 @@
 #include <unordered_set>
 
 #include "ast/bound_constants.h"
+#include "ast/dispatch.h"
 #include "ast/node_lookup.h"
 #include "ast/statements.h"
+#include "base/container/unordered_map.h"
 #include "base/container/vector.h"
 #include "scope.h"
 
@@ -60,8 +62,8 @@ struct Module {
       completed_;
 
   struct CompilationWorkItem {
-    CompilationWorkItem(ast::BoundConstants bc, ast::Expression *e, Module *mod)
-        : bound_constants_(std::move(bc)), expr_(e), mod_(mod) {}
+    CompilationWorkItem(ast::BoundConstants bc, ast::Expression *e,
+                        Module *mod);
 
     void Complete();
 
@@ -115,6 +117,15 @@ struct Module {
   base::unordered_map<ast::StructLiteral *,
                       base::map<type::Type const *, type::Type const *>>
       generic_struct_cache_;
+
+  std::map<ast::BoundConstants,
+           base::unordered_map<ast::Expression const *, ast::DispatchTable>>
+      dispatch_tables_;
+  // For use with expression nodes that have more than one dispatch table.
+  std::map<
+      ast::BoundConstants,
+      base::unordered_map<ast::Node const *, base::vector<ast::DispatchTable>>>
+      repeated_dispatch_tables_;
 
   std::filesystem::path const *path_ = nullptr;
 };

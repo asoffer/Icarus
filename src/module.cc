@@ -86,6 +86,11 @@ ast::Declaration *Module::GetDecl(std::string const &name) const {
   return nullptr;
 }
 
+Module::CompilationWorkItem::CompilationWorkItem(ast::BoundConstants bc,
+                                                 ast::Expression *e,
+                                                 Module *mod)
+    : bound_constants_(std::move(bc)), expr_(e), mod_(mod) {}
+
 void Module::CompilationWorkItem::Complete() {
   // Need to copy bc because this needs to be set before we call CompleteBody.
   // TODO perhaps on ctx it could be a pointer?
@@ -110,9 +115,8 @@ void Module::CompilationWorkItem::Complete() {
 
 void Module::CompleteAll() {
   while (!to_complete_.empty()) {
-    auto work = std::move(to_complete_.front());
+    to_complete_.front().Complete();
     to_complete_.pop();
-    work.Complete();
   }
 }
 

@@ -105,7 +105,9 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         type::Type const *t = nullptr;
         OverloadSet os(scope_, "-", ctx);
         os.add_adl("-", operand_type);
-        std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
+        DispatchTable table;
+        std::tie(table, t) = DispatchTable::Make(args, os, ctx);
+        ctx->set_dispatch_table(this, std::move(table));
         return VerifyResult(t, result.const_);
       }
       NOT_YET();
@@ -132,7 +134,9 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         type::Type const *t = nullptr;
         OverloadSet os(scope_, "!", ctx);
         os.add_adl("!", operand_type);
-        std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
+        DispatchTable table;
+        std::tie(table, t) = DispatchTable::Make(args, os, ctx);
+        ctx->set_dispatch_table(this, std::move(table));
         ASSERT(t, Not(Is<type::Tuple>()));
         return VerifyResult(t, result.const_);
       } else {
@@ -157,11 +161,12 @@ VerifyResult Unop::VerifyType(Context *ctx) {
 
 base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   auto *operand_type = ctx->type_of(operand.get());
-  if (operand_type->is<type::Struct>() && dispatch_table_.total_size_ != 0) {
+  if (auto const *dispatch_table = ctx->dispatch_table(this);
+      dispatch_table && dispatch_table->total_size_ != 0) {
     // TODO struct is not exactly right. we really mean user-defined
     FnArgs<std::pair<Expression *, ir::Val>> args;
     args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx)[0])};
-    return dispatch_table_.EmitCall(args, ctx->type_of(this), ctx);
+    return dispatch_table->EmitCall(args, ctx->type_of(this), ctx);
   }
 
   switch (op) {

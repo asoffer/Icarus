@@ -24,7 +24,6 @@ struct Unop : public Expression {
 
   std::unique_ptr<Expression> operand;
   Language::Operator op;
-  DispatchTable dispatch_table_;
 };
 }  // namespace ast
 #endif  // ICARUS_AST_UNOP_H

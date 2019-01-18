@@ -237,7 +237,6 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
       unop->args_.span = TextSpan(unop->args_.exprs_.front()->span,
                                   unop->args_.exprs_.back()->span);
     }
-    unop->dispatch_tables_.resize(unop->args_.exprs_.size());
     ASSERT_NOT_NULL(unop->span.source);
     return unop;
   } else if (tk == "print") {
@@ -254,7 +253,6 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
       ASSERT_NOT_NULL(unop->span.source);
     }
     unop->op_ = Operator::Print;
-    unop->dispatch_tables_.resize(unop->args_.exprs_.size());
     ASSERT_NOT_NULL(unop->span.source);
     return unop;
   } else if (tk == "'") {
@@ -308,7 +306,6 @@ std::unique_ptr<Node> BuildChainOp(base::vector<std::unique_ptr<Node>> nodes,
   }
 
   chain->ops.push_back(op);
-  chain->dispatch_tables_.emplace_back();
   chain->exprs.push_back(move_as<Expression>(nodes[2]));
   return chain;
 }
@@ -572,8 +569,6 @@ std::unique_ptr<Node> BuildShortFunctionLiteral(
     ret->op_ = Language::Operator::Return;
     ret->args_.exprs_.push_back(std::move(body));
   }
-
-  ret->dispatch_tables_.resize(ret->args_.exprs_.size());
 
   auto stmts = std::make_unique<Statements>();
   stmts->append(std::move(ret));

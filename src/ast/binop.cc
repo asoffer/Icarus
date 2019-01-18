@@ -147,7 +147,10 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         os.add_adl("as", lhs_result.type_);
         os.keep_return(t);
 
-        std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
+        DispatchTable table;
+        std::tie(table, t) = DispatchTable::Make(args, os, ctx);
+        ctx->set_dispatch_table(this, std::move(table));
+
         if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("as", lhs_result.type_,
                                              rhs_result.type_, span);
@@ -214,7 +217,9 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       OverloadSet os(scope_, symbol, ctx);                                      \
       os.add_adl(symbol, lhs_result.type_);                                     \
       os.add_adl(symbol, rhs_result.type_);                                     \
-      std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);        \
+      DispatchTable table;                                                      \
+      std::tie(table, t) = DispatchTable::Make(args, os, ctx);                  \
+      ctx->set_dispatch_table(this, std::move(table));                          \
       if (t == nullptr) {                                                       \
         ctx->error_log_.NoMatchingOperator(symbol, lhs_result.type_,            \
                                            rhs_result.type_, span);             \
@@ -252,7 +257,9 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         OverloadSet os(scope_, "+", ctx);
         os.add_adl("+", lhs_result.type_);
         os.add_adl("+", rhs_result.type_);
-        std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
+        DispatchTable table;
+        std::tie(table, t) = DispatchTable::Make(args, os, ctx);
+        ctx->set_dispatch_table(this, std::move(table));
         ASSERT(t, Not(Is<type::Tuple>()));
         if (t == nullptr) {
           ctx->error_log_.NoMatchingOperator("+", lhs_result.type_,
@@ -281,7 +288,9 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         OverloadSet os(scope_, "+=", ctx);
         os.add_adl("+=", lhs_result.type_);
         os.add_adl("+=", rhs_result.type_);
-        std::tie(dispatch_table_, t) = DispatchTable::Make(args, os, ctx);
+        DispatchTable table;
+        std::tie(table, t) = DispatchTable::Make(args, os, ctx);
+        ctx->set_dispatch_table(this, std::move(table));
         if (t->is<type::Tuple>()) { NOT_YET(); }
       }
     } break;
@@ -320,14 +329,15 @@ void Binop::ExtractJumps(JumpExprs *rets) const {
 base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
   auto *lhs_type = ctx->type_of(lhs.get());
   auto *rhs_type = ctx->type_of(rhs.get());
-  if (dispatch_table_.total_size_ != 0) {
+
+  if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
     ast::FnArgs<std::pair<ast::Expression *, ir::Val>> args;
     args.pos_.reserve(2);
     args.pos_.emplace_back(lhs.get(), lhs->EmitIR(ctx)[0]);
     args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx)[0]);
 
-    return dispatch_table_.EmitCall(args, ASSERT_NOT_NULL(ctx->type_of(this)),
+    return dispatch_table->EmitCall(args, ASSERT_NOT_NULL(ctx->type_of(this)),
                                     ctx);
   }
 

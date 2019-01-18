@@ -26,7 +26,6 @@ struct Binop : public Expression {
 
   Language::Operator op;
   std::unique_ptr<Expression> lhs, rhs;
-  DispatchTable dispatch_table_;
 };
 
 }  // namespace ast

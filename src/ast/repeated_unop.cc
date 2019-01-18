@@ -51,8 +51,12 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
           ? result.type_->as<type::Tuple>().entries_
           : base::vector<type::Type const *>{result.type_};
 
+  auto &dispatch_tables = *ctx->set_rep_dispatch_tables(
+      this, base::vector<DispatchTable>(args_.exprs_.size()));
+
   if (op_ == Language::Operator::Print) {
-    ASSERT(dispatch_tables_.size() == args_.exprs_.size());
+    // TODO what's the actual size given expansion of tuples and stuff?
+    dispatch_tables.reserve(args_.exprs_.size());
     for (size_t i = 0; i < args_.exprs_.size(); ++i) {
       auto &arg      = args_.exprs_[i];
       auto *arg_type = arg_types[i];
@@ -66,7 +70,7 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
         const type::Type *ret_type = nullptr;
         OverloadSet os(scope_, "print", ctx);
         os.add_adl("print", arg_type);
-        std::tie(dispatch_tables_[i], ret_type) =
+        std::tie(dispatch_tables[i], ret_type) =
             DispatchTable::Make(args, os, ctx);
         if (ret_type != type::Void()) {
           NOT_YET("log an error: ", ret_type);
@@ -143,6 +147,7 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
       return {};
     }
     case Language::Operator::Print: {
+      auto const *dispatch_tables = ctx->rep_dispatch_tables(this);
       size_t index = 0;
       // TODO this is wrong if you use the <<(...) spread operator.
       for (auto &val : arg_vals) {
@@ -150,7 +155,7 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
         if (t->is<type::Struct>()) {
           ast::FnArgs<std::pair<ast::Expression *, ir::Val>> args;
           args.pos_.emplace_back(args_.exprs_[index].get(), std::move(val));
-          dispatch_tables_.at(index).EmitCall(args, type::Void(), ctx);
+          ASSERT_NOT_NULL(dispatch_tables)->at(index).EmitCall(args, type::Void(), ctx);
         } else {
           t->EmitRepr(val, ctx);
         }

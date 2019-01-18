@@ -22,7 +22,6 @@ struct ChainOp : public Expression {
 
   base::vector<Language::Operator> ops;
   base::vector<std::unique_ptr<Expression>> exprs;
-  base::vector<DispatchTable> dispatch_tables_;
 };
 }  // namespace ast
 #endif  // ICARUS_AST_CHAINOP_H

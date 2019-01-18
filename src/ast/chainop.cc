@@ -44,8 +44,9 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
     args.pos_.emplace_back(chain_op->exprs[index].get(), lhs_ir);
     args.pos_.emplace_back(chain_op->exprs[index + 1].get(), rhs_ir);
 
-    auto results =
-        chain_op->dispatch_tables_[index].EmitCall(args, type::Bool, ctx);
+    auto results = ASSERT_NOT_NULL(ctx->rep_dispatch_tables(chain_op))
+                       ->at(index)
+                       .EmitCall(args, type::Bool, ctx);
     ASSERT(results.size() == 1u);
     return results[0].reg_or<bool>();
 
@@ -151,6 +152,9 @@ VerifyResult ChainOp::VerifyType(Context *ctx) {
     return VerifyResult::Error();
   }
 
+  auto &dispatch_tables = *ctx->set_rep_dispatch_tables(
+      this, base::vector<DispatchTable>(exprs.size() - 1));
+
   if (ops[0] == Language::Operator::Or) {
     bool found_err = false;
     for (size_t i = 0; i < results.size() - 1; ++i) {
@@ -243,7 +247,7 @@ not_blocks:
           OverloadSet os(scope_, token, ctx);
           os.add_adl(token, lhs_result.type_);
           os.add_adl(token, rhs_result.type_);
-          std::tie(dispatch_tables_.at(i), t) =
+          std::tie(dispatch_tables.at(i), t) =
               DispatchTable::Make(args, os, ctx);
           ASSERT(t, Not(Is<type::Tuple>())); // TODO handle this case.
           if (t == nullptr) { return VerifyResult::Error(); }
