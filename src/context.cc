@@ -6,10 +6,10 @@ type::Type const *Context::type_of(ast::Expression const *expr) const {
   if (parent_) { return parent_->type_of(expr); }
 
   for (Module const *mod : mod_->global_->embedded_modules_) {
-    auto bc_iter = mod->types_.find(bound_constants_);
-    if (bc_iter == mod->types_.end()) { continue; }
-    auto iter = bc_iter->second.data_.find(expr);
-    if (iter != bc_iter->second.data_.end()) { return iter->second; }
+    auto bc_iter = mod->data_.find(bound_constants_);
+    if (bc_iter == mod->data_.end()) { continue; }
+    auto iter = bc_iter->second.types_.data_.find(expr);
+    if (iter != bc_iter->second.types_.data_.end()) { return iter->second; }
   }
   return nullptr;
 }
@@ -20,7 +20,7 @@ type::Type const *Context::set_type(ast::Expression const *expr,
 }
 
 void Context::set_addr(ast::Declaration *decl, ir::Register r) {
-  mod_->addr_[bound_constants_][decl] = r;
+  mod_->data_[bound_constants_].addr_[decl] = r;
 }
 
 ir::Register Context::addr(ast::Declaration *decl) const {
@@ -29,13 +29,13 @@ ir::Register Context::addr(ast::Declaration *decl) const {
 
 void Context::set_dispatch_table(ast::Expression const *expr,
                                  ast::DispatchTable &&table) {
-  ASSERT(mod_->dispatch_tables_[bound_constants_]
-             .emplace(expr, std::move(table))
+  ASSERT(mod_->data_[bound_constants_]
+             .dispatch_tables_.emplace(expr, std::move(table))
              .second);
 }
 
 ast::DispatchTable const *Context::dispatch_table(ast::Expression const *expr) const {
-  auto &table = mod_->dispatch_tables_[bound_constants_];
+  auto &table = mod_->data_[bound_constants_].dispatch_tables_;
   if (auto iter = table.find(expr); iter != table.end()) {
     return &iter->second;
   }
@@ -45,14 +45,14 @@ ast::DispatchTable const *Context::dispatch_table(ast::Expression const *expr) c
 
 base::vector<ast::DispatchTable> *Context::set_rep_dispatch_tables(
     ast::Node const *node, base::vector<ast::DispatchTable> &&tables) {
-  auto &result = mod_->repeated_dispatch_tables_[bound_constants_][node] =
+  auto &result = mod_->data_[bound_constants_].repeated_dispatch_tables_[node] =
       std::move(tables);
   return &result;
 }
 
 base::vector<ast::DispatchTable> const *Context::rep_dispatch_tables(
     ast::Node const *node) const {
-  auto &table = mod_->repeated_dispatch_tables_[bound_constants_];
+  auto &table = mod_->data_[bound_constants_].repeated_dispatch_tables_;
   if (auto iter = table.find(node); iter != table.end()) {
     return &iter->second;
   }

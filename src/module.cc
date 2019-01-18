@@ -68,7 +68,7 @@ ir::Func *Module::AddFunc(
 
 type::Type const *Module::GetType(std::string const &name) const {
   ASSIGN_OR(return nullptr, auto &decl, GetDecl(name));
-  return types_.at(ast::BoundConstants{}).at(&decl);
+  return data_.at(ast::BoundConstants{}).types_.at(&decl);
 }
 
 ast::Declaration *Module::GetDecl(std::string const &name) const {
@@ -203,10 +203,9 @@ static Module const *CompileModule(Module *mod) {
 
 type::Type const *Module::type_of(ast::BoundConstants const &bc,
                                   ast::Expression const *expr) const {
-  auto bc_iter = types_.find(bc);
-  if (bc_iter != types_.end()) {
-    auto iter = bc_iter->second.data_.find(expr);
-    if (iter != bc_iter->second.data_.end()) { return iter->second; }
+  if (auto bc_iter = data_.find(bc); bc_iter != data_.end()) {
+    auto iter = bc_iter->second.types_.data_.find(expr);
+    if (iter != bc_iter->second.types_.data_.end()) { return iter->second; }
   }
 
   return nullptr;
@@ -214,13 +213,13 @@ type::Type const *Module::type_of(ast::BoundConstants const &bc,
 
 ir::Register Module::addr(ast::BoundConstants const &bc,
                           ast::Declaration *decl) const {
-  return addr_.at(bc).at(decl);
+  return data_.at(bc).addr_.at(decl);
 }
 
 type::Type const *Module::set_type(ast::BoundConstants const &bc,
                                    ast::Expression const *expr,
                                    type::Type const *t) {
-  types_[bc].emplace(expr, t);
+  data_[bc].types_.emplace(expr, t);
   return t;
 }
 

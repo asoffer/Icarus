@@ -231,7 +231,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
           //     _val: T = x
           //   }
           //
-          NOT_YET("log an error");
+          NOT_YET("log an error", this);
           return VerifyResult::Error();
         }
         auto *type_expr_type = type_expr_result.type_;

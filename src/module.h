@@ -102,30 +102,26 @@ struct Module {
                             ast::Expression const *expr) const;
   ir::Register addr(ast::BoundConstants const &bc,
                     ast::Declaration *decl) const;
-  std::map<ast::BoundConstants, ast::NodeLookup<type::Type const *>> types_;
-  std::map<ast::BoundConstants,
-           base::unordered_map<ast::Declaration *, ir::Register>>
-      addr_;
-  std::map<ast::BoundConstants,
-           std::unordered_set<ast::FunctionLiteral const *>>
-      validated_;
-  std::map<ast::BoundConstants,
-           base::unordered_map<ast::Expression const *, ir::Func *>>
-      ir_funcs_;
-
+           
   // TODO support more than just a single type argument to generic structs.
   base::unordered_map<ast::StructLiteral *,
                       base::map<type::Type const *, type::Type const *>>
       generic_struct_cache_;
 
-  std::map<ast::BoundConstants,
-           base::unordered_map<ast::Expression const *, ast::DispatchTable>>
-      dispatch_tables_;
-  // For use with expression nodes that have more than one dispatch table.
-  std::map<
-      ast::BoundConstants,
-      base::unordered_map<ast::Node const *, base::vector<ast::DispatchTable>>>
-      repeated_dispatch_tables_;
+  struct DependentData {
+    ast::NodeLookup<type::Type const *> types_;
+    base::unordered_map<ast::Declaration *, ir::Register> addr_;
+    std::unordered_set<ast::FunctionLiteral const *> validated_;
+
+    base::unordered_map<ast::Expression const *, ir::Func *> ir_funcs_;
+
+    base::unordered_map<ast::Expression const *, ast::DispatchTable>
+        dispatch_tables_;
+    // For use with expression nodes that have more than one dispatch table.
+    base::unordered_map<ast::Node const *, base::vector<ast::DispatchTable>>
+        repeated_dispatch_tables_;
+  };
+  std::map<ast::BoundConstants, DependentData> data_;
 
   std::filesystem::path const *path_ = nullptr;
 };

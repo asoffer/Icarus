@@ -131,7 +131,7 @@ void FunctionLiteral::Validate(Context *ctx) {
     return;
   }
 
-  auto &validated_fns = ctx->mod_->validated_[ctx->bound_constants_];
+  auto &validated_fns = ctx->mod_->data_[ctx->bound_constants_].validated_;
   bool inserted = validated_fns.insert(this).second;
   if (!inserted) { return; }
 
@@ -248,7 +248,7 @@ base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
     return {ir::Val::Func(this)};
   }
 
-  ir::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
+  ir::Func *&ir_func = ctx->mod_->data_[ctx->bound_constants_].ir_funcs_[this];
   if (!ir_func) {
     auto &work_item =
         ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this, ctx->mod_);
@@ -274,7 +274,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
 
   auto *t = ctx->type_of(this);
 
-  ir::Func *&ir_func = ctx->mod_->ir_funcs_[ctx->bound_constants_][this];
+  ir::Func *&ir_func = ctx->mod_->data_[ctx->bound_constants_].ir_funcs_[this];
   CURRENT_FUNC(ir_func) {
     ir::BasicBlock::Current = ir_func->entry();
     // Leave space for allocas that will come later (added to the entry

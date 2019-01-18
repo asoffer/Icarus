@@ -116,7 +116,7 @@ base::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
   //
   // For now, it's safe to do this from within a single module compilation
   // (which is single-threaded).
-  ir::Func *&ir_func = mod_->ir_funcs_[ctx->bound_constants_][this];
+  ir::Func *&ir_func = mod_->data_[ctx->bound_constants_].ir_funcs_[this];
   if (!ir_func) {
     auto &work_item =
         ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this, ctx->mod_);
@@ -143,7 +143,7 @@ base::vector<ir::RegisterOr<ir::Addr>> ast::StructLiteral::EmitLVal(Context *ctx
 }
 
 void StructLiteral::CompleteBody(Context *ctx) {
-  ir::Func *&ir_func = mod_->ir_funcs_[ctx->bound_constants_][this];
+  ir::Func *&ir_func = mod_->data_[ctx->bound_constants_].ir_funcs_[this];
   for (size_t i = 0; i < args_.size(); ++i) {
     ctx->set_addr(args_[i].get(), ir_func->Argument(i));
   }
