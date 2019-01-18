@@ -138,7 +138,8 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         return VerifyResult::Error();
       }
       auto *t = ctx->set_type(
-          this, backend::EvaluateAs<type::Type const *>(rhs.get(), ctx));
+          this, ASSERT_NOT_NULL(
+                    backend::EvaluateAs<type::Type const *>(rhs.get(), ctx)));
       if (t->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get()}};
@@ -396,7 +397,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
           })};
     } break;
     case Language::Operator::As: {
-      auto *this_type = ctx->type_of(this);
+      auto *this_type  = ASSERT_NOT_NULL(ctx->type_of(this));
       auto vals        = lhs->EmitIR(ctx);
       if (this_type == type::Type_) {
         base::vector<type::Type const *> entries;

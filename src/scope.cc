@@ -2,6 +2,7 @@
 
 #include "ast/declaration.h"
 #include "ast/identifier.h"
+#include "ast/match_declaration.h"
 #include "context.h"
 #include "ir/cmd.h"
 #include "module.h"
@@ -26,8 +27,8 @@ base::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
   base::vector<type::Typed<ast::Declaration *>> matching_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {
-    auto iter = scope_ptr->decls_.find(id);
-    if (iter != scope_ptr->decls_.end()) {
+    if (auto iter = scope_ptr->decls_.find(id);
+        iter != scope_ptr->decls_.end()) {
       for (auto *decl : iter->second) {
         auto *t = ctx->type_of(decl);
         // TODO This will call VerifyType once if it's correct, but *every* time
@@ -60,7 +61,10 @@ void FnScope::MakeAllStackAllocations(Context *ctx) {
   for (auto *scope : innards_) {
     for (const auto & [ key, val ] : scope->decls_) {
       for (auto *decl : val) {
-        if (decl->const_ || decl->is_fn_param_) { continue; }
+        if (decl->const_ || decl->is_fn_param_ ||
+            decl->is<ast::MatchDeclaration>()) {
+          continue;
+        }
 
         // TODO it's wrong to use a default BoundConstants, but it's even more
         // wrong to store the address on the declaration, so you can fix those

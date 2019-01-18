@@ -225,6 +225,12 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
         ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
                          type_expr->VerifyType(ctx));
         if (!type_expr_result.const_) {
+          // Hmm, not necessarily an error. Example (not necessarily minimal):
+          //
+          //   S ::= (x: any`T) => struct {
+          //     _val: T = x
+          //   }
+          //
           NOT_YET("log an error");
           return VerifyResult::Error();
         }

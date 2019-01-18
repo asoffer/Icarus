@@ -2,6 +2,7 @@
 
 #include "ast/declaration.h"
 #include "ast/function_literal.h"
+#include "ast/match_declaration.h"
 #include "backend/eval.h"
 #include "context.h"
 #include "error/log.h"
@@ -83,6 +84,14 @@ base::vector<ir::Val> ast::Identifier::EmitIR(Context *ctx) {
     return {decl->is_output_ && !t->is_big()
                 ? ir::Val::Reg(ir::Load(ctx->addr(decl), t), t)
                 : ir::Val::Reg(ctx->addr(decl), t)};
+  } else if (decl->is<MatchDeclaration>()) {
+    // TODO is there a better way to do look up? look up in parent too?
+    if (auto iter = ctx->bound_constants_.constants_.find(decl);
+        iter != ctx->bound_constants_.constants_.end()) {
+      return {iter->second};
+    } else {
+      UNREACHABLE(decl);
+    }
   } else {
     auto *t = ASSERT_NOT_NULL(ctx->type_of(this));
     auto lval = EmitLVal(ctx)[0];

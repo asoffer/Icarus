@@ -12,10 +12,8 @@ std::string MatchDeclaration::to_string(size_t n) const {
 VerifyResult MatchDeclaration::VerifyType(Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), [[maybe_unused]] auto result,
                    type_expr->VerifyType(ctx));
-  // TODO this is wrong. it's a type satisfying a given interface. does that
-  // matter?
   // TODO is this always constant? does that make sense?
-  return VerifyResult::Constant(ctx->set_type(this, type::Intf));
+  return VerifyResult::Constant(ctx->set_type(this, type::Type_));
 }
 
 void MatchDeclaration::Validate(Context *ctx) { type_expr->Validate(ctx); }
