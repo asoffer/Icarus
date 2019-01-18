@@ -500,15 +500,14 @@ base::vector<std::unique_ptr<Declaration>> ExtractInputs(
 
 std::unique_ptr<Node> BuildFunctionLiteral(
     TextSpan span, base::vector<std::unique_ptr<Declaration>> inputs,
-    std::unique_ptr<Expression> output, std::unique_ptr<Statements> stmts,
-    Context *ctx) {
+    std::unique_ptr<Expression> output, Statements &&stmts, Context *ctx) {
   auto fn     = std::make_unique<ast::FunctionLiteral>();
   fn->module_ = ASSERT_NOT_NULL(ctx->mod_);
   for (auto &input : inputs) { input->is_fn_param_ = true; }
 
-  fn->span       = std::move(span);
-  fn->inputs     = std::move(inputs);
-  fn->statements = std::move(stmts);
+  fn->span        = std::move(span);
+  fn->inputs_     = std::move(inputs);
+  fn->statements_ = std::move(stmts);
 
   if (output == nullptr) {
     fn->return_type_inferred_ = true;
@@ -518,18 +517,18 @@ std::unique_ptr<Node> BuildFunctionLiteral(
         decl->is_fn_param_ = true;
         decl->is_output_   = true;
       }
-      fn->outputs.push_back(std::move(expr));
+      fn->outputs_.push_back(std::move(expr));
     }
   } else {
     if (auto decl = output->if_as<Declaration>()) {
       decl->is_fn_param_ = true;
       decl->is_output_   = true;
     }
-    fn->outputs.push_back(std::move(output));
+    fn->outputs_.push_back(std::move(output));
   }
 
   size_t i = 0;
-  for (const auto &input : fn->inputs) { fn->lookup_[input->id_] = i++; }
+  for (const auto &input : fn->inputs_) { fn->lookup_[input->id_] = i++; }
 
   return fn;
 }
@@ -540,15 +539,15 @@ std::unique_ptr<Node> BuildNormalFunctionLiteral(
   auto *binop = &nodes[0]->as<Binop>();
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(std::move(binop->lhs)),
-      std::move(binop->rhs), move_as<Statements>(nodes[1]), ctx);
+      std::move(binop->rhs), std::move(nodes[1]->as<Statements>()), ctx);
 }
 
 std::unique_ptr<Node> BuildInferredFunctionLiteral(
     base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto span = TextSpan(nodes[0]->span, nodes.back()->span);
-  return BuildFunctionLiteral(std::move(span),
-                              ExtractInputs(move_as<Expression>(nodes[0])),
-                              nullptr, move_as<Statements>(nodes[2]), ctx);
+  return BuildFunctionLiteral(
+      std::move(span), ExtractInputs(move_as<Expression>(nodes[0])), nullptr,
+      std::move(nodes[2]->as<Statements>()), ctx);
 }
 
 std::unique_ptr<Node> BuildShortFunctionLiteral(
@@ -570,8 +569,8 @@ std::unique_ptr<Node> BuildShortFunctionLiteral(
     ret->args_.exprs_.push_back(std::move(body));
   }
 
-  auto stmts = std::make_unique<Statements>();
-  stmts->append(std::move(ret));
+  Statements stmts;
+  stmts.append(std::move(ret));
   return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
                               std::move(stmts), ctx);
 }
@@ -823,10 +822,10 @@ static std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     base::vector<std::unique_ptr<ast::Node>> nodes, bool is_enum,
     Context *ctx) {
   std::vector<std::unique_ptr<ast::Expression>> elems;
-  if (nodes[1]->is<ast::Statements>()) {
+  if (auto *stmts = nodes[1]->if_as<ast::Statements>()) {
     // TODO if you want these values to depend on compile-time parameters,
     // you'll need to actually build the AST nodes.
-    for (auto &stmt : nodes[1]->as<ast::Statements>().content_) {
+    for (auto &stmt : stmts->content_) {
       ASSERT(stmt, Is<ast::Expression>());
       elems.push_back(move_as<ast::Expression>(stmt));
     }

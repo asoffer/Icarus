@@ -30,7 +30,6 @@ struct StructLiteral : public Expression {
   base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::unique_ptr<DeclScope> type_scope;
-  // TODO declartaions directly. don't need unique_ptr indirection.
   base::vector<std::unique_ptr<Declaration>> fields_, args_;
   Module *mod_ = nullptr;
 };

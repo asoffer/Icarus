@@ -144,13 +144,13 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
       return metadata;
     } else if constexpr (std::is_same_v<eval_t, Function *> ||
                          std::is_same_v<eval_t, FunctionLiteral *>) {
-      metadata.reserve(eval->inputs.size());
-      for (size_t i = 0; i < eval->inputs.size(); ++i) {
-        auto *input_type = ctx->type_of(eval->inputs[i].get());
+      metadata.reserve(eval->inputs_.size());
+      for (size_t i = 0; i < eval->inputs_.size(); ++i) {
+        auto *input_type = ctx->type_of(eval->inputs_[i].get());
         metadata.push_back(ArgumentMetaData{
             /*        type = */ input_type,
-            /*        name = */ eval->inputs[i]->id_,
-            /* has_default = */ !eval->inputs[i]->IsDefaultInitialized()});
+            /*        name = */ eval->inputs_[i]->id_,
+            /* has_default = */ !eval->inputs_[i]->IsDefaultInitialized()});
       }
       // TODO Note the trickiness in names above. has_default if it isn't
       // default initailized. This is because IsDefaultInitialized means for

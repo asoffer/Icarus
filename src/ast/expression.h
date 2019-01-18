@@ -22,11 +22,11 @@ struct Expression : public Node {
   Expression &operator=(Expression const &) noexcept = default;
 
   virtual ~Expression(){};
-  virtual std::string to_string(size_t n) const          = 0;
-  virtual void assign_scope(Scope *scope)                = 0;
-  virtual VerifyResult VerifyType(Context *ctx)     = 0;
-  virtual void Validate(Context *ctx)                    = 0;
-  virtual base::vector<ir::Val> EmitIR(Context *)        = 0;
+  virtual std::string to_string(size_t n) const                      = 0;
+  virtual void assign_scope(Scope *scope)                            = 0;
+  virtual VerifyResult VerifyType(Context *ctx)                      = 0;
+  virtual void Validate(Context *ctx)                                = 0;
+  virtual base::vector<ir::Val> EmitIR(Context *)                    = 0;
   virtual base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
 
   virtual bool needs_expansion() const { return false; }

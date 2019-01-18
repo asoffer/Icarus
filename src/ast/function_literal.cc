@@ -19,11 +19,11 @@ namespace ast {
 std::string FunctionLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "(";
-  if (!inputs.empty()) {
-    auto iter = inputs.begin();
+  if (!inputs_.empty()) {
+    auto iter = inputs_.begin();
     ss << (*iter)->to_string(n);
     ++iter;
-    while (iter != inputs.end()) {
+    while (iter != inputs_.end()) {
       ss << ", " << (*iter)->to_string(n);
       ++iter;
     }
@@ -31,11 +31,11 @@ std::string FunctionLiteral::to_string(size_t n) const {
   ss << ") -> ";
   if (!return_type_inferred_) {
     ss << "(";
-    if (!outputs.empty()) {
-      auto iter = outputs.begin();
+    if (!outputs_.empty()) {
+      auto iter = outputs_.begin();
       ss << (*iter)->to_string(n);
       ++iter;
-      while (iter != outputs.end()) {
+      while (iter != outputs_.end()) {
         ss << ", " << (*iter)->to_string(n);
         ++iter;
       }
@@ -43,23 +43,23 @@ std::string FunctionLiteral::to_string(size_t n) const {
     ss << ")";
   }
   ss << " {\n"
-     << statements->to_string(n + 1) << std::string(2 * n, ' ') << "}";
+     << statements_.to_string(n + 1) << std::string(2 * n, ' ') << "}";
   return ss.str();
 }
 
 void FunctionLiteral::assign_scope(Scope *scope) {
   scope_ = scope;
-  if (!fn_scope) { // TODO can this ever be null? 
-    fn_scope          = scope->add_child<FnScope>();
-    fn_scope->fn_lit_ = this;
+  if (!fn_scope_) { // TODO can this ever be null? 
+    fn_scope_          = scope->add_child<FnScope>();
+    fn_scope_->fn_lit_ = this;
   }
-  for (auto &in : inputs) { in->assign_scope(fn_scope.get()); }
-  for (auto &out : outputs) { out->assign_scope(fn_scope.get()); }
-  statements->assign_scope(fn_scope.get());
+  for (auto &in : inputs_) { in->assign_scope(fn_scope_.get()); }
+  for (auto &out : outputs_) { out->assign_scope(fn_scope_.get()); }
+  statements_.assign_scope(fn_scope_.get());
 }
 
 VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
-  if (std::any_of(inputs.begin(), inputs.end(), [](auto const &decl) {
+  if (std::any_of(inputs_.begin(), inputs_.end(), [](auto const &decl) {
         return decl->const_ ||
                (decl->type_expr != nullptr &&
                 decl->type_expr->template is<MatchDeclaration>());
@@ -71,15 +71,15 @@ VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
 
 VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   base::vector<const type::Type *> input_type_vec;
-  input_type_vec.reserve(inputs.size());
-  for (auto &input : inputs) {
+  input_type_vec.reserve(inputs_.size());
+  for (auto &input : inputs_) {
     input_type_vec.push_back(input->VerifyType(ctx).type_);
   }
 
   base::vector<const type::Type *> output_type_vec;
-  output_type_vec.reserve(outputs.size());
+  output_type_vec.reserve(outputs_.size());
   bool error = false;
-  for (auto &output : outputs) {
+  for (auto &output : outputs_) {
     auto result = output->VerifyType(ctx);
     output_type_vec.push_back(result.type_);
     if (result.type_ != nullptr && !result.const_) {
@@ -106,12 +106,12 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
 
   if (!return_type_inferred_) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
-      if (outputs.at(i)->is<Declaration>()) {
-        output_type_vec.at(i) = ctx->type_of(&outputs[i]->as<Declaration>());
+      if (outputs_.at(i)->is<Declaration>()) {
+        output_type_vec.at(i) = ctx->type_of(&outputs_[i]->as<Declaration>());
       } else {
         ASSERT(output_type_vec.at(i) == type::Type_);
         output_type_vec.at(i) =
-            backend::EvaluateAs<type::Type const *>(outputs.at(i).get(), ctx);
+            backend::EvaluateAs<type::Type const *>(outputs_.at(i).get(), ctx);
       }
     }
 
@@ -135,22 +135,22 @@ void FunctionLiteral::Validate(Context *ctx) {
   bool inserted = validated_fns.insert(this).second;
   if (!inserted) { return; }
 
-  for (auto &in : inputs) { in->Validate(ctx); }
-  for (auto &out : outputs) { out->Validate(ctx); }
+  for (auto &in : inputs_) { in->Validate(ctx); }
+  for (auto &out : outputs_) { out->Validate(ctx); }
 
   // NOTE! Type verifcation on statements first!
-  statements->VerifyType(ctx);
+  statements_.VerifyType(ctx);
   // TODO propogate cyclic dependencies.
 
   JumpExprs rets;
-  statements->ExtractJumps(&rets);
-  statements->Validate(ctx);
+  statements_.ExtractJumps(&rets);
+  statements_.Validate(ctx);
   std::set<type::Type const *> types;
   for (auto *expr : rets[JumpKind::Return]) { types.insert(ctx->type_of(expr)); }
 
   base::vector<type::Type const *> input_type_vec;
-  input_type_vec.reserve(inputs.size());
-  for (auto const &input : inputs) {
+  input_type_vec.reserve(inputs_.size());
+  for (auto const &input : inputs_) {
     input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input.get())));
   }
 
@@ -164,13 +164,13 @@ void FunctionLiteral::Validate(Context *ctx) {
         if (one_type->is<type::Tuple>()) {
           const auto &entries = one_type->as<type::Tuple>().entries_;
           for (auto *entry : entries) {
-            outputs.push_back(
+            outputs_.push_back(
                 std::make_unique<Terminal>(TextSpan(), ir::Val(entry)));
           }
           ctx->set_type(this, type::Func(std::move(input_type_vec), entries));
 
         } else {
-          outputs.push_back(
+          outputs_.push_back(
               std::make_unique<Terminal>(TextSpan(), ir::Val(one_type)));
           ctx->set_type(this,
                         type::Func(std::move(input_type_vec), {one_type}));
@@ -227,12 +227,12 @@ void FunctionLiteral::Validate(Context *ctx) {
 }
 
 void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &in : inputs) { in->ExtractJumps(rets); }
-  for (auto &out : outputs) { out->ExtractJumps(rets); }
+  for (auto &in : inputs_) { in->ExtractJumps(rets); }
+  for (auto &out : outputs_) { out->ExtractJumps(rets); }
 }
 
 base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
-  if (std::any_of(inputs.begin(), inputs.end(), [&](auto const &decl) {
+  if (std::any_of(inputs_.begin(), inputs_.end(), [&](auto const &decl) {
         // TODO this is wrong... it may not directly be a match-decl, but
         // something that's "extractable" like a pointer to or an array of
         // match-decls.
@@ -254,8 +254,8 @@ base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
         ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this, ctx->mod_);
 
     base::vector<std::pair<std::string, Expression *>> args;
-    args.reserve(inputs.size());
-    for (const auto &input : inputs) {
+    args.reserve(inputs_.size());
+    for (const auto &input : inputs_) {
       args.emplace_back(input->as<Declaration>().id_,
                         input->as<Declaration>().init_val.get());
     }
@@ -283,15 +283,15 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
     ir::BasicBlock::Current = start_block;
 
     // TODO arguments should be renumbered to not waste space on const values
-    for (i32 i = 0; i < static_cast<i32>(inputs.size()); ++i) {
-      ctx->set_addr(inputs[i].get(), ir::Func::Current->Argument(i));
+    for (i32 i = 0; i < static_cast<i32>(inputs_.size()); ++i) {
+      ctx->set_addr(inputs_[i].get(), ir::Func::Current->Argument(i));
     }
 
-    fn_scope->MakeAllStackAllocations(ctx);
+    fn_scope_->MakeAllStackAllocations(ctx);
 
-    for (size_t i = 0; i < outputs.size(); ++i) {
-      if (!outputs[i]->is<Declaration>()) { continue; }
-      auto *out_decl      = &outputs[i]->as<Declaration>();
+    for (size_t i = 0; i < outputs_.size(); ++i) {
+      if (!outputs_[i]->is<Declaration>()) { continue; }
+      auto *out_decl      = &outputs_[i]->as<Declaration>();
       auto *out_decl_type = ASSERT_NOT_NULL(ctx->type_of(out_decl));
       auto alloc = out_decl_type->is_big() ? ir::GetRet(i, out_decl_type)
                                            : ir::Alloca(out_decl_type);
@@ -305,9 +305,9 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
       }
     }
 
-    statements->EmitIR(ctx);
+    statements_.EmitIR(ctx);
 
-    fn_scope->MakeAllDestructions(ctx);
+    fn_scope_->MakeAllDestructions(ctx);
 
 
     if (t->as<type::Function>().output.empty()) {

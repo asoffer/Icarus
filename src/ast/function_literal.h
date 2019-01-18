@@ -39,11 +39,11 @@ struct FunctionLiteral : public Expression {
 
   void CompleteBody(Context *ctx);
 
-  std::unique_ptr<FnScope> fn_scope;
+  std::unique_ptr<FnScope> fn_scope_;
 
-  base::vector<std::unique_ptr<Declaration>> inputs;
-  base::vector<std::unique_ptr<Expression>> outputs;
-  std::unique_ptr<Statements> statements;
+  base::vector<std::unique_ptr<Declaration>> inputs_;
+  base::vector<std::unique_ptr<Expression>> outputs_;
+  Statements statements_;
 
   // Maps the string name of the declared argument to it's index:
   // Example: (a: int, b: char, c: string) -> int

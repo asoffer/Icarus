@@ -218,33 +218,33 @@ CallObstruction DispatchTableRow::SetTypes(FunctionLiteral const &fn,
       // The naming here is super confusing but if a declaration
       // "IsDefaultInitialized" that means it's of the form `foo: bar`, and so
       // it does NOT have a default value.
-      auto &decl = *fn.inputs.at(i);
+      auto &decl = *fn.inputs_.at(i);
       if (decl.IsDefaultInitialized()) {
         return CallObstruction::NoDefault(decl.id_);
       }
       // TODO The order for evaluating these is wrong. Defaults may need to be
       // intermixed with non-defaults.
-      auto result = fn.inputs.at(i).get()->VerifyType(ctx);
+      auto result = fn.inputs_.at(i).get()->VerifyType(ctx);
       // TODO deal with the case where the initial value isn't a constant.
       if (!result.const_) { NOT_YET("log an error."); }
 
-      fn.inputs.at(i).get()->Validate(ctx);
+      fn.inputs_.at(i).get()->Validate(ctx);
       ctx->bound_constants_.constants_.emplace(
-          fn.inputs.at(i).get(),
-          backend::Evaluate(fn.inputs.at(i)->init_val.get(), ctx)[0]);
+          fn.inputs_.at(i).get(),
+          backend::Evaluate(fn.inputs_.at(i)->init_val.get(), ctx)[0]);
 
-      binding_.exprs_.at(i).set_type(ctx->type_of(fn.inputs.at(i).get()));
+      binding_.exprs_.at(i).set_type(ctx->type_of(fn.inputs_.at(i).get()));
       continue;
     }
     // TODO defaulted arguments
     // TODO Meet with the argument
-    type::Type const *match = ctx->type_of(fn.inputs.at(i).get());
+    type::Type const *match = ctx->type_of(fn.inputs_.at(i).get());
 
     binding_.exprs_.at(i).set_type(match);
     if (i < call_arg_types_.pos_.size()) {
       call_arg_types_.pos_.at(i) = match;
     } else {
-      auto iter = call_arg_types_.find(fn.inputs.at(i)->id_);
+      auto iter = call_arg_types_.find(fn.inputs_.at(i)->id_);
       ASSERT(iter != call_arg_types_.named_.end());
       iter->second = match;
     }
@@ -384,7 +384,7 @@ DispatchTableRow::MakeFromFnLit(
     type::Typed<Expression *, type::Callable> fn_option,
     FunctionLiteral *fn_lit, FnArgs<Expression *> const &args, Context *ctx) {
   size_t num =
-      std::max(fn_lit->inputs.size(), args.pos_.size() + args.named_.size());
+      std::max(fn_lit->inputs_.size(), args.pos_.size() + args.named_.size());
   ASSIGN_OR(return _.error(), auto binding,
                    MakeBinding(fn_option, args, num, &fn_lit->lookup_));
 
@@ -393,9 +393,9 @@ DispatchTableRow::MakeFromFnLit(
     // TODO wrong. this may not directly be a matchdecl but could be something
     // like an array-type of them.
     bool needs_match_decl =
-        fn_lit->inputs[i]->type_expr != nullptr &&
-        fn_lit->inputs[i]->type_expr->is<MatchDeclaration>();
-    if (!fn_lit->inputs[i]->const_ && !needs_match_decl) { continue; }
+        fn_lit->inputs_[i]->type_expr != nullptr &&
+        fn_lit->inputs_[i]->type_expr->is<MatchDeclaration>();
+    if (!fn_lit->inputs_[i]->const_ && !needs_match_decl) { continue; }
     // TODO this is wrong because it needs to be removed outside the scope of
     // this function.
     // TODO what if this isn't evaluable? i.e., what if args.pos_[i] isn't a
@@ -403,18 +403,18 @@ DispatchTableRow::MakeFromFnLit(
     // below for named and default arguments.
     if (needs_match_decl) {
       new_ctx.bound_constants_.constants_.emplace(
-          &fn_lit->inputs[i]->type_expr->as<MatchDeclaration>(),
+          &fn_lit->inputs_[i]->type_expr->as<MatchDeclaration>(),
           ir::Val(ctx->type_of(args.pos_[i])));
     }
 
-    if (fn_lit->inputs[i]->const_) {
+    if (fn_lit->inputs_[i]->const_) {
       new_ctx.bound_constants_.constants_.emplace(
-          fn_lit->inputs[i].get(), backend::Evaluate(args.pos_[i], ctx)[0]);
+          fn_lit->inputs_[i].get(), backend::Evaluate(args.pos_[i], ctx)[0]);
     }
   }
   for (auto & [ name, expr ] : args.named_) {
     size_t index = fn_lit->lookup_[name];
-    auto *decl   = fn_lit->inputs[index].get();
+    auto *decl   = fn_lit->inputs_[index].get();
     if (!decl->const_) { continue; }
     new_ctx.bound_constants_.constants_.emplace(
         decl, backend::Evaluate(expr, ctx)[0]);
@@ -426,7 +426,7 @@ DispatchTableRow::MakeFromFnLit(
     if (index < args.pos_.size()) { continue; }
     auto iter = args.named_.find(name);
     if (iter != args.named_.end()) { continue; }
-    auto *decl = fn_lit->inputs[index].get();
+    auto *decl = fn_lit->inputs_[index].get();
     decl->init_val->VerifyType(&new_ctx);
     decl->init_val->Validate(&new_ctx);
     new_ctx.bound_constants_.constants_.emplace(

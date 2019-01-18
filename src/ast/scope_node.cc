@@ -25,7 +25,7 @@ std::string ScopeNode::to_string(size_t n) const {
   std::stringstream ss;
   ss << name_->to_string(n) << " ";
   if (!args_.empty()) { ss << "(" << args_.to_string(n) << ") "; }
-  for (auto const &block : blocks_) { ss << block->to_string(n); }
+  for (auto const &block : blocks_) { ss << block.to_string(n); }
   return ss.str();
 }
 
@@ -33,7 +33,7 @@ void ScopeNode::assign_scope(Scope *scope) {
   scope_ = scope;
   name_->assign_scope(scope);
   args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
-  for (auto &block : blocks_) { block->assign_scope(scope); }
+  for (auto &block : blocks_) { block.assign_scope(scope); }
 }
 
 VerifyResult ScopeNode::VerifyType(Context *ctx) {
@@ -43,7 +43,7 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
       args_.Transform([ctx, this](auto &arg) { return arg->VerifyType(ctx); });
   // TODO type check
 
-  for (auto &block : blocks_) { block->VerifyType(ctx); }
+  for (auto &block : blocks_) { block.VerifyType(ctx); }
 
   // TODO check the scope type makes sense.
   if (!name_result.const_) {
@@ -62,14 +62,14 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
 
 void ScopeNode::Validate(Context *ctx) {
   for (auto &block_node : blocks_) {
-    block_node->stmts_.VerifyType(ctx);
-    block_node->stmts_.Validate(ctx);
+    block_node.stmts_.VerifyType(ctx);
+    block_node.stmts_.Validate(ctx);
   }
   // TODO
 }
 
 void ScopeNode::ExtractJumps(JumpExprs *rets) const {
-  for (auto &block : blocks_) { block->ExtractJumps(rets); }
+  for (auto &block : blocks_) { block.ExtractJumps(rets); }
 }
 
 base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
@@ -111,8 +111,8 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
   std::unordered_set<type::Type const *> state_types;
   for (auto &block : blocks_) {
     // TODO for now do lookup assuming it's an identifier.
-    ASSERT(block->name_, Is<Identifier>());
-    auto *decl = name_lookup.at(block->name_->as<Identifier>().token);
+    ASSERT(block.name_, Is<Identifier>());
+    auto *decl = name_lookup.at(block.name_->as<Identifier>().token);
     // Guarnteed to be constant because all declarations inside a scope literal
     // are guaranteed to be constant.
     auto &bseq = *backend::EvaluateAs<ir::BlockSequence>(decl, ctx).seq_;
@@ -136,9 +136,9 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
         state_types.insert(t->as<type::Function>().input[0]);
       }
     }
-    auto block_index        = ir::Func::Current->AddBlock();
-    block_data[block.get()] = {std::move(os_before), std::move(os_after),
-                               block_index, bseq[0]};
+    auto block_index   = ir::Func::Current->AddBlock();
+    block_data[&block] = {std::move(os_before), std::move(os_after),
+                          block_index, bseq[0]};
     jump_table->emplace(bseq[0], block_index);
   }
 
@@ -174,7 +174,7 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
   }
 
   for (auto &block : blocks_) {
-    auto &data              = block_data[block.get()];
+    auto &data              = block_data[&block];
     ir::BasicBlock::Current = data.index_;
 
     FnArgs<std::pair<Expression *, ir::Val>> before_args;
@@ -191,7 +191,7 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     // TODO args?
     dispatch_table.EmitCall(before_args, result_type, ctx);
 
-    block->EmitIR(ctx);
+    block.EmitIR(ctx);
     auto yields = std::move(ctx->yields_stack_.back());
 
     FnArgs<Expression *> after_expr_args;
