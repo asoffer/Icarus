@@ -7,14 +7,16 @@
 namespace ast {
 template <typename T>
 struct FnArgs {
-  auto find(const std::string &name) -> decltype(auto) {
+  template <typename S>
+  auto find(S &&name) -> decltype(auto) {
     auto iter = named_.begin();
     for (; iter != named_.end(); ++iter) {
       if (iter->first == name) { return iter; }
     }
     return iter;
   }
-  auto find(const std::string &name) const -> decltype(auto) {
+  template <typename S>
+  auto find(S &&name) const -> decltype(auto) {
     auto iter = named_.begin();
     for (; iter != named_.end(); ++iter) {
       if (iter->first == name) { return iter; }

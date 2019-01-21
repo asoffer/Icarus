@@ -22,10 +22,12 @@ void Array::EmitAssign(Type const *from_type, ir::Val const &from,
   std::unique_lock lock(mtx_);
   auto *&fn = assign_fns_[from_array_type];
   if (fn == nullptr) {
-    fn = ctx->mod_->AddFunc(
-        type::Func({from_type, type::Ptr(this)}, {}),
-        base::vector<std::pair<std::string, ast::Expression *>>{
-            {"from", nullptr}, {"to", nullptr}});
+    ast::FnParams<ast::Expression *> params;
+    params.append("", nullptr);
+    params.append("", nullptr);
+
+    fn = ctx->mod_->AddFunc(type::Func({from_type, type::Ptr(this)}, {}),
+                            std::move(params));
 
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();

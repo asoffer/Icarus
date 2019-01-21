@@ -121,16 +121,14 @@ base::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
     auto &work_item =
         ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this, ctx->mod_);
 
-    base::vector<std::pair<std::string, Expression *>> args;
-    args.reserve(args_.size());
-    for (auto const &d : args_) {
-      args.emplace_back(d->id_, d->init_val.get());
-    }
+    FnParams<Expression *> params;
+    params.reserve(args_.size());
+    for (auto const &d : args_) { params.append(d->id_, d->init_val.get()); }
 
     ir_func = mod_->AddFunc(
         type::Func(ctx->type_of(this)->as<type::GenericStruct>().deps_,
                    {type::Type_}),
-        std::move(args));
+        std::move(params));
 
     ir_func->work_item = &work_item;
   }

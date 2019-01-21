@@ -20,11 +20,11 @@ std::string FunctionLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "(";
   if (!inputs_.empty()) {
-    auto iter = inputs_.begin();
-    ss << (*iter)->to_string(n);
+    auto iter = inputs_.params_.begin();
+    ss << iter->value->to_string(n);
     ++iter;
-    while (iter != inputs_.end()) {
-      ss << ", " << (*iter)->to_string(n);
+    while (iter != inputs_.params_.end()) {
+      ss << ", " << iter->value->to_string(n);
       ++iter;
     }
   }
@@ -33,10 +33,10 @@ std::string FunctionLiteral::to_string(size_t n) const {
     ss << "(";
     if (!outputs_.empty()) {
       auto iter = outputs_.begin();
-      ss << (*iter)->to_string(n);
+      ss << iter->get()->to_string(n);
       ++iter;
       while (iter != outputs_.end()) {
-        ss << ", " << (*iter)->to_string(n);
+        ss << ", " << iter->get()->to_string(n);
         ++iter;
       }
     }
@@ -53,17 +53,18 @@ void FunctionLiteral::assign_scope(Scope *scope) {
     fn_scope_          = scope->add_child<FnScope>();
     fn_scope_->fn_lit_ = this;
   }
-  for (auto &in : inputs_) { in->assign_scope(fn_scope_.get()); }
+  for (auto &in : inputs_.params_) { in.value->assign_scope(fn_scope_.get()); }
   for (auto &out : outputs_) { out->assign_scope(fn_scope_.get()); }
   statements_.assign_scope(fn_scope_.get());
 }
 
 VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
-  if (std::any_of(inputs_.begin(), inputs_.end(), [](auto const &decl) {
-        return decl->const_ ||
-               (decl->type_expr != nullptr &&
-                decl->type_expr->template is<MatchDeclaration>());
-      })) {
+  if (std::any_of(
+          inputs_.params_.begin(), inputs_.params_.end(), [](auto const &decl) {
+            return decl.value->const_ ||
+                   (decl.value->type_expr != nullptr &&
+                    decl.value->type_expr->template is<MatchDeclaration>());
+          })) {
     return VerifyResult::Constant(ctx->set_type(this, type::Generic));
   }
   return VerifyTypeConcrete(ctx);
@@ -72,8 +73,8 @@ VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
 VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   base::vector<const type::Type *> input_type_vec;
   input_type_vec.reserve(inputs_.size());
-  for (auto &input : inputs_) {
-    input_type_vec.push_back(input->VerifyType(ctx).type_);
+  for (auto &input : inputs_.params_) {
+    input_type_vec.push_back(input.value->VerifyType(ctx).type_);
   }
 
   base::vector<const type::Type *> output_type_vec;
@@ -135,7 +136,7 @@ void FunctionLiteral::Validate(Context *ctx) {
   bool inserted = validated_fns.insert(this).second;
   if (!inserted) { return; }
 
-  for (auto &in : inputs_) { in->Validate(ctx); }
+  for (auto &in : inputs_.params_) { in.value->Validate(ctx); }
   for (auto &out : outputs_) { out->Validate(ctx); }
 
   // NOTE! Type verifcation on statements first!
@@ -150,8 +151,8 @@ void FunctionLiteral::Validate(Context *ctx) {
 
   base::vector<type::Type const *> input_type_vec;
   input_type_vec.reserve(inputs_.size());
-  for (auto const &input : inputs_) {
-    input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input.get())));
+  for (auto const &input : inputs_.params_) {
+    input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input.value.get())));
   }
 
   if (return_type_inferred_) {
@@ -227,24 +228,27 @@ void FunctionLiteral::Validate(Context *ctx) {
 }
 
 void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &in : inputs_) { in->ExtractJumps(rets); }
+  for (auto &in : inputs_.params_) { in.value->ExtractJumps(rets); }
   for (auto &out : outputs_) { out->ExtractJumps(rets); }
 }
 
 base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
-  if (std::any_of(inputs_.begin(), inputs_.end(), [&](auto const &decl) {
-        // TODO this is wrong... it may not directly be a match-decl, but
-        // something that's "extractable" like a pointer to or an array of
-        // match-decls.
-        return ((decl->const_ &&
-                 ctx->bound_constants_.constants_.find(decl.get()) ==
+  if (std::any_of(
+          inputs_.params_.begin(), inputs_.params_.end(),
+          [&](auto const &decl) {
+            // TODO this is wrong... it may not directly be a match-decl, but
+            // something that's "extractable" like a pointer to or an array of
+            // match-decls.
+            return (
+                (decl.value->const_ &&
+                 ctx->bound_constants_.constants_.find(decl.value.get()) ==
                      ctx->bound_constants_.constants_.end()) ||
-                (decl->type_expr != nullptr &&
-                 decl->type_expr->template is<MatchDeclaration>() &&
+                (decl.value->type_expr != nullptr &&
+                 decl.value->type_expr->template is<MatchDeclaration>() &&
                  ctx->bound_constants_.constants_.find(
-                     &decl->type_expr->template as<MatchDeclaration>()) ==
+                     &decl.value->type_expr->template as<MatchDeclaration>()) ==
                      ctx->bound_constants_.constants_.end()));
-      })) {
+          })) {
     return {ir::Val::Func(this)};
   }
 
@@ -253,15 +257,14 @@ base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
     auto &work_item =
         ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this, ctx->mod_);
 
-    base::vector<std::pair<std::string, Expression *>> args;
-    args.reserve(inputs_.size());
-    for (const auto &input : inputs_) {
-      args.emplace_back(input->as<Declaration>().id_,
-                        input->as<Declaration>().init_val.get());
+    FnParams<Expression*> params;
+    params.reserve(inputs_.size());
+    for (auto const &input : inputs_.params_) {
+      params.append(input.name, input.value->init_val.get());
     }
 
     ir_func = ctx->mod_->AddFunc(&ctx->type_of(this)->as<type::Function>(),
-                                 std::move(args));
+                                 std::move(params));
     ir_func->work_item = &work_item;
   }
 
@@ -284,7 +287,8 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
 
     // TODO arguments should be renumbered to not waste space on const values
     for (i32 i = 0; i < static_cast<i32>(inputs_.size()); ++i) {
-      ctx->set_addr(inputs_[i].get(), ir::Func::Current->Argument(i));
+      ctx->set_addr(inputs_.params_.at(i).value.get(),
+                    ir::Func::Current->Argument(i));
     }
 
     fn_scope_->MakeAllStackAllocations(ctx);

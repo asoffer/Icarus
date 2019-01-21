@@ -5,6 +5,7 @@
 #include "ast/declaration.h"
 #include "ast/dispatch.h"
 #include "ast/expression.h"
+#include "ast/fn_params.h"
 #include "ast/identifier.h"
 #include "ast/statements.h"
 #include "base/container/map.h"
@@ -41,14 +42,12 @@ struct FunctionLiteral : public Expression {
 
   std::unique_ptr<FnScope> fn_scope_;
 
-  base::vector<std::unique_ptr<Declaration>> inputs_;
+  // TODO This is storing both the name in the declaration and pulls the
+  // string_view of the name out in FnParams::Param.
+  FnParams<std::unique_ptr<Declaration>> inputs_;
   base::vector<std::unique_ptr<Expression>> outputs_;
   Statements statements_;
 
-  // Maps the string name of the declared argument to it's index:
-  // Example: (a: int, b: char, c: string) -> int
-  //           a => 0, b => 1, c => 2
-  base::unordered_map<std::string, size_t> lookup_;
   bool return_type_inferred_ = false;
   Module *module_            = nullptr;
 };

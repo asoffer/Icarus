@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "ast/fn_params.h"
 #include "ast/function_literal.h"
 #include "ast/terminal.h"
 #include "ast/unop.h"
@@ -25,14 +26,17 @@ i32 OpaqueFuncIndex = 1;
 
 ir::Val DebugIrFunc() {
   auto *fn_type                   = type::Func({}, {});
-  static ir::Func *debug_ir_func_ = new ir::Func(nullptr, fn_type, {});
+  static ir::Func *debug_ir_func_ =
+      new ir::Func(nullptr, fn_type, ast::FnParams<ast::Expression *>{});
   return ir::Val::Func(fn_type, debug_ir_func_);
 }
 
 ir::Val BytesFunc() {
   auto *fn_type                = type::Func({type::Type_}, {type::Int64});
   static ir::Func *bytes_func_ = [&]() {
-    auto fn = new ir::Func(nullptr, fn_type, {{"", nullptr}});
+    ast::FnParams<ast::Expression *> params;
+    params.append("", nullptr);
+    auto fn = new ir::Func(nullptr, fn_type, std::move(params));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
       ir::SetRet(0, Bytes(fn->Argument(0)));
@@ -46,7 +50,9 @@ ir::Val BytesFunc() {
 ir::Val AlignFunc() {
   auto *fn_type                = type::Func({type::Type_}, {type::Int64});
   static ir::Func *bytes_func_ = [&]() {
-    auto fn = new ir::Func(nullptr, fn_type, {{"", nullptr}});
+    ast::FnParams<ast::Expression *> params;
+    params.append("", nullptr);
+    auto fn = new ir::Func(nullptr, fn_type, std::move(params));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
       ir::SetRet(0, Align(fn->Argument(0)));

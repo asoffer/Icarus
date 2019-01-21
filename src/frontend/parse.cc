@@ -503,10 +503,18 @@ std::unique_ptr<Node> BuildFunctionLiteral(
     std::unique_ptr<Expression> output, Statements &&stmts, Context *ctx) {
   auto fn     = std::make_unique<ast::FunctionLiteral>();
   fn->module_ = ASSERT_NOT_NULL(ctx->mod_);
-  for (auto &input : inputs) { input->is_fn_param_ = true; }
+  for (auto &input : inputs) {
+    input->is_fn_param_ = true;
+    // NOTE: This is safe because the declaration is behind a unique_ptr so the
+    // string is never moved. You need to be careful if you ever decide to use
+    // make this declaration inline because SSO might mean moving the
+    // declaration (which can happen if FnParams internal vector gets
+    // reallocated) could invalidate the string_view unintentionally.
+    std::string_view name = input->id_;
+    fn->inputs_.append(name, std::move(input));
+  }
 
   fn->span        = std::move(span);
-  fn->inputs_     = std::move(inputs);
   fn->statements_ = std::move(stmts);
 
   if (output == nullptr) {
@@ -526,9 +534,6 @@ std::unique_ptr<Node> BuildFunctionLiteral(
     }
     fn->outputs_.push_back(std::move(output));
   }
-
-  size_t i = 0;
-  for (const auto &input : fn->inputs_) { fn->lookup_[input->id_] = i++; }
 
   return fn;
 }

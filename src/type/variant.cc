@@ -59,10 +59,9 @@ void Variant::EmitDestroy(ir::Register reg, Context *ctx) const {
 
   std::unique_lock lock(mtx_);
   if (!destroy_func_) {
-    destroy_func_ = ctx->mod_->AddFunc(
-        Func({this}, {}),
-        base::vector<std::pair<std::string, ast::Expression *>>{
-            {"arg", nullptr}});
+    ast::FnParams<ast::Expression*> params;
+    params.append("", nullptr);
+    destroy_func_ = ctx->mod_->AddFunc(Func({this}, {}), std::move(params));
     CURRENT_FUNC(destroy_func_) {
       ir::BasicBlock::Current = destroy_func_->entry();
       auto landing            = ir::Func::Current->AddBlock();

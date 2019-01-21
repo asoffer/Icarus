@@ -1,6 +1,7 @@
 #include "type/array.h"
 
 #include "architecture.h"
+#include "ast/fn_params.h"
 #include "base/guarded.h"
 #include "context.h"
 #include "ir/arguments.h"
@@ -27,11 +28,12 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
 
   auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
-    base::vector<std::pair<std::string, ast::Expression *>> args = {
-        {"lhs", nullptr}, {"rhs", nullptr}};
+    ast::FnParams<ast::Expression *> params;
+    params.append("", nullptr);
+    params.append("", nullptr);
     auto *fn = ctx->mod_->AddFunc(
         type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool}),
-        std::move(args));
+        std::move(params));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
 
@@ -42,7 +44,8 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
       auto body_block      = ir::Func::Current->AddBlock();
       auto incr_block      = ir::Func::Current->AddBlock();
 
-      ir::CondJump(ir::Eq(lhs_type->len, rhs_type->len), equal_len_block, false_block);
+      ir::CondJump(ir::Eq(lhs_type->len, rhs_type->len), equal_len_block,
+                   false_block);
 
       ir::BasicBlock::Current = true_block;
       ir::SetRet(0, true);

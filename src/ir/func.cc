@@ -18,9 +18,9 @@ Register Func::Return(u32 n) const {
 }
 
 Func::Func(Module *mod, type::Function const *fn_type,
-           base::vector<std::pair<std::string, ast::Expression *>> args)
+           ast::FnParams<ast::Expression *> params)
     : type_(fn_type),
-      args_(std::move(args)),
+      params_(std::move(params)),
       num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
       mod_(mod) {
   // Set the references for arguments and returns
@@ -28,8 +28,6 @@ Func::Func(Module *mod, type::Function const *fn_type,
        i < static_cast<i32>(type_->input.size()); ++i) {
     references_[Register{i}];
   }
-
-  for (size_t i = 0; i < args_.size(); ++i) { lookup_[args_[i].first] = i; }
 
   auto arch = Architecture::InterprettingMachine();
   i32 i     = 0;
@@ -50,7 +48,7 @@ Func::Func(Module *mod, type::Function const *fn_type,
     reg_map_.emplace(neg_bound_, Register(neg_bound_));
   }
 
-  ASSERT(args_.size() == fn_type->input.size());
+  ASSERT(params_.size() == fn_type->input.size()); // TODO is this still true with variadics?
   blocks_.emplace_back(this);
 }
 
@@ -89,7 +87,7 @@ static base::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
     auto & [ func, prop_map ] = result.emplace_back(
         std::piecewise_construct,
         std::forward_as_tuple(
-            fn->mod_, type::Func(fn->type_->input, {type::Bool}), fn->args_),
+            fn->mod_, type::Func(fn->type_->input, {type::Bool}), fn->params_),
         std::forward_as_tuple());
 
     CURRENT_FUNC(&func) {

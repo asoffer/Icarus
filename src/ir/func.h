@@ -3,6 +3,7 @@
 
 #include <unordered_set>
 
+#include "ast/fn_params.h"
 #include "base/container/bag.h"
 #include "base/container/unordered_map.h"
 #include "base/container/vector.h"
@@ -41,7 +42,7 @@ struct Func {
   static thread_local Func *Current;
 
   Func(Module *mod, type::Function const *fn_type,
-       base::vector<std::pair<std::string, ast::Expression *>> args);
+       ast::FnParams<ast::Expression *> params);
 
   Register Argument(u32 n) const;
   Register Return(u32 n) const;
@@ -81,8 +82,8 @@ struct Func {
   BlockIndex entry() const { return BlockIndex(0); }
 
   type::Function const *const type_ = nullptr;
-  base::vector<std::pair<std::string, ast::Expression *>> args_;
-  bool has_default(size_t i) const { return args_[i].second != nullptr; }
+  ast::FnParams<ast::Expression *> params_;
+  
   i32 num_regs_  = 0;
   i32 neg_bound_ = 0;
   base::vector<BasicBlock> blocks_;
@@ -95,8 +96,6 @@ struct Func {
 
   size_t reg_size_ = 0;
   base::unordered_map<i32, Register> reg_map_;
-
-  base::unordered_map<std::string, size_t> lookup_;
 
   base::vector<ast::Expression *> precondition_exprs_, postcondition_exprs_;
   base::vector<std::pair<ir::Func, prop::PropertyMap>> preconditions_,

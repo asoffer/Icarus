@@ -11,6 +11,7 @@
 
 #include "ast/bound_constants.h"
 #include "ast/dispatch.h"
+#include "ast/fn_params.h"
 #include "ast/node_lookup.h"
 #include "ast/statements.h"
 #include "base/container/unordered_map.h"
@@ -52,9 +53,8 @@ struct Module {
       std::filesystem::path const &src,
       std::filesystem::path const &requestor = std::filesystem::path{""});
 
-  ir::Func *AddFunc(
-      type::Function const *fn_type,
-      base::vector<std::pair<std::string, ast::Expression *>> args);
+  ir::Func *AddFunc(type::Function const *fn_type,
+                    ast::FnParams<ast::Expression *> params);
   type::Type const *GetType(std::string const &name) const;
   ast::Declaration *GetDecl(std::string const &name) const;
 

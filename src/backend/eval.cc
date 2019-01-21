@@ -17,7 +17,7 @@ static std::unique_ptr<ir::Func> ExprFn(
     type::Typed<ast::Expression *> typed_expr, Context *ctx) {
   auto fn = std::make_unique<ir::Func>(
       ctx->mod_, type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
-      base::vector<std::pair<std::string, ast::Expression *>>{});
+      ast::FnParams<ast::Expression *>{});
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
     // Factor these out together.

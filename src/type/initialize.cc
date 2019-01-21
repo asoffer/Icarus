@@ -16,10 +16,9 @@ namespace type {
 void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
   std::unique_lock lock(mtx_);
   if (!init_func_) {
-    init_func_ = ctx->mod_->AddFunc(
-        Func({Ptr(this)}, {}),
-        base::vector<std::pair<std::string, ast::Expression *>>{
-            {"arg", nullptr}});
+    ast::FnParams<ast::Expression *> params;
+    params.append("", nullptr);
+    init_func_ = ctx->mod_->AddFunc(Func({Ptr(this)}, {}), std::move(params));
 
     CURRENT_FUNC(init_func_) {
       ir::BasicBlock::Current = init_func_->entry();
@@ -102,10 +101,12 @@ static ir::Func *ArrayInitializationWith(const Array *from_type,
   auto handle         = init_fns.lock();
   auto[iter, success] = (*handle)[to_type].emplace(from_type, nullptr);
   if (success) {
-    base::vector<std::pair<std::string, ast::Expression *>> args = {
-        {"arg0", nullptr}, {"arg1", nullptr}};
+    ast::FnParams<ast::Expression *> params;
+    params.append("", nullptr);
+    params.append("", nullptr);
+
     auto *fn = ctx->mod_->AddFunc(
-        type::Func({from_type, type::Ptr(to_type)}, {}), std::move(args));
+        type::Func({from_type, type::Ptr(to_type)}, {}), std::move(params));
     iter->second = fn;
 
     CURRENT_FUNC(fn) {
@@ -161,10 +162,12 @@ static ir::Func *StructInitializationWith(const Struct *struct_type,
   auto[iter, success] = handle->emplace(struct_type, nullptr);
 
   if (success) {
-    base::vector<std::pair<std::string, ast::Expression *>> args = {
-        {"arg0", nullptr}, {"arg1", nullptr}};
+    ast::FnParams<ast::Expression *> params;
+    params.append("", nullptr);
+    params.append("", nullptr);
+
     auto *fn = iter->second = ctx->mod_->AddFunc(
-        Func({Ptr(struct_type), Ptr(struct_type)}, {}), std::move(args));
+        Func({Ptr(struct_type), Ptr(struct_type)}, {}), std::move(params));
 
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();

@@ -49,11 +49,10 @@ Module::Module()
 }
 Module::~Module() = default;
 
-ir::Func *Module::AddFunc(
-    type::Function const *fn_type,
-    base::vector<std::pair<std::string, ast::Expression *>> args) {
-  auto *result = fns_.emplace_back(std::make_unique<ir::Func>(this, fn_type,
-                                                              std::move(args)))
+ir::Func *Module::AddFunc(type::Function const *fn_type,
+                          ast::FnParams<ast::Expression *> params) {
+  auto *result = fns_.emplace_back(std::make_unique<ir::Func>(
+                                       this, fn_type, std::move(params)))
                      .get();
 
 #ifdef ICARUS_USE_LLVM

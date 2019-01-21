@@ -32,6 +32,10 @@ struct CallObstruction {
     return CallObstruction(NoParameterNamedData{std::move(name)});
   }
 
+  static CallObstruction NoDefault(std::string_view arg_name) {
+    return CallObstruction(NoDefaultData{std::string(arg_name)});
+  }
+
   static CallObstruction NoDefault(std::string arg_name) {
     return CallObstruction(NoDefaultData{std::move(arg_name)});
   }
@@ -47,7 +51,7 @@ struct CallObstruction {
   static CallObstruction TypeMismatch(size_t pos, type::Type const *bound,
                                       type::Type const *input) {
     return CallObstruction(
-        TypeMismatchData{pos, std::move(bound), std::move(input)});
+        TypeMismatchData{pos, ASSERT_NOT_NULL(bound), ASSERT_NOT_NULL(input)});
   }
 
   static CallObstruction CascadingError() {
@@ -126,7 +130,8 @@ using base::check::Is;
 base::expected<Binding, CallObstruction> MakeBinding(
     type::Typed<Expression *, type::Callable> fn,
     FnArgs<Expression *> const &args, size_t n,
-    base::unordered_map<std::string, size_t> const *index_lookup = nullptr) {
+    base::unordered_map<std::string_view, size_t> const *index_lookup =
+        nullptr) {
   bool constant = (index_lookup != nullptr);
   Binding b(fn, n, constant);
   if (constant) {
@@ -153,12 +158,11 @@ void Binding::SetPositionalArgs(FnArgs<Expression *> const &args) {
 
 namespace {
 struct DispatchTableRow {
-  CallObstruction SetTypes(type::Typed<Expression *, type::Function> fn,
-                           Context *ctx);
-  CallObstruction SetTypes(ir::Func const &fn, FnArgs<Expression *> const &args,
-                           Context *ctx);
-  CallObstruction SetTypes(FunctionLiteral const &fn,
+  template <typename E>
+  CallObstruction SetTypes(base::vector<type::Type const *> const &input_types,
+                           FnParams<E> const &params,
                            FnArgs<Expression *> const &args, Context *ctx);
+
   static base::expected<DispatchTableRow, CallObstruction> Make(
       type::Typed<Expression *, type::Callable> fn_option,
       FnArgs<Expression *> const &args, Context *ctx);
@@ -187,27 +191,10 @@ struct DispatchTableRow {
 
 }  // namespace
 
+template <typename E>
 CallObstruction DispatchTableRow::SetTypes(
-    type::Typed<Expression *, type::Function> fn, Context *ctx) {
-  ASSERT(fn.type()->input.size() == binding_.exprs_.size());
-  call_arg_types_.pos_.resize(fn.type()->input.size());
-  auto const &input_types = fn.type()->input;
-  for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
-    auto *bound_type = ctx->type_of(binding_.exprs_.at(i).get());
-    auto *input_type = input_types.at(i);
-    ASSIGN_OR(return CallObstruction::TypeMismatch(i, bound_type, input_type),
-                     auto &match, type::Meet(bound_type, input_type));
-
-    binding_.exprs_.at(i).set_type(input_type);
-    call_arg_types_.pos_.at(i) = &match;
-  }
-
-  return CallObstruction::None();
-}
-
-CallObstruction DispatchTableRow::SetTypes(FunctionLiteral const &fn,
-                                FnArgs<Expression *> const &args,
-                                Context *ctx) {
+    base::vector<type::Type const *> const &input_types,
+    FnParams<E> const &params, FnArgs<Expression *> const &args, Context *ctx) {
   call_arg_types_.pos_.resize(args.pos_.size());
   for (auto & [ name, expr ] : args.named_) {
     call_arg_types_.named_.emplace(name, nullptr);
@@ -215,64 +202,51 @@ CallObstruction DispatchTableRow::SetTypes(FunctionLiteral const &fn,
 
   for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
     if (binding_.defaulted(i)) {
-      // The naming here is super confusing but if a declaration
-      // "IsDefaultInitialized" that means it's of the form `foo: bar`, and so
-      // it does NOT have a default value.
-      auto &decl = *fn.inputs_.at(i);
-      if (decl.IsDefaultInitialized()) {
-        return CallObstruction::NoDefault(decl.id_);
+      type::Type const *input_type;
+      if constexpr (std::is_same_v<E, std::unique_ptr<Declaration>>) {
+        // The naming here is super confusing but if a declaration
+        // "IsDefaultInitialized" that means it's of the form `foo: bar`, and so
+        // it does NOT have a default value.
+        Declaration &decl = *params.at(i).value;
+        if (decl.IsDefaultInitialized()) {
+          return CallObstruction::NoDefault(decl.id_);
+        }
+        // TODO The order for evaluating these is wrong. Defaults may need to be
+        // intermixed with non-defaults.
+        auto result = decl.VerifyType(ctx);
+        // TODO deal with the case where the initial value isn't a constant.
+        if (!result.const_) { NOT_YET("log an error."); }
+        input_type = result.type_;
+
+        decl.Validate(ctx);
+        ctx->bound_constants_.constants_.emplace(
+            &decl, backend::Evaluate(decl.init_val.get(), ctx)[0]);
+
+      } else if constexpr (std::is_same_v<E, Expression *>) {
+        input_type = input_types.at(i);
+        if (params.at(i).value == nullptr) {
+          return CallObstruction::NoDefault(params.at(i).name);
+        }
+      } else {
+        UNREACHABLE();
       }
-      // TODO The order for evaluating these is wrong. Defaults may need to be
-      // intermixed with non-defaults.
-      auto result = fn.inputs_.at(i).get()->VerifyType(ctx);
-      // TODO deal with the case where the initial value isn't a constant.
-      if (!result.const_) { NOT_YET("log an error."); }
 
-      fn.inputs_.at(i).get()->Validate(ctx);
-      ctx->bound_constants_.constants_.emplace(
-          fn.inputs_.at(i).get(),
-          backend::Evaluate(fn.inputs_.at(i)->init_val.get(), ctx)[0]);
-
-      binding_.exprs_.at(i).set_type(ctx->type_of(fn.inputs_.at(i).get()));
+      binding_.exprs_.at(i).set_type(input_type);
       continue;
     }
-    // TODO defaulted arguments
-    // TODO Meet with the argument
-    type::Type const *match = ctx->type_of(fn.inputs_.at(i).get());
 
-    binding_.exprs_.at(i).set_type(match);
-    if (i < call_arg_types_.pos_.size()) {
-      call_arg_types_.pos_.at(i) = match;
+    // TODO for constant-parameters ordered processing won't work.
+    auto *bound_type = ctx->type_of(binding_.exprs_.at(i).get());
+    type::Type const *input_type;
+    if constexpr (std::is_same_v<E, std::unique_ptr<Declaration>>) {
+      input_type = ctx->type_of(params.at(i).value.get());
+    } else if constexpr (std::is_same_v<E, Expression *> ||
+                         std::is_same_v<E, std::nullptr_t>) {
+      input_type = input_types.at(i);
     } else {
-      auto iter = call_arg_types_.find(fn.inputs_.at(i)->id_);
-      ASSERT(iter != call_arg_types_.named_.end());
-      iter->second = match;
-    }
-  }
-
-  return CallObstruction::None();
-}
-
-CallObstruction DispatchTableRow::SetTypes(ir::Func const &fn,
-                                           FnArgs<Expression *> const &args,
-                                           Context *ctx) {
-  call_arg_types_.pos_.resize(args.pos_.size());
-  for (auto & [ name, expr ] : args.named_) {
-    call_arg_types_.named_.emplace(name, nullptr);
-  }
-
-  auto const &input_types = fn.type_->input;
-  for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
-    if (binding_.defaulted(i)) {
-      if (fn.args_.at(i).second == nullptr) {
-        return CallObstruction::NoDefault(fn.args_.at(i).first);
-      }
-      binding_.exprs_.at(i).set_type(input_types.at(i));
-      continue;
+      UNREACHABLE();
     }
 
-    auto *bound_type = ctx->type_of(binding_.exprs_.at(i).get());
-    auto *input_type = input_types.at(i);
     ASSIGN_OR(return CallObstruction::TypeMismatch(i, bound_type, input_type),
                      auto &match, type::Meet(bound_type, input_type));
 
@@ -281,7 +255,7 @@ CallObstruction DispatchTableRow::SetTypes(ir::Func const &fn,
     if (i < call_arg_types_.pos_.size()) {
       call_arg_types_.pos_.at(i) = &match;
     } else {
-      auto iter = call_arg_types_.find(fn.args_.at(i).first);
+      auto iter = call_arg_types_.find(params.at(i).name);
       ASSERT(iter != call_arg_types_.named_.end());
       iter->second = &match;
     }
@@ -323,7 +297,8 @@ base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::MakeNonConst
 
   DispatchTableRow dispatch_table_row(std::move(binding));
 
-  if (auto obs = dispatch_table_row.SetTypes(fn_option, ctx);
+  if (auto obs = dispatch_table_row.SetTypes(
+          fn_option.type()->input, FnParams<std::nullptr_t>{}, args, ctx);
       obs.obstructed()) {
     return obs;
   }
@@ -386,16 +361,16 @@ DispatchTableRow::MakeFromFnLit(
   size_t num =
       std::max(fn_lit->inputs_.size(), args.pos_.size() + args.named_.size());
   ASSIGN_OR(return _.error(), auto binding,
-                   MakeBinding(fn_option, args, num, &fn_lit->lookup_));
+                   MakeBinding(fn_option, args, num, &fn_lit->inputs_.lookup_));
 
   Context new_ctx(ctx);
   for (size_t i = 0; i < args.pos_.size(); ++i) {
     // TODO wrong. this may not directly be a matchdecl but could be something
     // like an array-type of them.
     bool needs_match_decl =
-        fn_lit->inputs_[i]->type_expr != nullptr &&
-        fn_lit->inputs_[i]->type_expr->is<MatchDeclaration>();
-    if (!fn_lit->inputs_[i]->const_ && !needs_match_decl) { continue; }
+        fn_lit->inputs_.at(i).value->type_expr != nullptr &&
+        fn_lit->inputs_.at(i).value->type_expr->is<MatchDeclaration>();
+    if (!fn_lit->inputs_.at(i).value->const_ && !needs_match_decl) { continue; }
     // TODO this is wrong because it needs to be removed outside the scope of
     // this function.
     // TODO what if this isn't evaluable? i.e., what if args.pos_[i] isn't a
@@ -403,18 +378,19 @@ DispatchTableRow::MakeFromFnLit(
     // below for named and default arguments.
     if (needs_match_decl) {
       new_ctx.bound_constants_.constants_.emplace(
-          &fn_lit->inputs_[i]->type_expr->as<MatchDeclaration>(),
+          &fn_lit->inputs_.at(i).value->type_expr->as<MatchDeclaration>(),
           ir::Val(ctx->type_of(args.pos_[i])));
     }
 
-    if (fn_lit->inputs_[i]->const_) {
+    if (fn_lit->inputs_.at(i).value->const_) {
       new_ctx.bound_constants_.constants_.emplace(
-          fn_lit->inputs_[i].get(), backend::Evaluate(args.pos_[i], ctx)[0]);
+          fn_lit->inputs_.at(i).value.get(),
+          backend::Evaluate(args.pos_[i], ctx)[0]);
     }
   }
   for (auto & [ name, expr ] : args.named_) {
-    size_t index = fn_lit->lookup_[name];
-    auto *decl   = fn_lit->inputs_[index].get();
+    size_t index = fn_lit->inputs_.lookup_[name];
+    auto *decl   = fn_lit->inputs_.at(index).value.get();
     if (!decl->const_) { continue; }
     new_ctx.bound_constants_.constants_.emplace(
         decl, backend::Evaluate(expr, ctx)[0]);
@@ -422,11 +398,11 @@ DispatchTableRow::MakeFromFnLit(
   }
 
   // TODO order these by their dependencies
-  for (auto & [ name, index ] : fn_lit->lookup_) {
+  for (auto & [ name, index ] : fn_lit->inputs_.lookup_) {
     if (index < args.pos_.size()) { continue; }
-    auto iter = args.named_.find(name);
+    auto iter = args.named_.find(std::string(name)); // TODO transparent hashing?
     if (iter != args.named_.end()) { continue; }
-    auto *decl = fn_lit->inputs_[index].get();
+    auto *decl = fn_lit->inputs_.at(index).value.get();
     decl->init_val->VerifyType(&new_ctx);
     decl->init_val->Validate(&new_ctx);
     new_ctx.bound_constants_.constants_.emplace(
@@ -443,7 +419,11 @@ DispatchTableRow::MakeFromFnLit(
   DispatchTableRow dispatch_table_row(std::move(binding));
   dispatch_table_row.callable_type_ = fn_type;
   ASSERT(dispatch_table_row.callable_type_ != nullptr);
-  if (auto obs = dispatch_table_row.SetTypes(*fn_lit, args, &new_ctx);
+
+  // Function literals don't need an input types vector because they have
+  // constants that need to be evaluated in new_ctx anyway.
+  if (auto obs = dispatch_table_row.SetTypes({}, fn_lit->inputs_, args,
+                                             &new_ctx);
       obs.obstructed()) {
     return obs;
   }
@@ -457,13 +437,14 @@ DispatchTableRow::MakeFromIrFunc(
     type::Typed<Expression *, type::Callable> fn_option,
     ir::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx) {
   size_t num =
-      std::max(ir_func.args_.size(), args.pos_.size() + args.named_.size());
+      std::max(ir_func.params_.size(), args.pos_.size() + args.named_.size());
   ASSIGN_OR(return _.error(), auto binding,
-                   MakeBinding(fn_option, args, num, &ir_func.lookup_));
+                   MakeBinding(fn_option, args, num, &ir_func.params_.lookup_));
   binding.bound_constants_ = ctx->bound_constants_;
 
   DispatchTableRow dispatch_table_row(std::move(binding));
-  if (auto obs = dispatch_table_row.SetTypes(ir_func, args, ctx);
+  if (auto obs = dispatch_table_row.SetTypes(ir_func.type_->input,
+                                             ir_func.params_, args, ctx);
       obs.obstructed()) {
     return obs;
   }
@@ -603,9 +584,9 @@ static void EmitOneCallDispatch(
   ASSERT(callee.type, Is<type::Callable>());
 
   // After the last check, if you pass, you should dispatch
-  base::vector<std::pair<std::string, Expression *>> *const_args = nullptr;
+  FnParams<Expression *> *const_params = nullptr;
   if (auto *fn_to_call = std::get_if<ir::AnyFunc>(&callee.value)) {
-    if (fn_to_call->is_fn()) { const_args = &(fn_to_call->func()->args_); }
+    if (fn_to_call->is_fn()) { const_params = &(fn_to_call->func()->params_); }
   }
 
   base::vector<ir::Val> args;
@@ -613,8 +594,8 @@ static void EmitOneCallDispatch(
   for (size_t i = 0; i < args.size(); ++i) {
     auto typed_expr = binding.exprs_[i];
     if (typed_expr.get() == nullptr) {
-      auto default_expr = (*ASSERT_NOT_NULL(const_args))[i].second;
-      args[i]           = ASSERT_NOT_NULL(typed_expr.type())
+      Expression *default_expr = (*ASSERT_NOT_NULL(const_params)).at(i).value;
+      args[i]                  = ASSERT_NOT_NULL(typed_expr.type())
                     ->PrepareArgument(ctx->type_of(default_expr),
                                       default_expr->EmitIR(ctx)[0], ctx);
     } else {

@@ -3,6 +3,7 @@
 
 #include "ast/declaration.h"
 #include "ast/expression.h"
+#include "ast/fn_params.h"
 #include "backend/exec.h"
 #include "base/container/vector.h"
 #include "base/untyped_buffer.h"
@@ -15,9 +16,8 @@
 namespace backend {
 static void ReplEval(ast::Expression *expr) {
   // TODO is nullptr for module okay here?
-  auto fn = std::make_unique<ir::Func>(
-      nullptr, type::Func({}, {}),
-      base::vector<std::pair<std::string, ast::Expression *>>{});
+  auto fn = std::make_unique<ir::Func>(nullptr, type::Func({}, {}),
+                                       ast::FnParams<ast::Expression *>{});
   CURRENT_FUNC(fn.get()) {
     ir::BasicBlock::Current = fn->entry();
     // TODO use the right module
