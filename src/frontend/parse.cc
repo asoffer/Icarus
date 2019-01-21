@@ -622,10 +622,8 @@ std::unique_ptr<Node> BuildScopeNode(base::vector<std::unique_ptr<Node>> nodes,
   scope_node->name_ = std::move(call->fn_);
   scope_node->args_ = std::move(call->args_);
 
-  // TODO args
-  auto block_node = move_as<BlockNode>(nodes[1]);
-  scope_node->span = TextSpan(scope_node->name_->span, block_node->span);
-  scope_node->blocks_.push_back(std::move(block_node));
+  scope_node->span = TextSpan(scope_node->name_->span, nodes[1]->span);
+  scope_node->blocks_.push_back(std::move(nodes[1]->as<BlockNode>()));
   return scope_node;
 }
 
@@ -635,7 +633,6 @@ std::unique_ptr<Node> BuildBlockNode(base::vector<std::unique_ptr<Node>> nodes,
   bn->span   = TextSpan(nodes[0]->span, nodes[1]->span);
   bn->name_  = move_as<Expression>(nodes[0]);
   bn->stmts_ = std::move(nodes[1]->as<Statements>());
-
   return bn;
 }
 
@@ -643,7 +640,7 @@ std::unique_ptr<Node> ExtendScopeNode(base::vector<std::unique_ptr<Node>> nodes,
                                       Context *ctx) {
   auto &scope_node = nodes[0]->as<ScopeNode>();
   (scope_node.sugared_ ? scope_node.sugared_ : &scope_node)
-      ->blocks_.push_back(move_as<BlockNode>(nodes[1]));
+      ->blocks_.push_back(std::move(nodes[1]->as<BlockNode>()));
   return std::move(nodes[0]);
 }
 
@@ -654,13 +651,12 @@ std::unique_ptr<Node> SugaredExtendScopeNode(
                               ? scope_node->sugared_
                               : &nodes[0]->as<ScopeNode>();
 
-  auto bn = std::make_unique<BlockNode>();
+  auto &bn = extension_point->blocks_.emplace_back();
   // TODO span
-  bn->name_ = move_as<Expression>(nodes[1]);
+  bn.name_ = move_as<Expression>(nodes[1]);
   // TODO hook this up to a yield when it exists
   scope_node->sugared_ = &nodes[2]->as<ScopeNode>();
-  bn->stmts_.append(std::move(nodes[2]));
-  extension_point->blocks_.push_back(std::move(bn));
+  bn.stmts_.append(std::move(nodes[2]));
   return std::move(nodes[0]);
 }
 

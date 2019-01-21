@@ -8,11 +8,10 @@
 
 namespace ast {
 struct BlockNode : public Expression {
+  BlockNode() = default;
   ~BlockNode() override {}
-
-  // TODO
-  template <typename... Args>
-  BlockNode(Args &&... args) {}
+  BlockNode(BlockNode &&) noexcept = default;
+  BlockNode &operator=(BlockNode &&) noexcept = default;
 
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
@@ -23,10 +22,8 @@ struct BlockNode : public Expression {
   base::vector<ir::Val> EmitIR(Context *) override;
   base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
-
   std::unique_ptr<Expression> name_;
   Statements stmts_;
-  std::unique_ptr<Expression> arg_; // TODO used?
   std::unique_ptr<ExecScope> block_scope_;
 };
 }  // namespace ast
