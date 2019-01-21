@@ -87,4 +87,11 @@ void Tuple::defining_modules(
   for (auto *entry : entries_) { entry->defining_modules(modules); }
 }
 
+void Tuple::EmitDestroy(ir::Register reg, Context *ctx) const {
+  // TODO don't auto-inline.
+  for (size_t i = 0; i < entries_.size(); ++i) {
+    entries_[i]->EmitDestroy(ir::Field(reg, this, i), ctx);
+  }
+}
+
 }  // namespace type
