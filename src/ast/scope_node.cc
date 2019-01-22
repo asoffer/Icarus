@@ -160,7 +160,7 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
           .EmitCall(
               args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
                 return std::pair(const_cast<Expression *>(expr.get()),
-                                 expr->EmitIR(ctx)[0]);
+                                 expr->EmitIR(ctx));
               }),
               result_type, ctx)[0]
           .reg_or<ir::BlockSequence>();
@@ -177,12 +177,12 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     auto &data              = block_data[&block];
     ir::BasicBlock::Current = data.index_;
 
-    FnArgs<std::pair<Expression *, ir::Val>> before_args;
+    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> before_args;
     FnArgs<Expression *> before_expr_args;
 
     if (scope_lit->stateful_) {
-      before_args.pos_.emplace_back(state_id,
-                                    ir::Val::Reg(alloc, state_ptr_type));
+      before_args.pos_.emplace_back(
+          state_id, base::vector<ir::Val>{ir::Val::Reg(alloc, state_ptr_type)});
       before_expr_args.pos_.push_back(state_id);
     }
     auto[dispatch_table, result_type] =
@@ -195,15 +195,16 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     auto yields = std::move(ctx->yields_stack_.back());
 
     FnArgs<Expression *> after_expr_args;
-    FnArgs<std::pair<Expression *, ir::Val>> after_args;
+    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> after_args;
     if (scope_lit->stateful_) {
       after_expr_args.pos_.push_back(state_id);
-      after_args.pos_.emplace_back(state_id,
-                                   ir::Val::Reg(alloc, state_ptr_type));
+      after_args.pos_.emplace_back(
+          state_id, base::vector<ir::Val>{ir::Val::Reg(alloc, state_ptr_type)});
     }
     for (auto &yield : yields) { 
       after_expr_args.pos_.push_back(yield.expr_);
-      after_args.pos_.emplace_back(yield.expr_, yield.val_);
+      after_args.pos_.emplace_back(yield.expr_,
+                                   base::vector<ir::Val>{yield.val_});
     }
 
     std::tie(dispatch_table, result_type) =
@@ -226,9 +227,10 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     ir::BasicBlock::Current = land_block;
 
     FnArgs<Expression *> expr_args;
-    FnArgs<std::pair<Expression *, ir::Val>> args;
+    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> args;
     if (scope_lit->stateful_) {
-      args.pos_.emplace_back(state_id, ir::Val::Reg(alloc, state_ptr_type));
+      args.pos_.emplace_back(
+          state_id, base::vector<ir::Val>{ir::Val::Reg(alloc, state_ptr_type)});
       expr_args.pos_.push_back(state_id);
     }
     std::tie(dispatch_table, result_type) =

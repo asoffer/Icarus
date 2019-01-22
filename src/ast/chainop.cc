@@ -39,10 +39,12 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
                                 op == Language::Operator::Eq, ctx)
         .reg_or<bool>();
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
-    FnArgs<std::pair<Expression *, ir::Val>> args;
+    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> args;
     args.pos_.reserve(2);
-    args.pos_.emplace_back(chain_op->exprs[index].get(), lhs_ir);
-    args.pos_.emplace_back(chain_op->exprs[index + 1].get(), rhs_ir);
+    args.pos_.emplace_back(chain_op->exprs[index].get(),
+                           base::vector<ir::Val>{lhs_ir});
+    args.pos_.emplace_back(chain_op->exprs[index + 1].get(),
+                           base::vector<ir::Val>{rhs_ir});
 
     auto results = ASSERT_NOT_NULL(ctx->rep_dispatch_tables(chain_op))
                        ->at(index)

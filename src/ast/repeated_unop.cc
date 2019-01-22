@@ -153,8 +153,9 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
       for (auto &val : arg_vals) {
         auto *t = ctx->type_of(args_.exprs_.at(index).get());
         if (t->is<type::Struct>()) {
-          ast::FnArgs<std::pair<ast::Expression *, ir::Val>> args;
-          args.pos_.emplace_back(args_.exprs_[index].get(), std::move(val));
+          ast::FnArgs<std::pair<ast::Expression *, base::vector<ir::Val>>> args;
+          args.pos_.emplace_back(args_.exprs_[index].get(),
+                                 base::vector<ir::Val>{std::move(val)});
           ASSERT_NOT_NULL(dispatch_tables)->at(index).EmitCall(args, type::Void(), ctx);
         } else {
           t->EmitRepr(val, ctx);

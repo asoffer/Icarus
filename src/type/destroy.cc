@@ -10,11 +10,8 @@ void Primitive::EmitDestroy(ir::Register, Context *ctx) const {}
 
 void Array::ComputeDestroyWithoutLock(Context *ctx) const {
   if (destroy_func_ != nullptr) { return; }
-  ast::FnParams<ast::Expression *> params;
-  params.append("", nullptr);
-
-  destroy_func_ =
-      ctx->mod_->AddFunc(type::Func({type::Ptr(this)}, {}), std::move(params));
+  destroy_func_ = ctx->mod_->AddFunc(type::Func({type::Ptr(this)}, {}),
+                                     ast::FnParams<ast::Expression *>(1));
 
   CURRENT_FUNC(destroy_func_) {
     ir::BasicBlock::Current = destroy_func_->entry();

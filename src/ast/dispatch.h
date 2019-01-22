@@ -33,23 +33,36 @@ struct Expression;
 // own is expressed as an overload set, but for each particular binding will be
 // either `int -> int` or `bool -> bool`.
 struct Binding {
-  void SetPositionalArgs(FnArgs<Expression *> const &args);
+  struct Entry {
+    Entry() = default;
+    Entry(Expression *expr, int argument_index, int expansion_index,
+          size_t parameter_index)
+        : expr(expr),
+          argument_index(argument_index),
+          expansion_index(expansion_index),
+          parameter_index(parameter_index) {}
 
-  bool defaulted(size_t i) const { return exprs_.at(i).get() == nullptr; }
+    constexpr bool defaulted() const { return expr == nullptr; }
 
-  Binding(type::Typed<Expression *, type::Callable> fn, size_t n,
-          bool constant = false)
-      : fn_(fn),
-        exprs_(n, type::Typed<Expression *>(nullptr, nullptr)),
-        const_(constant) {}
+    Expression *expr = nullptr;
+    int argument_index = -1;  // Positive numbers indicate positional arguments.
+                              // -1 indicates named argument.
+    int expansion_index = -1;     // Positive numbers indicate the index of an
+                                  // expansion. -1 indicates no expansion
+                                  // necessary.
+    size_t parameter_index = -1;  // Which parameter this gets associated with.
+    type::Type const *type = nullptr;
+  };
+
+  // Returns true if on this binding no argument is provided for the parameter
+  // at index `i`.
+  bool defaulted(size_t i) const;
+
+  Binding(type::Typed<Expression *, type::Callable> fn, bool constant = false)
+      : fn_(fn), const_(constant) {}
 
   type::Typed<Expression *, type::Callable> fn_;
-
-  // It's important to remember that some expressions may be tuple expansions,
-  // and so a lot of seemingly obvious things don't hold. For instance,
-  // exprs_.size() may not be the same the number of arguments passed in to the
-  // function call.
-  base::vector<type::Typed<Expression *>> exprs_;
+  base::vector<Entry> entries_;
 
   bool const_ = false;
   BoundConstants
@@ -67,7 +80,8 @@ struct DispatchTable {
       Context *ctx);
 
   base::vector<ir::Val> EmitCall(
-      ast::FnArgs<std::pair<ast::Expression *, ir::Val>> const &args,
+      ast::FnArgs<std::pair<ast::Expression *, base::vector<ir::Val>>> const
+          &args,
       type::Type const *ret_type, Context *ctx) const;
 
   base::map<FnArgs<type::Type const *>, Binding> bindings_;

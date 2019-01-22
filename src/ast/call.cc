@@ -188,18 +188,6 @@ VerifyResult Call::VerifyType(Context *ctx) {
   auto[table, ret_type] = DispatchTable::Make(args, overload_set, ctx);
   ctx->set_dispatch_table(this, std::move(table));
 
-  u64 expanded_size = 1;
-  arg_results.Apply([&expanded_size](VerifyResult const &r) {
-    if (auto *v = r.type_->if_as<type::Variant>()) {
-      expanded_size *= v->size();
-    }
-  });
-
-  if (table.total_size_ != expanded_size) {
-    ctx->error_log_.NoCallMatch(span, table.failure_reasons_);
-    return VerifyResult::Error();
-  }
-
   // TODO returning const is overly optimistic. This should be const if and only
   // if all arguments are const, all possible dispatched-to functions are const.
   // Default arguments are already required to be const, so we don't need to
@@ -272,9 +260,9 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
   // anyway, and their use cannot overlap.
 
   return dispatch_table.EmitCall(
-      args_.Transform([ctx](const std::unique_ptr<Expression> &expr) {
+      args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
         return std::pair(const_cast<Expression *>(expr.get()),
-                         expr->EmitIR(ctx)[0]);
+                         expr->EmitIR(ctx));
       }),
       ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
 }

@@ -28,12 +28,9 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
 
   auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
-    ast::FnParams<ast::Expression *> params;
-    params.append("", nullptr);
-    params.append("", nullptr);
     auto *fn = ctx->mod_->AddFunc(
         type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool}),
-        std::move(params));
+        ast::FnParams<ast::Expression *>(2));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
 

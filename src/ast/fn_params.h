@@ -10,6 +10,7 @@ namespace ast {
 template <typename T>
 struct FnParams {
   struct Param {
+    Param() = default;
     Param(std::string_view s, T t) : name(s), value(std::move(t)) {}
     Param(Param&&) noexcept = default;
     Param& operator=(Param&&) noexcept = default;
@@ -17,19 +18,27 @@ struct FnParams {
     Param(Param const&) noexcept = default;
     Param& operator=(Param const&) noexcept = default;
 
-    std::string_view name;
-    T value;
+    std::string_view name = "";
+    T value{};
   };
 
-  size_t size() const { return params_.size(); }
-  bool empty() const { return params_.empty(); }
+  FnParams(size_t num = 0) : params_(num) {}
+
+  constexpr size_t size() const { return params_.size(); }
+  constexpr bool empty() const { return params_.empty(); }
   void reserve(size_t n) { params_.reserve(n); }
+
+  constexpr auto begin() const { return params_.begin(); }
+  constexpr auto end() const { return params_.end(); }
+
+  constexpr auto begin() { return params_.begin(); }
+  constexpr auto end() { return params_.end(); }
 
   Param const& at(size_t i) const & { return params_.at(i); }
   Param& at(size_t i) & { return params_.at(i); }
 
   void append(std::string_view name, T val) {
-    lookup_.emplace(name, params_.size());
+    if (name != "") { lookup_.emplace(name, params_.size()); }
     params_.emplace_back(name, std::move(val));
   }
 

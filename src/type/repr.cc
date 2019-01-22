@@ -39,9 +39,8 @@ void Primitive::EmitRepr(ir::Val const &val, Context *ctx) const {
 void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
   std::unique_lock lock(mtx_);
   if (!repr_func_) {
-    ast::FnParams<ast::Expression *> params;
-    params.append("", nullptr);
-    repr_func_ = ctx->mod_->AddFunc(Func({this}, {}), std::move(params));
+    repr_func_ = ctx->mod_->AddFunc(Func({this}, {}),
+                                    ast::FnParams<ast::Expression *>(1));
 
     CURRENT_FUNC(repr_func_) {
       ir::BasicBlock::Current = repr_func_->entry();
@@ -105,9 +104,8 @@ void Variant::EmitRepr(ir::Val const &id_val, Context *ctx) const {
 
   std::unique_lock lock(mtx_);
   if (!repr_func_) {
-    ast::FnParams<ast::Expression *> params;
-    params.append("", nullptr);
-    repr_func_ = ctx->mod_->AddFunc(Func({this}, {}), std::move(params));
+    repr_func_ = ctx->mod_->AddFunc(Func({this}, {}),
+                                    ast::FnParams<ast::Expression *>(1));
 
     CURRENT_FUNC(repr_func_) {
       ir::BasicBlock::Current = repr_func_->entry();

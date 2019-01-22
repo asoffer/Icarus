@@ -21,11 +21,9 @@ void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
   ASSERT(this == from_type);
 
   if (!assign_func_) {
-    ast::FnParams<ast::Expression *> params;
-    params.append("", nullptr);
-    params.append("", nullptr);
-    assign_func_ = ctx->mod_->AddFunc(
-        type::Func({from_type, type::Ptr(this)}, {}), std::move(params));
+    assign_func_ =
+        ctx->mod_->AddFunc(type::Func({from_type, type::Ptr(this)}, {}),
+                           ast::FnParams<ast::Expression *>(2));
 
     CURRENT_FUNC(assign_func_) {
       ir::BasicBlock::Current = assign_func_->entry();
@@ -65,9 +63,8 @@ size_t Struct::offset(size_t field_num, Architecture const &arch) const {
 void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
   std::unique_lock lock(mtx_);
   if (!init_func_) {
-    ast::FnParams<ast::Expression *> params;
-    params.append("", nullptr);
-    init_func_ = ctx->mod_->AddFunc(Func({Ptr(this)}, {}), std::move(params));
+    init_func_ = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
+                                    ast::FnParams<ast::Expression *>(1));
 
     CURRENT_FUNC(init_func_) {
       ir::BasicBlock::Current = init_func_->entry();
@@ -122,10 +119,9 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
         goto call_it;
       }
 
-      ast::FnParams<ast::Expression *> params;
-      params.append("", nullptr);
-      destroy_func_ = ir::AnyFunc{ctx->mod_->AddFunc(
-          type::Func({type::Ptr(this)}, {}), std::move(params))};
+      destroy_func_ =
+          ir::AnyFunc{ctx->mod_->AddFunc(type::Func({type::Ptr(this)}, {}),
+                                         ast::FnParams<ast::Expression *>(1))};
 
       CURRENT_FUNC(destroy_func_.func()) {
         ir::BasicBlock::Current = destroy_func_.func()->entry();

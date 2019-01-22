@@ -161,11 +161,10 @@ VerifyResult Unop::VerifyType(Context *ctx) {
 
 base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   auto *operand_type = ctx->type_of(operand.get());
-  if (auto const *dispatch_table = ctx->dispatch_table(this);
-      dispatch_table && dispatch_table->total_size_ != 0) {
+  if (auto const *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
-    FnArgs<std::pair<Expression *, ir::Val>> args;
-    args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx)[0])};
+    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> args;
+    args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx))};
     return dispatch_table->EmitCall(args, ctx->type_of(this), ctx);
   }
 

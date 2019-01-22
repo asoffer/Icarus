@@ -333,10 +333,10 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
 
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
-    ast::FnArgs<std::pair<ast::Expression *, ir::Val>> args;
+    ast::FnArgs<std::pair<ast::Expression *, base::vector<ir::Val>>> args;
     args.pos_.reserve(2);
-    args.pos_.emplace_back(lhs.get(), lhs->EmitIR(ctx)[0]);
-    args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx)[0]);
+    args.pos_.emplace_back(lhs.get(), lhs->EmitIR(ctx));
+    args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx));
 
     return dispatch_table->EmitCall(args, ASSERT_NOT_NULL(ctx->type_of(this)),
                                     ctx);

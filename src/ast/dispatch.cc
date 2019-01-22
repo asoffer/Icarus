@@ -127,33 +127,71 @@ struct CallObstruction {
 namespace ast {
 using base::check::Is;
 
-base::expected<Binding, CallObstruction> MakeBinding(
-    type::Typed<Expression *, type::Callable> fn,
-    FnArgs<Expression *> const &args, size_t n,
-    base::unordered_map<std::string_view, size_t> const *index_lookup =
-        nullptr) {
-  bool constant = (index_lookup != nullptr);
-  Binding b(fn, n, constant);
-  if (constant) {
-    b.SetPositionalArgs(args);
-    for (auto const & [ name, expr ] : args.named_) {
-      if (auto iter = index_lookup->find(name); iter != index_lookup->end()) {
-        b.exprs_.at(iter->second) = type::Typed<Expression *>(expr, nullptr);
-      } else {
-        return CallObstruction::NoParameterNamed(name);
-      }
-    }
-  } else {
-    b.SetPositionalArgs(args);
+bool Binding::defaulted(size_t i) const {
+  // TODO shouldn't need to do a linear search.
+  for (auto &entry : entries_) {
+    if (entry.parameter_index == i) { return entry.defaulted(); }
   }
-  return b;
+  UNREACHABLE();
 }
 
-void Binding::SetPositionalArgs(FnArgs<Expression *> const &args) {
-  ASSERT(exprs_.size() >= args.pos_.size());
-  for (size_t i = 0; i < args.pos_.size(); ++i) {
-    exprs_[i] = type::Typed<Expression *>(args.pos_.at(i), nullptr);
+template <typename E>
+static base::expected<Binding, CallObstruction> MakeBinding(
+    type::Typed<Expression *, type::Callable> fn, FnParams<E> const &params,
+    FnArgs<Expression *> const &args, Context *ctx) {
+  bool constant = !params.lookup_.empty();
+  Binding b(fn, constant);
+  base::vector<Binding::Entry> entries;
+
+  auto p_iter = params.begin();
+  auto a_iter = args.pos_.begin();
+
+  size_t argument_index  = 0;
+  size_t parameter_index = 0;
+  while (p_iter != params.end() && a_iter != args.pos_.end()) {
+    auto *t = ASSERT_NOT_NULL(ctx->type_of(*a_iter));
+    if ((*a_iter)->needs_expansion()) {
+      auto const &tuple_entries = t->template as<type::Tuple>().entries_;
+
+      // TODO check that there is enough space in params
+      size_t expansion_index = 0;
+      for (auto *t : tuple_entries) {
+        b.entries_.emplace_back(*a_iter, argument_index, expansion_index,
+                                parameter_index);
+        ++p_iter;
+        ++parameter_index;
+        ++expansion_index;
+      }
+      ++argument_index;
+      ++a_iter;
+    } else {
+      b.entries_.emplace_back(*a_iter, argument_index, -1, parameter_index);
+      ++parameter_index;
+      ++argument_index;
+      ++p_iter;
+      ++a_iter;
+    }
   }
+
+  // Fill defaults
+  size_t num_pos    = b.entries_.size();
+  size_t total_size = num_pos + params.lookup_.size() - parameter_index;
+  b.entries_.reserve(total_size);
+  while (b.entries_.size() < total_size) {
+    b.entries_.emplace_back(nullptr, -1, -1, parameter_index++);
+  }
+
+  for (auto const & [ name, expr ] : args.named_) {
+    if (auto iter = params.lookup_.find(name); iter != params.lookup_.end()) {
+      auto &entry           = b.entries_.at(iter->second);
+      entry.expr            = expr;
+      entry.parameter_index = iter->second;
+    } else {
+      return CallObstruction::NoParameterNamed(name);
+    }
+  }
+
+  return b;
 }
 
 namespace {
@@ -195,19 +233,23 @@ template <typename E>
 CallObstruction DispatchTableRow::SetTypes(
     base::vector<type::Type const *> const &input_types,
     FnParams<E> const &params, FnArgs<Expression *> const &args, Context *ctx) {
-  call_arg_types_.pos_.resize(args.pos_.size());
+  size_t num = 0;
+  for (auto const &entry : binding_.entries_) {
+    if (entry.argument_index != -1) { ++num; }
+  }
+  call_arg_types_.pos_.resize(num);
   for (auto & [ name, expr ] : args.named_) {
     call_arg_types_.named_.emplace(name, nullptr);
   }
 
-  for (size_t i = 0; i < binding_.exprs_.size(); ++i) {
-    if (binding_.defaulted(i)) {
+  for (auto & entry : binding_.entries_) {
+    if (entry.defaulted()) {
       type::Type const *input_type;
       if constexpr (std::is_same_v<E, std::unique_ptr<Declaration>>) {
         // The naming here is super confusing but if a declaration
         // "IsDefaultInitialized" that means it's of the form `foo: bar`, and so
         // it does NOT have a default value.
-        Declaration &decl = *params.at(i).value;
+        Declaration &decl = *params.at(entry.parameter_index).value;
         if (decl.IsDefaultInitialized()) {
           return CallObstruction::NoDefault(decl.id_);
         }
@@ -223,39 +265,60 @@ CallObstruction DispatchTableRow::SetTypes(
             &decl, backend::Evaluate(decl.init_val.get(), ctx)[0]);
 
       } else if constexpr (std::is_same_v<E, Expression *>) {
-        input_type = input_types.at(i);
-        if (params.at(i).value == nullptr) {
-          return CallObstruction::NoDefault(params.at(i).name);
+        size_t i = entry.parameter_index;  // TODO anywhere you use this is
+                                           // probably wrong and needs to be
+                                           // audited.
+        input_type        = input_types.at(i);
+        auto const &param = params.at(entry.parameter_index);
+        if (param.value == nullptr) {
+          return CallObstruction::NoDefault(param.name);
         }
       } else {
         UNREACHABLE();
       }
 
-      binding_.exprs_.at(i).set_type(input_type);
+      for (auto & e : binding_.entries_) {
+        if (e.parameter_index == entry.parameter_index) {
+          e.type = input_type;
+        }
+      }
       continue;
     }
 
+    size_t i = entry.parameter_index;  // TODO anywhere you use this is probably
+                                       // wrong and needs to be audited.
     // TODO for constant-parameters ordered processing won't work.
-    auto *bound_type = ctx->type_of(binding_.exprs_.at(i).get());
+    // TODO variadics there may be more than one of these.
+    auto *bound_type = ctx->type_of(entry.expr);
+    if (entry.expansion_index != -1) {
+      bound_type =
+          bound_type->as<type::Tuple>().entries_.at(entry.expansion_index);
+    }
+
     type::Type const *input_type;
     if constexpr (std::is_same_v<E, std::unique_ptr<Declaration>>) {
-      input_type = ctx->type_of(params.at(i).value.get());
+      input_type = ctx->type_of(params.at(entry.parameter_index).value.get());
     } else if constexpr (std::is_same_v<E, Expression *> ||
                          std::is_same_v<E, std::nullptr_t>) {
-      input_type = input_types.at(i);
+      // TODO this indexing strategy will be wrong if there are variadics, I
+      // think.
+      input_type = input_types.at(entry.parameter_index);
     } else {
       UNREACHABLE();
     }
 
-    ASSIGN_OR(return CallObstruction::TypeMismatch(i, bound_type, input_type),
+    ASSIGN_OR(return CallObstruction::TypeMismatch(entry.parameter_index,
+                                                   bound_type, input_type),
                      auto &match, type::Meet(bound_type, input_type));
 
-    binding_.exprs_.at(i).set_type(input_type);
+    for (auto &e : binding_.entries_) {
+      if (e.parameter_index == entry.parameter_index) { e.type = input_type; }
+    }
 
     if (i < call_arg_types_.pos_.size()) {
       call_arg_types_.pos_.at(i) = &match;
     } else {
-      auto iter = call_arg_types_.find(params.at(i).name);
+      auto iter = call_arg_types_.find(params.at(entry.parameter_index).name);
       ASSERT(iter != call_arg_types_.named_.end());
       iter->second = &match;
     }
@@ -284,6 +347,7 @@ base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::MakeNonConst
     return CallObstruction::NonConstantNamedArguments();
   }
 
+  // TODO This is not the right check. Because you could expand arguments.
   if (args.pos_.size() != fn_option.type()->input.size()) {
     // TODO if you call with the wrong number of arguments, even if no default
     // is available, this error occurs and that's technically a valid assessment
@@ -291,14 +355,14 @@ base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::MakeNonConst
     return CallObstruction::NonConstantDefaults();
   }
 
+  FnParams<std::nullptr_t> params(fn_option.type()->input.size());
   ASSIGN_OR(return _.error(), auto binding,
-                   MakeBinding(fn_option, args, args.pos_.size()));
+                   MakeBinding(fn_option, params, args, ctx));
   binding.bound_constants_ = ctx->bound_constants_;
 
   DispatchTableRow dispatch_table_row(std::move(binding));
-
   if (auto obs = dispatch_table_row.SetTypes(
-          fn_option.type()->input, FnParams<std::nullptr_t>{}, args, ctx);
+          fn_option.type()->input, params, args, ctx);
       obs.obstructed()) {
     return obs;
   }
@@ -358,10 +422,8 @@ base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeFromFnLit(
     type::Typed<Expression *, type::Callable> fn_option,
     FunctionLiteral *fn_lit, FnArgs<Expression *> const &args, Context *ctx) {
-  size_t num =
-      std::max(fn_lit->inputs_.size(), args.pos_.size() + args.named_.size());
   ASSIGN_OR(return _.error(), auto binding,
-                   MakeBinding(fn_option, args, num, &fn_lit->inputs_.lookup_));
+                   MakeBinding(fn_option, fn_lit->inputs_, args, ctx));
 
   Context new_ctx(ctx);
   for (size_t i = 0; i < args.pos_.size(); ++i) {
@@ -436,10 +498,8 @@ base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeFromIrFunc(
     type::Typed<Expression *, type::Callable> fn_option,
     ir::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx) {
-  size_t num =
-      std::max(ir_func.params_.size(), args.pos_.size() + args.named_.size());
   ASSIGN_OR(return _.error(), auto binding,
-                   MakeBinding(fn_option, args, num, &ir_func.params_.lookup_));
+                   MakeBinding(fn_option, ir_func.params_, args, ctx));
   binding.bound_constants_ = ctx->bound_constants_;
 
   DispatchTableRow dispatch_table_row(std::move(binding));
@@ -562,7 +622,8 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
 // return value.
 static void EmitOneCallDispatch(
     type::Type const *ret_type, base::vector<ir::Val> *outgoing_regs,
-    base::unordered_map<Expression *, const ir::Val *> const &expr_map,
+    base::unordered_map<Expression *, base::vector<ir::Val> const *> const
+        &expr_map,
     Binding const &binding, Context *ctx) {
   auto callee = [&] {
     Context fn_ctx(ctx->mod_);  // TODO this might be the wrong module.
@@ -590,18 +651,23 @@ static void EmitOneCallDispatch(
   }
 
   base::vector<ir::Val> args;
-  args.resize(binding.exprs_.size());
+  args.resize(binding.entries_.size());
   for (size_t i = 0; i < args.size(); ++i) {
-    auto typed_expr = binding.exprs_[i];
-    if (typed_expr.get() == nullptr) {
+    auto entry = binding.entries_.at(i);
+    if (entry.defaulted()) {
       Expression *default_expr = (*ASSERT_NOT_NULL(const_params)).at(i).value;
-      args[i]                  = ASSERT_NOT_NULL(typed_expr.type())
+      args[i]                  = ASSERT_NOT_NULL(entry.type)
                     ->PrepareArgument(ctx->type_of(default_expr),
                                       default_expr->EmitIR(ctx)[0], ctx);
     } else {
-      args[i] = ASSERT_NOT_NULL(typed_expr.type())
-                    ->PrepareArgument(ctx->type_of(typed_expr.get()),
-                                      *expr_map.at(typed_expr.get()), ctx);
+      auto *t = (entry.expansion_index == -1)
+                    ? ctx->type_of(entry.expr)
+                    : ctx->type_of(entry.expr)
+                          ->as<type::Tuple>()
+                          .entries_.at(entry.expansion_index);
+      auto const &val =
+          expr_map.at(entry.expr)->at(std::max(0, entry.expansion_index));
+      args[i] = ASSERT_NOT_NULL(entry.type)->PrepareArgument(t, val, ctx);
     }
   }
 
@@ -709,17 +775,19 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
 }
 
 static ir::BlockIndex CallLookupTest(
-    FnArgs<std::pair<Expression *, ir::Val>> const &args,
+    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> const &args,
     FnArgs<type::Type const *> const &call_arg_type, Context *ctx) {
   // Generate code that attempts to match the types on each argument (only
   // check the ones at the call-site that could be variants).
+  
+  // TODO enable variant dispatch on arguments that got expanded.
   auto next_binding = ir::Func::Current->AddBlock();
   for (size_t i = 0; i < args.pos_.size(); ++i) {
     if (!ctx->type_of(args.pos_[i].first)->is<type::Variant>()) { continue; }
     ir::BasicBlock::Current = ir::EarlyExitOn<false>(
-        next_binding,
-        EmitVariantMatch(std::get<ir::Register>(args.pos_.at(i).second.value),
-                         call_arg_type.pos_[i]));
+        next_binding, EmitVariantMatch(std::get<ir::Register>(
+                                           args.pos_.at(i).second[0].value),
+                                       call_arg_type.pos_[i]));
   }
 
   for (const auto & [ name, expr_and_val ] : args.named_) {
@@ -729,7 +797,7 @@ static ir::BlockIndex CallLookupTest(
     ir::BasicBlock::Current = ir::EarlyExitOn<false>(
         next_binding,
         EmitVariantMatch(
-            std::get<ir::Register>(args.named_.at(iter->first).second.value),
+            std::get<ir::Register>(args.named_.at(iter->first).second[0].value),
             iter->second));
   }
 
@@ -737,13 +805,14 @@ static ir::BlockIndex CallLookupTest(
 }
 
 base::vector<ir::Val> DispatchTable::EmitCall(
-    FnArgs<std::pair<Expression *, ir::Val>> const &args,
+    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> const &args,
     type::Type const *ret_type, Context *ctx) const {
   ASSERT(bindings_.size() != 0u);
-  base::unordered_map<Expression *, const ir::Val *> expr_map;
-  args.Apply([&expr_map](const std::pair<Expression *, ir::Val> &arg) {
-    expr_map[arg.first] = &arg.second;
-  });
+  base::unordered_map<Expression *, base::vector<ir::Val> const *> expr_map;
+  args.Apply(
+      [&expr_map](std::pair<Expression *, base::vector<ir::Val>> const &arg) {
+        expr_map[arg.first] = &arg.second;
+      });
 
   base::vector<ir::Val> out_regs;
   if (ret_type->is<type::Tuple>()) {
