@@ -3,7 +3,7 @@
 #include "type/all.h"
 
 namespace type {
-ir::Val Array::PrepareArgument(const Type *from, const ir::Val &val,
+ir::Val Array::PrepareArgument(Type const *from, ir::Val const &val,
                                Context *ctx) const {
   if (from->is<Variant>()) {
     NOT_YET(this, from);
@@ -16,7 +16,7 @@ ir::Val Array::PrepareArgument(const Type *from, const ir::Val &val,
   }
 }
 
-ir::Val Primitive::PrepareArgument(const Type *from, const ir::Val &val,
+ir::Val Primitive::PrepareArgument(Type const *from, ir::Val const &val,
                                    Context *ctx) const {
   if (from->is<Variant>()) {
     return ir::Val::Reg(
@@ -29,13 +29,13 @@ ir::Val Primitive::PrepareArgument(const Type *from, const ir::Val &val,
   }
 }
 
-ir::Val Pointer::PrepareArgument(const Type *from, const ir::Val &val,
+ir::Val Pointer::PrepareArgument(Type const *from, ir::Val const &val,
                                  Context *ctx) const {
   ASSERT(from == this);
   return val;
 }
 
-ir::Val Function::PrepareArgument(const Type *from, const ir::Val &val,
+ir::Val Function::PrepareArgument(Type const *from, ir::Val const &val,
                                   Context *ctx) const {
   if (this == from) {
     return val;
@@ -44,25 +44,24 @@ ir::Val Function::PrepareArgument(const Type *from, const ir::Val &val,
   }
 }
 
-ir::Val Enum::PrepareArgument(const Type *from, const ir::Val &val,
+ir::Val Enum::PrepareArgument(Type const *from, ir::Val const &val,
                               Context *ctx) const {
   ASSERT(from == this);
   return val;
 }
 
-ir::Val Flags::PrepareArgument(const Type *from, const ir::Val &val,
+ir::Val Flags::PrepareArgument(Type const *from, ir::Val const &val,
                                Context *ctx) const {
   ASSERT(from == this);
   return val;
 }
-ir::Val Variant::PrepareArgument(const Type *from, const ir::Val &val,
+ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
                                  Context *ctx) const {
   if (this == from) { return val; }
   auto alloc_reg = ir::TmpAlloca(this, ctx);
 
   if (!from->is<Variant>()) {
-    type::Type_->EmitAssign(Type_, ir::Val(from), ir::VariantType(alloc_reg),
-                            ctx);
+    Type_->EmitAssign(Type_, ir::Val(from), ir::VariantType(alloc_reg), ctx);
     // TODO this isn't exactly right because 'from' might not be the appropriate
     // type here.
     // TODO this is actually the wrong type to plug in to VariantValue. It needs
@@ -70,11 +69,11 @@ ir::Val Variant::PrepareArgument(const Type *from, const ir::Val &val,
     from->EmitAssign(from, val, ir::VariantValue(from, alloc_reg), ctx);
   } else {
     auto *from_v = &from->as<Variant>();
-    auto runtime_type = ir::Load<type::Type const *>(
+    auto runtime_type = ir::Load<Type const *>(
         ir::VariantType(std::get<ir::Register>(val.value)));
 
     // Because variants_ is sorted, we can find the intersection quickly:
-    base::vector<const Type *> intersection;
+    base::vector<Type const *> intersection;
     auto f_iter = from_v->variants_.begin();
     auto t_iter = this->variants_.begin();
     while (f_iter != from_v->variants_.end() &&
@@ -124,7 +123,7 @@ ir::Val Variant::PrepareArgument(const Type *from, const ir::Val &val,
   return ir::Val::Reg(alloc_reg, type::Ptr(this));
 }
 
-ir::Val Struct::PrepareArgument(const Type *from, const ir::Val &val,
+ir::Val Struct::PrepareArgument(Type const *from, ir::Val const &val,
                                 Context *ctx) const {
   auto arg = ir::TmpAlloca(this, ctx);
 
@@ -142,9 +141,17 @@ ir::Val Struct::PrepareArgument(const Type *from, const ir::Val &val,
   return ir::Val::Reg(arg, type::Ptr(this));
 }
 
-ir::Val GenericStruct::PrepareArgument(const Type *from, const ir::Val &val,
+ir::Val GenericStruct::PrepareArgument(Type const *from, ir::Val const &val,
                                        Context *ctx) const {
   NOT_YET(this, from);
+}
+
+ir::Val Tuple::PrepareArgument(Type const *from, ir::Val const &val,
+                               Context *ctx) const {
+  ASSERT(from == this);
+  auto arg = ir::TmpAlloca(from, ctx);
+  from->EmitAssign(from, val, arg, ctx);
+  return ir::Val::Reg(arg, type::Ptr(from));
 }
 
 }  // namespace type

@@ -89,8 +89,7 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
     }
     call_buf.pad_to(offset);
 
-    // TODO generecially is_big()?
-    if (t->is<type::Variant>()) {
+    if (t->is_big()) {
       call_buf.append(
           is_reg ? regs.get<ir::Addr>(args_.get<ir::Register>(offset).value)
                  : args_.get<ir::Addr>(offset));
@@ -99,16 +98,9 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
         using T = typename decltype(type_holder)::type;
         // NOTE: the use of call_stack.top()... is the same as in resolve<T>,
         // but that's apparently uncapturable due to a GCC bug.
-
-        if constexpr (std::is_same_v<T, type::Struct const *>) {
-          call_buf.append(
-              is_reg ? regs.get<ir::Addr>(args_.get<ir::Register>(offset).value)
-                     : args_.get<ir::Addr>(offset));
-        } else {
-          call_buf.append(
-              is_reg ? regs.get<T>(args_.get<ir::Register>(offset).value)
-                     : args_.get<T>(offset));
-        }
+        call_buf.append(is_reg
+                            ? regs.get<T>(args_.get<ir::Register>(offset).value)
+                            : args_.get<T>(offset));
       });
     }
 

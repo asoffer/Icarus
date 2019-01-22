@@ -39,11 +39,6 @@ bool Type::is_big() const {
 
 Type const *Generic = new GenericFunction;
 
-ir::Val Tuple::PrepareArgument(Type const *t, ir::Val const &val,
-                               Context *ctx) const {
-  UNREACHABLE();
-}
-
 void Pointer::defining_modules(
     std::unordered_set<::Module const *> *modules) const {
   pointee->defining_modules(modules);

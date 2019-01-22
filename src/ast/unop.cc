@@ -6,6 +6,7 @@
 #include "backend/eval.h"
 #include "base/check.h"
 #include "context.h"
+#include "ir/components.h"
 #include "ir/func.h"
 #include "type/all.h"
 
@@ -235,14 +236,10 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
       base::vector<ir::Val> results;
       results.reserve(tuple_type->entries_.size());
       for (size_t i = 0; i < tuple_type->entries_.size(); ++i) {
-        if (tuple_type->entries_[i]->is_big()) {
-          NOT_YET(operand);
-        } else {
-          results.push_back(
-              ir::Val::Reg(ir::Load(ir::Field(tuple_reg, tuple_type, i),
+        results.push_back(
+            ir::Val::Reg(ir::PtrFix(ir::Field(tuple_reg, tuple_type, i),
                                     tuple_type->entries_[i]),
-                           tuple_type->entries_[i]));
-        }
+                         tuple_type->entries_[i]));
       }
       return results;
     }
