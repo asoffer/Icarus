@@ -543,7 +543,7 @@ void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
 void UncondJump(BlockIndex block);
 void ReturnJump();
 
-TypedRegister<type::Type const *> NewOpaqueType();
+TypedRegister<type::Type const *> NewOpaqueType(::Module const *mod);
 
 void BlockSeqJump(RegisterOr<BlockSequence> r,
                   std::unordered_map<ast::BlockLiteral const *,

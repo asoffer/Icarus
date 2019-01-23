@@ -647,7 +647,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       }
     } break;
     case ir::Op::NewOpaqueType: {
-      save(new type::Opaque);
+      save(new type::Opaque(cmd.mod_));
     } break;
     case ir::Op::LoadSymbol: {
       void *sym = [&]() -> void * {

@@ -39,8 +39,8 @@ struct Context {
   base::vector<ast::DispatchTable> const *rep_dispatch_tables(
       ast::Node const *node) const;
 
-  base::vector<ast::DispatchTable> *set_rep_dispatch_tables(
-      ast::Node const *node, base::vector<ast::DispatchTable> &&tables);
+  void push_rep_dispatch_table(ast::Node const *node,
+                               ast::DispatchTable &&tables);
 
   ir::Register addr(ast::Declaration *decl) const;
   void set_addr(ast::Declaration *decl, ir::Register);

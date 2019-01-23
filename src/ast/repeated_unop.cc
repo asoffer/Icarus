@@ -51,12 +51,8 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
           ? result.type_->as<type::Tuple>().entries_
           : base::vector<type::Type const *>{result.type_};
 
-  auto &dispatch_tables = *ctx->set_rep_dispatch_tables(
-      this, base::vector<DispatchTable>(args_.exprs_.size()));
-
   if (op_ == Language::Operator::Print) {
     // TODO what's the actual size given expansion of tuples and stuff?
-    dispatch_tables.reserve(args_.exprs_.size());
     for (size_t i = 0; i < args_.exprs_.size(); ++i) {
       auto &arg      = args_.exprs_[i];
       auto *arg_type = arg_types[i];
@@ -67,14 +63,13 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
       } else if (arg_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_.push_back(arg.get());
-        const type::Type *ret_type = nullptr;
         OverloadSet os(scope_, "print", ctx);
         os.add_adl("print", arg_type);
-        std::tie(dispatch_tables[i], ret_type) =
-            DispatchTable::Make(args, os, ctx);
-        if (ret_type != type::Void()) {
-          NOT_YET("log an error: ", ret_type);
-        }
+
+        auto *ret_type =
+            DispatchTable::MakeOrLogError(this, args, os, ctx, true);
+        if (ret_type == nullptr) { NOT_YET(); }
+        if (ret_type != type::Void()) { NOT_YET("log an error: ", ret_type); }
       } else if (arg_type->is<type::Variant>()) {
         // TODO check that any variant can be printed
       } else if (arg_type->is<type::Tuple>()) {

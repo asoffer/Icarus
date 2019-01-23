@@ -5,8 +5,11 @@
 #include "ir/val.h"
 #include "type/type.h"
 
+struct Module;
+
 namespace type {
 struct Opaque : public Type {
+  Opaque(::Module const *mod) : mod_(mod) {}
   ~Opaque() override {}
   void WriteTo(std::string *result) const override;
   void EmitAssign(const Type *from_type, ir::Val const &from,
@@ -29,12 +32,13 @@ struct Opaque : public Type {
 
   void defining_modules(
       std::unordered_set<::Module const *> *modules) const override {
-    NOT_YET();
+    modules->insert(mod_);
   }
 
   bool IsDefaultInitializable() const override { return false; }
 
   Cmp Comparator() const override { UNREACHABLE(); }
+  ::Module const *mod_;
 };
 
 }  // namespace type

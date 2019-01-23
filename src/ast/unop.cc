@@ -103,13 +103,12 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
         args.pos_           = base::vector<Expression *>{operand.get()};
-        type::Type const *t = nullptr;
         OverloadSet os(scope_, "-", ctx);
         os.add_adl("-", operand_type);
-        DispatchTable table;
-        std::tie(table, t) = DispatchTable::Make(args, os, ctx);
-        ctx->set_dispatch_table(this, std::move(table));
-        return VerifyResult(t, result.const_);
+
+        auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
+        if (ret_type == nullptr) { return VerifyResult::Error(); }
+        return VerifyResult(ctx->set_type(this, ret_type), result.const_);
       }
       NOT_YET();
       return VerifyResult::Error();
@@ -131,15 +130,14 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       }
       if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
-        args.pos_           = base::vector<Expression *>{operand.get()};
-        type::Type const *t = nullptr;
+        args.pos_ = base::vector<Expression *>{operand.get()};
         OverloadSet os(scope_, "!", ctx);
         os.add_adl("!", operand_type);
-        DispatchTable table;
-        std::tie(table, t) = DispatchTable::Make(args, os, ctx);
-        ctx->set_dispatch_table(this, std::move(table));
-        ASSERT(t, Not(Is<type::Tuple>()));
-        return VerifyResult(t, result.const_);
+
+        auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
+        if (ret_type == nullptr) { return VerifyResult::Error(); }
+        if (ret_type->is<type::Tuple>()) { NOT_YET(); }
+        return VerifyResult(ctx->set_type(this, ret_type), result.const_);
       } else {
         NOT_YET("log an error");
         return VerifyResult::Error();

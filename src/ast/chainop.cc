@@ -154,9 +154,6 @@ VerifyResult ChainOp::VerifyType(Context *ctx) {
     return VerifyResult::Error();
   }
 
-  auto &dispatch_tables = *ctx->set_rep_dispatch_tables(
-      this, base::vector<DispatchTable>(exprs.size() - 1));
-
   if (ops[0] == Language::Operator::Or) {
     bool found_err = false;
     for (size_t i = 0; i < results.size() - 1; ++i) {
@@ -208,8 +205,8 @@ not_blocks:
               default: UNREACHABLE();
             }
           }();
-          ctx->error_log_.NoMatchingOperator(op_str, first_expr_type,
-                                             result.type_, span);
+
+          NOT_YET("Log an error");
           is_const &= result.const_;
           failed = true;
         }
@@ -245,19 +242,17 @@ not_blocks:
           args.pos_ =
               base::vector<Expression *>{{exprs[i].get(), exprs[i + 1].get()}};
           // TODO overwriting type a bunch of times?
-          type::Type const *t = nullptr;
           OverloadSet os(scope_, token, ctx);
           os.add_adl(token, lhs_result.type_);
           os.add_adl(token, rhs_result.type_);
-          std::tie(dispatch_tables.at(i), t) =
-              DispatchTable::Make(args, os, ctx);
-          ASSERT(t, Not(Is<type::Tuple>())); // TODO handle this case.
-          if (t == nullptr) { return VerifyResult::Error(); }
+
+          auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx, true);
+          if (ret_type == nullptr) { return VerifyResult::Error(); }
+          if (ret_type->is<type::Tuple>()) { NOT_YET(); }
+          // TODO check that ret_type is a bool?
         } else {
           if (lhs_result.type_!= rhs_result.type_) {
-            // TODO better error.
-            ctx->error_log_.NoMatchingOperator(token, lhs_result.type_,
-                                               rhs_result.type_, span);
+            NOT_YET("Log an error");
 
           } else {
             auto cmp = lhs_result.type_->Comparator();

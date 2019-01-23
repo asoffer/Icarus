@@ -20,6 +20,7 @@ struct Function;
 }  // namespace type
 
 namespace ast {
+struct Node;
 struct FunctionLiteral;
 struct Expression;
 
@@ -78,6 +79,10 @@ struct DispatchTable {
   static std::pair<DispatchTable, type::Type const *> Make(
       FnArgs<Expression *> const &args, OverloadSet const &overload_set,
       Context *ctx);
+  static type::Type const *MakeOrLogError(Node *node,
+                                          FnArgs<Expression *> const &args,
+                                          OverloadSet const &overload_set,
+                                          Context *ctx, bool repeated = false);
 
   base::vector<ir::Val> EmitCall(
       ast::FnArgs<std::pair<ast::Expression *, base::vector<ir::Val>>> const

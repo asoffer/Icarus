@@ -558,8 +558,10 @@ void UncondJump(BlockIndex block) {
 
 void ReturnJump() { auto &cmd = MakeCmd(nullptr, Op::ReturnJump); }
 
-TypedRegister<type::Type const *> NewOpaqueType() {
-  return MakeCmd(type::Type_, Op::NewOpaqueType).result;
+TypedRegister<type::Type const *> NewOpaqueType(::Module const *mod) {
+  auto &cmd = MakeCmd(type::Type_, Op::NewOpaqueType);
+  cmd.mod_  = mod;
+  return cmd.result;
 }
 
 void BlockSeqJump(RegisterOr<BlockSequence> bseq,

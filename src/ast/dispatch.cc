@@ -617,6 +617,26 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
   return std::pair{std::move(table), ret_type};
 }
 
+type::Type const *DispatchTable::MakeOrLogError(
+    Node *node, FnArgs<Expression *> const &args,
+    OverloadSet const &overload_set, Context *ctx, bool repeated) {
+  auto[table, ret_type] = Make(args, overload_set, ctx);
+  if (table.bindings_.empty()) {
+    // TODO what about operators?
+    ctx->error_log_.NoCallMatch(node->span, table.failure_reasons_);
+    return nullptr;
+  }
+
+  if (false /* not all contingencies covered */) { NOT_YET(); }
+
+  if (repeated) {
+    ctx->push_rep_dispatch_table(node, std::move(table));
+  } else {
+    ctx->set_dispatch_table(&node->as<Expression>(), std::move(table));
+  }
+  return ctx->set_type(&node->as<Expression>(), ret_type);
+}
+
 // We allow overwriting outgoing_regs slots. This will only happen with locally
 // declared registers which means they're all simple and this works as a nice
 // return value.

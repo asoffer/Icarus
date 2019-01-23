@@ -16,7 +16,7 @@ type::Type const *Context::type_of(ast::Expression const *expr) const {
 
 type::Type const *Context::set_type(ast::Expression const *expr,
                                     type::Type const *t) {
-  return mod_->set_type(bound_constants_, expr, t);
+  return mod_->set_type(bound_constants_, expr, ASSERT_NOT_NULL(t));
 }
 
 void Context::set_addr(ast::Declaration *decl, ir::Register r) {
@@ -43,11 +43,10 @@ ast::DispatchTable const *Context::dispatch_table(ast::Expression const *expr) c
   return nullptr;
 }
 
-base::vector<ast::DispatchTable> *Context::set_rep_dispatch_tables(
-    ast::Node const *node, base::vector<ast::DispatchTable> &&tables) {
-  auto &result = mod_->data_[bound_constants_].repeated_dispatch_tables_[node] =
-      std::move(tables);
-  return &result;
+void Context::push_rep_dispatch_table(ast::Node const *node,
+                                      ast::DispatchTable &&tables) {
+  mod_->data_[bound_constants_].repeated_dispatch_tables_[node].push_back(
+      std::move(tables));
 }
 
 base::vector<ast::DispatchTable> const *Context::rep_dispatch_tables(

@@ -148,18 +148,11 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         os.add_adl("as", lhs_result.type_);
         os.keep_return(t);
 
-        DispatchTable table;
-        std::tie(table, t) = DispatchTable::Make(args, os, ctx);
-        ctx->set_dispatch_table(this, std::move(table));
+        auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
+        if (ret_type == nullptr) { return VerifyResult::Error(); }
+        ASSERT(t == ret_type);
+        return VerifyResult(ret_type, lhs_result.const_);
 
-        if (t == nullptr) {
-          ctx->error_log_.NoMatchingOperator("as", lhs_result.type_,
-                                             rhs_result.type_, span);
-          return VerifyResult::Error();
-        } else {
-          if (t->is<type::Tuple>()) { NOT_YET(); }
-          return VerifyResult(ctx->set_type(this, t), lhs_result.const_);
-        }
       } else {
         if (!type::CanCast(lhs_result.type_, t)) {
           LOG << this;
@@ -199,37 +192,29 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         return VerifyResult::Error();
       }
 
-#define CASE(OpName, symbol, ret_type)                                          \
-  case Operator::OpName: {                                                      \
-    bool is_const = lhs_result.const_ && rhs_result.const_;                     \
-    if (type::IsNumeric(lhs_result.type_) &&                                    \
-        type::IsNumeric(rhs_result.type_)) {                                    \
-      if (lhs_result.type_ == rhs_result.type_) {                               \
-        return VerifyResult(ctx->set_type(this, (ret_type)), is_const);         \
-      } else {                                                                  \
-        ctx->error_log_.NoMatchingOperator(symbol, lhs_result.type_,            \
-                                           rhs_result.type_, span);             \
-        return VerifyResult::Error();                                           \
-      }                                                                         \
-    } else {                                                                    \
-      FnArgs<Expression *> args;                                                \
-      args.pos_           = base::vector<Expression *>{{lhs.get(), rhs.get()}}; \
-      type::Type const *t = nullptr;                                            \
-      OverloadSet os(scope_, symbol, ctx);                                      \
-      os.add_adl(symbol, lhs_result.type_);                                     \
-      os.add_adl(symbol, rhs_result.type_);                                     \
-      DispatchTable table;                                                      \
-      std::tie(table, t) = DispatchTable::Make(args, os, ctx);                  \
-      ctx->set_dispatch_table(this, std::move(table));                          \
-      if (t == nullptr) {                                                       \
-        ctx->error_log_.NoMatchingOperator(symbol, lhs_result.type_,            \
-                                           rhs_result.type_, span);             \
-        return VerifyResult::Error();                                           \
-      } else {                                                                  \
-        if (t->is<type::Tuple>()) { NOT_YET(); }                                \
-        return VerifyResult(ctx->set_type(this, t), lhs_result.const_);         \
-      }                                                                         \
-    }                                                                           \
+#define CASE(OpName, symbol, return_type)                                      \
+  case Operator::OpName: {                                                     \
+    bool is_const = lhs_result.const_ && rhs_result.const_;                    \
+    if (type::IsNumeric(lhs_result.type_) &&                                   \
+        type::IsNumeric(rhs_result.type_)) {                                   \
+      if (lhs_result.type_ == rhs_result.type_) {                              \
+        return VerifyResult(ctx->set_type(this, (return_type)), is_const);     \
+      } else {                                                                 \
+        NOT_YET("Log an error");                                               \
+        return VerifyResult::Error();                                          \
+      }                                                                        \
+    } else {                                                                   \
+      FnArgs<Expression *> args;                                               \
+      args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};          \
+      OverloadSet os(scope_, symbol, ctx);                                     \
+      os.add_adl(symbol, lhs_result.type_);                                    \
+      os.add_adl(symbol, rhs_result.type_);                                    \
+                                                                               \
+      auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);     \
+      if (ret_type == nullptr) { return VerifyResult::Error(); }               \
+      if (ret_type->is<type::Tuple>()) { NOT_YET(); }                          \
+      return VerifyResult(ctx->set_type(this, ret_type), lhs_result.const_);   \
+    }                                                                          \
   } break;
       CASE(Sub, "-", lhs_result.type_);
       CASE(Mul, "-", lhs_result.type_);
@@ -247,28 +232,20 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         if (lhs_result.type_ == rhs_result.type_) {
           return VerifyResult(ctx->set_type(this, lhs_result.type_), is_const);
         } else {
-          ctx->error_log_.NoMatchingOperator("+", lhs_result.type_,
-                                             rhs_result.type_, span);
+          NOT_YET("Log an error");
           return VerifyResult::Error();
         }
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
-        type::Type const *t = nullptr;
         OverloadSet os(scope_, "+", ctx);
         os.add_adl("+", lhs_result.type_);
         os.add_adl("+", rhs_result.type_);
-        DispatchTable table;
-        std::tie(table, t) = DispatchTable::Make(args, os, ctx);
-        ctx->set_dispatch_table(this, std::move(table));
-        ASSERT(t, Not(Is<type::Tuple>()));
-        if (t == nullptr) {
-          ctx->error_log_.NoMatchingOperator("+", lhs_result.type_,
-                                             rhs_result.type_, span);
-          return VerifyResult::Error();
-        } else {
-          return VerifyResult(ctx->set_type(this, t), is_const);
-        }
+
+        auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
+        if (ret_type == nullptr) { return VerifyResult::Error(); }
+        if (ret_type->is<type::Tuple>()) { NOT_YET(); }
+        return VerifyResult(ctx->set_type(this, ret_type), is_const);
       }
     } break;
    case Operator::AddEq: {
@@ -278,21 +255,20 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         if (lhs_result.type_ == rhs_result.type_) {
           return VerifyResult(ctx->set_type(this, type::Void()), is_const);
         } else {
-          ctx->error_log_.NoMatchingOperator("+=", lhs_result.type_,
-                                             rhs_result.type_, span);
+          NOT_YET("Log an error");
           return VerifyResult::Error();
         }
       } else {
         FnArgs<Expression *> args;
         args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
-        type::Type const *t = nullptr;
         OverloadSet os(scope_, "+=", ctx);
         os.add_adl("+=", lhs_result.type_);
         os.add_adl("+=", rhs_result.type_);
-        DispatchTable table;
-        std::tie(table, t) = DispatchTable::Make(args, os, ctx);
-        ctx->set_dispatch_table(this, std::move(table));
-        if (t->is<type::Tuple>()) { NOT_YET(); }
+
+        auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
+        if (ret_type == nullptr) { return VerifyResult::Error(); }
+        if (ret_type->is<type::Tuple>()) { NOT_YET(); }
+        return VerifyResult(ctx->set_type(this, ret_type), is_const);
       }
     } break;
     case Operator::Arrow: {

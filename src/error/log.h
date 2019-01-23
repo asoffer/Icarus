@@ -55,8 +55,6 @@ struct Log {
   void IndexedReturnTypeMismatch(type::Type const *expected_type,
                                  ast::Expression const *ret_expr, size_t index);
   void ReturningWrongNumber(ast::Expression const *ret_expr, size_t num_rets);
-  void NoMatchingOperator(std::string const &op, type::Type const *lhs,
-                          type::Type const *rhs, TextSpan const &span);
   void NoReturnTypes(ast::Expression const *ret_expr);
   void DeclarationUsedInUnop(std::string const &unop,
                              TextSpan const &decl_span);
