@@ -718,10 +718,11 @@ type::Type const *DispatchTable::MakeOrLogError(
 
   if (repeated) {
     ctx->push_rep_dispatch_table(node, std::move(table));
+    return ret_type;
   } else {
     ctx->set_dispatch_table(&node->as<Expression>(), std::move(table));
+    return ctx->set_type(&node->as<Expression>(), ret_type);
   }
-  return ctx->set_type(&node->as<Expression>(), ret_type);
 }
 
 // We allow overwriting outgoing_regs slots. This will only happen with locally
