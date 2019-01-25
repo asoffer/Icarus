@@ -77,8 +77,8 @@ struct DispatchTable {
   // * Add weights for PGO optimizations?
 
   static std::pair<DispatchTable, type::Type const *> Make(
-      FnArgs<Expression *> const &args, OverloadSet const &overload_set,
-      Context *ctx);
+      FnArgs<type::Typed<Expression *>> const &args,
+      OverloadSet const &overload_set, Context *ctx);
   static type::Type const *MakeOrLogError(Node *node,
                                           FnArgs<Expression *> const &args,
                                           OverloadSet const &overload_set,

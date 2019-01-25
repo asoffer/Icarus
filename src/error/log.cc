@@ -659,4 +659,20 @@ void Log::NoCallMatch(TextSpan const &span,
   errors_.push_back(ss.str());
 }
 
+void Log::MissingDispatchContingency(
+    TextSpan const &span,
+    base::vector<ast::FnArgs<type::Type const *>> const &missing_dispatch) {
+  std::stringstream ss;
+  ss << "Failed to find a valid function to call for all required dispatches.\n\n";
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  for (auto const &fnargs : missing_dispatch) {
+    ss << "\n * No function taking arguments (" << fnargs.to_string() << ")\n";
+  }
+  ss << "\n";
+  errors_.push_back(ss.str());
+}
+
 }  // namespace error

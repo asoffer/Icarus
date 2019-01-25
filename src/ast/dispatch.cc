@@ -138,7 +138,7 @@ bool Binding::defaulted(size_t i) const {
 template <typename E>
 static base::expected<Binding, CallObstruction> MakeBinding(
     type::Typed<Expression *, type::Callable> fn, FnParams<E> const &params,
-    FnArgs<Expression *> const &args, Context *ctx) {
+    FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
   bool constant = !params.lookup_.empty();
   Binding b(fn, constant);
   base::vector<Binding::Entry> entries;
@@ -149,14 +149,14 @@ static base::expected<Binding, CallObstruction> MakeBinding(
   size_t argument_index  = 0;
   size_t parameter_index = 0;
   while (p_iter != params.end() && a_iter != args.pos_.end()) {
-    auto *t = ASSERT_NOT_NULL(ctx->type_of(*a_iter));
-    if ((*a_iter)->needs_expansion()) {
+    auto *t = a_iter->type();
+    if (a_iter->get()->needs_expansion()) {
       auto const &tuple_entries = t->template as<type::Tuple>().entries_;
 
       // TODO check that there is enough space in params
       size_t expansion_index = 0;
       for (auto *t : tuple_entries) {
-        b.entries_.emplace_back(*a_iter, argument_index, expansion_index,
+        b.entries_.emplace_back(a_iter->get(), argument_index, expansion_index,
                                 parameter_index);
         ++p_iter;
         ++parameter_index;
@@ -165,7 +165,7 @@ static base::expected<Binding, CallObstruction> MakeBinding(
       ++argument_index;
       ++a_iter;
     } else {
-      b.entries_.emplace_back(*a_iter, argument_index, -1, parameter_index);
+      b.entries_.emplace_back(a_iter->get(), argument_index, -1, parameter_index);
       ++parameter_index;
       ++argument_index;
       ++p_iter;
@@ -184,7 +184,7 @@ static base::expected<Binding, CallObstruction> MakeBinding(
   for (auto const & [ name, expr ] : args.named_) {
     if (auto iter = params.lookup_.find(name); iter != params.lookup_.end()) {
       auto &entry           = b.entries_.at(iter->second);
-      entry.expr            = expr;
+      entry.expr            = expr.get();
       entry.parameter_index = iter->second;
     } else {
       return CallObstruction::NoParameterNamed(name);
@@ -199,11 +199,12 @@ struct DispatchTableRow {
   template <typename E>
   CallObstruction SetTypes(base::vector<type::Type const *> const &input_types,
                            FnParams<E> const &params,
-                           FnArgs<Expression *> const &args, Context *ctx);
+                           FnArgs<type::Typed<Expression *>> const &args,
+                           Context *ctx);
 
   static base::expected<DispatchTableRow, CallObstruction> Make(
       type::Typed<Expression *, type::Callable> fn_option,
-      FnArgs<Expression *> const &args, Context *ctx);
+      FnArgs<type::Typed<Expression *>> const &args, Context *ctx);
 
   FnArgs<type::Type const *> call_arg_types_;
   type::Callable const *callable_type_ = nullptr;
@@ -212,18 +213,21 @@ struct DispatchTableRow {
  private:
   static base::expected<DispatchTableRow, CallObstruction> MakeNonConstant(
       type::Typed<Expression *, type::Function> fn_option,
-      FnArgs<Expression *> const &args, Context *ctx);
+      FnArgs<type::Typed<Expression *>> const &args, Context *ctx);
 
   static base::expected<DispatchTableRow, CallObstruction>
   MakeFromForeignFunction(type::Typed<Expression *, type::Callable> fn_option,
-                          FnArgs<Expression *> const &args, Context *ctx);
+                          FnArgs<type::Typed<Expression *>> const &args,
+                          Context *ctx);
   static base::expected<DispatchTableRow, CallObstruction> MakeFromIrFunc(
       type::Typed<Expression *, type::Callable> fn_option,
-      ir::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx);
+      ir::Func const &ir_func, FnArgs<type::Typed<Expression *>> const &args,
+      Context *ctx);
 
   static base::expected<DispatchTableRow, CallObstruction> MakeFromFnLit(
       type::Typed<Expression *, type::Callable> fn_option,
-      FunctionLiteral *fn_lit, FnArgs<Expression *> const &args, Context *ctx);
+      FunctionLiteral *fn_lit, FnArgs<type::Typed<Expression *>> const &args,
+      Context *ctx);
   DispatchTableRow(Binding b) : binding_(std::move(b)) {}
 };
 
@@ -232,7 +236,8 @@ struct DispatchTableRow {
 template <typename E>
 CallObstruction DispatchTableRow::SetTypes(
     base::vector<type::Type const *> const &input_types,
-    FnParams<E> const &params, FnArgs<Expression *> const &args, Context *ctx) {
+    FnParams<E> const &params, FnArgs<type::Typed<Expression *>> const &args,
+    Context *ctx) {
   size_t num = 0;
   for (auto const &entry : binding_.entries_) {
     if (entry.argument_index != -1) { ++num; }
@@ -341,7 +346,7 @@ static bool IsConstant(Expression *e) {
 
 base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::MakeNonConstant(
     type::Typed<Expression *, type::Function> fn_option,
-    FnArgs<Expression *> const &args, Context *ctx) {
+    FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
   if (!args.named_.empty()) {
     // TODO Describe `fn_option` explicitly.
     return CallObstruction::NonConstantNamedArguments();
@@ -356,13 +361,14 @@ base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::MakeNonConst
   }
 
   FnParams<std::nullptr_t> params(fn_option.type()->input.size());
+
   ASSIGN_OR(return _.error(), auto binding,
                    MakeBinding(fn_option, params, args, ctx));
   binding.bound_constants_ = ctx->bound_constants_;
 
   DispatchTableRow dispatch_table_row(std::move(binding));
-  if (auto obs = dispatch_table_row.SetTypes(
-          fn_option.type()->input, params, args, ctx);
+  if (auto obs = dispatch_table_row.SetTypes(fn_option.type()->input, params,
+                                             args, ctx);
       obs.obstructed()) {
     return obs;
   }
@@ -374,7 +380,7 @@ base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::MakeNonConst
 
 base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::Make(
     type::Typed<Expression *, type::Callable> fn_option,
-    FnArgs<Expression *> const &args, Context *ctx) {
+    FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
   if (fn_option.type() == nullptr) { NOT_YET(); }
   if (!IsConstant(fn_option.get())) {
     return MakeNonConstant(fn_option.as_type<type::Function>(), args, ctx);
@@ -404,7 +410,7 @@ base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::Make(
 base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeFromForeignFunction(
     type::Typed<Expression *, type::Callable> fn_option,
-    FnArgs<Expression *> const &args, Context *ctx) {
+    FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
   // TODO while all the behavior of MakeNonConst is what we want, the name is
   // obviously incorrect. and we need to reset binding_.const_ to true. Fix
   // the name here. Probably the error messages once we have them will be
@@ -421,7 +427,8 @@ DispatchTableRow::MakeFromForeignFunction(
 base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeFromFnLit(
     type::Typed<Expression *, type::Callable> fn_option,
-    FunctionLiteral *fn_lit, FnArgs<Expression *> const &args, Context *ctx) {
+    FunctionLiteral *fn_lit, FnArgs<type::Typed<Expression *>> const &args,
+    Context *ctx) {
   ASSIGN_OR(return _.error(), auto binding,
                    MakeBinding(fn_option, fn_lit->inputs_, args, ctx));
 
@@ -441,13 +448,13 @@ DispatchTableRow::MakeFromFnLit(
     if (needs_match_decl) {
       new_ctx.bound_constants_.constants_.emplace(
           &fn_lit->inputs_.at(i).value->type_expr->as<MatchDeclaration>(),
-          ir::Val(ctx->type_of(args.pos_[i])));
+          ir::Val(args.pos_.at(i).type()));
     }
 
     if (fn_lit->inputs_.at(i).value->const_) {
       new_ctx.bound_constants_.constants_.emplace(
           fn_lit->inputs_.at(i).value.get(),
-          backend::Evaluate(args.pos_[i], ctx)[0]);
+          backend::Evaluate(args.pos_.at(i).get(), ctx)[0]);
     }
   }
   for (auto & [ name, expr ] : args.named_) {
@@ -455,7 +462,7 @@ DispatchTableRow::MakeFromFnLit(
     auto *decl   = fn_lit->inputs_.at(index).value.get();
     if (!decl->const_) { continue; }
     new_ctx.bound_constants_.constants_.emplace(
-        decl, backend::Evaluate(expr, ctx)[0]);
+        decl, backend::Evaluate(expr.get(), ctx)[0]);
     // TODO Match decls?
   }
 
@@ -484,8 +491,8 @@ DispatchTableRow::MakeFromFnLit(
 
   // Function literals don't need an input types vector because they have
   // constants that need to be evaluated in new_ctx anyway.
-  if (auto obs = dispatch_table_row.SetTypes({}, fn_lit->inputs_, args,
-                                             &new_ctx);
+  if (auto obs =
+          dispatch_table_row.SetTypes({}, fn_lit->inputs_, args, &new_ctx);
       obs.obstructed()) {
     return obs;
   }
@@ -497,7 +504,8 @@ DispatchTableRow::MakeFromFnLit(
 base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeFromIrFunc(
     type::Typed<Expression *, type::Callable> fn_option,
-    ir::Func const &ir_func, FnArgs<Expression *> const &args, Context *ctx) {
+    ir::Func const &ir_func, FnArgs<type::Typed<Expression *>> const &args,
+    Context *ctx) {
   ASSIGN_OR(return _.error(), auto binding,
                    MakeBinding(fn_option, ir_func.params_, args, ctx));
   binding.bound_constants_ = ctx->bound_constants_;
@@ -568,8 +576,8 @@ static size_t ComputeExpansion(
 }
 
 std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
-    FnArgs<Expression *> const &args, OverloadSet const &overload_set,
-    Context *ctx) {
+    FnArgs<type::Typed<Expression *>> const &args,
+    OverloadSet const &overload_set, Context *ctx) {
   DispatchTable table;
 
   base::vector<type::Callable const *> precise_callable_types;
@@ -617,17 +625,96 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
   return std::pair{std::move(table), ret_type};
 }
 
+static void AddPositionalType(type::Type const *t,
+                              base::vector<FnArgs<type::Type const *>> *args) {
+  if (auto *vt = t->if_as<type::Variant>()) {
+    base::vector<FnArgs<type::Type const *>> new_args;
+    for (auto *v : vt->variants_) {
+      for (auto fnargs : *args) {
+        fnargs.pos_.push_back(v);
+        new_args.push_back(std::move(fnargs));
+      }
+    }
+    *args = std::move(new_args);
+  } else {
+    std::for_each(
+        args->begin(), args->end(),
+        [t](FnArgs<type::Type const *> &fnargs) { fnargs.pos_.push_back(t); });
+  }
+}
+
+static void AddNamedType(std::string const &name, type::Type const *t,
+                         base::vector<FnArgs<type::Type const *>> *args) {
+  if (auto *vt = t->if_as<type::Variant>()) {
+    base::vector<FnArgs<type::Type const *>> new_args;
+    for (auto *v : vt->variants_) {
+      for (auto fnargs : *args) {
+        fnargs.named_.emplace(name, v);
+        new_args.push_back(std::move(fnargs));
+      }
+    }
+    *args = std::move(new_args);
+  } else {
+    std::for_each(args->begin(), args->end(),
+                  [&](FnArgs<type::Type const *> &fnargs) {
+                    fnargs.named_.emplace(name, t);
+                  });
+  }
+}
+
+static base::vector<FnArgs<type::Type const *>> Expand(
+    FnArgs<type::Typed<Expression *>> const &typed_args) {
+  base::vector<FnArgs<type::Type const *>> all_expanded_options(1);
+  for (auto const &expr : typed_args.pos_) {
+    if (expr.get()->needs_expansion()) {
+      for (auto *t : expr.type()->as<type::Tuple>().entries_) {
+        AddPositionalType(t, &all_expanded_options);
+      }
+    } else {
+      AddPositionalType(expr.type(), &all_expanded_options);
+    }
+  }
+  for (auto const & [ name, expr ] : typed_args.named_) {
+    if (expr.get()->needs_expansion()) {
+      for (auto *t : expr.type()->as<type::Tuple>().entries_) {
+        AddNamedType(name, t, &all_expanded_options);
+      }
+    } else {
+      AddNamedType(name, expr.type(), &all_expanded_options);
+    }
+  }
+  return all_expanded_options;
+}
+
 type::Type const *DispatchTable::MakeOrLogError(
     Node *node, FnArgs<Expression *> const &args,
     OverloadSet const &overload_set, Context *ctx, bool repeated) {
-  auto[table, ret_type] = Make(args, overload_set, ctx);
+
+  // TODO pull this out one more layer into the VerifyType call of node.
+  auto typed_args = args.Transform([ctx](Expression *expr) {
+    return type::Typed<Expression *>(expr, ASSERT_NOT_NULL(ctx->type_of(expr)));
+  });
+
+  auto[table, ret_type] = Make(typed_args, overload_set, ctx);
   if (table.bindings_.empty()) {
     // TODO what about operators?
     ctx->error_log_.NoCallMatch(node->span, table.failure_reasons_);
     return nullptr;
   }
 
-  if (false /* not all contingencies covered */) { NOT_YET(); }
+  auto expanded = Expand(typed_args);
+  auto new_end_iter = std::remove_if(
+      expanded.begin(), expanded.end(),
+      [&](FnArgs<type::Type const *> const &fnargs) {
+        return std::any_of(
+            table.bindings_.begin(), table.bindings_.end(),
+            [&fnargs](auto const &kv) { return Covers(kv.first, fnargs); });
+      });
+  expanded.erase(new_end_iter, expanded.end());
+  if (!expanded.empty()) {
+    ctx->error_log_.MissingDispatchContingency(node->span, expanded);
+    return nullptr;
+  }
 
   if (repeated) {
     ctx->push_rep_dispatch_table(node, std::move(table));
@@ -792,6 +879,29 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
     // TODO actually just implicitly convertible to haystack
     return ir::Eq(haystack, runtime_type);
   }
+}
+
+// Small contains expanded arguments (no variants).
+bool Covers(FnArgs<type::Type const *> const &big,
+            FnArgs<type::Type const *> const &small) {
+  ASSERT(big.pos_.size() == small.pos_.size());
+  for (size_t i = 0; i < big.pos_.size(); ++i) {
+    if (big.pos_.at(i) == small.pos_.at(i)) { continue; }
+    if (auto *vt = big.pos_.at(i)->if_as<type::Variant>()) {
+      if (vt->contains(small.pos_.at(i))) { continue; }
+    }
+    return false;
+  }
+  for (auto const & [ name, t ] : small.named_) {
+    auto iter = big.named_.find(name);
+    if (iter == big.named_.end()) { return false; }
+    if (t == iter->second) { continue; }
+    if (auto *vt = iter->second->if_as<type::Variant>()) {
+      if (vt->contains(t)) { continue; }
+    }
+    return false;
+  }
+  return true;
 }
 
 static ir::BlockIndex CallLookupTest(

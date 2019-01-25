@@ -3,11 +3,12 @@
 
 #include <set>
 #include <string>
+
+#include "ast/fn_args.h"
 #include "base/container/unordered_map.h"
 #include "base/container/vector.h"
-
-#include "../base/debug.h"
-#include "../frontend/text_span.h"
+#include "base/debug.h"
+#include "frontend/text_span.h"
 
 namespace type {
 struct Type;
@@ -81,6 +82,10 @@ struct Log {
   void NoCallMatch(TextSpan const &span,
                    base::unordered_map<ast::Expression const *,
                                        std::string> const &failure_reasons);
+
+  void MissingDispatchContingency(
+      TextSpan const &span,
+      base::vector<ast::FnArgs<type::Type const *>> const &missing_dispatch);
 
   void StatementsFollowingJump(TextSpan const &span);
 
