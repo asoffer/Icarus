@@ -66,10 +66,10 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
         OverloadSet os(scope_, "print", ctx);
         os.add_adl("print", arg_type);
 
-        auto *ret_type =
-            DispatchTable::MakeOrLogError(this, args, os, ctx, true);
-        if (ret_type == nullptr) { NOT_YET(); }
-        if (ret_type != type::Void()) { NOT_YET("log an error: ", ret_type); }
+        ASSIGN_OR(
+            return VerifyResult::Error(), type::Type const &ret_type,
+                   DispatchTable::MakeOrLogError(this, args, os, ctx, true));
+        if (&ret_type != type::Void()) { NOT_YET("log an error: ", &ret_type); }
       } else if (arg_type->is<type::Variant>()) {
         // TODO check that any variant can be printed
       } else if (arg_type->is<type::Tuple>()) {

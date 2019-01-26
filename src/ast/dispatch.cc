@@ -564,17 +564,6 @@ static type::Type const *ComputeRetType(
   return type::Tup(std::move(combined_outputs));
 }
 
-static size_t ComputeExpansion(
-    FnArgs<type::Type const *> const &call_arg_types) {
-  size_t expanded_size = 1;
-  call_arg_types.Apply([&expanded_size](const type::Type *t) {
-    if (t->is<type::Variant>()) {
-      expanded_size *= t->as<type::Variant>().size();
-    }
-  });
-  return expanded_size;
-}
-
 std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
     FnArgs<type::Typed<Expression *>> const &args,
     OverloadSet const &overload_set, Context *ctx) {
@@ -607,8 +596,6 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
       continue;
     }
 
-    table.total_size_ +=
-        ComputeExpansion(maybe_dispatch_table_row->call_arg_types_);
     maybe_dispatch_table_row->binding_.fn_.set_type(
         maybe_dispatch_table_row->callable_type_);
     // TODO don't ned this as a field on the dispatchtablerow.
@@ -847,7 +834,7 @@ static void EmitOneCallDispatch(
   }
 
   ASSERT(std::holds_alternative<ir::Register>(callee.value) ||
-         std::holds_alternative<ir::AnyFunc>(callee.value));
+         std::holds_alternative<ir::AnyFunc>(callee.value)) << callee;
   ir::Call(callee.reg_or<ir::AnyFunc>(), std::move(call_args), std::move(outs));
 }
 

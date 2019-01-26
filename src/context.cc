@@ -5,8 +5,10 @@ type::Type const *Context::type_of(ast::Expression const *expr) const {
   if (auto *result = mod_->type_of(bound_constants_, expr)) { return result; }
   if (parent_) { return parent_->type_of(expr); }
 
+  // When searching in embedded modules we intentionally look with no bound
+  // constants. Across module boundaries, a declaration can't be present anyway.
   for (Module const *mod : mod_->global_->embedded_modules_) {
-    auto bc_iter = mod->data_.find(bound_constants_);
+    auto bc_iter = mod->data_.find(ast::BoundConstants{});
     if (bc_iter == mod->data_.end()) { continue; }
     auto iter = bc_iter->second.types_.data_.find(expr);
     if (iter != bc_iter->second.types_.data_.end()) { return iter->second; }

@@ -131,6 +131,9 @@ bool CommonAmbiguousFunctionCall(const base::vector<ArgumentMetaData> &data1,
   return false;
 }
 
+// TODO what about shadowing of symbols across module boundaries imported with
+// -- ::= ?
+// Or when you import two modules verifying that symbols don't conflict.
 bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
   auto *decl1_type = ctx->type_of(decl1);
   auto *decl2_type = ctx->type_of(decl2);
@@ -227,8 +230,16 @@ bool Declaration::IsCustomInitialized() const {
 }
 
 VerifyResult Declaration::VerifyType(Context *ctx) {
+  bool swap_bc = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
-  base::defer d([&] { ctx->mod_ = old_mod; });
+  BoundConstants old_bc;
+  if (swap_bc) {
+    old_bc = std::exchange(ctx->bound_constants_, BoundConstants{});
+  }
+  base::defer d([&] {
+    ctx->mod_ = old_mod;
+    if (swap_bc) { ctx->bound_constants_ = std::move(old_bc); }
+  });
 
   int dk = 0;
   if (type_expr == nullptr || type_expr->is<Hole>()) { dk = INFER; }
@@ -421,8 +432,17 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
 }
 
 void Declaration::Validate(Context *ctx) {
+  bool swap_bc = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
-  base::defer d([&] { ctx->mod_ = old_mod; });
+  BoundConstants old_bc;
+  if (swap_bc) {
+    old_bc = std::exchange(ctx->bound_constants_, BoundConstants{});
+  }
+  base::defer d([&] {
+    ctx->mod_ = old_mod;
+    if (swap_bc) { ctx->bound_constants_ = std::move(old_bc); }
+  });
+
   if (type_expr) { type_expr->Validate(ctx); }
   if (init_val) { init_val->Validate(ctx); }
 }
@@ -433,8 +453,16 @@ void Declaration::ExtractJumps(JumpExprs *rets) const {
 }
 
 base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
+  bool swap_bc = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
-  base::defer d([&] { ctx->mod_ = old_mod; });
+  BoundConstants old_bc;
+  if (swap_bc) {
+    old_bc = std::exchange(ctx->bound_constants_, BoundConstants{});
+  }
+  base::defer d([&] {
+    ctx->mod_ = old_mod;
+    if (swap_bc) { ctx->bound_constants_ = std::move(old_bc); }
+  });
 
   if (const_) {
     if (is_fn_param_) {

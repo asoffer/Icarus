@@ -91,7 +91,6 @@ struct DispatchTable {
 
   base::map<FnArgs<type::Type const *>, Binding> bindings_;
   std::unordered_map<Expression const *, std::string> failure_reasons_;
-  size_t total_size_ = 0;
 };
 
 }  // namespace ast
