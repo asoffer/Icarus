@@ -26,6 +26,7 @@
 #include "type/incomplete_enum.h"
 #include "type/incomplete_flags.h"
 #include "type/type.h"
+#include "type/util.h"
 
 using ::base::check::Is;
 
@@ -255,6 +256,9 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
   } else if (fn_type == type::Func({type::Ptr(type::Int32)}, {}) ||
              fn_type == type::Func({type::BufPtr(type::Int32)}, {})) {
     FfiCall<void, i32 *>(f, arguments, &ret_slots, stack);
+  } else if (fn_type == type::Func({type::Ptr(type::Float64)}, {}) ||
+             fn_type == type::Func({type::BufPtr(type::Float64)}, {})) {
+    FfiCall<void, double *>(f, arguments, &ret_slots, stack);
   } else {
     UNREACHABLE(fn_type);
   }

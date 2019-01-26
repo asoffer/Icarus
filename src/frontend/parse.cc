@@ -273,9 +273,7 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
       {"needs", Operator::Needs},   {"@", Operator::At},
       {"[*]", Operator::BufPtr},    {"<<", Operator::Expand},
       {"ensure", Operator::Ensure}, {"$", Operator::Eval}};
-  auto iter = UnopMap.find(tk);
-  ASSERT(iter != UnopMap.end());
-  unop->op = iter->second;
+  unop->op = UnopMap.at(tk);
 
   if (unop->operand->is<Declaration>()) {
     ctx->error_log_.DeclarationUsedInUnop(tk, unop->operand->span);

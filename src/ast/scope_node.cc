@@ -142,6 +142,9 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     jump_table->emplace(bseq[0], block_index);
   }
 
+  Identifier *state_id = nullptr;
+  FnArgs<type::Typed<Expression *>> typed_args;
+  FnArgs<std::pair<Expression *, base::vector<ir::Val>>> ir_args;
   if (scope_lit->stateful_) {
     ASSERT(state_types.size() == 1u);
     state_ptr_type = *state_types.begin();
@@ -149,30 +152,33 @@ base::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     state_type = state_ptr_type->as<type::Pointer>().pointee;
     alloc      = ir::TmpAlloca(state_type, ctx);
     state_type->EmitInit(alloc, ctx);
-  }
-
-  auto[dispatch_table, result_type] = DispatchTable::Make(
-      args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
-        return type::Typed<Expression *>(expr.get(), ctx->type_of(expr.get()));
-      }),
-      init_os, ctx);
-  auto block_seq =
-      dispatch_table
-          .EmitCall(
-              args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
-                return std::pair(const_cast<Expression *>(expr.get()),
-                                 expr->EmitIR(ctx));
-              }),
-              result_type, ctx)[0]
-          .reg_or<ir::BlockSequence>();
-  ir::BlockSeqJump(block_seq, jump_table);
-
-  Identifier *state_id = nullptr;
-
-  if (scope_lit->stateful_) {
     state_id = new Identifier(TextSpan{}, "<scope-state>");
-    ctx->set_type(state_id, state_ptr_type);
+
+    typed_args.pos_.emplace_back(state_id,
+                              ctx->set_type(state_id, state_ptr_type));
+    ir_args.pos_.emplace_back(
+        state_id, base::vector<ir::Val>{ir::Val::Reg(alloc, state_ptr_type)});
   }
+
+  for (auto const &expr : args_.pos_) {
+    typed_args.pos_.emplace_back(expr.get(), ctx->type_of(expr.get()));
+    ir_args.pos_.emplace_back(expr.get(), expr.get()->EmitIR(ctx));
+  }
+
+  for (auto const & [ name, expr ] : args_.named_) {
+    typed_args.named_.emplace(
+        std::piecewise_construct, std::forward_as_tuple(name),
+        std::forward_as_tuple(expr.get(), ctx->type_of(expr.get())));
+    ir_args.named_.emplace(std::piecewise_construct,
+                           std::forward_as_tuple(name),
+                           std::forward_as_tuple(expr.get(), expr.get()->EmitIR(ctx)));
+  }
+
+  auto[dispatch_table, result_type] =
+      DispatchTable::Make(typed_args, init_os, ctx);
+  auto block_seq = dispatch_table.EmitCall(ir_args, result_type, ctx)[0]
+                       .reg_or<ir::BlockSequence>();
+  ir::BlockSeqJump(block_seq, jump_table);
 
   for (auto &block : blocks_) {
     auto &data              = block_data[&block];

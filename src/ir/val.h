@@ -15,6 +15,7 @@
 #include "type/flags.h"
 #include "type/type.h"
 #include "type/typed_value.h"
+#include "type/util.h"
 
 struct Module;
 
