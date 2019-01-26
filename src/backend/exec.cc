@@ -215,6 +215,8 @@ void FfiCall(ir::Foreign const &f, base::untyped_buffer const &arguments,
 void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
                    base::vector<ir::Addr> ret_slots,
                    base::untyped_buffer *stack) {
+  // TODO we can catch locally or in the same lexical scope stack if a
+  // redeclaration of the same foreign symbol has a different type.
   // TODO handle failures gracefully.
   // TODO Consider caching these.
   // TODO Handle a bunch more function types in a coherent way.
@@ -253,12 +255,9 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
              fn_type->output.size() == 1 &&
              fn_type->output[0]->is<type::Pointer>()) {
     FfiCall<void *, u64>(f, arguments, &ret_slots, stack);
-  } else if (fn_type == type::Func({type::Ptr(type::Int32)}, {}) ||
-             fn_type == type::Func({type::BufPtr(type::Int32)}, {})) {
-    FfiCall<void, i32 *>(f, arguments, &ret_slots, stack);
-  } else if (fn_type == type::Func({type::Ptr(type::Float64)}, {}) ||
-             fn_type == type::Func({type::BufPtr(type::Float64)}, {})) {
-    FfiCall<void, double *>(f, arguments, &ret_slots, stack);
+  } else if (fn_type->input.size() == 1 && fn_type->output.empty() &&
+             fn_type->input[0]->is<type::Pointer>()) {
+    FfiCall<void, void *>(f, arguments, &ret_slots, stack);
   } else {
     UNREACHABLE(fn_type);
   }

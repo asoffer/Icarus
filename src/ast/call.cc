@@ -185,7 +185,6 @@ VerifyResult Call::VerifyType(Context *ctx) {
     }
   }();
 
-  LOG << "***" << this;
   auto *ret_type = DispatchTable::MakeOrLogError(this, args, overload_set, ctx);
   if (ret_type == nullptr) { return VerifyResult::Error(); }
 

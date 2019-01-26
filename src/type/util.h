@@ -56,7 +56,7 @@ constexpr type::Type const *Get() {
   } else if constexpr (std::is_pointer_v<T>) {
     return Ptr(Get<std::decay_t<decltype(*std::declval<T>())>>());
   } else {
-    UNREACHABLE();
+    UNREACHABLE(typeid(T).name());
   }
 }
 
