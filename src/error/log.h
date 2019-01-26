@@ -9,6 +9,9 @@
 #include "base/container/vector.h"
 #include "base/debug.h"
 #include "frontend/text_span.h"
+#include "error/inference_failure_reason.h"
+
+struct Context;
 
 namespace type {
 struct Type;
@@ -30,10 +33,9 @@ struct Log {
 
   void UndeclaredIdentifier(ast::Identifier *id);
   void AmbiguousIdentifier(ast::Identifier *id);
-  void PreconditionNeedsBool(ast::Expression *expr);
-  void PostconditionNeedsBool(ast::Expression *expr);
+  void PreconditionNeedsBool(TextSpan const &span, type::Type const *t);
+  void PostconditionNeedsBool(TextSpan const &span, type::Type const *t);
   void DeclOutOfOrder(ast::Declaration *decl, ast::Identifier *id);
-  void AssignmentTypeMismatch(ast::Expression *lhs, ast::Expression *rhs);
   void RunawayMultilineComment();
   void DoubleDeclAssignment(TextSpan const &decl_span,
                             TextSpan const &val_span);
@@ -42,7 +44,7 @@ struct Log {
   void UnknownParseError(base::vector<TextSpan> const &span);
   void PositionalArgumentFollowingNamed(base::vector<TextSpan> const &pos_spans,
                                         TextSpan const &named_span);
-  void NotAType(ast::Expression *expr);
+  void NotAType(TextSpan const &span, type::Type const *t);
   void ShadowingDeclaration(ast::Declaration const &decl1,
                             ast::Declaration const &decl2);
 
@@ -52,10 +54,12 @@ struct Log {
   void DereferencingNonPointer(type::Type const *type, TextSpan const &span);
   void WhichNonVariant(type::Type const *type, TextSpan const &span);
   void ReturnTypeMismatch(type::Type const *expected_type,
-                          ast::Expression const *ret_expr);
+                          type::Type const *actual_type, TextSpan const &span);
   void IndexedReturnTypeMismatch(type::Type const *expected_type,
-                                 ast::Expression const *ret_expr, size_t index);
-  void ReturningWrongNumber(ast::Expression const *ret_expr, size_t num_rets);
+                                 type::Type const *actual_type,
+                                 TextSpan const &span, size_t index);
+  void ReturningWrongNumber(TextSpan const &span, type::Type const *t,
+                            size_t num_rets);
   void NoReturnTypes(ast::Expression const *ret_expr);
   void DeclarationUsedInUnop(std::string const &unop,
                              TextSpan const &decl_span);
@@ -82,6 +86,7 @@ struct Log {
   void NoCallMatch(TextSpan const &span,
                    base::unordered_map<ast::Expression const *,
                                        std::string> const &failure_reasons);
+  void UninferrableType(InferenceFailureReason reason, TextSpan const &span);
 
   void MissingDispatchContingency(
       TextSpan const &span,

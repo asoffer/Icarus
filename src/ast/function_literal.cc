@@ -196,8 +196,9 @@ void FunctionLiteral::Validate(Context *ctx) {
       } break;
       case 1: {
         for (auto *expr : rets[JumpKind::Return]) {
-          if (ctx->type_of(expr) == outs[0]) { continue; }
-          ctx->error_log_.ReturnTypeMismatch(outs[0], expr);
+          auto *t = ctx->type_of(expr);
+          if (t == outs[0]) { continue; }
+          ctx->error_log_.ReturnTypeMismatch(outs[0], t, expr->span);
         }
       } break;
       default: {
@@ -206,20 +207,24 @@ void FunctionLiteral::Validate(Context *ctx) {
           if (expr_type->is<type::Tuple>()) {
             auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
-              ctx->error_log_.ReturningWrongNumber(expr, outs.size());
+              ctx->error_log_.ReturningWrongNumber(expr->span, expr_type, outs.size());
             } else {
               for (size_t i = 0; i < tup_entries.size(); ++i) {
                 if (tup_entries.at(i) != outs.at(i)) {
                   // TODO if this is a commalist we can point to it more
                   // carefully but if we're just passing on multiple return
                   // values it's harder.
-                  ctx->error_log_.IndexedReturnTypeMismatch(outs.at(i), expr,
-                                                            i);
+                  //
+                  // TODO point the span to the correct entry which may be hard
+                  // if it's splatted.
+                  ctx->error_log_.IndexedReturnTypeMismatch(
+                      outs.at(i), tup_entries.at(i), expr->span, i);
                 }
               }
             }
           } else {
-            ctx->error_log_.ReturningWrongNumber(expr, outs.size());
+            ctx->error_log_.ReturningWrongNumber(expr->span, expr_type,
+                                                 outs.size());
           }
         }
       } break;

@@ -81,6 +81,8 @@ struct Type : public base::Cast<Type> {
     return result;
   }
 
+  // TODO length-0 arrays and length-1 arrays of small types should be
+  // considered small too. Similarly with simple variants and tuples.
   bool is_big() const;
   virtual bool needs_destroy() const { return false; }
   virtual bool IsDefaultInitializable() const { return true; }

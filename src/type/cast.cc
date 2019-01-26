@@ -52,6 +52,7 @@ bool CanCast(Type const *from, Type const *to) {
     return to->as<BufferPointer>().pointee == from->as<Pointer>().pointee;
   }
   if (from == NullPtr && to->is<Pointer>()) { return true; }
+  if (from == EmptyArray && to->is<Array>()) { return true; }
 
   // TODO other integer types.
   if (from == Int32 && (to->is<Enum>() || to->is<Flags>())) { return true; }

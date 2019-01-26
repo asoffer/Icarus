@@ -72,6 +72,16 @@ Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
     return copy;
   }
 
+  // Note: ir::Cast is called with types associated IR commands and registers.
+  // Because arrays are considered big, they would never be stored directly in
+  // a register, so we would not see an empty array but rather a pointer to an
+  // empty arry.
+  if (from == type::Ptr(type::EmptyArray)) {
+    Val copy = val;
+    copy.type = type::Ptr(to);
+    return copy;
+  }
+
   if (to->is<type::Enum>()) {
     ASSERT(from == type::Int32);
     auto x = val.reg_or<i32>();

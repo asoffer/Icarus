@@ -54,8 +54,6 @@ MAKE_LOG_ERROR(InvalidImport,
 MAKE_LOG_ERROR(RHSNonIdInAccess, "Right-hand side must be an identifier")
 MAKE_LOG_ERROR(DeclarationInAccess,
                "Declaration not allowed on left-hand side of dot (.) operator.")
-MAKE_LOG_ERROR(UninferrableType,
-               "Unable to infer the type of the following expression:")
 
 MAKE_LOG_ERROR(InferringHole,
                "Attempting to infer the type of an uninitialized value")

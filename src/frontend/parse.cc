@@ -374,15 +374,10 @@ std::unique_ptr<Node> BuildIndexOperator(
   return binop;
 }
 
-// Input guarantee:
-// [expression] [l_bracket] [r_bracket]
-//
-// Internal checks: None
 std::unique_ptr<Node> BuildEmptyArray(base::vector<std::unique_ptr<Node>> nodes,
                                       Context *ctx) {
-  auto array_lit  = std::make_unique<ArrayLiteral>();
-  array_lit->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  return array_lit;
+  return std::make_unique<ArrayLiteral>(
+      TextSpan(nodes.front()->span, nodes.back()->span));
 }
 
 std::unique_ptr<Node> BuildEmptyCommaList(
@@ -394,8 +389,7 @@ std::unique_ptr<Node> BuildEmptyCommaList(
 
 std::unique_ptr<Node> BuildArrayLiteral(
     base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  auto array_lit  = std::make_unique<ArrayLiteral>();
-  array_lit->span = nodes[0]->span;
+  auto array_lit = std::make_unique<ArrayLiteral>(nodes[0]->span);
 
   if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().parenthesized_) {
     array_lit->cl_.exprs_ = std::move(nodes[1]->as<CommaList>().exprs_);

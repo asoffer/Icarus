@@ -4,6 +4,7 @@
 #include "ast/function_literal.h"
 #include "ast/hole.h"
 #include "backend/eval.h"
+#include "error/inference_failure_reason.h"
 #include "ir/func.h"
 #include "module.h"
 #include "type/all.h"
@@ -22,21 +23,39 @@ struct ArgumentMetaData {
   bool has_default;
 };
 
-// TODO return a reason why this is not inferrable for better error messages.
-bool Inferrable(type::Type const *t) {
-  if (t == type::NullPtr || t == type::EmptyArray) {
-    return false;
+InferenceFailureReason Inferrable(type::Type const *t) {
+  if (t == type::NullPtr) {
+    return InferenceFailureReason::NullPtr;
+  } else if (t == type::EmptyArray) {
+    return InferenceFailureReason::EmptyArray;
   } else if (t->is<type::Array>()) {
     return Inferrable(t->as<type::Array>().data_type);
   } else if (t->is<type::Pointer>()) {
     return Inferrable(t->as<type::Pointer>().pointee);
-  } else if (t->is<type::Function>()) {
-    const auto &f = t->as<type::Function>();
-    return std::all_of(f.input.begin(), f.input.end(), Inferrable) ||
-           std::all_of(f.output.begin(), f.output.end(), Inferrable);
+  } else if (auto *v = t->if_as<type::Variant>()) {
+    // TODO only returning the first failure here and not even givving a good
+    // explanation of precisely what the problem is. Fix here and below.
+    for (auto const *var : v->variants_) {
+      auto reason = Inferrable(var);
+      if (reason != InferenceFailureReason::Inferrable) { return reason; }
+    }
+  } else if (auto *tup = t->if_as<type::Tuple>()) {
+    for (auto const *entry : tup->entries_) {
+      auto reason = Inferrable(entry);
+      if (reason != InferenceFailureReason::Inferrable) { return reason; }
+    }
+  } else if (auto *f = t->if_as<type::Function>()) {
+    for (auto const *t : f->input) {
+      auto reason = Inferrable(t);
+      if (reason != InferenceFailureReason::Inferrable) { return reason; }
+    }
+    for (auto const *t : f->output) {
+      auto reason = Inferrable(t);
+      if (reason != InferenceFailureReason::Inferrable) { return reason; }
+    }
   }
   // TODO higher order types?
-  return true;
+  return InferenceFailureReason::Inferrable;
 }
 
 // TODO: This algorithm is sufficiently complicated you should combine it
@@ -212,7 +231,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
   base::defer d([&] { ctx->mod_ = old_mod; });
 
   int dk = 0;
-  if (!type_expr) { dk = INFER; }
+  if (type_expr == nullptr || type_expr->is<Hole>()) { dk = INFER; }
   if (init_val && init_val->is<Hole>()) {
     dk |= UNINITIALIZED;
   } else if (init_val) {
@@ -255,7 +274,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
                 backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
           }
         } else {
-          ctx->error_log_.NotAType(type_expr.get());
+          ctx->error_log_.NotAType(type_expr->span, type_expr_type);
           return VerifyResult::Error();
         }
       } break;
@@ -264,15 +283,16 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
         ASSIGN_OR(return VerifyResult::Error(), auto init_val_result,
                          init_val->VerifyType(ctx));
         auto *init_val_type = init_val_result.type_;
-        if (!Inferrable(init_val_type)) {
-          ctx->error_log_.UninferrableType(init_val->span);
+        auto reason = Inferrable(init_val_type);
+        if (reason != InferenceFailureReason::Inferrable) {
+          ctx->error_log_.UninferrableType(reason, init_val->span);
           return VerifyResult::Error();
         }
         this_type = ctx->set_type(this, init_val_type);
 
       } break;
       case INFER | UNINITIALIZED: {
-        ctx->error_log_.InferringHole(span);
+        ctx->error_log_.UninferrableType(InferenceFailureReason::Hole, init_val->span);
         if (const_) { ctx->error_log_.UninitializedConstant(span); }
         return VerifyResult::Error();
       } break;
@@ -281,15 +301,12 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
         bool error           = !init_val_result.ok();
 
         auto *init_val_type = init_val->VerifyType(ctx).type_;
-        if (init_val_type && !Inferrable(init_val_type)) {
-          ctx->error_log_.UninferrableType(init_val->span);
-          error = true;
-        }
-
         auto type_expr_result = type_expr->VerifyType(ctx);
         auto *type_expr_type = type_expr_result.type_;
 
-        if (type_expr_type == type::Type_) {
+        if (type_expr_type == nullptr) {
+          error = true;
+        } else if (type_expr_type == type::Type_) {
           if (!type_expr_result.const_) {
             NOT_YET("log an error");
             error = true;
@@ -308,7 +325,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
         } else if (type_expr_type == type::Intf) {
           this_type = ctx->set_type(this, type::Generic);
         } else {
-          ctx->error_log_.NotAType(type_expr.get());
+          ctx->error_log_.NotAType(type_expr->span, type_expr_type);
           error = true;
         }
 
@@ -329,7 +346,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
         } else if (type_expr_type == type::Intf) {
           this_type = ctx->set_type(this, type::Generic);
         } else {
-          ctx->error_log_.NotAType(type_expr.get());
+          ctx->error_log_.NotAType(type_expr->span, type_expr_type);
           return VerifyResult::Error();
         }
 

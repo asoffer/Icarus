@@ -6,6 +6,7 @@
 #include "ast/declaration.h"
 #include "ast/identifier.h"
 #include "base/interval.h"
+#include "context.h"
 #include "frontend/source.h"
 #include "type/enum.h"
 #include "type/opaque.h"
@@ -127,28 +128,27 @@ void Log::UndeclaredIdentifier(ast::Identifier *id) {
   undeclared_ids_[id->token].push_back(id);
 }
 
-void Log::PostconditionNeedsBool(ast::Expression *expr) {
+void Log::PostconditionNeedsBool(TextSpan const &span, type::Type const *t) {
   std::stringstream ss;
   ss << "Function postcondition must be of type bool, but you provided an "
-        "expression of type ";  // TODO pass in type or context too <<
-                                // expr->type->to_string() << "\n\n";
+        "expression of type "
+     << t << ".\n\n";
   WriteSource(
-      ss, *expr->span.source,
-      {base::Interval<size_t>{expr->span.start.line_num,
-                              expr->span.finish.line_num + 1}},
-      {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+      ss, *span.source,
+      {base::Interval<size_t>{span.start.line_num, span.finish.line_num + 1}},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
 
-void Log::PreconditionNeedsBool(ast::Expression *expr) {
+void Log::PreconditionNeedsBool(TextSpan const &span, type::Type const *t) {
   std::stringstream ss;
   ss << "Function precondition must be of type bool, but you provided an "
-        "expression of type ";  // TODO pass in type or context too <<
-                                // expr->type->to_string() << "\n\n";
+        "expression of type "
+     << t << ".\n\n";
   WriteSource(
-      ss, *expr->span.source, {expr->span.lines()},
-      {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
@@ -245,28 +245,24 @@ void Log::NonExportedMember(TextSpan const &span,
   errors_.push_back(ss.str());
 }
 
-
 void Log::ReturnTypeMismatch(type::Type const *expected_type,
-                             ast::Expression const *ret_expr) {
-  /* TODO pass in type or context too
+                             type::Type const *actual_type,
+                             TextSpan const &span) {
   std::stringstream ss;
-  if (ret_expr->type->is<type::Tuple>()) {
+  if (actual_type->is<type::Tuple>()) {
     ss << "Attempting to return multiple values";
   } else {
-    ss << "Returning an expression of type `" << ret_expr->type->to_string()
+    ss << "Returning an expression of type `" << actual_type->to_string()
        << '`';
   }
   ss << " from a function which returns `" << expected_type->to_string()
      << "`.\n\n";
-  auto &span = ret_expr->span;
   // TODO also show where the return type is specified?
   WriteSource(
-      ss, *ASSERT_NOT_NULL(span.source),
-      {span.lines()},
+      ss, *ASSERT_NOT_NULL(span.source), {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
-  */
 }
 
 void Log::NoReturnTypes(ast::Expression const *ret_expr) {
@@ -283,38 +279,30 @@ void Log::NoReturnTypes(ast::Expression const *ret_expr) {
   errors_.push_back(ss.str());
 }
 
-void Log::ReturningWrongNumber(ast::Expression const *ret_expr,
+void Log::ReturningWrongNumber(TextSpan const &span, type::Type const *t,
                                size_t num_rets) {
-  /* TODO pass in type or context too
   std::stringstream ss;
   ss << "Attempting to return "
-     << (ret_expr->type->is<type::Tuple>()
-             ? ret_expr->type->as<type::Tuple>().entries_.size()
-             : 1)
+     << (t->is<type::Tuple>() ? t->as<type::Tuple>().entries_.size() : 1)
      << " values from a function which has " << num_rets
      << " return values.\n\n";
-  auto &span = ret_expr->span;
   // TODO also show where the return type is specified?
   WriteSource(
-      ss, *span.source,
-      {span.lines()},
+      ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
-  */
 }
 
 void Log::IndexedReturnTypeMismatch(type::Type const *expected_type,
-                                    ast::Expression const *ret_expr,
-                                    size_t index) {
-  /* TODO Pass in type or context too
+                                    type::Type const *actual_type,
+                                    TextSpan const &span, size_t index) {
   std::stringstream ss;
-  // TODO should the slots be zero- or one-indexed?
-  ss << "Returning an expression in slot #" << (index + 1) << " of type `"
-     << ret_expr->type->as<type::Tuple>().entries_.at(index)->to_string()
+  ss << "Returning an expression in slot #" << index
+     << " (zero-indexed) of type `"
+     << actual_type->as<type::Tuple>().entries_.at(index)->to_string()
      << "` but function expects a value of type `" << expected_type->to_string()
      << "` in that slot.\n\n";
-  auto &span = ret_expr->span;
   // TODO also show where the return type is specified?
   WriteSource(
       ss, *span.source,
@@ -322,7 +310,6 @@ void Log::IndexedReturnTypeMismatch(type::Type const *expected_type,
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
-  */
 }
 
 void Log::DereferencingNonPointer(type::Type const *type,
@@ -368,28 +355,13 @@ void Log::NotBinary(TextSpan const &span, std::string const &token) {
   errors_.push_back(ss.str());
 }
 
-void Log::NotAType(ast::Expression *expr) {
+void Log::NotAType(TextSpan const& span, type::Type const* t) {
   std::stringstream ss;
   ss << "Expression was expected to be a type or interface, but instead it was "
-        "a(n) ";  // TODO pass in type or context too << expr->type->to_string()
-                  // << ".\n\n";
+        "a(n) " << t->to_string() << ".\n\n";
   WriteSource(
-      ss, *expr->span.source, {expr->span.lines()},
-      {{expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
-}
-
-void Log::AssignmentTypeMismatch(ast::Expression *lhs, ast::Expression *rhs) {
-  std::stringstream ss;
-  ss << "Invalid assignment. Left-hand side has type ";
-  // TODO pass in type or context too
-  //      << lhs->type->to_string() << ", but right-hand side has type "
-  //      << rhs->type->to_string() << ".\n\n";
-  WriteSource(
-      ss, *lhs->span.source, {lhs->span.lines(), rhs->span.lines()},
-      {{lhs->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}},
-       {rhs->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
 }
@@ -672,6 +644,32 @@ void Log::MissingDispatchContingency(
     ss << "\n * No function taking arguments (" << fnargs.to_string() << ")\n";
   }
   ss << "\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::UninferrableType(InferenceFailureReason reason,
+                           TextSpan const &span) {
+  std::stringstream ss;
+  switch (reason) {
+    case InferenceFailureReason::Inferrable: UNREACHABLE();
+    case InferenceFailureReason::EmptyArray:
+      ss << "Unable to infer the type of the following expression because the "
+            "type of an empty array cannot be inferred. Either specify the "
+            "type explicitly, or cast it to a specific array type:\n\n";
+      break;
+    case InferenceFailureReason::NullPtr:
+      ss << "Unable to infer the type of the following expression because the "
+            "type of `null` cannot be inferred. Either specify the type "
+            "explicitly, or cast it to a specific pointer type:\n\n";
+      break;
+    case InferenceFailureReason::Hole:
+      ss << "Unable to infer the type of a value that is uninitalized:\n\n";
+      break;
+  }
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
   errors_.push_back(ss.str());
 }
 

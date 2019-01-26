@@ -158,7 +158,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
           LOG << this;
           NOT_YET("log an error", lhs_result.type_, t);
         }
-        return VerifyResult::NonConstant(t);
+        return VerifyResult(t, lhs_result.const_);
       }
     }
     case Operator::XorEq:

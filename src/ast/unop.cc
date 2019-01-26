@@ -144,13 +144,13 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       }
     case Language::Operator::Needs:
       if (operand_type != type::Bool) {
-        ctx->error_log_.PreconditionNeedsBool(operand.get());
+        ctx->error_log_.PreconditionNeedsBool(operand->span, operand_type);
       }
       if (!result.const_) { NOT_YET(); }
       return VerifyResult::Constant(ctx->set_type(this, type::Void()));
     case Language::Operator::Ensure:
       if (operand_type != type::Bool) {
-        ctx->error_log_.PostconditionNeedsBool(operand.get());
+        ctx->error_log_.PostconditionNeedsBool(operand->span, operand_type);
       }
       if (!result.const_) { NOT_YET(); }
       return VerifyResult::Constant(ctx->set_type(this, type::Void()));

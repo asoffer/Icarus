@@ -5,7 +5,7 @@
 
 namespace ast {
 struct ArrayLiteral : public Expression {
-  ArrayLiteral() = default;
+  ArrayLiteral(TextSpan const& span) : Expression(span) {}
   ~ArrayLiteral() override {}
 
   void assign_scope(Scope *scope) override { return cl_.assign_scope(scope); }
