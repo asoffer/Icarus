@@ -10,7 +10,7 @@ ir::Val Array::PrepareArgument(Type const *from, ir::Val const &val,
   } else {
     ASSERT(from == this);
     // TODO Copy may be overkill. Think about value category.
-    auto arg = ir::TmpAlloca(from, ctx);
+    auto arg = ir::Alloca(from);
     from->EmitAssign(from, val, arg, ctx);
     return ir::Val::Reg(arg, type::Ptr(from));
   }
@@ -58,7 +58,7 @@ ir::Val Flags::PrepareArgument(Type const *from, ir::Val const &val,
 ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
                                  Context *ctx) const {
   if (this == from) { return val; }
-  auto alloc_reg = ir::TmpAlloca(this, ctx);
+  auto alloc_reg = ir::Alloca(this);
 
   if (!from->is<Variant>()) {
     Type_->EmitAssign(Type_, ir::Val(from), ir::VariantType(alloc_reg), ctx);
@@ -125,7 +125,7 @@ ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
 
 ir::Val Struct::PrepareArgument(Type const *from, ir::Val const &val,
                                 Context *ctx) const {
-  auto arg = ir::TmpAlloca(this, ctx);
+  auto arg = ir::Alloca(this);
 
   if (from->is<Variant>()) {
     EmitAssign(
@@ -149,7 +149,7 @@ ir::Val GenericStruct::PrepareArgument(Type const *from, ir::Val const &val,
 ir::Val Tuple::PrepareArgument(Type const *from, ir::Val const &val,
                                Context *ctx) const {
   ASSERT(from == this);
-  auto arg = ir::TmpAlloca(from, ctx);
+  auto arg = ir::Alloca(from);
   from->EmitAssign(from, val, arg, ctx);
   return ir::Val::Reg(arg, type::Ptr(from));
 }
