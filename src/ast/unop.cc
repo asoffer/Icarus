@@ -32,6 +32,7 @@ std::string Unop::to_string(size_t n) const {
     case Language::Operator::Ensure: ss << "ensure "; break;
     case Language::Operator::Expand: ss << "<< "; break;
     case Language::Operator::BufPtr: ss << "[*]"; break;
+    case Language::Operator::Copy: ss << "copy "; break;
     default: { UNREACHABLE(); }
   }
 
@@ -56,6 +57,9 @@ VerifyResult Unop::VerifyType(Context *ctx) {
   auto *operand_type = result.type_;
 
   switch (op) {
+    case Language::Operator::Copy:
+      // TODO Are copies always consts?
+      return VerifyResult(ctx->set_type(this, operand_type), result.const_);
     case Language::Operator::BufPtr:
       return VerifyResult(ctx->set_type(this, type::Type_), result.const_);
     case Language::Operator::TypeOf:
@@ -168,6 +172,8 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   }
 
   switch (op) {
+    case Language::Operator::Copy:
+      NOT_YET();
     case Language::Operator::BufPtr:
       return {ir::ValFrom(
           ir::BufPtr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};

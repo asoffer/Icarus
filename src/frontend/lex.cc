@@ -114,7 +114,8 @@ TaggedNode NextWord(SourceLocation &loc) {
       {"yield", op_lt},
       {"switch", kw_block_head},
       {"when", op_b},
-      {"as", op_b}};
+      {"as", op_b},
+      {"copy", op_l}};
   if (auto iter = KeywordMap.find(token); iter != KeywordMap.end()) {
     return TaggedNode(span, iter->first, iter->second);
   }

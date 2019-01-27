@@ -803,7 +803,7 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
       {"-", Language::Operator::Sub},    {"*", Language::Operator::Mul},
       {"/", Language::Operator::Div},    {"%", Language::Operator::Mod},
       {"[", Language::Operator::Index},  {"when", Language::Operator::When},
-      {"as", Language::Operator::As}};
+      {"as", Language::Operator::As},    {"copy", Language::Operator::Copy}};
   {
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }

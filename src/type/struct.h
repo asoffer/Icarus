@@ -67,9 +67,8 @@ struct Struct : public Type {
   base::unordered_map<std::string, size_t> field_indices_;
 
   mutable std::mutex mtx_;
-  mutable ir::Func *init_func_ = nullptr, *assign_func_ = nullptr,
-                   *repr_func_ = nullptr;
-  mutable ir::AnyFunc destroy_func_{nullptr};
+  mutable ir::Func *init_func_ = nullptr, *repr_func_ = nullptr;
+  mutable ir::AnyFunc destroy_func_{nullptr}, assign_func_{nullptr};
 };
 
 }  // namespace type

@@ -1,4 +1,5 @@
 OPERATOR_MACRO(Hashtag,        "",        0,    non_assoc)
+OPERATOR_MACRO(Copy,           "copy",    0,   non_assoc)
 OPERATOR_MACRO(Import,         "import",  0,    non_assoc)
 OPERATOR_MACRO(Return,         "return",  0,    non_assoc)
 OPERATOR_MACRO(Yield,          "yield",   0,    non_assoc)
