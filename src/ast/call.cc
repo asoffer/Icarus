@@ -163,11 +163,8 @@ VerifyResult Call::VerifyType(Context *ctx) {
     }
   }
 
-  FnArgs<Expression *> args =
-      args_.Transform([](std::unique_ptr<Expression> const &arg) {
-        return const_cast<Expression *>(arg.get());
-      });
-
+  FnArgs<Expression *> args = args_.Transform(
+      [](std::unique_ptr<Expression> const &arg) { return arg.get(); });
 
   OverloadSet overload_set = [&]() {
     if (fn_->is<Identifier>()) {

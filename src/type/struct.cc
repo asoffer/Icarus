@@ -166,6 +166,13 @@ bool Struct::IsDefaultInitializable() const {
   });
 }
 
+bool Struct::IsCopyable() const {
+  // TODO check that all sub-fields also have this requirement.
+  return std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
+    return tag.kind_ == ast::Hashtag::Builtin::Uncopyable;
+  });
+}
+
 bool Struct::needs_destroy() const {
   return true;
   //   return std::any_of(fields_.begin(), fields_.end(),

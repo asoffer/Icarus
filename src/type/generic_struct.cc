@@ -41,4 +41,6 @@ void GenericStruct::WriteTo(std::string *result) const {
   result->append("; struct]");
 }
 
+bool GenericStruct::IsCopyable() const { UNREACHABLE(); }
+
 }  // namespace type

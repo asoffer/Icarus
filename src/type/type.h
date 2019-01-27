@@ -88,6 +88,7 @@ struct Type : public base::Cast<Type> {
   bool is_big() const;
   virtual bool needs_destroy() const { return false; }
   virtual bool IsDefaultInitializable() const { return true; }
+  virtual bool IsCopyable() const { return true; }
 };
 
 void EmitCopyInit(const Type *from_type, const Type *to_type,

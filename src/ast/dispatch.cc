@@ -569,6 +569,19 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
     OverloadSet const &overload_set, Context *ctx) {
   DispatchTable table;
 
+  // TODO Uncopyable default arguments are not handled here, nor can they be
+  // because we don't know what defaults might be used until we look at each
+  // particular overload.
+  bool error = false;
+  args.Apply([&](type::Typed<Expression *> const &e) {
+    if (!e.type()->IsCopyable()) {
+      table.generic_failure_reasons_.emplace_back(e.type()->to_string() +
+                                                  " is uncopyable.");
+      error = true;
+    }
+  });
+  if (error) { return std::pair{std::move(table), nullptr}; }
+
   base::vector<type::Callable const *> precise_callable_types;
   for (auto &overload : overload_set) {
     // It is possible for elements of overload_set to be null. The example that
@@ -685,7 +698,8 @@ type::Type const *DispatchTable::MakeOrLogError(
   auto[table, ret_type] = Make(typed_args, overload_set, ctx);
   if (table.bindings_.empty()) {
     // TODO what about operators?
-    ctx->error_log_.NoCallMatch(node->span, table.failure_reasons_);
+    ctx->error_log_.NoCallMatch(node->span, table.generic_failure_reasons_,
+                                table.failure_reasons_);
     return nullptr;
   }
 

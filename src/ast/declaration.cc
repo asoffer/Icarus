@@ -301,6 +301,13 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
         }
         this_type = ctx->set_type(this, init_val_type);
 
+        if (this_type != nullptr) {
+          // TODO initialization, not assignment.
+          if (!type::VerifyAssignment(span, this_type, this_type, ctx)) {
+            return VerifyResult::Error();
+          }
+        }
+
       } break;
       case INFER | UNINITIALIZED: {
         ctx->error_log_.UninferrableType(InferenceFailureReason::Hole, init_val->span);

@@ -17,6 +17,8 @@ struct GenericStruct : public Callable {
 
   void EmitDestroy(ir::Register reg, Context *ctx) const override;
 
+  bool IsCopyable() const override;
+
   ::Module const *defining_module() const { return mod_; }
 
   ::Scope const *scope_ = nullptr;

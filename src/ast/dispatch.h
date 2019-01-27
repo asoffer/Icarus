@@ -90,7 +90,8 @@ struct DispatchTable {
       type::Type const *ret_type, Context *ctx) const;
 
   base::map<FnArgs<type::Type const *>, Binding> bindings_;
-  std::unordered_map<Expression const *, std::string> failure_reasons_;
+  base::unordered_map<Expression const *, std::string> failure_reasons_;
+  base::vector<std::string> generic_failure_reasons_;
 };
 
 }  // namespace ast

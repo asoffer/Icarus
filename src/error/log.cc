@@ -615,6 +615,7 @@ void Log::InvalidNumber(TextSpan const &span, std::string_view err) {
 }
 
 void Log::NoCallMatch(TextSpan const &span,
+                      base::vector<std::string> const &generic_failure_reasons,
                       base::unordered_map<ast::Expression const *,
                                           std::string> const &failure_reasons) {
   std::stringstream ss;
@@ -623,7 +624,10 @@ void Log::NoCallMatch(TextSpan const &span,
       ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
 
-  for (auto const &[expr, reason] : failure_reasons) {
+  for (std::string const &reason : generic_failure_reasons) {
+    ss << "\n  * " << reason << "\n";
+  }
+  for (auto const & [ expr, reason ] : failure_reasons) {
     ss << "\n  * " << reason << ":\n\n";
     WriteSource(ss, *expr->span.source, {expr->span.lines()}, {});
   }
@@ -644,6 +648,18 @@ void Log::MissingDispatchContingency(
     ss << "\n * No function taking arguments (" << fnargs.to_string() << ")\n";
   }
   ss << "\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::NotCopyable(TextSpan const &span, type::Type const *from) {
+  std::stringstream ss;
+  ss << "Attempting to copy a non-copyable type " << from->to_string()
+     << ".\n\n";
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  ss << "\n\n";
   errors_.push_back(ss.str());
 }
 

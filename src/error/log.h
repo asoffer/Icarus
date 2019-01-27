@@ -84,9 +84,12 @@ struct Log {
   void InvalidNumber(TextSpan const& span, std::string_view err);
 
   void NoCallMatch(TextSpan const &span,
+                   base::vector<std::string> const &generic_failure_reasons,
                    base::unordered_map<ast::Expression const *,
                                        std::string> const &failure_reasons);
   void UninferrableType(InferenceFailureReason reason, TextSpan const &span);
+
+  void NotCopyable(TextSpan const &span, type::Type const *from);
 
   void MissingDispatchContingency(
       TextSpan const &span,

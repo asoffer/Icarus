@@ -19,6 +19,7 @@ struct Array : public Type {
                          Array const *rhs_type, ir::Val rhs_ir, bool equality,
                          Context *ctx);
 
+  bool IsCopyable() const override;
   virtual bool needs_destroy() const { return data_type->needs_destroy(); }
 
   Type const *data_type;

@@ -44,6 +44,7 @@ struct Struct : public Type {
   void add_hashtag_to_last_field(ast::Hashtag hashtag);
   void add_field(type::Type const *t);
 
+  bool IsCopyable() const override;
   bool IsDefaultInitializable() const override;
 
   // Return the type of a field, or a nullptr if it doesn't exist

@@ -3,7 +3,7 @@
 
 namespace ast {
 struct Hashtag {
-  enum class Builtin { Export, NoDefault } kind_;
+  enum class Builtin { Export, NoDefault, Uncopyable } kind_;
 
   Hashtag() = delete;
   Hashtag(Builtin b) : kind_(b) {}

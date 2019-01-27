@@ -28,6 +28,8 @@ struct Tuple : public Type {
 
   size_t offset(size_t n, Architecture const &arch) const;
 
+  bool IsCopyable() const override;
+
   Type const *finalize();
 
 #ifdef ICARUS_USE_LLVM

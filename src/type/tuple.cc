@@ -110,4 +110,8 @@ void Tuple::WriteTo(std::string *result) const {
   result->append(")");
 }
 
+bool Tuple::IsCopyable() const {
+  return std::all_of(entries_.begin(), entries_.end(),
+                     [](Type const *t) { return t->IsCopyable(); });
+}
 }  // namespace type

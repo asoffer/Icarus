@@ -322,4 +322,6 @@ void Array::WriteTo(std::string *result) const {
   result->append("]");
 }
 
+bool Array::IsCopyable() const { return data_type->IsCopyable(); }
+
 }  // namespace type

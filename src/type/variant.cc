@@ -203,4 +203,8 @@ void Variant::WriteTo(std::string *result) const {
   }
 }
 
+bool Variant::IsCopyable() const {
+  return std::all_of(variants_.begin(), variants_.end(),
+                     [](Type const *t) { return t->IsCopyable(); });
+}
 }  // namespace type

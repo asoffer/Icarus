@@ -27,6 +27,15 @@ bool Type::is_big() const {
 
 bool VerifyAssignment(TextSpan const &span, type::Type const *to,
                       type::Type const *from, Context *ctx) {
+  // TODO this feels like the semantics are iffy. It works fine if we assign
+  // to/from the same type, but we really care if you can assign to a type
+  // rather than copy from another, I think.
+  if (!from->IsCopyable()) {
+    ctx->error_log_.NotCopyable(span, from);
+    // TODO log an error.
+    return false;
+  }
+
   if (to == from) { return true; }
   auto *to_tup   = to->if_as<type::Tuple>();
   auto *from_tup = from->if_as<type::Tuple>();
