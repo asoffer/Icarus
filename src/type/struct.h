@@ -37,6 +37,8 @@ struct Struct : public Type {
   ~Struct() override {}
   BASIC_METHODS;
 
+  void EmitDestroy(ir::Register reg, Context *ctx) const override;
+
   void set_last_name(std::string_view s);
   void add_hashtag(ast::Hashtag hashtag);
   void add_hashtag_to_last_field(ast::Hashtag hashtag);

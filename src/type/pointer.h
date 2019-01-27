@@ -12,6 +12,7 @@ class PointerType;
 namespace type {
 struct Pointer : public Type {
   TYPE_FNS(Pointer);
+
   Pointer(Type const *t) : pointee(t) {}
   Type const *pointee;
 

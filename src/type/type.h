@@ -40,12 +40,11 @@ struct AnyFunc;
 #define ENDING = 0
 #define BASIC_METHODS_WITHOUT_LLVM                                             \
   virtual void WriteTo(std::string *buf) const ENDING;                         \
-  virtual void EmitAssign(const Type *from_type, ir::Val const &from,          \
+  virtual void EmitAssign(Type const *from_type, ir::Val const &from,          \
                           ir::RegisterOr<ir::Addr> to, Context *ctx)           \
       const ENDING;                                                            \
   virtual void EmitInit(ir::Register reg, Context *ctx) const ENDING;          \
-  virtual void EmitDestroy(ir::Register reg, Context *ctx) const ENDING;       \
-  virtual ir::Val PrepareArgument(const Type *t, const ir::Val &val,           \
+  virtual ir::Val PrepareArgument(Type const *t, const ir::Val &val,           \
                                   Context *ctx) const ENDING;                  \
   virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const ENDING;     \
   virtual void defining_modules(std::unordered_set<::Module const *> *modules) \
@@ -75,6 +74,8 @@ struct Type : public base::Cast<Type> {
   Type() {}
   virtual ~Type() {}
   BASIC_METHODS;
+
+  virtual void EmitDestroy(ir::Register reg, Context *ctx) const {};
 
   std::string to_string() const {
     std::string result;

@@ -173,4 +173,11 @@ bool Struct::needs_destroy() const {
   //                      });
 }
 
+void Struct::EmitRepr(ir::Val const &val, Context *ctx) const { UNREACHABLE(); }
+
+void Struct::WriteTo(std::string *result) const {
+  result->append("struct.");
+  result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
+}
+
 }  // namespace type

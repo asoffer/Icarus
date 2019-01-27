@@ -26,4 +26,9 @@ bool Interface::matches(Type const *t) const {
   return true;
 }
 
+void Interface::WriteTo(std::string *result) const {
+  result->append("intf.");
+  result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
+}
+
 }  // namespace type

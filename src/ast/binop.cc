@@ -32,16 +32,6 @@ bool IsTypeOrTupleOfTypes(type::Type const *t) {
                      [](type::Type const *ty) { return ty == type::Type_; });
 }
 
-void ForEachExpr(ast::Expression *expr,
-                 std::function<void(ast::Expression *)> const &fn) {
-  if (expr->is<ast::CommaList>()) {
-    auto const &exprs = expr->as<ast::CommaList>().exprs_;
-    for (size_t i = 0; i < exprs.size(); ++i) { fn(exprs[i].get()); }
-  } else {
-    fn(expr);
-  }
-}
-
 }  // namespace
 
 namespace ast {
@@ -404,31 +394,15 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       return {ir::ValFrom(reg_or_type)};
     } break;
     case Language::Operator::Assign: {
-      base::vector<type::Type const *> lhs_types, rhs_types;
-      ForEachExpr(rhs.get(), [&ctx, &rhs_types](Expression *expr) {
-        auto *expr_type = ctx->type_of(expr);
-        if (expr_type->is<type::Tuple>()) {
-          rhs_types.insert(rhs_types.end(),
-                           expr_type->as<type::Tuple>().entries_.begin(),
-                           expr_type->as<type::Tuple>().entries_.end());
-        } else {
-          rhs_types.push_back(expr_type);
-        }
-      });
-      auto rhs_vals = rhs->EmitIR(ctx);
-
-      // TODO types can be retrieved from the values?
-      ForEachExpr(lhs.get(), [&ctx, &lhs_types](ast::Expression *expr) {
-        lhs_types.push_back(ctx->type_of(expr));
-      });
+      // TODO support splatting.
       auto lhs_lvals = lhs->EmitLVal(ctx);
+      if (lhs_lvals.size() != 1) { NOT_YET(); }
 
-      ASSERT(lhs_lvals.size() == rhs_vals.size());
-      ASSERT(lhs_lvals.size() == lhs_types.size());
-      ASSERT(lhs_lvals.size() == rhs_types.size());
-      for (size_t i = 0; i < lhs_lvals.size(); ++i) {
-        lhs_types[i]->EmitAssign(rhs_types[i], rhs_vals[i], lhs_lvals[i], ctx);
-      }
+      auto rhs_vals = rhs->EmitIR(ctx);
+      if (rhs_vals.size() != 1) { NOT_YET(); }
+
+      lhs_type->EmitAssign(rhs_type, rhs_vals[0], lhs_lvals[0], ctx);
+
       return {};
     } break;
     case Language::Operator::OrEq: {

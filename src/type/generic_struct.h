@@ -15,6 +15,8 @@ struct GenericStruct : public Callable {
   GenericStruct(::Scope const *scope, base::vector<Type const *> ts)
       : scope_(scope), mod_(scope->module()), deps_(std::move(ts)) {}
 
+  void EmitDestroy(ir::Register reg, Context *ctx) const override;
+
   ::Module const *defining_module() const { return mod_; }
 
   ::Scope const *scope_ = nullptr;

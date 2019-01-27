@@ -13,6 +13,8 @@
 #include "type/pointer.h"
 
 namespace type {
+using base::check::Is;
+
 static base::guarded<base::unordered_map<
     const Array *, base::unordered_map<const Array *, ir::Func *>>>
     eq_funcs;
@@ -114,6 +116,210 @@ const Array *Arr(Type const *t, size_t len) {
 void Array::defining_modules(
     std::unordered_set<::Module const *> *modules) const {
   data_type->defining_modules(modules);
+}
+
+void Array::EmitAssign(Type const *from_type, ir::Val const &from,
+                       ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+  ASSERT(from_type, Is<Array>());
+  auto *from_array_type = &from_type->as<Array>();
+
+  std::unique_lock lock(mtx_);
+  auto *&fn = assign_fns_[from_array_type];
+  if (fn == nullptr) {
+    fn = ctx->mod_->AddFunc(type::Func({from_type, type::Ptr(this)}, {}),
+                            ast::FnParams<ast::Expression *>(2));
+
+    CURRENT_FUNC(fn) {
+      ir::BasicBlock::Current = fn->entry();
+      auto val                = fn->Argument(0);
+      auto var                = fn->Argument(1);
+
+      auto *from_ptr_type = type::Ptr(from_array_type->data_type);
+      auto from_ptr       = ir::Index(type::Ptr(from_type), val, 0);
+      auto from_end_ptr =
+          ir::PtrIncr(from_ptr, from_array_type->len, from_ptr_type);
+      auto *to_ptr_type               = type::Ptr(data_type);
+      ir::RegisterOr<ir::Addr> to_ptr = ir::Index(type::Ptr(this), var, 0);
+
+      using tup =
+          std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
+      ir::CreateLoop(
+          [&](tup const &phis) {
+            return ir::Eq(std::get<0>(phis), from_end_ptr);
+          },
+          [&](tup const &phis) {
+            ASSERT(std::get<0>(phis).is_reg_);
+            ASSERT(std::get<1>(phis).is_reg_);
+
+            ir::Register ptr_fixed_reg =
+                from_array_type->data_type->is_big()
+                    ? std::get<0>(phis).reg_
+                    : ir::Load(std::get<0>(phis).reg_, data_type);
+            auto ptr_fixed_type = from_array_type->data_type->is_big()
+                                      ? from_array_type->data_type
+                                      : type::Ptr(from_array_type->data_type);
+
+            EmitCopyInit(from_array_type->data_type, data_type,
+                         ir::Val::Reg(ptr_fixed_reg, ptr_fixed_type),
+                         std::get<1>(phis).reg_, ctx);
+            return std::make_tuple(
+                ir::PtrIncr(std::get<0>(phis).reg_, 1, from_ptr_type),
+                ir::PtrIncr(std::get<1>(phis).reg_, 1, to_ptr_type));
+          },
+          std::tuple<type::Type const *, type::Type const *>{from_ptr_type,
+                                                             to_ptr_type},
+          tup{from_ptr, to_ptr});
+      ir::ReturnJump();
+    }
+  }
+
+  ir::Arguments call_args;
+  call_args.append(from);
+  call_args.append(to);
+  call_args.type_ = fn->type_;
+  ir::Call(ir::AnyFunc{fn}, std::move(call_args));
+}
+
+void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
+  std::unique_lock lock(mtx_);
+  if (!init_func_) {
+    init_func_ = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
+                                    ast::FnParams<ast::Expression *>(1));
+
+    CURRENT_FUNC(init_func_) {
+      ir::BasicBlock::Current = init_func_->entry();
+
+      auto ptr = ir::Index(type::Ptr(this), init_func_->Argument(0), 0);
+      auto end_ptr =
+          ir::PtrIncr(ptr, static_cast<i32>(len), type::Ptr(data_type));
+
+      using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
+      ir::CreateLoop(
+          [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
+          [&](tup const &phis) {
+            ASSERT(std::get<0>(phis).is_reg_);
+            data_type->EmitInit(std::get<0>(phis).reg_, ctx);
+            return tup{
+                ir::PtrIncr(std::get<0>(phis).reg_, 1, type::Ptr(data_type))};
+          },
+          std::tuple<type::Type const *>{type::Ptr(data_type)}, tup{ptr});
+
+      ir::ReturnJump();
+    }
+  }
+
+  ir::Arguments call_args;
+  call_args.append(id_reg);
+  call_args.type_ = init_func_->type_;
+  ir::Call(ir::AnyFunc{init_func_}, std::move(call_args));
+}
+
+static void ComputeDestroyWithoutLock(Array const *a, Context *ctx) {
+  if (a->destroy_func_ != nullptr) { return; }
+  a->destroy_func_ = ctx->mod_->AddFunc(type::Func({type::Ptr(a)}, {}),
+                                        ast::FnParams<ast::Expression *>(1));
+
+  CURRENT_FUNC(a->destroy_func_) {
+    ir::BasicBlock::Current = a->destroy_func_->entry();
+    auto arg                = a->destroy_func_->Argument(0);
+
+    if (a->data_type->needs_destroy()) {
+      Pointer const *ptr_to_data_type = type::Ptr(a->data_type);
+      auto ptr                        = ir::Index(type::Ptr(a), arg, 0);
+      auto end_ptr = ir::PtrIncr(ptr, a->len, ptr_to_data_type);
+
+      using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
+      ir::CreateLoop(
+          [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
+          [&](tup const &phis) {
+            ASSERT(std::get<0>(phis).is_reg_);
+            a->data_type->EmitDestroy(std::get<0>(phis).reg_, ctx);
+            return tup{ir::PtrIncr(std::get<0>(phis).reg_, 1, ptr_to_data_type)};
+          },
+          std::tuple<type::Type const *>{ptr_to_data_type}, tup{ptr});
+    }
+
+    ir::ReturnJump();
+  }
+}
+
+void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
+  if (!needs_destroy()) { return; }
+
+  {
+    std::unique_lock lock(mtx_);
+    ComputeDestroyWithoutLock(this, ctx);
+  }
+
+  ir::Arguments call_args;
+  call_args.append(reg);
+  call_args.type_ = destroy_func_->type_;
+  ir::Call(ir::AnyFunc{destroy_func_}, std::move(call_args));
+}
+
+void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
+  std::unique_lock lock(mtx_);
+  if (!repr_func_) {
+    repr_func_ = ctx->mod_->AddFunc(Func({this}, {}),
+                                    ast::FnParams<ast::Expression *>(1));
+
+    CURRENT_FUNC(repr_func_) {
+      ir::BasicBlock::Current = repr_func_->entry();
+
+      auto exit_block = repr_func_->AddBlock();
+
+      ir::Print(std::string_view{"["});
+
+      ir::BasicBlock::Current = ir::EarlyExitOn<true>(exit_block, len == 0);
+      auto ptr = ir::Index(type::Ptr(this), repr_func_->Argument(0), 0);
+
+      data_type->EmitRepr(ir::Val::Reg(ir::PtrFix(ptr, data_type), data_type),
+                          ctx);
+
+      using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<i32>>;
+      ir::CreateLoop(
+          [&](tup const &phis) { return ir::Eq(std::get<1>(phis), 0); },
+          [&](tup const &phis) {
+            ASSERT(std::get<0>(phis).is_reg_);
+            auto elem_ptr = ir::PtrIncr(std::get<0>(phis).reg_, 1,
+                                        type::Ptr(this->data_type));
+
+            ir::Print(std::string_view{", "});
+            data_type->EmitRepr(
+                ir::Val::Reg(ir::PtrFix(elem_ptr, data_type), data_type), ctx);
+
+            return std::make_tuple(
+                elem_ptr, ir::Sub(ir::RegisterOr<i32>(std::get<1>(phis)), 1));
+          },
+          std::tuple<type::Type const *, type::Type const *>{
+              type::Ptr(this->data_type), type::Int32},
+          tup{ptr, len - 1});
+      ir::UncondJump(exit_block);
+
+      ir::BasicBlock::Current = exit_block;
+      ir::Print(std::string_view{"]"});
+      ir::ReturnJump();
+    }
+  }
+
+  ir::Arguments call_args;
+  call_args.append(val);
+  call_args.type_ = repr_func_->type_;
+  ir::Call(ir::AnyFunc{repr_func_}, std::move(call_args));
+}
+
+void Array::WriteTo(std::string *result) const {
+  result->append("[");
+  result->append(std::to_string(len));
+  Type const *t = data_type;
+  while (auto *array_ptr = t->if_as<Array>()) {
+    result->append(", ");
+    result->append(std::to_string(array_ptr->len));
+    t = array_ptr->data_type;
+  }
+  result->append("; ");
+  data_type->WriteTo(result);
+  result->append("]");
 }
 
 }  // namespace type

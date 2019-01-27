@@ -8,9 +8,12 @@
 struct Context;
 
 namespace type {
+
 struct Array : public Type {
   TYPE_FNS(Array);
   Array(Type const *t, size_t l) : data_type(t), len(l) {}
+
+  void EmitDestroy(ir::Register reg, Context *ctx) const override;
 
   static ir::Val Compare(Array const *lhs_type, ir::Val lhs_ir,
                          Array const *rhs_type, ir::Val rhs_ir, bool equality,
@@ -21,8 +24,6 @@ struct Array : public Type {
   Type const *data_type;
   size_t len;
 
- private:
-  void ComputeDestroyWithoutLock(Context *ctx) const;
   mutable std::mutex mtx_;
   mutable base::unordered_map<Array const *, ir::Func *> assign_fns_;
   mutable ir::Func *destroy_func_ = nullptr;

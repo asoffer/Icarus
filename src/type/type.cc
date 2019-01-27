@@ -19,47 +19,59 @@ namespace type {
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
-static base::guarded<base::unordered_map<Type const *, Pointer const>>
-    pointers_;
-Pointer const *Ptr(Type const *t) {
-  return &pointers_.lock()->emplace(t, Pointer(t)).first->second;
-}
-
-static base::guarded<base::unordered_map<Type const *, BufferPointer const >>
-    buffer_pointers_;
-BufferPointer const *BufPtr(Type const *t) {
-  return &buffer_pointers_.lock()->emplace(t, BufferPointer(t)).first->second;
-}
-
 Type const *Void() { return Tup({}); }
 
 bool Type::is_big() const {
   return is<Array>() || is<Struct>() || is<Variant>() || is<Tuple>();
 }
 
-Type const *Generic = new GenericFunction;
+bool VerifyAssignment(TextSpan const &span, type::Type const *to,
+                      type::Type const *from, Context *ctx) {
+  if (to == from) { return true; }
+  auto *to_tup   = to->if_as<type::Tuple>();
+  auto *from_tup = from->if_as<type::Tuple>();
+  if (to_tup && from_tup) {
+    if (to_tup->entries_.size() != from_tup->entries_.size()) {
+      ctx->error_log_.MismatchedAssignmentSize(span, to_tup->entries_.size(),
+                                               from_tup->entries_.size());
+      return false;
+    }
 
-void Pointer::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
-  pointee->defining_modules(modules);
+    bool result = true;
+    for (size_t i = 0; i < to_tup->entries_.size(); ++i) {
+      result &= VerifyAssignment(span, to_tup->entries_.at(i),
+                                 from_tup->entries_.at(i), ctx);
+    }
+    return result;
+  }
+
+  if (auto *to_var = to->if_as<type::Variant>()) {
+    if (auto *from_var = from->if_as<type::Variant>()) {
+      for (auto fvar : from_var->variants_) {
+        if (!to_var->contains(fvar)) {
+          NOT_YET("log an error", from, to);
+          return false;
+        }
+      }
+      return true;
+    } else {
+      if (!to_var->contains(from)) {
+        NOT_YET("log an error", from, to);
+        return false;
+      }
+
+      return true;
+    }
+  }
+
+  if (auto *to_ptr = to->if_as<type::Pointer>()) {
+    if (from == type::NullPtr) { return true; }
+    NOT_YET("log an error", from, to);
+    return false;
+  }
+
+  NOT_YET("log an error: no cast from ", from, " to ", to);
 }
 
-void Primitive::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {}
-
-void Variant::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
-  for (auto *v : variants_) { v->defining_modules(modules); }
-}
-
-void Enum::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
-  NOT_YET();
-}
-
-void Flags::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
-  NOT_YET();
-}
 
 }  // namespace type

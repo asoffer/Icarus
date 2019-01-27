@@ -94,4 +94,20 @@ void Tuple::EmitDestroy(ir::Register reg, Context *ctx) const {
   }
 }
 
+void Tuple::WriteTo(std::string *result) const {
+  if (entries_.empty()) {
+    result->append("()");
+    return;
+  }
+  result->append("(");
+  auto iter = entries_.begin();
+  (*iter)->WriteTo(result);
+  ++iter;
+  for (; iter != entries_.end(); ++iter) {
+    result->append(", ");
+    (*iter)->WriteTo(result);
+  }
+  result->append(")");
+}
+
 }  // namespace type

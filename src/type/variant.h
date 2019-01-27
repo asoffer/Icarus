@@ -20,6 +20,8 @@ struct Variant : public Type {
     return result;
   }
 
+  void EmitDestroy(ir::Register reg, Context *ctx) const override;
+
   bool needs_destroy() const override;
 
   // TODO can do better with a pair of iterators and checking if one is a subset
