@@ -3,8 +3,15 @@
 namespace type {
 Type const *Generic = new GenericFunction;
 
-void GenericStruct::EmitAssign(Type const *from_type, ir::Val const &from,
-                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+void GenericStruct::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+                                   ir::RegisterOr<ir::Addr> to,
+                                   Context *ctx) const {
+  NOT_YET();
+}
+
+void GenericStruct::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+                                   ir::RegisterOr<ir::Addr> to,
+                                   Context *ctx) const {
   NOT_YET();
 }
 

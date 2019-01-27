@@ -267,13 +267,14 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
   unop->operand = move_as<Expression>(nodes[1]);
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
-  const static base::unordered_map<std::string, Operator> UnopMap{
-      {"*", Operator::Mul},         {"import", Operator::Import},
-      {"&", Operator::And},         {"-", Operator::Sub},
-      {"which", Operator::Which},   {"!", Operator::Not},
-      {"needs", Operator::Needs},   {"@", Operator::At},
-      {"[*]", Operator::BufPtr},    {"<<", Operator::Expand},
-      {"ensure", Operator::Ensure}, {"$", Operator::Eval}};
+  static base::unordered_map<std::string, Operator> const UnopMap{
+      {"*", Operator::Mul},     {"[*]", Operator::BufPtr},
+      {"@", Operator::At},      {"import", Operator::Import},
+      {"&", Operator::And},     {"which", Operator::Which},
+      {"-", Operator::Sub},     {"needs", Operator::Needs},
+      {"!", Operator::Not},     {"ensure", Operator::Ensure},
+      {"<<", Operator::Expand}, {"copy", Language::Operator::Copy},
+      {"$", Operator::Eval},    {"move", Language::Operator::Move}};
   unop->op = UnopMap.at(tk);
 
   if (unop->operand->is<Declaration>()) {
@@ -670,12 +671,12 @@ struct Rule {
   using fnptr = std::unique_ptr<ast::Node> (*)(
       base::vector<std::unique_ptr<ast::Node>>, Context *ctx);
 
-  Rule(frontend::Tag output, const OptVec &input, fnptr fn)
+  Rule(frontend::Tag output, OptVec const &input, fnptr fn)
       : output_(output), input_(input), fn_(fn) {}
 
   size_t size() const { return input_.size(); }
 
-  bool match(const base::vector<frontend::Tag> &tag_stack) const {
+  bool match(base::vector<frontend::Tag> const &tag_stack) const {
     // The stack needs to be long enough to match.
     if (input_.size() > tag_stack.size()) return false;
 
@@ -722,7 +723,7 @@ extern bool parser;
 
 static std::unique_ptr<ast::Node> BuildBinaryOperator(
     base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  static const base::unordered_map<std::string, Language::Operator> chain_ops{
+  static base::unordered_map<std::string, Language::Operator> const chain_ops{
       {",", Language::Operator::Comma}, {"==", Language::Operator::Eq},
       {"!=", Language::Operator::Ne},   {"<", Language::Operator::Lt},
       {">", Language::Operator::Gt},    {"<=", Language::Operator::Le},
@@ -730,7 +731,7 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
       {"|", Language::Operator::Or},    {"^", Language::Operator::Xor},
   };
 
-  const std::string &tk = nodes[1]->as<frontend::Token>().token;
+  std::string const &tk = nodes[1]->as<frontend::Token>().token;
   {
     auto iter = chain_ops.find(tk);
     if (iter != chain_ops.end()) {
@@ -794,7 +795,7 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
   binop->lhs = move_as<ast::Expression>(nodes[0]);
   binop->rhs = move_as<ast::Expression>(nodes[2]);
 
-  static const base::unordered_map<std::string, Language::Operator> symbols = {
+  static base::unordered_map<std::string, Language::Operator> const symbols = {
       {"->", Language::Operator::Arrow}, {"|=", Language::Operator::OrEq},
       {"&=", Language::Operator::AndEq}, {"^=", Language::Operator::XorEq},
       {"+=", Language::Operator::AddEq}, {"-=", Language::Operator::SubEq},
@@ -803,7 +804,7 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
       {"-", Language::Operator::Sub},    {"*", Language::Operator::Mul},
       {"/", Language::Operator::Div},    {"%", Language::Operator::Mod},
       {"[", Language::Operator::Index},  {"when", Language::Operator::When},
-      {"as", Language::Operator::As},    {"copy", Language::Operator::Copy}};
+      {"as", Language::Operator::As}};
   {
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }

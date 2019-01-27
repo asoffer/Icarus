@@ -15,12 +15,12 @@
 namespace type {
 using base::check::Is;
 
-void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
-                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+void Struct::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   std::unique_lock lock(mtx_);
   ASSERT(this == from_type);
 
-  if (assign_func_ == nullptr) {
+  if (copy_assign_func_ == nullptr) {
     for (auto &decl : scope_->AllDeclsWithId("copy", ctx)) {
       // Note: there cannot be more than one declaration with the correct type
       // because our shadowing checks would have caught it.
@@ -30,22 +30,23 @@ void Struct::EmitAssign(Type const *from_type, ir::Val const &from,
       auto *fn_type = decl.type()->if_as<Function>();
       if (fn_type == nullptr) { continue; }
       if (fn_type->input.front()->as<Pointer>().pointee != this) { continue; }
-      assign_func_ = std::get<ir::AnyFunc>(decl.get()->EmitIR(ctx)[0].value);
+      copy_assign_func_ =
+          std::get<ir::AnyFunc>(decl.get()->EmitIR(ctx)[0].value);
       goto call_it;
     }
 
-    assign_func_ =
+    copy_assign_func_ =
         ctx->mod_->AddFunc(type::Func({from_type, type::Ptr(this)}, {}),
                            ast::FnParams<ast::Expression *>(2));
 
-    CURRENT_FUNC(assign_func_.func()) {
+    CURRENT_FUNC(copy_assign_func_.func()) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto val                = ir::Func::Current->Argument(0);
       auto var                = ir::Func::Current->Argument(1);
 
       for (size_t i = 0; i < fields_.size(); ++i) {
         auto *field_type = from_type->as<type::Struct>().fields_.at(i).type;
-        fields_[i].type->EmitAssign(
+        fields_[i].type->EmitCopyAssign(
             fields_[i].type,
             ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), field_type),
                          field_type),
@@ -60,8 +61,58 @@ call_it:
   ir::Arguments call_args;
   call_args.append(from);
   call_args.append(to);
-  call_args.type_ = assign_func_.func()->type_;
-  ir::Call(assign_func_, std::move(call_args));
+  call_args.type_ = copy_assign_func_.func()->type_;
+  ir::Call(copy_assign_func_, std::move(call_args));
+}
+
+void Struct::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+  std::unique_lock lock(mtx_);
+  ASSERT(this == from_type);
+
+  if (move_assign_func_ == nullptr) {
+    for (auto &decl : scope_->AllDeclsWithId("copy", ctx)) {
+      // Note: there cannot be more than one declaration with the correct type
+      // because our shadowing checks would have caught it.
+      //
+      // TODO check when verifying the declaration that functions named "copy"
+      // adhere to a specific interface.
+      auto *fn_type = decl.type()->if_as<Function>();
+      if (fn_type == nullptr) { continue; }
+      if (fn_type->input.front()->as<Pointer>().pointee != this) { continue; }
+      move_assign_func_ =
+          std::get<ir::AnyFunc>(decl.get()->EmitIR(ctx)[0].value);
+      goto call_it;
+    }
+
+    move_assign_func_ =
+        ctx->mod_->AddFunc(type::Func({from_type, type::Ptr(this)}, {}),
+                           ast::FnParams<ast::Expression *>(2));
+
+    CURRENT_FUNC(move_assign_func_.func()) {
+      ir::BasicBlock::Current = ir::Func::Current->entry();
+      auto val                = ir::Func::Current->Argument(0);
+      auto var                = ir::Func::Current->Argument(1);
+
+      for (size_t i = 0; i < fields_.size(); ++i) {
+        auto *field_type = from_type->as<type::Struct>().fields_.at(i).type;
+        fields_[i].type->EmitCopyAssign(
+            fields_[i].type,
+            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), field_type),
+                         field_type),
+            ir::Field(var, this, i), ctx);
+      }
+
+      ir::ReturnJump();
+    }
+  }
+
+call_it:
+  ir::Arguments call_args;
+  call_args.append(from);
+  call_args.append(to);
+  call_args.type_ = move_assign_func_.func()->type_;
+  ir::Call(move_assign_func_, std::move(call_args));
 }
 
 size_t Struct::offset(size_t field_num, Architecture const &arch) const {

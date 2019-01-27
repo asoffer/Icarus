@@ -16,7 +16,13 @@ void Flags::EmitInit(ir::Register id_reg, Context *) const {
   ir::Store(ir::FlagsVal{0}, id_reg);
 }
 
-void Flags::EmitAssign(Type const *from_type, ir::Val const &from,
+void Flags::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+                       ir::RegisterOr<ir::Addr> to, Context *) const {
+  ASSERT(this == from_type);
+  ir::Store(from.reg_or<ir::FlagsVal>(), to);
+}
+
+void Flags::EmitMoveAssign(Type const *from_type, ir::Val const &from,
                        ir::RegisterOr<ir::Addr> to, Context *) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::FlagsVal>(), to);

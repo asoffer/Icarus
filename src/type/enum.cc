@@ -16,8 +16,14 @@ void Enum::EmitInit(ir::Register id_reg, Context *) const {
   UNREACHABLE("Enums must be initialized");
 }
 
-void Enum::EmitAssign(Type const *from_type, ir::Val const &from,
-                      ir::RegisterOr<ir::Addr> to, Context *) const {
+void Enum::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+                          ir::RegisterOr<ir::Addr> to, Context *) const {
+  ASSERT(this == from_type);
+  ir::Store(from.reg_or<ir::EnumVal>(), to);
+}
+
+void Enum::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+                          ir::RegisterOr<ir::Addr> to, Context *) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::EnumVal>(), to);
 }

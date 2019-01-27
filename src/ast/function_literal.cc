@@ -309,7 +309,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
       if (out_decl->IsDefaultInitialized()) {
         out_decl_type->EmitInit(alloc, ctx);
       } else {
-        out_decl_type->EmitAssign(
+        out_decl_type->EmitCopyAssign(
             out_decl_type, out_decl->init_val->EmitIR(ctx)[0], alloc, ctx);
       }
     }

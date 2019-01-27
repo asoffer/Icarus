@@ -19,7 +19,18 @@ BufferPointer const *BufPtr(Type const *t) {
   return &buffer_pointers_.lock()->emplace(t, BufferPointer(t)).first->second;
 }
 
-void Pointer::EmitAssign(Type const *from_type, ir::Val const &from,
+void Pointer::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+                         ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+  if (this == from_type) {
+    ir::Store(from.reg_or<ir::Addr>(), to);
+  } else if (from_type == NullPtr) {
+    ir::Store(ir::Addr::Null(), to);
+  } else {
+    UNREACHABLE();
+  }
+}
+
+void Pointer::EmitMoveAssign(Type const *from_type, ir::Val const &from,
                          ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   if (this == from_type) {
     ir::Store(from.reg_or<ir::Addr>(), to);

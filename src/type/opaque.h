@@ -12,10 +12,17 @@ struct Opaque : public Type {
   Opaque(::Module const *mod) : mod_(mod) {}
   ~Opaque() override {}
   void WriteTo(std::string *result) const { result->append("<opaque>"); }
-  void EmitAssign(const Type *from_type, ir::Val const &from,
-                  ir::RegisterOr<ir::Addr> to, Context *ctx) const override {
+  void EmitCopyAssign(const Type *from_type, ir::Val const &from,
+                      ir::RegisterOr<ir::Addr> to,
+                      Context *ctx) const override {
     UNREACHABLE();
   }
+  void EmitMoveAssign(const Type *from_type, ir::Val const &from,
+                      ir::RegisterOr<ir::Addr> to,
+                      Context *ctx) const override {
+    UNREACHABLE();
+  }
+
   void EmitInit(ir::Register reg, Context *ctx) const override {
     UNREACHABLE();
   }

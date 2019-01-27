@@ -110,7 +110,7 @@ void EmitCopyInit(Type const *from_type, Type const *to_type,
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>() || to_type->is<Function>()) {
     ASSERT(to_type == from_type);
-    to_type->EmitAssign(from_type, from_val, to_var, ctx);
+    to_type->EmitCopyAssign(from_type, from_val, to_var, ctx);
   } else if (to_type->is<Array>()) {
     ir::Arguments call_args;
     call_args.append(from_val);
@@ -133,10 +133,10 @@ void EmitCopyInit(Type const *from_type, Type const *to_type,
 
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
-    to_type->as<Variant>().EmitAssign(from_type, from_val, to_var, ctx);
+    to_type->as<Variant>().EmitCopyAssign(from_type, from_val, to_var, ctx);
   } else if (to_type->is<Tuple>()) {
     // TODO destruction in assignment may cause problems.
-    to_type->as<Tuple>().EmitAssign(from_type, from_val, to_var, ctx);
+    to_type->as<Tuple>().EmitCopyAssign(from_type, from_val, to_var, ctx);
   } else {
     UNREACHABLE(to_type->to_string(), from_type->to_string());
   }
@@ -147,7 +147,7 @@ void EmitMoveInit(Type const *from_type, Type const *to_type,
   if (to_type->is<Primitive>() || to_type->is<Enum>() || to_type->is<Flags>() ||
       to_type->is<Pointer>()) {
     ASSERT(to_type == from_type);
-    to_type->EmitAssign(from_type, from_val, to_var, ctx);
+    to_type->EmitCopyAssign(from_type, from_val, to_var, ctx);
 
   } else if (to_type->is<Array>()) {
     auto *to_array_type   = &to_type->as<Array>();
@@ -171,10 +171,10 @@ void EmitMoveInit(Type const *from_type, Type const *to_type,
     call_args.type_ = f->type_;
     ir::Call(ir::AnyFunc{f}, std::move(call_args));
   } else if (to_type->is<Function>()) {
-    to_type->EmitAssign(from_type, from_val, to_var, ctx);
+    to_type->EmitCopyAssign(from_type, from_val, to_var, ctx);
   } else if (to_type->is<Variant>()) {
     // TODO destruction in assignment may cause problems.
-    to_type->EmitAssign(from_type, from_val, to_var, ctx);
+    to_type->EmitCopyAssign(from_type, from_val, to_var, ctx);
   }
 }
 

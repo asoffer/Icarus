@@ -7,8 +7,12 @@
 
 namespace type {
 
-void GenericFunction::EmitAssign(const Type *from_type, ir::Val const &from,
-                          ir::RegisterOr<ir::Addr> to, Context *ctx) const {}
+void GenericFunction::EmitCopyAssign(const Type *from_type, ir::Val const &from,
+                                     ir::RegisterOr<ir::Addr> to,
+                                     Context *ctx) const {}
+void GenericFunction::EmitMoveAssign(const Type *from_type, ir::Val const &from,
+                                     ir::RegisterOr<ir::Addr> to,
+                                     Context *ctx) const {}
 void GenericFunction::EmitInit(ir::Register reg, Context *ctx) const {}
 void GenericFunction::EmitDestroy(ir::Register reg, Context *ctx) const {}
 ir::Val GenericFunction::PrepareArgument(const Type *t, const ir::Val &val,
@@ -39,7 +43,13 @@ Function const *Func(base::vector<Type const *> in,
               .first->second;
 }
 
-void Function::EmitAssign(Type const *from_type, ir::Val const &from,
+void Function::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+                          ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+  ASSERT(this == from_type);
+  ir::Store(from.reg_or<ir::AnyFunc>(), to);
+}
+
+void Function::EmitMoveAssign(Type const *from_type, ir::Val const &from,
                           ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(this == from_type);
   ir::Store(from.reg_or<ir::AnyFunc>(), to);

@@ -40,8 +40,11 @@ struct AnyFunc;
 #define ENDING = 0
 #define BASIC_METHODS_WITHOUT_LLVM                                             \
   virtual void WriteTo(std::string *buf) const ENDING;                         \
-  virtual void EmitAssign(Type const *from_type, ir::Val const &from,          \
-                          ir::RegisterOr<ir::Addr> to, Context *ctx)           \
+  virtual void EmitCopyAssign(Type const *from_type, ir::Val const &from,      \
+                              ir::RegisterOr<ir::Addr> to, Context *ctx)       \
+      const ENDING;                                                            \
+  virtual void EmitMoveAssign(Type const *from_type, ir::Val const &from,      \
+                              ir::RegisterOr<ir::Addr> to, Context *ctx)       \
       const ENDING;                                                            \
   virtual void EmitInit(ir::Register reg, Context *ctx) const ENDING;          \
   virtual ir::Val PrepareArgument(Type const *t, const ir::Val &val,           \

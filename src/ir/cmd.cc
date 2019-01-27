@@ -434,7 +434,7 @@ void SetRet(size_t n, Val const &v, Context *ctx) {
     if constexpr (std::is_same_v<T, type::Struct const *>) {
       auto *t = ir::Func::Current->type_->output[n];
       // TODO guaranteed copy-elision
-      t->EmitAssign(t, v, GetRet(n, t), ctx);
+      t->EmitCopyAssign(t, v, GetRet(n, t), ctx);
     } else {
       SetRet(n, v.reg_or<T>());
     }

@@ -16,12 +16,27 @@
 
 namespace type {
 static std::mutex mtx_;
-void Tuple::EmitAssign(Type const *from_type, ir::Val const &from,
+void Tuple::EmitCopyAssign(Type const *from_type, ir::Val const &from,
                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(this == from_type);
   for (size_t i = 0; i < entries_.size(); ++i) {
     auto *entry_type = from_type->as<type::Tuple>().entries_.at(i);
-    entries_[i]->EmitAssign(
+    entries_[i]->EmitCopyAssign(
+        entries_[i],
+        ir::Val::Reg(
+            ir::PtrFix(ir::Field(std::get<ir::Register>(from.value), this, i),
+                       entry_type),
+            entry_type),
+        ir::Field(to, this, i), ctx);
+  }
+}
+
+void Tuple::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+                       ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+  ASSERT(this == from_type);
+  for (size_t i = 0; i < entries_.size(); ++i) {
+    auto *entry_type = from_type->as<type::Tuple>().entries_.at(i);
+    entries_[i]->EmitMoveAssign(
         entries_[i],
         ir::Val::Reg(
             ir::PtrFix(ir::Field(std::get<ir::Register>(from.value), this, i),

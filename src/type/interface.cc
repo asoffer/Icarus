@@ -31,4 +31,15 @@ void Interface::WriteTo(std::string *result) const {
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
 }
 
+void Interface::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+                               ir::RegisterOr<ir::Addr> to,
+                               Context *ctx) const {
+  UNREACHABLE();
+}
+
+void Interface::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+                               ir::RegisterOr<ir::Addr> to,
+                               Context *ctx) const {
+  UNREACHABLE();
+}
 }  // namespace type

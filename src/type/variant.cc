@@ -100,8 +100,8 @@ bool Variant::needs_destroy() const {
                      [](Type const *t) { return t->needs_destroy(); });
 }
 
-void Variant::EmitAssign(Type const *from_type, ir::Val const &from,
-                         ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+void Variant::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+                             ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   // TODO full destruction is only necessary if the type is changing.
   ASSERT(to.is_reg_);
   // TODO have EmitDestroy take RegistorOr<Addr>
@@ -116,7 +116,7 @@ void Variant::EmitAssign(Type const *from_type, ir::Val const &from,
       ir::BasicBlock::Current =
           ir::EarlyExitOn<false>(next_block, ir::Eq(actual_type, v));
       ir::Store(v, ir::VariantType(to));
-      v->EmitAssign(
+      v->EmitCopyAssign(
           v,
           ir::Val::Reg(
               ir::PtrFix(
@@ -132,8 +132,45 @@ void Variant::EmitAssign(Type const *from_type, ir::Val const &from,
     ir::Store(from_type, ir::VariantType(to));
     // TODO Find the best match amongst the variants available.
     Type const *best_match = from_type;
-    best_match->EmitAssign(from_type, from, ir::VariantValue(best_match, to),
+    best_match->EmitCopyAssign(from_type, from, ir::VariantValue(best_match, to),
                            ctx);
+  }
+}
+
+void Variant::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+                             ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+  // TODO full destruction is only necessary if the type is changing.
+  ASSERT(to.is_reg_);
+  // TODO have EmitDestroy take RegistorOr<Addr>
+  EmitDestroy(to.reg_, ctx);
+
+  if (from_type->is<Variant>()) {
+    auto actual_type = ir::Load<type::Type const *>(
+        ir::VariantType(std::get<ir::Register>(from.value)));
+    auto landing = ir::Func::Current->AddBlock();
+    for (Type const *v : from_type->as<Variant>().variants_) {
+      auto next_block = ir::Func::Current->AddBlock();
+      ir::BasicBlock::Current =
+          ir::EarlyExitOn<false>(next_block, ir::Eq(actual_type, v));
+      ir::Store(v, ir::VariantType(to));
+      v->EmitMoveAssign(
+          v,
+          ir::Val::Reg(
+              ir::PtrFix(
+                  ir::VariantValue(v, std::get<ir::Register>(from.value)), v),
+              v),
+          ir::VariantValue(v, to), ctx);
+      ir::UncondJump(landing);
+      ir::BasicBlock::Current = next_block;
+    }
+    ir::UncondJump(landing);
+    ir::BasicBlock::Current = landing;
+  } else {
+    ir::Store(from_type, ir::VariantType(to));
+    // TODO Find the best match amongst the variants available.
+    Type const *best_match = from_type;
+    best_match->EmitMoveAssign(from_type, from,
+                               ir::VariantValue(best_match, to), ctx);
   }
 }
 

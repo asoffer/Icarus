@@ -68,7 +68,8 @@ struct Struct : public Type {
 
   mutable std::mutex mtx_;
   mutable ir::Func *init_func_ = nullptr, *repr_func_ = nullptr;
-  mutable ir::AnyFunc destroy_func_{nullptr}, assign_func_{nullptr};
+  mutable ir::AnyFunc destroy_func_{nullptr}, copy_assign_func_{nullptr},
+      move_assign_func_{nullptr};
 };
 
 }  // namespace type

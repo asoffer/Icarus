@@ -26,11 +26,10 @@ struct Array : public Type {
   size_t len;
 
   mutable std::mutex mtx_;
-  mutable base::unordered_map<Array const *, ir::Func *> assign_fns_;
+  mutable ir::Func *copy_assign_func_{nullptr}, *move_assign_func_{nullptr};
   mutable ir::Func *destroy_func_ = nullptr;
   mutable ir::Func *repr_func_    = nullptr;
   mutable ir::Func *init_func_    = nullptr;
-  mutable ir::Func *resize_func_  = nullptr;
 };
 
 Array const *Arr(Type const *t, size_t len);

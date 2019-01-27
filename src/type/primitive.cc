@@ -25,8 +25,8 @@ void Primitive::EmitInit(ir::Register id_reg, Context *) const {
   }
 }
 
-void Primitive::EmitAssign(Type const *from_type, ir::Val const &from,
-                           ir::RegisterOr<ir::Addr> to, Context *) const {
+void Primitive::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+                               ir::RegisterOr<ir::Addr> to, Context *) const {
   ASSERT(this == from_type);
   switch (this->type_) {
     case PrimType::Type_:
@@ -47,6 +47,12 @@ void Primitive::EmitAssign(Type const *from_type, ir::Val const &from,
     case PrimType::Float64: ir::Store(from.reg_or<double>(), to); break;
     default: UNREACHABLE();
   }
+}
+
+void Primitive::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+                               ir::RegisterOr<ir::Addr> to,
+                               Context *ctx) const {
+  EmitCopyAssign(from_type, from, to, ctx);
 }
 
 void Primitive::defining_modules(

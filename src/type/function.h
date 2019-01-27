@@ -22,8 +22,10 @@ struct GenericFunction : public Callable {
   void WriteTo(std::string *result) const override {
     result->append("generic");
   }
-  void EmitAssign(const Type *from_type, ir::Val const &from,
-                  ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
+  void EmitCopyAssign(const Type *from_type, ir::Val const &from,
+                      ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
+  void EmitMoveAssign(const Type *from_type, ir::Val const &from,
+                      ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
   void EmitInit(ir::Register reg, Context *ctx) const override;
   void EmitDestroy(ir::Register reg, Context *ctx) const override;
   ir::Val PrepareArgument(const Type *t, const ir::Val &val,
