@@ -76,12 +76,22 @@ void FnScope::MakeAllStackAllocations(Context *ctx) {
 }
 
 void Scope::MakeAllDestructions(Context *ctx) {
-  // TODO order these correctly.
+  // TODO store these in the appropriate order so we don't have to compute this?
+  // Will this be faster?
+  base::vector<ast::Declaration *> ordered_decls;
   for (auto & [ name, decls ] : decls_) {
-    for (auto *decl : decls) {
-      auto *t = ASSERT_NOT_NULL(ctx->type_of(decl));
-      if (!t->needs_destroy()) { continue; }
-      t->EmitDestroy(ctx->addr(decl), ctx);
-    }
+    ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
+  }
+  std::sort(ordered_decls.begin(), ordered_decls.end(),
+            [](ast::Declaration *lhs, ast::Declaration *rhs) {
+              return (lhs->span.start.line_num > rhs->span.start.line_num) ||
+                     (lhs->span.start.line_num == rhs->span.start.line_num &&
+                      lhs->span.start.offset > rhs->span.start.offset);
+            });
+
+  for (auto *decl : ordered_decls) {
+    auto *t = ASSERT_NOT_NULL(ctx->type_of(decl));
+    if (!t->needs_destroy()) { continue; }
+    t->EmitDestroy(ctx->addr(decl), ctx);
   }
 }
