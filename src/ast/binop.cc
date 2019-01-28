@@ -83,15 +83,15 @@ VerifyResult Binop::VerifyType(Context *ctx) {
   if (!lhs_result.ok() || !rhs_result.ok()) { return VerifyResult::Error(); }
 
   using Language::Operator;
-  // TODO if lhs is reserved?
-  if (op == Operator::Assign) {
-    if (!type::VerifyAssignment(span, lhs_result.type_, rhs_result.type_, ctx)) {
-      return VerifyResult::Error();
-    }
-    return VerifyResult::NonConstant(type::Void());
-  }
-
   switch (op) {
+    case Operator::Assign: {
+      // TODO if lhs is reserved?
+      if (!type::VerifyAssignment(span, lhs_result.type_, rhs_result.type_,
+                                  ctx)) {
+        return VerifyResult::Error();
+      }
+      return VerifyResult::NonConstant(type::Void());
+    } break;
     case Operator::Index: {
       if (lhs_result.type_ == type::ByteView) {
         if (rhs_result.type_ != type::Int32) {  // TODO other sizes

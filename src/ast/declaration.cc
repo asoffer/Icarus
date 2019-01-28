@@ -229,6 +229,84 @@ bool Declaration::IsCustomInitialized() const {
   return init_val && !init_val->is<Hole>();
 }
 
+VerifyResult VerifySpecialFunctions(Declaration const *decl,
+                                    type::Type const *decl_type) {
+  bool error = false;
+  if (decl->id_ == "copy") {
+    if (auto *f = decl_type->if_as<type::Function>()) {
+      if (!f->output.empty()) {
+        error = true;
+        NOT_YET("output must be empty");
+      }
+
+      if (f->input.size() != 2 || f->input.at(0) != f->input.at(1) ||
+          !f->input.at(0)->is<type::Pointer>() ||
+          !f->input.at(0)->as<type::Pointer>().pointee->is<type::Struct>()) {
+        error = true;
+        NOT_YET("incorrect input type");
+      } else {
+        // TODO should you check that they're exported consistently in some way?
+        // Note that you don't export the struct but rather declarations bound
+        // to it so it's not totally clear how you would do that.
+        auto const &s =
+            f->input.at(0)->as<type::Pointer>().pointee->as<type::Struct>();
+
+        if (decl->scope_ != s.scope_) {
+          error = true;
+          NOT_YET(
+              "(copy) must be defined in the same scope as the corresponding "
+              "type");
+        }
+
+        if (s.contains_hashtag(Hashtag::Builtin::Uncopyable)) {
+          NOT_YET("defined (copy) on a non-copyable type");
+        }
+      }
+    } else {
+      error = true;
+      NOT_YET("log an error. (copy) must be a function.");
+    }
+  } else if (decl->id_ == "move") {
+    if (auto *f = decl_type->if_as<type::Function>()) {
+      if (!f->output.empty()) {
+        error = true;
+        NOT_YET("output must be empty");
+      }
+
+      if (f->input.size() != 2 || f->input.at(0) != f->input.at(1) ||
+          !f->input.at(0)->is<type::Pointer>() ||
+          !f->input.at(0)->as<type::Pointer>().pointee->is<type::Struct>()) {
+        error = true;
+        NOT_YET("incorrect input type");
+      } else {
+        // TODO should you check that they're exported consistently in some way?
+        // Note that you don't export the struct but rather declarations bound
+        // to it so it's not totally clear how you would do that.
+        auto const &s =
+            f->input.at(0)->as<type::Pointer>().pointee->as<type::Struct>();
+
+        if (decl->scope_ != s.scope_) {
+          error = true;
+          NOT_YET(
+              "(move) must be defined in the same scope as the corresponding "
+              "type");
+        }
+
+        if (s.contains_hashtag(Hashtag::Builtin::Immovable)) {
+          error = true;
+          NOT_YET("defined (move) for an immovable type");
+        }
+      }
+    } else {
+      error = true;
+      NOT_YET("log an error. (move) must be a function.");
+    }
+  }
+  if (error) { return VerifyResult::Error(); }
+
+  return VerifyResult(decl_type, decl->const_);
+}
+
 VerifyResult Declaration::VerifyType(Context *ctx) {
   bool swap_bc = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
@@ -435,7 +513,8 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
     scope_->shadowed_decls_.insert(id_);
     return VerifyResult::Error();
   }
-  return VerifyResult(this_type, const_);
+
+  return VerifySpecialFunctions(this, this_type);
 }
 
 void Declaration::Validate(Context *ctx) {

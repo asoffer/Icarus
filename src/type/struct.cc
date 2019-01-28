@@ -251,4 +251,11 @@ void Struct::WriteTo(std::string *result) const {
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
 }
 
+bool Struct::contains_hashtag(ast::Hashtag needle) const {
+  for (auto const &tag : hashtags_) {
+    if (tag.kind_ == needle.kind_) { return true; }
+  }
+  return false;
+}
+
 }  // namespace type

@@ -59,8 +59,10 @@ struct Struct : public Type {
   base::vector<Field> const &fields() const { return fields_; }
   size_t index(std::string const &name) const;
 
- private:
+  bool contains_hashtag(ast::Hashtag needle) const;
+
   ::Scope const *scope_ = nullptr;
+ private:
   ::Module const *mod_ = nullptr;
   base::vector<ast::Hashtag> hashtags_;
   base::vector<Field> fields_;

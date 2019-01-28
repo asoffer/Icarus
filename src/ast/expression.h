@@ -32,6 +32,13 @@ struct Expression : public Node {
   virtual bool needs_expansion() const { return false; }
   std::vector<Hashtag> hashtags_;
   bool parenthesized_ = false;
+
+  bool contains_hashtag(Hashtag needle) const {
+    for (auto const &tag : hashtags_) {
+      if (tag.kind_ == needle.kind_) { return true; }
+    }
+    return false;
+  }
 };
 
 }  // namespace ast

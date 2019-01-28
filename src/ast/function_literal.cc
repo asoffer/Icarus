@@ -102,8 +102,7 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   // TODO need a better way to say if there was an error recorded in a
   // particular section of compilation. Right now we just have the grad total
   // count.
-  if (ctx->num_errors() > 0) {
-    return VerifyResult::Error(); }
+  if (ctx->num_errors() > 0) { return VerifyResult::Error(); }
 
   if (!return_type_inferred_) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
@@ -317,7 +316,6 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
     statements_.EmitIR(ctx);
 
     fn_scope_->MakeAllDestructions(ctx);
-
 
     if (t->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
