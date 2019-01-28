@@ -384,5 +384,6 @@ void Array::WriteTo(std::string *result) const {
 }
 
 bool Array::IsCopyable() const { return data_type->IsCopyable(); }
+bool Array::IsMovable() const { return data_type->IsMovable(); }
 
 }  // namespace type

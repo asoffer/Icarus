@@ -401,7 +401,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
       auto rhs_vals = rhs->EmitIR(ctx);
       if (rhs_vals.size() != 1) { NOT_YET(); }
 
-      lhs_type->EmitCopyAssign(rhs_type, rhs_vals[0], lhs_lvals[0], ctx);
+      lhs_type->EmitMoveAssign(rhs_type, rhs_vals[0], lhs_lvals[0], ctx);
 
       return {};
     } break;

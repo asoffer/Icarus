@@ -244,4 +244,10 @@ bool Variant::IsCopyable() const {
   return std::all_of(variants_.begin(), variants_.end(),
                      [](Type const *t) { return t->IsCopyable(); });
 }
+
+bool Variant::IsMovable() const {
+  return std::all_of(variants_.begin(), variants_.end(),
+                     [](Type const *t) { return t->IsMovable(); });
+}
+
 }  // namespace type

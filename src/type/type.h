@@ -92,6 +92,7 @@ struct Type : public base::Cast<Type> {
   virtual bool needs_destroy() const { return false; }
   virtual bool IsDefaultInitializable() const { return true; }
   virtual bool IsCopyable() const { return true; }
+  virtual bool IsMovable() const { return true; }
 };
 
 void EmitCopyInit(const Type *from_type, const Type *to_type,

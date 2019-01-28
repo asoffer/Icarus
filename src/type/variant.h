@@ -30,6 +30,7 @@ struct Variant : public Type {
 
   bool IsDefaultInitializable() const override { return false; }
   bool IsCopyable() const;
+  bool IsMovable() const;
   base::vector<Type const *> variants_;
 
  private:

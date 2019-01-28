@@ -45,6 +45,7 @@ struct Struct : public Type {
   void add_field(type::Type const *t);
 
   bool IsCopyable() const override;
+  bool IsMovable() const override;
   bool IsDefaultInitializable() const override;
 
   // Return the type of a field, or a nullptr if it doesn't exist

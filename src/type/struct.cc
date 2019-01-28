@@ -71,7 +71,7 @@ void Struct::EmitMoveAssign(Type const *from_type, ir::Val const &from,
   ASSERT(this == from_type);
 
   if (move_assign_func_ == nullptr) {
-    for (auto &decl : scope_->AllDeclsWithId("copy", ctx)) {
+    for (auto &decl : scope_->AllDeclsWithId("move", ctx)) {
       // Note: there cannot be more than one declaration with the correct type
       // because our shadowing checks would have caught it.
       //
@@ -234,6 +234,13 @@ bool Struct::IsCopyable() const {
   // TODO check that all sub-fields also have this requirement.
   return std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
     return tag.kind_ == ast::Hashtag::Builtin::Uncopyable;
+  });
+}
+
+bool Struct::IsMovable() const {
+  // TODO check that all sub-fields also have this requirement.
+  return std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
+    return tag.kind_ == ast::Hashtag::Builtin::Immovable;
   });
 }
 

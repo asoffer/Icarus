@@ -20,6 +20,7 @@ struct Array : public Type {
                          Context *ctx);
 
   bool IsCopyable() const override;
+  bool IsMovable() const override;
   virtual bool needs_destroy() const { return data_type->needs_destroy(); }
 
   Type const *data_type;

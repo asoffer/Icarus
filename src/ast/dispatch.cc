@@ -569,14 +569,14 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
     OverloadSet const &overload_set, Context *ctx) {
   DispatchTable table;
 
-  // TODO Uncopyable default arguments are not handled here, nor can they be
+  // TODO Immovable default arguments are not handled here, nor can they be
   // because we don't know what defaults might be used until we look at each
   // particular overload.
   bool error = false;
   args.Apply([&](type::Typed<Expression *> const &e) {
-    if (!e.type()->IsCopyable()) {
+    if (!e.type()->IsMovable()) {
       table.generic_failure_reasons_.emplace_back(e.type()->to_string() +
-                                                  " is uncopyable.");
+                                                  " is immovable.");
       error = true;
     }
   });

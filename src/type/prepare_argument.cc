@@ -11,7 +11,7 @@ ir::Val Array::PrepareArgument(Type const *from, ir::Val const &val,
     ASSERT(from == this);
     // TODO Copy may be overkill. Think about value category.
     auto arg = ir::Alloca(from);
-    from->EmitCopyAssign(from, val, arg, ctx);
+    from->EmitMoveAssign(from, val, arg, ctx);
     return ir::Val::Reg(arg, type::Ptr(from));
   }
 }
@@ -61,12 +61,12 @@ ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
   auto alloc_reg = ir::Alloca(this);
 
   if (!from->is<Variant>()) {
-    Type_->EmitCopyAssign(Type_, ir::Val(from), ir::VariantType(alloc_reg), ctx);
+    Type_->EmitMoveAssign(Type_, ir::Val(from), ir::VariantType(alloc_reg), ctx);
     // TODO this isn't exactly right because 'from' might not be the appropriate
     // type here.
     // TODO this is actually the wrong type to plug in to VariantValue. It needs
     // to be the precise type stored.
-    from->EmitCopyAssign(from, val, ir::VariantValue(from, alloc_reg), ctx);
+    from->EmitMoveAssign(from, val, ir::VariantValue(from, alloc_reg), ctx);
   } else {
     auto *from_v = &from->as<Variant>();
     auto runtime_type = ir::Load<Type const *>(
@@ -101,7 +101,7 @@ ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
     auto current = ir::BasicBlock::Current;
     for (size_t i = 0; i < intersection.size(); ++i) {
       ir::BasicBlock::Current = blocks[i];
-      this->EmitCopyAssign(
+      this->EmitMoveAssign(
           intersection[i],
           ir::Val::Reg(
               ir::PtrFix(ir::VariantValue(intersection[i],
@@ -128,13 +128,13 @@ ir::Val Struct::PrepareArgument(Type const *from, ir::Val const &val,
   auto arg = ir::Alloca(this);
 
   if (from->is<Variant>()) {
-    EmitCopyAssign(
+    EmitMoveAssign(
         this,
         ir::Val::Reg(ir::VariantValue(this, std::get<ir::Register>(val.value)),
                      type::Ptr(this)),
         arg, ctx);
   } else if (this == from) {
-    EmitCopyAssign(from, val, arg, ctx);
+    EmitMoveAssign(from, val, arg, ctx);
   } else {
     UNREACHABLE(from);
   }
@@ -150,7 +150,7 @@ ir::Val Tuple::PrepareArgument(Type const *from, ir::Val const &val,
                                Context *ctx) const {
   ASSERT(from == this);
   auto arg = ir::Alloca(from);
-  from->EmitCopyAssign(from, val, arg, ctx);
+  from->EmitMoveAssign(from, val, arg, ctx);
   return ir::Val::Reg(arg, type::Ptr(from));
 }
 

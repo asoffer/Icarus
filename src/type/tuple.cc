@@ -129,4 +129,10 @@ bool Tuple::IsCopyable() const {
   return std::all_of(entries_.begin(), entries_.end(),
                      [](Type const *t) { return t->IsCopyable(); });
 }
+
+bool Tuple::IsMovable() const {
+  return std::all_of(entries_.begin(), entries_.end(),
+                     [](Type const *t) { return t->IsMovable(); });
+}
+
 }  // namespace type

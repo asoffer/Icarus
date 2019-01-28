@@ -90,6 +90,7 @@ struct Log {
   void UninferrableType(InferenceFailureReason reason, TextSpan const &span);
 
   void NotCopyable(TextSpan const &span, type::Type const *from);
+  void NotMovable(TextSpan const &span, type::Type const *from);
 
   void MissingDispatchContingency(
       TextSpan const &span,

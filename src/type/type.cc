@@ -30,9 +30,8 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
   // TODO this feels like the semantics are iffy. It works fine if we assign
   // to/from the same type, but we really care if you can assign to a type
   // rather than copy from another, I think.
-  if (!from->IsCopyable()) {
-    ctx->error_log_.NotCopyable(span, from);
-    // TODO log an error.
+  if (!from->IsMovable()) {
+    ctx->error_log_.NotMovable(span, from);
     return false;
   }
 

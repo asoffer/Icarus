@@ -49,5 +49,6 @@ void GenericStruct::WriteTo(std::string *result) const {
 }
 
 bool GenericStruct::IsCopyable() const { UNREACHABLE(); }
+bool GenericStruct::IsMovable() const { UNREACHABLE(); }
 
 }  // namespace type

@@ -31,6 +31,7 @@ struct Tuple : public Type {
   size_t offset(size_t n, Architecture const &arch) const;
 
   bool IsCopyable() const override;
+  bool IsMovable() const override;
 
   Type const *finalize();
 

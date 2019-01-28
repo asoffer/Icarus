@@ -653,7 +653,19 @@ void Log::MissingDispatchContingency(
 
 void Log::NotCopyable(TextSpan const &span, type::Type const *from) {
   std::stringstream ss;
-  ss << "Attempting to copy a non-copyable type " << from->to_string()
+  ss << "Attempting to copy an uncopyable type " << from->to_string()
+     << ".\n\n";
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::NotMovable(TextSpan const &span, type::Type const *from) {
+  std::stringstream ss;
+  ss << "Attempting to move an immovable type " << from->to_string()
      << ".\n\n";
   WriteSource(
       ss, *span.source, {span.lines()},

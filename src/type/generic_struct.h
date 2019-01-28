@@ -18,6 +18,7 @@ struct GenericStruct : public Callable {
   void EmitDestroy(ir::Register reg, Context *ctx) const override;
 
   bool IsCopyable() const override;
+  bool IsMovable() const override;
 
   ::Module const *defining_module() const { return mod_; }
 
