@@ -586,7 +586,7 @@ base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
     auto *t   = ctx->type_of(this);
     auto addr = ctx->addr(this);
     if (IsCustomInitialized()) {
-      type::EmitCopyInit(ctx->type_of(init_val.get()), t,
+      type::EmitMoveInit(ctx->type_of(init_val.get()), t,
                          init_val->EmitIR(ctx)[0], addr, ctx);
     } else {
       if (!is_fn_param_) { t->EmitInit(addr, ctx); }

@@ -59,9 +59,11 @@ VerifyResult Unop::VerifyType(Context *ctx) {
 
   switch (op) {
     case Language::Operator::Copy:
+      if (!operand_type->IsCopyable()) { NOT_YET("log an error. not copyable"); }
       // TODO Are copies always consts?
       return VerifyResult(ctx->set_type(this, operand_type), result.const_);
     case Language::Operator::Move:
+      if (!operand_type->IsMovable()) { NOT_YET("log an error. not movable"); }
       // TODO Are copies always consts?
       return VerifyResult(ctx->set_type(this, operand_type), result.const_);
     case Language::Operator::BufPtr:
@@ -176,10 +178,18 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   }
 
   switch (op) {
-    case Language::Operator::Copy:
-      NOT_YET();
-    case Language::Operator::Move:
-      NOT_YET();
+    case Language::Operator::Copy: {
+      auto reg = ir::TmpAlloca(operand_type, ctx);
+      type::EmitCopyInit(operand_type, operand_type, operand->EmitIR(ctx)[0],
+                         reg, ctx);
+      return {ir::Val::Reg(reg, operand_type)};
+    } break;
+    case Language::Operator::Move: {
+      auto reg = ir::TmpAlloca(operand_type, ctx);
+      type::EmitMoveInit(operand_type, operand_type, operand->EmitIR(ctx)[0],
+                         reg, ctx);
+      return {ir::Val::Reg(reg, operand_type)};
+    } break;
     case Language::Operator::BufPtr:
       return {ir::ValFrom(
           ir::BufPtr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};

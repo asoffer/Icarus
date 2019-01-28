@@ -81,5 +81,18 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
   NOT_YET("log an error: no cast from ", from, " to ", to);
 }
 
+void EmitCopyInit(Type const *from_type, Type const *to_type,
+                  ir::Val const &from_val, ir::Register to_var, Context *ctx) {
+  // TODO Optimize once you understand the semantics better.
+  to_type->EmitInit(to_var, ctx);
+  to_type->EmitCopyAssign(from_type, from_val, to_var, ctx);
+}
+
+void EmitMoveInit(Type const *from_type, Type const *to_type,
+                  ir::Val const &from_val, ir::Register to_var, Context *ctx) {
+  // TODO Optimize once you understand the semantics better.
+  to_type->EmitInit(to_var, ctx);
+  to_type->EmitMoveAssign(from_type, from_val, to_var, ctx);
+}
 
 }  // namespace type
