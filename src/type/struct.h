@@ -6,6 +6,7 @@
 #include <string_view>
 #include "ast/hashtag.h"
 #include "base/container/vector.h"
+#include "base/lazy.h"
 #include "ir/val.h"
 #include "scope.h"
 #include "type/type.h"
@@ -33,7 +34,7 @@ struct Struct : public Type {
   };
 
   Struct(::Scope const *scope, ::Module const *mod)
-      : scope_(scope), mod_(mod) {}
+      : scope_(scope), mod_(const_cast<::Module *>(mod)) {}
   ~Struct() override {}
   BASIC_METHODS;
 
@@ -64,16 +65,15 @@ struct Struct : public Type {
 
   ::Scope const *scope_ = nullptr;
 
-  mutable ir::AnyFunc destroy_func_{nullptr}, copy_assign_func_{nullptr},
-      move_assign_func_{nullptr};
+  base::lazy<ir::AnyFunc> init_func_;
+  base::lazy<ir::AnyFunc> destroy_func_;
+  base::lazy<ir::AnyFunc> copy_assign_func_;
+  base::lazy<ir::AnyFunc> move_assign_func_;
 
-  ::Module const *mod_ = nullptr;
+  ::Module *mod_ = nullptr;
   base::vector<ast::Hashtag> hashtags_;
   base::vector<Field> fields_;
   base::unordered_map<std::string, size_t> field_indices_;
-
-  mutable std::mutex mtx_;
-  mutable ir::Func *init_func_ = nullptr, *repr_func_ = nullptr;
 };
 
 }  // namespace type

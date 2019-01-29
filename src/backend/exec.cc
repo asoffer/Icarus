@@ -463,7 +463,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         call_buf.append(resolve(cmd.special2_.regs_[0]));
         call_buf.append(resolve(cmd.special2_.regs_[1]));
 
-        ir::AnyFunc f = s->move_assign_func_;
+        ir::AnyFunc f = s->move_assign_func_.get();
         if (f.is_fn()) {
           Execute(f.func(), call_buf, return_slots, this);
         } else {
@@ -479,7 +479,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         call_buf.append(resolve(cmd.special2_.regs_[0]));
         call_buf.append(resolve(cmd.special2_.regs_[1]));
 
-        ir::AnyFunc f = s->copy_assign_func_;
+        ir::AnyFunc f = s->copy_assign_func_.get();
         if (f.is_fn()) {
           Execute(f.func(), call_buf, return_slots, this);
         } else {
@@ -494,7 +494,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         base::untyped_buffer call_buf(sizeof(ir::Addr));
         call_buf.append(resolve(cmd.special1_.regs_[0]));
 
-        ir::AnyFunc f = s->destroy_func_;
+        ir::AnyFunc f = s->destroy_func_.get();
         if (f.is_fn()) {
           Execute(f.func(), call_buf, return_slots, this);
         } else {

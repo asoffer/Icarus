@@ -696,8 +696,6 @@ struct Rule {
 
   void apply(base::vector<std::unique_ptr<ast::Node>> *node_stack,
              base::vector<frontend::Tag> *tag_stack, Context *ctx) const {
-    // Make a vector for the rule function to take as input. It will begin with
-    // size() shared_ptrs.
     base::vector<std::unique_ptr<ast::Node>> nodes_to_reduce;
     nodes_to_reduce.reserve(this->size());
     for (auto i = node_stack->size() - this->size(); i < node_stack->size();

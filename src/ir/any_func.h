@@ -52,6 +52,7 @@ struct AnyFunc {
   uintptr_t data_;
 };
 
+inline bool operator!=(AnyFunc lhs, AnyFunc rhs) { return !(lhs == rhs); }
 inline std::ostream &operator<<(std::ostream &os, AnyFunc a) {
   return a.is_fn() ? (os << a.func()) : (os << a.foreign());
 }

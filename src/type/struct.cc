@@ -15,23 +15,44 @@
 namespace type {
 using base::check::Is;
 
-enum SpecialMemberCategory { Copy, Move };
+enum SpecialFunctionCategory { Copy, Move };
 
-template <SpecialMemberCategory Cat>
-void EmitDefaultAssign(Struct const *t, ir::AnyFunc *fn, Context *ctx) {
-  Pointer const *pt = Ptr(t);
-  *fn               = ctx->mod_->AddFunc(type::Func({pt, pt}, {}),
-                           ast::FnParams<ast::Expression *>(2));
-  CURRENT_FUNC(fn->func()) {
+template <SpecialFunctionCategory Cat>
+static constexpr char const *Name() {
+  if constexpr (Cat == Move) { return "move"; }
+  if constexpr (Cat == Copy) { return "copy"; }
+}
+
+static std::optional<ir::AnyFunc> SpecialFunction(Struct const *s, char const *symbol,
+                                                Context *ctx) {
+  auto *ptr_to_s = Ptr(s);
+  for (auto &decl : s->scope_->AllDeclsWithId("~", ctx)) {
+    // Note: there cannot be more than one declaration with the correct type
+    // because our shadowing checks would have caught it.
+    auto *fn_type = decl.type()->if_as<Function>();
+    if (fn_type == nullptr) { continue; }
+    if (fn_type->input.front() != ptr_to_s) { continue; }
+    return std::get<ir::AnyFunc>(decl.get()->EmitIR(ctx)[0].value);
+  }
+  return std::nullopt;
+}
+
+template <SpecialFunctionCategory Cat>
+static ir::AnyFunc CreateAssign(Struct const *s, Context *ctx) {
+  if (auto fn = SpecialFunction(s, Name<Cat>(), ctx)) { return *fn; }
+  Pointer const *pt = Ptr(s);
+  ir::AnyFunc fn    = s->mod_->AddFunc(type::Func({pt, pt}, {}),
+                                    ast::FnParams<ast::Expression *>(2));
+  CURRENT_FUNC(fn.func()) {
     ir::BasicBlock::Current = ir::Func::Current->entry();
     auto val                = ir::Func::Current->Argument(0);
     auto var                = ir::Func::Current->Argument(1);
 
-    for (size_t i = 0; i < t->fields_.size(); ++i) {
-      auto *field_type = t->fields_.at(i).type;
-      auto from = ir::Val::Reg(ir::PtrFix(ir::Field(val, t, i), field_type),
+    for (size_t i = 0; i < s->fields_.size(); ++i) {
+      auto *field_type = s->fields_.at(i).type;
+      auto from = ir::Val::Reg(ir::PtrFix(ir::Field(val, s, i), field_type),
                                field_type);
-      auto to   = ir::Field(var, t, i);
+      auto to   = ir::Field(var, s, i);
 
       if constexpr (Cat == Copy) {
         field_type->EmitCopyAssign(field_type, from, to, ctx);
@@ -42,59 +63,20 @@ void EmitDefaultAssign(Struct const *t, ir::AnyFunc *fn, Context *ctx) {
 
     ir::ReturnJump();
   }
+  return fn;
 }
 
 void Struct::EmitCopyAssign(Type const *from_type, ir::Val const &from,
                             ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  ASSERT(this == from_type);
-  std::unique_lock lock(mtx_);
-
-  if (copy_assign_func_ == nullptr) {
-    for (auto &decl : scope_->AllDeclsWithId("copy", ctx)) {
-      // Note: there cannot be more than one declaration with the correct type
-      // because our shadowing checks would have caught it.
-      //
-      // TODO check when verifying the declaration that functions named "copy"
-      // adhere to a specific interface.
-      auto *fn_type = decl.type()->if_as<Function>();
-      if (fn_type == nullptr) { continue; }
-      if (fn_type->input.front()->as<Pointer>().pointee != this) { continue; }
-      copy_assign_func_ =
-          std::get<ir::AnyFunc>(decl.get()->EmitIR(ctx)[0].value);
-      goto call_it;
-    }
-
-    EmitDefaultAssign<Copy>(this, &copy_assign_func_, ctx);
-  }
-
-call_it:
+  copy_assign_func_.init(
+      [this, ctx]() { return CreateAssign<Copy>(this, ctx); });
   ir::Copy(this, std::get<ir::Register>(from.value), to);
 }
 
 void Struct::EmitMoveAssign(Type const *from_type, ir::Val const &from,
                             ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  std::unique_lock lock(mtx_);
-  ASSERT(this == from_type);
-
-  if (move_assign_func_ == nullptr) {
-    for (auto &decl : scope_->AllDeclsWithId("move", ctx)) {
-      // Note: there cannot be more than one declaration with the correct type
-      // because our shadowing checks would have caught it.
-      //
-      // TODO check when verifying the declaration that functions named "copy"
-      // adhere to a specific interface.
-      auto *fn_type = decl.type()->if_as<Function>();
-      if (fn_type == nullptr) { continue; }
-      if (fn_type->input.front()->as<Pointer>().pointee != this) { continue; }
-      move_assign_func_ =
-          std::get<ir::AnyFunc>(decl.get()->EmitIR(ctx)[0].value);
-      goto call_it;
-    }
-
-    EmitDefaultAssign<Move>(this, &move_assign_func_, ctx);
-  }
-
-call_it:
+  move_assign_func_.init(
+      [this, ctx]() { return CreateAssign<Move>(this, ctx); });
   ir::Move(this, std::get<ir::Register>(from.value), to);
 }
 
@@ -108,36 +90,38 @@ size_t Struct::offset(size_t field_num, Architecture const &arch) const {
 }
 
 void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
-  std::unique_lock lock(mtx_);
-  if (!init_func_) {
-    init_func_ = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                    ast::FnParams<ast::Expression *>(1));
+  init_func_.init([this, ctx]() {
+    // TODO special function?
 
-    CURRENT_FUNC(init_func_) {
-      ir::BasicBlock::Current = init_func_->entry();
-
-      // TODO init expressions? Do these need to be verfied too?
+    ir::AnyFunc fn = mod_->AddFunc(type::Func({Ptr(this)}, {}),
+                                   ast::FnParams<ast::Expression *>(1));
+    CURRENT_FUNC(fn.func()) {
+      ir::BasicBlock::Current = ir::Func::Current->entry();
+      auto var                = ir::Func::Current->Argument(0);
       for (size_t i = 0; i < fields_.size(); ++i) {
+        auto field = ir::Field(var, this, i);
         if (fields_[i].init_val != ir::Val::None()) {
           EmitCopyInit(/* from_type = */ fields_[i].type,
                        /*   to_type = */ fields_[i].type,
                        /*  from_val = */ fields_[i].init_val,
-                       /*    to_var = */
-                       ir::Field(init_func_->Argument(0), this, i), ctx);
+                       /*    to_var = */ field, ctx);
         } else {
-          fields_.at(i).type->EmitInit(
-              ir::Field(init_func_->Argument(0), this, i), ctx);
+          fields_.at(i).type->EmitInit(field, ctx);
         }
       }
 
       ir::ReturnJump();
     }
-  }
+    return fn;
+  });
 
+  auto init_fn = init_func_.get();
   ir::Arguments call_args;
   call_args.append(id_reg);
-  call_args.type_ = init_func_->type_;
-  ir::Call(ir::AnyFunc{init_func_}, std::move(call_args));
+  call_args.type_ = init_fn.func()->type_;  // TODO if we allow ctors this may
+                                            // not be a func. it could be
+                                            // foreign.
+  ir::Call(init_fn, std::move(call_args));
 }
 
 size_t Struct::index(std::string const &name) const {
@@ -151,36 +135,25 @@ Struct::Field const *Struct::field(std::string const &name) const {
 }
 
 void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
-  // TODO where do we check that dtors are only defined in the same module?
-  {
-    std::unique_lock lock(mtx_);
-    if (destroy_func_ == nullptr) {
-      for (auto &decl : scope_->AllDeclsWithId("~", ctx)) {
-        ASSIGN_OR(continue, auto &fn_type, decl.type()->if_as<Function>());
-        // Should have already been part of type-checking.
-        ASSERT(fn_type.input.size() == 1u);
-        ASSERT(fn_type.input[0], Is<Pointer>());
-        auto *ptee    = fn_type.input[0]->as<Pointer>().pointee;
-        if (ptee != this) { continue; }
-        destroy_func_ = std::get<ir::AnyFunc>(decl.get()->EmitIR(ctx)[0].value);
-        goto call_it;
+  destroy_func_.init([this, ctx]() {
+    if (auto fn = SpecialFunction(this, "~", ctx)) { return *fn; }
+
+    Pointer const *pt = Ptr(this);
+    ir::AnyFunc fn    = mod_->AddFunc(type::Func({pt}, {}),
+                                   ast::FnParams<ast::Expression *>(1));
+    CURRENT_FUNC(fn.func()) {
+      ir::BasicBlock::Current = ir::Func::Current->entry();
+      auto var                = ir::Func::Current->Argument(0);
+
+      for (int i = static_cast<int>(fields_.size()) - 1; i >= 0; --i) {
+        fields_.at(i).type->EmitDestroy(ir::Field(var, this, i), ctx);
       }
 
-      destroy_func_ =
-          ir::AnyFunc{ctx->mod_->AddFunc(type::Func({type::Ptr(this)}, {}),
-                                         ast::FnParams<ast::Expression *>(1))};
-
-      CURRENT_FUNC(destroy_func_.func()) {
-        ir::BasicBlock::Current = destroy_func_.func()->entry();
-        for (size_t i = 0; i < fields_.size(); ++i) {
-          fields_[i].type->EmitDestroy(
-              ir::Field(destroy_func_.func()->Argument(0), this, i), ctx);
-        }
-        ir::ReturnJump();
-      }
+      ir::ReturnJump();
     }
-  }
-call_it:
+    return fn;
+  });
+
   ir::Destroy(this, reg);
 }
 
