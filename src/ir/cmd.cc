@@ -16,6 +16,21 @@ namespace ir {
 using base::check::Is;
 thread_local BlockIndex BasicBlock::Current;
 
+void Move(type::Type const *t, Register from, RegisterOr<Addr> to) {
+  auto &cmd    = MakeCmd(t, Op::Move);
+  cmd.special2_ = {t, from, to};
+}
+
+void Copy(type::Type const *t, Register from, RegisterOr<Addr> to) {
+  auto &cmd    = MakeCmd(t, Op::Copy);
+  cmd.special2_ = {t, from, to};
+}
+
+void Destroy(type::Type const *t, Register r) {
+  auto &cmd     = MakeCmd(t, Op::Destroy);
+  cmd.special1_ = {t, r};
+}
+
 Cmd &MakeCmd(type::Type const *t, Op op) {
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
                   ->block(BasicBlock::Current)

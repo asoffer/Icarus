@@ -205,6 +205,19 @@ struct Cmd {
     RegisterOr<i32> val_;
   };
 
+  template <size_t N>
+  struct SpecialMember {
+    type::Type const *type_;
+    std::array<RegisterOr<Addr>, N> regs_;
+
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           SpecialMember<N> const &sm) {
+      os << sm.type_->to_string();
+      for (size_t i = 0; i < N; ++i) { os << " " << sm.regs_[i]; }
+      return os;
+    }
+  };
+
   union {
     Empty empty_;
     Register reg_;
@@ -248,6 +261,8 @@ struct Cmd {
     RegisterOr<Addr> addr_arg_;
     RegisterOr<type::Interface const *> intf_arg_;
 
+    SpecialMember<1> special1_;
+    SpecialMember<2> special2_;
     Args<bool> bool_args_;
     Args<i8> i8_args_;
     Args<i16> i16_args_;
@@ -564,5 +579,10 @@ type::Typed<Register> LoadSymbol(std::string_view name, type::Type const *type);
 TypedRegister<Addr> GetRet(size_t n, type::Type const *t);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
+
+void Move(type::Type const *t, Register from, RegisterOr<Addr> to);
+void Copy(type::Type const *t, Register from, RegisterOr<Addr> to);
+void Destroy(type::Type const *t, Register r);
+
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

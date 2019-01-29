@@ -15,10 +15,39 @@
 namespace type {
 using base::check::Is;
 
+enum SpecialMemberCategory { Copy, Move };
+
+template <SpecialMemberCategory Cat>
+void EmitDefaultAssign(Struct const *t, ir::AnyFunc *fn, Context *ctx) {
+  Pointer const *pt = Ptr(t);
+  *fn               = ctx->mod_->AddFunc(type::Func({pt, pt}, {}),
+                           ast::FnParams<ast::Expression *>(2));
+  CURRENT_FUNC(fn->func()) {
+    ir::BasicBlock::Current = ir::Func::Current->entry();
+    auto val                = ir::Func::Current->Argument(0);
+    auto var                = ir::Func::Current->Argument(1);
+
+    for (size_t i = 0; i < t->fields_.size(); ++i) {
+      auto *field_type = t->fields_.at(i).type;
+      auto from = ir::Val::Reg(ir::PtrFix(ir::Field(val, t, i), field_type),
+                               field_type);
+      auto to   = ir::Field(var, t, i);
+
+      if constexpr (Cat == Copy) {
+        field_type->EmitCopyAssign(field_type, from, to, ctx);
+      } else if constexpr (Cat == Move) {
+        field_type->EmitMoveAssign(field_type, from, to, ctx);
+      }
+    }
+
+    ir::ReturnJump();
+  }
+}
+
 void Struct::EmitCopyAssign(Type const *from_type, ir::Val const &from,
                             ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  std::unique_lock lock(mtx_);
   ASSERT(this == from_type);
+  std::unique_lock lock(mtx_);
 
   if (copy_assign_func_ == nullptr) {
     for (auto &decl : scope_->AllDeclsWithId("copy", ctx)) {
@@ -35,34 +64,11 @@ void Struct::EmitCopyAssign(Type const *from_type, ir::Val const &from,
       goto call_it;
     }
 
-    copy_assign_func_ =
-        ctx->mod_->AddFunc(type::Func({from_type, type::Ptr(this)}, {}),
-                           ast::FnParams<ast::Expression *>(2));
-
-    CURRENT_FUNC(copy_assign_func_.func()) {
-      ir::BasicBlock::Current = ir::Func::Current->entry();
-      auto val                = ir::Func::Current->Argument(0);
-      auto var                = ir::Func::Current->Argument(1);
-
-      for (size_t i = 0; i < fields_.size(); ++i) {
-        auto *field_type = from_type->as<type::Struct>().fields_.at(i).type;
-        fields_[i].type->EmitCopyAssign(
-            fields_[i].type,
-            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), field_type),
-                         field_type),
-            ir::Field(var, this, i), ctx);
-      }
-
-      ir::ReturnJump();
-    }
+    EmitDefaultAssign<Copy>(this, &copy_assign_func_, ctx);
   }
 
 call_it:
-  ir::Arguments call_args;
-  call_args.append(from);
-  call_args.append(to);
-  call_args.type_ = copy_assign_func_.func()->type_;
-  ir::Call(copy_assign_func_, std::move(call_args));
+  ir::Copy(this, std::get<ir::Register>(from.value), to);
 }
 
 void Struct::EmitMoveAssign(Type const *from_type, ir::Val const &from,
@@ -85,34 +91,11 @@ void Struct::EmitMoveAssign(Type const *from_type, ir::Val const &from,
       goto call_it;
     }
 
-    move_assign_func_ =
-        ctx->mod_->AddFunc(type::Func({from_type, type::Ptr(this)}, {}),
-                           ast::FnParams<ast::Expression *>(2));
-
-    CURRENT_FUNC(move_assign_func_.func()) {
-      ir::BasicBlock::Current = ir::Func::Current->entry();
-      auto val                = ir::Func::Current->Argument(0);
-      auto var                = ir::Func::Current->Argument(1);
-
-      for (size_t i = 0; i < fields_.size(); ++i) {
-        auto *field_type = from_type->as<type::Struct>().fields_.at(i).type;
-        fields_[i].type->EmitCopyAssign(
-            fields_[i].type,
-            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), field_type),
-                         field_type),
-            ir::Field(var, this, i), ctx);
-      }
-
-      ir::ReturnJump();
-    }
+    EmitDefaultAssign<Move>(this, &move_assign_func_, ctx);
   }
 
 call_it:
-  ir::Arguments call_args;
-  call_args.append(from);
-  call_args.append(to);
-  call_args.type_ = move_assign_func_.func()->type_;
-  ir::Call(move_assign_func_, std::move(call_args));
+  ir::Move(this, std::get<ir::Register>(from.value), to);
 }
 
 size_t Struct::offset(size_t field_num, Architecture const &arch) const {
@@ -198,11 +181,9 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
     }
   }
 call_it:
-  ir::Arguments call_args;
-  call_args.append(reg);
-  call_args.type_ = destroy_func_.func()->type_;
-  ir::Call(destroy_func_, std::move(call_args));
+  ir::Destroy(this, reg);
 }
+
 void Struct::defining_modules(
     std::unordered_set<::Module const *> *modules) const {
   modules->insert(defining_module());

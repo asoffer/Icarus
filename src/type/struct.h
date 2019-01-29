@@ -63,7 +63,10 @@ struct Struct : public Type {
   bool contains_hashtag(ast::Hashtag needle) const;
 
   ::Scope const *scope_ = nullptr;
- private:
+
+  mutable ir::AnyFunc destroy_func_{nullptr}, copy_assign_func_{nullptr},
+      move_assign_func_{nullptr};
+
   ::Module const *mod_ = nullptr;
   base::vector<ast::Hashtag> hashtags_;
   base::vector<Field> fields_;
@@ -71,8 +74,6 @@ struct Struct : public Type {
 
   mutable std::mutex mtx_;
   mutable ir::Func *init_func_ = nullptr, *repr_func_ = nullptr;
-  mutable ir::AnyFunc destroy_func_{nullptr}, copy_assign_func_{nullptr},
-      move_assign_func_{nullptr};
 };
 
 }  // namespace type

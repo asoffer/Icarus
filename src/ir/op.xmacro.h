@@ -280,3 +280,6 @@ OP_MACRO(SetRetInterface,      SetRet,              type::Interface const*,  set
 OP_MACRO(ArgumentCache,        ArgumentCache,       ast::StructLiteral *,    sl_)
 OP_MACRO(NewOpaqueType,        NewOpaqueType,       void,                    reg_)
 OP_MACRO(LoadSymbol,           LoadSymbol,          void,                    load_sym_)
+OP_MACRO(Destroy,              Destroy,             void,                    special1_)
+OP_MACRO(Move,                 Move,                void,                    special2_)
+OP_MACRO(Copy,                 Copy,                void,                    special2_)

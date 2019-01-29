@@ -455,7 +455,53 @@ ir::BlockIndex ExecContext::ExecuteCmd(
                           {std::forward<std::decay_t<decltype(rhs)>>(rhs)});
       });
 #undef CASE
+    case ir::Op::Move: {
+      auto *t = cmd.special2_.type_;
+      if (auto *s = t->if_as<type::Struct>()) {
+        base::vector<ir::Addr> return_slots;
+        base::untyped_buffer call_buf(sizeof(ir::Addr) * 2);
+        call_buf.append(resolve(cmd.special2_.regs_[0]));
+        call_buf.append(resolve(cmd.special2_.regs_[1]));
 
+        ir::AnyFunc f = s->move_assign_func_;
+        if (f.is_fn()) {
+          Execute(f.func(), call_buf, return_slots, this);
+        } else {
+          CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
+        }
+      }
+    } break;
+    case ir::Op::Copy: {
+      auto *t = cmd.special2_.type_;
+      if (auto *s = t->if_as<type::Struct>()) {
+        base::vector<ir::Addr> return_slots;
+        base::untyped_buffer call_buf(sizeof(ir::Addr) * 2);
+        call_buf.append(resolve(cmd.special2_.regs_[0]));
+        call_buf.append(resolve(cmd.special2_.regs_[1]));
+
+        ir::AnyFunc f = s->copy_assign_func_;
+        if (f.is_fn()) {
+          Execute(f.func(), call_buf, return_slots, this);
+        } else {
+          CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
+        }
+      }
+    } break;
+    case ir::Op::Destroy: {
+      auto *t = cmd.special1_.type_;
+      if (auto *s = t->if_as<type::Struct>()) {
+        base::vector<ir::Addr> return_slots;
+        base::untyped_buffer call_buf(sizeof(ir::Addr));
+        call_buf.append(resolve(cmd.special1_.regs_[0]));
+
+        ir::AnyFunc f = s->destroy_func_;
+        if (f.is_fn()) {
+          Execute(f.func(), call_buf, return_slots, this);
+        } else {
+          CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
+        }
+      }
+    } break;
     case ir::Op::CreateStruct:
       save(new type::Struct(cmd.scope_, cmd.scope_->module()));
       break;
