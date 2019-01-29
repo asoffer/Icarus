@@ -4,9 +4,11 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+
 #include "ast/hashtag.h"
 #include "base/container/vector.h"
 #include "base/lazy.h"
+#include "ir/any_func.h"
 #include "ir/val.h"
 #include "scope.h"
 #include "type/type.h"

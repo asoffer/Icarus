@@ -9,47 +9,87 @@
 #include "context.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
-#include "ir/func.h"
 #include "module.h"
 #include "type/function.h"
 #include "type/pointer.h"
 
 namespace type {
-static std::mutex mtx_;
 void Tuple::EmitCopyAssign(Type const *from_type, ir::Val const &from,
                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  ASSERT(this == from_type);
-  for (size_t i = 0; i < entries_.size(); ++i) {
-    auto *entry_type = from_type->as<type::Tuple>().entries_.at(i);
-    entries_[i]->EmitCopyAssign(
-        entries_[i],
-        ir::Val::Reg(
-            ir::PtrFix(ir::Field(std::get<ir::Register>(from.value), this, i),
-                       entry_type),
-            entry_type),
-        ir::Field(to, this, i), ctx);
-  }
+  copy_assign_func_.init([this, ctx]() {
+    Pointer const *p = Ptr(this);
+    ir::AnyFunc fn   = ctx->mod_->AddFunc(Func({p, p}, {}),
+                                        ast::FnParams<ast::Expression *>(2));
+    CURRENT_FUNC(fn.func()) {
+      ir::BasicBlock::Current = ir::Func::Current->entry();
+      auto val                = ir::Func::Current->Argument(0);
+      auto var                = ir::Func::Current->Argument(1);
+
+      // TODO is initialization order well-defined? ranodmize it? at least it
+      // should always be opposite destruction order?
+      for (size_t i = 0; i < entries_.size(); ++i) {
+        auto *entry = entries_.at(i);
+        auto from_entry =
+            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), entry), entry);
+        entry->EmitCopyAssign(entry, from_entry, ir::Field(var, this, i), ctx);
+      }
+
+      ir::ReturnJump();
+    }
+    return fn;
+  });
+
+  ir::Copy(this, std::get<ir::Register>(from.value), to);
 }
 
 void Tuple::EmitMoveAssign(Type const *from_type, ir::Val const &from,
                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  ASSERT(this == from_type);
-  for (size_t i = 0; i < entries_.size(); ++i) {
-    auto *entry_type = from_type->as<type::Tuple>().entries_.at(i);
-    entries_[i]->EmitMoveAssign(
-        entries_[i],
-        ir::Val::Reg(
-            ir::PtrFix(ir::Field(std::get<ir::Register>(from.value), this, i),
-                       entry_type),
-            entry_type),
-        ir::Field(to, this, i), ctx);
-  }
+  move_assign_func_.init([this, ctx]() {
+    Pointer const *p = Ptr(this);
+    ir::AnyFunc fn   = ctx->mod_->AddFunc(Func({p, p}, {}),
+                                        ast::FnParams<ast::Expression *>(2));
+    CURRENT_FUNC(fn.func()) {
+      ir::BasicBlock::Current = ir::Func::Current->entry();
+      auto val                = ir::Func::Current->Argument(0);
+      auto var                = ir::Func::Current->Argument(1);
+
+      // TODO is initialization order well-defined? ranodmize it? at least it
+      // should always be opposite destruction order?
+      for (size_t i = 0; i < entries_.size(); ++i) {
+        auto *entry = entries_.at(i);
+        auto from_entry =
+            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), entry), entry);
+        entry->EmitMoveAssign(entry, from_entry, ir::Field(var, this, i), ctx);
+      }
+
+      ir::ReturnJump();
+    }
+    return fn;
+  });
+
+  ir::Move(this, std::get<ir::Register>(from.value), to);
 }
 
 void Tuple::EmitInit(ir::Register reg, Context *ctx) const {
-  for (size_t i= 0; i < entries_.size(); ++i) {
-    entries_[i]->EmitInit(ir::Field(reg, this, i), ctx);
-  }
+  init_func_.init([this, ctx]() {
+    ir::AnyFunc fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
+                                        ast::FnParams<ast::Expression *>(1));
+    CURRENT_FUNC(fn.func()) {
+      ir::BasicBlock::Current = ir::Func::Current->entry();
+      auto var                = ir::Func::Current->Argument(0);
+
+      // TODO is initialization order well-defined? ranodmize it? at least it
+      // should always be opposite destruction order?
+      for (size_t i = 0; i < entries_.size(); ++i) {
+        entries_.at(i)->EmitInit(ir::Field(var, this, i), ctx);
+      }
+
+      ir::ReturnJump();
+    }
+    return fn;
+  });
+
+  ir::Init(this, reg);
 }
 
 void Tuple::EmitRepr(ir::Val const &id_val, Context *ctx) const {
@@ -76,8 +116,9 @@ void Tuple::EmitRepr(ir::Val const &id_val, Context *ctx) const {
 static base::guarded<base::map<base::vector<Type const *>, Tuple const>> tups_;
 Type const *Tup(base::vector<Type const *> entries) {
   if (entries.size() == 1) { return entries[0]; }
-  Tuple tup(entries);
-  auto[iter, success] = tups_.lock()->emplace(std::move(entries), std::move(tup));
+  auto[iter, success] = tups_.lock()->emplace(std::piecewise_construct,
+                                              std::forward_as_tuple(entries),
+                                              std::forward_as_tuple(entries));
   return &iter->second;
 }
 
@@ -103,10 +144,24 @@ void Tuple::defining_modules(
 }
 
 void Tuple::EmitDestroy(ir::Register reg, Context *ctx) const {
-  // TODO don't auto-inline.
-  for (size_t i = 0; i < entries_.size(); ++i) {
-    entries_[i]->EmitDestroy(ir::Field(reg, this, i), ctx);
-  }
+  destroy_func_.init([this, ctx]() {
+    ir::AnyFunc fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
+                                        ast::FnParams<ast::Expression *>(1));
+    CURRENT_FUNC(fn.func()) {
+      ir::BasicBlock::Current = ir::Func::Current->entry();
+      auto var                = ir::Func::Current->Argument(0);
+
+      // TODO is destruction order well-defined? ranodmize it?
+      for (int i = static_cast<int>(entries_.size()) - 1; i >= 0; --i) {
+        entries_.at(i)->EmitDestroy(ir::Field(var, this, i), ctx);
+      }
+
+      ir::ReturnJump();
+    }
+    return fn;
+  });
+
+  ir::Destroy(this, reg);
 }
 
 void Tuple::WriteTo(std::string *result) const {

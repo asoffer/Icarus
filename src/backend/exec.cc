@@ -457,49 +457,88 @@ ir::BlockIndex ExecContext::ExecuteCmd(
 #undef CASE
     case ir::Op::Move: {
       auto *t = cmd.special2_.type_;
-      if (auto *s = t->if_as<type::Struct>()) {
-        base::vector<ir::Addr> return_slots;
-        base::untyped_buffer call_buf(sizeof(ir::Addr) * 2);
-        call_buf.append(resolve(cmd.special2_.regs_[0]));
-        call_buf.append(resolve(cmd.special2_.regs_[1]));
+      base::vector<ir::Addr> return_slots;
+      base::untyped_buffer call_buf(sizeof(ir::Addr) * 2);
+      call_buf.append(resolve(cmd.special2_.regs_[0]));
+      call_buf.append(resolve(cmd.special2_.regs_[1]));
 
-        ir::AnyFunc f = s->move_assign_func_.get();
-        if (f.is_fn()) {
-          Execute(f.func(), call_buf, return_slots, this);
-        } else {
-          CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
-        }
+      ir::AnyFunc f;
+      if (auto *s = t->if_as<type::Struct>()) {
+        f = s->move_assign_func_.get();
+      } else if (auto *tup = t->if_as<type::Tuple>()) {
+        f = tup->move_assign_func_.get();
+      } else {
+        NOT_YET();
+      }
+
+      if (f.is_fn()) {
+        Execute(f.func(), call_buf, return_slots, this);
+      } else {
+        CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
       }
     } break;
     case ir::Op::Copy: {
       auto *t = cmd.special2_.type_;
-      if (auto *s = t->if_as<type::Struct>()) {
-        base::vector<ir::Addr> return_slots;
-        base::untyped_buffer call_buf(sizeof(ir::Addr) * 2);
-        call_buf.append(resolve(cmd.special2_.regs_[0]));
-        call_buf.append(resolve(cmd.special2_.regs_[1]));
+      base::vector<ir::Addr> return_slots;
+      base::untyped_buffer call_buf(sizeof(ir::Addr) * 2);
+      call_buf.append(resolve(cmd.special2_.regs_[0]));
+      call_buf.append(resolve(cmd.special2_.regs_[1]));
 
-        ir::AnyFunc f = s->copy_assign_func_.get();
-        if (f.is_fn()) {
-          Execute(f.func(), call_buf, return_slots, this);
-        } else {
-          CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
-        }
+      ir::AnyFunc f;
+      if (auto *s = t->if_as<type::Struct>()) {
+        f = s->copy_assign_func_.get();
+      } else if (auto *tup = t->if_as<type::Tuple>()) {
+        f = tup->copy_assign_func_.get();
+      } else {
+        NOT_YET();
+      }
+
+      if (f.is_fn()) {
+        Execute(f.func(), call_buf, return_slots, this);
+      } else {
+        CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
+      }
+    } break;
+    case ir::Op::Init: {
+      auto *t = cmd.special1_.type_;
+      base::vector<ir::Addr> return_slots;
+      base::untyped_buffer call_buf(sizeof(ir::Addr));
+      call_buf.append(resolve(cmd.special1_.regs_[0]));
+
+      ir::AnyFunc f;
+      if (auto *s = t->if_as<type::Struct>()) {
+       f = s->init_func_.get();
+      } else if (auto *tup = t->if_as<type::Tuple>()) {
+        f = tup->init_func_.get();
+      } else {
+        NOT_YET();
+      }
+
+      if (f.is_fn()) {
+        Execute(f.func(), call_buf, return_slots, this);
+      } else {
+        CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
       }
     } break;
     case ir::Op::Destroy: {
       auto *t = cmd.special1_.type_;
-      if (auto *s = t->if_as<type::Struct>()) {
-        base::vector<ir::Addr> return_slots;
-        base::untyped_buffer call_buf(sizeof(ir::Addr));
-        call_buf.append(resolve(cmd.special1_.regs_[0]));
+      base::vector<ir::Addr> return_slots;
+      base::untyped_buffer call_buf(sizeof(ir::Addr));
+      call_buf.append(resolve(cmd.special1_.regs_[0]));
 
-        ir::AnyFunc f = s->destroy_func_.get();
-        if (f.is_fn()) {
-          Execute(f.func(), call_buf, return_slots, this);
-        } else {
-          CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
-        }
+      ir::AnyFunc f;
+      if (auto *s = t->if_as<type::Struct>()) {
+        f = s->destroy_func_.get();
+      } else if (auto *tup = t->if_as<type::Tuple>()) {
+        f = tup->destroy_func_.get();
+      } else {
+        NOT_YET();
+      }
+
+      if (f.is_fn()) {
+        Execute(f.func(), call_buf, return_slots, this);
+      } else {
+        CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
       }
     } break;
     case ir::Op::CreateStruct:

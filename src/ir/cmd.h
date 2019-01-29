@@ -583,6 +583,7 @@ std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
 void Move(type::Type const *t, Register from, RegisterOr<Addr> to);
 void Copy(type::Type const *t, Register from, RegisterOr<Addr> to);
 void Destroy(type::Type const *t, Register r);
+void Init(type::Type const *t, Register r);
 
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

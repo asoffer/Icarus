@@ -41,8 +41,8 @@ template <SpecialFunctionCategory Cat>
 static ir::AnyFunc CreateAssign(Struct const *s, Context *ctx) {
   if (auto fn = SpecialFunction(s, Name<Cat>(), ctx)) { return *fn; }
   Pointer const *pt = Ptr(s);
-  ir::AnyFunc fn    = s->mod_->AddFunc(type::Func({pt, pt}, {}),
-                                    ast::FnParams<ast::Expression *>(2));
+  ir::AnyFunc fn =
+      s->mod_->AddFunc(Func({pt, pt}, {}), ast::FnParams<ast::Expression *>(2));
   CURRENT_FUNC(fn.func()) {
     ir::BasicBlock::Current = ir::Func::Current->entry();
     auto val                = ir::Func::Current->Argument(0);
@@ -93,7 +93,7 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
   init_func_.init([this, ctx]() {
     // TODO special function?
 
-    ir::AnyFunc fn = mod_->AddFunc(type::Func({Ptr(this)}, {}),
+    ir::AnyFunc fn = mod_->AddFunc(Func({Ptr(this)}, {}),
                                    ast::FnParams<ast::Expression *>(1));
     CURRENT_FUNC(fn.func()) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
@@ -115,13 +115,7 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
     return fn;
   });
 
-  auto init_fn = init_func_.get();
-  ir::Arguments call_args;
-  call_args.append(id_reg);
-  call_args.type_ = init_fn.func()->type_;  // TODO if we allow ctors this may
-                                            // not be a func. it could be
-                                            // foreign.
-  ir::Call(init_fn, std::move(call_args));
+  ir::Init(this, id_reg);
 }
 
 size_t Struct::index(std::string const &name) const {
@@ -139,8 +133,8 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
     if (auto fn = SpecialFunction(this, "~", ctx)) { return *fn; }
 
     Pointer const *pt = Ptr(this);
-    ir::AnyFunc fn    = mod_->AddFunc(type::Func({pt}, {}),
-                                   ast::FnParams<ast::Expression *>(1));
+    ir::AnyFunc fn =
+        mod_->AddFunc(Func({pt}, {}), ast::FnParams<ast::Expression *>(1));
     CURRENT_FUNC(fn.func()) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto var                = ir::Func::Current->Argument(0);
@@ -175,7 +169,7 @@ void Struct::add_hashtag_to_last_field(ast::Hashtag hashtag) {
   fields_.back().hashtags_.push_back(hashtag);
 }
 
-void Struct::add_field(type::Type const *t) { fields_.emplace_back(t); }
+void Struct::add_field(Type const *t) { fields_.emplace_back(t); }
 
 bool Struct::IsDefaultInitializable() const {
   // TODO check that all sub-fields also have this requirement.

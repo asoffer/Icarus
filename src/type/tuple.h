@@ -1,6 +1,8 @@
 #ifndef ICARUS_TYPE_TUPLE_H
 #define ICARUS_TYPE_TUPLE_H
 
+#include "base/lazy.h"
+#include "ir/any_func.h"
 #include "type.h"
 
 struct Architecture;
@@ -41,8 +43,10 @@ struct Tuple : public Type {
 
   base::vector<Type const *> entries_;
 
-  mutable ir::Func *init_func_ = nullptr, *assign_func_ = nullptr,
-                   *destroy_func_ = nullptr, *repr_func_ = nullptr;
+  base::lazy<ir::AnyFunc> destroy_func_;
+  base::lazy<ir::AnyFunc> init_func_;
+  base::lazy<ir::AnyFunc> copy_assign_func_;
+  base::lazy<ir::AnyFunc> move_assign_func_;
 };
 
 Type const *Tup(base::vector<Type const *> entries);

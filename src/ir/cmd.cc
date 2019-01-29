@@ -26,6 +26,11 @@ void Copy(type::Type const *t, Register from, RegisterOr<Addr> to) {
   cmd.special2_ = {t, from, to};
 }
 
+void Init(type::Type const *t, Register r) {
+  auto &cmd     = MakeCmd(t, Op::Init);
+  cmd.special1_ = {t, r};
+}
+
 void Destroy(type::Type const *t, Register r) {
   auto &cmd     = MakeCmd(t, Op::Destroy);
   cmd.special1_ = {t, r};
