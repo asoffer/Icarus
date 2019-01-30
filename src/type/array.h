@@ -30,11 +30,11 @@ struct Array : public Type {
 
   base::lazy<ir::AnyFunc> copy_assign_func_;
   base::lazy<ir::AnyFunc> move_assign_func_;
+  base::lazy<ir::AnyFunc> init_func_;
+  base::lazy<ir::AnyFunc> destroy_func_;
 
   mutable std::mutex mtx_;
-  mutable ir::Func *destroy_func_ = nullptr;
-  mutable ir::Func *repr_func_    = nullptr;
-  mutable ir::Func *init_func_    = nullptr;
+  mutable ir::Func *repr_func_ = nullptr;
 };
 
 Array const *Arr(Type const *t, size_t len);

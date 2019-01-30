@@ -93,14 +93,12 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto var                = ir::Func::Current->Argument(0);
       for (size_t i = 0; i < fields_.size(); ++i) {
-        auto field = ir::Field(var, this, i);
-        if (fields_[i].init_val != ir::Val::None()) {
-          EmitCopyInit(/* from_type = */ fields_[i].type,
-                       /*   to_type = */ fields_[i].type,
-                       /*  from_val = */ fields_[i].init_val,
-                       /*    to_var = */ field, ctx);
+        auto ir_field     = ir::Field(var, this, i);
+        auto const &field = fields_.at(i);
+        if (field.init_val != ir::Val::None()) {
+          EmitCopyInit(field.type, field.type, field.init_val, ir_field, ctx);
         } else {
-          fields_.at(i).type->EmitInit(field, ctx);
+          field.type->EmitInit(ir_field, ctx);
         }
       }
 

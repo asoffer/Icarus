@@ -221,82 +221,55 @@ void Array::EmitMoveAssign(Type const *from_type, ir::Val const &from,
   ir::Move(this, std::get<ir::Register>(from.value), to);
 }
 
-void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
-  std::unique_lock lock(mtx_);
-  if (!init_func_) {
-    init_func_ = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                    ast::FnParams<ast::Expression *>(1));
+template <typename F>
+static void OnEachElement(type::Array const *t, ir::Func *fn, F &&fn_to_apply) {
+  CURRENT_FUNC(fn) {
+    ir::BasicBlock::Current = fn->entry();
+    auto *data_ptr_type     = Ptr(t->data_type);
 
-    CURRENT_FUNC(init_func_) {
-      ir::BasicBlock::Current = init_func_->entry();
+    auto ptr     = ir::Index(Ptr(t), fn->Argument(0), 0);
+    auto end_ptr = ir::PtrIncr(ptr, static_cast<i32>(t->len), data_ptr_type);
 
-      auto ptr = ir::Index(type::Ptr(this), init_func_->Argument(0), 0);
-      auto end_ptr =
-          ir::PtrIncr(ptr, static_cast<i32>(len), type::Ptr(data_type));
-
-      using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
-      CreateLoop(
-          [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
-          [&](tup const &phis) {
-            ASSERT(std::get<0>(phis).is_reg_);
-            data_type->EmitInit(std::get<0>(phis).reg_, ctx);
-            return tup{
-                ir::PtrIncr(std::get<0>(phis).reg_, 1, type::Ptr(data_type))};
-          },
-          std::tuple<type::Type const *>{type::Ptr(data_type)}, tup{ptr});
-
-      ir::ReturnJump();
-    }
-  }
-
-  ir::Arguments call_args;
-  call_args.append(id_reg);
-  call_args.type_ = init_func_->type_;
-  ir::Call(ir::AnyFunc{init_func_}, std::move(call_args));
-}
-
-static void ComputeDestroyWithoutLock(Array const *a, Context *ctx) {
-  if (a->destroy_func_ != nullptr) { return; }
-  a->destroy_func_ = ctx->mod_->AddFunc(type::Func({type::Ptr(a)}, {}),
-                                        ast::FnParams<ast::Expression *>(1));
-
-  CURRENT_FUNC(a->destroy_func_) {
-    ir::BasicBlock::Current = a->destroy_func_->entry();
-    auto arg                = a->destroy_func_->Argument(0);
-
-    if (a->data_type->needs_destroy()) {
-      Pointer const *ptr_to_data_type = type::Ptr(a->data_type);
-      auto ptr                        = ir::Index(type::Ptr(a), arg, 0);
-      auto end_ptr = ir::PtrIncr(ptr, a->len, ptr_to_data_type);
-
-      using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
-      CreateLoop(
-          [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
-          [&](tup const &phis) {
-            ASSERT(std::get<0>(phis).is_reg_);
-            a->data_type->EmitDestroy(std::get<0>(phis).reg_, ctx);
-            return tup{
-                ir::PtrIncr(std::get<0>(phis).reg_, 1, ptr_to_data_type)};
-          },
-          std::tuple<type::Type const *>{ptr_to_data_type}, tup{ptr});
-    }
+    using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
+    CreateLoop(
+        [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
+        [&](tup const &phis) {
+          ASSERT(std::get<0>(phis).is_reg_);
+          fn_to_apply(std::get<0>(phis).reg_);
+          return tup{ir::PtrIncr(std::get<0>(phis).reg_, 1, data_ptr_type)};
+        },
+        std::tuple{data_ptr_type}, tup{ptr});
 
     ir::ReturnJump();
   }
 }
 
+void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
+  init_func_.init([this, ctx]() {
+    // TODO special function?
+    ir::AnyFunc fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
+                                        ast::FnParams<ast::Expression *>(1));
+    OnEachElement(this, fn.func(),
+                  [this, ctx](ir::Register r) { data_type->EmitInit(r, ctx); });
+    return fn;
+  });
+
+  ir::Init(this, id_reg);
+}
+
 void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
-  if (!needs_destroy()) { return; }
+  if (!data_type->needs_destroy()) { return; }
+  destroy_func_.init([this, ctx]() {
+    // TODO special function?
+    ir::AnyFunc fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
+                                        ast::FnParams<ast::Expression *>(1));
+    OnEachElement(this, fn.func(), [this, ctx](ir::Register r) {
+      data_type->EmitDestroy(r, ctx);
+    });
+    return fn;
+  });
 
-  {
-    std::unique_lock lock(mtx_);
-    ComputeDestroyWithoutLock(this, ctx);
-  }
-
-  ir::Arguments call_args;
-  call_args.append(reg);
-  call_args.type_ = destroy_func_->type_;
-  ir::Call(ir::AnyFunc{destroy_func_}, std::move(call_args));
+  ir::Destroy(this, reg);
 }
 
 void Array::EmitRepr(ir::Val const &val, Context *ctx) const {

@@ -514,6 +514,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
        f = s->init_func_.get();
       } else if (auto *tup = t->if_as<type::Tuple>()) {
         f = tup->init_func_.get();
+      } else if (auto *a = t->if_as<type::Array>()) {
+        f = a->init_func_.get();
       } else {
         NOT_YET();
       }
@@ -535,6 +537,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         f = s->destroy_func_.get();
       } else if (auto *tup = t->if_as<type::Tuple>()) {
         f = tup->destroy_func_.get();
+      } else if (auto *a = t->if_as<type::Array>()) {
+        f = a->destroy_func_.get();
       } else {
         NOT_YET();
       }
