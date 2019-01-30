@@ -463,6 +463,10 @@ void SetRet(size_t n, Val const &v, Context *ctx) {
 
 TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<i32> inc,
                             type::Pointer const *t) {
+  if (!inc.is_reg_ && inc.val_ == 0 &&
+      /* TODO get rid of this last condition */ ptr.is_reg_) {
+    return TypedRegister<Addr>{ptr.reg_};
+  }
   auto &cmd     = MakeCmd(t, Op::PtrIncr);
   cmd.ptr_incr_ = {ptr, t->pointee, inc};
   return cmd.result;
@@ -674,7 +678,7 @@ static std::ostream &operator<<(std::ostream &os,
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::PtrIncr const &p) {
-  return os << p.incr_;
+  return os << p.ptr_ << " " << p.pointee_type_ << " " << p.incr_;
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Array const &a) {
