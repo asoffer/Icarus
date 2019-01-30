@@ -18,9 +18,9 @@ void Tuple::EmitCopyAssign(Type const *from_type, ir::Val const &from,
                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   copy_assign_func_.init([this, ctx]() {
     Pointer const *p = Ptr(this);
-    ir::AnyFunc fn   = ctx->mod_->AddFunc(Func({p, p}, {}),
-                                        ast::FnParams<ast::Expression *>(2));
-    CURRENT_FUNC(fn.func()) {
+    auto *fn         = ctx->mod_->AddFunc(Func({p, p}, {}),
+                                  ast::FnParams<ast::Expression *>(2));
+    CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto val                = ir::Func::Current->Argument(0);
       auto var                = ir::Func::Current->Argument(1);
@@ -46,9 +46,9 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Val const &from,
                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   move_assign_func_.init([this, ctx]() {
     Pointer const *p = Ptr(this);
-    ir::AnyFunc fn   = ctx->mod_->AddFunc(Func({p, p}, {}),
-                                        ast::FnParams<ast::Expression *>(2));
-    CURRENT_FUNC(fn.func()) {
+    auto *fn         = ctx->mod_->AddFunc(Func({p, p}, {}),
+                                  ast::FnParams<ast::Expression *>(2));
+    CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto val                = ir::Func::Current->Argument(0);
       auto var                = ir::Func::Current->Argument(1);
@@ -72,9 +72,9 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Val const &from,
 
 void Tuple::EmitInit(ir::Register reg, Context *ctx) const {
   init_func_.init([this, ctx]() {
-    ir::AnyFunc fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                        ast::FnParams<ast::Expression *>(1));
-    CURRENT_FUNC(fn.func()) {
+    auto *fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
+                                  ast::FnParams<ast::Expression *>(1));
+    CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto var                = ir::Func::Current->Argument(0);
 
@@ -145,9 +145,9 @@ void Tuple::defining_modules(
 
 void Tuple::EmitDestroy(ir::Register reg, Context *ctx) const {
   destroy_func_.init([this, ctx]() {
-    ir::AnyFunc fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                        ast::FnParams<ast::Expression *>(1));
-    CURRENT_FUNC(fn.func()) {
+    auto *fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
+                                  ast::FnParams<ast::Expression *>(1));
+    CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto var                = ir::Func::Current->Argument(0);
 

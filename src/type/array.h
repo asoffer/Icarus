@@ -1,10 +1,8 @@
 #ifndef ICARUS_TYPE_ARRAY_H
 #define ICARUS_TYPE_ARRAY_H
 
-#include <mutex>
-#include "base/container/unordered_map.h"
+#include "ir/func.h"
 #include "base/lazy.h"
-#include "ir/any_func.h"
 #include "type.h"
 
 struct Context;
@@ -28,13 +26,11 @@ struct Array : public Type {
   Type const *data_type;
   size_t len;
 
-  base::lazy<ir::AnyFunc> copy_assign_func_;
-  base::lazy<ir::AnyFunc> move_assign_func_;
-  base::lazy<ir::AnyFunc> init_func_;
-  base::lazy<ir::AnyFunc> destroy_func_;
-
-  mutable std::mutex mtx_;
-  mutable ir::Func *repr_func_ = nullptr;
+  base::lazy<ir::Func *> copy_assign_func_;
+  base::lazy<ir::Func *> move_assign_func_;
+  base::lazy<ir::Func *> init_func_;
+  base::lazy<ir::Func *> destroy_func_;
+  base::lazy<ir::Func *> repr_func_;
 };
 
 Array const *Arr(Type const *t, size_t len);

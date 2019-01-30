@@ -6,7 +6,7 @@
 #include "context.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/any_func.h"
 #include "ir/phi.h"
 #include "module.h"
 #include "type/function.h"
@@ -71,9 +71,8 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
 
   auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
-    auto *fn = ctx->mod_->AddFunc(
-        type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool}),
-        ast::FnParams<ast::Expression *>(2));
+    auto *fn = ctx->mod_->AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, {Bool}),
+                                  ast::FnParams<ast::Expression *>(2));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
 
@@ -96,10 +95,10 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
       ir::ReturnJump();
 
       ir::BasicBlock::Current = equal_len_block;
-      auto lhs_start = ir::Index(type::Ptr(lhs_type), fn->Argument(0), 0);
-      auto rhs_start = ir::Index(type::Ptr(rhs_type), fn->Argument(1), 0);
+      auto lhs_start          = ir::Index(Ptr(lhs_type), fn->Argument(0), 0);
+      auto rhs_start          = ir::Index(Ptr(rhs_type), fn->Argument(1), 0);
       auto lhs_end =
-          ir::PtrIncr(lhs_start, lhs_type->len, type::Ptr(rhs_type->data_type));
+          ir::PtrIncr(lhs_start, lhs_type->len, Ptr(rhs_type->data_type));
       ir::UncondJump(phi_block);
 
       ir::BasicBlock::Current = phi_block;
@@ -118,10 +117,8 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
                    incr_block, false_block);
 
       ir::BasicBlock::Current = incr_block;
-      auto lhs_incr =
-          ir::PtrIncr(lhs_phi_reg, 1, type::Ptr(lhs_type->data_type));
-      auto rhs_incr =
-          ir::PtrIncr(rhs_phi_reg, 1, type::Ptr(rhs_type->data_type));
+      auto lhs_incr = ir::PtrIncr(lhs_phi_reg, 1, Ptr(lhs_type->data_type));
+      auto rhs_incr = ir::PtrIncr(rhs_phi_reg, 1, Ptr(rhs_type->data_type));
       ir::UncondJump(phi_block);
 
       ir::MakePhi<ir::Addr>(lhs_phi_index, {{equal_len_block, lhs_start},
@@ -137,10 +134,10 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
   call_args.type_ = iter->second->type_;
 
   ir::OutParams outs;
-  auto result = outs.AppendReg(type::Bool);
+  auto result = outs.AppendReg(Bool);
 
   ir::Call(ir::AnyFunc{iter->second}, std::move(call_args), std::move(outs));
-  return {ir::Val::Reg(result, type::Bool)};
+  return {ir::Val::Reg(result, Bool)};
 }
 
 static base::guarded<
@@ -160,15 +157,15 @@ void Array::defining_modules(
 }
 
 template <SpecialFunctionCategory Cat>
-static ir::AnyFunc CreateAssign(Array const *a, Context *ctx) {
+static ir::Func *CreateAssign(Array const *a, Context *ctx) {
   Pointer const *ptr_type = Ptr(a);
   auto *data_ptr_type     = Ptr(a->data_type);
-  ir::AnyFunc fn          = ctx->mod_->AddFunc(Func({ptr_type, ptr_type}, {}),
-                                      ast::FnParams<ast::Expression *>(2));
-  CURRENT_FUNC(fn.func()) {
-    ir::BasicBlock::Current = fn.func()->entry();
-    auto val                = fn.func()->Argument(0);
-    auto var                = fn.func()->Argument(1);
+  auto *fn                = ctx->mod_->AddFunc(Func({ptr_type, ptr_type}, {}),
+                                ast::FnParams<ast::Expression *>(2));
+  CURRENT_FUNC(fn) {
+    ir::BasicBlock::Current = fn->entry();
+    auto val                = fn->Argument(0);
+    auto var                = fn->Argument(1);
 
     auto from_ptr     = ir::Index(ptr_type, val, 0);
     auto from_end_ptr = ir::PtrIncr(from_ptr, a->len, data_ptr_type);
@@ -222,7 +219,7 @@ void Array::EmitMoveAssign(Type const *from_type, ir::Val const &from,
 }
 
 template <typename F>
-static void OnEachElement(type::Array const *t, ir::Func *fn, F &&fn_to_apply) {
+static void OnEachElement(Array const *t, ir::Func *fn, F &&fn_to_apply) {
   CURRENT_FUNC(fn) {
     ir::BasicBlock::Current = fn->entry();
     auto *data_ptr_type     = Ptr(t->data_type);
@@ -247,9 +244,9 @@ static void OnEachElement(type::Array const *t, ir::Func *fn, F &&fn_to_apply) {
 void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
   init_func_.init([this, ctx]() {
     // TODO special function?
-    ir::AnyFunc fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                        ast::FnParams<ast::Expression *>(1));
-    OnEachElement(this, fn.func(),
+    auto *fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
+                                  ast::FnParams<ast::Expression *>(1));
+    OnEachElement(this, fn,
                   [this, ctx](ir::Register r) { data_type->EmitInit(r, ctx); });
     return fn;
   });
@@ -261,9 +258,9 @@ void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
   if (!data_type->needs_destroy()) { return; }
   destroy_func_.init([this, ctx]() {
     // TODO special function?
-    ir::AnyFunc fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                        ast::FnParams<ast::Expression *>(1));
-    OnEachElement(this, fn.func(), [this, ctx](ir::Register r) {
+    auto *fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
+                                  ast::FnParams<ast::Expression *>(1));
+    OnEachElement(this, fn, [this, ctx](ir::Register r) {
       data_type->EmitDestroy(r, ctx);
     });
     return fn;
@@ -273,20 +270,20 @@ void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
 }
 
 void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
-  std::unique_lock lock(mtx_);
-  if (!repr_func_) {
-    repr_func_ = ctx->mod_->AddFunc(Func({this}, {}),
-                                    ast::FnParams<ast::Expression *>(1));
+  repr_func_.init([this, ctx]() {
+    // TODO special function?
+    ir::Func *fn = ctx->mod_->AddFunc(Func({this}, {}),
+                                      ast::FnParams<ast::Expression *>(1));
 
-    CURRENT_FUNC(repr_func_) {
-      ir::BasicBlock::Current = repr_func_->entry();
+    CURRENT_FUNC(fn) {
+      ir::BasicBlock::Current = fn->entry();
 
-      auto exit_block = repr_func_->AddBlock();
+      auto exit_block = fn->AddBlock();
 
       ir::Print(std::string_view{"["});
 
       ir::BasicBlock::Current = ir::EarlyExitOn<true>(exit_block, len == 0);
-      auto ptr = ir::Index(type::Ptr(this), repr_func_->Argument(0), 0);
+      auto ptr                = ir::Index(Ptr(this), fn->Argument(0), 0);
 
       data_type->EmitRepr(ir::Val::Reg(ir::PtrFix(ptr, data_type), data_type),
                           ctx);
@@ -296,8 +293,8 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
           [&](tup const &phis) { return ir::Eq(std::get<1>(phis), 0); },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
-            auto elem_ptr = ir::PtrIncr(std::get<0>(phis).reg_, 1,
-                                        type::Ptr(this->data_type));
+            auto elem_ptr =
+                ir::PtrIncr(std::get<0>(phis).reg_, 1, Ptr(data_type));
 
             ir::Print(std::string_view{", "});
             data_type->EmitRepr(
@@ -306,21 +303,21 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
             return std::make_tuple(
                 elem_ptr, ir::Sub(ir::RegisterOr<i32>(std::get<1>(phis)), 1));
           },
-          std::tuple<type::Type const *, type::Type const *>{
-              type::Ptr(this->data_type), type::Int32},
-          tup{ptr, len - 1});
+          std::tuple{Ptr(this->data_type), Int32}, tup{ptr, len - 1});
       ir::UncondJump(exit_block);
 
       ir::BasicBlock::Current = exit_block;
       ir::Print(std::string_view{"]"});
       ir::ReturnJump();
     }
-  }
+
+    return fn;
+  });
 
   ir::Arguments call_args;
   call_args.append(val);
-  call_args.type_ = repr_func_->type_;
-  ir::Call(ir::AnyFunc{repr_func_}, std::move(call_args));
+  call_args.type_ = repr_func_.get()->type_;
+  ir::Call(ir::AnyFunc{repr_func_.get()}, std::move(call_args));
 }
 
 void Array::WriteTo(std::string *result) const {
