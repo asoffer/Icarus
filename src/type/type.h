@@ -63,6 +63,14 @@ struct AnyFunc;
 #endif
 
 namespace type {
+enum SpecialFunctionCategory { Copy, Move };
+
+template <SpecialFunctionCategory Cat>
+constexpr char const *Name() {
+  if constexpr (Cat == Move) { return "move"; }
+  if constexpr (Cat == Copy) { return "copy"; }
+}
+
 struct Function;
 struct Struct;
 struct GenericStruct;

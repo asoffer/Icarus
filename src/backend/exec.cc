@@ -467,6 +467,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         f = s->move_assign_func_.get();
       } else if (auto *tup = t->if_as<type::Tuple>()) {
         f = tup->move_assign_func_.get();
+      } else if (auto *a = t->if_as<type::Array>()) {
+        f = a->move_assign_func_.get();
       } else {
         NOT_YET();
       }
@@ -489,6 +491,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         f = s->copy_assign_func_.get();
       } else if (auto *tup = t->if_as<type::Tuple>()) {
         f = tup->copy_assign_func_.get();
+      } else if (auto *a = t->if_as<type::Array>()) {
+        f = a->copy_assign_func_.get();
       } else {
         NOT_YET();
       }

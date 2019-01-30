@@ -17,22 +17,22 @@ using base::check::Is;
 thread_local BlockIndex BasicBlock::Current;
 
 void Move(type::Type const *t, Register from, RegisterOr<Addr> to) {
-  auto &cmd    = MakeCmd(t, Op::Move);
+  auto &cmd    = MakeCmd(nullptr, Op::Move);
   cmd.special2_ = {t, from, to};
 }
 
 void Copy(type::Type const *t, Register from, RegisterOr<Addr> to) {
-  auto &cmd    = MakeCmd(t, Op::Copy);
+  auto &cmd    = MakeCmd(nullptr, Op::Copy);
   cmd.special2_ = {t, from, to};
 }
 
 void Init(type::Type const *t, Register r) {
-  auto &cmd     = MakeCmd(t, Op::Init);
+  auto &cmd     = MakeCmd(nullptr, Op::Init);
   cmd.special1_ = {t, r};
 }
 
 void Destroy(type::Type const *t, Register r) {
-  auto &cmd     = MakeCmd(t, Op::Destroy);
+  auto &cmd     = MakeCmd(nullptr, Op::Destroy);
   cmd.special1_ = {t, r};
 }
 

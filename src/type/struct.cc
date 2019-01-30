@@ -15,14 +15,6 @@
 namespace type {
 using base::check::Is;
 
-enum SpecialFunctionCategory { Copy, Move };
-
-template <SpecialFunctionCategory Cat>
-static constexpr char const *Name() {
-  if constexpr (Cat == Move) { return "move"; }
-  if constexpr (Cat == Copy) { return "copy"; }
-}
-
 static std::optional<ir::AnyFunc> SpecialFunction(Struct const *s, char const *symbol,
                                                 Context *ctx) {
   auto *ptr_to_s = Ptr(s);
@@ -58,6 +50,8 @@ static ir::AnyFunc CreateAssign(Struct const *s, Context *ctx) {
         field_type->EmitCopyAssign(field_type, from, to, ctx);
       } else if constexpr (Cat == Move) {
         field_type->EmitMoveAssign(field_type, from, to, ctx);
+      } else {
+        UNREACHABLE();
       }
     }
 

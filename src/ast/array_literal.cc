@@ -32,14 +32,16 @@ VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), auto expr_results,
                    cl_.VerifyWithoutSetting(ctx));
   VerifyResult result;
-  result.type_ = expr_results.front().type_;
+  auto *t      = expr_results.front().type_;
+  result.type_ = type::Arr(t, expr_results.size());
   for (auto expr_result : expr_results) {
     result.const_ &= expr_result.const_;
-    if (expr_result.type_ != result.type_) {
+    if (expr_result.type_ != t) {
       ctx->error_log_.InconsistentArrayType(span);
       return VerifyResult::Error();
     }
   }
+  ctx->set_type(this, result.type_);
   return result;
 }
 

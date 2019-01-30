@@ -12,6 +12,47 @@
 #include "type/function.h"
 #include "type/pointer.h"
 
+template <typename LoopPhiFn, typename LoopBodyFn, typename TypeTup,
+          typename... Ts>
+static void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
+                       TypeTup &&types,
+                       std::tuple<ir::RegisterOr<Ts>...> entry_vals) {
+  auto entry_block = ir::BasicBlock::Current;
+
+  auto loop_phi   = ir::Func::Current->AddBlock();
+  auto loop_body  = ir::Func::Current->AddBlock();
+  auto exit_block = ir::Func::Current->AddBlock();
+
+  ir::UncondJump(loop_phi);
+  ir::BasicBlock::Current = loop_phi;
+
+  auto phi_indices = base::tuple::transform(ir::Phi, types);
+  auto phi_vals    = base::tuple::transform(
+      [](auto &&val) { return ir::Func::Current->Command(val).result; },
+      phi_indices);
+
+  auto exit_cond = std::forward<LoopPhiFn>(loop_phi_fn)(phi_vals);
+  ir::CondJump(exit_cond, exit_block, loop_body);
+
+  ir::BasicBlock::Current = loop_body;
+  auto new_phis           = std::forward<LoopBodyFn>(loop_body_fn)(phi_vals);
+  ir::UncondJump(loop_phi);
+
+  base::tuple::for_each(
+      [&](auto &&phi_index, auto &&entry_val, auto &&new_phi) {
+        using T = std::decay_t<decltype(entry_val.val_)>;
+        ir::MakePhi<T>(phi_index,
+                       std::unordered_map<ir::BlockIndex, ir::RegisterOr<T>>{
+                           std::pair<ir::BlockIndex, ir::RegisterOr<T>>{
+                               entry_block, entry_val},
+                           std::pair<ir::BlockIndex, ir::RegisterOr<T>>{
+                               loop_body, new_phi}});
+      },
+      std::move(phi_indices), std::move(entry_vals), std::move(new_phis));
+
+  ir::BasicBlock::Current = exit_block;
+}
+
 namespace type {
 using base::check::Is;
 
@@ -118,127 +159,66 @@ void Array::defining_modules(
   data_type->defining_modules(modules);
 }
 
+template <SpecialFunctionCategory Cat>
+static ir::AnyFunc CreateAssign(Array const *a, Context *ctx) {
+  Pointer const *ptr_type = Ptr(a);
+  auto *data_ptr_type     = Ptr(a->data_type);
+  ir::AnyFunc fn          = ctx->mod_->AddFunc(Func({ptr_type, ptr_type}, {}),
+                                      ast::FnParams<ast::Expression *>(2));
+  CURRENT_FUNC(fn.func()) {
+    ir::BasicBlock::Current = fn.func()->entry();
+    auto val                = fn.func()->Argument(0);
+    auto var                = fn.func()->Argument(1);
+
+    auto from_ptr     = ir::Index(ptr_type, val, 0);
+    auto from_end_ptr = ir::PtrIncr(from_ptr, a->len, data_ptr_type);
+    auto to_ptr       = ir::Index(ptr_type, var, 0);
+
+    using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
+    CreateLoop(
+        [&](tup const &phis) {
+          return ir::Eq(std::get<0>(phis), from_end_ptr);
+        },
+        [&](tup const &phis) {
+          ASSERT(std::get<0>(phis).is_reg_);
+          ASSERT(std::get<1>(phis).is_reg_);
+
+          auto from_val = ir::Val::Reg(
+              PtrFix(std::get<0>(phis).reg_, a->data_type),
+              a->data_type->is_big() ? a->data_type : data_ptr_type);
+
+          if constexpr (Cat == Copy) {
+            a->data_type->EmitCopyAssign(a->data_type, from_val,
+                                         std::get<1>(phis).reg_, ctx);
+          } else if constexpr (Cat == Move) {
+            a->data_type->EmitMoveAssign(a->data_type, from_val,
+                                         std::get<1>(phis).reg_, ctx);
+          } else {
+            UNREACHABLE();
+          }
+
+          return std::tuple{
+              ir::PtrIncr(std::get<0>(phis).reg_, 1, data_ptr_type),
+              ir::PtrIncr(std::get<1>(phis).reg_, 1, data_ptr_type)};
+        },
+        std::tuple{data_ptr_type, data_ptr_type}, tup{from_ptr, to_ptr});
+    ir::ReturnJump();
+  }
+  return fn;
+}
+
 void Array::EmitCopyAssign(Type const *from_type, ir::Val const &from,
                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  ASSERT(from_type, Is<Array>());
-  auto *from_array_type = &from_type->as<Array>();
-
-  std::unique_lock lock(mtx_);
-  if (copy_assign_func_ == nullptr) {
-    copy_assign_func_ = ctx->mod_->AddFunc(type::Func({from_type, type::Ptr(this)}, {}),
-                            ast::FnParams<ast::Expression *>(2));
-
-    CURRENT_FUNC(copy_assign_func_) {
-      ir::BasicBlock::Current = copy_assign_func_->entry();
-      auto val                = copy_assign_func_->Argument(0);
-      auto var                = copy_assign_func_->Argument(1);
-
-      auto *from_ptr_type = type::Ptr(from_array_type->data_type);
-      auto from_ptr       = ir::Index(type::Ptr(from_type), val, 0);
-      auto from_end_ptr =
-          ir::PtrIncr(from_ptr, from_array_type->len, from_ptr_type);
-      auto *to_ptr_type               = type::Ptr(data_type);
-      ir::RegisterOr<ir::Addr> to_ptr = ir::Index(type::Ptr(this), var, 0);
-
-      using tup =
-          std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
-      ir::CreateLoop(
-          [&](tup const &phis) {
-            return ir::Eq(std::get<0>(phis), from_end_ptr);
-          },
-          [&](tup const &phis) {
-            ASSERT(std::get<0>(phis).is_reg_);
-            ASSERT(std::get<1>(phis).is_reg_);
-
-            ir::Register ptr_fixed_reg =
-                from_array_type->data_type->is_big()
-                    ? std::get<0>(phis).reg_
-                    : ir::Load(std::get<0>(phis).reg_, data_type);
-            auto ptr_fixed_type = from_array_type->data_type->is_big()
-                                      ? from_array_type->data_type
-                                      : type::Ptr(from_array_type->data_type);
-
-            EmitCopyInit(from_array_type->data_type, data_type,
-                         ir::Val::Reg(ptr_fixed_reg, ptr_fixed_type),
-                         std::get<1>(phis).reg_, ctx);
-            return std::make_tuple(
-                ir::PtrIncr(std::get<0>(phis).reg_, 1, from_ptr_type),
-                ir::PtrIncr(std::get<1>(phis).reg_, 1, to_ptr_type));
-          },
-          std::tuple<type::Type const *, type::Type const *>{from_ptr_type,
-                                                             to_ptr_type},
-          tup{from_ptr, to_ptr});
-      ir::ReturnJump();
-    }
-  }
-
-  ir::Arguments call_args;
-  call_args.append(from);
-  call_args.append(to);
-  call_args.type_ = copy_assign_func_->type_;
-  ir::Call(ir::AnyFunc{copy_assign_func_}, std::move(call_args));
+  copy_assign_func_.init(
+      [this, ctx]() { return CreateAssign<Copy>(this, ctx); });
+  ir::Copy(this, std::get<ir::Register>(from.value), to);
 }
 
 void Array::EmitMoveAssign(Type const *from_type, ir::Val const &from,
                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  ASSERT(from_type, Is<Array>());
-  auto *from_array_type = &from_type->as<Array>();
-
-  std::unique_lock lock(mtx_);
-  if (move_assign_func_ == nullptr) {
-    move_assign_func_ =
-        ctx->mod_->AddFunc(type::Func({from_type, type::Ptr(this)}, {}),
-                           ast::FnParams<ast::Expression *>(2));
-
-    CURRENT_FUNC(move_assign_func_) {
-      ir::BasicBlock::Current = move_assign_func_->entry();
-      auto val                = move_assign_func_->Argument(0);
-      auto var                = move_assign_func_->Argument(1);
-
-      auto *from_ptr_type = type::Ptr(from_array_type->data_type);
-      auto from_ptr       = ir::Index(type::Ptr(from_type), val, 0);
-      auto from_end_ptr =
-          ir::PtrIncr(from_ptr, from_array_type->len, from_ptr_type);
-      auto *to_ptr_type               = type::Ptr(data_type);
-      ir::RegisterOr<ir::Addr> to_ptr = ir::Index(type::Ptr(this), var, 0);
-
-      using tup =
-          std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
-      ir::CreateLoop(
-          [&](tup const &phis) {
-            return ir::Eq(std::get<0>(phis), from_end_ptr);
-          },
-          [&](tup const &phis) {
-            ASSERT(std::get<0>(phis).is_reg_);
-            ASSERT(std::get<1>(phis).is_reg_);
-
-            ir::Register ptr_fixed_reg =
-                from_array_type->data_type->is_big()
-                    ? std::get<0>(phis).reg_
-                    : ir::Load(std::get<0>(phis).reg_, data_type);
-            auto ptr_fixed_type = from_array_type->data_type->is_big()
-                                      ? from_array_type->data_type
-                                      : type::Ptr(from_array_type->data_type);
-
-            EmitMoveInit(from_array_type->data_type, data_type,
-                         ir::Val::Reg(ptr_fixed_reg, ptr_fixed_type),
-                         std::get<1>(phis).reg_, ctx);
-            return std::make_tuple(
-                ir::PtrIncr(std::get<0>(phis).reg_, 1, from_ptr_type),
-                ir::PtrIncr(std::get<1>(phis).reg_, 1, to_ptr_type));
-          },
-          std::tuple<type::Type const *, type::Type const *>{from_ptr_type,
-                                                             to_ptr_type},
-          tup{from_ptr, to_ptr});
-      ir::ReturnJump();
-    }
-  }
-
-  ir::Arguments call_args;
-  call_args.append(from);
-  call_args.append(to);
-  call_args.type_ = move_assign_func_->type_;
-  ir::Call(ir::AnyFunc{move_assign_func_}, std::move(call_args));
+  move_assign_func_.init(
+      [this, ctx]() { return CreateAssign<Move>(this, ctx); });
+  ir::Move(this, std::get<ir::Register>(from.value), to);
 }
 
 void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
@@ -255,7 +235,7 @@ void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
           ir::PtrIncr(ptr, static_cast<i32>(len), type::Ptr(data_type));
 
       using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
-      ir::CreateLoop(
+      CreateLoop(
           [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
@@ -290,12 +270,13 @@ static void ComputeDestroyWithoutLock(Array const *a, Context *ctx) {
       auto end_ptr = ir::PtrIncr(ptr, a->len, ptr_to_data_type);
 
       using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
-      ir::CreateLoop(
+      CreateLoop(
           [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);
             a->data_type->EmitDestroy(std::get<0>(phis).reg_, ctx);
-            return tup{ir::PtrIncr(std::get<0>(phis).reg_, 1, ptr_to_data_type)};
+            return tup{
+                ir::PtrIncr(std::get<0>(phis).reg_, 1, ptr_to_data_type)};
           },
           std::tuple<type::Type const *>{ptr_to_data_type}, tup{ptr});
     }
@@ -338,7 +319,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
                           ctx);
 
       using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<i32>>;
-      ir::CreateLoop(
+      CreateLoop(
           [&](tup const &phis) { return ir::Eq(std::get<1>(phis), 0); },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_);

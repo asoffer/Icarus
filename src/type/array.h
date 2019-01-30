@@ -3,6 +3,8 @@
 
 #include <mutex>
 #include "base/container/unordered_map.h"
+#include "base/lazy.h"
+#include "ir/any_func.h"
 #include "type.h"
 
 struct Context;
@@ -26,8 +28,10 @@ struct Array : public Type {
   Type const *data_type;
   size_t len;
 
+  base::lazy<ir::AnyFunc> copy_assign_func_;
+  base::lazy<ir::AnyFunc> move_assign_func_;
+
   mutable std::mutex mtx_;
-  mutable ir::Func *copy_assign_func_{nullptr}, *move_assign_func_{nullptr};
   mutable ir::Func *destroy_func_ = nullptr;
   mutable ir::Func *repr_func_    = nullptr;
   mutable ir::Func *init_func_    = nullptr;
