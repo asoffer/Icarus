@@ -21,7 +21,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
        ++iter) {
     if (*iter == this) {
       ctx->error_log_.CyclicDependency(
-          std::vector<ast::Identifier const *>(iter, ctx->cyc_deps_.end()));
+          std::vector<Identifier const *>(iter, ctx->cyc_deps_.end()));
       return VerifyResult::Error();
     }
   }
@@ -76,7 +76,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
 
 void Identifier::Validate(Context *ctx) {}
 
-base::vector<ir::Val> ast::Identifier::EmitIR(Context *ctx) {
+base::vector<ir::Val> Identifier::EmitIR(Context *ctx) {
   ASSERT(decl != nullptr) << this;
   if (decl->const_) { return decl->EmitIR(ctx); }
   if (decl->is_fn_param_) {
@@ -100,7 +100,7 @@ base::vector<ir::Val> ast::Identifier::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> ast::Identifier::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl != nullptr);
   ASSERT(!decl->const_);
   return {ctx->addr(decl)};

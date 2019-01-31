@@ -1,5 +1,6 @@
 #include "context.h"
 #include "ast/expression.h"
+#include "ast/dispatch.h"
 
 type::Type const *Context::type_of(ast::Expression const *expr) const {
   if (auto *result = mod_->type_of(bound_constants_, expr)) { return result; }

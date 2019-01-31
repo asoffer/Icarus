@@ -103,6 +103,7 @@ struct Type : public base::Cast<Type> {
   virtual bool IsMovable() const { return true; }
 };
 
+// TODO use typed registers.
 void EmitCopyInit(const Type *from_type, const Type *to_type,
                   ir::Val const &from_val, ir::Register to_var, Context *ctx);
 void EmitMoveInit(const Type *from_type, const Type *to_type,

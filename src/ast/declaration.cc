@@ -586,12 +586,12 @@ base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
     auto *t   = ctx->type_of(this);
     auto addr = ctx->addr(this);
     if (IsCustomInitialized()) {
-      type::EmitMoveInit(ctx->type_of(init_val.get()), t,
-                         init_val->EmitIR(ctx)[0], addr, ctx);
+      init_val->EmitMoveInit(type::Typed(addr, t), ctx);
     } else {
       if (!is_fn_param_) { t->EmitInit(addr, ctx); }
     }
     return {ir::Val::Reg(addr, t)};
   }
 }
+
 }  // namespace ast

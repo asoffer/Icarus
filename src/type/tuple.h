@@ -36,6 +36,7 @@ struct Tuple : public Type {
   bool IsMovable() const override;
 
   Type const *finalize();
+  bool needs_destroy() const override;
 
 #ifdef ICARUS_USE_LLVM
   virtual llvm::Type *llvm(llvm::LLVMContext &) const { UNREACHABLE(); }

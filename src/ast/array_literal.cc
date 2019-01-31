@@ -45,7 +45,7 @@ VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
   return result;
 }
 
-base::vector<ir::Val> ast::ArrayLiteral::EmitIR(Context *ctx) {
+base::vector<ir::Val> ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = ctx->type_of(this);
   auto alloc      = ir::TmpAlloca(this_type, ctx);
@@ -61,8 +61,30 @@ base::vector<ir::Val> ast::ArrayLiteral::EmitIR(Context *ctx) {
   return {array_val};
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> ast::ArrayLiteral::EmitLVal(
-    Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> ArrayLiteral::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
+
+void ArrayLiteral::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
+  type::Array const &array_type = ctx->type_of(this)->as<type::Array>();
+  auto *data_type_ptr           = type::Ptr(array_type.data_type);
+  auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
+  for (size_t i = 0; i < array_type.len; ++i) {
+    cl_.exprs_.at(i)->EmitMoveInit(
+        type::Typed<ir::Register>(elem, array_type.data_type), ctx);
+    elem = ir::PtrIncr(elem, 1, data_type_ptr);
+  }
+}
+
+void ArrayLiteral::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
+  type::Array const &array_type = ctx->type_of(this)->as<type::Array>();
+  auto *data_type_ptr           = type::Ptr(array_type.data_type);
+  auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
+  for (size_t i = 0; i < array_type.len; ++i) {
+    cl_.exprs_.at(i)->EmitCopyInit(
+        type::Typed<ir::Register>(elem, array_type.data_type), ctx);
+    elem = ir::PtrIncr(elem, 1, data_type_ptr);
+  }
+}
+
 }  // namespace ast

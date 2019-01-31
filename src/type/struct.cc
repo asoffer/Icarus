@@ -185,10 +185,11 @@ bool Struct::IsMovable() const {
 }
 
 bool Struct::needs_destroy() const {
-  return true;
-  //   return std::any_of(fields_.begin(), fields_.end(),
-  //                      [](Field const &f) { return f.type->needs_destroy();
-  //                      });
+  // TODO is this okay? Does it work for generics? Does it need to?
+  Context ctx(mod_);
+  return SpecialFunction(this, "~", &ctx) ||
+         std::any_of(fields_.begin(), fields_.end(),
+                     [](Field const &f) { return f.type->needs_destroy(); });
 }
 
 void Struct::EmitRepr(ir::Val const &val, Context *ctx) const { UNREACHABLE(); }

@@ -101,4 +101,47 @@ base::vector<ir::RegisterOr<ir::Addr>> CommaList::EmitLVal(Context *ctx) {
   return results;
 }
 
+void CommaList::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
+  size_t index = 0;
+  auto const &t = reg.type()->as<type::Tuple>();
+  for (auto &expr : exprs_) {
+    if (expr->needs_expansion()) {
+      for (auto const &val : expr->EmitIR(ctx)) {
+        // TODO handle this case.
+        type::EmitMoveInit(t.entries_[index], t.entries_[index], val,
+                           ir::Field(reg.get(), &t, index), ctx);
+        ++index;
+      }
+    } else {
+      expr->EmitMoveInit(
+          type::Typed<ir::Register>(ir::Field(reg.get(), &t, index),
+                                    t.entries_.at(index)),
+          ctx);
+      ++index;
+    }
+  }
+}
+
+void CommaList::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
+  size_t index = 0;
+  auto const &t = reg.type()->as<type::Tuple>();
+  for (auto &expr : exprs_) {
+    if (expr->needs_expansion()) {
+      for (auto const &val : expr->EmitIR(ctx)) {
+        // TODO handle this case.
+        type::EmitCopyInit(t.entries_[index], t.entries_[index], val,
+                           ir::Field(reg.get(), &t, index), ctx);
+        ++index;
+      }
+    } else {
+      expr->EmitCopyInit(
+          type::Typed<ir::Register>(ir::Field(reg.get(), &t, index),
+                                    t.entries_.at(index)),
+          ctx);
+      ++index;
+    }
+  }
+
+}
+
 }  // namespace ast

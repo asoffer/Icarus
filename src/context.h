@@ -1,7 +1,6 @@
 #ifndef ICARUS_CONTEXT_H
 #define ICARUS_CONTEXT_H
 
-#include "ast/dispatch.h"
 #include "base/container/unordered_map.h"
 #include "base/container/vector.h"
 #include "base/debug.h"
@@ -15,6 +14,7 @@ struct Type;
 
 namespace ast {
 struct Identifier;
+struct DispatchTable;
 }  // namespace ast
 
 struct Context {

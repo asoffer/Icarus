@@ -42,6 +42,11 @@ void Tuple::EmitCopyAssign(Type const *from_type, ir::Val const &from,
   ir::Copy(this, std::get<ir::Register>(from.value), to);
 }
 
+bool Tuple::needs_destroy() const {
+  return std::any_of(entries_.begin(), entries_.end(),
+                     [](Type const *t) { return t->needs_destroy(); });
+}
+
 void Tuple::EmitMoveAssign(Type const *from_type, ir::Val const &from,
                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   move_assign_func_.init([this, ctx]() {

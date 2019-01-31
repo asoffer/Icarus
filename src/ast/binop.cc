@@ -53,7 +53,7 @@ std::string Binop::to_string(size_t n) const {
     case Language::Operator::Mul: ss << " * "; break;
     case Language::Operator::Div: ss << " / "; break;
     case Language::Operator::Mod: ss << " % "; break;
-    case Language::Operator::Assign: ss << " <<:=>> "; break;
+    case Language::Operator::Assign: ss << " = "; break;
     case Language::Operator::OrEq: ss << " |= "; break;
     case Language::Operator::XorEq: ss << " ^= "; break;
     case Language::Operator::AndEq: ss << " &= "; break;
@@ -293,13 +293,13 @@ void Binop::ExtractJumps(JumpExprs *rets) const {
   rhs->ExtractJumps(rets);
 }
 
-base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
+base::vector<ir::Val> Binop::EmitIR(Context *ctx) {
   auto *lhs_type = ctx->type_of(lhs.get());
   auto *rhs_type = ctx->type_of(rhs.get());
 
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
-    ast::FnArgs<std::pair<ast::Expression *, base::vector<ir::Val>>> args;
+    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> args;
     args.pos_.reserve(2);
     args.pos_.emplace_back(lhs.get(), lhs->EmitIR(ctx));
     args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx));
@@ -543,7 +543,7 @@ base::vector<ir::Val> ast::Binop::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> ast::Binop::EmitLVal(Context *ctx) {
+base::vector<ir::RegisterOr<ir::Addr>> Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::As: NOT_YET();
     case Language::Operator::Index: 

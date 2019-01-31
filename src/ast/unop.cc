@@ -271,4 +271,27 @@ base::vector<ir::RegisterOr<ir::Addr>> Unop::EmitLVal(Context *ctx) {
   ASSERT(op == Language::Operator::At);
   return {std::get<ir::Register>(operand->EmitIR(ctx)[0].value)};
 }
+
+void Unop::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
+  switch (op) {
+    case Language::Operator::Move: operand->EmitMoveInit(reg, ctx); break;
+    case Language::Operator::Copy: operand->EmitCopyInit(reg, ctx); break;
+    default:
+      type::EmitMoveInit(ctx->type_of(this), reg.type(), this->EmitIR(ctx)[0],
+                         reg.get(), ctx);
+      break;
+  }
+}
+
+void Unop::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
+  switch (op) {
+    case Language::Operator::Move: operand->EmitMoveInit(reg, ctx); break;
+    case Language::Operator::Copy: operand->EmitCopyInit(reg, ctx); break;
+    default:
+      type::EmitCopyInit(ctx->type_of(this), reg.type(), this->EmitIR(ctx)[0],
+                         reg.get(), ctx);
+      break;
+  }
+}
+
 }  // namespace ast

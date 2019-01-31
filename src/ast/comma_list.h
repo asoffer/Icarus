@@ -25,6 +25,8 @@ struct CommaList : public Expression {
 
   base::vector<ir::Val> EmitIR(Context *) override;
   base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) override;
+  void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) override;
 
   base::vector<std::unique_ptr<Expression>> exprs_;
 };
