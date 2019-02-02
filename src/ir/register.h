@@ -13,10 +13,12 @@ DEFINE_STRONG_INT(ir, Register, i32, std::numeric_limits<i32>::lowest());
 
 namespace ir {
 #define MAKE_CMP(type)                                                         \
-  inline bool operator<(type lhs, type rhs) { return lhs.value < rhs.value; }  \
-  inline bool operator<=(type lhs, type rhs) { return !(rhs < lhs); }          \
-  inline bool operator>(type lhs, type rhs) { return rhs < lhs; }              \
-  inline bool operator>=(type lhs, type rhs) { return !(lhs < rhs); }
+  constexpr bool operator<(type lhs, type rhs) {                               \
+    return lhs.value < rhs.value;                                              \
+  }                                                                            \
+  constexpr bool operator<=(type lhs, type rhs) { return !(rhs < lhs); }       \
+  constexpr bool operator>(type lhs, type rhs) { return rhs < lhs; }           \
+  constexpr bool operator>=(type lhs, type rhs) { return !(lhs < rhs); }
 MAKE_CMP(BlockIndex)
 MAKE_CMP(EnumVal)
 MAKE_CMP(Register)
@@ -30,6 +32,45 @@ struct BlockLiteral;
 }  // namespace ast
 
 namespace ir {
+struct Reg {
+ public:
+  constexpr explicit Reg(uint64_t val) : val_(val & ~(arg_mask | out_mask)) {}
+  constexpr static Reg Arg(uint64_t val) { return MakeReg(val | arg_mask); }
+  constexpr static Reg Out(uint64_t val) { return MakeReg(val | arg_mask); }
+
+  constexpr bool is_argument() { return val_ & arg_mask; }
+  constexpr bool is_out() { return val_ & out_mask; }
+
+ private:
+  friend constexpr bool operator==(Reg lhs, Reg rhs) {
+    return lhs.val_ == rhs.val_;
+  }
+
+  friend constexpr bool operator<(Reg lhs, Reg rhs) {
+    return lhs.val_ < rhs.val_;
+  }
+
+  constexpr static Reg MakeReg(uint64_t val) {
+    Reg r;
+    r.val_ = val;
+    return r;
+  }
+  friend inline std::ostream &operator<<(std::ostream &os, Reg r) {
+    return os << "r." << r.val_;
+  }
+
+  constexpr Reg() : val_(std::numeric_limits<uint64_t>::max()){};
+
+  constexpr static uint64_t arg_mask = 0x8000'0000'0000'0000;
+  constexpr static uint64_t out_mask = 0x4000'0000'0000'0000;
+  uint64_t val_;
+};
+
+constexpr bool operator!=(Reg lhs, Reg rhs) { return !(lhs == rhs); }
+constexpr bool operator>(Reg lhs, Reg rhs) { return rhs < lhs; }
+constexpr bool operator<=(Reg lhs, Reg rhs) { return !(lhs > rhs); }
+constexpr bool operator>=(Reg lhs, Reg rhs) { return !(lhs < rhs); }
+
 struct Func;
 
 struct BlockSequence {

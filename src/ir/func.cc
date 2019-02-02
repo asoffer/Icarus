@@ -11,10 +11,24 @@
 namespace ir {
 thread_local Func *Func::Current{nullptr};
 
-Register Func::Argument(u32 n) const { return Register(reg_map_.at(n)); }
+Register Func::Argument(u32 n) const {
+  auto arch       = Architecture::InterprettingMachine();
+  size_t reg_size = 0;
+  size_t i        = 0;
+  for (auto *t : type_->input) {
+    size_t entry;
+    if (t->is_big()) {
+      entry = ((reg_size - 1) | (alignof(Addr) - 1)) + 1;
+    } else {
+      entry = arch.MoveForwardToAlignment(t, reg_size);
+    }
 
-Register Func::Return(u32 n) const {
-  return Register(reg_map_.at(type_->input.size() + n));
+    if (i == n) { return Register(entry); }
+    i++;
+    reg_size = entry + (t->is_big() ? sizeof(Addr) : arch.bytes(t));
+  }
+
+  UNREACHABLE();
 }
 
 Func::Func(Module *mod, type::Function const *fn_type,
@@ -38,14 +52,7 @@ Func::Func(Module *mod, type::Function const *fn_type,
     } else {
       entry = arch.MoveForwardToAlignment(t, reg_size_);
     }
-    reg_map_.emplace(i++, Register(entry));
     reg_size_ = entry + (t->is_big() ? sizeof(Addr) : arch.bytes(t));
-  }
-
-  // Return registers are just negative integers starting at -1 and decreasing
-  for (auto *t : type_->output) {
-    --neg_bound_;
-    reg_map_.emplace(neg_bound_, Register(neg_bound_));
   }
 
   ASSERT(params_.size() == fn_type->input.size()); // TODO is this still true with variadics?

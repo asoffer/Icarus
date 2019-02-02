@@ -45,7 +45,6 @@ struct Func {
        ast::FnParams<ast::Expression *> params);
 
   Register Argument(u32 n) const;
-  Register Return(u32 n) const;
 
   void ComputeInvariants();
   void CheckInvariants();
@@ -85,7 +84,6 @@ struct Func {
   ast::FnParams<ast::Expression *> params_;
   
   i32 num_regs_  = 0;
-  i32 neg_bound_ = 0;
   base::vector<BasicBlock> blocks_;
   Module::CompilationWorkItem *work_item = nullptr;
 #ifdef ICARUS_USE_LLVM
@@ -95,7 +93,6 @@ struct Func {
   Module *mod_;
 
   size_t reg_size_ = 0;
-  base::unordered_map<i32, Register> reg_map_;
 
   base::vector<ast::Expression *> precondition_exprs_, postcondition_exprs_;
   base::vector<std::pair<ir::Func, prop::PropertyMap>> preconditions_,
@@ -106,6 +103,11 @@ struct Func {
   base::unordered_map<BasicBlock const *,
                       std::unordered_set<BasicBlock const *>>
   GetIncomingBlocks() const;
+
+  // This vector is indexed by ir::Reg and stores the value which is the offset
+  // into the base::untyped_buffer holding all registers during compile-time
+  // execution. It is only valid for Architecture::CompilingMachine().
+  base::vector<size_t> compiler_reg_to_offset_;
 };
 
 static_assert(alignof(Func) > 1);

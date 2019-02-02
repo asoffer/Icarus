@@ -86,8 +86,8 @@ PropertySet LtInt(PropertySet const &lhs, int rhs) {
 }  // namespace
 
 FnStateView::FnStateView(ir::Func *fn) {
-  for (const auto & [ num, reg ] : fn->reg_map_) {
-    view_.emplace(reg, PropertySet{});
+  for (auto reg : fn->compiler_reg_to_offset_) {
+    view_.emplace(ir::Register(reg), PropertySet{});
   }
 }
 

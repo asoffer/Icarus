@@ -286,23 +286,25 @@ Register Reserve(type::Type const *t, bool incr_num_regs = true) {
   auto reg_val = arch.MoveForwardToAlignment(t, Func::Current->reg_size_);
   auto result  = Register(reg_val);
   Func::Current->reg_size_ = reg_val + arch.bytes(t);
+
   if (incr_num_regs) {
-    Func::Current->reg_map_.emplace(Func::Current->num_regs_, result);
+    ir::Reg r{Func::Current->compiler_reg_to_offset_.size()};
+    LOG << r;
+    Func::Current->compiler_reg_to_offset_.push_back(result.value);
     ++Func::Current->num_regs_;
   }
   return result;
 }
 
-Cmd::Cmd(const type::Type *t, Op op) : op_code_(op) {
+Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
   ASSERT(Func::Current != nullptr);
   CmdIndex cmd_index{
       BasicBlock::Current,
       static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
   if (t == nullptr) {
-    result = Register{--Func::Current->neg_bound_};
+    result = Register(-1);
     Func::Current->references_[result];  // Guarantee it exists.
     Func::Current->reg_to_cmd_.emplace(result, cmd_index);
-    Func::Current->reg_map_.emplace(Func::Current->neg_bound_, result);
     return;
   }
 
