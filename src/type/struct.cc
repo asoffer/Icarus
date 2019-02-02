@@ -42,9 +42,9 @@ static ir::AnyFunc CreateAssign(Struct const *s, Context *ctx) {
 
     for (size_t i = 0; i < s->fields_.size(); ++i) {
       auto *field_type = s->fields_.at(i).type;
-      auto from = ir::Val::Reg(ir::PtrFix(ir::Field(val, s, i), field_type),
-                               field_type);
-      auto to   = ir::Field(var, s, i);
+      auto from        = ir::Val::Reg(
+          ir::PtrFix(ir::Field(val, s, i).get(), field_type), field_type);
+      auto to   = ir::Field(var, s, i).get();
 
       if constexpr (Cat == Copy) {
         field_type->EmitCopyAssign(field_type, from, to, ctx);
@@ -96,9 +96,9 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
         auto ir_field     = ir::Field(var, this, i);
         auto const &field = fields_.at(i);
         if (field.init_val != ir::Val::None()) {
-          EmitCopyInit(field.type, field.type, field.init_val, ir_field, ctx);
+          EmitCopyInit(field.type, field.init_val, ir_field, ctx);
         } else {
-          field.type->EmitInit(ir_field, ctx);
+          field.type->EmitInit(ir_field.get(), ctx);
         }
       }
 
@@ -132,7 +132,7 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
       auto var                = ir::Func::Current->Argument(0);
 
       for (int i = static_cast<int>(fields_.size()) - 1; i >= 0; --i) {
-        fields_.at(i).type->EmitDestroy(ir::Field(var, this, i), ctx);
+        fields_.at(i).type->EmitDestroy(ir::Field(var, this, i).get(), ctx);
       }
 
       ir::ReturnJump();

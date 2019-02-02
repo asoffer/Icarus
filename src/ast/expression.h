@@ -7,6 +7,7 @@
 #include "ir/addr.h"
 #include "ir/register.h"
 #include "type/typed_value.h"
+#include "type/util.h"
 
 namespace ir {
 struct Val;
@@ -29,12 +30,10 @@ struct Expression : public Node {
   virtual base::vector<ir::Val> EmitIR(Context *)                    = 0;
   virtual base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
   virtual void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
-    type::EmitCopyInit(ctx->type_of(this), reg.type(), this->EmitIR(ctx)[0],
-                       reg.get(), ctx);
+    type::EmitCopyInit(ctx->type_of(this), this->EmitIR(ctx)[0], reg, ctx);
   }
   virtual void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
-    type::EmitMoveInit(ctx->type_of(this), reg.type(), this->EmitIR(ctx)[0],
-                       reg.get(), ctx);
+    type::EmitMoveInit(ctx->type_of(this), this->EmitIR(ctx)[0], reg, ctx);
   }
 
   virtual bool needs_expansion() const { return false; }

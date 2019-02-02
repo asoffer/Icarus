@@ -115,7 +115,7 @@ base::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
 
   ASSERT(t, Is<type::Struct>());
   auto *struct_type = &t->as<type::Struct>();
-  return {ir::Field(reg, struct_type, struct_type->index(member_name))};
+  return {ir::Field(reg, struct_type, struct_type->index(member_name)).get()};
 }
 
 base::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {

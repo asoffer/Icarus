@@ -399,8 +399,8 @@ Register VariantValue(const type::Type *t, RegisterOr<Addr> r);
 // Type repreesents the type of `ptr`
 TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<i32> inc,
                             type::Pointer const *t);
-Register Field(RegisterOr<Addr> r, type::Struct const *t, size_t n);
-Register Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n);
+type::Typed<Register> Field(RegisterOr<Addr> r, type::Struct const *t, size_t n);
+type::Typed<Register> Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);
 

@@ -79,14 +79,12 @@ base::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
   for (auto &expr : exprs_) {
     if (expr->needs_expansion()) {
       for (auto const &val : expr->EmitIR(ctx)) {
-        type::EmitCopyInit(tuple_type->entries_[index],
-                           tuple_type->entries_[index], val,
+        type::EmitCopyInit(tuple_type->entries_[index], val,
                            ir::Field(tuple_alloc, tuple_type, index), ctx);
         ++index;
       }
     } else {
-      type::EmitCopyInit(tuple_type->entries_[index],
-                         tuple_type->entries_[index], expr->EmitIR(ctx)[0],
+      type::EmitCopyInit(tuple_type->entries_[index], expr->EmitIR(ctx)[0],
                          ir::Field(tuple_alloc, tuple_type, index), ctx);
       ++index;
     }
@@ -103,20 +101,17 @@ base::vector<ir::RegisterOr<ir::Addr>> CommaList::EmitLVal(Context *ctx) {
 
 void CommaList::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
   size_t index = 0;
-  auto const &t = reg.type()->as<type::Tuple>();
+  auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : exprs_) {
     if (expr->needs_expansion()) {
       for (auto const &val : expr->EmitIR(ctx)) {
         // TODO handle this case.
-        type::EmitMoveInit(t.entries_[index], t.entries_[index], val,
+        type::EmitMoveInit(t.entries_[index], val,
                            ir::Field(reg.get(), &t, index), ctx);
         ++index;
       }
     } else {
-      expr->EmitMoveInit(
-          type::Typed<ir::Register>(ir::Field(reg.get(), &t, index),
-                                    t.entries_.at(index)),
-          ctx);
+      expr->EmitMoveInit(ir::Field(reg.get(), &t, index), ctx);
       ++index;
     }
   }
@@ -124,20 +119,17 @@ void CommaList::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
 
 void CommaList::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
   size_t index = 0;
-  auto const &t = reg.type()->as<type::Tuple>();
+  auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : exprs_) {
     if (expr->needs_expansion()) {
       for (auto const &val : expr->EmitIR(ctx)) {
         // TODO handle this case.
-        type::EmitCopyInit(t.entries_[index], t.entries_[index], val,
+        type::EmitCopyInit(t.entries_[index], val,
                            ir::Field(reg.get(), &t, index), ctx);
         ++index;
       }
     } else {
-      expr->EmitCopyInit(
-          type::Typed<ir::Register>(ir::Field(reg.get(), &t, index),
-                                    t.entries_.at(index)),
-          ctx);
+      expr->EmitCopyInit(ir::Field(reg.get(), &t, index), ctx);
       ++index;
     }
   }

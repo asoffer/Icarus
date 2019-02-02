@@ -36,8 +36,8 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
   }
 
   if (to == from) { return true; }
-  auto *to_tup   = to->if_as<type::Tuple>();
-  auto *from_tup = from->if_as<type::Tuple>();
+  auto *to_tup   = to->if_as<Tuple>();
+  auto *from_tup = from->if_as<Tuple>();
   if (to_tup && from_tup) {
     if (to_tup->entries_.size() != from_tup->entries_.size()) {
       ctx->error_log_.MismatchedAssignmentSize(span, to_tup->entries_.size(),
@@ -53,8 +53,8 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
     return result;
   }
 
-  if (auto *to_var = to->if_as<type::Variant>()) {
-    if (auto *from_var = from->if_as<type::Variant>()) {
+  if (auto *to_var = to->if_as<Variant>()) {
+    if (auto *from_var = from->if_as<Variant>()) {
       for (auto fvar : from_var->variants_) {
         if (!to_var->contains(fvar)) {
           NOT_YET("log an error", from, to);
@@ -72,8 +72,8 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
     }
   }
 
-  if (auto *to_ptr = to->if_as<type::Pointer>()) {
-    if (from == type::NullPtr) { return true; }
+  if (auto *to_ptr = to->if_as<Pointer>()) {
+    if (from == NullPtr) { return true; }
     NOT_YET("log an error", from, to);
     return false;
   }
@@ -81,18 +81,26 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
   NOT_YET("log an error: no cast from ", from, " to ", to);
 }
 
-void EmitCopyInit(Type const *from_type, Type const *to_type,
-                  ir::Val const &from_val, ir::Register to_var, Context *ctx) {
+void EmitCopyInit(Type const *from_type, ir::Val const &from_val,
+                  Typed<ir::Register> to_var, Context *ctx) {
+  auto *to_type = to_var.type()->as<Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.
-  if (!to_type->is<type::Primitive>()) { to_type->EmitInit(to_var, ctx); }
-  to_type->EmitCopyAssign(from_type, from_val, to_var, ctx);
+  if (!to_type->is<Primitive>() && !to_type->is<Function>() &&
+      !to_type->is<Variant>()) {
+    to_type->EmitInit(to_var.get(), ctx);
+  }
+  to_type->EmitCopyAssign(from_type, from_val, to_var.get(), ctx);
 }
 
-void EmitMoveInit(Type const *from_type, Type const *to_type,
-                  ir::Val const &from_val, ir::Register to_var, Context *ctx) {
+void EmitMoveInit(Type const *from_type, ir::Val const &from_val,
+                  Typed<ir::Register> to_var, Context *ctx) {
+  auto *to_type = to_var.type()->as<Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.
-  if (!to_type->is<type::Primitive>()) { to_type->EmitInit(to_var, ctx); }
-  to_type->EmitMoveAssign(from_type, from_val, to_var, ctx);
+  if (!to_type->is<Primitive>() && !to_type->is<Function>() &&
+      !to_type->is<Variant>()) {
+    to_type->EmitInit(to_var.get(), ctx);
+  }
+  to_type->EmitMoveAssign(from_type, from_val, to_var.get(), ctx);
 }
 
 }  // namespace type

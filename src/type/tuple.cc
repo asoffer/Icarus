@@ -30,8 +30,8 @@ void Tuple::EmitCopyAssign(Type const *from_type, ir::Val const &from,
       for (size_t i = 0; i < entries_.size(); ++i) {
         auto *entry = entries_.at(i);
         auto from_entry =
-            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), entry), entry);
-        entry->EmitCopyAssign(entry, from_entry, ir::Field(var, this, i), ctx);
+            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i).get(), entry), entry);
+        entry->EmitCopyAssign(entry, from_entry, ir::Field(var, this, i).get(), ctx);
       }
 
       ir::ReturnJump();
@@ -63,8 +63,8 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Val const &from,
       for (size_t i = 0; i < entries_.size(); ++i) {
         auto *entry = entries_.at(i);
         auto from_entry =
-            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i), entry), entry);
-        entry->EmitMoveAssign(entry, from_entry, ir::Field(var, this, i), ctx);
+            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i).get(), entry), entry);
+        entry->EmitMoveAssign(entry, from_entry, ir::Field(var, this, i).get(), ctx);
       }
 
       ir::ReturnJump();
@@ -86,7 +86,7 @@ void Tuple::EmitInit(ir::Register reg, Context *ctx) const {
       // TODO is initialization order well-defined? ranodmize it? at least it
       // should always be opposite destruction order?
       for (size_t i = 0; i < entries_.size(); ++i) {
-        entries_.at(i)->EmitInit(ir::Field(var, this, i), ctx);
+        entries_.at(i)->EmitInit(ir::Field(var, this, i).get(), ctx);
       }
 
       ir::ReturnJump();
@@ -102,7 +102,7 @@ void Tuple::EmitRepr(ir::Val const &id_val, Context *ctx) const {
   ir::Print(std::string_view{"("});
   for (int i = 0; i < static_cast<int>(entries_.size()) - 1; ++i) {
     entries_[i]->EmitRepr(
-        ir::Val::Reg(ir::PtrFix(ir::Field(reg, this, i), entries_[i]),
+        ir::Val::Reg(ir::PtrFix(ir::Field(reg, this, i).get(), entries_[i]),
                      entries_[i]),
         ctx);
     ir::Print(std::string_view{", "});
@@ -110,7 +110,7 @@ void Tuple::EmitRepr(ir::Val const &id_val, Context *ctx) const {
 
   if (!entries_.empty()) {
     entries_.back()->EmitRepr(
-        ir::Val::Reg(ir::PtrFix(ir::Field(reg, this, entries_.size() - 1),
+        ir::Val::Reg(ir::PtrFix(ir::Field(reg, this, entries_.size() - 1).get(),
                                 entries_.back()),
                      entries_.back()),
         ctx);
@@ -158,7 +158,7 @@ void Tuple::EmitDestroy(ir::Register reg, Context *ctx) const {
 
       // TODO is destruction order well-defined? ranodmize it?
       for (int i = static_cast<int>(entries_.size()) - 1; i >= 0; --i) {
-        entries_.at(i)->EmitDestroy(ir::Field(var, this, i), ctx);
+        entries_.at(i)->EmitDestroy(ir::Field(var, this, i).get(), ctx);
       }
 
       ir::ReturnJump();

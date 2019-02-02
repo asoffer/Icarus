@@ -265,16 +265,20 @@ RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
   return cmd.result;
 }
 
-Register Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n) {
-  auto &cmd  = MakeCmd(type::Ptr(t->entries_.at(n)), Op::Field);
+type::Typed<Register> Field(RegisterOr<Addr> r, type::Tuple const *t,
+                            size_t n) {
+  auto *p    = type::Ptr(t->entries_.at(n));
+  auto &cmd  = MakeCmd(p, Op::Field);
   cmd.field_ = {r, t, n};
-  return cmd.result;
+  return type::Typed<Register>(cmd.result, p);
 }
 
-Register Field(RegisterOr<Addr> r, type::Struct const *t, size_t n) {
-  auto &cmd  = MakeCmd(type::Ptr(t->fields().at(n).type), Op::Field);
+type::Typed<Register> Field(RegisterOr<Addr> r, type::Struct const *t,
+                            size_t n) {
+  auto *p    = type::Ptr(t->fields().at(n).type);
+  auto &cmd  = MakeCmd(p, Op::Field);
   cmd.field_ = {r, t, n};
-  return cmd.result;
+  return type::Typed<Register>(cmd.result, p);
 }
 
 Register Reserve(type::Type const *t, bool incr_num_regs = true) {
@@ -453,8 +457,8 @@ void SetRet(size_t n, Val const &v, Context *ctx) {
     using T = typename decltype(type_holder)::type;
     if constexpr (std::is_same_v<T, type::Struct const *>) {
       auto *t = ir::Func::Current->type_->output[n];
-      // TODO guaranteed copy-elision
-      t->EmitCopyAssign(t, v, GetRet(n, t), ctx);
+      // TODO guaranteed move-elision
+      t->EmitMoveAssign(t, v, GetRet(n, t), ctx);
     } else {
       SetRet(n, v.reg_or<T>());
     }

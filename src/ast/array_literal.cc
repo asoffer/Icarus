@@ -54,8 +54,11 @@ base::vector<ir::Val> ArrayLiteral::EmitIR(Context *ctx) {
     auto *data_type = this_type->as<type::Array>().data_type;
     for (size_t i = 0; i < cl_.exprs_.size(); ++i) {
       type::EmitMoveInit(
-          data_type, data_type, cl_.exprs_[i]->EmitIR(ctx)[0],
-          ir::Index(type::Ptr(this_type), alloc, static_cast<i32>(i)), ctx);
+          data_type, cl_.exprs_[i]->EmitIR(ctx)[0],
+          type::Typed<ir::Register>(
+              ir::Index(type::Ptr(this_type), alloc, static_cast<i32>(i)),
+              type::Ptr(data_type)),
+          ctx);
     }
   }
   return {array_val};
@@ -69,22 +72,26 @@ void ArrayLiteral::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
   type::Array const &array_type = ctx->type_of(this)->as<type::Array>();
   auto *data_type_ptr           = type::Ptr(array_type.data_type);
   auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
-  for (size_t i = 0; i < array_type.len; ++i) {
+  for (size_t i = 0; i + 1 < array_type.len; ++i) {
     cl_.exprs_.at(i)->EmitMoveInit(
-        type::Typed<ir::Register>(elem, array_type.data_type), ctx);
+        type::Typed<ir::Register>(elem, data_type_ptr), ctx);
     elem = ir::PtrIncr(elem, 1, data_type_ptr);
   }
+  cl_.exprs_.back()->EmitMoveInit(
+      type::Typed<ir::Register>(elem, data_type_ptr), ctx);
 }
 
 void ArrayLiteral::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
   type::Array const &array_type = ctx->type_of(this)->as<type::Array>();
   auto *data_type_ptr           = type::Ptr(array_type.data_type);
   auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
-  for (size_t i = 0; i < array_type.len; ++i) {
+  for (size_t i = 0; i + 1 < array_type.len; ++i) {
     cl_.exprs_.at(i)->EmitCopyInit(
-        type::Typed<ir::Register>(elem, array_type.data_type), ctx);
+        type::Typed<ir::Register>(elem, data_type_ptr), ctx);
     elem = ir::PtrIncr(elem, 1, data_type_ptr);
   }
+  cl_.exprs_.back()->EmitCopyInit(
+      type::Typed<ir::Register>(elem, data_type_ptr), ctx);
 }
 
 }  // namespace ast

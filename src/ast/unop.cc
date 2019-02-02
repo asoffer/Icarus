@@ -180,14 +180,14 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   switch (op) {
     case Language::Operator::Copy: {
       auto reg = ir::TmpAlloca(operand_type, ctx);
-      type::EmitCopyInit(operand_type, operand_type, operand->EmitIR(ctx)[0],
-                         reg, ctx);
+      type::EmitCopyInit(operand_type, operand->EmitIR(ctx)[0],
+                         type::Typed<ir::Register>(reg, operand_type), ctx);
       return {ir::Val::Reg(reg, operand_type)};
     } break;
     case Language::Operator::Move: {
       auto reg = ir::TmpAlloca(operand_type, ctx);
-      type::EmitMoveInit(operand_type, operand_type, operand->EmitIR(ctx)[0],
-                         reg, ctx);
+      type::EmitMoveInit(operand_type, operand->EmitIR(ctx)[0],
+                         type::Typed<ir::Register>(reg, operand_type), ctx);
       return {ir::Val::Reg(reg, operand_type)};
     } break;
     case Language::Operator::BufPtr:
@@ -257,7 +257,7 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
       results.reserve(tuple_type->entries_.size());
       for (size_t i = 0; i < tuple_type->entries_.size(); ++i) {
         results.push_back(
-            ir::Val::Reg(ir::PtrFix(ir::Field(tuple_reg, tuple_type, i),
+            ir::Val::Reg(ir::PtrFix(ir::Field(tuple_reg, tuple_type, i).get(),
                                     tuple_type->entries_[i]),
                          tuple_type->entries_[i]));
       }
@@ -277,8 +277,7 @@ void Unop::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
     case Language::Operator::Move: operand->EmitMoveInit(reg, ctx); break;
     case Language::Operator::Copy: operand->EmitCopyInit(reg, ctx); break;
     default:
-      type::EmitMoveInit(ctx->type_of(this), reg.type(), this->EmitIR(ctx)[0],
-                         reg.get(), ctx);
+      type::EmitMoveInit(ctx->type_of(this), this->EmitIR(ctx)[0], reg, ctx);
       break;
   }
 }
@@ -288,8 +287,7 @@ void Unop::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
     case Language::Operator::Move: operand->EmitMoveInit(reg, ctx); break;
     case Language::Operator::Copy: operand->EmitCopyInit(reg, ctx); break;
     default:
-      type::EmitCopyInit(ctx->type_of(this), reg.type(), this->EmitIR(ctx)[0],
-                         reg.get(), ctx);
+      type::EmitCopyInit(ctx->type_of(this), this->EmitIR(ctx)[0], reg, ctx);
       break;
   }
 }

@@ -37,7 +37,7 @@ void Pointer::EmitMoveAssign(Type const *from_type, ir::Val const &from,
   } else if (from_type == NullPtr) {
     ir::Store(ir::Addr::Null(), to);
   } else {
-    UNREACHABLE();
+    UNREACHABLE(this);
   }
 }
 

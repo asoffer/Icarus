@@ -2,11 +2,18 @@
 #define ICARUS_TYPE_UTIL_H
 // TODO this file is terribly named.
 
-#include "type/type.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/type.h"
+#include "type/typed_value.h"
 
 namespace type {
+
+void EmitCopyInit(const Type *from_type, ir::Val const &from_val,
+                  Typed<ir::Register> to_var, Context *ctx);
+void EmitMoveInit(const Type *from_type, ir::Val const &from_val,
+                  Typed<ir::Register> to_var, Context *ctx);
+
 template <typename T>
 constexpr type::Type const *Get() {
   if constexpr (std::is_same_v<T, bool>) {

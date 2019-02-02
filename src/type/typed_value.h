@@ -15,7 +15,7 @@ struct Typed {
 
   V& get() & { return value_; }
   V const& get() const & { return value_; }
-  V&& get() && { return value_; }
+  V&& get() && { return std::move(value_); }
   V const&& get() const && { return value_; }
 
   V* operator->() & { return &value_; }
