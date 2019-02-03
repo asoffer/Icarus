@@ -1,4 +1,4 @@
-MAKEFLAGS += --jobs=4
+MAKEFLAGS += -j
 
 TESTS := $(shell find src -name *_test.cc 2>/dev/null)
 TEST_TARGETS := $(patsubst src/%.cc,bin/test/%,$(TESTS))
@@ -7,7 +7,7 @@ SRCS := $(shell find src -name *.cc ! -name *_test.cc 2>/dev/null)
 SRC_OBJS := $(patsubst src/%.cc,build/%.o,$(SRCS))
 TARGET := bin/$(shell basename `pwd`)
 
-COMPILER := g++-8
+COMPILER := g++
 BUILD_FLAGS := -g -O0 -DDBG -rdynamic
 STDS = -std=c++17
 WARN = -Wno-unused-but-set-parameter -Wno-unused-variable -Wall -Wextra -Werror -Wuninitialized -Wpedantic -Wno-unused-parameter #-Weffc++
