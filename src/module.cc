@@ -231,8 +231,9 @@ PendingModule Module::Schedule(std::filesystem::path const &src,
   // Need to add dependencies even if the node was already scheduled (hence the
   // "already scheduled" check is done after this).
   if (requestor != std::filesystem::path{""}) {
-    ASSERT(import_graph.AddDependency(
-        src_ptr, ASSERT_NOT_NULL(import_graph.node(requestor).first)));
+    bool success = import_graph.AddDependency(
+        src_ptr, ASSERT_NOT_NULL(import_graph.node(requestor).first));
+    ASSERT(success);
   }
 
   if (!newly_inserted) {

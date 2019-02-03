@@ -281,19 +281,15 @@ type::Typed<Register> Field(RegisterOr<Addr> r, type::Struct const *t,
   return type::Typed<Register>(cmd.result, p);
 }
 
-Register Reserve(type::Type const *t, bool incr_num_regs = true) {
-  auto arch    = Architecture::InterprettingMachine();
-  auto reg_val = arch.MoveForwardToAlignment(t, Func::Current->reg_size_);
-  auto result  = Register(reg_val);
-  Func::Current->reg_size_ = reg_val + arch.bytes(t);
+Register Reserve(type::Type const *t) {
+  auto arch   = Architecture::InterprettingMachine();
+  auto offset = arch.MoveForwardToAlignment(t, Func::Current->reg_size_);
+  Func::Current->reg_size_ = offset + arch.bytes(t);
 
-  if (incr_num_regs) {
-    ir::Reg r{Func::Current->compiler_reg_to_offset_.size()};
-    LOG << r;
-    Func::Current->compiler_reg_to_offset_.push_back(result.value);
-    ++Func::Current->num_regs_;
-  }
-  return result;
+  ir::Reg r{Func::Current->compiler_reg_to_offset_.size()};
+  Func::Current->compiler_reg_to_offset_.push_back(offset);
+  ++Func::Current->num_regs_;
+  return r;
 }
 
 Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
@@ -302,7 +298,7 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
       BasicBlock::Current,
       static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
   if (t == nullptr) {
-    result = Register(-1);
+    result = Register();
     Func::Current->references_[result];  // Guarantee it exists.
     Func::Current->reg_to_cmd_.emplace(result, cmd_index);
     return;
@@ -734,7 +730,7 @@ static std::ostream &operator<<(std::ostream &os, Cmd::SetEnumerator const &s) {
 }
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
-  if (cmd.result.value >= 0) { os << cmd.result << " = "; }
+  if (cmd.result != Register{}) { os << cmd.result << " = "; }
   os << OpCodeStr(cmd.op_code_) << " ";
   switch (cmd.op_code_) {
 #define OP_MACRO(op, tag, type, field)                                         \

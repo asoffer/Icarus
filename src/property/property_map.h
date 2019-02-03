@@ -38,7 +38,7 @@ struct Entry {
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Entry &e) {
-  return os << "{" << e.viewing_block_ << ", " << e.reg_.to_string() << "}";
+  return os << "{" << e.viewing_block_ << ", " << e.reg_ << "}";
 }
 
 inline bool operator==(const Entry &lhs, const Entry &rhs) {

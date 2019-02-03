@@ -152,6 +152,7 @@ void Struct::set_last_name(std::string_view s) {
   fields_.back().name = std::string(s);
   auto[iter, success] =
       field_indices_.emplace(fields_.back().name, fields_.size() - 1);
+  static_cast<void>(iter);
   ASSERT(success);
 }
 

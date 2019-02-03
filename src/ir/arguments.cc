@@ -19,7 +19,7 @@ std::string Arguments::to_string() const {
     if (is_reg_[i]) {
       // TODO wrap this up somewhere.
       offset = ((offset - 1) | (alignof(Register) - 1)) + 1;
-      ss << " " << args_.get<Register>(offset).to_string();
+      ss << " " << args_.get<Register>(offset);
       offset += sizeof(Register);
     } else {
       offset = arch.MoveForwardToAlignment(t, offset);
@@ -57,7 +57,7 @@ void Arguments::append(const ir::Val &val) {
 }
 
 base::untyped_buffer Arguments::PrepareCallBuffer(
-    base::untyped_buffer const &regs) {
+    ir::Func *fn, base::untyped_buffer const &regs) {
   // TODO we can compute the exact required size.
   base::untyped_buffer call_buf(32);
 
@@ -90,22 +90,24 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
     call_buf.pad_to(offset);
 
     if (t->is_big()) {
-      call_buf.append(
-          is_reg ? regs.get<ir::Addr>(args_.get<ir::Register>(offset).value)
-                 : args_.get<ir::Addr>(offset));
+      call_buf.append(is_reg
+                          ? regs.get<ir::Addr>(fn->compiler_reg_to_offset_.at(
+                                args_.get<ir::Register>(offset).value()))
+                          : args_.get<ir::Addr>(offset));
     } else {
       type::Apply(t, [&](auto type_holder) {
         using T = typename decltype(type_holder)::type;
         // NOTE: the use of call_stack.top()... is the same as in resolve<T>,
         // but that's apparently uncapturable due to a GCC bug.
-        call_buf.append(is_reg
-                            ? regs.get<T>(args_.get<ir::Register>(offset).value)
-                            : args_.get<T>(offset));
+        call_buf.append(is_reg ? regs.get<T>(fn->compiler_reg_to_offset_.at(
+                                     args_.get<ir::Register>(offset).value()))
+                               : args_.get<T>(offset));
       });
     }
 
     offset += is_reg ? sizeof(ir::Register) : arch.bytes(t);
   }
+
   return call_buf;
 }
 }  // namespace ir

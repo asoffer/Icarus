@@ -11,25 +11,7 @@
 namespace ir {
 thread_local Func *Func::Current{nullptr};
 
-Register Func::Argument(u32 n) const {
-  auto arch       = Architecture::InterprettingMachine();
-  size_t reg_size = 0;
-  size_t i        = 0;
-  for (auto *t : type_->input) {
-    size_t entry;
-    if (t->is_big()) {
-      entry = ((reg_size - 1) | (alignof(Addr) - 1)) + 1;
-    } else {
-      entry = arch.MoveForwardToAlignment(t, reg_size);
-    }
-
-    if (i == n) { return Register(entry); }
-    i++;
-    reg_size = entry + (t->is_big() ? sizeof(Addr) : arch.bytes(t));
-  }
-
-  UNREACHABLE();
-}
+Register Func::Argument(u32 n) const { return Register(n); }
 
 Func::Func(Module *mod, type::Function const *fn_type,
            ast::FnParams<ast::Expression *> params)
@@ -40,7 +22,7 @@ Func::Func(Module *mod, type::Function const *fn_type,
   // Set the references for arguments and returns
   for (i32 i = -static_cast<i32>(type_->output.size());
        i < static_cast<i32>(type_->input.size()); ++i) {
-    references_[Register{i}];
+    references_[Register(i)];
   }
 
   auto arch = Architecture::InterprettingMachine();
@@ -52,6 +34,7 @@ Func::Func(Module *mod, type::Function const *fn_type,
     } else {
       entry = arch.MoveForwardToAlignment(t, reg_size_);
     }
+    compiler_reg_to_offset_.push_back(entry);
     reg_size_ = entry + (t->is_big() ? sizeof(Addr) : arch.bytes(t));
   }
 

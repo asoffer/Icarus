@@ -1,4 +1,4 @@
-MAKEFLAGS += -j
+MAKEFLAGS += --jobs=10
 
 TESTS := $(shell find src -name *_test.cc 2>/dev/null)
 TEST_TARGETS := $(patsubst src/%.cc,bin/test/%,$(TESTS))

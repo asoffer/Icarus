@@ -18,7 +18,8 @@ struct Arguments {
   void append(Val const &val);
   void append(RegisterOr<Addr> reg);
   std::string to_string() const;
-  base::untyped_buffer PrepareCallBuffer(base::untyped_buffer const &regs);
+  base::untyped_buffer PrepareCallBuffer(ir::Func *fn,
+                                         base::untyped_buffer const &regs);
 
   type::Callable const *type_ = nullptr;
   base::vector<bool> is_reg_;

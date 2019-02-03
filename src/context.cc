@@ -32,9 +32,10 @@ ir::Register Context::addr(ast::Declaration *decl) const {
 
 void Context::set_dispatch_table(ast::Expression const *expr,
                                  ast::DispatchTable &&table) {
-  ASSERT(mod_->data_[bound_constants_]
-             .dispatch_tables_.emplace(expr, std::move(table))
-             .second);
+  auto [iter, success] = mod_->data_[bound_constants_].dispatch_tables_.emplace(
+      expr, std::move(table));
+  static_cast<void>(iter);
+  ASSERT(success);
 }
 
 ast::DispatchTable const *Context::dispatch_table(ast::Expression const *expr) const {

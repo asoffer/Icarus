@@ -79,8 +79,9 @@ void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
 }
 
 template <typename T>
-T ExecContext::resolve(ir::Register val) const {
-  return call_stack.top().regs_.get<T>(val.value);
+T ExecContext::resolve(ir::Register r) const {
+  return call_stack.top().regs_.get<T>(
+      call_stack.top().fn_->compiler_reg_to_offset_.at(r.value()));
 }
 
 ExecContext::ExecContext() : stack_(50u) {}
@@ -266,7 +267,9 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
 ir::BlockIndex ExecContext::ExecuteCmd(
     const ir::Cmd &cmd, const base::vector<ir::Addr> &ret_slots) {
   auto save = [&](auto val) {
-    call_stack.top().regs_.set(cmd.result.value, val);
+    call_stack.top().regs_.set(
+        call_stack.top().fn_->compiler_reg_to_offset_.at(cmd.result.value()),
+        val);
   };
 
   switch (cmd.op_code_) {
@@ -575,11 +578,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::DebugIr: LOG << call_stack.top().fn_; break;
     case ir::Op::Alloca: {
-      ir::Addr addr;
-      addr.as_stack = stack_.size();
-      addr.kind     = ir::Addr::Kind::Stack;
-      save(addr);
-
+      save(ir::Addr::Stack(stack_.size()));
       auto arch = Architecture::InterprettingMachine();
       stack_.append_bytes(arch.bytes(cmd.type_),
                           arch.alignment(cmd.type_));
@@ -722,17 +721,16 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           if (cmd.call_.outs_->is_loc_[i]) {
             return_slots.push_back(resolve<ir::Addr>(cmd.call_.outs_->regs_[i]));
           } else {
-            ir::Addr addr;
-            addr.kind    = ir::Addr::Kind::Heap;
-            addr.as_heap =
-                call_stack.top().regs_.raw(cmd.call_.outs_->regs_[i].value);
+            auto addr = ir::Addr::Heap(call_stack.top().regs_.raw(
+                call_stack.top().fn_->compiler_reg_to_offset_.at(
+                    cmd.call_.outs_->regs_[i].value())));
             return_slots.push_back(addr);
           }
         }
       }
 
-      auto call_buf =
-          cmd.call_.arguments_->PrepareCallBuffer(call_stack.top().regs_);
+      auto call_buf = cmd.call_.arguments_->PrepareCallBuffer(
+          call_stack.top().fn_, call_stack.top().regs_);
       ir::AnyFunc f = resolve(cmd.call_.fn_);
 
       // TODO you need to be able to determine how many args there are

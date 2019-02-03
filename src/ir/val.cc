@@ -96,7 +96,9 @@ std::string Val::to_string() const {
   return std::visit(
       base::overloaded{
           [this](Register reg) -> std::string {
-            return this->type->to_string() + " " + reg.to_string();
+            std::stringstream ss;
+            ss << this->type << " " << reg;
+            return ss.str();
           },
           [](ir::Addr addr) -> std::string { return addr.to_string(); },
           [this](bool b) -> std::string {
@@ -137,7 +139,9 @@ std::string Val::to_string() const {
             return "scope(" + std::to_string(reinterpret_cast<uintptr_t>(s)) +
                    ")";
           },
-          [](ast::Expression *e) -> std::string { return "<expr> " + e->to_string(0); },
+          [](ast::Expression *e) -> std::string {
+            return "<expr> " + e->to_string(0);
+          },
           [](BlockIndex b) -> std::string { return b.to_string(); },
           [](std::string_view sv) -> std::string {
             return "\"" + Escaped(sv) + "\"";

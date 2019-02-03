@@ -18,7 +18,7 @@ void Debug(PropertyMap const &pm) {
   for (auto const & [ block, view ] : pm.view_) {
     fprintf(stderr, "VIEWING BLOCK: %lu\n", reinterpret_cast<uintptr_t>(block));
     for (auto const & [ reg, prop_set ] : view.view_) {
-      fprintf(stderr, "  reg.%d:\n", reg.value);
+      fprintf(stderr, "  reg.%d:\n", static_cast<int>(reg.value()));
       for (auto const &p : prop_set.props_) {
         fprintf(stderr, "    %s\n", p->to_string().c_str());
       }
@@ -35,7 +35,7 @@ void ForEachArgument(ir::Func const &f, Fn &&fn_to_call) {
 
   for (auto *t : f.type_->input) {
     offset = arch.MoveForwardToAlignment(t, offset);
-    fn_to_call(ir::Register{static_cast<int>(offset)});
+    fn_to_call(ir::Register{offset});
     offset += arch.bytes(t);
   }
 }
