@@ -1,7 +1,6 @@
 #ifndef ICARUS_BASE_STRING_H
 #define ICARUS_BASE_STRING_H
 
-#include <filesystem>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -25,7 +24,6 @@ std::string stringify(T &&t);
   auto stringify(dispatch_rank<rank>, T &&val)                                 \
       ->decltype(std::enable_if_t<std::is_same_v<std::decay_t<T>, type>>(),    \
                  std::string())
-DEFINE_RANKED_STRINGIFY(0, std::filesystem::path) { return val.string(); }
 DEFINE_RANKED_STRINGIFY(0, bool) { return val ? "true" : "false"; }
 DEFINE_RANKED_STRINGIFY(0, const char *) { return val; }
 DEFINE_RANKED_STRINGIFY(0, std::string) { return val; }

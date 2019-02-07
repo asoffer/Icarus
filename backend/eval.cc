@@ -1,18 +1,15 @@
 #include "backend/eval.h"
 
 #include <iomanip>
-#include "architecture.h"
 #include "ast/expression.h"
 #include "backend/exec.h"
-#include "context.h"
 #include "ir/func.h"
-#include "type/all.h"
+#include "misc/architecture.h"
+#include "misc/context.h"
+#include "type/generic_struct.h"
+#include "type/util.h"
 
 namespace backend {
-void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
-             const base::vector<ir::Addr> &ret_slots,
-             backend::ExecContext *ctx);
-
 static std::unique_ptr<ir::Func> ExprFn(
     type::Typed<ast::Expression *> typed_expr, Context *ctx) {
   auto fn = std::make_unique<ir::Func>(

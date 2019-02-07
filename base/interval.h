@@ -1,7 +1,7 @@
 #ifndef ICARUS_BASE_INTERVAL_H
 #define ICARUS_BASE_INTERVAL_H
 
-#include "base/container/vector.h"
+#include <vector>
 #include <algorithm>
 
 namespace base {
@@ -33,7 +33,7 @@ struct IntervalSet {
     auto upper = std::upper_bound(endpoints_.begin(), endpoints_.end(), i.end_);
 
     if (std::distance(lower, upper) == 0) {
-      auto entries = base::vector<T>{i.start_, i.end_};
+      auto entries = std::vector<T>{i.start_, i.end_};
       endpoints_.insert(lower, entries.begin(), entries.end());
       return;
     }
@@ -49,7 +49,7 @@ struct IntervalSet {
     endpoints_.erase(lower, upper);
   }
 
-  base::vector<T> endpoints_;
+  std::vector<T> endpoints_;
 };
 }  // namespace base
 

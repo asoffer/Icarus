@@ -5,7 +5,7 @@
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "base/check.h"
-#include "context.h"
+#include "misc/context.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"

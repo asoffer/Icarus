@@ -3,12 +3,12 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "architecture.h"
 #include "ast/block_literal.h"
 #include "ast/function_literal.h"
 #include "ast/scope_literal.h"
 #include "base/guarded.h"
 #include "ir/func.h"
+#include "misc/architecture.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"

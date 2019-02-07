@@ -4,7 +4,6 @@
 #include <unordered_set>
 
 #include "base/container/unordered_map.h"
-#include "ir/register.h"
 #include "type.h"
 #include "typed_value.h"
 
@@ -16,16 +15,8 @@ struct Enum : public type::Type {
 
   bool IsDefaultInitializable() const override { return false; }
 
-  std::optional<ir::EnumVal> Get(const std::string& str) const {
-    if (auto iter = vals_.find(str); iter != vals_.end()) {
-      return iter->second;
-    }
-    return std::nullopt;
-  }
-
-  Typed<ir::EnumVal, Enum> EmitLiteral(std::string const& member_name) const {
-    return Typed<ir::EnumVal, Enum>(vals_.at(member_name), this);
-  }
+  std::optional<ir::EnumVal> Get(const std::string& str) const;
+  Typed<ir::EnumVal, Enum> EmitLiteral(std::string const& member_name) const ;
 
   // TODO privatize
   base::unordered_map<i32, std::string> members_;

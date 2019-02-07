@@ -5,9 +5,9 @@
 #include "base/container/vector.h"
 #include "base/untyped_buffer.h"
 #include "base/util.h"
-#include "context.h"
 #include "ir/func.h"
-#include "module.h"
+#include "misc/context.h"
+#include "misc/module.h"
 
 #ifdef ICARUS_USE_LLVM
 #include "llvm/ADT/STLExtras.h"

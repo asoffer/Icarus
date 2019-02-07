@@ -16,6 +16,16 @@ void Enum::EmitInit(ir::Register id_reg, Context *) const {
   UNREACHABLE("Enums must be initialized");
 }
 
+std::optional<ir::EnumVal> Enum::Get(const std::string &str) const {
+  if (auto iter = vals_.find(str); iter != vals_.end()) { return iter->second; }
+  return std::nullopt;
+}
+
+Typed<ir::EnumVal, Enum> Enum::EmitLiteral(
+    std::string const &member_name) const {
+  return Typed<ir::EnumVal, Enum>(vals_.at(member_name), this);
+}
+
 void Enum::EmitCopyAssign(Type const *from_type, ir::Val const &from,
                           ir::RegisterOr<ir::Addr> to, Context *) const {
   ASSERT(this == from_type);

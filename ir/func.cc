@@ -1,8 +1,8 @@
 #include "ir/func.h"
 
-#include "architecture.h"
 #include "ast/function_literal.h"
 #include "ir/arguments.h"
+#include "misc/architecture.h"
 #include "property/property.h"
 #include "property/property_map.h"
 #include "type/function.h"

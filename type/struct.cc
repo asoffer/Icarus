@@ -1,14 +1,14 @@
 #include "type/struct.h"
 
-#include "architecture.h"
+#include "misc/architecture.h"
 #include "ast/declaration.h"
 #include "ast/struct_literal.h"
 #include "base/guarded.h"
-#include "context.h"
+#include "misc/context.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
-#include "module.h"
+#include "misc/module.h"
 #include "type/function.h"
 #include "type/pointer.h"
 
@@ -95,11 +95,11 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
       for (size_t i = 0; i < fields_.size(); ++i) {
         auto ir_field     = ir::Field(var, this, i);
         auto const &field = fields_.at(i);
-        if (field.init_val != ir::Val::None()) {
-          EmitCopyInit(field.type, field.init_val, ir_field, ctx);
-        } else {
+        // if (field.init_val != ir::Val::None()) {
+        //   EmitCopyInit(field.type, field.init_val, ir_field, ctx);
+        // } else {
           field.type->EmitInit(ir_field.get(), ctx);
-        }
+        //  }
       }
 
       ir::ReturnJump();

@@ -1,6 +1,8 @@
 #ifndef ICARUS_AST_BOUND_CONSTANTS_H
 #define ICARUS_AST_BOUND_CONSTANTS_H
 
+#include <sstream>
+
 #include "base/container/map.h"
 #include "base/string.h"
 #include "ir/val.h"
@@ -13,7 +15,15 @@ struct BoundConstants {
 
   // TODO blah.
   std::string to_string() const {
-    return base::internal::stringify(constants_);
+    std::stringstream ss;
+    ss << "{\n";
+    for ( auto const&[decl,val]: constants_) {
+      ss << reinterpret_cast<uintptr_t>(decl) << ": " << val.to_string()
+         << "\n";
+    }
+
+    ss << "}";
+    return ss.str();
   }
 };
 }  // namespace ast

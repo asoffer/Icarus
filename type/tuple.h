@@ -3,7 +3,7 @@
 
 #include "base/lazy.h"
 #include "ir/any_func.h"
-#include "type.h"
+#include "type/type.h"
 
 struct Architecture;
 

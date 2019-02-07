@@ -1,7 +1,7 @@
 #include "ast/overload_set.h"
 #include "ast/declaration.h"
-#include "context.h"
-#include "scope.h"
+#include "misc/context.h"
+#include "misc/scope.h"
 
 namespace ast {
 // TODO only hold functions?

@@ -1,5 +1,6 @@
 #ifndef ICARUS_IR_BASIC_BLOCK_H
 #define ICARUS_IR_BASIC_BLOCK_H
+
 #include <list>
 #include "base/container/vector.h"
 #include "base/untyped_buffer.h"

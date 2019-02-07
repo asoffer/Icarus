@@ -4,7 +4,7 @@
 #include <random>
 #include <utility>
 
-#include "module.h"
+#include "misc/module.h"
 #include "type/enum.h"
 
 namespace type {

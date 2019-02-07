@@ -5,7 +5,7 @@
 #include <optional>
 
 #include "ast/expression.h"
-#include "module.h"
+#include "misc/module.h"
 
 namespace ast {
 struct Import : public Expression {

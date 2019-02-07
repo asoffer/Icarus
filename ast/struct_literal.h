@@ -4,7 +4,7 @@
 #include "ast/comma_list.h"
 #include "ast/declaration.h"
 #include "ast/expression.h"
-#include "scope.h"
+#include "misc/scope.h"
 
 namespace type {
 struct Struct;

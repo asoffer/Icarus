@@ -6,8 +6,7 @@
 #include "backend/eval.h"
 #include "error/inference_failure_reason.h"
 #include "ir/func.h"
-#include "module.h"
-#include "type/all.h"
+#include "misc/module.h"
 #include "type/cast.h"
 #include "type/typed_value.h"
 

@@ -1,17 +1,17 @@
 MAKEFLAGS += --jobs=10
 
-TESTS := $(shell find src -name *_test.cc 2>/dev/null)
-TEST_TARGETS := $(patsubst src/%.cc,bin/test/%,$(TESTS))
+TESTS := $(shell find . -name '*_test.cc' 2>/dev/null)
+TEST_TARGETS := $(patsubst %.cc,bin/test/%,$(TESTS))
 
-SRCS := $(shell find src -name *.cc ! -name *_test.cc 2>/dev/null)
-SRC_OBJS := $(patsubst src/%.cc,build/%.o,$(SRCS))
+SRCS := $(shell find . -name '*.cc' ! -name '*_test.cc' 2>/dev/null)
+SRC_OBJS := $(patsubst %.cc,build/%.o,$(SRCS))
 TARGET := bin/$(shell basename `pwd`)
 
 COMPILER := g++
 BUILD_FLAGS := -g -O0 -DDBG -rdynamic
 STDS = -std=c++17
 WARN = -Wno-unused-but-set-parameter -Wno-unused-variable -Wall -Wextra -Werror -Wuninitialized -Wpedantic -Wno-unused-parameter #-Weffc++
-OPTS = -iquote$(shell pwd)/src -fno-exceptions
+OPTS = -iquote$(shell pwd) -fno-exceptions
 LINK_FLAGS = -rdynamic -pthread -ldl -lstdc++fs
 
 
@@ -30,9 +30,9 @@ llvm: OPTS += -DICARUS_USE_LLVM
 # removed -fno-rtti so I could use dynamic cast
 llvm: $(TARGET)
 
-build/%.o: src/%.cc
+build/%.o: %.cc
 	@mkdir -p `dirname build/$*.o`
-	@time $(COMPILER) $(LLVM_CXX) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) -c src/$*.cc -o build/$*.o
+	@time $(COMPILER) $(LLVM_CXX) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) -c $*.cc -o build/$*.o
 	@echo "Above time is for: " $< "\n"
 
 $(TARGET): $(SRC_OBJS)
@@ -44,11 +44,11 @@ $(TARGET): $(SRC_OBJS)
 .PHONY: number_test 
 number_test: build/frontend/numbers.o build/frontend/numbers_test.o
 	@mkdir -p `dirname bin/test/$*.cc`
-	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) src/frontend/numbers.cc src/frontend/numbers_test.cc -o bin/test/frontend/$@
+	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) frontend/numbers.cc frontend/numbers_test.cc -o bin/test/frontend/$@
 
-bin/test/%: src/%.cc
+bin/test/%: %.cc
 	@mkdir -p `dirname bin/test/$*.cc`
-	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) src/$*.cc -o $@
+	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) $*.cc -o $@
 
 .PHONY: unity
 unity:
@@ -74,4 +74,4 @@ help:
 
 .PHONY: wc
 wc:
-	@wc src/*.* src/*/*.*
+	@wc *.* */*.*

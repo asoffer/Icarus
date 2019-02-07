@@ -1,8 +1,11 @@
 #include "ir/arguments.h"
 
-#include "architecture.h"
+#include "ir/func.h"
 #include "ir/val.h"
-#include "type/all.h"
+#include "misc/architecture.h"
+#include "type/function.h"
+#include "type/generic_struct.h"
+#include "type/util.h"
 
 namespace ir {
 std::string Arguments::to_string() const {

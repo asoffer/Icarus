@@ -1,9 +1,8 @@
 #ifndef ICARUS_TYPE_ARRAY_H
 #define ICARUS_TYPE_ARRAY_H
 
-#include "ir/func.h"
 #include "base/lazy.h"
-#include "type.h"
+#include "type/type.h"
 
 struct Context;
 
@@ -15,9 +14,9 @@ struct Array : public Type {
 
   void EmitDestroy(ir::Register reg, Context *ctx) const override;
 
-  static ir::Val Compare(Array const *lhs_type, ir::Val lhs_ir,
-                         Array const *rhs_type, ir::Val rhs_ir, bool equality,
-                         Context *ctx);
+  static ir::Val Compare(Array const *lhs_type, ir::Val const &lhs_ir,
+                         Array const *rhs_type, ir::Val const &rhs_ir,
+                         bool equality, Context *ctx);
 
   bool IsCopyable() const override;
   bool IsMovable() const override;

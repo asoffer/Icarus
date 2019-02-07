@@ -1,6 +1,6 @@
 #include "ast/terminal.h"
 
-#include "context.h"
+#include "misc/context.h"
 
 namespace ast {
 Terminal::Terminal(const TextSpan &span, ir::Val val) : Expression(span) {

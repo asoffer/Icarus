@@ -3,13 +3,13 @@
 #include <cmath>
 #include <iostream>
 
-#include "architecture.h"
 #include "ast/struct_literal.h"
 #include "base/container/vector.h"
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "ir/val.h"
-#include "type/all.h"
+#include "misc/architecture.h"
+#include "type/generic_struct.h"
 #include "type/typed_value.h"
 
 namespace ir {

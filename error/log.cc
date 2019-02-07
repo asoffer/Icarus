@@ -6,7 +6,7 @@
 #include "ast/declaration.h"
 #include "ast/identifier.h"
 #include "base/interval.h"
-#include "context.h"
+#include "misc/context.h"
 #include "frontend/source.h"
 #include "type/enum.h"
 #include "type/opaque.h"

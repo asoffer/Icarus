@@ -4,7 +4,7 @@
 #include <memory>
 #include "ast/expression.h"
 #include "ast/statements.h"
-#include "scope.h"
+#include "misc/scope.h"
 
 namespace ast {
 struct BlockNode : public Expression {

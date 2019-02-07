@@ -3,8 +3,10 @@
 
 #include "ast/hashtag.h"
 #include "base/untyped_buffer.h"
-#include "context.h"
+#include "misc/context.h"
 #include "val.h"
+
+struct Scope;
 
 namespace type {
 struct Function;

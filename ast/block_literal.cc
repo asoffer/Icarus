@@ -1,8 +1,8 @@
 #include "ast/block_literal.h"
 
-#include "context.h"
+#include "misc/context.h"
 #include "ir/val.h"
-#include "scope.h"
+#include "misc/scope.h"
 #include "type/function.h"
 #include "type/primitive.h"
 

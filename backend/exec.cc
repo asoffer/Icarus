@@ -10,19 +10,17 @@
 #include <memory>
 #include <thread>
 
-#include "architecture.h"
 #include "ast/block_literal.h"
 #include "ast/expression.h"
 #include "ast/function_literal.h"
 #include "ast/scope_node.h"
 #include "ast/struct_literal.h"
-#include "backend/eval.h"
 #include "base/util.h"
 #include "error/log.h"
 #include "ir/arguments.h"
 #include "ir/func.h"
-#include "module.h"
-#include "type/all.h"
+#include "misc/architecture.h"
+#include "misc/module.h"
 #include "type/incomplete_enum.h"
 #include "type/incomplete_flags.h"
 #include "type/type.h"

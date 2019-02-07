@@ -7,7 +7,7 @@
 #include "ast/fn_args.h"
 #include "ast/statements.h"
 #include "base/container/unordered_map.h"
-#include "scope.h"
+#include "misc/scope.h"
 
 struct Context;
 

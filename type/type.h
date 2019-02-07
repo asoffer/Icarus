@@ -106,7 +106,7 @@ struct Type : public base::Cast<Type> {
 struct Enum;
 struct Flags;
 
-const Type *Void();
+Type const *Void();
 
 #define PRIMITIVE_MACRO(EnumName, name) extern Type const *EnumName;
 #include "type/primitive.xmacro.h"

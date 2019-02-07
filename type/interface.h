@@ -1,9 +1,8 @@
 #ifndef ICARUS_TYPE_INTERFACE_H
 #define ICARUS_TYPE_INTERFACE_H
 
-#include "ir/val.h"  // TODO remove this include
-#include "scope.h"
-#include "type.h"
+#include "misc/scope.h"
+#include "type/type.h"
 
 struct Architecture;
 
@@ -21,18 +20,18 @@ struct Interface : public Type {
   void EmitMoveAssign(Type const *from_type, ir::Val const &from,
                       ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
 
-  virtual void EmitInit(ir::Register reg, Context *ctx) const { UNREACHABLE(); }
-  virtual void EmitDestroy(ir::Register reg, Context *ctx) const {
-    UNREACHABLE();
-  }
-  virtual ir::Val PrepareArgument(Type const *t, ir::Val const &val,
-                                  Context *ctx) const {
+  void EmitInit(ir::Register reg, Context *ctx) const override {
     UNREACHABLE();
   }
 
-  virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const {
+  void EmitDestroy(ir::Register reg, Context *ctx) const override {
     UNREACHABLE();
   }
+
+  ir::Val PrepareArgument(Type const *t, ir::Val const &val,
+                          Context *ctx) const override;
+
+  void EmitRepr(ir::Val const &id_val, Context *ctx) const override;
 
   bool matches(Type const *t) const;
 

@@ -6,7 +6,6 @@
 
 #include "base/container/bag.h"
 #include "base/owned_ptr.h"
-#include "base/string.h"
 #include "base/util.h"
 
 namespace prop {
@@ -23,7 +22,7 @@ struct PropertySet {
 };
 
 inline std::ostream &operator<<(std::ostream &os, const PropertySet &props) {
-  return os << base::internal::stringify(props.props_);
+  NOT_YET();
 }
 }  // namespace prop
 

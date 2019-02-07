@@ -1,10 +1,9 @@
 #include "ast/scope_literal.h"
 
-#include "ast/declaration.h"
-#include "context.h"
+#include "misc/context.h"
 #include "error/log.h"
 #include "ir/val.h"
-#include "scope.h"
+#include "misc/scope.h"
 #include "type/function.h"
 #include "type/pointer.h"
 

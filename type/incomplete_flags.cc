@@ -1,6 +1,6 @@
 #include "type/incomplete_flags.h"
 
-#include "module.h"
+#include "misc/module.h"
 #include "type/flags.h"
 
 namespace type {

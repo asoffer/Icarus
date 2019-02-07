@@ -2,7 +2,6 @@
 #define ICARUS_AST_NODE_LOOKUP_H
 
 #include "base/container/unordered_map.h"
-#include "base/container/vector.h"
 
 namespace ast {
 struct Node;

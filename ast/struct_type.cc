@@ -1,7 +1,7 @@
 #include "ast/struct_type.h"
 
 #include <sstream>
-#include "context.h"
+#include "misc/context.h"
 #include "type/type.h"
 
 namespace ast {

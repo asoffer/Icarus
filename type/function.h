@@ -2,7 +2,6 @@
 #define ICARUS_TYPE_FUNCTION_H
 
 #include <cstring>
-#include "type/type.h"
 #include "type/callable.h"
 
 #ifdef ICARUS_USE_LLVM

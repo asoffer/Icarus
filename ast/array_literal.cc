@@ -1,6 +1,6 @@
 #include "ast/array_literal.h"
 
-#include "context.h"
+#include "misc/context.h"
 #include "error/log.h"
 #include "ir/cmd.h"
 #include "type/array.h"

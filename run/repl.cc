@@ -7,10 +7,10 @@
 #include "backend/exec.h"
 #include "base/container/vector.h"
 #include "base/untyped_buffer.h"
-#include "context.h"
 #include "frontend/source.h"
 #include "ir/func.h"
-#include "module.h"
+#include "misc/context.h"
+#include "misc/module.h"
 #include "type/function.h"
 
 namespace backend {

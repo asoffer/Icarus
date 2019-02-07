@@ -14,7 +14,7 @@ struct Func;
 }  // namespace ir
 
 namespace backend {
-void EmitAll(const base::vector<std::unique_ptr<ir::Func>> &fns,
+void EmitAll(base::vector<std::unique_ptr<ir::Func>> const &fns,
              llvm::Module *module);
 
 }  // namespace backend

@@ -1,8 +1,8 @@
 #include "property/property_map.h"
 
-#include "architecture.h"
 #include "ir/arguments.h"
 #include "ir/func.h"
+#include "misc/architecture.h"
 #include "property/property.h"
 #include "type/function.h"
 #include "type/generic_struct.h"

@@ -3,10 +3,9 @@
 #include "ast/fn_args.h"
 #include "ast/function_literal.h"
 #include "ast/overload_set.h"
-#include "context.h"
+#include "misc/context.h"
 #include "ir/func.h"
-#include "scope.h"
-#include "type/all.h"
+#include "misc/scope.h"
 
 namespace ast {
 std::string RepeatedUnop::to_string(size_t n) const {

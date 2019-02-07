@@ -11,7 +11,7 @@
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
-#include "scope.h"
+#include "misc/scope.h"
 #include "type/array.h"
 #include "type/function.h"
 #include "type/generic_struct.h"

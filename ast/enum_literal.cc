@@ -2,7 +2,7 @@
 
 #include "ast/hole.h"
 #include "ast/identifier.h"
-#include "context.h"
+#include "misc/context.h"
 #include "ir/cmd.h"
 #include "ir/val.h"
 

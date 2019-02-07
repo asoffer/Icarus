@@ -3,13 +3,13 @@
 #include <mutex>
 #include <utility>
 
-#include "architecture.h"
 #include "base/container/map.h"
 #include "base/guarded.h"
-#include "context.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
-#include "module.h"
+#include "misc/architecture.h"
+#include "misc/context.h"
+#include "misc/module.h"
 #include "type/function.h"
 #include "type/pointer.h"
 

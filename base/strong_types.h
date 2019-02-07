@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <iosfwd>
 #include <string>
-#include "debug.h"
+#include "base/debug.h"
 
 #define DEFINE_STRONG_INT(ns, type, underlying_type, default_value)            \
   namespace ns {                                                               \

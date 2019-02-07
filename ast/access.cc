@@ -4,7 +4,7 @@
 #include "backend/eval.h"
 #include "ir/cmd.h"
 #include "ir/components.h"
-#include "module.h"
+#include "misc/module.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"

@@ -1,6 +1,18 @@
 #include "type/cast.h"
 
-#include "type/all.h"
+#include "type/array.h"
+#include "type/enum.h"
+#include "type/flags.h"
+#include "type/function.h"
+#include "type/generic_struct.h"
+#include "type/interface.h"
+#include "type/opaque.h"
+#include "type/pointer.h"
+#include "type/primitive.h"
+#include "type/struct.h"
+#include "type/tuple.h"
+#include "type/variant.h"
+
 
 namespace feature {
 extern bool loose_casting;

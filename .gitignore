@@ -1,6 +1,4 @@
-bin/
-build/
-
+bazel-*
 *.ll
 
 *.dot
@@ -12,3 +10,4 @@ build/
 examples/test.ic
 
 a.out
+bazel-*

@@ -3,7 +3,7 @@
 
 #include "ast/expression.h"
 #include "ir/val.h"
-#include "module.h"
+#include "misc/module.h"
 
 struct Context;
 

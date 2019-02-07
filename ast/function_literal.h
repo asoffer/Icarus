@@ -11,7 +11,7 @@
 #include "base/container/map.h"
 #include "base/container/vector.h"
 #include "ir/val.h"
-#include "scope.h"
+#include "misc/scope.h"
 
 struct Module;
 

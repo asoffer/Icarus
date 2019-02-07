@@ -5,10 +5,9 @@
 #include "ast/terminal.h"
 #include "backend/eval.h"
 #include "base/check.h"
-#include "context.h"
+#include "misc/context.h"
 #include "ir/components.h"
 #include "ir/func.h"
-#include "type/all.h"
 
 namespace ast {
 using base::check::Is;

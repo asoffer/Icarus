@@ -5,7 +5,7 @@
 
 #include "ast/declaration.h"
 #include "base/container/vector.h"
-#include "scope.h"
+#include "misc/scope.h"
 
 namespace ast {
 // TODO rename this because it's for enums and flags.

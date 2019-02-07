@@ -2,8 +2,8 @@
 #define ICARUS_TYPE_GENERIC_STRUCT_H
 
 #include "base/container/vector.h"
-#include "module.h"
-#include "scope.h"
+#include "misc/module.h"
+#include "misc/scope.h"
 #include "type/callable.h"
 #include "type/type.h"
 

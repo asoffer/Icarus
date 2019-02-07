@@ -9,8 +9,7 @@
 #include "base/container/vector.h"
 #include "base/lazy.h"
 #include "ir/any_func.h"
-#include "ir/val.h"
-#include "scope.h"
+#include "misc/scope.h"
 #include "type/type.h"
 
 struct Architecture;
@@ -31,7 +30,6 @@ struct Struct : public Type {
     // TODO make a string_view but deal with trickiness of moving
     std::string name;
     Type const *type = nullptr;
-    ir::Val init_val;
     base::vector<ast::Hashtag> hashtags_;
   };
 

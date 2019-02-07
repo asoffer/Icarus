@@ -1,17 +1,17 @@
-#include "type/all.h"
+#include "type/type.h"
 
-#include "architecture.h"
 #include "ast/declaration.h"
 #include "ast/struct_literal.h"
 #include "base/container/map.h"
 #include "base/container/unordered_map.h"
 #include "base/guarded.h"
-#include "context.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
-#include "module.h"
+#include "misc/architecture.h"
+#include "misc/context.h"
+#include "misc/module.h"
 
 namespace type {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \

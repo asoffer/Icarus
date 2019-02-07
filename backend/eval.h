@@ -1,9 +1,10 @@
 #ifndef ICARUS_BACKEND_EVAL_H
 #define ICARUS_BACKEND_EVAL_H
 
+#include "base/debug.h"
 #include "base/untyped_buffer.h"
-#include "context.h"
 #include "ir/val.h"
+#include "misc/context.h"
 
 namespace ast {
 struct Expression;

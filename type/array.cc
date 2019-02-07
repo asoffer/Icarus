@@ -1,14 +1,15 @@
 #include "type/array.h"
 
-#include "architecture.h"
 #include "ast/fn_params.h"
 #include "base/guarded.h"
-#include "context.h"
+#include "ir/any_func.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
-#include "ir/any_func.h"
+#include "ir/func.h"
 #include "ir/phi.h"
-#include "module.h"
+#include "misc/architecture.h"
+#include "misc/context.h"
+#include "misc/module.h"
 #include "type/function.h"
 #include "type/pointer.h"
 
@@ -63,9 +64,9 @@ static base::guarded<base::unordered_map<
     const Array *, base::unordered_map<const Array *, ir::Func *>>>
     ne_funcs;
 // TODO this should early exit if the types aren't equal.
-ir::Val Array::Compare(const Array *lhs_type, ir::Val lhs_ir,
-                       const Array *rhs_type, ir::Val rhs_ir, bool equality,
-                       Context *ctx) {
+ir::Val Array::Compare(const Array *lhs_type, ir::Val const &lhs_ir,
+                       const Array *rhs_type, ir::Val const &rhs_ir,
+                       bool equality, Context *ctx) {
   auto &funcs = equality ? eq_funcs : ne_funcs;
   auto handle = funcs.lock();
 

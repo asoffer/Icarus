@@ -4,9 +4,8 @@
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "base/guarded.h"
-#include "context.h"
+#include "misc/context.h"
 #include "ir/val.h"
-#include "module.h"
 #include "type/primitive.h"
 
 namespace ast {
