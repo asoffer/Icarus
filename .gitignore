@@ -10,4 +10,4 @@ bazel-*
 examples/test.ic
 
 a.out
-bazel-*
+bin/*
