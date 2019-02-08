@@ -1,6 +1,7 @@
 package(default_visibility = ["//visibility:public"])
+load("//:defs.bzl", "cc_lib")
 
-cc_library(
+cc_lib(
     name = "compiler",
     srcs = ["compiler.cc"],
     deps = [
@@ -14,7 +15,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "repl",
     srcs = ["repl.cc"],
     deps = [

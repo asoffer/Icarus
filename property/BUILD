@@ -1,6 +1,7 @@
 package(default_visibility = ["//visibility:public"])
+load("//:defs.bzl", "cc_lib")
 
-cc_library(
+cc_lib(
     name = "property",
     hdrs = ["property.h"],
     srcs = ["property.cc"],
@@ -11,7 +12,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "property_map",
     hdrs = ["property_map.h"],
     deps = [
@@ -25,7 +26,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "property_map-impl",
     srcs = ["property_map.cc"],
     deps = [
@@ -38,7 +39,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "property_set",
     hdrs = ["property_set.h"],
     srcs = ["property_set.cc"],

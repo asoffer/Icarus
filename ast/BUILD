@@ -1,12 +1,77 @@
 package(default_visibility = ["//visibility:public"])
+load("//:defs.bzl", "cc_lib")
 
-cc_library(
+cc_lib(
+    name = "ast",
+    deps = [
+        ":access",
+        ":array_literal",
+        ":array_type",
+        ":binop",
+        ":block_literal",
+        ":block_node",
+        ":bound_constants",
+        ":call",
+        ":chainop",
+        ":comma_list",
+        ":declaration",
+        ":dispatch",
+        ":enum_literal",
+        ":expression",
+        ":fn_args",
+        ":fn_params",
+        ":function_literal",
+        ":hashtag",
+        ":hole",
+        ":identifier",
+        ":import",
+        ":interface",
+        ":match_declaration",
+        ":node",
+        ":node_lookup",
+        ":overload_set",
+        ":repeated_unop",
+        ":scope_literal",
+        ":scope_node",
+        ":statements",
+        ":struct_literal",
+        ":struct_type",
+        ":switch",
+        ":terminal",
+        ":unop",
+    ],
+)
+
+cc_lib(
+    name = "impl",
+    deps = [
+        ":access-impl",
+        ":array_literal-impl",
+        ":array_type-impl",
+        ":binop-impl",
+        ":block_literal-impl",
+        ":block_node-impl",
+        ":call-impl",
+        ":chainop-impl",
+        ":comma_list-impl",
+        ":declaration-impl",
+        ":dispatch-impl",
+        ":function_literal-impl",
+        ":identifier-impl",
+        ":overload_set-impl",
+        ":scope_node-impl",
+        ":statements-impl",
+        ":struct_literal-impl",
+    ],
+)
+
+cc_lib(
     name = "access",
     hdrs = ["access.h"],
     deps = [":expression"],
 )
 
-cc_library(
+cc_lib(
     name = "access-impl",
     srcs = ["access.cc"],
     deps = [
@@ -26,13 +91,13 @@ cc_library(
     ]
 )
 
-cc_library(
+cc_lib(
     name = "array_literal",
     hdrs = ["array_literal.h"],
     deps = [":comma_list"],
 )
 
-cc_library(
+cc_lib(
     name = "array_literal-impl",
     srcs = ["array_literal.cc"],
     deps = [
@@ -46,13 +111,13 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "array_type",
     hdrs = ["array_type.h"],
     deps = [":expression"],
 )
 
-cc_library(
+cc_lib(
     name = "array_type-impl",
     srcs = ["array_type.cc"],
     deps = [
@@ -62,10 +127,9 @@ cc_library(
     ]
 )
 
-cc_library(
+cc_lib(
     name = "binop",
     hdrs = ["binop.h"],
-    srcs = ["binop.cc"],
     deps = [
         ":comma_list",
         ":dispatch",
@@ -92,7 +156,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "binop-impl",
     srcs = ["binop.cc"],
     deps = [
@@ -118,13 +182,13 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "block_literal",
     hdrs = ["block_literal.h"],
     deps = [":expression"],
 )
 
-cc_library(
+cc_lib(
     name = "block_literal-impl",
     srcs = ["block_literal.cc"],
     deps = [
@@ -137,7 +201,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "block_node",
     hdrs = ["block_node.h"],
     deps = [
@@ -147,7 +211,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "block_node-impl",
     srcs = ["block_node.cc"],
     deps = [
@@ -156,7 +220,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "bound_constants",
     hdrs = ["bound_constants.h"],
     deps = [
@@ -165,7 +229,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "call",
     hdrs = ["call.h"],
     deps = [
@@ -175,7 +239,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "call-impl",
     srcs = ["call.cc"],
     deps = [
@@ -199,7 +263,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "chainop",
     hdrs = ["chainop.h"],
     deps = [
@@ -210,7 +274,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "chainop-impl",
     srcs = ["chainop.cc"],
     deps = [
@@ -230,13 +294,13 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "comma_list",
     hdrs = ["comma_list.h"],
     deps = [":expression"],
 )
 
-cc_library(
+cc_lib(
     name = "comma_list-impl",
     srcs = ["comma_list.cc"],
     deps = [
@@ -247,7 +311,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "declaration",
     hdrs = ["declaration.h"],
     deps = [
@@ -256,7 +320,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "declaration-impl",
     srcs = ["declaration.cc"],
     deps = [
@@ -272,7 +336,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "dispatch",
     hdrs = ["dispatch.h"],
     deps = [
@@ -285,7 +349,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "dispatch-impl",
     srcs = ["dispatch.cc"],
     deps = [
@@ -310,7 +374,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "enum_literal",
     hdrs = ["enum_literal.h"],
     srcs = ["enum_literal.cc"],
@@ -327,7 +391,7 @@ cc_library(
 )
 
 
-cc_library(
+cc_lib(
     name = "expression",
     hdrs = ["expression.h"],
     deps = [
@@ -341,7 +405,7 @@ cc_library(
     ]
 )
 
-cc_library(
+cc_lib(
     name = "fn_args",
     hdrs = ["fn_args.h"],
     deps = [
@@ -350,7 +414,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "fn_params",
     hdrs = ["fn_params.h"],
     deps = [
@@ -359,7 +423,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "function_literal",
     hdrs = ["function_literal.h"],
     deps = [
@@ -377,23 +441,63 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
+    name = "function_literal-impl",
+    srcs = ["function_literal.cc"],
+    deps = [
+        ":bound_constants",
+        ":declaration",
+        ":match_declaration",
+        ":repeated_unop",
+        ":terminal",
+        "//backend:eval",
+        "//misc:context",
+        "//error:log",
+        "//ir:func",
+        "//misc:module",
+        "//type:function",
+        "//type:tuple",
+        "//type:type",
+    ],
+)
+
+cc_lib(
     name = "hashtag",
     hdrs = ["hashtag.h"],
 )
 
-cc_library(
+cc_lib(
     name = "hole",
     hdrs = ["hole.h"],
 )
 
-cc_library(
+cc_lib(
     name = "identifier",
     hdrs = ["identifier.h"],
     deps = [":expression"],
 )
 
-cc_library(
+cc_lib(
+    name = "identifier-impl",
+    srcs = ["identifier.cc"],
+    deps = [
+        ":declaration",
+        ":function_literal",
+        ":identifier",
+        ":match_declaration",
+        "//backend:eval",
+        "//misc:context",
+        "//error:log",
+        "//ir:components",
+        "//ir:val",
+        "//misc:module",
+        "//misc:scope",
+        "//type:pointer",
+        "//type:type",
+    ],
+)
+
+cc_lib(
     name = "import",
     hdrs = ["import.h"],
     srcs = ["import.cc"],
@@ -409,7 +513,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "interface",
     hdrs = ["interface.h"],
     srcs = ["interface.cc"],
@@ -424,7 +528,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "match_declaration",
     hdrs = ["match_declaration.h"],
     srcs = ["match_declaration.cc"],
@@ -436,7 +540,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "node",
     hdrs = ["node.h"],
     deps = [
@@ -448,13 +552,13 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "node_lookup",
     hdrs = ["node_lookup.h"],
     deps = ["//base/container:unordered_map"],
 )
 
-cc_library(
+cc_lib(
     name = "overload_set",
     hdrs = ["overload_set.h"],
     deps = [
@@ -464,7 +568,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "overload_set-impl",
     srcs = ["overload_set.cc"],
     deps = [
@@ -475,7 +579,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "repeated_unop",
     hdrs = ["repeated_unop.h"],
     srcs = ["repeated_unop.cc"],
@@ -493,7 +597,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "scope_literal",
     hdrs = ["scope_literal.h"],
     srcs = ["scope_literal.cc"],
@@ -509,7 +613,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "scope_node",
     hdrs = ["scope_node.h"],
     deps = [
@@ -522,7 +626,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "scope_node-impl",
     srcs = ["scope_node.cc"],
     deps = [
@@ -546,7 +650,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "statements",
     hdrs = ["statements.h"],
     deps = [
@@ -556,7 +660,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "statements-impl",
     srcs = ["statements.cc"],
     deps = [
@@ -566,7 +670,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "struct_literal",
     hdrs = ["struct_literal.h"],
     deps = [
@@ -577,7 +681,26 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
+    name = "struct_literal-impl",
+    srcs = ["struct_literal.cc"],
+    deps = [
+        ":declaration",
+        ":struct_literal",
+        "//backend:exec",
+        "//base:untyped_buffer",
+        "//ir:components",
+        "//ir:func",
+        "//ir:val",
+        "//type:function",
+        "//type:generic_struct",
+        "//type:pointer",
+        "//type:struct",
+        "//type:tuple",
+    ],
+)
+
+cc_lib(
     name = "struct_type",
     hdrs = ["struct_type.h"],
     srcs = ["struct_type.cc"],
@@ -588,7 +711,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "switch",
     hdrs = ["switch.h"],
     srcs = ["switch.cc"],
@@ -604,7 +727,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "terminal",
     hdrs = ["terminal.h"],
     srcs = ["terminal.cc"],
@@ -616,7 +739,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "unop",
     hdrs = ["unop.h"],
     srcs = ["unop.cc"],

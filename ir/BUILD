@@ -1,6 +1,7 @@
 package(default_visibility = ["//visibility:public"])
+load("//:defs.bzl", "cc_lib")
 
-cc_library(
+cc_lib(
     name = "addr",
     hdrs = ["addr.h"],
     srcs = ["addr.cc"],
@@ -11,7 +12,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "any_func",
     hdrs = ["any_func.h"],
     deps = [
@@ -21,7 +22,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "arguments",
     hdrs = ["arguments.h"],
     deps = [
@@ -34,7 +35,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "arguments-impl",
     srcs = ["arguments.cc"],
     deps = [
@@ -45,7 +46,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "basic_block",
     hdrs = ["basic_block.h"],
     deps = [
@@ -57,7 +58,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "cmd",
     hdrs = ["cmd.h"],
     textual_hdrs = ["op.xmacro.h"],
@@ -69,7 +70,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "cmd-impl",
     srcs = ["cmd.cc"],
     deps = [
@@ -85,7 +86,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "components",
     hdrs = ["components.h"],
     deps = [
@@ -97,7 +98,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "flags_val",
     hdrs = ["flags_val.h"],
     srcs = ["flags_val.cc"],
@@ -107,7 +108,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "foreign",
     hdrs = ["foreign.h"],
     srcs = ["foreign.cc"],
@@ -118,7 +119,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "func",
     hdrs = ["func.h"],
     deps = [
@@ -132,7 +133,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "func-impl",
     srcs = ["func.cc"],
     deps = [
@@ -147,7 +148,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "out_params",
     hdrs = ["out_params.h"],
     srcs = ["out_params.cc"],
@@ -157,7 +158,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "phi",
     hdrs = ["phi.h"],
     srcs = ["phi.cc"],
@@ -172,7 +173,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "register",
     hdrs = ["register.h"],
     deps = [
@@ -182,7 +183,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "val",
     hdrs = ["val.h"],
     deps = [
@@ -196,5 +197,34 @@ cc_library(
         "//type:type",
         "//type:typed_value",
         "//type:util",
+    ],
+)
+
+cc_lib(
+    name = "val-impl",
+    srcs = ["val.cc"],
+    deps = [
+        ":val",
+        "//ast:block_literal",
+        "//ast:function_literal",
+        "//ast:scope_literal",
+        "//base:guarded",
+        "//ir:func",
+        "//misc:architecture",
+        "//type:enum",
+        "//type:flags",
+        "//type:function",
+        "//type:pointer",
+        "//type:struct",
+    ],
+)
+
+cc_lib(
+    name = "impl",
+    deps = [
+        ":arguments-impl",
+        ":cmd-impl",
+        ":func-impl",
+        ":val-impl",
     ],
 )

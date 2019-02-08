@@ -1,7 +1,19 @@
 package(default_visibility = ["//visibility:public"])
+load("//:defs.bzl", "cc_lib")
+
 # Directory of things I haven't totally figured out how to organize yet.
 
-cc_library(
+cc_lib(
+    name = "impl",
+    deps = [
+        "architecture-impl",
+        "context-impl",
+        "module-impl",
+        "scope-impl",
+    ],
+)
+
+cc_lib(
     name = "architecture",
     hdrs = ["architecture.h"],
     deps = [
@@ -11,7 +23,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "architecture-impl",
     srcs = ["architecture.cc"],
     deps = [
@@ -33,7 +45,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "context",
     hdrs = ["context.h"],
     deps = [
@@ -47,7 +59,7 @@ cc_library(
     ],
 )  
 
-cc_library(
+cc_lib(
     name = "context-impl",
     srcs = ["context.cc"],
     deps = [
@@ -57,14 +69,14 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "import_graph",
     hdrs = ["import_graph.h"],
     srcs = ["import_graph.cc"],
     deps = ["//base/container:unordered_map"],
 )
 
-cc_library(
+cc_lib(
     name = "module",
     hdrs = ["module.h"],
     deps = [
@@ -79,7 +91,26 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
+    name = "module-impl",
+    srcs = ["module.cc"],
+    deps = [
+        ":module",
+        "//ast:declaration",
+        "//ast:expression",
+        "//ast:function_literal",
+        "//ast:struct_literal",
+        # "//backend:emit",
+        "//backend:eval",
+        "//base:guarded",
+        "//frontend:source",
+        "//misc:import_graph",
+        "//ir:func",
+        "//type:function",
+    ],
+)
+
+cc_lib(
     name = "scope",
     hdrs = ["scope.h"],
     deps = [
@@ -87,5 +118,22 @@ cc_library(
         "//base/container:vector",
         "//base:util",
         "//type:typed_value",
+    ],
+)
+
+
+cc_lib(
+    name = "scope-impl",
+    srcs = ["scope.cc"],
+    deps = [
+        ":context",
+        ":module",
+        ":scope",
+        "//ast:declaration",
+        "//ast:identifier",
+        "//ast:match_declaration",
+        "//ir:cmd",
+        "//type:function",
+        "//type:pointer",
     ],
 )

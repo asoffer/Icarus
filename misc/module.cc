@@ -6,11 +6,11 @@
 #include "ast/expression.h"
 #include "ast/function_literal.h"
 #include "ast/struct_literal.h"
-#include "backend/emit.h"
+// #include "backend/emit.h"
 #include "backend/eval.h"
 #include "base/guarded.h"
 #include "frontend/source.h"
-#include "import_graph.h"
+#include "misc/import_graph.h"
 #include "ir/func.h"
 #include "type/function.h"
 

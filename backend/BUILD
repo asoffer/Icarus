@@ -1,18 +1,19 @@
 package(default_visibility = ["//visibility:public"])
+load("//:defs.bzl", "cc_lib")
 
-# cc_library(
+# cc_lib(
 #     name = "emit",
 #     hdrs = ["emit.h"],
 #     deps = ["//base/container:vector"],
 # )
 # 
-# cc_library(
+# cc_lib(
 #     name = "emit-impl",
 #     srcs = ["emit.cc"],
 #     deps = [":emit"],
 # )
 
-cc_library(
+cc_lib(
     name = "eval",
     hdrs = ["eval.h"],
     deps = [
@@ -24,7 +25,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "eval-impl",
     srcs = ["eval.cc"],
     deps = [
@@ -39,7 +40,7 @@ cc_library(
     ],
 )
 
-cc_library(
+cc_lib(
     name = "exec",
     hdrs = ["exec.h"],
     srcs = ["exec.cc"],
