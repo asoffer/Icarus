@@ -3,8 +3,8 @@
 #include "ast/fn_args.h"
 #include "ast/function_literal.h"
 #include "ast/overload_set.h"
-#include "misc/context.h"
 #include "ir/func.h"
+#include "misc/context.h"
 #include "misc/scope.h"
 
 namespace ast {

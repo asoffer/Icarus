@@ -1,15 +1,28 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
+load("//:defs.bzl", "cc_lib", "cc_target")
 
 cc_lib(
-    name = "addr",
-    hdrs = ["addr.h"],
-    srcs = ["addr.cc"],
+    name = "impl",
     deps = [
-        "//base:debug",
+        ":addr-impl",
+        ":arguments-impl",
+        ":cmd-impl",
+        ":flags_val-impl",
+        ":foreign-impl",
+        ":func-impl",
+        ":out_params-impl",
+        ":phi-impl",
+        ":val-impl",
+    ],
+)
+
+cc_target(
+    name = "addr",
+    intf_deps = [
         "//base:types",
         "//base:untyped_buffer",
     ],
+    impl_deps = ["//base:debug"],
 )
 
 cc_lib(
@@ -22,10 +35,9 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "arguments",
-    hdrs = ["arguments.h"],
-    deps = [
+    intf_deps = [
         ":register",
         "//base/container:vector",
         "//base:untyped_buffer",
@@ -33,13 +45,7 @@ cc_lib(
         "//type:generic_struct",
         "//type:util",
     ],
-)
-
-cc_lib(
-    name = "arguments-impl",
-    srcs = ["arguments.cc"],
-    deps = [
-        ":arguments",
+    impl_deps = [
         ":func",
         ":val",
         "//misc:architecture",
@@ -58,23 +64,16 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "cmd",
-    hdrs = ["cmd.h"],
     textual_hdrs = ["op.xmacro.h"],
-    deps = [
+    intf_deps = [
         ":val",
         "//ast:hashtag",
         "//base:untyped_buffer",
         "//misc:context",
     ],
-)
-
-cc_lib(
-    name = "cmd-impl",
-    srcs = ["cmd.cc"],
-    deps = [
-        ":cmd",
+    impl_deps = [
         ":func",
         ":phi",
         ":val",
@@ -98,31 +97,24 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "flags_val",
-    hdrs = ["flags_val.h"],
-    srcs = ["flags_val.cc"],
-    deps = [
-        "//base:strong_types",
-        "//type:flags",
-    ],
+    intf_deps = ["//base:strong_types"],
+    impl_deps = ["//type:flags"],
 )
 
-cc_lib(
+cc_target(
     name = "foreign",
-    hdrs = ["foreign.h"],
-    srcs = ["foreign.cc"],
-    deps = [
+    impl_deps = [
         "//base/container:unordered_map",
         "//base:guarded",
         "//type:type",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "func",
-    hdrs = ["func.h"],
-    deps = [
+    intf_deps = [
         "//ast:fn_params",
         "//ast:function_literal",
         "//base/container:bag",
@@ -131,14 +123,8 @@ cc_lib(
         "//ir:basic_block",
         "//property:property_map",
     ],
-)
-
-cc_lib(
-    name = "func-impl",
-    srcs = ["func.cc"],
-    deps = [
+    impl_deps = [
         ":arguments",
-        ":func",
         "//ast:function_literal",
         "//misc:architecture",
         "//property:property",
@@ -148,23 +134,21 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "out_params",
-    hdrs = ["out_params.h"],
-    srcs = ["out_params.cc"],
-    deps = [
+    intf_deps = [
         ":register",
         "//base/container:vector",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "phi",
-    hdrs = ["phi.h"],
-    srcs = ["phi.cc"],
-    deps = [
+    intf_deps = [
         ":func",
         ":val",
+    ],
+    impl_deps = [
         "//type:enum",
         "//type:flags",
         "//type:function",
@@ -183,10 +167,9 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "val",
-    hdrs = ["val.h"],
-    deps = [
+    intf_deps = [
         ":addr",
         ":any_func",
         ":flags_val",
@@ -198,13 +181,7 @@ cc_lib(
         "//type:typed_value",
         "//type:util",
     ],
-)
-
-cc_lib(
-    name = "val-impl",
-    srcs = ["val.cc"],
-    deps = [
-        ":val",
+    impl_deps = [
         "//ast:block_literal",
         "//ast:function_literal",
         "//ast:scope_literal",
@@ -216,15 +193,5 @@ cc_lib(
         "//type:function",
         "//type:pointer",
         "//type:struct",
-    ],
-)
-
-cc_lib(
-    name = "impl",
-    deps = [
-        ":arguments-impl",
-        ":cmd-impl",
-        ":func-impl",
-        ":val-impl",
     ],
 )

@@ -1,33 +1,27 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
+load("//:defs.bzl", "cc_lib", "cc_target")
 
 # Directory of things I haven't totally figured out how to organize yet.
 
 cc_lib(
     name = "impl",
     deps = [
-        "architecture-impl",
-        "context-impl",
-        "module-impl",
-        "scope-impl",
+        ":architecture-impl",
+        ":context-impl",
+        ":module-impl",
+        ":scope-impl",
+        ":import_graph-impl",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "architecture",
-    hdrs = ["architecture.h"],
-    deps = [
+    intf_deps = [
         "//base:types",
         "//ir:addr",
         "//ir:register",
     ],
-)
-
-cc_lib(
-    name = "architecture-impl",
-    srcs = ["architecture.cc"],
-    deps = [
-        ":architecture",
+    impl_deps = [
         ":context",
         "//ir:cmd",
         "//type:array",
@@ -45,10 +39,9 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "context",
-    hdrs = ["context.h"],
-    deps = [
+    intf_deps = [
         ":module",
         "//ast:bound_constants",
         "//base/container:unordered_map",
@@ -57,29 +50,20 @@ cc_lib(
         "//error:log",
         "//ir:register",
     ],
-)  
-
-cc_lib(
-    name = "context-impl",
-    srcs = ["context.cc"],
-    deps = [
-        ":context",
+    impl_deps = [
         "//ast:expression",
         "//ast:dispatch",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "import_graph",
-    hdrs = ["import_graph.h"],
-    srcs = ["import_graph.cc"],
-    deps = ["//base/container:unordered_map"],
+    intf_deps = ["//base/container:unordered_map"],
 )
 
-cc_lib(
+cc_target(
     name = "module",
-    hdrs = ["module.h"],
-    deps = [
+    intf_deps = [
         ":scope",
         "//ast:fn_params",
         "//ast:bound_constants",
@@ -89,13 +73,8 @@ cc_lib(
         "//base/container:unordered_map",
         "//base/container:vector",
     ],
-)
-
-cc_lib(
-    name = "module-impl",
-    srcs = ["module.cc"],
-    deps = [
-        ":module",
+    impl_deps = [
+        ":import_graph",
         "//ast:declaration",
         "//ast:expression",
         "//ast:function_literal",
@@ -104,31 +83,22 @@ cc_lib(
         "//backend:eval",
         "//base:guarded",
         "//frontend:source",
-        "//misc:import_graph",
         "//ir:func",
         "//type:function",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "scope",
-    hdrs = ["scope.h"],
-    deps = [
+    intf_deps = [
         "//base/container:unordered_map",
         "//base/container:vector",
         "//base:util",
         "//type:typed_value",
     ],
-)
-
-
-cc_lib(
-    name = "scope-impl",
-    srcs = ["scope.cc"],
-    deps = [
+    impl_deps = [
         ":context",
         ":module",
-        ":scope",
         "//ast:declaration",
         "//ast:identifier",
         "//ast:match_declaration",

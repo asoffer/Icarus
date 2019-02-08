@@ -1,20 +1,13 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
+load("//:defs.bzl", "cc_lib", "cc_target")
 
-cc_lib(
+cc_target(
     name = "array",
-    hdrs = ["array.h"],
-    deps = [
+    intf_deps = [
         "//base:lazy",
         "//type:type",
     ],
-)
-
-cc_lib(
-    name = "array-impl",
-    srcs = ["array.cc"],
-    deps = [
-        ":array",
+    impl_deps = [
         ":function",
         ":pointer",
         "//ast:fn_params",
@@ -37,66 +30,69 @@ cc_lib(
 )
 
 cc_lib(
-    name = "cast",
-    hdrs = ["cast.h"],
-)
-
-cc_lib(
-    name = "cast-impl",
-    srcs = ["cast.cc"],
+    name = "all_types",
     deps = [
-        ":cast",
         ":array",
         ":enum",
         ":flags",
         ":function",
         ":generic_struct",
+        ":incomplete_enum",
+        ":incomplete_flags",
         ":interface",
         ":opaque",
         ":pointer",
         ":primitive",
         ":struct",
         ":tuple",
+        ":type",
         ":variant",
     ],
+)
+
+cc_lib(
+    name = "impl",
+    deps = [
+        ":array-impl",
+        ":cast-impl",
+        ":comparator-impl",
+        ":enum-impl",
+        ":flags-impl",
+        ":function-impl",
+        ":generic_struct-impl",
+        ":incomplete_enum-impl",
+        ":incomplete_flags-impl",
+        ":interface-impl",
+        ":opaque-impl",
+        ":pointer-impl",
+        ":prepare_argument-impl",
+        ":primitive-impl",
+        ":struct-impl",
+        ":tuple-impl",
+        ":type-impl",
+        ":variant-impl",
+    ],
+)
+cc_target(
+    name = "cast",
+    impl_deps = [":all_types"],
 )
 
 #TODO remove me.
 cc_lib(
     name = "comparator-impl",
     srcs = ["comparator.cc"],
-    deps = [
-        ":array",
-        ":enum",
-        ":flags",
-        ":function",
-        ":generic_struct",
-        ":interface",
-        ":opaque",
-        ":pointer",
-        ":primitive",
-        ":struct",
-        ":tuple",
-        ":util",
-        ":variant",
-    ],
+    deps = [":all_types"],
 )
 
-cc_lib(
+cc_target(
     name = "enum",
-    hdrs = ["enum.h"],
-    deps = [
+    intf_deps = [
         ":type",
         ":typed_value",
         "//base/container:unordered_map",
     ],
-)
-
-cc_lib(
-    name = "enum-impl",
-    srcs = ["enum.cc"],
-    deps = [
-        ":enum",
+    impl_deps = [
         "//ir:addr",
         "//ir:cmd",
         "//ir:register",
@@ -104,21 +100,14 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "flags",
-    hdrs = ["flags.h"],
-    deps = [
+    intf_deps = [
         ":type",
         ":typed_value",
         "//base/container:unordered_map",
     ],
-)
-
-cc_lib(
-    name = "flags-impl",
-    srcs = ["flags.cc"],
-    deps = [
-        ":flags",
+    impl_deps = [
         "//ir:addr",
         "//ir:cmd",
         "//ir:flags_val",
@@ -127,16 +116,10 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "function",
-    hdrs = ["function.h"],
-    deps = [":callable"]
-)
-
-cc_lib(
-    name = "function-impl",
-    srcs = ["function.cc"],
-    deps = [
+    intf_deps = [":callable"],
+    impl_deps = [
         "//base/container:map",
         "//base:guarded",
         "//ir:cmd",
@@ -144,11 +127,9 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "generic_struct",
-    hdrs = ["generic_struct.h"],
-    srcs = ["generic_struct.cc"],
-    deps = [
+    intf_deps = [
         ":callable",
         ":type",
         "//base/container:vector",
@@ -157,46 +138,39 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "incomplete_enum",
-    hdrs = ["incomplete_enum.h"],
-    srcs = ["incomplete_enum.cc"],
-    deps = [
+    intf_deps = [
+        "//base/container:vector",
+        "//ir:register",
+    ],
+    impl_deps = [
         ":enum",
-        "//base/container:vector",
-        "//ir:register",
         "//misc:module",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "incomplete_flags",
-    hdrs = ["incomplete_flags.h"],
-    srcs = ["incomplete_flags.cc"],
-    deps = [
-        ":flags",
+    intf_deps = [
         "//base/container:vector",
         "//ir:register",
+    ],
+    impl_deps = [
+        ":flags",
         "//misc:module",
     ],
 
 )
 
-cc_lib(
+cc_target(
     name = "interface",
-    hdrs = ["interface.h"],
-    deps = [
+    intf_deps = [
         ":type",
         "//misc:scope",
     ],
-)
-
-cc_lib(
-    name = "interface-impl",
-    srcs = ["interface.cc"],
-    deps = [
+    impl_deps = [
         ":function",
-        ":interface",
         ":pointer",
         "//base/container:map",
         "//base:guarded",
@@ -211,32 +185,19 @@ cc_lib(
 
 #TODO llvm.cc
 
-cc_lib(
+cc_target(
     name = "opaque",
-    hdrs = ["opaque.h"],
-    deps = [":type"],
-)
-
-cc_lib(
-    name = "opaque-impl",
-    srcs = ["opaque.cc"],
-    deps = [
-        ":opaque",
+    intf_deps = [":type"],
+    impl_deps = [
         "//base:debug",
         "//ir:val",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "pointer",
-    hdrs = ["pointer.h"],
-    deps = [":type"],
-)
-
-cc_lib(
-    name = "pointer-impl",
-    srcs = ["pointer.cc"],
-    deps = [
+    intf_deps = [":type"],
+    impl_deps = [
         ":function",
         "//base/container:unordered_map",
         "//base:guarded",
@@ -255,40 +216,24 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "primitive",
-    hdrs = ["primitive.h"],
     textual_hdrs = ["primitive.xmacro.h"],
-    deps = [":type"],
+    intf_deps = [":type"],
+    impl_deps = ["//ir:cmd"],
 )
 
-cc_lib(
-    name = "primitive-impl",
-    textual_hdrs = ["primitive.xmacro.h"],
-    srcs = ["primitive.cc"],
-    deps = [
-        ":primitive",
-        "//ir:cmd"
-    ],
-)
-
-cc_lib(
+cc_target(
     name = "struct",
-    hdrs = ["struct.h"],
-    deps = [
+    intf_deps = [
         ":type",
         "//ast:hashtag",
         "//base/container:vector",
         "//base:lazy",
         "//ir:any_func",
         "//misc:scope",
-    ]
-)
-
-cc_lib(
-    name = "struct-impl",
-    srcs = ["struct.cc"],
-    deps = [
+    ],
+    impl_deps = [
         ":function",
         ":pointer",
         "//ast:declaration",
@@ -303,23 +248,16 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "tuple",
-    hdrs = ["tuple.h"],
-    deps = [
+    intf_deps = [
         ":type",
         "//base:lazy",
         "//ir:any_func",
     ],
-)
-
-cc_lib(
-    name = "tuple-impl",
-    srcs = ["tuple.cc"],
-    deps = [
+    impl_deps = [
         ":function",
         ":pointer",
-        ":tuple",
         "//base/container:map",
         "//base:guarded",
         "//ir:arguments",
@@ -336,23 +274,16 @@ cc_lib(
     deps = [":type"],
 )
 
-cc_lib(
+cc_target(
     name = "type",
-    hdrs = ["type.h"],
     textual_hdrs = ["primitive.xmacro.h"],
-    deps = [
+    intf_deps = [
         "//base:debug",
         "//base:util",
         "//ir:addr",
         "//ir:register",
     ],
-)
-
-cc_lib(
-    name = "type-impl",
-    srcs = ["type.cc"],
-    deps = [
-        ":type",
+    impl_deps = [
         "//ast:declaration",
         "//ast:struct_literal",
         "//base/container:map",
@@ -372,10 +303,13 @@ cc_lib(
     name = "util",
     hdrs = ["util.h"],
     deps = [
+        # Not :all_types because we exclude generic_struct to avoid a cyclic dependency.
         ":array",
         ":enum",
         ":flags",
         ":function",
+        ":incomplete_enum",
+        ":incomplete_flags",
         ":interface",
         ":opaque",
         ":pointer",
@@ -388,43 +322,15 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "variant",
-    hdrs = ["variant.h"],
-    deps = [":type"],
-)
-
-cc_lib(
-    name = "variant-impl",
-    srcs = ["variant.cc"],
-    deps = [
-        ":type",
+    intf_deps = [":type"],
+    impl_deps = [
         "//base/container:map",
         "//base:guarded",
         "//misc:context",
         "//ir:arguments",
         "//ir:components",
         "//ir:func",
-    ],
-)
-
-cc_lib(
-    name = "impl",
-    deps = [
-        ":array-impl",
-        ":cast-impl",
-        ":comparator-impl",
-        ":enum-impl",
-        ":flags-impl",
-        ":function-impl",
-        ":interface-impl",
-        ":opaque-impl",
-        ":pointer-impl",
-        ":prepare_argument-impl",
-        ":primitive-impl",
-        ":struct-impl",
-        ":tuple-impl",
-        ":type-impl",
-        ":variant-impl",
     ],
 )

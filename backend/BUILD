@@ -1,35 +1,21 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
+load("//:defs.bzl", "cc_target")
 
-# cc_lib(
+# cc_target(
 #     name = "emit",
-#     hdrs = ["emit.h"],
-#     deps = ["//base/container:vector"],
-# )
-# 
-# cc_lib(
-#     name = "emit-impl",
-#     srcs = ["emit.cc"],
-#     deps = [":emit"],
+#     intf_deps = ["//base/container:vector"],
 # )
 
-cc_lib(
+cc_target(
     name = "eval",
-    hdrs = ["eval.h"],
-    deps = [
+    intf_deps = [
         ":exec",
         "//base:debug",
         "//base:untyped_buffer",
         "//ir:val",
         "//misc:context",
     ],
-)
-
-cc_lib(
-    name = "eval-impl",
-    srcs = ["eval.cc"],
-    deps = [
-        ":eval",
+    impl_deps = [
         "//misc:architecture",
         "//ast:expression",
         "//backend:exec",
@@ -40,11 +26,15 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "exec",
-    hdrs = ["exec.h"],
-    srcs = ["exec.cc"],
-    deps = [
+    intf_deps = [
+        "//base:untyped_buffer",
+        "//ir:basic_block",
+        "//ir:cmd",
+        "//ir:val",
+    ],
+    impl_deps = [
         "//ast:block_literal",
         "//ast:expression",
         "//ast:function_literal",

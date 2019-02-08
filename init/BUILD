@@ -1,14 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
+load("//:defs.bzl", "cc_target")
 
-cc_lib(
-    name = "cli",
-    hdrs = ["cli.h"],
-    srcs = ["cli.cc"],
-)
-
-cc_lib(
-    name = "signal",
-    hdrs = ["signal.h"],
-    srcs = ["signal.cc"],
-)
+cc_target(name = "cli")
+cc_target(name = "signal")

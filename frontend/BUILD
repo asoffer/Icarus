@@ -40,6 +40,7 @@ cc_lib(
         ":tagged_node",
         ":token",
         "//ast",
+        "//base:guarded",
     ],
 )
 

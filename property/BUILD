@@ -1,21 +1,18 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
+load("//:defs.bzl", "cc_lib", "cc_target")
 
-cc_lib(
+cc_target(
     name = "property",
-    hdrs = ["property.h"],
-    srcs = ["property.cc"],
-    deps = [
+    intf_deps = [
         "//base:owned_ptr",
         "//base:util",
         "//ir:cmd",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "property_map",
-    hdrs = ["property_map.h"],
-    deps = [
+    intf_deps = [
         ":property",
         ":property_set",
         "//base/container:unordered_map",
@@ -24,13 +21,7 @@ cc_lib(
         "//base:util",
         "//ir:cmd",
     ],
-)
-
-cc_lib(
-    name = "property_map-impl",
-    srcs = ["property_map.cc"],
-    deps = [
-        ":property",
+    impl_deps = [
         "//misc:architecture",
         "//ir:arguments",
         "//ir:func",
@@ -39,14 +30,12 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "property_set",
-    hdrs = ["property_set.h"],
-    srcs = ["property_set.cc"],
-    deps = [
-        ":property",
+    intf_deps = [
         "//base/container:bag",
         "//base:owned_ptr",
         "//base:util",
     ],
+    impl_deps = [":property"],
 )

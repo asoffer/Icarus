@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
+load("//:defs.bzl", "cc_lib", "cc_target")
 
 cc_lib(
     name = "ast",
@@ -56,26 +56,29 @@ cc_lib(
         ":comma_list-impl",
         ":declaration-impl",
         ":dispatch-impl",
+        ":enum_literal-impl",
         ":function_literal-impl",
         ":identifier-impl",
+        ":import-impl",
+        ":interface-impl",
+        ":match_declaration-impl",
         ":overload_set-impl",
+        ":repeated_unop-impl",
+        ":scope_literal-impl",
         ":scope_node-impl",
         ":statements-impl",
         ":struct_literal-impl",
+        ":struct_type-impl",
+        ":switch-impl",
+        ":terminal-impl",
+        ":unop-impl",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "access",
-    hdrs = ["access.h"],
-    deps = [":expression"],
-)
-
-cc_lib(
-    name = "access-impl",
-    srcs = ["access.cc"],
-    deps = [
-        ":access",
+    intf_deps = [":expression"],
+    impl_deps = [
         ":declaration",
         "//backend:eval",
         "//ir:cmd",
@@ -91,17 +94,10 @@ cc_lib(
     ]
 )
 
-cc_lib(
+cc_target(
     name = "array_literal",
-    hdrs = ["array_literal.h"],
-    deps = [":comma_list"],
-)
-
-cc_lib(
-    name = "array_literal-impl",
-    srcs = ["array_literal.cc"],
-    deps = [
-        ":array_literal",
+    intf_deps = [":comma_list"],
+    impl_deps = [
         "//misc:context",
         "//error:log",
         "//ir:cmd",
@@ -111,56 +107,23 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "array_type",
-    hdrs = ["array_type.h"],
-    deps = [":expression"],
-)
-
-cc_lib(
-    name = "array_type-impl",
-    srcs = ["array_type.cc"],
-    deps = [
-        ":array_type",
+    intf_deps = [":expression"],
+    impl_deps = [
         ":hole",
         "//ir:cmd",
     ]
 )
 
-cc_lib(
+cc_target(
     name = "binop",
-    hdrs = ["binop.h"],
-    deps = [
-        ":comma_list",
+    intf_deps = [
         ":dispatch",
         ":expression",
-        ":fn_args",
-        ":overload_set",
-        "//backend:eval",
-        "//base:check",
         "//frontend:operators",
-        "//ir:components",
-        "//ir:func",
-        "//ir:phi",
-        "//ir:val",
-        "//misc:context",
-        "//type:array",
-        "//type:cast",
-        "//type:enum",
-        "//type:flags",
-        "//type:function",
-        "//type:pointer",
-        "//type:struct",
-        "//type:tuple",
-        "//type:variant",
     ],
-)
-
-cc_lib(
-    name = "binop-impl",
-    srcs = ["binop.cc"],
-    deps = [
-        ":binop",
+    impl_deps = [
         ":comma_list",
         ":fn_args",
         ":overload_set",
@@ -182,17 +145,10 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "block_literal",
-    hdrs = ["block_literal.h"],
-    deps = [":expression"],
-)
-
-cc_lib(
-    name = "block_literal-impl",
-    srcs = ["block_literal.cc"],
-    deps = [
-        ":block_literal",
+    intf_deps = [":expression"],
+    impl_deps = [
         "//misc:context",
         "//ir:val",
         "//misc:scope",
@@ -201,23 +157,14 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "block_node",
-    hdrs = ["block_node.h"],
-    deps = [
-        "//ast:expression",
-        "//ast:statements",
+    intf_deps = [
+        ":expression",
+        ":statements",
         "//misc:scope",
     ],
-)
-
-cc_lib(
-    name = "block_node-impl",
-    srcs = ["block_node.cc"],
-    deps = [
-        ":block_node",
-        "//ir:val",
-    ],
+    impl_deps = ["//ir:val"],
 )
 
 cc_lib(
@@ -229,21 +176,14 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "call",
-    hdrs = ["call.h"],
-    deps = [
+    intf_deps = [
         ":dispatch",
         ":expression",
         ":fn_args",
     ],
-)
-
-cc_lib(
-    name = "call-impl",
-    srcs = ["call.cc"],
-    deps = [
-        ":call",
+    impl_deps = [
         ":fn_params",
         ":function_literal",
         ":terminal",
@@ -263,22 +203,15 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "chainop",
-    hdrs = ["chainop.h"],
-    deps = [
+    intf_deps = [
         ":dispatch",
         ":expression",
         "//base/container:vector",
         "//frontend:operators",
     ],
-)
-
-cc_lib(
-    name = "chainop-impl",
-    srcs = ["chainop.cc"],
-    deps = [
-        ":chainop",
+    impl_deps = [
         ":fn_args",
         ":overload_set",
         "//base:check",
@@ -294,37 +227,23 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "comma_list",
-    hdrs = ["comma_list.h"],
-    deps = [":expression"],
-)
-
-cc_lib(
-    name = "comma_list-impl",
-    srcs = ["comma_list.cc"],
-    deps = [
-        ":comma_list",
+    intf_deps = [":expression"],
+    impl_deps = [
         "//misc:context",
         "//ir:cmd",
         "//type:tuple",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "declaration",
-    hdrs = ["declaration.h"],
-    deps = [
+    intf_deps = [
         ":expression",
         "//ir:register",
     ],
-)
-
-cc_lib(
-    name = "declaration-impl",
-    srcs = ["declaration.cc"],
-    deps = [
-        ":declaration",
+    impl_deps = [
         ":function_literal",
         ":hole",
         "//backend:eval",
@@ -336,10 +255,9 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "dispatch",
-    hdrs = ["dispatch.h"],
-    deps = [
+    intf_deps = [
         ":bound_constants",
         ":fn_args",
         ":overload_set",
@@ -347,12 +265,7 @@ cc_lib(
         "//base/container:unordered_map",
         "//base:expected",
     ],
-)
-
-cc_lib(
-    name = "dispatch-impl",
-    srcs = ["dispatch.cc"],
-    deps = [
+    impl_deps = [
         ":call",
         ":function_literal",
         ":match_declaration",
@@ -374,17 +287,17 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "enum_literal",
-    hdrs = ["enum_literal.h"],
-    srcs = ["enum_literal.cc"],
-    deps = [
+    intf_deps = [
         ":declaration",
+        "//base/container:vector",
+        "//misc:scope",
+    ],
+    impl_deps = [
         ":hole",
         ":identifier",
-        "//base/container:vector",
         "//misc:context",
-        "//misc:scope",
         "//ir:cmd",
         "//ir:val",
     ],
@@ -423,10 +336,9 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "function_literal",
-    hdrs = ["function_literal.h"],
-    deps = [
+    intf_deps = [
         ":bound_constants",
         ":declaration",
         ":dispatch",
@@ -439,12 +351,7 @@ cc_lib(
         "//ir:val",
         "//misc:scope",
     ],
-)
-
-cc_lib(
-    name = "function_literal-impl",
-    srcs = ["function_literal.cc"],
-    deps = [
+    impl_deps = [
         ":bound_constants",
         ":declaration",
         ":match_declaration",
@@ -471,19 +378,12 @@ cc_lib(
     hdrs = ["hole.h"],
 )
 
-cc_lib(
+cc_target(
     name = "identifier",
-    hdrs = ["identifier.h"],
-    deps = [":expression"],
-)
-
-cc_lib(
-    name = "identifier-impl",
-    srcs = ["identifier.cc"],
-    deps = [
+    intf_deps = [":expression"],
+    impl_deps = [
         ":declaration",
         ":function_literal",
-        ":identifier",
         ":match_declaration",
         "//backend:eval",
         "//misc:context",
@@ -497,43 +397,41 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "import",
-    hdrs = ["import.h"],
-    srcs = ["import.cc"],
-    deps = [
+    intf_deps = [
         "//ast:expression",
+        "//misc:module",
+    ],
+    impl_deps = [
         "//ast:overload_set",
         "//backend:eval",
         "//base:guarded",
         "//misc:context",
-        "//misc:module",
         "//ir:val",
         "//type:primitive",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "interface",
-    hdrs = ["interface.h"],
-    srcs = ["interface.cc"],
-    deps = [
+    intf_deps = [
         ":declaration",
         ":expression",
+        "//misc:scope",
+    ],
+    impl_deps = [
         "//error:log",
         "//ir:val",
         "//misc:context",
-        "//misc:scope",
         "//type:type",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "match_declaration",
-    hdrs = ["match_declaration.h"],
-    srcs = ["match_declaration.cc"],
-    deps = [
-        ":declaration",
+    intf_deps = [":declaration"],
+    impl_deps = [
         "//backend:eval",
         "//type:interface",
         "//type:primitive",
@@ -558,52 +456,41 @@ cc_lib(
     deps = ["//base/container:unordered_map"],
 )
 
-cc_lib(
+cc_target(
     name = "overload_set",
-    hdrs = ["overload_set.h"],
-    deps = [
+    intf_deps = [
         "//base/container:vector",
         "//type:typed_value",
         "//type:function",
     ],
-)
-
-cc_lib(
-    name = "overload_set-impl",
-    srcs = ["overload_set.cc"],
-    deps = [
-        ":overload_set",
+    impl_deps = [
         ":declaration",
         "//misc:context",
         "//misc:scope",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "repeated_unop",
-    hdrs = ["repeated_unop.h"],
-    srcs = ["repeated_unop.cc"],
-    deps = [
+    intf_deps = [
         ":comma_list",
         ":dispatch",
+        "//frontend:operators",
+    ],
+    impl_deps = [
         ":fn_args",
         ":function_literal",
         ":overload_set",
-        "//frontend:operators",
-        "//misc:context",
         "//ir:func",
+        "//misc:context",
         "//misc:scope",
-        "//type:util",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "scope_literal",
-    hdrs = ["scope_literal.h"],
-    srcs = ["scope_literal.cc"],
-    deps = [
-        ":expression",
-        ":declaration",
+    intf_deps = [":declaration"],
+    impl_deps = [
         "//misc:context",
         "//error:log",
         "//ir:val",
@@ -613,10 +500,9 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "scope_node",
-    hdrs = ["scope_node.h"],
-    deps = [
+    intf_deps = [
         ":block_node",
         ":expression",
         ":fn_args",
@@ -624,19 +510,13 @@ cc_lib(
         "//base/container:unordered_map",
         "//misc:scope",
     ],
-)
-
-cc_lib(
-    name = "scope_node-impl",
-    srcs = ["scope_node.cc"],
-    deps = [
+    impl_deps = [
         ":access",
         ":block_literal",
         ":block_node",
         ":fn_args",
         ":function_literal",
         ":identifier",
-        ":scope_node",
         ":scope_literal",
         "//backend:eval",
         "//base:util",
@@ -650,43 +530,29 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "statements",
-    hdrs = ["statements.h"],
-    deps = [
+    intf_deps = [
         ":node",
         "//base/container:vector",
         "//ir:val",
     ],
-)
-
-cc_lib(
-    name = "statements-impl",
-    srcs = ["statements.cc"],
-    deps = [
-        ":statements",
+    impl_deps = [
         "//misc:context",
         "//ir:val",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "struct_literal",
-    hdrs = ["struct_literal.h"],
-    deps = [
+    intf_deps = [
         ":comma_list",
         ":declaration",
         ":expression",
         "//misc:scope",
     ],
-)
-
-cc_lib(
-    name = "struct_literal-impl",
-    srcs = ["struct_literal.cc"],
-    deps = [
+    impl_deps = [
         ":declaration",
-        ":struct_literal",
         "//backend:exec",
         "//base:untyped_buffer",
         "//ir:components",
@@ -700,23 +566,19 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "struct_type",
-    hdrs = ["struct_type.h"],
-    srcs = ["struct_type.cc"],
-    deps = [
-        ":expression",
+    intf_deps = [":expression"],
+    impl_deps = [
         "//misc:context",
         "//type:type",
     ],
 )
 
-cc_lib(
+cc_target(
     name = "switch",
-    hdrs = ["switch.h"],
-    srcs = ["switch.cc"],
-    deps = [
-        ":expression",
+    intf_deps = [":expression"],
+    impl_deps = [
         "//base:util",
         "//ir:components",
         "//ir:func",
@@ -727,33 +589,31 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "terminal",
-    hdrs = ["terminal.h"],
-    srcs = ["terminal.cc"],
-    deps = [
+    intf_deps = [
         ":expression",
         "//ir:val",
         "//misc:context",
-        "//misc:module",
     ],
+    impl_deps = ["//misc:module"],
 )
 
-cc_lib(
+cc_target(
     name = "unop",
-    hdrs = ["unop.h"],
-    srcs = ["unop.cc"],
-    deps =[
+    intf_deps = [
+        ":dispatch",
+        ":expression",
+        "//frontend:operators",
+    ],
+    impl_deps = [
         ":fn_args",
         ":overload_set",
-        ":dispatch",
         ":terminal",
         "//backend:eval",
         "//base:check",
-        "//frontend:operators",
         "//misc:context",
         "//ir:components",
         "//ir:func",
-        "//type:util",
     ],
 )
