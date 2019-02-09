@@ -42,10 +42,6 @@ std::vector<ir::Val> ArrayType::EmitIR(Context *ctx) {
                 data_type_->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> ArrayType::EmitLVal(Context *) {
-  UNREACHABLE(*this);
-}
-
 void ArrayType::ExtractJumps(JumpExprs *rets) const {
   length_->ExtractJumps(rets);
   data_type_->ExtractJumps(rets);

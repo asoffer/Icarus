@@ -418,8 +418,4 @@ std::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
   }
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> ChainOp::EmitLVal(Context *ctx) {
-  UNREACHABLE(this);
-}
-
 }  // namespace ast

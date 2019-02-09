@@ -136,10 +136,6 @@ std::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
   return {ir::Val::Func(ir_func->type_, ir_func)};
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> ast::StructLiteral::EmitLVal(Context *ctx) {
-  UNREACHABLE(*this);
-}
-
 void StructLiteral::CompleteBody(Context *ctx) {
   ir::Func *&ir_func = mod_->data_[ctx->bound_constants_].ir_funcs_[this];
   for (size_t i = 0; i < args_.size(); ++i) {

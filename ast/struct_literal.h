@@ -3,7 +3,7 @@
 
 #include "ast/comma_list.h"
 #include "ast/declaration.h"
-#include "ast/expression.h"
+#include "ast/literal.h"
 #include "misc/scope.h"
 
 namespace type {
@@ -11,7 +11,7 @@ struct Struct;
 }  // namespace type
 
 namespace ast {
-struct StructLiteral : public Expression {
+struct StructLiteral : public Literal {
   StructLiteral()                          = default;
   StructLiteral(StructLiteral &&) noexcept = default;
   ~StructLiteral() override {}
@@ -27,7 +27,6 @@ struct StructLiteral : public Expression {
   void CompleteBody(Context *ctx);
 
   std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::unique_ptr<DeclScope> type_scope;
   std::vector<std::unique_ptr<Declaration>> fields_, args_;

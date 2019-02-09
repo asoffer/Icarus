@@ -64,10 +64,6 @@ std::vector<ir::Val> ArrayLiteral::EmitIR(Context *ctx) {
   return {array_val};
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> ArrayLiteral::EmitLVal(Context *ctx) {
-  UNREACHABLE(*this);
-}
-
 void ArrayLiteral::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
   type::Array const &array_type = ctx->type_of(this)->as<type::Array>();
   auto *data_type_ptr           = type::Ptr(array_type.data_type);

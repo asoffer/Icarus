@@ -2,19 +2,20 @@
 #define ICARUS_AST_ENUM_LITERAL_H
 
 #include <string>
+#include <vector>
 
 #include "ast/declaration.h"
-#include <vector>
+#include "ast/literal.h"
 #include "misc/scope.h"
 
 namespace ast {
 // TODO rename this because it's for enums and flags.
-struct EnumLiteral : public Expression {
+struct EnumLiteral : public Literal {
   enum Kind : char { Enum, Flags };
 
   EnumLiteral(std::vector<std::unique_ptr<Expression>> elems, TextSpan span,
               bool is_enum)
-      : Expression(std::move(span)),
+      : Literal(std::move(span)),
         elems_(std::move(elems)),
         kind_(is_enum ? Kind::Enum : Kind::Flags) {}
 
@@ -28,9 +29,6 @@ struct EnumLiteral : public Expression {
   void ExtractJumps(JumpExprs *rets) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override {
-    UNREACHABLE();
-  }
 
   std::unique_ptr<DeclScope> enum_scope_;
   std::vector<std::unique_ptr<Expression>> elems_;

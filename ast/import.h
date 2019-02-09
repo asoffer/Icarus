@@ -4,11 +4,11 @@
 #include <memory>
 #include <optional>
 
-#include "ast/expression.h"
+#include "ast/literal.h"
 #include "misc/module.h"
 
 namespace ast {
-struct Import : public Expression {
+struct Import : public Literal {
   Import(std::unique_ptr<Expression> expr) : operand_(std::move(expr)) {}
   ~Import() override {}
 
@@ -24,7 +24,6 @@ struct Import : public Expression {
   }
 
   std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   // TODO optimization: if the operand_ is a string literal, schedule it
   // immediately.

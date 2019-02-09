@@ -53,7 +53,4 @@ std::vector<ir::Val> ast::Interface::EmitIR(Context *ctx) {
   return {ir::Val(ir::FinalizeInterface(ir::CreateInterface(scope_)))};
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> ast::Interface::EmitLVal(Context *ctx) {
-  UNREACHABLE(*this);
-}
 }  // namespace ast

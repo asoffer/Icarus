@@ -1,11 +1,11 @@
 #ifndef ICARUS_AST_STRUCT_TYPE_H
 #define ICARUS_AST_STRUCT_TYPE_H
 
-#include "ast/expression.h"
+#include "ast/literal.h"
 
 namespace ast {
-struct StructType : public Expression {
-  StructType(TextSpan span) : Expression(span) {}
+struct StructType : public Literal {
+  StructType(TextSpan span) : Literal(span) {}
   ~StructType() override {}
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
@@ -14,7 +14,6 @@ struct StructType : public Expression {
   void ExtractJumps(JumpExprs *) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *ct) override;
 
   std::vector<std::unique_ptr<Expression>> args_;
 };

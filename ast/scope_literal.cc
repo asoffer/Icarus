@@ -101,7 +101,5 @@ std::vector<ir::Val> ast::ScopeLiteral::EmitIR(Context *ctx) {
   for (auto &decl : decls_) { decl.EmitIR(ctx); }
   return {ir::Val(this)};
 }
-std::vector<ir::RegisterOr<ir::Addr>> ScopeLiteral::EmitLVal(Context *) {
-  UNREACHABLE(this);
-}
+
 }  // namespace ast

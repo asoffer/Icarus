@@ -98,8 +98,4 @@ std::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
   return {ir::MakePhi(ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)};
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> ast::Switch::EmitLVal(Context *ctx) {
-  UNREACHABLE(*this);
-}
-
 }  // namespace ast

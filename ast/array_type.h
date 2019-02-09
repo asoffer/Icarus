@@ -1,10 +1,10 @@
 #ifndef ICARUS_AST_ARRAY_TYPE_H
 #define ICARUS_AST_ARRAY_TYPE_H
 
-#include "ast/expression.h"
+#include "ast/literal.h"
 
 namespace ast {
-struct ArrayType : public Expression {
+struct ArrayType : public Literal {
   ~ArrayType() override {}
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
@@ -13,7 +13,6 @@ struct ArrayType : public Expression {
   void ExtractJumps(JumpExprs *) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *ct) override;
 
   std::unique_ptr<Expression> length_, data_type_;
 };

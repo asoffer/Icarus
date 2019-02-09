@@ -2,11 +2,11 @@
 #define ICARUS_AST_INTERFACE_H
 
 #include "ast/declaration.h"
-#include "ast/expression.h"
+#include "ast/literal.h"
 #include "misc/scope.h"
 
 namespace ast {
-struct Interface : public Expression {
+struct Interface : public Literal {
   ~Interface() override {}
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
@@ -15,7 +15,6 @@ struct Interface : public Expression {
   void ExtractJumps(JumpExprs *) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::vector<Declaration> decls_;
   std::unique_ptr<DeclScope> body_scope_;

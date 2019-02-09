@@ -1,29 +1,30 @@
 #ifndef ICARUS_AST_TERMINAL_H
 #define ICARUS_AST_TERMINAL_H
 
-#include "ast/expression.h"
+#include "ast/literal.h"
 #include "ir/val.h"
 #include "misc/module.h"
 
 struct Context;
 
 namespace ast {
-struct Terminal : public Expression {
+struct Terminal : public Literal {
   Terminal() = default;
-  Terminal(const TextSpan &span, ir::Val val);
-
+  Terminal(const TextSpan &span, ir::Val val)
+      : Literal(span), value(std::move(val)) {}
   ~Terminal() override {}
 
-  void assign_scope(Scope *scope) override;
+  void assign_scope(Scope *scope) override { scope_ = scope; }
   std::string to_string(size_t) const override { return value.to_string(); }
 
-  VerifyResult VerifyType(Context *ctx) override;
+  VerifyResult VerifyType(Context *ctx) override {
+    return VerifyResult::Constant(ctx->set_type(this, value.type));
+  }
 
   void Validate(Context *) override {}
   void ExtractJumps(JumpExprs *) const override {}
 
-  std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *ct) override;
+  std::vector<ir::Val> EmitIR(Context *) override { return {value}; }
 
   ir::Val value = ir::Val::None();
 };

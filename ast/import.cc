@@ -21,8 +21,6 @@ std::vector<ir::Val> Import::EmitIR(Context *ctx) {
   return {ir::Val(module_.get())};
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
-
 VerifyResult Import::VerifyType(Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), auto result,
                    operand_->VerifyType(ctx));

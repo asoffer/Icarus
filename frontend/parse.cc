@@ -18,6 +18,7 @@
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
 #include "ast/import.h"
+#include "ast/index.h"
 #include "ast/interface.h"
 #include "ast/match_declaration.h"
 #include "ast/repeated_unop.h"
@@ -31,10 +32,10 @@
 #include "ast/unop.h"
 #include "base/debug.h"
 #include "base/guarded.h"
-#include "misc/context.h"
 #include "frontend/operators.h"
 #include "frontend/tagged_node.h"
 #include "frontend/token.h"
+#include "misc/context.h"
 #include "type/enum.h"
 #include "type/flags.h"
 
@@ -357,21 +358,20 @@ std::unique_ptr<Node> BuildAccess(std::vector<std::unique_ptr<Node>> nodes,
 // RHS is not a declaration
 std::unique_ptr<Node> BuildIndexOperator(
     std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
-  auto binop  = std::make_unique<Binop>();
-  binop->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  binop->lhs  = move_as<Expression>(nodes[0]);
-  binop->rhs  = move_as<Expression>(nodes[2]);
-  binop->op   = Language::Operator::Index;
+  auto index  = std::make_unique<Index>();
+  index->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  index->lhs  = move_as<Expression>(nodes[0]);
+  index->rhs  = move_as<Expression>(nodes[2]);
 
-  if (binop->lhs->is<Declaration>()) {
-    ctx->error_log_.IndexingDeclaration(binop->lhs->span);
+  if (index->lhs->is<Declaration>()) {
+    ctx->error_log_.IndexingDeclaration(index->lhs->span);
   }
 
-  if (binop->rhs->is<Declaration>()) {
-    ctx->error_log_.DeclarationInIndex(binop->rhs->span);
+  if (index->rhs->is<Declaration>()) {
+    ctx->error_log_.DeclarationInIndex(index->rhs->span);
   }
 
-  return binop;
+  return index;
 }
 
 std::unique_ptr<Node> BuildEmptyArray(std::vector<std::unique_ptr<Node>> nodes,

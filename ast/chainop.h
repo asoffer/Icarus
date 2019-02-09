@@ -3,12 +3,12 @@
 
 #include <memory>
 #include "ast/dispatch.h"
-#include "ast/expression.h"
+#include "ast/literal.h"
 #include <vector>
 #include "frontend/operators.h"
 
 namespace ast {
-struct ChainOp : public Expression {
+struct ChainOp : public Literal {
   ~ChainOp() override {}
 
   std::string to_string(size_t n) const override;
@@ -18,7 +18,6 @@ struct ChainOp : public Expression {
   void ExtractJumps(JumpExprs *) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::vector<Language::Operator> ops;
   std::vector<std::unique_ptr<Expression>> exprs;

@@ -30,10 +30,6 @@ void StructType::Validate(Context *ctx) {
 
 std::vector<ir::Val> StructType::EmitIR(Context *ctx) { NOT_YET(); }
 
-std::vector<ir::RegisterOr<ir::Addr>> StructType::EmitLVal(Context *) {
-  UNREACHABLE(*this);
-}
-
 void StructType::ExtractJumps(JumpExprs *rets) const {
   for (auto &arg : args_) { arg->ExtractJumps(rets); }
 }

@@ -1,7 +1,7 @@
 def cc_lib(**kwargs):
   native.cc_library(alwayslink = True, **kwargs)
 
-def cc_target(name, intf_deps =[], impl_deps = [], **kwargs):
+def cc_target(name, intf_deps = None, impl_deps = [], **kwargs):
     native.cc_library(
         name = name,
         hdrs = [name + ".h"],

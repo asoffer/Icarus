@@ -2,10 +2,10 @@
 #define ICARUS_AST_SCOPE_LITERAL_H
 
 #include "ast/declaration.h"
-#include "ast/expression.h"
+#include "ast/literal.h"
 
 namespace ast {
-struct ScopeLiteral : public Expression {
+struct ScopeLiteral : public Literal {
   ScopeLiteral(bool stateful) : stateful_(stateful) {}
   ~ScopeLiteral() override {}
   std::string to_string(size_t n) const override;
@@ -15,7 +15,6 @@ struct ScopeLiteral : public Expression {
   void ExtractJumps(JumpExprs *) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::vector<Declaration> decls_;
   std::unique_ptr<Scope> body_scope_;

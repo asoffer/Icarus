@@ -56,8 +56,4 @@ std::vector<ir::Val> ast::BlockLiteral::EmitIR(Context *ctx) {
   return {ir::Val::Block(this)};
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> BlockLiteral::EmitLVal(Context *) {
-  UNREACHABLE(this);
-}
-
 }  // namespace ast

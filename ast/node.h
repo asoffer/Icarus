@@ -54,12 +54,12 @@ struct JumpExprs
     : public std::unordered_map<JumpKind, std::vector<Expression const *>> {};
 
 struct Node : public base::Cast<Node> {
-  virtual std::string to_string(size_t n) const   = 0;
-  virtual void assign_scope(Scope *)              = 0;
-  virtual VerifyResult VerifyType(Context *)      = 0;
-  virtual void Validate(Context *)                = 0;
+  virtual std::string to_string(size_t n) const  = 0;
+  virtual void assign_scope(Scope *)             = 0;
+  virtual VerifyResult VerifyType(Context *)     = 0;
+  virtual void Validate(Context *)               = 0;
   virtual std::vector<ir::Val> EmitIR(Context *) = 0;
-  virtual void ExtractJumps(JumpExprs *) const    = 0;
+  virtual void ExtractJumps(JumpExprs *) const   = 0;
 
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}

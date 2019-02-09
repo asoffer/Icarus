@@ -1,11 +1,12 @@
 #ifndef ICARUS_AST_ARRAY_LITERAL_H
 #define ICARUS_AST_ARRAY_LITERAL_H
 
+#include "ast/literal.h"
 #include "ast/comma_list.h"
 
 namespace ast {
-struct ArrayLiteral : public Expression {
-  ArrayLiteral(TextSpan const& span) : Expression(span) {}
+struct ArrayLiteral : public Literal {
+  ArrayLiteral(TextSpan const& span) : Literal(span) {}
   ~ArrayLiteral() override {}
 
   void assign_scope(Scope *scope) override { return cl_.assign_scope(scope); }
@@ -17,7 +18,6 @@ struct ArrayLiteral : public Expression {
   }
 
   std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
   void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) override;
   void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) override;
 

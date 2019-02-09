@@ -4,7 +4,7 @@
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"
 #include "ast/dispatch.h"
-#include "ast/expression.h"
+#include "ast/literal.h"
 #include "ast/fn_params.h"
 #include "ast/identifier.h"
 #include "ast/statements.h"
@@ -21,7 +21,7 @@ struct Func;
 
 namespace ast {
 
-struct FunctionLiteral : public Expression {
+struct FunctionLiteral : public Literal {
   // Represents a function with all constants bound to some value.
   FunctionLiteral() {}
   FunctionLiteral(FunctionLiteral &&) noexcept = default;
@@ -36,7 +36,6 @@ struct FunctionLiteral : public Expression {
   VerifyResult VerifyTypeConcrete(Context *);
 
   std::vector<ir::Val> EmitIR(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   void CompleteBody(Context *ctx);
 

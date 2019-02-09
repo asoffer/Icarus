@@ -40,11 +40,6 @@ using base::check::Not;
 
 std::string Binop::to_string(size_t n) const {
   std::stringstream ss;
-  if (op == Language::Operator::Index) {
-    ss << lhs->to_string(n) << "[" << rhs->to_string(n) << "]";
-    return ss.str();
-  }
-
   ss << "(" << lhs->to_string(n) << ")";
   switch (op) {
     case Language::Operator::Arrow: ss << " -> "; break;
@@ -91,32 +86,6 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         return VerifyResult::Error();
       }
       return VerifyResult::NonConstant(type::Void());
-    } break;
-    case Operator::Index: {
-      if (lhs_result.type_ == type::ByteView) {
-        if (rhs_result.type_ != type::Int32) {  // TODO other sizes
-          ctx->error_log_.InvalidByteViewIndex(span, rhs_result.type_);
-        }
-        return VerifyResult(ctx->set_type(this, type::Nat8),
-                            rhs_result.const_);  // TODO is nat8 what I want?
-      } else if (auto *lhs_array_type =
-                     lhs_result.type_->if_as<type::Array>()) {
-        auto *t = ctx->set_type(this, lhs_array_type->data_type);
-        if (rhs_result.type_ != type::Int32) {  // TODO other sizes
-          ctx->error_log_.NonIntegralArrayIndex(span, rhs_result.type_);
-        }
-        return VerifyResult(t, rhs_result.const_);
-      } else if (auto *lhs_buf_type =
-                     lhs_result.type_->if_as<type::BufferPointer>()) {
-        auto *t = ctx->set_type(this, lhs_buf_type->pointee);
-        if (rhs_result.type_ != type::Int32) {  // TODO other sizes
-          ctx->error_log_.NonIntegralArrayIndex(span, rhs_result.type_);
-        }
-        return VerifyResult(t, rhs_result.const_);
-      } else {
-        ctx->error_log_.InvalidIndexing(span, lhs_result.type_);
-        return VerifyResult::Error();
-      }
     } break;
     case Operator::As: {
       if (rhs_result.type_ != type::Type_) {
@@ -534,11 +503,6 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       }
       return {};
     } break;
-    case Language::Operator::Index: {
-      auto *this_type = ctx->type_of(this);
-      auto lval       = EmitLVal(ctx)[0];
-      return {ir::Val::Reg(ir::PtrFix(lval.reg_, this_type), this_type)};
-    } break;
     default: UNREACHABLE(*this);
   }
 }
@@ -546,25 +510,6 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
 std::vector<ir::RegisterOr<ir::Addr>> Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::As: NOT_YET();
-    case Language::Operator::Index: 
-      if (auto *t = ctx->type_of(lhs.get()); t->is<type::Array>()) {
-        auto lval = lhs->EmitLVal(ctx)[0];
-        if (!lval.is_reg_) { NOT_YET(this, ctx->type_of(this)); }
-        return {ir::Index(type::Ptr(ctx->type_of(lhs.get())), lval.reg_,
-                          rhs->EmitIR(ctx)[0].reg_or<int32_t>())};
-      } else if (t->is<type::BufferPointer>()) {
-        return {ir::PtrIncr(std::get<ir::Register>(lhs->EmitIR(ctx)[0].value),
-                            rhs->EmitIR(ctx)[0].reg_or<int32_t>(),
-                            type::Ptr(t->as<type::BufferPointer>().pointee))};
-      } else if (t == type::ByteView) {
-        // TODO interim until you remove string_view and replace it with Addr
-        // entirely.
-        return {ir::PtrIncr(
-            ir::GetString(std::string(
-                std::get<std::string_view>(lhs->EmitIR(ctx)[0].value))),
-            rhs->EmitIR(ctx)[0].reg_or<int32_t>(), type::Ptr(type::Nat8))};
-      }
-      [[fallthrough]];
     default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }

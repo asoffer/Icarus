@@ -264,5 +264,4 @@ std::vector<ir::Val> Call::EmitIR(Context *ctx) {
       ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> Call::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace ast

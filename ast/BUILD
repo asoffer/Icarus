@@ -25,6 +25,7 @@ cc_lib(
         ":hole",
         ":identifier",
         ":import",
+        ":index",
         ":interface",
         ":match_declaration",
         ":node",
@@ -60,6 +61,7 @@ cc_lib(
         ":function_literal-impl",
         ":identifier-impl",
         ":import-impl",
+        ":index-impl",
         ":interface-impl",
         ":match_declaration-impl",
         ":overload_set-impl",
@@ -70,7 +72,6 @@ cc_lib(
         ":struct_literal-impl",
         ":struct_type-impl",
         ":switch-impl",
-        ":terminal-impl",
         ":unop-impl",
     ],
 )
@@ -96,7 +97,10 @@ cc_target(
 
 cc_target(
     name = "array_literal",
-    intf_deps = [":comma_list"],
+    intf_deps = [
+        ":literal",
+        ":comma_list",
+    ],
     impl_deps = [
         "//misc:context",
         "//error:log",
@@ -109,7 +113,7 @@ cc_target(
 
 cc_target(
     name = "array_type",
-    intf_deps = [":expression"],
+    intf_deps = [":literal"],
     impl_deps = [
         ":hole",
         "//ir:cmd",
@@ -147,7 +151,7 @@ cc_target(
 
 cc_target(
     name = "block_literal",
-    intf_deps = [":expression"],
+    intf_deps = [":literal"],
     impl_deps = [
         "//misc:context",
         "//ir:val",
@@ -177,7 +181,7 @@ cc_target(
     name = "call",
     intf_deps = [
         ":dispatch",
-        ":expression",
+        ":literal",
         ":fn_args",
     ],
     impl_deps = [
@@ -204,7 +208,7 @@ cc_target(
     name = "chainop",
     intf_deps = [
         ":dispatch",
-        ":expression",
+        ":literal",
         "//frontend:operators",
     ],
     impl_deps = [
@@ -285,6 +289,7 @@ cc_target(
     name = "enum_literal",
     intf_deps = [
         ":declaration",
+        ":literal",
         "//misc:scope",
     ],
     impl_deps = [
@@ -331,9 +336,9 @@ cc_target(
         ":bound_constants",
         ":declaration",
         ":dispatch",
-        ":expression",
         ":fn_params",
         ":identifier",
+        ":literal",
         ":statements",
         "//ir:val",
         "//misc:scope",
@@ -363,6 +368,7 @@ cc_lib(
 cc_lib(
     name = "hole",
     hdrs = ["hole.h"],
+    deps = [":literal"],
 )
 
 cc_target(
@@ -387,11 +393,11 @@ cc_target(
 cc_target(
     name = "import",
     intf_deps = [
-        "//ast:expression",
+        ":literal",
         "//misc:module",
     ],
     impl_deps = [
-        "//ast:overload_set",
+        ":overload_set",
         "//backend:eval",
         "//base:guarded",
         "//misc:context",
@@ -401,10 +407,19 @@ cc_target(
 )
 
 cc_target(
+    name = "index",
+    intf_deps = [":expression"],
+    impl_deps = [
+        "//type:cast",
+        "//ir:components",
+    ]
+)
+
+cc_target(
     name = "interface",
     intf_deps = [
         ":declaration",
-        ":expression",
+        ":literal",
         "//misc:scope",
     ],
     impl_deps = [
@@ -413,6 +428,12 @@ cc_target(
         "//misc:context",
         "//type:type",
     ],
+)
+
+cc_lib(
+    name = "literal",
+    hdrs = ["literal.h"],
+    deps = [":expression"],
 )
 
 cc_target(
@@ -472,7 +493,10 @@ cc_target(
 
 cc_target(
     name = "scope_literal",
-    intf_deps = [":declaration"],
+    intf_deps = [
+        ":declaration",
+        ":literal",
+    ],
     impl_deps = [
         "//misc:context",
         "//error:log",
@@ -526,7 +550,7 @@ cc_target(
     intf_deps = [
         ":comma_list",
         ":declaration",
-        ":expression",
+        ":literal",
         "//misc:scope",
     ],
     impl_deps = [
@@ -546,7 +570,7 @@ cc_target(
 
 cc_target(
     name = "struct_type",
-    intf_deps = [":expression"],
+    intf_deps = [":literal"],
     impl_deps = [
         "//misc:context",
         "//type:type",
@@ -555,7 +579,7 @@ cc_target(
 
 cc_target(
     name = "switch",
-    intf_deps = [":expression"],
+    intf_deps = [":literal"],
     impl_deps = [
         "//base:util",
         "//ir:components",
@@ -567,14 +591,15 @@ cc_target(
     ],
 )
 
-cc_target(
+cc_lib(
     name = "terminal",
-    intf_deps = [
+    hdrs = ["terminal.h"],
+    deps = [
         ":expression",
         "//ir:val",
         "//misc:context",
+        "//misc:module"
     ],
-    impl_deps = ["//misc:module"],
 )
 
 cc_target(
