@@ -10,7 +10,6 @@
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "type/array.h"
-#include "type/cast.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
@@ -57,7 +56,6 @@ std::string Binop::to_string(size_t n) const {
     case Language::Operator::MulEq: ss << " *= "; break;
     case Language::Operator::DivEq: ss << " /= "; break;
     case Language::Operator::ModEq: ss << " %= "; break;
-    case Language::Operator::As: ss << " as "; break;
     case Language::Operator::When: ss << " when "; break;
     default: UNREACHABLE();
   }
@@ -87,39 +85,6 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       }
       return VerifyResult::NonConstant(type::Void());
     } break;
-    case Operator::As: {
-      if (rhs_result.type_ != type::Type_) {
-        ctx->error_log_.CastToNonType(span);
-        return VerifyResult::Error();
-      }
-      if (!rhs_result.const_) {
-        ctx->error_log_.CastToNonConstantType(span);
-        return VerifyResult::Error();
-      }
-      auto *t = ctx->set_type(
-          this, ASSERT_NOT_NULL(
-                    backend::EvaluateAs<type::Type const *>(rhs.get(), ctx)));
-      if (t->is<type::Struct>()) {
-        FnArgs<Expression *> args;
-        args.pos_ = std::vector<Expression *>{{lhs.get()}};
-        OverloadSet os(scope_, "as", ctx);
-        os.add_adl("as", t);
-        os.add_adl("as", lhs_result.type_);
-        os.keep_return(t);
-
-        auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
-        if (ret_type == nullptr) { return VerifyResult::Error(); }
-        ASSERT(t == ret_type);
-        return VerifyResult(ret_type, lhs_result.const_);
-
-      } else {
-        if (!type::CanCast(lhs_result.type_, t)) {
-          LOG << this;
-          NOT_YET("log an error", lhs_result.type_, t);
-        }
-        return VerifyResult(t, lhs_result.const_);
-      }
-    }
     case Operator::XorEq:
       if (lhs_result.type_ == rhs_result.type_ &&
           (lhs_result.type_ == type::Bool ||
@@ -331,20 +296,6 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
             return ir::ValFrom(ir::Mod(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
           })};
     } break;
-    case Language::Operator::As: {
-      auto *this_type  = ASSERT_NOT_NULL(ctx->type_of(this));
-      auto vals        = lhs->EmitIR(ctx);
-      if (this_type == type::Type_) {
-        std::vector<type::Type const *> entries;
-        entries.reserve(vals.size());
-        for (auto const& val : vals) {
-          // TODO what about incomplete structs?
-          entries.push_back(std::get<type::Type const*>(val.value));
-        }
-        return {ir::Val(type::Tup(entries))};
-      }
-      return {ir::Cast(vals[0].type, this_type, vals[0])};
-    } break;
     case Language::Operator::Arrow: {
       // TODO ugly hack.
       std::vector<ir::Val> lhs_vals, rhs_vals;
@@ -504,13 +455,6 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       return {};
     } break;
     default: UNREACHABLE(*this);
-  }
-}
-
-std::vector<ir::RegisterOr<ir::Addr>> Binop::EmitLVal(Context *ctx) {
-  switch (op) {
-    case Language::Operator::As: NOT_YET();
-    default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
 

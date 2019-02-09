@@ -12,6 +12,7 @@ cc_lib(
         ":block_node",
         ":bound_constants",
         ":call",
+        ":cast",
         ":chainop",
         ":comma_list",
         ":declaration",
@@ -53,6 +54,7 @@ cc_lib(
         ":block_literal-impl",
         ":block_node-impl",
         ":call-impl",
+        ":cast-impl",
         ":chainop-impl",
         ":comma_list-impl",
         ":declaration-impl",
@@ -124,7 +126,7 @@ cc_target(
     name = "binop",
     intf_deps = [
         ":dispatch",
-        ":expression",
+        ":literal",
         "//frontend:operators",
     ],
     impl_deps = [
@@ -138,7 +140,6 @@ cc_target(
         "//ir:func",
         "//ir:phi",
         "//type:array",
-        "//type:cast",
         "//type:enum",
         "//type:flags",
         "//type:function",
@@ -201,6 +202,20 @@ cc_target(
         "//type:pointer",
         "//type:tuple",
         "//type:variant",
+    ],
+)
+
+cc_target(
+    name = "cast",
+    intf_deps = [":expression"],
+    impl_deps = [
+        ":fn_args",
+        ":overload_set",
+        "//backend:eval",
+        "//ir:cmd",
+        "//misc:context",
+        "//type:cast",
+        "//type:tuple",
     ],
 )
 

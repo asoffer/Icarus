@@ -11,6 +11,7 @@
 #include "ast/binop.h"
 #include "ast/block_literal.h"
 #include "ast/call.h"
+#include "ast/cast.h"
 #include "ast/chainop.h"
 #include "ast/comma_list.h"
 #include "ast/declaration.h"
@@ -778,6 +779,12 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
       binop->op  = Language::Operator::Assign;
       return binop;
     }
+  } else if (tk == "as") {
+    auto cast = std::make_unique<ast::Cast>();
+    cast->span  = TextSpan(nodes[0]->span, nodes[2]->span);
+    cast->expr_ = move_as<ast::Expression>(nodes[0]);
+    cast->type_ = move_as<ast::Expression>(nodes[2]);
+    return cast;
   }
 
   if (tk == "(") {  // TODO these should just generate BuildCall directly.
@@ -801,8 +808,7 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
       {"%=", Language::Operator::ModEq}, {"+", Language::Operator::Add},
       {"-", Language::Operator::Sub},    {"*", Language::Operator::Mul},
       {"/", Language::Operator::Div},    {"%", Language::Operator::Mod},
-      {"[", Language::Operator::Index},  {"when", Language::Operator::When},
-      {"as", Language::Operator::As}};
+      {"when", Language::Operator::When}};
   {
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }
