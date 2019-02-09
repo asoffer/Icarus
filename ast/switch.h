@@ -12,10 +12,10 @@ struct Switch : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *rets) const override;
 
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
-  base::vector<
+  std::vector<
       std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>>>
       cases_;
 };

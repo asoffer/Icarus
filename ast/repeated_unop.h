@@ -17,7 +17,7 @@ struct RepeatedUnop : public Node {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
 
   Language::Operator op_;
   CommaList args_;

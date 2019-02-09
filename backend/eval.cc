@@ -45,7 +45,7 @@ base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
   size_t bytes_needed = Architecture::InterprettingMachine().bytes(typed_expr.type());
   base::untyped_buffer ret_buf(bytes_needed);
   ret_buf.append_bytes(bytes_needed, 1);
-  base::vector<ir::Addr> ret_slots;
+  std::vector<ir::Addr> ret_slots;
 
   ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
   backend::ExecContext exec_context;
@@ -53,7 +53,7 @@ base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
   return ret_buf;
 }
 
-base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
+std::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
                                Context *ctx) {
   if (ctx->num_errors() != 0) {
     // TODO when is an appropriate time to surface these?
@@ -65,12 +65,12 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
   ASSERT(typed_expr.type() != nullptr);
   auto result_buf = EvaluateToBuffer(typed_expr, ctx);
 
-  base::vector<type::Type const *> types =
+  std::vector<type::Type const *> types =
       typed_expr.type()->is<type::Tuple>()
           ? typed_expr.type()->as<type::Tuple>().entries_
-          : base::vector<type::Type const *>{typed_expr.type()};
+          : std::vector<type::Type const *>{typed_expr.type()};
 
-  base::vector<ir::Val> results;
+  std::vector<ir::Val> results;
   results.reserve(types.size());
 
   auto arch     = Architecture::InterprettingMachine();
@@ -115,7 +115,7 @@ base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
   return results;
 }
 
-base::vector<ir::Val> Evaluate(ast::Expression *expr, Context *ctx) {
+std::vector<ir::Val> Evaluate(ast::Expression *expr, Context *ctx) {
   return Evaluate({expr, ASSERT_NOT_NULL(ctx->type_of(expr))}, ctx);
 }
 }  // namespace backend

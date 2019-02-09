@@ -22,9 +22,9 @@ Module const *Scope::module() const {
 }
 
 // TODO error version will always have nullptr types.
-base::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
+std::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
     std::string const &id, Context *ctx) const {
-  base::vector<type::Typed<ast::Declaration *>> matching_decls;
+  std::vector<type::Typed<ast::Declaration *>> matching_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {
     if (auto iter = scope_ptr->decls_.find(id);
@@ -78,7 +78,7 @@ void FnScope::MakeAllStackAllocations(Context *ctx) {
 void Scope::MakeAllDestructions(Context *ctx) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
-  base::vector<ast::Declaration *> ordered_decls;
+  std::vector<ast::Declaration *> ordered_decls;
   for (auto & [ name, decls ] : decls_) {
     ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
   }

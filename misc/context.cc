@@ -54,7 +54,7 @@ void Context::push_rep_dispatch_table(ast::Node const *node,
       std::move(tables));
 }
 
-base::vector<ast::DispatchTable> const *Context::rep_dispatch_tables(
+std::vector<ast::DispatchTable> const *Context::rep_dispatch_tables(
     ast::Node const *node) const {
   auto &table = mod_->data_[bound_constants_].repeated_dispatch_tables_;
   if (auto iter = table.find(node); iter != table.end()) {

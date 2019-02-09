@@ -20,7 +20,7 @@
 #include "type/variant.h"
 
 namespace ir {
-RegisterOr<type::Type const *> Tup(base::vector<Val> const &entries);
+RegisterOr<type::Type const *> Tup(std::vector<Val> const &entries);
 }  // namespace ir
 
 namespace {
@@ -132,7 +132,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
                     backend::EvaluateAs<type::Type const *>(rhs.get(), ctx)));
       if (t->is<type::Struct>()) {
         FnArgs<Expression *> args;
-        args.pos_ = base::vector<Expression *>{{lhs.get()}};
+        args.pos_ = std::vector<Expression *>{{lhs.get()}};
         OverloadSet os(scope_, "as", ctx);
         os.add_adl("as", t);
         os.add_adl("as", lhs_result.type_);
@@ -195,7 +195,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       }                                                                        \
     } else {                                                                   \
       FnArgs<Expression *> args;                                               \
-      args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};          \
+      args.pos_ = std::vector<Expression *>{{lhs.get(), rhs.get()}};          \
       OverloadSet os(scope_, symbol, ctx);                                     \
       os.add_adl(symbol, lhs_result.type_);                                    \
       os.add_adl(symbol, rhs_result.type_);                                    \
@@ -227,7 +227,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         }
       } else {
         FnArgs<Expression *> args;
-        args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
+        args.pos_ = std::vector<Expression *>{{lhs.get(), rhs.get()}};
         OverloadSet os(scope_, "+", ctx);
         os.add_adl("+", lhs_result.type_);
         os.add_adl("+", rhs_result.type_);
@@ -250,7 +250,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         }
       } else {
         FnArgs<Expression *> args;
-        args.pos_ = base::vector<Expression *>{{lhs.get(), rhs.get()}};
+        args.pos_ = std::vector<Expression *>{{lhs.get(), rhs.get()}};
         OverloadSet os(scope_, "+=", ctx);
         os.add_adl("+=", lhs_result.type_);
         os.add_adl("+=", rhs_result.type_);
@@ -293,13 +293,13 @@ void Binop::ExtractJumps(JumpExprs *rets) const {
   rhs->ExtractJumps(rets);
 }
 
-base::vector<ir::Val> Binop::EmitIR(Context *ctx) {
+std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
   auto *lhs_type = ctx->type_of(lhs.get());
   auto *rhs_type = ctx->type_of(rhs.get());
 
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
-    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> args;
+    FnArgs<std::pair<Expression *, std::vector<ir::Val>>> args;
     args.pos_.reserve(2);
     args.pos_.emplace_back(lhs.get(), lhs->EmitIR(ctx));
     args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx));
@@ -366,7 +366,7 @@ base::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       auto *this_type  = ASSERT_NOT_NULL(ctx->type_of(this));
       auto vals        = lhs->EmitIR(ctx);
       if (this_type == type::Type_) {
-        base::vector<type::Type const *> entries;
+        std::vector<type::Type const *> entries;
         entries.reserve(vals.size());
         for (auto const& val : vals) {
           // TODO what about incomplete structs?
@@ -543,7 +543,7 @@ base::vector<ir::Val> Binop::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> Binop::EmitLVal(Context *ctx) {
+std::vector<ir::RegisterOr<ir::Addr>> Binop::EmitLVal(Context *ctx) {
   switch (op) {
     case Language::Operator::As: NOT_YET();
     case Language::Operator::Index: 

@@ -15,7 +15,6 @@ cc_target(
     intf_deps = [
         ":property",
         ":property_set",
-        "//base/container:unordered_map",
         "//base:hash",
         "//base:owned_ptr",
         "//base:util",
@@ -33,7 +32,7 @@ cc_target(
 cc_target(
     name = "property_set",
     intf_deps = [
-        "//base/container:bag",
+        "//base:bag",
         "//base:owned_ptr",
         "//base:util",
     ],

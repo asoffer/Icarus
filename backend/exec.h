@@ -37,9 +37,9 @@ struct ExecContext {
 
   std::stack<Frame> call_stack;
 
-  ir::BlockIndex ExecuteBlock(const base::vector<ir::Addr> &ret_slots);
+  ir::BlockIndex ExecuteBlock(const std::vector<ir::Addr> &ret_slots);
   ir::BlockIndex ExecuteCmd(const ir::Cmd &cmd,
-                            const base::vector<ir::Addr> &ret_slots);
+                            const std::vector<ir::Addr> &ret_slots);
 
   template <typename T>
   T resolve(ir::Register val) const;
@@ -53,6 +53,6 @@ struct ExecContext {
 };
 
 void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
-             const base::vector<ir::Addr> &ret_slots, ExecContext *ctx);
+             const std::vector<ir::Addr> &ret_slots, ExecContext *ctx);
 }  // namespace backend
 #endif  // ICARUS_BACKEND_EXEC_H

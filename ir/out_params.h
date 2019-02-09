@@ -1,7 +1,7 @@
 #ifndef ICARUS_IR_OUT_PARAMS_H
 #define ICARUS_IR_OUT_PARAMS_H
 
-#include "base/container/vector.h"
+#include <vector>
 #include "ir/register.h"
 
 namespace type {
@@ -17,8 +17,8 @@ struct OutParams {
   void AppendLoc(Register reg);
   size_t size() const { return is_loc_.size(); }
 
-  base::vector<Register> regs_;
-  base::vector<bool> is_loc_;
+  std::vector<Register> regs_;
+  std::vector<bool> is_loc_;
 };
 }  // namespace ir
 

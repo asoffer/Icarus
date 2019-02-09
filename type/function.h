@@ -37,7 +37,7 @@ struct GenericFunction : public Callable {
 
 struct Function : public Callable {
   TYPE_FNS(Function);
-  Function(base::vector<const Type *> in, base::vector<const Type *> out)
+  Function(std::vector<const Type *> in, std::vector<const Type *> out)
       : input(std::move(in)), output(std::move(out)) {
     for (auto *t : input) { ASSERT(t != nullptr); }
     for (auto *t : output) { ASSERT(t != nullptr); }
@@ -47,11 +47,11 @@ struct Function : public Callable {
   llvm::FunctionType *llvm_fn(llvm::LLVMContext &ctx) const;
 #endif  // ICARUS_USE_LLVM
 
-  base::vector<const Type *> input, output;
+  std::vector<const Type *> input, output;
 };
 
-Function const *Func(base::vector<Type const *> in,
-                     base::vector<Type const *> out);
+Function const *Func(std::vector<Type const *> in,
+                     std::vector<Type const *> out);
 
 }  // namespace type
 

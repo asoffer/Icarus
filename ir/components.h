@@ -3,7 +3,7 @@
 
 #include <tuple>
 
-#include "base/container/tuple.h"
+#include "base/tuple.h"
 #include "ir/cmd.h"
 #include "ir/func.h"
 #include "ir/phi.h"

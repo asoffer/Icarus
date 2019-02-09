@@ -13,8 +13,8 @@ VerifyResult Terminal::VerifyType(Context *ctx) {
   return VerifyResult::Constant(ctx->set_type(this, value.type));
 }
 
-base::vector<ir::Val> Terminal::EmitIR(Context *) { return {value}; }
-base::vector<ir::RegisterOr<ir::Addr>> Terminal::EmitLVal(Context *ct) {
+std::vector<ir::Val> Terminal::EmitIR(Context *) { return {value}; }
+std::vector<ir::RegisterOr<ir::Addr>> Terminal::EmitLVal(Context *ct) {
   UNREACHABLE(this);
 }
 

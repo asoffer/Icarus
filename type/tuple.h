@@ -11,7 +11,7 @@ namespace type {
 struct Tuple : public Type {
   Tuple() = delete;
   ~Tuple() {}
-  Tuple(base::vector<Type const *> entries) : entries_(std::move(entries)) {}
+  Tuple(std::vector<Type const *> entries) : entries_(std::move(entries)) {}
   void WriteTo(std::string *result) const override;
 
   void EmitCopyAssign(Type const *from_type, ir::Val const &from,
@@ -42,7 +42,7 @@ struct Tuple : public Type {
   virtual llvm::Type *llvm(llvm::LLVMContext &) const { UNREACHABLE(); }
 #endif  // ICARUS_USE_LLVM
 
-  base::vector<Type const *> entries_;
+  std::vector<Type const *> entries_;
 
   base::lazy<ir::Func *> destroy_func_;
   base::lazy<ir::Func *> init_func_;
@@ -50,7 +50,7 @@ struct Tuple : public Type {
   base::lazy<ir::Func *> move_assign_func_;
 };
 
-Type const *Tup(base::vector<Type const *> entries);
+Type const *Tup(std::vector<Type const *> entries);
 
 }  // namespace type
 

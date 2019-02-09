@@ -4,9 +4,9 @@
 #include <unordered_set>
 
 #include "ast/fn_params.h"
-#include "base/container/bag.h"
-#include "base/container/unordered_map.h"
-#include "base/container/vector.h"
+#include "base/bag.h"
+#include <unordered_map>
+#include <vector>
 #include "ir/basic_block.h"
 #include "property/property_map.h"
 
@@ -84,7 +84,7 @@ struct Func {
   ast::FnParams<ast::Expression *> params_;
   
   i32 num_regs_  = 0;
-  base::vector<BasicBlock> blocks_;
+  std::vector<BasicBlock> blocks_;
   Module::CompilationWorkItem *work_item = nullptr;
 #ifdef ICARUS_USE_LLVM
   llvm::Function *llvm_fn_ = nullptr;
@@ -94,20 +94,20 @@ struct Func {
 
   size_t reg_size_ = 0;
 
-  base::vector<ast::Expression *> precondition_exprs_, postcondition_exprs_;
-  base::vector<std::pair<ir::Func, prop::PropertyMap>> preconditions_,
+  std::vector<ast::Expression *> precondition_exprs_, postcondition_exprs_;
+  std::vector<std::pair<ir::Func, prop::PropertyMap>> preconditions_,
       postconditions_;
-  base::unordered_map<Register, base::bag<Register>> references_;
-  base::unordered_map<Register, CmdIndex> reg_to_cmd_;
+  std::unordered_map<Register, base::bag<Register>> references_;
+  std::unordered_map<Register, CmdIndex> reg_to_cmd_;
 
-  base::unordered_map<BasicBlock const *,
+  std::unordered_map<BasicBlock const *,
                       std::unordered_set<BasicBlock const *>>
   GetIncomingBlocks() const;
 
   // This vector is indexed by ir::Reg and stores the value which is the offset
   // into the base::untyped_buffer holding all registers during compile-time
   // execution. It is only valid for Architecture::CompilingMachine().
-  base::vector<size_t> compiler_reg_to_offset_;
+  std::vector<size_t> compiler_reg_to_offset_;
 };
 
 static_assert(alignof(Func) > 1);

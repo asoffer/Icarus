@@ -35,7 +35,7 @@ struct Token : public ast::Node {
   void Validate(Context *) override { UNREACHABLE(token); }
   void ExtractJumps(ast::JumpExprs *) const override { UNREACHABLE(token); }
 
-  base::vector<ir::Val> EmitIR(Context *) override { UNREACHABLE(token); }
+  std::vector<ir::Val> EmitIR(Context *) override { UNREACHABLE(token); }
 
   std::string token;
   Language::Operator op;

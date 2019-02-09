@@ -48,7 +48,7 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
   std::vector<type::Type const *> arg_types =
       result.type_->is<type::Tuple>()
           ? result.type_->as<type::Tuple>().entries_
-          : base::vector<type::Type const *>{result.type_};
+          : std::vector<type::Type const *>{result.type_};
 
   if (op_ == Language::Operator::Print) {
     // TODO what's the actual size given expansion of tuples and stuff?
@@ -82,8 +82,8 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
   return VerifyResult(type::Void(), result.const_);
 }
 
-base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
-  base::vector<ir::Val> arg_vals;
+std::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
+  std::vector<ir::Val> arg_vals;
   if (args_.needs_expansion()) {
     for (auto &expr : args_.exprs_) {
       auto vals = expr->EmitIR(ctx);
@@ -147,9 +147,9 @@ base::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
       for (auto &val : arg_vals) {
         auto *t = ctx->type_of(args_.exprs_.at(index).get());
         if (t->is<type::Struct>()) {
-          ast::FnArgs<std::pair<ast::Expression *, base::vector<ir::Val>>> args;
+          ast::FnArgs<std::pair<ast::Expression *, std::vector<ir::Val>>> args;
           args.pos_.emplace_back(args_.exprs_[index].get(),
-                                 base::vector<ir::Val>{std::move(val)});
+                                 std::vector<ir::Val>{std::move(val)});
           ASSERT_NOT_NULL(dispatch_tables)->at(index).EmitCall(args, type::Void(), ctx);
         } else {
           t->EmitRepr(val, ctx);

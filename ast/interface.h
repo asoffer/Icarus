@@ -14,10 +14,10 @@ struct Interface : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
-  base::vector<Declaration> decls_;
+  std::vector<Declaration> decls_;
   std::unique_ptr<DeclScope> body_scope_;
 };
 }  // namespace ast

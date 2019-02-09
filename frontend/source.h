@@ -5,7 +5,7 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include "base/container/vector.h"
+#include <vector>
 
 struct Context;
 
@@ -22,7 +22,7 @@ struct Source {
   virtual std::optional<Line> NextLine()                    = 0;
   virtual std::unique_ptr<ast::Statements> Parse(Context *) = 0;
 
-  base::vector<Line> lines{
+  std::vector<Line> lines{
       1};  // Start with one blank line because line numbers
            // are 1-indexed not 0-indexed.
   // TODO this is a hacky way to do it and you should just shift the counter by

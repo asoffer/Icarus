@@ -48,7 +48,6 @@ cc_lib(
     name = "source",
     hdrs = ["source.h"],
     srcs = ["source.cc"],
-    deps = ["//base/container:vector"],
 )
 
 cc_lib(

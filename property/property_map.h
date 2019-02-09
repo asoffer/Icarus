@@ -3,7 +3,7 @@
 
 #include <unordered_set>
 
-#include "base/container/unordered_map.h"
+#include <unordered_map>
 #include "base/hash.h"
 #include "base/owned_ptr.h"
 #include "base/util.h"
@@ -21,7 +21,7 @@ namespace prop {
 struct FnStateView {
   FnStateView(ir::Func *fn);
 
-  base::unordered_map<ir::Register, PropertySet> view_;
+  std::unordered_map<ir::Register, PropertySet> view_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
@@ -88,7 +88,7 @@ struct PropertyMap {
   }
 
   ir::Func *fn_ = nullptr;
-  base::unordered_map<const ir::BasicBlock *, FnStateView> view_;
+  std::unordered_map<const ir::BasicBlock *, FnStateView> view_;
 
  private:
   void refresh(std::unordered_set<Entry> stale_up,

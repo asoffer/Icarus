@@ -103,7 +103,7 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
     return result ? Arr(result, lhs->as<Array>().len) : result;
   } else if (lhs->is<Variant>()) {
     // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
-    base::vector<Type const *> results;
+    std::vector<Type const *> results;
     if (rhs->is<Variant>()) {
       for (Type const *l_type : lhs->as<Variant>().variants_) {
         for (Type const *r_type : rhs->as<Variant>().variants_) {
@@ -120,7 +120,7 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
   } else if (rhs->is<Variant>()) {  // lhs is not a variant
     // TODO faster lookups? maybe not represented as a vector. at least give a
     // better interface.
-    base::vector<Type const *> results;
+    std::vector<Type const *> results;
     for (Type const *t : rhs->as<Variant>().variants_) {
       if (Type const *result = Meet(t, lhs)) { results.push_back(result); }
     }

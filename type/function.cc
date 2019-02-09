@@ -1,6 +1,6 @@
 #include "type/function.h"
 
-#include "base/container/map.h"
+#include <unordered_map>
 #include "base/guarded.h"
 #include "ir/cmd.h"
 #include "ir/val.h"
@@ -31,11 +31,11 @@ void Function::defining_modules(
   NOT_YET();
 }
 
-static base::guarded<base::map<base::vector<Type const *>,
-                               base::map<base::vector<Type const *>, Function>>>
+static base::guarded<std::map<std::vector<Type const *>,
+                               std::map<std::vector<Type const *>, Function>>>
     funcs_;
-Function const *Func(base::vector<Type const *> in,
-                     base::vector<Type const *> out) {
+Function const *Func(std::vector<Type const *> in,
+                     std::vector<Type const *> out) {
   // TODO if void is unit in some way we shouldn't do this.
   auto f = Function(in, out);
   return &(*funcs_.lock())[std::move(in)]

@@ -7,8 +7,8 @@
 #include "ast/bound_constants.h"
 #include "ast/fn_args.h"
 #include "ast/overload_set.h"
-#include "base/container/map.h"
-#include "base/container/unordered_map.h"
+#include <unordered_map>
+#include <unordered_map>
 #include "base/expected.h"
 
 struct Context;
@@ -63,7 +63,7 @@ struct Binding {
       : fn_(fn), const_(constant) {}
 
   type::Typed<Expression *, type::Callable> fn_;
-  base::vector<Entry> entries_;
+  std::vector<Entry> entries_;
 
   bool const_ = false;
   BoundConstants
@@ -84,14 +84,14 @@ struct DispatchTable {
                                           OverloadSet const &overload_set,
                                           Context *ctx, bool repeated = false);
 
-  base::vector<ir::Val> EmitCall(
-      ast::FnArgs<std::pair<ast::Expression *, base::vector<ir::Val>>> const
+  std::vector<ir::Val> EmitCall(
+      ast::FnArgs<std::pair<ast::Expression *, std::vector<ir::Val>>> const
           &args,
       type::Type const *ret_type, Context *ctx) const;
 
-  base::map<FnArgs<type::Type const *>, Binding> bindings_;
-  base::unordered_map<Expression const *, std::string> failure_reasons_;
-  base::vector<std::string> generic_failure_reasons_;
+  std::map<FnArgs<type::Type const *>, Binding> bindings_;
+  std::unordered_map<Expression const *, std::string> failure_reasons_;
+  std::vector<std::string> generic_failure_reasons_;
 };
 
 }  // namespace ast

@@ -44,7 +44,7 @@ void Interface::ExtractJumps(JumpExprs *rets) const {
   for (auto &d : decls_) { d.ExtractJumps(rets); }
 }
 
-base::vector<ir::Val> ast::Interface::EmitIR(Context *ctx) {
+std::vector<ir::Val> ast::Interface::EmitIR(Context *ctx) {
   // TODO this needs to be serialized as instructions so that we can evaluate
   // functions which return interfaces. For example,
   // HasFoo ::= (T: type) => interface {
@@ -53,7 +53,7 @@ base::vector<ir::Val> ast::Interface::EmitIR(Context *ctx) {
   return {ir::Val(ir::FinalizeInterface(ir::CreateInterface(scope_)))};
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> ast::Interface::EmitLVal(Context *ctx) {
+std::vector<ir::RegisterOr<ir::Addr>> ast::Interface::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
 }  // namespace ast

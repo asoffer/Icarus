@@ -13,8 +13,8 @@ struct Expression;
 struct Context;
 
 namespace backend {
-base::vector<ir::Val> Evaluate(ast::Expression *expr, Context *ctx);
-base::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
+std::vector<ir::Val> Evaluate(ast::Expression *expr, Context *ctx);
+std::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
                                Context *ctx);
 base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
                                       Context *ctx);

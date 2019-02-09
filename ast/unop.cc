@@ -111,7 +111,7 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         return VerifyResult(ctx->set_type(this, operand_type), result.const_);
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
-        args.pos_           = base::vector<Expression *>{operand.get()};
+        args.pos_           = std::vector<Expression *>{operand.get()};
         OverloadSet os(scope_, "-", ctx);
         os.add_adl("-", operand_type);
 
@@ -139,7 +139,7 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       }
       if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
-        args.pos_ = base::vector<Expression *>{operand.get()};
+        args.pos_ = std::vector<Expression *>{operand.get()};
         OverloadSet os(scope_, "!", ctx);
         os.add_adl("!", operand_type);
 
@@ -167,11 +167,11 @@ VerifyResult Unop::VerifyType(Context *ctx) {
   }
 }
 
-base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
+std::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   auto *operand_type = ctx->type_of(operand.get());
   if (auto const *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
-    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> args;
+    FnArgs<std::pair<Expression *, std::vector<ir::Val>>> args;
     args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx))};
     return dispatch_table->EmitCall(args, ctx->type_of(this), ctx);
   }
@@ -252,7 +252,7 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
       ir::Val tuple_val             = operand->EmitIR(ctx)[0];
       ir::Register tuple_reg        = std::get<ir::Register>(tuple_val.value);
       type::Tuple const *tuple_type = &tuple_val.type->as<type::Tuple>();
-      base::vector<ir::Val> results;
+      std::vector<ir::Val> results;
       results.reserve(tuple_type->entries_.size());
       for (size_t i = 0; i < tuple_type->entries_.size(); ++i) {
         results.push_back(
@@ -266,7 +266,7 @@ base::vector<ir::Val> Unop::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> Unop::EmitLVal(Context *ctx) {
+std::vector<ir::RegisterOr<ir::Addr>> Unop::EmitLVal(Context *ctx) {
   ASSERT(op == Language::Operator::At);
   return {std::get<ir::Register>(operand->EmitIR(ctx)[0].value)};
 }

@@ -23,8 +23,8 @@ struct Import : public Expression {
     operand_->ExtractJumps(rets);
   }
 
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   // TODO optimization: if the operand_ is a string literal, schedule it
   // immediately.

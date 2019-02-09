@@ -24,15 +24,15 @@ namespace ir {
 // TODO this stores way more than is needed. It'd be nice to have a way to say
 // when you're done with these. this could be done by code manually
 // incrementing/decrementing counters because this is compile-time only.
-static base::guarded<std::set<base::vector<ast::BlockLiteral *>>> seqs;
+static base::guarded<std::set<std::vector<ast::BlockLiteral *>>> seqs;
 Val Val::Block(ast::BlockLiteral *b) {
   auto handle         = seqs.lock();
-  auto[iter, success] = handle->insert(base::vector<ast::BlockLiteral *>{b});
+  auto[iter, success] = handle->insert(std::vector<ast::BlockLiteral *>{b});
   return Val::BlockSeq(BlockSequence{&*iter});
 }
 
-BlockSequence MakeBlockSeq(const base::vector<ir::BlockSequence> &blocks) {
-  base::vector<ast::BlockLiteral *> seq;
+BlockSequence MakeBlockSeq(const std::vector<ir::BlockSequence> &blocks) {
+  std::vector<ast::BlockLiteral *> seq;
   for (const auto &bseq : blocks) {
     seq.insert(seq.end(), bseq.seq_->begin(), bseq.seq_->end());
   }

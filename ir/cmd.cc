@@ -4,7 +4,7 @@
 #include <iostream>
 
 #include "ast/struct_literal.h"
-#include "base/container/vector.h"
+#include <vector>
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "ir/val.h"
@@ -165,12 +165,12 @@ RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r) {
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
                                      RegisterOr<type::Type const *> v2) {
   if (!v1.is_reg_ && !v2.is_reg_) {
-    base::vector<type::Type const *> ins =
+    std::vector<type::Type const *> ins =
         v1.val_->is<type::Tuple>() ? v1.val_->as<type::Tuple>().entries_
-                                   : base::vector<type::Type const *>{v1.val_};
-    base::vector<type::Type const *> outs =
+                                   : std::vector<type::Type const *>{v1.val_};
+    std::vector<type::Type const *> outs =
         v2.val_->is<type::Tuple>() ? v2.val_->as<type::Tuple>().entries_
-                                   : base::vector<type::Type const *>{v2.val_};
+                                   : std::vector<type::Type const *>{v2.val_};
     return type::Func(std::move(ins), std::move(outs));
   }
   auto &cmd = MakeCmd(type::Type_, Op::Arrow);
@@ -205,7 +205,7 @@ Register FinalizeTuple(Register r) {
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Tup(base::vector<Val> const &entries) {
+RegisterOr<type::Type const *> Tup(std::vector<Val> const &entries) {
   if (std::all_of(entries.begin(), entries.end(), [](ir::Val const &v) {
         return std::holds_alternative<type::Type const *>(v.value);
       })) {
@@ -238,11 +238,11 @@ Register FinalizeVariant(Register r) {
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals) {
+RegisterOr<type::Type const *> Variant(std::vector<Val> const &vals) {
   if (std::all_of(vals.begin(), vals.end(), [](Val const &v) {
         return std::holds_alternative<type::Type const *>(v.value);
       })) {
-    base::vector<type::Type const *> types;
+    std::vector<type::Type const *> types;
     types.reserve(vals.size());
     for (Val const &v : vals) {
       types.push_back(std::get<type::Type const *>(v.value));
@@ -310,7 +310,7 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
   Func::Current->reg_to_cmd_.emplace(result, cmd_index);
 }
 
-BlockSequence MakeBlockSeq(base::vector<ir::BlockSequence> const &blocks);
+BlockSequence MakeBlockSeq(std::vector<ir::BlockSequence> const &blocks);
 
 Register CreateBlockSeq() {
   return MakeCmd(type::Type_, Op::CreateBlockSeq).result;
@@ -329,7 +329,7 @@ Register FinalizeBlockSeq(Register r) {
 }
 
 // TODO replace Val with RegOr<BlockSequence>
-Val BlockSeq(const base::vector<Val> &blocks) {
+Val BlockSeq(const std::vector<Val> &blocks) {
   if (std::all_of(blocks.begin(), blocks.end(), [](const ir::Val &v) {
         return std::holds_alternative<ir::BlockSequence>(v.value);
       })) {

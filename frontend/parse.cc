@@ -2,8 +2,8 @@
 #include <cstdio>
 #include <iosfwd>
 #include <queue>
-#include "base/container/unordered_map.h"
-#include "base/container/vector.h"
+#include <unordered_map>
+#include <vector>
 
 #include "ast/access.h"
 #include "ast/array_literal.h"
@@ -75,7 +75,7 @@ static std::map<std::string, ast::Hashtag::Builtin> const BuiltinHashtagMap = {
     {"{immovable}", ast::Hashtag::Builtin::Immovable},
     {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
 static std::unique_ptr<ast::Node> AddHashtag(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto expr = move_as<ast::Expression>(nodes.back());
   auto iter =
       BuiltinHashtagMap.find(nodes.front()->as<frontend::Token>().token);
@@ -88,7 +88,7 @@ static std::unique_ptr<ast::Node> AddHashtag(
 }
 
 static std::unique_ptr<ast::Node> OneBracedStatement(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto stmts  = std::make_unique<ast::Statements>();
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
   stmts->append(std::move(nodes[1]));
@@ -97,7 +97,7 @@ static std::unique_ptr<ast::Node> OneBracedStatement(
 }
 
 static std::unique_ptr<ast::Node> EmptyBraces(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto stmts  = std::make_unique<ast::Statements>();
   stmts->span = TextSpan(nodes[0]->span, nodes[1]->span);
   return stmts;
@@ -115,7 +115,7 @@ static std::unique_ptr<ast::Node> BuildJump(std::unique_ptr<ast::Node> node) {
 }
 
 static std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto stmts  = move_as<ast::Statements>(nodes[1]);
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
   if (nodes[2]->is<ast::Statements>()) {
@@ -131,14 +131,14 @@ static std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
 }
 
 static std::unique_ptr<ast::Node> BracedStatementsJumpSameLineEnd(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   nodes[2] = BuildJump(std::move(nodes[2]));
   return BracedStatementsSameLineEnd(std::move(nodes), ctx);
 }
 
 namespace ast {
 namespace {
-std::unique_ptr<Node> BuildRightUnop(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildRightUnop(std::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
   const std::string &tk = nodes[1]->as<frontend::Token>().token;
   if (tk == ":?") {
@@ -163,7 +163,7 @@ std::unique_ptr<Node> BuildRightUnop(base::vector<std::unique_ptr<Node>> nodes,
 // Internal checks:
 // LHS is not a declaration
 // RHS is not a declaration
-std::unique_ptr<Node> BuildCall(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildCall(std::vector<std::unique_ptr<Node>> nodes,
                                 Context *ctx) {
   auto call  = std::make_unique<Call>();
   call->span = TextSpan(nodes.front()->span, nodes.back()->span);
@@ -171,7 +171,7 @@ std::unique_ptr<Node> BuildCall(base::vector<std::unique_ptr<Node>> nodes,
 
   if (nodes[2]->is<CommaList>()) {
     std::optional<TextSpan> last_named_span_before_error = std::nullopt;
-    base::vector<TextSpan> positional_error_spans;
+    std::vector<TextSpan> positional_error_spans;
 
     for (auto &expr : nodes[2]->as<CommaList>().exprs_) {
       if (expr->is<Binop>() &&
@@ -219,7 +219,7 @@ std::unique_ptr<Node> BuildCall(base::vector<std::unique_ptr<Node>> nodes,
 // Internal checks:
 // Operand cannot be a declaration.
 // Operand cannot be an assignment of any kind.
-std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes,
                                     Context *ctx) {
   const std::string &tk = nodes[0]->as<frontend::Token>().token;
 
@@ -268,7 +268,7 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
   unop->operand = move_as<Expression>(nodes[1]);
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
-  static base::unordered_map<std::string, Operator> const UnopMap{
+  static std::unordered_map<std::string, Operator> const UnopMap{
       {"*", Operator::Mul},     {"[*]", Operator::BufPtr},
       {"@", Operator::At},      {"import", Operator::Import},
       {"&", Operator::And},     {"which", Operator::Which},
@@ -288,7 +288,7 @@ std::unique_ptr<Node> BuildLeftUnop(base::vector<std::unique_ptr<Node>> nodes,
 // [expr] [chainop] [expr]
 //
 // Internal checks: None
-std::unique_ptr<Node> BuildChainOp(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildChainOp(std::vector<std::unique_ptr<Node>> nodes,
                                    Context *ctx) {
   auto op = nodes[1]->as<frontend::Token>().op;
   std::unique_ptr<ChainOp> chain;
@@ -311,7 +311,7 @@ std::unique_ptr<Node> BuildChainOp(base::vector<std::unique_ptr<Node>> nodes,
   return chain;
 }
 
-std::unique_ptr<Node> BuildCommaList(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildCommaList(std::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
   std::unique_ptr<CommaList> comma_list = nullptr;
   if (nodes[0]->is<CommaList>() && !nodes[0]->as<CommaList>().parenthesized_) {
@@ -332,7 +332,7 @@ std::unique_ptr<Node> BuildCommaList(base::vector<std::unique_ptr<Node>> nodes,
 // Internal checks:
 // LHS is not a declaration
 // RHS is an identifier
-std::unique_ptr<Node> BuildAccess(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildAccess(std::vector<std::unique_ptr<Node>> nodes,
                                   Context *ctx) {
   auto access     = std::make_unique<Access>();
   access->span    = TextSpan(nodes[0]->span, nodes[2]->span);
@@ -357,7 +357,7 @@ std::unique_ptr<Node> BuildAccess(base::vector<std::unique_ptr<Node>> nodes,
 // LHS is not a declaration
 // RHS is not a declaration
 std::unique_ptr<Node> BuildIndexOperator(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto binop  = std::make_unique<Binop>();
   binop->span = TextSpan(nodes[0]->span, nodes[2]->span);
   binop->lhs  = move_as<Expression>(nodes[0]);
@@ -375,21 +375,21 @@ std::unique_ptr<Node> BuildIndexOperator(
   return binop;
 }
 
-std::unique_ptr<Node> BuildEmptyArray(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildEmptyArray(std::vector<std::unique_ptr<Node>> nodes,
                                       Context *ctx) {
   return std::make_unique<ArrayLiteral>(
       TextSpan(nodes.front()->span, nodes.back()->span));
 }
 
 std::unique_ptr<Node> BuildEmptyCommaList(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto comma_list  = std::make_unique<CommaList>();
   comma_list->span = TextSpan(nodes[0]->span, nodes[1]->span);
   return comma_list;
 }
 
 std::unique_ptr<Node> BuildArrayLiteral(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto array_lit = std::make_unique<ArrayLiteral>(nodes[0]->span);
 
   if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().parenthesized_) {
@@ -401,7 +401,7 @@ std::unique_ptr<Node> BuildArrayLiteral(
   return array_lit;
 }
 
-std::unique_ptr<Node> BuildGenericStructType(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildGenericStructType(std::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
   auto result = std::make_unique<StructType>(
       TextSpan(nodes.front()->span, nodes.back()->span));
@@ -414,7 +414,7 @@ std::unique_ptr<Node> BuildGenericStructType(base::vector<std::unique_ptr<Node>>
   return result;
 }
 
-std::unique_ptr<Node> BuildArrayType(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildArrayType(std::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
   if (nodes[1]->is<CommaList>() && !nodes[1]->as<CommaList>().parenthesized_) {
     auto *length_chain = &nodes[1]->as<CommaList>();
@@ -443,7 +443,7 @@ std::unique_ptr<Node> BuildArrayType(base::vector<std::unique_ptr<Node>> nodes,
 
 template <bool IsConst>
 std::unique_ptr<Node> BuildDeclaration(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto op    = nodes[1]->as<frontend::Token>().op;
   auto decl  = std::make_unique<Declaration>(IsConst);
   decl->span = TextSpan(nodes[0]->span, nodes[2]->span);
@@ -463,7 +463,7 @@ std::unique_ptr<Node> BuildDeclaration(
 }
 
 std::unique_ptr<Node> BuildMatchDeclaration(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto decl  = std::make_unique<ast::MatchDeclaration>();
   decl->span = TextSpan(nodes[0]->span, nodes[2]->span);
   if (nodes[2]->is<Identifier>()) {
@@ -474,9 +474,9 @@ std::unique_ptr<Node> BuildMatchDeclaration(
   return decl;
 }
 
-base::vector<std::unique_ptr<Declaration>> ExtractInputs(
+std::vector<std::unique_ptr<Declaration>> ExtractInputs(
     std::unique_ptr<Expression> args) {
-  base::vector<std::unique_ptr<Declaration>> inputs;
+  std::vector<std::unique_ptr<Declaration>> inputs;
   if (args->is<Declaration>()) {
     inputs.push_back(move_as<Declaration>(args));
 
@@ -494,7 +494,7 @@ base::vector<std::unique_ptr<Declaration>> ExtractInputs(
 }
 
 std::unique_ptr<Node> BuildFunctionLiteral(
-    TextSpan span, base::vector<std::unique_ptr<Declaration>> inputs,
+    TextSpan span, std::vector<std::unique_ptr<Declaration>> inputs,
     std::unique_ptr<Expression> output, Statements &&stmts, Context *ctx) {
   auto fn     = std::make_unique<ast::FunctionLiteral>();
   fn->module_ = ASSERT_NOT_NULL(ctx->mod_);
@@ -534,7 +534,7 @@ std::unique_ptr<Node> BuildFunctionLiteral(
 }
 
 std::unique_ptr<Node> BuildNormalFunctionLiteral(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto span   = TextSpan(nodes[0]->span, nodes.back()->span);
   auto *binop = &nodes[0]->as<Binop>();
   return BuildFunctionLiteral(
@@ -543,7 +543,7 @@ std::unique_ptr<Node> BuildNormalFunctionLiteral(
 }
 
 std::unique_ptr<Node> BuildInferredFunctionLiteral(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto span = TextSpan(nodes[0]->span, nodes.back()->span);
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(move_as<Expression>(nodes[0])), nullptr,
@@ -576,7 +576,7 @@ std::unique_ptr<Node> BuildShortFunctionLiteral(
 }
 
 std::unique_ptr<Node> BuildOneElementCommaList(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto comma_list  = std::make_unique<CommaList>();
   comma_list->span = TextSpan(nodes[0]->span, nodes[3]->span);
   comma_list->exprs_.push_back(move_as<Expression>(nodes[1]));
@@ -585,7 +585,7 @@ std::unique_ptr<Node> BuildOneElementCommaList(
 }
 
 std::unique_ptr<Node> BuildOneStatement(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = nodes[0]->span;
   stmts->append(std::move(nodes[0]));
@@ -594,14 +594,14 @@ std::unique_ptr<Node> BuildOneStatement(
 }
 
 std::unique_ptr<Node> BuildMoreStatements(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   std::unique_ptr<Statements> stmts = move_as<Statements>(nodes[0]);
   stmts->append(std::move(nodes[1]));
   ValidateStatementSyntax(stmts->content_.back().get(), ctx);
   return stmts;
 }
 
-std::unique_ptr<Node> OneBracedJump(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> OneBracedJump(std::vector<std::unique_ptr<Node>> nodes,
                                     Context *ctx) {
   auto stmts  = std::make_unique<ast::Statements>();
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
@@ -610,12 +610,12 @@ std::unique_ptr<Node> OneBracedJump(base::vector<std::unique_ptr<Node>> nodes,
   return stmts;
 }
 
-std::unique_ptr<Node> BuildJump(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildJump(std::vector<std::unique_ptr<Node>> nodes,
                                 Context *) {
   return ::BuildJump(std::move(nodes[0]));
 }
 
-std::unique_ptr<Node> BuildScopeNode(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildScopeNode(std::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
   auto scope_node  = std::make_unique<ScopeNode>();
   auto call        = move_as<Call>(nodes[0]);
@@ -627,7 +627,7 @@ std::unique_ptr<Node> BuildScopeNode(base::vector<std::unique_ptr<Node>> nodes,
   return scope_node;
 }
 
-std::unique_ptr<Node> BuildBlockNode(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> BuildBlockNode(std::vector<std::unique_ptr<Node>> nodes,
                                      Context *ctx) {
   auto bn    = std::make_unique<BlockNode>();
   bn->span   = TextSpan(nodes[0]->span, nodes[1]->span);
@@ -636,7 +636,7 @@ std::unique_ptr<Node> BuildBlockNode(base::vector<std::unique_ptr<Node>> nodes,
   return bn;
 }
 
-std::unique_ptr<Node> ExtendScopeNode(base::vector<std::unique_ptr<Node>> nodes,
+std::unique_ptr<Node> ExtendScopeNode(std::vector<std::unique_ptr<Node>> nodes,
                                       Context *ctx) {
   auto &scope_node = nodes[0]->as<ScopeNode>();
   (scope_node.sugared_ ? scope_node.sugared_ : &scope_node)
@@ -645,7 +645,7 @@ std::unique_ptr<Node> ExtendScopeNode(base::vector<std::unique_ptr<Node>> nodes,
 }
 
 std::unique_ptr<Node> SugaredExtendScopeNode(
-    base::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto *scope_node = &nodes[0]->as<ScopeNode>();
   auto *extension_point = (scope_node->sugared_ != nullptr)
                               ? scope_node->sugared_
@@ -667,17 +667,17 @@ namespace {
 
 struct Rule {
  public:
-  using OptVec = base::vector<u64>;
+  using OptVec = std::vector<u64>;
   // TODO use spans
   using fnptr = std::unique_ptr<ast::Node> (*)(
-      base::vector<std::unique_ptr<ast::Node>>, Context *ctx);
+      std::vector<std::unique_ptr<ast::Node>>, Context *ctx);
 
   Rule(frontend::Tag output, OptVec const &input, fnptr fn)
       : output_(output), input_(input), fn_(fn) {}
 
   size_t size() const { return input_.size(); }
 
-  bool match(base::vector<frontend::Tag> const &tag_stack) const {
+  bool match(std::vector<frontend::Tag> const &tag_stack) const {
     // The stack needs to be long enough to match.
     if (input_.size() > tag_stack.size()) return false;
 
@@ -694,9 +694,9 @@ struct Rule {
     return true;
   }
 
-  void apply(base::vector<std::unique_ptr<ast::Node>> *node_stack,
-             base::vector<frontend::Tag> *tag_stack, Context *ctx) const {
-    base::vector<std::unique_ptr<ast::Node>> nodes_to_reduce;
+  void apply(std::vector<std::unique_ptr<ast::Node>> *node_stack,
+             std::vector<frontend::Tag> *tag_stack, Context *ctx) const {
+    std::vector<std::unique_ptr<ast::Node>> nodes_to_reduce;
     nodes_to_reduce.reserve(this->size());
     for (auto i = node_stack->size() - this->size(); i < node_stack->size();
          ++i) {
@@ -721,8 +721,8 @@ extern bool parser;
 }  // namespace debug
 
 static std::unique_ptr<ast::Node> BuildBinaryOperator(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  static base::unordered_map<std::string, Language::Operator> const chain_ops{
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+  static std::unordered_map<std::string, Language::Operator> const chain_ops{
       {",", Language::Operator::Comma}, {"==", Language::Operator::Eq},
       {"!=", Language::Operator::Ne},   {"<", Language::Operator::Lt},
       {">", Language::Operator::Gt},    {"<=", Language::Operator::Le},
@@ -794,7 +794,7 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
   binop->lhs = move_as<ast::Expression>(nodes[0]);
   binop->rhs = move_as<ast::Expression>(nodes[2]);
 
-  static base::unordered_map<std::string, Language::Operator> const symbols = {
+  static std::unordered_map<std::string, Language::Operator> const symbols = {
       {"->", Language::Operator::Arrow}, {"|=", Language::Operator::OrEq},
       {"&=", Language::Operator::AndEq}, {"^=", Language::Operator::XorEq},
       {"+=", Language::Operator::AddEq}, {"-=", Language::Operator::SubEq},
@@ -813,7 +813,7 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
 }
 
 static std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
-    base::vector<std::unique_ptr<ast::Node>> nodes, bool is_enum,
+    std::vector<std::unique_ptr<ast::Node>> nodes, bool is_enum,
     Context *ctx) {
   std::vector<std::unique_ptr<ast::Expression>> elems;
   if (auto *stmts = nodes[1]->if_as<ast::Statements>()) {
@@ -924,7 +924,7 @@ static std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
 }
 
 static std::unique_ptr<ast::Node> BuildGenericStruct(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto result = BuildStructLiteral(
       std::move(nodes[4]->as<ast::Statements>()),
       TextSpan(nodes.front()->span, nodes.back()->span), ctx);
@@ -944,14 +944,14 @@ static std::unique_ptr<ast::Node> BuildGenericStruct(
 }
 
 static std::unique_ptr<ast::Node> BuildConcreteStruct(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   return BuildStructLiteral(std::move(nodes[1]->as<ast::Statements>()),
                             TextSpan(nodes.front()->span, nodes.back()->span),
                             ctx);
 }
 
 static std::unique_ptr<ast::Node> BuildKWBlock(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   if (nodes[0]->is<frontend::Token>()) {
     std::string const &tk = nodes[0]->as<frontend::Token>().token;
 
@@ -998,14 +998,14 @@ static std::unique_ptr<ast::Node> BuildKWBlock(
 }
 
 static std::unique_ptr<ast::Node> Parenthesize(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto result            = move_as<ast::Expression>(nodes[1]);
   result->parenthesized_ = true;
   return result;
 }
 
 static std::unique_ptr<ast::Node> BuildEmptyParen(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto call  = std::make_unique<ast::Call>();
   call->span = TextSpan(nodes[0]->span, nodes[2]->span);
   call->fn_  = move_as<ast::Expression>(nodes[0]);
@@ -1018,12 +1018,12 @@ static std::unique_ptr<ast::Node> BuildEmptyParen(
 
 template <size_t N>
 static std::unique_ptr<ast::Node> drop_all_but(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   return std::move(nodes[N]);
 }
 
 static std::unique_ptr<ast::Node> CombineColonEq(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto *tk_node = &nodes[0]->as<frontend::Token>();
   tk_node->token += "=";  // Change : to := and :: to ::=
   tk_node->op = Language::Operator::ColonEq;
@@ -1031,7 +1031,7 @@ static std::unique_ptr<ast::Node> CombineColonEq(
 }
 
 std::unique_ptr<ast::Node> EmptyFile(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto stmts  = std::make_unique<ast::Statements>();
   stmts->span = nodes[0]->span;
   return std::move(stmts);
@@ -1040,7 +1040,7 @@ std::unique_ptr<ast::Node> EmptyFile(
 namespace ErrMsg {
 template <size_t RTN, size_t RES>
 static std::unique_ptr<ast::Node> Reserved(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   ctx->error_log_.Reserved(nodes[RES]->span,
                            nodes[RES]->as<frontend::Token>().token);
 
@@ -1049,7 +1049,7 @@ static std::unique_ptr<ast::Node> Reserved(
 
 template <size_t RTN, size_t RES1, size_t RES2>
 static std::unique_ptr<ast::Node> BothReserved(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   ctx->error_log_.Reserved(nodes[RES1]->span,
                            nodes[RES1]->as<frontend::Token>().token);
   ctx->error_log_.Reserved(nodes[RES2]->span,
@@ -1058,7 +1058,7 @@ static std::unique_ptr<ast::Node> BothReserved(
 }
 
 static std::unique_ptr<ast::Node> NonBinop(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   ctx->error_log_.NotBinary(nodes[1]->span,
                             nodes[1]->as<frontend::Token>().token);
   return std::make_unique<ast::Identifier>(nodes[1]->span, "invalid_node");
@@ -1066,7 +1066,7 @@ static std::unique_ptr<ast::Node> NonBinop(
 
 template <size_t RTN, size_t RES>
 static std::unique_ptr<ast::Node> NonBinopReserved(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   ctx->error_log_.NotBinary(nodes[1]->span,
                             nodes[1]->as<frontend::Token>().token);
   ctx->error_log_.Reserved(nodes[RES]->span,
@@ -1075,7 +1075,7 @@ static std::unique_ptr<ast::Node> NonBinopReserved(
 }
 
 static std::unique_ptr<ast::Node> NonBinopBothReserved(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   ctx->error_log_.Reserved(nodes[0]->span,
                            nodes[0]->as<frontend::Token>().token);
   ctx->error_log_.NotBinary(nodes[1]->span,
@@ -1087,7 +1087,7 @@ static std::unique_ptr<ast::Node> NonBinopBothReserved(
 }  // namespace ErrMsg
 
 static std::unique_ptr<ast::Node> BuildOperatorIdentifier(
-    base::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+    std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto span = nodes[1]->span;
   return std::make_unique<ast::Identifier>(
       span, move_as<frontend::Token>(nodes[1])->token);
@@ -1320,8 +1320,8 @@ struct ParseState {
     return lookahead_.back();
   }
 
-  base::vector<frontend::Tag> tag_stack_;
-  base::vector<std::unique_ptr<ast::Node>> node_stack_;
+  std::vector<frontend::Tag> tag_stack_;
+  std::vector<std::unique_ptr<ast::Node>> node_stack_;
   std::queue<frontend::TaggedNode> lookahead_;
   Context *ctx_        = nullptr;
   SourceLocation *loc_ = nullptr;
@@ -1457,7 +1457,7 @@ std::unique_ptr<ast::Statements> frontend::File::Parse(Context *ctx) {
 
   // Finish
   if (state.node_stack_.size() > 1) {
-    base::vector<TextSpan> lines;
+    std::vector<TextSpan> lines;
 
     for (size_t i = 0; i < state.node_stack_.size(); ++i) {
       if (state.tag_stack_[i] &

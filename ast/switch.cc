@@ -70,8 +70,8 @@ void Switch::ExtractJumps(JumpExprs *rets) const {
   }
 }
 
-base::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
-  base::unordered_map<ir::BlockIndex, ir::Val> phi_args;
+std::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
+  std::unordered_map<ir::BlockIndex, ir::Val> phi_args;
   auto land_block = ir::Func::Current->AddBlock();
 
   // TODO handle a default value. for now, we're just not checking the very last
@@ -98,7 +98,7 @@ base::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
   return {ir::MakePhi(ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)};
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> ast::Switch::EmitLVal(Context *ctx) {
+std::vector<ir::RegisterOr<ir::Addr>> ast::Switch::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
 

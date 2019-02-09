@@ -3,7 +3,7 @@
 #include <mutex>
 #include <utility>
 
-#include "base/container/map.h"
+#include <unordered_map>
 #include "base/guarded.h"
 #include "ir/arguments.h"
 #include "ir/components.h"

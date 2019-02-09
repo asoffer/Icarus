@@ -6,9 +6,9 @@
 #include <set>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
-#include "base/container/unordered_map.h"
-#include "base/container/vector.h"
+#include <vector>
 #include "base/untyped_buffer.h"
 
 #include "base/util.h"
@@ -51,14 +51,14 @@ struct VerifyResult {
 
 enum class JumpKind { Return, Yield };
 struct JumpExprs
-    : public base::unordered_map<JumpKind, base::vector<Expression const *>> {};
+    : public std::unordered_map<JumpKind, std::vector<Expression const *>> {};
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const   = 0;
   virtual void assign_scope(Scope *)              = 0;
   virtual VerifyResult VerifyType(Context *)      = 0;
   virtual void Validate(Context *)                = 0;
-  virtual base::vector<ir::Val> EmitIR(Context *) = 0;
+  virtual std::vector<ir::Val> EmitIR(Context *) = 0;
   virtual void ExtractJumps(JumpExprs *) const    = 0;
 
   Node(const TextSpan &span = TextSpan()) : span(span) {}

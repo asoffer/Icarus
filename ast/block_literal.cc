@@ -50,13 +50,13 @@ void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &a : after_) { a->ExtractJumps(rets); }
 }
 
-base::vector<ir::Val> ast::BlockLiteral::EmitIR(Context *ctx) {
+std::vector<ir::Val> ast::BlockLiteral::EmitIR(Context *ctx) {
   for (auto& b : before_) { b->EmitIR(ctx); }
   for (auto& a : after_) { a->EmitIR(ctx); }
   return {ir::Val::Block(this)};
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> BlockLiteral::EmitLVal(Context *) {
+std::vector<ir::RegisterOr<ir::Addr>> BlockLiteral::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
 

@@ -19,8 +19,8 @@ struct Hole : public Expression {
   VerifyResult VerifyType(Context *) { return VerifyResult::Error(); }
   void Validate(Context *ctx) {}
 
-  base::vector<ir::Val> EmitIR(Context *) override { return {ir::Val::None()}; }
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override { UNREACHABLE(); }
+  std::vector<ir::Val> EmitIR(Context *) override { return {ir::Val::None()}; }
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override { UNREACHABLE(); }
 };
 }  // namespace ast
 

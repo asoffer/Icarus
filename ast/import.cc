@@ -17,11 +17,11 @@ void Import::assign_scope(Scope *scope) {
   operand_->assign_scope(scope);
 }
 
-base::vector<ir::Val> Import::EmitIR(Context *ctx) {
+std::vector<ir::Val> Import::EmitIR(Context *ctx) {
   return {ir::Val(module_.get())};
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
+std::vector<ir::RegisterOr<ir::Addr>> Import::EmitLVal(Context *ctx) { UNREACHABLE(); }
 
 VerifyResult Import::VerifyType(Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), auto result,

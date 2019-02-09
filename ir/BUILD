@@ -39,7 +39,6 @@ cc_target(
     name = "arguments",
     intf_deps = [
         ":register",
-        "//base/container:vector",
         "//base:untyped_buffer",
         "//type:function",
         "//type:generic_struct",
@@ -59,7 +58,6 @@ cc_lib(
         ":arguments",
         ":cmd",
         ":out_params",
-        "//base/container:vector",
         "//base:untyped_buffer",
     ],
 )
@@ -78,7 +76,6 @@ cc_target(
         ":phi",
         ":val",
         "//ast:struct_literal",
-        "//base/container:vector",
         "//misc:architecture",
         "//type:typed_value",
         "//type:generic_struct",
@@ -93,7 +90,7 @@ cc_lib(
         ":func",
         ":phi",
         ":register",
-        "//base/container:tuple",
+        "//base:tuple",
     ],
 )
 
@@ -106,7 +103,6 @@ cc_target(
 cc_target(
     name = "foreign",
     impl_deps = [
-        "//base/container:unordered_map",
         "//base:guarded",
         "//type:type",
     ],
@@ -117,9 +113,7 @@ cc_target(
     intf_deps = [
         "//ast:fn_params",
         "//ast:function_literal",
-        "//base/container:bag",
-        "//base/container:unordered_map",
-        "//base/container:vector",
+        "//base:bag",
         "//ir:basic_block",
         "//property:property_map",
     ],
@@ -138,7 +132,6 @@ cc_target(
     name = "out_params",
     intf_deps = [
         ":register",
-        "//base/container:vector",
     ],
 )
 
@@ -161,7 +154,6 @@ cc_lib(
     name = "register",
     hdrs = ["register.h"],
     deps = [
-        "//base/container:vector",
         "//base:strong_types",
         "//base:types",
     ],
@@ -176,10 +168,9 @@ cc_target(
         ":register",
         "//base:strong_types",
         "//base:types",
-        "//type:flags",
-        "//type:type",
         "//type:typed_value",
         "//type:util",
+        "//type:interface",
     ],
     impl_deps = [
         "//ast:block_literal",

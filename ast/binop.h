@@ -2,7 +2,7 @@
 #define ICARUS_AST_BINOP_H
 
 #include <memory>
-#include "base/container/vector.h"
+#include <vector>
 
 #include "ast/dispatch.h"
 #include "ast/expression.h"
@@ -21,8 +21,8 @@ struct Binop : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   Language::Operator op;
   std::unique_ptr<Expression> lhs, rhs;

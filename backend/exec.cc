@@ -36,14 +36,14 @@ using ::base::check::Is;
 // kinds
 
 namespace ir {
-ir::BlockSequence MakeBlockSeq(const base::vector<ir::BlockSequence> &blocks);
+ir::BlockSequence MakeBlockSeq(const std::vector<ir::BlockSequence> &blocks);
 }  // namespace ir
 
 namespace backend {
 base::untyped_buffer ReadOnlyData(0);
 
 void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
-             const base::vector<ir::Addr> &ret_slots, ExecContext *exec_ctx) {
+             const std::vector<ir::Addr> &ret_slots, ExecContext *exec_ctx) {
   // TODO: Understand why and how work-items may not be complete and add an
   // explanation here. I'm quite confident this is really possible with the
   // generics model I have, but I can't quite articulate exactly why it only
@@ -97,7 +97,7 @@ ExecContext::Frame::Frame(ir::Func *fn, const base::untyped_buffer &arguments)
 }
 
 ir::BlockIndex ExecContext::ExecuteBlock(
-    const base::vector<ir::Addr> &ret_slots) {
+    const std::vector<ir::Addr> &ret_slots) {
   ir::BlockIndex result;
   ASSERT(current_block().cmds_.size() > 0u) << call_stack.top().fn_;
   auto cmd_iter = current_block().cmds_.begin();
@@ -199,7 +199,7 @@ std::tuple<Ts...> MakeTupleArgs(base::untyped_buffer const &arguments) {
 // TODO Generalize this based on calling convention.
 template <typename Out, typename... Ins>
 void FfiCall(ir::Foreign const &f, base::untyped_buffer const &arguments,
-             base::vector<ir::Addr> *ret_slots, base::untyped_buffer *stack) {
+             std::vector<ir::Addr> *ret_slots, base::untyped_buffer *stack) {
   using fn_t = Out (*)(Ins...);
   fn_t fn    = (fn_t)(f.get());
 
@@ -212,7 +212,7 @@ void FfiCall(ir::Foreign const &f, base::untyped_buffer const &arguments,
 }
 
 void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
-                   base::vector<ir::Addr> ret_slots,
+                   std::vector<ir::Addr> ret_slots,
                    base::untyped_buffer *stack) {
   // TODO we can catch locally or in the same lexical scope stack if a
   // redeclaration of the same foreign symbol has a different type.
@@ -263,7 +263,7 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
 }
 
 ir::BlockIndex ExecContext::ExecuteCmd(
-    const ir::Cmd &cmd, const base::vector<ir::Addr> &ret_slots) {
+    const ir::Cmd &cmd, const std::vector<ir::Addr> &ret_slots) {
   auto save = [&](auto val) {
     call_stack.top().regs_.set(
         call_stack.top().fn_->compiler_reg_to_offset_.at(cmd.result.value()),
@@ -458,7 +458,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
 #undef CASE
     case ir::Op::Move: {
       auto *t = cmd.special2_.type_;
-      base::vector<ir::Addr> return_slots;
+      std::vector<ir::Addr> return_slots;
       base::untyped_buffer call_buf(sizeof(ir::Addr) * 2);
       call_buf.append(resolve(cmd.special2_.regs_[0]));
       call_buf.append(resolve(cmd.special2_.regs_[1]));
@@ -482,7 +482,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::Copy: {
       auto *t = cmd.special2_.type_;
-      base::vector<ir::Addr> return_slots;
+      std::vector<ir::Addr> return_slots;
       base::untyped_buffer call_buf(sizeof(ir::Addr) * 2);
       call_buf.append(resolve(cmd.special2_.regs_[0]));
       call_buf.append(resolve(cmd.special2_.regs_[1]));
@@ -506,7 +506,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::Init: {
       auto *t = cmd.special1_.type_;
-      base::vector<ir::Addr> return_slots;
+      std::vector<ir::Addr> return_slots;
       base::untyped_buffer call_buf(sizeof(ir::Addr));
       call_buf.append(resolve(cmd.special1_.regs_[0]));
 
@@ -529,7 +529,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::Destroy: {
       auto *t = cmd.special1_.type_;
-      base::vector<ir::Addr> return_slots;
+      std::vector<ir::Addr> return_slots;
       base::untyped_buffer call_buf(sizeof(ir::Addr));
       call_buf.append(resolve(cmd.special1_.regs_[0]));
 
@@ -678,7 +678,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::PrintFlags: {
       size_t val = resolve(cmd.print_flags_.arg_).value;
-      base::vector<std::string> vals;
+      std::vector<std::string> vals;
 
       auto const &members = cmd.print_flags_.flags_type_->members_;
 
@@ -712,7 +712,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       // NOTE: This is a hack using heap address slots to represent registers
       // since they are both void* and are used identically in the
       // interpretter.
-      base::vector<ir::Addr> return_slots;
+      std::vector<ir::Addr> return_slots;
       if (cmd.call_.outs_ != nullptr) {
         return_slots.reserve(cmd.call_.outs_->size());
         for (size_t i = 0; i < cmd.call_.outs_->size(); ++i) {
@@ -792,7 +792,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(resolve<type::Interface *>(cmd.reg_));
     } break;
     case ir::Op::CreateTuple: {
-      save(new type::Tuple(base::vector<type::Type const *>{}));
+      save(new type::Tuple(std::vector<type::Type const *>{}));
     } break;
     case ir::Op::AppendToTuple: {
       auto *tuple_to_modify =
@@ -803,7 +803,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(resolve<type::Tuple *>(cmd.reg_)->finalize());
       break;
     case ir::Op::CreateVariant: {
-      save(new type::Variant(base::vector<type::Type const *>{}));
+      save(new type::Variant(std::vector<type::Type const *>{}));
     } break;
     case ir::Op::AppendToVariant: {
       auto *variant_to_modify =
@@ -847,16 +847,16 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::CastToFlags: save(ir::FlagsVal(resolve<i32>(cmd.reg_))); break;
     case ir::Op::CastPtr: save(resolve<ir::Addr>(cmd.typed_reg_.get())); break;
     case ir::Op::CreateBlockSeq:
-      save(new base::vector<ir::BlockSequence>{});
+      save(new std::vector<ir::BlockSequence>{});
       break;
     case ir::Op::AppendToBlockSeq: {
       auto *block_seq_to_modify =
-          ASSERT_NOT_NULL(resolve<base::vector<ir::BlockSequence> *>(
+          ASSERT_NOT_NULL(resolve<std::vector<ir::BlockSequence> *>(
               cmd.store_block_.addr_.reg_));
       block_seq_to_modify->push_back(resolve(cmd.store_block_.val_));
     } break;
     case ir::Op::FinalizeBlockSeq: {
-      auto *block_seq = resolve<base::vector<ir::BlockSequence> *>(cmd.reg_);
+      auto *block_seq = resolve<std::vector<ir::BlockSequence> *>(cmd.reg_);
       auto seq = ir::MakeBlockSeq(*block_seq);
       delete block_seq;
       save(seq);

@@ -6,7 +6,7 @@
 #include <string>
 #include <unordered_set>
 
-#include "base/container/unordered_map.h"
+#include <unordered_map>
 #include "ir/flags_val.h"
 #include "type.h"
 #include "typed_value.h"
@@ -17,13 +17,13 @@ struct Flags : public type::Type {
 
   Flags(::Module const* mod) : mod_(mod) {}
 
-  Flags(base::unordered_map<std::string, std::optional<i32>> const& members);
+  Flags(std::unordered_map<std::string, std::optional<i32>> const& members);
 
   std::optional<ir::FlagsVal> Get(const std::string& str) const;
   Typed<ir::FlagsVal, Flags> EmitLiteral(std::string const& member_name) const;
 
   // TODO privatize
-  base::unordered_map<size_t, std::string> members_;
+  std::unordered_map<size_t, std::string> members_;
 
   size_t All = 0;
 
@@ -32,7 +32,7 @@ struct Flags : public type::Type {
 
   ::Module const *mod_;
   // TODO combine these into a single bidirectional map?
-  base::unordered_map<std::string, ir::FlagsVal> vals_;
+  std::unordered_map<std::string, ir::FlagsVal> vals_;
 };
 }  // namespace type
 

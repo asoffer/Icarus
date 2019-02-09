@@ -59,13 +59,13 @@ InferenceFailureReason Inferrable(type::Type const *t) {
 
 // TODO: This algorithm is sufficiently complicated you should combine it
 // with proof of correctness and good explanation of what it does.
-bool CommonAmbiguousFunctionCall(const base::vector<ArgumentMetaData> &data1,
-                                 const base::vector<ArgumentMetaData> &data2) {
+bool CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
+                                 const std::vector<ArgumentMetaData> &data2) {
   // TODO Don't need to reprocess this each time
-  base::unordered_map<std::string, size_t> index2;
+  std::unordered_map<std::string, size_t> index2;
   for (size_t i = 0; i < data2.size(); ++i) { index2[data2[i].name] = i; }
 
-  base::vector<int> delta_fwd_matches(std::max(data1.size(), data2.size()), 0);
+  std::vector<int> delta_fwd_matches(std::max(data1.size(), data2.size()), 0);
   for (size_t i = 0; i < data1.size(); ++i) {
     auto iter = index2.find(data1[i].name);
     if (iter == index2.end()) { continue; }
@@ -74,7 +74,7 @@ bool CommonAmbiguousFunctionCall(const base::vector<ArgumentMetaData> &data1,
     delta_fwd_matches[std::max(i, j)]--;
   }
 
-  base::vector<size_t> indices = {0};
+  std::vector<size_t> indices = {0};
   // One useful invariant here is that accumulating delta_fwd_matches always
   // yields a non-negative integer. This is because any subtraction that
   // occurs is always preceeded by an addition.
@@ -150,9 +150,9 @@ bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
   // information.
   // TODO check const-decl or not.
 
-  auto ExtractMetaData = [ctx](auto &eval) -> base::vector<ArgumentMetaData> {
+  auto ExtractMetaData = [ctx](auto &eval) -> std::vector<ArgumentMetaData> {
     using eval_t = std::decay_t<decltype(eval)>;
-    base::vector<ArgumentMetaData> metadata;
+    std::vector<ArgumentMetaData> metadata;
 
     if constexpr (std::is_same_v<eval_t, ir::Func *>) {
       metadata.reserve(eval->args_.size());
@@ -471,7 +471,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
 
   // TODO simplify now that you don't have error decls.
   ASSERT(this_type != nullptr) << this;
-  base::vector<type::Typed<Declaration *>> decls_to_check;
+  std::vector<type::Typed<Declaration *>> decls_to_check;
   {
     auto good_decls_to_check = scope_->AllDeclsWithId(id_, ctx);
     size_t num_total         = good_decls_to_check.size();
@@ -537,7 +537,7 @@ void Declaration::ExtractJumps(JumpExprs *rets) const {
   if (init_val) { init_val->ExtractJumps(rets); }
 }
 
-base::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
+std::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
   bool swap_bc = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   BoundConstants old_bc;

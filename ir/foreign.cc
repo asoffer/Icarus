@@ -1,11 +1,11 @@
 #include "ir/foreign.h"
 
-#include "base/container/unordered_map.h"
+#include <unordered_map>
 #include "base/guarded.h"
 #include "type/type.h"
 
 namespace ir {
-static base::guarded<base::unordered_map<void *, type::Type const *>>
+static base::guarded<std::unordered_map<void *, type::Type const *>>
     foreign_objs;
 
 Foreign::Foreign(void *obj, type::Type const *t) : obj_(obj) {

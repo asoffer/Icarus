@@ -27,7 +27,7 @@ void CommaList::assign_scope(Scope *scope) {
 
 std::optional<std::vector<VerifyResult>> CommaList::VerifyWithoutSetting(
     Context *ctx) {
-  base::vector<VerifyResult> results;
+  std::vector<VerifyResult> results;
   results.reserve(exprs_.size());
   for (auto &expr : exprs_) {
     auto r = expr->VerifyType(ctx);
@@ -48,7 +48,7 @@ std::optional<std::vector<VerifyResult>> CommaList::VerifyWithoutSetting(
 VerifyResult CommaList::VerifyType(Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), auto results,
                    VerifyWithoutSetting(ctx));
-  base::vector<type::Type const *> ts;
+  std::vector<type::Type const *> ts;
   ts.reserve(results.size());
   bool is_const = true;
   for (auto const &r : results) {
@@ -66,8 +66,8 @@ void CommaList::ExtractJumps(JumpExprs *rets) const {
   for (auto &expr : exprs_) { expr->ExtractJumps(rets); }
 }
 
-base::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
-  base::vector<ir::Val> results;
+std::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
+  std::vector<ir::Val> results;
   auto *tuple_type = &ctx->type_of(this)->as<type::Tuple>();
   // TODO this is a hack. I'm still not sure what counts as a tuple and what
   // counts as atype
@@ -92,8 +92,8 @@ base::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
   return {ir::Val::Reg(tuple_alloc, tuple_type)};
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> CommaList::EmitLVal(Context *ctx) {
-  base::vector<ir::RegisterOr<ir::Addr>> results;
+std::vector<ir::RegisterOr<ir::Addr>> CommaList::EmitLVal(Context *ctx) {
+  std::vector<ir::RegisterOr<ir::Addr>> results;
   results.reserve(exprs_.size());
   for (auto &expr : exprs_) { results.push_back(expr->EmitLVal(ctx)[0]); }
   return results;

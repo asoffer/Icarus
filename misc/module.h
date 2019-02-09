@@ -3,19 +3,20 @@
 
 #include <filesystem>
 #include <future>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "ast/bound_constants.h"
 #include "ast/dispatch.h"
 #include "ast/fn_params.h"
 #include "ast/node_lookup.h"
 #include "ast/statements.h"
-#include "base/container/unordered_map.h"
-#include "base/container/vector.h"
 #include "scope.h"
 
 #ifdef ICARUS_USE_LLVM
@@ -83,7 +84,7 @@ struct Module {
   //
   // TODO Almost surely this needs to be even deeper, treating it as a tree
   // of arbitrary depth.
-  base::map<ast::BoundConstants, ast::BoundConstants> constants_;
+  std::map<ast::BoundConstants, ast::BoundConstants> constants_;
 
   // TODO long-term this is not a good way to store these. We should probably
   // extract the declarations determine which are public, etc.
@@ -94,7 +95,7 @@ struct Module {
   std::unique_ptr<llvm::Module> llvm_;
 #endif  // ICARUS_USE_LLVM
 
-  base::vector<std::unique_ptr<ir::Func>> fns_;
+  std::vector<std::unique_ptr<ir::Func>> fns_;
 
   type::Type const *set_type(ast::BoundConstants const &bc,
                              ast::Expression const *expr, type::Type const *);
@@ -104,21 +105,21 @@ struct Module {
                     ast::Declaration *decl) const;
            
   // TODO support more than just a single type argument to generic structs.
-  base::unordered_map<ast::StructLiteral *,
-                      base::map<type::Type const *, type::Type const *>>
+  std::unordered_map<ast::StructLiteral *,
+                      std::map<type::Type const *, type::Type const *>>
       generic_struct_cache_;
 
   struct DependentData {
     ast::NodeLookup<type::Type const *> types_;
-    base::unordered_map<ast::Declaration *, ir::Register> addr_;
+    std::unordered_map<ast::Declaration *, ir::Register> addr_;
     std::unordered_set<ast::FunctionLiteral const *> validated_;
 
-    base::unordered_map<ast::Expression const *, ir::Func *> ir_funcs_;
+    std::unordered_map<ast::Expression const *, ir::Func *> ir_funcs_;
 
-    base::unordered_map<ast::Expression const *, ast::DispatchTable>
+    std::unordered_map<ast::Expression const *, ast::DispatchTable>
         dispatch_tables_;
     // For use with expression nodes that have more than one dispatch table.
-    base::unordered_map<ast::Node const *, base::vector<ast::DispatchTable>>
+    std::unordered_map<ast::Node const *, std::vector<ast::DispatchTable>>
         repeated_dispatch_tables_;
   };
   std::map<ast::BoundConstants, DependentData> data_;

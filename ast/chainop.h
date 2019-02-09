@@ -4,7 +4,7 @@
 #include <memory>
 #include "ast/dispatch.h"
 #include "ast/expression.h"
-#include "base/container/vector.h"
+#include <vector>
 #include "frontend/operators.h"
 
 namespace ast {
@@ -17,11 +17,11 @@ struct ChainOp : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
 
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
-  base::vector<Language::Operator> ops;
-  base::vector<std::unique_ptr<Expression>> exprs;
+  std::vector<Language::Operator> ops;
+  std::vector<std::unique_ptr<Expression>> exprs;
 };
 }  // namespace ast
 #endif  // ICARUS_AST_CHAINOP_H

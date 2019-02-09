@@ -57,11 +57,11 @@ static void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
 namespace type {
 using base::check::Is;
 
-static base::guarded<base::unordered_map<
-    const Array *, base::unordered_map<const Array *, ir::Func *>>>
+static base::guarded<std::unordered_map<
+    const Array *, std::unordered_map<const Array *, ir::Func *>>>
     eq_funcs;
-static base::guarded<base::unordered_map<
-    const Array *, base::unordered_map<const Array *, ir::Func *>>>
+static base::guarded<std::unordered_map<
+    const Array *, std::unordered_map<const Array *, ir::Func *>>>
     ne_funcs;
 // TODO this should early exit if the types aren't equal.
 ir::Val Array::Compare(const Array *lhs_type, ir::Val const &lhs_ir,
@@ -142,7 +142,7 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val const &lhs_ir,
 }
 
 static base::guarded<
-    base::unordered_map<Type const *, base::unordered_map<size_t, Array>>>
+    std::unordered_map<Type const *, std::unordered_map<size_t, Array>>>
     fixed_arrays_;
 const Array *Arr(Type const *t, size_t len) {
   auto handle = fixed_arrays_.lock();

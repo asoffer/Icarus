@@ -5,8 +5,8 @@
 #include <string>
 
 #include "ast/fn_args.h"
-#include "base/container/unordered_map.h"
-#include "base/container/vector.h"
+#include <unordered_map>
+#include <vector>
 #include "base/debug.h"
 #include "frontend/text_span.h"
 #include "error/inference_failure_reason.h"
@@ -41,8 +41,8 @@ struct Log {
                             TextSpan const &val_span);
   void Reserved(TextSpan const &span, std::string const &token);
   void NotBinary(TextSpan const &span, std::string const &token);
-  void UnknownParseError(base::vector<TextSpan> const &span);
-  void PositionalArgumentFollowingNamed(base::vector<TextSpan> const &pos_spans,
+  void UnknownParseError(std::vector<TextSpan> const &span);
+  void PositionalArgumentFollowingNamed(std::vector<TextSpan> const &pos_spans,
                                         TextSpan const &named_span);
   void NotAType(TextSpan const &span, type::Type const *t);
   void ShadowingDeclaration(ast::Declaration const &decl1,
@@ -77,15 +77,15 @@ struct Log {
 
   void ComparingIncomparables(type::Type const *lhs, type::Type const *rhs,
                               TextSpan const &span);
-  void CyclicDependency(base::vector<ast::Identifier const *> cyc_deps);
+  void CyclicDependency(std::vector<ast::Identifier const *> cyc_deps);
 
   void MismatchedAssignmentSize(TextSpan const &span, size_t lhs, size_t rhs);
 
   void InvalidNumber(TextSpan const& span, std::string_view err);
 
   void NoCallMatch(TextSpan const &span,
-                   base::vector<std::string> const &generic_failure_reasons,
-                   base::unordered_map<ast::Expression const *,
+                   std::vector<std::string> const &generic_failure_reasons,
+                   std::unordered_map<ast::Expression const *,
                                        std::string> const &failure_reasons);
   void UninferrableType(InferenceFailureReason reason, TextSpan const &span);
 
@@ -94,7 +94,7 @@ struct Log {
 
   void MissingDispatchContingency(
       TextSpan const &span,
-      base::vector<ast::FnArgs<type::Type const *>> const &missing_dispatch);
+      std::vector<ast::FnArgs<type::Type const *>> const &missing_dispatch);
 
   void StatementsFollowingJump(TextSpan const &span);
 
@@ -107,13 +107,13 @@ struct Log {
   // TODO per source file splitting? Can't do this until you figure out the
   // module/multi-source-file story.
   using Token = std::string;
-  base::unordered_map<Token, base::vector<ast::Identifier *>> undeclared_ids_;
-  base::unordered_map<ast::Declaration *, base::vector<ast::Identifier *>>
+  std::unordered_map<Token, std::vector<ast::Identifier *>> undeclared_ids_;
+  std::unordered_map<ast::Declaration *, std::vector<ast::Identifier *>>
       out_of_order_decls_;
 
-  base::vector<base::vector<ast::Identifier const *>> cyc_dep_vecs_;
+  std::vector<std::vector<ast::Identifier const *>> cyc_dep_vecs_;
 
-  base::vector<std::string> errors_;
+  std::vector<std::string> errors_;
 };
 }  // namespace error
 

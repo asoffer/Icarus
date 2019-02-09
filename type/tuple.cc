@@ -3,7 +3,7 @@
 #include <mutex>
 #include <utility>
 
-#include "base/container/map.h"
+#include <unordered_map>
 #include "base/guarded.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
@@ -118,8 +118,8 @@ void Tuple::EmitRepr(ir::Val const &id_val, Context *ctx) const {
   ir::Print(std::string_view{")"});
 }
 
-static base::guarded<base::map<base::vector<Type const *>, Tuple const>> tups_;
-Type const *Tup(base::vector<Type const *> entries) {
+static base::guarded<std::map<std::vector<Type const *>, Tuple const>> tups_;
+Type const *Tup(std::vector<Type const *> entries) {
   if (entries.size() == 1) { return entries[0]; }
   auto[iter, success] = tups_.lock()->emplace(std::piecewise_construct,
                                               std::forward_as_tuple(entries),

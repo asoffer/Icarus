@@ -5,11 +5,11 @@
 #include "type.h"
 
 namespace type {
-Type const *Var(base::vector<Type const *> variants);
+Type const *Var(std::vector<Type const *> variants);
 
 struct Variant : public Type {
   TYPE_FNS(Variant);
-  Variant(base::vector<Type const *> variants)
+  Variant(std::vector<Type const *> variants)
       : variants_(std::move(variants)) {}
   size_t size() const { return variants_.size(); }
 
@@ -31,7 +31,7 @@ struct Variant : public Type {
   bool IsDefaultInitializable() const override { return false; }
   bool IsCopyable() const;
   bool IsMovable() const;
-  base::vector<Type const *> variants_;
+  std::vector<Type const *> variants_;
 
  private:
   mutable std::mutex mtx_;

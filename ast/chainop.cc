@@ -16,8 +16,8 @@
 #include "type/tuple.h"
 
 namespace ir {
-Val BlockSeq(base::vector<Val> const &blocks);
-RegisterOr<type::Type const *> Variant(base::vector<Val> const &vals);
+Val BlockSeq(std::vector<Val> const &blocks);
+RegisterOr<type::Type const *> Variant(std::vector<Val> const &vals);
 }  // namespace ir
 
 namespace ast {
@@ -39,12 +39,12 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
                                 op == Language::Operator::Eq, ctx)
         .reg_or<bool>();
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
-    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> args;
+    FnArgs<std::pair<Expression *, std::vector<ir::Val>>> args;
     args.pos_.reserve(2);
     args.pos_.emplace_back(chain_op->exprs[index].get(),
-                           base::vector<ir::Val>{lhs_ir});
+                           std::vector<ir::Val>{lhs_ir});
     args.pos_.emplace_back(chain_op->exprs[index + 1].get(),
-                           base::vector<ir::Val>{rhs_ir});
+                           std::vector<ir::Val>{rhs_ir});
 
     auto results = ASSERT_NOT_NULL(ctx->rep_dispatch_tables(chain_op))
                        ->at(index)
@@ -240,7 +240,7 @@ not_blocks:
         if (lhs_result.type_->is<type::Struct>() || lhs_result.type_->is<type::Struct>()) {
           FnArgs<Expression *> args;
           args.pos_ =
-              base::vector<Expression *>{{exprs[i].get(), exprs[i + 1].get()}};
+              std::vector<Expression *>{{exprs[i].get(), exprs[i + 1].get()}};
           // TODO overwriting type a bunch of times?
           OverloadSet os(scope_, token, ctx);
           os.add_adl(token, lhs_result.type_);
@@ -303,7 +303,7 @@ void ChainOp::ExtractJumps(JumpExprs *rets) const {
   for (auto &expr : exprs) { expr->ExtractJumps(rets); }
 }
 
-base::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
+std::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
   auto *t = ctx->type_of(this);
   if (ops[0] == Language::Operator::Xor) {
     if (t == type::Bool) {
@@ -347,14 +347,14 @@ base::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
   } else if (ops[0] == Language::Operator::Or && t == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
-    base::vector<ir::Val> args;
+    std::vector<ir::Val> args;
     args.reserve(exprs.size());
     for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)[0]); }
     auto reg_or_type = ir::Variant(args);
     return {ir::ValFrom(reg_or_type)};
   } else if (ops[0] == Language::Operator::Or &&
              (t == type::Block || t == type::OptBlock)) {
-    base::vector<ir::Val> vals;
+    std::vector<ir::Val> vals;
     vals.reserve(exprs.size());
     for (auto &expr : exprs) { vals.push_back(expr->EmitIR(ctx)[0]); }
     return {ir::BlockSeq(vals)};
@@ -362,7 +362,7 @@ base::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
              ops[0] == Language::Operator::Or) {
     auto land_block = ir::Func::Current->AddBlock();
 
-    base::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
+    std::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       auto val = exprs[i]->EmitIR(ctx)[0].reg_or<bool>();
@@ -390,7 +390,7 @@ base::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
       return {ir::ValFrom(EmitChainOpPair(this, 0, lhs_ir, rhs_ir, ctx))};
 
     } else {
-      base::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
+      std::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
       auto lhs_ir     = exprs.front()->EmitIR(ctx)[0];
       auto land_block = ir::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
@@ -418,7 +418,7 @@ base::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
   }
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> ChainOp::EmitLVal(Context *ctx) {
+std::vector<ir::RegisterOr<ir::Addr>> ChainOp::EmitLVal(Context *ctx) {
   UNREACHABLE(this);
 }
 

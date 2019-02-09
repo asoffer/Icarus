@@ -104,7 +104,7 @@ VerifyResult Access::VerifyType(Context *ctx) {
 
 void Access::Validate(Context *ctx) { operand->Validate(ctx); }
 
-base::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
+std::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
   auto reg = operand->EmitLVal(ctx)[0];
   auto *t  = ctx->type_of(operand.get());
   if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
@@ -118,7 +118,7 @@ base::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
   return {ir::Field(reg, struct_type, struct_type->index(member_name)).get()};
 }
 
-base::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {
+std::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {
   if (ctx->type_of(operand.get()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?

@@ -97,11 +97,11 @@ void ScopeLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &decl : decls_) { decl.ExtractJumps(rets); }
 }
 
-base::vector<ir::Val> ast::ScopeLiteral::EmitIR(Context *ctx) {
+std::vector<ir::Val> ast::ScopeLiteral::EmitIR(Context *ctx) {
   for (auto &decl : decls_) { decl.EmitIR(ctx); }
   return {ir::Val(this)};
 }
-base::vector<ir::RegisterOr<ir::Addr>> ScopeLiteral::EmitLVal(Context *) {
+std::vector<ir::RegisterOr<ir::Addr>> ScopeLiteral::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
 }  // namespace ast

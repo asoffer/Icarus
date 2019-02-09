@@ -26,11 +26,11 @@ struct StructLiteral : public Expression {
 
   void CompleteBody(Context *ctx);
 
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::unique_ptr<DeclScope> type_scope;
-  base::vector<std::unique_ptr<Declaration>> fields_, args_;
+  std::vector<std::unique_ptr<Declaration>> fields_, args_;
   Module *mod_ = nullptr;
 };
 }  // namespace ast

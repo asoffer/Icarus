@@ -71,13 +71,13 @@ VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
 }
 
 VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
-  base::vector<const type::Type *> input_type_vec;
+  std::vector<const type::Type *> input_type_vec;
   input_type_vec.reserve(inputs_.size());
   for (auto &input : inputs_.params_) {
     input_type_vec.push_back(input.value->VerifyType(ctx).type_);
   }
 
-  base::vector<const type::Type *> output_type_vec;
+  std::vector<const type::Type *> output_type_vec;
   output_type_vec.reserve(outputs_.size());
   bool error = false;
   for (auto &output : outputs_) {
@@ -148,7 +148,7 @@ void FunctionLiteral::Validate(Context *ctx) {
   std::set<type::Type const *> types;
   for (auto *expr : rets[JumpKind::Return]) { types.insert(ctx->type_of(expr)); }
 
-  base::vector<type::Type const *> input_type_vec;
+  std::vector<type::Type const *> input_type_vec;
   input_type_vec.reserve(inputs_.size());
   for (auto const &input : inputs_.params_) {
     input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input.value.get())));
@@ -236,7 +236,7 @@ void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &out : outputs_) { out->ExtractJumps(rets); }
 }
 
-base::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
+std::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
   if (std::any_of(
           inputs_.params_.begin(), inputs_.params_.end(),
           [&](auto const &decl) {
@@ -329,7 +329,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
   }
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> FunctionLiteral::EmitLVal(Context *) {
+std::vector<ir::RegisterOr<ir::Addr>> FunctionLiteral::EmitLVal(Context *) {
   UNREACHABLE(this);
 }
 }  // namespace ast

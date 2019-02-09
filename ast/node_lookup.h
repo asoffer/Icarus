@@ -1,7 +1,7 @@
 #ifndef ICARUS_AST_NODE_LOOKUP_H
 #define ICARUS_AST_NODE_LOOKUP_H
 
-#include "base/container/unordered_map.h"
+#include <unordered_map>
 
 namespace ast {
 struct Node;
@@ -22,7 +22,7 @@ struct NodeLookup {
 
   auto at(Node const *n) const { return data_.at(n); }
 
-  base::unordered_map<Node const *, T> data_;
+  std::unordered_map<Node const *, T> data_;
 };
 }  // namespace ast
 

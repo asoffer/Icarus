@@ -12,8 +12,6 @@ cc_target(
     intf_deps = [
         ":inference_failure_reason",
         "//ast:fn_args",
-        "//base/container:unordered_map",
-        "//base/container:vector",
         "//base:debug",
         "//frontend:text_span",
     ],

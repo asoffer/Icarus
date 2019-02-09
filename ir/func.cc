@@ -42,9 +42,9 @@ Func::Func(Module *mod, type::Function const *fn_type,
   blocks_.emplace_back(this);
 }
 
-base::unordered_map<BasicBlock const *, std::unordered_set<BasicBlock const *>>
+std::unordered_map<BasicBlock const *, std::unordered_set<BasicBlock const *>>
 Func::GetIncomingBlocks() const {
-  base::unordered_map<BasicBlock const *,
+  std::unordered_map<BasicBlock const *,
                       std::unordered_set<BasicBlock const *>>
       incoming;
   for (auto const &b : blocks_) {
@@ -69,9 +69,9 @@ Cmd const *Func::Command(Register reg) const {
   return &Command(iter->second);
 }
 
-static base::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
-    ir::Func *fn, base::vector<ast::Expression *> const &exprs) {
-  base::vector<std::pair<ir::Func, prop::PropertyMap>> result;
+static std::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
+    ir::Func *fn, std::vector<ast::Expression *> const &exprs) {
+  std::vector<std::pair<ir::Func, prop::PropertyMap>> result;
   // Resreve to guarantee pointer stability.
   for (auto const &expr : exprs) {
     auto & [ func, prop_map ] = result.emplace_back(

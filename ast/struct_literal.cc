@@ -51,7 +51,7 @@ void StructLiteral::assign_scope(Scope *scope) {
 }
 
 VerifyResult StructLiteral::VerifyType(Context *ctx) {
-  base::vector<type::Type const *> ts;
+  std::vector<type::Type const *> ts;
   ts.reserve(args_.size());
   for (auto &a : args_) { ts.push_back(a->VerifyType(ctx).type_); }
   if (std::any_of(ts.begin(), ts.end(),
@@ -104,7 +104,7 @@ static ir::TypedRegister<type::Type const *> GenerateStruct(
   return ir::FinalizeStruct(struct_reg);
 }
 
-base::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
+std::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
   if (args_.empty()) {
     return {ir::Val(GenerateStruct(this, ir::CreateStruct(scope_), ctx))};
   }
@@ -136,7 +136,7 @@ base::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
   return {ir::Val::Func(ir_func->type_, ir_func)};
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> ast::StructLiteral::EmitLVal(Context *ctx) {
+std::vector<ir::RegisterOr<ir::Addr>> ast::StructLiteral::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
 

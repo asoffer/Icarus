@@ -13,7 +13,7 @@ std::string Arguments::to_string() const {
   auto arch     = Architecture::InterprettingMachine();
   size_t offset = 0;
   size_t i      = 0;
-  base::vector<type::Type const *> const &ts = [&] {
+  std::vector<type::Type const *> const &ts = [&] {
     if (auto *f = type_->if_as<type::Function>()) { return f->input; }
     if (auto *g = type_->if_as<type::GenericStruct>()) { return g->deps_; }
     UNREACHABLE();
@@ -67,7 +67,7 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
   size_t offset   = 0;
   auto arch       = Architecture::InterprettingMachine();
 
-  base::vector<type::Type const *> const &ins = [&] {
+  std::vector<type::Type const *> const &ins = [&] {
     if (auto *f = type_->if_as<type::Function>()) { return f->input; }
     if (auto *g = type_->if_as<type::GenericStruct>()) { return g->deps_; }
     UNREACHABLE();
@@ -76,7 +76,7 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
   auto outs = [&] {
     if (auto *f = type_->if_as<type::Function>()) { return f->output; }
     if (auto *g = type_->if_as<type::GenericStruct>()) {
-      return base::vector<type::Type const *>{type::Type_};
+      return std::vector<type::Type const *>{type::Type_};
     }
     UNREACHABLE();
   }();

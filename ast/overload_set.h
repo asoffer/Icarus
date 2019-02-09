@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "base/container/vector.h"
+#include <vector>
 #include "type/typed_value.h"
 #include "type/function.h"
 
@@ -14,7 +14,7 @@ namespace ast {
 struct Expression;
 
 struct OverloadSet
-    : public base::vector<type::Typed<Expression *, type::Callable>> {
+    : public std::vector<type::Typed<Expression *, type::Callable>> {
   OverloadSet() = default;
   OverloadSet(Scope *scope, std::string const &id, Context *ctx);
 

@@ -2,8 +2,8 @@
 
 #include "ast/declaration.h"
 #include "ast/struct_literal.h"
-#include "base/container/map.h"
-#include "base/container/unordered_map.h"
+#include <unordered_map>
+#include <unordered_map>
 #include "base/guarded.h"
 #include "ir/arguments.h"
 #include "ir/components.h"

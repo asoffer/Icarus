@@ -203,7 +203,7 @@ void Call::ExtractJumps(JumpExprs *rets) const {
   for (const auto & [ key, val ] : args_.named_) { val->ExtractJumps(rets); }
 }
 
-base::vector<ir::Val> Call::EmitIR(Context *ctx) {
+std::vector<ir::Val> Call::EmitIR(Context *ctx) {
   if (fn_->is<Terminal>()) {
     auto fn_val = fn_->as<Terminal>().value;
 #ifdef DBG
@@ -264,5 +264,5 @@ base::vector<ir::Val> Call::EmitIR(Context *ctx) {
       ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> Call::EmitLVal(Context *) { UNREACHABLE(this); }
+std::vector<ir::RegisterOr<ir::Addr>> Call::EmitLVal(Context *) { UNREACHABLE(this); }
 }  // namespace ast

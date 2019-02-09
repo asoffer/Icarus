@@ -6,7 +6,6 @@ cc_lib(
     srcs = ["compiler.cc"],
     deps = [
         "//backend:exec",
-        "//base/container:vector",
         "//base:untyped_buffer",
         "//base:util",
         "//misc:context",
@@ -23,7 +22,6 @@ cc_lib(
         "//ast:expression",
         "//ast:fn_params",
         "//backend:exec",
-        "//base/container:vector",
         "//base:untyped_buffer",
         "//frontend:source",
         "//ir:func",

@@ -16,8 +16,8 @@ struct ArrayLiteral : public Expression {
     return cl_.ExtractJumps(rets);
   }
 
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
   void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) override;
   void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) override;
 

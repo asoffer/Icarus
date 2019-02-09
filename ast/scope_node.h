@@ -6,7 +6,7 @@
 #include "ast/expression.h"
 #include "ast/fn_args.h"
 #include "ast/statements.h"
-#include "base/container/unordered_map.h"
+#include <unordered_map>
 #include "misc/scope.h"
 
 struct Context;
@@ -21,12 +21,12 @@ struct ScopeNode : public Expression {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
   
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::unique_ptr<Expression> name_;
   FnArgs<std::unique_ptr<Expression>> args_;
-  base::vector<BlockNode> blocks_;
+  std::vector<BlockNode> blocks_;
   ScopeNode *sugared_ = nullptr;
 };
 }  // namespace ast

@@ -102,7 +102,7 @@ void EnumLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &elem : elems_) { elem->ExtractJumps(rets); }
 }
 
-base::vector<ir::Val> EnumLiteral::EmitIR(Context *ctx) {
+std::vector<ir::Val> EnumLiteral::EmitIR(Context *ctx) {
   auto reg = ir::CreateEnum(kind_, ctx->mod_);
   for (auto &elem : elems_) {
     if (elem->is<Identifier>()) {

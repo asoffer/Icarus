@@ -1,7 +1,7 @@
 #ifndef ICARUS_IR_REGISTER_H
 #define ICARUS_IR_REGISTER_H
 
-#include "base/container/vector.h"
+#include <vector>
 #include "base/strong_types.h"
 #include "base/types.h"
 
@@ -81,7 +81,7 @@ namespace ir {
 struct Func;
 
 struct BlockSequence {
-  base::vector<ast::BlockLiteral *> const *seq_;
+  std::vector<ast::BlockLiteral *> const *seq_;
 };
 inline std::ostream &operator<<(std::ostream &os, BlockSequence b) {
   return os << base::internal::stringify(*b.seq_);

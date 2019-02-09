@@ -74,7 +74,7 @@ ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
         ir::VariantType(std::get<ir::Register>(val.value)));
 
     // Because variants_ is sorted, we can find the intersection quickly:
-    base::vector<Type const *> intersection;
+    std::vector<Type const *> intersection;
     auto f_iter = from_v->variants_.begin();
     auto t_iter = this->variants_.begin();
     while (f_iter != from_v->variants_.end() &&
@@ -93,7 +93,7 @@ ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
 
     auto landing = ir::Func::Current->AddBlock();
 
-    base::vector<ir::BlockIndex> blocks;
+    std::vector<ir::BlockIndex> blocks;
     blocks.reserve(intersection.size());
     for (auto *t : intersection) {
       blocks.push_back(ir::Func::Current->AddBlock());

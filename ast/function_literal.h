@@ -8,8 +8,8 @@
 #include "ast/fn_params.h"
 #include "ast/identifier.h"
 #include "ast/statements.h"
-#include "base/container/map.h"
-#include "base/container/vector.h"
+#include <unordered_map>
+#include <vector>
 #include "ir/val.h"
 #include "misc/scope.h"
 
@@ -35,8 +35,8 @@ struct FunctionLiteral : public Expression {
 
   VerifyResult VerifyTypeConcrete(Context *);
 
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   void CompleteBody(Context *ctx);
 
@@ -45,7 +45,7 @@ struct FunctionLiteral : public Expression {
   // TODO This is storing both the name in the declaration and pulls the
   // string_view of the name out in FnParams::Param.
   FnParams<std::unique_ptr<Declaration>> inputs_;
-  base::vector<std::unique_ptr<Expression>> outputs_;
+  std::vector<std::unique_ptr<Expression>> outputs_;
   Statements statements_;
 
   bool return_type_inferred_ = false;

@@ -1,4 +1,4 @@
-#include "base/container/vector.h"
+#include <vector>
 #include "frontend/source.h"
 #include "init/cli.h"
 #include "init/signal.h"
@@ -12,7 +12,7 @@ namespace feature {
 bool loose_casting = false;
 }  // namespace feature
 
-extern base::vector<frontend::Source::Name> files;
+extern std::vector<frontend::Source::Name> files;
 
 int RunRepl();
 int RunCompiler();

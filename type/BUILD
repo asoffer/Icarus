@@ -32,14 +32,20 @@ cc_lib(
 cc_lib(
     name = "all_types",
     deps = [
+        ":concrete_types",
+        ":generic_struct",
+    ],
+)
+
+cc_lib(
+    name = "concrete_types",
+    deps = [
         ":array",
         ":enum",
         ":flags",
         ":function",
-        ":generic_struct",
         ":incomplete_enum",
         ":incomplete_flags",
-        ":interface",
         ":opaque",
         ":pointer",
         ":primitive",
@@ -90,7 +96,6 @@ cc_target(
     intf_deps = [
         ":type",
         ":typed_value",
-        "//base/container:unordered_map",
     ],
     impl_deps = [
         "//ir:addr",
@@ -105,7 +110,6 @@ cc_target(
     intf_deps = [
         ":type",
         ":typed_value",
-        "//base/container:unordered_map",
     ],
     impl_deps = [
         "//ir:addr",
@@ -120,7 +124,6 @@ cc_target(
     name = "function",
     intf_deps = [":callable"],
     impl_deps = [
-        "//base/container:map",
         "//base:guarded",
         "//ir:cmd",
         "//ir:val",
@@ -132,7 +135,6 @@ cc_target(
     intf_deps = [
         ":callable",
         ":type",
-        "//base/container:vector",
         "//misc:module",
         "//misc:scope",
     ],
@@ -141,7 +143,6 @@ cc_target(
 cc_target(
     name = "incomplete_enum",
     intf_deps = [
-        "//base/container:vector",
         "//ir:register",
     ],
     impl_deps = [
@@ -153,7 +154,6 @@ cc_target(
 cc_target(
     name = "incomplete_flags",
     intf_deps = [
-        "//base/container:vector",
         "//ir:register",
     ],
     impl_deps = [
@@ -172,7 +172,6 @@ cc_target(
     impl_deps = [
         ":function",
         ":pointer",
-        "//base/container:map",
         "//base:guarded",
         "//ir:arguments",
         "//ir:components",
@@ -199,7 +198,6 @@ cc_target(
     intf_deps = [":type"],
     impl_deps = [
         ":function",
-        "//base/container:unordered_map",
         "//base:guarded",
         "//ir:cmd",
     ],
@@ -228,7 +226,6 @@ cc_target(
     intf_deps = [
         ":type",
         "//ast:hashtag",
-        "//base/container:vector",
         "//base:lazy",
         "//ir:any_func",
         "//misc:scope",
@@ -258,7 +255,6 @@ cc_target(
     impl_deps = [
         ":function",
         ":pointer",
-        "//base/container:map",
         "//base:guarded",
         "//ir:arguments",
         "//ir:components",
@@ -286,8 +282,6 @@ cc_target(
     impl_deps = [
         "//ast:declaration",
         "//ast:struct_literal",
-        "//base/container:map",
-        "//base/container:unordered_map",
         "//base:guarded",
         "//ir:arguments",
         "//ir:components",
@@ -302,31 +296,13 @@ cc_target(
 cc_lib(
     name = "util",
     hdrs = ["util.h"],
-    deps = [
-        # Not :all_types because we exclude generic_struct to avoid a cyclic dependency.
-        ":array",
-        ":enum",
-        ":flags",
-        ":function",
-        ":incomplete_enum",
-        ":incomplete_flags",
-        ":interface",
-        ":opaque",
-        ":pointer",
-        ":primitive",
-        ":struct",
-        ":tuple",
-        ":type",
-        ":variant",
-        ":typed_value",
-    ],
+    deps = [":concrete_types"],
 )
 
 cc_target(
     name = "variant",
     intf_deps = [":type"],
     impl_deps = [
-        "//base/container:map",
         "//base:guarded",
         "//misc:context",
         "//ir:arguments",

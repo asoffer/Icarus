@@ -1,19 +1,19 @@
 #include "type/pointer.h"
 
-#include "base/container/unordered_map.h"
+#include <unordered_map>
 #include "base/guarded.h"
 #include "ir/cmd.h"
 #include "type/function.h"
 
 namespace type {
 
-static base::guarded<base::unordered_map<Type const *, Pointer const>>
+static base::guarded<std::unordered_map<Type const *, Pointer const>>
     pointers_;
 Pointer const *Ptr(Type const *t) {
   return &pointers_.lock()->emplace(t, Pointer(t)).first->second;
 }
 
-static base::guarded<base::unordered_map<Type const *, BufferPointer const>>
+static base::guarded<std::unordered_map<Type const *, BufferPointer const>>
     buffer_pointers_;
 BufferPointer const *BufPtr(Type const *t) {
   return &buffer_pointers_.lock()->emplace(t, BufferPointer(t)).first->second;

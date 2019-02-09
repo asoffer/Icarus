@@ -27,7 +27,7 @@ std::string WriteObjectFile(std::string const &name, Module *mod);
 static std::mutex mtx;
 static ImportGraph import_graph;
 static std::list<std::shared_future<Module const*>> pending_module_futures;
-static base::unordered_map<
+static std::unordered_map<
     std::filesystem::path const *,
     std::pair<std::shared_future<Module const *> *, Module>>
     modules;

@@ -2,6 +2,11 @@ package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib")
 
 cc_lib(
+    name = "bag",
+    hdrs = ["bag.h"],
+)
+
+cc_lib(
     name = "check",
     hdrs = ["check.h"],
     deps = [":string"],
@@ -71,6 +76,11 @@ cc_lib(
 )
 
 cc_lib(
+    name = "tuple",
+    hdrs = ["tuple.h"],
+)
+
+cc_lib(
     name = "types",
     hdrs = ["types.h"],
 )
@@ -87,3 +97,5 @@ cc_lib(
     hdrs = ["util.h"],
     deps = [":debug"],
 )
+
+

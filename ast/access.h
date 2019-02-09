@@ -19,8 +19,8 @@ struct Access : public Expression {
     operand->ExtractJumps(rets);
   }
 
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::string member_name;
   std::unique_ptr<Expression> operand;

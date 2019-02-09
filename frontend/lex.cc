@@ -1,5 +1,5 @@
 #include <cmath>
-#include "base/container/unordered_map.h"
+#include <unordered_map>
 
 #include "ast/hole.h"
 #include "ast/identifier.h"
@@ -66,7 +66,7 @@ TaggedNode NextWord(SourceLocation &loc) {
   std::string token = loc.line().substr(span.start.offset,
                                         span.finish.offset - span.start.offset);
 
-  static base::unordered_map<std::string, ir::Val> Reserved{
+  static std::unordered_map<std::string, ir::Val> Reserved{
       {"bool", ir::Val(type::Bool)},
       {"int8", ir::Val(type::Int8)},
       {"int16", ir::Val(type::Int16)},
@@ -99,7 +99,7 @@ TaggedNode NextWord(SourceLocation &loc) {
     return TaggedNode::TerminalExpression(span, iter->second);
   }
 
-  static const base::unordered_map<std::string, Tag> KeywordMap = {
+  static const std::unordered_map<std::string, Tag> KeywordMap = {
       {"which", op_l},         {"print", op_l},    {"ensure", op_l},
       {"needs", op_l},         {"import", op_l},   {"flags", kw_block_head},
       {"enum", kw_block_head}, {"generate", op_l}, {"struct", kw_struct},

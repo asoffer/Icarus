@@ -4,7 +4,7 @@
 #include <string>
 
 #include "ast/declaration.h"
-#include "base/container/vector.h"
+#include <vector>
 #include "misc/scope.h"
 
 namespace ast {
@@ -12,7 +12,7 @@ namespace ast {
 struct EnumLiteral : public Expression {
   enum Kind : char { Enum, Flags };
 
-  EnumLiteral(base::vector<std::unique_ptr<Expression>> elems, TextSpan span,
+  EnumLiteral(std::vector<std::unique_ptr<Expression>> elems, TextSpan span,
               bool is_enum)
       : Expression(std::move(span)),
         elems_(std::move(elems)),
@@ -27,13 +27,13 @@ struct EnumLiteral : public Expression {
 
   void ExtractJumps(JumpExprs *rets) const override;
 
-  base::vector<ir::Val> EmitIR(Context *) override;
-  base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override {
+  std::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override {
     UNREACHABLE();
   }
 
   std::unique_ptr<DeclScope> enum_scope_;
-  base::vector<std::unique_ptr<Expression>> elems_;
+  std::vector<std::unique_ptr<Expression>> elems_;
   Kind kind_;
 };
 

@@ -141,7 +141,7 @@ static base::expected<Binding, CallObstruction> MakeBinding(
     FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
   bool constant = !params.lookup_.empty();
   Binding b(fn, constant);
-  base::vector<Binding::Entry> entries;
+  std::vector<Binding::Entry> entries;
 
   auto p_iter = params.begin();
   auto a_iter = args.pos_.begin();
@@ -197,7 +197,7 @@ static base::expected<Binding, CallObstruction> MakeBinding(
 namespace {
 struct DispatchTableRow {
   template <typename E>
-  CallObstruction SetTypes(base::vector<type::Type const *> const &input_types,
+  CallObstruction SetTypes(std::vector<type::Type const *> const &input_types,
                            FnParams<E> const &params,
                            FnArgs<type::Typed<Expression *>> const &args,
                            Context *ctx);
@@ -235,7 +235,7 @@ struct DispatchTableRow {
 
 template <typename E>
 CallObstruction DispatchTableRow::SetTypes(
-    base::vector<type::Type const *> const &input_types,
+    std::vector<type::Type const *> const &input_types,
     FnParams<E> const &params, FnArgs<type::Typed<Expression *>> const &args,
     Context *ctx) {
   size_t num = 0;
@@ -524,7 +524,7 @@ DispatchTableRow::MakeFromIrFunc(
 }
 
 static type::Type const *ComputeRetType(
-    base::vector<type::Callable const *> const &callable_types) {
+    std::vector<type::Callable const *> const &callable_types) {
   if (callable_types.empty()) { return nullptr; }
   std::unordered_set<size_t> sizes;
   for (auto *callable_type : callable_types) {
@@ -542,7 +542,7 @@ static type::Type const *ComputeRetType(
   }
 
   size_t num_outs = *sizes.begin();
-  base::vector<base::vector<type::Type const *>> out_types(num_outs);
+  std::vector<std::vector<type::Type const *>> out_types(num_outs);
   for (size_t i = 0; i < callable_types.size(); ++i) {
     auto *callable_type = callable_types.at(i);
     ASSERT(callable_type != nullptr);
@@ -556,7 +556,7 @@ static type::Type const *ComputeRetType(
       UNREACHABLE();
     }
   }
-  base::vector<type::Type const *> combined_outputs;
+  std::vector<type::Type const *> combined_outputs;
   combined_outputs.reserve(out_types.size());
   for (auto &ts : out_types) {
     combined_outputs.push_back(type::Var(std::move(ts)));
@@ -582,7 +582,7 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
   });
   if (error) { return std::pair{std::move(table), nullptr}; }
 
-  base::vector<type::Callable const *> precise_callable_types;
+  std::vector<type::Callable const *> precise_callable_types;
   for (auto &overload : overload_set) {
     // It is possible for elements of overload_set to be null. The example that
     // brought this to my attention was
@@ -626,9 +626,9 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
 }
 
 static void AddPositionalType(type::Type const *t,
-                              base::vector<FnArgs<type::Type const *>> *args) {
+                              std::vector<FnArgs<type::Type const *>> *args) {
   if (auto *vt = t->if_as<type::Variant>()) {
-    base::vector<FnArgs<type::Type const *>> new_args;
+    std::vector<FnArgs<type::Type const *>> new_args;
     for (auto *v : vt->variants_) {
       for (auto fnargs : *args) {
         fnargs.pos_.push_back(v);
@@ -644,9 +644,9 @@ static void AddPositionalType(type::Type const *t,
 }
 
 static void AddNamedType(std::string const &name, type::Type const *t,
-                         base::vector<FnArgs<type::Type const *>> *args) {
+                         std::vector<FnArgs<type::Type const *>> *args) {
   if (auto *vt = t->if_as<type::Variant>()) {
-    base::vector<FnArgs<type::Type const *>> new_args;
+    std::vector<FnArgs<type::Type const *>> new_args;
     for (auto *v : vt->variants_) {
       for (auto fnargs : *args) {
         fnargs.named_.emplace(name, v);
@@ -662,9 +662,9 @@ static void AddNamedType(std::string const &name, type::Type const *t,
   }
 }
 
-static base::vector<FnArgs<type::Type const *>> Expand(
+static std::vector<FnArgs<type::Type const *>> Expand(
     FnArgs<type::Typed<Expression *>> const &typed_args) {
-  base::vector<FnArgs<type::Type const *>> all_expanded_options(1);
+  std::vector<FnArgs<type::Type const *>> all_expanded_options(1);
   for (auto const &expr : typed_args.pos_) {
     if (expr.get()->needs_expansion()) {
       for (auto *t : expr.type()->as<type::Tuple>().entries_) {
@@ -730,8 +730,8 @@ type::Type const *DispatchTable::MakeOrLogError(
 // declared registers which means they're all simple and this works as a nice
 // return value.
 static void EmitOneCallDispatch(
-    type::Type const *ret_type, base::vector<ir::Val> *outgoing_regs,
-    base::unordered_map<Expression *, base::vector<ir::Val> const *> const
+    type::Type const *ret_type, std::vector<ir::Val> *outgoing_regs,
+    std::unordered_map<Expression *, std::vector<ir::Val> const *> const
         &expr_map,
     Binding const &binding, Context *ctx) {
   auto callee = [&] {
@@ -759,7 +759,7 @@ static void EmitOneCallDispatch(
     if (fn_to_call->is_fn()) { const_params = &(fn_to_call->func()->params_); }
   }
 
-  base::vector<ir::Val> args;
+  std::vector<ir::Val> args;
   args.resize(binding.entries_.size());
   for (size_t i = 0; i < args.size(); ++i) {
     auto entry = binding.entries_.at(i);
@@ -784,11 +784,11 @@ static void EmitOneCallDispatch(
   call_args.type_ = &callee.type->as<type::Callable>();
   for (const auto &arg : args) { call_args.append(arg); }
 
-  base::vector<ir::Val> results;
+  std::vector<ir::Val> results;
   ir::OutParams outs;
 
   // TODO don't copy the vector.
-  base::vector<type::Type const *> out_types;
+  std::vector<type::Type const *> out_types;
   if (binding.fn_.type()->is<type::Function>()) {
     out_types = binding.fn_.type()->as<type::Function>().output;
   } else if (binding.fn_.type()->is<type::GenericStruct>()) {
@@ -862,7 +862,7 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
     // other.
     auto landing = ir::Func::Current->AddBlock();
 
-    base::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_map;
+    std::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_map;
     for (type::Type const *v : haystack->as<type::Variant>().variants_) {
       phi_map.emplace(ir::BasicBlock::Current, true);
 
@@ -907,7 +907,7 @@ bool Covers(FnArgs<type::Type const *> const &big,
 }
 
 static ir::BlockIndex CallLookupTest(
-    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> const &args,
+    FnArgs<std::pair<Expression *, std::vector<ir::Val>>> const &args,
     FnArgs<type::Type const *> const &call_arg_type, Context *ctx) {
   // Generate code that attempts to match the types on each argument (only
   // check the ones at the call-site that could be variants).
@@ -936,17 +936,17 @@ static ir::BlockIndex CallLookupTest(
   return next_binding;
 }
 
-base::vector<ir::Val> DispatchTable::EmitCall(
-    FnArgs<std::pair<Expression *, base::vector<ir::Val>>> const &args,
+std::vector<ir::Val> DispatchTable::EmitCall(
+    FnArgs<std::pair<Expression *, std::vector<ir::Val>>> const &args,
     type::Type const *ret_type, Context *ctx) const {
   ASSERT(bindings_.size() != 0u);
-  base::unordered_map<Expression *, base::vector<ir::Val> const *> expr_map;
+  std::unordered_map<Expression *, std::vector<ir::Val> const *> expr_map;
   args.Apply(
-      [&expr_map](std::pair<Expression *, base::vector<ir::Val>> const &arg) {
+      [&expr_map](std::pair<Expression *, std::vector<ir::Val>> const &arg) {
         expr_map[arg.first] = &arg.second;
       });
 
-  base::vector<ir::Val> out_regs;
+  std::vector<ir::Val> out_regs;
   if (ret_type->is<type::Tuple>()) {
     out_regs.reserve(ret_type->as<type::Tuple>().entries_.size());
     for (auto *entry : ret_type->as<type::Tuple>().entries_) {
@@ -971,7 +971,7 @@ base::vector<ir::Val> DispatchTable::EmitCall(
                         ? ret_type->as<type::Tuple>().entries_.size()
                         : 1;
 
-  base::vector<base::unordered_map<ir::BlockIndex, ir::Val>> result_phi_args(
+  std::vector<std::unordered_map<ir::BlockIndex, ir::Val>> result_phi_args(
       num_rets);
 
   auto landing_block = ir::Func::Current->AddBlock();
@@ -1018,7 +1018,7 @@ base::vector<ir::Val> DispatchTable::EmitCall(
       }
       break;
     default: {
-      base::vector<ir::Val> results;
+      std::vector<ir::Val> results;
       results.reserve(num_rets);
       const auto &tup_entries = ret_type->as<type::Tuple>().entries_;
       for (size_t i = 0; i < num_rets; ++i) {

@@ -4,7 +4,7 @@
 #include <optional>
 #include <string_view>
 
-#include "base/container/vector.h"
+#include <vector>
 #include "ir/register.h"
 
 struct Module;
@@ -21,7 +21,7 @@ struct IncompleteEnum {
 
  private:
   ::Module const *mod_;
-  base::vector<std::pair<std::string, std::optional<i32>>> entries_;
+  std::vector<std::pair<std::string, std::optional<i32>>> entries_;
 };
 
 }  // namespace type

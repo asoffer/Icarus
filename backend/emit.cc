@@ -2,8 +2,8 @@
 #include "backend/emit.h"
 
 #include <string>
-#include "base/container/unordered_map.h"
-#include "base/container/vector.h"
+#include <unordered_map>
+#include <vector>
 
 #include "architecture.h"
 #include "ast/function_literal.h"
@@ -20,7 +20,7 @@
 // module?)
 static llvm::Value *StringConstant(llvm::IRBuilder<> *builder,
                                    std::string_view str) {
-  static base::unordered_map<std::string, llvm::Value *> global_strs;
+  static std::unordered_map<std::string, llvm::Value *> global_strs;
   auto &result = global_strs[std::string(str)];
   if (!result) {
     result =
@@ -37,9 +37,9 @@ struct LlvmData {
   llvm::Function *fn;
   llvm::Module *module;
   llvm::IRBuilder<> *builder;
-  base::unordered_map<ir::Register, llvm::Value *> regs;
-  base::vector<llvm::BasicBlock *> blocks;
-  base::vector<llvm::Value *> rets;
+  std::unordered_map<ir::Register, llvm::Value *> regs;
+  std::vector<llvm::BasicBlock *> blocks;
+  std::vector<llvm::Value *> rets;
 };
 }  // namespace
 
@@ -243,7 +243,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
       }
     } break;
     case ir::Op::Call: {
-      base::vector<llvm::Value *> values;
+      std::vector<llvm::Value *> values;
       values.reserve(cmd.args.size());
       for (const auto &arg : cmd.args) {
         values.push_back(EmitValue(num_args, llvm_data, arg));
@@ -399,7 +399,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
   UNREACHABLE();
 }
 
-void EmitAll(const base::vector<std::unique_ptr<ir::Func>> &fns,
+void EmitAll(const std::vector<std::unique_ptr<ir::Func>> &fns,
              llvm::Module *module) {
   auto &ctx = module->getContext();
   llvm::IRBuilder<> builder(ctx);

@@ -171,7 +171,6 @@ cc_lib(
     name = "bound_constants",
     hdrs = ["bound_constants.h"],
     deps = [
-        "//base/container:map",
         "//ir:val",
     ],
 )
@@ -208,7 +207,6 @@ cc_target(
     intf_deps = [
         ":dispatch",
         ":expression",
-        "//base/container:vector",
         "//frontend:operators",
     ],
     impl_deps = [
@@ -261,8 +259,6 @@ cc_target(
         ":bound_constants",
         ":fn_args",
         ":overload_set",
-        "//base/container:map",
-        "//base/container:unordered_map",
         "//base:expected",
     ],
     impl_deps = [
@@ -291,7 +287,6 @@ cc_target(
     name = "enum_literal",
     intf_deps = [
         ":declaration",
-        "//base/container:vector",
         "//misc:scope",
     ],
     impl_deps = [
@@ -322,8 +317,6 @@ cc_lib(
     name = "fn_args",
     hdrs = ["fn_args.h"],
     deps = [
-        "//base/container:unordered_map",
-        "//base/container:vector",
     ],
 )
 
@@ -331,8 +324,6 @@ cc_lib(
     name = "fn_params",
     hdrs = ["fn_params.h"],
     deps = [
-        "//base/container:unordered_map",
-        "//base/container:vector",
     ],
 )
 
@@ -346,8 +337,6 @@ cc_target(
         ":fn_params",
         ":identifier",
         ":statements",
-        "//base/container:map",
-        "//base/container:vector",
         "//ir:val",
         "//misc:scope",
     ],
@@ -442,8 +431,6 @@ cc_lib(
     name = "node",
     hdrs = ["node.h"],
     deps = [
-        "//base/container:unordered_map",
-        "//base/container:vector",
         "//base:untyped_buffer",
         "//base:util",
         "//frontend:text_span",
@@ -453,13 +440,11 @@ cc_lib(
 cc_lib(
     name = "node_lookup",
     hdrs = ["node_lookup.h"],
-    deps = ["//base/container:unordered_map"],
 )
 
 cc_target(
     name = "overload_set",
     intf_deps = [
-        "//base/container:vector",
         "//type:typed_value",
         "//type:function",
     ],
@@ -507,7 +492,6 @@ cc_target(
         ":expression",
         ":fn_args",
         ":statements",
-        "//base/container:unordered_map",
         "//misc:scope",
     ],
     impl_deps = [
@@ -532,11 +516,7 @@ cc_target(
 
 cc_target(
     name = "statements",
-    intf_deps = [
-        ":node",
-        "//base/container:vector",
-        "//ir:val",
-    ],
+    intf_deps = [":node"],
     impl_deps = [
         "//misc:context",
         "//ir:val",

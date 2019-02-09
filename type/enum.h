@@ -3,7 +3,7 @@
 
 #include <unordered_set>
 
-#include "base/container/unordered_map.h"
+#include <unordered_map>
 #include "type.h"
 #include "typed_value.h"
 
@@ -19,13 +19,13 @@ struct Enum : public type::Type {
   Typed<ir::EnumVal, Enum> EmitLiteral(std::string const& member_name) const ;
 
   // TODO privatize
-  base::unordered_map<i32, std::string> members_;
+  std::unordered_map<i32, std::string> members_;
 
  private:
   friend struct IncompleteEnum;
   ::Module const *mod_;
   // TODO combine these into a single bidirectional map?
-  base::unordered_map<std::string, ir::EnumVal> vals_;
+  std::unordered_map<std::string, ir::EnumVal> vals_;
 };
 }  // namespace type
 

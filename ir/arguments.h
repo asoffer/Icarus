@@ -2,7 +2,7 @@
 #define ICARUS_IR_ARGUMENTS_H
 
 #include <string>
-#include "base/container/vector.h"
+#include <vector>
 #include "base/untyped_buffer.h"
 #include "ir/register.h"
 #include "type/callable.h"
@@ -22,7 +22,7 @@ struct Arguments {
                                          base::untyped_buffer const &regs);
 
   type::Callable const *type_ = nullptr;
-  base::vector<bool> is_reg_;
+  std::vector<bool> is_reg_;
   base::untyped_buffer args_{0};
 };
 }  // namespace ir

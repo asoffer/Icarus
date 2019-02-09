@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "base/container/map.h"
+#include <unordered_map>
 #include "base/guarded.h"
 #include "misc/context.h"
 #include "ir/arguments.h"
@@ -19,8 +19,8 @@ bool Variant::contains(Type const *t) const {
   return false;
 }
 
-static base::guarded<base::map<base::vector<Type const *>, Variant>> variants_;
-Type const *Var(base::vector<Type const *> variants) {
+static base::guarded<std::map<std::vector<Type const *>, Variant>> variants_;
+Type const *Var(std::vector<Type const *> variants) {
   if (variants.empty()) { return Void(); }
   if (variants.size() == 1) { return variants[0]; }
 

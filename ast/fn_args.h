@@ -1,8 +1,8 @@
 #ifndef ICARUS_AST_FN_ARGS_H
 #define ICARUS_AST_FN_ARGS_H
 
-#include "base/container/unordered_map.h"
-#include "base/container/vector.h"
+#include <unordered_map>
+#include <vector>
 
 namespace ast {
 template <typename T>
@@ -65,8 +65,8 @@ struct FnArgs {
   size_t size() const { return pos_.size() + named_.size(); }
   bool empty() const { return this->size() == 0; }
 
-  base::vector<T> pos_;
-  base::unordered_map<std::string, T> named_;
+  std::vector<T> pos_;
+  std::unordered_map<std::string, T> named_;
 };
 
 template <typename T>

@@ -2,7 +2,7 @@
 #define ICARUS_IR_BASIC_BLOCK_H
 
 #include <list>
-#include "base/container/vector.h"
+#include <vector>
 #include "base/untyped_buffer.h"
 #include "ir/arguments.h"
 #include "ir/out_params.h"
@@ -23,8 +23,8 @@ struct BasicBlock {
   BasicBlock &operator=(const BasicBlock &) = delete;
 
   Func *fn_;  // Containing function
-  base::vector<BlockIndex> incoming_blocks_;
-  base::vector<Cmd> cmds_;
+  std::vector<BlockIndex> incoming_blocks_;
+  std::vector<Cmd> cmds_;
 
   // These containers are append-only and we separately store pointers to these
   // elments so we never traverse. We just need pointer stabiltiy. In the long

@@ -3,7 +3,7 @@
 
 #include <filesystem>
 #include <unordered_set>
-#include "base/container/unordered_map.h"
+#include <unordered_map>
 
 struct ImportGraph {
  public:
@@ -20,7 +20,7 @@ struct ImportGraph {
   };
 
   std::unordered_set<std::filesystem::path, PathHasher> all_paths_;
-  base::unordered_map<std::filesystem::path const *,
+  std::unordered_map<std::filesystem::path const *,
                       std::unordered_set<std::filesystem::path const *>>
       import_deps_;
 };

@@ -17,7 +17,7 @@
 
 using LineNum = size_t;
 using FileToLineNumMap =
-    base::unordered_map<frontend::Source::Name, base::vector<LineNum>>;
+    std::unordered_map<frontend::Source::Name, std::vector<LineNum>>;
 static FileToLineNumMap global_non_decl;
 
 namespace {
@@ -62,7 +62,7 @@ std::ostream &operator<<(std::ostream &os, const DisplayAttrs &attrs) {
 void WriteSource(
     std::ostream &os, const frontend::Source &source,
     base::IntervalSet<size_t> const &line_intervals,
-    base::vector<std::pair<TextSpan, DisplayAttrs>> const &underlines) {
+    std::vector<std::pair<TextSpan, DisplayAttrs>> const &underlines) {
   size_t border_alignment = NumDigits(line_intervals.endpoints_.back() - 1) + 2;
 
   auto iter = underlines.begin();
@@ -156,7 +156,7 @@ void Log::PreconditionNeedsBool(TextSpan const &span, type::Type const *t) {
 template <typename ExprContainer>
 static auto LinesToShow(ExprContainer const &exprs) {
   base::IntervalSet<size_t> iset;
-  base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
+  std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
   for (auto const &expr : exprs) {
     iset.insert(expr->span.lines().expanded(1).clamped_below(1));
     underlines.emplace_back(
@@ -367,12 +367,12 @@ void Log::NotAType(TextSpan const& span, type::Type const* t) {
 }
 
 void Log::PositionalArgumentFollowingNamed(
-    base::vector<TextSpan> const &pos_spans, TextSpan const &named_span) {
+    std::vector<TextSpan> const &pos_spans, TextSpan const &named_span) {
   std::stringstream ss;
   ss << "Positional function arguments cannot follow a named argument.\n\n";
   base::IntervalSet<size_t> iset;
 
-  base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
+  std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
   // TODO do you also want to show the whole function call?
   iset.insert(base::Interval<size_t>{named_span.start.line_num - 1,
                                      named_span.finish.line_num + 2});
@@ -391,7 +391,7 @@ void Log::PositionalArgumentFollowingNamed(
   errors_.push_back(ss.str());
 }
 
-void Log::UnknownParseError(base::vector<TextSpan> const &lines) {
+void Log::UnknownParseError(std::vector<TextSpan> const &lines) {
   // TODO there's something seriously wrong with this
   std::stringstream ss;
   ss << "Parse errors found in \"" << lines.front().source->name
@@ -406,7 +406,7 @@ void Log::UnknownParseError(base::vector<TextSpan> const &lines) {
   errors_.push_back(ss.str());
 }
 
-void Log::CyclicDependency(base::vector<ast::Identifier const *> cyc_deps) {
+void Log::CyclicDependency(std::vector<ast::Identifier const *> cyc_deps) {
   cyc_dep_vecs_.push_back(std::move(cyc_deps));
 }
 
@@ -433,11 +433,11 @@ void Log::Dump() const {
     // TODO make cyc_dep_vec just identifiers
     std::cerr << "Found a cyclic dependency:\n\n";
 
-    base::unordered_map<ast::Declaration const *, size_t> decls;
+    std::unordered_map<ast::Declaration const *, size_t> decls;
     for (auto const *id : cycle) { decls.emplace(id->decl, decls.size()); }
 
     base::IntervalSet<size_t> iset;
-    base::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
+    std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
     for (const auto *id : cycle) {
       iset.insert(base::Interval<size_t>{id->span.start.line_num - 1,
                                          id->span.finish.line_num + 2});
@@ -615,8 +615,8 @@ void Log::InvalidNumber(TextSpan const &span, std::string_view err) {
 }
 
 void Log::NoCallMatch(TextSpan const &span,
-                      base::vector<std::string> const &generic_failure_reasons,
-                      base::unordered_map<ast::Expression const *,
+                      std::vector<std::string> const &generic_failure_reasons,
+                      std::unordered_map<ast::Expression const *,
                                           std::string> const &failure_reasons) {
   std::stringstream ss;
   ss << "Failed to find a matching function signature to call.\n\n";
@@ -637,7 +637,7 @@ void Log::NoCallMatch(TextSpan const &span,
 
 void Log::MissingDispatchContingency(
     TextSpan const &span,
-    base::vector<ast::FnArgs<type::Type const *>> const &missing_dispatch) {
+    std::vector<ast::FnArgs<type::Type const *>> const &missing_dispatch) {
   std::stringstream ss;
   ss << "Failed to find a valid function to call for all required dispatches.\n\n";
   WriteSource(

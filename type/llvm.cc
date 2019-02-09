@@ -74,14 +74,14 @@ llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
 }
 
 llvm::Type* Struct::llvm(llvm::LLVMContext& ctx) const {
-  base::vector<llvm::Type*> llvm_types;
+  std::vector<llvm::Type*> llvm_types;
   llvm_types.reserve(fields_.size());
   for (const auto& f : fields_) { llvm_types.push_back(f.type->llvm(ctx)); }
   return llvm::StructType::get(ctx, llvm_types);
 }
 
 llvm::FunctionType* Function::llvm_fn(llvm::LLVMContext& ctx) const {
-  base::vector<llvm::Type*> llvm_inputs;
+  std::vector<llvm::Type*> llvm_inputs;
   llvm_inputs.reserve(input.size());
   for (auto* t : input) {
     auto* llvm_type = t->llvm(ctx);

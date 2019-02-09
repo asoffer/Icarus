@@ -3,7 +3,6 @@ load("//:defs.bzl", "cc_target")
 
 # cc_target(
 #     name = "emit",
-#     intf_deps = ["//base/container:vector"],
 # )
 
 cc_target(

@@ -18,7 +18,7 @@ void Flags::EmitInit(ir::Register id_reg, Context *) const {
 }
 
 Flags::Flags(
-    base::unordered_map<std::string, std::optional<i32>> const &members) {
+    std::unordered_map<std::string, std::optional<i32>> const &members) {
   std::unordered_set<i32> taken;
   for (auto const &[s, v] : members) {
     if (v.has_value()) {

@@ -45,7 +45,7 @@ VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
   return result;
 }
 
-base::vector<ir::Val> ArrayLiteral::EmitIR(Context *ctx) {
+std::vector<ir::Val> ArrayLiteral::EmitIR(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = ctx->type_of(this);
   auto alloc      = ir::TmpAlloca(this_type, ctx);
@@ -64,7 +64,7 @@ base::vector<ir::Val> ArrayLiteral::EmitIR(Context *ctx) {
   return {array_val};
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> ArrayLiteral::EmitLVal(Context *ctx) {
+std::vector<ir::RegisterOr<ir::Addr>> ArrayLiteral::EmitLVal(Context *ctx) {
   UNREACHABLE(*this);
 }
 

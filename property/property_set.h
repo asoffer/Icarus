@@ -4,7 +4,7 @@
 #include <iosfwd>
 #include <string>
 
-#include "base/container/bag.h"
+#include "base/bag.h"
 #include "base/owned_ptr.h"
 #include "base/util.h"
 

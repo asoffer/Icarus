@@ -2,7 +2,7 @@
 #include <filesystem>
 
 #include "backend/exec.h"
-#include "base/container/vector.h"
+#include <vector>
 #include "base/untyped_buffer.h"
 #include "base/util.h"
 #include "ir/func.h"
@@ -15,7 +15,7 @@
 #include "llvm/Support/TargetSelect.h"
 #endif  // ICARUS_USE_LLVM
 
-base::vector<frontend::Source::Name> files;
+std::vector<frontend::Source::Name> files;
 
 // TODO sad. don't use a global to do this.
 extern ir::Func *main_fn;

@@ -1,7 +1,7 @@
 #ifndef ICARUS_AST_STATEMENTS_H
 #define ICARUS_AST_STATEMENTS_H
 
-#include "base/container/vector.h"
+#include <vector>
 
 #include "node.h"
 
@@ -18,13 +18,13 @@ struct Statements : public Node {
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
   
-  base::vector<ir::Val> EmitIR(Context *) override;
+  std::vector<ir::Val> EmitIR(Context *) override;
 
   inline size_t size() const { return content_.size(); }
 
   void append(std::unique_ptr<Node>&& node);
 
-  base::vector<std::unique_ptr<Node>> content_;
+  std::vector<std::unique_ptr<Node>> content_;
 };
 
 }  // namespace ast

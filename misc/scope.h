@@ -3,8 +3,8 @@
 
 #include <iosfwd>
 #include <unordered_set>
-#include "base/container/unordered_map.h"
-#include "base/container/vector.h"
+#include <unordered_map>
+#include <vector>
 #include "base/util.h"
 #include "type/typed_value.h"
 
@@ -41,7 +41,7 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this);
   }
 
-  base::vector<type::Typed<ast::Declaration *>> AllDeclsWithId(
+  std::vector<type::Typed<ast::Declaration *>> AllDeclsWithId(
       std::string const &id, Context *ctx) const;
 
   Module const *module() const;
@@ -51,8 +51,8 @@ struct Scope : public base::Cast<Scope> {
 
   FnScope *ContainingFnScope();
   std::unordered_set<std::string> shadowed_decls_;
-  base::unordered_map<std::string, base::vector<ast::Declaration *>> decls_;
-  base::unordered_map<std::string, base::vector<ast::Declaration *>>
+  std::unordered_map<std::string, std::vector<ast::Declaration *>> decls_;
+  std::unordered_map<std::string, std::vector<ast::Declaration *>>
       child_decls_;
 
   std::unordered_set<Module const *> embedded_modules_;
@@ -77,7 +77,7 @@ struct FnScope : public ExecScope {
   void MakeAllStackAllocations(Context *ctx);
 
   ast::FunctionLiteral *fn_lit_ = nullptr;
-  base::vector<ExecScope *> innards_{1, this};
+  std::vector<ExecScope *> innards_{1, this};
 };
 
 inline FnScope *Scope::ContainingFnScope() {

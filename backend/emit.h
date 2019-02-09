@@ -3,7 +3,7 @@
 #define ICARUS_BACKEND_EMIT_H
 
 #include <memory>
-#include "base/container/vector.h"
+#include <vector>
 
 namespace llvm {
 class Module;
@@ -14,7 +14,7 @@ struct Func;
 }  // namespace ir
 
 namespace backend {
-void EmitAll(base::vector<std::unique_ptr<ir::Func>> const &fns,
+void EmitAll(std::vector<std::unique_ptr<ir::Func>> const &fns,
              llvm::Module *module);
 
 }  // namespace backend

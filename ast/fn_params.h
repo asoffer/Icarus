@@ -1,8 +1,8 @@
 #ifndef ICARUS_AST_FN_PARAMS_H
 #define ICARUS_AST_FN_PARAMS_H
 
-#include "base/container/vector.h"
-#include "base/container/unordered_map.h"
+#include <vector>
+#include <unordered_map>
 
 #include <string_view>
 
@@ -42,12 +42,12 @@ struct FnParams {
     params_.emplace_back(name, std::move(val));
   }
 
-  base::vector<Param> params_;
+  std::vector<Param> params_;
 
   // Maps the string name of the declared argument to it's index:
   // Example: (a: int, b: char, c: string) -> int
   //           a => 0, b => 1, c => 2
-  base::unordered_map<std::string_view, size_t> lookup_;
+  std::unordered_map<std::string_view, size_t> lookup_;
 };
 }  // namespace ast
 

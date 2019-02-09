@@ -6,7 +6,7 @@
 #include <string_view>
 
 #include "ast/hashtag.h"
-#include "base/container/vector.h"
+#include <vector>
 #include "base/lazy.h"
 #include "ir/any_func.h"
 #include "misc/scope.h"
@@ -30,7 +30,7 @@ struct Struct : public Type {
     // TODO make a string_view but deal with trickiness of moving
     std::string name;
     Type const *type = nullptr;
-    base::vector<ast::Hashtag> hashtags_;
+    std::vector<ast::Hashtag> hashtags_;
   };
 
   Struct(::Scope const *scope, ::Module const *mod)
@@ -58,7 +58,7 @@ struct Struct : public Type {
 
   size_t offset(size_t n, Architecture const &arch) const;
 
-  base::vector<Field> const &fields() const { return fields_; }
+  std::vector<Field> const &fields() const { return fields_; }
   size_t index(std::string const &name) const;
 
   bool contains_hashtag(ast::Hashtag needle) const;
@@ -71,9 +71,9 @@ struct Struct : public Type {
   base::lazy<ir::AnyFunc> move_assign_func_;
 
   ::Module *mod_ = nullptr;
-  base::vector<ast::Hashtag> hashtags_;
-  base::vector<Field> fields_;
-  base::unordered_map<std::string, size_t> field_indices_;
+  std::vector<ast::Hashtag> hashtags_;
+  std::vector<Field> fields_;
+  std::unordered_map<std::string, size_t> field_indices_;
 };
 
 }  // namespace type

@@ -27,8 +27,8 @@ struct Expression : public Node {
   virtual void assign_scope(Scope *scope)                            = 0;
   virtual VerifyResult VerifyType(Context *ctx)                      = 0;
   virtual void Validate(Context *ctx)                                = 0;
-  virtual base::vector<ir::Val> EmitIR(Context *)                    = 0;
-  virtual base::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
+  virtual std::vector<ir::Val> EmitIR(Context *)                    = 0;
+  virtual std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
   virtual void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
     type::EmitCopyInit(ctx->type_of(this), this->EmitIR(ctx)[0], reg, ctx);
   }

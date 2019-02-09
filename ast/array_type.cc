@@ -36,13 +36,13 @@ void ArrayType::Validate(Context *ctx) {
   data_type_->Validate(ctx);
 }
 
-base::vector<ir::Val> ArrayType::EmitIR(Context *ctx) {
+std::vector<ir::Val> ArrayType::EmitIR(Context *ctx) {
   return {ir::ValFrom(
       ir::Array(length_->EmitIR(ctx)[0].reg_or<i64>(),
                 data_type_->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
 }
 
-base::vector<ir::RegisterOr<ir::Addr>> ArrayType::EmitLVal(Context *) {
+std::vector<ir::RegisterOr<ir::Addr>> ArrayType::EmitLVal(Context *) {
   UNREACHABLE(*this);
 }
 

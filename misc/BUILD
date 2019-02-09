@@ -44,8 +44,6 @@ cc_target(
     intf_deps = [
         ":module",
         "//ast:bound_constants",
-        "//base/container:unordered_map",
-        "//base/container:vector",
         "//base:debug",
         "//error:log",
         "//ir:register",
@@ -58,7 +56,6 @@ cc_target(
 
 cc_target(
     name = "import_graph",
-    intf_deps = ["//base/container:unordered_map"],
 )
 
 cc_target(
@@ -70,8 +67,6 @@ cc_target(
         "//ast:dispatch",
         "//ast:node_lookup",
         "//ast:statements",
-        "//base/container:unordered_map",
-        "//base/container:vector",
     ],
     impl_deps = [
         ":import_graph",
@@ -91,8 +86,6 @@ cc_target(
 cc_target(
     name = "scope",
     intf_deps = [
-        "//base/container:unordered_map",
-        "//base/container:vector",
         "//base:util",
         "//type:typed_value",
     ],

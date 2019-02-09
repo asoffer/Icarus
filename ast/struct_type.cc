@@ -28,9 +28,9 @@ void StructType::Validate(Context *ctx) {
   for (auto &arg : args_) { arg->Validate(ctx); }
 }
 
-base::vector<ir::Val> StructType::EmitIR(Context *ctx) { NOT_YET(); }
+std::vector<ir::Val> StructType::EmitIR(Context *ctx) { NOT_YET(); }
 
-base::vector<ir::RegisterOr<ir::Addr>> StructType::EmitLVal(Context *) {
+std::vector<ir::RegisterOr<ir::Addr>> StructType::EmitLVal(Context *) {
   UNREACHABLE(*this);
 }
 

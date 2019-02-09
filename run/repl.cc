@@ -5,7 +5,7 @@
 #include "ast/expression.h"
 #include "ast/fn_params.h"
 #include "backend/exec.h"
-#include "base/container/vector.h"
+#include <vector>
 #include "base/untyped_buffer.h"
 #include "frontend/source.h"
 #include "ir/func.h"

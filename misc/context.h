@@ -2,8 +2,8 @@
 #define ICARUS_CONTEXT_H
 
 #include "ast/bound_constants.h"
-#include "base/container/unordered_map.h"
-#include "base/container/vector.h"
+#include <unordered_map>
+#include <vector>
 #include "base/debug.h"
 #include "error/log.h"
 #include "ir/register.h"
@@ -37,7 +37,7 @@ struct Context {
   void push_dispatch_table(ast::Node const *node,
                            ast::DispatchTable &&table);
 
-  base::vector<ast::DispatchTable> const *rep_dispatch_tables(
+  std::vector<ast::DispatchTable> const *rep_dispatch_tables(
       ast::Node const *node) const;
 
   void push_rep_dispatch_table(ast::Node const *node,
@@ -61,19 +61,19 @@ struct Context {
     ast::Expression *expr_;
     ir::Val val_;
     };
-    base::vector<base::vector<YieldResult>> yields_stack_;
+    std::vector<std::vector<YieldResult>> yields_stack_;
     bool more_stmts_allowed_ = true;
 
     // Temporaries need to be destroyed at the end of each statement.
     // This is a pointer to a buffer where temporary allocations can register
     // themselves for deletion.
-    base::vector<type::Typed<ir::Register>> *temporaries_to_destroy_ = nullptr;
+    std::vector<type::Typed<ir::Register>> *temporaries_to_destroy_ = nullptr;
 
     // During validation, when a cyclic dependency is encountered, we write it
     // down here. That way, we can bubble up from the dependency until we see it
     // again, at each step adding the nodes to the error log involved in the
     // dependency. Once complete, we reset this to null
-    base::vector<ast::Identifier *> cyc_deps_;
+    std::vector<ast::Identifier *> cyc_deps_;
 };
 
 #endif  // ICARUS_CONTEXT_H

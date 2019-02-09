@@ -43,8 +43,8 @@ void Statements::append(std::unique_ptr<Node> &&node) {
   }
 }
 
-base::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
-  base::vector<type::Typed<ir::Register>> to_destroy;
+std::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
+  std::vector<type::Typed<ir::Register>> to_destroy;
   auto *old_tmp_ptr = std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
   bool old_more_stmts_allowed = std::exchange(ctx->more_stmts_allowed_, true);
   base::defer d([&] {

@@ -325,8 +325,8 @@ void PropertyMap::refresh(std::unordered_set<Entry> stale_up,
 // TODO this is not a great way to handle this. Probably should store all
 // set-rets first.
 BoolProp PropertyMap::Returns() const {
-  base::vector<ir::CmdIndex> rets;
-  base::vector<ir::Register> regs;
+  std::vector<ir::CmdIndex> rets;
+  std::vector<ir::Register> regs;
 
   // This can be precompeted and stored on the actual ir::Func.
   i32 num_blocks = static_cast<i32>(fn_->blocks_.size());
@@ -367,7 +367,7 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
   // so figure out why.
 
   std::unordered_set<Entry> stale_down;
-  base::vector<type::Type const *> const &ins = [&] {
+  std::vector<type::Type const *> const &ins = [&] {
     if (args.type_->is<type::Function>()) {
       return args.type_->as<type::Function>().input;
     } else if (args.type_->is<type::GenericStruct>()) {
