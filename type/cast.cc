@@ -19,7 +19,7 @@ extern bool loose_casting;
 }  // namespace feature
 
 namespace type {
-static u8 CastMask(Type const *t) {
+static uint8_t CastMask(Type const *t) {
   if (feature::loose_casting) {
     // Loose casting enables casting between any integral types, and between any
     // floating-point types, and from integral to floating-point, even if it
@@ -36,9 +36,9 @@ static u8 CastMask(Type const *t) {
   } else {
     //              f32 (0x31) -> f64 (0x33)
     //               ^             ^
-    // i8 (0x10) -> i16 (0x11) -> i32 (0x13) -> i64 (0x17)
+    // int8_t (0x10) -> int16_t (0x11) -> int32_t (0x13) -> int64_t (0x17)
     //               ^             ^             ^
-    //              u8  (0x01) -> u16 (0x03) -> u32 (0x07) -> u64 (0x0f)
+    //              uint8_t  (0x01) -> uint16_t (0x03) -> uint32_t (0x07) -> uint64_t (0x0f)
     if (t == Nat8) { return 0x01; }
     if (t == Nat16) { return 0x03; }
     if (t == Nat32) { return 0x07; }

@@ -25,7 +25,7 @@ struct Module;
 namespace ir {
 struct CmdIndex {
   BlockIndex block;
-  i32 cmd;
+  int32_t cmd;
 };
 
 inline bool operator==(CmdIndex lhs, CmdIndex rhs) {
@@ -44,7 +44,7 @@ struct Func {
   Func(Module *mod, type::Function const *fn_type,
        ast::FnParams<ast::Expression *> params);
 
-  Register Argument(u32 n) const;
+  Register Argument(uint32_t n) const;
 
   void ComputeInvariants();
   void CheckInvariants();
@@ -83,7 +83,7 @@ struct Func {
   type::Function const *const type_ = nullptr;
   ast::FnParams<ast::Expression *> params_;
   
-  i32 num_regs_  = 0;
+  int32_t num_regs_  = 0;
   std::vector<BasicBlock> blocks_;
   Module::CompilationWorkItem *work_item = nullptr;
 #ifdef ICARUS_USE_LLVM

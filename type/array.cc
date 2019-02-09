@@ -226,7 +226,7 @@ static void OnEachElement(Array const *t, ir::Func *fn, F &&fn_to_apply) {
     auto *data_ptr_type     = Ptr(t->data_type);
 
     auto ptr     = ir::Index(Ptr(t), fn->Argument(0), 0);
-    auto end_ptr = ir::PtrIncr(ptr, static_cast<i32>(t->len), data_ptr_type);
+    auto end_ptr = ir::PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
 
     using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
     CreateLoop(
@@ -289,7 +289,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
       data_type->EmitRepr(ir::Val::Reg(ir::PtrFix(ptr, data_type), data_type),
                           ctx);
 
-      using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<i32>>;
+      using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<int32_t>>;
       CreateLoop(
           [&](tup const &phis) { return ir::Eq(std::get<1>(phis), 0); },
           [&](tup const &phis) {
@@ -302,7 +302,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
                 ir::Val::Reg(ir::PtrFix(elem_ptr, data_type), data_type), ctx);
 
             return std::make_tuple(
-                elem_ptr, ir::Sub(ir::RegisterOr<i32>(std::get<1>(phis)), 1));
+                elem_ptr, ir::Sub(ir::RegisterOr<int32_t>(std::get<1>(phis)), 1));
           },
           std::tuple{Ptr(this->data_type), Int32}, tup{ptr, len - 1});
       ir::UncondJump(exit_block);

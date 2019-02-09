@@ -32,7 +32,7 @@ static std::unique_ptr<PhiArgs<T>> MakePhiArgs(
 CmdIndex Phi(type::Type const *t) {
   CmdIndex cmd_index{
       BasicBlock::Current,
-      static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
+      static_cast<int32_t>(Func::Current->block(BasicBlock::Current).cmds_.size())};
   ASSERT_NOT_NULL(Func::Current)
       ->block(BasicBlock::Current)
       .cmds_.emplace_back(t, Op::Death);

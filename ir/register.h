@@ -3,11 +3,10 @@
 
 #include <vector>
 #include "base/strong_types.h"
-#include "base/types.h"
 
-DEFINE_STRONG_INT(ir, BlockIndex, i32, -1);
+DEFINE_STRONG_INT(ir, BlockIndex, int32_t, -1);
 DEFINE_STRONG_INT(ir, EnumVal, size_t, 0);
-DEFINE_STRONG_INT(ir, BuiltinGenericIndex, i32, -1);
+DEFINE_STRONG_INT(ir, BuiltinGenericIndex, int32_t, -1);
 
 namespace ir {
 #define MAKE_CMP(type)                                                         \

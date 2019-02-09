@@ -6,7 +6,7 @@
 struct TextSpan;
 
 namespace frontend {
-enum Tag : u64 {
+enum Tag : uint64_t {
   bof           = 1ull << 0,
   eof           = 1ull << 1,
   newline       = 1ull << 2,

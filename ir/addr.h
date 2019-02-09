@@ -3,17 +3,16 @@
 
 #include <iosfwd>
 
-#include "base/types.h"
 #include "base/untyped_buffer.h"
 
 namespace ir {
 struct Addr {
-  enum class Kind : u8 { Heap, Stack, ReadOnly } kind;
+  enum class Kind : uint8_t { Heap, Stack, ReadOnly } kind;
 
   constexpr Addr() : kind(Kind::Heap), as_heap(nullptr) {}
   constexpr static Addr Null() { return Addr{}; }
 
-  constexpr static Addr ReadOnly(u64 index) {
+  constexpr static Addr ReadOnly(uint64_t index) {
     Addr addr;
     addr.kind      = Kind::ReadOnly;
     addr.as_rodata = index;
@@ -27,7 +26,7 @@ struct Addr {
     return addr;
   }
 
-  constexpr static Addr Stack(u64 index) {
+  constexpr static Addr Stack(uint64_t index) {
     Addr addr;
     addr.kind     = Kind::Stack;
     addr.as_stack = index;
@@ -35,9 +34,9 @@ struct Addr {
   }
 
   union {
-    u64 as_stack;
+    uint64_t as_stack;
     void *as_heap;
-    u64 as_rodata;
+    uint64_t as_rodata;
   };
 
   std::string to_string() const;

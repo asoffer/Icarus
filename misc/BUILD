@@ -17,7 +17,6 @@ cc_lib(
 cc_target(
     name = "architecture",
     intf_deps = [
-        "//base:types",
         "//ir:addr",
         "//ir:register",
     ],

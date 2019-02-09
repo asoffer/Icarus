@@ -329,11 +329,11 @@ BoolProp PropertyMap::Returns() const {
   std::vector<ir::Register> regs;
 
   // This can be precompeted and stored on the actual ir::Func.
-  i32 num_blocks = static_cast<i32>(fn_->blocks_.size());
-  for (i32 i = 0; i < num_blocks; ++i) {
+  int32_t num_blocks = static_cast<int32_t>(fn_->blocks_.size());
+  for (int32_t i = 0; i < num_blocks; ++i) {
     const auto &block = fn_->blocks_[i];
-    i32 num_cmds      = static_cast<i32>(block.cmds_.size());
-    for (i32 j = 0; j < num_cmds; ++j) {
+    int32_t num_cmds      = static_cast<int32_t>(block.cmds_.size());
+    for (int32_t j = 0; j < num_cmds; ++j) {
       const auto &cmd = block.cmds_[j];
       if (cmd.op_code_ == ir::Op::SetRetBool) {
         rets.push_back(ir::CmdIndex{ir::BlockIndex{i}, j});

@@ -221,21 +221,21 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
   // TODO Handle a bunch more function types in a coherent way.
   auto *fn_type = &f.type()->as<type::Function>();
   if (fn_type == type::Func({type::Int32}, {type::Int32})) {
-    FfiCall<i32, i32>(f, arguments, &ret_slots, stack);
+    FfiCall<int32_t, int32_t>(f, arguments, &ret_slots, stack);
   } else if (fn_type == type::Func({type::Int32}, {})) {
-    FfiCall<void, i32>(f, arguments, &ret_slots, stack);
+    FfiCall<void, int32_t>(f, arguments, &ret_slots, stack);
   } else if (fn_type == type::Func({type::Float64}, {type::Float64})) {
     FfiCall<double, double>(f, arguments, &ret_slots, stack);
   } else if (fn_type == type::Func({type::Float32}, {type::Float32})) {
     FfiCall<float, float>(f, arguments, &ret_slots, stack);
   } else if (fn_type == type::Func({}, {type::Int32})) {
-    FfiCall<i32>(f, arguments, &ret_slots, stack);
+    FfiCall<int32_t>(f, arguments, &ret_slots, stack);
   } else if (fn_type == type::Func({type::Nat8}, {type::Int32})) {
-    FfiCall<i32, u8>(f, arguments, &ret_slots, stack);
+    FfiCall<int32_t, uint8_t>(f, arguments, &ret_slots, stack);
   } else if (fn_type->input.size() == 1 &&
              fn_type->input[0]->is<type::Pointer>() &&
              fn_type->output.size() == 1 && fn_type->output[0] == type::Int32) {
-    FfiCall<i32, void *>(f, arguments, &ret_slots, stack);
+    FfiCall<int32_t, void *>(f, arguments, &ret_slots, stack);
   } else if (fn_type->input.size() == 2 &&
              fn_type->input[0]->is<type::Pointer>() &&
              fn_type->input[1]->is<type::Pointer>() &&
@@ -245,15 +245,15 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
   } else if (fn_type->input.size() == 2 && fn_type->input[0] == type::Int32 &&
              fn_type->input[1]->is<type::Pointer>() &&
              fn_type->output.size() == 1 && fn_type->output[0] == type::Int32) {
-    FfiCall<i32, i32, void *>(f, arguments, &ret_slots, stack);
+    FfiCall<int32_t, int32_t, void *>(f, arguments, &ret_slots, stack);
   } else if (fn_type->input.size() == 1 && fn_type->input[0] == type::Int32 &&
              fn_type->output.size() == 1 &&
              fn_type->output[0]->is<type::Pointer>()) {
-    FfiCall<void *, i32>(f, arguments, &ret_slots, stack);
+    FfiCall<void *, int32_t>(f, arguments, &ret_slots, stack);
   } else if (fn_type->input.size() == 1 && fn_type->input[0] == type::Nat64 &&
              fn_type->output.size() == 1 &&
              fn_type->output[0]->is<type::Pointer>()) {
-    FfiCall<void *, u64>(f, arguments, &ret_slots, stack);
+    FfiCall<void *, uint64_t>(f, arguments, &ret_slots, stack);
   } else if (fn_type->input.size() == 1 && fn_type->output.empty() &&
              fn_type->input[0]->is<type::Pointer>()) {
     FfiCall<void, void *>(f, arguments, &ret_slots, stack);
@@ -284,23 +284,23 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(ir::NotFlags(resolve<ir::FlagsVal>(cmd.typed_reg_.get()),
                         &cmd.typed_reg_.type()->as<type::Flags>()));
     } break;
-    case ir::Op::NegInt8: save(-resolve<i8>(cmd.reg_)); break;
-    case ir::Op::NegInt16: save(-resolve<i16>(cmd.reg_)); break;
-    case ir::Op::NegInt32: save(-resolve<i32>(cmd.reg_)); break;
-    case ir::Op::NegInt64: save(-resolve<i64>(cmd.reg_)); break;
+    case ir::Op::NegInt8: save(-resolve<int8_t>(cmd.reg_)); break;
+    case ir::Op::NegInt16: save(-resolve<int16_t>(cmd.reg_)); break;
+    case ir::Op::NegInt32: save(-resolve<int32_t>(cmd.reg_)); break;
+    case ir::Op::NegInt64: save(-resolve<int64_t>(cmd.reg_)); break;
     case ir::Op::NegFloat32: save(-resolve<double>(cmd.reg_)); break;
     case ir::Op::NegFloat64: save(-resolve<double>(cmd.reg_)); break;
 #define CASE(op, ty)                                                           \
   case op: save(LoadValue<ty>(resolve<ir::Addr>(cmd.reg_), stack_)); break
       CASE(ir::Op::LoadBool, bool);
-      CASE(ir::Op::LoadInt8, i8);
-      CASE(ir::Op::LoadInt16, i16);
-      CASE(ir::Op::LoadInt32, i32);
-      CASE(ir::Op::LoadInt64, i64);
-      CASE(ir::Op::LoadNat8, u8);
-      CASE(ir::Op::LoadNat16, u16);
-      CASE(ir::Op::LoadNat32, u32);
-      CASE(ir::Op::LoadNat64, u64);
+      CASE(ir::Op::LoadInt8, int8_t);
+      CASE(ir::Op::LoadInt16, int16_t);
+      CASE(ir::Op::LoadInt32, int32_t);
+      CASE(ir::Op::LoadInt64, int64_t);
+      CASE(ir::Op::LoadNat8, uint8_t);
+      CASE(ir::Op::LoadNat16, uint16_t);
+      CASE(ir::Op::LoadNat32, uint32_t);
+      CASE(ir::Op::LoadNat64, uint64_t);
       CASE(ir::Op::LoadFloat32, float);
       CASE(ir::Op::LoadFloat64, double);
       CASE(ir::Op::LoadType, type::Type const *);
@@ -315,116 +315,116 @@ ir::BlockIndex ExecContext::ExecuteCmd(
   case op: {                                                                   \
     save(fn(resolve(cmd.member.args_[0]), resolve(cmd.member.args_[1])));      \
   } break
-      CASE(ir::Op::AddInt8, i8_args_, std::plus<i8>{});
-      CASE(ir::Op::AddInt16, i16_args_, std::plus<i16>{});
-      CASE(ir::Op::AddInt32, i32_args_, std::plus<i32>{});
-      CASE(ir::Op::AddInt64, i64_args_, std::plus<i64>{});
-      CASE(ir::Op::AddNat8, u8_args_, std::plus<u8>{});
-      CASE(ir::Op::AddNat16, u16_args_, std::plus<u16>{});
-      CASE(ir::Op::AddNat32, u32_args_, std::plus<u32>{});
-      CASE(ir::Op::AddNat64, u64_args_, std::plus<u64>{});
+      CASE(ir::Op::AddInt8, i8_args_, std::plus<int8_t>{});
+      CASE(ir::Op::AddInt16, i16_args_, std::plus<int16_t>{});
+      CASE(ir::Op::AddInt32, i32_args_, std::plus<int32_t>{});
+      CASE(ir::Op::AddInt64, i64_args_, std::plus<int64_t>{});
+      CASE(ir::Op::AddNat8, u8_args_, std::plus<uint8_t>{});
+      CASE(ir::Op::AddNat16, u16_args_, std::plus<uint16_t>{});
+      CASE(ir::Op::AddNat32, u32_args_, std::plus<uint32_t>{});
+      CASE(ir::Op::AddNat64, u64_args_, std::plus<uint64_t>{});
       CASE(ir::Op::AddFloat32, float32_args_, std::plus<float>{});
       CASE(ir::Op::AddFloat64, float64_args_, std::plus<double>{});
 
-      CASE(ir::Op::SubInt8, i8_args_, std::minus<i8>{});
-      CASE(ir::Op::SubInt16, i16_args_, std::minus<i16>{});
-      CASE(ir::Op::SubInt32, i32_args_, std::minus<i32>{});
-      CASE(ir::Op::SubInt64, i64_args_, std::minus<i64>{});
-      CASE(ir::Op::SubNat8, u8_args_, std::minus<u8>{});
-      CASE(ir::Op::SubNat16, u16_args_, std::minus<u16>{});
-      CASE(ir::Op::SubNat32, u32_args_, std::minus<u32>{});
-      CASE(ir::Op::SubNat64, u64_args_, std::minus<u64>{});
+      CASE(ir::Op::SubInt8, i8_args_, std::minus<int8_t>{});
+      CASE(ir::Op::SubInt16, i16_args_, std::minus<int16_t>{});
+      CASE(ir::Op::SubInt32, i32_args_, std::minus<int32_t>{});
+      CASE(ir::Op::SubInt64, i64_args_, std::minus<int64_t>{});
+      CASE(ir::Op::SubNat8, u8_args_, std::minus<uint8_t>{});
+      CASE(ir::Op::SubNat16, u16_args_, std::minus<uint16_t>{});
+      CASE(ir::Op::SubNat32, u32_args_, std::minus<uint32_t>{});
+      CASE(ir::Op::SubNat64, u64_args_, std::minus<uint64_t>{});
       CASE(ir::Op::SubFloat32, float32_args_, std::minus<float>{});
       CASE(ir::Op::SubFloat64, float64_args_, std::minus<double>{});
 
-      CASE(ir::Op::MulInt8, i8_args_, std::multiplies<i8>{});
-      CASE(ir::Op::MulInt16, i16_args_, std::multiplies<i16>{});
-      CASE(ir::Op::MulInt32, i32_args_, std::multiplies<i32>{});
-      CASE(ir::Op::MulInt64, i64_args_, std::multiplies<i64>{});
-      CASE(ir::Op::MulNat8, u8_args_, std::multiplies<u8>{});
-      CASE(ir::Op::MulNat16, u16_args_, std::multiplies<u16>{});
-      CASE(ir::Op::MulNat32, u32_args_, std::multiplies<u32>{});
-      CASE(ir::Op::MulNat64, u64_args_, std::multiplies<u64>{});
+      CASE(ir::Op::MulInt8, i8_args_, std::multiplies<int8_t>{});
+      CASE(ir::Op::MulInt16, i16_args_, std::multiplies<int16_t>{});
+      CASE(ir::Op::MulInt32, i32_args_, std::multiplies<int32_t>{});
+      CASE(ir::Op::MulInt64, i64_args_, std::multiplies<int64_t>{});
+      CASE(ir::Op::MulNat8, u8_args_, std::multiplies<uint8_t>{});
+      CASE(ir::Op::MulNat16, u16_args_, std::multiplies<uint16_t>{});
+      CASE(ir::Op::MulNat32, u32_args_, std::multiplies<uint32_t>{});
+      CASE(ir::Op::MulNat64, u64_args_, std::multiplies<uint64_t>{});
       CASE(ir::Op::MulFloat32, float32_args_, std::multiplies<float>{});
       CASE(ir::Op::MulFloat64, float64_args_, std::multiplies<double>{});
 
-      CASE(ir::Op::DivInt8, i8_args_, std::divides<i8>{});
-      CASE(ir::Op::DivInt16, i16_args_, std::divides<i16>{});
-      CASE(ir::Op::DivInt32, i32_args_, std::divides<i32>{});
-      CASE(ir::Op::DivInt64, i64_args_, std::divides<i64>{});
-      CASE(ir::Op::DivNat8, u8_args_, std::divides<u8>{});
-      CASE(ir::Op::DivNat16, u16_args_, std::divides<u16>{});
-      CASE(ir::Op::DivNat32, u32_args_, std::divides<u32>{});
-      CASE(ir::Op::DivNat64, u64_args_, std::divides<u64>{});
+      CASE(ir::Op::DivInt8, i8_args_, std::divides<int8_t>{});
+      CASE(ir::Op::DivInt16, i16_args_, std::divides<int16_t>{});
+      CASE(ir::Op::DivInt32, i32_args_, std::divides<int32_t>{});
+      CASE(ir::Op::DivInt64, i64_args_, std::divides<int64_t>{});
+      CASE(ir::Op::DivNat8, u8_args_, std::divides<uint8_t>{});
+      CASE(ir::Op::DivNat16, u16_args_, std::divides<uint16_t>{});
+      CASE(ir::Op::DivNat32, u32_args_, std::divides<uint32_t>{});
+      CASE(ir::Op::DivNat64, u64_args_, std::divides<uint64_t>{});
       CASE(ir::Op::DivFloat32, float32_args_, std::divides<float>{});
       CASE(ir::Op::DivFloat64, float64_args_, std::divides<double>{});
 
-      CASE(ir::Op::ModInt8, i8_args_, std::modulus<i8>{});
-      CASE(ir::Op::ModInt16, i16_args_, std::modulus<i16>{});
-      CASE(ir::Op::ModInt32, i32_args_, std::modulus<i32>{});
-      CASE(ir::Op::ModInt64, i64_args_, std::modulus<i64>{});
-      CASE(ir::Op::ModNat8, u8_args_, std::modulus<u8>{});
-      CASE(ir::Op::ModNat16, u16_args_, std::modulus<u16>{});
-      CASE(ir::Op::ModNat32, u32_args_, std::modulus<u32>{});
-      CASE(ir::Op::ModNat64, u64_args_, std::modulus<u64>{});
+      CASE(ir::Op::ModInt8, i8_args_, std::modulus<int8_t>{});
+      CASE(ir::Op::ModInt16, i16_args_, std::modulus<int16_t>{});
+      CASE(ir::Op::ModInt32, i32_args_, std::modulus<int32_t>{});
+      CASE(ir::Op::ModInt64, i64_args_, std::modulus<int64_t>{});
+      CASE(ir::Op::ModNat8, u8_args_, std::modulus<uint8_t>{});
+      CASE(ir::Op::ModNat16, u16_args_, std::modulus<uint16_t>{});
+      CASE(ir::Op::ModNat32, u32_args_, std::modulus<uint32_t>{});
+      CASE(ir::Op::ModNat64, u64_args_, std::modulus<uint64_t>{});
 
-      CASE(ir::Op::LtInt8, i8_args_, std::less<i8>{});
-      CASE(ir::Op::LtInt16, i16_args_, std::less<i16>{});
-      CASE(ir::Op::LtInt32, i32_args_, std::less<i32>{});
-      CASE(ir::Op::LtInt64, i64_args_, std::less<i64>{});
-      CASE(ir::Op::LtNat8, u8_args_, std::less<u8>{});
-      CASE(ir::Op::LtNat16, u16_args_, std::less<u16>{});
-      CASE(ir::Op::LtNat32, u32_args_, std::less<u32>{});
-      CASE(ir::Op::LtNat64, u64_args_, std::less<u64>{});
+      CASE(ir::Op::LtInt8, i8_args_, std::less<int8_t>{});
+      CASE(ir::Op::LtInt16, i16_args_, std::less<int16_t>{});
+      CASE(ir::Op::LtInt32, i32_args_, std::less<int32_t>{});
+      CASE(ir::Op::LtInt64, i64_args_, std::less<int64_t>{});
+      CASE(ir::Op::LtNat8, u8_args_, std::less<uint8_t>{});
+      CASE(ir::Op::LtNat16, u16_args_, std::less<uint16_t>{});
+      CASE(ir::Op::LtNat32, u32_args_, std::less<uint32_t>{});
+      CASE(ir::Op::LtNat64, u64_args_, std::less<uint64_t>{});
       CASE(ir::Op::LtFloat32, float32_args_, std::less<float>{});
       CASE(ir::Op::LtFloat64, float64_args_, std::less<double>{});
       CASE(ir::Op::LtFlags, flags_args_, std::less<ir::FlagsVal>{});
 
-      CASE(ir::Op::LeInt8, i8_args_, std::less_equal<i8>{});
-      CASE(ir::Op::LeInt16, i16_args_, std::less_equal<i16>{});
-      CASE(ir::Op::LeInt32, i32_args_, std::less_equal<i32>{});
-      CASE(ir::Op::LeInt64, i64_args_, std::less_equal<i64>{});
-      CASE(ir::Op::LeNat8, u8_args_, std::less_equal<u8>{});
-      CASE(ir::Op::LeNat16, u16_args_, std::less_equal<u16>{});
-      CASE(ir::Op::LeNat32, u32_args_, std::less_equal<u32>{});
-      CASE(ir::Op::LeNat64, u64_args_, std::less_equal<u64>{});
+      CASE(ir::Op::LeInt8, i8_args_, std::less_equal<int8_t>{});
+      CASE(ir::Op::LeInt16, i16_args_, std::less_equal<int16_t>{});
+      CASE(ir::Op::LeInt32, i32_args_, std::less_equal<int32_t>{});
+      CASE(ir::Op::LeInt64, i64_args_, std::less_equal<int64_t>{});
+      CASE(ir::Op::LeNat8, u8_args_, std::less_equal<uint8_t>{});
+      CASE(ir::Op::LeNat16, u16_args_, std::less_equal<uint16_t>{});
+      CASE(ir::Op::LeNat32, u32_args_, std::less_equal<uint32_t>{});
+      CASE(ir::Op::LeNat64, u64_args_, std::less_equal<uint64_t>{});
       CASE(ir::Op::LeFloat32, float32_args_, std::less_equal<float>{});
       CASE(ir::Op::LeFloat64, float64_args_, std::less_equal<double>{});
       CASE(ir::Op::LeFlags, flags_args_, std::less_equal<ir::FlagsVal>{});
 
-      CASE(ir::Op::GtInt8, i8_args_, std::greater<i8>{});
-      CASE(ir::Op::GtInt16, i16_args_, std::greater<i16>{});
-      CASE(ir::Op::GtInt32, i32_args_, std::greater<i32>{});
-      CASE(ir::Op::GtInt64, i64_args_, std::greater<i64>{});
-      CASE(ir::Op::GtNat8, u8_args_, std::greater<u8>{});
-      CASE(ir::Op::GtNat16, u16_args_, std::greater<u16>{});
-      CASE(ir::Op::GtNat32, u32_args_, std::greater<u32>{});
-      CASE(ir::Op::GtNat64, u64_args_, std::greater<u64>{});
+      CASE(ir::Op::GtInt8, i8_args_, std::greater<int8_t>{});
+      CASE(ir::Op::GtInt16, i16_args_, std::greater<int16_t>{});
+      CASE(ir::Op::GtInt32, i32_args_, std::greater<int32_t>{});
+      CASE(ir::Op::GtInt64, i64_args_, std::greater<int64_t>{});
+      CASE(ir::Op::GtNat8, u8_args_, std::greater<uint8_t>{});
+      CASE(ir::Op::GtNat16, u16_args_, std::greater<uint16_t>{});
+      CASE(ir::Op::GtNat32, u32_args_, std::greater<uint32_t>{});
+      CASE(ir::Op::GtNat64, u64_args_, std::greater<uint64_t>{});
       CASE(ir::Op::GtFloat32, float32_args_, std::greater<float>{});
       CASE(ir::Op::GtFloat64, float64_args_, std::greater<double>{});
       CASE(ir::Op::GtFlags, flags_args_, std::greater<ir::FlagsVal>{});
 
-      CASE(ir::Op::GeInt8, i8_args_, std::greater_equal<i8>{});
-      CASE(ir::Op::GeInt16, i16_args_, std::greater_equal<i16>{});
-      CASE(ir::Op::GeInt32, i32_args_, std::greater_equal<i32>{});
-      CASE(ir::Op::GeInt64, i64_args_, std::greater_equal<i64>{});
-      CASE(ir::Op::GeNat8, u8_args_, std::greater_equal<u8>{});
-      CASE(ir::Op::GeNat16, u16_args_, std::greater_equal<u16>{});
-      CASE(ir::Op::GeNat32, u32_args_, std::greater_equal<u32>{});
-      CASE(ir::Op::GeNat64, u64_args_, std::greater_equal<u64>{});
+      CASE(ir::Op::GeInt8, i8_args_, std::greater_equal<int8_t>{});
+      CASE(ir::Op::GeInt16, i16_args_, std::greater_equal<int16_t>{});
+      CASE(ir::Op::GeInt32, i32_args_, std::greater_equal<int32_t>{});
+      CASE(ir::Op::GeInt64, i64_args_, std::greater_equal<int64_t>{});
+      CASE(ir::Op::GeNat8, u8_args_, std::greater_equal<uint8_t>{});
+      CASE(ir::Op::GeNat16, u16_args_, std::greater_equal<uint16_t>{});
+      CASE(ir::Op::GeNat32, u32_args_, std::greater_equal<uint32_t>{});
+      CASE(ir::Op::GeNat64, u64_args_, std::greater_equal<uint64_t>{});
       CASE(ir::Op::GeFloat32, float32_args_, std::greater_equal<float>{});
       CASE(ir::Op::GeFloat64, float64_args_, std::greater_equal<double>{});
       CASE(ir::Op::GeFlags, flags_args_, std::greater_equal<ir::FlagsVal>{});
 
       CASE(ir::Op::EqBool, bool_args_, std::equal_to<bool>{});
-      CASE(ir::Op::EqInt8, i8_args_, std::equal_to<i8>{});
-      CASE(ir::Op::EqInt16, i16_args_, std::equal_to<i16>{});
-      CASE(ir::Op::EqInt32, i32_args_, std::equal_to<i32>{});
-      CASE(ir::Op::EqInt64, i64_args_, std::equal_to<i64>{});
-      CASE(ir::Op::EqNat8, u8_args_, std::equal_to<u8>{});
-      CASE(ir::Op::EqNat16, u16_args_, std::equal_to<u16>{});
-      CASE(ir::Op::EqNat32, u32_args_, std::equal_to<u32>{});
-      CASE(ir::Op::EqNat64, u64_args_, std::equal_to<u64>{});
+      CASE(ir::Op::EqInt8, i8_args_, std::equal_to<int8_t>{});
+      CASE(ir::Op::EqInt16, i16_args_, std::equal_to<int16_t>{});
+      CASE(ir::Op::EqInt32, i32_args_, std::equal_to<int32_t>{});
+      CASE(ir::Op::EqInt64, i64_args_, std::equal_to<int64_t>{});
+      CASE(ir::Op::EqNat8, u8_args_, std::equal_to<uint8_t>{});
+      CASE(ir::Op::EqNat16, u16_args_, std::equal_to<uint16_t>{});
+      CASE(ir::Op::EqNat32, u32_args_, std::equal_to<uint32_t>{});
+      CASE(ir::Op::EqNat64, u64_args_, std::equal_to<uint64_t>{});
       CASE(ir::Op::EqFloat32, float32_args_, std::equal_to<float>{});
       CASE(ir::Op::EqFloat64, float64_args_, std::equal_to<double>{});
       CASE(ir::Op::EqEnum, enum_args_, std::equal_to<ir::EnumVal>{});
@@ -433,14 +433,14 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       CASE(ir::Op::EqAddr, addr_args_, std::equal_to<ir::Addr>{});
 
       CASE(ir::Op::XorBool, bool_args_, std::not_equal_to<bool>{});
-      CASE(ir::Op::NeInt8, i8_args_, std::not_equal_to<i8>{});
-      CASE(ir::Op::NeInt16, i16_args_, std::not_equal_to<i16>{});
-      CASE(ir::Op::NeInt32, i32_args_, std::not_equal_to<i32>{});
-      CASE(ir::Op::NeInt64, i64_args_, std::not_equal_to<i64>{});
-      CASE(ir::Op::NeNat8, u8_args_, std::not_equal_to<u8>{});
-      CASE(ir::Op::NeNat16, u16_args_, std::not_equal_to<u16>{});
-      CASE(ir::Op::NeNat32, u32_args_, std::not_equal_to<u32>{});
-      CASE(ir::Op::NeNat64, u64_args_, std::not_equal_to<u64>{});
+      CASE(ir::Op::NeInt8, i8_args_, std::not_equal_to<int8_t>{});
+      CASE(ir::Op::NeInt16, i16_args_, std::not_equal_to<int16_t>{});
+      CASE(ir::Op::NeInt32, i32_args_, std::not_equal_to<int32_t>{});
+      CASE(ir::Op::NeInt64, i64_args_, std::not_equal_to<int64_t>{});
+      CASE(ir::Op::NeNat8, u8_args_, std::not_equal_to<uint8_t>{});
+      CASE(ir::Op::NeNat16, u16_args_, std::not_equal_to<uint16_t>{});
+      CASE(ir::Op::NeNat32, u32_args_, std::not_equal_to<uint32_t>{});
+      CASE(ir::Op::NeNat64, u64_args_, std::not_equal_to<uint64_t>{});
       CASE(ir::Op::NeFloat32, float32_args_, std::not_equal_to<float>{});
       CASE(ir::Op::NeFloat64, float64_args_, std::not_equal_to<double>{});
       CASE(ir::Op::NeEnum, enum_args_, std::not_equal_to<ir::EnumVal>{});
@@ -651,13 +651,13 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       std::cerr << (resolve(cmd.bool_arg_) ? "true" : "false");
       break;
     case ir::Op::PrintInt8:
-      std::cerr << static_cast<i32>(resolve(cmd.i8_arg_));
+      std::cerr << static_cast<int32_t>(resolve(cmd.i8_arg_));
       break;
     case ir::Op::PrintInt16: std::cerr << resolve(cmd.i16_arg_); break;
     case ir::Op::PrintInt32: std::cerr << resolve(cmd.i32_arg_); break;
     case ir::Op::PrintInt64: std::cerr << resolve(cmd.i64_arg_); break;
     case ir::Op::PrintNat8:
-      std::cerr << static_cast<i32>(resolve(cmd.u8_arg_));
+      std::cerr << static_cast<int32_t>(resolve(cmd.u8_arg_));
       break;
     case ir::Op::PrintNat16: std::cerr << resolve(cmd.u16_arg_); break;
     case ir::Op::PrintNat32: std::cerr << resolve(cmd.u32_arg_); break;
@@ -814,37 +814,37 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(resolve<type::Variant *>(cmd.reg_)->finalize());
       break;
     case ir::Op::CastToInt8: {
-      save(static_cast<i8>(resolve<i8>(cmd.typed_reg_.get())));
+      save(static_cast<int8_t>(resolve<int8_t>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToNat8: {
-      save(static_cast<u8>(resolve<i8>(cmd.typed_reg_.get())));
+      save(static_cast<uint8_t>(resolve<int8_t>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToInt16: {
-      save(static_cast<u16>(resolve<i8>(cmd.typed_reg_.get())));
+      save(static_cast<uint16_t>(resolve<int8_t>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToNat16: {
-      save(static_cast<u16>(resolve<u8>(cmd.typed_reg_.get())));
+      save(static_cast<uint16_t>(resolve<uint8_t>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToInt32: {
-      save(static_cast<i32>(resolve<i8>(cmd.typed_reg_.get())));
+      save(static_cast<int32_t>(resolve<int8_t>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToNat32: {
-      save(static_cast<u32>(resolve<u8>(cmd.typed_reg_.get())));
+      save(static_cast<uint32_t>(resolve<uint8_t>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToInt64: {
-      save(static_cast<i64>(resolve<i8>(cmd.typed_reg_.get())));
+      save(static_cast<int64_t>(resolve<int8_t>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToNat64: {
-      save(static_cast<u64>(resolve<u8>(cmd.typed_reg_.get())));
+      save(static_cast<uint64_t>(resolve<uint8_t>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToFloat32: {
-      save(static_cast<float>(resolve<i8>(cmd.typed_reg_.get())));
+      save(static_cast<float>(resolve<int8_t>(cmd.typed_reg_.get())));
     } break;
     case ir::Op::CastToFloat64: {
-      save(static_cast<double>(resolve<i8>(cmd.typed_reg_.get())));
+      save(static_cast<double>(resolve<int8_t>(cmd.typed_reg_.get())));
     } break;
-    case ir::Op::CastToEnum: save(ir::EnumVal(resolve<i32>(cmd.reg_))); break;
-    case ir::Op::CastToFlags: save(ir::FlagsVal(resolve<i32>(cmd.reg_))); break;
+    case ir::Op::CastToEnum: save(ir::EnumVal(resolve<int32_t>(cmd.reg_))); break;
+    case ir::Op::CastToFlags: save(ir::FlagsVal(resolve<int32_t>(cmd.reg_))); break;
     case ir::Op::CastPtr: save(resolve<ir::Addr>(cmd.typed_reg_.get())); break;
     case ir::Op::CreateBlockSeq:
       save(new std::vector<ir::BlockSequence>{});

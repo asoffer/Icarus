@@ -208,7 +208,7 @@ std::vector<ir::Val> Unop::EmitIR(Context *ctx) {
     } break;
     case Language::Operator::Sub: {
       auto operand_ir = operand->EmitIR(ctx)[0];
-      return {type::ApplyTypes<i8, i16, i32, i64, float, double>(
+      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
           ctx->type_of(operand.get()), [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             return ir::ValFrom(ir::Neg(operand_ir.reg_or<T>()));

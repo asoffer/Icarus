@@ -106,18 +106,18 @@ std::string Val::to_string() const {
             return type ? (b ? "true" : "false") : "--";
           },
           [](char c) -> std::string {
-            return std::to_string(static_cast<i32>(c)) + "_c";
+            return std::to_string(static_cast<int32_t>(c)) + "_c";
           },
           [](float f) -> std::string { return std::to_string(f) + "_f32"; },
           [](double d) -> std::string { return std::to_string(d) + "_f64"; },
-          [](i8 n) -> std::string { return std::to_string(n); },
-          [](i16 n) -> std::string { return std::to_string(n); },
-          [](i32 n) -> std::string { return std::to_string(n); },
-          [](i64 n) -> std::string { return std::to_string(n); },
-          [](u8 n) -> std::string { return std::to_string(n); },
-          [](u16 n) -> std::string { return std::to_string(n); },
-          [](u32 n) -> std::string { return std::to_string(n); },
-          [](u64 n) -> std::string { return std::to_string(n); },
+          [](int8_t n) -> std::string { return std::to_string(n); },
+          [](int16_t n) -> std::string { return std::to_string(n); },
+          [](int32_t n) -> std::string { return std::to_string(n); },
+          [](int64_t n) -> std::string { return std::to_string(n); },
+          [](uint8_t n) -> std::string { return std::to_string(n); },
+          [](uint16_t n) -> std::string { return std::to_string(n); },
+          [](uint32_t n) -> std::string { return std::to_string(n); },
+          [](uint64_t n) -> std::string { return std::to_string(n); },
           [this](EnumVal e) -> std::string {
             return e.value >= this->type->as<type::Enum>().members_.size()
                        ? this->type->as<type::Enum>().to_string() + ":END"

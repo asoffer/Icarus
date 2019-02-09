@@ -18,10 +18,7 @@ cc_lib(
 
 cc_target(
     name = "addr",
-    intf_deps = [
-        "//base:types",
-        "//base:untyped_buffer",
-    ],
+    intf_deps = ["//base:untyped_buffer"],
     impl_deps = ["//base:debug"],
 )
 
@@ -153,10 +150,7 @@ cc_target(
 cc_lib(
     name = "register",
     hdrs = ["register.h"],
-    deps = [
-        "//base:strong_types",
-        "//base:types",
-    ],
+    deps = ["//base:strong_types"],
 )
 
 cc_target(
@@ -167,7 +161,6 @@ cc_target(
         ":flags_val",
         ":register",
         "//base:strong_types",
-        "//base:types",
         "//type:typed_value",
         "//type:util",
         "//type:interface",

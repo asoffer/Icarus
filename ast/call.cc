@@ -21,8 +21,8 @@
 
 using base::check::Is;
 
-i32 ForeignFuncIndex = 0;
-i32 OpaqueFuncIndex = 1;
+int32_t ForeignFuncIndex = 0;
+int32_t OpaqueFuncIndex = 1;
 
 ir::Val DebugIrFunc() {
   auto *fn_type                   = type::Func({}, {});

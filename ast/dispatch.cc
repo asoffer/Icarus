@@ -21,7 +21,7 @@
 #include "type/tuple.h"
 #include "type/variant.h"
 
-extern i32 ForeignFuncIndex;
+extern int32_t ForeignFuncIndex;
 
 namespace {
 // Reason why the particular function could not be called.

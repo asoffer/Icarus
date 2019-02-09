@@ -7,8 +7,8 @@
 
 namespace ir {
 bool operator<(Addr lhs, Addr rhs) {
-  u8 lhs_kind = static_cast<u8>(lhs.kind);
-  u8 rhs_kind = static_cast<u8>(rhs.kind);
+  uint8_t lhs_kind = static_cast<uint8_t>(lhs.kind);
+  uint8_t rhs_kind = static_cast<uint8_t>(rhs.kind);
   if (lhs_kind < rhs_kind) { return true; }
   if (lhs_kind > rhs_kind) { return false; }
   switch (lhs.kind) {

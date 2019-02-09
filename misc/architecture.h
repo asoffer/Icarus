@@ -3,7 +3,6 @@
 
 #include <cstddef>
 
-#include "base/types.h"
 #include "ir/addr.h"
 #include "ir/register.h"
 
@@ -27,11 +26,11 @@ struct Architecture {
     return ((index - 1) | (alignment(t) - 1)) + 1;
   }
 
-  ir::RegisterOr<i32> ComputeArrayLength(ir::RegisterOr<i32> len,
+  ir::RegisterOr<int32_t> ComputeArrayLength(ir::RegisterOr<int32_t> len,
                                          type::Type const *t) const;
 
-  i32 ComputeArrayLength(i32 len, type::Type const *t) const {
-    return len * static_cast<i32>(MoveForwardToAlignment(t, bytes(t)));
+  int32_t ComputeArrayLength(int32_t len, type::Type const *t) const {
+    return len * static_cast<int32_t>(MoveForwardToAlignment(t, bytes(t)));
   }
 
   static constexpr Architecture InterprettingMachine() {

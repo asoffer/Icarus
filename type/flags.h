@@ -17,7 +17,7 @@ struct Flags : public type::Type {
 
   Flags(::Module const* mod) : mod_(mod) {}
 
-  Flags(std::unordered_map<std::string, std::optional<i32>> const& members);
+  Flags(std::unordered_map<std::string, std::optional<int32_t>> const& members);
 
   std::optional<ir::FlagsVal> Get(const std::string& str) const;
   Typed<ir::FlagsVal, Flags> EmitLiteral(std::string const& member_name) const;

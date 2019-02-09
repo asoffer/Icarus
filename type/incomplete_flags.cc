@@ -9,14 +9,14 @@ IncompleteFlags::IncompleteFlags(::Module const *mod) : mod_(mod) {}
 void IncompleteFlags::add(std::string_view s) {
   entries_.emplace_back(std::string(s), std::nullopt);
 }
-void IncompleteFlags::set_last_value(i32 value) {
+void IncompleteFlags::set_last_value(int32_t value) {
   entries_.back().second = value;
 }
 
 Flags const *IncompleteFlags::finalize() && {
-  std::vector<i32> available;
+  std::vector<int32_t> available;
   available.reserve(32);
-  for (i32 i = 0; i < 32; ++i) { available.push_back(i); }
+  for (int32_t i = 0; i < 32; ++i) { available.push_back(i); }
 
   auto *f = new Flags(mod_);
   for (auto const & [ s, v ] : entries_) {
@@ -35,7 +35,7 @@ Flags const *IncompleteFlags::finalize() && {
   std::shuffle(available.begin(), available.end(), std::mt19937(rd()));
   for (auto const & [ s, v ] : entries_) {
     if (v.has_value()) { continue; }
-    i32 x = available.back();
+    int32_t x = available.back();
     f->vals_.emplace(s, ir::FlagsVal(size_t{1} << x));
     f->members_.emplace(size_t{1} << x, s);
     available.pop_back();

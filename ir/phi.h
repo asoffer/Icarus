@@ -22,16 +22,16 @@ RegisterOr<T> MakePhi(CmdIndex phi_index,
   if constexpr (std::is_same_v<T, bool>) {
     cmd.op_code_  = Op::PhiBool;
     cmd.phi_bool_ = phi_args.get();
-  } else if constexpr (std::is_same_v<T, i8>) {
+  } else if constexpr (std::is_same_v<T, int8_t>) {
     cmd.op_code_ = Op::PhiInt8;
     cmd.phi_i8_ = phi_args.get();
-  } else if constexpr (std::is_same_v<T, i16>) {
+  } else if constexpr (std::is_same_v<T, int16_t>) {
     cmd.op_code_ = Op::PhiInt16;
     cmd.phi_i16_ = phi_args.get();
-  } else if constexpr (std::is_same_v<T, i32>) {
+  } else if constexpr (std::is_same_v<T, int32_t>) {
     cmd.op_code_ = Op::PhiInt32;
     cmd.phi_i32_ = phi_args.get();
-  } else if constexpr (std::is_same_v<T, i64>) {
+  } else if constexpr (std::is_same_v<T, int64_t>) {
     cmd.op_code_ = Op::PhiInt64;
     cmd.phi_i64_ = phi_args.get();
   } else if constexpr (std::is_same_v<T, float>) {

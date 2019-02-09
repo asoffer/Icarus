@@ -15,13 +15,13 @@ struct Enum;
 struct IncompleteEnum {
   IncompleteEnum(::Module const *mod);
   void add(std::string_view s);
-  void set_last_value(i32 value);
+  void set_last_value(int32_t value);
 
   Enum const *finalize() &&;
 
  private:
   ::Module const *mod_;
-  std::vector<std::pair<std::string, std::optional<i32>>> entries_;
+  std::vector<std::pair<std::string, std::optional<int32_t>>> entries_;
 };
 
 }  // namespace type

@@ -4,10 +4,8 @@
 #include <string_view>
 #include <variant>
 
-#include "base/types.h"
-
 namespace frontend {
-using NumberOrError = std::variant<i32, double, std::string_view>;
+using NumberOrError = std::variant<int64_t, double, std::string_view>;
 NumberOrError ParseNumber(std::string_view sv);
 }  // namespace frontend
 

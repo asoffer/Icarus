@@ -7,7 +7,6 @@
 #include <variant>
 
 #include "base/strong_types.h"
-#include "base/types.h"
 #include "ir/addr.h"
 #include "ir/any_func.h"
 #include "ir/flags_val.h"
@@ -38,12 +37,12 @@ std::string_view SaveStringGlobally(std::string const &str);
 
 struct Val {
   const type::Type *type = nullptr;
-  std::variant<Register, ir::Addr, bool, float, double, i8, i16, i32, i64, u8,
-               u16, u32, u64, EnumVal, FlagsVal, type::Type const *,
-               type::Struct *, AnyFunc, ast::FunctionLiteral *,
-               std::string_view, ast::ScopeLiteral *, type::Interface const *,
-               ast::Expression *, BlockIndex, Module const *, BlockSequence,
-               BuiltinGenericIndex>
+  std::variant<Register, ir::Addr, bool, float, double, int8_t, int16_t,
+               int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, EnumVal,
+               FlagsVal, type::Type const *, type::Struct *, AnyFunc,
+               ast::FunctionLiteral *, std::string_view, ast::ScopeLiteral *,
+               type::Interface const *, ast::Expression *, BlockIndex,
+               Module const *, BlockSequence, BuiltinGenericIndex>
       value{false};
 
   template <typename T>
@@ -81,7 +80,7 @@ struct Val {
   explicit Val(ast::ScopeLiteral *scope_lit);
 
   static Val Reg(Register r, const type::Type *t) { return Val(t, r); }
-  static Val BuiltinGeneric(i32 n) {
+  static Val BuiltinGeneric(int32_t n) {
     return Val(type::Generic, BuiltinGenericIndex{n});
   }
   // TODO take an EnumVal.

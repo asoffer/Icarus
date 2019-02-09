@@ -78,7 +78,7 @@ struct Pointer;
 struct Interface;
 
 // Note: the order of these is meaningful and relied upon!
-enum class Cmp : u8 { None, Equality, Order };
+enum class Cmp : uint8_t { None, Equality, Order };
 
 struct Type : public base::Cast<Type> {
  public:
@@ -122,21 +122,21 @@ template <typename T>
 bool Compare(::type::Type const *t) {
   if constexpr (std::is_same_v<T, bool>) {
     return t == ::type::Bool;
-  } else if constexpr (std::is_same_v<T, i8>) {
+  } else if constexpr (std::is_same_v<T, int8_t>) {
     return t == ::type::Int8;
-  } else if constexpr (std::is_same_v<T, i16>) {
+  } else if constexpr (std::is_same_v<T, int16_t>) {
     return t == ::type::Int16;
-  } else if constexpr (std::is_same_v<T, i32>) {
+  } else if constexpr (std::is_same_v<T, int32_t>) {
     return t == ::type::Int32;
-  } else if constexpr (std::is_same_v<T, i64>) {
+  } else if constexpr (std::is_same_v<T, int64_t>) {
     return t == ::type::Int64;
-  } else if constexpr (std::is_same_v<T, u8>) {
+  } else if constexpr (std::is_same_v<T, uint8_t>) {
     return t == ::type::Nat8;
-  } else if constexpr (std::is_same_v<T, u16>) {
+  } else if constexpr (std::is_same_v<T, uint16_t>) {
     return t == ::type::Nat16;
-  } else if constexpr (std::is_same_v<T, u32>) {
+  } else if constexpr (std::is_same_v<T, uint32_t>) {
     return t == ::type::Nat32;
-  } else if constexpr (std::is_same_v<T, u64>) {
+  } else if constexpr (std::is_same_v<T, uint64_t>) {
     return t == ::type::Nat64;
   } else if constexpr (std::is_same_v<T, float>) {
     return t == ::type::Float32;
@@ -208,12 +208,13 @@ auto ApplyTypes(Type const *t, Fn &&fn, Args &&... args) {
 
 template <typename Fn, typename... Args>
 auto Apply(Type const *t, Fn &&fn, Args &&... args) {
-  return ApplyTypes<bool, i8, i16, i32, i64, u8, u16, u32, u64, float, double,
-                    type::Type const *, ir::EnumVal, ir::FlagsVal, ir::Addr,
-                    std::string_view, ::Module const *, type::Struct const *,
-                    ast::ScopeLiteral *, ir::AnyFunc, ir::BlockSequence,
-                    type::Interface const *, ast::FunctionLiteral *>(
-      t, std::forward<Fn>(fn), std::forward<Args>(args)...);
+  return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                    uint32_t, uint64_t, float, double, type::Type const *,
+                    ir::EnumVal, ir::FlagsVal, ir::Addr, std::string_view,
+                    ::Module const *, type::Struct const *, ast::ScopeLiteral *,
+                    ir::AnyFunc, ir::BlockSequence, type::Interface const *,
+                    ast::FunctionLiteral *>(t, std::forward<Fn>(fn),
+                                            std::forward<Args>(args)...);
 }
 
 inline bool IsNumeric(Type const *t) {

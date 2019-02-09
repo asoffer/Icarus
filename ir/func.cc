@@ -11,22 +11,22 @@
 namespace ir {
 thread_local Func *Func::Current{nullptr};
 
-Register Func::Argument(u32 n) const { return Register(n); }
+Register Func::Argument(uint32_t n) const { return Register(n); }
 
 Func::Func(Module *mod, type::Function const *fn_type,
            ast::FnParams<ast::Expression *> params)
     : type_(fn_type),
       params_(std::move(params)),
-      num_regs_(static_cast<i32>(type_->input.size() + type_->output.size())),
+      num_regs_(static_cast<int32_t>(type_->input.size() + type_->output.size())),
       mod_(mod) {
   // Set the references for arguments and returns
-  for (i32 i = -static_cast<i32>(type_->output.size());
-       i < static_cast<i32>(type_->input.size()); ++i) {
+  for (int32_t i = -static_cast<int32_t>(type_->output.size());
+       i < static_cast<int32_t>(type_->input.size()); ++i) {
     references_[Register(i)];
   }
 
   auto arch = Architecture::InterprettingMachine();
-  i32 i     = 0;
+  int32_t i     = 0;
   for (auto *t : type_->input) {
     size_t entry;
     if (t->is_big()) {

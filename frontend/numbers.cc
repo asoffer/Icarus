@@ -6,21 +6,21 @@
 namespace frontend {
 namespace {
 template <int Base>
-i32 DigitInBase(char c);
+int64_t DigitInBase(char c);
 template <>
-i32 DigitInBase<10>(char c) {
+int64_t DigitInBase<10>(char c) {
   return ('0' <= c && c <= '9') ? (c - '0') : -1;
 }
 template <>
-i32 DigitInBase<2>(char c) {
+int64_t DigitInBase<2>(char c) {
   return ((c | 1) == '1') ? (c - '0') : -1;
 }
 template <>
-i32 DigitInBase<8>(char c) {
+int64_t DigitInBase<8>(char c) {
   return ((c | 7) == '7') ? (c - '0') : -1;
 }
 template <>
-i32 DigitInBase<16>(char c) {
+int64_t DigitInBase<16>(char c) {
   int digit = DigitInBase<10>(c);
   if (digit != -1) { return digit; }
   if ('A' <= c && c <= 'F') { return c - 'A' + 10; }
@@ -56,9 +56,9 @@ NumberOrError ParseIntInBase(const std::string &s) {
   if (IntRepresentableInBase<Base>(s)) {
     return "Number is too large to fit in a 32-bit signed integer";
   }
-  i32 result = 0;
+  int64_t result = 0;
   for (char c : s) {
-    i32 digit = DigitInBase<Base>(c);
+    int64_t digit = DigitInBase<Base>(c);
     if (digit == -1) { return "Number contains an invalid digit."; }
     result = result * Base + digit;
   }
@@ -67,17 +67,17 @@ NumberOrError ParseIntInBase(const std::string &s) {
 
 template <int Base>
 NumberOrError ParseRealInBase(const std::string &s, int dot) {
-  i64 int_part = 0;
+  int64_t int_part = 0;
   for (int i = 0; i < dot; ++i) {
-    i32 digit = DigitInBase<Base>(s[i]);
+    int64_t digit = DigitInBase<Base>(s[i]);
     if (digit == -1) { return "Number contains an invalid digit."; }
     int_part = int_part * Base + digit;
   }
 
-  i64 frac_part = 0;
-  i64 exp       = 1;
+  int64_t frac_part = 0;
+  int64_t exp       = 1;
   for (size_t i = dot + 1; i < s.size(); ++i) {
-    i32 digit = DigitInBase<Base>(s[i]);
+    int64_t digit = DigitInBase<Base>(s[i]);
     if (digit == -1) { return "Number contains an invalid digit."; }
     exp *= Base;
     frac_part = frac_part * Base + digit;

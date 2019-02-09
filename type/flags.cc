@@ -18,8 +18,8 @@ void Flags::EmitInit(ir::Register id_reg, Context *) const {
 }
 
 Flags::Flags(
-    std::unordered_map<std::string, std::optional<i32>> const &members) {
-  std::unordered_set<i32> taken;
+    std::unordered_map<std::string, std::optional<int32_t>> const &members) {
+  std::unordered_set<int32_t> taken;
   for (auto const &[s, v] : members) {
     if (v.has_value()) {
       vals_.emplace(s, ir::FlagsVal(size_t{1} << *v));
@@ -34,7 +34,7 @@ Flags::Flags(
     if (v.has_value()) { continue; }
     std::random_device rd;
     std::uniform_int_distribution<int> dist(0, 31);
-    i32 x;
+    int32_t x;
     {
     try_again:
       x            = dist(rd);

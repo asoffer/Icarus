@@ -15,9 +15,9 @@
 #include "type/tuple.h"
 #include "type/variant.h"
 
-ir::RegisterOr<i32> Architecture::ComputeArrayLength(
-    ir::RegisterOr<i32> len, type::Type const *t) const {
-  return ir::Mul(len, static_cast<i32>(MoveForwardToAlignment(t, bytes(t))));
+ir::RegisterOr<int32_t> Architecture::ComputeArrayLength(
+    ir::RegisterOr<int32_t> len, type::Type const *t) const {
+  return ir::Mul(len, static_cast<int32_t>(MoveForwardToAlignment(t, bytes(t))));
 }
 
 size_t Architecture::alignment(type::Type const *t) const {

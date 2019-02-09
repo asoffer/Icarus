@@ -55,14 +55,14 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
   } else {
     switch (op) {
       case Language::Operator::Lt:
-        return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float,
+        return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                                 double, ir::FlagsVal>(
             lhs_ir.type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;
               return ir::Lt(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
       case Language::Operator::Le:
-        return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float,
+        return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                                 double, ir::FlagsVal>(
             lhs_ir.type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;
@@ -75,7 +75,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
             std::get_if<ir::BlockSequence>(&rhs_ir.value);
         if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
       }
-        return type::ApplyTypes<bool, i8, i16, i32, i64, u8, u16, u32, u64,
+        return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t,
                                 float, double, type::Type const *, ir::EnumVal,
                                 ir::FlagsVal, ir::Addr>(
             lhs_ir.type, [&](auto type_holder) {
@@ -89,7 +89,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
             std::get_if<ir::BlockSequence>(&rhs_ir.value);
         if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
       }
-        return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float,
+        return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                                 double, type::Type const *, ir::EnumVal,
                                 ir::FlagsVal, ir::Addr>(
             lhs_ir.type, [&](auto type_holder) {
@@ -97,14 +97,14 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
               return ir::Ne(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
       case Language::Operator::Ge:
-        return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float,
+        return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                                 double, ir::FlagsVal>(
             lhs_ir.type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;
               return ir::Ge(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
       case Language::Operator::Gt:
-        return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float,
+        return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float,
                                 double, ir::FlagsVal>(
             lhs_ir.type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;

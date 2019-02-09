@@ -40,7 +40,7 @@ void AddEnumerator(ast::EnumLiteral::Kind kind, Register reg,
   }
 }
 
-void SetEnumerator(Register reg, RegisterOr<i32> val) {
+void SetEnumerator(Register reg, RegisterOr<int32_t> val) {
   auto &cmd           = MakeCmd(type::Type_, Op::SetEnumerator);
   cmd.set_enumerator_ = {reg, val};
 }
@@ -111,7 +111,7 @@ std::vector<ir::Val> EnumLiteral::EmitIR(Context *ctx) {
       auto &decl = elem->as<Declaration>();
       ir::AddEnumerator(kind_, reg, decl.id_);
       if (!decl.init_val->is<Hole>()) {
-        ir::SetEnumerator(reg, decl.init_val->EmitIR(ctx)[0].reg_or<i32>());
+        ir::SetEnumerator(reg, decl.init_val->EmitIR(ctx)[0].reg_or<int32_t>());
       }
     }
   }

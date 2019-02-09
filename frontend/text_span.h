@@ -3,12 +3,11 @@
 
 #include "base/debug.h"
 #include "base/interval.h"
-#include "base/types.h"
 #include "frontend/source.h"
 
 struct Cursor {
-  u32 offset   = 0;
-  u32 line_num = 0;
+  uint32_t offset   = 0;
+  uint32_t line_num = 0;
 };
 
 struct TextSpan {
@@ -44,7 +43,7 @@ struct SourceLocation {
     return span;
   }
 
-  void SkipToEndOfLine() { cursor.offset = static_cast<u32>(line().size()); }
+  void SkipToEndOfLine() { cursor.offset = static_cast<uint32_t>(line().size()); }
 
   void BackUp() {
     // You can't back up to a previous line.

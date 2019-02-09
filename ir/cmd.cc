@@ -3,8 +3,8 @@
 #include <cmath>
 #include <iostream>
 
-#include "ast/struct_literal.h"
 #include <vector>
+#include "ast/struct_literal.h"
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "ir/val.h"
@@ -17,12 +17,12 @@ using base::check::Is;
 thread_local BlockIndex BasicBlock::Current;
 
 void Move(type::Type const *t, Register from, RegisterOr<Addr> to) {
-  auto &cmd    = MakeCmd(nullptr, Op::Move);
+  auto &cmd     = MakeCmd(nullptr, Op::Move);
   cmd.special2_ = {t, from, to};
 }
 
 void Copy(type::Type const *t, Register from, RegisterOr<Addr> to) {
-  auto &cmd    = MakeCmd(nullptr, Op::Copy);
+  auto &cmd     = MakeCmd(nullptr, Op::Copy);
   cmd.special2_ = {t, from, to};
 }
 
@@ -56,13 +56,13 @@ Register CastPtr(Register r, type::Pointer const *t) {
   return cmd.result;
 }
 
-RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r) {
+RegisterOr<int32_t> Bytes(RegisterOr<type::Type const *> r) {
   auto &cmd     = MakeCmd(type::Int32, Op::Bytes);
   cmd.type_arg_ = r;
   return cmd.result;
 }
 
-RegisterOr<i32> Align(RegisterOr<type::Type const *> r) {
+RegisterOr<int32_t> Align(RegisterOr<type::Type const *> r) {
   auto &cmd     = MakeCmd(type::Int32, Op::Align);
   cmd.type_arg_ = r;
   return cmd.result;
@@ -76,7 +76,8 @@ static Val CastTo(type::Type const *from, Val const &val) {
     cmd.typed_reg_ = type::Typed<Register>(*r, from);
     return Val::Reg(cmd.result, to);
   } else {
-    return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float>(
+    return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                            uint16_t, uint32_t, uint64_t, float>(
         from, [&](auto type_holder) {
           using FromType = typename decltype(type_holder)::type;
           return Val(static_cast<T>(std::get<FromType>(val.value)));
@@ -97,14 +98,14 @@ Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
   // a register, so we would not see an empty array but rather a pointer to an
   // empty arry.
   if (from == type::Ptr(type::EmptyArray)) {
-    Val copy = val;
+    Val copy  = val;
     copy.type = type::Ptr(to);
     return copy;
   }
 
   if (to->is<type::Enum>()) {
     ASSERT(from == type::Int32);
-    auto x = val.reg_or<i32>();
+    auto x = val.reg_or<int32_t>();
     if (x.is_reg_) {
       auto &cmd = MakeCmd(to, Op::CastToEnum);
       cmd.reg_  = x.reg_;
@@ -114,7 +115,7 @@ Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
     }
   } else if (to->is<type::Flags>()) {
     ASSERT(from == type::Int32);
-    auto x = val.reg_or<i32>();
+    auto x = val.reg_or<int32_t>();
     if (x.is_reg_) {
       auto &cmd = MakeCmd(to, Op::CastToFlags);
       cmd.reg_  = x.reg_;
@@ -124,9 +125,10 @@ Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
     }
   }
 
-  // TODO We only need to include i8 and u8 here for supporting loose casting.
-  // If that disappears, we can remove those types.
-  return type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+  // TODO We only need to include int8_t and uint8_t here for supporting loose
+  // casting. If that disappears, we can remove those types.
+  return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                          uint32_t, uint64_t, float, double>(
       to, [&](auto type_holder) {
         using ToType = typename decltype(type_holder)::type;
         return CastTo<ToType>(from, val);
@@ -181,7 +183,7 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Array(RegisterOr<i64> len,
+RegisterOr<type::Type const *> Array(RegisterOr<int64_t> len,
                                      RegisterOr<type::Type const *> data_type) {
   if (!data_type.is_reg_ && !len.is_reg_) {
     return type::Arr(data_type.val_, len.val_);
@@ -296,7 +298,8 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
   ASSERT(Func::Current != nullptr);
   CmdIndex cmd_index{
       BasicBlock::Current,
-      static_cast<i32>(Func::Current->block(BasicBlock::Current).cmds_.size())};
+      static_cast<int32_t>(
+          Func::Current->block(BasicBlock::Current).cmds_.size())};
   if (t == nullptr) {
     result = Register();
     Func::Current->references_[result];  // Guarantee it exists.
@@ -318,7 +321,7 @@ Register CreateBlockSeq() {
 
 void AppendToBlockSeq(Register block_seq,
                       RegisterOr<ir::BlockSequence> more_block_seq) {
-  auto &cmd = MakeCmd(nullptr, Op::AppendToBlockSeq);
+  auto &cmd        = MakeCmd(nullptr, Op::AppendToBlockSeq);
   cmd.store_block_ = {block_seq, more_block_seq};
 }
 
@@ -375,7 +378,7 @@ Register CreateInterface(::Scope const *scope) {
 
 Register ArgumentCache(ast::StructLiteral *sl) {
   auto &cmd = MakeCmd(type::Ptr(type::Type_), Op::ArgumentCache);
-  cmd.sl_ = sl;
+  cmd.sl_   = sl;
   return cmd.result;
 }
 
@@ -394,13 +397,13 @@ Register FinalizeInterface(Register r) {
 void DebugIr() { MakeCmd(nullptr, Op::DebugIr); }
 
 Register VariantType(RegisterOr<Addr> r) {
-  auto &cmd = MakeCmd(Ptr(type::Type_), Op::VariantType);
+  auto &cmd     = MakeCmd(Ptr(type::Type_), Op::VariantType);
   cmd.addr_arg_ = r;
   return cmd.result;
 }
 
 Register VariantValue(type::Type const *t, RegisterOr<Addr> r) {
-  auto &cmd = MakeCmd(type::Ptr(t), Op::VariantValue);
+  auto &cmd     = MakeCmd(type::Ptr(t), Op::VariantValue);
   cmd.addr_arg_ = r;
   return cmd.result;
 }
@@ -463,7 +466,7 @@ void SetRet(size_t n, Val const &v, Context *ctx) {
   });
 }
 
-TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<i32> inc,
+TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int32_t> inc,
                             type::Pointer const *t) {
   if (!inc.is_reg_ && inc.val_ == 0 &&
       /* TODO get rid of this last condition */ ptr.is_reg_) {
@@ -554,7 +557,7 @@ Register Load(RegisterOr<Addr> r, type::Type const *t) {
 }
 
 TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
-                          RegisterOr<i32> offset) {
+                          RegisterOr<int32_t> offset) {
   auto *array_type = &t->pointee->as<type::Array>();
   // TODO this works but generates worse ir (both here and in llvm). It's worth
   // figuring out how to do this better. Is this still true without
@@ -626,7 +629,7 @@ char const *OpCodeStr(Op op) {
 }
 
 template <typename T>
-static auto Stringify(T&& val) {
+static auto Stringify(T &&val) {
   if constexpr (std::is_same_v<std::decay_t<T>, type::Type const *>) {
     return val->to_string();
   } else if constexpr (std::is_same_v<std::decay_t<T>,

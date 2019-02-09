@@ -31,7 +31,6 @@
 #include "ast/unop.h"
 #include "base/debug.h"
 #include "base/guarded.h"
-#include "base/types.h"
 #include "misc/context.h"
 #include "frontend/operators.h"
 #include "frontend/tagged_node.h"
@@ -667,7 +666,7 @@ namespace {
 
 struct Rule {
  public:
-  using OptVec = std::vector<u64>;
+  using OptVec = std::vector<uint64_t>;
   // TODO use spans
   using fnptr = std::unique_ptr<ast::Node> (*)(
       std::vector<std::unique_ptr<ast::Node>>, Context *ctx);
@@ -1094,11 +1093,11 @@ static std::unique_ptr<ast::Node> BuildOperatorIdentifier(
 }
 
 namespace frontend {
-static constexpr u64 OP_B = op_b | comma | colon | eq;
-static constexpr u64 EXPR = expr | fn_expr | scope_expr | fn_call_expr;
+static constexpr uint64_t OP_B = op_b | comma | colon | eq;
+static constexpr uint64_t EXPR = expr | fn_expr | scope_expr | fn_call_expr;
 // Used in error productions only!
-static constexpr u64 RESERVED = kw_struct | kw_block_head | op_lt;
-static constexpr u64 KW_BLOCK = kw_struct | kw_block_head | kw_block;
+static constexpr uint64_t RESERVED = kw_struct | kw_block_head | op_lt;
+static constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in the
 // list (second line of each rule). If so, then the function given in the third
@@ -1273,7 +1272,7 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    constexpr u64 OP = hashtag | op_r | op_l | op_b | colon | eq | comma |
+    constexpr uint64_t OP = hashtag | op_r | op_l | op_b | colon | eq | comma |
                        op_bl | op_lt | fn_arrow;
     if (get_type<2>() & OP) {
       if (get_type<1>() == r_paren) {

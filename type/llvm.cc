@@ -3,7 +3,6 @@
 #include "llvm/ir/DerivedTypes.h"
 #include "llvm/ir/LLVMContext.h"
 #include "llvm/ir/Type.h"
-#include "type/all.h"
 
 namespace type {
 llvm::Type* Primitive::llvm(llvm::LLVMContext& ctx) const {

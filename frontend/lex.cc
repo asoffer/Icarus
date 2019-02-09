@@ -20,8 +20,8 @@ ir::Val AlignFunc();
 ir::Val DebugIrFunc();
 #endif  // DBG
 
-extern i32 ForeignFuncIndex;
-extern i32 OpaqueFuncIndex;
+extern int32_t ForeignFuncIndex;
+extern int32_t OpaqueFuncIndex;
 
 namespace frontend {
 TaggedNode::TaggedNode(const TextSpan &span, const std::string &token, Tag tag)
@@ -158,7 +158,7 @@ TaggedNode NextNumber(SourceLocation &loc, error::Log *error_log) {
   }
   span.finish = loc.cursor;
   return TaggedNode::TerminalExpression(
-      span, std::visit(base::overloaded{[](i32 n) { return ir::Val(n); },
+      span, std::visit(base::overloaded{[](int64_t n) { return ir::Val(n); },
                                         [](double d) { return ir::Val(d); },
                                         [&](std::string_view err) {
                                           error_log->InvalidNumber(span, err);
@@ -537,7 +537,7 @@ TaggedNode NextSlashInitiatedToken(SourceLocation &loc, error::Log *error_log) {
       char back_one = *loc;
       loc.Increment();
 
-      u64 comment_layer = 1;
+      uint64_t comment_layer = 1;
       while (comment_layer != 0) {
         if (loc.source->seen_eof) {
           error_log->RunawayMultilineComment();

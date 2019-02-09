@@ -21,10 +21,7 @@ cc_lib(
     name = "numbers",
     hdrs = ["numbers.h"],
     srcs = ["numbers.cc"],
-    deps = [
-        "//base:types",
-        "//base:debug",
-    ],
+    deps = ["//base:debug"]
 )
 
 cc_lib(
@@ -64,7 +61,6 @@ cc_lib(
         ":source",
         "//base:debug",
         "//base:interval",
-        "//base:types",
     ],
 )
 

@@ -56,7 +56,7 @@ std::vector<ir::Val> ArrayLiteral::EmitIR(Context *ctx) {
       type::EmitMoveInit(
           data_type, cl_.exprs_[i]->EmitIR(ctx)[0],
           type::Typed<ir::Register>(
-              ir::Index(type::Ptr(this_type), alloc, static_cast<i32>(i)),
+              ir::Index(type::Ptr(this_type), alloc, static_cast<int32_t>(i)),
               type::Ptr(data_type)),
           ctx);
     }

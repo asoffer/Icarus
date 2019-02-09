@@ -27,21 +27,21 @@ template <typename T>
 constexpr type::Type const *Get() {
   if constexpr (std::is_same_v<T, bool>) {
     return type::Bool;
-  } else if constexpr (std::is_same_v<T, i8>) {
+  } else if constexpr (std::is_same_v<T, int8_t>) {
     return type::Int8;
-  } else if constexpr (std::is_same_v<T, i16>) {
+  } else if constexpr (std::is_same_v<T, int16_t>) {
     return type::Int16;
-  } else if constexpr (std::is_same_v<T, i32>) {
+  } else if constexpr (std::is_same_v<T, int32_t>) {
     return type::Int32;
-  } else if constexpr (std::is_same_v<T, i64>) {
+  } else if constexpr (std::is_same_v<T, int64_t>) {
     return type::Int64;
-  } else if constexpr (std::is_same_v<T, u8>) {
+  } else if constexpr (std::is_same_v<T, uint8_t>) {
     return type::Nat8;
-  } else if constexpr (std::is_same_v<T, u16>) {
+  } else if constexpr (std::is_same_v<T, uint16_t>) {
     return type::Nat16;
-  } else if constexpr (std::is_same_v<T, u32>) {
+  } else if constexpr (std::is_same_v<T, uint32_t>) {
     return type::Nat32;
-  } else if constexpr (std::is_same_v<T, u64>) {
+  } else if constexpr (std::is_same_v<T, uint64_t>) {
     return type::Nat64;
   } else if constexpr (std::is_same_v<T, float>) {
     return type::Float32;

@@ -12,7 +12,6 @@
 #include "llvm/ir/DerivedTypes.h"
 #include "llvm/ir/IRBuilder.h"
 #include "llvm/ir/Module.h"
-#include "type/all.h"
 
 // TODO remove dependence on printf, malloc, free
 //
@@ -79,7 +78,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             return llvm::ConstantFP::get(
                 llvm::Type::getDoubleTy(llvm_data->module->getContext()), d);
           },
-          [&](i32 n) -> llvm::Value * {
+          [&](int32_t n) -> llvm::Value * {
             return llvm::ConstantInt::get(llvm_data->module->getContext(),
                                           llvm::APInt(32, n, true));
           },
@@ -353,7 +352,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
               .pointee->as<type::Struct>()
               .llvm(ctx),
           EmitValue(num_args, llvm_data, cmd.args[0]),
-          static_cast<u32>(std::get<i32>(cmd.args[1].value)));
+          static_cast<uint32_t>(std::get<int32_t>(cmd.args[1].value)));
     case ir::Op::PtrIncr:
       return llvm_data->builder->CreateGEP(
           EmitValue(num_args, llvm_data, cmd.args[0]),

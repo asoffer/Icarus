@@ -69,7 +69,7 @@ struct Cmd {
   };
 
   struct Array {
-    RegisterOr<i64> len_;
+    RegisterOr<int64_t> len_;
     RegisterOr<type::Type const *> type_;
   };
 
@@ -78,7 +78,7 @@ struct Cmd {
     // don't need it.
     RegisterOr<Addr> ptr_;
     type::Type const *pointee_type_;
-    RegisterOr<i32> incr_;
+    RegisterOr<int32_t> incr_;
   };
   struct Field {
     RegisterOr<Addr> ptr_;
@@ -87,7 +87,7 @@ struct Cmd {
   };
 
   struct Call {
-    Call(RegisterOr<AnyFunc> f, Arguments * args, OutParams * outs)
+    Call(RegisterOr<AnyFunc> f, Arguments *args, OutParams *outs)
         : fn_(f), arguments_(args), outs_(outs) {}
     RegisterOr<AnyFunc> fn_;
     Arguments *arguments_;
@@ -178,7 +178,6 @@ struct Cmd {
                                            AddHashtag const &a) {
       return os << a.struct_ << " " << static_cast<int>(a.hashtag_.kind_);
     }
-
   };
 
   struct CondJump {
@@ -204,7 +203,7 @@ struct Cmd {
 
   struct SetEnumerator {
     Register enum_;
-    RegisterOr<i32> val_;
+    RegisterOr<int32_t> val_;
   };
 
   template <size_t N>
@@ -246,14 +245,14 @@ struct Cmd {
 
     // TODO names of these are easily mis-spellable and would lead to UB.
     RegisterOr<bool> bool_arg_;
-    RegisterOr<i8> i8_arg_;
-    RegisterOr<i16> i16_arg_;
-    RegisterOr<i32> i32_arg_;
-    RegisterOr<i64> i64_arg_;
-    RegisterOr<u8> u8_arg_;
-    RegisterOr<u16> u16_arg_;
-    RegisterOr<u32> u32_arg_;
-    RegisterOr<u64> u64_arg_;
+    RegisterOr<int8_t> i8_arg_;
+    RegisterOr<int16_t> i16_arg_;
+    RegisterOr<int32_t> i32_arg_;
+    RegisterOr<int64_t> i64_arg_;
+    RegisterOr<uint8_t> u8_arg_;
+    RegisterOr<uint16_t> u16_arg_;
+    RegisterOr<uint32_t> u32_arg_;
+    RegisterOr<uint64_t> u64_arg_;
     RegisterOr<float> float32_arg_;
     RegisterOr<double> float64_arg_;
     RegisterOr<EnumVal> enum_arg_;
@@ -266,14 +265,14 @@ struct Cmd {
     SpecialMember<1> special1_;
     SpecialMember<2> special2_;
     Args<bool> bool_args_;
-    Args<i8> i8_args_;
-    Args<i16> i16_args_;
-    Args<i32> i32_args_;
-    Args<i64> i64_args_;
-    Args<u8> u8_args_;
-    Args<u16> u16_args_;
-    Args<u32> u32_args_;
-    Args<u64> u64_args_;
+    Args<int8_t> i8_args_;
+    Args<int16_t> i16_args_;
+    Args<int32_t> i32_args_;
+    Args<int64_t> i64_args_;
+    Args<uint8_t> u8_args_;
+    Args<uint16_t> u16_args_;
+    Args<uint32_t> u32_args_;
+    Args<uint64_t> u64_args_;
     Args<float> float32_args_;
     Args<double> float64_args_;
     Args<EnumVal> enum_args_;
@@ -284,14 +283,14 @@ struct Cmd {
     // TODO rename these since some of them are used for things other than
     // storage (e.g., block appending).
     Store<bool> store_bool_;
-    Store<i8> store_i8_;
-    Store<i16> store_i16_;
-    Store<i32> store_i32_;
-    Store<i64> store_i64_;
-    Store<u8> store_u8_;
-    Store<u16> store_u16_;
-    Store<u32> store_u32_;
-    Store<u64> store_u64_;
+    Store<int8_t> store_i8_;
+    Store<int16_t> store_i16_;
+    Store<int32_t> store_i32_;
+    Store<int64_t> store_i64_;
+    Store<uint8_t> store_u8_;
+    Store<uint16_t> store_u16_;
+    Store<uint32_t> store_u32_;
+    Store<uint64_t> store_u64_;
     Store<float> store_float32_;
     Store<double> store_float64_;
     Store<type::Type const *> store_type_;
@@ -302,14 +301,14 @@ struct Cmd {
     Store<BlockSequence> store_block_;
 
     SetRet<bool> set_ret_bool_;
-    SetRet<i8> set_ret_i8_;
-    SetRet<i16> set_ret_i16_;
-    SetRet<i32> set_ret_i32_;
-    SetRet<i64> set_ret_i64_;
-    SetRet<u8> set_ret_u8_;
-    SetRet<u16> set_ret_u16_;
-    SetRet<u32> set_ret_u32_;
-    SetRet<u64> set_ret_u64_;
+    SetRet<int8_t> set_ret_i8_;
+    SetRet<int16_t> set_ret_i16_;
+    SetRet<int32_t> set_ret_i32_;
+    SetRet<int64_t> set_ret_i64_;
+    SetRet<uint8_t> set_ret_u8_;
+    SetRet<uint16_t> set_ret_u16_;
+    SetRet<uint32_t> set_ret_u32_;
+    SetRet<uint64_t> set_ret_u64_;
     SetRet<float> set_ret_float32_;
     SetRet<double> set_ret_float64_;
     SetRet<type::Type const *> set_ret_type_;
@@ -325,14 +324,14 @@ struct Cmd {
     SetRet<type::Interface const *> set_ret_intf_;
 
     PhiArgs<bool> *phi_bool_;
-    PhiArgs<i8> *phi_i8_;
-    PhiArgs<i16> *phi_i16_;
-    PhiArgs<i32> *phi_i32_;
-    PhiArgs<i64> *phi_i64_;
-    PhiArgs<u8> *phi_u8_;
-    PhiArgs<u16> *phi_u16_;
-    PhiArgs<u32> *phi_u32_;
-    PhiArgs<u64> *phi_u64_;
+    PhiArgs<int8_t> *phi_i8_;
+    PhiArgs<int16_t> *phi_i16_;
+    PhiArgs<int32_t> *phi_i32_;
+    PhiArgs<int64_t> *phi_i64_;
+    PhiArgs<uint8_t> *phi_u8_;
+    PhiArgs<uint16_t> *phi_u16_;
+    PhiArgs<uint32_t> *phi_u32_;
+    PhiArgs<uint64_t> *phi_u64_;
     PhiArgs<float> *phi_float32_;
     PhiArgs<double> *phi_float64_;
     PhiArgs<type::Type const *> *phi_type_;
@@ -353,11 +352,11 @@ struct Cmd {
   Register result;
 };
 
-RegisterOr<i32> Bytes(RegisterOr<type::Type const *> r);
-RegisterOr<i32> Align(RegisterOr<type::Type const *> r);
+RegisterOr<int32_t> Bytes(RegisterOr<type::Type const *> r);
+RegisterOr<int32_t> Align(RegisterOr<type::Type const *> r);
 RegisterOr<bool> Not(RegisterOr<bool> r);
 RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r);
-RegisterOr<i32> ModInt(RegisterOr<i32> v1, RegisterOr<i32> v2);
+RegisterOr<int32_t> ModInt(RegisterOr<int32_t> v1, RegisterOr<int32_t> v2);
 RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2);
 RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &lhs,
@@ -375,15 +374,16 @@ template <typename T>
 RegisterOr<T> Neg(RegisterOr<T> r) {
   if (!r.is_reg_) { return -r.val_; }
   auto &cmd = MakeCmd(type::Get<T>(), Cmd::OpCode<Cmd::NegTag, T>());
-  cmd.reg_ = r.reg_;
-  // TODO reenable Func::Current->references_[cmd.neg_int_.reg_].insert(cmd.result);
+  cmd.reg_  = r.reg_;
+  // TODO reenable
+  // Func::Current->references_[cmd.neg_int_.reg_].insert(cmd.result);
   return cmd.result;
 }
 
 template <typename T, typename... Args>
 TypedRegister<T> Load(RegisterOr<Addr> r,
                       type::Type const *t = type::Get<T>()) {
-  auto &cmd = MakeCmd(t, Cmd::OpCode<Cmd::LoadTag, T>());
+  auto &cmd     = MakeCmd(t, Cmd::OpCode<Cmd::LoadTag, T>());
   cmd.addr_arg_ = r;
   return cmd.result;
 }
@@ -394,14 +394,15 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
 RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r);
 RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r);
 
-RegisterOr<type::Type const *> Array(RegisterOr<i64> len,
+RegisterOr<type::Type const *> Array(RegisterOr<int64_t> len,
                                      RegisterOr<type::Type const *> data_type);
 Register VariantType(RegisterOr<Addr> r);
 Register VariantValue(const type::Type *t, RegisterOr<Addr> r);
 // Type repreesents the type of `ptr`
-TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<i32> inc,
+TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int32_t> inc,
                             type::Pointer const *t);
-type::Typed<Register> Field(RegisterOr<Addr> r, type::Struct const *t, size_t n);
+type::Typed<Register> Field(RegisterOr<Addr> r, type::Struct const *t,
+                            size_t n);
 type::Typed<Register> Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);
@@ -424,7 +425,7 @@ auto HandleBinop(Lhs lhs, Rhs rhs) {
   } else {
     static_assert(std::is_same_v<Lhs, Rhs>);
     using result_type = decltype(F<typename Lhs::type>{}(lhs.val_, rhs.val_));
-    using ret_type =  ir::RegisterOr<result_type>;
+    using ret_type    = ir::RegisterOr<result_type>;
     return [&]() -> ret_type {
       if (!lhs.is_reg_ && !rhs.is_reg_) {
         return F<typename Lhs::type>{}(lhs.val_, rhs.val_);
@@ -522,7 +523,8 @@ void Print(T r, Args &&... args) {
   if constexpr (IsRegOr<T>::value) {
     using type = typename T::type;
     auto &cmd  = MakeCmd(nullptr, Cmd::OpCode<Cmd::PrintTag, type>());
-    if constexpr (std::is_same_v<type, EnumVal> || std::is_same_v<type, FlagsVal>) {
+    if constexpr (std::is_same_v<type, EnumVal> ||
+                  std::is_same_v<type, FlagsVal>) {
       cmd.template set<Cmd::PrintTag, type>(r, std::forward<Args>(args)...);
     } else {
       static_assert(sizeof...(Args) == 0);
@@ -569,10 +571,10 @@ void BlockSeqJump(RegisterOr<BlockSequence> r,
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                                   ast::BlockLiteral *lit);
 
-Val Cast(type::Type const *from, type::Type const *to, Val const& val);
+Val Cast(type::Type const *from, type::Type const *to, Val const &val);
 
 TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
-                          RegisterOr<i32> offset);
+                          RegisterOr<int32_t> offset);
 TypedRegister<Addr> Alloca(type::Type const *t);
 TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx);
 

@@ -313,7 +313,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       return {
-          type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+          type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
               rhs_ir.type, [&](auto type_holder) {
                 using T = typename decltype(type_holder)::type;
                 return ir::ValFrom(
@@ -324,7 +324,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       return {
-          type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+          type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
               rhs_ir.type, [&](auto type_holder) {
                 using T = typename decltype(type_holder)::type;
                 return ir::ValFrom(
@@ -335,7 +335,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       return {
-          type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+          type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
               rhs_ir.type, [&](auto type_holder) {
                 using T = typename decltype(type_holder)::type;
                 return ir::ValFrom(
@@ -346,7 +346,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       return {
-          type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+          type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
               rhs_ir.type, [&](auto type_holder) {
                 using T = typename decltype(type_holder)::type;
                 return ir::ValFrom(
@@ -356,7 +356,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::Mod: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64>(
+      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             return ir::ValFrom(ir::Mod(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
@@ -465,7 +465,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::AddEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Add(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -476,7 +476,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::SubEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Sub(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -487,7 +487,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::DivEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -498,7 +498,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::ModEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64>(
+      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -509,7 +509,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::MulEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<i8, i16, i32, i64, u8, u16, u32, u64, float, double>(
+      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Mul(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -551,10 +551,10 @@ std::vector<ir::RegisterOr<ir::Addr>> Binop::EmitLVal(Context *ctx) {
         auto lval = lhs->EmitLVal(ctx)[0];
         if (!lval.is_reg_) { NOT_YET(this, ctx->type_of(this)); }
         return {ir::Index(type::Ptr(ctx->type_of(lhs.get())), lval.reg_,
-                          rhs->EmitIR(ctx)[0].reg_or<i32>())};
+                          rhs->EmitIR(ctx)[0].reg_or<int32_t>())};
       } else if (t->is<type::BufferPointer>()) {
         return {ir::PtrIncr(std::get<ir::Register>(lhs->EmitIR(ctx)[0].value),
-                            rhs->EmitIR(ctx)[0].reg_or<i32>(),
+                            rhs->EmitIR(ctx)[0].reg_or<int32_t>(),
                             type::Ptr(t->as<type::BufferPointer>().pointee))};
       } else if (t == type::ByteView) {
         // TODO interim until you remove string_view and replace it with Addr
@@ -562,7 +562,7 @@ std::vector<ir::RegisterOr<ir::Addr>> Binop::EmitLVal(Context *ctx) {
         return {ir::PtrIncr(
             ir::GetString(std::string(
                 std::get<std::string_view>(lhs->EmitIR(ctx)[0].value))),
-            rhs->EmitIR(ctx)[0].reg_or<i32>(), type::Ptr(type::Nat8))};
+            rhs->EmitIR(ctx)[0].reg_or<int32_t>(), type::Ptr(type::Nat8))};
       }
       [[fallthrough]];
     default: UNREACHABLE("Operator is ", static_cast<int>(op));

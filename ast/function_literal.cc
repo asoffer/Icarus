@@ -290,7 +290,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
     ir::BasicBlock::Current = start_block;
 
     // TODO arguments should be renumbered to not waste space on const values
-    for (i32 i = 0; i < static_cast<i32>(inputs_.size()); ++i) {
+    for (int32_t i = 0; i < static_cast<int32_t>(inputs_.size()); ++i) {
       ctx->set_addr(inputs_.params_.at(i).value.get(),
                     ir::Func::Current->Argument(i));
     }

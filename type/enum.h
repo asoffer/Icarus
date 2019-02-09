@@ -19,7 +19,7 @@ struct Enum : public type::Type {
   Typed<ir::EnumVal, Enum> EmitLiteral(std::string const& member_name) const ;
 
   // TODO privatize
-  std::unordered_map<i32, std::string> members_;
+  std::unordered_map<int32_t, std::string> members_;
 
  private:
   friend struct IncompleteEnum;
