@@ -283,7 +283,7 @@ void Log::ReturningWrongNumber(TextSpan const &span, type::Type const *t,
                                size_t num_rets) {
   std::stringstream ss;
   ss << "Attempting to return "
-     << (t->is<type::Tuple>() ? t->as<type::Tuple>().entries_.size() : 1)
+     << (t->is<type::Tuple>() ? t->as<type::Tuple>().size() : 1)
      << " values from a function which has " << num_rets
      << " return values.\n\n";
   // TODO also show where the return type is specified?
@@ -547,7 +547,7 @@ void Log::NonIntegralArrayIndex(TextSpan const &span,
 void Log::InvalidIndexing(TextSpan const &span, type::Type const *t) {
   std::stringstream ss;
   ss << "Cannot index into a non-array, non-buffer type. Indexed type is a `"
-     << t->to_string() << "`.";
+     << t->to_string() << "`.\n\n";
   WriteSource(
       ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -673,6 +673,21 @@ void Log::NotMovable(TextSpan const &span, type::Type const *from) {
 
   ss << "\n\n";
   errors_.push_back(ss.str());
+}
+
+void Log::IndexingTupleOutOfBounds(TextSpan const &span, type::Tuple const *tup,
+                                   size_t index) {
+  std::stringstream ss;
+  ss << "Tuple is indexed out of bounds. Tuple of type `" << tup->to_string()
+     << "` has size " << tup->size()
+     << " but you are attempting to access position " << index << ".\n\n";
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+
 }
 
 void Log::UninferrableType(InferenceFailureReason reason,

@@ -410,8 +410,10 @@ cc_target(
     name = "index",
     intf_deps = [":expression"],
     impl_deps = [
-        "//type:cast",
+        "//backend:eval",
         "//ir:components",
+        "//misc:architecture",
+        "//type:cast",
     ]
 )
 

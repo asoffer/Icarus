@@ -360,15 +360,15 @@ std::unique_ptr<Node> BuildIndexOperator(
     std::vector<std::unique_ptr<Node>> nodes, Context *ctx) {
   auto index  = std::make_unique<Index>();
   index->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  index->lhs  = move_as<Expression>(nodes[0]);
-  index->rhs  = move_as<Expression>(nodes[2]);
+  index->lhs_  = move_as<Expression>(nodes[0]);
+  index->rhs_  = move_as<Expression>(nodes[2]);
 
-  if (index->lhs->is<Declaration>()) {
-    ctx->error_log_.IndexingDeclaration(index->lhs->span);
+  if (index->lhs_->is<Declaration>()) {
+    ctx->error_log_.IndexingDeclaration(index->lhs_->span);
   }
 
-  if (index->rhs->is<Declaration>()) {
-    ctx->error_log_.DeclarationInIndex(index->rhs->span);
+  if (index->rhs_->is<Declaration>()) {
+    ctx->error_log_.DeclarationInIndex(index->rhs_->span);
   }
 
   return index;

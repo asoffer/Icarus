@@ -31,6 +31,7 @@ struct Tuple : public Type {
       std::unordered_set<::Module const *> *modules) const;
 
   size_t offset(size_t n, Architecture const &arch) const;
+  size_t size() const { return entries_.size(); }
 
   bool IsCopyable() const override;
   bool IsMovable() const override;

@@ -836,7 +836,7 @@ static void EmitOneCallDispatch(
     };
 
     if (ret_type->is<type::Tuple>()) {
-      ASSERT(ret_type->as<type::Tuple>().entries_.size() == out_types.size());
+      ASSERT(ret_type->as<type::Tuple>().size() == out_types.size());
       for (size_t i = 0; i < out_types.size(); ++i) {
         MakeRegister(out_types.at(i),
                      ret_type->as<type::Tuple>().entries_.at(i),
@@ -948,7 +948,7 @@ std::vector<ir::Val> DispatchTable::EmitCall(
 
   std::vector<ir::Val> out_regs;
   if (ret_type->is<type::Tuple>()) {
-    out_regs.reserve(ret_type->as<type::Tuple>().entries_.size());
+    out_regs.reserve(ret_type->as<type::Tuple>().size());
     for (auto *entry : ret_type->as<type::Tuple>().entries_) {
       out_regs.push_back(entry->is_big()
                              ? ir::Val::Reg(ir::Alloca(entry), type::Ptr(entry))
@@ -967,9 +967,8 @@ std::vector<ir::Val> DispatchTable::EmitCall(
   }
 
   // TODO push void out of here.
-  size_t num_rets = ret_type->is<type::Tuple>()
-                        ? ret_type->as<type::Tuple>().entries_.size()
-                        : 1;
+  size_t num_rets =
+      ret_type->is<type::Tuple>() ? ret_type->as<type::Tuple>().size() : 1;
 
   std::vector<std::unordered_map<ir::BlockIndex, ir::Val>> result_phi_args(
       num_rets);

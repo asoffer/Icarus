@@ -39,14 +39,14 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
   auto *to_tup   = to->if_as<Tuple>();
   auto *from_tup = from->if_as<Tuple>();
   if (to_tup && from_tup) {
-    if (to_tup->entries_.size() != from_tup->entries_.size()) {
-      ctx->error_log_.MismatchedAssignmentSize(span, to_tup->entries_.size(),
-                                               from_tup->entries_.size());
+    if (to_tup->size() != from_tup->size()) {
+      ctx->error_log_.MismatchedAssignmentSize(span, to_tup->size(),
+                                               from_tup->size());
       return false;
     }
 
     bool result = true;
-    for (size_t i = 0; i < to_tup->entries_.size(); ++i) {
+    for (size_t i = 0; i < to_tup->size(); ++i) {
       result &= VerifyAssignment(span, to_tup->entries_.at(i),
                                  from_tup->entries_.at(i), ctx);
     }

@@ -253,8 +253,8 @@ std::vector<ir::Val> Unop::EmitIR(Context *ctx) {
       ir::Register tuple_reg        = std::get<ir::Register>(tuple_val.value);
       type::Tuple const *tuple_type = &tuple_val.type->as<type::Tuple>();
       std::vector<ir::Val> results;
-      results.reserve(tuple_type->entries_.size());
-      for (size_t i = 0; i < tuple_type->entries_.size(); ++i) {
+      results.reserve(tuple_type->size());
+      for (size_t i = 0; i < tuple_type->size(); ++i) {
         results.push_back(
             ir::Val::Reg(ir::PtrFix(ir::Field(tuple_reg, tuple_type, i).get(),
                                     tuple_type->entries_[i]),
