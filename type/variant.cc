@@ -250,4 +250,82 @@ bool Variant::IsMovable() const {
                      [](Type const *t) { return t->IsMovable(); });
 }
 
+ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
+                                 Context *ctx) const {
+  if (this == from) { return val; }
+  auto alloc_reg = ir::Alloca(this);
+
+  if (!from->is<Variant>()) {
+    Type_->EmitMoveAssign(Type_, ir::Val(from), ir::VariantType(alloc_reg),
+                          ctx);
+    // TODO this isn't exactly right because 'from' might not be the appropriate
+    // type here.
+    // TODO this is actually the wrong type to plug in to VariantValue. It needs
+    // to be the precise type stored.
+    from->EmitMoveAssign(from, val, ir::VariantValue(from, alloc_reg), ctx);
+  } else {
+    auto *from_v      = &from->as<Variant>();
+    auto runtime_type = ir::Load<Type const *>(
+        ir::VariantType(std::get<ir::Register>(val.value)));
+
+    // Because variants_ is sorted, we can find the intersection quickly:
+    std::vector<Type const *> intersection;
+    auto f_iter = from_v->variants_.begin();
+    auto t_iter = this->variants_.begin();
+    while (f_iter != from_v->variants_.end() &&
+           t_iter != this->variants_.end()) {
+      if (*f_iter < *t_iter) {
+        ++f_iter;
+      } else if (*f_iter > *t_iter) {
+        ++t_iter;
+      } else {
+        intersection.push_back(*f_iter);
+        ++f_iter;
+        ++t_iter;
+      }
+    }
+    ASSERT(!intersection.empty());
+
+    auto landing = ir::Func::Current->AddBlock();
+
+    std::vector<ir::BlockIndex> blocks;
+    blocks.reserve(intersection.size());
+    for (auto *t : intersection) {
+      blocks.push_back(ir::Func::Current->AddBlock());
+    }
+
+    auto current = ir::BasicBlock::Current;
+    for (size_t i = 0; i < intersection.size(); ++i) {
+      ir::BasicBlock::Current = blocks[i];
+      this->EmitMoveAssign(
+          intersection[i],
+          ir::Val::Reg(
+              ir::PtrFix(ir::VariantValue(intersection[i],
+                                          std::get<ir::Register>(val.value)),
+                         intersection[i]),
+              intersection[i]),
+          alloc_reg, ctx);
+      ir::UncondJump(landing);
+    }
+
+    ir::BasicBlock::Current = current;
+    for (size_t i = 0; i < intersection.size() - 1; ++i) {
+      ir::BasicBlock::Current = ir::EarlyExitOn<true>(
+          blocks[i], ir::Eq(runtime_type, intersection[i]));
+    }
+    ir::UncondJump(blocks.back());
+    ir::BasicBlock::Current = landing;
+  }
+  return ir::Val::Reg(alloc_reg, type::Ptr(this));
+}
+
+Cmp Variant::Comparator() const {
+  using cmp_t = std::underlying_type_t<Cmp>;
+  auto cmp    = static_cast<cmp_t>(Cmp::Equality);
+  for (const Type *t : variants_) {
+    cmp = std::min(cmp, static_cast<cmp_t>(t->Comparator()));
+  }
+  return static_cast<Cmp>(cmp);
+}
+
 }  // namespace type

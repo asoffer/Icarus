@@ -338,4 +338,21 @@ void Array::WriteTo(std::string *result) const {
 bool Array::IsCopyable() const { return data_type->IsCopyable(); }
 bool Array::IsMovable() const { return data_type->IsMovable(); }
 
+ir::Val Array::PrepareArgument(Type const *from, ir::Val const &val,
+                               Context *ctx) const {
+  if (from->is<Variant>()) {
+    NOT_YET(this, from);
+  } else {
+    ASSERT(from == this);
+    // TODO Copy may be overkill. Think about value category.
+    auto arg = ir::Alloca(from);
+    from->EmitMoveAssign(from, val, arg, ctx);
+    return ir::Val::Reg(arg, type::Ptr(from));
+  }
+}
+
+// TODO arrays are tricky because they may contain structs and so just using the
+// result of this function is... maybe not what you intended.
+Cmp Array::Comparator() const { return data_type->Comparator(); }
+
 }  // namespace type

@@ -1,6 +1,7 @@
 -- ::= import "examples/lib/core.ic"
 
 main ::= () -> () {
+  'debug_ir
   num := 0
   upper ::= 1000//46_342
   n := 2

@@ -195,4 +195,12 @@ bool Tuple::IsMovable() const {
                      [](Type const *t) { return t->IsMovable(); });
 }
 
+ir::Val Tuple::PrepareArgument(Type const *from, ir::Val const &val,
+                               Context *ctx) const {
+  ASSERT(from == this);
+  auto arg = ir::Alloca(from);
+  from->EmitMoveAssign(from, val, arg, ctx);
+  return ir::Val::Reg(arg, type::Ptr(from));
+}
+
 }  // namespace type

@@ -170,9 +170,7 @@ cc_target(
 cc_lib(
     name = "bound_constants",
     hdrs = ["bound_constants.h"],
-    deps = [
-        "//ir:val",
-    ],
+    deps = ["//ir:val"],
 )
 
 cc_target(

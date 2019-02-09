@@ -26,6 +26,8 @@ void GenericFunction::defining_modules(
   NOT_YET();
 }
 
+Cmp GenericFunction::Comparator() const { return Cmp::None; }
+
 void Function::defining_modules(
     std::unordered_set<::Module const *> *modules) const {
   NOT_YET();
@@ -92,5 +94,16 @@ void Function::WriteTo(std::string *result) const {
     result->append(")");
   }
 }
+
+ir::Val Function::PrepareArgument(Type const *from, ir::Val const &val,
+                                  Context *ctx) const {
+  if (this == from) {
+    return val;
+  } else {
+    NOT_YET(this, from);
+  }
+}
+
+Cmp Function::Comparator() const { return Cmp::None; }
 
 }  // namespace type

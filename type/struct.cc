@@ -207,4 +207,24 @@ bool Struct::contains_hashtag(ast::Hashtag needle) const {
   return false;
 }
 
+ir::Val Struct::PrepareArgument(Type const *from, ir::Val const &val,
+                                Context *ctx) const {
+  auto arg = ir::Alloca(this);
+
+  if (from->is<Variant>()) {
+    EmitMoveAssign(
+        this,
+        ir::Val::Reg(ir::VariantValue(this, std::get<ir::Register>(val.value)),
+                     type::Ptr(this)),
+        arg, ctx);
+  } else if (this == from) {
+    EmitMoveAssign(from, val, arg, ctx);
+  } else {
+    UNREACHABLE(from);
+  }
+  return ir::Val::Reg(arg, type::Ptr(this));
+}
+
+Cmp Struct::Comparator() const { return Cmp::None; }
+
 }  // namespace type

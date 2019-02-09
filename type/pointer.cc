@@ -66,4 +66,12 @@ void static WriteStr(char const *ptr_str, Pointer const *ptr,
 void BufferPointer::WriteTo(std::string *r) const { WriteStr("[*]", this, r); }
 void Pointer::WriteTo(std::string *r) const { WriteStr("*", this, r); }
 
+ir::Val Pointer::PrepareArgument(Type const *from, ir::Val const &val,
+                                 Context *ctx) const {
+  ASSERT(from == this);
+  return val;
+}
+
+Cmp Pointer::Comparator() const { return Cmp::Equality; }
+
 }  // namespace type

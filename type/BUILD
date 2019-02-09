@@ -61,7 +61,6 @@ cc_lib(
     deps = [
         ":array-impl",
         ":cast-impl",
-        ":comparator-impl",
         ":enum-impl",
         ":flags-impl",
         ":function-impl",
@@ -71,7 +70,6 @@ cc_lib(
         ":interface-impl",
         ":opaque-impl",
         ":pointer-impl",
-        ":prepare_argument-impl",
         ":primitive-impl",
         ":struct-impl",
         ":tuple-impl",
@@ -82,13 +80,6 @@ cc_lib(
 cc_target(
     name = "cast",
     impl_deps = [":all_types"],
-)
-
-#TODO remove me.
-cc_lib(
-    name = "comparator-impl",
-    srcs = ["comparator.cc"],
-    deps = [":all_types"],
 )
 
 cc_target(
@@ -200,17 +191,6 @@ cc_target(
         ":function",
         "//base:guarded",
         "//ir:cmd",
-    ],
-)
-
-cc_lib(
-    name = "prepare_argument-impl",
-    srcs = ["prepare_argument.cc"],
-    deps = [
-        ":util",
-        ":generic_struct",
-        "//ir:components",
-        "//ir:func",
     ],
 )
 

@@ -51,4 +51,11 @@ void GenericStruct::WriteTo(std::string *result) const {
 bool GenericStruct::IsCopyable() const { UNREACHABLE(); }
 bool GenericStruct::IsMovable() const { UNREACHABLE(); }
 
+ir::Val GenericStruct::PrepareArgument(Type const *from, ir::Val const &val,
+                                       Context *ctx) const {
+  NOT_YET(this, from);
+}
+
+Cmp GenericStruct::Comparator() const { return Cmp::None; }
+
 }  // namespace type

@@ -83,4 +83,12 @@ void Flags::WriteTo(std::string *result) const {
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
 }
 
+ir::Val Flags::PrepareArgument(Type const *from, ir::Val const &val,
+                               Context *ctx) const {
+  ASSERT(from == this);
+  return val;
+}
+
+Cmp Flags::Comparator() const { return Cmp::Order; }
+
 }  // namespace type

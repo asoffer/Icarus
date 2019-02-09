@@ -53,4 +53,12 @@ void Enum::WriteTo(std::string *result) const {
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
 }
 
+ir::Val Enum::PrepareArgument(Type const *from, ir::Val const &val,
+                              Context *ctx) const {
+  ASSERT(from == this);
+  return val;
+}
+
+Cmp Enum::Comparator() const { return Cmp::Equality; }
+
 }  // namespace type
