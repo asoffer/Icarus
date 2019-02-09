@@ -531,12 +531,10 @@ void Log::InvalidByteViewIndex(TextSpan const &span,
   errors_.push_back(ss.str());
 }
 
-void Log::NonIntegralArrayIndex(TextSpan const &span,
-                                type::Type const *index_type) {
+void Log::InvalidIndexing(TextSpan const &span, type::Type const *t) {
   std::stringstream ss;
-  ss << "Array is being indexed by an expression of type "
-     << index_type->to_string() << ".";
-
+  ss << "Cannot index into a non-array, non-buffer type. Indexed type is a `"
+     << t->to_string() << "`.\n\n";
   WriteSource(
       ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -544,10 +542,13 @@ void Log::NonIntegralArrayIndex(TextSpan const &span,
   errors_.push_back(ss.str());
 }
 
-void Log::InvalidIndexing(TextSpan const &span, type::Type const *t) {
+void Log::InvalidIndexType(TextSpan const &span, type::Type const *t,
+                           type::Type const *index_type) {
   std::stringstream ss;
-  ss << "Cannot index into a non-array, non-buffer type. Indexed type is a `"
-     << t->to_string() << "`.\n\n";
+  ss << "Attempting to index a value of type `" << t->to_string()
+     << "` with a non-integral index. Indices must be integers, but you "
+        "provided an index of type `"
+     << index_type->to_string() << "`.\n\n";
   WriteSource(
       ss, *span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});

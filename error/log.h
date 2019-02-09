@@ -70,12 +70,12 @@ struct Log {
                          type::Type const *t);
   void InvalidByteViewIndex(TextSpan const &span, type::Type const *index_type);
   // TODO is this the same as `ArrayIndexType`?
-  void NonIntegralArrayIndex(TextSpan const &span,
-                             type::Type const *index_type);
   void IndexingTupleOutOfBounds(TextSpan const &span, type::Tuple const *tup,
                                 size_t index);
 
   void InvalidIndexing(TextSpan const &span, type::Type const *t);
+  void InvalidIndexType(TextSpan const &span, type::Type const *t,
+                        type::Type const *index_type);
 
   void TypeMustBeInitialized(TextSpan const &span, type::Type const *t);
 

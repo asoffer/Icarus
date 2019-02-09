@@ -27,35 +27,36 @@ VerifyResult Index::VerifyType(Context *ctx) {
   auto rhs_result = rhs_->VerifyType(ctx);
   if (!lhs_result.ok() || !rhs_result.ok()) { return VerifyResult::Error(); }
 
+  auto *index_type = rhs_result.type_->if_as<type::Primitive>();
+  if (!index_type || !index_type->is_integral()) {
+    ctx->error_log_.InvalidIndexType(span, lhs_result.type_, lhs_result.type_);
+  }
+
   if (lhs_result.type_ == type::ByteView) {
-    if (rhs_result.type_ != type::Int32) {  // TODO other sizes
-      ctx->error_log_.InvalidByteViewIndex(span, rhs_result.type_);
-    }
     return VerifyResult(ctx->set_type(this, type::Nat8),
                         rhs_result.const_);  // TODO is nat8 what I want?
   } else if (auto *lhs_array_type = lhs_result.type_->if_as<type::Array>()) {
-    auto *t = ctx->set_type(this, lhs_array_type->data_type);
-    if (rhs_result.type_ != type::Int32) {  // TODO other sizes
-      ctx->error_log_.NonIntegralArrayIndex(span, rhs_result.type_);
-    }
-    return VerifyResult(t, rhs_result.const_);
+    return VerifyResult(ctx->set_type(this, lhs_array_type->data_type),
+                        rhs_result.const_);
   } else if (auto *lhs_buf_type =
                  lhs_result.type_->if_as<type::BufferPointer>()) {
-    auto *t = ctx->set_type(this, lhs_buf_type->pointee);
-    if (rhs_result.type_ != type::Int32) {  // TODO other sizes
-      ctx->error_log_.NonIntegralArrayIndex(span, rhs_result.type_);
-    }
-    return VerifyResult(t, rhs_result.const_);
+    return VerifyResult(ctx->set_type(this, lhs_buf_type->pointee),
+                        rhs_result.const_);
   } else if (auto *tup = lhs_result.type_->if_as<type::Tuple>()) {
     if (!rhs_result.const_) {
       NOT_YET("log an error");
       return VerifyResult::Error();
     }
 
-    // TODO other sizes
-    ASSERT(rhs_result.type_ == type::Int32);
-    int32_t index = backend::EvaluateAs<int32_t>(rhs_.get(), ctx);
-    if (index < 0 || index >= static_cast<int32_t>(tup->size())) {
+    // TODO Will this cast appropriately?
+    int64_t index = type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                                     uint16_t, uint32_t, uint64_t>(
+        index_type, [&](auto type_holder) -> int64_t {
+          using T = typename decltype(type_holder)::type;
+          return backend::EvaluateAs<T>(rhs_.get(), ctx);
+        });
+
+    if (index < 0 || index >= static_cast<int64_t>(tup->size())) {
       ctx->error_log_.IndexingTupleOutOfBounds(span, tup, index);
       return VerifyResult::Error();
     }
@@ -90,25 +91,34 @@ std::vector<ir::Val> Index::EmitIR(Context *ctx) {
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> Index::EmitLVal(Context *ctx) {
-  auto *t = ctx->type_of(lhs_.get());
-  if (t->is<type::Array>()) {
+  auto *lhs_type = ctx->type_of(lhs_.get());
+  auto *rhs_type = ctx->type_of(rhs_.get());
+
+  if (lhs_type->is<type::Array>()) {
+    auto index =
+        ir::Cast(rhs_type, type::Int64, rhs_->EmitIR(ctx)[0]).reg_or<int64_t>();
+
     auto lval = lhs_->EmitLVal(ctx)[0];
     if (!lval.is_reg_) { NOT_YET(this, ctx->type_of(this)); }
-    return {ir::Index(type::Ptr(ctx->type_of(lhs_.get())), lval.reg_,
-                      rhs_->EmitIR(ctx)[0].reg_or<int32_t>())};
-  } else if (t->is<type::BufferPointer>()) {
+    return {ir::Index(type::Ptr(ctx->type_of(lhs_.get())), lval.reg_, index)};
+  } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
+    auto index =
+        ir::Cast(rhs_type, type::Int64, rhs_->EmitIR(ctx)[0]).reg_or<int64_t>();
+
     return {ir::PtrIncr(std::get<ir::Register>(lhs_->EmitIR(ctx)[0].value),
-                        rhs_->EmitIR(ctx)[0].reg_or<int32_t>(),
-                        type::Ptr(t->as<type::BufferPointer>().pointee))};
-  } else if (t == type::ByteView) {
+                        index, type::Ptr(buf_ptr_type->pointee))};
+  } else if (lhs_type == type::ByteView) {
     // TODO interim until you remove string_view and replace it with Addr
     // entirely.
-    return {ir::PtrIncr(
-        ir::GetString(
-            std::string(std::get<std::string_view>(lhs_->EmitIR(ctx)[0].value))),
-        rhs_->EmitIR(ctx)[0].reg_or<int32_t>(), type::Ptr(type::Nat8))};
-  } else if (auto *tup = t->if_as<type::Tuple>()) {
-    int32_t index = backend::EvaluateAs<int32_t>(rhs_.get(), ctx);
+    auto index =
+        ir::Cast(rhs_type, type::Int64, rhs_->EmitIR(ctx)[0]).reg_or<int64_t>();
+    return {ir::PtrIncr(ir::GetString(std::string(std::get<std::string_view>(
+                            lhs_->EmitIR(ctx)[0].value))),
+                        index, type::Ptr(type::Nat8))};
+  } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
+    auto index = std::get<int64_t>(
+        ir::Cast(rhs_type, type::Int64, backend::Evaluate(rhs_.get(), ctx)[0])
+            .value);
     return {ir::Field(lhs_->EmitLVal(ctx)[0], tup, index).get()};
   }
   UNREACHABLE(*this);

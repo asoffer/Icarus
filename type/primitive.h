@@ -1,7 +1,6 @@
 #ifndef ICARUS_TYPE_PRIMITIVE_H
 #define ICARUS_TYPE_PRIMITIVE_H
 
-#include <mutex>
 #include "type/type.h"
 
 struct Architecture;
@@ -18,12 +17,11 @@ struct Primitive : public Type {
   TYPE_FNS(Primitive);
   Primitive(PrimType pt) : type_(pt) {}
 
+  bool is_integral() const;
+
  private:
   friend struct ::Architecture;
   PrimType type_;
-
-  mutable std::mutex mtx_;
-  mutable ir::Func *repr_func_ = nullptr;
 };
 
 }  // namespace type

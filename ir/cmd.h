@@ -78,7 +78,7 @@ struct Cmd {
     // don't need it.
     RegisterOr<Addr> ptr_;
     type::Type const *pointee_type_;
-    RegisterOr<int32_t> incr_;
+    RegisterOr<int64_t> incr_;
   };
   struct Field {
     RegisterOr<Addr> ptr_;
@@ -399,7 +399,7 @@ RegisterOr<type::Type const *> Array(RegisterOr<int64_t> len,
 Register VariantType(RegisterOr<Addr> r);
 Register VariantValue(const type::Type *t, RegisterOr<Addr> r);
 // Type repreesents the type of `ptr`
-TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int32_t> inc,
+TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int64_t> inc,
                             type::Pointer const *t);
 type::Typed<Register> Field(RegisterOr<Addr> r, type::Struct const *t,
                             size_t n);
@@ -574,7 +574,7 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
 Val Cast(type::Type const *from, type::Type const *to, Val const &val);
 
 TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
-                          RegisterOr<int32_t> offset);
+                          RegisterOr<int64_t> offset);
 TypedRegister<Addr> Alloca(type::Type const *t);
 TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx);
 

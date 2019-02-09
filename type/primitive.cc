@@ -122,5 +122,18 @@ Cmp Primitive::Comparator() const {
              : Cmp::Equality;
 }
 
+bool Primitive::is_integral() const {
+  switch (type_) {
+    case PrimType::Int8:
+    case PrimType::Int16:
+    case PrimType::Int32:
+    case PrimType::Int64:
+    case PrimType::Nat8:
+    case PrimType::Nat16:
+    case PrimType::Nat32:
+    case PrimType::Nat64: return true;
+    default: return false;
+  }
+}
 
 }  // namespace type

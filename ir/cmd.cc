@@ -466,7 +466,7 @@ void SetRet(size_t n, Val const &v, Context *ctx) {
   });
 }
 
-TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int32_t> inc,
+TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int64_t> inc,
                             type::Pointer const *t) {
   if (!inc.is_reg_ && inc.val_ == 0 &&
       /* TODO get rid of this last condition */ ptr.is_reg_) {
@@ -557,7 +557,7 @@ Register Load(RegisterOr<Addr> r, type::Type const *t) {
 }
 
 TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
-                          RegisterOr<int32_t> offset) {
+                          RegisterOr<int64_t> offset) {
   auto *array_type = &t->pointee->as<type::Array>();
   // TODO this works but generates worse ir (both here and in llvm). It's worth
   // figuring out how to do this better. Is this still true without
