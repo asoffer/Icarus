@@ -141,9 +141,7 @@ static Module const *CompileModule(Module *mod) {
     return mod;
   }
 
-  LOG << "****";
   file_stmts->Validate(&ctx);
-  LOG << "****";
   if (ctx.num_errors() != 0) {
     ctx.DumpErrors();
     found_errors = true;

@@ -164,7 +164,8 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Function>();
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
     return t == ::type::Generic;
-  } else if constexpr (std::is_same_v<T, ::Module const *>) {
+  } else if constexpr (std::is_same_v<T, ::Module *> ||
+                       std::is_same_v<T, ::Module const *>) {
     return t == ::type::Module;
   } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
     return t == ::type::OptBlock || t == ::type::Block || t == ::type::RepBlock;
@@ -211,7 +212,7 @@ auto Apply(Type const *t, Fn &&fn, Args &&... args) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, std::string_view,
-                    ::Module const *, type::Struct const *, ast::ScopeLiteral *,
+                    ::Module *, type::Struct const *, ast::ScopeLiteral *,
                     ir::AnyFunc, ir::BlockSequence, type::Interface const *,
                     ast::FunctionLiteral *>(t, std::forward<Fn>(fn),
                                             std::forward<Args>(args)...);

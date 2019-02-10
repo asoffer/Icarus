@@ -221,10 +221,20 @@ struct Cmd {
 
   struct AstData {
     ast::Node *node_;
-    ::Module *mod_;
+    Register ctx_;
 
     inline friend std::ostream &operator<<(std::ostream &os, AstData ast) {
-      return os << ast.node_ << " " << reinterpret_cast<uintptr_t>(ast.mod_);
+      return os << ast.node_ << " ctx=" << ast.ctx_;
+    }
+  };
+
+  struct AddBc {
+    Register ctx_;
+    ast::Declaration *decl_;
+    RegisterOr<type::Type const *> type_;
+
+    inline friend std::ostream &operator<<(std::ostream &os, AddBc const &a) {
+      return os << a.ctx_ << " " << a.decl_ << " " << a.type_;
     }
   };
 
@@ -249,8 +259,10 @@ struct Cmd {
     BlockSeqContains block_seq_contains_;
     Cmd::Array array_;
     Field field_;
-    ::Module const *mod_;
+    ::Module *mod_;
     ::Scope const *scope_;
+
+    AddBc add_bc_;
 
     // TODO names of these are easily mis-spellable and would lead to UB.
     RegisterOr<bool> bool_arg_;
@@ -330,7 +342,7 @@ struct Cmd {
     SetRet<std::string_view> set_ret_byte_view_;
     SetRet<ast::ScopeLiteral *> set_ret_scope_;
     SetRet<ast::FunctionLiteral *> set_ret_generic_;
-    SetRet<Module const *> set_ret_module_;
+    SetRet<Module *> set_ret_module_;
     SetRet<BlockSequence> set_ret_block_;
     SetRet<type::Interface const *> set_ret_intf_;
 
@@ -569,7 +581,7 @@ void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
 void UncondJump(BlockIndex block);
 void ReturnJump();
 
-TypedRegister<type::Type const *> NewOpaqueType(::Module const *mod);
+TypedRegister<type::Type const *> NewOpaqueType(::Module *mod);
 
 void BlockSeqJump(RegisterOr<BlockSequence> r,
                   std::unordered_map<ast::BlockLiteral const *,
@@ -596,9 +608,13 @@ void Copy(type::Type const *t, Register from, RegisterOr<Addr> to);
 void Destroy(type::Type const *t, Register r);
 void Init(type::Type const *t, Register r);
 
-void VerifyType(ast::Node *node, ::Module *mod);
-void Validate(ast::Node *node, ::Module *mod);
-Register EvaluateAsType(ast::Node *node, ::Module *mod);
+void VerifyType(ast::Node *node, Register ctx);
+void Validate(ast::Node *node, Register ctx);
+Register EvaluateAsType(ast::Node *node, Register ctx);
 
+Register CreateContext(Module *mod);
+void AddBoundConstant(Register ctx, ast::Declaration *decl,
+                      RegisterOr<type::Type const *> type);
+void DestroyContext(Register r);
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

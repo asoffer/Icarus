@@ -156,6 +156,7 @@ void StructLiteral::CompleteBody(Context *ctx) {
     ir::BasicBlock::Current = ir::EarlyExitOn<false>(
         land_block,
         ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
+    auto ctx_reg =  ir::CreateContext(ctx->mod_);
     auto struct_reg = ir::CreateStruct(scope_);
 
     // TODO why isn't implicit TypedRegister -> RegisterOr cast working on
@@ -164,13 +165,17 @@ void StructLiteral::CompleteBody(Context *ctx) {
     // second... I don't know.
     ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(struct_reg),
               cache_slot_addr);
+    for (auto const& arg : args_) {
+      ir::AddBoundConstant(ctx_reg, arg.get(), ctx->addr(arg.get()));
+    }
+
     for (auto const &field : fields_) {
-      ir::VerifyType(field.get(), ctx->mod_);
-      ir::Validate(field.get(), ctx->mod_);
+      ir::VerifyType(field.get(), ctx_reg);
+      ir::Validate(field.get(), ctx_reg);
 
       // TODO exit early if either verifytype or validate fail.
 
-      auto type_reg = ir::EvaluateAsType(field->type_expr.get(), ctx->mod_);
+      auto type_reg = ir::EvaluateAsType(field->type_expr.get(), ctx_reg);
 
       ir::CreateStructField(struct_reg, type_reg);
       ir::SetStructFieldName(struct_reg, field->id_);
@@ -185,12 +190,15 @@ void StructLiteral::CompleteBody(Context *ctx) {
     }
 
     ir::RegisterOr<type::Type const *> result = ir::FinalizeStruct(struct_reg);
+    ir::DestroyContext(ctx_reg);
+
+    // Exit path from creating a new struct.
     ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(result));
     ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(result),
               cache_slot_addr);
-
     ir::ReturnJump();
 
+    // Exit path from finding the cache
     ir::BasicBlock::Current = land_block;
     ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(cache_slot));
     ir::ReturnJump();

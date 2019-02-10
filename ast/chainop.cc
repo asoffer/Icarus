@@ -251,8 +251,8 @@ not_blocks:
           if (ret_type->is<type::Tuple>()) { NOT_YET(); }
           // TODO check that ret_type is a bool?
         } else {
-          if (lhs_result.type_!= rhs_result.type_) {
-            NOT_YET("Log an error");
+          if (lhs_result.type_ != rhs_result.type_) {
+            NOT_YET("Log an error", lhs_result.type_, rhs_result.type_, this);
 
           } else {
             auto cmp = lhs_result.type_->Comparator();

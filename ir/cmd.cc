@@ -36,19 +36,36 @@ void Destroy(type::Type const *t, Register r) {
   cmd.special1_ = {t, r};
 }
 
-void VerifyType(ast::Node *node, ::Module *mod) {
+void VerifyType(ast::Node *node, Register ctx) {
   auto &cmd = MakeCmd(nullptr, Op::VerifyType);
-  cmd.ast_  = {node, mod};
+  cmd.ast_  = {node, ctx};
 }
 
-void Validate(ast::Node *node, ::Module *mod) {
+void Validate(ast::Node *node, Register ctx) {
   auto &cmd = MakeCmd(nullptr, Op::Validate);
-  cmd.ast_  = {node, mod};
+  cmd.ast_  = {node, ctx};
 }
 
-Register EvaluateAsType(ast::Node *node, ::Module *mod) {
+Register CreateContext(Module *mod) {
+  auto &cmd = MakeCmd(type::Ctx, Op::CreateContext);
+  cmd.mod_  = mod;
+  return cmd.result;
+}
+
+void AddBoundConstant(Register ctx, ast::Declaration *decl,
+                      RegisterOr<type::Type const *> type) {
+  auto &cmd   = MakeCmd(nullptr, Op::AddBoundConstant);
+  cmd.add_bc_ = {ctx, decl, type};
+}
+
+void DestroyContext(Register r) {
+  auto &cmd = MakeCmd(nullptr, Op::DestroyContext);
+  cmd.reg_  = r;
+}
+
+Register EvaluateAsType(ast::Node *node, Register ctx) {
   auto &cmd = MakeCmd(type::Type_, Op::EvaluateAsType);
-  cmd.ast_  = {node, mod};
+  cmd.ast_  = {node, ctx};
   return cmd.result;
 }
 
@@ -614,7 +631,7 @@ void UncondJump(BlockIndex block) {
 
 void ReturnJump() { auto &cmd = MakeCmd(nullptr, Op::ReturnJump); }
 
-TypedRegister<type::Type const *> NewOpaqueType(::Module const *mod) {
+TypedRegister<type::Type const *> NewOpaqueType(::Module *mod) {
   auto &cmd = MakeCmd(type::Type_, Op::NewOpaqueType);
   cmd.mod_  = mod;
   return cmd.result;

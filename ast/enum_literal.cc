@@ -9,7 +9,7 @@
 namespace ir {
 // TODO as a general rule we let ast reach into ir but not the other direction.
 // Fix this.
-Register CreateEnum(ast::EnumLiteral::Kind kind, ::Module const *mod) {
+Register CreateEnum(ast::EnumLiteral::Kind kind, ::Module *mod) {
   switch (kind) {
     case ast::EnumLiteral::Kind::Enum: {
       auto &cmd = MakeCmd(type::Type_, Op::CreateEnum);

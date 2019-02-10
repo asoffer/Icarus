@@ -1,6 +1,6 @@
 -- ::= import "examples/lib/core.ic"
 
-factorial ::= (n: int32) -> int32 {
+factorial ::= (n: int64) -> int64 {
   return switch {
                         1  when  n < 2
     n * (n - 1)'factorial  when  n >= 2

@@ -36,7 +36,7 @@ void Context::set_dispatch_table(ast::Expression const *expr,
   auto [iter, success] = mod_->data_[bound_constants_].dispatch_tables_.emplace(
       expr, std::move(table));
   static_cast<void>(iter);
-  ASSERT(success);
+  ASSERT(success) << expr;
 }
 
 ast::DispatchTable const *Context::dispatch_table(ast::Expression const *expr) const {

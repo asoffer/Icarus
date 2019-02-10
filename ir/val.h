@@ -41,8 +41,8 @@ struct Val {
                int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, EnumVal,
                FlagsVal, type::Type const *, type::Struct *, AnyFunc,
                ast::FunctionLiteral *, std::string_view, ast::ScopeLiteral *,
-               type::Interface const *, ast::Expression *, BlockIndex,
-               Module const *, BlockSequence, BuiltinGenericIndex>
+               type::Interface const *, ast::Expression *, BlockIndex, Module *,
+               BlockSequence, BuiltinGenericIndex>
       value{false};
 
   template <typename T>

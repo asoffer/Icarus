@@ -24,6 +24,7 @@ size_t Architecture::alignment(type::Type const *t) const {
   if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Module: return local_ptr_align_;
+      case type::PrimType::Ctx: return local_ptr_align_;
       case type::PrimType::Block: return local_ptr_align_;
       case type::PrimType::OptBlock: return local_ptr_align_;
       case type::PrimType::RepBlock: return local_ptr_align_;
@@ -89,6 +90,7 @@ size_t Architecture::bytes(type::Type const *t) const {
   if (ASSERT_NOT_NULL(t)->is<type::Primitive>()) {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Module: return local_ptr_bytes_;
+      case type::PrimType::Ctx: return local_ptr_bytes_;
       case type::PrimType::Block: return local_ptr_bytes_;
       case type::PrimType::OptBlock: return local_ptr_bytes_;
       case type::PrimType::RepBlock: return local_ptr_bytes_;

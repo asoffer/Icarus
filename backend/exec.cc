@@ -1075,39 +1075,23 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           &cache[resolve<type::Type const *>(ir::Register{0})];
       save(ir::Addr::Heap(cache_slot));
     } break;
+    case ir::Op::CreateContext: save(new Context(cmd.mod_)); break;
+    case ir::Op::AddBoundConstant: {
+      resolve<Context *>(cmd.add_bc_.ctx_)
+          ->bound_constants_.constants_.emplace(cmd.add_bc_.decl_,
+                                                resolve(cmd.add_bc_.type_));
+    } break;
+    case ir::Op::DestroyContext: delete resolve<Context *>(cmd.reg_); break;
     case ir::Op::VerifyType: {
-      LOG << cmd.ast_.mod_->generic_struct_cache_;
-      Context ctx(cmd.ast_.mod_);
-      // TODO This is a hack to see if we can get bound constants to work. It's
-      // only going to work if you have exactly one parameter in your struct
-      // literal and it's a type.
-      auto *t =  resolve<type::Type const*>(ir::Register{0});
-      auto *sl = cmd.ast_.mod_->generic_struct_cache_.begin()->first;
-      ctx.bound_constants_.constants_.emplace(sl->args_.at(0).get(), t);
-      cmd.ast_.node_->VerifyType(&ctx);
+      cmd.ast_.node_->VerifyType(resolve<Context *>(cmd.ast_.ctx_));
     } break;
     case ir::Op::Validate: {
-      Context ctx(cmd.ast_.mod_);
-      // TODO This is a hack to see if we can get bound constants to work. It's
-      // only going to work if you have exactly one parameter in your struct
-      // literal and it's a type.
-      auto *t =  resolve<type::Type const*>(ir::Register{0});
-      auto *sl = cmd.ast_.mod_->generic_struct_cache_.begin()->first;
-      ctx.bound_constants_.constants_.emplace(sl->args_.at(0).get(), t);
-
-      cmd.ast_.node_->Validate(&ctx);
+      cmd.ast_.node_->Validate(resolve<Context *>(cmd.ast_.ctx_));
     } break;
     case ir::Op::EvaluateAsType: {
-      Context ctx(cmd.ast_.mod_);
-      // TODO This is a hack to see if we can get bound constants to work. It's
-      // only going to work if you have exactly one parameter in your struct
-      // literal and it's a type.
-      auto *t =  resolve<type::Type const*>(ir::Register{0});
-      auto *sl = cmd.ast_.mod_->generic_struct_cache_.begin()->first;
-      ctx.bound_constants_.constants_.emplace(sl->args_.at(0).get(), t);
-
-      save(EvaluateAs<type::Type const *>(
-          &cmd.ast_.node_->as<ast::Expression>(), &ctx));
+      save(
+          EvaluateAs<type::Type const *>(&cmd.ast_.node_->as<ast::Expression>(),
+                                         resolve<Context *>(cmd.ast_.ctx_)));
     } break;
     case ir::Op::CondJump:
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];

@@ -63,7 +63,8 @@ constexpr type::Type const *Get() {
     return type::Type_;
   } else if constexpr (std::is_same_v<T, type::Interface const *>) {
     return type::Intf;
-  } else if constexpr (std::is_same_v<T, ::Module const *>) {
+  } else if constexpr (std::is_same_v<T, ::Module *> ||
+                       std::is_same_v<T, ::Module const *>) {
     return type::Module;
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
     return type::Generic;
