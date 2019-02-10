@@ -1,8 +1,8 @@
 #{export}
 if ::= scope {
-  init ::= (b: bool) => switch {
-    then        when b
-    else | exit when !b
+  init ::= (b: bool) => switch (b) {
+    then        when true
+    else | exit when false
   }
   then ::= block {
     before ::= () -> {}
@@ -17,9 +17,9 @@ if ::= scope {
 
 #{export}
 while ::= scope {
-  init ::= (b: bool) => switch {
-    do when b
-    exit when !b
+  init ::= (b: bool) => switch (b) {
+    do    when true
+    exit  when false
   }
   do ::= block {
     before ::= () -> {}

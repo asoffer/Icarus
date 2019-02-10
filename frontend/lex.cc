@@ -99,11 +99,13 @@ TaggedNode NextWord(SourceLocation &loc) {
     return TaggedNode::TerminalExpression(span, iter->second);
   }
 
+  // TODO rename kw_struct to more clearly indicate that it's a scope block
+  // taking a an optional parenthesized list before the braces.
   static const std::unordered_map<std::string, Tag> KeywordMap = {
       {"which", op_l},         {"print", op_l},    {"ensure", op_l},
       {"needs", op_l},         {"import", op_l},   {"flags", kw_block_head},
       {"enum", kw_block_head}, {"generate", op_l}, {"struct", kw_struct},
-      {"return", op_lt},       {"yield", op_lt},   {"switch", kw_block_head},
+      {"return", op_lt},       {"yield", op_lt},   {"switch", kw_struct},
       {"when", op_b},          {"as", op_b},       {"interface", kw_block},
       {"copy", op_l},          {"move", op_l}};
   if (auto iter = KeywordMap.find(token); iter != KeywordMap.end()) {

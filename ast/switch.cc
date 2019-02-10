@@ -15,10 +15,11 @@
 namespace ast {
 std::string Switch::to_string(size_t n) const {
   std::stringstream ss;
-  ss << "switch {\n";
+  ss << "switch ";
+  if (expr_) { ss << "(" << expr_->to_string(n) << ") {\n"; }
   for (const auto & [ expr, cond ] : cases_) {
-    ss << std::string((n + 1) * 2, ' ') << expr->to_string(n + 1) << " when ";
-    ss << std::string((n + 1) * 2, ' ') << cond->to_string(n + 1) << "\n";
+    ss << std::string((n + 1) * 2, ' ') << expr->to_string(n + 1) << " when "
+       << cond->to_string(n + 1) << "\n";
   }
   ss << std::string(2 * n, ' ') << "}";
   return ss.str();
@@ -26,6 +27,7 @@ std::string Switch::to_string(size_t n) const {
 
 void Switch::assign_scope(Scope *scope) {
   scope_ = scope;
+  if (expr_) { expr_->assign_scope(scope_); }
   for (auto & [ expr, cond ] : cases_) {
     expr->assign_scope(scope);
     cond->assign_scope(scope);
@@ -33,17 +35,31 @@ void Switch::assign_scope(Scope *scope) {
 }
 
 VerifyResult Switch::VerifyType(Context *ctx) {
-  std::unordered_set<const type::Type *> types;
   bool is_const = true;
+  type::Type const *expr_type = nullptr;
+  if (expr_) {
+    ASSIGN_OR(return _, auto result, expr_->VerifyType(ctx));
+    is_const &= result.const_;
+    expr_type = result.type_;
+  }
+
+  std::unordered_set<const type::Type *> types;
   for (auto & [ expr, cond ] : cases_) {
     auto cond_result = cond->VerifyType(ctx);
     auto expr_result = expr->VerifyType(ctx);
     is_const &= cond_result.const_ && expr_result.const_;
-    if (cond_result.type_ != type::Bool) { NOT_YET("handle type error"); }
+    if (expr_) {
+      if (cond_result.type_ != expr_type) { NOT_YET("handle type error"); }
+    } else {
+      if (cond_result.type_ != type::Bool) { NOT_YET("handle type error"); }
+    }
     // TODO if there's an error, an unorderded_set is not helpful for giving
     // good error messages.
     types.insert(expr_result.type_);
   }
+
+  // TODO check to ensure that the type is either exhaustable or has a default.
+
   if (types.empty()) { NOT_YET("handle type error"); }
   auto some_type = *types.begin();
   if (std::all_of(types.begin(), types.end(),
@@ -57,6 +73,7 @@ VerifyResult Switch::VerifyType(Context *ctx) {
 }
 
 void Switch::Validate(Context *ctx) {
+  if (expr_) { expr_->Validate(ctx); }
   for (auto & [ expr, cond ] : cases_) {
     expr->Validate(ctx);
     cond->Validate(ctx);
@@ -64,6 +81,7 @@ void Switch::Validate(Context *ctx) {
 }
 
 void Switch::ExtractJumps(JumpExprs *rets) const {
+  if (expr_) { expr_->ExtractJumps(rets); }
   for (auto & [ expr, cond ] : cases_) {
     expr->ExtractJumps(rets);
     cond->ExtractJumps(rets);
@@ -76,11 +94,29 @@ std::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
 
   // TODO handle a default value. for now, we're just not checking the very last
   // condition. This is very wrong.
+
+  // TODO handle switching on tuples/multiple values?
+  ir::Val expr_val;
+  if (expr_) { expr_val = expr_->EmitIR(ctx)[0]; }
+
+  auto *expr_type = ctx->type_of(expr_.get());
+
   for (size_t i = 0; i < cases_.size() - 1; ++i) {
-    auto & [ expr, cond ] = cases_[i];
+    auto & [ expr, match_cond ] = cases_[i];
     auto expr_block       = ir::Func::Current->AddBlock();
-    auto next_block =
-        ir::EarlyExitOn<true>(expr_block, cond->EmitIR(ctx)[0].reg_or<bool>());
+
+    auto match_val = match_cond->EmitIR(ctx)[0];
+    ir::RegisterOr<bool> cond =
+        !expr_
+            ? match_val.reg_or<bool>()
+            : type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                               uint16_t, uint32_t, uint64_t, float, double>(
+                  expr_type, [&](auto type_holder) {
+                    using T = typename decltype(type_holder)::type;
+                    return ir::Eq(match_val.reg_or<T>(), expr_val.reg_or<T>());
+                  });
+
+    auto next_block = ir::EarlyExitOn<true>(expr_block, cond);
 
     ir::BasicBlock::Current           = expr_block;
     auto val                          = expr->EmitIR(ctx)[0];

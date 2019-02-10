@@ -1,3 +1,4 @@
 build:gcc --crosstool_top=//toolchain:gcc_toolchain_suite
 build:gcc --cpu=gcc
 build:gcc --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build:gcc --strip=never

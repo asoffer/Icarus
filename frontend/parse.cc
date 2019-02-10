@@ -88,6 +88,30 @@ static std::unique_ptr<ast::Node> AddHashtag(
   return expr;
 }
 
+static std::unique_ptr<ast::Switch> BuildSwitch(
+    std::unique_ptr<ast::Statements> stmts, Context *ctx) {
+  auto switch_expr  = std::make_unique<ast::Switch>();
+  switch_expr->span = stmts->span;  // TODO it's really bigger than this because
+                                    // it involves the keyword too.
+
+  switch_expr->cases_.reserve(stmts->content_.size());
+  for (auto &stmt : stmts->content_) {
+    if (stmt->is<ast::Binop>()) {
+      auto binop = move_as<ast::Binop>(stmt);
+      if (binop->op == Language::Operator::When) {
+        switch_expr->cases_.emplace_back(std::move(binop->lhs),
+                                         std::move(binop->rhs));
+      } else {
+        NOT_YET("handle error");
+      }
+    } else {
+      NOT_YET("handle error");
+    }
+  }
+
+  return switch_expr;
+}
+
 static std::unique_ptr<ast::Node> OneBracedStatement(
     std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   auto stmts  = std::make_unique<ast::Statements>();
@@ -887,30 +911,6 @@ static std::unique_ptr<ast::Node> BuildBlock(
   return block_expr;
 }
 
-static std::unique_ptr<ast::Node> BuildSwitch(
-    std::unique_ptr<ast::Statements> stmts, Context *ctx) {
-  auto switch_expr  = std::make_unique<ast::Switch>();
-  switch_expr->span = stmts->span;  // TODO it's really bigger than this because
-                                    // it involves the keyword too.
-
-  switch_expr->cases_.reserve(stmts->content_.size());
-  for (auto &stmt : stmts->content_) {
-    if (stmt->is<ast::Binop>()) {
-      auto binop = move_as<ast::Binop>(stmt);
-      if (binop->op == Language::Operator::When) {
-        switch_expr->cases_.emplace_back(std::move(binop->lhs),
-                                         std::move(binop->rhs));
-      } else {
-        NOT_YET("handle error");
-      }
-    } else {
-      NOT_YET("handle error");
-    }
-  }
-
-  return switch_expr;
-}
-
 static std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
     ast::Statements &&stmts, TextSpan span, Context *ctx) {
   auto struct_lit  = std::make_unique<ast::StructLiteral>();
@@ -928,8 +928,16 @@ static std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
   return struct_lit;
 }
 
+// TODO rename this now that it supports switch statements too.
 static std::unique_ptr<ast::Node> BuildGenericStruct(
     std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
+  if (auto *tk = nodes[0]->if_as<frontend::Token>()) {
+    ASSERT(tk->token == "switch");
+    auto sw   = BuildSwitch(move_as<ast::Statements>(nodes[4]), ctx);
+    sw->expr_ = move_as<ast::Expression>(nodes[2]);
+    return sw;
+  }
+
   auto result = BuildStructLiteral(
       std::move(nodes[4]->as<ast::Statements>()),
       TextSpan(nodes.front()->span, nodes.back()->span), ctx);
@@ -966,6 +974,9 @@ static std::unique_ptr<ast::Node> BuildKWBlock(
     } else if (tk == "struct") {
       return BuildConcreteStruct(std::move(nodes), ctx);
 
+    } else if (tk == "switch") {
+      return BuildSwitch(move_as<ast::Statements>(nodes[1]), ctx);
+
     } else if (tk == "scope") {
       TextSpan span(nodes.front()->span, nodes.back()->span);
       return BuildScopeLiteral(move_as<ast::Statements>(nodes[1]), span, false,
@@ -979,8 +990,6 @@ static std::unique_ptr<ast::Node> BuildKWBlock(
     } else if (tk == "interface") {
       return BuildInterfaceLiteral(move_as<ast::Statements>(nodes[1]), ctx);
 
-    } else if (tk == "switch") {
-      return BuildSwitch(move_as<ast::Statements>(nodes[1]), ctx);
     } else {
       UNREACHABLE(tk);
     }

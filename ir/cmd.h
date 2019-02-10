@@ -432,11 +432,7 @@ auto HandleBinop(Lhs lhs, Rhs rhs) {
       }
       auto &cmd = MakeCmd(type::Get<result_type>(),
                           Cmd::OpCode<Tag, typename Lhs::type>());
-      if constexpr (std::is_same_v<typename Lhs::type, bool>) {
-        cmd.template set<Tag, typename Lhs::type>(lhs.reg_, rhs.reg_);
-      } else {
-        cmd.template set<Tag, typename Lhs::type>(lhs, rhs);
-      }
+      cmd.template set<Tag, typename Lhs::type>(lhs, rhs);
       /* TODO reenable
       auto &refs = Func::Current->references_;
       if (lhs.is_reg_) { refs[lhs.reg_].insert(cmd.result); }
