@@ -1,9 +1,8 @@
 #include "type/type.h"
 
+#include <unordered_map>
 #include "ast/declaration.h"
 #include "ast/struct_literal.h"
-#include <unordered_map>
-#include <unordered_map>
 #include "base/guarded.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
@@ -12,6 +11,7 @@
 #include "misc/architecture.h"
 #include "misc/context.h"
 #include "misc/module.h"
+#include "type/generic_struct.h"
 
 namespace type {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \
@@ -27,6 +27,8 @@ bool Type::is_big() const {
 
 bool VerifyAssignment(TextSpan const &span, type::Type const *to,
                       type::Type const *from, Context *ctx) {
+  if (to == from && to->is<GenericStruct>()) { return true; }
+
   // TODO this feels like the semantics are iffy. It works fine if we assign
   // to/from the same type, but we really care if you can assign to a type
   // rather than copy from another, I think.

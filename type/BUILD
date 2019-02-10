@@ -12,6 +12,7 @@ cc_target(
         ":pointer",
         "//ast:fn_params",
         "//base:guarded",
+        "//base:tuple",
         "//ir:any_func",
         "//ir:arguments",
         "//ir:components",
@@ -260,6 +261,7 @@ cc_target(
         "//ir:register",
     ],
     impl_deps = [
+        ":generic_struct",
         "//ast:declaration",
         "//ast:struct_literal",
         "//base:guarded",

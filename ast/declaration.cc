@@ -307,7 +307,7 @@ VerifyResult VerifySpecialFunctions(Declaration const *decl,
 }
 
 VerifyResult Declaration::VerifyType(Context *ctx) {
-  bool swap_bc = ctx->mod_ != mod_;
+  bool swap_bc    = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   BoundConstants old_bc;
   if (swap_bc) {
@@ -327,146 +327,143 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
   }
 
   type::Type const *this_type = nullptr;
-  {
-    switch (dk) {
-      case 0 /* Default initailization */: {
-        ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
-                         type_expr->VerifyType(ctx));
-        if (!type_expr_result.const_) {
-          // Hmm, not necessarily an error. Example (not necessarily minimal):
-          //
-          //   S ::= (x: any`T) => struct {
-          //     _val: T = x
-          //   }
-          //
-          NOT_YET("log an error", this);
-          return VerifyResult::Error();
-        }
-        auto *type_expr_type = type_expr_result.type_;
-        if (type_expr_type == type::Type_) {
-          this_type = ctx->set_type(
-              this, ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
-                        type_expr.get(), ctx)));
-
-          if (!is_fn_param_ && !this_type->IsDefaultInitializable()) {
-            ctx->error_log_.TypeMustBeInitialized(span, this_type);
-          }
-
-        } else if (type_expr_type == type::Intf) {
-          if (!type_expr_result.const_) {
-            NOT_YET("log an error");
-            return VerifyResult::Error();
-          } else {
-            this_type = ctx->set_type(
-                this,
-                backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
-          }
-        } else {
-          ctx->error_log_.NotAType(type_expr->span, type_expr_type);
-          return VerifyResult::Error();
-        }
-      } break;
-      case INFER: UNREACHABLE(); break;
-      case INFER | CUSTOM_INIT: {
-        ASSIGN_OR(return VerifyResult::Error(), auto init_val_result,
-                         init_val->VerifyType(ctx));
-        auto *init_val_type = init_val_result.type_;
-        auto reason = Inferrable(init_val_type);
-        if (reason != InferenceFailureReason::Inferrable) {
-          ctx->error_log_.UninferrableType(reason, init_val->span);
-          return VerifyResult::Error();
-        }
-        this_type = ctx->set_type(this, init_val_type);
-
-        if (this_type != nullptr) {
-          // TODO initialization, not assignment.
-          if (!type::VerifyAssignment(span, this_type, this_type, ctx)) {
-            return VerifyResult::Error();
-          }
-        }
-
-      } break;
-      case INFER | UNINITIALIZED: {
-        ctx->error_log_.UninferrableType(InferenceFailureReason::Hole, init_val->span);
-        if (const_) { ctx->error_log_.UninitializedConstant(span); }
+  switch (dk) {
+    case 0 /* Default initailization */: {
+      ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
+                       type_expr->VerifyType(ctx));
+      if (!type_expr_result.const_) {
+        // Hmm, not necessarily an error. Example (not necessarily minimal):
+        //
+        //   S ::= (x: any`T) => struct {
+        //     _val: T = x
+        //   }
+        //
+        NOT_YET("log an error", this);
         return VerifyResult::Error();
-      } break;
-      case CUSTOM_INIT: {
-        auto init_val_result = init_val->VerifyType(ctx);
-        bool error           = !init_val_result.ok();
+      }
+      auto *type_expr_type = type_expr_result.type_;
+      if (type_expr_type == type::Type_) {
+        this_type = ctx->set_type(
+            this, ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
+                      type_expr.get(), ctx)));
 
-        auto *init_val_type = init_val->VerifyType(ctx).type_;
-        auto type_expr_result = type_expr->VerifyType(ctx);
-        auto *type_expr_type = type_expr_result.type_;
-
-        if (type_expr_type == nullptr) {
-          error = true;
-        } else if (type_expr_type == type::Type_) {
-          if (!type_expr_result.const_) {
-            NOT_YET("log an error");
-            error = true;
-          } else {
-            this_type = ctx->set_type(
-                this,
-                backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
-          }
-
-          // TODO initialization, not assignment. Error messages will be
-          // wrong.
-          if (this_type != nullptr && init_val_type != nullptr) {
-            error |=
-                !type::VerifyAssignment(span, this_type, init_val_type, ctx);
-          }
-        } else if (type_expr_type == type::Intf) {
-          this_type = ctx->set_type(this, type::Generic);
-        } else {
-          ctx->error_log_.NotAType(type_expr->span, type_expr_type);
-          error = true;
+        if (!is_fn_param_ && !this_type->IsDefaultInitializable()) {
+          ctx->error_log_.TypeMustBeInitialized(span, this_type);
         }
 
-        if (error) { return VerifyResult::Error(); }
-      } break;
-      case UNINITIALIZED: {
-        ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
-                         type_expr->VerifyType(ctx));
-        auto *type_expr_type = type_expr_result.type_;
-        if (type_expr_type == type::Type_) {
-          if (!type_expr_result.const_) {
-            NOT_YET("log an error");
-            return VerifyResult::Error();
-          }
+      } else if (type_expr_type == type::Intf) {
+        if (!type_expr_result.const_) {
+          NOT_YET("log an error");
+          return VerifyResult::Error();
+        } else {
           this_type = ctx->set_type(
               this,
               backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
-        } else if (type_expr_type == type::Intf) {
-          this_type = ctx->set_type(this, type::Generic);
-        } else {
-          ctx->error_log_.NotAType(type_expr->span, type_expr_type);
-          return VerifyResult::Error();
         }
-
-        if (const_) {
-          ctx->error_log_.UninitializedConstant(span);
-          return VerifyResult::Error();
-        }
-
-      } break;
-      default: UNREACHABLE(dk);
-    }
-
-    if (id_.empty()) {
-      if (this_type == type::Module) {
-        // TODO check shadowing against other modules?
-        // TODO what if no init val is provded? what if not constant?
-        scope_->embedded_modules_.insert(
-            backend::EvaluateAs<Module const *>(init_val.get(), ctx));
-        return VerifyResult::Constant(type::Module);
-      } else if (this_type->is<type::Tuple>()) {
-        NOT_YET(this_type);
       } else {
-        NOT_YET(this_type);
+        ctx->error_log_.NotAType(type_expr->span, type_expr_type);
+        return VerifyResult::Error();
       }
-    }
+    } break;
+    case INFER: UNREACHABLE(); break;
+    case INFER | CUSTOM_INIT: {
+      ASSIGN_OR(return VerifyResult::Error(), auto init_val_result,
+                       init_val->VerifyType(ctx));
+      auto *init_val_type = init_val_result.type_;
+      auto reason         = Inferrable(init_val_type);
+      if (reason != InferenceFailureReason::Inferrable) {
+        ctx->error_log_.UninferrableType(reason, init_val->span);
+        return VerifyResult::Error();
+      }
+
+      this_type = ctx->set_type(this, init_val_type);
+
+      // TODO initialization, not assignment.
+      if (!type::VerifyAssignment(span, this_type, this_type, ctx)) {
+        return VerifyResult::Error();
+      }
+
+    } break;
+    case INFER | UNINITIALIZED: {
+      ctx->error_log_.UninferrableType(InferenceFailureReason::Hole,
+                                       init_val->span);
+      if (const_) { ctx->error_log_.UninitializedConstant(span); }
+      return VerifyResult::Error();
+    } break;
+    case CUSTOM_INIT: {
+      auto init_val_result = init_val->VerifyType(ctx);
+      bool error           = !init_val_result.ok();
+
+      auto *init_val_type   = init_val->VerifyType(ctx).type_;
+      auto type_expr_result = type_expr->VerifyType(ctx);
+      auto *type_expr_type  = type_expr_result.type_;
+
+      if (type_expr_type == nullptr) {
+        error = true;
+      } else if (type_expr_type == type::Type_) {
+        if (!type_expr_result.const_) {
+          NOT_YET("log an error");
+          error = true;
+        } else {
+          this_type = ctx->set_type(
+              this,
+              backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
+        }
+
+        // TODO initialization, not assignment. Error messages will be
+        // wrong.
+        if (this_type != nullptr && init_val_type != nullptr) {
+          error |= !type::VerifyAssignment(span, this_type, init_val_type, ctx);
+        }
+      } else if (type_expr_type == type::Intf) {
+        this_type = ctx->set_type(this, type::Generic);
+      } else {
+        ctx->error_log_.NotAType(type_expr->span, type_expr_type);
+        error = true;
+      }
+
+      if (error) { return VerifyResult::Error(); }
+    } break;
+    case UNINITIALIZED: {
+      ASSIGN_OR(return VerifyResult::Error(), auto type_expr_result,
+                       type_expr->VerifyType(ctx));
+      auto *type_expr_type = type_expr_result.type_;
+      if (type_expr_type == type::Type_) {
+        if (!type_expr_result.const_) {
+          NOT_YET("log an error");
+          return VerifyResult::Error();
+        }
+        this_type = ctx->set_type(this, backend::EvaluateAs<type::Type const *>(
+                                            type_expr.get(), ctx));
+      } else if (type_expr_type == type::Intf) {
+        this_type = ctx->set_type(this, type::Generic);
+      } else {
+        ctx->error_log_.NotAType(type_expr->span, type_expr_type);
+        return VerifyResult::Error();
+      }
+
+      if (const_) {
+        ctx->error_log_.UninitializedConstant(span);
+        return VerifyResult::Error();
+      }
+
+    } break;
+    default:
+      UNREACHABLE(dk);
+
+      if (id_.empty()) {
+        if (this_type == type::Module) {
+          // TODO check shadowing against other modules?
+          // TODO what if no init val is provded? what if not constant?
+          scope_->embedded_modules_.insert(
+              backend::EvaluateAs<Module const *>(init_val.get(), ctx));
+          return VerifyResult::Constant(type::Module);
+        } else if (this_type->is<type::Tuple>()) {
+          NOT_YET(this_type);
+        } else {
+          NOT_YET(this_type);
+        }
+      }
   }
 
   // TODO simplify now that you don't have error decls.

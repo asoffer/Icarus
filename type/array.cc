@@ -2,6 +2,7 @@
 
 #include "ast/fn_params.h"
 #include "base/guarded.h"
+#include "base/tuple.h"
 #include "ir/any_func.h"
 #include "ir/arguments.h"
 #include "ir/components.h"

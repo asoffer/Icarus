@@ -7,6 +7,7 @@ cc_lib(
         ":addr-impl",
         ":arguments-impl",
         ":cmd-impl",
+        ":components-impl",
         ":flags_val-impl",
         ":foreign-impl",
         ":func-impl",
@@ -79,16 +80,13 @@ cc_target(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "components",
-    hdrs = ["components.h"],
-    deps = [
-        ":cmd",
+    intf_deps = [
         ":func",
-        ":phi",
         ":register",
-        "//base:tuple",
     ],
+    impl_deps = [],
 )
 
 cc_target(

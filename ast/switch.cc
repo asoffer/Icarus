@@ -49,7 +49,8 @@ VerifyResult Switch::VerifyType(Context *ctx) {
     auto expr_result = expr->VerifyType(ctx);
     is_const &= cond_result.const_ && expr_result.const_;
     if (expr_) {
-      if (cond_result.type_ != expr_type) { NOT_YET("handle type error"); }
+      static_cast<void>(expr_type);
+      // TODO dispatch table
     } else {
       if (cond_result.type_ != type::Bool) { NOT_YET("handle type error"); }
     }
@@ -97,24 +98,21 @@ std::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
 
   // TODO handle switching on tuples/multiple values?
   ir::Val expr_val;
-  if (expr_) { expr_val = expr_->EmitIR(ctx)[0]; }
-
-  auto *expr_type = ctx->type_of(expr_.get());
+  type::Type const * expr_type;
+  if (expr_) {
+    expr_val  = expr_->EmitIR(ctx)[0];
+    expr_type = ctx->type_of(expr_.get());
+  }
 
   for (size_t i = 0; i < cases_.size() - 1; ++i) {
     auto & [ expr, match_cond ] = cases_[i];
     auto expr_block       = ir::Func::Current->AddBlock();
 
     auto match_val = match_cond->EmitIR(ctx)[0];
-    ir::RegisterOr<bool> cond =
-        !expr_
-            ? match_val.reg_or<bool>()
-            : type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                               uint16_t, uint32_t, uint64_t, float, double>(
-                  expr_type, [&](auto type_holder) {
-                    using T = typename decltype(type_holder)::type;
-                    return ir::Eq(match_val.reg_or<T>(), expr_val.reg_or<T>());
-                  });
+    ir::RegisterOr<bool> cond = expr_
+                                    ? ir::EmitEq(ctx->type_of(match_cond.get()),
+                                                 match_val, expr_type, expr_val)
+                                    : match_val.reg_or<bool>();
 
     auto next_block = ir::EarlyExitOn<true>(expr_block, cond);
 

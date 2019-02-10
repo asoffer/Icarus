@@ -929,31 +929,36 @@ static std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
 }
 
 // TODO rename this now that it supports switch statements too.
-static std::unique_ptr<ast::Node> BuildGenericStruct(
+static std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  if (auto *tk = nodes[0]->if_as<frontend::Token>()) {
-    ASSERT(tk->token == "switch");
+  // TODO should probably not do this with a token but some sort of enumerator
+  // so we can ensure coverage/safety.
+  ASSERT(nodes[0], Is<frontend::Token>());
+  auto const &tk = nodes[0]->as<frontend::Token>().token;
+  if (tk == "switch") {
     auto sw   = BuildSwitch(move_as<ast::Statements>(nodes[4]), ctx);
     sw->expr_ = move_as<ast::Expression>(nodes[2]);
     return sw;
-  }
-
-  auto result = BuildStructLiteral(
-      std::move(nodes[4]->as<ast::Statements>()),
-      TextSpan(nodes.front()->span, nodes.back()->span), ctx);
-  if (nodes[2]->is<ast::CommaList>()) {
-    for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
-      ASSERT(expr, Is<ast::Declaration>());  // TODO handle failure
-      auto decl          = move_as<ast::Declaration>(expr);
+  } else if (tk == "struct") {
+    auto result = BuildStructLiteral(
+        std::move(nodes[4]->as<ast::Statements>()),
+        TextSpan(nodes.front()->span, nodes.back()->span), ctx);
+    if (nodes[2]->is<ast::CommaList>()) {
+      for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
+        ASSERT(expr, Is<ast::Declaration>());  // TODO handle failure
+        auto decl          = move_as<ast::Declaration>(expr);
+        decl->is_fn_param_ = true;
+        result->args_.push_back(std::move(decl));
+      }
+    } else {
+      auto decl          = move_as<ast::Declaration>(nodes[2]);
       decl->is_fn_param_ = true;
       result->args_.push_back(std::move(decl));
     }
+    return result;
   } else {
-    auto decl          = move_as<ast::Declaration>(nodes[2]);
-    decl->is_fn_param_ = true;
-    result->args_.push_back(std::move(decl));
+    UNREACHABLE();
   }
-  return result;
 }
 
 static std::unique_ptr<ast::Node> BuildConcreteStruct(
@@ -1189,7 +1194,7 @@ auto Rules = std::array{
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
     Rule(stmts, {stmts, (EXPR | stmts), newline}, ast::BuildMoreStatements),
     Rule(expr, {kw_struct, l_paren, expr, r_paren, braced_stmts},
-         BuildGenericStruct),
+         BuildParameterizedKeywordScope),
     Rule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
     Rule(expr, {KW_BLOCK, newline}, drop_all_but<0>),
 
