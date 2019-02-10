@@ -18,7 +18,6 @@ cc_target(
         "//misc:architecture",
         "//ast:expression",
         "//backend:exec",
-        "//misc:context",
         "//ir:func",
         "//type:generic_struct",
         "//type:util",
@@ -34,6 +33,7 @@ cc_target(
         "//ir:val",
     ],
     impl_deps = [
+        ":eval",
         "//ast:block_literal",
         "//ast:expression",
         "//ast:function_literal",

@@ -284,3 +284,6 @@ OP_MACRO(Init,                 Init,                void,                    spe
 OP_MACRO(Destroy,              Destroy,             void,                    special1_)
 OP_MACRO(Move,                 Move,                void,                    special2_)
 OP_MACRO(Copy,                 Copy,                void,                    special2_)
+OP_MACRO(VerifyType,           VerifyType,          void,                    ast_)
+OP_MACRO(Validate,             Validate,            void,                    ast_)
+OP_MACRO(EvaluateAsType,       EvaluateAsType,      type::Type const*,       ast_)

@@ -70,9 +70,14 @@ VerifyResult StructLiteral::VerifyType(Context *ctx) {
 
 void StructLiteral::Validate(Context *ctx) {
   for (auto &a : args_) { a->Validate(ctx); }
-  for (auto &field : fields_) {
-    field->VerifyType(ctx);
-    field->Validate(ctx);
+  // TODO perhaps do some minimal field validation when it's not dependent on
+  // the argument parameters.
+
+  if (args_.empty()) {
+    for (auto &field : fields_) {
+      field->VerifyType(ctx);
+      field->Validate(ctx);
+    }
   }
 }
 
@@ -159,7 +164,27 @@ void StructLiteral::CompleteBody(Context *ctx) {
     // second... I don't know.
     ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(struct_reg),
               cache_slot_addr);
-    auto result = GenerateStruct(this, struct_reg, ctx);
+    for (auto const &field : fields_) {
+      ir::VerifyType(field.get(), ctx->mod_);
+      ir::Validate(field.get(), ctx->mod_);
+
+      // TODO exit early if either verifytype or validate fail.
+
+      auto type_reg = ir::EvaluateAsType(field->type_expr.get(), ctx->mod_);
+
+      ir::CreateStructField(struct_reg, type_reg);
+      ir::SetStructFieldName(struct_reg, field->id_);
+
+      for (auto const &hashtag : field->hashtags_) {
+        ir::AddHashtagToField(struct_reg, hashtag);
+      }
+    }
+
+    for (auto hashtag : hashtags_) {
+      ir::AddHashtagToStruct(struct_reg, hashtag);
+    }
+
+    ir::RegisterOr<type::Type const *> result = ir::FinalizeStruct(struct_reg);
     ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(result));
     ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(result),
               cache_slot_addr);

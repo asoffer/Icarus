@@ -141,7 +141,9 @@ static Module const *CompileModule(Module *mod) {
     return mod;
   }
 
+  LOG << "****";
   file_stmts->Validate(&ctx);
+  LOG << "****";
   if (ctx.num_errors() != 0) {
     ctx.DumpErrors();
     found_errors = true;
@@ -172,21 +174,24 @@ static Module const *CompileModule(Module *mod) {
 #endif  // ICARUS_USE_LLVM
 
   for (auto const &stmt : ctx.mod_->statements_.content_) {
-    if (!stmt->is<ast::Declaration>()) { continue; }
-    auto &decl = stmt->as<ast::Declaration>();
-    if (decl.id_ != "main") { continue; }
-    auto f = backend::EvaluateAs<ir::AnyFunc>(decl.init_val.get(), &ctx);
-    ASSERT(f.is_fn());
-    auto ir_fn = f.func();
+    if (auto *decl = stmt->if_as<ast::Declaration>()) {
+      if (decl->id_ != "main") { continue; }
+      auto f = backend::EvaluateAs<ir::AnyFunc>(decl->init_val.get(), &ctx);
+      ASSERT(f.is_fn());
+      auto ir_fn = f.func();
 
-    // TODO check more than one?
+      // TODO check more than one?
 
 #ifdef ICARUS_USE_LLVM
-    ir_fn->llvm_fn_->setName("main");
-    ir_fn->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
+      ir_fn->llvm_fn_->setName("main");
+      ir_fn->llvm_fn_->setLinkage(llvm::GlobalValue::ExternalLinkage);
 #else
-    main_fn = ir_fn;
+      // TODO need to be holding a lock when you do this.
+      main_fn = ir_fn;
 #endif  // ICARUS_USE_LLVM
+    } else {
+      continue;
+    }
   }
 
 #ifdef ICARUS_USE_LLVM

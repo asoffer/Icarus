@@ -71,8 +71,6 @@ VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
 }
 
 VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
-
-  LOG << this;
   std::vector<const type::Type *> input_type_vec;
   input_type_vec.reserve(inputs_.size());
   for (auto &input : inputs_.params_) {
@@ -129,7 +127,6 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
 // TODO VerifyType has access to types of previous entries, but Validate
 // doesnt.
 void FunctionLiteral::Validate(Context *ctx) {
-  LOG << this;
   if (ctx->mod_->type_of(ctx->bound_constants_, this) == type::Generic) {
     return;
   }

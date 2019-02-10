@@ -28,7 +28,11 @@ std::string Arguments::to_string() const {
       offset = arch.MoveForwardToAlignment(t, offset);
       type::Apply(t, [&](auto type_holder) {
         using T = typename decltype(type_holder)::type;
-        ss << " " << args_.get<T>(offset);
+        if constexpr (std::is_same_v<T, type::Type const*>) {
+          ss << " " << args_.get<T>(offset)->to_string();
+        } else {
+          ss << " " << args_.get<T>(offset);
+        }
       });
       offset += arch.bytes(t);
     }

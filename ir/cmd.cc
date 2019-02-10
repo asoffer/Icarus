@@ -36,6 +36,22 @@ void Destroy(type::Type const *t, Register r) {
   cmd.special1_ = {t, r};
 }
 
+void VerifyType(ast::Node *node, ::Module *mod) {
+  auto &cmd = MakeCmd(nullptr, Op::VerifyType);
+  cmd.ast_  = {node, mod};
+}
+
+void Validate(ast::Node *node, ::Module *mod) {
+  auto &cmd = MakeCmd(nullptr, Op::Validate);
+  cmd.ast_  = {node, mod};
+}
+
+Register EvaluateAsType(ast::Node *node, ::Module *mod) {
+  auto &cmd = MakeCmd(type::Type_, Op::EvaluateAsType);
+  cmd.ast_  = {node, mod};
+  return cmd.result;
+}
+
 Cmd &MakeCmd(type::Type const *t, Op op) {
   auto &cmd = ASSERT_NOT_NULL(Func::Current)
                   ->block(BasicBlock::Current)

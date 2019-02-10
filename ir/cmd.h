@@ -219,6 +219,15 @@ struct Cmd {
     }
   };
 
+  struct AstData {
+    ast::Node *node_;
+    ::Module *mod_;
+
+    inline friend std::ostream &operator<<(std::ostream &os, AstData ast) {
+      return os << ast.node_ << " " << reinterpret_cast<uintptr_t>(ast.mod_);
+    }
+  };
+
   union {
     Empty empty_;
     Register reg_;
@@ -279,6 +288,8 @@ struct Cmd {
     Args<FlagsVal> flags_args_;
     Args<type::Type const *> type_args_;
     Args<Addr> addr_args_;
+
+    AstData ast_;
 
     // TODO rename these since some of them are used for things other than
     // storage (e.g., block appending).
@@ -584,6 +595,10 @@ void Move(type::Type const *t, Register from, RegisterOr<Addr> to);
 void Copy(type::Type const *t, Register from, RegisterOr<Addr> to);
 void Destroy(type::Type const *t, Register r);
 void Init(type::Type const *t, Register r);
+
+void VerifyType(ast::Node *node, ::Module *mod);
+void Validate(ast::Node *node, ::Module *mod);
+Register EvaluateAsType(ast::Node *node, ::Module *mod);
 
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

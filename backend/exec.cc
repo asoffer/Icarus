@@ -15,6 +15,7 @@
 #include "ast/function_literal.h"
 #include "ast/scope_node.h"
 #include "ast/struct_literal.h"
+#include "backend/eval.h"
 #include "base/util.h"
 #include "error/log.h"
 #include "ir/arguments.h"
@@ -1073,6 +1074,40 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       type::Type const **cache_slot =
           &cache[resolve<type::Type const *>(ir::Register{0})];
       save(ir::Addr::Heap(cache_slot));
+    } break;
+    case ir::Op::VerifyType: {
+      LOG << cmd.ast_.mod_->generic_struct_cache_;
+      Context ctx(cmd.ast_.mod_);
+      // TODO This is a hack to see if we can get bound constants to work. It's
+      // only going to work if you have exactly one parameter in your struct
+      // literal and it's a type.
+      auto *t =  resolve<type::Type const*>(ir::Register{0});
+      auto *sl = cmd.ast_.mod_->generic_struct_cache_.begin()->first;
+      ctx.bound_constants_.constants_.emplace(sl->args_.at(0).get(), t);
+      cmd.ast_.node_->VerifyType(&ctx);
+    } break;
+    case ir::Op::Validate: {
+      Context ctx(cmd.ast_.mod_);
+      // TODO This is a hack to see if we can get bound constants to work. It's
+      // only going to work if you have exactly one parameter in your struct
+      // literal and it's a type.
+      auto *t =  resolve<type::Type const*>(ir::Register{0});
+      auto *sl = cmd.ast_.mod_->generic_struct_cache_.begin()->first;
+      ctx.bound_constants_.constants_.emplace(sl->args_.at(0).get(), t);
+
+      cmd.ast_.node_->Validate(&ctx);
+    } break;
+    case ir::Op::EvaluateAsType: {
+      Context ctx(cmd.ast_.mod_);
+      // TODO This is a hack to see if we can get bound constants to work. It's
+      // only going to work if you have exactly one parameter in your struct
+      // literal and it's a type.
+      auto *t =  resolve<type::Type const*>(ir::Register{0});
+      auto *sl = cmd.ast_.mod_->generic_struct_cache_.begin()->first;
+      ctx.bound_constants_.constants_.emplace(sl->args_.at(0).get(), t);
+
+      save(EvaluateAs<type::Type const *>(
+          &cmd.ast_.node_->as<ast::Expression>(), &ctx));
     } break;
     case ir::Op::CondJump:
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];
