@@ -1,7 +1,7 @@
 #include "ast/statements.h"
 
-#include "misc/context.h"
 #include "ir/val.h"
+#include "misc/context.h"
 
 namespace ast {
 std::string Statements::to_string(size_t n) const {
@@ -17,6 +17,11 @@ std::string Statements::to_string(size_t n) const {
 void Statements::assign_scope(Scope *scope) {
   scope_ = scope;
   for (auto &stmt : content_) { stmt->assign_scope(scope); }
+}
+
+void Statements::DependentDecls(base::Graph<Declaration *> *g,
+                                Declaration *d) const {
+  for (auto const &stmt : content_) { stmt->DependentDecls(g, d); }
 }
 
 VerifyResult Statements::VerifyType(Context *ctx) {

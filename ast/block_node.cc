@@ -18,6 +18,12 @@ void BlockNode::assign_scope(Scope *scope) {
   stmts_.assign_scope(block_scope_.get());
 }
 
+void BlockNode::DependentDecls(base::Graph<Declaration *> *g,
+                               Declaration *d) const {
+  name_->DependentDecls(g, d);
+  stmts_.DependentDecls(g, d);
+}
+
 VerifyResult BlockNode::VerifyType(Context *) {
   // TODO Is this always constant?
   return VerifyResult::Constant(type::Block);
@@ -33,6 +39,8 @@ std::vector<ir::Val> BlockNode::EmitIR(Context *ctx) {
   block_scope_->MakeAllDestructions(ctx);
   return {};
 }
-std::vector<ir::RegisterOr<ir::Addr>> BlockNode::EmitLVal(Context *) { UNREACHABLE(); }
+std::vector<ir::RegisterOr<ir::Addr>> BlockNode::EmitLVal(Context *) {
+  UNREACHABLE();
+}
 
 }  // namespace ast

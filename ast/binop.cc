@@ -5,10 +5,10 @@
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "base/check.h"
-#include "misc/context.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
+#include "misc/context.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -70,6 +70,12 @@ void Binop::assign_scope(Scope *scope) {
   rhs->assign_scope(scope);
 }
 
+void Binop::DependentDecls(base::Graph<Declaration *> *g,
+                           Declaration *d) const {
+  lhs->DependentDecls(g, d);
+  rhs->DependentDecls(g, d);
+}
+
 VerifyResult Binop::VerifyType(Context *ctx) {
   auto lhs_result = lhs->VerifyType(ctx);
   auto rhs_result = rhs->VerifyType(ctx);
@@ -129,7 +135,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       }                                                                        \
     } else {                                                                   \
       FnArgs<Expression *> args;                                               \
-      args.pos_ = std::vector<Expression *>{{lhs.get(), rhs.get()}};          \
+      args.pos_ = std::vector<Expression *>{{lhs.get(), rhs.get()}};           \
       OverloadSet os(scope_, symbol, ctx);                                     \
       os.add_adl(symbol, lhs_result.type_);                                    \
       os.add_adl(symbol, rhs_result.type_);                                    \
@@ -172,8 +178,8 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         return VerifyResult(ctx->set_type(this, ret_type), is_const);
       }
     } break;
-   case Operator::AddEq: {
-       bool is_const = lhs_result.const_ && rhs_result.const_;
+    case Operator::AddEq: {
+      bool is_const = lhs_result.const_ && rhs_result.const_;
       if (type::IsNumeric(lhs_result.type_) &&
           type::IsNumeric(rhs_result.type_)) {
         if (lhs_result.type_ == rhs_result.type_) {
@@ -246,51 +252,48 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::Add: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {
-          type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-              rhs_ir.type, [&](auto type_holder) {
-                using T = typename decltype(type_holder)::type;
-                return ir::ValFrom(
-                    ir::Add(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-              })};
+      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                               uint16_t, uint32_t, uint64_t, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(ir::Add(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+          })};
     } break;
     case Language::Operator::Sub: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {
-          type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-              rhs_ir.type, [&](auto type_holder) {
-                using T = typename decltype(type_holder)::type;
-                return ir::ValFrom(
-                    ir::Sub(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-              })};
+      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                               uint16_t, uint32_t, uint64_t, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(ir::Sub(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+          })};
     } break;
     case Language::Operator::Mul: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {
-          type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-              rhs_ir.type, [&](auto type_holder) {
-                using T = typename decltype(type_holder)::type;
-                return ir::ValFrom(
-                    ir::Mul(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-              })};
+      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                               uint16_t, uint32_t, uint64_t, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(ir::Mul(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+          })};
     } break;
     case Language::Operator::Div: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {
-          type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
-              rhs_ir.type, [&](auto type_holder) {
-                using T = typename decltype(type_holder)::type;
-                return ir::ValFrom(
-                    ir::Div(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-              })};
+      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                               uint16_t, uint32_t, uint64_t, float, double>(
+          rhs_ir.type, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(ir::Div(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
+          })};
     } break;
     case Language::Operator::Mod: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t>(
+      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                               uint16_t, uint32_t, uint64_t>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             return ir::ValFrom(ir::Mod(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
@@ -385,7 +388,8 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::AddEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
+      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                       uint32_t, uint64_t, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Add(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -396,7 +400,8 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::SubEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
+      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                       uint32_t, uint64_t, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Sub(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -407,7 +412,8 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::DivEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
+      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                       uint32_t, uint64_t, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -418,18 +424,18 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     case Language::Operator::ModEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t>(
-          rhs_ir.type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
-            ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
-                      lhs_lval);
-          });
+      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                       uint32_t, uint64_t>(rhs_ir.type, [&](auto type_holder) {
+        using T = typename decltype(type_holder)::type;
+        ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()), lhs_lval);
+      });
       return {};
     } break;
     case Language::Operator::MulEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
-      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>(
+      type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                       uint32_t, uint64_t, float, double>(
           rhs_ir.type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
             ir::Store(ir::Mul(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
@@ -446,9 +452,10 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
         auto *flags_type = &lhs_type->as<type::Flags>();
         auto lhs_lval    = lhs->EmitLVal(ctx)[0];
         auto rhs_ir      = rhs->EmitIR(ctx)[0].reg_or<ir::FlagsVal>();
-        ir::Store(ir::XorFlags(flags_type, ir::Load<ir::FlagsVal>(lhs_lval, flags_type),
-                               rhs_ir),
-                  lhs_lval);
+        ir::Store(
+            ir::XorFlags(flags_type,
+                         ir::Load<ir::FlagsVal>(lhs_lval, flags_type), rhs_ir),
+            lhs_lval);
       } else {
         UNREACHABLE(lhs_type);
       }

@@ -23,8 +23,8 @@ std::vector<ir::Val> MatchDeclaration::EmitIR(Context *ctx) {
       iter != ctx->bound_constants_.constants_.end()) {
     return {iter->second};
   } else {
-  return {ir::Val(
-      backend::EvaluateAs<type::Interface const *>(type_expr.get(), ctx))};
+    return {ir::Val(
+        backend::EvaluateAs<type::Interface const *>(type_expr.get(), ctx))};
   }
 }
 }  // namespace ast

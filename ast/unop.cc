@@ -5,9 +5,9 @@
 #include "ast/terminal.h"
 #include "backend/eval.h"
 #include "base/check.h"
-#include "misc/context.h"
 #include "ir/components.h"
 #include "ir/func.h"
+#include "misc/context.h"
 
 namespace ast {
 using base::check::Is;
@@ -45,11 +45,14 @@ void Unop::assign_scope(Scope *scope) {
   operand->assign_scope(scope);
 }
 
+void Unop::DependentDecls(base::Graph<Declaration *> *g,
+                            Declaration *d) const {
+  operand->DependentDecls(g, d);
+}
+
 void Unop::Validate(Context *ctx) { operand->Validate(ctx); }
 
-void Unop::ExtractJumps(JumpExprs *rets) const {
-  operand->ExtractJumps(rets);
-}
+void Unop::ExtractJumps(JumpExprs *rets) const { operand->ExtractJumps(rets); }
 
 VerifyResult Unop::VerifyType(Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), auto result,
@@ -58,7 +61,9 @@ VerifyResult Unop::VerifyType(Context *ctx) {
 
   switch (op) {
     case Language::Operator::Copy:
-      if (!operand_type->IsCopyable()) { NOT_YET("log an error. not copyable"); }
+      if (!operand_type->IsCopyable()) {
+        NOT_YET("log an error. not copyable");
+      }
       // TODO Are copies always consts?
       return VerifyResult(ctx->set_type(this, operand_type), result.const_);
     case Language::Operator::Move:
@@ -111,7 +116,7 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         return VerifyResult(ctx->set_type(this, operand_type), result.const_);
       } else if (operand_type->is<type::Struct>()) {
         FnArgs<Expression *> args;
-        args.pos_           = std::vector<Expression *>{operand.get()};
+        args.pos_ = std::vector<Expression *>{operand.get()};
         OverloadSet os(scope_, "-", ctx);
         os.add_adl("-", operand_type);
 
@@ -203,16 +208,17 @@ std::vector<ir::Val> Unop::EmitIR(Context *ctx) {
                 operand->EmitIR(ctx)[0].reg_or<ir::FlagsVal>(), flags_type)),
             flags_type)};
       } else {
-        NOT_YET(); 
+        NOT_YET();
       }
     } break;
     case Language::Operator::Sub: {
       auto operand_ir = operand->EmitIR(ctx)[0];
-      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
-          ctx->type_of(operand.get()), [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Neg(operand_ir.reg_or<T>()));
-          })};
+      return {
+          type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
+              ctx->type_of(operand.get()), [&](auto type_holder) {
+                using T = typename decltype(type_holder)::type;
+                return ir::ValFrom(ir::Neg(operand_ir.reg_or<T>()));
+              })};
     } break;
     case Language::Operator::TypeOf:
       return {ir::Val(ctx->type_of(operand.get()))};

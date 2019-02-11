@@ -9,8 +9,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "base/untyped_buffer.h"
 
+#include "base/graph.h"
 #include "base/util.h"
 #include "frontend/text_span.h"
 
@@ -26,6 +26,7 @@ struct Val;
 
 namespace ast {
 struct Expression;
+struct Declaration;
 
 struct VerifyResult {
   type::Type const *type_;
@@ -60,6 +61,8 @@ struct Node : public base::Cast<Node> {
   virtual void Validate(Context *)               = 0;
   virtual std::vector<ir::Val> EmitIR(Context *) = 0;
   virtual void ExtractJumps(JumpExprs *) const   = 0;
+  virtual void DependentDecls(base::Graph<Declaration *> *g,
+                              Declaration *d) const = 0;
 
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}

@@ -49,35 +49,56 @@ std::string FunctionLiteral::to_string(size_t n) const {
 
 void FunctionLiteral::assign_scope(Scope *scope) {
   scope_ = scope;
-  if (!fn_scope_) { // TODO can this ever be null? 
+  if (!fn_scope_) {  // TODO can this ever be null?
     fn_scope_          = scope->add_child<FnScope>();
     fn_scope_->fn_lit_ = this;
   }
+
   for (auto &in : inputs_.params_) { in.value->assign_scope(fn_scope_.get()); }
   for (auto &out : outputs_) { out->assign_scope(fn_scope_.get()); }
   statements_.assign_scope(fn_scope_.get());
+
+  base::Graph<Declaration *> dep_graph;
+  for (auto const &in : inputs_.params_) {
+    if (in.value->type_expr) {
+      in.value->type_expr->DependentDecls(&dep_graph, in.value.get());
+    }
+    if (in.value->init_val) {
+      in.value->init_val->DependentDecls(&dep_graph, in.value.get());
+    }
+  }
+
+  sorted_params_.reserve(dep_graph.num_nodes());
+  dep_graph.topologically(
+      [this](Declaration *decl) { sorted_params_.push_back(decl); });
+}
+
+void FunctionLiteral::DependentDecls(base::Graph<Declaration *> *g,
+                                     Declaration *d) const {
+  for (auto const &in : inputs_.params_) { in.value->DependentDecls(g, d); }
+  for (auto const &out : outputs_) { out->DependentDecls(g, d); }
 }
 
 VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
-  if (std::any_of(
-          inputs_.params_.begin(), inputs_.params_.end(), [](auto const &decl) {
-            return decl.value->const_ ||
-                   (decl.value->type_expr != nullptr &&
-                    decl.value->type_expr->template is<MatchDeclaration>());
-          })) {
+  if (std::any_of(sorted_params_.begin(), sorted_params_.end(),
+                  [](Declaration const *decl) {
+                    return decl->const_ ||
+                           (decl->type_expr != nullptr &&
+                            decl->type_expr->template is<MatchDeclaration>());
+                  })) {
     return VerifyResult::Constant(ctx->set_type(this, type::Generic));
   }
   return VerifyTypeConcrete(ctx);
 }
 
 VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
-  std::vector<const type::Type *> input_type_vec;
+  std::vector<type::Type const *> input_type_vec;
   input_type_vec.reserve(inputs_.size());
-  for (auto &input : inputs_.params_) {
-    input_type_vec.push_back(input.value->VerifyType(ctx).type_);
+  for (auto *d : sorted_params_) {
+    input_type_vec.push_back(d->VerifyType(ctx).type_);
   }
 
-  std::vector<const type::Type *> output_type_vec;
+  std::vector<type::Type const *> output_type_vec;
   output_type_vec.reserve(outputs_.size());
   bool error = false;
   for (auto &output : outputs_) {
@@ -132,10 +153,10 @@ void FunctionLiteral::Validate(Context *ctx) {
   }
 
   auto &validated_fns = ctx->mod_->data_[ctx->bound_constants_].validated_;
-  bool inserted = validated_fns.insert(this).second;
+  bool inserted       = validated_fns.insert(this).second;
   if (!inserted) { return; }
 
-  for (auto &in : inputs_.params_) { in.value->Validate(ctx); }
+  for (auto *in : sorted_params_) { in->Validate(ctx); }
   for (auto &out : outputs_) { out->Validate(ctx); }
 
   // NOTE! Type verifcation on statements first!
@@ -146,12 +167,14 @@ void FunctionLiteral::Validate(Context *ctx) {
   statements_.ExtractJumps(&rets);
   statements_.Validate(ctx);
   std::set<type::Type const *> types;
-  for (auto *expr : rets[JumpKind::Return]) { types.insert(ctx->type_of(expr)); }
+  for (auto *expr : rets[JumpKind::Return]) {
+    types.insert(ctx->type_of(expr));
+  }
 
   std::vector<type::Type const *> input_type_vec;
-  input_type_vec.reserve(inputs_.size());
-  for (auto const &input : inputs_.params_) {
-    input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input.value.get())));
+  input_type_vec.reserve(sorted_params_.size());
+  for (auto *input : sorted_params_) {
+    input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input)));
   }
 
   if (return_type_inferred_) {
@@ -206,7 +229,8 @@ void FunctionLiteral::Validate(Context *ctx) {
           if (expr_type->is<type::Tuple>()) {
             auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
-              ctx->error_log_.ReturningWrongNumber(expr->span, expr_type, outs.size());
+              ctx->error_log_.ReturningWrongNumber(expr->span, expr_type,
+                                                   outs.size());
             } else {
               for (size_t i = 0; i < tup_entries.size(); ++i) {
                 if (tup_entries.at(i) != outs.at(i)) {
@@ -232,7 +256,7 @@ void FunctionLiteral::Validate(Context *ctx) {
 }
 
 void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &in : inputs_.params_) { in.value->ExtractJumps(rets); }
+  for (auto &in : sorted_params_) { in->ExtractJumps(rets); }
   for (auto &out : outputs_) { out->ExtractJumps(rets); }
 }
 
@@ -261,7 +285,7 @@ std::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
     auto &work_item =
         ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this, ctx->mod_);
 
-    FnParams<Expression*> params;
+    FnParams<Expression *> params;
     params.reserve(inputs_.size());
     for (auto const &input : inputs_.params_) {
       params.append(input.name, input.value->init_val.get());

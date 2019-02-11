@@ -18,9 +18,17 @@ void ArrayType::assign_scope(Scope *scope) {
   data_type_->assign_scope(scope);
 }
 
+void ArrayType::DependentDecls(base::Graph<Declaration *> *g,
+                               Declaration *d) const {
+  length_->DependentDecls(g, d);
+  data_type_->DependentDecls(g, d);
+}
+
 VerifyResult ArrayType::VerifyType(Context *ctx) {
   auto length_result = length_->VerifyType(ctx);
-  if (length_result.type_ != type::Int64) { ctx->error_log_.ArrayIndexType(span); }
+  if (length_result.type_ != type::Int64) {
+    ctx->error_log_.ArrayIndexType(span);
+  }
 
   auto data_type_result = data_type_->VerifyType(ctx);
   if (data_type_result.type_ != type::Type_) {

@@ -2,11 +2,11 @@
 #define ICARUS_AST_SCOPE_NODE_H
 
 #include <memory>
+#include <unordered_map>
 #include "ast/block_node.h"
 #include "ast/expression.h"
 #include "ast/fn_args.h"
 #include "ast/statements.h"
-#include <unordered_map>
 #include "misc/scope.h"
 
 struct Context;
@@ -20,7 +20,9 @@ struct ScopeNode : public Expression {
   VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
-  
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override;
+
   std::vector<ir::Val> EmitIR(Context *) override;
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 

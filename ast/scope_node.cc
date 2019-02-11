@@ -36,8 +36,15 @@ void ScopeNode::assign_scope(Scope *scope) {
   for (auto &block : blocks_) { block.assign_scope(scope); }
 }
 
+void ScopeNode::DependentDecls(base::Graph<Declaration *> *g,
+                               Declaration *d) const {
+  args_.Apply([g, d](auto const &expr) { expr->DependentDecls(g, d); });
+  for (auto &block : blocks_) { block.DependentDecls(g, d); }
+}
+
 VerifyResult ScopeNode::VerifyType(Context *ctx) {
-  ASSIGN_OR(return VerifyResult::Error(), auto name_result, name_->VerifyType(ctx));
+  ASSIGN_OR(return VerifyResult::Error(), auto name_result,
+                   name_->VerifyType(ctx));
 
   auto arg_types =
       args_.Transform([ctx, this](auto &arg) { return arg->VerifyType(ctx); });
@@ -50,7 +57,6 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
     ctx->error_log_.NonConstantScopeName(name_->span);
     return VerifyResult::Error();
   }
-
 
   // TODO check that all the blocks make sense and emit errors
 
@@ -155,7 +161,7 @@ std::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     state_id = new Identifier(TextSpan{}, "<scope-state>");
 
     typed_args.pos_.emplace_back(state_id,
-                              ctx->set_type(state_id, state_ptr_type));
+                                 ctx->set_type(state_id, state_ptr_type));
     ir_args.pos_.emplace_back(
         state_id, std::vector<ir::Val>{ir::Val::Reg(alloc, state_ptr_type)});
   }
@@ -165,16 +171,16 @@ std::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
     ir_args.pos_.emplace_back(expr.get(), expr.get()->EmitIR(ctx));
   }
 
-  for (auto const & [ name, expr ] : args_.named_) {
+  for (auto const &[name, expr] : args_.named_) {
     typed_args.named_.emplace(
         std::piecewise_construct, std::forward_as_tuple(name),
         std::forward_as_tuple(expr.get(), ctx->type_of(expr.get())));
-    ir_args.named_.emplace(std::piecewise_construct,
-                           std::forward_as_tuple(name),
-                           std::forward_as_tuple(expr.get(), expr.get()->EmitIR(ctx)));
+    ir_args.named_.emplace(
+        std::piecewise_construct, std::forward_as_tuple(name),
+        std::forward_as_tuple(expr.get(), expr.get()->EmitIR(ctx)));
   }
 
-  auto[dispatch_table, result_type] =
+  auto [dispatch_table, result_type] =
       DispatchTable::Make(typed_args, init_os, ctx);
   auto block_seq = dispatch_table.EmitCall(ir_args, result_type, ctx)[0]
                        .reg_or<ir::BlockSequence>();
@@ -192,7 +198,7 @@ std::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
           state_id, std::vector<ir::Val>{ir::Val::Reg(alloc, state_ptr_type)});
       before_expr_args.pos_.emplace_back(state_id, state_ptr_type);
     }
-    auto[dispatch_table, result_type] =
+    auto [dispatch_table, result_type] =
         DispatchTable::Make(before_expr_args, data.before_os_, ctx);
 
     // TODO args?
@@ -249,5 +255,7 @@ std::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
   }
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> ScopeNode::EmitLVal(Context *) { UNREACHABLE(this); }
+std::vector<ir::RegisterOr<ir::Addr>> ScopeNode::EmitLVal(Context *) {
+  UNREACHABLE(this);
+}
 }  // namespace ast

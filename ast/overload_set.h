@@ -4,8 +4,8 @@
 #include <string>
 
 #include <vector>
-#include "type/typed_value.h"
 #include "type/function.h"
+#include "type/typed_value.h"
 
 struct Scope;
 struct Context;

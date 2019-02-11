@@ -18,6 +18,8 @@ struct Access : public Expression {
   void ExtractJumps(JumpExprs *rets) const override {
     operand->ExtractJumps(rets);
   }
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;

@@ -4,10 +4,10 @@
 #include "ast/function_literal.h"
 #include "ast/match_declaration.h"
 #include "backend/eval.h"
-#include "misc/context.h"
 #include "error/log.h"
 #include "ir/components.h"
 #include "ir/val.h"
+#include "misc/context.h"
 #include "misc/module.h"
 #include "misc/scope.h"
 #include "type/pointer.h"
@@ -46,7 +46,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
       } break;
       case 0:
         // TODO what if you find a bound constant and some errror decls?
-        for (auto const & [ d, v ] :
+        for (auto const &[d, v] :
              ctx->mod_->constants_[ctx->bound_constants_].constants_) {
           if (d->id_ == token) {
             return VerifyResult(ctx->set_type(this, v.type), d->const_);
@@ -63,8 +63,8 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
   }
 
   if (!decl_->const_ && (span.start.line_num < decl_->span.start.line_num ||
-                        (span.start.line_num == decl_->span.start.line_num &&
-                         span.start.offset < decl_->span.start.offset))) {
+                         (span.start.line_num == decl_->span.start.line_num &&
+                          span.start.offset < decl_->span.start.offset))) {
     ctx->error_log_.DeclOutOfOrder(decl_, this);
   }
 
@@ -105,7 +105,7 @@ std::vector<ir::Val> Identifier::EmitIR(Context *ctx) {
       UNREACHABLE(decl_);
     }
   } else {
-    auto *t = ASSERT_NOT_NULL(ctx->type_of(this));
+    auto *t   = ASSERT_NOT_NULL(ctx->type_of(this));
     auto lval = EmitLVal(ctx)[0];
     if (!lval.is_reg_) { NOT_YET(); }
     return {ir::Val::Reg(ir::PtrFix(lval.reg_, t), t)};

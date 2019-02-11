@@ -27,6 +27,11 @@ cc_lib(
 )
 
 cc_lib(
+    name = "graph",
+    hdrs = ["graph.h"],
+)
+
+cc_lib(
     name = "guarded",
     hdrs = ["guarded.h"],
 )

@@ -21,5 +21,5 @@ struct Literal : public Expression {
   }
 };
 
-} // namespace ast
-#endif // ICARUS_AST_LITERAL_H
+}  // namespace ast
+#endif  // ICARUS_AST_LITERAL_H

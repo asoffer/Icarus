@@ -2,9 +2,9 @@
 
 #include "ast/hole.h"
 #include "ast/identifier.h"
-#include "misc/context.h"
 #include "ir/cmd.h"
 #include "ir/val.h"
+#include "misc/context.h"
 
 namespace ir {
 // TODO as a general rule we let ast reach into ir but not the other direction.
@@ -29,11 +29,11 @@ void AddEnumerator(ast::EnumLiteral::Kind kind, Register reg,
                    std::string_view token) {
   switch (kind) {
     case ast::EnumLiteral::Kind::Enum: {
-      auto &cmd     = MakeCmd(type::Type_, Op::AddEnumerator);
+      auto &cmd           = MakeCmd(type::Type_, Op::AddEnumerator);
       cmd.add_enumerator_ = {reg, token};
     } break;
     case ast::EnumLiteral::Kind::Flags: {
-      auto &cmd     = MakeCmd(type::Type_, Op::AddFlag);
+      auto &cmd           = MakeCmd(type::Type_, Op::AddFlag);
       cmd.add_enumerator_ = {reg, token};
     } break;
     default: UNREACHABLE();
@@ -55,7 +55,7 @@ TypedRegister<type::Type const *> FinalizeEnum(ast::EnumLiteral::Kind kind,
     } break;
     case ast::EnumLiteral::Kind::Flags: {
       auto &cmd = MakeCmd(type::Type_, Op::FinalizeFlags);
-      cmd.reg_ = reg;
+      cmd.reg_  = reg;
       return cmd.result;
     } break;
     default: UNREACHABLE();
@@ -81,6 +81,11 @@ std::string EnumLiteral::to_string(size_t n) const {
 void EnumLiteral::assign_scope(Scope *scope) {
   enum_scope_ = scope->add_child<DeclScope>();
   for (auto &elem : elems_) { elem->assign_scope(enum_scope_.get()); }
+}
+
+void EnumLiteral::DependentDecls(base::Graph<Declaration *> *g,
+                                 Declaration *d) const {
+  for (auto const &elem : elems_) { elem->DependentDecls(g, d); }
 }
 
 VerifyResult EnumLiteral::VerifyType(Context *ctx) {

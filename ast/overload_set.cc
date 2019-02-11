@@ -13,7 +13,7 @@ OverloadSet::OverloadSet(Scope *scope, std::string const &id, Context *ctx) {
 
 using base::check::Is;
 void OverloadSet::keep_return(type::Type const *t) {
-  auto head_iter  = begin();
+  auto head_iter = begin();
   auto tail_iter = end();
   --tail_iter;
   while (head_iter != tail_iter) {

@@ -23,6 +23,8 @@ struct Terminal : public Literal {
 
   void Validate(Context *) override {}
   void ExtractJumps(JumpExprs *) const override {}
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override {}
 
   std::vector<ir::Val> EmitIR(Context *) override { return {value}; }
 

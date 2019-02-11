@@ -468,7 +468,7 @@ cc_lib(
     name = "node",
     hdrs = ["node.h"],
     deps = [
-        "//base:untyped_buffer",
+        "//base:graph",
         "//base:util",
         "//frontend:text_span",
     ],

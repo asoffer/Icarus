@@ -18,6 +18,8 @@ struct CommaList : public Expression {
   VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override;
 
   std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(Context *ctx);
 

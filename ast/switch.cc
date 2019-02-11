@@ -17,7 +17,7 @@ std::string Switch::to_string(size_t n) const {
   std::stringstream ss;
   ss << "switch ";
   if (expr_) { ss << "(" << expr_->to_string(n) << ") {\n"; }
-  for (const auto & [ expr, cond ] : cases_) {
+  for (const auto &[expr, cond] : cases_) {
     ss << std::string((n + 1) * 2, ' ') << expr->to_string(n + 1) << " when "
        << cond->to_string(n + 1) << "\n";
   }
@@ -28,14 +28,23 @@ std::string Switch::to_string(size_t n) const {
 void Switch::assign_scope(Scope *scope) {
   scope_ = scope;
   if (expr_) { expr_->assign_scope(scope_); }
-  for (auto & [ expr, cond ] : cases_) {
+  for (auto &[expr, cond] : cases_) {
     expr->assign_scope(scope);
     cond->assign_scope(scope);
   }
 }
 
+void Switch::DependentDecls(base::Graph<Declaration *> *g,
+                            Declaration *d) const {
+  if (expr_) { expr_->DependentDecls(g, d); }
+  for (auto &[expr, cond] : cases_) {
+    expr->DependentDecls(g, d);
+    cond->DependentDecls(g, d);
+  }
+}
+
 VerifyResult Switch::VerifyType(Context *ctx) {
-  bool is_const = true;
+  bool is_const               = true;
   type::Type const *expr_type = nullptr;
   if (expr_) {
     ASSIGN_OR(return _, auto result, expr_->VerifyType(ctx));
@@ -44,7 +53,7 @@ VerifyResult Switch::VerifyType(Context *ctx) {
   }
 
   std::unordered_set<const type::Type *> types;
-  for (auto & [ expr, cond ] : cases_) {
+  for (auto &[expr, cond] : cases_) {
     auto cond_result = cond->VerifyType(ctx);
     auto expr_result = expr->VerifyType(ctx);
     is_const &= cond_result.const_ && expr_result.const_;
@@ -75,7 +84,7 @@ VerifyResult Switch::VerifyType(Context *ctx) {
 
 void Switch::Validate(Context *ctx) {
   if (expr_) { expr_->Validate(ctx); }
-  for (auto & [ expr, cond ] : cases_) {
+  for (auto &[expr, cond] : cases_) {
     expr->Validate(ctx);
     cond->Validate(ctx);
   }
@@ -83,7 +92,7 @@ void Switch::Validate(Context *ctx) {
 
 void Switch::ExtractJumps(JumpExprs *rets) const {
   if (expr_) { expr_->ExtractJumps(rets); }
-  for (auto & [ expr, cond ] : cases_) {
+  for (auto &[expr, cond] : cases_) {
     expr->ExtractJumps(rets);
     cond->ExtractJumps(rets);
   }
@@ -98,17 +107,17 @@ std::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
 
   // TODO handle switching on tuples/multiple values?
   ir::Val expr_val;
-  type::Type const * expr_type;
+  type::Type const *expr_type;
   if (expr_) {
     expr_val  = expr_->EmitIR(ctx)[0];
     expr_type = ctx->type_of(expr_.get());
   }
 
   for (size_t i = 0; i < cases_.size() - 1; ++i) {
-    auto & [ expr, match_cond ] = cases_[i];
-    auto expr_block       = ir::Func::Current->AddBlock();
+    auto &[expr, match_cond] = cases_[i];
+    auto expr_block          = ir::Func::Current->AddBlock();
 
-    auto match_val = match_cond->EmitIR(ctx)[0];
+    auto match_val            = match_cond->EmitIR(ctx)[0];
     ir::RegisterOr<bool> cond = expr_
                                     ? ir::EmitEq(ctx->type_of(match_cond.get()),
                                                  match_val, expr_type, expr_val)

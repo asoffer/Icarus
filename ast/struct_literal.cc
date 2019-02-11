@@ -43,6 +43,12 @@ std::string StructLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
+void StructLiteral::DependentDecls(base::Graph<Declaration *> *g,
+                                   Declaration *d) const {
+  for (auto &a : args_) { a->DependentDecls(g, d); }
+  for (auto &f : fields_) { f->DependentDecls(g, d); }
+}
+
 void StructLiteral::assign_scope(Scope *scope) {
   scope_     = scope;
   type_scope = scope->add_child<DeclScope>();
@@ -156,7 +162,7 @@ void StructLiteral::CompleteBody(Context *ctx) {
     ir::BasicBlock::Current = ir::EarlyExitOn<false>(
         land_block,
         ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
-    auto ctx_reg =  ir::CreateContext(ctx->mod_);
+    auto ctx_reg    = ir::CreateContext(ctx->mod_);
     auto struct_reg = ir::CreateStruct(scope_);
 
     // TODO why isn't implicit TypedRegister -> RegisterOr cast working on
@@ -165,7 +171,7 @@ void StructLiteral::CompleteBody(Context *ctx) {
     // second... I don't know.
     ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(struct_reg),
               cache_slot_addr);
-    for (auto const& arg : args_) {
+    for (auto const &arg : args_) {
       ir::AddBoundConstant(ctx_reg, arg.get(), ctx->addr(arg.get()));
     }
 

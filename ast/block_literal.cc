@@ -1,7 +1,7 @@
 #include "ast/block_literal.h"
 
-#include "misc/context.h"
 #include "ir/val.h"
+#include "misc/context.h"
 #include "misc/scope.h"
 #include "type/function.h"
 #include "type/primitive.h"
@@ -29,6 +29,12 @@ void BlockLiteral::assign_scope(Scope *scope) {
   for (auto &a : after_) { a->assign_scope(body_scope_.get()); }
 }
 
+void BlockLiteral::DependentDecls(base::Graph<Declaration *> *g,
+                                  Declaration *d) const {
+  for (auto const &b : before_) { b->DependentDecls(g, d); }
+  for (auto const &a : after_) { a->DependentDecls(g, d); }
+}
+
 VerifyResult BlockLiteral::VerifyType(Context *ctx) {
   return VerifyResult::Constant(required_ ? type::Block : type::OptBlock);
 }
@@ -51,8 +57,8 @@ void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
 }
 
 std::vector<ir::Val> ast::BlockLiteral::EmitIR(Context *ctx) {
-  for (auto& b : before_) { b->EmitIR(ctx); }
-  for (auto& a : after_) { a->EmitIR(ctx); }
+  for (auto &b : before_) { b->EmitIR(ctx); }
+  for (auto &a : after_) { a->EmitIR(ctx); }
   return {ir::Val::Block(this)};
 }
 

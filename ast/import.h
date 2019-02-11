@@ -23,6 +23,11 @@ struct Import : public Literal {
     operand_->ExtractJumps(rets);
   }
 
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override {
+    operand_->DependentDecls(g, d);
+  }
+
   std::vector<ir::Val> EmitIR(Context *) override;
 
   // TODO optimization: if the operand_ is a string literal, schedule it

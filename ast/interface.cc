@@ -8,13 +8,18 @@
 namespace ir {
 TypedRegister<type::Interface const *> CreateInterface(::Scope const *scope);
 ir::TypedRegister<type::Interface const *> FinalizeInterface(Register r);
-}
+}  // namespace ir
 
 namespace ast {
 void Interface::assign_scope(Scope *scope) {
   scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
   for (auto &d : decls_) { d.assign_scope(body_scope_.get()); }
+}
+
+void Interface::DependentDecls(base::Graph<Declaration *> *g,
+                               Declaration *d) const {
+  NOT_YET();
 }
 
 std::string Interface::to_string(size_t n) const {

@@ -17,12 +17,14 @@ struct Statements : public Node {
   VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
-  
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override;
+
   std::vector<ir::Val> EmitIR(Context *) override;
 
   inline size_t size() const { return content_.size(); }
 
-  void append(std::unique_ptr<Node>&& node);
+  void append(std::unique_ptr<Node> &&node);
 
   std::vector<std::unique_ptr<Node>> content_;
 };

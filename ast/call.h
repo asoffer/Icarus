@@ -2,8 +2,8 @@
 #define ICARUS_AST_CALL_H
 
 #include "ast/dispatch.h"
-#include "ast/literal.h"
 #include "ast/fn_args.h"
+#include "ast/literal.h"
 
 namespace ast {
 struct Call : public Literal {
@@ -13,6 +13,8 @@ struct Call : public Literal {
   VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
 

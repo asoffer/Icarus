@@ -1,8 +1,8 @@
 #include "ast/scope_literal.h"
 
-#include "misc/context.h"
 #include "error/log.h"
 #include "ir/val.h"
+#include "misc/context.h"
 #include "misc/scope.h"
 #include "type/function.h"
 #include "type/pointer.h"
@@ -22,6 +22,11 @@ void ScopeLiteral::assign_scope(Scope *scope) {
   scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
   for (auto &decl : decls_) { decl.assign_scope(body_scope_.get()); }
+}
+
+void ScopeLiteral::DependentDecls(base::Graph<Declaration *> *g,
+                                  Declaration *d) const {
+  for (auto &decl : decls_) { decl.DependentDecls(g, d); }
 }
 
 type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {

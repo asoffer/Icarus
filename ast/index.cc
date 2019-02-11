@@ -22,6 +22,12 @@ void Index::assign_scope(Scope *scope) {
   rhs_->assign_scope(scope);
 }
 
+void Index::DependentDecls(base::Graph<Declaration *> *g,
+                           Declaration *d) const {
+  lhs_->DependentDecls(g, d);
+  rhs_->DependentDecls(g, d);
+}
+
 VerifyResult Index::VerifyType(Context *ctx) {
   auto lhs_result = lhs_->VerifyType(ctx);
   auto rhs_result = rhs_->VerifyType(ctx);
@@ -70,7 +76,7 @@ VerifyResult Index::VerifyType(Context *ctx) {
   } else {
     ctx->error_log_.InvalidIndexing(span, lhs_result.type_);
     return VerifyResult::Error();
-  } 
+  }
 }
 
 void Index::Validate(Context *ctx) {

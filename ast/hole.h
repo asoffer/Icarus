@@ -16,6 +16,9 @@ struct Hole : public Literal {
   void assign_scope(Scope *scope) { scope_ = scope; }
   std::string to_string(size_t n) const override { return "--"; }
   void ExtractJumps(JumpExprs *) const {}
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override {}
+
   VerifyResult VerifyType(Context *) { return VerifyResult::Error(); }
   void Validate(Context *ctx) {}
 

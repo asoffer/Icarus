@@ -16,6 +16,8 @@ struct RepeatedUnop : public Node {
   VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
 

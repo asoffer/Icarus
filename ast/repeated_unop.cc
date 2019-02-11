@@ -26,6 +26,11 @@ void RepeatedUnop::assign_scope(Scope *scope) {
   args_.assign_scope(scope);
 }
 
+void RepeatedUnop::DependentDecls(base::Graph<Declaration *> *g,
+                                  Declaration *d) const {
+  args_.DependentDecls(g, d);
+}
+
 void RepeatedUnop::Validate(Context *ctx) { args_.Validate(ctx); }
 
 void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
@@ -135,14 +140,15 @@ std::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
       // things or at least make them not compile if the `after` function takes
       // a compile-time constant argument.
       for (size_t i = 0; i < arg_vals.size(); ++i) {
-        ctx->yields_stack_.back().emplace_back(args_.exprs_[i].get(), arg_vals[i]);
+        ctx->yields_stack_.back().emplace_back(args_.exprs_[i].get(),
+                                               arg_vals[i]);
       }
       ctx->more_stmts_allowed_ = false;
       return {};
     }
     case Language::Operator::Print: {
       auto const *dispatch_tables = ctx->rep_dispatch_tables(this);
-      size_t index = 0;
+      size_t index                = 0;
       // TODO this is wrong if you use the <<(...) spread operator.
       for (auto &val : arg_vals) {
         auto *t = ctx->type_of(args_.exprs_.at(index).get());
@@ -150,7 +156,9 @@ std::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
           ast::FnArgs<std::pair<ast::Expression *, std::vector<ir::Val>>> args;
           args.pos_.emplace_back(args_.exprs_[index].get(),
                                  std::vector<ir::Val>{std::move(val)});
-          ASSERT_NOT_NULL(dispatch_tables)->at(index).EmitCall(args, type::Void(), ctx);
+          ASSERT_NOT_NULL(dispatch_tables)
+              ->at(index)
+              .EmitCall(args, type::Void(), ctx);
         } else {
           t->EmitRepr(val, ctx);
         }

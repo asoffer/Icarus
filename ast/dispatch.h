@@ -4,11 +4,10 @@
 #include <string>
 #include <variant>
 
+#include <unordered_map>
 #include "ast/bound_constants.h"
 #include "ast/fn_args.h"
 #include "ast/overload_set.h"
-#include <unordered_map>
-#include <unordered_map>
 #include "base/expected.h"
 
 struct Context;
@@ -45,7 +44,7 @@ struct Binding {
 
     constexpr bool defaulted() const { return expr == nullptr; }
 
-    Expression *expr = nullptr;
+    Expression *expr   = nullptr;
     int argument_index = -1;  // Positive numbers indicate positional arguments.
                               // -1 indicates named argument.
     int expansion_index = -1;     // Positive numbers indicate the index of an

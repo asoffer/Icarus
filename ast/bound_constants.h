@@ -1,8 +1,8 @@
 #ifndef ICARUS_AST_BOUND_CONSTANTS_H
 #define ICARUS_AST_BOUND_CONSTANTS_H
 
-#include <sstream>
 #include <map>
+#include <sstream>
 
 #include "base/string.h"
 #include "ir/val.h"

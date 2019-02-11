@@ -19,6 +19,11 @@ void StructType::assign_scope(Scope *scope) {
   for (auto &arg : args_) { arg->assign_scope(scope); }
 }
 
+void StructType::DependentDecls(base::Graph<Declaration *> *g,
+                                Declaration *d) const {
+  for (auto &arg : args_) { arg->DependentDecls(g, d); }
+}
+
 VerifyResult StructType::VerifyType(Context *ctx) {
   for (auto &arg : args_) { arg->VerifyType(ctx); }
   return VerifyResult::Constant(ctx->set_type(this, type::Type_));

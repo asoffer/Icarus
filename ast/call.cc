@@ -22,10 +22,10 @@
 using base::check::Is;
 
 int32_t ForeignFuncIndex = 0;
-int32_t OpaqueFuncIndex = 1;
+int32_t OpaqueFuncIndex  = 1;
 
 ir::Val DebugIrFunc() {
-  auto *fn_type                   = type::Func({}, {});
+  auto *fn_type = type::Func({}, {});
   static ir::Func *debug_ir_func_ =
       new ir::Func(nullptr, fn_type, ast::FnParams<ast::Expression *>{});
   return ir::Val::Func(fn_type, debug_ir_func_);
@@ -72,7 +72,7 @@ std::string Call::to_string(size_t n) const {
     ss << (seen_one ? ", " : "") << pos->to_string(n);
     seen_one = true;
   }
-  for (const auto & [ key, val ] : args_.named_) {
+  for (const auto &[key, val] : args_.named_) {
     ss << (seen_one ? ", " : "") << key << " = " << val->to_string(n) << ", ";
     seen_one = true;
   }
@@ -84,6 +84,12 @@ void Call::assign_scope(Scope *scope) {
   scope_ = scope;
   fn_->assign_scope(scope);
   args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
+}
+
+void Call::DependentDecls(base::Graph<Declaration *> *g,
+                          Declaration *d) const {
+  fn_->DependentDecls(g, d);
+  args_.Apply([g, d](auto const &expr) { expr->DependentDecls(g, d); });
 }
 
 VerifyResult Call::VerifyType(Context *ctx) {
@@ -102,7 +108,7 @@ VerifyResult Call::VerifyType(Context *ctx) {
     }
   }
 
-  for (auto const& [name, expr] : args_.named_) {
+  for (auto const &[name, expr] : args_.named_) {
     arg_results.named_.emplace(name, expr->VerifyType(ctx));
   }
 
@@ -201,7 +207,7 @@ void Call::Validate(Context *ctx) {
 void Call::ExtractJumps(JumpExprs *rets) const {
   fn_->ExtractJumps(rets);
   for (const auto &val : args_.pos_) { val->ExtractJumps(rets); }
-  for (const auto & [ key, val ] : args_.named_) { val->ExtractJumps(rets); }
+  for (const auto &[key, val] : args_.named_) { val->ExtractJumps(rets); }
 }
 
 std::vector<ir::Val> Call::EmitIR(Context *ctx) {

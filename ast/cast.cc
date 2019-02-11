@@ -20,6 +20,12 @@ void Cast::assign_scope(Scope *scope) {
   type_->assign_scope(scope);
 }
 
+void Cast::DependentDecls(base::Graph<Declaration *> *g,
+                          Declaration *d) const {
+  expr_->DependentDecls(g, d);
+  type_->DependentDecls(g, d);
+}
+
 VerifyResult Cast::VerifyType(Context *ctx) {
   auto expr_result = expr_->VerifyType(ctx);
   auto type_result = type_->VerifyType(ctx);
@@ -34,8 +40,8 @@ VerifyResult Cast::VerifyType(Context *ctx) {
     return VerifyResult::Error();
   }
   auto *t = ctx->set_type(
-      this,
-      ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(type_.get(), ctx)));
+      this, ASSERT_NOT_NULL(
+                backend::EvaluateAs<type::Type const *>(type_.get(), ctx)));
   if (t->is<type::Struct>()) {
     FnArgs<Expression *> args;
     args.pos_ = std::vector<Expression *>{{expr_.get()}};

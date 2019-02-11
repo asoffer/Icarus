@@ -224,6 +224,18 @@ void Declaration::assign_scope(Scope *scope) {
   if (init_val) { init_val->assign_scope(scope); }
 }
 
+// Note: This case covers MatchDeclaration too!
+void Declaration::DependentDecls(base::Graph<Declaration *> *g,
+                                 Declaration *d) const {
+  g->add_edge(d, const_cast<Declaration *>(this));
+  if (type_expr) {
+    type_expr->DependentDecls(g, const_cast<Declaration *>(this));
+  }
+  if (init_val) {
+    init_val->DependentDecls(g, const_cast<Declaration *>(this));
+  }
+}
+
 bool Declaration::IsCustomInitialized() const {
   return init_val && !init_val->is<Hole>();
 }
@@ -514,7 +526,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
 }
 
 void Declaration::Validate(Context *ctx) {
-  bool swap_bc = ctx->mod_ != mod_;
+  bool swap_bc    = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   BoundConstants old_bc;
   if (swap_bc) {
@@ -535,7 +547,7 @@ void Declaration::ExtractJumps(JumpExprs *rets) const {
 }
 
 std::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
-  bool swap_bc = ctx->mod_ != mod_;
+  bool swap_bc    = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   BoundConstants old_bc;
   if (swap_bc) {
@@ -550,7 +562,7 @@ std::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
     if (is_fn_param_) {
       return {ctx->bound_constants_.constants_.at(this)};
     } else {
-      auto[iter, newly_inserted] =
+      auto [iter, newly_inserted] =
           ctx->mod_->constants_[ctx->bound_constants_].constants_.emplace(
               this, ir::Val::None());
       if (!newly_inserted) { return {iter->second}; }

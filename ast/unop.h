@@ -14,6 +14,8 @@ struct Unop : public Expression {
   VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;

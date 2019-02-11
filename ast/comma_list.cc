@@ -1,7 +1,7 @@
 #include "ast/comma_list.h"
 
-#include "misc/context.h"
 #include "ir/cmd.h"
+#include "misc/context.h"
 #include "type/tuple.h"
 
 namespace ast {
@@ -23,6 +23,11 @@ std::string CommaList::to_string(size_t n) const {
 void CommaList::assign_scope(Scope *scope) {
   scope_ = scope;
   for (auto &expr : exprs_) { expr->assign_scope(scope); }
+}
+
+void CommaList::DependentDecls(base::Graph<Declaration *> *g,
+                               Declaration *d) const {
+  for (auto const &expr : exprs_) { expr->DependentDecls(g, d); }
 }
 
 std::optional<std::vector<VerifyResult>> CommaList::VerifyWithoutSetting(
@@ -100,7 +105,7 @@ std::vector<ir::RegisterOr<ir::Addr>> CommaList::EmitLVal(Context *ctx) {
 }
 
 void CommaList::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
-  size_t index = 0;
+  size_t index  = 0;
   auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : exprs_) {
     if (expr->needs_expansion()) {
@@ -118,7 +123,7 @@ void CommaList::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
 }
 
 void CommaList::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
-  size_t index = 0;
+  size_t index  = 0;
   auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : exprs_) {
     if (expr->needs_expansion()) {
@@ -133,7 +138,6 @@ void CommaList::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
       ++index;
     }
   }
-
 }
 
 }  // namespace ast

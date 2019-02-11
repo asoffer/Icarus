@@ -1,8 +1,8 @@
 #include "ast/array_literal.h"
 
-#include "misc/context.h"
 #include "error/log.h"
 #include "ir/cmd.h"
+#include "misc/context.h"
 #include "type/array.h"
 #include "type/cast.h"
 #include "type/pointer.h"
@@ -22,6 +22,11 @@ std::string ArrayLiteral::to_string(size_t n) const {
   }
   ss << "]";
   return ss.str();
+}
+
+void ArrayLiteral::DependentDecls(base::Graph<Declaration *> *g,
+                                  Declaration *d) const {
+  for (auto const &expr : cl_.exprs_) { expr->DependentDecls(g, d); }
 }
 
 VerifyResult ArrayLiteral::VerifyType(Context *ctx) {

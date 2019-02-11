@@ -1,8 +1,8 @@
 #ifndef ICARUS_AST_FN_PARAMS_H
 #define ICARUS_AST_FN_PARAMS_H
 
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include <string_view>
 
@@ -34,7 +34,7 @@ struct FnParams {
   constexpr auto begin() { return params_.begin(); }
   constexpr auto end() { return params_.end(); }
 
-  Param const& at(size_t i) const & { return params_.at(i); }
+  Param const& at(size_t i) const& { return params_.at(i); }
   Param& at(size_t i) & { return params_.at(i); }
 
   void append(std::string_view name, T val) {

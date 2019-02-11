@@ -34,8 +34,11 @@ struct Token : public ast::Node {
   ast::VerifyResult VerifyType(Context *) override { UNREACHABLE(token); }
   void Validate(Context *) override { UNREACHABLE(token); }
   void ExtractJumps(ast::JumpExprs *) const override { UNREACHABLE(token); }
-
   std::vector<ir::Val> EmitIR(Context *) override { UNREACHABLE(token); }
+  void DependentDecls(base::Graph<ast::Declaration *> *g,
+                      ast::Declaration *d) const {
+    UNREACHABLE(token);
+  }
 
   std::string token;
   Language::Operator op;

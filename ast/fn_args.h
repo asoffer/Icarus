@@ -31,7 +31,7 @@ struct FnArgs {
       result +=
           (!val ? "null" : val->to_string(std::forward<Args>(args)...)) + ", ";
     }
-    for (auto && [ key, val ] : named_) {
+    for (auto &&[key, val] : named_) {
       result += key + ": " +
                 (!val ? "null" : val->to_string(std::forward<Args>(args)...)) +
                 ", ";
@@ -43,13 +43,13 @@ struct FnArgs {
   template <typename Fn>
   void Apply(Fn &&fn) {
     for (auto &&val : pos_) { fn(val); }
-    for (auto && [ key, val ] : named_) { fn(val); }
+    for (auto &&[key, val] : named_) { fn(val); }
   }
 
   template <typename Fn>
   void Apply(Fn &&fn) const {
     for (const auto &val : pos_) { fn(val); }
-    for (const auto & [ key, val ] : named_) { fn(val); }
+    for (const auto &[key, val] : named_) { fn(val); }
   }
 
   template <typename Fn>
@@ -58,7 +58,7 @@ struct FnArgs {
     FnArgs<out_t> result;
     result.pos_.reserve(pos_.size());
     for (auto &&val : pos_) { result.pos_.push_back(fn(val)); }
-    for (auto && [ key, val ] : named_) { result.named_.emplace(key, fn(val)); }
+    for (auto &&[key, val] : named_) { result.named_.emplace(key, fn(val)); }
     return result;
   }
 

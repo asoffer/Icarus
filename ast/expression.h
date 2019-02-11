@@ -35,6 +35,8 @@ struct Expression : public Node {
   virtual void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
     type::EmitMoveInit(ctx->type_of(this), this->EmitIR(ctx)[0], reg, ctx);
   }
+  virtual void DependentDecls(base::Graph<Declaration *> *g,
+                              Declaration *d) const = 0;
 
   virtual bool needs_expansion() const { return false; }
   std::vector<Hashtag> hashtags_;

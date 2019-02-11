@@ -7,11 +7,11 @@
 #include "ast/match_declaration.h"
 #include "ast/terminal.h"
 #include "backend/eval.h"
-#include "misc/context.h"
 #include "ir/cmd.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
+#include "misc/context.h"
 #include "misc/module.h"
 #include "misc/scope.h"
 #include "type/cast.h"
@@ -93,7 +93,8 @@ struct CallObstruction {
         data_);
   }
 
-  template <typename T> bool is() const {
+  template <typename T>
+  bool is() const {
     return std::holds_alternative<T>(data_);
   }
 
@@ -165,7 +166,8 @@ static base::expected<Binding, CallObstruction> MakeBinding(
       ++argument_index;
       ++a_iter;
     } else {
-      b.entries_.emplace_back(a_iter->get(), argument_index, -1, parameter_index);
+      b.entries_.emplace_back(a_iter->get(), argument_index, -1,
+                              parameter_index);
       ++parameter_index;
       ++argument_index;
       ++p_iter;
@@ -181,7 +183,7 @@ static base::expected<Binding, CallObstruction> MakeBinding(
     b.entries_.emplace_back(nullptr, -1, -1, parameter_index++);
   }
 
-  for (auto const & [ name, expr ] : args.named_) {
+  for (auto const &[name, expr] : args.named_) {
     if (auto iter = params.lookup_.find(name); iter != params.lookup_.end()) {
       auto &entry           = b.entries_.at(iter->second);
       entry.expr            = expr.get();
@@ -243,11 +245,11 @@ CallObstruction DispatchTableRow::SetTypes(
     if (entry.argument_index != -1) { ++num; }
   }
   call_arg_types_.pos_.resize(num);
-  for (auto & [ name, expr ] : args.named_) {
+  for (auto &[name, expr] : args.named_) {
     call_arg_types_.named_.emplace(name, nullptr);
   }
 
-  for (auto & entry : binding_.entries_) {
+  for (auto &entry : binding_.entries_) {
     if (entry.defaulted()) {
       type::Type const *input_type;
       if constexpr (std::is_same_v<E, std::unique_ptr<Declaration>>) {
@@ -282,10 +284,8 @@ CallObstruction DispatchTableRow::SetTypes(
         UNREACHABLE();
       }
 
-      for (auto & e : binding_.entries_) {
-        if (e.parameter_index == entry.parameter_index) {
-          e.type = input_type;
-        }
+      for (auto &e : binding_.entries_) {
+        if (e.parameter_index == entry.parameter_index) { e.type = input_type; }
       }
       continue;
     }
@@ -340,11 +340,12 @@ static bool IsConstant(Expression *e) {
       return bgi == ir::BuiltinGenericIndex{ForeignFuncIndex};
     }
   }
-  return  e->is<FunctionLiteral>() ||
+  return e->is<FunctionLiteral>() ||
          (e->is<Declaration>() && e->as<Declaration>().const_);
 }
 
-base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::MakeNonConstant(
+base::expected<DispatchTableRow, CallObstruction>
+DispatchTableRow::MakeNonConstant(
     type::Typed<Expression *, type::Function> fn_option,
     FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
   if (!args.named_.empty()) {
@@ -457,7 +458,7 @@ DispatchTableRow::MakeFromFnLit(
           backend::Evaluate(args.pos_.at(i).get(), ctx)[0]);
     }
   }
-  for (auto & [ name, expr ] : args.named_) {
+  for (auto &[name, expr] : args.named_) {
     size_t index = fn_lit->inputs_.lookup_[name];
     auto *decl   = fn_lit->inputs_.at(index).value.get();
     if (!decl->const_) { continue; }
@@ -467,9 +468,10 @@ DispatchTableRow::MakeFromFnLit(
   }
 
   // TODO order these by their dependencies
-  for (auto & [ name, index ] : fn_lit->inputs_.lookup_) {
+  for (auto &[name, index] : fn_lit->inputs_.lookup_) {
     if (index < args.pos_.size()) { continue; }
-    auto iter = args.named_.find(std::string(name)); // TODO transparent hashing?
+    auto iter =
+        args.named_.find(std::string(name));  // TODO transparent hashing?
     if (iter != args.named_.end()) { continue; }
     auto *decl = fn_lit->inputs_.at(index).value.get();
     decl->init_val->VerifyType(&new_ctx);
@@ -477,7 +479,6 @@ DispatchTableRow::MakeFromFnLit(
     new_ctx.bound_constants_.constants_.emplace(
         decl, backend::Evaluate(decl->init_val.get(), &new_ctx)[0]);
   }
-
 
   // TODO named arguments too.
   auto *fn_type = &ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx).type_)
@@ -674,7 +675,7 @@ static std::vector<FnArgs<type::Type const *>> Expand(
       AddPositionalType(expr.type(), &all_expanded_options);
     }
   }
-  for (auto const & [ name, expr ] : typed_args.named_) {
+  for (auto const &[name, expr] : typed_args.named_) {
     if (expr.get()->needs_expansion()) {
       for (auto *t : expr.type()->as<type::Tuple>().entries_) {
         AddNamedType(name, t, &all_expanded_options);
@@ -694,7 +695,7 @@ type::Type const *DispatchTable::MakeOrLogError(
     return type::Typed<Expression *>(expr, ASSERT_NOT_NULL(ctx->type_of(expr)));
   });
 
-  auto[table, ret_type] = Make(typed_args, overload_set, ctx);
+  auto [table, ret_type] = Make(typed_args, overload_set, ctx);
   if (table.bindings_.empty()) {
     // TODO what about operators?
     ctx->error_log_.NoCallMatch(node->span, table.generic_failure_reasons_,
@@ -702,7 +703,7 @@ type::Type const *DispatchTable::MakeOrLogError(
     return nullptr;
   }
 
-  auto expanded = Expand(typed_args);
+  auto expanded     = Expand(typed_args);
   auto new_end_iter = std::remove_if(
       expanded.begin(), expanded.end(),
       [&](FnArgs<type::Type const *> const &fnargs) {
@@ -847,7 +848,8 @@ static void EmitOneCallDispatch(
   }
 
   ASSERT(std::holds_alternative<ir::Register>(callee.value) ||
-         std::holds_alternative<ir::AnyFunc>(callee.value)) << callee;
+         std::holds_alternative<ir::AnyFunc>(callee.value))
+      << callee;
   ir::Call(callee.reg_or<ir::AnyFunc>(), std::move(call_args), std::move(outs));
 }
 
@@ -893,7 +895,7 @@ bool Covers(FnArgs<type::Type const *> const &big,
     }
     return false;
   }
-  for (auto const & [ name, t ] : small.named_) {
+  for (auto const &[name, t] : small.named_) {
     auto iter = big.named_.find(name);
     if (iter == big.named_.end()) { return false; }
     if (t == iter->second) { continue; }
@@ -910,7 +912,7 @@ static ir::BlockIndex CallLookupTest(
     FnArgs<type::Type const *> const &call_arg_type, Context *ctx) {
   // Generate code that attempts to match the types on each argument (only
   // check the ones at the call-site that could be variants).
-  
+
   // TODO enable variant dispatch on arguments that got expanded.
   auto next_binding = ir::Func::Current->AddBlock();
   for (size_t i = 0; i < args.pos_.size(); ++i) {
@@ -921,7 +923,7 @@ static ir::BlockIndex CallLookupTest(
                                        call_arg_type.pos_[i]));
   }
 
-  for (const auto & [ name, expr_and_val ] : args.named_) {
+  for (const auto &[name, expr_and_val] : args.named_) {
     auto iter = call_arg_type.find(name);
     if (iter == call_arg_type.named_.end()) { continue; }
     if (!ctx->type_of(expr_and_val.first)->is<type::Variant>()) { continue; }
@@ -960,7 +962,7 @@ std::vector<ir::Val> DispatchTable::EmitCall(
   }
 
   if (bindings_.size() == 1) {
-    const auto & [ call_arg_type, binding ] = *bindings_.begin();
+    const auto &[call_arg_type, binding] = *bindings_.begin();
     EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
     return out_regs;
   }
@@ -977,7 +979,7 @@ std::vector<ir::Val> DispatchTable::EmitCall(
   auto iter = bindings_.begin();
   ASSERT(iter != bindings_.end());
   for (size_t i = 0; i < bindings_.size() - 1; ++i, ++iter) {
-    const auto & [ call_arg_type, binding ] = *iter;
+    const auto &[call_arg_type, binding] = *iter;
     auto next_binding = CallLookupTest(args, call_arg_type, ctx);
     size_t j          = 0;
 
@@ -992,8 +994,8 @@ std::vector<ir::Val> DispatchTable::EmitCall(
     ir::BasicBlock::Current = next_binding;
   }
 
-  const auto & [ call_arg_type, binding ] = *iter;
-  size_t j                                = 0;
+  const auto &[call_arg_type, binding] = *iter;
+  size_t j                             = 0;
   EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
   for (const auto &result : out_regs) {
     result_phi_args.at(j)[ir::BasicBlock::Current] = result;

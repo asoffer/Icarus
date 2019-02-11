@@ -2,9 +2,9 @@
 #define ICARUS_AST_CHAINOP_H
 
 #include <memory>
+#include <vector>
 #include "ast/dispatch.h"
 #include "ast/literal.h"
-#include <vector>
 #include "frontend/operators.h"
 
 namespace ast {
@@ -16,6 +16,8 @@ struct ChainOp : public Literal {
   VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
+  void DependentDecls(base::Graph<Declaration *> *g,
+                      Declaration *d) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
 

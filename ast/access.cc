@@ -28,6 +28,11 @@ void Access::assign_scope(Scope *scope) {
   operand->assign_scope(scope);
 }
 
+void Access::DependentDecls(base::Graph<Declaration *> *g,
+                            Declaration *d) const {
+  operand->DependentDecls(g, d);
+}
+
 VerifyResult Access::VerifyType(Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), auto operand_result,
                    operand->VerifyType(ctx));
