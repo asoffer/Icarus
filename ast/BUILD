@@ -53,6 +53,7 @@ cc_lib(
         ":binop-impl",
         ":block_literal-impl",
         ":block_node-impl",
+        ":bound_constants-impl",
         ":call-impl",
         ":cast-impl",
         ":chainop-impl",
@@ -172,10 +173,10 @@ cc_target(
     impl_deps = ["//ir:val"],
 )
 
-cc_lib(
+cc_target(
     name = "bound_constants",
-    hdrs = ["bound_constants.h"],
-    deps = ["//ir:val"],
+    intf_deps = ["//ir:val"],
+    impl_deps = [":declaration"],
 )
 
 cc_target(

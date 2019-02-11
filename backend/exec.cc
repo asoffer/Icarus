@@ -221,36 +221,36 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
   // TODO Consider caching these.
   // TODO Handle a bunch more function types in a coherent way.
   auto *fn_type = &f.type()->as<type::Function>();
-  if (fn_type == type::Func({type::Int32}, {type::Int32})) {
-    FfiCall<int32_t, int32_t>(f, arguments, &ret_slots, stack);
-  } else if (fn_type == type::Func({type::Int32}, {})) {
-    FfiCall<void, int32_t>(f, arguments, &ret_slots, stack);
+  if (fn_type == type::Func({type::Int64}, {type::Int64})) {
+    FfiCall<int64_t, int64_t>(f, arguments, &ret_slots, stack);
+  } else if (fn_type == type::Func({type::Int64}, {})) {
+    FfiCall<void, int64_t>(f, arguments, &ret_slots, stack);
   } else if (fn_type == type::Func({type::Float64}, {type::Float64})) {
     FfiCall<double, double>(f, arguments, &ret_slots, stack);
   } else if (fn_type == type::Func({type::Float32}, {type::Float32})) {
     FfiCall<float, float>(f, arguments, &ret_slots, stack);
-  } else if (fn_type == type::Func({}, {type::Int32})) {
-    FfiCall<int32_t>(f, arguments, &ret_slots, stack);
-  } else if (fn_type == type::Func({type::Nat8}, {type::Int32})) {
-    FfiCall<int32_t, uint8_t>(f, arguments, &ret_slots, stack);
+  } else if (fn_type == type::Func({}, {type::Int64})) {
+    FfiCall<int64_t>(f, arguments, &ret_slots, stack);
+  } else if (fn_type == type::Func({type::Nat8}, {type::Int64})) {
+    FfiCall<int64_t, uint8_t>(f, arguments, &ret_slots, stack);
   } else if (fn_type->input.size() == 1 &&
              fn_type->input[0]->is<type::Pointer>() &&
-             fn_type->output.size() == 1 && fn_type->output[0] == type::Int32) {
-    FfiCall<int32_t, void *>(f, arguments, &ret_slots, stack);
+             fn_type->output.size() == 1 && fn_type->output[0] == type::Int64) {
+    FfiCall<int64_t, void *>(f, arguments, &ret_slots, stack);
   } else if (fn_type->input.size() == 2 &&
              fn_type->input[0]->is<type::Pointer>() &&
              fn_type->input[1]->is<type::Pointer>() &&
              fn_type->output.size() == 1 &&
              fn_type->output[0]->is<type::Pointer>()) {
     FfiCall<void *, void *, void *>(f, arguments, &ret_slots, stack);
-  } else if (fn_type->input.size() == 2 && fn_type->input[0] == type::Int32 &&
+  } else if (fn_type->input.size() == 2 && fn_type->input[0] == type::Int64 &&
              fn_type->input[1]->is<type::Pointer>() &&
-             fn_type->output.size() == 1 && fn_type->output[0] == type::Int32) {
-    FfiCall<int32_t, int32_t, void *>(f, arguments, &ret_slots, stack);
-  } else if (fn_type->input.size() == 1 && fn_type->input[0] == type::Int32 &&
+             fn_type->output.size() == 1 && fn_type->output[0] == type::Int64) {
+    FfiCall<int64_t, int64_t, void *>(f, arguments, &ret_slots, stack);
+  } else if (fn_type->input.size() == 1 && fn_type->input[0] == type::Int64 &&
              fn_type->output.size() == 1 &&
              fn_type->output[0]->is<type::Pointer>()) {
-    FfiCall<void *, int32_t>(f, arguments, &ret_slots, stack);
+    FfiCall<void *, int64_t>(f, arguments, &ret_slots, stack);
   } else if (fn_type->input.size() == 1 && fn_type->input[0] == type::Nat64 &&
              fn_type->output.size() == 1 &&
              fn_type->output[0]->is<type::Pointer>()) {
@@ -1070,9 +1070,16 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(resolve(cmd.phi_flags_->map_.at(call_stack.top().prev_)));
       break;
     case ir::Op::ArgumentCache: {
-      auto &cache = cmd.sl_->mod_->generic_struct_cache_[cmd.sl_];
+      // TODO currently cache is dependetn on all args but requires that they be
+      // types.
+      std::vector<type::Type const*> cached_vals;
+      cached_vals.reserve(cmd.sl_->args_.size());
+      for (uint64_t i = 0; i < cmd.sl_->args_.size(); ++i) {
+        cached_vals.push_back(resolve<type::Type const *>(ir::Register{i}));
+      }
+
       type::Type const **cache_slot =
-          &cache[resolve<type::Type const *>(ir::Register{0})];
+          &cmd.sl_->mod_->generic_struct_cache_[cmd.sl_][cached_vals];
       save(ir::Addr::Heap(cache_slot));
     } break;
     case ir::Op::CreateContext: save(new Context(cmd.mod_)); break;
@@ -1089,9 +1096,10 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       cmd.ast_.node_->Validate(resolve<Context *>(cmd.ast_.ctx_));
     } break;
     case ir::Op::EvaluateAsType: {
-      save(
-          EvaluateAs<type::Type const *>(&cmd.ast_.node_->as<ast::Expression>(),
-                                         resolve<Context *>(cmd.ast_.ctx_)));
+      // TODO, you don't have a parent context... that could be problematic.
+      save(EvaluateAs<type::Type const *>(
+          type::Typed(&cmd.ast_.node_->as<ast::Expression>(), type::Type_),
+          resolve<Context *>(cmd.ast_.ctx_)));
     } break;
     case ir::Op::CondJump:
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];

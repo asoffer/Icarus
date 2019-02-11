@@ -24,7 +24,7 @@ struct Identifier : public Expression {
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::string token;
-  Declaration *decl = nullptr;
+  Declaration *decl_ = nullptr;
 };
 }  // namespace ast
 

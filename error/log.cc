@@ -434,7 +434,7 @@ void Log::Dump() const {
     std::cerr << "Found a cyclic dependency:\n\n";
 
     std::unordered_map<ast::Declaration const *, size_t> decls;
-    for (auto const *id : cycle) { decls.emplace(id->decl, decls.size()); }
+    for (auto const *id : cycle) { decls.emplace(id->decl_, decls.size()); }
 
     base::IntervalSet<size_t> iset;
     std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
@@ -444,18 +444,18 @@ void Log::Dump() const {
       // TODO handle case where it's 1 mod 7 and so adjacent entries show up
       // with the same color
 
-      TextSpan decl_id_span = id->decl->span;
+      TextSpan decl_id_span = id->decl_->span;
       decl_id_span.finish.offset = decl_id_span.start.offset + id->token.size();
       underlines.emplace_back(
           decl_id_span,
           DisplayAttrs{static_cast<DisplayAttrs::Color>(
                            DisplayAttrs::RED +
-                           static_cast<char>(decls.at(id->decl) % 7)),
+                           static_cast<char>(decls.at(id->decl_) % 7)),
                        DisplayAttrs::UNDERLINE});
       underlines.emplace_back(
           id->span, DisplayAttrs{static_cast<DisplayAttrs::Color>(
                                      DisplayAttrs::RED +
-                                     static_cast<char>(decls.at(id->decl) % 7)),
+                                     static_cast<char>(decls.at(id->decl_) % 7)),
                                  DisplayAttrs::UNDERLINE});
     }
 

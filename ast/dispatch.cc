@@ -689,7 +689,6 @@ static std::vector<FnArgs<type::Type const *>> Expand(
 type::Type const *DispatchTable::MakeOrLogError(
     Node *node, FnArgs<Expression *> const &args,
     OverloadSet const &overload_set, Context *ctx, bool repeated) {
-
   // TODO pull this out one more layer into the VerifyType call of node.
   auto typed_args = args.Transform([ctx](Expression *expr) {
     return type::Typed<Expression *>(expr, ASSERT_NOT_NULL(ctx->type_of(expr)));

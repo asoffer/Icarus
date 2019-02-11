@@ -189,6 +189,7 @@ VerifyResult Call::VerifyType(Context *ctx) {
   // if all arguments are const, all possible dispatched-to functions are const.
   // Default arguments are already required to be const, so we don't need to
   // check those.
+
   return VerifyResult::Constant(ret_type);
 }
 

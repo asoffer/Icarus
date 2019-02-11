@@ -14,17 +14,7 @@ struct BoundConstants {
   std::map<Declaration const*, ir::Val> constants_;
 
   // TODO blah.
-  std::string to_string() const {
-    std::stringstream ss;
-    ss << "{\n";
-    for ( auto const&[decl,val]: constants_) {
-      ss << reinterpret_cast<uintptr_t>(decl) << ": " << val.to_string()
-         << "\n";
-    }
-
-    ss << "}";
-    return ss.str();
-  }
+  std::string to_string() const;
 };
 }  // namespace ast
 
