@@ -33,6 +33,10 @@ void Access::DependentDecls(base::Graph<Declaration *> *g,
   operand->DependentDecls(g, d);
 }
 
+bool Access::InferType(type::Type const *t, InferenceState *state) const {
+  return false;
+}
+
 VerifyResult Access::VerifyType(Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), auto operand_result,
                    operand->VerifyType(ctx));

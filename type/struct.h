@@ -18,10 +18,6 @@ namespace ast {
 struct StructLiteral;
 }  // namespace ast
 
-namespace ir {
-struct Func;
-}  // namespace ir
-
 namespace type {
 
 struct Struct : public Type {
@@ -33,8 +29,9 @@ struct Struct : public Type {
     std::vector<ast::Hashtag> hashtags_;
   };
 
-  Struct(::Scope const *scope, ::Module const *mod)
-      : scope_(scope), mod_(const_cast<::Module *>(mod)) {}
+  Struct(::Scope const *scope, ::Module const *mod,
+         ast::StructLiteral const *parent)
+      : scope_(scope), mod_(const_cast<::Module *>(mod)), parent_(parent) {}
   ~Struct() override {}
   BASIC_METHODS;
 
@@ -63,14 +60,15 @@ struct Struct : public Type {
 
   bool contains_hashtag(ast::Hashtag needle) const;
 
-  ::Scope const *scope_ = nullptr;
+  ::Scope const *scope_             = nullptr;
+  ::Module *mod_                    = nullptr;
+  ast::StructLiteral const *parent_ = nullptr;
 
   base::lazy<ir::AnyFunc> init_func_;
   base::lazy<ir::AnyFunc> destroy_func_;
   base::lazy<ir::AnyFunc> copy_assign_func_;
   base::lazy<ir::AnyFunc> move_assign_func_;
 
-  ::Module *mod_ = nullptr;
   std::vector<ast::Hashtag> hashtags_;
   std::vector<Field> fields_;
   std::unordered_map<std::string, size_t> field_indices_;

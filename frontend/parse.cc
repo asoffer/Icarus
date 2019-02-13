@@ -494,6 +494,7 @@ std::unique_ptr<Node> BuildMatchDeclaration(
     decl->id_ = std::move(nodes[2]->as<Identifier>().token);
   }
   decl->mod_      = ctx->mod_;
+  decl->const_    = true;
   decl->type_expr = move_as<Expression>(nodes[0]);
   return decl;
 }

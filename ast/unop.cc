@@ -50,6 +50,35 @@ void Unop::DependentDecls(base::Graph<Declaration *> *g,
   operand->DependentDecls(g, d);
 }
 
+bool Unop::InferType(type::Type const *t, InferenceState *state) const {
+  // TODO consider the possibility for overloadable operators to be generic
+  // struct and therefore not always returning false.
+  switch  (op) {
+    case Language::Operator::Mul: {
+      // TODO will this catch buffer pointers too and should it?
+      auto *p = t->if_as<type::Pointer>();
+      return p && operand->InferType(p->pointee, state);
+    }
+    case Language::Operator::Eval: return operand->InferType(t, state);
+    case Language::Operator::BufPtr: {
+      auto *p = t->if_as<type::BufferPointer>();
+      return p && operand->InferType(p->pointee, state);
+    }
+    case Language::Operator::Which:
+    case Language::Operator::And:
+    case Language::Operator::Sub:
+    case Language::Operator::Not:
+    case Language::Operator::At:
+    case Language::Operator::Needs:
+    case Language::Operator::Ensure:
+    case Language::Operator::Expand:
+    case Language::Operator::Copy:
+    case Language::Operator::Move: return false;
+    default: UNREACHABLE();
+  }
+}
+
+
 void Unop::Validate(Context *ctx) { operand->Validate(ctx); }
 
 void Unop::ExtractJumps(JumpExprs *rets) const { operand->ExtractJumps(rets); }

@@ -19,6 +19,7 @@ struct Identifier : public Expression {
   void Validate(Context *ctx) override;
 
   void ExtractJumps(JumpExprs *) const override {}
+  // TODO I think you should actually be dependent on the decl_.
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override {}
 

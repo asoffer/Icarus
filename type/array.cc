@@ -332,7 +332,7 @@ void Array::WriteTo(std::string *result) const {
     t = array_ptr->data_type;
   }
   result->append("; ");
-  data_type->WriteTo(result);
+  t->WriteTo(result);
   result->append("]");
 }
 

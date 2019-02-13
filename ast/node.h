@@ -13,6 +13,7 @@
 #include "base/graph.h"
 #include "base/util.h"
 #include "frontend/text_span.h"
+#include "misc/inference_state.h"
 
 struct Context;
 struct Scope;
@@ -55,14 +56,18 @@ struct JumpExprs
     : public std::unordered_map<JumpKind, std::vector<Expression const *>> {};
 
 struct Node : public base::Cast<Node> {
-  virtual std::string to_string(size_t n) const  = 0;
-  virtual void assign_scope(Scope *)             = 0;
-  virtual VerifyResult VerifyType(Context *)     = 0;
-  virtual void Validate(Context *)               = 0;
-  virtual std::vector<ir::Val> EmitIR(Context *) = 0;
-  virtual void ExtractJumps(JumpExprs *) const   = 0;
+  virtual std::string to_string(size_t n) const     = 0;
+  virtual void assign_scope(Scope *)                = 0;
+  virtual VerifyResult VerifyType(Context *)        = 0;
+  virtual void Validate(Context *)                  = 0;
+  virtual std::vector<ir::Val> EmitIR(Context *)    = 0;
+  virtual void ExtractJumps(JumpExprs *) const      = 0;
   virtual void DependentDecls(base::Graph<Declaration *> *g,
                               Declaration *d) const = 0;
+
+  virtual bool InferType(type::Type const *t, InferenceState *state) const {
+    return false;
+  }  // TODO = 0
 
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}

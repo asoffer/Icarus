@@ -434,37 +434,45 @@ DispatchTableRow::MakeFromFnLit(
                    MakeBinding(fn_option, fn_lit->inputs_, args, ctx));
 
   Context new_ctx(ctx);
-  for (size_t i = 0; i < args.pos_.size(); ++i) {
-    // TODO wrong. this may not directly be a matchdecl but could be something
-    // like an array-type of them.
-    bool needs_match_decl =
-        fn_lit->inputs_.at(i).value->type_expr != nullptr &&
-        fn_lit->inputs_.at(i).value->type_expr->is<MatchDeclaration>();
-    if (!fn_lit->inputs_.at(i).value->const_ && !needs_match_decl) { continue; }
-    // TODO this is wrong because it needs to be removed outside the scope of
-    // this function.
-    // TODO what if this isn't evaluable? i.e., what if args.pos_[i] isn't a
-    // constant. Is that a hard error or do we just ignore this case? Similarly
-    // below for named and default arguments.
-    if (needs_match_decl) {
-      new_ctx.bound_constants_.constants_.emplace(
-          &fn_lit->inputs_.at(i).value->type_expr->as<MatchDeclaration>(),
-          ir::Val(args.pos_.at(i).type()));
-    }
 
-    if (fn_lit->inputs_.at(i).value->const_) {
-      new_ctx.bound_constants_.constants_.emplace(
-          fn_lit->inputs_.at(i).value.get(),
-          backend::Evaluate(args.pos_.at(i).get(), ctx)[0]);
+  InferenceState state(&new_ctx);
+  if (!fn_lit->sorted_params_.empty() &&
+      fn_lit->sorted_params_.back()->type_expr) {
+    state.match_queue_.emplace(fn_lit->sorted_params_.back()->type_expr.get(),
+                               args.pos_.at(0).type());
+  }
+  size_t last_success = 0;
+  while (!state.match_queue_.empty()) {
+    if (last_success >= state.match_queue_.size()) {
+      NOT_YET("exit with a failure");
+    }
+    auto [e, t] = state.match_queue_.front();
+    state.match_queue_.pop();
+    if (e->InferType(t, &state)) {
+      last_success = 0;
+    } else {
+      ++last_success;
+      state.match_queue_.emplace(e, t);
     }
   }
+
+  for (auto const &[d, t] : state.matches_) {
+    new_ctx.bound_constants_.constants_.emplace(d, ir::Val(t));
+  }
+
+  for (size_t i = 0; i < args.pos_.size(); ++i) {
+    if (!fn_lit->inputs_.at(i).value->const_) { continue; }
+    new_ctx.bound_constants_.constants_.emplace(
+        fn_lit->inputs_.at(i).value.get(),
+        backend::Evaluate(args.pos_.at(i).get(), ctx)[0]);
+  }
+
   for (auto &[name, expr] : args.named_) {
     size_t index = fn_lit->inputs_.lookup_[name];
     auto *decl   = fn_lit->inputs_.at(index).value.get();
     if (!decl->const_) { continue; }
     new_ctx.bound_constants_.constants_.emplace(
         decl, backend::Evaluate(expr.get(), ctx)[0]);
-    // TODO Match decls?
   }
 
   // TODO order these by their dependencies

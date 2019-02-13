@@ -19,7 +19,7 @@ namespace ir {
 // from having to pass extra information and thereby bloating all commands. At
 // some point we should switch to a buffer-chunk system so that one won't bloat
 // another.
-Register CreateStruct(::Scope const *scope);
+Register CreateStruct(::Scope const *scope, ast::StructLiteral const *parent);
 void CreateStructField(Register struct_type,
                        RegisterOr<type::Type const *> type);
 void SetStructFieldName(Register struct_type, std::string_view field_name);
@@ -117,7 +117,7 @@ static ir::TypedRegister<type::Type const *> GenerateStruct(
 
 std::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
   if (args_.empty()) {
-    return {ir::Val(GenerateStruct(this, ir::CreateStruct(scope_), ctx))};
+    return {ir::Val(GenerateStruct(this, ir::CreateStruct(scope_, this), ctx))};
   }
 
   // TODO A bunch of things need to be fixed here.
@@ -163,7 +163,7 @@ void StructLiteral::CompleteBody(Context *ctx) {
         land_block,
         ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
     auto ctx_reg    = ir::CreateContext(ctx->mod_);
-    auto struct_reg = ir::CreateStruct(scope_);
+    auto struct_reg = ir::CreateStruct(scope_, this);
 
     // TODO why isn't implicit TypedRegister -> RegisterOr cast working on
     // either of these? On the first it's clear because we don't even return a

@@ -33,10 +33,14 @@ ir::Register Context::addr(ast::Declaration *decl) const {
 
 void Context::set_dispatch_table(ast::Expression const *expr,
                                  ast::DispatchTable &&table) {
-  auto [iter, success] = mod_->data_[bound_constants_].dispatch_tables_.emplace(
-      expr, std::move(table));
-  static_cast<void>(iter);
-  ASSERT(success) << expr;
+  mod_->data_[bound_constants_].dispatch_tables_.emplace(expr,
+                                                         std::move(table));
+  // TODO in some situations you may be trying to set the dispatch table more
+  // than once. This has come up with generic structs and you should
+  // investigate.
+  //
+  // static_cast<void>(iter);
+  // ASSERT(success) << expr;
 }
 
 ast::DispatchTable const *Context::dispatch_table(ast::Expression const *expr) const {

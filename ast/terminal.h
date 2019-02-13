@@ -21,6 +21,12 @@ struct Terminal : public Literal {
     return VerifyResult::Constant(ctx->set_type(this, value.type));
   }
 
+  // TODO distinguish between guaranteed failures and failures to continue
+  bool InferType(type::Type const *t, InferenceState *state) const override {
+    return value.type == type::Type_ &&
+           std::get<type::Type const *>(value.value) == t;
+  }
+
   void Validate(Context *) override {}
   void ExtractJumps(JumpExprs *) const override {}
   void DependentDecls(base::Graph<Declaration *> *g,

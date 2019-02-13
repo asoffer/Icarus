@@ -14,6 +14,8 @@ struct ArrayType : public Literal {
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
 
+  bool InferType(type::Type const *t, InferenceState *state) const override;
+
   std::vector<ir::Val> EmitIR(Context *) override;
 
   std::unique_ptr<Expression> length_, data_type_;

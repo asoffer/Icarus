@@ -184,7 +184,7 @@ OP_MACRO(XorBool,              Xor,                 bool,                    boo
 OP_MACRO(XorFlags,             Xor,                 FlagsVal,                flags_args_)
 OP_MACRO(OrFlags,              Or,                  FlagsVal,                flags_args_)
 OP_MACRO(AndFlags,             And,                 FlagsVal,                flags_args_)
-OP_MACRO(CreateStruct,         CreateStruct,        ::Scope const *,         scope_)
+OP_MACRO(CreateStruct,         CreateStruct,        ::Scope const *,         create_struct_)
 OP_MACRO(CreateStructField,    CreateStructField,   void,                    create_struct_field_)
 OP_MACRO(SetStructFieldName,   SetStructFieldName,  void,                    set_struct_field_name_)
 OP_MACRO(AddHashtagToField,    AddHashtagToField,   void,                    add_hashtag_)

@@ -4,6 +4,7 @@
 
 #include "ast/fn_params.h"
 #include "ast/function_literal.h"
+#include "ast/struct_literal.h"
 #include "ast/terminal.h"
 #include "ast/unop.h"
 #include "backend/eval.h"
@@ -84,6 +85,52 @@ void Call::assign_scope(Scope *scope) {
   scope_ = scope;
   fn_->assign_scope(scope);
   args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
+}
+
+static OverloadSet FindOverloads(Scope *scope, std::string const &token,
+                                 FnArgs<type::Type const *> arg_types,
+                                 Context *ctx) {
+  OverloadSet os(scope, token, ctx);
+  arg_types.Apply([&](type::Type const *t) { os.add_adl(token, t); });
+  return os;
+}
+
+bool Call::InferType(type::Type const *t, InferenceState *state) const {
+  auto *s = t->if_as<type::Struct>();
+  if (!s) { return false; }
+
+  if (auto *id = fn_->if_as<Identifier>()) {
+    // TODO this is probably the wrong approach. It'd be nice to stuff more data
+    // we know into the inference state.
+    auto os = FindOverloads(scope_, id->token, {}, state->ctx_);
+    if (os.size() != 1) { NOT_YET("only handle no overloading right now."); }
+    if (auto *gs = os[0].type()->if_as<type::GenericStruct>()) {
+      auto iter = gs->mod_->generic_struct_cache_.find(s->parent_);
+      if (iter == gs->mod_->generic_struct_cache_.end()) { return false; }
+
+      auto backward_iter = iter->second.back_.find(s);
+      if (backward_iter == iter->second.back_.end()) { 
+        // TODO This is impossible? Just use .at if so.
+        return false;
+      }
+
+      // TODO only if this is the right dispatch?
+      // TODO named args too.
+      ASSERT(backward_iter->second->size() == args_.pos_.size());
+      for (size_t i = 0; i < args_.pos_.size(); ++i) {
+        state->match_queue_.emplace(args_.pos_[i].get(),
+                                    backward_iter->second->at(i));
+      }
+
+      return true;
+    } else {
+      NOT_YET(this);
+    }
+
+  } else {
+    NOT_YET(this);
+  }
+  return false;
 }
 
 void Call::DependentDecls(base::Graph<Declaration *> *g,
@@ -173,12 +220,11 @@ VerifyResult Call::VerifyType(Context *ctx) {
       [](std::unique_ptr<Expression> const &arg) { return arg.get(); });
 
   OverloadSet overload_set = [&]() {
-    if (fn_->is<Identifier>()) {
-      auto &token = fn_->as<Identifier>().token;
-      OverloadSet os(scope_, token, ctx);
-      arg_results.Apply(
-          [&](VerifyResult const &v) { os.add_adl(token, v.type_); });
-      return os;
+    if (auto *id = fn_->if_as<Identifier>()) {
+      return FindOverloads(
+          scope_, id->token,
+          arg_results.Transform([](VerifyResult const &v) { return v.type_; }),
+          ctx);
     } else {
       auto t = fn_->VerifyType(ctx).type_;
       OverloadSet os;

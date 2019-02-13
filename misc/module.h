@@ -105,9 +105,14 @@ struct Module {
                     ast::Declaration *decl) const;
            
   // TODO support more than just a single type argument to generic structs.
-  std::unordered_map<
-      ast::StructLiteral *,
-      std::map<std::vector<type::Type const *>, type::Type const *>>
+  struct GenericStructCache {
+    std::map<std::vector<type::Type const *>, type::Type const *> fwd_;
+    std::unordered_map<type::Type const *,
+                       std::vector<type::Type const *> const *>
+        back_;
+  };
+
+  std::unordered_map<ast::StructLiteral const *, GenericStructCache>
       generic_struct_cache_;
 
   struct DependentData {

@@ -9,12 +9,13 @@
 struct Scope;
 
 namespace type {
-struct Function;
-struct Tuple;
 struct Enum;
 struct Flags;
-struct Struct;
+struct Function;
+struct GenericStruct;
 struct Pointer;
+struct Struct;
+struct Tuple;
 struct Variant;
 }  // namespace type
 
@@ -146,6 +147,16 @@ struct Cmd {
     }
   };
 
+  struct CreateStruct {
+    ::Scope const *scope_;
+    ast::StructLiteral const *parent_;
+
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           CreateStruct const &c) {
+      return os << c.scope_ << " " << c.parent_;
+    }
+  };
+
   struct CreateStructField {
     Register struct_;
     RegisterOr<type::Type const *> type_;
@@ -246,6 +257,7 @@ struct Cmd {
     ast::StructLiteral *sl_;
     LoadSymbol load_sym_;
 
+    CreateStruct create_struct_;
     CreateStructField create_struct_field_;
     SetStructFieldName set_struct_field_name_;
     AddHashtag add_hashtag_;

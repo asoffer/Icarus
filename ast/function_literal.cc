@@ -58,18 +58,18 @@ void FunctionLiteral::assign_scope(Scope *scope) {
   for (auto &out : outputs_) { out->assign_scope(fn_scope_.get()); }
   statements_.assign_scope(fn_scope_.get());
 
-  base::Graph<Declaration *> dep_graph;
   for (auto const &in : inputs_.params_) {
+    param_dep_graph_.add_node(in.value.get());
     if (in.value->type_expr) {
-      in.value->type_expr->DependentDecls(&dep_graph, in.value.get());
+      in.value->type_expr->DependentDecls(&param_dep_graph_, in.value.get());
     }
     if (in.value->init_val) {
-      in.value->init_val->DependentDecls(&dep_graph, in.value.get());
+      in.value->init_val->DependentDecls(&param_dep_graph_, in.value.get());
     }
   }
 
-  sorted_params_.reserve(dep_graph.num_nodes());
-  dep_graph.topologically(
+  sorted_params_.reserve(param_dep_graph_.num_nodes());
+  param_dep_graph_.topologically(
       [this](Declaration *decl) { sorted_params_.push_back(decl); });
 }
 
@@ -80,22 +80,20 @@ void FunctionLiteral::DependentDecls(base::Graph<Declaration *> *g,
 }
 
 VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
-  if (std::any_of(sorted_params_.begin(), sorted_params_.end(),
-                  [](Declaration const *decl) {
-                    return decl->const_ ||
-                           (decl->type_expr != nullptr &&
-                            decl->type_expr->template is<MatchDeclaration>());
-                  })) {
-    return VerifyResult::Constant(ctx->set_type(this, type::Generic));
+  for (auto const &p : inputs_.params_) {
+    if (p.value->const_ || !param_dep_graph_.at(p.value.get()).empty()) {
+      return VerifyResult::Constant(ctx->set_type(this, type::Generic));
+    }
   }
+
   return VerifyTypeConcrete(ctx);
 }
 
 VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   std::vector<type::Type const *> input_type_vec;
   input_type_vec.reserve(inputs_.size());
-  for (auto *d : sorted_params_) {
-    input_type_vec.push_back(d->VerifyType(ctx).type_);
+  for (auto &d : inputs_.params_) {
+    input_type_vec.push_back(d.value->VerifyType(ctx).type_);
   }
 
   std::vector<type::Type const *> output_type_vec;
@@ -156,7 +154,7 @@ void FunctionLiteral::Validate(Context *ctx) {
   bool inserted       = validated_fns.insert(this).second;
   if (!inserted) { return; }
 
-  for (auto *in : sorted_params_) { in->Validate(ctx); }
+  for (auto &in : inputs_.params_) { in.value->Validate(ctx); }
   for (auto &out : outputs_) { out->Validate(ctx); }
 
   // NOTE! Type verifcation on statements first!
@@ -172,9 +170,9 @@ void FunctionLiteral::Validate(Context *ctx) {
   }
 
   std::vector<type::Type const *> input_type_vec;
-  input_type_vec.reserve(sorted_params_.size());
-  for (auto *input : sorted_params_) {
-    input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input)));
+  input_type_vec.reserve(inputs_.params_.size());
+  for (auto &input : inputs_.params_) {
+    input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input.value.get())));
   }
 
   if (return_type_inferred_) {
@@ -256,28 +254,24 @@ void FunctionLiteral::Validate(Context *ctx) {
 }
 
 void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &in : sorted_params_) { in->ExtractJumps(rets); }
+  for (auto &in : inputs_.params_) { in.value->ExtractJumps(rets); }
   for (auto &out : outputs_) { out->ExtractJumps(rets); }
 }
 
 std::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
-  if (std::any_of(
-          inputs_.params_.begin(), inputs_.params_.end(),
-          [&](auto const &decl) {
-            // TODO this is wrong... it may not directly be a match-decl, but
-            // something that's "extractable" like a pointer to or an array of
-            // match-decls.
-            return (
-                (decl.value->const_ &&
-                 ctx->bound_constants_.constants_.find(decl.value.get()) ==
-                     ctx->bound_constants_.constants_.end()) ||
-                (decl.value->type_expr != nullptr &&
-                 decl.value->type_expr->template is<MatchDeclaration>() &&
-                 ctx->bound_constants_.constants_.find(
-                     &decl.value->type_expr->template as<MatchDeclaration>()) ==
-                     ctx->bound_constants_.constants_.end()));
-          })) {
-    return {ir::Val::Func(this)};
+  for (auto const &param : inputs_.params_) {
+    auto *p = param.value.get();
+    if (p->const_ && ctx->bound_constants_.constants_.find(p) ==
+                         ctx->bound_constants_.constants_.end()) {
+      return {ir::Val::Func(this)};
+    }
+
+    for (auto *dep : param_dep_graph_.sink_deps(param.value.get())) {
+      if (ctx->bound_constants_.constants_.find(dep) ==
+          ctx->bound_constants_.constants_.end()) {
+        return {ir::Val::Func(this)};
+      }
+    }
   }
 
   ir::Func *&ir_func = ctx->mod_->data_[ctx->bound_constants_].ir_funcs_[this];

@@ -525,6 +525,7 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
       UNREACHABLE("Encountered character whose value is ",
                   static_cast<int>(*loc));
   }
+  UNREACHABLE();
 }
 
 TaggedNode NextSlashInitiatedToken(SourceLocation &loc, error::Log *error_log) {

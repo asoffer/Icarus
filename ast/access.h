@@ -20,6 +20,7 @@ struct Access : public Expression {
   }
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
+  bool InferType(type::Type const *t, InferenceState *state) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;

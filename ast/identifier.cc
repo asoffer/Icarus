@@ -82,8 +82,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
   type::Type const *t = ctx->type_of(decl_);
 
   if (t == nullptr) { return VerifyResult::Error(); }
-  ctx->set_type(this, t);
-  return VerifyResult(t, decl_->const_);
+  return VerifyResult(ctx->set_type(this, t), decl_->const_);
 }
 
 void Identifier::Validate(Context *ctx) {}

@@ -14,6 +14,8 @@ struct MatchDeclaration : public Declaration {
   VerifyResult VerifyType(Context *) override;
   void Validate(Context *) override;
 
+  bool InferType(type::Type const *t, InferenceState *state) const override;
+
   std::vector<ir::Val> EmitIR(Context *) override;
 };
 }  // namespace ast

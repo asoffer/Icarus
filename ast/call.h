@@ -15,6 +15,7 @@ struct Call : public Literal {
   void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
+  bool InferType(type::Type const *t, InferenceState *state) const override;
 
   std::vector<ir::Val> EmitIR(Context *) override;
 

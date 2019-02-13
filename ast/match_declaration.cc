@@ -16,6 +16,12 @@ VerifyResult MatchDeclaration::VerifyType(Context *ctx) {
   return VerifyResult::Constant(ctx->set_type(this, type::Type_));
 }
 
+bool MatchDeclaration::InferType(type::Type const *t,
+                                 InferenceState *state) const {
+  state->matches_.emplace(this, t);
+  return true;
+}
+
 void MatchDeclaration::Validate(Context *ctx) { type_expr->Validate(ctx); }
 
 std::vector<ir::Val> MatchDeclaration::EmitIR(Context *ctx) {

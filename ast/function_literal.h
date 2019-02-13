@@ -51,14 +51,13 @@ struct FunctionLiteral : public Literal {
   //
   // TODO rename assign_scope.
   std::vector<Declaration *> sorted_params_;
+  base::Graph<Declaration *> param_dep_graph_;
 
   // TODO This is storing both the name in the declaration and pulls the
   // string_view of the name out in FnParams::Param.
   FnParams<std::unique_ptr<Declaration>> inputs_;
   std::vector<std::unique_ptr<Expression>> outputs_;
   Statements statements_;
-
-
 
   bool return_type_inferred_ = false;
   Module *module_            = nullptr;

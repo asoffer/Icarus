@@ -189,6 +189,7 @@ cc_target(
     impl_deps = [
         ":fn_params",
         ":function_literal",
+        ":struct_literal",
         ":terminal",
         ":unop",
         "//backend:eval",
@@ -471,6 +472,7 @@ cc_lib(
         "//base:graph",
         "//base:util",
         "//frontend:text_span",
+        "//misc:inference_state",
     ],
 )
 

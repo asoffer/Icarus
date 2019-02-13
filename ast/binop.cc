@@ -64,6 +64,38 @@ std::string Binop::to_string(size_t n) const {
   return ss.str();
 }
 
+bool Binop::InferType(type::Type const *t, InferenceState *state) const {
+  // TODO consider the possibility for overloadable operators to be generic
+  // struct and therefore not always returning false.
+  switch (op) {
+    case Language::Operator::Arrow:
+      if (auto *f = t->if_as<type::Function>()) {
+        // TODO is tuple right?
+        state->match_queue_.emplace(lhs.get(), type::Tup(f->input));
+        state->match_queue_.emplace(rhs.get(), type::Tup(f->output));
+        return true;
+      } else {
+        return false;
+      }
+    case Language::Operator::Add:
+    case Language::Operator::Sub:
+    case Language::Operator::Mul:
+    case Language::Operator::Div:
+    case Language::Operator::Mod:
+    case Language::Operator::Assign:
+    case Language::Operator::OrEq:
+    case Language::Operator::XorEq:
+    case Language::Operator::AndEq:
+    case Language::Operator::AddEq:
+    case Language::Operator::SubEq:
+    case Language::Operator::MulEq:
+    case Language::Operator::DivEq:
+    case Language::Operator::ModEq:
+    case Language::Operator::When: return false;
+    default: UNREACHABLE();
+  }
+}
+
 void Binop::assign_scope(Scope *scope) {
   scope_ = scope;
   lhs->assign_scope(scope);
@@ -463,6 +495,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     } break;
     default: UNREACHABLE(*this);
   }
+  UNREACHABLE(*this);
 }
 
 }  // namespace ast

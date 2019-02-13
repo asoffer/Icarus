@@ -57,6 +57,12 @@ cc_target(
     name = "import_graph",
 )
 
+cc_lib(
+    name = "inference_state",
+    hdrs = ["inference_state.h"],
+    deps = ["//base:debug"],
+)
+
 cc_target(
     name = "module",
     intf_deps = [

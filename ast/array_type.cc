@@ -24,6 +24,11 @@ void ArrayType::DependentDecls(base::Graph<Declaration *> *g,
   data_type_->DependentDecls(g, d);
 }
 
+bool ArrayType::InferType(type::Type const *t, InferenceState *state) const {
+  auto *a = t->if_as<type::Array>();
+  return a && data_type_->InferType(a->data_type, state);
+}
+
 VerifyResult ArrayType::VerifyType(Context *ctx) {
   auto length_result = length_->VerifyType(ctx);
   if (length_result.type_ != type::Int64) {

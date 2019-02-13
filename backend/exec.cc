@@ -552,7 +552,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       }
     } break;
     case ir::Op::CreateStruct:
-      save(new type::Struct(cmd.scope_, cmd.scope_->module()));
+      save(new type::Struct(cmd.create_struct_.scope_,
+                            cmd.create_struct_.scope_->module(),
+                            cmd.create_struct_.parent_));
       break;
     case ir::Op::CreateStructField: {
       auto *struct_to_modify = ASSERT_NOT_NULL(
@@ -573,7 +575,21 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           ->add_hashtag(cmd.add_hashtag_.hashtag_);
     } break;
     case ir::Op::FinalizeStruct: {
-      save(resolve<type::Struct *>(cmd.reg_));
+
+      auto *s = resolve<type::Struct *>(cmd.reg_);
+      auto &cache = s->mod_->generic_struct_cache_[s->parent_];
+
+      // TODO this is horrendous. Find a better way to populate the back_ map.
+      std::vector<type::Type const *> const *input_vals = nullptr;
+      for (auto const &[vals, t] : cache.fwd_) {
+        if (t != s) { continue; }
+        input_vals = &vals;
+        break;
+      }
+      ASSERT(cache.back_.emplace(s, ASSERT_NOT_NULL(input_vals)).second);
+      save(s);
+
+      // TODO set backwards map.
     } break;
     case ir::Op::DebugIr: LOG << call_stack.top().fn_; break;
     case ir::Op::Alloca: {
@@ -1077,9 +1093,10 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       for (uint64_t i = 0; i < cmd.sl_->args_.size(); ++i) {
         cached_vals.push_back(resolve<type::Type const *>(ir::Register{i}));
       }
-
-      type::Type const **cache_slot =
-          &cmd.sl_->mod_->generic_struct_cache_[cmd.sl_][cached_vals];
+      auto &cache = cmd.sl_->mod_->generic_struct_cache_[cmd.sl_];
+      auto iter = cache.fwd_.try_emplace(std::move(cached_vals), nullptr).first;
+      type::Type const **cache_slot = &iter->second;
+      // Backwards direction set in FinalizeStruct
       save(ir::Addr::Heap(cache_slot));
     } break;
     case ir::Op::CreateContext: save(new Context(cmd.mod_)); break;
