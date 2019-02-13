@@ -123,9 +123,9 @@ template <typename T>
 static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack) {
   if constexpr (std::is_same_v<std::decay_t<T>, void *>) {
     auto start  = reinterpret_cast<uintptr_t>(stack->raw(0));
-    auto end    = reinterpret_cast<uintptr_t>(stack->raw(stack->size() - 1));
+    auto end    = reinterpret_cast<uintptr_t>(stack->raw(stack->size()));
     auto result = reinterpret_cast<uintptr_t>(val);
-    if (start <= result && result <= end) {
+    if (start <= result && result < end) {
       StoreValue(ir::Addr::Stack(result - start), addr, stack);
     } else {
       StoreValue(ir::Addr::Heap(val), addr, stack);
@@ -586,15 +586,20 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         input_vals = &vals;
         break;
       }
-      ASSERT(cache.back_.emplace(s, ASSERT_NOT_NULL(input_vals)).second);
+      if (input_vals != nullptr) {
+        ASSERT(cache.back_.emplace(s, input_vals).second);
+      }
       save(s);
 
       // TODO set backwards map.
     } break;
     case ir::Op::DebugIr: LOG << call_stack.top().fn_; break;
     case ir::Op::Alloca: {
-      save(ir::Addr::Stack(stack_.size()));
       auto arch = Architecture::InterprettingMachine();
+
+      save(ir::Addr::Stack(
+          arch.MoveForwardToAlignment(cmd.type_, stack_.size())));
+      // TODO simplify: just say how big you want the stack to be after this.
       stack_.append_bytes(arch.bytes(cmd.type_),
                           arch.alignment(cmd.type_));
 

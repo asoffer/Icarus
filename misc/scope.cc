@@ -40,6 +40,7 @@ std::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
 
     for (auto const *mod : scope_ptr->embedded_modules_) {
       // TODO use the right bound constants? or kill bound constants?
+      LOG << mod;
       if (auto *decl = mod->GetDecl(id)) {
         matching_decls.emplace_back(decl,
                                     mod->type_of(ast::BoundConstants{}, decl));

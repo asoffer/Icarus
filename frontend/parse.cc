@@ -510,7 +510,11 @@ std::vector<std::unique_ptr<Declaration>> ExtractInputs(
     inputs.reserve(decls->exprs_.size());
 
     for (auto &expr : decls->exprs_) {
-      inputs.push_back(move_as<Declaration>(expr));
+      if (expr->is<Declaration>()) {
+        inputs.push_back(move_as<Declaration>(expr));
+      } else {
+        NOT_YET("log an error: ", args);
+      }
     }
   } else {
     NOT_YET("log an error: ", args);

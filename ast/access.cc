@@ -87,6 +87,7 @@ VerifyResult Access::VerifyType(Context *ctx) {
                      })) {
       ctx->error_log_.NonExportedMember(span, member_name, s);
     }
+
     return VerifyResult(ctx->set_type(this, member->type),
                         operand_result.const_);
 
@@ -116,7 +117,7 @@ void Access::Validate(Context *ctx) { operand->Validate(ctx); }
 std::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
   auto reg = operand->EmitLVal(ctx)[0];
   auto *t  = ctx->type_of(operand.get());
-  if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
+
   while (t->is<type::Pointer>()) {
     t   = t->as<type::Pointer>().pointee;
     reg = ir::Load<ir::Addr>(reg, t);
@@ -144,8 +145,19 @@ std::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {
     auto lit = this_type->as<type::Flags>().EmitLiteral(member_name);
     return {ir::Val(lit)};
   } else {
-    auto lval = EmitLVal(ctx)[0];
-    return {ir::Val::Reg(ir::PtrFix(lval.reg_, this_type), this_type)};
+    auto reg = operand->EmitLVal(ctx)[0];
+    auto *t  = ctx->type_of(operand.get());
+
+    if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
+    while (t->is<type::Pointer>()) {
+      t   = t->as<type::Pointer>().pointee;
+      reg = ir::Load<ir::Addr>(reg, t);
+    }
+
+    ASSERT(t, Is<type::Struct>());
+    auto *struct_type = &t->as<type::Struct>();
+    auto field = ir::Field(reg, struct_type, struct_type->index(member_name));
+    return {ir::Val::Reg(ir::PtrFix(field.get(), this_type), this_type)};
   }
 }
 
