@@ -1,12 +1,11 @@
 package(default_visibility = ['//visibility:public'])
-filegroup(name = 'gcc')
 filegroup(name = 'empty')
 
 cc_toolchain_suite(
     name = 'gcc_toolchain_suite',
     toolchains = {
         'gcc': ':gcc_toolchain'
-    },
+    }
 )
 
 cc_toolchain(

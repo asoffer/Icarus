@@ -107,7 +107,7 @@ std::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
 
   // TODO handle switching on tuples/multiple values?
   ir::Val expr_val;
-  type::Type const *expr_type;
+  type::Type const *expr_type = nullptr;
   if (expr_) {
     expr_val  = expr_->EmitIR(ctx)[0];
     expr_type = ctx->type_of(expr_.get());
