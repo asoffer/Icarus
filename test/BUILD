@@ -6,7 +6,7 @@ cc_lib(
     hdrs = ["test.h"],
     deps = [
         "//base:stringify",
-        "//base:tuple",
+        "//base:matchers",
     ],
     testonly = True,
 )

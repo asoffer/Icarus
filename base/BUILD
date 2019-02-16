@@ -58,6 +58,12 @@ cc_lib(
 )
 
 cc_lib(
+    name = "matchers",
+    hdrs = ["matchers.h"],
+    deps = [":tuple"],
+)
+
+cc_lib(
     name = "owned_ptr",
     hdrs = ["owned_ptr.h"],
 )
@@ -115,5 +121,3 @@ cc_lib(
     hdrs = ["util.h"],
     deps = [":debug"],
 )
-
-

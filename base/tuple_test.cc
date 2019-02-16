@@ -4,15 +4,15 @@
 
 namespace base {
 namespace {
-using ::test::Eq;
-using ::test::Tuple;
+using ::matcher::Eq;
+using ::matcher::Tuple;
 
 TEST(TupleForEach) {
   std::tuple nums(1, 2, 3);
 
   int total = 0;
   tuple::for_each([&total](int arg) { total += arg; }, nums);
-  CHECK(total, Eq(6));
+  CHECK(total == 6);
 
   tuple::for_each([](auto& arg) { arg = arg * arg; }, nums);
   CHECK(nums, Tuple(Eq(1), Eq(4), Eq(9)));
@@ -24,7 +24,7 @@ TEST(TupleForEachTogether) {
 
   int dot_product = 0;
   tuple::for_each([&dot_product](int u, int v) { dot_product += u * v; }, u, v);
-  CHECK(dot_product, Eq(1 * 5 + 2 * 2 + 3 * -3));
+  CHECK(dot_product == 1 * 5 + 2 * 2 + 3 * -3);
 }
 
 TEST(TupleTransform) {
