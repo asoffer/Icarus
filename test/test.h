@@ -1,10 +1,11 @@
-#include <any>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/stringify.h"
+#include "base/tuple.h"
 
 #define EXPECT(...)                                                            \
   do {                                                                         \
@@ -53,90 +54,141 @@ struct Test {
 #define CHECK_1_ARG(x)
 #define CHECK_2_ARGS(expr, matcher)                                            \
   do {                                                                         \
-    auto&& m = (matcher);                                                      \
-    auto&& e = (expr);                                                         \
     ++stats_.expectations;                                                     \
-    if (m.match(e)) {                                                          \
+    auto const& e                          = (expr);                           \
+    std::optional<std::string> description = (matcher).match_and_describe(e);  \
+    if (!description.has_value()) {                                            \
       ++stats_.passes;                                                         \
     } else {                                                                   \
+      using base::stringify;                                                   \
       /* TODO specify output logger? */                                        \
-      std::cerr << "\n\033[0;1;34m[" __FILE__ ": " << std::to_string(__LINE__)   \
+      std::cerr << "\n\033[0;1;34m[" __FILE__ ": " << std::to_string(__LINE__) \
                 << "]\033[0;1;31m Check failed\n"                              \
                    "  \033[0;1;37mExpression:\033[0m " #expr                   \
                    "\n"                                                        \
                    "    \033[0;1;37mExpected:\033[0m "                         \
-                << m.describe(true) << "\n"                                    \
-                << "      \033[0;1;37mActual:\033[0m " << expr << "\n";        \
+                << *description << "\n"                                        \
+                << "      \033[0;1;37mActual:\033[0m " << stringify(e)         \
+                << "\n";                                                       \
     }                                                                          \
   } while (false)
 
+template <typename T>
 struct Matcher {
-  virtual Matcher* move()                           = 0;
-  virtual bool match(std::any const& input) const   = 0;
+  std::optional<std::string >match_and_describe(T const& input) {
+    if (match(input)) { return std::nullopt; }
+    return describe(true);
+  }
+
   virtual std::string describe(bool positive) const = 0;
+  virtual bool match(T const&) const                = 0;
 };
 
-struct Not : public Matcher {
-  virtual Matcher* move() { return new Not(std::move(*m_)); }
-  Not(Matcher&& m) : m_(m.move()) {}
-  bool match(std::any const& input) const override { return !m_->match(input); }
+template <typename T>
+struct Not : public Matcher<T> {
+  Not(Matcher<T> const& m) : m_(m) {}
+
+  bool match(T const& input) const { return !m_.match(input); }
   std::string describe(bool positive) const override {
-    return m_->describe(!positive);
+    return m_.describe(!positive);
   }
 
  private:
-  std::unique_ptr<Matcher> m_;
-};
-inline Not operator!(Matcher&& m) { return Not{std::move(m)}; }
-
-struct And : public Matcher {
-  virtual Matcher* move() {
-    return new And(std::move(*lhs_), std::move(*rhs_));
-  }
-  And(Matcher&& lhs, Matcher&& rhs) : lhs_(lhs.move()), rhs_(rhs.move()) {}
-  bool match(std::any const& input) const override {
-    return lhs_->match(input) && rhs_->match(input);
-  }
-  std::string describe(bool positive) const override {
-    return lhs_->describe(positive) + " and " + rhs_->describe(positive);
-  }
-
- private:
-  std::unique_ptr<Matcher> lhs_, rhs_;
+  Matcher<T> const& m_;
 };
 
-inline And operator&&(Matcher&& lhs, Matcher&& rhs) {
-  return And{std::move(lhs), std::move(rhs)};
-}
-
-struct Or : public Matcher {
-  virtual Matcher* move() { return new Or(std::move(*lhs_), std::move(*rhs_)); }
-  Or(Matcher&& lhs, Matcher&& rhs) : lhs_(lhs.move()), rhs_(rhs.move()) {}
-  bool match(std::any const& input) const override {
-    return lhs_->match(input) || rhs_->match(input);
-  }
-  std::string describe(bool positive) const override {
-    return lhs_->describe(positive) + " or " + rhs_->describe(positive);
-  }
-
- private:
-  std::unique_ptr<Matcher> lhs_, rhs_;
-};
-
-inline Or operator||(Matcher&& lhs, Matcher&& rhs) {
-  return Or{std::move(lhs), std::move(rhs)};
+template <typename T>
+inline Not<T> operator!(Matcher<T> const& m) {
+  return Not{m};
 }
 
 template <typename T>
-struct Eq : public test::Matcher {
-  virtual test::Matcher* move() { return new Eq<T>(std::move(value_)); }
-  Eq(T value) : value_(std::move(value)) {}
-  bool match(std::any const& input) const override {
-    if (auto* t = std::any_cast<T>(&input)) { return *t == value_; }
-    return false;
+struct And : public Matcher<T> {
+  And(Matcher<T> const& lhs, Matcher<T> const& rhs) : lhs_(lhs), rhs_(rhs) {}
+  bool match(T const& input) const override {
+    return lhs_.match(input) && rhs_.match(input);
   }
   std::string describe(bool positive) const override {
-    return (positive ? "equals " : "does not equal ") + base::stringify(value_);
+    return lhs_.describe(positive) + " and " + rhs_.describe(positive);
+  }
+
+ private:
+  Matcher<T> const& lhs_;
+  Matcher<T> const& rhs_;
+};
+
+template <typename T>
+inline And<T> operator&&(Matcher<T> const& lhs, Matcher<T> const& rhs) {
+  return And{lhs, rhs};
+}
+
+template <typename T>
+struct Or : public Matcher<T> {
+  Or(Matcher<T> const& lhs, Matcher<T> const& rhs) : lhs_(lhs), rhs_(rhs) {}
+  bool match(T const& input) const override {
+    return lhs_.match(input) || rhs_.match(input);
+  }
+  std::string describe(bool positive) const override {
+    return lhs_.describe(positive) + " or " + rhs_.describe(positive);
+  }
+
+ private:
+  Matcher<T> const& lhs_;
+  Matcher<T> const& rhs_;
+};
+
+template <typename T>
+inline Or<T> operator||(Matcher<T> const& lhs, Matcher<T> const& rhs) {
+  return Or{lhs, rhs};
+}
+
+template <typename... Ts>
+struct Tuple : public Matcher<std::tuple<Ts...>> {
+  Tuple(Matcher<Ts> const&... ms) : matchers_(ms...) {}
+
+  bool match(std::tuple<Ts...> const& input) const {
+    bool success = true;
+    base::tuple::for_each(
+        [&success](auto const& m, auto const& val) { success &= m.match(val); },
+        matchers_, input);
+    return success;
+  }
+
+  std::string describe(bool positive) const override {
+    if constexpr (sizeof...(Ts) == 0) {
+      return positive ? "is an empty tuple" : "is not an empty tuple";
+    } else if constexpr (sizeof...(Ts) == 1) {
+      return "is a 1-element tuple whose element " +
+             matchers_[0].describe(positive);
+    } else {
+      std::array<std::string, sizeof...(Ts)> descriptions;
+      size_t index = 0;
+      base::tuple::for_each(
+          [&descriptions, &index, positive](auto const& m) {
+            descriptions[index++] = m.describe(true);
+          },
+          matchers_);
+      std::string result = "is a tuple where";
+      if (!positive) { result += " one of the following is false:"; }
+      for (size_t i = 0; i < sizeof...(Ts); ++i) {
+        result += "\n                 parameter " + std::to_string(i) + " " +
+                  descriptions[i];
+      }
+      return result;
+    }
+  }
+
+ private:
+  std::tuple<Matcher<Ts> const&...> matchers_;
+};
+
+template <typename T>
+struct Eq : public Matcher<T> {
+  Eq(T value) : value_(std::move(value)) {}
+  bool match(T const& input) const override { return input == value_; }
+  std::string describe(bool positive) const override {
+    using base::stringify;
+    return (positive ? "equals " : "does not equal ") + stringify(value_);
   }
 
   T value_;

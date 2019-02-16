@@ -4,6 +4,9 @@ load("//:defs.bzl", "cc_lib")
 cc_lib(
     name = "test",
     hdrs = ["test.h"],
-    deps = ["//base:stringify"],
+    deps = [
+        "//base:stringify",
+        "//base:tuple",
+    ],
     testonly = True,
 )

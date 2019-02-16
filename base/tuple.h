@@ -13,20 +13,22 @@ struct with_seq;
 
 template <size_t N, typename Fn, typename... Tups>
 constexpr auto call_at_index(Fn &&fn, Tups &&... tups) {
-  return fn(std::get<N>(tups)...);
+  return fn(std::get<N>(std::forward<Tups>(tups))...);
 }
 
 template <size_t... Ns>
 struct with_seq<std::index_sequence<Ns...>> {
   template <typename Fn, typename... Tups>
   constexpr static auto transform(Fn &&fn, Tups &&... tups) {
-    return std::make_tuple(
-        ::base::tuple::internal::call_at_index<Ns>(fn, tups...)...);
+    return std::make_tuple(::base::tuple::internal::call_at_index<Ns>(
+        fn, std::forward<Tups>(tups)...)...);
   }
 
   template <typename Fn, typename... Tups>
   constexpr static void for_each(Fn &&fn, Tups &&... tups) {
-    (::base::tuple::internal::call_at_index<Ns>(fn, tups...), ...);
+    (::base::tuple::internal::call_at_index<Ns>(fn,
+                                                std::forward<Tups>(tups)...),
+     ...);
   }
 };
 }  // namespace internal

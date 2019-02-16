@@ -89,6 +89,15 @@ cc_lib(
     hdrs = ["tuple.h"],
 )
 
+cc_test(
+    name = "tuple_test",
+    srcs = ["tuple_test.cc"],
+    deps = [
+        ":tuple",
+        "//test",
+    ],
+)
+
 cc_lib(
     name = "types",
     hdrs = ["types.h"],
