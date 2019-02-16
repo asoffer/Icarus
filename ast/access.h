@@ -13,7 +13,6 @@ struct Access : public Expression {
 
   void assign_scope(Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
-  void Validate(Context *) override;
 
   void ExtractJumps(JumpExprs *rets) const override {
     operand->ExtractJumps(rets);

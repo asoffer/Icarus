@@ -245,11 +245,6 @@ VerifyResult Call::VerifyType(Context *ctx) {
   return VerifyResult::Constant(ret_type);
 }
 
-void Call::Validate(Context *ctx) {
-  fn_->Validate(ctx);
-  args_.Apply([ctx](auto &arg) { arg->Validate(ctx); });
-}
-
 void Call::ExtractJumps(JumpExprs *rets) const {
   fn_->ExtractJumps(rets);
   for (const auto &val : args_.pos_) { val->ExtractJumps(rets); }

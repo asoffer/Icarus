@@ -41,10 +41,6 @@ VerifyResult Interface::VerifyType(Context *ctx) {
   return VerifyResult::Constant(ctx->set_type(this, type::Intf));
 }
 
-void Interface::Validate(Context *ctx) {
-  for (auto &decl : decls_) { decl.Validate(ctx); }
-}
-
 void Interface::ExtractJumps(JumpExprs *rets) const {
   for (auto &d : decls_) { d.ExtractJumps(rets); }
 }

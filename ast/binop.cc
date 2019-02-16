@@ -255,11 +255,6 @@ VerifyResult Binop::VerifyType(Context *ctx) {
   UNREACHABLE(static_cast<int>(op));
 }
 
-void Binop::Validate(Context *ctx) {
-  lhs->Validate(ctx);
-  rhs->Validate(ctx);
-}
-
 void Binop::ExtractJumps(JumpExprs *rets) const {
   lhs->ExtractJumps(rets);
   rhs->ExtractJumps(rets);

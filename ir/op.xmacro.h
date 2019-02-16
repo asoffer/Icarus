@@ -285,7 +285,6 @@ OP_MACRO(Destroy,              Destroy,             void,                    spe
 OP_MACRO(Move,                 Move,                void,                    special2_)
 OP_MACRO(Copy,                 Copy,                void,                    special2_)
 OP_MACRO(VerifyType,           VerifyType,          void,                    ast_)
-OP_MACRO(Validate,             Validate,            void,                    ast_)
 OP_MACRO(EvaluateAsType,       EvaluateAsType,      type::Type const*,       ast_)
 OP_MACRO(CreateContext,        CreateContext,       Context *,               mod_)
 OP_MACRO(AddBoundConstant,     AddBoundConstant,    void,                    add_bc_)

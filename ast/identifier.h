@@ -16,7 +16,6 @@ struct Identifier : public Expression {
   void assign_scope(Scope *scope) override;
 
   VerifyResult VerifyType(Context *) override;
-  void Validate(Context *ctx) override;
 
   void ExtractJumps(JumpExprs *) const override {}
   // TODO I think you should actually be dependent on the decl_.

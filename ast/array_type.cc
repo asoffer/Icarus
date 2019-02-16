@@ -44,11 +44,6 @@ VerifyResult ArrayType::VerifyType(Context *ctx) {
                       data_type_result.const_ && length_result.const_);
 }
 
-void ArrayType::Validate(Context *ctx) {
-  length_->Validate(ctx);
-  data_type_->Validate(ctx);
-}
-
 std::vector<ir::Val> ArrayType::EmitIR(Context *ctx) {
   return {ir::ValFrom(
       ir::Array(length_->EmitIR(ctx)[0].reg_or<int64_t>(),

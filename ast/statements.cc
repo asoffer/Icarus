@@ -29,10 +29,6 @@ VerifyResult Statements::VerifyType(Context *ctx) {
   return VerifyResult::NonConstant(type::Void());
 }
 
-void Statements::Validate(Context *ctx) {
-  for (auto &stmt : content_) { stmt->Validate(ctx); }
-}
-
 void Statements::ExtractJumps(JumpExprs *rets) const {
   for (auto &stmt : content_) { stmt->ExtractJumps(rets); }
 }

@@ -73,6 +73,8 @@ struct Module {
     Module *mod_;
   };
   std::queue<CompilationWorkItem> to_complete_;
+  std::queue<std::function<void()>> deferred_work_;
+  void CompleteAllDeferredWork();
   void CompleteAll();
 
   std::unique_ptr<DeclScope> global_;
@@ -118,7 +120,6 @@ struct Module {
   struct DependentData {
     ast::NodeLookup<type::Type const *> types_;
     std::unordered_map<ast::Declaration *, ir::Register> addr_;
-    std::unordered_set<ast::FunctionLiteral const *> validated_;
 
     std::unordered_map<ast::Expression const *, ir::Func *> ir_funcs_;
 

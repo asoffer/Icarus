@@ -134,92 +134,73 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
       }
     }
 
+    ctx->mod_->deferred_work_.emplace(
+        [bc{ctx->bound_constants_}, this, mod{ctx->mod_}]() mutable {
+          Context ctx(mod);
+          ctx.bound_constants_ = std::move(bc);
+          this->VerifyBody(&ctx);
+        });
+
     return VerifyResult::Constant(ctx->set_type(
         this,
         type::Func(std::move(input_type_vec), std::move(output_type_vec))));
   } else {
-    Validate(ctx);
-    return VerifyResult::Constant(ctx->type_of(this));
+    return VerifyBody(ctx);
   }
 }
 
-// TODO VerifyType has access to types of previous entries, but Validate
-// doesnt.
-void FunctionLiteral::Validate(Context *ctx) {
-  if (ctx->mod_->type_of(ctx->bound_constants_, this) == type::Generic) {
-    return;
-  }
-
-  auto &validated_fns = ctx->mod_->data_[ctx->bound_constants_].validated_;
-  bool inserted       = validated_fns.insert(this).second;
-  if (!inserted) { return; }
-
-  for (auto &in : inputs_.params_) { in.value->Validate(ctx); }
-  for (auto &out : outputs_) { out->Validate(ctx); }
-
-  // NOTE! Type verifcation on statements first!
+// TODO there's not that much shared between the inferred and uninferred cases,
+// so probably break them out.
+VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
   statements_.VerifyType(ctx);
   // TODO propogate cyclic dependencies.
 
   JumpExprs rets;
   statements_.ExtractJumps(&rets);
-  statements_.Validate(ctx);
-  std::set<type::Type const *> types;
+  std::unordered_set<type::Type const *> types;
   for (auto *expr : rets[JumpKind::Return]) {
     types.insert(ctx->type_of(expr));
   }
 
-  std::vector<type::Type const *> input_type_vec;
-  input_type_vec.reserve(inputs_.params_.size());
-  for (auto &input : inputs_.params_) {
-    input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input.value.get())));
-  }
-
   if (return_type_inferred_) {
-    switch (types.size()) {
-      case 0:
-        ctx->set_type(this, type::Func(std::move(input_type_vec), {}));
-        break;
-      case 1: {
-        auto *one_type = *types.begin();
-        if (one_type->is<type::Tuple>()) {
-          const auto &entries = one_type->as<type::Tuple>().entries_;
-          for (auto *entry : entries) {
-            outputs_.push_back(
-                std::make_unique<Terminal>(TextSpan(), ir::Val(entry)));
-          }
-          ctx->set_type(this, type::Func(std::move(input_type_vec), entries));
-
-        } else {
-          outputs_.push_back(
-              std::make_unique<Terminal>(TextSpan(), ir::Val(one_type)));
-          ctx->set_type(this,
-                        type::Func(std::move(input_type_vec), {one_type}));
-        }
-      } break;
-      default: {
-        // Note: this feels impossible, but it is possible if we allow scopes to
-        // both evaluate to values and return.
-        NOT_YET();
-      } break;
+    std::vector<type::Type const *> input_type_vec;
+    input_type_vec.reserve(inputs_.params_.size());
+    for (auto &input : inputs_.params_) {
+      input_type_vec.push_back(
+          ASSERT_NOT_NULL(ctx->type_of(input.value.get())));
     }
+
+    std::vector<type::Type const *> output_type_vec(
+        std::make_move_iterator(types.begin()),
+        std::make_move_iterator(types.end()));
+
+    if (types.size() > 1) { NOT_YET("log an error"); }
+    auto f = type::Func(std::move(input_type_vec), std::move(output_type_vec));
+    return VerifyResult::Constant(ctx->set_type(this, f));
+
   } else {
-    auto const &outs =
-        ASSERT_NOT_NULL(ctx->type_of(this))->as<type::Function>().output;
+    auto *this_type  = ctx->type_of(this);
+    auto const &outs = ASSERT_NOT_NULL(this_type)->as<type::Function>().output;
     switch (outs.size()) {
       case 0: {
+        bool err = false;
         for (auto *expr : rets[JumpKind::Return]) {
           if (!expr->as<CommaList>().exprs_.empty()) {
             ctx->error_log_.NoReturnTypes(expr);
+            err = true;
           }
         }
+        return err ? VerifyResult::Error() : VerifyResult::Constant(this_type);
       } break;
       case 1: {
+        bool err = false;
         for (auto *expr : rets[JumpKind::Return]) {
           auto *t = ctx->type_of(expr);
           if (t == outs[0]) { continue; }
           ctx->error_log_.ReturnTypeMismatch(outs[0], t, expr->span);
+          err = true;
         }
+        return err ? VerifyResult::Error() : VerifyResult::Constant(this_type);
       } break;
       default: {
         for (auto *expr : rets[JumpKind::Return]) {
@@ -229,7 +210,9 @@ void FunctionLiteral::Validate(Context *ctx) {
             if (tup_entries.size() != outs.size()) {
               ctx->error_log_.ReturningWrongNumber(expr->span, expr_type,
                                                    outs.size());
+              return VerifyResult::Error();
             } else {
+              bool err = false;
               for (size_t i = 0; i < tup_entries.size(); ++i) {
                 if (tup_entries.at(i) != outs.at(i)) {
                   // TODO if this is a commalist we can point to it more
@@ -240,14 +223,18 @@ void FunctionLiteral::Validate(Context *ctx) {
                   // if it's splatted.
                   ctx->error_log_.IndexedReturnTypeMismatch(
                       outs.at(i), tup_entries.at(i), expr->span, i);
+                  err = true;
                 }
               }
+              if (err) { return VerifyResult::Error(); }
             }
           } else {
             ctx->error_log_.ReturningWrongNumber(expr->span, expr_type,
                                                  outs.size());
+            return VerifyResult::Error();
           }
         }
+        return VerifyResult::Constant(this_type);
       } break;
     }
   }

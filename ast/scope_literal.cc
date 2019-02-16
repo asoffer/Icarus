@@ -94,10 +94,6 @@ VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
   return VerifyResult::Constant(ctx->set_type(this, type::Scope));
 }
 
-void ScopeLiteral::Validate(Context *ctx) {
-  for (auto &decl : decls_) { decl.Validate(ctx); }
-}
-
 void ScopeLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &decl : decls_) { decl.ExtractJumps(rets); }
 }

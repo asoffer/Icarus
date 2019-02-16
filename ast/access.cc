@@ -112,8 +112,6 @@ VerifyResult Access::VerifyType(Context *ctx) {
   }
 }
 
-void Access::Validate(Context *ctx) { operand->Validate(ctx); }
-
 std::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
   auto reg = operand->EmitLVal(ctx)[0];
   auto *t  = ctx->type_of(operand.get());

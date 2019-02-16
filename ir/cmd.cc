@@ -41,11 +41,6 @@ void VerifyType(ast::Node *node, Register ctx) {
   cmd.ast_  = {node, ctx};
 }
 
-void Validate(ast::Node *node, Register ctx) {
-  auto &cmd = MakeCmd(nullptr, Op::Validate);
-  cmd.ast_  = {node, ctx};
-}
-
 Register CreateContext(Module *mod) {
   auto &cmd = MakeCmd(type::Ctx, Op::CreateContext);
   cmd.mod_  = mod;

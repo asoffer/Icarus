@@ -27,7 +27,6 @@ struct Terminal : public Literal {
            std::get<type::Type const *>(value.value) == t;
   }
 
-  void Validate(Context *) override {}
   void ExtractJumps(JumpExprs *) const override {}
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override {}

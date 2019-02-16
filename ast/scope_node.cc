@@ -58,20 +58,15 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
     return VerifyResult::Error();
   }
 
+  // TODO
+  for (auto &block_node : blocks_) { block_node.stmts_.VerifyType(ctx); }
+
   // TODO check that all the blocks make sense and emit errors
 
   // TODO compute what type this should return
   // TODO can this evaluate to anything?
   // TODO constant is wrong.
   return VerifyResult::Constant(ctx->set_type(this, type::Void()));
-}
-
-void ScopeNode::Validate(Context *ctx) {
-  for (auto &block_node : blocks_) {
-    block_node.stmts_.VerifyType(ctx);
-    block_node.stmts_.Validate(ctx);
-  }
-  // TODO
 }
 
 void ScopeNode::ExtractJumps(JumpExprs *rets) const {

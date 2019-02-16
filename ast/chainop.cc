@@ -307,10 +307,6 @@ not_blocks:
   }
 }
 
-void ChainOp::Validate(Context *ctx) {
-  for (auto &expr : exprs) { expr->Validate(ctx); }
-}
-
 void ChainOp::ExtractJumps(JumpExprs *rets) const {
   for (auto &expr : exprs) { expr->ExtractJumps(rets); }
 }

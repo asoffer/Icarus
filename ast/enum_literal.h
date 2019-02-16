@@ -24,7 +24,6 @@ struct EnumLiteral : public Literal {
 
   void assign_scope(Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
-  void Validate(Context *) override;
 
   void ExtractJumps(JumpExprs *rets) const override;
   void DependentDecls(base::Graph<Declaration *> *g,

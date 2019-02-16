@@ -20,7 +20,6 @@ struct Hole : public Literal {
                       Declaration *d) const override {}
 
   VerifyResult VerifyType(Context *) { return VerifyResult::Error(); }
-  void Validate(Context *ctx) {}
 
   std::vector<ir::Val> EmitIR(Context *) override { return {ir::Val::None()}; }
 };

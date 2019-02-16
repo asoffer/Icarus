@@ -82,14 +82,6 @@ VerifyResult Switch::VerifyType(Context *ctx) {
   }
 }
 
-void Switch::Validate(Context *ctx) {
-  if (expr_) { expr_->Validate(ctx); }
-  for (auto &[expr, cond] : cases_) {
-    expr->Validate(ctx);
-    cond->Validate(ctx);
-  }
-}
-
 void Switch::ExtractJumps(JumpExprs *rets) const {
   if (expr_) { expr_->ExtractJumps(rets); }
   for (auto &[expr, cond] : cases_) {

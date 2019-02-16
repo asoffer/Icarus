@@ -112,6 +112,13 @@ void Module::CompilationWorkItem::Complete() {
   }
 }
 
+void Module::CompleteAllDeferredWork() {
+  while (!deferred_work_.empty()) {
+    deferred_work_.front()();
+    deferred_work_.pop();
+  }
+}
+
 void Module::CompleteAll() {
   while (!to_complete_.empty()) {
     to_complete_.front().Complete();
@@ -141,12 +148,7 @@ static Module const *CompileModule(Module *mod) {
     return mod;
   }
 
-  file_stmts->Validate(&ctx);
-  if (ctx.num_errors() != 0) {
-    ctx.DumpErrors();
-    found_errors = true;
-    return mod;
-  }
+  mod->CompleteAllDeferredWork();
 
   file_stmts->EmitIR(&ctx);
   if (ctx.num_errors() != 0) {

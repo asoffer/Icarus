@@ -58,7 +58,6 @@ repl_start : {
       auto *decl = &stmt->as<ast::Declaration>();
       decl->assign_scope(ctx.mod_->global_.get());
       decl->VerifyType(&ctx);
-      decl->Validate(&ctx);
       decl->EmitIR(&ctx);
       if (ctx.num_errors() != 0) {
         ctx.DumpErrors();

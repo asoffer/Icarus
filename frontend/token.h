@@ -32,7 +32,6 @@ struct Token : public ast::Node {
 
   void assign_scope(Scope *) override { UNREACHABLE(token); }
   ast::VerifyResult VerifyType(Context *) override { UNREACHABLE(token); }
-  void Validate(Context *) override { UNREACHABLE(token); }
   void ExtractJumps(ast::JumpExprs *) const override { UNREACHABLE(token); }
   std::vector<ir::Val> EmitIR(Context *) override { UNREACHABLE(token); }
   void DependentDecls(base::Graph<ast::Declaration *> *g,

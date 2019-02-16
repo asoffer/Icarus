@@ -525,22 +525,6 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
   return VerifySpecialFunctions(this, this_type);
 }
 
-void Declaration::Validate(Context *ctx) {
-  bool swap_bc    = ctx->mod_ != mod_;
-  Module *old_mod = std::exchange(ctx->mod_, mod_);
-  BoundConstants old_bc;
-  if (swap_bc) {
-    old_bc = std::exchange(ctx->bound_constants_, BoundConstants{});
-  }
-  base::defer d([&] {
-    ctx->mod_ = old_mod;
-    if (swap_bc) { ctx->bound_constants_ = std::move(old_bc); }
-  });
-
-  if (type_expr) { type_expr->Validate(ctx); }
-  if (init_val) { init_val->Validate(ctx); }
-}
-
 void Declaration::ExtractJumps(JumpExprs *rets) const {
   if (type_expr) { type_expr->ExtractJumps(rets); }
   if (init_val) { init_val->ExtractJumps(rets); }

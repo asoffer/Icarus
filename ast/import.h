@@ -15,7 +15,6 @@ struct Import : public Literal {
   std::string to_string(size_t n) const override;
   void assign_scope(Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
-  void Validate(Context *) override {}
 
   // TODO what if the operand does a result/return thing in a scope? This feels
   // like it should be disallowed but maybe I need this to catch the error!

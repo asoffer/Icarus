@@ -36,19 +36,17 @@ void BlockLiteral::DependentDecls(base::Graph<Declaration *> *g,
 }
 
 VerifyResult BlockLiteral::VerifyType(Context *ctx) {
-  return VerifyResult::Constant(required_ ? type::Block : type::OptBlock);
-}
+  ctx->mod_->deferred_work_.emplace(
+      [bc{ctx->bound_constants_}, this, mod{ctx->mod_}]() mutable {
+        Context ctx(mod);
+        ctx.bound_constants_ = std::move(bc);
 
-void BlockLiteral::Validate(Context *ctx) {
-  ctx->set_type(this, required_ ? type::Block : type::OptBlock);
-  bool err = false;
-  for (auto &b : before_) { err |= !b->VerifyType(ctx).ok(); }
-  for (auto &a : after_) { err |= !a->VerifyType(ctx).ok(); }
-  if (err) { return; }
+        for (auto &b : before_) { b->VerifyType(&ctx); }
+        for (auto &a : after_) { a->VerifyType(&ctx); }
+      });
 
-  // TODO type-check before/after functions.
-  for (auto &b : before_) { b->Validate(ctx); }
-  for (auto &a : after_) { a->Validate(ctx); }
+  return VerifyResult::Constant(
+      ctx->set_type(this, required_ ? type::Block : type::OptBlock));
 }
 
 void BlockLiteral::ExtractJumps(JumpExprs *rets) const {

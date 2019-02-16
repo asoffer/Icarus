@@ -89,18 +89,16 @@ void EnumLiteral::DependentDecls(base::Graph<Declaration *> *g,
 }
 
 VerifyResult EnumLiteral::VerifyType(Context *ctx) {
-  return VerifyResult::Constant(ctx->set_type(this, type::Type_));
-}
-
-void EnumLiteral::Validate(Context *ctx) {
+  ctx->set_type(this, type::Type_);
   for (auto &elem : elems_) {
     if (auto *decl = elem->if_as<Declaration>()) {
       auto *t = decl->init_val->VerifyType(ctx).type_;
       ASSERT(t == type::Int32);
       // TODO determine what is allowed here and how to generate errors.
-      elem->as<Declaration>().init_val->Validate(ctx);
     }
   }
+
+  return VerifyResult::Constant(type::Type_);
 }
 
 void EnumLiteral::ExtractJumps(JumpExprs *rets) const {

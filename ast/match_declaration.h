@@ -12,7 +12,6 @@ struct MatchDeclaration : public Declaration {
 
   std::string to_string(size_t n) const override;
   VerifyResult VerifyType(Context *) override;
-  void Validate(Context *) override;
 
   bool InferType(type::Type const *t, InferenceState *state) const override;
 

@@ -267,7 +267,6 @@ CallObstruction DispatchTableRow::SetTypes(
         if (!result.const_) { NOT_YET("log an error."); }
         input_type = result.type_;
 
-        decl.Validate(ctx);
         ctx->bound_constants_.constants_.emplace(
             &decl, backend::Evaluate(decl.init_val.get(), ctx)[0]);
 
@@ -483,7 +482,6 @@ DispatchTableRow::MakeFromFnLit(
     if (iter != args.named_.end()) { continue; }
     auto *decl = fn_lit->inputs_.at(index).value.get();
     decl->init_val->VerifyType(&new_ctx);
-    decl->init_val->Validate(&new_ctx);
     new_ctx.bound_constants_.constants_.emplace(
         decl, backend::Evaluate(decl->init_val.get(), &new_ctx)[0]);
   }
@@ -491,7 +489,6 @@ DispatchTableRow::MakeFromFnLit(
   // TODO named arguments too.
   auto *fn_type = &ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx).type_)
                        ->as<type::Callable>();
-  fn_lit->Validate(&new_ctx);
   binding.fn_.set_type(fn_type);
 
   DispatchTableRow dispatch_table_row(std::move(binding));

@@ -22,8 +22,6 @@ bool MatchDeclaration::InferType(type::Type const *t,
   return true;
 }
 
-void MatchDeclaration::Validate(Context *ctx) { type_expr->Validate(ctx); }
-
 std::vector<ir::Val> MatchDeclaration::EmitIR(Context *ctx) {
   if (auto iter = ctx->bound_constants_.constants_.find(this);
       iter != ctx->bound_constants_.constants_.end()) {

@@ -29,10 +29,6 @@ VerifyResult StructType::VerifyType(Context *ctx) {
   return VerifyResult::Constant(ctx->set_type(this, type::Type_));
 }
 
-void StructType::Validate(Context *ctx) {
-  for (auto &arg : args_) { arg->Validate(ctx); }
-}
-
 std::vector<ir::Val> StructType::EmitIR(Context *ctx) { NOT_YET(); }
 
 void StructType::ExtractJumps(JumpExprs *rets) const {

@@ -66,24 +66,11 @@ VerifyResult StructLiteral::VerifyType(Context *ctx) {
   }
 
   if (args_.empty()) {
-    Validate(ctx);
+    for (auto &field : fields_) { field->VerifyType(ctx); }
     return VerifyResult::Constant(ctx->set_type(this, type::Type_));
   } else {
     return VerifyResult::Constant(
         ctx->set_type(this, type::GenStruct(scope_, std::move(ts))));
-  }
-}
-
-void StructLiteral::Validate(Context *ctx) {
-  for (auto &a : args_) { a->Validate(ctx); }
-  // TODO perhaps do some minimal field validation when it's not dependent on
-  // the argument parameters.
-
-  if (args_.empty()) {
-    for (auto &field : fields_) {
-      field->VerifyType(ctx);
-      field->Validate(ctx);
-    }
   }
 }
 
@@ -177,9 +164,8 @@ void StructLiteral::CompleteBody(Context *ctx) {
 
     for (auto const &field : fields_) {
       ir::VerifyType(field.get(), ctx_reg);
-      ir::Validate(field.get(), ctx_reg);
 
-      // TODO exit early if either verifytype or validate fail.
+      // TODO exit early if verifytype fails.
 
       auto type_reg = ir::EvaluateAsType(field->type_expr.get(), ctx_reg);
 

@@ -79,11 +79,6 @@ VerifyResult Index::VerifyType(Context *ctx) {
   }
 }
 
-void Index::Validate(Context *ctx) {
-  lhs_->Validate(ctx);
-  rhs_->Validate(ctx);
-}
-
 void Index::ExtractJumps(JumpExprs *rets) const {
   lhs_->ExtractJumps(rets);
   rhs_->ExtractJumps(rets);

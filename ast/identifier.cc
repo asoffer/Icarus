@@ -85,8 +85,6 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
   return VerifyResult(ctx->set_type(this, t), decl_->const_);
 }
 
-void Identifier::Validate(Context *ctx) {}
-
 std::vector<ir::Val> Identifier::EmitIR(Context *ctx) {
   ASSERT(decl_ != nullptr) << this;
   if (decl_->const_) { return decl_->EmitIR(ctx); }

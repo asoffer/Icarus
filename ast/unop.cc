@@ -78,9 +78,6 @@ bool Unop::InferType(type::Type const *t, InferenceState *state) const {
   }
 }
 
-
-void Unop::Validate(Context *ctx) { operand->Validate(ctx); }
-
 void Unop::ExtractJumps(JumpExprs *rets) const { operand->ExtractJumps(rets); }
 
 VerifyResult Unop::VerifyType(Context *ctx) {

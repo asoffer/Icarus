@@ -63,10 +63,6 @@ VerifyResult CommaList::VerifyType(Context *ctx) {
   return VerifyResult(ctx->set_type(this, type::Tup(std::move(ts))), is_const);
 }
 
-void CommaList::Validate(Context *ctx) {
-  for (auto &expr : exprs_) { expr->Validate(ctx); }
-}
-
 void CommaList::ExtractJumps(JumpExprs *rets) const {
   for (auto &expr : exprs_) { expr->ExtractJumps(rets); }
 }

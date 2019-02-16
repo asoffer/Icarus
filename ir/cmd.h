@@ -621,7 +621,6 @@ void Destroy(type::Type const *t, Register r);
 void Init(type::Type const *t, Register r);
 
 void VerifyType(ast::Node *node, Register ctx);
-void Validate(ast::Node *node, Register ctx);
 Register EvaluateAsType(ast::Node *node, Register ctx);
 
 Register CreateContext(Module *mod);

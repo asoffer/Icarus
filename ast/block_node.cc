@@ -28,8 +28,6 @@ VerifyResult BlockNode::VerifyType(Context *) {
   // TODO Is this always constant?
   return VerifyResult::Constant(type::Block);
 }
-void BlockNode::Validate(Context *) { NOT_YET(); }
-
 void BlockNode::ExtractJumps(JumpExprs *rets) const {
   stmts_.ExtractJumps(rets);
 }

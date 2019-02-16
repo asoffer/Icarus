@@ -1114,9 +1114,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::VerifyType: {
       cmd.ast_.node_->VerifyType(resolve<Context *>(cmd.ast_.ctx_));
     } break;
-    case ir::Op::Validate: {
-      cmd.ast_.node_->Validate(resolve<Context *>(cmd.ast_.ctx_));
-    } break;
     case ir::Op::EvaluateAsType: {
       // TODO, you don't have a parent context... that could be problematic.
       save(EvaluateAs<type::Type const *>(

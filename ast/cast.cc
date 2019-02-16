@@ -64,11 +64,6 @@ VerifyResult Cast::VerifyType(Context *ctx) {
   }
 }
 
-void Cast::Validate(Context *ctx) {
-  expr_->Validate(ctx);
-  type_->Validate(ctx);
-}
-
 void Cast::ExtractJumps(JumpExprs *rets) const {
   expr_->ExtractJumps(rets);
   type_->ExtractJumps(rets);

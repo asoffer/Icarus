@@ -31,8 +31,6 @@ void RepeatedUnop::DependentDecls(base::Graph<Declaration *> *g,
   args_.DependentDecls(g, d);
 }
 
-void RepeatedUnop::Validate(Context *ctx) { args_.Validate(ctx); }
-
 void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
   args_.ExtractJumps(rets);
   // TODO yield as well?
