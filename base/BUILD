@@ -9,7 +9,7 @@ cc_lib(
 cc_lib(
     name = "check",
     hdrs = ["check.h"],
-    deps = [":string"],
+    deps = [":stringify"],
 )
 
 cc_lib(
@@ -54,7 +54,7 @@ cc_lib(
 cc_lib(
     name = "log",
     hdrs = ["log.h"],
-    deps = [":string"],
+    deps = [":stringify"],
 )
 
 cc_lib(
@@ -63,21 +63,25 @@ cc_lib(
 )
 
 cc_lib(
-    name = "string",
-    hdrs = ["string.h"],
-    visibility = ["//visibility:private"],
+    name = "stringify",
+    hdrs = ["stringify.h"],
+    deps = [":tuple"],
+    visibility = ["//test:__pkg__"],
+)
+
+cc_test(
+    name = "stringify_test",
+    srcs = ["stringify_test.cc"],
+    deps = [
+        ":stringify",
+        "//test",
+    ],
 )
 
 cc_lib(
     name = "strong_types",
     hdrs = ["strong_types.h"],
     deps = [":debug"],
-)
-
-cc_lib(
-    name = "test",
-    hdrs = ["test.h"],
-    deps = [":check"],
 )
 
 cc_lib(

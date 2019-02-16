@@ -4,7 +4,7 @@
 #include <map>
 #include <sstream>
 
-#include "base/string.h"
+#include "base/stringify.h"
 #include "ir/val.h"
 
 namespace ast {

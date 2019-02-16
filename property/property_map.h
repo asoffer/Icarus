@@ -25,7 +25,7 @@ struct FnStateView {
 };
 
 inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
-  return os << base::internal::stringify(fsv.view_);
+  return os << base::stringify(fsv.view_);
 }
 
 // TODO rename me.

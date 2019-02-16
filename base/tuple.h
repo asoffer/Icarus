@@ -41,8 +41,9 @@ auto transform(Fn &&fn, Tups &&... tups) {
 
 template <typename Fn, typename... Tups>
 void for_each(Fn &&fn, Tups &&... tups) {
-  return ::base::tuple::internal::with_seq<std::make_index_sequence<
-      std::tuple_size_v<std::tuple_element_t<0, std::tuple<Tups...>>>>>::
+  return ::base::tuple::internal::with_seq<
+      std::make_index_sequence<std::tuple_size_v<
+          std::tuple_element_t<0, std::tuple<std::decay_t<Tups>...>>>>>::
       for_each(std::forward<Fn>(fn), std::forward<Tups>(tups)...);
 }
 }  // namespace tuple

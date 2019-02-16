@@ -2,7 +2,7 @@
 #define ICARUS_BASE_CHECK_H
 
 #include <iostream>
-#include "base/string.h"
+#include "base/stringify.h"
 
 namespace base::check {
 namespace internal {
@@ -77,10 +77,8 @@ auto operator>>(const Expr<T> &lhs, U &&rhs) {
     if (lhs.val op rhs) { return true; }                                       \
     std::cerr << "Expectation failed (" << lhs.stealer.file << ", line #"      \
               << lhs.stealer.line << ")\n\n  " << lhs.stealer.expr             \
-              << "\n\nleft-hand side:  "                                       \
-              << ::base::internal::stringify(lhs.val)                          \
-              << "\nright-hand side: " << ::base::internal::stringify(rhs)     \
-              << "\n\n";                                                       \
+              << "\n\nleft-hand side:  " << ::base::stringify(lhs.val)         \
+              << "\nright-hand side: " << ::base::stringify(rhs) << "\n\n";    \
     return false;                                                              \
   }
 MAKE_OPERATOR(<)
@@ -105,7 +103,7 @@ CastableToBool operator,(CastableToBool, T) = delete;
 
 template <typename T, typename M>
 CastableToBool operator,(Expr<T> &&e, M &&m) {
-  auto str    = base::internal::stringify(e.val);
+  auto str    = base::stringify(e.val);
   auto result = std::forward<M>(m)(std::move(e.val));
   if (result.empty()) { return CastableToBool(true); }
   std::cerr << "Expectation failed (" << e.stealer.file << ", line #"

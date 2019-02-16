@@ -2,7 +2,7 @@
 #define ICARUS_BASE_LOG_H
 
 #include <cstdio>
-#include "base/string.h"
+#include "base/stringify.h"
 
 namespace base {
 struct Logger {
@@ -20,7 +20,7 @@ struct Logger {
 
 template <typename T>
 Logger const &operator<<(Logger const &l, T const &t) {
-  fprintf(stderr, "%s", internal::stringify(t).c_str());
+  fprintf(stderr, "%s", stringify(t).c_str());
   return l;
 }
 
