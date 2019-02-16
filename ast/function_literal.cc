@@ -263,8 +263,12 @@ std::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
 
   ir::Func *&ir_func = ctx->mod_->data_[ctx->bound_constants_].ir_funcs_[this];
   if (!ir_func) {
-    auto &work_item =
-        ctx->mod_->to_complete_.emplace(ctx->bound_constants_, this, ctx->mod_);
+    auto &work_item = ctx->mod_->deferred_work_.emplace(
+        [bc{ctx->bound_constants_}, this, mod{ctx->mod_}]() mutable {
+          Context ctx(mod);
+          ctx.bound_constants_ = std::move(bc);
+          CompleteBody(&ctx);
+        });
 
     FnParams<Expression *> params;
     params.reserve(inputs_.size());

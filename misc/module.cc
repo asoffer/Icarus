@@ -85,44 +85,12 @@ ast::Declaration *Module::GetDecl(std::string const &name) const {
   return nullptr;
 }
 
-Module::CompilationWorkItem::CompilationWorkItem(ast::BoundConstants bc,
-                                                 ast::Expression *e,
-                                                 Module *mod)
-    : bound_constants_(std::move(bc)), expr_(e), mod_(mod) {}
-
-void Module::CompilationWorkItem::Complete() {
-  // Need to copy bc because this needs to be set before we call CompleteBody.
-  // TODO perhaps on ctx it could be a pointer?
-  if (mod_->completed_[bound_constants_].emplace(expr_).second) {
-    Context ctx(mod_);
-    ctx.bound_constants_ = bound_constants_;
-    if (expr_->is<ast::FunctionLiteral>()) {
-      expr_->as<ast::FunctionLiteral>().CompleteBody(&ctx);
-    } else if (expr_->is<ast::StructLiteral>()) {
-      expr_->as<ast::StructLiteral>().CompleteBody(&ctx);
-    } else {
-      UNREACHABLE(expr_);
-    }
-
-    if (ctx.num_errors() > 0) {
-      // TODO Is this right?
-      ctx.DumpErrors();
-      found_errors = true;
-    }
-  }
-}
-
 void Module::CompleteAllDeferredWork() {
   while (!deferred_work_.empty()) {
-    deferred_work_.front()();
+    auto &work = deferred_work_.front();
+    if (work == nullptr) { continue; }
+    work();
     deferred_work_.pop();
-  }
-}
-
-void Module::CompleteAll() {
-  while (!to_complete_.empty()) {
-    to_complete_.front().Complete();
-    to_complete_.pop();
   }
 }
 
@@ -142,29 +110,22 @@ static Module const *CompileModule(Module *mod) {
 
   file_stmts->assign_scope(ctx.mod_->global_.get());
   file_stmts->VerifyType(&ctx);
-  if (ctx.num_errors() != 0) {
+  mod->CompleteAllDeferredWork();
+  if (ctx.num_errors() > 0) {
+    // TODO Is this right?
     ctx.DumpErrors();
     found_errors = true;
-    return mod;
   }
 
-  mod->CompleteAllDeferredWork();
-
   file_stmts->EmitIR(&ctx);
-  if (ctx.num_errors() != 0) {
+  mod->CompleteAllDeferredWork();
+  if (ctx.num_errors() > 0) {
+    // TODO Is this right?
     ctx.DumpErrors();
     found_errors = true;
-    return mod;
   }
 
   ctx.mod_->statements_ = std::move(*file_stmts);
-  ctx.mod_->CompleteAll();
-
-  if (ctx.num_errors() != 0) {
-    ctx.DumpErrors();
-    found_errors = true;
-    return mod;
-  }
 
   for (auto &fn : ctx.mod_->fns_) { fn->ComputeInvariants(); }
   for (auto &fn : ctx.mod_->fns_) { fn->CheckInvariants(); }

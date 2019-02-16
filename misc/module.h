@@ -62,17 +62,6 @@ struct Module {
   std::map<ast::BoundConstants, std::unordered_set<ast::Expression const *>>
       completed_;
 
-  struct CompilationWorkItem {
-    CompilationWorkItem(ast::BoundConstants bc, ast::Expression *e,
-                        Module *mod);
-
-    void Complete();
-
-    ast::BoundConstants bound_constants_;
-    ast::Expression *expr_;
-    Module *mod_;
-  };
-  std::queue<CompilationWorkItem> to_complete_;
   std::queue<std::function<void()>> deferred_work_;
   void CompleteAllDeferredWork();
   void CompleteAll();

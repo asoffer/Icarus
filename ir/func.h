@@ -85,7 +85,7 @@ struct Func {
   
   int32_t num_regs_  = 0;
   std::vector<BasicBlock> blocks_;
-  Module::CompilationWorkItem *work_item = nullptr;
+  std::function<void()> *work_item = nullptr;
 #ifdef ICARUS_USE_LLVM
   llvm::Function *llvm_fn_ = nullptr;
 #endif  // ICARUS_USE_LLVM

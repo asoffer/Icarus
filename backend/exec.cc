@@ -50,7 +50,9 @@ void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
   // generics model I have, but I can't quite articulate exactly why it only
   // happens for generics and nothing else.
   if (fn->work_item != nullptr) {
-    std::exchange(fn->work_item, nullptr)->Complete();
+    (*fn->work_item)();
+    // Remove it from the queue by setting to null.
+    *fn->work_item = nullptr;
   }
 
   // TODO what about bound constants?
