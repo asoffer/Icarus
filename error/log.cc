@@ -691,6 +691,20 @@ void Log::IndexingTupleOutOfBounds(TextSpan const &span, type::Tuple const *tup,
 
 }
 
+void Log::MissingModule(std::filesystem::path const &src,
+                        std::filesystem::path const &requestor) {
+  std::string requestor_str = requestor.string();
+  if (requestor_str.empty()) {
+    requestor_str = "command line";
+  } else {
+    requestor_str = "\"" + requestor_str + "\"";
+  }
+  std::stringstream ss;
+  ss << "Could not find module named \"" << src.string()
+     << "\" requested from " << requestor_str << ".\n\n";
+  errors_.push_back(ss.str());
+}
+
 void Log::UninferrableType(InferenceFailureReason reason,
                            TextSpan const &span) {
   std::stringstream ss;

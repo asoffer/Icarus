@@ -35,9 +35,16 @@ int RunCompiler() {
   llvm::InitializeAllAsmPrinters();
 #endif  // ICARUS_USE_LLVM
 
+  error::Log log;
   for (const auto &src : files) {
-    Module::Schedule(std::filesystem::path{src});
+    Module::Schedule(&log, std::filesystem::path{src});
   }
+
+  if (log.size() > 0) {
+    log.Dump();
+    return 0;
+  }
+
   AwaitAllModulesTransitively();
 
 #ifndef ICARUS_USE_LLVM

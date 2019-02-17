@@ -191,11 +191,15 @@ type::Type const *Module::set_type(ast::BoundConstants const &bc,
   return t;
 }
 
-PendingModule Module::Schedule(std::filesystem::path const &src,
+PendingModule Module::Schedule(error::Log *log,
+                               std::filesystem::path const &src,
                                std::filesystem::path const &requestor) {
   std::lock_guard lock(mtx);
   auto[src_ptr, newly_inserted] = import_graph.node(src);
-  ASSERT(src_ptr != nullptr);
+  if (src_ptr == nullptr) {
+    log->MissingModule(src, requestor);
+    return PendingModule(static_cast<Module *>(nullptr));
+  }
 
   // Need to add dependencies even if the node was already scheduled (hence the
   // "already scheduled" check is done after this).

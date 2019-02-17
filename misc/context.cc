@@ -23,12 +23,25 @@ type::Type const *Context::set_type(ast::Expression const *expr,
   return mod_->set_type(bound_constants_, expr, ASSERT_NOT_NULL(t));
 }
 
+ast::VerifyResult const *Context::prior_verification_attempt(
+    ast::Declaration const *decl) {
+  auto const &map = mod_->data_[bound_constants_].verify_results_;
+  if (auto iter = map.find(decl); iter != map.end()) { return &iter->second; }
+  return nullptr;
+}
+
 void Context::set_addr(ast::Declaration *decl, ir::Register r) {
   mod_->data_[bound_constants_].addr_[decl] = r;
 }
 
 ir::Register Context::addr(ast::Declaration *decl) const {
   return mod_->addr(bound_constants_, decl);
+}
+
+ast::VerifyResult Context::set_verification_attempt(
+    ast::Declaration const *decl, ast::VerifyResult r) {
+  mod_->data_[bound_constants_].verify_results_.emplace(decl, r);
+  return r;
 }
 
 void Context::set_dispatch_table(ast::Expression const *expr,

@@ -1,15 +1,15 @@
 #ifndef ICARUS_ERROR_LOG_H
 #define ICARUS_ERROR_LOG_H
 
-#include <set>
+#include <filesystem>
 #include <string>
-
-#include "ast/fn_args.h"
 #include <unordered_map>
 #include <vector>
+
+#include "ast/fn_args.h"
 #include "base/debug.h"
-#include "frontend/text_span.h"
 #include "error/inference_failure_reason.h"
+#include "frontend/text_span.h"
 
 struct Context;
 
@@ -99,6 +99,9 @@ struct Log {
   void MissingDispatchContingency(
       TextSpan const &span,
       std::vector<ast::FnArgs<type::Type const *>> const &missing_dispatch);
+
+  void MissingModule(std::filesystem::path const &src,
+                     std::filesystem::path const &requestor);
 
   void StatementsFollowingJump(TextSpan const &span);
 

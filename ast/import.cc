@@ -22,8 +22,7 @@ std::vector<ir::Val> Import::EmitIR(Context *ctx) {
 }
 
 VerifyResult Import::VerifyType(Context *ctx) {
-  ASSIGN_OR(return VerifyResult::Error(), auto result,
-                   operand_->VerifyType(ctx));
+  ASSIGN_OR(return _, auto result, operand_->VerifyType(ctx));
   bool err = false;
   if (result.type_ != type::ByteView) {
     // TODO allow (import) overload
@@ -39,9 +38,11 @@ VerifyResult Import::VerifyType(Context *ctx) {
   if (err) { return VerifyResult::Error(); }
   // TODO storing this might not be safe.
   module_ = Module::Schedule(
+      ctx->error_log(),
       std::filesystem::path{
           backend::EvaluateAs<std::string_view>(operand_.get(), ctx)},
       *ctx->mod_->path_);
+  if (!module_.valid()) { return VerifyResult::Error(); }
   return VerifyResult::Constant(ctx->set_type(this, type::Module));
 }
 }  // namespace ast

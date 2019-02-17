@@ -52,7 +52,7 @@ struct Module {
   Module(Module &&) = delete;
 
   static PendingModule Schedule(
-      std::filesystem::path const &src,
+      error::Log *log, std::filesystem::path const &src,
       std::filesystem::path const &requestor = std::filesystem::path{""});
 
   ir::Func *AddFunc(type::Function const *fn_type,
@@ -115,6 +115,9 @@ struct Module {
 
     std::unordered_map<ast::Expression const *, ir::Func *> ir_funcs_;
 
+    std::unordered_map<ast::Declaration const *, ast::VerifyResult>
+        verify_results_;
+
     std::unordered_map<ast::Expression const *, ast::DispatchTable>
         dispatch_tables_;
     // For use with expression nodes that have more than one dispatch table.
@@ -139,6 +142,8 @@ struct PendingModule {
   // Returns the compiled module, possibly blocking if `get` is called before
   // the module has finished compiling.
   Module *get();
+
+  bool valid() const { return data_ != 0; }
 
  private:
   uintptr_t data_ = 0;
