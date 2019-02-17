@@ -1,7 +1,7 @@
-#include <iostream>
 #include <string>
 #include <vector>
 
+#include "base/log.h"
 #include "base/matchers.h"
 #include "base/stringify.h"
 
@@ -34,46 +34,51 @@ struct Test {
   TEST_##name TEST_##name::Instance;                                           \
   void TEST_##name::Body()
 
-#define CHECK(...) MATCH(CHECK_MATCH, CHECK_EXPR, __VA_ARGS__)
+#define CHECK(...) MATCH(::test::Checker{&stats_}, __VA_ARGS__)
 
-#define CHECK_EXPR(expr)                                                       \
-  [&](auto const& result) {                                                    \
-    ++stats_.expectations;                                                     \
-    if (result.matched) {                                                      \
-      ++stats_.passes;                                                         \
-    } else {                                                                   \
-      using base::stringify;                                                   \
-      /* TODO specify output logger? */                                        \
-      std::cerr << "\n\033[0;1;34m[" __FILE__ ": " << std::to_string(__LINE__) \
-                << "]\033[0;1;31m Check failed"                                \
-                   "\n    \033[0;1;37mExpected:\033[0m " #expr                 \
-                   "\n         \033[0;1;37mLHS:\033[0m "                       \
-                << stringify(result.lhs)                                       \
-                << "\n         \033[0;1;37mRHS:\033[0m "                       \
-                << stringify(result.rhs) << "\n";                              \
-    }                                                                          \
-  }(MATCH_EXPR(expr))
+struct Checker {
+  Checker(test::Statistics* stats) : stats_(stats) {}
+  template <typename L, typename R>
+  void operator()(::matcher::ExprMatchResult<L, R> const& result) const {
+    ++stats_->expectations;
+    if (result.matched) {
+      ++stats_->passes;
+    } else {
+      using base::stringify;
+      base::Logger(base::LogFormatterWithoutFunction)
+          << "\033[0;1;31mCheck failed\n"
+             "    \033[0;1;37mExpected:\033[0m "
+          << result.expr_string
+          << "\n"
+             "         \033[0;1;37mLHS:\033[0m "
+          << stringify(result.lhs)
+          << "\n"
+             "         \033[0;1;37mRHS:\033[0m "
+          << stringify(result.rhs) << "\n";
+    }
+  }
 
-#define CHECK_MATCH(expr, matcher)                                             \
-  [&](auto const& e, auto const& m) {                                          \
-    ++stats_.expectations;                                                     \
-    using expr_type  = std::decay_t<decltype(e)>;                              \
-    auto description = m.template With<expr_type>().match_and_describe(e);     \
-    if (!description.has_value()) {                                            \
-      ++stats_.passes;                                                         \
-    } else {                                                                   \
-      using base::stringify;                                                   \
-      /* TODO specify output logger? */                                        \
-      std::cerr << "\n\033[0;1;34m[" __FILE__ ": " << std::to_string(__LINE__) \
-                << "]\033[0;1;31m Check failed\n"                              \
-                   "  \033[0;1;37mExpression:\033[0m " #expr                   \
-                   "\n"                                                        \
-                   "    \033[0;1;37mExpected:\033[0m "                         \
-                << *description << "\n"                                        \
-                << "      \033[0;1;37mActual:\033[0m " << stringify(e)         \
-                << "\n";                                                       \
-    }                                                                          \
-  }((expr), (matcher))
+  template <typename T>
+  void operator()(::matcher::MatchResult<T> const& match_result) {
+    ++stats_->expectations;
+    if (!match_result.description.has_value()) {
+      ++stats_->passes;
+    } else {
+      using base::stringify;
+      base::Logger(base::LogFormatterWithoutFunction)
+          << "\033[0;1;31m Check failed\n"
+             "  \033[0;1;37mExpression:\033[0m "
+          << match_result.expr.string()
+          << "\n"
+             "    \033[0;1;37mExpected:\033[0m "
+          << *match_result.description << "\n"
+          << "      \033[0;1;37mActual:\033[0m "
+          << stringify(match_result.expr.value()) << "\n";
+    }
+  }
+
+  test::Statistics* stats_ = nullptr;
+};
 
 }  // namespace test
 

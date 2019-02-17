@@ -125,11 +125,11 @@ void Func::CheckInvariants() {
 
       prop::BoolProp prop = prop_copy.Returns();
       if (!prop.can_be_true_) {
-        LOG << "Provably false!";
+        base::Log() << "Provably false!";
       } else if (prop.can_be_false_) {
-        LOG << "Not provably true!";
+        base::Log() << "Not provably true!";
       } else {
-        LOG << "Okay";
+        base::Log() << "Okay";
       }
     }
   }

@@ -7,41 +7,53 @@
 #ifdef DBG
 
 #define ASSERT(...)                                                            \
-  static_cast<bool>((MATCH(ASSERT_MATCH, ASSERT_EXPR, __VA_ARGS__))) ||        \
-      base::Logger(std::abort)
+  static_cast<bool>((MATCH(::debug::Asserter{}, __VA_ARGS__))) ||              \
+      base::Logger(                                                            \
+          +[](std::experimental::source_location const &) -> std::string {     \
+            return "";                                                         \
+          },                                                                   \
+          std::abort)
 
-#define ASSERT_EXPR(expr)                                                      \
-  [&](auto const &result) {                                                    \
-    if (!result.matched) {                                                     \
-      using base::stringify;                                                   \
-      /* TODO specify output logger? */                                        \
-      LOG << "\n\033[0;1;34m[" __FILE__ ": " << std::to_string(__LINE__)       \
-          << "]\033[0;1;31m Check failed"                                      \
-             "\n    \033[0;1;37mExpected:\033[0m " #expr                       \
-             "\n         \033[0;1;37mLHS:\033[0m "                             \
-          << stringify(result.lhs) << "\n         \033[0;1;37mRHS:\033[0m "    \
-          << stringify(result.rhs) << "\n";                                    \
-    }                                                                          \
-    return result.matched;                                                     \
-  }(MATCH_EXPR(expr))
+namespace debug {
 
-#define ASSERT_MATCH(expr, matcher)                                            \
-  [&](auto const &e, auto const &m) {                                          \
-    using expr_type  = std::decay_t<decltype(e)>;                              \
-    auto description = m.template With<expr_type>().match_and_describe(e);     \
-    if (description.has_value()) {                                             \
-      using base::stringify;                                                   \
-      /* TODO specify output logger? */                                        \
-      LOG << "\n\033[0;1;34m[" __FILE__ ": " << std::to_string(__LINE__)       \
-          << "]\033[0;1;31m Check failed\n"                                    \
-             "  \033[0;1;37mExpression:\033[0m " #expr                         \
-             "\n"                                                              \
-             "    \033[0;1;37mExpected:\033[0m "                               \
-          << *description << "\n"                                              \
-          << "      \033[0;1;37mActual:\033[0m " << stringify(e) << "\n";      \
-    }                                                                          \
-    return !description.has_value();                                           \
-  }((expr), (matcher))
+struct Asserter {
+  template <typename L, typename R>
+  bool operator()(::matcher::ExprMatchResult<L, R> const &result) const {
+    if (!result.matched) {
+      using base::stringify;
+      base::Logger(base::LogFormatterWithoutFunction)
+          << "\033[0;1;31mAssertion failed\n"
+             "    \033[0;1;37mExpected:\033[0m "
+          << result.expr_string
+          << "\n"
+             "         \033[0;1;37mLHS:\033[0m "
+          << stringify(result.lhs)
+          << "\n"
+             "         \033[0;1;37mRHS:\033[0m "
+          << stringify(result.rhs) << "\n";
+    }
+    return result.matched;
+  }
+
+  template <typename T>
+  bool operator()(::matcher::MatchResult<T> const &match_result) {
+    if (match_result.description.has_value()) {
+      using base::stringify;
+      base::Logger(base::LogFormatterWithoutFunction)
+          << "\033[0;1;31mAssertion failed\n"
+             "  \033[0;1;37mExpression:\033[0m "
+          << match_result.expr.string()
+          << "\n"
+             "    \033[0;1;37mExpected:\033[0m "
+          << *match_result.description
+          << "\n"
+             "      \033[0;1;37mActual:\033[0m "
+          << stringify(match_result.expr.value()) << "\n";
+    }
+    return !match_result.description.has_value();
+  }
+};
+}  // namespace debug
 
 #define NUM_ARGS(...)                                                          \
   INTERNAL_NUM_ARGS(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -68,7 +80,7 @@
 #define ASSERT_NOT_NULL(expr)                                                  \
   ([](auto &&ptr) {                                                            \
     if (ptr == nullptr) {                                                      \
-      LOG << #expr " is unexpectedly null.";                                   \
+      base::Log() << #expr " is unexpectedly null.";                                   \
       std::abort();                                                            \
     }                                                                          \
     return ptr;                                                                \
@@ -76,31 +88,25 @@
 
 #define UNREACHABLE(...)                                                       \
   do {                                                                         \
-    auto logger = LOG << "Unreachable code-path.\n";                           \
-    debug::LogArgs(__VA_ARGS__);                                               \
+    base::Log() << "Unreachable code-path.\n" << std::forward_as_tuple(__VA_ARGS__);   \
     std::abort();                                                              \
   } while (false)
 
 #else
 
-#define ASSERT(...) false && base::Logger(nullptr)
+#define ASSERT(...)                                                            \
+  false && base::Logger(+[](std::experimental::source_location const &)        \
+                            -> std::string { return ""; },                     \
+                        nullptr)
 #define ASSERT_NOT_NULL(...) __VA_ARGS__
-#define UNREACHABLE(...) __builtin_unreachable();
+#define UNREACHABLE(arg) __builtin_unreachable();
 #define DUMP(...) ""
 #endif
 
 #define NOT_YET(...)                                                           \
   do {                                                                         \
-    auto logger = LOG << "Not yet implemented.\n";                             \
-    debug::LogArgs(__VA_ARGS__);                                               \
+    base::Log() << "Not yet implemented\n" << std::forward_as_tuple(__VA_ARGS__);      \
     std::abort();                                                              \
   } while (false)
 
-namespace debug {
-template <typename... Args>
-void LogArgs(Args &&... args) {
-  [[maybe_unused]] const auto &log =
-      (base::Logger{} << ... << std::forward<Args>(args));
-}
-}  // namespace debug
 #endif  // ICARUS_BASE_DEBUG_H

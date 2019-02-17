@@ -594,7 +594,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
 
       // TODO set backwards map.
     } break;
-    case ir::Op::DebugIr: LOG << call_stack.top().fn_; break;
+    case ir::Op::DebugIr: base::Log() << call_stack.top().fn_; break;
     case ir::Op::Alloca: {
       auto arch = Architecture::InterprettingMachine();
 

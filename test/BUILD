@@ -5,6 +5,7 @@ cc_lib(
     name = "test",
     hdrs = ["test.h"],
     deps = [
+        "//base:log",
         "//base:stringify",
         "//base:matchers",
     ],
