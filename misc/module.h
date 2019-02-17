@@ -131,14 +131,14 @@ void AwaitAllModulesTransitively();
 struct PendingModule {
  public:
   PendingModule() = default;
-  explicit PendingModule(Module const *mod)
+  explicit PendingModule(Module *mod)
       : data_(reinterpret_cast<uintptr_t>(mod)) {}
-  explicit PendingModule(std::shared_future<Module const *> *mod)
+  explicit PendingModule(std::shared_future<Module *> *mod)
       : data_(reinterpret_cast<uintptr_t>(mod) | 0x01) {}
 
   // Returns the compiled module, possibly blocking if `get` is called before
   // the module has finished compiling.
-  Module const *get();
+  Module *get();
 
  private:
   uintptr_t data_ = 0;

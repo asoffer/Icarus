@@ -398,7 +398,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
     } break;
     case INFER | UNINITIALIZED: {
       ctx->error_log()->UninferrableType(InferenceFailureReason::Hole,
-                                       init_val->span);
+                                         init_val->span);
       if (const_) { ctx->error_log()->UninitializedConstant(span); }
       return VerifyResult::Error();
     } break;
@@ -460,22 +460,21 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
       }
 
     } break;
-    default:
-      UNREACHABLE(dk);
+    default: UNREACHABLE(dk);
+  }
 
-      if (id_.empty()) {
-        if (this_type == type::Module) {
-          // TODO check shadowing against other modules?
-          // TODO what if no init val is provded? what if not constant?
-          scope_->embedded_modules_.insert(
-              backend::EvaluateAs<Module const *>(init_val.get(), ctx));
-          return VerifyResult::Constant(type::Module);
-        } else if (this_type->is<type::Tuple>()) {
-          NOT_YET(this_type);
-        } else {
-          NOT_YET(this_type);
-        }
-      }
+  if (id_.empty()) {
+    if (this_type == type::Module) {
+      // TODO check shadowing against other modules?
+      // TODO what if no init val is provded? what if not constant?
+      scope_->embedded_modules_.insert(
+          backend::EvaluateAs<Module const *>(init_val.get(), ctx));
+      return VerifyResult::Constant(type::Module);
+    } else if (this_type->is<type::Tuple>()) {
+      NOT_YET(this_type);
+    } else {
+      NOT_YET(this_type);
+    }
   }
 
   // TODO simplify now that you don't have error decls.
@@ -552,8 +551,9 @@ std::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
       if (!newly_inserted) { return {iter->second}; }
 
       if (IsCustomInitialized()) {
-        iter->second = backend::Evaluate(init_val.get(), ctx)[0];
-        if (ctx->num_errors()) { return {}; }
+        auto vals = backend::Evaluate(init_val.get(), ctx);
+        iter->second = vals[0];
+        if (ctx->num_errors() > 0u) { return {}; }
         return {iter->second};
       } else if (IsDefaultInitialized()) {
         if (is_fn_param_) {

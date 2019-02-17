@@ -195,7 +195,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
       case 1: {
         bool err = false;
         for (auto *expr : rets[JumpKind::Return]) {
-          auto *t = ctx->type_of(expr);
+          auto *t = ASSERT_NOT_NULL(ctx->type_of(expr));
           if (t == outs[0]) { continue; }
           ctx->error_log()->ReturnTypeMismatch(outs[0], t, expr->span);
           err = true;

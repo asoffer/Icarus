@@ -15,6 +15,7 @@ static std::unique_ptr<ir::Func> ExprFn(
   auto fn = std::make_unique<ir::Func>(
       ctx->mod_, type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
       ast::FnParams<ast::Expression *>{});
+
   CURRENT_FUNC(fn.get()) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
     // Factor these out together.
@@ -82,7 +83,7 @@ std::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
       auto any_func = result_buf.get<ir::AnyFunc>(offset);
       results.push_back(ir::Val::Func(t, any_func));
     } else if (t == type::Module) {
-      results.emplace_back(result_buf.get<Module const *>(offset));
+      results.emplace_back(result_buf.get<Module *>(offset));
     } else if (t == type::Generic || t->is<type::Function>()) {
       // TODO mostly wrong.
       results.push_back(

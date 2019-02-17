@@ -101,23 +101,6 @@ std::string Val::to_string() const {
             return ss.str();
           },
           [](ir::Addr addr) -> std::string { return addr.to_string(); },
-          [this](bool b) -> std::string {
-            // type::Bool is used to represent -- if the type is missing.
-            return type ? (b ? "true" : "false") : "--";
-          },
-          [](char c) -> std::string {
-            return std::to_string(static_cast<int32_t>(c)) + "_c";
-          },
-          [](float f) -> std::string { return std::to_string(f) + "_f32"; },
-          [](double d) -> std::string { return std::to_string(d) + "_f64"; },
-          [](int8_t n) -> std::string { return std::to_string(n); },
-          [](int16_t n) -> std::string { return std::to_string(n); },
-          [](int32_t n) -> std::string { return std::to_string(n); },
-          [](int64_t n) -> std::string { return std::to_string(n); },
-          [](uint8_t n) -> std::string { return std::to_string(n); },
-          [](uint16_t n) -> std::string { return std::to_string(n); },
-          [](uint32_t n) -> std::string { return std::to_string(n); },
-          [](uint64_t n) -> std::string { return std::to_string(n); },
           [this](EnumVal e) -> std::string {
             return e.value >= this->type->as<type::Enum>().members_.size()
                        ? this->type->as<type::Enum>().to_string() + ":END"
@@ -146,10 +129,6 @@ std::string Val::to_string() const {
           [](std::string_view sv) -> std::string {
             return "\"" + Escaped(sv) + "\"";
           },
-          [](const Module *module) -> std::string {
-            // TODO
-            return "module";
-          },
           [](BlockSequence bs) -> std::string {
             // TODO
             return "bs." + std::to_string(reinterpret_cast<uintptr_t>(bs.seq_));
@@ -159,6 +138,10 @@ std::string Val::to_string() const {
           },
           [](ir::BuiltinGenericIndex n) -> std::string {
             return "builtin(" + n.to_string() + ")";
+          },
+          [](auto const &x) -> std::string {
+            using ::base::stringify;
+            return stringify(x);
           },
           [](Foreign f) -> std::string {
             return "foreign(" +

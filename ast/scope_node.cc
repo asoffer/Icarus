@@ -43,8 +43,7 @@ void ScopeNode::DependentDecls(base::Graph<Declaration *> *g,
 }
 
 VerifyResult ScopeNode::VerifyType(Context *ctx) {
-  ASSIGN_OR(return VerifyResult::Error(), auto name_result,
-                   name_->VerifyType(ctx));
+  ASSIGN_OR(return _, auto name_result, name_->VerifyType(ctx));
 
   auto arg_types =
       args_.Transform([ctx, this](auto &arg) { return arg->VerifyType(ctx); });

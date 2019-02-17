@@ -31,6 +31,11 @@ struct Import : public Literal {
 
   // TODO optimization: if the operand_ is a string literal, schedule it
   // immediately.
+  // TODO this could definitely be dependent on context/bound constants:
+  // f ::= (version :: string) -> {
+  //   lib ::= import "library." + version + ".ic"
+  //   return lib.some_function()
+  // }
   PendingModule module_;
   std::unique_ptr<Expression> operand_;
 };

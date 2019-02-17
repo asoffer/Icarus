@@ -26,10 +26,9 @@ std::string WriteObjectFile(std::string const &name, Module *mod);
 
 static std::mutex mtx;
 static ImportGraph import_graph;
-static std::list<std::shared_future<Module const*>> pending_module_futures;
-static std::unordered_map<
-    std::filesystem::path const *,
-    std::pair<std::shared_future<Module const *> *, Module>>
+static std::list<std::shared_future<Module *>> pending_module_futures;
+static std::unordered_map<std::filesystem::path const *,
+                          std::pair<std::shared_future<Module *> *, Module>>
     modules;
 
 std::atomic<bool> found_errors = false;
@@ -97,7 +96,7 @@ void Module::CompleteAllDeferredWork() {
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
 // inside this function.
-static Module const *CompileModule(Module *mod) {
+static Module *CompileModule(Module *mod) {
   ast::BoundConstants bc;
   Context ctx(mod);
   frontend::File f(ASSERT_NOT_NULL(mod->path_)->string());
@@ -111,6 +110,7 @@ static Module const *CompileModule(Module *mod) {
   file_stmts->assign_scope(ctx.mod_->global_.get());
   file_stmts->VerifyType(&ctx);
   mod->CompleteAllDeferredWork();
+
   if (ctx.num_errors() > 0) {
     // TODO Is this right?
     ctx.DumpErrors();
@@ -120,6 +120,7 @@ static Module const *CompileModule(Module *mod) {
 
   file_stmts->EmitIR(&ctx);
   mod->CompleteAllDeferredWork();
+
   if (ctx.num_errors() > 0) {
     // TODO Is this right?
     ctx.DumpErrors();
@@ -216,10 +217,10 @@ PendingModule Module::Schedule(std::filesystem::path const &src,
   return PendingModule{fut};
 }
 
-Module const *PendingModule::get() {
-  if ((data_ & 1) == 0) { return reinterpret_cast<Module const *>(data_); }
-  Module const *result =
-      reinterpret_cast<std::shared_future<Module const *> *>(data_ - 1)->get();
+Module *PendingModule::get() {
+  if ((data_ & 1) == 0) { return reinterpret_cast<Module *>(data_); }
+  Module *result =
+      reinterpret_cast<std::shared_future<Module *> *>(data_ - 1)->get();
   *this = PendingModule{result};
   return result;
 }
