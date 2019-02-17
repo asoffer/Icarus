@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include "base/util.h"
+
 namespace cli {
 namespace internal {
 struct Handler;
@@ -60,6 +62,21 @@ struct Handler {
         f();
         return ::cli::internal::Result::Ok;
       };
+    } else if constexpr (std::is_invocable_v<Fn, char const *>) {
+      call_once_       = false;
+      parse_and_apply_ = [ this, f = std::forward<Fn>(fn) ](char const * cstr) {
+        bool called_already = called_;
+        called_             = true;
+        if (call_once_ && called_already) {
+          return ::cli::internal::Result::AlreadyCalled;
+        }
+
+        f(cstr);
+        return ::cli::internal::Result::Ok;
+      };
+
+    } else {
+      static_assert(base::always_false<Fn>());
     }
   }
 

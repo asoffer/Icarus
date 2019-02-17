@@ -105,6 +105,11 @@ struct overloaded : Ts... {
 };
 template <typename... Ts>
 overloaded(Ts...)->overloaded<Ts...>;
+
+template <typename T>
+constexpr bool always_false() {
+  return false;
+}
 }  // namespace base
 #undef STATIC_ASSERT_RELATED
 #endif  // ICARUS_BASE_UTIL_H

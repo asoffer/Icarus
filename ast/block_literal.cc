@@ -36,6 +36,7 @@ void BlockLiteral::DependentDecls(base::Graph<Declaration *> *g,
 }
 
 VerifyResult BlockLiteral::VerifyType(Context *ctx) {
+  base::Log() << to_string(0);
   ctx->mod_->deferred_work_.emplace(
       [bc{ctx->bound_constants_}, this, mod{ctx->mod_}]() mutable {
         Context ctx(mod);

@@ -25,7 +25,7 @@ void BlockNode::DependentDecls(base::Graph<Declaration *> *g,
 }
 
 VerifyResult BlockNode::VerifyType(Context *ctx) {
-  // TODO Is this always constant?
+  base::Log() << to_string(0);
   stmts_.VerifyType(ctx);
   return VerifyResult::Constant(type::Block);
 }

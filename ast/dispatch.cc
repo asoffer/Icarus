@@ -381,7 +381,7 @@ DispatchTableRow::MakeNonConstant(
 base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::Make(
     type::Typed<Expression *, type::Callable> fn_option,
     FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
-  if (fn_option.type() == nullptr) { NOT_YET(); }
+  if (fn_option.type() == nullptr) { NOT_YET(fn_option.get()->to_string(0)); }
   if (!IsConstant(fn_option.get())) {
     return MakeNonConstant(fn_option.as_type<type::Function>(), args, ctx);
   }

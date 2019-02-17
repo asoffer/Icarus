@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "base/debug.h"
+
 namespace cli {
 std::function<int()> execute;
 std::function<void(char const *)> HandleOther;
@@ -26,13 +28,13 @@ int ParseAndRun(int argc, char *argv[]) {
         *old_ptr      = '\0';
         ptr           = was_eq ? ptr + 1 : nullptr;
 
-        auto iter = ::cli::internal::all_handlers.find(arg + 2);
-        if (iter == ::cli::internal::all_handlers.end()) {
+        if (auto iter = ::cli::internal::all_handlers.find(arg + 2);
+            iter == ::cli::internal::all_handlers.end()) {
           std::cerr << "Invalid argument \"" << argv[arg_num]
                     << "\" encountered (failed to find matching name).\n";
           errors = true;
         } else {
-          switch (iter->second->parse_and_apply_(ptr)) {
+          switch (ASSERT_NOT_NULL(iter->second->parse_and_apply_)(ptr)) {
             case ::cli::internal::Result::Ok: break;
             case ::cli::internal::Result::ParseError:
               if (was_eq) { *old_ptr = '='; }

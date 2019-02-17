@@ -21,6 +21,7 @@ int RunCompiler();
 namespace backend {
 extern char const *output_file;
 }  // namespace backend
+
 #endif
 
 void cli::Usage() {

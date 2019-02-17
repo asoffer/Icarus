@@ -138,6 +138,7 @@ void Call::DependentDecls(base::Graph<Declaration *> *g,
 }
 
 VerifyResult Call::VerifyType(Context *ctx) {
+  base::Log() << to_string(0);
   FnArgs<VerifyResult> arg_results;
   for (auto const &expr : args_.pos_) {
     auto expr_result = expr->VerifyType(ctx);

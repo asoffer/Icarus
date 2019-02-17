@@ -45,6 +45,7 @@ type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {
 }
 
 VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
+  base::Log() << to_string(0);
   if (stateful_) {
     std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
         state_types;

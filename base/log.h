@@ -4,10 +4,12 @@
 #include <experimental/source_location>
 #include <iostream>
 #include <mutex>
+#include <unordered_set>
 #include "base/stringify.h"
 
 namespace base {
 inline std::mutex logger_mtx_;
+
 struct Logger {
   Logger(std::string (*fmt)(std::experimental::source_location const &src),
          void (*fn)() = nullptr,
@@ -18,23 +20,24 @@ struct Logger {
     std::cerr << fmt(src_loc);
   }
 
-  operator bool () const { return true; }
+  operator bool() const { return true; }
 
   // Loggers are not shared betweer threads, so this doesn't need to be
   // synchronized in any way.
-  mutable bool locked_ = false; 
+  mutable bool locked_ = false;
 
   ~Logger() {
     logger_mtx_.unlock();
-    fprintf(stderr, "\n");
+    std::cerr << "\n";
     if (fn_) { fn_(); }
   }
   void (*fn_)() = nullptr;
+  bool do_log_ = false;
 };
 
 template <typename T>
 Logger const &operator<<(Logger const &l, T const &t) {
-  fprintf(stderr, "%s", stringify(t).c_str());
+  std::cerr << stringify(t);
   return l;
 }
 

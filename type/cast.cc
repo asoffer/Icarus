@@ -30,7 +30,7 @@ static uint8_t CastMask(Type const *t) {
     } else if (t == Float32 || t == Float64) {
       return 0x01;
     } else {
-      UNREACHABLE(t);
+      UNREACHABLE(t->to_string());
     }
 
   } else {
@@ -49,13 +49,14 @@ static uint8_t CastMask(Type const *t) {
     if (t == Int64) { return 0x17; }
     if (t == Float32) { return 0x31; }
     if (t == Float64) { return 0x33; }
-    UNREACHABLE();
+    UNREACHABLE(t->to_string());
   }
 }
 
 bool CanCast(Type const *from, Type const *to) {
   if (from == to) { return true; }
   if (from->is<Tuple>() && to == Type_) {
+    // TODO remove this hack for expressing the type of tuples
     auto const &entries = from->as<Tuple>().entries_;
     return std::all_of(entries.begin(), entries.end(),
                        [](Type const *t) { return t == Type_; });
@@ -68,6 +69,12 @@ bool CanCast(Type const *from, Type const *to) {
 
   // TODO other integer types.
   if (from == Int32 && (to->is<Enum>() || to->is<Flags>())) { return true; }
+
+  if (auto *from_variant = from->if_as<Variant>()) {
+    if (to->is<Variant>()) { NOT_YET(); }
+    // TODO not necessarily safe to do this cast.
+    return from_variant->contains(to);
+  }
 
   auto from_mask = CastMask(from);
   auto to_mask   = CastMask(to);

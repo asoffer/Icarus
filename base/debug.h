@@ -1,8 +1,8 @@
 #ifndef ICARUS_BASE_DEBUG_H
 #define ICARUS_BASE_DEBUG_H
 
-#include "base/matchers.h"
 #include "base/log.h"
+#include "base/matchers.h"
 
 #ifdef DBG
 
@@ -69,7 +69,8 @@ struct Asserter {
 #define DUMP_(arg) #arg " = " + stringify(arg) + ", ",
 
 #define FOR_EACH(name, num, ...) BASE_INTERNAL_FOR_EACH(name, num, __VA_ARGS__)
-#define BASE_INTERNAL_FOR_EACH(name, num, ...) BASE_APPLY_##num(name, __VA_ARGS__)
+#define BASE_INTERNAL_FOR_EACH(name, num, ...)                                 \
+  BASE_APPLY_##num(name, __VA_ARGS__)
 #define BASE_APPLY_1(macro, a) macro(a)
 #define BASE_APPLY_2(macro, a, ...) macro(a) BASE_APPLY_1(macro, __VA_ARGS__)
 #define BASE_APPLY_3(macro, a, ...) macro(a) BASE_APPLY_2(macro, __VA_ARGS__)
@@ -78,17 +79,18 @@ struct Asserter {
 #define BASE_APPLY_6(macro, a, ...) macro(a) BASE_APPLY_5(macro, __VA_ARGS__)
 
 #define ASSERT_NOT_NULL(expr)                                                  \
-  ([](auto &&ptr) {                                                            \
+  ([](auto &&ptr, std::experimental::source_location src_loc) {                \
     if (ptr == nullptr) {                                                      \
-      base::Log() << #expr " is unexpectedly null.";                                   \
-      std::abort();                                                            \
+      ::base::Logger(::base::DefaultLogFormatter, std::abort, src_loc)         \
+          << #expr " is unexpectedly null.";                                   \
     }                                                                          \
     return ptr;                                                                \
-  })(expr)
+  })(expr, std::experimental::source_location::current())
 
 #define UNREACHABLE(...)                                                       \
   do {                                                                         \
-    base::Log() << "Unreachable code-path.\n" << std::forward_as_tuple(__VA_ARGS__);   \
+    base::Log() << "Unreachable code-path.\n"                                  \
+                << std::forward_as_tuple(__VA_ARGS__);                         \
     std::abort();                                                              \
   } while (false)
 
@@ -99,13 +101,14 @@ struct Asserter {
                             -> std::string { return ""; },                     \
                         nullptr)
 #define ASSERT_NOT_NULL(...) __VA_ARGS__
-#define UNREACHABLE(arg) __builtin_unreachable();
+#define UNREACHABLE(...) __builtin_unreachable();
 #define DUMP(...) ""
 #endif
 
 #define NOT_YET(...)                                                           \
   do {                                                                         \
-    base::Log() << "Not yet implemented\n" << std::forward_as_tuple(__VA_ARGS__);      \
+    base::Log() << "Not yet implemented\n"                                     \
+                << std::forward_as_tuple(__VA_ARGS__);                         \
     std::abort();                                                              \
   } while (false)
 
