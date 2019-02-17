@@ -54,7 +54,7 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
 
   // TODO check the scope type makes sense.
   if (!name_result.const_) {
-    ctx->error_log_.NonConstantScopeName(name_->span);
+    ctx->error_log()->NonConstantScopeName(name_->span);
     return VerifyResult::Error();
   }
 

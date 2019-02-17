@@ -1,6 +1,7 @@
 #ifndef ICARUS_BASE_STRING_H
 #define ICARUS_BASE_STRING_H
 
+#include <iomanip>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -29,15 +30,18 @@ auto stringify_dispatch(dispatch_rank<0>, T const &val) -> std::string {
 
 #define DEFINE_RANKED_STRINGIFY(rank, ...)                                     \
   template <typename T>                                                        \
-  auto stringify_dispatch(dispatch_rank<rank>, T &&value)                      \
+  auto stringify_dispatch(dispatch_rank<rank>, T value)                        \
       ->decltype(                                                              \
-          std::enable_if_t<std::is_same_v<std::decay_t<T>, __VA_ARGS__>>(),    \
+          std::enable_if_t<                                                    \
+              std::is_same_v<std::decay_t<T>, std::decay_t<__VA_ARGS__>>>(),   \
           std::string{})
 
-DEFINE_RANKED_STRINGIFY(1, std::nullptr_t) { return "nullptr"; }
+DEFINE_RANKED_STRINGIFY(2, std::nullptr_t) { return "nullptr"; }
 DEFINE_RANKED_STRINGIFY(1, bool) { return value ? "true" : "false"; }
-DEFINE_RANKED_STRINGIFY(1, char const *) { return value; }
-DEFINE_RANKED_STRINGIFY(2, std::string) { return value; }
+DEFINE_RANKED_STRINGIFY(2, char const *) {
+  return (value == nullptr) ? "null char const*" : value;
+}
+DEFINE_RANKED_STRINGIFY(2, std::string const&) { return value; }
 DEFINE_RANKED_STRINGIFY(1, char) {
   char const c[2] = {value, '\0'};
   return std::string(c);
@@ -54,6 +58,20 @@ DEFINE_RANKED_STRINGIFY(1, float) { return std::to_string(value); }
 DEFINE_RANKED_STRINGIFY(1, double) { return std::to_string(value); }
 DEFINE_RANKED_STRINGIFY(1, long double) { return std::to_string(value); }
 #undef DEFINE_RANKED_STRINGIFY
+
+// Should be lower rank than const char *.
+template <typename T>
+std::string stringify_dispatch(dispatch_rank<1>, T *ptr) {
+  return stringify_dispatch(dispatch_rank<1>{}, static_cast<T const *>(ptr));
+}
+
+template <typename T>
+std::string stringify_dispatch(dispatch_rank<1>, T const *ptr) {
+  std::stringstream ss;
+  ss << "0x" << std::setw(2 * sizeof(uintptr_t)) << std::setfill('0')
+     << std::hex << reinterpret_cast<uintptr_t>(ptr);
+  return ss.str();
+}
 
 template <typename A, typename B>
 std::string stringify_dispatch(dispatch_rank<1>, std::pair<A, B> const &pair) {

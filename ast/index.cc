@@ -35,7 +35,7 @@ VerifyResult Index::VerifyType(Context *ctx) {
 
   auto *index_type = rhs_result.type_->if_as<type::Primitive>();
   if (!index_type || !index_type->is_integral()) {
-    ctx->error_log_.InvalidIndexType(span, lhs_result.type_, lhs_result.type_);
+    ctx->error_log()->InvalidIndexType(span, lhs_result.type_, lhs_result.type_);
   }
 
   if (lhs_result.type_ == type::ByteView) {
@@ -63,7 +63,7 @@ VerifyResult Index::VerifyType(Context *ctx) {
         });
 
     if (index < 0 || index >= static_cast<int64_t>(tup->size())) {
-      ctx->error_log_.IndexingTupleOutOfBounds(span, tup, index);
+      ctx->error_log()->IndexingTupleOutOfBounds(span, tup, index);
       return VerifyResult::Error();
     }
 
@@ -74,7 +74,7 @@ VerifyResult Index::VerifyType(Context *ctx) {
     return result;
 
   } else {
-    ctx->error_log_.InvalidIndexing(span, lhs_result.type_);
+    ctx->error_log()->InvalidIndexing(span, lhs_result.type_);
     return VerifyResult::Error();
   }
 }

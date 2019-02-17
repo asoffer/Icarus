@@ -703,7 +703,7 @@ type::Type const *DispatchTable::MakeOrLogError(
   auto [table, ret_type] = Make(typed_args, overload_set, ctx);
   if (table.bindings_.empty()) {
     // TODO what about operators?
-    ctx->error_log_.NoCallMatch(node->span, table.generic_failure_reasons_,
+    ctx->error_log()->NoCallMatch(node->span, table.generic_failure_reasons_,
                                 table.failure_reasons_);
     return nullptr;
   }
@@ -718,7 +718,7 @@ type::Type const *DispatchTable::MakeOrLogError(
       });
   expanded.erase(new_end_iter, expanded.end());
   if (!expanded.empty()) {
-    ctx->error_log_.MissingDispatchContingency(node->span, expanded);
+    ctx->error_log()->MissingDispatchContingency(node->span, expanded);
     return nullptr;
   }
 

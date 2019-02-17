@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <vector>
 #include "base/debug.h"
-#include "error/log.h"
 #include "ir/register.h"
 #include "misc/module.h"
 
@@ -24,8 +23,9 @@ struct Context {
 
   Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {}
 
-  size_t num_errors() { return error_log_.size(); }
-  void DumpErrors() { error_log_.Dump(); }
+  error::Log *error_log() { return &mod_->error_log_; }
+  size_t num_errors() { return error_log()->size(); }
+  void DumpErrors() { error_log()->Dump(); }
 
   type::Type const *type_of(ast::Expression const *expr) const;
   type::Type const *set_type(ast::Expression const *expr, type::Type const *t);
@@ -46,7 +46,6 @@ struct Context {
   ir::Register addr(ast::Declaration *decl) const;
   void set_addr(ast::Declaration *decl, ir::Register);
 
-  error::Log error_log_;
   Context const *parent_ = nullptr;
   Module *mod_           = nullptr;
 

@@ -32,12 +32,12 @@ bool ArrayType::InferType(type::Type const *t, InferenceState *state) const {
 VerifyResult ArrayType::VerifyType(Context *ctx) {
   auto length_result = length_->VerifyType(ctx);
   if (length_result.type_ != type::Int64) {
-    ctx->error_log_.ArrayIndexType(span);
+    ctx->error_log()->ArrayIndexType(span);
   }
 
   auto data_type_result = data_type_->VerifyType(ctx);
   if (data_type_result.type_ != type::Type_) {
-    ctx->error_log_.ArrayDataTypeNotAType(data_type_->span);
+    ctx->error_log()->ArrayDataTypeNotAType(data_type_->span);
   }
 
   return VerifyResult(ctx->set_type(this, type::Type_),

@@ -45,7 +45,7 @@ VerifyResult Access::VerifyType(Context *ctx) {
   auto base_type = DereferenceAll(operand_result.type_);
   if (base_type == type::Type_) {
     if (!operand_result.const_) {
-      ctx->error_log_.NonConstantTypeMemberAccess(span);
+      ctx->error_log()->NonConstantTypeMemberAccess(span);
       return VerifyResult::Error();
     }
     // TODO We may not be allowed to evaluate this:
@@ -59,25 +59,25 @@ VerifyResult Access::VerifyType(Context *ctx) {
     // carry on assuming that this is an element of that enum type.
     if (auto *e = evaled_type->if_as<type::Enum>()) {
       if (!e->Get(member_name).has_value()) {
-        ctx->error_log_.MissingMember(span, member_name, evaled_type);
+        ctx->error_log()->MissingMember(span, member_name, evaled_type);
       }
       return VerifyResult::Constant(ctx->set_type(this, evaled_type));
     } else if (auto *f = evaled_type->if_as<type::Flags>()) {
       if (!f->Get(member_name).has_value()) {
-        ctx->error_log_.MissingMember(span, member_name, evaled_type);
+        ctx->error_log()->MissingMember(span, member_name, evaled_type);
       }
       return VerifyResult::Constant(ctx->set_type(this, evaled_type));
     } else {
       // TODO what about structs? Can structs have constant members we're
       // allowed to access?
-      ctx->error_log_.TypeHasNoMembers(span);
+      ctx->error_log()->TypeHasNoMembers(span);
       return VerifyResult::Error();
     }
 
   } else if (auto *s = base_type->if_as<type::Struct>()) {
     auto const *member = s->field(member_name);
     if (member == nullptr) {
-      ctx->error_log_.MissingMember(span, member_name, s);
+      ctx->error_log()->MissingMember(span, member_name, s);
       return VerifyResult::Error();
     }
 
@@ -86,7 +86,7 @@ VerifyResult Access::VerifyType(Context *ctx) {
                      [](ast::Hashtag h) {
                        return h.kind_ == ast::Hashtag::Builtin::Export;
                      })) {
-      ctx->error_log_.NonExportedMember(span, member_name, s);
+      ctx->error_log()->NonExportedMember(span, member_name, s);
     }
 
     return VerifyResult(ctx->set_type(this, member->type),
@@ -94,21 +94,21 @@ VerifyResult Access::VerifyType(Context *ctx) {
 
   } else if (base_type == type::Module) {
     if (!operand_result.const_) {
-      ctx->error_log_.NonConstantModuleMemberAccess(span);
+      ctx->error_log()->NonConstantModuleMemberAccess(span);
       return VerifyResult::Error();
     }
 
     auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
                   ->GetType(member_name);
     if (t == nullptr) {
-      ctx->error_log_.NoExportedSymbol(span);
+      ctx->error_log()->NoExportedSymbol(span);
       return VerifyResult::Error();
     }
 
     // TODO is this right?
     return VerifyResult::Constant(ctx->set_type(this, t));
   } else {
-    ctx->error_log_.MissingMember(span, member_name, base_type);
+    ctx->error_log()->MissingMember(span, member_name, base_type);
     return VerifyResult::Error();
   }
 }

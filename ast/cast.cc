@@ -32,11 +32,11 @@ VerifyResult Cast::VerifyType(Context *ctx) {
   if (!expr_result.ok() || !type_result.ok()) { return VerifyResult::Error(); }
 
   if (type_result.type_ != type::Type_) {
-    ctx->error_log_.CastToNonType(span);
+    ctx->error_log()->CastToNonType(span);
     return VerifyResult::Error();
   }
   if (!type_result.const_) {
-    ctx->error_log_.CastToNonConstantType(span);
+    ctx->error_log()->CastToNonConstantType(span);
     return VerifyResult::Error();
   }
   auto *t = ctx->set_type(

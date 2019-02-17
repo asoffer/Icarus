@@ -55,7 +55,7 @@ std::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
 
   for (auto &stmt : content_) {
     if (!ctx->more_stmts_allowed_) {
-      ctx->error_log_.StatementsFollowingJump(stmt->span);
+      ctx->error_log()->StatementsFollowingJump(stmt->span);
 
       // Allow it again so we can repeated bugs in the same block.
       ctx->more_stmts_allowed_ = true;

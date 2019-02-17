@@ -17,6 +17,7 @@
 #include "ast/fn_params.h"
 #include "ast/node_lookup.h"
 #include "ast/statements.h"
+#include "error/log.h"
 #include "scope.h"
 
 #ifdef ICARUS_USE_LLVM
@@ -65,6 +66,8 @@ struct Module {
   std::queue<std::function<void()>> deferred_work_;
   void CompleteAllDeferredWork();
   void CompleteAll();
+
+  error::Log error_log_;
 
   std::unique_ptr<DeclScope> global_;
 

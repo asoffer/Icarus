@@ -20,7 +20,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
   for (auto iter = ctx->cyc_deps_.begin(); iter != ctx->cyc_deps_.end();
        ++iter) {
     if (*iter == this) {
-      ctx->error_log_.CyclicDependency(
+      ctx->error_log()->CyclicDependency(
           std::vector<Identifier const *>(iter, ctx->cyc_deps_.end()));
       return VerifyResult::Error();
     }
@@ -53,11 +53,11 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
           }
         }
 
-        ctx->error_log_.UndeclaredIdentifier(this);
+        ctx->error_log()->UndeclaredIdentifier(this);
         return VerifyResult::Error();
       default:
         // TODO Should we allow the overload?
-        ctx->error_log_.UnspecifiedOverload(span);
+        ctx->error_log()->UnspecifiedOverload(span);
         return VerifyResult::Error();
     }
   }
@@ -65,7 +65,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
   if (!decl_->const_ && (span.start.line_num < decl_->span.start.line_num ||
                          (span.start.line_num == decl_->span.start.line_num &&
                           span.start.offset < decl_->span.start.offset))) {
-    ctx->error_log_.DeclOutOfOrder(decl_, this);
+    ctx->error_log()->DeclOutOfOrder(decl_, this);
   }
 
   // TODO: This needs cleanup. I'm sure there's a bunch of inefficiencies here
@@ -86,7 +86,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
 }
 
 std::vector<ir::Val> Identifier::EmitIR(Context *ctx) {
-  ASSERT(decl_ != nullptr) << this;
+  ASSERT(decl_ != nullptr) << this->to_string(0);
   if (decl_->const_) { return decl_->EmitIR(ctx); }
   if (decl_->is_fn_param_) {
     auto *t = ctx->type_of(this);

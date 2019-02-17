@@ -42,7 +42,7 @@ VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
   for (auto expr_result : expr_results) {
     result.const_ &= expr_result.const_;
     if (expr_result.type_ != t) {
-      ctx->error_log_.InconsistentArrayType(span);
+      ctx->error_log()->InconsistentArrayType(span);
       return VerifyResult::Error();
     }
   }

@@ -127,7 +127,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         ctx->set_type(this, lhs_result.type_);
         return lhs_result;
       } else {
-        ctx->error_log_.XorEqNeedsBoolOrFlags(span);
+        ctx->error_log()->XorEqNeedsBoolOrFlags(span);
         return VerifyResult::Error();
       }
     case Operator::AndEq:
@@ -137,7 +137,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         ctx->set_type(this, lhs_result.type_);
         return lhs_result;
       } else {
-        ctx->error_log_.AndEqNeedsBoolOrFlags(span);
+        ctx->error_log()->AndEqNeedsBoolOrFlags(span);
         return VerifyResult::Error();
       }
     case Operator::OrEq:
@@ -147,7 +147,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         ctx->set_type(this, lhs_result.type_);
         return lhs_result;
       } else {
-        ctx->error_log_.OrEqNeedsBoolOrFlags(span);
+        ctx->error_log()->OrEqNeedsBoolOrFlags(span);
         return VerifyResult::Error();
       }
 
@@ -234,12 +234,12 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       type::Type const *t = type::Type_;
       if (!IsTypeOrTupleOfTypes(lhs_result.type_)) {
         t = nullptr;
-        ctx->error_log_.NonTypeFunctionInput(span);
+        ctx->error_log()->NonTypeFunctionInput(span);
       }
 
       if (!IsTypeOrTupleOfTypes(rhs_result.type_)) {
         t = nullptr;
-        ctx->error_log_.NonTypeFunctionOutput(span);
+        ctx->error_log()->NonTypeFunctionOutput(span);
       }
 
       if (t == nullptr) { return VerifyResult::Error(); }

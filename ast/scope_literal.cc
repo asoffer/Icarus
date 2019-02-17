@@ -75,7 +75,7 @@ VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
         TextSpan block_title_span = span;
         block_title_span.finish   = block_title_span.start;
         block_title_span.finish.offset += sizeof("scope!") - 1;
-        ctx->error_log_.StatefulScopeWithoutStateArg(block_title_span);
+        ctx->error_log()->StatefulScopeWithoutStateArg(block_title_span);
       } break;
       case 1: break;
       default: NOT_YET("Inconsistent"); break;

@@ -21,6 +21,18 @@ TEST(StringifyStrings) {
   CHECK(stringify("") == "");
 }
 
+TEST(StringifyPointers) {
+  CHECK(stringify(nullptr) == "nullptr");
+  CHECK(stringify(static_cast<char const*>(nullptr)) == "null char const*");
+
+  char const* chars = "hello";
+  CHECK(stringify(chars) == "hello");
+
+  int n;
+  CHECK(stringify(&n) != "0x0000000000000000");
+  CHECK(stringify(static_cast<int*>(nullptr)) == "0x0000000000000000");
+}
+
 TEST(StringifyBool) {
   CHECK(stringify(true) == "true");
   CHECK(stringify(false) == "false");

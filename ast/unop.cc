@@ -102,14 +102,14 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         // TODO here you could return a correct type and just have there
         // be an error regarding constness. When you do this probably worth a
         // full pass over all verification code.
-        ctx->error_log_.NonConstantEvaluation(operand->span);
+        ctx->error_log()->NonConstantEvaluation(operand->span);
         return VerifyResult::Error();
       } else {
         return VerifyResult(ctx->set_type(this, operand_type), result.const_);
       }
     case Language::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
-        ctx->error_log_.WhichNonVariant(operand_type, span);
+        ctx->error_log()->WhichNonVariant(operand_type, span);
       }
       return VerifyResult(ctx->set_type(this, type::Type_), result.const_);
     case Language::Operator::At:
@@ -118,7 +118,7 @@ VerifyResult Unop::VerifyType(Context *ctx) {
             ctx->set_type(this, operand_type->as<type::Pointer>().pointee),
             result.const_);
       } else {
-        ctx->error_log_.DereferencingNonPointer(operand_type, span);
+        ctx->error_log()->DereferencingNonPointer(operand_type, span);
         return VerifyResult::Error();
       }
     case Language::Operator::And:
@@ -181,13 +181,13 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       }
     case Language::Operator::Needs:
       if (operand_type != type::Bool) {
-        ctx->error_log_.PreconditionNeedsBool(operand->span, operand_type);
+        ctx->error_log()->PreconditionNeedsBool(operand->span, operand_type);
       }
       if (!result.const_) { NOT_YET(); }
       return VerifyResult::Constant(ctx->set_type(this, type::Void()));
     case Language::Operator::Ensure:
       if (operand_type != type::Bool) {
-        ctx->error_log_.PostconditionNeedsBool(operand->span, operand_type);
+        ctx->error_log()->PostconditionNeedsBool(operand->span, operand_type);
       }
       if (!result.const_) { NOT_YET(); }
       return VerifyResult::Constant(ctx->set_type(this, type::Void()));

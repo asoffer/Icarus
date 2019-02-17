@@ -360,7 +360,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
                       type_expr.get(), ctx)));
 
         if (!is_fn_param_ && !this_type->IsDefaultInitializable()) {
-          ctx->error_log_.TypeMustBeInitialized(span, this_type);
+          ctx->error_log()->TypeMustBeInitialized(span, this_type);
         }
 
       } else if (type_expr_type == type::Intf) {
@@ -373,7 +373,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
               backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
         }
       } else {
-        ctx->error_log_.NotAType(type_expr->span, type_expr_type);
+        ctx->error_log()->NotAType(type_expr->span, type_expr_type);
         return VerifyResult::Error();
       }
     } break;
@@ -384,7 +384,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
       auto *init_val_type = init_val_result.type_;
       auto reason         = Inferrable(init_val_type);
       if (reason != InferenceFailureReason::Inferrable) {
-        ctx->error_log_.UninferrableType(reason, init_val->span);
+        ctx->error_log()->UninferrableType(reason, init_val->span);
         return VerifyResult::Error();
       }
 
@@ -397,9 +397,9 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
 
     } break;
     case INFER | UNINITIALIZED: {
-      ctx->error_log_.UninferrableType(InferenceFailureReason::Hole,
+      ctx->error_log()->UninferrableType(InferenceFailureReason::Hole,
                                        init_val->span);
-      if (const_) { ctx->error_log_.UninitializedConstant(span); }
+      if (const_) { ctx->error_log()->UninitializedConstant(span); }
       return VerifyResult::Error();
     } break;
     case CUSTOM_INIT: {
@@ -430,7 +430,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
       } else if (type_expr_type == type::Intf) {
         this_type = ctx->set_type(this, type::Generic);
       } else {
-        ctx->error_log_.NotAType(type_expr->span, type_expr_type);
+        ctx->error_log()->NotAType(type_expr->span, type_expr_type);
         error = true;
       }
 
@@ -450,12 +450,12 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
       } else if (type_expr_type == type::Intf) {
         this_type = ctx->set_type(this, type::Generic);
       } else {
-        ctx->error_log_.NotAType(type_expr->span, type_expr_type);
+        ctx->error_log()->NotAType(type_expr->span, type_expr_type);
         return VerifyResult::Error();
       }
 
       if (const_) {
-        ctx->error_log_.UninitializedConstant(span);
+        ctx->error_log()->UninitializedConstant(span);
         return VerifyResult::Error();
       }
 
@@ -508,7 +508,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
     auto typed_decl = *iter;
     if (Shadow(this, typed_decl.get(), ctx)) {
       failed_shadowing = true;
-      ctx->error_log_.ShadowingDeclaration(*this, *typed_decl);
+      ctx->error_log()->ShadowingDeclaration(*this, *typed_decl);
     }
     ++iter;
   }

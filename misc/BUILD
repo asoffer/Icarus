@@ -44,7 +44,6 @@ cc_target(
         ":module",
         "//ast:bound_constants",
         "//base:debug",
-        "//error:log",
         "//ir:register",
     ],
     impl_deps = [
@@ -72,6 +71,7 @@ cc_target(
         "//ast:dispatch",
         "//ast:node_lookup",
         "//ast:statements",
+        "//error:log",
     ],
     impl_deps = [
         ":import_graph",

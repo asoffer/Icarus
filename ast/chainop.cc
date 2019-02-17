@@ -168,7 +168,7 @@ VerifyResult ChainOp::VerifyType(Context *ctx) {
       if (results[i].type_ == type::Block) {
         if (!results[i].const_) { NOT_YET("log an error: non const block"); }
 
-        ctx->error_log_.EarlyRequiredBlock(exprs[i]->span);
+        ctx->error_log()->EarlyRequiredBlock(exprs[i]->span);
         found_err = true;
       } else if (results[i].type_ == type::OptBlock) {
         if (!results[i].const_) { NOT_YET("log an error: non const block"); }
@@ -274,7 +274,7 @@ not_blocks:
                   case type::Cmp::Order:
                   case type::Cmp::Equality: continue;
                   case type::Cmp::None:
-                    ctx->error_log_.ComparingIncomparables(
+                    ctx->error_log()->ComparingIncomparables(
                         lhs_result.type_, rhs_result.type_,
                         TextSpan(exprs[i]->span, exprs[i + 1]->span));
                     return VerifyResult::Error();
@@ -288,7 +288,7 @@ not_blocks:
                   case type::Cmp::Order: continue;
                   case type::Cmp::Equality:
                   case type::Cmp::None:
-                    ctx->error_log_.ComparingIncomparables(
+                    ctx->error_log()->ComparingIncomparables(
                         lhs_result.type_, rhs_result.type_,
                         TextSpan(exprs[i]->span, exprs[i + 1]->span));
                     return VerifyResult::Error();

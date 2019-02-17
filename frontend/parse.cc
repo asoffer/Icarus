@@ -50,7 +50,7 @@ static std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
 
 static void ValidateStatementSyntax(ast::Node *node, Context *ctx) {
   if (node->is<ast::CommaList>()) {
-    ctx->error_log_.CommaListStatement(node->as<ast::CommaList>().span);
+    ctx->error_log()->CommaListStatement(node->as<ast::CommaList>().span);
   }
 }
 
@@ -174,7 +174,7 @@ std::unique_ptr<Node> BuildRightUnop(std::vector<std::unique_ptr<Node>> nodes,
     unop->span    = TextSpan(unop->operand->span, nodes[1]->span);
 
     if (unop->operand->is<Declaration>()) {
-      ctx->error_log_.DeclarationUsedInUnop(tk, unop->operand->span);
+      ctx->error_log()->DeclarationUsedInUnop(tk, unop->operand->span);
     }
 
     return unop;
@@ -217,7 +217,7 @@ std::unique_ptr<Node> BuildCall(std::vector<std::unique_ptr<Node>> nodes,
     }
 
     if (!positional_error_spans.empty()) {
-      ctx->error_log_.PositionalArgumentFollowingNamed(
+      ctx->error_log()->PositionalArgumentFollowingNamed(
           positional_error_spans, *last_named_span_before_error);
     }
   } else {
@@ -232,7 +232,7 @@ std::unique_ptr<Node> BuildCall(std::vector<std::unique_ptr<Node>> nodes,
   }
 
   if (call->fn_->is<Declaration>()) {
-    ctx->error_log_.CallingDeclaration(call->fn_->span);
+    ctx->error_log()->CallingDeclaration(call->fn_->span);
   }
   return call;
 }
@@ -305,7 +305,7 @@ std::unique_ptr<Node> BuildLeftUnop(std::vector<std::unique_ptr<Node>> nodes,
   unop->op = UnopMap.at(tk);
 
   if (unop->operand->is<Declaration>()) {
-    ctx->error_log_.DeclarationUsedInUnop(tk, unop->operand->span);
+    ctx->error_log()->DeclarationUsedInUnop(tk, unop->operand->span);
   }
   return unop;
 }
@@ -365,11 +365,11 @@ std::unique_ptr<Node> BuildAccess(std::vector<std::unique_ptr<Node>> nodes,
   access->operand = move_as<Expression>(nodes[0]);
 
   if (access->operand->is<Declaration>()) {
-    ctx->error_log_.DeclarationInAccess(access->operand->span);
+    ctx->error_log()->DeclarationInAccess(access->operand->span);
   }
 
   if (!nodes[2]->is<Identifier>()) {
-    ctx->error_log_.RHSNonIdInAccess(nodes[2]->span);
+    ctx->error_log()->RHSNonIdInAccess(nodes[2]->span);
   } else {
     access->member_name = std::move(nodes[2]->as<Identifier>().token);
   }
@@ -390,11 +390,11 @@ std::unique_ptr<Node> BuildIndexOperator(
   index->rhs_  = move_as<Expression>(nodes[2]);
 
   if (index->lhs_->is<Declaration>()) {
-    ctx->error_log_.IndexingDeclaration(index->lhs_->span);
+    ctx->error_log()->IndexingDeclaration(index->lhs_->span);
   }
 
   if (index->rhs_->is<Declaration>()) {
-    ctx->error_log_.DeclarationInIndex(index->rhs_->span);
+    ctx->error_log()->DeclarationInIndex(index->rhs_->span);
   }
 
   return index;
@@ -792,7 +792,7 @@ static std::unique_ptr<ast::Node> BuildBinaryOperator(
       if (nodes[0]->as<ast::Declaration>().IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
         // give a good error message if that's what is intended?
-        ctx->error_log_.DoubleDeclAssignment(nodes[0]->span, nodes[1]->span);
+        ctx->error_log()->DoubleDeclAssignment(nodes[0]->span, nodes[1]->span);
         return move_as<ast::Declaration>(nodes[0]);
       }
 
@@ -926,7 +926,7 @@ static std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
     if (stmt->is<ast::Declaration>()) {
       struct_lit->fields_.push_back(move_as<ast::Declaration>(stmt));
     } else {
-      ctx->error_log_.NonDeclarationInStructDeclaration(stmt->span);
+      ctx->error_log()->NonDeclarationInStructDeclaration(stmt->span);
       // TODO show the entire struct declaration and point to the problematic
       // lines.
     }
@@ -1036,7 +1036,7 @@ static std::unique_ptr<ast::Node> BuildEmptyParen(
   call->fn_  = move_as<ast::Expression>(nodes[0]);
 
   if (call->fn_->is<ast::Declaration>()) {
-    ctx->error_log_.CallingDeclaration(call->fn_->span);
+    ctx->error_log()->CallingDeclaration(call->fn_->span);
   }
   return call;
 }
@@ -1066,7 +1066,7 @@ namespace ErrMsg {
 template <size_t RTN, size_t RES>
 static std::unique_ptr<ast::Node> Reserved(
     std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  ctx->error_log_.Reserved(nodes[RES]->span,
+  ctx->error_log()->Reserved(nodes[RES]->span,
                            nodes[RES]->as<frontend::Token>().token);
 
   return std::make_unique<ast::Identifier>(nodes[RTN]->span, "invalid_node");
@@ -1075,16 +1075,16 @@ static std::unique_ptr<ast::Node> Reserved(
 template <size_t RTN, size_t RES1, size_t RES2>
 static std::unique_ptr<ast::Node> BothReserved(
     std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  ctx->error_log_.Reserved(nodes[RES1]->span,
+  ctx->error_log()->Reserved(nodes[RES1]->span,
                            nodes[RES1]->as<frontend::Token>().token);
-  ctx->error_log_.Reserved(nodes[RES2]->span,
+  ctx->error_log()->Reserved(nodes[RES2]->span,
                            nodes[RES2]->as<frontend::Token>().token);
   return std::make_unique<ast::Identifier>(nodes[RTN]->span, "invalid_node");
 }
 
 static std::unique_ptr<ast::Node> NonBinop(
     std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  ctx->error_log_.NotBinary(nodes[1]->span,
+  ctx->error_log()->NotBinary(nodes[1]->span,
                             nodes[1]->as<frontend::Token>().token);
   return std::make_unique<ast::Identifier>(nodes[1]->span, "invalid_node");
 }
@@ -1092,20 +1092,20 @@ static std::unique_ptr<ast::Node> NonBinop(
 template <size_t RTN, size_t RES>
 static std::unique_ptr<ast::Node> NonBinopReserved(
     std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  ctx->error_log_.NotBinary(nodes[1]->span,
+  ctx->error_log()->NotBinary(nodes[1]->span,
                             nodes[1]->as<frontend::Token>().token);
-  ctx->error_log_.Reserved(nodes[RES]->span,
+  ctx->error_log()->Reserved(nodes[RES]->span,
                            nodes[RES]->as<frontend::Token>().token);
   return std::make_unique<ast::Identifier>(nodes[RTN]->span, "invalid_node");
 }
 
 static std::unique_ptr<ast::Node> NonBinopBothReserved(
     std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
-  ctx->error_log_.Reserved(nodes[0]->span,
+  ctx->error_log()->Reserved(nodes[0]->span,
                            nodes[0]->as<frontend::Token>().token);
-  ctx->error_log_.NotBinary(nodes[1]->span,
+  ctx->error_log()->NotBinary(nodes[1]->span,
                             nodes[1]->as<frontend::Token>().token);
-  ctx->error_log_.Reserved(nodes[2]->span,
+  ctx->error_log()->Reserved(nodes[2]->span,
                            nodes[2]->as<frontend::Token>().token);
   return std::make_unique<ast::Identifier>(nodes[1]->span, "invalid_node");
 }
@@ -1338,7 +1338,7 @@ struct ParseState {
     return ShiftState::MustReduce;
   }
 
-  void LookAhead() { lookahead_.push(NextToken(*loc_, &ctx_->error_log_)); }
+  void LookAhead() { lookahead_.push(NextToken(*loc_, ctx_->error_log())); }
 
   const TaggedNode &Next() {
     if (lookahead_.empty()) { LookAhead(); }
@@ -1495,7 +1495,7 @@ std::unique_ptr<ast::Statements> frontend::File::Parse(Context *ctx) {
     }
 
     // This is an exceedingly crappy error message.
-    ctx->error_log_.UnknownParseError(lines);
+    ctx->error_log()->UnknownParseError(lines);
   }
 
   return move_as<ast::Statements>(state.node_stack_.back());

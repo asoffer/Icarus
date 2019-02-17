@@ -186,7 +186,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
         bool err = false;
         for (auto *expr : rets[JumpKind::Return]) {
           if (!expr->as<CommaList>().exprs_.empty()) {
-            ctx->error_log_.NoReturnTypes(expr);
+            ctx->error_log()->NoReturnTypes(expr);
             err = true;
           }
         }
@@ -197,7 +197,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
         for (auto *expr : rets[JumpKind::Return]) {
           auto *t = ctx->type_of(expr);
           if (t == outs[0]) { continue; }
-          ctx->error_log_.ReturnTypeMismatch(outs[0], t, expr->span);
+          ctx->error_log()->ReturnTypeMismatch(outs[0], t, expr->span);
           err = true;
         }
         return err ? VerifyResult::Error() : VerifyResult::Constant(this_type);
@@ -208,7 +208,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
           if (expr_type->is<type::Tuple>()) {
             auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
-              ctx->error_log_.ReturningWrongNumber(expr->span, expr_type,
+              ctx->error_log()->ReturningWrongNumber(expr->span, expr_type,
                                                    outs.size());
               return VerifyResult::Error();
             } else {
@@ -221,7 +221,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
                   //
                   // TODO point the span to the correct entry which may be hard
                   // if it's splatted.
-                  ctx->error_log_.IndexedReturnTypeMismatch(
+                  ctx->error_log()->IndexedReturnTypeMismatch(
                       outs.at(i), tup_entries.at(i), expr->span, i);
                   err = true;
                 }
@@ -229,7 +229,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
               if (err) { return VerifyResult::Error(); }
             }
           } else {
-            ctx->error_log_.ReturningWrongNumber(expr->span, expr_type,
+            ctx->error_log()->ReturningWrongNumber(expr->span, expr_type,
                                                  outs.size());
             return VerifyResult::Error();
           }

@@ -27,12 +27,12 @@ VerifyResult Import::VerifyType(Context *ctx) {
   bool err = false;
   if (result.type_ != type::ByteView) {
     // TODO allow (import) overload
-    ctx->error_log_.InvalidImport(operand_->span);
+    ctx->error_log()->InvalidImport(operand_->span);
     err = true;
   }
 
   if (!result.const_) {
-    ctx->error_log_.NonConstantImport(operand_->span);
+    ctx->error_log()->NonConstantImport(operand_->span);
     err = true;
   }
 

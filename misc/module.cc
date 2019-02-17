@@ -115,6 +115,7 @@ static Module const *CompileModule(Module *mod) {
     // TODO Is this right?
     ctx.DumpErrors();
     found_errors = true;
+    return mod;
   }
 
   file_stmts->EmitIR(&ctx);
@@ -123,6 +124,7 @@ static Module const *CompileModule(Module *mod) {
     // TODO Is this right?
     ctx.DumpErrors();
     found_errors = true;
+    return mod;
   }
 
   ctx.mod_->statements_ = std::move(*file_stmts);
