@@ -7,7 +7,7 @@
 #include "type/function.h"
 
 namespace ir {
-using ::base::check::Is;
+using ::matcher::InheritsFrom;
 
 struct Func;
 
@@ -15,7 +15,7 @@ struct Func;
 struct AnyFunc {
   AnyFunc(Func *fn = nullptr) { std::memcpy(&data_, &fn, sizeof(fn)); }
   AnyFunc(Foreign foreign) {
-    ASSERT(foreign.type(), Is<type::Function>());
+    ASSERT(foreign.type(), InheritsFrom<type::Function>());
     void *obj = foreign.get();
     std::memcpy(&data_, &obj, sizeof(void *));
     data_ |= 0x1u;

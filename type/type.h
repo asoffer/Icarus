@@ -180,7 +180,7 @@ struct ConditionalApplicator {
   template <typename Fn, typename... Args>
   static auto Apply(type::Type const *t, Fn &&fn, Args &&... args) {
     if constexpr (sizeof...(Ts) == 0) {
-      ASSERT(::type::Compare<T>(t)) << DUMP(t, typeid(T).name());
+      ASSERT(::type::Compare<T>(t) == true) << DUMP(t, typeid(T).name());
       return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
                                   std::forward<Args>(args)...);
     } else {

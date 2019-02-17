@@ -4,7 +4,6 @@
 
 #include "ast/fn_args.h"
 #include "ast/overload_set.h"
-#include "base/check.h"
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "misc/context.h"
@@ -22,8 +21,6 @@ RegisterOr<type::Type const *> Variant(std::vector<Val> const &vals);
 
 namespace ast {
 namespace {
-using base::check::Is;
-using base::check::Not;
 
 ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
                                      ir::Val const &lhs_ir,
@@ -33,7 +30,8 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
   auto op        = chain_op->ops[index];
 
   if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
-    ASSERT(op == Language::Operator::Eq || op == Language::Operator::Ne);
+    using ::matcher::Eq;
+    ASSERT(op, Eq(Language::Operator::Eq) || Eq(Language::Operator::Ne));
     return type::Array::Compare(&lhs_type->as<type::Array>(), lhs_ir,
                                 &rhs_type->as<type::Array>(), rhs_ir,
                                 op == Language::Operator::Eq, ctx)

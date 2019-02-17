@@ -37,9 +37,8 @@ struct Test {
 #define CHECK(...) MATCH(CHECK_MATCH, CHECK_EXPR, __VA_ARGS__)
 
 #define CHECK_EXPR(expr)                                                       \
-  do {                                                                         \
+  [&](auto const& result) {                                                    \
     ++stats_.expectations;                                                     \
-    auto result = (::matcher::internal::ExprStealer{} << expr);                \
     if (result.matched) {                                                      \
       ++stats_.passes;                                                         \
     } else {                                                                   \
@@ -53,13 +52,13 @@ struct Test {
                 << "\n         \033[0;1;37mRHS:\033[0m "                       \
                 << stringify(result.rhs) << "\n";                              \
     }                                                                          \
-  } while (false)
+  }(MATCH_EXPR(expr))
 
 #define CHECK_MATCH(expr, matcher)                                             \
-  do {                                                                         \
+  [&](auto const& e, auto const& m) {                                          \
     ++stats_.expectations;                                                     \
-    auto const& e    = (expr);                                                 \
-    auto description = (matcher).match_and_describe(e);                        \
+    using expr_type  = std::decay_t<decltype(e)>;                              \
+    auto description = m.template With<expr_type>().match_and_describe(e);     \
     if (!description.has_value()) {                                            \
       ++stats_.passes;                                                         \
     } else {                                                                   \
@@ -74,7 +73,7 @@ struct Test {
                 << "      \033[0;1;37mActual:\033[0m " << stringify(e)         \
                 << "\n";                                                       \
     }                                                                          \
-  } while (false)
+  }((expr), (matcher))
 
 }  // namespace test
 

@@ -111,7 +111,7 @@ std::vector<ir::Val> Identifier::EmitIR(Context *ctx) {
 
 std::vector<ir::RegisterOr<ir::Addr>> Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl_ != nullptr);
-  ASSERT(!decl_->const_);
+  ASSERT(decl_->const_ == false);
   return {ctx->addr(decl_)};
 }
 

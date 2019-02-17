@@ -40,10 +40,11 @@
 #include "type/enum.h"
 #include "type/flags.h"
 
-using ::base::check::Is;
+using ::matcher::InheritsFrom;
+
 template <typename To, typename From>
 static std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
-  ASSERT(val, Is<To>());
+  ASSERT(val, InheritsFrom<To>());
   return std::unique_ptr<To>(static_cast<To *>(val.release()));
 }
 
@@ -854,7 +855,7 @@ static std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     // TODO if you want these values to depend on compile-time parameters,
     // you'll need to actually build the AST nodes.
     for (auto &stmt : stmts->content_) {
-      ASSERT(stmt, Is<ast::Expression>());
+      ASSERT(stmt, InheritsFrom<ast::Expression>());
       elems.push_back(move_as<ast::Expression>(stmt));
     }
   }
@@ -938,7 +939,7 @@ static std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     std::vector<std::unique_ptr<ast::Node>> nodes, Context *ctx) {
   // TODO should probably not do this with a token but some sort of enumerator
   // so we can ensure coverage/safety.
-  ASSERT(nodes[0], Is<frontend::Token>());
+  ASSERT(nodes[0], InheritsFrom<frontend::Token>());
   auto const &tk = nodes[0]->as<frontend::Token>().token;
   if (tk == "switch") {
     auto sw   = BuildSwitch(move_as<ast::Statements>(nodes[4]), ctx);
@@ -950,7 +951,7 @@ static std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
         TextSpan(nodes.front()->span, nodes.back()->span), ctx);
     if (nodes[2]->is<ast::CommaList>()) {
       for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
-        ASSERT(expr, Is<ast::Declaration>());  // TODO handle failure
+        ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO handle failure
         auto decl          = move_as<ast::Declaration>(expr);
         decl->is_fn_param_ = true;
         result->args_.push_back(std::move(decl));

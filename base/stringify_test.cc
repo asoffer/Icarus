@@ -11,6 +11,7 @@
 namespace base {
 namespace {
 using ::matcher::Eq;
+using ::matcher::InheritsFrom;
 
 TEST(StringifyStrings) {
   CHECK(stringify(std::string{"hello"}) == "hello");

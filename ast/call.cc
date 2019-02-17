@@ -20,8 +20,6 @@
 #include "type/tuple.h"
 #include "type/variant.h"
 
-using base::check::Is;
-
 int32_t ForeignFuncIndex = 0;
 int32_t OpaqueFuncIndex  = 1;
 
@@ -194,9 +192,9 @@ VerifyResult Call::VerifyType(Context *ctx) {
       // TODO should turn this into some sort of interface requiremnet of being
       // string-like
       ASSERT(arg_results.pos_[0].type_ == type::ByteView);
-      ASSERT(arg_results.pos_[0].const_);
+      ASSERT(arg_results.pos_[0].const_ == true);
       ASSERT(arg_results.pos_[1].type_ == type::Type_);
-      ASSERT(arg_results.pos_[1].const_);
+      ASSERT(arg_results.pos_[1].const_ == true);
       return VerifyResult(
           ctx->set_type(this, backend::EvaluateAs<type::Type const *>(
                                   args_.pos_[1].get(), ctx)),
@@ -205,7 +203,7 @@ VerifyResult Call::VerifyType(Context *ctx) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
       ASSERT(args_.named_.size() == 0u);
-      ASSERT(args_.pos_.empty());
+      ASSERT(args_.pos_.size() == 0u);
       return VerifyResult::Constant(ctx->set_type(this, type::Type_));
     } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {
       // TODO might be optional.
@@ -268,7 +266,7 @@ std::vector<ir::Val> Call::EmitIR(Context *ctx) {
       call_args.type_ = &fn_val.type->as<type::Function>();
 
       auto *out_type = fn_val.type->as<type::Function>().output.at(0);
-      ASSERT(!out_type->is_big());
+      ASSERT(out_type->is_big() == false);
 
       ir::OutParams outs;
       auto reg = outs.AppendReg(out_type);

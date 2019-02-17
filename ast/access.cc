@@ -15,12 +15,13 @@
 
 namespace ast {
 namespace {
-using base::check::Is;
+using ::matcher::InheritsFrom;
 
-const type::Type *DereferenceAll(type::Type const *t) {
+type::Type const *DereferenceAll(type::Type const *t) {
   while (auto *p = t->if_as<type::Pointer>()) { t = p->pointee; }
   return t;
 }
+
 }  // namespace
 
 void Access::assign_scope(Scope *scope) {
@@ -121,7 +122,7 @@ std::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
     reg = ir::Load<ir::Addr>(reg, t);
   }
 
-  ASSERT(t, Is<type::Struct>());
+  ASSERT(t, InheritsFrom<type::Struct>());
   auto *struct_type = &t->as<type::Struct>();
   return {ir::Field(reg, struct_type, struct_type->index(member_name)).get()};
 }
@@ -152,7 +153,7 @@ std::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {
       reg = ir::Load<ir::Addr>(reg, t);
     }
 
-    ASSERT(t, Is<type::Struct>());
+    ASSERT(t, InheritsFrom<type::Struct>());
     auto *struct_type = &t->as<type::Struct>();
     auto field = ir::Field(reg, struct_type, struct_type->index(member_name));
     return {ir::Val::Reg(ir::PtrFix(field.get(), this_type), this_type)};

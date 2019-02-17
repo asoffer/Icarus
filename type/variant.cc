@@ -103,7 +103,7 @@ bool Variant::needs_destroy() const {
 void Variant::EmitCopyAssign(Type const *from_type, ir::Val const &from,
                              ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   // TODO full destruction is only necessary if the type is changing.
-  ASSERT(to.is_reg_);
+  ASSERT(to.is_reg_ == true);
   // TODO have EmitDestroy take RegistorOr<Addr>
   EmitDestroy(to.reg_, ctx);
 
@@ -140,7 +140,7 @@ void Variant::EmitCopyAssign(Type const *from_type, ir::Val const &from,
 void Variant::EmitMoveAssign(Type const *from_type, ir::Val const &from,
                              ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   // TODO full destruction is only necessary if the type is changing.
-  ASSERT(to.is_reg_);
+  ASSERT(to.is_reg_ == true);
   // TODO have EmitDestroy take RegistorOr<Addr>
   EmitDestroy(to.reg_, ctx);
 
@@ -284,7 +284,7 @@ ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
         ++t_iter;
       }
     }
-    ASSERT(!intersection.empty());
+    ASSERT(intersection.size() != 0u);
 
     auto landing = ir::Func::Current->AddBlock();
 

@@ -33,6 +33,8 @@ auto stringify_dispatch(dispatch_rank<0>, T const &val) -> std::string {
       ->decltype(                                                              \
           std::enable_if_t<std::is_same_v<std::decay_t<T>, __VA_ARGS__>>(),    \
           std::string{})
+
+DEFINE_RANKED_STRINGIFY(1, std::nullptr_t) { return "nullptr"; }
 DEFINE_RANKED_STRINGIFY(1, bool) { return value ? "true" : "false"; }
 DEFINE_RANKED_STRINGIFY(1, char const *) { return value; }
 DEFINE_RANKED_STRINGIFY(2, std::string) { return value; }

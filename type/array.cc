@@ -56,7 +56,6 @@ static void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
 }
 
 namespace type {
-using base::check::Is;
 
 static base::guarded<std::unordered_map<
     const Array *, std::unordered_map<const Array *, ir::Func *>>>
@@ -179,8 +178,8 @@ static ir::Func *CreateAssign(Array const *a, Context *ctx) {
           return ir::Eq(std::get<0>(phis), from_end_ptr);
         },
         [&](tup const &phis) {
-          ASSERT(std::get<0>(phis).is_reg_);
-          ASSERT(std::get<1>(phis).is_reg_);
+          ASSERT(std::get<0>(phis).is_reg_ == true);
+          ASSERT(std::get<1>(phis).is_reg_ == true);
 
           auto from_val = ir::Val::Reg(
               PtrFix(std::get<0>(phis).reg_, a->data_type),
@@ -233,7 +232,7 @@ static void OnEachElement(Array const *t, ir::Func *fn, F &&fn_to_apply) {
     CreateLoop(
         [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
         [&](tup const &phis) {
-          ASSERT(std::get<0>(phis).is_reg_);
+          ASSERT(std::get<0>(phis).is_reg_ == true);
           fn_to_apply(std::get<0>(phis).reg_);
           return tup{ir::PtrIncr(std::get<0>(phis).reg_, 1, data_ptr_type)};
         },
@@ -294,7 +293,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
       CreateLoop(
           [&](tup const &phis) { return ir::Eq(std::get<1>(phis), 0); },
           [&](tup const &phis) {
-            ASSERT(std::get<0>(phis).is_reg_);
+            ASSERT(std::get<0>(phis).is_reg_ == true);
             auto elem_ptr =
                 ir::PtrIncr(std::get<0>(phis).reg_, 1, Ptr(data_type));
 

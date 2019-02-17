@@ -54,11 +54,11 @@ Val MakePhi(CmdIndex phi_index,
           MakePhi<ir::Addr>(phi_index, ConvertMap<ir::Addr>(val_map)),
           &cmd_type->as<type::Pointer>());
     } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
-      ASSERT(!val_map.empty());
+      ASSERT(val_map.size() != 0u);
       return ir::ValFrom(MakePhi<T>(phi_index, ConvertMap<T>(val_map)),
                          &val_map.begin()->second.type->as<type::Enum>());
     } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
-      ASSERT(!val_map.empty());
+      ASSERT(val_map.size() != 0u);
       return ir::ValFrom(MakePhi<T>(phi_index, ConvertMap<T>(val_map)),
                          &val_map.begin()->second.type->as<type::Flags>());
     } else if constexpr (std::is_same_v<T, BlockSequence>) {

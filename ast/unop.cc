@@ -4,14 +4,11 @@
 #include "ast/overload_set.h"
 #include "ast/terminal.h"
 #include "backend/eval.h"
-#include "base/check.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "misc/context.h"
 
 namespace ast {
-using base::check::Is;
-using base::check::Not;
 
 std::string Unop::to_string(size_t n) const {
   if (op == Language::Operator::TypeOf) {

@@ -13,7 +13,6 @@
 #include "type/pointer.h"
 
 namespace type {
-using base::check::Is;
 
 static std::optional<ir::AnyFunc> SpecialFunction(Struct const *s, char const *symbol,
                                                 Context *ctx) {
@@ -153,7 +152,7 @@ void Struct::set_last_name(std::string_view s) {
   auto[iter, success] =
       field_indices_.emplace(fields_.back().name, fields_.size() - 1);
   static_cast<void>(iter);
-  ASSERT(success);
+  ASSERT(success == true);
 }
 
 void Struct::add_hashtag(ast::Hashtag hashtag) { hashtags_.push_back(hashtag); }

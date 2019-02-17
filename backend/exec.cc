@@ -27,8 +27,6 @@
 #include "type/type.h"
 #include "type/util.h"
 
-using ::base::check::Is;
-
 // TODO CreateStruct, CreateEnum, etc should register a deleter so if we exit
 // early we don't leak them. FinalizeStruct, FinalizeEnum, etc should dergeister
 // the deleter without calling it.
@@ -589,7 +587,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         break;
       }
       if (input_vals != nullptr) {
-        ASSERT(cache.back_.emplace(s, input_vals).second);
+        bool inserted = cache.back_.emplace(s, input_vals).second;
+        ASSERT(inserted == true);
       }
       save(s);
 

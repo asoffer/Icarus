@@ -138,7 +138,7 @@ static Module const *CompileModule(Module *mod) {
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
       if (decl->id_ != "main") { continue; }
       auto f = backend::EvaluateAs<ir::AnyFunc>(decl->init_val.get(), &ctx);
-      ASSERT(f.is_fn());
+      ASSERT(f.is_fn() == true);
       auto ir_fn = f.func();
 
       // TODO check more than one?
@@ -199,7 +199,7 @@ PendingModule Module::Schedule(std::filesystem::path const &src,
   if (requestor != std::filesystem::path{""}) {
     bool success = import_graph.AddDependency(
         src_ptr, ASSERT_NOT_NULL(import_graph.node(requestor).first));
-    ASSERT(success);
+    ASSERT(success == true);
   }
 
   if (!newly_inserted) {

@@ -126,7 +126,7 @@ struct CallObstruction {
 }  // namespace
 
 namespace ast {
-using base::check::Is;
+using ::matcher::InheritsFrom;
 
 bool Binding::defaulted(size_t i) const {
   // TODO shouldn't need to do a linear search.
@@ -756,7 +756,7 @@ static void EmitOneCallDispatch(
       }
     }
   }
-  ASSERT(callee.type, Is<type::Callable>());
+  ASSERT(callee.type, InheritsFrom<type::Callable>());
 
   // After the last check, if you pass, you should dispatch
   FnParams<Expression *> *const_params = nullptr;
@@ -833,7 +833,7 @@ static void EmitOneCallDispatch(
         return;
       }
 
-      ASSERT(expected_return_type, Is<type::Variant>());
+      ASSERT(expected_return_type, InheritsFrom<type::Variant>());
       ir::Store(return_type,
                 ir::VariantType(std::get<ir::Register>(out_reg->value)));
       outs.AppendLoc(ir::VariantValue(return_type,
@@ -852,9 +852,6 @@ static void EmitOneCallDispatch(
     }
   }
 
-  ASSERT(std::holds_alternative<ir::Register>(callee.value) ||
-         std::holds_alternative<ir::AnyFunc>(callee.value))
-      << callee;
   ir::Call(callee.reg_or<ir::AnyFunc>(), std::move(call_args), std::move(outs));
 }
 

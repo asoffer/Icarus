@@ -13,7 +13,6 @@
 #include "type/typed_value.h"
 
 namespace ir {
-using base::check::Is;
 thread_local BlockIndex BasicBlock::Current;
 
 void Move(type::Type const *t, Register from, RegisterOr<Addr> to) {
@@ -472,7 +471,7 @@ TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx) {
 }
 
 TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
-  ASSERT(t->is_big());
+  ASSERT(t->is_big() == true);
   auto &cmd    = MakeCmd(type::Ptr(t), Op::GetRet);
   cmd.get_ret_ = n;
   return cmd.result;

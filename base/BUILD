@@ -7,16 +7,10 @@ cc_lib(
 )
 
 cc_lib(
-    name = "check",
-    hdrs = ["check.h"],
-    deps = [":stringify"],
-)
-
-cc_lib(
     name = "debug",
     hdrs = ["debug.h"],
     deps = [
-        ":check",
+        ":matchers",
         ":log",
     ]
 )

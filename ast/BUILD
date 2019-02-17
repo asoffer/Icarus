@@ -135,7 +135,6 @@ cc_target(
         ":fn_args",
         ":overload_set",
         "//backend:eval",
-        "//base:check",
         "//misc:context",
         "//ir:components",
         "//ir:func",
@@ -231,7 +230,6 @@ cc_target(
     impl_deps = [
         ":fn_args",
         ":overload_set",
-        "//base:check",
         "//misc:context",
         "//ir:func",
         "//ir:phi",
@@ -634,7 +632,6 @@ cc_target(
         ":overload_set",
         ":terminal",
         "//backend:eval",
-        "//base:check",
         "//misc:context",
         "//ir:components",
         "//ir:func",

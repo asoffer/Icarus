@@ -30,7 +30,7 @@ static llvm::Value *StringConstant(llvm::IRBuilder<> *builder,
 
 namespace backend {
 namespace {
-using base::check::Is;
+using ::matcher::InheritsFrom;
 
 struct LlvmData {
   llvm::Function *fn;
@@ -57,7 +57,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
           [&](ir::Addr addr) -> llvm::Value * {
             switch (addr.kind) {
               case ir::Addr::Kind::Null:
-                ASSERT(val.type, Is<type::Pointer>());
+                ASSERT(val.type, InheritsFrom<type::Pointer>());
                 return llvm::ConstantPointerNull::get(
                     val.type->as<type::Pointer>().llvm_ptr(
                         llvm_data->module->getContext()));

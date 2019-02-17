@@ -4,7 +4,6 @@
 #include "ast/fn_args.h"
 #include "ast/overload_set.h"
 #include "backend/eval.h"
-#include "base/check.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
@@ -34,8 +33,6 @@ bool IsTypeOrTupleOfTypes(type::Type const *t) {
 }  // namespace
 
 namespace ast {
-using base::check::Is;
-using base::check::Not;
 
 std::string Binop::to_string(size_t n) const {
   std::stringstream ss;

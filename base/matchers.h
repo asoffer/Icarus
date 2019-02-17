@@ -1,19 +1,83 @@
 #include <optional>
 #include <string>
+#include <memory>
 
 #include "base/stringify.h"
 #include "base/tuple.h"
 
 namespace matcher {
+struct UntypedMatcher {};
+
 template <typename T>
-struct Matcher {
-  std::optional<std::string> match_and_describe(T const& input) {
+struct Matcher : public UntypedMatcher {
+  std::optional<std::string> match_and_describe(T const& input) const& {
     if (match(input)) { return std::nullopt; }
     return describe(true);
   }
 
+  template <typename Expr>
+  auto const& With() const& {
+    return *this;
+  }
+
   virtual std::string describe(bool positive) const = 0;
   virtual bool match(T const&) const                = 0;
+};
+
+namespace internal {
+template <typename T>
+struct is_pointery : public std::false_type {};
+
+template <typename T>
+struct is_pointery<T*> : public std::true_type {
+  T const* get(T const* ptr) { return ptr; }
+};
+
+template <typename T>
+struct is_pointery<std::unique_ptr<T>> : public std::true_type {
+  T const* get(std::unique_ptr<T> const& ptr) { return ptr.get(); }
+};
+}  // namespace internal
+
+template <typename T>
+struct InheritsFrom : public UntypedMatcher {
+  template <typename Expr>
+  struct Matcher : public ::matcher::Matcher<Expr> {
+    bool match(Expr const& input) const {
+      if constexpr (internal::is_pointery<Expr>::value) {
+        return dynamic_cast<T const*>(
+                   internal::is_pointery<Expr>{}.get(input)) != nullptr;
+      }
+    }
+    std::string describe(bool positive) const override {
+      return (positive ? "inherits from " : "does not inherit from ") +
+             std::string(typeid(T).name());
+    }
+  };
+
+  template <typename Expr>
+  auto With() const& {
+    return InheritsFrom::Matcher<Expr>{};
+  }
+};
+
+template <typename T>
+struct Holds : public UntypedMatcher {
+  template <typename V>
+  struct Matcher : public ::matcher::Matcher<V> {
+    bool match(V const& input) const {
+      return std::holds_alternative<T>(input);
+    }
+    std::string describe(bool positive) const override {
+      return (positive ? " holds a " : "does not hold a ") +
+             std::string(typeid(T).name());
+    }
+  };
+
+  template <typename Expr>
+  auto With() const& {
+    return Holds::Matcher<Expr>{};
+  }
 };
 
 template <typename T>
@@ -129,6 +193,13 @@ struct Eq : public Matcher<T> {
 template <int N>
 Eq(char const (&)[N])->Eq<std::string>;
 
+template <typename L, typename R>
+struct ExprMatchResult {
+  bool matched;
+  L const& lhs;
+  R const& rhs;
+};
+
 namespace internal {
 template <typename T>
 struct StolenExpr {
@@ -143,59 +214,40 @@ StolenExpr<T> operator<<(ExprStealer, T const& expr) {
   return {expr};
 }
 
-template <typename T>
-struct Result {
-  bool matched;
-  T lhs;
-  T rhs;
-};
-
 template <typename T, typename U>
-Result<T> operator==(StolenExpr<T> expr, U&& other) {
-  T lhs        = expr.expr_;
-  T rhs        = other;
-  bool matched = (lhs == rhs);
-  return {matched, lhs, rhs};
+ExprMatchResult<T, U> operator==(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ == rhs);
+  return {matched, expr.expr_, rhs};
 }
 
 template <typename T, typename U>
-Result<T> operator!=(StolenExpr<T> expr, U&& other) {
-  T lhs        = expr.expr_;
-  T rhs        = other;
-  bool matched = (lhs != rhs);
-  return {matched, lhs, rhs};
+ExprMatchResult<T, U> operator!=(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ != rhs);
+  return {matched, expr.expr_, rhs};
 }
 
 template <typename T, typename U>
-Result<T> operator<(StolenExpr<T> expr, U&& other) {
-  T lhs        = expr.expr_;
-  T rhs        = other;
-  bool matched = (lhs < rhs);
-  return {matched, lhs, rhs};
+ExprMatchResult<T, U> operator<(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ < rhs);
+  return {matched, expr.expr_, rhs};
 }
 
 template <typename T, typename U>
-Result<T> operator>(StolenExpr<T> expr, U&& other) {
-  T lhs        = expr.expr_;
-  T rhs        = other;
-  bool matched = (lhs > rhs);
-  return {matched, lhs, rhs};
+ExprMatchResult<T, U> operator>(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ > rhs);
+  return {matched, expr.expr_, rhs};
 }
 
 template <typename T, typename U>
-Result<T> operator<=(StolenExpr<T> expr, U&& other) {
-  T lhs        = expr.expr_;
-  T rhs        = other;
-  bool matched = (lhs <= rhs);
-  return {matched, lhs, rhs};
+ExprMatchResult<T, U> operator<=(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ <= rhs);
+  return {matched, expr.expr_, rhs};
 }
 
 template <typename T, typename U>
-Result<T> operator>=(StolenExpr<T> expr, U&& other) {
-  T lhs        = expr.expr_;
-  T rhs        = other;
-  bool matched = (lhs >= rhs);
-  return {matched, lhs, rhs};
+ExprMatchResult<T, U> operator>=(StolenExpr<T> expr, U const& rhs) {
+  bool matched = (expr.expr_ >= rhs);
+  return {matched, expr.expr_, rhs};
 }
 
 }  // namespace internal
@@ -206,3 +258,5 @@ Result<T> operator>=(StolenExpr<T> expr, U&& other) {
              __VA_ARGS__)
 #define MATCH_IMPL_NUM_ARGS(x, y, macro, ...) macro
 #define MATCH_IMPL(match, ...) match(__VA_ARGS__)
+
+#define MATCH_EXPR(expr) (::matcher::internal::ExprStealer{} << expr)

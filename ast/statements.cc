@@ -54,8 +54,6 @@ std::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
   });
 
   for (auto &stmt : content_) {
-    using ::base::check::Is;
-    ASSERT(stmt, Not(Is<Statements>()));
     if (!ctx->more_stmts_allowed_) {
       ctx->error_log_.StatementsFollowingJump(stmt->span);
 
