@@ -1,7 +1,12 @@
+#ifndef ICARUS_BASE_EXPECTED_H
+#define ICARUS_BASE_EXPECTED_H
+
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <variant>
+
+#include "base/stringify.h"
 
 namespace base {
 struct unexpected {
@@ -44,4 +49,17 @@ struct expected {
  private:
   std::variant<T, E> val_;
 };
+
+inline std::string stringify(unexpected const &u) { return u.to_string(); }
+
+template <typename T, typename E>
+std::string stringify(expected<T, E> const& e) {
+  if (e) {
+    using base::stringify;
+    return stringify(*e);
+  }
+  return stringify(e.error());
+}
 }  // namespace base
+
+#endif  // ICARUS_BASE_EXPECTED_H

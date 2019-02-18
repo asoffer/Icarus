@@ -7,68 +7,82 @@ namespace {
 
 TEST(StringSrcSingleChunk) {
   StringSrc src("abc");
-  auto chunk = src.ReadChunk();
+  auto chunk = src.ReadUntil('\0');
   CHECK(chunk.view == "abc");
-  CHECK(chunk.view.size() == 3u);
+  CHECK(chunk.more_to_read == false);
+}
+
+TEST(StringSrcSingleChunkNoDelimFound) {
+  StringSrc src("abc");
+  auto chunk = src.ReadUntil('x');
+  CHECK(chunk.view == "abc");
   CHECK(chunk.more_to_read == false);
 }
 
 TEST(StringSrcMultipleChunks) {
-  StringSrc src(std::string(512, 'a') + std::string(512, 'b') +
-                std::string(512, 'c') + std::string(512, 'd') +
-                std::string(512, 'e'));
-  auto chunk = src.ReadChunk();
-  CHECK(chunk.view[0] == 'a');
+  StringSrc src("abcdefg");
+  auto chunk = src.ReadUntil('d');
+  CHECK(chunk.view == "abc");
   CHECK(chunk.more_to_read == true);
 
-  chunk = src.ReadChunk();
-  CHECK(chunk.view[0] == 'c');
+  chunk = src.ReadUntil('d');
+  CHECK(chunk.view == "efg");
+  CHECK(chunk.more_to_read == false);
+}
+TEST(StringSrcSmallChunks) {
+  StringSrc src("aaa");
+  auto chunk = src.ReadUntil('a');
+  CHECK(chunk.view == "");
   CHECK(chunk.more_to_read == true);
 
-  chunk = src.ReadChunk();
-  CHECK(chunk.view[0] == 'e');
-  CHECK(chunk.view.size() == 512u);
+  chunk = src.ReadUntil('a');
+  CHECK(chunk.view == "");
+  CHECK(chunk.more_to_read == true);
+
+  chunk = src.ReadUntil('a');
+  CHECK(chunk.view == "");
   CHECK(chunk.more_to_read == false);
 }
 
 TEST(FileSrcFail) {
-  CHECK(MakeFileSrc("not_a_file.txt").has_value() == false);
+  CHECK(FileSrc::Make("not_a_file.txt").has_value() == false);
 }
 
 TEST(FileSrcReadEmptyFile) {
-  REQUIRE_ASSIGN(auto src, MakeFileSrc("frontend/testdata/empty_file.txt"));
+  REQUIRE_ASSIGN(auto src, FileSrc::Make("frontend/testdata/empty_file.txt"));
 
-  auto chunk = src.ReadChunk();
+  auto chunk = src.ReadUntil('\n');
   CHECK(chunk.view == "");
   CHECK(chunk.more_to_read == false);
 }
 
 TEST(FileSrcReadOneLine) {
-  REQUIRE_ASSIGN(auto src, MakeFileSrc("frontend/testdata/one_line_file.txt"));
+  REQUIRE_ASSIGN(auto src,
+                 FileSrc::Make("frontend/testdata/one_line_file.txt"));
 
-  auto chunk = src.ReadChunk();
-  CHECK(chunk.view == "hello\n");
+  auto chunk = src.ReadUntil('\n');
+  CHECK(chunk.view == "hello");
+  CHECK(chunk.more_to_read == true);
+
+  chunk = src.ReadUntil('\n');
+  CHECK(chunk.view == "");
   CHECK(chunk.more_to_read == false);
 }
 
 TEST(FileSrcReadMultipleLines) {
   REQUIRE_ASSIGN(auto src,
-                 MakeFileSrc<5>("frontend/testdata/multi_line_file.txt"));
+                 FileSrc::Make("frontend/testdata/multi_line_file.txt"));
 
-  auto chunk = src.ReadChunk();
-  CHECK(chunk.view == "hell");
+  auto chunk = src.ReadUntil('\n');
+  CHECK(chunk.view == "hello");
   CHECK(chunk.more_to_read == true);
 
-  chunk = src.ReadChunk();
-  CHECK(chunk.view == "o\nwo");
+  chunk = src.ReadUntil('\n');
+  CHECK(chunk.view == "world!");
   CHECK(chunk.more_to_read == true);
 
-  chunk = src.ReadChunk();
-  CHECK(chunk.view == "rld!");
-  CHECK(chunk.more_to_read == true);
-
-  chunk = src.ReadChunk();
-  CHECK(chunk.view == "\n");
+  chunk = src.ReadUntil('\n');
+  CHECK(chunk.view == "");
   CHECK(chunk.more_to_read == false);
 }
 

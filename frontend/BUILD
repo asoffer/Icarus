@@ -36,6 +36,7 @@ cc_lib(
     deps = [
         ":tagged_node",
         ":token",
+        ":source",
         "//ast",
         "//base:guarded",
     ],
@@ -45,11 +46,13 @@ cc_lib(
     name = "deprecated_source",
     hdrs = ["deprecated_source.h"],
     srcs = ["deprecated_source.cc"],
+    deps = [":source"],
 )
 
 cc_lib(
     name = "source",
     hdrs = ["source.h"],
+    srcs = ["source.cc"],
     deps = ["//base:expected"],
 )
 

@@ -18,6 +18,7 @@ cc_lib(
 cc_lib(
     name = "expected",
     hdrs = ["expected.h"],
+    deps = [":stringify"],
 )
 
 cc_lib(
@@ -113,5 +114,8 @@ cc_lib(
 cc_lib(
     name = "util",
     hdrs = ["util.h"],
-    deps = [":debug"],
+    deps = [
+        ":debug",
+        ":macros",
+    ],
 )

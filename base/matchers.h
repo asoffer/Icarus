@@ -1,3 +1,6 @@
+#ifndef ICARUS_BASE_MATCHERS_H
+#define ICARUS_BASE_MATCHERS_H
+
 #include <optional>
 #include <string>
 #include <memory>
@@ -298,3 +301,5 @@ ExprMatchResult<T, U> operator>=(StolenExpr<T> expr, U const& rhs) {
 
 #define INTERNAL_MATCH_EXPR(handler, expr)                                     \
   handler(::matcher::internal::ExprStealer{#expr} << expr)
+
+#endif  // ICARUS_BASE_MATCHERS_H

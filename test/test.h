@@ -28,7 +28,11 @@ std::string StringifyAndEscape(T const& t) {
     // TODO clean up performance here.
     for (char c : t) {
       auto escaped = EscapeChar(c);
-      if (escaped) { result += escaped; }
+      if (escaped) {
+        result += escaped;
+      } else {
+        result += std::string(1, c);
+      }
     }
     return result + "\"";
   } else if constexpr (std::is_same_v<type, char*> ||
@@ -38,10 +42,19 @@ std::string StringifyAndEscape(T const& t) {
     // TODO clean up performance here.
     while (*ptr != '\0') {
       auto escaped = EscapeChar(*ptr);
-      if (escaped) { result += escaped; }
+      if (escaped) {
+        result += escaped;
+      } else {
+        result += std::string(1, *ptr);
+      }
       ++ptr;
     }
     return result + "\"";
+  } else if constexpr(std::is_same_v<type, char>) {
+    auto escaped       = EscapeChar(t);
+    using namespace std::literals;
+    if (escaped) { return "'"s + escaped + "'"; }
+    return {'\'', t, '\'', '\0'};
   } else {
     using base::stringify;
     return stringify(t);

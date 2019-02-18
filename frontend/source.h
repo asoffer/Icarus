@@ -7,7 +7,6 @@
 #include <string_view>
 
 #include "base/expected.h"
-#include "base/log.h"
 
 namespace frontend {
 
@@ -19,77 +18,65 @@ struct SrcChunk {
 struct Src {
   virtual ~Src(){};
 
-  // Data is guaranteed never to be cut in the middle of a token. It is
-  // guaranteed to be valid until the next call to Read.
-  virtual SrcChunk ReadChunk() = 0;
+  // Reads data from the source until the delimeter is found, dropping the
+  // delimeter Sources may have a maximum number of characters they will read.  Typically 1k.
+  //
+  // Returned data contains a string_view which is guaranteed to be valid until
+  // the next call to ReadUntil.
+  virtual SrcChunk ReadUntil(char delim) = 0;
 };
 
 struct StringSrc : public Src {
-  static constexpr uint16_t MaxChunkSize = 1024;
-
   ~StringSrc() override {}
-  StringSrc(std::string src)
-      : src_(std::move(src)), head_(src_.data()), size_left_(src_.size()){};
+  StringSrc(std::string src) : src_(std::move(src)), view_(src_) {}
 
-  SrcChunk ReadChunk() override {
-    if (size_left_ >= MaxChunkSize) {
-      std::string_view result(head_, MaxChunkSize);
-      head_ += MaxChunkSize;
-      size_left_ -= MaxChunkSize;
-      return {result, true};
-    } else if (size_left_ == 0) {
-      return {"", false};
-    } else {
-      std::string_view result(head_, size_left_);
-      head_ += size_left_;
-      size_left_ = 0;
-      return {result, false};
-    }
+  SrcChunk ReadUntil(char delim) override {
+    auto pos = view_.find_first_of(delim);
+    if (pos == std::string_view::npos) { return {view_, false}; }
+    auto result = view_.substr(0, pos);
+    view_.remove_prefix(pos + 1);
+    return {result, !view_.empty()};
   }
 
  private:
   std::string src_;
-  char const *head_;
-  size_t size_left_;
+  std::string_view view_;
 };
 
-template <size_t MaxChunkSize>
 struct FileSrc : public Src {
-  FileSrc(std::filesystem::path path, FILE *f)
-      : path_(std::move(path)), f_(f) {}
+  static base::expected<FileSrc> Make(std::filesystem::path path);
+
   FileSrc(FileSrc const&) = delete;
   FileSrc(FileSrc &&f) : path_(std::move(f.path_)), f_(f.f_) { f.f_ = nullptr; }
   ~FileSrc() override {
+    std::free(buf_);
     if (f_) { std::fclose(f_); }
   }
 
-  SrcChunk ReadChunk() override {
-    // Note: Let string_view deduce the length of the buffer because we may not
-    // have used the full `MaxChunkSize` and a null terminator may have been
-    // written earlier.
-    size_t num_read = std::fread(&buf_[0], sizeof(buf_[0]), MaxChunkSize - 1, f_);
-    buf_[num_read] = '\0';
-    return {std::string_view(&buf_[0], num_read), num_read == MaxChunkSize - 1};
+  SrcChunk ReadUntil(char delim) override {
+    std::free(buf_);
+    buf_ = nullptr;
+    size_t n = 0;
+    ssize_t num_chars = getdelim(&buf_, &n, delim, f_);
+    if (num_chars <= 0) { return {"", false}; }
+    if (buf_[num_chars - 1] == delim) {
+      return {std::string_view(buf_, num_chars - 1), true};
+    } else {
+      return {std::string_view(buf_, num_chars), true};
+    }
   }
+
+  std::filesystem::path path() const { return path_; }
 
  private:
-  template <size_t N>
-  friend base::expected<FileSrc<N>> MakeFileSrc(std::filesystem::path path);
+  FileSrc(std::filesystem::path path, FILE *f)
+      : path_(std::move(path)), f_(f) {}
+
   std::filesystem::path path_;
-  FILE *f_ = nullptr;
-  char buf_[MaxChunkSize];
+  FILE *f_   = nullptr;
+  char *buf_ = nullptr;
 };
 
-template <size_t MaxChunkSize = 1024>
-base::expected<FileSrc<MaxChunkSize>> MakeFileSrc(std::filesystem::path path) {
-  FILE *f = std::fopen(path.c_str(), "r");
-  if (!f) {
-    return base ::unexpected(std::string("Unable to open file \"") +
-                             path.string() + "\"");
-  }
-  FileSrc<MaxChunkSize> src(std::move(path), f);
-  return src;
-}
 
 }  // namespace frontend
 

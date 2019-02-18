@@ -99,7 +99,12 @@ void Module::CompleteAllDeferredWork() {
 static Module *CompileModule(Module *mod) {
   ast::BoundConstants bc;
   Context ctx(mod);
-  frontend::File f(ASSERT_NOT_NULL(mod->path_)->string());
+
+  // TODO log an error if this fails.
+  ASSIGN_OR(return nullptr, frontend::FileSrc src,
+                   frontend::FileSrc::Make(*ASSERT_NOT_NULL(mod->path_)));
+
+  frontend::SrcSource f(std::move(src));
   auto file_stmts = f.Parse(&ctx);
   if (ctx.num_errors() > 0) {
     ctx.DumpErrors();
@@ -195,6 +200,7 @@ PendingModule Module::Schedule(error::Log *log,
                                std::filesystem::path const &src,
                                std::filesystem::path const &requestor) {
   std::lock_guard lock(mtx);
+
   auto[src_ptr, newly_inserted] = import_graph.node(src);
   if (src_ptr == nullptr) {
     log->MissingModule(src, requestor);

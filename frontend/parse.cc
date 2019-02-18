@@ -33,7 +33,9 @@
 #include "ast/unop.h"
 #include "base/debug.h"
 #include "base/guarded.h"
+#include "error/log.h"
 #include "frontend/operators.h"
+#include "frontend/source.h"
 #include "frontend/tagged_node.h"
 #include "frontend/token.h"
 #include "misc/context.h"
@@ -1231,12 +1233,11 @@ namespace {
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
   ParseState(SourceLocation *loc, Context *ctx) : ctx_(ctx), loc_(loc) {
-    lookahead_.push(frontend::TaggedNode(
-        std::make_unique<frontend::Token>(loc_->ToSpan()), bof));
+    lookahead_.push(TaggedNode(std::make_unique<Token>(loc_->ToSpan()), bof));
   }
 
   template <size_t N>
-  inline frontend::Tag get_type() const {
+  inline Tag get_type() const {
     return tag_stack_[tag_stack_.size() - N];
   }
 
@@ -1278,11 +1279,13 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<1>() & (kw_block_head | kw_struct)) && ahead.tag_ == newline) {
+    if ((get_type<1>() & (kw_block_head | kw_struct)) &&
+        ahead.tag_ == newline) {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<2>() & (kw_block_head | kw_struct)) && get_type<1>() == newline) {
+    if ((get_type<2>() & (kw_block_head | kw_struct)) &&
+        get_type<1>() == newline) {
       return ShiftState::NeedMore;
     }
 
@@ -1299,16 +1302,16 @@ struct ParseState {
     }
 
     constexpr uint64_t OP = hashtag | op_r | op_l | op_b | colon | eq | comma |
-                       op_bl | op_lt | fn_arrow;
+                            op_bl | op_lt | fn_arrow;
     if (get_type<2>() & OP) {
       if (get_type<1>() == r_paren) {
         // TODO this feels like a hack, but maybe this whole function is.
         return ShiftState::MustReduce;
       }
-      auto left_prec = precedence(get<2>()->as<frontend::Token>().op);
+      auto left_prec = precedence(get<2>()->as<Token>().op);
       size_t right_prec;
       if (ahead.tag_ & OP) {
-        right_prec = precedence(ahead.node_->as<frontend::Token>().op);
+        right_prec = precedence(ahead.node_->as<Token>().op);
       } else if (ahead.tag_ == l_bracket) {
         right_prec = precedence(Operator::Index);
 
@@ -1345,9 +1348,9 @@ struct ParseState {
     return lookahead_.back();
   }
 
-  std::vector<frontend::Tag> tag_stack_;
+  std::vector<Tag> tag_stack_;
   std::vector<std::unique_ptr<ast::Node>> node_stack_;
-  std::queue<frontend::TaggedNode> lookahead_;
+  std::queue<TaggedNode> lookahead_;
   Context *ctx_        = nullptr;
   SourceLocation *loc_ = nullptr;
 
@@ -1357,11 +1360,9 @@ struct ParseState {
   // correct value when the braces match.
   int brace_count = 0;
 };
-}  // namespace
-}  // namespace frontend
 
 // Print out the debug information for the parse stack, and pause.
-static void Debug(frontend::ParseState *ps) {
+void Debug(ParseState *ps) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
   if (ps->loc_ != nullptr) {
@@ -1380,7 +1381,7 @@ static void Debug(frontend::ParseState *ps) {
   fgetc(stdin);
 }
 
-static void Shift(frontend::ParseState *ps) {
+void Shift(ParseState *ps) {
   if (ps->lookahead_.empty()) { ps->LookAhead(); }
   auto ahead = std::move(ps->lookahead_.front());
   ps->lookahead_.pop();
@@ -1388,18 +1389,16 @@ static void Shift(frontend::ParseState *ps) {
   ps->node_stack_.push_back(std::move(ahead.node_));
 
   auto tag_ahead = ps->Next().tag_;
-  if (tag_ahead &
-      (frontend::l_paren | frontend::l_bracket | frontend::l_brace)) {
+  if (tag_ahead & (l_paren | l_bracket | l_brace)) {
     ++ps->brace_count;
-  } else if (tag_ahead &
-             (frontend::r_paren | frontend::r_bracket | frontend::r_brace)) {
+  } else if (tag_ahead & (r_paren | r_bracket | r_brace)) {
     --ps->brace_count;
   }
 }
 
-static bool Reduce(frontend::ParseState *ps) {
+bool Reduce(ParseState *ps) {
   const Rule *matched_rule_ptr = nullptr;
-  for (const Rule &rule : frontend::Rules) {
+  for (const Rule &rule : Rules) {
     if (rule.match(ps->tag_stack_)) {
       matched_rule_ptr = &rule;
       break;
@@ -1417,7 +1416,7 @@ static bool Reduce(frontend::ParseState *ps) {
   return true;
 }
 
-static void CleanUpReduction(frontend::ParseState *state) {
+void CleanUpReduction(ParseState *state) {
   // Reduce what you can
   while (Reduce(state)) {
     if (debug::parser) { Debug(state); }
@@ -1431,45 +1430,46 @@ static void CleanUpReduction(frontend::ParseState *state) {
   }
   if (debug::parser) { Debug(state); }
 }
+}  // namespace
 
-std::unique_ptr<ast::Statements> frontend::Repl::Parse(Context *ctx) {
+std::unique_ptr<ast::Statements> Repl::Parse(Context *ctx) {
   first_entry = true;  // Show '>> ' the first time.
 
   SourceLocation loc;
   loc.source = this;
 
-  auto state = frontend::ParseState(&loc, ctx);
+  auto state = ParseState(&loc, ctx);
   Shift(&state);
 
   while (true) {
     auto shift_state = state.shift_state();
     switch (shift_state) {
-      case frontend::ShiftState::NeedMore:
+      case ShiftState::NeedMore:
         Shift(&state);
 
         if (debug::parser) { Debug(&state); }
         continue;
-      case frontend::ShiftState::EndOfExpr:
+      case ShiftState::EndOfExpr:
         CleanUpReduction(&state);
         return move_as<ast::Statements>(state.node_stack_.back());
-      case frontend::ShiftState::MustReduce:
+      case ShiftState::MustReduce:
         Reduce(&state) || (Shift(&state), true);
         if (debug::parser) { Debug(&state); }
     }
   }
 }
 
-std::unique_ptr<ast::Statements> frontend::File::Parse(Context *ctx) {
+std::unique_ptr<ast::Statements> SrcSource::Parse(Context *ctx) {
   SourceLocation loc;
   loc.source = this;
 
-  auto state = frontend::ParseState(&loc, ctx);
+  auto state = ParseState(&loc, ctx);
   Shift(&state);
 
-  while (state.Next().tag_ != frontend::eof) {
+  while (state.Next().tag_ != eof) {
     ASSERT(state.tag_stack_.size() == state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
-    if (state.shift_state() == frontend::ShiftState::NeedMore ||
+    if (state.shift_state() == ShiftState::NeedMore ||
         !Reduce(&state)) {
       Shift(&state);
     }
@@ -1486,10 +1486,8 @@ std::unique_ptr<ast::Statements> frontend::File::Parse(Context *ctx) {
 
     for (size_t i = 0; i < state.node_stack_.size(); ++i) {
       if (state.tag_stack_[i] &
-          (frontend::braced_stmts | frontend::l_paren | frontend::r_paren |
-           frontend::l_bracket | frontend::r_bracket | frontend::l_brace |
-           frontend::r_brace | frontend::semicolon | frontend::fn_arrow |
-           frontend::expr)) {
+          (braced_stmts | l_paren | r_paren | l_bracket | r_bracket | l_brace |
+           r_brace | semicolon | fn_arrow | expr)) {
         lines.push_back(state.node_stack_[i]->span);
       }
     }
@@ -1500,3 +1498,14 @@ std::unique_ptr<ast::Statements> frontend::File::Parse(Context *ctx) {
 
   return move_as<ast::Statements>(state.node_stack_.back());
 }
+
+ast::Statements Parse(Src *src, ::Module *mod) {
+  while (true) {
+    auto chunk = src->ReadUntil('\n');
+    base::Log() << chunk.view;
+    if (!chunk.more_to_read) break;
+  }
+  return ast::Statements{};
+}
+
+}  // namespace frontend

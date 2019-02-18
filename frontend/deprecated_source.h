@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "frontend/source.h"
+
 struct Context;
 
 namespace ast {
@@ -47,16 +49,16 @@ struct Repl : public Source {
   bool first_entry = true;
 };
 
-struct File : Source {
-  File(Source::Name source_name)
-      : Source(std::move(source_name)), ifs(name.c_str(), std::ifstream::in) {}
-  ~File() final {}
+// Hack for the time being so we can migrate to using Src
+struct SrcSource: public Source {
+  ~SrcSource() final {}
+  SrcSource(FileSrc src) : Source(src.path().string()), src_(std::move(src)) {}
 
   std::optional<Source::Line> NextLine() final;
   std::unique_ptr<ast::Statements> Parse(Context *) final;
 
   ast::Statements *ast = nullptr;
-  std::ifstream ifs;
+  FileSrc src_;
 };
 
 }  // namespace frontend
