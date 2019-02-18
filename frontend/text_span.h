@@ -3,16 +3,16 @@
 
 #include "base/debug.h"
 #include "base/interval.h"
-#include "frontend/source.h"
+#include "frontend/deprecated_source.h"
 
-struct Cursor {
+struct SourceCursor {
   uint32_t offset   = 0;
   uint32_t line_num = 0;
 };
 
 struct TextSpan {
   TextSpan() {}
-  TextSpan(const Cursor &s, const Cursor &f) : start(s), finish(f) {}
+  TextSpan(const SourceCursor &s, const SourceCursor &f) : start(s), finish(f) {}
   TextSpan(const TextSpan &s, const TextSpan &f);
 
   char last_char() const {
@@ -24,8 +24,8 @@ struct TextSpan {
     return base::Interval<size_t>{start.line_num, finish.line_num + 1};
   }
 
-  Cursor start;
-  Cursor finish;
+  SourceCursor start;
+  SourceCursor finish;
   frontend::Source *source = nullptr;
 };
 
@@ -53,7 +53,7 @@ struct SourceLocation {
 
   void Increment();
 
-  Cursor cursor;
+  SourceCursor cursor;
   frontend::Source *source = nullptr;
 };
 

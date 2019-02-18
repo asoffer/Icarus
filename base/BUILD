@@ -99,11 +99,6 @@ cc_test(
 )
 
 cc_lib(
-    name = "types",
-    hdrs = ["types.h"],
-)
-
-cc_lib(
     name = "untyped_buffer",
     hdrs = ["untyped_buffer.h"],
     srcs = ["untyped_buffer.cc"],

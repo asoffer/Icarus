@@ -6,6 +6,7 @@
 namespace init {
 void InstallSignalHandlers() {
 #ifdef DBG
+  std::signal(SIGSEGV, +[](int) { std::abort(); });
   std::signal(SIGABRT, +[](int) {
     constexpr unsigned int max_frames = 40;
     fprintf(stderr, "stack trace:\n");

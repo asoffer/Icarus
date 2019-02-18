@@ -42,9 +42,29 @@ cc_lib(
 )
 
 cc_lib(
+    name = "deprecated_source",
+    hdrs = ["deprecated_source.h"],
+    srcs = ["deprecated_source.cc"],
+)
+
+cc_lib(
     name = "source",
     hdrs = ["source.h"],
-    srcs = ["source.cc"],
+    deps = ["//base:expected"],
+)
+
+cc_test(
+    name = "source_test",
+    srcs = ["source_test.cc"],
+    deps = [
+        "//test",
+        ":source",
+    ],
+    data= [
+        "testdata/empty_file.txt",
+        "testdata/one_line_file.txt",
+        "testdata/multi_line_file.txt",
+    ],
 )
 
 cc_lib(
@@ -58,7 +78,7 @@ cc_lib(
     hdrs = ["text_span.h"],
     srcs = ["text_span.cc"],
     deps = [
-        ":source",
+        ":deprecated_source",
         "//base:debug",
         "//base:interval",
     ],

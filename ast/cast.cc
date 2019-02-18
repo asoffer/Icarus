@@ -57,7 +57,6 @@ VerifyResult Cast::VerifyType(Context *ctx) {
 
   } else {
     if (!type::CanCast(expr_result.type_, t)) {
-      base::Log() << this;
       NOT_YET("log an error", expr_result.type_, t);
     }
     return VerifyResult(t, expr_result.const_);

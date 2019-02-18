@@ -4,8 +4,50 @@
 #include "base/log.h"
 #include "base/matchers.h"
 #include "base/stringify.h"
+#include "init/signal.h"
 
 namespace test {
+namespace internal {
+char const* EscapeChar(char c) {
+  switch (c) {
+    case '\0': return "\\0";
+    case '\n': return "\\n";
+    case '\t': return "\\t";
+    case '"': return "\\\"";
+    default: return nullptr;
+  }
+}
+
+template <typename T>
+std::string StringifyAndEscape(T const& t) {
+  using type = std::decay_t<T>;
+  if constexpr (std::is_same_v<type, std::string> ||
+                std::is_same_v<type, std::string_view>) {
+    std::string result = "\"";
+    // TODO clean up performance here.
+    for (char c : t) {
+      auto escaped = EscapeChar(c);
+      if (escaped) { result += escaped; }
+    }
+    return result + "\"";
+  } else if constexpr (std::is_same_v<type, char*> ||
+                       std::is_same_v<type, char const*>) {
+    char const * ptr = t;
+    std::string result = "\"";
+    // TODO clean up performance here.
+    while (*ptr != '\0') {
+      auto escaped = EscapeChar(*ptr);
+      if (escaped) { result += escaped; }
+      ++ptr;
+    }
+    return result + "\"";
+  } else {
+    using base::stringify;
+    return stringify(t);
+  }
+}
+}  // namespace internal
+
 struct Test;
 static std::vector<Test*> AllTests{};
 struct Statistics {
@@ -39,33 +81,36 @@ struct Test {
 struct Checker {
   Checker(test::Statistics* stats) : stats_(stats) {}
   template <typename L, typename R>
-  void operator()(::matcher::ExprMatchResult<L, R> const& result) const {
+  bool operator()(::matcher::ExprMatchResult<L, R> const& result,
+                  std::experimental::source_location src_loc =
+                      std::experimental::source_location::current()) const {
     ++stats_->expectations;
     if (result.matched) {
       ++stats_->passes;
     } else {
-      using base::stringify;
-      base::Logger(base::LogFormatterWithoutFunction)
+      base::Logger(base::LogFormatterWithoutFunction, nullptr, src_loc)
           << "\033[0;1;31mCheck failed\n"
              "    \033[0;1;37mExpected:\033[0m "
           << result.expr_string
           << "\n"
              "         \033[0;1;37mLHS:\033[0m "
-          << stringify(result.lhs)
+          << internal::StringifyAndEscape(result.lhs)
           << "\n"
              "         \033[0;1;37mRHS:\033[0m "
-          << stringify(result.rhs) << "\n";
+          << internal::StringifyAndEscape(result.rhs) << "\n";
     }
+    return result.matched;
   }
 
   template <typename T>
-  void operator()(::matcher::MatchResult<T> const& match_result) {
+  bool operator()(::matcher::MatchResult<T> const& match_result,
+                  std::experimental::source_location src_loc =
+                      std::experimental::source_location::current()) {
     ++stats_->expectations;
     if (!match_result.description.has_value()) {
       ++stats_->passes;
     } else {
-      using base::stringify;
-      base::Logger(base::LogFormatterWithoutFunction)
+      base::Logger(base::LogFormatterWithoutFunction, nullptr, src_loc)
           << "\033[0;1;31m Check failed\n"
              "  \033[0;1;37mExpression:\033[0m "
           << match_result.expr.string()
@@ -73,17 +118,25 @@ struct Checker {
              "    \033[0;1;37mExpected:\033[0m "
           << *match_result.description << "\n"
           << "      \033[0;1;37mActual:\033[0m "
-          << stringify(match_result.expr.value()) << "\n";
+          << StringifyAndEscape(match_result.expr.value()) << "\n";
     }
+    return match_result.description.has_value();
   }
 
+ private:
   test::Statistics* stats_ = nullptr;
 };
+
+#define REQUIRE(...)                                                           \
+  do {                                                                         \
+    if (!(MATCH(::test::Checker{&stats_}, __VA_ARGS__))) { return; }           \
+  } while (false)
 
 }  // namespace test
 
 #ifndef ICARUS_CUSTOM_MAIN_TEST
 int main() {
+  init::InstallSignalHandlers();
   bool found_error = false;
   for (test::Test* test : test::AllTests) {
     auto stats = test->Run();

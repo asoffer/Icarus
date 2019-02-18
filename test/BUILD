@@ -8,6 +8,8 @@ cc_lib(
         "//base:log",
         "//base:stringify",
         "//base:matchers",
+        "//init:signal",
+        "//init:signal-impl",
     ],
     testonly = True,
 )

@@ -1,5 +1,5 @@
 #include <vector>
-#include "frontend/source.h"
+#include "frontend/deprecated_source.h"
 #include "init/cli.h"
 #include "init/signal.h"
 

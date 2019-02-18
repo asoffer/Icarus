@@ -2,7 +2,7 @@
 
 #include "base/debug.h"
 
-static void IncrementCursor(frontend::Source *source, Cursor *cursor) {
+static void IncrementCursor(frontend::Source *source, SourceCursor *cursor) {
   if (cursor->offset != source->lines[cursor->line_num].size()) {
     ++cursor->offset;
   } else {
