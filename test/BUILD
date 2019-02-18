@@ -6,6 +6,7 @@ cc_lib(
     hdrs = ["test.h"],
     deps = [
         "//base:log",
+        "//base:macros",
         "//base:stringify",
         "//base:matchers",
         "//init:signal",

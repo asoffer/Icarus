@@ -36,40 +36,38 @@ TEST(FileSrcFail) {
 }
 
 TEST(FileSrcReadEmptyFile) {
-  auto maybe_file_src = MakeFileSrc("frontend/testdata/empty_file.txt");
-  REQUIRE(maybe_file_src.has_value() == true);
+  REQUIRE_ASSIGN(auto src, MakeFileSrc("frontend/testdata/empty_file.txt"));
 
-  auto chunk = maybe_file_src->ReadChunk();
+  auto chunk = src.ReadChunk();
   CHECK(chunk.view == "");
   CHECK(chunk.more_to_read == false);
 }
 
 TEST(FileSrcReadOneLine) {
-  auto maybe_file_src = MakeFileSrc("frontend/testdata/one_line_file.txt");
-  REQUIRE(maybe_file_src.has_value() == true);
+  REQUIRE_ASSIGN(auto src, MakeFileSrc("frontend/testdata/one_line_file.txt"));
 
-  auto chunk = maybe_file_src->ReadChunk();
+  auto chunk = src.ReadChunk();
   CHECK(chunk.view == "hello\n");
   CHECK(chunk.more_to_read == false);
 }
 
 TEST(FileSrcReadMultipleLines) {
-  auto maybe_file_src = MakeFileSrc<5>("frontend/testdata/multi_line_file.txt");
-  REQUIRE(maybe_file_src.has_value() == true);
+  REQUIRE_ASSIGN(auto src,
+                 MakeFileSrc<5>("frontend/testdata/multi_line_file.txt"));
 
-  auto chunk = maybe_file_src->ReadChunk();
+  auto chunk = src.ReadChunk();
   CHECK(chunk.view == "hell");
   CHECK(chunk.more_to_read == true);
 
-  chunk = maybe_file_src->ReadChunk();
+  chunk = src.ReadChunk();
   CHECK(chunk.view == "o\nwo");
   CHECK(chunk.more_to_read == true);
 
-  chunk = maybe_file_src->ReadChunk();
+  chunk = src.ReadChunk();
   CHECK(chunk.view == "rld!");
   CHECK(chunk.more_to_read == true);
 
-  chunk = maybe_file_src->ReadChunk();
+  chunk = src.ReadChunk();
   CHECK(chunk.view == "\n");
   CHECK(chunk.more_to_read == false);
 }

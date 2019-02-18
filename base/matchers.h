@@ -78,6 +78,19 @@ struct InheritsFrom : public UntypedMatcher<InheritsFrom<T>> {
   };
 };
 
+template <bool B>
+struct CastsTo : public UntypedMatcher<CastsTo<B>> {
+  template <typename Expr>
+  struct Matcher : public ::matcher::Matcher<Expr> {
+    bool match(Expr const& input) const {
+      return static_cast<bool>(input) == B;
+    }
+    std::string describe(bool positive) const override {
+      return std::string("casts to ") + (positive == B ? "true" : "false");
+    }
+  };
+};
+
 template <typename T>
 struct Holds : public UntypedMatcher<Holds<T>> {
   template <typename V>

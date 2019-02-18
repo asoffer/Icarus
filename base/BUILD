@@ -52,6 +52,11 @@ cc_lib(
 )
 
 cc_lib(
+    name = "macros",
+    hdrs = ["macros.h"],
+)
+
+cc_lib(
     name = "matchers",
     hdrs = ["matchers.h"],
     deps = [":tuple"],
