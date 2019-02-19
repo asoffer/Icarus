@@ -1,7 +1,6 @@
 #include "frontend/numbers.h"
 
 #include <algorithm>
-#include "base/debug.h"
 
 namespace frontend {
 namespace {
@@ -29,48 +28,55 @@ int64_t DigitInBase<16>(char c) {
 }
 
 template <int Base>
-bool IntRepresentableInBase(const std::string &s);
+bool IntRepresentableInBase(std::string const &s);
 
 template <>
-bool IntRepresentableInBase<2>(const std::string &s) {
+bool IntRepresentableInBase<2>(std::string const &s) {
   return s.size() > 31;
 }
 
 template <>
-bool IntRepresentableInBase<8>(const std::string &s) {
+bool IntRepresentableInBase<8>(std::string const &s) {
   return (s.size() > 11 || (s.size() == 11 && s[0] > '1'));
 }
 
 template <>
-bool IntRepresentableInBase<10>(const std::string &s) {
+bool IntRepresentableInBase<10>(std::string const &s) {
   return s.size() > 10 || (s.size() == 10 && s > "2147483647");
 }
 
 template <>
-bool IntRepresentableInBase<16>(const std::string &s) {
+bool IntRepresentableInBase<16>(std::string const &s) {
   return s.size() > 8 || (s.size() == 8 && s[0] > '7');
 }
 
 template <int Base>
-NumberOrError ParseIntInBase(const std::string &s) {
+base::expected<std::variant<int64_t, double>> ParseIntInBase(
+    std::string const &s) {
   if (IntRepresentableInBase<Base>(s)) {
-    return "Number is too large to fit in a 32-bit signed integer";
+    return base::unexpected(
+        "Number is too large to fit in a 32-bit signed integer");
   }
   int64_t result = 0;
   for (char c : s) {
     int64_t digit = DigitInBase<Base>(c);
-    if (digit == -1) { return "Number contains an invalid digit."; }
+    if (digit == -1) {
+      return base::unexpected("Number contains an invalid digit.");
+    }
     result = result * Base + digit;
   }
-  return result;
+  return base::expected<std::variant<int64_t, double>>{result};
 }
 
 template <int Base>
-NumberOrError ParseRealInBase(const std::string &s, int dot) {
+base::expected<std::variant<int64_t, double>> ParseRealInBase(
+    std::string const &s, int dot) {
   int64_t int_part = 0;
   for (int i = 0; i < dot; ++i) {
     int64_t digit = DigitInBase<Base>(s[i]);
-    if (digit == -1) { return "Number contains an invalid digit."; }
+    if (digit == -1) {
+      return base::unexpected("Number contains an invalid digit.");
+    }
     int_part = int_part * Base + digit;
   }
 
@@ -78,15 +84,19 @@ NumberOrError ParseRealInBase(const std::string &s, int dot) {
   int64_t exp       = 1;
   for (size_t i = dot + 1; i < s.size(); ++i) {
     int64_t digit = DigitInBase<Base>(s[i]);
-    if (digit == -1) { return "Number contains an invalid digit."; }
+    if (digit == -1) {
+      return base::unexpected("Number contains an invalid digit.");
+    }
     exp *= Base;
     frac_part = frac_part * Base + digit;
   }
-  return int_part + static_cast<double>(frac_part) / exp;
+  return base::expected<std::variant<int64_t, double>>{
+      int_part + static_cast<double>(frac_part) / exp};
 }
 
 template <int Base>
-NumberOrError ParseNumberInBase(std::string_view sv) {
+base::expected<std::variant<int64_t, double>> ParseNumberInBase(
+    std::string_view sv) {
   std::string copy(sv.data(), sv.size());
   copy.erase(
       std::remove_if(copy.begin(), copy.end(), [](char c) { return c == '_'; }),
@@ -101,19 +111,19 @@ NumberOrError ParseNumberInBase(std::string_view sv) {
 
   if (num_dots == copy.size()) {
     // TODO better error message here
-    return "Need at least one digit in a number.";
+    return base::unexpected("Need at least one digit in a number.");
   }
 
   switch (num_dots) {
     case 0: return ParseIntInBase<Base>(copy);
     case 1: return ParseRealInBase<Base>(copy, first_dot);
-    default: return "Too many `.` characters in numeric literal.";
+    default:
+      return base::unexpected("Too many `.` characters in numeric literal.");
   }
-  UNREACHABLE();
 }
 }  // namespace
 
-NumberOrError ParseNumber(std::string_view sv) {
+base::expected<std::variant<int64_t, double>> ParseNumber(std::string_view sv) {
   if (sv.size() > 1 && sv[0] == '0') {
     if (sv[1] == '.') { return ParseNumberInBase<10>(sv); }
     char base = sv[1];
@@ -123,7 +133,8 @@ NumberOrError ParseNumber(std::string_view sv) {
       case 'o': return ParseNumberInBase<8>(sv);
       case 'd': return ParseNumberInBase<10>(sv);
       case 'x': return ParseNumberInBase<16>(sv);
-      default: return "Base must be one of `b`, `o`, `d`, or `x`.";
+      default:
+        return base::unexpected("Base must be one of `b`, `o`, `d`, or `x`.");
     }
   } else {
     return ParseNumberInBase<10>(sv);

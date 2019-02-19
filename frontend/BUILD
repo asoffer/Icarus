@@ -21,7 +21,7 @@ cc_lib(
     name = "numbers",
     hdrs = ["numbers.h"],
     srcs = ["numbers.cc"],
-    deps = ["//base:debug"]
+    deps = ["//base:expected"]
 )
 
 cc_lib(
@@ -71,9 +71,15 @@ cc_test(
 )
 
 cc_lib(
+    name = "tag",
+    hdrs = ["tag.h"],
+)
+
+cc_lib(
     name = "tagged_node",
     hdrs = ["tagged_node.h"],
     srcs = ["tagged_node.h"],
+    deps = [":tag"],
 )
 
 cc_lib(
@@ -95,3 +101,31 @@ cc_lib(
         "//ast:node",
     ]
 )
+
+cc_lib(
+    name = "tokenize",
+    hdrs = ["tokenize.h"],
+    srcs = ["tokenize.cc"],
+    deps = [
+        ":numbers",
+        ":operators",
+        ":source",
+        ":tag",
+        "//base:debug",
+        "//base:log",
+        "//base:macros",
+    ],
+
+)
+
+cc_test(
+    name = "tokenize_test",
+    srcs = ["tokenize_test.cc"],
+    deps = [
+        ":tag",
+        ":tokenize",
+        "//test",
+    ]
+)
+
+

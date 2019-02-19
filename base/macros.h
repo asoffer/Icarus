@@ -16,4 +16,10 @@
   }                                                                            \
   var = *std::move(temp)
 
+#ifdef TEST
+#define TEST_OR_STATIC
+#else
+#define TEST_OR_STATIC static
+#endif
+
 #endif // ICARUS_BASE_MACROS_H

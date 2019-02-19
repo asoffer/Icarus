@@ -159,16 +159,14 @@ TaggedNode NextNumber(SourceLocation &loc, error::Log *error_log) {
     loc.Increment();
   }
   span.finish = loc.cursor;
+  auto num    = ParseNumber(std::string_view(start, &*loc - start));
+  if (!num.has_value()) {
+    // TODO should you do something with guessing the type?
+    error_log->InvalidNumber(span, num.error().to_string());
+    return TaggedNode::TerminalExpression(span, ir::Val(0));
+  }
   return TaggedNode::TerminalExpression(
-      span, std::visit(base::overloaded{[](int64_t n) { return ir::Val(n); },
-                                        [](double d) { return ir::Val(d); },
-                                        [&](std::string_view err) {
-                                          error_log->InvalidNumber(span, err);
-                                          // TODO should you do something with
-                                          // guessing the type?
-                                          return ir::Val(0);
-                                        }},
-                       ParseNumber(std::string_view(start, &*loc - start))));
+      span, std::visit([](auto x) { return ir::Val(x); }, *num));
 }
 
 TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
@@ -599,4 +597,5 @@ restart:
   if (!tagged_node.valid()) { goto restart; }
   return tagged_node;
 }
+
 }  // namespace frontend

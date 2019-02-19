@@ -3,10 +3,12 @@
 
 #include <string_view>
 #include <variant>
+#include "base/expected.h"
 
 namespace frontend {
-using NumberOrError = std::variant<int64_t, double, std::string_view>;
-NumberOrError ParseNumber(std::string_view sv);
+
+base::expected<std::variant<int64_t, double>> ParseNumber(std::string_view sv);
+
 }  // namespace frontend
 
 #endif  // ICARUS_FRONTEND_NUMBERS_H

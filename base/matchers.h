@@ -1,6 +1,7 @@
 #ifndef ICARUS_BASE_MATCHERS_H
 #define ICARUS_BASE_MATCHERS_H
 
+#include <vector>
 #include <optional>
 #include <string>
 #include <memory>
@@ -45,7 +46,9 @@ template <typename CrtpDerived>
 struct UntypedMatcher {
   template <typename T>
   MatchResult<T> match_and_describe(Expression<T> const& input) const& {
-    return typename CrtpDerived::template Matcher<T>().match_and_describe(input);
+    return typename CrtpDerived::template Matcher<T>(
+               *static_cast<CrtpDerived const*>(this))
+        .match_and_describe(input);
   }
 };
 
@@ -68,6 +71,7 @@ template <typename T>
 struct InheritsFrom : public UntypedMatcher<InheritsFrom<T>> {
   template <typename Expr>
   struct Matcher : public ::matcher::Matcher<Expr> {
+    Matcher(InheritsFrom const&m) {}
     bool match(Expr const& input) const {
       if constexpr (internal::is_pointery<Expr>::value) {
         return dynamic_cast<T const*>(
@@ -85,6 +89,7 @@ template <bool B>
 struct CastsTo : public UntypedMatcher<CastsTo<B>> {
   template <typename Expr>
   struct Matcher : public ::matcher::Matcher<Expr> {
+    Matcher(CastsTo const&m) {}
     bool match(Expr const& input) const {
       return static_cast<bool>(input) == B;
     }
@@ -98,12 +103,63 @@ template <typename T>
 struct Holds : public UntypedMatcher<Holds<T>> {
   template <typename V>
   struct Matcher : public ::matcher::Matcher<V> {
+    Matcher(Holds const&m) {}
     bool match(V const& input) const {
       return std::holds_alternative<T>(input);
     }
     std::string describe(bool positive) const override {
-      return (positive ? " holds a " : "does not hold a ") +
+      return (positive ? "holds a " : "does not hold a ") +
              std::string(typeid(T).name());
+    }
+  };
+};
+
+template <typename T>
+struct OrderedElementsAre : public UntypedMatcher<OrderedElementsAre<T>> {
+  template <typename... Args>
+  OrderedElementsAre(::matcher::Matcher<T> const& m, Args const&... args)
+      : matchers_{m, args...} {}
+
+  template <typename Expr>
+  struct Matcher : public ::matcher::Matcher<Expr> {
+    Matcher(OrderedElementsAre const& m) : m_(m) {}
+    bool match(Expr const& input) const {
+      auto it         = input.begin();
+      auto matcher_it = m_.matchers_.begin();
+      while (it != input.end() && matcher_it != m_.matchers_.end()) {
+        if (!matcher_it->get().match(*it)) { 
+          return false; }
+        ++matcher_it;
+        ++it;
+      }
+      return it == input.end() && matcher_it == m_.matchers_.end();
+    }
+
+    std::string describe(bool positive) const override {
+      std::string result =
+          (positive ? "Has" : "Does not have") +
+          std::string(" the following elements in the following order:");
+      for (auto m : m_.matchers_) {
+        result += "\n                * " + m.get().describe(true);
+      }
+      return result;
+    }
+
+   private:
+    OrderedElementsAre const& m_;
+  };
+
+ private:
+  std::vector<std::reference_wrapper<::matcher::Matcher<T> const>> matchers_;
+};
+
+struct IsEmpty : public UntypedMatcher<IsEmpty> {
+  template <typename V>
+  struct Matcher : public ::matcher::Matcher<V> {
+    Matcher(IsEmpty const&m) {}
+    bool match(V const& input) const { return input.empty(); }
+    std::string describe(bool positive) const override {
+      return positive ? "is empty" : "is not empty";
     }
   };
 };
