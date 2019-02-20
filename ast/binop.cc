@@ -38,22 +38,22 @@ std::string Binop::to_string(size_t n) const {
   std::stringstream ss;
   ss << "(" << lhs->to_string(n) << ")";
   switch (op) {
-    case Language::Operator::Arrow: ss << " -> "; break;
-    case Language::Operator::Add: ss << " + "; break;
-    case Language::Operator::Sub: ss << " - "; break;
-    case Language::Operator::Mul: ss << " * "; break;
-    case Language::Operator::Div: ss << " / "; break;
-    case Language::Operator::Mod: ss << " % "; break;
-    case Language::Operator::Assign: ss << " = "; break;
-    case Language::Operator::OrEq: ss << " |= "; break;
-    case Language::Operator::XorEq: ss << " ^= "; break;
-    case Language::Operator::AndEq: ss << " &= "; break;
-    case Language::Operator::AddEq: ss << " += "; break;
-    case Language::Operator::SubEq: ss << " -= "; break;
-    case Language::Operator::MulEq: ss << " *= "; break;
-    case Language::Operator::DivEq: ss << " /= "; break;
-    case Language::Operator::ModEq: ss << " %= "; break;
-    case Language::Operator::When: ss << " when "; break;
+    case frontend::Operator::Arrow: ss << " -> "; break;
+    case frontend::Operator::Add: ss << " + "; break;
+    case frontend::Operator::Sub: ss << " - "; break;
+    case frontend::Operator::Mul: ss << " * "; break;
+    case frontend::Operator::Div: ss << " / "; break;
+    case frontend::Operator::Mod: ss << " % "; break;
+    case frontend::Operator::Assign: ss << " = "; break;
+    case frontend::Operator::OrEq: ss << " |= "; break;
+    case frontend::Operator::XorEq: ss << " ^= "; break;
+    case frontend::Operator::AndEq: ss << " &= "; break;
+    case frontend::Operator::AddEq: ss << " += "; break;
+    case frontend::Operator::SubEq: ss << " -= "; break;
+    case frontend::Operator::MulEq: ss << " *= "; break;
+    case frontend::Operator::DivEq: ss << " /= "; break;
+    case frontend::Operator::ModEq: ss << " %= "; break;
+    case frontend::Operator::When: ss << " when "; break;
     default: UNREACHABLE();
   }
   ss << "(" << rhs->to_string(n) << ")";
@@ -65,7 +65,7 @@ bool Binop::InferType(type::Type const *t, InferenceState *state) const {
   // TODO consider the possibility for overloadable operators to be generic
   // struct and therefore not always returning false.
   switch (op) {
-    case Language::Operator::Arrow:
+    case frontend::Operator::Arrow:
       if (auto *f = t->if_as<type::Function>()) {
         // TODO is tuple right?
         state->match_queue_.emplace(lhs.get(), type::Tup(f->input));
@@ -74,21 +74,21 @@ bool Binop::InferType(type::Type const *t, InferenceState *state) const {
       } else {
         return false;
       }
-    case Language::Operator::Add:
-    case Language::Operator::Sub:
-    case Language::Operator::Mul:
-    case Language::Operator::Div:
-    case Language::Operator::Mod:
-    case Language::Operator::Assign:
-    case Language::Operator::OrEq:
-    case Language::Operator::XorEq:
-    case Language::Operator::AndEq:
-    case Language::Operator::AddEq:
-    case Language::Operator::SubEq:
-    case Language::Operator::MulEq:
-    case Language::Operator::DivEq:
-    case Language::Operator::ModEq:
-    case Language::Operator::When: return false;
+    case frontend::Operator::Add:
+    case frontend::Operator::Sub:
+    case frontend::Operator::Mul:
+    case frontend::Operator::Div:
+    case frontend::Operator::Mod:
+    case frontend::Operator::Assign:
+    case frontend::Operator::OrEq:
+    case frontend::Operator::XorEq:
+    case frontend::Operator::AndEq:
+    case frontend::Operator::AddEq:
+    case frontend::Operator::SubEq:
+    case frontend::Operator::MulEq:
+    case frontend::Operator::DivEq:
+    case frontend::Operator::ModEq:
+    case frontend::Operator::When: return false;
     default: UNREACHABLE();
   }
 }
@@ -110,7 +110,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
   auto rhs_result = rhs->VerifyType(ctx);
   if (!lhs_result.ok() || !rhs_result.ok()) { return VerifyResult::Error(); }
 
-  using Language::Operator;
+  using frontend::Operator;
   switch (op) {
     case Operator::Assign: {
       // TODO if lhs is reserved?
@@ -273,7 +273,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
   }
 
   switch (op) {
-    case Language::Operator::Add: {
+    case frontend::Operator::Add: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -283,7 +283,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
             return ir::ValFrom(ir::Add(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
           })};
     } break;
-    case Language::Operator::Sub: {
+    case frontend::Operator::Sub: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -293,7 +293,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
             return ir::ValFrom(ir::Sub(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
           })};
     } break;
-    case Language::Operator::Mul: {
+    case frontend::Operator::Mul: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -303,7 +303,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
             return ir::ValFrom(ir::Mul(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
           })};
     } break;
-    case Language::Operator::Div: {
+    case frontend::Operator::Div: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -313,7 +313,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
             return ir::ValFrom(ir::Div(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
           })};
     } break;
-    case Language::Operator::Mod: {
+    case frontend::Operator::Mod: {
       auto lhs_ir = lhs->EmitIR(ctx)[0];
       auto rhs_ir = rhs->EmitIR(ctx)[0];
       return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -323,7 +323,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
             return ir::ValFrom(ir::Mod(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
           })};
     } break;
-    case Language::Operator::Arrow: {
+    case frontend::Operator::Arrow: {
       // TODO ugly hack.
       std::vector<ir::Val> lhs_vals, rhs_vals;
       if (auto *l = lhs->if_as<CommaList>()) {
@@ -340,7 +340,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       auto reg_or_type = ir::Arrow(ir::Tup(lhs_vals), ir::Tup(rhs_vals));
       return {ir::ValFrom(reg_or_type)};
     } break;
-    case Language::Operator::Assign: {
+    case frontend::Operator::Assign: {
       // TODO support splatting.
       auto lhs_lvals = lhs->EmitLVal(ctx);
       if (lhs_lvals.size() != 1) { NOT_YET(); }
@@ -352,7 +352,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
 
       return {};
     } break;
-    case Language::Operator::OrEq: {
+    case frontend::Operator::OrEq: {
       auto *this_type = ctx->type_of(this);
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
@@ -380,7 +380,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
           ir::Phi(type::Bool),
           {{lhs_end_block, true}, {rhs_end_block, rhs_val}}))};
     } break;
-    case Language::Operator::AndEq: {
+    case frontend::Operator::AndEq: {
       auto *this_type = ctx->type_of(this);
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
@@ -409,7 +409,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
           ir::Phi(type::Bool),
           {{lhs_end_block, rhs_val}, {rhs_end_block, false}}))};
     } break;
-    case Language::Operator::AddEq: {
+    case frontend::Operator::AddEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
@@ -421,7 +421,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
           });
       return {};
     } break;
-    case Language::Operator::SubEq: {
+    case frontend::Operator::SubEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
@@ -433,7 +433,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
           });
       return {};
     } break;
-    case Language::Operator::DivEq: {
+    case frontend::Operator::DivEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
@@ -445,7 +445,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
           });
       return {};
     } break;
-    case Language::Operator::ModEq: {
+    case frontend::Operator::ModEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
@@ -455,7 +455,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       });
       return {};
     } break;
-    case Language::Operator::MulEq: {
+    case frontend::Operator::MulEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
       auto rhs_ir   = rhs->EmitIR(ctx)[0];
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
@@ -467,7 +467,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
           });
       return {};
     } break;
-    case Language::Operator::XorEq: {
+    case frontend::Operator::XorEq: {
       if (lhs_type == type::Bool) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
         auto rhs_ir   = rhs->EmitIR(ctx)[0].reg_or<bool>();

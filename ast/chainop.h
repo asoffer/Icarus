@@ -20,7 +20,7 @@ struct ChainOp : public Literal {
 
   std::vector<ir::Val> EmitIR(Context *) override;
 
-  std::vector<Language::Operator> ops;
+  std::vector<frontend::Operator> ops;
   std::vector<std::unique_ptr<Expression>> exprs;
 };
 }  // namespace ast

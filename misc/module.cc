@@ -97,22 +97,22 @@ void Module::CompleteAllDeferredWork() {
 // access to the source lines. All verification for this module must be done
 // inside this function.
 static Module *CompileModule(Module *mod) {
-  ast::BoundConstants bc;
-  Context ctx(mod);
-
   // TODO log an error if this fails.
   ASSIGN_OR(return nullptr, frontend::FileSrc src,
                    frontend::FileSrc::Make(*ASSERT_NOT_NULL(mod->path_)));
 
   frontend::SrcSource f(std::move(src));
-  auto file_stmts = f.Parse(&ctx);
-  if (ctx.num_errors() > 0) {
-    ctx.DumpErrors();
+  error::Log log;
+  auto file_stmts = f.Parse(mod, &log);
+  if (log.size() > 0) {
+    log.Dump();
     found_errors = true;
     return mod;
   }
 
-  file_stmts->assign_scope(ctx.mod_->global_.get());
+  file_stmts->assign_scope(mod->global_.get());
+
+  Context ctx(mod);
   file_stmts->VerifyType(&ctx);
   mod->CompleteAllDeferredWork();
 

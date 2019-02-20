@@ -475,7 +475,7 @@ TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
         loc.Increment();
         span.finish = loc.cursor;
         auto nptr   = std::make_unique<Token>(span, "->");
-        nptr->op    = Language::Operator::Arrow;
+        nptr->op    = Operator::Arrow;
         return TaggedNode(std::move(nptr), fn_arrow);
 
       } else if (*loc == '-') {

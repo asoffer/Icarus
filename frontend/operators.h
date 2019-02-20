@@ -1,12 +1,12 @@
 #ifndef ICARUS_OPERATORS_H
 #define ICARUS_OPERATORS_H
 
-namespace Language {
+namespace frontend {
 enum class Operator {
 #define OPERATOR_MACRO(name, symbol, prec, assoc) name,
 #include "frontend/operators.xmacro.h"
 #undef OPERATOR_MACRO
 };
-}  // namespace Language
+}  // namespace frontend
 
 #endif  // ICARUS_OPERATORS_H

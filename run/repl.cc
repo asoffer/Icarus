@@ -46,33 +46,35 @@ int RunRepl() {
   Module mod;
   Context ctx(&mod);
 
-repl_start : {
-  auto stmts = repl.Parse(&ctx);
-  if (ctx.num_errors() > 0) {
-    ctx.DumpErrors();
+repl_start:;
+  {
+    error::Log log;
+    auto stmts = repl.Parse(&mod, &log);
+    if (log.size() > 0) {
+      log.Dump();
+      goto repl_start;
+    }
+
+    for (auto &stmt : stmts->content_) {
+      if (stmt->is<ast::Declaration>()) {
+        auto *decl = &stmt->as<ast::Declaration>();
+        decl->assign_scope(ctx.mod_->global_.get());
+        decl->VerifyType(&ctx);
+        decl->EmitIR(&ctx);
+        if (ctx.num_errors() != 0) {
+          ctx.DumpErrors();
+          goto repl_start;
+        }
+
+      } else if (stmt->is<ast::Expression>()) {
+        auto *expr = &stmt->as<ast::Expression>();
+        expr->assign_scope(ctx.mod_->global_.get());
+        backend::ReplEval(expr);
+        fprintf(stderr, "\n");
+      } else {
+        NOT_YET(*stmt);
+      }
+    }
     goto repl_start;
   }
-
-  for (auto &stmt : stmts->content_) {
-    if (stmt->is<ast::Declaration>()) {
-      auto *decl = &stmt->as<ast::Declaration>();
-      decl->assign_scope(ctx.mod_->global_.get());
-      decl->VerifyType(&ctx);
-      decl->EmitIR(&ctx);
-      if (ctx.num_errors() != 0) {
-        ctx.DumpErrors();
-        goto repl_start;
-      }
-
-    } else if (stmt->is<ast::Expression>()) {
-      auto *expr = &stmt->as<ast::Expression>();
-      expr->assign_scope(ctx.mod_->global_.get());
-      backend::ReplEval(expr);
-      fprintf(stderr, "\n");
-    } else {
-      NOT_YET(*stmt);
-    }
-  }
-  goto repl_start;
-}
 }

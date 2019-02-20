@@ -13,16 +13,16 @@ struct Token : public ast::Node {
         bool is_hashtag = false)
       : Node(span), token(std::move(str)) {
     if (is_hashtag) {
-      op = Language::Operator::Hashtag;
+      op = Operator::Hashtag;
     } else {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
   if (token == symbol) {                                                       \
-    op = Language::Operator::name;                                             \
+    op = Operator::name;                                                       \
     return;                                                                    \
   }
 #include "operators.xmacro.h"
 #undef OPERATOR_MACRO
-      op = Language::Operator::NotAnOperator;
+      op = Operator::NotAnOperator;
     }
   }
 
@@ -40,7 +40,7 @@ struct Token : public ast::Node {
   }
 
   std::string token;
-  Language::Operator op;
+  Operator op;
 };
 
 }  // namespace frontend

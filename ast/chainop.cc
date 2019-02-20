@@ -31,10 +31,10 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
 
   if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
     using ::matcher::Eq;
-    ASSERT(op, Eq(Language::Operator::Eq) || Eq(Language::Operator::Ne));
+    ASSERT(op, Eq(frontend::Operator::Eq) || Eq(frontend::Operator::Ne));
     return type::Array::Compare(&lhs_type->as<type::Array>(), lhs_ir,
                                 &rhs_type->as<type::Array>(), rhs_ir,
-                                op == Language::Operator::Eq, ctx)
+                                op == frontend::Operator::Eq, ctx)
         .reg_or<bool>();
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
     FnArgs<std::pair<Expression *, std::vector<ir::Val>>> args;
@@ -52,7 +52,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
 
   } else {
     switch (op) {
-      case Language::Operator::Lt:
+      case frontend::Operator::Lt:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 ir::FlagsVal>(
@@ -60,7 +60,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
               using T = typename decltype(type_holder)::type;
               return ir::Lt(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
-      case Language::Operator::Le:
+      case frontend::Operator::Le:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 ir::FlagsVal>(
@@ -68,7 +68,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
               using T = typename decltype(type_holder)::type;
               return ir::Le(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
-      case Language::Operator::Eq: {
+      case frontend::Operator::Eq: {
         ir::BlockSequence const *val1 =
             std::get_if<ir::BlockSequence>(&lhs_ir.value);
         ir::BlockSequence const *val2 =
@@ -83,7 +83,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
               using T = typename decltype(type_holder)::type;
               return ir::Eq(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
-      case Language::Operator::Ne: {
+      case frontend::Operator::Ne: {
         ir::BlockSequence const *val1 =
             std::get_if<ir::BlockSequence>(&lhs_ir.value);
         ir::BlockSequence const *val2 =
@@ -97,7 +97,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
           using T = typename decltype(type_holder)::type;
           return ir::Ne(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
         });
-      case Language::Operator::Ge:
+      case frontend::Operator::Ge:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 ir::FlagsVal>(
@@ -105,7 +105,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
               using T = typename decltype(type_holder)::type;
               return ir::Ge(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
-      case Language::Operator::Gt:
+      case frontend::Operator::Gt:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 ir::FlagsVal>(
@@ -113,7 +113,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
               using T = typename decltype(type_holder)::type;
               return ir::Gt(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
             });
-        // TODO case Language::Operator::And: cmp = lhs_ir; break;
+        // TODO case frontend::Operator::And: cmp = lhs_ir; break;
       default: UNREACHABLE();
     }
   }
@@ -127,15 +127,15 @@ std::string ChainOp::to_string(size_t n) const {
   for (size_t i = 0; i < ops.size(); ++i) {
     ss << exprs[i]->to_string(n);
     switch (ops[i]) {
-      case Language::Operator::Or: ss << " | "; break;
-      case Language::Operator::Xor: ss << " ^ "; break;
-      case Language::Operator::And: ss << " & "; break;
-      case Language::Operator::Lt: ss << " < "; break;
-      case Language::Operator::Le: ss << " <= "; break;
-      case Language::Operator::Eq: ss << " == "; break;
-      case Language::Operator::Ne: ss << " != "; break;
-      case Language::Operator::Ge: ss << " >= "; break;
-      case Language::Operator::Gt: ss << " > "; break;
+      case frontend::Operator::Or: ss << " | "; break;
+      case frontend::Operator::Xor: ss << " ^ "; break;
+      case frontend::Operator::And: ss << " & "; break;
+      case frontend::Operator::Lt: ss << " < "; break;
+      case frontend::Operator::Le: ss << " <= "; break;
+      case frontend::Operator::Eq: ss << " == "; break;
+      case frontend::Operator::Ne: ss << " != "; break;
+      case frontend::Operator::Ge: ss << " >= "; break;
+      case frontend::Operator::Gt: ss << " > "; break;
       default: UNREACHABLE();
     }
   }
@@ -162,7 +162,7 @@ VerifyResult ChainOp::VerifyType(Context *ctx) {
     return VerifyResult::Error();
   }
 
-  if (ops[0] == Language::Operator::Or) {
+  if (ops[0] == frontend::Operator::Or) {
     bool found_err = false;
     for (size_t i = 0; i < results.size() - 1; ++i) {
       if (results[i].type_ == type::Block) {
@@ -195,9 +195,9 @@ not_blocks:
   // Safe to just check first because to be on the same chain they must all have
   // the same precedence, and ^, &, and | uniquely hold a given precedence.
   switch (ops[0]) {
-    case Language::Operator::Or:
-    case Language::Operator::And:
-    case Language::Operator::Xor: {
+    case frontend::Operator::Or:
+    case frontend::Operator::And:
+    case frontend::Operator::Xor: {
       bool failed                       = false;
       bool is_const                     = true;
       type::Type const *first_expr_type = results[0].type_;
@@ -207,9 +207,9 @@ not_blocks:
         if (result.type_ != first_expr_type) {
           auto op_str = [this] {
             switch (ops[0]) {
-              case Language::Operator::Or: return "|";
-              case Language::Operator::And: return "&";
-              case Language::Operator::Xor: return "^";
+              case frontend::Operator::Or: return "|";
+              case frontend::Operator::And: return "&";
+              case frontend::Operator::Xor: return "^";
               default: UNREACHABLE();
             }
           }();
@@ -236,12 +236,12 @@ not_blocks:
         // figure out the details here.
         const char *token = nullptr;
         switch (ops[i]) {
-          case Language::Operator::Lt: token = "<"; break;
-          case Language::Operator::Le: token = "<="; break;
-          case Language::Operator::Eq: token = "=="; break;
-          case Language::Operator::Ne: token = "!="; break;
-          case Language::Operator::Ge: token = ">="; break;
-          case Language::Operator::Gt: token = ">"; break;
+          case frontend::Operator::Lt: token = "<"; break;
+          case frontend::Operator::Le: token = "<="; break;
+          case frontend::Operator::Eq: token = "=="; break;
+          case frontend::Operator::Ne: token = "!="; break;
+          case frontend::Operator::Ge: token = ">="; break;
+          case frontend::Operator::Gt: token = ">"; break;
           default: UNREACHABLE();
         }
 
@@ -268,8 +268,8 @@ not_blocks:
             auto cmp = lhs_result.type_->Comparator();
 
             switch (ops[i]) {
-              case Language::Operator::Eq:
-              case Language::Operator::Ne: {
+              case frontend::Operator::Eq:
+              case frontend::Operator::Ne: {
                 switch (cmp) {
                   case type::Cmp::Order:
                   case type::Cmp::Equality: continue;
@@ -280,10 +280,10 @@ not_blocks:
                     return VerifyResult::Error();
                 }
               } break;
-              case Language::Operator::Lt:
-              case Language::Operator::Le:
-              case Language::Operator::Ge:
-              case Language::Operator::Gt: {
+              case frontend::Operator::Lt:
+              case frontend::Operator::Le:
+              case frontend::Operator::Ge:
+              case frontend::Operator::Gt: {
                 switch (cmp) {
                   case type::Cmp::Order: continue;
                   case type::Cmp::Equality:
@@ -311,7 +311,7 @@ void ChainOp::ExtractJumps(JumpExprs *rets) const {
 
 std::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
   auto *t = ctx->type_of(this);
-  if (ops[0] == Language::Operator::Xor) {
+  if (ops[0] == frontend::Operator::Xor) {
     if (t == type::Bool) {
       return {ir::ValFrom(std::accumulate(
           exprs.begin(), exprs.end(), ir::RegisterOr<bool>(false),
@@ -334,7 +334,7 @@ std::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
       UNREACHABLE();
     }
 
-  } else if (ops[0] == Language::Operator::Or && t->is<type::Flags>()) {
+  } else if (ops[0] == frontend::Operator::Or && t->is<type::Flags>()) {
     auto iter = exprs.begin();
     auto val  = (*iter)->EmitIR(ctx)[0].reg_or<ir::FlagsVal>();
     while (++iter != exprs.end()) {
@@ -342,7 +342,7 @@ std::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
                         (*iter)->EmitIR(ctx)[0].reg_or<ir::FlagsVal>());
     }
     return {ir::ValFrom(val, &t->as<type::Flags>())};
-  } else if (ops[0] == Language::Operator::And && t->is<type::Flags>()) {
+  } else if (ops[0] == frontend::Operator::And && t->is<type::Flags>()) {
     auto iter = exprs.begin();
     auto val  = (*iter)->EmitIR(ctx)[0].reg_or<ir::FlagsVal>();
     while (++iter != exprs.end()) {
@@ -350,7 +350,7 @@ std::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
                          (*iter)->EmitIR(ctx)[0].reg_or<ir::FlagsVal>());
     }
     return {ir::ValFrom(val, &t->as<type::Flags>())};
-  } else if (ops[0] == Language::Operator::Or && t == type::Type_) {
+  } else if (ops[0] == frontend::Operator::Or && t == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
     std::vector<ir::Val> args;
@@ -358,18 +358,18 @@ std::vector<ir::Val> ChainOp::EmitIR(Context *ctx) {
     for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)[0]); }
     auto reg_or_type = ir::Variant(args);
     return {ir::ValFrom(reg_or_type)};
-  } else if (ops[0] == Language::Operator::Or &&
+  } else if (ops[0] == frontend::Operator::Or &&
              (t == type::Block || t == type::OptBlock)) {
     std::vector<ir::Val> vals;
     vals.reserve(exprs.size());
     for (auto &expr : exprs) { vals.push_back(expr->EmitIR(ctx)[0]); }
     return {ir::BlockSeq(vals)};
-  } else if (ops[0] == Language::Operator::And ||
-             ops[0] == Language::Operator::Or) {
+  } else if (ops[0] == frontend::Operator::And ||
+             ops[0] == frontend::Operator::Or) {
     auto land_block = ir::Func::Current->AddBlock();
 
     std::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
-    bool is_or = (ops[0] == Language::Operator::Or);
+    bool is_or = (ops[0] == frontend::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       auto val = exprs[i]->EmitIR(ctx)[0].reg_or<bool>();
 

@@ -25,7 +25,7 @@ struct Binop : public Literal {
 
   std::vector<ir::Val> EmitIR(Context *) override;
 
-  Language::Operator op;
+  frontend::Operator op;
   std::unique_ptr<Expression> lhs, rhs;
 };
 

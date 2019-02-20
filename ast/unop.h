@@ -23,11 +23,11 @@ struct Unop : public Expression {
   void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) override;
 
   bool needs_expansion() const override {
-    return !parenthesized_ && op == Language::Operator::Expand;
+    return !parenthesized_ && op == frontend::Operator::Expand;
   }
 
   std::unique_ptr<Expression> operand;
-  Language::Operator op;
+  frontend::Operator op;
 };
 }  // namespace ast
 #endif  // ICARUS_AST_UNOP_H

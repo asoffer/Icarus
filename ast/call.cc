@@ -142,7 +142,7 @@ VerifyResult Call::VerifyType(Context *ctx) {
   for (auto const &expr : args_.pos_) {
     auto expr_result = expr->VerifyType(ctx);
     if (!expr->parenthesized_ && expr->is<Unop>() &&
-        expr->as<Unop>().op == Language::Operator::Expand &&
+        expr->as<Unop>().op == frontend::Operator::Expand &&
         expr_result.type_->is<type::Tuple>()) {
       auto const &entries = expr_result.type_->as<type::Tuple>().entries_;
       for (type::Type const *entry : entries) {

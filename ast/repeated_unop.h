@@ -20,7 +20,7 @@ struct RepeatedUnop : public Node {
 
   std::vector<ir::Val> EmitIR(Context *) override;
 
-  Language::Operator op_;
+  frontend::Operator op_;
   CommaList args_;
 };
 }  // namespace ast

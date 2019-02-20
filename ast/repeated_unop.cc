@@ -10,9 +10,9 @@
 namespace ast {
 std::string RepeatedUnop::to_string(size_t n) const {
   switch (op_) {
-    case Language::Operator::Return: return "return " + args_.to_string(n);
-    case Language::Operator::Yield: return "yield " + args_.to_string(n);
-    case Language::Operator::Print: return "print " + args_.to_string(n);
+    case frontend::Operator::Return: return "return " + args_.to_string(n);
+    case frontend::Operator::Yield: return "yield " + args_.to_string(n);
+    case frontend::Operator::Print: return "print " + args_.to_string(n);
     default: { UNREACHABLE(); }
   }
 }
@@ -35,10 +35,10 @@ void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
   args_.ExtractJumps(rets);
   // TODO yield as well?
   switch (op_) {
-    case Language::Operator::Return:
+    case frontend::Operator::Return:
       (*rets)[JumpKind::Return].push_back(&args_);
       break;
-    case Language::Operator::Yield:
+    case frontend::Operator::Yield:
       (*rets)[JumpKind::Yield].push_back(&args_);
       break;
     default: break;
@@ -53,7 +53,7 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
           ? result.type_->as<type::Tuple>().entries_
           : std::vector<type::Type const *>{result.type_};
 
-  if (op_ == Language::Operator::Print) {
+  if (op_ == frontend::Operator::Print) {
     // TODO what's the actual size given expansion of tuples and stuff?
     for (size_t i = 0; i < args_.exprs_.size(); ++i) {
       auto &arg      = args_.exprs_[i];
@@ -98,7 +98,7 @@ std::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
   }
 
   switch (op_) {
-    case Language::Operator::Return: {
+    case frontend::Operator::Return: {
       size_t offset  = 0;
       auto *fn_scope = ASSERT_NOT_NULL(scope_->ContainingFnScope());
       auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit_);
@@ -123,7 +123,7 @@ std::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
       ir::ReturnJump();
       return {};
     }
-    case Language::Operator::Yield: {
+    case frontend::Operator::Yield: {
       scope_->MakeAllDestructions(ctx);
       // TODO pretty sure this is all wrong.
 
@@ -144,7 +144,7 @@ std::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
       ctx->more_stmts_allowed_ = false;
       return {};
     }
-    case Language::Operator::Print: {
+    case frontend::Operator::Print: {
       auto const *dispatch_tables = ctx->rep_dispatch_tables(this);
       size_t index                = 0;
       // TODO this is wrong if you use the <<(...) spread operator.

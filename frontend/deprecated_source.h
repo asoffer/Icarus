@@ -10,11 +10,15 @@
 
 #include "frontend/source.h"
 
-struct Context;
+struct Module;
+
+namespace error {
+struct Log;
+}  // namespace error
 
 namespace ast {
 struct Statements;
-}
+}  // namespace ast
 
 namespace frontend {
 
@@ -24,7 +28,7 @@ struct Source {
 
   virtual ~Source() {}
   virtual std::optional<Line> NextLine()                    = 0;
-  virtual std::unique_ptr<ast::Statements> Parse(Context *) = 0;
+  virtual std::unique_ptr<ast::Statements> Parse(Module *, error::Log*) = 0;
 
   std::vector<Line> lines{
       1};  // Start with one blank line because line numbers
@@ -44,8 +48,7 @@ struct Repl : public Source {
   Repl() : Source(Source::Name("")) {}
 
   std::optional<Source::Line> NextLine() final;
-  std::unique_ptr<ast::Statements> Parse(Context *) final;
-
+  std::unique_ptr<ast::Statements> Parse(Module *, error::Log*) final;
   bool first_entry = true;
 };
 
@@ -55,7 +58,7 @@ struct SrcSource: public Source {
   SrcSource(FileSrc src) : Source(src.path().string()), src_(std::move(src)) {}
 
   std::optional<Source::Line> NextLine() final;
-  std::unique_ptr<ast::Statements> Parse(Context *) final;
+  std::unique_ptr<ast::Statements> Parse(Module *, error::Log *) final;
 
   ast::Statements *ast = nullptr;
   FileSrc src_;
