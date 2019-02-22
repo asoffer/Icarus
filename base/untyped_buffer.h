@@ -55,12 +55,13 @@ struct untyped_buffer {
   }
 
   template <typename T>
-  void append(T const &t) {
+  size_t append(T const &t) {
     size_t old_size = size_;
 
     append_bytes(sizeof(T), alignof(T));
     size_t old_size_with_alignment = ((old_size - 1) | (alignof(T) - 1)) + 1;
     set(old_size_with_alignment, t);
+    return old_size_with_alignment;
   }
 
   void write(size_t offset, base::untyped_buffer const &buf) {

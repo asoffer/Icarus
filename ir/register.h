@@ -39,6 +39,8 @@ struct Reg {
   constexpr bool is_out() { return val_ & out_mask; }
   constexpr auto value() const { return val_; }
 
+  std::string to_string() const { return "r." + std::to_string(val_); }
+
  private:
   constexpr static Reg MakeReg(uint64_t val) {
     Reg r;
@@ -128,6 +130,19 @@ struct RegisterOr {
     }
   }
 };
+
+template <typename T>
+bool operator==(RegisterOr<T> const&lhs, RegisterOr<T>const&rhs) {
+  if (lhs.is_reg_) { return rhs.is_reg_ && lhs.reg_ == rhs.reg_; }
+  return !rhs.is_reg_ && lhs.val_ == rhs.val_;
+}
+
+template<typename T>
+std::string stringify(RegisterOr<T> const& r) {
+  std::stringstream ss;
+  ss << r;
+  return ss.str();
+}
 
 template <typename T>
 struct TypedRegister : public Register {

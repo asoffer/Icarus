@@ -152,6 +152,24 @@ cc_lib(
 )
 
 cc_target(
+    name = "results",
+    intf_deps = [
+        ":register",
+        "//base:untyped_buffer",
+    ],
+    impl_deps = [":val"],
+)
+
+cc_test(
+    name = "results-test",
+    srcs = ["results_test.cc"],
+    deps = [
+        ":results-impl",
+        "//test",
+    ],
+)
+
+cc_target(
     name = "val",
     intf_deps = [
         ":addr",
