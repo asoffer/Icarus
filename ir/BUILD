@@ -37,6 +37,7 @@ cc_target(
     name = "arguments",
     intf_deps = [
         ":register",
+        ":results",
         "//base:untyped_buffer",
         "//type:function",
         "//type:generic_struct",
@@ -161,7 +162,7 @@ cc_target(
 )
 
 cc_test(
-    name = "results-test",
+    name = "results_test",
     srcs = ["results_test.cc"],
     deps = [
         ":results-impl",

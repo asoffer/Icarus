@@ -384,9 +384,9 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
     // to the caller. because registers might also have some properties that can
     // be reasoned about, all of this should be figured out where it's known and
     // then passed in.
-    if (args.is_reg_.at(index)) {
+    if (args.results_.is_reg(index)) {
       props.at(ir::Register(offset))
-          .add(fn_state_view.view_.at(args.args_.get<ir::Register>(offset)));
+          .add(fn_state_view.view_.at(args.results_.get<ir::Register>(index)));
 
       // TODO only need to do this on the entry block, but we're not passing
       // info between block views yet.
@@ -397,7 +397,8 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
     } else {
       if (t == type::Bool) {
         props.at(ir::Register(offset))
-            .add(base::make_owned<BoolProp>(args.args_.get<bool>(offset)));
+            .add(base::make_owned<BoolProp>(
+                args.results_.get<bool>(offset).val_));
         // TODO only need to do this on the entry block, but we're not passing
         // info between block views yet.
         for (const auto &b : fn_->blocks_) {

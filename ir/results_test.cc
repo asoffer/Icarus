@@ -27,5 +27,13 @@ TEST(AccessRegisters) {
   CHECK(r.get<Reg>(1) == Reg{17});
 }
 
+TEST(IsReg) {
+  Results r{3.14, Reg{4}, Reg{17}, true};
+  CHECK(r.is_reg(0) == false);
+  CHECK(r.is_reg(1) == true);
+  CHECK(r.is_reg(2) == true);
+  CHECK(r.is_reg(0) == false);
+}
+
 }  // namespace
 }  // namespace ir

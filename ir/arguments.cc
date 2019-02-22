@@ -3,6 +3,7 @@
 #include "ir/func.h"
 #include "ir/val.h"
 #include "misc/architecture.h"
+#include "type/callable.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
 #include "type/util.h"
@@ -10,57 +11,29 @@
 namespace ir {
 std::string Arguments::to_string() const {
   std::stringstream ss;
-  auto arch     = Architecture::InterprettingMachine();
-  size_t offset = 0;
-  size_t i      = 0;
+  size_t i                                  = 0;
   std::vector<type::Type const *> const &ts = [&] {
     if (auto *f = type_->if_as<type::Function>()) { return f->input; }
     if (auto *g = type_->if_as<type::GenericStruct>()) { return g->deps_; }
     UNREACHABLE();
   }();
   for (auto *t : ts) {
-    if (is_reg_[i]) {
-      // TODO wrap this up somewhere.
-      offset = ((offset - 1) | (alignof(Register) - 1)) + 1;
-      ss << " " << args_.get<Register>(offset);
-      offset += sizeof(Register);
-    } else {
-      offset = arch.MoveForwardToAlignment(t, offset);
-      type::Apply(t, [&](auto type_holder) {
-        using T = typename decltype(type_holder)::type;
-        if constexpr (std::is_same_v<T, type::Type const*>) {
-          ss << " " << args_.get<T>(offset)->to_string();
-        } else {
-          ss << " " << args_.get<T>(offset);
-        }
-      });
-      offset += arch.bytes(t);
-    }
+    type::Apply(t, [&](auto type_holder) {
+      ss << " " << results_.get<typename decltype(type_holder)::type>(i);
+    });
     ++i;
   }
   ss << ": ";
   return ss.str();
 }
 
-void Arguments::append(RegisterOr<Addr> r) {
-  is_reg_.push_back(r.is_reg_);
-  if (r.is_reg_) {
-    args_.append(r.reg_);
-  } else {
-    args_.append(r.val_);
-  }
-}
+void Arguments::append(RegisterOr<Addr> r) { results_.append(r); }
+
+Arguments::Arguments(type::Callable const *c, ir::Results results)
+    : type_(c), results_(std::move(results)) {}
 
 void Arguments::append(const ir::Val &val) {
-  // TODO deal with alignment?
-  std::visit(
-      base::overloaded{
-          [&](auto &&v) {
-            args_.append(v);
-            is_reg_.push_back(
-                std::is_same_v<ir::Register, std::decay_t<decltype(v)>>);
-          }},
-      val.value);
+  std::visit([&](auto v) { results_.append(v); }, val.value);
 }
 
 base::untyped_buffer Arguments::PrepareCallBuffer(
@@ -85,8 +58,8 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
     UNREACHABLE();
   }();
 
-  for (size_t i = 0; i < is_reg_.size(); ++i) {
-    bool is_reg = is_reg_[i];
+  for (size_t i = 0; i < results_.size(); ++i) {
+    bool is_reg = results_.is_reg(i);
     auto *t = (i < ins.size()) ? ins.at(i) : outs.at(i - ins.size());
 
     if (is_reg) {
@@ -97,18 +70,22 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
     call_buf.pad_to(offset);
 
     if (t->is_big()) {
-      call_buf.append(is_reg
-                          ? regs.get<ir::Addr>(fn->compiler_reg_to_offset_.at(
-                                args_.get<ir::Register>(offset).value()))
-                          : args_.get<ir::Addr>(offset));
+      auto reg_or_addr = results_.get<Addr>(i);
+      call_buf.append(reg_or_addr.is_reg_
+                          ? regs.get<Addr>(fn->compiler_reg_to_offset_.at(
+                                reg_or_addr.reg_.value()))
+                          : reg_or_addr.val_);
     } else {
       type::Apply(t, [&](auto type_holder) {
         using T = typename decltype(type_holder)::type;
         // NOTE: the use of call_stack.top()... is the same as in resolve<T>,
         // but that's apparently uncapturable due to a GCC bug.
-        call_buf.append(is_reg ? regs.get<T>(fn->compiler_reg_to_offset_.at(
-                                     args_.get<ir::Register>(offset).value()))
-                               : args_.get<T>(offset));
+        auto reg_or_val = results_.get<T>(i);
+        call_buf.append(reg_or_val.is_reg_
+                            ? regs.get<T>(fn->compiler_reg_to_offset_.at(
+                                  reg_or_val.reg_.value()))
+                            : reg_or_val.val_);
+
       });
     }
 
