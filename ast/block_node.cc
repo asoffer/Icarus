@@ -32,11 +32,12 @@ void BlockNode::ExtractJumps(JumpExprs *rets) const {
   stmts_.ExtractJumps(rets);
 }
 
-std::vector<ir::Val> BlockNode::EmitIR(Context *ctx) {
-  stmts_.EmitIR(ctx);
+ir::Results BlockNode::EmitIr(Context *ctx) {
+  stmts_.EmitIr(ctx);
   block_scope_->MakeAllDestructions(ctx);
-  return {};
+  return ir::Results{};
 }
+
 std::vector<ir::RegisterOr<ir::Addr>> BlockNode::EmitLVal(Context *) {
   UNREACHABLE();
 }

@@ -181,9 +181,8 @@ static ir::Func *CreateAssign(Array const *a, Context *ctx) {
           ASSERT(std::get<0>(phis).is_reg_ == true);
           ASSERT(std::get<1>(phis).is_reg_ == true);
 
-          auto from_val = ir::Val::Reg(
-              PtrFix(std::get<0>(phis).reg_, a->data_type),
-              a->data_type->is_big() ? a->data_type : data_ptr_type);
+          auto from_val =
+              ir::Results{PtrFix(std::get<0>(phis).reg_, a->data_type)};
 
           if constexpr (Cat == Copy) {
             a->data_type->EmitCopyAssign(a->data_type, from_val,
@@ -205,18 +204,18 @@ static ir::Func *CreateAssign(Array const *a, Context *ctx) {
   return fn;
 }
 
-void Array::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void Array::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   copy_assign_func_.init(
       [this, ctx]() { return CreateAssign<Copy>(this, ctx); });
-  ir::Copy(this, std::get<ir::Register>(from.value), to);
+   ir::Copy(this, from.get<ir::Reg>(0), to);
 }
 
-void Array::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+void Array::EmitMoveAssign(Type const *from_type, ir::Results const &from,
                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   move_assign_func_.init(
       [this, ctx]() { return CreateAssign<Move>(this, ctx); });
-  ir::Move(this, std::get<ir::Register>(from.value), to);
+  ir::Move(this, from.get<ir::Reg>(0), to);
 }
 
 template <typename F>
@@ -338,8 +337,8 @@ void Array::WriteTo(std::string *result) const {
 bool Array::IsCopyable() const { return data_type->IsCopyable(); }
 bool Array::IsMovable() const { return data_type->IsMovable(); }
 
-ir::Val Array::PrepareArgument(Type const *from, ir::Val const &val,
-                               Context *ctx) const {
+ir::Results Array::PrepareArgument(Type const *from, ir::Results const &val,
+                                   Context *ctx) const {
   if (from->is<Variant>()) {
     NOT_YET(this, from);
   } else {
@@ -347,7 +346,7 @@ ir::Val Array::PrepareArgument(Type const *from, ir::Val const &val,
     // TODO Copy may be overkill. Think about value category.
     auto arg = ir::Alloca(from);
     from->EmitMoveAssign(from, val, arg, ctx);
-    return ir::Val::Reg(arg, type::Ptr(from));
+    return ir::Results{arg};
   }
 }
 

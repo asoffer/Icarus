@@ -14,7 +14,7 @@ struct BlockLiteral : public Literal {
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *ctx);
 
   std::vector<std::unique_ptr<Expression>> before_, after_;
   std::unique_ptr<Scope> body_scope_;

@@ -17,9 +17,7 @@ void Import::assign_scope(Scope *scope) {
   operand_->assign_scope(scope);
 }
 
-std::vector<ir::Val> Import::EmitIR(Context *ctx) {
-  return {ir::Val(module_.get())};
-}
+ir::Results Import::EmitIr(Context *ctx) { return ir::Results{module_.get()}; }
 
 VerifyResult Import::VerifyType(Context *ctx) {
   ASSIGN_OR(return _, auto result, operand_->VerifyType(ctx));

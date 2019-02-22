@@ -14,14 +14,14 @@ struct Tuple : public Type {
   Tuple(std::vector<Type const *> entries) : entries_(std::move(entries)) {}
   void WriteTo(std::string *result) const override;
 
-  void EmitCopyAssign(Type const *from_type, ir::Val const &from,
+  void EmitCopyAssign(Type const *from_type, ir::Results const &from,
                       ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
-  void EmitMoveAssign(Type const *from_type, ir::Val const &from,
+  void EmitMoveAssign(Type const *from_type, ir::Results const &from,
                       ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
   virtual void EmitInit(ir::Register reg, Context *ctx) const;
   virtual void EmitDestroy(ir::Register reg, Context *ctx) const;
-  virtual ir::Val PrepareArgument(Type const *t, ir::Val const &val,
-                                  Context *ctx) const;
+  virtual ir::Results PrepareArgument(Type const *t, ir::Results const &val,
+                                      Context *ctx) const;
 
   virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const;
 

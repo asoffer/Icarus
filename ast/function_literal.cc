@@ -245,18 +245,18 @@ void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &out : outputs_) { out->ExtractJumps(rets); }
 }
 
-std::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
+ir::Results FunctionLiteral::EmitIr(Context *ctx) {
   for (auto const &param : inputs_.params_) {
     auto *p = param.value.get();
     if (p->const_ && ctx->bound_constants_.constants_.find(p) ==
                          ctx->bound_constants_.constants_.end()) {
-      return {ir::Val::Func(this)};
+      return ir::Results{this};
     }
 
     for (auto *dep : param_dep_graph_.sink_deps(param.value.get())) {
       if (ctx->bound_constants_.constants_.find(dep) ==
           ctx->bound_constants_.constants_.end()) {
-        return {ir::Val::Func(this)};
+        return ir::Results{this};
       }
     }
   }
@@ -281,7 +281,7 @@ std::vector<ir::Val> FunctionLiteral::EmitIR(Context *ctx) {
     ir_func->work_item = &work_item;
   }
 
-  return {ir::Val::Func(ir_func->type_, ir_func)};
+  return ir::Results{ir_func};
 }
 
 void FunctionLiteral::CompleteBody(Context *ctx) {
@@ -291,6 +291,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
   auto *t = ctx->type_of(this);
 
   ir::Func *&ir_func = ctx->mod_->data_[ctx->bound_constants_].ir_funcs_[this];
+
   CURRENT_FUNC(ir_func) {
     ir::BasicBlock::Current = ir_func->entry();
     // Leave space for allocas that will come later (added to the entry
@@ -318,11 +319,11 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
         out_decl_type->EmitInit(alloc, ctx);
       } else {
         out_decl_type->EmitCopyAssign(
-            out_decl_type, out_decl->init_val->EmitIR(ctx)[0], alloc, ctx);
+            out_decl_type, out_decl->init_val->EmitIr(ctx), alloc, ctx);
       }
     }
 
-    statements_.EmitIR(ctx);
+    statements_.EmitIr(ctx);
 
     fn_scope_->MakeAllDestructions(ctx);
 
@@ -335,6 +336,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
     ir::BasicBlock::Current = ir_func->entry();
     ir::UncondJump(start_block);
     ir_func->work_item = nullptr;
+    std::stringstream ss;
   }
 }
 

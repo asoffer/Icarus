@@ -35,5 +35,17 @@ TEST(IsReg) {
   CHECK(r.is_reg(0) == false);
 }
 
+TEST(GetResult) {
+  Results r{3.14, Reg{4}, Reg{17}, true};
+  CHECK(r.GetResult(0).size() == 1u);
+  CHECK(r.GetResult(0).get<double>(0) == RegisterOr{3.14});
+  CHECK(r.GetResult(1).size() == 1u);
+  CHECK(r.GetResult(1).get<Reg>(0) == Reg{4});
+  CHECK(r.GetResult(2).size() == 1u);
+  CHECK(r.GetResult(2).get<Reg>(0) == Reg{17});
+  CHECK(r.GetResult(3).size() == 1u);
+  CHECK(r.GetResult(3).get<bool>(0) == RegisterOr{true});
+}
+
 }  // namespace
 }  // namespace ir

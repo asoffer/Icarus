@@ -470,6 +470,7 @@ cc_lib(
         "//base:graph",
         "//base:util",
         "//frontend:text_span",
+        "//ir:results",
         "//misc:inference_state",
     ],
 )

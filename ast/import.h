@@ -27,7 +27,7 @@ struct Import : public Literal {
     operand_->DependentDecls(g, d);
   }
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *) override;
 
   // TODO optimization: if the operand_ is a string literal, schedule it
   // immediately.

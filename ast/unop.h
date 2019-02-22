@@ -17,7 +17,7 @@ struct Unop : public Expression {
                       Declaration *d) const override;
   bool InferType(type::Type const *t, InferenceState *state) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *) override;
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
   void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) override;
   void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) override;

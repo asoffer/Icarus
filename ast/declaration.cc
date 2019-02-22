@@ -541,7 +541,7 @@ void Declaration::ExtractJumps(JumpExprs *rets) const {
   if (init_val) { init_val->ExtractJumps(rets); }
 }
 
-std::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
+ir::Results Declaration::EmitIr(Context *ctx) {
   bool swap_bc    = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   BoundConstants old_bc;
@@ -555,22 +555,23 @@ std::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
 
   if (const_) {
     if (is_fn_param_) {
-      return {ctx->bound_constants_.constants_.at(this)};
+      return ir::Results::FromVals({ctx->bound_constants_.constants_.at(this)});
     } else {
       auto [iter, newly_inserted] =
           ctx->mod_->constants_[ctx->bound_constants_].constants_.emplace(
               this, ir::Val::None());
-      if (!newly_inserted) { return {iter->second}; }
+      if (!newly_inserted) { return ir::Results::FromVals({iter->second}); }
 
       if (IsCustomInitialized()) {
         auto vals    = backend::Evaluate(init_val.get(), ctx);
         iter->second = vals[0];
-        if (ctx->num_errors() > 0u) { return {}; }
-        return {iter->second};
+        if (ctx->num_errors() > 0u) { return ir::Results{}; }
+        return ir::Results::FromVals({iter->second});
       } else if (IsDefaultInitialized()) {
         if (is_fn_param_) {
-          return {
-              ctx->mod_->constants_[ctx->bound_constants_].constants_.at(this)};
+          return ir::Results::FromVals(
+              {ctx->mod_->constants_[ctx->bound_constants_].constants_.at(
+                  this)});
         } else {
           NOT_YET(this);
         }
@@ -581,12 +582,12 @@ std::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation
-    // in FunctionLiteral::EmitIR. Declaration::EmitIR is just used to set the
+    // in FunctionLiteral::EmitIr. Declaration::EmitIr is just used to set the
     // value.
     ASSERT(scope_->ContainingFnScope() != nullptr);
 
     // TODO these checks actually overlap and could be simplified.
-    if (IsUninitialized(this)) { return {}; }
+    if (IsUninitialized(this)) { return ir::Results{}; }
     auto *t   = ctx->type_of(this);
     auto addr = ctx->addr(this);
     if (IsCustomInitialized()) {
@@ -594,7 +595,7 @@ std::vector<ir::Val> ast::Declaration::EmitIR(Context *ctx) {
     } else {
       if (!is_fn_param_) { t->EmitInit(addr, ctx); }
     }
-    return {ir::Val::Reg(addr, t)};
+    return ir::Results{addr};
   }
 }
 

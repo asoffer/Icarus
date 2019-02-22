@@ -13,7 +13,9 @@
 #include "base/graph.h"
 #include "base/util.h"
 #include "frontend/text_span.h"
+#include "ir/results.h"
 #include "misc/inference_state.h"
+#include "type/typed_value.h"
 
 struct Context;
 struct Scope;
@@ -59,7 +61,8 @@ struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const     = 0;
   virtual void assign_scope(Scope *)                = 0;
   virtual VerifyResult VerifyType(Context *)        = 0;
-  virtual std::vector<ir::Val> EmitIR(Context *)    = 0;
+  virtual std::vector<ir::Val> EmitIR(Context *);
+  virtual ir::Results EmitIr(Context *ctx);
   virtual void ExtractJumps(JumpExprs *) const      = 0;
   virtual void DependentDecls(base::Graph<Declaration *> *g,
                               Declaration *d) const = 0;

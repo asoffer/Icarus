@@ -10,30 +10,33 @@ struct Context;
 namespace ast {
 struct Terminal : public Literal {
   Terminal() = default;
-  Terminal(const TextSpan &span, ir::Val val)
-      : Literal(span), value(std::move(val)) {}
+  Terminal(const TextSpan &span, ir::Results results, type::Type const *t)
+      : Literal(span), results_(std::move(results)), type_(t) {}
   ~Terminal() override {}
 
   void assign_scope(Scope *scope) override { scope_ = scope; }
-  std::string to_string(size_t) const override { return value.to_string(); }
+  std::string to_string(size_t) const override {
+    return "<<terminal: " + type_->to_string() + ">>";
+  }
 
   VerifyResult VerifyType(Context *ctx) override {
-    return VerifyResult::Constant(ctx->set_type(this, value.type));
+    return VerifyResult::Constant(ctx->set_type(this, type_));
   }
 
   // TODO distinguish between guaranteed failures and failures to continue
   bool InferType(type::Type const *t, InferenceState *state) const override {
-    return value.type == type::Type_ &&
-           std::get<type::Type const *>(value.value) == t;
+    return type_ == type::Type_ &&
+           results_.get<type::Type const *>(0).val_ == t;
   }
 
   void ExtractJumps(JumpExprs *) const override {}
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override {}
 
-  std::vector<ir::Val> EmitIR(Context *) override { return {value}; }
+  ir::Results EmitIr(Context *ctx) override { return results_; };
 
-  ir::Val value = ir::Val::None();
+  ir::Results results_;
+  type::Type const *type_;
 };
 }  // namespace ast
 

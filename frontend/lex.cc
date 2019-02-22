@@ -9,6 +9,7 @@
 #include "frontend/tagged_node.h"
 #include "frontend/text_span.h"
 #include "frontend/token.h"
+#include "ir/results.h"
 #include "type/primitive.h"
 
 // TODO audit every location where frontend::TaggedNode::Invalid is returned to
@@ -27,8 +28,9 @@ namespace frontend {
 TaggedNode::TaggedNode(const TextSpan &span, const std::string &token, Tag tag)
     : node_(std::make_unique<Token>(span, token, tag == hashtag)), tag_(tag) {}
 
-TaggedNode TaggedNode::TerminalExpression(const TextSpan &span, ir::Val val) {
-  return TaggedNode(std::make_unique<ast::Terminal>(span, std::move(val)),
+TaggedNode TaggedNode::TerminalExpression(const TextSpan &span,
+                                          ir::Results results, type::Type const* type) {
+  return TaggedNode(std::make_unique<ast::Terminal>(span, std::move(results), type),
                     expr);
 }
 
@@ -66,37 +68,56 @@ TaggedNode NextWord(SourceLocation &loc) {
   std::string token = loc.line().substr(span.start.offset,
                                         span.finish.offset - span.start.offset);
 
-  static std::unordered_map<std::string, ir::Val> Reserved{
-      {"bool", ir::Val(type::Bool)},
-      {"int8", ir::Val(type::Int8)},
-      {"int16", ir::Val(type::Int16)},
-      {"int32", ir::Val(type::Int32)},
-      {"int64", ir::Val(type::Int64)},
-      {"nat8", ir::Val(type::Nat8)},
-      {"nat16", ir::Val(type::Nat16)},
-      {"nat32", ir::Val(type::Nat32)},
-      {"nat64", ir::Val(type::Nat64)},
-      {"float32", ir::Val(type::Float32)},
-      {"float64", ir::Val(type::Float64)},
-      {"type", ir::Val(type::Type_)},
-      {"module", ir::Val(type::Module)},
-      {"true", ir::Val(true)},
-      {"false", ir::Val(false)},
-      {"null", ir::Val(nullptr)},
-#ifdef DBG
-      {"debug_ir", DebugIrFunc()},
-#endif  // DBG
-      {"foreign", ir::Val::BuiltinGeneric(ForeignFuncIndex)},
-      {"opaque", ir::Val::BuiltinGeneric(OpaqueFuncIndex)},
-      {"byte_view", ir::Val(type::ByteView)},
-      {"bytes", BytesFunc()},
-      {"alignment", AlignFunc()},
-      // TODO these are terrible. Make them reasonable. In particular, this is
-      // definitively UB.
-      {"exit", ir::Val::Block(nullptr)},
-      {"start", ir::Val::Block(reinterpret_cast<ast::BlockLiteral *>(0x1))}};
+  static std::unordered_map<std::string,
+                            std::pair<ir::Results, type::Type const *>>
+      Reserved{
+          {"bool", std::pair(ir::Results{type::Bool}, type::Type_)},
+          {"int8", std::pair(ir::Results{type::Int8}, type::Type_)},
+          {"int16", std::pair(ir::Results{type::Int16}, type::Type_)},
+          {"int32", std::pair(ir::Results{type::Int32}, type::Type_)},
+          {"int64", std::pair(ir::Results{type::Int64}, type::Type_)},
+          {"nat8", std::pair(ir::Results{type::Nat8}, type::Type_)},
+          {"nat16", std::pair(ir::Results{type::Nat16}, type::Type_)},
+          {"nat32", std::pair(ir::Results{type::Nat32}, type::Type_)},
+          {"nat64", std::pair(ir::Results{type::Nat64}, type::Type_)},
+          {"float32", std::pair(ir::Results{type::Float32}, type::Type_)},
+          {"float64", std::pair(ir::Results{type::Float64}, type::Type_)},
+          {"type", std::pair(ir::Results{type::Type_}, type::Type_)},
+          {"module", std::pair(ir::Results{type::Module}, type::Type_)},
+          {"true", std::pair(ir::Results{true}, type::Bool)},
+          {"false", std::pair(ir::Results{false}, type::Bool)},
+          {"null", std::pair(ir::Results{ir::Addr::Null()}, type::NullPtr)},
+          /*
+    #ifdef DBG
+          {"debug_ir", DebugIrFunc()},
+    #endif  // DBG
+          {"foreign", ir::Val::BuiltinGeneric(ForeignFuncIndex)},
+          {"opaque", ir::Val::BuiltinGeneric(OpaqueFuncIndex)},
+          */
+          {"byte_view", std::pair(ir::Results{type::ByteView}, type::Type_)},
+          {"bytes",
+           std::pair(ir::Results{std::get<ir::AnyFunc>(BytesFunc().value)},
+                     BytesFunc().type)},
+          {"alignment",
+           std::pair(ir::Results{std::get<ir::AnyFunc>(AlignFunc().value)},
+                     AlignFunc().type)},
+          {"exit",
+           std::pair(
+               ir::Results{std::get<ir::BlockSequence>(
+                   ir::Val::Block(static_cast<ast::BlockLiteral *>(nullptr))
+                       .value)},
+               type::Block)},
+          // TODO these are terrible. Make them reasonable. In particular, this
+          // is definitively UB.
+          {"start",
+           std::pair(
+               ir::Results{std::get<ir::BlockSequence>(
+                   ir::Val::Block(reinterpret_cast<ast::BlockLiteral *>(0x1))
+                       .value)},
+               type::Block)}};
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
-    return TaggedNode::TerminalExpression(span, iter->second);
+    auto const &[results, type] = iter->second;
+    return TaggedNode::TerminalExpression(span, results, type);
   }
 
   // TODO rename kw_struct to more clearly indicate that it's a scope block
@@ -136,8 +157,9 @@ TaggedNode NextWord(SourceLocation &loc) {
       t           = type::RepBlock;
       token       = "block~";
     }
-    return TaggedNode(std::make_unique<ast::Terminal>(span, ir::Val(t)),
-                      kw_block);
+    return TaggedNode(
+        std::make_unique<ast::Terminal>(span, ir::Results{t}, type::Type_),
+        kw_block);
   } else if (token == "scope") {
     if (*loc == '!') {
       loc.Increment();
@@ -163,10 +185,14 @@ TaggedNode NextNumber(SourceLocation &loc, error::Log *error_log) {
   if (!num.has_value()) {
     // TODO should you do something with guessing the type?
     error_log->InvalidNumber(span, num.error().to_string());
-    return TaggedNode::TerminalExpression(span, ir::Val(0));
+    return TaggedNode::TerminalExpression(span, ir::Results{0}, type::Int32);
   }
-  return TaggedNode::TerminalExpression(
-      span, std::visit([](auto x) { return ir::Val(x); }, *num));
+  return std::visit(
+      [&span](auto x) {
+        return TaggedNode::TerminalExpression(span, ir::Results{x},
+                                              type::Get<decltype(x)>());
+      },
+      *num);
 }
 
 TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
@@ -213,7 +239,8 @@ TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
   }
 
   span.finish = loc.cursor;
-  return TaggedNode::TerminalExpression(span, ir::Val(str_lit));
+  return TaggedNode::TerminalExpression(
+      span, ir::Results{ir::SaveStringGlobally(str_lit)}, type::ByteView);
 }
 
 TaggedNode NextHashtag(SourceLocation &loc, error::Log *error_log) {

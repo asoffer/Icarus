@@ -26,16 +26,16 @@ Typed<ir::EnumVal, Enum> Enum::EmitLiteral(
   return Typed<ir::EnumVal, Enum>(vals_.at(member_name), this);
 }
 
-void Enum::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void Enum::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                           ir::RegisterOr<ir::Addr> to, Context *) const {
   ASSERT(this == from_type);
-  ir::Store(from.reg_or<ir::EnumVal>(), to);
+  ir::Store(from.get<ir::EnumVal>(0), to);
 }
 
-void Enum::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+void Enum::EmitMoveAssign(Type const *from_type, ir::Results const &from,
                           ir::RegisterOr<ir::Addr> to, Context *) const {
   ASSERT(this == from_type);
-  ir::Store(from.reg_or<ir::EnumVal>(), to);
+  ir::Store(from.get<ir::EnumVal>(0), to);
 }
 
 void Enum::defining_modules(
@@ -53,8 +53,8 @@ void Enum::WriteTo(std::string *result) const {
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
 }
 
-ir::Val Enum::PrepareArgument(Type const *from, ir::Val const &val,
-                              Context *ctx) const {
+ir::Results Enum::PrepareArgument(Type const *from, ir::Results const &val,
+                                  Context *ctx) const {
   ASSERT(from == this);
   return val;
 }

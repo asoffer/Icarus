@@ -23,6 +23,20 @@ struct untyped_buffer {
     that.capacity_ = 0;
     that.data_     = nullptr;
   }
+  untyped_buffer(untyped_buffer const &that)
+      : size_(that.size_),
+        capacity_(that.size_),
+        data_(static_cast<char *>(malloc(size_))) {
+    std::memcpy(data_, that.data_, size_);
+  }
+
+  untyped_buffer &operator=(untyped_buffer &&that) {
+    size_     = std::exchange(that.size_, 0);
+    capacity_ = std::exchange(that.capacity_, 0);
+    data_     = std::exchange(that.data_, nullptr);
+    return *this;
+  }
+
   ~untyped_buffer() { free(data_); }
 
   size_t size() const { return size_; }

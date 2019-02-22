@@ -21,7 +21,7 @@ struct Hole : public Literal {
 
   VerifyResult VerifyType(Context *) { return VerifyResult::Error(); }
 
-  std::vector<ir::Val> EmitIR(Context *) override { return {ir::Val::None()}; }
+  ir::Results EmitIr(Context *) override { return ir::Results{}; }
 };
 }  // namespace ast
 

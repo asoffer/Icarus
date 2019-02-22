@@ -15,7 +15,7 @@ struct ScopeLiteral : public Literal {
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *) override;
 
   std::vector<Declaration> decls_;
   std::unique_ptr<Scope> body_scope_;

@@ -88,8 +88,7 @@ static ir::TypedRegister<type::Type const *> GenerateStruct(
     // not safe to access these registers returned by CreateStructField after
     // a subsequent call to CreateStructField.
     ir::CreateStructField(
-        struct_reg,
-        field->type_expr->EmitIR(ctx)[0].reg_or<type::Type const *>());
+        struct_reg, field->type_expr->EmitIr(ctx).get<type::Type const *>(0));
     ir::SetStructFieldName(struct_reg, field->id_);
     for (auto const &hashtag : field->hashtags_) {
       ir::AddHashtagToField(struct_reg, hashtag);
@@ -102,9 +101,9 @@ static ir::TypedRegister<type::Type const *> GenerateStruct(
   return ir::FinalizeStruct(struct_reg);
 }
 
-std::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
+ir::Results StructLiteral::EmitIr(Context *ctx) {
   if (args_.empty()) {
-    return {ir::Val(GenerateStruct(this, ir::CreateStruct(scope_, this), ctx))};
+    return ir::Results{GenerateStruct(this, ir::CreateStruct(scope_, this), ctx)};
   }
 
   // TODO A bunch of things need to be fixed here.
@@ -135,7 +134,8 @@ std::vector<ir::Val> ast::StructLiteral::EmitIR(Context *ctx) {
     ir_func->work_item = &work_item;
   }
 
-  return {ir::Val::Func(ir_func->type_, ir_func)};
+  return ir::Results{
+      std::get<ir::AnyFunc>(ir::Val::Func(ir_func->type_, ir_func).value)};
 }
 
 void StructLiteral::CompleteBody(Context *ctx) {

@@ -82,10 +82,9 @@ VerifyResult Access::VerifyType(Context *ctx) {
     }
 
     if (ctx->mod_ != s->defining_module() &&
-        std::none_of(member->hashtags_.begin(), member->hashtags_.end(),
-                     [](ast::Hashtag h) {
-                       return h.kind_ == ast::Hashtag::Builtin::Export;
-                     })) {
+        std::none_of(
+            member->hashtags_.begin(), member->hashtags_.end(),
+            [](Hashtag h) { return h.kind_ == Hashtag::Builtin::Export; })) {
       ctx->error_log()->NonExportedMember(span, member_name, s);
     }
 
@@ -113,7 +112,7 @@ VerifyResult Access::VerifyType(Context *ctx) {
   }
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
+std::vector<ir::RegisterOr<ir::Addr>> Access::EmitLVal(Context *ctx) {
   auto reg = operand->EmitLVal(ctx)[0];
   auto *t  = ctx->type_of(operand.get());
 
@@ -127,22 +126,22 @@ std::vector<ir::RegisterOr<ir::Addr>> ast::Access::EmitLVal(Context *ctx) {
   return {ir::Field(reg, struct_type, struct_type->index(member_name)).get()};
 }
 
-std::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {
+ir::Results Access::EmitIr(Context *ctx) {
   if (ctx->type_of(operand.get()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
     return backend::EvaluateAs<Module const *>(operand.get(), ctx)
         ->GetDecl(member_name)
-        ->EmitIR(ctx);
+        ->EmitIr(ctx);
   }
 
   auto *this_type = ctx->type_of(this);
   if (this_type->is<type::Enum>()) {
     auto lit = this_type->as<type::Enum>().EmitLiteral(member_name);
-    return {ir::Val(lit)};
+    return ir::Results{lit};
   } else if (this_type->is<type::Flags>()) {
     auto lit = this_type->as<type::Flags>().EmitLiteral(member_name);
-    return {ir::Val(lit)};
+    return ir::Results{lit};
   } else {
     auto reg = operand->EmitLVal(ctx)[0];
     auto *t  = ctx->type_of(operand.get());
@@ -156,8 +155,50 @@ std::vector<ir::Val> ast::Access::EmitIR(Context *ctx) {
     ASSERT(t, InheritsFrom<type::Struct>());
     auto *struct_type = &t->as<type::Struct>();
     auto field = ir::Field(reg, struct_type, struct_type->index(member_name));
-    return {ir::Val::Reg(ir::PtrFix(field.get(), this_type), this_type)};
+    return ir::Results{ir::PtrFix(field.get(), this_type)};
   }
+}
+
+// Just sticking this in some cc file for now. I don't really care where. Just
+// so ir::Val is complete. Going to delete it soon.
+ir::Results Node::EmitIr(Context *ctx) {
+  ir::Results results;
+  for (auto const &val : EmitIR(ctx)) {
+    std::visit([&results](auto x) { results.append(x); }, val.value);
+  }
+  return results;
+}
+
+std::vector<ir::Val> Expression::EmitIR(Context *ctx) {
+  auto results = EmitIr(ctx);
+  auto *t      = ctx->type_of(this);
+  if (t == nullptr) {
+    return {};
+  } else if (auto *e = t->if_as<type::Enum>()) {
+    return {ir::ValFrom(results.get<ir::EnumVal>(0).val_, e)};
+  } else if (auto *f = t->if_as<type::Flags>()) {
+    return {ir::ValFrom(results.get<ir::FlagsVal>(0).val_, f)};
+  } else if (auto *fn = t->if_as<type::Function>()) {
+    auto f = results.get<ir::AnyFunc>(0);
+    if (f.is_reg_) { return {ir::Val::Reg(f.reg_, fn)}; }
+    return {ir::Val::Func(fn, f.val_)};
+  } else if (auto *v = t->if_as<type::Variant>()) {
+    return {ir::ValFrom(results.get<ir::Addr>(0), type::Ptr(v))};
+  }
+  return {
+      type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                       uint16_t, uint32_t, uint64_t, float, double, ir::Addr,
+                       ::Module *, ast::ScopeLiteral *, ast::FunctionLiteral *,
+                       std::string_view, type::Type const *, ir::BlockSequence>(
+          t, [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::ValFrom(results.get<T>(0));
+          })};
+}
+
+std::vector<ir::Val> Node::EmitIR(Context *ctx) {
+  EmitIr(ctx);
+  return {};
 }
 
 }  // namespace ast

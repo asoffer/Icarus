@@ -7,16 +7,19 @@
 
 namespace type {
 
-void GenericFunction::EmitCopyAssign(const Type *from_type, ir::Val const &from,
+void GenericFunction::EmitCopyAssign(const Type *from_type,
+                                     ir::Results const &from,
                                      ir::RegisterOr<ir::Addr> to,
                                      Context *ctx) const {}
-void GenericFunction::EmitMoveAssign(const Type *from_type, ir::Val const &from,
+void GenericFunction::EmitMoveAssign(const Type *from_type,
+                                     ir::Results const &from,
                                      ir::RegisterOr<ir::Addr> to,
                                      Context *ctx) const {}
 void GenericFunction::EmitInit(ir::Register reg, Context *ctx) const {}
 void GenericFunction::EmitDestroy(ir::Register reg, Context *ctx) const {}
-ir::Val GenericFunction::PrepareArgument(const Type *t, const ir::Val &val,
-                                  Context *ctx) const {
+ir::Results GenericFunction::PrepareArgument(const Type *t,
+                                             const ir::Results &val,
+                                             Context *ctx) const {
   NOT_YET();
 }
 void GenericFunction::EmitRepr(ir::Val const &id_val, Context *ctx) const {}
@@ -45,16 +48,16 @@ Function const *Func(std::vector<Type const *> in,
               .first->second;
 }
 
-void Function::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void Function::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                           ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(this == from_type);
-  ir::Store(from.reg_or<ir::AnyFunc>(), to);
+  ir::Store(from.get<ir::AnyFunc>(0), to);
 }
 
-void Function::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+void Function::EmitMoveAssign(Type const *from_type, ir::Results const &from,
                           ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   ASSERT(this == from_type);
-  ir::Store(from.reg_or<ir::AnyFunc>(), to);
+  ir::Store(from.get<ir::AnyFunc>(0), to);
 }
 
 void Function::EmitInit(ir::Register id_reg, Context *ctx) const {
@@ -95,8 +98,8 @@ void Function::WriteTo(std::string *result) const {
   }
 }
 
-ir::Val Function::PrepareArgument(Type const *from, ir::Val const &val,
-                                  Context *ctx) const {
+ir::Results Function::PrepareArgument(Type const *from, ir::Results const &val,
+                                      Context *ctx) const {
   if (this == from) {
     return val;
   } else {

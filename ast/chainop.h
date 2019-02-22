@@ -18,7 +18,7 @@ struct ChainOp : public Literal {
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *) override;
 
   std::vector<frontend::Operator> ops;
   std::vector<std::unique_ptr<Expression>> exprs;

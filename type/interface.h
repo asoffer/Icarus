@@ -15,9 +15,9 @@ struct Interface : public Type {
 
   void WriteTo(std::string *result) const override;
 
-  void EmitCopyAssign(Type const *from_type, ir::Val const &from,
+  void EmitCopyAssign(Type const *from_type, ir::Results const &from,
                       ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
-  void EmitMoveAssign(Type const *from_type, ir::Val const &from,
+  void EmitMoveAssign(Type const *from_type, ir::Results const &from,
                       ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
 
   void EmitInit(ir::Register reg, Context *ctx) const override {
@@ -28,8 +28,8 @@ struct Interface : public Type {
     UNREACHABLE();
   }
 
-  ir::Val PrepareArgument(Type const *t, ir::Val const &val,
-                          Context *ctx) const override;
+  ir::Results PrepareArgument(Type const *t, ir::Results const &val,
+                              Context *ctx) const override;
 
   void EmitRepr(ir::Val const &id_val, Context *ctx) const override;
 

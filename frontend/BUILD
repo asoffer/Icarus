@@ -13,6 +13,7 @@ cc_lib(
         "//ast:identifier",
         "//ast:terminal",
         "//error:log",
+        "//ir:results",
         "//type:primitive",
     ],
 )

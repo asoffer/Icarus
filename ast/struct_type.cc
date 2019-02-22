@@ -29,7 +29,7 @@ VerifyResult StructType::VerifyType(Context *ctx) {
   return VerifyResult::Constant(ctx->set_type(this, type::Type_));
 }
 
-std::vector<ir::Val> StructType::EmitIR(Context *ctx) { NOT_YET(); }
+ir::Results StructType::EmitIr(Context *ctx) { NOT_YET(); }
 
 void StructType::ExtractJumps(JumpExprs *rets) const {
   for (auto &arg : args_) { arg->ExtractJumps(rets); }

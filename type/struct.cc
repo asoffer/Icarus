@@ -41,9 +41,9 @@ static ir::AnyFunc CreateAssign(Struct const *s, Context *ctx) {
 
     for (size_t i = 0; i < s->fields_.size(); ++i) {
       auto *field_type = s->fields_.at(i).type;
-      auto from        = ir::Val::Reg(
-          ir::PtrFix(ir::Field(val, s, i).get(), field_type), field_type);
-      auto to   = ir::Field(var, s, i).get();
+      auto from =
+          ir::Results{ir::PtrFix(ir::Field(val, s, i).get(), field_type)};
+      auto to = ir::Field(var, s, i).get();
 
       if constexpr (Cat == Copy) {
         field_type->EmitCopyAssign(field_type, from, to, ctx);
@@ -59,18 +59,18 @@ static ir::AnyFunc CreateAssign(Struct const *s, Context *ctx) {
   return fn;
 }
 
-void Struct::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void Struct::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                             ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   copy_assign_func_.init(
       [this, ctx]() { return CreateAssign<Copy>(this, ctx); });
-  ir::Copy(this, std::get<ir::Register>(from.value), to);
+  ir::Copy(this, from.get<ir::Reg>(0), to);
 }
 
-void Struct::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+void Struct::EmitMoveAssign(Type const *from_type, ir::Results const &from,
                             ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   move_assign_func_.init(
       [this, ctx]() { return CreateAssign<Move>(this, ctx); });
-  ir::Move(this, std::get<ir::Register>(from.value), to);
+  ir::Move(this, from.get<ir::Reg>(0), to);
 }
 
 size_t Struct::offset(size_t field_num, Architecture const &arch) const {
@@ -206,22 +206,20 @@ bool Struct::contains_hashtag(ast::Hashtag needle) const {
   return false;
 }
 
-ir::Val Struct::PrepareArgument(Type const *from, ir::Val const &val,
-                                Context *ctx) const {
+ir::Results Struct::PrepareArgument(Type const *from, ir::Results const &val,
+                                    Context *ctx) const {
   auto arg = ir::Alloca(this);
 
   if (from->is<Variant>()) {
-    EmitMoveAssign(
-        this,
-        ir::Val::Reg(ir::VariantValue(this, std::get<ir::Register>(val.value)),
-                     type::Ptr(this)),
-        arg, ctx);
+    EmitMoveAssign(this,
+                   ir::Results{ir::VariantValue(this, val.get<ir::Reg>(0))},
+                   arg, ctx);
   } else if (this == from) {
     EmitMoveAssign(from, val, arg, ctx);
   } else {
     UNREACHABLE(from);
   }
-  return ir::Val::Reg(arg, type::Ptr(this));
+  return ir::Results{arg};
 }
 
 Cmp Struct::Comparator() const { return Cmp::None; }

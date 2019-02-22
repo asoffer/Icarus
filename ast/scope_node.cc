@@ -72,7 +72,7 @@ void ScopeNode::ExtractJumps(JumpExprs *rets) const {
   for (auto &block : blocks_) { block.ExtractJumps(rets); }
 }
 
-std::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
+ir::Results ScopeNode::EmitIr(Context *ctx) {
   ctx->yields_stack_.emplace_back();
   base::defer d([&]() { ctx->yields_stack_.pop_back(); });
 
@@ -245,7 +245,7 @@ std::vector<ir::Val> ast::ScopeNode::EmitIR(Context *ctx) {
 
     auto results = dispatch_table.EmitCall(args, result_type, ctx);
     if (scope_lit->stateful_) { state_type->EmitDestroy(alloc, ctx); }
-    return results;
+    return ir::Results::FromVals(results);
   }
 }
 

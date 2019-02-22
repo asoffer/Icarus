@@ -13,6 +13,7 @@ cc_lib(
         ":func-impl",
         ":out_params-impl",
         ":phi-impl",
+        ":results-impl",
         ":val-impl",
     ],
 )

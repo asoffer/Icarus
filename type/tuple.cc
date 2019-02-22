@@ -14,7 +14,7 @@
 #include "type/pointer.h"
 
 namespace type {
-void Tuple::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void Tuple::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   copy_assign_func_.init([this, ctx]() {
     Pointer const *p = Ptr(this);
@@ -29,9 +29,10 @@ void Tuple::EmitCopyAssign(Type const *from_type, ir::Val const &from,
       // should always be opposite destruction order?
       for (size_t i = 0; i < entries_.size(); ++i) {
         auto *entry = entries_.at(i);
-        auto from_entry =
-            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i).get(), entry), entry);
-        entry->EmitCopyAssign(entry, from_entry, ir::Field(var, this, i).get(), ctx);
+        entry->EmitCopyAssign(
+            entry,
+            ir::Results{ir::PtrFix(ir::Field(val, this, i).get(), entry)},
+            ir::Field(var, this, i).get(), ctx);
       }
 
       ir::ReturnJump();
@@ -39,7 +40,7 @@ void Tuple::EmitCopyAssign(Type const *from_type, ir::Val const &from,
     return fn;
   });
 
-  ir::Copy(this, std::get<ir::Register>(from.value), to);
+  ir::Copy(this, from.get<ir::Reg>(0), to);
 }
 
 bool Tuple::needs_destroy() const {
@@ -47,7 +48,7 @@ bool Tuple::needs_destroy() const {
                      [](Type const *t) { return t->needs_destroy(); });
 }
 
-void Tuple::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+void Tuple::EmitMoveAssign(Type const *from_type, ir::Results const &from,
                        ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   move_assign_func_.init([this, ctx]() {
     Pointer const *p = Ptr(this);
@@ -62,9 +63,10 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Val const &from,
       // should always be opposite destruction order?
       for (size_t i = 0; i < entries_.size(); ++i) {
         auto *entry = entries_.at(i);
-        auto from_entry =
-            ir::Val::Reg(ir::PtrFix(ir::Field(val, this, i).get(), entry), entry);
-        entry->EmitMoveAssign(entry, from_entry, ir::Field(var, this, i).get(), ctx);
+        entry->EmitMoveAssign(
+            entry,
+            ir::Results{ir::PtrFix(ir::Field(val, this, i).get(), entry)},
+            ir::Field(var, this, i).get(), ctx);
       }
 
       ir::ReturnJump();
@@ -72,7 +74,7 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Val const &from,
     return fn;
   });
 
-  ir::Move(this, std::get<ir::Register>(from.value), to);
+  ir::Move(this, from.get<ir::Reg>(0), to);
 }
 
 void Tuple::EmitInit(ir::Register reg, Context *ctx) const {
@@ -195,12 +197,12 @@ bool Tuple::IsMovable() const {
                      [](Type const *t) { return t->IsMovable(); });
 }
 
-ir::Val Tuple::PrepareArgument(Type const *from, ir::Val const &val,
-                               Context *ctx) const {
+ir::Results Tuple::PrepareArgument(Type const *from, ir::Results const &val,
+                                   Context *ctx) const {
   ASSERT(from == this);
   auto arg = ir::Alloca(from);
   from->EmitMoveAssign(from, val, arg, ctx);
-  return ir::Val::Reg(arg, type::Ptr(from));
+  return ir::Results{arg};
 }
 
 }  // namespace type

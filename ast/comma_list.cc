@@ -67,30 +67,30 @@ void CommaList::ExtractJumps(JumpExprs *rets) const {
   for (auto &expr : exprs_) { expr->ExtractJumps(rets); }
 }
 
-std::vector<ir::Val> CommaList::EmitIR(Context *ctx) {
-  std::vector<ir::Val> results;
+ir::Results CommaList::EmitIr(Context *ctx) {
   auto *tuple_type = &ctx->type_of(this)->as<type::Tuple>();
   // TODO this is a hack. I'm still not sure what counts as a tuple and what
   // counts as atype
-  if (tuple_type->entries_.empty()) { return {ir::Val(type::Tup({}))}; }
+  if (tuple_type->entries_.empty()) { return ir::Results{type::Tup({})}; }
 
   auto tuple_alloc = ir::TmpAlloca(tuple_type, ctx);
 
   size_t index = 0;
   for (auto &expr : exprs_) {
     if (expr->needs_expansion()) {
-      for (auto const &val : expr->EmitIR(ctx)) {
-        type::EmitCopyInit(tuple_type->entries_[index], val,
+      auto results = expr->EmitIr(ctx);
+      for (size_t i = 0; i < results.size(); ++i) {
+        type::EmitCopyInit(tuple_type->entries_[index], results.GetResult(i),
                            ir::Field(tuple_alloc, tuple_type, index), ctx);
         ++index;
       }
     } else {
-      type::EmitCopyInit(tuple_type->entries_[index], expr->EmitIR(ctx)[0],
+      type::EmitCopyInit(tuple_type->entries_[index], expr->EmitIr(ctx),
                          ir::Field(tuple_alloc, tuple_type, index), ctx);
       ++index;
     }
   }
-  return {ir::Val::Reg(tuple_alloc, tuple_type)};
+  return ir::Results{tuple_alloc};
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> CommaList::EmitLVal(Context *ctx) {
@@ -105,9 +105,9 @@ void CommaList::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
   auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : exprs_) {
     if (expr->needs_expansion()) {
-      for (auto const &val : expr->EmitIR(ctx)) {
-        // TODO handle this case.
-        type::EmitMoveInit(t.entries_[index], val,
+      auto results = expr->EmitIr(ctx);
+      for (size_t i = 0; i < results.size(); ++i) {
+        type::EmitMoveInit(t.entries_[index], results.GetResult(i),
                            ir::Field(reg.get(), &t, index), ctx);
         ++index;
       }
@@ -123,9 +123,9 @@ void CommaList::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
   auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : exprs_) {
     if (expr->needs_expansion()) {
-      for (auto const &val : expr->EmitIR(ctx)) {
-        // TODO handle this case.
-        type::EmitCopyInit(t.entries_[index], val,
+      auto results = expr->EmitIr(ctx);
+      for (size_t i = 0; i < results.size(); ++i) {
+        type::EmitCopyInit(t.entries_[index], results.GetResult(i),
                            ir::Field(reg.get(), &t, index), ctx);
         ++index;
       }

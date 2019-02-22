@@ -60,7 +60,7 @@ repl_start:;
         auto *decl = &stmt->as<ast::Declaration>();
         decl->assign_scope(ctx.mod_->global_.get());
         decl->VerifyType(&ctx);
-        decl->EmitIR(&ctx);
+        decl->EmitIr(&ctx);
         if (ctx.num_errors() != 0) {
           ctx.DumpErrors();
           goto repl_start;

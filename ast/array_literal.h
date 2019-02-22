@@ -18,7 +18,7 @@ struct ArrayLiteral : public Literal {
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *ctx) override;
   void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) override;
   void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) override;
 

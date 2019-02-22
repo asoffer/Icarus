@@ -15,7 +15,7 @@ struct Interface : public Literal {
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *ctx) override;
 
   std::vector<Declaration> decls_;
   std::unique_ptr<DeclScope> body_scope_;

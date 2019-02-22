@@ -85,7 +85,7 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
   return VerifyResult(type::Void(), result.const_);
 }
 
-std::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
+ir::Results RepeatedUnop::EmitIr(Context *ctx) {
   std::vector<ir::Val> arg_vals;
   if (args_.needs_expansion()) {
     for (auto &expr : args_.exprs_) {
@@ -121,7 +121,7 @@ std::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
 
       ctx->more_stmts_allowed_ = false;
       ir::ReturnJump();
-      return {};
+      return ir::Results{};
     }
     case frontend::Operator::Yield: {
       scope_->MakeAllDestructions(ctx);
@@ -142,7 +142,7 @@ std::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
                                                arg_vals[i]);
       }
       ctx->more_stmts_allowed_ = false;
-      return {};
+      return ir::Results{};
     }
     case frontend::Operator::Print: {
       auto const *dispatch_tables = ctx->rep_dispatch_tables(this);
@@ -162,7 +162,7 @@ std::vector<ir::Val> RepeatedUnop::EmitIR(Context *ctx) {
         }
         ++index;
       }
-      return {};
+      return ir::Results{};
     } break;
     default: UNREACHABLE("Operator is ", static_cast<int>(op_));
   }

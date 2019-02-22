@@ -44,7 +44,7 @@ void Statements::append(std::unique_ptr<Node> &&node) {
   }
 }
 
-std::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
+ir::Results ast::Statements::EmitIr(Context *ctx) {
   std::vector<type::Typed<ir::Register>> to_destroy;
   auto *old_tmp_ptr = std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
   bool old_more_stmts_allowed = std::exchange(ctx->more_stmts_allowed_, true);
@@ -60,14 +60,14 @@ std::vector<ir::Val> ast::Statements::EmitIR(Context *ctx) {
       // Allow it again so we can repeated bugs in the same block.
       ctx->more_stmts_allowed_ = true;
     }
-    stmt->EmitIR(ctx);
+    stmt->EmitIr(ctx);
     for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
       auto &reg = to_destroy.at(i);
       reg.type()->EmitDestroy(reg.get(), ctx);
     }
     to_destroy.clear();
   }
-  return {};
+  return ir::Results{};
 }
 
 }  // namespace ast

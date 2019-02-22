@@ -19,7 +19,7 @@ struct Statements : public Node {
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *) override;
 
   inline size_t size() const { return content_.size(); }
 

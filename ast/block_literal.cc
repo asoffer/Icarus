@@ -54,10 +54,10 @@ void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &a : after_) { a->ExtractJumps(rets); }
 }
 
-std::vector<ir::Val> ast::BlockLiteral::EmitIR(Context *ctx) {
-  for (auto &b : before_) { b->EmitIR(ctx); }
-  for (auto &a : after_) { a->EmitIR(ctx); }
-  return {ir::Val::Block(this)};
+ir::Results BlockLiteral::EmitIr(Context *ctx) {
+  for (auto &b : before_) { b->EmitIr(ctx); }
+  for (auto &a : after_) { a->EmitIr(ctx); }
+  return ir::Results::FromVals({ir::Val::Block(this)});
 }
 
 }  // namespace ast

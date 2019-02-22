@@ -335,7 +335,7 @@ static bool IsConstant(Expression *e) {
     if (auto *c = &e->as<Call>(); c->fn_->is<Terminal>()) {
       ASSIGN_OR(return false, auto &bgi,
                        std::get_if<ir::BuiltinGenericIndex>(
-                           &c->fn_->as<Terminal>().value.value));
+                           &c->fn_->as<Terminal>().EmitIR(nullptr)[0].value));
       return bgi == ir::BuiltinGenericIndex{ForeignFuncIndex};
     }
   }
@@ -481,6 +481,7 @@ DispatchTableRow::MakeFromFnLit(
         args.named_.find(std::string(name));  // TODO transparent hashing?
     if (iter != args.named_.end()) { continue; }
     auto *decl = fn_lit->inputs_.at(index).value.get();
+
     decl->init_val->VerifyType(&new_ctx);
     new_ctx.bound_constants_.constants_.emplace(
         decl, backend::Evaluate(decl->init_val.get(), &new_ctx)[0]);
@@ -736,12 +737,18 @@ type::Type const *DispatchTable::MakeOrLogError(
 // return value.
 static void EmitOneCallDispatch(
     type::Type const *ret_type, std::vector<ir::Val> *outgoing_regs,
-    std::unordered_map<Expression *, std::vector<ir::Val> const *> const
+    std::unordered_map<Expression *, ir::Results const *> const
         &expr_map,
     Binding const &binding, Context *ctx) {
   auto callee = [&] {
     Context fn_ctx(ctx->mod_);  // TODO this might be the wrong module.
     fn_ctx.bound_constants_ = binding.bound_constants_;
+    if (auto *d = binding.fn_.get()->if_as<ast::Declaration>()) {
+      // Skipping into the declaration initial value, which is kind of a hack,
+      // but basically that's all we've verifyied the type for in this context.
+      ASSERT(d->const_ == true);
+      return ASSERT_NOT_NULL(d->init_val.get())->EmitIR(&fn_ctx)[0];
+    }
     return binding.fn_.get()->EmitIR(&fn_ctx)[0];
   }();
 
@@ -764,32 +771,32 @@ static void EmitOneCallDispatch(
     if (fn_to_call->is_fn()) { const_params = &(fn_to_call->func()->params_); }
   }
 
-  std::vector<ir::Val> args;
-  args.resize(binding.entries_.size());
-  for (size_t i = 0; i < args.size(); ++i) {
+  ir::Results results;
+  for (size_t i = 0; i < binding.entries_.size(); ++i) {
     auto entry = binding.entries_.at(i);
     if (entry.defaulted()) {
       Expression *default_expr = (*ASSERT_NOT_NULL(const_params)).at(i).value;
-      args[i]                  = ASSERT_NOT_NULL(entry.type)
-                    ->PrepareArgument(ctx->type_of(default_expr),
-                                      default_expr->EmitIR(ctx)[0], ctx);
+      // TODO this would more suitably take results as a pointer and append to
+      // it.
+      results.append(ASSERT_NOT_NULL(entry.type)
+                         ->PrepareArgument(ctx->type_of(default_expr),
+                                           default_expr->EmitIr(ctx), ctx));
     } else {
       auto *t = (entry.expansion_index == -1)
                     ? ctx->type_of(entry.expr)
                     : ctx->type_of(entry.expr)
                           ->as<type::Tuple>()
                           .entries_.at(entry.expansion_index);
-      auto const &val =
-          expr_map.at(entry.expr)->at(std::max(0, entry.expansion_index));
-      args[i] = ASSERT_NOT_NULL(entry.type)->PrepareArgument(t, val, ctx);
+      ir::Results val = expr_map.at(entry.expr)
+                            ->GetResult(std::max(0, entry.expansion_index));
+      // TODO probably always want to pass something like a ResultView?
+      results.append(ASSERT_NOT_NULL(entry.type)->PrepareArgument(t, val, ctx));
     }
   }
 
-  ir::Arguments call_args;
-  call_args.type_ = &callee.type->as<type::Callable>();
-  for (const auto &arg : args) { call_args.append(arg); }
+  ir::Arguments call_args{&callee.type->as<type::Callable>(),
+                          std::move(results)};
 
-  std::vector<ir::Val> results;
   ir::OutParams outs;
 
   // TODO don't copy the vector.
@@ -910,7 +917,7 @@ bool Covers(FnArgs<type::Type const *> const &big,
 }
 
 static ir::BlockIndex CallLookupTest(
-    FnArgs<std::pair<Expression *, std::vector<ir::Val>>> const &args,
+    FnArgs<std::pair<Expression *, ir::Results>> const &args,
     FnArgs<type::Type const *> const &call_arg_type, Context *ctx) {
   // Generate code that attempts to match the types on each argument (only
   // check the ones at the call-site that could be variants).
@@ -920,8 +927,7 @@ static ir::BlockIndex CallLookupTest(
   for (size_t i = 0; i < args.pos_.size(); ++i) {
     if (!ctx->type_of(args.pos_[i].first)->is<type::Variant>()) { continue; }
     ir::BasicBlock::Current = ir::EarlyExitOn<false>(
-        next_binding, EmitVariantMatch(std::get<ir::Register>(
-                                           args.pos_.at(i).second[0].value),
+        next_binding, EmitVariantMatch(args.pos_.at(i).second.get<ir::Reg>(0),
                                        call_arg_type.pos_[i]));
   }
 
@@ -931,9 +937,8 @@ static ir::BlockIndex CallLookupTest(
     if (!ctx->type_of(expr_and_val.first)->is<type::Variant>()) { continue; }
     ir::BasicBlock::Current = ir::EarlyExitOn<false>(
         next_binding,
-        EmitVariantMatch(
-            std::get<ir::Register>(args.named_.at(iter->first).second[0].value),
-            iter->second));
+        EmitVariantMatch(args.named_.at(iter->first).second.get<ir::Reg>(0),
+                         iter->second));
   }
 
   return next_binding;
@@ -942,12 +947,20 @@ static ir::BlockIndex CallLookupTest(
 std::vector<ir::Val> DispatchTable::EmitCall(
     FnArgs<std::pair<Expression *, std::vector<ir::Val>>> const &args,
     type::Type const *ret_type, Context *ctx) const {
+  return EmitCall(args.Transform([](auto const &arg) {
+    return std::make_pair(arg.first, ir::Results::FromVals(arg.second));
+  }),
+                  ret_type, ctx);
+}
+
+std::vector<ir::Val> DispatchTable::EmitCall(
+    FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    type::Type const *ret_type, Context *ctx) const {
   ASSERT(bindings_.size() != 0u);
-  std::unordered_map<Expression *, std::vector<ir::Val> const *> expr_map;
-  args.Apply(
-      [&expr_map](std::pair<Expression *, std::vector<ir::Val>> const &arg) {
-        expr_map[arg.first] = &arg.second;
-      });
+  std::unordered_map<Expression *, ir::Results const *> expr_map;
+  args.Apply([&expr_map](std::pair<Expression *, ir::Results> const &arg) {
+    expr_map[arg.first] = &arg.second;
+  });
 
   std::vector<ir::Val> out_regs;
   if (ret_type->is<type::Tuple>()) {

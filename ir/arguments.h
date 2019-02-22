@@ -2,9 +2,10 @@
 #define ICARUS_IR_ARGUMENTS_H
 
 #include <string>
-#include "ir/results.h"
-#include "ir/register.h"
 #include "ir/addr.h"
+#include "ir/register.h"
+#include "ir/results.h"
+#include "type/callable.h"
 
 namespace type {
 struct Callable;
@@ -15,7 +16,7 @@ struct Val;
 
 struct Arguments {
   Arguments() = default;
-  Arguments(type::Callable const *c, ir::Results results);
+  Arguments(type::Callable const *c, Results results);
 
   void append(Val const &val);
   void append(RegisterOr<Addr> reg);

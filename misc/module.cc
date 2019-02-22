@@ -123,7 +123,7 @@ static Module *CompileModule(Module *mod) {
     return mod;
   }
 
-  file_stmts->EmitIR(&ctx);
+  file_stmts->EmitIr(&ctx);
   mod->CompleteAllDeferredWork();
 
   if (ctx.num_errors() > 0) {

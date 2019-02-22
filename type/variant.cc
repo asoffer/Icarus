@@ -100,7 +100,7 @@ bool Variant::needs_destroy() const {
                      [](Type const *t) { return t->needs_destroy(); });
 }
 
-void Variant::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void Variant::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                              ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   // TODO full destruction is only necessary if the type is changing.
   ASSERT(to.is_reg_ == true);
@@ -109,7 +109,7 @@ void Variant::EmitCopyAssign(Type const *from_type, ir::Val const &from,
 
   if (from_type->is<Variant>()) {
     auto actual_type = ir::Load<type::Type const *>(
-        ir::VariantType(std::get<ir::Register>(from.value)));
+        ir::VariantType(from.get<ir::Reg>(0)));
     auto landing = ir::Func::Current->AddBlock();
     for (Type const *v : from_type->as<Variant>().variants_) {
       auto next_block = ir::Func::Current->AddBlock();
@@ -118,10 +118,7 @@ void Variant::EmitCopyAssign(Type const *from_type, ir::Val const &from,
       ir::Store(v, ir::VariantType(to));
       v->EmitCopyAssign(
           v,
-          ir::Val::Reg(
-              ir::PtrFix(
-                  ir::VariantValue(v, std::get<ir::Register>(from.value)), v),
-              v),
+          ir::Results{ir::PtrFix(ir::VariantValue(v, from.get<ir::Reg>(0)), v)},
           ir::VariantValue(v, to), ctx);
       ir::UncondJump(landing);
       ir::BasicBlock::Current = next_block;
@@ -137,7 +134,7 @@ void Variant::EmitCopyAssign(Type const *from_type, ir::Val const &from,
   }
 }
 
-void Variant::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+void Variant::EmitMoveAssign(Type const *from_type, ir::Results const &from,
                              ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   // TODO full destruction is only necessary if the type is changing.
   ASSERT(to.is_reg_ == true);
@@ -145,8 +142,8 @@ void Variant::EmitMoveAssign(Type const *from_type, ir::Val const &from,
   EmitDestroy(to.reg_, ctx);
 
   if (from_type->is<Variant>()) {
-    auto actual_type = ir::Load<type::Type const *>(
-        ir::VariantType(std::get<ir::Register>(from.value)));
+    auto actual_type =
+        ir::Load<type::Type const *>(ir::VariantType(from.get<ir::Reg>(0)));
     auto landing = ir::Func::Current->AddBlock();
     for (Type const *v : from_type->as<Variant>().variants_) {
       auto next_block = ir::Func::Current->AddBlock();
@@ -155,10 +152,7 @@ void Variant::EmitMoveAssign(Type const *from_type, ir::Val const &from,
       ir::Store(v, ir::VariantType(to));
       v->EmitMoveAssign(
           v,
-          ir::Val::Reg(
-              ir::PtrFix(
-                  ir::VariantValue(v, std::get<ir::Register>(from.value)), v),
-              v),
+          ir::Results{ir::PtrFix(ir::VariantValue(v, from.get<ir::Reg>(0)), v)},
           ir::VariantValue(v, to), ctx);
       ir::UncondJump(landing);
       ir::BasicBlock::Current = next_block;
@@ -250,13 +244,13 @@ bool Variant::IsMovable() const {
                      [](Type const *t) { return t->IsMovable(); });
 }
 
-ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
-                                 Context *ctx) const {
+ir::Results Variant::PrepareArgument(Type const *from, ir::Results const &val,
+                                     Context *ctx) const {
   if (this == from) { return val; }
   auto alloc_reg = ir::Alloca(this);
 
   if (!from->is<Variant>()) {
-    Type_->EmitMoveAssign(Type_, ir::Val(from), ir::VariantType(alloc_reg),
+    Type_->EmitMoveAssign(Type_, ir::Results{from}, ir::VariantType(alloc_reg),
                           ctx);
     // TODO this isn't exactly right because 'from' might not be the appropriate
     // type here.
@@ -264,9 +258,9 @@ ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
     // to be the precise type stored.
     from->EmitMoveAssign(from, val, ir::VariantValue(from, alloc_reg), ctx);
   } else {
-    auto *from_v      = &from->as<Variant>();
-    auto runtime_type = ir::Load<Type const *>(
-        ir::VariantType(std::get<ir::Register>(val.value)));
+    auto *from_v = &from->as<Variant>();
+    auto runtime_type =
+        ir::Load<Type const *>(ir::VariantType(val.get<ir::Reg>(0)));
 
     // Because variants_ is sorted, we can find the intersection quickly:
     std::vector<Type const *> intersection;
@@ -299,11 +293,9 @@ ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
       ir::BasicBlock::Current = blocks[i];
       this->EmitMoveAssign(
           intersection[i],
-          ir::Val::Reg(
-              ir::PtrFix(ir::VariantValue(intersection[i],
-                                          std::get<ir::Register>(val.value)),
-                         intersection[i]),
-              intersection[i]),
+          ir::Results{
+              ir::PtrFix(ir::VariantValue(intersection[i], val.get<ir::Reg>(0)),
+                         intersection[i])},
           alloc_reg, ctx);
       ir::UncondJump(landing);
     }
@@ -316,7 +308,7 @@ ir::Val Variant::PrepareArgument(Type const *from, ir::Val const &val,
     ir::UncondJump(blocks.back());
     ir::BasicBlock::Current = landing;
   }
-  return ir::Val::Reg(alloc_reg, type::Ptr(this));
+  return ir::Results{alloc_reg};
 }
 
 Cmp Variant::Comparator() const {

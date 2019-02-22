@@ -19,10 +19,10 @@ BufferPointer const *BufPtr(Type const *t) {
   return &buffer_pointers_.lock()->emplace(t, BufferPointer(t)).first->second;
 }
 
-void Pointer::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void Pointer::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                          ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   if (this == from_type) {
-    ir::Store(from.reg_or<ir::Addr>(), to);
+    ir::Store(from.get<ir::Addr>(0), to);
   } else if (from_type == NullPtr) {
     ir::Store(ir::Addr::Null(), to);
   } else {
@@ -30,10 +30,10 @@ void Pointer::EmitCopyAssign(Type const *from_type, ir::Val const &from,
   }
 }
 
-void Pointer::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+void Pointer::EmitMoveAssign(Type const *from_type, ir::Results const &from,
                          ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   if (this == from_type) {
-    ir::Store(from.reg_or<ir::Addr>(), to);
+    ir::Store(from.get<ir::Addr>(0), to);
   } else if (from_type == NullPtr) {
     ir::Store(ir::Addr::Null(), to);
   } else {
@@ -66,8 +66,8 @@ void static WriteStr(char const *ptr_str, Pointer const *ptr,
 void BufferPointer::WriteTo(std::string *r) const { WriteStr("[*]", this, r); }
 void Pointer::WriteTo(std::string *r) const { WriteStr("*", this, r); }
 
-ir::Val Pointer::PrepareArgument(Type const *from, ir::Val const &val,
-                                 Context *ctx) const {
+ir::Results Pointer::PrepareArgument(Type const *from, ir::Results const &val,
+                                     Context *ctx) const {
   ASSERT(from == this);
   return val;
 }

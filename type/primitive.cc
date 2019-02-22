@@ -25,31 +25,29 @@ void Primitive::EmitInit(ir::Register id_reg, Context *) const {
   }
 }
 
-void Primitive::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void Primitive::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                                ir::RegisterOr<ir::Addr> to, Context *) const {
   ASSERT(this == from_type);
   switch (this->type_) {
-    case PrimType::Type_:
-      ir::Store(from.reg_or<type::Type const *>(), to);
-      break;
+    case PrimType::Type_: ir::Store(from.get<type::Type const *>(0), to); break;
     case PrimType::NullPtr: UNREACHABLE();
     case PrimType::EmptyArray: UNREACHABLE();
-    case PrimType::Bool: ir::Store(from.reg_or<bool>(), to); break;
-    case PrimType::Int8: ir::Store(from.reg_or<int8_t>(), to); break;
-    case PrimType::Int16: ir::Store(from.reg_or<int16_t>(), to); break;
-    case PrimType::Int32: ir::Store(from.reg_or<int32_t>(), to); break;
-    case PrimType::Int64: ir::Store(from.reg_or<int64_t>(), to); break;
-    case PrimType::Nat8: ir::Store(from.reg_or<uint8_t>(), to); break;
-    case PrimType::Nat16: ir::Store(from.reg_or<uint16_t>(), to); break;
-    case PrimType::Nat32: ir::Store(from.reg_or<uint32_t>(), to); break;
-    case PrimType::Nat64: ir::Store(from.reg_or<uint64_t>(), to); break;
-    case PrimType::Float32: ir::Store(from.reg_or<float>(), to); break;
-    case PrimType::Float64: ir::Store(from.reg_or<double>(), to); break;
+    case PrimType::Bool: ir::Store(from.get<bool>(0), to); break;
+    case PrimType::Int8: ir::Store(from.get<int8_t>(0), to); break;
+    case PrimType::Int16: ir::Store(from.get<int16_t>(0), to); break;
+    case PrimType::Int32: ir::Store(from.get<int32_t>(0), to); break;
+    case PrimType::Int64: ir::Store(from.get<int64_t>(0), to); break;
+    case PrimType::Nat8: ir::Store(from.get<uint8_t>(0), to); break;
+    case PrimType::Nat16: ir::Store(from.get<uint16_t>(0), to); break;
+    case PrimType::Nat32: ir::Store(from.get<uint32_t>(0), to); break;
+    case PrimType::Nat64: ir::Store(from.get<uint64_t>(0), to); break;
+    case PrimType::Float32: ir::Store(from.get<float>(0), to); break;
+    case PrimType::Float64: ir::Store(from.get<double>(0), to); break;
     default: UNREACHABLE();
   }
 }
 
-void Primitive::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+void Primitive::EmitMoveAssign(Type const *from_type, ir::Results const &from,
                                ir::RegisterOr<ir::Addr> to,
                                Context *ctx) const {
   EmitCopyAssign(from_type, from, to, ctx);
@@ -98,13 +96,11 @@ void Primitive::WriteTo(std::string *result) const {
   }
 }
 
-ir::Val Primitive::PrepareArgument(Type const *from, ir::Val const &val,
-                                   Context *ctx) const {
+ir::Results Primitive::PrepareArgument(Type const *from, ir::Results const &val,
+                                       Context *ctx) const {
   if (from->is<Variant>()) {
-    return ir::Val::Reg(
-        ir::Load(ir::VariantValue(this, std::get<ir::Register>(val.value)),
-                 this),
-        this);
+    return ir::Results{
+        ir::Load(ir::VariantValue(this, val.get<ir::Register>(0)), this)};
   } else {
     ASSERT(from == this);
     return val;

@@ -90,7 +90,7 @@ void Switch::ExtractJumps(JumpExprs *rets) const {
   }
 }
 
-std::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
+ir::Results ast::Switch::EmitIr(Context *ctx) {
   std::unordered_map<ir::BlockIndex, ir::Val> phi_args;
   auto land_block = ir::Func::Current->AddBlock();
 
@@ -130,7 +130,8 @@ std::vector<ir::Val> ast::Switch::EmitIR(Context *ctx) {
 
   ir::BasicBlock::Current = land_block;
   auto *t                 = ctx->type_of(this);
-  return {ir::MakePhi(ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)};
+  return ir::Results{ir::Results::FromVals(
+      {ir::MakePhi(ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)})};
 }
 
 }  // namespace ast

@@ -84,6 +84,9 @@ struct DispatchTable {
                                           Context *ctx, bool repeated = false);
 
   std::vector<ir::Val> EmitCall(
+      ast::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
+      type::Type const *ret_type, Context *ctx) const;
+  std::vector<ir::Val> EmitCall(
       ast::FnArgs<std::pair<ast::Expression *, std::vector<ir::Val>>> const
           &args,
       type::Type const *ret_type, Context *ctx) const;

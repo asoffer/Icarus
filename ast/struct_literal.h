@@ -27,7 +27,7 @@ struct StructLiteral : public Literal {
 
   void CompleteBody(Context *ctx);
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *) override;
 
   std::unique_ptr<DeclScope> type_scope;
   std::vector<std::unique_ptr<Declaration>> fields_, args_;

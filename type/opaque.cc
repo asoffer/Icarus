@@ -6,12 +6,12 @@
 namespace type {
 void Opaque::WriteTo(std::string *result) const { result->append("<opaque>"); }
 
-void Opaque::EmitCopyAssign(const Type *from_type, ir::Val const &from,
+void Opaque::EmitCopyAssign(const Type *from_type, ir::Results const &from,
                             ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   UNREACHABLE();
 }
 
-void Opaque::EmitMoveAssign(const Type *from_type, ir::Val const &from,
+void Opaque::EmitMoveAssign(const Type *from_type, ir::Results const &from,
                             ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   UNREACHABLE();
 }
@@ -22,8 +22,8 @@ void Opaque::EmitDestroy(ir::Register reg, Context *ctx) const {
   UNREACHABLE();
 }
 
-ir::Val Opaque::PrepareArgument(const Type *t, const ir::Val &val,
-                                Context *ctx) const {
+ir::Results Opaque::PrepareArgument(const Type *t, const ir::Results &val,
+                                    Context *ctx) const {
   UNREACHABLE();
 }
 

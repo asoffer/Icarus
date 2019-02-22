@@ -84,11 +84,9 @@ void Index::ExtractJumps(JumpExprs *rets) const {
   rhs_->ExtractJumps(rets);
 }
 
-std::vector<ir::Val> Index::EmitIR(Context *ctx) {
+ir::Results Index::EmitIr(Context *ctx) {
   // TODO is indexing overloadable?
-  auto *this_type = ctx->type_of(this);
-  return {
-      ir::Val::Reg(ir::PtrFix(EmitLVal(ctx)[0].reg_, this_type), this_type)};
+  return ir::Results{ir::PtrFix(EmitLVal(ctx)[0].reg_, ctx->type_of(this))};
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> Index::EmitLVal(Context *ctx) {
@@ -106,15 +104,15 @@ std::vector<ir::RegisterOr<ir::Addr>> Index::EmitLVal(Context *ctx) {
     auto index =
         ir::Cast(rhs_type, type::Int64, rhs_->EmitIR(ctx)[0]).reg_or<int64_t>();
 
-    return {ir::PtrIncr(std::get<ir::Register>(lhs_->EmitIR(ctx)[0].value),
-                        index, type::Ptr(buf_ptr_type->pointee))};
+    return {ir::PtrIncr(lhs_->EmitIr(ctx).get<ir::Reg>(0), index,
+                        type::Ptr(buf_ptr_type->pointee))};
   } else if (lhs_type == type::ByteView) {
     // TODO interim until you remove string_view and replace it with Addr
     // entirely.
     auto index =
         ir::Cast(rhs_type, type::Int64, rhs_->EmitIR(ctx)[0]).reg_or<int64_t>();
-    return {ir::PtrIncr(ir::GetString(std::string(std::get<std::string_view>(
-                            lhs_->EmitIR(ctx)[0].value))),
+    return {ir::PtrIncr(ir::GetString(std::string(
+                            lhs_->EmitIr(ctx).get<std::string_view>(0).val_)),
                         index, type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
     auto index = std::get<int64_t>(

@@ -32,18 +32,18 @@ void Interface::WriteTo(std::string *result) const {
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
 }
 
-ir::Val Interface::PrepareArgument(Type const *t, ir::Val const &val,
-                                   Context *ctx) const {
+ir::Results Interface::PrepareArgument(Type const *t, ir::Results const &val,
+                                       Context *ctx) const {
   UNREACHABLE();
 }
 
-void Interface::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void Interface::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                                ir::RegisterOr<ir::Addr> to,
                                Context *ctx) const {
   UNREACHABLE();
 }
 
-void Interface::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+void Interface::EmitMoveAssign(Type const *from_type, ir::Results const &from,
                                ir::RegisterOr<ir::Addr> to,
                                Context *ctx) const {
   UNREACHABLE();

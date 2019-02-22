@@ -9,6 +9,7 @@
 #include "type/util.h"
 
 namespace ir {
+
 std::string Arguments::to_string() const {
   std::stringstream ss;
   size_t i                                  = 0;
@@ -29,7 +30,7 @@ std::string Arguments::to_string() const {
 
 void Arguments::append(RegisterOr<Addr> r) { results_.append(r); }
 
-Arguments::Arguments(type::Callable const *c, ir::Results results)
+Arguments::Arguments(type::Callable const *c, Results results)
     : type_(c), results_(std::move(results)) {}
 
 void Arguments::append(const ir::Val &val) {

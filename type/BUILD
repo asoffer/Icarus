@@ -259,6 +259,7 @@ cc_target(
         "//base:util",
         "//ir:addr",
         "//ir:register",
+        "//ir:results",
     ],
     impl_deps = [
         ":generic_struct",

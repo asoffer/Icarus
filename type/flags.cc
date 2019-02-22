@@ -57,16 +57,16 @@ Typed<ir::FlagsVal, Flags> Flags::EmitLiteral(
   return Typed<ir::FlagsVal, Flags>(vals_.at(member_name), this);
 }
 
-void Flags::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void Flags::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                            ir::RegisterOr<ir::Addr> to, Context *) const {
   ASSERT(this == from_type);
-  ir::Store(from.reg_or<ir::FlagsVal>(), to);
+  ir::Store(from.get<ir::FlagsVal>(0), to);
 }
 
-void Flags::EmitMoveAssign(Type const *from_type, ir::Val const &from,
-                       ir::RegisterOr<ir::Addr> to, Context *) const {
+void Flags::EmitMoveAssign(Type const *from_type, ir::Results const &from,
+                           ir::RegisterOr<ir::Addr> to, Context *) const {
   ASSERT(this == from_type);
-  ir::Store(from.reg_or<ir::FlagsVal>(), to);
+  ir::Store(from.get<ir::FlagsVal>(0), to);
 }
 
 void Flags::defining_modules(
@@ -83,8 +83,8 @@ void Flags::WriteTo(std::string *result) const {
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
 }
 
-ir::Val Flags::PrepareArgument(Type const *from, ir::Val const &val,
-                               Context *ctx) const {
+ir::Results Flags::PrepareArgument(Type const *from, ir::Results const &val,
+                                   Context *ctx) const {
   ASSERT(from == this);
   return val;
 }

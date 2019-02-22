@@ -18,7 +18,7 @@ struct RepeatedUnop : public Node {
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *) override;
 
   frontend::Operator op_;
   CommaList args_;

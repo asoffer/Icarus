@@ -52,6 +52,8 @@ struct Results {
     }
   }
 
+  Results GetResult(size_t index) const;
+
   size_t size() const { return offset_.size(); }
 
  private:

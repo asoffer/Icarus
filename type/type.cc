@@ -83,7 +83,7 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
   NOT_YET("log an error: no cast from ", from, " to ", to);
 }
 
-void EmitCopyInit(Type const *from_type, ir::Val const &from_val,
+void EmitCopyInit(Type const *from_type, ir::Results const &from_val,
                   Typed<ir::Register> to_var, Context *ctx) {
   auto *to_type = to_var.type()->as<Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.
@@ -94,7 +94,7 @@ void EmitCopyInit(Type const *from_type, ir::Val const &from_val,
   to_type->EmitCopyAssign(from_type, from_val, to_var.get(), ctx);
 }
 
-void EmitMoveInit(Type const *from_type, ir::Val const &from_val,
+void EmitMoveInit(Type const *from_type, ir::Results const &from_val,
                   Typed<ir::Register> to_var, Context *ctx) {
   auto *to_type = to_var.type()->as<Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.

@@ -171,7 +171,8 @@ VerifyResult Call::VerifyType(Context *ctx) {
   if (fn_->is<Terminal>()) {
     // Special case for error, etc.
     // TODO can these be overloaded?
-    auto fn_val = fn_->as<Terminal>().value;
+    auto fn_val = fn_->as<Terminal>().EmitIR(ctx)[0];
+
     if (fn_val == BytesFunc() || fn_val == AlignFunc()) {
       // TODO turn assert into actual checks with error logging. Or maybe allow
       // named args here?
@@ -251,7 +252,7 @@ void Call::ExtractJumps(JumpExprs *rets) const {
 
 std::vector<ir::Val> Call::EmitIR(Context *ctx) {
   if (fn_->is<Terminal>()) {
-    auto fn_val = fn_->as<Terminal>().value;
+    auto fn_val = fn_->as<Terminal>().EmitIR(ctx)[0];
 #ifdef DBG
     if (fn_val == DebugIrFunc()) {
       ir::DebugIr();

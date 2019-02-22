@@ -85,19 +85,19 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
   return VerifyResult(ctx->set_type(this, t), decl_->const_);
 }
 
-std::vector<ir::Val> Identifier::EmitIR(Context *ctx) {
+ir::Results Identifier::EmitIr(Context *ctx) {
   ASSERT(decl_ != nullptr) << this->to_string(0);
-  if (decl_->const_) { return decl_->EmitIR(ctx); }
+  if (decl_->const_) { return decl_->EmitIr(ctx); }
   if (decl_->is_fn_param_) {
     auto *t = ctx->type_of(this);
-    return {decl_->is_output_ && !t->is_big()
-                ? ir::Val::Reg(ir::Load(ctx->addr(decl_), t), t)
-                : ir::Val::Reg(ctx->addr(decl_), t)};
+    return ir::Results{decl_->is_output_ && !t->is_big()
+                           ? ir::Load(ctx->addr(decl_), t)
+                           : ctx->addr(decl_)};
   } else if (decl_->is<MatchDeclaration>()) {
     // TODO is there a better way to do look up? look up in parent too?
     if (auto iter = ctx->bound_constants_.constants_.find(decl_);
         iter != ctx->bound_constants_.constants_.end()) {
-      return {iter->second};
+      return ir::Results::FromVals({iter->second});
     } else {
       UNREACHABLE(decl_);
     }
@@ -105,7 +105,7 @@ std::vector<ir::Val> Identifier::EmitIR(Context *ctx) {
     auto *t   = ASSERT_NOT_NULL(ctx->type_of(this));
     auto lval = EmitLVal(ctx)[0];
     if (!lval.is_reg_) { NOT_YET(); }
-    return {ir::Val::Reg(ir::PtrFix(lval.reg_, t), t)};
+    return ir::Results{ir::PtrFix(lval.reg_, t)};
   }
 }
 

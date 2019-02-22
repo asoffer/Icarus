@@ -195,99 +195,91 @@ VerifyResult Unop::VerifyType(Context *ctx) {
   }
 }
 
-std::vector<ir::Val> Unop::EmitIR(Context *ctx) {
+ir::Results Unop::EmitIr(Context *ctx) {
   auto *operand_type = ctx->type_of(operand.get());
   if (auto const *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
     FnArgs<std::pair<Expression *, std::vector<ir::Val>>> args;
     args.pos_ = {std::pair(operand.get(), operand->EmitIR(ctx))};
-    return dispatch_table->EmitCall(args, ctx->type_of(this), ctx);
+    return ir::Results::FromVals(
+        dispatch_table->EmitCall(args, ctx->type_of(this), ctx));
   }
 
   switch (op) {
     case frontend::Operator::Copy: {
       auto reg = ir::TmpAlloca(operand_type, ctx);
-      type::EmitCopyInit(operand_type, operand->EmitIR(ctx)[0],
+      type::EmitCopyInit(operand_type, operand->EmitIr(ctx),
                          type::Typed<ir::Register>(reg, operand_type), ctx);
-      return {ir::Val::Reg(reg, operand_type)};
+      return ir::Results{reg};
     } break;
     case frontend::Operator::Move: {
       auto reg = ir::TmpAlloca(operand_type, ctx);
-      type::EmitMoveInit(operand_type, operand->EmitIR(ctx)[0],
+      type::EmitMoveInit(operand_type, operand->EmitIr(ctx),
                          type::Typed<ir::Register>(reg, operand_type), ctx);
-      return {ir::Val::Reg(reg, operand_type)};
+      return ir::Results{reg};
     } break;
     case frontend::Operator::BufPtr:
-      return {ir::ValFrom(
-          ir::BufPtr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
+      return ir::Results{
+          ir::BufPtr(operand->EmitIr(ctx).get<type::Type const *>(0))};
     case frontend::Operator::Not: {
       auto *t = ctx->type_of(operand.get());
       if (t == type::Bool) {
-        return {ir::ValFrom(ir::Not(operand->EmitIR(ctx)[0].reg_or<bool>()))};
+        return ir::Results{ir::Not(operand->EmitIr(ctx).get<bool>(0))};
       } else if (t->is<type::Flags>()) {
         auto *flags_type = &t->as<type::Flags>();
-        return {ir::ValFrom(
+        return ir::Results{
             ir::Not(type::Typed<ir::RegisterOr<ir::FlagsVal>, type::Flags>(
-                operand->EmitIR(ctx)[0].reg_or<ir::FlagsVal>(), flags_type)),
-            flags_type)};
+                operand->EmitIr(ctx).get<ir::FlagsVal>(0), flags_type)),
+            flags_type};
       } else {
         NOT_YET();
       }
     } break;
     case frontend::Operator::Sub: {
       auto operand_ir = operand->EmitIR(ctx)[0];
-      return {
-          type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
-              ctx->type_of(operand.get()), [&](auto type_holder) {
-                using T = typename decltype(type_holder)::type;
-                return ir::ValFrom(ir::Neg(operand_ir.reg_or<T>()));
-              })};
+      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
+          ctx->type_of(operand.get()), [&](auto type_holder) {
+            using T = typename decltype(type_holder)::type;
+            return ir::Results{ir::Neg(operand_ir.reg_or<T>())};
+          });
     } break;
     case frontend::Operator::TypeOf:
-      return {ir::Val(ctx->type_of(operand.get()))};
+      return ir::Results{ctx->type_of(operand.get())};
     case frontend::Operator::Which:
-      return {ir::Val::Reg(
-          ir::Load<type::Type const *>(ir::VariantType(
-              std::get<ir::Register>(operand->EmitIR(ctx)[0].value))),
-          type::Type_)};
-    case frontend::Operator::And:
-      return {ir::ValFrom(operand->EmitLVal(ctx)[0],
-                          type::Ptr(ctx->type_of(this)))};
+      return ir::Results{ir::Load<type::Type const *>(ir::VariantType(
+          std::get<ir::Register>(operand->EmitIR(ctx)[0].value)))};
+    case frontend::Operator::And: return ir::Results{operand->EmitLVal(ctx)[0]};
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?
-      return backend::Evaluate(operand.get(), ctx);
+      return ir::Results::FromVals(backend::Evaluate(operand.get(), ctx));
     }
     case frontend::Operator::Mul:
-      return {ir::ValFrom(
-          ir::Ptr(operand->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
+      return ir::Results{
+          ir::Ptr(operand->EmitIr(ctx).get<type::Type const *>(0))};
     case frontend::Operator::At: {
       auto *t = ctx->type_of(this);
-      return {ir::Val::Reg(
-          ir::Load(std::get<ir::Register>(operand->EmitIR(ctx)[0].value), t),
-          t)};
+      return ir::Results{
+          ir::Load(std::get<ir::Register>(operand->EmitIR(ctx)[0].value), t)};
     }
     case frontend::Operator::Needs: {
       // TODO validate requirements are well-formed?
       ir::Func::Current->precondition_exprs_.push_back(operand.get());
-      return {};
+      return ir::Results{};
     } break;
     case frontend::Operator::Ensure: {
       // TODO validate requirements are well-formed?
       ir::Func::Current->postcondition_exprs_.push_back(operand.get());
-      return {};
+      return ir::Results{};
     } break;
     case frontend::Operator::Expand: {
       ir::Val tuple_val             = operand->EmitIR(ctx)[0];
       ir::Register tuple_reg        = std::get<ir::Register>(tuple_val.value);
       type::Tuple const *tuple_type = &tuple_val.type->as<type::Tuple>();
-      std::vector<ir::Val> results;
-      results.reserve(tuple_type->size());
+      ir::Results results;
       for (size_t i = 0; i < tuple_type->size(); ++i) {
-        results.push_back(
-            ir::Val::Reg(ir::PtrFix(ir::Field(tuple_reg, tuple_type, i).get(),
-                                    tuple_type->entries_[i]),
-                         tuple_type->entries_[i]));
+        results.append(ir::PtrFix(ir::Field(tuple_reg, tuple_type, i).get(),
+                                  tuple_type->entries_[i]));
       }
       return results;
     }
@@ -305,7 +297,7 @@ void Unop::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
     case frontend::Operator::Move: operand->EmitMoveInit(reg, ctx); break;
     case frontend::Operator::Copy: operand->EmitCopyInit(reg, ctx); break;
     default:
-      type::EmitMoveInit(ctx->type_of(this), this->EmitIR(ctx)[0], reg, ctx);
+      type::EmitMoveInit(ctx->type_of(this), this->EmitIr(ctx), reg, ctx);
       break;
   }
 }
@@ -315,7 +307,7 @@ void Unop::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
     case frontend::Operator::Move: operand->EmitMoveInit(reg, ctx); break;
     case frontend::Operator::Copy: operand->EmitCopyInit(reg, ctx); break;
     default:
-      type::EmitCopyInit(ctx->type_of(this), this->EmitIR(ctx)[0], reg, ctx);
+      type::EmitCopyInit(ctx->type_of(this), this->EmitIr(ctx), reg, ctx);
       break;
   }
 }

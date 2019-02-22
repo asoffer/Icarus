@@ -17,7 +17,9 @@ struct TaggedNode {
   TaggedNode(std::unique_ptr<ast::Node> node, Tag tag)
       : node_(std::move(node)), tag_(tag) {}
 
-  static TaggedNode TerminalExpression(const TextSpan &span, ir::Val val);
+  static TaggedNode TerminalExpression(const TextSpan &span,
+                                       ir::Results results, type::Type const *);
+
   TaggedNode(const TextSpan &span, const std::string &token, Tag tag);
 
   bool valid() const { return node_ != nullptr; }

@@ -26,13 +26,13 @@ struct Expression : public Node {
   virtual std::string to_string(size_t n) const                     = 0;
   virtual void assign_scope(Scope *scope)                           = 0;
   virtual VerifyResult VerifyType(Context *ctx)                     = 0;
-  virtual std::vector<ir::Val> EmitIR(Context *)                    = 0;
+  virtual std::vector<ir::Val> EmitIR(Context *);
   virtual std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
   virtual void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
-    type::EmitCopyInit(ctx->type_of(this), this->EmitIR(ctx)[0], reg, ctx);
+    type::EmitCopyInit(ctx->type_of(this), this->EmitIr(ctx), reg, ctx);
   }
   virtual void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
-    type::EmitMoveInit(ctx->type_of(this), this->EmitIR(ctx)[0], reg, ctx);
+    type::EmitMoveInit(ctx->type_of(this), this->EmitIr(ctx), reg, ctx);
   }
   virtual void DependentDecls(base::Graph<Declaration *> *g,
                               Declaration *d) const = 0;

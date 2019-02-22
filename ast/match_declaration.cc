@@ -22,13 +22,13 @@ bool MatchDeclaration::InferType(type::Type const *t,
   return true;
 }
 
-std::vector<ir::Val> MatchDeclaration::EmitIR(Context *ctx) {
+ir::Results MatchDeclaration::EmitIr(Context *ctx) {
   if (auto iter = ctx->bound_constants_.constants_.find(this);
       iter != ctx->bound_constants_.constants_.end()) {
-    return {iter->second};
+    return ir::Results::FromVals({iter->second});
   } else {
-    return {ir::Val(
-        backend::EvaluateAs<type::Interface const *>(type_expr.get(), ctx))};
+    return ir::Results{
+        backend::EvaluateAs<type::Interface const *>(type_expr.get(), ctx)};
   }
 }
 }  // namespace ast

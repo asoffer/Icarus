@@ -8,6 +8,7 @@
 #include "base/util.h"
 #include "ir/addr.h"
 #include "ir/register.h"
+#include "ir/results.h"
 
 struct Context;
 struct TextSpan;
@@ -40,15 +41,15 @@ struct AnyFunc;
 #define ENDING = 0
 #define BASIC_METHODS_WITHOUT_LLVM                                             \
   virtual void WriteTo(std::string *buf) const ENDING;                         \
-  virtual void EmitCopyAssign(Type const *from_type, ir::Val const &from,      \
+  virtual void EmitCopyAssign(Type const *from_type, ir::Results const &from,  \
                               ir::RegisterOr<ir::Addr> to, Context *ctx)       \
       const ENDING;                                                            \
-  virtual void EmitMoveAssign(Type const *from_type, ir::Val const &from,      \
+  virtual void EmitMoveAssign(Type const *from_type, ir::Results const &from,  \
                               ir::RegisterOr<ir::Addr> to, Context *ctx)       \
       const ENDING;                                                            \
   virtual void EmitInit(ir::Register reg, Context *ctx) const ENDING;          \
-  virtual ir::Val PrepareArgument(Type const *t, const ir::Val &val,           \
-                                  Context *ctx) const ENDING;                  \
+  virtual ir::Results PrepareArgument(Type const *t, const ir::Results &val,   \
+                                      Context *ctx) const ENDING;              \
   virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const ENDING;     \
   virtual void defining_modules(std::unordered_set<::Module const *> *modules) \
       const ENDING;                                                            \
@@ -180,7 +181,8 @@ struct ConditionalApplicator {
   template <typename Fn, typename... Args>
   static auto Apply(type::Type const *t, Fn &&fn, Args &&... args) {
     if constexpr (sizeof...(Ts) == 0) {
-      ASSERT(::type::Compare<T>(t) == true) << DUMP(t, typeid(T).name());
+      ASSERT(::type::Compare<T>(t) == true)
+          << DUMP(t->to_string(), typeid(T).name());
       return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
                                   std::forward<Args>(args)...);
     } else {

@@ -18,10 +18,12 @@ namespace debug {
 
 struct Asserter {
   template <typename L, typename R>
-  bool operator()(::matcher::ExprMatchResult<L, R> const &result) const {
+  bool operator()(::matcher::ExprMatchResult<L, R> const &result,
+                  std::experimental::source_location src_loc =
+                      std::experimental::source_location::current()) const {
     if (!result.matched) {
       using base::stringify;
-      base::Logger(base::LogFormatterWithoutFunction)
+      base::Logger(base::LogFormatterWithoutFunction, nullptr, src_loc)
           << "\033[0;1;31mAssertion failed\n"
              "    \033[0;1;37mExpected:\033[0m "
           << result.expr_string
@@ -36,10 +38,12 @@ struct Asserter {
   }
 
   template <typename T>
-  bool operator()(::matcher::MatchResult<T> const &match_result) {
+  bool operator()(::matcher::MatchResult<T> const &match_result,
+                  std::experimental::source_location src_loc =
+                      std::experimental::source_location::current()) {
     if (match_result.description.has_value()) {
       using base::stringify;
-      base::Logger(base::LogFormatterWithoutFunction)
+      base::Logger(base::LogFormatterWithoutFunction, nullptr, src_loc)
           << "\033[0;1;31mAssertion failed\n"
              "  \033[0;1;37mExpression:\033[0m "
           << match_result.expr.string()

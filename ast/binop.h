@@ -23,7 +23,7 @@ struct Binop : public Literal {
                       Declaration *d) const override;
   bool InferType(type::Type const *t, InferenceState *state) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *) override;
 
   frontend::Operator op;
   std::unique_ptr<Expression> lhs, rhs;

@@ -37,7 +37,7 @@ struct FunctionLiteral : public Literal {
   VerifyResult VerifyTypeConcrete(Context *);
   VerifyResult VerifyBody(Context *);
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *) override;
 
   void CompleteBody(Context *ctx);
 

@@ -50,23 +50,22 @@ VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
   return result;
 }
 
-std::vector<ir::Val> ArrayLiteral::EmitIR(Context *ctx) {
+ir::Results ArrayLiteral::EmitIr(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = ctx->type_of(this);
   auto alloc      = ir::TmpAlloca(this_type, ctx);
-  auto array_val  = ir::Val::Reg(alloc, type::Ptr(this_type));
   if (!cl_.exprs_.empty()) {
     auto *data_type = this_type->as<type::Array>().data_type;
     for (size_t i = 0; i < cl_.exprs_.size(); ++i) {
       type::EmitMoveInit(
-          data_type, cl_.exprs_[i]->EmitIR(ctx)[0],
+          data_type, cl_.exprs_[i]->EmitIr(ctx),
           type::Typed<ir::Register>(
               ir::Index(type::Ptr(this_type), alloc, static_cast<int32_t>(i)),
               type::Ptr(data_type)),
           ctx);
     }
   }
-  return {array_val};
+  return ir::Results{alloc};
 }
 
 void ArrayLiteral::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {

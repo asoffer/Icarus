@@ -44,10 +44,10 @@ VerifyResult ArrayType::VerifyType(Context *ctx) {
                       data_type_result.const_ && length_result.const_);
 }
 
-std::vector<ir::Val> ArrayType::EmitIR(Context *ctx) {
-  return {ir::ValFrom(
-      ir::Array(length_->EmitIR(ctx)[0].reg_or<int64_t>(),
-                data_type_->EmitIR(ctx)[0].reg_or<type::Type const *>()))};
+ir::Results ArrayType::EmitIr(Context *ctx) {
+  return ir::Results{
+      ir::Array(length_->EmitIr(ctx).get<int64_t>(0),
+                data_type_->EmitIr(ctx).get<type::Type const *>(0))};
 }
 
 void ArrayType::ExtractJumps(JumpExprs *rets) const {

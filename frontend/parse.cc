@@ -1051,9 +1051,8 @@ std::unique_ptr<ast::Node> BuildKWBlock(
     } else {
       UNREACHABLE(tk);
     }
-  } else if (nodes[0]->is<ast::Terminal>()) {
-    auto *t =
-        std::get<const type::Type *>(nodes[0]->as<ast::Terminal>().value.value);
+  } else if (auto *term = nodes[0]->if_as<ast::Terminal>()) {
+    auto *t = term->results_.get<type::Type const *>(0).val_;
 
     if (t == type::Block) {
       return BuildBlock(move_as<ast::Statements>(nodes[1]), true, mod,

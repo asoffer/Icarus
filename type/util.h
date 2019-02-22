@@ -18,9 +18,9 @@
 
 namespace type {
 
-void EmitCopyInit(const Type *from_type, ir::Val const &from_val,
+void EmitCopyInit(const Type *from_type, ir::Results const &from_val,
                   Typed<ir::Register> to_var, Context *ctx);
-void EmitMoveInit(const Type *from_type, ir::Val const &from_val,
+void EmitMoveInit(const Type *from_type, ir::Results const &from_val,
                   Typed<ir::Register> to_var, Context *ctx);
 
 template <typename T>
@@ -58,7 +58,7 @@ constexpr type::Type const *Get() {
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
-    UNREACHABLE();
+    return type::Block; // Maybe opt-block?
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return type::Type_;
   } else if constexpr (std::is_same_v<T, type::Interface const *>) {

@@ -257,7 +257,7 @@ void Binop::ExtractJumps(JumpExprs *rets) const {
   rhs->ExtractJumps(rets);
 }
 
-std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
+ir::Results Binop::EmitIr(Context *ctx) {
   auto *lhs_type = ctx->type_of(lhs.get());
   auto *rhs_type = ctx->type_of(rhs.get());
 
@@ -268,60 +268,60 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
     args.pos_.emplace_back(lhs.get(), lhs->EmitIR(ctx));
     args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx));
 
-    return dispatch_table->EmitCall(args, ASSERT_NOT_NULL(ctx->type_of(this)),
-                                    ctx);
+    return ir::Results::FromVals(dispatch_table->EmitCall(
+        args, ASSERT_NOT_NULL(ctx->type_of(this)), ctx));
   }
 
   switch (op) {
     case frontend::Operator::Add: {
-      auto lhs_ir = lhs->EmitIR(ctx)[0];
-      auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                               uint16_t, uint32_t, uint64_t, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
+      auto lhs_ir = lhs->EmitIr(ctx);
+      auto rhs_ir = rhs->EmitIr(ctx);
+      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                              uint16_t, uint32_t, uint64_t, float, double>(
+          rhs_type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Add(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-          })};
+            return ir::Results{ir::Add(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
+          });
     } break;
     case frontend::Operator::Sub: {
-      auto lhs_ir = lhs->EmitIR(ctx)[0];
-      auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                               uint16_t, uint32_t, uint64_t, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
+      auto lhs_ir = lhs->EmitIr(ctx);
+      auto rhs_ir = rhs->EmitIr(ctx);
+      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                              uint16_t, uint32_t, uint64_t, float, double>(
+          rhs_type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Sub(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-          })};
+            return ir::Results{ir::Sub(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
+          });
     } break;
     case frontend::Operator::Mul: {
-      auto lhs_ir = lhs->EmitIR(ctx)[0];
-      auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                               uint16_t, uint32_t, uint64_t, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
+      auto lhs_ir = lhs->EmitIr(ctx);
+      auto rhs_ir = rhs->EmitIr(ctx);
+      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                              uint16_t, uint32_t, uint64_t, float, double>(
+          rhs_type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Mul(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-          })};
+            return ir::Results{ir::Mul(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
+          });
     } break;
     case frontend::Operator::Div: {
-      auto lhs_ir = lhs->EmitIR(ctx)[0];
-      auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                               uint16_t, uint32_t, uint64_t, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
+      auto lhs_ir = lhs->EmitIr(ctx);
+      auto rhs_ir = rhs->EmitIr(ctx);
+      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                              uint16_t, uint32_t, uint64_t, float, double>(
+          rhs_type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Div(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-          })};
+            return ir::Results{ir::Div(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
+          });
     } break;
     case frontend::Operator::Mod: {
-      auto lhs_ir = lhs->EmitIR(ctx)[0];
-      auto rhs_ir = rhs->EmitIR(ctx)[0];
-      return {type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                               uint16_t, uint32_t, uint64_t>(
-          rhs_ir.type, [&](auto type_holder) {
+      auto lhs_ir = lhs->EmitIr(ctx);
+      auto rhs_ir = rhs->EmitIr(ctx);
+      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                              uint16_t, uint32_t, uint64_t>(
+          rhs_type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(ir::Mod(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>()));
-          })};
+            return ir::Results{ir::Mod(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
+          });
     } break;
     case frontend::Operator::Arrow: {
       // TODO ugly hack.
@@ -338,19 +338,17 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       }
 
       auto reg_or_type = ir::Arrow(ir::Tup(lhs_vals), ir::Tup(rhs_vals));
-      return {ir::ValFrom(reg_or_type)};
+      return ir::Results{reg_or_type};
     } break;
     case frontend::Operator::Assign: {
       // TODO support splatting.
       auto lhs_lvals = lhs->EmitLVal(ctx);
       if (lhs_lvals.size() != 1) { NOT_YET(); }
 
-      auto rhs_vals = rhs->EmitIR(ctx);
-      if (rhs_vals.size() != 1) { NOT_YET(); }
+      auto rhs_vals = rhs->EmitIr(ctx);
+      lhs_type->EmitMoveAssign(rhs_type, rhs_vals, lhs_lvals[0], ctx);
 
-      lhs_type->EmitMoveAssign(rhs_type, rhs_vals[0], lhs_lvals[0], ctx);
-
-      return {};
+      return ir::Results{};
     } break;
     case frontend::Operator::OrEq: {
       auto *this_type = ctx->type_of(this);
@@ -358,27 +356,27 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
         ir::Store(ir::OrFlags(&this_type->as<type::Flags>(),
                               ir::Load<ir::FlagsVal>(lhs_lval, this_type),
-                              rhs->EmitIR(ctx)[0].reg_or<ir::FlagsVal>()),
+                              rhs->EmitIr(ctx).get<ir::FlagsVal>(0)),
                   lhs_lval);
-        return {};
+        return ir::Results{};
       }
       auto land_block = ir::Func::Current->AddBlock();
       auto more_block = ir::Func::Current->AddBlock();
 
-      auto lhs_val       = lhs->EmitIR(ctx)[0].reg_or<bool>();
+      auto lhs_val       = lhs->EmitIr(ctx).get<bool>(0);
       auto lhs_end_block = ir::BasicBlock::Current;
       ir::CondJump(lhs_val, land_block, more_block);
 
       ir::BasicBlock::Current = more_block;
-      auto rhs_val            = rhs->EmitIR(ctx)[0].reg_or<bool>();
+      auto rhs_val            = rhs->EmitIr(ctx).get<bool>(0);
       auto rhs_end_block      = ir::BasicBlock::Current;
       ir::UncondJump(land_block);
 
       ir::BasicBlock::Current = land_block;
 
-      return {ir::ValFrom(ir::MakePhi<bool>(
-          ir::Phi(type::Bool),
-          {{lhs_end_block, true}, {rhs_end_block, rhs_val}}))};
+      return ir::Results{
+          ir::MakePhi<bool>(ir::Phi(type::Bool),
+                            {{lhs_end_block, true}, {rhs_end_block, rhs_val}})};
     } break;
     case frontend::Operator::AndEq: {
       auto *this_type = ctx->type_of(this);
@@ -386,96 +384,96 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
         ir::Store(ir::AndFlags(&this_type->as<type::Flags>(),
                                ir::Load<ir::FlagsVal>(lhs_lval, this_type),
-                               rhs->EmitIR(ctx)[0].reg_or<ir::FlagsVal>()),
+                               rhs->EmitIr(ctx).get<ir::FlagsVal>(0)),
                   lhs_lval);
-        return {};
+        return ir::Results{};
       }
 
       auto land_block = ir::Func::Current->AddBlock();
       auto more_block = ir::Func::Current->AddBlock();
 
-      auto lhs_val       = lhs->EmitIR(ctx)[0].reg_or<bool>();
+      auto lhs_val       = lhs->EmitIr(ctx).get<bool>(0);
       auto lhs_end_block = ir::BasicBlock::Current;
       ir::CondJump(lhs_val, more_block, land_block);
 
       ir::BasicBlock::Current = more_block;
-      auto rhs_val            = rhs->EmitIR(ctx)[0].reg_or<bool>();
+      auto rhs_val            = rhs->EmitIr(ctx).get<bool>(0);
       auto rhs_end_block      = ir::BasicBlock::Current;
       ir::UncondJump(land_block);
 
       ir::BasicBlock::Current = land_block;
 
-      return {ir::ValFrom(ir::MakePhi<bool>(
+      return ir::Results{ir::MakePhi<bool>(
           ir::Phi(type::Bool),
-          {{lhs_end_block, rhs_val}, {rhs_end_block, false}}))};
+          {{lhs_end_block, rhs_val}, {rhs_end_block, false}})};
     } break;
     case frontend::Operator::AddEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
-      auto rhs_ir   = rhs->EmitIR(ctx)[0];
+      auto rhs_ir   = rhs->EmitIr(ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
+          rhs_type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
-            ir::Store(ir::Add(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
+            ir::Store(ir::Add(ir::Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                       lhs_lval);
           });
-      return {};
+      return ir::Results{};
     } break;
     case frontend::Operator::SubEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
-      auto rhs_ir   = rhs->EmitIR(ctx)[0];
+      auto rhs_ir   = rhs->EmitIr(ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
+          rhs_type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
-            ir::Store(ir::Sub(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
+            ir::Store(ir::Sub(ir::Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                       lhs_lval);
           });
-      return {};
+      return ir::Results{};
     } break;
     case frontend::Operator::DivEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
-      auto rhs_ir   = rhs->EmitIR(ctx)[0];
+      auto rhs_ir   = rhs->EmitIr(ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
+          rhs_type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
-            ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
+            ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                       lhs_lval);
           });
-      return {};
+      return ir::Results{};
     } break;
     case frontend::Operator::ModEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
-      auto rhs_ir   = rhs->EmitIR(ctx)[0];
+      auto rhs_ir   = rhs->EmitIr(ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                       uint32_t, uint64_t>(rhs_ir.type, [&](auto type_holder) {
+                       uint32_t, uint64_t>(rhs_type, [&](auto type_holder) {
         using T = typename decltype(type_holder)::type;
-        ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()), lhs_lval);
+        ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.get<T>(0)), lhs_lval);
       });
-      return {};
+      return ir::Results{};
     } break;
     case frontend::Operator::MulEq: {
       auto lhs_lval = lhs->EmitLVal(ctx)[0];
-      auto rhs_ir   = rhs->EmitIR(ctx)[0];
+      auto rhs_ir   = rhs->EmitIr(ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          rhs_ir.type, [&](auto type_holder) {
+          rhs_type, [&](auto type_holder) {
             using T = typename decltype(type_holder)::type;
-            ir::Store(ir::Mul(ir::Load<T>(lhs_lval), rhs_ir.reg_or<T>()),
+            ir::Store(ir::Mul(ir::Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                       lhs_lval);
           });
-      return {};
+      return ir::Results{};
     } break;
     case frontend::Operator::XorEq: {
       if (lhs_type == type::Bool) {
         auto lhs_lval = lhs->EmitLVal(ctx)[0];
-        auto rhs_ir   = rhs->EmitIR(ctx)[0].reg_or<bool>();
+        auto rhs_ir   = rhs->EmitIr(ctx).get<bool>(0);
         ir::Store(ir::XorBool(ir::Load<bool>(lhs_lval), rhs_ir), lhs_lval);
       } else if (lhs_type->is<type::Flags>()) {
         auto *flags_type = &lhs_type->as<type::Flags>();
         auto lhs_lval    = lhs->EmitLVal(ctx)[0];
-        auto rhs_ir      = rhs->EmitIR(ctx)[0].reg_or<ir::FlagsVal>();
+        auto rhs_ir      = rhs->EmitIr(ctx).get<ir::FlagsVal>(0);
         ir::Store(
             ir::XorFlags(flags_type,
                          ir::Load<ir::FlagsVal>(lhs_lval, flags_type), rhs_ir),
@@ -483,7 +481,7 @@ std::vector<ir::Val> Binop::EmitIR(Context *ctx) {
       } else {
         UNREACHABLE(lhs_type);
       }
-      return {};
+      return ir::Results{};
     } break;
     default: UNREACHABLE(*this);
   }

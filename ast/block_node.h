@@ -20,7 +20,7 @@ struct BlockNode : public Expression {
   void DependentDecls(base::Graph<Declaration *> *g,
                       Declaration *d) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *ctx) override;
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::unique_ptr<Expression> name_;

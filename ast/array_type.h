@@ -15,7 +15,7 @@ struct ArrayType : public Literal {
 
   bool InferType(type::Type const *t, InferenceState *state) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *ctx) override;
 
   std::unique_ptr<Expression> length_, data_type_;
 };

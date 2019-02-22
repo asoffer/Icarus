@@ -3,13 +3,15 @@
 namespace type {
 Type const *Generic = new GenericFunction;
 
-void GenericStruct::EmitCopyAssign(Type const *from_type, ir::Val const &from,
+void GenericStruct::EmitCopyAssign(Type const *from_type,
+                                   ir::Results const &from,
                                    ir::RegisterOr<ir::Addr> to,
                                    Context *ctx) const {
   NOT_YET();
 }
 
-void GenericStruct::EmitMoveAssign(Type const *from_type, ir::Val const &from,
+void GenericStruct::EmitMoveAssign(Type const *from_type,
+                                   ir::Results const &from,
                                    ir::RegisterOr<ir::Addr> to,
                                    Context *ctx) const {
   NOT_YET();
@@ -51,8 +53,9 @@ void GenericStruct::WriteTo(std::string *result) const {
 bool GenericStruct::IsCopyable() const { UNREACHABLE(); }
 bool GenericStruct::IsMovable() const { UNREACHABLE(); }
 
-ir::Val GenericStruct::PrepareArgument(Type const *from, ir::Val const &val,
-                                       Context *ctx) const {
+ir::Results GenericStruct::PrepareArgument(Type const *from,
+                                           ir::Results const &val,
+                                           Context *ctx) const {
   NOT_YET(this, from);
 }
 
