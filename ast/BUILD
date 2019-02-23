@@ -11,6 +11,7 @@ cc_lib(
         ":block_literal",
         ":block_node",
         ":bound_constants",
+        ":builtin_fn",
         ":call",
         ":cast",
         ":chainop",
@@ -54,6 +55,7 @@ cc_lib(
         ":block_literal-impl",
         ":block_node-impl",
         ":bound_constants-impl",
+        ":builtin_fn-impl",
         ":call-impl",
         ":cast-impl",
         ":chainop-impl",
@@ -179,6 +181,21 @@ cc_target(
 )
 
 cc_target(
+    name = "builtin_fn",
+    intf_deps = [
+        ":fn_args",
+        ":literal",
+        "//ir:builtin",
+        "//misc:context",
+    ],
+    impl_deps = [
+        "//backend:eval",
+        "//ir:arguments",
+        "//ir:cmd",
+    ],
+)
+
+cc_target(
     name = "call",
     intf_deps = [
         ":dispatch",
@@ -186,10 +203,10 @@ cc_target(
         ":fn_args",
     ],
     impl_deps = [
+        ":builtin_fn",
         ":fn_params",
         ":function_literal",
         ":struct_literal",
-        ":terminal",
         ":unop",
         "//backend:eval",
         "//ir:arguments",
@@ -280,9 +297,9 @@ cc_target(
     ],
     impl_deps = [
         ":call",
+        ":builtin_fn",
         ":function_literal",
         ":match_declaration",
-        ":terminal",
         "//backend:eval",
         "//misc:context",
         "//ir:cmd",
@@ -312,7 +329,6 @@ cc_target(
         ":identifier",
         "//misc:context",
         "//ir:cmd",
-        "//ir:val",
     ],
 )
 
@@ -416,7 +432,6 @@ cc_target(
         "//backend:eval",
         "//base:guarded",
         "//misc:context",
-        "//ir:val",
         "//type:primitive",
     ],
 )
@@ -441,7 +456,6 @@ cc_target(
     ],
     impl_deps = [
         "//error:log",
-        "//ir:val",
         "//misc:context",
         "//type:type",
     ],
@@ -615,7 +629,6 @@ cc_lib(
     hdrs = ["terminal.h"],
     deps = [
         ":expression",
-        "//ir:val",
         "//misc:context",
         "//misc:module"
     ],

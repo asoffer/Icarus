@@ -6,6 +6,7 @@ cc_lib(
     deps = [
         ":addr-impl",
         ":arguments-impl",
+        ":builtin-impl",
         ":cmd-impl",
         ":components-impl",
         ":flags_val-impl",
@@ -59,6 +60,16 @@ cc_lib(
         ":cmd",
         ":out_params",
         "//base:untyped_buffer",
+    ],
+)
+
+cc_target(
+    name = "builtin",
+    textual_hdrs = ["builtin.xmacro.h"],
+    impl_deps = [
+        ":any_func",
+        ":func",
+        "//base:debug",
     ],
 )
 

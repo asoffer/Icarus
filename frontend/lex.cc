@@ -3,26 +3,19 @@
 
 #include "ast/hole.h"
 #include "ast/identifier.h"
+#include "ast/builtin_fn.h"
 #include "ast/terminal.h"
 #include "error/log.h"
 #include "frontend/numbers.h"
 #include "frontend/tagged_node.h"
 #include "frontend/text_span.h"
 #include "frontend/token.h"
+#include "ir/builtin.h"
 #include "ir/results.h"
 #include "type/primitive.h"
 
 // TODO audit every location where frontend::TaggedNode::Invalid is returned to
 // see if you need to log an error.
-
-ir::AnyFunc BytesFunc();
-ir::AnyFunc AlignFunc();
-#ifdef DBG
-ir::AnyFunc DebugIrFunc();
-#endif  // DBG
-
-extern int32_t ForeignFuncIndex;
-extern int32_t OpaqueFuncIndex;
 
 namespace frontend {
 TaggedNode::TaggedNode(const TextSpan &span, const std::string &token, Tag tag)
@@ -87,19 +80,7 @@ TaggedNode NextWord(SourceLocation &loc) {
           {"true", std::pair(ir::Results{true}, type::Bool)},
           {"false", std::pair(ir::Results{false}, type::Bool)},
           {"null", std::pair(ir::Results{ir::Addr::Null()}, type::NullPtr)},
-#ifdef DBG
-          {"debug_ir",
-           std::pair(ir::Results{DebugIrFunc()}, type::Func({}, {}))},
-#endif  // DBG
-          /*
-          {"foreign", ir::Val::BuiltinGeneric(ForeignFuncIndex)},
-          {"opaque", ir::Val::BuiltinGeneric(OpaqueFuncIndex)},
-          */
           {"byte_view", std::pair(ir::Results{type::ByteView}, type::Type_)},
-          {"bytes", std::pair(ir::Results{BytesFunc()},
-                              type::Func({type::Type_}, {type::Int64}))},
-          {"alignment", std::pair(ir::Results{AlignFunc()},
-                                  type::Func({type::Type_}, {type::Int64}))},
           {"exit",
            std::pair(
                ir::Results{std::get<ir::BlockSequence>(
@@ -114,9 +95,19 @@ TaggedNode NextWord(SourceLocation &loc) {
                    ir::Val::Block(reinterpret_cast<ast::BlockLiteral *>(0x1))
                        .value)},
                type::Block)}};
+
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     auto const &[results, type] = iter->second;
     return TaggedNode::TerminalExpression(span, results, type);
+  }
+  static std::unordered_map<std::string, ir::Builtin> BuiltinFns{
+#define IR_BUILTIN_MACRO(enumerator, str, t) {str, ir::Builtin::enumerator},
+#include "ir/builtin.xmacro.h"
+#undef IR_BUILTIN_MACRO
+  };
+  if (auto iter = BuiltinFns.find(token); iter != BuiltinFns.end()) {
+    return TaggedNode(std::make_unique<ast::BuiltinFn>(span, iter->second),
+                      expr);
   }
 
   // TODO rename kw_struct to more clearly indicate that it's a scope block

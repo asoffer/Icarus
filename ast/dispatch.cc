@@ -2,10 +2,10 @@
 
 #include <variant>
 
+#include "ast/builtin_fn.h"
 #include "ast/call.h"
 #include "ast/function_literal.h"
 #include "ast/match_declaration.h"
-#include "ast/terminal.h"
 #include "backend/eval.h"
 #include "ir/cmd.h"
 #include "ir/components.h"
@@ -20,8 +20,6 @@
 #include "type/pointer.h"
 #include "type/tuple.h"
 #include "type/variant.h"
-
-extern int32_t ForeignFuncIndex;
 
 namespace {
 // Reason why the particular function could not be called.
@@ -331,18 +329,7 @@ CallObstruction DispatchTableRow::SetTypes(
 }
 
 static bool IsConstant(Expression *e) {
-  if (e->is<Call>()) {
-    if (auto *c = &e->as<Call>(); c->fn_->is<Terminal>()) {
-      auto &term = c->fn_->as<Terminal>();
-      if (term.type_ == type::Generic) {
-        auto bgi = term.EmitIr(nullptr).get<ir::BuiltinGenericIndex>(0).val_;
-        return bgi == ir::BuiltinGenericIndex{ForeignFuncIndex};
-      } else {
-        return false;
-      }
-    }
-  }
-  return e->is<FunctionLiteral>() ||
+  return e->is<FunctionLiteral>() || e->is<BuiltinFn>() ||
          (e->is<Declaration>() && e->as<Declaration>().const_);
 }
 

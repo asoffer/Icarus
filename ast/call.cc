@@ -2,10 +2,10 @@
 
 #include <sstream>
 
+#include "ast/builtin_fn.h"
 #include "ast/fn_params.h"
 #include "ast/function_literal.h"
 #include "ast/struct_literal.h"
-#include "ast/terminal.h"
 #include "ast/unop.h"
 #include "backend/eval.h"
 #include "ir/arguments.h"
@@ -19,47 +19,6 @@
 #include "type/pointer.h"
 #include "type/tuple.h"
 #include "type/variant.h"
-
-int32_t ForeignFuncIndex = 0;
-int32_t OpaqueFuncIndex  = 1;
-
-ir::AnyFunc DebugIrFunc() {
-  static ir::Func *debug_ir_func_ = new ir::Func(
-      nullptr, type::Func({}, {}), ast::FnParams<ast::Expression *>{});
-  return ir::AnyFunc{debug_ir_func_};
-}
-
-ir::AnyFunc BytesFunc() {
-  static ir::Func *bytes_func_ = [&]() {
-    ast::FnParams<ast::Expression *> params;
-    params.append("", nullptr);
-    auto fn = new ir::Func(nullptr, type::Func({type::Type_}, {type::Int64}),
-                           std::move(params));
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = fn->entry();
-      ir::SetRet(0, Bytes(fn->Argument(0)));
-      ir::ReturnJump();
-    }
-    return fn;
-  }();
-  return ir::AnyFunc{bytes_func_};
-}
-
-ir::AnyFunc AlignFunc() {
-  static ir::Func *bytes_func_ = [&]() {
-    ast::FnParams<ast::Expression *> params;
-    params.append("", nullptr);
-    auto fn = new ir::Func(nullptr, type::Func({type::Type_}, {type::Int64}),
-                           std::move(params));
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = fn->entry();
-      ir::SetRet(0, Align(fn->Argument(0)));
-      ir::ReturnJump();
-    }
-    return fn;
-  }();
-  return ir::AnyFunc{bytes_func_};
-}
 
 namespace ast {
 std::string Call::to_string(size_t n) const {
@@ -167,55 +126,12 @@ VerifyResult Call::VerifyType(Context *ctx) {
     return VerifyResult::Error();
   }
 
-  if (fn_->is<Terminal>()) {
-    NOT_YET();
-    /*
-    // Special case for error, etc.
-    // TODO can these be overloaded?
-    auto fn_val = fn_->as<Terminal>().EmitIr(ctx)[0];
-
-    if (fn_val == BytesFunc() || fn_val == AlignFunc()) {
-      // TODO turn assert into actual checks with error logging. Or maybe allow
-      // named args here?
-      ASSERT(args_.named_.size() == 0u);
-      ASSERT(args_.pos_.size() == 1u);
-      ASSERT(arg_results.pos_[0].type_ == type::Type_);
-      return VerifyResult(ctx->set_type(this, type::Int64),
-                          arg_results.pos_[0].const_);
-#ifdef DBG
-    } else if (fn_val == DebugIrFunc()) {
-      return VerifyResult::Constant(type::Func({}, {}));
-#endif  // DBG
-    } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {
-      // TODO turn assert into actual checks with error logging. Or maybe allow
-      // named args here?
-      ASSERT(args_.named_.size() == 0u);
-      ASSERT(args_.pos_.size() == 2u);
-      // TODO should turn this into some sort of interface requiremnet of being
-      // string-like
-      ASSERT(arg_results.pos_[0].type_ == type::ByteView);
-      ASSERT(arg_results.pos_[0].const_ == true);
-      ASSERT(arg_results.pos_[1].type_ == type::Type_);
-      ASSERT(arg_results.pos_[1].const_ == true);
-      return VerifyResult(
-          ctx->set_type(this, backend::EvaluateAs<type::Type const *>(
-                                  args_.pos_[1].get(), ctx)),
-          arg_results.pos_[0].const_ && arg_results.pos_[1].const_);
-    } else if (fn_val == ir::Val::BuiltinGeneric(OpaqueFuncIndex)) {
-      // TODO turn assert into actual checks with error logging. Or maybe allow
-      // named args here?
-      ASSERT(args_.named_.size() == 0u);
-      ASSERT(args_.pos_.size() == 0u);
-      return VerifyResult::Constant(ctx->set_type(this, type::Type_));
-    } else if (std::holds_alternative<ir::BlockSequence>(fn_val.value)) {
-      // TODO might be optional.
-      // TODO what about set_type?
-      return VerifyResult::Constant(type::Block);
-    } else {
-      UNREACHABLE();
-    }
-    */
-  }
+  if (auto *b = fn_->if_as<BuiltinFn>()) {
+    // TODO: Should we allow these to be overloaded?
+    ASSIGN_OR(return VerifyResult::Error(), auto result,
+                     b->VerifyCall(args_, arg_results, ctx));
+    return VerifyResult(ctx->set_type(this, result.type_), result.const_);
+  }  
 
   FnArgs<Expression *> args = args_.Transform(
       [](std::unique_ptr<Expression> const &arg) { return arg.get(); });
@@ -253,47 +169,54 @@ void Call::ExtractJumps(JumpExprs *rets) const {
 }
 
 ir::Results Call::EmitIr(Context *ctx) {
-  if (fn_->is<Terminal>()) {
-    NOT_YET();
-    /*
-    auto fn_val = fn_->as<Terminal>().EmitIr(ctx)[0];
+  if (auto *b = fn_->if_as<BuiltinFn>()) {
+    switch (b->b_) {
+      case ir::Builtin::Foreign: {
+        auto name =
+            backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx);
+        auto *foreign_type =
+            backend::EvaluateAs<type::Type const *>(args_.pos_[1].get(), ctx);
+        return ir::Results{ir::LoadSymbol(name, foreign_type)};
+      } break;
+
+      case ir::Builtin::Opaque:
+        return ir::Results{static_cast<ir::Reg>(ir::NewOpaqueType(ctx->mod_))};
+
+      case ir::Builtin::Bytes: {
+        auto const &fn_type =
+            ir::BuiltinType(ir::Builtin::Bytes)->as<type::Function>();
+        ir::Arguments call_args{&fn_type, args_.pos_[0]->EmitIr(ctx)};
+
+        ir::OutParams outs;
+        auto reg = outs.AppendReg(fn_type.output.at(0));
+        ir::Call(ir::BytesFn(), std::move(call_args), std::move(outs));
+
+        return ir::Results{reg};
+      } break;
+
+      case ir::Builtin::Alignment: {
+        auto const &fn_type =
+            ir::BuiltinType(ir::Builtin::Alignment)->as<type::Function>();
+        ir::Arguments call_args{&fn_type, args_.pos_[0]->EmitIr(ctx)};
+
+        ir::OutParams outs;
+        auto reg = outs.AppendReg(fn_type.output.at(0));
+        ir::Call(ir::AlignmentFn(), std::move(call_args), std::move(outs));
+
+        return ir::Results{reg};
+      } break;
+
 #ifdef DBG
-    if (fn_val == DebugIrFunc()) {
-      ir::DebugIr();
-      return ir::Results{};
-    }
+      case ir::Builtin::DebugIr: ir::DebugIr(); return ir::Results{};
 #endif  // DBG
-    if (fn_val == BytesFunc() || fn_val == AlignFunc()) {
-      ir::Arguments call_args{&fn_val.type->as<type::Function>(),
-                              args_.pos_[0]->EmitIr(ctx)};
-
-      auto *out_type = fn_val.type->as<type::Function>().output.at(0);
-      ASSERT(out_type->is_big() == false);
-
-      ir::OutParams outs;
-      auto reg = outs.AppendReg(out_type);
-      ir::Call(std::get<ir::AnyFunc>(fn_val.value), std::move(call_args),
-               std::move(outs));
-
-      return ir::Results{reg};
-
-    } else if (fn_val == ir::Val::BuiltinGeneric(ForeignFuncIndex)) {
-      // Note: verified as constants in VerifyType.
-      auto name =
-          backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx);
-      // TODO can I evaluate as type::Function const *?
-      auto *foreign_type =
-          backend::EvaluateAs<type::Type const *>(args_.pos_[1].get(), ctx);
-      return ir::Results{ir::LoadSymbol(name, foreign_type)};
-    } else if (fn_val == ir::Val::BuiltinGeneric(OpaqueFuncIndex)) {
-      return ir::Results{ir::NewOpaqueType(ctx->mod_)};
-    } else if (auto *bs = std::get_if<ir::BlockSequence>(&fn_val.value)) {
-      // TODO might be optional.
-      return ir::Results{*bs};
     }
-
     UNREACHABLE();
-    */
+  //} else if (auto *t = fn->if_as<Terminal>()) {
+  //  UNREACHABLE(this);
+  //  if (auto *bs = std::get_if<ir::BlockSequence>(&fn_val.value)) {
+  //    // TODO might be optional.
+  //    return ir::Results{*bs};
+  //  }
   }
 
   auto const &dispatch_table = *ASSERT_NOT_NULL(ctx->dispatch_table(this));

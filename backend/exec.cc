@@ -594,7 +594,11 @@ ir::BlockIndex ExecContext::ExecuteCmd(
 
       // TODO set backwards map.
     } break;
-    case ir::Op::DebugIr: base::Log() << call_stack.top().fn_; break;
+    case ir::Op::DebugIr: {
+      std::stringstream ss;
+      ss << *call_stack.top().fn_;
+      base::Log() << ss.str();
+    } break;
     case ir::Op::Alloca: {
       auto arch = Architecture::InterprettingMachine();
 
@@ -761,9 +765,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
       }
     } break;
-    case ir::Op::NewOpaqueType: {
-      save(new type::Opaque(cmd.mod_));
-    } break;
+    case ir::Op::NewOpaqueType: save(new type::Opaque(cmd.mod_)); break;
     case ir::Op::LoadSymbol: {
       void *sym = [&]() -> void * {
         // TODO: this is a hack for now untill we figure out why we can load
