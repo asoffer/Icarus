@@ -52,7 +52,11 @@ RegisterOr<T> MakePhi(CmdIndex phi_index,
   } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
     cmd.op_code_   = Op::PhiFlags;
     cmd.phi_flags_ = phi_args.get();
+  } else if constexpr (std::is_same_v<T, ir::AnyFunc>) {
+    cmd.op_code_  = Op::PhiFunc;
+    cmd.phi_func_ = phi_args.get();
   }
+
   ir::Func::Current->block(BasicBlock::Current)
       .phi_args_.push_back(std::move(phi_args));
   return cmd.result;

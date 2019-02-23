@@ -736,10 +736,11 @@ static void EmitOneCallDispatch(
     if (auto *d = binding.fn_.get()->if_as<ast::Declaration>()) {
       // Skipping into the declaration initial value, which is kind of a hack,
       // but basically that's all we've verifyied the type for in this context.
-      ASSERT(d->const_ == true);
-      return ASSERT_NOT_NULL(d->init_val.get())
-          ->EmitIr(&fn_ctx)
-          .get<ir::AnyFunc>(0);
+      if (d->const_) {
+        return ASSERT_NOT_NULL(d->init_val.get())
+            ->EmitIr(&fn_ctx)
+            .get<ir::AnyFunc>(0);
+      }
     }
     return binding.fn_.get()->EmitIr(&fn_ctx).get<ir::AnyFunc>(0);
   }();

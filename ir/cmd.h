@@ -375,6 +375,7 @@ struct Cmd {
     PhiArgs<ir::Addr> *phi_addr_;
     PhiArgs<ir::EnumVal> *phi_enum_;
     PhiArgs<ir::FlagsVal> *phi_flags_;
+    PhiArgs<ir::AnyFunc> *phi_func_;
 
     PrintEnum print_enum_;
     PrintFlags print_flags_;

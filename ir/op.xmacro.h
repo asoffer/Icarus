@@ -253,6 +253,7 @@ OP_MACRO(PhiBlock,             Phi,                 BlockSequence,           phi
 OP_MACRO(PhiAddr,              Phi,                 ir::Addr,                phi_addr_)
 OP_MACRO(PhiEnum,              Phi,                 ir::EnumVal,             phi_enum_)
 OP_MACRO(PhiFlags,             Phi,                 ir::FlagsVal,            phi_flags_)
+OP_MACRO(PhiFunc,              Phi,                 ir::AnyFunc,             phi_func_)
 OP_MACRO(BlockSeqContains,     BlockSeqContains,    void,                    block_seq_contains_)
 OP_MACRO(GetRet,               GetRet,              void,                    get_ret_)
 OP_MACRO(SetRetBool,           SetRet,              bool,                    set_ret_bool_)

@@ -46,6 +46,9 @@ ir::Results MakePhi(type::Type const *t, CmdIndex phi_index,
   if (t->is_big()) {
     return ir::Results{
         MakePhi<ir::Addr>(phi_index, ConvertMap<ir::Addr>(val_map))};
+  } else if (auto *fn = t->if_as<type::Function>()) {
+    return ir::Results{
+        MakePhi<ir::AnyFunc>(phi_index, ConvertMap<ir::AnyFunc>(val_map))};
   }
 
   return type::Apply(t, [&](auto type_holder) {

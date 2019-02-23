@@ -1093,6 +1093,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PhiFlags:
       save(resolve(cmd.phi_flags_->map_.at(call_stack.top().prev_)));
       break;
+    case ir::Op::PhiFunc:
+      save(resolve(cmd.phi_func_->map_.at(call_stack.top().prev_)));
+      break;
     case ir::Op::ArgumentCache: {
       // TODO currently cache is dependetn on all args but requires that they be
       // types.
