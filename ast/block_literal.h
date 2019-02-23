@@ -1,6 +1,7 @@
 #ifndef ICARUS_AST_BLOCK_LITERAL_H
 #define ICARUS_AST_BLOCK_LITERAL_H
 
+#include "ast/declaration.h"
 #include "ast/literal.h"
 
 namespace ast {
@@ -16,7 +17,7 @@ struct BlockLiteral : public Literal {
 
   ir::Results EmitIr(Context *ctx);
 
-  std::vector<std::unique_ptr<Expression>> before_, after_;
+  std::vector<Declaration> before_, after_;
   std::unique_ptr<Scope> body_scope_;
   bool required_;
 };

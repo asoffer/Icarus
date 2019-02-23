@@ -25,7 +25,6 @@ size_t Architecture::alignment(type::Type const *t) const {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Module: return local_ptr_align_;
       case type::PrimType::Ctx: return local_ptr_align_;
-      case type::PrimType::Block: return local_ptr_align_;
       case type::PrimType::OptBlock: return local_ptr_align_;
       case type::PrimType::RepBlock: return local_ptr_align_;
       case type::PrimType::Intf: return local_ptr_align_;
@@ -48,6 +47,8 @@ size_t Architecture::alignment(type::Type const *t) const {
       case type::PrimType::ByteView: return alignof(std::string_view);
     }
     UNREACHABLE(t);
+  } else if (t->is<type::Block>()) {
+    return local_ptr_align_;
   } else if (t->is<type::GenericStruct>()) {
     return local_ptr_align_;
   } else if (t->is<type::Pointer>()) {
@@ -91,7 +92,6 @@ size_t Architecture::bytes(type::Type const *t) const {
     switch (t->as<type::Primitive>().type_) {
       case type::PrimType::Module: return local_ptr_bytes_;
       case type::PrimType::Ctx: return local_ptr_bytes_;
-      case type::PrimType::Block: return local_ptr_bytes_;
       case type::PrimType::OptBlock: return local_ptr_bytes_;
       case type::PrimType::RepBlock: return local_ptr_bytes_;
       case type::PrimType::Intf: return local_ptr_bytes_;
@@ -115,6 +115,8 @@ size_t Architecture::bytes(type::Type const *t) const {
     }
 
     UNREACHABLE(t);
+  } else if (t->is<type::Block>()) {
+    return local_ptr_bytes_;
   } else if (t->is<type::GenericStruct>()) {
     return local_ptr_bytes_;
   } else if (t->is<type::Pointer>()) {

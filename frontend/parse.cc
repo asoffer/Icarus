@@ -943,12 +943,13 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<ast::Statements> stmts,
                                    // it involves the keyword too.
 
   for (auto &stmt : stmts->content_) {
-    if (stmt->is<ast::Declaration>()) {
-      auto decl = move_as<ast::Declaration>(stmt);
+    if (auto *decl = stmt->if_as<ast::Declaration>()) {
       if (decl->id_ == "before") {
-        block_expr->before_.push_back(std::move(decl));
+        block_expr->before_.push_back(std::move(*decl));
       } else if (decl->id_ == "after") {
-        block_expr->after_.push_back(std::move(decl));
+        block_expr->after_.push_back(std::move(*decl));
+      } else {
+        NOT_YET(stmt->to_string(0));
       }
     } else {
       NOT_YET();
@@ -1054,7 +1055,7 @@ std::unique_ptr<ast::Node> BuildKWBlock(
   } else if (auto *term = nodes[0]->if_as<ast::Terminal>()) {
     auto *t = term->results_.get<type::Type const *>(0).val_;
 
-    if (t == type::Block) {
+    if (t->is<type::Block>()) {
       return BuildBlock(move_as<ast::Statements>(nodes[1]), true, mod,
                         error_log);
 

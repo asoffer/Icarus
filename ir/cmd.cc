@@ -338,7 +338,7 @@ void AppendToBlockSeq(Register block_seq,
 }
 
 Register FinalizeBlockSeq(Register r) {
-  auto &cmd = MakeCmd(type::Block, Op::FinalizeBlockSeq);
+  auto &cmd = MakeCmd(type::Blk(), Op::FinalizeBlockSeq);
   cmd.reg_  = r;
   return cmd.result;
 }

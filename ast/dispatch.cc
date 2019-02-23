@@ -2,6 +2,7 @@
 
 #include <variant>
 
+#include "ast/block_literal.h"
 #include "ast/builtin_fn.h"
 #include "ast/call.h"
 #include "ast/function_literal.h"
@@ -216,6 +217,11 @@ struct DispatchTableRow {
       FnArgs<type::Typed<Expression *>> const &args, Context *ctx);
 
   static base::expected<DispatchTableRow, CallObstruction>
+  MakeFromBlockSequence(ir::BlockSequence bs,
+                        FnArgs<type::Typed<Expression *>> const &args,
+                        Context *ctx);
+
+  static base::expected<DispatchTableRow, CallObstruction>
   MakeFromForeignFunction(type::Typed<Expression *, type::Callable> fn_option,
                           FnArgs<type::Typed<Expression *>> const &args,
                           Context *ctx);
@@ -392,9 +398,62 @@ base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::Make(
   } else if (auto *fn = std::get_if<FunctionLiteral *>(&fn_val.value)) {
     return MakeFromFnLit(fn_option, *fn, args, ctx);
 
+  } else if (auto *fn = std::get_if<ir::BlockSequence>(&fn_val.value)) {
+    return MakeFromBlockSequence(*fn, args, ctx);
   } else {
     UNREACHABLE();
   }
+}
+
+base::expected<DispatchTableRow, CallObstruction>
+DispatchTableRow::MakeFromBlockSequence(
+    ir::BlockSequence bs, FnArgs<type::Typed<Expression *>> const &args,
+    Context *ctx) {
+  // TODO figure out which one to call. For now just calling the last entry.
+
+  // ir::Call(callee, std::move(call_args), std::move(outs));
+  // TODO pick the right one to call.
+  // TODO
+
+  for (auto *block_lit : *bs.seq_) {
+    if (block_lit == nullptr) {
+      base::Log() << "start";
+    } else if (block_lit == reinterpret_cast<BlockLiteral *>(0x01)) {
+      base::Log() << "exit";
+    } else {
+      for (auto const& e : block_lit->before_) {
+        base::Log() << e.to_string(0);
+      }
+    }
+  }
+
+  FnParams<std::nullptr_t> params(1);
+
+  ASSIGN_OR(return _.error(), auto binding,
+                   MakeBinding(
+                       type::Typed<Expression *, type::Callable>{
+                           &bs.seq_->back()->before_.at(0), type::Blk()},
+                       params, args, ctx));
+  for (const auto &e : binding.entries_) {
+    base::Log() << e.expr->to_string(0);
+    base::Log() << e.argument_index;
+    base::Log() << e.expansion_index;
+    base::Log() << e.parameter_index;
+  }
+
+   DispatchTableRow dispatch_table_row(std::move(binding));
+   dispatch_table_row.callable_type_ =
+       &ctx->type_of(&bs.seq_->back()->before_.at(0))->as<type::Callable>();
+
+   if (auto obs = dispatch_table_row.SetTypes(
+           dispatch_table_row.callable_type_->as<type::Function>().input,
+           params, args, ctx);
+       obs.obstructed()) {
+     return obs;
+   }
+
+   base::Log() << dispatch_table_row.callable_type_->to_string();
+   return dispatch_table_row;
 }
 
 base::expected<DispatchTableRow, CallObstruction>
@@ -483,8 +542,7 @@ DispatchTableRow::MakeFromFnLit(
   binding.fn_.set_type(fn_type);
 
   DispatchTableRow dispatch_table_row(std::move(binding));
-  dispatch_table_row.callable_type_ = fn_type;
-  ASSERT(dispatch_table_row.callable_type_ != nullptr);
+  dispatch_table_row.callable_type_ = ASSERT_NOT_NULL(fn_type);
 
   // Function literals don't need an input types vector because they have
   // constants that need to be evaluated in new_ctx anyway.

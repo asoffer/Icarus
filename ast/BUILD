@@ -154,10 +154,12 @@ cc_target(
 
 cc_target(
     name = "block_literal",
-    intf_deps = [":literal"],
+    intf_deps = [
+        ":declaration",
+        ":literal",
+    ],
     impl_deps = [
         "//misc:context",
-        "//ir:val",
         "//misc:scope",
         "//type:function",
         "//type:primitive",
@@ -203,6 +205,7 @@ cc_target(
         ":fn_args",
     ],
     impl_deps = [
+        ":block_literal",
         ":builtin_fn",
         ":fn_params",
         ":function_literal",
@@ -298,6 +301,7 @@ cc_target(
     impl_deps = [
         ":call",
         ":builtin_fn",
+        ":block_literal",
         ":function_literal",
         ":match_declaration",
         "//backend:eval",

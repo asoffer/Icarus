@@ -76,7 +76,6 @@ void Primitive::EmitRepr(ir::Results const &val, Context *) const {
     case PrimType::NullPtr:
     case PrimType::EmptyArray:
     case PrimType::Module:
-    case PrimType::Block:
     case PrimType::OptBlock:
     case PrimType::RepBlock: UNREACHABLE();
     case PrimType::Intf: ir::Print(val.get<Interface const *>(0)); break;

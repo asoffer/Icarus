@@ -94,7 +94,7 @@ std::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
       // TODO mostly wrong.
       results.push_back(
           ir::Val::Func(result_buf.get<ast::FunctionLiteral *>(offset)));
-    } else if (t == type::Block || t == type::OptBlock) {
+    } else if (t->is<type::Block>() || t == type::OptBlock) {
       results.push_back(
           ir::Val::BlockSeq(result_buf.get<ir::BlockSequence>(offset)));
     } else {

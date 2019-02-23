@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "ast/block_literal.h"
 #include "ast/builtin_fn.h"
 #include "ast/fn_params.h"
 #include "ast/function_literal.h"

@@ -11,7 +11,7 @@ struct Typed {
   // TODO: This does a weird thing where it upcasts and then downcasts. Probably
   // free but worth making sure or fixing it.
   Typed(V value, type::Type const* t)
-      : value_(std::move(value)), type_(t->if_as<T>()) {}
+      : value_(std::move(value)), type_(ASSERT_NOT_NULL(t->if_as<T>())) {}
 
   V& get() & { return value_; }
   V const& get() const & { return value_; }

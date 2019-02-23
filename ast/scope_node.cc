@@ -120,21 +120,16 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
 
     OverloadSet os_before;
     for (auto &b : bseq[0]->before_) {
-      auto *t = ctx->type_of(b.get());
-      os_before.emplace_back(b.get(), t);
-      if (scope_lit->stateful_) {
-        state_types.insert(t->as<type::Function>().input[0]);
-      }
+      auto const& t = ctx->type_of(&b)->as<type::Function>();
+      os_before.emplace_back(&b, &t);
+      if (scope_lit->stateful_) { state_types.insert(t.input[0]); }
     }
 
     OverloadSet os_after;
     for (auto &a : bseq[0]->after_) {
-      auto *t = ctx->type_of(a.get());
-      os_after.emplace_back(a.get(), t);
-
-      if (scope_lit->stateful_) {
-        state_types.insert(t->as<type::Function>().input[0]);
-      }
+      auto const &t = ctx->type_of(&a)->as<type::Function>();
+      os_after.emplace_back(&a, &t);
+      if (scope_lit->stateful_) { state_types.insert(t.input[0]); }
     }
     auto block_index   = ir::Func::Current->AddBlock();
     block_data[&block] = {std::move(os_before), std::move(os_after),

@@ -12,11 +12,11 @@ BlockLiteral::BlockLiteral(bool required) : required_(required) {}
 std::string BlockLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "block {\n";
-  for (auto &b : before_) {
-    ss << std::string(2 * (n + 1), ' ') << b->to_string(n + 1) << "\n";
+  for (auto const &b : before_) {
+    ss << std::string(2 * (n + 1), ' ') << b.to_string(n + 1) << "\n";
   }
-  for (auto &a : after_) {
-    ss << std::string(2 * (n + 1), ' ') << a->to_string(n + 1) << "\n";
+  for (auto const &a : after_) {
+    ss << std::string(2 * (n + 1), ' ') << a.to_string(n + 1) << "\n";
   }
   ss << std::string(2 * n, ' ') << "}";
   return ss.str();
@@ -25,38 +25,32 @@ std::string BlockLiteral::to_string(size_t n) const {
 void BlockLiteral::assign_scope(Scope *scope) {
   scope_      = scope;
   body_scope_ = scope->add_child<DeclScope>();
-  for (auto &b : before_) { b->assign_scope(body_scope_.get()); }
-  for (auto &a : after_) { a->assign_scope(body_scope_.get()); }
+  for (auto &b : before_) { b.assign_scope(body_scope_.get()); }
+  for (auto &a : after_) { a.assign_scope(body_scope_.get()); }
 }
 
 void BlockLiteral::DependentDecls(base::Graph<Declaration *> *g,
                                   Declaration *d) const {
-  for (auto const &b : before_) { b->DependentDecls(g, d); }
-  for (auto const &a : after_) { a->DependentDecls(g, d); }
+  for (auto const &b : before_) { b.DependentDecls(g, d); }
+  for (auto const &a : after_) { a.DependentDecls(g, d); }
 }
 
 VerifyResult BlockLiteral::VerifyType(Context *ctx) {
-  ctx->mod_->deferred_work_.emplace(
-      [bc{ctx->bound_constants_}, this, mod{ctx->mod_}]() mutable {
-        Context ctx(mod);
-        ctx.bound_constants_ = std::move(bc);
-
-        for (auto &b : before_) { b->VerifyType(&ctx); }
-        for (auto &a : after_) { a->VerifyType(&ctx); }
-      });
+  for (auto &b : before_) { b.VerifyType(ctx); }
+  for (auto &a : after_) { a.VerifyType(ctx); }
 
   return VerifyResult::Constant(
-      ctx->set_type(this, required_ ? type::Block : type::OptBlock));
+      ctx->set_type(this, required_ ? type::Blk() : type::OptBlock));
 }
 
 void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &b : before_) { b->ExtractJumps(rets); }
-  for (auto &a : after_) { a->ExtractJumps(rets); }
+  for (auto &b : before_) { b.ExtractJumps(rets); }
+  for (auto &a : after_) { a.ExtractJumps(rets); }
 }
 
 ir::Results BlockLiteral::EmitIr(Context *ctx) {
-  for (auto &b : before_) { b->EmitIr(ctx); }
-  for (auto &a : after_) { a->EmitIr(ctx); }
+  for (auto &b : before_) { b.EmitIr(ctx); }
+  for (auto &a : after_) { a.EmitIr(ctx); }
   return ir::Results::FromVals({ir::Val::Block(this)});
 }
 

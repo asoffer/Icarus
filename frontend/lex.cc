@@ -86,7 +86,7 @@ TaggedNode NextWord(SourceLocation &loc) {
                ir::Results{std::get<ir::BlockSequence>(
                    ir::Val::Block(static_cast<ast::BlockLiteral *>(nullptr))
                        .value)},
-               type::Block)},
+               type::Blk())},
           // TODO these are terrible. Make them reasonable. In particular, this
           // is definitively UB.
           {"start",
@@ -94,7 +94,7 @@ TaggedNode NextWord(SourceLocation &loc) {
                ir::Results{std::get<ir::BlockSequence>(
                    ir::Val::Block(reinterpret_cast<ast::BlockLiteral *>(0x1))
                        .value)},
-               type::Block)}};
+               type::Blk())}};
 
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     auto const &[results, type] = iter->second;
@@ -135,7 +135,7 @@ TaggedNode NextWord(SourceLocation &loc) {
   // this requires tagging "block" differently from the other block-head
   // keywords.
   if (token == "block") {
-    auto t = type::Block;
+    type::Type const *t = type::Blk();
     if (*loc == '?') {
       loc.Increment();
       span.finish = loc.cursor;

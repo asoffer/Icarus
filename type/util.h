@@ -3,6 +3,7 @@
 // TODO this file is terribly named.
 
 #include "type/array.h"
+#include "type/block.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
@@ -58,7 +59,7 @@ constexpr type::Type const *Get() {
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
-    return type::Block; // Maybe opt-block?
+    return type::Blk(); // Maybe opt-block?
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return type::Type_;
   } else if constexpr (std::is_same_v<T, type::Interface const *>) {
