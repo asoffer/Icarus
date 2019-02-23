@@ -159,46 +159,4 @@ ir::Results Access::EmitIr(Context *ctx) {
   }
 }
 
-// Just sticking this in some cc file for now. I don't really care where. Just
-// so ir::Val is complete. Going to delete it soon.
-ir::Results Node::EmitIr(Context *ctx) {
-  ir::Results results;
-  for (auto const &val : EmitIR(ctx)) {
-    std::visit([&results](auto x) { results.append(x); }, val.value);
-  }
-  return results;
-}
-
-std::vector<ir::Val> Expression::EmitIR(Context *ctx) {
-  auto results = EmitIr(ctx);
-  auto *t      = ctx->type_of(this);
-  if (t == nullptr) {
-    return {};
-  } else if (auto *e = t->if_as<type::Enum>()) {
-    return {ir::ValFrom(results.get<ir::EnumVal>(0).val_, e)};
-  } else if (auto *f = t->if_as<type::Flags>()) {
-    return {ir::ValFrom(results.get<ir::FlagsVal>(0).val_, f)};
-  } else if (auto *fn = t->if_as<type::Function>()) {
-    auto f = results.get<ir::AnyFunc>(0);
-    if (f.is_reg_) { return {ir::Val::Reg(f.reg_, fn)}; }
-    return {ir::Val::Func(fn, f.val_)};
-  } else if (auto *v = t->if_as<type::Variant>()) {
-    return {ir::ValFrom(results.get<ir::Addr>(0), type::Ptr(v))};
-  }
-  return {
-      type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                       uint16_t, uint32_t, uint64_t, float, double, ir::Addr,
-                       ::Module *, ast::ScopeLiteral *, ast::FunctionLiteral *,
-                       std::string_view, type::Type const *, ir::BlockSequence>(
-          t, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
-            return ir::ValFrom(results.get<T>(0));
-          })};
-}
-
-std::vector<ir::Val> Node::EmitIR(Context *ctx) {
-  EmitIr(ctx);
-  return {};
-}
-
 }  // namespace ast

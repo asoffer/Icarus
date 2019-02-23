@@ -84,7 +84,7 @@ static std::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
       ir::BasicBlock::Current = func.entry();
       // TODO bound constants?
       Context ctx(fn->mod_);
-      ir::SetRet(0, expr->EmitIR(&ctx)[0], &ctx);
+      ir::SetRet(0, type::Typed{expr->EmitIr(&ctx), type::Bool}, &ctx);
       ir::ReturnJump();
     }
     prop_map = prop::PropertyMap(&func);

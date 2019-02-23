@@ -27,7 +27,7 @@ ir::Results Opaque::PrepareArgument(const Type *t, const ir::Results &val,
   UNREACHABLE();
 }
 
-void Opaque::EmitRepr(ir::Val const &id_val, Context *ctx) const {
+void Opaque::EmitRepr(ir::Results const &id_val, Context *ctx) const {
   UNREACHABLE();
 }
 

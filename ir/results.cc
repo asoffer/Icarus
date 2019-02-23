@@ -27,9 +27,15 @@ Results Results::GetResult(size_t index) const {
     size_t raw_end   = (i < offset_.size()) ? -offset_.at(i) : buf_.size();
     size_t len       = raw_end - raw_start;
     r.buf_           = base::untyped_buffer::MakeFull(len);
-    std::memmove(r.buf_.raw(0), buf_.raw(raw_start), len);
+    std::memcpy(r.buf_.raw(0), buf_.raw(raw_start), len);
     return r;
   }
 }
+#ifdef DBG
+std::string Results::DebugString() const { 
+ using base::stringify;
+ return stringify(offset_) + buf_.DebugString();
+}
+#endif
 
 }  // namespace ir

@@ -15,16 +15,17 @@
 #include "type/tuple.h"
 
 namespace ir {
-Val BlockSeq(std::vector<Val> const &blocks);
-RegisterOr<type::Type const *> Variant(std::vector<Val> const &vals);
+Val BlockSeq(std::vector<RegisterOr<BlockSequence>> const &blocks);
+RegisterOr<type::Type const *> Variant(
+    std::vector<RegisterOr<type::Type const *>> const &vals);
 }  // namespace ir
 
 namespace ast {
 namespace {
 
 ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
-                                     ir::Val const &lhs_ir,
-                                     ir::Val const &rhs_ir, Context *ctx) {
+                                     ir::Results const &lhs_ir,
+                                     ir::Results const &rhs_ir, Context *ctx) {
   auto *lhs_type = ctx->type_of(chain_op->exprs[index].get());
   auto *rhs_type = ctx->type_of(chain_op->exprs[index + 1].get());
   auto op        = chain_op->ops[index];
@@ -35,84 +36,78 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
     return type::Array::Compare(&lhs_type->as<type::Array>(), lhs_ir,
                                 &rhs_type->as<type::Array>(), rhs_ir,
                                 op == frontend::Operator::Eq, ctx)
-        .reg_or<bool>();
+        .get<bool>(0);
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
-    FnArgs<std::pair<Expression *, std::vector<ir::Val>>> args;
+    FnArgs<std::pair<Expression *, ir::Results>> args;
     args.pos_.reserve(2);
-    args.pos_.emplace_back(chain_op->exprs[index].get(),
-                           std::vector<ir::Val>{lhs_ir});
-    args.pos_.emplace_back(chain_op->exprs[index + 1].get(),
-                           std::vector<ir::Val>{rhs_ir});
+    args.pos_.emplace_back(chain_op->exprs[index].get(), lhs_ir);
+    args.pos_.emplace_back(chain_op->exprs[index + 1].get(), rhs_ir);
 
     auto results = ASSERT_NOT_NULL(ctx->rep_dispatch_tables(chain_op))
                        ->at(index)
                        .EmitCall(args, type::Bool, ctx);
     ASSERT(results.size() == 1u);
-    return results[0].reg_or<bool>();
+    return results.get<bool>(0);
 
   } else {
     switch (op) {
       case frontend::Operator::Lt:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(
-            lhs_ir.type, [&](auto type_holder) {
-              using T = typename decltype(type_holder)::type;
-              return ir::Lt(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
-            });
+                                ir::FlagsVal>(lhs_type, [&](auto type_holder) {
+          using T = typename decltype(type_holder)::type;
+          return ir::Lt(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+        });
       case frontend::Operator::Le:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(
-            lhs_ir.type, [&](auto type_holder) {
-              using T = typename decltype(type_holder)::type;
-              return ir::Le(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
-            });
-      case frontend::Operator::Eq: {
-        ir::BlockSequence const *val1 =
-            std::get_if<ir::BlockSequence>(&lhs_ir.value);
-        ir::BlockSequence const *val2 =
-            std::get_if<ir::BlockSequence>(&rhs_ir.value);
-        if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
-      }
+                                ir::FlagsVal>(lhs_type, [&](auto type_holder) {
+          using T = typename decltype(type_holder)::type;
+          return ir::Le(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+        });
+      case frontend::Operator::Eq:
+        if (lhs_type == type::Block || lhs_type == type::OptBlock ||
+            lhs_type == type::RepBlock) {
+          auto val1 = lhs_ir.get<ir::BlockSequence>(0);
+          auto val2 = rhs_ir.get<ir::BlockSequence>(0);
+          if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
+        }
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
                                 double, type::Type const *, ir::EnumVal,
                                 ir::FlagsVal, ir::Addr>(
-            lhs_ir.type, [&](auto type_holder) {
+            lhs_type, [&](auto type_holder) {
               using T = typename decltype(type_holder)::type;
-              return ir::Eq(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
+              return ir::Eq(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
             });
-      case frontend::Operator::Ne: {
-        ir::BlockSequence const *val1 =
-            std::get_if<ir::BlockSequence>(&lhs_ir.value);
-        ir::BlockSequence const *val2 =
-            std::get_if<ir::BlockSequence>(&rhs_ir.value);
-        if (val1 != nullptr && val2 != nullptr) { return *val1 == *val2; }
+      case frontend::Operator::Ne:
+        if (lhs_type == type::Block || lhs_type == type::OptBlock ||
+            lhs_type == type::RepBlock) {
+          auto val1 = lhs_ir.get<ir::BlockSequence>(0);
+          auto val2 = rhs_ir.get<ir::BlockSequence>(0);
+          if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
       }
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 type::Type const *, ir::EnumVal, ir::FlagsVal,
-                                ir::Addr>(lhs_ir.type, [&](auto type_holder) {
+                                ir::Addr>(lhs_type, [&](auto type_holder) {
           using T = typename decltype(type_holder)::type;
-          return ir::Ne(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
+          return ir::Ne(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
         });
       case frontend::Operator::Ge:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(
-            lhs_ir.type, [&](auto type_holder) {
-              using T = typename decltype(type_holder)::type;
-              return ir::Ge(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
-            });
+                                ir::FlagsVal>(lhs_type, [&](auto type_holder) {
+          using T = typename decltype(type_holder)::type;
+          return ir::Ge(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+        });
       case frontend::Operator::Gt:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(
-            lhs_ir.type, [&](auto type_holder) {
-              using T = typename decltype(type_holder)::type;
-              return ir::Gt(lhs_ir.reg_or<T>(), rhs_ir.reg_or<T>());
-            });
+                                ir::FlagsVal>(lhs_type, [&](auto type_holder) {
+          using T = typename decltype(type_holder)::type;
+          return ir::Gt(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+        });
         // TODO case frontend::Operator::And: cmp = lhs_ir; break;
       default: UNREACHABLE();
     }
@@ -352,17 +347,21 @@ ir::Results ChainOp::EmitIr(Context *ctx) {
   } else if (ops[0] == frontend::Operator::Or && t == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
-    std::vector<ir::Val> args;
+    std::vector<ir::RegisterOr<type::Type const *>> args;
     args.reserve(exprs.size());
-    for (const auto &expr : exprs) { args.push_back(expr->EmitIR(ctx)[0]); }
+    for (const auto &expr : exprs) {
+      args.push_back(expr->EmitIr(ctx).get<type::Type const *>(0));
+    }
     auto reg_or_type = ir::Variant(args);
     return ir::Results{reg_or_type};
   } else if (ops[0] == frontend::Operator::Or &&
              (t == type::Block || t == type::OptBlock)) {
-    std::vector<ir::Val> vals;
+    std::vector<ir::RegisterOr<ir::BlockSequence>> vals;
     vals.reserve(exprs.size());
-    for (auto &expr : exprs) { vals.push_back(expr->EmitIR(ctx)[0]); }
-    return ir::Results{std::get<ir::BlockSequence>(ir::BlockSeq(vals).value)};
+    for (auto &expr : exprs) {
+      vals.push_back(expr->EmitIr(ctx).get<ir::BlockSequence>(0));
+    }
+    return ir::Results{ir::BlockSeq(vals)};
   } else if (ops[0] == frontend::Operator::And ||
              ops[0] == frontend::Operator::Or) {
     auto land_block = ir::Func::Current->AddBlock();
@@ -390,27 +389,27 @@ ir::Results ChainOp::EmitIr(Context *ctx) {
 
   } else {
     if (ops.size() == 1) {
-      auto lhs_ir = exprs[0]->EmitIR(ctx)[0];
-      auto rhs_ir = exprs[1]->EmitIR(ctx)[0];
+      auto lhs_ir = exprs[0]->EmitIr(ctx);
+      auto rhs_ir = exprs[1]->EmitIr(ctx);
       return ir::Results{EmitChainOpPair(this, 0, lhs_ir, rhs_ir, ctx)};
 
     } else {
       std::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
-      auto lhs_ir     = exprs.front()->EmitIR(ctx)[0];
+      auto lhs_ir     = exprs.front()->EmitIr(ctx);
       auto land_block = ir::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
-        auto rhs_ir = exprs[i + 1]->EmitIR(ctx)[0];
+        auto rhs_ir = exprs[i + 1]->EmitIr(ctx);
         auto cmp    = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
 
         phi_args.emplace(ir::BasicBlock::Current, false);
         auto next_block = ir::Func::Current->AddBlock();
         ir::CondJump(cmp, next_block, land_block);
         ir::BasicBlock::Current = next_block;
-        lhs_ir                  = rhs_ir;
+        lhs_ir                  = std::move(rhs_ir);
       }
 
       // Once more for the last element, but don't do a conditional jump.
-      auto rhs_ir = exprs.back()->EmitIR(ctx)[0];
+      auto rhs_ir = exprs.back()->EmitIr(ctx);
       phi_args.emplace(
           ir::BasicBlock::Current,
           EmitChainOpPair(this, exprs.size() - 2, lhs_ir, rhs_ir, ctx));

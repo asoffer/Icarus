@@ -15,10 +15,10 @@
 // TODO audit every location where frontend::TaggedNode::Invalid is returned to
 // see if you need to log an error.
 
-ir::Val BytesFunc();
-ir::Val AlignFunc();
+ir::AnyFunc BytesFunc();
+ir::AnyFunc AlignFunc();
 #ifdef DBG
-ir::Val DebugIrFunc();
+ir::AnyFunc DebugIrFunc();
 #endif  // DBG
 
 extern int32_t ForeignFuncIndex;
@@ -87,20 +87,19 @@ TaggedNode NextWord(SourceLocation &loc) {
           {"true", std::pair(ir::Results{true}, type::Bool)},
           {"false", std::pair(ir::Results{false}, type::Bool)},
           {"null", std::pair(ir::Results{ir::Addr::Null()}, type::NullPtr)},
+#ifdef DBG
+          {"debug_ir",
+           std::pair(ir::Results{DebugIrFunc()}, type::Func({}, {}))},
+#endif  // DBG
           /*
-    #ifdef DBG
-          {"debug_ir", DebugIrFunc()},
-    #endif  // DBG
           {"foreign", ir::Val::BuiltinGeneric(ForeignFuncIndex)},
           {"opaque", ir::Val::BuiltinGeneric(OpaqueFuncIndex)},
           */
           {"byte_view", std::pair(ir::Results{type::ByteView}, type::Type_)},
-          {"bytes",
-           std::pair(ir::Results{std::get<ir::AnyFunc>(BytesFunc().value)},
-                     BytesFunc().type)},
-          {"alignment",
-           std::pair(ir::Results{std::get<ir::AnyFunc>(AlignFunc().value)},
-                     AlignFunc().type)},
+          {"bytes", std::pair(ir::Results{BytesFunc()},
+                              type::Func({type::Type_}, {type::Int64}))},
+          {"alignment", std::pair(ir::Results{AlignFunc()},
+                                  type::Func({type::Type_}, {type::Int64}))},
           {"exit",
            std::pair(
                ir::Results{std::get<ir::BlockSequence>(

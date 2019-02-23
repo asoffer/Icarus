@@ -50,7 +50,7 @@ struct AnyFunc;
   virtual void EmitInit(ir::Register reg, Context *ctx) const ENDING;          \
   virtual ir::Results PrepareArgument(Type const *t, const ir::Results &val,   \
                                       Context *ctx) const ENDING;              \
-  virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const ENDING;     \
+  virtual void EmitRepr(ir::Results const &id_val, Context *ctx) const ENDING; \
   virtual void defining_modules(std::unordered_set<::Module const *> *modules) \
       const ENDING;                                                            \
   virtual Cmp Comparator() const ENDING

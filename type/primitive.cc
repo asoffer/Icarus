@@ -56,20 +56,20 @@ void Primitive::EmitMoveAssign(Type const *from_type, ir::Results const &from,
 void Primitive::defining_modules(
     std::unordered_set<::Module const *> *modules) const {}
 
-void Primitive::EmitRepr(ir::Val const &val, Context *) const {
+void Primitive::EmitRepr(ir::Results const &val, Context *) const {
   switch (type_) {
-    case PrimType::Bool: ir::Print(val.reg_or<bool>()); break;
-    case PrimType::Int8: ir::Print(val.reg_or<int8_t>()); break;
-    case PrimType::Int16: ir::Print(val.reg_or<int16_t>()); break;
-    case PrimType::Int32: ir::Print(val.reg_or<int32_t>()); break;
-    case PrimType::Int64: ir::Print(val.reg_or<int64_t>()); break;
-    case PrimType::Nat8: ir::Print(val.reg_or<uint8_t>()); break;
-    case PrimType::Nat16: ir::Print(val.reg_or<uint16_t>()); break;
-    case PrimType::Nat32: ir::Print(val.reg_or<uint32_t>()); break;
-    case PrimType::Nat64: ir::Print(val.reg_or<uint64_t>()); break;
-    case PrimType::Float32: ir::Print(val.reg_or<float>()); break;
-    case PrimType::Float64: ir::Print(val.reg_or<double>()); break;
-    case PrimType::Type_: ir::Print(val.reg_or<Type const *>()); break;
+    case PrimType::Bool: ir::Print(val.get<bool>(0)); break;
+    case PrimType::Int8: ir::Print(val.get<int8_t>(0)); break;
+    case PrimType::Int16: ir::Print(val.get<int16_t>(0)); break;
+    case PrimType::Int32: ir::Print(val.get<int32_t>(0)); break;
+    case PrimType::Int64: ir::Print(val.get<int64_t>(0)); break;
+    case PrimType::Nat8: ir::Print(val.get<uint8_t>(0)); break;
+    case PrimType::Nat16: ir::Print(val.get<uint16_t>(0)); break;
+    case PrimType::Nat32: ir::Print(val.get<uint32_t>(0)); break;
+    case PrimType::Nat64: ir::Print(val.get<uint64_t>(0)); break;
+    case PrimType::Float32: ir::Print(val.get<float>(0)); break;
+    case PrimType::Float64: ir::Print(val.get<double>(0)); break;
+    case PrimType::Type_: ir::Print(val.get<Type const *>(0)); break;
     case PrimType::Ctx:
     case PrimType::Scope:
     case PrimType::StatefulScope:
@@ -79,8 +79,8 @@ void Primitive::EmitRepr(ir::Val const &val, Context *) const {
     case PrimType::Block:
     case PrimType::OptBlock:
     case PrimType::RepBlock: UNREACHABLE();
-    case PrimType::Intf: ir::Print(val.reg_or<Interface const *>()); break;
-    case PrimType::ByteView: ir::Print(val.reg_or<std::string_view>()); break;
+    case PrimType::Intf: ir::Print(val.get<Interface const *>(0)); break;
+    case PrimType::ByteView: ir::Print(val.get<std::string_view>(0)); break;
   }
 }
 

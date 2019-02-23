@@ -16,7 +16,7 @@ struct Call : public Literal {
                       Declaration *d) const override;
   bool InferType(type::Type const *t, InferenceState *state) const override;
 
-  std::vector<ir::Val> EmitIR(Context *) override;
+  ir::Results EmitIr(Context *) override;
 
   std::unique_ptr<Expression> fn_;
   FnArgs<std::unique_ptr<Expression>> args_;

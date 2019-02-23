@@ -74,8 +74,8 @@ void Flags::defining_modules(
   NOT_YET();
 }
 
-void Flags::EmitRepr(ir::Val const &val, Context *) const {
-  ir::Print(val.reg_or<ir::FlagsVal>(), this);
+void Flags::EmitRepr(ir::Results const &val, Context *) const {
+  ir::Print(val.get<ir::FlagsVal>(0), this);
 }
 
 void Flags::WriteTo(std::string *result) const {

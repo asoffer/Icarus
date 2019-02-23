@@ -18,7 +18,8 @@
 #include "type/variant.h"
 
 namespace ir {
-RegisterOr<type::Type const *> Tup(std::vector<Val> const &entries);
+RegisterOr<type::Type const *> Tup(
+    std::vector<RegisterOr<type::Type const *>> const &entries);
 }  // namespace ir
 
 namespace {
@@ -263,13 +264,13 @@ ir::Results Binop::EmitIr(Context *ctx) {
 
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
-    FnArgs<std::pair<Expression *, std::vector<ir::Val>>> args;
+    FnArgs<std::pair<Expression *, ir::Results>> args;
     args.pos_.reserve(2);
-    args.pos_.emplace_back(lhs.get(), lhs->EmitIR(ctx));
-    args.pos_.emplace_back(rhs.get(), rhs->EmitIR(ctx));
+    args.pos_.emplace_back(lhs.get(), lhs->EmitIr(ctx));
+    args.pos_.emplace_back(rhs.get(), rhs->EmitIr(ctx));
 
-    return ir::Results::FromVals(dispatch_table->EmitCall(
-        args, ASSERT_NOT_NULL(ctx->type_of(this)), ctx));
+    return dispatch_table->EmitCall(args, ASSERT_NOT_NULL(ctx->type_of(this)),
+                                    ctx);
   }
 
   switch (op) {
@@ -325,16 +326,20 @@ ir::Results Binop::EmitIr(Context *ctx) {
     } break;
     case frontend::Operator::Arrow: {
       // TODO ugly hack.
-      std::vector<ir::Val> lhs_vals, rhs_vals;
+      std::vector<ir::RegisterOr<type::Type const *>> lhs_vals, rhs_vals;
       if (auto *l = lhs->if_as<CommaList>()) {
-        for (auto &e : l->exprs_) { lhs_vals.push_back(e->EmitIR(ctx)[0]); }
+        for (auto &e : l->exprs_) {
+          lhs_vals.push_back(e->EmitIr(ctx).get<type::Type const *>(0));
+        }
       } else {
-        lhs_vals.push_back(lhs->EmitIR(ctx)[0]);
+        lhs_vals.push_back(lhs->EmitIr(ctx).get<type::Type const *>(0));
       }
       if (auto *r = rhs->if_as<CommaList>()) {
-        for (auto &e : r->exprs_) { rhs_vals.push_back(e->EmitIR(ctx)[0]); }
+        for (auto &e : r->exprs_) {
+          rhs_vals.push_back(e->EmitIr(ctx).get<type::Type const *>(0));
+        }
       } else {
-        rhs_vals.push_back(rhs->EmitIR(ctx)[0]);
+        rhs_vals.push_back(rhs->EmitIr(ctx).get<type::Type const *>(0));
       }
 
       auto reg_or_type = ir::Arrow(ir::Tup(lhs_vals), ir::Tup(rhs_vals));

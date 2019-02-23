@@ -50,8 +50,8 @@ void Pointer::EmitInit(ir::Register id_reg, Context *ctx) const {
   ir::Store(ir::Addr::Null(), id_reg);
 }
 
-void Pointer::EmitRepr(ir::Val const &val, Context *ctx) const {
-  ir::Print(val.reg_or<ir::Addr>());
+void Pointer::EmitRepr(ir::Results const &val, Context *ctx) const {
+  ir::Print(val.get<ir::Addr>(0));
 }
 
 void static WriteStr(char const *ptr_str, Pointer const *ptr,

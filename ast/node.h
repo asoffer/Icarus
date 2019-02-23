@@ -61,8 +61,7 @@ struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const     = 0;
   virtual void assign_scope(Scope *)                = 0;
   virtual VerifyResult VerifyType(Context *)        = 0;
-  virtual std::vector<ir::Val> EmitIR(Context *);
-  virtual ir::Results EmitIr(Context *ctx);
+  virtual ir::Results EmitIr(Context *ctx)          = 0;
   virtual void ExtractJumps(JumpExprs *) const      = 0;
   virtual void DependentDecls(base::Graph<Declaration *> *g,
                               Declaration *d) const = 0;

@@ -114,7 +114,7 @@ ir::Results EnumLiteral::EmitIr(Context *ctx) {
       auto &decl = elem->as<Declaration>();
       ir::AddEnumerator(kind_, reg, decl.id_);
       if (!decl.init_val->is<Hole>()) {
-        ir::SetEnumerator(reg, decl.init_val->EmitIR(ctx)[0].reg_or<int32_t>());
+        ir::SetEnumerator(reg, decl.init_val->EmitIr(ctx).get<int32_t>(0));
       }
     }
   }

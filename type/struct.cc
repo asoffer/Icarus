@@ -23,7 +23,7 @@ static std::optional<ir::AnyFunc> SpecialFunction(Struct const *s, char const *s
     auto *fn_type = decl.type()->if_as<Function>();
     if (fn_type == nullptr) { continue; }
     if (fn_type->input.front() != ptr_to_s) { continue; }
-    return std::get<ir::AnyFunc>(decl.get()->EmitIR(ctx)[0].value);
+    return decl.get()->EmitIr(ctx).get<ir::AnyFunc>(0).val_;
   }
   return std::nullopt;
 }
@@ -192,7 +192,7 @@ bool Struct::needs_destroy() const {
                      [](Field const &f) { return f.type->needs_destroy(); });
 }
 
-void Struct::EmitRepr(ir::Val const &val, Context *ctx) const { UNREACHABLE(); }
+void Struct::EmitRepr(ir::Results const &val, Context *ctx) const { UNREACHABLE(); }
 
 void Struct::WriteTo(std::string *result) const {
   result->append("struct.");

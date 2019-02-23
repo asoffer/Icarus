@@ -49,7 +49,7 @@ void Interface::EmitMoveAssign(Type const *from_type, ir::Results const &from,
   UNREACHABLE();
 }
 
-void Interface::EmitRepr(ir::Val const &id_val, Context *ctx) const {
+void Interface::EmitRepr(ir::Results const &id_val, Context *ctx) const {
   UNREACHABLE();
 }
 }  // namespace type

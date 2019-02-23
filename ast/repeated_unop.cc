@@ -86,15 +86,19 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
 }
 
 ir::Results RepeatedUnop::EmitIr(Context *ctx) {
-  std::vector<ir::Val> arg_vals;
+  std::vector<ir::Results> arg_vals;
   if (args_.needs_expansion()) {
     for (auto &expr : args_.exprs_) {
-      auto vals = expr->EmitIR(ctx);
-      arg_vals.insert(arg_vals.end(), std::make_move_iterator(vals.begin()),
-                      std::make_move_iterator(vals.end()));
+      auto vals = expr->EmitIr(ctx);
+      for (size_t i = 0; i < vals.size(); ++i) {
+        arg_vals.push_back(vals.GetResult(i));
+      }
     }
   } else {
-    arg_vals.push_back(args_.EmitIR(ctx)[0]);
+    auto vals = args_.EmitIr(ctx);
+    for (size_t i = 0; i < vals.size(); ++i) {
+      arg_vals.push_back(vals.GetResult(i));
+    }
   }
 
   switch (op_) {
@@ -107,7 +111,7 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
           &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
       for (size_t i = 0; i < arg_vals.size(); ++i) {
         // TODO return type maybe not the same as type actually returned?
-        ir::SetRet(i, arg_vals[i], ctx);
+        ir::SetRet(i, type::Typed{arg_vals[i], fn_type->output.at(i)}, ctx);
       }
 
       // Rather than doing this on each block it'd be better to have each
@@ -151,9 +155,8 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
       for (auto &val : arg_vals) {
         auto *t = ctx->type_of(args_.exprs_.at(index).get());
         if (t->is<type::Struct>()) {
-          ast::FnArgs<std::pair<ast::Expression *, std::vector<ir::Val>>> args;
-          args.pos_.emplace_back(args_.exprs_[index].get(),
-                                 std::vector<ir::Val>{std::move(val)});
+          ast::FnArgs<std::pair<ast::Expression *, ir::Results>> args;
+          args.pos_.emplace_back(args_.exprs_[index].get(), std::move(val));
           ASSERT_NOT_NULL(dispatch_tables)
               ->at(index)
               .EmitCall(args, type::Void(), ctx);

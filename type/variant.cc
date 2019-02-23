@@ -172,7 +172,7 @@ void Variant::EmitInit(ir::Register, Context *ctx) const {
   UNREACHABLE("Variants must be initialized.");
 }
 
-void Variant::EmitRepr(ir::Val const &id_val, Context *ctx) const {
+void Variant::EmitRepr(ir::Results const &id_val, Context *ctx) const {
   // TODO design and build a jump table?
   // TODO repr_func_
   // TODO remove these casts in favor of something easier to track properties on
@@ -193,10 +193,9 @@ void Variant::EmitRepr(ir::Val const &id_val, Context *ctx) const {
         auto found_block = ir::Func::Current->AddBlock();
 
         ir::BasicBlock::Current = found_block;
-        v->EmitRepr(
-            ir::Val::Reg(
-                ir::PtrFix(ir::VariantValue(v, repr_func_->Argument(0)), v), v),
-            ctx);
+        v->EmitRepr(ir::Results{ir::PtrFix(
+                        ir::VariantValue(v, repr_func_->Argument(0)), v)},
+                    ctx);
         ir::UncondJump(landing);
 
         ir::BasicBlock::Current = old_block;
@@ -210,10 +209,7 @@ void Variant::EmitRepr(ir::Val const &id_val, Context *ctx) const {
     }
   }
 
-  ir::Arguments call_args;
-  call_args.append(id_val);
-  call_args.type_ = repr_func_->type_;
-  ir::Call(ir::AnyFunc{repr_func_}, std::move(call_args));
+  ir::Call(ir::AnyFunc{repr_func_}, ir::Arguments{repr_func_->type_, id_val});
 }
 
 void Variant::defining_modules(

@@ -44,8 +44,8 @@ void Enum::defining_modules(
 }
 
 // TODO print something friendlier
-void Enum::EmitRepr(ir::Val const &val, Context *) const {
-  ir::Print(val.reg_or<ir::EnumVal>(), this);
+void Enum::EmitRepr(ir::Results const &val, Context *) const {
+  ir::Print(val.get<ir::EnumVal>(0), this);
 }
 
 void Enum::WriteTo(std::string *result) const {

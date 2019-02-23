@@ -64,9 +64,9 @@ static base::guarded<std::unordered_map<
     const Array *, std::unordered_map<const Array *, ir::Func *>>>
     ne_funcs;
 // TODO this should early exit if the types aren't equal.
-ir::Val Array::Compare(const Array *lhs_type, ir::Val const &lhs_ir,
-                       const Array *rhs_type, ir::Val const &rhs_ir,
-                       bool equality, Context *ctx) {
+ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
+                           Array const *rhs_type, ir::Results const &rhs_ir,
+                           bool equality, Context *ctx) {
   auto &funcs = equality ? eq_funcs : ne_funcs;
   auto handle = funcs.lock();
 
@@ -129,16 +129,12 @@ ir::Val Array::Compare(const Array *lhs_type, ir::Val const &lhs_ir,
     }
   }
 
-  ir::Arguments call_args;
-  call_args.append(lhs_ir);
-  call_args.append(rhs_ir);
-  call_args.type_ = iter->second->type_;
-
+  ir::Arguments call_args{iter->second->type_, ir::Results{lhs_ir, rhs_ir}};
   ir::OutParams outs;
   auto result = outs.AppendReg(Bool);
 
   ir::Call(ir::AnyFunc{iter->second}, std::move(call_args), std::move(outs));
-  return {ir::Val::Reg(result, Bool)};
+  return ir::Results{result};
 }
 
 static base::guarded<
@@ -269,7 +265,7 @@ void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
   ir::Destroy(this, reg);
 }
 
-void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
+void Array::EmitRepr(ir::Results const &val, Context *ctx) const {
   repr_func_.init([this, ctx]() {
     // TODO special function?
     ir::Func *fn = ctx->mod_->AddFunc(Func({this}, {}),
@@ -285,8 +281,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
       ir::BasicBlock::Current = ir::EarlyExitOn<true>(exit_block, len == 0);
       auto ptr                = ir::Index(Ptr(this), fn->Argument(0), 0);
 
-      data_type->EmitRepr(ir::Val::Reg(ir::PtrFix(ptr, data_type), data_type),
-                          ctx);
+      data_type->EmitRepr(ir::Results{ir::PtrFix(ptr, data_type)}, ctx);
 
       using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<int32_t>>;
       CreateLoop(
@@ -297,8 +292,7 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
                 ir::PtrIncr(std::get<0>(phis).reg_, 1, Ptr(data_type));
 
             ir::Print(std::string_view{", "});
-            data_type->EmitRepr(
-                ir::Val::Reg(ir::PtrFix(elem_ptr, data_type), data_type), ctx);
+            data_type->EmitRepr(ir::Results{ir::PtrFix(elem_ptr, data_type)}, ctx);
 
             return std::make_tuple(
                 elem_ptr, ir::Sub(ir::RegisterOr<int32_t>(std::get<1>(phis)), 1));
@@ -314,10 +308,8 @@ void Array::EmitRepr(ir::Val const &val, Context *ctx) const {
     return fn;
   });
 
-  ir::Arguments call_args;
-  call_args.append(val);
-  call_args.type_ = repr_func_.get()->type_;
-  ir::Call(ir::AnyFunc{repr_func_.get()}, std::move(call_args));
+  ir::Call(ir::AnyFunc{repr_func_.get()},
+           ir::Arguments{repr_func_.get()->type_, val});
 }
 
 void Array::WriteTo(std::string *result) const {

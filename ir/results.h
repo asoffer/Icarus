@@ -40,8 +40,12 @@ struct Results {
   template <typename T>
   size_t append(T const& t) {
     if constexpr (std::is_same_v<Results, T>) {
+      int64_t current_buf_end = buf_.size();
       buf_.write(buf_.size(), t.buf_);
-      offset_.insert(offset_.end(), t.offset_.begin(), t.offset_.end());
+      offset_.reserve(offset_.size() + t.offset_.size());
+      for (int64_t off : t.offset_) {
+        offset_.push_back(off <= 0 ? off - current_buf_end : off);
+      }
       return offset_.back();
     } else if constexpr (std::is_base_of_v<Reg, T>) {
       return offset_.emplace_back(1 + static_cast<int64_t>(t.value()));
@@ -53,6 +57,10 @@ struct Results {
   }
 
   Results GetResult(size_t index) const;
+
+#ifdef DBG
+  std::string DebugString() const;
+#endif
 
   size_t size() const { return offset_.size(); }
 

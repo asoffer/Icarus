@@ -10,10 +10,6 @@ class FunctionType;
 }  // namespace llvm
 #endif  // ICARUS_USE_LLVM
 
-namespace ir {
-struct Val;
-}  // namespace ir
-
 namespace type {
 struct GenericFunction : public Callable {
   GenericFunction() {}
@@ -29,7 +25,7 @@ struct GenericFunction : public Callable {
   void EmitDestroy(ir::Register reg, Context *ctx) const override;
   ir::Results PrepareArgument(const Type *t, const ir::Results &val,
                           Context *ctx) const override;
-  void EmitRepr(ir::Val const &id_val, Context *ctx) const override;
+  void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
   void defining_modules(
       std::unordered_set<::Module const *> *modules) const override;
   Cmp Comparator() const override;

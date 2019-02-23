@@ -22,7 +22,7 @@ ir::Results GenericFunction::PrepareArgument(const Type *t,
                                              Context *ctx) const {
   NOT_YET();
 }
-void GenericFunction::EmitRepr(ir::Val const &id_val, Context *ctx) const {}
+void GenericFunction::EmitRepr(ir::Results const &id_val, Context *ctx) const {}
 
 void GenericFunction::defining_modules(
     std::unordered_set<::Module const *> *modules) const {
@@ -64,7 +64,7 @@ void Function::EmitInit(ir::Register id_reg, Context *ctx) const {
   UNREACHABLE();
 }
 
-void Function::EmitRepr(ir::Val const &, Context *ctx) const { UNREACHABLE(); }
+void Function::EmitRepr(ir::Results const &, Context *ctx) const { UNREACHABLE(); }
 
 void Function::WriteTo(std::string *result) const {
   if (input.empty()) {

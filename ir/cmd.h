@@ -3,8 +3,9 @@
 
 #include "ast/hashtag.h"
 #include "base/untyped_buffer.h"
+#include "ir/results.h"
+#include "ir/val.h"
 #include "misc/context.h"
-#include "val.h"
 
 struct Scope;
 
@@ -492,7 +493,7 @@ void SetRet(size_t n, T t) {
     // Func::Current->references_[r.reg_].insert(cmd.result); }
   }
 }
-void SetRet(size_t n, Val const &v2, Context *ctx = nullptr);
+void SetRet(size_t n, type::Typed<Results> const &v2, Context *ctx = nullptr);
 
 template <typename Lhs, typename Rhs>
 RegisterOr<bool> Lt(Lhs lhs, Rhs rhs) {
@@ -602,7 +603,7 @@ void BlockSeqJump(RegisterOr<BlockSequence> r,
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                                   ast::BlockLiteral *lit);
 
-Val Cast(type::Type const *from, type::Type const *to, Val const &val);
+Results Cast(type::Type const *from, type::Type const *to, Results const &val);
 
 TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
                           RegisterOr<int64_t> offset);

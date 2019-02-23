@@ -17,7 +17,7 @@ static std::unique_ptr<ir::Func> ExprFn(
       ast::FnParams<ast::Expression *>{});
 
   CURRENT_FUNC(fn.get()) {
-    // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
+    // TODO this is essentially a copy of the body of FunctionLiteral::EmitIr
     // Factor these out together.
     ir::BasicBlock::Current = fn->entry();
     // Leave space for allocas that will come later (added to the entry
@@ -26,10 +26,16 @@ static std::unique_ptr<ir::Func> ExprFn(
     auto start_block = ir::BasicBlock::Current = ir::Func::Current->AddBlock();
 
     ASSERT(ctx != nullptr);
-    auto vals = typed_expr.get()->EmitIR(ctx);
+    auto vals = typed_expr.get()->EmitIr(ctx);
     // TODO wrap this up into SetRet(vector)
+    std::vector<type::Type const *> extracted_types;
+    if (auto *tup = typed_expr.type()->if_as<type::Tuple>()) {
+      extracted_types = tup->entries_;
+    } else {
+      extracted_types = {typed_expr.type()};
+    }
     for (size_t i = 0; i < vals.size(); ++i) {
-      ir::SetRet(i, std::move(vals[i]), ctx);
+      ir::SetRet(i, type::Typed{vals.GetResult(i), extracted_types.at(i)}, ctx);
     }
     ir::ReturnJump();
 

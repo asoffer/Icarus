@@ -19,7 +19,7 @@ struct Opaque : public Type {
   void EmitDestroy(ir::Register reg, Context *ctx) const override;
   ir::Results PrepareArgument(const Type *t, const ir::Results &val,
                               Context *ctx) const override;
-  void EmitRepr(ir::Val const &id_val, Context *ctx) const override;
+  void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
 
   void defining_modules(
       std::unordered_set<::Module const *> *modules) const override;

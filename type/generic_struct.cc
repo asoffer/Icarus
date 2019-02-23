@@ -34,7 +34,7 @@ void GenericStruct::defining_modules(
   modules->insert(defining_module());
 }
 
-void GenericStruct::EmitRepr(ir::Val const &val, Context *ctx) const {
+void GenericStruct::EmitRepr(ir::Results const &val, Context *ctx) const {
   UNREACHABLE();
 }
 

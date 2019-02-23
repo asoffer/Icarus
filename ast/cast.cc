@@ -68,30 +68,30 @@ void Cast::ExtractJumps(JumpExprs *rets) const {
   type_->ExtractJumps(rets);
 }
 
-std::vector<ir::Val> Cast::EmitIR(Context *ctx) {
+ir::Results Cast::EmitIr(Context *ctx) {
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
-    FnArgs<std::pair<Expression *, std::vector<ir::Val>>> args;
+    FnArgs<std::pair<Expression *, ir::Results>> args;
     args.pos_.reserve(2);
-    args.pos_.emplace_back(expr_.get(), expr_->EmitIR(ctx));
-    args.pos_.emplace_back(type_.get(), type_->EmitIR(ctx));
+    args.pos_.emplace_back(expr_.get(), expr_->EmitIr(ctx));
+    args.pos_.emplace_back(type_.get(), type_->EmitIr(ctx));
 
     return dispatch_table->EmitCall(args, ASSERT_NOT_NULL(ctx->type_of(this)),
                                     ctx);
   }
 
   auto *this_type = ASSERT_NOT_NULL(ctx->type_of(this));
-  auto vals       = expr_->EmitIR(ctx);
+  auto results    = expr_->EmitIr(ctx);
   if (this_type == type::Type_) {
     std::vector<type::Type const *> entries;
-    entries.reserve(vals.size());
-    for (auto const &val : vals) {
+    entries.reserve(results.size());
+    for (size_t i = 0; i < results.size(); ++i) {
       // TODO what about incomplete structs?
-      entries.push_back(std::get<type::Type const *>(val.value));
+      entries.push_back(results.GetResult(i).get<type::Type const *>(0).val_);
     }
-    return {ir::Val(type::Tup(entries))};
+    return ir::Results{type::Tup(entries)};
   }
-  return {ir::Cast(vals[0].type, this_type, vals[0])};
+  return ir::Cast(ctx->type_of(expr_.get()), this_type, results);
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> Cast::EmitLVal(Context *ctx) {

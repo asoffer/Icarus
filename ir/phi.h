@@ -8,8 +8,8 @@
 namespace ir {
 CmdIndex Phi(type::Type const *);
 
-Val MakePhi(CmdIndex phi_index,
-            const std::unordered_map<BlockIndex, ir::Val> &val_map);
+ir::Results MakePhi(type::Type const *type, CmdIndex phi_index,
+            std::unordered_map<BlockIndex, ir::Results> const &val_map);
 
 template <typename T>
 RegisterOr<T> MakePhi(CmdIndex phi_index,

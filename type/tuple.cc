@@ -99,22 +99,19 @@ void Tuple::EmitInit(ir::Register reg, Context *ctx) const {
   ir::Init(this, reg);
 }
 
-void Tuple::EmitRepr(ir::Val const &id_val, Context *ctx) const {
-  auto reg = std::get<ir::Register>(id_val.value);
+void Tuple::EmitRepr(ir::Results const &id_val, Context *ctx) const {
+  auto reg = id_val.get<ir::Reg>(0);
   ir::Print(std::string_view{"("});
   for (int i = 0; i < static_cast<int>(entries_.size()) - 1; ++i) {
     entries_[i]->EmitRepr(
-        ir::Val::Reg(ir::PtrFix(ir::Field(reg, this, i).get(), entries_[i]),
-                     entries_[i]),
-        ctx);
+        ir::Results{ir::PtrFix(ir::Field(reg, this, i).get(), entries_[i])}, ctx);
     ir::Print(std::string_view{", "});
   }
 
   if (!entries_.empty()) {
     entries_.back()->EmitRepr(
-        ir::Val::Reg(ir::PtrFix(ir::Field(reg, this, entries_.size() - 1).get(),
-                                entries_.back()),
-                     entries_.back()),
+        ir::Results{ir::PtrFix(ir::Field(reg, this, entries_.size() - 1).get(),
+                               entries_.back())},
         ctx);
   }
   ir::Print(std::string_view{")"});
@@ -123,9 +120,9 @@ void Tuple::EmitRepr(ir::Val const &id_val, Context *ctx) const {
 static base::guarded<std::map<std::vector<Type const *>, Tuple const>> tups_;
 Type const *Tup(std::vector<Type const *> entries) {
   if (entries.size() == 1) { return entries[0]; }
-  auto[iter, success] = tups_.lock()->emplace(std::piecewise_construct,
-                                              std::forward_as_tuple(entries),
-                                              std::forward_as_tuple(entries));
+  auto [iter, success] = tups_.lock()->emplace(std::piecewise_construct,
+                                               std::forward_as_tuple(entries),
+                                               std::forward_as_tuple(entries));
   return &iter->second;
 }
 

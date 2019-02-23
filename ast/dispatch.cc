@@ -333,10 +333,13 @@ CallObstruction DispatchTableRow::SetTypes(
 static bool IsConstant(Expression *e) {
   if (e->is<Call>()) {
     if (auto *c = &e->as<Call>(); c->fn_->is<Terminal>()) {
-      ASSIGN_OR(return false, auto &bgi,
-                       std::get_if<ir::BuiltinGenericIndex>(
-                           &c->fn_->as<Terminal>().EmitIR(nullptr)[0].value));
-      return bgi == ir::BuiltinGenericIndex{ForeignFuncIndex};
+      auto &term = c->fn_->as<Terminal>();
+      if (term.type_ == type::Generic) {
+        auto bgi = term.EmitIr(nullptr).get<ir::BuiltinGenericIndex>(0).val_;
+        return bgi == ir::BuiltinGenericIndex{ForeignFuncIndex};
+      } else {
+        return false;
+      }
     }
   }
   return e->is<FunctionLiteral>() ||
@@ -747,28 +750,26 @@ static void EmitOneCallDispatch(
       // Skipping into the declaration initial value, which is kind of a hack,
       // but basically that's all we've verifyied the type for in this context.
       ASSERT(d->const_ == true);
-      return ASSERT_NOT_NULL(d->init_val.get())->EmitIR(&fn_ctx)[0];
+      return ASSERT_NOT_NULL(d->init_val.get())
+          ->EmitIr(&fn_ctx)
+          .get<ir::AnyFunc>(0);
     }
-    return binding.fn_.get()->EmitIR(&fn_ctx)[0];
+    return binding.fn_.get()->EmitIr(&fn_ctx).get<ir::AnyFunc>(0);
   }();
 
   if (!binding.const_) {
     if (!binding.fn_.get()->is<Declaration>() ||
         !binding.fn_.get()->as<Declaration>().is_fn_param_) {
-      if (auto *reg = std::get_if<ir::Register>(&callee.value)) {
-        // TODO this feels like a hack, there should be a better way to
-        // determine if the function
-        callee = ir::Val::Reg(ir::Load<ir::AnyFunc>(*reg, binding.fn_.type()),
-                              binding.fn_.type());
+      if (callee.is_reg_) {
+        callee = ir::Load<ir::AnyFunc>(callee.reg_, binding.fn_.type());
       }
     }
   }
-  ASSERT(callee.type, InheritsFrom<type::Callable>());
 
   // After the last check, if you pass, you should dispatch
   FnParams<Expression *> *const_params = nullptr;
-  if (auto *fn_to_call = std::get_if<ir::AnyFunc>(&callee.value)) {
-    if (fn_to_call->is_fn()) { const_params = &(fn_to_call->func()->params_); }
+  if (!callee.is_reg_ && callee.val_.is_fn()) {
+    const_params = &(callee.val_.func()->params_);
   }
 
   ir::Results results;
@@ -794,7 +795,7 @@ static void EmitOneCallDispatch(
     }
   }
 
-  ir::Arguments call_args{&callee.type->as<type::Callable>(),
+  ir::Arguments call_args{&binding.fn_.type()->as<type::Callable>(),
                           std::move(results)};
 
   ir::OutParams outs;
@@ -859,7 +860,7 @@ static void EmitOneCallDispatch(
     }
   }
 
-  ir::Call(callee.reg_or<ir::AnyFunc>(), std::move(call_args), std::move(outs));
+  ir::Call(callee, std::move(call_args), std::move(outs));
 }
 
 static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
@@ -944,16 +945,7 @@ static ir::BlockIndex CallLookupTest(
   return next_binding;
 }
 
-std::vector<ir::Val> DispatchTable::EmitCall(
-    FnArgs<std::pair<Expression *, std::vector<ir::Val>>> const &args,
-    type::Type const *ret_type, Context *ctx) const {
-  return EmitCall(args.Transform([](auto const &arg) {
-    return std::make_pair(arg.first, ir::Results::FromVals(arg.second));
-  }),
-                  ret_type, ctx);
-}
-
-std::vector<ir::Val> DispatchTable::EmitCall(
+ir::Results DispatchTable::EmitCall(
     FnArgs<std::pair<Expression *, ir::Results>> const &args,
     type::Type const *ret_type, Context *ctx) const {
   ASSERT(bindings_.size() != 0u);
@@ -979,14 +971,14 @@ std::vector<ir::Val> DispatchTable::EmitCall(
   if (bindings_.size() == 1) {
     const auto &[call_arg_type, binding] = *bindings_.begin();
     EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
-    return out_regs;
+    return ir::Results::FromVals(out_regs);
   }
 
   // TODO push void out of here.
   size_t num_rets =
       ret_type->is<type::Tuple>() ? ret_type->as<type::Tuple>().size() : 1;
 
-  std::vector<std::unordered_map<ir::BlockIndex, ir::Val>> result_phi_args(
+  std::vector<std::unordered_map<ir::BlockIndex, ir::Results>> result_phi_args(
       num_rets);
 
   auto landing_block = ir::Func::Current->AddBlock();
@@ -999,8 +991,9 @@ std::vector<ir::Val> DispatchTable::EmitCall(
     size_t j          = 0;
 
     EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
-    for (const auto &result : out_regs) {
-      result_phi_args.at(j)[ir::BasicBlock::Current] = result;
+    for (const auto &out_reg : out_regs) {
+      result_phi_args.at(j)[ir::BasicBlock::Current] =
+          ir::Results::FromVals({out_reg});
       ++j;
     }
     ASSERT(j == num_rets);
@@ -1012,8 +1005,9 @@ std::vector<ir::Val> DispatchTable::EmitCall(
   const auto &[call_arg_type, binding] = *iter;
   size_t j                             = 0;
   EmitOneCallDispatch(ret_type, &out_regs, expr_map, binding, ctx);
-  for (const auto &result : out_regs) {
-    result_phi_args.at(j)[ir::BasicBlock::Current] = result;
+  for (const auto &out_reg : out_regs) {
+    result_phi_args.at(j)[ir::BasicBlock::Current] =
+        ir::Results::FromVals({out_reg});
     ++j;
   }
   ASSERT(j == num_rets);
@@ -1022,30 +1016,23 @@ std::vector<ir::Val> DispatchTable::EmitCall(
   ir::BasicBlock::Current = landing_block;
 
   switch (num_rets) {
-    case 0: return {};
+    case 0: return ir::Results{};
     case 1:
-      if (ret_type == type::Void()) {
-        return {ir::Val::None()};
-      } else {
-        return {
-            ir::MakePhi(ir::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type),
-                        result_phi_args[0])};
-      }
-      break;
+      ASSERT(ret_type != type::Void());
+      return ir::MakePhi(ret_type,
+                         ir::Phi(ret_type->is_big() ? Ptr(ret_type) : ret_type),
+                         result_phi_args[0]);
     default: {
-      std::vector<ir::Val> results;
-      results.reserve(num_rets);
+      ir::Results results;
       const auto &tup_entries = ret_type->as<type::Tuple>().entries_;
       for (size_t i = 0; i < num_rets; ++i) {
         const type::Type *single_ret_type = tup_entries[i];
-        if (single_ret_type == type::Void()) {
-          results.push_back(ir::Val::None());
-        } else {
-          results.push_back(ir::MakePhi(
-              ir::Phi(single_ret_type->is_big() ? Ptr(single_ret_type)
-                                                : single_ret_type),
-              result_phi_args[i]));
-        }
+        ASSERT(single_ret_type != type::Void());
+        results.append(
+            ir::MakePhi(single_ret_type,
+                        ir::Phi(single_ret_type->is_big() ? Ptr(single_ret_type)
+                                                          : single_ret_type),
+                        result_phi_args[i]));
       }
       return results;
     } break;

@@ -18,12 +18,12 @@ struct Tuple : public Type {
                       ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
   void EmitMoveAssign(Type const *from_type, ir::Results const &from,
                       ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
-  virtual void EmitInit(ir::Register reg, Context *ctx) const;
-  virtual void EmitDestroy(ir::Register reg, Context *ctx) const;
-  virtual ir::Results PrepareArgument(Type const *t, ir::Results const &val,
-                                      Context *ctx) const;
+   void EmitInit(ir::Register reg, Context *ctx) const override;
+   void EmitDestroy(ir::Register reg, Context *ctx) const override;
+   ir::Results PrepareArgument(Type const *t, ir::Results const &val,
+                                      Context *ctx) const override;
 
-  virtual void EmitRepr(ir::Val const &id_val, Context *ctx) const;
+  void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
 
   virtual Cmp Comparator() const { UNREACHABLE(); }
 

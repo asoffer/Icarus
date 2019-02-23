@@ -31,7 +31,7 @@ struct Interface : public Type {
   ir::Results PrepareArgument(Type const *t, ir::Results const &val,
                               Context *ctx) const override;
 
-  void EmitRepr(ir::Val const &id_val, Context *ctx) const override;
+  void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
 
   bool matches(Type const *t) const;
 

@@ -91,17 +91,17 @@ void Switch::ExtractJumps(JumpExprs *rets) const {
 }
 
 ir::Results ast::Switch::EmitIr(Context *ctx) {
-  std::unordered_map<ir::BlockIndex, ir::Val> phi_args;
+  std::unordered_map<ir::BlockIndex, ir::Results> phi_args;
   auto land_block = ir::Func::Current->AddBlock();
 
   // TODO handle a default value. for now, we're just not checking the very last
   // condition. This is very wrong.
 
   // TODO handle switching on tuples/multiple values?
-  ir::Val expr_val;
+  ir::Results expr_results;
   type::Type const *expr_type = nullptr;
   if (expr_) {
-    expr_val  = expr_->EmitIR(ctx)[0];
+    expr_results  = expr_->EmitIr(ctx);
     expr_type = ctx->type_of(expr_.get());
   }
 
@@ -109,29 +109,27 @@ ir::Results ast::Switch::EmitIr(Context *ctx) {
     auto &[expr, match_cond] = cases_[i];
     auto expr_block          = ir::Func::Current->AddBlock();
 
-    auto match_val            = match_cond->EmitIR(ctx)[0];
+    ir::Results match_val     = match_cond->EmitIr(ctx);
     ir::RegisterOr<bool> cond = expr_
                                     ? ir::EmitEq(ctx->type_of(match_cond.get()),
-                                                 match_val, expr_type, expr_val)
-                                    : match_val.reg_or<bool>();
+                                                 match_val, expr_type, expr_results)
+                                    : match_val.get<bool>(0);
 
     auto next_block = ir::EarlyExitOn<true>(expr_block, cond);
 
     ir::BasicBlock::Current           = expr_block;
-    auto val                          = expr->EmitIR(ctx)[0];
-    phi_args[ir::BasicBlock::Current] = std::move(val);
+    phi_args[ir::BasicBlock::Current] = expr->EmitIr(ctx);
     ir::UncondJump(land_block);
 
     ir::BasicBlock::Current = next_block;
   }
 
-  phi_args[ir::BasicBlock::Current] = cases_.back().first->EmitIR(ctx)[0];
+  phi_args[ir::BasicBlock::Current] = cases_.back().first->EmitIr(ctx);
   ir::UncondJump(land_block);
 
   ir::BasicBlock::Current = land_block;
   auto *t                 = ctx->type_of(this);
-  return ir::Results{ir::Results::FromVals(
-      {ir::MakePhi(ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args)})};
+  return ir::MakePhi(t, ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args);
 }
 
 }  // namespace ast

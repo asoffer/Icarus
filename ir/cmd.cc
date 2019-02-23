@@ -96,59 +96,51 @@ RegisterOr<int32_t> Align(RegisterOr<type::Type const *> r) {
 }
 
 template <typename T>
-static Val CastTo(type::Type const *from, Val const &val) {
-  if (auto *r = std::get_if<Register>(&val.value)) {
+static Results CastTo(type::Type const *from, Results const &val) {
+  if (val.is_reg(0)) {
     auto *to       = type::Get<T>();
     auto &cmd      = MakeCmd(to, Cmd::OpCode<Cmd::CastTag, T>());
-    cmd.typed_reg_ = type::Typed<Register>(*r, from);
-    return Val::Reg(cmd.result, to);
+    cmd.typed_reg_ = type::Typed<Register>(val.get<Reg>(0), from);
+    return Results{cmd.result};
   } else {
     return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                             uint16_t, uint32_t, uint64_t, float>(
         from, [&](auto type_holder) {
           using FromType = typename decltype(type_holder)::type;
-          return Val(static_cast<T>(std::get<FromType>(val.value)));
+          return Results{static_cast<T>(val.get<FromType>(0).val_)};
         });
   }
   UNREACHABLE("To ", type::Get<T>(), " from ", from);
 }
 
-Val Cast(type::Type const *from, type::Type const *to, Val const &val) {
-  if (from == type::NullPtr) {
-    Val copy  = val;
-    copy.type = to;
-    return copy;
-  }
+Results Cast(type::Type const *from, type::Type const *to, Results const &val) {
+  if (from == type::NullPtr) { return val; }
 
   // Note: ir::Cast is called with types associated IR commands and registers.
   // Because arrays are considered big, they would never be stored directly in
   // a register, so we would not see an empty array but rather a pointer to an
   // empty arry.
-  if (from == type::Ptr(type::EmptyArray)) {
-    Val copy  = val;
-    copy.type = type::Ptr(to);
-    return copy;
-  }
+  if (from == type::Ptr(type::EmptyArray)) { return val; }
 
   if (to->is<type::Enum>()) {
     ASSERT(from == type::Int32);
-    auto x = val.reg_or<int32_t>();
+    auto x = val.get<int32_t>(0);
     if (x.is_reg_) {
       auto &cmd = MakeCmd(to, Op::CastToEnum);
       cmd.reg_  = x.reg_;
-      return Val::Reg(cmd.result, to);
+      return Results{cmd.result};
     } else {
-      return ValFrom(EnumVal(x.val_), &to->as<type::Enum>());
+      return Results{EnumVal(x.val_)};
     }
   } else if (to->is<type::Flags>()) {
     ASSERT(from == type::Int32);
-    auto x = val.reg_or<int32_t>();
+    auto x = val.get<int32_t>(0);
     if (x.is_reg_) {
       auto &cmd = MakeCmd(to, Op::CastToFlags);
       cmd.reg_  = x.reg_;
-      return Val::Reg(cmd.result, to);
+      return Results{cmd.result};
     } else {
-      return ValFrom(FlagsVal(x.val_), &to->as<type::Flags>());
+      return Results{FlagsVal(x.val_)};
     }
   }
 
@@ -234,21 +226,18 @@ Register FinalizeTuple(Register r) {
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Tup(std::vector<Val> const &entries) {
-  if (std::all_of(entries.begin(), entries.end(), [](ir::Val const &v) {
-        return std::holds_alternative<type::Type const *>(v.value);
-      })) {
+RegisterOr<type::Type const *> Tup(
+    std::vector<RegisterOr<type::Type const *>> const &entries) {
+  if (std::all_of(
+          entries.begin(), entries.end(),
+          [](RegisterOr<type::Type const *> r) { return !r.is_reg_; })) {
     std::vector<type::Type const *> types;
-    for (auto const &val : entries) {
-      types.push_back(std::get<type::Type const *>(val.value));
-    }
+    for (auto const &val : entries) { types.push_back(val.val_); }
     return type::Tup(std::move(types));
   }
 
   ir::Register tup = ir::CreateTuple();
-  for (auto const &val : entries) {
-    ir::AppendToTuple(tup, val.reg_or<type::Type const *>());
-  }
+  for (auto const &val : entries) { ir::AppendToTuple(tup, val); }
   return ir::FinalizeTuple(tup);
 }
 
@@ -267,22 +256,18 @@ Register FinalizeVariant(Register r) {
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Variant(std::vector<Val> const &vals) {
-  if (std::all_of(vals.begin(), vals.end(), [](Val const &v) {
-        return std::holds_alternative<type::Type const *>(v.value);
-      })) {
+RegisterOr<type::Type const *> Variant(
+    std::vector<RegisterOr<type::Type const *>> const &vals) {
+  if (std::all_of(
+          vals.begin(), vals.end(),
+          [](RegisterOr<type::Type const *> const &v) { return !v.is_reg_; })) {
     std::vector<type::Type const *> types;
     types.reserve(vals.size());
-    for (Val const &v : vals) {
-      types.push_back(std::get<type::Type const *>(v.value));
-    }
-
+    for (auto const &v : vals) { types.push_back(v.val_); }
     return type::Var(std::move(types));
   }
   ir::Register var = ir::CreateVariant();
-  for (auto const &val : vals) {
-    ir::AppendToVariant(var, val.reg_or<type::Type const *>());
-  }
+  for (auto const &val : vals) { ir::AppendToVariant(var, val); }
   return ir::FinalizeVariant(var);
 }
 
@@ -359,24 +344,21 @@ Register FinalizeBlockSeq(Register r) {
 }
 
 // TODO replace Val with RegOr<BlockSequence>
-Val BlockSeq(const std::vector<Val> &blocks) {
-  if (std::all_of(blocks.begin(), blocks.end(), [](const ir::Val &v) {
-        return std::holds_alternative<ir::BlockSequence>(v.value);
-      })) {
+RegisterOr<BlockSequence> BlockSeq(
+    std::vector<RegisterOr<BlockSequence>> const &blocks) {
+  if (std::all_of(
+          blocks.begin(), blocks.end(),
+          [](RegisterOr<BlockSequence> const &v) { return !v.is_reg_; })) {
     std::vector<ir::BlockSequence> block_seqs;
     block_seqs.reserve(blocks.size());
-    for (const auto &val : blocks) {
-      block_seqs.push_back(std::get<ir::BlockSequence>(val.value));
-    }
-    return ir::Val::BlockSeq(MakeBlockSeq(block_seqs));
+    for (auto const &val : blocks) { block_seqs.push_back(val.val_); }
+    return MakeBlockSeq(block_seqs);
   }
 
   auto reg = CreateBlockSeq();
-  for (auto const &val : blocks) {
-    ir::AppendToBlockSeq(reg, val.reg_or<ir::BlockSequence>());
-  }
+  for (auto const &val : blocks) { ir::AppendToBlockSeq(reg, val); }
   // TODO can it be an opt block?
-  return ir::Val::Reg(ir::FinalizeBlockSeq(reg), type::Block);
+  return ir::FinalizeBlockSeq(reg);
 }
 
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
@@ -477,20 +459,21 @@ TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
   return cmd.result;
 }
 
-void SetRet(size_t n, Val const &v, Context *ctx) {
-  if (v.type->is<type::GenericStruct>()) {
-    return SetRet(n, v.reg_or<AnyFunc>());
+void SetRet(size_t n, type::Typed<Results> const &r, Context *ctx) {
+  if (r.type()->is<type::GenericStruct>()) {
+    SetRet(n, r->get<AnyFunc>(0));
+  } else {
+    type::Apply(r.type(), [&](auto type_holder) {
+      using T = typename decltype(type_holder)::type;
+      if constexpr (std::is_same_v<T, type::Struct const *>) {
+        auto *t = ir::Func::Current->type_->output[n];
+        // TODO guaranteed move-elision
+        t->EmitMoveAssign(t, r.get(), GetRet(n, t), ctx);
+      } else {
+        SetRet(n, r->get<T>(0));
+      }
+    });
   }
-  return type::Apply(ASSERT_NOT_NULL(v.type), [&](auto type_holder) {
-    using T = typename decltype(type_holder)::type;
-    if constexpr (std::is_same_v<T, type::Struct const *>) {
-      auto *t = ir::Func::Current->type_->output[n];
-      // TODO guaranteed move-elision
-      t->EmitMoveAssign(t, ir::Results{v}, GetRet(n, t), ctx);
-    } else {
-      SetRet(n, v.reg_or<T>());
-    }
-  });
 }
 
 TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int64_t> inc,
