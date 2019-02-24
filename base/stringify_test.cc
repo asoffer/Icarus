@@ -126,6 +126,14 @@ TEST(StringifyWithToStringMethod) {
   CHECK(stringify(std::pair{S{}, S{}}) == "(to_string!, to_string!)");
 }
 
+struct Streamable {};
+std::ostream& operator<<(std::ostream& os, Streamable) {
+  return os << "streamable!";
+}
+TEST(StringifyWithStreamable) {
+  CHECK(stringify(Streamable{}) == "streamable!");
+}
+
 }  // namespace
 }  // namespace base
 

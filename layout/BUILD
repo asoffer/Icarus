@@ -14,3 +14,12 @@ cc_lib(
         "//ir:any_func",
     ],
 )
+
+cc_test(
+    name = "arch_test",
+    srcs = ["arch_test.cc"],
+    deps = [
+        ":arch",
+        "//test"
+    ],
+)

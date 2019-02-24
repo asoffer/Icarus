@@ -395,7 +395,7 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
         // TODO Pretty sure this is wrong now that we have compiler_reg_to_offset_
         stale_down.emplace(&b, ir::Register(offset.value()));
       }
-      offset += sizeof(ir::Register);
+      offset += layout::Bytes{sizeof(ir::Register)};
     } else {
       if (t == type::Bool) {
         props.at(ir::Register(offset.value()))

@@ -4,7 +4,7 @@
 namespace layout {
 
 struct Bytes {
-  constexpr Bytes(size_t val) : value_(val) {}
+  constexpr explicit Bytes(size_t val) : value_(val) {}
 
   constexpr auto value() const { return value_; }
 
@@ -36,6 +36,10 @@ constexpr bool operator<(Bytes lhs, Bytes rhs) {
 constexpr bool operator<=(Bytes lhs, Bytes rhs) { return !(rhs < lhs); }
 constexpr bool operator>(Bytes lhs, Bytes rhs) { return rhs < lhs; }
 constexpr bool operator>=(Bytes lhs, Bytes rhs) { return !(lhs < rhs); }
+
+inline std::ostream& operator<<(std::ostream& os, Bytes b) {
+  return os << b.value() << " bytes";
+}
 
 }  // namespace layout
 

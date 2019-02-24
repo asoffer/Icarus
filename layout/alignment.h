@@ -4,7 +4,7 @@
 namespace layout {
 
 struct Alignment {
-  constexpr Alignment(size_t val) : value_(val) {}
+  constexpr explicit Alignment(size_t val) : value_(val) {}
 
   constexpr auto value() const { return value_; }
 
@@ -24,6 +24,10 @@ constexpr bool operator<(Alignment lhs, Alignment rhs) {
 constexpr bool operator<=(Alignment lhs, Alignment rhs) { return !(rhs < lhs); }
 constexpr bool operator>(Alignment lhs, Alignment rhs) { return rhs < lhs; }
 constexpr bool operator>=(Alignment lhs, Alignment rhs) { return !(lhs < rhs); }
+
+inline std::ostream& operator<<(std::ostream& os, Alignment a) {
+  return os << "align(" << a.value() << ")";
+}
 
 }  // namespace layout
 
