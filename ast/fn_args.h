@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/stringify.h"
+
 namespace ast {
 template <typename T>
 struct FnArgs {
@@ -24,17 +26,12 @@ struct FnArgs {
     return iter;
   }
 
-  template <typename... Args>
-  std::string to_string(Args &&... args) const {
+  std::string to_string() const {
+    using base::stringify;
     std::string result;
-    for (auto &&val : pos_) {
-      result +=
-          (!val ? "null" : val->to_string(std::forward<Args>(args)...)) + ", ";
-    }
+    for (auto &&val : pos_) { result += stringify(val) + ", "; }
     for (auto &&[key, val] : named_) {
-      result += key + ": " +
-                (!val ? "null" : val->to_string(std::forward<Args>(args)...)) +
-                ", ";
+      result += key + ": " + stringify(val) + ", ";
     }
     return result;
   }

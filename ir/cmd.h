@@ -389,8 +389,8 @@ struct Cmd {
   Register result;
 };
 
-RegisterOr<int32_t> Bytes(RegisterOr<type::Type const *> r);
-RegisterOr<int32_t> Align(RegisterOr<type::Type const *> r);
+RegisterOr<int64_t> Bytes(RegisterOr<type::Type const *> r);
+RegisterOr<int64_t> Align(RegisterOr<type::Type const *> r);
 RegisterOr<bool> Not(RegisterOr<bool> r);
 RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r);
 RegisterOr<int32_t> ModInt(RegisterOr<int32_t> v1, RegisterOr<int32_t> v2);

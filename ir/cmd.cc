@@ -83,14 +83,14 @@ Register CastPtr(Register r, type::Pointer const *t) {
   return cmd.result;
 }
 
-RegisterOr<int32_t> Bytes(RegisterOr<type::Type const *> r) {
-  auto &cmd     = MakeCmd(type::Int32, Op::Bytes);
+RegisterOr<int64_t> Bytes(RegisterOr<type::Type const *> r) {
+  auto &cmd     = MakeCmd(type::Int64, Op::Bytes);
   cmd.type_arg_ = r;
   return cmd.result;
 }
 
-RegisterOr<int32_t> Align(RegisterOr<type::Type const *> r) {
-  auto &cmd     = MakeCmd(type::Int32, Op::Align);
+RegisterOr<int64_t> Align(RegisterOr<type::Type const *> r) {
+  auto &cmd     = MakeCmd(type::Int64, Op::Align);
   cmd.type_arg_ = r;
   return cmd.result;
 }

@@ -731,4 +731,14 @@ void Log::UninferrableType(InferenceFailureReason reason,
   errors_.push_back(ss.str());
 }
 
+void Log::BuiltinError(TextSpan const &span, std::string_view text) {
+  std::stringstream ss;
+  ss << text << "\n\n";
+  WriteSource(
+      ss, *span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
 }  // namespace error

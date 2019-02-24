@@ -11,47 +11,109 @@ VerifyResult BuiltinFn::VerifyCall(
     FnArgs<std::unique_ptr<Expression>> const &args,
     FnArgs<VerifyResult> const &arg_results, Context *ctx) const {
   switch (b_) {
-    case ir::Builtin::Foreign:
-      if (!arg_results.named_.empty()) { NOT_YET(); }
-      if (arg_results.pos_.size() != 2u) {
-        NOT_YET();
-      } else {
-        if (arg_results.pos_[0].type_ != type::ByteView) { NOT_YET(); }
-        if (!arg_results.pos_[0].const_) { NOT_YET(); }
-        if (arg_results.pos_[0].type_ != type::Type_) { NOT_YET(); }
-        if (!arg_results.pos_[0].const_) { NOT_YET(); }
-        return VerifyResult::Constant(
-            backend::EvaluateAs<type::Type const *>(args.pos_[1].get(), ctx));
+    case ir::Builtin::Foreign: {
+      bool err = false;
+      if (!arg_results.named_.empty()) {
+        ctx->error_log()->BuiltinError(span,
+                                       "Built-in function `foreign` cannot be "
+                                       "called with named arguments.");
+        err = true;
       }
 
+      if (arg_results.size() != 2u) {
+        ctx->error_log()->BuiltinError(span,
+                                       "Built-in function `foreign` takes "
+                                       "exactly two arguments (You provided " +
+                                           std::to_string(arg_results.size()) +
+                                           ").");
+        err = true;
+      }
+
+      if (!err) {
+        if (arg_results.pos_[0].type_ != type::ByteView) {
+          ctx->error_log()->BuiltinError(
+              span,
+              "First argument to `foreign` must be a byte-view (You provided "
+              "a(n) " +
+                  arg_results.pos_[0].type_->to_string() + ").");
+        }
+        if (!arg_results.pos_[0].const_) {
+          ctx->error_log()->BuiltinError(
+              span, "First argument to `foreign` must be a constant.");
+        }
+        if (arg_results.pos_[0].type_ != type::Type_) {
+          ctx->error_log()->BuiltinError(
+              span,
+              "Second argument to `foreign` must be a type (You provided "
+              "a(n) " +
+                  arg_results.pos_[0].type_->to_string() + ").");
+        }
+        if (!arg_results.pos_[0].const_) {
+          ctx->error_log()->BuiltinError(
+              span, "Second argument to `foreign` must be a constant.");
+        }
+      }
+      return VerifyResult::Constant(
+          backend::EvaluateAs<type::Type const *>(args.pos_[1].get(), ctx));
+    } break;
+
     case ir::Builtin::Opaque:
-      if (!arg_results.empty()) { NOT_YET(); }
+      if (!arg_results.empty()) {
+        ctx->error_log()->BuiltinError(
+            span, "Built-in function `opaque` takes no arguments.");
+      }
       return VerifyResult::Constant(
           ir::BuiltinType(ir::Builtin::Opaque)->as<type::Function>().output[0]);
 
     case ir::Builtin::Bytes:
-      if (!arg_results.named_.empty()) { NOT_YET(); }
-      if (arg_results.pos_.size() != 1u) {
-        NOT_YET();
+      if (!arg_results.named_.empty()) {
+        ctx->error_log()->BuiltinError(span,
+                                       "Built-in function `bytes` cannot be "
+                                       "called with named arguments.");
+      } else if (arg_results.size() != 1u) {
+        ctx->error_log()->BuiltinError(span,
+                                       "Built-in function `bytes` takes "
+                                       "exactly one argument (You provided " +
+                                           std::to_string(arg_results.size()) +
+                                           ").");
       } else if (arg_results.pos_[0].type_ != type::Type_) {
-        NOT_YET();
+        ctx->error_log()->BuiltinError(
+            span,
+            "Built-in function `bytes` must take a single argument of type "
+            "`type` (You provided a(n) " +
+                arg_results.pos_[0].type_->to_string() + ").");
       }
       return VerifyResult::Constant(
           ir::BuiltinType(ir::Builtin::Bytes)->as<type::Function>().output[0]);
 
     case ir::Builtin::Alignment:
-      if (!arg_results.named_.empty()) { NOT_YET(); }
-      if (arg_results.pos_.size() != 1u) {
-        NOT_YET();
+      if (!arg_results.named_.empty()) {
+        ctx->error_log()->BuiltinError(span,
+                                       "Built-in function `alignment` cannot "
+                                       "be called with named arguments.");
+      }
+      if (arg_results.size() != 1u) {
+        ctx->error_log()->BuiltinError(span,
+                                       "Built-in function `alignment` takes "
+                                       "exactly one argument (You provided " +
+                                           std::to_string(arg_results.size()) +
+                                           ").");
+
       } else if (arg_results.pos_[0].type_ != type::Type_) {
-        NOT_YET();
+        ctx->error_log()->BuiltinError(
+            span,
+            "Built-in function `alignment` must take a single argument of "
+            "type `type` (you provided a(n) " +
+                arg_results.pos_[0].type_->to_string() + ")");
       }
       return VerifyResult::Constant(ir::BuiltinType(ir::Builtin::Alignment)
                                         ->as<type::Function>()
                                         .output[0]);
 #ifdef DBG
     case ir::Builtin::DebugIr:
-      if (!arg_results.empty()) { NOT_YET(); }
+      // This is for debugging the compiler only, so there's no need to write
+      // decent errors here.
+      ASSERT(arg_results, matcher::IsEmpty());
       return VerifyResult::Constant(type::Void());
 #endif  // DBG
   }

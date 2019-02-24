@@ -96,6 +96,8 @@ struct Log {
   void NotCopyable(TextSpan const &span, type::Type const *from);
   void NotMovable(TextSpan const &span, type::Type const *from);
 
+  void BuiltinError(TextSpan const&span, std::string_view text);
+
   void MissingDispatchContingency(
       TextSpan const &span,
       std::vector<ast::FnArgs<type::Type const *>> const &missing_dispatch);
