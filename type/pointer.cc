@@ -72,6 +72,14 @@ ir::Results Pointer::PrepareArgument(Type const *from, ir::Results const &val,
   return val;
 }
 
+layout::Bytes Pointer::bytes(layout::Arch const &a) const {
+  return a.ptr_bytes;
+}
+
+layout::Alignment Pointer::alignment(layout::Arch const &a) const {
+  return a.ptr_alignment;
+}
+
 Cmp Pointer::Comparator() const { return Cmp::Equality; }
 
 }  // namespace type

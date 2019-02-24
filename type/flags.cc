@@ -89,6 +89,16 @@ ir::Results Flags::PrepareArgument(Type const *from, ir::Results const &val,
   return val;
 }
 
+// TODO make this the smallest size that fits.
+layout::Bytes Flags::bytes(layout::Arch const &a) const {
+  return layout::Bytes{8};
+}
+
+// TODO make this the smallest size that fits.
+layout::Alignment Flags::alignment(layout::Arch const &a) const {
+  return layout::Alignment{8};
+}
+
 Cmp Flags::Comparator() const { return Cmp::Order; }
 
 }  // namespace type

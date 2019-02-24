@@ -20,7 +20,7 @@
 #include "error/log.h"
 #include "ir/arguments.h"
 #include "ir/func.h"
-#include "misc/architecture.h"
+#include "layout/arch.h"
 #include "misc/module.h"
 #include "type/incomplete_enum.h"
 #include "type/incomplete_flags.h"
@@ -59,12 +59,12 @@ void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
   // TODO log an error if you're asked to execute a function that had an
   // error.
 
-  auto arch     = Architecture::InterprettingMachine();
-  size_t offset = 0;
+  auto arch     = layout::Interpretter();
+  auto offset = layout::Bytes{0};
   for (auto *t : fn->type_->output) {
-    offset = arch.MoveForwardToAlignment(t, offset) + arch.bytes(t);
+    offset = layout::FwdAlign(offset, t->alignment(arch)) + t->bytes(arch);
   }
-  base::untyped_buffer ret_buffer(offset);
+  base::untyped_buffer ret_buffer(offset.value());
 
   while (true) {
     auto block_index = exec_ctx->ExecuteBlock(ret_slots);
@@ -93,7 +93,7 @@ ExecContext::Frame::Frame(ir::Func *fn, const base::untyped_buffer &arguments)
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
-      regs_(base::untyped_buffer::MakeFull(fn_->reg_size_)) {
+      regs_(base::untyped_buffer::MakeFull(fn_->reg_size_.value())) {
   regs_.write(0, arguments);
 }
 
@@ -172,11 +172,12 @@ struct RetrieveArgs<N, T, Ts...> {
       *index += sizeof(ir::Addr);
       RetrieveArgs<N + 1, Ts...>{}(arguments, index, out_tup);
     } else {
-      auto arch             = Architecture::InterprettingMachine();
-      auto t                = type::Get<T>();
-      *index                = arch.MoveForwardToAlignment(t, *index);
+      auto arch = layout::Interpretter();
+      auto t    = type::Get<T>();
+      *index =
+          layout::FwdAlign(layout::Bytes{*index}, t->alignment(arch)).value();
       std::get<N>(*out_tup) = arguments.get<T>(*index);
-      *index += arch.bytes(t);
+      *index += t->bytes(arch).value();
       RetrieveArgs<N + 1, Ts...>{}(arguments, index, out_tup);
     }
   }
@@ -274,11 +275,10 @@ ir::BlockIndex ExecContext::ExecuteCmd(
   switch (cmd.op_code_) {
     case ir::Op::Death: UNREACHABLE(call_stack.top().fn_);
     case ir::Op::Bytes:
-      save(Architecture::InterprettingMachine().bytes(resolve(cmd.type_arg_)));
+      save(resolve(cmd.type_arg_)->bytes(layout::Interpretter()));
       break;
     case ir::Op::Align:
-      save(Architecture::InterprettingMachine().alignment(
-          resolve(cmd.type_arg_)));
+      save(resolve(cmd.type_arg_)->alignment(layout::Interpretter()));
       break;
     case ir::Op::NotBool: save(!resolve<bool>(cmd.reg_)); break;
     case ir::Op::NotFlags: {
@@ -600,13 +600,14 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       base::Log() << ss.str();
     } break;
     case ir::Op::Alloca: {
-      auto arch = Architecture::InterprettingMachine();
+      auto arch = layout::Interpretter();
 
-      save(ir::Addr::Stack(
-          arch.MoveForwardToAlignment(cmd.type_, stack_.size())));
+      save(ir::Addr::Stack(layout::FwdAlign(layout::Bytes{stack_.size()},
+                                            cmd.type_->alignment(arch))
+                               .value()));
       // TODO simplify: just say how big you want the stack to be after this.
-      stack_.append_bytes(arch.bytes(cmd.type_),
-                          arch.alignment(cmd.type_));
+      stack_.append_bytes(cmd.type_->bytes(arch).value(),
+                          cmd.type_->alignment(arch).value());
 
     } break;
     case ir::Op::Ptr:
@@ -620,57 +621,60 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::VariantType: save(resolve(cmd.addr_arg_)); break;
     case ir::Op::VariantValue: {
-      auto bytes = Architecture::InterprettingMachine().bytes(Ptr(type::Type_));
-      auto bytes_fwd =
-          Architecture::InterprettingMachine().MoveForwardToAlignment(
-              Ptr(type::Type_), bytes);
-      auto addr = resolve(cmd.addr_arg_);
+      auto arch      = layout::Interpretter();
+      auto bytes     = type::Type_->bytes(arch);
+      auto bytes_fwd = layout::FwdAlign(bytes, type::Type_->alignment(arch));
+      auto addr      = resolve(cmd.addr_arg_);
       switch (addr.kind) {
         case ir::Addr::Kind::Stack:
-          addr.as_stack += bytes_fwd;
+          addr.as_stack += bytes_fwd.value();
           save(addr);
           break;
         case ir::Addr::Kind::Heap:
           addr.as_heap = static_cast<void *>(static_cast<char *>(addr.as_heap) +
-                                             bytes_fwd);
+                                             bytes_fwd.value());
           save(addr);
           break;
         case ir::Addr::Kind::ReadOnly:
-          addr.as_rodata += bytes_fwd;
+          addr.as_rodata += bytes_fwd.value();
           save(addr);
           break;
       }
     } break;
     case ir::Op::PtrIncr: {
-      auto addr      = resolve(cmd.ptr_incr_.ptr_);
-      auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          resolve(cmd.ptr_incr_.incr_), cmd.ptr_incr_.pointee_type_);
+      auto addr = resolve(cmd.ptr_incr_.ptr_);
+      auto bytes_fwd =
+          type::Array(cmd.ptr_incr_.pointee_type_, resolve(cmd.ptr_incr_.incr_))
+              .bytes(layout::Interpretter());
       switch (addr.kind) {
-        case ir::Addr::Kind::Stack: addr.as_stack += bytes_fwd; break;
+        case ir::Addr::Kind::Stack: addr.as_stack += bytes_fwd.value(); break;
         case ir::Addr::Kind::Heap:
-          addr.as_heap = static_cast<char *>(addr.as_heap) + bytes_fwd;
-         break;
-        case ir::Addr::Kind::ReadOnly: addr.as_rodata += bytes_fwd; break;
+          addr.as_heap = static_cast<char *>(addr.as_heap) + bytes_fwd.value();
+          break;
+        case ir::Addr::Kind::ReadOnly:
+          addr.as_rodata += bytes_fwd.value();
+          break;
       }
       save(addr);
     } break;
     case ir::Op::Field: {
-      auto addr = resolve(cmd.field_.ptr_);
-      size_t offset = 0;
+      auto addr   = resolve(cmd.field_.ptr_);
+      auto offset = layout::Bytes{0};
+      auto arch   = layout::Interpretter();
       if (cmd.field_.type_->is<type::Struct>()) {
-        offset = cmd.field_.type_->as<type::Struct>().offset(
-            cmd.field_.num_, Architecture::InterprettingMachine());
+        offset =
+            cmd.field_.type_->as<type::Struct>().offset(cmd.field_.num_, arch);
       } else if (cmd.field_.type_->is<type::Tuple>()) {
-        offset = cmd.field_.type_->as<type::Tuple>().offset(
-            cmd.field_.num_, Architecture::InterprettingMachine());
+        offset =
+            cmd.field_.type_->as<type::Tuple>().offset(cmd.field_.num_, arch);
       } else {
         UNREACHABLE();
       }
       if (addr.kind == ir::Addr::Kind::Stack) {
-        addr.as_stack += offset;
+        addr.as_stack += offset.value();
       } else {
         addr.as_heap =
-            static_cast<void *>(static_cast<char *>(addr.as_heap) + offset);
+            static_cast<void *>(static_cast<char *>(addr.as_heap) + offset.value());
       }
       save(addr);
     } break;

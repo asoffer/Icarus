@@ -12,8 +12,6 @@
 #include "misc/scope.h"
 #include "type/type.h"
 
-struct Architecture;
-
 namespace ast {
 struct StructLiteral;
 }  // namespace ast
@@ -53,7 +51,7 @@ struct Struct : public Type {
 
   ::Module const *defining_module() const { return mod_; }
 
-  size_t offset(size_t n, Architecture const &arch) const;
+  layout::Bytes offset(size_t n, layout::Arch const &arch) const;
 
   std::vector<Field> const &fields() const { return fields_; }
   size_t index(std::string const &name) const;

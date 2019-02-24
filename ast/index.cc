@@ -3,7 +3,7 @@
 #include "backend/eval.h"
 #include "ir/components.h"
 #include "ir/val.h"
-#include "misc/architecture.h"
+#include "layout/arch.h"
 #include "misc/context.h"
 #include "type/array.h"
 #include "type/cast.h"

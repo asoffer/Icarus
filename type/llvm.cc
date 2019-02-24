@@ -48,27 +48,26 @@ llvm::PointerType* Pointer::llvm_ptr(llvm::LLVMContext& ctx) const {
 }
 llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
   // TODO pass in information about the machine we're compiling to
-  auto arch = Architecture::CompilingMachine();
+  auto arch = layout::Host();
 
   const Type* max_elem = nullptr;
   size_t max_alignment = 0;
   for (const Type* v : variants_) {
-    auto v_alignment = arch.alignment(v);
+    auto v_alignment = v->alignment(arch);
     if (max_alignment < v_alignment) {
       max_alignment = v_alignment;
       max_elem      = v;
     }
   }
-  auto extra_bytes = arch.bytes(this) - arch.bytes(max_elem) - 8;
+  auto extra_bytes = bytes(arch) - max_elem->bytes(arch) - 8;
   if (extra_bytes == 0) {
     return llvm::StructType::get(
         ctx, {llvm::Type::getInt64Ty(ctx), max_elem->llvm(ctx)});
   } else {
     return llvm::StructType::get(
-        ctx,
-        {llvm::Type::getInt64Ty(ctx), max_elem->llvm(ctx),
-         llvm::ArrayType::get(llvm::Type::getInt8Ty(ctx),
-                              arch.bytes(this) - arch.bytes(max_elem) - 8)});
+        ctx, {llvm::Type::getInt64Ty(ctx), max_elem->llvm(ctx),
+              llvm::ArrayType::get(llvm::Type::getInt8Ty(ctx),
+                                   bytes(arch) - max_elem->bytes(arch) - 8)});
   }
 }
 

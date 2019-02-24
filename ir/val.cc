@@ -8,7 +8,7 @@
 #include "ast/scope_literal.h"
 #include "base/guarded.h"
 #include "ir/func.h"
-#include "misc/architecture.h"
+#include "layout/arch.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
@@ -52,7 +52,7 @@ std::string_view SaveStringGlobally(std::string const &str) {
   size_t buf_end = backend::ReadOnlyData.size();
   backend::ReadOnlyData.append_bytes(
       str.size() + 1,  // +1 for the null terminator.
-      Architecture::InterprettingMachine().alignment(type::Nat8));
+      type::Nat8->alignment(layout::Interpretter()).value());
   std::memcpy(backend::ReadOnlyData.raw(buf_end), str.data(), str.size() + 1);
   iter->second = Addr::ReadOnly(buf_end);
 

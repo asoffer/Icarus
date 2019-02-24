@@ -31,7 +31,6 @@ cc_lib(
     deps = [
         ":foreign",
         "//base:debug",
-        "//type:function",
     ],
 )
 
@@ -48,7 +47,7 @@ cc_target(
     impl_deps = [
         ":func",
         ":val",
-        "//misc:architecture",
+        "//layout:arch",
     ],
 )
 
@@ -87,7 +86,7 @@ cc_target(
         ":phi",
         ":val",
         "//ast:struct_literal",
-        "//misc:architecture",
+        "//layout:arch",
         "//type:typed_value",
         "//type:generic_struct",
     ],
@@ -128,7 +127,7 @@ cc_target(
     impl_deps = [
         ":arguments",
         "//ast:function_literal",
-        "//misc:architecture",
+        "//layout:arch",
         "//property:property",
         "//property:property_map",
         "//type:function",
@@ -200,7 +199,7 @@ cc_target(
         "//ast:scope_literal",
         "//base:guarded",
         "//ir:func",
-        "//misc:architecture",
+        "//layout:arch",
         "//type:enum",
         "//type:flags",
         "//type:function",

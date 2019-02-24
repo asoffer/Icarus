@@ -1,0 +1,42 @@
+#ifndef ICARUS_LAYOUT_BYTES_H
+#define ICARUS_LAYOUT_BYTES_H
+
+namespace layout {
+
+struct Bytes {
+  constexpr Bytes(size_t val) : value_(val) {}
+
+  constexpr auto value() const { return value_; }
+
+  constexpr Bytes& operator+=(Bytes b) {
+    value_ += b.value_;
+    return *this;
+  }
+
+ private:
+  size_t value_ = 0;
+};
+
+constexpr Bytes operator*(Bytes b, size_t n) { return Bytes{b.value() * n}; }
+constexpr Bytes operator*(size_t n, Bytes b) { return Bytes{b.value() * n}; }
+
+constexpr Bytes operator+(Bytes lhs, Bytes rhs) {
+  return Bytes{lhs.value() + rhs.value()};
+}
+
+constexpr bool operator==(Bytes lhs, Bytes rhs) {
+  return lhs.value() == rhs.value();
+}
+
+constexpr bool operator!=(Bytes lhs, Bytes rhs) { return !(lhs == rhs); }
+constexpr bool operator<(Bytes lhs, Bytes rhs) {
+  return lhs.value() < rhs.value();
+}
+
+constexpr bool operator<=(Bytes lhs, Bytes rhs) { return !(rhs < lhs); }
+constexpr bool operator>(Bytes lhs, Bytes rhs) { return rhs < lhs; }
+constexpr bool operator>=(Bytes lhs, Bytes rhs) { return !(lhs < rhs); }
+
+}  // namespace layout
+
+#endif  // ICARUS_LAYOUT_BYTES_H

@@ -84,7 +84,7 @@ struct untyped_buffer {
   }
 
   void append_bytes(size_t num, size_t alignment) {
-    // TODO combine with Architecture::MoveForwardToAlignment?
+    // TODO combine with layout::FwdAlign?
     size_t new_size = ((size_ - 1) | (alignment - 1)) + 1 + num;
 
     if (new_size > capacity_) { reallocate(new_size); }

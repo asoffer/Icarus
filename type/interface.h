@@ -4,8 +4,6 @@
 #include "misc/scope.h"
 #include "type/type.h"
 
-struct Architecture;
-
 namespace type {
 struct Interface : public Type {
   Interface() = delete;
@@ -35,15 +33,18 @@ struct Interface : public Type {
 
   bool matches(Type const *t) const;
 
-  virtual Cmp Comparator() const { UNREACHABLE(); }
+  layout::Bytes bytes(layout::Arch const &arch) const override;
+  layout::Alignment alignment(layout::Arch const &arch) const override;
+
+   Cmp Comparator() const override { UNREACHABLE(); }
 
   ::Module const *defining_module() const { return mod_; }
 
-  virtual void defining_modules(
-      std::unordered_set<::Module const *> *modules) const;
+  void defining_modules(
+      std::unordered_set<::Module const *> *modules) const override;
 
 #ifdef ICARUS_USE_LLVM
-  virtual llvm::Type *llvm(llvm::LLVMContext &) const { UNREACHABLE(); }
+  llvm::Type *llvm(llvm::LLVMContext &) const override { UNREACHABLE(); }
 #endif  // ICARUS_USE_LLVM
 
   ::Scope const *scope_ = nullptr;

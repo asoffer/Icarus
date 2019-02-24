@@ -8,7 +8,7 @@
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
-#include "misc/architecture.h"
+#include "layout/arch.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
@@ -340,6 +340,14 @@ ir::Results Array::PrepareArgument(Type const *from, ir::Results const &val,
     from->EmitMoveAssign(from, val, arg, ctx);
     return ir::Results{arg};
   }
+}
+
+layout::Bytes Array::bytes(layout::Arch const &a) const {
+  return layout::FwdAlign(data_type->bytes(a), data_type->alignment(a)) * len;
+}
+
+layout::Alignment Array::alignment(layout::Arch const &a) const {
+  return data_type->alignment(a);
 }
 
 // TODO arrays are tricky because they may contain structs and so just using the

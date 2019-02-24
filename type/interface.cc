@@ -9,7 +9,7 @@
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/val.h"
-#include "misc/architecture.h"
+#include "layout/arch.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
@@ -52,4 +52,13 @@ void Interface::EmitMoveAssign(Type const *from_type, ir::Results const &from,
 void Interface::EmitRepr(ir::Results const &id_val, Context *ctx) const {
   UNREACHABLE();
 }
+
+layout::Bytes Interface::bytes(layout::Arch const &a) const {
+  return layout::Host().ptr_bytes;
+}
+
+layout::Alignment Interface::alignment(layout::Arch const &a) const {
+  return layout::Host().ptr_alignment;
+}
+
 }  // namespace type

@@ -36,6 +36,14 @@ void Opaque::defining_modules(
   modules->insert(mod_);
 }
 
+layout::Bytes Opaque::bytes(layout::Arch const &a) const {
+  NOT_YET("figure out what to do here");
+}
+
+layout::Alignment Opaque::alignment(layout::Arch const &a) const {
+  NOT_YET("figure out what to do here");
+}
+
 Cmp Opaque::Comparator() const { UNREACHABLE(); }
 
 }  // namespace type

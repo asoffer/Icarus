@@ -2,7 +2,7 @@
 
 #include "ir/arguments.h"
 #include "ir/func.h"
-#include "misc/architecture.h"
+#include "layout/arch.h"
 #include "property/property.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
@@ -30,13 +30,14 @@ void Debug(PropertyMap const &pm) {
 
 template <typename Fn>
 void ForEachArgument(ir::Func const &f, Fn &&fn_to_call) {
-  auto arch     = Architecture::InterprettingMachine();
-  size_t offset = 0;
+  auto arch   = layout::Interpretter();
+  auto offset = layout::Bytes{0};
 
   for (auto *t : f.type_->input) {
-    offset = arch.MoveForwardToAlignment(t, offset);
-    fn_to_call(ir::Register{offset});
-    offset += arch.bytes(t);
+    // TODO these register offsets are wrong now that we have compiler_reg_to_offset_.
+    offset = layout::FwdAlign(offset, t->alignment(arch));
+    fn_to_call(ir::Register{offset.value()});
+    offset += t->bytes(arch);
   }
 }
 
@@ -360,9 +361,9 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
   auto *entry_block = &fn_->block(fn_->entry());
   auto &props       = copy.view_.at(entry_block).view_;
 
-  auto arch     = Architecture::InterprettingMachine();
-  size_t offset = 0;
-  size_t index  = 0;
+  auto arch    = layout::Interpretter();
+  auto offset  = layout::Bytes{0};
+  size_t index = 0;
   // TODO offset < args.args_.size() should work as the condition but it isn't,
   // so figure out why.
 
@@ -379,33 +380,34 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
 
   while (index < ins.size()) {
     auto *t = ins.at(index);
-    offset  = arch.MoveForwardToAlignment(t, offset);
+    offset = layout::FwdAlign(offset, t->alignment(arch));
     // TODO instead of looking for non-register args, this should be moved out
     // to the caller. because registers might also have some properties that can
     // be reasoned about, all of this should be figured out where it's known and
     // then passed in.
     if (args.results_.is_reg(index)) {
-      props.at(ir::Register(offset))
+      props.at(ir::Register(offset.value()))
           .add(fn_state_view.view_.at(args.results_.get<ir::Register>(index)));
 
       // TODO only need to do this on the entry block, but we're not passing
       // info between block views yet.
       for (const auto &b : fn_->blocks_) {
-        stale_down.emplace(&b, ir::Register(offset));
+        // TODO Pretty sure this is wrong now that we have compiler_reg_to_offset_
+        stale_down.emplace(&b, ir::Register(offset.value()));
       }
       offset += sizeof(ir::Register);
     } else {
       if (t == type::Bool) {
-        props.at(ir::Register(offset))
+        props.at(ir::Register(offset.value()))
             .add(base::make_owned<BoolProp>(
-                args.results_.get<bool>(offset).val_));
+                args.results_.get<bool>(offset.value()).val_));
         // TODO only need to do this on the entry block, but we're not passing
         // info between block views yet.
         for (const auto &b : fn_->blocks_) {
-          stale_down.emplace(&b, ir::Register(offset));
+          stale_down.emplace(&b, ir::Register(offset.value()));
         }
       }
-      offset += arch.bytes(t);
+      offset += t->bytes(arch);
     }
     ++index;
   }

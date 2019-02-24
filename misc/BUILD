@@ -6,35 +6,10 @@ load("//:defs.bzl", "cc_lib", "cc_target")
 cc_lib(
     name = "impl",
     deps = [
-        ":architecture-impl",
         ":context-impl",
         ":module-impl",
         ":scope-impl",
         ":import_graph-impl",
-    ],
-)
-
-cc_target(
-    name = "architecture",
-    intf_deps = [
-        "//ir:addr",
-        "//ir:register",
-    ],
-    impl_deps = [
-        ":context",
-        "//ir:cmd",
-        "//type:array",
-        "//type:enum",
-        "//type:flags",
-        "//type:function",
-        "//type:generic_struct",
-        "//type:interface",
-        "//type:opaque",
-        "//type:pointer",
-        "//type:primitive",
-        "//type:struct",
-        "//type:tuple",
-        "//type:variant",
     ],
 )
 

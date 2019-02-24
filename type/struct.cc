@@ -1,6 +1,6 @@
 #include "type/struct.h"
 
-#include "misc/architecture.h"
+#include "layout/arch.h"
 #include "ast/declaration.h"
 #include "ast/struct_literal.h"
 #include "base/guarded.h"
@@ -73,11 +73,11 @@ void Struct::EmitMoveAssign(Type const *from_type, ir::Results const &from,
   ir::Move(this, from.get<ir::Reg>(0), to);
 }
 
-size_t Struct::offset(size_t field_num, Architecture const &arch) const {
-  size_t offset = 0;
+layout::Bytes Struct::offset(size_t field_num, layout::Arch const &a) const {
+  auto offset = layout::Bytes{0};
   for (size_t i = 0; i < field_num; ++i) {
-    offset += arch.bytes(fields_.at(i).type);
-    offset = arch.MoveForwardToAlignment(fields_.at(i + 1).type, offset);
+    offset += fields_.at(i).type->bytes(a);
+    offset = layout::FwdAlign(offset, fields_.at(i + 1).type->alignment(a));
   }
   return offset;
 }
@@ -220,6 +220,26 @@ ir::Results Struct::PrepareArgument(Type const *from, ir::Results const &val,
     UNREACHABLE(from);
   }
   return ir::Results{arg};
+}
+
+layout::Bytes Struct::bytes(layout::Arch const &a) const {
+  auto num_bytes = layout::Bytes{0};
+  for (auto const &field : fields_) {
+    num_bytes += field.type->bytes(a);
+    // TODO it'd be in the (common, I think) case where you want both, it would
+    // be faster to compute bytes and alignment simultaneously.
+    num_bytes = layout::FwdAlign(num_bytes, field.type->alignment(a));
+  }
+
+  return num_bytes;
+}
+
+layout::Alignment Struct::alignment(layout::Arch const &a) const {
+  auto align = layout::Alignment{1};
+  for (auto const &field : fields_) {
+    align = std::max(align, field.type->alignment(a));
+  }
+  return align;
 }
 
 Cmp Struct::Comparator() const { return Cmp::None; }

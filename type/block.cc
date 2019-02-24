@@ -30,5 +30,13 @@ ir::Results Block::PrepareArgument(Type const *from, ir::Results const &val,
   UNREACHABLE();
 }
 
+layout::Bytes Block::bytes(layout::Arch const &) const {
+  return layout::Host().ptr_bytes;
+}
+
+layout::Alignment Block::alignment(layout::Arch const &) const {
+  return layout::Host().ptr_alignment;
+}
+
 Cmp Block::Comparator() const { return Cmp::None; }
 }  // namespace type

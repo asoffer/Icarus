@@ -446,7 +446,7 @@ cc_target(
     impl_deps = [
         "//backend:eval",
         "//ir:components",
-        "//misc:architecture",
+        "//layout:arch",
         "//type:cast",
     ]
 )

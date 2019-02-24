@@ -8,7 +8,7 @@
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
-#include "misc/architecture.h"
+#include "layout/arch.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/generic_struct.h"

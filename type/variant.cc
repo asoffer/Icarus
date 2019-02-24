@@ -19,7 +19,8 @@ bool Variant::contains(Type const *t) const {
   return false;
 }
 
-static base::guarded<std::map<std::vector<Type const *>, Variant>> variants_;
+static base::guarded<std::map<std::vector<Type const *>, Variant>>
+    all_variants_;
 Type const *Var(std::vector<Type const *> variants) {
   if (variants.empty()) { return Void(); }
   if (variants.size() == 1) { return variants[0]; }
@@ -46,7 +47,7 @@ Type const *Var(std::vector<Type const *> variants) {
 
   if (variants.size() == 1) { return variants.front(); }
 
-  return &variants_.lock()
+  return &all_variants_.lock()
               ->emplace(std::piecewise_construct,
                         std::forward_as_tuple(variants),
                         std::forward_as_tuple(variants))
@@ -307,10 +308,26 @@ ir::Results Variant::PrepareArgument(Type const *from, ir::Results const &val,
   return ir::Results{alloc_reg};
 }
 
+layout::Bytes Variant::bytes(layout::Arch const &a) const {
+  auto num_bytes = layout::Bytes{0};
+  auto align = layout::Alignment{1};
+  for (auto const *t : variants_) {
+    align     = std::max(align, t->alignment(a));
+    num_bytes = std::max(num_bytes, t->bytes(a));
+  }
+  return layout::FwdAlign(Type_->bytes(a), align) + num_bytes;
+}
+
+layout::Alignment Variant::alignment(layout::Arch const &a) const {
+  auto align = Type_->alignment(a);
+  for (auto const *t : variants_) { align = std::max(align, t->alignment(a)); }
+  return align;
+}
+
 Cmp Variant::Comparator() const {
   using cmp_t = std::underlying_type_t<Cmp>;
   auto cmp    = static_cast<cmp_t>(Cmp::Equality);
-  for (const Type *t : variants_) {
+  for (Type const *t : variants_) {
     cmp = std::min(cmp, static_cast<cmp_t>(t->Comparator()));
   }
   return static_cast<Cmp>(cmp);

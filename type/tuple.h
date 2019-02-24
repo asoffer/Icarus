@@ -5,8 +5,6 @@
 #include "ir/any_func.h"
 #include "type/type.h"
 
-struct Architecture;
-
 namespace type {
 struct Tuple : public Type {
   Tuple() = delete;
@@ -30,8 +28,11 @@ struct Tuple : public Type {
   virtual void defining_modules(
       std::unordered_set<::Module const *> *modules) const;
 
-  size_t offset(size_t n, Architecture const &arch) const;
+  layout::Bytes offset(size_t n, layout::Arch const &arch) const;
   size_t size() const { return entries_.size(); }
+
+  layout::Bytes bytes(layout::Arch const &arch) const override;
+  layout::Alignment alignment(layout::Arch const &arch) const override;
 
   bool IsCopyable() const override;
   bool IsMovable() const override;

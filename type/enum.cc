@@ -59,6 +59,16 @@ ir::Results Enum::PrepareArgument(Type const *from, ir::Results const &val,
   return val;
 }
 
+// TODO make this the smallest size that fits.
+layout::Bytes Enum::bytes(layout::Arch const &a) const {
+  return layout::Bytes{8};
+}
+
+// TODO make this the smallest size that fits.
+layout::Alignment Enum::alignment(layout::Arch const &a) const {
+  return layout::Alignment{8};
+}
+
 Cmp Enum::Comparator() const { return Cmp::Equality; }
 
 }  // namespace type

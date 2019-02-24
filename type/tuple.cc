@@ -7,7 +7,7 @@
 #include "base/guarded.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
-#include "misc/architecture.h"
+#include "layout/arch.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
@@ -133,11 +133,11 @@ Type const *Tuple::finalize() {
   return result;
 }
 
-size_t Tuple::offset(size_t field_num, Architecture const &arch) const {
-  size_t offset = 0;
+layout::Bytes Tuple::offset(size_t field_num, layout::Arch const &a) const {
+  auto offset = layout::Bytes{0};
   for (size_t i = 0; i < field_num; ++i) {
-    offset += arch.bytes(entries_.at(i));
-    offset = arch.MoveForwardToAlignment(entries_.at(i + 1), offset);
+    offset += entries_.at(i)->bytes(a);
+    offset = layout::FwdAlign(offset, entries_.at(i + 1)->alignment(a));
   }
   return offset;
 }
@@ -200,6 +200,24 @@ ir::Results Tuple::PrepareArgument(Type const *from, ir::Results const &val,
   auto arg = ir::Alloca(from);
   from->EmitMoveAssign(from, val, arg, ctx);
   return ir::Results{arg};
+}
+
+layout::Bytes Tuple::bytes(layout::Arch const &a) const {
+  auto num_bytes = layout::Bytes{0};
+  for (auto const *t : entries_) {
+    num_bytes += t->bytes(a);
+    // TODO it'd be in the (common, I think) case where you want both, it would
+    // be faster to compute bytes and alignment simultaneously.
+    num_bytes = layout::FwdAlign(num_bytes, t->alignment(a));
+  }
+
+  return num_bytes;
+}
+
+layout::Alignment Tuple::alignment(layout::Arch const &a) const {
+  auto align = layout::Alignment{1};
+  for (auto const *t : entries_) { align = std::max(align, t->alignment(a)); }
+  return align;
 }
 
 }  // namespace type

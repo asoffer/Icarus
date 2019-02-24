@@ -8,7 +8,7 @@
 #include "ir/func.h"
 #include "ir/phi.h"
 #include "ir/val.h"
-#include "misc/architecture.h"
+#include "layout/arch.h"
 #include "type/generic_struct.h"
 #include "type/typed_value.h"
 
@@ -296,12 +296,12 @@ type::Typed<Register> Field(RegisterOr<Addr> r, type::Struct const *t,
 }
 
 Register Reserve(type::Type const *t) {
-  auto arch   = Architecture::InterprettingMachine();
-  auto offset = arch.MoveForwardToAlignment(t, Func::Current->reg_size_);
-  Func::Current->reg_size_ = offset + arch.bytes(t);
+  auto arch   = layout::Interpretter();
+  auto offset = FwdAlign(Func::Current->reg_size_, t->alignment(arch));
+  Func::Current->reg_size_ = offset + t->bytes(arch);
 
   ir::Reg r{Func::Current->compiler_reg_to_offset_.size()};
-  Func::Current->compiler_reg_to_offset_.push_back(offset);
+  Func::Current->compiler_reg_to_offset_.push_back(offset.value());
   ++Func::Current->num_regs_;
   return r;
 }

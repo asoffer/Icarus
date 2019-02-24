@@ -3,8 +3,6 @@
 
 #include "type/type.h"
 
-struct Architecture;
-
 namespace type {
 enum class PrimType : char {
 #define PRIMITIVE_MACRO(EnumName, name) EnumName,
@@ -20,7 +18,6 @@ struct Primitive : public Type {
   bool is_integral() const;
 
  private:
-  friend struct ::Architecture;
   PrimType type_;
 };
 
