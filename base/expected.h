@@ -27,7 +27,7 @@ template <typename T, typename E = unexpected>
 struct expected {
   static_assert(!std::is_same_v<T, E>);
 
-  expected(T &&val) : val_(std::forward<T>(val)) {}
+  expected(T val) : val_(std::move(val)) {}
 
   template <typename... Args>
   explicit expected(Args &&... args) : val_(T{std::forward<Args>(args)...}) {}

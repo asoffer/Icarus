@@ -1,11 +1,12 @@
-#ifndef ICARUS_AST_DISPATCH_H
-#define ICARUS_AST_DISPATCH_H
+#ifndef ICARUS_AST_DISPATCH_TABLE_H
+#define ICARUS_AST_DISPATCH_TABLE_H
 
 #include <string>
 #include <variant>
 
 #include <unordered_map>
 #include "ast/bound_constants.h"
+#include "ast/dispatch/arg_resolution.h"
 #include "ast/fn_args.h"
 #include "ast/overload_set.h"
 #include "base/expected.h"
@@ -33,36 +34,11 @@ struct Expression;
 // own is expressed as an overload set, but for each particular binding will be
 // either `int -> int` or `bool -> bool`.
 struct Binding {
-  struct Entry {
-    Entry() = default;
-    Entry(Expression *expr, int argument_index, int expansion_index,
-          size_t parameter_index)
-        : expr(expr),
-          argument_index(argument_index),
-          expansion_index(expansion_index),
-          parameter_index(parameter_index) {}
-
-    constexpr bool defaulted() const { return expr == nullptr; }
-
-    Expression *expr   = nullptr;
-    int argument_index = -1;  // Positive numbers indicate positional arguments.
-                              // -1 indicates named argument.
-    int expansion_index = -1;     // Positive numbers indicate the index of an
-                                  // expansion. -1 indicates no expansion
-                                  // necessary.
-    size_t parameter_index = -1;  // Which parameter this gets associated with.
-    type::Type const *type = nullptr;
-  };
-
-  // Returns true if on this binding no argument is provided for the parameter
-  // at index `i`.
-  bool defaulted(size_t i) const;
-
   Binding(type::Typed<Expression *, type::Callable> fn, bool constant = false)
       : fn_(fn), const_(constant) {}
 
   type::Typed<Expression *, type::Callable> fn_;
-  std::vector<Entry> entries_;
+  ArgResolution arg_res_;
 
   bool const_ = false;
   BoundConstants
@@ -94,4 +70,4 @@ struct DispatchTable {
 
 }  // namespace ast
 
-#endif  // ICARUS_AST_DISPATCH_H
+#endif  // ICARUS_AST_DISPATCH_TABLE_H

@@ -1,7 +1,6 @@
 #ifndef ICARUS_AST_CALL_H
 #define ICARUS_AST_CALL_H
 
-#include "ast/dispatch.h"
 #include "ast/fn_args.h"
 #include "ast/literal.h"
 

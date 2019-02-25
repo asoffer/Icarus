@@ -17,7 +17,6 @@ cc_lib(
         ":chainop",
         ":comma_list",
         ":declaration",
-        ":dispatch",
         ":enum_literal",
         ":expression",
         ":fn_args",
@@ -42,6 +41,7 @@ cc_lib(
         ":switch",
         ":terminal",
         ":unop",
+        "//ast/dispatch",
     ],
 )
 
@@ -61,8 +61,8 @@ cc_lib(
         ":chainop-impl",
         ":comma_list-impl",
         ":declaration-impl",
-        ":dispatch-impl",
         ":enum_literal-impl",
+        ":expression-impl",
         ":function_literal-impl",
         ":identifier-impl",
         ":import-impl",
@@ -78,6 +78,7 @@ cc_lib(
         ":struct_type-impl",
         ":switch-impl",
         ":unop-impl",
+        "//ast/dispatch:impl",
     ],
 )
 
@@ -128,7 +129,6 @@ cc_target(
 cc_target(
     name = "binop",
     intf_deps = [
-        ":dispatch",
         ":literal",
         "//frontend:operators",
     ],
@@ -172,6 +172,7 @@ cc_target(
         ":expression",
         ":statements",
         "//misc:scope",
+        "//misc:context",
     ],
     impl_deps = ["//ir:val"],
 )
@@ -200,7 +201,6 @@ cc_target(
 cc_target(
     name = "call",
     intf_deps = [
-        ":dispatch",
         ":literal",
         ":fn_args",
     ],
@@ -211,6 +211,7 @@ cc_target(
         ":function_literal",
         ":struct_literal",
         ":unop",
+        "//ast/dispatch:table",
         "//backend:eval",
         "//ir:arguments",
         "//ir:components",
@@ -243,7 +244,6 @@ cc_target(
 cc_target(
     name = "chainop",
     intf_deps = [
-        ":dispatch",
         ":literal",
         "//frontend:operators",
     ],
@@ -291,37 +291,6 @@ cc_target(
 )
 
 cc_target(
-    name = "dispatch",
-    intf_deps = [
-        ":bound_constants",
-        ":fn_args",
-        ":overload_set",
-        "//base:expected",
-    ],
-    impl_deps = [
-        ":call",
-        ":builtin_fn",
-        ":block_literal",
-        ":function_literal",
-        ":match_declaration",
-        "//backend:eval",
-        "//misc:context",
-        "//ir:cmd",
-        "//ir:components",
-        "//ir:func",
-        "//ir:phi",
-        "//misc:module",
-        "//misc:scope",
-        "//type:cast",
-        "//type:function",
-        "//type:generic_struct",
-        "//type:pointer",
-        "//type:tuple",
-        "//type:variant",
-    ],
-)
-
-cc_target(
     name = "enum_literal",
     intf_deps = [
         ":declaration",
@@ -337,18 +306,19 @@ cc_target(
 )
 
 
-cc_lib(
+cc_target(
     name = "expression",
-    hdrs = ["expression.h"],
-    deps = [
+    intf_deps = [
         ":hashtag",
         ":node",
-        "//misc:context",
         "//ir:addr",
         "//ir:register",
         "//type:typed_value",
         "//type:util",
-    ]
+    ],
+    impl_deps = [
+        "//misc:context",
+    ],
 )
 
 cc_lib(
@@ -370,7 +340,6 @@ cc_target(
     intf_deps = [
         ":bound_constants",
         ":declaration",
-        ":dispatch",
         ":fn_params",
         ":identifier",
         ":literal",
@@ -515,7 +484,6 @@ cc_target(
     name = "repeated_unop",
     intf_deps = [
         ":comma_list",
-        ":dispatch",
         "//frontend:operators",
     ],
     impl_deps = [
@@ -641,7 +609,6 @@ cc_lib(
 cc_target(
     name = "unop",
     intf_deps = [
-        ":dispatch",
         ":expression",
         "//frontend:operators",
     ],

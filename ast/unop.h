@@ -1,7 +1,6 @@
 #ifndef ICARUS_AST_UNOP_H
 #define ICARUS_AST_UNOP_H
 
-#include "ast/dispatch.h"
 #include "ast/expression.h"
 #include "frontend/operators.h"
 

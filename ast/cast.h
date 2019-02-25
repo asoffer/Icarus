@@ -4,7 +4,6 @@
 #include <memory>
 #include <vector>
 
-#include "ast/dispatch.h"
 #include "ast/expression.h"
 
 struct Scope;

@@ -23,7 +23,7 @@ cc_target(
     ],
     impl_deps = [
         "//ast:expression",
-        "//ast:dispatch",
+        "//ast/dispatch:table",
     ],
 )
 
@@ -43,7 +43,7 @@ cc_target(
         ":scope",
         "//ast:fn_params",
         "//ast:bound_constants",
-        "//ast:dispatch",
+        "//ast/dispatch:table",
         "//ast:node_lookup",
         "//ast:statements",
         "//error:log",

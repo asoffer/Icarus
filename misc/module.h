@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "ast/bound_constants.h"
-#include "ast/dispatch.h"
+#include "ast/dispatch/table.h"
 #include "ast/fn_params.h"
 #include "ast/node_lookup.h"
 #include "ast/statements.h"

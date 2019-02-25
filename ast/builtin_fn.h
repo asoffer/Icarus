@@ -5,6 +5,7 @@
 #include "ast/literal.h"
 #include "ir/builtin.h"
 #include "misc/module.h"
+#include "misc/context.h"
 
 struct Context;
 

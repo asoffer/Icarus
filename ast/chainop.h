@@ -3,7 +3,6 @@
 
 #include <memory>
 #include <vector>
-#include "ast/dispatch.h"
 #include "ast/literal.h"
 #include "frontend/operators.h"
 

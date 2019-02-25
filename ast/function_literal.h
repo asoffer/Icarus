@@ -5,7 +5,6 @@
 #include <vector>
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"
-#include "ast/dispatch.h"
 #include "ast/fn_params.h"
 #include "ast/identifier.h"
 #include "ast/literal.h"

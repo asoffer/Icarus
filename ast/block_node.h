@@ -4,6 +4,7 @@
 #include <memory>
 #include "ast/expression.h"
 #include "ast/statements.h"
+#include "misc/context.h"
 #include "misc/scope.h"
 
 namespace ast {

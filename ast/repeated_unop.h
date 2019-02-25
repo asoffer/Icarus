@@ -2,7 +2,6 @@
 #define ICARUS_AST_REPEATED_UNOP_H
 
 #include "ast/comma_list.h"
-#include "ast/dispatch.h"
 #include "ast/node.h"
 #include "frontend/operators.h"
 

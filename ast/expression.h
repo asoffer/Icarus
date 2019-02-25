@@ -5,9 +5,7 @@
 #include "ast/node.h"
 #include "ir/addr.h"
 #include "ir/register.h"
-#include "misc/context.h"
 #include "type/typed_value.h"
-#include "type/util.h"
 
 namespace ir {
 struct Val;
@@ -28,12 +26,8 @@ struct Expression : public Node {
   virtual VerifyResult VerifyType(Context *ctx)                     = 0;
   virtual ir::Results EmitIr(Context *)                             = 0;
   virtual std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
-  virtual void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
-    type::EmitCopyInit(ctx->type_of(this), this->EmitIr(ctx), reg, ctx);
-  }
-  virtual void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
-    type::EmitMoveInit(ctx->type_of(this), this->EmitIr(ctx), reg, ctx);
-  }
+  virtual void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx);
+  virtual void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx);
   virtual void DependentDecls(base::Graph<Declaration *> *g,
                               Declaration *d) const = 0;
 
