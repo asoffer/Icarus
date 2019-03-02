@@ -1,6 +1,6 @@
 main ::= () -> () {
-  x: bool | int32 = 999
-  y: bool | int32 = true
+  x: bool | int64 = 999
+  y: bool | int64 = true
 
   x = true
   y = 123
@@ -23,14 +23,14 @@ foo ::= (x: bool, y: bool) -> () {
   print "foo(x: bool = ", x, ", y: bool = ", y, ")\n"
 }
 
-foo ::= (x: bool, y: int32) -> () {
-  print "foo(x: bool = ", x, ", y: int32 = ", y, ")\n"
+foo ::= (x: bool, y: int64) -> () {
+  print "foo(x: bool = ", x, ", y: int64 = ", y, ")\n"
 }
 
-foo ::= (x: int32, y: bool) -> () {
-  print "foo(x: int32 = ", x, ", y: bool = ", y, ")\n"
+foo ::= (x: int64, y: bool) -> () {
+  print "foo(x: int64 = ", x, ", y: bool = ", y, ")\n"
 }
 
-foo ::= (x: int32, y: int32) -> () {
-  print "foo(x: int32 = ", x, ", y: int32 = ", y, ")\n"
+foo ::= (x: int64, y: int64) -> () {
+  print "foo(x: int64 = ", x, ", y: int64 = ", y, ")\n"
 }

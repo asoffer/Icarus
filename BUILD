@@ -5,7 +5,7 @@ cc_binary(
         "//ast:impl",
         "//backend:eval-impl",
         "//backend:exec-impl",
-        "//frontend:lex",
+        "//frontend:lex-impl",
         "//frontend:parse",
         "//error:log-impl",
         "//init:cli-impl",

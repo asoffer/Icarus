@@ -24,6 +24,10 @@ std::string WriteObjectFile(std::string const &name, Module *mod);
 
 #endif  // ICARUS_USE_LLVM
 
+namespace frontend {
+std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
+}  // namespace frontend
+
 static std::mutex mtx;
 static ImportGraph import_graph;
 static std::list<std::shared_future<Module *>> pending_module_futures;
@@ -101,11 +105,9 @@ static Module *CompileModule(Module *mod) {
   ASSIGN_OR(return nullptr, frontend::FileSrc src,
                    frontend::FileSrc::Make(*ASSERT_NOT_NULL(mod->path_)));
 
-  frontend::SrcSource f(std::move(src));
-  error::Log log;
-  auto file_stmts = f.Parse(mod, &log);
-  if (log.size() > 0) {
-    log.Dump();
+  auto file_stmts = frontend::Parse(&src, mod);
+  if (mod->error_log_.size() > 0) {
+    mod->error_log_.Dump();
     found_errors = true;
     return mod;
   }

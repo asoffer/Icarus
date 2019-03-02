@@ -1,19 +1,21 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
+load("//:defs.bzl", "cc_lib", "cc_target")
 
-cc_lib(
+cc_target(
     name = "lex",
-    srcs = ["lex.cc"],
-    deps = [
-        ":numbers",
+    intf_deps = [
+        ":source",
         ":tagged_node",
         ":text_span",
+        "//error:log",
+    ],
+    impl_deps = [
+        ":numbers",
         ":token",
         "//ast:builtin_fn",
         "//ast:hole",
         "//ast:identifier",
         "//ast:terminal",
-        "//error:log",
         "//ir:builtin",
         "//ir:results",
         "//type:primitive",
@@ -37,19 +39,13 @@ cc_lib(
     name = "parse",
     srcs = ["parse.cc"],
     deps = [
+        ":lex",
+        ":source",
         ":tagged_node",
         ":token",
-        ":source",
         "//ast",
         "//base:guarded",
     ],
-)
-
-cc_lib(
-    name = "deprecated_source",
-    hdrs = ["deprecated_source.h"],
-    srcs = ["deprecated_source.cc"],
-    deps = [":source", "//base:log"],
 )
 
 cc_lib(
@@ -90,7 +86,6 @@ cc_lib(
     hdrs = ["text_span.h"],
     srcs = ["text_span.cc"],
     deps = [
-        ":deprecated_source",
         "//base:debug",
         "//base:interval",
     ],

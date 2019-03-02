@@ -34,6 +34,7 @@
 #include "base/debug.h"
 #include "base/guarded.h"
 #include "error/log.h"
+#include "frontend/lex.h"
 #include "frontend/operators.h"
 #include "frontend/source.h"
 #include "frontend/tagged_node.h"
@@ -48,8 +49,6 @@ extern bool parser;
 }  // namespace debug
 
 namespace frontend {
-TaggedNode NextToken(SourceLocation &loc, error::Log *error_log);
-
 namespace {
 
 template <typename To, typename From>
@@ -1108,14 +1107,6 @@ std::unique_ptr<ast::Node> CombineColonEq(
   return drop_all_but<0>(std::move(nodes), mod, error_log);
 }
 
-std::unique_ptr<ast::Node> EmptyFile(
-    std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
-  auto stmts  = std::make_unique<ast::Statements>();
-  stmts->span = nodes[0]->span;
-  return std::move(stmts);
-}
-
 namespace ErrMsg {
 template <size_t RTN, size_t RES>
 std::unique_ptr<ast::Node> Reserved(
@@ -1213,10 +1204,8 @@ auto Rules = std::array{
          ErrMsg::Reserved<0, 1>),
     Rule(expr, {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
          ErrMsg::BothReserved<0, 1, 3>),
-    Rule(bof, {bof, newline}, drop_all_but<0>),
     Rule(eof, {newline, eof}, drop_all_but<1>),
-    Rule(prog, {bof, eof}, EmptyFile),
-    Rule(prog, {bof, stmts, eof}, drop_all_but<1>),
+    Rule(stmts, {stmts, eof}, drop_all_but<0>),
     Rule(r_paren, {newline, r_paren}, drop_all_but<1>),
     Rule(r_bracket, {newline, r_bracket}, drop_all_but<1>),
     Rule(r_brace, {newline, r_brace}, drop_all_but<1>),
@@ -1250,7 +1239,7 @@ auto Rules = std::array{
     Rule(expr, {l_bracket, EXPR, r_bracket}, BuildArrayLiteral),
     Rule(expr, {l_paren, RESERVED, r_paren}, ErrMsg::Reserved<1, 1>),
     Rule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
-    Rule(stmts, {stmts, (EXPR | stmts), newline}, BuildMoreStatements),
+    Rule(stmts, {stmts, (EXPR | stmts), newline | eof}, BuildMoreStatements),
     Rule(expr, {kw_struct, l_paren, expr, r_paren, braced_stmts},
          BuildParameterizedKeywordScope),
     Rule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
@@ -1278,9 +1267,8 @@ auto Rules = std::array{
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
-  ParseState(SourceLocation *loc, Module *mod, error::Log *error_log)
-      : mod_(mod), error_log_(error_log), loc_(loc) {
-    lookahead_.push(TaggedNode(std::make_unique<Token>(loc_->ToSpan()), bof));
+  ParseState(Src *src, Module *mod)
+      : mod_(mod), lex_state_{src, &mod->error_log_} {
   }
 
   template <size_t N>
@@ -1387,7 +1375,7 @@ struct ParseState {
     return ShiftState::MustReduce;
   }
 
-  void LookAhead() { lookahead_.push(NextToken(*loc_, error_log_)); }
+  void LookAhead() { lookahead_.push(NextToken(&lex_state_)); }
 
   const TaggedNode &Next() {
     if (lookahead_.empty()) { LookAhead(); }
@@ -1397,9 +1385,8 @@ struct ParseState {
   std::vector<Tag> tag_stack_;
   std::vector<std::unique_ptr<ast::Node>> node_stack_;
   std::queue<TaggedNode> lookahead_;
-  Module *mod_           = nullptr;
-  error::Log *error_log_ = nullptr;
-  SourceLocation *loc_   = nullptr;
+  Module *mod_ = nullptr;
+  LexState lex_state_;
 
   // We actually don't care about mathing braces because we are only using this
   // to determine for the REPL if we should prompt for further input. If it's
@@ -1412,12 +1399,6 @@ struct ParseState {
 void Debug(ParseState *ps) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
-  if (ps->loc_ != nullptr) {
-    fprintf(stderr, "%s\n", ps->loc_->line().c_str());
-    fprintf(stderr, "%*s^\n(offset = %u)\n\n",
-            static_cast<int>(ps->loc_->cursor.offset), "",
-            ps->loc_->cursor.offset);
-  }
   for (auto x : ps->tag_stack_) { fprintf(stderr, "%lu, ", x); }
   fprintf(stderr, " -> %lu", ps->Next().tag_);
   fputs("", stderr);
@@ -1458,8 +1439,7 @@ bool Reduce(ParseState *ps) {
 
   ASSERT_NOT_NULL(ps->node_stack_.back()->span.source);
   matched_rule_ptr->apply(&ps->node_stack_, &ps->tag_stack_, ps->mod_,
-                          ps->error_log_);
-  ASSERT_NOT_NULL(ps->node_stack_.back()->span.source);
+                          ps->lex_state_.error_log_);
 
   return true;
 }
@@ -1480,40 +1460,8 @@ void CleanUpReduction(ParseState *state) {
 }
 }  // namespace
 
-std::unique_ptr<ast::Statements> Repl::Parse(Module *mod,
-                                             error::Log *error_log) {
-  first_entry = true;  // Show '>> ' the first time.
-
-  SourceLocation loc;
-  loc.source = this;
-
-  auto state = ParseState(&loc, mod, error_log);
-  Shift(&state);
-
-  while (true) {
-    auto shift_state = state.shift_state();
-    switch (shift_state) {
-      case ShiftState::NeedMore:
-        Shift(&state);
-
-        if (debug::parser) { Debug(&state); }
-        continue;
-      case ShiftState::EndOfExpr:
-        CleanUpReduction(&state);
-        return move_as<ast::Statements>(state.node_stack_.back());
-      case ShiftState::MustReduce:
-        Reduce(&state) || (Shift(&state), true);
-        if (debug::parser) { Debug(&state); }
-    }
-  }
-}
-
-std::unique_ptr<ast::Statements> SrcSource::Parse(Module *mod,
-                                                  error::Log *error_log) {
-  SourceLocation loc;
-  loc.source = this;
-
-  auto state = ParseState(&loc, mod, error_log);
+std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod) {
+  auto state = ParseState(src, mod);
   Shift(&state);
 
   while (state.Next().tag_ != eof) {
@@ -1542,19 +1490,10 @@ std::unique_ptr<ast::Statements> SrcSource::Parse(Module *mod,
     }
 
     // This is an exceedingly crappy error message.
-    error_log->UnknownParseError(lines);
+    mod->error_log_.UnknownParseError(lines);
   }
 
   return move_as<ast::Statements>(state.node_stack_.back());
-}
-
-ast::Statements Parse(Src *src, ::Module *mod) {
-  while (true) {
-    auto chunk = src->ReadUntil('\n');
-    base::Log() << chunk.view;
-    if (!chunk.more_to_read) break;
-  }
-  return ast::Statements{};
 }
 
 }  // namespace frontend

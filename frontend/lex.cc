@@ -1,14 +1,12 @@
 #include <cmath>
 #include <unordered_map>
 
+#include "ast/builtin_fn.h"
 #include "ast/hole.h"
 #include "ast/identifier.h"
-#include "ast/builtin_fn.h"
 #include "ast/terminal.h"
-#include "error/log.h"
+#include "frontend/lex.h"
 #include "frontend/numbers.h"
-#include "frontend/tagged_node.h"
-#include "frontend/text_span.h"
 #include "frontend/token.h"
 #include "ir/builtin.h"
 #include "ir/results.h"
@@ -28,6 +26,17 @@ TaggedNode TaggedNode::TerminalExpression(const TextSpan &span,
 }
 
 namespace {
+
+TextSpan ToSpan(SrcCursor const &cursor, Src *src) {
+  TextSpan span;
+  span.start.offset    = cursor.offset();
+  span.start.line_num  = cursor.line();
+  span.finish.offset   = cursor.offset() + cursor.view().size();
+  span.finish.line_num = cursor.line();
+  span.source          = ASSERT_NOT_NULL(src);
+  return span;
+}
+
 constexpr inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
 constexpr inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
 constexpr inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
@@ -47,21 +56,18 @@ constexpr inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
 
-TextSpan NextSimpleWord(SourceLocation &loc) {
-  auto span = loc.ToSpan();
-  while (IsAlphaNumericOrUnderscore(*loc)) { loc.Increment(); }
-  span.finish = loc.cursor;
-  return span;
+SrcCursor NextSimpleWord(SrcCursor *cursor) {
+  return cursor->ConsumeWhile(IsAlphaNumericOrUnderscore);
 }
 
-TaggedNode NextWord(SourceLocation &loc) {
+TaggedNode NextWord(SrcCursor *cursor, Src *src) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
   // We have already matched the first character
-  auto span         = NextSimpleWord(loc);
-  std::string token = loc.line().substr(span.start.offset,
-                                        span.finish.offset - span.start.offset);
+  auto word_cursor       = NextSimpleWord(cursor);
+  std::string_view token = word_cursor.view();
+  auto span              = ToSpan(word_cursor, src);
 
-  static std::unordered_map<std::string,
+  static std::unordered_map<std::string_view,
                             std::pair<ir::Results, type::Type const *>>
       Reserved{
           {"bool", std::pair(ir::Results{type::Bool}, type::Type_)},
@@ -100,7 +106,7 @@ TaggedNode NextWord(SourceLocation &loc) {
     auto const &[results, type] = iter->second;
     return TaggedNode::TerminalExpression(span, results, type);
   }
-  static std::unordered_map<std::string, ir::Builtin> BuiltinFns{
+  static std::unordered_map<std::string_view, ir::Builtin> BuiltinFns{
 #define IR_BUILTIN_MACRO(enumerator, str, t) {str, ir::Builtin::enumerator},
 #include "ir/builtin.xmacro.h"
 #undef IR_BUILTIN_MACRO
@@ -112,7 +118,7 @@ TaggedNode NextWord(SourceLocation &loc) {
 
   // TODO rename kw_struct to more clearly indicate that it's a scope block
   // taking a an optional parenthesized list before the braces.
-  static const std::unordered_map<std::string, Tag> KeywordMap = {
+  static const std::unordered_map<std::string_view, Tag> KeywordMap = {
       {"which", op_l},         {"print", op_l},    {"ensure", op_l},
       {"needs", op_l},         {"import", op_l},   {"flags", kw_block_head},
       {"enum", kw_block_head}, {"generate", op_l}, {"struct", kw_struct},
@@ -120,7 +126,7 @@ TaggedNode NextWord(SourceLocation &loc) {
       {"when", op_b},          {"as", op_b},       {"interface", kw_block},
       {"copy", op_l},          {"move", op_l}};
   if (auto iter = KeywordMap.find(token); iter != KeywordMap.end()) {
-    return TaggedNode(span, iter->first, iter->second);
+    return TaggedNode(span, std::string{iter->first}, iter->second);
   }
 
   // "block" is special because it is also the name of the type of such a block.
@@ -136,42 +142,43 @@ TaggedNode NextWord(SourceLocation &loc) {
   // keywords.
   if (token == "block") {
     type::Type const *t = type::Blk();
-    if (*loc == '?') {
-      loc.Increment();
-      span.finish = loc.cursor;
-      t           = type::OptBlock;
-      token       = "block?";
-    } else if (*loc == '~') {
-      loc.Increment();
-      span.finish = loc.cursor;
-      t           = type::RepBlock;
-      token       = "block~";
+    if (cursor->view()[0] == '?') {
+      cursor->remove_prefix(1);
+      span = ToSpan(word_cursor, src);
+      ++span.finish.offset;
+      t     = type::OptBlock;
+      token = "block?";
+    } else if (cursor->view()[0] == '~') {
+      cursor->remove_prefix(1);
+      span = ToSpan(word_cursor, src);
+      ++span.finish.offset;
+      t     = type::RepBlock;
+      token = "block~";
     }
     return TaggedNode(
         std::make_unique<ast::Terminal>(span, ir::Results{t}, type::Type_),
         kw_block);
   } else if (token == "scope") {
-    if (*loc == '!') {
-      loc.Increment();
-      span.finish = loc.cursor;
+    if (cursor->view()[0] == '!') {
+      cursor->remove_prefix(1);
+      span = ToSpan(word_cursor, src);
+      ++span.finish.offset;
       token = "scope!";
     }
-    return TaggedNode(span, token, kw_block);
+    return TaggedNode(span, std::string{token}, kw_block);
   }
 
-
-  return TaggedNode(std::make_unique<ast::Identifier>(span, token), expr);
+  return TaggedNode(std::make_unique<ast::Identifier>(span, std::string{token}), expr);
 }
 
-TaggedNode NextNumber(SourceLocation &loc, error::Log *error_log) {
-  auto span         = loc.ToSpan();
-  const char *start = &*loc;
-  while (*loc == 'b' || *loc == 'o' || *loc == 'd' || *loc == 'x' ||
-         *loc == '_' || *loc == '.' || IsDigit(*loc)) {
-    loc.Increment();
-  }
-  span.finish = loc.cursor;
-  auto num    = ParseNumber(std::string_view(start, &*loc - start));
+TaggedNode NextNumber(SrcCursor *cursor, Src *src, error::Log *error_log) {
+  auto num_cursor = cursor->ConsumeWhile([](char c) {
+    return c == 'b' || c == 'o' || c == 'd' || c == 'd' || c == '_' ||
+           c == '.' || IsDigit(c);
+  });
+
+  auto span = ToSpan(num_cursor, src);
+  auto num  = ParseNumber(num_cursor.view());
   if (!num.has_value()) {
     // TODO should you do something with guessing the type?
     error_log->InvalidNumber(span, num.error().to_string());
@@ -185,431 +192,347 @@ TaggedNode NextNumber(SourceLocation &loc, error::Log *error_log) {
       *num);
 }
 
-TaggedNode NextStringLiteral(SourceLocation &loc, error::Log *error_log) {
-  auto span = loc.ToSpan();
-  loc.Increment();
+TaggedNode NextStringLiteral(SrcCursor *cursor, Src *src,
+                             error::Log *error_log) {
+  cursor->remove_prefix(1);
+  bool escaped = false;
+  auto str_lit_cursor =
+      cursor->ConsumeWhile([&escaped, src, error_log](char c) {
+        if (c == '\\') {
+          escaped = !escaped;
+          return true;
+        }
+        if (!escaped) { return c != '"'; }
+        escaped = false;
+        switch (c) {
+          case '"':
+          case 'a':
+          case 'b':
+          case 'f':
+          case 'n':
+          case 'r':
+          case 't':
+          case 'v': break;
+          default: {
+            // TODO log an invalid escape character
+            // error_log->InvalidEscapedCharacterInStringLiteral(invalid);
+          } break;
+        }
 
-  // TODO we assign to this repeatedly which is untenable perf-wise in the
-  // long-run.
-  std::string str_lit = "";
+        return true;
+      });
 
-  for (; *loc != '"' && *loc != '\0'; loc.Increment()) {
-    if (*loc != '\\') {
-      str_lit += *loc;
-      continue;
-    }
-
-    loc.Increment();  // Iterate past '\\'
-    span.finish = loc.cursor;
-    switch (*loc) {
-      case '\\': str_lit += '\\'; break;
-      case '"': str_lit += '"'; break;
-      case 'a': str_lit += '\a'; break;
-      case 'b': str_lit += '\b'; break;
-      case 'f': str_lit += '\f'; break;
-      case 'n': str_lit += '\n'; break;
-      case 'r': str_lit += '\r'; break;
-      case 't': str_lit += '\t'; break;
-      case 'v': str_lit += '\v'; break;
-      default:
-        TextSpan invalid = loc.ToSpan();
-        --invalid.start.offset;
-        ++invalid.finish.offset;
-        error_log->InvalidEscapedCharacterInStringLiteral(invalid);
-        str_lit += *loc;
-        break;
-    }
-  }
-
-  if (*loc == '\n' || *loc == '\0') {
-    span.finish = loc.cursor;
+  auto span = ToSpan(str_lit_cursor, src);
+  if (cursor->view().empty()) {
     error_log->RunawayStringLiteral(span);
   } else {
-    loc.Increment();
+    cursor->remove_prefix(1);  // Ending '"'
   }
 
-  span.finish = loc.cursor;
+  std::string str_lit;
+  // Slightly larger than necessary because we're creating extra space for the
+  // '\', but it's at most double the size in the most pathological case, so
+  // unlikely to be an issue.
+  str_lit.reserve(str_lit_cursor.view().size());
+  for (auto it = str_lit_cursor.view().begin(); it != str_lit_cursor.view().end(); ++it) {
+    if (*it != '\\') {
+      str_lit.push_back(*it);
+      continue;
+    }
+    switch (*++it) {
+      case '"': str_lit.push_back('"'); break;
+      case 'a': str_lit.push_back('\a'); break;
+      case 'b': str_lit.push_back('\b'); break;
+      case 'f': str_lit.push_back('\f'); break;
+      case 'n': str_lit.push_back('\n'); break;
+      case 'r': str_lit.push_back('\r'); break;
+      case 't': str_lit.push_back('\t'); break;
+      case 'v': str_lit.push_back('\v'); break;
+      default: UNREACHABLE();
+    }
+  }
+
   return TaggedNode::TerminalExpression(
       span, ir::Results{ir::SaveStringGlobally(str_lit)}, type::ByteView);
 }
 
-TaggedNode NextHashtag(SourceLocation &loc, error::Log *error_log) {
-  loc.Increment();
+TaggedNode NextHashtag(SrcCursor *cursor, Src *src, error::Log *error_log) {
+  cursor->remove_prefix(1);
   TextSpan span;
-  if (*loc == '{') {
-    loc.Increment();
-    span = NextSimpleWord(loc);
+  std::string_view token;
+  if (cursor->view()[0] == '{') {
+    cursor->remove_prefix(1);
+    auto word_cursor = NextSimpleWord(cursor);
+    token            = std::string_view{word_cursor.view().data() - 1,
+                             word_cursor.view().size() + 2};
+    span             = ToSpan(word_cursor, src);
+
     // TODO log an error if this fails.
-    ASSERT(*loc == '}');
-    loc.Increment();
+    ASSERT(cursor->view().size() != 0u);
+    ASSERT(cursor->view()[0] == '}');
+    cursor->remove_prefix(1);
     --span.start.offset;
     ++span.finish.offset;
   } else {
-    span = NextSimpleWord(loc);
+    auto word_cursor = NextSimpleWord(cursor);
+    token            = word_cursor.view();
+    span             = ToSpan(word_cursor, src);
   }
-  std::string token = loc.line().substr(span.start.offset,
-                                        span.finish.offset - span.start.offset);
-  auto t            = TaggedNode(span, token, hashtag);
-  return t;
+  return TaggedNode(span, std::string{token}, hashtag);
 }
 
-TaggedNode NextOperator(SourceLocation &loc, error::Log *error_log) {
-  auto span = loc.ToSpan();
-  switch (*loc) {
+TaggedNode NextOperator(SrcCursor *cursor, Src *src, error::Log *error_log) {
+  switch (cursor->view()[0]) {
     case '@':
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, "@", op_l);
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "@", op_l);
     case ',':
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, ",", comma);
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), ",", comma);
     case ';':
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, ";", semicolon);
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), ";", semicolon);
     case '(':
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, "(", l_paren);
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "(", l_paren);
     case ')':
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, ")", r_paren);
-    case '[': {
-      loc.Increment();
-      auto original = loc;
-      if (*loc == '*') {
-        loc.Increment();
-        if (*loc == ']') {
-          loc.Increment();
-          span.finish = loc.cursor;
-          return TaggedNode(span, "[*]", op_l);
-        } else {
-          loc = original;
-        }
-      }
-      span.finish = loc.cursor;
-      return TaggedNode(span, "[", l_bracket);
-    } break;
-    case ']':
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, "]", r_bracket);
-    case '$':
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, "$", op_l);
-
-    case '{': {
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, "{", l_brace);
-    }
-    case '}': {
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, "}", r_brace);
-    }
-
-    case '.': {
-      while (*loc == '.') { loc.Increment(); }
-      span.finish     = loc.cursor;
-      size_t num_dots = span.finish.offset - span.start.offset;
-
-      if (num_dots == 1) {
-        if (IsDigit(*loc)) {
-          loc.BackUp();
-          return NextNumber(loc, error_log);
-        }
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), ")", r_paren);
+    case '[':
+      if (cursor->view().size() > 3 && cursor->view()[1] == '*' &&
+          cursor->view()[2] == ']') {
+        return TaggedNode(ToSpan(cursor->remove_prefix(3), src), "[*]", op_l);
       } else {
-        error_log->TooManyDots(span);
+        return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "[",
+                          l_bracket);
       }
-      span.finish = loc.cursor;
-      return TaggedNode(span, ".", op_b);
-    } break;
-
+    case ']':
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "]", r_bracket);
+    case '$':
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "$", op_l);
+    case '{':
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "{", l_brace);
+    case '}':
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "}", r_brace);
+    case '.':
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), ".", op_b);
     case '\\': {
-      size_t dist = 1;
-
-      loc.Increment();
-      ++dist;
-      switch (*loc) {
-        case '\\':
-          loc.Increment();
-          span.finish = loc.cursor;
-          return TaggedNode(span, "", newline);
-          break;
-        case '\0':
-          // Ignore the following newline and retry
-          loc.Increment();
-          return TaggedNode::Invalid();
-        case ' ':
-        case '\t':
-          while (IsWhitespace(*loc)) {
-            loc.Increment();
-            ++dist;
-          }
-          if (*loc == '\0') {
-            loc.Increment();
-            return TaggedNode::Invalid();
-          }
-          [[fallthrough]];
-        default:
-          span.finish = loc.cursor;
-          ++span.finish.offset;
-          // TODO this often causes the parser to fail afterwards
-          error_log->NonWhitespaceAfterNewlineEscape(span);
-          return TaggedNode::Invalid();
+      if (cursor->view().size() >= 2 && cursor->view()[1] == '\\') {
+        return TaggedNode(ToSpan(cursor->remove_prefix(2), src), R"(\\)",
+                          newline);
       }
+      auto span = ToSpan(cursor->remove_prefix(1), src);
+      cursor->ConsumeWhile(IsWhitespace);
+      if (!cursor->view().empty()) {
+        error_log->NonWhitespaceAfterNewlineEscape(span);
+      }
+      // TODO using invalid to skip this node. That's not the best semantics.
+      return TaggedNode::Invalid();
     } break;
-    case '#': return NextHashtag(loc, error_log);
+    case '#': return NextHashtag(cursor, src, error_log);
     case '+':
     case '%':
     case '>':
     case '|':
     case '^': {
-      char first_char = *loc;
-      loc.Increment();
-
-      std::string token = "X=";
-      token[0]          = first_char;
-      if (*loc == '=') {
-        loc.Increment();
-      } else {
-        token = std::string(1, first_char);
-      }
-
-      span.finish = loc.cursor;
-      return TaggedNode(span, token, op_b);
-    } break;
-    case '<': {
-      char first_char = *loc;
-      loc.Increment();
-
-      std::string token;
-      Tag tag = op_b;
-      if (*loc == '=') {
-        loc.Increment();
-        token = "<=";
-      } else if (*loc == '<') {
-        loc.Increment();
-        token = "<<";
-        tag   = op_l;
-      } else {
-        token = "<";
-      }
-
-      span.finish = loc.cursor;
-      return TaggedNode(span, token, tag);
+      auto op = cursor->remove_prefix(
+          (cursor->view().size() < 2 || cursor->view()[1] != '=') ? 1 : 2);
+      return TaggedNode(ToSpan(op, src), std::string{op.view()}, op_b);
+    }
+    case '<': {  // Handles "<", "<<", and "<="
+      auto op = cursor->remove_prefix(
+          (cursor->view().size() < 2 ||
+           (cursor->view()[1] != '=' && cursor->view()[1] != '<'))
+              ? 1
+              : 2);
+      return TaggedNode(ToSpan(op, src), std::string{op.view()},
+                        op.view() == "<<" ? op_l : op_b);
     }
     case '*':
-      loc.Increment();
-      if (*loc == '/') {
-        loc.Increment();
-        if (*loc == '/') {
-          // Looking at "*//" which should be parsed as an asterisk followed by
-          // a one-line comment.
-          loc.BackUp();
-          span.finish = loc.cursor;
-          return TaggedNode(span, "*", op_b);
-        } else {
-          span.finish = loc.cursor;
-          error_log->NotInMultilineComment(span);
-          return TaggedNode::Invalid();
+      if (cursor->view().size() >= 2) {
+        switch (cursor->view()[1]) {
+          case '/':
+            error_log->NotInMultilineComment(
+                ToSpan(cursor->remove_prefix(2), src));
+            return TaggedNode::Invalid();
+          case '=':
+            return TaggedNode(ToSpan(cursor->remove_prefix(2), src),
+                              "*=", op_b);
         }
-      } else if (*loc == '=') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(span, "*=", op_b);
-      } else {
-        span.finish = loc.cursor;
-        return TaggedNode(span, "*", op_bl);
       }
-
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "*", op_bl);
     case '&': {
-      loc.Increment();
-      if (*loc == '=') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(span, "&=", op_b);
-      } else {
-        span.finish = loc.cursor;
-        return TaggedNode(span, "&", op_bl);
+      size_t len =
+          (cursor->view().size() >= 2 && cursor->view()[1] == '=') ? 2 : 1;
+      auto op = cursor->remove_prefix(len);
+      return TaggedNode(ToSpan(op, src), std::string{op.view()},
+                        len == 1 ? op_bl : op_b);
+    }
+    case ':':
+      if (cursor->view().size() >= 3 && cursor->view()[1] == ':' &&
+          cursor->view()[2] == '=') {
+        return TaggedNode(ToSpan(cursor->remove_prefix(3), src), "::=", op_b);
       }
-    } break;
 
-    case ':': {
-      loc.Increment();
-
-      if (*loc == '=') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(span, ":=", op_b);
-
-      } else if (*loc == '?') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(span, ":?", op_r);
-
-      } else if (*loc == ':') {
-        loc.Increment();
-
-        if (*loc == '=') {
-          loc.Increment();
-          span.finish = loc.cursor;
-          return TaggedNode(span, "::=", op_b);
-        } else {
-          span.finish = loc.cursor;
-          return TaggedNode(span, "::", colon);
+      if (cursor->view().size() >= 2) {
+        switch (cursor->view()[1]) {
+          case ':': {
+            auto op = cursor->remove_prefix(2);
+            return TaggedNode(ToSpan(op, src), "::", colon);
+          }
+          case '=': {
+            auto op = cursor->remove_prefix(2);
+            return TaggedNode(ToSpan(op, src), ":=", op_b);
+          }
+          case '?': {
+            auto op = cursor->remove_prefix(2);
+            return TaggedNode(ToSpan(op, src), ":?", op_r);
+          }
         }
-      } else {
-        span.finish = loc.cursor;
-        return TaggedNode(span, ":", colon);
       }
-    } break;
-
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), ":", colon);
     case '!': {
-      loc.Increment();
-      if (*loc == '=') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(span, "!=", op_b);
-      } else {
-        span.finish = loc.cursor;
-        return TaggedNode(span, "!", op_l);
+      size_t len =
+          (cursor->view().size() >= 2 && cursor->view()[1] == '=') ? 2 : 1;
+      auto op = cursor->remove_prefix(len);
+      return TaggedNode(ToSpan(op, src), std::string{op.view()},
+                        len == 1 ? op_l : op_b);
+    }
+    case '-':
+      if (cursor->view().size() >= 2) {
+        switch (cursor->view()[1]) {
+          case '>':
+            return TaggedNode(ToSpan(cursor->remove_prefix(2), src), "->",
+                              fn_arrow);
+          case '=':
+            return TaggedNode(ToSpan(cursor->remove_prefix(2), src),
+                              "-=", op_b);
+
+          case '-':
+            return TaggedNode(std::make_unique<ast::Hole>(
+                                  ToSpan(cursor->remove_prefix(2), src)),
+                              expr);
+        }
       }
-    } break;
-
-    case '-': {
-      loc.Increment();
-      if (*loc == '=') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(span, "-=", op_b);
-
-      } else if (*loc == '>') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        auto nptr   = std::make_unique<Token>(span, "->");
-        nptr->op    = Operator::Arrow;
-        return TaggedNode(std::move(nptr), fn_arrow);
-
-      } else if (*loc == '-') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(std::make_unique<ast::Hole>(span), expr);
-      } else {
-        span.finish = loc.cursor;
-        return TaggedNode(span, "-", op_bl);
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "-", op_bl);
+    case '=':
+      if (cursor->view().size() >= 2) {
+        switch (cursor->view()[1]) {
+          case '>':
+            return TaggedNode(ToSpan(cursor->remove_prefix(2), src), "=>",
+                              op_b);
+          case '=':
+            return TaggedNode(ToSpan(cursor->remove_prefix(2), src),
+                              "==", op_b);
+        }
       }
-    } break;
-
-    case '=': {
-      loc.Increment();
-      if (*loc == '=') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(span, "==", op_b);
-
-      } else if (*loc == '>') {
-        loc.Increment();
-        span.finish = loc.cursor;
-        return TaggedNode(span, "=>", op_b);
-
-      } else {
-        span.finish = loc.cursor;
-        return TaggedNode(span, "=", eq);
-      }
-    } break;
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "=", eq);
     case '?':
-      loc.Increment();
-      span.finish = loc.cursor;
-      error_log->InvalidCharacterQuestionMark(span);
+      error_log->InvalidCharacterQuestionMark(
+          ToSpan(cursor->remove_prefix(1), src));
       return TaggedNode::Invalid();
     case '~':
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, "~", op_l);
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "~", op_l);
     case '\'':
-      loc.Increment();
-      span.finish = loc.cursor;
-      return TaggedNode(span, "'", op_bl);
+      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "'", op_bl);
     case '_': UNREACHABLE();
     default:
       UNREACHABLE("Encountered character whose value is ",
-                  static_cast<int>(*loc));
+                  static_cast<int>(cursor->view()[0]));
   }
   UNREACHABLE();
 }
 
-TaggedNode NextSlashInitiatedToken(SourceLocation &loc, error::Log *error_log) {
-  auto span = loc.ToSpan();
-  loc.Increment();
-  switch (*loc) {
+TaggedNode NextSlashInitiatedToken(SrcCursor *cursor, Src *src,
+                                   error::Log *error_log) {
+  TextSpan span;
+  span.start.offset   = cursor->offset();
+  span.start.line_num = cursor->line();
+  span.source         = src;
+  cursor->remove_prefix(1);
+  switch (cursor->view()[0]) {
     case '/':  // line comment
-      loc.SkipToEndOfLine();
+      cursor->ConsumeWhile([](char) { return true; });
       return TaggedNode::Invalid();
     case '*': {  // Multiline comment
-      loc.Increment();
-      char back_one = *loc;
-      loc.Increment();
+      cursor->remove_prefix(1);
+      char back_one = cursor->view()[0];
+      cursor->remove_prefix(1);
+      NOT_YET();
 
-      uint64_t comment_layer = 1;
-      while (comment_layer != 0) {
-        if (loc.source->seen_eof) {
-          error_log->RunawayMultilineComment();
-          span.finish = loc.cursor;
-          return TaggedNode(span, "", eof);
+      // uint64_t comment_layer = 1;
+      // while (comment_layer != 0) {
+      //   if (loc.source->seen_eof) {
+      //     error_log->RunawayMultilineComment();
+      //     span.finish = loc.cursor;
+      //     return TaggedNode(span, "", eof);
 
-        } else if (back_one == '/' && *loc == '*') {
-          ++comment_layer;
+      //   } else if (back_one == '/' && *loc == '*') {
+      //     ++comment_layer;
 
-        } else if (back_one == '*' && *loc == '/') {
-          --comment_layer;
-        }
+      //   } else if (back_one == '*' && *loc == '/') {
+      //     --comment_layer;
+      //   }
 
-        back_one = *loc;
-        loc.Increment();
-      }
+      //   back_one = *loc;
+      //   cursor->remove_prefix(1);
+      // }
       return TaggedNode::Invalid();
     }
     case '=':
-      loc.Increment();
-      span.finish = loc.cursor;
+      cursor->remove_prefix(1);
+      span.finish.line_num = span.start.line_num;
+      span.finish.offset= span.start.offset + 2;
       return TaggedNode(span, "/=", op_b);
-    default: span.finish = loc.cursor; return TaggedNode(span, "/", op_b);
+    default:
+      span.finish.line_num = span.start.line_num;
+      span.finish.offset   = span.start.offset + 1;
+      return TaggedNode(span, "/", op_b);
   }
 }
 }  // namespace
 
-TaggedNode NextToken(SourceLocation &loc, error::Log *error_log) {
+TaggedNode NextToken(LexState *state) {
 restart:
   // Delegate based on the next character in the file stream
-  if (loc.source->seen_eof) {
-    return TaggedNode(loc.ToSpan(), "", eof);
-  } else if (IsAlphaOrUnderscore(*loc)) {
-    return NextWord(loc);
-  } else if (IsDigit(*loc)) {
-    return NextNumber(loc, error_log);
+  if (state->cursor_.view().empty()) {
+    auto chunk = state->src_->ReadUntil('\n');
+    if (chunk.more_to_read) {
+      state->cursor_ = SrcCursor{state->cursor_.line() + 1, 0, chunk.view};
+      return TaggedNode(ToSpan(state->cursor_.remove_prefix(0), state->src_),
+                        "\n", newline);
+    } else {
+      return TaggedNode(ToSpan(state->cursor_.remove_prefix(0), state->src_),
+                        "", eof);
+    }
+  } else if (IsAlphaOrUnderscore(state->peek())) {
+    return NextWord(&state->cursor_, state->src_);
+  } else if (IsDigit(state->peek()) ||
+             (state->peek() == '.' && state->cursor_.view().size() > 1 &&
+              IsDigit(state->cursor_.view()[1]))) {
+    return NextNumber(&state->cursor_, state->src_, state->error_log_);
   }
 
   TaggedNode tagged_node = TaggedNode::Invalid();
-  switch (*loc) {
+  switch (state->peek()) {
     case '`': {
-      loc.Increment();
-      auto span   = loc.ToSpan();
-      tagged_node = TaggedNode(span, "`", op_b);
+      auto span          = ToSpan(state->cursor_.remove_prefix(1), state->src_);
+      span.finish.offset = state->cursor_.offset() + 1;
+      tagged_node        = TaggedNode(span, "`", op_b);
     } break;
-    case '"': tagged_node = NextStringLiteral(loc, error_log); break;
-    case '/': tagged_node = NextSlashInitiatedToken(loc, error_log); break;
+    case '"': {
+      tagged_node =
+          NextStringLiteral(&state->cursor_, state->src_, state->error_log_);
+    } break;
+    case '/': {
+      tagged_node = NextSlashInitiatedToken(&state->cursor_, state->src_,
+                                            state->error_log_);
+    } break;
     case '\t':
-    case ' ':
-      loc.Increment();
-      goto restart;  // Skip whitespace
-    case '\n':
-    case '\0': loc.Increment(); return TaggedNode(loc.ToSpan(), "", newline);
-    default: tagged_node = NextOperator(loc, error_log); break;
+    case ' ': state->cursor_.ConsumeWhile(IsWhitespace); goto restart;
+    case '\0': {
+      auto span = ToSpan(state->cursor_.remove_prefix(0), state->src_);
+      return TaggedNode(span, "\n", newline);
+    } break;
+    default:
+      tagged_node =
+          NextOperator(&state->cursor_, state->src_, state->error_log_);
+      break;
   }
   if (!tagged_node.valid()) { goto restart; }
   return tagged_node;

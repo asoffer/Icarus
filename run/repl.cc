@@ -13,6 +13,10 @@
 #include "misc/module.h"
 #include "type/function.h"
 
+namespace frontend {
+std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
+}  // namespace frontend
+
 namespace backend {
 static void ReplEval(ast::Expression *expr) {
   // TODO is nullptr for module okay here?
@@ -42,16 +46,15 @@ static void ReplEval(ast::Expression *expr) {
 int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
-  frontend::Repl repl;
+  frontend::ReplSrc repl;
   Module mod;
   Context ctx(&mod);
 
 repl_start:;
   {
-    error::Log log;
-    auto stmts = repl.Parse(&mod, &log);
-    if (log.size() > 0) {
-      log.Dump();
+    auto stmts = frontend::Parse(&repl, &mod);
+    if (mod.error_log_.size() > 0) {
+      mod.error_log_.Dump();
       goto repl_start;
     }
 

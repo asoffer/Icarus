@@ -1,5 +1,4 @@
 #include <vector>
-#include "frontend/deprecated_source.h"
 #include "init/cli.h"
 #include "init/signal.h"
 
@@ -12,7 +11,7 @@ namespace feature {
 bool loose_casting = false;
 }  // namespace feature
 
-extern std::vector<frontend::Source::Name> files;
+extern std::vector<std::string> files;
 
 int RunRepl();
 int RunCompiler();

@@ -15,7 +15,7 @@
 #include "llvm/Support/TargetSelect.h"
 #endif  // ICARUS_USE_LLVM
 
-std::vector<frontend::Source::Name> files;
+std::vector<std::string> files;
 
 // TODO sad. don't use a global to do this.
 extern ir::Func *main_fn;
