@@ -49,7 +49,7 @@ cc_lib(
     name = "deprecated_source",
     hdrs = ["deprecated_source.h"],
     srcs = ["deprecated_source.cc"],
-    deps = [":source"],
+    deps = [":source", "//base:log"],
 )
 
 cc_lib(

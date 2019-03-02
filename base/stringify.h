@@ -98,8 +98,9 @@ std::string stringify_dispatch(dispatch_rank<2>, std::tuple<Ts...> const &tup) {
 }
 
 template <typename... Ts>
-std::string stringify_dispatch(dispatch_rank<2>, std::variant<Ts...> const &v) {
-  return std::visit([](auto const &v) { return stringify(v); }, v);
+std::string stringify_dispatch(dispatch_rank<2>,
+                               std::variant<Ts...> const &var) {
+  return std::visit([](auto const &v) { return stringify(v); }, var);
 }
 
 template <typename T>

@@ -24,7 +24,17 @@ struct TaggedToken {
   template <typename Tk>
   TaggedToken(Tag tag, Tk&& token) : tag(tag), token(std::forward<Tk>(token)) {}
   Tag tag;
-  std::variant<std::string, int64_t, double> token;
+  std::variant<std::string, int64_t, double, Operator> token;
+};
+
+struct Tokenizer {
+  explicit Tokenizer(Src* src) : src_(src) {}
+  TaggedToken Next();
+
+ private:
+  Src* src_              = nullptr;
+  std::string_view line_ = "";
+  bool more_to_read_     = true;
 };
 
 inline std::string stringify(TaggedToken t) {
@@ -38,10 +48,6 @@ inline bool operator==(TaggedToken lhs, TaggedToken rhs) {
 inline bool operator!=(TaggedToken lhs, TaggedToken rhs) {
   return !(lhs == rhs);
 }
-
-// Reads in a line from Src and pushes tokens onto out. Returns false if we have
-// reached the end of the file.
-bool TokenizeLine(Src* line, std::vector<TaggedToken>* out);
 
 }  // namespace frontend
 

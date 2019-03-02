@@ -124,30 +124,62 @@ TaggedToken ConsumeNumber(std::string_view* line) {
   return std::visit([](auto n) { return TaggedToken(expr, n); }, parsed_num);
 }
 
-bool TokenizeLine(Src* src, std::vector<TaggedToken>* out) {
-  auto chunk            = src->ReadUntil('\n');
-  std::string_view line = chunk.view;
+// Single line comments start with "//" and end at the next \n character in the
+// source, or the next explicit endline "\\" (whichever comes first).
+void ConsumeSingleLineComment(std::string_view* line) {
+  ConsumeWhile([](char c) { return c != '\\'; }, line);
+  // If there are 0 or 1 characters left, we cannot possible have a "\\".
+  if (line->size() < 2) { return; }
 
-  while (!line.empty()) {
-    if (IsIdentifierStartChar(line[0])) {
-      out->push_back(ConsumeWord(&line));
-      continue;
-    } else if (IsDigit(line[0])) {
-      out->push_back(ConsumeNumber(&line));
-      continue;
+  if ((*line)[1] == '\\') { return; }
+  line->remove_prefix(2);
+  ConsumeSingleLineComment(line);
+}
+
+TaggedToken Tokenizer::Next() {
+  if (line_.empty()) {
+    if (more_to_read_) {
+      auto chunk    = src_->ReadUntil('\n');
+      line_         = chunk.view;
+      more_to_read_ = chunk.more_to_read;
+      return TaggedToken{newline, "\n"};
+    } else {
+      return TaggedToken{eof, ""};
     }
-
-    switch (line[0]) {
-      case '"': NOT_YET(); break;
-      case '/': NOT_YET(); break;
-      case '\t':
-      case ' ': line.remove_prefix(1); continue;
-    }
-
-    NOT_YET("consume operator");
   }
 
-  return chunk.more_to_read;
+  if (IsWhitespace(line_[0])) {
+    line_.remove_prefix(1);
+    return Next();
+  } else if (IsIdentifierStartChar(line_[0])) {
+    return ConsumeWord(&line_);
+  } else if (IsDigit(line_[0])) {
+    return ConsumeNumber(&line_);
+  }
+
+  switch (line_[0]) {
+    case '/': {
+      line_.remove_prefix(1);
+      if (line_.empty() || IsWhitespace(line_[0])) {
+        return TaggedToken{op_b, Operator::Div};
+      } else if (line_[0] == '/') {
+        ConsumeSingleLineComment(&line_);
+        if (line_.empty()) { return Next(); }
+        line_.remove_prefix(2);
+        return TaggedToken{newline, R"(\\)"};
+      }
+      /*
+          switch (line_[1]) {
+            case '/': {
+              line_.remove_prefix(1);
+              // ConsumeSingleLineComment(line_);
+              return Next();
+            }
+        } break;
+      */
+    } break;
+  }
+  UNREACHABLE(line_[0]);
 }
 
 }  // namespace frontend

@@ -3,7 +3,7 @@
 #include "base/debug.h"
 
 static void IncrementCursor(frontend::Source *source, SourceCursor *cursor) {
-  if (cursor->offset != source->lines[cursor->line_num].size()) {
+  if (cursor->offset != source->current_line_.size()) {
     ++cursor->offset;
   } else {
     ASSERT(source != nullptr);
@@ -11,7 +11,6 @@ static void IncrementCursor(frontend::Source *source, SourceCursor *cursor) {
     if (!next) {
       source->seen_eof = true;
     } else {
-      source->lines.push_back(std::move(*next));
       cursor->offset = 0;
       ++cursor->line_num;
     }

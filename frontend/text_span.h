@@ -15,9 +15,6 @@ struct TextSpan {
   TextSpan(const SourceCursor &s, const SourceCursor &f) : start(s), finish(f) {}
   TextSpan(const TextSpan &s, const TextSpan &f);
 
-  char last_char() const {
-    return source->lines[finish.line_num][finish.offset];
-  }
   void Increment();
 
   base::Interval<size_t> lines() const {
@@ -31,12 +28,8 @@ struct TextSpan {
 
 struct SourceLocation {
   // Get the character that the cursor is currently pointing to
-  const char &operator*() const {
-    return source->lines[cursor.line_num][cursor.offset];
-  }
-  const frontend::Source::Line &line() const {
-    return source->lines[cursor.line_num];
-  }
+  const char &operator*() const { return source->current_line_[cursor.offset]; }
+  const frontend::Source::Line &line() const { return source->current_line_; }
   TextSpan ToSpan() const {
     TextSpan span(cursor, cursor);
     span.source = source;

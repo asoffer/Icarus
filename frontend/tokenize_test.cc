@@ -15,41 +15,78 @@ using ::matcher::Eq;
 using ::matcher::IsEmpty;
 using ::matcher::OrderedElementsAre;
 
-TEST(ConsumeWord) {
-  std::string_view line = "abc def";
-  CHECK(ConsumeWord(&line) == TaggedToken(id, "abc"));
-
-  line = "print xyz";
-  CHECK(ConsumeWord(&line) == TaggedToken(op_l, "print"));
+std::vector<TaggedToken> TokenVec(char const *str) {
+  std::vector<TaggedToken> results;
+  StringSrc src(str);
+  Tokenizer tkr(&src);
+  do { results.push_back(tkr.Next()); } while (results.back().tag != eof);
+  return results;
 }
 
 TEST(TokenizeEmpty) {
-  auto src = StringSrc("");
-  std::vector<TaggedToken> tks;
-  CHECK(TokenizeLine(&src, &tks) == false);
-  CHECK(tks, IsEmpty());
+  CHECK(TokenVec(""), OrderedElementsAre(Eq(TaggedToken(newline, "\n")),
+                                         Eq(TaggedToken(eof, ""))));
+}
+
+TEST(TokenizeIdentifier) {
+  CHECK(TokenVec(R"(print abc
+  def gh--ij-k--__)"),
+        OrderedElementsAre(Eq(TaggedToken(newline, "\n")),  //
+                           Eq(TaggedToken(op_l, "print")),  //
+                           Eq(TaggedToken(id, "abc")),      //
+                           Eq(TaggedToken(newline, "\n")),  //
+                           Eq(TaggedToken(id, "def")),
+                           Eq(TaggedToken(id, "gh--ij-k--__")),
+                           Eq(TaggedToken(eof, ""))));
 }
 
 TEST(TokenizeWhitespace) {
-  std::vector<TaggedToken> tks;
-
-  auto src = StringSrc("    ");
-  CHECK(TokenizeLine(&src, &tks) == false);
-  CHECK(tks, IsEmpty());
-
-  src = StringSrc("\t\t  \t");
-  CHECK(TokenizeLine(&src, &tks) == false);
-  CHECK(tks, IsEmpty());
+  CHECK(TokenVec("    \t\t  \r\n\t  \n  \r\r"),
+        OrderedElementsAre(Eq(TaggedToken(newline, "\n")),  //
+                           Eq(TaggedToken(newline, "\n")),
+                           Eq(TaggedToken(newline, "\n")),
+                           Eq(TaggedToken(eof, ""))));
 }
 
-TEST(TokenizeJustOneLine) {
-  std::vector<TaggedToken> tks;
+TEST(Slash) {
+  CHECK(TokenVec(R"(    /
+  /   /)"),
+        OrderedElementsAre(Eq(TaggedToken(newline, "\n")),  //
+                           Eq(TaggedToken(op_b, Operator::Div)),
+                           Eq(TaggedToken(newline, "\n")),
+                           Eq(TaggedToken(op_b, Operator::Div)),
+                           Eq(TaggedToken(op_b, Operator::Div)),
+                           Eq(TaggedToken(eof, ""))));
+}
 
-  auto src = StringSrc(R"(print abc
-  def)");
-  CHECK(TokenizeLine(&src, &tks) == true);
-  CHECK(tks, OrderedElementsAre(Eq(TaggedToken{op_l, "print"}),
-                                Eq(TaggedToken{id, "abc"})));
+TEST(SingleLineComment) {
+  CHECK(TokenVec("foo // ignore all of this"),
+        OrderedElementsAre(Eq(TaggedToken(newline, "\n")),  //
+                           Eq(TaggedToken(id, "foo")),      //
+                           Eq(TaggedToken(eof, ""))));
+
+  CHECK(TokenVec(R"(foo // ignore all of this
+  bar)"),
+        OrderedElementsAre(Eq(TaggedToken(newline, "\n")),  //
+                           Eq(TaggedToken(id, "foo")),      //
+                           Eq(TaggedToken(newline, "\n")),  //
+                           Eq(TaggedToken(id, "bar")),      //
+                           Eq(TaggedToken(eof, ""))));
+
+  CHECK(TokenVec(R"(foo // ignore all of this // and this too
+  bar)"),
+        OrderedElementsAre(Eq(TaggedToken(newline, "\n")),  //
+                           Eq(TaggedToken(id, "foo")),      //
+                           Eq(TaggedToken(newline, "\n")),  //
+                           Eq(TaggedToken(id, "bar")),      //
+                           Eq(TaggedToken(eof, ""))));
+
+  CHECK(TokenVec(R"(foo // ignore all of this \\ bar)"),
+        OrderedElementsAre(Eq(TaggedToken(newline, "\n")),     //
+                           Eq(TaggedToken(id, "foo")),         //
+                           Eq(TaggedToken(newline, R"(\\)")),  //
+                           Eq(TaggedToken(id, "bar")),         //
+                           Eq(TaggedToken(eof, ""))));
 }
 
 }  // namespace

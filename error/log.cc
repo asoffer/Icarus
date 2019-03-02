@@ -20,6 +20,16 @@ using FileToLineNumMap =
     std::unordered_map<frontend::Source::Name, std::vector<LineNum>>;
 static FileToLineNumMap global_non_decl;
 
+std::vector<std::string> const &LoadLines(frontend::Source const *src) {
+  static std::unordered_map<frontend::Source const *, std::vector<std::string>>
+      lines;
+  auto iter = lines.find(src);
+  if (iter == lines.end()) {
+    iter = lines.emplace(src, const_cast<frontend::Source *>(src)->LoadLines()).first;
+  }
+  return iter->second;
+}
+
 namespace {
 inline size_t NumDigits(size_t n) {
   if (n == 0) { return 1; }
@@ -70,7 +80,7 @@ void WriteSource(
     size_t line_num = line_intervals.endpoints_[i];
     size_t end_num  = line_intervals.endpoints_[i + 1];
     while (line_num < end_num) {
-      const auto &line = source.lines.at(line_num);
+      const auto &line = LoadLines(&source).at(line_num);
 
       // Line number
       os << "\033[97;1m" << std::right
@@ -113,7 +123,7 @@ void WriteSource(
       if (end_num + 1 == line_intervals.endpoints_[i + 2]) {
         os << "\033[97;1m" << std::right
            << std::setw(static_cast<int>(border_alignment)) << line_num << " | "
-           << "\033[0m" << source.lines.at(end_num) << "\n";
+           << "\033[0m" << LoadLines(&source).at(end_num) << "\n";
       } else {
         os << "\033[97;1m" << std::right
            << std::setw(static_cast<int>(border_alignment) + 3)
@@ -413,8 +423,8 @@ void Log::CyclicDependency(std::vector<ast::Identifier const *> cyc_deps) {
 void Log::ShadowingDeclaration(ast::Declaration const &decl1,
                                ast::Declaration const &decl2) {
   // TODO migrate away from old display.
-  auto line1     = decl1.span.source->lines.at(decl1.span.start.line_num);
-  auto line2     = decl2.span.source->lines.at(decl2.span.start.line_num);
+  auto line1     = LoadLines(decl1.span.source).at(decl1.span.start.line_num);
+  auto line2     = LoadLines(decl2.span.source).at(decl2.span.start.line_num);
   auto line_num1 = decl1.span.start.line_num;
   auto line_num2 = decl2.span.start.line_num;
   auto align =
