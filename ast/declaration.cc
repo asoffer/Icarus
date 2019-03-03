@@ -591,6 +591,7 @@ ir::Results Declaration::EmitIr(Context *ctx) {
     auto *t   = ctx->type_of(this);
     auto addr = ctx->addr(this);
     if (IsCustomInitialized()) {
+        base::Log() << this->to_string(0);
       init_val->EmitMoveInit(type::Typed(addr, type::Ptr(t)), ctx);
     } else {
       if (!is_fn_param_) { t->EmitInit(addr, ctx); }

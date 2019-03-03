@@ -13,9 +13,6 @@
 #include "ir/results.h"
 #include "type/primitive.h"
 
-// TODO audit every location where frontend::TaggedNode::Invalid is returned to
-// see if you need to log an error.
-
 namespace frontend {
 namespace {
 
@@ -408,13 +405,11 @@ restart:
     auto chunk = state->src_->ReadUntil('\n');
     if (chunk.more_to_read) {
       state->cursor_ = SrcCursor{state->cursor_.line() + 1, 0, chunk.view};
-      return Lexeme(Syntax::ImplicitNewline, ToSpan(state->cursor_, state->src_));
-      // return TaggedNode(ToSpan(state->cursor_.remove_prefix(0), state->src_),
-                        // "\n", newline);
+      return Lexeme(Syntax::ImplicitNewline,
+                    ToSpan(state->cursor_.remove_prefix(0), state->src_));
     } else {
-      return Lexeme(Syntax::EndOfFile, ToSpan(state->cursor_, state->src_));
-      // return TaggedNode(ToSpan(state->cursor_.remove_prefix(0), state->src_),
-                        // "", eof);
+      return Lexeme(Syntax::EndOfFile,
+                    ToSpan(state->cursor_.remove_prefix(0), state->src_));
     }
   } else if (IsAlphaOrUnderscore(state->peek())) {
     return NextWord(&state->cursor_, state->src_);
@@ -463,10 +458,7 @@ restart:
       if (state->cursor_.view().size() >= 2 &&
           state->cursor_.view()[1] == '\\') {
         return Lexeme(Syntax::ExplicitNewline,
-                      ToSpan(state->cursor_, state->src_));
-        // return TaggedNode(ToSpan(state->cursor_.remove_prefix(2),
-        // state->src_),
-        //                   "\\", newline);
+                      ToSpan(state->cursor_.remove_prefix(2), state->src_));
       }
       auto span = ToSpan(state->cursor_.remove_prefix(1), state->src_);
       state->cursor_.ConsumeWhile(IsWhitespace);

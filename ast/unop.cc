@@ -225,11 +225,10 @@ ir::Results Unop::EmitIr(Context *ctx) {
       if (t == type::Bool) {
         return ir::Results{ir::Not(operand->EmitIr(ctx).get<bool>(0))};
       } else if (t->is<type::Flags>()) {
-        auto *flags_type = &t->as<type::Flags>();
         return ir::Results{
             ir::Not(type::Typed<ir::RegisterOr<ir::FlagsVal>, type::Flags>(
-                operand->EmitIr(ctx).get<ir::FlagsVal>(0), flags_type)),
-            flags_type};
+                operand->EmitIr(ctx).get<ir::FlagsVal>(0),
+                &t->as<type::Flags>()))};
       } else {
         NOT_YET();
       }

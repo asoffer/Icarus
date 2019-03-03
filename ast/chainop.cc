@@ -322,8 +322,7 @@ ir::Results ChainOp::EmitIr(Context *ctx) {
                                 &t->as<type::Flags>(), acc,
                                 expr->EmitIr(ctx).template get<ir::FlagsVal>(
                                     0));
-                          }),
-          &t->as<type::Flags>()};
+                          })};
     } else {
       UNREACHABLE();
     }

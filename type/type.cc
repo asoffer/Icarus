@@ -99,6 +99,7 @@ void EmitMoveInit(Type const *from_type, ir::Results const &from_val,
   auto *to_type = to_var.type()->as<Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.
   if (!to_type->is<Primitive>() && !to_type->is<Function>() &&
+      !to_type->is<Enum>() && !to_type->is<Flags>() &&
       !to_type->is<Variant>()) {
     to_type->EmitInit(to_var.get(), ctx);
   }
