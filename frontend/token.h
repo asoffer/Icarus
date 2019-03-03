@@ -15,7 +15,7 @@ struct Token : public ast::Node {
     if (is_hashtag) {
       op = Operator::Hashtag;
     } else {
-#define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
+#define OPERATOR_MACRO(name, symbol, tag, prec, assoc)                         \
   if (token == symbol) {                                                       \
     op = Operator::name;                                                       \
     return;                                                                    \

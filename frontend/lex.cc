@@ -33,7 +33,6 @@ TextSpan ToSpan(SrcCursor const &cursor, Src *src) {
   span.start.line_num  = cursor.line();
   span.finish.offset   = cursor.offset() + cursor.view().size();
   span.finish.line_num = cursor.line();
-  span.source          = ASSERT_NOT_NULL(src);
   return span;
 }
 
@@ -192,8 +191,8 @@ TaggedNode NextNumber(SrcCursor *cursor, Src *src, error::Log *error_log) {
       *num);
 }
 
-TaggedNode NextStringLiteral(SrcCursor *cursor, Src *src,
-                             error::Log *error_log) {
+std::pair<TextSpan, std::string> NextStringLiteral(SrcCursor *cursor, Src *src,
+                                                   error::Log *error_log) {
   cursor->remove_prefix(1);
   bool escaped = false;
   auto str_lit_cursor =
@@ -230,11 +229,13 @@ TaggedNode NextStringLiteral(SrcCursor *cursor, Src *src,
   }
 
   std::string str_lit;
-  // Slightly larger than necessary because we're creating extra space for the
+  // Slightly larger than necessary because we're creating extra space for
+  // the
   // '\', but it's at most double the size in the most pathological case, so
   // unlikely to be an issue.
   str_lit.reserve(str_lit_cursor.view().size());
-  for (auto it = str_lit_cursor.view().begin(); it != str_lit_cursor.view().end(); ++it) {
+  for (auto it = str_lit_cursor.view().begin();
+       it != str_lit_cursor.view().end(); ++it) {
     if (*it != '\\') {
       str_lit.push_back(*it);
       continue;
@@ -252,11 +253,10 @@ TaggedNode NextStringLiteral(SrcCursor *cursor, Src *src,
     }
   }
 
-  return TaggedNode::TerminalExpression(
-      span, ir::Results{ir::SaveStringGlobally(str_lit)}, type::ByteView);
+  return std::pair{span, str_lit};
 }
 
-TaggedNode NextHashtag(SrcCursor *cursor, Src *src, error::Log *error_log) {
+TaggedNode NextHashtag(SrcCursor *cursor, Src *src) {
   cursor->remove_prefix(1);
   TextSpan span;
   std::string_view token;
@@ -281,50 +281,25 @@ TaggedNode NextHashtag(SrcCursor *cursor, Src *src, error::Log *error_log) {
   return TaggedNode(span, std::string{token}, hashtag);
 }
 
-TaggedNode NextOperator(SrcCursor *cursor, Src *src, error::Log *error_log) {
+std::tuple<SrcCursor, std::string, Tag> NextOperator(SrcCursor *cursor) {
   switch (cursor->view()[0]) {
-    case '@':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "@", op_l);
-    case ',':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), ",", comma);
-    case ';':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), ";", semicolon);
-    case '(':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "(", l_paren);
-    case ')':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), ")", r_paren);
+    case '@': return std::tuple{cursor->remove_prefix(1), "@", op_l};
+    case ',': return std::tuple{cursor->remove_prefix(1), ",", comma};
+    case ';': return std::tuple{cursor->remove_prefix(1), ";", semicolon};
+    case '(': return std::tuple{cursor->remove_prefix(1), "(", l_paren};
+    case ')': return std::tuple{cursor->remove_prefix(1), ")", r_paren};
     case '[':
       if (cursor->view().size() > 3 && cursor->view()[1] == '*' &&
           cursor->view()[2] == ']') {
-        return TaggedNode(ToSpan(cursor->remove_prefix(3), src), "[*]", op_l);
+        return std::tuple{cursor->remove_prefix(3), "[*]", op_l};
       } else {
-        return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "[",
-                          l_bracket);
+        return std::tuple{cursor->remove_prefix(1), "[", l_bracket};
       }
-    case ']':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "]", r_bracket);
-    case '$':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "$", op_l);
-    case '{':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "{", l_brace);
-    case '}':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "}", r_brace);
-    case '.':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), ".", op_b);
-    case '\\': {
-      if (cursor->view().size() >= 2 && cursor->view()[1] == '\\') {
-        return TaggedNode(ToSpan(cursor->remove_prefix(2), src), R"(\\)",
-                          newline);
-      }
-      auto span = ToSpan(cursor->remove_prefix(1), src);
-      cursor->ConsumeWhile(IsWhitespace);
-      if (!cursor->view().empty()) {
-        error_log->NonWhitespaceAfterNewlineEscape(span);
-      }
-      // TODO using invalid to skip this node. That's not the best semantics.
-      return TaggedNode::Invalid();
-    } break;
-    case '#': return NextHashtag(cursor, src, error_log);
+    case ']': return std::tuple{cursor->remove_prefix(1), "]", r_bracket};
+    case '$': return std::tuple{cursor->remove_prefix(1), "$", op_l};
+    case '{': return std::tuple{cursor->remove_prefix(1), "{", l_brace};
+    case '}': return std::tuple{cursor->remove_prefix(1), "}", r_brace};
+    case '.': return std::tuple{cursor->remove_prefix(1), ".", op_b};
     case '+':
     case '%':
     case '>':
@@ -332,7 +307,7 @@ TaggedNode NextOperator(SrcCursor *cursor, Src *src, error::Log *error_log) {
     case '^': {
       auto op = cursor->remove_prefix(
           (cursor->view().size() < 2 || cursor->view()[1] != '=') ? 1 : 2);
-      return TaggedNode(ToSpan(op, src), std::string{op.view()}, op_b);
+      return std::tuple{op, std::string{op.view()}, op_b};
     }
     case '<': {  // Handles "<", "<<", and "<="
       auto op = cursor->remove_prefix(
@@ -340,96 +315,68 @@ TaggedNode NextOperator(SrcCursor *cursor, Src *src, error::Log *error_log) {
            (cursor->view()[1] != '=' && cursor->view()[1] != '<'))
               ? 1
               : 2);
-      return TaggedNode(ToSpan(op, src), std::string{op.view()},
-                        op.view() == "<<" ? op_l : op_b);
+      return std::tuple{op, std::string{op.view()},
+                        op.view() == "<<" ? op_l : op_b};
     }
     case '*':
-      if (cursor->view().size() >= 2) {
-        switch (cursor->view()[1]) {
-          case '/':
-            error_log->NotInMultilineComment(
-                ToSpan(cursor->remove_prefix(2), src));
-            return TaggedNode::Invalid();
-          case '=':
-            return TaggedNode(ToSpan(cursor->remove_prefix(2), src),
-                              "*=", op_b);
-        }
+      if (cursor->view().size() >= 2 && cursor->view()[1] == '=') {
+         return std::tuple{cursor->remove_prefix(2), "*=", op_b};
+      } else {
+        return std::tuple{cursor->remove_prefix(1), "*", op_bl};
       }
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "*", op_bl);
     case '&': {
       size_t len =
           (cursor->view().size() >= 2 && cursor->view()[1] == '=') ? 2 : 1;
       auto op = cursor->remove_prefix(len);
-      return TaggedNode(ToSpan(op, src), std::string{op.view()},
-                        len == 1 ? op_bl : op_b);
+      return std::tuple{op, std::string{op.view()}, len == 1 ? op_bl : op_b};
     }
     case ':':
       if (cursor->view().size() >= 3 && cursor->view()[1] == ':' &&
           cursor->view()[2] == '=') {
-        return TaggedNode(ToSpan(cursor->remove_prefix(3), src), "::=", op_b);
+        return std::tuple{cursor->remove_prefix(3), "::=", op_b};
       }
 
       if (cursor->view().size() >= 2) {
         switch (cursor->view()[1]) {
           case ':': {
             auto op = cursor->remove_prefix(2);
-            return TaggedNode(ToSpan(op, src), "::", colon);
+            return std::tuple{op, "::", colon};
           }
           case '=': {
             auto op = cursor->remove_prefix(2);
-            return TaggedNode(ToSpan(op, src), ":=", op_b);
+            return std::tuple{op, ":=", op_b};
           }
           case '?': {
             auto op = cursor->remove_prefix(2);
-            return TaggedNode(ToSpan(op, src), ":?", op_r);
+            return std::tuple{op, ":?", op_r};
           }
         }
       }
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), ":", colon);
+      return std::tuple{cursor->remove_prefix(1), ":", colon};
     case '!': {
       size_t len =
           (cursor->view().size() >= 2 && cursor->view()[1] == '=') ? 2 : 1;
       auto op = cursor->remove_prefix(len);
-      return TaggedNode(ToSpan(op, src), std::string{op.view()},
-                        len == 1 ? op_l : op_b);
+      return std::tuple{op, std::string{op.view()}, len == 1 ? op_l : op_b};
     }
     case '-':
       if (cursor->view().size() >= 2) {
         switch (cursor->view()[1]) {
-          case '>':
-            return TaggedNode(ToSpan(cursor->remove_prefix(2), src), "->",
-                              fn_arrow);
-          case '=':
-            return TaggedNode(ToSpan(cursor->remove_prefix(2), src),
-                              "-=", op_b);
-
-          case '-':
-            return TaggedNode(std::make_unique<ast::Hole>(
-                                  ToSpan(cursor->remove_prefix(2), src)),
-                              expr);
+          case '>': return std::tuple{cursor->remove_prefix(2), "->", fn_arrow};
+          case '=': return std::tuple{cursor->remove_prefix(2), "-=", op_b};
         }
       }
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "-", op_bl);
+      return std::tuple{cursor->remove_prefix(1), "-", op_bl};
     case '=':
       if (cursor->view().size() >= 2) {
         switch (cursor->view()[1]) {
-          case '>':
-            return TaggedNode(ToSpan(cursor->remove_prefix(2), src), "=>",
-                              op_b);
-          case '=':
-            return TaggedNode(ToSpan(cursor->remove_prefix(2), src),
-                              "==", op_b);
+          case '>': return std::tuple{cursor->remove_prefix(2), "=>", op_b};
+          case '=': return std::tuple{cursor->remove_prefix(2), "==", op_b};
         }
       }
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "=", eq);
-    case '?':
-      error_log->InvalidCharacterQuestionMark(
-          ToSpan(cursor->remove_prefix(1), src));
-      return TaggedNode::Invalid();
-    case '~':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "~", op_l);
-    case '\'':
-      return TaggedNode(ToSpan(cursor->remove_prefix(1), src), "'", op_bl);
+      return std::tuple{cursor->remove_prefix(1), "=", eq};
+    case '~': return std::tuple{cursor->remove_prefix(1), "~", op_l};
+    case '\'': return std::tuple{cursor->remove_prefix(1), "'", op_bl};
     case '_': UNREACHABLE();
     default:
       UNREACHABLE("Encountered character whose value is ",
@@ -438,17 +385,16 @@ TaggedNode NextOperator(SrcCursor *cursor, Src *src, error::Log *error_log) {
   UNREACHABLE();
 }
 
-TaggedNode NextSlashInitiatedToken(SrcCursor *cursor, Src *src,
-                                   error::Log *error_log) {
+std::optional<std::pair<TextSpan, Operator>> NextSlashInitiatedToken(
+    SrcCursor *cursor, Src *src, error::Log *error_log) {
   TextSpan span;
   span.start.offset   = cursor->offset();
   span.start.line_num = cursor->line();
-  span.source         = src;
   cursor->remove_prefix(1);
   switch (cursor->view()[0]) {
     case '/':  // line comment
       cursor->ConsumeWhile([](char) { return true; });
-      return TaggedNode::Invalid();
+      return std::nullopt;
     case '*': {  // Multiline comment
       cursor->remove_prefix(1);
       char back_one = cursor->view()[0];
@@ -472,17 +418,17 @@ TaggedNode NextSlashInitiatedToken(SrcCursor *cursor, Src *src,
       //   back_one = *loc;
       //   cursor->remove_prefix(1);
       // }
-      return TaggedNode::Invalid();
+      return std::nullopt;
     }
     case '=':
       cursor->remove_prefix(1);
       span.finish.line_num = span.start.line_num;
       span.finish.offset= span.start.offset + 2;
-      return TaggedNode(span, "/=", op_b);
+      return std::pair{span, Operator::DivEq};
     default:
       span.finish.line_num = span.start.line_num;
       span.finish.offset   = span.start.offset + 1;
-      return TaggedNode(span, "/", op_b);
+      return std::pair{span, Operator::Div};
   }
 }
 }  // namespace
@@ -516,12 +462,21 @@ restart:
       tagged_node        = TaggedNode(span, "`", op_b);
     } break;
     case '"': {
-      tagged_node =
+      auto [span, str] =
           NextStringLiteral(&state->cursor_, state->src_, state->error_log_);
+      tagged_node = TaggedNode::TerminalExpression(
+          span, ir::Results{ir::SaveStringGlobally(str)}, type::ByteView);
+
     } break;
+    case '#': return NextHashtag(&state->cursor_, state->src_);
     case '/': {
-      tagged_node = NextSlashInitiatedToken(&state->cursor_, state->src_,
-                                            state->error_log_);
+      // TODO just check for comments early and roll this into NextOperator.
+      if (auto maybe_op = NextSlashInitiatedToken(&state->cursor_, state->src_,
+                                                  state->error_log_)) {
+        auto &[span, op] = *maybe_op;
+        return TaggedNode(span, stringify(op), op_b);
+      }
+      goto restart;
     } break;
     case '\t':
     case ' ': state->cursor_.ConsumeWhile(IsWhitespace); goto restart;
@@ -529,9 +484,44 @@ restart:
       auto span = ToSpan(state->cursor_.remove_prefix(0), state->src_);
       return TaggedNode(span, "\n", newline);
     } break;
+    case '?':
+      state->error_log_->InvalidCharacterQuestionMark(
+          ToSpan(state->cursor_.remove_prefix(1), state->src_));
+      return TaggedNode::Invalid();
+    case '\\': {
+      if (state->cursor_.view().size() >= 2 &&
+          state->cursor_.view()[1] == '\\') {
+        return TaggedNode(ToSpan(state->cursor_.remove_prefix(2), state->src_),
+                          "\\", newline);
+      }
+      auto span = ToSpan(state->cursor_.remove_prefix(1), state->src_);
+      state->cursor_.ConsumeWhile(IsWhitespace);
+      if (!state->cursor_.view().empty()) {
+        state->error_log_->NonWhitespaceAfterNewlineEscape(span);
+      }
+      // TODO using invalid to skip this node. That's not the best semantics.
+      return TaggedNode::Invalid();
+    } break;
+    case '-':
+      if (state->cursor_.view().size() >= 2 &&
+          state->cursor_.view()[1] == '-') {
+        return TaggedNode(std::make_unique<ast::Hole>(ToSpan(
+                              state->cursor_.remove_prefix(2), state->src_)),
+                          expr);
+      }
+      goto handle_operator;
+    case '*':
+      if (state->cursor_.view().size() >= 2 &&
+          state->cursor_.view()[1] == '/') {
+        state->error_log_->NotInMultilineComment(
+            ToSpan(state->cursor_.remove_prefix(2), state->src_));
+        return TaggedNode::Invalid();
+      }
+      [[fallthrough]]; // For '*=' and '*'
     default:
-      tagged_node =
-          NextOperator(&state->cursor_, state->src_, state->error_log_);
+    handle_operator:
+      auto [src_cursor, op_str, tag] = NextOperator(&state->cursor_);
+      tagged_node = TaggedNode(ToSpan(src_cursor, state->src_), op_str, tag);
       break;
   }
   if (!tagged_node.valid()) { goto restart; }

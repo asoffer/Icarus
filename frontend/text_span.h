@@ -15,8 +15,10 @@ struct SourceCursor {
 
 struct TextSpan {
   TextSpan() {}
-  TextSpan(const SourceCursor &s, const SourceCursor &f) : start(s), finish(f) {}
-  TextSpan(const TextSpan &s, const TextSpan &f);
+  TextSpan(SourceCursor const &s, SourceCursor const &f)
+      : start(s), finish(f) {}
+  TextSpan(TextSpan const &s, TextSpan const &f)
+      : start(s.start), finish(f.finish), source(s.source) {}
 
   base::Interval<size_t> lines() const {
     return base::Interval<size_t>{start.line_num, finish.line_num + 1};
@@ -24,7 +26,6 @@ struct TextSpan {
 
   SourceCursor start;
   SourceCursor finish;
-  // TODO this should be deducible from the module and we can probably afford not to store it.
   frontend::Src *source = nullptr;
 };
 

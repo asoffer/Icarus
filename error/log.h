@@ -115,8 +115,8 @@ struct Log {
 
   // TODO per source file splitting? Can't do this until you figure out the
   // module/multi-source-file story.
-  using Token = std::string;
-  std::unordered_map<Token, std::vector<ast::Identifier *>> undeclared_ids_;
+  std::unordered_map<std::string, std::vector<ast::Identifier *>>
+      undeclared_ids_;
   std::unordered_map<ast::Declaration *, std::vector<ast::Identifier *>>
       out_of_order_decls_;
 

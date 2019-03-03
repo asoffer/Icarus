@@ -72,7 +72,7 @@ constexpr size_t assoc_mask  = 3;
 
 constexpr size_t precedence(frontend::Operator op) {
   switch (op) {
-#define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
+#define OPERATOR_MACRO(name, symbol, tag, prec, assoc)                         \
   case frontend::Operator::name:                                               \
     return (((prec) << 2) + (assoc));
 #include "frontend/operators.xmacro.h"
@@ -282,7 +282,6 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       unop->args_.span = TextSpan(unop->args_.exprs_.front()->span,
                                   unop->args_.exprs_.back()->span);
     }
-    ASSERT_NOT_NULL(unop->span.source);
     return unop;
   } else if (tk == "print") {
     // TODO Copy of above.
@@ -293,13 +292,10 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
           TextSpan(nodes.front()->span, nodes.back()->span));
       unop->args_ = std::move(nodes[1]->as<ast::CommaList>());
     } else {
-      ASSERT_NOT_NULL(nodes[1]->span.source);
       unop = std::make_unique<ast::RepeatedUnop>(nodes[1]->span);
       unop->args_.exprs_.push_back(move_as<ast::Expression>(nodes[1]));
-      ASSERT_NOT_NULL(unop->span.source);
     }
     unop->op_ = Operator::Print;
-    ASSERT_NOT_NULL(unop->span.source);
     return unop;
   } else if (tk == "'") {
     std::swap(nodes[0], nodes[1]);
@@ -1437,7 +1433,6 @@ bool Reduce(ParseState *ps) {
   // return false
   if (matched_rule_ptr == nullptr) { return false; }
 
-  ASSERT_NOT_NULL(ps->node_stack_.back()->span.source);
   matched_rule_ptr->apply(&ps->node_stack_, &ps->tag_stack_, ps->mod_,
                           ps->lex_state_.error_log_);
 

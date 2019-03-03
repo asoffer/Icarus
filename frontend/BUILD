@@ -33,6 +33,7 @@ cc_lib(
     name = "operators",
     hdrs = ["operators.h"],
     textual_hdrs = ["operators.xmacro.h"],
+    deps = ["//base:debug"],
 )
 
 cc_lib(
@@ -84,7 +85,6 @@ cc_lib(
 cc_lib(
     name = "text_span",
     hdrs = ["text_span.h"],
-    srcs = ["text_span.cc"],
     deps = [
         "//base:debug",
         "//base:interval",
