@@ -4,14 +4,13 @@ load("//:defs.bzl", "cc_lib", "cc_target")
 cc_target(
     name = "lex",
     intf_deps = [
+        ":lexeme",
         ":source",
-        ":tagged_node",
         ":text_span",
         "//error:log",
     ],
     impl_deps = [
         ":numbers",
-        ":token",
         "//ast:builtin_fn",
         "//ast:hole",
         "//ast:identifier",
@@ -19,6 +18,16 @@ cc_target(
         "//ir:builtin",
         "//ir:results",
         "//type:primitive",
+    ],
+)
+
+cc_lib(
+    name = "lexeme",
+    hdrs = ["lexeme.h"],
+    deps = [
+        ":operators",
+        ":syntax",
+        ":tag",
     ],
 )
 
@@ -33,7 +42,20 @@ cc_lib(
     name = "operators",
     hdrs = ["operators.h"],
     textual_hdrs = ["operators.xmacro.h"],
-    deps = ["//base:debug"],
+    deps = [
+        ":tag",
+        "//base:debug",
+    ],
+)
+
+cc_lib(
+    name = "syntax",
+    hdrs = ["syntax.h"],
+    textual_hdrs = ["syntax.xmacro.h"],
+    deps = [
+        ":tag",
+        "//base:debug",
+    ],
 )
 
 cc_lib(
@@ -79,7 +101,7 @@ cc_lib(
     name = "tagged_node",
     hdrs = ["tagged_node.h"],
     srcs = ["tagged_node.h"],
-    deps = [":tag"],
+    deps = [":tag", ":lexeme"],
 )
 
 cc_lib(
@@ -99,31 +121,3 @@ cc_lib(
         "//ast:node",
     ]
 )
-
-cc_lib(
-    name = "tokenize",
-    hdrs = ["tokenize.h"],
-    srcs = ["tokenize.cc"],
-    deps = [
-        ":numbers",
-        ":operators",
-        ":source",
-        ":tag",
-        "//base:debug",
-        "//base:log",
-        "//base:macros",
-    ],
-
-)
-
-cc_test(
-    name = "tokenize_test",
-    srcs = ["tokenize_test.cc"],
-    deps = [
-        ":tag",
-        ":tokenize",
-        "//test",
-    ]
-)
-
-

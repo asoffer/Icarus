@@ -7,7 +7,8 @@
 #include "ast/terminal.h"
 #include "frontend/lex.h"
 #include "frontend/numbers.h"
-#include "frontend/token.h"
+#include "frontend/operators.h"
+#include "frontend/syntax.h"
 #include "ir/builtin.h"
 #include "ir/results.h"
 #include "type/primitive.h"
@@ -16,15 +17,6 @@
 // see if you need to log an error.
 
 namespace frontend {
-TaggedNode::TaggedNode(const TextSpan &span, const std::string &token, Tag tag)
-    : node_(std::make_unique<Token>(span, token, tag == hashtag)), tag_(tag) {}
-
-TaggedNode TaggedNode::TerminalExpression(const TextSpan &span,
-                                          ir::Results results, type::Type const* type) {
-  return TaggedNode(std::make_unique<ast::Terminal>(span, std::move(results), type),
-                    expr);
-}
-
 namespace {
 
 TextSpan ToSpan(SrcCursor const &cursor, Src *src) {
@@ -59,7 +51,19 @@ SrcCursor NextSimpleWord(SrcCursor *cursor) {
   return cursor->ConsumeWhile(IsAlphaNumericOrUnderscore);
 }
 
-TaggedNode NextWord(SrcCursor *cursor, Src *src) {
+static const std::unordered_map<std::string_view,
+                                std::variant<Operator, Syntax>>
+    Keywords = {
+        {"which", {Operator::Which}},   {"print", {Operator::Print}},
+        {"ensure", {Operator::Ensure}}, {"needs", {Operator::Needs}},
+        {"import", {Operator::Import}}, {"flags", {Syntax::Flags}},
+        {"enum", {Syntax::Enum}},       {"struct", {Syntax::Struct}},
+        {"return", {Operator::Return}}, {"yield", {Operator::Yield}},
+        {"switch", {Syntax::Switch}},   {"when", {Operator::When}},
+        {"as", {Operator::As}},         {"interface", {Syntax::Interface}},
+        {"copy", {Operator::Copy}},     {"move", {Operator::Move}}};
+
+Lexeme NextWord(SrcCursor *cursor, Src *src) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
   // We have already matched the first character
   auto word_cursor       = NextSimpleWord(cursor);
@@ -103,7 +107,8 @@ TaggedNode NextWord(SrcCursor *cursor, Src *src) {
 
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     auto const &[results, type] = iter->second;
-    return TaggedNode::TerminalExpression(span, results, type);
+    return Lexeme(
+        std::make_unique<ast::Terminal>(span, std::move(results), type));
   }
   static std::unordered_map<std::string_view, ir::Builtin> BuiltinFns{
 #define IR_BUILTIN_MACRO(enumerator, str, t) {str, ir::Builtin::enumerator},
@@ -111,21 +116,11 @@ TaggedNode NextWord(SrcCursor *cursor, Src *src) {
 #undef IR_BUILTIN_MACRO
   };
   if (auto iter = BuiltinFns.find(token); iter != BuiltinFns.end()) {
-    return TaggedNode(std::make_unique<ast::BuiltinFn>(span, iter->second),
-                      expr);
+    return Lexeme(std::make_unique<ast::BuiltinFn>(span, iter->second));
   }
 
-  // TODO rename kw_struct to more clearly indicate that it's a scope block
-  // taking a an optional parenthesized list before the braces.
-  static const std::unordered_map<std::string_view, Tag> KeywordMap = {
-      {"which", op_l},         {"print", op_l},    {"ensure", op_l},
-      {"needs", op_l},         {"import", op_l},   {"flags", kw_block_head},
-      {"enum", kw_block_head}, {"generate", op_l}, {"struct", kw_struct},
-      {"return", op_lt},       {"yield", op_lt},   {"switch", kw_struct},
-      {"when", op_b},          {"as", op_b},       {"interface", kw_block},
-      {"copy", op_l},          {"move", op_l}};
-  if (auto iter = KeywordMap.find(token); iter != KeywordMap.end()) {
-    return TaggedNode(span, std::string{iter->first}, iter->second);
+  if (auto iter = Keywords.find(token); iter != Keywords.end()) {
+    return std::visit([&](auto x) { return Lexeme(x, span); }, iter->second);
   }
 
   // "block" is special because it is also the name of the type of such a block.
@@ -145,32 +140,30 @@ TaggedNode NextWord(SrcCursor *cursor, Src *src) {
       cursor->remove_prefix(1);
       span = ToSpan(word_cursor, src);
       ++span.finish.offset;
-      t     = type::OptBlock;
-      token = "block?";
+      return Lexeme(Syntax::OptBlock, span);
     } else if (cursor->view()[0] == '~') {
       cursor->remove_prefix(1);
       span = ToSpan(word_cursor, src);
       ++span.finish.offset;
-      t     = type::RepBlock;
-      token = "block~";
+      return Lexeme(Syntax::RepBlock, span);
     }
-    return TaggedNode(
-        std::make_unique<ast::Terminal>(span, ir::Results{t}, type::Type_),
-        kw_block);
+    return Lexeme(Syntax::Block, span);
   } else if (token == "scope") {
     if (cursor->view()[0] == '!') {
       cursor->remove_prefix(1);
       span = ToSpan(word_cursor, src);
       ++span.finish.offset;
       token = "scope!";
+      return Lexeme(Syntax::StatefulScope, span);
+    } else {
+      return Lexeme(Syntax::Scope, span);
     }
-    return TaggedNode(span, std::string{token}, kw_block);
   }
 
-  return TaggedNode(std::make_unique<ast::Identifier>(span, std::string{token}), expr);
+  return Lexeme(std::make_unique<ast::Identifier>(span, std::string{token}));
 }
 
-TaggedNode NextNumber(SrcCursor *cursor, Src *src, error::Log *error_log) {
+Lexeme NextNumber(SrcCursor *cursor, Src *src, error::Log *error_log) {
   auto num_cursor = cursor->ConsumeWhile([](char c) {
     return c == 'b' || c == 'o' || c == 'd' || c == 'd' || c == '_' ||
            c == '.' || IsDigit(c);
@@ -181,12 +174,13 @@ TaggedNode NextNumber(SrcCursor *cursor, Src *src, error::Log *error_log) {
   if (!num.has_value()) {
     // TODO should you do something with guessing the type?
     error_log->InvalidNumber(span, num.error().to_string());
-    return TaggedNode::TerminalExpression(span, ir::Results{0}, type::Int32);
+    return Lexeme(
+        std::make_unique<ast::Terminal>(span, ir::Results{0}, type::Int32));
   }
   return std::visit(
       [&span](auto x) {
-        return TaggedNode::TerminalExpression(span, ir::Results{x},
-                                              type::Get<decltype(x)>());
+        return Lexeme(std::make_unique<ast::Terminal>(
+            span, ir::Results{x}, type::Get<decltype(x)>()));
       },
       *num);
 }
@@ -256,7 +250,13 @@ std::pair<TextSpan, std::string> NextStringLiteral(SrcCursor *cursor, Src *src,
   return std::pair{span, str_lit};
 }
 
-TaggedNode NextHashtag(SrcCursor *cursor, Src *src) {
+static std::unordered_map<std::string_view, ast::Hashtag::Builtin> const
+    BuiltinHashtagMap = {{"{export}", ast::Hashtag::Builtin::Export},
+                         {"{uncopyable}", ast::Hashtag::Builtin::Uncopyable},
+                         {"{immovable}", ast::Hashtag::Builtin::Immovable},
+                         {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
+
+Lexeme NextHashtag(SrcCursor *cursor, Src *src) {
   cursor->remove_prefix(1);
   TextSpan span;
   std::string_view token;
@@ -278,109 +278,77 @@ TaggedNode NextHashtag(SrcCursor *cursor, Src *src) {
     token            = word_cursor.view();
     span             = ToSpan(word_cursor, src);
   }
-  return TaggedNode(span, std::string{token}, hashtag);
+
+  if (auto iter = BuiltinHashtagMap.find(token);
+      iter != BuiltinHashtagMap.end()) {
+    return Lexeme(ast::Hashtag{iter->second}, span);
+  }
+
+  NOT_YET();
 }
 
-std::tuple<SrcCursor, std::string, Tag> NextOperator(SrcCursor *cursor) {
-  switch (cursor->view()[0]) {
-    case '@': return std::tuple{cursor->remove_prefix(1), "@", op_l};
-    case ',': return std::tuple{cursor->remove_prefix(1), ",", comma};
-    case ';': return std::tuple{cursor->remove_prefix(1), ";", semicolon};
-    case '(': return std::tuple{cursor->remove_prefix(1), "(", l_paren};
-    case ')': return std::tuple{cursor->remove_prefix(1), ")", r_paren};
-    case '[':
-      if (cursor->view().size() > 3 && cursor->view()[1] == '*' &&
-          cursor->view()[2] == ']') {
-        return std::tuple{cursor->remove_prefix(3), "[*]", op_l};
-      } else {
-        return std::tuple{cursor->remove_prefix(1), "[", l_bracket};
-      }
-    case ']': return std::tuple{cursor->remove_prefix(1), "]", r_bracket};
-    case '$': return std::tuple{cursor->remove_prefix(1), "$", op_l};
-    case '{': return std::tuple{cursor->remove_prefix(1), "{", l_brace};
-    case '}': return std::tuple{cursor->remove_prefix(1), "}", r_brace};
-    case '.': return std::tuple{cursor->remove_prefix(1), ".", op_b};
-    case '+':
-    case '%':
-    case '>':
-    case '|':
-    case '^': {
-      auto op = cursor->remove_prefix(
-          (cursor->view().size() < 2 || cursor->view()[1] != '=') ? 1 : 2);
-      return std::tuple{op, std::string{op.view()}, op_b};
-    }
-    case '<': {  // Handles "<", "<<", and "<="
-      auto op = cursor->remove_prefix(
-          (cursor->view().size() < 2 ||
-           (cursor->view()[1] != '=' && cursor->view()[1] != '<'))
-              ? 1
-              : 2);
-      return std::tuple{op, std::string{op.view()},
-                        op.view() == "<<" ? op_l : op_b};
-    }
-    case '*':
-      if (cursor->view().size() >= 2 && cursor->view()[1] == '=') {
-         return std::tuple{cursor->remove_prefix(2), "*=", op_b};
-      } else {
-        return std::tuple{cursor->remove_prefix(1), "*", op_bl};
-      }
-    case '&': {
-      size_t len =
-          (cursor->view().size() >= 2 && cursor->view()[1] == '=') ? 2 : 1;
-      auto op = cursor->remove_prefix(len);
-      return std::tuple{op, std::string{op.view()}, len == 1 ? op_bl : op_b};
-    }
-    case ':':
-      if (cursor->view().size() >= 3 && cursor->view()[1] == ':' &&
-          cursor->view()[2] == '=') {
-        return std::tuple{cursor->remove_prefix(3), "::=", op_b};
-      }
+static bool BeginsWith(std::string_view prefix, std::string_view s) {
+  if (s.size() < prefix.size()) { return false; }
+  auto p_iter = prefix.begin();
+  auto s_iter = s.begin();
+  while (p_iter != prefix.end()) {
+    if (*p_iter++ != *s_iter++) { return false; }
+  }
+  return true;
+}
 
-      if (cursor->view().size() >= 2) {
-        switch (cursor->view()[1]) {
-          case ':': {
-            auto op = cursor->remove_prefix(2);
-            return std::tuple{op, "::", colon};
-          }
-          case '=': {
-            auto op = cursor->remove_prefix(2);
-            return std::tuple{op, ":=", op_b};
-          }
-          case '?': {
-            auto op = cursor->remove_prefix(2);
-            return std::tuple{op, ":?", op_r};
-          }
-        }
-      }
-      return std::tuple{cursor->remove_prefix(1), ":", colon};
-    case '!': {
-      size_t len =
-          (cursor->view().size() >= 2 && cursor->view()[1] == '=') ? 2 : 1;
-      auto op = cursor->remove_prefix(len);
-      return std::tuple{op, std::string{op.view()}, len == 1 ? op_l : op_b};
+static const std::array<
+    std::pair<std::string_view, std::variant<Operator, Syntax>>, 43>
+    Ops = {{{"@", {Operator::At}},
+            {",", {Operator::Comma}},
+            {"[*]", {Operator::BufPtr}},
+            {"$", {Operator::Eval}},
+            {"+=", {Operator::AddEq}},
+            {"+", {Operator::Add}},
+            {"-=", {Operator::SubEq}},
+            {"->", {Operator::Arrow}},
+            {"-", {Operator::Sub}},
+            {"*=", {Operator::MulEq}},
+            {"*", {Operator::Mul}},
+            {"%=", {Operator::ModEq}},
+            {"%", {Operator::Mod}},
+            {"&=", {Operator::AndEq}},
+            {"&", {Operator::And}},
+            {"|=", {Operator::OrEq}},
+            {"|", {Operator::Or}},
+            {"^=", {Operator::XorEq}},
+            {"^", {Operator::Xor}},
+            {">=", {Operator::Ge}},
+            {">", {Operator::Gt}},
+            {"::=", {Operator::DoubleColonEq}},
+            {"::", {Operator::DoubleColon}},
+            {":=", {Operator::ColonEq}},
+            {":?", {Operator::TypeOf}},
+            {":", {Operator::Colon}},
+            {"<<", {Operator::Expand}},
+            {"<=", {Operator::Le}},
+            {"<", {Operator::Lt}},
+            {"!=", {Operator::Ne}},
+            {"!", {Operator::Not}},
+            {"==", {Operator::Eq}},
+            {"=>", {Operator::Rocket}},
+            {"=", {Operator::Assign}},
+            {"'", {Operator::Call}},
+            {"(", {Syntax::LeftParen}},
+            {")", {Syntax::RightParen}},
+            {"[", {Syntax::LeftBracket}},
+            {"]", {Syntax::RightBracket}},
+            {"{", {Syntax::LeftBrace}},
+            {"}", {Syntax::RightBrace}},
+            {";", {Syntax::Semicolon}},
+            {".", {Syntax::Dot}}}};
+
+Lexeme NextOperator(SrcCursor *cursor, Src*src) {
+  for (auto [prefix, x] : Ops) {
+    if (BeginsWith(prefix, cursor->view())) {
+      auto span = ToSpan(cursor->remove_prefix(prefix.size()), src);
+      return std::visit([&](auto x) { return Lexeme(x, span); }, x);
     }
-    case '-':
-      if (cursor->view().size() >= 2) {
-        switch (cursor->view()[1]) {
-          case '>': return std::tuple{cursor->remove_prefix(2), "->", fn_arrow};
-          case '=': return std::tuple{cursor->remove_prefix(2), "-=", op_b};
-        }
-      }
-      return std::tuple{cursor->remove_prefix(1), "-", op_bl};
-    case '=':
-      if (cursor->view().size() >= 2) {
-        switch (cursor->view()[1]) {
-          case '>': return std::tuple{cursor->remove_prefix(2), "=>", op_b};
-          case '=': return std::tuple{cursor->remove_prefix(2), "==", op_b};
-        }
-      }
-      return std::tuple{cursor->remove_prefix(1), "=", eq};
-    case '~': return std::tuple{cursor->remove_prefix(1), "~", op_l};
-    case '\'': return std::tuple{cursor->remove_prefix(1), "'", op_bl};
-    case '_': UNREACHABLE();
-    default:
-      UNREACHABLE("Encountered character whose value is ",
-                  static_cast<int>(cursor->view()[0]));
   }
   UNREACHABLE();
 }
@@ -433,18 +401,20 @@ std::optional<std::pair<TextSpan, Operator>> NextSlashInitiatedToken(
 }
 }  // namespace
 
-TaggedNode NextToken(LexState *state) {
+Lexeme NextToken(LexState *state) {
 restart:
   // Delegate based on the next character in the file stream
   if (state->cursor_.view().empty()) {
     auto chunk = state->src_->ReadUntil('\n');
     if (chunk.more_to_read) {
       state->cursor_ = SrcCursor{state->cursor_.line() + 1, 0, chunk.view};
-      return TaggedNode(ToSpan(state->cursor_.remove_prefix(0), state->src_),
-                        "\n", newline);
+      return Lexeme(Syntax::ImplicitNewline, ToSpan(state->cursor_, state->src_));
+      // return TaggedNode(ToSpan(state->cursor_.remove_prefix(0), state->src_),
+                        // "\n", newline);
     } else {
-      return TaggedNode(ToSpan(state->cursor_.remove_prefix(0), state->src_),
-                        "", eof);
+      return Lexeme(Syntax::EndOfFile, ToSpan(state->cursor_, state->src_));
+      // return TaggedNode(ToSpan(state->cursor_.remove_prefix(0), state->src_),
+                        // "", eof);
     }
   } else if (IsAlphaOrUnderscore(state->peek())) {
     return NextWord(&state->cursor_, state->src_);
@@ -453,19 +423,23 @@ restart:
               IsDigit(state->cursor_.view()[1]))) {
     return NextNumber(&state->cursor_, state->src_, state->error_log_);
   }
+  if (BeginsWith("*/", state->cursor_.view())) {
+    state->error_log_->NotInMultilineComment(
+        ToSpan(state->cursor_.remove_prefix(2), state->src_));
+    goto restart;
+  }
 
-  TaggedNode tagged_node = TaggedNode::Invalid();
   switch (state->peek()) {
     case '`': {
-      auto span          = ToSpan(state->cursor_.remove_prefix(1), state->src_);
-      span.finish.offset = state->cursor_.offset() + 1;
-      tagged_node        = TaggedNode(span, "`", op_b);
+      // auto span          = ToSpan(state->cursor_.remove_prefix(1),
+      // state->src_); span.finish.offset = state->cursor_.offset() + 1;
+      return Lexeme(Operator::MatchDecl, ToSpan(state->cursor_, state->src_));
     } break;
     case '"': {
       auto [span, str] =
           NextStringLiteral(&state->cursor_, state->src_, state->error_log_);
-      tagged_node = TaggedNode::TerminalExpression(
-          span, ir::Results{ir::SaveStringGlobally(str)}, type::ByteView);
+      return Lexeme(std::make_unique<ast::Terminal>(
+          span, ir::Results{ir::SaveStringGlobally(str)}, type::ByteView));
 
     } break;
     case '#': return NextHashtag(&state->cursor_, state->src_);
@@ -474,58 +448,43 @@ restart:
       if (auto maybe_op = NextSlashInitiatedToken(&state->cursor_, state->src_,
                                                   state->error_log_)) {
         auto &[span, op] = *maybe_op;
-        return TaggedNode(span, stringify(op), op_b);
+        return Lexeme(op, ToSpan(state->cursor_, state->src_));
       }
       goto restart;
     } break;
     case '\t':
     case ' ': state->cursor_.ConsumeWhile(IsWhitespace); goto restart;
-    case '\0': {
-      auto span = ToSpan(state->cursor_.remove_prefix(0), state->src_);
-      return TaggedNode(span, "\n", newline);
-    } break;
     case '?':
       state->error_log_->InvalidCharacterQuestionMark(
           ToSpan(state->cursor_.remove_prefix(1), state->src_));
-      return TaggedNode::Invalid();
+      // Ignore and restart
+      goto restart;
     case '\\': {
       if (state->cursor_.view().size() >= 2 &&
           state->cursor_.view()[1] == '\\') {
-        return TaggedNode(ToSpan(state->cursor_.remove_prefix(2), state->src_),
-                          "\\", newline);
+        return Lexeme(Syntax::ExplicitNewline,
+                      ToSpan(state->cursor_, state->src_));
+        // return TaggedNode(ToSpan(state->cursor_.remove_prefix(2),
+        // state->src_),
+        //                   "\\", newline);
       }
       auto span = ToSpan(state->cursor_.remove_prefix(1), state->src_);
       state->cursor_.ConsumeWhile(IsWhitespace);
       if (!state->cursor_.view().empty()) {
         state->error_log_->NonWhitespaceAfterNewlineEscape(span);
       }
-      // TODO using invalid to skip this node. That's not the best semantics.
-      return TaggedNode::Invalid();
+      goto restart;
     } break;
     case '-':
       if (state->cursor_.view().size() >= 2 &&
           state->cursor_.view()[1] == '-') {
-        return TaggedNode(std::make_unique<ast::Hole>(ToSpan(
-                              state->cursor_.remove_prefix(2), state->src_)),
-                          expr);
+        return Lexeme(std::make_unique<ast::Hole>(
+            ToSpan(state->cursor_.remove_prefix(2), state->src_)));
       }
-      goto handle_operator;
-    case '*':
-      if (state->cursor_.view().size() >= 2 &&
-          state->cursor_.view()[1] == '/') {
-        state->error_log_->NotInMultilineComment(
-            ToSpan(state->cursor_.remove_prefix(2), state->src_));
-        return TaggedNode::Invalid();
-      }
-      [[fallthrough]]; // For '*=' and '*'
-    default:
-    handle_operator:
-      auto [src_cursor, op_str, tag] = NextOperator(&state->cursor_);
-      tagged_node = TaggedNode(ToSpan(src_cursor, state->src_), op_str, tag);
-      break;
+      [[fallthrough]];
+    default: return NextOperator(&state->cursor_, state->src_); break;
   }
-  if (!tagged_node.valid()) { goto restart; }
-  return tagged_node;
+  UNREACHABLE();
 }
 
 }  // namespace frontend

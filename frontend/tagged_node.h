@@ -3,7 +3,9 @@
 
 #include <memory>
 
+#include "frontend/lexeme.h"
 #include "frontend/tag.h"
+#include "frontend/token.h"
 
 struct TextSpan;
 
@@ -14,11 +16,40 @@ struct TaggedNode {
   Tag tag_ = bof;
 
   TaggedNode() = default;
+
+  /* implicit */ TaggedNode(Lexeme &&l) : tag_(l.tag()) {
+    auto span = l.span();
+    std::visit(
+        [&](auto &&x) {
+          using T = std::decay_t<decltype(x)>;
+          if constexpr (std::is_same_v<T, Syntax>) {
+            node_ = std::make_unique<Token>(span, stringify(x), false);
+          } else if constexpr (std::is_same_v<T, Operator>) {
+            node_ = std::make_unique<Token>(span, stringify(x), false);
+          } else if constexpr (std::is_same_v<T, std::unique_ptr<ast::Node>>) {
+            node_ = std::move(x);
+          } else {
+            std::string token;
+            switch (x.kind_) {
+              case ast::Hashtag::Builtin::Export: token = "{export}"; break;
+              case ast::Hashtag::Builtin::NoDefault:
+                token = "{no_default}";
+                break;
+              case ast::Hashtag::Builtin::Uncopyable:
+                token = "{uncopyable}";
+                break;
+              case ast::Hashtag::Builtin::Immovable:
+                token = "{immovable}";
+                break;
+            }
+            node_ = std::make_unique<Token>(span, token, true);
+          }
+        },
+        std::move(l).get());
+  }
+
   TaggedNode(std::unique_ptr<ast::Node> node, Tag tag)
       : node_(std::move(node)), tag_(tag) {}
-
-  static TaggedNode TerminalExpression(const TextSpan &span,
-                                       ir::Results results, type::Type const *);
 
   TaggedNode(const TextSpan &span, const std::string &token, Tag tag);
 

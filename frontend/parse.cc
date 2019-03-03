@@ -1044,22 +1044,16 @@ std::unique_ptr<ast::Node> BuildKWBlock(
       return BuildInterfaceLiteral(move_as<ast::Statements>(nodes[1]), mod,
                                    error_log);
 
-    } else {
-      UNREACHABLE(tk);
-    }
-  } else if (auto *term = nodes[0]->if_as<ast::Terminal>()) {
-    auto *t = term->results_.get<type::Type const *>(0).val_;
-
-    if (t->is<type::Block>()) {
+    } else if (tk == "block") {
       return BuildBlock(move_as<ast::Statements>(nodes[1]), true, mod,
                         error_log);
-
-    } else if (t == type::OptBlock) {
+    } else if (tk == "block?") {
       return BuildBlock(move_as<ast::Statements>(nodes[1]), false, mod,
                         error_log);
-
+    } else if (tk == "block~") {
+      UNREACHABLE();
     } else {
-      UNREACHABLE(t);
+      UNREACHABLE(tk);
     }
   } else {
     UNREACHABLE(nodes[0].get());
@@ -1282,21 +1276,21 @@ struct ParseState {
     if (node_stack_.size() < 2) { return ShiftState::NeedMore; }
 
     const auto &ahead = Next();
-    if (ahead.tag_ == newline) {
+    if (ahead.tag() == newline) {
       return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace && (get_type<1>() & kw_block) &&
+    if (ahead.tag() == l_brace && (get_type<1>() & kw_block) &&
         get_type<2>() == fn_arrow) {
       return ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace && get_type<1>() == fn_expr &&
+    if (ahead.tag() == l_brace && get_type<1>() == fn_expr &&
         get_type<2>() == fn_arrow) {
       return ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace &&
+    if (ahead.tag() == l_brace &&
         (get_type<1>() & (fn_expr | kw_block_head | kw_struct))) {
       return ShiftState::NeedMore;
     }
@@ -1305,12 +1299,12 @@ struct ParseState {
       return ShiftState::MustReduce;
     }
 
-    if (get_type<1>() == op_lt && ahead.tag_ != newline) {
+    if (get_type<1>() == op_lt && ahead.tag() != newline) {
       return ShiftState::NeedMore;
     }
 
     if ((get_type<1>() & (kw_block_head | kw_struct)) &&
-        ahead.tag_ == newline) {
+        ahead.tag() == newline) {
       return ShiftState::NeedMore;
     }
 
@@ -1319,9 +1313,9 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    if (ahead.tag_ == r_paren) { return ShiftState::MustReduce; }
+    if (ahead.tag() == r_paren) { return ShiftState::MustReduce; }
 
-    if (get_type<1>() == r_paren && ahead.tag_ == l_brace) {
+    if (get_type<1>() == r_paren && ahead.tag() == l_brace) {
       size_t i = tag_stack_.size() - 1;
       while (i > 0) {
         if (tag_stack_[i] == fn_arrow) { return ShiftState::MustReduce; }
@@ -1340,12 +1334,15 @@ struct ParseState {
       }
       auto left_prec = precedence(get<2>()->as<Token>().op);
       size_t right_prec;
-      if (ahead.tag_ & OP) {
-        right_prec = precedence(ahead.node_->as<Token>().op);
-      } else if (ahead.tag_ == l_bracket) {
+      if (ahead.tag() & OP) {
+        right_prec = (ahead.op() == static_cast<Operator>(
+                                        std::numeric_limits<uint64_t>::max()))
+                         ? precedence(Operator::NotAnOperator)
+                         : precedence(ahead.op());
+      } else if (ahead.tag() == l_bracket) {
         right_prec = precedence(Operator::Index);
 
-      } else if (ahead.tag_ == l_paren) {
+      } else if (ahead.tag() == l_paren) {
         // TODO this might be a hack. To get the following example to parse
         // correctly:
         //
@@ -1373,14 +1370,14 @@ struct ParseState {
 
   void LookAhead() { lookahead_.push(NextToken(&lex_state_)); }
 
-  const TaggedNode &Next() {
+  const Lexeme &Next() {
     if (lookahead_.empty()) { LookAhead(); }
     return lookahead_.back();
   }
 
   std::vector<Tag> tag_stack_;
   std::vector<std::unique_ptr<ast::Node>> node_stack_;
-  std::queue<TaggedNode> lookahead_;
+  std::queue<Lexeme> lookahead_;
   Module *mod_ = nullptr;
   LexState lex_state_;
 
@@ -1396,8 +1393,7 @@ void Debug(ParseState *ps) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
   for (auto x : ps->tag_stack_) { fprintf(stderr, "%lu, ", x); }
-  fprintf(stderr, " -> %lu", ps->Next().tag_);
-  fputs("", stderr);
+  fprintf(stderr, " -> %lu\n", ps->Next().tag());
 
   for (const auto &node_ptr : ps->node_stack_) {
     fputs(node_ptr->to_string(0).c_str(), stderr);
@@ -1409,10 +1405,10 @@ void Shift(ParseState *ps) {
   if (ps->lookahead_.empty()) { ps->LookAhead(); }
   auto ahead = std::move(ps->lookahead_.front());
   ps->lookahead_.pop();
-  ps->tag_stack_.push_back(ahead.tag_);
-  ps->node_stack_.push_back(std::move(ahead.node_));
+  ps->tag_stack_.push_back(ahead.tag());
+  ps->node_stack_.push_back(TaggedNode(std::move(ahead)).node_);
 
-  auto tag_ahead = ps->Next().tag_;
+  auto tag_ahead = ps->Next().tag();
   if (tag_ahead & (l_paren | l_bracket | l_brace)) {
     ++ps->brace_count;
   } else if (tag_ahead & (r_paren | r_bracket | r_brace)) {
@@ -1459,7 +1455,7 @@ std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod) {
   auto state = ParseState(src, mod);
   Shift(&state);
 
-  while (state.Next().tag_ != eof) {
+  while (state.Next().tag() != eof) {
     ASSERT(state.tag_stack_.size() == state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
     if (state.shift_state() == ShiftState::NeedMore || !Reduce(&state)) {

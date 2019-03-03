@@ -2,9 +2,9 @@
 #define ICARUS_FRONTEND_LEX_H
 
 #include "error/log.h"
-#include "frontend/text_span.h"
+#include "frontend/lexeme.h"
 #include "frontend/source.h"
-#include "frontend/tagged_node.h"
+#include "frontend/text_span.h"
 
 namespace frontend {
 
@@ -62,7 +62,7 @@ struct LexState {
   error::Log *error_log_;
 };
 
-TaggedNode NextToken(LexState *state);
+Lexeme NextToken(LexState *state);
 
 }  // namespace frontend
 
