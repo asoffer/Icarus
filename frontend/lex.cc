@@ -2,7 +2,6 @@
 #include <unordered_map>
 
 #include "ast/builtin_fn.h"
-#include "ast/hole.h"
 #include "ast/identifier.h"
 #include "ast/terminal.h"
 #include "frontend/lex.h"
@@ -295,13 +294,14 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
 }
 
 static const std::array<
-    std::pair<std::string_view, std::variant<Operator, Syntax>>, 43>
+    std::pair<std::string_view, std::variant<Operator, Syntax>>, 44>
     Ops = {{{"@", {Operator::At}},
             {",", {Operator::Comma}},
             {"[*]", {Operator::BufPtr}},
             {"$", {Operator::Eval}},
             {"+=", {Operator::AddEq}},
             {"+", {Operator::Add}},
+            {"--", {Syntax::Hole}},
             {"-=", {Operator::SubEq}},
             {"->", {Operator::Arrow}},
             {"-", {Operator::Sub}},
@@ -467,13 +467,6 @@ restart:
       }
       goto restart;
     } break;
-    case '-':
-      if (state->cursor_.view().size() >= 2 &&
-          state->cursor_.view()[1] == '-') {
-        return Lexeme(std::make_unique<ast::Hole>(
-            ToSpan(state->cursor_.remove_prefix(2), state->src_)));
-      }
-      [[fallthrough]];
     default: return NextOperator(&state->cursor_, state->src_); break;
   }
   UNREACHABLE();

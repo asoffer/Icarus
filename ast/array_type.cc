@@ -1,7 +1,6 @@
 #include "ast/array_type.h"
 
 #include <sstream>
-#include "ast/hole.h"
 #include "ir/cmd.h"
 
 namespace ast {

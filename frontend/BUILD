@@ -12,7 +12,6 @@ cc_target(
     impl_deps = [
         ":numbers",
         "//ast:builtin_fn",
-        "//ast:hole",
         "//ast:identifier",
         "//ast:terminal",
         "//ir:builtin",

@@ -1,6 +1,5 @@
 #include "ast/enum_literal.h"
 
-#include "ast/hole.h"
 #include "ast/identifier.h"
 #include "ir/cmd.h"
 #include "ir/val.h"
@@ -113,7 +112,7 @@ ir::Results EnumLiteral::EmitIr(Context *ctx) {
     } else if (elem->is<Declaration>()) {
       auto &decl = elem->as<Declaration>();
       ir::AddEnumerator(kind_, reg, decl.id_);
-      if (!decl.init_val->is<Hole>()) {
+      if (!decl.IsCustomInitialized()) {
         ir::SetEnumerator(reg, decl.init_val->EmitIr(ctx).get<int32_t>(0));
       }
     }

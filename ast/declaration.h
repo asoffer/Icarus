@@ -34,16 +34,18 @@ struct Declaration : public Expression {
   Module *mod_ = nullptr;
 
   // Field in a function, whether or not it's an input our output.
-  bool is_fn_param_ = false;
-  bool is_output_   = false;
-  bool const_       = false;
+  bool is_fn_param_  = false;
+  bool is_output_    = false;
+  bool const_        = false;
+  bool init_is_hole_ = false;
 
   // These functions are confusingly named. They look correct in normal
   // declarations, but in function arguments, IsDefaultInitialized() is true iff
   // there is no default value provided.
   bool IsInferred() const { return !type_expr; }
-  bool IsDefaultInitialized() const { return !init_val; }
-  bool IsCustomInitialized() const;
+  bool IsDefaultInitialized() const { return !init_val && !init_is_hole_; }
+  bool IsCustomInitialized() const { return init_val.get(); }
+  bool IsUninitialized() const { return init_is_hole_; }
 };
 }  // namespace ast
 

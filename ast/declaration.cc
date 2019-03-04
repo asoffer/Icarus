@@ -2,7 +2,6 @@
 
 #include <sstream>
 #include "ast/function_literal.h"
-#include "ast/hole.h"
 #include "backend/eval.h"
 #include "error/inference_failure_reason.h"
 #include "ir/func.h"
@@ -12,9 +11,6 @@
 
 namespace ast {
 namespace {
-bool IsUninitialized(Declaration *decl) {
-  return decl->init_val && decl->init_val->is<Hole>();
-}
 
 struct ArgumentMetaData {
   const type::Type *type;
@@ -236,10 +232,6 @@ void Declaration::DependentDecls(base::Graph<Declaration *> *g,
   }
 }
 
-bool Declaration::IsCustomInitialized() const {
-  return init_val && !init_val->is<Hole>();
-}
-
 VerifyResult VerifySpecialFunctions(Declaration const *decl,
                                     type::Type const *decl_type, Context *ctx) {
   bool error = false;
@@ -337,10 +329,10 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
   if (auto *attempt = ctx->prior_verification_attempt(this)) { return *attempt; }
 
   int dk = 0;
-  if (type_expr == nullptr || type_expr->is<Hole>()) { dk = INFER; }
-  if (init_val && init_val->is<Hole>()) {
+  if (IsInferred()) { dk = INFER; }
+  if (IsUninitialized()) {
     dk |= UNINITIALIZED;
-  } else if (init_val) {
+  } else if (IsCustomInitialized()) {
     dk |= CUSTOM_INIT;
   }
 
@@ -587,11 +579,10 @@ ir::Results Declaration::EmitIr(Context *ctx) {
     ASSERT(scope_->ContainingFnScope() != nullptr);
 
     // TODO these checks actually overlap and could be simplified.
-    if (IsUninitialized(this)) { return ir::Results{}; }
+    if (IsUninitialized()) { return ir::Results{}; }
     auto *t   = ctx->type_of(this);
     auto addr = ctx->addr(this);
     if (IsCustomInitialized()) {
-        base::Log() << this->to_string(0);
       init_val->EmitMoveInit(type::Typed(addr, type::Ptr(t)), ctx);
     } else {
       if (!is_fn_param_) { t->EmitInit(addr, ctx); }

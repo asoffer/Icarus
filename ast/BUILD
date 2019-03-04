@@ -23,7 +23,6 @@ cc_lib(
         ":fn_params",
         ":function_literal",
         ":hashtag",
-        ":hole",
         ":identifier",
         ":import",
         ":index",
@@ -120,10 +119,7 @@ cc_target(
 cc_target(
     name = "array_type",
     intf_deps = [":literal"],
-    impl_deps = [
-        ":hole",
-        "//ir:cmd",
-    ]
+    impl_deps = ["//ir:cmd"],
 )
 
 cc_target(
@@ -280,7 +276,6 @@ cc_target(
     ],
     impl_deps = [
         ":function_literal",
-        ":hole",
         "//backend:eval",
         "//error:inference_failure_reason",
         "//ir:func",
@@ -298,7 +293,6 @@ cc_target(
         "//misc:scope",
     ],
     impl_deps = [
-        ":hole",
         ":identifier",
         "//misc:context",
         "//ir:cmd",
@@ -367,12 +361,6 @@ cc_target(
 cc_lib(
     name = "hashtag",
     hdrs = ["hashtag.h"],
-)
-
-cc_lib(
-    name = "hole",
-    hdrs = ["hole.h"],
-    deps = [":literal"],
 )
 
 cc_target(
