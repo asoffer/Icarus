@@ -18,13 +18,7 @@ std::string Arguments::to_string() const {
     if (auto *g = type_->if_as<type::GenericStruct>()) { return g->deps_; }
     UNREACHABLE();
   }();
-  for (auto *t : ts) {
-    type::Apply(t, [&](auto type_holder) {
-      ss << " " << results_.get<typename decltype(type_holder)::type>(i);
-    });
-    ++i;
-  }
-  ss << ": ";
+  ss << results_.DebugString() << ": ";
   return ss.str();
 }
 

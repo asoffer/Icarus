@@ -1,7 +1,6 @@
 #include "type/generic_struct.h"
 
 namespace type {
-Type const *Generic = new GenericFunction;
 
 void GenericStruct::EmitCopyAssign(Type const *from_type,
                                    ir::Results const &from,

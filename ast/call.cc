@@ -27,14 +27,15 @@ std::string Call::to_string(size_t n) const {
   std::stringstream ss;
   ss << fn_->to_string(n) << "(";
   bool seen_one = false;
-  for (const auto &pos : args_.pos_) {
-    ss << (seen_one ? ", " : "") << pos->to_string(n);
-    seen_one = true;
-  }
-  for (const auto &[key, val] : args_.named_) {
-    ss << (seen_one ? ", " : "") << key << " = " << val->to_string(n) << ", ";
-    seen_one = true;
-  }
+  args_.ApplyWithIndex(
+      [&](auto &&index, std::unique_ptr<Expression> const &expr) {
+        ss << (seen_one ? ", " : "");
+        if constexpr (!std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
+          ss << index << " = ";
+        }
+        ss << expr->to_string(n);
+        seen_one = true;
+      });
   ss << ")";
   return ss.str();
 }
@@ -60,7 +61,8 @@ bool Call::InferType(type::Type const *t, InferenceState *state) const {
   if (auto *id = fn_->if_as<Identifier>()) {
     // TODO this is probably the wrong approach. It'd be nice to stuff more data
     // we know into the inference state.
-    auto os = FindOverloads(scope_, id->token, {}, state->ctx_);
+    auto os = FindOverloads(scope_, id->token, FnArgs<type::Type const *>{},
+                            state->ctx_);
     if (os.size() != 1) { NOT_YET("only handle no overloading right now."); }
     if (auto *gs = os[0].type()->if_as<type::GenericStruct>()) {
       auto iter = gs->mod_->generic_struct_cache_.find(s->parent_);
@@ -74,9 +76,9 @@ bool Call::InferType(type::Type const *t, InferenceState *state) const {
 
       // TODO only if this is the right dispatch?
       // TODO named args too.
-      ASSERT(backward_iter->second->size() == args_.pos_.size());
-      for (size_t i = 0; i < args_.pos_.size(); ++i) {
-        state->match_queue_.emplace(args_.pos_[i].get(),
+      ASSERT(backward_iter->second->size() == args_.num_pos());
+      for (size_t i = 0; i < args_.num_pos(); ++i) {
+        state->match_queue_.emplace(args_.at(i).get(),
                                     backward_iter->second->at(i));
       }
 
@@ -98,35 +100,39 @@ void Call::DependentDecls(base::Graph<Declaration *> *g,
 }
 
 VerifyResult Call::VerifyType(Context *ctx) {
-  FnArgs<VerifyResult> arg_results;
-  for (auto const &expr : args_.pos_) {
-    auto expr_result = expr->VerifyType(ctx);
-    if (!expr->parenthesized_ && expr->is<Unop>() &&
-        expr->as<Unop>().op == frontend::Operator::Expand &&
-        expr_result.type_->is<type::Tuple>()) {
-      auto const &entries = expr_result.type_->as<type::Tuple>().entries_;
-      for (type::Type const *entry : entries) {
-        arg_results.pos_.emplace_back(entry, expr_result.const_);
-      }
-    } else {
-      arg_results.pos_.push_back(expr_result);
-    }
-  }
+  std::vector<VerifyResult> pos_results;
+  std::unordered_map<std::string, VerifyResult> named_results;
 
-  for (auto const &[name, expr] : args_.named_) {
-    arg_results.named_.emplace(name, expr->VerifyType(ctx));
-  }
+  bool err = false;
+
+  // TODO this could be TransformWithIndex
+  args_.ApplyWithIndex(
+      [&](auto &&index, std::unique_ptr<Expression> const &expr) {
+        if constexpr (std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
+          auto expr_result = expr->VerifyType(ctx);
+          if (!expr->parenthesized_ && expr->is<Unop>() &&
+              expr->as<Unop>().op == frontend::Operator::Expand &&
+              expr_result.type_->is<type::Tuple>()) {
+            auto const &entries = expr_result.type_->as<type::Tuple>().entries_;
+            for (type::Type const *entry : entries) {
+              pos_results.emplace_back(entry, expr_result.const_);
+              err |= !pos_results.back().ok();
+            }
+          } else {
+            pos_results.push_back(expr_result);
+            err |= !pos_results.back().ok();
+          }
+        } else {
+          auto iter = named_results.emplace(index, expr->VerifyType(ctx)).first;
+          err |= !iter->second.ok();
+        }
+      });
+
+  FnArgs<VerifyResult> arg_results(std::move(pos_results),
+                                   std::move(named_results));
 
   // TODO handle cyclic dependencies in call arguments.
-
-  if (std::any_of(arg_results.pos_.begin(), arg_results.pos_.end(),
-                  [](VerifyResult const &v) { return !v.ok(); }) ||
-      std::any_of(arg_results.named_.begin(), arg_results.named_.end(),
-                  [](std::pair<std::string, VerifyResult> const &p) {
-                    return !p.second.ok();
-                  })) {
-    return VerifyResult::Error();
-  }
+  if (err) { return VerifyResult::Error(); }
 
   if (auto *b = fn_->if_as<BuiltinFn>()) {
     // TODO: Should we allow these to be overloaded?
@@ -166,8 +172,9 @@ VerifyResult Call::VerifyType(Context *ctx) {
 
 void Call::ExtractJumps(JumpExprs *rets) const {
   fn_->ExtractJumps(rets);
-  for (const auto &val : args_.pos_) { val->ExtractJumps(rets); }
-  for (const auto &[key, val] : args_.named_) { val->ExtractJumps(rets); }
+  args_.Apply([rets](std::unique_ptr<Expression> const &expr) {
+    expr->ExtractJumps(rets);
+  });
 }
 
 ir::Results Call::EmitIr(Context *ctx) {
@@ -175,9 +182,9 @@ ir::Results Call::EmitIr(Context *ctx) {
     switch (b->b_) {
       case ir::Builtin::Foreign: {
         auto name =
-            backend::EvaluateAs<std::string_view>(args_.pos_[0].get(), ctx);
+            backend::EvaluateAs<std::string_view>(args_.at(0).get(), ctx);
         auto *foreign_type =
-            backend::EvaluateAs<type::Type const *>(args_.pos_[1].get(), ctx);
+            backend::EvaluateAs<type::Type const *>(args_.at(1).get(), ctx);
         return ir::Results{ir::LoadSymbol(name, foreign_type)};
       } break;
 
@@ -187,7 +194,7 @@ ir::Results Call::EmitIr(Context *ctx) {
       case ir::Builtin::Bytes: {
         auto const &fn_type =
             ir::BuiltinType(ir::Builtin::Bytes)->as<type::Function>();
-        ir::Arguments call_args{&fn_type, args_.pos_[0]->EmitIr(ctx)};
+        ir::Arguments call_args{&fn_type, args_.at(0)->EmitIr(ctx)};
 
         ir::OutParams outs;
         auto reg = outs.AppendReg(fn_type.output.at(0));
@@ -199,7 +206,7 @@ ir::Results Call::EmitIr(Context *ctx) {
       case ir::Builtin::Alignment: {
         auto const &fn_type =
             ir::BuiltinType(ir::Builtin::Alignment)->as<type::Function>();
-        ir::Arguments call_args{&fn_type, args_.pos_[0]->EmitIr(ctx)};
+        ir::Arguments call_args{&fn_type, args_.at(0)->EmitIr(ctx)};
 
         ir::OutParams outs;
         auto reg = outs.AppendReg(fn_type.output.at(0));
@@ -213,12 +220,12 @@ ir::Results Call::EmitIr(Context *ctx) {
 #endif  // DBG
     }
     UNREACHABLE();
-  //} else if (auto *t = fn->if_as<Terminal>()) {
-  //  UNREACHABLE(this);
-  //  if (auto *bs = std::get_if<ir::BlockSequence>(&fn_val.value)) {
-  //    // TODO might be optional.
-  //    return ir::Results{*bs};
-  //  }
+    //} else if (auto *t = fn->if_as<Terminal>()) {
+    //  UNREACHABLE(this);
+    //  if (auto *bs = std::get_if<ir::BlockSequence>(&fn_val.value)) {
+    //    // TODO might be optional.
+    //    return ir::Results{*bs};
+    //  }
   }
 
   auto const &dispatch_table = *ASSERT_NOT_NULL(ctx->dispatch_table(this));

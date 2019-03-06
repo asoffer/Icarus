@@ -88,11 +88,12 @@ CallObstruction DispatchTableRow::SetTypes(
     std::vector<type::Type const *> const &input_types,
     FnParams<E> const &params, FnArgs<type::Typed<Expression *>> const &args,
     Context *ctx) {
-  call_arg_types_.pos_.resize(binding_.arg_res_.num_positional_arguments());
-  for (auto &[name, expr] : args.named_) {
-    call_arg_types_.named_.emplace(name, nullptr);
-  }
+  std::unordered_map<std::string, type::Type const *> named;
+  for (auto &[name, expr] : args.named()) { named.emplace(name, nullptr); }
 
+  size_t num_pos  = binding_.arg_res_.num_positional_arguments();
+  call_arg_types_ = FnArgs(std::vector<type::Type const *>(num_pos, nullptr),
+                           std::move(named));
   return binding_.arg_res_.SetTypes(input_types, params, ctx, &call_arg_types_);
 }
 
@@ -105,13 +106,13 @@ base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeNonConstant(
     type::Typed<Expression *, type::Function> fn_option,
     FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
-  if (!args.named_.empty()) {
+  if (args.num_named() != 0u) {
     // TODO Describe `fn_option` explicitly.
     return CallObstruction::NonConstantNamedArguments();
   }
 
   // TODO This is not the right check. Because you could expand arguments.
-  if (args.pos_.size() != fn_option.type()->input.size()) {
+  if (args.num_pos() != fn_option.type()->input.size()) {
     // TODO if you call with the wrong number of arguments, even if no default
     // is available, this error occurs and that's technically a valid assessment
     // but still super misleading.
@@ -241,7 +242,7 @@ DispatchTableRow::MakeFromFnLit(
   if (!fn_lit->sorted_params_.empty() &&
       fn_lit->sorted_params_.back()->type_expr) {
     state.match_queue_.emplace(fn_lit->sorted_params_.back()->type_expr.get(),
-                               args.pos_.at(0).type());
+                               args.at(0).type());
   }
   size_t last_success = 0;
   while (!state.match_queue_.empty()) {
@@ -262,27 +263,30 @@ DispatchTableRow::MakeFromFnLit(
     new_ctx.bound_constants_.constants_.emplace(d, ir::Val(t));
   }
 
-  for (size_t i = 0; i < args.pos_.size(); ++i) {
+  for (size_t i = 0; i < args.num_pos(); ++i) {
     if (!fn_lit->inputs_.at(i).value->const_) { continue; }
     new_ctx.bound_constants_.constants_.emplace(
         fn_lit->inputs_.at(i).value.get(),
-        backend::Evaluate(args.pos_.at(i).get(), ctx)[0]);
+        backend::Evaluate(args.at(i).get(), ctx)[0]);
   }
 
-  for (auto &[name, expr] : args.named_) {
-    size_t index = fn_lit->inputs_.lookup_[name];
-    auto *decl   = fn_lit->inputs_.at(index).value.get();
-    if (!decl->const_) { continue; }
+  args.ApplyWithIndex([&](auto &&index, type::Typed<Expression *> expr) {
+    size_t input_index = 0;
+    if constexpr (std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
+      input_index = index;
+    } else {
+      input_index = fn_lit->inputs_.lookup_[index];
+    }
+    Declaration *decl = fn_lit->inputs_.at(input_index).value.get();
+    if (!decl->const_) { return; }
     new_ctx.bound_constants_.constants_.emplace(
         decl, backend::Evaluate(expr.get(), ctx)[0]);
-  }
+  });
 
   // TODO order these by their dependencies
   for (auto &[name, index] : fn_lit->inputs_.lookup_) {
-    if (index < args.pos_.size()) { continue; }
-    auto iter =
-        args.named_.find(std::string(name));  // TODO transparent hashing?
-    if (iter != args.named_.end()) { continue; }
+    if (index < args.num_pos()) { continue; }
+    if (!args.at_or_null(std::string(name))) { continue; }
     auto *decl = fn_lit->inputs_.at(index).value.get();
 
     decl->init_val->VerifyType(&new_ctx);
@@ -422,7 +426,7 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
         maybe_dispatch_table_row->callable_type_);
     // TODO don't ned this as a field on the dispatchtablerow.
     precise_callable_types.push_back(maybe_dispatch_table_row->callable_type_);
-    table.bindings_.emplace(
+    table.bindings_.emplace_back(
         std::move(maybe_dispatch_table_row->call_arg_types_),
         std::move(maybe_dispatch_table_row->binding_));
   }
@@ -434,64 +438,47 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
   return std::pair{std::move(table), ret_type};
 }
 
-static void AddPositionalType(type::Type const *t,
-                              std::vector<FnArgs<type::Type const *>> *args) {
+template <typename IndexT>
+static void AddType(IndexT &&index, type::Type const *t,
+                    std::vector<FnArgs<type::Type const *>> *args) {
   if (auto *vt = t->if_as<type::Variant>()) {
     std::vector<FnArgs<type::Type const *>> new_args;
     for (auto *v : vt->variants_) {
       for (auto fnargs : *args) {
-        fnargs.pos_.push_back(v);
+        if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
+          fnargs.pos_emplace(v);
+        } else {
+          fnargs.named_emplace(index, v);
+        }
         new_args.push_back(std::move(fnargs));
       }
     }
     *args = std::move(new_args);
   } else {
     std::for_each(
-        args->begin(), args->end(),
-        [t](FnArgs<type::Type const *> &fnargs) { fnargs.pos_.push_back(t); });
-  }
-}
-
-static void AddNamedType(std::string const &name, type::Type const *t,
-                         std::vector<FnArgs<type::Type const *>> *args) {
-  if (auto *vt = t->if_as<type::Variant>()) {
-    std::vector<FnArgs<type::Type const *>> new_args;
-    for (auto *v : vt->variants_) {
-      for (auto fnargs : *args) {
-        fnargs.named_.emplace(name, v);
-        new_args.push_back(std::move(fnargs));
-      }
-    }
-    *args = std::move(new_args);
-  } else {
-    std::for_each(args->begin(), args->end(),
-                  [&](FnArgs<type::Type const *> &fnargs) {
-                    fnargs.named_.emplace(name, t);
-                  });
+        args->begin(), args->end(), [&](FnArgs<type::Type const *> &fnargs) {
+          if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
+            fnargs.pos_emplace(t);
+          } else {
+            fnargs.named_emplace(index, t);
+          }
+        });
   }
 }
 
 static std::vector<FnArgs<type::Type const *>> Expand(
     FnArgs<type::Typed<Expression *>> const &typed_args) {
   std::vector<FnArgs<type::Type const *>> all_expanded_options(1);
-  for (auto const &expr : typed_args.pos_) {
+  typed_args.ApplyWithIndex([&](auto &&index, type::Typed<Expression *> expr) {
     if (expr.get()->needs_expansion()) {
       for (auto *t : expr.type()->as<type::Tuple>().entries_) {
-        AddPositionalType(t, &all_expanded_options);
+        AddType(index, t, &all_expanded_options);
       }
     } else {
-      AddPositionalType(expr.type(), &all_expanded_options);
+      AddType(index, expr.type(), &all_expanded_options);
     }
-  }
-  for (auto const &[name, expr] : typed_args.named_) {
-    if (expr.get()->needs_expansion()) {
-      for (auto *t : expr.type()->as<type::Tuple>().entries_) {
-        AddNamedType(name, t, &all_expanded_options);
-      }
-    } else {
-      AddNamedType(name, expr.type(), &all_expanded_options);
-    }
-  }
+  });
+
   return all_expanded_options;
 }
 
@@ -675,23 +662,25 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
 // Small contains expanded arguments (no variants).
 bool Covers(FnArgs<type::Type const *> const &big,
             FnArgs<type::Type const *> const &small) {
-  ASSERT(big.pos_.size() == small.pos_.size());
-  for (size_t i = 0; i < big.pos_.size(); ++i) {
-    if (big.pos_.at(i) == small.pos_.at(i)) { continue; }
-    if (auto *vt = big.pos_.at(i)->if_as<type::Variant>()) {
-      if (vt->contains(small.pos_.at(i))) { continue; }
+  ASSERT(big.num_pos() == small.num_pos());
+  for (size_t i = 0; i < big.num_pos(); ++i) {
+    if (big.at(i) == small.at(i)) { continue; }
+    if (auto *vt = big.at(i)->if_as<type::Variant>()) {
+      if (vt->contains(small.at(i))) { continue; }
     }
     return false;
   }
-  for (auto const &[name, t] : small.named_) {
-    auto iter = big.named_.find(name);
-    if (iter == big.named_.end()) { return false; }
-    if (t == iter->second) { continue; }
-    if (auto *vt = iter->second->if_as<type::Variant>()) {
-      if (vt->contains(t)) { continue; }
+
+  for (auto const &[name, t] : small.named()) {
+    if (type::Type const *const *big_t = big.at_or_null(name)) {
+      if (t == *big_t) { continue; }
+      if (auto *vt = (*big_t)->if_as<type::Variant>()) {
+        if (vt->contains(t)) { continue; }
+      }
     }
     return false;
   }
+
   return true;
 }
 
@@ -703,22 +692,25 @@ static ir::BlockIndex CallLookupTest(
 
   // TODO enable variant dispatch on arguments that got expanded.
   auto next_binding = ir::Func::Current->AddBlock();
-  for (size_t i = 0; i < args.pos_.size(); ++i) {
-    if (!ctx->type_of(args.pos_[i].first)->is<type::Variant>()) { continue; }
-    ir::BasicBlock::Current = ir::EarlyExitOn<false>(
-        next_binding, EmitVariantMatch(args.pos_.at(i).second.get<ir::Reg>(0),
-                                       call_arg_type.pos_[i]));
-  }
 
-  for (const auto &[name, expr_and_val] : args.named_) {
-    auto iter = call_arg_type.find(name);
-    if (iter == call_arg_type.named_.end()) { continue; }
-    if (!ctx->type_of(expr_and_val.first)->is<type::Variant>()) { continue; }
-    ir::BasicBlock::Current = ir::EarlyExitOn<false>(
-        next_binding,
-        EmitVariantMatch(args.named_.at(iter->first).second.get<ir::Reg>(0),
-                         iter->second));
-  }
+  args.ApplyWithIndex(
+      [&](auto &&index,
+          std::pair<Expression *, ir::Results> const &expr_and_val) {
+        type::Type const *call_type = nullptr;
+        auto const &[expr, val]     = expr_and_val;
+        if (!ctx->type_of(expr)->is<type::Variant>()) { return; }
+
+        if constexpr (std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
+          call_type = call_arg_type.at(index);
+        } else {
+          type::Type const *const *t = call_arg_type.at_or_null(index);
+          if (!t) { return; }
+          call_type = *t;
+        }
+
+        ir::BasicBlock::Current = ir::EarlyExitOn<false>(
+            next_binding, EmitVariantMatch(val.get<ir::Reg>(0), call_type));
+      });
 
   return next_binding;
 }

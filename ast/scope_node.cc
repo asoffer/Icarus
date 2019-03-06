@@ -150,24 +150,24 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     state_type->EmitInit(alloc, ctx);
     state_id = new Identifier(TextSpan{}, "<scope-state>");
 
-    typed_args.pos_.emplace_back(state_id,
-                                 ctx->set_type(state_id, state_ptr_type));
-    ir_args.pos_.emplace_back(state_id, ir::Results{alloc});
+    typed_args.pos_emplace(state_id, ctx->set_type(state_id, state_ptr_type));
+    ir_args.pos_emplace(state_id, ir::Results{alloc});
   }
 
-  for (auto const &expr : args_.pos_) {
-    typed_args.pos_.emplace_back(expr.get(), ctx->type_of(expr.get()));
-    ir_args.pos_.emplace_back(expr.get(), expr.get()->EmitIr(ctx));
-  }
-
-  for (auto const &[name, expr] : args_.named_) {
-    typed_args.named_.emplace(
-        std::piecewise_construct, std::forward_as_tuple(name),
-        std::forward_as_tuple(expr.get(), ctx->type_of(expr.get())));
-    ir_args.named_.emplace(
-        std::piecewise_construct, std::forward_as_tuple(name),
-        std::forward_as_tuple(expr.get(), expr.get()->EmitIr(ctx)));
-  }
+  args_.ApplyWithIndex([&](auto &&index,
+                           std::unique_ptr<Expression> const &expr) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
+      typed_args.pos_emplace(expr.get(), ctx->type_of(expr.get()));
+      ir_args.pos_emplace(expr.get(), expr.get()->EmitIr(ctx));
+    } else {
+      typed_args.named_emplace(
+          std::piecewise_construct, std::forward_as_tuple(index),
+          std::forward_as_tuple(expr.get(), ctx->type_of(expr.get())));
+      ir_args.named_emplace(
+          std::piecewise_construct, std::forward_as_tuple(index),
+          std::forward_as_tuple(expr.get(), expr.get()->EmitIr(ctx)));
+    }
+  });
 
   auto [dispatch_table, result_type] =
       DispatchTable::Make(typed_args, init_os, ctx);
@@ -183,8 +183,8 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     FnArgs<type::Typed<Expression *>> before_expr_args;
 
     if (scope_lit->stateful_) {
-      before_args.pos_.emplace_back(state_id, ir::Results{alloc});
-      before_expr_args.pos_.emplace_back(state_id, state_ptr_type);
+      before_args.pos_emplace(state_id, ir::Results{alloc});
+      before_expr_args.pos_emplace(state_id, state_ptr_type);
     }
     auto [dispatch_table, result_type] =
         DispatchTable::Make(before_expr_args, data.before_os_, ctx);
@@ -198,12 +198,12 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     FnArgs<type::Typed<Expression *>> after_expr_args;
     FnArgs<std::pair<Expression *, ir::Results>> after_args;
     if (scope_lit->stateful_) {
-      after_expr_args.pos_.emplace_back(state_id, state_ptr_type);
-      after_args.pos_.emplace_back(state_id, ir::Results{alloc});
+      after_expr_args.pos_emplace(state_id, state_ptr_type);
+      after_args.pos_emplace(state_id, ir::Results{alloc});
     }
     for (auto &yield : yields) {
-      after_expr_args.pos_.emplace_back(yield.expr_, ctx->type_of(yield.expr_));
-      after_args.pos_.emplace_back(yield.expr_, yield.val_);
+      after_expr_args.pos_emplace(yield.expr_, ctx->type_of(yield.expr_));
+      after_args.pos_emplace(yield.expr_, yield.val_);
     }
 
     std::tie(dispatch_table, result_type) =
@@ -228,8 +228,8 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     FnArgs<type::Typed<Expression *>> expr_args;
     FnArgs<std::pair<Expression *, ir::Results>> args;
     if (scope_lit->stateful_) {
-      args.pos_.emplace_back(state_id, ir::Results{alloc});
-      expr_args.pos_.emplace_back(state_id, state_ptr_type);
+      args.pos_emplace(state_id, ir::Results{alloc});
+      expr_args.pos_emplace(state_id, state_ptr_type);
     }
     std::tie(dispatch_table, result_type) =
         DispatchTable::Make(expr_args, done_os, ctx);

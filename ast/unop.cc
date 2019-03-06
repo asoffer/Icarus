@@ -138,12 +138,11 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       if (type::IsNumeric(operand_type)) {
         return VerifyResult(ctx->set_type(this, operand_type), result.const_);
       } else if (operand_type->is<type::Struct>()) {
-        FnArgs<Expression *> args;
-        args.pos_ = std::vector<Expression *>{operand.get()};
         OverloadSet os(scope_, "-", ctx);
         os.add_adl("-", operand_type);
 
-        auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
+        auto *ret_type = DispatchTable::MakeOrLogError(
+            this, FnArgs<Expression *>({operand.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         return VerifyResult(ctx->set_type(this, ret_type), result.const_);
       }
@@ -166,12 +165,11 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         return VerifyResult(ctx->set_type(this, operand_type), result.const_);
       }
       if (operand_type->is<type::Struct>()) {
-        FnArgs<Expression *> args;
-        args.pos_ = std::vector<Expression *>{operand.get()};
         OverloadSet os(scope_, "!", ctx);
         os.add_adl("!", operand_type);
 
-        auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
+        auto *ret_type = DispatchTable::MakeOrLogError(
+            this, FnArgs<Expression *>({operand.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         if (ret_type->is<type::Tuple>()) { NOT_YET(); }
         return VerifyResult(ctx->set_type(this, ret_type), result.const_);
@@ -199,9 +197,10 @@ ir::Results Unop::EmitIr(Context *ctx) {
   auto *operand_type = ctx->type_of(operand.get());
   if (auto const *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
-    FnArgs<std::pair<Expression *, ir::Results>> args;
-    args.pos_.emplace_back(operand.get(), operand->EmitIr(ctx));
-    return dispatch_table->EmitCall(args, ctx->type_of(this), ctx);
+    return dispatch_table->EmitCall(
+        FnArgs<std::pair<Expression *, ir::Results>>(
+            {std::pair(operand.get(), operand->EmitIr(ctx))}, {}),
+        ctx->type_of(this), ctx);
   }
 
   switch (op) {

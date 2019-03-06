@@ -219,14 +219,14 @@ std::unique_ptr<ast::Node> BuildCall(
         if (positional_error_spans.empty()) {
           last_named_span_before_error = expr->as<ast::Binop>().lhs->span;
         }
-        call->args_.named_.emplace(
+        call->args_.named_emplace(
             std::move(expr->as<ast::Binop>().lhs->as<ast::Identifier>().token),
             std::move(expr->as<ast::Binop>().rhs));
       } else {
         if (last_named_span_before_error.has_value()) {
           positional_error_spans.push_back(expr->span);
         }
-        call->args_.pos_.push_back(std::move(expr));
+        call->args_.pos_emplace(std::move(expr));
       }
     }
 
@@ -237,12 +237,12 @@ std::unique_ptr<ast::Node> BuildCall(
   } else {
     if (nodes[2]->is<ast::Binop>() &&
         nodes[2]->as<ast::Binop>().op == frontend::Operator::Assign) {
-      call->args_.named_.emplace(
+      call->args_.named_emplace(
           std::move(
               nodes[2]->as<ast::Binop>().lhs->as<ast::Identifier>().token),
           std::move(nodes[2]->as<ast::Binop>().rhs));
     } else {
-      call->args_.pos_.push_back(move_as<ast::Expression>(nodes[2]));
+      call->args_.pos_emplace(move_as<ast::Expression>(nodes[2]));
     }
   }
 

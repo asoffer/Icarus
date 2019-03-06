@@ -654,7 +654,10 @@ void Log::MissingDispatchContingency(
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
 
   for (auto const &fnargs : missing_dispatch) {
-    ss << "\n * No function taking arguments (" << fnargs.to_string() << ")\n";
+    ss << "\n * No function taking arguments ("
+       << fnargs.Transform([](type::Type const *t) { return t->to_string(); })
+              .to_string()
+       << ")\n";
   }
   ss << "\n";
   errors_.push_back(ss.str());

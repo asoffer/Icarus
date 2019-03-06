@@ -21,6 +21,7 @@ TextSpan ToSpan(SrcCursor const &cursor, Src *src) {
   span.start.line_num  = cursor.line();
   span.finish.offset   = cursor.offset() + cursor.view().size();
   span.finish.line_num = cursor.line();
+  span.source          = src;
   return span;
 }
 

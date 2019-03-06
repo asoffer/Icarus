@@ -43,14 +43,13 @@ VerifyResult Cast::VerifyType(Context *ctx) {
       this, ASSERT_NOT_NULL(
                 backend::EvaluateAs<type::Type const *>(type_.get(), ctx)));
   if (t->is<type::Struct>()) {
-    FnArgs<Expression *> args;
-    args.pos_ = std::vector<Expression *>{{expr_.get()}};
     OverloadSet os(scope_, "as", ctx);
     os.add_adl("as", t);
     os.add_adl("as", expr_result.type_);
     os.keep_return(t);
 
-    auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
+    auto *ret_type = DispatchTable::MakeOrLogError(
+        this, FnArgs<Expression *>({expr_.get()}, {}), os, ctx);
     if (ret_type == nullptr) { return VerifyResult::Error(); }
     ASSERT(t == ret_type);
     return VerifyResult(ret_type, expr_result.const_);
@@ -71,13 +70,12 @@ void Cast::ExtractJumps(JumpExprs *rets) const {
 ir::Results Cast::EmitIr(Context *ctx) {
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
-    FnArgs<std::pair<Expression *, ir::Results>> args;
-    args.pos_.reserve(2);
-    args.pos_.emplace_back(expr_.get(), expr_->EmitIr(ctx));
-    args.pos_.emplace_back(type_.get(), type_->EmitIr(ctx));
-
-    return dispatch_table->EmitCall(args, ASSERT_NOT_NULL(ctx->type_of(this)),
-                                    ctx);
+    return dispatch_table->EmitCall(
+        FnArgs<std::pair<Expression *, ir::Results>>(
+            {std::pair(expr_.get(), expr_->EmitIr(ctx)),
+             std::pair(type_.get(), type_->EmitIr(ctx))},
+            {}),
+        ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
   }
 
   auto *this_type = ASSERT_NOT_NULL(ctx->type_of(this));

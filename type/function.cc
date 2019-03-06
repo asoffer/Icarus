@@ -6,6 +6,7 @@
 #include "ir/val.h"
 
 namespace type {
+Type const *Generic = new GenericFunction;
 
 void GenericFunction::EmitCopyAssign(const Type *from_type,
                                      ir::Results const &from,

@@ -48,33 +48,33 @@ struct ArgResolution {
       FnArgs<type::Typed<Expression *>> const &args) {
     ArgResolution res;
     auto p_iter = params.begin();
-    auto a_iter = args.pos_.begin();
+    size_t ai = 0;
 
     size_t argument_index  = 0;
     size_t parameter_index = 0;
-    while (p_iter != params.end() && a_iter != args.pos_.end()) {
-      auto *t = a_iter->type();
-      if (a_iter->get()->needs_expansion()) {
+    while (p_iter != params.end() && ai != args.num_pos()) {
+      auto *t = args.at(ai).type();
+      if (args.at(ai).get()->needs_expansion()) {
         auto const &tuple_entries = t->template as<type::Tuple>().entries_;
 
         // TODO check that there is enough space in params
         size_t expansion_index = 0;
         for (auto *t : tuple_entries) {
-          res.entries_.emplace_back(a_iter->get(), argument_index, expansion_index,
-                                parameter_index);
+          res.entries_.emplace_back(args.at(ai).get(), argument_index,
+                                    expansion_index, parameter_index);
           ++p_iter;
           ++parameter_index;
           ++expansion_index;
         }
         ++argument_index;
-        ++a_iter;
+        ++ai;
       } else {
-        res.entries_.emplace_back(a_iter->get(), argument_index, -1,
+        res.entries_.emplace_back(args.at(ai).get(), argument_index, -1,
                                   parameter_index);
         ++parameter_index;
         ++argument_index;
         ++p_iter;
-        ++a_iter;
+        ++ai;
       }
     }
 
@@ -90,7 +90,7 @@ struct ArgResolution {
 
     // TODO this assumes we aren't splatting into a named argument, which might
     // make sense for named variadics.
-    for (auto const &[name, expr] : args.named_) {
+    for (auto const &[name, expr] : args.named()) {
       if (auto iter = params.lookup_.find(name); iter != params.lookup_.end()) {
         auto &entry           = res.entries_.at(iter->second);
         entry.expr            = expr.get();
@@ -135,13 +135,11 @@ struct ArgResolution {
         // TODO variadics there may be more than one of these.
         ASSIGN_OR(return _.error(), auto *t, MeetWithBoundType(entry, input_type, ctx));
 
-        if (entry.parameter_index < call_arg_types->pos_.size()) {
-          call_arg_types->pos_.at(entry.parameter_index) = t;
+        if (entry.parameter_index < call_arg_types->num_pos()) {
+          call_arg_types->at(entry.parameter_index) = t;
         } else {
-          auto iter =
-              call_arg_types->find(params.at(entry.parameter_index).name);
-          ASSERT(iter != call_arg_types->named_.end());
-          iter->second = t;
+          call_arg_types->at(
+              std::string{params.at(entry.parameter_index).name}) = t;
         }
       }
 

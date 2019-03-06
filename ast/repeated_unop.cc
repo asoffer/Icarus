@@ -63,14 +63,13 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
           arg_type->is<type::Flags>() || arg_type->is<type::Array>()) {
         continue;
       } else if (arg_type->is<type::Struct>()) {
-        FnArgs<Expression *> args;
-        args.pos_.push_back(arg.get());
         OverloadSet os(scope_, "print", ctx);
         os.add_adl("print", arg_type);
 
-        ASSIGN_OR(
-            return VerifyResult::Error(), type::Type const &ret_type,
-                   DispatchTable::MakeOrLogError(this, args, os, ctx, true));
+        ASSIGN_OR(return VerifyResult::Error(), type::Type const &ret_type,
+                         DispatchTable::MakeOrLogError(
+                             this, FnArgs<Expression *>({arg.get()}, {}), os,
+                             ctx, true));
         if (&ret_type != type::Void()) { NOT_YET("log an error: ", &ret_type); }
       } else if (arg_type->is<type::Variant>()) {
         // TODO check that any variant can be printed
@@ -155,11 +154,13 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
       for (auto &val : arg_vals) {
         auto *t = ctx->type_of(args_.exprs_.at(index).get());
         if (t->is<type::Struct>()) {
-          ast::FnArgs<std::pair<ast::Expression *, ir::Results>> args;
-          args.pos_.emplace_back(args_.exprs_[index].get(), std::move(val));
           ASSERT_NOT_NULL(dispatch_tables)
               ->at(index)
-              .EmitCall(args, type::Void(), ctx);
+              .EmitCall(
+                  FnArgs<std::pair<Expression *, ir::Results>>(
+                      {std::pair(args_.exprs_[index].get(), std::move(val))},
+                      {}),
+                  type::Void(), ctx);
         } else {
           t->EmitRepr(val, ctx);
         }

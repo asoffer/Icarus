@@ -63,7 +63,7 @@ struct DispatchTable {
       ast::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
       type::Type const *ret_type, Context *ctx) const;
 
-  std::map<FnArgs<type::Type const *>, Binding> bindings_;
+  std::vector<std::pair<FnArgs<type::Type const *>, Binding>> bindings_;
   std::unordered_map<Expression const *, std::string> failure_reasons_;
   std::vector<std::string> generic_failure_reasons_;
 };

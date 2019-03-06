@@ -318,7 +318,15 @@ cc_target(
 cc_lib(
     name = "fn_args",
     hdrs = ["fn_args.h"],
+    deps = [],
+)
+
+cc_test(
+    name = "fn_args_test",
+    srcs = ["fn_args_test.cc"],
     deps = [
+        ":fn_args",
+        "//test",
     ],
 )
 

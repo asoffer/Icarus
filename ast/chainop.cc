@@ -38,14 +38,14 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
                                 op == frontend::Operator::Eq, ctx)
         .get<bool>(0);
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
-    FnArgs<std::pair<Expression *, ir::Results>> args;
-    args.pos_.reserve(2);
-    args.pos_.emplace_back(chain_op->exprs[index].get(), lhs_ir);
-    args.pos_.emplace_back(chain_op->exprs[index + 1].get(), rhs_ir);
-
-    auto results = ASSERT_NOT_NULL(ctx->rep_dispatch_tables(chain_op))
-                       ->at(index)
-                       .EmitCall(args, type::Bool, ctx);
+    auto results =
+        ASSERT_NOT_NULL(ctx->rep_dispatch_tables(chain_op))
+            ->at(index)
+            .EmitCall(FnArgs<std::pair<Expression *, ir::Results>>(
+                          {std::pair(chain_op->exprs[index].get(), lhs_ir),
+                           std::pair(chain_op->exprs[index + 1].get(), rhs_ir)},
+                          {}),
+                      type::Bool, ctx);
     ASSERT(results.size() == 1u);
     return results.get<bool>(0);
 
@@ -242,16 +242,15 @@ not_blocks:
 
         if (lhs_result.type_->is<type::Struct>() ||
             lhs_result.type_->is<type::Struct>()) {
-          FnArgs<Expression *> args;
-          args.pos_ =
-              std::vector<Expression *>{{exprs[i].get(), exprs[i + 1].get()}};
           // TODO overwriting type a bunch of times?
           OverloadSet os(scope_, token, ctx);
           os.add_adl(token, lhs_result.type_);
           os.add_adl(token, rhs_result.type_);
 
-          auto *ret_type =
-              DispatchTable::MakeOrLogError(this, args, os, ctx, true);
+          auto *ret_type = DispatchTable::MakeOrLogError(
+              this,
+              FnArgs<Expression *>({exprs[i].get(), exprs[i + 1].get()}, {}),
+              os, ctx, true);
           if (ret_type == nullptr) { return VerifyResult::Error(); }
           if (ret_type->is<type::Tuple>()) { NOT_YET(); }
           // TODO check that ret_type is a bool?

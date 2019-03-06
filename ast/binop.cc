@@ -164,13 +164,12 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         return VerifyResult::Error();                                          \
       }                                                                        \
     } else {                                                                   \
-      FnArgs<Expression *> args;                                               \
-      args.pos_ = std::vector<Expression *>{{lhs.get(), rhs.get()}};           \
       OverloadSet os(scope_, symbol, ctx);                                     \
       os.add_adl(symbol, lhs_result.type_);                                    \
       os.add_adl(symbol, rhs_result.type_);                                    \
                                                                                \
-      auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);     \
+      auto *ret_type = DispatchTable::MakeOrLogError(                          \
+          this, FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);    \
       if (ret_type == nullptr) { return VerifyResult::Error(); }               \
       if (ret_type->is<type::Tuple>()) { NOT_YET(); }                          \
       return VerifyResult(ctx->set_type(this, ret_type), lhs_result.const_);   \
@@ -196,13 +195,12 @@ VerifyResult Binop::VerifyType(Context *ctx) {
           return VerifyResult::Error();
         }
       } else {
-        FnArgs<Expression *> args;
-        args.pos_ = std::vector<Expression *>{{lhs.get(), rhs.get()}};
-        OverloadSet os(scope_, "+", ctx);
+            OverloadSet os(scope_, "+", ctx);
         os.add_adl("+", lhs_result.type_);
         os.add_adl("+", rhs_result.type_);
 
-        auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
+        auto *ret_type = DispatchTable::MakeOrLogError(
+            this, FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         if (ret_type->is<type::Tuple>()) { NOT_YET(); }
         return VerifyResult(ctx->set_type(this, ret_type), is_const);
@@ -219,13 +217,12 @@ VerifyResult Binop::VerifyType(Context *ctx) {
           return VerifyResult::Error();
         }
       } else {
-        FnArgs<Expression *> args;
-        args.pos_ = std::vector<Expression *>{{lhs.get(), rhs.get()}};
         OverloadSet os(scope_, "+=", ctx);
         os.add_adl("+=", lhs_result.type_);
         os.add_adl("+=", rhs_result.type_);
 
-        auto *ret_type = DispatchTable::MakeOrLogError(this, args, os, ctx);
+        auto *ret_type = DispatchTable::MakeOrLogError(
+            this, FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         if (ret_type->is<type::Tuple>()) { NOT_YET(); }
         return VerifyResult(ctx->set_type(this, ret_type), is_const);
@@ -264,13 +261,12 @@ ir::Results Binop::EmitIr(Context *ctx) {
 
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
-    FnArgs<std::pair<Expression *, ir::Results>> args;
-    args.pos_.reserve(2);
-    args.pos_.emplace_back(lhs.get(), lhs->EmitIr(ctx));
-    args.pos_.emplace_back(rhs.get(), rhs->EmitIr(ctx));
-
-    return dispatch_table->EmitCall(args, ASSERT_NOT_NULL(ctx->type_of(this)),
-                                    ctx);
+    return dispatch_table->EmitCall(
+        FnArgs<std::pair<Expression *, ir::Results>>(
+            {std::pair(lhs.get(), lhs->EmitIr(ctx)),
+             std::pair(rhs.get(), rhs->EmitIr(ctx))},
+            {}),
+        ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
   }
 
   switch (op) {
