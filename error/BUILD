@@ -11,7 +11,7 @@ cc_target(
     textual_hdrs = ["errors.xmacro.h"],
     intf_deps = [
         ":inference_failure_reason",
-        "//ast:fn_args",
+        "//core:fn_args",
         "//base:debug",
         "//frontend:text_span",
     ],

@@ -13,7 +13,7 @@ struct Identifier : public Expression {
   ~Identifier() override {}
 
   std::string to_string(size_t n) const override { return token; }
-  void assign_scope(Scope *scope) override;
+  void assign_scope(core::Scope *scope) override;
 
   VerifyResult VerifyType(Context *) override;
 

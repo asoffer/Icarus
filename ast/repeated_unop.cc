@@ -1,11 +1,11 @@
 #include "ast/repeated_unop.h"
 
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 #include "ast/function_literal.h"
 #include "ast/overload_set.h"
 #include "ir/func.h"
 #include "misc/context.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 
 namespace ast {
 std::string RepeatedUnop::to_string(size_t n) const {
@@ -21,7 +21,7 @@ RepeatedUnop::RepeatedUnop(TextSpan const &text_span) {
   span = args_.span = text_span;
 }
 
-void RepeatedUnop::assign_scope(Scope *scope) {
+void RepeatedUnop::assign_scope(core::Scope *scope) {
   scope_ = scope;
   args_.assign_scope(scope);
 }
@@ -68,7 +68,7 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
 
         ASSIGN_OR(return VerifyResult::Error(), type::Type const &ret_type,
                          DispatchTable::MakeOrLogError(
-                             this, FnArgs<Expression *>({arg.get()}, {}), os,
+                             this, core::FnArgs<Expression *>({arg.get()}, {}), os,
                              ctx, true));
         if (&ret_type != type::Void()) { NOT_YET("log an error: ", &ret_type); }
       } else if (arg_type->is<type::Variant>()) {
@@ -116,10 +116,9 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
       // Rather than doing this on each block it'd be better to have each
       // scope's destructors jump you to the correct next block for destruction.
       auto *scope = scope_;
-      while (scope != nullptr) {
-        scope->MakeAllDestructions(ctx);
-        if (scope->is<FnScope>()) { break; }
-        scope = scope->parent;
+      while (auto *exec = scope->if_as<core::ExecScope>()) {
+        exec->MakeAllDestructions(ctx);
+        scope = exec->parent;
       }
 
       ctx->more_stmts_allowed_ = false;
@@ -127,7 +126,8 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
       return ir::Results{};
     }
     case frontend::Operator::Yield: {
-      scope_->MakeAllDestructions(ctx);
+      // TODO store this as an exec_scope.
+      scope_->as<core::ExecScope>().MakeAllDestructions(ctx);
       // TODO pretty sure this is all wrong.
 
       // Can't return these because we need to pass them up at least through the
@@ -157,7 +157,7 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
           ASSERT_NOT_NULL(dispatch_tables)
               ->at(index)
               .EmitCall(
-                  FnArgs<std::pair<Expression *, ir::Results>>(
+                  core::FnArgs<std::pair<Expression *, ir::Results>>(
                       {std::pair(args_.exprs_[index].get(), std::move(val))},
                       {}),
                   type::Void(), ctx);

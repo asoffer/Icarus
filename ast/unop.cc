@@ -1,6 +1,6 @@
 #include "ast/unop.h"
 
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 #include "ast/overload_set.h"
 #include "ast/terminal.h"
 #include "backend/eval.h"
@@ -37,7 +37,7 @@ std::string Unop::to_string(size_t n) const {
   return ss.str();
 }
 
-void Unop::assign_scope(Scope *scope) {
+void Unop::assign_scope(core::Scope *scope) {
   scope_ = scope;
   operand->assign_scope(scope);
 }
@@ -142,7 +142,7 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         os.add_adl("-", operand_type);
 
         auto *ret_type = DispatchTable::MakeOrLogError(
-            this, FnArgs<Expression *>({operand.get()}, {}), os, ctx);
+            this, core::FnArgs<Expression *>({operand.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         return VerifyResult(ctx->set_type(this, ret_type), result.const_);
       }
@@ -169,7 +169,7 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         os.add_adl("!", operand_type);
 
         auto *ret_type = DispatchTable::MakeOrLogError(
-            this, FnArgs<Expression *>({operand.get()}, {}), os, ctx);
+            this, core::FnArgs<Expression *>({operand.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         if (ret_type->is<type::Tuple>()) { NOT_YET(); }
         return VerifyResult(ctx->set_type(this, ret_type), result.const_);
@@ -198,7 +198,7 @@ ir::Results Unop::EmitIr(Context *ctx) {
   if (auto const *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
     return dispatch_table->EmitCall(
-        FnArgs<std::pair<Expression *, ir::Results>>(
+        core::FnArgs<std::pair<Expression *, ir::Results>>(
             {std::pair(operand.get(), operand->EmitIr(ctx))}, {}),
         ctx->type_of(this), ctx);
   }

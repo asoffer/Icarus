@@ -6,7 +6,7 @@
 
 #include "ast/declaration.h"
 #include "ast/literal.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 
 namespace ast {
 // TODO rename this because it's for enums and flags.
@@ -22,7 +22,7 @@ struct EnumLiteral : public Literal {
   ~EnumLiteral() override {}
   std::string to_string(size_t n) const override;
 
-  void assign_scope(Scope *scope) override;
+  void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
 
   void ExtractJumps(JumpExprs *rets) const override;
@@ -31,7 +31,7 @@ struct EnumLiteral : public Literal {
 
   ir::Results EmitIr(Context *) override;
 
-  std::unique_ptr<DeclScope> enum_scope_;
+  std::unique_ptr<core::DeclScope> enum_scope_;
   std::vector<std::unique_ptr<Expression>> elems_;
   Kind kind_;
 };

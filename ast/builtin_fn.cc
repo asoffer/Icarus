@@ -8,8 +8,8 @@
 
 namespace ast {
 VerifyResult BuiltinFn::VerifyCall(
-    FnArgs<std::unique_ptr<Expression>> const &args,
-    FnArgs<VerifyResult> const &arg_results, Context *ctx) const {
+    core::FnArgs<std::unique_ptr<Expression>> const &args,
+    core::FnArgs<VerifyResult> const &arg_results, Context *ctx) const {
   switch (b_) {
     case ir::Builtin::Foreign: {
       bool err = false;

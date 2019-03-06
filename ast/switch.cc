@@ -25,7 +25,7 @@ std::string Switch::to_string(size_t n) const {
   return ss.str();
 }
 
-void Switch::assign_scope(Scope *scope) {
+void Switch::assign_scope(core::Scope *scope) {
   scope_ = scope;
   if (expr_) { expr_->assign_scope(scope_); }
   for (auto &[expr, cond] : cases_) {

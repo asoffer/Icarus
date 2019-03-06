@@ -19,7 +19,6 @@ cc_lib(
         ":declaration",
         ":enum_literal",
         ":expression",
-        ":fn_args",
         ":fn_params",
         ":function_literal",
         ":hashtag",
@@ -130,9 +129,9 @@ cc_target(
     ],
     impl_deps = [
         ":comma_list",
-        ":fn_args",
         ":overload_set",
         "//backend:eval",
+        "//core:fn_args",
         "//misc:context",
         "//ir:components",
         "//ir:func",
@@ -156,7 +155,7 @@ cc_target(
     ],
     impl_deps = [
         "//misc:context",
-        "//misc:scope",
+        "//core:scope",
         "//type:function",
         "//type:primitive",
     ],
@@ -167,7 +166,7 @@ cc_target(
     intf_deps = [
         ":expression",
         ":statements",
-        "//misc:scope",
+        "//core:scope",
         "//misc:context",
     ],
     impl_deps = ["//ir:val"],
@@ -182,8 +181,8 @@ cc_target(
 cc_target(
     name = "builtin_fn",
     intf_deps = [
-        ":fn_args",
         ":literal",
+        "//core:fn_args",
         "//ir:builtin",
         "//misc:context",
     ],
@@ -198,7 +197,7 @@ cc_target(
     name = "call",
     intf_deps = [
         ":literal",
-        ":fn_args",
+        "//core:fn_args",
     ],
     impl_deps = [
         ":block_literal",
@@ -213,7 +212,7 @@ cc_target(
         "//ir:components",
         "//ir:func",
         "//ir:phi",
-        "//misc:scope",
+        "//core:scope",
         "//type:array",
         "//type:function",
         "//type:generic_struct",
@@ -227,9 +226,9 @@ cc_target(
     name = "cast",
     intf_deps = [":expression"],
     impl_deps = [
-        ":fn_args",
         ":overload_set",
         "//backend:eval",
+        "//core:fn_args",
         "//ir:cmd",
         "//misc:context",
         "//type:cast",
@@ -244,8 +243,8 @@ cc_target(
         "//frontend:operators",
     ],
     impl_deps = [
-        ":fn_args",
         ":overload_set",
+        "//core:fn_args",
         "//misc:context",
         "//ir:func",
         "//ir:phi",
@@ -290,7 +289,7 @@ cc_target(
     intf_deps = [
         ":declaration",
         ":literal",
-        "//misc:scope",
+        "//core:scope",
     ],
     impl_deps = [
         ":identifier",
@@ -316,21 +315,6 @@ cc_target(
 )
 
 cc_lib(
-    name = "fn_args",
-    hdrs = ["fn_args.h"],
-    deps = [],
-)
-
-cc_test(
-    name = "fn_args_test",
-    srcs = ["fn_args_test.cc"],
-    deps = [
-        ":fn_args",
-        "//test",
-    ],
-)
-
-cc_lib(
     name = "fn_params",
     hdrs = ["fn_params.h"],
     deps = [
@@ -347,7 +331,7 @@ cc_target(
         ":literal",
         ":statements",
         "//ir:val",
-        "//misc:scope",
+        "//core:scope",
     ],
     impl_deps = [
         ":bound_constants",
@@ -384,7 +368,7 @@ cc_target(
         "//ir:components",
         "//ir:val",
         "//misc:module",
-        "//misc:scope",
+        "//core:scope",
         "//type:pointer",
         "//type:type",
     ],
@@ -421,7 +405,7 @@ cc_target(
     intf_deps = [
         ":declaration",
         ":literal",
-        "//misc:scope",
+        "//core:scope",
     ],
     impl_deps = [
         "//error:log",
@@ -472,7 +456,7 @@ cc_target(
     impl_deps = [
         ":declaration",
         "//misc:context",
-        "//misc:scope",
+        "//core:scope",
     ],
 )
 
@@ -483,12 +467,12 @@ cc_target(
         "//frontend:operators",
     ],
     impl_deps = [
-        ":fn_args",
         ":function_literal",
         ":overload_set",
+        "//core:fn_args",
         "//ir:func",
         "//misc:context",
-        "//misc:scope",
+        "//core:scope",
     ],
 )
 
@@ -502,7 +486,7 @@ cc_target(
         "//misc:context",
         "//error:log",
         "//ir:val",
-        "//misc:scope",
+        "//core:scope",
         "//type:function",
         "//type:pointer",
     ],
@@ -513,24 +497,24 @@ cc_target(
     intf_deps = [
         ":block_node",
         ":expression",
-        ":fn_args",
         ":statements",
-        "//misc:scope",
+        "//core:fn_args",
+        "//core:scope",
     ],
     impl_deps = [
         ":access",
         ":block_literal",
         ":block_node",
-        ":fn_args",
         ":function_literal",
         ":identifier",
         ":scope_literal",
         "//backend:eval",
         "//base:util",
+        "//core:fn_args",
         "//ir:components",
         "//ir:func",
         "//misc:context",
-        "//misc:scope",
+        "//core:scope",
         "//type:function",
         "//type:pointer",
         "//type:type",
@@ -552,7 +536,7 @@ cc_target(
         ":comma_list",
         ":declaration",
         ":literal",
-        "//misc:scope",
+        "//core:scope",
     ],
     impl_deps = [
         ":declaration",
@@ -609,10 +593,10 @@ cc_target(
         "//frontend:operators",
     ],
     impl_deps = [
-        ":fn_args",
         ":overload_set",
         ":terminal",
         "//backend:eval",
+        "//core:fn_args",
         "//misc:context",
         "//ir:components",
         "//ir:func",

@@ -5,7 +5,7 @@
 #include "ast/access.h"
 #include "ast/block_literal.h"
 #include "ast/block_node.h"
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
 #include "ast/scope_literal.h"
@@ -14,7 +14,7 @@
 #include "ir/components.h"
 #include "ir/func.h"
 #include "misc/context.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/type.h"
@@ -30,7 +30,7 @@ std::string ScopeNode::to_string(size_t n) const {
   return ss.str();
 }
 
-void ScopeNode::assign_scope(Scope *scope) {
+void ScopeNode::assign_scope(core::Scope *scope) {
   scope_ = scope;
   name_->assign_scope(scope);
   args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
@@ -139,8 +139,8 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   }
 
   Identifier *state_id = nullptr;
-  FnArgs<type::Typed<Expression *>> typed_args;
-  FnArgs<std::pair<Expression *, ir::Results>> ir_args;
+  core::FnArgs<type::Typed<Expression *>> typed_args;
+  core::FnArgs<std::pair<Expression *, ir::Results>> ir_args;
   if (scope_lit->stateful_) {
     ASSERT(state_types.size() == 1u);
     state_ptr_type = *state_types.begin();
@@ -179,8 +179,8 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     auto &data              = block_data[&block];
     ir::BasicBlock::Current = data.index_;
 
-    FnArgs<std::pair<Expression *, ir::Results>> before_args;
-    FnArgs<type::Typed<Expression *>> before_expr_args;
+    core::FnArgs<std::pair<Expression *, ir::Results>> before_args;
+    core::FnArgs<type::Typed<Expression *>> before_expr_args;
 
     if (scope_lit->stateful_) {
       before_args.pos_emplace(state_id, ir::Results{alloc});
@@ -195,8 +195,8 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     block.EmitIr(ctx);
     auto yields = std::move(ctx->yields_stack_.back());
 
-    FnArgs<type::Typed<Expression *>> after_expr_args;
-    FnArgs<std::pair<Expression *, ir::Results>> after_args;
+    core::FnArgs<type::Typed<Expression *>> after_expr_args;
+    core::FnArgs<std::pair<Expression *, ir::Results>> after_args;
     if (scope_lit->stateful_) {
       after_expr_args.pos_emplace(state_id, state_ptr_type);
       after_args.pos_emplace(state_id, ir::Results{alloc});
@@ -225,8 +225,8 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
 
     ir::BasicBlock::Current = land_block;
 
-    FnArgs<type::Typed<Expression *>> expr_args;
-    FnArgs<std::pair<Expression *, ir::Results>> args;
+    core::FnArgs<type::Typed<Expression *>> expr_args;
+    core::FnArgs<std::pair<Expression *, ir::Results>> args;
     if (scope_lit->stateful_) {
       args.pos_emplace(state_id, ir::Results{alloc});
       expr_args.pos_emplace(state_id, state_ptr_type);

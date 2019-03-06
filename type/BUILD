@@ -135,7 +135,7 @@ cc_target(
         ":callable",
         ":type",
         "//misc:module",
-        "//misc:scope",
+        "//core:scope",
     ],
 )
 
@@ -166,7 +166,7 @@ cc_target(
     name = "interface",
     intf_deps = [
         ":type",
-        "//misc:scope",
+        "//core:scope",
     ],
     impl_deps = [
         ":function",
@@ -216,7 +216,7 @@ cc_target(
         "//ast:hashtag",
         "//base:lazy",
         "//ir:any_func",
-        "//misc:scope",
+        "//core:scope",
     ],
     impl_deps = [
         ":function",

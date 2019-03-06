@@ -5,7 +5,7 @@
 #include "ast/expression.h"
 #include "ast/statements.h"
 #include "misc/context.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 
 namespace ast {
 struct BlockNode : public Expression {
@@ -15,7 +15,7 @@ struct BlockNode : public Expression {
   BlockNode &operator=(BlockNode &&) noexcept = default;
 
   std::string to_string(size_t n) const override;
-  void assign_scope(Scope *scope) override;
+  void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(base::Graph<Declaration *> *g,
@@ -26,7 +26,7 @@ struct BlockNode : public Expression {
 
   std::unique_ptr<Expression> name_;
   Statements stmts_;
-  std::unique_ptr<ExecScope> block_scope_;
+  std::unique_ptr<core::ExecScope> block_scope_;
 };
 }  // namespace ast
 

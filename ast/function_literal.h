@@ -10,7 +10,7 @@
 #include "ast/literal.h"
 #include "ast/statements.h"
 #include "ir/val.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 
 struct Module;
 
@@ -27,7 +27,7 @@ struct FunctionLiteral : public Literal {
   ~FunctionLiteral() override {}
 
   std::string to_string(size_t n) const override;
-  void assign_scope(Scope *scope) override;
+  void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(base::Graph<Declaration *> *g,
@@ -40,7 +40,7 @@ struct FunctionLiteral : public Literal {
 
   void CompleteBody(Context *ctx);
 
-  std::unique_ptr<FnScope> fn_scope_;
+  std::unique_ptr<core::FnScope> fn_scope_;
 
   // Note this field is computed, but it is independent of any type or
   // context-specific information. It holds a topologically sorted list of

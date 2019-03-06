@@ -9,7 +9,7 @@ namespace ast {
 struct Switch : public Literal {
   ~Switch() override {}
   std::string to_string(size_t n) const override;
-  void assign_scope(Scope *scope) override;
+  void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *rets) const override;
   void DependentDecls(base::Graph<Declaration *> *g,

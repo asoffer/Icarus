@@ -15,7 +15,7 @@ std::string StructType::to_string(size_t n) const {
   return ss.str();
 }
 
-void StructType::assign_scope(Scope *scope) {
+void StructType::assign_scope(core::Scope *scope) {
   for (auto &arg : args_) { arg->assign_scope(scope); }
 }
 

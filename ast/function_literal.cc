@@ -47,10 +47,10 @@ std::string FunctionLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void FunctionLiteral::assign_scope(Scope *scope) {
+void FunctionLiteral::assign_scope(core::Scope *scope) {
   scope_ = scope;
   if (!fn_scope_) {  // TODO can this ever be null?
-    fn_scope_          = scope->add_child<FnScope>();
+    fn_scope_          = scope->add_child<core::FnScope>();
     fn_scope_->fn_lit_ = this;
   }
 

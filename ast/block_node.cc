@@ -11,10 +11,10 @@ std::string BlockNode::to_string(size_t n) const {
   return ss.str();
 }
 
-void BlockNode::assign_scope(Scope *scope) {
+void BlockNode::assign_scope(core::Scope *scope) {
   scope_ = scope;
   name_->assign_scope(scope);
-  block_scope_ = scope->add_child<ExecScope>();
+  block_scope_ = scope->add_child<core::ExecScope>();
   stmts_.assign_scope(block_scope_.get());
 }
 

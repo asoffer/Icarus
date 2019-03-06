@@ -9,7 +9,7 @@ struct BlockLiteral : public Literal {
   BlockLiteral(bool required);
   ~BlockLiteral() override {}
   std::string to_string(size_t n) const override;
-  void assign_scope(Scope *scope) override;
+  void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(base::Graph<Declaration *> *g,
@@ -18,7 +18,7 @@ struct BlockLiteral : public Literal {
   ir::Results EmitIr(Context *ctx);
 
   std::vector<Declaration> before_, after_;
-  std::unique_ptr<Scope> body_scope_;
+  std::unique_ptr<core::Scope> body_scope_;
   bool required_;
 };
 }  // namespace ast

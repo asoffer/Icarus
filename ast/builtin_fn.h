@@ -1,7 +1,7 @@
 #ifndef ICARUS_AST_BUILTIN_FN_H
 #define ICARUS_AST_BUILTIN_FN_H
 
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 #include "ast/literal.h"
 #include "ir/builtin.h"
 #include "misc/module.h"
@@ -16,15 +16,15 @@ struct BuiltinFn : public Literal {
   BuiltinFn(const TextSpan &span, ir::Builtin b) : Literal(span), b_(b) {}
   ~BuiltinFn() override {}
 
-  void assign_scope(Scope *scope) override { scope_ = scope; }
+  void assign_scope(core::Scope *scope) override { scope_ = scope; }
   std::string to_string(size_t) const override { return stringify(b_); }
 
   VerifyResult VerifyType(Context *ctx) override {
     return VerifyResult::Constant(ctx->set_type(this, ir::BuiltinType(b_)));
   }
 
-  VerifyResult VerifyCall(FnArgs<std::unique_ptr<Expression>> const &args,
-                          FnArgs<VerifyResult> const &arg_results,
+  VerifyResult VerifyCall(core::FnArgs<std::unique_ptr<Expression>> const &args,
+                          core::FnArgs<VerifyResult> const &arg_results,
                           Context *ctx) const;
 
   // TODO distinguish between guaranteed failures and failures to continue

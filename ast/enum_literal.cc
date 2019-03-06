@@ -77,8 +77,8 @@ std::string EnumLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void EnumLiteral::assign_scope(Scope *scope) {
-  enum_scope_ = scope->add_child<DeclScope>();
+void EnumLiteral::assign_scope(core::Scope *scope) {
+  enum_scope_ = scope->add_child<core::DeclScope>();
   for (auto &elem : elems_) { elem->assign_scope(enum_scope_.get()); }
 }
 

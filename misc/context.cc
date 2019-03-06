@@ -9,7 +9,7 @@ type::Type const *Context::type_of(ast::Expression const *expr) const {
 
   // When searching in embedded modules we intentionally look with no bound
   // constants. Across module boundaries, a declaration can't be present anyway.
-  for (Module const *mod : mod_->global_->embedded_modules_) {
+  for (Module const *mod : mod_->scope_.embedded_modules_) {
     auto bc_iter = mod->data_.find(ast::BoundConstants{});
     if (bc_iter == mod->data_.end()) { continue; }
     auto iter = bc_iter->second.types_.data_.find(expr);

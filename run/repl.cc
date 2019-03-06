@@ -61,7 +61,7 @@ repl_start:;
     for (auto &stmt : stmts->content_) {
       if (stmt->is<ast::Declaration>()) {
         auto *decl = &stmt->as<ast::Declaration>();
-        decl->assign_scope(ctx.mod_->global_.get());
+        decl->assign_scope(&ctx.mod_->scope_);
         decl->VerifyType(&ctx);
         decl->EmitIr(&ctx);
         if (ctx.num_errors() != 0) {
@@ -71,7 +71,7 @@ repl_start:;
 
       } else if (stmt->is<ast::Expression>()) {
         auto *expr = &stmt->as<ast::Expression>();
-        expr->assign_scope(ctx.mod_->global_.get());
+        expr->assign_scope(&ctx.mod_->scope_);
         backend::ReplEval(expr);
         fprintf(stderr, "\n");
       } else {

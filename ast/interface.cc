@@ -6,14 +6,15 @@
 #include "type/type.h"
 
 namespace ir {
-TypedRegister<type::Interface const *> CreateInterface(::Scope const *scope);
+TypedRegister<type::Interface const *> CreateInterface(
+    core::Scope const *scope);
 ir::TypedRegister<type::Interface const *> FinalizeInterface(Register r);
 }  // namespace ir
 
 namespace ast {
-void Interface::assign_scope(Scope *scope) {
+void Interface::assign_scope(core::Scope *scope) {
   scope_      = scope;
-  body_scope_ = scope->add_child<DeclScope>();
+  body_scope_ = scope->add_child<core::DeclScope>();
   for (auto &d : decls_) { d.assign_scope(body_scope_.get()); }
 }
 

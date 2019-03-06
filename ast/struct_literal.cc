@@ -19,7 +19,8 @@ namespace ir {
 // from having to pass extra information and thereby bloating all commands. At
 // some point we should switch to a buffer-chunk system so that one won't bloat
 // another.
-Register CreateStruct(::Scope const *scope, ast::StructLiteral const *parent);
+Register CreateStruct(core::Scope const *scope,
+                      ast::StructLiteral const *parent);
 void CreateStructField(Register struct_type,
                        RegisterOr<type::Type const *> type);
 void SetStructFieldName(Register struct_type, std::string_view field_name);
@@ -49,9 +50,9 @@ void StructLiteral::DependentDecls(base::Graph<Declaration *> *g,
   for (auto &f : fields_) { f->DependentDecls(g, d); }
 }
 
-void StructLiteral::assign_scope(Scope *scope) {
+void StructLiteral::assign_scope(core::Scope *scope) {
   scope_     = scope;
-  type_scope = scope->add_child<DeclScope>();
+  type_scope = scope->add_child<core::DeclScope>();
   for (auto &a : args_) { a->assign_scope(type_scope.get()); }
   for (auto &f : fields_) { f->assign_scope(type_scope.get()); }
 }

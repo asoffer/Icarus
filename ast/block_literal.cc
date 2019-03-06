@@ -2,7 +2,7 @@
 
 #include "ir/val.h"
 #include "misc/context.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 #include "type/function.h"
 #include "type/primitive.h"
 
@@ -22,9 +22,9 @@ std::string BlockLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void BlockLiteral::assign_scope(Scope *scope) {
+void BlockLiteral::assign_scope(core::Scope *scope) {
   scope_      = scope;
-  body_scope_ = scope->add_child<DeclScope>();
+  body_scope_ = scope->add_child<core::DeclScope>();
   for (auto &b : before_) { b.assign_scope(body_scope_.get()); }
   for (auto &a : after_) { a.assign_scope(body_scope_.get()); }
 }

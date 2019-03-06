@@ -212,7 +212,7 @@ std::string Declaration::to_string(size_t n) const {
   return ss.str();
 }
 
-void Declaration::assign_scope(Scope *scope) {
+void Declaration::assign_scope(core::Scope *scope) {
   ASSERT(scope != nullptr);
   scope_ = scope;
   scope_->InsertDecl(this);
@@ -521,7 +521,6 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
     // higher-up-the-scope-tree identifier as the shadow when something else on
     // a different branch could find it unambiguously. It's also just a hack
     // from the get-go so maybe we should just do it the right way.
-    scope_->shadowed_decls_.insert(id_);
     return ctx->set_verification_attempt(this, VerifyResult::Error());
   }
 

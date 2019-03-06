@@ -1,13 +1,13 @@
 #include "ast/overload_set.h"
 #include "ast/declaration.h"
 #include "misc/context.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 
 namespace ast {
 using ::matcher::InheritsFrom;
 
 // TODO only hold functions?
-OverloadSet::OverloadSet(Scope *scope, std::string const &id, Context *ctx) {
+OverloadSet::OverloadSet(core::Scope *scope, std::string const &id, Context *ctx) {
   auto decls = scope->AllDeclsWithId(id, ctx);
   reserve(decls.size());
   for (auto const &decl : decls) { emplace_back(decl.get(), decl.type()); }

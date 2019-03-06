@@ -3,13 +3,13 @@
 
 #include "ast/declaration.h"
 #include "ast/literal.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 
 namespace ast {
 struct Interface : public Literal {
   ~Interface() override {}
   std::string to_string(size_t n) const override;
-  void assign_scope(Scope *scope) override;
+  void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(base::Graph<Declaration *> *g,
@@ -18,7 +18,7 @@ struct Interface : public Literal {
   ir::Results EmitIr(Context *ctx) override;
 
   std::vector<Declaration> decls_;
-  std::unique_ptr<DeclScope> body_scope_;
+  std::unique_ptr<core::DeclScope> body_scope_;
 };
 }  // namespace ast
 

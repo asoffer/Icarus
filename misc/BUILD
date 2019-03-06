@@ -8,7 +8,6 @@ cc_lib(
     deps = [
         ":context-impl",
         ":module-impl",
-        ":scope-impl",
         ":import_graph-impl",
     ],
 )
@@ -40,12 +39,12 @@ cc_lib(
 cc_target(
     name = "module",
     intf_deps = [
-        ":scope",
         "//ast:fn_params",
         "//ast:bound_constants",
         "//ast/dispatch:table",
         "//ast:node_lookup",
         "//ast:statements",
+        "//core:scope",
         "//error:log",
     ],
     impl_deps = [
@@ -60,23 +59,5 @@ cc_target(
         "//frontend:source",
         "//ir:func",
         "//type:function",
-    ],
-)
-
-cc_target(
-    name = "scope",
-    intf_deps = [
-        "//base:util",
-        "//type:typed_value",
-    ],
-    impl_deps = [
-        ":context",
-        ":module",
-        "//ast:declaration",
-        "//ast:identifier",
-        "//ast:match_declaration",
-        "//ir:cmd",
-        "//type:function",
-        "//type:pointer",
     ],
 )

@@ -15,7 +15,7 @@ struct Terminal : public Literal {
       : Literal(span), results_(std::move(results)), type_(t) {}
   ~Terminal() override {}
 
-  void assign_scope(Scope *scope) override { scope_ = scope; }
+  void assign_scope(core::Scope *scope) override { scope_ = scope; }
   std::string to_string(size_t) const override {
     return "<<terminal: " + type_->to_string() + ">>";
   }

@@ -3,7 +3,7 @@
 #include "error/log.h"
 #include "ir/val.h"
 #include "misc/context.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 #include "type/function.h"
 #include "type/pointer.h"
 
@@ -18,9 +18,9 @@ std::string ScopeLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void ScopeLiteral::assign_scope(Scope *scope) {
+void ScopeLiteral::assign_scope(core::Scope *scope) {
   scope_      = scope;
-  body_scope_ = scope->add_child<DeclScope>();
+  body_scope_ = scope->add_child<core::DeclScope>();
   for (auto &decl : decls_) { decl.assign_scope(body_scope_.get()); }
 }
 

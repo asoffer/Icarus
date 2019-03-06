@@ -9,7 +9,7 @@
 #include <vector>
 #include "base/lazy.h"
 #include "ir/any_func.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 #include "type/type.h"
 
 namespace ast {
@@ -27,7 +27,7 @@ struct Struct : public Type {
     std::vector<ast::Hashtag> hashtags_;
   };
 
-  Struct(::Scope const *scope, ::Module const *mod,
+  Struct(core::Scope const *scope, ::Module const *mod,
          ast::StructLiteral const *parent)
       : scope_(scope), mod_(const_cast<::Module *>(mod)), parent_(parent) {}
   ~Struct() override {}
@@ -58,7 +58,7 @@ struct Struct : public Type {
 
   bool contains_hashtag(ast::Hashtag needle) const;
 
-  ::Scope const *scope_             = nullptr;
+  core::Scope const *scope_         = nullptr;
   ::Module *mod_                    = nullptr;
   ast::StructLiteral const *parent_ = nullptr;
 

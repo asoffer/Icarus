@@ -3,7 +3,7 @@
 
 #include <vector>
 #include "misc/module.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 #include "type/callable.h"
 #include "type/type.h"
 
@@ -12,7 +12,7 @@ struct Context;
 namespace type {
 struct GenericStruct : public Callable {
   TYPE_FNS(GenericStruct);
-  GenericStruct(::Scope const *scope, std::vector<Type const *> ts)
+  GenericStruct(core::Scope const *scope, std::vector<Type const *> ts)
       : scope_(scope), mod_(scope->module()), deps_(std::move(ts)) {}
 
   void EmitDestroy(ir::Register reg, Context *ctx) const override;
@@ -22,12 +22,13 @@ struct GenericStruct : public Callable {
 
   ::Module const *defining_module() const { return mod_; }
 
-  ::Scope const *scope_ = nullptr;
-  ::Module const *mod_  = nullptr;
+  core::Scope const *scope_ = nullptr;
+  ::Module const *mod_      = nullptr;
   std::vector<Type const *> deps_;
 };
 
-GenericStruct *GenStruct(::Scope const *scope, std::vector<Type const *> ts);
+GenericStruct *GenStruct(core::Scope const *scope,
+                         std::vector<Type const *> ts);
 }  // namespace type
 
 #endif  // ICARUS_TYPE_GENERIC_STRUCT_H

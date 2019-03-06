@@ -13,7 +13,7 @@ struct Import : public Literal {
   ~Import() override {}
 
   std::string to_string(size_t n) const override;
-  void assign_scope(Scope *scope) override;
+  void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
 
   // TODO what if the operand does a result/return thing in a scope? This feels

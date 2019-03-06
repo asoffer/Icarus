@@ -23,8 +23,8 @@ cc_target(
        ":call_obstruction",
        "//ast:declaration",
        "//ast:expression",
-       "//ast:fn_args",
        "//ast:fn_params",
+       "//core:fn_args",
        "//base:expected",
        "//type:typed_value",
        "//type:tuple",
@@ -51,8 +51,8 @@ cc_target(
     intf_deps = [
         ":arg_resolution",
         "//ast:bound_constants",
-        "//ast:fn_args",
         "//ast:overload_set",
+        "//core:fn_args",
         "//base:expected",
     ],
     impl_deps = [
@@ -68,7 +68,7 @@ cc_target(
         "//ir:func",
         "//ir:phi",
         "//misc:module",
-        "//misc:scope",
+        "//core:scope",
         "//type:cast",
         "//type:function",
         "//type:generic_struct",

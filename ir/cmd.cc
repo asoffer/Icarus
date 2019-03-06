@@ -373,13 +373,13 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                      [lit](ast::BlockLiteral *l) { return lit == l; });
 }
 
-Register CreateStruct(::Scope const *scope, ast::StructLiteral const *parent) {
+Register CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent) {
   auto &cmd          = MakeCmd(type::Type_, Op::CreateStruct);
   cmd.create_struct_ = {scope, parent};
   return cmd.result;
 }
 
-Register CreateInterface(::Scope const *scope) {
+Register CreateInterface(core::Scope const *scope) {
   auto &cmd  = MakeCmd(type::Type_, Op::CreateInterface);
   cmd.scope_ = scope;
   return cmd.result;

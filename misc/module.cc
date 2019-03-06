@@ -40,16 +40,17 @@ ir::Func *main_fn;
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of ir::Func which we want to forward declare.
+#ifndef ICARUS_USE_LLVM
+
+Module::Module() : scope_(this) {}
+
+#else
 Module::Module()
-    : global_(std::make_unique<DeclScope>(nullptr))
-#ifdef ICARUS_USE_LLVM
-      ,
+    : scope_(this),
       llvm_ctx_(std::make_unique<llvm::LLVMContext>()),
-      llvm_(std::make_unique<llvm::Module>("my module", *llvm_ctx_))
+      llvm_(std::make_unique<llvm::Module>("my module", *llvm_ctx_)) {}
 #endif  // ICARUS_USE_LLVM
-{
-  global_->module_ = this;
-}
+
 Module::~Module() = default;
 
 ir::Func *Module::AddFunc(type::Function const *fn_type,
@@ -112,7 +113,7 @@ static Module *CompileModule(Module *mod) {
     return mod;
   }
 
-  file_stmts->assign_scope(mod->global_.get());
+  file_stmts->assign_scope(&mod->scope_);
 
   Context ctx(mod);
   file_stmts->VerifyType(&ctx);

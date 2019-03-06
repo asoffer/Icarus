@@ -5,7 +5,7 @@
 
 #include "ast/dispatch/call_obstruction.h"
 #include "ast/expression.h"
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 #include "ast/fn_params.h"
 #include "base/expected.h"
 #include "base/util.h"
@@ -45,7 +45,7 @@ struct ArgResolution {
   template <typename T>
   static base::expected<ArgResolution, CallObstruction> Make(
       FnParams<T> const &params,
-      FnArgs<type::Typed<Expression *>> const &args) {
+      core::FnArgs<type::Typed<Expression *>> const &args) {
     ArgResolution res;
     auto p_iter = params.begin();
     size_t ai = 0;
@@ -105,7 +105,7 @@ struct ArgResolution {
 
   template <typename E>
   CallObstruction SetTypes(std::vector<type::Type const *> const &input_types,
-                           FnParams<E> const &params, Context *ctx,   FnArgs<type::Type const *> *call_arg_types) {
+                           FnParams<E> const &params, Context *ctx,   core::FnArgs<type::Type const *> *call_arg_types) {
     for (auto &entry : entries_) {
       type::Type const *input_type;
       if constexpr (std::is_same_v<E, std::unique_ptr<Declaration>>) {

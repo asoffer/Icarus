@@ -646,7 +646,7 @@ void Log::NoCallMatch(TextSpan const &span,
 
 void Log::MissingDispatchContingency(
     TextSpan const &span,
-    std::vector<ast::FnArgs<type::Type const *>> const &missing_dispatch) {
+    std::vector<core::FnArgs<type::Type const *>> const &missing_dispatch) {
   std::stringstream ss;
   ss << "Failed to find a valid function to call for all required dispatches.\n\n";
   WriteSource(

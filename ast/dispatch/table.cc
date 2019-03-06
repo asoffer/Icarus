@@ -14,7 +14,7 @@
 #include "ir/phi.h"
 #include "misc/context.h"
 #include "misc/module.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 #include "type/cast.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
@@ -31,7 +31,7 @@ using ::matcher::InheritsFrom;
 template <typename E>
 static base::expected<Binding, CallObstruction> MakeBinding(
     type::Typed<Expression *, type::Callable> fn, FnParams<E> const &params,
-    FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
+    core::FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
   bool constant = !params.lookup_.empty();
   Binding b(fn, constant);
 
@@ -44,39 +44,39 @@ struct DispatchTableRow {
   template <typename E>
   CallObstruction SetTypes(std::vector<type::Type const *> const &input_types,
                            FnParams<E> const &params,
-                           FnArgs<type::Typed<Expression *>> const &args,
+                           core::FnArgs<type::Typed<Expression *>> const &args,
                            Context *ctx);
 
   static base::expected<DispatchTableRow, CallObstruction> Make(
       type::Typed<Expression *, type::Callable> fn_option,
-      FnArgs<type::Typed<Expression *>> const &args, Context *ctx);
+      core::FnArgs<type::Typed<Expression *>> const &args, Context *ctx);
 
-  FnArgs<type::Type const *> call_arg_types_;
+  core::FnArgs<type::Type const *> call_arg_types_;
   type::Callable const *callable_type_ = nullptr;
   Binding binding_;
 
  private:
   static base::expected<DispatchTableRow, CallObstruction> MakeNonConstant(
       type::Typed<Expression *, type::Function> fn_option,
-      FnArgs<type::Typed<Expression *>> const &args, Context *ctx);
+      core::FnArgs<type::Typed<Expression *>> const &args, Context *ctx);
 
   static base::expected<DispatchTableRow, CallObstruction>
   MakeFromBlockSequence(ir::BlockSequence bs,
-                        FnArgs<type::Typed<Expression *>> const &args,
+                        core::FnArgs<type::Typed<Expression *>> const &args,
                         Context *ctx);
 
   static base::expected<DispatchTableRow, CallObstruction>
   MakeFromForeignFunction(type::Typed<Expression *, type::Callable> fn_option,
-                          FnArgs<type::Typed<Expression *>> const &args,
+                          core::FnArgs<type::Typed<Expression *>> const &args,
                           Context *ctx);
   static base::expected<DispatchTableRow, CallObstruction> MakeFromIrFunc(
       type::Typed<Expression *, type::Callable> fn_option,
-      ir::Func const &ir_func, FnArgs<type::Typed<Expression *>> const &args,
+      ir::Func const &ir_func, core::FnArgs<type::Typed<Expression *>> const &args,
       Context *ctx);
 
   static base::expected<DispatchTableRow, CallObstruction> MakeFromFnLit(
       type::Typed<Expression *, type::Callable> fn_option,
-      FunctionLiteral *fn_lit, FnArgs<type::Typed<Expression *>> const &args,
+      FunctionLiteral *fn_lit, core::FnArgs<type::Typed<Expression *>> const &args,
       Context *ctx);
   DispatchTableRow(Binding b) : binding_(std::move(b)) {}
 };
@@ -86,13 +86,13 @@ struct DispatchTableRow {
 template <typename E>
 CallObstruction DispatchTableRow::SetTypes(
     std::vector<type::Type const *> const &input_types,
-    FnParams<E> const &params, FnArgs<type::Typed<Expression *>> const &args,
+    FnParams<E> const &params, core::FnArgs<type::Typed<Expression *>> const &args,
     Context *ctx) {
   std::unordered_map<std::string, type::Type const *> named;
   for (auto &[name, expr] : args.named()) { named.emplace(name, nullptr); }
 
   size_t num_pos  = binding_.arg_res_.num_positional_arguments();
-  call_arg_types_ = FnArgs(std::vector<type::Type const *>(num_pos, nullptr),
+  call_arg_types_ = core::FnArgs(std::vector<type::Type const *>(num_pos, nullptr),
                            std::move(named));
   return binding_.arg_res_.SetTypes(input_types, params, ctx, &call_arg_types_);
 }
@@ -105,7 +105,7 @@ static bool IsConstant(Expression *e) {
 base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeNonConstant(
     type::Typed<Expression *, type::Function> fn_option,
-    FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
+    core::FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
   if (args.num_named() != 0u) {
     // TODO Describe `fn_option` explicitly.
     return CallObstruction::NonConstantNamedArguments();
@@ -139,7 +139,7 @@ DispatchTableRow::MakeNonConstant(
 
 base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::Make(
     type::Typed<Expression *, type::Callable> fn_option,
-    FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
+    core::FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
   if (fn_option.type() == nullptr) { NOT_YET(fn_option.get()->to_string(0)); }
   if (!IsConstant(fn_option.get())) {
     return MakeNonConstant(fn_option.as_type<type::Function>(), args, ctx);
@@ -170,7 +170,7 @@ base::expected<DispatchTableRow, CallObstruction> DispatchTableRow::Make(
 
 base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeFromBlockSequence(
-    ir::BlockSequence bs, FnArgs<type::Typed<Expression *>> const &args,
+    ir::BlockSequence bs, core::FnArgs<type::Typed<Expression *>> const &args,
     Context *ctx) {
   // TODO figure out which one to call. For now just calling the last entry.
 
@@ -214,7 +214,7 @@ DispatchTableRow::MakeFromBlockSequence(
 base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeFromForeignFunction(
     type::Typed<Expression *, type::Callable> fn_option,
-    FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
+    core::FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
   // TODO while all the behavior of MakeNonConst is what we want, the name is
   // obviously incorrect. and we need to reset binding_.const_ to true. Fix
   // the name here. Probably the error messages once we have them will be
@@ -231,7 +231,7 @@ DispatchTableRow::MakeFromForeignFunction(
 base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeFromFnLit(
     type::Typed<Expression *, type::Callable> fn_option,
-    FunctionLiteral *fn_lit, FnArgs<type::Typed<Expression *>> const &args,
+    FunctionLiteral *fn_lit, core::FnArgs<type::Typed<Expression *>> const &args,
     Context *ctx) {
   ASSIGN_OR(return _.error(), auto binding,
                    MakeBinding(fn_option, fn_lit->inputs_, args, ctx));
@@ -317,7 +317,7 @@ DispatchTableRow::MakeFromFnLit(
 base::expected<DispatchTableRow, CallObstruction>
 DispatchTableRow::MakeFromIrFunc(
     type::Typed<Expression *, type::Callable> fn_option,
-    ir::Func const &ir_func, FnArgs<type::Typed<Expression *>> const &args,
+    ir::Func const &ir_func, core::FnArgs<type::Typed<Expression *>> const &args,
     Context *ctx) {
   ASSIGN_OR(return _.error(), auto binding,
                    MakeBinding(fn_option, ir_func.params_, args, ctx));
@@ -378,7 +378,7 @@ static type::Type const *ComputeRetType(
 }
 
 std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
-    FnArgs<type::Typed<Expression *>> const &args,
+    core::FnArgs<type::Typed<Expression *>> const &args,
     OverloadSet const &overload_set, Context *ctx) {
   DispatchTable table;
 
@@ -440,9 +440,9 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
 
 template <typename IndexT>
 static void AddType(IndexT &&index, type::Type const *t,
-                    std::vector<FnArgs<type::Type const *>> *args) {
+                    std::vector<core::FnArgs<type::Type const *>> *args) {
   if (auto *vt = t->if_as<type::Variant>()) {
-    std::vector<FnArgs<type::Type const *>> new_args;
+    std::vector<core::FnArgs<type::Type const *>> new_args;
     for (auto *v : vt->variants_) {
       for (auto fnargs : *args) {
         if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
@@ -456,7 +456,7 @@ static void AddType(IndexT &&index, type::Type const *t,
     *args = std::move(new_args);
   } else {
     std::for_each(
-        args->begin(), args->end(), [&](FnArgs<type::Type const *> &fnargs) {
+        args->begin(), args->end(), [&](core::FnArgs<type::Type const *> &fnargs) {
           if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
             fnargs.pos_emplace(t);
           } else {
@@ -466,9 +466,9 @@ static void AddType(IndexT &&index, type::Type const *t,
   }
 }
 
-static std::vector<FnArgs<type::Type const *>> Expand(
-    FnArgs<type::Typed<Expression *>> const &typed_args) {
-  std::vector<FnArgs<type::Type const *>> all_expanded_options(1);
+static std::vector<core::FnArgs<type::Type const *>> Expand(
+    core::FnArgs<type::Typed<Expression *>> const &typed_args) {
+  std::vector<core::FnArgs<type::Type const *>> all_expanded_options(1);
   typed_args.ApplyWithIndex([&](auto &&index, type::Typed<Expression *> expr) {
     if (expr.get()->needs_expansion()) {
       for (auto *t : expr.type()->as<type::Tuple>().entries_) {
@@ -482,8 +482,33 @@ static std::vector<FnArgs<type::Type const *>> Expand(
   return all_expanded_options;
 }
 
+// Small contains expanded arguments (no variants).
+bool Covers(core::FnArgs<type::Type const *> const &big,
+            core::FnArgs<type::Type const *> const &small) {
+  ASSERT(big.num_pos() == small.num_pos());
+  for (size_t i = 0; i < big.num_pos(); ++i) {
+    if (big.at(i) == small.at(i)) { continue; }
+    if (auto *vt = big.at(i)->if_as<type::Variant>()) {
+      if (vt->contains(small.at(i))) { continue; }
+    }
+    return false;
+  }
+
+  for (auto const &[name, t] : small.named()) {
+    if (type::Type const *const *big_t = big.at_or_null(name)) {
+      if (t == *big_t) { continue; }
+      if (auto *vt = (*big_t)->if_as<type::Variant>()) {
+        if (vt->contains(t)) { continue; }
+      }
+    }
+    return false;
+  }
+
+  return true;
+}
+
 type::Type const *DispatchTable::MakeOrLogError(
-    Node *node, FnArgs<Expression *> const &args,
+    Node *node, core::FnArgs<Expression *> const &args,
     OverloadSet const &overload_set, Context *ctx, bool repeated) {
   // TODO pull this out one more layer into the VerifyType call of node.
   auto typed_args = args.Transform([ctx](Expression *expr) {
@@ -501,7 +526,7 @@ type::Type const *DispatchTable::MakeOrLogError(
   auto expanded     = Expand(typed_args);
   auto new_end_iter = std::remove_if(
       expanded.begin(), expanded.end(),
-      [&](FnArgs<type::Type const *> const &fnargs) {
+      [&](core::FnArgs<type::Type const *> const &fnargs) {
         return std::any_of(
             table.bindings_.begin(), table.bindings_.end(),
             [&fnargs](auto const &kv) { return Covers(kv.first, fnargs); });
@@ -659,34 +684,9 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
   }
 }
 
-// Small contains expanded arguments (no variants).
-bool Covers(FnArgs<type::Type const *> const &big,
-            FnArgs<type::Type const *> const &small) {
-  ASSERT(big.num_pos() == small.num_pos());
-  for (size_t i = 0; i < big.num_pos(); ++i) {
-    if (big.at(i) == small.at(i)) { continue; }
-    if (auto *vt = big.at(i)->if_as<type::Variant>()) {
-      if (vt->contains(small.at(i))) { continue; }
-    }
-    return false;
-  }
-
-  for (auto const &[name, t] : small.named()) {
-    if (type::Type const *const *big_t = big.at_or_null(name)) {
-      if (t == *big_t) { continue; }
-      if (auto *vt = (*big_t)->if_as<type::Variant>()) {
-        if (vt->contains(t)) { continue; }
-      }
-    }
-    return false;
-  }
-
-  return true;
-}
-
 static ir::BlockIndex CallLookupTest(
-    FnArgs<std::pair<Expression *, ir::Results>> const &args,
-    FnArgs<type::Type const *> const &call_arg_type, Context *ctx) {
+    core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    core::FnArgs<type::Type const *> const &call_arg_type, Context *ctx) {
   // Generate code that attempts to match the types on each argument (only
   // check the ones at the call-site that could be variants).
 
@@ -716,7 +716,7 @@ static ir::BlockIndex CallLookupTest(
 }
 
 ir::Results DispatchTable::EmitCall(
-    FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
     type::Type const *ret_type, Context *ctx) const {
   ASSERT(bindings_.size() != 0u);
   std::unordered_map<Expression *, ir::Results const *> expr_map;

@@ -4,7 +4,7 @@
 #include "ast/comma_list.h"
 #include "ast/declaration.h"
 #include "ast/literal.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 
 namespace type {
 struct Struct;
@@ -19,7 +19,7 @@ struct StructLiteral : public Literal {
   StructLiteral &operator=(StructLiteral &&) noexcept = default;
 
   std::string to_string(size_t n) const override;
-  void assign_scope(Scope *scope) override;
+  void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(base::Graph<Declaration *> *g,
@@ -29,7 +29,7 @@ struct StructLiteral : public Literal {
 
   ir::Results EmitIr(Context *) override;
 
-  std::unique_ptr<DeclScope> type_scope;
+  std::unique_ptr<core::DeclScope> type_scope;
   std::vector<std::unique_ptr<Declaration>> fields_, args_;
   Module *mod_ = nullptr;
 };

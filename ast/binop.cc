@@ -1,7 +1,7 @@
 #include "ast/binop.h"
 
 #include "ast/comma_list.h"
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "ir/components.h"
@@ -94,7 +94,7 @@ bool Binop::InferType(type::Type const *t, InferenceState *state) const {
   }
 }
 
-void Binop::assign_scope(Scope *scope) {
+void Binop::assign_scope(core::Scope *scope) {
   scope_ = scope;
   lhs->assign_scope(scope);
   rhs->assign_scope(scope);
@@ -169,7 +169,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       os.add_adl(symbol, rhs_result.type_);                                    \
                                                                                \
       auto *ret_type = DispatchTable::MakeOrLogError(                          \
-          this, FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);    \
+          this, core::FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);    \
       if (ret_type == nullptr) { return VerifyResult::Error(); }               \
       if (ret_type->is<type::Tuple>()) { NOT_YET(); }                          \
       return VerifyResult(ctx->set_type(this, ret_type), lhs_result.const_);   \
@@ -200,7 +200,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         os.add_adl("+", rhs_result.type_);
 
         auto *ret_type = DispatchTable::MakeOrLogError(
-            this, FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);
+            this, core::FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         if (ret_type->is<type::Tuple>()) { NOT_YET(); }
         return VerifyResult(ctx->set_type(this, ret_type), is_const);
@@ -222,7 +222,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         os.add_adl("+=", rhs_result.type_);
 
         auto *ret_type = DispatchTable::MakeOrLogError(
-            this, FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);
+            this, core::FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         if (ret_type->is<type::Tuple>()) { NOT_YET(); }
         return VerifyResult(ctx->set_type(this, ret_type), is_const);
@@ -262,7 +262,7 @@ ir::Results Binop::EmitIr(Context *ctx) {
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
     return dispatch_table->EmitCall(
-        FnArgs<std::pair<Expression *, ir::Results>>(
+        core::FnArgs<std::pair<Expression *, ir::Results>>(
             {std::pair(lhs.get(), lhs->EmitIr(ctx)),
              std::pair(rhs.get(), rhs->EmitIr(ctx))},
             {}),

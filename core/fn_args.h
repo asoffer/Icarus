@@ -1,12 +1,12 @@
-#ifndef ICARUS_AST_FN_ARGS_H
-#define ICARUS_AST_FN_ARGS_H
+#ifndef ICARUS_CORE_FN_ARGS_H
+#define ICARUS_CORE_FN_ARGS_H
 
 #include <unordered_map>
 #include <vector>
 
 #include "base/stringify.h"
 
-namespace ast {
+namespace core {
 template <typename T>
 struct FnArgs {
   FnArgs() = default;
@@ -86,6 +86,6 @@ struct FnArgs {
   std::unordered_map<std::string, T> named_;
 };
 
-}  // namespace ast
+}  // namespace core
 
-#endif  // ICARUS_AST_FN_ARGS_H
+#endif  // ICARUS_CORE_FN_ARGS_H

@@ -7,7 +7,9 @@
 #include "ir/val.h"
 #include "misc/context.h"
 
+namespace core {
 struct Scope;
+}  // namespace core
 
 namespace type {
 struct Enum;
@@ -149,7 +151,7 @@ struct Cmd {
   };
 
   struct CreateStruct {
-    ::Scope const *scope_;
+    core::Scope const *scope_;
     ast::StructLiteral const *parent_;
 
     inline friend std::ostream &operator<<(std::ostream &os,
@@ -273,7 +275,7 @@ struct Cmd {
     Cmd::Array array_;
     Field field_;
     ::Module *mod_;
-    ::Scope const *scope_;
+    core::Scope const *scope_;
 
     AddBc add_bc_;
 

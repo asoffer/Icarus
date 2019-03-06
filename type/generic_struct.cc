@@ -24,7 +24,7 @@ void GenericStruct::EmitDestroy(ir::Register reg, Context *ctx) const {
   UNREACHABLE();
 }
 
-GenericStruct *GenStruct(::Scope const* scope, std::vector<Type const *> ts) {
+GenericStruct *GenStruct(core::Scope const* scope, std::vector<Type const *> ts) {
   return new GenericStruct(scope, std::move(ts));
 }
 

@@ -14,7 +14,7 @@ std::string Statements::to_string(size_t n) const {
   return ss.str();
 }
 
-void Statements::assign_scope(Scope *scope) {
+void Statements::assign_scope(core::Scope *scope) {
   scope_ = scope;
   for (auto &stmt : content_) { stmt->assign_scope(scope); }
 }

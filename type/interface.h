@@ -1,14 +1,14 @@
 #ifndef ICARUS_TYPE_INTERFACE_H
 #define ICARUS_TYPE_INTERFACE_H
 
-#include "misc/scope.h"
+#include "core/scope.h"
 #include "type/type.h"
 
 namespace type {
 struct Interface : public Type {
   Interface() = delete;
   ~Interface() {}
-  Interface(::Scope const *scope, ::Module const *mod)
+  Interface(core::Scope const *scope, ::Module const *mod)
       : scope_(scope), mod_(mod) {}
 
   void WriteTo(std::string *result) const override;
@@ -47,7 +47,7 @@ struct Interface : public Type {
   llvm::Type *llvm(llvm::LLVMContext &) const override { UNREACHABLE(); }
 #endif  // ICARUS_USE_LLVM
 
-  ::Scope const *scope_ = nullptr;
+  core::Scope const *scope_ = nullptr;
   ::Module const *mod_  = nullptr;
 };
 

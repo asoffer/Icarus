@@ -24,7 +24,7 @@ type::Type const *DereferenceAll(type::Type const *t) {
 
 }  // namespace
 
-void Access::assign_scope(Scope *scope) {
+void Access::assign_scope(core::Scope *scope) {
   scope_ = scope;
   operand->assign_scope(scope);
 }

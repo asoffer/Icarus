@@ -1,7 +1,6 @@
-#ifndef ICARUS_SCOPE_H
-#define ICARUS_SCOPE_H
+#ifndef ICARUS_CORE_SCOPE_H
+#define ICARUS_CORE_SCOPE_H
 
-#include <iosfwd>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
@@ -11,21 +10,12 @@
 struct Context;
 struct Module;
 
-namespace ir {
-struct Val;
-}  // namespace ir
-
 namespace ast {
 struct Declaration;
-struct Expression;
-struct Identifier;
 struct FunctionLiteral;
 }  // namespace ast
 
-namespace type {
-struct Type;
-struct Function;
-}  // namespace type
+namespace core {
 
 struct DeclScope;
 struct ExecScope;
@@ -47,13 +37,10 @@ struct Scope : public base::Cast<Scope> {
   Module const *module() const;
 
   void InsertDecl(ast::Declaration *decl);
-  void MakeAllDestructions(Context *ctx);
 
   FnScope *ContainingFnScope();
-  std::unordered_set<std::string> shadowed_decls_;
   std::unordered_map<std::string, std::vector<ast::Declaration *>> decls_;
-  std::unordered_map<std::string, std::vector<ast::Declaration *>>
-      child_decls_;
+  std::unordered_map<std::string, std::vector<ast::Declaration *>> child_decls_;
 
   std::unordered_set<Module const *> embedded_modules_;
   Scope *parent = nullptr;
@@ -62,12 +49,21 @@ struct Scope : public base::Cast<Scope> {
 struct DeclScope : public Scope {
   DeclScope(Scope *parent) : Scope(parent) {}
   ~DeclScope() override {}
-  Module *module_;  // Should be only on global scopes?
+};
+
+struct ModuleScope : public DeclScope {
+  ModuleScope(::Module *mod) : DeclScope(nullptr), module_(mod) {}
+
+ private:
+  friend struct Scope;
+  Module *module_;
 };
 
 struct ExecScope : public Scope {
   ExecScope(Scope *parent);
   ~ExecScope() override {}
+
+  void MakeAllDestructions(Context *ctx);
 };
 
 struct FnScope : public ExecScope {
@@ -86,4 +82,7 @@ inline FnScope *Scope::ContainingFnScope() {
   // static_cast rather than ->as<FnScope> because it could be null.
   return static_cast<FnScope *>(scope);
 }
-#endif  // ICARUS_SCOPE_H
+
+}  // namespace core
+
+#endif  // ICARUS_CORE_SCOPE_H

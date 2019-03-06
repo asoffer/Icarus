@@ -7,12 +7,11 @@
 #include <unordered_map>
 #include "ast/bound_constants.h"
 #include "ast/dispatch/arg_resolution.h"
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 #include "ast/overload_set.h"
 #include "base/expected.h"
 
 struct Context;
-struct Scope;
 
 namespace type {
 struct Type;
@@ -52,18 +51,18 @@ struct DispatchTable {
   // * Add weights for PGO optimizations?
 
   static std::pair<DispatchTable, type::Type const *> Make(
-      FnArgs<type::Typed<Expression *>> const &args,
+      core::FnArgs<type::Typed<Expression *>> const &args,
       OverloadSet const &overload_set, Context *ctx);
   static type::Type const *MakeOrLogError(Node *node,
-                                          FnArgs<Expression *> const &args,
+                                          core::FnArgs<Expression *> const &args,
                                           OverloadSet const &overload_set,
                                           Context *ctx, bool repeated = false);
 
   ir::Results EmitCall(
-      ast::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
+      core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
       type::Type const *ret_type, Context *ctx) const;
 
-  std::vector<std::pair<FnArgs<type::Type const *>, Binding>> bindings_;
+  std::vector<std::pair<core::FnArgs<type::Type const *>, Binding>> bindings_;
   std::unordered_map<Expression const *, std::string> failure_reasons_;
   std::vector<std::string> generic_failure_reasons_;
 };

@@ -16,7 +16,7 @@ std::string Index::to_string(size_t n) const {
   return lhs_->to_string(n) + "[" + rhs_->to_string(n) + "]";
 }
 
-void Index::assign_scope(Scope *scope) {
+void Index::assign_scope(core::Scope *scope) {
   scope_ = scope;
   lhs_->assign_scope(scope);
   rhs_->assign_scope(scope);

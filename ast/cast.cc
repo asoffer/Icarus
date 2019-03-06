@@ -1,6 +1,6 @@
 #include "ast/cast.h"
 
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "ir/cmd.h"
@@ -14,7 +14,7 @@ std::string Cast::to_string(size_t n) const {
   return "(" + expr_->to_string(n) + ") as (" + type_->to_string(n) + ")";
 }
 
-void Cast::assign_scope(Scope *scope) {
+void Cast::assign_scope(core::Scope *scope) {
   scope_ = scope;
   expr_->assign_scope(scope);
   type_->assign_scope(scope);
@@ -49,7 +49,7 @@ VerifyResult Cast::VerifyType(Context *ctx) {
     os.keep_return(t);
 
     auto *ret_type = DispatchTable::MakeOrLogError(
-        this, FnArgs<Expression *>({expr_.get()}, {}), os, ctx);
+        this, core::FnArgs<Expression *>({expr_.get()}, {}), os, ctx);
     if (ret_type == nullptr) { return VerifyResult::Error(); }
     ASSERT(t == ret_type);
     return VerifyResult(ret_type, expr_result.const_);
@@ -71,7 +71,7 @@ ir::Results Cast::EmitIr(Context *ctx) {
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
     return dispatch_table->EmitCall(
-        FnArgs<std::pair<Expression *, ir::Results>>(
+        core::FnArgs<std::pair<Expression *, ir::Results>>(
             {std::pair(expr_.get(), expr_->EmitIr(ctx)),
              std::pair(type_.get(), type_->EmitIr(ctx))},
             {}),

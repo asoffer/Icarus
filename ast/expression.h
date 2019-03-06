@@ -7,10 +7,6 @@
 #include "ir/register.h"
 #include "type/typed_value.h"
 
-namespace ir {
-struct Val;
-}  // namespace ir
-
 namespace ast {
 struct Expression : public Node {
   Expression(TextSpan const &span = TextSpan()) : Node(span) {}
@@ -22,7 +18,7 @@ struct Expression : public Node {
 
   virtual ~Expression() {}
   virtual std::string to_string(size_t n) const                     = 0;
-  virtual void assign_scope(Scope *scope)                           = 0;
+  virtual void assign_scope(core::Scope *scope)                     = 0;
   virtual VerifyResult VerifyType(Context *ctx)                     = 0;
   virtual ir::Results EmitIr(Context *)                             = 0;
   virtual std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;

@@ -11,7 +11,7 @@ std::string ArrayType::to_string(size_t n) const {
   return ss.str();
 }
 
-void ArrayType::assign_scope(Scope *scope) {
+void ArrayType::assign_scope(core::Scope *scope) {
   scope_ = scope;
   length_->assign_scope(scope);
   data_type_->assign_scope(scope);

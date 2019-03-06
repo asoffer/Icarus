@@ -1,8 +1,8 @@
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 
 #include "test/test.h"
 
-namespace ast {
+namespace core {
 namespace {
 
 TEST(MutableAccess) {
@@ -66,4 +66,4 @@ TEST(ApplyWithIndex) {
 }
 
 }  // namespace
-}  // namespace ast
+}  // namespace core

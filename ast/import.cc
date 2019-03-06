@@ -12,7 +12,7 @@ namespace ast {
 std::string Import::to_string(size_t n) const {
   return "import " + operand_->to_string(n);
 }
-void Import::assign_scope(Scope *scope) {
+void Import::assign_scope(core::Scope *scope) {
   scope_ = scope;
   operand_->assign_scope(scope);
 }

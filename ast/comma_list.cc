@@ -20,7 +20,7 @@ std::string CommaList::to_string(size_t n) const {
   return ss.str();
 }
 
-void CommaList::assign_scope(Scope *scope) {
+void CommaList::assign_scope(core::Scope *scope) {
   scope_ = scope;
   for (auto &expr : exprs_) { expr->assign_scope(scope); }
 }

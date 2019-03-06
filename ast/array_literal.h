@@ -9,7 +9,7 @@ struct ArrayLiteral : public Literal {
   ArrayLiteral(TextSpan const &span) : Literal(span) {}
   ~ArrayLiteral() override {}
 
-  void assign_scope(Scope *scope) override { return cl_.assign_scope(scope); }
+  void assign_scope(core::Scope *scope) override { return cl_.assign_scope(scope); }
   std::string to_string(size_t n) const override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *rets) const override {

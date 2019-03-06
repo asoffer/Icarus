@@ -14,7 +14,7 @@
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 #include "type/array.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
@@ -40,14 +40,14 @@ std::string Call::to_string(size_t n) const {
   return ss.str();
 }
 
-void Call::assign_scope(Scope *scope) {
+void Call::assign_scope(core::Scope *scope) {
   scope_ = scope;
   fn_->assign_scope(scope);
   args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
 }
 
-static OverloadSet FindOverloads(Scope *scope, std::string const &token,
-                                 FnArgs<type::Type const *> arg_types,
+static OverloadSet FindOverloads(core::Scope *scope, std::string const &token,
+                                 core::FnArgs<type::Type const *> arg_types,
                                  Context *ctx) {
   OverloadSet os(scope, token, ctx);
   arg_types.Apply([&](type::Type const *t) { os.add_adl(token, t); });
@@ -61,7 +61,7 @@ bool Call::InferType(type::Type const *t, InferenceState *state) const {
   if (auto *id = fn_->if_as<Identifier>()) {
     // TODO this is probably the wrong approach. It'd be nice to stuff more data
     // we know into the inference state.
-    auto os = FindOverloads(scope_, id->token, FnArgs<type::Type const *>{},
+    auto os = FindOverloads(scope_, id->token, core::FnArgs<type::Type const *>{},
                             state->ctx_);
     if (os.size() != 1) { NOT_YET("only handle no overloading right now."); }
     if (auto *gs = os[0].type()->if_as<type::GenericStruct>()) {
@@ -128,7 +128,7 @@ VerifyResult Call::VerifyType(Context *ctx) {
         }
       });
 
-  FnArgs<VerifyResult> arg_results(std::move(pos_results),
+  core::FnArgs<VerifyResult> arg_results(std::move(pos_results),
                                    std::move(named_results));
 
   // TODO handle cyclic dependencies in call arguments.
@@ -141,7 +141,7 @@ VerifyResult Call::VerifyType(Context *ctx) {
     return VerifyResult(ctx->set_type(this, result.type_), result.const_);
   }  
 
-  FnArgs<Expression *> args = args_.Transform(
+  core::FnArgs<Expression *> args = args_.Transform(
       [](std::unique_ptr<Expression> const &arg) { return arg.get(); });
 
   OverloadSet overload_set = [&]() {

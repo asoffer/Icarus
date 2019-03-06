@@ -7,7 +7,10 @@
 #include "type/function.h"
 #include "type/typed_value.h"
 
+namespace core {
 struct Scope;
+}  // namespace core
+
 struct Context;
 
 namespace ast {
@@ -16,7 +19,7 @@ struct Expression;
 struct OverloadSet
     : public std::vector<type::Typed<Expression *, type::Callable>> {
   OverloadSet() = default;
-  OverloadSet(Scope *scope, std::string const &id, Context *ctx);
+  OverloadSet(core::Scope *scope, std::string const &id, Context *ctx);
 
   void add_adl(std::string const &id, type::Type const *t);
 

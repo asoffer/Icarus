@@ -1,4 +1,4 @@
-#include "misc/scope.h"
+#include "core/scope.h"
 
 #include "ast/declaration.h"
 #include "ast/identifier.h"
@@ -9,6 +9,8 @@
 #include "type/function.h"
 #include "type/pointer.h"
 
+namespace core {
+
 void Scope::InsertDecl(ast::Declaration *decl) {
   decls_[decl->id_].push_back(decl);
   for (auto *scope_ptr = parent; scope_ptr; scope_ptr = scope_ptr->parent) {
@@ -17,7 +19,7 @@ void Scope::InsertDecl(ast::Declaration *decl) {
 }
 
 Module const *Scope::module() const {
-  if (auto *ds = this->if_as<DeclScope>()) { return ds->module_; }
+  if (auto *ds = this->if_as<ModuleScope>()) { return ds->module_; }
   return parent->module();
 }
 
@@ -59,7 +61,7 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
 // TODO not sure you need to pass in the module.
 void FnScope::MakeAllStackAllocations(Context *ctx) {
   for (auto *scope : innards_) {
-    for (const auto & [ key, val ] : scope->decls_) {
+    for (const auto &[key, val] : scope->decls_) {
       for (auto *decl : val) {
         if (decl->const_ || decl->is_fn_param_ ||
             decl->is<ast::MatchDeclaration>()) {
@@ -75,11 +77,11 @@ void FnScope::MakeAllStackAllocations(Context *ctx) {
   }
 }
 
-void Scope::MakeAllDestructions(Context *ctx) {
+void ExecScope::MakeAllDestructions(Context *ctx) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
   std::vector<ast::Declaration *> ordered_decls;
-  for (auto & [ name, decls ] : decls_) {
+  for (auto &[name, decls] : decls_) {
     ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
   }
   std::sort(ordered_decls.begin(), ordered_decls.end(),
@@ -95,3 +97,5 @@ void Scope::MakeAllDestructions(Context *ctx) {
     t->EmitDestroy(ctx->addr(decl), ctx);
   }
 }
+
+}  // namespace core

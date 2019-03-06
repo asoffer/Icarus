@@ -2,7 +2,7 @@
 
 #include <numeric>
 
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 #include "ast/overload_set.h"
 #include "ir/func.h"
 #include "ir/phi.h"
@@ -41,7 +41,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
     auto results =
         ASSERT_NOT_NULL(ctx->rep_dispatch_tables(chain_op))
             ->at(index)
-            .EmitCall(FnArgs<std::pair<Expression *, ir::Results>>(
+            .EmitCall(core::FnArgs<std::pair<Expression *, ir::Results>>(
                           {std::pair(chain_op->exprs[index].get(), lhs_ir),
                            std::pair(chain_op->exprs[index + 1].get(), rhs_ir)},
                           {}),
@@ -138,7 +138,7 @@ std::string ChainOp::to_string(size_t n) const {
   return ss.str();
 }
 
-void ChainOp::assign_scope(Scope *scope) {
+void ChainOp::assign_scope(core::Scope *scope) {
   scope_ = scope;
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
@@ -249,7 +249,7 @@ not_blocks:
 
           auto *ret_type = DispatchTable::MakeOrLogError(
               this,
-              FnArgs<Expression *>({exprs[i].get(), exprs[i + 1].get()}, {}),
+              core::FnArgs<Expression *>({exprs[i].get(), exprs[i + 1].get()}, {}),
               os, ctx, true);
           if (ret_type == nullptr) { return VerifyResult::Error(); }
           if (ret_type->is<type::Tuple>()) { NOT_YET(); }

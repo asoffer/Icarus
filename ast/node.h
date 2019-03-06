@@ -18,14 +18,14 @@
 #include "type/typed_value.h"
 
 struct Context;
+
+namespace core {
 struct Scope;
+}  // namespace core
+
 namespace type {
 struct Type;
 }  // namespace type
-
-namespace ir {
-struct Val;
-}  // namespace ir
 
 namespace ast {
 struct Expression;
@@ -59,7 +59,7 @@ struct JumpExprs
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const     = 0;
-  virtual void assign_scope(Scope *)                = 0;
+  virtual void assign_scope(core::Scope *)                = 0;
   virtual VerifyResult VerifyType(Context *)        = 0;
   virtual ir::Results EmitIr(Context *ctx)          = 0;
   virtual void ExtractJumps(JumpExprs *) const      = 0;
@@ -79,7 +79,7 @@ struct Node : public base::Cast<Node> {
     return os << node.to_string(0);
   }
 
-  Scope *scope_ = nullptr;
+  core::Scope *scope_ = nullptr;
   TextSpan span;
 };
 

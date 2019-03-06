@@ -9,12 +9,12 @@
 #include "ir/val.h"
 #include "misc/context.h"
 #include "misc/module.h"
-#include "misc/scope.h"
+#include "core/scope.h"
 #include "type/pointer.h"
 #include "type/type.h"
 
 namespace ast {
-void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
+void Identifier::assign_scope(core::Scope *scope) { scope_ = scope; }
 
 VerifyResult Identifier::VerifyType(Context *ctx) {
   for (auto iter = ctx->cyc_deps_.begin(); iter != ctx->cyc_deps_.end();

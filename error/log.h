@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "ast/fn_args.h"
+#include "core/fn_args.h"
 #include "base/debug.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/text_span.h"
@@ -100,7 +100,7 @@ struct Log {
 
   void MissingDispatchContingency(
       TextSpan const &span,
-      std::vector<ast::FnArgs<type::Type const *>> const &missing_dispatch);
+      std::vector<core::FnArgs<type::Type const *>> const &missing_dispatch);
 
   void MissingModule(std::filesystem::path const &src,
                      std::filesystem::path const &requestor);
