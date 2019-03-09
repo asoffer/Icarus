@@ -566,7 +566,15 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
     // declaration (which can happen if core::FnParams internal vector gets
     // reallocated) could invalidate the string_view unintentionally.
     std::string_view name = input->id_;
-    fn->inputs_.append(name, std::move(input));
+
+    // Note the weird naming here: A declaration which is default initialized
+    // means there is no `=` as part of the declaration. This means that the
+    // declaration, when thougth of as a parameter to a function, has no default
+    // value.
+    core::FnParamFlags flags{};
+    if (!input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
+
+    fn->inputs_.append(name, std::move(input), flags);
   }
 
   fn->span        = std::move(span);

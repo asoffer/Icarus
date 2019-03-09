@@ -20,37 +20,45 @@ enum FnParamFlags : uint8_t {
 };
 
 template <typename T>
+struct Param {
+  Param() = default;
+  Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
+      : name(s), value(std::move(t)), flags(f) {}
+  Param(Param&&) noexcept = default;
+  Param& operator=(Param&&) noexcept = default;
+
+  // Param(Param const&) noexcept = default;
+  // Param& operator=(Param const&) noexcept = default;
+
+  std::string_view name = "";
+  T value{};
+  FnParamFlags flags{};
+};
+
+template <typename T>
+inline bool operator==(Param<T> const& lhs, Param<T> const& rhs) {
+  return lhs.name == rhs.name && lhs.value == rhs.value &&
+         lhs.flags == rhs.flags;
+}
+
+template <typename T>
+inline bool operator!=(Param<T> const& lhs, Param<T> const& rhs) {
+  return !(lhs == rhs);
+}
+
+template <typename T>
 struct FnParams {
-  struct Param {
-    Param() = default;
-    Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
-        : name(s), value(std::move(t)), flags(f) {}
-    Param(Param&&) noexcept = default;
-    Param& operator=(Param&&) noexcept = default;
-
-    // Param(Param const&) noexcept = default;
-    // Param& operator=(Param const&) noexcept = default;
-
-    std::string_view name = "";
-    T value{};
-    FnParamFlags flags{};
-
-    bool operator==(Param const& rhs) const {
-      return name == rhs.name && value == rhs.value;
-    }
-
-    bool operator!=(Param const& rhs) const { return !(*this == rhs); }
-  };
-
   // Construct a FnParams object representing `n` parameters all of which must
   // not be named.
   explicit FnParams(size_t n = 0) : params_(n) {
-    for (auto& p : params_) { p = Param("", T{}, MUST_NOT_NAME); }
+    for (auto& p : params_) { p = Param<T>("", T{}, MUST_NOT_NAME); }
   }
 
   template <typename... Ps>
-  explicit FnParams(Param param, Ps&&... params)
-      : params_{std::move(param), std::forward<Ps>(params)...} {
+  explicit FnParams(Param<T> param, Ps&&... params) {
+    params_.reserve(1 + sizeof...(Ps));
+    params_.push_back(std::move(param));
+    (params_.push_back(std::forward<Ps>(params)), ...);
     size_t i = 0;
     for (auto const& p : params_) {
       if (p.name != "") { lookup_.emplace(p.name, i); }
@@ -93,12 +101,13 @@ struct FnParams {
     return &iter->second;
   }
 
-  Param const& at(size_t i) const& { return params_.at(i); }
-  Param& at(size_t i) & { return params_.at(i); }
+  Param<T> const& at(size_t i) const& { return params_.at(i); }
+  Param<T>& at(size_t i) & { return params_.at(i); }
 
-  void append(std::string_view name, T val) {
+  void append(std::string_view name, T val,
+              FnParamFlags flags = FnParamFlags{}) {
     if (name != "") { lookup_.emplace(name, params_.size()); }
-    params_.emplace_back(name, std::move(val));
+    params_.emplace_back(name, std::move(val), flags);
   }
 
   // TODO hide this
@@ -107,7 +116,7 @@ struct FnParams {
   template <typename U>
   friend struct FnParams;
 
-  std::vector<Param> params_;
+  std::vector<Param<T>> params_;
 
   // Maps the string name of the declared argument to it's index:
   // Example: (a: int, b: char, c: string) -> int
@@ -182,6 +191,7 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
         continue;
       } else if (size_t const *index1 = params1.at_or_null(name)) {
         auto const &p1 = params1.at(*index1);
+
         if (ambiguity(p1.value, p2.value)) { continue; }
         goto next_named_positional_breakpoint;
       } else {
@@ -192,7 +202,7 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
     for (; checked_type_matches_through < i; ++checked_type_matches_through) {
       if (!ambiguity(params1.at(checked_type_matches_through).value,
                      params2.at(checked_type_matches_through).value)) {
-        goto next_named_positional_breakpoint;
+        return false;
       }
     }
 

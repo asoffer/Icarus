@@ -23,7 +23,6 @@ std::vector<std::string> const &LoadLines(frontend::Src *src) {
   static std::unordered_map<frontend::Src *, std::vector<std::string>> lines;
   auto iter = lines.find(src);
   if (iter == lines.end()) {
-    base::Log() << (uintptr_t)src;
     iter = lines.emplace(src, src->LoadLines()).first;
   }
   return iter->second;
@@ -427,9 +426,11 @@ void Log::ShadowingDeclaration(TextSpan const &span1, TextSpan const &span2) {
   auto line2     = LoadLines(ASSERT_NOT_NULL(span2.source)).at(line_num2);
   auto align =
       std::max(size_t{4}, NumDigits(std::max(line_num1, line_num2)) + 2);
-  std::cerr << "Ambiguous declarations:\n\n"
-            << LineToDisplay(line_num1, line1, align) << '\n'
-            << LineToDisplay(line_num2, line2, align) << '\n';
+  std::stringstream ss;
+  ss << "Ambiguous declarations:\n\n"
+     << LineToDisplay(line_num1, line1, align) << '\n'
+     << LineToDisplay(line_num2, line2, align) << '\n';
+  errors_.push_back(ss.str());
 }
 
 void Log::UserDefinedError(std::string const &err) {
