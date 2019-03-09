@@ -46,8 +46,7 @@ struct Log {
   void PositionalArgumentFollowingNamed(std::vector<TextSpan> const &pos_spans,
                                         TextSpan const &named_span);
   void NotAType(TextSpan const &span, type::Type const *t);
-  void ShadowingDeclaration(ast::Declaration const &decl1,
-                            ast::Declaration const &decl2);
+  void ShadowingDeclaration(TextSpan const &span1, TextSpan const &span2);
 
   // TODO include a source location/span/trace or whatever you decide to
   // include.

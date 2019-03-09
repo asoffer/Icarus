@@ -14,7 +14,7 @@
 
 #include "ast/bound_constants.h"
 #include "ast/dispatch/table.h"
-#include "ast/fn_params.h"
+#include "core/fn_params.h"
 #include "ast/node_lookup.h"
 #include "ast/statements.h"
 #include "core/scope.h"
@@ -56,7 +56,7 @@ struct Module {
       std::filesystem::path const &requestor = std::filesystem::path{""});
 
   ir::Func *AddFunc(type::Function const *fn_type,
-                    ast::FnParams<ast::Expression *> params);
+                    core::FnParams<ast::Expression *> params);
   type::Type const *GetType(std::string const &name) const;
   ast::Declaration *GetDecl(std::string const &name) const;
 

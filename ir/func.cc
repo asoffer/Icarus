@@ -14,7 +14,7 @@ thread_local Func *Func::Current{nullptr};
 Register Func::Argument(uint32_t n) const { return Register(n); }
 
 Func::Func(Module *mod, type::Function const *fn_type,
-           ast::FnParams<ast::Expression *> params)
+           core::FnParams<ast::Expression *> params)
     : type_(fn_type),
       params_(std::move(params)),
       num_regs_(static_cast<int32_t>(type_->input.size() + type_->output.size())),
@@ -73,23 +73,24 @@ Cmd const *Func::Command(Register reg) const {
 static std::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
     ir::Func *fn, std::vector<ast::Expression *> const &exprs) {
   std::vector<std::pair<ir::Func, prop::PropertyMap>> result;
-  // Resreve to guarantee pointer stability.
-  for (auto const &expr : exprs) {
-    auto & [ func, prop_map ] = result.emplace_back(
-        std::piecewise_construct,
-        std::forward_as_tuple(
-            fn->mod_, type::Func(fn->type_->input, {type::Bool}), fn->params_),
-        std::forward_as_tuple());
+  // TODO
+  // Reserve to guarantee pointer stability.
+  // for (auto const &expr : exprs) {
+  //   auto &[func, prop_map] = result.emplace_back(
+  //       std::piecewise_construct,
+  //       std::forward_as_tuple(
+  //           fn->mod_, type::Func(fn->type_->input, {type::Bool}), fn->params_),
+  //       core::FnParams<ast::Expression *>{});
 
-    CURRENT_FUNC(&func) {
-      ir::BasicBlock::Current = func.entry();
-      // TODO bound constants?
-      Context ctx(fn->mod_);
-      ir::SetRet(0, type::Typed{expr->EmitIr(&ctx), type::Bool}, &ctx);
-      ir::ReturnJump();
-    }
-    prop_map = prop::PropertyMap(&func);
-  }
+  //   CURRENT_FUNC(&func) {
+  //     ir::BasicBlock::Current = func.entry();
+  //     // TODO bound constants?
+  //     Context ctx(fn->mod_);
+  //     ir::SetRet(0, type::Typed{expr->EmitIr(&ctx), type::Bool}, &ctx);
+  //     ir::ReturnJump();
+  //   }
+  //   prop_map = prop::PropertyMap(&func);
+  // }
   return result;
 }
 

@@ -123,7 +123,7 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
           CompleteBody(&ctx);
         });
 
-    FnParams<Expression *> params;
+    core::FnParams<Expression *> params;
     params.reserve(args_.size());
     for (auto const &d : args_) { params.append(d->id_, d->init_val.get()); }
 

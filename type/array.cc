@@ -1,6 +1,6 @@
 #include "type/array.h"
 
-#include "ast/fn_params.h"
+#include "core/fn_params.h"
 #include "base/guarded.h"
 #include "base/tuple.h"
 #include "ir/any_func.h"
@@ -73,7 +73,7 @@ ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
   auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
     auto *fn = ctx->mod_->AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, {Bool}),
-                                  ast::FnParams<ast::Expression *>(2));
+                                  core::FnParams<ast::Expression *>(2));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
 
@@ -158,7 +158,7 @@ static ir::Func *CreateAssign(Array const *a, Context *ctx) {
   Pointer const *ptr_type = Ptr(a);
   auto *data_ptr_type     = Ptr(a->data_type);
   auto *fn                = ctx->mod_->AddFunc(Func({ptr_type, ptr_type}, {}),
-                                ast::FnParams<ast::Expression *>(2));
+                                core::FnParams<ast::Expression *>(2));
   CURRENT_FUNC(fn) {
     ir::BasicBlock::Current = fn->entry();
     auto val                = fn->Argument(0);
@@ -241,7 +241,7 @@ void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
   init_func_.init([this, ctx]() {
     // TODO special function?
     auto *fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                  ast::FnParams<ast::Expression *>(1));
+                                  core::FnParams<ast::Expression *>(1));
     OnEachElement(this, fn,
                   [this, ctx](ir::Register r) { data_type->EmitInit(r, ctx); });
     return fn;
@@ -255,7 +255,7 @@ void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
   destroy_func_.init([this, ctx]() {
     // TODO special function?
     auto *fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                  ast::FnParams<ast::Expression *>(1));
+                                  core::FnParams<ast::Expression *>(1));
     OnEachElement(this, fn, [this, ctx](ir::Register r) {
       data_type->EmitDestroy(r, ctx);
     });
@@ -269,7 +269,7 @@ void Array::EmitRepr(ir::Results const &val, Context *ctx) const {
   repr_func_.init([this, ctx]() {
     // TODO special function?
     ir::Func *fn = ctx->mod_->AddFunc(Func({this}, {}),
-                                      ast::FnParams<ast::Expression *>(1));
+                                      core::FnParams<ast::Expression *>(1));
 
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();

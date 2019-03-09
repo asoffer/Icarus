@@ -118,9 +118,9 @@ cc_target(
 cc_target(
     name = "func",
     intf_deps = [
-        "//ast:fn_params",
         "//ast:function_literal",
         "//base:bag",
+        "//core:fn_params",
         "//ir:basic_block",
         "//property:property_map",
     ],

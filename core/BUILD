@@ -23,6 +23,21 @@ cc_test(
     ],
 )
 
+cc_lib(
+    name = "fn_params",
+    hdrs = ["fn_params.h"],
+    deps = [],
+)
+
+cc_test(
+    name = "fn_params_test",
+    srcs = ["fn_params_test.cc"],
+    deps = [
+        ":fn_params",
+        "//test",
+    ],
+)
+
 cc_target(
     name = "scope",
     intf_deps = [

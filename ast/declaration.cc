@@ -12,12 +12,6 @@
 namespace ast {
 namespace {
 
-struct ArgumentMetaData {
-  const type::Type *type;
-  std::string name;
-  bool has_default;
-};
-
 InferenceFailureReason Inferrable(type::Type const *t) {
   if (t == type::NullPtr) {
     return InferenceFailureReason::NullPtr;
@@ -53,145 +47,33 @@ InferenceFailureReason Inferrable(type::Type const *t) {
   return InferenceFailureReason::Inferrable;
 }
 
-// TODO: This algorithm is sufficiently complicated you should combine it
-// with proof of correctness and good explanation of what it does.
-bool CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
-                                 const std::vector<ArgumentMetaData> &data2) {
-  // TODO Don't need to reprocess this each time
-  std::unordered_map<std::string, size_t> index2;
-  for (size_t i = 0; i < data2.size(); ++i) { index2[data2[i].name] = i; }
-
-  std::vector<int> delta_fwd_matches(std::max(data1.size(), data2.size()), 0);
-  for (size_t i = 0; i < data1.size(); ++i) {
-    auto iter = index2.find(data1[i].name);
-    if (iter == index2.end()) { continue; }
-    size_t j = iter->second;
-    delta_fwd_matches[std::min(i, j)]++;
-    delta_fwd_matches[std::max(i, j)]--;
-  }
-
-  std::vector<size_t> indices = {0};
-  // One useful invariant here is that accumulating delta_fwd_matches always
-  // yields a non-negative integer. This is because any subtraction that
-  // occurs is always preceeded by an addition.
-  size_t accumulator = 0;
-  for (size_t i = 0; i < delta_fwd_matches.size(); ++i) {
-    if (data1[i].type != data2[i].type) { break; }
-    accumulator += delta_fwd_matches[i];
-    if (accumulator == 0) { indices.push_back(i + 1); }
-  }
-
-  // TODO working backwards through indices should allow you to avoid having
-  // to copy index2 each time and redo the same work repeatedly.
-  for (auto index : indices) {
-    // Everything after this index would have to be named or defaulted.
-    // named values that match but with different types would have to be
-    // defaulted.
-    auto index2_copy = index2;
-    for (size_t i = index; i < data1.size(); ++i) {
-      auto iter = index2_copy.find(data1[i].name);
-      if (iter == index2_copy.end()) {
-        if (!data1[i].has_default) { goto next_option; }
-      } else {
-        size_t j = iter->second;
-        // TODO not just equal but if there exists something convertible to
-        // both.
-        if (data1[i].type != data2[j].type &&
-            (!data1[i].has_default || !data2[j].has_default)) {
-          goto next_option;
-        }
-
-        // These two parameters can both be named explicitly. Remove it from
-        // index2_copy so what we're left with are all those elements in the
-        // second function which haven't been named by anything in the
-        // first.
-        index2_copy.erase(iter);
-      }
-    }
-
-    for (const auto &entry : index2) {
-      if (entry.second < index) {
-        // Ignore entries which preceed the index where we start using named
-        // arguments.
-        continue;
-      }
-      // Each of these must have a default if there's a call to both.
-      if (!data2[entry.second].has_default) { goto next_option; }
-    }
-
-    return true;
-
-  next_option:;
-  }
-  return false;
-}
-
 // TODO what about shadowing of symbols across module boundaries imported with
 // -- ::= ?
 // Or when you import two modules verifying that symbols don't conflict.
-bool Shadow(Declaration *decl1, Declaration *decl2, Context *ctx) {
-  auto *decl1_type = ctx->type_of(decl1);
-  auto *decl2_type = ctx->type_of(decl2);
+bool Shadow(type::Typed<Declaration *> decl1, type::Typed<Declaration *> decl2,
+            Context *ctx) {
   // TODO Don't worry about generic shadowing? It'll be checked later?
-  if (decl1_type->is<type::Function>() || decl1_type == type::Generic ||
-      decl2_type->is<type::Function>() || decl2_type == type::Generic) {
+  if (decl1.type() == type::Generic || decl2.type() == type::Generic) {
     return false;
   }
 
-  // If they're both functions, we have more work to do because we allow
-  // overloading so long as there are no ambiguous calls.
-
-  // TODO can we store the data in this format to begin with?
-  // TODO I don't need to fully generate code here, just the heading
-  // information.
-  // TODO check const-decl or not.
-
-  auto ExtractMetaData = [ctx](auto &eval) -> std::vector<ArgumentMetaData> {
-    using eval_t = std::decay_t<decltype(eval)>;
-    std::vector<ArgumentMetaData> metadata;
-
-    if constexpr (std::is_same_v<eval_t, ir::Func *>) {
-      metadata.reserve(eval->args_.size());
-      for (size_t i = 0; i < eval->args_.size(); ++i) {
-        metadata.push_back(ArgumentMetaData{
-            /*        type = */ eval->type_->input[i],
-            /*        name = */ eval->params_.at(i).name,
-            /* has_default = */ eval->args_.at(i).value != nullptr});
-      }
-      return metadata;
-    } else if constexpr (std::is_same_v<eval_t, Function *> ||
-                         std::is_same_v<eval_t, FunctionLiteral *>) {
-      metadata.reserve(eval->inputs_.size());
-      for (size_t i = 0; i < eval->inputs_.size(); ++i) {
-        auto *input_type = ctx->type_of(eval->inputs_.at(i).value.get());
-        metadata.push_back(ArgumentMetaData{
-            /*        type = */ input_type,
-            /*        name = */ eval->inputs_.at(i).value->id_,
-            /* has_default = */
-            !eval->inputs_.at(i).value->IsDefaultInitialized()});
-      }
-      // TODO Note the trickiness in names above. has_default if it isn't
-      // default initailized. This is because IsDefaultInitialized means for
-      // declarations that you do not have an "= something" part. It's just
-      // the "foo: bar" part. But for function arguments, we call the "=
-      // something" part the default.
-      return metadata;
-    } else {
-      UNREACHABLE(typeid(eval_t).name());
+  auto ExtractParams = +[](bool is_const, Expression *expr,
+                           Context *ctx) -> core::FnParams<type::Type const *> {
+    if (!is_const) { NOT_YET(); }
+    if (auto *fn_lit = expr->if_as<FunctionLiteral>()) {
+      return fn_lit->inputs_.Transform(
+          [ctx](std::unique_ptr<Declaration> const &decl) {
+            return ctx->type_of(decl.get());
+          });
     }
+    NOT_YET();
   };
-
-  // TODO are val1 and val2 necessarily const? Do we actually need to evaluate
-  // them?
-  auto val1 = backend::Evaluate(decl1->init_val.get(), ctx)[0];
-  if (val1.type == nullptr) { return false; }
-  auto metadata1 = std::visit(ExtractMetaData, val1.value);
-
-  auto val2 = backend::Evaluate(decl2->init_val.get(), ctx)[0];
-  if (val2.type == nullptr) { return false; }
-  auto metadata2 = std::visit(ExtractMetaData, val2.value);
-
-  return CommonAmbiguousFunctionCall(metadata1, metadata2);
+  return core::AmbiguouslyCallable(
+      ExtractParams(decl1.get()->const_, (*decl1)->init_val.get(), ctx),
+      ExtractParams(decl2.get()->const_, (*decl2)->init_val.get(), ctx),
+      [](type::Type const *lhs, type::Type const *rhs) {
+        return type::Meet(lhs, rhs) != nullptr;
+      });
 }
 
 enum DeclKind { INFER = 1, CUSTOM_INIT = 2, UNINITIALIZED = 4 };
@@ -509,9 +391,9 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
   bool failed_shadowing = false;
   while (iter != decls_to_check.end()) {
     auto typed_decl = *iter;
-    if (Shadow(this, typed_decl.get(), ctx)) {
+    if (Shadow(type::Typed(this, this_type), typed_decl, ctx)) {
       failed_shadowing = true;
-      ctx->error_log()->ShadowingDeclaration(*this, *typed_decl);
+      ctx->error_log()->ShadowingDeclaration(span, (*typed_decl)->span);
     }
     ++iter;
   }

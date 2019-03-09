@@ -5,7 +5,7 @@
 #include <vector>
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"
-#include "ast/fn_params.h"
+#include "core/fn_params.h"
 #include "ast/identifier.h"
 #include "ast/literal.h"
 #include "ast/statements.h"
@@ -53,8 +53,8 @@ struct FunctionLiteral : public Literal {
   base::Graph<Declaration *> param_dep_graph_;
 
   // TODO This is storing both the name in the declaration and pulls the
-  // string_view of the name out in FnParams::Param.
-  FnParams<std::unique_ptr<Declaration>> inputs_;
+  // string_view of the name out in core::FnParams::Param.
+  core::FnParams<std::unique_ptr<Declaration>> inputs_;
   std::vector<std::unique_ptr<Expression>> outputs_;
   Statements statements_;
 

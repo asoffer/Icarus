@@ -498,6 +498,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
     error::Log *error_log) {
   auto op    = nodes[1]->as<frontend::Token>().op;
   auto decl  = std::make_unique<ast::Declaration>(IsConst);
+  ASSERT(nodes[0]->span.source != nullptr);
   decl->span = TextSpan(nodes[0]->span, nodes[2]->span);
   if (nodes[0]->is<ast::Identifier>()) {
     decl->id_ = std::move(nodes[0]->as<ast::Identifier>().token);
@@ -562,7 +563,7 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
     // NOTE: This is safe because the declaration is behind a unique_ptr so the
     // string is never moved. You need to be careful if you ever decide to use
     // make this declaration inline because SSO might mean moving the
-    // declaration (which can happen if FnParams internal vector gets
+    // declaration (which can happen if core::FnParams internal vector gets
     // reallocated) could invalidate the string_view unintentionally.
     std::string_view name = input->id_;
     fn->inputs_.append(name, std::move(input));

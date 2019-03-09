@@ -30,9 +30,9 @@ using ::matcher::InheritsFrom;
 
 template <typename E>
 static base::expected<Binding, CallObstruction> MakeBinding(
-    type::Typed<Expression *, type::Callable> fn, FnParams<E> const &params,
+    type::Typed<Expression *, type::Callable> fn, core::FnParams<E> const &params,
     core::FnArgs<type::Typed<Expression *>> const &args, Context *ctx) {
-  bool constant = !params.lookup_.empty();
+  bool constant = !params.empty();
   Binding b(fn, constant);
 
   ASSIGN_OR(return _.error(), b.arg_res_, ArgResolution::Make(params, args));
@@ -43,7 +43,7 @@ namespace {
 struct DispatchTableRow {
   template <typename E>
   CallObstruction SetTypes(std::vector<type::Type const *> const &input_types,
-                           FnParams<E> const &params,
+                           core::FnParams<E> const &params,
                            core::FnArgs<type::Typed<Expression *>> const &args,
                            Context *ctx);
 
@@ -86,7 +86,7 @@ struct DispatchTableRow {
 template <typename E>
 CallObstruction DispatchTableRow::SetTypes(
     std::vector<type::Type const *> const &input_types,
-    FnParams<E> const &params, core::FnArgs<type::Typed<Expression *>> const &args,
+    core::FnParams<E> const &params, core::FnArgs<type::Typed<Expression *>> const &args,
     Context *ctx) {
   std::unordered_map<std::string, type::Type const *> named;
   for (auto &[name, expr] : args.named()) { named.emplace(name, nullptr); }
@@ -119,7 +119,7 @@ DispatchTableRow::MakeNonConstant(
     return CallObstruction::NonConstantDefaults();
   }
 
-  FnParams<std::nullptr_t> params(fn_option.type()->input.size());
+  core::FnParams<std::nullptr_t> params(fn_option.type()->input.size());
 
   ASSIGN_OR(return _.error(), auto binding,
                    MakeBinding(fn_option, params, args, ctx));
@@ -190,7 +190,7 @@ DispatchTableRow::MakeFromBlockSequence(
     }
   }
 
-  FnParams<std::nullptr_t> params(1);
+  core::FnParams<std::nullptr_t> params(1);
 
   ASSIGN_OR(return _.error(), auto binding,
                    MakeBinding(
@@ -270,6 +270,8 @@ DispatchTableRow::MakeFromFnLit(
         backend::Evaluate(args.at(i).get(), ctx)[0]);
   }
 
+  // TODO Combine these into some sort of arg/param resolution/binding and then
+  // do evals on what you need.
   args.ApplyWithIndex([&](auto &&index, type::Typed<Expression *> expr) {
     size_t input_index = 0;
     if constexpr (std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
@@ -579,7 +581,7 @@ static void EmitOneCallDispatch(
   }
 
   // After the last check, if you pass, you should dispatch
-  FnParams<Expression *> *const_params = nullptr;
+  core::FnParams<Expression *> *const_params = nullptr;
   if (!callee.is_reg_ && callee.val_.is_fn()) {
     const_params = &(callee.val_.func()->params_);
   }

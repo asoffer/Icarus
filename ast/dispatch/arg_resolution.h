@@ -6,7 +6,7 @@
 #include "ast/dispatch/call_obstruction.h"
 #include "ast/expression.h"
 #include "core/fn_args.h"
-#include "ast/fn_params.h"
+#include "core/fn_params.h"
 #include "base/expected.h"
 #include "base/util.h"
 #include "type/tuple.h"
@@ -44,7 +44,7 @@ struct ArgResolution {
 
   template <typename T>
   static base::expected<ArgResolution, CallObstruction> Make(
-      FnParams<T> const &params,
+      core::FnParams<T> const &params,
       core::FnArgs<type::Typed<Expression *>> const &args) {
     ArgResolution res;
     auto p_iter = params.begin();
@@ -105,7 +105,7 @@ struct ArgResolution {
 
   template <typename E>
   CallObstruction SetTypes(std::vector<type::Type const *> const &input_types,
-                           FnParams<E> const &params, Context *ctx,   core::FnArgs<type::Type const *> *call_arg_types) {
+                           core::FnParams<E> const &params, Context *ctx,   core::FnArgs<type::Type const *> *call_arg_types) {
     for (auto &entry : entries_) {
       type::Type const *input_type;
       if constexpr (std::is_same_v<E, std::unique_ptr<Declaration>>) {
@@ -154,7 +154,7 @@ struct ArgResolution {
   }
 
   ir::Results Results(
-      FnParams<Expression *> *const_params,
+      core::FnParams<Expression *> *const_params,
       std::unordered_map<Expression *, ir::Results const *> const &expr_map,
       Context *ctx) const;
 

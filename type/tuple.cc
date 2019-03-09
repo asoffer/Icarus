@@ -19,7 +19,7 @@ void Tuple::EmitCopyAssign(Type const *from_type, ir::Results const &from,
   copy_assign_func_.init([this, ctx]() {
     Pointer const *p = Ptr(this);
     auto *fn         = ctx->mod_->AddFunc(Func({p, p}, {}),
-                                  ast::FnParams<ast::Expression *>(2));
+                                  core::FnParams<ast::Expression *>(2));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto val                = ir::Func::Current->Argument(0);
@@ -53,7 +53,7 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Results const &from,
   move_assign_func_.init([this, ctx]() {
     Pointer const *p = Ptr(this);
     auto *fn         = ctx->mod_->AddFunc(Func({p, p}, {}),
-                                  ast::FnParams<ast::Expression *>(2));
+                                  core::FnParams<ast::Expression *>(2));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto val                = ir::Func::Current->Argument(0);
@@ -80,7 +80,7 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Results const &from,
 void Tuple::EmitInit(ir::Register reg, Context *ctx) const {
   init_func_.init([this, ctx]() {
     auto *fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                  ast::FnParams<ast::Expression *>(1));
+                                  core::FnParams<ast::Expression *>(1));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto var                = ir::Func::Current->Argument(0);
@@ -150,7 +150,7 @@ void Tuple::defining_modules(
 void Tuple::EmitDestroy(ir::Register reg, Context *ctx) const {
   destroy_func_.init([this, ctx]() {
     auto *fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                  ast::FnParams<ast::Expression *>(1));
+                                  core::FnParams<ast::Expression *>(1));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto var                = ir::Func::Current->Argument(0);

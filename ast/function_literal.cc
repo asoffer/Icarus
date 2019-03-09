@@ -20,10 +20,10 @@ std::string FunctionLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "(";
   if (!inputs_.empty()) {
-    auto iter = inputs_.params_.begin();
+    auto iter = inputs_.begin();
     ss << iter->value->to_string(n);
     ++iter;
-    while (iter != inputs_.params_.end()) {
+    while (iter != inputs_.end()) {
       ss << ", " << iter->value->to_string(n);
       ++iter;
     }
@@ -54,11 +54,11 @@ void FunctionLiteral::assign_scope(core::Scope *scope) {
     fn_scope_->fn_lit_ = this;
   }
 
-  for (auto &in : inputs_.params_) { in.value->assign_scope(fn_scope_.get()); }
+  for (auto &in : inputs_) { in.value->assign_scope(fn_scope_.get()); }
   for (auto &out : outputs_) { out->assign_scope(fn_scope_.get()); }
   statements_.assign_scope(fn_scope_.get());
 
-  for (auto const &in : inputs_.params_) {
+  for (auto const &in : inputs_) {
     param_dep_graph_.add_node(in.value.get());
     if (in.value->type_expr) {
       in.value->type_expr->DependentDecls(&param_dep_graph_, in.value.get());
@@ -75,12 +75,12 @@ void FunctionLiteral::assign_scope(core::Scope *scope) {
 
 void FunctionLiteral::DependentDecls(base::Graph<Declaration *> *g,
                                      Declaration *d) const {
-  for (auto const &in : inputs_.params_) { in.value->DependentDecls(g, d); }
+  for (auto const &in : inputs_) { in.value->DependentDecls(g, d); }
   for (auto const &out : outputs_) { out->DependentDecls(g, d); }
 }
 
 VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
-  for (auto const &p : inputs_.params_) {
+  for (auto const &p : inputs_) {
     if (p.value->const_ || !param_dep_graph_.at(p.value.get()).empty()) {
       return VerifyResult::Constant(ctx->set_type(this, type::Generic));
     }
@@ -92,7 +92,7 @@ VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
 VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   std::vector<type::Type const *> input_type_vec;
   input_type_vec.reserve(inputs_.size());
-  for (auto &d : inputs_.params_) {
+  for (auto &d : inputs_) {
     input_type_vec.push_back(d.value->VerifyType(ctx).type_);
   }
 
@@ -164,8 +164,8 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
 
   if (return_type_inferred_) {
     std::vector<type::Type const *> input_type_vec;
-    input_type_vec.reserve(inputs_.params_.size());
-    for (auto &input : inputs_.params_) {
+    input_type_vec.reserve(inputs_.size());
+    for (auto &input : inputs_) {
       input_type_vec.push_back(
           ASSERT_NOT_NULL(ctx->type_of(input.value.get())));
     }
@@ -241,12 +241,12 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
 }
 
 void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &in : inputs_.params_) { in.value->ExtractJumps(rets); }
+  for (auto &in : inputs_) { in.value->ExtractJumps(rets); }
   for (auto &out : outputs_) { out->ExtractJumps(rets); }
 }
 
 ir::Results FunctionLiteral::EmitIr(Context *ctx) {
-  for (auto const &param : inputs_.params_) {
+  for (auto const &param : inputs_) {
     auto *p = param.value.get();
     if (p->const_ && ctx->bound_constants_.constants_.find(p) ==
                          ctx->bound_constants_.constants_.end()) {
@@ -270,9 +270,9 @@ ir::Results FunctionLiteral::EmitIr(Context *ctx) {
           CompleteBody(&ctx);
         });
 
-    FnParams<Expression *> params;
+    core::FnParams<Expression *> params;
     params.reserve(inputs_.size());
-    for (auto const &input : inputs_.params_) {
+    for (auto const &input : inputs_) {
       params.append(input.name, input.value->init_val.get());
     }
 
@@ -301,8 +301,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
 
     // TODO arguments should be renumbered to not waste space on const values
     for (int32_t i = 0; i < static_cast<int32_t>(inputs_.size()); ++i) {
-      ctx->set_addr(inputs_.params_.at(i).value.get(),
-                    ir::Func::Current->Argument(i));
+      ctx->set_addr(inputs_.at(i).value.get(), ir::Func::Current->Argument(i));
     }
 
     fn_scope_->MakeAllStackAllocations(ctx);

@@ -39,11 +39,11 @@ cc_lib(
 cc_target(
     name = "module",
     intf_deps = [
-        "//ast:fn_params",
         "//ast:bound_constants",
         "//ast/dispatch:table",
         "//ast:node_lookup",
         "//ast:statements",
+        "//core:fn_params",
         "//core:scope",
         "//error:log",
     ],

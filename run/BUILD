@@ -20,9 +20,9 @@ cc_lib(
     deps = [
         "//ast:declaration",
         "//ast:expression",
-        "//ast:fn_params",
         "//backend:exec",
         "//base:untyped_buffer",
+        "//core:fn_params",
         "//frontend:source",
         "//ir:func",
         "//ir:cmd",

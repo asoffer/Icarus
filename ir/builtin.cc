@@ -32,7 +32,7 @@ std::string stringify(Builtin b) {
 AnyFunc DebugIrFn() {
   static Func *debug_ir_func_ = []() {
     auto fn = new Func(nullptr, type::Func({}, {}),
-                       ast::FnParams<ast::Expression *>{});
+                       core::FnParams<ast::Expression *>{});
     CURRENT_FUNC(fn) {
       BasicBlock::Current = fn->entry();
       DebugIr();
@@ -45,7 +45,7 @@ AnyFunc DebugIrFn() {
 
 AnyFunc BytesFn() {
   static Func *bytes_func_ = [&]() {
-    ast::FnParams<ast::Expression *> params;
+    core::FnParams<ast::Expression *> params;
     params.append("", nullptr);
     auto fn = new Func(nullptr, type::Func({type::Type_}, {type::Int64}),
                        std::move(params));
@@ -61,7 +61,7 @@ AnyFunc BytesFn() {
 
 AnyFunc AlignmentFn() {
   static Func *bytes_func_ = [&]() {
-    ast::FnParams<ast::Expression *> params;
+    core::FnParams<ast::Expression *> params;
     params.append("", nullptr);
     auto fn = new Func(nullptr, type::Func({type::Type_}, {type::Int64}),
                        std::move(params));

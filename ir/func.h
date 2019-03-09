@@ -3,7 +3,7 @@
 
 #include <unordered_set>
 
-#include "ast/fn_params.h"
+#include "core/fn_params.h"
 #include "base/bag.h"
 #include <unordered_map>
 #include <vector>
@@ -42,7 +42,7 @@ struct Func {
   static thread_local Func *Current;
 
   Func(Module *mod, type::Function const *fn_type,
-       ast::FnParams<ast::Expression *> params);
+       core::FnParams<ast::Expression *> params);
 
   Register Argument(uint32_t n) const;
 
@@ -81,7 +81,7 @@ struct Func {
   BlockIndex entry() const { return BlockIndex(0); }
 
   type::Function const *const type_ = nullptr;
-  ast::FnParams<ast::Expression *> params_;
+  core::FnParams<ast::Expression *> params_;
   
   int32_t num_regs_  = 0;
   std::vector<BasicBlock> blocks_;

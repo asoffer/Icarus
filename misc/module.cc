@@ -54,7 +54,7 @@ Module::Module()
 Module::~Module() = default;
 
 ir::Func *Module::AddFunc(type::Function const *fn_type,
-                          ast::FnParams<ast::Expression *> params) {
+                          core::FnParams<ast::Expression *> params) {
   auto *result = fns_.emplace_back(std::make_unique<ir::Func>(
                                        this, fn_type, std::move(params)))
                      .get();

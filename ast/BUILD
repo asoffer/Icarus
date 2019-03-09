@@ -19,7 +19,6 @@ cc_lib(
         ":declaration",
         ":enum_literal",
         ":expression",
-        ":fn_params",
         ":function_literal",
         ":hashtag",
         ":identifier",
@@ -202,12 +201,12 @@ cc_target(
     impl_deps = [
         ":block_literal",
         ":builtin_fn",
-        ":fn_params",
         ":function_literal",
         ":struct_literal",
         ":unop",
         "//ast/dispatch:table",
         "//backend:eval",
+        "//core:fn_params",
         "//ir:arguments",
         "//ir:components",
         "//ir:func",
@@ -314,24 +313,17 @@ cc_target(
     ],
 )
 
-cc_lib(
-    name = "fn_params",
-    hdrs = ["fn_params.h"],
-    deps = [
-    ],
-)
-
 cc_target(
     name = "function_literal",
     intf_deps = [
         ":bound_constants",
         ":declaration",
-        ":fn_params",
         ":identifier",
         ":literal",
         ":statements",
-        "//ir:val",
+        "//core:fn_params",
         "//core:scope",
+        "//ir:val",
     ],
     impl_deps = [
         ":bound_constants",

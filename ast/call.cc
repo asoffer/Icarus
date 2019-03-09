@@ -5,7 +5,7 @@
 #include "ast/block_literal.h"
 #include "ast/builtin_fn.h"
 #include "ast/dispatch/table.h"
-#include "ast/fn_params.h"
+#include "core/fn_params.h"
 #include "ast/function_literal.h"
 #include "ast/struct_literal.h"
 #include "ast/unop.h"

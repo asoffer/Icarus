@@ -23,6 +23,7 @@ std::vector<std::string> const &LoadLines(frontend::Src *src) {
   static std::unordered_map<frontend::Src *, std::vector<std::string>> lines;
   auto iter = lines.find(src);
   if (iter == lines.end()) {
+    base::Log() << (uintptr_t)src;
     iter = lines.emplace(src, src->LoadLines()).first;
   }
   return iter->second;
@@ -418,13 +419,12 @@ void Log::CyclicDependency(std::vector<ast::Identifier const *> cyc_deps) {
   cyc_dep_vecs_.push_back(std::move(cyc_deps));
 }
 
-void Log::ShadowingDeclaration(ast::Declaration const &decl1,
-                               ast::Declaration const &decl2) {
+void Log::ShadowingDeclaration(TextSpan const &span1, TextSpan const &span2) {
   // TODO migrate away from old display.
-  auto line1     = LoadLines(decl1.span.source).at(decl1.span.start.line_num);
-  auto line2     = LoadLines(decl2.span.source).at(decl2.span.start.line_num);
-  auto line_num1 = decl1.span.start.line_num;
-  auto line_num2 = decl2.span.start.line_num;
+  auto line_num1 = span1.start.line_num;
+  auto line_num2 = span2.start.line_num;
+  auto line1     = LoadLines(ASSERT_NOT_NULL(span1.source)).at(line_num1);
+  auto line2     = LoadLines(ASSERT_NOT_NULL(span2.source)).at(line_num2);
   auto align =
       std::max(size_t{4}, NumDigits(std::max(line_num1, line_num2)) + 2);
   std::cerr << "Ambiguous declarations:\n\n"

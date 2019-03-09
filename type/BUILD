@@ -10,9 +10,9 @@ cc_target(
     impl_deps = [
         ":function",
         ":pointer",
-        "//ast:fn_params",
         "//base:guarded",
         "//base:tuple",
+        "//core:fn_params",
         "//ir:any_func",
         "//ir:arguments",
         "//ir:components",

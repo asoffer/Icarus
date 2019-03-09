@@ -12,7 +12,7 @@
 namespace ast {
 
 ir::Results ArgResolution::Results(
-    FnParams<Expression *> *const_params,
+    core::FnParams<Expression *> *const_params,
     std::unordered_map<Expression *, ir::Results const *> const &expr_map,
     Context *ctx) const {
   ir::Results results;
