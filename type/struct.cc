@@ -32,8 +32,10 @@ template <SpecialFunctionCategory Cat>
 static ir::AnyFunc CreateAssign(Struct const *s, Context *ctx) {
   if (auto fn = SpecialFunction(s, Name<Cat>(), ctx)) { return *fn; }
   Pointer const *pt = Ptr(s);
-  ir::AnyFunc fn    = s->mod_->AddFunc(Func({pt, pt}, {}),
-                                    core::FnParams<ast::Expression *>(2));
+  ir::AnyFunc fn    = s->mod_->AddFunc(
+      Func({pt, pt}, {}),
+      core::FnParams(core::Param{"", Typed<ast::Expression *>{nullptr, pt}},
+                     core::Param{"", Typed<ast::Expression *>{nullptr, pt}}));
   CURRENT_FUNC(fn.func()) {
     ir::BasicBlock::Current = ir::Func::Current->entry();
     auto val                = ir::Func::Current->Argument(0);
@@ -86,8 +88,10 @@ void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
   init_func_.init([this, ctx]() {
     // TODO special function?
 
-    ir::AnyFunc fn = mod_->AddFunc(Func({Ptr(this)}, {}),
-                                   core::FnParams<ast::Expression *>(1));
+    ir::AnyFunc fn =
+        mod_->AddFunc(Func({Ptr(this)}, {}),
+                      core::FnParams(core::Param{
+                          "", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
     CURRENT_FUNC(fn.func()) {
       ir::BasicBlock::Current = ir::Func::Current->entry();
       auto var                = ir::Func::Current->Argument(0);
@@ -124,8 +128,9 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
     if (auto fn = SpecialFunction(this, "~", ctx)) { return *fn; }
 
     Pointer const *pt = Ptr(this);
-    ir::AnyFunc fn =
-        mod_->AddFunc(Func({pt}, {}), core::FnParams<ast::Expression *>(1));
+    ir::AnyFunc fn    = mod_->AddFunc(
+        Func({pt}, {}),
+        core::FnParams(core::Param{"", Typed<ast::Expression *>{nullptr, pt}}));
 
     CURRENT_FUNC(fn.func()) {
       ir::BasicBlock::Current = ir::Func::Current->entry();

@@ -4,8 +4,6 @@
 
 namespace core {
 namespace {
-// This structure gives us a way to model ambiguity more general than just
-// testing for equality.
 constexpr bool Ambiguity(int lhs, int rhs) { return (lhs & rhs) != 0; }
 
 TEST(Creation) {

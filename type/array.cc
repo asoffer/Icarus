@@ -1,8 +1,8 @@
 #include "type/array.h"
 
-#include "core/fn_params.h"
 #include "base/guarded.h"
 #include "base/tuple.h"
+#include "core/fn_params.h"
 #include "ir/any_func.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
@@ -70,10 +70,14 @@ ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
   auto &funcs = equality ? eq_funcs : ne_funcs;
   auto handle = funcs.lock();
 
-  auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
+  auto [iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
-    auto *fn = ctx->mod_->AddFunc(Func({Ptr(lhs_type), Ptr(rhs_type)}, {Bool}),
-                                  core::FnParams<ast::Expression *>(2));
+    auto *fn = ctx->mod_->AddFunc(
+        Func({Ptr(lhs_type), Ptr(rhs_type)}, {Bool}),
+        core::FnParams(
+            core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(lhs_type)}},
+            core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(rhs_type)}}));
+
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
 
@@ -157,8 +161,11 @@ template <SpecialFunctionCategory Cat>
 static ir::Func *CreateAssign(Array const *a, Context *ctx) {
   Pointer const *ptr_type = Ptr(a);
   auto *data_ptr_type     = Ptr(a->data_type);
-  auto *fn                = ctx->mod_->AddFunc(Func({ptr_type, ptr_type}, {}),
-                                core::FnParams<ast::Expression *>(2));
+  auto *fn                = ctx->mod_->AddFunc(
+      Func({ptr_type, ptr_type}, {}),
+      core::FnParams(
+          core::Param{"", Typed<ast::Expression *>{nullptr, ptr_type}},
+          core::Param{"", Typed<ast::Expression *>{nullptr, ptr_type}}));
   CURRENT_FUNC(fn) {
     ir::BasicBlock::Current = fn->entry();
     auto val                = fn->Argument(0);
@@ -204,7 +211,7 @@ void Array::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   copy_assign_func_.init(
       [this, ctx]() { return CreateAssign<Copy>(this, ctx); });
-   ir::Copy(this, from.get<ir::Reg>(0), to);
+  ir::Copy(this, from.get<ir::Reg>(0), to);
 }
 
 void Array::EmitMoveAssign(Type const *from_type, ir::Results const &from,
@@ -220,8 +227,9 @@ static void OnEachElement(Array const *t, ir::Func *fn, F &&fn_to_apply) {
     ir::BasicBlock::Current = fn->entry();
     auto *data_ptr_type     = Ptr(t->data_type);
 
-    auto ptr     = ir::Index(Ptr(t), fn->Argument(0), 0);
-    auto end_ptr = ir::PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
+    auto ptr = ir::Index(Ptr(t), fn->Argument(0), 0);
+    auto end_ptr =
+        ir::PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
 
     using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
     CreateLoop(
@@ -240,8 +248,10 @@ static void OnEachElement(Array const *t, ir::Func *fn, F &&fn_to_apply) {
 void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
   init_func_.init([this, ctx]() {
     // TODO special function?
-    auto *fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                  core::FnParams<ast::Expression *>(1));
+    auto *fn = ctx->mod_->AddFunc(
+        Func({Ptr(this)}, {}),
+        core::FnParams(
+            core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
     OnEachElement(this, fn,
                   [this, ctx](ir::Register r) { data_type->EmitInit(r, ctx); });
     return fn;
@@ -254,8 +264,11 @@ void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
   if (!data_type->needs_destroy()) { return; }
   destroy_func_.init([this, ctx]() {
     // TODO special function?
-    auto *fn = ctx->mod_->AddFunc(Func({Ptr(this)}, {}),
-                                  core::FnParams<ast::Expression *>(1));
+    auto *fn = ctx->mod_->AddFunc(
+        Func({Ptr(this)}, {}),
+        core::FnParams(
+            core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
+
     OnEachElement(this, fn, [this, ctx](ir::Register r) {
       data_type->EmitDestroy(r, ctx);
     });
@@ -268,8 +281,9 @@ void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
 void Array::EmitRepr(ir::Results const &val, Context *ctx) const {
   repr_func_.init([this, ctx]() {
     // TODO special function?
-    ir::Func *fn = ctx->mod_->AddFunc(Func({this}, {}),
-                                      core::FnParams<ast::Expression *>(1));
+    ir::Func *fn = ctx->mod_->AddFunc(
+        Func({this}, {}), core::FnParams(core::Param{
+                              "", Typed<ast::Expression *>{nullptr, this}}));
 
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();

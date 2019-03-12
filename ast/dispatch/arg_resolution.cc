@@ -12,14 +12,15 @@
 namespace ast {
 
 ir::Results ArgResolution::Results(
-    core::FnParams<Expression *> *const_params,
+    core::FnParams<type::Typed<Expression *>> *const_params,
     std::unordered_map<Expression *, ir::Results const *> const &expr_map,
     Context *ctx) const {
   ir::Results results;
   for (size_t i = 0; i < entries_.size(); ++i) {
     auto entry = entries_.at(i);
     if (entry.defaulted()) {
-      Expression *default_expr = (*ASSERT_NOT_NULL(const_params)).at(i).value;
+      Expression *default_expr =
+          (*ASSERT_NOT_NULL(const_params)).at(i).value.get();
       // TODO this would more suitably take results as a pointer and append to
       // it.
       results.append(ASSERT_NOT_NULL(entry.type)

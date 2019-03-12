@@ -154,7 +154,7 @@ struct ArgResolution {
   }
 
   ir::Results Results(
-      core::FnParams<Expression *> *const_params,
+      core::FnParams<type::Typed<Expression *>> *const_params,
       std::unordered_map<Expression *, ir::Results const *> const &expr_map,
       Context *ctx) const;
 

@@ -72,7 +72,6 @@ cc_lib(
     name = "stringify",
     hdrs = ["stringify.h"],
     deps = [":tuple"],
-    visibility = ["//test:__pkg__"],
 )
 
 cc_test(

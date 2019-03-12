@@ -32,7 +32,7 @@ std::string stringify(Builtin b) {
 AnyFunc DebugIrFn() {
   static Func *debug_ir_func_ = []() {
     auto fn = new Func(nullptr, type::Func({}, {}),
-                       core::FnParams<ast::Expression *>{});
+                       core::FnParams<type::Typed<ast::Expression *>>{});
     CURRENT_FUNC(fn) {
       BasicBlock::Current = fn->entry();
       DebugIr();
@@ -45,10 +45,10 @@ AnyFunc DebugIrFn() {
 
 AnyFunc BytesFn() {
   static Func *bytes_func_ = [&]() {
-    core::FnParams<ast::Expression *> params;
-    params.append("", nullptr);
-    auto fn = new Func(nullptr, type::Func({type::Type_}, {type::Int64}),
-                       std::move(params));
+    auto fn = new Func(
+        nullptr, type::Func({type::Type_}, {type::Int64}),
+        core::FnParams(core::Param(
+            "", type::Typed<ast::Expression *>(nullptr, type::Type_))));
     CURRENT_FUNC(fn) {
       BasicBlock::Current = fn->entry();
       SetRet(0, Bytes(fn->Argument(0)));
@@ -61,10 +61,11 @@ AnyFunc BytesFn() {
 
 AnyFunc AlignmentFn() {
   static Func *bytes_func_ = [&]() {
-    core::FnParams<ast::Expression *> params;
-    params.append("", nullptr);
-    auto fn = new Func(nullptr, type::Func({type::Type_}, {type::Int64}),
-                       std::move(params));
+    auto fn = new Func(
+        nullptr, type::Func({type::Type_}, {type::Int64}),
+        core::FnParams(core::Param(
+            "", type::Typed<ast::Expression *>(nullptr, type::Type_))));
+
     CURRENT_FUNC(fn) {
       BasicBlock::Current = fn->entry();
       SetRet(0, Align(fn->Argument(0)));

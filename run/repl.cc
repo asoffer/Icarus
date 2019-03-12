@@ -20,10 +20,10 @@ std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
 namespace backend {
 static void ReplEval(ast::Expression *expr) {
   // TODO is nullptr for module okay here?
-  auto fn = std::make_unique<ir::Func>(nullptr, type::Func({}, {}),
-                                       core::FnParams<ast::Expression *>{});
-  CURRENT_FUNC(fn.get()) {
-    ir::BasicBlock::Current = fn->entry();
+  ir::Func fn(nullptr, type::Func({}, {}),
+              core::FnParams<type::Typed<ast::Expression *>>{});
+  CURRENT_FUNC(&fn) {
+    ir::BasicBlock::Current = fn.entry();
     // TODO use the right module
     Context ctx(static_cast<Module *>(nullptr));
 
@@ -39,7 +39,7 @@ static void ReplEval(ast::Expression *expr) {
   }
 
   ExecContext ctx;
-  Execute(fn.get(), base::untyped_buffer(0), {}, &ctx);
+  Execute(&fn, base::untyped_buffer(0), {}, &ctx);
 }
 }  // namespace backend
 

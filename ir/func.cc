@@ -14,10 +14,11 @@ thread_local Func *Func::Current{nullptr};
 Register Func::Argument(uint32_t n) const { return Register(n); }
 
 Func::Func(Module *mod, type::Function const *fn_type,
-           core::FnParams<ast::Expression *> params)
+           core::FnParams<type::Typed<ast::Expression *>> params)
     : type_(fn_type),
       params_(std::move(params)),
-      num_regs_(static_cast<int32_t>(type_->input.size() + type_->output.size())),
+      num_regs_(
+          static_cast<int32_t>(type_->input.size() + type_->output.size())),
       mod_(mod) {
   // Set the references for arguments and returns
   for (int32_t i = -static_cast<int32_t>(type_->output.size());

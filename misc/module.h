@@ -56,7 +56,7 @@ struct Module {
       std::filesystem::path const &requestor = std::filesystem::path{""});
 
   ir::Func *AddFunc(type::Function const *fn_type,
-                    core::FnParams<ast::Expression *> params);
+                    core::FnParams<type::Typed<ast::Expression *>> params);
   type::Type const *GetType(std::string const &name) const;
   ast::Declaration *GetDecl(std::string const &name) const;
 

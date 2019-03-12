@@ -13,7 +13,11 @@ struct FnArgs {
   FnArgs(std::vector<T> pos, std::unordered_map<std::string, T> named)
       : pos_(std::move(pos)), named_(std::move(named)) {}
 
-  std::unordered_map<std::string, T> const &named() const { return named_; }
+  std::vector<T> const &pos() const & { return pos_; }
+  std::vector<T> &&pos() && { return pos_; }
+
+  std::unordered_map<std::string, T> const &named() const & { return named_; }
+  std::unordered_map<std::string, T> &&named() && { return named_; }
 
   constexpr size_t num_pos() const { return pos_.size(); }
   constexpr size_t num_named() const { return named_.size(); }

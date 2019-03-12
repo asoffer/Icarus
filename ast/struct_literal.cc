@@ -123,14 +123,17 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
           CompleteBody(&ctx);
         });
 
-    core::FnParams<Expression *> params;
-    params.reserve(args_.size());
-    for (auto const &d : args_) { params.append(d->id_, d->init_val.get()); }
+    auto const &arg_types = ctx->type_of(this)->as<type::GenericStruct>().deps_;
 
-    ir_func = mod_->AddFunc(
-        type::Func(ctx->type_of(this)->as<type::GenericStruct>().deps_,
-                   {type::Type_}),
-        std::move(params));
+    core::FnParams<type::Typed<Expression *>> params;
+    params.reserve(args_.size());
+    size_t i = 0;
+    for (auto const &d : args_) {
+      params.append(d->id_, type::Typed(d->init_val.get(), arg_types.at(i++)));
+    }
+
+    ir_func =
+        mod_->AddFunc(type::Func(arg_types, {type::Type_}), std::move(params));
 
     ir_func->work_item = &work_item;
   }

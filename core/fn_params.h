@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "core/fn_args.h"
+
 namespace type {
 struct Type;
 }  // namespace type
@@ -50,7 +52,9 @@ template <typename T>
 struct FnParams {
   // Construct a FnParams object representing `n` parameters all of which must
   // not be named.
-  explicit FnParams(size_t n = 0) : params_(n) {
+
+  FnParams() {}
+  explicit FnParams(size_t n) : params_(n) {
     for (auto& p : params_) { p = Param<T>("", T{}, MUST_NOT_NAME); }
   }
 
@@ -111,6 +115,9 @@ struct FnParams {
   }
 
   // TODO hide this
+  // Maps the string name of the declared argument to it's index:
+  // Example: (a: int, b: char, c: string) -> int
+  //           a => 0, b => 1, c => 2
   std::unordered_map<std::string_view, size_t> lookup_;
  private:
   template <typename U>
@@ -118,9 +125,6 @@ struct FnParams {
 
   std::vector<Param<T>> params_;
 
-  // Maps the string name of the declared argument to it's index:
-  // Example: (a: int, b: char, c: string) -> int
-  //           a => 0, b => 1, c => 2
 };
 
 template <typename T, typename AmbiguityFn>

@@ -11,7 +11,7 @@ cc_lib(
 cc_lib(
     name = "fn_args",
     hdrs = ["fn_args.h"],
-    deps = [],
+    deps = ["//base:stringify"],
 )
 
 cc_test(
@@ -26,7 +26,7 @@ cc_test(
 cc_lib(
     name = "fn_params",
     hdrs = ["fn_params.h"],
-    deps = [],
+    deps = [":fn_args"],
 )
 
 cc_test(

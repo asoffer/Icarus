@@ -270,14 +270,14 @@ ir::Results FunctionLiteral::EmitIr(Context *ctx) {
           CompleteBody(&ctx);
         });
 
-    core::FnParams<Expression *> params;
-    params.reserve(inputs_.size());
-    for (auto const &input : inputs_) {
-      params.append(input.name, input.value->init_val.get());
-    }
+    auto *fn_type = &ctx->type_of(this)->as<type::Function>();
 
-    ir_func = ctx->mod_->AddFunc(&ctx->type_of(this)->as<type::Function>(),
-                                 std::move(params));
+    ir_func = ctx->mod_->AddFunc(
+        fn_type,
+        inputs_.Transform(
+            [fn_type, i = 0](std::unique_ptr<Declaration> const &e) mutable {
+              return type::Typed(e->init_val.get(), fn_type->input.at(i++));
+            }));
     ir_func->work_item = &work_item;
   }
 

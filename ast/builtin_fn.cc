@@ -13,7 +13,7 @@ VerifyResult BuiltinFn::VerifyCall(
   switch (b_) {
     case ir::Builtin::Foreign: {
       bool err = false;
-      if (arg_results.num_named() == 0u) {
+      if (arg_results.num_named() != 0u) {
         ctx->error_log()->BuiltinError(span,
                                        "Built-in function `foreign` cannot be "
                                        "called with named arguments.");
@@ -41,14 +41,14 @@ VerifyResult BuiltinFn::VerifyCall(
           ctx->error_log()->BuiltinError(
               span, "First argument to `foreign` must be a constant.");
         }
-        if (arg_results.at(0).type_ != type::Type_) {
+        if (arg_results.at(1).type_ != type::Type_) {
           ctx->error_log()->BuiltinError(
               span,
               "Second argument to `foreign` must be a type (You provided "
               "a(n) " +
                   arg_results.at(0).type_->to_string() + ").");
         }
-        if (!arg_results.at(0).const_) {
+        if (!arg_results.at(1).const_) {
           ctx->error_log()->BuiltinError(
               span, "Second argument to `foreign` must be a constant.");
         }

@@ -22,8 +22,6 @@
 #include "type/tuple.h"
 #include "type/variant.h"
 
-namespace {
-}  // namespace
 
 namespace ast {
 using ::matcher::InheritsFrom;
@@ -326,8 +324,11 @@ DispatchTableRow::MakeFromIrFunc(
   binding.bound_constants_ = ctx->bound_constants_;
 
   DispatchTableRow dispatch_table_row(std::move(binding));
-  if (auto obs = dispatch_table_row.SetTypes(ir_func.type_->input,
-                                             ir_func.params_, args, ctx);
+  if (auto obs = dispatch_table_row.SetTypes(
+          ir_func.type_->input,
+          ir_func.params_.Transform(
+              [](type::Typed<Expression *> e) { return e.get(); }),
+          args, ctx);
       obs.obstructed()) {
     return obs;
   }
@@ -468,7 +469,7 @@ static void AddType(IndexT &&index, type::Type const *t,
   }
 }
 
-static std::vector<core::FnArgs<type::Type const *>> Expand(
+static std::vector<core::FnArgs<type::Type const *>> ExpandAllFnArgs(
     core::FnArgs<type::Typed<Expression *>> const &typed_args) {
   std::vector<core::FnArgs<type::Type const *>> all_expanded_options(1);
   typed_args.ApplyWithIndex([&](auto &&index, type::Typed<Expression *> expr) {
@@ -525,7 +526,7 @@ type::Type const *DispatchTable::MakeOrLogError(
     return nullptr;
   }
 
-  auto expanded     = Expand(typed_args);
+  auto expanded     = ExpandAllFnArgs(typed_args);
   auto new_end_iter = std::remove_if(
       expanded.begin(), expanded.end(),
       [&](core::FnArgs<type::Type const *> const &fnargs) {
@@ -581,7 +582,7 @@ static void EmitOneCallDispatch(
   }
 
   // After the last check, if you pass, you should dispatch
-  core::FnParams<Expression *> *const_params = nullptr;
+  core::FnParams<type::Typed<Expression *>> *const_params = nullptr;
   if (!callee.is_reg_ && callee.val_.is_fn()) {
     const_params = &(callee.val_.func()->params_);
   }
