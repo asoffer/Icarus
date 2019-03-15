@@ -6,10 +6,10 @@
 #include <set>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "base/graph.h"
 #include "base/util.h"
 #include "frontend/text_span.h"
@@ -55,7 +55,7 @@ struct VerifyResult {
 
 enum class JumpKind { Return, Yield };
 struct JumpExprs
-    : public std::unordered_map<JumpKind, std::vector<Expression const *>> {};
+    : public absl::flat_hash_map<JumpKind, std::vector<Expression const *>> {};
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const     = 0;

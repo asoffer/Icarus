@@ -1,9 +1,7 @@
 #ifndef ICARUS_TYPE_ENUM_H
 #define ICARUS_TYPE_ENUM_H
 
-#include <unordered_set>
-
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
 #include "type.h"
 #include "typed_value.h"
 
@@ -19,13 +17,13 @@ struct Enum : public type::Type {
   Typed<ir::EnumVal, Enum> EmitLiteral(std::string const& member_name) const ;
 
   // TODO privatize
-  std::unordered_map<int32_t, std::string> members_;
+  absl::flat_hash_map<int32_t, std::string> members_;
 
  private:
   friend struct IncompleteEnum;
   ::Module const *mod_;
   // TODO combine these into a single bidirectional map?
-  std::unordered_map<std::string, ir::EnumVal> vals_;
+  absl::flat_hash_map<std::string, ir::EnumVal> vals_;
 };
 }  // namespace type
 

@@ -11,7 +11,10 @@ cc_lib(
 cc_lib(
     name = "fn_args",
     hdrs = ["fn_args.h"],
-    deps = ["//base:stringify"],
+    deps = [
+        "//base:stringify",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
 )
 
 cc_test(
@@ -26,7 +29,10 @@ cc_test(
 cc_lib(
     name = "fn_params",
     hdrs = ["fn_params.h"],
-    deps = [":fn_args"],
+    deps = [
+        ":fn_args",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
 )
 
 cc_test(
@@ -43,6 +49,8 @@ cc_target(
     intf_deps = [
         "//base:util",
         "//type:typed_value",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
         "//ast:declaration",

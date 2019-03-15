@@ -27,7 +27,7 @@ struct GenericFunction : public Callable {
                           Context *ctx) const override;
   void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
   void defining_modules(
-      std::unordered_set<::Module const *> *modules) const override;
+      absl::flat_hash_set<::Module const *> *modules) const override;
 
   layout::Bytes bytes(layout::Arch const &arch) const override;
   layout::Alignment alignment(layout::Arch const &arch) const override;

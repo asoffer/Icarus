@@ -2,7 +2,6 @@
 
 #include <algorithm>
 
-#include <unordered_map>
 #include "base/guarded.h"
 #include "misc/context.h"
 #include "ir/arguments.h"
@@ -216,7 +215,7 @@ void Variant::EmitRepr(ir::Results const &id_val, Context *ctx) const {
 }
 
 void Variant::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   for (auto *v : variants_) { v->defining_modules(modules); }
 }
 

@@ -143,6 +143,7 @@ cc_target(
         "//type:struct",
         "//type:tuple",
         "//type:variant",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -218,6 +219,7 @@ cc_target(
         "//type:pointer",
         "//type:tuple",
         "//type:variant",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -253,6 +255,7 @@ cc_target(
         "//type:pointer",
         "//type:struct",
         "//type:tuple",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -437,6 +440,9 @@ cc_lib(
 cc_lib(
     name = "node_lookup",
     hdrs = ["node_lookup.h"],
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
 )
 
 cc_target(
@@ -449,6 +455,7 @@ cc_target(
         ":declaration",
         "//misc:context",
         "//core:scope",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 
@@ -510,6 +517,7 @@ cc_target(
         "//type:function",
         "//type:pointer",
         "//type:type",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -565,6 +573,7 @@ cc_target(
         "//type:cast",
         "//type:pointer",
         "//type:type",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

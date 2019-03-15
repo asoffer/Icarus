@@ -7,10 +7,10 @@
 #include <memory>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "base/util.h"
 
 namespace cli {
@@ -19,7 +19,7 @@ struct Handler;
 enum class Result { Ok, ParseError, AlreadyCalled };
 
 extern std::vector<std::unique_ptr<::cli::internal::Handler>> owned_handlers;
-extern std::unordered_map<std::string, ::cli::internal::Handler *> all_handlers;
+extern absl::flat_hash_map<std::string, ::cli::internal::Handler *> all_handlers;
 
 struct Handler {
   template <typename... Args>

@@ -1,9 +1,9 @@
 #include "type/incomplete_enum.h"
 
-#include <unordered_set>
 #include <random>
 #include <utility>
 
+#include "absl/container/flat_hash_set.h"
 #include "misc/module.h"
 #include "type/enum.h"
 
@@ -19,7 +19,7 @@ void IncompleteEnum::set_last_value(int32_t value) {
 }
 
 Enum const *IncompleteEnum::finalize() && {
-  std::unordered_set<int32_t> taken;
+  absl::flat_hash_set<int32_t> taken;
   auto *e = new Enum(mod_);
   for (auto const & [ s, v ] : entries_) {
     if (v.has_value()) {

@@ -10,7 +10,7 @@ std::function<void(char const *)> HandleOther;
 
 namespace internal {
 std::vector<std::unique_ptr<::cli::internal::Handler>> owned_handlers;
-std::unordered_map<std::string, ::cli::internal::Handler *> all_handlers;
+absl::flat_hash_map<std::string, ::cli::internal::Handler *> all_handlers;
 }  // namespace internal
 
 int ParseAndRun(int argc, char *argv[]) {
@@ -74,7 +74,7 @@ int ParseAndRun(int argc, char *argv[]) {
 
 int ShowUsage() {
   std::fputs("Usage:\n", stderr);
-  std::unordered_map<::cli::internal::Handler *, std::vector<std::string>>
+  absl::flat_hash_map<::cli::internal::Handler *, std::vector<std::string>>
       handlers;
 
   // TODO any sort of reasonable sorting?

@@ -3,7 +3,6 @@
 #include <mutex>
 #include <utility>
 
-#include <unordered_map>
 #include "base/guarded.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
@@ -150,7 +149,7 @@ layout::Bytes Tuple::offset(size_t field_num, layout::Arch const &a) const {
 }
 
 void Tuple::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   for (auto *entry : entries_) { entry->defining_modules(modules); }
 }
 

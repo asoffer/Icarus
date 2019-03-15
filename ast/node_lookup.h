@@ -1,7 +1,7 @@
 #ifndef ICARUS_AST_NODE_LOOKUP_H
 #define ICARUS_AST_NODE_LOOKUP_H
 
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
 
 namespace ast {
 struct Node;
@@ -22,7 +22,7 @@ struct NodeLookup {
 
   auto at(Node const *n) const { return data_.at(n); }
 
-  std::unordered_map<Node const *, T> data_;
+  absl::flat_hash_map<Node const *, T> data_;
 };
 }  // namespace ast
 

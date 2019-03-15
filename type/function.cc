@@ -1,6 +1,5 @@
 #include "type/function.h"
 
-#include <unordered_map>
 #include "base/guarded.h"
 #include "ir/cmd.h"
 #include "ir/val.h"
@@ -26,7 +25,7 @@ ir::Results GenericFunction::PrepareArgument(const Type *t,
 void GenericFunction::EmitRepr(ir::Results const &id_val, Context *ctx) const {}
 
 void GenericFunction::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   NOT_YET();
 }
 
@@ -41,7 +40,7 @@ layout::Alignment GenericFunction::alignment(layout::Arch const &) const {
 Cmp GenericFunction::Comparator() const { return Cmp::None; }
 
 void Function::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   NOT_YET();
 }
 

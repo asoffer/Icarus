@@ -46,7 +46,7 @@ type::Pointer const *StatePtrTypeOrLogError(type::Type const *t) {
 
 VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
   if (stateful_) {
-    std::unordered_map<type::Pointer const *, std::vector<Declaration const *>>
+    absl::flat_hash_map<type::Pointer const *, std::vector<Declaration const *>>
         state_types;
     bool error = false;
     for (auto &decl : decls_) {

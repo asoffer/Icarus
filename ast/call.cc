@@ -2,19 +2,20 @@
 
 #include <sstream>
 
+#include "absl/container/flat_hash_map.h"
 #include "ast/block_literal.h"
 #include "ast/builtin_fn.h"
 #include "ast/dispatch/table.h"
-#include "core/fn_params.h"
 #include "ast/function_literal.h"
 #include "ast/struct_literal.h"
 #include "ast/unop.h"
 #include "backend/eval.h"
+#include "core/fn_params.h"
+#include "core/scope.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
-#include "core/scope.h"
 #include "type/array.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
@@ -101,7 +102,7 @@ void Call::DependentDecls(base::Graph<Declaration *> *g,
 
 VerifyResult Call::VerifyType(Context *ctx) {
   std::vector<VerifyResult> pos_results;
-  std::unordered_map<std::string, VerifyResult> named_results;
+  absl::flat_hash_map<std::string, VerifyResult> named_results;
 
   bool err = false;
 

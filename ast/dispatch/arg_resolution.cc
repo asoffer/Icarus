@@ -13,7 +13,7 @@ namespace ast {
 
 ir::Results ArgResolution::Results(
     core::FnParams<type::Typed<Expression *>> *const_params,
-    std::unordered_map<Expression *, ir::Results const *> const &expr_map,
+    absl::flat_hash_map<Expression *, ir::Results const *> const &expr_map,
     Context *ctx) const {
   ir::Results results;
   for (size_t i = 0; i < entries_.size(); ++i) {

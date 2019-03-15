@@ -41,7 +41,7 @@ struct Interface : public Type {
   ::Module const *defining_module() const { return mod_; }
 
   void defining_modules(
-      std::unordered_set<::Module const *> *modules) const override;
+      absl::flat_hash_set<::Module const *> *modules) const override;
 
 #ifdef ICARUS_USE_LLVM
   llvm::Type *llvm(llvm::LLVMContext &) const override { UNREACHABLE(); }

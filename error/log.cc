@@ -6,8 +6,8 @@
 #include "ast/declaration.h"
 #include "ast/identifier.h"
 #include "base/interval.h"
-#include "misc/context.h"
 #include "frontend/source.h"
+#include "misc/context.h"
 #include "type/enum.h"
 #include "type/opaque.h"
 #include "type/struct.h"
@@ -15,12 +15,12 @@
 #include "type/type.h"
 #include "type/variant.h"
 
-using LineNum = size_t;
-using FileToLineNumMap = std::unordered_map<std::string, std::vector<LineNum>>;
+using LineNum          = size_t;
+using FileToLineNumMap = absl::flat_hash_map<std::string, std::vector<LineNum>>;
 static FileToLineNumMap global_non_decl;
 
 std::vector<std::string> const &LoadLines(frontend::Src *src) {
-  static std::unordered_map<frontend::Src *, std::vector<std::string>> lines;
+  static absl::flat_hash_map<frontend::Src *, std::vector<std::string>> lines;
   auto iter = lines.find(src);
   if (iter == lines.end()) {
     iter = lines.emplace(src, src->LoadLines()).first;
@@ -179,7 +179,7 @@ static auto LinesToShow(ExprContainer const &exprs) {
     std::stringstream ss;                                                      \
     ss << msg "\n\n";                                                          \
     WriteSource(                                                               \
-        ss, span.source, {span.lines()},                                      \
+        ss, span.source, {span.lines()},                                       \
         {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});   \
     ss << "\n\n";                                                              \
     errors_.push_back(ss.str());                                               \
@@ -243,8 +243,8 @@ void Log::NonExportedMember(TextSpan const &span,
                             std::string const &member_name,
                             type::Type const *t) {
   std::stringstream ss;
-  ss << "Expressions of type `" << t->to_string() << "` do not export the member `"
-     << member_name << "`.\n\n";
+  ss << "Expressions of type `" << t->to_string()
+     << "` do not export the member `" << member_name << "`.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -313,8 +313,7 @@ void Log::IndexedReturnTypeMismatch(type::Type const *expected_type,
      << "` in that slot.\n\n";
   // TODO also show where the return type is specified?
   WriteSource(
-      ss, span.source,
-      {span.lines()},
+      ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -363,10 +362,11 @@ void Log::NotBinary(TextSpan const &span, std::string const &token) {
   errors_.push_back(ss.str());
 }
 
-void Log::NotAType(TextSpan const& span, type::Type const* t) {
+void Log::NotAType(TextSpan const &span, type::Type const *t) {
   std::stringstream ss;
   ss << "Expression was expected to be a type or interface, but instead it was "
-        "a(n) " << t->to_string() << ".\n\n";
+        "a(n) "
+     << t->to_string() << ".\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -438,11 +438,11 @@ void Log::UserDefinedError(std::string const &err) {
 }
 
 void Log::Dump() const {
-  for (auto& cycle : cyc_dep_vecs_) {
+  for (auto &cycle : cyc_dep_vecs_) {
     // TODO make cyc_dep_vec just identifiers
     std::cerr << "Found a cyclic dependency:\n\n";
 
-    std::unordered_map<ast::Declaration const *, size_t> decls;
+    absl::flat_hash_map<ast::Declaration const *, size_t> decls;
     for (auto const *id : cycle) { decls.emplace(id->decl_, decls.size()); }
 
     base::IntervalSet<size_t> iset;
@@ -453,7 +453,7 @@ void Log::Dump() const {
       // TODO handle case where it's 1 mod 7 and so adjacent entries show up
       // with the same color
 
-      TextSpan decl_id_span = id->decl_->span;
+      TextSpan decl_id_span      = id->decl_->span;
       decl_id_span.finish.offset = decl_id_span.start.offset + id->token.size();
       underlines.emplace_back(
           decl_id_span,
@@ -462,10 +462,11 @@ void Log::Dump() const {
                            static_cast<char>(decls.at(id->decl_) % 7)),
                        DisplayAttrs::UNDERLINE});
       underlines.emplace_back(
-          id->span, DisplayAttrs{static_cast<DisplayAttrs::Color>(
-                                     DisplayAttrs::RED +
-                                     static_cast<char>(decls.at(id->decl_) % 7)),
-                                 DisplayAttrs::UNDERLINE});
+          id->span,
+          DisplayAttrs{static_cast<DisplayAttrs::Color>(
+                           DisplayAttrs::RED +
+                           static_cast<char>(decls.at(id->decl_) % 7)),
+                       DisplayAttrs::UNDERLINE});
     }
 
     std::sort(underlines.begin(), underlines.end(),
@@ -495,12 +496,12 @@ void Log::Dump() const {
     std::cerr << "\n\n";
   }
 
-  for (const auto & [ decl, ids ] : out_of_order_decls_) {
+  for (const auto &[decl, ids] : out_of_order_decls_) {
     std::cerr << "Declaration of `" << decl->id_
               << "` is used before it is defined (which is only allowed for "
                  "constants).\n\n";
 
-    auto[iset, underlines] = LinesToShow(ids);
+    auto [iset, underlines] = LinesToShow(ids);
     iset.insert(base::Interval<size_t>{decl->span.start.line_num - 1,
                                        decl->span.finish.line_num + 2});
     // TODO highlight just the identifier
@@ -511,10 +512,10 @@ void Log::Dump() const {
     std::cerr << "\n\n";
   }
 
-  for (const auto & [ token, ids ] : undeclared_ids_) {
+  for (const auto &[token, ids] : undeclared_ids_) {
     std::cerr << "Use of undeclared identifier `" << token << "`:\n\n";
 
-    auto[iset, underlines] = LinesToShow(ids);
+    auto [iset, underlines] = LinesToShow(ids);
     WriteSource(std::cerr, ids.front()->span.source, iset, underlines);
     std::cerr << "\n\n";
   }
@@ -626,7 +627,7 @@ void Log::InvalidNumber(TextSpan const &span, std::string_view err) {
 
 void Log::NoCallMatch(TextSpan const &span,
                       std::vector<std::string> const &generic_failure_reasons,
-                      std::unordered_map<ast::Expression const *,
+                      absl::flat_hash_map<ast::Expression const *,
                                           std::string> const &failure_reasons) {
   std::stringstream ss;
   ss << "Failed to find a matching function signature to call.\n\n";
@@ -637,7 +638,7 @@ void Log::NoCallMatch(TextSpan const &span,
   for (std::string const &reason : generic_failure_reasons) {
     ss << "\n  * " << reason << "\n";
   }
-  for (auto const & [ expr, reason ] : failure_reasons) {
+  for (auto const &[expr, reason] : failure_reasons) {
     ss << "\n  * " << reason << ":\n\n";
     WriteSource(ss, expr->span.source, {expr->span.lines()}, {});
   }
@@ -649,7 +650,8 @@ void Log::MissingDispatchContingency(
     TextSpan const &span,
     std::vector<core::FnArgs<type::Type const *>> const &missing_dispatch) {
   std::stringstream ss;
-  ss << "Failed to find a valid function to call for all required dispatches.\n\n";
+  ss << "Failed to find a valid function to call for all required "
+        "dispatches.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -678,8 +680,7 @@ void Log::NotCopyable(TextSpan const &span, type::Type const *from) {
 
 void Log::NotMovable(TextSpan const &span, type::Type const *from) {
   std::stringstream ss;
-  ss << "Attempting to move an immovable type " << from->to_string()
-     << ".\n\n";
+  ss << "Attempting to move an immovable type " << from->to_string() << ".\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -700,7 +701,6 @@ void Log::IndexingTupleOutOfBounds(TextSpan const &span, type::Tuple const *tup,
 
   ss << "\n\n";
   errors_.push_back(ss.str());
-
 }
 
 void Log::MissingModule(std::filesystem::path const &src,
@@ -712,8 +712,8 @@ void Log::MissingModule(std::filesystem::path const &src,
     requestor_str = "\"" + requestor_str + "\"";
   }
   std::stringstream ss;
-  ss << "Could not find module named \"" << src.string()
-     << "\" requested from " << requestor_str << ".\n\n";
+  ss << "Could not find module named \"" << src.string() << "\" requested from "
+     << requestor_str << ".\n\n";
   errors_.push_back(ss.str());
 }
 

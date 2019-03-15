@@ -1,4 +1,6 @@
 #include "ast/overload_set.h"
+
+#include "absl/container/flat_hash_set.h"
 #include "ast/declaration.h"
 #include "misc/context.h"
 #include "core/scope.h"
@@ -36,7 +38,7 @@ void OverloadSet::keep_return(type::Type const *t) {
 }
 
 void OverloadSet::add_adl(std::string const &id, type::Type const *t) {
-  std::unordered_set<::Module const *> modules;
+  absl::flat_hash_set<::Module const *> modules;
   t->defining_modules(&modules);
 
   for (auto *mod : modules) {

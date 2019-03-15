@@ -2,9 +2,9 @@
 #include "backend/emit.h"
 
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "architecture.h"
 #include "ast/function_literal.h"
 #include "base/check.h"
@@ -19,7 +19,7 @@
 // module?)
 static llvm::Value *StringConstant(llvm::IRBuilder<> *builder,
                                    std::string_view str) {
-  static std::unordered_map<std::string, llvm::Value *> global_strs;
+  static absl::flat_hash_map<std::string, llvm::Value *> global_strs;
   auto &result = global_strs[std::string(str)];
   if (!result) {
     result =
@@ -36,7 +36,7 @@ struct LlvmData {
   llvm::Function *fn;
   llvm::Module *module;
   llvm::IRBuilder<> *builder;
-  std::unordered_map<ir::Register, llvm::Value *> regs;
+  absl::flat_hash_map<ir::Register, llvm::Value *> regs;
   std::vector<llvm::BasicBlock *> blocks;
   std::vector<llvm::Value *> rets;
 };

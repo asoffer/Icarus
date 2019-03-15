@@ -17,6 +17,7 @@ cc_target(
         "//ir:builtin",
         "//ir:results",
         "//type:primitive",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -67,6 +68,7 @@ cc_lib(
         ":token",
         "//ast",
         "//base:guarded",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

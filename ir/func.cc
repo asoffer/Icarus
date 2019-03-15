@@ -44,10 +44,10 @@ Func::Func(Module *mod, type::Function const *fn_type,
   blocks_.emplace_back(this);
 }
 
-std::unordered_map<BasicBlock const *, std::unordered_set<BasicBlock const *>>
+absl::flat_hash_map<BasicBlock const *, absl::flat_hash_set<BasicBlock const *>>
 Func::GetIncomingBlocks() const {
-  std::unordered_map<BasicBlock const *,
-                      std::unordered_set<BasicBlock const *>>
+  absl::flat_hash_map<BasicBlock const *,
+                      absl::flat_hash_set<BasicBlock const *>>
       incoming;
   for (auto const &b : blocks_) {
     ASSERT(b.cmds_.size() > 0u);
@@ -80,7 +80,8 @@ static std::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
   //   auto &[func, prop_map] = result.emplace_back(
   //       std::piecewise_construct,
   //       std::forward_as_tuple(
-  //           fn->mod_, type::Func(fn->type_->input, {type::Bool}), fn->params_),
+  //           fn->mod_, type::Func(fn->type_->input, {type::Bool}),
+  //           fn->params_),
   //       core::FnParams<ast::Expression *>{});
 
   //   CURRENT_FUNC(&func) {
@@ -119,9 +120,9 @@ void Func::CheckInvariants() {
 
   auto prop_map = prop::PropertyMap(this);
 
-  for (auto const & [ block, cmd ] : cmds) {
+  for (auto const &[block, cmd] : cmds) {
     // TODO can preconditions be foreign functions?!
-    for (auto const & [ precond, precond_prop_map ] :
+    for (auto const &[precond, precond_prop_map] :
          cmd->call_.fn_.val_.func()->preconditions_) {
       auto prop_copy = precond_prop_map.with_args(*cmd->call_.arguments_,
                                                   prop_map.view_.at(block));

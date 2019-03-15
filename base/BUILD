@@ -24,6 +24,10 @@ cc_lib(
 cc_lib(
     name = "graph",
     hdrs = ["graph.h"],
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
 )
 
 cc_lib(

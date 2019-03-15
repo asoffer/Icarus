@@ -1,7 +1,6 @@
 #ifndef ICARUS_AST_FUNCTION_LITERAL_H
 #define ICARUS_AST_FUNCTION_LITERAL_H
 
-#include <unordered_map>
 #include <vector>
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"

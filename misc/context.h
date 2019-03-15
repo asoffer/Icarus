@@ -2,7 +2,6 @@
 #define ICARUS_CONTEXT_H
 
 #include "ast/bound_constants.h"
-#include <unordered_map>
 #include <vector>
 #include "base/debug.h"
 #include "ir/register.h"

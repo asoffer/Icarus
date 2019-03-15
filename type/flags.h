@@ -4,9 +4,8 @@
 #include <optional>
 #include <random>
 #include <string>
-#include <unordered_set>
 
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
 #include "ir/flags_val.h"
 #include "type.h"
 #include "typed_value.h"
@@ -17,13 +16,14 @@ struct Flags : public type::Type {
 
   Flags(::Module const* mod) : mod_(mod) {}
 
-  Flags(std::unordered_map<std::string, std::optional<int32_t>> const& members);
+  Flags(
+      absl::flat_hash_map<std::string, std::optional<int32_t>> const& members);
 
   std::optional<ir::FlagsVal> Get(const std::string& str) const;
   Typed<ir::FlagsVal, Flags> EmitLiteral(std::string const& member_name) const;
 
   // TODO privatize
-  std::unordered_map<size_t, std::string> members_;
+  absl::flat_hash_map<size_t, std::string> members_;
 
   size_t All = 0;
 
@@ -32,7 +32,7 @@ struct Flags : public type::Type {
 
   ::Module const *mod_;
   // TODO combine these into a single bidirectional map?
-  std::unordered_map<std::string, ir::FlagsVal> vals_;
+  absl::flat_hash_map<std::string, ir::FlagsVal> vals_;
 };
 }  // namespace type
 

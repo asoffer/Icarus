@@ -1,8 +1,8 @@
 #include "ir/val.h"
 
 #include <sstream>
-#include <unordered_set>
 
+#include "absl/container/node_hash_set.h"
 #include "ast/block_literal.h"
 #include "ast/function_literal.h"
 #include "ast/scope_literal.h"
@@ -43,7 +43,7 @@ BlockSequence MakeBlockSeq(const std::vector<ir::BlockSequence> &blocks) {
 }
 
 // TODO avoid double-storing the string.
-static base::guarded<std::unordered_map<std::string, Addr>> GlobalStringSet;
+static base::guarded<absl::node_hash_map<std::string, Addr>> GlobalStringSet;
 std::string_view SaveStringGlobally(std::string const &str) {
   auto handle         = GlobalStringSet.lock();
   auto[iter, success] = handle->emplace(str, Addr::ReadOnly(0));

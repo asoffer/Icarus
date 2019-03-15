@@ -54,6 +54,7 @@ cc_target(
         "//ast:overload_set",
         "//core:fn_args",
         "//base:expected",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
         "//ast:call",

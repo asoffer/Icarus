@@ -1,9 +1,8 @@
 #include <array>
 #include <cstdio>
-#include <iosfwd>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "ast/access.h"
 #include "ast/array_literal.h"
 #include "ast/array_type.h"
@@ -307,7 +306,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   unop->operand = move_as<ast::Expression>(nodes[1]);
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
-  static std::unordered_map<std::string, Operator> const UnopMap{
+  static absl::flat_hash_map<std::string_view, Operator> const UnopMap{
       {"*", Operator::Mul},     {"[*]", Operator::BufPtr},
       {"@", Operator::At},      {"import", Operator::Import},
       {"&", Operator::And},     {"which", Operator::Which},
@@ -794,13 +793,14 @@ struct Rule {
 std::unique_ptr<ast::Node> BuildBinaryOperator(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  static std::unordered_map<std::string, frontend::Operator> const chain_ops{
-      {",", frontend::Operator::Comma}, {"==", frontend::Operator::Eq},
-      {"!=", frontend::Operator::Ne},   {"<", frontend::Operator::Lt},
-      {">", frontend::Operator::Gt},    {"<=", frontend::Operator::Le},
-      {">=", frontend::Operator::Ge},   {"&", frontend::Operator::And},
-      {"|", frontend::Operator::Or},    {"^", frontend::Operator::Xor},
-  };
+  static absl::flat_hash_map<std::string_view, frontend::Operator> const
+      chain_ops{
+          {",", frontend::Operator::Comma}, {"==", frontend::Operator::Eq},
+          {"!=", frontend::Operator::Ne},   {"<", frontend::Operator::Lt},
+          {">", frontend::Operator::Gt},    {"<=", frontend::Operator::Le},
+          {">=", frontend::Operator::Ge},   {"&", frontend::Operator::And},
+          {"|", frontend::Operator::Or},    {"^", frontend::Operator::Xor},
+      };
 
   std::string const &tk = nodes[1]->as<frontend::Token>().token;
   {
@@ -872,15 +872,16 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   binop->lhs = move_as<ast::Expression>(nodes[0]);
   binop->rhs = move_as<ast::Expression>(nodes[2]);
 
-  static std::unordered_map<std::string, frontend::Operator> const symbols = {
-      {"->", frontend::Operator::Arrow}, {"|=", frontend::Operator::OrEq},
-      {"&=", frontend::Operator::AndEq}, {"^=", frontend::Operator::XorEq},
-      {"+=", frontend::Operator::AddEq}, {"-=", frontend::Operator::SubEq},
-      {"*=", frontend::Operator::MulEq}, {"/=", frontend::Operator::DivEq},
-      {"%=", frontend::Operator::ModEq}, {"+", frontend::Operator::Add},
-      {"-", frontend::Operator::Sub},    {"*", frontend::Operator::Mul},
-      {"/", frontend::Operator::Div},    {"%", frontend::Operator::Mod},
-      {"when", frontend::Operator::When}};
+  static absl::flat_hash_map<std::string_view, frontend::Operator> const
+      symbols = {
+          {"->", frontend::Operator::Arrow}, {"|=", frontend::Operator::OrEq},
+          {"&=", frontend::Operator::AndEq}, {"^=", frontend::Operator::XorEq},
+          {"+=", frontend::Operator::AddEq}, {"-=", frontend::Operator::SubEq},
+          {"*=", frontend::Operator::MulEq}, {"/=", frontend::Operator::DivEq},
+          {"%=", frontend::Operator::ModEq}, {"+", frontend::Operator::Add},
+          {"-", frontend::Operator::Sub},    {"*", frontend::Operator::Mul},
+          {"/", frontend::Operator::Div},    {"%", frontend::Operator::Mod},
+          {"when", frontend::Operator::When}};
   {
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }

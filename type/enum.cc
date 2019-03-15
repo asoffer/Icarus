@@ -1,7 +1,7 @@
 #include "type/enum.h"
 
-#include <unordered_set>
 
+#include "absl/container/flat_hash_set.h"
 #include "ir/addr.h"
 #include "ir/cmd.h"
 #include "ir/register.h"
@@ -39,7 +39,7 @@ void Enum::EmitMoveAssign(Type const *from_type, ir::Results const &from,
 }
 
 void Enum::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   NOT_YET();
 }
 

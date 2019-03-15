@@ -1,7 +1,7 @@
 #ifndef ICARUS_IR_PHI_H
 #define ICARUS_IR_PHI_H
 
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
 #include "ir/func.h"
 #include "ir/val.h"
 
@@ -9,11 +9,11 @@ namespace ir {
 CmdIndex Phi(type::Type const *);
 
 ir::Results MakePhi(type::Type const *type, CmdIndex phi_index,
-            std::unordered_map<BlockIndex, ir::Results> const &val_map);
+            absl::flat_hash_map<BlockIndex, ir::Results> const &val_map);
 
 template <typename T>
 RegisterOr<T> MakePhi(CmdIndex phi_index,
-                      std::unordered_map<BlockIndex, RegisterOr<T>> val_map) {
+                      absl::flat_hash_map<BlockIndex, RegisterOr<T>> val_map) {
   auto &cmd = ir::Func::Current->Command(phi_index);
 
   auto phi_args  = std::make_unique<PhiArgs<T>>();

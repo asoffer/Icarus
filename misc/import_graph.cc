@@ -1,4 +1,4 @@
-#include "import_graph.h"
+#include "misc/import_graph.h"
 
 #include <queue>
 
@@ -14,7 +14,7 @@ std::pair<std::filesystem::path const *, bool> ImportGraph::node(
 bool ImportGraph::AddDependency(std::filesystem::path const *dependee,
                                 std::filesystem::path const *depender) {
   if (depender == dependee) { return false; }
-  std::unordered_set<std::filesystem::path const *> handled;
+  absl::flat_hash_set<std::filesystem::path const *> handled;
   std::queue<std::filesystem::path const *> to_process;
   to_process.push(dependee);
   while (!to_process.empty()) {

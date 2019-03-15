@@ -86,7 +86,7 @@ CallObstruction DispatchTableRow::SetTypes(
     std::vector<type::Type const *> const &input_types,
     core::FnParams<E> const &params, core::FnArgs<type::Typed<Expression *>> const &args,
     Context *ctx) {
-  std::unordered_map<std::string, type::Type const *> named;
+  absl::flat_hash_map<std::string, type::Type const *> named;
   for (auto &[name, expr] : args.named()) { named.emplace(name, nullptr); }
 
   size_t num_pos  = binding_.arg_res_.num_positional_arguments();
@@ -342,7 +342,7 @@ DispatchTableRow::MakeFromIrFunc(
 static type::Type const *ComputeRetType(
     std::vector<type::Callable const *> const &callable_types) {
   if (callable_types.empty()) { return nullptr; }
-  std::unordered_set<size_t> sizes;
+  absl::flat_hash_set<size_t> sizes;
   for (auto *callable_type : callable_types) {
     if (callable_type->is<type::Function>()) {
       sizes.insert(callable_type->as<type::Function>().output.size());
@@ -554,7 +554,7 @@ type::Type const *DispatchTable::MakeOrLogError(
 // return value.
 static void EmitOneCallDispatch(
     type::Type const *ret_type, std::vector<ir::Val> *outgoing_regs,
-    std::unordered_map<Expression *, ir::Results const *> const
+    absl::flat_hash_map<Expression *, ir::Results const *> const
         &expr_map,
     Binding const &binding, Context *ctx) {
   auto callee = [&] {
@@ -666,7 +666,7 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
     // other.
     auto landing = ir::Func::Current->AddBlock();
 
-    std::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_map;
+    absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_map;
     for (type::Type const *v : haystack->as<type::Variant>().variants_) {
       phi_map.emplace(ir::BasicBlock::Current, true);
 
@@ -722,7 +722,7 @@ ir::Results DispatchTable::EmitCall(
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
     type::Type const *ret_type, Context *ctx) const {
   ASSERT(bindings_.size() != 0u);
-  std::unordered_map<Expression *, ir::Results const *> expr_map;
+  absl::flat_hash_map<Expression *, ir::Results const *> expr_map;
   args.Apply([&expr_map](std::pair<Expression *, ir::Results> const &arg) {
     expr_map[arg.first] = &arg.second;
   });
@@ -751,7 +751,7 @@ ir::Results DispatchTable::EmitCall(
   size_t num_rets =
       ret_type->is<type::Tuple>() ? ret_type->as<type::Tuple>().size() : 1;
 
-  std::vector<std::unordered_map<ir::BlockIndex, ir::Results>> result_phi_args(
+  std::vector<absl::flat_hash_map<ir::BlockIndex, ir::Results>> result_phi_args(
       num_rets);
 
   auto landing_block = ir::Func::Current->AddBlock();

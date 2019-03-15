@@ -1,6 +1,8 @@
 #include "ast/function_literal.h"
 
 #include <sstream>
+
+#include "absl/container/flat_hash_set.h"
 #include "ast/bound_constants.h"
 #include "ast/declaration.h"
 #include "ast/match_declaration.h"
@@ -157,7 +159,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
 
   JumpExprs rets;
   statements_.ExtractJumps(&rets);
-  std::unordered_set<type::Type const *> types;
+  absl::flat_hash_set<type::Type const *> types;
   for (auto *expr : rets[JumpKind::Return]) {
     types.insert(ctx->type_of(expr));
   }

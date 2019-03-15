@@ -1,22 +1,25 @@
 #include "type/pointer.h"
 
-#include <unordered_map>
+#include "absl/container/flat_hash_set.h"
+#include "absl/container/flat_hash_map.h"
 #include "base/guarded.h"
 #include "ir/cmd.h"
 #include "type/function.h"
 
 namespace type {
 
-static base::guarded<std::unordered_map<Type const *, Pointer const>>
+static base::guarded<absl::flat_hash_map<Type const *, Pointer const *>>
     pointers_;
 Pointer const *Ptr(Type const *t) {
-  return &pointers_.lock()->emplace(t, Pointer(t)).first->second;
+  return pointers_.lock()->emplace(t, new Pointer(t)).first->second;
 }
 
-static base::guarded<std::unordered_map<Type const *, BufferPointer const>>
+static base::guarded<absl::flat_hash_map<Type const *, BufferPointer const *>>
     buffer_pointers_;
 BufferPointer const *BufPtr(Type const *t) {
-  return &buffer_pointers_.lock()->emplace(t, BufferPointer(t)).first->second;
+  return buffer_pointers_.lock()
+      ->emplace(t, new BufferPointer(t))
+      .first->second;
 }
 
 void Pointer::EmitCopyAssign(Type const *from_type, ir::Results const &from,
@@ -42,7 +45,7 @@ void Pointer::EmitMoveAssign(Type const *from_type, ir::Results const &from,
 }
 
 void Pointer::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   pointee->defining_modules(modules);
 }
 

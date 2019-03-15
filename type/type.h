@@ -2,8 +2,8 @@
 #define ICARUS_TYPE_TYPE_H
 
 #include <string>
-#include <unordered_set>
 
+#include "absl/container/flat_hash_set.h"
 #include "base/debug.h"
 #include "base/util.h"
 #include "ir/addr.h"
@@ -54,8 +54,8 @@ struct AnyFunc;
   virtual ir::Results PrepareArgument(Type const *t, const ir::Results &val,   \
                                       Context *ctx) const ENDING;              \
   virtual void EmitRepr(ir::Results const &id_val, Context *ctx) const ENDING; \
-  virtual void defining_modules(std::unordered_set<::Module const *> *modules) \
-      const ENDING;                                                            \
+  virtual void defining_modules(                                               \
+      absl::flat_hash_set<::Module const *> *modules) const ENDING;            \
   virtual Cmp Comparator() const ENDING
 
 #ifdef ICARUS_USE_LLVM

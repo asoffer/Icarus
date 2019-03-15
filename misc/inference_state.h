@@ -2,7 +2,8 @@
 #define ICARUS_MISC_INFERENCE_STATE_H
 
 #include <queue>
-#include <unordered_map>
+
+#include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
 
 struct Context;
@@ -19,7 +20,7 @@ struct Type;
 struct InferenceState {
   InferenceState(Context *ctx) : ctx_(ASSERT_NOT_NULL(ctx)) {}
   std::queue<std::pair<ast::Expression const *, type::Type const *>> match_queue_;
-  std::unordered_map<ast::Declaration const *, type::Type const *> matches_;
+  absl::flat_hash_map<ast::Declaration const *, type::Type const *> matches_;
   Context *ctx_;
 };
 

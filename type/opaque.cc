@@ -32,7 +32,7 @@ void Opaque::EmitRepr(ir::Results const &id_val, Context *ctx) const {
 }
 
 void Opaque::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   modules->insert(mod_);
 }
 

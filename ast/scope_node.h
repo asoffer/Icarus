@@ -2,7 +2,6 @@
 #define ICARUS_AST_SCOPE_NODE_H
 
 #include <memory>
-#include <unordered_map>
 #include "ast/block_node.h"
 #include "ast/expression.h"
 #include "core/fn_args.h"

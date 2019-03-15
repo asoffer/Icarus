@@ -29,7 +29,7 @@ GenericStruct *GenStruct(core::Scope const* scope, std::vector<Type const *> ts)
 }
 
 void GenericStruct::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   modules->insert(defining_module());
 }
 

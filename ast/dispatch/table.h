@@ -4,12 +4,12 @@
 #include <string>
 #include <variant>
 
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
 #include "ast/bound_constants.h"
 #include "ast/dispatch/arg_resolution.h"
-#include "core/fn_args.h"
 #include "ast/overload_set.h"
 #include "base/expected.h"
+#include "core/fn_args.h"
 
 struct Context;
 
@@ -63,7 +63,7 @@ struct DispatchTable {
       type::Type const *ret_type, Context *ctx) const;
 
   std::vector<std::pair<core::FnArgs<type::Type const *>, Binding>> bindings_;
-  std::unordered_map<Expression const *, std::string> failure_reasons_;
+  absl::flat_hash_map<Expression const *, std::string> failure_reasons_;
   std::vector<std::string> generic_failure_reasons_;
 };
 

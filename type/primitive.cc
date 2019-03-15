@@ -54,7 +54,7 @@ void Primitive::EmitMoveAssign(Type const *from_type, ir::Results const &from,
 }
 
 void Primitive::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {}
+    absl::flat_hash_set<::Module const *> *modules) const {}
 
 void Primitive::EmitRepr(ir::Results const &val, Context *) const {
   switch (type_) {

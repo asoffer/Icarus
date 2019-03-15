@@ -25,7 +25,7 @@ struct Opaque : public Type {
   layout::Alignment alignment(layout::Arch const &arch) const override;
 
   void defining_modules(
-      std::unordered_set<::Module const *> *modules) const override;
+      absl::flat_hash_set<::Module const *> *modules) const override;
 
   bool IsDefaultInitializable() const override { return false; }
 

@@ -3,9 +3,9 @@
 
 #include <algorithm>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "core/fn_args.h"
 
 namespace type {
@@ -118,7 +118,7 @@ struct FnParams {
   // Maps the string name of the declared argument to it's index:
   // Example: (a: int, b: char, c: string) -> int
   //           a => 0, b => 1, c => 2
-  std::unordered_map<std::string_view, size_t> lookup_;
+  absl::flat_hash_map<std::string_view, size_t> lookup_;
  private:
   template <typename U>
   friend struct FnParams;

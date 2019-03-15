@@ -8,15 +8,16 @@
 #include <mutex>
 #include <queue>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
+#include "absl/container/node_hash_map.h"
 #include "ast/bound_constants.h"
 #include "ast/dispatch/table.h"
-#include "core/fn_params.h"
 #include "ast/node_lookup.h"
 #include "ast/statements.h"
+#include "core/fn_params.h"
 #include "core/scope.h"
 #include "error/log.h"
 
@@ -60,7 +61,7 @@ struct Module {
   type::Type const *GetType(std::string const &name) const;
   ast::Declaration *GetDecl(std::string const &name) const;
 
-  std::map<ast::BoundConstants, std::unordered_set<ast::Expression const *>>
+  std::map<ast::BoundConstants, absl::flat_hash_set<ast::Expression const *>>
       completed_;
 
   std::queue<std::function<void()>> deferred_work_;
@@ -101,27 +102,27 @@ struct Module {
   // TODO support more than just a single type argument to generic structs.
   struct GenericStructCache {
     std::map<std::vector<type::Type const *>, type::Type const *> fwd_;
-    std::unordered_map<type::Type const *,
+    absl::flat_hash_map<type::Type const *,
                        std::vector<type::Type const *> const *>
         back_;
   };
 
-  std::unordered_map<ast::StructLiteral const *, GenericStructCache>
+  absl::flat_hash_map<ast::StructLiteral const *, GenericStructCache>
       generic_struct_cache_;
 
   struct DependentData {
     ast::NodeLookup<type::Type const *> types_;
-    std::unordered_map<ast::Declaration *, ir::Register> addr_;
+    absl::flat_hash_map<ast::Declaration *, ir::Register> addr_;
 
-    std::unordered_map<ast::Expression const *, ir::Func *> ir_funcs_;
+    absl::node_hash_map<ast::Expression const *, ir::Func *> ir_funcs_;
 
-    std::unordered_map<ast::Declaration const *, ast::VerifyResult>
+    absl::flat_hash_map<ast::Declaration const *, ast::VerifyResult>
         verify_results_;
 
-    std::unordered_map<ast::Expression const *, ast::DispatchTable>
+    absl::flat_hash_map<ast::Expression const *, ast::DispatchTable>
         dispatch_tables_;
     // For use with expression nodes that have more than one dispatch table.
-    std::unordered_map<ast::Node const *, std::vector<ast::DispatchTable>>
+    absl::flat_hash_map<ast::Node const *, std::vector<ast::DispatchTable>>
         repeated_dispatch_tables_;
   };
   std::map<ast::BoundConstants, DependentData> data_;

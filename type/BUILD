@@ -21,6 +21,8 @@ cc_target(
         "//layout:arch",
         "//misc:context",
         "//misc:module",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 
@@ -95,6 +97,7 @@ cc_target(
     intf_deps = [
         ":type",
         ":typed_value",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
         "//ir:addr",
@@ -109,6 +112,7 @@ cc_target(
     intf_deps = [
         ":type",
         ":typed_value",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
         "//ir:addr",
@@ -147,6 +151,7 @@ cc_target(
     impl_deps = [
         ":enum",
         "//misc:module",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 
@@ -199,6 +204,8 @@ cc_target(
         ":function",
         "//base:guarded",
         "//ir:cmd",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 
@@ -217,6 +224,7 @@ cc_target(
         "//base:lazy",
         "//ir:any_func",
         "//core:scope",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
         ":function",
@@ -268,6 +276,7 @@ cc_target(
         "//ir:register",
         "//ir:results",
         "//layout:arch",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
         ":generic_struct",

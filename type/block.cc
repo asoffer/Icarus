@@ -5,7 +5,7 @@ static type::Block blk_;
 Block *Blk() { return &blk_; }
 
 void Block::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {}
+    absl::flat_hash_set<::Module const *> *modules) const {}
 
 void Block::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {

@@ -1,9 +1,10 @@
 #ifndef ICARUS_CORE_SCOPE_H
 #define ICARUS_CORE_SCOPE_H
 
-#include <unordered_set>
-#include <unordered_map>
 #include <vector>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "base/util.h"
 #include "type/typed_value.h"
 
@@ -39,10 +40,14 @@ struct Scope : public base::Cast<Scope> {
   void InsertDecl(ast::Declaration *decl);
 
   FnScope *ContainingFnScope();
-  std::unordered_map<std::string, std::vector<ast::Declaration *>> decls_;
-  std::unordered_map<std::string, std::vector<ast::Declaration *>> child_decls_;
+  // TODO these ids are already stored on the declaration so it's probably safe
+  // to use string_views here. Need to really guarantee that ast nodes are
+  // constant after construction.
+  absl::flat_hash_map<std::string, std::vector<ast::Declaration *>> decls_;
+  absl::flat_hash_map<std::string, std::vector<ast::Declaration *>>
+      child_decls_;
 
-  std::unordered_set<Module const *> embedded_modules_;
+  absl::flat_hash_set<Module const *> embedded_modules_;
   Scope *parent = nullptr;
 };
 

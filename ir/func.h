@@ -1,12 +1,12 @@
 #ifndef ICARUS_IR_FUNC_H
 #define ICARUS_IR_FUNC_H
 
-#include <unordered_set>
-
-#include "core/fn_params.h"
-#include "base/bag.h"
-#include <unordered_map>
 #include <vector>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
+#include "base/bag.h"
+#include "core/fn_params.h"
 #include "ir/basic_block.h"
 #include "property/property_map.h"
 
@@ -97,11 +97,11 @@ struct Func {
   std::vector<ast::Expression *> precondition_exprs_, postcondition_exprs_;
   std::vector<std::pair<ir::Func, prop::PropertyMap>> preconditions_,
       postconditions_;
-  std::unordered_map<Register, base::bag<Register>> references_;
-  std::unordered_map<Register, CmdIndex> reg_to_cmd_;
+  absl::flat_hash_map<Register, base::bag<Register>> references_;
+  absl::flat_hash_map<Register, CmdIndex> reg_to_cmd_;
 
-  std::unordered_map<BasicBlock const *,
-                      std::unordered_set<BasicBlock const *>>
+  absl::flat_hash_map<BasicBlock const *,
+                      absl::flat_hash_set<BasicBlock const *>>
   GetIncomingBlocks() const;
 
   // This vector is indexed by ir::Reg and stores the value which is the offset

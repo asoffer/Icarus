@@ -2,8 +2,8 @@
 
 #include <numeric>
 #include <sstream>
-#include <unordered_set>
 
+#include "absl/container/flat_hash_set.h"
 #include "base/util.h"
 #include "ir/components.h"
 #include "ir/func.h"
@@ -52,7 +52,7 @@ VerifyResult Switch::VerifyType(Context *ctx) {
     expr_type = result.type_;
   }
 
-  std::unordered_set<const type::Type *> types;
+  absl::flat_hash_set<const type::Type *> types;
   for (auto &[expr, cond] : cases_) {
     auto cond_result = cond->VerifyType(ctx);
     auto expr_result = expr->VerifyType(ctx);
@@ -91,7 +91,7 @@ void Switch::ExtractJumps(JumpExprs *rets) const {
 }
 
 ir::Results ast::Switch::EmitIr(Context *ctx) {
-  std::unordered_map<ir::BlockIndex, ir::Results> phi_args;
+  absl::flat_hash_map<ir::BlockIndex, ir::Results> phi_args;
   auto land_block = ir::Func::Current->AddBlock();
 
   // TODO handle a default value. for now, we're just not checking the very last

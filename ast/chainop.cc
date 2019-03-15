@@ -364,7 +364,7 @@ ir::Results ChainOp::EmitIr(Context *ctx) {
              ops[0] == frontend::Operator::Or) {
     auto land_block = ir::Func::Current->AddBlock();
 
-    std::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
+    absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
     bool is_or = (ops[0] == frontend::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       auto val = exprs[i]->EmitIr(ctx).get<bool>(0);
@@ -392,7 +392,7 @@ ir::Results ChainOp::EmitIr(Context *ctx) {
       return ir::Results{EmitChainOpPair(this, 0, lhs_ir, rhs_ir, ctx)};
 
     } else {
-      std::unordered_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
+      absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
       auto lhs_ir     = exprs.front()->EmitIr(ctx);
       auto land_block = ir::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {

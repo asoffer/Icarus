@@ -92,7 +92,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     }
   }
 
-  std::unordered_map<std::string, Declaration *> name_lookup;
+  absl::flat_hash_map<std::string, Declaration *> name_lookup;
   for (auto &decl : scope_lit->decls_) { name_lookup.emplace(decl.id_, &decl); }
 
   struct BlockData {
@@ -102,14 +102,14 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   };
 
   auto *jump_table =
-      new std::unordered_map<ast::BlockLiteral const *, ir::BlockIndex>{
+      new absl::flat_hash_map<ast::BlockLiteral const *, ir::BlockIndex>{
           {reinterpret_cast<ast::BlockLiteral const *>(0x1), init_block},
           {nullptr, land_block}};
 
-  std::unordered_map<BlockNode *, BlockData> block_data;
+  absl::flat_hash_map<BlockNode *, BlockData> block_data;
   ir::Register alloc;
   type::Type const *state_ptr_type = nullptr, *state_type = nullptr;
-  std::unordered_set<type::Type const *> state_types;
+  absl::flat_hash_set<type::Type const *> state_types;
   for (auto &block : blocks_) {
     // TODO for now do lookup assuming it's an identifier.
     ASSERT(block.name_, InheritsFrom<Identifier>());

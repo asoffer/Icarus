@@ -8,9 +8,9 @@
 
 namespace ir {
 template <typename T>
-static std::unordered_map<BlockIndex, RegisterOr<T>> ConvertMap(
-    std::unordered_map<BlockIndex, Results> const &val_map) {
-  std::unordered_map<BlockIndex, RegisterOr<T>> result;
+static absl::flat_hash_map<BlockIndex, RegisterOr<T>> ConvertMap(
+    absl::flat_hash_map<BlockIndex, Results> const &val_map) {
+  absl::flat_hash_map<BlockIndex, RegisterOr<T>> result;
 
   for (auto const & [ block, val ] : val_map) {
     result.emplace(block, val.template get<T>(0));
@@ -21,7 +21,7 @@ static std::unordered_map<BlockIndex, RegisterOr<T>> ConvertMap(
 
 template <typename T>
 static std::unique_ptr<PhiArgs<T>> MakePhiArgs(
-    std::unordered_map<BlockIndex, Results> const &val_map) {
+    absl::flat_hash_map<BlockIndex, Results> const &val_map) {
   auto phi_args = std::make_unique<PhiArgs<T>>();
   for (auto const &[block, val] : val_map) {
     phi_args->map_.emplace(block, val.template get<T>(0));
@@ -40,7 +40,7 @@ CmdIndex Phi(type::Type const *t) {
 }
 
 ir::Results MakePhi(type::Type const *t, CmdIndex phi_index,
-            std::unordered_map<BlockIndex, ir::Results> const &val_map) {
+            absl::flat_hash_map<BlockIndex, ir::Results> const &val_map) {
   auto &cmd = ir::Func::Current->Command(phi_index);
 
   if (t->is_big()) {

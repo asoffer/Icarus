@@ -46,7 +46,7 @@ struct GenericPhiArgs : public base::Cast<GenericPhiArgs> {
 template <typename T>
 struct PhiArgs : GenericPhiArgs {
   ~PhiArgs() override {}
-  std::unordered_map<BlockIndex, RegisterOr<T>> map_;
+  absl::flat_hash_map<BlockIndex, RegisterOr<T>> map_;
 };
 
 struct Cmd {
@@ -201,7 +201,7 @@ struct Cmd {
 
   struct BlockSeqJump {
     RegisterOr<BlockSequence> bseq_;
-    std::unordered_map<ast::BlockLiteral const *, ir::BlockIndex> const
+    absl::flat_hash_map<ast::BlockLiteral const *, ir::BlockIndex> const
         *jump_table_;
   };
 
@@ -600,8 +600,8 @@ void ReturnJump();
 TypedRegister<type::Type const *> NewOpaqueType(::Module *mod);
 
 void BlockSeqJump(RegisterOr<BlockSequence> r,
-                  std::unordered_map<ast::BlockLiteral const *,
-                                     ir::BlockIndex> const *jump_table);
+                  absl::flat_hash_map<ast::BlockLiteral const *,
+                                      ir::BlockIndex> const *jump_table);
 
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                                   ast::BlockLiteral *lit);

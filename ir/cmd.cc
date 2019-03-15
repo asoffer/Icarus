@@ -615,7 +615,7 @@ TypedRegister<type::Type const *> NewOpaqueType(::Module *mod) {
 }
 
 void BlockSeqJump(RegisterOr<BlockSequence> bseq,
-                  std::unordered_map<ast::BlockLiteral const *,
+                  absl::flat_hash_map<ast::BlockLiteral const *,
                                      ir::BlockIndex> const *jump_table) {
   auto &cmd           = MakeCmd(nullptr, Op::BlockSeqJump);
   cmd.block_seq_jump_ = Cmd::BlockSeqJump{bseq, jump_table};

@@ -149,7 +149,7 @@ void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
 }
 
 void Struct::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   modules->insert(defining_module());
 }
 

@@ -2,8 +2,9 @@
 #define ICARUS_IMPORT_GRAPH_H
 
 #include <filesystem>
-#include <unordered_set>
-#include <unordered_map>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 
 struct ImportGraph {
  public:
@@ -19,9 +20,9 @@ struct ImportGraph {
     }
   };
 
-  std::unordered_set<std::filesystem::path, PathHasher> all_paths_;
-  std::unordered_map<std::filesystem::path const *,
-                      std::unordered_set<std::filesystem::path const *>>
+  absl::flat_hash_set<std::filesystem::path, PathHasher> all_paths_;
+  absl::flat_hash_map<std::filesystem::path const *,
+                      absl::flat_hash_set<std::filesystem::path const *>>
       import_deps_;
 };
 

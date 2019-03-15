@@ -19,6 +19,8 @@ cc_target(
         "//base:owned_ptr",
         "//base:util",
         "//ir:cmd",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
         "//ir:arguments",

@@ -1,6 +1,5 @@
 #include "type/type.h"
 
-#include <unordered_map>
 #include "ast/declaration.h"
 #include "ast/struct_literal.h"
 #include "base/guarded.h"

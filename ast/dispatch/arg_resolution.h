@@ -155,7 +155,7 @@ struct ArgResolution {
 
   ir::Results Results(
       core::FnParams<type::Typed<Expression *>> *const_params,
-      std::unordered_map<Expression *, ir::Results const *> const &expr_map,
+      absl::flat_hash_map<Expression *, ir::Results const *> const &expr_map,
       Context *ctx) const;
 
   size_t num_positional_arguments() const {

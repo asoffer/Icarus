@@ -2,6 +2,7 @@
 
 #include <list>
 
+#include "absl/container/flat_hash_map.h"
 #include "ast/declaration.h"
 #include "ast/expression.h"
 #include "ast/function_literal.h"
@@ -31,8 +32,9 @@ std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
 static std::mutex mtx;
 static ImportGraph import_graph;
 static std::list<std::shared_future<Module *>> pending_module_futures;
-static std::unordered_map<std::filesystem::path const *,
-                          std::pair<std::shared_future<Module *> *, Module>>
+static absl::flat_hash_map<
+    std::filesystem::path const *,
+    std::pair<std::shared_future<Module *> *, std::unique_ptr<Module>>>
     modules;
 
 std::atomic<bool> found_errors = false;
@@ -225,9 +227,10 @@ PendingModule Module::Schedule(error::Log *log,
 
   auto & [ fut, mod ] = modules[src_ptr];
   ASSERT(fut == nullptr);
-  mod.path_ = src_ptr;
+  mod = std::make_unique<Module>();
+  mod->path_ = src_ptr;
   fut       = &pending_module_futures.emplace_back(
-      std::async(std::launch::async, CompileModule, &mod));
+      std::async(std::launch::async, CompileModule, mod.get()));
   return PendingModule{fut};
 }
 

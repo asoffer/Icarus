@@ -1,23 +1,23 @@
 #ifndef ICARUS_CORE_FN_ARGS_H
 #define ICARUS_CORE_FN_ARGS_H
 
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "base/stringify.h"
 
 namespace core {
 template <typename T>
 struct FnArgs {
   FnArgs() = default;
-  FnArgs(std::vector<T> pos, std::unordered_map<std::string, T> named)
+  FnArgs(std::vector<T> pos, absl::flat_hash_map<std::string, T> named)
       : pos_(std::move(pos)), named_(std::move(named)) {}
 
   std::vector<T> const &pos() const & { return pos_; }
   std::vector<T> &&pos() && { return pos_; }
 
-  std::unordered_map<std::string, T> const &named() const & { return named_; }
-  std::unordered_map<std::string, T> &&named() && { return named_; }
+  absl::flat_hash_map<std::string, T> const &named() const & { return named_; }
+  absl::flat_hash_map<std::string, T> &&named() && { return named_; }
 
   constexpr size_t num_pos() const { return pos_.size(); }
   constexpr size_t num_named() const { return named_.size(); }
@@ -77,7 +77,7 @@ struct FnArgs {
     using out_t = decltype(fn(pos_[0]));
     std::vector<out_t> pos;
     pos.reserve(pos_.size());
-    std::unordered_map<std::string, out_t> named;
+    absl::flat_hash_map<std::string, out_t> named;
     for (auto &&val : pos_) { pos.push_back(fn(val)); }
     for (auto &&[key, val] : named_) { named.emplace(key, fn(val)); }
     return FnArgs<out_t>(std::move(pos), std::move(named));
@@ -87,7 +87,7 @@ struct FnArgs {
 
  private:
   std::vector<T> pos_;
-  std::unordered_map<std::string, T> named_;
+  absl::flat_hash_map<std::string, T> named_;
 };
 
 }  // namespace core

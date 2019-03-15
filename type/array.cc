@@ -44,11 +44,7 @@ static void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
       [&](auto &&phi_index, auto &&entry_val, auto &&new_phi) {
         using T = std::decay_t<decltype(entry_val.val_)>;
         ir::MakePhi<T>(phi_index,
-                       std::unordered_map<ir::BlockIndex, ir::RegisterOr<T>>{
-                           std::pair<ir::BlockIndex, ir::RegisterOr<T>>{
-                               entry_block, entry_val},
-                           std::pair<ir::BlockIndex, ir::RegisterOr<T>>{
-                               loop_body, new_phi}});
+                       {{entry_block, entry_val}, {loop_body, new_phi}});
       },
       std::move(phi_indices), std::move(entry_vals), std::move(new_phis));
 
@@ -57,11 +53,11 @@ static void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
 
 namespace type {
 
-static base::guarded<std::unordered_map<
-    const Array *, std::unordered_map<const Array *, ir::Func *>>>
+static base::guarded<absl::flat_hash_map<
+    Array const *, absl::flat_hash_map<Array const *, ir::Func *>>>
     eq_funcs;
-static base::guarded<std::unordered_map<
-    const Array *, std::unordered_map<const Array *, ir::Func *>>>
+static base::guarded<absl::flat_hash_map<
+    Array const *, absl::flat_hash_map<Array const *, ir::Func *>>>
     ne_funcs;
 // TODO this should early exit if the types aren't equal.
 ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
@@ -142,18 +138,15 @@ ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
 }
 
 static base::guarded<
-    std::unordered_map<Type const *, std::unordered_map<size_t, Array>>>
+    absl::flat_hash_map<Type const *, absl::flat_hash_map<size_t, Array *>>>
     fixed_arrays_;
-const Array *Arr(Type const *t, size_t len) {
+Array const *Arr(Type const *t, size_t len) {
   auto handle = fixed_arrays_.lock();
-  return &(*handle)[t]
-              .emplace(std::piecewise_construct, std::forward_as_tuple(len),
-                       std::forward_as_tuple(t, len))
-              .first->second;
+  return (*handle)[t].emplace(len, new Array(t, len)).first->second;
 }
 
 void Array::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   data_type->defining_modules(modules);
 }
 

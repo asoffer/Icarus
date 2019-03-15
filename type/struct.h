@@ -4,12 +4,13 @@
 #include <mutex>
 #include <string>
 #include <string_view>
-
-#include "ast/hashtag.h"
 #include <vector>
+
+#include "absl/container/flat_hash_map.h"
+#include "ast/hashtag.h"
 #include "base/lazy.h"
-#include "ir/any_func.h"
 #include "core/scope.h"
+#include "ir/any_func.h"
 #include "type/type.h"
 
 namespace ast {
@@ -69,7 +70,7 @@ struct Struct : public Type {
 
   std::vector<ast::Hashtag> hashtags_;
   std::vector<Field> fields_;
-  std::unordered_map<std::string, size_t> field_indices_;
+  absl::flat_hash_map<std::string, size_t> field_indices_;
 };
 
 }  // namespace type

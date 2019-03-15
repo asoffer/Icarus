@@ -80,6 +80,7 @@ cc_target(
         "//ast:hashtag",
         "//base:untyped_buffer",
         "//misc:context",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
         ":func",
@@ -112,6 +113,7 @@ cc_target(
     impl_deps = [
         "//base:guarded",
         "//type:type",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -123,6 +125,8 @@ cc_target(
         "//core:fn_params",
         "//ir:basic_block",
         "//property:property_map",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
         ":arguments",
@@ -147,6 +151,7 @@ cc_target(
     intf_deps = [
         ":func",
         ":val",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
         "//type:enum",
@@ -205,5 +210,6 @@ cc_target(
         "//type:function",
         "//type:pointer",
         "//type:struct",
+        "@com_google_absl//absl/container:node_hash_set",
     ],
 )

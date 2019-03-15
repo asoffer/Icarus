@@ -3,7 +3,6 @@
 #include <mutex>
 #include <utility>
 
-#include <unordered_map>
 #include "base/guarded.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
@@ -18,7 +17,7 @@
 namespace type {
 
 void Interface::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   modules->insert(defining_module());
 }
 

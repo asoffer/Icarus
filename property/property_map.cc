@@ -97,7 +97,7 @@ PropertyMap PropertyMap::AssumingReturnsTrue() const {
   ASSERT(fn_->type_->output.at(0) == type::Bool);
   PropertyMap result = *this;
 
-  std::unordered_set<Entry> stale_up;
+  absl::flat_hash_set<Entry> stale_up;
   for (auto const &block : fn_->blocks_) {
     for (auto const &cmd : block.cmds_) {
       if (cmd.op_code_ != ir::Op::SetRetBool) { continue; }
@@ -127,7 +127,7 @@ PropertyMap::PropertyMap(ir::Func *fn) : fn_(fn) {
     });
   }
 
-  std::unordered_set<Entry> stale_down;
+  absl::flat_hash_set<Entry> stale_down;
   auto *entry_block = &fn_->block(fn_->entry());
   ForEachArgument(*fn_, [&stale_down, entry_block](ir::Register arg) {
     stale_down.emplace(entry_block, ir::Register(0));
@@ -141,7 +141,7 @@ PropertyMap::PropertyMap(ir::Func *fn) : fn_(fn) {
 
 // TODO no longer need to pass stale in as ptr.
 void PropertyMap::MarkReferencesStale(Entry const &e,
-                                      std::unordered_set<Entry> *stale_down) {
+                                      absl::flat_hash_set<Entry> *stale_down) {
   for (ir::Register reg : fn_->references_.at(e.reg_)) {
     stale_down->emplace(e.viewing_block_, reg);
   }
@@ -216,8 +216,8 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
 }
 
 void PropertyMap::UpdateEntryFromBelow(Entry const &e,
-                                       std::unordered_set<Entry> *stale_up,
-                                       std::unordered_set<Entry> *stale_down) {
+                                       absl::flat_hash_set<Entry> *stale_up,
+                                       absl::flat_hash_set<Entry> *stale_down) {
   if (debug::validation) { Debug(*this); }
 
   auto *cmd_ptr = fn_->Command(e.reg_);
@@ -309,8 +309,8 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
   }
 }
 
-void PropertyMap::refresh(std::unordered_set<Entry> stale_up,
-                          std::unordered_set<Entry> stale_down) {
+void PropertyMap::refresh(absl::flat_hash_set<Entry> stale_up,
+                          absl::flat_hash_set<Entry> stale_down) {
   do {
     until_empty(&stale_down, [this, &stale_down](Entry const &e) {
       if (this->UpdateEntryFromAbove(e)) {
@@ -367,7 +367,7 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
   // TODO offset < args.args_.size() should work as the condition but it isn't,
   // so figure out why.
 
-  std::unordered_set<Entry> stale_down;
+  absl::flat_hash_set<Entry> stale_down;
   std::vector<type::Type const *> const &ins = [&] {
     if (args.type_->is<type::Function>()) {
       return args.type_->as<type::Function>().input;

@@ -1,9 +1,8 @@
 #ifndef ICARUS_PROPERTY_PROPERTY_MAP_H
 #define ICARUS_PROPERTY_PROPERTY_MAP_H
 
-#include <unordered_set>
-
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "base/hash.h"
 #include "base/owned_ptr.h"
 #include "base/util.h"
@@ -21,7 +20,7 @@ namespace prop {
 struct FnStateView {
   FnStateView(ir::Func *fn);
 
-  std::unordered_map<ir::Register, PropertySet> view_;
+  absl::flat_hash_map<ir::Register, PropertySet> view_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
@@ -88,19 +87,20 @@ struct PropertyMap {
   }
 
   ir::Func *fn_ = nullptr;
-  std::unordered_map<const ir::BasicBlock *, FnStateView> view_;
+  absl::flat_hash_map<const ir::BasicBlock *, FnStateView> view_;
 
  private:
-  void refresh(std::unordered_set<Entry> stale_up,
-               std::unordered_set<Entry> stale_down);
+  void refresh(absl::flat_hash_set<Entry> stale_up,
+               absl::flat_hash_set<Entry> stale_down);
 
   PropertyMap AssumingReturnsTrue() const;
 
   void MarkReferencesStale(Entry const &e,
-                           std::unordered_set<Entry> *stale_down);
+                           absl::flat_hash_set<Entry> *stale_down);
   bool UpdateEntryFromAbove(Entry const &e);
-  void UpdateEntryFromBelow(Entry const &e, std::unordered_set<Entry> *stale_up,
-                            std::unordered_set<Entry> *stale_down);
+  void UpdateEntryFromBelow(Entry const &e,
+                            absl::flat_hash_set<Entry> *stale_up,
+                            absl::flat_hash_set<Entry> *stale_down);
 };
 
 }  // namespace prop

@@ -24,7 +24,6 @@ toolchain {
   compiler_flag: '-Wextra'
   compiler_flag: '-Werror'
   compiler_flag: '-Wuninitialized'
-  compiler_flag: '-Wpedantic'
   compiler_flag: '-Wno-unused-parameter'
   compiler_flag: '-Wno-unused-variable'
   compiler_flag: '-Wno-unused-but-set-parameter'

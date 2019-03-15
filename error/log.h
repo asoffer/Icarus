@@ -3,11 +3,11 @@
 
 #include <filesystem>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
-#include "core/fn_args.h"
+#include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
+#include "core/fn_args.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/text_span.h"
 
@@ -88,7 +88,7 @@ struct Log {
 
   void NoCallMatch(TextSpan const &span,
                    std::vector<std::string> const &generic_failure_reasons,
-                   std::unordered_map<ast::Expression const *,
+                   absl::flat_hash_map<ast::Expression const *,
                                        std::string> const &failure_reasons);
   void UninferrableType(InferenceFailureReason reason, TextSpan const &span);
 
@@ -114,9 +114,9 @@ struct Log {
 
   // TODO per source file splitting? Can't do this until you figure out the
   // module/multi-source-file story.
-  std::unordered_map<std::string, std::vector<ast::Identifier *>>
+  absl::flat_hash_map<std::string, std::vector<ast::Identifier *>>
       undeclared_ids_;
-  std::unordered_map<ast::Declaration *, std::vector<ast::Identifier *>>
+  absl::flat_hash_map<ast::Declaration *, std::vector<ast::Identifier *>>
       out_of_order_decls_;
 
   std::vector<std::vector<ast::Identifier const *>> cyc_dep_vecs_;

@@ -28,12 +28,19 @@ cc_target(
 
 cc_target(
     name = "import_graph",
+    intf_deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
 )
 
 cc_lib(
     name = "inference_state",
     hdrs = ["inference_state.h"],
-    deps = ["//base:debug"],
+    deps = [
+        "//base:debug",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
 )
 
 cc_target(
@@ -46,6 +53,9 @@ cc_target(
         "//core:fn_params",
         "//core:scope",
         "//error:log",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/container:node_hash_map",
     ],
     impl_deps = [
         ":import_graph",

@@ -2,8 +2,9 @@
 #define ICARUS_BASE_GRAPH_H
 
 #include <queue>
-#include <unordered_map>
-#include <unordered_set>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 
 namespace base {
 
@@ -16,7 +17,7 @@ struct Graph {
     adj_lists_[from].insert(to);
   }
 
-  std::unordered_set<T> const& at(T const& t) const { return adj_lists_.at(t); }
+  absl::flat_hash_set<T> const& at(T const& t) const { return adj_lists_.at(t); }
 
   template <typename Fn>
   void topologically(Fn&& fn) const {
@@ -47,8 +48,8 @@ struct Graph {
     }
   }
 
-  std::unordered_set<T> sink_deps(T const& t) {
-    std::unordered_set<T> results;
+  absl::flat_hash_set<T> sink_deps(T const& t) {
+    absl::flat_hash_set<T> results;
     insert_sink_deps(t, &results);
     return results;
   }
@@ -56,7 +57,7 @@ struct Graph {
   size_t num_nodes() const { return adj_lists_.size(); }
 
  private:
-  void insert_sink_deps(T const& t, std::unordered_set<T>* results) {
+  void insert_sink_deps(T const& t, absl::flat_hash_set<T>* results) {
     for (auto const& n : adj_lists_.at(t)) {
       if (adj_lists_.at(n).empty()) {
         results->insert(n);
@@ -68,7 +69,7 @@ struct Graph {
 
   // adjacency lists will be typically short, so probably better to use a flat
   // map structure.
-  std::unordered_map<T, std::unordered_set<T>> adj_lists_;
+  absl::flat_hash_map<T, absl::flat_hash_set<T>> adj_lists_;
 };
 
 }  // namespace base

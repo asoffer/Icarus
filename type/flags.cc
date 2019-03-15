@@ -1,7 +1,5 @@
 #include "type/flags.h"
 
-#include <unordered_set>
-
 #include "ir/addr.h"
 #include "ir/cmd.h"
 #include "ir/flags_val.h"
@@ -18,8 +16,8 @@ void Flags::EmitInit(ir::Register id_reg, Context *) const {
 }
 
 Flags::Flags(
-    std::unordered_map<std::string, std::optional<int32_t>> const &members) {
-  std::unordered_set<int32_t> taken;
+    absl::flat_hash_map<std::string, std::optional<int32_t>> const &members) {
+  absl::flat_hash_set<int32_t> taken;
   for (auto const &[s, v] : members) {
     if (v.has_value()) {
       vals_.emplace(s, ir::FlagsVal(size_t{1} << *v));
@@ -70,7 +68,7 @@ void Flags::EmitMoveAssign(Type const *from_type, ir::Results const &from,
 }
 
 void Flags::defining_modules(
-    std::unordered_set<::Module const *> *modules) const {
+    absl::flat_hash_set<::Module const *> *modules) const {
   NOT_YET();
 }
 

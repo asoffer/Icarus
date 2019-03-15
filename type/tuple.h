@@ -26,7 +26,7 @@ struct Tuple : public Type {
   virtual Cmp Comparator() const { UNREACHABLE(); }
 
   virtual void defining_modules(
-      std::unordered_set<::Module const *> *modules) const;
+      absl::flat_hash_set<::Module const *> *modules) const;
 
   layout::Bytes offset(size_t n, layout::Arch const &arch) const;
   size_t size() const { return entries_.size(); }
