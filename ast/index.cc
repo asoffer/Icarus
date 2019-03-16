@@ -39,15 +39,15 @@ VerifyResult Index::VerifyType(Context *ctx) {
   }
 
   if (lhs_result.type_ == type::ByteView) {
-    return VerifyResult(ctx->set_type(this, type::Nat8),
-                        rhs_result.const_);  // TODO is nat8 what I want?
+    // TODO is nat8 what I want?
+    return ctx->set_result(this, VerifyResult(type::Nat8, rhs_result.const_));
   } else if (auto *lhs_array_type = lhs_result.type_->if_as<type::Array>()) {
-    return VerifyResult(ctx->set_type(this, lhs_array_type->data_type),
-                        rhs_result.const_);
+    return ctx->set_result(
+        this, VerifyResult(lhs_array_type->data_type, rhs_result.const_));
   } else if (auto *lhs_buf_type =
                  lhs_result.type_->if_as<type::BufferPointer>()) {
-    return VerifyResult(ctx->set_type(this, lhs_buf_type->pointee),
-                        rhs_result.const_);
+    return ctx->set_result(
+        this, VerifyResult(lhs_buf_type->pointee, rhs_result.const_));
   } else if (auto *tup = lhs_result.type_->if_as<type::Tuple>()) {
     if (!rhs_result.const_) {
       NOT_YET("log an error");
@@ -67,11 +67,8 @@ VerifyResult Index::VerifyType(Context *ctx) {
       return VerifyResult::Error();
     }
 
-    VerifyResult result;
-    result.type_  = tup->entries_.at(index);
-    result.const_ = lhs_result.const_;
-    ctx->set_type(this, result.type_);
-    return result;
+    return ctx->set_result(
+        this, VerifyResult(tup->entries_.at(index), lhs_result.const_));
 
   } else {
     ctx->error_log()->InvalidIndexing(span, lhs_result.type_);

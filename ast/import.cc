@@ -41,6 +41,6 @@ VerifyResult Import::VerifyType(Context *ctx) {
           backend::EvaluateAs<std::string_view>(operand_.get(), ctx)},
       *ctx->mod_->path_);
   if (!module_.valid()) { return VerifyResult::Error(); }
-  return VerifyResult::Constant(ctx->set_type(this, type::Module));
+  return ctx->set_result(this, VerifyResult::Constant(type::Module));
 }
 }  // namespace ast

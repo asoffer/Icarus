@@ -61,12 +61,12 @@ VerifyResult Access::VerifyType(Context *ctx) {
       if (!e->Get(member_name).has_value()) {
         ctx->error_log()->MissingMember(span, member_name, evaled_type);
       }
-      return VerifyResult::Constant(ctx->set_type(this, evaled_type));
+      return ctx->set_result(this,VerifyResult::Constant( evaled_type));
     } else if (auto *f = evaled_type->if_as<type::Flags>()) {
       if (!f->Get(member_name).has_value()) {
         ctx->error_log()->MissingMember(span, member_name, evaled_type);
       }
-      return VerifyResult::Constant(ctx->set_type(this, evaled_type));
+      return ctx->set_result(this,VerifyResult::Constant( evaled_type));
     } else {
       // TODO what about structs? Can structs have constant members we're
       // allowed to access?
@@ -88,8 +88,7 @@ VerifyResult Access::VerifyType(Context *ctx) {
       ctx->error_log()->NonExportedMember(span, member_name, s);
     }
 
-    return VerifyResult(ctx->set_type(this, member->type),
-                        operand_result.const_);
+    return ctx->set_result(this, VerifyResult(member->type, operand_result.const_));
 
   } else if (base_type == type::Module) {
     if (!operand_result.const_) {
@@ -105,7 +104,7 @@ VerifyResult Access::VerifyType(Context *ctx) {
     }
 
     // TODO is this right?
-    return VerifyResult::Constant(ctx->set_type(this, t));
+    return ctx->set_result(this, VerifyResult::Constant(t));
   } else {
     ctx->error_log()->MissingMember(span, member_name, base_type);
     return VerifyResult::Error();

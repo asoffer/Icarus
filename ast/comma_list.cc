@@ -60,7 +60,8 @@ VerifyResult CommaList::VerifyType(Context *ctx) {
     ts.push_back(r.type_);
     is_const &= r.const_;
   }
-  return VerifyResult(ctx->set_type(this, type::Tup(std::move(ts))), is_const);
+  return ctx->set_result(this,
+                         VerifyResult(type::Tup(std::move(ts)), is_const));
 }
 
 void CommaList::ExtractJumps(JumpExprs *rets) const {

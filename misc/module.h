@@ -15,7 +15,6 @@
 #include "absl/container/node_hash_map.h"
 #include "ast/bound_constants.h"
 #include "ast/dispatch/table.h"
-#include "ast/node_lookup.h"
 #include "ast/statements.h"
 #include "core/fn_params.h"
 #include "core/scope.h"
@@ -92,8 +91,6 @@ struct Module {
 
   std::vector<std::unique_ptr<ir::Func>> fns_;
 
-  type::Type const *set_type(ast::BoundConstants const &bc,
-                             ast::Expression const *expr, type::Type const *);
   type::Type const *type_of(ast::BoundConstants const &bc,
                             ast::Expression const *expr) const;
   ir::Register addr(ast::BoundConstants const &bc,
@@ -111,12 +108,14 @@ struct Module {
       generic_struct_cache_;
 
   struct DependentData {
-    ast::NodeLookup<type::Type const *> types_;
     absl::flat_hash_map<ast::Declaration *, ir::Register> addr_;
 
     absl::node_hash_map<ast::Expression const *, ir::Func *> ir_funcs_;
 
-    absl::flat_hash_map<ast::Declaration const *, ast::VerifyResult>
+    // TODO future optimization: the bool determining if it's const is not
+    // dependent and can therefore be stored more efficiently (though querying
+    // for both simultaneously would be more expensive I guess.
+    absl::flat_hash_map<ast::Expression const *, ast::VerifyResult>
         verify_results_;
 
     absl::flat_hash_map<ast::Expression const *, ast::DispatchTable>

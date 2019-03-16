@@ -180,7 +180,7 @@ VerifyResult ChainOp::VerifyType(Context *ctx) {
     } else if (!results.back().const_) {
       NOT_YET("log an error: non const block");
     } else {
-      return VerifyResult::Constant(ctx->set_type(this, last.type_));
+      return ctx->set_result(this, VerifyResult::Constant(last.type_));
     }
   }
 not_blocks:
@@ -216,7 +216,7 @@ not_blocks:
       }
 
       if (failed) { return VerifyResult::Error(); }
-      return VerifyResult(ctx->set_type(this, first_expr_type), is_const);
+      return ctx->set_result(this, VerifyResult(first_expr_type, is_const));
     } break;
     default: {
       bool is_const = results[0].const_;
@@ -294,7 +294,7 @@ not_blocks:
         }
       }
 
-      return VerifyResult(ctx->set_type(this, type::Bool), is_const);
+      return ctx->set_result(this, VerifyResult(type::Bool, is_const));
     }
   }
 }

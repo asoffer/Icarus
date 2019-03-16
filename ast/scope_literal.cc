@@ -91,7 +91,7 @@ VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
     }
     if (error) { return VerifyResult::Error(); }
   }
-  return VerifyResult::Constant(ctx->set_type(this, type::Scope));
+  return ctx->set_result(this, VerifyResult::Constant(type::Scope));
 }
 
 void ScopeLiteral::ExtractJumps(JumpExprs *rets) const {

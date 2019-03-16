@@ -39,7 +39,7 @@ VerifyResult Interface::VerifyType(Context *ctx) {
     decl.VerifyType(ctx);
     if (decl.init_val != nullptr) { NOT_YET(); }
   }
-  return VerifyResult::Constant(ctx->set_type(this, type::Intf));
+  return ctx->set_result(this, VerifyResult::Constant(type::Intf));
 }
 
 void Interface::ExtractJumps(JumpExprs *rets) const {

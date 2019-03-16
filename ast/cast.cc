@@ -39,9 +39,8 @@ VerifyResult Cast::VerifyType(Context *ctx) {
     ctx->error_log()->CastToNonConstantType(span);
     return VerifyResult::Error();
   }
-  auto *t = ctx->set_type(
-      this, ASSERT_NOT_NULL(
-                backend::EvaluateAs<type::Type const *>(type_.get(), ctx)));
+  auto *t = ASSERT_NOT_NULL(
+      backend::EvaluateAs<type::Type const *>(type_.get(), ctx));
   if (t->is<type::Struct>()) {
     OverloadSet os(scope_, "as", ctx);
     os.add_adl("as", t);
@@ -52,7 +51,7 @@ VerifyResult Cast::VerifyType(Context *ctx) {
         this, core::FnArgs<Expression *>({expr_.get()}, {}), os, ctx);
     if (ret_type == nullptr) { return VerifyResult::Error(); }
     ASSERT(t == ret_type);
-    return VerifyResult(ret_type, expr_result.const_);
+    return ctx->set_result(this, VerifyResult(ret_type, expr_result.const_));
 
   } else {
     if (!type::CanCast(expr_result.type_, t)) {

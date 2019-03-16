@@ -26,7 +26,7 @@ void BlockNode::DependentDecls(base::Graph<Declaration *> *g,
 
 VerifyResult BlockNode::VerifyType(Context *ctx) {
   stmts_.VerifyType(ctx);
-  return VerifyResult::Constant(ctx->set_type(this, type::Blk()));
+  return ctx->set_result(this, VerifyResult::Constant(type::Blk()));
 }
 void BlockNode::ExtractJumps(JumpExprs *rets) const {
   stmts_.ExtractJumps(rets);

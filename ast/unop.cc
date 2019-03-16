@@ -1,9 +1,9 @@
 #include "ast/unop.h"
 
-#include "core/fn_args.h"
 #include "ast/overload_set.h"
 #include "ast/terminal.h"
 #include "backend/eval.h"
+#include "core/fn_args.h"
 #include "ir/components.h"
 #include "ir/func.h"
 #include "misc/context.h"
@@ -42,15 +42,14 @@ void Unop::assign_scope(core::Scope *scope) {
   operand->assign_scope(scope);
 }
 
-void Unop::DependentDecls(base::Graph<Declaration *> *g,
-                            Declaration *d) const {
+void Unop::DependentDecls(base::Graph<Declaration *> *g, Declaration *d) const {
   operand->DependentDecls(g, d);
 }
 
 bool Unop::InferType(type::Type const *t, InferenceState *state) const {
   // TODO consider the possibility for overloadable operators to be generic
   // struct and therefore not always returning false.
-  switch  (op) {
+  switch (op) {
     case frontend::Operator::Mul: {
       // TODO will this catch buffer pointers too and should it?
       auto *p = t->if_as<type::Pointer>();
@@ -88,15 +87,15 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         NOT_YET("log an error. not copyable");
       }
       // TODO Are copies always consts?
-      return VerifyResult(ctx->set_type(this, operand_type), result.const_);
+      return ctx->set_result(this, VerifyResult(operand_type, result.const_));
     case frontend::Operator::Move:
       if (!operand_type->IsMovable()) { NOT_YET("log an error. not movable"); }
       // TODO Are copies always consts?
-      return VerifyResult(ctx->set_type(this, operand_type), result.const_);
+      return ctx->set_result(this, VerifyResult(operand_type, result.const_));
     case frontend::Operator::BufPtr:
-      return VerifyResult(ctx->set_type(this, type::Type_), result.const_);
+      return ctx->set_result(this, VerifyResult(type::Type_, result.const_));
     case frontend::Operator::TypeOf:
-      return VerifyResult(ctx->set_type(this, type::Type_), result.const_);
+      return ctx->set_result(this, VerifyResult(type::Type_, result.const_));
     case frontend::Operator::Eval:
       if (!result.const_) {
         // TODO here you could return a correct type and just have there
@@ -105,18 +104,18 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         ctx->error_log()->NonConstantEvaluation(operand->span);
         return VerifyResult::Error();
       } else {
-        return VerifyResult(ctx->set_type(this, operand_type), result.const_);
+        return ctx->set_result(this, VerifyResult(operand_type, result.const_));
       }
     case frontend::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
         ctx->error_log()->WhichNonVariant(operand_type, span);
       }
-      return VerifyResult(ctx->set_type(this, type::Type_), result.const_);
+      return ctx->set_result(this, VerifyResult(type::Type_, result.const_));
     case frontend::Operator::At:
       if (operand_type->is<type::Pointer>()) {
-        return VerifyResult(
-            ctx->set_type(this, operand_type->as<type::Pointer>().pointee),
-            result.const_);
+        return ctx->set_result(
+            this, VerifyResult(operand_type->as<type::Pointer>().pointee,
+                               result.const_));
       } else {
         ctx->error_log()->DereferencingNonPointer(operand_type, span);
         return VerifyResult::Error();
@@ -125,18 +124,18 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       // TODO  does it make sense to take the address of a constant? I think it
       // has to but it also has to have some special meaning. Things we take the
       // address of in run-time code need to be made available at run-time.
-      return VerifyResult(ctx->set_type(this, type::Ptr(operand_type)),
-                          result.const_);
+      return ctx->set_result(
+          this, VerifyResult(type::Ptr(operand_type), result.const_));
     case frontend::Operator::Mul:
       if (operand_type != type::Type_) {
         NOT_YET("log an error, ", operand_type, this);
         return VerifyResult::Error();
       } else {
-        return VerifyResult(ctx->set_type(this, type::Type_), result.const_);
+        return ctx->set_result(this, VerifyResult(type::Type_, result.const_));
       }
     case frontend::Operator::Sub:
       if (type::IsNumeric(operand_type)) {
-        return VerifyResult(ctx->set_type(this, operand_type), result.const_);
+        return ctx->set_result(this, VerifyResult(operand_type, result.const_));
       } else if (operand_type->is<type::Struct>()) {
         OverloadSet os(scope_, "-", ctx);
         os.add_adl("-", operand_type);
@@ -144,7 +143,7 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         auto *ret_type = DispatchTable::MakeOrLogError(
             this, core::FnArgs<Expression *>({operand.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
-        return VerifyResult(ctx->set_type(this, ret_type), result.const_);
+        return ctx->set_result(this, VerifyResult(ret_type, result.const_));
       }
       NOT_YET();
       return VerifyResult::Error();
@@ -155,14 +154,14 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       //
       if (operand_type->is<type::Tuple>()) {
         // TODO there should be a way to avoid copying over any of entire type
-        return VerifyResult(ctx->set_type(this, operand_type), result.const_);
+        return ctx->set_result(this, VerifyResult(operand_type, result.const_));
       } else {
         NOT_YET();  // Log an error. can't expand a non-tuple.
       }
     case frontend::Operator::Not:
       if (operand_type == type::Bool || operand_type->is<type::Enum>() ||
           operand_type->is<type::Flags>()) {
-        return VerifyResult(ctx->set_type(this, operand_type), result.const_);
+        return ctx->set_result(this, VerifyResult(operand_type, result.const_));
       }
       if (operand_type->is<type::Struct>()) {
         OverloadSet os(scope_, "!", ctx);
@@ -172,7 +171,7 @@ VerifyResult Unop::VerifyType(Context *ctx) {
             this, core::FnArgs<Expression *>({operand.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         if (ret_type->is<type::Tuple>()) { NOT_YET(); }
-        return VerifyResult(ctx->set_type(this, ret_type), result.const_);
+        return ctx->set_result(this, VerifyResult(ret_type, result.const_));
       } else {
         NOT_YET("log an error");
         return VerifyResult::Error();
@@ -182,13 +181,13 @@ VerifyResult Unop::VerifyType(Context *ctx) {
         ctx->error_log()->PreconditionNeedsBool(operand->span, operand_type);
       }
       if (!result.const_) { NOT_YET(); }
-      return VerifyResult::Constant(ctx->set_type(this, type::Void()));
+      return ctx->set_result(this,VerifyResult::Constant( type::Void()));
     case frontend::Operator::Ensure:
       if (operand_type != type::Bool) {
         ctx->error_log()->PostconditionNeedsBool(operand->span, operand_type);
       }
       if (!result.const_) { NOT_YET(); }
-      return VerifyResult::Constant(ctx->set_type(this, type::Void()));
+      return ctx->set_result(this,VerifyResult::Constant( type::Void()));
     default: UNREACHABLE(*this);
   }
 }
@@ -269,8 +268,8 @@ ir::Results Unop::EmitIr(Context *ctx) {
       return ir::Results{};
     } break;
     case frontend::Operator::Expand: {
-      ir::Results tuple_val         = operand->EmitIr(ctx);
-      ir::Register tuple_reg        = tuple_val.get<ir::Reg>(0);
+      ir::Results tuple_val  = operand->EmitIr(ctx);
+      ir::Register tuple_reg = tuple_val.get<ir::Reg>(0);
       type::Tuple const *tuple_type =
           &ctx->type_of(operand.get())->as<type::Tuple>();
       ir::Results results;

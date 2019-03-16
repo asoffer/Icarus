@@ -75,7 +75,7 @@ VerifyResult Switch::VerifyType(Context *ctx) {
   if (std::all_of(types.begin(), types.end(),
                   [&](type::Type const *t) { return t == some_type; })) {
     // TODO this might be a constant.
-    return VerifyResult(ctx->set_type(this, some_type), is_const);
+    return ctx->set_result(this, VerifyResult(some_type, is_const));
   } else {
     NOT_YET("handle type error");
     return VerifyResult::Error();

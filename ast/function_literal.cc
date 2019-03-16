@@ -84,7 +84,7 @@ void FunctionLiteral::DependentDecls(base::Graph<Declaration *> *g,
 VerifyResult FunctionLiteral::VerifyType(Context *ctx) {
   for (auto const &p : inputs_) {
     if (p.value->const_ || !param_dep_graph_.at(p.value.get()).empty()) {
-      return VerifyResult::Constant(ctx->set_type(this, type::Generic));
+      return ctx->set_result(this, VerifyResult::Constant(type::Generic));
     }
   }
 
@@ -143,9 +143,9 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
           this->VerifyBody(&ctx);
         });
 
-    return VerifyResult::Constant(ctx->set_type(
-        this,
-        type::Func(std::move(input_type_vec), std::move(output_type_vec))));
+    return ctx->set_result(
+        this, VerifyResult::Constant(type::Func(std::move(input_type_vec),
+                                                std::move(output_type_vec))));
   } else {
     return VerifyBody(ctx);
   }
@@ -178,7 +178,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
 
     if (types.size() > 1) { NOT_YET("log an error"); }
     auto f = type::Func(std::move(input_type_vec), std::move(output_type_vec));
-    return VerifyResult::Constant(ctx->set_type(this, f));
+    return ctx->set_result(this, VerifyResult::Constant(f));
 
   } else {
     auto *this_type  = ctx->type_of(this);

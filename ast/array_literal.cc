@@ -31,7 +31,7 @@ void ArrayLiteral::DependentDecls(base::Graph<Declaration *> *g,
 
 VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
   if (cl_.exprs_.empty()) {
-    return VerifyResult::Constant(ctx->set_type(this, type::EmptyArray));
+    return ctx->set_result(this, VerifyResult::Constant(type::EmptyArray));
   }
 
   ASSIGN_OR(return VerifyResult::Error(), auto expr_results,
@@ -46,8 +46,7 @@ VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
       return VerifyResult::Error();
     }
   }
-  ctx->set_type(this, result.type_);
-  return result;
+  return ctx->set_result(this, result);
 }
 
 ir::Results ArrayLiteral::EmitIr(Context *ctx) {

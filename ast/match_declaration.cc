@@ -13,7 +13,7 @@ VerifyResult MatchDeclaration::VerifyType(Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), [[maybe_unused]] auto result,
                    type_expr->VerifyType(ctx));
   // TODO is this always constant? does that make sense?
-  return VerifyResult::Constant(ctx->set_type(this, type::Type_));
+  return ctx->set_result(this, VerifyResult::Constant(type::Type_));
 }
 
 bool MatchDeclaration::InferType(type::Type const *t,

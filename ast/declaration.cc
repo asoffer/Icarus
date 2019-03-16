@@ -187,10 +187,9 @@ VerifyResult VerifySpecialFunctions(Declaration const *decl,
       NOT_YET("log an error. (move) must be a function.");
     }
   }
-  if (error) { ctx->set_verification_attempt(decl, VerifyResult::Error()); }
+  if (error) { ctx->set_result(decl, VerifyResult::Error()); }
 
-  return ctx->set_verification_attempt(decl,
-                                       VerifyResult(decl_type, decl->const_));
+  return ctx->set_result(decl, VerifyResult(decl_type, decl->const_));
 }
 
 VerifyResult Declaration::VerifyType(Context *ctx) {
@@ -208,7 +207,9 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
   // Declarations may have already been computed. Essentially the first time we
   // see an identifier (either a real identifier node, or a declaration, we need
   // to verify the type, but we only want to do this once.
-  if (auto *attempt = ctx->prior_verification_attempt(this)) { return *attempt; }
+  if (auto *attempt = ctx->prior_verification_attempt(this)) {
+    return *attempt;
+  }
 
   int dk = 0;
   if (IsInferred()) { dk = INFER; }
@@ -221,9 +222,8 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
   type::Type const *this_type = nullptr;
   switch (dk) {
     case 0 /* Default initailization */: {
-      ASSIGN_OR(
-          return ctx->set_verification_attempt(this, VerifyResult::Error()),
-                 auto type_expr_result, type_expr->VerifyType(ctx));
+      ASSIGN_OR(return ctx->set_result(this, VerifyResult::Error()),
+                       auto type_expr_result, type_expr->VerifyType(ctx));
       if (!type_expr_result.const_) {
         // Hmm, not necessarily an error. Example (not necessarily minimal):
         //
@@ -232,13 +232,15 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
         //   }
         //
         NOT_YET("log an error", this);
-        return ctx->set_verification_attempt(this, VerifyResult::Error());
+        return ctx->set_result(this, VerifyResult::Error());
       }
       auto *type_expr_type = type_expr_result.type_;
       if (type_expr_type == type::Type_) {
-        this_type = ctx->set_type(
-            this, ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
-                      type_expr.get(), ctx)));
+        this_type = ASSERT_NOT_NULL(
+            ctx->set_result(this, VerifyResult::Constant(
+                                      backend::EvaluateAs<type::Type const *>(
+                                          type_expr.get(), ctx)))
+                .type_);
 
         if (!is_fn_param_ && !this_type->IsDefaultInitializable()) {
           ctx->error_log()->TypeMustBeInitialized(span, this_type);
@@ -247,42 +249,45 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
       } else if (type_expr_type == type::Intf) {
         if (!type_expr_result.const_) {
           NOT_YET("log an error");
-          return ctx->set_verification_attempt(this, VerifyResult::Error());
+          return ctx->set_result(this, VerifyResult::Error());
         } else {
-          this_type = ctx->set_type(
-              this,
-              backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
+          this_type =
+              ctx->set_result(this, VerifyResult::Constant(
+                                        backend::EvaluateAs<type::Type const *>(
+                                            type_expr.get(), ctx)))
+                  .type_;
         }
       } else {
         ctx->error_log()->NotAType(type_expr->span, type_expr_type);
-        return ctx->set_verification_attempt(this, VerifyResult::Error());
+        return ctx->set_result(this, VerifyResult::Error());
       }
     } break;
     case INFER: UNREACHABLE(); break;
     case INFER | CUSTOM_INIT: {
-      ASSIGN_OR(
-          return ctx->set_verification_attempt(this, VerifyResult::Error()),
-                 auto init_val_result, init_val->VerifyType(ctx));
-      auto *init_val_type = init_val_result.type_;
-      auto reason         = Inferrable(init_val_type);
+      ASSIGN_OR(return ctx->set_result(this, VerifyResult::Error()),
+                       auto init_val_result, init_val->VerifyType(ctx));
+      auto reason = Inferrable(init_val_result.type_);
       if (reason != InferenceFailureReason::Inferrable) {
         ctx->error_log()->UninferrableType(reason, init_val->span);
-        return ctx->set_verification_attempt(this, VerifyResult::Error());
+        return ctx->set_result(this, VerifyResult::Error());
       }
-
-      this_type = ctx->set_type(this, init_val_type);
 
       // TODO initialization, not assignment.
-      if (!type::VerifyAssignment(span, this_type, this_type, ctx)) {
-        return ctx->set_verification_attempt(this, VerifyResult::Error());
+      if (!type::VerifyAssignment(span, init_val_result.type_,
+                                  init_val_result.type_, ctx)) {
+        return ctx->set_result(this, VerifyResult::Error());
       }
+
+      this_type =
+          ctx->set_result(this, VerifyResult(init_val_result.type_, const_))
+              .type_;
 
     } break;
     case INFER | UNINITIALIZED: {
       ctx->error_log()->UninferrableType(InferenceFailureReason::Hole,
                                          init_val->span);
       if (const_) { ctx->error_log()->UninitializedConstant(span); }
-      return ctx->set_verification_attempt(this, VerifyResult::Error());
+      return ctx->set_result(this, VerifyResult::Error());
     } break;
     case CUSTOM_INIT: {
       auto init_val_result = init_val->VerifyType(ctx);
@@ -299,9 +304,11 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
           NOT_YET("log an error");
           error = true;
         } else {
-          this_type = ctx->set_type(
-              this,
-              backend::EvaluateAs<type::Type const *>(type_expr.get(), ctx));
+          this_type =
+              ctx->set_result(this, VerifyResult::Constant(
+                                        backend::EvaluateAs<type::Type const *>(
+                                            type_expr.get(), ctx)))
+                  .type_;
         }
 
         // TODO initialization, not assignment. Error messages will be
@@ -310,38 +317,40 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
           error |= !type::VerifyAssignment(span, this_type, init_val_type, ctx);
         }
       } else if (type_expr_type == type::Intf) {
-        this_type = ctx->set_type(this, type::Generic);
+        this_type =
+            ctx->set_result(this, VerifyResult::Constant(type::Generic)).type_;
       } else {
         ctx->error_log()->NotAType(type_expr->span, type_expr_type);
         error = true;
       }
 
-      if (error) {
-        return ctx->set_verification_attempt(this, VerifyResult::Error());
-      }
+      if (error) { return ctx->set_result(this, VerifyResult::Error()); }
     } break;
     case UNINITIALIZED: {
-      ASSIGN_OR(
-          return ctx->set_verification_attempt(this, VerifyResult::Error()),
-                 auto type_expr_result, type_expr->VerifyType(ctx));
+      ASSIGN_OR(return ctx->set_result(this, VerifyResult::Error()),
+                       auto type_expr_result, type_expr->VerifyType(ctx));
       auto *type_expr_type = type_expr_result.type_;
       if (type_expr_type == type::Type_) {
         if (!type_expr_result.const_) {
           NOT_YET("log an error");
-          return ctx->set_verification_attempt(this, VerifyResult::Error());
+          return ctx->set_result(this, VerifyResult::Error());
         }
-        this_type = ctx->set_type(this, backend::EvaluateAs<type::Type const *>(
-                                            type_expr.get(), ctx));
+        this_type =
+            ctx->set_result(this, VerifyResult::Constant(
+                                      backend::EvaluateAs<type::Type const *>(
+                                          type_expr.get(), ctx)))
+                .type_;
       } else if (type_expr_type == type::Intf) {
-        this_type = ctx->set_type(this, type::Generic);
+        this_type =
+            ctx->set_result(this, VerifyResult::Constant(type::Generic)).type_;
       } else {
         ctx->error_log()->NotAType(type_expr->span, type_expr_type);
-        return ctx->set_verification_attempt(this, VerifyResult::Error());
+        return ctx->set_result(this, VerifyResult::Error());
       }
 
       if (const_) {
         ctx->error_log()->UninitializedConstant(span);
-        return ctx->set_verification_attempt(this, VerifyResult::Error());
+        return ctx->set_result(this, VerifyResult::Error());
       }
 
     } break;
@@ -354,17 +363,16 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
       // TODO what if no init val is provded? what if not constant?
       scope_->embedded_modules_.insert(
           backend::EvaluateAs<Module const *>(init_val.get(), ctx));
-      return ctx->set_verification_attempt(
-          this, VerifyResult::Constant(type::Module));
+      return ctx->set_result(this, VerifyResult::Constant(type::Module));
     } else if (this_type->is<type::Tuple>()) {
-      NOT_YET(this_type);
+      NOT_YET(this_type , to_string(0));
     } else {
-      NOT_YET(this_type);
+      NOT_YET(this_type ,to_string(0));
     }
   }
 
   // TODO simplify now that you don't have error decls.
-  ASSERT(this_type != nullptr) << this;
+  ASSERT(this_type != nullptr) << to_string(0);
   std::vector<type::Typed<Declaration *>> decls_to_check;
   {
     auto good_decls_to_check = scope_->AllDeclsWithId(id_, ctx);
@@ -403,7 +411,7 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
     // higher-up-the-scope-tree identifier as the shadow when something else on
     // a different branch could find it unambiguously. It's also just a hack
     // from the get-go so maybe we should just do it the right way.
-    return ctx->set_verification_attempt(this, VerifyResult::Error());
+    return ctx->set_result(this, VerifyResult::Error());
   }
 
   return VerifySpecialFunctions(this, this_type, ctx);

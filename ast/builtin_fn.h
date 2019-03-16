@@ -20,7 +20,7 @@ struct BuiltinFn : public Literal {
   std::string to_string(size_t) const override { return stringify(b_); }
 
   VerifyResult VerifyType(Context *ctx) override {
-    return VerifyResult::Constant(ctx->set_type(this, ir::BuiltinType(b_)));
+    return ctx->set_result(this, VerifyResult::Constant(ir::BuiltinType(b_)));
   }
 
   VerifyResult VerifyCall(core::FnArgs<std::unique_ptr<Expression>> const &args,

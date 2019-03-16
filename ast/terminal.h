@@ -21,7 +21,7 @@ struct Terminal : public Literal {
   }
 
   VerifyResult VerifyType(Context *ctx) override {
-    return VerifyResult::Constant(ctx->set_type(this, type_));
+    return ctx->set_result(this, VerifyResult::Constant(type_));
   }
 
   // TODO distinguish between guaranteed failures and failures to continue

@@ -49,7 +49,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
         for (auto const &[d, v] :
              ctx->mod_->constants_[ctx->bound_constants_].constants_) {
           if (d->id_ == token) {
-            return VerifyResult(ctx->set_type(this, v.type), d->const_);
+            return ctx->set_result(this, VerifyResult(v.type, d->const_));
           }
         }
 
@@ -72,7 +72,8 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
   // due to me not totally understanding what's going on.
   if (auto iter = ctx->bound_constants_.constants_.find(decl_);
       iter != ctx->bound_constants_.constants_.end()) {
-    return VerifyResult(ctx->set_type(this, iter->second.type), decl_->const_);
+    return ctx->set_result(this,
+                           VerifyResult(iter->second.type, decl_->const_));
   }
 
   // TODO this is because we may have determined the declartaion previously with
@@ -82,7 +83,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
   type::Type const *t = ctx->type_of(decl_);
 
   if (t == nullptr) { return VerifyResult::Error(); }
-  return VerifyResult(ctx->set_type(this, t), decl_->const_);
+  return ctx->set_result(this, VerifyResult(t, decl_->const_));
 }
 
 ir::Results Identifier::EmitIr(Context *ctx) {

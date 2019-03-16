@@ -48,7 +48,6 @@ cc_target(
     intf_deps = [
         "//ast:bound_constants",
         "//ast/dispatch:table",
-        "//ast:node_lookup",
         "//ast:statements",
         "//core:fn_params",
         "//core:scope",

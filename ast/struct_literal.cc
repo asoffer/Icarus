@@ -68,10 +68,10 @@ VerifyResult StructLiteral::VerifyType(Context *ctx) {
 
   if (args_.empty()) {
     for (auto &field : fields_) { field->VerifyType(ctx); }
-    return VerifyResult::Constant(ctx->set_type(this, type::Type_));
+    return ctx->set_result(this, VerifyResult::Constant(type::Type_));
   } else {
-    return VerifyResult::Constant(
-        ctx->set_type(this, type::GenStruct(scope_, std::move(ts))));
+    return ctx->set_result(
+        this, VerifyResult::Constant(type::GenStruct(scope_, std::move(ts))));
   }
 }
 

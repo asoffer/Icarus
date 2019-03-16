@@ -139,7 +139,7 @@ VerifyResult Call::VerifyType(Context *ctx) {
     // TODO: Should we allow these to be overloaded?
     ASSIGN_OR(return VerifyResult::Error(), auto result,
                      b->VerifyCall(args_, arg_results, ctx));
-    return VerifyResult(ctx->set_type(this, result.type_), result.const_);
+    return ctx->set_result(this, VerifyResult(result.type_, result.const_));
   }  
 
   core::FnArgs<Expression *> args = args_.Transform(

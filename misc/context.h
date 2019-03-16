@@ -27,13 +27,13 @@ struct Context {
   size_t num_errors() { return error_log()->size(); }
   void DumpErrors() { error_log()->Dump(); }
 
+  // TODO remove.
   type::Type const *type_of(ast::Expression const *expr) const;
-  type::Type const *set_type(ast::Expression const *expr, type::Type const *t);
 
   ast::VerifyResult const *prior_verification_attempt(
-      ast::Declaration const *decl);
-  ast::VerifyResult set_verification_attempt(ast::Declaration const *decl,
-                                             ast::VerifyResult r);
+      ast::Expression const *expr);
+  ast::VerifyResult set_result(ast::Expression const *expr,
+                               ast::VerifyResult r);
 
   ast::DispatchTable const *dispatch_table(ast::Expression const *expr) const;
   void set_dispatch_table(ast::Expression const *expr,

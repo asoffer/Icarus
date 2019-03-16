@@ -26,7 +26,7 @@ void StructType::DependentDecls(base::Graph<Declaration *> *g,
 
 VerifyResult StructType::VerifyType(Context *ctx) {
   for (auto &arg : args_) { arg->VerifyType(ctx); }
-  return VerifyResult::Constant(ctx->set_type(this, type::Type_));
+  return ctx->set_result(this, VerifyResult::Constant(type::Type_));
 }
 
 ir::Results StructType::EmitIr(Context *ctx) { NOT_YET(); }

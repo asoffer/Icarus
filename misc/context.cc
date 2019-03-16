@@ -12,21 +12,19 @@ type::Type const *Context::type_of(ast::Expression const *expr) const {
   for (Module const *mod : mod_->scope_.embedded_modules_) {
     auto bc_iter = mod->data_.find(ast::BoundConstants{});
     if (bc_iter == mod->data_.end()) { continue; }
-    auto iter = bc_iter->second.types_.data_.find(expr);
-    if (iter != bc_iter->second.types_.data_.end()) { return iter->second; }
+
+    if (auto iter = bc_iter->second.verify_results_.find(expr);
+        iter != bc_iter->second.verify_results_.end()) {
+      return iter->second.type_;
+    }
   }
   return nullptr;
 }
 
-type::Type const *Context::set_type(ast::Expression const *expr,
-                                    type::Type const *t) {
-  return mod_->set_type(bound_constants_, expr, ASSERT_NOT_NULL(t));
-}
-
 ast::VerifyResult const *Context::prior_verification_attempt(
-    ast::Declaration const *decl) {
+    ast::Expression const *expr) {
   auto const &map = mod_->data_[bound_constants_].verify_results_;
-  if (auto iter = map.find(decl); iter != map.end()) { return &iter->second; }
+  if (auto iter = map.find(expr); iter != map.end()) { return &iter->second; }
   return nullptr;
 }
 
@@ -38,9 +36,9 @@ ir::Register Context::addr(ast::Declaration *decl) const {
   return mod_->addr(bound_constants_, decl);
 }
 
-ast::VerifyResult Context::set_verification_attempt(
-    ast::Declaration const *decl, ast::VerifyResult r) {
-  mod_->data_[bound_constants_].verify_results_.emplace(decl, r);
+ast::VerifyResult Context::set_result(ast::Expression const *expr,
+                                      ast::VerifyResult r) {
+  mod_->data_[bound_constants_].verify_results_.emplace(expr, r);
   return r;
 }
 

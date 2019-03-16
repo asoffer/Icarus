@@ -513,6 +513,7 @@ bool Covers(core::FnArgs<type::Type const *> const &big,
 type::Type const *DispatchTable::MakeOrLogError(
     Node *node, core::FnArgs<Expression *> const &args,
     OverloadSet const &overload_set, Context *ctx, bool repeated) {
+
   // TODO pull this out one more layer into the VerifyType call of node.
   auto typed_args = args.Transform([ctx](Expression *expr) {
     return type::Typed<Expression *>(expr, ASSERT_NOT_NULL(ctx->type_of(expr)));
@@ -545,7 +546,8 @@ type::Type const *DispatchTable::MakeOrLogError(
     return ret_type;
   } else {
     ctx->set_dispatch_table(&node->as<Expression>(), std::move(table));
-    return ctx->set_type(&node->as<Expression>(), ret_type);
+    // TODO constness is wrong here
+    return ctx->set_result(&node->as<Expression>(), VerifyResult::Constant(ret_type)).type_;
   }
 }
 

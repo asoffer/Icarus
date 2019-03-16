@@ -39,8 +39,8 @@ VerifyResult BlockLiteral::VerifyType(Context *ctx) {
   for (auto &b : before_) { b.VerifyType(ctx); }
   for (auto &a : after_) { a.VerifyType(ctx); }
 
-  return VerifyResult::Constant(
-      ctx->set_type(this, required_ ? type::Blk() : type::OptBlock));
+  return ctx->set_result(
+      this, VerifyResult::Constant(required_ ? type::Blk() : type::OptBlock));
 }
 
 void BlockLiteral::ExtractJumps(JumpExprs *rets) const {

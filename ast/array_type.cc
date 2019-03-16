@@ -39,8 +39,9 @@ VerifyResult ArrayType::VerifyType(Context *ctx) {
     ctx->error_log()->ArrayDataTypeNotAType(data_type_->span);
   }
 
-  return VerifyResult(ctx->set_type(this, type::Type_),
-                      data_type_result.const_ && length_result.const_);
+  return ctx->set_result(
+      this, VerifyResult(type::Type_,
+                         data_type_result.const_ && length_result.const_));
 }
 
 ir::Results ArrayType::EmitIr(Context *ctx) {

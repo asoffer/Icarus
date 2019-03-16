@@ -27,7 +27,6 @@ cc_lib(
         ":interface",
         ":match_declaration",
         ":node",
-        ":node_lookup",
         ":overload_set",
         ":repeated_unop",
         ":scope_literal",
@@ -434,14 +433,6 @@ cc_lib(
         "//frontend:text_span",
         "//ir:results",
         "//misc:inference_state",
-    ],
-)
-
-cc_lib(
-    name = "node_lookup",
-    hdrs = ["node_lookup.h"],
-    deps = [
-        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

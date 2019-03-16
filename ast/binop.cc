@@ -125,8 +125,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       if (lhs_result.type_ == rhs_result.type_ &&
           (lhs_result.type_ == type::Bool ||
            lhs_result.type_->is<type::Flags>())) {
-        ctx->set_type(this, lhs_result.type_);
-        return lhs_result;
+        return ctx->set_result(this, lhs_result);
       } else {
         ctx->error_log()->XorEqNeedsBoolOrFlags(span);
         return VerifyResult::Error();
@@ -135,8 +134,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       if (lhs_result.type_ == rhs_result.type_ &&
           (lhs_result.type_ == type::Bool ||
            lhs_result.type_->is<type::Flags>())) {
-        ctx->set_type(this, lhs_result.type_);
-        return lhs_result;
+        return ctx->set_result(this, lhs_result);
       } else {
         ctx->error_log()->AndEqNeedsBoolOrFlags(span);
         return VerifyResult::Error();
@@ -145,8 +143,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       if (lhs_result.type_ == rhs_result.type_ &&
           (lhs_result.type_ == type::Bool ||
            lhs_result.type_->is<type::Flags>())) {
-        ctx->set_type(this, lhs_result.type_);
-        return lhs_result;
+        return ctx->set_result(this, lhs_result);
       } else {
         ctx->error_log()->OrEqNeedsBoolOrFlags(span);
         return VerifyResult::Error();
@@ -158,7 +155,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
     if (type::IsNumeric(lhs_result.type_) &&                                   \
         type::IsNumeric(rhs_result.type_)) {                                   \
       if (lhs_result.type_ == rhs_result.type_) {                              \
-        return VerifyResult(ctx->set_type(this, (return_type)), is_const);     \
+        return ctx->set_result(this, VerifyResult((return_type), is_const));   \
       } else {                                                                 \
         NOT_YET("Log an error");                                               \
         return VerifyResult::Error();                                          \
@@ -169,10 +166,11 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       os.add_adl(symbol, rhs_result.type_);                                    \
                                                                                \
       auto *ret_type = DispatchTable::MakeOrLogError(                          \
-          this, core::FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);    \
+          this, core::FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os,    \
+          ctx);                                                                \
       if (ret_type == nullptr) { return VerifyResult::Error(); }               \
       if (ret_type->is<type::Tuple>()) { NOT_YET(); }                          \
-      return VerifyResult(ctx->set_type(this, ret_type), lhs_result.const_);   \
+      return ctx->set_result(this, VerifyResult(ret_type, lhs_result.const_)); \
     }                                                                          \
   } break;
       CASE(Sub, "-", lhs_result.type_);
@@ -189,7 +187,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       if (type::IsNumeric(lhs_result.type_) &&
           type::IsNumeric(rhs_result.type_)) {
         if (lhs_result.type_ == rhs_result.type_) {
-          return VerifyResult(ctx->set_type(this, lhs_result.type_), is_const);
+          return ctx->set_result(this, VerifyResult(lhs_result.type_, is_const));
         } else {
           NOT_YET("Log an error");
           return VerifyResult::Error();
@@ -203,7 +201,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
             this, core::FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         if (ret_type->is<type::Tuple>()) { NOT_YET(); }
-        return VerifyResult(ctx->set_type(this, ret_type), is_const);
+        return ctx->set_result(this, VerifyResult(ret_type, is_const));
       }
     } break;
     case Operator::AddEq: {
@@ -211,7 +209,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       if (type::IsNumeric(lhs_result.type_) &&
           type::IsNumeric(rhs_result.type_)) {
         if (lhs_result.type_ == rhs_result.type_) {
-          return VerifyResult(ctx->set_type(this, type::Void()), is_const);
+          return ctx->set_result(this, VerifyResult(type::Void(), is_const));
         } else {
           NOT_YET("Log an error");
           return VerifyResult::Error();
@@ -225,7 +223,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
             this, core::FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);
         if (ret_type == nullptr) { return VerifyResult::Error(); }
         if (ret_type->is<type::Tuple>()) { NOT_YET(); }
-        return VerifyResult(ctx->set_type(this, ret_type), is_const);
+        return ctx->set_result(this, VerifyResult(ret_type, is_const));
       }
     } break;
     case Operator::Arrow: {
@@ -242,8 +240,9 @@ VerifyResult Binop::VerifyType(Context *ctx) {
 
       if (t == nullptr) { return VerifyResult::Error(); }
 
-      return VerifyResult(ctx->set_type(this, type::Type_),
-                          lhs_result.const_ && rhs_result.const_);
+      return ctx->set_result(
+          this,
+          VerifyResult(type::Type_, lhs_result.const_ && rhs_result.const_));
     }
     default: UNREACHABLE();
   }

@@ -66,7 +66,7 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
   // TODO compute what type this should return
   // TODO can this evaluate to anything?
   // TODO constant is wrong.
-  return VerifyResult::Constant(ctx->set_type(this, type::Void()));
+  return ctx->set_result(this, VerifyResult::Constant(type::Void()));
 }
 
 void ScopeNode::ExtractJumps(JumpExprs *rets) const {
@@ -150,7 +150,10 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     state_type->EmitInit(alloc, ctx);
     state_id = new Identifier(TextSpan{}, "<scope-state>");
 
-    typed_args.pos_emplace(state_id, ctx->set_type(state_id, state_ptr_type));
+    typed_args.pos_emplace(
+        state_id,
+        ctx->set_result(state_id, VerifyResult::Constant(state_ptr_type))
+            .type_);
     ir_args.pos_emplace(state_id, ir::Results{alloc});
   }
 
