@@ -59,8 +59,13 @@ bool Shadow(type::Typed<Declaration *> decl1, type::Typed<Declaration *> decl2,
 
   auto ExtractParams = +[](bool is_const, Expression *expr,
                            Context *ctx) -> core::FnParams<type::Type const *> {
-    if (!is_const) { NOT_YET(); }
-    if (auto *fn_lit = expr->if_as<FunctionLiteral>()) {
+    if (!is_const) {
+      return ctx->type_of(expr)
+          ->as<type::Function>()
+          .AnonymousFnParams()
+          .Transform(
+              [](type::Typed<Expression *> expr) { return expr.type(); });
+    } else if (auto *fn_lit = expr->if_as<FunctionLiteral>()) {
       return fn_lit->inputs_.Transform(
           [ctx](std::unique_ptr<Declaration> const &decl) {
             return ctx->type_of(decl.get());

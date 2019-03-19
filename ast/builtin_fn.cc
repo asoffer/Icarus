@@ -9,7 +9,8 @@
 namespace ast {
 VerifyResult BuiltinFn::VerifyCall(
     core::FnArgs<std::unique_ptr<Expression>> const &args,
-    core::FnArgs<VerifyResult> const &arg_results, Context *ctx) const {
+    core::FnArgs<std::pair<Expression *, VerifyResult>> const &arg_results,
+    Context *ctx) const {
   switch (b_) {
     case ir::Builtin::Foreign: {
       bool err = false;
@@ -30,25 +31,25 @@ VerifyResult BuiltinFn::VerifyCall(
       }
 
       if (!err) {
-        if (arg_results.at(0).type_ != type::ByteView) {
+        if (arg_results.at(0).second.type_ != type::ByteView) {
           ctx->error_log()->BuiltinError(
               span,
               "First argument to `foreign` must be a byte-view (You provided "
               "a(n) " +
-                  arg_results.at(0).type_->to_string() + ").");
+                  arg_results.at(0).second.type_->to_string() + ").");
         }
-        if (!arg_results.at(0).const_) {
+        if (!arg_results.at(0).second.const_) {
           ctx->error_log()->BuiltinError(
               span, "First argument to `foreign` must be a constant.");
         }
-        if (arg_results.at(1).type_ != type::Type_) {
+        if (arg_results.at(1).second.type_ != type::Type_) {
           ctx->error_log()->BuiltinError(
               span,
               "Second argument to `foreign` must be a type (You provided "
               "a(n) " +
-                  arg_results.at(0).type_->to_string() + ").");
+                  arg_results.at(0).second.type_->to_string() + ").");
         }
-        if (!arg_results.at(1).const_) {
+        if (!arg_results.at(1).second.const_) {
           ctx->error_log()->BuiltinError(
               span, "Second argument to `foreign` must be a constant.");
         }
@@ -75,12 +76,12 @@ VerifyResult BuiltinFn::VerifyCall(
                                        "Built-in function `bytes` takes "
                                        "exactly one argument (You provided " +
                                            std::to_string(size) + ").");
-      } else if (arg_results.at(0).type_ != type::Type_) {
+      } else if (arg_results.at(0).second.type_ != type::Type_) {
         ctx->error_log()->BuiltinError(
             span,
             "Built-in function `bytes` must take a single argument of type "
             "`type` (You provided a(n) " +
-                arg_results.at(0).type_->to_string() + ").");
+                arg_results.at(0).second.type_->to_string() + ").");
       }
       return VerifyResult::Constant(
           ir::BuiltinType(ir::Builtin::Bytes)->as<type::Function>().output[0]);
@@ -98,12 +99,12 @@ VerifyResult BuiltinFn::VerifyCall(
                                        "exactly one argument (You provided " +
                                            std::to_string(size) + ").");
 
-      } else if (arg_results.at(0).type_ != type::Type_) {
+      } else if (arg_results.at(0).second.type_ != type::Type_) {
         ctx->error_log()->BuiltinError(
             span,
             "Built-in function `alignment` must take a single argument of "
             "type `type` (you provided a(n) " +
-                arg_results.at(0).type_->to_string() + ")");
+                arg_results.at(0).second.type_->to_string() + ")");
       }
       return VerifyResult::Constant(ir::BuiltinType(ir::Builtin::Alignment)
                                         ->as<type::Function>()

@@ -7,7 +7,7 @@
 #include "base/stringify.h"
 
 namespace base {
-inline std::mutex logger_mtx_;
+inline std::recursive_mutex logger_mtx_;
 
 struct Logger {
   Logger(std::string (*fmt)(std::experimental::source_location const &src),

@@ -23,9 +23,10 @@ struct BuiltinFn : public Literal {
     return ctx->set_result(this, VerifyResult::Constant(ir::BuiltinType(b_)));
   }
 
-  VerifyResult VerifyCall(core::FnArgs<std::unique_ptr<Expression>> const &args,
-                          core::FnArgs<VerifyResult> const &arg_results,
-                          Context *ctx) const;
+  VerifyResult VerifyCall(
+      core::FnArgs<std::unique_ptr<Expression>> const &args,
+      core::FnArgs<std::pair<Expression *, VerifyResult>> const &arg_results,
+      Context *ctx) const;
 
   // TODO distinguish between guaranteed failures and failures to continue
   bool InferType(type::Type const *t, InferenceState *state) const override {

@@ -125,7 +125,10 @@ cc_target(
 
 cc_target(
     name = "function",
-    intf_deps = [":callable"],
+    intf_deps = [
+        ":callable",
+        "//core:fn_params",
+    ],
     impl_deps = [
         "//base:guarded",
         "//ir:cmd",

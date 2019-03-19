@@ -6,45 +6,33 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ast/bound_constants.h"
-#include "ast/dispatch/arg_resolution.h"
 #include "ast/overload_set.h"
-#include "base/expected.h"
+#include "type/typed_value.h"
 #include "core/fn_args.h"
 
 struct Context;
 
 namespace type {
 struct Type;
-struct Function;
 }  // namespace type
 
 namespace ast {
 struct Node;
-struct FunctionLiteral;
 struct Expression;
 
-// Represents a particular call resolution. This means the precise callable
-// and arguments along with their types. the associated types may differ from
-// the type of the callable or arguments computed by VerifyType. This is
-// because, an argument which is a variant may be dispatched to more than one
-// place. So, for instance if there are functions `id :: bool -> bool` and
-// `id ::= int -> int`, then calling `id` with a variant will produce two
-// bindings: One for bool and one for int. Simlarly, the type of `id` on it's
-// own is expressed as an overload set, but for each particular binding will be
-// either `int -> int` or `bool -> bool`.
-struct Binding {
-  Binding(type::Typed<Expression *, type::Callable> fn, bool constant = false)
-      : fn_(fn), const_(constant) {}
-
-  type::Typed<Expression *, type::Callable> fn_;
-  ArgResolution arg_res_;
-
-  bool const_ = false;
-  BoundConstants
-      bound_constants_;  // TODO don't copy these. Use some sitting on a module.
-};
-
 struct DispatchTable {
+  struct Row {
+    Row(core::FnParams<type::Typed<ast::Expression *>> p,
+        type::Function const *t, std::variant<Expression *, ir::AnyFunc> f)
+        : params(std::move(p)), type(t), fn(std::move(f)) {}
+
+    // In the typed-expression, each expression may be null (if no default value
+    // is possible), but the type will always be present.
+    core::FnParams<type::Typed<Expression *>> params;
+    type::Function const *type;
+    std::variant<Expression *, ir::AnyFunc> fn;
+  };
+
   // TODO come up with a good internal representaion.
   // * Can/should this be balanced to find the right type-check sequence in a
   //   streaming manner?
@@ -53,19 +41,22 @@ struct DispatchTable {
   static std::pair<DispatchTable, type::Type const *> Make(
       core::FnArgs<type::Typed<Expression *>> const &args,
       OverloadSet const &overload_set, Context *ctx);
-  static type::Type const *MakeOrLogError(Node *node,
-                                          core::FnArgs<Expression *> const &args,
-                                          OverloadSet const &overload_set,
-                                          Context *ctx, bool repeated = false);
+  static type::Type const *MakeOrLogError(
+      Node *node, core::FnArgs<Expression *> const &args,
+      OverloadSet const &overload_set, Context *ctx, bool repeated = false);
 
   ir::Results EmitCall(
       core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
-      type::Type const *ret_type, Context *ctx) const;
+      type::Type const *, Context *ctx) const;
 
-  std::vector<std::pair<core::FnArgs<type::Type const *>, Binding>> bindings_;
-  absl::flat_hash_map<Expression const *, std::string> failure_reasons_;
-  std::vector<std::string> generic_failure_reasons_;
+  std::vector<Row> bindings_;
+  std::vector<type::Type const*> return_types_;
 };
+
+VerifyResult VerifyDispatch(
+    Expression const *expr, OverloadSet const &os,
+    core::FnArgs<std::pair<Expression *, VerifyResult>> const &args,
+    Context *ctx);
 
 }  // namespace ast
 

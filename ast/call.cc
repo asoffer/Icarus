@@ -65,7 +65,7 @@ bool Call::InferType(type::Type const *t, InferenceState *state) const {
     auto os = FindOverloads(scope_, id->token, core::FnArgs<type::Type const *>{},
                             state->ctx_);
     if (os.size() != 1) { NOT_YET("only handle no overloading right now."); }
-    if (auto *gs = os[0].type()->if_as<type::GenericStruct>()) {
+    if (auto *gs = os.begin()->result.type_->if_as<type::GenericStruct>()) {
       auto iter = gs->mod_->generic_struct_cache_.find(s->parent_);
       if (iter == gs->mod_->generic_struct_cache_.end()) { return false; }
 
@@ -101,36 +101,43 @@ void Call::DependentDecls(base::Graph<Declaration *> *g,
 }
 
 VerifyResult Call::VerifyType(Context *ctx) {
-  std::vector<VerifyResult> pos_results;
-  absl::flat_hash_map<std::string, VerifyResult> named_results;
+  std::vector<std::pair<Expression *, VerifyResult>> pos_results;
+  absl::flat_hash_map<std::string, std::pair<Expression *, VerifyResult>>
+      named_results;
 
   bool err = false;
 
   // TODO this could be TransformWithIndex
-  args_.ApplyWithIndex(
-      [&](auto &&index, std::unique_ptr<Expression> const &expr) {
-        if constexpr (std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
-          auto expr_result = expr->VerifyType(ctx);
-          if (!expr->parenthesized_ && expr->is<Unop>() &&
-              expr->as<Unop>().op == frontend::Operator::Expand &&
-              expr_result.type_->is<type::Tuple>()) {
-            auto const &entries = expr_result.type_->as<type::Tuple>().entries_;
-            for (type::Type const *entry : entries) {
-              pos_results.emplace_back(entry, expr_result.const_);
-              err |= !pos_results.back().ok();
-            }
-          } else {
-            pos_results.push_back(expr_result);
-            err |= !pos_results.back().ok();
-          }
-        } else {
-          auto iter = named_results.emplace(index, expr->VerifyType(ctx)).first;
-          err |= !iter->second.ok();
+  args_.ApplyWithIndex([&](auto &&index,
+                           std::unique_ptr<Expression> const &expr) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
+      auto expr_result = expr->VerifyType(ctx);
+      if (!expr->parenthesized_ && expr->is<Unop>() &&
+          expr->as<Unop>().op == frontend::Operator::Expand &&
+          expr_result.type_->is<type::Tuple>()) {
+        auto const &entries = expr_result.type_->as<type::Tuple>().entries_;
+        for (type::Type const *entry : entries) {
+          pos_results.emplace_back(
+              std::piecewise_construct, std::forward_as_tuple(expr.get()),
+              std::forward_as_tuple(entry, expr_result.const_));
+          err |= !pos_results.back().second.ok();
         }
-      });
+      } else {
+        pos_results.emplace_back(expr.get(), expr_result);
+        err |= !pos_results.back().second.ok();
+      }
+    } else {
+      auto iter =
+          named_results
+              .emplace(std::piecewise_construct, std::forward_as_tuple(index),
+                       std::forward_as_tuple(expr.get(), expr->VerifyType(ctx)))
+              .first;
+      err |= !iter->second.second.ok();
+    }
+  });
 
-  core::FnArgs<VerifyResult> arg_results(std::move(pos_results),
-                                   std::move(named_results));
+  core::FnArgs<std::pair<Expression *, VerifyResult>> arg_results(
+      std::move(pos_results), std::move(named_results));
 
   // TODO handle cyclic dependencies in call arguments.
   if (err) { return VerifyResult::Error(); }
@@ -140,7 +147,7 @@ VerifyResult Call::VerifyType(Context *ctx) {
     ASSIGN_OR(return VerifyResult::Error(), auto result,
                      b->VerifyCall(args_, arg_results, ctx));
     return ctx->set_result(this, VerifyResult(result.type_, result.const_));
-  }  
+  }
 
   core::FnArgs<Expression *> args = args_.Transform(
       [](std::unique_ptr<Expression> const &arg) { return arg.get(); });
@@ -149,26 +156,21 @@ VerifyResult Call::VerifyType(Context *ctx) {
     if (auto *id = fn_->if_as<Identifier>()) {
       return FindOverloads(
           scope_, id->token,
-          arg_results.Transform([](VerifyResult const &v) { return v.type_; }),
+          arg_results.Transform(
+              [](std::pair<Expression *, VerifyResult> const &p) {
+                return p.second.type_;
+              }),
           ctx);
     } else {
-      auto t = fn_->VerifyType(ctx).type_;
+      auto results = fn_->VerifyType(ctx);
       OverloadSet os;
-      os.emplace_back(fn_.get(), t);
+      os.emplace(fn_.get(), results);
       // TODO ADL for this?
       return os;
     }
   }();
 
-  auto *ret_type = DispatchTable::MakeOrLogError(this, args, overload_set, ctx);
-  if (ret_type == nullptr) { return VerifyResult::Error(); }
-
-  // TODO returning const is overly optimistic. This should be const if and only
-  // if all arguments are const, all possible dispatched-to functions are const.
-  // Default arguments are already required to be const, so we don't need to
-  // check those.
-
-  return VerifyResult::Constant(ret_type);
+  return VerifyDispatch(this, overload_set, arg_results, ctx);
 }
 
 void Call::ExtractJumps(JumpExprs *rets) const {

@@ -3,6 +3,7 @@
 #include "base/guarded.h"
 #include "ir/cmd.h"
 #include "ir/val.h"
+#include "type/typed_value.h"
 
 namespace type {
 Type const *Generic = new GenericFunction;
@@ -124,5 +125,14 @@ layout::Alignment Function::alignment(layout::Arch const &a) const {
 }
 
 Cmp Function::Comparator() const { return Cmp::None; }
+
+core::FnParams<type::Typed<ast::Expression *>> Function::AnonymousFnParams()
+    const {
+  core::FnParams<type::Typed<ast::Expression *>> result;
+  for (type::Type const *t : input) {
+    result.append("", type::Typed(static_cast<ast::Expression *>(nullptr), t));
+  }
+  return result;
+}
 
 }  // namespace type

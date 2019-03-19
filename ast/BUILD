@@ -439,6 +439,7 @@ cc_lib(
 cc_target(
     name = "overload_set",
     intf_deps = [
+        "//base:bag",
         "//type:typed_value",
         "//type:function",
     ],

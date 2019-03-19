@@ -45,7 +45,7 @@ VerifyResult Cast::VerifyType(Context *ctx) {
     OverloadSet os(scope_, "as", ctx);
     os.add_adl("as", t);
     os.add_adl("as", expr_result.type_);
-    os.keep_return(t);
+    os.keep([t](Overload const &o) { return o.result.type_ == t; });
 
     auto *ret_type = DispatchTable::MakeOrLogError(
         this, core::FnArgs<Expression *>({expr_.get()}, {}), os, ctx);

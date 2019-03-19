@@ -3,7 +3,9 @@
 
 #include <string>
 
-#include <vector>
+// TODO pull out VerifyResult into it's own header.
+#include "ast/node.h"
+#include "base/bag.h"
 #include "type/function.h"
 #include "type/typed_value.h"
 
@@ -16,14 +18,18 @@ struct Context;
 namespace ast {
 struct Expression;
 
-struct OverloadSet
-    : public std::vector<type::Typed<Expression *, type::Callable>> {
+struct Overload {
+  Overload(Expression *expr, VerifyResult result)
+      : expr(expr), result(std::move(result)) {}
+  Expression *expr;
+  VerifyResult result;
+};
+
+struct OverloadSet : public base::bag<Overload> {
   OverloadSet() = default;
   OverloadSet(core::Scope *scope, std::string const &id, Context *ctx);
 
   void add_adl(std::string const &id, type::Type const *t);
-
-  void keep_return(type::Type const *t);
 };
 }  // namespace ast
 

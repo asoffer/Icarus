@@ -21,7 +21,8 @@ enum FnParamFlags : uint8_t {
   VARIADIC      = 8   // TODO: Not yet supported
 };
 
-template <typename T>
+template <typename T, bool = std::is_copy_constructible_v<T>,
+          bool = std::is_move_constructible_v<T>>
 struct Param {
   Param() = default;
   Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
@@ -29,8 +30,54 @@ struct Param {
   Param(Param&&) noexcept = default;
   Param& operator=(Param&&) noexcept = default;
 
-  // Param(Param const&) noexcept = default;
-  // Param& operator=(Param const&) noexcept = default;
+  Param(Param const&) noexcept = default;
+  Param& operator=(Param const&) noexcept = default;
+
+  std::string_view name = "";
+  T value{};
+  FnParamFlags flags{};
+};
+
+template <typename T>
+struct Param<T, false, true> {
+  Param() = default;
+  Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
+      : name(s), value(std::move(t)), flags(f) {}
+  Param(Param const&) = delete;
+  Param& operator=(Param const&) = delete;
+  Param(Param&&) noexcept        = default;
+  Param& operator=(Param&&) noexcept = default;
+
+  std::string_view name = "";
+  T value{};
+  FnParamFlags flags{};
+};
+
+
+template <typename T>
+struct Param<T, true, false> {
+  Param() = default;
+  Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
+      : name(s), value(std::move(t)), flags(f) {}
+  Param(Param const&) noexcept = default;
+  Param& operator=(Param const&) noexcept = default;
+  Param(Param&&)                          = delete;
+  Param& operator=(Param&&) = delete;
+
+  std::string_view name = "";
+  T value{};
+  FnParamFlags flags{};
+};
+
+template <typename T>
+struct Param<T, false, false> {
+  Param() = default;
+  Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
+      : name(s), value(std::move(t)), flags(f) {}
+  Param(Param const&) = delete;
+  Param& operator=(Param const&) = delete;
+  Param(Param&&)                 = delete;
+  Param& operator=(Param&&) = delete;
 
   std::string_view name = "";
   T value{};

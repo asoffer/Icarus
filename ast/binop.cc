@@ -164,13 +164,13 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       OverloadSet os(scope_, symbol, ctx);                                     \
       os.add_adl(symbol, lhs_result.type_);                                    \
       os.add_adl(symbol, rhs_result.type_);                                    \
-                                                                               \
-      auto *ret_type = DispatchTable::MakeOrLogError(                          \
-          this, core::FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os,    \
+      return VerifyDispatch(                                                   \
+          this, os,                                                            \
+          core::FnArgs<std::pair<Expression *, VerifyResult>>(                 \
+              {std::pair{lhs.get(), lhs_result},                               \
+               std::pair{rhs.get(), rhs_result}},                              \
+              {}),                                                             \
           ctx);                                                                \
-      if (ret_type == nullptr) { return VerifyResult::Error(); }               \
-      if (ret_type->is<type::Tuple>()) { NOT_YET(); }                          \
-      return ctx->set_result(this, VerifyResult(ret_type, lhs_result.const_)); \
     }                                                                          \
   } break;
       CASE(Sub, "-", lhs_result.type_);
@@ -193,15 +193,16 @@ VerifyResult Binop::VerifyType(Context *ctx) {
           return VerifyResult::Error();
         }
       } else {
-            OverloadSet os(scope_, "+", ctx);
+        OverloadSet os(scope_, "+", ctx);
         os.add_adl("+", lhs_result.type_);
         os.add_adl("+", rhs_result.type_);
-
-        auto *ret_type = DispatchTable::MakeOrLogError(
-            this, core::FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);
-        if (ret_type == nullptr) { return VerifyResult::Error(); }
-        if (ret_type->is<type::Tuple>()) { NOT_YET(); }
-        return ctx->set_result(this, VerifyResult(ret_type, is_const));
+        return VerifyDispatch(
+            this, os,
+            core::FnArgs<std::pair<Expression *, VerifyResult>>(
+                {std::pair{lhs.get(), lhs_result},
+                 std::pair{rhs.get(), rhs_result}},
+                {}),
+            ctx);
       }
     } break;
     case Operator::AddEq: {
@@ -218,12 +219,13 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         OverloadSet os(scope_, "+=", ctx);
         os.add_adl("+=", lhs_result.type_);
         os.add_adl("+=", rhs_result.type_);
-
-        auto *ret_type = DispatchTable::MakeOrLogError(
-            this, core::FnArgs<Expression *>({lhs.get(), rhs.get()}, {}), os, ctx);
-        if (ret_type == nullptr) { return VerifyResult::Error(); }
-        if (ret_type->is<type::Tuple>()) { NOT_YET(); }
-        return ctx->set_result(this, VerifyResult(ret_type, is_const));
+        return VerifyDispatch(
+            this, os,
+            core::FnArgs<std::pair<Expression *, VerifyResult>>(
+                {std::pair{lhs.get(), lhs_result},
+                 std::pair{rhs.get(), rhs_result}},
+                {}),
+            ctx);
       }
     } break;
     case Operator::Arrow: {

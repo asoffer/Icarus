@@ -2,7 +2,10 @@
 #define ICARUS_TYPE_FUNCTION_H
 
 #include <cstring>
+
+#include "core/fn_params.h"
 #include "type/callable.h"
+#include "type/typed_value.h"
 
 #ifdef ICARUS_USE_LLVM
 namespace llvm {
@@ -42,6 +45,8 @@ struct Function : public Callable {
     for (auto *t : input) { ASSERT(t != nullptr); }
     for (auto *t : output) { ASSERT(t != nullptr); }
   }
+
+  core::FnParams<type::Typed<ast::Expression *>> AnonymousFnParams() const;
 
 #ifdef ICARUS_USE_LLVM
   llvm::FunctionType *llvm_fn(llvm::LLVMContext &ctx) const;

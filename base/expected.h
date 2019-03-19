@@ -14,7 +14,8 @@ struct unexpected {
   explicit unexpected(std::string_view s) : reason_(s) {}
   explicit unexpected(std::string s) : reason_(std::move(s)) {}
 
-  std::string to_string() const { return reason_; }
+  std::string &&to_string() && { return std::move(reason_); }
+  std::string const &to_string() const & { return reason_; }
   friend std::ostream &operator<<(std::ostream &os, unexpected const &u) {
     return os << u.reason_;
   }
@@ -50,7 +51,7 @@ struct expected {
   std::variant<T, E> val_;
 };
 
-inline std::string stringify(unexpected const &u) { return u.to_string(); }
+inline std::string stringify(unexpected u) { return std::move(u).to_string(); }
 
 template <typename T, typename E>
 std::string stringify(expected<T, E> const& e) {

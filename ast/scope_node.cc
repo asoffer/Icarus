@@ -88,7 +88,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   OverloadSet init_os;
   for (auto &decl : scope_lit->decls_) {
     if (decl.id_ == "init") {
-      init_os.emplace_back(&decl, &ctx->type_of(&decl)->as<type::Function>());
+      init_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
     }
   }
 
@@ -121,15 +121,15 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
 
     OverloadSet os_before;
     for (auto &b : bseq[0]->before_) {
+      os_before.emplace(&b, *ctx->prior_verification_attempt(&b));
       auto const& t = ctx->type_of(&b)->as<type::Function>();
-      os_before.emplace_back(&b, &t);
       if (scope_lit->stateful_) { state_types.insert(t.input[0]); }
     }
 
     OverloadSet os_after;
     for (auto &a : bseq[0]->after_) {
+      os_before.emplace(&a, *ctx->prior_verification_attempt(&a));
       auto const &t = ctx->type_of(&a)->as<type::Function>();
-      os_after.emplace_back(&a, &t);
       if (scope_lit->stateful_) { state_types.insert(t.input[0]); }
     }
     auto block_index   = ir::Func::Current->AddBlock();
@@ -222,7 +222,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     OverloadSet done_os;
     for (auto &decl : scope_lit->decls_) {
       if (decl.id_ == "done") {
-        done_os.emplace_back(&decl, &ctx->type_of(&decl)->as<type::Function>());
+        done_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
       }
     }
 
