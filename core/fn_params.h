@@ -160,23 +160,24 @@ struct FnParams {
 
   Param<T> const& at(size_t i) const& { return params_.at(i); }
 
-  // TODO deprecate. this is super dangerous.
-  Param<T>& at(size_t i) & { return params_.at(i); }
-
   void append(std::string_view name, T val,
               FnParamFlags flags = FnParamFlags{}) {
     if (!name.empty()) { lookup_.emplace(name, params_.size()); }
     params_.emplace_back(name, std::move(val), flags);
   }
 
-  // TODO hide this
+ private:
+  template <typename U>
+  friend struct FnParams;
+  template <typename U, typename AmbiguityFn>
+  friend bool AmbiguouslyCallable(FnParams<U> const& params1,
+                                  FnParams<U> const& params2,
+                                  AmbiguityFn&& ambiguity);
+
   // Maps the string name of the declared argument to it's index:
   // Example: (a: int, b: char, c: string) -> int
   //           a => 0, b => 1, c => 2
   absl::flat_hash_map<std::string_view, size_t> lookup_;
- private:
-  template <typename U>
-  friend struct FnParams;
 
   std::vector<Param<T>> params_;
 
