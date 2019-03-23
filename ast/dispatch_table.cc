@@ -255,6 +255,13 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                         param.flags});
           } else {
             if (auto *arg = args.at_or_null(param.value->id_)) {
+              type::Type const *decl_type = new_ctx.type_of(param.value.get());
+              if (!type::CanCast(arg->second.type_, decl_type)) {
+                return base::unexpected(
+                    absl::StrCat("TODO good error message couldn't match type ",
+                                 decl_type->to_string(), " to ",
+                                 arg->second.type_->to_string()));
+              }
               new_ctx.bound_constants_.constants_.emplace(
                   param.value.get(),
                   backend::Evaluate(arg->first, &new_ctx).at(0));
