@@ -43,7 +43,7 @@
 using ::matcher::InheritsFrom;
 
 namespace debug {
-extern bool parser;
+bool parser     = false;
 }  // namespace debug
 
 namespace frontend {

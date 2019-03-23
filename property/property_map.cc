@@ -8,7 +8,7 @@
 #include "type/generic_struct.h"
 
 namespace debug {
-extern bool validation;
+bool validation = false;
 }  // namespace debug
 
 namespace prop {

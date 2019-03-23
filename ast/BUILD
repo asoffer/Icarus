@@ -317,6 +317,16 @@ cc_target(
     ],
 )
 
+cc_test(
+    name = "dispatch_table_test",
+    srcs = ["dispatch_table_test.cc"],
+    deps = [
+        "//:impl",
+        "//test:util",
+        "//test",
+    ],
+)
+
 cc_target(
     name = "enum_literal",
     intf_deps = [

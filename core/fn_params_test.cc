@@ -106,5 +106,14 @@ TEST_CASE("ambiguously callable") {
   }
 }
 
+TEST_CASE("set") {
+  FnParams<int> p(2);
+
+  CHECK(p.at_or_null("n") == nullptr);
+
+  p.set(1, Param<int>("n", 3));
+  CHECK(p.at_or_null("n") != nullptr);
+}
+
 }  // namespace
 }  // namespace core

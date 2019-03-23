@@ -4,3 +4,4 @@ build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build --strip=never
 build --color=yes
 test  --color=yes
+test  --test_arg="--use-colour yes"

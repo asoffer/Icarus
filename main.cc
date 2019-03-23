@@ -3,12 +3,13 @@
 #include "init/signal.h"
 
 namespace debug {
-bool parser     = false;
-bool validation = false;
+extern bool parser;
+extern bool validation;
 }  // namespace debug
 
+
 namespace feature {
-bool loose_casting = false;
+extern bool loose_casting;
 }  // namespace feature
 
 extern std::vector<std::string> files;

@@ -6,6 +6,11 @@
 
 namespace ast {
 struct Call : public Literal {
+  Call() = default;
+  explicit Call(std::unique_ptr<Expression> fn,
+                core::FnArgs<std::unique_ptr<Expression>> args)
+      : fn_(std::move(fn)), args_(std::move(args)) {}
+
   ~Call() override {}
   std::string to_string(size_t n) const override;
   void assign_scope(core::Scope *scope) override;

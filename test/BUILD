@@ -27,3 +27,14 @@ cc_lib(
     deps = [":catch"],
     testonly = True,
 )
+
+cc_library(
+    name = "util",
+    hdrs = ["util.h"],
+    deps = [
+        "//misc:context",
+        "//misc:module",
+        "//:impl",
+    ],
+    testonly = True,
+)

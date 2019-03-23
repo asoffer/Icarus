@@ -3,6 +3,7 @@
 #include "test/catch.h"
 
 namespace layout {
+namespace {
 
 TEST_CASE("forward alignment") {
   CHECK(FwdAlign(Bytes{0}, Alignment{1}) == Bytes{0});
@@ -15,4 +16,5 @@ TEST_CASE("forward alignment") {
   CHECK(FwdAlign(Bytes{8}, Alignment{8}) == Bytes{8});
 }
 
+}  // namespace
 }  // namespace layout

@@ -31,6 +31,7 @@ cc_lib(
     hdrs = ["fn_params.h"],
     deps = [
         ":fn_args",
+        "//base:debug",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

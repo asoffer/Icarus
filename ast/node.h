@@ -78,6 +78,20 @@ struct VerifyResult {
   VerifyResult operator*() const { return *this; }
 };
 
+inline std::ostream& operator<<(std::ostream& os, VerifyResult r) {
+  if (!r.ok()) { return os << "error"; }
+  return os << (r.const_ ? "const[" : "non-const[") << r.type_->to_string()
+            << "]";
+}
+
+constexpr bool operator==(VerifyResult lhs, VerifyResult rhs) {
+  return lhs.type_ == rhs.type_ && lhs.const_ == rhs.const_;
+}
+
+constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
+  return !(lhs == rhs);
+}
+
 enum class JumpKind { Return, Yield };
 struct JumpExprs
     : public absl::flat_hash_map<JumpKind, std::vector<Expression const *>> {};

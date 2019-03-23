@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "base/debug.h"
 #include "core/fn_args.h"
 
 namespace type {
@@ -112,12 +113,17 @@ struct FnParams {
     (params_.push_back(std::forward<Ps>(params)), ...);
     size_t i = 0;
     for (auto const& p : params_) {
-      if (p.name != "") { lookup_.emplace(p.name, i); }
+      if (!p.name.empty()) { lookup_.emplace(p.name, i); }
       ++i;
     }
   }
 
-  
+  void set(size_t index, Param<T> param) {
+    ASSERT(params_.at(index).name == "");
+    lookup_.emplace(param.name, index);
+    params_.at(index) = std::move(param);
+  }
+
   template <typename Fn>
   auto Transform(Fn &&fn) const {
     using out_t = decltype(fn(params_[0].value));
@@ -153,11 +159,13 @@ struct FnParams {
   }
 
   Param<T> const& at(size_t i) const& { return params_.at(i); }
+
+  // TODO deprecate. this is super dangerous.
   Param<T>& at(size_t i) & { return params_.at(i); }
 
   void append(std::string_view name, T val,
               FnParamFlags flags = FnParamFlags{}) {
-    if (name != "") { lookup_.emplace(name, params_.size()); }
+    if (!name.empty()) { lookup_.emplace(name, params_.size()); }
     params_.emplace_back(name, std::move(val), flags);
   }
 

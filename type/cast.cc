@@ -15,7 +15,7 @@
 
 
 namespace feature {
-extern bool loose_casting;
+bool loose_casting = false;
 }  // namespace feature
 
 namespace type {
@@ -76,9 +76,13 @@ bool CanCast(Type const *from, Type const *to) {
     return from_variant->contains(to);
   }
 
-  auto from_mask = CastMask(from);
-  auto to_mask   = CastMask(to);
-  return ((from_mask & to_mask) == from_mask);
+  if (IsNumeric(from) && IsNumeric(to)) {
+    auto from_mask = CastMask(from);
+    auto to_mask   = CastMask(to);
+    return ((from_mask & to_mask) == from_mask);
+  } else {
+    return false;
+  }
 }
 
 // TODO optimize (early exists. don't check lhs->is<> && rhs->is<>. If they

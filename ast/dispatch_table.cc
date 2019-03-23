@@ -115,6 +115,12 @@ static base::expected<core::FnParams<type::Typed<Expression *>>>
 MatchArgsToParams(
     core::FnParams<type::Typed<Expression *>> const &params,
     core::FnArgs<std::pair<Expression *, VerifyResult>> const &args) {
+  if (args.pos().size() > params.size()) {
+    return base::unexpected(absl::StrCat(
+        "Too many arguments provided (", args.size(),
+        ") but expression is only callable with at most ", params.size()));
+  }
+
   core::FnParams<type::Typed<Expression *>> matched_params;
   size_t param_index = 0;
   for (auto const &[expr, verify_result] : args.pos()) {
@@ -166,15 +172,22 @@ MatchArgsToParams(
   }
 
   for (auto const &[name, unused] : args.named()) {
-    if (params.at_or_null(name) != nullptr) { continue; }
-    return base::unexpected(
-        absl::StrCat("No parameter matching argument named `", name, "`"));
+    auto *index = params.at_or_null(name);
+    if (index == nullptr) {
+      return base::unexpected(
+          absl::StrCat("No parameter matching argument named `", name, "`"));
+    }
+    if (*index < args.pos().size()) {
+      // TODO better error message.
+      return base::unexpected(absl::StrCat(
+          "Argument named `", name, "` shadows positional argument ", *index));
+    }
   }
 
   return  matched_params;
 }
 
-static DispatchTable::Row OverloadParams(
+static base::expected<DispatchTable::Row> OverloadParams(
     Overload const &overload,
     core::FnArgs<std::pair<Expression *, VerifyResult>> const &args,
     Context *ctx) {
@@ -217,35 +230,62 @@ static DispatchTable::Row OverloadParams(
         if (!result.ok()) { NOT_YET(); }
 
         if (!param.value->const_) {
-          params.at(param_index) = core::Param<type::Typed<Expression *>>{
-              param.name,
-              type::Typed<Expression *>(param.value.get(),
-                                        new_ctx.type_of(param.value.get())),
-              param.flags};
+          params.set(param_index, core::Param<type::Typed<Expression *>>{
+                                      param.name,
+                                      type::Typed<Expression *>(
+                                          param.value.get(),
+                                          new_ctx.type_of(param.value.get())),
+                                      param.flags});
         } else {
           if (param_index < args.pos().size()) {
             auto [arg_expr, verify_result] = args.pos().at(param_index);
+            type::Type const *decl_type    = new_ctx.type_of(param.value.get());
+            if (!type::CanCast(verify_result.type_, decl_type)) {
+              return base::unexpected(
+                  absl::StrCat("TODO good error message couldn't match type ",
+                               decl_type->to_string(), " to ",
+                               verify_result.type_->to_string()));
+            }
             new_ctx.bound_constants_.constants_.emplace(
                 param.value.get(), backend::Evaluate(arg_expr, &new_ctx).at(0));
-            params.at(param_index) = core::Param<type::Typed<Expression *>>{
-                param.name,
-                type::Typed<Expression *>(param.value.get(),
-                                          verify_result.type_),
-                param.flags};
+            params.set(param_index, core::Param<type::Typed<Expression *>>{
+                                        param.name,
+                                        type::Typed<Expression *>(
+                                            param.value.get(), decl_type),
+                                        param.flags});
           } else {
             if (auto *arg = args.at_or_null(param.value->id_)) {
               new_ctx.bound_constants_.constants_.emplace(
                   param.value.get(),
                   backend::Evaluate(arg->first, &new_ctx).at(0));
-              params.at(param_index) = core::Param<type::Typed<Expression *>>{
-                  param.name,
-                  type::Typed<Expression *>(param.value.get(),
-                                            new_ctx.type_of(param.value.get())),
-                  param.flags};
+              params.set(param_index,
+                         core::Param<type::Typed<Expression *>>{
+                             param.name,
+                             type::Typed<Expression *>(
+                                 param.value.get(),
+                                 new_ctx.type_of(param.value.get())),
+                             param.flags});
 
             } else {
-              // Do I have a default?
-              NOT_YET();
+              if (param.flags & core::HAS_DEFAULT) {
+                new_ctx.bound_constants_.constants_.emplace(
+                    param.value.get(),
+                    backend::Evaluate(decl->init_val.get(), &new_ctx).at(0));
+                // TODO should I be setting this parameter?
+
+                type::Type const *decl_type =
+                    new_ctx.type_of(param.value.get());
+                params.set(param_index,
+                           core::Param<type::Typed<Expression *>>{
+                               param.name,
+                               type::Typed<Expression *>(decl->init_val.get(),
+                                                         decl_type),
+                               param.flags});
+              } else {
+                return base::unexpected(
+                    "TODO good error message. needed default parameter but "
+                    "none provided.");
+              }
             }
           }
         }
@@ -285,7 +325,8 @@ static DispatchTable::Row OverloadParams(
 }
 
 static size_t NumOutputs(std::vector<DispatchTable::Row> const &rows) {
-  ASSERT(rows.size() != 0u);
+  if (rows.empty()) { return std::numeric_limits<size_t>::max(); }
+
   size_t expected = rows.front().type->output.size();
   return absl::c_all_of(rows,
                         [expected](DispatchTable::Row const &row) {
@@ -323,17 +364,22 @@ VerifyResult VerifyDispatch(
   absl::flat_hash_map<Expression const *, std::string> failure_reasons;
   for (Overload const &overload : os) {
     is_const &= overload.result.const_;
-    auto row = OverloadParams(overload, args, ctx);
+    auto expected_row = OverloadParams(overload, args, ctx);
+    if (!expected_row.has_value()) {
+      failure_reasons.emplace(overload.expr,
+                              std::move(expected_row).error().to_string());
+      continue;
+    }
 
-    auto match = MatchArgsToParams(row.params, args);
+    auto match = MatchArgsToParams(expected_row->params, args);
     if (!match.has_value()) {
       failure_reasons.emplace(overload.expr,
                               std::move(match).error().to_string());
       continue;
     }
 
-    row.params = *std::move(match);
-    table.bindings_.push_back(std::move(row));
+    expected_row->params = *std::move(match);
+    table.bindings_.push_back(*std::move(expected_row));
   }
 
   size_t num_outputs = NumOutputs(table.bindings_);
