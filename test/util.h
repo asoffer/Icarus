@@ -15,9 +15,11 @@ std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
 }  // namespace frontend
 
 namespace test {
-template <typename T>
-std::unique_ptr<T> MakeVerified(std::string s, ::Context *ctx,
-                                core::Scope *scope = nullptr) {
+namespace internal {
+
+template <typename T, bool Verify>
+std::unique_ptr<T> MakeNode(std::string s, ::Context *ctx, core::Scope *scope) {
+  if (scope == nullptr) { scope = &ctx->mod_->scope_; }
   frontend::StringSrc src(std::move(s));
   std::unique_ptr<ast::Statements> stmts = frontend::Parse(&src, ctx->mod_);
   if (!stmts) { return nullptr; }
@@ -26,7 +28,7 @@ std::unique_ptr<T> MakeVerified(std::string s, ::Context *ctx,
   auto *cast_ptr                  = stmt->if_as<T>();
   if (cast_ptr) {
     cast_ptr->assign_scope(scope);
-    if (!cast_ptr->VerifyType(ctx)) { return nullptr; }
+    if (Verify && !cast_ptr->VerifyType(ctx)) { return nullptr; }
     stmt.release();
     return std::unique_ptr<T>{cast_ptr};
 
@@ -34,6 +36,21 @@ std::unique_ptr<T> MakeVerified(std::string s, ::Context *ctx,
     return nullptr;
   }
 }
+
+}  // namespace internal
+
+template <typename T>
+std::unique_ptr<T> MakeUnverified(std::string s, ::Context *ctx,
+                                  core::Scope *scope = nullptr) {
+  return internal::MakeNode<T, false>(std::move(s), ctx, scope);
+}
+
+template <typename T>
+std::unique_ptr<T> MakeVerified(std::string s, ::Context *ctx,
+                                  core::Scope *scope = nullptr) {
+  return internal::MakeNode<T, true>(std::move(s), ctx, scope);
+}
+
 }  // namespace test
 
 #endif  // ICARUS_TEST_UTIL_H

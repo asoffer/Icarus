@@ -81,29 +81,30 @@ static std::vector<core::FnArgs<type::Type const *>> ExpandAllFnArgs(
 }
 
 // Small contains expanded arguments (no variants).
-// static bool Covers(core::FnArgs<type::Type const *> const &big,
-//                    core::FnArgs<type::Type const *> const &small) {
-//   ASSERT(big.pos().size() == small.pos().size());
-//   for (size_t i = 0; i < big.pos().size(); ++i) {
-//     if (big.at(i) == small.at(i)) { continue; }
-//     if (auto *vt = big.at(i)->if_as<type::Variant>()) {
-//       if (vt->contains(small.at(i))) { continue; }
-//     }
-//     return false;
-//   }
-// 
-//   for (auto const &[name, t] : small.named()) {
-//     if (type::Type const *const *big_t = big.at_or_null(name)) {
-//       if (t == *big_t) { continue; }
-//       if (auto *vt = (*big_t)->if_as<type::Variant>()) {
-//         if (vt->contains(t)) { continue; }
-//       }
-//     }
-//     return false;
-//   }
-// 
-//   return true;
-// }
+static bool Covers(core::FnParams<type::Typed<Expression *>> const &params,
+                   core::FnArgs<type::Type const *> const &args) {
+  if (params.size() < args.size()) { return false; }
+
+  for (size_t i = 0; i < args.pos().size(); ++i) {
+    if (!type::CanCast(args.pos().at(i), params.at(i).value.type())) {
+      return false;
+    }
+  }
+
+  for (auto const &[name, type] : args.named()) {
+    auto *index = params.at_or_null(name);
+    if (index == nullptr) { return false; }
+    if (!type::CanCast(type, params.at(*index).value.type())) { return false; }
+  }
+
+  for (size_t i = args.pos().size(); i < params.size(); ++i) {
+    auto const& param = params.at(i);
+    if (param.flags & core::HAS_DEFAULT) { continue; }
+    if (args.at_or_null(std::string{param.name}) == nullptr) { return false; }
+  }
+
+  return true;
+}
 
 type::Type const *DispatchTable::MakeOrLogError(
     Node *node, core::FnArgs<Expression *> const &args,
@@ -403,14 +404,14 @@ VerifyResult VerifyDispatch(
                        return absl::c_any_of(
                            table.bindings_,
                            [&fnargs](DispatchTable::Row const &row) {
-                             // TODO return Covers(kv.first, fnargs);
-                             return true;
+                             return Covers(row.params, fnargs);
                            });
                      }),
       expanded_fnargs.end());
   if (!expanded_fnargs.empty()) {
-    NOT_YET("log an error");
+    // TODO log an error
     // ctx->error_log()->MissingDispatchContingency(node->span, expanded_fnargs);
+    return VerifyResult::Error();
   }
 
   ctx->set_dispatch_table(expr, std::move(table));
