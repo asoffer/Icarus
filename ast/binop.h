@@ -17,7 +17,7 @@ struct Binop : public Literal {
   void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
-  void DependentDecls(base::Graph<Declaration *> *g,
+  void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
   bool InferType(type::Type const *t, InferenceState *state) const override;
 

@@ -26,7 +26,7 @@ void RepeatedUnop::assign_scope(core::Scope *scope) {
   args_.assign_scope(scope);
 }
 
-void RepeatedUnop::DependentDecls(base::Graph<Declaration *> *g,
+void RepeatedUnop::DependentDecls(DeclDepGraph *g,
                                   Declaration *d) const {
   args_.DependentDecls(g, d);
 }

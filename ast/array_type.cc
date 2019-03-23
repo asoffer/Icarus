@@ -17,7 +17,7 @@ void ArrayType::assign_scope(core::Scope *scope) {
   data_type_->assign_scope(scope);
 }
 
-void ArrayType::DependentDecls(base::Graph<Declaration *> *g,
+void ArrayType::DependentDecls(DeclDepGraph *g,
                                Declaration *d) const {
   length_->DependentDecls(g, d);
   data_type_->DependentDecls(g, d);

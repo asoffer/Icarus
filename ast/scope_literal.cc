@@ -24,7 +24,7 @@ void ScopeLiteral::assign_scope(core::Scope *scope) {
   for (auto &decl : decls_) { decl.assign_scope(body_scope_.get()); }
 }
 
-void ScopeLiteral::DependentDecls(base::Graph<Declaration *> *g,
+void ScopeLiteral::DependentDecls(DeclDepGraph *g,
                                   Declaration *d) const {
   for (auto &decl : decls_) { decl.DependentDecls(g, d); }
 }

@@ -29,7 +29,7 @@ struct FunctionLiteral : public Literal {
   void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
-  void DependentDecls(base::Graph<Declaration *> *g,
+  void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
 
   VerifyResult VerifyTypeConcrete(Context *);
@@ -49,6 +49,7 @@ struct FunctionLiteral : public Literal {
   //
   // TODO rename assign_scope.
   std::vector<Declaration *> sorted_params_;
+  absl::flat_hash_map<Declaration *, size_t> decl_to_param_;
   base::Graph<Declaration *> param_dep_graph_;
 
   // TODO This is storing both the name in the declaration and pulls the

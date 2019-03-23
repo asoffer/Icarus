@@ -37,7 +37,7 @@ void ScopeNode::assign_scope(core::Scope *scope) {
   for (auto &block : blocks_) { block.assign_scope(scope); }
 }
 
-void ScopeNode::DependentDecls(base::Graph<Declaration *> *g,
+void ScopeNode::DependentDecls(DeclDepGraph *g,
                                Declaration *d) const {
   args_.Apply([g, d](auto const &expr) { expr->DependentDecls(g, d); });
   for (auto &block : blocks_) { block.DependentDecls(g, d); }

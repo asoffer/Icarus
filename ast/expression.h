@@ -24,7 +24,7 @@ struct Expression : public Node {
   virtual std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
   virtual void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx);
   virtual void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx);
-  virtual void DependentDecls(base::Graph<Declaration *> *g,
+  virtual void DependentDecls(DeclDepGraph *g,
                               Declaration *d) const = 0;
 
   virtual bool needs_expansion() const { return false; }

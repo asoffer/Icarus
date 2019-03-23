@@ -108,9 +108,8 @@ void Declaration::assign_scope(core::Scope *scope) {
 }
 
 // Note: This case covers MatchDeclaration too!
-void Declaration::DependentDecls(base::Graph<Declaration *> *g,
-                                 Declaration *d) const {
-  g->add_edge(d, const_cast<Declaration *>(this));
+void Declaration::DependentDecls(DeclDepGraph *g, Declaration *d) const {
+  g->graph_.add_edge(d, const_cast<Declaration *>(this));
   if (type_expr) {
     type_expr->DependentDecls(g, const_cast<Declaration *>(this));
   }

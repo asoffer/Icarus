@@ -15,7 +15,7 @@ struct ArrayLiteral : public Literal {
   void ExtractJumps(JumpExprs *rets) const override {
     return cl_.ExtractJumps(rets);
   }
-  void DependentDecls(base::Graph<Declaration *> *g,
+  void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
 
   ir::Results EmitIr(Context *ctx) override;

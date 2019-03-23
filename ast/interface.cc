@@ -18,7 +18,7 @@ void Interface::assign_scope(core::Scope *scope) {
   for (auto &d : decls_) { d.assign_scope(body_scope_.get()); }
 }
 
-void Interface::DependentDecls(base::Graph<Declaration *> *g,
+void Interface::DependentDecls(DeclDepGraph *g,
                                Declaration *d) const {
   NOT_YET();
 }

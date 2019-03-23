@@ -8,6 +8,7 @@
 namespace type {
 template <typename V, typename T = Type>
 struct Typed {
+  Typed() = default;
   // TODO: This does a weird thing where it upcasts and then downcasts. Probably
   // free but worth making sure or fixing it.
   Typed(V value, type::Type const* t)

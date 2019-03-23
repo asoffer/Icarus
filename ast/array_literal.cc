@@ -24,7 +24,7 @@ std::string ArrayLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void ArrayLiteral::DependentDecls(base::Graph<Declaration *> *g,
+void ArrayLiteral::DependentDecls(DeclDepGraph *g,
                                   Declaration *d) const {
   for (auto const &expr : cl_.exprs_) { expr->DependentDecls(g, d); }
 }

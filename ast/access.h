@@ -17,7 +17,7 @@ struct Access : public Expression {
   void ExtractJumps(JumpExprs *rets) const override {
     operand->ExtractJumps(rets);
   }
-  void DependentDecls(base::Graph<Declaration *> *g,
+  void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
   bool InferType(type::Type const *t, InferenceState *state) const override;
 

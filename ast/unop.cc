@@ -42,7 +42,7 @@ void Unop::assign_scope(core::Scope *scope) {
   operand->assign_scope(scope);
 }
 
-void Unop::DependentDecls(base::Graph<Declaration *> *g, Declaration *d) const {
+void Unop::DependentDecls(DeclDepGraph *g, Declaration *d) const {
   operand->DependentDecls(g, d);
 }
 

@@ -100,7 +100,7 @@ void Binop::assign_scope(core::Scope *scope) {
   rhs->assign_scope(scope);
 }
 
-void Binop::DependentDecls(base::Graph<Declaration *> *g,
+void Binop::DependentDecls(DeclDepGraph *g,
                            Declaration *d) const {
   lhs->DependentDecls(g, d);
   rhs->DependentDecls(g, d);

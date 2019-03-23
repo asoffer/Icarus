@@ -29,7 +29,7 @@ void BlockLiteral::assign_scope(core::Scope *scope) {
   for (auto &a : after_) { a.assign_scope(body_scope_.get()); }
 }
 
-void BlockLiteral::DependentDecls(base::Graph<Declaration *> *g,
+void BlockLiteral::DependentDecls(DeclDepGraph *g,
                                   Declaration *d) const {
   for (auto const &b : before_) { b.DependentDecls(g, d); }
   for (auto const &a : after_) { a.DependentDecls(g, d); }

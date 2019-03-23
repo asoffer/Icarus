@@ -44,7 +44,7 @@ std::string StructLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void StructLiteral::DependentDecls(base::Graph<Declaration *> *g,
+void StructLiteral::DependentDecls(DeclDepGraph *g,
                                    Declaration *d) const {
   for (auto &a : args_) { a->DependentDecls(g, d); }
   for (auto &f : fields_) { f->DependentDecls(g, d); }

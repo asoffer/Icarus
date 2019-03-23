@@ -20,7 +20,7 @@ void Cast::assign_scope(core::Scope *scope) {
   type_->assign_scope(scope);
 }
 
-void Cast::DependentDecls(base::Graph<Declaration *> *g,
+void Cast::DependentDecls(DeclDepGraph *g,
                           Declaration *d) const {
   expr_->DependentDecls(g, d);
   type_->DependentDecls(g, d);

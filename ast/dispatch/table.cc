@@ -174,8 +174,10 @@ MatchArgsToParams(
   return  matched_params;
 }
 
-static DispatchTable::Row OverloadParams(Overload const &overload,
-                                         Context *ctx) {
+static DispatchTable::Row OverloadParams(
+    Overload const &overload,
+    core::FnArgs<std::pair<Expression *, VerifyResult>> const &args,
+    Context *ctx) {
   // These are the parameters for the actual overload that will be potentially
   // selected. In particular, if we have two overloads:
   //
@@ -198,10 +200,62 @@ static DispatchTable::Row OverloadParams(Overload const &overload,
 
   if (result.const_) {
     if (result.type_ == type::Generic) {
-      auto *expr =
+      auto *fn_lit =
           backend::EvaluateAs<ast::FunctionLiteral *>(overload.expr, ctx);
-      base::Log() << overload.expr->to_string(0);
-      NOT_YET();
+
+      // This is the right context in which to evaluate arguments. What about
+      // parameters with defaults?
+      Context new_ctx(ctx);
+
+      core::FnParams<type::Typed<Expression *>> params(fn_lit->inputs_.size());
+      for (auto *decl : fn_lit->sorted_params_) {
+        // TODO skip decls that are not parameters.
+        size_t param_index = fn_lit->decl_to_param_.at(decl);
+        auto const& param = fn_lit->inputs_.at(param_index);
+
+        auto result = decl->VerifyType(&new_ctx);
+        if (!result.ok()) { NOT_YET(); }
+
+        if (!param.value->const_) {
+          params.at(param_index) = core::Param<type::Typed<Expression *>>{
+              param.name,
+              type::Typed<Expression *>(param.value.get(),
+                                        new_ctx.type_of(param.value.get())),
+              param.flags};
+        } else {
+          if (param_index < args.pos().size()) {
+            auto [arg_expr, verify_result] = args.pos().at(param_index);
+            new_ctx.bound_constants_.constants_.emplace(
+                param.value.get(), backend::Evaluate(arg_expr, &new_ctx).at(0));
+            params.at(param_index) = core::Param<type::Typed<Expression *>>{
+                param.name,
+                type::Typed<Expression *>(param.value.get(),
+                                          verify_result.type_),
+                param.flags};
+          } else {
+            if (auto *arg = args.at_or_null(param.value->id_)) {
+              new_ctx.bound_constants_.constants_.emplace(
+                  param.value.get(),
+                  backend::Evaluate(arg->first, &new_ctx).at(0));
+              params.at(param_index) = core::Param<type::Typed<Expression *>>{
+                  param.name,
+                  type::Typed<Expression *>(param.value.get(),
+                                            new_ctx.type_of(param.value.get())),
+                  param.flags};
+
+            } else {
+              // Do I have a default?
+              NOT_YET();
+            }
+          }
+        }
+      }
+      // TODO errors?
+      auto *fn_type =
+          ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx).type_);
+      return DispatchTable::Row{
+          std::move(params), &fn_type->as<type::Function>(),
+          backend::EvaluateAs<ir::AnyFunc>(fn_lit, &new_ctx)};
     } else {
       ir::AnyFunc fn = backend::EvaluateAs<ir::AnyFunc>(overload.expr, ctx);
       if (fn.is_fn()) {
@@ -269,7 +323,7 @@ VerifyResult VerifyDispatch(
   absl::flat_hash_map<Expression const *, std::string> failure_reasons;
   for (Overload const &overload : os) {
     is_const &= overload.result.const_;
-    auto row = OverloadParams(overload, ctx);
+    auto row = OverloadParams(overload, args, ctx);
 
     auto match = MatchArgsToParams(row.params, args);
     if (!match.has_value()) {

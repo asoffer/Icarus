@@ -60,23 +60,38 @@ void FunctionLiteral::assign_scope(core::Scope *scope) {
   for (auto &out : outputs_) { out->assign_scope(fn_scope_.get()); }
   statements_.assign_scope(fn_scope_.get());
 
+  DeclDepGraph decl_dep_graph;
   for (auto const &in : inputs_) {
-    param_dep_graph_.add_node(in.value.get());
+    decl_dep_graph.graph_.add_node(in.value.get());
     if (in.value->type_expr) {
-      in.value->type_expr->DependentDecls(&param_dep_graph_, in.value.get());
+      in.value->type_expr->DependentDecls(&decl_dep_graph, in.value.get());
     }
     if (in.value->init_val) {
-      in.value->init_val->DependentDecls(&param_dep_graph_, in.value.get());
+      in.value->init_val->DependentDecls(&decl_dep_graph, in.value.get());
     }
+  }
+
+  absl::flat_hash_map<std::string_view, Declaration*> decls_by_id;
+  for (auto const& param : inputs_) {
+    decls_by_id.emplace(param.value->id_, param.value.get());
+  }
+
+  param_dep_graph_ = std::move(decl_dep_graph.graph_);
+  for (auto &[id, decls] : decl_dep_graph.ids_) {
+    auto iter = decls_by_id.find(id);
+    if (iter == decls_by_id.end()) { continue; }
+    for (auto *d : decls) { param_dep_graph_.add_edge(d, iter->second); }
   }
 
   sorted_params_.reserve(param_dep_graph_.num_nodes());
   param_dep_graph_.topologically(
       [this](Declaration *decl) { sorted_params_.push_back(decl); });
+  for (size_t i = 0; i < inputs_.size(); ++i) {
+    decl_to_param_.emplace(inputs_.at(i).value.get(), i);
+  }
 }
 
-void FunctionLiteral::DependentDecls(base::Graph<Declaration *> *g,
-                                     Declaration *d) const {
+void FunctionLiteral::DependentDecls(DeclDepGraph *g, Declaration *d) const {
   for (auto const &in : inputs_) { in.value->DependentDecls(g, d); }
   for (auto const &out : outputs_) { out->DependentDecls(g, d); }
 }
@@ -211,7 +226,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
             auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
               ctx->error_log()->ReturningWrongNumber(expr->span, expr_type,
-                                                   outs.size());
+                                                     outs.size());
               return VerifyResult::Error();
             } else {
               bool err = false;
@@ -232,7 +247,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
             }
           } else {
             ctx->error_log()->ReturningWrongNumber(expr->span, expr_type,
-                                                 outs.size());
+                                                   outs.size());
             return VerifyResult::Error();
           }
         }

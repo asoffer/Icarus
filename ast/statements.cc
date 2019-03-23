@@ -19,7 +19,7 @@ void Statements::assign_scope(core::Scope *scope) {
   for (auto &stmt : content_) { stmt->assign_scope(scope); }
 }
 
-void Statements::DependentDecls(base::Graph<Declaration *> *g,
+void Statements::DependentDecls(DeclDepGraph *g,
                                 Declaration *d) const {
   for (auto const &stmt : content_) { stmt->DependentDecls(g, d); }
 }

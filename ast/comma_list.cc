@@ -25,7 +25,7 @@ void CommaList::assign_scope(core::Scope *scope) {
   for (auto &expr : exprs_) { expr->assign_scope(scope); }
 }
 
-void CommaList::DependentDecls(base::Graph<Declaration *> *g,
+void CommaList::DependentDecls(DeclDepGraph *g,
                                Declaration *d) const {
   for (auto const &expr : exprs_) { expr->DependentDecls(g, d); }
 }

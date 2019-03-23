@@ -29,7 +29,7 @@ void Access::assign_scope(core::Scope *scope) {
   operand->assign_scope(scope);
 }
 
-void Access::DependentDecls(base::Graph<Declaration *> *g,
+void Access::DependentDecls(DeclDepGraph *g,
                             Declaration *d) const {
   operand->DependentDecls(g, d);
 }

@@ -82,7 +82,7 @@ void EnumLiteral::assign_scope(core::Scope *scope) {
   for (auto &elem : elems_) { elem->assign_scope(enum_scope_.get()); }
 }
 
-void EnumLiteral::DependentDecls(base::Graph<Declaration *> *g,
+void EnumLiteral::DependentDecls(DeclDepGraph *g,
                                  Declaration *d) const {
   for (auto const &elem : elems_) { elem->DependentDecls(g, d); }
 }

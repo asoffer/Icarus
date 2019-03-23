@@ -22,7 +22,7 @@ void Index::assign_scope(core::Scope *scope) {
   rhs_->assign_scope(scope);
 }
 
-void Index::DependentDecls(base::Graph<Declaration *> *g,
+void Index::DependentDecls(DeclDepGraph *g,
                            Declaration *d) const {
   lhs_->DependentDecls(g, d);
   rhs_->DependentDecls(g, d);

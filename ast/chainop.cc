@@ -143,7 +143,7 @@ void ChainOp::assign_scope(core::Scope *scope) {
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
-void ChainOp::DependentDecls(base::Graph<Declaration *> *g,
+void ChainOp::DependentDecls(DeclDepGraph *g,
                              Declaration *d) const {
   for (auto const &expr : exprs) { expr->DependentDecls(g, d); }
 }

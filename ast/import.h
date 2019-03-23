@@ -22,7 +22,7 @@ struct Import : public Literal {
     operand_->ExtractJumps(rets);
   }
 
-  void DependentDecls(base::Graph<Declaration *> *g,
+  void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override {
     operand_->DependentDecls(g, d);
   }

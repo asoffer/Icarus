@@ -18,7 +18,7 @@ struct ScopeNode : public Expression {
   void assign_scope(core::Scope *scope) override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
-  void DependentDecls(base::Graph<Declaration *> *g,
+  void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
 
   ir::Results EmitIr(Context *) override;

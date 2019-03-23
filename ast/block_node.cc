@@ -18,7 +18,7 @@ void BlockNode::assign_scope(core::Scope *scope) {
   stmts_.assign_scope(block_scope_.get());
 }
 
-void BlockNode::DependentDecls(base::Graph<Declaration *> *g,
+void BlockNode::DependentDecls(DeclDepGraph *g,
                                Declaration *d) const {
   name_->DependentDecls(g, d);
   stmts_.DependentDecls(g, d);

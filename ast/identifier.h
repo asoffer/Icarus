@@ -18,9 +18,10 @@ struct Identifier : public Expression {
   VerifyResult VerifyType(Context *) override;
 
   void ExtractJumps(JumpExprs *) const override {}
-  // TODO I think you should actually be dependent on the decl_.
-  void DependentDecls(base::Graph<Declaration *> *g,
-                      Declaration *d) const override {}
+  void DependentDecls(DeclDepGraph *g,
+                      Declaration *d) const override {
+    g->ids_[token].push_back(d);
+  }
 
   ir::Results EmitIr(Context *) override;
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;

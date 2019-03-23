@@ -94,7 +94,7 @@ bool Call::InferType(type::Type const *t, InferenceState *state) const {
   return false;
 }
 
-void Call::DependentDecls(base::Graph<Declaration *> *g,
+void Call::DependentDecls(DeclDepGraph *g,
                           Declaration *d) const {
   fn_->DependentDecls(g, d);
   args_.Apply([g, d](auto const &expr) { expr->DependentDecls(g, d); });

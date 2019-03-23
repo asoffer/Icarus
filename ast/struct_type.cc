@@ -19,7 +19,7 @@ void StructType::assign_scope(core::Scope *scope) {
   for (auto &arg : args_) { arg->assign_scope(scope); }
 }
 
-void StructType::DependentDecls(base::Graph<Declaration *> *g,
+void StructType::DependentDecls(DeclDepGraph *g,
                                 Declaration *d) const {
   for (auto &arg : args_) { arg->DependentDecls(g, d); }
 }

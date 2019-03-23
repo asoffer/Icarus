@@ -34,8 +34,7 @@ struct Token : public ast::Node {
   ast::VerifyResult VerifyType(Context *) override { UNREACHABLE(token); }
   void ExtractJumps(ast::JumpExprs *) const override { UNREACHABLE(token); }
   ir::Results EmitIr(Context *) override { UNREACHABLE(token); }
-  void DependentDecls(base::Graph<ast::Declaration *> *g,
-                      ast::Declaration *d) const {
+  void DependentDecls(ast::DeclDepGraph *, ast::Declaration *) const {
     UNREACHABLE(token);
   }
 

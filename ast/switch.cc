@@ -34,7 +34,7 @@ void Switch::assign_scope(core::Scope *scope) {
   }
 }
 
-void Switch::DependentDecls(base::Graph<Declaration *> *g,
+void Switch::DependentDecls(DeclDepGraph *g,
                             Declaration *d) const {
   if (expr_) { expr_->DependentDecls(g, d); }
   for (auto &[expr, cond] : cases_) {

@@ -17,7 +17,7 @@ struct CommaList : public Expression {
   std::string to_string(size_t n) const override;
   VerifyResult VerifyType(Context *) override;
   void ExtractJumps(JumpExprs *) const override;
-  void DependentDecls(base::Graph<Declaration *> *g,
+  void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
 
   std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(Context *ctx);

@@ -31,7 +31,7 @@ struct Terminal : public Literal {
   }
 
   void ExtractJumps(JumpExprs *) const override {}
-  void DependentDecls(base::Graph<Declaration *> *g,
+  void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override {}
 
   ir::Results EmitIr(Context *ctx) override { return results_; };
