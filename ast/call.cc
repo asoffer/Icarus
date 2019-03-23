@@ -77,8 +77,8 @@ bool Call::InferType(type::Type const *t, InferenceState *state) const {
 
       // TODO only if this is the right dispatch?
       // TODO named args too.
-      ASSERT(backward_iter->second->size() == args_.num_pos());
-      for (size_t i = 0; i < args_.num_pos(); ++i) {
+      ASSERT(backward_iter->second->size() == args_.pos().size());
+      for (size_t i = 0; i < args_.pos().size(); ++i) {
         state->match_queue_.emplace(args_.at(i).get(),
                                     backward_iter->second->at(i));
       }

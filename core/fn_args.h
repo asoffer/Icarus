@@ -19,9 +19,6 @@ struct FnArgs {
   absl::flat_hash_map<std::string, T> const &named() const & { return named_; }
   absl::flat_hash_map<std::string, T> &&named() && { return named_; }
 
-  constexpr size_t num_pos() const { return pos_.size(); }
-  constexpr size_t num_named() const { return named_.size(); }
-
   template <typename... Args>
   void pos_emplace(Args &&... args) & {
     pos_.emplace_back(std::forward<Args>(args)...);
@@ -83,7 +80,8 @@ struct FnArgs {
     return FnArgs<out_t>(std::move(pos), std::move(named));
   }
 
-  bool empty() const { return num_pos() + num_named() == 0; }
+  size_t size() const { return pos().size() + named().size(); }
+  bool empty() const { return size() == 0; }
 
  private:
   std::vector<T> pos_;

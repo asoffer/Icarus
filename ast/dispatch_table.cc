@@ -83,8 +83,8 @@ static std::vector<core::FnArgs<type::Type const *>> ExpandAllFnArgs(
 // Small contains expanded arguments (no variants).
 // static bool Covers(core::FnArgs<type::Type const *> const &big,
 //                    core::FnArgs<type::Type const *> const &small) {
-//   ASSERT(big.num_pos() == small.num_pos());
-//   for (size_t i = 0; i < big.num_pos(); ++i) {
+//   ASSERT(big.pos().size() == small.pos().size());
+//   for (size_t i = 0; i < big.pos().size(); ++i) {
 //     if (big.at(i) == small.at(i)) { continue; }
 //     if (auto *vt = big.at(i)->if_as<type::Variant>()) {
 //       if (vt->contains(small.at(i))) { continue; }

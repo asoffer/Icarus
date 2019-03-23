@@ -6,14 +6,12 @@
 #include <set>
 #include <vector>
 
-#include "test/test.h"
+#include "test/catch.h"
 
 namespace base {
 namespace {
-using ::matcher::Eq;
-using ::matcher::InheritsFrom;
 
-TEST(StringifyStrings) {
+TEST_CASE("strings") {
   CHECK(stringify(std::string{"hello"}) == "hello");
   CHECK(stringify(std::string{""}) == "");
 
@@ -21,7 +19,7 @@ TEST(StringifyStrings) {
   CHECK(stringify("") == "");
 }
 
-TEST(StringifyPointers) {
+TEST_CASE("pointers") {
   CHECK(stringify(nullptr) == "nullptr");
   CHECK(stringify(static_cast<char const*>(nullptr)) == "null char const*");
 
@@ -33,12 +31,12 @@ TEST(StringifyPointers) {
   CHECK(stringify(static_cast<int*>(nullptr)) == "0x0000000000000000");
 }
 
-TEST(StringifyBool) {
+TEST_CASE("bools") {
   CHECK(stringify(true) == "true");
   CHECK(stringify(false) == "false");
 }
 
-TEST(StringifyIntegers) {
+TEST_CASE("ints") {
   CHECK(stringify(0) == "0");
   CHECK(stringify(-3) == "-3");
   CHECK(stringify(17) == "17");
@@ -55,13 +53,13 @@ TEST(StringifyIntegers) {
         "18446744073709551615");
 }
 
-TEST(StringifyChars) {
+TEST_CASE("chars") {
   CHECK(stringify('x') == "x");
   CHECK(stringify('\n') == "\n");
   CHECK(stringify('\0') == "");
 }
 
-TEST(StringifyFloats) {
+TEST_CASE("floats") {
   CHECK(stringify(0.0f) == "0.000000");
   CHECK(stringify(-0.0f) == "-0.000000");
   CHECK(stringify(std::nanf("tag")) == "nan");
@@ -73,21 +71,21 @@ TEST(StringifyFloats) {
   CHECK(stringify(17.34) == "17.340000");
 }
 
-TEST(StringifyPair) {
+TEST_CASE("pairs") {
   CHECK(stringify(std::pair(3, 4)) == "(3, 4)");
-  CHECK(stringify(std::pair(3, std::pair(true, "hello"))),
-        Eq("(3, (true, hello))"));
+  CHECK(stringify(std::pair(3, std::pair(true, "hello"))) ==
+        "(3, (true, hello))");
 }
 
-TEST(StringifyTuple) {
+TEST_CASE("tuples") {
   CHECK(stringify(std::tuple<>()) == "()");
   CHECK(stringify(std::tuple(false)) == "(false)");
   CHECK(stringify(std::tuple(3, 4)) == "(3, 4)");
-  CHECK(stringify(std::tuple(true, 3, std::pair(false, "hello"))),
-        Eq("(true, 3, (false, hello))"));
+  CHECK(stringify(std::tuple(true, 3, std::pair(false, "hello"))) ==
+            "(true, 3, (false, hello))");
 }
 
-TEST(StringifyVariant) {
+TEST_CASE("variants") {
   std::variant<int, bool> v = 3;
   CHECK(stringify(v) == "3");
   v = true;
@@ -101,24 +99,24 @@ TEST(StringifyVariant) {
   CHECK(stringify(w) == "true");
 }
 
-TEST(StringifyOptional) {
+TEST_CASE("optional") {
   std::optional<int> n;
   CHECK(stringify(n) == "nullopt");
   n = 3;
   CHECK(stringify(n) == "3");
 }
 
-TEST(StringifyContainer) {
+TEST_CASE("containers") {
   CHECK(stringify(std::vector<int>{}) == "[]");
   CHECK(stringify(std::vector<int>{17}) == "[17]");
 
   CHECK(stringify(std::vector<int>{1, 2, 3, 4}) == "[1, 2, 3, 4]");
-  CHECK(stringify(std::map<int, std::string>{{2, "hello"}, {5, "world"}}),
-        Eq("[(2, hello), (5, world)]"));
+  CHECK(stringify(std::map<int, std::string>{{2, "hello"}, {5, "world"}}) ==
+        "[(2, hello), (5, world)]");
   CHECK(stringify(std::set<int>{8, 4, 6, 2}) == "[2, 4, 6, 8]");
 }
 
-TEST(StringifyWithToStringMethod) {
+TEST_CASE("has to_string method") {
   struct S {
     std::string to_string() const { return "to_string!"; }
   };
@@ -130,7 +128,7 @@ struct Streamable {};
 std::ostream& operator<<(std::ostream& os, Streamable) {
   return os << "streamable!";
 }
-TEST(StringifyWithStreamable) {
+TEST_CASE("streamable") {
   CHECK(stringify(Streamable{}) == "streamable!");
 }
 
@@ -140,7 +138,7 @@ TEST(StringifyWithStreamable) {
 struct S {};
 std::string stringify(S const&) { return "adl"; }
 
-TEST(StringifyAdlOverload) {
+TEST_CASE("ADL overload") {
   using base::stringify;
   CHECK(stringify(S{}) =="adl");
   CHECK(stringify(std::pair{S{}, S{}}) == "(adl, adl)");

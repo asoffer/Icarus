@@ -1,89 +1,90 @@
 #include "frontend/source.h"
 
-#include "test/test.h"
+#include "test/catch.h"
 
 namespace frontend {
 namespace {
 
-TEST(StringSrcSingleChunk) {
+TEST_CASE("Single-chunk StringSrc") {
   StringSrc src("abc");
   auto chunk = src.ReadUntil('\0');
   CHECK(chunk.view == "abc");
-  CHECK(chunk.more_to_read == false);
+  CHECK_FALSE(chunk.more_to_read);
 }
 
-TEST(StringSrcSingleChunkNoDelimFound) {
+TEST_CASE("Single-chunk StringSrc not finding delimiter") {
   StringSrc src("abc");
   auto chunk = src.ReadUntil('x');
   CHECK(chunk.view == "abc");
-  CHECK(chunk.more_to_read == false);
+  CHECK_FALSE(chunk.more_to_read);
 }
 
-TEST(StringSrcMultipleChunks) {
+TEST_CASE("StringSrc with multiple chunks") {
   StringSrc src("abcdefg");
   auto chunk = src.ReadUntil('d');
   CHECK(chunk.view == "abc");
-  CHECK(chunk.more_to_read == true);
+  CHECK(chunk.more_to_read);
 
   chunk = src.ReadUntil('d');
   CHECK(chunk.view == "efg");
-  CHECK(chunk.more_to_read == false);
+  CHECK_FALSE(chunk.more_to_read);
 }
-TEST(StringSrcSmallChunks) {
+
+TEST_CASE("StringSrc with small chunks") {
   StringSrc src("aaa");
   auto chunk = src.ReadUntil('a');
   CHECK(chunk.view == "");
-  CHECK(chunk.more_to_read == true);
+  CHECK(chunk.more_to_read);
 
   chunk = src.ReadUntil('a');
   CHECK(chunk.view == "");
-  CHECK(chunk.more_to_read == true);
+  CHECK(chunk.more_to_read);
 
   chunk = src.ReadUntil('a');
   CHECK(chunk.view == "");
-  CHECK(chunk.more_to_read == false);
+  CHECK_FALSE(chunk.more_to_read);
 }
 
-TEST(FileSrcFail) {
-  CHECK(FileSrc::Make("not_a_file.txt").has_value() == false);
+TEST_CASE("Failed to open FileSrc") {
+  CHECK_FALSE(FileSrc::Make("not_a_file.txt").has_value());
 }
 
-TEST(FileSrcReadEmptyFile) {
+TEST_CASE("FileSrc reading empty file") {
   REQUIRE_ASSIGN(auto src, FileSrc::Make("frontend/testdata/empty_file.txt"));
 
   auto chunk = src.ReadUntil('\n');
   CHECK(chunk.view == "");
-  CHECK(chunk.more_to_read == false);
+  CHECK_FALSE(chunk.more_to_read);
 }
 
-TEST(FileSrcReadOneLine) {
+TEST_CASE("FileSrc one-line file") {
   REQUIRE_ASSIGN(auto src,
                  FileSrc::Make("frontend/testdata/one_line_file.txt"));
 
   auto chunk = src.ReadUntil('\n');
   CHECK(chunk.view == "hello");
-  CHECK(chunk.more_to_read == true);
+  CHECK(chunk.more_to_read);
 
   chunk = src.ReadUntil('\n');
   CHECK(chunk.view == "");
-  CHECK(chunk.more_to_read == false);
+  CHECK_FALSE(chunk.more_to_read);
 }
 
-TEST(FileSrcReadMultipleLines) {
+TEST_CASE("FileSrc multiple lines") {
   REQUIRE_ASSIGN(auto src,
                  FileSrc::Make("frontend/testdata/multi_line_file.txt"));
 
   auto chunk = src.ReadUntil('\n');
   CHECK(chunk.view == "hello");
-  CHECK(chunk.more_to_read == true);
+  CHECK(chunk.more_to_read);
 
   chunk = src.ReadUntil('\n');
   CHECK(chunk.view == "world!");
-  CHECK(chunk.more_to_read == true);
+  CHECK(chunk.more_to_read);
 
   chunk = src.ReadUntil('\n');
   CHECK(chunk.view == "");
-  CHECK(chunk.more_to_read == false);
+  CHECK_FALSE(chunk.more_to_read);
 }
 
 }  // namespace

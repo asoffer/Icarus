@@ -3,14 +3,27 @@ load("//:defs.bzl", "cc_lib")
 
 cc_lib(
     name = "test",
-    hdrs = ["test.h"],
     deps = [
-        "//base:log",
-        "//base:macros",
-        "//base:stringify",
-        "//base:matchers",
-        "//init:signal",
-        "//init:signal-impl",
+        ":catch",
+        ":elements_are",
     ],
+    testonly = True,
+)
+
+cc_lib(
+    name = "catch",
+    hdrs = [
+        "catch.h",
+        "Catch2/single_include/catch2/catch.hpp",
+    ],
+    srcs = ["catch.cc"],
+    deps = ["//base:macros"],
+    testonly = True,
+)
+
+cc_lib(
+    name = "elements_are",
+    hdrs = ["elements_are.h"],
+    deps = [":catch"],
     testonly = True,
 )

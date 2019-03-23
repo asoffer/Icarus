@@ -14,14 +14,14 @@ VerifyResult BuiltinFn::VerifyCall(
   switch (b_) {
     case ir::Builtin::Foreign: {
       bool err = false;
-      if (arg_results.num_named() != 0u) {
+      if (!arg_results.named().empty()) {
         ctx->error_log()->BuiltinError(span,
                                        "Built-in function `foreign` cannot be "
                                        "called with named arguments.");
         err = true;
       }
 
-      size_t size = arg_results.num_named() + arg_results.num_pos();
+      size_t size = arg_results.size();
       if (size != 2u) {
         ctx->error_log()->BuiltinError(span,
                                        "Built-in function `foreign` takes "
@@ -66,8 +66,8 @@ VerifyResult BuiltinFn::VerifyCall(
           ir::BuiltinType(ir::Builtin::Opaque)->as<type::Function>().output[0]);
 
     case ir::Builtin::Bytes: {
-      size_t size = arg_results.num_named() + arg_results.num_pos();
-      if (arg_results.num_named() != 0u) {
+      size_t size = arg_results.size();
+      if (!arg_results.named().empty()) {
         ctx->error_log()->BuiltinError(span,
                                        "Built-in function `bytes` cannot be "
                                        "called with named arguments.");
@@ -87,8 +87,8 @@ VerifyResult BuiltinFn::VerifyCall(
           ir::BuiltinType(ir::Builtin::Bytes)->as<type::Function>().output[0]);
     }
     case ir::Builtin::Alignment: {
-      size_t size = arg_results.num_named() + arg_results.num_pos();
-      if (arg_results.num_named()) {
+      size_t size = arg_results.size();
+      if (!arg_results.named().empty()) {
         ctx->error_log()->BuiltinError(span,
                                        "Built-in function `alignment` cannot "
                                        "be called with named arguments.");
