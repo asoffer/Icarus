@@ -1,5 +1,5 @@
 #include "misc/context.h"
-#include "ast/dispatch/table.h"
+#include "ast/dispatch_table.h"
 #include "ast/expression.h"
 #include "misc/module.h"
 

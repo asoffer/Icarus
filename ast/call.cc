@@ -5,7 +5,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/block_literal.h"
 #include "ast/builtin_fn.h"
-#include "ast/dispatch/table.h"
+#include "ast/dispatch_table.h"
 #include "ast/function_literal.h"
 #include "ast/struct_literal.h"
 #include "ast/unop.h"

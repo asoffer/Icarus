@@ -22,7 +22,7 @@ cc_target(
     ],
     impl_deps = [
         "//ast:expression",
-        "//ast/dispatch:table",
+        "//ast:dispatch_table",
     ],
 )
 
@@ -47,7 +47,7 @@ cc_target(
     name = "module",
     intf_deps = [
         "//ast:bound_constants",
-        "//ast/dispatch:table",
+        "//ast:dispatch_table",
         "//ast:statements",
         "//core:fn_params",
         "//core:scope",

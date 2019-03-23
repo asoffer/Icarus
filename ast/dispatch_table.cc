@@ -1,4 +1,4 @@
-#include "ast/dispatch/table.h"
+#include "ast/dispatch_table.h"
 
 #include <variant>
 

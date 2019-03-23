@@ -14,7 +14,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
 #include "ast/bound_constants.h"
-#include "ast/dispatch/table.h"
+#include "ast/dispatch_table.h"
 #include "ast/statements.h"
 #include "core/fn_params.h"
 #include "core/scope.h"

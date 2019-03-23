@@ -17,6 +17,7 @@ cc_lib(
         ":chainop",
         ":comma_list",
         ":declaration",
+        ":dispatch_table",
         ":enum_literal",
         ":expression",
         ":function_literal",
@@ -37,7 +38,6 @@ cc_lib(
         ":switch",
         ":terminal",
         ":unop",
-        "//ast/dispatch",
     ],
 )
 
@@ -57,6 +57,7 @@ cc_lib(
         ":chainop-impl",
         ":comma_list-impl",
         ":declaration-impl",
+        ":dispatch_table-impl",
         ":enum_literal-impl",
         ":expression-impl",
         ":function_literal-impl",
@@ -74,7 +75,6 @@ cc_lib(
         ":struct_type-impl",
         ":switch-impl",
         ":unop-impl",
-        "//ast/dispatch:impl",
     ],
 )
 
@@ -201,10 +201,10 @@ cc_target(
     impl_deps = [
         ":block_literal",
         ":builtin_fn",
+        ":dispatch_table",
         ":function_literal",
         ":struct_literal",
         ":unop",
-        "//ast/dispatch:table",
         "//backend:eval",
         "//core:fn_params",
         "//ir:arguments",
@@ -282,6 +282,38 @@ cc_target(
         "//misc:module",
         "//type:cast",
         "//type:typed_value",
+    ],
+)
+
+cc_target(
+    name = "dispatch_table",
+    intf_deps = [
+        ":bound_constants",
+        ":overload_set",
+        "//core:fn_args",
+        "//base:expected",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+    impl_deps = [
+        ":call",
+        ":builtin_fn",
+        ":block_literal",
+        ":function_literal",
+        "//ast:match_declaration",
+        "//backend:eval",
+        "//misc:context",
+        "//ir:cmd",
+        "//ir:components",
+        "//ir:func",
+        "//ir:phi",
+        "//misc:module",
+        "//core:scope",
+        "//type:cast",
+        "//type:function",
+        "//type:generic_struct",
+        "//type:pointer",
+        "//type:tuple",
+        "//type:variant",
     ],
 )
 
