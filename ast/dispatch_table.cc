@@ -106,12 +106,6 @@ static bool Covers(core::FnParams<type::Typed<Expression *>> const &params,
   return true;
 }
 
-type::Type const *DispatchTable::MakeOrLogError(
-    Node *node, core::FnArgs<Expression *> const &args,
-    OverloadSet const &overload_set, Context *ctx, bool repeated) {
-  NOT_YET();
-}
-
 static base::expected<core::FnParams<type::Typed<Expression *>>>
 MatchArgsToParams(
     core::FnParams<type::Typed<Expression *>> const &params,
@@ -363,6 +357,8 @@ static std::vector<type::Type const *> ReturnTypes(
   return result;
 }
 
+// TODO It is unsafe to access `expr` because it may have some low bits set.
+// Change it to uintptr_t.
 VerifyResult VerifyDispatch(
     Expression const *expr, OverloadSet const &os,
     core::FnArgs<std::pair<Expression *, VerifyResult>> const &args,

@@ -139,11 +139,11 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       } else if (operand_type->is<type::Struct>()) {
         OverloadSet os(scope_, "-", ctx);
         os.add_adl("-", operand_type);
-
-        auto *ret_type = DispatchTable::MakeOrLogError(
-            this, core::FnArgs<Expression *>({operand.get()}, {}), os, ctx);
-        if (ret_type == nullptr) { return VerifyResult::Error(); }
-        return ctx->set_result(this, VerifyResult(ret_type, result.const_));
+        return VerifyDispatch(
+            this, os,
+            core::FnArgs<std::pair<Expression *, VerifyResult>>(
+                {std::pair(operand.get(), result)}, {}),
+            ctx);
       }
       NOT_YET();
       return VerifyResult::Error();
@@ -166,12 +166,11 @@ VerifyResult Unop::VerifyType(Context *ctx) {
       if (operand_type->is<type::Struct>()) {
         OverloadSet os(scope_, "!", ctx);
         os.add_adl("!", operand_type);
-
-        auto *ret_type = DispatchTable::MakeOrLogError(
-            this, core::FnArgs<Expression *>({operand.get()}, {}), os, ctx);
-        if (ret_type == nullptr) { return VerifyResult::Error(); }
-        if (ret_type->is<type::Tuple>()) { NOT_YET(); }
-        return ctx->set_result(this, VerifyResult(ret_type, result.const_));
+        return VerifyDispatch(
+            this, os,
+            core::FnArgs<std::pair<Expression *, VerifyResult>>(
+                {std::pair(operand.get(), result)}, {}),
+            ctx);
       } else {
         NOT_YET("log an error");
         return VerifyResult::Error();

@@ -120,9 +120,6 @@ struct Module {
 
     absl::flat_hash_map<ast::Expression const *, ast::DispatchTable>
         dispatch_tables_;
-    // For use with expression nodes that have more than one dispatch table.
-    absl::flat_hash_map<ast::Node const *, std::vector<ast::DispatchTable>>
-        repeated_dispatch_tables_;
   };
   std::map<ast::BoundConstants, DependentData> data_;
 

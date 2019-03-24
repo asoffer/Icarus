@@ -62,19 +62,3 @@ ast::DispatchTable const *Context::dispatch_table(ast::Expression const *expr) c
   if (parent_) { return parent_->dispatch_table(expr); }
   return nullptr;
 }
-
-void Context::push_rep_dispatch_table(ast::Node const *node,
-                                      ast::DispatchTable &&tables) {
-  mod_->data_[bound_constants_].repeated_dispatch_tables_[node].push_back(
-      std::move(tables));
-}
-
-std::vector<ast::DispatchTable> const *Context::rep_dispatch_tables(
-    ast::Node const *node) const {
-  auto &table = mod_->data_[bound_constants_].repeated_dispatch_tables_;
-  if (auto iter = table.find(node); iter != table.end()) {
-    return &iter->second;
-  }
-  if (parent_) { return parent_->rep_dispatch_tables(node); }
-  return nullptr;
-}

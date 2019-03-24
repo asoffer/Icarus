@@ -39,13 +39,16 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
         .get<bool>(0);
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
     auto results =
-        ASSERT_NOT_NULL(ctx->rep_dispatch_tables(chain_op))
-            ->at(index)
-            .EmitCall(core::FnArgs<std::pair<Expression *, ir::Results>>(
-                          {std::pair(chain_op->exprs[index].get(), lhs_ir),
-                           std::pair(chain_op->exprs[index + 1].get(), rhs_ir)},
-                          {}),
-                      type::Bool, ctx);
+        ASSERT_NOT_NULL(
+            ctx->dispatch_table(reinterpret_cast<Expression *>(
+                reinterpret_cast<uintptr_t>(chain_op->exprs[index].get()) |
+                0x1)))
+            ->EmitCall(
+                core::FnArgs<std::pair<Expression *, ir::Results>>(
+                    {std::pair(chain_op->exprs[index].get(), lhs_ir),
+                     std::pair(chain_op->exprs[index + 1].get(), rhs_ir)},
+                    {}),
+                type::Bool, ctx);
     ASSERT(results.size() == 1u);
     return results.get<bool>(0);
 
@@ -246,50 +249,51 @@ not_blocks:
           OverloadSet os(scope_, token, ctx);
           os.add_adl(token, lhs_result.type_);
           os.add_adl(token, rhs_result.type_);
+          return VerifyDispatch(
+              reinterpret_cast<Expression *>(
+                  reinterpret_cast<uintptr_t>(exprs[i].get()) | 0x1),
+              os,
+              core::FnArgs<std::pair<Expression *, VerifyResult>>(
+                  {std::pair(exprs[i].get(), lhs_result),
+                   std::pair(exprs[i + 1].get(), rhs_result)},
+                  {}),
+              ctx);
+        }
 
-          auto *ret_type = DispatchTable::MakeOrLogError(
-              this,
-              core::FnArgs<Expression *>({exprs[i].get(), exprs[i + 1].get()}, {}),
-              os, ctx, true);
-          if (ret_type == nullptr) { return VerifyResult::Error(); }
-          if (ret_type->is<type::Tuple>()) { NOT_YET(); }
-          // TODO check that ret_type is a bool?
+        if (lhs_result.type_ != rhs_result.type_) {
+          NOT_YET("Log an error", lhs_result.type_, rhs_result.type_, this);
+
         } else {
-          if (lhs_result.type_ != rhs_result.type_) {
-            NOT_YET("Log an error", lhs_result.type_, rhs_result.type_, this);
+          auto cmp = lhs_result.type_->Comparator();
 
-          } else {
-            auto cmp = lhs_result.type_->Comparator();
-
-            switch (ops[i]) {
-              case frontend::Operator::Eq:
-              case frontend::Operator::Ne: {
-                switch (cmp) {
-                  case type::Cmp::Order:
-                  case type::Cmp::Equality: continue;
-                  case type::Cmp::None:
-                    ctx->error_log()->ComparingIncomparables(
-                        lhs_result.type_, rhs_result.type_,
-                        TextSpan(exprs[i]->span, exprs[i + 1]->span));
-                    return VerifyResult::Error();
-                }
-              } break;
-              case frontend::Operator::Lt:
-              case frontend::Operator::Le:
-              case frontend::Operator::Ge:
-              case frontend::Operator::Gt: {
-                switch (cmp) {
-                  case type::Cmp::Order: continue;
-                  case type::Cmp::Equality:
-                  case type::Cmp::None:
-                    ctx->error_log()->ComparingIncomparables(
-                        lhs_result.type_, rhs_result.type_,
-                        TextSpan(exprs[i]->span, exprs[i + 1]->span));
-                    return VerifyResult::Error();
-                }
-              } break;
-              default: UNREACHABLE("Expecting a ChainOp operator type.");
-            }
+          switch (ops[i]) {
+            case frontend::Operator::Eq:
+            case frontend::Operator::Ne: {
+              switch (cmp) {
+                case type::Cmp::Order:
+                case type::Cmp::Equality: continue;
+                case type::Cmp::None:
+                  ctx->error_log()->ComparingIncomparables(
+                      lhs_result.type_, rhs_result.type_,
+                      TextSpan(exprs[i]->span, exprs[i + 1]->span));
+                  return VerifyResult::Error();
+              }
+            } break;
+            case frontend::Operator::Lt:
+            case frontend::Operator::Le:
+            case frontend::Operator::Ge:
+            case frontend::Operator::Gt: {
+              switch (cmp) {
+                case type::Cmp::Order: continue;
+                case type::Cmp::Equality:
+                case type::Cmp::None:
+                  ctx->error_log()->ComparingIncomparables(
+                      lhs_result.type_, rhs_result.type_,
+                      TextSpan(exprs[i]->span, exprs[i + 1]->span));
+                  return VerifyResult::Error();
+              }
+            } break;
+            default: UNREACHABLE("Expecting a ChainOp operator type.");
           }
         }
       }

@@ -42,12 +42,6 @@ struct Context {
                                            size_t index) const;
   void push_dispatch_table(ast::Node const *node, ast::DispatchTable &&table);
 
-  std::vector<ast::DispatchTable> const *rep_dispatch_tables(
-      ast::Node const *node) const;
-
-  void push_rep_dispatch_table(ast::Node const *node,
-                               ast::DispatchTable &&tables);
-
   ir::Register addr(ast::Declaration *decl) const;
   void set_addr(ast::Declaration *decl, ir::Register);
 

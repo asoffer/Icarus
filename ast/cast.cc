@@ -46,13 +46,10 @@ VerifyResult Cast::VerifyType(Context *ctx) {
     os.add_adl("as", t);
     os.add_adl("as", expr_result.type_);
     os.keep([t](Overload const &o) { return o.result.type_ == t; });
-
-    auto *ret_type = DispatchTable::MakeOrLogError(
-        this, core::FnArgs<Expression *>({expr_.get()}, {}), os, ctx);
-    if (ret_type == nullptr) { return VerifyResult::Error(); }
-    ASSERT(t == ret_type);
-    return ctx->set_result(this, VerifyResult(ret_type, expr_result.const_));
-
+    return VerifyDispatch(this, os,
+                          core::FnArgs<std::pair<Expression *, VerifyResult>>(
+                              {std::pair(expr_.get(), expr_result)}, {}),
+                          ctx);
   } else {
     if (!type::CanCast(expr_result.type_, t)) {
       NOT_YET("log an error", expr_result.type_, t);

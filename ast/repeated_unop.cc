@@ -62,21 +62,29 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
           arg_type == type::ByteView || arg_type->is<type::Enum>() ||
           arg_type->is<type::Flags>() || arg_type->is<type::Array>()) {
         continue;
-      } else if (arg_type->is<type::Struct>()) {
+      } else {
         OverloadSet os(scope_, "print", ctx);
         os.add_adl("print", arg_type);
 
-        ASSIGN_OR(return VerifyResult::Error(), type::Type const &ret_type,
-                         DispatchTable::MakeOrLogError(
-                             this, core::FnArgs<Expression *>({arg.get()}, {}), os,
-                             ctx, true));
-        if (&ret_type != type::Void()) { NOT_YET("log an error: ", &ret_type); }
-      } else if (arg_type->is<type::Variant>()) {
-        // TODO check that any variant can be printed
-      } else if (arg_type->is<type::Tuple>()) {
-        // TODO check that all tuple members can be printed.
-      } else {
-        NOT_YET(arg_type);
+        // TODO I need finer-grained const-ness here: Currently all members are
+        // const or all are non-const.
+        //
+        // TODO using arg.get() for the dispatch table is super janky. This is
+        // used so we don't collide with the table for the actual expression as
+        // `print f(x)` needs a table both for the printing and for the call to
+        // `f`. Test this thoroughly.
+        auto dispatch_result = VerifyDispatch(
+            reinterpret_cast<Expression *>(
+                reinterpret_cast<uintptr_t>(arg.get()) | 0x1),
+            os,
+            core::FnArgs<std::pair<Expression *, VerifyResult>>(
+                {std::pair(arg.get(), VerifyResult(arg_type, result.const_))},
+                {}),
+            ctx);
+        if (dispatch_result.type_ && dispatch_result.type_ != type::Void()) {
+          NOT_YET("log an error. must return void: ",
+                  dispatch_result.type_->to_string());
+        }
       }
     }
   }
@@ -148,20 +156,19 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
       return ir::Results{};
     }
     case frontend::Operator::Print: {
-      auto const *dispatch_tables = ctx->rep_dispatch_tables(this);
       size_t index                = 0;
       // TODO this is wrong if you use the <<(...) spread operator.
       for (auto &val : arg_vals) {
-        auto *t = ctx->type_of(args_.exprs_.at(index).get());
-        if (t->is<type::Struct>()) {
-          ASSERT_NOT_NULL(dispatch_tables)
-              ->at(index)
-              .EmitCall(
-                  core::FnArgs<std::pair<Expression *, ir::Results>>(
-                      {std::pair(args_.exprs_[index].get(), std::move(val))},
-                      {}),
-                  type::Void(), ctx);
+        if (auto const *dispatch_table =
+                ctx->dispatch_table(reinterpret_cast<Expression *>(
+                    (reinterpret_cast<uintptr_t>(args_.exprs_[index].get()) |
+                     0x1)))) {
+          dispatch_table->EmitCall(
+              core::FnArgs<std::pair<Expression *, ir::Results>>(
+                  {std::pair(args_.exprs_[index].get(), std::move(val))}, {}),
+              type::Void(), ctx);
         } else {
+          auto *t = ctx->type_of(args_.exprs_.at(index).get());
           t->EmitRepr(val, ctx);
         }
         ++index;

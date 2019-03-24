@@ -33,17 +33,9 @@ struct DispatchTable {
     std::variant<Expression *, ir::AnyFunc> fn;
   };
 
-  // TODO come up with a good internal representaion.
-  // * Can/should this be balanced to find the right type-check sequence in a
-  //   streaming manner?
-  // * Add weights for PGO optimizations?
-
   static std::pair<DispatchTable, type::Type const *> Make(
       core::FnArgs<type::Typed<Expression *>> const &args,
       OverloadSet const &overload_set, Context *ctx);
-  static type::Type const *MakeOrLogError(
-      Node *node, core::FnArgs<Expression *> const &args,
-      OverloadSet const &overload_set, Context *ctx, bool repeated = false);
 
   ir::Results EmitCall(
       core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,

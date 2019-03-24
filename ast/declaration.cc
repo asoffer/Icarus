@@ -285,7 +285,6 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
       this_type =
           ctx->set_result(this, VerifyResult(init_val_result.type_, const_))
               .type_;
-
     } break;
     case INFER | UNINITIALIZED: {
       ctx->error_log()->UninferrableType(InferenceFailureReason::Hole,

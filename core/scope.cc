@@ -84,6 +84,8 @@ void ExecScope::MakeAllDestructions(Context *ctx) {
   for (auto &[name, decls] : decls_) {
     ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
   }
+
+  // TODO eek, don't use line number to determine destruction order!
   std::sort(ordered_decls.begin(), ordered_decls.end(),
             [](ast::Declaration *lhs, ast::Declaration *rhs) {
               return (lhs->span.start.line_num > rhs->span.start.line_num) ||
