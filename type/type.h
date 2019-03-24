@@ -56,6 +56,7 @@ struct AnyFunc;
   virtual void EmitRepr(ir::Results const &id_val, Context *ctx) const ENDING; \
   virtual void defining_modules(                                               \
       absl::flat_hash_set<::Module const *> *modules) const ENDING;            \
+  virtual bool ReinterpretAs(Type const *t) const ENDING;                      \
   virtual Cmp Comparator() const ENDING
 
 #ifdef ICARUS_USE_LLVM
@@ -225,12 +226,17 @@ auto Apply(Type const *t, Fn &&fn, Args &&... args) {
                                             std::forward<Args>(args)...);
 }
 
-inline bool IsNumeric(Type const *t) {
-  return t == type::Int8 || t == type::Int16 || t == type::Int32 ||
-         t == type::Int64 || t == type::Nat8 || t == type::Nat16 ||
-         t == type::Nat32 || t == type::Nat64 || t == type::Float32 ||
-         t == type::Float64;
+// TODO lay these out adjacent in memory so the tests can be faster.
+inline bool IsIntegral(Type const *t) {
+  return t == Int8 || t == Int16 || t == Int32 || t == Int64 || t == Nat8 ||
+         t == Nat16 || t == Nat32 || t == Nat64 ;
 }
+
+inline bool IsFloatingPoint(Type const *t) {
+  return  t == Float32 || t == Float64;
+}
+
+inline bool IsNumeric(Type const *t) { return IsIntegral(t) || IsFloatingPoint(t); }
 
 bool VerifyAssignment(TextSpan const &span, type::Type const *to,
                       type::Type const *from, Context *ctx);

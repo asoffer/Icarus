@@ -33,6 +33,8 @@ struct Interface : public Type {
 
   bool matches(Type const *t) const;
 
+  bool ReinterpretAs(Type const *t) const override;
+
   layout::Bytes bytes(layout::Arch const &arch) const override;
   layout::Alignment alignment(layout::Arch const &arch) const override;
 

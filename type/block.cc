@@ -38,5 +38,7 @@ layout::Alignment Block::alignment(layout::Arch const &) const {
   return layout::Host().ptr_alignment;
 }
 
+bool Block::ReinterpretAs(Type const *t) const { return t == this; }
+
 Cmp Block::Comparator() const { return Cmp::None; }
 }  // namespace type

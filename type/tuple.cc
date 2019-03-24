@@ -228,4 +228,12 @@ layout::Alignment Tuple::alignment(layout::Arch const &a) const {
   return align;
 }
 
+bool Tuple::ReinterpretAs(Type const *t) const {
+  auto *tup = t->if_as<Tuple>();
+  if (!tup || tup->size() != size()) { return false; }
+  for (size_t i = 0; i < size(); ++i) {
+    if (!entries_.at(i)->ReinterpretAs(tup->entries_.at(i))) { return false; }
+  }
+  return true;
+}
 }  // namespace type

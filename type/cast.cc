@@ -1,5 +1,8 @@
 #include "type/cast.h"
 
+#include <numeric>
+
+#include "absl/algorithm/container.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -14,75 +17,58 @@
 #include "type/variant.h"
 
 
-namespace feature {
-bool loose_casting = false;
-}  // namespace feature
-
 namespace type {
-static uint8_t CastMask(Type const *t) {
-  if (feature::loose_casting) {
-    // Loose casting enables casting between any integral types, and between any
-    // floating-point types, and from integral to floating-point, even if it
-    // results in precision loss.
-    if (t == Nat8 || t == Nat16 || t == Nat32 || t == Nat64 || t == Int8 ||
-        t == Int16 || t == Int32 || t == Int64) {
-      return 0x00;
-    } else if (t == Float32 || t == Float64) {
-      return 0x01;
-    } else {
-      UNREACHABLE(t->to_string());
-    }
 
-  } else {
-    //              f32 (0x31) -> f64 (0x33)
-    //               ^             ^
-    // int8_t (0x10) -> int16_t (0x11) -> int32_t (0x13) -> int64_t (0x17)
-    //               ^             ^             ^
-    //              uint8_t  (0x01) -> uint16_t (0x03) -> uint32_t (0x07) -> uint64_t (0x0f)
-    if (t == Nat8) { return 0x01; }
-    if (t == Nat16) { return 0x03; }
-    if (t == Nat32) { return 0x07; }
-    if (t == Nat64) { return 0x1f; }
-    if (t == Int8) { return 0x10; }
-    if (t == Int16) { return 0x11; }
-    if (t == Int32) { return 0x13; }
-    if (t == Int64) { return 0x17; }
-    if (t == Float32) { return 0x31; }
-    if (t == Float64) { return 0x33; }
-    UNREACHABLE(t->to_string());
-  }
-}
-
+// TODO much of this should be moved to virtual methods.
 bool CanCast(Type const *from, Type const *to) {
-  if (from == to) { return true; }
+  if (from->ReinterpretAs(to)) { return true; }
+
+  if (IsIntegral(from) && IsNumeric(to)) { return true; }
+  if (IsFloatingPoint(from) && IsFloatingPoint(to)) { return true; }
+
   if (from->is<Tuple>() && to == Type_) {
     // TODO remove this hack for expressing the type of tuples
     auto const &entries = from->as<Tuple>().entries_;
     return std::all_of(entries.begin(), entries.end(),
                        [](Type const *t) { return t == Type_; });
   }
-  if (from->is<BufferPointer>() && to->is<Pointer>()) {
-    return to->as<BufferPointer>().pointee == from->as<Pointer>().pointee;
-  }
-  if (from == NullPtr && to->is<Pointer>()) { return true; }
-  if (from == EmptyArray && to->is<Array>()) { return true; }
 
   // TODO other integer types.
   if (from == Int32 && (to->is<Enum>() || to->is<Flags>())) { return true; }
 
-  if (auto *from_variant = from->if_as<Variant>()) {
-    if (to->is<Variant>()) { NOT_YET(); }
-    // TODO not necessarily safe to do this cast.
-    return from_variant->contains(to);
+  if (auto *from_var = from->if_as<Variant>()) {
+    if (auto *to_var = to->if_as<Variant>()) {
+      return absl::c_all_of(from_var->variants_, [to_var](Type const *from_v) {
+        return absl::c_count_if(to_var->variants_, [from_v](Type const *to_v) {
+                 return CanCast(from_v, to_v);
+               }) == 1;
+      });
+    } else {
+      return absl::c_all_of(from_var->variants_, [to](Type const *from_v) {
+        return CanCast(from_v, to);
+      });
+    }
+  } else if (auto *to_var = to->if_as<Variant>()) {
+    return absl::c_count_if(to_var->variants_, [from](Type const *to_v) {
+             return CanCast(from, to_v);
+           }) == 1;
   }
 
-  if (IsNumeric(from) && IsNumeric(to)) {
-    auto from_mask = CastMask(from);
-    auto to_mask   = CastMask(to);
-    return ((from_mask & to_mask) == from_mask);
-  } else {
-    return false;
+  if (auto *from_tup = from->if_as<Tuple>()) {
+    if (auto *to_tup = to->if_as<Tuple>()) {
+      if (from_tup->size() != to_tup->size()) { return false; }
+      for (size_t i = 0; i < from_tup->size(); ++i) {
+        if (!CanCast(from_tup->entries_.at(i), to_tup->entries_.at(i))) {
+          return false;
+        }
+      }
+      return true;
+    } else {
+      return false;
+    }
   }
+
+  return false;
 }
 
 // TODO optimize (early exists. don't check lhs->is<> && rhs->is<>. If they
@@ -111,7 +97,7 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
   } else if (lhs->is<Array>() && rhs->is<Array>()) {
     if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
     auto *result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-    return result ? Arr(result, lhs->as<Array>().len) : result;
+    return result ? Arr(lhs->as<Array>().len, result) : result;
   } else if (lhs->is<Variant>()) {
     // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
     std::vector<Type const *> results;

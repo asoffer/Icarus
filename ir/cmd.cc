@@ -205,7 +205,7 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
 RegisterOr<type::Type const *> Array(RegisterOr<int64_t> len,
                                      RegisterOr<type::Type const *> data_type) {
   if (!data_type.is_reg_ && !len.is_reg_) {
-    return type::Arr(data_type.val_, len.val_);
+    return type::Arr(len.val_, data_type.val_);
   }
 
   auto &cmd  = MakeCmd(type::Type_, Op::Array);

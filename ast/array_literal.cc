@@ -38,7 +38,7 @@ VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
                    cl_.VerifyWithoutSetting(ctx));
   VerifyResult result;
   auto *t      = expr_results.front().type_;
-  result.type_ = type::Arr(t, expr_results.size());
+  result.type_ = type::Arr(expr_results.size(), t);
   for (auto expr_result : expr_results) {
     result.const_ &= expr_result.const_;
     if (expr_result.type_ != t) {

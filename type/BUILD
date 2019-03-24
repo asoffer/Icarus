@@ -89,7 +89,19 @@ cc_lib(
 )
 cc_target(
     name = "cast",
-    impl_deps = [":all_types"],
+    impl_deps = [
+        ":all_types",
+        "@com_google_absl//absl/algorithm:container",
+    ],
+)
+
+cc_test(
+    name = "cast_test",
+    srcs = ["cast_test.cc"],
+    deps = [
+        "//:impl",
+        "//test",
+    ],
 )
 
 cc_target(
@@ -311,5 +323,6 @@ cc_target(
         "//ir:arguments",
         "//ir:components",
         "//ir:func",
+        "@com_google_absl//absl/algorithm:container",
     ],
 )

@@ -21,6 +21,8 @@ struct Opaque : public Type {
                               Context *ctx) const override;
   void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
 
+  bool ReinterpretAs(Type const *t) const override;
+
   layout::Bytes bytes(layout::Arch const &arch) const override;
   layout::Alignment alignment(layout::Arch const &arch) const override;
 

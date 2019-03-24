@@ -190,4 +190,8 @@ layout::Alignment Primitive::alignment(layout::Arch const &a) const {
   }
 }
 
+bool Primitive::ReinterpretAs(Type const *t) const {
+  return t == this || (type_ == PrimType::NullPtr && t->is<Pointer>()) ||
+         (type_ == PrimType::EmptyArray && t->is<Array>());
+}
 }  // namespace type

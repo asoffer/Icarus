@@ -2,11 +2,12 @@
 
 #include <algorithm>
 
+#include "absl/algorithm/container.h"
 #include "base/guarded.h"
-#include "misc/context.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
+#include "misc/context.h"
 
 namespace type {
 
@@ -332,6 +333,25 @@ Cmp Variant::Comparator() const {
     cmp = std::min(cmp, static_cast<cmp_t>(t->Comparator()));
   }
   return static_cast<Cmp>(cmp);
+}
+
+bool Variant::ReinterpretAs(Type const *t) const {
+  auto *v = t->if_as<Variant>();
+  if (!v) { return false; }
+  // Every type in this variant needs to be reinterprettable as a type in v
+  // exactly once. The problem is this isn't quite enough because the to-type
+  // could have another member that's much larger. This violates the
+  // size-doesnt-chnage invariant.
+  for (auto *this_v : variants_) {
+    if (absl::c_count_if(v->variants_, [this_v](Type const *to) {
+          return this_v->ReinterpretAs(to);
+        }) == 1) {
+      continue;
+    } else {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace type

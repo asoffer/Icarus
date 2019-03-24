@@ -25,6 +25,7 @@ struct Pointer : public Type {
 struct BufferPointer : public Pointer {
   BufferPointer() = delete;
   void WriteTo(std::string *result) const override;
+  bool ReinterpretAs(Type const *t) const override;
   BufferPointer(Type const *t) : Pointer(t) {}
 };
 

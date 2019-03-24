@@ -60,4 +60,6 @@ layout::Alignment Interface::alignment(layout::Arch const &a) const {
   return layout::Host().ptr_alignment;
 }
 
+bool Interface::ReinterpretAs(Type const *t) const { return t == this; }
+
 }  // namespace type

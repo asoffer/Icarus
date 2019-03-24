@@ -28,6 +28,8 @@ struct Tuple : public Type {
   virtual void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const;
 
+  bool ReinterpretAs(Type const *t) const override;
+
   layout::Bytes offset(size_t n, layout::Arch const &arch) const;
   size_t size() const { return entries_.size(); }
 

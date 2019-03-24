@@ -32,6 +32,8 @@ struct GenericFunction : public Callable {
   void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const override;
 
+  bool ReinterpretAs(Type const *t) const override;
+
   layout::Bytes bytes(layout::Arch const &arch) const override;
   layout::Alignment alignment(layout::Arch const &arch) const override;
 

@@ -1,8 +1,6 @@
 #ifndef ICARUS_TYPE_CAST_H
 #define ICARUS_TYPE_CAST_H
 
-#include <numeric>
-
 namespace type {
 struct Type;
 

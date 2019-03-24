@@ -616,7 +616,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(type::BufPtr(resolve<type::Type const *>(cmd.reg_)));
       break;
     case ir::Op::Array: {
-      save(type::Arr(resolve(cmd.array_.type_), resolve(cmd.array_.len_)));
+      save(type::Arr(resolve(cmd.array_.len_), resolve(cmd.array_.type_)));
     } break;
     case ir::Op::VariantType: save(resolve(cmd.addr_arg_)); break;
     case ir::Op::VariantValue: {
@@ -643,7 +643,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PtrIncr: {
       auto addr = resolve(cmd.ptr_incr_.ptr_);
       auto bytes_fwd =
-          type::Array(cmd.ptr_incr_.pointee_type_, resolve(cmd.ptr_incr_.incr_))
+          type::Array(resolve(cmd.ptr_incr_.incr_), cmd.ptr_incr_.pointee_type_)
               .bytes(layout::Interpretter());
       switch (addr.kind) {
         case ir::Addr::Kind::Stack: addr.as_stack += bytes_fwd.value(); break;

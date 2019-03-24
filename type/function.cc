@@ -40,6 +40,8 @@ layout::Alignment GenericFunction::alignment(layout::Arch const &) const {
 
 Cmp GenericFunction::Comparator() const { return Cmp::None; }
 
+bool GenericFunction::ReinterpretAs(Type const *t) const { return t == this; }
+
 void Function::defining_modules(
     absl::flat_hash_set<::Module const *> *modules) const {
   NOT_YET();
@@ -134,5 +136,7 @@ core::FnParams<type::Typed<ast::Expression *>> Function::AnonymousFnParams()
   }
   return result;
 }
+
+bool Function::ReinterpretAs(Type const *t) const { return t == this; }
 
 }  // namespace type

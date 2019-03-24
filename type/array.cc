@@ -140,9 +140,9 @@ ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
 static base::guarded<
     absl::flat_hash_map<Type const *, absl::flat_hash_map<size_t, Array *>>>
     fixed_arrays_;
-Array const *Arr(Type const *t, size_t len) {
+Array const *Arr(size_t len, Type const *t) {
   auto handle = fixed_arrays_.lock();
-  return (*handle)[t].emplace(len, new Array(t, len)).first->second;
+  return (*handle)[t].emplace(len, new Array(len, t)).first->second;
 }
 
 void Array::defining_modules(
@@ -355,6 +355,13 @@ layout::Bytes Array::bytes(layout::Arch const &a) const {
 
 layout::Alignment Array::alignment(layout::Arch const &a) const {
   return data_type->alignment(a);
+}
+
+bool Array::ReinterpretAs(Type const *t) const {
+  if (auto *a = t->if_as<Array>()) {
+    return len == a->len && data_type->ReinterpretAs(a->data_type);
+  }
+  return false;
 }
 
 // TODO arrays are tricky because they may contain structs and so just using the

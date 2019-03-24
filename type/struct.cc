@@ -250,4 +250,5 @@ layout::Alignment Struct::alignment(layout::Arch const &a) const {
 
 Cmp Struct::Comparator() const { return Cmp::None; }
 
+bool Struct::ReinterpretAs(Type const *t) const { return t == this; }
 }  // namespace type

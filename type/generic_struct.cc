@@ -68,4 +68,6 @@ layout::Alignment GenericStruct::alignment(layout::Arch const &a) const {
 
 Cmp GenericStruct::Comparator() const { return Cmp::None; }
 
+bool GenericStruct::ReinterpretAs(Type const *t) const { return t == this; }
+
 }  // namespace type

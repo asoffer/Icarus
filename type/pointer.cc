@@ -85,4 +85,19 @@ layout::Alignment Pointer::alignment(layout::Arch const &a) const {
 
 Cmp Pointer::Comparator() const { return Cmp::Equality; }
 
+bool Pointer::ReinterpretAs(Type const *t) const {
+  auto *to_ptr = t->if_as<Pointer>();
+  if (!to_ptr) { return false; }
+  if (to_ptr->is<BufferPointer>()) { return false; }
+  return pointee->ReinterpretAs(to_ptr->pointee);
+}
+
+bool BufferPointer::ReinterpretAs(Type const *t) const {
+  if (auto *to_ptr = t->if_as<Pointer>()) {
+    return pointee->ReinterpretAs(to_ptr->pointee);
+  } else {
+    return false;
+  }
+}
+
 }  // namespace type

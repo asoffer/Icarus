@@ -10,7 +10,7 @@ namespace type {
 
 struct Array : public Type {
   TYPE_FNS(Array);
-  Array(Type const *t, size_t l) : data_type(t), len(l) {}
+  Array(size_t l, Type const *t) : len(l), data_type(t) {}
 
   void EmitDestroy(ir::Register reg, Context *ctx) const override;
 
@@ -22,8 +22,8 @@ struct Array : public Type {
   bool IsMovable() const override;
   virtual bool needs_destroy() const { return data_type->needs_destroy(); }
 
-  Type const *data_type;
   size_t len;
+  Type const *data_type;
 
   base::lazy<ir::Func *> copy_assign_func_;
   base::lazy<ir::Func *> move_assign_func_;
@@ -32,7 +32,7 @@ struct Array : public Type {
   base::lazy<ir::Func *> repr_func_;
 };
 
-Array const *Arr(Type const *t, size_t len);
+Array const *Arr(size_t len, Type const *t);
 
 }  // namespace type
 #endif  // ICARUS_TYPE_ARRAY_H
