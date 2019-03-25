@@ -85,31 +85,6 @@ layout::Bytes Struct::offset(size_t field_num, layout::Arch const &a) const {
 }
 
 void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
-  init_func_.init([this, ctx]() {
-    // TODO special function?
-
-    ir::AnyFunc fn =
-        mod_->AddFunc(Func({Ptr(this)}, {}),
-                      core::FnParams(core::Param{
-                          "", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
-    CURRENT_FUNC(fn.func()) {
-      ir::BasicBlock::Current = ir::Func::Current->entry();
-      auto var                = ir::Func::Current->Argument(0);
-      for (size_t i = 0; i < fields_.size(); ++i) {
-        auto ir_field     = ir::Field(var, this, i);
-        auto const &field = fields_.at(i);
-        // if (field.init_val != ir::Val::None()) {
-        //   EmitCopyInit(field.type, field.init_val, ir_field, ctx);
-        // } else {
-          field.type->EmitInit(ir_field.get(), ctx);
-        //  }
-      }
-
-      ir::ReturnJump();
-    }
-    return fn;
-  });
-
   ir::Init(this, id_reg);
 }
 

@@ -63,7 +63,16 @@ struct Struct : public Type {
   ::Module *mod_                    = nullptr;
   ast::StructLiteral const *parent_ = nullptr;
 
-  base::lazy<ir::AnyFunc> init_func_;
+  // `init_func_` is generated in FinalizeStruct.
+  //
+  // TODO I'm not sure if this needs locking. If the threading model turns out
+  // to be 1 per module, then probably not. By generating this in init_func_, we
+  // guarantee that no one really had access to this struct, but maybe they got
+  // a pointer to it before it was completely initialized and tried to
+  // dereference ad use it? We can definitely hand out pointers before
+  // FinalizeStruct is called because that's how we do recursive types.
+  ir::AnyFunc init_func_;
+
   base::lazy<ir::AnyFunc> destroy_func_;
   base::lazy<ir::AnyFunc> copy_assign_func_;
   base::lazy<ir::AnyFunc> move_assign_func_;

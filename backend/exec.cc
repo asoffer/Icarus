@@ -512,7 +512,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
 
       ir::AnyFunc f;
       if (auto *s = t->if_as<type::Struct>()) {
-       f = s->init_func_.get();
+       f = s->init_func_;
       } else if (auto *tup = t->if_as<type::Tuple>()) {
         f = tup->init_func_.get();
       } else if (auto *a = t->if_as<type::Array>()) {
@@ -589,6 +589,33 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         bool inserted = cache.back_.emplace(s, input_vals).second;
         ASSERT(inserted == true);
       }
+
+      s->init_func_ = s->mod_->AddFunc(
+          type::Func({type::Ptr(s)}, {}),
+          core::FnParams(core::Param{
+              "", type::Typed<ast::Expression *>{nullptr, type::Ptr(s)}}));
+      CURRENT_FUNC(s->init_func_.func()) {
+        // TODO this context gets no constants which is not what we want.
+        // Probably need to store the correct bound constants pointer in the
+        // struct type when we create create it initially.
+        Context ctx(s->mod_);
+
+        ir::BasicBlock::Current = ir::Func::Current->entry();
+        auto var                = ir::Func::Current->Argument(0);
+        size_t i                = 0;
+        for (auto const &field : s->parent_->fields_) {
+          auto ir_field = ir::Field(var, s, i);
+          if (field->init_val) {
+            field->init_val->EmitCopyInit(ir_field, &ctx);
+          } else {
+            s->fields_.at(i).type->EmitInit(ir_field.get(), &ctx);
+          }
+          ++i;
+        }
+
+        ir::ReturnJump();
+      }
+
       save(s);
 
       // TODO set backwards map.
