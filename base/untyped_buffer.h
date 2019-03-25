@@ -97,9 +97,7 @@ struct untyped_buffer {
     size_ = new_size;
   }
 
-#ifdef DBG
-  std::string DebugString() const;
-#endif
+  std::string to_string() const;
 
  private:
   void reallocate(size_t num) {

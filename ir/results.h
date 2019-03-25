@@ -58,9 +58,7 @@ struct Results {
 
   Results GetResult(size_t index) const;
 
-#ifdef DBG
-  std::string DebugString() const;
-#endif
+  std::string to_string() const;
 
   size_t size() const { return offset_.size(); }
 

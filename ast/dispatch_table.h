@@ -19,6 +19,7 @@ struct Type;
 namespace ast {
 struct Node;
 struct Expression;
+struct ExprPtr;
 
 struct DispatchTable {
   struct Row {
@@ -46,7 +47,7 @@ struct DispatchTable {
 };
 
 VerifyResult VerifyDispatch(
-    Expression const *expr, OverloadSet const &os,
+    ExprPtr expr, OverloadSet const &os,
     core::FnArgs<std::pair<Expression *, VerifyResult>> const &args,
     Context *ctx);
 

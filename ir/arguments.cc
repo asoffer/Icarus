@@ -18,7 +18,7 @@ std::string Arguments::to_string() const {
     if (auto *g = type_->if_as<type::GenericStruct>()) { return g->deps_; }
     UNREACHABLE();
   }();
-  ss << results_.DebugString() << ": ";
+  ss << results_.to_string() << ": ";
   return ss.str();
 }
 

@@ -31,11 +31,10 @@ Results Results::GetResult(size_t index) const {
     return r;
   }
 }
-#ifdef DBG
-std::string Results::DebugString() const { 
+
+std::string Results::to_string() const { 
  using base::stringify;
- return stringify(offset_) + buf_.DebugString();
+ return stringify(offset_) + buf_.to_string();
 }
-#endif
 
 }  // namespace ir

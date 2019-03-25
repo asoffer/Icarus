@@ -74,9 +74,7 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
         // `print f(x)` needs a table both for the printing and for the call to
         // `f`. Test this thoroughly.
         auto dispatch_result = VerifyDispatch(
-            reinterpret_cast<Expression *>(
-                reinterpret_cast<uintptr_t>(arg.get()) | 0x1),
-            os,
+            ExprPtr{arg.get(), true}, os,
             core::FnArgs<std::pair<Expression *, VerifyResult>>(
                 {std::pair(arg.get(), VerifyResult(arg_type, result.const_))},
                 {}),
@@ -160,9 +158,7 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
       // TODO this is wrong if you use the <<(...) spread operator.
       for (auto &val : arg_vals) {
         if (auto const *dispatch_table =
-                ctx->dispatch_table(reinterpret_cast<Expression *>(
-                    (reinterpret_cast<uintptr_t>(args_.exprs_[index].get()) |
-                     0x1)))) {
+                ctx->dispatch_table(ExprPtr{args_.exprs_[index].get(), true})) {
           dispatch_table->EmitCall(
               core::FnArgs<std::pair<Expression *, ir::Results>>(
                   {std::pair(args_.exprs_[index].get(), std::move(val))}, {}),

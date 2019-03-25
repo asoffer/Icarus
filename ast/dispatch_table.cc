@@ -360,7 +360,7 @@ static std::vector<type::Type const *> ReturnTypes(
 // TODO It is unsafe to access `expr` because it may have some low bits set.
 // Change it to uintptr_t.
 VerifyResult VerifyDispatch(
-    Expression const *expr, OverloadSet const &os,
+    ExprPtr expr, OverloadSet const &os,
     core::FnArgs<std::pair<Expression *, VerifyResult>> const &args,
     Context *ctx) {
   DispatchTable table;

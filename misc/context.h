@@ -32,12 +32,10 @@ struct Context {
 
   ast::VerifyResult const *prior_verification_attempt(
       ast::Expression const *expr);
-  ast::VerifyResult set_result(ast::Expression const *expr,
-                               ast::VerifyResult r);
+  ast::VerifyResult set_result(ast::ExprPtr expr, ast::VerifyResult r);
 
-  ast::DispatchTable const *dispatch_table(ast::Expression const *expr) const;
-  void set_dispatch_table(ast::Expression const *expr,
-                          ast::DispatchTable &&table);
+  ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
+  void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);
   ast::DispatchTable const *dispatch_table(ast::Node const *node,
                                            size_t index) const;
   void push_dispatch_table(ast::Node const *node, ast::DispatchTable &&table);

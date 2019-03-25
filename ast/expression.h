@@ -8,6 +8,7 @@
 #include "type/typed_value.h"
 
 namespace ast {
+
 struct Expression : public Node {
   Expression(TextSpan const &span = TextSpan()) : Node(span) {}
 
@@ -37,6 +38,24 @@ struct Expression : public Node {
     }
     return false;
   }
+};
+
+// TODO pick a better name
+struct ExprPtr {
+  constexpr ExprPtr(Expression const *expr, bool offset = false)
+      : value_(reinterpret_cast<uintptr_t>(expr) | (offset ? 0x1 : 0x0)) {}
+
+  template <typename H>
+  friend H AbslHashValue(H h, ExprPtr e) {
+    return H::combine(std::move(h), e.value_);
+  }
+
+  friend constexpr bool operator==(ExprPtr lhs, ExprPtr rhs) {
+    return lhs.value_ == rhs.value_;
+  }
+
+ private:
+  uintptr_t value_;
 };
 
 }  // namespace ast

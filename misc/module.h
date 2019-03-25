@@ -15,6 +15,7 @@
 #include "absl/container/node_hash_map.h"
 #include "ast/bound_constants.h"
 #include "ast/dispatch_table.h"
+#include "ast/expression.h"
 #include "ast/statements.h"
 #include "core/fn_params.h"
 #include "core/scope.h"
@@ -37,7 +38,6 @@ struct Func;
 }  // namespace ir
 
 namespace ast {
-struct Expression;
 struct FunctionLiteral;
 struct StructLiteral;
 }  // namespace ast
@@ -115,11 +115,9 @@ struct Module {
     // TODO future optimization: the bool determining if it's const is not
     // dependent and can therefore be stored more efficiently (though querying
     // for both simultaneously would be more expensive I guess.
-    absl::flat_hash_map<ast::Expression const *, ast::VerifyResult>
-        verify_results_;
+    absl::flat_hash_map<ast::ExprPtr, ast::VerifyResult> verify_results_;
 
-    absl::flat_hash_map<ast::Expression const *, ast::DispatchTable>
-        dispatch_tables_;
+    absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
   };
   std::map<ast::BoundConstants, DependentData> data_;
 

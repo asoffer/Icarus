@@ -29,10 +29,9 @@ TEST_CASE("index") {
                           Param<double>{"phi", 1.618}};
 
   CHECK(params.size() == 5u);
-  CHECK(params.lookup_.at("pi") == 0u);
-  CHECK(params.lookup_.at("e") == 1u);
-  CHECK(params.lookup_.at("phi") == 4u);
-  CHECK(params.lookup_.size() == 3u);
+  CHECK(*params.at_or_null("pi") == 0u);
+  CHECK(*params.at_or_null("e") == 1u);
+  CHECK(*params.at_or_null("phi") == 4u);
 }
 
 TEST_CASE("transform") {
@@ -46,9 +45,8 @@ TEST_CASE("transform") {
   CHECK(double_params.at(1) == Param<double>("b", 1));
   CHECK(double_params.at(2) == Param<double>("", 1.5));
 
-  CHECK(double_params.lookup_.size() == 2u);
-  CHECK(double_params.lookup_.at("a") == 0u);
-  CHECK(double_params.lookup_.at("b") == 1u);
+  CHECK(*double_params.at_or_null("a") == 0u);
+  CHECK(*double_params.at_or_null("b") == 1u);
 }
 
 TEST_CASE("ambiguously callable") {

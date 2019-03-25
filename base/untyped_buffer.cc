@@ -1,8 +1,7 @@
 #include "base/untyped_buffer.h"
 
 namespace base {
-#ifdef DBG
-std::string untyped_buffer::DebugString() const {
+std::string untyped_buffer::to_string() const {
   constexpr char char_lookup[32] =
       "0\0001\0002\0003\0004\0005\0006\0007\000"
       "8\0009\000a\000b\000c\000d\000e\000f";
@@ -18,5 +17,4 @@ std::string untyped_buffer::DebugString() const {
   }
   return s + "]";
 }
-#endif
-}
+}  // namespace base

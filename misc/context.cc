@@ -36,14 +36,12 @@ ir::Register Context::addr(ast::Declaration *decl) const {
   return mod_->addr(bound_constants_, decl);
 }
 
-ast::VerifyResult Context::set_result(ast::Expression const *expr,
-                                      ast::VerifyResult r) {
+ast::VerifyResult Context::set_result(ast::ExprPtr expr, ast::VerifyResult r) {
   mod_->data_[bound_constants_].verify_results_.emplace(expr, r);
   return r;
 }
 
-void Context::set_dispatch_table(ast::Expression const *expr,
-                                 ast::DispatchTable &&table) {
+void Context::set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table) {
   mod_->data_[bound_constants_].dispatch_tables_.emplace(expr,
                                                          std::move(table));
   // TODO in some situations you may be trying to set the dispatch table more
@@ -54,7 +52,7 @@ void Context::set_dispatch_table(ast::Expression const *expr,
   // ASSERT(success) << expr;
 }
 
-ast::DispatchTable const *Context::dispatch_table(ast::Expression const *expr) const {
+ast::DispatchTable const *Context::dispatch_table(ast::ExprPtr expr) const {
   auto &table = mod_->data_[bound_constants_].dispatch_tables_;
   if (auto iter = table.find(expr); iter != table.end()) {
     return &iter->second;
