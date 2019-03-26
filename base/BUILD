@@ -111,7 +111,19 @@ cc_lib(
     name = "untyped_buffer",
     hdrs = ["untyped_buffer.h"],
     srcs = ["untyped_buffer.cc"],
-    deps = [":debug"],
+    deps = [
+        ":debug",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "untyped_buffer_test",
+    srcs = ["untyped_buffer_test.cc"],
+    deps = [
+        ":untyped_buffer",
+        "//test",
+    ],
 )
 
 cc_lib(

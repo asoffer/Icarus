@@ -1,20 +1,31 @@
 #include "base/untyped_buffer.h"
 
+#include "absl/strings/str_join.h"
+
 namespace base {
-std::string untyped_buffer::to_string() const {
-  constexpr char char_lookup[32] =
-      "0\0001\0002\0003\0004\0005\0006\0007\000"
-      "8\0009\000a\000b\000c\000d\000e\000f";
-  std::string s = "[ ";
-  for (size_t i = 0; i < size_; ++i) {
-    if (i % 8 == 0) { s += "\n  "; }
-    uint8_t num   = *reinterpret_cast<uint8_t const *>(raw(i));
-    uint8_t upper = num / 16;
-    s += char_lookup + upper * 2;
-    uint8_t lower = num & 0xf;
-    s += char_lookup + lower * 2;
-    s += " ";
+std::string untyped_buffer::to_string(size_t width, size_t indent) const {
+  constexpr char char_lookup[32] ="0123456789abcdef";
+
+  std::vector<std::string> lines;
+
+  size_t num_left = size_;
+  base::Log() << num_left << indent << width;
+  while (num_left != 0) {
+    size_t row_width = std::min(width, num_left);
+    std::string line(3 * row_width - 1 + indent, ' ');
+    char *index = &line[indent];
+    for (size_t i = 0; i < row_width; ++i) {
+      uint8_t num =
+          *reinterpret_cast<uint8_t const *>(raw(size_ - num_left + i));
+      uint8_t upper = num / 16;
+      uint8_t lower = num & 0x0f;
+      *index++      = char_lookup[upper];
+      *index++      = char_lookup[lower];
+      ++index;  // Skip the next space.
+    }
+    num_left -= std::min(num_left, width);
+    lines.push_back(std::move(line));
   }
-  return s + "]";
+  return absl::StrJoin(lines, "\n");
 }
 }  // namespace base

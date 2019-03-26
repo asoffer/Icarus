@@ -1,12 +1,15 @@
 #ifndef ICARUS_BASE_UNTYPED_BUFFER_H
 #define ICARUS_BASE_UNTYPED_BUFFER_H
 
+#include <string>
 #include <cstring>
+#include <utility>
+
 #include "base/debug.h"
 
 namespace base {
 struct untyped_buffer {
-  untyped_buffer(size_t starting_capacity)
+  untyped_buffer(size_t starting_capacity = 0)
       : size_(0),
         capacity_(starting_capacity),
         data_(static_cast<char *>(malloc(starting_capacity))) {}
@@ -97,7 +100,8 @@ struct untyped_buffer {
     size_ = new_size;
   }
 
-  std::string to_string() const;
+  std::string to_string() const { return to_string(8, 0); }
+  std::string to_string(size_t width, size_t indent) const;
 
  private:
   void reallocate(size_t num) {
