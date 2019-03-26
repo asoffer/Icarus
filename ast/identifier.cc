@@ -43,6 +43,7 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
         // there's a bound constant of the same name? If so, we need to deal
         // with this case.
         decl_ = potential_decls[0].get();
+        if (decl_ == nullptr) { return VerifyResult::Error(); }
       } break;
       case 0:
         // TODO what if you find a bound constant and some errror decls?

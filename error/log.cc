@@ -87,7 +87,7 @@ void WriteSource(
 
       std::string_view line_view(line);
       iter = std::lower_bound(iter, underlines.end(), line_num,
-                              [](const auto &span_and_attrs, size_t n) {
+                              [](auto const &span_and_attrs, size_t n) {
                                 return span_and_attrs.first.start.line_num < n;
                               });
 
@@ -497,13 +497,12 @@ void Log::Dump() const {
   }
 
   for (const auto &[decl, ids] : out_of_order_decls_) {
-    std::cerr << "Declaration of `" << decl->id_
+    std::cerr << "Variable `" << decl->id_
               << "` is used before it is defined (which is only allowed for "
                  "constants).\n\n";
 
     auto [iset, underlines] = LinesToShow(ids);
-    iset.insert(base::Interval<size_t>{decl->span.start.line_num - 1,
-                                       decl->span.finish.line_num + 2});
+    iset.insert(decl->span.lines().expanded(1).clamped_below(1));
     // TODO highlight just the identifier
     underlines.emplace_back(
         decl->span, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});

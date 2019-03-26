@@ -67,8 +67,20 @@ VerifyResult StructLiteral::VerifyType(Context *ctx) {
   }
 
   if (args_.empty()) {
-    for (auto &field : fields_) { field->VerifyType(ctx); }
-    return ctx->set_result(this, VerifyResult::Constant(type::Type_));
+    bool ok = absl::c_all_of(
+        fields_, [ctx](std::unique_ptr<Declaration> const &field) {
+          if (field->VerifyType(ctx).const_) { return true; }
+          ctx->error_log()->NonConstantStructFieldDefaultValue(
+              field->init_val->span);
+          return false;
+        });
+    // TODO so in fact we could recover here and just not emit ir but we're no
+    // longer set up to do that.
+    if (ok) {
+      return ctx->set_result(this, VerifyResult::Constant(type::Type_));
+    } else {
+      return VerifyResult::Error();
+    }
   } else {
     return ctx->set_result(
         this, VerifyResult::Constant(type::GenStruct(scope_, std::move(ts))));
