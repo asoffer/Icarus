@@ -127,6 +127,24 @@ cc_test(
 )
 
 cc_lib(
+    name = "untyped_map",
+    hdrs = ["untyped_map.h"],
+    deps = [
+        ":untyped_buffer",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "untyped_map_test",
+    srcs = ["untyped_map_test.cc"],
+    deps = [
+        ":untyped_map",
+        "//test",
+    ],
+)
+
+cc_lib(
     name = "util",
     hdrs = ["util.h"],
     deps = [

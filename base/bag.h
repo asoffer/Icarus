@@ -24,7 +24,7 @@ struct bag {
       return !(lhs == rhs);
     }
 
-    const_iterator(typename std::vector<T>::const_iterator iter)
+    explicit const_iterator(typename std::vector<T>::const_iterator iter)
         : value_(iter) {}
     typename std::vector<T>::const_iterator value_;
   };
