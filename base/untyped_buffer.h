@@ -40,6 +40,15 @@ struct untyped_buffer {
     return *this;
   }
 
+
+  untyped_buffer &operator=(untyped_buffer const&that) {
+    size_     = that.size_;
+    capacity_ = that.size_;
+    data_     = static_cast<char *>(malloc(capacity_));
+    std::memcpy(data_, that.data_, size_);
+    return *this;
+  }
+
   ~untyped_buffer() { free(data_); }
 
   size_t size() const { return size_; }
@@ -73,10 +82,7 @@ struct untyped_buffer {
 
   template <typename T>
   size_t append(T const &t) {
-    size_t old_size = size_;
-
-    append_bytes(sizeof(T), alignof(T));
-    size_t old_size_with_alignment = ((old_size - 1) | (alignof(T) - 1)) + 1;
+    size_t old_size_with_alignment = append_bytes(sizeof(T), alignof(T));
     set(old_size_with_alignment, t);
     return old_size_with_alignment;
   }
@@ -86,12 +92,14 @@ struct untyped_buffer {
     std::memcpy(data_ + offset, buf.data_, buf.size_);
   }
 
-  void append_bytes(size_t num, size_t alignment) {
+  // Returns an offset to the newly appended region
+  size_t append_bytes(size_t num, size_t alignment) {
     // TODO combine with layout::FwdAlign?
-    size_t new_size = ((size_ - 1) | (alignment - 1)) + 1 + num;
-
+    size_t old_size_with_alignment = ((size_ - 1) | (alignment - 1)) + 1;
+    size_t new_size                = old_size_with_alignment + num;
     if (new_size > capacity_) { reallocate(new_size); }
     size_ = new_size;
+    return old_size_with_alignment;
   }
 
   void pad_to(size_t n) {

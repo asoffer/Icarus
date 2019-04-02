@@ -46,14 +46,6 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
         if (decl_ == nullptr) { return VerifyResult::Error(); }
       } break;
       case 0:
-        // TODO what if you find a bound constant and some errror decls?
-        for (auto const &[d, v] :
-             ctx->mod_->constants_[ctx->bound_constants_].constants_) {
-          if (d->id_ == token) {
-            return ctx->set_result(this, VerifyResult(v.type, d->const_));
-          }
-        }
-
         ctx->error_log()->UndeclaredIdentifier(this);
         return VerifyResult::Error();
       default:
@@ -61,20 +53,12 @@ VerifyResult Identifier::VerifyType(Context *ctx) {
         ctx->error_log()->UnspecifiedOverload(span);
         return VerifyResult::Error();
     }
-  }
 
-  if (!decl_->const_ && (span.start.line_num < decl_->span.start.line_num ||
-                         (span.start.line_num == decl_->span.start.line_num &&
-                          span.start.offset < decl_->span.start.offset))) {
-    ctx->error_log()->DeclOutOfOrder(decl_, this);
-  }
-
-  // TODO: This needs cleanup. I'm sure there's a bunch of inefficiencies here
-  // due to me not totally understanding what's going on.
-  if (auto iter = ctx->bound_constants_.constants_.find(decl_);
-      iter != ctx->bound_constants_.constants_.end()) {
-    return ctx->set_result(this,
-                           VerifyResult(iter->second.type, decl_->const_));
+    if (!decl_->const_ && (span.start.line_num < decl_->span.start.line_num ||
+                           (span.start.line_num == decl_->span.start.line_num &&
+                            span.start.offset < decl_->span.start.offset))) {
+      ctx->error_log()->DeclOutOfOrder(decl_, this);
+    }
   }
 
   // TODO this is because we may have determined the declartaion previously with
@@ -97,12 +81,8 @@ ir::Results Identifier::EmitIr(Context *ctx) {
                            : ctx->addr(decl_)};
   } else if (decl_->is<MatchDeclaration>()) {
     // TODO is there a better way to do look up? look up in parent too?
-    if (auto iter = ctx->bound_constants_.constants_.find(decl_);
-        iter != ctx->bound_constants_.constants_.end()) {
-      return ir::Results::FromVals({iter->second});
-    } else {
-      UNREACHABLE(decl_);
-    }
+    UNREACHABLE(decl_);
+
   } else {
     auto *t   = ASSERT_NOT_NULL(ctx->type_of(this));
     auto lval = EmitLVal(ctx)[0];

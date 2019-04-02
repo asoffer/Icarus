@@ -38,20 +38,20 @@ static absl::flat_hash_map<
     modules;
 
 std::atomic<bool> found_errors = false;
-ir::Func *main_fn;
+ir::Func *main_fn = nullptr;
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of ir::Func which we want to forward declare.
-#ifndef ICARUS_USE_LLVM
-
-Module::Module() : scope_(this) {}
-
-#else
 Module::Module()
-    : scope_(this),
-      llvm_ctx_(std::make_unique<llvm::LLVMContext>()),
-      llvm_(std::make_unique<llvm::Module>("my module", *llvm_ctx_)) {}
+    : scope_(this)
+#ifndef ICARUS_USE_LLVM
+#else
+          llvm_ctx_(std::make_unique<llvm::LLVMContext>()),
+      llvm_(std::make_unique<llvm::Module>("my module", *llvm_ctx_))
 #endif  // ICARUS_USE_LLVM
+{
+  dep_data_.emplace_back();
+}
 
 Module::~Module() = default;
 
@@ -74,7 +74,7 @@ ir::Func *Module::AddFunc(
 
 type::Type const *Module::GetType(std::string const &name) const {
   ASSIGN_OR(return nullptr, auto &decl, GetDecl(name));
-  return data_.at(ast::BoundConstants{}).verify_results_.at(&decl).type_;
+  return dep_data_.front().second.verify_results_.at(&decl).type_;
 }
 
 ast::Declaration *Module::GetDecl(std::string const &name) const {
@@ -180,21 +180,9 @@ static Module *CompileModule(Module *mod) {
   return mod;
 }
 
-type::Type const *Module::type_of(ast::BoundConstants const &bc,
-                                  ast::Expression const *expr) const {
-  if (auto bc_iter = data_.find(bc); bc_iter != data_.end()) {
-    auto iter = bc_iter->second.verify_results_.find(expr);
-    if (iter != bc_iter->second.verify_results_.end()) {
-      return iter->second.type_;
-    }
-  }
-
-  return nullptr;
-}
-
 ir::Register Module::addr(ast::BoundConstants const &bc,
                           ast::Declaration *decl) const {
-  return data_.at(bc).addr_.at(decl);
+  return dep_data_.front().second.addr_.at(decl);
 }
 
 PendingModule Module::Schedule(error::Log *log,

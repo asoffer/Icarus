@@ -94,6 +94,12 @@ struct Type : public base::Cast<Type> {
 
   virtual void EmitDestroy(ir::Register reg, Context *ctx) const {};
 
+  // TODO rename so it doesn't have "Test" in the name.
+  virtual bool TestEquality(void const *lhs, void const *rhs) const {
+    // TODO
+    return true;
+  }
+
   std::string to_string() const {
     std::string result;
     WriteTo(&result);

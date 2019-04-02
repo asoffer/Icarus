@@ -20,6 +20,7 @@
 #include "core/fn_params.h"
 #include "core/scope.h"
 #include "error/log.h"
+#include "misc/constant_binding.h"
 
 #ifdef ICARUS_USE_LLVM
 namespace llvm {
@@ -71,15 +72,6 @@ struct Module {
 
   core::ModuleScope scope_;
 
-  // Holds all constants defined in the module (both globals and scoped
-  // constants). These are the values in the map. They're keyed on conditional
-  // constants. So we have options for mulitple meanings of things depending on
-  // context.
-  //
-  // TODO Almost surely this needs to be even deeper, treating it as a tree
-  // of arbitrary depth.
-  std::map<ast::BoundConstants, ast::BoundConstants> constants_;
-
   // TODO long-term this is not a good way to store these. We should probably
   // extract the declarations determine which are public, etc.
   ast::Statements statements_;
@@ -91,8 +83,6 @@ struct Module {
 
   std::vector<std::unique_ptr<ir::Func>> fns_;
 
-  type::Type const *type_of(ast::BoundConstants const &bc,
-                            ast::Expression const *expr) const;
   ir::Register addr(ast::BoundConstants const &bc,
                     ast::Declaration *decl) const;
            
@@ -108,8 +98,10 @@ struct Module {
       generic_struct_cache_;
 
   struct DependentData {
+    // TODO I'm not sure this needs to be dependent? Or stored at all?
     absl::flat_hash_map<ast::Declaration *, ir::Register> addr_;
 
+    // TODO probably make these funcs constant.
     absl::node_hash_map<ast::Expression const *, ir::Func *> ir_funcs_;
 
     // TODO future optimization: the bool determining if it's const is not
@@ -118,8 +110,32 @@ struct Module {
     absl::flat_hash_map<ast::ExprPtr, ast::VerifyResult> verify_results_;
 
     absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
+    ConstantBinding constants_;
   };
-  std::map<ast::BoundConstants, DependentData> data_;
+  // TODO It's possible to have layers of constant bindings in a tree-like
+  // structure. For example,
+  //   f :: (a :: int64) => (b :: int64) => (c :: int64) => a + b * c
+  // has 3 layers. Essentially the number of layers is the number of nested
+  // scopes that have constant parameters (at time of writing only functions and
+  // struct literals, though struct literals may not be specified as constants
+  // syntactically?). For now you just store them flat in this vector and check
+  // them potentially many times. Perhaps a tree-like structure would be more
+  // efficient? More cache misses, but you're already paying heavily for the
+  // equality call, so maybe it's just a simpler structure.
+  //
+  // Using list because we need to not invalidate pointers to elements on insertion.
+  std::list<std::pair<ConstantBinding, DependentData>> dep_data_;
+
+  std::pair<ConstantBinding, DependentData> *insert_constants(
+      ConstantBinding const &constant_binding) {
+    for (auto iter = dep_data_.begin(); iter != dep_data_.end(); ++iter) {
+      auto &[key, val] = *iter;
+      if (key == constant_binding) { return &*iter; }
+    }
+    auto &pair = dep_data_.emplace_back(constant_binding, DependentData{});
+    pair.second.constants_ = pair.first;
+    return &pair;
+  }
 
   std::filesystem::path const *path_ = nullptr;
 };

@@ -211,17 +211,13 @@ static base::expected<DispatchTable::Row> OverloadParams(
       auto *fn_lit =
           backend::EvaluateAs<ast::FunctionLiteral *>(overload.expr, ctx);
 
-      // This is the right context in which to evaluate arguments. What about
-      // parameters with defaults?
-      Context new_ctx(ctx);
-
       core::FnParams<type::Typed<Expression *>> params(fn_lit->inputs_.size());
       for (auto *decl : fn_lit->sorted_params_) {
         // TODO skip decls that are not parameters.
         size_t param_index = fn_lit->decl_to_param_.at(decl);
         auto const& param = fn_lit->inputs_.at(param_index);
 
-        auto result = decl->VerifyType(&new_ctx);
+        auto result = decl->VerifyType(ctx);
         if (!result.ok()) { NOT_YET(); }
 
         if (!param.value->const_) {
@@ -229,20 +225,28 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                       param.name,
                                       type::Typed<Expression *>(
                                           param.value.get(),
-                                          new_ctx.type_of(param.value.get())),
+                                          ctx->type_of(param.value.get())),
                                       param.flags});
         } else {
           if (param_index < args.pos().size()) {
             auto [arg_expr, verify_result] = args.pos().at(param_index);
-            type::Type const *decl_type    = new_ctx.type_of(param.value.get());
+            type::Type const *decl_type    = ctx->type_of(param.value.get());
             if (!type::CanCast(verify_result.type_, decl_type)) {
               return base::unexpected(
                   absl::StrCat("TODO good error message couldn't match type ",
                                decl_type->to_string(), " to ",
                                verify_result.type_->to_string()));
             }
-            new_ctx.bound_constants_.constants_.emplace(
-                param.value.get(), backend::Evaluate(arg_expr, &new_ctx).at(0));
+
+            auto buf = backend::EvaluateToBuffer(
+                type::Typed(arg_expr, verify_result.type_), ctx);
+            auto [data_offset, num_bytes] =
+                std::get<std::pair<size_t, layout::Bytes>>(
+                    ctx->current_constants_.reserve_slot(param.value.get(), decl_type));
+            // TODO you haven't done the cast yet! And you didn't even check
+            // about implicit casts.
+            ctx->current_constants_.set_slot(data_offset, buf.raw(0),
+                                             num_bytes);
             params.set(param_index, core::Param<type::Typed<Expression *>>{
                                         param.name,
                                         type::Typed<Expression *>(
@@ -250,33 +254,47 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                         param.flags});
           } else {
             if (auto *arg = args.at_or_null(param.value->id_)) {
-              type::Type const *decl_type = new_ctx.type_of(param.value.get());
+              type::Type const *decl_type = ctx->type_of(param.value.get());
               if (!type::CanCast(arg->second.type_, decl_type)) {
                 return base::unexpected(
                     absl::StrCat("TODO good error message couldn't match type ",
                                  decl_type->to_string(), " to ",
                                  arg->second.type_->to_string()));
               }
-              new_ctx.bound_constants_.constants_.emplace(
-                  param.value.get(),
-                  backend::Evaluate(arg->first, &new_ctx).at(0));
-              params.set(param_index,
-                         core::Param<type::Typed<Expression *>>{
-                             param.name,
-                             type::Typed<Expression *>(
-                                 param.value.get(),
-                                 new_ctx.type_of(param.value.get())),
-                             param.flags});
+
+              auto buf = backend::EvaluateToBuffer(
+                  type::Typed(arg->first, decl_type), ctx);
+            auto [data_offset, num_bytes] =
+                std::get<std::pair<size_t, layout::Bytes>>(
+                    ctx->current_constants_.reserve_slot(param.value.get(),
+                                                         decl_type));
+            // TODO you haven't done the cast yet! And you didn't even check
+            // about implicit casts.
+            ctx->current_constants_.set_slot(data_offset, buf.raw(0),
+                                             num_bytes);
+            params.set(param_index, core::Param<type::Typed<Expression *>>{
+                                        param.name,
+                                        type::Typed<Expression *>(
+                                            param.value.get(),
+                                            ctx->type_of(param.value.get())),
+                                        param.flags});
 
             } else {
               if (param.flags & core::HAS_DEFAULT) {
-                new_ctx.bound_constants_.constants_.emplace(
-                    param.value.get(),
-                    backend::Evaluate(decl->init_val.get(), &new_ctx).at(0));
+                type::Type const *decl_type =
+                    ctx->type_of(param.value.get());
+
+                // TODO you haven't done the cast from init_val to declared type
+                auto buf = backend::EvaluateToBuffer(
+                    type::Typed(decl->init_val.get(), decl_type), ctx);
+                auto [data_offset, num_bytes] =
+                    std::get<std::pair<size_t, layout::Bytes>>(
+                        ctx->current_constants_.reserve_slot(param.value.get(),
+                                                             decl_type));
+                ctx->current_constants_.set_slot(data_offset, buf.raw(0),
+                                                 num_bytes);
                 // TODO should I be setting this parameter?
 
-                type::Type const *decl_type =
-                    new_ctx.type_of(param.value.get());
                 params.set(param_index,
                            core::Param<type::Typed<Expression *>>{
                                param.name,
@@ -292,12 +310,15 @@ static base::expected<DispatchTable::Row> OverloadParams(
           }
         }
       }
+
+      auto *old_constants = std::exchange(
+          ctx->constants_, ctx->insert_constants(ctx->current_constants_));
+      base::defer d([&]() { ctx->constants_ = old_constants; });
       // TODO errors?
-      auto *fn_type =
-          ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&new_ctx).type_);
-      return DispatchTable::Row{
-          std::move(params), &fn_type->as<type::Function>(),
-          backend::EvaluateAs<ir::AnyFunc>(fn_lit, &new_ctx)};
+      auto *fn_type = ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(ctx).type_);
+      return DispatchTable::Row{std::move(params),
+                                &fn_type->as<type::Function>(),
+                                backend::EvaluateAs<ir::AnyFunc>(fn_lit, ctx)};
     } else {
       ir::AnyFunc fn = backend::EvaluateAs<ir::AnyFunc>(overload.expr, ctx);
       if (fn.is_fn()) {
@@ -479,7 +500,8 @@ static void EmitOneCall(
   // TODO look for matches
   ir::RegisterOr<ir::AnyFunc> fn = std::visit(
       [&](auto f) -> ir::RegisterOr<ir::AnyFunc> {
-        if constexpr (std::is_same_v<decltype(f), ir::AnyFunc>) {
+        using T = std::decay_t<decltype(f)>;
+        if constexpr (std::is_same_v<T, ir::AnyFunc>) {
           return f;
         } else {
           // TODO must `f` always be a declaration?

@@ -59,5 +59,12 @@ TEST_CASE("append results") {
   CHECK(r1.get<Reg>(3) == Reg{34});
 }
 
+TEST_CASE("FromRaw") {
+  int n = 0xdeadbeef;
+  auto results = Results::FromRaw(static_cast<void *>(&n), layout::Bytes{4});
+  CHECK(results.size() == 1);
+  CHECK(results.get<int>(0) == RegisterOr{n});
+}
+
 }  // namespace
 }  // namespace ir

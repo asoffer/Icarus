@@ -201,11 +201,13 @@ VerifyResult Declaration::VerifyType(Context *ctx) {
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   BoundConstants old_bc;
   if (swap_bc) {
-    old_bc = std::exchange(ctx->bound_constants_, BoundConstants{});
+    // TODO constants
   }
   base::defer d([&] {
     ctx->mod_ = old_mod;
-    if (swap_bc) { ctx->bound_constants_ = std::move(old_bc); }
+    if (swap_bc) {
+      // TODO constants
+    }
   });
 
   // Declarations may have already been computed. Essentially the first time we
@@ -430,39 +432,61 @@ ir::Results Declaration::EmitIr(Context *ctx) {
   Module *old_mod = std::exchange(ctx->mod_, mod_);
   BoundConstants old_bc;
   if (swap_bc) {
-    old_bc = std::exchange(ctx->bound_constants_, BoundConstants{});
+    // TODO constants
   }
   base::defer d([&] {
     ctx->mod_ = old_mod;
-    if (swap_bc) { ctx->bound_constants_ = std::move(old_bc); }
+    if (swap_bc) {
+      // TODO constants
+    }
   });
 
   if (const_) {
+    // TODO
     if (is_fn_param_) {
-      return ir::Results::FromVals({ctx->bound_constants_.constants_.at(this)});
+      if (auto result = ctx->current_constants_.get_constant(this);
+          !result.empty()) {
+        return result;
+      } else if (auto result = ctx->constants_->first.get_constant(this);
+                 !result.empty()) {
+        return result;
+      } else {
+        UNREACHABLE();
+      }
     } else {
-      auto [iter, newly_inserted] =
-          ctx->mod_->constants_[ctx->bound_constants_].constants_.emplace(
-              this, ir::Val::None());
-      if (!newly_inserted) { return ir::Results::FromVals({iter->second}); }
+      auto *t = ctx->type_of(this);
+      auto slot = ctx->constants_->second.constants_.reserve_slot(this, t);
+      if (auto *result = std::get_if<ir::Results>(&slot)) {
+        return std::move(*result);
+      }
+
+      auto &[data_offset, num_bytes] =
+          std::get<std::pair<size_t, layout::Bytes>>(slot);
 
       if (IsCustomInitialized()) {
-        auto vals    = backend::Evaluate(init_val.get(), ctx);
-        iter->second = vals[0];
+        // TODO there's a lot of inefficiency here. `buf` is copied into the
+        // constants slot and the copied to an ir::Results object to be
+        // returned. In reality, we could write directly to the buffer and only
+        // copy once if Evaluate* took an out-parameter.
+        base::untyped_buffer buf =
+            backend::EvaluateToBuffer(type::Typed(init_val.get(), t), ctx);
         if (ctx->num_errors() > 0u) { return ir::Results{}; }
-        return ir::Results::FromVals({iter->second});
+        return ctx->constants_->second.constants_.set_slot(
+            data_offset, buf.raw(0), num_bytes);
       } else if (IsDefaultInitialized()) {
-        if (is_fn_param_) {
-          return ir::Results::FromVals(
-              {ctx->mod_->constants_[ctx->bound_constants_].constants_.at(
-                  this)});
-        } else {
-          NOT_YET(this);
-        }
+        //     if (is_fn_param_) {
+        //       return ir::Results::FromVals(
+        //           {ctx->mod_->constants_[ctx->bound_constants_].constants_.at(
+        //               this)});
+        //     } else {
+        //       NOT_YET(this);
+        //     }
+        UNREACHABLE();
       } else {
         UNREACHABLE();
       }
     }
+    UNREACHABLE(to_string(0));
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation

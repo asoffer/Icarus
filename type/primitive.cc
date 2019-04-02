@@ -194,4 +194,14 @@ bool Primitive::ReinterpretAs(Type const *t) const {
   return t == this || (type_ == PrimType::NullPtr && t->is<Pointer>()) ||
          (type_ == PrimType::EmptyArray && t->is<Array>());
 }
+
+bool Primitive::TestEquality(void const *lhs, void const *rhs) const {
+  switch (type_) {
+    case PrimType::Int64:
+      return *reinterpret_cast<int64_t const *>(lhs) ==
+             *reinterpret_cast<int64_t const *>(rhs);
+    default: UNREACHABLE();
+  }
+}
+
 }  // namespace type

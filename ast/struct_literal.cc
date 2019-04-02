@@ -126,12 +126,12 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
   //
   // For now, it's safe to do this from within a single module compilation
   // (which is single-threaded).
-  ir::Func *&ir_func = mod_->data_[ctx->bound_constants_].ir_funcs_[this];
+  ir::Func *&ir_func = ctx->constants_->second.ir_funcs_[this];
   if (!ir_func) {
     auto &work_item = ctx->mod_->deferred_work_.emplace(
-        [bc{ctx->bound_constants_}, this, mod{ctx->mod_}]() mutable {
+        [constants{ctx->constants_}, this, mod{ctx->mod_}]() mutable {
           Context ctx(mod);
-          ctx.bound_constants_ = std::move(bc);
+          ctx.constants_ = constants;
           CompleteBody(&ctx);
         });
 
@@ -155,7 +155,7 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
 }
 
 void StructLiteral::CompleteBody(Context *ctx) {
-  ir::Func *&ir_func = mod_->data_[ctx->bound_constants_].ir_funcs_[this];
+  ir::Func *&ir_func = ctx->constants_->second.ir_funcs_[this];
   for (size_t i = 0; i < args_.size(); ++i) {
     ctx->set_addr(args_[i].get(), ir_func->Argument(i));
   }

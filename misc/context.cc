@@ -1,20 +1,24 @@
 #include "misc/context.h"
 #include "ast/dispatch_table.h"
 #include "ast/expression.h"
+#include "ast/declaration.h"
 #include "misc/module.h"
 
 type::Type const *Context::type_of(ast::Expression const *expr) const {
-  if (auto *result = mod_->type_of(bound_constants_, expr)) { return result; }
-  if (parent_) { return parent_->type_of(expr); }
+  if (auto *decl = expr->if_as<ast::Declaration>()) {
+    if (auto *t = current_constants_.type_of(decl)) { return t; }
+  }
+  if (auto iter = constants_->second.verify_results_.find(expr);
+      iter != constants_->second.verify_results_.end()) {
+    if (iter->second.type_) { return iter->second.type_; }
+  }
 
   // When searching in embedded modules we intentionally look with no bound
   // constants. Across module boundaries, a declaration can't be present anyway.
   for (Module const *mod : mod_->scope_.embedded_modules_) {
-    auto bc_iter = mod->data_.find(ast::BoundConstants{});
-    if (bc_iter == mod->data_.end()) { continue; }
-
-    if (auto iter = bc_iter->second.verify_results_.find(expr);
-        iter != bc_iter->second.verify_results_.end()) {
+    // TODO use right constants
+    if (auto iter = mod->dep_data_.front().second.verify_results_.find(expr);
+        iter != mod->dep_data_.front().second.verify_results_.end()) {
       return iter->second.type_;
     }
   }
@@ -23,13 +27,23 @@ type::Type const *Context::type_of(ast::Expression const *expr) const {
 
 ast::VerifyResult const *Context::prior_verification_attempt(
     ast::Expression const *expr) {
-  auto const &map = mod_->data_[bound_constants_].verify_results_;
+  auto const &map = constants_->second.verify_results_;
   if (auto iter = map.find(expr); iter != map.end()) { return &iter->second; }
   return nullptr;
 }
 
+std::pair<ConstantBinding, Module::DependentData> *Context::insert_constants(
+    ConstantBinding const &constant_binding) {
+  auto *pair = mod_->insert_constants(constant_binding);
+  for (auto const &[decl, binding] : constant_binding.keys_) {
+    pair->second.verify_results_.emplace(
+        ast::ExprPtr(decl), ast::VerifyResult::Constant(binding.type_));
+  }
+  return pair;
+}
+
 void Context::set_addr(ast::Declaration *decl, ir::Register r) {
-  mod_->data_[bound_constants_].addr_[decl] = r;
+  constants_->second.addr_[decl] = r;
 }
 
 ir::Register Context::addr(ast::Declaration *decl) const {
@@ -37,13 +51,13 @@ ir::Register Context::addr(ast::Declaration *decl) const {
 }
 
 ast::VerifyResult Context::set_result(ast::ExprPtr expr, ast::VerifyResult r) {
-  mod_->data_[bound_constants_].verify_results_.emplace(expr, r);
+  constants_->second.verify_results_.emplace(expr, r);
   return r;
 }
 
-void Context::set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table) {
-  mod_->data_[bound_constants_].dispatch_tables_.emplace(expr,
-                                                         std::move(table));
+void Context::set_dispatch_table(ast::ExprPtr expr,
+                                 ast::DispatchTable &&table) {
+  constants_->second.dispatch_tables_.emplace(expr, std::move(table));
   // TODO in some situations you may be trying to set the dispatch table more
   // than once. This has come up with generic structs and you should
   // investigate.
@@ -53,10 +67,9 @@ void Context::set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table) 
 }
 
 ast::DispatchTable const *Context::dispatch_table(ast::ExprPtr expr) const {
-  auto &table = mod_->data_[bound_constants_].dispatch_tables_;
+  auto &table = constants_->second.dispatch_tables_;
   if (auto iter = table.find(expr); iter != table.end()) {
     return &iter->second;
   }
-  if (parent_) { return parent_->dispatch_table(expr); }
   return nullptr;
 }

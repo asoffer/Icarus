@@ -15,6 +15,8 @@ struct Primitive : public Type {
   TYPE_FNS(Primitive);
   Primitive(PrimType pt) : type_(pt) {}
 
+  bool TestEquality(void const *lhs, void const *rhs) const override;
+
   bool is_integral() const;
 
  private:

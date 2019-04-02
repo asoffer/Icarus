@@ -180,7 +180,6 @@ struct FnParams {
   absl::flat_hash_map<std::string_view, size_t> lookup_;
 
   std::vector<Param<T>> params_;
-
 };
 
 template <typename T, typename AmbiguityFn>

@@ -12,6 +12,16 @@ Results Results::FromVals(std::vector<Val> const& vals) {
   return results;
 }
 
+Results Results::FromRaw(void const* data, layout::Bytes bytes) {
+  Results results;
+  // I don't care about alignment here because the buffer is maximally aligned
+  // anyway.
+  results.buf_.append_bytes(bytes.value(), 16);
+  std::memcpy(results.buf_.raw(0), data, bytes.value());
+  results.offset_.push_back(0);
+  return results;
+}
+
 Results Results::GetResult(size_t index) const {
   Results r;
   if (is_reg(index)) {

@@ -6,6 +6,7 @@
 
 #include "base/untyped_buffer.h"
 #include "ir/register.h"
+#include "layout/bytes.h"
 
 namespace ir {
 struct Val;
@@ -17,6 +18,7 @@ struct Results {
     (append<Args>(args), ...);
   }
 
+  static Results FromRaw(void const* data, layout::Bytes bytes);
   static Results FromVals(std::vector<Val> const& vals);
 
   template <typename T, typename = std::enable_if_t<!std::is_base_of_v<Reg, T>>>
@@ -61,6 +63,7 @@ struct Results {
   std::string to_string() const;
 
   size_t size() const { return offset_.size(); }
+  size_t empty() const { return offset_.empty(); }
 
  private:
   // TODO reduce indicetions by storing registers directly in the vector. Be

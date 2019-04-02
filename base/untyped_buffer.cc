@@ -9,7 +9,6 @@ std::string untyped_buffer::to_string(size_t width, size_t indent) const {
   std::vector<std::string> lines;
 
   size_t num_left = size_;
-  base::Log() << num_left << indent << width;
   while (num_left != 0) {
     size_t row_width = std::min(width, num_left);
     std::string line(3 * row_width - 1 + indent, ' ');

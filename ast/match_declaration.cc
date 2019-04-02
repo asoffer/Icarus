@@ -23,12 +23,9 @@ bool MatchDeclaration::InferType(type::Type const *t,
 }
 
 ir::Results MatchDeclaration::EmitIr(Context *ctx) {
-  if (auto iter = ctx->bound_constants_.constants_.find(this);
-      iter != ctx->bound_constants_.constants_.end()) {
-    return ir::Results::FromVals({iter->second});
-  } else {
-    return ir::Results{
-        backend::EvaluateAs<type::Interface const *>(type_expr.get(), ctx)};
-  }
+  auto results = ctx->constants_->first.get_constant(this);
+  if (!results.empty()) { return results; }
+  return ir::Results{
+      backend::EvaluateAs<type::Interface const *>(type_expr.get(), ctx)};
 }
 }  // namespace ast

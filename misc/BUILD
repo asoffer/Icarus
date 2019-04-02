@@ -6,9 +6,23 @@ load("//:defs.bzl", "cc_lib", "cc_target")
 cc_lib(
     name = "impl",
     deps = [
+        ":constant_binding-impl",
         ":context-impl",
         ":module-impl",
         ":import_graph-impl",
+    ],
+)
+
+cc_target(
+    name = "constant_binding",
+    intf_deps = [
+        "//base:untyped_buffer",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+    impl_deps = [
+        "//ir:results",
+        "//layout:arch",
+        "//type",
     ],
 )
 
@@ -22,6 +36,7 @@ cc_target(
     ],
     impl_deps = [
         "//ast:expression",
+        "//ast:declaration",
         "//ast:dispatch_table",
     ],
 )
@@ -46,6 +61,7 @@ cc_lib(
 cc_target(
     name = "module",
     intf_deps = [
+        ":constant_binding",
         "//ast:bound_constants",
         "//ast:dispatch_table",
         "//ast:expression",

@@ -10,16 +10,14 @@
 #include "type/util.h"
 
 namespace backend {
-static std::unique_ptr<ir::Func> ExprFn(
-    type::Typed<ast::Expression *> typed_expr, Context *ctx) {
-  auto fn = std::make_unique<ir::Func>(
-      ctx->mod_, type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
-      core::FnParams<type::Typed<ast::Expression *>>{});
-
-  CURRENT_FUNC(fn.get()) {
+static ir::Func ExprFn(type::Typed<ast::Expression *> typed_expr,
+                       Context *ctx) {
+  ir::Func fn(ctx->mod_, type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
+              core::FnParams<type::Typed<ast::Expression *>>{});
+  CURRENT_FUNC(&fn) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIr
     // Factor these out together.
-    ir::BasicBlock::Current = fn->entry();
+    ir::BasicBlock::Current = fn.entry();
     // Leave space for allocas that will come later (added to the entry
     // block).
 
@@ -39,7 +37,7 @@ static std::unique_ptr<ir::Func> ExprFn(
     }
     ir::ReturnJump();
 
-    ir::BasicBlock::Current = fn->entry();
+    ir::BasicBlock::Current = fn.entry();
     ir::UncondJump(start_block);
   }
   return fn;
@@ -57,7 +55,7 @@ base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
 
   ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
   backend::ExecContext exec_context;
-  Execute(fn.get(), base::untyped_buffer(0), ret_slots, &exec_context);
+  Execute(&fn, base::untyped_buffer(0), ret_slots, &exec_context);
   return ret_buf;
 }
 

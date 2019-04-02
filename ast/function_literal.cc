@@ -110,7 +110,8 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
   std::vector<type::Type const *> input_type_vec;
   input_type_vec.reserve(inputs_.size());
   for (auto &d : inputs_) {
-    input_type_vec.push_back(d.value->VerifyType(ctx).type_);
+    ASSIGN_OR(return _, auto result, d.value->VerifyType(ctx));
+    input_type_vec.push_back(result.type_);
   }
 
   std::vector<type::Type const *> output_type_vec;
@@ -152,9 +153,9 @@ VerifyResult FunctionLiteral::VerifyTypeConcrete(Context *ctx) {
     }
 
     ctx->mod_->deferred_work_.emplace(
-        [bc{ctx->bound_constants_}, this, mod{ctx->mod_}]() mutable {
+        [constants{ctx->constants_}, this, mod{ctx->mod_}]() mutable {
           Context ctx(mod);
-          ctx.bound_constants_ = std::move(bc);
+          ctx.constants_ = constants;
           this->VerifyBody(&ctx);
         });
 
@@ -265,25 +266,22 @@ void FunctionLiteral::ExtractJumps(JumpExprs *rets) const {
 ir::Results FunctionLiteral::EmitIr(Context *ctx) {
   for (auto const &param : inputs_) {
     auto *p = param.value.get();
-    if (p->const_ && ctx->bound_constants_.constants_.find(p) ==
-                         ctx->bound_constants_.constants_.end()) {
+    if (p->const_ && !ctx->constants_->first.contains(p)) {
       return ir::Results{this};
     }
 
     for (auto *dep : param_dep_graph_.sink_deps(param.value.get())) {
-      if (ctx->bound_constants_.constants_.find(dep) ==
-          ctx->bound_constants_.constants_.end()) {
-        return ir::Results{this};
-      }
+      if (!ctx->constants_->first.contains(dep)) { return ir::Results{this}; }
     }
   }
 
-  ir::Func *&ir_func = ctx->mod_->data_[ctx->bound_constants_].ir_funcs_[this];
+  // TODO Use correct constants
+  ir::Func *&ir_func = ctx->constants_->second.ir_funcs_[this];
   if (!ir_func) {
     auto &work_item = ctx->mod_->deferred_work_.emplace(
-        [bc{ctx->bound_constants_}, this, mod{ctx->mod_}]() mutable {
+        [constants{ctx->constants_}, this, mod{ctx->mod_}]() mutable {
           Context ctx(mod);
-          ctx.bound_constants_ = std::move(bc);
+          ctx.constants_ = constants;
           CompleteBody(&ctx);
         });
 
@@ -307,7 +305,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
 
   auto *t = ctx->type_of(this);
 
-  ir::Func *&ir_func = ctx->mod_->data_[ctx->bound_constants_].ir_funcs_[this];
+  ir::Func *&ir_func = ctx->constants_->second.ir_funcs_[this];
 
   CURRENT_FUNC(ir_func) {
     ir::BasicBlock::Current = ir_func->entry();

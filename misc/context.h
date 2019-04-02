@@ -18,10 +18,9 @@ struct DispatchTable;
 }  // namespace ast
 
 struct Context {
-  Context(Context const *parent)
-      : parent_(ASSERT_NOT_NULL(parent)), mod_(parent_->mod_) {}
-
-  Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {}
+  Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {
+    constants_ = &mod_->dep_data_.front();
+  }
 
   error::Log *error_log() { return &mod_->error_log_; }
   size_t num_errors() { return error_log()->size(); }
@@ -43,9 +42,21 @@ struct Context {
   ir::Register addr(ast::Declaration *decl) const;
   void set_addr(ast::Declaration *decl, ir::Register);
 
-  Context const *parent_ = nullptr;
-  Module *mod_           = nullptr;
+  std::pair<ConstantBinding, Module::DependentData> *insert_constants(
+      ConstantBinding const &constant_binding);
 
+
+  Module *mod_ = nullptr;
+
+  std::pair<ConstantBinding, Module::DependentData> *constants_;
+  // We only want to generate at most one node for each set of constants in a
+  // function literal, but we can't generate them all at once because, for
+  // example:
+  //   (val :: T, T :: type) -> () { ... }
+  // So we need to be able to build them even when there are dependencies
+  // between them. To do this, we bulid them here and then move them into the
+  // module constants when they're ready.
+  ConstantBinding current_constants_;
   ast::BoundConstants bound_constants_;
 
   // TODO this looks useful in bindings too. maybe give it a better name and
