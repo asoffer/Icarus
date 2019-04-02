@@ -6,6 +6,7 @@
 #include "ir/addr.h"
 #include "ir/register.h"
 #include "type/typed_value.h"
+#include "type/util.h"
 
 namespace ast {
 

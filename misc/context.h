@@ -1,8 +1,8 @@
 #ifndef ICARUS_CONTEXT_H
 #define ICARUS_CONTEXT_H
 
-#include "ast/bound_constants.h"
 #include <vector>
+
 #include "base/debug.h"
 #include "ir/register.h"
 #include "ir/results.h"
@@ -57,7 +57,6 @@ struct Context {
   // between them. To do this, we bulid them here and then move them into the
   // module constants when they're ready.
   ConstantBinding current_constants_;
-  ast::BoundConstants bound_constants_;
 
   // TODO this looks useful in bindings too. maybe give it a better name and
   // use it more frequently?

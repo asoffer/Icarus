@@ -30,7 +30,6 @@ cc_target(
     name = "context",
     intf_deps = [
         ":module",
-        "//ast:bound_constants",
         "//base:debug",
         "//ir:register",
     ],
@@ -62,7 +61,6 @@ cc_target(
     name = "module",
     intf_deps = [
         ":constant_binding",
-        "//ast:bound_constants",
         "//ast:dispatch_table",
         "//ast:expression",
         "//ast:statements",

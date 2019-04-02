@@ -5,7 +5,6 @@
 #include <variant>
 
 #include "absl/container/flat_hash_map.h"
-#include "ast/bound_constants.h"
 #include "ast/overload_set.h"
 #include "type/typed_value.h"
 #include "core/fn_args.h"

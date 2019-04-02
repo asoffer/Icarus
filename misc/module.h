@@ -13,7 +13,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
-#include "ast/bound_constants.h"
 #include "ast/dispatch_table.h"
 #include "ast/expression.h"
 #include "ast/statements.h"
@@ -61,9 +60,6 @@ struct Module {
   type::Type const *GetType(std::string const &name) const;
   ast::Declaration *GetDecl(std::string const &name) const;
 
-  std::map<ast::BoundConstants, absl::flat_hash_set<ast::Expression const *>>
-      completed_;
-
   std::queue<std::function<void()>> deferred_work_;
   void CompleteAllDeferredWork();
   void CompleteAll();
@@ -83,9 +79,6 @@ struct Module {
 
   std::vector<std::unique_ptr<ir::Func>> fns_;
 
-  ir::Register addr(ast::BoundConstants const &bc,
-                    ast::Declaration *decl) const;
-           
   // TODO support more than just a single type argument to generic structs.
   struct GenericStructCache {
     std::map<std::vector<type::Type const *>, type::Type const *> fwd_;

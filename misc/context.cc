@@ -47,7 +47,7 @@ void Context::set_addr(ast::Declaration *decl, ir::Register r) {
 }
 
 ir::Register Context::addr(ast::Declaration *decl) const {
-  return mod_->addr(bound_constants_, decl);
+  return constants_->second.addr_.at(decl);
 }
 
 ast::VerifyResult Context::set_result(ast::ExprPtr expr, ast::VerifyResult r) {

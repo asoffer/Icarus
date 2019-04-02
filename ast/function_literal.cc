@@ -3,7 +3,6 @@
 #include <sstream>
 
 #include "absl/container/flat_hash_set.h"
-#include "ast/bound_constants.h"
 #include "ast/declaration.h"
 #include "ast/match_declaration.h"
 #include "ast/repeated_unop.h"

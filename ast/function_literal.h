@@ -2,7 +2,6 @@
 #define ICARUS_AST_FUNCTION_LITERAL_H
 
 #include <vector>
-#include "ast/bound_constants.h"
 #include "ast/declaration.h"
 #include "core/fn_params.h"
 #include "ast/identifier.h"

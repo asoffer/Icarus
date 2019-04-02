@@ -199,7 +199,6 @@ VerifyResult VerifySpecialFunctions(Declaration const *decl,
 VerifyResult Declaration::VerifyType(Context *ctx) {
   bool swap_bc    = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
-  BoundConstants old_bc;
   if (swap_bc) {
     // TODO constants
   }
@@ -430,7 +429,6 @@ void Declaration::ExtractJumps(JumpExprs *rets) const {
 ir::Results Declaration::EmitIr(Context *ctx) {
   bool swap_bc    = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
-  BoundConstants old_bc;
   if (swap_bc) {
     // TODO constants
   }

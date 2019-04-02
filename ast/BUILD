@@ -10,7 +10,6 @@ cc_lib(
         ":binop",
         ":block_literal",
         ":block_node",
-        ":bound_constants",
         ":builtin_fn",
         ":call",
         ":cast",
@@ -50,7 +49,6 @@ cc_lib(
         ":binop-impl",
         ":block_literal-impl",
         ":block_node-impl",
-        ":bound_constants-impl",
         ":builtin_fn-impl",
         ":call-impl",
         ":cast-impl",
@@ -153,6 +151,7 @@ cc_target(
         ":literal",
     ],
     impl_deps = [
+        "//ir:val",
         "//misc:context",
         "//core:scope",
         "//type:function",
@@ -169,12 +168,6 @@ cc_target(
         "//misc:context",
     ],
     impl_deps = ["//ir:val"],
-)
-
-cc_target(
-    name = "bound_constants",
-    intf_deps = ["//ir:val"],
-    impl_deps = [":declaration"],
 )
 
 cc_target(
@@ -288,7 +281,6 @@ cc_target(
 cc_target(
     name = "dispatch_table",
     intf_deps = [
-        ":bound_constants",
         ":overload_set",
         "//core:fn_args",
         "//base:expected",
@@ -360,7 +352,6 @@ cc_target(
 cc_target(
     name = "function_literal",
     intf_deps = [
-        ":bound_constants",
         ":declaration",
         ":identifier",
         ":literal",
@@ -370,7 +361,6 @@ cc_target(
         "//ir:val",
     ],
     impl_deps = [
-        ":bound_constants",
         ":declaration",
         ":match_declaration",
         ":repeated_unop",
@@ -439,6 +429,7 @@ cc_target(
 cc_target(
     name = "interface",
     intf_deps = [
+        "//ir:val",
         ":declaration",
         ":literal",
         "//core:scope",
@@ -616,6 +607,7 @@ cc_lib(
     hdrs = ["terminal.h"],
     deps = [
         ":expression",
+        "//ir:val",
         "//misc:context",
         "//misc:module"
     ],

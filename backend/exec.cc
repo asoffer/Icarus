@@ -1142,9 +1142,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::CreateContext: save(new Context(cmd.mod_)); break;
     case ir::Op::AddBoundConstant: {
-      resolve<Context *>(cmd.add_bc_.ctx_)
-          ->bound_constants_.constants_.emplace(cmd.add_bc_.decl_,
-                                                resolve(cmd.add_bc_.type_));
+      NOT_YET();
     } break;
     case ir::Op::DestroyContext: delete resolve<Context *>(cmd.reg_); break;
     case ir::Op::VerifyType: {

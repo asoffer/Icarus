@@ -180,11 +180,6 @@ static Module *CompileModule(Module *mod) {
   return mod;
 }
 
-ir::Register Module::addr(ast::BoundConstants const &bc,
-                          ast::Declaration *decl) const {
-  return dep_data_.front().second.addr_.at(decl);
-}
-
 PendingModule Module::Schedule(error::Log *log,
                                std::filesystem::path const &src,
                                std::filesystem::path const &requestor) {

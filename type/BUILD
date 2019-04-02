@@ -91,6 +91,7 @@ cc_target(
     name = "cast",
     impl_deps = [
         ":all_types",
+        ":interface",
         "@com_google_absl//absl/algorithm:container",
     ],
 )
@@ -124,12 +125,12 @@ cc_target(
     intf_deps = [
         ":type",
         ":typed_value",
+        "//ir:flags_val",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
         "//ir:addr",
         "//ir:cmd",
-        "//ir:flags_val",
         "//ir:register",
         "//ir:val",
     ],
@@ -177,6 +178,8 @@ cc_target(
     ],
     impl_deps = [
         ":flags",
+        "//ir:flags_val",
+        "//ir:val",
         "//misc:module",
     ],
 
@@ -311,7 +314,10 @@ cc_target(
 cc_lib(
     name = "util",
     hdrs = ["util.h"],
-    deps = [":concrete_types"],
+    deps = [
+        ":concrete_types",
+        ":interface",
+    ],
 )
 
 cc_target(
