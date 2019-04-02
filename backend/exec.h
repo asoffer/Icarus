@@ -6,7 +6,6 @@
 #include "base/untyped_buffer.h"
 #include "ir/basic_block.h"
 #include "ir/cmd.h"
-#include "ir/val.h"
 
 namespace ir {
 struct Func;

@@ -3,7 +3,6 @@
 
 #include "base/debug.h"
 #include "base/untyped_buffer.h"
-#include "ir/val.h"
 #include "misc/context.h"
 
 namespace ast {
@@ -13,9 +12,8 @@ struct Expression;
 struct Context;
 
 namespace backend {
-std::vector<ir::Val> Evaluate(ast::Expression *expr, Context *ctx);
-std::vector<ir::Val> Evaluate(type::Typed<ast::Expression *> typed_expr,
-                               Context *ctx);
+ir::Results Evaluate(ast::Expression *expr, Context *ctx);
+ir::Results Evaluate(type::Typed<ast::Expression *> typed_expr, Context *ctx);
 base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
                                       Context *ctx);
 

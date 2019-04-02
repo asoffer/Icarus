@@ -247,7 +247,7 @@ ir::Results Unop::EmitIr(Context *ctx) {
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?
-      return ir::Results::FromVals(backend::Evaluate(operand.get(), ctx));
+      return backend::Evaluate(operand.get(), ctx);
     }
     case frontend::Operator::Mul:
       return ir::Results{

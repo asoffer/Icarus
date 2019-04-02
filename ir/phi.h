@@ -3,7 +3,6 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ir/func.h"
-#include "ir/val.h"
 
 namespace ir {
 CmdIndex Phi(type::Type const *);

@@ -6,7 +6,6 @@
 
 #include "ast/literal.h"
 #include "frontend/operators.h"
-#include "ir/val.h"
 
 struct Context;
 

@@ -6,7 +6,6 @@
 #include "base/untyped_buffer.h"
 #include "ir/components.h"
 #include "ir/func.h"
-#include "ir/val.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
 #include "type/pointer.h"
@@ -150,8 +149,7 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
     ir_func->work_item = &work_item;
   }
 
-  return ir::Results{
-      std::get<ir::AnyFunc>(ir::Val::Func(ir_func->type_, ir_func).value)};
+  return ir::Results{ir::AnyFunc{ir_func}};
 }
 
 void StructLiteral::CompleteBody(Context *ctx) {

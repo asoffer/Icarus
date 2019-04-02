@@ -16,6 +16,7 @@ cc_target(
         "//ast:terminal",
         "//ir:builtin",
         "//ir:results",
+        "//ir:str",
         "//type:primitive",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

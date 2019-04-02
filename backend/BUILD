@@ -11,7 +11,6 @@ cc_target(
         ":exec",
         "//base:debug",
         "//base:untyped_buffer",
-        "//ir:val",
         "//misc:context",
     ],
     impl_deps = [
@@ -30,7 +29,6 @@ cc_target(
         "//base:untyped_buffer",
         "//ir:basic_block",
         "//ir:cmd",
-        "//ir:val",
     ],
     impl_deps = [
         ":eval",

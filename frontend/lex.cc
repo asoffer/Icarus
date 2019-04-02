@@ -10,6 +10,7 @@
 #include "frontend/syntax.h"
 #include "ir/builtin.h"
 #include "ir/results.h"
+#include "ir/str.h"
 #include "type/primitive.h"
 
 namespace frontend {
@@ -86,6 +87,7 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
       {"false", std::pair(ir::Results{false}, type::Bool)},
       {"null", std::pair(ir::Results{ir::Addr::Null()}, type::NullPtr)},
       {"byte_view", std::pair(ir::Results{type::ByteView}, type::Type_)},
+      /*
       {"exit",
        std::pair(ir::Results{std::get<ir::BlockSequence>(
                      ir::Val::Block(static_cast<ast::BlockLiteral *>(nullptr))
@@ -97,7 +99,7 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
        std::pair(ir::Results{std::get<ir::BlockSequence>(
                      ir::Val::Block(reinterpret_cast<ast::BlockLiteral *>(0x1))
                          .value)},
-                 type::Blk())}};
+                 type::Blk())},*/};
 
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     auto const &[results, type] = iter->second;

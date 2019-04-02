@@ -18,7 +18,7 @@ struct Arguments {
   Arguments() = default;
   Arguments(type::Callable const *c, Results results);
 
-  void append(Val const &val);
+  void append(ir::Results val);
   void append(RegisterOr<Addr> reg);
   std::string to_string() const;
   base::untyped_buffer PrepareCallBuffer(ir::Func *fn,

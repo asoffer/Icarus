@@ -1,16 +1,6 @@
 #include "ir/results.h"
 
-#include "ir/val.h"
-
 namespace ir {
-
-Results Results::FromVals(std::vector<Val> const& vals) {
-  Results results;
-  for (auto const& val : vals) {
-    std::visit([&results](auto x) { results.append(x); }, val.value);
-  }
-  return results;
-}
 
 Results Results::FromRaw(void const* data, layout::Bytes bytes) {
   Results results;
@@ -19,6 +9,15 @@ Results Results::FromRaw(void const* data, layout::Bytes bytes) {
   results.buf_.append_bytes(bytes.value(), 16);
   std::memcpy(results.buf_.raw(0), data, bytes.value());
   results.offset_.push_back(0);
+  return results;
+}
+
+Results Results::FromUntypedBuffer(std::vector<int64_t> offsets,
+                                   base::untyped_buffer buf) {
+  Results results;
+  for (int64_t& offset : offsets) { offset = -offset; }
+  results.offset_ = std::move(offsets);
+  results.buf_    = std::move(buf);
   return results;
 }
 

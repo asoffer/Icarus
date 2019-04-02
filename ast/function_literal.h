@@ -7,7 +7,6 @@
 #include "ast/identifier.h"
 #include "ast/literal.h"
 #include "ast/statements.h"
-#include "ir/val.h"
 #include "core/scope.h"
 
 struct Module;

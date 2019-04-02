@@ -2,7 +2,6 @@
 
 #include "base/guarded.h"
 #include "ir/cmd.h"
-#include "ir/val.h"
 #include "type/typed_value.h"
 
 namespace type {

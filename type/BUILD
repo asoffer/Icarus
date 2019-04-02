@@ -116,7 +116,6 @@ cc_target(
         "//ir:addr",
         "//ir:cmd",
         "//ir:register",
-        "//ir:val",
     ],
 )
 
@@ -132,7 +131,6 @@ cc_target(
         "//ir:addr",
         "//ir:cmd",
         "//ir:register",
-        "//ir:val",
     ],
 )
 
@@ -145,7 +143,6 @@ cc_target(
     impl_deps = [
         "//base:guarded",
         "//ir:cmd",
-        "//ir:val",
     ],
 )
 
@@ -179,7 +176,6 @@ cc_target(
     impl_deps = [
         ":flags",
         "//ir:flags_val",
-        "//ir:val",
         "//misc:module",
     ],
 
@@ -209,10 +205,7 @@ cc_target(
 cc_target(
     name = "opaque",
     intf_deps = [":type"],
-    impl_deps = [
-        "//base:debug",
-        "//ir:val",
-    ],
+    impl_deps = ["//base:debug"],
 )
 
 cc_target(

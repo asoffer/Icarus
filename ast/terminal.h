@@ -2,7 +2,6 @@
 #define ICARUS_AST_TERMINAL_H
 
 #include "ast/literal.h"
-#include "ir/val.h"
 #include "misc/module.h"
 #include "misc/context.h"
 

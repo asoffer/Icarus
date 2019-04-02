@@ -18,8 +18,9 @@ struct Results {
     (append<Args>(args), ...);
   }
 
+  static Results FromUntypedBuffer(std::vector<int64_t> offsets,
+                                   base::untyped_buffer buf);
   static Results FromRaw(void const* data, layout::Bytes bytes);
-  static Results FromVals(std::vector<Val> const& vals);
 
   template <typename T, typename = std::enable_if_t<!std::is_base_of_v<Reg, T>>>
   RegisterOr<T> get(size_t index) const {

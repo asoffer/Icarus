@@ -1,7 +1,6 @@
 #include "type/opaque.h"
 
 #include "base/debug.h"
-#include "ir/val.h"
 
 namespace type {
 void Opaque::WriteTo(std::string *result) const { result->append("<opaque>"); }

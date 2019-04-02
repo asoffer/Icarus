@@ -1,6 +1,5 @@
 #include "ast/statements.h"
 
-#include "ir/val.h"
 #include "misc/context.h"
 
 namespace ast {

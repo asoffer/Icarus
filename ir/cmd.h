@@ -4,7 +4,6 @@
 #include "ast/hashtag.h"
 #include "base/untyped_buffer.h"
 #include "ir/results.h"
-#include "ir/val.h"
 #include "misc/context.h"
 
 namespace core {

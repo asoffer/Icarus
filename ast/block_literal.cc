@@ -1,6 +1,5 @@
 #include "ast/block_literal.h"
 
-#include "ir/val.h"
 #include "misc/context.h"
 #include "core/scope.h"
 #include "type/function.h"
@@ -51,7 +50,8 @@ void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
 ir::Results BlockLiteral::EmitIr(Context *ctx) {
   for (auto &b : before_) { b.EmitIr(ctx); }
   for (auto &a : after_) { a.EmitIr(ctx); }
-  return ir::Results::FromVals({ir::Val::Block(this)});
+  NOT_YET();
+  // return ir::Results::FromVals({ir::Val::Block(this)});
 }
 
 }  // namespace ast

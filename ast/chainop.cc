@@ -15,7 +15,6 @@
 #include "type/tuple.h"
 
 namespace ir {
-Val BlockSeq(std::vector<RegisterOr<BlockSequence>> const &blocks);
 RegisterOr<type::Type const *> Variant(
     std::vector<RegisterOr<type::Type const *>> const &vals);
 }  // namespace ir
@@ -363,7 +362,7 @@ ir::Results ChainOp::EmitIr(Context *ctx) {
     for (auto &expr : exprs) {
       vals.push_back(expr->EmitIr(ctx).get<ir::BlockSequence>(0));
     }
-    return ir::Results{ir::BlockSeq(vals)};
+    NOT_YET();
   } else if (ops[0] == frontend::Operator::And ||
              ops[0] == frontend::Operator::Or) {
     auto land_block = ir::Func::Current->AddBlock();

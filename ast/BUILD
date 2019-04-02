@@ -151,7 +151,6 @@ cc_target(
         ":literal",
     ],
     impl_deps = [
-        "//ir:val",
         "//misc:context",
         "//core:scope",
         "//type:function",
@@ -167,7 +166,7 @@ cc_target(
         "//core:scope",
         "//misc:context",
     ],
-    impl_deps = ["//ir:val"],
+    impl_deps = [],
 )
 
 cc_target(
@@ -358,7 +357,6 @@ cc_target(
         ":statements",
         "//core:fn_params",
         "//core:scope",
-        "//ir:val",
     ],
     impl_deps = [
         ":declaration",
@@ -392,7 +390,6 @@ cc_target(
         "//misc:context",
         "//error:log",
         "//ir:components",
-        "//ir:val",
         "//misc:module",
         "//core:scope",
         "//type:pointer",
@@ -421,6 +418,7 @@ cc_target(
     impl_deps = [
         "//backend:eval",
         "//ir:components",
+        "//ir:str",
         "//layout:arch",
         "//type:cast",
     ]
@@ -429,7 +427,6 @@ cc_target(
 cc_target(
     name = "interface",
     intf_deps = [
-        "//ir:val",
         ":declaration",
         ":literal",
         "//core:scope",
@@ -509,7 +506,6 @@ cc_target(
     impl_deps = [
         "//misc:context",
         "//error:log",
-        "//ir:val",
         "//core:scope",
         "//type:function",
         "//type:pointer",
@@ -551,7 +547,6 @@ cc_target(
     intf_deps = [":node"],
     impl_deps = [
         "//misc:context",
-        "//ir:val",
     ],
 )
 
@@ -569,7 +564,6 @@ cc_target(
         "//base:untyped_buffer",
         "//ir:components",
         "//ir:func",
-        "//ir:val",
         "//type:function",
         "//type:generic_struct",
         "//type:pointer",
@@ -607,7 +601,6 @@ cc_lib(
     hdrs = ["terminal.h"],
     deps = [
         ":expression",
-        "//ir:val",
         "//misc:context",
         "//misc:module"
     ],

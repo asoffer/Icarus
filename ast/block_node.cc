@@ -1,7 +1,6 @@
 #include "ast/block_node.h"
 
 #include <sstream>
-#include "ir/val.h"
 
 namespace ast {
 std::string BlockNode::to_string(size_t n) const {

@@ -15,7 +15,7 @@ cc_lib(
         ":out_params-impl",
         ":phi-impl",
         ":results-impl",
-        ":val-impl",
+        ":str-impl",
     ],
 )
 
@@ -46,7 +46,6 @@ cc_target(
     ],
     impl_deps = [
         ":func",
-        ":val",
         "//layout:arch",
     ],
 )
@@ -76,7 +75,6 @@ cc_target(
     name = "cmd",
     textual_hdrs = ["op.xmacro.h"],
     intf_deps = [
-        ":val",
         "//ast:hashtag",
         "//base:untyped_buffer",
         "//misc:context",
@@ -85,7 +83,6 @@ cc_target(
     impl_deps = [
         ":func",
         ":phi",
-        ":val",
         "//ast:struct_literal",
         "//layout:arch",
         "//type:typed_value",
@@ -150,7 +147,6 @@ cc_target(
     name = "phi",
     intf_deps = [
         ":func",
-        ":val",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
@@ -172,9 +168,10 @@ cc_target(
     name = "results",
     intf_deps = [
         ":register",
+        "//layout:bytes",
         "//base:untyped_buffer",
     ],
-    impl_deps = [":val"],
+    impl_deps = [],
 )
 
 cc_test(
@@ -187,29 +184,10 @@ cc_test(
 )
 
 cc_target(
-    name = "val",
-    intf_deps = [
-        ":addr",
-        ":any_func",
-        ":flags_val",
-        ":register",
-        "//base:strong_types",
-        "//type:typed_value",
-        "//type:util",
-        "//type:interface",
-    ],
+    name = "str",
+    intf_deps = [":addr"],
     impl_deps = [
-        "//ast:block_literal",
-        "//ast:function_literal",
-        "//ast:scope_literal",
         "//base:guarded",
-        "//ir:func",
-        "//layout:arch",
-        "//type:enum",
-        "//type:flags",
-        "//type:function",
-        "//type:pointer",
-        "//type:struct",
-        "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/container:node_hash_map",
     ],
 )

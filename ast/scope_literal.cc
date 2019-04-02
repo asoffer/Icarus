@@ -1,7 +1,6 @@
 #include "ast/scope_literal.h"
 
 #include "error/log.h"
-#include "ir/val.h"
 #include "misc/context.h"
 #include "core/scope.h"
 #include "type/function.h"

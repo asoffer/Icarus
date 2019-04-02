@@ -1,7 +1,6 @@
 #include "ir/arguments.h"
 
 #include "ir/func.h"
-#include "ir/val.h"
 #include "layout/arch.h"
 #include "type/callable.h"
 #include "type/function.h"
@@ -27,8 +26,9 @@ void Arguments::append(RegisterOr<Addr> r) { results_.append(r); }
 Arguments::Arguments(type::Callable const *c, Results results)
     : type_(c), results_(std::move(results)) {}
 
-void Arguments::append(const ir::Val &val) {
-  std::visit([&](auto v) { results_.append(v); }, val.value);
+void Arguments::append(Results val) {
+  ASSERT(val.size() == 1u);
+  results_.append(val);
 }
 
 base::untyped_buffer Arguments::PrepareCallBuffer(

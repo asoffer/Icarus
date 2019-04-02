@@ -2,7 +2,6 @@
 
 #include "ast/identifier.h"
 #include "ir/cmd.h"
-#include "ir/val.h"
 #include "misc/context.h"
 
 namespace ir {

@@ -7,7 +7,6 @@
 #include "ast/struct_literal.h"
 #include "ir/func.h"
 #include "ir/phi.h"
-#include "ir/val.h"
 #include "layout/arch.h"
 #include "type/generic_struct.h"
 #include "type/typed_value.h"
@@ -341,24 +340,6 @@ Register FinalizeBlockSeq(Register r) {
   auto &cmd = MakeCmd(type::Blk(), Op::FinalizeBlockSeq);
   cmd.reg_  = r;
   return cmd.result;
-}
-
-// TODO replace Val with RegOr<BlockSequence>
-RegisterOr<BlockSequence> BlockSeq(
-    std::vector<RegisterOr<BlockSequence>> const &blocks) {
-  if (std::all_of(
-          blocks.begin(), blocks.end(),
-          [](RegisterOr<BlockSequence> const &v) { return !v.is_reg_; })) {
-    std::vector<ir::BlockSequence> block_seqs;
-    block_seqs.reserve(blocks.size());
-    for (auto const &val : blocks) { block_seqs.push_back(val.val_); }
-    return MakeBlockSeq(block_seqs);
-  }
-
-  auto reg = CreateBlockSeq();
-  for (auto const &val : blocks) { ir::AppendToBlockSeq(reg, val); }
-  // TODO can it be an opt block?
-  return ir::FinalizeBlockSeq(reg);
 }
 
 RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,

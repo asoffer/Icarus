@@ -4,7 +4,6 @@
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "base/guarded.h"
-#include "ir/val.h"
 #include "misc/context.h"
 #include "type/primitive.h"
 

@@ -5,7 +5,6 @@
 #include "ir/addr.h"
 #include "ir/cmd.h"
 #include "ir/register.h"
-#include "ir/val.h"
 
 struct Module;
 struct Context;

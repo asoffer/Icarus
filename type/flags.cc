@@ -4,7 +4,6 @@
 #include "ir/cmd.h"
 #include "ir/flags_val.h"
 #include "ir/register.h"
-#include "ir/val.h"
 
 struct Module;
 struct Context;

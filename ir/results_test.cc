@@ -66,5 +66,20 @@ TEST_CASE("FromRaw") {
   CHECK(results.get<int>(0) == RegisterOr{n});
 }
 
+TEST_CASE("FromUntypedBuffer") {
+  base::untyped_buffer buf;
+  buf.append(int{1234});
+  buf.append(true);
+  buf.append(int{5678});
+  // TODO this test is mildly dependent on size and alignment. Should be good so
+  // long as bool's size and alignment are less than that for int.
+  auto results = Results::FromUntypedBuffer({0, sizeof(int), 2 * sizeof(int)},
+                                            std::move(buf));
+  CHECK(results.size() == 3);
+  CHECK(results.get<int>(0) == RegisterOr{1234});
+  CHECK(results.get<bool>(1) == RegisterOr{true});
+  CHECK(results.get<int>(2) == RegisterOr{5678});
+}
+
 }  // namespace
 }  // namespace ir

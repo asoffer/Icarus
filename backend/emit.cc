@@ -384,7 +384,6 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
     case ir::Op::Align: UNREACHABLE();
     case ir::Op::Bytes: UNREACHABLE();
     case ir::Op::Tup: UNREACHABLE();
-    case ir::Op::BlockSeq: UNREACHABLE();
     case ir::Op::BlockSeqContains: UNREACHABLE();
     case ir::Op::CreateStruct: UNREACHABLE();
     case ir::Op::CreateStructField: UNREACHABLE();

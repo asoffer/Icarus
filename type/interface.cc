@@ -7,7 +7,6 @@
 #include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
-#include "ir/val.h"
 #include "layout/arch.h"
 #include "misc/context.h"
 #include "misc/module.h"

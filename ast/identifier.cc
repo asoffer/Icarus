@@ -6,7 +6,6 @@
 #include "backend/eval.h"
 #include "error/log.h"
 #include "ir/components.h"
-#include "ir/val.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "core/scope.h"

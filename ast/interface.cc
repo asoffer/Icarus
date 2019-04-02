@@ -1,7 +1,6 @@
 #include "ast/interface.h"
 
 #include "error/log.h"
-#include "ir/val.h"
 #include "misc/context.h"
 #include "type/type.h"
 

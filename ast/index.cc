@@ -2,7 +2,7 @@
 
 #include "backend/eval.h"
 #include "ir/components.h"
-#include "ir/val.h"
+#include "ir/str.h"
 #include "layout/arch.h"
 #include "misc/context.h"
 #include "type/array.h"
@@ -113,9 +113,9 @@ std::vector<ir::RegisterOr<ir::Addr>> Index::EmitLVal(Context *ctx) {
                         index, type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
     auto index =
-        ir::Cast(rhs_type, type::Int64,
-                 ir::Results::FromVals(backend::Evaluate(rhs_.get(), ctx)))
-            .get<int64_t>(0).val_;
+        ir::Cast(rhs_type, type::Int64, backend::Evaluate(rhs_.get(), ctx))
+            .get<int64_t>(0)
+            .val_;
     return {ir::Field(lhs_->EmitLVal(ctx)[0], tup, index).get()};
   }
   UNREACHABLE(*this);

@@ -33,10 +33,6 @@
 // TODO compile-time failure. dump the stack trace and abort for Null address
 // kinds
 
-namespace ir {
-ir::BlockSequence MakeBlockSeq(const std::vector<ir::BlockSequence> &blocks);
-}  // namespace ir
-
 namespace backend {
 base::untyped_buffer ReadOnlyData(0);
 
@@ -911,10 +907,11 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       block_seq_to_modify->push_back(resolve(cmd.store_block_.val_));
     } break;
     case ir::Op::FinalizeBlockSeq: {
-      auto *block_seq = resolve<std::vector<ir::BlockSequence> *>(cmd.reg_);
-      auto seq = ir::MakeBlockSeq(*block_seq);
-      delete block_seq;
-      save(seq);
+      NOT_YET();
+      //  auto *block_seq = resolve<std::vector<ir::BlockSequence> *>(cmd.reg_);
+      //  auto seq = ir::MakeBlockSeq(*block_seq);
+      //  delete block_seq;
+      //  save(seq);
     } break;
     case ir::Op::BlockSeqContains: {
       auto *seq = resolve<ir::BlockSequence>(cmd.block_seq_contains_.reg_).seq_;
