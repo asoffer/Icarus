@@ -972,7 +972,7 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(ast::Statements &&stmts,
   struct_lit->span = std::move(span);
   for (auto &&stmt : std::move(stmts).content_) {
     if (stmt->is<ast::Declaration>()) {
-      struct_lit->fields_.push_back(move_as<ast::Declaration>(stmt));
+      struct_lit->fields_.push_back(std::move(stmt->as<ast::Declaration>()));
     } else {
       error_log->NonDeclarationInStructDeclaration(stmt->span);
       // TODO show the entire struct declaration and point to the problematic
@@ -1003,12 +1003,12 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
         ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO handle failure
         auto decl          = move_as<ast::Declaration>(expr);
         decl->is_fn_param_ = true;
-        result->args_.push_back(std::move(decl));
+        result->args_.push_back(std::move(*decl));
       }
     } else {
       auto decl          = move_as<ast::Declaration>(nodes[2]);
       decl->is_fn_param_ = true;
-      result->args_.push_back(std::move(decl));
+      result->args_.push_back(std::move(*decl));
     }
     return result;
   } else {

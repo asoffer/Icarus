@@ -34,10 +34,10 @@ namespace ast {
 std::string StructLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << "struct (";
-  for (auto &a : args_) { ss << a->to_string(n) << ", "; }
+  for (auto &a : args_) { ss << a.to_string(n) << ", "; }
   ss << ") {\n";
   for (const auto &f : fields_) {
-    ss << std::string((n + 1) * 2, ' ') << f->to_string(n) << "\n";
+    ss << std::string((n + 1) * 2, ' ') << f.to_string(n) << "\n";
   }
   ss << std::string(2 * n, ' ') << "}";
   return ss.str();
@@ -45,32 +45,35 @@ std::string StructLiteral::to_string(size_t n) const {
 
 void StructLiteral::DependentDecls(DeclDepGraph *g,
                                    Declaration *d) const {
-  for (auto &a : args_) { a->DependentDecls(g, d); }
-  for (auto &f : fields_) { f->DependentDecls(g, d); }
+  for (auto &a : args_) { a.DependentDecls(g, d); }
+  for (auto &f : fields_) { f.DependentDecls(g, d); }
 }
 
 void StructLiteral::assign_scope(core::Scope *scope) {
   scope_     = scope;
   type_scope = scope->add_child<core::DeclScope>();
-  for (auto &a : args_) { a->assign_scope(type_scope.get()); }
-  for (auto &f : fields_) { f->assign_scope(type_scope.get()); }
+  for (auto &a : args_) { a.assign_scope(type_scope.get()); }
+  for (auto &f : fields_) { f.assign_scope(type_scope.get()); }
 }
 
 VerifyResult StructLiteral::VerifyType(Context *ctx) {
   std::vector<type::Type const *> ts;
   ts.reserve(args_.size());
-  for (auto &a : args_) { ts.push_back(a->VerifyType(ctx).type_); }
+  for (auto &a : args_) { ts.push_back(a.VerifyType(ctx).type_); }
   if (std::any_of(ts.begin(), ts.end(),
                   [](type::Type const *t) { return t == nullptr; })) {
     return VerifyResult::Error();
   }
 
   if (args_.empty()) {
-    bool ok = absl::c_all_of(
-        fields_, [ctx](std::unique_ptr<Declaration> const &field) {
-          if (field->VerifyType(ctx).const_) { return true; }
+    bool ok =
+        absl::c_all_of(fields_, [ctx](Declaration const &field) {
+          // TODO remove const_cast once VerifyType is const method.
+          if (const_cast<Declaration &>(field).VerifyType(ctx).const_) {
+            return true;
+          }
           ctx->error_log()->NonConstantStructFieldDefaultValue(
-              field->init_val->span);
+              field.init_val->span);
           return false;
         });
     // TODO so in fact we could recover here and just not emit ir but we're no
@@ -87,8 +90,8 @@ VerifyResult StructLiteral::VerifyType(Context *ctx) {
 }
 
 void StructLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &a : args_) { a->ExtractJumps(rets); }
-  for (auto &f : fields_) { f->ExtractJumps(rets); }
+  for (auto &a : args_) { a.ExtractJumps(rets); }
+  for (auto &f : fields_) { f.ExtractJumps(rets); }
 }
 
 static ir::TypedRegister<type::Type const *> GenerateStruct(
@@ -100,9 +103,9 @@ static ir::TypedRegister<type::Type const *> GenerateStruct(
     // not safe to access these registers returned by CreateStructField after
     // a subsequent call to CreateStructField.
     ir::CreateStructField(
-        struct_reg, field->type_expr->EmitIr(ctx).get<type::Type const *>(0));
-    ir::SetStructFieldName(struct_reg, field->id_);
-    for (auto const &hashtag : field->hashtags_) {
+        struct_reg, field.type_expr->EmitIr(ctx).get<type::Type const *>(0));
+    ir::SetStructFieldName(struct_reg, field.id_);
+    for (auto const &hashtag : field.hashtags_) {
       ir::AddHashtagToField(struct_reg, hashtag);
     }
   }
@@ -140,7 +143,7 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
     params.reserve(args_.size());
     size_t i = 0;
     for (auto const &d : args_) {
-      params.append(d->id_, type::Typed(d->init_val.get(), arg_types.at(i++)));
+      params.append(d.id_, type::Typed(d.init_val.get(), arg_types.at(i++)));
     }
 
     ir_func =
@@ -155,7 +158,7 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
 void StructLiteral::CompleteBody(Context *ctx) {
   ir::Func *&ir_func = ctx->constants_->second.ir_funcs_[this];
   for (size_t i = 0; i < args_.size(); ++i) {
-    ctx->set_addr(args_[i].get(), ir_func->Argument(i));
+    ctx->set_addr(&args_[i], ir_func->Argument(i));
   }
 
   CURRENT_FUNC(ir_func) {
@@ -176,21 +179,21 @@ void StructLiteral::CompleteBody(Context *ctx) {
     // second... I don't know.
     ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(struct_reg),
               cache_slot_addr);
-    for (auto const &arg : args_) {
-      ir::AddBoundConstant(ctx_reg, arg.get(), ctx->addr(arg.get()));
+    for (auto &arg : args_) {  // TODO const-ref
+      ir::AddBoundConstant(ctx_reg, &arg, ctx->addr(&arg));
     }
 
-    for (auto const &field : fields_) {
-      ir::VerifyType(field.get(), ctx_reg);
+    for (auto &field : fields_) { // TODO const-ref
+      ir::VerifyType(&field, ctx_reg);
 
       // TODO exit early if verifytype fails.
 
-      auto type_reg = ir::EvaluateAsType(field->type_expr.get(), ctx_reg);
+      auto type_reg = ir::EvaluateAsType(field.type_expr.get(), ctx_reg);
 
       ir::CreateStructField(struct_reg, type_reg);
-      ir::SetStructFieldName(struct_reg, field->id_);
+      ir::SetStructFieldName(struct_reg, field.id_);
 
-      for (auto const &hashtag : field->hashtags_) {
+      for (auto const &hashtag : field.hashtags_) {
         ir::AddHashtagToField(struct_reg, hashtag);
       }
     }
