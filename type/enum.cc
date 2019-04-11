@@ -62,13 +62,13 @@ ir::Results Enum::PrepareArgument(Type const *from, ir::Results const &val,
 }
 
 // TODO make this the smallest size that fits.
-layout::Bytes Enum::bytes(layout::Arch const &a) const {
-  return layout::Bytes{8};
+core::Bytes Enum::bytes(core::Arch const &a) const {
+  return core::Bytes{8};
 }
 
 // TODO make this the smallest size that fits.
-layout::Alignment Enum::alignment(layout::Arch const &a) const {
-  return layout::Alignment{8};
+core::Alignment Enum::alignment(core::Arch const &a) const {
+  return core::Alignment{8};
 }
 
 Cmp Enum::Comparator() const { return Cmp::Equality; }

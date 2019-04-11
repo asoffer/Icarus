@@ -14,7 +14,7 @@ cc_target(
         "//misc:context",
     ],
     impl_deps = [
-        "//layout:arch",
+        "//core:arch",
         "//ast:expression",
         "//backend:exec",
         "//ir:func",
@@ -41,7 +41,7 @@ cc_target(
         "//error:log",
         "//ir:arguments",
         "//ir:func",
-        "//layout:arch",
+        "//core:arch",
         "//misc:module",
         "//type:generic_struct",
         "//type:incomplete_enum",

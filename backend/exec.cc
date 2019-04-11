@@ -19,7 +19,7 @@
 #include "error/log.h"
 #include "ir/arguments.h"
 #include "ir/func.h"
-#include "layout/arch.h"
+#include "core/arch.h"
 #include "misc/module.h"
 #include "type/incomplete_enum.h"
 #include "type/incomplete_flags.h"
@@ -54,10 +54,10 @@ void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
   // TODO log an error if you're asked to execute a function that had an
   // error.
 
-  auto arch     = layout::Interpretter();
-  auto offset = layout::Bytes{0};
+  auto arch     = core::Interpretter();
+  auto offset = core::Bytes{0};
   for (auto *t : fn->type_->output) {
-    offset = layout::FwdAlign(offset, t->alignment(arch)) + t->bytes(arch);
+    offset = core::FwdAlign(offset, t->alignment(arch)) + t->bytes(arch);
   }
   base::untyped_buffer ret_buffer(offset.value());
 
@@ -167,10 +167,10 @@ struct RetrieveArgs<N, T, Ts...> {
       *index += sizeof(ir::Addr);
       RetrieveArgs<N + 1, Ts...>{}(arguments, index, out_tup);
     } else {
-      auto arch = layout::Interpretter();
+      auto arch = core::Interpretter();
       auto t    = type::Get<T>();
       *index =
-          layout::FwdAlign(layout::Bytes{*index}, t->alignment(arch)).value();
+          core::FwdAlign(core::Bytes{*index}, t->alignment(arch)).value();
       std::get<N>(*out_tup) = arguments.get<T>(*index);
       *index += t->bytes(arch).value();
       RetrieveArgs<N + 1, Ts...>{}(arguments, index, out_tup);
@@ -270,10 +270,10 @@ ir::BlockIndex ExecContext::ExecuteCmd(
   switch (cmd.op_code_) {
     case ir::Op::Death: UNREACHABLE(call_stack.top().fn_);
     case ir::Op::Bytes:
-      save(resolve(cmd.type_arg_)->bytes(layout::Interpretter()));
+      save(resolve(cmd.type_arg_)->bytes(core::Interpretter()));
       break;
     case ir::Op::Align:
-      save(resolve(cmd.type_arg_)->alignment(layout::Interpretter()));
+      save(resolve(cmd.type_arg_)->alignment(core::Interpretter()));
       break;
     case ir::Op::NotBool: save(!resolve<bool>(cmd.reg_)); break;
     case ir::Op::NotFlags: {
@@ -622,9 +622,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       base::Log() << ss.str();
     } break;
     case ir::Op::Alloca: {
-      auto arch = layout::Interpretter();
+      auto arch = core::Interpretter();
 
-      save(ir::Addr::Stack(layout::FwdAlign(layout::Bytes{stack_.size()},
+      save(ir::Addr::Stack(core::FwdAlign(core::Bytes{stack_.size()},
                                             cmd.type_->alignment(arch))
                                .value()));
       // TODO simplify: just say how big you want the stack to be after this.
@@ -643,9 +643,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::VariantType: save(resolve(cmd.addr_arg_)); break;
     case ir::Op::VariantValue: {
-      auto arch      = layout::Interpretter();
+      auto arch      = core::Interpretter();
       auto bytes     = type::Type_->bytes(arch);
-      auto bytes_fwd = layout::FwdAlign(bytes, type::Type_->alignment(arch));
+      auto bytes_fwd = core::FwdAlign(bytes, type::Type_->alignment(arch));
       auto addr      = resolve(cmd.addr_arg_);
       switch (addr.kind) {
         case ir::Addr::Kind::Stack:
@@ -667,7 +667,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       auto addr = resolve(cmd.ptr_incr_.ptr_);
       auto bytes_fwd =
           type::Array(resolve(cmd.ptr_incr_.incr_), cmd.ptr_incr_.pointee_type_)
-              .bytes(layout::Interpretter());
+              .bytes(core::Interpretter());
       switch (addr.kind) {
         case ir::Addr::Kind::Stack: addr.as_stack += bytes_fwd.value(); break;
         case ir::Addr::Kind::Heap:
@@ -681,8 +681,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::Field: {
       auto addr   = resolve(cmd.field_.ptr_);
-      auto offset = layout::Bytes{0};
-      auto arch   = layout::Interpretter();
+      auto offset = core::Bytes{0};
+      auto arch   = core::Interpretter();
       if (cmd.field_.type_->is<type::Struct>()) {
         offset =
             cmd.field_.type_->as<type::Struct>().offset(cmd.field_.num_, arch);

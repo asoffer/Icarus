@@ -30,11 +30,11 @@ struct Tuple : public Type {
 
   bool ReinterpretAs(Type const *t) const override;
 
-  layout::Bytes offset(size_t n, layout::Arch const &arch) const;
+  core::Bytes offset(size_t n, core::Arch const &arch) const;
   size_t size() const { return entries_.size(); }
 
-  layout::Bytes bytes(layout::Arch const &arch) const override;
-  layout::Alignment alignment(layout::Arch const &arch) const override;
+  core::Bytes bytes(core::Arch const &arch) const override;
+  core::Alignment alignment(core::Arch const &arch) const override;
 
   bool IsCopyable() const override;
   bool IsMovable() const override;

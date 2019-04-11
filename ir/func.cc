@@ -2,7 +2,7 @@
 
 #include "ast/function_literal.h"
 #include "ir/arguments.h"
-#include "layout/arch.h"
+#include "core/arch.h"
 #include "property/property.h"
 #include "property/property_map.h"
 #include "type/function.h"
@@ -26,18 +26,18 @@ Func::Func(Module *mod, type::Function const *fn_type,
     references_[Register(i)];
   }
 
-  auto arch = layout::Interpretter();
+  auto arch = core::Interpretter();
   int32_t i     = 0;
   for (auto *t : type_->input) {
-    auto entry = layout::Bytes{0};
+    auto entry = core::Bytes{0};
     if (t->is_big()) {
-      entry = layout::FwdAlign(reg_size_, layout::Alignment{alignof(Addr)});
+      entry = core::FwdAlign(reg_size_, core::Alignment{alignof(Addr)});
     } else {
-      entry = layout::FwdAlign(reg_size_, t->alignment(arch));
+      entry = core::FwdAlign(reg_size_, t->alignment(arch));
     }
     compiler_reg_to_offset_.push_back(entry.value());
     reg_size_ =
-        entry + (t->is_big() ? layout::Bytes{sizeof(Addr)} : t->bytes(arch));
+        entry + (t->is_big() ? core::Bytes{sizeof(Addr)} : t->bytes(arch));
   }
 
   ASSERT(params_.size() == fn_type->input.size()); // TODO is this still true with variadics?

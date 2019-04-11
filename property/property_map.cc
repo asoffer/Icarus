@@ -2,7 +2,7 @@
 
 #include "ir/arguments.h"
 #include "ir/func.h"
-#include "layout/arch.h"
+#include "core/arch.h"
 #include "property/property.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
@@ -30,12 +30,12 @@ void Debug(PropertyMap const &pm) {
 
 template <typename Fn>
 void ForEachArgument(ir::Func const &f, Fn &&fn_to_call) {
-  auto arch   = layout::Interpretter();
-  auto offset = layout::Bytes{0};
+  auto arch   = core::Interpretter();
+  auto offset = core::Bytes{0};
 
   for (auto *t : f.type_->input) {
     // TODO these register offsets are wrong now that we have compiler_reg_to_offset_.
-    offset = layout::FwdAlign(offset, t->alignment(arch));
+    offset = core::FwdAlign(offset, t->alignment(arch));
     fn_to_call(ir::Register{offset.value()});
     offset += t->bytes(arch);
   }
@@ -361,8 +361,8 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
   auto *entry_block = &fn_->block(fn_->entry());
   auto &props       = copy.view_.at(entry_block).view_;
 
-  auto arch    = layout::Interpretter();
-  auto offset  = layout::Bytes{0};
+  auto arch    = core::Interpretter();
+  auto offset  = core::Bytes{0};
   size_t index = 0;
   // TODO offset < args.args_.size() should work as the condition but it isn't,
   // so figure out why.
@@ -380,7 +380,7 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
 
   while (index < ins.size()) {
     auto *t = ins.at(index);
-    offset = layout::FwdAlign(offset, t->alignment(arch));
+    offset = core::FwdAlign(offset, t->alignment(arch));
     // TODO instead of looking for non-register args, this should be moved out
     // to the caller. because registers might also have some properties that can
     // be reasoned about, all of this should be figured out where it's known and
@@ -395,7 +395,7 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
         // TODO Pretty sure this is wrong now that we have compiler_reg_to_offset_
         stale_down.emplace(&b, ir::Register(offset.value()));
       }
-      offset += layout::Bytes{sizeof(ir::Register)};
+      offset += core::Bytes{sizeof(ir::Register)};
     } else {
       if (t == type::Bool) {
         props.at(ir::Register(offset.value()))

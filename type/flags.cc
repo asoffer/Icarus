@@ -89,13 +89,13 @@ ir::Results Flags::PrepareArgument(Type const *from, ir::Results const &val,
 }
 
 // TODO make this the smallest size that fits.
-layout::Bytes Flags::bytes(layout::Arch const &a) const {
-  return layout::Bytes{8};
+core::Bytes Flags::bytes(core::Arch const &a) const {
+  return core::Bytes{8};
 }
 
 // TODO make this the smallest size that fits.
-layout::Alignment Flags::alignment(layout::Arch const &a) const {
-  return layout::Alignment{8};
+core::Alignment Flags::alignment(core::Arch const &a) const {
+  return core::Alignment{8};
 }
 
 Cmp Flags::Comparator() const { return Cmp::Order; }

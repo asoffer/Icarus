@@ -6,7 +6,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/untyped_buffer.h"
-#include "layout/bytes.h"
+#include "core/bytes.h"
 
 namespace ast {
 struct Declaration;
@@ -35,9 +35,9 @@ struct ConstantBinding {
     return nullptr;
   }
 
-  std::variant<ir::Results, std::pair<size_t, layout::Bytes>> reserve_slot(
+  std::variant<ir::Results, std::pair<size_t, core::Bytes>> reserve_slot(
       ast::Declaration const* decl, type::Type const* t);
-  ir::Results set_slot(size_t offset, void const* data, layout::Bytes bytes);
+  ir::Results set_slot(size_t offset, void const* data, core::Bytes bytes);
 
   ir::Results get_constant(ast::Declaration const* decl) const;
 

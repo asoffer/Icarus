@@ -35,8 +35,8 @@ struct Interface : public Type {
 
   bool ReinterpretAs(Type const *t) const override;
 
-  layout::Bytes bytes(layout::Arch const &arch) const override;
-  layout::Alignment alignment(layout::Arch const &arch) const override;
+  core::Bytes bytes(core::Arch const &arch) const override;
+  core::Alignment alignment(core::Arch const &arch) const override;
 
    Cmp Comparator() const override { UNREACHABLE(); }
 

@@ -459,7 +459,7 @@ ir::Results Declaration::EmitIr(Context *ctx) {
       }
 
       auto &[data_offset, num_bytes] =
-          std::get<std::pair<size_t, layout::Bytes>>(slot);
+          std::get<std::pair<size_t, core::Bytes>>(slot);
 
       if (IsCustomInitialized()) {
         // TODO there's a lot of inefficiency here. `buf` is copied into the

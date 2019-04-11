@@ -132,60 +132,60 @@ bool Primitive::is_integral() const {
   }
 }
 
-layout::Bytes Primitive::bytes(layout::Arch const &a) const {
+core::Bytes Primitive::bytes(core::Arch const &a) const {
   switch (type_) {
     // Types are stored as pointers on the host and integers on the target
     // machine that are as wide as host pointers.
-    case PrimType::Type_: return layout::Host().ptr_bytes;
+    case PrimType::Type_: return core::Host().ptr_bytes;
     case PrimType::NullPtr: return a.ptr_bytes;
-    case PrimType::EmptyArray: return layout::Bytes{0};
-    case PrimType::Bool: return layout::Bytes{1};
-    case PrimType::Int8: return layout::Bytes{1};
-    case PrimType::Int16: return layout::Bytes{2};
-    case PrimType::Int32: return layout::Bytes{4};
-    case PrimType::Int64: return layout::Bytes{8};
-    case PrimType::Nat8: return layout::Bytes{1};
-    case PrimType::Nat16: return layout::Bytes{2};
-    case PrimType::Nat32: return layout::Bytes{4};
-    case PrimType::Nat64: return layout::Bytes{8};
-    case PrimType::Float32: return layout::Bytes{4};
-    case PrimType::Float64: return layout::Bytes{8};
-    case PrimType::Module: return layout::Host().ptr_bytes;
-    case PrimType::Scope: return layout::Host().ptr_bytes;
-    case PrimType::OptBlock: return layout::Host().ptr_bytes;
-    case PrimType::RepBlock: return layout::Host().ptr_bytes;
+    case PrimType::EmptyArray: return core::Bytes{0};
+    case PrimType::Bool: return core::Bytes{1};
+    case PrimType::Int8: return core::Bytes{1};
+    case PrimType::Int16: return core::Bytes{2};
+    case PrimType::Int32: return core::Bytes{4};
+    case PrimType::Int64: return core::Bytes{8};
+    case PrimType::Nat8: return core::Bytes{1};
+    case PrimType::Nat16: return core::Bytes{2};
+    case PrimType::Nat32: return core::Bytes{4};
+    case PrimType::Nat64: return core::Bytes{8};
+    case PrimType::Float32: return core::Bytes{4};
+    case PrimType::Float64: return core::Bytes{8};
+    case PrimType::Module: return core::Host().ptr_bytes;
+    case PrimType::Scope: return core::Host().ptr_bytes;
+    case PrimType::OptBlock: return core::Host().ptr_bytes;
+    case PrimType::RepBlock: return core::Host().ptr_bytes;
     case PrimType::ByteView:
       // TODO generalize to other architectures.
-      return layout::Bytes{sizeof(std::string_view)};
+      return core::Bytes{sizeof(std::string_view)};
     default: UNREACHABLE(to_string());
   }
 }
 
-layout::Alignment Primitive::alignment(layout::Arch const &a) const {
+core::Alignment Primitive::alignment(core::Arch const &a) const {
   switch (type_) {
     // Types are stored as pointers on the host and integers on the target
     // machine that are as wide as host pointers.
-    case PrimType::Type_: return layout::Host().ptr_alignment;
+    case PrimType::Type_: return core::Host().ptr_alignment;
     case PrimType::NullPtr: return a.ptr_alignment;
-    case PrimType::EmptyArray: return layout::Alignment{1};
-    case PrimType::Bool: return layout::Alignment{1};
-    case PrimType::Int8: return layout::Alignment{1};
-    case PrimType::Int16: return layout::Alignment{2};
-    case PrimType::Int32: return layout::Alignment{4};
-    case PrimType::Int64: return layout::Alignment{8};
-    case PrimType::Nat8: return layout::Alignment{1};
-    case PrimType::Nat16: return layout::Alignment{2};
-    case PrimType::Nat32: return layout::Alignment{4};
-    case PrimType::Nat64: return layout::Alignment{8};
-    case PrimType::Float32: return layout::Alignment{4};
-    case PrimType::Float64: return layout::Alignment{8};
-    case PrimType::Module: return layout::Host().ptr_alignment;
-    case PrimType::Scope: return layout::Host().ptr_alignment;
-    case PrimType::OptBlock: return layout::Host().ptr_alignment;
-    case PrimType::RepBlock: return layout::Host().ptr_alignment;
+    case PrimType::EmptyArray: return core::Alignment{1};
+    case PrimType::Bool: return core::Alignment{1};
+    case PrimType::Int8: return core::Alignment{1};
+    case PrimType::Int16: return core::Alignment{2};
+    case PrimType::Int32: return core::Alignment{4};
+    case PrimType::Int64: return core::Alignment{8};
+    case PrimType::Nat8: return core::Alignment{1};
+    case PrimType::Nat16: return core::Alignment{2};
+    case PrimType::Nat32: return core::Alignment{4};
+    case PrimType::Nat64: return core::Alignment{8};
+    case PrimType::Float32: return core::Alignment{4};
+    case PrimType::Float64: return core::Alignment{8};
+    case PrimType::Module: return core::Host().ptr_alignment;
+    case PrimType::Scope: return core::Host().ptr_alignment;
+    case PrimType::OptBlock: return core::Host().ptr_alignment;
+    case PrimType::RepBlock: return core::Host().ptr_alignment;
     case PrimType::ByteView:
       // TODO generalize to other architectures.
-      return layout::Alignment{alignof(std::string_view)};
+      return core::Alignment{alignof(std::string_view)};
     default: UNREACHABLE(to_string());
   }
 }

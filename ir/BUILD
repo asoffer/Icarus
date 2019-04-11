@@ -46,7 +46,7 @@ cc_target(
     ],
     impl_deps = [
         ":func",
-        "//layout:arch",
+        "//core:arch",
     ],
 )
 
@@ -84,7 +84,7 @@ cc_target(
         ":func",
         ":phi",
         "//ast:struct_literal",
-        "//layout:arch",
+        "//core:arch",
         "//type:typed_value",
         "//type:generic_struct",
     ],
@@ -128,7 +128,7 @@ cc_target(
     impl_deps = [
         ":arguments",
         "//ast:function_literal",
-        "//layout:arch",
+        "//core:arch",
         "//property:property",
         "//property:property_map",
         "//type:function",
@@ -168,7 +168,7 @@ cc_target(
     name = "results",
     intf_deps = [
         ":register",
-        "//layout:bytes",
+        "//core:bytes",
         "//base:untyped_buffer",
     ],
     impl_deps = [],

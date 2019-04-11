@@ -7,7 +7,7 @@
 #include "ast/struct_literal.h"
 #include "ir/func.h"
 #include "ir/phi.h"
-#include "layout/arch.h"
+#include "core/arch.h"
 #include "type/generic_struct.h"
 #include "type/typed_value.h"
 
@@ -295,7 +295,7 @@ type::Typed<Register> Field(RegisterOr<Addr> r, type::Struct const *t,
 }
 
 Register Reserve(type::Type const *t) {
-  auto arch   = layout::Interpretter();
+  auto arch   = core::Interpretter();
   auto offset = FwdAlign(Func::Current->reg_size_, t->alignment(arch));
   Func::Current->reg_size_ = offset + t->bytes(arch);
 

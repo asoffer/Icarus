@@ -1,12 +1,12 @@
-#ifndef ICARUS_LAYOUT_ARCH_H
-#define ICARUS_LAYOUT_ARCH_H
+#ifndef ICARUS_CORE_ARCH_H
+#define ICARUS_CORE_ARCH_H
 
 #include "ir/addr.h"
 #include "ir/any_func.h"
-#include "layout/alignment.h"
-#include "layout/bytes.h"
+#include "core/alignment.h"
+#include "core/bytes.h"
 
-namespace layout {
+namespace core {
 
 struct Arch {
   Bytes const ptr_bytes;
@@ -34,6 +34,6 @@ constexpr Bytes FwdAlign(Bytes b, Alignment a) {
   return Bytes{((b.value() - 1u) | (a.value() - 1u)) + 1u};
 }
 
-}  // namespace layout
+}  // namespace core
 
-#endif  // ICARUS_LAYOUT_ARCH_H
+#endif  // ICARUS_CORE_ARCH_H

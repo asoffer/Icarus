@@ -75,11 +75,11 @@ ir::Results Pointer::PrepareArgument(Type const *from, ir::Results const &val,
   return val;
 }
 
-layout::Bytes Pointer::bytes(layout::Arch const &a) const {
+core::Bytes Pointer::bytes(core::Arch const &a) const {
   return a.ptr_bytes;
 }
 
-layout::Alignment Pointer::alignment(layout::Arch const &a) const {
+core::Alignment Pointer::alignment(core::Arch const &a) const {
   return a.ptr_alignment;
 }
 

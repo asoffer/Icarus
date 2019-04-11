@@ -29,12 +29,12 @@ void GenericFunction::defining_modules(
   NOT_YET();
 }
 
-layout::Bytes GenericFunction::bytes(layout::Arch const &) const {
-  return layout::Host().ptr_bytes;
+core::Bytes GenericFunction::bytes(core::Arch const &) const {
+  return core::Host().ptr_bytes;
 }
 
-layout::Alignment GenericFunction::alignment(layout::Arch const &) const {
-  return layout::Host().ptr_alignment;
+core::Alignment GenericFunction::alignment(core::Arch const &) const {
+  return core::Host().ptr_alignment;
 }
 
 Cmp GenericFunction::Comparator() const { return Cmp::None; }
@@ -117,11 +117,11 @@ ir::Results Function::PrepareArgument(Type const *from, ir::Results const &val,
   }
 }
 
-layout::Bytes Function::bytes(layout::Arch const &a) const {
+core::Bytes Function::bytes(core::Arch const &a) const {
   return a.fn_ptr_bytes;
 }
 
-layout::Alignment Function::alignment(layout::Arch const &a) const {
+core::Alignment Function::alignment(core::Arch const &a) const {
   return a.fn_ptr_alignment;
 }
 

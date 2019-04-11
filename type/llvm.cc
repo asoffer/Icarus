@@ -48,7 +48,7 @@ llvm::PointerType* Pointer::llvm_ptr(llvm::LLVMContext& ctx) const {
 }
 llvm::Type* Variant::llvm(llvm::LLVMContext& ctx) const {
   // TODO pass in information about the machine we're compiling to
-  auto arch = layout::Host();
+  auto arch = core::Host();
 
   const Type* max_elem = nullptr;
   size_t max_alignment = 0;

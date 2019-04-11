@@ -1,8 +1,8 @@
-#include "layout/arch.h"
+#include "core/arch.h"
 
 #include "test/catch.h"
 
-namespace layout {
+namespace core {
 namespace {
 
 TEST_CASE("forward alignment") {
@@ -17,4 +17,4 @@ TEST_CASE("forward alignment") {
 }
 
 }  // namespace
-}  // namespace layout
+}  // namespace core

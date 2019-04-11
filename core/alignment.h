@@ -1,7 +1,7 @@
-#ifndef ICARUS_LAYOUT_ALIGNMENT_H
-#define ICARUS_LAYOUT_ALIGNMENT_H
+#ifndef ICARUS_CORE_ALIGNMENT_H
+#define ICARUS_CORE_ALIGNMENT_H
 
-namespace layout {
+namespace core {
 
 struct Alignment {
   constexpr explicit Alignment(size_t val) : value_(val) {}
@@ -29,6 +29,6 @@ inline std::ostream& operator<<(std::ostream& os, Alignment a) {
   return os << "align(" << a.value() << ")";
 }
 
-}  // namespace layout
+}  // namespace core
 
-#endif  // ICARUS_LAYOUT_ALIGNMENT_H
+#endif  // ICARUS_CORE_ALIGNMENT_H

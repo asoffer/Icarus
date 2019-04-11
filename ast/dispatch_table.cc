@@ -241,7 +241,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
             auto buf = backend::EvaluateToBuffer(
                 type::Typed(arg_expr, verify_result.type_), ctx);
             auto [data_offset, num_bytes] =
-                std::get<std::pair<size_t, layout::Bytes>>(
+                std::get<std::pair<size_t, core::Bytes>>(
                     ctx->current_constants_.reserve_slot(param.value.get(), decl_type));
             // TODO you haven't done the cast yet! And you didn't even check
             // about implicit casts.
@@ -265,7 +265,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
               auto buf = backend::EvaluateToBuffer(
                   type::Typed(arg->first, decl_type), ctx);
             auto [data_offset, num_bytes] =
-                std::get<std::pair<size_t, layout::Bytes>>(
+                std::get<std::pair<size_t, core::Bytes>>(
                     ctx->current_constants_.reserve_slot(param.value.get(),
                                                          decl_type));
             // TODO you haven't done the cast yet! And you didn't even check
@@ -288,7 +288,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
                 auto buf = backend::EvaluateToBuffer(
                     type::Typed(decl->init_val.get(), decl_type), ctx);
                 auto [data_offset, num_bytes] =
-                    std::get<std::pair<size_t, layout::Bytes>>(
+                    std::get<std::pair<size_t, core::Bytes>>(
                         ctx->current_constants_.reserve_slot(param.value.get(),
                                                              decl_type));
                 ctx->current_constants_.set_slot(data_offset, buf.raw(0),

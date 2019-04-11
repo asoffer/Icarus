@@ -7,7 +7,7 @@
 #include "ir/arguments.h"
 #include "ir/components.h"
 #include "ir/func.h"
-#include "layout/arch.h"
+#include "core/arch.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
@@ -51,12 +51,12 @@ void Interface::EmitRepr(ir::Results const &id_val, Context *ctx) const {
   UNREACHABLE();
 }
 
-layout::Bytes Interface::bytes(layout::Arch const &a) const {
-  return layout::Host().ptr_bytes;
+core::Bytes Interface::bytes(core::Arch const &a) const {
+  return core::Host().ptr_bytes;
 }
 
-layout::Alignment Interface::alignment(layout::Arch const &a) const {
-  return layout::Host().ptr_alignment;
+core::Alignment Interface::alignment(core::Arch const &a) const {
+  return core::Host().ptr_alignment;
 }
 
 bool Interface::ReinterpretAs(Type const *t) const { return t == this; }

@@ -9,7 +9,7 @@
 #include "ir/addr.h"
 #include "ir/register.h"
 #include "ir/results.h"
-#include "layout/arch.h"
+#include "core/arch.h"
 
 struct Context;
 struct TextSpan;
@@ -42,8 +42,8 @@ struct AnyFunc;
 #define ENDING = 0
 #define BASIC_METHODS_WITHOUT_LLVM                                             \
   virtual void WriteTo(std::string *buf) const ENDING;                         \
-  virtual layout::Bytes bytes(layout::Arch const &arch) const ENDING;          \
-  virtual layout::Alignment alignment(layout::Arch const &arch) const ENDING;  \
+  virtual core::Bytes bytes(core::Arch const &arch) const ENDING;          \
+  virtual core::Alignment alignment(core::Arch const &arch) const ENDING;  \
   virtual void EmitCopyAssign(Type const *from_type, ir::Results const &from,  \
                               ir::RegisterOr<ir::Addr> to, Context *ctx)       \
       const ENDING;                                                            \

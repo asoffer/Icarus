@@ -8,7 +8,7 @@
 #include "ir/components.h"
 #include "ir/func.h"
 #include "ir/phi.h"
-#include "layout/arch.h"
+#include "core/arch.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
@@ -349,11 +349,11 @@ ir::Results Array::PrepareArgument(Type const *from, ir::Results const &val,
   }
 }
 
-layout::Bytes Array::bytes(layout::Arch const &a) const {
-  return layout::FwdAlign(data_type->bytes(a), data_type->alignment(a)) * len;
+core::Bytes Array::bytes(core::Arch const &a) const {
+  return core::FwdAlign(data_type->bytes(a), data_type->alignment(a)) * len;
 }
 
-layout::Alignment Array::alignment(layout::Arch const &a) const {
+core::Alignment Array::alignment(core::Arch const &a) const {
   return data_type->alignment(a);
 }
 

@@ -52,7 +52,7 @@ struct Struct : public Type {
 
   ::Module const *defining_module() const { return mod_; }
 
-  layout::Bytes offset(size_t n, layout::Arch const &arch) const;
+  core::Bytes offset(size_t n, core::Arch const &arch) const;
 
   std::vector<Field> const &fields() const { return fields_; }
   size_t index(std::string const &name) const;

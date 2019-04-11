@@ -21,7 +21,7 @@ cc_target(
     ],
     impl_deps = [
         "//ir:results",
-        "//layout:arch",
+        "//core:arch",
         "//type",
     ],
 )

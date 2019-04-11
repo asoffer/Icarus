@@ -94,7 +94,7 @@ struct untyped_buffer {
 
   // Returns an offset to the newly appended region
   size_t append_bytes(size_t num, size_t alignment) {
-    // TODO combine with layout::FwdAlign?
+    // TODO combine with core::FwdAlign?
     size_t old_size_with_alignment = ((size_ - 1) | (alignment - 1)) + 1;
     size_t new_size                = old_size_with_alignment + num;
     if (new_size > capacity_) { reallocate(new_size); }

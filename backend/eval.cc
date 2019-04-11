@@ -4,7 +4,7 @@
 #include "ast/expression.h"
 #include "backend/exec.h"
 #include "ir/func.h"
-#include "layout/arch.h"
+#include "core/arch.h"
 #include "misc/context.h"
 #include "type/generic_struct.h"
 #include "type/util.h"
@@ -48,7 +48,7 @@ base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
   auto fn = ExprFn(typed_expr, ctx);
 
   size_t bytes_needed =
-      typed_expr.type()->bytes(layout::Interpretter()).value();
+      typed_expr.type()->bytes(core::Interpretter()).value();
   base::untyped_buffer ret_buf(bytes_needed);
   ret_buf.append_bytes(bytes_needed, 1);
   std::vector<ir::Addr> ret_slots;
@@ -69,10 +69,10 @@ ir::Results Evaluate(type::Typed<ast::Expression *> typed_expr, Context *ctx) {
 
   if (auto *tup = typed_expr.type()->if_as<type::Tuple>()) {
     offsets.reserve(tup->entries_.size());
-    auto arch   = layout::Interpretter();
-    auto offset = layout::Bytes{0};
+    auto arch   = core::Interpretter();
+    auto offset = core::Bytes{0};
     for (auto *t : tup->entries_) {
-      offset = layout::FwdAlign(offset, t->alignment(arch));
+      offset = core::FwdAlign(offset, t->alignment(arch));
       offsets.push_back(offset.value());
       offset += t->bytes(arch);
     }

@@ -58,12 +58,12 @@ ir::Results GenericStruct::PrepareArgument(Type const *from,
   NOT_YET(this, from);
 }
 
-layout::Bytes GenericStruct::bytes(layout::Arch const &a) const {
-  return layout::Host().ptr_bytes;
+core::Bytes GenericStruct::bytes(core::Arch const &a) const {
+  return core::Host().ptr_bytes;
 }
 
-layout::Alignment GenericStruct::alignment(layout::Arch const &a) const {
-  return layout::Host().ptr_alignment;
+core::Alignment GenericStruct::alignment(core::Arch const &a) const {
+  return core::Host().ptr_alignment;
 }
 
 Cmp GenericStruct::Comparator() const { return Cmp::None; }

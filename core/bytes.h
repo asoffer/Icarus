@@ -1,7 +1,7 @@
-#ifndef ICARUS_LAYOUT_BYTES_H
-#define ICARUS_LAYOUT_BYTES_H
+#ifndef ICARUS_CORE_BYTES_H
+#define ICARUS_CORE_BYTES_H
 
-namespace layout {
+namespace core {
 
 struct Bytes {
   constexpr explicit Bytes(size_t val) : value_(val) {}
@@ -41,6 +41,6 @@ inline std::ostream& operator<<(std::ostream& os, Bytes b) {
   return os << b.value() << " bytes";
 }
 
-}  // namespace layout
+}  // namespace core
 
-#endif  // ICARUS_LAYOUT_BYTES_H
+#endif  // ICARUS_CORE_BYTES_H

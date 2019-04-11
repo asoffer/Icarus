@@ -1,7 +1,7 @@
 #include "ir/arguments.h"
 
 #include "ir/func.h"
-#include "layout/arch.h"
+#include "core/arch.h"
 #include "type/callable.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
@@ -36,8 +36,8 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
   // TODO we can compute the exact required size.
   base::untyped_buffer call_buf(32);
 
-  auto offset = layout::Bytes{0};
-  auto arch   = layout::Interpretter();
+  auto offset = core::Bytes{0};
+  auto arch   = core::Interpretter();
 
   std::vector<type::Type const *> const &ins = [&] {
     if (auto *f = type_->if_as<type::Function>()) { return f->input; }
@@ -59,9 +59,9 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
 
     if (is_reg) {
       // TODO registers this way are kind of a hack around the type system.
-      offset = layout::FwdAlign(offset, layout::Alignment{alignof(ir::Register)});
+      offset = core::FwdAlign(offset, core::Alignment{alignof(ir::Register)});
     } else {
-      offset = layout::FwdAlign(offset, t->alignment(arch));
+      offset = core::FwdAlign(offset, t->alignment(arch));
     }
     call_buf.pad_to(offset.value());
 
@@ -86,7 +86,7 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
     }
 
     // TODO bytes(sizeof()) is a hack around the type system.
-    offset += is_reg ? layout::Bytes{sizeof(ir::Register)} : t->bytes(arch);
+    offset += is_reg ? core::Bytes{sizeof(ir::Register)} : t->bytes(arch);
   }
 
   return call_buf;

@@ -30,12 +30,12 @@ ir::Results Block::PrepareArgument(Type const *from, ir::Results const &val,
   UNREACHABLE();
 }
 
-layout::Bytes Block::bytes(layout::Arch const &) const {
-  return layout::Host().ptr_bytes;
+core::Bytes Block::bytes(core::Arch const &) const {
+  return core::Host().ptr_bytes;
 }
 
-layout::Alignment Block::alignment(layout::Arch const &) const {
-  return layout::Host().ptr_alignment;
+core::Alignment Block::alignment(core::Arch const &) const {
+  return core::Host().ptr_alignment;
 }
 
 bool Block::ReinterpretAs(Type const *t) const { return t == this; }

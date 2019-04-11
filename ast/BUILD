@@ -419,7 +419,7 @@ cc_target(
         "//backend:eval",
         "//ir:components",
         "//ir:str",
-        "//layout:arch",
+        "//core:arch",
         "//type:cast",
     ]
 )

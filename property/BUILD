@@ -25,7 +25,7 @@ cc_target(
     impl_deps = [
         "//ir:arguments",
         "//ir:func",
-        "//layout:arch",
+        "//core:arch",
         "//type:function",
         "//type:generic_struct",
     ],

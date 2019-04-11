@@ -23,12 +23,12 @@ ir::Results ConstantBinding::get_constant(ast::Declaration const* decl) const {
   if (iter == keys_.end()) { return ir::Results{}; }
   auto [type, offset] = iter->second;
   return ir::Results::FromRaw(buf_.raw(offset),
-                              type->bytes(layout::Interpretter()));
+                              type->bytes(core::Interpretter()));
 }
 
-std::variant<ir::Results, std::pair<size_t, layout::Bytes>>
+std::variant<ir::Results, std::pair<size_t, core::Bytes>>
 ConstantBinding::reserve_slot(ast::Declaration const* decl, type::Type const* t) {
-  auto arch                   = layout::Interpretter();
+  auto arch                   = core::Interpretter();
   auto bytes                  = t->bytes(arch);
   auto [iter, newly_inserted] = keys_.try_emplace(decl);
   if (!newly_inserted) {
@@ -41,7 +41,7 @@ ConstantBinding::reserve_slot(ast::Declaration const* decl, type::Type const* t)
 }
 
 ir::Results ConstantBinding::set_slot(size_t offset, void const* data,
-                                      layout::Bytes bytes) {
+                                      core::Bytes bytes) {
   std::memcpy(buf_.raw(offset), data, bytes.value());
   return ir::Results::FromRaw(buf_.raw(offset), bytes);
 }

@@ -23,8 +23,8 @@ struct Opaque : public Type {
 
   bool ReinterpretAs(Type const *t) const override;
 
-  layout::Bytes bytes(layout::Arch const &arch) const override;
-  layout::Alignment alignment(layout::Arch const &arch) const override;
+  core::Bytes bytes(core::Arch const &arch) const override;
+  core::Alignment alignment(core::Arch const &arch) const override;
 
   void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const override;

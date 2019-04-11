@@ -92,7 +92,7 @@ struct Func {
 
   Module *mod_;
 
-  layout::Bytes reg_size_ = layout::Bytes{0};
+  core::Bytes reg_size_ = core::Bytes{0};
 
   std::vector<ast::Expression *> precondition_exprs_, postcondition_exprs_;
   std::vector<std::pair<ir::Func, prop::PropertyMap>> preconditions_,
@@ -106,7 +106,7 @@ struct Func {
 
   // This vector is indexed by ir::Reg and stores the value which is the offset
   // into the base::untyped_buffer holding all registers during compile-time
-  // execution. It is only valid for layout::Host().
+  // execution. It is only valid for core::Host().
   std::vector<size_t> compiler_reg_to_offset_;
 };
 

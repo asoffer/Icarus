@@ -310,17 +310,17 @@ ir::Results Variant::PrepareArgument(Type const *from, ir::Results const &val,
   return ir::Results{alloc_reg};
 }
 
-layout::Bytes Variant::bytes(layout::Arch const &a) const {
-  auto num_bytes = layout::Bytes{0};
-  auto align = layout::Alignment{1};
+core::Bytes Variant::bytes(core::Arch const &a) const {
+  auto num_bytes = core::Bytes{0};
+  auto align = core::Alignment{1};
   for (auto const *t : variants_) {
     align     = std::max(align, t->alignment(a));
     num_bytes = std::max(num_bytes, t->bytes(a));
   }
-  return layout::FwdAlign(Type_->bytes(a), align) + num_bytes;
+  return core::FwdAlign(Type_->bytes(a), align) + num_bytes;
 }
 
-layout::Alignment Variant::alignment(layout::Arch const &a) const {
+core::Alignment Variant::alignment(core::Arch const &a) const {
   auto align = Type_->alignment(a);
   for (auto const *t : variants_) { align = std::max(align, t->alignment(a)); }
   return align;

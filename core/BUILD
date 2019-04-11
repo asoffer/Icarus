@@ -1,12 +1,31 @@
 package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib", "cc_target")
 
+cc_lib(name = "impl", deps = [":scope-impl"])
+
+cc_lib(name = "alignment", hdrs = ["alignment.h"])
+
 cc_lib(
-    name = "impl",
+    name = "arch",
+    hdrs = ["arch.h"],
     deps = [
-        ":scope-impl",
+        ":alignment",
+        ":bytes",
+        "//ir:addr",
+        "//ir:any_func",
     ],
 )
+
+cc_test(
+    name = "arch_test",
+    srcs = ["arch_test.cc"],
+    deps = [
+        ":arch",
+        "//test"
+    ],
+)
+
+cc_lib(name = "bytes", hdrs = ["bytes.h"])
 
 cc_lib(
     name = "fn_args",

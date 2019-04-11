@@ -6,7 +6,7 @@
 
 #include "base/untyped_buffer.h"
 #include "ir/register.h"
-#include "layout/bytes.h"
+#include "core/bytes.h"
 
 namespace ir {
 struct Val;
@@ -20,7 +20,7 @@ struct Results {
 
   static Results FromUntypedBuffer(std::vector<int64_t> offsets,
                                    base::untyped_buffer buf);
-  static Results FromRaw(void const* data, layout::Bytes bytes);
+  static Results FromRaw(void const* data, core::Bytes bytes);
 
   template <typename T, typename = std::enable_if_t<!std::is_base_of_v<Reg, T>>>
   RegisterOr<T> get(size_t index) const {
