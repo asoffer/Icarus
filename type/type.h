@@ -50,7 +50,7 @@ struct AnyFunc;
   virtual void EmitMoveAssign(Type const *from_type, ir::Results const &from,  \
                               ir::RegisterOr<ir::Addr> to, Context *ctx)       \
       const ENDING;                                                            \
-  virtual void EmitInit(ir::Register reg, Context *ctx) const ENDING;          \
+  virtual void EmitInit(ir::Reg reg, Context *ctx) const ENDING;          \
   virtual ir::Results PrepareArgument(Type const *t, const ir::Results &val,   \
                                       Context *ctx) const ENDING;              \
   virtual void EmitRepr(ir::Results const &id_val, Context *ctx) const ENDING; \
@@ -92,7 +92,7 @@ struct Type : public base::Cast<Type> {
   virtual ~Type() {}
   BASIC_METHODS;
 
-  virtual void EmitDestroy(ir::Register reg, Context *ctx) const {};
+  virtual void EmitDestroy(ir::Reg reg, Context *ctx) const {};
 
   // TODO rename so it doesn't have "Test" in the name.
   virtual bool TestEquality(void const *lhs, void const *rhs) const {

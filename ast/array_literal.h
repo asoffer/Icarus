@@ -19,8 +19,8 @@ struct ArrayLiteral : public Literal {
                       Declaration *d) const override;
 
   ir::Results EmitIr(Context *ctx) override;
-  void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) override;
-  void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) override;
+  void EmitMoveInit(type::Typed<ir::Reg> reg, Context *ctx) override;
+  void EmitCopyInit(type::Typed<ir::Reg> reg, Context *ctx) override;
 
   CommaList cl_;
 };

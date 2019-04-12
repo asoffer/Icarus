@@ -49,8 +49,8 @@ struct Context {
                                            size_t index) const;
   void push_dispatch_table(ast::Node const *node, ast::DispatchTable &&table);
 
-  ir::Register addr(ast::Declaration *decl) const;
-  void set_addr(ast::Declaration *decl, ir::Register);
+  ir::Reg addr(ast::Declaration *decl) const;
+  void set_addr(ast::Declaration *decl, ir::Reg);
 
   std::pair<ConstantBinding, Module::DependentData> *insert_constants(
       ConstantBinding const &constant_binding);
@@ -83,7 +83,7 @@ struct Context {
   // Temporaries need to be destroyed at the end of each statement.
   // This is a pointer to a buffer where temporary allocations can register
   // themselves for deletion.
-  std::vector<type::Typed<ir::Register>> *temporaries_to_destroy_ = nullptr;
+  std::vector<type::Typed<ir::Reg>> *temporaries_to_destroy_ = nullptr;
 
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it

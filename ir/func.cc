@@ -11,7 +11,7 @@
 namespace ir {
 thread_local Func *Func::Current{nullptr};
 
-Register Func::Argument(uint32_t n) const { return Register(n); }
+Reg Func::Argument(uint32_t n) const { return Reg(n); }
 
 Func::Func(Module *mod, type::Function const *fn_type,
            core::FnParams<type::Typed<ast::Expression *>> params)
@@ -23,7 +23,7 @@ Func::Func(Module *mod, type::Function const *fn_type,
   // Set the references for arguments and returns
   for (int32_t i = -static_cast<int32_t>(type_->output.size());
        i < static_cast<int32_t>(type_->input.size()); ++i) {
-    references_[Register(i)];
+    references_[Reg(i)];
   }
 
   auto arch = core::Interpretter();
@@ -65,7 +65,7 @@ Func::GetIncomingBlocks() const {
   return incoming;
 }
 
-Cmd const *Func::Command(Register reg) const {
+Cmd const *Func::Command(Reg reg) const {
   auto iter = reg_to_cmd_.find(reg);
   if (iter == reg_to_cmd_.end()) { return nullptr; }
   return &Command(iter->second);

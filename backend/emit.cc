@@ -36,7 +36,7 @@ struct LlvmData {
   llvm::Function *fn;
   llvm::Module *module;
   llvm::IRBuilder<> *builder;
-  absl::flat_hash_map<ir::Register, llvm::Value *> regs;
+  absl::flat_hash_map<ir::Reg, llvm::Value *> regs;
   std::vector<llvm::BasicBlock *> blocks;
   std::vector<llvm::Value *> rets;
 };
@@ -46,7 +46,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
                               const ir::Val &val) {
   return std::visit(
       base::overloaded{
-          [&](ir::Register reg) -> llvm::Value * {
+          [&](ir::Reg reg) -> llvm::Value * {
             if (static_cast<size_t>(reg.value) < num_args) {
               return llvm_data->fn->arg_begin() + reg.value;
             }

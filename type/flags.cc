@@ -10,7 +10,7 @@ struct Context;
 
 namespace type {
 
-void Flags::EmitInit(ir::Register id_reg, Context *) const {
+void Flags::EmitInit(ir::Reg id_reg, Context *) const {
   ir::Store(ir::FlagsVal{0}, id_reg);
 }
 

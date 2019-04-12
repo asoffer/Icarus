@@ -107,7 +107,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
           {nullptr, land_block}};
 
   absl::flat_hash_map<BlockNode *, BlockData> block_data;
-  ir::Register alloc;
+  ir::Reg alloc;
   type::Type const *state_ptr_type = nullptr, *state_type = nullptr;
   absl::flat_hash_set<type::Type const *> state_types;
   for (auto &block : blocks_) {

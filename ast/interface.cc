@@ -7,7 +7,7 @@
 namespace ir {
 TypedRegister<type::Interface const *> CreateInterface(
     core::Scope const *scope);
-ir::TypedRegister<type::Interface const *> FinalizeInterface(Register r);
+ir::TypedRegister<type::Interface const *> FinalizeInterface(Reg r);
 }  // namespace ir
 
 namespace ast {

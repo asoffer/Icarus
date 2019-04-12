@@ -36,7 +36,7 @@ struct Results {
   bool is_reg(size_t index) const { return offset_[index] > 0; }
 
   template <typename T, typename = std::enable_if_t<std::is_base_of_v<Reg, T>>>
-  Register get(size_t index) const {
+  Reg get(size_t index) const {
     return Reg{static_cast<uint64_t>(offset_[index] - 1)};
   }
 

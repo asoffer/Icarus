@@ -44,7 +44,7 @@ struct Func {
   Func(Module *mod, type::Function const *fn_type,
        core::FnParams<type::Typed<ast::Expression *>> params);
 
-  Register Argument(uint32_t n) const;
+  Reg Argument(uint32_t n) const;
 
   void ComputeInvariants();
   void CheckInvariants();
@@ -64,7 +64,7 @@ struct Func {
     return blocks_.at(cmd_index.block.value).cmds_.at(cmd_index.cmd);
   }
 
-  Cmd const *Command(Register reg) const;
+  Cmd const *Command(Reg reg) const;
 
   Cmd &Command(CmdIndex cmd_index) {
     return const_cast<Cmd &>(
@@ -97,8 +97,8 @@ struct Func {
   std::vector<ast::Expression *> precondition_exprs_, postcondition_exprs_;
   std::vector<std::pair<ir::Func, prop::PropertyMap>> preconditions_,
       postconditions_;
-  absl::flat_hash_map<Register, base::bag<Register>> references_;
-  absl::flat_hash_map<Register, CmdIndex> reg_to_cmd_;
+  absl::flat_hash_map<Reg, base::bag<Reg>> references_;
+  absl::flat_hash_map<Reg, CmdIndex> reg_to_cmd_;
 
   absl::flat_hash_map<BasicBlock const *,
                       absl::flat_hash_set<BasicBlock const *>>

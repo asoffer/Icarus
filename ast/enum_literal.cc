@@ -7,7 +7,7 @@
 namespace ir {
 // TODO as a general rule we let ast reach into ir but not the other direction.
 // Fix this.
-Register CreateEnum(ast::EnumLiteral::Kind kind, ::Module *mod) {
+Reg CreateEnum(ast::EnumLiteral::Kind kind, ::Module *mod) {
   switch (kind) {
     case ast::EnumLiteral::Kind::Enum: {
       auto &cmd = MakeCmd(type::Type_, Op::CreateEnum);
@@ -23,7 +23,7 @@ Register CreateEnum(ast::EnumLiteral::Kind kind, ::Module *mod) {
   }
 }
 
-void AddEnumerator(ast::EnumLiteral::Kind kind, Register reg,
+void AddEnumerator(ast::EnumLiteral::Kind kind, Reg reg,
                    std::string_view token) {
   switch (kind) {
     case ast::EnumLiteral::Kind::Enum: {
@@ -38,13 +38,13 @@ void AddEnumerator(ast::EnumLiteral::Kind kind, Register reg,
   }
 }
 
-void SetEnumerator(Register reg, RegisterOr<int32_t> val) {
+void SetEnumerator(Reg reg, RegisterOr<int32_t> val) {
   auto &cmd           = MakeCmd(type::Type_, Op::SetEnumerator);
   cmd.set_enumerator_ = {reg, val};
 }
 
 TypedRegister<type::Type const *> FinalizeEnum(ast::EnumLiteral::Kind kind,
-                                               ir::Register reg) {
+                                               ir::Reg reg) {
   switch (kind) {
     case ast::EnumLiteral::Kind::Enum: {
       auto &cmd = MakeCmd(type::Type_, Op::FinalizeEnum);

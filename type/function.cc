@@ -15,8 +15,8 @@ void GenericFunction::EmitMoveAssign(const Type *from_type,
                                      ir::Results const &from,
                                      ir::RegisterOr<ir::Addr> to,
                                      Context *ctx) const {}
-void GenericFunction::EmitInit(ir::Register reg, Context *ctx) const {}
-void GenericFunction::EmitDestroy(ir::Register reg, Context *ctx) const {}
+void GenericFunction::EmitInit(ir::Reg reg, Context *ctx) const {}
+void GenericFunction::EmitDestroy(ir::Reg reg, Context *ctx) const {}
 ir::Results GenericFunction::PrepareArgument(const Type *t,
                                              const ir::Results &val,
                                              Context *ctx) const {
@@ -70,7 +70,7 @@ void Function::EmitMoveAssign(Type const *from_type, ir::Results const &from,
   ir::Store(from.get<ir::AnyFunc>(0), to);
 }
 
-void Function::EmitInit(ir::Register id_reg, Context *ctx) const {
+void Function::EmitInit(ir::Reg id_reg, Context *ctx) const {
   UNREACHABLE();
 }
 

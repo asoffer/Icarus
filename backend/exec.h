@@ -41,7 +41,7 @@ struct ExecContext {
                             const std::vector<ir::Addr> &ret_slots);
 
   template <typename T>
-  T resolve(ir::Register val) const;
+  T resolve(ir::Reg val) const;
 
   template <typename T>
   T resolve(ir::RegisterOr<T> val) const {

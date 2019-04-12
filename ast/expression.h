@@ -24,8 +24,8 @@ struct Expression : public Node {
   virtual VerifyResult VerifyType(Context *ctx)                     = 0;
   virtual ir::Results EmitIr(Context *)                             = 0;
   virtual std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
-  virtual void EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx);
-  virtual void EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx);
+  virtual void EmitCopyInit(type::Typed<ir::Reg> reg, Context *ctx);
+  virtual void EmitMoveInit(type::Typed<ir::Reg> reg, Context *ctx);
   virtual void DependentDecls(DeclDepGraph *g,
                               Declaration *d) const = 0;
 

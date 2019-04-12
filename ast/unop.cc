@@ -205,13 +205,13 @@ ir::Results Unop::EmitIr(Context *ctx) {
     case frontend::Operator::Copy: {
       auto reg = ir::TmpAlloca(operand_type, ctx);
       type::EmitCopyInit(operand_type, operand->EmitIr(ctx),
-                         type::Typed<ir::Register>(reg, operand_type), ctx);
+                         type::Typed<ir::Reg>(reg, operand_type), ctx);
       return ir::Results{reg};
     } break;
     case frontend::Operator::Move: {
       auto reg = ir::TmpAlloca(operand_type, ctx);
       type::EmitMoveInit(operand_type, operand->EmitIr(ctx),
-                         type::Typed<ir::Register>(reg, operand_type), ctx);
+                         type::Typed<ir::Reg>(reg, operand_type), ctx);
       return ir::Results{reg};
     } break;
     case frontend::Operator::BufPtr:
@@ -268,7 +268,7 @@ ir::Results Unop::EmitIr(Context *ctx) {
     } break;
     case frontend::Operator::Expand: {
       ir::Results tuple_val  = operand->EmitIr(ctx);
-      ir::Register tuple_reg = tuple_val.get<ir::Reg>(0);
+      ir::Reg tuple_reg = tuple_val.get<ir::Reg>(0);
       type::Tuple const *tuple_type =
           &ctx->type_of(operand.get())->as<type::Tuple>();
       ir::Results results;
@@ -287,7 +287,7 @@ std::vector<ir::RegisterOr<ir::Addr>> Unop::EmitLVal(Context *ctx) {
   return {operand->EmitIr(ctx).get<ir::Reg>(0)};
 }
 
-void Unop::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
+void Unop::EmitMoveInit(type::Typed<ir::Reg> reg, Context *ctx) {
   switch (op) {
     case frontend::Operator::Move: operand->EmitMoveInit(reg, ctx); break;
     case frontend::Operator::Copy: operand->EmitCopyInit(reg, ctx); break;
@@ -297,7 +297,7 @@ void Unop::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
   }
 }
 
-void Unop::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
+void Unop::EmitCopyInit(type::Typed<ir::Reg> reg, Context *ctx) {
   switch (op) {
     case frontend::Operator::Move: operand->EmitMoveInit(reg, ctx); break;
     case frontend::Operator::Copy: operand->EmitCopyInit(reg, ctx); break;

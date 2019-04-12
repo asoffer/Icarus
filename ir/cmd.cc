@@ -14,49 +14,49 @@
 namespace ir {
 thread_local BlockIndex BasicBlock::Current;
 
-void Move(type::Type const *t, Register from, RegisterOr<Addr> to) {
+void Move(type::Type const *t, Reg from, RegisterOr<Addr> to) {
   auto &cmd     = MakeCmd(nullptr, Op::Move);
   cmd.special2_ = {t, from, to};
 }
 
-void Copy(type::Type const *t, Register from, RegisterOr<Addr> to) {
+void Copy(type::Type const *t, Reg from, RegisterOr<Addr> to) {
   auto &cmd     = MakeCmd(nullptr, Op::Copy);
   cmd.special2_ = {t, from, to};
 }
 
-void Init(type::Type const *t, Register r) {
+void Init(type::Type const *t, Reg r) {
   auto &cmd     = MakeCmd(nullptr, Op::Init);
   cmd.special1_ = {t, r};
 }
 
-void Destroy(type::Type const *t, Register r) {
+void Destroy(type::Type const *t, Reg r) {
   auto &cmd     = MakeCmd(nullptr, Op::Destroy);
   cmd.special1_ = {t, r};
 }
 
-void VerifyType(ast::Node *node, Register ctx) {
+void VerifyType(ast::Node *node, Reg ctx) {
   auto &cmd = MakeCmd(nullptr, Op::VerifyType);
   cmd.ast_  = {node, ctx};
 }
 
-Register CreateContext(Module *mod) {
+Reg CreateContext(Module *mod) {
   auto &cmd = MakeCmd(type::Ctx, Op::CreateContext);
   cmd.mod_  = mod;
   return cmd.result;
 }
 
-void AddBoundConstant(Register ctx, ast::Declaration *decl,
+void AddBoundConstant(Reg ctx, ast::Declaration *decl,
                       RegisterOr<type::Type const *> type) {
   auto &cmd   = MakeCmd(nullptr, Op::AddBoundConstant);
   cmd.add_bc_ = {ctx, decl, type};
 }
 
-void DestroyContext(Register r) {
+void DestroyContext(Reg r) {
   auto &cmd = MakeCmd(nullptr, Op::DestroyContext);
   cmd.reg_  = r;
 }
 
-Register EvaluateAsType(ast::Node *node, Register ctx) {
+Reg EvaluateAsType(ast::Node *node, Reg ctx) {
   auto &cmd = MakeCmd(type::Type_, Op::EvaluateAsType);
   cmd.ast_  = {node, ctx};
   return cmd.result;
@@ -69,16 +69,16 @@ Cmd &MakeCmd(type::Type const *t, Op op) {
   return cmd;
 }
 
-type::Typed<Register> LoadSymbol(std::string_view name, type::Type const *t) {
+type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *t) {
   auto &cmd     = MakeCmd(t, Op::LoadSymbol);
   cmd.load_sym_ = {name, t};
-  return type::Typed<Register>{cmd.result, t};
+  return type::Typed<Reg>{cmd.result, t};
 }
 
 // TODO pass atyped_reg? not sure that's right.
-Register CastPtr(Register r, type::Pointer const *t) {
+Reg CastPtr(Reg r, type::Pointer const *t) {
   auto &cmd      = MakeCmd(t, Op::CastPtr);
-  cmd.typed_reg_ = type::Typed<Register>(r, t);
+  cmd.typed_reg_ = type::Typed<Reg>(r, t);
   return cmd.result;
 }
 
@@ -99,7 +99,7 @@ static Results CastTo(type::Type const *from, Results const &val) {
   if (val.is_reg(0)) {
     auto *to       = type::Get<T>();
     auto &cmd      = MakeCmd(to, Cmd::OpCode<Cmd::CastTag, T>());
-    cmd.typed_reg_ = type::Typed<Register>(val.get<Reg>(0), from);
+    cmd.typed_reg_ = type::Typed<Reg>(val.get<Reg>(0), from);
     return Results{cmd.result};
   } else {
     return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
@@ -164,7 +164,7 @@ RegisterOr<bool> Not(RegisterOr<bool> r) {
 RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r) {
   if (!r->is_reg_) { return NotFlags(r->val_, r.type()); }
   auto &cmd      = MakeCmd(r.type(), Op::NotFlags);
-  cmd.typed_reg_ = type::Typed<Register>(r->reg_, r.type());
+  cmd.typed_reg_ = type::Typed<Reg>(r->reg_, r.type());
   return cmd.result;
 }
 
@@ -212,14 +212,14 @@ RegisterOr<type::Type const *> Array(RegisterOr<int64_t> len,
   return cmd.result;
 }
 
-Register CreateTuple() { return MakeCmd(type::Type_, Op::CreateTuple).result; }
+Reg CreateTuple() { return MakeCmd(type::Type_, Op::CreateTuple).result; }
 
-void AppendToTuple(Register tup, RegisterOr<type::Type const *> entry) {
+void AppendToTuple(Reg tup, RegisterOr<type::Type const *> entry) {
   auto &cmd       = MakeCmd(nullptr, Op::AppendToTuple);
   cmd.store_type_ = {tup, entry};
 }
 
-Register FinalizeTuple(Register r) {
+Reg FinalizeTuple(Reg r) {
   auto &cmd = MakeCmd(type::Type_, Op::FinalizeTuple);
   cmd.reg_  = r;
   return cmd.result;
@@ -235,21 +235,21 @@ RegisterOr<type::Type const *> Tup(
     return type::Tup(std::move(types));
   }
 
-  ir::Register tup = ir::CreateTuple();
+  ir::Reg tup = ir::CreateTuple();
   for (auto const &val : entries) { ir::AppendToTuple(tup, val); }
   return ir::FinalizeTuple(tup);
 }
 
-Register CreateVariant() {
+Reg CreateVariant() {
   return MakeCmd(type::Type_, Op::CreateVariant).result;
 }
 
-void AppendToVariant(Register var, RegisterOr<type::Type const *> entry) {
+void AppendToVariant(Reg var, RegisterOr<type::Type const *> entry) {
   auto &cmd       = MakeCmd(nullptr, Op::AppendToVariant);
   cmd.store_type_ = {var, entry};
 }
 
-Register FinalizeVariant(Register r) {
+Reg FinalizeVariant(Reg r) {
   auto &cmd = MakeCmd(type::Type_, Op::FinalizeVariant);
   cmd.reg_  = r;
   return cmd.result;
@@ -265,7 +265,7 @@ RegisterOr<type::Type const *> Variant(
     for (auto const &v : vals) { types.push_back(v.val_); }
     return type::Var(std::move(types));
   }
-  ir::Register var = ir::CreateVariant();
+  ir::Reg var = ir::CreateVariant();
   for (auto const &val : vals) { ir::AppendToVariant(var, val); }
   return ir::FinalizeVariant(var);
 }
@@ -278,23 +278,23 @@ RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
   return cmd.result;
 }
 
-type::Typed<Register> Field(RegisterOr<Addr> r, type::Tuple const *t,
+type::Typed<Reg> Field(RegisterOr<Addr> r, type::Tuple const *t,
                             size_t n) {
   auto *p    = type::Ptr(t->entries_.at(n));
   auto &cmd  = MakeCmd(p, Op::Field);
   cmd.field_ = {r, t, n};
-  return type::Typed<Register>(cmd.result, p);
+  return type::Typed<Reg>(cmd.result, p);
 }
 
-type::Typed<Register> Field(RegisterOr<Addr> r, type::Struct const *t,
+type::Typed<Reg> Field(RegisterOr<Addr> r, type::Struct const *t,
                             size_t n) {
   auto *p    = type::Ptr(t->fields().at(n).type);
   auto &cmd  = MakeCmd(p, Op::Field);
   cmd.field_ = {r, t, n};
-  return type::Typed<Register>(cmd.result, p);
+  return type::Typed<Reg>(cmd.result, p);
 }
 
-Register Reserve(type::Type const *t) {
+Reg Reserve(type::Type const *t) {
   auto arch   = core::Interpretter();
   auto offset = FwdAlign(Func::Current->reg_size_, t->alignment(arch));
   Func::Current->reg_size_ = offset + t->bytes(arch);
@@ -312,7 +312,7 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
       static_cast<int32_t>(
           Func::Current->block(BasicBlock::Current).cmds_.size())};
   if (t == nullptr) {
-    result = Register();
+    result = Reg();
     Func::Current->references_[result];  // Guarantee it exists.
     Func::Current->reg_to_cmd_.emplace(result, cmd_index);
     return;
@@ -326,17 +326,17 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
 
 BlockSequence MakeBlockSeq(std::vector<ir::BlockSequence> const &blocks);
 
-Register CreateBlockSeq() {
+Reg CreateBlockSeq() {
   return MakeCmd(type::Type_, Op::CreateBlockSeq).result;
 }
 
-void AppendToBlockSeq(Register block_seq,
+void AppendToBlockSeq(Reg block_seq,
                       RegisterOr<ir::BlockSequence> more_block_seq) {
   auto &cmd        = MakeCmd(nullptr, Op::AppendToBlockSeq);
   cmd.store_block_ = {block_seq, more_block_seq};
 }
 
-Register FinalizeBlockSeq(Register r) {
+Reg FinalizeBlockSeq(Reg r) {
   auto &cmd = MakeCmd(type::Blk(), Op::FinalizeBlockSeq);
   cmd.reg_  = r;
   return cmd.result;
@@ -354,31 +354,31 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
                      [lit](ast::BlockLiteral *l) { return lit == l; });
 }
 
-Register CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent) {
+Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent) {
   auto &cmd          = MakeCmd(type::Type_, Op::CreateStruct);
   cmd.create_struct_ = {scope, parent};
   return cmd.result;
 }
 
-Register CreateInterface(core::Scope const *scope) {
+Reg CreateInterface(core::Scope const *scope) {
   auto &cmd  = MakeCmd(type::Type_, Op::CreateInterface);
   cmd.scope_ = scope;
   return cmd.result;
 }
 
-Register ArgumentCache(ast::StructLiteral *sl) {
+Reg ArgumentCache(ast::StructLiteral *sl) {
   auto &cmd = MakeCmd(type::Ptr(type::Type_), Op::ArgumentCache);
   cmd.sl_   = sl;
   return cmd.result;
 }
 
-TypedRegister<type::Interface const *> FinalizeStruct(Register r) {
+TypedRegister<type::Interface const *> FinalizeStruct(Reg r) {
   auto &cmd = MakeCmd(type::Type_, Op::FinalizeStruct);
   cmd.reg_  = r;
   return cmd.result;
 }
 
-Register FinalizeInterface(Register r) {
+Reg FinalizeInterface(Reg r) {
   auto &cmd = MakeCmd(type::Type_, Op::FinalizeInterface);
   cmd.reg_  = r;
   return cmd.result;
@@ -386,35 +386,35 @@ Register FinalizeInterface(Register r) {
 
 void DebugIr() { MakeCmd(nullptr, Op::DebugIr); }
 
-Register VariantType(RegisterOr<Addr> r) {
+Reg VariantType(RegisterOr<Addr> r) {
   auto &cmd     = MakeCmd(Ptr(type::Type_), Op::VariantType);
   cmd.addr_arg_ = r;
   return cmd.result;
 }
 
-Register VariantValue(type::Type const *t, RegisterOr<Addr> r) {
+Reg VariantValue(type::Type const *t, RegisterOr<Addr> r) {
   auto &cmd     = MakeCmd(type::Ptr(t), Op::VariantValue);
   cmd.addr_arg_ = r;
   return cmd.result;
 }
 
-void CreateStructField(Register struct_type,
+void CreateStructField(Reg struct_type,
                        RegisterOr<type::Type const *> type) {
   auto &cmd                = MakeCmd(nullptr, Op::CreateStructField);
   cmd.create_struct_field_ = {struct_type, std::move(type)};
 }
 
-void SetStructFieldName(Register struct_type, std::string_view field_name) {
+void SetStructFieldName(Reg struct_type, std::string_view field_name) {
   auto &cmd                  = MakeCmd(nullptr, Op::SetStructFieldName);
   cmd.set_struct_field_name_ = {struct_type, field_name};
 }
 
-void AddHashtagToField(Register struct_type, ast::Hashtag hashtag) {
+void AddHashtagToField(Reg struct_type, ast::Hashtag hashtag) {
   auto &cmd        = MakeCmd(nullptr, Op::AddHashtagToField);
   cmd.add_hashtag_ = {struct_type, hashtag};
 }
 
-void AddHashtagToStruct(Register struct_type, ast::Hashtag hashtag) {
+void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag) {
   auto &cmd        = MakeCmd(nullptr, Op::AddHashtagToStruct);
   cmd.add_hashtag_ = {struct_type, hashtag};
 }
@@ -533,9 +533,9 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
   return cmd.result;
 }
 
-Register Load(RegisterOr<Addr> r, type::Type const *t) {
+Reg Load(RegisterOr<Addr> r, type::Type const *t) {
   if (t->is<type::Function>()) { return Load<AnyFunc>(r, t); }
-  return type::Apply(t, [&](auto type_holder) -> Register {
+  return type::Apply(t, [&](auto type_holder) -> Reg {
     using T = typename decltype(type_holder)::type;
     if constexpr (std::is_same_v<T, ir::Addr> ||
                   std::is_same_v<T, ir::EnumVal> ||
@@ -547,7 +547,7 @@ Register Load(RegisterOr<Addr> r, type::Type const *t) {
   });
 }
 
-TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
+TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
                           RegisterOr<int64_t> offset) {
   auto *array_type = &t->pointee->as<type::Array>();
   // TODO this works but generates worse ir (both here and in llvm). It's worth
@@ -724,7 +724,7 @@ static std::ostream &operator<<(std::ostream &os, Cmd::SetEnumerator const &s) {
 }
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
-  if (cmd.result != Register{}) { os << cmd.result << " = "; }
+  if (cmd.result != Reg{}) { os << cmd.result << " = "; }
   os << OpCodeStr(cmd.op_code_) << " ";
   switch (cmd.op_code_) {
 #define OP_MACRO(op, tag, type, field)                                         \

@@ -24,8 +24,8 @@ struct GenericFunction : public Callable {
                       ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
   void EmitMoveAssign(const Type *from_type, ir::Results const &from,
                       ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
-  void EmitInit(ir::Register reg, Context *ctx) const override;
-  void EmitDestroy(ir::Register reg, Context *ctx) const override;
+  void EmitInit(ir::Reg reg, Context *ctx) const override;
+  void EmitDestroy(ir::Reg reg, Context *ctx) const override;
   ir::Results PrepareArgument(const Type *t, const ir::Results &val,
                           Context *ctx) const override;
   void EmitRepr(ir::Results const &id_val, Context *ctx) const override;

@@ -84,7 +84,7 @@ core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
   return offset;
 }
 
-void Struct::EmitInit(ir::Register id_reg, Context *ctx) const {
+void Struct::EmitInit(ir::Reg id_reg, Context *ctx) const {
   ir::Init(this, id_reg);
 }
 
@@ -98,7 +98,7 @@ Struct::Field const *Struct::field(std::string const &name) const {
   return &fields_[iter->second];
 }
 
-void Struct::EmitDestroy(ir::Register reg, Context *ctx) const {
+void Struct::EmitDestroy(ir::Reg reg, Context *ctx) const {
   destroy_func_.init([this, ctx]() {
     if (auto fn = SpecialFunction(this, "~", ctx)) { return *fn; }
 

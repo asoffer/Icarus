@@ -98,7 +98,7 @@ struct Cmd {
   };
 
   struct BlockSeqContains {
-    Register reg_;
+    Reg reg_;
     ast::BlockLiteral *lit_;
   };
 
@@ -160,7 +160,7 @@ struct Cmd {
   };
 
   struct CreateStructField {
-    Register struct_;
+    Reg struct_;
     RegisterOr<type::Type const *> type_;
 
     inline friend std::ostream &operator<<(std::ostream &os,
@@ -175,7 +175,7 @@ struct Cmd {
 
   struct SetStructFieldName {
     // Implicitly the last element.
-    Register struct_;
+    Reg struct_;
     std::string_view name_;
     inline friend std::ostream &operator<<(std::ostream &os,
                                            SetStructFieldName const &s) {
@@ -184,7 +184,7 @@ struct Cmd {
   };
 
   struct AddHashtag {
-    Register struct_;
+    Reg struct_;
     ast::Hashtag hashtag_;
 
     inline friend std::ostream &operator<<(std::ostream &os,
@@ -194,7 +194,7 @@ struct Cmd {
   };
 
   struct CondJump {
-    Register cond_;
+    Reg cond_;
     BlockIndex blocks_[2];
   };
 
@@ -210,12 +210,12 @@ struct Cmd {
   };
 
   struct AddEnumerator {
-    Register enum_;
+    Reg enum_;
     std::string_view name_;
   };
 
   struct SetEnumerator {
-    Register enum_;
+    Reg enum_;
     RegisterOr<int32_t> val_;
   };
 
@@ -234,7 +234,7 @@ struct Cmd {
 
   struct AstData {
     ast::Node *node_;
-    Register ctx_;
+    Reg ctx_;
 
     inline friend std::ostream &operator<<(std::ostream &os, AstData ast) {
       return os << ast.node_ << " ctx=" << ast.ctx_;
@@ -242,7 +242,7 @@ struct Cmd {
   };
 
   struct AddBc {
-    Register ctx_;
+    Reg ctx_;
     ast::Declaration *decl_;
     RegisterOr<type::Type const *> type_;
 
@@ -253,7 +253,7 @@ struct Cmd {
 
   union {
     Empty empty_;
-    Register reg_;
+    Reg reg_;
     size_t get_ret_;
     type::Type const *type_;
     ast::StructLiteral *sl_;
@@ -381,13 +381,13 @@ struct Cmd {
     PrintEnum print_enum_;
     PrintFlags print_flags_;
 
-    type::Typed<Register> typed_reg_;
+    type::Typed<Reg> typed_reg_;
 #define OP_MACRO(...)
 #include "ir/op.xmacro.h"
 #undef OP_MACRO
   };
 
-  Register result;
+  Reg result;
 };
 
 RegisterOr<int64_t> Bytes(RegisterOr<type::Type const *> r);
@@ -425,7 +425,7 @@ TypedRegister<T> Load(RegisterOr<Addr> r,
   cmd.addr_arg_ = r;
   return cmd.result;
 }
-Register Load(RegisterOr<Addr> r, type::Type const *t);
+Reg Load(RegisterOr<Addr> r, type::Type const *t);
 
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
                                      RegisterOr<type::Type const *> out);
@@ -434,14 +434,14 @@ RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r);
 
 RegisterOr<type::Type const *> Array(RegisterOr<int64_t> len,
                                      RegisterOr<type::Type const *> data_type);
-Register VariantType(RegisterOr<Addr> r);
-Register VariantValue(const type::Type *t, RegisterOr<Addr> r);
+Reg VariantType(RegisterOr<Addr> r);
+Reg VariantValue(const type::Type *t, RegisterOr<Addr> r);
 // Type repreesents the type of `ptr`
 TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int64_t> inc,
                             type::Pointer const *t);
-type::Typed<Register> Field(RegisterOr<Addr> r, type::Struct const *t,
+type::Typed<Reg> Field(RegisterOr<Addr> r, type::Struct const *t,
                             size_t n);
-type::Typed<Register> Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n);
+type::Typed<Reg> Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);
 
@@ -585,12 +585,12 @@ void Store(T r, Args &&... args) {
 
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments);
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs);
-Register CreateTuple();
-void AppendToTuple(Register tup, RegisterOr<type::Type const *> entry);
-Register FinalizeTuple(Register tup);
-Register CreateVariant();
-void AppendToVariant(Register tup, RegisterOr<type::Type const *> entry);
-Register FinalizeVariant(Register var);
+Reg CreateTuple();
+void AppendToTuple(Reg tup, RegisterOr<type::Type const *> entry);
+Reg FinalizeTuple(Reg tup);
+Reg CreateVariant();
+void AppendToVariant(Reg tup, RegisterOr<type::Type const *> entry);
+Reg FinalizeVariant(Reg var);
 void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
               BlockIndex false_block);
 void UncondJump(BlockIndex block);
@@ -607,28 +607,28 @@ RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
 
 Results Cast(type::Type const *from, type::Type const *to, Results const &val);
 
-TypedRegister<Addr> Index(type::Pointer const *t, Register array_ptr,
+TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
                           RegisterOr<int64_t> offset);
 TypedRegister<Addr> Alloca(type::Type const *t);
 TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx);
 
-type::Typed<Register> LoadSymbol(std::string_view name, type::Type const *type);
+type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type);
 
 TypedRegister<Addr> GetRet(size_t n, type::Type const *t);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
 
-void Move(type::Type const *t, Register from, RegisterOr<Addr> to);
-void Copy(type::Type const *t, Register from, RegisterOr<Addr> to);
-void Destroy(type::Type const *t, Register r);
-void Init(type::Type const *t, Register r);
+void Move(type::Type const *t, Reg from, RegisterOr<Addr> to);
+void Copy(type::Type const *t, Reg from, RegisterOr<Addr> to);
+void Destroy(type::Type const *t, Reg r);
+void Init(type::Type const *t, Reg r);
 
-void VerifyType(ast::Node *node, Register ctx);
-Register EvaluateAsType(ast::Node *node, Register ctx);
+void VerifyType(ast::Node *node, Reg ctx);
+Reg EvaluateAsType(ast::Node *node, Reg ctx);
 
-Register CreateContext(Module *mod);
-void AddBoundConstant(Register ctx, ast::Declaration *decl,
+Reg CreateContext(Module *mod);
+void AddBoundConstant(Reg ctx, ast::Declaration *decl,
                       RegisterOr<type::Type const *> type);
-void DestroyContext(Register r);
+void DestroyContext(Reg r);
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

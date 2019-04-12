@@ -5,7 +5,7 @@ struct Module;
 struct Context;
 
 namespace type {
-void Primitive::EmitInit(ir::Register id_reg, Context *) const {
+void Primitive::EmitInit(ir::Reg id_reg, Context *) const {
   switch (type_) {
     case PrimType::Type_: ir::Store(type::Void(), id_reg); break;
     case PrimType::NullPtr: UNREACHABLE();
@@ -99,7 +99,7 @@ ir::Results Primitive::PrepareArgument(Type const *from, ir::Results const &val,
                                        Context *ctx) const {
   if (from->is<Variant>()) {
     return ir::Results{
-        ir::Load(ir::VariantValue(this, val.get<ir::Register>(0)), this)};
+        ir::Load(ir::VariantValue(this, val.get<ir::Reg>(0)), this)};
   } else {
     ASSERT(from == this);
     return val;

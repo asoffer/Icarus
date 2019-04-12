@@ -49,7 +49,7 @@ void Pointer::defining_modules(
   pointee->defining_modules(modules);
 }
 
-void Pointer::EmitInit(ir::Register id_reg, Context *ctx) const {
+void Pointer::EmitInit(ir::Reg id_reg, Context *ctx) const {
   ir::Store(ir::Addr::Null(), id_reg);
 }
 

@@ -439,7 +439,7 @@ VerifyResult VerifyDispatch(
   return ctx->set_result(expr, VerifyResult(tup, is_const));
 }
 
-static ir::RegisterOr<bool> EmitVariantMatch(ir::Register needle,
+static ir::RegisterOr<bool> EmitVariantMatch(ir::Reg needle,
                                              type::Type const *haystack) {
   auto runtime_type = ir::Load<type::Type const *>(ir::VariantType(needle));
 

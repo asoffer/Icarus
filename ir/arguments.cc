@@ -59,7 +59,7 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
 
     if (is_reg) {
       // TODO registers this way are kind of a hack around the type system.
-      offset = core::FwdAlign(offset, core::Alignment{alignof(ir::Register)});
+      offset = core::FwdAlign(offset, core::Alignment{alignof(ir::Reg)});
     } else {
       offset = core::FwdAlign(offset, t->alignment(arch));
     }
@@ -86,7 +86,7 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
     }
 
     // TODO bytes(sizeof()) is a hack around the type system.
-    offset += is_reg ? core::Bytes{sizeof(ir::Register)} : t->bytes(arch);
+    offset += is_reg ? core::Bytes{sizeof(ir::Reg)} : t->bytes(arch);
   }
 
   return call_buf;

@@ -20,7 +20,7 @@ namespace prop {
 struct FnStateView {
   FnStateView(ir::Func *fn);
 
-  absl::flat_hash_map<ir::Register, PropertySet> view_;
+  absl::flat_hash_map<ir::Reg, PropertySet> view_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
@@ -29,11 +29,11 @@ inline std::ostream &operator<<(std::ostream &os, const FnStateView &fsv) {
 
 // TODO rename me.
 struct Entry {
-  Entry(const ir::BasicBlock *viewing_block, ir::Register reg)
+  Entry(const ir::BasicBlock *viewing_block, ir::Reg reg)
       : viewing_block_(viewing_block), reg_(reg) {}
 
   const ir::BasicBlock *viewing_block_;
-  ir::Register reg_;
+  ir::Reg reg_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Entry &e) {
@@ -78,11 +78,11 @@ struct PropertyMap {
   }
 
   PropertySet const &lookup(ir::BasicBlock const *viewing_block,
-                            ir::Register reg) const {
+                            ir::Reg reg) const {
     return view_.at(viewing_block).view_.at(reg);
   }
 
-  PropertySet &lookup(ir::BasicBlock const *viewing_block, ir::Register reg) {
+  PropertySet &lookup(ir::BasicBlock const *viewing_block, ir::Reg reg) {
     return view_.at(viewing_block).view_.at(reg);
   }
 

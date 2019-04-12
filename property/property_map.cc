@@ -36,7 +36,7 @@ void ForEachArgument(ir::Func const &f, Fn &&fn_to_call) {
   for (auto *t : f.type_->input) {
     // TODO these register offsets are wrong now that we have compiler_reg_to_offset_.
     offset = core::FwdAlign(offset, t->alignment(arch));
-    fn_to_call(ir::Register{offset.value()});
+    fn_to_call(ir::Reg{offset.value()});
     offset += t->bytes(arch);
   }
 }
@@ -88,7 +88,7 @@ PropertySet LtInt(PropertySet const &lhs, int rhs) {
 
 FnStateView::FnStateView(ir::Func *fn) {
   for (auto reg : fn->compiler_reg_to_offset_) {
-    view_.emplace(ir::Register(reg), PropertySet{});
+    view_.emplace(ir::Reg(reg), PropertySet{});
   }
 }
 
@@ -121,7 +121,7 @@ PropertyMap::PropertyMap(ir::Func *fn) : fn_(fn) {
   for (auto const & [ f, pm ] : fn->preconditions_) {
     auto pm_copy = pm.AssumingReturnsTrue();
 
-    ForEachArgument(*fn_, [this, &pm_copy, &f](ir::Register arg) {
+    ForEachArgument(*fn_, [this, &pm_copy, &f](ir::Reg arg) {
       lookup(&fn_->blocks_.at(0), arg)
           .add(pm_copy.lookup(&f.blocks_.at(0), arg));
     });
@@ -129,8 +129,8 @@ PropertyMap::PropertyMap(ir::Func *fn) : fn_(fn) {
 
   absl::flat_hash_set<Entry> stale_down;
   auto *entry_block = &fn_->block(fn_->entry());
-  ForEachArgument(*fn_, [&stale_down, entry_block](ir::Register arg) {
-    stale_down.emplace(entry_block, ir::Register(0));
+  ForEachArgument(*fn_, [&stale_down, entry_block](ir::Reg arg) {
+    stale_down.emplace(entry_block, ir::Reg(0));
   });
 
   // This refresh is an optimization. Because it's likely that this gets called
@@ -142,7 +142,7 @@ PropertyMap::PropertyMap(ir::Func *fn) : fn_(fn) {
 // TODO no longer need to pass stale in as ptr.
 void PropertyMap::MarkReferencesStale(Entry const &e,
                                       absl::flat_hash_set<Entry> *stale_down) {
-  for (ir::Register reg : fn_->references_.at(e.reg_)) {
+  for (ir::Reg reg : fn_->references_.at(e.reg_)) {
     stale_down->emplace(e.viewing_block_, reg);
   }
 
@@ -327,7 +327,7 @@ void PropertyMap::refresh(absl::flat_hash_set<Entry> stale_up,
 // set-rets first.
 BoolProp PropertyMap::Returns() const {
   std::vector<ir::CmdIndex> rets;
-  std::vector<ir::Register> regs;
+  std::vector<ir::Reg> regs;
 
   // This can be precompeted and stored on the actual ir::Func.
   int32_t num_blocks = static_cast<int32_t>(fn_->blocks_.size());
@@ -386,25 +386,25 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
     // be reasoned about, all of this should be figured out where it's known and
     // then passed in.
     if (args.results_.is_reg(index)) {
-      props.at(ir::Register(offset.value()))
-          .add(fn_state_view.view_.at(args.results_.get<ir::Register>(index)));
+      props.at(ir::Reg(offset.value()))
+          .add(fn_state_view.view_.at(args.results_.get<ir::Reg>(index)));
 
       // TODO only need to do this on the entry block, but we're not passing
       // info between block views yet.
       for (const auto &b : fn_->blocks_) {
         // TODO Pretty sure this is wrong now that we have compiler_reg_to_offset_
-        stale_down.emplace(&b, ir::Register(offset.value()));
+        stale_down.emplace(&b, ir::Reg(offset.value()));
       }
-      offset += core::Bytes{sizeof(ir::Register)};
+      offset += core::Bytes{sizeof(ir::Reg)};
     } else {
       if (t == type::Bool) {
-        props.at(ir::Register(offset.value()))
+        props.at(ir::Reg(offset.value()))
             .add(base::make_owned<BoolProp>(
                 args.results_.get<bool>(offset.value()).val_));
         // TODO only need to do this on the entry block, but we're not passing
         // info between block views yet.
         for (const auto &b : fn_->blocks_) {
-          stale_down.emplace(&b, ir::Register(offset.value()));
+          stale_down.emplace(&b, ir::Reg(offset.value()));
         }
       }
       offset += t->bytes(arch);

@@ -92,7 +92,7 @@ struct Module {
 
   struct DependentData {
     // TODO I'm not sure this needs to be dependent? Or stored at all?
-    absl::flat_hash_map<ast::Declaration *, ir::Register> addr_;
+    absl::flat_hash_map<ast::Declaration *, ir::Reg> addr_;
 
     // TODO probably make these funcs constant.
     absl::node_hash_map<ast::Expression const *, ir::Func *> ir_funcs_;

@@ -18,16 +18,16 @@ namespace ir {
 // from having to pass extra information and thereby bloating all commands. At
 // some point we should switch to a buffer-chunk system so that one won't bloat
 // another.
-Register CreateStruct(core::Scope const *scope,
+Reg CreateStruct(core::Scope const *scope,
                       ast::StructLiteral const *parent);
-void CreateStructField(Register struct_type,
+void CreateStructField(Reg struct_type,
                        RegisterOr<type::Type const *> type);
-void SetStructFieldName(Register struct_type, std::string_view field_name);
-void AddHashtagToField(Register struct_type, ast::Hashtag hashtag);
-void AddHashtagToStruct(Register struct_type, ast::Hashtag hashtag);
-Register FinalizeStruct(Register r);
+void SetStructFieldName(Reg struct_type, std::string_view field_name);
+void AddHashtagToField(Reg struct_type, ast::Hashtag hashtag);
+void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag);
+Reg FinalizeStruct(Reg r);
 
-Register ArgumentCache(ast::StructLiteral *sl);
+Reg ArgumentCache(ast::StructLiteral *sl);
 }  // namespace ir
 
 namespace ast {
@@ -95,7 +95,7 @@ void StructLiteral::ExtractJumps(JumpExprs *rets) const {
 }
 
 static ir::TypedRegister<type::Type const *> GenerateStruct(
-    StructLiteral *sl, ir::Register struct_reg, Context *ctx) {
+    StructLiteral *sl, ir::Reg struct_reg, Context *ctx) {
   for (auto const &field : sl->fields_) {
     // TODO initial values? hashatgs?
 

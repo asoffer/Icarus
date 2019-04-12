@@ -16,7 +16,7 @@ BlockIndex EarlyExitOn(BlockIndex exit_block, RegisterOr<bool> cond) {
   return continue_block;
 }
 
-inline Register PtrFix(Register r, type::Type const *desired_type) {
+inline Reg PtrFix(Reg r, type::Type const *desired_type) {
   return desired_type->is_big() ? r : Load(r, desired_type);
 }
 

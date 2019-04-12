@@ -11,7 +11,7 @@ struct Context;
 
 namespace type {
 
-void Enum::EmitInit(ir::Register id_reg, Context *) const {
+void Enum::EmitInit(ir::Reg id_reg, Context *) const {
   UNREACHABLE("Enums must be initialized");
 }
 

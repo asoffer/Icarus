@@ -16,11 +16,11 @@ void GenericStruct::EmitMoveAssign(Type const *from_type,
   NOT_YET();
 }
 
-void GenericStruct::EmitInit(ir::Register id_reg, Context *ctx) const {
+void GenericStruct::EmitInit(ir::Reg id_reg, Context *ctx) const {
   NOT_YET();
 }
 
-void GenericStruct::EmitDestroy(ir::Register reg, Context *ctx) const {
+void GenericStruct::EmitDestroy(ir::Reg reg, Context *ctx) const {
   UNREACHABLE();
 }
 

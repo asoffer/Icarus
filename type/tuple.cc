@@ -80,7 +80,7 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Results const &from,
   ir::Move(this, from.get<ir::Reg>(0), to);
 }
 
-void Tuple::EmitInit(ir::Register reg, Context *ctx) const {
+void Tuple::EmitInit(ir::Reg reg, Context *ctx) const {
   init_func_.init([this, ctx]() {
     auto *fn = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),
@@ -153,7 +153,7 @@ void Tuple::defining_modules(
   for (auto *entry : entries_) { entry->defining_modules(modules); }
 }
 
-void Tuple::EmitDestroy(ir::Register reg, Context *ctx) const {
+void Tuple::EmitDestroy(ir::Reg reg, Context *ctx) const {
   destroy_func_.init([this, ctx]() {
     auto *fn = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),

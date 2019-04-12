@@ -83,7 +83,7 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
 }
 
 void EmitCopyInit(Type const *from_type, ir::Results const &from_val,
-                  Typed<ir::Register> to_var, Context *ctx) {
+                  Typed<ir::Reg> to_var, Context *ctx) {
   auto *to_type = to_var.type()->as<Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.
   if (!to_type->is<Primitive>() && !to_type->is<Function>() &&
@@ -94,7 +94,7 @@ void EmitCopyInit(Type const *from_type, ir::Results const &from_val,
 }
 
 void EmitMoveInit(Type const *from_type, ir::Results const &from_val,
-                  Typed<ir::Register> to_var, Context *ctx) {
+                  Typed<ir::Reg> to_var, Context *ctx) {
   auto *to_type = to_var.type()->as<Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.
   if (!to_type->is<Primitive>() && !to_type->is<Function>() &&

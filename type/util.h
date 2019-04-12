@@ -20,9 +20,9 @@
 namespace type {
 
 void EmitCopyInit(const Type *from_type, ir::Results const &from_val,
-                  Typed<ir::Register> to_var, Context *ctx);
+                  Typed<ir::Reg> to_var, Context *ctx);
 void EmitMoveInit(const Type *from_type, ir::Results const &from_val,
-                  Typed<ir::Register> to_var, Context *ctx);
+                  Typed<ir::Reg> to_var, Context *ctx);
 
 template <typename T>
 constexpr type::Type const *Get() {

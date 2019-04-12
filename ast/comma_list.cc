@@ -101,7 +101,7 @@ std::vector<ir::RegisterOr<ir::Addr>> CommaList::EmitLVal(Context *ctx) {
   return results;
 }
 
-void CommaList::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
+void CommaList::EmitMoveInit(type::Typed<ir::Reg> reg, Context *ctx) {
   size_t index  = 0;
   auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : exprs_) {
@@ -119,7 +119,7 @@ void CommaList::EmitMoveInit(type::Typed<ir::Register> reg, Context *ctx) {
   }
 }
 
-void CommaList::EmitCopyInit(type::Typed<ir::Register> reg, Context *ctx) {
+void CommaList::EmitCopyInit(type::Typed<ir::Reg> reg, Context *ctx) {
   size_t index  = 0;
   auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : exprs_) {

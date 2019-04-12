@@ -73,7 +73,7 @@ void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
 }
 
 template <typename T>
-T ExecContext::resolve(ir::Register r) const {
+T ExecContext::resolve(ir::Reg r) const {
   return call_stack.top().regs_.get<T>(
       call_stack.top().fn_->compiler_reg_to_offset_.at(r.value()));
 }
@@ -1129,7 +1129,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       std::vector<type::Type const*> cached_vals;
       cached_vals.reserve(cmd.sl_->args_.size());
       for (uint64_t i = 0; i < cmd.sl_->args_.size(); ++i) {
-        cached_vals.push_back(resolve<type::Type const *>(ir::Register{i}));
+        cached_vals.push_back(resolve<type::Type const *>(ir::Reg{i}));
       }
       auto &cache = cmd.sl_->mod_->generic_struct_cache_[cmd.sl_];
       auto iter = cache.fwd_.try_emplace(std::move(cached_vals), nullptr).first;

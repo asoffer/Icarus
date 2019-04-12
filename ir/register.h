@@ -53,8 +53,6 @@ struct Reg {
   uint64_t val_;
 };
 
-using Register = Reg;
-
 constexpr bool operator==(Reg lhs, Reg rhs) {
   return lhs.value() == rhs.value();
 }
@@ -109,14 +107,14 @@ inline std::ostream &operator<<(std::ostream &os, BlockIndex b) {
 template <typename T>
 struct RegisterOr {
   using type = T;
-  static_assert(!std::is_same_v<Register, T>);
+  static_assert(!std::is_same_v<Reg, T>);
   RegisterOr() : is_reg_(true) {}
 
-  RegisterOr(Register reg) : reg_(reg), is_reg_(true) {}
+  RegisterOr(Reg reg) : reg_(reg), is_reg_(true) {}
   RegisterOr(T val) : val_(val), is_reg_(false) {}
 
   union {
-    Register reg_;
+    Reg reg_;
     T val_;
   };
   bool is_reg_;
@@ -145,10 +143,10 @@ std::string stringify(RegisterOr<T> const& r) {
 }
 
 template <typename T>
-struct TypedRegister : public Register {
+struct TypedRegister : public Reg {
   using type = T;
-  TypedRegister(Register r) : Register(r) {}
-  operator RegisterOr<T>() const { return static_cast<Register>(*this); }
+  TypedRegister(Reg r) : Reg(r) {}
+  operator RegisterOr<T>() const { return static_cast<Reg>(*this); }
 };
 
 template <typename T>

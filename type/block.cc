@@ -17,7 +17,7 @@ void Block::EmitMoveAssign(Type const *from_type, ir::Results const &from,
   UNREACHABLE();
 }
 
-void Block::EmitInit(ir::Register id_reg, Context *ctx) const {
+void Block::EmitInit(ir::Reg id_reg, Context *ctx) const {
   UNREACHABLE();
 }
 

@@ -54,7 +54,7 @@ Type const *Var(std::vector<Type const *> variants) {
               .first->second;
 }
 
-void Variant::EmitDestroy(ir::Register reg, Context *ctx) const {
+void Variant::EmitDestroy(ir::Reg reg, Context *ctx) const {
   // TODO design and build a jump table?
   // TODO remove these casts in favor of something easier to track properties on
 
@@ -170,7 +170,7 @@ void Variant::EmitMoveAssign(Type const *from_type, ir::Results const &from,
   }
 }
 
-void Variant::EmitInit(ir::Register, Context *ctx) const {
+void Variant::EmitInit(ir::Reg, Context *ctx) const {
   UNREACHABLE("Variants must be initialized.");
 }
 

@@ -13,11 +13,11 @@ namespace ir {
 // register is a register to be filled with the value, or it is the address to
 // which the value should be written.
 struct OutParams {
-  Register AppendReg(type::Type const *);
-  void AppendLoc(Register reg);
+  Reg AppendReg(type::Type const *);
+  void AppendLoc(Reg reg);
   size_t size() const { return is_loc_.size(); }
 
-  std::vector<Register> regs_;
+  std::vector<Reg> regs_;
   std::vector<bool> is_loc_;
 };
 }  // namespace ir

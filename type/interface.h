@@ -18,11 +18,11 @@ struct Interface : public Type {
   void EmitMoveAssign(Type const *from_type, ir::Results const &from,
                       ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
 
-  void EmitInit(ir::Register reg, Context *ctx) const override {
+  void EmitInit(ir::Reg reg, Context *ctx) const override {
     UNREACHABLE();
   }
 
-  void EmitDestroy(ir::Register reg, Context *ctx) const override {
+  void EmitDestroy(ir::Reg reg, Context *ctx) const override {
     UNREACHABLE();
   }
 

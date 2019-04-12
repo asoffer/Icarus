@@ -238,7 +238,7 @@ static void OnEachElement(Array const *t, ir::Func *fn, F &&fn_to_apply) {
   }
 }
 
-void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
+void Array::EmitInit(ir::Reg id_reg, Context *ctx) const {
   init_func_.init([this, ctx]() {
     // TODO special function?
     auto *fn = ctx->mod_->AddFunc(
@@ -246,14 +246,14 @@ void Array::EmitInit(ir::Register id_reg, Context *ctx) const {
         core::FnParams(
             core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
     OnEachElement(this, fn,
-                  [this, ctx](ir::Register r) { data_type->EmitInit(r, ctx); });
+                  [this, ctx](ir::Reg r) { data_type->EmitInit(r, ctx); });
     return fn;
   });
 
   ir::Init(this, id_reg);
 }
 
-void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
+void Array::EmitDestroy(ir::Reg reg, Context *ctx) const {
   if (!data_type->needs_destroy()) { return; }
   destroy_func_.init([this, ctx]() {
     // TODO special function?
@@ -262,7 +262,7 @@ void Array::EmitDestroy(ir::Register reg, Context *ctx) const {
         core::FnParams(
             core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
 
-    OnEachElement(this, fn, [this, ctx](ir::Register r) {
+    OnEachElement(this, fn, [this, ctx](ir::Reg r) {
       data_type->EmitDestroy(r, ctx);
     });
     return fn;

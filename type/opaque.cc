@@ -15,9 +15,9 @@ void Opaque::EmitMoveAssign(const Type *from_type, ir::Results const &from,
   UNREACHABLE();
 }
 
-void Opaque::EmitInit(ir::Register reg, Context *ctx) const { UNREACHABLE(); }
+void Opaque::EmitInit(ir::Reg reg, Context *ctx) const { UNREACHABLE(); }
 
-void Opaque::EmitDestroy(ir::Register reg, Context *ctx) const {
+void Opaque::EmitDestroy(ir::Reg reg, Context *ctx) const {
   UNREACHABLE();
 }
 

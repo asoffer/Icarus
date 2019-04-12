@@ -20,7 +20,7 @@ struct Variant : public Type {
     return result;
   }
 
-  void EmitDestroy(ir::Register reg, Context *ctx) const override;
+  void EmitDestroy(ir::Reg reg, Context *ctx) const override;
 
   bool needs_destroy() const override;
 

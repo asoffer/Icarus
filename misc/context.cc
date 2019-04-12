@@ -42,11 +42,11 @@ std::pair<ConstantBinding, Module::DependentData> *Context::insert_constants(
   return pair;
 }
 
-void Context::set_addr(ast::Declaration *decl, ir::Register r) {
+void Context::set_addr(ast::Declaration *decl, ir::Reg r) {
   constants_->second.addr_[decl] = r;
 }
 
-ir::Register Context::addr(ast::Declaration *decl) const {
+ir::Reg Context::addr(ast::Declaration *decl) const {
   return constants_->second.addr_.at(decl);
 }
 
