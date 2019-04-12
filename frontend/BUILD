@@ -14,6 +14,7 @@ cc_target(
         "//ast:builtin_fn",
         "//ast:identifier",
         "//ast:terminal",
+        "//ir:block",
         "//ir:builtin",
         "//ir:results",
         "//ir:str",

@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "node.h"
+#include "ast/node.h"
 
 namespace ast {
 struct Statements : public Node {

@@ -52,10 +52,14 @@ VerifyResult Switch::VerifyType(Context *ctx) {
     expr_type = result.type_;
   }
 
-  absl::flat_hash_set<const type::Type *> types;
+  absl::flat_hash_set<type::Type const *> types;
+  bool err = false;
   for (auto &[expr, cond] : cases_) {
     auto cond_result = cond->VerifyType(ctx);
     auto expr_result = expr->VerifyType(ctx);
+    err |= !cond_result || !expr_result;
+    if (err) { base::Log() << expr->to_string(0); continue; }
+
     is_const &= cond_result.const_ && expr_result.const_;
     if (expr_) {
       static_cast<void>(expr_type);
@@ -67,6 +71,7 @@ VerifyResult Switch::VerifyType(Context *ctx) {
     // good error messages.
     types.insert(expr_result.type_);
   }
+  if (err) { return VerifyResult::Error(); }
 
   // TODO check to ensure that the type is either exhaustable or has a default.
 
@@ -77,6 +82,9 @@ VerifyResult Switch::VerifyType(Context *ctx) {
     // TODO this might be a constant.
     return ctx->set_result(this, VerifyResult(some_type, is_const));
   } else {
+    for (auto &t:types) {
+      base::Log() << (!t ? "<>" : t->to_string());
+    }
     NOT_YET("handle type error");
     return VerifyResult::Error();
   }

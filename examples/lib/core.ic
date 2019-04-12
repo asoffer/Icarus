@@ -1,29 +1,33 @@
 #{export}
 if ::= scope {
-  init ::= (b: bool) => switch (b) {
-    then        when true
-    else | exit when false
+  init ::= (b: bool) -> () {
+    jump switch (b) {
+      then        when true
+      else | exit when false
+    }()
   }
   then ::= block {
-    before ::= () -> {}
-    after ::= () => exit
+    before ::= () -> () {}
+    after ::= () -> () { jump exit() }
   }
   else ::= block? {
-    before ::= () -> {}
-    after ::= () => exit
+    before ::= () -> () {}
+    after ::= () -> () { jump exit() }
   }
-  done ::=() -> {}
+  done ::= () -> () {}
 }
 
 #{export}
 while ::= scope {
-  init ::= (b: bool) => switch (b) {
-    do    when true
-    exit  when false
+  init ::= (b: bool) -> () {
+    jump switch (b) {
+      do   when true
+      exit when false
+    }()
   }
   do ::= block {
-    before ::= () -> {}
-    after ::= () => start
+    before ::= () -> () {}
+    after ::= () -> () { jump start() }
   }
-  done ::= () -> {}
+  done ::= () -> () {}
 }

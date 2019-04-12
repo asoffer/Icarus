@@ -144,7 +144,15 @@ std::unique_ptr<ast::Node> BuildJump(std::unique_ptr<ast::Node> node) {
   using ::frontend::Operator;
   auto &tk   = node->as<frontend::Token>().token;
   auto jmp   = std::make_unique<ast::RepeatedUnop>(node->span);
-  jmp->op_   = tk == "return" ? Operator::Return : Operator::Yield;
+  if (tk == "return") {
+    jmp->op_ = Operator::Return;
+  } else if (tk == "yield") {
+    jmp->op_ = Operator::Yield;
+  } else if (tk == "jump") {
+    jmp->op_ = Operator::Jump;
+  } else {
+    UNREACHABLE();
+  }
   auto stmts = std::make_unique<ast::Statements>();
   stmts->append(std::move(jmp));
   stmts->span = node->span;
@@ -268,10 +276,18 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
         std::make_unique<ast::Import>(move_as<ast::Expression>(nodes[1]));
     import_node->span = TextSpan(nodes[0]->span, import_node->operand_->span);
     return import_node;
-  } else if (tk == "return" || tk == "yield") {
+  } else if (tk == "return" || tk == "yield" || tk == "jump") {
     auto unop = std::make_unique<ast::RepeatedUnop>(
         TextSpan(nodes.front()->span, nodes.back()->span));
-    unop->op_ = tk == "return" ? Operator::Return : Operator::Yield;
+    if (tk == "return") {
+      unop->op_ = Operator::Return;
+    } else if (tk == "yield") {
+      unop->op_ = Operator::Yield;
+    } else if (tk == "jump") {
+      unop->op_ = Operator::Jump;
+    } else {
+      UNREACHABLE();
+    }
     if (nodes[1]->is<ast::CommaList>() &&
         !nodes[1]->as<ast::CommaList>().parenthesized_) {
       unop->args_ = std::move(nodes[1]->as<ast::CommaList>());

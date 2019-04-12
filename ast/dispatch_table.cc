@@ -336,13 +336,13 @@ static base::expected<DispatchTable::Row> OverloadParams(
   } else {
     if (result.type_ == type::Generic) {
       UNREACHABLE();
+    } else if (auto *fn_type = result.type_->if_as<type::Function>()) {
+      return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type,
+                                overload.expr};
+    } else if (result.type_->is<type::Block>()) {
+      NOT_YET();
     } else {
-      if (auto *fn_type = result.type_->if_as<type::Function>()) {
-        return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type,
-                                  overload.expr};
-      } else {
-        UNREACHABLE();
-      }
+      UNREACHABLE();
     }
   }
 }

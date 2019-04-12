@@ -36,10 +36,10 @@ void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
   // TODO yield as well?
   switch (op_) {
     case frontend::Operator::Return:
-      (*rets)[JumpKind::Return].push_back(&args_);
+      (*rets)[JumpExprs::Kind::Return].push_back(&args_);
       break;
     case frontend::Operator::Yield:
-      (*rets)[JumpKind::Yield].push_back(&args_);
+      (*rets)[JumpExprs::Kind::Yield].push_back(&args_);
       break;
     default: break;
   }

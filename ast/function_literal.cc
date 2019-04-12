@@ -175,7 +175,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
   JumpExprs rets;
   statements_.ExtractJumps(&rets);
   absl::flat_hash_set<type::Type const *> types;
-  for (auto *expr : rets[JumpKind::Return]) {
+  for (auto *expr : rets[JumpExprs::Kind::Return]) {
     types.insert(ctx->type_of(expr));
   }
 
@@ -201,7 +201,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
     switch (outs.size()) {
       case 0: {
         bool err = false;
-        for (auto *expr : rets[JumpKind::Return]) {
+        for (auto *expr : rets[JumpExprs::Kind::Return]) {
           if (!expr->as<CommaList>().exprs_.empty()) {
             ctx->error_log()->NoReturnTypes(expr);
             err = true;
@@ -211,7 +211,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
       } break;
       case 1: {
         bool err = false;
-        for (auto *expr : rets[JumpKind::Return]) {
+        for (auto *expr : rets[JumpExprs::Kind::Return]) {
           auto *t = ASSERT_NOT_NULL(ctx->type_of(expr));
           if (t == outs[0]) { continue; }
           ctx->error_log()->ReturnTypeMismatch(outs[0], t, expr->span);
@@ -220,7 +220,7 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
         return err ? VerifyResult::Error() : VerifyResult::Constant(this_type);
       } break;
       default: {
-        for (auto *expr : rets[JumpKind::Return]) {
+        for (auto *expr : rets[JumpExprs::Kind::Return]) {
           auto *expr_type = ctx->type_of(expr);
           if (expr_type->is<type::Tuple>()) {
             auto const &tup_entries = expr_type->as<type::Tuple>().entries_;

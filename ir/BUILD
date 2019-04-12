@@ -61,6 +61,11 @@ cc_lib(
     ],
 )
 
+cc_lib(
+    name = "block",
+    hdrs = ["block.h"],
+)
+
 cc_target(
     name = "builtin",
     textual_hdrs = ["builtin.xmacro.h"],

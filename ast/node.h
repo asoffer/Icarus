@@ -17,6 +17,7 @@
 #include "misc/inference_state.h"
 #include "type/typed_value.h"
 
+struct JumpExprs;
 struct Context;
 
 namespace core {
@@ -92,16 +93,12 @@ constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
   return !(lhs == rhs);
 }
 
-enum class JumpKind { Return, Yield };
-struct JumpExprs
-    : public absl::flat_hash_map<JumpKind, std::vector<Expression const *>> {};
-
 struct Node : public base::Cast<Node> {
-  virtual std::string to_string(size_t n) const     = 0;
-  virtual void assign_scope(core::Scope *)          = 0;
-  virtual VerifyResult VerifyType(Context *)        = 0;
-  virtual ir::Results EmitIr(Context *ctx)          = 0;
-  virtual void ExtractJumps(JumpExprs *) const      = 0;
+  virtual std::string to_string(size_t n) const                      = 0;
+  virtual void assign_scope(core::Scope *)                           = 0;
+  virtual VerifyResult VerifyType(Context *)                         = 0;
+  virtual ir::Results EmitIr(Context *ctx)                           = 0;
+  virtual void ExtractJumps(JumpExprs *) const                       = 0;
   virtual void DependentDecls(DeclDepGraph *g, Declaration *d) const = 0;
 
   virtual bool InferType(type::Type const *t, InferenceState *state) const {

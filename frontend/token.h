@@ -5,6 +5,7 @@
 #include "ast/node.h"
 #include "frontend/operators.h"
 
+struct JumpExprs;
 namespace frontend {
 // ast node used only for holding tokens which have been lexed but not yet
 // parsed.
@@ -32,7 +33,7 @@ struct Token : public ast::Node {
 
   void assign_scope(core::Scope *) override { UNREACHABLE(token); }
   ast::VerifyResult VerifyType(Context *) override { UNREACHABLE(token); }
-  void ExtractJumps(ast::JumpExprs *) const override { UNREACHABLE(token); }
+  void ExtractJumps(JumpExprs *) const override { UNREACHABLE(token); }
   ir::Results EmitIr(Context *) override { UNREACHABLE(token); }
   void DependentDecls(ast::DeclDepGraph *, ast::Declaration *) const {
     UNREACHABLE(token);

@@ -8,6 +8,7 @@
 #include "frontend/numbers.h"
 #include "frontend/operators.h"
 #include "frontend/syntax.h"
+#include "ir/block.h"
 #include "ir/builtin.h"
 #include "ir/results.h"
 #include "ir/str.h"
@@ -51,14 +52,15 @@ SrcCursor NextSimpleWord(SrcCursor *cursor) {
 
 static absl::flat_hash_map<std::string_view,
                            std::variant<Operator, Syntax>> const Keywords = {
-    {"which", {Operator::Which}},   {"print", {Operator::Print}},
-    {"ensure", {Operator::Ensure}}, {"needs", {Operator::Needs}},
-    {"import", {Operator::Import}}, {"flags", {Syntax::Flags}},
-    {"enum", {Syntax::Enum}},       {"struct", {Syntax::Struct}},
-    {"return", {Operator::Return}}, {"yield", {Operator::Yield}},
-    {"switch", {Syntax::Switch}},   {"when", {Operator::When}},
-    {"as", {Operator::As}},         {"interface", {Syntax::Interface}},
-    {"copy", {Operator::Copy}},     {"move", {Operator::Move}}};
+    {"which", {Operator::Which}},       {"print", {Operator::Print}},
+    {"ensure", {Operator::Ensure}},     {"needs", {Operator::Needs}},
+    {"import", {Operator::Import}},     {"flags", {Syntax::Flags}},
+    {"enum", {Syntax::Enum}},           {"struct", {Syntax::Struct}},
+    {"return", {Operator::Return}},     {"yield", {Operator::Yield}},
+    {"jump", {Operator::Jump}},         {"switch", {Syntax::Switch}},
+    {"when", {Operator::When}},         {"as", {Operator::As}},
+    {"interface", {Syntax::Interface}}, {"copy", {Operator::Copy}},
+    {"move", {Operator::Move}}};
 
 Lexeme NextWord(SrcCursor *cursor, Src *src) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
@@ -67,39 +69,28 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
   std::string_view token = word_cursor.view();
   auto span              = ToSpan(word_cursor, src);
 
-  static absl::flat_hash_map<
-      std::string_view,
-      std::pair<ir::Results, type::Type const *>> const Reserved{
-      {"bool", std::pair(ir::Results{type::Bool}, type::Type_)},
-      {"int8", std::pair(ir::Results{type::Int8}, type::Type_)},
-      {"int16", std::pair(ir::Results{type::Int16}, type::Type_)},
-      {"int32", std::pair(ir::Results{type::Int32}, type::Type_)},
-      {"int64", std::pair(ir::Results{type::Int64}, type::Type_)},
-      {"nat8", std::pair(ir::Results{type::Nat8}, type::Type_)},
-      {"nat16", std::pair(ir::Results{type::Nat16}, type::Type_)},
-      {"nat32", std::pair(ir::Results{type::Nat32}, type::Type_)},
-      {"nat64", std::pair(ir::Results{type::Nat64}, type::Type_)},
-      {"float32", std::pair(ir::Results{type::Float32}, type::Type_)},
-      {"float64", std::pair(ir::Results{type::Float64}, type::Type_)},
-      {"type", std::pair(ir::Results{type::Type_}, type::Type_)},
-      {"module", std::pair(ir::Results{type::Module}, type::Type_)},
-      {"true", std::pair(ir::Results{true}, type::Bool)},
-      {"false", std::pair(ir::Results{false}, type::Bool)},
-      {"null", std::pair(ir::Results{ir::Addr::Null()}, type::NullPtr)},
-      {"byte_view", std::pair(ir::Results{type::ByteView}, type::Type_)},
-      /*
-      {"exit",
-       std::pair(ir::Results{std::get<ir::BlockSequence>(
-                     ir::Val::Block(static_cast<ast::BlockLiteral *>(nullptr))
-                         .value)},
-                 type::Blk())},
-      // TODO these are terrible. Make them reasonable. In particular, this
-      // is definitively UB.
-      {"start",
-       std::pair(ir::Results{std::get<ir::BlockSequence>(
-                     ir::Val::Block(reinterpret_cast<ast::BlockLiteral *>(0x1))
-                         .value)},
-                 type::Blk())},*/};
+  static absl::flat_hash_map<std::string_view,
+                             std::pair<ir::Results, type::Type const *>> const
+      Reserved{
+          {"bool", std::pair(ir::Results{type::Bool}, type::Type_)},
+          {"int8", std::pair(ir::Results{type::Int8}, type::Type_)},
+          {"int16", std::pair(ir::Results{type::Int16}, type::Type_)},
+          {"int32", std::pair(ir::Results{type::Int32}, type::Type_)},
+          {"int64", std::pair(ir::Results{type::Int64}, type::Type_)},
+          {"nat8", std::pair(ir::Results{type::Nat8}, type::Type_)},
+          {"nat16", std::pair(ir::Results{type::Nat16}, type::Type_)},
+          {"nat32", std::pair(ir::Results{type::Nat32}, type::Type_)},
+          {"nat64", std::pair(ir::Results{type::Nat64}, type::Type_)},
+          {"float32", std::pair(ir::Results{type::Float32}, type::Type_)},
+          {"float64", std::pair(ir::Results{type::Float64}, type::Type_)},
+          {"type", std::pair(ir::Results{type::Type_}, type::Type_)},
+          {"module", std::pair(ir::Results{type::Module}, type::Type_)},
+          {"true", std::pair(ir::Results{true}, type::Bool)},
+          {"false", std::pair(ir::Results{false}, type::Bool)},
+          {"null", std::pair(ir::Results{ir::Addr::Null()}, type::NullPtr)},
+          {"byte_view", std::pair(ir::Results{type::ByteView}, type::Type_)},
+          {"exit", std::pair(ir::Results{ir::Block::Exit()}, type::Blk())},
+      };
 
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     auto const &[results, type] = iter->second;

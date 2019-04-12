@@ -17,6 +17,16 @@ struct Identifier;
 struct DispatchTable;
 }  // namespace ast
 
+struct JumpExprs {
+  enum class Kind { Return, Yield, Jump };
+  std::vector<ast::Expression const *> &operator[](Kind k) {
+    return data_[static_cast<std::underlying_type_t<Kind>>(k)];
+  }
+
+ private:
+  std::array<std::vector<ast::Expression const *>, 3> data_;
+};
+
 struct Context {
   Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {
     constants_ = &mod_->dep_data_.front();
