@@ -10,6 +10,7 @@
 namespace ast {
 std::string RepeatedUnop::to_string(size_t n) const {
   switch (op_) {
+    case frontend::Operator::Jump: return "jump " + args_.to_string(n);
     case frontend::Operator::Return: return "return " + args_.to_string(n);
     case frontend::Operator::Yield: return "yield " + args_.to_string(n);
     case frontend::Operator::Print: return "print " + args_.to_string(n);
@@ -35,6 +36,9 @@ void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
   args_.ExtractJumps(rets);
   // TODO yield as well?
   switch (op_) {
+    case frontend::Operator::Jump:
+      (*rets)[JumpExprs::Kind::Jump].push_back(&args_);
+      break;
     case frontend::Operator::Return:
       (*rets)[JumpExprs::Kind::Return].push_back(&args_);
       break;

@@ -16,7 +16,9 @@ struct Terminal : public Literal {
 
   void assign_scope(core::Scope *scope) override { scope_ = scope; }
   std::string to_string(size_t) const override {
-    if (type_ == type::Int64) {
+    if (type_ == type::Bool) {
+      return results_.get<bool>(0).val_ ? "true" : "false";
+    } else if (type_ == type::Int64) {
       return std::to_string(results_.get<int64_t>(0).val_) + "_i64";
     } else if (type_ == type::Nat64) {
       return std::to_string(results_.get<uint64_t>(0).val_) + "_u64";

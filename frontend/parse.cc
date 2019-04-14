@@ -106,14 +106,9 @@ std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<ast::Statements> stmts,
 
   switch_expr->cases_.reserve(stmts->content_.size());
   for (auto &stmt : stmts->content_) {
-    if (stmt->is<ast::Binop>()) {
-      auto binop = move_as<ast::Binop>(stmt);
-      if (binop->op == frontend::Operator::When) {
-        switch_expr->cases_.emplace_back(std::move(binop->lhs),
-                                         std::move(binop->rhs));
-      } else {
-        NOT_YET("handle error");
-      }
+    if (auto *switch_when = stmt->if_as<ast::SwitchWhen>()) {
+      switch_expr->cases_.emplace_back(std::move(switch_when->body),
+                                       std::move(switch_when->cond));
     } else {
       NOT_YET("handle error");
     }
@@ -873,6 +868,12 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     cast->expr_ = move_as<ast::Expression>(nodes[0]);
     cast->type_ = move_as<ast::Expression>(nodes[2]);
     return cast;
+  } else if (tk == "when") {
+    auto when  = std::make_unique<ast::SwitchWhen>();
+    when->span = TextSpan(nodes[0]->span, nodes[2]->span);
+    when->body = move_as<ast::Node>(nodes[0]);
+    when->cond = move_as<ast::Expression>(nodes[2]);
+    return when;
   }
 
   if (tk == "(") {  // TODO these should just generate BuildCall directly.
@@ -896,14 +897,12 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
           {"*=", frontend::Operator::MulEq}, {"/=", frontend::Operator::DivEq},
           {"%=", frontend::Operator::ModEq}, {"+", frontend::Operator::Add},
           {"-", frontend::Operator::Sub},    {"*", frontend::Operator::Mul},
-          {"/", frontend::Operator::Div},    {"%", frontend::Operator::Mod},
-          {"when", frontend::Operator::When}};
-  {
-    auto iter = symbols.find(tk);
-    if (iter != symbols.end()) { binop->op = iter->second; }
-
-    return binop;
+          {"/", frontend::Operator::Div},    {"%", frontend::Operator::Mod}};
+  if (auto iter = symbols.find(tk); iter != symbols.end()) {
+    binop->op = iter->second;
   }
+
+  return binop;
 }
 
 std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
