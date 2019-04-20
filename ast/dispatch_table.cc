@@ -12,6 +12,7 @@
 #include "backend/eval.h"
 #include "base/expected.h"
 #include "core/scope.h"
+#include "ir/block.h"
 #include "ir/cmd.h"
 #include "ir/components.h"
 #include "ir/func.h"
@@ -320,7 +321,29 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                 &fn_type->as<type::Function>(),
                                 backend::EvaluateAs<ir::AnyFunc>(fn_lit, ctx)};
     } else {
+      base::Log() << result.type_->to_string();
+      if (result.type_->is<type::Block>() || result.type_ == type::OptBlock ||
+          result.type_ == type::RepBlock) {
+        ir::Block b = backend::EvaluateAs<ir::Block>(overload.expr, ctx);
+        // TODO each of these is wrong (e.g., not taking parameters?
+        if (b == ir::Block::Start()) {
+          return DispatchTable::Row{core::FnParams<type::Typed<Expression *>>{},
+                                    type::Func({}, {}), nullptr};
+
+        } else if (b == ir::Block::Exit()) {
+          return DispatchTable::Row{core::FnParams<type::Typed<Expression *>>{},
+                                    type::Func({}, {}),
+                                    reinterpret_cast<Expression *>(0x1)};
+
+        } else {
+          return DispatchTable::Row{core::FnParams<type::Typed<Expression *>>{},
+                                    type::Func({}, {}),
+                                    const_cast<ast::BlockLiteral *>(b.get())};
+        }
+      }
+
       ir::AnyFunc fn = backend::EvaluateAs<ir::AnyFunc>(overload.expr, ctx);
+
       if (fn.is_fn()) {
         return DispatchTable::Row{fn.func()->params_, fn.func()->type_, fn};
       } else {

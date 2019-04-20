@@ -98,7 +98,6 @@ void ScopeLiteral::ExtractJumps(JumpExprs *rets) const {
 }
 
 ir::Results ScopeLiteral::EmitIr(Context *ctx) {
-  for (auto &decl : decls_) { decl.EmitIr(ctx); }
   return ir::Results{this};
 }
 

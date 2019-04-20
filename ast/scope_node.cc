@@ -58,6 +58,17 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
     return VerifyResult::Error();
   }
 
+  auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
+  OverloadSet init_os;
+  for (auto &decl : scope_lit->decls_) {
+    if (decl.id_ == "init") {
+      init_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
+    }
+  }
+
+  ASSIGN_OR(return _, std::ignore,
+                   VerifyDispatch(this, init_os, /* TODO */ {}, ctx));
+
   // TODO
   for (auto &block_node : blocks_) { block_node.stmts_.VerifyType(ctx); }
 
@@ -78,7 +89,11 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   base::defer d([&]() { ctx->yields_stack_.pop_back(); });
 
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
+  base::Log() << scope_lit->to_string(0);
 
+  auto *dispatch_table = ASSERT_NOT_NULL(ctx->dispatch_table(this));
+
+  base::Log() << "****";
   auto init_block = ir::Func::Current->AddBlock();
   auto land_block = ir::Func::Current->AddBlock();
 
@@ -172,9 +187,9 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     }
   });
 
-  auto [dispatch_table, result_type] =
+  auto [dispatch__table, result_type] =
       DispatchTable::Make(typed_args, init_os, ctx);
-  auto block_seq = dispatch_table.EmitCall(ir_args, result_type, ctx)
+  auto block_seq = dispatch__table.EmitCall(ir_args, result_type, ctx)
                        .get<ir::BlockSequence>(0);
   ir::BlockSeqJump(block_seq, jump_table);
 
@@ -189,11 +204,11 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
       before_args.pos_emplace(state_id, ir::Results{alloc});
       before_expr_args.pos_emplace(state_id, state_ptr_type);
     }
-    auto [dispatch_table, result_type] =
+    auto [dispatch__table, result_type] =
         DispatchTable::Make(before_expr_args, data.before_os_, ctx);
 
     // TODO args?
-    dispatch_table.EmitCall(before_args, result_type, ctx);
+    dispatch__table.EmitCall(before_args, result_type, ctx);
 
     block.EmitIr(ctx);
     auto yields = std::move(ctx->yields_stack_.back());
@@ -209,10 +224,10 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
       after_args.pos_emplace(yield.expr_, yield.val_);
     }
 
-    std::tie(dispatch_table, result_type) =
+    std::tie(dispatch__table, result_type) =
         DispatchTable::Make(after_expr_args, data.after_os_, ctx);
     auto call_exit_result =
-        dispatch_table.EmitCall(after_args, result_type, ctx)
+        dispatch__table.EmitCall(after_args, result_type, ctx)
             .get<ir::BlockSequence>(0);
 
     ir::BlockSeqJump(call_exit_result, jump_table);
@@ -234,10 +249,10 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
       args.pos_emplace(state_id, ir::Results{alloc});
       expr_args.pos_emplace(state_id, state_ptr_type);
     }
-    std::tie(dispatch_table, result_type) =
+    std::tie(dispatch__table, result_type) =
         DispatchTable::Make(expr_args, done_os, ctx);
 
-    auto results = dispatch_table.EmitCall(args, result_type, ctx);
+    auto results = dispatch__table.EmitCall(args, result_type, ctx);
     if (scope_lit->stateful_) { state_type->EmitDestroy(alloc, ctx); }
     return results;
   }

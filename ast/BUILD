@@ -151,6 +151,7 @@ cc_target(
         ":literal",
     ],
     impl_deps = [
+        "//ir:block",
         "//misc:context",
         "//core:scope",
         "//type:function",
@@ -293,6 +294,7 @@ cc_target(
         "//ast:match_declaration",
         "//backend:eval",
         "//misc:context",
+        "//ir:block",
         "//ir:cmd",
         "//ir:components",
         "//ir:func",
