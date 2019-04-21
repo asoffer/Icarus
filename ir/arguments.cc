@@ -1,6 +1,6 @@
 #include "ir/arguments.h"
 
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "core/arch.h"
 #include "type/callable.h"
 #include "type/function.h"
@@ -32,7 +32,7 @@ void Arguments::append(Results val) {
 }
 
 base::untyped_buffer Arguments::PrepareCallBuffer(
-    ir::Func *fn, base::untyped_buffer const &regs) {
+    ir::CompiledFn *fn, base::untyped_buffer const &regs) {
   // TODO we can compute the exact required size.
   base::untyped_buffer call_buf(32);
 

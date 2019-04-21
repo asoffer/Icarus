@@ -48,10 +48,10 @@ struct Tuple : public Type {
 
   std::vector<Type const *> entries_;
 
-  base::lazy<ir::Func *> destroy_func_;
-  base::lazy<ir::Func *> init_func_;
-  base::lazy<ir::Func *> copy_assign_func_;
-  base::lazy<ir::Func *> move_assign_func_;
+  base::lazy<ir::CompiledFn *> destroy_func_;
+  base::lazy<ir::CompiledFn *> init_func_;
+  base::lazy<ir::CompiledFn *> copy_assign_func_;
+  base::lazy<ir::CompiledFn *> move_assign_func_;
 };
 
 Type const *Tup(std::vector<Type const *> entries);

@@ -32,8 +32,9 @@ static std::unique_ptr<PhiArgs<T>> MakePhiArgs(
 CmdIndex Phi(type::Type const *t) {
   CmdIndex cmd_index{
       BasicBlock::Current,
-      static_cast<int32_t>(Func::Current->block(BasicBlock::Current).cmds_.size())};
-  ASSERT_NOT_NULL(Func::Current)
+      static_cast<int32_t>(
+          CompiledFn::Current->block(BasicBlock::Current).cmds_.size())};
+  ASSERT_NOT_NULL(CompiledFn::Current)
       ->block(BasicBlock::Current)
       .cmds_.emplace_back(t, Op::Death);
   return cmd_index;
@@ -41,7 +42,7 @@ CmdIndex Phi(type::Type const *t) {
 
 ir::Results MakePhi(type::Type const *t, CmdIndex phi_index,
             absl::flat_hash_map<BlockIndex, ir::Results> const &val_map) {
-  auto &cmd = ir::Func::Current->Command(phi_index);
+  auto &cmd = ir::CompiledFn::Current->Command(phi_index);
 
   if (t->is_big()) {
     return ir::Results{
@@ -68,7 +69,7 @@ ir::Results MakePhi(type::Type const *t, CmdIndex phi_index,
       auto phi_args  = MakePhiArgs<BlockSequence>(val_map);
       cmd.op_code_   = Op::PhiBlock;
       cmd.phi_block_ = phi_args.get();
-      ir::Func::Current->block(BasicBlock::Current)
+      ir::CompiledFn::Current->block(BasicBlock::Current)
           .phi_args_.push_back(std::move(phi_args));
       return Results{cmd.result};
     } else {

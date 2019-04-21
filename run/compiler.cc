@@ -5,7 +5,7 @@
 #include <vector>
 #include "base/untyped_buffer.h"
 #include "base/util.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "misc/module.h"
 
@@ -18,7 +18,7 @@
 std::vector<std::string> files;
 
 // TODO sad. don't use a global to do this.
-extern ir::Func *main_fn;
+extern ir::CompiledFn *main_fn;
 
 extern std::atomic<bool> found_errors;
 

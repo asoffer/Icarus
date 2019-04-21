@@ -6,7 +6,7 @@
 #include "ir/any_func.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "ir/phi.h"
 #include "core/arch.h"
 #include "misc/context.h"
@@ -21,16 +21,16 @@ static void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
                        std::tuple<ir::RegisterOr<Ts>...> entry_vals) {
   auto entry_block = ir::BasicBlock::Current;
 
-  auto loop_phi   = ir::Func::Current->AddBlock();
-  auto loop_body  = ir::Func::Current->AddBlock();
-  auto exit_block = ir::Func::Current->AddBlock();
+  auto loop_phi   = ir::CompiledFn::Current->AddBlock();
+  auto loop_body  = ir::CompiledFn::Current->AddBlock();
+  auto exit_block = ir::CompiledFn::Current->AddBlock();
 
   ir::UncondJump(loop_phi);
   ir::BasicBlock::Current = loop_phi;
 
   auto phi_indices = base::tuple::transform(ir::Phi, types);
   auto phi_vals    = base::tuple::transform(
-      [](auto &&val) { return ir::Func::Current->Command(val).result; },
+      [](auto &&val) { return ir::CompiledFn::Current->Command(val).result; },
       phi_indices);
 
   auto exit_cond = std::forward<LoopPhiFn>(loop_phi_fn)(phi_vals);
@@ -54,10 +54,10 @@ static void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
 namespace type {
 
 static base::guarded<absl::flat_hash_map<
-    Array const *, absl::flat_hash_map<Array const *, ir::Func *>>>
+    Array const *, absl::flat_hash_map<Array const *, ir::CompiledFn *>>>
     eq_funcs;
 static base::guarded<absl::flat_hash_map<
-    Array const *, absl::flat_hash_map<Array const *, ir::Func *>>>
+    Array const *, absl::flat_hash_map<Array const *, ir::CompiledFn *>>>
     ne_funcs;
 // TODO this should early exit if the types aren't equal.
 ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
@@ -77,12 +77,12 @@ ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
 
-      auto equal_len_block = ir::Func::Current->AddBlock();
-      auto true_block      = ir::Func::Current->AddBlock();
-      auto false_block     = ir::Func::Current->AddBlock();
-      auto phi_block       = ir::Func::Current->AddBlock();
-      auto body_block      = ir::Func::Current->AddBlock();
-      auto incr_block      = ir::Func::Current->AddBlock();
+      auto equal_len_block = ir::CompiledFn::Current->AddBlock();
+      auto true_block      = ir::CompiledFn::Current->AddBlock();
+      auto false_block     = ir::CompiledFn::Current->AddBlock();
+      auto phi_block       = ir::CompiledFn::Current->AddBlock();
+      auto body_block      = ir::CompiledFn::Current->AddBlock();
+      auto incr_block      = ir::CompiledFn::Current->AddBlock();
 
       ir::CondJump(ir::Eq(lhs_type->len, rhs_type->len), equal_len_block,
                    false_block);
@@ -105,8 +105,8 @@ ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
       ir::BasicBlock::Current = phi_block;
       auto lhs_phi_index      = ir::Phi(Ptr(lhs_type->data_type));
       auto rhs_phi_index      = ir::Phi(Ptr(rhs_type->data_type));
-      auto lhs_phi_reg = ir::Func::Current->Command(lhs_phi_index).result;
-      auto rhs_phi_reg = ir::Func::Current->Command(rhs_phi_index).result;
+      auto lhs_phi_reg = ir::CompiledFn::Current->Command(lhs_phi_index).result;
+      auto rhs_phi_reg = ir::CompiledFn::Current->Command(rhs_phi_index).result;
 
       ir::CondJump(ir::Eq(ir::RegisterOr<ir::Addr>(lhs_phi_reg), lhs_end),
                    true_block, body_block);
@@ -151,7 +151,7 @@ void Array::defining_modules(
 }
 
 template <SpecialFunctionCategory Cat>
-static ir::Func *CreateAssign(Array const *a, Context *ctx) {
+static ir::CompiledFn *CreateAssign(Array const *a, Context *ctx) {
   Pointer const *ptr_type = Ptr(a);
   auto *data_ptr_type     = Ptr(a->data_type);
   auto *fn                = ctx->mod_->AddFunc(
@@ -215,7 +215,7 @@ void Array::EmitMoveAssign(Type const *from_type, ir::Results const &from,
 }
 
 template <typename F>
-static void OnEachElement(Array const *t, ir::Func *fn, F &&fn_to_apply) {
+static void OnEachElement(Array const *t, ir::CompiledFn *fn, F &&fn_to_apply) {
   CURRENT_FUNC(fn) {
     ir::BasicBlock::Current = fn->entry();
     auto *data_ptr_type     = Ptr(t->data_type);
@@ -274,7 +274,7 @@ void Array::EmitDestroy(ir::Reg reg, Context *ctx) const {
 void Array::EmitRepr(ir::Results const &val, Context *ctx) const {
   repr_func_.init([this, ctx]() {
     // TODO special function?
-    ir::Func *fn = ctx->mod_->AddFunc(
+    ir::CompiledFn *fn = ctx->mod_->AddFunc(
         Func({this}, {}), core::FnParams(core::Param{
                               "", Typed<ast::Expression *>{nullptr, this}}));
 

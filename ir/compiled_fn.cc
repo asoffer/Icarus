@@ -1,20 +1,20 @@
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 
 #include "ast/function_literal.h"
-#include "ir/arguments.h"
 #include "core/arch.h"
+#include "ir/arguments.h"
 #include "property/property.h"
 #include "property/property_map.h"
 #include "type/function.h"
 #include "type/pointer.h"
 
 namespace ir {
-thread_local Func *Func::Current{nullptr};
+thread_local CompiledFn *CompiledFn::Current{nullptr};
 
-Reg Func::Argument(uint32_t n) const { return Reg(n); }
+Reg CompiledFn::Argument(uint32_t n) const { return Reg(n); }
 
-Func::Func(Module *mod, type::Function const *fn_type,
-           core::FnParams<type::Typed<ast::Expression *>> params)
+CompiledFn::CompiledFn(Module *mod, type::Function const *fn_type,
+                       core::FnParams<type::Typed<ast::Expression *>> params)
     : type_(fn_type),
       params_(std::move(params)),
       num_regs_(
@@ -27,7 +27,7 @@ Func::Func(Module *mod, type::Function const *fn_type,
   }
 
   auto arch = core::Interpretter();
-  int32_t i     = 0;
+  int32_t i = 0;
   for (auto *t : type_->input) {
     auto entry = core::Bytes{0};
     if (t->is_big()) {
@@ -40,12 +40,13 @@ Func::Func(Module *mod, type::Function const *fn_type,
         entry + (t->is_big() ? core::Bytes{sizeof(Addr)} : t->bytes(arch));
   }
 
-  ASSERT(params_.size() == fn_type->input.size()); // TODO is this still true with variadics?
+  ASSERT(params_.size() ==
+         fn_type->input.size());  // TODO is this still true with variadics?
   blocks_.emplace_back(this);
 }
 
 absl::flat_hash_map<BasicBlock const *, absl::flat_hash_set<BasicBlock const *>>
-Func::GetIncomingBlocks() const {
+CompiledFn::GetIncomingBlocks() const {
   absl::flat_hash_map<BasicBlock const *,
                       absl::flat_hash_set<BasicBlock const *>>
       incoming;
@@ -65,22 +66,22 @@ Func::GetIncomingBlocks() const {
   return incoming;
 }
 
-Cmd const *Func::Command(Reg reg) const {
+Cmd const *CompiledFn::Command(Reg reg) const {
   auto iter = reg_to_cmd_.find(reg);
   if (iter == reg_to_cmd_.end()) { return nullptr; }
   return &Command(iter->second);
 }
 
-static std::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
-    ir::Func *fn, std::vector<ast::Expression *> const &exprs) {
-  std::vector<std::pair<ir::Func, prop::PropertyMap>> result;
+static std::vector<std::pair<ir::CompiledFn, prop::PropertyMap>> InvariantsFor(
+    ir::CompiledFn *fn, std::vector<ast::Expression *> const &exprs) {
+  std::vector<std::pair<ir::CompiledFn, prop::PropertyMap>> result;
   // TODO
   // Reserve to guarantee pointer stability.
   // for (auto const &expr : exprs) {
   //   auto &[func, prop_map] = result.emplace_back(
   //       std::piecewise_construct,
   //       std::forward_as_tuple(
-  //           fn->mod_, type::Func(fn->type_->input, {type::Bool}),
+  //           fn->mod_, type::CompiledFn(fn->type_->input, {type::Bool}),
   //           fn->params_),
   //       core::FnParams<ast::Expression *>{});
 
@@ -96,12 +97,12 @@ static std::vector<std::pair<ir::Func, prop::PropertyMap>> InvariantsFor(
   return result;
 }
 
-void Func::ComputeInvariants() {
+void CompiledFn::ComputeInvariants() {
   preconditions_  = InvariantsFor(this, precondition_exprs_);
   postconditions_ = InvariantsFor(this, postcondition_exprs_);
 }
 
-void Func::CheckInvariants() {
+void CompiledFn::CheckInvariants() {
   std::vector<std::pair<BasicBlock const *, ir::Cmd const *>> cmds;
   for (const auto &block : blocks_) {
     for (const auto &cmd : block.cmds_) {
@@ -139,7 +140,7 @@ void Func::CheckInvariants() {
   }
 }
 
-std::ostream &operator<<(std::ostream &os, ir::Func const &f) {
+std::ostream &operator<<(std::ostream &os, ir::CompiledFn const &f) {
   os << "\n" << f.name() << ": " << f.type_->to_string();
   for (size_t i = 0; i < f.blocks_.size(); ++i) {
     os << "\n block #" << i << "\n" << f.blocks_[i];
@@ -147,7 +148,7 @@ std::ostream &operator<<(std::ostream &os, ir::Func const &f) {
   return os;
 }
 
-std::string Func::name() const {
+std::string CompiledFn::name() const {
   std::stringstream ss;
   ss << this;
   return ss.str();

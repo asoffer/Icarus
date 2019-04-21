@@ -8,10 +8,10 @@ cc_lib(
         ":arguments-impl",
         ":builtin-impl",
         ":cmd-impl",
+        ":compiled_fn-impl",
         ":components-impl",
         ":flags_val-impl",
         ":foreign-impl",
-        ":func-impl",
         ":out_params-impl",
         ":phi-impl",
         ":results-impl",
@@ -45,7 +45,7 @@ cc_target(
         "//type:util",
     ],
     impl_deps = [
-        ":func",
+        ":compiled_fn",
         "//core:arch",
     ],
 )
@@ -71,7 +71,7 @@ cc_target(
     textual_hdrs = ["builtin.xmacro.h"],
     impl_deps = [
         ":any_func",
-        ":func",
+        ":compiled_fn",
         "//base:debug",
     ],
 )
@@ -86,7 +86,7 @@ cc_target(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
-        ":func",
+        ":compiled_fn",
         ":phi",
         "//ast:struct_literal",
         "//core:arch",
@@ -98,7 +98,7 @@ cc_target(
 cc_target(
     name = "components",
     intf_deps = [
-        ":func",
+        ":compiled_fn",
         ":register",
     ],
     impl_deps = [],
@@ -120,7 +120,7 @@ cc_target(
 )
 
 cc_target(
-    name = "func",
+    name = "compiled_fn",
     intf_deps = [
         "//ast:function_literal",
         "//base:bag",
@@ -151,7 +151,7 @@ cc_target(
 cc_target(
     name = "phi",
     intf_deps = [
-        ":func",
+        ":compiled_fn",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [

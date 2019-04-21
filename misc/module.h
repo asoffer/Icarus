@@ -34,7 +34,7 @@ struct Function;
 }  // namespace type
 
 namespace ir {
-struct Func;
+struct CompiledFn;
 }  // namespace ir
 
 namespace ast {
@@ -55,7 +55,7 @@ struct Module {
       error::Log *log, std::filesystem::path const &src,
       std::filesystem::path const &requestor = std::filesystem::path{""});
 
-  ir::Func *AddFunc(type::Function const *fn_type,
+  ir::CompiledFn *AddFunc(type::Function const *fn_type,
                     core::FnParams<type::Typed<ast::Expression *>> params);
   type::Type const *GetType(std::string const &name) const;
   ast::Declaration *GetDecl(std::string const &name) const;
@@ -77,7 +77,7 @@ struct Module {
   std::unique_ptr<llvm::Module> llvm_;
 #endif  // ICARUS_USE_LLVM
 
-  std::vector<std::unique_ptr<ir::Func>> fns_;
+  std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
 
   // TODO support more than just a single type argument to generic structs.
   struct GenericStructCache {
@@ -95,7 +95,7 @@ struct Module {
     absl::flat_hash_map<ast::Declaration *, ir::Reg> addr_;
 
     // TODO probably make these funcs constant.
-    absl::node_hash_map<ast::Expression const *, ir::Func *> ir_funcs_;
+    absl::node_hash_map<ast::Expression const *, ir::CompiledFn *> ir_funcs_;
 
     // TODO future optimization: the bool determining if it's const is not
     // dependent and can therefore be stored more efficiently (though querying

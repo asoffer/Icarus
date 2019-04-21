@@ -8,7 +8,7 @@
 #include "architecture.h"
 #include "ast/function_literal.h"
 #include "base/check.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "llvm/ir/DerivedTypes.h"
 #include "llvm/ir/IRBuilder.h"
 #include "llvm/ir/Module.h"
@@ -96,7 +96,7 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
                 llvm_data->module->getContext(),
                 llvm::APInt(64, reinterpret_cast<uintptr_t>(t), false));
           },
-          [&](ir::Func *f) -> llvm::Value * {
+          [&](ir::CompiledFn *f) -> llvm::Value * {
             return llvm_data->module->getOrInsertFunction(
                 f->name(), f->type_->llvm_fn(llvm_data->module->getContext()));
           },
@@ -397,7 +397,7 @@ static llvm::Value *EmitCmd(const type::Function *fn_type, LlvmData *llvm_data,
   UNREACHABLE();
 }
 
-void EmitAll(const std::vector<std::unique_ptr<ir::Func>> &fns,
+void EmitAll(const std::vector<std::unique_ptr<ir::CompiledFn>> &fns,
              llvm::Module *module) {
   auto &ctx = module->getContext();
   llvm::IRBuilder<> builder(ctx);

@@ -10,19 +10,19 @@
 #include "cmd.h"
 
 namespace ir {
-struct Func;
+struct CompiledFn;
 
 struct BasicBlock {
   static thread_local BlockIndex Current;
   BasicBlock()                    = delete;
   BasicBlock(const BasicBlock &&) = delete;
   BasicBlock(BasicBlock &&)       = default;
-  BasicBlock(Func *fn) : fn_(fn) {}
+  BasicBlock(CompiledFn *fn) : fn_(fn) {}
 
   BasicBlock &operator=(BasicBlock &&) = default;
   BasicBlock &operator=(const BasicBlock &) = delete;
 
-  Func *fn_;  // Containing function
+  CompiledFn *fn_;  // Containing function
   std::vector<BlockIndex> incoming_blocks_;
   std::vector<Cmd> cmds_;
 

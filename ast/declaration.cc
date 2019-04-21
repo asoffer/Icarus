@@ -4,7 +4,7 @@
 #include "ast/function_literal.h"
 #include "backend/eval.h"
 #include "error/inference_failure_reason.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "misc/module.h"
 #include "type/cast.h"
 #include "type/typed_value.h"

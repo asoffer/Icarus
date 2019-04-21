@@ -25,11 +25,11 @@ struct Array : public Type {
   size_t len;
   Type const *data_type;
 
-  base::lazy<ir::Func *> copy_assign_func_;
-  base::lazy<ir::Func *> move_assign_func_;
-  base::lazy<ir::Func *> init_func_;
-  base::lazy<ir::Func *> destroy_func_;
-  base::lazy<ir::Func *> repr_func_;
+  base::lazy<ir::CompiledFn *> copy_assign_func_;
+  base::lazy<ir::CompiledFn *> move_assign_func_;
+  base::lazy<ir::CompiledFn *> init_func_;
+  base::lazy<ir::CompiledFn *> destroy_func_;
+  base::lazy<ir::CompiledFn *> repr_func_;
 };
 
 Array const *Arr(size_t len, Type const *t);

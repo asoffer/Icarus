@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_FUNC_H
-#define ICARUS_IR_FUNC_H
+#ifndef ICARUS_IR_COMPILED_FN_H
+#define ICARUS_IR_COMPILED_FN_H
 
 #include <vector>
 
@@ -38,11 +38,11 @@ inline bool operator<(CmdIndex lhs, CmdIndex rhs) {
   return lhs.cmd < rhs.cmd;
 }
 
-struct Func {
-  static thread_local Func *Current;
+struct CompiledFn {
+  static thread_local CompiledFn *Current;
 
-  Func(Module *mod, type::Function const *fn_type,
-       core::FnParams<type::Typed<ast::Expression *>> params);
+  CompiledFn(Module *mod, type::Function const *fn_type,
+             core::FnParams<type::Typed<ast::Expression *>> params);
 
   Reg Argument(uint32_t n) const;
 
@@ -57,7 +57,7 @@ struct Func {
   }
   BasicBlock &block(BlockIndex index) {
     return const_cast<BasicBlock &>(
-        static_cast<const Func *>(this)->block(index));
+        static_cast<CompiledFn const *>(this)->block(index));
   }
 
   Cmd const &Command(CmdIndex cmd_index) const {
@@ -68,7 +68,7 @@ struct Func {
 
   Cmd &Command(CmdIndex cmd_index) {
     return const_cast<Cmd &>(
-        static_cast<const Func *>(this)->Command(cmd_index));
+        static_cast<CompiledFn const *>(this)->Command(cmd_index));
   }
 
   static BlockIndex AddBlock() {
@@ -82,8 +82,8 @@ struct Func {
 
   type::Function const *const type_ = nullptr;
   core::FnParams<type::Typed<ast::Expression *>> params_;
-  
-  int32_t num_regs_  = 0;
+
+  int32_t num_regs_ = 0;
   std::vector<BasicBlock> blocks_;
   std::function<void()> *work_item = nullptr;
 #ifdef ICARUS_USE_LLVM
@@ -95,7 +95,7 @@ struct Func {
   core::Bytes reg_size_ = core::Bytes{0};
 
   std::vector<ast::Expression *> precondition_exprs_, postcondition_exprs_;
-  std::vector<std::pair<ir::Func, prop::PropertyMap>> preconditions_,
+  std::vector<std::pair<ir::CompiledFn, prop::PropertyMap>> preconditions_,
       postconditions_;
   absl::flat_hash_map<Reg, base::bag<Reg>> references_;
   absl::flat_hash_map<Reg, CmdIndex> reg_to_cmd_;
@@ -110,22 +110,22 @@ struct Func {
   std::vector<size_t> compiler_reg_to_offset_;
 };
 
-static_assert(alignof(Func) > 1);
+static_assert(alignof(CompiledFn) > 1);
 
-std::ostream &operator<<(std::ostream &, ir::Func const &);
+std::ostream &operator<<(std::ostream &, ir::CompiledFn const &);
 
 namespace internal {
 struct FuncResetter {
-  FuncResetter(Func *fn)
-      : old_fn_(Func::Current), old_block_(BasicBlock::Current) {
-    Func::Current = fn;
+  FuncResetter(CompiledFn *fn)
+      : old_fn_(CompiledFn::Current), old_block_(BasicBlock::Current) {
+    CompiledFn::Current = fn;
   }
   ~FuncResetter() {
-    Func::Current       = old_fn_;
+    CompiledFn::Current = old_fn_;
     BasicBlock::Current = old_block_;
   }
 
-  Func *old_fn_;
+  CompiledFn *old_fn_;
   BlockIndex old_block_;
 };
 }  // namespace internal
@@ -133,4 +133,4 @@ struct FuncResetter {
 
 #define CURRENT_FUNC(fn) if (ir::internal::FuncResetter resetter(fn); true)
 
-#endif  // ICARUS_IR_FUNC_H
+#endif  // ICARUS_IR_COMPILED_FN_H

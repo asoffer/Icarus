@@ -81,7 +81,7 @@ cc_target(
         "//backend:eval",
         "//base:guarded",
         "//frontend:source",
-        "//ir:func",
+        "//ir:compiled_fn",
         "//type:function",
     ],
 )

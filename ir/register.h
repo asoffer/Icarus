@@ -77,7 +77,6 @@ struct hash<ir::Reg> {
 }  // namespace std
 
 namespace ir {
-struct Func;
 
 struct BlockSequence {
   std::vector<ast::BlockLiteral *> const *seq_;

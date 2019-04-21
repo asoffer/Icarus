@@ -13,12 +13,12 @@
 namespace ir {
 struct Arguments;
 struct BasicBlock;
-struct Func;
+struct CompiledFn;
 }  // namespace ir
 
 namespace prop {
 struct FnStateView {
-  FnStateView(ir::Func *fn);
+  FnStateView(ir::CompiledFn *fn);
 
   absl::flat_hash_map<ir::Reg, PropertySet> view_;
 };
@@ -57,7 +57,7 @@ struct hash<prop::Entry> {
 namespace prop {
 struct PropertyMap {
   PropertyMap() = default;
-  PropertyMap(ir::Func *fn);
+  PropertyMap(ir::CompiledFn *fn);
   PropertyMap(const PropertyMap &p) = default;
   PropertyMap &operator=(const PropertyMap &p) = default;
   PropertyMap(PropertyMap &&p) noexcept        = default;
@@ -86,7 +86,7 @@ struct PropertyMap {
     return view_.at(viewing_block).view_.at(reg);
   }
 
-  ir::Func *fn_ = nullptr;
+  ir::CompiledFn *fn_ = nullptr;
   absl::flat_hash_map<const ir::BasicBlock *, FnStateView> view_;
 
  private:

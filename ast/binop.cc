@@ -5,7 +5,7 @@
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "ir/phi.h"
 #include "misc/context.h"
 #include "type/array.h"
@@ -362,8 +362,8 @@ ir::Results Binop::EmitIr(Context *ctx) {
                   lhs_lval);
         return ir::Results{};
       }
-      auto land_block = ir::Func::Current->AddBlock();
-      auto more_block = ir::Func::Current->AddBlock();
+      auto land_block = ir::CompiledFn::Current->AddBlock();
+      auto more_block = ir::CompiledFn::Current->AddBlock();
 
       auto lhs_val       = lhs->EmitIr(ctx).get<bool>(0);
       auto lhs_end_block = ir::BasicBlock::Current;
@@ -391,8 +391,8 @@ ir::Results Binop::EmitIr(Context *ctx) {
         return ir::Results{};
       }
 
-      auto land_block = ir::Func::Current->AddBlock();
-      auto more_block = ir::Func::Current->AddBlock();
+      auto land_block = ir::CompiledFn::Current->AddBlock();
+      auto more_block = ir::CompiledFn::Current->AddBlock();
 
       auto lhs_val       = lhs->EmitIr(ctx).get<bool>(0);
       auto lhs_end_block = ir::BasicBlock::Current;

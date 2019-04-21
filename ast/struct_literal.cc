@@ -5,7 +5,7 @@
 #include "backend/exec.h"
 #include "base/untyped_buffer.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
 #include "type/pointer.h"
@@ -128,7 +128,7 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
   //
   // For now, it's safe to do this from within a single module compilation
   // (which is single-threaded).
-  ir::Func *&ir_func = ctx->constants_->second.ir_funcs_[this];
+  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[this];
   if (!ir_func) {
     auto &work_item = ctx->mod_->deferred_work_.emplace(
         [constants{ctx->constants_}, this, mod{ctx->mod_}]() mutable {
@@ -156,7 +156,7 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
 }
 
 void StructLiteral::CompleteBody(Context *ctx) {
-  ir::Func *&ir_func = ctx->constants_->second.ir_funcs_[this];
+  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[this];
   for (size_t i = 0; i < args_.size(); ++i) {
     ctx->set_addr(&args_[i], ir_func->Argument(i));
   }
@@ -166,7 +166,7 @@ void StructLiteral::CompleteBody(Context *ctx) {
     auto cache_slot_addr    = ir::ArgumentCache(this);
     auto cache_slot         = ir::Load<type::Type const *>(cache_slot_addr);
 
-    auto land_block         = ir::Func::Current->AddBlock();
+    auto land_block         = ir::CompiledFn::Current->AddBlock();
     ir::BasicBlock::Current = ir::EarlyExitOn<false>(
         land_block,
         ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));

@@ -2,7 +2,7 @@
 
 #include "base/debug.h"
 #include "ir/any_func.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "type/type.h"
 
 namespace ir {
@@ -30,8 +30,8 @@ std::string stringify(Builtin b) {
 }
 
 AnyFunc DebugIrFn() {
-  static Func *debug_ir_func_ = []() {
-    auto fn = new Func(nullptr, type::Func({}, {}),
+  static CompiledFn *debug_ir_func_ = []() {
+    auto fn = new CompiledFn(nullptr, type::Func({}, {}),
                        core::FnParams<type::Typed<ast::Expression *>>{});
     CURRENT_FUNC(fn) {
       BasicBlock::Current = fn->entry();
@@ -44,8 +44,8 @@ AnyFunc DebugIrFn() {
 }
 
 AnyFunc BytesFn() {
-  static Func *bytes_func_ = [&]() {
-    auto fn = new Func(
+  static CompiledFn *bytes_func_ = [&]() {
+    auto fn = new CompiledFn(
         nullptr, type::Func({type::Type_}, {type::Int64}),
         core::FnParams(core::Param(
             "", type::Typed<ast::Expression *>(nullptr, type::Type_))));
@@ -60,8 +60,8 @@ AnyFunc BytesFn() {
 }
 
 AnyFunc AlignmentFn() {
-  static Func *bytes_func_ = [&]() {
-    auto fn = new Func(
+  static CompiledFn *bytes_func_ = [&]() {
+    auto fn = new CompiledFn(
         nullptr, type::Func({type::Type_}, {type::Int64}),
         core::FnParams(core::Param(
             "", type::Typed<ast::Expression *>(nullptr, type::Type_))));

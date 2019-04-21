@@ -21,7 +21,7 @@ struct Arguments {
   void append(ir::Results val);
   void append(RegisterOr<Addr> reg);
   std::string to_string() const;
-  base::untyped_buffer PrepareCallBuffer(ir::Func *fn,
+  base::untyped_buffer PrepareCallBuffer(ir::CompiledFn *fn,
                                          base::untyped_buffer const &regs);
 
   type::Callable const *type_ = nullptr;

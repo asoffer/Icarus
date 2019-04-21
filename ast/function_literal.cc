@@ -9,7 +9,7 @@
 #include "ast/terminal.h"
 #include "backend/eval.h"
 #include "error/log.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
@@ -285,7 +285,7 @@ ir::Results FunctionLiteral::EmitIr(Context *ctx) {
   }
 
   // TODO Use correct constants
-  ir::Func *&ir_func = ctx->constants_->second.ir_funcs_[this];
+  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[this];
   if (!ir_func ) {
     std::function<void()> *work_item_ptr = nullptr;
     if (should_complete_body_) {
@@ -317,18 +317,18 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
 
   auto *t = ctx->type_of(this);
 
-  ir::Func *&ir_func = ctx->constants_->second.ir_funcs_[this];
+  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[this];
 
   CURRENT_FUNC(ir_func) {
     ir::BasicBlock::Current = ir_func->entry();
     // Leave space for allocas that will come later (added to the entry
     // block).
-    auto start_block        = ir::Func::Current->AddBlock();
+    auto start_block        = ir::CompiledFn::Current->AddBlock();
     ir::BasicBlock::Current = start_block;
 
     // TODO arguments should be renumbered to not waste space on const values
     for (int32_t i = 0; i < static_cast<int32_t>(inputs_.size()); ++i) {
-      ctx->set_addr(inputs_.at(i).value.get(), ir::Func::Current->Argument(i));
+      ctx->set_addr(inputs_.at(i).value.get(), ir::CompiledFn::Current->Argument(i));
     }
 
     fn_scope_->MakeAllStackAllocations(ctx);

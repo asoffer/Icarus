@@ -15,7 +15,7 @@
 #include "ir/block.h"
 #include "ir/cmd.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "ir/phi.h"
 #include "misc/context.h"
 #include "misc/module.h"
@@ -467,7 +467,7 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Reg needle,
     // TODO I'm fairly confident this will work, but it's also overkill because
     // we may already know this type matches if one variant is a subset of the
     // other.
-    auto landing = ir::Func::Current->AddBlock();
+    auto landing = ir::CompiledFn::Current->AddBlock();
 
     absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_map;
     for (type::Type const *v : haystack_var->variants_) {
@@ -494,7 +494,7 @@ static ir::BlockIndex EmitDispatchTest(
     core::FnParams<type::Typed<ast::Expression *>> const &params,
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
     Context *ctx) {
-  auto next_binding = ir::Func::Current->AddBlock();
+  auto next_binding = ir::CompiledFn::Current->AddBlock();
 
   for (size_t i = 0; i < params.size(); ++i) {
     const auto &param = params.at(i);
@@ -553,7 +553,7 @@ static void EmitOneCall(
 
   ir::OutParams out_params;
 
-  auto call_block = ir::Func::Current->AddBlock();
+  auto call_block = ir::CompiledFn::Current->AddBlock();
 
   size_t j = 0;
   for (type::Type const *ret_type : row.type->output) {
@@ -590,7 +590,7 @@ static void EmitOneCall(
   if constexpr (Inline) {
     ASSERT(fn.is_reg_ == false);
     ASSERT(fn.val_.is_fn() == true);
-    base::Log() << *ir::Func::Current;
+    base::Log() << *ir::CompiledFn::Current;
     base::Log() << *fn.val_.func();
     static_cast<void>(fn);
     NOT_YET();
@@ -605,7 +605,7 @@ static ir::Results EmitFnCall(
     DispatchTable const *table,
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
     Context *ctx) {
-  auto landing_block = ir::Func::Current->AddBlock();
+  auto landing_block = ir::CompiledFn::Current->AddBlock();
 
   // If an output to the function fits in a register we will create a phi node
   // for it on the landing block. Otherwise, we'll temporarily allocate stack

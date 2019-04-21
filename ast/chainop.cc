@@ -4,7 +4,7 @@
 
 #include "core/fn_args.h"
 #include "ast/overload_set.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "ir/phi.h"
 #include "misc/context.h"
 #include "type/array.h"
@@ -365,14 +365,14 @@ ir::Results ChainOp::EmitIr(Context *ctx) {
     NOT_YET();
   } else if (ops[0] == frontend::Operator::And ||
              ops[0] == frontend::Operator::Or) {
-    auto land_block = ir::Func::Current->AddBlock();
+    auto land_block = ir::CompiledFn::Current->AddBlock();
 
     absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
     bool is_or = (ops[0] == frontend::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       auto val = exprs[i]->EmitIr(ctx).get<bool>(0);
 
-      auto next_block = ir::Func::Current->AddBlock();
+      auto next_block = ir::CompiledFn::Current->AddBlock();
       ir::CondJump(val, is_or ? land_block : next_block,
                    is_or ? next_block : land_block);
       phi_args.emplace(ir::BasicBlock::Current, is_or);
@@ -397,13 +397,13 @@ ir::Results ChainOp::EmitIr(Context *ctx) {
     } else {
       absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
       auto lhs_ir     = exprs.front()->EmitIr(ctx);
-      auto land_block = ir::Func::Current->AddBlock();
+      auto land_block = ir::CompiledFn::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
         auto rhs_ir = exprs[i + 1]->EmitIr(ctx);
         auto cmp    = EmitChainOpPair(this, i, lhs_ir, rhs_ir, ctx);
 
         phi_args.emplace(ir::BasicBlock::Current, false);
-        auto next_block = ir::Func::Current->AddBlock();
+        auto next_block = ir::CompiledFn::Current->AddBlock();
         ir::CondJump(cmp, next_block, land_block);
         ir::BasicBlock::Current = next_block;
         lhs_ir                  = std::move(rhs_ir);

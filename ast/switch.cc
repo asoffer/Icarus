@@ -6,7 +6,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "base/util.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "ir/phi.h"
 #include "type/cast.h"
 #include "type/pointer.h"
@@ -109,7 +109,7 @@ void Switch::ExtractJumps(JumpExprs *rets) const {
 
 ir::Results ast::Switch::EmitIr(Context *ctx) {
   absl::flat_hash_map<ir::BlockIndex, ir::Results> phi_args;
-  auto land_block = ir::Func::Current->AddBlock();
+  auto land_block = ir::CompiledFn::Current->AddBlock();
   auto *t         = ctx->type_of(this);
   // TODO this is not precisely accurate if you have regular void.
   bool all_paths_jump = (t == type::Void());
@@ -127,7 +127,7 @@ ir::Results ast::Switch::EmitIr(Context *ctx) {
 
   for (size_t i = 0; i < cases_.size() - 1; ++i) {
     auto &[body, match_cond] = cases_[i];
-    auto expr_block          = ir::Func::Current->AddBlock();
+    auto expr_block          = ir::CompiledFn::Current->AddBlock();
 
     ir::Results match_val     = match_cond->EmitIr(ctx);
     ir::RegisterOr<bool> cond = expr_

@@ -5,9 +5,9 @@
 
 #include <vector>
 #include "ast/struct_literal.h"
-#include "ir/func.h"
-#include "ir/phi.h"
 #include "core/arch.h"
+#include "ir/compiled_fn.h"
+#include "ir/phi.h"
 #include "type/generic_struct.h"
 #include "type/typed_value.h"
 
@@ -63,7 +63,7 @@ Reg EvaluateAsType(ast::Node *node, Reg ctx) {
 }
 
 Cmd &MakeCmd(type::Type const *t, Op op) {
-  auto &cmd = ASSERT_NOT_NULL(Func::Current)
+  auto &cmd = ASSERT_NOT_NULL(CompiledFn::Current)
                   ->block(BasicBlock::Current)
                   .cmds_.emplace_back(t, op);
   return cmd;
@@ -157,7 +157,7 @@ RegisterOr<bool> Not(RegisterOr<bool> r) {
   if (!r.is_reg_) { return !r.val_; }
   auto &cmd = MakeCmd(type::Bool, Op::NotBool);
   cmd.reg_  = r.reg_;
-  Func::Current->references_[cmd.reg_].insert(cmd.result);
+  CompiledFn::Current->references_[cmd.reg_].insert(cmd.result);
   return cmd.result;
 }
 
@@ -195,7 +195,7 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
   }
   auto &cmd = MakeCmd(type::Type_, Op::Arrow);
   cmd.set<Cmd::ArrowTag, type::Type const *>(v1, v2);
-  auto &refs = Func::Current->references_;
+  auto &refs = CompiledFn::Current->references_;
   if (v1.is_reg_) { refs[v1.reg_].insert(cmd.result); }
   if (v2.is_reg_) { refs[v2.reg_].insert(cmd.result); }
   return cmd.result;
@@ -240,9 +240,7 @@ RegisterOr<type::Type const *> Tup(
   return ir::FinalizeTuple(tup);
 }
 
-Reg CreateVariant() {
-  return MakeCmd(type::Type_, Op::CreateVariant).result;
-}
+Reg CreateVariant() { return MakeCmd(type::Type_, Op::CreateVariant).result; }
 
 void AppendToVariant(Reg var, RegisterOr<type::Type const *> entry) {
   auto &cmd       = MakeCmd(nullptr, Op::AppendToVariant);
@@ -278,16 +276,14 @@ RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
   return cmd.result;
 }
 
-type::Typed<Reg> Field(RegisterOr<Addr> r, type::Tuple const *t,
-                            size_t n) {
+type::Typed<Reg> Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n) {
   auto *p    = type::Ptr(t->entries_.at(n));
   auto &cmd  = MakeCmd(p, Op::Field);
   cmd.field_ = {r, t, n};
   return type::Typed<Reg>(cmd.result, p);
 }
 
-type::Typed<Reg> Field(RegisterOr<Addr> r, type::Struct const *t,
-                            size_t n) {
+type::Typed<Reg> Field(RegisterOr<Addr> r, type::Struct const *t, size_t n) {
   auto *p    = type::Ptr(t->fields().at(n).type);
   auto &cmd  = MakeCmd(p, Op::Field);
   cmd.field_ = {r, t, n};
@@ -296,39 +292,37 @@ type::Typed<Reg> Field(RegisterOr<Addr> r, type::Struct const *t,
 
 Reg Reserve(type::Type const *t) {
   auto arch   = core::Interpretter();
-  auto offset = FwdAlign(Func::Current->reg_size_, t->alignment(arch));
-  Func::Current->reg_size_ = offset + t->bytes(arch);
+  auto offset = FwdAlign(CompiledFn::Current->reg_size_, t->alignment(arch));
+  CompiledFn::Current->reg_size_ = offset + t->bytes(arch);
 
-  ir::Reg r{Func::Current->compiler_reg_to_offset_.size()};
-  Func::Current->compiler_reg_to_offset_.push_back(offset.value());
-  ++Func::Current->num_regs_;
+  ir::Reg r{CompiledFn::Current->compiler_reg_to_offset_.size()};
+  CompiledFn::Current->compiler_reg_to_offset_.push_back(offset.value());
+  ++CompiledFn::Current->num_regs_;
   return r;
 }
 
 Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
-  ASSERT(Func::Current != nullptr);
+  ASSERT(CompiledFn::Current != nullptr);
   CmdIndex cmd_index{
       BasicBlock::Current,
       static_cast<int32_t>(
-          Func::Current->block(BasicBlock::Current).cmds_.size())};
+          CompiledFn::Current->block(BasicBlock::Current).cmds_.size())};
   if (t == nullptr) {
     result = Reg();
-    Func::Current->references_[result];  // Guarantee it exists.
-    Func::Current->reg_to_cmd_.emplace(result, cmd_index);
+    CompiledFn::Current->references_[result];  // Guarantee it exists.
+    CompiledFn::Current->reg_to_cmd_.emplace(result, cmd_index);
     return;
   }
 
   result = Reserve(t);
-  Func::Current->references_[result];  // Guarantee it exists.
+  CompiledFn::Current->references_[result];  // Guarantee it exists.
   // TODO for implicitly declared out-params of a Call, map them to the call.
-  Func::Current->reg_to_cmd_.emplace(result, cmd_index);
+  CompiledFn::Current->reg_to_cmd_.emplace(result, cmd_index);
 }
 
 BlockSequence MakeBlockSeq(std::vector<ir::BlockSequence> const &blocks);
 
-Reg CreateBlockSeq() {
-  return MakeCmd(type::Type_, Op::CreateBlockSeq).result;
-}
+Reg CreateBlockSeq() { return MakeCmd(type::Type_, Op::CreateBlockSeq).result; }
 
 void AppendToBlockSeq(Reg block_seq,
                       RegisterOr<ir::BlockSequence> more_block_seq) {
@@ -398,8 +392,7 @@ Reg VariantValue(type::Type const *t, RegisterOr<Addr> r) {
   return cmd.result;
 }
 
-void CreateStructField(Reg struct_type,
-                       RegisterOr<type::Type const *> type) {
+void CreateStructField(Reg struct_type, RegisterOr<type::Type const *> type) {
   auto &cmd                = MakeCmd(nullptr, Op::CreateStructField);
   cmd.create_struct_field_ = {struct_type, std::move(type)};
 }
@@ -420,8 +413,8 @@ void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag) {
 }
 
 TypedRegister<Addr> Alloca(type::Type const *t) {
-  auto &cmd = ASSERT_NOT_NULL(Func::Current)
-                  ->block(Func::Current->entry())
+  auto &cmd = ASSERT_NOT_NULL(CompiledFn::Current)
+                  ->block(CompiledFn::Current->entry())
                   .cmds_.emplace_back(type::Ptr(t), Op::Alloca);
   cmd.type_ = t;
   return cmd.result;
@@ -447,7 +440,7 @@ void SetRet(size_t n, type::Typed<Results> const &r, Context *ctx) {
     type::Apply(r.type(), [&](auto type_holder) {
       using T = typename decltype(type_holder)::type;
       if constexpr (std::is_same_v<T, type::Struct const *>) {
-        auto *t = ir::Func::Current->type_->output[n];
+        auto *t = ir::CompiledFn::Current->type_->output[n];
         // TODO guaranteed move-elision
         t->EmitMoveAssign(t, r.get(), GetRet(n, t), ctx);
       } else {
@@ -557,7 +550,7 @@ TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
 }
 
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments) {
-  auto &block     = Func::Current->block(BasicBlock::Current);
+  auto &block     = CompiledFn::Current->block(BasicBlock::Current);
   Arguments *args = &block.arguments_.emplace_back(std::move(arguments));
 
   auto &cmd = MakeCmd(nullptr, Op::Call);
@@ -565,7 +558,7 @@ void Call(RegisterOr<AnyFunc> const &f, Arguments arguments) {
 }
 
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs) {
-  auto &block    = Func::Current->block(BasicBlock::Current);
+  auto &block    = CompiledFn::Current->block(BasicBlock::Current);
   auto *args     = &block.arguments_.emplace_back(std::move(arguments));
   auto *outs_ptr = &block.outs_.emplace_back(std::move(outs));
 
@@ -597,7 +590,7 @@ TypedRegister<type::Type const *> NewOpaqueType(::Module *mod) {
 
 void BlockSeqJump(RegisterOr<BlockSequence> bseq,
                   absl::flat_hash_map<ast::BlockLiteral const *,
-                                     ir::BlockIndex> const *jump_table) {
+                                      ir::BlockIndex> const *jump_table) {
   auto &cmd           = MakeCmd(nullptr, Op::BlockSeqJump);
   cmd.block_seq_jump_ = Cmd::BlockSeqJump{bseq, jump_table};
 }

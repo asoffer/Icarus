@@ -142,8 +142,8 @@ compile_time_arguments ::= () -> () {
 // So far we have only seen arguments to functions declared with a
   // single colon. Using `::` marks the argument as required to be known at
   // compile-time.
-  compile_time_square ::= (n :: int64) => n * n
-  print compile_time_square(3), "\n"
+//   compile_time_square ::= (n :: int64) => n * n
+//   print compile_time_square(3), "\n"
 // 
 //   // Compile-time arguments do not need to be literals. They can also be
 //   // compile-time constants, or expressions known at compile-time.

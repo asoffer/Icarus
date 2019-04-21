@@ -12,7 +12,7 @@
 #include "backend/eval.h"
 #include "base/util.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "core/scope.h"
 #include "type/function.h"
@@ -92,8 +92,8 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
 
   auto const &dispatch_table = *ASSERT_NOT_NULL(ctx->dispatch_table(this));
 
-  auto init_block = ir::Func::Current->AddBlock();
-  //auto land_block = ir::Func::Current->AddBlock();
+  auto init_block = ir::CompiledFn::Current->AddBlock();
+  //auto land_block = ir::CompiledFn::Current->AddBlock();
 
   ir::UncondJump(init_block);
   ir::BasicBlock::Current = init_block;
@@ -104,7 +104,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
                          expr->EmitIr(ctx));
       }),
       ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
-  base::Log() << *ir::Func::Current;
+  base::Log() << *ir::CompiledFn::Current;
   NOT_YET();
   /*
 
@@ -156,7 +156,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
       auto const &t = ctx->type_of(&a)->as<type::Function>();
       if (scope_lit->stateful_) { state_types.insert(t.input[0]); }
     }
-    auto block_index   = ir::Func::Current->AddBlock();
+    auto block_index   = ir::CompiledFn::Current->AddBlock();
     block_data[&block] = {std::move(os_before), std::move(os_after),
                           block_index, bseq[0]};
     jump_table->emplace(bseq[0], block_index);

@@ -5,7 +5,7 @@
 #include "backend/eval.h"
 #include "core/fn_args.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "misc/context.h"
 
 namespace ast {
@@ -258,12 +258,12 @@ ir::Results Unop::EmitIr(Context *ctx) {
     }
     case frontend::Operator::Needs: {
       // TODO validate requirements are well-formed?
-      ir::Func::Current->precondition_exprs_.push_back(operand.get());
+      ir::CompiledFn::Current->precondition_exprs_.push_back(operand.get());
       return ir::Results{};
     } break;
     case frontend::Operator::Ensure: {
       // TODO validate requirements are well-formed?
-      ir::Func::Current->postcondition_exprs_.push_back(operand.get());
+      ir::CompiledFn::Current->postcondition_exprs_.push_back(operand.get());
       return ir::Results{};
     } break;
     case frontend::Operator::Expand: {

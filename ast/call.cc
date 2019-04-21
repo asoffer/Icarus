@@ -14,7 +14,7 @@
 #include "core/scope.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "ir/phi.h"
 #include "type/array.h"
 #include "type/function.h"

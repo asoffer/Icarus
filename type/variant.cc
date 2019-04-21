@@ -6,7 +6,7 @@
 #include "base/guarded.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "misc/context.h"
 
 namespace type {
@@ -65,14 +65,14 @@ void Variant::EmitDestroy(ir::Reg reg, Context *ctx) const {
                               "", Typed<ast::Expression *>{nullptr, this}}));
     CURRENT_FUNC(destroy_func_) {
       ir::BasicBlock::Current = destroy_func_->entry();
-      auto landing            = ir::Func::Current->AddBlock();
+      auto landing            = ir::CompiledFn::Current->AddBlock();
       auto type =
           ir::Load<Type const *>(ir::VariantType(destroy_func_->Argument(0)));
 
       for (Type const *v : variants_) {
         if (!v->needs_destroy()) { continue; }
         auto old_block   = ir::BasicBlock::Current;
-        auto found_block = ir::Func::Current->AddBlock();
+        auto found_block = ir::CompiledFn::Current->AddBlock();
 
         ir::BasicBlock::Current = found_block;
         v->EmitDestroy(
@@ -112,9 +112,9 @@ void Variant::EmitCopyAssign(Type const *from_type, ir::Results const &from,
   if (from_type->is<Variant>()) {
     auto actual_type = ir::Load<type::Type const *>(
         ir::VariantType(from.get<ir::Reg>(0)));
-    auto landing = ir::Func::Current->AddBlock();
+    auto landing = ir::CompiledFn::Current->AddBlock();
     for (Type const *v : from_type->as<Variant>().variants_) {
-      auto next_block = ir::Func::Current->AddBlock();
+      auto next_block = ir::CompiledFn::Current->AddBlock();
       ir::BasicBlock::Current =
           ir::EarlyExitOn<false>(next_block, ir::Eq(actual_type, v));
       ir::Store(v, ir::VariantType(to));
@@ -146,9 +146,9 @@ void Variant::EmitMoveAssign(Type const *from_type, ir::Results const &from,
   if (from_type->is<Variant>()) {
     auto actual_type =
         ir::Load<type::Type const *>(ir::VariantType(from.get<ir::Reg>(0)));
-    auto landing = ir::Func::Current->AddBlock();
+    auto landing = ir::CompiledFn::Current->AddBlock();
     for (Type const *v : from_type->as<Variant>().variants_) {
-      auto next_block = ir::Func::Current->AddBlock();
+      auto next_block = ir::CompiledFn::Current->AddBlock();
       ir::BasicBlock::Current =
           ir::EarlyExitOn<false>(next_block, ir::Eq(actual_type, v));
       ir::Store(v, ir::VariantType(to));
@@ -187,13 +187,13 @@ void Variant::EmitRepr(ir::Results const &id_val, Context *ctx) const {
 
     CURRENT_FUNC(repr_func_) {
       ir::BasicBlock::Current = repr_func_->entry();
-      auto landing            = ir::Func::Current->AddBlock();
+      auto landing            = ir::CompiledFn::Current->AddBlock();
       auto type               = ir::Load<type::Type const *>(
           ir::VariantType(repr_func_->Argument(0)));
 
       for (const Type *v : variants_) {
         auto old_block   = ir::BasicBlock::Current;
-        auto found_block = ir::Func::Current->AddBlock();
+        auto found_block = ir::CompiledFn::Current->AddBlock();
 
         ir::BasicBlock::Current = found_block;
         v->EmitRepr(ir::Results{ir::PtrFix(
@@ -279,12 +279,12 @@ ir::Results Variant::PrepareArgument(Type const *from, ir::Results const &val,
     }
     ASSERT(intersection.size() != 0u);
 
-    auto landing = ir::Func::Current->AddBlock();
+    auto landing = ir::CompiledFn::Current->AddBlock();
 
     std::vector<ir::BlockIndex> blocks;
     blocks.reserve(intersection.size());
     for (auto *t : intersection) {
-      blocks.push_back(ir::Func::Current->AddBlock());
+      blocks.push_back(ir::CompiledFn::Current->AddBlock());
     }
 
     auto current = ir::BasicBlock::Current;

@@ -8,21 +8,21 @@
 namespace ir {
 using ::matcher::InheritsFrom;
 
-struct Func;
+struct CompiledFn;
 
 // TODO This is a terrible name. Pick something better.
 struct AnyFunc {
-  AnyFunc(Func *fn = nullptr) { std::memcpy(&data_, &fn, sizeof(fn)); }
+  AnyFunc(CompiledFn *fn = nullptr) { std::memcpy(&data_, &fn, sizeof(fn)); }
   AnyFunc(Foreign foreign) {
     void *obj = foreign.get();
     std::memcpy(&data_, &obj, sizeof(void *));
     data_ |= 0x1u;
   }
 
-  Func *func() const {
+  CompiledFn *func() const {
     ASSERT((data_ & 0x1u) == 0u);
-    Func *f;
-    std::memcpy(&f, &data_, sizeof(Func *));
+    CompiledFn *f;
+    std::memcpy(&f, &data_, sizeof(CompiledFn *));
     return f;
   }
 

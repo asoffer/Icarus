@@ -12,7 +12,7 @@
 #include "base/guarded.h"
 #include "frontend/source.h"
 #include "misc/import_graph.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "type/function.h"
 
 #ifdef ICARUS_USE_LLVM
@@ -38,10 +38,10 @@ static absl::flat_hash_map<
     modules;
 
 std::atomic<bool> found_errors = false;
-ir::Func *main_fn = nullptr;
+ir::CompiledFn *main_fn = nullptr;
 
 // Can't declare this in header because unique_ptr's destructor needs to know
-// the size of ir::Func which we want to forward declare.
+// the size of ir::CompiledFn which we want to forward declare.
 Module::Module()
     : scope_(this)
 #ifndef ICARUS_USE_LLVM
@@ -55,10 +55,10 @@ Module::Module()
 
 Module::~Module() = default;
 
-ir::Func *Module::AddFunc(
+ir::CompiledFn *Module::AddFunc(
     type::Function const *fn_type,
     core::FnParams<type::Typed<ast::Expression *>> params) {
-  auto *result = fns_.emplace_back(std::make_unique<ir::Func>(
+  auto *result = fns_.emplace_back(std::make_unique<ir::CompiledFn>(
                                        this, fn_type, std::move(params)))
                      .get();
 

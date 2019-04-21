@@ -8,7 +8,7 @@
 #include <vector>
 #include "base/untyped_buffer.h"
 #include "frontend/source.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
@@ -20,7 +20,7 @@ std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
 namespace backend {
 static void ReplEval(ast::Expression *expr) {
   // TODO is nullptr for module okay here?
-  ir::Func fn(nullptr, type::Func({}, {}),
+  ir::CompiledFn fn(nullptr, type::Func({}, {}),
               core::FnParams<type::Typed<ast::Expression *>>{});
   CURRENT_FUNC(&fn) {
     ir::BasicBlock::Current = fn.entry();

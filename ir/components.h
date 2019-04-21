@@ -1,13 +1,13 @@
 #ifndef ICARUS_IR_COMPONENTS_H
 #define ICARUS_IR_COMPONENTS_H
 
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "ir/register.h"
 
 namespace ir {
 template <bool B>
 BlockIndex EarlyExitOn(BlockIndex exit_block, RegisterOr<bool> cond) {
-  auto continue_block = Func::Current->AddBlock();
+  auto continue_block = CompiledFn::Current->AddBlock();
   if constexpr (B) {
     CondJump(cond, exit_block, continue_block);
   } else {

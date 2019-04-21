@@ -414,7 +414,7 @@ RegisterOr<T> Neg(RegisterOr<T> r) {
   auto &cmd = MakeCmd(type::Get<T>(), Cmd::OpCode<Cmd::NegTag, T>());
   cmd.reg_  = r.reg_;
   // TODO reenable
-  // Func::Current->references_[cmd.neg_int_.reg_].insert(cmd.result);
+  // CompiledFn::Current->references_[cmd.neg_int_.reg_].insert(cmd.result);
   return cmd.result;
 }
 
@@ -472,7 +472,7 @@ auto HandleBinop(Lhs lhs, Rhs rhs) {
                           Cmd::OpCode<Tag, typename Lhs::type>());
       cmd.template set<Tag, typename Lhs::type>(lhs, rhs);
       /* TODO reenable
-      auto &refs = Func::Current->references_;
+      auto &refs = CompiledFn::Current->references_;
       if (lhs.is_reg_) { refs[lhs.reg_].insert(cmd.result); }
       if (rhs.is_reg_) { refs[rhs.reg_].insert(cmd.result); }
       */
@@ -492,7 +492,7 @@ void SetRet(size_t n, T t) {
         MakeCmd(nullptr, Cmd::OpCode<Cmd::SetRetTag, typename T::type>());
     cmd.template set<Cmd::SetRetTag, typename T::type>(n, t);
     // TODO reenable if (r.is_reg_) {
-    // Func::Current->references_[r.reg_].insert(cmd.result); }
+    // CompiledFn::Current->references_[r.reg_].insert(cmd.result); }
   }
 }
 void SetRet(size_t n, type::Typed<Results> const &v2, Context *ctx = nullptr);

@@ -5,7 +5,7 @@
 #include "ast/overload_set.h"
 #include "core/fn_args.h"
 #include "core/scope.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "misc/context.h"
 
 namespace ast {

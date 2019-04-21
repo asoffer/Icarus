@@ -18,7 +18,7 @@
 #include "base/util.h"
 #include "error/log.h"
 #include "ir/arguments.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "core/arch.h"
 #include "misc/module.h"
 #include "type/incomplete_enum.h"
@@ -36,7 +36,7 @@
 namespace backend {
 base::untyped_buffer ReadOnlyData(0);
 
-void Execute(ir::Func *fn, const base::untyped_buffer &arguments,
+void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
              const std::vector<ir::Addr> &ret_slots, ExecContext *exec_ctx) {
   // TODO: Understand why and how work-items may not be complete and add an
   // explanation here. I'm quite confident this is really possible with the
@@ -84,7 +84,7 @@ ir::BasicBlock &ExecContext::current_block() {
   return call_stack.top().fn_->block(call_stack.top().current_);
 }
 
-ExecContext::Frame::Frame(ir::Func *fn, const base::untyped_buffer &arguments)
+ExecContext::Frame::Frame(ir::CompiledFn *fn, const base::untyped_buffer &arguments)
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
@@ -596,8 +596,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         // struct type when we create create it initially.
         Context ctx(s->mod_);
 
-        ir::BasicBlock::Current = ir::Func::Current->entry();
-        auto var                = ir::Func::Current->Argument(0);
+        ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
+        auto var                = ir::CompiledFn::Current->Argument(0);
         size_t i                = 0;
         for (auto const &field : s->parent_->fields_) {
           auto ir_field = ir::Field(var, s, i);

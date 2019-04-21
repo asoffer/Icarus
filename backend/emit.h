@@ -9,12 +9,8 @@ namespace llvm {
 class Module;
 }  // namespace llvm
 
-namespace ir {
-struct Func;
-}  // namespace ir
-
 namespace backend {
-void EmitAll(std::vector<std::unique_ptr<ir::Func>> const &fns,
+void EmitAll(std::vector<std::unique_ptr<ir::CompiledFn>> const &fns,
              llvm::Module *module);
 
 }  // namespace backend

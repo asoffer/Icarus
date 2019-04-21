@@ -35,7 +35,7 @@ struct Variant : public Type {
 
  private:
   mutable std::mutex mtx_;
-  mutable ir::Func *repr_func_ = nullptr, *destroy_func_ = nullptr;
+  mutable ir::CompiledFn *repr_func_ = nullptr, *destroy_func_ = nullptr;
 };
 
 }  // namespace type

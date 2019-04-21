@@ -1,7 +1,7 @@
 #include "property/property_map.h"
 
 #include "ir/arguments.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "core/arch.h"
 #include "property/property.h"
 #include "type/function.h"
@@ -29,7 +29,7 @@ void Debug(PropertyMap const &pm) {
 }
 
 template <typename Fn>
-void ForEachArgument(ir::Func const &f, Fn &&fn_to_call) {
+void ForEachArgument(ir::CompiledFn const &f, Fn &&fn_to_call) {
   auto arch   = core::Interpretter();
   auto offset = core::Bytes{0};
 
@@ -86,7 +86,7 @@ PropertySet LtInt(PropertySet const &lhs, int rhs) {
 
 }  // namespace
 
-FnStateView::FnStateView(ir::Func *fn) {
+FnStateView::FnStateView(ir::CompiledFn *fn) {
   for (auto reg : fn->compiler_reg_to_offset_) {
     view_.emplace(ir::Reg(reg), PropertySet{});
   }
@@ -112,7 +112,7 @@ PropertyMap PropertyMap::AssumingReturnsTrue() const {
   return result;
 }
 
-PropertyMap::PropertyMap(ir::Func *fn) : fn_(fn) {
+PropertyMap::PropertyMap(ir::CompiledFn *fn) : fn_(fn) {
   // TODO copy fnstateview rather than creating it repeatedly?
   for (const auto &block : fn_->blocks_) {
     view_.emplace(&block, FnStateView(fn_));
@@ -329,7 +329,7 @@ BoolProp PropertyMap::Returns() const {
   std::vector<ir::CmdIndex> rets;
   std::vector<ir::Reg> regs;
 
-  // This can be precompeted and stored on the actual ir::Func.
+  // This can be precompeted and stored on the actual ir::CompiledFn.
   int32_t num_blocks = static_cast<int32_t>(fn_->blocks_.size());
   for (int32_t i = 0; i < num_blocks; ++i) {
     const auto &block = fn_->blocks_[i];

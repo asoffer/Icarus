@@ -10,7 +10,7 @@ cc_lib(
         "//base:util",
         "//misc:context",
         "//misc:module",
-        "//ir:func",
+        "//ir:compiled_fn",
     ],
 )
 
@@ -24,7 +24,7 @@ cc_lib(
         "//base:untyped_buffer",
         "//core:fn_params",
         "//frontend:source",
-        "//ir:func",
+        "//ir:compiled_fn",
         "//ir:cmd",
         "//misc:context",
         "//misc:module",

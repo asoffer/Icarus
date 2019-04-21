@@ -6,7 +6,7 @@
 #include "base/guarded.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
-#include "ir/func.h"
+#include "ir/compiled_fn.h"
 #include "core/arch.h"
 #include "misc/context.h"
 #include "misc/module.h"
