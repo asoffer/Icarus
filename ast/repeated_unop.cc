@@ -1,13 +1,16 @@
 #include "ast/repeated_unop.h"
 
-#include "core/fn_args.h"
+#include "ast/call.h"
 #include "ast/function_literal.h"
 #include "ast/overload_set.h"
+#include "core/fn_args.h"
+#include "core/scope.h"
 #include "ir/func.h"
 #include "misc/context.h"
-#include "core/scope.h"
 
 namespace ast {
+using ::matcher::InheritsFrom;
+
 std::string RepeatedUnop::to_string(size_t n) const {
   switch (op_) {
     case frontend::Operator::Jump: return "jump " + args_.to_string(n);
@@ -95,6 +98,12 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
 }
 
 ir::Results RepeatedUnop::EmitIr(Context *ctx) {
+  if (op_ == frontend::Operator::Jump) {
+    ASSERT(args_.exprs_.size() == 1u);
+    ASSERT(args_.exprs_[0].get(), InheritsFrom<Call>());
+    NOT_YET();
+  }
+
   std::vector<ir::Results> arg_vals;
   if (args_.needs_expansion()) {
     for (auto &expr : args_.exprs_) {

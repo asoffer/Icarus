@@ -89,16 +89,24 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   base::defer d([&]() { ctx->yields_stack_.pop_back(); });
 
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
-  base::Log() << scope_lit->to_string(0);
 
-  auto *dispatch_table = ASSERT_NOT_NULL(ctx->dispatch_table(this));
+  auto const &dispatch_table = *ASSERT_NOT_NULL(ctx->dispatch_table(this));
 
-  base::Log() << "****";
   auto init_block = ir::Func::Current->AddBlock();
-  auto land_block = ir::Func::Current->AddBlock();
+  //auto land_block = ir::Func::Current->AddBlock();
 
   ir::UncondJump(init_block);
   ir::BasicBlock::Current = init_block;
+
+  dispatch_table.EmitInlineCall(
+      args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
+        return std::pair(const_cast<Expression *>(expr.get()),
+                         expr->EmitIr(ctx));
+      }),
+      ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
+  base::Log() << *ir::Func::Current;
+  NOT_YET();
+  /*
 
   OverloadSet init_os;
   for (auto &decl : scope_lit->decls_) {
@@ -109,6 +117,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
 
   absl::flat_hash_map<std::string, Declaration *> name_lookup;
   for (auto &decl : scope_lit->decls_) { name_lookup.emplace(decl.id_, &decl); }
+  base::Log() << name_lookup;
 
   struct BlockData {
     OverloadSet before_os_, after_os_;
@@ -256,6 +265,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     if (scope_lit->stateful_) { state_type->EmitDestroy(alloc, ctx); }
     return results;
   }
+  */
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> ScopeNode::EmitLVal(Context *) {

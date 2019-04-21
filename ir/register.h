@@ -83,7 +83,7 @@ struct BlockSequence {
   std::vector<ast::BlockLiteral *> const *seq_;
 };
 inline std::ostream &operator<<(std::ostream &os, BlockSequence b) {
-  return os << base::stringify(*b.seq_);
+  return os << "<block-sequence>";
 }
 
 // TODO not really comparable. just for variant? :(

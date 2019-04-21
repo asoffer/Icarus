@@ -490,6 +490,7 @@ cc_target(
         "//frontend:operators",
     ],
     impl_deps = [
+        ":call",
         ":function_literal",
         ":overload_set",
         "//core:fn_args",
@@ -603,6 +604,7 @@ cc_lib(
     hdrs = ["terminal.h"],
     deps = [
         ":expression",
+        "//ir:block",
         "//misc:context",
         "//misc:module"
     ],

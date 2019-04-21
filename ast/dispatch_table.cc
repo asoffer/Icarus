@@ -27,8 +27,6 @@
 #include "type/variant.h"
 
 namespace ast {
-using ::matcher::InheritsFrom;
-
 std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
      core::FnArgs<type::Typed<Expression *>> const &args,
      OverloadSet const &overload_set, Context *ctx) {
@@ -321,7 +319,6 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                 &fn_type->as<type::Function>(),
                                 backend::EvaluateAs<ir::AnyFunc>(fn_lit, ctx)};
     } else {
-      base::Log() << result.type_->to_string();
       if (result.type_->is<type::Block>() || result.type_ == type::OptBlock ||
           result.type_ == type::RepBlock) {
         ir::Block b = backend::EvaluateAs<ir::Block>(overload.expr, ctx);
@@ -513,6 +510,7 @@ static ir::BlockIndex EmitDispatchTest(
   return next_binding;
 }
 
+template <bool Inline>
 static void EmitOneCall(
     DispatchTable::Row const &row,
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
@@ -589,20 +587,31 @@ static void EmitOneCall(
 
   ir::UncondJump(call_block);
   ir::BasicBlock::Current = call_block;
-  ir::Call(fn, ir::Arguments{row.type, std::move(arg_results)},
-           std::move(out_params));
+  if constexpr (Inline) {
+    ASSERT(fn.is_reg_ == false);
+    ASSERT(fn.val_.is_fn() == true);
+    base::Log() << *ir::Func::Current;
+    base::Log() << *fn.val_.func();
+    static_cast<void>(fn);
+    NOT_YET();
+  } else {
+    ir::Call(fn, ir::Arguments{row.type, std::move(arg_results)},
+             std::move(out_params));
+  }
 }
 
-ir::Results DispatchTable::EmitCall(
+template <bool Inline>
+static ir::Results EmitFnCall(
+    DispatchTable const *table,
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
-    type::Type const *, Context *ctx) const {
+    Context *ctx) {
   auto landing_block = ir::Func::Current->AddBlock();
 
   // If an output to the function fits in a register we will create a phi node
   // for it on the landing block. Otherwise, we'll temporarily allocate stack
   // space for it and pass in an output pointer.
   size_t num_regs = absl::c_count_if(
-      return_types_, [](type::Type const *t) { return !t->is_big(); });
+      table->return_types_, [](type::Type const *t) { return !t->is_big(); });
   absl::flat_hash_map<ir::BlockIndex, ir::Results> result_phi_args[num_regs];
 
   // The vector of registers for all the outputs aggregated from all the
@@ -614,10 +623,10 @@ ir::Results DispatchTable::EmitCall(
   std::vector<
       std::variant<ir::Reg, absl::flat_hash_map<ir::BlockIndex, ir::Results> *>>
       outputs;
-  outputs.reserve(return_types_.size());
+  outputs.reserve(table->return_types_.size());
 
   size_t index_into_phi_args = 0;
-  for (type::Type const *t : return_types_) {
+  for (type::Type const *t : table->return_types_) {
     if (t->is_big()) {
       outputs.emplace_back(ir::TmpAlloca(t, ctx));
     } else {
@@ -625,23 +634,24 @@ ir::Results DispatchTable::EmitCall(
     }
   }
 
-  for (size_t i = 0; i + 1 < bindings_.size(); ++i) {
-    auto const &row   = bindings_.at(i);
+  for (size_t i = 0; i + 1 < table->bindings_.size(); ++i) {
+    auto const &row   = table->bindings_.at(i);
     auto next_binding = EmitDispatchTest(row.params, args, ctx);
 
-    EmitOneCall(row, args, return_types_, &outputs, ctx);
+    EmitOneCall<Inline>(row, args, table->return_types_, &outputs, ctx);
 
     ir::UncondJump(landing_block);
     ir::BasicBlock::Current = next_binding;
   }
 
-  EmitOneCall(bindings_.back(), args, return_types_, &outputs, ctx);
+  EmitOneCall<Inline>(table->bindings_.back(), args, table->return_types_,
+                      &outputs, ctx);
   ir::UncondJump(landing_block);
 
   ir::BasicBlock::Current = landing_block;
 
   ir::Results results;
-  for (size_t i = 0; i < return_types_.size(); ++i) {
+  for (size_t i = 0; i < table->return_types_.size(); ++i) {
     std::visit(
         [&](auto out) {
           if constexpr (std::is_same_v<std::decay_t<decltype(out)>, ir::Reg>) {
@@ -653,7 +663,7 @@ ir::Results DispatchTable::EmitCall(
             // Return is small enough to fit in a register, so we need to create
             // a phi node joining all the registers from all the possible
             // dispatches.
-            type::Type const *ret_type = return_types_[i];
+            type::Type const *ret_type = table->return_types_[i];
             results.append(ir::MakePhi(ret_type, ir::Phi(ret_type), *out));
           }
         },
@@ -661,6 +671,18 @@ ir::Results DispatchTable::EmitCall(
   }
 
   return results;
+}
+
+ir::Results DispatchTable::EmitInlineCall(
+    core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    type::Type const *, Context *ctx) const {
+  return EmitFnCall<true>(this, args, ctx);
+}
+
+ir::Results DispatchTable::EmitCall(
+    core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    type::Type const *, Context *ctx) const {
+  return EmitFnCall<false>(this, args, ctx);
 }
 
 }  // namespace ast

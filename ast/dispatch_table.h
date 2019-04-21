@@ -37,6 +37,9 @@ struct DispatchTable {
       core::FnArgs<type::Typed<Expression *>> const &args,
       OverloadSet const &overload_set, Context *ctx);
 
+  ir::Results EmitInlineCall(
+      core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
+      type::Type const *, Context *ctx) const;
   ir::Results EmitCall(
       core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
       type::Type const *, Context *ctx) const;

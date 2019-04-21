@@ -174,6 +174,16 @@ VerifyResult FunctionLiteral::VerifyBody(Context *ctx) {
 
   JumpExprs rets;
   statements_.ExtractJumps(&rets);
+
+  // TODO we can have yields and returns, or yields and jumps, but not jumps and
+  // returns. Check this.
+  //
+  // TODO this is a bit strange because `VerifyBody` may be extremely
+  // context-dependent but this particular thing has to be context-independent.
+  // This means we're not allowed to have the existence of jumps dependent on
+  // types, though I think this is technically feasible when we introduce inline
+  // scopes.
+  should_complete_body_ = rets[JumpExprs::Kind::Jump].empty();
   absl::flat_hash_set<type::Type const *> types;
   for (auto *expr : rets[JumpExprs::Kind::Return]) {
     types.insert(ctx->type_of(expr));
@@ -276,13 +286,16 @@ ir::Results FunctionLiteral::EmitIr(Context *ctx) {
 
   // TODO Use correct constants
   ir::Func *&ir_func = ctx->constants_->second.ir_funcs_[this];
-  if (!ir_func) {
-    auto &work_item = ctx->mod_->deferred_work_.emplace(
-        [constants{ctx->constants_}, this, mod{ctx->mod_}]() mutable {
-          Context ctx(mod);
-          ctx.constants_ = constants;
-          CompleteBody(&ctx);
-        });
+  if (!ir_func ) {
+    std::function<void()> *work_item_ptr = nullptr;
+    if (should_complete_body_) {
+      work_item_ptr = &ctx->mod_->deferred_work_.emplace(
+          [constants{ctx->constants_}, this, mod{ctx->mod_}]() mutable {
+            Context ctx(mod);
+            ctx.constants_ = constants;
+            CompleteBody(&ctx);
+          });
+    }
 
     auto *fn_type = &ctx->type_of(this)->as<type::Function>();
 
@@ -292,7 +305,7 @@ ir::Results FunctionLiteral::EmitIr(Context *ctx) {
             [fn_type, i = 0](std::unique_ptr<Declaration> const &e) mutable {
               return type::Typed(e->init_val.get(), fn_type->input.at(i++));
             }));
-    ir_func->work_item = &work_item;
+    if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
   }
 
   return ir::Results{ir_func};

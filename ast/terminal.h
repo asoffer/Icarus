@@ -1,9 +1,12 @@
 #ifndef ICARUS_AST_TERMINAL_H
 #define ICARUS_AST_TERMINAL_H
 
+#include <sstream>
+
 #include "ast/literal.h"
-#include "misc/module.h"
+#include "ir/block.h"
 #include "misc/context.h"
+#include "misc/module.h"
 
 struct Context;
 
@@ -36,6 +39,10 @@ struct Terminal : public Literal {
       return std::to_string(results_.get<uint8_t>(0).val_) + "_u8";
     } else if (type_ == type::Type_) {
       return results_.get<type::Type const *>(0).val_->to_string();
+    } else if (type_ == type::Blk()) {
+      std::stringstream ss;
+      ss << results_.get<ir::Block>(0).val_;
+      return ss.str();
     }
     return "<<terminal: " + type_->to_string() + ">>";
   }
