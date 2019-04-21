@@ -66,8 +66,7 @@ void Variant::EmitDestroy(ir::Reg reg, Context *ctx) const {
     CURRENT_FUNC(destroy_func_) {
       ir::BasicBlock::Current = destroy_func_->entry();
       auto landing            = ir::CompiledFn::Current->AddBlock();
-      auto type =
-          ir::Load<Type const *>(ir::VariantType(destroy_func_->Argument(0)));
+      auto type = ir::Load<Type const *>(ir::VariantType(ir::Reg::Arg(0)));
 
       for (Type const *v : variants_) {
         if (!v->needs_destroy()) { continue; }
@@ -75,9 +74,8 @@ void Variant::EmitDestroy(ir::Reg reg, Context *ctx) const {
         auto found_block = ir::CompiledFn::Current->AddBlock();
 
         ir::BasicBlock::Current = found_block;
-        v->EmitDestroy(
-            ir::PtrFix(ir::VariantValue(v, destroy_func_->Argument(0)), v),
-            ctx);
+        v->EmitDestroy(ir::PtrFix(ir::VariantValue(v, ir::Reg::Arg(0)), v),
+                       ctx);
         ir::UncondJump(landing);
 
         ir::BasicBlock::Current = old_block;
@@ -188,17 +186,17 @@ void Variant::EmitRepr(ir::Results const &id_val, Context *ctx) const {
     CURRENT_FUNC(repr_func_) {
       ir::BasicBlock::Current = repr_func_->entry();
       auto landing            = ir::CompiledFn::Current->AddBlock();
-      auto type               = ir::Load<type::Type const *>(
-          ir::VariantType(repr_func_->Argument(0)));
+      auto type =
+          ir::Load<type::Type const *>(ir::VariantType(ir::Reg::Arg(0)));
 
       for (const Type *v : variants_) {
         auto old_block   = ir::BasicBlock::Current;
         auto found_block = ir::CompiledFn::Current->AddBlock();
 
         ir::BasicBlock::Current = found_block;
-        v->EmitRepr(ir::Results{ir::PtrFix(
-                        ir::VariantValue(v, repr_func_->Argument(0)), v)},
-                    ctx);
+        v->EmitRepr(
+            ir::Results{ir::PtrFix(ir::VariantValue(v, ir::Reg::Arg(0)), v)},
+            ctx);
         ir::UncondJump(landing);
 
         ir::BasicBlock::Current = old_block;

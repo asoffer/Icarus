@@ -12,13 +12,16 @@ namespace ir {
 struct Val;
 
 struct Results {
+ private:
+  constexpr static uint64_t is_reg_mask = 0x8000'0000'0000'0000;
+
  public:
   template <typename... Args>
   explicit Results(Args... args) {
     (append<Args>(args), ...);
   }
 
-  static Results FromUntypedBuffer(std::vector<int64_t> offsets,
+  static Results FromUntypedBuffer(std::vector<uint64_t> offsets,
                                    base::untyped_buffer buf);
   static Results FromRaw(void const* data, core::Bytes bytes);
 
@@ -28,34 +31,38 @@ struct Results {
       return get<typename IsRegOr<T>::type>(index);
     } else {
       auto offset = offset_[index];
-      if (offset > 0) { return Reg{static_cast<uint64_t>(offset - 1)}; }
-      return buf_.get<T>(-offset);
+      if (offset & is_reg_mask) {
+        return Reg{static_cast<uint64_t>(offset & ~is_reg_mask)};
+      }
+      return buf_.get<T>(offset);
     }
   }
 
-  bool is_reg(size_t index) const { return offset_[index] > 0; }
+  bool is_reg(size_t index) const { return offset_[index] & is_reg_mask; }
 
   template <typename T, typename = std::enable_if_t<std::is_base_of_v<Reg, T>>>
   Reg get(size_t index) const {
-    return Reg{static_cast<uint64_t>(offset_[index] - 1)};
+    ASSERT(is_reg(index) == true);
+    return Reg{offset_[index] & ~is_reg_mask};
   }
 
   template <typename T>
   size_t append(T const& t) {
     if constexpr (std::is_same_v<Results, T>) {
-      int64_t current_buf_end = buf_.size();
+      uint64_t current_buf_end = buf_.size();
       buf_.write(buf_.size(), t.buf_);
       offset_.reserve(offset_.size() + t.offset_.size());
-      for (int64_t off : t.offset_) {
-        offset_.push_back(off <= 0 ? off - current_buf_end : off);
+      for (uint64_t off : t.offset_) {
+        offset_.push_back(!(off & is_reg_mask) ? current_buf_end + off : off);
       }
       return offset_.back();
     } else if constexpr (std::is_base_of_v<Reg, T>) {
-      return offset_.emplace_back(1 + static_cast<int64_t>(t.value()));
+      return offset_.emplace_back(
+          static_cast<uint64_t>(is_reg_mask | t.value()));
     } else if constexpr (IsRegOr<T>::value) {
       return t.is_reg_ ? append(t.reg_) : append(t.val_);
     } else {
-      return offset_.emplace_back(-static_cast<int64_t>(buf_.append(t)));
+      return offset_.emplace_back(buf_.append(t));
     }
   }
 
@@ -73,7 +80,7 @@ struct Results {
   // Value at position `n` is the offset of the `n`th entry in `buf_`. Negative
   // values indicate that the value stored is a register rather than the actual
   // value.
-  std::vector<int64_t> offset_;
+  std::vector<uint64_t> offset_;
   base::untyped_buffer buf_{16};
 };
 }  // namespace ir

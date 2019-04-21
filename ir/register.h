@@ -6,7 +6,6 @@
 
 DEFINE_STRONG_INT(ir, BlockIndex, int32_t, -1);
 DEFINE_STRONG_INT(ir, EnumVal, size_t, 0);
-DEFINE_STRONG_INT(ir, BuiltinGenericIndex, int32_t, -1);
 
 namespace ir {
 #define MAKE_CMP(type)                                                         \
@@ -18,7 +17,6 @@ namespace ir {
   constexpr bool operator>=(type lhs, type rhs) { return !(lhs < rhs); }
 MAKE_CMP(BlockIndex)
 MAKE_CMP(EnumVal)
-MAKE_CMP(BuiltinGenericIndex)
 #undef MAKE_CMP
 }  // namespace ir
 
@@ -31,7 +29,7 @@ namespace ir {
 struct Reg {
  public:
   constexpr Reg() : val_(std::numeric_limits<uint64_t>::max()){};
-  constexpr explicit Reg(uint64_t val) : val_(val & ~(arg_mask | out_mask)) {}
+  constexpr explicit Reg(uint64_t val) : val_(val) {}
   constexpr static Reg Arg(uint64_t val) { return MakeReg(val | arg_mask); }
   constexpr static Reg Out(uint64_t val) { return MakeReg(val | arg_mask); }
 
@@ -48,8 +46,17 @@ struct Reg {
     return r;
   }
 
-  constexpr static uint64_t arg_mask = 0x8000'0000'0000'0000;
-  constexpr static uint64_t out_mask = 0x4000'0000'0000'0000;
+  friend inline std::ostream &operator<<(std::ostream &os, Reg r) {
+    if (r.is_argument()) {
+      return os << "arg." << (r.value() & ~Reg::arg_mask);
+    }
+    if (r.is_out()) { return os << "out." << (r.value() & ~Reg::out_mask); }
+    return os << "r." << r.value();
+  }
+
+  // NOTE: Do *not* use the top bit here. We need it in ir::Results
+  constexpr static uint64_t arg_mask = 0x4000'0000'0000'0000;
+  constexpr static uint64_t out_mask = 0x2000'0000'0000'0000;
   uint64_t val_;
 };
 
@@ -62,10 +69,6 @@ constexpr bool operator!=(Reg lhs, Reg rhs) { return !(lhs == rhs); }
 constexpr bool operator>(Reg lhs, Reg rhs) { return rhs < lhs; }
 constexpr bool operator<=(Reg lhs, Reg rhs) { return !(lhs > rhs); }
 constexpr bool operator>=(Reg lhs, Reg rhs) { return !(lhs < rhs); }
-
-inline std::ostream &operator<<(std::ostream &os, Reg r) {
-  return os << "r." << r.value();
-}
 
 }  // namespace ir
 

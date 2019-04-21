@@ -51,7 +51,7 @@ AnyFunc BytesFn() {
             "", type::Typed<ast::Expression *>(nullptr, type::Type_))));
     CURRENT_FUNC(fn) {
       BasicBlock::Current = fn->entry();
-      SetRet(0, Bytes(fn->Argument(0)));
+      SetRet(0, Bytes(Reg::Arg(0)));
       ReturnJump();
     }
     return fn;
@@ -68,7 +68,7 @@ AnyFunc AlignmentFn() {
 
     CURRENT_FUNC(fn) {
       BasicBlock::Current = fn->entry();
-      SetRet(0, Align(fn->Argument(0)));
+      SetRet(0, Align(Reg::Arg(0)));
       ReturnJump();
     }
     return fn;

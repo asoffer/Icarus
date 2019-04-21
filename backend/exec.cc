@@ -75,7 +75,7 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
 template <typename T>
 T ExecContext::resolve(ir::Reg r) const {
   return call_stack.top().regs_.get<T>(
-      call_stack.top().fn_->compiler_reg_to_offset_.at(r.value()));
+      call_stack.top().fn_->compiler_reg_to_offset_.at(r));
 }
 
 ExecContext::ExecContext() : stack_(50u) {}
@@ -263,8 +263,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     const ir::Cmd &cmd, const std::vector<ir::Addr> &ret_slots) {
   auto save = [&](auto val) {
     call_stack.top().regs_.set(
-        call_stack.top().fn_->compiler_reg_to_offset_.at(cmd.result.value()),
-        val);
+        call_stack.top().fn_->compiler_reg_to_offset_.at(cmd.result), val);
   };
 
   switch (cmd.op_code_) {
@@ -597,7 +596,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         Context ctx(s->mod_);
 
         ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-        auto var                = ir::CompiledFn::Current->Argument(0);
+        auto var                = ir::Reg::Arg(0);
         size_t i                = 0;
         for (auto const &field : s->parent_->fields_) {
           auto ir_field = ir::Field(var, s, i);
@@ -774,7 +773,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           } else {
             auto addr = ir::Addr::Heap(call_stack.top().regs_.raw(
                 call_stack.top().fn_->compiler_reg_to_offset_.at(
-                    cmd.call_.outs_->regs_[i].value())));
+                    cmd.call_.outs_->regs_[i])));
             return_slots.push_back(addr);
           }
         }

@@ -328,7 +328,7 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
 
     // TODO arguments should be renumbered to not waste space on const values
     for (int32_t i = 0; i < static_cast<int32_t>(inputs_.size()); ++i) {
-      ctx->set_addr(inputs_.at(i).value.get(), ir::CompiledFn::Current->Argument(i));
+      ctx->set_addr(inputs_.at(i).value.get(), ir::Reg::Arg(i));
     }
 
     fn_scope_->MakeAllStackAllocations(ctx);

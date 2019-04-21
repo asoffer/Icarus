@@ -64,7 +64,7 @@ ir::Results Evaluate(type::Typed<ast::Expression *> typed_expr, Context *ctx) {
   if (ctx->num_errors() != 0) { return ir::Results{}; }
 
   ASSERT(typed_expr.type() != nullptr);
-  std::vector<int64_t> offsets;
+  std::vector<uint64_t> offsets;
   auto buf = EvaluateToBuffer(typed_expr, ctx);
 
   if (auto *tup = typed_expr.type()->if_as<type::Tuple>()) {

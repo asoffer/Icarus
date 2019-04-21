@@ -96,8 +96,8 @@ ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
       ir::ReturnJump();
 
       ir::BasicBlock::Current = equal_len_block;
-      auto lhs_start          = ir::Index(Ptr(lhs_type), fn->Argument(0), 0);
-      auto rhs_start          = ir::Index(Ptr(rhs_type), fn->Argument(1), 0);
+      auto lhs_start          = ir::Index(Ptr(lhs_type), ir::Reg::Arg(0), 0);
+      auto rhs_start          = ir::Index(Ptr(rhs_type), ir::Reg::Arg(1), 0);
       auto lhs_end =
           ir::PtrIncr(lhs_start, lhs_type->len, Ptr(rhs_type->data_type));
       ir::UncondJump(phi_block);
@@ -161,8 +161,8 @@ static ir::CompiledFn *CreateAssign(Array const *a, Context *ctx) {
           core::Param{"", Typed<ast::Expression *>{nullptr, ptr_type}}));
   CURRENT_FUNC(fn) {
     ir::BasicBlock::Current = fn->entry();
-    auto val                = fn->Argument(0);
-    auto var                = fn->Argument(1);
+    auto val                = ir::Reg::Arg(0);
+    auto var                = ir::Reg::Arg(1);
 
     auto from_ptr     = ir::Index(ptr_type, val, 0);
     auto from_end_ptr = ir::PtrIncr(from_ptr, a->len, data_ptr_type);
@@ -220,7 +220,7 @@ static void OnEachElement(Array const *t, ir::CompiledFn *fn, F &&fn_to_apply) {
     ir::BasicBlock::Current = fn->entry();
     auto *data_ptr_type     = Ptr(t->data_type);
 
-    auto ptr = ir::Index(Ptr(t), fn->Argument(0), 0);
+    auto ptr = ir::Index(Ptr(t), ir::Reg::Arg(0), 0);
     auto end_ptr =
         ir::PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
 
@@ -286,7 +286,7 @@ void Array::EmitRepr(ir::Results const &val, Context *ctx) const {
       ir::Print(std::string_view{"["});
 
       ir::BasicBlock::Current = ir::EarlyExitOn<true>(exit_block, len == 0);
-      auto ptr                = ir::Index(Ptr(this), fn->Argument(0), 0);
+      auto ptr                = ir::Index(Ptr(this), ir::Reg::Arg(0), 0);
 
       data_type->EmitRepr(ir::Results{ir::PtrFix(ptr, data_type)}, ctx);
 

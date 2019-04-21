@@ -6,8 +6,6 @@
 #include "ir/foreign.h"
 
 namespace ir {
-using ::matcher::InheritsFrom;
-
 struct CompiledFn;
 
 // TODO This is a terrible name. Pick something better.
@@ -37,20 +35,9 @@ struct AnyFunc {
   bool is_fn() const { return (data_ & 0x1u) == 0u; }
 
  private:
-  inline friend bool operator==(AnyFunc lhs, AnyFunc rhs) {
-    return lhs.data_ == rhs.data_;
-  }
-  inline friend bool operator<(AnyFunc lhs, AnyFunc rhs) {
-    return lhs.data_ < rhs.data_;
-  }
-  inline friend bool operator>(AnyFunc lhs, AnyFunc rhs) {
-    return lhs.data_ > rhs.data_;
-  }
-
   uintptr_t data_;
 };
 
-inline bool operator!=(AnyFunc lhs, AnyFunc rhs) { return !(lhs == rhs); }
 inline std::ostream &operator<<(std::ostream &os, AnyFunc a) {
   return a.is_fn() ? (os << a.func()) : (os << a.foreign());
 }

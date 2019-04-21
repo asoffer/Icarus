@@ -38,8 +38,8 @@ static ir::AnyFunc CreateAssign(Struct const *s, Context *ctx) {
                      core::Param{"", Typed<ast::Expression *>{nullptr, pt}}));
   CURRENT_FUNC(fn.func()) {
     ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-    auto val                = ir::CompiledFn::Current->Argument(0);
-    auto var                = ir::CompiledFn::Current->Argument(1);
+    auto val                = ir::Reg::Arg(0);
+    auto var                = ir::Reg::Arg(1);
 
     for (size_t i = 0; i < s->fields_.size(); ++i) {
       auto *field_type = s->fields_.at(i).type;
@@ -109,7 +109,7 @@ void Struct::EmitDestroy(ir::Reg reg, Context *ctx) const {
 
     CURRENT_FUNC(fn.func()) {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto var                = ir::CompiledFn::Current->Argument(0);
+      auto var                = ir::Reg::Arg(0);
 
       for (int i = static_cast<int>(fields_.size()) - 1; i >= 0; --i) {
         fields_.at(i).type->EmitDestroy(ir::Field(var, this, i).get(), ctx);

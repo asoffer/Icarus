@@ -1,5 +1,7 @@
 #include "ir/results.h"
 
+#include <sstream>
+
 namespace ir {
 
 Results Results::FromRaw(void const* data, core::Bytes bytes) {
@@ -12,10 +14,9 @@ Results Results::FromRaw(void const* data, core::Bytes bytes) {
   return results;
 }
 
-Results Results::FromUntypedBuffer(std::vector<int64_t> offsets,
+Results Results::FromUntypedBuffer(std::vector<uint64_t> offsets,
                                    base::untyped_buffer buf) {
   Results results;
-  for (int64_t& offset : offsets) { offset = -offset; }
   results.offset_ = std::move(offsets);
   results.buf_    = std::move(buf);
   return results;
@@ -30,10 +31,10 @@ Results Results::GetResult(size_t index) const {
     r.offset_.push_back(offset_.at(0));
     size_t i = index + 1;
     for (; i < offset_.size(); ++i) {
-      if (offset_.at(i) < 0) { break; }
+      if (!is_reg(i)) { break; }
     }
-    size_t raw_start = -offset_.at(index);
-    size_t raw_end   = (i < offset_.size()) ? -offset_.at(i) : buf_.size();
+    size_t raw_start = offset_.at(index);
+    size_t raw_end   = (i < offset_.size()) ? offset_.at(i) : buf_.size();
     size_t len       = raw_end - raw_start;
     r.buf_           = base::untyped_buffer::MakeFull(len);
     std::memcpy(r.buf_.raw(0), buf_.raw(raw_start), len);
@@ -41,9 +42,27 @@ Results Results::GetResult(size_t index) const {
   }
 }
 
-std::string Results::to_string() const { 
- using base::stringify;
- return stringify(offset_) + buf_.to_string();
+std::string Results::to_string() const {
+  std::stringstream ss;
+  ss << "[";
+  auto iter       = offset_.begin();
+  uint64_t offset = *iter;
+  if (offset & is_reg_mask) {
+    ss << Reg{offset & ~is_reg_mask};
+  } else {
+    ss << "offset(" << offset << ")";
+  }
+  ++iter;
+  for (; iter != offset_.end(); ++iter) {
+    uint64_t offset = *iter;
+    if (offset & is_reg_mask) {
+      ss << ", " << Reg{offset & ~is_reg_mask};
+    } else {
+      ss << ", offset(" << offset << ")";
+    }
+  }
+  ss << "]"<< buf_.to_string();
+  return ss.str();
 }
 
 }  // namespace ir

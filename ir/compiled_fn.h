@@ -107,7 +107,7 @@ struct CompiledFn {
   // This vector is indexed by ir::Reg and stores the value which is the offset
   // into the base::untyped_buffer holding all registers during compile-time
   // execution. It is only valid for core::Host().
-  std::vector<size_t> compiler_reg_to_offset_;
+  absl::flat_hash_map<ir::Reg, size_t> compiler_reg_to_offset_;
 };
 
 static_assert(alignof(CompiledFn) > 1);

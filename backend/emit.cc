@@ -110,7 +110,6 @@ static llvm::Value *EmitValue(size_t num_args, LlvmData *llvm_data,
             return StringConstant(llvm_data->builder, s);
           },
           [&](const ir::BlockSequence &bs) -> llvm::Value * { NOT_YET(); },
-          [&](const ir::BuiltinGenericIndex &bgi) -> llvm::Value * {
             NOT_YET();
           },
           [&](const ir::Foreign &f) -> llvm::Value * { NOT_YET(); }

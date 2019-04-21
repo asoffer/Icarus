@@ -11,8 +11,6 @@
 namespace ir {
 thread_local CompiledFn *CompiledFn::Current{nullptr};
 
-Reg CompiledFn::Argument(uint32_t n) const { return Reg(n); }
-
 CompiledFn::CompiledFn(Module *mod, type::Function const *fn_type,
                        core::FnParams<type::Typed<ast::Expression *>> params)
     : type_(fn_type),
@@ -35,7 +33,7 @@ CompiledFn::CompiledFn(Module *mod, type::Function const *fn_type,
     } else {
       entry = core::FwdAlign(reg_size_, t->alignment(arch));
     }
-    compiler_reg_to_offset_.push_back(entry.value());
+    compiler_reg_to_offset_.emplace(ir::Reg::Arg(i++), entry.value());
     reg_size_ =
         entry + (t->is_big() ? core::Bytes{sizeof(Addr)} : t->bytes(arch));
   }

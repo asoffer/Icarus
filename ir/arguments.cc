@@ -67,20 +67,20 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
 
     if (t->is_big()) {
       auto reg_or_addr = results_.get<Addr>(i);
-      call_buf.append(reg_or_addr.is_reg_
-                          ? regs.get<Addr>(fn->compiler_reg_to_offset_.at(
-                                reg_or_addr.reg_.value()))
-                          : reg_or_addr.val_);
+      call_buf.append(
+          reg_or_addr.is_reg_
+              ? regs.get<Addr>(fn->compiler_reg_to_offset_.at(reg_or_addr.reg_))
+              : reg_or_addr.val_);
     } else {
       type::Apply(t, [&](auto type_holder) {
         using T = typename decltype(type_holder)::type;
         // NOTE: the use of call_stack.top()... is the same as in resolve<T>,
         // but that's apparently uncapturable due to a GCC bug.
         auto reg_or_val = results_.get<T>(i);
-        call_buf.append(reg_or_val.is_reg_
-                            ? regs.get<T>(fn->compiler_reg_to_offset_.at(
-                                  reg_or_val.reg_.value()))
-                            : reg_or_val.val_);
+        call_buf.append(
+            reg_or_val.is_reg_
+                ? regs.get<T>(fn->compiler_reg_to_offset_.at(reg_or_val.reg_))
+                : reg_or_val.val_);
 
       });
     }

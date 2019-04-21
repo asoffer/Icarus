@@ -11,6 +11,10 @@ TEST_CASE("construction") {
   CHECK(Results(3, true, 4).size() == 3u);
 }
 
+TEST_CASE("Args pass through unchanged") {
+  CHECK(Results{Reg::Arg(3)}.get<Reg>(0) == Reg::Arg(3));
+}
+
 TEST_CASE("access values") {
   Results r{3, true, 4};
   CHECK(r.get<int>(0) == RegisterOr{3});

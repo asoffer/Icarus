@@ -295,8 +295,9 @@ Reg Reserve(type::Type const *t) {
   auto offset = FwdAlign(CompiledFn::Current->reg_size_, t->alignment(arch));
   CompiledFn::Current->reg_size_ = offset + t->bytes(arch);
 
+  // TODO starts at `n`, where `n` is the number of function arguments.
   ir::Reg r{CompiledFn::Current->compiler_reg_to_offset_.size()};
-  CompiledFn::Current->compiler_reg_to_offset_.push_back(offset.value());
+  CompiledFn::Current->compiler_reg_to_offset_.emplace(r, offset.value());
   ++CompiledFn::Current->num_regs_;
   return r;
 }

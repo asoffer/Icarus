@@ -23,8 +23,8 @@ void Tuple::EmitCopyAssign(Type const *from_type, ir::Results const &from,
                        core::Param{"", Typed<ast::Expression *>{nullptr, p}}));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto val                = ir::CompiledFn::Current->Argument(0);
-      auto var                = ir::CompiledFn::Current->Argument(1);
+      auto val                = ir::Reg::Arg(0);
+      auto var                = ir::Reg::Arg(1);
 
       // TODO is initialization order well-defined? ranodmize it? at least it
       // should always be opposite destruction order?
@@ -59,8 +59,8 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Results const &from,
                        core::Param{"", Typed<ast::Expression *>{nullptr, p}}));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto val                = ir::CompiledFn::Current->Argument(0);
-      auto var                = ir::CompiledFn::Current->Argument(1);
+      auto val                = ir::Reg::Arg(0);
+      auto var                = ir::Reg::Arg(1);
 
       // TODO is initialization order well-defined? ranodmize it? at least it
       // should always be opposite destruction order?
@@ -89,7 +89,7 @@ void Tuple::EmitInit(ir::Reg reg, Context *ctx) const {
 
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto var                = ir::CompiledFn::Current->Argument(0);
+      auto var                = ir::Reg::Arg(0);
 
       // TODO is initialization order well-defined? ranodmize it? at least it
       // should always be opposite destruction order?
@@ -161,7 +161,7 @@ void Tuple::EmitDestroy(ir::Reg reg, Context *ctx) const {
             core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto var                = ir::CompiledFn::Current->Argument(0);
+      auto var                = ir::Reg::Arg(0);
 
       // TODO is destruction order well-defined? ranodmize it?
       for (int i = static_cast<int>(entries_.size()) - 1; i >= 0; --i) {

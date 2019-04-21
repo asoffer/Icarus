@@ -158,7 +158,7 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
 void StructLiteral::CompleteBody(Context *ctx) {
   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[this];
   for (size_t i = 0; i < args_.size(); ++i) {
-    ctx->set_addr(&args_[i], ir_func->Argument(i));
+    ctx->set_addr(&args_[i], ir::Reg::Arg(i));
   }
 
   CURRENT_FUNC(ir_func) {
