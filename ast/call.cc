@@ -240,12 +240,21 @@ ir::Results Call::EmitIr(Context *ctx) {
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
 
-  return dispatch_table.EmitCall(
-      args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
-        return std::pair(const_cast<Expression *>(expr.get()),
-                         expr->EmitIr(ctx));
-      }),
-      ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
+  if (contains_hashtag(Hashtag(Hashtag::Builtin::Inline))) {
+    return dispatch_table.EmitInlineCall(
+        args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
+          return std::pair(const_cast<Expression *>(expr.get()),
+                           expr->EmitIr(ctx));
+        }),
+        ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
+  } else {
+    return dispatch_table.EmitCall(
+        args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
+          return std::pair(const_cast<Expression *>(expr.get()),
+                           expr->EmitIr(ctx));
+        }),
+        ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
+  }
 }
 
 }  // namespace ast

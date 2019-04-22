@@ -241,6 +241,7 @@ static absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
     BuiltinHashtagMap = {{"{export}", ast::Hashtag::Builtin::Export},
                          {"{uncopyable}", ast::Hashtag::Builtin::Uncopyable},
                          {"{immovable}", ast::Hashtag::Builtin::Immovable},
+                         {"{inline}", ast::Hashtag::Builtin::Inline},
                          {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
 
 Lexeme NextHashtag(SrcCursor *cursor, Src *src) {

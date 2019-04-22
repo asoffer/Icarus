@@ -74,10 +74,17 @@ ir::Results Identifier::EmitIr(Context *ctx) {
   ASSERT(decl_ != nullptr) << this->to_string(0);
   if (decl_->const_) { return decl_->EmitIr(ctx); }
   if (decl_->is_fn_param_) {
-    auto *t = ctx->type_of(this);
-    return ir::Results{decl_->is_output_ && !t->is_big()
-                           ? ir::Load(ctx->addr(decl_), t)
-                           : ctx->addr(decl_)};
+    if (ctx->inline_) {}
+    auto *t     = ctx->type_of(this);
+    ir::Reg reg = ctx->addr(decl_);
+    if (ctx->inline_) {
+      ir::Results reg_results = (*ctx->inline_)[reg];
+      if (!reg_results.is_reg(0)) { return reg_results; }
+      reg = reg_results.get<ir::Reg>(0);
+    }
+
+    return ir::Results{decl_->is_output_ && !t->is_big() ? ir::Load(reg, t)
+                                                         : reg};
   } else if (decl_->is<MatchDeclaration>()) {
     // TODO is there a better way to do look up? look up in parent too?
     UNREACHABLE(decl_);
@@ -93,6 +100,7 @@ ir::Results Identifier::EmitIr(Context *ctx) {
 std::vector<ir::RegisterOr<ir::Addr>> Identifier::EmitLVal(Context *ctx) {
   ASSERT(decl_ != nullptr);
   ASSERT(decl_->const_ == false);
+  ASSERT(decl_->is_fn_param_ == false);
   return {ctx->addr(decl_)};
 }
 

@@ -510,6 +510,9 @@ static ir::BlockIndex EmitDispatchTest(
   return next_binding;
 }
 
+// TODO inline_results is a hacky solution to this problem and you should think
+// about solving it robustly. Return ir::Results for both the in and out-of-line
+// cases.
 template <bool Inline>
 static void EmitOneCall(
     DispatchTable::Row const &row,
@@ -517,7 +520,7 @@ static void EmitOneCall(
     std::vector<type::Type const *> const &return_types,
     std::vector<std::variant<
         ir::Reg, absl::flat_hash_map<ir::BlockIndex, ir::Results> *>> *outputs,
-    Context *ctx) {
+    ir::Results *inline_results, Context *ctx) {
   // TODO look for matches
   ir::RegisterOr<ir::AnyFunc> fn = std::visit(
       [&](auto f) -> ir::RegisterOr<ir::AnyFunc> {
@@ -551,50 +554,62 @@ static void EmitOneCall(
     }
   }
 
-  ir::OutParams out_params;
-
-  auto call_block = ir::CompiledFn::Current->AddBlock();
-
-  size_t j = 0;
-  for (type::Type const *ret_type : row.type->output) {
-    if (ret_type->is_big()) {
-      ir::Reg reg = std::get<ir::Reg>(outputs->at(j++));
-      // TODO this seems like something that should be shareable with the
-      // type-based assignment/initialization code.
-      NOT_YET(reg);
-    } else {
-      std::visit(
-          [&](auto out) {
-            if constexpr (std::is_same_v<std::decay_t<decltype(out)>, ir::Reg>) {
-              // This specific function returns something small enough to fit in
-              // a register, but combined with all the other possible
-              // dispatches, we need more space.
-
-              // There is no need to call the destructor on this variant that
-              // we're overwriting because it has not been initialized yet.
-              ir::Store(ret_type, ir::VariantType(out));
-              auto val = ir::VariantValue(ret_type, out);
-              out_params.AppendLoc(val);
-            } else {
-              // Every function that may be dispatched to returns the same type.
-              ir::Reg out_reg = out_params.AppendReg(ret_type);
-              out->emplace(call_block, ir::Results{out_reg});
-            }
-          },
-          outputs->at(j++));
-    }
-  }
-
-  ir::UncondJump(call_block);
-  ir::BasicBlock::Current = call_block;
   if constexpr (Inline) {
     ASSERT(fn.is_reg_ == false);
-    ASSERT(fn.val_.is_fn() == true);
-    base::Log() << *ir::CompiledFn::Current;
-    base::Log() << *fn.val_.func();
-    static_cast<void>(fn);
-    NOT_YET();
+    if (fn.val_.is_fn()) {
+      // absl::flat_hash_map<ir::Reg, ir::Results> inline_map;
+      // auto *prev_inline_map = std::exchange(ctx->inline_, &inline_map);
+      // base::defer d([&]() { ctx->inline_ = prev_inline_map; });
+      if (fn.val_.func()->work_item == nullptr) {
+        *inline_results = ir::CallInline(fn.val_.func(),
+                                         ir::Arguments{row.type, arg_results});
+      } else {
+        NOT_YET();
+      }
+    } else {
+      NOT_YET();
+    }
+
   } else {
+    ir::OutParams out_params;
+
+    auto call_block = ir::CompiledFn::Current->AddBlock();
+
+    size_t j = 0;
+    for (type::Type const *ret_type : row.type->output) {
+      if (ret_type->is_big()) {
+        ir::Reg reg = std::get<ir::Reg>(outputs->at(j++));
+        // TODO this seems like something that should be shareable with the
+        // type-based assignment/initialization code.
+        NOT_YET(reg);
+      } else {
+        std::visit(
+            [&](auto out) {
+              if constexpr (std::is_same_v<std::decay_t<decltype(out)>,
+                                           ir::Reg>) {
+                // This specific function returns something small enough to fit
+                // in a register, but combined with all the other possible
+                // dispatches, we need more space.
+
+                // There is no need to call the destructor on this variant that
+                // we're overwriting because it has not been initialized yet.
+                ir::Store(ret_type, ir::VariantType(out));
+                auto val = ir::VariantValue(ret_type, out);
+                out_params.AppendLoc(val);
+              } else {
+                // Every function that may be dispatched to returns the same
+                // type.
+                ir::Reg out_reg = out_params.AppendReg(ret_type);
+                out->emplace(call_block, ir::Results{out_reg});
+              }
+            },
+            outputs->at(j++));
+      }
+    }
+
+    ir::UncondJump(call_block);
+    ir::BasicBlock::Current = call_block;
+
     ir::Call(fn, ir::Arguments{row.type, std::move(arg_results)},
              std::move(out_params));
   }
@@ -634,43 +649,49 @@ static ir::Results EmitFnCall(
     }
   }
 
+  ir::Results inline_results;
   for (size_t i = 0; i + 1 < table->bindings_.size(); ++i) {
     auto const &row   = table->bindings_.at(i);
     auto next_binding = EmitDispatchTest(row.params, args, ctx);
 
-    EmitOneCall<Inline>(row, args, table->return_types_, &outputs, ctx);
+    EmitOneCall<Inline>(row, args, table->return_types_, &outputs, &inline_results, ctx);
 
     ir::UncondJump(landing_block);
     ir::BasicBlock::Current = next_binding;
   }
 
   EmitOneCall<Inline>(table->bindings_.back(), args, table->return_types_,
-                      &outputs, ctx);
+                      &outputs, &inline_results, ctx);
   ir::UncondJump(landing_block);
 
   ir::BasicBlock::Current = landing_block;
 
-  ir::Results results;
-  for (size_t i = 0; i < table->return_types_.size(); ++i) {
-    std::visit(
-        [&](auto out) {
-          if constexpr (std::is_same_v<std::decay_t<decltype(out)>, ir::Reg>) {
-            // Return is large. We allocated a slot large enough ahead of time
-            // and simply wrote to it. Thus, no phi node is necessary, we can
-            // just return a pointer to the temporary allocation.
-            results.append(out);
-          } else {
-            // Return is small enough to fit in a register, so we need to create
-            // a phi node joining all the registers from all the possible
-            // dispatches.
-            type::Type const *ret_type = table->return_types_[i];
-            results.append(ir::MakePhi(ret_type, ir::Phi(ret_type), *out));
-          }
-        },
-        outputs[i]);
-  }
+  if constexpr (Inline) {
+    return inline_results;
+  } else {
+    ir::Results results;
+    for (size_t i = 0; i < table->return_types_.size(); ++i) {
+      std::visit(
+          [&](auto out) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(out)>,
+                                         ir::Reg>) {
+              // Return is large. We allocated a slot large enough ahead of time
+              // and simply wrote to it. Thus, no phi node is necessary, we can
+              // just return a pointer to the temporary allocation.
+              results.append(out);
+            } else {
+              // Return is small enough to fit in a register, so we need to
+              // create a phi node joining all the registers from all the
+              // possible dispatches.
+              type::Type const *ret_type = table->return_types_[i];
+              results.append(ir::MakePhi(ret_type, ir::Phi(ret_type), *out));
+            }
+          },
+          outputs[i]);
+    }
 
-  return results;
+    return results;
+  }
 }
 
 ir::Results DispatchTable::EmitInlineCall(

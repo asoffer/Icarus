@@ -83,6 +83,7 @@ std::map<std::string, ast::Hashtag::Builtin> const BuiltinHashtagMap = {
     {"{export}", ast::Hashtag::Builtin::Export},
     {"{uncopyable}", ast::Hashtag::Builtin::Uncopyable},
     {"{immovable}", ast::Hashtag::Builtin::Immovable},
+    {"{inline}", ast::Hashtag::Builtin::Inline},
     {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
 std::unique_ptr<ast::Node> AddHashtag(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
@@ -1236,7 +1237,7 @@ auto Rules = std::array{
     Rule(expr, {fn_expr, braced_stmts}, BuildNormalFunctionLiteral),
     Rule(expr, {expr, fn_arrow, braced_stmts}, BuildInferredFunctionLiteral),
     Rule(hashtag, {hashtag, newline}, drop_all_but<0>),
-    Rule(expr, {hashtag, expr}, AddHashtag),
+    Rule(expr, {hashtag, EXPR}, AddHashtag),
 
     // Call and index operator with reserved words. We can't put reserved words
     // in the first slot because that might conflict with a real use case.

@@ -2,9 +2,10 @@
 
 #include <cmath>
 #include <iostream>
-
 #include <vector>
+
 #include "ast/struct_literal.h"
+#include "base/bag.h"
 #include "core/arch.h"
 #include "ir/compiled_fn.h"
 #include "ir/phi.h"
@@ -565,6 +566,143 @@ void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs) {
 
   auto &cmd = MakeCmd(nullptr, Op::Call);
   cmd.call_ = Cmd::Call(f, args, outs_ptr);
+}
+
+Results CallInline(CompiledFn *f, Arguments const &arguments) {
+  std::vector<Results> return_vals;
+  return_vals.resize(f->type_->output.size());
+
+  // TODO is this used?
+  auto &block = CompiledFn::Current->block(BasicBlock::Current);
+
+  // In order to inline the entire function, we have to be careful because
+  // reading the blocks in numeric order may not yield registers in an order
+  // such that we only see registers depending on previously seen registers.
+  // Such an ordering cannot exist because phi-nodes could depend on values
+  // determined later in the same block. It is conceivable that phi-nodes are
+  // the only exception, but relying on this puts some strange limitations on
+  // how we build the IR (cannot jump to another block and then back), so we
+  // would rather not enforce that.
+  //
+  // We do know that block 0 consists entirely of allocas and an unconditional
+  // jump to block 1.
+  //
+  // 1. Map parameter registers to arguments.
+  // 2. Initialize block 0.
+  // 3. Ignoring phi-nodes, iterate over commands in blocks, skipping to the
+  //    next one whenever you get stuck.
+  // 4. After all such blocks are handled, go back with a second pass over
+  //    phi-nodes.
+  absl::flat_hash_map<ir::Reg, ir::Results> reg_relocs;
+
+  // 1. Map parameter registers to arguments.
+  for (size_t i = 0; i < f->type_->input.size(); ++i) {
+    reg_relocs.emplace(Reg::Arg(i), arguments.results_.GetResult(i));
+  }
+
+  // 2. Initialize block 0.
+  for (auto const &cmd : f->block(f->entry()).cmds_) {
+    switch (cmd.op_code_) {
+      case Op::Alloca:
+        reg_relocs.emplace(cmd.result, ir::Results{Alloca(cmd.type_)});
+        continue;
+      case Op::UncondJump: continue;
+      default: UNREACHABLE();
+    }
+  }
+
+  // 3. Ignoring phi-nodes, iterate over commands in blocks, skipping to the
+  //    next one whenever you get stuck.
+  base::bag<std::pair<BasicBlock *, size_t>> blocks;
+  for (size_t i = 1; i < f->blocks_.size(); ++i) {
+    blocks.emplace(&f->blocks_.at(i), 0);
+  }
+
+  while (!blocks.empty()) {
+    auto iter           = blocks.begin();
+    auto [block, index] = *iter;
+    for (; index < block->cmds_.size(); ++index) {
+      auto const &cmd = block->cmds_.at(index);
+      switch (cmd.op_code_) {
+#define CASE(op_code, op_fn, args, type)                                       \
+  case op_code: {                                                              \
+    auto iter0 = reg_relocs.find(args[0].reg_);                                \
+    if (iter0 == reg_relocs.end()) { goto next_block; }                        \
+    auto iter1 = reg_relocs.find(args[1].reg_);                                \
+    if (iter1 == reg_relocs.end()) { goto next_block; }                        \
+    reg_relocs.emplace(cmd.result, op_fn(iter0->second.get<type>(0),           \
+                                         iter1->second.get<type>(0)));         \
+  } break
+        CASE(Op::AddNat8, Add, cmd.u8_args_.args_, uint8_t);
+        CASE(Op::AddNat16, Add, cmd.u16_args_.args_, uint16_t);
+        CASE(Op::AddNat32, Add, cmd.u32_args_.args_, uint32_t);
+        CASE(Op::AddNat64, Add, cmd.u64_args_.args_, uint64_t);
+        CASE(Op::AddInt8, Add, cmd.i8_args_.args_, int8_t);
+        CASE(Op::AddInt16, Add, cmd.i16_args_.args_, int16_t);
+        CASE(Op::AddInt32, Add, cmd.i32_args_.args_, int32_t);
+        CASE(Op::AddInt64, Add, cmd.i64_args_.args_, int64_t);
+
+        CASE(Op::SubNat8, Sub, cmd.u8_args_.args_, uint8_t);
+        CASE(Op::SubNat16, Sub, cmd.u16_args_.args_, uint16_t);
+        CASE(Op::SubNat32, Sub, cmd.u32_args_.args_, uint32_t);
+        CASE(Op::SubNat64, Sub, cmd.u64_args_.args_, uint64_t);
+        CASE(Op::SubInt8, Sub, cmd.i8_args_.args_, int8_t);
+        CASE(Op::SubInt16, Sub, cmd.i16_args_.args_, int16_t);
+        CASE(Op::SubInt32, Sub, cmd.i32_args_.args_, int32_t);
+        CASE(Op::SubInt64, Sub, cmd.i64_args_.args_, int64_t);
+
+        CASE(Op::MulNat8, Mul, cmd.u8_args_.args_, uint8_t);
+        CASE(Op::MulNat16, Mul, cmd.u16_args_.args_, uint16_t);
+        CASE(Op::MulNat32, Mul, cmd.u32_args_.args_, uint32_t);
+        CASE(Op::MulNat64, Mul, cmd.u64_args_.args_, uint64_t);
+        CASE(Op::MulInt8, Mul, cmd.i8_args_.args_, int8_t);
+        CASE(Op::MulInt16, Mul, cmd.i16_args_.args_, int16_t);
+        CASE(Op::MulInt32, Mul, cmd.i32_args_.args_, int32_t);
+        CASE(Op::MulInt64, Mul, cmd.i64_args_.args_, int64_t);
+
+        CASE(Op::DivNat8, Div, cmd.u8_args_.args_, uint8_t);
+        CASE(Op::DivNat16, Div, cmd.u16_args_.args_, uint16_t);
+        CASE(Op::DivNat32, Div, cmd.u32_args_.args_, uint32_t);
+        CASE(Op::DivNat64, Div, cmd.u64_args_.args_, uint64_t);
+        CASE(Op::DivInt8, Div, cmd.i8_args_.args_, int8_t);
+        CASE(Op::DivInt16, Div, cmd.i16_args_.args_, int16_t);
+        CASE(Op::DivInt32, Div, cmd.i32_args_.args_, int32_t);
+        CASE(Op::DivInt64, Div, cmd.i64_args_.args_, int64_t);
+
+        CASE(Op::ModNat8, Mod, cmd.u8_args_.args_, uint8_t);
+        CASE(Op::ModNat16, Mod, cmd.u16_args_.args_, uint16_t);
+        CASE(Op::ModNat32, Mod, cmd.u32_args_.args_, uint32_t);
+        CASE(Op::ModNat64, Mod, cmd.u64_args_.args_, uint64_t);
+        CASE(Op::ModInt8, Mod, cmd.i8_args_.args_, int8_t);
+        CASE(Op::ModInt16, Mod, cmd.i16_args_.args_, int16_t);
+        CASE(Op::ModInt32, Mod, cmd.i32_args_.args_, int32_t);
+        CASE(Op::ModInt64, Mod, cmd.i64_args_.args_, int64_t);
+
+#undef CASE
+        case Op::SetRetInt64: {
+          if (cmd.set_ret_i64_.val_.is_reg_) {
+            auto iter = reg_relocs.find(cmd.set_ret_i64_.val_.reg_);
+            if (iter == reg_relocs.end()) { goto next_block; }
+            return_vals.at(cmd.set_ret_i64_.ret_num_) = iter->second;
+          } else {
+            return_vals.at(cmd.set_ret_i64_.ret_num_) =
+                ir::Results{cmd.set_ret_i64_.val_.val_};
+          }
+        } break;
+        default:;  // NOT_YET(static_cast<int>(cmd.op_code_));
+      }
+      continue;
+
+    next_block:
+      blocks.emplace(block, index);
+      break;
+    }
+    blocks.erase(iter);
+  }
+
+  Results results;
+  for (auto const &r : return_vals) { results.append(r); }
+  return results;
 }
 
 void CondJump(RegisterOr<bool> cond, BlockIndex true_block,

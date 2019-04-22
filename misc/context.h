@@ -90,6 +90,12 @@ struct Context {
   // again, at each step adding the nodes to the error log involved in the
   // dependency. Once complete, we reset this to null
   std::vector<ast::Identifier *> cyc_deps_;
+
+  // TODO Because you already have arguments, it's perhaps better to just be a
+  // pointer into the arguments buffer, to avoid the
+  // reallocation/double-storage, but we can deal with this later. Probably
+  // requires a deeper refactoring to have things linke ir::ResultView, etc.
+  absl::flat_hash_map<ir::Reg, ir::Results> *inline_ = nullptr;
 };
 
 #endif  // ICARUS_CONTEXT_H

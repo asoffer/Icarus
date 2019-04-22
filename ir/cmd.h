@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_CMD_H
 #define ICARUS_IR_CMD_H
 
+#include "absl/container/flat_hash_map.h"
 #include "ast/hashtag.h"
 #include "base/untyped_buffer.h"
 #include "ir/results.h"
@@ -585,6 +586,8 @@ void Store(T r, Args &&... args) {
 
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments);
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs);
+Results CallInline(CompiledFn *f, Arguments const &arguments);
+
 Reg CreateTuple();
 void AppendToTuple(Reg tup, RegisterOr<type::Type const *> entry);
 Reg FinalizeTuple(Reg tup);

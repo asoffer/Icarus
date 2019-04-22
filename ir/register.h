@@ -1,7 +1,9 @@
 #ifndef ICARUS_IR_REGISTER_H
 #define ICARUS_IR_REGISTER_H
 
+#include <sstream>
 #include <vector>
+
 #include "base/strong_types.h"
 
 DEFINE_STRONG_INT(ir, BlockIndex, int32_t, -1);
@@ -37,7 +39,11 @@ struct Reg {
   constexpr bool is_out() { return val_ & out_mask; }
   constexpr auto value() const { return val_; }
 
-  std::string to_string() const { return "r." + std::to_string(val_); }
+  std::string to_string() const {
+    std::stringstream ss;
+    ss << *this;
+    return ss.str();
+  }
 
  private:
   constexpr static Reg MakeReg(uint64_t val) {

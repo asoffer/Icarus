@@ -44,8 +44,6 @@ struct CompiledFn {
   CompiledFn(Module *mod, type::Function const *fn_type,
              core::FnParams<type::Typed<ast::Expression *>> params);
 
-  Reg Argument(uint32_t n) const;
-
   void ComputeInvariants();
   void CheckInvariants();
 
