@@ -77,6 +77,7 @@ struct Results {
   // TODO reduce indicetions by storing registers directly in the vector. Be
   // sure to handle their bit patterns correctly.
   //
+  // TODO documentation below is wrong.
   // Value at position `n` is the offset of the `n`th entry in `buf_`. Negative
   // values indicate that the value stored is a register rather than the actual
   // value.

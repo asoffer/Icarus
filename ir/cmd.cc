@@ -236,9 +236,9 @@ RegisterOr<type::Type const *> Tup(
     return type::Tup(std::move(types));
   }
 
-  ir::Reg tup = ir::CreateTuple();
-  for (auto const &val : entries) { ir::AppendToTuple(tup, val); }
-  return ir::FinalizeTuple(tup);
+  Reg tup = CreateTuple();
+  for (auto const &val : entries) { AppendToTuple(tup, val); }
+  return FinalizeTuple(tup);
 }
 
 Reg CreateVariant() { return MakeCmd(type::Type_, Op::CreateVariant).result; }
@@ -568,12 +568,27 @@ void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs) {
   cmd.call_ = Cmd::Call(f, args, outs_ptr);
 }
 
+template <typename T>
+static void InlinePhiNode(
+    CmdIndex cmd_index,
+    PhiArgs<T> const &phi_args,
+    absl::flat_hash_map<BlockIndex, BlockIndex> const &block_relocs,
+    absl::flat_hash_map<Reg, Results> const &reg_relocs) {
+  absl::flat_hash_map<BlockIndex, RegisterOr<T>> phi_map;
+  for (auto [block, val] : phi_args.map_) {
+    phi_map.emplace(block_relocs.at(block),
+                    val.is_reg_ ? reg_relocs.at(val.reg_).template get<T>(0)
+                                : RegisterOr<T>{val.val_});
+  }
+  base::Log() << phi_map;
+  base::Log() << reg_relocs;
+  base::Log() << block_relocs;
+  MakePhi(cmd_index, std::move(phi_map));
+}
+
 Results CallInline(CompiledFn *f, Arguments const &arguments) {
   std::vector<Results> return_vals;
   return_vals.resize(f->type_->output.size());
-
-  // TODO is this used?
-  auto &block = CompiledFn::Current->block(BasicBlock::Current);
 
   // In order to inline the entire function, we have to be careful because
   // reading the blocks in numeric order may not yield registers in an order
@@ -613,72 +628,188 @@ Results CallInline(CompiledFn *f, Arguments const &arguments) {
 
   // 3. Ignoring phi-nodes, iterate over commands in blocks, skipping to the
   //    next one whenever you get stuck.
-  base::bag<std::pair<BasicBlock *, size_t>> blocks;
-  for (size_t i = 1; i < f->blocks_.size(); ++i) {
-    blocks.emplace(&f->blocks_.at(i), 0);
+  base::bag<std::pair<BlockIndex, size_t>> blocks;
+  // TODO block relocation is much simpler: 0 -> 0, 1 -> current block, all
+  // others are now add are just their index + current size
+  absl::flat_hash_map<BlockIndex, BlockIndex> block_relocs;
+  block_relocs.emplace(BlockIndex{1}, BasicBlock::Current);
+  blocks.emplace(BlockIndex{1}, 0);
+  for (size_t i = 2; i < f->blocks_.size(); ++i) {
+    blocks.emplace(BlockIndex(i), 0);
+    block_relocs.emplace(BlockIndex(i), CompiledFn::AddBlock());
   }
+
+  std::vector<std::pair<GenericPhiArgs *, CmdIndex>> deferred_phis;
 
   while (!blocks.empty()) {
     auto iter           = blocks.begin();
     auto [block, index] = *iter;
-    for (; index < block->cmds_.size(); ++index) {
-      auto const &cmd = block->cmds_.at(index);
+    BasicBlock::Current = block_relocs.at(block);
+    // TODO could just as easily be a ref
+    auto const &block_ref = f->block(block);
+    for (; index < block_ref.cmds_.size(); ++index) {
+      auto const &cmd = block_ref.cmds_.at(index);
       switch (cmd.op_code_) {
-#define CASE(op_code, op_fn, args, type)                                       \
-  case op_code: {                                                              \
-    auto iter0 = reg_relocs.find(args[0].reg_);                                \
+#define CASE(op_code, op_fn, type, args)                                       \
+  case Op::op_code: {                                                          \
+    auto iter0 = reg_relocs.find(cmd.args.args_[0].reg_);                      \
     if (iter0 == reg_relocs.end()) { goto next_block; }                        \
-    auto iter1 = reg_relocs.find(args[1].reg_);                                \
+    auto iter1 = reg_relocs.find(cmd.args.args_[1].reg_);                      \
     if (iter1 == reg_relocs.end()) { goto next_block; }                        \
     reg_relocs.emplace(cmd.result, op_fn(iter0->second.get<type>(0),           \
                                          iter1->second.get<type>(0)));         \
   } break
-        CASE(Op::AddNat8, Add, cmd.u8_args_.args_, uint8_t);
-        CASE(Op::AddNat16, Add, cmd.u16_args_.args_, uint16_t);
-        CASE(Op::AddNat32, Add, cmd.u32_args_.args_, uint32_t);
-        CASE(Op::AddNat64, Add, cmd.u64_args_.args_, uint64_t);
-        CASE(Op::AddInt8, Add, cmd.i8_args_.args_, int8_t);
-        CASE(Op::AddInt16, Add, cmd.i16_args_.args_, int16_t);
-        CASE(Op::AddInt32, Add, cmd.i32_args_.args_, int32_t);
-        CASE(Op::AddInt64, Add, cmd.i64_args_.args_, int64_t);
-
-        CASE(Op::SubNat8, Sub, cmd.u8_args_.args_, uint8_t);
-        CASE(Op::SubNat16, Sub, cmd.u16_args_.args_, uint16_t);
-        CASE(Op::SubNat32, Sub, cmd.u32_args_.args_, uint32_t);
-        CASE(Op::SubNat64, Sub, cmd.u64_args_.args_, uint64_t);
-        CASE(Op::SubInt8, Sub, cmd.i8_args_.args_, int8_t);
-        CASE(Op::SubInt16, Sub, cmd.i16_args_.args_, int16_t);
-        CASE(Op::SubInt32, Sub, cmd.i32_args_.args_, int32_t);
-        CASE(Op::SubInt64, Sub, cmd.i64_args_.args_, int64_t);
-
-        CASE(Op::MulNat8, Mul, cmd.u8_args_.args_, uint8_t);
-        CASE(Op::MulNat16, Mul, cmd.u16_args_.args_, uint16_t);
-        CASE(Op::MulNat32, Mul, cmd.u32_args_.args_, uint32_t);
-        CASE(Op::MulNat64, Mul, cmd.u64_args_.args_, uint64_t);
-        CASE(Op::MulInt8, Mul, cmd.i8_args_.args_, int8_t);
-        CASE(Op::MulInt16, Mul, cmd.i16_args_.args_, int16_t);
-        CASE(Op::MulInt32, Mul, cmd.i32_args_.args_, int32_t);
-        CASE(Op::MulInt64, Mul, cmd.i64_args_.args_, int64_t);
-
-        CASE(Op::DivNat8, Div, cmd.u8_args_.args_, uint8_t);
-        CASE(Op::DivNat16, Div, cmd.u16_args_.args_, uint16_t);
-        CASE(Op::DivNat32, Div, cmd.u32_args_.args_, uint32_t);
-        CASE(Op::DivNat64, Div, cmd.u64_args_.args_, uint64_t);
-        CASE(Op::DivInt8, Div, cmd.i8_args_.args_, int8_t);
-        CASE(Op::DivInt16, Div, cmd.i16_args_.args_, int16_t);
-        CASE(Op::DivInt32, Div, cmd.i32_args_.args_, int32_t);
-        CASE(Op::DivInt64, Div, cmd.i64_args_.args_, int64_t);
-
-        CASE(Op::ModNat8, Mod, cmd.u8_args_.args_, uint8_t);
-        CASE(Op::ModNat16, Mod, cmd.u16_args_.args_, uint16_t);
-        CASE(Op::ModNat32, Mod, cmd.u32_args_.args_, uint32_t);
-        CASE(Op::ModNat64, Mod, cmd.u64_args_.args_, uint64_t);
-        CASE(Op::ModInt8, Mod, cmd.i8_args_.args_, int8_t);
-        CASE(Op::ModInt16, Mod, cmd.i16_args_.args_, int16_t);
-        CASE(Op::ModInt32, Mod, cmd.i32_args_.args_, int32_t);
-        CASE(Op::ModInt64, Mod, cmd.i64_args_.args_, int64_t);
-
+        CASE(AddNat8, Add, uint8_t, u8_args_);
+        CASE(AddNat16, Add, uint16_t, u16_args_);
+        CASE(AddNat32, Add, uint32_t, u32_args_);
+        CASE(AddNat64, Add, uint64_t, u64_args_);
+        CASE(AddInt8, Add, int8_t, i8_args_);
+        CASE(AddInt16, Add, int16_t, i16_args_);
+        CASE(AddInt32, Add, int32_t, i32_args_);
+        CASE(AddInt64, Add, int64_t, i64_args_);
+        CASE(AddFloat32, Add, float, float32_args_);
+        CASE(AddFloat64, Add, double, float64_args_);
+        CASE(SubNat8, Sub, uint8_t, u8_args_);
+        CASE(SubNat16, Sub, uint16_t, u16_args_);
+        CASE(SubNat32, Sub, uint32_t, u32_args_);
+        CASE(SubNat64, Sub, uint64_t, u64_args_);
+        CASE(SubInt8, Sub, int8_t, i8_args_);
+        CASE(SubInt16, Sub, int16_t, i16_args_);
+        CASE(SubInt32, Sub, int32_t, i32_args_);
+        CASE(SubInt64, Sub, int64_t, i64_args_);
+        CASE(SubFloat32, Sub, float, float32_args_);
+        CASE(SubFloat64, Sub, double, float64_args_);
+        CASE(MulNat8, Mul, uint8_t, u8_args_);
+        CASE(MulNat16, Mul, uint16_t, u16_args_);
+        CASE(MulNat32, Mul, uint32_t, u32_args_);
+        CASE(MulNat64, Mul, uint64_t, u64_args_);
+        CASE(MulInt8, Mul, int8_t, i8_args_);
+        CASE(MulInt16, Mul, int16_t, i16_args_);
+        CASE(MulInt32, Mul, int32_t, i32_args_);
+        CASE(MulInt64, Mul, int64_t, i64_args_);
+        CASE(MulFloat32, Mul, float, float32_args_);
+        CASE(MulFloat64, Mul, double, float64_args_);
+        CASE(DivNat8, Div, uint8_t, u8_args_);
+        CASE(DivNat16, Div, uint16_t, u16_args_);
+        CASE(DivNat32, Div, uint32_t, u32_args_);
+        CASE(DivNat64, Div, uint64_t, u64_args_);
+        CASE(DivInt8, Div, int8_t, i8_args_);
+        CASE(DivInt16, Div, int16_t, i16_args_);
+        CASE(DivInt32, Div, int32_t, i32_args_);
+        CASE(DivInt64, Div, int64_t, i64_args_);
+        CASE(DivFloat32, Div, float, float32_args_);
+        CASE(DivFloat64, Div, double, float64_args_);
+        CASE(ModNat8, Mod, uint8_t, u8_args_);
+        CASE(ModNat16, Mod, uint16_t, u16_args_);
+        CASE(ModNat32, Mod, uint32_t, u32_args_);
+        CASE(ModNat64, Mod, uint64_t, u64_args_);
+        CASE(ModInt8, Mod, int8_t, i8_args_);
+        CASE(ModInt16, Mod, int16_t, i16_args_);
+        CASE(ModInt32, Mod, int32_t, i32_args_);
+        CASE(ModInt64, Mod, int64_t, i64_args_);
+        CASE(LtInt8, Lt, int8_t, i8_args_);
+        CASE(LtInt16, Lt, int16_t, i16_args_);
+        CASE(LtInt32, Lt, int32_t, i32_args_);
+        CASE(LtInt64, Lt, int64_t, i64_args_);
+        CASE(LtNat8, Lt, uint8_t, u8_args_);
+        CASE(LtNat16, Lt, uint16_t, u16_args_);
+        CASE(LtNat32, Lt, uint32_t, u32_args_);
+        CASE(LtNat64, Lt, uint64_t, u64_args_);
+        CASE(LtFloat32, Lt, float, float32_args_);
+        CASE(LtFloat64, Lt, double, float64_args_);
+        CASE(LtFlags, Lt, FlagsVal, flags_args_);
+        CASE(LeInt8, Le, int8_t, i8_args_);
+        CASE(LeInt16, Le, int16_t, i16_args_);
+        CASE(LeInt32, Le, int32_t, i32_args_);
+        CASE(LeInt64, Le, int64_t, i64_args_);
+        CASE(LeNat8, Le, uint8_t, u8_args_);
+        CASE(LeNat16, Le, uint16_t, u16_args_);
+        CASE(LeNat32, Le, uint32_t, u32_args_);
+        CASE(LeNat64, Le, uint64_t, u64_args_);
+        CASE(LeFloat32, Le, float, float32_args_);
+        CASE(LeFloat64, Le, double, float64_args_);
+        CASE(LeFlags, Le, FlagsVal, flags_args_);
+        CASE(GtInt8, Gt, int8_t, i8_args_);
+        CASE(GtInt16, Gt, int16_t, i16_args_);
+        CASE(GtInt32, Gt, int32_t, i32_args_);
+        CASE(GtInt64, Gt, int64_t, i64_args_);
+        CASE(GtNat8, Gt, uint8_t, u8_args_);
+        CASE(GtNat16, Gt, uint16_t, u16_args_);
+        CASE(GtNat32, Gt, uint32_t, u32_args_);
+        CASE(GtNat64, Gt, uint64_t, u64_args_);
+        CASE(GtFloat32, Gt, float, float32_args_);
+        CASE(GtFloat64, Gt, double, float64_args_);
+        CASE(GtFlags, Gt, FlagsVal, flags_args_);
+        CASE(GeInt8, Ge, int8_t, i8_args_);
+        CASE(GeInt16, Ge, int16_t, i16_args_);
+        CASE(GeInt32, Ge, int32_t, i32_args_);
+        CASE(GeInt64, Ge, int64_t, i64_args_);
+        CASE(GeNat8, Ge, uint8_t, u8_args_);
+        CASE(GeNat16, Ge, uint16_t, u16_args_);
+        CASE(GeNat32, Ge, uint32_t, u32_args_);
+        CASE(GeNat64, Ge, uint64_t, u64_args_);
+        CASE(GeFloat32, Ge, float, float32_args_);
+        CASE(GeFloat64, Ge, double, float64_args_);
+        CASE(GeFlags, Ge, FlagsVal, flags_args_);
+        CASE(EqBool, Eq, bool, bool_args_);
+        CASE(EqInt8, Eq, int8_t, i8_args_);
+        CASE(EqInt16, Eq, int16_t, i16_args_);
+        CASE(EqInt32, Eq, int32_t, i32_args_);
+        CASE(EqInt64, Eq, int64_t, i64_args_);
+        CASE(EqNat8, Eq, uint8_t, u8_args_);
+        CASE(EqNat16, Eq, uint16_t, u16_args_);
+        CASE(EqNat32, Eq, uint32_t, u32_args_);
+        CASE(EqNat64, Eq, uint64_t, u64_args_);
+        CASE(EqFloat32, Eq, float, float32_args_);
+        CASE(EqFloat64, Eq, double, float64_args_);
+        CASE(EqType, Eq, type::Type const *, type_args_);
+        CASE(EqEnum, Eq, EnumVal, enum_args_);
+        CASE(EqFlags, Eq, FlagsVal, flags_args_);
+        CASE(EqAddr, Eq, ir::Addr, addr_args_);
+        CASE(NeInt8, Ne, int8_t, i8_args_);
+        CASE(NeInt16, Ne, int16_t, i16_args_);
+        CASE(NeInt32, Ne, int32_t, i32_args_);
+        CASE(NeInt64, Ne, int64_t, i64_args_);
+        CASE(NeNat8, Ne, uint8_t, u8_args_);
+        CASE(NeNat16, Ne, uint16_t, u16_args_);
+        CASE(NeNat32, Ne, uint32_t, u32_args_);
+        CASE(NeNat64, Ne, uint64_t, u64_args_);
+        CASE(NeFloat32, Ne, float, float32_args_);
+        CASE(NeFloat64, Ne, double, float64_args_);
+        CASE(NeType, Ne, type::Type const *, type_args_);
+        CASE(NeEnum, Ne, EnumVal, enum_args_);
+        CASE(NeFlags, Ne, FlagsVal, flags_args_);
+        CASE(NeAddr, Ne, ir::Addr, addr_args_);
 #undef CASE
+        case Op::PhiBool: {
+          auto cmd_index = Phi(type::Bool);
+          auto reg       = CompiledFn::Current->Command(cmd_index).result;
+          reg_relocs.emplace(cmd.result, reg);
+          deferred_phis.emplace_back(cmd.phi_bool_, cmd_index);
+        } break;
+        case Op::CondJump: {
+          auto iter = reg_relocs.find(cmd.cond_jump_.cond_);
+          if (iter == reg_relocs.end()) { goto next_block; }
+          CondJump(iter->second.get<bool>(0),
+                   block_relocs.at(cmd.cond_jump_.blocks_[true]),
+                   block_relocs.at(cmd.cond_jump_.blocks_[false]));
+        } break;
+        case Op::UncondJump: {
+          UncondJump(block_relocs.at(cmd.block_));
+        } break;
+        case Op::ReturnJump: {
+                               // TODO jump to landing block
+        } break;
+        case Op::SetRetBool: {
+          if (cmd.set_ret_bool_.val_.is_reg_) {
+            auto iter = reg_relocs.find(cmd.set_ret_bool_.val_.reg_);
+            if (iter == reg_relocs.end()) { goto next_block; }
+            return_vals.at(cmd.set_ret_bool_.ret_num_) = iter->second;
+          } else {
+            return_vals.at(cmd.set_ret_bool_.ret_num_) =
+                ir::Results{cmd.set_ret_bool_.val_.val_};
+          }
+        } break;
         case Op::SetRetInt64: {
           if (cmd.set_ret_i64_.val_.is_reg_) {
             auto iter = reg_relocs.find(cmd.set_ret_i64_.val_.reg_);
@@ -700,8 +831,38 @@ Results CallInline(CompiledFn *f, Arguments const &arguments) {
     blocks.erase(iter);
   }
 
+  // 4. Go back with a second pass over phi-nodes.
+  for (auto [gen_phi_args, cmd_index] : deferred_phis) {
+    if (auto *phi_args = gen_phi_args->if_as<PhiArgs<bool>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int8_t>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int16_t>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int32_t>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int64_t>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint8_t>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint16_t>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint32_t>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint64_t>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<float>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<double>>()) {
+      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+    } else {
+      UNREACHABLE();
+    }
+  }
+
   Results results;
-  for (auto const &r : return_vals) { results.append(r); }
+  for (auto const &r : return_vals) {
+      results.append(r); }
   return results;
 }
 
@@ -729,7 +890,7 @@ TypedRegister<type::Type const *> NewOpaqueType(::Module *mod) {
 
 void BlockSeqJump(RegisterOr<BlockSequence> bseq,
                   absl::flat_hash_map<ast::BlockLiteral const *,
-                                      ir::BlockIndex> const *jump_table) {
+                                      BlockIndex> const *jump_table) {
   auto &cmd           = MakeCmd(nullptr, Op::BlockSeqJump);
   cmd.block_seq_jump_ = Cmd::BlockSeqJump{bseq, jump_table};
 }

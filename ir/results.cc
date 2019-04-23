@@ -28,7 +28,7 @@ Results Results::GetResult(size_t index) const {
     r.offset_.push_back(offset_.at(index));
     return r;
   } else {
-    r.offset_.push_back(offset_.at(0));
+    r.offset_.push_back(0);
     size_t i = index + 1;
     for (; i < offset_.size(); ++i) {
       if (!is_reg(i)) { break; }

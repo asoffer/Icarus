@@ -51,6 +51,14 @@ TEST_CASE("get result") {
   CHECK(r.GetResult(3).get<bool>(0) == RegisterOr{true});
 }
 
+TEST_CASE("get result starting with reg") {
+  Results r{Reg{1}, static_cast<int64_t>(4)};
+  REQUIRE(r.GetResult(0).size() == 1u);
+  CHECK(r.GetResult(0).get<Reg>(0) == Reg{1});
+  REQUIRE(r.GetResult(1).size() == 1u);
+  CHECK(r.GetResult(1).get<int64_t>(0) == RegisterOr{static_cast<int64_t>(4)});
+}
+
 TEST_CASE("append results") {
   Results r1{true, Reg{17}};
   Results r2{3, Reg{34}};
