@@ -580,9 +580,6 @@ static void InlinePhiNode(
                     val.is_reg_ ? reg_relocs.at(val.reg_).template get<T>(0)
                                 : RegisterOr<T>{val.val_});
   }
-  base::Log() << phi_map;
-  base::Log() << reg_relocs;
-  base::Log() << block_relocs;
   MakePhi(cmd_index, std::move(phi_map));
 }
 
@@ -650,143 +647,293 @@ Results CallInline(CompiledFn *f, Arguments const &arguments) {
     for (; index < block_ref.cmds_.size(); ++index) {
       auto const &cmd = block_ref.cmds_.at(index);
       switch (cmd.op_code_) {
+        case Op::Death: UNREACHABLE();
+        case Op::Bytes: {
+          RegisterOr<type::Type const *> r;
+          if (cmd.type_arg_.is_reg_) {
+            auto iter = reg_relocs.find(cmd.type_arg_.reg_);
+            if (iter == reg_relocs.end()) { goto next_block; }
+            r = iter->second.get<type::Type const *>(0).reg_;
+          } else {
+            r = cmd.type_arg_;
+          }
+          reg_relocs.emplace(cmd.result, Bytes(r));
+        } break;
+        case Op::Align: {
+          RegisterOr<type::Type const *> r;
+          if (cmd.type_arg_.is_reg_) {
+            auto iter = reg_relocs.find(cmd.type_arg_.reg_);
+            if (iter == reg_relocs.end()) { goto next_block; }
+            r = iter->second.get<type::Type const *>(0).reg_;
+          } else {
+            r = cmd.type_arg_;
+          }
+          reg_relocs.emplace(cmd.result, Align(r));
+        } break;
 #define CASE(op_code, op_fn, type, args)                                       \
   case Op::op_code: {                                                          \
-    auto iter0 = reg_relocs.find(cmd.args.args_[0].reg_);                      \
-    if (iter0 == reg_relocs.end()) { goto next_block; }                        \
-    auto iter1 = reg_relocs.find(cmd.args.args_[1].reg_);                      \
-    if (iter1 == reg_relocs.end()) { goto next_block; }                        \
-    reg_relocs.emplace(cmd.result, op_fn(iter0->second.get<type>(0),           \
-                                         iter1->second.get<type>(0)));         \
+    auto iter = reg_relocs.find(cmd.args);                                     \
+    if (iter == reg_relocs.end()) { goto next_block; }                         \
+    reg_relocs.emplace(cmd.result, op_fn(iter->second.get<type>(0)));          \
   } break
-        CASE(AddNat8, Add, uint8_t, u8_args_);
-        CASE(AddNat16, Add, uint16_t, u16_args_);
-        CASE(AddNat32, Add, uint32_t, u32_args_);
-        CASE(AddNat64, Add, uint64_t, u64_args_);
-        CASE(AddInt8, Add, int8_t, i8_args_);
-        CASE(AddInt16, Add, int16_t, i16_args_);
-        CASE(AddInt32, Add, int32_t, i32_args_);
-        CASE(AddInt64, Add, int64_t, i64_args_);
-        CASE(AddFloat32, Add, float, float32_args_);
-        CASE(AddFloat64, Add, double, float64_args_);
-        CASE(SubNat8, Sub, uint8_t, u8_args_);
-        CASE(SubNat16, Sub, uint16_t, u16_args_);
-        CASE(SubNat32, Sub, uint32_t, u32_args_);
-        CASE(SubNat64, Sub, uint64_t, u64_args_);
-        CASE(SubInt8, Sub, int8_t, i8_args_);
-        CASE(SubInt16, Sub, int16_t, i16_args_);
-        CASE(SubInt32, Sub, int32_t, i32_args_);
-        CASE(SubInt64, Sub, int64_t, i64_args_);
-        CASE(SubFloat32, Sub, float, float32_args_);
-        CASE(SubFloat64, Sub, double, float64_args_);
-        CASE(MulNat8, Mul, uint8_t, u8_args_);
-        CASE(MulNat16, Mul, uint16_t, u16_args_);
-        CASE(MulNat32, Mul, uint32_t, u32_args_);
-        CASE(MulNat64, Mul, uint64_t, u64_args_);
-        CASE(MulInt8, Mul, int8_t, i8_args_);
-        CASE(MulInt16, Mul, int16_t, i16_args_);
-        CASE(MulInt32, Mul, int32_t, i32_args_);
-        CASE(MulInt64, Mul, int64_t, i64_args_);
-        CASE(MulFloat32, Mul, float, float32_args_);
-        CASE(MulFloat64, Mul, double, float64_args_);
-        CASE(DivNat8, Div, uint8_t, u8_args_);
-        CASE(DivNat16, Div, uint16_t, u16_args_);
-        CASE(DivNat32, Div, uint32_t, u32_args_);
-        CASE(DivNat64, Div, uint64_t, u64_args_);
-        CASE(DivInt8, Div, int8_t, i8_args_);
-        CASE(DivInt16, Div, int16_t, i16_args_);
-        CASE(DivInt32, Div, int32_t, i32_args_);
-        CASE(DivInt64, Div, int64_t, i64_args_);
-        CASE(DivFloat32, Div, float, float32_args_);
-        CASE(DivFloat64, Div, double, float64_args_);
-        CASE(ModNat8, Mod, uint8_t, u8_args_);
-        CASE(ModNat16, Mod, uint16_t, u16_args_);
-        CASE(ModNat32, Mod, uint32_t, u32_args_);
-        CASE(ModNat64, Mod, uint64_t, u64_args_);
-        CASE(ModInt8, Mod, int8_t, i8_args_);
-        CASE(ModInt16, Mod, int16_t, i16_args_);
-        CASE(ModInt32, Mod, int32_t, i32_args_);
-        CASE(ModInt64, Mod, int64_t, i64_args_);
-        CASE(LtInt8, Lt, int8_t, i8_args_);
-        CASE(LtInt16, Lt, int16_t, i16_args_);
-        CASE(LtInt32, Lt, int32_t, i32_args_);
-        CASE(LtInt64, Lt, int64_t, i64_args_);
-        CASE(LtNat8, Lt, uint8_t, u8_args_);
-        CASE(LtNat16, Lt, uint16_t, u16_args_);
-        CASE(LtNat32, Lt, uint32_t, u32_args_);
-        CASE(LtNat64, Lt, uint64_t, u64_args_);
-        CASE(LtFloat32, Lt, float, float32_args_);
-        CASE(LtFloat64, Lt, double, float64_args_);
-        CASE(LtFlags, Lt, FlagsVal, flags_args_);
-        CASE(LeInt8, Le, int8_t, i8_args_);
-        CASE(LeInt16, Le, int16_t, i16_args_);
-        CASE(LeInt32, Le, int32_t, i32_args_);
-        CASE(LeInt64, Le, int64_t, i64_args_);
-        CASE(LeNat8, Le, uint8_t, u8_args_);
-        CASE(LeNat16, Le, uint16_t, u16_args_);
-        CASE(LeNat32, Le, uint32_t, u32_args_);
-        CASE(LeNat64, Le, uint64_t, u64_args_);
-        CASE(LeFloat32, Le, float, float32_args_);
-        CASE(LeFloat64, Le, double, float64_args_);
-        CASE(LeFlags, Le, FlagsVal, flags_args_);
-        CASE(GtInt8, Gt, int8_t, i8_args_);
-        CASE(GtInt16, Gt, int16_t, i16_args_);
-        CASE(GtInt32, Gt, int32_t, i32_args_);
-        CASE(GtInt64, Gt, int64_t, i64_args_);
-        CASE(GtNat8, Gt, uint8_t, u8_args_);
-        CASE(GtNat16, Gt, uint16_t, u16_args_);
-        CASE(GtNat32, Gt, uint32_t, u32_args_);
-        CASE(GtNat64, Gt, uint64_t, u64_args_);
-        CASE(GtFloat32, Gt, float, float32_args_);
-        CASE(GtFloat64, Gt, double, float64_args_);
-        CASE(GtFlags, Gt, FlagsVal, flags_args_);
-        CASE(GeInt8, Ge, int8_t, i8_args_);
-        CASE(GeInt16, Ge, int16_t, i16_args_);
-        CASE(GeInt32, Ge, int32_t, i32_args_);
-        CASE(GeInt64, Ge, int64_t, i64_args_);
-        CASE(GeNat8, Ge, uint8_t, u8_args_);
-        CASE(GeNat16, Ge, uint16_t, u16_args_);
-        CASE(GeNat32, Ge, uint32_t, u32_args_);
-        CASE(GeNat64, Ge, uint64_t, u64_args_);
-        CASE(GeFloat32, Ge, float, float32_args_);
-        CASE(GeFloat64, Ge, double, float64_args_);
-        CASE(GeFlags, Ge, FlagsVal, flags_args_);
-        CASE(EqBool, Eq, bool, bool_args_);
-        CASE(EqInt8, Eq, int8_t, i8_args_);
-        CASE(EqInt16, Eq, int16_t, i16_args_);
-        CASE(EqInt32, Eq, int32_t, i32_args_);
-        CASE(EqInt64, Eq, int64_t, i64_args_);
-        CASE(EqNat8, Eq, uint8_t, u8_args_);
-        CASE(EqNat16, Eq, uint16_t, u16_args_);
-        CASE(EqNat32, Eq, uint32_t, u32_args_);
-        CASE(EqNat64, Eq, uint64_t, u64_args_);
-        CASE(EqFloat32, Eq, float, float32_args_);
-        CASE(EqFloat64, Eq, double, float64_args_);
-        CASE(EqType, Eq, type::Type const *, type_args_);
-        CASE(EqEnum, Eq, EnumVal, enum_args_);
-        CASE(EqFlags, Eq, FlagsVal, flags_args_);
-        CASE(EqAddr, Eq, ir::Addr, addr_args_);
-        CASE(NeInt8, Ne, int8_t, i8_args_);
-        CASE(NeInt16, Ne, int16_t, i16_args_);
-        CASE(NeInt32, Ne, int32_t, i32_args_);
-        CASE(NeInt64, Ne, int64_t, i64_args_);
-        CASE(NeNat8, Ne, uint8_t, u8_args_);
-        CASE(NeNat16, Ne, uint16_t, u16_args_);
-        CASE(NeNat32, Ne, uint32_t, u32_args_);
-        CASE(NeNat64, Ne, uint64_t, u64_args_);
-        CASE(NeFloat32, Ne, float, float32_args_);
-        CASE(NeFloat64, Ne, double, float64_args_);
-        CASE(NeType, Ne, type::Type const *, type_args_);
-        CASE(NeEnum, Ne, EnumVal, enum_args_);
-        CASE(NeFlags, Ne, FlagsVal, flags_args_);
-        CASE(NeAddr, Ne, ir::Addr, addr_args_);
-#undef CASE
-        case Op::PhiBool: {
-          auto cmd_index = Phi(type::Bool);
-          auto reg       = CompiledFn::Current->Command(cmd_index).result;
-          reg_relocs.emplace(cmd.result, reg);
-          deferred_phis.emplace_back(cmd.phi_bool_, cmd_index);
+          CASE(NotBool, Not, bool, reg_);
+        case Op::NotFlags: {
+          auto iter = reg_relocs.find(cmd.typed_reg_.get());
+          if (iter == reg_relocs.end()) { goto next_block; }
+          reg_relocs.emplace(
+              cmd.result,
+              Not(type::Typed<RegisterOr<FlagsVal>, type::Flags>{
+                  iter->second.get<FlagsVal>(0), cmd.typed_reg_.type()}));
         } break;
+          CASE(NegInt8, Neg, int8_t, reg_);
+          CASE(NegInt16, Neg, int16_t, reg_);
+          CASE(NegInt32, Neg, int32_t, reg_);
+          CASE(NegInt64, Neg, int64_t, reg_);
+          CASE(NegFloat32, Neg, float, reg_);
+          CASE(NegFloat64, Neg, double, reg_);
+#undef CASE
+
+#define CASE(op_code, op_fn, type)                                             \
+  case Op::op_code: {                                                          \
+    RegisterOr<Addr> r;                                                        \
+    if (cmd.addr_arg_.is_reg_) {                                               \
+      auto iter = reg_relocs.find(cmd.addr_arg_.reg_);                         \
+      if (iter == reg_relocs.end()) { goto next_block; }                       \
+      r = op_fn<type>(iter->second.get<Addr>(0));                              \
+    } else {                                                                   \
+      r = cmd.addr_arg_;                                                       \
+    }                                                                          \
+    reg_relocs.emplace(cmd.result, r);                                         \
+  } break;
+          CASE(LoadBool, Load, bool);
+          CASE(LoadInt8, Load, int8_t);
+          CASE(LoadInt16, Load, int16_t);
+          CASE(LoadInt32, Load, int32_t);
+          CASE(LoadInt64, Load, int64_t);
+          CASE(LoadNat8, Load, uint8_t);
+          CASE(LoadNat16, Load, uint16_t);
+          CASE(LoadNat32, Load, uint32_t);
+          CASE(LoadNat64, Load, uint64_t);
+          CASE(LoadFloat32, Load, float);
+          CASE(LoadFloat64, Load, double);
+          CASE(LoadType, Load, type::Type const *);
+          CASE(LoadEnum, Load, EnumVal);
+          CASE(LoadFlags, Load, FlagsVal);
+          CASE(LoadAddr, Load, ir::Addr);
+          CASE(LoadFunc, Load, AnyFunc);
+#undef CASE
+
+#define CASE(op_code, op_fn, type, arg)                                        \
+  case Op::op_code: {                                                          \
+    RegisterOr<Addr> r0;                                                       \
+    RegisterOr<type> r1;                                                       \
+    if (cmd.arg.addr_.is_reg_) {                                               \
+      auto iter0 = reg_relocs.find(cmd.arg.addr_.reg_);                        \
+      if (iter0 == reg_relocs.end()) { goto next_block; }                      \
+      r0 = iter0->second.get<Addr>(0);                                         \
+    } else {                                                                   \
+      r0 = cmd.arg.addr_;                                                      \
+    }                                                                          \
+    if (cmd.arg.val_.is_reg_) {                                                \
+      auto iter1 = reg_relocs.find(cmd.arg.val_.reg_);                         \
+      if (iter1 == reg_relocs.end()) { goto next_block; }                      \
+      r1 = iter1->second.get<type>(0);                                         \
+    } else {                                                                   \
+      r1 = cmd.arg.val_;                                                       \
+    }                                                                          \
+    op_fn(r1, r0);                                                             \
+  } break
+          CASE(StoreBool, Store, bool, store_bool_);
+          CASE(StoreInt8, Store, int8_t, store_i8_);
+          CASE(StoreInt16, Store, int16_t, store_i16_);
+          CASE(StoreInt32, Store, int32_t, store_i32_);
+          CASE(StoreInt64, Store, int64_t, store_i64_);
+          CASE(StoreNat8, Store, uint8_t, store_u8_);
+          CASE(StoreNat16, Store, uint16_t, store_u16_);
+          CASE(StoreNat32, Store, uint32_t, store_u32_);
+          CASE(StoreNat64, Store, uint64_t, store_u64_);
+          CASE(StoreFloat32, Store, float, store_float32_);
+          CASE(StoreFloat64, Store, double, store_float64_);
+          CASE(StoreType, Store, type::Type const *, store_type_);
+          CASE(StoreEnum, Store, EnumVal, store_enum_);
+          CASE(StoreFunc, Store, ir::AnyFunc, store_func_);
+          CASE(StoreFlags, Store, FlagsVal, store_flags_);
+          CASE(StoreAddr, Store, ir::Addr, store_addr_);
+#undef CASE
+
+#define CASE(op_code, op_fn, type, arg)                                        \
+  case Op::op_code: {                                                          \
+    RegisterOr<type> r;                                                        \
+    if (cmd.arg.is_reg_) {                                                     \
+      auto iter = reg_relocs.find(cmd.arg.reg_);                               \
+      if (iter == reg_relocs.end()) { goto next_block; }                       \
+      r = iter->second.get<type>(0);                                           \
+    } else {                                                                   \
+      r = cmd.arg;                                                             \
+    }                                                                          \
+    op_fn(r);                                                                  \
+  } break;
+          CASE(PrintBool, Print, bool, bool_arg_)
+          CASE(PrintInt8, Print, int8_t, i8_arg_)
+          CASE(PrintInt16, Print, int16_t, i16_arg_)
+          CASE(PrintInt32, Print, int32_t, i32_arg_)
+          CASE(PrintInt64, Print, int64_t, i64_arg_)
+          CASE(PrintNat8, Print, uint8_t, u8_arg_)
+          CASE(PrintNat16, Print, uint16_t, u16_arg_)
+          CASE(PrintNat32, Print, uint32_t, u32_arg_)
+          CASE(PrintNat64, Print, uint64_t, u64_arg_)
+          CASE(PrintFloat32, Print, float, float32_arg_)
+          CASE(PrintFloat64, Print, double, float64_arg_)
+          CASE(PrintType, Print, type::Type const *, type_arg_)
+          // TODO CASE(PrintEnum, Print, EnumVal, print_enum_)
+          // TODO CASE(PrintFlags, Print, FlagsVal, print_flags_)
+          CASE(PrintAddr, Print, ir::Addr, addr_arg_)
+          CASE(PrintByteView, Print, std::string_view, byte_view_arg_)
+          CASE(PrintInterface, Print, type::Interface const *, intf_arg_)
+#undef CASE
+
+#define CASE(op_code, op_fn, type, args)                                       \
+  case Op::op_code: {                                                          \
+    RegisterOr<type> r0, r1;                                                   \
+    if (cmd.args.args_[0].is_reg_) {                                          \
+      auto iter0 = reg_relocs.find(cmd.args.args_[0].reg_);                    \
+      if (iter0 == reg_relocs.end()) { goto next_block; }                      \
+      r0 = iter0->second.get<type>(0);                                         \
+    } else {                                                                   \
+      r0 = cmd.args.args_[0];                                                  \
+    }                                                                          \
+    if (cmd.args.args_[1].is_reg_) {                                          \
+      auto iter1 = reg_relocs.find(cmd.args.args_[1].reg_);                    \
+      if (iter1 == reg_relocs.end()) { goto next_block; }                      \
+      r1 = iter1->second.get<type>(0);                                         \
+    } else {                                                                   \
+      r1 = cmd.args.args_[0];                                                  \
+    }                                                                          \
+    reg_relocs.emplace(cmd.result, op_fn(r0, r1));                             \
+  } break
+              CASE(AddNat8, Add, uint8_t, u8_args_);
+          CASE(AddNat16, Add, uint16_t, u16_args_);
+          CASE(AddNat32, Add, uint32_t, u32_args_);
+          CASE(AddNat64, Add, uint64_t, u64_args_);
+          CASE(AddInt8, Add, int8_t, i8_args_);
+          CASE(AddInt16, Add, int16_t, i16_args_);
+          CASE(AddInt32, Add, int32_t, i32_args_);
+          CASE(AddInt64, Add, int64_t, i64_args_);
+          CASE(AddFloat32, Add, float, float32_args_);
+          CASE(AddFloat64, Add, double, float64_args_);
+          CASE(SubNat8, Sub, uint8_t, u8_args_);
+          CASE(SubNat16, Sub, uint16_t, u16_args_);
+          CASE(SubNat32, Sub, uint32_t, u32_args_);
+          CASE(SubNat64, Sub, uint64_t, u64_args_);
+          CASE(SubInt8, Sub, int8_t, i8_args_);
+          CASE(SubInt16, Sub, int16_t, i16_args_);
+          CASE(SubInt32, Sub, int32_t, i32_args_);
+          CASE(SubInt64, Sub, int64_t, i64_args_);
+          CASE(SubFloat32, Sub, float, float32_args_);
+          CASE(SubFloat64, Sub, double, float64_args_);
+          CASE(MulNat8, Mul, uint8_t, u8_args_);
+          CASE(MulNat16, Mul, uint16_t, u16_args_);
+          CASE(MulNat32, Mul, uint32_t, u32_args_);
+          CASE(MulNat64, Mul, uint64_t, u64_args_);
+          CASE(MulInt8, Mul, int8_t, i8_args_);
+          CASE(MulInt16, Mul, int16_t, i16_args_);
+          CASE(MulInt32, Mul, int32_t, i32_args_);
+          CASE(MulInt64, Mul, int64_t, i64_args_);
+          CASE(MulFloat32, Mul, float, float32_args_);
+          CASE(MulFloat64, Mul, double, float64_args_);
+          CASE(DivNat8, Div, uint8_t, u8_args_);
+          CASE(DivNat16, Div, uint16_t, u16_args_);
+          CASE(DivNat32, Div, uint32_t, u32_args_);
+          CASE(DivNat64, Div, uint64_t, u64_args_);
+          CASE(DivInt8, Div, int8_t, i8_args_);
+          CASE(DivInt16, Div, int16_t, i16_args_);
+          CASE(DivInt32, Div, int32_t, i32_args_);
+          CASE(DivInt64, Div, int64_t, i64_args_);
+          CASE(DivFloat32, Div, float, float32_args_);
+          CASE(DivFloat64, Div, double, float64_args_);
+          CASE(ModNat8, Mod, uint8_t, u8_args_);
+          CASE(ModNat16, Mod, uint16_t, u16_args_);
+          CASE(ModNat32, Mod, uint32_t, u32_args_);
+          CASE(ModNat64, Mod, uint64_t, u64_args_);
+          CASE(ModInt8, Mod, int8_t, i8_args_);
+          CASE(ModInt16, Mod, int16_t, i16_args_);
+          CASE(ModInt32, Mod, int32_t, i32_args_);
+          CASE(ModInt64, Mod, int64_t, i64_args_);
+          CASE(LtInt8, Lt, int8_t, i8_args_);
+          CASE(LtInt16, Lt, int16_t, i16_args_);
+          CASE(LtInt32, Lt, int32_t, i32_args_);
+          CASE(LtInt64, Lt, int64_t, i64_args_);
+          CASE(LtNat8, Lt, uint8_t, u8_args_);
+          CASE(LtNat16, Lt, uint16_t, u16_args_);
+          CASE(LtNat32, Lt, uint32_t, u32_args_);
+          CASE(LtNat64, Lt, uint64_t, u64_args_);
+          CASE(LtFloat32, Lt, float, float32_args_);
+          CASE(LtFloat64, Lt, double, float64_args_);
+          CASE(LtFlags, Lt, FlagsVal, flags_args_);
+          CASE(LeInt8, Le, int8_t, i8_args_);
+          CASE(LeInt16, Le, int16_t, i16_args_);
+          CASE(LeInt32, Le, int32_t, i32_args_);
+          CASE(LeInt64, Le, int64_t, i64_args_);
+          CASE(LeNat8, Le, uint8_t, u8_args_);
+          CASE(LeNat16, Le, uint16_t, u16_args_);
+          CASE(LeNat32, Le, uint32_t, u32_args_);
+          CASE(LeNat64, Le, uint64_t, u64_args_);
+          CASE(LeFloat32, Le, float, float32_args_);
+          CASE(LeFloat64, Le, double, float64_args_);
+          CASE(LeFlags, Le, FlagsVal, flags_args_);
+          CASE(GtInt8, Gt, int8_t, i8_args_);
+          CASE(GtInt16, Gt, int16_t, i16_args_);
+          CASE(GtInt32, Gt, int32_t, i32_args_);
+          CASE(GtInt64, Gt, int64_t, i64_args_);
+          CASE(GtNat8, Gt, uint8_t, u8_args_);
+          CASE(GtNat16, Gt, uint16_t, u16_args_);
+          CASE(GtNat32, Gt, uint32_t, u32_args_);
+          CASE(GtNat64, Gt, uint64_t, u64_args_);
+          CASE(GtFloat32, Gt, float, float32_args_);
+          CASE(GtFloat64, Gt, double, float64_args_);
+          CASE(GtFlags, Gt, FlagsVal, flags_args_);
+          CASE(GeInt8, Ge, int8_t, i8_args_);
+          CASE(GeInt16, Ge, int16_t, i16_args_);
+          CASE(GeInt32, Ge, int32_t, i32_args_);
+          CASE(GeInt64, Ge, int64_t, i64_args_);
+          CASE(GeNat8, Ge, uint8_t, u8_args_);
+          CASE(GeNat16, Ge, uint16_t, u16_args_);
+          CASE(GeNat32, Ge, uint32_t, u32_args_);
+          CASE(GeNat64, Ge, uint64_t, u64_args_);
+          CASE(GeFloat32, Ge, float, float32_args_);
+          CASE(GeFloat64, Ge, double, float64_args_);
+          CASE(GeFlags, Ge, FlagsVal, flags_args_);
+          CASE(EqBool, Eq, bool, bool_args_);
+          CASE(EqInt8, Eq, int8_t, i8_args_);
+          CASE(EqInt16, Eq, int16_t, i16_args_);
+          CASE(EqInt32, Eq, int32_t, i32_args_);
+          CASE(EqInt64, Eq, int64_t, i64_args_);
+          CASE(EqNat8, Eq, uint8_t, u8_args_);
+          CASE(EqNat16, Eq, uint16_t, u16_args_);
+          CASE(EqNat32, Eq, uint32_t, u32_args_);
+          CASE(EqNat64, Eq, uint64_t, u64_args_);
+          CASE(EqFloat32, Eq, float, float32_args_);
+          CASE(EqFloat64, Eq, double, float64_args_);
+          CASE(EqType, Eq, type::Type const *, type_args_);
+          CASE(EqEnum, Eq, EnumVal, enum_args_);
+          CASE(EqFlags, Eq, FlagsVal, flags_args_);
+          CASE(EqAddr, Eq, ir::Addr, addr_args_);
+          CASE(NeInt8, Ne, int8_t, i8_args_);
+          CASE(NeInt16, Ne, int16_t, i16_args_);
+          CASE(NeInt32, Ne, int32_t, i32_args_);
+          CASE(NeInt64, Ne, int64_t, i64_args_);
+          CASE(NeNat8, Ne, uint8_t, u8_args_);
+          CASE(NeNat16, Ne, uint16_t, u16_args_);
+          CASE(NeNat32, Ne, uint32_t, u32_args_);
+          CASE(NeNat64, Ne, uint64_t, u64_args_);
+          CASE(NeFloat32, Ne, float, float32_args_);
+          CASE(NeFloat64, Ne, double, float64_args_);
+          CASE(NeType, Ne, type::Type const *, type_args_);
+          CASE(NeEnum, Ne, EnumVal, enum_args_);
+          CASE(NeFlags, Ne, FlagsVal, flags_args_);
+          CASE(NeAddr, Ne, ir::Addr, addr_args_);
+#undef CASE
+
         case Op::CondJump: {
           auto iter = reg_relocs.find(cmd.cond_jump_.cond_);
           if (iter == reg_relocs.end()) { goto next_block; }
@@ -798,29 +945,82 @@ Results CallInline(CompiledFn *f, Arguments const &arguments) {
           UncondJump(block_relocs.at(cmd.block_));
         } break;
         case Op::ReturnJump: {
-                               // TODO jump to landing block
+          // TODO jump to landing block
         } break;
-        case Op::SetRetBool: {
-          if (cmd.set_ret_bool_.val_.is_reg_) {
-            auto iter = reg_relocs.find(cmd.set_ret_bool_.val_.reg_);
-            if (iter == reg_relocs.end()) { goto next_block; }
-            return_vals.at(cmd.set_ret_bool_.ret_num_) = iter->second;
-          } else {
-            return_vals.at(cmd.set_ret_bool_.ret_num_) =
-                ir::Results{cmd.set_ret_bool_.val_.val_};
-          }
-        } break;
-        case Op::SetRetInt64: {
-          if (cmd.set_ret_i64_.val_.is_reg_) {
-            auto iter = reg_relocs.find(cmd.set_ret_i64_.val_.reg_);
-            if (iter == reg_relocs.end()) { goto next_block; }
-            return_vals.at(cmd.set_ret_i64_.ret_num_) = iter->second;
-          } else {
-            return_vals.at(cmd.set_ret_i64_.ret_num_) =
-                ir::Results{cmd.set_ret_i64_.val_.val_};
-          }
-        } break;
-        default:;  // NOT_YET(static_cast<int>(cmd.op_code_));
+
+#define CASE(op_code, phi_type, args)                                          \
+  case Op::op_code: {                                                          \
+    auto cmd_index = Phi(phi_type);                                            \
+    auto reg       = CompiledFn::Current->Command(cmd_index).result;           \
+    reg_relocs.emplace(cmd.result, reg);                                       \
+    deferred_phis.emplace_back(cmd.args, cmd_index);                           \
+  } break
+          CASE(PhiBool, type::Bool, phi_bool_);
+          CASE(PhiInt8, type::Int8, phi_i8_);
+          CASE(PhiInt16, type::Int16, phi_i16_);
+          CASE(PhiInt32, type::Int32, phi_i32_);
+          CASE(PhiInt64, type::Int64, phi_i64_);
+          CASE(PhiNat8, type::Nat8, phi_u8_);
+          CASE(PhiNat16, type::Nat16, phi_u16_);
+          CASE(PhiNat32, type::Nat32, phi_u32_);
+          CASE(PhiNat64, type::Nat64, phi_u64_);
+          CASE(PhiFloat32, type::Float32, phi_float32_);
+          CASE(PhiFloat64, type::Float64, phi_float64_);
+          CASE(PhiType, type::Type_, phi_type_);
+          // TODO CASE(PhiBlock, ____, phi_block_);
+          // TODO CASE(PhiAddr, ____, phi_addr_);
+          // TODO CASE(PhiEnum, ____, phi_enum_);
+          // TODO CASE(PhiFlags, ____, phi_flags_);
+          // TODO CASE(PhiFunc, ____, phi_func_);
+#undef CASE
+        case Op::BlockSeqContains: NOT_YET();
+        case Op::GetRet: NOT_YET();
+#define CASE(op_code, args)                                                    \
+  case Op::op_code: {                                                          \
+    if (cmd.args.val_.is_reg_) {                                               \
+      auto iter = reg_relocs.find(cmd.args.val_.reg_);                         \
+      if (iter == reg_relocs.end()) { goto next_block; }                       \
+      return_vals.at(cmd.args.ret_num_) = iter->second;                        \
+    } else {                                                                   \
+      return_vals.at(cmd.args.ret_num_) = ir::Results{cmd.args.val_.val_};     \
+    }                                                                          \
+  } break
+          CASE(SetRetBool, set_ret_bool_);
+          CASE(SetRetInt8, set_ret_i8_);
+          CASE(SetRetInt16, set_ret_i16_);
+          CASE(SetRetInt32, set_ret_i32_);
+          CASE(SetRetInt64, set_ret_i64_);
+          CASE(SetRetNat8, set_ret_u8_);
+          CASE(SetRetNat16, set_ret_u16_);
+          CASE(SetRetNat32, set_ret_u32_);
+          CASE(SetRetNat64, set_ret_u64_);
+          CASE(SetRetFloat32, set_ret_float32_);
+          CASE(SetRetFloat64, set_ret_float64_);
+          CASE(SetRetType, set_ret_type_);
+          CASE(SetRetEnum, set_ret_enum_);
+          CASE(SetRetFlags, set_ret_flags_);
+          CASE(SetRetByteView, set_ret_byte_view_);
+          CASE(SetRetAddr, set_ret_addr_);
+          CASE(SetRetFunc, set_ret_func_);
+          CASE(SetRetScope, set_ret_scope_);
+          CASE(SetRetGeneric, set_ret_generic_);
+          CASE(SetRetModule, set_ret_module_);
+          CASE(SetRetBlock, set_ret_block_);
+          CASE(SetRetInterface, set_ret_intf_);
+#undef CASE
+        case Op::ArgumentCache: NOT_YET();
+        case Op::NewOpaqueType: NOT_YET();
+        case Op::LoadSymbol: NOT_YET();
+        case Op::Init: NOT_YET();
+        case Op::Destroy: NOT_YET();
+        case Op::Move: NOT_YET();
+        case Op::Copy: NOT_YET();
+        case Op::VerifyType: UNREACHABLE();
+        case Op::EvaluateAsType: UNREACHABLE();
+        case Op::CreateContext: UNREACHABLE();
+        case Op::AddBoundConstant: UNREACHABLE();
+        case Op::DestroyContext: UNREACHABLE();
+        default:; NOT_YET(static_cast<int>(cmd.op_code_));
       }
       continue;
 
