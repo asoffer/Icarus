@@ -90,6 +90,7 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
           {"null", std::pair(ir::Results{ir::Addr::Null()}, type::NullPtr)},
           {"byte_view", std::pair(ir::Results{type::ByteView}, type::Type_)},
           {"exit", std::pair(ir::Results{ir::Block::Exit()}, type::Blk())},
+          {"start", std::pair(ir::Results{ir::Block::Start()}, type::Blk())},
       };
 
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {

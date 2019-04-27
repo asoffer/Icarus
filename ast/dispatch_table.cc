@@ -415,7 +415,6 @@ VerifyResult VerifyDispatch(
                               std::move(expected_row).error().to_string());
       continue;
     }
-
     auto match = MatchArgsToParams(expected_row->params, args);
     if (!match.has_value()) {
       failure_reasons.emplace(overload.expr,
@@ -543,12 +542,14 @@ static void EmitOneCall(
 
   ir::Results arg_results;
   size_t i = 0;
+  ASSERT(row.params.size() >= args.pos().size());
   for (auto const &[expr, results] : args.pos()) {
     // TODO Don't re-lookup the type of this expression. You should know it
     // already.
     arg_results.append(row.params.at(i++).value.type()->PrepareArgument(
-        ctx->type_of(expr), results, ctx));
+        ASSERT_NOT_NULL(ctx->type_of(expr)), results, ctx));
   }
+
   for (; i < row.params.size(); ++i) {
     auto const &param = row.params.at(i);
     auto *arg         = args.at_or_null(std::string{param.name});

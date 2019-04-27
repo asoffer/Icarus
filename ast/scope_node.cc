@@ -67,9 +67,15 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
       done_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
     }
   }
- 
+
+  auto arg_results =
+      args_.Transform([ctx](std::unique_ptr<Expression> const &arg) {
+        auto *arg_ptr = const_cast<Expression *>(arg.get());
+        return std::pair{arg_ptr, arg_ptr->VerifyType(ctx)};
+      });
+
   ASSIGN_OR(return _, std::ignore,
-                   VerifyDispatch(this, init_os, /* TODO */ {}, ctx));
+                   VerifyDispatch(this, init_os, arg_results, ctx));
   ASSIGN_OR(
       return _, std::ignore,
              VerifyDispatch(ExprPtr{this, true}, done_os, /* TODO */ {}, ctx));
@@ -96,8 +102,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   auto land_block = ir::CompiledFn::Current->AddBlock();
 
   absl::flat_hash_map<ir::Block, ir::BlockIndex> block_map{
-      {ir::Block::Start(), ir::BasicBlock::Current},
-      {ir::Block::Exit(), land_block}};
+      {ir::Block::Start(), init_block}, {ir::Block::Exit(), land_block}};
 
   absl::flat_hash_map<std::string_view, std::tuple<ir::Block, BlockNode *>>
       name_to_block;
@@ -157,12 +162,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   ir::UncondJump(land_block);
   ir::BasicBlock::Current = land_block;
   ASSERT_NOT_NULL(ctx->dispatch_table(ExprPtr{this, true}))
-      ->EmitInlineCall(
-          args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
-            return std::pair(const_cast<Expression *>(expr.get()),
-                             expr->EmitIr(ctx));
-          }),
-          ASSERT_NOT_NULL(ctx->type_of(this)), {}, ctx);
+      ->EmitInlineCall({}, ASSERT_NOT_NULL(ctx->type_of(this)), {}, ctx);
 
   return ir::Results{};
 }

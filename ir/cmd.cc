@@ -646,7 +646,6 @@ Results CallInline(
   }
 
   std::vector<std::pair<GenericPhiArgs *, CmdIndex>> deferred_phis;
-
   while (!blocks.empty()) {
     auto iter           = blocks.begin();
     auto [block, index] = *iter;
