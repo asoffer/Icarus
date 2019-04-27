@@ -74,7 +74,6 @@ ir::Results Identifier::EmitIr(Context *ctx) {
   ASSERT(decl_ != nullptr) << this->to_string(0);
   if (decl_->const_) { return decl_->EmitIr(ctx); }
   if (decl_->is_fn_param_) {
-    if (ctx->inline_) {}
     auto *t     = ctx->type_of(this);
     ir::Reg reg = ctx->addr(decl_);
     if (ctx->inline_) {

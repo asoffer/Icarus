@@ -640,6 +640,7 @@ Results CallInline(
   absl::flat_hash_map<BlockIndex, BlockIndex> block_relocs;
   block_relocs.emplace(BlockIndex{1}, BasicBlock::Current);
   blocks.emplace(BlockIndex{1}, 0);
+
   for (size_t i = 2; i < f->blocks_.size(); ++i) {
     blocks.emplace(BlockIndex(i), 0);
     block_relocs.emplace(BlockIndex(i), CompiledFn::AddBlock());

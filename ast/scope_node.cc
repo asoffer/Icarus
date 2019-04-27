@@ -145,14 +145,11 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
 
   for (auto [block_name, block_and_node] : name_to_block) {
     if (block_name == "init" || block_name == "done") { continue; }
-    auto &[block, node] = block_and_node;
+    auto &[block, node]     = block_and_node;
     ir::BasicBlock::Current = block_map.at(block);
     ASSERT_NOT_NULL(ctx->dispatch_table(block.get()))
         ->EmitInlineCall({}, /* TODO block type */ type::Blk(), {}, ctx);
 
-    auto body = ir::CompiledFn::Current->AddBlock();
-    ir::UncondJump(body);
-    ir::BasicBlock::Current = body;
     ASSERT_NOT_NULL(node)->EmitIr(ctx);
 
     ASSERT_NOT_NULL(ctx->dispatch_table(ExprPtr{block.get(), true}))

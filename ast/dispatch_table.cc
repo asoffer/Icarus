@@ -565,15 +565,14 @@ static void EmitOneCall(
   if constexpr (Inline) {
     ASSERT(fn.is_reg_ == false);
     if (fn.val_.is_fn()) {
-      // absl::flat_hash_map<ir::Reg, ir::Results> inline_map;
-      // auto *prev_inline_map = std::exchange(ctx->inline_, &inline_map);
-      // base::defer d([&]() { ctx->inline_ = prev_inline_map; });
-      if (fn.val_.func()->work_item == nullptr) {
-        *inline_results = ir::CallInline(
-            fn.val_.func(), ir::Arguments{row.type, arg_results}, block_map);
-      } else {
-        NOT_YET();
-      }
+      auto *prev_inline_map = std::exchange(ctx->inline_, nullptr);
+      base::defer d([&]() { ctx->inline_ = prev_inline_map; });
+      auto *func = ASSERT_NOT_NULL(fn.val_.func());
+      if (func->work_item != nullptr) { (*func->work_item)(); }
+      ASSERT(func->work_item == nullptr);
+
+      *inline_results =
+          ir::CallInline(func, ir::Arguments{row.type, arg_results}, block_map);
     } else {
       NOT_YET();
     }
@@ -629,8 +628,6 @@ static ir::Results EmitFnCall(
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
     absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
     Context *ctx) {
-  auto landing_block = ir::CompiledFn::Current->AddBlock();
-
   // If an output to the function fits in a register we will create a phi node
   // for it on the landing block. Otherwise, we'll temporarily allocate stack
   // space for it and pass in an output pointer.
@@ -658,6 +655,8 @@ static ir::Results EmitFnCall(
     }
   }
 
+  auto landing_block = ir::CompiledFn::Current->AddBlock();
+
   ir::Results inline_results;
   for (size_t i = 0; i + 1 < table->bindings_.size(); ++i) {
     auto const &row   = table->bindings_.at(i);
@@ -672,8 +671,8 @@ static ir::Results EmitFnCall(
 
   EmitOneCall<Inline>(table->bindings_.back(), args, table->return_types_,
                       &outputs, block_map, &inline_results, ctx);
-  if (block_map.empty()) { ir::UncondJump(landing_block); }
 
+  ir::UncondJump(landing_block);
   ir::BasicBlock::Current = landing_block;
 
   if constexpr (Inline) {

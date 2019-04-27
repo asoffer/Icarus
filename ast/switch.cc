@@ -125,7 +125,7 @@ ir::Results ast::Switch::EmitIr(Context *ctx) {
     expr_type = ctx->type_of(expr_.get());
   }
 
-  for (size_t i = 0; i < cases_.size() - 1; ++i) {
+  for (size_t i = 0; i + 1 < cases_.size(); ++i) {
     auto &[body, match_cond] = cases_[i];
     auto expr_block          = ir::CompiledFn::Current->AddBlock();
 
@@ -137,7 +137,7 @@ ir::Results ast::Switch::EmitIr(Context *ctx) {
 
     auto next_block = ir::EarlyExitOn<true>(expr_block, cond);
 
-    ir::BasicBlock::Current           = expr_block;
+    ir::BasicBlock::Current = expr_block;
     if (body->is<Expression>()) {
       phi_args[ir::BasicBlock::Current] = body->EmitIr(ctx);
       ir::UncondJump(land_block);
@@ -150,8 +150,14 @@ ir::Results ast::Switch::EmitIr(Context *ctx) {
     ir::BasicBlock::Current = next_block;
   }
 
-  phi_args[ir::BasicBlock::Current] = cases_.back().first->EmitIr(ctx);
-  ir::UncondJump(land_block);
+  if (cases_.back().first->is<Expression>()) {
+    phi_args[ir::BasicBlock::Current] = cases_.back().first->EmitIr(ctx);
+    ir::UncondJump(land_block);
+  } else {
+    // It must be a jump/yield/return, which we've verified in VerifyType.
+    cases_.back().first->EmitIr(ctx);
+    if (!all_paths_jump) { ctx->more_stmts_allowed_ = true; }
+  }
 
   ir::BasicBlock::Current = land_block;
   if (t == type::Void()) {

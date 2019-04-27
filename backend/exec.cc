@@ -42,11 +42,8 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   // explanation here. I'm quite confident this is really possible with the
   // generics model I have, but I can't quite articulate exactly why it only
   // happens for generics and nothing else.
-  if (fn->work_item != nullptr) {
-    (*fn->work_item)();
-    // Remove it from the queue by setting to null.
-    *fn->work_item = nullptr;
-  }
+  if (fn->work_item != nullptr) { (*fn->work_item)(); }
+  ASSERT(fn->work_item == nullptr);
 
   // TODO what about bound constants?
   exec_ctx->call_stack.emplace(fn, arguments);
@@ -95,7 +92,8 @@ ExecContext::Frame::Frame(ir::CompiledFn *fn, const base::untyped_buffer &argume
 ir::BlockIndex ExecContext::ExecuteBlock(
     const std::vector<ir::Addr> &ret_slots) {
   ir::BlockIndex result;
-  ASSERT(current_block().cmds_.size() > 0u) << call_stack.top().fn_;
+  ASSERT(current_block().cmds_.size() > 0u)
+      << call_stack.top().current_ << "  " << *call_stack.top().fn_;
   auto cmd_iter = current_block().cmds_.begin();
   do {
     result = ExecuteCmd(*cmd_iter++, ret_slots);
