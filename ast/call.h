@@ -22,7 +22,7 @@ struct Call : public Literal {
 
   ir::Results EmitIr(Context *) override;
 
-  std::unique_ptr<Expression> fn_;
+  std::unique_ptr<Expression> fn_;  // Rename to `callable_` or something
   core::FnArgs<std::unique_ptr<Expression>> args_;
 };
 }  // namespace ast

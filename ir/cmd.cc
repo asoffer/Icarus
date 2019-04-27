@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 
+#include "ast/block_literal.h"
 #include "ast/struct_literal.h"
 #include "base/bag.h"
 #include "core/arch.h"
@@ -93,6 +94,12 @@ RegisterOr<int64_t> Align(RegisterOr<type::Type const *> r) {
   auto &cmd     = MakeCmd(type::Int64, Op::Align);
   cmd.type_arg_ = r;
   return cmd.result;
+}
+
+void JumpPlaceholder(ir::Block block) {
+  auto &cmd = MakeCmd(nullptr, Op::JumpPlaceholder);
+  cmd.block_      = block;
+  CompiledFn::Current->must_inline_ = true;
 }
 
 template <typename T>
@@ -583,7 +590,9 @@ static void InlinePhiNode(
   MakePhi(cmd_index, std::move(phi_map));
 }
 
-Results CallInline(CompiledFn *f, Arguments const &arguments) {
+Results CallInline(
+    CompiledFn *f, Arguments const &arguments,
+    absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map) {
   std::vector<Results> return_vals;
   return_vals.resize(f->type_->output.size());
 
@@ -942,10 +951,17 @@ Results CallInline(CompiledFn *f, Arguments const &arguments) {
                    block_relocs.at(cmd.cond_jump_.blocks_[false]));
         } break;
         case Op::UncondJump: {
-          UncondJump(block_relocs.at(cmd.block_));
+          UncondJump(block_relocs.at(cmd.block_index_));
         } break;
         case Op::ReturnJump: {
           // TODO jump to landing block
+        } break;
+        case Op::BlockSeqJump: {
+          NOT_YET();
+          // TODO deprecate
+        } break;
+        case Op::JumpPlaceholder: {
+          UncondJump(block_map.at(cmd.block_));
         } break;
 
 #define CASE(op_code, phi_type, args)                                          \
@@ -1061,8 +1077,7 @@ Results CallInline(CompiledFn *f, Arguments const &arguments) {
   }
 
   Results results;
-  for (auto const &r : return_vals) {
-      results.append(r); }
+  for (auto const &r : return_vals) { results.append(r); }
   return results;
 }
 
@@ -1077,7 +1092,7 @@ void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
 }
 
 void UncondJump(BlockIndex block) {
-  MakeCmd(nullptr, Op::UncondJump).block_ = block;
+  MakeCmd(nullptr, Op::UncondJump).block_index_ = block;
 }
 
 void ReturnJump() { auto &cmd = MakeCmd(nullptr, Op::ReturnJump); }

@@ -520,6 +520,7 @@ static void EmitOneCall(
     std::vector<type::Type const *> const &return_types,
     std::vector<std::variant<
         ir::Reg, absl::flat_hash_map<ir::BlockIndex, ir::Results> *>> *outputs,
+    absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
     ir::Results *inline_results, Context *ctx) {
   // TODO look for matches
   ir::RegisterOr<ir::AnyFunc> fn = std::visit(
@@ -533,6 +534,12 @@ static void EmitOneCall(
         }
       },
       row.fn);
+  // TODO this feels super hacky. ANd wasteful to compute `fn` twice.
+  if (!Inline && !fn.is_reg_ && fn.val_.is_fn() &&
+      fn.val_.func()->must_inline_) {
+    return EmitOneCall<true>(row, args, return_types, outputs, block_map,
+                             inline_results, ctx);
+  }
 
   ir::Results arg_results;
   size_t i = 0;
@@ -561,8 +568,8 @@ static void EmitOneCall(
       // auto *prev_inline_map = std::exchange(ctx->inline_, &inline_map);
       // base::defer d([&]() { ctx->inline_ = prev_inline_map; });
       if (fn.val_.func()->work_item == nullptr) {
-        *inline_results = ir::CallInline(fn.val_.func(),
-                                         ir::Arguments{row.type, arg_results});
+        *inline_results = ir::CallInline(
+            fn.val_.func(), ir::Arguments{row.type, arg_results}, block_map);
       } else {
         NOT_YET();
       }
@@ -619,6 +626,7 @@ template <bool Inline>
 static ir::Results EmitFnCall(
     DispatchTable const *table,
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
     Context *ctx) {
   auto landing_block = ir::CompiledFn::Current->AddBlock();
 
@@ -654,15 +662,16 @@ static ir::Results EmitFnCall(
     auto const &row   = table->bindings_.at(i);
     auto next_binding = EmitDispatchTest(row.params, args, ctx);
 
-    EmitOneCall<Inline>(row, args, table->return_types_, &outputs, &inline_results, ctx);
+    EmitOneCall<Inline>(row, args, table->return_types_, &outputs, block_map,
+                        &inline_results, ctx);
 
     ir::UncondJump(landing_block);
     ir::BasicBlock::Current = next_binding;
   }
 
   EmitOneCall<Inline>(table->bindings_.back(), args, table->return_types_,
-                      &outputs, &inline_results, ctx);
-  ir::UncondJump(landing_block);
+                      &outputs, block_map, &inline_results, ctx);
+  if (block_map.empty()) { ir::UncondJump(landing_block); }
 
   ir::BasicBlock::Current = landing_block;
 
@@ -696,14 +705,16 @@ static ir::Results EmitFnCall(
 
 ir::Results DispatchTable::EmitInlineCall(
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
-    type::Type const *, Context *ctx) const {
-  return EmitFnCall<true>(this, args, ctx);
+    type::Type const *, 
+    absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
+    Context *ctx) const {
+  return EmitFnCall<true>(this, args, block_map, ctx);
 }
 
 ir::Results DispatchTable::EmitCall(
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
     type::Type const *, Context *ctx) const {
-  return EmitFnCall<false>(this, args, ctx);
+  return EmitFnCall<false>(this, args, {}, ctx);
 }
 
 }  // namespace ast

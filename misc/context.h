@@ -45,9 +45,6 @@ struct Context {
 
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
   void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);
-  ast::DispatchTable const *dispatch_table(ast::Node const *node,
-                                           size_t index) const;
-  void push_dispatch_table(ast::Node const *node, ast::DispatchTable &&table);
 
   ir::Reg addr(ast::Declaration *decl) const;
   void set_addr(ast::Declaration *decl, ir::Reg);

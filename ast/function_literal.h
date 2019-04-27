@@ -57,7 +57,6 @@ struct FunctionLiteral : public Literal {
   Statements statements_;
 
   bool return_type_inferred_ = false;
-  bool should_complete_body_ = true;
   Module *module_            = nullptr;
 };
 }  // namespace ast

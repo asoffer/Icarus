@@ -1152,8 +1152,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::CondJump:
       return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];
-    case ir::Op::UncondJump: return cmd.block_;
+    case ir::Op::UncondJump: return cmd.block_index_;
     case ir::Op::ReturnJump: return ir::BlockIndex{-1};
+    case ir::Op::JumpPlaceholder: UNREACHABLE(call_stack.top().fn_);
     case ir::Op::BlockSeqJump: {
       auto bseq = resolve(cmd.block_seq_jump_.bseq_);
 

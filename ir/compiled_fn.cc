@@ -52,7 +52,9 @@ CompiledFn::GetIncomingBlocks() const {
     ASSERT(b.cmds_.size() > 0u);
     auto const &last = b.cmds_.back();
     switch (last.op_code_) {
-      case Op::UncondJump: incoming[&block(last.block_)].insert(&b); break;
+      case Op::UncondJump:
+        incoming[&block(last.block_index_)].insert(&b);
+        break;
       case Op::CondJump:
         incoming[&block(last.cond_jump_.blocks_[0])].insert(&b);
         incoming[&block(last.cond_jump_.blocks_[1])].insert(&b);

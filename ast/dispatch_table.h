@@ -6,8 +6,9 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ast/overload_set.h"
-#include "type/typed_value.h"
 #include "core/fn_args.h"
+#include "ir/block.h"
+#include "type/typed_value.h"
 
 struct Context;
 
@@ -39,7 +40,9 @@ struct DispatchTable {
 
   ir::Results EmitInlineCall(
       core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
-      type::Type const *, Context *ctx) const;
+      type::Type const *,
+      absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
+      Context *ctx) const;
   ir::Results EmitCall(
       core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
       type::Type const *, Context *ctx) const;

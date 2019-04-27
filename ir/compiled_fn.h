@@ -106,6 +106,7 @@ struct CompiledFn {
   // into the base::untyped_buffer holding all registers during compile-time
   // execution. It is only valid for core::Host().
   absl::flat_hash_map<ir::Reg, size_t> compiler_reg_to_offset_;
+  bool must_inline_ = false;
 };
 
 static_assert(alignof(CompiledFn) > 1);

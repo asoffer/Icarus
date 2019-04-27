@@ -3,6 +3,7 @@
 #include "ast/call.h"
 #include "ast/function_literal.h"
 #include "ast/overload_set.h"
+#include "backend/eval.h"
 #include "core/fn_args.h"
 #include "core/scope.h"
 #include "ir/compiled_fn.h"
@@ -92,6 +93,15 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
         }
       }
     }
+  } else if (op_ == frontend::Operator::Jump) {
+    ASSERT(args_.exprs_[0].get(), InheritsFrom<Call>());
+    // Note: We're not verifying the type of the call but instead the callable
+    // and its args.
+    auto &call = args_.exprs_[0]->as<Call>();
+    call.fn_->VerifyType(ctx);
+    call.args_.Apply([ctx](std::unique_ptr<Expression> const &arg) {
+      const_cast<std::unique_ptr<Expression> &>(arg)->VerifyType(ctx);
+    });
   }
 
   return VerifyResult(type::Void(), result.const_);
@@ -101,7 +111,12 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
   if (op_ == frontend::Operator::Jump) {
     ASSERT(args_.exprs_.size() == 1u);
     ASSERT(args_.exprs_[0].get(), InheritsFrom<Call>());
-    NOT_YET();
+    auto *called_expr = args_.exprs_[0]->as<Call>().fn_.get();
+    ir::JumpPlaceholder(backend::EvaluateAs<ir::Block>(
+        type::Typed<Expression *>(args_.exprs_[0]->as<Call>().fn_.get(),
+                                  type::Blk()),
+        ctx));
+    return ir::Results{};
   }
 
   std::vector<ir::Results> arg_vals;

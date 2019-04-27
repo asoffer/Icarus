@@ -4,6 +4,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/hashtag.h"
 #include "base/untyped_buffer.h"
+#include "ir/block.h"
 #include "ir/results.h"
 #include "misc/context.h"
 
@@ -259,6 +260,7 @@ struct Cmd {
     type::Type const *type_;
     ast::StructLiteral *sl_;
     LoadSymbol load_sym_;
+    Block block_;
 
     CreateStruct create_struct_;
     CreateStructField create_struct_field_;
@@ -267,7 +269,7 @@ struct Cmd {
     AddEnumerator add_enumerator_;
     SetEnumerator set_enumerator_;
     CondJump cond_jump_;
-    BlockIndex block_;
+    BlockIndex block_index_;
     BlockSeqJump block_seq_jump_;
     Call call_;
     PtrIncr ptr_incr_;
@@ -586,7 +588,9 @@ void Store(T r, Args &&... args) {
 
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments);
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs);
-Results CallInline(CompiledFn *f, Arguments const &arguments);
+Results CallInline(
+    CompiledFn *f, Arguments const &arguments,
+    absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map);
 
 Reg CreateTuple();
 void AppendToTuple(Reg tup, RegisterOr<type::Type const *> entry);
@@ -633,5 +637,6 @@ Reg CreateContext(Module *mod);
 void AddBoundConstant(Reg ctx, ast::Declaration *decl,
                       RegisterOr<type::Type const *> type);
 void DestroyContext(Reg r);
+void JumpPlaceholder(ir::Block block);
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

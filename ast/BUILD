@@ -284,6 +284,7 @@ cc_target(
         ":overload_set",
         "//core:fn_args",
         "//base:expected",
+        "//ir:block",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
@@ -493,6 +494,7 @@ cc_target(
         ":call",
         ":function_literal",
         ":overload_set",
+        "//backend:eval",
         "//core:fn_args",
         "//ir:compiled_fn",
         "//misc:context",

@@ -25,7 +25,12 @@ struct Block {
     return lhs.data_ == rhs.data_;
   }
 
-  ast::BlockLiteral const *get() {
+  template <typename H>
+  friend H AbslHashValue(H h, Block b) {
+    return H::combine(std::move(h), b.data_);
+  }
+
+  ast::BlockLiteral const *get() const {
     ASSERT(*this != Start());
     ASSERT(*this != Exit());
     return reinterpret_cast<ast::BlockLiteral const *>(data_);

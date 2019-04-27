@@ -69,6 +69,16 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
   ASSIGN_OR(return _, std::ignore,
                    VerifyDispatch(this, init_os, /* TODO */ {}, ctx));
 
+  OverloadSet done_os;
+  for (auto &decl : scope_lit->decls_) {
+    if (decl.id_ == "done") {
+      done_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
+    }
+  }
+
+  ASSIGN_OR(
+      return _, std::ignore,
+             VerifyDispatch(ExprPtr{this, true}, done_os, /* TODO */ {}, ctx));
   // TODO
   for (auto &block_node : blocks_) { block_node.stmts_.VerifyType(ctx); }
 
@@ -88,24 +98,56 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   ctx->yields_stack_.emplace_back();
   base::defer d([&]() { ctx->yields_stack_.pop_back(); });
 
-  auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
-
-  auto const &dispatch_table = *ASSERT_NOT_NULL(ctx->dispatch_table(this));
-
   auto init_block = ir::CompiledFn::Current->AddBlock();
-  //auto land_block = ir::CompiledFn::Current->AddBlock();
+  auto land_block = ir::CompiledFn::Current->AddBlock();
+
+  absl::flat_hash_map<ir::Block, ir::BlockIndex> block_map{
+      {ir::Block::Start(), ir::BasicBlock::Current},
+      {ir::Block::Exit(), land_block}};
+
+  absl::flat_hash_map<std::string_view, ir::Block> name_to_block;
+  auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
+  for (auto &decl : scope_lit->decls_) {
+    name_to_block.emplace(
+        decl.id_, backend::EvaluateAs<ir::Block>(
+                      type::Typed<Expression *>{&decl, type::Blk()}, ctx));
+  }
+
+  for (auto const &block_node : blocks_) {
+    if (auto *block_id = block_node.name_->if_as<Identifier>()) {
+      if (auto iter = name_to_block.find(block_id->token);
+          iter != name_to_block.end()) {
+        block_map.emplace(iter->second, ir::CompiledFn::Current->AddBlock());
+      } else {
+        base::Log() << block_id->token;
+        NOT_YET();
+      }
+    } else {
+      NOT_YET(block_node.name_->to_string(0));
+    }
+  }
 
   ir::UncondJump(init_block);
-  ir::BasicBlock::Current = init_block;
 
-  dispatch_table.EmitInlineCall(
-      args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
-        return std::pair(const_cast<Expression *>(expr.get()),
-                         expr->EmitIr(ctx));
-      }),
-      ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
-  base::Log() << *ir::CompiledFn::Current;
-  NOT_YET();
+  ir::BasicBlock::Current = init_block;
+  ASSERT_NOT_NULL(ctx->dispatch_table(this))
+      ->EmitInlineCall(
+          args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
+            return std::pair(const_cast<Expression *>(expr.get()),
+                             expr->EmitIr(ctx));
+          }),
+          ASSERT_NOT_NULL(ctx->type_of(this)), block_map, ctx);
+
+  ir::BasicBlock::Current = land_block;
+  ASSERT_NOT_NULL(ctx->dispatch_table(ExprPtr{this, true}))
+      ->EmitInlineCall(
+          args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
+            return std::pair(const_cast<Expression *>(expr.get()),
+                             expr->EmitIr(ctx));
+          }),
+          ASSERT_NOT_NULL(ctx->type_of(this)), {}, ctx);
+
+  return ir::Results{};
   /*
 
   OverloadSet init_os;

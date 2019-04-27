@@ -80,6 +80,7 @@ cc_target(
     name = "cmd",
     textual_hdrs = ["op.xmacro.h"],
     intf_deps = [
+        ":block",
         "//ast:hashtag",
         "//base:untyped_buffer",
         "//misc:context",
@@ -88,6 +89,7 @@ cc_target(
     impl_deps = [
         ":compiled_fn",
         ":phi",
+        "//ast:block_literal",
         "//ast:struct_literal",
         "//core:arch",
         "//type:typed_value",
