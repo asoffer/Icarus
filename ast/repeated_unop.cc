@@ -1,5 +1,6 @@
 #include "ast/repeated_unop.h"
 
+#include "ast/block_literal.h"
 #include "ast/call.h"
 #include "ast/function_literal.h"
 #include "ast/overload_set.h"
@@ -99,9 +100,23 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
     // and its args.
     auto &call = args_.exprs_[0]->as<Call>();
     call.fn_->VerifyType(ctx);
-    call.args_.Apply([ctx](std::unique_ptr<Expression> const &arg) {
-      const_cast<std::unique_ptr<Expression> &>(arg)->VerifyType(ctx);
-    });
+
+    auto block = backend::EvaluateAs<ir::Block>(
+        type::Typed<Expression *>(call.fn_.get(), type::Blk()), ctx);
+    if (block != ir::Block::Start() && block != ir::Block::Exit()) {
+      auto args =
+          call.args_.Transform([ctx](std::unique_ptr<Expression> const &arg)
+                                   -> std::pair<Expression *, VerifyResult> {
+            auto *arg_ptr =
+                const_cast<std::unique_ptr<Expression> &>(arg).get();
+            return std::pair{arg_ptr, arg_ptr->VerifyType(ctx)};
+          });
+      OverloadSet before_os(block.get()->body_scope_.get(), "before", ctx);
+      VerifyDispatch(block.get(), before_os, args, ctx);
+
+      OverloadSet after_os(block.get()->body_scope_.get(), "after", ctx);
+      VerifyDispatch(ExprPtr{block.get(), true}, after_os, args, ctx);
+    }
   }
 
   return VerifyResult(type::Void(), result.const_);

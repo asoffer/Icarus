@@ -59,23 +59,17 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
   }
 
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
-  OverloadSet init_os;
+  OverloadSet init_os, done_os;
   for (auto &decl : scope_lit->decls_) {
     if (decl.id_ == "init") {
       init_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
-    }
-  }
-
-  ASSIGN_OR(return _, std::ignore,
-                   VerifyDispatch(this, init_os, /* TODO */ {}, ctx));
-
-  OverloadSet done_os;
-  for (auto &decl : scope_lit->decls_) {
-    if (decl.id_ == "done") {
+    } else if (decl.id_ == "done") {
       done_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
     }
   }
-
+ 
+  ASSIGN_OR(return _, std::ignore,
+                   VerifyDispatch(this, init_os, /* TODO */ {}, ctx));
   ASSIGN_OR(
       return _, std::ignore,
              VerifyDispatch(ExprPtr{this, true}, done_os, /* TODO */ {}, ctx));
@@ -105,19 +99,25 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
       {ir::Block::Start(), ir::BasicBlock::Current},
       {ir::Block::Exit(), land_block}};
 
-  absl::flat_hash_map<std::string_view, ir::Block> name_to_block;
+  absl::flat_hash_map<std::string_view, std::tuple<ir::Block, BlockNode *>>
+      name_to_block;
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
   for (auto &decl : scope_lit->decls_) {
     name_to_block.emplace(
-        decl.id_, backend::EvaluateAs<ir::Block>(
-                      type::Typed<Expression *>{&decl, type::Blk()}, ctx));
+        std::piecewise_construct, std::forward_as_tuple(decl.id_),
+        std::forward_as_tuple(
+            backend::EvaluateAs<ir::Block>(
+                type::Typed<Expression *>{&decl, type::Blk()}, ctx),
+            nullptr));
   }
 
-  for (auto const &block_node : blocks_) {
+  for (auto &block_node : blocks_) {
     if (auto *block_id = block_node.name_->if_as<Identifier>()) {
       if (auto iter = name_to_block.find(block_id->token);
           iter != name_to_block.end()) {
-        block_map.emplace(iter->second, ir::CompiledFn::Current->AddBlock());
+        std::get<1>(iter->second) = &block_node;
+        block_map.emplace(std::get<0>(iter->second),
+                          ir::CompiledFn::Current->AddBlock());
       } else {
         base::Log() << block_id->token;
         NOT_YET();
@@ -138,6 +138,23 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
           }),
           ASSERT_NOT_NULL(ctx->type_of(this)), block_map, ctx);
 
+  for (auto [block_name, block_and_node] : name_to_block) {
+    if (block_name == "init" || block_name == "done") { continue; }
+    auto &[block, node] = block_and_node;
+    ir::BasicBlock::Current = block_map.at(block);
+    ASSERT_NOT_NULL(ctx->dispatch_table(block.get()))
+        ->EmitInlineCall({}, /* TODO block type */ type::Blk(), {}, ctx);
+
+    auto body = ir::CompiledFn::Current->AddBlock();
+    ir::UncondJump(body);
+    ir::BasicBlock::Current = body;
+    ASSERT_NOT_NULL(node)->EmitIr(ctx);
+
+    ASSERT_NOT_NULL(ctx->dispatch_table(ExprPtr{block.get(), true}))
+        ->EmitInlineCall({}, /* TODO block type */ type::Blk(), block_map, ctx);
+  }
+
+  ir::UncondJump(land_block);
   ir::BasicBlock::Current = land_block;
   ASSERT_NOT_NULL(ctx->dispatch_table(ExprPtr{this, true}))
       ->EmitInlineCall(
@@ -148,166 +165,6 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
           ASSERT_NOT_NULL(ctx->type_of(this)), {}, ctx);
 
   return ir::Results{};
-  /*
-
-  OverloadSet init_os;
-  for (auto &decl : scope_lit->decls_) {
-    if (decl.id_ == "init") {
-      init_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
-    }
-  }
-
-  absl::flat_hash_map<std::string, Declaration *> name_lookup;
-  for (auto &decl : scope_lit->decls_) { name_lookup.emplace(decl.id_, &decl); }
-  base::Log() << name_lookup;
-
-  struct BlockData {
-    OverloadSet before_os_, after_os_;
-    ir::BlockIndex index_;
-    BlockLiteral *lit_;
-  };
-
-  auto *jump_table =
-      new absl::flat_hash_map<ast::BlockLiteral const *, ir::BlockIndex>{
-          {reinterpret_cast<ast::BlockLiteral const *>(0x1), init_block},
-          {nullptr, land_block}};
-
-  absl::flat_hash_map<BlockNode *, BlockData> block_data;
-  ir::Reg alloc;
-  type::Type const *state_ptr_type = nullptr, *state_type = nullptr;
-  absl::flat_hash_set<type::Type const *> state_types;
-  for (auto &block : blocks_) {
-    // TODO for now do lookup assuming it's an identifier.
-    ASSERT(block.name_, InheritsFrom<Identifier>());
-    auto *decl = name_lookup.at(block.name_->as<Identifier>().token);
-    // Guarnteed to be constant because all declarations inside a scope literal
-    // are guaranteed to be constant.
-    auto &bseq = *backend::EvaluateAs<ir::BlockSequence>(decl, ctx).seq_;
-    ASSERT(bseq.size() == 1u);
-
-    OverloadSet os_before;
-    for (auto &b : bseq[0]->before_) {
-      os_before.emplace(&b, *ctx->prior_verification_attempt(&b));
-      auto const& t = ctx->type_of(&b)->as<type::Function>();
-      if (scope_lit->stateful_) { state_types.insert(t.input[0]); }
-    }
-
-    OverloadSet os_after;
-    for (auto &a : bseq[0]->after_) {
-      os_before.emplace(&a, *ctx->prior_verification_attempt(&a));
-      auto const &t = ctx->type_of(&a)->as<type::Function>();
-      if (scope_lit->stateful_) { state_types.insert(t.input[0]); }
-    }
-    auto block_index   = ir::CompiledFn::Current->AddBlock();
-    block_data[&block] = {std::move(os_before), std::move(os_after),
-                          block_index, bseq[0]};
-    jump_table->emplace(bseq[0], block_index);
-  }
-
-  Identifier *state_id = nullptr;
-  core::FnArgs<type::Typed<Expression *>> typed_args;
-  core::FnArgs<std::pair<Expression *, ir::Results>> ir_args;
-  if (scope_lit->stateful_) {
-    ASSERT(state_types.size() == 1u);
-    state_ptr_type = *state_types.begin();
-    ASSERT(state_ptr_type, InheritsFrom<type::Pointer>());
-    state_type = state_ptr_type->as<type::Pointer>().pointee;
-    alloc      = ir::TmpAlloca(state_type, ctx);
-    state_type->EmitInit(alloc, ctx);
-    state_id = new Identifier(TextSpan{}, "<scope-state>");
-
-    typed_args.pos_emplace(
-        state_id,
-        ctx->set_result(state_id, VerifyResult::Constant(state_ptr_type))
-            .type_);
-    ir_args.pos_emplace(state_id, ir::Results{alloc});
-  }
-
-  args_.ApplyWithIndex([&](auto &&index,
-                           std::unique_ptr<Expression> const &expr) {
-    if constexpr (std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
-      typed_args.pos_emplace(expr.get(), ctx->type_of(expr.get()));
-      ir_args.pos_emplace(expr.get(), expr.get()->EmitIr(ctx));
-    } else {
-      typed_args.named_emplace(
-          std::piecewise_construct, std::forward_as_tuple(index),
-          std::forward_as_tuple(expr.get(), ctx->type_of(expr.get())));
-      ir_args.named_emplace(
-          std::piecewise_construct, std::forward_as_tuple(index),
-          std::forward_as_tuple(expr.get(), expr.get()->EmitIr(ctx)));
-    }
-  });
-
-  auto [dispatch__table, result_type] =
-      DispatchTable::Make(typed_args, init_os, ctx);
-  auto block_seq = dispatch__table.EmitCall(ir_args, result_type, ctx)
-                       .get<ir::BlockSequence>(0);
-  ir::BlockSeqJump(block_seq, jump_table);
-
-  for (auto &block : blocks_) {
-    auto &data              = block_data[&block];
-    ir::BasicBlock::Current = data.index_;
-
-    core::FnArgs<std::pair<Expression *, ir::Results>> before_args;
-    core::FnArgs<type::Typed<Expression *>> before_expr_args;
-
-    if (scope_lit->stateful_) {
-      before_args.pos_emplace(state_id, ir::Results{alloc});
-      before_expr_args.pos_emplace(state_id, state_ptr_type);
-    }
-    auto [dispatch__table, result_type] =
-        DispatchTable::Make(before_expr_args, data.before_os_, ctx);
-
-    // TODO args?
-    dispatch__table.EmitCall(before_args, result_type, ctx);
-
-    block.EmitIr(ctx);
-    auto yields = std::move(ctx->yields_stack_.back());
-
-    core::FnArgs<type::Typed<Expression *>> after_expr_args;
-    core::FnArgs<std::pair<Expression *, ir::Results>> after_args;
-    if (scope_lit->stateful_) {
-      after_expr_args.pos_emplace(state_id, state_ptr_type);
-      after_args.pos_emplace(state_id, ir::Results{alloc});
-    }
-    for (auto &yield : yields) {
-      after_expr_args.pos_emplace(yield.expr_, ctx->type_of(yield.expr_));
-      after_args.pos_emplace(yield.expr_, yield.val_);
-    }
-
-    std::tie(dispatch__table, result_type) =
-        DispatchTable::Make(after_expr_args, data.after_os_, ctx);
-    auto call_exit_result =
-        dispatch__table.EmitCall(after_args, result_type, ctx)
-            .get<ir::BlockSequence>(0);
-
-    ir::BlockSeqJump(call_exit_result, jump_table);
-  }
-
-  {  // Landing block
-    OverloadSet done_os;
-    for (auto &decl : scope_lit->decls_) {
-      if (decl.id_ == "done") {
-        done_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
-      }
-    }
-
-    ir::BasicBlock::Current = land_block;
-
-    core::FnArgs<type::Typed<Expression *>> expr_args;
-    core::FnArgs<std::pair<Expression *, ir::Results>> args;
-    if (scope_lit->stateful_) {
-      args.pos_emplace(state_id, ir::Results{alloc});
-      expr_args.pos_emplace(state_id, state_ptr_type);
-    }
-    std::tie(dispatch__table, result_type) =
-        DispatchTable::Make(expr_args, done_os, ctx);
-
-    auto results = dispatch__table.EmitCall(args, result_type, ctx);
-    if (scope_lit->stateful_) { state_type->EmitDestroy(alloc, ctx); }
-    return results;
-  }
-  */
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> ScopeNode::EmitLVal(Context *) {

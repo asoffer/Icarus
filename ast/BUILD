@@ -491,6 +491,7 @@ cc_target(
         "//frontend:operators",
     ],
     impl_deps = [
+        ":block_literal",
         ":call",
         ":function_literal",
         ":overload_set",

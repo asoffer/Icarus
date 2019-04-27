@@ -30,6 +30,7 @@ struct Block {
     return H::combine(std::move(h), b.data_);
   }
 
+  // operator->?
   ast::BlockLiteral const *get() const {
     ASSERT(*this != Start());
     ASSERT(*this != Exit());
