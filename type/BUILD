@@ -263,6 +263,7 @@ cc_target(
         ":function",
         ":pointer",
         "//base:guarded",
+        "//base:permutation",
         "//ir:arguments",
         "//ir:components",
         "//core:arch",

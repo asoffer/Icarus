@@ -145,32 +145,39 @@ void Struct::add_hashtag_to_last_field(ast::Hashtag hashtag) {
 void Struct::add_field(Type const *t) { fields_.emplace_back(t); }
 
 bool Struct::IsDefaultInitializable() const {
-  // TODO check that all sub-fields also have this requirement.
-  return std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
-    return tag.kind_ == ast::Hashtag::Builtin::NoDefault;
-  });
+  return std::all_of(fields_.begin(), fields_.end(),
+                     [](Field const &field) {
+                       return field.type->IsDefaultInitializable();
+                     }) &&
+         std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
+           return tag.kind_ == ast::Hashtag::Builtin::NoDefault;
+         });
 }
 
 bool Struct::IsCopyable() const {
-  // TODO check that all sub-fields also have this requirement.
-  return std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
-    return tag.kind_ == ast::Hashtag::Builtin::Uncopyable;
-  });
+  return std::all_of(
+             fields_.begin(), fields_.end(),
+             [](Field const &field) { return field.type->IsCopyable(); }) &&
+         std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
+           return tag.kind_ == ast::Hashtag::Builtin::Uncopyable;
+         });
 }
 
 bool Struct::IsMovable() const {
-  // TODO check that all sub-fields also have this requirement.
-  return std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
-    return tag.kind_ == ast::Hashtag::Builtin::Immovable;
-  });
+  return std::all_of(
+             fields_.begin(), fields_.end(),
+             [](Field const &field) { return field.type->IsMovable(); }) &&
+         std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
+           return tag.kind_ == ast::Hashtag::Builtin::Immovable;
+         });
 }
 
 bool Struct::needs_destroy() const {
   // TODO is this okay? Does it work for generics? Does it need to?
   Context ctx(mod_);
   return SpecialFunction(this, "~", &ctx) ||
-         std::any_of(fields_.begin(), fields_.end(),
-                     [](Field const &f) { return f.type->needs_destroy(); });
+         absl::c_any_of(fields_,
+                        [](Field const &f) { return f.type->needs_destroy(); });
 }
 
 void Struct::EmitRepr(ir::Results const &val, Context *ctx) const { UNREACHABLE(); }

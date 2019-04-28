@@ -68,6 +68,11 @@ cc_lib(
 )
 
 cc_lib(
+    name = "permutation",
+    hdrs = ["permutation.h"],
+)
+
+cc_lib(
     name = "owned_ptr",
     hdrs = ["owned_ptr.h"],
 )

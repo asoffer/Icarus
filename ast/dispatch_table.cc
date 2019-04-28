@@ -202,6 +202,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
     // Figure out who should have verified this. Is it guaranteed to be
     // covered by shadowing checks? What if the overload isn't a declaration
     // so there aren't any shadowing checks?
+    base::Log() << result.type_->to_string();
     NOT_YET();
   }
 

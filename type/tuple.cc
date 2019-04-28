@@ -4,17 +4,21 @@
 #include <utility>
 
 #include "base/guarded.h"
+#include "base/permutation.h"
+#include "core/arch.h"
 #include "ir/arguments.h"
 #include "ir/components.h"
-#include "core/arch.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
 #include "type/pointer.h"
 
+// TODO Currently order of init/move/copy/destroy is entirely randomized. This
+// may not be a good design.
+
 namespace type {
 void Tuple::EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                       ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+                           ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   copy_assign_func_.init([this, ctx]() {
     Pointer const *p = Ptr(this);
     auto *fn         = ctx->mod_->AddFunc(
@@ -26,9 +30,9 @@ void Tuple::EmitCopyAssign(Type const *from_type, ir::Results const &from,
       auto val                = ir::Reg::Arg(0);
       auto var                = ir::Reg::Arg(1);
 
-      // TODO is initialization order well-defined? ranodmize it? at least it
-      // should always be opposite destruction order?
-      for (size_t i = 0; i < entries_.size(); ++i) {
+      std::vector<size_t> perm = base::make_random_permutation(entries_.size());
+      for (size_t index : perm) {
+        size_t i    = perm.at(index);
         auto *entry = entries_.at(i);
         entry->EmitCopyAssign(
             entry,
@@ -50,7 +54,7 @@ bool Tuple::needs_destroy() const {
 }
 
 void Tuple::EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                       ir::RegisterOr<ir::Addr> to, Context *ctx) const {
+                           ir::RegisterOr<ir::Addr> to, Context *ctx) const {
   move_assign_func_.init([this, ctx]() {
     Pointer const *p = Ptr(this);
     auto *fn         = ctx->mod_->AddFunc(
@@ -62,9 +66,9 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Results const &from,
       auto val                = ir::Reg::Arg(0);
       auto var                = ir::Reg::Arg(1);
 
-      // TODO is initialization order well-defined? ranodmize it? at least it
-      // should always be opposite destruction order?
-      for (size_t i = 0; i < entries_.size(); ++i) {
+      std::vector<size_t> perm = base::make_random_permutation(entries_.size());
+      for (size_t index : perm) {
+        size_t i    = perm.at(index);
         auto *entry = entries_.at(i);
         entry->EmitMoveAssign(
             entry,
@@ -91,9 +95,10 @@ void Tuple::EmitInit(ir::Reg reg, Context *ctx) const {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
       auto var                = ir::Reg::Arg(0);
 
-      // TODO is initialization order well-defined? ranodmize it? at least it
-      // should always be opposite destruction order?
-      for (size_t i = 0; i < entries_.size(); ++i) {
+      std::vector<size_t> perm = base::make_random_permutation(entries_.size());
+      for (size_t index : perm) {
+        size_t i    = perm.at(index);
+        auto *entry = entries_.at(i);
         entries_.at(i)->EmitInit(ir::Field(var, this, i).get(), ctx);
       }
 
@@ -110,7 +115,8 @@ void Tuple::EmitRepr(ir::Results const &id_val, Context *ctx) const {
   ir::Print(std::string_view{"("});
   for (int i = 0; i < static_cast<int>(entries_.size()) - 1; ++i) {
     entries_[i]->EmitRepr(
-        ir::Results{ir::PtrFix(ir::Field(reg, this, i).get(), entries_[i])}, ctx);
+        ir::Results{ir::PtrFix(ir::Field(reg, this, i).get(), entries_[i])},
+        ctx);
     ir::Print(std::string_view{", "});
   }
 
@@ -126,9 +132,9 @@ void Tuple::EmitRepr(ir::Results const &id_val, Context *ctx) const {
 static base::guarded<std::map<std::vector<Type const *>, Tuple const>> tups_;
 Type const *Tup(std::vector<Type const *> entries) {
   if (entries.size() == 1) { return entries[0]; }
-  auto [iter, success] = tups_.lock()->emplace(std::piecewise_construct,
-                                               std::forward_as_tuple(entries),
-                                               std::forward_as_tuple(entries));
+  auto[iter, success] = tups_.lock()->emplace(std::piecewise_construct,
+                                              std::forward_as_tuple(entries),
+                                              std::forward_as_tuple(entries));
   return &iter->second;
 }
 
@@ -163,8 +169,9 @@ void Tuple::EmitDestroy(ir::Reg reg, Context *ctx) const {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
       auto var                = ir::Reg::Arg(0);
 
-      // TODO is destruction order well-defined? ranodmize it?
-      for (int i = static_cast<int>(entries_.size()) - 1; i >= 0; --i) {
+      std::vector<size_t> perm = base::make_random_permutation(entries_.size());
+      for (size_t index : perm) {
+        size_t i = perm.at(index);
         entries_.at(i)->EmitDestroy(ir::Field(var, this, i).get(), ctx);
       }
 
