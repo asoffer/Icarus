@@ -8,9 +8,10 @@ cc_lib(
         "//backend:exec",
         "//base:untyped_buffer",
         "//base:util",
+        "//ir:compiled_fn",
         "//misc:context",
         "//misc:module",
-        "//ir:compiled_fn",
+        "//opt:combine_blocks",
     ],
 )
 

@@ -1,13 +1,14 @@
 #include <dlfcn.h>
 #include <filesystem>
+#include <vector>
 
 #include "backend/exec.h"
-#include <vector>
 #include "base/untyped_buffer.h"
 #include "base/util.h"
 #include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "misc/module.h"
+#include "opt/combine_blocks.h"
 
 #ifdef ICARUS_USE_LLVM
 #include "llvm/ADT/STLExtras.h"
@@ -54,6 +55,10 @@ int RunCompiler() {
     std::cerr << "No compiled module has a `main` function.\n";
   } else if (!found_errors) {
     ASSERT(main_fn->mod_ != nullptr);
+
+    // TODO All the functions? In all the modules?
+    opt::CombineBlocks(main_fn);
+
     backend::ExecContext exec_ctx;
     backend::Execute(main_fn, base::untyped_buffer(0), {}, &exec_ctx);
   }

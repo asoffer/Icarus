@@ -24,6 +24,7 @@ cc_library(
         "//error:log-impl",
         "//ir:impl",
         "//misc:impl",
+        "//opt:impl",
         "//property:property_map-impl",
         "//property:property_set-impl",
         "//property:property-impl",

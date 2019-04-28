@@ -14,12 +14,12 @@ struct CompiledFn;
 
 struct BasicBlock {
   static thread_local BlockIndex Current;
-  BasicBlock()                    = delete;
-  BasicBlock(const BasicBlock &&) = delete;
-  BasicBlock(BasicBlock &&)       = default;
+  BasicBlock()                       = default;
+  BasicBlock(const BasicBlock &&)    = delete;
+  BasicBlock(BasicBlock &&) noexcept = default;
   BasicBlock(CompiledFn *fn) : fn_(fn) {}
 
-  BasicBlock &operator=(BasicBlock &&) = default;
+  BasicBlock &operator=(BasicBlock &&) noexcept = default;
   BasicBlock &operator=(const BasicBlock &) = delete;
 
   CompiledFn *fn_;  // Containing function
