@@ -30,4 +30,6 @@ Addr GetString(std::string const &str) {
   return GlobalStringSet.lock()->find(str)->second;
 }
 
+Addr GetString(std::string_view str) { return GetString(std::string{str}); }
+
 }  // namespace ir

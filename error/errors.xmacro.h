@@ -105,3 +105,5 @@ MAKE_LOG_ERROR(NonConstantImport, "Cannot import a non-constant module.")
 MAKE_LOG_ERROR(NonConstantScopeName, "Scope names must be constant.")
 MAKE_LOG_ERROR(NonConstantStructFieldDefaultValue,
                "Struct field default values must be constant.")
+MAKE_LOG_ERROR(NonConstantTupleIndex,
+               "Index into a tuple must be a compile-time constant.")

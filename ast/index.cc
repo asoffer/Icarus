@@ -22,8 +22,7 @@ void Index::assign_scope(core::Scope *scope) {
   rhs_->assign_scope(scope);
 }
 
-void Index::DependentDecls(DeclDepGraph *g,
-                           Declaration *d) const {
+void Index::DependentDecls(DeclDepGraph *g, Declaration *d) const {
   lhs_->DependentDecls(g, d);
   rhs_->DependentDecls(g, d);
 }
@@ -39,7 +38,6 @@ VerifyResult Index::VerifyType(Context *ctx) {
   }
 
   if (lhs_result.type_ == type::ByteView) {
-    // TODO is nat8 what I want?
     return ctx->set_result(this, VerifyResult(type::Nat8, rhs_result.const_));
   } else if (auto *lhs_array_type = lhs_result.type_->if_as<type::Array>()) {
     return ctx->set_result(
@@ -50,17 +48,22 @@ VerifyResult Index::VerifyType(Context *ctx) {
         this, VerifyResult(lhs_buf_type->pointee, rhs_result.const_));
   } else if (auto *tup = lhs_result.type_->if_as<type::Tuple>()) {
     if (!rhs_result.const_) {
-      NOT_YET("log an error");
+      ctx->error_log()->NonConstantTupleIndex(span);
       return VerifyResult::Error();
     }
 
-    // TODO Will this cast appropriately?
-    int64_t index = type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                                     uint16_t, uint32_t, uint64_t>(
-        index_type, [&](auto type_holder) -> int64_t {
-          using T = typename decltype(type_holder)::type;
-          return backend::EvaluateAs<T>(rhs_.get(), ctx);
-        });
+    int64_t index = [&]() -> int64_t {
+      auto results = backend::Evaluate(rhs_.get(), ctx);
+      if (index_type == type::Int8) { return results.get<int8_t>(0).val_; }
+      if (index_type == type::Int16) { return results.get<int16_t>(0).val_; }
+      if (index_type == type::Int32) { return results.get<int32_t>(0).val_; }
+      if (index_type == type::Int64) { return results.get<int64_t>(0).val_; }
+      if (index_type == type::Nat8) { return results.get<uint8_t>(0).val_; }
+      if (index_type == type::Nat16) { return results.get<uint16_t>(0).val_; }
+      if (index_type == type::Nat32) { return results.get<uint32_t>(0).val_; }
+      if (index_type == type::Nat64) { return results.get<uint64_t>(0).val_; }
+      UNREACHABLE();
+    }();
 
     if (index < 0 || index >= static_cast<int64_t>(tup->size())) {
       ctx->error_log()->IndexingTupleOutOfBounds(span, tup, index);
@@ -82,7 +85,6 @@ void Index::ExtractJumps(JumpExprs *rets) const {
 }
 
 ir::Results Index::EmitIr(Context *ctx) {
-  // TODO is indexing overloadable?
   return ir::Results{ir::PtrFix(EmitLVal(ctx)[0].reg_, ctx->type_of(this))};
 }
 
@@ -108,9 +110,9 @@ std::vector<ir::RegisterOr<ir::Addr>> Index::EmitLVal(Context *ctx) {
     // entirely.
     auto index =
         ir::Cast(rhs_type, type::Int64, rhs_->EmitIr(ctx)).get<int64_t>(0);
-    return {ir::PtrIncr(ir::GetString(std::string(
-                            lhs_->EmitIr(ctx).get<std::string_view>(0).val_)),
-                        index, type::Ptr(type::Nat8))};
+    return {ir::PtrIncr(
+        ir::GetString(lhs_->EmitIr(ctx).get<std::string_view>(0).val_), index,
+        type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
     auto index =
         ir::Cast(rhs_type, type::Int64, backend::Evaluate(rhs_.get(), ctx))
