@@ -38,6 +38,9 @@ struct Token : public ast::Node {
   void DependentDecls(ast::DeclDepGraph *, ast::Declaration *) const {
     UNREACHABLE(token);
   }
+  bool InferType(type::Type const *t, InferenceState *state) const override {
+    return false;
+  }
 
   std::string token;
   Operator op;

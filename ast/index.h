@@ -17,6 +17,9 @@ struct Index : public Expression {
   void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
+  bool InferType(type::Type const *t, InferenceState *state) const override {
+    return false;
+  }
 
   ir::Results EmitIr(Context *) override;
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;

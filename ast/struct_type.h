@@ -13,6 +13,9 @@ struct StructType : public Literal {
   void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
+  bool InferType(type::Type const *t, InferenceState *state) const override {
+    return false;
+  }
 
   ir::Results EmitIr(Context *) override;
 

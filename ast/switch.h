@@ -14,6 +14,9 @@ struct Switch : public Literal {
   void ExtractJumps(JumpExprs *rets) const override;
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
+  bool InferType(type::Type const *t, InferenceState *state) const override {
+    return false;
+  }
 
   ir::Results EmitIr(Context *) override;
 
@@ -35,6 +38,10 @@ struct SwitchWhen : public Node {
   void DependentDecls(DeclDepGraph *g, Declaration *d) const override {
     UNREACHABLE();
   }
+  bool InferType(type::Type const *t, InferenceState *state) const override {
+    return false;
+  }
+
   ir::Results EmitIr(Context *) override { UNREACHABLE(); }
 
   std::unique_ptr<Node> body;

@@ -29,6 +29,9 @@ struct FunctionLiteral : public Literal {
   void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
+  bool InferType(type::Type const *t, InferenceState *state) const override {
+    return false;
+  }
 
   VerifyResult VerifyTypeConcrete(Context *);
   VerifyResult VerifyBody(Context *);

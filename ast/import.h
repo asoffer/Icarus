@@ -26,6 +26,9 @@ struct Import : public Literal {
                       Declaration *d) const override {
     operand_->DependentDecls(g, d);
   }
+  bool InferType(type::Type const *t, InferenceState *state) const override {
+    return false;
+  }
 
   ir::Results EmitIr(Context *) override;
 

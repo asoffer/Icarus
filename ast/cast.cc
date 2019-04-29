@@ -65,7 +65,6 @@ void Cast::ExtractJumps(JumpExprs *rets) const {
 
 ir::Results Cast::EmitIr(Context *ctx) {
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
-    // TODO struct is not exactly right. we really mean user-defined
     return dispatch_table->EmitCall(
         core::FnArgs<std::pair<Expression *, ir::Results>>(
             {std::pair(expr_.get(), expr_->EmitIr(ctx)),
@@ -81,7 +80,7 @@ ir::Results Cast::EmitIr(Context *ctx) {
     entries.reserve(results.size());
     for (size_t i = 0; i < results.size(); ++i) {
       // TODO what about incomplete structs?
-      entries.push_back(results.GetResult(i).get<type::Type const *>(0).val_);
+      entries.push_back(results.get<type::Type const *>(i).val_);
     }
     return ir::Results{type::Tup(entries)};
   }

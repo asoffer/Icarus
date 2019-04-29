@@ -19,6 +19,9 @@ struct CommaList : public Expression {
   void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
+  bool InferType(type::Type const *t, InferenceState *state) const override {
+    return false;
+  }
 
   std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(Context *ctx);
 

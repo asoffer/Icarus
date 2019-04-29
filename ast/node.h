@@ -94,16 +94,13 @@ constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
 }
 
 struct Node : public base::Cast<Node> {
-  virtual std::string to_string(size_t n) const                      = 0;
-  virtual void assign_scope(core::Scope *)                           = 0;
-  virtual VerifyResult VerifyType(Context *)                         = 0;
-  virtual ir::Results EmitIr(Context *ctx)                           = 0;
-  virtual void ExtractJumps(JumpExprs *) const                       = 0;
-  virtual void DependentDecls(DeclDepGraph *g, Declaration *d) const = 0;
-
-  virtual bool InferType(type::Type const *t, InferenceState *state) const {
-    return false;
-  }  // TODO = 0
+  virtual std::string to_string(size_t n) const                            = 0;
+  virtual void assign_scope(core::Scope *)                                 = 0;
+  virtual VerifyResult VerifyType(Context *)                               = 0;
+  virtual ir::Results EmitIr(Context *ctx)                                 = 0;
+  virtual void ExtractJumps(JumpExprs *) const                             = 0;
+  virtual void DependentDecls(DeclDepGraph *g, Declaration *d) const       = 0;
+  virtual bool InferType(type::Type const *t, InferenceState *state) const = 0;
 
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}

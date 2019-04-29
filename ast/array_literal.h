@@ -17,6 +17,9 @@ struct ArrayLiteral : public Literal {
   }
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
+  bool InferType(type::Type const *t, InferenceState *state) const override {
+    return false;
+  }
 
   ir::Results EmitIr(Context *ctx) override;
   void EmitMoveInit(type::Typed<ir::Reg> reg, Context *ctx) override;
