@@ -196,8 +196,8 @@ bool Struct::contains_hashtag(ast::Hashtag needle) const {
 
 ir::Results Struct::PrepareArgument(Type const *from, ir::Results const &val,
                                     Context *ctx) const {
+  // TODO consider who is responsible for destruction here.
   auto arg = ir::Alloca(this);
-
   if (from->is<Variant>()) {
     EmitMoveAssign(this,
                    ir::Results{ir::VariantValue(this, val.get<ir::Reg>(0))},

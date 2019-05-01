@@ -89,8 +89,8 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
                 {}),
             ctx);
         if (dispatch_result.type_ && dispatch_result.type_ != type::Void()) {
-          NOT_YET("log an error. must return void: ",
-                  dispatch_result.type_->to_string());
+          ctx->error_log()->PrintMustReturnVoid(dispatch_result.type_, span);
+          return VerifyResult::Error();
         }
       }
     }

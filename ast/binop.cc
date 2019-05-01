@@ -157,7 +157,8 @@ VerifyResult Binop::VerifyType(Context *ctx) {
       if (lhs_result.type_ == rhs_result.type_) {                              \
         return ctx->set_result(this, VerifyResult((return_type), is_const));   \
       } else {                                                                 \
-        NOT_YET("Log an error");                                               \
+        ctx->error_log()->MismatchedBinopArithmeticType(                       \
+            lhs_result.type_, rhs_result.type_, span);                         \
         return VerifyResult::Error();                                          \
       }                                                                        \
     } else {                                                                   \
@@ -174,7 +175,7 @@ VerifyResult Binop::VerifyType(Context *ctx) {
     }                                                                          \
   } break;
       CASE(Sub, "-", lhs_result.type_);
-      CASE(Mul, "-", lhs_result.type_);
+      CASE(Mul, "*", lhs_result.type_);
       CASE(Div, "/", lhs_result.type_);
       CASE(Mod, "%", lhs_result.type_);
       CASE(SubEq, "-=", type::Void());
@@ -189,7 +190,8 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         if (lhs_result.type_ == rhs_result.type_) {
           return ctx->set_result(this, VerifyResult(lhs_result.type_, is_const));
         } else {
-          NOT_YET("Log an error");
+          ctx->error_log()->MismatchedBinopArithmeticType(
+              lhs_result.type_, rhs_result.type_, span);
           return VerifyResult::Error();
         }
       } else {
@@ -212,7 +214,8 @@ VerifyResult Binop::VerifyType(Context *ctx) {
         if (lhs_result.type_ == rhs_result.type_) {
           return ctx->set_result(this, VerifyResult(type::Void(), is_const));
         } else {
-          NOT_YET("Log an error");
+          ctx->error_log()->MismatchedBinopArithmeticType(
+              lhs_result.type_, rhs_result.type_, span);
           return VerifyResult::Error();
         }
       } else {

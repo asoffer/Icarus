@@ -742,6 +742,57 @@ void Log::UninferrableType(InferenceFailureReason reason,
   errors_.push_back(ss.str());
 }
 
+void Log::MismatchedBinopArithmeticType(type::Type const *lhs, type::Type const *rhs,
+                                   TextSpan const &span) {
+  std::stringstream ss;
+  ss << "Mismatched types `" << lhs->to_string() << "` and `"
+     << rhs->to_string() << "` in binary operator.\n\n";
+  WriteSource(
+      ss, span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::InvalidCast(type::Type const *from, type::Type const *to,
+                                   TextSpan const &span) {
+  std::stringstream ss;
+  ss << "No viable cast from `" << from->to_string() << "` to `"
+     << to->to_string() << "`.\n\n";
+  WriteSource(
+      ss, span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::PrintMustReturnVoid(type::Type const *t, TextSpan const &span) {
+  std::stringstream ss;
+  ss << "`print` must return void, but evaluates to an object of type "
+     << t->to_string() << ".\n\n";
+  WriteSource(
+      ss, span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
+void Log::SwitchConditionNeedsBool(type::Type const *t, TextSpan const &span) {
+  std::stringstream ss;
+  ss << "Expressionless switch conditions must evaluate to a `bool`, but you "
+        "provided a `"
+     << t->to_string() << "`.\n\n";
+  WriteSource(
+      ss, span.source, {span.lines()},
+      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
+
+  ss << "\n\n";
+  errors_.push_back(ss.str());
+}
+
 void Log::BuiltinError(TextSpan const &span, std::string_view text) {
   std::stringstream ss;
   ss << text << "\n\n";

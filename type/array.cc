@@ -338,15 +338,18 @@ bool Array::IsMovable() const { return data_type->IsMovable(); }
 
 ir::Results Array::PrepareArgument(Type const *from, ir::Results const &val,
                                    Context *ctx) const {
+  // TODO consider who is responsible for destruction here.
+  auto arg = ir::Alloca(this);
   if (from->is<Variant>()) {
-    NOT_YET(this, from);
+    EmitMoveAssign(this,
+                   ir::Results{ir::VariantValue(this, val.get<ir::Reg>(0))},
+                   arg, ctx);
+  } else if (this == from) {
+    EmitMoveAssign(from, val, arg, ctx);
   } else {
-    ASSERT(from == this);
-    // TODO Copy may be overkill. Think about value category.
-    auto arg = ir::Alloca(from);
-    from->EmitMoveAssign(from, val, arg, ctx);
-    return ir::Results{arg};
+    UNREACHABLE(from);
   }
+  return ir::Results{arg};
 }
 
 core::Bytes Array::bytes(core::Arch const &a) const {

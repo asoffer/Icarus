@@ -69,7 +69,9 @@ VerifyResult Switch::VerifyType(Context *ctx) {
       static_cast<void>(expr_type);
       // TODO dispatch table
     } else {
-      if (cond_result.type_ != type::Bool) { NOT_YET("handle type error"); }
+      if (cond_result.type_ != type::Bool) {
+        ctx->error_log()->SwitchConditionNeedsBool(cond_result.type_, span);
+      }
     }
     // TODO if there's an error, an unorderded_set is not helpful for giving
     // good error messages.

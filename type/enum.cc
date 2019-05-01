@@ -42,7 +42,7 @@ void Enum::EmitMoveAssign(Type const *from_type, ir::Results const &from,
 
 void Enum::defining_modules(
     absl::flat_hash_set<::Module const *> *modules) const {
-  NOT_YET();
+  modules->insert(mod_);
 }
 
 // TODO print something friendlier
