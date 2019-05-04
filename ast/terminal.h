@@ -39,7 +39,7 @@ struct Terminal : public Literal {
       return std::to_string(results_.get<uint8_t>(0).val_) + "_u8";
     } else if (type_ == type::Type_) {
       return results_.get<type::Type const *>(0).val_->to_string();
-    } else if (type_ == type::Blk()) {
+    } else if (type_ == type::Block) {
       std::stringstream ss;
       ss << results_.get<ir::Block>(0).val_;
       return ss.str();
@@ -61,7 +61,15 @@ struct Terminal : public Literal {
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override {}
 
-  ir::Results EmitIr(Context *ctx) override { return results_; };
+  ir::Results EmitIr(Context *ctx) override {
+    if (type_ == type::Block) {
+      ir::BlockSequence seq;
+      seq.append(results_.get<ir::Block>(0).val_);
+      return ir::Results{seq};
+    }
+
+    return results_;
+  };
 
   ir::Results results_;
   type::Type const *type_;

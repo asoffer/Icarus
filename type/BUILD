@@ -26,11 +26,6 @@ cc_target(
     ],
 )
 
-cc_target(
-    name = "block",
-    intf_deps = [":callable"],
-)
-
 cc_lib(
     name = "callable",
     hdrs = ["callable.h"],
@@ -49,7 +44,6 @@ cc_lib(
     name = "concrete_types",
     deps = [
         ":array",
-        ":block",
         ":enum",
         ":flags",
         ":function",
@@ -69,7 +63,6 @@ cc_lib(
     name = "impl",
     deps = [
         ":array-impl",
-        ":block-impl",
         ":cast-impl",
         ":enum-impl",
         ":flags-impl",
@@ -285,6 +278,7 @@ cc_target(
         "//base:debug",
         "//base:util",
         "//ir:addr",
+        "//ir:block",
         "//ir:register",
         "//ir:results",
         "//core:arch",

@@ -894,28 +894,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::CastToEnum: save(ir::EnumVal(resolve<int32_t>(cmd.reg_))); break;
     case ir::Op::CastToFlags: save(ir::FlagsVal(resolve<int32_t>(cmd.reg_))); break;
     case ir::Op::CastPtr: save(resolve<ir::Addr>(cmd.typed_reg_.get())); break;
-    case ir::Op::CreateBlockSeq:
-      save(new std::vector<ir::BlockSequence>{});
-      break;
-    case ir::Op::AppendToBlockSeq: {
-      auto *block_seq_to_modify =
-          ASSERT_NOT_NULL(resolve<std::vector<ir::BlockSequence> *>(
-              cmd.store_block_.addr_.reg_));
-      block_seq_to_modify->push_back(resolve(cmd.store_block_.val_));
-    } break;
-    case ir::Op::FinalizeBlockSeq: {
-      NOT_YET();
-      //  auto *block_seq = resolve<std::vector<ir::BlockSequence> *>(cmd.reg_);
-      //  auto seq = ir::MakeBlockSeq(*block_seq);
-      //  delete block_seq;
-      //  save(seq);
-    } break;
-    case ir::Op::BlockSeqContains: {
-      auto *seq = resolve<ir::BlockSequence>(cmd.block_seq_contains_.reg_).seq_;
-      save(std::any_of(seq->begin(), seq->end(), [&](ast::BlockLiteral *lit) {
-        return lit == cmd.block_seq_contains_.lit_;
-      }));
-    } break;
     case ir::Op::GetRet: save(ret_slots.at(cmd.get_ret_)); break;
     case ir::Op::SetRetBool:
       StoreValue(resolve(cmd.set_ret_bool_.val_),
@@ -1153,17 +1131,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::UncondJump: return cmd.block_index_;
     case ir::Op::ReturnJump: return ir::BlockIndex{-1};
     case ir::Op::JumpPlaceholder: UNREACHABLE(call_stack.top().fn_);
-    case ir::Op::BlockSeqJump: {
-      auto bseq = resolve(cmd.block_seq_jump_.bseq_);
-
-      for (auto *bl : *bseq.seq_) {
-        auto iter = cmd.block_seq_jump_.jump_table_->find(bl);
-        if (iter != cmd.block_seq_jump_.jump_table_->end()) {
-          return iter->second;
-        }
-      }
-      NOT_YET(bseq.seq_);
-    } break;
+    case ir::Op::BlockSeqJump: NOT_YET(); break;
   }
 
   return ir::BlockIndex{-2};

@@ -198,7 +198,9 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
   auto result =
       *ASSERT_NOT_NULL(ctx->prior_verification_attempt(overload.expr));
-  if (!result.type_->is<type::Callable>() && result.type_ != type::Generic) {
+  if (!result.type_->is<type::Callable>() && result.type_ != type::Generic &&
+      result.type_ != type::Block && result.type_ != type::OptBlock &&
+      result.type_ != type::RepBlock) {
     // Figure out who should have verified this. Is it guaranteed to be
     // covered by shadowing checks? What if the overload isn't a declaration
     // so there aren't any shadowing checks?
@@ -320,7 +322,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                 &fn_type->as<type::Function>(),
                                 backend::EvaluateAs<ir::AnyFunc>(fn_lit, ctx)};
     } else {
-      if (result.type_->is<type::Block>() || result.type_ == type::OptBlock ||
+      if (result.type_ == type::Block || result.type_ == type::OptBlock ||
           result.type_ == type::RepBlock) {
         ir::Block b = backend::EvaluateAs<ir::Block>(overload.expr, ctx);
         // TODO each of these is wrong (e.g., not taking parameters?
@@ -360,7 +362,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
     } else if (auto *fn_type = result.type_->if_as<type::Function>()) {
       return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type,
                                 overload.expr};
-    } else if (result.type_->is<type::Block>()) {
+    } else if (result.type_ == type::Block) {
       NOT_YET();
     } else {
       UNREACHABLE();

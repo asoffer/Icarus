@@ -6,10 +6,11 @@
 #include "absl/container/flat_hash_set.h"
 #include "base/debug.h"
 #include "base/util.h"
+#include "core/arch.h"
 #include "ir/addr.h"
+#include "ir/block.h"
 #include "ir/register.h"
 #include "ir/results.h"
-#include "core/arch.h"
 
 struct Context;
 struct TextSpan;
@@ -180,8 +181,7 @@ bool Compare(::type::Type const *t) {
                        std::is_same_v<T, ::Module const *>) {
     return t == ::type::Module;
   } else if constexpr (std::is_same_v<T, ir::BlockSequence>) {
-    return t == ::type::OptBlock || t->is<::type::Block>() ||
-           t == ::type::RepBlock;
+    return t == ::type::OptBlock || t == ::type::Block || t == ::type::RepBlock;
   } else {
     UNREACHABLE(t->to_string(), " vs ", typeid(T).name());
   }

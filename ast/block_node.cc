@@ -25,7 +25,7 @@ void BlockNode::DependentDecls(DeclDepGraph *g,
 
 VerifyResult BlockNode::VerifyType(Context *ctx) {
   stmts_.VerifyType(ctx);
-  return ctx->set_result(this, VerifyResult::Constant(type::Blk()));
+  return ctx->set_result(this, VerifyResult::Constant(type::Block));
 }
 void BlockNode::ExtractJumps(JumpExprs *rets) const {
   stmts_.ExtractJumps(rets);

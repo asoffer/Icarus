@@ -96,9 +96,9 @@ RegisterOr<int64_t> Align(RegisterOr<type::Type const *> r) {
   return cmd.result;
 }
 
-void JumpPlaceholder(ir::Block block) {
-  auto &cmd = MakeCmd(nullptr, Op::JumpPlaceholder);
-  cmd.block_      = block;
+void JumpPlaceholder(BlockSequence block_seq) {
+  auto &cmd                         = MakeCmd(nullptr, Op::JumpPlaceholder);
+  cmd.block_seq_                    = block_seq;
   CompiledFn::Current->must_inline_ = true;
 }
 
@@ -327,34 +327,6 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
   CompiledFn::Current->references_[result];  // Guarantee it exists.
   // TODO for implicitly declared out-params of a Call, map them to the call.
   CompiledFn::Current->reg_to_cmd_.emplace(result, cmd_index);
-}
-
-BlockSequence MakeBlockSeq(std::vector<ir::BlockSequence> const &blocks);
-
-Reg CreateBlockSeq() { return MakeCmd(type::Type_, Op::CreateBlockSeq).result; }
-
-void AppendToBlockSeq(Reg block_seq,
-                      RegisterOr<ir::BlockSequence> more_block_seq) {
-  auto &cmd        = MakeCmd(nullptr, Op::AppendToBlockSeq);
-  cmd.store_block_ = {block_seq, more_block_seq};
-}
-
-Reg FinalizeBlockSeq(Reg r) {
-  auto &cmd = MakeCmd(type::Blk(), Op::FinalizeBlockSeq);
-  cmd.reg_  = r;
-  return cmd.result;
-}
-
-RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
-                                  ast::BlockLiteral *lit) {
-  if (r.is_reg_) {
-    auto &cmd               = MakeCmd(type::Bool, Op::BlockSeqContains);
-    cmd.block_seq_contains_ = Cmd::BlockSeqContains{r.reg_, lit};
-    return cmd.result;
-  }
-
-  return std::any_of(r.val_.seq_->begin(), r.val_.seq_->end(),
-                     [lit](ast::BlockLiteral *l) { return lit == l; });
 }
 
 Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent) {
@@ -961,7 +933,15 @@ Results CallInline(
           // TODO deprecate
         } break;
         case Op::JumpPlaceholder: {
-          UncondJump(block_map.at(cmd.block_));
+          for (auto block : *cmd.block_seq_.seq_) {
+            auto iter = block_map.find(block);
+            if (iter != block_map.end()) {
+              UncondJump(iter->second);
+              goto found_valid_jump;
+            }
+          }
+          UNREACHABLE();
+        found_valid_jump:;
         } break;
 
 #define CASE(op_code, phi_type, args)                                          \
@@ -989,7 +969,6 @@ Results CallInline(
           // TODO CASE(PhiFlags, ____, phi_flags_);
           // TODO CASE(PhiFunc, ____, phi_func_);
 #undef CASE
-        case Op::BlockSeqContains: NOT_YET();
         case Op::GetRet: NOT_YET();
 #define CASE(op_code, args)                                                    \
   case Op::op_code: {                                                          \
@@ -1174,11 +1153,6 @@ static std::ostream &operator<<(std::ostream &os, Cmd::PrintFlags const &p) {
 
 static std::ostream &operator<<(std::ostream &os, Cmd::BlockSeqJump const &b) {
   return os << b.bseq_;
-}
-
-static std::ostream &operator<<(std::ostream &os,
-                                Cmd::BlockSeqContains const &b) {
-  return os << b.lit_;
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::PtrIncr const &p) {

@@ -101,8 +101,9 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
     auto &call = args_.exprs_[0]->as<Call>();
     call.fn_->VerifyType(ctx);
 
-    auto block = backend::EvaluateAs<ir::Block>(
-        type::Typed<Expression *>(call.fn_.get(), type::Blk()), ctx);
+    auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
+        type::Typed<Expression *>(call.fn_.get(), type::Block), ctx);
+    auto block = block_seq.at(0);
     if (block != ir::Block::Start() && block != ir::Block::Exit()) {
       auto args =
           call.args_.Transform([ctx](std::unique_ptr<Expression> const &arg)
@@ -127,9 +128,9 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
     ASSERT(args_.exprs_.size() == 1u);
     ASSERT(args_.exprs_[0].get(), InheritsFrom<Call>());
     auto *called_expr = args_.exprs_[0]->as<Call>().fn_.get();
-    ir::JumpPlaceholder(backend::EvaluateAs<ir::Block>(
+    ir::JumpPlaceholder(backend::EvaluateAs<ir::BlockSequence>(
         type::Typed<Expression *>(args_.exprs_[0]->as<Call>().fn_.get(),
-                                  type::Blk()),
+                                  type::Block),
         ctx));
     return ir::Results{};
   }

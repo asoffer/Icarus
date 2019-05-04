@@ -11,7 +11,7 @@ BlockLiteral::BlockLiteral(bool required) : required_(required) {}
 
 std::string BlockLiteral::to_string(size_t n) const {
   std::stringstream ss;
-  ss << "block {\n";
+  ss << "block" << (required_ ? "" : "?") << " {\n";
   for (auto const &b : before_) {
     ss << std::string(2 * (n + 1), ' ') << b.to_string(n + 1) << "\n";
   }
@@ -40,7 +40,7 @@ VerifyResult BlockLiteral::VerifyType(Context *ctx) {
   for (auto &a : after_) { a.VerifyType(ctx); }
 
   return ctx->set_result(
-      this, VerifyResult::Constant(required_ ? type::Blk() : type::OptBlock));
+      this, VerifyResult::Constant(required_ ? type::Block : type::OptBlock));
 }
 
 void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
@@ -48,6 +48,10 @@ void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
   for (auto &a : after_) { a.ExtractJumps(rets); }
 }
 
-ir::Results BlockLiteral::EmitIr(Context *ctx) { return ir::Results{ir::Block(this)}; }
+ir::Results BlockLiteral::EmitIr(Context *ctx) {
+  ir::BlockSequence seq;
+  seq.append(ir::Block(this));
+  return ir::Results{seq};
+}
 
 }  // namespace ast

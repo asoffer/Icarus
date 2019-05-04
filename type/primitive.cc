@@ -76,6 +76,7 @@ void Primitive::EmitRepr(ir::Results const &val, Context *) const {
     case PrimType::NullPtr:
     case PrimType::EmptyArray:
     case PrimType::Module:
+    case PrimType::Block:
     case PrimType::OptBlock:
     case PrimType::RepBlock: UNREACHABLE();
     case PrimType::Intf: ir::Print(val.get<Interface const *>(0)); break;
@@ -152,6 +153,7 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
     case PrimType::Float64: return core::Bytes{8};
     case PrimType::Module: return core::Host().ptr_bytes;
     case PrimType::Scope: return core::Host().ptr_bytes;
+    case PrimType::Block: return core::Host().ptr_bytes;
     case PrimType::OptBlock: return core::Host().ptr_bytes;
     case PrimType::RepBlock: return core::Host().ptr_bytes;
     case PrimType::ByteView:
@@ -181,6 +183,7 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     case PrimType::Float64: return core::Alignment{8};
     case PrimType::Module: return core::Host().ptr_alignment;
     case PrimType::Scope: return core::Host().ptr_alignment;
+    case PrimType::Block: return core::Host().ptr_alignment;
     case PrimType::OptBlock: return core::Host().ptr_alignment;
     case PrimType::RepBlock: return core::Host().ptr_alignment;
     case PrimType::ByteView:

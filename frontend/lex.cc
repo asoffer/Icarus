@@ -89,8 +89,8 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
           {"false", std::pair(ir::Results{false}, type::Bool)},
           {"null", std::pair(ir::Results{ir::Addr::Null()}, type::NullPtr)},
           {"byte_view", std::pair(ir::Results{type::ByteView}, type::Type_)},
-          {"exit", std::pair(ir::Results{ir::Block::Exit()}, type::Blk())},
-          {"start", std::pair(ir::Results{ir::Block::Start()}, type::Blk())},
+          {"exit", std::pair(ir::Results{ir::Block::Exit()}, type::Block)},
+          {"start", std::pair(ir::Results{ir::Block::Start()}, type::Block)},
       };
 
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
@@ -123,7 +123,6 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
   // this requires tagging "block" differently from the other block-head
   // keywords.
   if (token == "block") {
-    type::Type const *t = type::Blk();
     if (cursor->view()[0] == '?') {
       cursor->remove_prefix(1);
       span = ToSpan(word_cursor, src);

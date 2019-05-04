@@ -108,12 +108,18 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
       name_to_block;
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
   for (auto &decl : scope_lit->decls_) {
-    name_to_block.emplace(
-        std::piecewise_construct, std::forward_as_tuple(decl.id_),
-        std::forward_as_tuple(
-            backend::EvaluateAs<ir::Block>(
-                type::Typed<Expression *>{&decl, type::Blk()}, ctx),
-            nullptr));
+    if (decl.id_ == "init") {
+      continue;
+    } else if (decl.id_ == "done") {
+      continue;
+    } else {
+      auto bs = backend::EvaluateAs<ir::BlockSequence>(
+          type::Typed<Expression *>{&decl, type::Block}, ctx);
+      ASSERT(bs.size() == 1u);
+      name_to_block.emplace(std::piecewise_construct,
+                            std::forward_as_tuple(decl.id_),
+                            std::forward_as_tuple(bs.at(0), nullptr));
+    }
   }
 
   for (auto &block_node : blocks_) {
@@ -146,14 +152,16 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   for (auto [block_name, block_and_node] : name_to_block) {
     if (block_name == "init" || block_name == "done") { continue; }
     auto &[block, node]     = block_and_node;
-    ir::BasicBlock::Current = block_map.at(block);
+    auto iter = block_map.find(block);
+    if (iter == block_map.end()) { continue; }
+    ir::BasicBlock::Current = iter->second;
     ASSERT_NOT_NULL(ctx->dispatch_table(block.get()))
-        ->EmitInlineCall({}, /* TODO block type */ type::Blk(), {}, ctx);
+        ->EmitInlineCall({}, /* TODO block type */ type::Block, {}, ctx);
 
     ASSERT_NOT_NULL(node)->EmitIr(ctx);
 
     ASSERT_NOT_NULL(ctx->dispatch_table(ExprPtr{block.get(), true}))
-        ->EmitInlineCall({}, /* TODO block type */ type::Blk(), block_map, ctx);
+        ->EmitInlineCall({}, /* TODO block type */ type::Block, block_map, ctx);
   }
 
   ir::UncondJump(land_block);

@@ -87,23 +87,6 @@ struct hash<ir::Reg> {
 
 namespace ir {
 
-struct BlockSequence {
-  std::vector<ast::BlockLiteral *> const *seq_;
-};
-inline std::ostream &operator<<(std::ostream &os, BlockSequence b) {
-  return os << "<block-sequence>";
-}
-
-// TODO not really comparable. just for variant? :(
-inline bool operator==(const BlockSequence &lhs, const BlockSequence &rhs) {
-  return lhs.seq_ == rhs.seq_;
-}
-
-// TODO not really comparable. just for variant? :(
-inline bool operator<(const BlockSequence &lhs, const BlockSequence &rhs) {
-  return lhs.seq_ < rhs.seq_;
-}
-
 inline std::ostream &operator<<(std::ostream &os, EnumVal e) {
   return os << e.value;
 }

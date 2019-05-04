@@ -99,11 +99,6 @@ struct Cmd {
     OutParams *outs_;
   };
 
-  struct BlockSeqContains {
-    Reg reg_;
-    ast::BlockLiteral *lit_;
-  };
-
 #define OP_MACRO(op, tag, ...) struct tag##Tag;
 #include "ir/op.xmacro.h"
 #undef OP_MACRO
@@ -260,7 +255,7 @@ struct Cmd {
     type::Type const *type_;
     ast::StructLiteral *sl_;
     LoadSymbol load_sym_;
-    Block block_;
+    BlockSequence block_seq_;
 
     CreateStruct create_struct_;
     CreateStructField create_struct_field_;
@@ -273,7 +268,6 @@ struct Cmd {
     BlockSeqJump block_seq_jump_;
     Call call_;
     PtrIncr ptr_incr_;
-    BlockSeqContains block_seq_contains_;
     Cmd::Array array_;
     Field field_;
     ::Module *mod_;
@@ -338,7 +332,6 @@ struct Cmd {
     Store<AnyFunc> store_func_;
     Store<FlagsVal> store_flags_;
     Store<Addr> store_addr_;
-    Store<BlockSequence> store_block_;
 
     SetRet<bool> set_ret_bool_;
     SetRet<int8_t> set_ret_i8_;
@@ -609,9 +602,6 @@ void BlockSeqJump(RegisterOr<BlockSequence> r,
                   absl::flat_hash_map<ast::BlockLiteral const *,
                                       ir::BlockIndex> const *jump_table);
 
-RegisterOr<bool> BlockSeqContains(RegisterOr<BlockSequence> r,
-                                  ast::BlockLiteral *lit);
-
 Results Cast(type::Type const *from, type::Type const *to, Results const &val);
 
 TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
@@ -637,6 +627,6 @@ Reg CreateContext(Module *mod);
 void AddBoundConstant(Reg ctx, ast::Declaration *decl,
                       RegisterOr<type::Type const *> type);
 void DestroyContext(Reg r);
-void JumpPlaceholder(ir::Block block);
+void JumpPlaceholder(ir::BlockSequence block_seq);
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

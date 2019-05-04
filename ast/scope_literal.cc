@@ -55,7 +55,7 @@ VerifyResult ScopeLiteral::VerifyType(Context *ctx) {
         ASSIGN_OR(continue, auto &state_type,
                   StatePtrTypeOrLogError(result.type_));
         state_types[&state_type].push_back(&decl);
-      } else if (result.type_->is<type::Block>() ||
+      } else if (result.type_ == type::Block ||
                  result.type_ == type::OptBlock ||
                  result.type_ == type::RepBlock) {
         // TODO add these types to the state_types map.

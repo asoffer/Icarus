@@ -68,7 +68,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
           return ir::Le(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
         });
       case frontend::Operator::Eq:
-        if (lhs_type->is<type::Block>() || lhs_type == type::OptBlock ||
+        if (lhs_type == type::Block || lhs_type == type::OptBlock ||
             lhs_type == type::RepBlock) {
           auto val1 = lhs_ir.get<ir::BlockSequence>(0);
           auto val2 = rhs_ir.get<ir::BlockSequence>(0);
@@ -83,7 +83,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
               return ir::Eq(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
             });
       case frontend::Operator::Ne:
-        if (lhs_type->is<type::Block>() || lhs_type == type::OptBlock ||
+        if (lhs_type == type::Block || lhs_type == type::OptBlock ||
             lhs_type == type::RepBlock) {
           auto val1 = lhs_ir.get<ir::BlockSequence>(0);
           auto val2 = rhs_ir.get<ir::BlockSequence>(0);
@@ -162,7 +162,7 @@ VerifyResult ChainOp::VerifyType(Context *ctx) {
   if (ops[0] == frontend::Operator::Or) {
     bool found_err = false;
     for (size_t i = 0; i < results.size() - 1; ++i) {
-      if (results[i].type_->is<type::Block>()) {
+      if (results[i].type_ == type::Block) {
         if (!results[i].const_) { NOT_YET("log an error: non const block"); }
 
         ctx->error_log()->EarlyRequiredBlock(exprs[i]->span);
@@ -177,7 +177,7 @@ VerifyResult ChainOp::VerifyType(Context *ctx) {
     }
     if (found_err) { return VerifyResult::Error(); }
     auto &last = results.back();
-    if (!last.type_->is<type::Block>() && last.type_ != type::OptBlock) {
+    if (last.type_ != type::Block && last.type_ != type::OptBlock) {
       goto not_blocks;
     } else if (!results.back().const_) {
       NOT_YET("log an error: non const block");
@@ -356,20 +356,21 @@ ir::Results ChainOp::EmitIr(Context *ctx) {
     auto reg_or_type = ir::Variant(args);
     return ir::Results{reg_or_type};
   } else if (ops[0] == frontend::Operator::Or &&
-             (t->is<type::Block>() || t == type::OptBlock)) {
-    std::vector<ir::RegisterOr<ir::BlockSequence>> vals;
-    vals.reserve(exprs.size());
+             (t == type::Block || t == type::OptBlock)) {
+    ir::BlockSequence seq;
     for (auto &expr : exprs) {
-      vals.push_back(expr->EmitIr(ctx).get<ir::BlockSequence>(0));
+      auto reg_or_seq = expr->EmitIr(ctx).get<ir::BlockSequence>(0);
+      ASSERT(reg_or_seq.is_reg_ == false);
+      seq |= reg_or_seq.val_;
     }
-    NOT_YET();
+    return ir::Results{seq};
   } else if (ops[0] == frontend::Operator::And ||
              ops[0] == frontend::Operator::Or) {
     auto land_block = ir::CompiledFn::Current->AddBlock();
 
     absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
     bool is_or = (ops[0] == frontend::Operator::Or);
-    for (size_t i = 0; i < exprs.size() - 1; ++i) {
+    for (size_t i = 0; i + 1 < exprs.size(); ++i) {
       auto val = exprs[i]->EmitIr(ctx).get<bool>(0);
 
       auto next_block = ir::CompiledFn::Current->AddBlock();
