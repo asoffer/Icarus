@@ -60,7 +60,10 @@ void CombineBlocks(ir::CompiledFn* fn) {
       final_block.emplace(landing_block_index, jumping_block_index);
       auto& jumping_block = fn->block(jumping_block_index);
       auto& landing_block = fn->block(landing_block_index);
+      // TODO figure out why blocks might be empty and fix that.
+      if (jumping_block.cmds_.empty()) { continue; }
       ASSERT(jumping_block.cmds_.back().op_code_ == ir::Op::UncondJump);
+
       jumping_block.cmds_.pop_back();
       jumping_block.cmds_.insert(
           jumping_block.cmds_.end(),

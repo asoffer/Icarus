@@ -102,7 +102,7 @@ ir::Results Primitive::PrepareArgument(Type const *from, ir::Results const &val,
     return ir::Results{
         ir::Load(ir::VariantValue(this, val.get<ir::Reg>(0)), this)};
   } else {
-    ASSERT(from == this);
+    ASSERT(this->to_string() == from->to_string());
     return val;
   }
 }

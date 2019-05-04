@@ -43,8 +43,8 @@ struct Expression : public Node {
 
 // TODO pick a better name
 struct ExprPtr {
-  constexpr ExprPtr(Expression const *expr, bool offset = false)
-      : value_(reinterpret_cast<uintptr_t>(expr) | (offset ? 0x1 : 0x0)) {}
+  constexpr ExprPtr(Expression const *expr, int8_t offset = 0)
+      : value_(reinterpret_cast<uintptr_t>(expr) | (offset & 0x03)) {}
 
   template <typename H>
   friend H AbslHashValue(H h, ExprPtr e) {
@@ -53,6 +53,14 @@ struct ExprPtr {
 
   friend constexpr bool operator==(ExprPtr lhs, ExprPtr rhs) {
     return lhs.value_ == rhs.value_;
+  }
+
+  Expression *get() const {
+    return (value_ & 0x1) ? nullptr : reinterpret_cast<Expression *>(value_);
+  }
+
+  friend std::ostream &operator<<(std::ostream &os, ExprPtr e) {
+    return os << "expr-ptr(" << e.value_ << ")";
   }
 
  private:

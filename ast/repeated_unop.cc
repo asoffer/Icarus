@@ -83,7 +83,7 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
         // `print f(x)` needs a table both for the printing and for the call to
         // `f`. Test this thoroughly.
         auto dispatch_result = VerifyDispatch(
-            ExprPtr{arg.get(), true}, os,
+            ExprPtr{arg.get(), 0x01}, os,
             core::FnArgs<std::pair<Expression *, VerifyResult>>(
                 {std::pair(arg.get(), VerifyResult(arg_type, result.const_))},
                 {}),
@@ -116,7 +116,7 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
       VerifyDispatch(block.get(), before_os, args, ctx);
 
       OverloadSet after_os(block.get()->body_scope_.get(), "after", ctx);
-      VerifyDispatch(ExprPtr{block.get(), true}, after_os, args, ctx);
+      VerifyDispatch(ExprPtr{block.get(), 0x02}, after_os, args, ctx);
     }
   }
 
@@ -202,7 +202,7 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
       // TODO this is wrong if you use the <<(...) spread operator.
       for (auto &val : arg_vals) {
         if (auto const *dispatch_table =
-                ctx->dispatch_table(ExprPtr{args_.exprs_[index].get(), true})) {
+                ctx->dispatch_table(ExprPtr{args_.exprs_[index].get(), 0x01})) {
           dispatch_table->EmitCall(
               core::FnArgs<std::pair<Expression *, ir::Results>>(
                   {std::pair(args_.exprs_[index].get(), std::move(val))}, {}),

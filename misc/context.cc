@@ -26,7 +26,7 @@ type::Type const *Context::type_of(ast::Expression const *expr) const {
 }
 
 ast::VerifyResult const *Context::prior_verification_attempt(
-    ast::Expression const *expr) {
+    ast::ExprPtr expr) {
   auto const &map = constants_->second.verify_results_;
   if (auto iter = map.find(expr); iter != map.end()) { return &iter->second; }
   return nullptr;

@@ -86,22 +86,15 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
             &decl, *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
       }
     }
-
-    ASSIGN_OR(return _, std::ignore,
-                     VerifyDispatch(this, init_os, arg_results, ctx));
-    ASSIGN_OR(return _, std::ignore,
-                     VerifyDispatch(ExprPtr{this, true}, done_os, /* TODO */ {},
-                                    ctx));
   }
-  // TODO
+
+  ASSIGN_OR(
+      return _, std::ignore,
+             VerifyDispatch(ExprPtr{this, 0x02}, init_os, arg_results, ctx));
+
   for (auto &block_node : blocks_) { block_node.stmts_.VerifyType(ctx); }
 
-  // TODO check that all the blocks make sense and emit errors
-
-  // TODO compute what type this should return
-  // TODO can this evaluate to anything?
-  // TODO constant is wrong.
-  return ctx->set_result(this, VerifyResult::Constant(type::Void()));
+  return VerifyDispatch(this, done_os, /* TODO */ {}, ctx);
 }
 
 void ScopeNode::ExtractJumps(JumpExprs *rets) const {
@@ -166,14 +159,16 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
       ctx->mod_ = old_mod;
       if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
     });
-    return ctx->dispatch_table(this);
+    return ctx->dispatch_table(ExprPtr{this, 0x02});
   }())
       ->EmitInlineCall(
           args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
             return std::pair(const_cast<Expression *>(expr.get()),
                              expr->EmitIr(ctx));
           }),
-          ASSERT_NOT_NULL(ctx->type_of(this)), block_map, ctx);
+          ASSERT_NOT_NULL(
+              ctx->prior_verification_attempt(ExprPtr{this, 0x02})->type_),
+          block_map, ctx);
 
   for (auto [block_name, block_and_node] : name_to_block) {
     if (block_name == "init" || block_name == "done") { continue; }
@@ -205,7 +200,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
         ctx->mod_ = old_mod;
         if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
       });
-      return ctx->dispatch_table(ExprPtr{block.get(), true});
+      return ctx->dispatch_table(ExprPtr{block.get(), 0x02});
     }())
         ->EmitInlineCall({}, /* TODO block type */ type::Block, block_map, ctx);
   }
@@ -214,20 +209,18 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   ir::BasicBlock::Current = land_block;
 
   // TODO this lambda thing is an awful hack.
-  ASSERT_NOT_NULL([&] {
-    auto *mod       = scope_lit->decls_.at(0).mod_;
-    bool swap_bc    = ctx->mod_ != mod;
-    Module *old_mod = std::exchange(ctx->mod_, mod);
-    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-    base::defer d([&] {
-      ctx->mod_ = old_mod;
-      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-    });
-    return ctx->dispatch_table(ExprPtr{this, true});
-  }())
+  return ASSERT_NOT_NULL([&] {
+           auto *mod       = scope_lit->decls_.at(0).mod_;
+           bool swap_bc    = ctx->mod_ != mod;
+           Module *old_mod = std::exchange(ctx->mod_, mod);
+           if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+           base::defer d([&] {
+             ctx->mod_ = old_mod;
+             if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+           });
+           return ctx->dispatch_table(this);
+         }())
       ->EmitInlineCall({}, ASSERT_NOT_NULL(ctx->type_of(this)), {}, ctx);
-
-  return ir::Results{};
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> ScopeNode::EmitLVal(Context *) {

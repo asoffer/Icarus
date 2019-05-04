@@ -39,8 +39,7 @@ struct Context {
   // TODO remove.
   type::Type const *type_of(ast::Expression const *expr) const;
 
-  ast::VerifyResult const *prior_verification_attempt(
-      ast::Expression const *expr);
+  ast::VerifyResult const *prior_verification_attempt(ast::ExprPtr expr);
   ast::VerifyResult set_result(ast::ExprPtr expr, ast::VerifyResult r);
 
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
