@@ -1,10 +1,10 @@
 #{export}
 if ::= scope {
   init ::= (b: bool) -> () {
-    jump switch (b) {
-      then        when true
-      else | exit when false
-    }()
+    switch (b) {
+      jump then() when true
+      jump (else | exit)() when false
+    }
   }
   then ::= block {
     before ::= () -> () {}
@@ -20,10 +20,10 @@ if ::= scope {
 #{export}
 while ::= scope {
   init ::= (b: bool) -> () {
-    jump switch (b) {
-      do   when true
-      exit when false
-    }()
+    switch (b) {
+      jump do()   when true
+      jump exit() when false
+    }
   }
   do ::= block {
     before ::= () -> () {}

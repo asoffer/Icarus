@@ -429,14 +429,10 @@ void Declaration::ExtractJumps(JumpExprs *rets) const {
 ir::Results Declaration::EmitIr(Context *ctx) {
   bool swap_bc    = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);
-  if (swap_bc) {
-    // TODO constants
-  }
+  if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
   base::defer d([&] {
     ctx->mod_ = old_mod;
-    if (swap_bc) {
-      // TODO constants
-    }
+    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
   });
 
   if (const_) {
@@ -452,7 +448,7 @@ ir::Results Declaration::EmitIr(Context *ctx) {
         UNREACHABLE();
       }
     } else {
-      auto *t = ctx->type_of(this);
+      auto *t = ASSERT_NOT_NULL(ctx->type_of(this));
       auto slot = ctx->constants_->second.constants_.reserve_slot(this, t);
       if (auto *result = std::get_if<ir::Results>(&slot)) {
         return std::move(*result);

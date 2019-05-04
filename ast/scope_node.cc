@@ -60,13 +60,6 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
 
   auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
   OverloadSet init_os, done_os;
-  for (auto &decl : scope_lit->decls_) {
-    if (decl.id_ == "init") {
-      init_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
-    } else if (decl.id_ == "done") {
-      done_os.emplace(&decl, *ctx->prior_verification_attempt(&decl));
-    }
-  }
 
   auto arg_results =
       args_.Transform([ctx](std::unique_ptr<Expression> const &arg) {
@@ -74,11 +67,32 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
         return std::pair{arg_ptr, arg_ptr->VerifyType(ctx)};
       });
 
-  ASSIGN_OR(return _, std::ignore,
-                   VerifyDispatch(this, init_os, arg_results, ctx));
-  ASSIGN_OR(
-      return _, std::ignore,
-             VerifyDispatch(ExprPtr{this, true}, done_os, /* TODO */ {}, ctx));
+  {
+    auto *mod       = scope_lit->decls_.at(0).mod_;
+    bool swap_bc    = ctx->mod_ != mod;
+    Module *old_mod = std::exchange(ctx->mod_, mod);
+    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+    base::defer d([&] {
+      ctx->mod_ = old_mod;
+      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+    });
+
+    for (auto &decl : scope_lit->decls_) {
+      if (decl.id_ == "init") {
+        init_os.emplace(
+            &decl, *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
+      } else if (decl.id_ == "done") {
+        done_os.emplace(
+            &decl, *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
+      }
+    }
+
+    ASSIGN_OR(return _, std::ignore,
+                     VerifyDispatch(this, init_os, arg_results, ctx));
+    ASSIGN_OR(return _, std::ignore,
+                     VerifyDispatch(ExprPtr{this, true}, done_os, /* TODO */ {},
+                                    ctx));
+  }
   // TODO
   for (auto &block_node : blocks_) { block_node.stmts_.VerifyType(ctx); }
 
@@ -141,7 +155,19 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   ir::UncondJump(init_block);
 
   ir::BasicBlock::Current = init_block;
-  ASSERT_NOT_NULL(ctx->dispatch_table(this))
+
+  // TODO this lambda thing is an awful hack.
+  ASSERT_NOT_NULL([&] {
+    auto *mod       = scope_lit->decls_.at(0).mod_;
+    bool swap_bc    = ctx->mod_ != mod;
+    Module *old_mod = std::exchange(ctx->mod_, mod);
+    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+    base::defer d([&] {
+      ctx->mod_ = old_mod;
+      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+    });
+    return ctx->dispatch_table(this);
+  }())
       ->EmitInlineCall(
           args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
             return std::pair(const_cast<Expression *>(expr.get()),
@@ -155,18 +181,50 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     auto iter = block_map.find(block);
     if (iter == block_map.end()) { continue; }
     ir::BasicBlock::Current = iter->second;
-    ASSERT_NOT_NULL(ctx->dispatch_table(block.get()))
+    ASSERT_NOT_NULL([&] {
+      auto *mod       = scope_lit->decls_.at(0).mod_;
+      bool swap_bc    = ctx->mod_ != mod;
+      Module *old_mod = std::exchange(ctx->mod_, mod);
+      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+      base::defer d([&] {
+        ctx->mod_ = old_mod;
+        if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+      });
+      return ctx->dispatch_table(block.get());
+    }())
         ->EmitInlineCall({}, /* TODO block type */ type::Block, {}, ctx);
 
     ASSERT_NOT_NULL(node)->EmitIr(ctx);
 
-    ASSERT_NOT_NULL(ctx->dispatch_table(ExprPtr{block.get(), true}))
+    ASSERT_NOT_NULL([&] {
+      auto *mod       = scope_lit->decls_.at(0).mod_;
+      bool swap_bc    = ctx->mod_ != mod;
+      Module *old_mod = std::exchange(ctx->mod_, mod);
+      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+      base::defer d([&] {
+        ctx->mod_ = old_mod;
+        if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+      });
+      return ctx->dispatch_table(ExprPtr{block.get(), true});
+    }())
         ->EmitInlineCall({}, /* TODO block type */ type::Block, block_map, ctx);
   }
 
   ir::UncondJump(land_block);
   ir::BasicBlock::Current = land_block;
-  ASSERT_NOT_NULL(ctx->dispatch_table(ExprPtr{this, true}))
+
+  // TODO this lambda thing is an awful hack.
+  ASSERT_NOT_NULL([&] {
+    auto *mod       = scope_lit->decls_.at(0).mod_;
+    bool swap_bc    = ctx->mod_ != mod;
+    Module *old_mod = std::exchange(ctx->mod_, mod);
+    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+    base::defer d([&] {
+      ctx->mod_ = old_mod;
+      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+    });
+    return ctx->dispatch_table(ExprPtr{this, true});
+  }())
       ->EmitInlineCall({}, ASSERT_NOT_NULL(ctx->type_of(this)), {}, ctx);
 
   return ir::Results{};
