@@ -42,6 +42,7 @@ cc_test(
     srcs = ["fn_args_test.cc"],
     deps = [
         ":fn_args",
+        "//base:untyped_buffer-impl",
         "//test",
     ],
 )
@@ -61,6 +62,7 @@ cc_test(
     srcs = ["fn_params_test.cc"],
     deps = [
         ":fn_params",
+        "//base:untyped_buffer-impl",
         "//test",
     ],
 )

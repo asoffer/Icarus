@@ -188,7 +188,9 @@ cc_target(
         "//core:bytes",
         "//base:untyped_buffer",
     ],
-    impl_deps = [],
+    impl_deps = [
+        "//base:untyped_buffer-impl",
+    ],
 )
 
 cc_test(

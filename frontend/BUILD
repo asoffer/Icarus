@@ -83,7 +83,7 @@ cc_test(
     srcs = ["source_test.cc"],
     deps = [
         "//test",
-        ":source",
+        ":source-impl",
     ],
     data= [
         "testdata/empty_file.txt",
