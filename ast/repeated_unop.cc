@@ -112,11 +112,14 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
                 const_cast<std::unique_ptr<Expression> &>(arg).get();
             return std::pair{arg_ptr, arg_ptr->VerifyType(ctx)};
           });
-      OverloadSet before_os(block.get()->body_scope_.get(), "before", ctx);
-      VerifyDispatch(block.get(), before_os, args, ctx);
 
-      OverloadSet after_os(block.get()->body_scope_.get(), "after", ctx);
-      VerifyDispatch(ExprPtr{block.get(), 0x02}, after_os, args, ctx);
+      VerifyDispatch(ExprPtr{&call, 0x01},
+                     OverloadSet(block.get()->body_scope_.get(), "before", ctx),
+                     args, ctx);
+
+      VerifyDispatch(ExprPtr{block.get(), 0x02},
+                     OverloadSet(block.get()->body_scope_.get(), "after", ctx),
+                     args, ctx);
     }
   }
 
@@ -127,11 +130,23 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
   if (op_ == frontend::Operator::Jump) {
     ASSERT(args_.exprs_.size() == 1u);
     ASSERT(args_.exprs_[0].get(), InheritsFrom<Call>());
-    auto *called_expr = args_.exprs_[0]->as<Call>().fn_.get();
+    auto &call = args_.exprs_[0]->as<Call>();
+    auto *called_expr = call.fn_.get();
+
+    // TODO stop calculating this so many times.
+    auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
+        type::Typed<Expression *>(call.fn_.get(), type::Block), ctx);
+    auto block = block_seq.at(0);
+    if (block == ir::Block::Start()) {
+      // Do nothing. You'll just end up jumping to this location and the body
+      // will be emit elsewhere.
+    } else if (block == ir::Block::Exit()) {
+    } else {
+      ASSERT_NOT_NULL(ctx->dispatch_table(ExprPtr{&call, 0x01}))
+          ->EmitInlineCall({}, {}, ctx);
+    }
     ir::JumpPlaceholder(backend::EvaluateAs<ir::BlockSequence>(
-        type::Typed<Expression *>(args_.exprs_[0]->as<Call>().fn_.get(),
-                                  type::Block),
-        ctx));
+        type::Typed<Expression *>(called_expr, type::Block), ctx));
     return ir::Results{};
   }
 
@@ -206,7 +221,7 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
           dispatch_table->EmitCall(
               core::FnArgs<std::pair<Expression *, ir::Results>>(
                   {std::pair(args_.exprs_[index].get(), std::move(val))}, {}),
-              type::Void(), ctx);
+              ctx);
         } else {
           auto *t = ctx->type_of(args_.exprs_.at(index).get());
           t->EmitRepr(val, ctx);

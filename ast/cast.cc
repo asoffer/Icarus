@@ -71,7 +71,7 @@ ir::Results Cast::EmitIr(Context *ctx) {
             {std::pair(expr_.get(), expr_->EmitIr(ctx)),
              std::pair(type_.get(), type_->EmitIr(ctx))},
             {}),
-        ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
+        ctx);
   }
 
   auto *this_type = ASSERT_NOT_NULL(ctx->type_of(this));

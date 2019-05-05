@@ -708,7 +708,6 @@ static ir::Results EmitFnCall(
 
 ir::Results DispatchTable::EmitInlineCall(
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
-    type::Type const *, 
     absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
     Context *ctx) const {
   return EmitFnCall<true>(this, args, block_map, ctx);
@@ -716,7 +715,7 @@ ir::Results DispatchTable::EmitInlineCall(
 
 ir::Results DispatchTable::EmitCall(
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
-    type::Type const *, Context *ctx) const {
+    Context *ctx) const {
   return EmitFnCall<false>(this, args, {}, ctx);
 }
 

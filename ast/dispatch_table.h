@@ -40,12 +40,11 @@ struct DispatchTable {
 
   ir::Results EmitInlineCall(
       core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
-      type::Type const *,
       absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
       Context *ctx) const;
   ir::Results EmitCall(
       core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
-      type::Type const *, Context *ctx) const;
+      Context *ctx) const;
 
   std::vector<Row> bindings_;
   std::vector<type::Type const*> return_types_;

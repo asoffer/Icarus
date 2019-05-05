@@ -246,14 +246,14 @@ ir::Results Call::EmitIr(Context *ctx) {
           return std::pair(const_cast<Expression *>(expr.get()),
                            expr->EmitIr(ctx));
         }),
-        ASSERT_NOT_NULL(ctx->type_of(this)), {}, ctx);
+        {}, ctx);
   } else {
     return dispatch_table.EmitCall(
         args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
           return std::pair(const_cast<Expression *>(expr.get()),
                            expr->EmitIr(ctx));
         }),
-        ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
+        ctx);
   }
 }
 

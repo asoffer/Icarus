@@ -47,7 +47,7 @@ ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp *chain_op, size_t index,
                     {std::pair(chain_op->exprs[index].get(), lhs_ir),
                      std::pair(chain_op->exprs[index + 1].get(), rhs_ir)},
                     {}),
-                type::Bool, ctx);
+                ctx);
     ASSERT(results.size() == 1u);
     return results.get<bool>(0);
 

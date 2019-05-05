@@ -270,7 +270,7 @@ ir::Results Binop::EmitIr(Context *ctx) {
             {std::pair(lhs.get(), lhs->EmitIr(ctx)),
              std::pair(rhs.get(), rhs->EmitIr(ctx))},
             {}),
-        ASSERT_NOT_NULL(ctx->type_of(this)), ctx);
+        ctx);
   }
 
   switch (op) {

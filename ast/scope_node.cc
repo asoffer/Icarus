@@ -166,8 +166,6 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
             return std::pair(const_cast<Expression *>(expr.get()),
                              expr->EmitIr(ctx));
           }),
-          ASSERT_NOT_NULL(
-              ctx->prior_verification_attempt(ExprPtr{this, 0x02})->type_),
           block_map, ctx);
 
   for (auto [block_name, block_and_node] : name_to_block) {
@@ -176,19 +174,6 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
     auto iter = block_map.find(block);
     if (iter == block_map.end()) { continue; }
     ir::BasicBlock::Current = iter->second;
-    ASSERT_NOT_NULL([&] {
-      auto *mod       = scope_lit->decls_.at(0).mod_;
-      bool swap_bc    = ctx->mod_ != mod;
-      Module *old_mod = std::exchange(ctx->mod_, mod);
-      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-      base::defer d([&] {
-        ctx->mod_ = old_mod;
-        if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-      });
-      return ctx->dispatch_table(block.get());
-    }())
-        ->EmitInlineCall({}, /* TODO block type */ type::Block, {}, ctx);
-
     ASSERT_NOT_NULL(node)->EmitIr(ctx);
 
     ASSERT_NOT_NULL([&] {
@@ -202,7 +187,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
       });
       return ctx->dispatch_table(ExprPtr{block.get(), 0x02});
     }())
-        ->EmitInlineCall({}, /* TODO block type */ type::Block, block_map, ctx);
+        ->EmitInlineCall({}, block_map, ctx);
   }
 
   ir::UncondJump(land_block);
@@ -220,7 +205,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
            });
            return ctx->dispatch_table(this);
          }())
-      ->EmitInlineCall({}, ASSERT_NOT_NULL(ctx->type_of(this)), {}, ctx);
+      ->EmitInlineCall({}, {}, ctx);
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> ScopeNode::EmitLVal(Context *) {

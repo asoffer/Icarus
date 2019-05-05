@@ -198,7 +198,7 @@ ir::Results Unop::EmitIr(Context *ctx) {
     return dispatch_table->EmitCall(
         core::FnArgs<std::pair<Expression *, ir::Results>>(
             {std::pair(operand.get(), operand->EmitIr(ctx))}, {}),
-        ctx->type_of(this), ctx);
+        ctx);
   }
 
   switch (op) {
