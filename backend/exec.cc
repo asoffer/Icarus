@@ -778,7 +778,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       }
 
       auto call_buf = cmd.call_.arguments_->PrepareCallBuffer(
-          call_stack.top().fn_, call_stack.top().regs_);
+          call_stack.top().fn_->compiler_reg_to_offset_,
+          call_stack.top().regs_);
       ir::AnyFunc f = resolve(cmd.call_.fn_);
 
       // TODO you need to be able to determine how many args there are

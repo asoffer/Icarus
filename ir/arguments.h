@@ -2,28 +2,33 @@
 #define ICARUS_IR_ARGUMENTS_H
 
 #include <string>
-#include "ir/addr.h"
-#include "ir/register.h"
+#include <utility>
+#include <vector>
+
+#include "absl/container/flat_hash_map.h"
+#include "base/untyped_buffer.h"
 #include "ir/results.h"
-#include "type/callable.h"
 
 namespace type {
+struct Type;
 struct Callable;
 }  // namespace type
 
 namespace ir {
-struct Val;
-
 struct Arguments {
-  Arguments() = default;
-  Arguments(type::Callable const *c, Results results);
+  Arguments(type::Callable const *c) : type_(c) {}
+  Arguments(type::Callable const *c, Results results)
+      : type_(c), results_(std::move(results)) {}
 
-  void append(ir::Results val);
-  void append(RegisterOr<Addr> reg);
   std::string to_string() const;
-  base::untyped_buffer PrepareCallBuffer(ir::CompiledFn *fn,
-                                         base::untyped_buffer const &regs);
+  base::untyped_buffer PrepareCallBuffer(
+      absl::flat_hash_map<Reg, size_t> const &reg_to_offset,
+      base::untyped_buffer const &regs);
 
+  std::vector<type::Type const *> const &input_types() const;
+  Results const &results() const { return results_; }
+
+ private:
   type::Callable const *type_ = nullptr;
   Results results_;
 };

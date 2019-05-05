@@ -89,10 +89,8 @@ void Variant::EmitDestroy(ir::Reg reg, Context *ctx) const {
     }
   }
 
-  ir::Arguments call_args;
-  call_args.append(reg);
-  call_args.type_ = destroy_func_->type_;
-  ir::Call(ir::AnyFunc{destroy_func_}, std::move(call_args));
+  ir::Call(ir::AnyFunc{destroy_func_},
+           ir::Arguments(destroy_func_->type_, ir::Results{reg}));
 }
 
 bool Variant::needs_destroy() const {

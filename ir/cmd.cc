@@ -591,7 +591,7 @@ Results CallInline(
 
   // 1. Map parameter registers to arguments.
   for (size_t i = 0; i < f->type_->input.size(); ++i) {
-    reg_relocs.emplace(Reg::Arg(i), arguments.results_.GetResult(i));
+    reg_relocs.emplace(Reg::Arg(i), arguments.results().GetResult(i));
   }
 
   // 2. Initialize block 0.

@@ -24,7 +24,7 @@ struct ElementsAreMatcher : public Catch::MatcherBase<Container> {
 
   virtual std::string describe() const override {
     using base::stringify;
-    return "is a hash map containing " + stringify(container_);
+    return "is a container with the elements in some order " + stringify(container_);
   }
 
  private:

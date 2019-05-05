@@ -369,15 +369,8 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
   // so figure out why.
 
   absl::flat_hash_set<Entry> stale_down;
-  std::vector<type::Type const *> const &ins = [&] {
-    if (args.type_->is<type::Function>()) {
-      return args.type_->as<type::Function>().input;
-    } else if (args.type_->is<type::GenericStruct>()) {
-      return args.type_->as<type::GenericStruct>().deps_;
-    } else {
-      UNREACHABLE();
-    }
-  }();
+  std::vector<type::Type const *> const &ins = args.input_types();
+  auto const& results = args.results();
 
   while (index < ins.size()) {
     auto *t = ins.at(index);
@@ -386,9 +379,9 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
     // to the caller. because registers might also have some properties that can
     // be reasoned about, all of this should be figured out where it's known and
     // then passed in.
-    if (args.results_.is_reg(index)) {
+    if (results.is_reg(index)) {
       props.at(ir::Reg(offset.value()))
-          .add(fn_state_view.view_.at(args.results_.get<ir::Reg>(index)));
+          .add(fn_state_view.view_.at(results.get<ir::Reg>(index)));
 
       // TODO only need to do this on the entry block, but we're not passing
       // info between block views yet.
@@ -401,7 +394,7 @@ PropertyMap PropertyMap::with_args(ir::Arguments const &args,
       if (t == type::Bool) {
         props.at(ir::Reg(offset.value()))
             .add(base::make_owned<BoolProp>(
-                args.results_.get<bool>(offset.value()).val_));
+                results.get<bool>(offset.value()).val_));
         // TODO only need to do this on the entry block, but we're not passing
         // info between block views yet.
         for (const auto &b : fn_->blocks_) {

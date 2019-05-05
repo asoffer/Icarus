@@ -44,10 +44,19 @@ cc_target(
         "//type:function",
         "//type:generic_struct",
         "//type:util",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
-        ":compiled_fn",
         "//core:arch",
+    ],
+)
+
+cc_test(
+    name = "arguments_test",
+    srcs = ["arguments_test.cc"],
+    deps = [
+        "//:impl",
+        "//test",
     ],
 )
 

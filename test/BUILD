@@ -6,6 +6,7 @@ cc_lib(
     deps = [
         ":catch",
         ":elements_are",
+        ":ordered_elements_are",
     ],
     testonly = True,
 )
@@ -24,6 +25,13 @@ cc_lib(
 cc_lib(
     name = "elements_are",
     hdrs = ["elements_are.h"],
+    deps = [":catch"],
+    testonly = True,
+)
+
+cc_lib(
+    name = "ordered_elements_are",
+    hdrs = ["ordered_elements_are.h"],
     deps = [":catch"],
     testonly = True,
 )
