@@ -335,7 +335,8 @@ Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent) {
   return cmd.result;
 }
 
-Reg CreateInterface(core::Scope const *scope) {
+TypedRegister<type::Interface const *> CreateInterface(
+    core::Scope const *scope) {
   auto &cmd  = MakeCmd(type::Type_, Op::CreateInterface);
   cmd.scope_ = scope;
   return cmd.result;
@@ -347,13 +348,13 @@ Reg ArgumentCache(ast::StructLiteral *sl) {
   return cmd.result;
 }
 
-TypedRegister<type::Interface const *> FinalizeStruct(Reg r) {
+Reg FinalizeStruct(Reg r) {
   auto &cmd = MakeCmd(type::Type_, Op::FinalizeStruct);
   cmd.reg_  = r;
   return cmd.result;
 }
 
-Reg FinalizeInterface(Reg r) {
+TypedRegister<type::Interface const *> FinalizeInterface(Reg r) {
   auto &cmd = MakeCmd(type::Type_, Op::FinalizeInterface);
   cmd.reg_  = r;
   return cmd.result;

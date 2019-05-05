@@ -79,12 +79,6 @@ constexpr size_t precedence(frontend::Operator op) {
   __builtin_unreachable();
 }
 
-std::map<std::string, ast::Hashtag::Builtin> const BuiltinHashtagMap = {
-    {"{export}", ast::Hashtag::Builtin::Export},
-    {"{uncopyable}", ast::Hashtag::Builtin::Uncopyable},
-    {"{immovable}", ast::Hashtag::Builtin::Immovable},
-    {"{inline}", ast::Hashtag::Builtin::Inline},
-    {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
 std::unique_ptr<ast::Node> AddHashtag(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {

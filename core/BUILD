@@ -1,5 +1,6 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target")
+load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+sources()
 
 cc_lib(name = "impl", deps = [":scope-impl"])
 

@@ -1,5 +1,6 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target")
+load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+sources()
 
 cc_target(
     name = "lex",
@@ -10,7 +11,7 @@ cc_target(
         "//error:log",
     ],
     impl_deps = [
-        ":numbers",
+        ":numbers-impl",
         "//ast:builtin_fn",
         "//ast:identifier",
         "//ast:terminal",
@@ -33,11 +34,9 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "numbers",
-    hdrs = ["numbers.h"],
-    srcs = ["numbers.cc"],
-    deps = ["//base:expected"]
+    intf_deps = ["//base:expected"],
 )
 
 cc_lib(
@@ -64,7 +63,7 @@ cc_lib(
     name = "parse",
     srcs = ["parse.cc"],
     deps = [
-        ":lex",
+        ":lex-impl",
         ":source",
         ":tagged_node",
         ":token",
@@ -74,11 +73,9 @@ cc_lib(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "source",
-    hdrs = ["source.h"],
-    srcs = ["source.cc"],
-    deps = ["//base:expected"],
+    intf_deps = ["//base:expected"],
 )
 
 cc_test(

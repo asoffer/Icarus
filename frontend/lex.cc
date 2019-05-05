@@ -15,6 +15,14 @@
 #include "type/primitive.h"
 
 namespace frontend {
+
+absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
+    BuiltinHashtagMap = {{"{export}", ast::Hashtag::Builtin::Export},
+                         {"{uncopyable}", ast::Hashtag::Builtin::Uncopyable},
+                         {"{immovable}", ast::Hashtag::Builtin::Immovable},
+                         {"{inline}", ast::Hashtag::Builtin::Inline},
+                         {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
+
 namespace {
 
 TextSpan ToSpan(SrcCursor const &cursor, Src *src) {
@@ -236,13 +244,6 @@ std::pair<TextSpan, std::string> NextStringLiteral(SrcCursor *cursor, Src *src,
 
   return std::pair{span, str_lit};
 }
-
-static absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
-    BuiltinHashtagMap = {{"{export}", ast::Hashtag::Builtin::Export},
-                         {"{uncopyable}", ast::Hashtag::Builtin::Uncopyable},
-                         {"{immovable}", ast::Hashtag::Builtin::Immovable},
-                         {"{inline}", ast::Hashtag::Builtin::Inline},
-                         {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
 
 Lexeme NextHashtag(SrcCursor *cursor, Src *src) {
   cursor->remove_prefix(1);

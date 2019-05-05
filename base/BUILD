@@ -1,5 +1,6 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
+load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+sources()
 
 cc_lib(
     name = "bag",
@@ -112,11 +113,9 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "untyped_buffer",
-    hdrs = ["untyped_buffer.h"],
-    srcs = ["untyped_buffer.cc"],
-    deps = [
+    intf_deps = [
         ":debug",
         "@com_google_absl//absl/strings",
     ],
@@ -126,7 +125,7 @@ cc_test(
     name = "untyped_buffer_test",
     srcs = ["untyped_buffer_test.cc"],
     deps = [
-        ":untyped_buffer",
+        ":untyped_buffer-impl",
         "//test",
     ],
 )

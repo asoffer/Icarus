@@ -7,6 +7,8 @@
 #include "frontend/text_span.h"
 
 namespace frontend {
+extern absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
+    BuiltinHashtagMap;
 
 struct SrcCursor {
  public:

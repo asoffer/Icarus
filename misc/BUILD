@@ -1,5 +1,6 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target")
+load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+sources()
 
 # Directory of things I haven't totally figured out how to organize yet.
 
@@ -80,7 +81,7 @@ cc_target(
         # "//backend:emit",
         "//backend:eval",
         "//base:guarded",
-        "//frontend:source",
+        "//frontend:source-impl",
         "//ir:compiled_fn",
         "//type:function",
     ],

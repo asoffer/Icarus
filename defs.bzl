@@ -14,3 +14,12 @@ def cc_target(name, intf_deps = None, impl_deps = [], **kwargs):
         deps = [name] + impl_deps,
         alwayslink = True,
         **kwargs)
+
+def sources():
+    native.filegroup(
+        name = "sources",
+        srcs = native.glob(
+            include=["*.cc", "**/*.cc"],
+            exclude=["*_test.cc", "**/*_test.cc"],
+        ),
+    )
