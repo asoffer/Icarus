@@ -43,11 +43,15 @@ char const *OpCodeStr(Op op);
 
 struct GenericPhiArgs : public base::Cast<GenericPhiArgs> {
   virtual ~GenericPhiArgs() {}
+  virtual std::ostream &print(std::ostream &os) const = 0;
 };
 template <typename T>
 struct PhiArgs : GenericPhiArgs {
   ~PhiArgs() override {}
   absl::flat_hash_map<BlockIndex, RegisterOr<T>> map_;
+  virtual std::ostream &print(std::ostream &os) const {
+    return os << base::stringify(map_);
+  }
 };
 
 struct Cmd {

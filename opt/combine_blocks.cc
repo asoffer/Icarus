@@ -5,33 +5,29 @@
 
 namespace opt {
 
-void CombineBlocks(ir::CompiledFn* fn) {
-  for (auto& block : fn->blocks_) {
-    auto& cmds = block.cmds_;
-    auto iter  = cmds.begin();
-    for (; iter != cmds.end(); ++iter) {
-      switch (iter->op_code_) {
-        case ir::Op::JumpPlaceholder:
-          return;  // Don't bother optimizing this kind of block.
-        case ir::Op::UncondJump:
-        case ir::Op::CondJump:
-        case ir::Op::ReturnJump:
-        case ir::Op::BlockSeqJump:
-          cmds.erase(++iter, cmds.end());
-          goto next_block;
-        default: continue;
-      }
+void RemoveEverythingAfterFirstJump(ir::BasicBlock* block) {
+  auto& cmds = block->cmds_;
+  auto iter  = cmds.begin();
+  for (; iter != cmds.end(); ++iter) {
+    switch (iter->op_code_) {
+      case ir::Op::JumpPlaceholder: UNREACHABLE();
+      case ir::Op::UncondJump:
+      case ir::Op::CondJump:
+      case ir::Op::ReturnJump:
+      case ir::Op::BlockSeqJump: cmds.erase(++iter, cmds.end()); return;
+      default: continue;
     }
-  next_block:;
   }
+}
 
-  // Maps a block index to a pair. The first element of the pair is the number
-  // of incoming blocks. If that number is 1, and the unique incoming block is
-  // an unconditional jump, then the second element is that block. Otherwise,
-  // the value of the second pair is unspecified.
+// Constructs a map from a block index to a pair. The first element of the pair
+// is the number of incoming blocks. If that number is 1 and the unique incoming
+// block is an unconditional jump, then the second element is that block.
+// Otherwise, the value of the second pair is unspecified.
+static absl::flat_hash_map<ir::BlockIndex, std::pair<size_t, ir::BlockIndex>>
+IncomingMap(ir::CompiledFn* fn) {
   absl::flat_hash_map<ir::BlockIndex, std::pair<size_t, ir::BlockIndex>>
       incoming;
-
   for (int32_t i = 0; i < static_cast<int32_t>(fn->blocks_.size()); ++i) {
     auto& cmds = fn->blocks_.at(i).cmds_;
     if (cmds.empty()) { continue; }
@@ -48,28 +44,47 @@ void CombineBlocks(ir::CompiledFn* fn) {
       default:;
     }
   }
+  return incoming;
+}
+
+
+
+void CombineBlocks(ir::CompiledFn* fn) {
+  for (auto& block : fn->blocks_) { RemoveEverythingAfterFirstJump(&block); }
+  auto incoming = IncomingMap(fn);
 
   {
     absl::flat_hash_map<ir::BlockIndex, ir::BlockIndex> final_block;
     for (auto& [landing_block_index, count_and_jumping] : incoming) {
       auto [count, jumping_block_index] = count_and_jumping;
-      if (count != 1) { continue; }
-      if (jumping_block_index == ir::BlockIndex{}) { continue; }
-      auto iter = final_block.find(jumping_block_index);
-      if (iter != final_block.end()) { jumping_block_index = iter->second; }
+      if (count != 1 || jumping_block_index == ir::BlockIndex{}) { continue; }
+      // landing_block_index -- the index of the block being jumped to
+      // jumping_block_index -- the index of the block that jumps to
+      //                        `landing_block_index`.
+      //
+      // If `jumping_block_index` is already present in the table, that means we
+      // have already moved the jumping block (i.e., it was some other block's
+      // landing block) and therefore is of no use. Instead we should treat the
+      // block that jumped to it as our jumping block. But that block may have
+      // been moved too! Thus, we repeatedly traverse until we find a block a
+      // jumping block that has not yet been merged with the one block that
+      // jumped to it.
+      decltype(final_block)::const_iterator iter;
+      while ((iter = final_block.find(jumping_block_index)) !=
+             final_block.end()) {
+        jumping_block_index = iter->second;
+      }
+
+      // Update the previous jump to cut down on the lookup path each time.
+      // final_block[original_jumping_block_index] = jumping_block_index;
+      final_block[landing_block_index] = jumping_block_index;
+
       final_block.emplace(landing_block_index, jumping_block_index);
       auto& jumping_block = fn->block(jumping_block_index);
       auto& landing_block = fn->block(landing_block_index);
       // TODO figure out why blocks might be empty and fix that.
       if (jumping_block.cmds_.empty()) { continue; }
-      ASSERT(jumping_block.cmds_.back().op_code_ == ir::Op::UncondJump);
-
-      jumping_block.cmds_.pop_back();
-      jumping_block.cmds_.insert(
-          jumping_block.cmds_.end(),
-          std::make_move_iterator(landing_block.cmds_.begin()),
-          std::make_move_iterator(landing_block.cmds_.end()));
-      landing_block.cmds_.clear();
+      jumping_block.Append(std::move(landing_block));
     }
   }
 

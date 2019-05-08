@@ -696,7 +696,11 @@ static ir::Results EmitFnCall(
               // create a phi node joining all the registers from all the
               // possible dispatches.
               type::Type const *ret_type = table->return_types_[i];
-              results.append(ir::MakePhi(ret_type, ir::Phi(ret_type), *out));
+              if (out->size() == 1) {
+                results.append(out->begin()->second);
+              } else {
+                results.append(ir::MakePhi(ret_type, ir::Phi(ret_type), *out));
+              }
             }
           },
           outputs[i]);

@@ -8,17 +8,7 @@
 
 namespace ir {
 
-std::string Arguments::to_string() const {
-  std::stringstream ss;
-  size_t i                                  = 0;
-  std::vector<type::Type const *> const &ts = [&] {
-    if (auto *f = type_->if_as<type::Function>()) { return f->input; }
-    if (auto *g = type_->if_as<type::GenericStruct>()) { return g->deps_; }
-    UNREACHABLE();
-  }();
-  ss << results_.to_string() << ": ";
-  return ss.str();
-}
+std::string Arguments::to_string() const { return results_.to_string(); }
 
 std::vector<type::Type const *> const &Arguments::input_types() const {
   if (auto *f = type_->if_as<type::Function>()) { return f->input; }

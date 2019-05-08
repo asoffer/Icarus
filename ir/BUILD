@@ -7,6 +7,7 @@ cc_lib(
     deps = [
         ":addr-impl",
         ":arguments-impl",
+        ":basic_block-impl",
         ":builtin-impl",
         ":cmd-impl",
         ":compiled_fn-impl",
@@ -60,10 +61,9 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_target(
     name = "basic_block",
-    hdrs = ["basic_block.h"],
-    deps = [
+    intf_deps = [
         ":arguments",
         ":cmd",
         ":out_params",

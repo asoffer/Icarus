@@ -1,13 +1,15 @@
 #ifndef ICARUS_IR_BASIC_BLOCK_H
 #define ICARUS_IR_BASIC_BLOCK_H
 
+#include <iostream>
 #include <list>
+#include <memory>
 #include <vector>
+
 #include "base/untyped_buffer.h"
 #include "ir/arguments.h"
+#include "ir/cmd.h"
 #include "ir/out_params.h"
-
-#include "cmd.h"
 
 namespace ir {
 struct CompiledFn;
@@ -22,8 +24,9 @@ struct BasicBlock {
   BasicBlock &operator=(BasicBlock &&) noexcept = default;
   BasicBlock &operator=(const BasicBlock &) = delete;
 
+  void Append(BasicBlock &&b);
+
   CompiledFn *fn_;  // Containing function
-  std::vector<BlockIndex> incoming_blocks_;
   std::vector<Cmd> cmds_;
 
   // These containers are append-only and we separately store pointers to these
@@ -35,9 +38,7 @@ struct BasicBlock {
   std::vector<std::unique_ptr<GenericPhiArgs>> phi_args_;
 };
 
-inline std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
-  for (const auto &cmd : b.cmds_) { os << "  " << cmd << "\n"; }
-  return os;
-}
+std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
+
 }  // namespace ir
 #endif  // ICARUS_IR_BASIC_BLOCK_H

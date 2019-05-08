@@ -188,7 +188,7 @@ ir::Results Call::EmitIr(Context *ctx) {
             backend::EvaluateAs<std::string_view>(args_.at(0).get(), ctx);
         auto *foreign_type =
             backend::EvaluateAs<type::Type const *>(args_.at(1).get(), ctx);
-        return ir::Results{ir::LoadSymbol(name, foreign_type)};
+        return ir::Results{ir::LoadSymbol(name, foreign_type).get()};
       } break;
 
       case ir::Builtin::Opaque:

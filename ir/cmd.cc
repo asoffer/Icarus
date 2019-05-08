@@ -1209,7 +1209,16 @@ static std::ostream &operator<<(std::ostream &os, Cmd::SetEnumerator const &s) {
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
   if (cmd.result != Reg{}) { os << cmd.result << " = "; }
   os << OpCodeStr(cmd.op_code_) << " ";
-  switch (cmd.op_code_) {
+   if (cmd.op_code_ == Op::PhiBool) { return cmd.phi_bool_->print(os); }
+   if (cmd.op_code_ == Op::PhiInt8) { return cmd.phi_i8_->print(os); }
+   if (cmd.op_code_ == Op::PhiInt16) { return cmd.phi_i16_->print(os); }
+   if (cmd.op_code_ == Op::PhiInt32) { return cmd.phi_i32_->print(os); }
+   if (cmd.op_code_ == Op::PhiInt64) { return cmd.phi_i64_->print(os); }
+   if (cmd.op_code_ == Op::PhiNat8) { return cmd.phi_u8_->print(os); }
+   if (cmd.op_code_ == Op::PhiNat16) { return cmd.phi_u16_->print(os); }
+   if (cmd.op_code_ == Op::PhiNat32) { return cmd.phi_u32_->print(os); }
+   if (cmd.op_code_ == Op::PhiNat64) { return cmd.phi_u64_->print(os); }
+   switch (cmd.op_code_) {
 #define OP_MACRO(op, tag, type, field)                                         \
   case Op::op:                                                                 \
     return os << Stringify(cmd.field);
