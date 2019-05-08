@@ -127,7 +127,7 @@ void CombineBlocks(ir::CompiledFn* fn) {
         }
       } break;
       case ir::Op::ReturnJump: break;
-      default: UNREACHABLE();
+      default: base::Log() << *fn; UNREACHABLE();
     }
   }
 }

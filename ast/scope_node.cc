@@ -67,24 +67,22 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
         return std::pair{arg_ptr, arg_ptr->VerifyType(ctx)};
       });
 
-  {
-    auto *mod       = scope_lit->decls_.at(0).mod_;
-    bool swap_bc    = ctx->mod_ != mod;
-    Module *old_mod = std::exchange(ctx->mod_, mod);
+  auto *mod       = scope_lit->decls_.at(0).mod_;
+  bool swap_bc    = ctx->mod_ != mod;
+  Module *old_mod = std::exchange(ctx->mod_, mod);
+  if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+  base::defer d([&] {
+    ctx->mod_ = old_mod;
     if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-    base::defer d([&] {
-      ctx->mod_ = old_mod;
-      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-    });
+  });
 
-    for (auto &decl : scope_lit->decls_) {
-      if (decl.id_ == "init") {
-        init_os.emplace(
-            &decl, *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
-      } else if (decl.id_ == "done") {
-        done_os.emplace(
-            &decl, *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
-      }
+  for (auto &decl : scope_lit->decls_) {
+    if (decl.id_ == "init") {
+      init_os.emplace(&decl,
+                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
+    } else if (decl.id_ == "done") {
+      done_os.emplace(&decl,
+                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
     }
   }
 

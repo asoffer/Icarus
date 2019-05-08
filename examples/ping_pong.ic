@@ -7,14 +7,14 @@ main ::= () -> () {
 }
 
 foo ::= scope {
-  init ::= () => ping
+  init ::= () -> () { jump ping() }
   ping ::= block {
     before ::= () -> {}
-    after ::= () => pong
+    after ::= () -> () { jump pong() }
   }
   pong ::= block {
     before ::= () -> {}
-    after ::= () => ping
+    after ::= () -> () { jump ping() }
   }
   done ::= () -> {}
 }
