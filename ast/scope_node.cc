@@ -63,8 +63,7 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
 
   auto arg_results =
       args_.Transform([ctx](std::unique_ptr<Expression> const &arg) {
-        auto *arg_ptr = const_cast<Expression *>(arg.get());
-        return std::pair{arg_ptr, arg_ptr->VerifyType(ctx)};
+        return std::pair{arg.get(), arg->VerifyType(ctx)};
       });
 
   auto *mod       = scope_lit->decls_.at(0).mod_;
@@ -161,8 +160,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   }())
       ->EmitInlineCall(
           args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
-            return std::pair(const_cast<Expression *>(expr.get()),
-                             expr->EmitIr(ctx));
+            return std::pair(expr.get(), expr->EmitIr(ctx));
           }),
           block_map, ctx);
 

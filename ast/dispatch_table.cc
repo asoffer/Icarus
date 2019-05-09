@@ -719,8 +719,9 @@ ir::Results DispatchTable::EmitInlineCall(
 
 ir::Results DispatchTable::EmitCall(
     core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
-    Context *ctx) const {
-  return EmitFnCall<false>(this, args, {}, ctx);
+    Context *ctx, bool is_inline) const {
+  return (is_inline ? EmitFnCall<true> : EmitFnCall<false>)(this, args, {},
+                                                            ctx);
 }
 
 }  // namespace ast
