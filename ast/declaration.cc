@@ -486,7 +486,7 @@ ir::Results Declaration::EmitIr(Context *ctx) {
     // set, but the allocation has to be done much earlier. We do the allocation
     // in FunctionLiteral::EmitIr. Declaration::EmitIr is just used to set the
     // value.
-    ASSERT(scope_->ContainingFnScope() != nullptr);
+    ASSERT(scope_->Containing<core::FnScope>() != nullptr);
 
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) { return ir::Results{}; }

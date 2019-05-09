@@ -21,7 +21,7 @@ struct ScopeLiteral : public Literal {
   ir::Results EmitIr(Context *) override;
 
   std::vector<Declaration> decls_;
-  std::unique_ptr<core::Scope> body_scope_;
+  std::unique_ptr<core::ScopeLitScope> body_scope_;
   bool stateful_ = false;
 };
 }  // namespace ast

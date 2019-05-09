@@ -19,7 +19,7 @@ std::string ScopeLiteral::to_string(size_t n) const {
 
 void ScopeLiteral::assign_scope(core::Scope *scope) {
   scope_      = scope;
-  body_scope_ = scope->add_child<core::DeclScope>();
+  body_scope_ = scope->add_child<core::ScopeLitScope>(this);
   for (auto &decl : decls_) { decl.assign_scope(body_scope_.get()); }
 }
 

@@ -168,7 +168,7 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
   switch (op_) {
     case frontend::Operator::Return: {
       size_t offset  = 0;
-      auto *fn_scope = ASSERT_NOT_NULL(scope_->ContainingFnScope());
+      auto *fn_scope = ASSERT_NOT_NULL(scope_->Containing<core::FnScope>());
       auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit_);
 
       auto *fn_type =

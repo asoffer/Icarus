@@ -54,7 +54,7 @@ std::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
 
 ExecScope::ExecScope(Scope *parent) : Scope(parent) {
   // If this scope is a FnScope it will be handled by the FnScope constructor.
-  if (auto containing_fn_scope = parent->ContainingFnScope()) {
+  if (auto containing_fn_scope = parent->Containing<FnScope>()) {
     containing_fn_scope->innards_.push_back(this);
   }
 }

@@ -14,22 +14,19 @@ struct Module;
 namespace ast {
 struct Declaration;
 struct FunctionLiteral;
+struct ScopeLiteral;
 }  // namespace ast
 
 namespace core {
-
-struct DeclScope;
-struct ExecScope;
-struct FnScope;
 
 struct Scope : public base::Cast<Scope> {
   Scope() = delete;
   Scope(Scope *parent) : parent(parent) {}
   virtual ~Scope() {}
 
-  template <typename ScopeType>
-  std::unique_ptr<ScopeType> add_child() {
-    return std::make_unique<ScopeType>(this);
+  template <typename ScopeType, typename ...Args>
+  std::unique_ptr<ScopeType> add_child(Args&& ...args) {
+    return std::make_unique<ScopeType>(this, std::forward<Args>(args)...);
   }
 
   std::vector<type::Typed<ast::Declaration *>> AllDeclsWithId(
@@ -39,7 +36,13 @@ struct Scope : public base::Cast<Scope> {
 
   void InsertDecl(ast::Declaration *decl);
 
-  FnScope *ContainingFnScope();
+  template <typename Sc>
+  Sc *Containing() {
+    Scope *scope = this;
+    while (scope && !scope->is<Sc>()) { scope = scope->parent; }
+    return static_cast<Sc *>(scope);
+  }
+
   // TODO these ids are already stored on the declaration so it's probably safe
   // to use string_views here. Need to really guarantee that ast nodes are
   // constant after construction.
@@ -54,6 +57,12 @@ struct Scope : public base::Cast<Scope> {
 struct DeclScope : public Scope {
   DeclScope(Scope *parent) : Scope(parent) {}
   ~DeclScope() override {}
+};
+
+struct ScopeLitScope : public DeclScope {
+  ScopeLitScope(Scope *parent, ast::ScopeLiteral *sl)
+      : DeclScope(parent), scope_lit_(sl) {}
+  ast::ScopeLiteral *scope_lit_ = nullptr;
 };
 
 struct ModuleScope : public DeclScope {
@@ -80,13 +89,6 @@ struct FnScope : public ExecScope {
   ast::FunctionLiteral *fn_lit_ = nullptr;
   std::vector<ExecScope *> innards_{1, this};
 };
-
-inline FnScope *Scope::ContainingFnScope() {
-  Scope *scope = this;
-  while (scope && !scope->is<FnScope>()) { scope = scope->parent; }
-  // static_cast rather than ->as<FnScope> because it could be null.
-  return static_cast<FnScope *>(scope);
-}
 
 }  // namespace core
 
