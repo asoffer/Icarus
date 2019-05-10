@@ -7,14 +7,16 @@
 #include "ast/builtin_fn.h"
 #include "ast/dispatch_table.h"
 #include "ast/function_literal.h"
+#include "ast/scope_literal.h"
 #include "ast/struct_literal.h"
+#include "ast/terminal.h"
 #include "ast/unop.h"
 #include "backend/eval.h"
 #include "core/fn_params.h"
 #include "core/scope.h"
 #include "ir/arguments.h"
-#include "ir/components.h"
 #include "ir/compiled_fn.h"
+#include "ir/components.h"
 #include "ir/phi.h"
 #include "type/array.h"
 #include "type/function.h"
@@ -152,25 +154,39 @@ VerifyResult Call::VerifyType(Context *ctx) {
   core::FnArgs<Expression *> args = args_.Transform(
       [](std::unique_ptr<Expression> const &arg) { return arg.get(); });
 
-  OverloadSet overload_set = [&]() {
-    if (auto *id = fn_->if_as<Identifier>()) {
-      return FindOverloads(
-          scope_, id->token,
-          arg_results.Transform(
-              [](std::pair<Expression *, VerifyResult> const &p) {
-                return p.second.type_;
-              }),
-          ctx);
-    } else {
-      auto results = fn_->VerifyType(ctx);
-      OverloadSet os;
-      os.emplace(fn_.get(), results);
-      // TODO ADL for this?
-      return os;
+  if (auto *id = fn_->if_as<Identifier>()) {
+    return VerifyDispatch(
+        this,
+        FindOverloads(scope_, id->token,
+                      arg_results.Transform(
+                          [](std::pair<Expression *, VerifyResult> const &p) {
+                            return p.second.type_;
+                          }),
+                      ctx),
+        arg_results, ctx);
+  } else if (auto *t = fn_->if_as<Terminal>()) {
+    ASSERT(t->type_ == type::Block);
+    auto block = t->results_.get<ir::Block>(0).val_;
+    OverloadSet os;
+    if (block == ir::Block::Start()) {
+      for (auto const &d : scope_->AllDeclsWithId("init", ctx)) {
+        os.emplace(*d, VerifyResult::Constant(d.type()));
+      }
+      return VerifyDispatch(this, os, arg_results, ctx);
+    } else if (block == ir::Block::Exit()) {
+      for (auto const &d : scope_->AllDeclsWithId("done", ctx)) {
+        os.emplace(*d, VerifyResult::Constant(d.type()));
+      }
+      return VerifyDispatch(this, os, arg_results, ctx);
     }
-  }();
-
-  return VerifyDispatch(this, overload_set, arg_results, ctx);
+  } else {
+    auto results = fn_->VerifyType(ctx);
+    OverloadSet os;
+    os.emplace(fn_.get(), results);
+    // TODO ADL for this?
+    return VerifyDispatch(this, os, arg_results, ctx);
+  }
+  UNREACHABLE();
 }
 
 void Call::ExtractJumps(JumpExprs *rets) const {
