@@ -458,7 +458,6 @@ VerifyResult VerifyDispatch(
   // TODO this assumes we only have one return value or that we're returning a
   // tuple. So, e.g., you don't get the benefit of A -> (A, A) and B -> (A, B)
   // combining into (A | B) -> (A, A | B).
-  base::Log() << expr;
   return ctx->set_result(expr, VerifyResult(tup, is_const));
 }
 

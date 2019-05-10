@@ -1296,11 +1296,6 @@ struct ParseState {
       return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::MustReduce;
     }
 
-    if (get_type<1>() == fn_call_expr && ahead.tag_ == expr &&
-        (get_type<2>() & (op_l | op_lt | op_bl))) {
-      return ShiftState::NeedMore;
-    }
-
     if (ahead.tag_ == l_brace && (get_type<1>() & kw_block) &&
         get_type<2>() == fn_arrow) {
       return ShiftState::MustReduce;

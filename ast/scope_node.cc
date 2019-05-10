@@ -2,21 +2,19 @@
 
 
 #include <sstream>
-
 #include "ast/access.h"
 #include "ast/block_literal.h"
 #include "ast/block_node.h"
+#include "core/fn_args.h"
 #include "ast/function_literal.h"
 #include "ast/identifier.h"
 #include "ast/scope_literal.h"
 #include "backend/eval.h"
 #include "base/util.h"
-#include "core/fn_args.h"
-#include "core/scope.h"
-#include "ir/compiled_fn.h"
 #include "ir/components.h"
+#include "ir/compiled_fn.h"
 #include "misc/context.h"
-#include "type/cast.h"
+#include "core/scope.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/type.h"
@@ -77,30 +75,14 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
     if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
   });
 
-  std::vector<type::Type const*> done_return_types;
   for (auto &decl : scope_lit->decls_) {
     if (decl.id_ == "init") {
       init_os.emplace(&decl,
                       *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
     } else if (decl.id_ == "done") {
-      // TODO generics?
-      done_return_types.push_back(
-          type::Tup(ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl))
-                        ->type_->as<type::Function>()
-                        .output));
+      done_os.emplace(&decl,
+                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
     }
-  }
-
-  if (done_return_types.empty()) {
-    NOT_YET("log an error");
-    return VerifyResult::Error();
-  }
-
-  type::Type const *combined = done_return_types.at(0);
-  for (auto iter = std::next(done_return_types.begin());
-       iter != done_return_types.end(); ++iter) {
-    combined = type::Meet(combined, *iter);
-    if (combined == nullptr) { NOT_YET("log an error"); }
   }
 
   ASSIGN_OR(
@@ -109,7 +91,7 @@ VerifyResult ScopeNode::VerifyType(Context *ctx) {
 
   for (auto &block_node : blocks_) { block_node.stmts_.VerifyType(ctx); }
 
-  return VerifyResult::Constant(combined);
+  return VerifyDispatch(this, done_os, /* TODO */ {}, ctx);
 }
 
 void ScopeNode::ExtractJumps(JumpExprs *rets) const {
@@ -208,7 +190,6 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   ir::BasicBlock::Current = land_block;
 
   // TODO this lambda thing is an awful hack.
-  base::Log() << this->to_string(0);
   return ASSERT_NOT_NULL([&] {
            auto *mod       = scope_lit->decls_.at(0).mod_;
            bool swap_bc    = ctx->mod_ != mod;
