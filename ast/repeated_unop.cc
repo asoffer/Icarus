@@ -108,9 +108,7 @@ VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
       auto args =
           call.args_.Transform([ctx](std::unique_ptr<Expression> const &arg)
                                    -> std::pair<Expression *, VerifyResult> {
-            auto *arg_ptr =
-                const_cast<std::unique_ptr<Expression> &>(arg).get();
-            return std::pair{arg_ptr, arg_ptr->VerifyType(ctx)};
+            return std::pair{arg.get(), arg->VerifyType(ctx)};
           });
 
       VerifyDispatch(ExprPtr{&call, 0x01},

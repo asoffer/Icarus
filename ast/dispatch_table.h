@@ -44,7 +44,7 @@ struct DispatchTable {
       Context *ctx) const;
   ir::Results EmitCall(
       core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
-      Context *ctx) const;
+      Context *ctx, bool is_inline = false) const;
 
   std::vector<Row> bindings_;
   std::vector<type::Type const*> return_types_;
