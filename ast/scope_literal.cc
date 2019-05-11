@@ -17,11 +17,6 @@ std::string ScopeLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void ScopeLiteral::DependentDecls(DeclDepGraph *g,
-                                  Declaration *d) const {
-  for (auto &decl : decls_) { decl.DependentDecls(g, d); }
-}
-
 ir::Results ScopeLiteral::EmitIr(Context *ctx) {
   return ir::Results{this};
 }

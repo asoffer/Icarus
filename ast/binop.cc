@@ -51,44 +51,6 @@ std::string Binop::to_string(size_t n) const {
   return ss.str();
 }
 
-bool Binop::InferType(type::Type const *t, InferenceState *state) const {
-  // TODO consider the possibility for overloadable operators to be generic
-  // struct and therefore not always returning false.
-  switch (op) {
-    case frontend::Operator::Arrow:
-      if (auto *f = t->if_as<type::Function>()) {
-        // TODO is tuple right?
-        state->match_queue_.emplace(lhs.get(), type::Tup(f->input));
-        state->match_queue_.emplace(rhs.get(), type::Tup(f->output));
-        return true;
-      } else {
-        return false;
-      }
-    case frontend::Operator::Add:
-    case frontend::Operator::Sub:
-    case frontend::Operator::Mul:
-    case frontend::Operator::Div:
-    case frontend::Operator::Mod:
-    case frontend::Operator::Assign:
-    case frontend::Operator::OrEq:
-    case frontend::Operator::XorEq:
-    case frontend::Operator::AndEq:
-    case frontend::Operator::AddEq:
-    case frontend::Operator::SubEq:
-    case frontend::Operator::MulEq:
-    case frontend::Operator::DivEq:
-    case frontend::Operator::ModEq:
-    case frontend::Operator::When: return false;
-    default: UNREACHABLE();
-  }
-}
-
-void Binop::DependentDecls(DeclDepGraph *g,
-                           Declaration *d) const {
-  lhs->DependentDecls(g, d);
-  rhs->DependentDecls(g, d);
-}
-
 ir::Results Binop::EmitIr(Context *ctx) {
   auto *lhs_type = ctx->type_of(lhs.get());
   auto *rhs_type = ctx->type_of(rhs.get());

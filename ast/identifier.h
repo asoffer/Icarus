@@ -16,14 +16,6 @@ struct Identifier : public Expression {
 
   std::string to_string(size_t n) const override { return token; }
 
-  void DependentDecls(DeclDepGraph *g,
-                      Declaration *d) const override {
-    g->ids_[token].push_back(d);
-  }
-  bool InferType(type::Type const *t, InferenceState *state) const override {
-    return false;
-  }
-
   ir::Results EmitIr(Context *) override;
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 

@@ -25,15 +25,6 @@ std::string Switch::to_string(size_t n) const {
   return ss.str();
 }
 
-void Switch::DependentDecls(DeclDepGraph *g,
-                            Declaration *d) const {
-  if (expr_) { expr_->DependentDecls(g, d); }
-  for (auto &[body, cond] : cases_) {
-    body->DependentDecls(g, d);
-    cond->DependentDecls(g, d);
-  }
-}
-
 ir::Results ast::Switch::EmitIr(Context *ctx) {
   absl::flat_hash_map<ir::BlockIndex, ir::Results> phi_args;
   auto land_block = ir::CompiledFn::Current->AddBlock();

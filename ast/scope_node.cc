@@ -30,12 +30,6 @@ std::string ScopeNode::to_string(size_t n) const {
   return ss.str();
 }
 
-void ScopeNode::DependentDecls(DeclDepGraph *g,
-                               Declaration *d) const {
-  args_.Apply([g, d](auto const &expr) { expr->DependentDecls(g, d); });
-  for (auto &block : blocks_) { block.DependentDecls(g, d); }
-}
-
 ir::Results ScopeNode::EmitIr(Context *ctx) {
   ctx->yields_stack_.emplace_back();
   base::defer d([&]() { ctx->yields_stack_.pop_back(); });

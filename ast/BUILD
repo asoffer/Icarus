@@ -3,8 +3,14 @@ load("//:defs.bzl", "cc_lib", "cc_target", "sources")
 sources()
 
 cc_lib(
+    name = "node_xmacro",
+    textual_hdrs = ["node.xmacro.h"],
+)
+
+cc_lib(
     name = "ast-fwd",
     hdrs = ["ast_fwd.h"],
+    deps = [":node_xmacro"],
 )
 
 cc_lib(
@@ -473,7 +479,6 @@ cc_lib(
         "//base:util",
         "//frontend:text_span",
         "//ir:results",
-        "//misc:inference_state",
     ],
 )
 

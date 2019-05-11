@@ -48,15 +48,6 @@ struct Terminal : public Literal {
     return "<<terminal: " + type_->to_string() + ">>";
   }
 
-  // TODO distinguish between guaranteed failures and failures to continue
-  bool InferType(type::Type const *t, InferenceState *state) const override {
-    return type_ == type::Type_ &&
-           results_.get<type::Type const *>(0).val_ == t;
-  }
-
-  void DependentDecls(DeclDepGraph *g,
-                      Declaration *d) const override {}
-
   ir::Results EmitIr(Context *ctx) override {
     if (type_ == type::Block) {
       ir::BlockSequence seq;

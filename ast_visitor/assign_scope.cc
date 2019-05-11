@@ -94,14 +94,14 @@ void AssignScope::operator()(ast::FunctionLiteral *node,
   for (auto &out : node->outputs_) { out->assign_scope(this, node->fn_scope_.get()); }
   node->statements_.assign_scope(this, node->fn_scope_.get());
 
-  ast::DeclDepGraph decl_dep_graph;
+  DependentDecls visitor;
   for (auto const &in : node->inputs_) {
-    decl_dep_graph.graph_.add_node(in.value.get());
+    visitor.decl_graph_.graph_.add_node(in.value.get());
     if (in.value->type_expr) {
-      in.value->type_expr->DependentDecls(&decl_dep_graph, in.value.get());
+      in.value->type_expr->DependentDecls(&visitor, in.value.get());
     }
     if (in.value->init_val) {
-      in.value->init_val->DependentDecls(&decl_dep_graph, in.value.get());
+      in.value->init_val->DependentDecls(&visitor, in.value.get());
     }
   }
 
@@ -110,16 +110,17 @@ void AssignScope::operator()(ast::FunctionLiteral *node,
     decls_by_id.emplace(param.value->id_, param.value.get());
   }
 
-  node->param_dep_graph_ = std::move(decl_dep_graph.graph_);
-  for (auto &[id, decls] : decl_dep_graph.ids_) {
+  node->param_dep_graph_ = std::move(visitor.decl_graph_.graph_);
+  for (auto &[id, decls] : visitor.decl_graph_.ids_) {
     auto iter = decls_by_id.find(id);
     if (iter == decls_by_id.end()) { continue; }
     for (auto *d : decls) { node->param_dep_graph_.add_edge(d, iter->second); }
   }
 
   node->sorted_params_.reserve(node->param_dep_graph_.num_nodes());
-  node->param_dep_graph_.topologically(
-      [node](ast::Declaration *decl) { node->sorted_params_.push_back(decl); });
+  node->param_dep_graph_.topologically([node](ast::Declaration const *decl) {
+    node->sorted_params_.push_back(decl);
+  });
   for (size_t i = 0; i < node->inputs_.size(); ++i) {
     node->decl_to_param_.emplace(node->inputs_.at(i).value.get(), i);
   }

@@ -11,17 +11,6 @@ std::string ArrayType::to_string(size_t n) const {
   return ss.str();
 }
 
-void ArrayType::DependentDecls(DeclDepGraph *g,
-                               Declaration *d) const {
-  length_->DependentDecls(g, d);
-  data_type_->DependentDecls(g, d);
-}
-
-bool ArrayType::InferType(type::Type const *t, InferenceState *state) const {
-  auto *a = t->if_as<type::Array>();
-  return a && data_type_->InferType(a->data_type, state);
-}
-
 ir::Results ArrayType::EmitIr(Context *ctx) {
   return ir::Results{
       ir::Array(length_->EmitIr(ctx).get<int64_t>(0),

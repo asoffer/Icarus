@@ -140,11 +140,6 @@ std::string ChainOp::to_string(size_t n) const {
   return ss.str();
 }
 
-void ChainOp::DependentDecls(DeclDepGraph *g,
-                             Declaration *d) const {
-  for (auto const &expr : exprs) { expr->DependentDecls(g, d); }
-}
-
 ir::Results ChainOp::EmitIr(Context *ctx) {
   auto *t = ctx->type_of(this);
   if (ops[0] == frontend::Operator::Xor) {

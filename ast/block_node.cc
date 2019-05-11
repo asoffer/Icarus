@@ -10,12 +10,6 @@ std::string BlockNode::to_string(size_t n) const {
   return ss.str();
 }
 
-void BlockNode::DependentDecls(DeclDepGraph *g,
-                               Declaration *d) const {
-  name_->DependentDecls(g, d);
-  stmts_.DependentDecls(g, d);
-}
-
 ir::Results BlockNode::EmitIr(Context *ctx) {
   stmts_.EmitIr(ctx);
   block_scope_->MakeAllDestructions(ctx);

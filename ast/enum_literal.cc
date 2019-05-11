@@ -76,11 +76,6 @@ std::string EnumLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void EnumLiteral::DependentDecls(DeclDepGraph *g,
-                                 Declaration *d) const {
-  for (auto const &elem : elems_) { elem->DependentDecls(g, d); }
-}
-
 ir::Results EnumLiteral::EmitIr(Context *ctx) {
   auto reg = ir::CreateEnum(kind_, ctx->mod_);
   for (auto &elem : elems_) {

@@ -13,10 +13,6 @@ struct Access : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  void DependentDecls(DeclDepGraph *g,
-                      Declaration *d) const override;
-  bool InferType(type::Type const *t, InferenceState *state) const override;
-
   ir::Results EmitIr(Context *) override;
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 

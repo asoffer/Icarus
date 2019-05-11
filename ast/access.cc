@@ -19,15 +19,6 @@ using ::matcher::InheritsFrom;
 
 }  // namespace
 
-void Access::DependentDecls(DeclDepGraph *g,
-                            Declaration *d) const {
-  operand->DependentDecls(g, d);
-}
-
-bool Access::InferType(type::Type const *t, InferenceState *state) const {
-  return false;
-}
-
 std::vector<ir::RegisterOr<ir::Addr>> Access::EmitLVal(Context *ctx) {
   auto reg = operand->EmitLVal(ctx)[0];
   auto *t  = ctx->type_of(operand.get());

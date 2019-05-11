@@ -11,10 +11,6 @@ ir::TypedRegister<type::Interface const *> FinalizeInterface(Reg r);
 }  // namespace ir
 
 namespace ast {
-void Interface::DependentDecls(DeclDepGraph *g,
-                               Declaration *d) const {
-  NOT_YET();
-}
 
 std::string Interface::to_string(size_t n) const {
   if (decls_.empty()) { return "interface {}"; }

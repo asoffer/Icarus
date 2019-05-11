@@ -8,3 +8,7 @@ ICARUS_AST_VISITOR(ast_visitor::VerifyResult, VerifyType,
                    (ast_visitor::VerifyType const *visitor, Context *ctx)
                        const,
                    { return (*visitor)(this, ctx); });
+ICARUS_AST_VISITOR(void, DependentDecls,
+                   (ast_visitor::DependentDecls * visitor,
+                    ast::Declaration const *d) const,
+                   { (*visitor)(this, d); });

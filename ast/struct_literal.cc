@@ -43,12 +43,6 @@ std::string StructLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void StructLiteral::DependentDecls(DeclDepGraph *g,
-                                   Declaration *d) const {
-  for (auto &a : args_) { a.DependentDecls(g, d); }
-  for (auto &f : fields_) { f.DependentDecls(g, d); }
-}
-
 static ir::TypedRegister<type::Type const *> GenerateStruct(
     StructLiteral *sl, ir::Reg struct_reg, Context *ctx) {
   for (auto const &field : sl->fields_) {

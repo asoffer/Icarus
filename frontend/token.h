@@ -43,11 +43,9 @@ struct Token : public ast::Node {
     UNREACHABLE(token);
   }
   ir::Results EmitIr(Context *) override { UNREACHABLE(token); }
-  void DependentDecls(ast::DeclDepGraph *, ast::Declaration *) const {
+  void DependentDecls(ast_visitor::DependentDecls *,
+                      ast::Declaration const *) const override {
     UNREACHABLE(token);
-  }
-  bool InferType(type::Type const *t, InferenceState *state) const override {
-    return false;
   }
 
   std::string token;

@@ -24,8 +24,6 @@ struct Expression : public Node {
   virtual std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
   virtual void EmitCopyInit(type::Typed<ir::Reg> reg, Context *ctx);
   virtual void EmitMoveInit(type::Typed<ir::Reg> reg, Context *ctx);
-  virtual void DependentDecls(DeclDepGraph *g,
-                              Declaration *d) const = 0;
 
   virtual bool needs_expansion() const { return false; }
   std::vector<Hashtag> hashtags_;

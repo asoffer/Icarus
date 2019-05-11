@@ -27,11 +27,6 @@ RepeatedUnop::RepeatedUnop(TextSpan const &text_span) {
   span = args_.span = text_span;
 }
 
-void RepeatedUnop::DependentDecls(DeclDepGraph *g,
-                                  Declaration *d) const {
-  args_.DependentDecls(g, d);
-}
-
 ir::Results RepeatedUnop::EmitIr(Context *ctx) {
   if (op_ == frontend::Operator::Jump) {
     ASSERT(args_.exprs_.size() == 1u);

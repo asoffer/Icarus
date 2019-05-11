@@ -37,38 +37,6 @@ std::string Unop::to_string(size_t n) const {
   return ss.str();
 }
 
-void Unop::DependentDecls(DeclDepGraph *g, Declaration *d) const {
-  operand->DependentDecls(g, d);
-}
-
-bool Unop::InferType(type::Type const *t, InferenceState *state) const {
-  // TODO consider the possibility for overloadable operators to be generic
-  // struct and therefore not always returning false.
-  switch (op) {
-    case frontend::Operator::Mul: {
-      // TODO will this catch buffer pointers too and should it?
-      auto *p = t->if_as<type::Pointer>();
-      return p && operand->InferType(p->pointee, state);
-    }
-    case frontend::Operator::Eval: return operand->InferType(t, state);
-    case frontend::Operator::BufPtr: {
-      auto *p = t->if_as<type::BufferPointer>();
-      return p && operand->InferType(p->pointee, state);
-    }
-    case frontend::Operator::Which:
-    case frontend::Operator::And:
-    case frontend::Operator::Sub:
-    case frontend::Operator::Not:
-    case frontend::Operator::At:
-    case frontend::Operator::Needs:
-    case frontend::Operator::Ensure:
-    case frontend::Operator::Expand:
-    case frontend::Operator::Copy:
-    case frontend::Operator::Move: return false;
-    default: UNREACHABLE();
-  }
-}
-
 ir::Results Unop::EmitIr(Context *ctx) {
   auto *operand_type = ctx->type_of(operand.get());
   if (auto const *dispatch_table = ctx->dispatch_table(this)) {

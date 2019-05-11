@@ -16,11 +16,6 @@ std::string Index::to_string(size_t n) const {
   return lhs_->to_string(n) + "[" + rhs_->to_string(n) + "]";
 }
 
-void Index::DependentDecls(DeclDepGraph *g, Declaration *d) const {
-  lhs_->DependentDecls(g, d);
-  rhs_->DependentDecls(g, d);
-}
-
 ir::Results Index::EmitIr(Context *ctx) {
   return ir::Results{ir::PtrFix(EmitLVal(ctx)[0].reg_, ctx->type_of(this))};
 }

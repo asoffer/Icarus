@@ -22,12 +22,6 @@ std::string BlockLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void BlockLiteral::DependentDecls(DeclDepGraph *g,
-                                  Declaration *d) const {
-  for (auto const &b : before_) { b.DependentDecls(g, d); }
-  for (auto const &a : after_) { a.DependentDecls(g, d); }
-}
-
 ir::Results BlockLiteral::EmitIr(Context *ctx) {
   ir::BlockSequence seq;
   seq.append(ir::Block(this));

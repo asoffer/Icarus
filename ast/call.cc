@@ -41,59 +41,6 @@ std::string Call::to_string(size_t n) const {
   return ss.str();
 }
 
-static OverloadSet FindOverloads(core::Scope *scope, std::string const &token,
-                                 core::FnArgs<type::Type const *> arg_types,
-                                 Context *ctx) {
-  OverloadSet os(scope, token, ctx);
-  arg_types.Apply([&](type::Type const *t) { os.add_adl(token, t); });
-  return os;
-}
-
-bool Call::InferType(type::Type const *t, InferenceState *state) const {
-  auto *s = t->if_as<type::Struct>();
-  if (!s) { return false; }
-
-  if (auto *id = fn_->if_as<Identifier>()) {
-    // TODO this is probably the wrong approach. It'd be nice to stuff more data
-    // we know into the inference state.
-    auto os = FindOverloads(scope_, id->token, core::FnArgs<type::Type const *>{},
-                            state->ctx_);
-    if (os.size() != 1) { NOT_YET("only handle no overloading right now."); }
-    if (auto *gs = os.begin()->result.type_->if_as<type::GenericStruct>()) {
-      auto iter = gs->mod_->generic_struct_cache_.find(s->parent_);
-      if (iter == gs->mod_->generic_struct_cache_.end()) { return false; }
-
-      auto backward_iter = iter->second.back_.find(s);
-      if (backward_iter == iter->second.back_.end()) { 
-        // TODO This is impossible? Just use .at if so.
-        return false;
-      }
-
-      // TODO only if this is the right dispatch?
-      // TODO named args too.
-      ASSERT(backward_iter->second->size() == args_.pos().size());
-      for (size_t i = 0; i < args_.pos().size(); ++i) {
-        state->match_queue_.emplace(args_.at(i).get(),
-                                    backward_iter->second->at(i));
-      }
-
-      return true;
-    } else {
-      NOT_YET(this);
-    }
-
-  } else {
-    NOT_YET(this);
-  }
-  return false;
-}
-
-void Call::DependentDecls(DeclDepGraph *g,
-                          Declaration *d) const {
-  fn_->DependentDecls(g, d);
-  args_.Apply([g, d](auto const &expr) { expr->DependentDecls(g, d); });
-}
-
 ir::Results Call::EmitIr(Context *ctx) {
   if (auto *b = fn_->if_as<BuiltinFn>()) {
     switch (b->b_) {

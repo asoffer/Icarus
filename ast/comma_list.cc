@@ -20,11 +20,6 @@ std::string CommaList::to_string(size_t n) const {
   return ss.str();
 }
 
-void CommaList::DependentDecls(DeclDepGraph *g,
-                               Declaration *d) const {
-  for (auto const &expr : exprs_) { expr->DependentDecls(g, d); }
-}
-
 ir::Results CommaList::EmitIr(Context *ctx) {
   auto *tuple_type = &ctx->type_of(this)->as<type::Tuple>();
   // TODO this is a hack. I'm still not sure what counts as a tuple and what

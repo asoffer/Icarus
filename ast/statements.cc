@@ -13,11 +13,6 @@ std::string Statements::to_string(size_t n) const {
   return ss.str();
 }
 
-void Statements::DependentDecls(DeclDepGraph *g,
-                                Declaration *d) const {
-  for (auto const &stmt : content_) { stmt->DependentDecls(g, d); }
-}
-
 void Statements::append(std::unique_ptr<Node> &&node) {
   if (node->is<Statements>()) {
     content_.insert(

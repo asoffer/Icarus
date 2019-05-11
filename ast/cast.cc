@@ -14,12 +14,6 @@ std::string Cast::to_string(size_t n) const {
   return "(" + expr_->to_string(n) + ") as (" + type_->to_string(n) + ")";
 }
 
-void Cast::DependentDecls(DeclDepGraph *g,
-                          Declaration *d) const {
-  expr_->DependentDecls(g, d);
-  type_->DependentDecls(g, d);
-}
-
 ir::Results Cast::EmitIr(Context *ctx) {
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     return dispatch_table->EmitCall(

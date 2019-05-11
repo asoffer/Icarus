@@ -26,14 +26,6 @@ struct BuiltinFn : public Literal {
                              ast_visitor::VerifyResult>> const &arg_results,
       Context *ctx) const;
 
-  // TODO distinguish between guaranteed failures and failures to continue
-  bool InferType(type::Type const *t, InferenceState *state) const override {
-    return type::Type_ && ir::BuiltinType(b_) == t;
-  }
-
-  void DependentDecls(DeclDepGraph *g,
-                      Declaration *d) const override {}
-
   ir::Results EmitIr(Context *ctx) override { return ir::Results{b_}; };
 
   ir::Builtin b_;

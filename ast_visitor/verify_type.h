@@ -46,38 +46,10 @@ constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
 }
 
 struct VerifyType {
-  VerifyResult operator()(ast::Access const *node, Context *ctx) const;
-  VerifyResult operator()(ast::ArrayLiteral const *node, Context *ctx) const;
-  VerifyResult operator()(ast::ArrayType const *node, Context *ctx) const;
-  VerifyResult operator()(ast::Binop const *node, Context *ctx) const;
-  VerifyResult operator()(ast::BlockLiteral const *node, Context *ctx) const;
-  VerifyResult operator()(ast::BlockNode const *node, Context *ctx) const;
-  VerifyResult operator()(ast::BuiltinFn const *node, Context *ctx) const;
-  VerifyResult operator()(ast::Call const *node, Context *ctx) const;
-  VerifyResult operator()(ast::Cast const *node, Context *ctx) const;
-  VerifyResult operator()(ast::ChainOp const *node, Context *ctx) const;
-  VerifyResult operator()(ast::CommaList const *node, Context *ctx) const;
-  VerifyResult operator()(ast::Declaration const *node, Context *ctx) const;
-  VerifyResult operator()(ast::EnumLiteral const *node, Context *ctx) const;
-  VerifyResult operator()(ast::FunctionLiteral const *node, Context *ctx) const;
-  VerifyResult operator()(ast::Identifier const *node, Context *ctx) const;
-  VerifyResult operator()(ast::Import const *node, Context *ctx) const;
-  VerifyResult operator()(ast::MatchDeclaration const *node,
-                          Context *ctx) const;
-  VerifyResult operator()(ast::Index const *node, Context *ctx) const;
-  VerifyResult operator()(ast::Interface const *node, Context *ctx) const;
-  VerifyResult operator()(ast::RepeatedUnop const *node, Context *ctx) const;
-  VerifyResult operator()(ast::ScopeLiteral const *node, Context *ctx) const;
-  VerifyResult operator()(ast::ScopeNode const *node, Context *ctx) const;
-  VerifyResult operator()(ast::Statements const *node, Context *ctx) const;
-  VerifyResult operator()(ast::StructLiteral const *node, Context *ctx) const;
-  VerifyResult operator()(ast::StructType const *node, Context *ctx) const;
-  VerifyResult operator()(ast::Switch const *node, Context *ctx) const;
-  VerifyResult operator()(ast::SwitchWhen const *node, Context *ctx) const {
-    UNREACHABLE();
-  }
-  VerifyResult operator()(ast::Terminal const *node, Context *ctx) const;
-  VerifyResult operator()(ast::Unop const *node, Context *ctx) const;
+#define ICARUS_AST_NODE_X(name)\
+  VerifyResult operator()(ast::name const *node, Context *ctx) const;
+#include "ast/node.xmacro.h"
+#undef ICARUS_AST_NODE_X
 };
 
 }  // namespace ast_visitor

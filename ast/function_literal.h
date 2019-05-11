@@ -26,11 +26,6 @@ struct FunctionLiteral : public Literal {
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override;
-  void DependentDecls(DeclDepGraph *g,
-                      Declaration *d) const override;
-  bool InferType(type::Type const *t, InferenceState *state) const override {
-    return false;
-  }
 
   ast_visitor::VerifyResult VerifyTypeConcrete(ast_visitor::VerifyType const *,
                                                Context *) const;
@@ -50,9 +45,9 @@ struct FunctionLiteral : public Literal {
   // information to do so and it guarantees it's only called once.
   //
   // TODO rename assign_scope.
-  std::vector<Declaration *> sorted_params_;
-  absl::flat_hash_map<Declaration *, size_t> decl_to_param_;
-  base::Graph<Declaration *> param_dep_graph_;
+  std::vector<Declaration const *> sorted_params_;
+  absl::flat_hash_map<Declaration const *, size_t> decl_to_param_;
+  base::Graph<Declaration const *> param_dep_graph_;
 
   // TODO This is storing both the name in the declaration and pulls the
   // string_view of the name out in core::FnParams::Param.

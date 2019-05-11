@@ -48,11 +48,6 @@ std::string FunctionLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void FunctionLiteral::DependentDecls(DeclDepGraph *g, Declaration *d) const {
-  for (auto const &in : inputs_) { in.value->DependentDecls(g, d); }
-  for (auto const &out : outputs_) { out->DependentDecls(g, d); }
-}
-
 // TODO there's not that much shared between the inferred and uninferred cases,
 // so probably break them out.
 ast_visitor::VerifyResult FunctionLiteral::VerifyBody(

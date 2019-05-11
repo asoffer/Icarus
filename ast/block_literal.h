@@ -12,11 +12,6 @@ struct BlockLiteral : public Literal {
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override;
-  void DependentDecls(DeclDepGraph *g,
-                      Declaration *d) const override;
-  bool InferType(type::Type const *t, InferenceState *state) const override {
-    return false;
-  }
 
   ir::Results EmitIr(Context *ctx);
 

@@ -16,11 +16,6 @@ struct CommaList : public Expression {
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override;
-  void DependentDecls(DeclDepGraph *g,
-                      Declaration *d) const override;
-  bool InferType(type::Type const *t, InferenceState *state) const override {
-    return false;
-  }
 
   bool needs_expansion() const override { return !parenthesized_; }
 

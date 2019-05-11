@@ -24,11 +24,6 @@ std::string ArrayLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void ArrayLiteral::DependentDecls(DeclDepGraph *g,
-                                  Declaration *d) const {
-  for (auto const &expr : cl_.exprs_) { expr->DependentDecls(g, d); }
-}
-
 ir::Results ArrayLiteral::EmitIr(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = ctx->type_of(this);

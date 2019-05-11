@@ -15,10 +15,5 @@ std::string StructType::to_string(size_t n) const {
   return ss.str();
 }
 
-void StructType::DependentDecls(DeclDepGraph *g,
-                                Declaration *d) const {
-  for (auto &arg : args_) { arg->DependentDecls(g, d); }
-}
-
 ir::Results StructType::EmitIr(Context *ctx) { NOT_YET(); }
 }  // namespace ast

@@ -1483,6 +1483,11 @@ VerifyResult VerifyType::operator()(ast::Switch const *node,
   }
 }
 
+VerifyResult VerifyType::operator()(ast::SwitchWhen const *node,
+                                    Context *ctx) const {
+  UNREACHABLE();
+}
+
 VerifyResult VerifyType::operator()(ast::Terminal const *node,
                                     Context *ctx) const {
   return ctx->set_result(node, VerifyResult::Constant(node->type_));

@@ -25,17 +25,6 @@ std::string Declaration::to_string(size_t n) const {
   return ss.str();
 }
 
-// Note: This case covers MatchDeclaration too!
-void Declaration::DependentDecls(DeclDepGraph *g, Declaration *d) const {
-  g->graph_.add_edge(d, const_cast<Declaration *>(this));
-  if (type_expr) {
-    type_expr->DependentDecls(g, const_cast<Declaration *>(this));
-  }
-  if (init_val) {
-    init_val->DependentDecls(g, const_cast<Declaration *>(this));
-  }
-}
-
 ir::Results Declaration::EmitIr(Context *ctx) {
   bool swap_bc    = ctx->mod_ != mod_;
   Module *old_mod = std::exchange(ctx->mod_, mod_);

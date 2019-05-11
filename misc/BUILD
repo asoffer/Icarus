@@ -49,15 +49,6 @@ cc_target(
     ],
 )
 
-cc_lib(
-    name = "inference_state",
-    hdrs = ["inference_state.h"],
-    deps = [
-        "//base:debug",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
 cc_target(
     name = "module",
     intf_deps = [

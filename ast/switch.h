@@ -12,11 +12,6 @@ struct Switch : public Literal {
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override;
-  void DependentDecls(DeclDepGraph *g,
-                      Declaration *d) const override;
-  bool InferType(type::Type const *t, InferenceState *state) const override {
-    return false;
-  }
 
   ir::Results EmitIr(Context *) override;
 
@@ -34,13 +29,6 @@ struct SwitchWhen : public Node {
 
   std::string to_string(size_t n) const override {
     return body->to_string(n) + " when " + cond->to_string(n);
-  }
-
-  void DependentDecls(DeclDepGraph *g, Declaration *d) const override {
-    UNREACHABLE();
-  }
-  bool InferType(type::Type const *t, InferenceState *state) const override {
-    return false;
   }
 
   ir::Results EmitIr(Context *) override { UNREACHABLE(); }
