@@ -25,87 +25,12 @@ std::string Switch::to_string(size_t n) const {
   return ss.str();
 }
 
-void Switch::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  if (expr_) { expr_->assign_scope(scope_); }
-  for (auto &[body, cond] : cases_) {
-    body->assign_scope(scope);
-    cond->assign_scope(scope);
-  }
-}
-
 void Switch::DependentDecls(DeclDepGraph *g,
                             Declaration *d) const {
   if (expr_) { expr_->DependentDecls(g, d); }
   for (auto &[body, cond] : cases_) {
     body->DependentDecls(g, d);
     cond->DependentDecls(g, d);
-  }
-}
-
-VerifyResult Switch::VerifyType(Context *ctx) {
-  bool is_const               = true;
-  type::Type const *expr_type = nullptr;
-  if (expr_) {
-    ASSIGN_OR(return _, auto result, expr_->VerifyType(ctx));
-    is_const &= result.const_;
-    expr_type = result.type_;
-  }
-
-  absl::flat_hash_set<type::Type const *> types;
-  bool err = false;
-  for (auto &[body, cond] : cases_) {
-    auto cond_result = cond->VerifyType(ctx);
-    auto body_result = body->VerifyType(ctx);
-    err |= !cond_result || !body_result;
-    if (err) {
-      base::Log() << body->to_string(0);
-      NOT_YET();
-      continue;
-    }
-
-    is_const &= cond_result.const_ && body_result.const_;
-    if (expr_) {
-      static_cast<void>(expr_type);
-      // TODO dispatch table
-    } else {
-      if (cond_result.type_ != type::Bool) {
-        ctx->error_log()->SwitchConditionNeedsBool(cond_result.type_, span);
-      }
-    }
-    // TODO if there's an error, an unorderded_set is not helpful for giving
-    // good error messages.
-    if (body->is<Expression>()) {
-      // TODO check that it's actually a jump
-      types.insert(body_result.type_);
-    }
-  }
-  if (err) { return VerifyResult::Error(); }
-
-  // TODO check to ensure that the type is either exhaustable or has a default.
-
-  if (types.empty()) {
-    return ctx->set_result(this, VerifyResult(type::Void(), is_const));
-  }
-  auto some_type = *types.begin();
-  if (std::all_of(types.begin(), types.end(),
-                  [&](type::Type const *t) { return t == some_type; })) {
-    // TODO this might be a constant.
-    return ctx->set_result(this, VerifyResult(some_type, is_const));
-  } else {
-    for (auto &t:types) {
-      base::Log() << (!t ? "<>" : t->to_string());
-    }
-    NOT_YET("handle type error");
-    return VerifyResult::Error();
-  }
-}
-
-void Switch::ExtractJumps(JumpExprs *rets) const {
-  if (expr_) { expr_->ExtractJumps(rets); }
-  for (auto &[body, cond] : cases_) {
-    body->ExtractJumps(rets);
-    cond->ExtractJumps(rets);
   }
 }
 

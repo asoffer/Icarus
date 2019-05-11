@@ -20,52 +20,9 @@ std::string CommaList::to_string(size_t n) const {
   return ss.str();
 }
 
-void CommaList::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  for (auto &expr : exprs_) { expr->assign_scope(scope); }
-}
-
 void CommaList::DependentDecls(DeclDepGraph *g,
                                Declaration *d) const {
   for (auto const &expr : exprs_) { expr->DependentDecls(g, d); }
-}
-
-std::optional<std::vector<VerifyResult>> CommaList::VerifyWithoutSetting(
-    Context *ctx) {
-  std::vector<VerifyResult> results;
-  results.reserve(exprs_.size());
-  for (auto &expr : exprs_) {
-    auto r = expr->VerifyType(ctx);
-    if (expr->needs_expansion()) {
-      auto &entries = r.type_->as<type::Tuple>().entries_;
-      for (auto *t : entries) { results.emplace_back(t, r.const_); }
-    } else {
-      results.push_back(r);
-    }
-  }
-  if (std::any_of(results.begin(), results.end(),
-                  [](VerifyResult const &r) { return !r.ok(); })) {
-    return std::nullopt;
-  }
-  return results;
-}
-
-VerifyResult CommaList::VerifyType(Context *ctx) {
-  ASSIGN_OR(return VerifyResult::Error(), auto results,
-                   VerifyWithoutSetting(ctx));
-  std::vector<type::Type const *> ts;
-  ts.reserve(results.size());
-  bool is_const = true;
-  for (auto const &r : results) {
-    ts.push_back(r.type_);
-    is_const &= r.const_;
-  }
-  return ctx->set_result(this,
-                         VerifyResult(type::Tup(std::move(ts)), is_const));
-}
-
-void CommaList::ExtractJumps(JumpExprs *rets) const {
-  for (auto &expr : exprs_) { expr->ExtractJumps(rets); }
 }
 
 ir::Results CommaList::EmitIr(Context *ctx) {

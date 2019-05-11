@@ -23,8 +23,9 @@ void Tuple::EmitCopyAssign(Type const *from_type, ir::Results const &from,
     Pointer const *p = Ptr(this);
     auto *fn         = ctx->mod_->AddFunc(
         Func({p, p}, {}),
-        core::FnParams(core::Param{"", Typed<ast::Expression *>{nullptr, p}},
-                       core::Param{"", Typed<ast::Expression *>{nullptr, p}}));
+        core::FnParams(
+            core::Param{"", Typed<ast::Expression const *>{nullptr, p}},
+            core::Param{"", Typed<ast::Expression const *>{nullptr, p}}));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
       auto val                = ir::Reg::Arg(0);
@@ -59,8 +60,9 @@ void Tuple::EmitMoveAssign(Type const *from_type, ir::Results const &from,
     Pointer const *p = Ptr(this);
     auto *fn         = ctx->mod_->AddFunc(
         Func({p, p}, {}),
-        core::FnParams(core::Param{"", Typed<ast::Expression *>{nullptr, p}},
-                       core::Param{"", Typed<ast::Expression *>{nullptr, p}}));
+        core::FnParams(
+            core::Param{"", Typed<ast::Expression const *>{nullptr, p}},
+            core::Param{"", Typed<ast::Expression const *>{nullptr, p}}));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
       auto val                = ir::Reg::Arg(0);
@@ -88,8 +90,8 @@ void Tuple::EmitInit(ir::Reg reg, Context *ctx) const {
   init_func_.init([this, ctx]() {
     auto *fn = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),
-        core::FnParams(
-            core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
+        core::FnParams(core::Param{
+            "", Typed<ast::Expression const *>{nullptr, Ptr(this)}}));
 
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
@@ -163,8 +165,8 @@ void Tuple::EmitDestroy(ir::Reg reg, Context *ctx) const {
   destroy_func_.init([this, ctx]() {
     auto *fn = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),
-        core::FnParams(
-            core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
+        core::FnParams(core::Param{
+            "", Typed<ast::Expression const *>{nullptr, Ptr(this)}}));
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
       auto var                = ir::Reg::Arg(0);

@@ -17,7 +17,8 @@ struct Terminal : public Literal {
       : Literal(span), results_(std::move(results)), type_(t) {}
   ~Terminal() override {}
 
-  void assign_scope(core::Scope *scope) override { scope_ = scope; }
+#include "ast_visitor/visitors.xmacro.h"
+
   std::string to_string(size_t) const override {
     if (type_ == type::Bool) {
       return results_.get<bool>(0).val_ ? "true" : "false";
@@ -47,17 +48,12 @@ struct Terminal : public Literal {
     return "<<terminal: " + type_->to_string() + ">>";
   }
 
-  VerifyResult VerifyType(Context *ctx) override {
-    return ctx->set_result(this, VerifyResult::Constant(type_));
-  }
-
   // TODO distinguish between guaranteed failures and failures to continue
   bool InferType(type::Type const *t, InferenceState *state) const override {
     return type_ == type::Type_ &&
            results_.get<type::Type const *>(0).val_ == t;
   }
 
-  void ExtractJumps(JumpExprs *) const override {}
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override {}
 

@@ -13,23 +13,9 @@ std::string Statements::to_string(size_t n) const {
   return ss.str();
 }
 
-void Statements::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  for (auto &stmt : content_) { stmt->assign_scope(scope); }
-}
-
 void Statements::DependentDecls(DeclDepGraph *g,
                                 Declaration *d) const {
   for (auto const &stmt : content_) { stmt->DependentDecls(g, d); }
-}
-
-VerifyResult Statements::VerifyType(Context *ctx) {
-  for (auto &stmt : content_) { stmt->VerifyType(ctx); }
-  return VerifyResult::NonConstant(type::Void());
-}
-
-void Statements::ExtractJumps(JumpExprs *rets) const {
-  for (auto &stmt : content_) { stmt->ExtractJumps(rets); }
 }
 
 void Statements::append(std::unique_ptr<Node> &&node) {

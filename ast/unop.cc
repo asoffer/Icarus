@@ -37,11 +37,6 @@ std::string Unop::to_string(size_t n) const {
   return ss.str();
 }
 
-void Unop::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  operand->assign_scope(scope);
-}
-
 void Unop::DependentDecls(DeclDepGraph *g, Declaration *d) const {
   operand->DependentDecls(g, d);
 }
@@ -74,129 +69,12 @@ bool Unop::InferType(type::Type const *t, InferenceState *state) const {
   }
 }
 
-void Unop::ExtractJumps(JumpExprs *rets) const { operand->ExtractJumps(rets); }
-
-VerifyResult Unop::VerifyType(Context *ctx) {
-  ASSIGN_OR(return VerifyResult::Error(), auto result,
-                   operand->VerifyType(ctx));
-  auto *operand_type = result.type_;
-
-  switch (op) {
-    case frontend::Operator::Copy:
-      if (!operand_type->IsCopyable()) {
-        NOT_YET("log an error. not copyable");
-      }
-      // TODO Are copies always consts?
-      return ctx->set_result(this, VerifyResult(operand_type, result.const_));
-    case frontend::Operator::Move:
-      if (!operand_type->IsMovable()) { NOT_YET("log an error. not movable"); }
-      // TODO Are copies always consts?
-      return ctx->set_result(this, VerifyResult(operand_type, result.const_));
-    case frontend::Operator::BufPtr:
-      return ctx->set_result(this, VerifyResult(type::Type_, result.const_));
-    case frontend::Operator::TypeOf:
-      return ctx->set_result(this, VerifyResult(type::Type_, result.const_));
-    case frontend::Operator::Eval:
-      if (!result.const_) {
-        // TODO here you could return a correct type and just have there
-        // be an error regarding constness. When you do this probably worth a
-        // full pass over all verification code.
-        ctx->error_log()->NonConstantEvaluation(operand->span);
-        return VerifyResult::Error();
-      } else {
-        return ctx->set_result(this, VerifyResult(operand_type, result.const_));
-      }
-    case frontend::Operator::Which:
-      if (!operand_type->is<type::Variant>()) {
-        ctx->error_log()->WhichNonVariant(operand_type, span);
-      }
-      return ctx->set_result(this, VerifyResult(type::Type_, result.const_));
-    case frontend::Operator::At:
-      if (operand_type->is<type::Pointer>()) {
-        return ctx->set_result(
-            this, VerifyResult(operand_type->as<type::Pointer>().pointee,
-                               result.const_));
-      } else {
-        ctx->error_log()->DereferencingNonPointer(operand_type, span);
-        return VerifyResult::Error();
-      }
-    case frontend::Operator::And:
-      // TODO  does it make sense to take the address of a constant? I think it
-      // has to but it also has to have some special meaning. Things we take the
-      // address of in run-time code need to be made available at run-time.
-      return ctx->set_result(
-          this, VerifyResult(type::Ptr(operand_type), result.const_));
-    case frontend::Operator::Mul:
-      if (operand_type != type::Type_) {
-        NOT_YET("log an error, ", operand_type, this);
-        return VerifyResult::Error();
-      } else {
-        return ctx->set_result(this, VerifyResult(type::Type_, result.const_));
-      }
-    case frontend::Operator::Sub:
-      if (type::IsNumeric(operand_type)) {
-        return ctx->set_result(this, VerifyResult(operand_type, result.const_));
-      } else if (operand_type->is<type::Struct>()) {
-        OverloadSet os(scope_, "-", ctx);
-        os.add_adl("-", operand_type);
-        return VerifyDispatch(
-            this, os,
-            core::FnArgs<std::pair<Expression *, VerifyResult>>(
-                {std::pair(operand.get(), result)}, {}),
-            ctx);
-      }
-      NOT_YET();
-      return VerifyResult::Error();
-    case frontend::Operator::Expand:
-      // NOTE: It doesn't really make sense to ask for the type of an expanded
-      // argument, but since we consider the type of the result of a function
-      // call returning multiple arguments to be a tuple, we do the same here.
-      //
-      if (operand_type->is<type::Tuple>()) {
-        // TODO there should be a way to avoid copying over any of entire type
-        return ctx->set_result(this, VerifyResult(operand_type, result.const_));
-      } else {
-        NOT_YET();  // Log an error. can't expand a non-tuple.
-      }
-    case frontend::Operator::Not:
-      if (operand_type == type::Bool || operand_type->is<type::Enum>() ||
-          operand_type->is<type::Flags>()) {
-        return ctx->set_result(this, VerifyResult(operand_type, result.const_));
-      }
-      if (operand_type->is<type::Struct>()) {
-        OverloadSet os(scope_, "!", ctx);
-        os.add_adl("!", operand_type);
-        return VerifyDispatch(
-            this, os,
-            core::FnArgs<std::pair<Expression *, VerifyResult>>(
-                {std::pair(operand.get(), result)}, {}),
-            ctx);
-      } else {
-        NOT_YET("log an error");
-        return VerifyResult::Error();
-      }
-    case frontend::Operator::Needs:
-      if (operand_type != type::Bool) {
-        ctx->error_log()->PreconditionNeedsBool(operand->span, operand_type);
-      }
-      if (!result.const_) { NOT_YET(); }
-      return ctx->set_result(this,VerifyResult::Constant( type::Void()));
-    case frontend::Operator::Ensure:
-      if (operand_type != type::Bool) {
-        ctx->error_log()->PostconditionNeedsBool(operand->span, operand_type);
-      }
-      if (!result.const_) { NOT_YET(); }
-      return ctx->set_result(this,VerifyResult::Constant( type::Void()));
-    default: UNREACHABLE(*this);
-  }
-}
-
 ir::Results Unop::EmitIr(Context *ctx) {
   auto *operand_type = ctx->type_of(operand.get());
   if (auto const *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
     return dispatch_table->EmitCall(
-        core::FnArgs<std::pair<Expression *, ir::Results>>(
+        core::FnArgs<std::pair<Expression const *, ir::Results>>(
             {std::pair(operand.get(), operand->EmitIr(ctx))}, {}),
         ctx);
   }

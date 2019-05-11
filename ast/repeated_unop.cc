@@ -27,101 +27,9 @@ RepeatedUnop::RepeatedUnop(TextSpan const &text_span) {
   span = args_.span = text_span;
 }
 
-void RepeatedUnop::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  args_.assign_scope(scope);
-}
-
 void RepeatedUnop::DependentDecls(DeclDepGraph *g,
                                   Declaration *d) const {
   args_.DependentDecls(g, d);
-}
-
-void RepeatedUnop::ExtractJumps(JumpExprs *rets) const {
-  args_.ExtractJumps(rets);
-  // TODO yield as well?
-  switch (op_) {
-    case frontend::Operator::Jump:
-      (*rets)[JumpExprs::Kind::Jump].push_back(&args_);
-      break;
-    case frontend::Operator::Return:
-      (*rets)[JumpExprs::Kind::Return].push_back(&args_);
-      break;
-    case frontend::Operator::Yield:
-      (*rets)[JumpExprs::Kind::Yield].push_back(&args_);
-      break;
-    default: break;
-  }
-}
-
-VerifyResult RepeatedUnop::VerifyType(Context *ctx) {
-  ASSIGN_OR(return _, auto result, args_.VerifyType(ctx));
-
-  std::vector<type::Type const *> arg_types =
-      result.type_->is<type::Tuple>()
-          ? result.type_->as<type::Tuple>().entries_
-          : std::vector<type::Type const *>{result.type_};
-
-  if (op_ == frontend::Operator::Print) {
-    // TODO what's the actual size given expansion of tuples and stuff?
-    for (size_t i = 0; i < args_.exprs_.size(); ++i) {
-      auto &arg      = args_.exprs_[i];
-      auto *arg_type = arg_types[i];
-      if (arg_type->is<type::Primitive>() || arg_type->is<type::Pointer>() ||
-          arg_type == type::ByteView || arg_type->is<type::Enum>() ||
-          arg_type->is<type::Flags>() || arg_type->is<type::Array>()) {
-        continue;
-      } else {
-        OverloadSet os(scope_, "print", ctx);
-        os.add_adl("print", arg_type);
-
-        // TODO I need finer-grained const-ness here: Currently all members are
-        // const or all are non-const.
-        //
-        // TODO using arg.get() for the dispatch table is super janky. This is
-        // used so we don't collide with the table for the actual expression as
-        // `print f(x)` needs a table both for the printing and for the call to
-        // `f`. Test this thoroughly.
-        auto dispatch_result = VerifyDispatch(
-            ExprPtr{arg.get(), 0x01}, os,
-            core::FnArgs<std::pair<Expression *, VerifyResult>>(
-                {std::pair(arg.get(), VerifyResult(arg_type, result.const_))},
-                {}),
-            ctx);
-        if (dispatch_result.type_ && dispatch_result.type_ != type::Void()) {
-          ctx->error_log()->PrintMustReturnVoid(dispatch_result.type_, span);
-          return VerifyResult::Error();
-        }
-      }
-    }
-  } else if (op_ == frontend::Operator::Jump) {
-    ASSERT(args_.exprs_[0].get(), InheritsFrom<Call>());
-    // Note: We're not verifying the type of the call but instead the callable
-    // and its args.
-    auto &call = args_.exprs_[0]->as<Call>();
-    call.fn_->VerifyType(ctx);
-
-    auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
-        type::Typed<Expression *>(call.fn_.get(), type::Block), ctx);
-    auto block = block_seq.at(0);
-    if (block != ir::Block::Start() && block != ir::Block::Exit()) {
-      auto args =
-          call.args_.Transform([ctx](std::unique_ptr<Expression> const &arg)
-                                   -> std::pair<Expression *, VerifyResult> {
-            return std::pair{arg.get(), arg->VerifyType(ctx)};
-          });
-
-      VerifyDispatch(ExprPtr{&call, 0x01},
-                     OverloadSet(block.get()->body_scope_.get(), "before", ctx),
-                     args, ctx);
-
-      VerifyDispatch(ExprPtr{block.get(), 0x02},
-                     OverloadSet(block.get()->body_scope_.get(), "after", ctx),
-                     args, ctx);
-    }
-  }
-
-  return VerifyResult(type::Void(), result.const_);
 }
 
 ir::Results RepeatedUnop::EmitIr(Context *ctx) {
@@ -133,7 +41,7 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
 
     // TODO stop calculating this so many times.
     auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
-        type::Typed<Expression *>(call.fn_.get(), type::Block), ctx);
+        type::Typed<Expression const *>(call.fn_.get(), type::Block), ctx);
     auto block = block_seq.at(0);
     if (block == ir::Block::Start()) {
       // Do nothing. You'll just end up jumping to this location and the body
@@ -144,7 +52,7 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
           ->EmitInlineCall({}, {}, ctx);
     }
     ir::JumpPlaceholder(backend::EvaluateAs<ir::BlockSequence>(
-        type::Typed<Expression *>(called_expr, type::Block), ctx));
+        type::Typed<Expression const *>(called_expr, type::Block), ctx));
     return ir::Results{};
   }
 
@@ -217,7 +125,7 @@ ir::Results RepeatedUnop::EmitIr(Context *ctx) {
         if (auto const *dispatch_table =
                 ctx->dispatch_table(ExprPtr{args_.exprs_[index].get(), 0x01})) {
           dispatch_table->EmitCall(
-              core::FnArgs<std::pair<Expression *, ir::Results>>(
+              core::FnArgs<std::pair<Expression const *, ir::Results>>(
                   {std::pair(args_.exprs_[index].get(), std::move(val))}, {}),
               ctx);
         } else {

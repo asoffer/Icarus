@@ -10,6 +10,9 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "ast_visitor/assign_scope.h"
+#include "ast_visitor/extract_jumps.h"
+#include "ast_visitor/verify_type.h"
 #include "base/graph.h"
 #include "base/util.h"
 #include "frontend/text_span.h"
@@ -57,50 +60,15 @@ struct DeclDepGraph {
   absl::flat_hash_map<std::string_view, std::vector<Declaration *>> ids_;
 };
 
-struct VerifyResult {
-  type::Type const *type_;
-  bool const_;
-
-  constexpr VerifyResult() : type_(nullptr), const_(false) {}
-  constexpr VerifyResult(type::Type const *t, bool b) : type_(t), const_(b) {}
-
-  // TODO you could actually pass some information through successfully. Like
-  // maybe there's a type error but you do at least know it's a constant.
-  static constexpr VerifyResult Error() { return VerifyResult{nullptr, false}; }
-  static constexpr VerifyResult Constant(type::Type const *t) {
-    return VerifyResult{t, true};
-  }
-  static constexpr VerifyResult NonConstant(type::Type const *t) {
-    return VerifyResult{t, false};
-  }
-
-  explicit operator bool() const { return type_ != nullptr; }
-  bool ok() const { return type_ != nullptr; }
-  VerifyResult operator*() const { return *this; }
-};
-
-inline std::ostream& operator<<(std::ostream& os, VerifyResult r) {
-  if (!r.ok()) { return os << "error"; }
-  return os << (r.const_ ? "const[" : "non-const[") << r.type_->to_string()
-            << "]";
-}
-
-constexpr bool operator==(VerifyResult lhs, VerifyResult rhs) {
-  return lhs.type_ == rhs.type_ && lhs.const_ == rhs.const_;
-}
-
-constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
-  return !(lhs == rhs);
-}
-
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const                            = 0;
-  virtual void assign_scope(core::Scope *)                                 = 0;
-  virtual VerifyResult VerifyType(Context *)                               = 0;
   virtual ir::Results EmitIr(Context *ctx)                                 = 0;
-  virtual void ExtractJumps(JumpExprs *) const                             = 0;
   virtual void DependentDecls(DeclDepGraph *g, Declaration *d) const       = 0;
   virtual bool InferType(type::Type const *t, InferenceState *state) const = 0;
+
+#define ICARUS_AST_VISITOR(ret_type, name, args, body) virtual ret_type name args = 0;
+#include "ast_visitor/visitors.xmacro.h"
+#undef ICARUS_AST_VISITOR
 
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}
@@ -116,4 +84,8 @@ struct Node : public base::Cast<Node> {
 };
 
 }  // namespace ast
+
+#define ICARUS_AST_VISITOR(ret_type, name, args, body)                         \
+  ret_type name args override body
+
 #endif  // ICARUS_AST_NODE_H

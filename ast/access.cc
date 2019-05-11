@@ -17,17 +17,7 @@ namespace ast {
 namespace {
 using ::matcher::InheritsFrom;
 
-type::Type const *DereferenceAll(type::Type const *t) {
-  while (auto *p = t->if_as<type::Pointer>()) { t = p->pointee; }
-  return t;
-}
-
 }  // namespace
-
-void Access::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  operand->assign_scope(scope);
-}
 
 void Access::DependentDecls(DeclDepGraph *g,
                             Declaration *d) const {
@@ -36,79 +26,6 @@ void Access::DependentDecls(DeclDepGraph *g,
 
 bool Access::InferType(type::Type const *t, InferenceState *state) const {
   return false;
-}
-
-VerifyResult Access::VerifyType(Context *ctx) {
-  ASSIGN_OR(return VerifyResult::Error(), auto operand_result,
-                   operand->VerifyType(ctx));
-
-  auto base_type = DereferenceAll(operand_result.type_);
-  if (base_type == type::Type_) {
-    if (!operand_result.const_) {
-      ctx->error_log()->NonConstantTypeMemberAccess(span);
-      return VerifyResult::Error();
-    }
-    // TODO We may not be allowed to evaluate this:
-    //    f ::= (T: type) => T.key
-    // We need to know that T is const
-    auto *evaled_type =
-        backend::EvaluateAs<type::Type const *>(operand.get(), ctx);
-
-    // For enums and flags, regardless of whether we can get the value, it's
-    // clear that this is supposed to be a member so we should emit an error but
-    // carry on assuming that this is an element of that enum type.
-    if (auto *e = evaled_type->if_as<type::Enum>()) {
-      if (!e->Get(member_name).has_value()) {
-        ctx->error_log()->MissingMember(span, member_name, evaled_type);
-      }
-      return ctx->set_result(this,VerifyResult::Constant( evaled_type));
-    } else if (auto *f = evaled_type->if_as<type::Flags>()) {
-      if (!f->Get(member_name).has_value()) {
-        ctx->error_log()->MissingMember(span, member_name, evaled_type);
-      }
-      return ctx->set_result(this,VerifyResult::Constant( evaled_type));
-    } else {
-      // TODO what about structs? Can structs have constant members we're
-      // allowed to access?
-      ctx->error_log()->TypeHasNoMembers(span);
-      return VerifyResult::Error();
-    }
-
-  } else if (auto *s = base_type->if_as<type::Struct>()) {
-    auto const *member = s->field(member_name);
-    if (member == nullptr) {
-      ctx->error_log()->MissingMember(span, member_name, s);
-      return VerifyResult::Error();
-    }
-
-    if (ctx->mod_ != s->defining_module() &&
-        std::none_of(
-            member->hashtags_.begin(), member->hashtags_.end(),
-            [](Hashtag h) { return h.kind_ == Hashtag::Builtin::Export; })) {
-      ctx->error_log()->NonExportedMember(span, member_name, s);
-    }
-
-    return ctx->set_result(this, VerifyResult(member->type, operand_result.const_));
-
-  } else if (base_type == type::Module) {
-    if (!operand_result.const_) {
-      ctx->error_log()->NonConstantModuleMemberAccess(span);
-      return VerifyResult::Error();
-    }
-
-    auto *t = backend::EvaluateAs<Module const *>(operand.get(), ctx)
-                  ->GetType(member_name);
-    if (t == nullptr) {
-      ctx->error_log()->NoExportedSymbol(span);
-      return VerifyResult::Error();
-    }
-
-    // TODO is this right?
-    return ctx->set_result(this, VerifyResult::Constant(t));
-  } else {
-    ctx->error_log()->MissingMember(span, member_name, base_type);
-    return VerifyResult::Error();
-  }
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> Access::EmitLVal(Context *ctx) {
@@ -156,6 +73,7 @@ ir::Results Access::EmitIr(Context *ctx) {
     auto field = ir::Field(reg, struct_type, struct_type->index(member_name));
     return ir::Results{ir::PtrFix(field.get(), this_type)};
   }
+
 }
 
 }  // namespace ast

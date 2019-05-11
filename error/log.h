@@ -32,11 +32,10 @@ struct Log {
 #include "error/errors.xmacro.h"
 #undef MAKE_LOG_ERROR
 
-  void UndeclaredIdentifier(ast::Identifier *id);
-  void AmbiguousIdentifier(ast::Identifier *id);
+  void UndeclaredIdentifier(ast::Identifier const *id);
   void PreconditionNeedsBool(TextSpan const &span, type::Type const *t);
   void PostconditionNeedsBool(TextSpan const &span, type::Type const *t);
-  void DeclOutOfOrder(ast::Declaration *decl, ast::Identifier *id);
+  void DeclOutOfOrder(ast::Declaration const *decl, ast::Identifier const *id);
   void RunawayMultilineComment();
   void DoubleDeclAssignment(TextSpan const &decl_span,
                             TextSpan const &val_span);
@@ -122,9 +121,10 @@ struct Log {
 
   // TODO per source file splitting? Can't do this until you figure out the
   // module/multi-source-file story.
-  absl::flat_hash_map<std::string, std::vector<ast::Identifier *>>
+  absl::flat_hash_map<std::string, std::vector<ast::Identifier const *>>
       undeclared_ids_;
-  absl::flat_hash_map<ast::Declaration *, std::vector<ast::Identifier *>>
+  absl::flat_hash_map<ast::Declaration const *,
+                      std::vector<ast::Identifier const *>>
       out_of_order_decls_;
 
   std::vector<std::vector<ast::Identifier const *>> cyc_dep_vecs_;

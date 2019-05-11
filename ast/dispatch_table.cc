@@ -14,8 +14,8 @@
 #include "core/scope.h"
 #include "ir/block.h"
 #include "ir/cmd.h"
-#include "ir/components.h"
 #include "ir/compiled_fn.h"
+#include "ir/components.h"
 #include "ir/phi.h"
 #include "misc/context.h"
 #include "misc/module.h"
@@ -28,8 +28,8 @@
 
 namespace ast {
 std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
-     core::FnArgs<type::Typed<Expression *>> const &args,
-     OverloadSet const &overload_set, Context *ctx) {
+    core::FnArgs<type::Typed<Expression const *>> const &args,
+    OverloadSet const &overload_set, Context *ctx) {
   NOT_YET();
 }
 
@@ -60,13 +60,15 @@ static void AddType(IndexT &&index, type::Type const *t,
           }
         });
   }
- }
+}
 
 static std::vector<core::FnArgs<type::Type const *>> ExpandAllFnArgs(
-    core::FnArgs<std::pair<Expression *, VerifyResult>> const &args) {
+    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+        &args) {
   std::vector<core::FnArgs<type::Type const *>> all_expanded_options(1);
   args.ApplyWithIndex(
-      [&](auto &&index, std::pair<Expression *, VerifyResult> const &p) {
+      [&](auto &&index,
+          std::pair<Expression const *, ast_visitor::VerifyResult> const &p) {
         if (p.first->needs_expansion()) {
           for (auto *t : p.second.type_->as<type::Tuple>().entries_) {
             AddType(index, t, &all_expanded_options);
@@ -80,8 +82,9 @@ static std::vector<core::FnArgs<type::Type const *>> ExpandAllFnArgs(
 }
 
 // Small contains expanded arguments (no variants).
-static bool Covers(core::FnParams<type::Typed<Expression *>> const &params,
-                   core::FnArgs<type::Type const *> const &args) {
+static bool Covers(
+    core::FnParams<type::Typed<Expression const *>> const &params,
+    core::FnArgs<type::Type const *> const &args) {
   if (params.size() < args.size()) { return false; }
 
   for (size_t i = 0; i < args.pos().size(); ++i) {
@@ -97,7 +100,7 @@ static bool Covers(core::FnParams<type::Typed<Expression *>> const &params,
   }
 
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
-    auto const& param = params.at(i);
+    auto const &param = params.at(i);
     if (param.flags & core::HAS_DEFAULT) { continue; }
     if (args.at_or_null(std::string{param.name}) == nullptr) { return false; }
   }
@@ -105,17 +108,18 @@ static bool Covers(core::FnParams<type::Typed<Expression *>> const &params,
   return true;
 }
 
-static base::expected<core::FnParams<type::Typed<Expression *>>>
+static base::expected<core::FnParams<type::Typed<Expression const *>>>
 MatchArgsToParams(
-    core::FnParams<type::Typed<Expression *>> const &params,
-    core::FnArgs<std::pair<Expression *, VerifyResult>> const &args) {
+    core::FnParams<type::Typed<Expression const *>> const &params,
+    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+        &args) {
   if (args.pos().size() > params.size()) {
     return base::unexpected(absl::StrCat(
         "Too many arguments provided (", args.size(),
         ") but expression is only callable with at most ", params.size()));
   }
 
-  core::FnParams<type::Typed<Expression *>> matched_params;
+  core::FnParams<type::Typed<Expression const *>> matched_params;
   size_t param_index = 0;
   for (auto const &[expr, verify_result] : args.pos()) {
     auto const &param = params.at(param_index);
@@ -126,15 +130,15 @@ MatchArgsToParams(
           "Failed to match argument to parameter at position ", param_index));
     }
     // Note: I'm intentionally not taking any flags here.
-    matched_params.append(
-        param.name, type::Typed(static_cast<Expression *>(nullptr), meet));
+    matched_params.append(param.name,
+                          type::Typed<Expression const *>(nullptr, meet));
     ++param_index;
   }
 
   // TODO currently bailing on first error. Probably better to determine all
   // errors.
   for (size_t i = param_index; i < params.size(); ++i) {
-    auto const &param   = params.at(i);
+    auto const &param            = params.at(i);
     auto *expr_and_verify_result = args.at_or_null(std::string{param.name});
     if (expr_and_verify_result == nullptr) {
       if ((param.flags & core::HAS_DEFAULT) == 0) {
@@ -160,8 +164,8 @@ MatchArgsToParams(
             "Failed to match argument to parameter named `", param.name, "`"));
       }
       // Note: I'm intentionally not taking any flags here.
-      matched_params.append(
-          param.name, type::Typed(static_cast<Expression *>(nullptr), meet));
+      matched_params.append(param.name,
+                            type::Typed<Expression const *>(nullptr, meet));
     }
   }
 
@@ -178,12 +182,13 @@ MatchArgsToParams(
     }
   }
 
-  return  matched_params;
+  return matched_params;
 }
 
 static base::expected<DispatchTable::Row> OverloadParams(
     Overload const &overload,
-    core::FnArgs<std::pair<Expression *, VerifyResult>> const &args,
+    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+        &args,
     Context *ctx) {
   // These are the parameters for the actual overload that will be potentially
   // selected. In particular, if we have two overloads:
@@ -213,19 +218,21 @@ static base::expected<DispatchTable::Row> OverloadParams(
       auto *fn_lit =
           backend::EvaluateAs<ast::FunctionLiteral *>(overload.expr, ctx);
 
-      core::FnParams<type::Typed<Expression *>> params(fn_lit->inputs_.size());
+      core::FnParams<type::Typed<Expression const *>> params(
+          fn_lit->inputs_.size());
       for (auto *decl : fn_lit->sorted_params_) {
         // TODO skip decls that are not parameters.
         size_t param_index = fn_lit->decl_to_param_.at(decl);
-        auto const& param = fn_lit->inputs_.at(param_index);
+        auto const &param  = fn_lit->inputs_.at(param_index);
 
-        auto result = decl->VerifyType(ctx);
+        ast_visitor::VerifyType visitor;
+        auto result = decl->VerifyType(&visitor, ctx);
         if (!result.ok()) { NOT_YET(); }
 
         if (!param.value->const_) {
-          params.set(param_index, core::Param<type::Typed<Expression *>>{
+          params.set(param_index, core::Param<type::Typed<Expression const *>>{
                                       param.name,
-                                      type::Typed<Expression *>(
+                                      type::Typed<Expression const *>(
                                           param.value.get(),
                                           ctx->type_of(param.value.get())),
                                       param.flags});
@@ -241,19 +248,22 @@ static base::expected<DispatchTable::Row> OverloadParams(
             }
 
             auto buf = backend::EvaluateToBuffer(
-                type::Typed(arg_expr, verify_result.type_), ctx);
+                type::Typed<Expression const *>(arg_expr, verify_result.type_),
+                ctx);
             auto [data_offset, num_bytes] =
                 std::get<std::pair<size_t, core::Bytes>>(
-                    ctx->current_constants_.reserve_slot(param.value.get(), decl_type));
+                    ctx->current_constants_.reserve_slot(param.value.get(),
+                                                         decl_type));
             // TODO you haven't done the cast yet! And you didn't even check
             // about implicit casts.
             ctx->current_constants_.set_slot(data_offset, buf.raw(0),
                                              num_bytes);
-            params.set(param_index, core::Param<type::Typed<Expression *>>{
-                                        param.name,
-                                        type::Typed<Expression *>(
-                                            param.value.get(), decl_type),
-                                        param.flags});
+            params.set(param_index,
+                       core::Param<type::Typed<Expression const *>>{
+                           param.name,
+                           type::Typed<Expression const *>(param.value.get(),
+                                                           decl_type),
+                           param.flags});
           } else {
             if (auto *arg = args.at_or_null(param.value->id_)) {
               type::Type const *decl_type = ctx->type_of(param.value.get());
@@ -265,30 +275,32 @@ static base::expected<DispatchTable::Row> OverloadParams(
               }
 
               auto buf = backend::EvaluateToBuffer(
-                  type::Typed(arg->first, decl_type), ctx);
-            auto [data_offset, num_bytes] =
-                std::get<std::pair<size_t, core::Bytes>>(
-                    ctx->current_constants_.reserve_slot(param.value.get(),
-                                                         decl_type));
-            // TODO you haven't done the cast yet! And you didn't even check
-            // about implicit casts.
-            ctx->current_constants_.set_slot(data_offset, buf.raw(0),
-                                             num_bytes);
-            params.set(param_index, core::Param<type::Typed<Expression *>>{
-                                        param.name,
-                                        type::Typed<Expression *>(
-                                            param.value.get(),
-                                            ctx->type_of(param.value.get())),
-                                        param.flags});
+                  type::Typed<Expression const *>(arg->first, decl_type), ctx);
+              auto [data_offset, num_bytes] =
+                  std::get<std::pair<size_t, core::Bytes>>(
+                      ctx->current_constants_.reserve_slot(param.value.get(),
+                                                           decl_type));
+              // TODO you haven't done the cast yet! And you didn't even check
+              // about implicit casts.
+              ctx->current_constants_.set_slot(data_offset, buf.raw(0),
+                                               num_bytes);
+              params.set(
+                  param_index,
+                  core::Param<type::Typed<Expression const *>>{
+                      param.name,
+                      type::Typed<Expression const *>(
+                          param.value.get(), ctx->type_of(param.value.get())),
+                      param.flags});
 
             } else {
               if (param.flags & core::HAS_DEFAULT) {
-                type::Type const *decl_type =
-                    ctx->type_of(param.value.get());
+                type::Type const *decl_type = ctx->type_of(param.value.get());
 
                 // TODO you haven't done the cast from init_val to declared type
                 auto buf = backend::EvaluateToBuffer(
-                    type::Typed(decl->init_val.get(), decl_type), ctx);
+                    type::Typed<ast::Expression const *>(decl->init_val.get(),
+                                                         decl_type),
+                    ctx);
                 auto [data_offset, num_bytes] =
                     std::get<std::pair<size_t, core::Bytes>>(
                         ctx->current_constants_.reserve_slot(param.value.get(),
@@ -298,10 +310,10 @@ static base::expected<DispatchTable::Row> OverloadParams(
                 // TODO should I be setting this parameter?
 
                 params.set(param_index,
-                           core::Param<type::Typed<Expression *>>{
+                           core::Param<type::Typed<Expression const *>>{
                                param.name,
-                               type::Typed<Expression *>(decl->init_val.get(),
-                                                         decl_type),
+                               type::Typed<Expression const *>(
+                                   decl->init_val.get(), decl_type),
                                param.flags});
               } else {
                 return base::unexpected(
@@ -317,7 +329,9 @@ static base::expected<DispatchTable::Row> OverloadParams(
           ctx->constants_, ctx->insert_constants(ctx->current_constants_));
       base::defer d([&]() { ctx->constants_ = old_constants; });
       // TODO errors?
-      auto *fn_type = ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(ctx).type_);
+      ast_visitor::VerifyType visitor;
+      auto *fn_type =
+          ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&visitor, ctx).type_);
       return DispatchTable::Row{std::move(params),
                                 &fn_type->as<type::Function>(),
                                 backend::EvaluateAs<ir::AnyFunc>(fn_lit, ctx)};
@@ -327,16 +341,16 @@ static base::expected<DispatchTable::Row> OverloadParams(
         ir::Block b = backend::EvaluateAs<ir::Block>(overload.expr, ctx);
         // TODO each of these is wrong (e.g., not taking parameters?
         if (b == ir::Block::Start()) {
-          return DispatchTable::Row{core::FnParams<type::Typed<Expression *>>{},
+          return DispatchTable::Row{core::FnParams<type::Typed<Expression const *>>{},
                                     type::Func({}, {}), nullptr};
 
         } else if (b == ir::Block::Exit()) {
-          return DispatchTable::Row{core::FnParams<type::Typed<Expression *>>{},
+          return DispatchTable::Row{core::FnParams<type::Typed<Expression const *>>{},
                                     type::Func({}, {}),
-                                    reinterpret_cast<Expression *>(0x1)};
+                                    reinterpret_cast<Expression const *>(0x1)};
 
         } else {
-          return DispatchTable::Row{core::FnParams<type::Typed<Expression *>>{},
+          return DispatchTable::Row{core::FnParams<type::Typed<Expression const *>>{},
                                     type::Func({}, {}),
                                     const_cast<ast::BlockLiteral *>(b.get())};
         }
@@ -403,9 +417,10 @@ static std::vector<type::Type const *> ReturnTypes(
 
 // TODO It is unsafe to access `expr` because it may have some low bits set.
 // Change it to uintptr_t.
-VerifyResult VerifyDispatch(
+ast_visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, OverloadSet const &os,
-    core::FnArgs<std::pair<Expression *, VerifyResult>> const &args,
+    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+        &args,
     Context *ctx) {
   DispatchTable table;
   bool is_const = true;
@@ -431,10 +446,10 @@ VerifyResult VerifyDispatch(
 
   size_t num_outputs = NumOutputs(table.bindings_);
   if (num_outputs == std::numeric_limits<size_t>::max()) {
-    return ctx->set_result(expr, VerifyResult::Error());
+    return ctx->set_result(expr, ast_visitor::VerifyResult::Error());
   }
   table.return_types_ = ReturnTypes(num_outputs, table.bindings_);
-  auto *tup = type::Tup(table.return_types_);
+  auto *tup           = type::Tup(table.return_types_);
 
   auto expanded_fnargs = ExpandAllFnArgs(args);
   expanded_fnargs.erase(
@@ -449,8 +464,9 @@ VerifyResult VerifyDispatch(
       expanded_fnargs.end());
   if (!expanded_fnargs.empty()) {
     // TODO log an error
-    // ctx->error_log()->MissingDispatchContingency(node->span, expanded_fnargs);
-    return VerifyResult::Error();
+    // ctx->error_log()->MissingDispatchContingency(node->span,
+    // expanded_fnargs);
+    return ast_visitor::VerifyResult::Error();
   }
 
   ctx->set_dispatch_table(expr, std::move(table));
@@ -458,7 +474,7 @@ VerifyResult VerifyDispatch(
   // TODO this assumes we only have one return value or that we're returning a
   // tuple. So, e.g., you don't get the benefit of A -> (A, A) and B -> (A, B)
   // combining into (A | B) -> (A, A | B).
-  return ctx->set_result(expr, VerifyResult(tup, is_const));
+  return ctx->set_result(expr, ast_visitor::VerifyResult(tup, is_const));
 }
 
 static ir::RegisterOr<bool> EmitVariantMatch(ir::Reg needle,
@@ -493,8 +509,8 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Reg needle,
 }
 
 static ir::BlockIndex EmitDispatchTest(
-    core::FnParams<type::Typed<ast::Expression *>> const &params,
-    core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    core::FnParams<type::Typed<ast::Expression const *>> const &params,
+    core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     Context *ctx) {
   auto next_binding = ir::CompiledFn::Current->AddBlock();
 
@@ -518,7 +534,7 @@ static ir::BlockIndex EmitDispatchTest(
 template <bool Inline>
 static void EmitOneCall(
     DispatchTable::Row const &row,
-    core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     std::vector<type::Type const *> const &return_types,
     std::vector<std::variant<
         ir::Reg, absl::flat_hash_map<ir::BlockIndex, ir::Results> *>> *outputs,
@@ -532,7 +548,8 @@ static void EmitOneCall(
           return f;
         } else {
           // TODO must `f` always be a declaration?
-          return ir::Load(ctx->addr(&f->template as<Declaration>()), row.type);
+          return ir::Load(ctx->addr(&f->template as<Declaration const>()),
+                          row.type);
         }
       },
       row.fn);
@@ -557,7 +574,8 @@ static void EmitOneCall(
     auto const &param = row.params.at(i);
     auto *arg         = args.at_or_null(std::string{param.name});
     if (!arg && (param.flags & core::HAS_DEFAULT)) {
-      arg_results.append(param.value.get()->EmitIr(ctx));
+      arg_results.append(
+          const_cast<Expression *>(param.value.get())->EmitIr(ctx));
     } else {
       auto const &[expr, results] = *arg;
       arg_results.append(param.value.type()->PrepareArgument(ctx->type_of(expr),
@@ -628,7 +646,7 @@ static void EmitOneCall(
 template <bool Inline>
 static ir::Results EmitFnCall(
     DispatchTable const *table,
-    core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
     Context *ctx) {
   // If an output to the function fits in a register we will create a phi node
@@ -711,14 +729,14 @@ static ir::Results EmitFnCall(
 }
 
 ir::Results DispatchTable::EmitInlineCall(
-    core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
     Context *ctx) const {
   return EmitFnCall<true>(this, args, block_map, ctx);
 }
 
 ir::Results DispatchTable::EmitCall(
-    core::FnArgs<std::pair<Expression *, ir::Results>> const &args,
+    core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     Context *ctx, bool is_inline) const {
   return (is_inline ? EmitFnCall<true> : EmitFnCall<false>)(this, args, {},
                                                             ctx);

@@ -41,12 +41,6 @@ std::string Call::to_string(size_t n) const {
   return ss.str();
 }
 
-void Call::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  fn_->assign_scope(scope);
-  args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
-}
-
 static OverloadSet FindOverloads(core::Scope *scope, std::string const &token,
                                  core::FnArgs<type::Type const *> arg_types,
                                  Context *ctx) {
@@ -98,86 +92,6 @@ void Call::DependentDecls(DeclDepGraph *g,
                           Declaration *d) const {
   fn_->DependentDecls(g, d);
   args_.Apply([g, d](auto const &expr) { expr->DependentDecls(g, d); });
-}
-
-VerifyResult Call::VerifyType(Context *ctx) {
-  std::vector<std::pair<Expression *, VerifyResult>> pos_results;
-  absl::flat_hash_map<std::string, std::pair<Expression *, VerifyResult>>
-      named_results;
-
-  bool err = false;
-
-  // TODO this could be TransformWithIndex
-  args_.ApplyWithIndex([&](auto &&index,
-                           std::unique_ptr<Expression> const &expr) {
-    if constexpr (std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
-      auto expr_result = expr->VerifyType(ctx);
-      if (!expr->parenthesized_ && expr->is<Unop>() &&
-          expr->as<Unop>().op == frontend::Operator::Expand &&
-          expr_result.type_->is<type::Tuple>()) {
-        auto const &entries = expr_result.type_->as<type::Tuple>().entries_;
-        for (type::Type const *entry : entries) {
-          pos_results.emplace_back(
-              std::piecewise_construct, std::forward_as_tuple(expr.get()),
-              std::forward_as_tuple(entry, expr_result.const_));
-          err |= !pos_results.back().second.ok();
-        }
-      } else {
-        pos_results.emplace_back(expr.get(), expr_result);
-        err |= !pos_results.back().second.ok();
-      }
-    } else {
-      auto iter =
-          named_results
-              .emplace(std::piecewise_construct, std::forward_as_tuple(index),
-                       std::forward_as_tuple(expr.get(), expr->VerifyType(ctx)))
-              .first;
-      err |= !iter->second.second.ok();
-    }
-  });
-
-  core::FnArgs<std::pair<Expression *, VerifyResult>> arg_results(
-      std::move(pos_results), std::move(named_results));
-
-  // TODO handle cyclic dependencies in call arguments.
-  if (err) { return VerifyResult::Error(); }
-
-  if (auto *b = fn_->if_as<BuiltinFn>()) {
-    // TODO: Should we allow these to be overloaded?
-    ASSIGN_OR(return VerifyResult::Error(), auto result,
-                     b->VerifyCall(args_, arg_results, ctx));
-    return ctx->set_result(this, VerifyResult(result.type_, result.const_));
-  }
-
-  core::FnArgs<Expression *> args = args_.Transform(
-      [](std::unique_ptr<Expression> const &arg) { return arg.get(); });
-
-  OverloadSet overload_set = [&]() {
-    if (auto *id = fn_->if_as<Identifier>()) {
-      return FindOverloads(
-          scope_, id->token,
-          arg_results.Transform(
-              [](std::pair<Expression *, VerifyResult> const &p) {
-                return p.second.type_;
-              }),
-          ctx);
-    } else {
-      auto results = fn_->VerifyType(ctx);
-      OverloadSet os;
-      os.emplace(fn_.get(), results);
-      // TODO ADL for this?
-      return os;
-    }
-  }();
-
-  return VerifyDispatch(this, overload_set, arg_results, ctx);
-}
-
-void Call::ExtractJumps(JumpExprs *rets) const {
-  fn_->ExtractJumps(rets);
-  args_.Apply([rets](std::unique_ptr<Expression> const &expr) {
-    expr->ExtractJumps(rets);
-  });
 }
 
 ir::Results Call::EmitIr(Context *ctx) {
@@ -239,9 +153,11 @@ ir::Results Call::EmitIr(Context *ctx) {
   // TODO an opmitimazion we can do is merging all the allocas for results
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
-  auto args = args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
-    return std::pair(expr.get(), expr->EmitIr(ctx));
-  });
+  auto args =
+      args_.Transform([ctx](std::unique_ptr<Expression> const &expr)
+                          -> std::pair<Expression const *, ir::Results> {
+        return std::pair(expr.get(), expr->EmitIr(ctx));
+      });
 
   return dispatch_table.EmitCall(
       args, ctx, contains_hashtag(Hashtag(Hashtag::Builtin::Inline)));

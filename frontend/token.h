@@ -31,9 +31,17 @@ struct Token : public ast::Node {
 
   std::string to_string(size_t) const override { return "[" + token + "]\n"; }
 
-  void assign_scope(core::Scope *) override { UNREACHABLE(token); }
-  ast::VerifyResult VerifyType(Context *) override { UNREACHABLE(token); }
-  void ExtractJumps(JumpExprs *) const override { UNREACHABLE(token); }
+  void assign_scope(ast_visitor::AssignScope *, core::Scope *) override {
+    UNREACHABLE(token);
+  }
+  void ExtractJumps(ast_visitor::ExtractJumps *) const override {
+    UNREACHABLE(token);
+  }
+
+  ast_visitor::VerifyResult VerifyType(ast_visitor::VerifyType const *,
+                                       Context *) const override {
+    UNREACHABLE(token);
+  }
   ir::Results EmitIr(Context *) override { UNREACHABLE(token); }
   void DependentDecls(ast::DeclDepGraph *, ast::Declaration *) const {
     UNREACHABLE(token);

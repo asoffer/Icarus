@@ -585,8 +585,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
 
       s->init_func_ = s->mod_->AddFunc(
           type::Func({type::Ptr(s)}, {}),
-          core::FnParams(core::Param{
-              "", type::Typed<ast::Expression *>{nullptr, type::Ptr(s)}}));
+          core::FnParams(core::Param{"", type::Typed<ast::Expression const *>{
+                                             nullptr, type::Ptr(s)}}));
       CURRENT_FUNC(s->init_func_.func()) {
         // TODO this context gets no constants which is not what we want.
         // Probably need to store the correct bound constants pointer in the
@@ -1119,12 +1119,13 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::DestroyContext: delete resolve<Context *>(cmd.reg_); break;
     case ir::Op::VerifyType: {
-      cmd.ast_.node_->VerifyType(resolve<Context *>(cmd.ast_.ctx_));
+      ast_visitor::VerifyType visitor;
+      cmd.ast_.node_->VerifyType(&visitor, resolve<Context *>(cmd.ast_.ctx_));
     } break;
     case ir::Op::EvaluateAsType: {
       // TODO, you don't have a parent context... that could be problematic.
       save(EvaluateAs<type::Type const *>(
-          type::Typed(&cmd.ast_.node_->as<ast::Expression>(), type::Type_),
+          type::Typed(&cmd.ast_.node_->as<ast::Expression const>(), type::Type_),
           resolve<Context *>(cmd.ast_.ctx_)));
     } break;
     case ir::Op::CondJump:

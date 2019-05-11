@@ -11,12 +11,6 @@ ir::TypedRegister<type::Interface const *> FinalizeInterface(Reg r);
 }  // namespace ir
 
 namespace ast {
-void Interface::assign_scope(core::Scope *scope) {
-  scope_      = scope;
-  body_scope_ = scope->add_child<core::DeclScope>();
-  for (auto &d : decls_) { d.assign_scope(body_scope_.get()); }
-}
-
 void Interface::DependentDecls(DeclDepGraph *g,
                                Declaration *d) const {
   NOT_YET();
@@ -31,18 +25,6 @@ std::string Interface::to_string(size_t n) const {
   }
   ss << "}";
   return ss.str();
-}
-
-VerifyResult Interface::VerifyType(Context *ctx) {
-  for (auto &decl : decls_) {
-    decl.VerifyType(ctx);
-    if (decl.init_val != nullptr) { NOT_YET(); }
-  }
-  return ctx->set_result(this, VerifyResult::Constant(type::Intf));
-}
-
-void Interface::ExtractJumps(JumpExprs *rets) const {
-  for (auto &d : decls_) { d.ExtractJumps(rets); }
 }
 
 ir::Results Interface::EmitIr(Context *ctx) {

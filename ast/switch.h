@@ -8,10 +8,10 @@ namespace ast {
 // parse if it has parens or not.
 struct Switch : public Literal {
   ~Switch() override {}
+
+#include "ast_visitor/visitors.xmacro.h"
+
   std::string to_string(size_t n) const override;
-  void assign_scope(core::Scope *scope) override;
-  VerifyResult VerifyType(Context *) override;
-  void ExtractJumps(JumpExprs *rets) const override;
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
   bool InferType(type::Type const *t, InferenceState *state) const override {
@@ -29,12 +29,13 @@ struct Switch : public Literal {
 // distinguish 'when' from other binary operators.
 struct SwitchWhen : public Node {
   ~SwitchWhen() override {}
+
+#include "ast_visitor/visitors.xmacro.h"
+
   std::string to_string(size_t n) const override {
     return body->to_string(n) + " when " + cond->to_string(n);
   }
-  void assign_scope(core::Scope *scope) override { UNREACHABLE(); }
-  VerifyResult VerifyType(Context *) override { UNREACHABLE(); }
-  void ExtractJumps(JumpExprs *rets) const override { UNREACHABLE(); }
+
   void DependentDecls(DeclDepGraph *g, Declaration *d) const override {
     UNREACHABLE();
   }

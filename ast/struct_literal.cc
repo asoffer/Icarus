@@ -49,51 +49,6 @@ void StructLiteral::DependentDecls(DeclDepGraph *g,
   for (auto &f : fields_) { f.DependentDecls(g, d); }
 }
 
-void StructLiteral::assign_scope(core::Scope *scope) {
-  scope_     = scope;
-  type_scope = scope->add_child<core::DeclScope>();
-  for (auto &a : args_) { a.assign_scope(type_scope.get()); }
-  for (auto &f : fields_) { f.assign_scope(type_scope.get()); }
-}
-
-VerifyResult StructLiteral::VerifyType(Context *ctx) {
-  std::vector<type::Type const *> ts;
-  ts.reserve(args_.size());
-  for (auto &a : args_) { ts.push_back(a.VerifyType(ctx).type_); }
-  if (std::any_of(ts.begin(), ts.end(),
-                  [](type::Type const *t) { return t == nullptr; })) {
-    return VerifyResult::Error();
-  }
-
-  if (args_.empty()) {
-    bool ok =
-        absl::c_all_of(fields_, [ctx](Declaration const &field) {
-          // TODO remove const_cast once VerifyType is const method.
-          if (const_cast<Declaration &>(field).VerifyType(ctx).const_) {
-            return true;
-          }
-          ctx->error_log()->NonConstantStructFieldDefaultValue(
-              field.init_val->span);
-          return false;
-        });
-    // TODO so in fact we could recover here and just not emit ir but we're no
-    // longer set up to do that.
-    if (ok) {
-      return ctx->set_result(this, VerifyResult::Constant(type::Type_));
-    } else {
-      return VerifyResult::Error();
-    }
-  } else {
-    return ctx->set_result(
-        this, VerifyResult::Constant(type::GenStruct(scope_, std::move(ts))));
-  }
-}
-
-void StructLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &a : args_) { a.ExtractJumps(rets); }
-  for (auto &f : fields_) { f.ExtractJumps(rets); }
-}
-
 static ir::TypedRegister<type::Type const *> GenerateStruct(
     StructLiteral *sl, ir::Reg struct_reg, Context *ctx) {
   for (auto const &field : sl->fields_) {
@@ -139,11 +94,12 @@ ir::Results StructLiteral::EmitIr(Context *ctx) {
 
     auto const &arg_types = ctx->type_of(this)->as<type::GenericStruct>().deps_;
 
-    core::FnParams<type::Typed<Expression *>> params;
+    core::FnParams<type::Typed<Expression const *>> params;
     params.reserve(args_.size());
     size_t i = 0;
     for (auto const &d : args_) {
-      params.append(d.id_, type::Typed(d.init_val.get(), arg_types.at(i++)));
+      params.append(d.id_, type::Typed<Expression const *>(d.init_val.get(),
+                                                           arg_types.at(i++)));
     }
 
     ir_func =

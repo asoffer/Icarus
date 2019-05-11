@@ -24,9 +24,9 @@ Module const *Scope::module() const {
 }
 
 // TODO error version will always have nullptr types.
-std::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
+std::vector<type::Typed<ast::Declaration const *>> Scope::AllDeclsWithId(
     std::string const &id, Context *ctx) const {
-  std::vector<type::Typed<ast::Declaration *>> matching_decls;
+  std::vector<type::Typed<ast::Declaration const *>> matching_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {
     if (auto iter = scope_ptr->decls_.find(id);
@@ -35,7 +35,10 @@ std::vector<type::Typed<ast::Declaration *>> Scope::AllDeclsWithId(
         auto *t = ctx->type_of(decl);
         // TODO This will call VerifyType once if it's correct, but *every* time
         // if it's incorrect. Fix this.
-        if (t == nullptr) { t = decl->VerifyType(ctx).type_; }
+        if (t == nullptr) {
+          ast_visitor::VerifyType visitor;
+          t = decl->VerifyType(&visitor, ctx).type_;
+        }
         matching_decls.emplace_back(decl, t);
       }
     }

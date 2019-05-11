@@ -12,15 +12,9 @@ struct Import : public Literal {
   Import(std::unique_ptr<Expression> expr) : operand_(std::move(expr)) {}
   ~Import() override {}
 
-  std::string to_string(size_t n) const override;
-  void assign_scope(core::Scope *scope) override;
-  VerifyResult VerifyType(Context *) override;
+#include "ast_visitor/visitors.xmacro.h"
 
-  // TODO what if the operand does a result/return thing in a scope? This feels
-  // like it should be disallowed but maybe I need this to catch the error!
-  void ExtractJumps(JumpExprs *rets) const override {
-    operand_->ExtractJumps(rets);
-  }
+  std::string to_string(size_t n) const override;
 
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override {
@@ -39,7 +33,7 @@ struct Import : public Literal {
   //   lib ::= import "library." + version + ".ic"
   //   return lib.some_function()
   // }
-  PendingModule module_;
+  mutable PendingModule module_;
   std::unique_ptr<Expression> operand_;
 };
 }  // namespace ast

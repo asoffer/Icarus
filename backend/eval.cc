@@ -3,17 +3,18 @@
 #include <iomanip>
 #include "ast/expression.h"
 #include "backend/exec.h"
-#include "ir/compiled_fn.h"
 #include "core/arch.h"
+#include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "type/generic_struct.h"
 #include "type/util.h"
 
 namespace backend {
-static ir::CompiledFn ExprFn(type::Typed<ast::Expression *> typed_expr,
-                       Context *ctx) {
-  ir::CompiledFn fn(ctx->mod_, type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
-              core::FnParams<type::Typed<ast::Expression *>>{});
+static ir::CompiledFn ExprFn(type::Typed<ast::Expression const *> typed_expr,
+                             Context *ctx) {
+  ir::CompiledFn fn(ctx->mod_,
+                    type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
+                    core::FnParams<type::Typed<ast::Expression const *>>{});
   CURRENT_FUNC(&fn) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIr
     // Factor these out together.
@@ -21,10 +22,11 @@ static ir::CompiledFn ExprFn(type::Typed<ast::Expression *> typed_expr,
     // Leave space for allocas that will come later (added to the entry
     // block).
 
-    auto start_block = ir::BasicBlock::Current = ir::CompiledFn::Current->AddBlock();
+    auto start_block = ir::BasicBlock::Current =
+        ir::CompiledFn::Current->AddBlock();
 
     ASSERT(ctx != nullptr);
-    auto vals = typed_expr.get()->EmitIr(ctx);
+    auto vals = const_cast<ast::Expression *>(typed_expr.get())->EmitIr(ctx);
     // TODO wrap this up into SetRet(vector)
     std::vector<type::Type const *> extracted_types;
     if (auto *tup = typed_expr.type()->if_as<type::Tuple>()) {
@@ -43,8 +45,8 @@ static ir::CompiledFn ExprFn(type::Typed<ast::Expression *> typed_expr,
   return fn;
 }
 
-base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
-                                      Context *ctx) {
+base::untyped_buffer EvaluateToBuffer(
+    type::Typed<ast::Expression const *> typed_expr, Context *ctx) {
   auto fn = ExprFn(typed_expr, ctx);
 
   size_t bytes_needed =
@@ -59,7 +61,8 @@ base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
   return ret_buf;
 }
 
-ir::Results Evaluate(type::Typed<ast::Expression *> typed_expr, Context *ctx) {
+ir::Results Evaluate(type::Typed<ast::Expression const *> typed_expr,
+                     Context *ctx) {
   // TODO is the error-case distinguishible from successfully returning void?
   if (ctx->num_errors() != 0) { return ir::Results{}; }
 
@@ -83,7 +86,7 @@ ir::Results Evaluate(type::Typed<ast::Expression *> typed_expr, Context *ctx) {
   return ir::Results::FromUntypedBuffer(std::move(offsets), std::move(buf));
 }
 
-ir::Results Evaluate(ast::Expression *expr, Context *ctx) {
+ir::Results Evaluate(ast::Expression const *expr, Context *ctx) {
   return Evaluate({expr, ASSERT_NOT_NULL(ctx->type_of(expr))}, ctx);
 }
 }  // namespace backend

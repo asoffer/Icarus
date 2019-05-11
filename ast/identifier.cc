@@ -13,66 +13,10 @@
 #include "type/type.h"
 
 namespace ast {
-void Identifier::assign_scope(core::Scope *scope) { scope_ = scope; }
-
-VerifyResult Identifier::VerifyType(Context *ctx) {
-  for (auto iter = ctx->cyc_deps_.begin(); iter != ctx->cyc_deps_.end();
-       ++iter) {
-    if (*iter == this) {
-      ctx->error_log()->CyclicDependency(
-          std::vector<Identifier const *>(iter, ctx->cyc_deps_.end()));
-      return VerifyResult::Error();
-    }
-  }
-  ctx->cyc_deps_.push_back(this);
-  base::defer d([&] { ctx->cyc_deps_.pop_back(); });
-
-  // `decl_` is not necessarily null. Because we may call VerifyType many times
-  // in multiple contexts, it is null the first time, but not on future
-  // iterations.
-  //
-  // TODO that means we should probably resolve identifiers ahead of
-  // type verification, but I think we rely on type information to figure it out
-  // for now so you'll have to undo that first.
-  if (decl_ == nullptr) {
-    auto potential_decls = scope_->AllDeclsWithId(token, ctx);
-    switch (potential_decls.size()) {
-      case 1: {
-        // TODO could it be that evn though there is only one declaration,
-        // there's a bound constant of the same name? If so, we need to deal
-        // with this case.
-        decl_ = potential_decls[0].get();
-        if (decl_ == nullptr) { return VerifyResult::Error(); }
-      } break;
-      case 0:
-        ctx->error_log()->UndeclaredIdentifier(this);
-        return VerifyResult::Error();
-      default:
-        // TODO Should we allow the overload?
-        ctx->error_log()->UnspecifiedOverload(span);
-        return VerifyResult::Error();
-    }
-
-    if (!decl_->const_ && (span.start.line_num < decl_->span.start.line_num ||
-                           (span.start.line_num == decl_->span.start.line_num &&
-                            span.start.offset < decl_->span.start.offset))) {
-      ctx->error_log()->DeclOutOfOrder(decl_, this);
-    }
-  }
-
-  // TODO this is because we may have determined the declartaion previously with
-  // a different generic setup but not bound the type for this context. But this
-  // is wrong in the sense that the declaration bound is possibly dependent on
-  // the context.
-  type::Type const *t = ctx->type_of(decl_);
-
-  if (t == nullptr) { return VerifyResult::Error(); }
-  return ctx->set_result(this, VerifyResult(t, decl_->const_));
-}
 
 ir::Results Identifier::EmitIr(Context *ctx) {
   ASSERT(decl_ != nullptr) << this->to_string(0);
-  if (decl_->const_) { return decl_->EmitIr(ctx); }
+  if (decl_->const_) { return const_cast<Declaration *>(decl_)->EmitIr(ctx); }
   if (decl_->is_fn_param_) {
     auto *t     = ctx->type_of(this);
     ir::Reg reg = ctx->addr(decl_);

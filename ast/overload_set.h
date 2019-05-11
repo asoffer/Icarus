@@ -3,7 +3,6 @@
 
 #include <string>
 
-// TODO pull out VerifyResult into it's own header.
 #include "ast/node.h"
 #include "base/bag.h"
 #include "type/function.h"
@@ -19,10 +18,10 @@ namespace ast {
 struct Expression;
 
 struct Overload {
-  Overload(Expression *expr, VerifyResult result)
+  Overload(Expression const *expr, ast_visitor::VerifyResult result)
       : expr(expr), result(std::move(result)) {}
-  Expression *expr;
-  VerifyResult result;
+  Expression const *expr;
+  ast_visitor::VerifyResult result;
 };
 
 struct OverloadSet : public base::bag<Overload> {

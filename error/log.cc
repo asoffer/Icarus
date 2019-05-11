@@ -132,7 +132,7 @@ void WriteSource(
 }
 }  // namespace
 namespace error {
-void Log::UndeclaredIdentifier(ast::Identifier *id) {
+void Log::UndeclaredIdentifier(ast::Identifier const *id) {
   undeclared_ids_[id->token].push_back(id);
 }
 
@@ -496,7 +496,7 @@ void Log::Dump() const {
     std::cerr << "\n\n";
   }
 
-  for (const auto &[decl, ids] : out_of_order_decls_) {
+  for (auto const &[decl, ids] : out_of_order_decls_) {
     std::cerr << "Variable `" << decl->id_
               << "` is used before it is defined (which is only allowed for "
                  "constants).\n\n";
@@ -522,7 +522,8 @@ void Log::Dump() const {
   for (const auto &err : errors_) { std::cerr << err; }
 }
 
-void Log::DeclOutOfOrder(ast::Declaration *decl, ast::Identifier *id) {
+void Log::DeclOutOfOrder(ast::Declaration const *decl,
+                         ast::Identifier const *id) {
   out_of_order_decls_[decl].push_back(id);
 }
 

@@ -14,7 +14,7 @@ OverloadSet::OverloadSet(core::Scope *scope, std::string const &id, Context *ctx
   reserve(decls.size());
   for (auto const &decl : decls) {
     // TODO const??!
-    emplace(decl.get(), VerifyResult{decl.type(), true});
+    emplace(decl.get(), ast_visitor::VerifyResult{decl.type(), true});
   }
 }
 
@@ -32,7 +32,7 @@ void OverloadSet::add_adl(std::string const &id, type::Type const *t) {
       if (&d == overload.expr) { return; }
     }
     // TODO const
-    emplace(&d, VerifyResult{&t, true});
+    emplace(&d, ast_visitor::VerifyResult{&t, true});
   }
 }
 

@@ -16,16 +16,14 @@ struct BuiltinFn : public Literal {
   BuiltinFn(const TextSpan &span, ir::Builtin b) : Literal(span), b_(b) {}
   ~BuiltinFn() override {}
 
-  void assign_scope(core::Scope *scope) override { scope_ = scope; }
+#include "ast_visitor/visitors.xmacro.h"
+
   std::string to_string(size_t) const override { return stringify(b_); }
 
-  VerifyResult VerifyType(Context *ctx) override {
-    return ctx->set_result(this, VerifyResult::Constant(ir::BuiltinType(b_)));
-  }
-
-  VerifyResult VerifyCall(
+  ast_visitor::VerifyResult VerifyCall(
       core::FnArgs<std::unique_ptr<Expression>> const &args,
-      core::FnArgs<std::pair<Expression *, VerifyResult>> const &arg_results,
+      core::FnArgs<std::pair<Expression const *,
+                             ast_visitor::VerifyResult>> const &arg_results,
       Context *ctx) const;
 
   // TODO distinguish between guaranteed failures and failures to continue
@@ -33,7 +31,6 @@ struct BuiltinFn : public Literal {
     return type::Type_ && ir::BuiltinType(b_) == t;
   }
 
-  void ExtractJumps(JumpExprs *) const override {}
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override {}
 

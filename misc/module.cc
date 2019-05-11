@@ -57,7 +57,7 @@ Module::~Module() = default;
 
 ir::CompiledFn *Module::AddFunc(
     type::Function const *fn_type,
-    core::FnParams<type::Typed<ast::Expression *>> params) {
+    core::FnParams<type::Typed<ast::Expression const *>> params) {
   auto *result = fns_.emplace_back(std::make_unique<ir::CompiledFn>(
                                        this, fn_type, std::move(params)))
                      .get();
@@ -116,10 +116,14 @@ static Module *CompileModule(Module *mod) {
     return mod;
   }
 
-  file_stmts->assign_scope(&mod->scope_);
+  {
+    ast_visitor::AssignScope visitor;
+    file_stmts->assign_scope(&visitor, &mod->scope_);
+  }
 
   Context ctx(mod);
-  file_stmts->VerifyType(&ctx);
+  ast_visitor::VerifyType visitor;
+  file_stmts->VerifyType(&visitor, &ctx);
   mod->CompleteAllDeferredWork();
 
   if (ctx.num_errors() > 0) {

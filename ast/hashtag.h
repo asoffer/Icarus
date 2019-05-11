@@ -2,6 +2,7 @@
 #define ICARUS_AST_HASHTAG_H
 
 namespace ast {
+// TODO move out of ast?
 struct Hashtag {
   enum class Builtin { Export, NoDefault, Uncopyable, Immovable, Inline } kind_;
 

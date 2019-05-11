@@ -14,60 +14,16 @@ std::string Cast::to_string(size_t n) const {
   return "(" + expr_->to_string(n) + ") as (" + type_->to_string(n) + ")";
 }
 
-void Cast::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  expr_->assign_scope(scope);
-  type_->assign_scope(scope);
-}
-
 void Cast::DependentDecls(DeclDepGraph *g,
                           Declaration *d) const {
   expr_->DependentDecls(g, d);
   type_->DependentDecls(g, d);
 }
 
-VerifyResult Cast::VerifyType(Context *ctx) {
-  auto expr_result = expr_->VerifyType(ctx);
-  auto type_result = type_->VerifyType(ctx);
-  if (!expr_result.ok() || !type_result.ok()) { return VerifyResult::Error(); }
-
-  if (type_result.type_ != type::Type_) {
-    ctx->error_log()->CastToNonType(span);
-    return VerifyResult::Error();
-  }
-  if (!type_result.const_) {
-    ctx->error_log()->CastToNonConstantType(span);
-    return VerifyResult::Error();
-  }
-  auto *t = ASSERT_NOT_NULL(
-      backend::EvaluateAs<type::Type const *>(type_.get(), ctx));
-  if (t->is<type::Struct>()) {
-    OverloadSet os(scope_, "as", ctx);
-    os.add_adl("as", t);
-    os.add_adl("as", expr_result.type_);
-    os.keep([t](Overload const &o) { return o.result.type_ == t; });
-    return VerifyDispatch(this, os,
-                          core::FnArgs<std::pair<Expression *, VerifyResult>>(
-                              {std::pair(expr_.get(), expr_result)}, {}),
-                          ctx);
-  } else {
-    if (!type::CanCast(expr_result.type_, t)) {
-      ctx->error_log()->InvalidCast(expr_result.type_, t, span);
-      NOT_YET("log an error", expr_result.type_, t);
-    }
-    return VerifyResult(t, expr_result.const_);
-  }
-}
-
-void Cast::ExtractJumps(JumpExprs *rets) const {
-  expr_->ExtractJumps(rets);
-  type_->ExtractJumps(rets);
-}
-
 ir::Results Cast::EmitIr(Context *ctx) {
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     return dispatch_table->EmitCall(
-        core::FnArgs<std::pair<Expression *, ir::Results>>(
+        core::FnArgs<std::pair<Expression const *, ir::Results>>(
             {std::pair(expr_.get(), expr_->EmitIr(ctx)),
              std::pair(type_.get(), type_->EmitIr(ctx))},
             {}),

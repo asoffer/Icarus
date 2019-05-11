@@ -17,16 +17,6 @@ struct Identifier;
 struct DispatchTable;
 }  // namespace ast
 
-struct JumpExprs {
-  enum class Kind { Return, Yield, Jump };
-  std::vector<ast::Expression const *> &operator[](Kind k) {
-    return data_[static_cast<std::underlying_type_t<Kind>>(k)];
-  }
-
- private:
-  std::array<std::vector<ast::Expression const *>, 3> data_;
-};
-
 struct Context {
   Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {
     constants_ = &mod_->dep_data_.front();
@@ -39,14 +29,15 @@ struct Context {
   // TODO remove.
   type::Type const *type_of(ast::Expression const *expr) const;
 
-  ast::VerifyResult const *prior_verification_attempt(ast::ExprPtr expr);
-  ast::VerifyResult set_result(ast::ExprPtr expr, ast::VerifyResult r);
+  ast_visitor::VerifyResult const *prior_verification_attempt(ast::ExprPtr expr);
+  ast_visitor::VerifyResult set_result(ast::ExprPtr expr,
+                                       ast_visitor::VerifyResult r);
 
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
   void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);
 
-  ir::Reg addr(ast::Declaration *decl) const;
-  void set_addr(ast::Declaration *decl, ir::Reg);
+  ir::Reg addr(ast::Declaration const *decl) const;
+  void set_addr(ast::Declaration const *decl, ir::Reg);
 
   std::pair<ConstantBinding, Module::DependentData> *insert_constants(
       ConstantBinding const &constant_binding);
@@ -85,7 +76,7 @@ struct Context {
   // down here. That way, we can bubble up from the dependency until we see it
   // again, at each step adding the nodes to the error log involved in the
   // dependency. Once complete, we reset this to null
-  std::vector<ast::Identifier *> cyc_deps_;
+  std::vector<ast::Identifier const *> cyc_deps_;
 
   // TODO Because you already have arguments, it's perhaps better to just be a
   // pointer into the arguments buffer, to avoid the

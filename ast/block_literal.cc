@@ -22,30 +22,10 @@ std::string BlockLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void BlockLiteral::assign_scope(core::Scope *scope) {
-  scope_      = scope;
-  body_scope_ = scope->add_child<core::DeclScope>();
-  for (auto &b : before_) { b.assign_scope(body_scope_.get()); }
-  for (auto &a : after_) { a.assign_scope(body_scope_.get()); }
-}
-
 void BlockLiteral::DependentDecls(DeclDepGraph *g,
                                   Declaration *d) const {
   for (auto const &b : before_) { b.DependentDecls(g, d); }
   for (auto const &a : after_) { a.DependentDecls(g, d); }
-}
-
-VerifyResult BlockLiteral::VerifyType(Context *ctx) {
-  for (auto &b : before_) { b.VerifyType(ctx); }
-  for (auto &a : after_) { a.VerifyType(ctx); }
-
-  return ctx->set_result(
-      this, VerifyResult::Constant(required_ ? type::Block : type::OptBlock));
-}
-
-void BlockLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &b : before_) { b.ExtractJumps(rets); }
-  for (auto &a : after_) { a.ExtractJumps(rets); }
 }
 
 ir::Results BlockLiteral::EmitIr(Context *ctx) {

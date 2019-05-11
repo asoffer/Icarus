@@ -11,8 +11,9 @@
 namespace ir {
 thread_local CompiledFn *CompiledFn::Current{nullptr};
 
-CompiledFn::CompiledFn(Module *mod, type::Function const *fn_type,
-                       core::FnParams<type::Typed<ast::Expression *>> params)
+CompiledFn::CompiledFn(
+    Module *mod, type::Function const *fn_type,
+    core::FnParams<type::Typed<ast::Expression const *>> params)
     : type_(fn_type),
       params_(std::move(params)),
       num_regs_(

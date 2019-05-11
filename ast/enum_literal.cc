@@ -76,30 +76,9 @@ std::string EnumLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-void EnumLiteral::assign_scope(core::Scope *scope) {
-  enum_scope_ = scope->add_child<core::DeclScope>();
-  for (auto &elem : elems_) { elem->assign_scope(enum_scope_.get()); }
-}
-
 void EnumLiteral::DependentDecls(DeclDepGraph *g,
                                  Declaration *d) const {
   for (auto const &elem : elems_) { elem->DependentDecls(g, d); }
-}
-
-VerifyResult EnumLiteral::VerifyType(Context *ctx) {
-  for (auto &elem : elems_) {
-    if (auto *decl = elem->if_as<Declaration>()) {
-      auto *t = decl->init_val->VerifyType(ctx).type_;
-      ASSERT(t == type::Int32);
-      // TODO determine what is allowed here and how to generate errors.
-    }
-  }
-
-  return ctx->set_result(this, VerifyResult::Constant(type::Type_));
-}
-
-void EnumLiteral::ExtractJumps(JumpExprs *rets) const {
-  for (auto &elem : elems_) { elem->ExtractJumps(rets); }
 }
 
 ir::Results EnumLiteral::EmitIr(Context *ctx) {

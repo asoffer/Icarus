@@ -127,11 +127,11 @@ core::Alignment Function::alignment(core::Arch const &a) const {
 
 Cmp Function::Comparator() const { return Cmp::None; }
 
-core::FnParams<type::Typed<ast::Expression *>> Function::AnonymousFnParams()
+core::FnParams<type::Typed<ast::Expression const *>> Function::AnonymousFnParams()
     const {
-  core::FnParams<type::Typed<ast::Expression *>> result;
+  core::FnParams<type::Typed<ast::Expression const*>> result;
   for (type::Type const *t : input) {
-    result.append("", type::Typed(static_cast<ast::Expression *>(nullptr), t));
+    result.append("", type::Typed<ast::Expression const *>(nullptr, t));
   }
   return result;
 }

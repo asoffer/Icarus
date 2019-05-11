@@ -29,7 +29,7 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this, std::forward<Args>(args)...);
   }
 
-  std::vector<type::Typed<ast::Declaration *>> AllDeclsWithId(
+  std::vector<type::Typed<ast::Declaration const *>> AllDeclsWithId(
       std::string const &id, Context *ctx) const;
 
   Module const *module() const;

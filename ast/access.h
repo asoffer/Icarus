@@ -11,12 +11,8 @@ struct Access : public Expression {
     return operand->to_string(n) + "." + member_name;
   }
 
-  void assign_scope(core::Scope *scope) override;
-  VerifyResult VerifyType(Context *) override;
+#include "ast_visitor/visitors.xmacro.h"
 
-  void ExtractJumps(JumpExprs *rets) const override {
-    operand->ExtractJumps(rets);
-  }
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
   bool InferType(type::Type const *t, InferenceState *state) const override;

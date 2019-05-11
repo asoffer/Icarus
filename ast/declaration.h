@@ -16,10 +16,9 @@ struct Declaration : public Expression {
   Declaration &operator=(Declaration &&) noexcept = default;
   ~Declaration() override {}
 
+#include "ast_visitor/visitors.xmacro.h"
+
   std::string to_string(size_t n) const override;
-  void assign_scope(core::Scope *scope) override;
-  VerifyResult VerifyType(Context *) override;
-  void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
   bool InferType(type::Type const *t, InferenceState *state) const override {

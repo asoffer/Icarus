@@ -7,9 +7,10 @@
 #include "type/type.h"
 
 namespace ast {
-VerifyResult BuiltinFn::VerifyCall(
+ast_visitor::VerifyResult BuiltinFn::VerifyCall(
     core::FnArgs<std::unique_ptr<Expression>> const &args,
-    core::FnArgs<std::pair<Expression *, VerifyResult>> const &arg_results,
+    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+        &arg_results,
     Context *ctx) const {
   switch (b_) {
     case ir::Builtin::Foreign: {
@@ -54,7 +55,7 @@ VerifyResult BuiltinFn::VerifyCall(
               span, "Second argument to `foreign` must be a constant.");
         }
       }
-      return VerifyResult::Constant(
+      return ast_visitor::VerifyResult::Constant(
           backend::EvaluateAs<type::Type const *>(args.at(1).get(), ctx));
     } break;
     case ir::Builtin::Opaque:
@@ -62,7 +63,7 @@ VerifyResult BuiltinFn::VerifyCall(
         ctx->error_log()->BuiltinError(
             span, "Built-in function `opaque` takes no arguments.");
       }
-      return VerifyResult::Constant(
+      return ast_visitor::VerifyResult::Constant(
           ir::BuiltinType(ir::Builtin::Opaque)->as<type::Function>().output[0]);
 
     case ir::Builtin::Bytes: {
@@ -83,7 +84,7 @@ VerifyResult BuiltinFn::VerifyCall(
             "`type` (You provided a(n) " +
                 arg_results.at(0).second.type_->to_string() + ").");
       }
-      return VerifyResult::Constant(
+      return ast_visitor::VerifyResult::Constant(
           ir::BuiltinType(ir::Builtin::Bytes)->as<type::Function>().output[0]);
     }
     case ir::Builtin::Alignment: {
@@ -106,16 +107,17 @@ VerifyResult BuiltinFn::VerifyCall(
             "type `type` (you provided a(n) " +
                 arg_results.at(0).second.type_->to_string() + ")");
       }
-      return VerifyResult::Constant(ir::BuiltinType(ir::Builtin::Alignment)
-                                        ->as<type::Function>()
-                                        .output[0]);
+      return ast_visitor::VerifyResult::Constant(
+          ir::BuiltinType(ir::Builtin::Alignment)
+              ->as<type::Function>()
+              .output[0]);
     }
 #ifdef DBG
     case ir::Builtin::DebugIr:
       // This is for debugging the compiler only, so there's no need to write
       // decent errors here.
       ASSERT(arg_results, matcher::IsEmpty());
-      return VerifyResult::Constant(type::Void());
+      return ast_visitor::VerifyResult::Constant(type::Void());
 #endif  // DBG
   }
   UNREACHABLE();

@@ -20,8 +20,7 @@ std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
 namespace backend {
 static void ReplEval(ast::Expression *expr) {
   // TODO is nullptr for module okay here?
-  ir::CompiledFn fn(nullptr, type::Func({}, {}),
-              core::FnParams<type::Typed<ast::Expression *>>{});
+  ir::CompiledFn fn(nullptr, type::Func({}, {}), {});
   CURRENT_FUNC(&fn) {
     ir::BasicBlock::Current = fn.entry();
     // TODO use the right module
@@ -61,8 +60,14 @@ repl_start:;
     for (auto &stmt : stmts->content_) {
       if (stmt->is<ast::Declaration>()) {
         auto *decl = &stmt->as<ast::Declaration>();
-        decl->assign_scope(&ctx.mod_->scope_);
-        decl->VerifyType(&ctx);
+        {
+          ast_visitor::AssignScope visitor;
+          decl->assign_scope(&visitor, &ctx.mod_->scope_);
+        }
+        {
+          ast_visitor::VerifyType visitor;
+          decl->VerifyType(&visitor, &ctx);
+        }
         decl->EmitIr(&ctx);
         if (ctx.num_errors() != 0) {
           ctx.DumpErrors();
@@ -71,7 +76,8 @@ repl_start:;
 
       } else if (stmt->is<ast::Expression>()) {
         auto *expr = &stmt->as<ast::Expression>();
-        expr->assign_scope(&ctx.mod_->scope_);
+        ast_visitor::AssignScope visitor;
+        expr->assign_scope(&visitor, &ctx.mod_->scope_);
         backend::ReplEval(expr);
         fprintf(stderr, "\n");
       } else {

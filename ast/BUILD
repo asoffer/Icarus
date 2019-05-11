@@ -3,7 +3,13 @@ load("//:defs.bzl", "cc_lib", "cc_target", "sources")
 sources()
 
 cc_lib(
+    name = "ast-fwd",
+    hdrs = ["ast_fwd.h"],
+)
+
+cc_lib(
     name = "ast",
+    hdrs = ["ast.h"],
     deps = [
         ":access",
         ":array_literal",
@@ -462,6 +468,7 @@ cc_lib(
     name = "node",
     hdrs = ["node.h"],
     deps = [
+        "//ast_visitor:visitors",
         "//base:graph",
         "//base:util",
         "//frontend:text_span",

@@ -42,7 +42,7 @@ struct CompiledFn {
   static thread_local CompiledFn *Current;
 
   CompiledFn(Module *mod, type::Function const *fn_type,
-             core::FnParams<type::Typed<ast::Expression *>> params);
+             core::FnParams<type::Typed<ast::Expression const *>> params);
 
   void ComputeInvariants();
   void CheckInvariants();
@@ -79,7 +79,7 @@ struct CompiledFn {
   BlockIndex entry() const { return BlockIndex(0); }
 
   type::Function const *const type_ = nullptr;
-  core::FnParams<type::Typed<ast::Expression *>> params_;
+  core::FnParams<type::Typed<ast::Expression const *>> params_;
 
   int32_t num_regs_ = 0;
   std::vector<BasicBlock> blocks_;

@@ -9,13 +9,6 @@ std::string MatchDeclaration::to_string(size_t n) const {
   return type_expr->to_string(n) + "`" + id_;
 }
 
-VerifyResult MatchDeclaration::VerifyType(Context *ctx) {
-  ASSIGN_OR(return VerifyResult::Error(), [[maybe_unused]] auto result,
-                   type_expr->VerifyType(ctx));
-  // TODO is this always constant? does that make sense?
-  return ctx->set_result(this, VerifyResult::Constant(type::Type_));
-}
-
 bool MatchDeclaration::InferType(type::Type const *t,
                                  InferenceState *state) const {
   state->matches_.emplace(this, t);

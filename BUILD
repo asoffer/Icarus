@@ -30,6 +30,7 @@ cc_library(
         "//property:property_set-impl",
         "//property:property-impl",
         "//type:impl",
+        "//ast_visitor:visitors-impl",
     ],
     alwayslink = True,
 )
@@ -41,6 +42,7 @@ genrule(
     srcs = [
         ":sources",
         "//ast:sources",
+        "//ast_visitor:sources",
         "//backend:sources",
         "//base:sources",
         "//core:sources",
@@ -57,6 +59,7 @@ genrule(
     outs = ["unity.cc"],
     cmd = ("cat $(locations :sources)" +
            " $(locations //ast:sources)" +
+           " $(locations //ast_visitor:sources)" +
            " $(locations //backend:sources)" +
            " $(locations //base:sources)" +
            " $(locations //core:sources)" +

@@ -30,72 +30,10 @@ std::string ScopeNode::to_string(size_t n) const {
   return ss.str();
 }
 
-void ScopeNode::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  name_->assign_scope(scope);
-  args_.Apply([scope](auto &expr) { expr->assign_scope(scope); });
-  for (auto &block : blocks_) { block.assign_scope(scope); }
-}
-
 void ScopeNode::DependentDecls(DeclDepGraph *g,
                                Declaration *d) const {
   args_.Apply([g, d](auto const &expr) { expr->DependentDecls(g, d); });
   for (auto &block : blocks_) { block.DependentDecls(g, d); }
-}
-
-VerifyResult ScopeNode::VerifyType(Context *ctx) {
-  ASSIGN_OR(return _, auto name_result, name_->VerifyType(ctx));
-
-  auto arg_types =
-      args_.Transform([ctx, this](auto &arg) { return arg->VerifyType(ctx); });
-  // TODO type check
-
-  for (auto &block : blocks_) { block.VerifyType(ctx); }
-
-  // TODO check the scope type makes sense.
-  if (!name_result.const_) {
-    ctx->error_log()->NonConstantScopeName(name_->span);
-    return VerifyResult::Error();
-  }
-
-  auto *scope_lit = backend::EvaluateAs<ScopeLiteral *>(name_.get(), ctx);
-  OverloadSet init_os, done_os;
-
-  auto arg_results =
-      args_.Transform([ctx](std::unique_ptr<Expression> const &arg) {
-        return std::pair{arg.get(), arg->VerifyType(ctx)};
-      });
-
-  auto *mod       = scope_lit->decls_.at(0).mod_;
-  bool swap_bc    = ctx->mod_ != mod;
-  Module *old_mod = std::exchange(ctx->mod_, mod);
-  if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-  base::defer d([&] {
-    ctx->mod_ = old_mod;
-    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-  });
-
-  for (auto &decl : scope_lit->decls_) {
-    if (decl.id_ == "init") {
-      init_os.emplace(&decl,
-                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
-    } else if (decl.id_ == "done") {
-      done_os.emplace(&decl,
-                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
-    }
-  }
-
-  ASSIGN_OR(
-      return _, std::ignore,
-             VerifyDispatch(ExprPtr{this, 0x02}, init_os, arg_results, ctx));
-
-  for (auto &block_node : blocks_) { block_node.stmts_.VerifyType(ctx); }
-
-  return VerifyDispatch(this, done_os, /* TODO */ {}, ctx);
-}
-
-void ScopeNode::ExtractJumps(JumpExprs *rets) const {
-  for (auto &block : blocks_) { block.ExtractJumps(rets); }
 }
 
 ir::Results ScopeNode::EmitIr(Context *ctx) {
@@ -118,7 +56,7 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
       continue;
     } else {
       auto bs = backend::EvaluateAs<ir::BlockSequence>(
-          type::Typed<Expression *>{&decl, type::Block}, ctx);
+          type::Typed<Expression const *>{&decl, type::Block}, ctx);
       ASSERT(bs.size() == 1u);
       name_to_block.emplace(std::piecewise_construct,
                             std::forward_as_tuple(decl.id_),
@@ -160,7 +98,8 @@ ir::Results ScopeNode::EmitIr(Context *ctx) {
   }())
       ->EmitInlineCall(
           args_.Transform([ctx](std::unique_ptr<Expression> const &expr) {
-            return std::pair(expr.get(), expr->EmitIr(ctx));
+            return std::pair<Expression const *, ir::Results>(
+                expr.get(), expr->EmitIr(ctx));
           }),
           block_map, ctx);
 

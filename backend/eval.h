@@ -12,13 +12,14 @@ struct Expression;
 struct Context;
 
 namespace backend {
-ir::Results Evaluate(ast::Expression *expr, Context *ctx);
-ir::Results Evaluate(type::Typed<ast::Expression *> typed_expr, Context *ctx);
-base::untyped_buffer EvaluateToBuffer(type::Typed<ast::Expression *> typed_expr,
-                                      Context *ctx);
+ir::Results Evaluate(ast::Expression const *expr, Context *ctx);
+ir::Results Evaluate(type::Typed<ast::Expression const *> typed_expr,
+                     Context *ctx);
+base::untyped_buffer EvaluateToBuffer(
+    type::Typed<ast::Expression const *> typed_expr, Context *ctx);
 
 template <typename T>
-T EvaluateAs(type::Typed<ast::Expression *> typed_expr, Context *ctx) {
+T EvaluateAs(type::Typed<ast::Expression const *> typed_expr, Context *ctx) {
   static_assert(std::is_trivially_copyable_v<T>);
   if (ctx->num_errors() != 0u) {
     ctx->DumpErrors();
@@ -31,7 +32,7 @@ T EvaluateAs(type::Typed<ast::Expression *> typed_expr, Context *ctx) {
 }
 
 template <typename T>
-T EvaluateAs(ast::Expression *expr, Context *ctx) {
+T EvaluateAs(ast::Expression const *expr, Context *ctx) {
   return EvaluateAs<T>({expr, ctx->type_of(expr)}, ctx);
 }
 

@@ -27,8 +27,12 @@ std::unique_ptr<T> MakeNode(std::string s, ::Context *ctx, core::Scope *scope) {
   std::unique_ptr<ast::Node> stmt = std::move(stmts->content_[0]);
   auto *cast_ptr                  = stmt->if_as<T>();
   if (cast_ptr) {
-    cast_ptr->assign_scope(scope);
-    if (Verify && !cast_ptr->VerifyType(ctx)) { return nullptr; }
+    {
+      ast_visitor::AssignScope visitor;
+      cast_ptr->assign_scope(&visitor, scope);
+    }
+    ast_visitor::VerifyType visitor;
+    if (Verify && !cast_ptr->VerifyType(&visitor, ctx)) { return nullptr; }
     stmt.release();
     return std::unique_ptr<T>{cast_ptr};
 

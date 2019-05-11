@@ -23,7 +23,10 @@ static std::optional<ir::AnyFunc> SpecialFunction(Struct const *s, char const *s
     auto *fn_type = decl.type()->if_as<Function>();
     if (fn_type == nullptr) { continue; }
     if (fn_type->input.front() != ptr_to_s) { continue; }
-    return decl.get()->EmitIr(ctx).get<ir::AnyFunc>(0).val_;
+    return const_cast<ast::Declaration *>(decl.get())
+        ->EmitIr(ctx)
+        .get<ir::AnyFunc>(0)
+        .val_;
   }
   return std::nullopt;
 }
@@ -34,8 +37,9 @@ static ir::AnyFunc CreateAssign(Struct const *s, Context *ctx) {
   Pointer const *pt = Ptr(s);
   ir::AnyFunc fn    = s->mod_->AddFunc(
       Func({pt, pt}, {}),
-      core::FnParams(core::Param{"", Typed<ast::Expression *>{nullptr, pt}},
-                     core::Param{"", Typed<ast::Expression *>{nullptr, pt}}));
+      core::FnParams(
+          core::Param{"", Typed<ast::Expression const *>{nullptr, pt}},
+          core::Param{"", Typed<ast::Expression const *>{nullptr, pt}}));
   CURRENT_FUNC(fn.func()) {
     ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
     auto val                = ir::Reg::Arg(0);
@@ -104,8 +108,8 @@ void Struct::EmitDestroy(ir::Reg reg, Context *ctx) const {
 
     Pointer const *pt = Ptr(this);
     ir::AnyFunc fn    = mod_->AddFunc(
-        Func({pt}, {}),
-        core::FnParams(core::Param{"", Typed<ast::Expression *>{nullptr, pt}}));
+        Func({pt}, {}), core::FnParams(core::Param{
+                            "", Typed<ast::Expression const *>{nullptr, pt}}));
 
     CURRENT_FUNC(fn.func()) {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();

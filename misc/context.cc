@@ -25,7 +25,7 @@ type::Type const *Context::type_of(ast::Expression const *expr) const {
   return nullptr;
 }
 
-ast::VerifyResult const *Context::prior_verification_attempt(
+ast_visitor::VerifyResult const *Context::prior_verification_attempt(
     ast::ExprPtr expr) {
   auto const &map = constants_->second.verify_results_;
   if (auto iter = map.find(expr); iter != map.end()) { return &iter->second; }
@@ -37,20 +37,21 @@ std::pair<ConstantBinding, Module::DependentData> *Context::insert_constants(
   auto *pair = mod_->insert_constants(constant_binding);
   for (auto const &[decl, binding] : constant_binding.keys_) {
     pair->second.verify_results_.emplace(
-        ast::ExprPtr(decl), ast::VerifyResult::Constant(binding.type_));
+        ast::ExprPtr(decl), ast_visitor::VerifyResult::Constant(binding.type_));
   }
   return pair;
 }
 
-void Context::set_addr(ast::Declaration *decl, ir::Reg r) {
+void Context::set_addr(ast::Declaration const *decl, ir::Reg r) {
   constants_->second.addr_[decl] = r;
 }
 
-ir::Reg Context::addr(ast::Declaration *decl) const {
+ir::Reg Context::addr(ast::Declaration const *decl) const {
   return constants_->second.addr_.at(decl);
 }
 
-ast::VerifyResult Context::set_result(ast::ExprPtr expr, ast::VerifyResult r) {
+ast_visitor::VerifyResult Context::set_result(ast::ExprPtr expr,
+                                              ast_visitor::VerifyResult r) {
   constants_->second.verify_results_.emplace(expr, r);
   return r;
 }

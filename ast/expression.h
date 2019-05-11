@@ -20,8 +20,6 @@ struct Expression : public Node {
 
   virtual ~Expression() {}
   virtual std::string to_string(size_t n) const                     = 0;
-  virtual void assign_scope(core::Scope *scope)                     = 0;
-  virtual VerifyResult VerifyType(Context *ctx)                     = 0;
   virtual ir::Results EmitIr(Context *)                             = 0;
   virtual std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
   virtual void EmitCopyInit(type::Typed<ir::Reg> reg, Context *ctx);

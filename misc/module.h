@@ -56,7 +56,7 @@ struct Module {
       std::filesystem::path const &requestor = std::filesystem::path{""});
 
   ir::CompiledFn *AddFunc(type::Function const *fn_type,
-                    core::FnParams<type::Typed<ast::Expression *>> params);
+                    core::FnParams<type::Typed<ast::Expression const *>> params);
   type::Type const *GetType(std::string const &name) const;
   ast::Declaration *GetDecl(std::string const &name) const;
 
@@ -92,7 +92,7 @@ struct Module {
 
   struct DependentData {
     // TODO I'm not sure this needs to be dependent? Or stored at all?
-    absl::flat_hash_map<ast::Declaration *, ir::Reg> addr_;
+    absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;
 
     // TODO probably make these funcs constant.
     absl::node_hash_map<ast::Expression const *, ir::CompiledFn *> ir_funcs_;
@@ -100,7 +100,7 @@ struct Module {
     // TODO future optimization: the bool determining if it's const is not
     // dependent and can therefore be stored more efficiently (though querying
     // for both simultaneously would be more expensive I guess.
-    absl::flat_hash_map<ast::ExprPtr, ast::VerifyResult> verify_results_;
+    absl::flat_hash_map<ast::ExprPtr, ast_visitor::VerifyResult> verify_results_;
 
     absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
     ConstantBinding constants_;

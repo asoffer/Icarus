@@ -12,12 +12,10 @@ struct Identifier : public Expression {
       : Expression(span), token(std::move(token)) {}
   ~Identifier() override {}
 
+#include "ast_visitor/visitors.xmacro.h"
+
   std::string to_string(size_t n) const override { return token; }
-  void assign_scope(core::Scope *scope) override;
 
-  VerifyResult VerifyType(Context *) override;
-
-  void ExtractJumps(JumpExprs *) const override {}
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override {
     g->ids_[token].push_back(d);
@@ -30,7 +28,10 @@ struct Identifier : public Expression {
   std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
 
   std::string token;
-  Declaration *decl_ = nullptr;
+  // TODO determine if mutability here is safe. It's thread-hostile, but maybe
+  // you can make the rules clear enough. Or maybe store it elsewhere, but that
+  // seems like overkill. This should only be set by VerifyType.
+  mutable Declaration const *decl_ = nullptr;
 };
 }  // namespace ast
 

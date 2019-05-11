@@ -48,7 +48,8 @@ struct Function : public Callable {
     for (auto *t : output) { ASSERT(t != nullptr); }
   }
 
-  core::FnParams<type::Typed<ast::Expression *>> AnonymousFnParams() const;
+  core::FnParams<type::Typed<ast::Expression const *>> AnonymousFnParams()
+      const;
 
 #ifdef ICARUS_USE_LLVM
   llvm::FunctionType *llvm_fn(llvm::LLVMContext &ctx) const;

@@ -23,36 +23,38 @@ struct ExprPtr;
 
 struct DispatchTable {
   struct Row {
-    Row(core::FnParams<type::Typed<ast::Expression *>> p,
-        type::Function const *t, std::variant<Expression *, ir::AnyFunc> f)
+    Row(core::FnParams<type::Typed<Expression const *>> p,
+        type::Function const *t,
+        std::variant<Expression const *, ir::AnyFunc> f)
         : params(std::move(p)), type(t), fn(std::move(f)) {}
 
     // In the typed-expression, each expression may be null (if no default value
     // is possible), but the type will always be present.
-    core::FnParams<type::Typed<Expression *>> params;
+    core::FnParams<type::Typed<Expression const *>> params;
     type::Function const *type;
-    std::variant<Expression *, ir::AnyFunc> fn;
+    std::variant<Expression const *, ir::AnyFunc> fn;
   };
 
   static std::pair<DispatchTable, type::Type const *> Make(
-      core::FnArgs<type::Typed<Expression *>> const &args,
+      core::FnArgs<type::Typed<Expression const *>> const &args,
       OverloadSet const &overload_set, Context *ctx);
 
   ir::Results EmitInlineCall(
-      core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
+      core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
       absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
       Context *ctx) const;
   ir::Results EmitCall(
-      core::FnArgs<std::pair<ast::Expression *, ir::Results>> const &args,
+      core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
       Context *ctx, bool is_inline = false) const;
 
   std::vector<Row> bindings_;
   std::vector<type::Type const*> return_types_;
 };
 
-VerifyResult VerifyDispatch(
+ast_visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, OverloadSet const &os,
-    core::FnArgs<std::pair<Expression *, VerifyResult>> const &args,
+    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+        &args,
     Context *ctx);
 
 }  // namespace ast

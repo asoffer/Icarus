@@ -29,26 +29,6 @@ void ArrayLiteral::DependentDecls(DeclDepGraph *g,
   for (auto const &expr : cl_.exprs_) { expr->DependentDecls(g, d); }
 }
 
-VerifyResult ArrayLiteral::VerifyType(Context *ctx) {
-  if (cl_.exprs_.empty()) {
-    return ctx->set_result(this, VerifyResult::Constant(type::EmptyArray));
-  }
-
-  ASSIGN_OR(return VerifyResult::Error(), auto expr_results,
-                   cl_.VerifyWithoutSetting(ctx));
-  VerifyResult result;
-  auto *t      = expr_results.front().type_;
-  result.type_ = type::Arr(expr_results.size(), t);
-  for (auto expr_result : expr_results) {
-    result.const_ &= expr_result.const_;
-    if (expr_result.type_ != t) {
-      ctx->error_log()->InconsistentArrayType(span);
-      return VerifyResult::Error();
-    }
-  }
-  return ctx->set_result(this, result);
-}
-
 ir::Results ArrayLiteral::EmitIr(Context *ctx) {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = ctx->type_of(this);

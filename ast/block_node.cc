@@ -10,25 +10,10 @@ std::string BlockNode::to_string(size_t n) const {
   return ss.str();
 }
 
-void BlockNode::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  name_->assign_scope(scope);
-  block_scope_ = scope->add_child<core::ExecScope>();
-  stmts_.assign_scope(block_scope_.get());
-}
-
 void BlockNode::DependentDecls(DeclDepGraph *g,
                                Declaration *d) const {
   name_->DependentDecls(g, d);
   stmts_.DependentDecls(g, d);
-}
-
-VerifyResult BlockNode::VerifyType(Context *ctx) {
-  stmts_.VerifyType(ctx);
-  return ctx->set_result(this, VerifyResult::Constant(type::Block));
-}
-void BlockNode::ExtractJumps(JumpExprs *rets) const {
-  stmts_.ExtractJumps(rets);
 }
 
 ir::Results BlockNode::EmitIr(Context *ctx) {

@@ -22,17 +22,6 @@ RegisterOr<type::Type const *> Tup(
     std::vector<RegisterOr<type::Type const *>> const &entries);
 }  // namespace ir
 
-namespace {
-bool IsTypeOrTupleOfTypes(type::Type const *t) {
-  if (t == type::Type_) { return true; }
-  if (!t->is<type::Tuple>()) { return false; }
-  auto &entries = t->as<type::Tuple>().entries_;
-  return std::all_of(entries.begin(), entries.end(),
-                     [](type::Type const *ty) { return ty == type::Type_; });
-}
-
-}  // namespace
-
 namespace ast {
 
 std::string Binop::to_string(size_t n) const {
@@ -94,169 +83,10 @@ bool Binop::InferType(type::Type const *t, InferenceState *state) const {
   }
 }
 
-void Binop::assign_scope(core::Scope *scope) {
-  scope_ = scope;
-  lhs->assign_scope(scope);
-  rhs->assign_scope(scope);
-}
-
 void Binop::DependentDecls(DeclDepGraph *g,
                            Declaration *d) const {
   lhs->DependentDecls(g, d);
   rhs->DependentDecls(g, d);
-}
-
-VerifyResult Binop::VerifyType(Context *ctx) {
-  auto lhs_result = lhs->VerifyType(ctx);
-  auto rhs_result = rhs->VerifyType(ctx);
-  if (!lhs_result.ok() || !rhs_result.ok()) { return VerifyResult::Error(); }
-
-  using frontend::Operator;
-  switch (op) {
-    case Operator::Assign: {
-      // TODO if lhs is reserved?
-      if (!type::VerifyAssignment(span, lhs_result.type_, rhs_result.type_,
-                                  ctx)) {
-        return VerifyResult::Error();
-      }
-      return VerifyResult::NonConstant(type::Void());
-    } break;
-    case Operator::XorEq:
-      if (lhs_result.type_ == rhs_result.type_ &&
-          (lhs_result.type_ == type::Bool ||
-           lhs_result.type_->is<type::Flags>())) {
-        return ctx->set_result(this, lhs_result);
-      } else {
-        ctx->error_log()->XorEqNeedsBoolOrFlags(span);
-        return VerifyResult::Error();
-      }
-    case Operator::AndEq:
-      if (lhs_result.type_ == rhs_result.type_ &&
-          (lhs_result.type_ == type::Bool ||
-           lhs_result.type_->is<type::Flags>())) {
-        return ctx->set_result(this, lhs_result);
-      } else {
-        ctx->error_log()->AndEqNeedsBoolOrFlags(span);
-        return VerifyResult::Error();
-      }
-    case Operator::OrEq:
-      if (lhs_result.type_ == rhs_result.type_ &&
-          (lhs_result.type_ == type::Bool ||
-           lhs_result.type_->is<type::Flags>())) {
-        return ctx->set_result(this, lhs_result);
-      } else {
-        ctx->error_log()->OrEqNeedsBoolOrFlags(span);
-        return VerifyResult::Error();
-      }
-
-#define CASE(OpName, symbol, return_type)                                      \
-  case Operator::OpName: {                                                     \
-    bool is_const = lhs_result.const_ && rhs_result.const_;                    \
-    if (type::IsNumeric(lhs_result.type_) &&                                   \
-        type::IsNumeric(rhs_result.type_)) {                                   \
-      if (lhs_result.type_ == rhs_result.type_) {                              \
-        return ctx->set_result(this, VerifyResult((return_type), is_const));   \
-      } else {                                                                 \
-        ctx->error_log()->MismatchedBinopArithmeticType(                       \
-            lhs_result.type_, rhs_result.type_, span);                         \
-        return VerifyResult::Error();                                          \
-      }                                                                        \
-    } else {                                                                   \
-      OverloadSet os(scope_, symbol, ctx);                                     \
-      os.add_adl(symbol, lhs_result.type_);                                    \
-      os.add_adl(symbol, rhs_result.type_);                                    \
-      return VerifyDispatch(                                                   \
-          this, os,                                                            \
-          core::FnArgs<std::pair<Expression *, VerifyResult>>(                 \
-              {std::pair{lhs.get(), lhs_result},                               \
-               std::pair{rhs.get(), rhs_result}},                              \
-              {}),                                                             \
-          ctx);                                                                \
-    }                                                                          \
-  } break;
-      CASE(Sub, "-", lhs_result.type_);
-      CASE(Mul, "*", lhs_result.type_);
-      CASE(Div, "/", lhs_result.type_);
-      CASE(Mod, "%", lhs_result.type_);
-      CASE(SubEq, "-=", type::Void());
-      CASE(MulEq, "*=", type::Void());
-      CASE(DivEq, "/=", type::Void());
-      CASE(ModEq, "%=", type::Void());
-#undef CASE
-    case Operator::Add: {
-      bool is_const = lhs_result.const_ && rhs_result.const_;
-      if (type::IsNumeric(lhs_result.type_) &&
-          type::IsNumeric(rhs_result.type_)) {
-        if (lhs_result.type_ == rhs_result.type_) {
-          return ctx->set_result(this, VerifyResult(lhs_result.type_, is_const));
-        } else {
-          ctx->error_log()->MismatchedBinopArithmeticType(
-              lhs_result.type_, rhs_result.type_, span);
-          return VerifyResult::Error();
-        }
-      } else {
-        OverloadSet os(scope_, "+", ctx);
-        os.add_adl("+", lhs_result.type_);
-        os.add_adl("+", rhs_result.type_);
-        return VerifyDispatch(
-            this, os,
-            core::FnArgs<std::pair<Expression *, VerifyResult>>(
-                {std::pair{lhs.get(), lhs_result},
-                 std::pair{rhs.get(), rhs_result}},
-                {}),
-            ctx);
-      }
-    } break;
-    case Operator::AddEq: {
-      bool is_const = lhs_result.const_ && rhs_result.const_;
-      if (type::IsNumeric(lhs_result.type_) &&
-          type::IsNumeric(rhs_result.type_)) {
-        if (lhs_result.type_ == rhs_result.type_) {
-          return ctx->set_result(this, VerifyResult(type::Void(), is_const));
-        } else {
-          ctx->error_log()->MismatchedBinopArithmeticType(
-              lhs_result.type_, rhs_result.type_, span);
-          return VerifyResult::Error();
-        }
-      } else {
-        OverloadSet os(scope_, "+=", ctx);
-        os.add_adl("+=", lhs_result.type_);
-        os.add_adl("+=", rhs_result.type_);
-        return VerifyDispatch(
-            this, os,
-            core::FnArgs<std::pair<Expression *, VerifyResult>>(
-                {std::pair{lhs.get(), lhs_result},
-                 std::pair{rhs.get(), rhs_result}},
-                {}),
-            ctx);
-      }
-    } break;
-    case Operator::Arrow: {
-      type::Type const *t = type::Type_;
-      if (!IsTypeOrTupleOfTypes(lhs_result.type_)) {
-        t = nullptr;
-        ctx->error_log()->NonTypeFunctionInput(span);
-      }
-
-      if (!IsTypeOrTupleOfTypes(rhs_result.type_)) {
-        t = nullptr;
-        ctx->error_log()->NonTypeFunctionOutput(span);
-      }
-
-      if (t == nullptr) { return VerifyResult::Error(); }
-
-      return ctx->set_result(
-          this,
-          VerifyResult(type::Type_, lhs_result.const_ && rhs_result.const_));
-    }
-    default: UNREACHABLE();
-  }
-  UNREACHABLE(static_cast<int>(op));
-}
-
-void Binop::ExtractJumps(JumpExprs *rets) const {
-  lhs->ExtractJumps(rets);
-  rhs->ExtractJumps(rets);
 }
 
 ir::Results Binop::EmitIr(Context *ctx) {
@@ -266,7 +96,7 @@ ir::Results Binop::EmitIr(Context *ctx) {
   if (auto *dispatch_table = ctx->dispatch_table(this)) {
     // TODO struct is not exactly right. we really mean user-defined
     return dispatch_table->EmitCall(
-        core::FnArgs<std::pair<Expression *, ir::Results>>(
+        core::FnArgs<std::pair<Expression const *, ir::Results>>(
             {std::pair(lhs.get(), lhs->EmitIr(ctx)),
              std::pair(rhs.get(), rhs->EmitIr(ctx))},
             {}),

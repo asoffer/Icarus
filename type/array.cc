@@ -71,8 +71,10 @@ ir::Results Array::Compare(Array const *lhs_type, ir::Results const &lhs_ir,
     auto *fn = ctx->mod_->AddFunc(
         Func({Ptr(lhs_type), Ptr(rhs_type)}, {Bool}),
         core::FnParams(
-            core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(lhs_type)}},
-            core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(rhs_type)}}));
+            core::Param{"",
+                        Typed<ast::Expression const *>{nullptr, Ptr(lhs_type)}},
+            core::Param{
+                "", Typed<ast::Expression const *>{nullptr, Ptr(rhs_type)}}));
 
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
@@ -157,8 +159,8 @@ static ir::CompiledFn *CreateAssign(Array const *a, Context *ctx) {
   auto *fn                = ctx->mod_->AddFunc(
       Func({ptr_type, ptr_type}, {}),
       core::FnParams(
-          core::Param{"", Typed<ast::Expression *>{nullptr, ptr_type}},
-          core::Param{"", Typed<ast::Expression *>{nullptr, ptr_type}}));
+          core::Param{"", Typed<ast::Expression const *>{nullptr, ptr_type}},
+          core::Param{"", Typed<ast::Expression const *>{nullptr, ptr_type}}));
   CURRENT_FUNC(fn) {
     ir::BasicBlock::Current = fn->entry();
     auto val                = ir::Reg::Arg(0);
@@ -243,8 +245,8 @@ void Array::EmitInit(ir::Reg id_reg, Context *ctx) const {
     // TODO special function?
     auto *fn = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),
-        core::FnParams(
-            core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
+        core::FnParams(core::Param{
+            "", Typed<ast::Expression const *>{nullptr, Ptr(this)}}));
     OnEachElement(this, fn,
                   [this, ctx](ir::Reg r) { data_type->EmitInit(r, ctx); });
     return fn;
@@ -259,8 +261,8 @@ void Array::EmitDestroy(ir::Reg reg, Context *ctx) const {
     // TODO special function?
     auto *fn = ctx->mod_->AddFunc(
         Func({Ptr(this)}, {}),
-        core::FnParams(
-            core::Param{"", Typed<ast::Expression *>{nullptr, Ptr(this)}}));
+        core::FnParams(core::Param{
+            "", Typed<ast::Expression const *>{nullptr, Ptr(this)}}));
 
     OnEachElement(this, fn, [this, ctx](ir::Reg r) {
       data_type->EmitDestroy(r, ctx);
@@ -275,8 +277,9 @@ void Array::EmitRepr(ir::Results const &val, Context *ctx) const {
   repr_func_.init([this, ctx]() {
     // TODO special function?
     ir::CompiledFn *fn = ctx->mod_->AddFunc(
-        Func({this}, {}), core::FnParams(core::Param{
-                              "", Typed<ast::Expression *>{nullptr, this}}));
+        Func({this}, {}),
+        core::FnParams(
+            core::Param{"", Typed<ast::Expression const *>{nullptr, this}}));
 
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();

@@ -13,17 +13,14 @@ struct CommaList : public Expression {
   CommaList &operator=(CommaList const &) noexcept = default;
   CommaList &operator=(CommaList &&) noexcept = default;
 
-  void assign_scope(core::Scope *scope) override;
+#include "ast_visitor/visitors.xmacro.h"
+
   std::string to_string(size_t n) const override;
-  VerifyResult VerifyType(Context *) override;
-  void ExtractJumps(JumpExprs *) const override;
   void DependentDecls(DeclDepGraph *g,
                       Declaration *d) const override;
   bool InferType(type::Type const *t, InferenceState *state) const override {
     return false;
   }
-
-  std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(Context *ctx);
 
   bool needs_expansion() const override { return !parenthesized_; }
 
