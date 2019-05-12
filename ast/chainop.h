@@ -3,18 +3,17 @@
 
 #include <memory>
 #include <vector>
-#include "ast/literal.h"
+
+#include "ast/expression.h"
 #include "frontend/operators.h"
 
 namespace ast {
-struct ChainOp : public Literal {
+struct ChainOp : public Expression {
   ~ChainOp() override {}
 
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override;
-
-  ir::Results EmitIr(Context *) override;
 
   std::vector<frontend::Operator> ops;
   std::vector<std::unique_ptr<Expression>> exprs;

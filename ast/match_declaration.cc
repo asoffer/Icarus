@@ -9,10 +9,4 @@ std::string MatchDeclaration::to_string(size_t n) const {
   return type_expr->to_string(n) + "`" + id_;
 }
 
-ir::Results MatchDeclaration::EmitIr(Context *ctx) {
-  auto results = ctx->constants_->first.get_constant(this);
-  if (!results.empty()) { return results; }
-  return ir::Results{
-      backend::EvaluateAs<type::Interface const *>(type_expr.get(), ctx)};
-}
 }  // namespace ast

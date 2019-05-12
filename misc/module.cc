@@ -122,8 +122,10 @@ static Module *CompileModule(Module *mod) {
   }
 
   Context ctx(mod);
-  ast_visitor::VerifyType visitor;
-  file_stmts->VerifyType(&visitor, &ctx);
+  {
+    ast_visitor::VerifyType visitor;
+    file_stmts->VerifyType(&visitor, &ctx);
+  }
   mod->CompleteAllDeferredWork();
 
   if (ctx.num_errors() > 0) {
@@ -133,7 +135,10 @@ static Module *CompileModule(Module *mod) {
     return mod;
   }
 
-  file_stmts->EmitIr(&ctx);
+  {
+    ast_visitor::EmitIr visitor;
+    file_stmts->EmitIr(&visitor, &ctx);
+  }
   mod->CompleteAllDeferredWork();
 
   if (ctx.num_errors() > 0) {

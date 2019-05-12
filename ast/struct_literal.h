@@ -3,7 +3,7 @@
 
 #include "ast/comma_list.h"
 #include "ast/declaration.h"
-#include "ast/literal.h"
+#include "ast/expression.h"
 #include "core/scope.h"
 
 namespace type {
@@ -11,7 +11,7 @@ struct Struct;
 }  // namespace type
 
 namespace ast {
-struct StructLiteral : public Literal {
+struct StructLiteral : public Expression {
   StructLiteral()                          = default;
   StructLiteral(StructLiteral &&) noexcept = default;
   ~StructLiteral() override {}
@@ -21,10 +21,8 @@ struct StructLiteral : public Literal {
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override;
-    
-  void CompleteBody(Context *ctx);
 
-  ir::Results EmitIr(Context *) override;
+  void CompleteBody(Context *ctx) const;
 
   std::unique_ptr<core::DeclScope> type_scope;
   std::vector<Declaration> fields_, args_;

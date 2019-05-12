@@ -36,7 +36,7 @@ void Destroy(type::Type const *t, Reg r) {
   cmd.special1_ = {t, r};
 }
 
-void VerifyType(ast::Node *node, Reg ctx) {
+void VerifyType(ast::Node const *node, Reg ctx) {
   auto &cmd = MakeCmd(nullptr, Op::VerifyType);
   cmd.ast_  = {node, ctx};
 }
@@ -47,7 +47,7 @@ Reg CreateContext(Module *mod) {
   return cmd.result;
 }
 
-void AddBoundConstant(Reg ctx, ast::Declaration *decl,
+void AddBoundConstant(Reg ctx, ast::Declaration const *decl,
                       RegisterOr<type::Type const *> type) {
   auto &cmd   = MakeCmd(nullptr, Op::AddBoundConstant);
   cmd.add_bc_ = {ctx, decl, type};
@@ -58,7 +58,7 @@ void DestroyContext(Reg r) {
   cmd.reg_  = r;
 }
 
-Reg EvaluateAsType(ast::Node *node, Reg ctx) {
+Reg EvaluateAsType(ast::Node const *node, Reg ctx) {
   auto &cmd = MakeCmd(type::Type_, Op::EvaluateAsType);
   cmd.ast_  = {node, ctx};
   return cmd.result;
@@ -342,7 +342,7 @@ TypedRegister<type::Interface const *> CreateInterface(
   return cmd.result;
 }
 
-Reg ArgumentCache(ast::StructLiteral *sl) {
+Reg ArgumentCache(ast::StructLiteral const *sl) {
   auto &cmd = MakeCmd(type::Ptr(type::Type_), Op::ArgumentCache);
   cmd.sl_   = sl;
   return cmd.result;

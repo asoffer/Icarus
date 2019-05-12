@@ -20,11 +20,6 @@ struct Declaration : public Expression {
 
   std::string to_string(size_t n) const override;
 
-  ir::Results EmitIr(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override {
-    UNREACHABLE(this);
-  }
-
   std::string id_;
   std::unique_ptr<Expression> type_expr, init_val;
 

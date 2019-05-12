@@ -14,8 +14,6 @@ struct RepeatedUnop : public Node {
 
   std::string to_string(size_t n) const override;
 
-  ir::Results EmitIr(Context *) override;
-
   frontend::Operator op_;
   CommaList args_;
 };

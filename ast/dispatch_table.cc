@@ -574,8 +574,8 @@ static void EmitOneCall(
     auto const &param = row.params.at(i);
     auto *arg         = args.at_or_null(std::string{param.name});
     if (!arg && (param.flags & core::HAS_DEFAULT)) {
-      arg_results.append(
-          const_cast<Expression *>(param.value.get())->EmitIr(ctx));
+      ast_visitor::EmitIr visitor;
+      arg_results.append(param.value.get()->EmitIr(&visitor, ctx));
     } else {
       auto const &[expr, results] = *arg;
       arg_results.append(param.value.type()->PrepareArgument(ctx->type_of(expr),

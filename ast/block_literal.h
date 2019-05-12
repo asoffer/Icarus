@@ -1,19 +1,17 @@
 #ifndef ICARUS_AST_BLOCK_LITERAL_H
 #define ICARUS_AST_BLOCK_LITERAL_H
 
+#include "ast/expression.h"
 #include "ast/declaration.h"
-#include "ast/literal.h"
 
 namespace ast {
-struct BlockLiteral : public Literal {
+struct BlockLiteral : public Expression {
   BlockLiteral(bool required);
   ~BlockLiteral() override {}
 
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override;
-
-  ir::Results EmitIr(Context *ctx);
 
   std::vector<Declaration> before_, after_;
   std::unique_ptr<core::Scope> body_scope_;

@@ -16,10 +16,7 @@ struct Statements : public Node {
 
   std::string to_string(size_t n) const override;
 
-  ir::Results EmitIr(Context *) override;
-
-  inline size_t size() const { return content_.size(); }
-
+  size_t size() const { return content_.size(); }
   void append(std::unique_ptr<Node> &&node);
 
   std::vector<std::unique_ptr<Node>> content_;

@@ -2,20 +2,16 @@
 #define ICARUS_AST_ARRAY_LITERAL_H
 
 #include "ast/comma_list.h"
-#include "ast/literal.h"
+#include "ast/expression.h"
 
 namespace ast {
-struct ArrayLiteral : public Literal {
-  ArrayLiteral(TextSpan const &span) : Literal(span) {}
+struct ArrayLiteral : public Expression {
+  ArrayLiteral(TextSpan const &span) : Expression(span) {}
   ~ArrayLiteral() override {}
 
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override;
-
-  ir::Results EmitIr(Context *ctx) override;
-  void EmitMoveInit(type::Typed<ir::Reg> reg, Context *ctx) override;
-  void EmitCopyInit(type::Typed<ir::Reg> reg, Context *ctx) override;
 
   CommaList cl_;
 };

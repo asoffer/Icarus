@@ -2,11 +2,12 @@
 #define ICARUS_AST_FUNCTION_LITERAL_H
 
 #include <vector>
+
 #include "ast/declaration.h"
-#include "core/fn_params.h"
+#include "ast/expression.h"
 #include "ast/identifier.h"
-#include "ast/literal.h"
 #include "ast/statements.h"
+#include "core/fn_params.h"
 #include "core/scope.h"
 
 struct Module;
@@ -17,7 +18,7 @@ struct Func;
 
 namespace ast {
 
-struct FunctionLiteral : public Literal {
+struct FunctionLiteral : public Expression {
   // Represents a function with all constants bound to some value.
   FunctionLiteral() {}
   FunctionLiteral(FunctionLiteral &&) noexcept = default;
@@ -32,9 +33,7 @@ struct FunctionLiteral : public Literal {
   ast_visitor::VerifyResult VerifyBody(ast_visitor::VerifyType const *,
                                        Context *) const;
 
-  ir::Results EmitIr(Context *) override;
-
-  void CompleteBody(Context *ctx);
+  void CompleteBody(ast_visitor::EmitIr const *visitor, Context *ctx) const;
 
   std::unique_ptr<core::FnScope> fn_scope_;
 

@@ -4,19 +4,17 @@
 #include <memory>
 #include <optional>
 
-#include "ast/literal.h"
+#include "ast/expression.h"
 #include "misc/module.h"
 
 namespace ast {
-struct Import : public Literal {
+struct Import : public Expression {
   Import(std::unique_ptr<Expression> expr) : operand_(std::move(expr)) {}
   ~Import() override {}
 
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override;
-
-  ir::Results EmitIr(Context *) override;
 
   // TODO optimization: if the operand_ is a string literal, schedule it
   // immediately.

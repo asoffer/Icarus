@@ -22,7 +22,6 @@
 #include "ast/import.h"
 #include "ast/index.h"
 #include "ast/interface.h"
-#include "ast/literal.h"
 #include "ast/match_declaration.h"
 #include "ast/node.h"
 #include "ast/overload_set.h"

@@ -27,7 +27,8 @@ static void ReplEval(ast::Expression *expr) {
     Context ctx(static_cast<Module *>(nullptr));
 
     // TODO support multiple values computed simultaneously?
-    auto expr_val = expr->EmitIr(&ctx);
+    ast_visitor::EmitIr visitor;
+    auto expr_val = expr->EmitIr(&visitor, &ctx);
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
       return;
@@ -68,7 +69,11 @@ repl_start:;
           ast_visitor::VerifyType visitor;
           decl->VerifyType(&visitor, &ctx);
         }
-        decl->EmitIr(&ctx);
+
+        {
+          ast_visitor::EmitIr visitor;
+          decl->EmitIr(&visitor, &ctx);
+        }
         if (ctx.num_errors() != 0) {
           ctx.DumpErrors();
           goto repl_start;

@@ -11,10 +11,4 @@ std::string ArrayType::to_string(size_t n) const {
   return ss.str();
 }
 
-ir::Results ArrayType::EmitIr(Context *ctx) {
-  return ir::Results{
-      ir::Array(length_->EmitIr(ctx).get<int64_t>(0),
-                data_type_->EmitIr(ctx).get<type::Type const *>(0))};
-}
-
 }  // namespace ast

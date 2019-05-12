@@ -1,19 +1,17 @@
 #ifndef ICARUS_AST_SWITCH_H
 #define ICARUS_AST_SWITCH_H
 
-#include "ast/literal.h"
+#include "ast/expression.h"
 
 namespace ast {
 // TODO consider separating this into two classes given that we know when we
 // parse if it has parens or not.
-struct Switch : public Literal {
+struct Switch : public Expression {
   ~Switch() override {}
 
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override;
-
-  ir::Results EmitIr(Context *) override;
 
   std::unique_ptr<Expression> expr_;
   std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
@@ -30,8 +28,6 @@ struct SwitchWhen : public Node {
   std::string to_string(size_t n) const override {
     return body->to_string(n) + " when " + cond->to_string(n);
   }
-
-  ir::Results EmitIr(Context *) override { UNREACHABLE(); }
 
   std::unique_ptr<Node> body;
   std::unique_ptr<Expression> cond;

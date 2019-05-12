@@ -212,45 +212,8 @@ ast_visitor::VerifyResult FunctionLiteral::VerifyTypeConcrete(
   }
 }
 
-ir::Results FunctionLiteral::EmitIr(Context *ctx) {
-  for (auto const &param : inputs_) {
-    auto *p = param.value.get();
-    if (p->const_ && !ctx->constants_->first.contains(p)) {
-      return ir::Results{this};
-    }
-
-    for (auto *dep : param_dep_graph_.sink_deps(param.value.get())) {
-      if (!ctx->constants_->first.contains(dep)) { return ir::Results{this}; }
-    }
-  }
-
-  // TODO Use correct constants
-  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[this];
-  if (!ir_func) {
-    std::function<void()> *work_item_ptr = nullptr;
-    work_item_ptr                        = &ctx->mod_->deferred_work_.emplace(
-        [constants{ctx->constants_}, this, mod{ctx->mod_}]() mutable {
-          Context ctx(mod);
-          ctx.constants_ = constants;
-          CompleteBody(&ctx);
-        });
-
-    auto *fn_type = &ctx->type_of(this)->as<type::Function>();
-
-    ir_func = ctx->mod_->AddFunc(
-        fn_type,
-        inputs_.Transform(
-            [fn_type, i = 0](std::unique_ptr<Declaration> const &e) mutable {
-              return type::Typed<Expression const *>(e->init_val.get(),
-                                                     fn_type->input.at(i++));
-            }));
-    if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
-  }
-
-  return ir::Results{ir_func};
-}
-
-void FunctionLiteral::CompleteBody(Context *ctx) {
+void FunctionLiteral::CompleteBody(ast_visitor::EmitIr const *visitor,
+                                   Context *ctx) const {
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
@@ -284,11 +247,11 @@ void FunctionLiteral::CompleteBody(Context *ctx) {
         out_decl_type->EmitInit(alloc, ctx);
       } else {
         out_decl_type->EmitCopyAssign(
-            out_decl_type, out_decl->init_val->EmitIr(ctx), alloc, ctx);
+            out_decl_type, out_decl->init_val->EmitIr(visitor, ctx), alloc, ctx);
       }
     }
 
-    statements_.EmitIr(ctx);
+    statements_.EmitIr(visitor, ctx);
 
     fn_scope_->MakeAllDestructions(ctx);
 

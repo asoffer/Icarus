@@ -48,7 +48,7 @@ struct Graph {
     }
   }
 
-  absl::flat_hash_set<T> sink_deps(T const& t) {
+  absl::flat_hash_set<T> sink_deps(T const& t) const {
     absl::flat_hash_set<T> results;
     insert_sink_deps(t, &results);
     return results;
@@ -57,7 +57,7 @@ struct Graph {
   size_t num_nodes() const { return adj_lists_.size(); }
 
  private:
-  void insert_sink_deps(T const& t, absl::flat_hash_set<T>* results) {
+  void insert_sink_deps(T const& t, absl::flat_hash_set<T>* results) const {
     for (auto const& n : adj_lists_.at(t)) {
       if (adj_lists_.at(n).empty()) {
         results->insert(n);

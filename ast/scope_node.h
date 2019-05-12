@@ -18,9 +18,6 @@ struct ScopeNode : public Expression {
 
   std::string to_string(size_t n) const override;
 
-  ir::Results EmitIr(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
-
   std::unique_ptr<Expression> name_;
   core::FnArgs<std::unique_ptr<Expression>> args_;
   std::vector<BlockNode> blocks_;

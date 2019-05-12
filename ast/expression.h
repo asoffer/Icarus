@@ -3,9 +3,7 @@
 
 #include "ast/hashtag.h"
 #include "ast/node.h"
-#include "ir/addr.h"
 #include "ir/register.h"
-#include "type/typed_value.h"
 #include "type/util.h"
 
 namespace ast {
@@ -19,11 +17,7 @@ struct Expression : public Node {
   Expression &operator=(Expression const &) noexcept = default;
 
   virtual ~Expression() {}
-  virtual std::string to_string(size_t n) const                     = 0;
-  virtual ir::Results EmitIr(Context *)                             = 0;
-  virtual std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) = 0;
-  virtual void EmitCopyInit(type::Typed<ir::Reg> reg, Context *ctx);
-  virtual void EmitMoveInit(type::Typed<ir::Reg> reg, Context *ctx);
+  virtual std::string to_string(size_t n) const = 0;
 
   virtual bool needs_expansion() const { return false; }
   std::vector<Hashtag> hashtags_;

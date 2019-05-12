@@ -17,8 +17,4 @@ std::string ScopeLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-ir::Results ScopeLiteral::EmitIr(Context *ctx) {
-  return ir::Results{this};
-}
-
 }  // namespace ast

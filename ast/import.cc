@@ -1,6 +1,7 @@
 #include "ast/import.h"
 
 #include <filesystem>
+
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "base/guarded.h"
@@ -11,7 +12,5 @@ namespace ast {
 std::string Import::to_string(size_t n) const {
   return "import " + operand_->to_string(n);
 }
-ir::Results Import::EmitIr(Context *ctx) { return ir::Results{module_.get()}; }
-
 
 }  // namespace ast

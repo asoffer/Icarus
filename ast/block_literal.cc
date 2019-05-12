@@ -22,10 +22,4 @@ std::string BlockLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-ir::Results BlockLiteral::EmitIr(Context *ctx) {
-  ir::BlockSequence seq;
-  seq.append(ir::Block(this));
-  return ir::Results{seq};
-}
-
 }  // namespace ast

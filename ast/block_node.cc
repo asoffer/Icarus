@@ -10,14 +10,4 @@ std::string BlockNode::to_string(size_t n) const {
   return ss.str();
 }
 
-ir::Results BlockNode::EmitIr(Context *ctx) {
-  stmts_.EmitIr(ctx);
-  block_scope_->MakeAllDestructions(ctx);
-  return ir::Results{};
-}
-
-std::vector<ir::RegisterOr<ir::Addr>> BlockNode::EmitLVal(Context *) {
-  UNREACHABLE();
-}
-
 }  // namespace ast

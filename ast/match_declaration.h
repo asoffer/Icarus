@@ -11,9 +11,6 @@ struct MatchDeclaration : public Declaration {
   ~MatchDeclaration() override {}
 
   std::string to_string(size_t n) const override;
-
-
-  ir::Results EmitIr(Context *) override;
 };
 }  // namespace ast
 

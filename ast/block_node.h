@@ -18,9 +18,6 @@ struct BlockNode : public Expression {
 
   std::string to_string(size_t n) const override;
 
-  ir::Results EmitIr(Context *ctx) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
-
   std::unique_ptr<Expression> name_;
   Statements stmts_;
   std::unique_ptr<core::ExecScope> block_scope_;

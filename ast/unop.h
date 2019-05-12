@@ -12,11 +12,6 @@ struct Unop : public Expression {
 
   std::string to_string(size_t n) const override;
 
-  ir::Results EmitIr(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
-  void EmitMoveInit(type::Typed<ir::Reg> reg, Context *ctx) override;
-  void EmitCopyInit(type::Typed<ir::Reg> reg, Context *ctx) override;
-
   bool needs_expansion() const override {
     return !parenthesized_ && op == frontend::Operator::Expand;
   }

@@ -15,5 +15,4 @@ std::string StructType::to_string(size_t n) const {
   return ss.str();
 }
 
-ir::Results StructType::EmitIr(Context *ctx) { NOT_YET(); }
 }  // namespace ast

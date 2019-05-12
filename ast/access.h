@@ -13,9 +13,6 @@ struct Access : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  ir::Results EmitIr(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
-
   std::string member_name;
   std::unique_ptr<Expression> operand;
 };

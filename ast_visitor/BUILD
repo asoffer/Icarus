@@ -9,6 +9,7 @@ cc_lib(
         ":assign_scope",
         ":dependent_decls",
         ":extract_jumps",
+        ":emit_ir",
         ":verify_type",
     ],
 )
@@ -19,6 +20,10 @@ cc_lib(
     deps = [
         ":assign_scope-impl",
         ":dependent_decls-impl",
+        ":emit_ir_copy_init",
+        ":emit_ir_move_init",
+        ":emit_ir_ref",
+        ":emit_ir_val",
         ":extract_jumps-impl",
         ":verify_type-impl",
     ],
@@ -42,6 +47,64 @@ cc_target(
         "//base:graph",
     ],
     impl_deps = ["//ast"],
+)
+
+cc_lib(
+    name = "emit_ir",
+    hdrs = ["emit_ir.h"],
+    deps = [
+        "//ast:ast-fwd",
+        "//ir:addr",
+        "//ir:register",
+    ],
+)
+
+cc_lib(
+    name = "emit_ir_copy_init",
+    srcs = ["emit_ir_copy_init.cc"],
+    deps = [
+        ":emit_ir",
+        "//ast",
+        "//ir:cmd",
+    ],
+)
+
+cc_lib(
+    name = "emit_ir_move_init",
+    srcs = ["emit_ir_move_init.cc"],
+    deps = [
+        ":emit_ir",
+        "//ast",
+        "//ir:cmd",
+    ],
+)
+
+cc_lib(
+    name = "emit_ir_ref",
+    srcs = ["emit_ir_ref.cc"],
+    deps = [
+        ":emit_ir",
+        "//ast",
+        "//backend:eval",
+        "//ir:addr",
+        "//ir:cmd",
+        "//ir:register",
+        "//ir:str",
+    ],
+)
+
+cc_lib(
+    name = "emit_ir_val",
+    srcs = ["emit_ir_val.cc"],
+    deps = [
+        ":emit_ir",
+        "//ast",
+        "//backend:eval",
+        "//ir:cmd",
+        "//ir:components",
+        "//ir:phi",
+        "//ir:results",
+    ],
 )
 
 cc_target(

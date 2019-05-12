@@ -26,7 +26,8 @@ static ir::CompiledFn ExprFn(type::Typed<ast::Expression const *> typed_expr,
         ir::CompiledFn::Current->AddBlock();
 
     ASSERT(ctx != nullptr);
-    auto vals = const_cast<ast::Expression *>(typed_expr.get())->EmitIr(ctx);
+    ast_visitor::EmitIr visitor;
+    auto vals = typed_expr.get()->EmitIr(&visitor, ctx);
     // TODO wrap this up into SetRet(vector)
     std::vector<type::Type const *> extracted_types;
     if (auto *tup = typed_expr.type()->if_as<type::Tuple>()) {

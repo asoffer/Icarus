@@ -3,7 +3,7 @@
 
 #include <sstream>
 
-#include "ast/literal.h"
+#include "ast/expression.h"
 #include "ir/block.h"
 #include "misc/context.h"
 #include "misc/module.h"
@@ -11,10 +11,10 @@
 struct Context;
 
 namespace ast {
-struct Terminal : public Literal {
+struct Terminal : public Expression {
   Terminal() = default;
   Terminal(const TextSpan &span, ir::Results results, type::Type const *t)
-      : Literal(span), results_(std::move(results)), type_(t) {}
+      : Expression(span), results_(std::move(results)), type_(t) {}
   ~Terminal() override {}
 
 #include "ast_visitor/visitors.xmacro.h"
@@ -47,16 +47,6 @@ struct Terminal : public Literal {
     }
     return "<<terminal: " + type_->to_string() + ">>";
   }
-
-  ir::Results EmitIr(Context *ctx) override {
-    if (type_ == type::Block) {
-      ir::BlockSequence seq;
-      seq.append(results_.get<ir::Block>(0).val_);
-      return ir::Results{seq};
-    }
-
-    return results_;
-  };
 
   ir::Results results_;
   type::Type const *type_;

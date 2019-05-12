@@ -207,4 +207,3 @@ void AssignScope::operator()(ast::Unop *node, core::Scope *scope) {
 }
 
 }  // namespace ast_visitor
-

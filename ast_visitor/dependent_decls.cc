@@ -1,0 +1,162 @@
+#include "ast_visitor/dependent_decls.h"
+
+#include "ast/ast.h"
+
+namespace ast_visitor {
+
+void DependentDecls::operator()(ast::Access const *node,
+                                ast::Declaration const *d) {
+  node->operand->DependentDecls(this, d);
+}
+
+void DependentDecls::operator()(ast::ArrayLiteral const *node,
+                                ast::Declaration const *d) {
+  for (auto const &expr : node->cl_.exprs_) { expr->DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::ArrayType const *node,
+                                ast::Declaration const *d) {
+  node->length_->DependentDecls(this, d);
+  node->data_type_->DependentDecls(this, d);
+}
+
+void DependentDecls::operator()(ast::Binop const *node,
+                                ast::Declaration const *d) {
+  node->lhs->DependentDecls(this, d);
+  node->rhs->DependentDecls(this, d);
+}
+
+void DependentDecls::operator()(ast::BlockLiteral const *node,
+                                ast::Declaration const *d) {
+  for (auto const &b : node->before_) { b.DependentDecls(this, d); }
+  for (auto const &a : node->after_) { a.DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::BlockNode const *node,
+                                ast::Declaration const *d) {
+  node->name_->DependentDecls(this, d);
+  node->stmts_.DependentDecls(this, d);
+}
+
+void DependentDecls::operator()(ast::BuiltinFn const *node,
+                                ast::Declaration const *d) {}
+
+void DependentDecls::operator()(ast::Call const *node,
+                                ast::Declaration const *d) {
+  node->fn_->DependentDecls(this, d);
+  node->args_.Apply(
+      [this, d](auto const &expr) { expr->DependentDecls(this, d); });
+}
+
+void DependentDecls::operator()(ast::Cast const *node,
+                                ast::Declaration const *d) {
+  node->expr_->DependentDecls(this, d);
+  node->type_->DependentDecls(this, d);
+}
+
+void DependentDecls::operator()(ast::ChainOp const *node,
+                                ast::Declaration const *d) {
+  for (auto const &expr : node->exprs) { expr->DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::CommaList const *node,
+                                ast::Declaration const *d) {
+  for (auto const &expr : node->exprs_) { expr->DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::Declaration const *node,
+                                ast::Declaration const *d) {
+  decl_graph_.graph_.add_edge(d, node);
+  if (node->type_expr) { node->type_expr->DependentDecls(this, node); }
+  if (node->init_val) { node->init_val->DependentDecls(this, node); }
+}
+
+void DependentDecls::operator()(ast::EnumLiteral const *node,
+                                ast::Declaration const *d) {
+  for (auto const &elem : node->elems_) { elem->DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::FunctionLiteral const *node,
+                                ast::Declaration const *d) {
+  for (auto const &in : node->inputs_) { in.value->DependentDecls(this, d); }
+  for (auto const &out : node->outputs_) { out->DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::Identifier const *node,
+                                ast::Declaration const *d) {
+  decl_graph_.ids_[node->token].push_back(d);
+}
+
+void DependentDecls::operator()(ast::Import const *node,
+                                ast::Declaration const *d) {
+  node->operand_->DependentDecls(this, d);
+}
+
+void DependentDecls::operator()(ast::Index const *node,
+                                ast::Declaration const *d) {
+  node->lhs_->DependentDecls(this, d);
+  node->rhs_->DependentDecls(this, d);
+}
+
+void DependentDecls::operator()(ast::Interface const *node,
+                                ast::Declaration const *d) {
+  NOT_YET();
+}
+
+void DependentDecls::operator()(ast::RepeatedUnop const *node,
+                                ast::Declaration const *d) {
+  node->args_.DependentDecls(this, d);
+}
+
+void DependentDecls::operator()(ast::ScopeLiteral const *node,
+                                ast::Declaration const *d) {
+  for (auto &decl : node->decls_) { decl.DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::ScopeNode const *node,
+                                ast::Declaration const *d) {
+  node->args_.Apply(
+      [this, d](auto const &expr) { expr->DependentDecls(this, d); });
+  for (auto &block : node->blocks_) { block.DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::Statements const *node,
+                                ast::Declaration const *d) {
+  for (auto const &stmt : node->content_) { stmt->DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::StructLiteral const *node,
+                                ast::Declaration const *d) {
+  for (auto &a : node->args_) { a.DependentDecls(this, d); }
+  for (auto &f : node->fields_) { f.DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::StructType const *node,
+                                ast::Declaration const *d) {
+  for (auto &arg : node->args_) { arg->DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::Switch const *node,
+                                ast::Declaration const *d) {
+  if (node->expr_) { node->expr_->DependentDecls(this, d); }
+  for (auto &[body, cond] : node->cases_) {
+    body->DependentDecls(this, d);
+    cond->DependentDecls(this, d);
+  }
+}
+
+void DependentDecls::operator()(ast::SwitchWhen const *node,
+                                ast::Declaration const *d) {
+  UNREACHABLE();
+}
+
+void DependentDecls::operator()(ast::Terminal const *node,
+                                ast::Declaration const *d) {}
+
+void DependentDecls::operator()(ast::Unop const *node,
+                                ast::Declaration const *d) {
+  node->operand->DependentDecls(this, d);
+}
+
+}  // namespace ast_visitor
+

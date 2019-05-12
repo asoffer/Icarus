@@ -1,19 +1,19 @@
 #ifndef ICARUS_AST_BUILTIN_FN_H
 #define ICARUS_AST_BUILTIN_FN_H
 
+#include "ast/expression.h"
 #include "core/fn_args.h"
-#include "ast/literal.h"
 #include "ir/builtin.h"
-#include "misc/module.h"
 #include "misc/context.h"
+#include "misc/module.h"
 
 struct Context;
 
 namespace ast {
 
-struct BuiltinFn : public Literal {
+struct BuiltinFn : public Expression {
   BuiltinFn() = default;
-  BuiltinFn(const TextSpan &span, ir::Builtin b) : Literal(span), b_(b) {}
+  BuiltinFn(const TextSpan &span, ir::Builtin b) : Expression(span), b_(b) {}
   ~BuiltinFn() override {}
 
 #include "ast_visitor/visitors.xmacro.h"
@@ -25,8 +25,6 @@ struct BuiltinFn : public Literal {
       core::FnArgs<std::pair<Expression const *,
                              ast_visitor::VerifyResult>> const &arg_results,
       Context *ctx) const;
-
-  ir::Results EmitIr(Context *ctx) override { return ir::Results{b_}; };
 
   ir::Builtin b_;
 };

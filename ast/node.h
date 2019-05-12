@@ -12,6 +12,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast_visitor/assign_scope.h"
 #include "ast_visitor/dependent_decls.h"
+#include "ast_visitor/emit_ir.h"
 #include "ast_visitor/extract_jumps.h"
 #include "ast_visitor/verify_type.h"
 #include "base/util.h"
@@ -36,7 +37,6 @@ struct Declaration;
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
-  virtual ir::Results EmitIr(Context *ctx)      = 0;
 
 #define ICARUS_AST_VISITOR(ret_type, name, args, body) virtual ret_type name args = 0;
 #include "ast_visitor/visitors.xmacro.h"

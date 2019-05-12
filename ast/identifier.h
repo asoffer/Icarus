@@ -16,9 +16,6 @@ struct Identifier : public Expression {
 
   std::string to_string(size_t n) const override { return token; }
 
-  ir::Results EmitIr(Context *) override;
-  std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(Context *) override;
-
   std::string token;
   // TODO determine if mutability here is safe. It's thread-hostile, but maybe
   // you can make the rules clear enough. Or maybe store it elsewhere, but that

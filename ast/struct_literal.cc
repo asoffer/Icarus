@@ -27,7 +27,7 @@ void AddHashtagToField(Reg struct_type, ast::Hashtag hashtag);
 void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag);
 Reg FinalizeStruct(Reg r);
 
-Reg ArgumentCache(ast::StructLiteral *sl);
+Reg ArgumentCache(ast::StructLiteral const *sl);
 }  // namespace ir
 
 namespace ast {
@@ -43,69 +43,7 @@ std::string StructLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
-static ir::TypedRegister<type::Type const *> GenerateStruct(
-    StructLiteral *sl, ir::Reg struct_reg, Context *ctx) {
-  for (auto const &field : sl->fields_) {
-    // TODO initial values? hashatgs?
-
-    // NOTE: CreateStructField may invalidate all other struct fields, so it's
-    // not safe to access these registers returned by CreateStructField after
-    // a subsequent call to CreateStructField.
-    ir::CreateStructField(
-        struct_reg, field.type_expr->EmitIr(ctx).get<type::Type const *>(0));
-    ir::SetStructFieldName(struct_reg, field.id_);
-    for (auto const &hashtag : field.hashtags_) {
-      ir::AddHashtagToField(struct_reg, hashtag);
-    }
-  }
-
-  for (auto hashtag : sl->hashtags_) {
-    ir::AddHashtagToStruct(struct_reg, hashtag);
-  }
-  return ir::FinalizeStruct(struct_reg);
-}
-
-ir::Results StructLiteral::EmitIr(Context *ctx) {
-  if (args_.empty()) {
-    return ir::Results{GenerateStruct(this, ir::CreateStruct(scope_, this), ctx)};
-  }
-
-  // TODO A bunch of things need to be fixed here.
-  // * Lock access during creation so two requestors don't clobber each other.
-  // * Add a way way for one requestor to wait for another to have created the
-  // object and be notified.
-  //
-  // For now, it's safe to do this from within a single module compilation
-  // (which is single-threaded).
-  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[this];
-  if (!ir_func) {
-    auto &work_item = ctx->mod_->deferred_work_.emplace(
-        [constants{ctx->constants_}, this, mod{ctx->mod_}]() mutable {
-          Context ctx(mod);
-          ctx.constants_ = constants;
-          CompleteBody(&ctx);
-        });
-
-    auto const &arg_types = ctx->type_of(this)->as<type::GenericStruct>().deps_;
-
-    core::FnParams<type::Typed<Expression const *>> params;
-    params.reserve(args_.size());
-    size_t i = 0;
-    for (auto const &d : args_) {
-      params.append(d.id_, type::Typed<Expression const *>(d.init_val.get(),
-                                                           arg_types.at(i++)));
-    }
-
-    ir_func =
-        mod_->AddFunc(type::Func(arg_types, {type::Type_}), std::move(params));
-
-    ir_func->work_item = &work_item;
-  }
-
-  return ir::Results{ir::AnyFunc{ir_func}};
-}
-
-void StructLiteral::CompleteBody(Context *ctx) {
+void StructLiteral::CompleteBody(Context *ctx) const {
   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[this];
   for (size_t i = 0; i < args_.size(); ++i) {
     ctx->set_addr(&args_[i], ir::Reg::Arg(i));

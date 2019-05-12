@@ -5,8 +5,10 @@
 #include "ast/hashtag.h"
 #include "base/untyped_buffer.h"
 #include "ir/block.h"
+#include "ir/register.h"
 #include "ir/results.h"
 #include "misc/context.h"
+#include "type/util.h"
 
 namespace core {
 struct Scope;
@@ -234,7 +236,7 @@ struct Cmd {
   };
 
   struct AstData {
-    ast::Node *node_;
+    ast::Node const *node_;
     Reg ctx_;
 
     inline friend std::ostream &operator<<(std::ostream &os, AstData ast) {
@@ -244,7 +246,7 @@ struct Cmd {
 
   struct AddBc {
     Reg ctx_;
-    ast::Declaration *decl_;
+    ast::Declaration const *decl_;
     RegisterOr<type::Type const *> type_;
 
     inline friend std::ostream &operator<<(std::ostream &os, AddBc const &a) {
@@ -257,7 +259,7 @@ struct Cmd {
     Reg reg_;
     size_t get_ret_;
     type::Type const *type_;
-    ast::StructLiteral *sl_;
+    ast::StructLiteral const *sl_;
     LoadSymbol load_sym_;
     BlockSequence block_seq_;
 
@@ -624,13 +626,18 @@ void Copy(type::Type const *t, Reg from, RegisterOr<Addr> to);
 void Destroy(type::Type const *t, Reg r);
 void Init(type::Type const *t, Reg r);
 
-void VerifyType(ast::Node *node, Reg ctx);
-Reg EvaluateAsType(ast::Node *node, Reg ctx);
+void VerifyType(ast::Node const *node, Reg ctx);
+Reg EvaluateAsType(ast::Node const *node, Reg ctx);
 
 Reg CreateContext(Module *mod);
-void AddBoundConstant(Reg ctx, ast::Declaration *decl,
+void AddBoundConstant(Reg ctx, ast::Declaration const *decl,
                       RegisterOr<type::Type const *> type);
 void DestroyContext(Reg r);
 void JumpPlaceholder(ir::BlockSequence block_seq);
+
+TypedRegister<type::Interface const *> CreateInterface(
+    core::Scope const *scope);
+ir::TypedRegister<type::Interface const *> FinalizeInterface(Reg r);
+
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

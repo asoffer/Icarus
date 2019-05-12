@@ -91,9 +91,11 @@ cc_target(
     textual_hdrs = ["op.xmacro.h"],
     intf_deps = [
         ":block",
+        ":register",
         "//ast:hashtag",
         "//base:untyped_buffer",
         "//misc:context",
+        "//type:util",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
