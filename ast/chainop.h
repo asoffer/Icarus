@@ -13,7 +13,27 @@ struct ChainOp : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override{
+    std::stringstream ss;
+    ss << "(";
+    for (size_t i = 0; i < ops.size(); ++i) {
+      ss << exprs[i]->to_string(n);
+      switch (ops[i]) {
+        case frontend::Operator::Or: ss << " | "; break;
+        case frontend::Operator::Xor: ss << " ^ "; break;
+        case frontend::Operator::And: ss << " & "; break;
+        case frontend::Operator::Lt: ss << " < "; break;
+        case frontend::Operator::Le: ss << " <= "; break;
+        case frontend::Operator::Eq: ss << " == "; break;
+        case frontend::Operator::Ne: ss << " != "; break;
+        case frontend::Operator::Ge: ss << " >= "; break;
+        case frontend::Operator::Gt: ss << " > "; break;
+        default: UNREACHABLE();
+      }
+    }
+    ss << exprs.back()->to_string(n) << ")";
+    return ss.str();
+  }
 
   std::vector<frontend::Operator> ops;
   std::vector<std::unique_ptr<Expression>> exprs;

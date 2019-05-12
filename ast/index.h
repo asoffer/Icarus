@@ -14,7 +14,9 @@ struct Index : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override{
+    return lhs_->to_string(n) + "[" + rhs_->to_string(n) + "]";
+  }
 
   std::unique_ptr<Expression> lhs_, rhs_;
 };

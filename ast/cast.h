@@ -14,7 +14,9 @@ struct Cast : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override{
+    return "(" + expr_->to_string(n) + ") as (" + type_->to_string(n) + ")";
+  }
 
   std::unique_ptr<Expression> expr_, type_;
 };

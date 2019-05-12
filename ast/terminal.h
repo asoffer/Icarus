@@ -5,10 +5,7 @@
 
 #include "ast/expression.h"
 #include "ir/block.h"
-#include "misc/context.h"
-#include "misc/module.h"
-
-struct Context;
+#include "ir/results.h"
 
 namespace ast {
 struct Terminal : public Expression {

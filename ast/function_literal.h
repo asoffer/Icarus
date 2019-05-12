@@ -5,7 +5,6 @@
 
 #include "ast/declaration.h"
 #include "ast/expression.h"
-#include "ast/identifier.h"
 #include "ast/statements.h"
 #include "core/fn_params.h"
 #include "core/scope.h"
@@ -26,7 +25,36 @@ struct FunctionLiteral : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override {
+    std::stringstream ss;
+    ss << "(";
+    if (!inputs_.empty()) {
+      auto iter = inputs_.begin();
+      ss << iter->value->to_string(n);
+      ++iter;
+      while (iter != inputs_.end()) {
+        ss << ", " << iter->value->to_string(n);
+        ++iter;
+      }
+    }
+    ss << ") -> ";
+    if (!return_type_inferred_) {
+      ss << "(";
+      if (!outputs_.empty()) {
+        auto iter = outputs_.begin();
+        ss << iter->get()->to_string(n);
+        ++iter;
+        while (iter != outputs_.end()) {
+          ss << ", " << iter->get()->to_string(n);
+          ++iter;
+        }
+      }
+      ss << ")";
+    }
+    ss << " {\n"
+       << statements_.to_string(n + 1) << std::string(2 * n, ' ') << "}";
+    return ss.str();
+  }
 
   std::unique_ptr<core::FnScope> fn_scope_;
 

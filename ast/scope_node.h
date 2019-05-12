@@ -16,7 +16,13 @@ struct ScopeNode : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override {
+    std::stringstream ss;
+    ss << name_->to_string(n) << " ";
+    if (!args_.empty()) { ss << "(" << args_.to_string() << ") "; }
+    for (auto const &block : blocks_) { ss << block.to_string(n); }
+    return ss.str();
+  }
 
   std::unique_ptr<Expression> name_;
   core::FnArgs<std::unique_ptr<Expression>> args_;

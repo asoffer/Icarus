@@ -1,5 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load(":defs.bzl", "icarus_ast_node")
+
 sources()
 
 cc_lib(
@@ -56,239 +58,54 @@ cc_lib(
 cc_lib(
     name = "impl",
     deps = [
-        ":access-impl",
-        ":array_literal-impl",
-        ":array_type-impl",
-        ":binop-impl",
-        ":block_literal-impl",
-        ":block_node-impl",
-        ":builtin_fn-impl",
-        ":call-impl",
-        ":cast-impl",
-        ":chainop-impl",
-        ":comma_list-impl",
-        ":declaration-impl",
         ":dispatch_table-impl",
-        ":enum_literal-impl",
-        ":function_literal-impl",
-        ":identifier-impl",
-        ":import-impl",
-        ":index-impl",
-        ":interface-impl",
-        ":match_declaration-impl",
         ":overload_set-impl",
-        ":repeated_unop-impl",
-        ":scope_literal-impl",
-        ":scope_node-impl",
-        ":statements-impl",
-        ":struct_literal-impl",
-        ":struct_type-impl",
-        ":switch-impl",
-        ":unop-impl",
     ],
 )
 
-cc_target(
-    name = "access",
-    intf_deps = [":expression"],
-    impl_deps = [
-        ":declaration",
-        "//backend:eval",
-        "//ir:cmd",
-        "//ir:components",
-        "//misc:module",
-        "//type:array",
-        "//type:enum",
-        "//type:flags",
-        "//type:function",
-        "//type:pointer",
-        "//type:primitive",
-        "//type:struct",
-    ]
-)
-
-cc_target(
-    name = "array_literal",
-    intf_deps = [
-        ":expression",
-        ":comma_list",
-    ],
-    impl_deps = [
-        "//misc:context",
-        "//error:log",
-        "//ir:cmd",
-        "//type:array",
-        "//type:cast",
-        "//type:pointer",
-    ],
-)
-
-cc_target(
-    name = "array_type",
-    intf_deps = [":expression"],
-    impl_deps = ["//ir:cmd"],
-)
-
-cc_target(
-    name = "binop",
-    intf_deps = [
-        ":expression",
-        "//frontend:operators",
-    ],
-    impl_deps = [
-        ":comma_list",
-        ":overload_set",
-        "//backend:eval",
-        "//core:fn_args",
-        "//misc:context",
-        "//ir:components",
-        "//ir:compiled_fn",
-        "//ir:phi",
-        "//type:array",
-        "//type:enum",
-        "//type:flags",
-        "//type:function",
-        "//type:pointer",
-        "//type:struct",
-        "//type:tuple",
-        "//type:variant",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_target(
-    name = "block_literal",
-    intf_deps = [
-        ":declaration",
-        ":expression",
-    ],
-    impl_deps = [
-        "//ir:block",
-        "//misc:context",
-        "//core:scope",
-        "//type:function",
-        "//type:primitive",
-    ],
-)
-
-cc_target(
-    name = "block_node",
-    intf_deps = [
-        ":expression",
-        ":statements",
-        "//core:scope",
-        "//misc:context",
-    ],
-    impl_deps = [],
-)
-
-cc_target(
-    name = "builtin_fn",
-    intf_deps = [
-        ":expression",
-        "//core:fn_args",
-        "//ir:builtin",
-        "//misc:context",
-    ],
-    impl_deps = [
-        "//backend:eval",
-        "//ir:arguments",
-        "//ir:cmd",
-    ],
-)
-
-cc_target(
-    name = "call",
-    intf_deps = [
-        ":expression",
-        "//core:fn_args",
-    ],
-    impl_deps = [
-        ":block_literal",
-        ":builtin_fn",
-        ":dispatch_table",
-        ":function_literal",
-        ":struct_literal",
-        ":unop",
-        "//backend:eval",
-        "//core:fn_params",
-        "//ir:arguments",
-        "//ir:components",
-        "//ir:compiled_fn",
-        "//ir:phi",
-        "//core:scope",
-        "//type:array",
-        "//type:function",
-        "//type:generic_struct",
-        "//type:pointer",
-        "//type:tuple",
-        "//type:variant",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_target(
-    name = "cast",
-    intf_deps = [":expression"],
-    impl_deps = [
-        ":overload_set",
-        "//backend:eval",
-        "//core:fn_args",
-        "//ir:cmd",
-        "//misc:context",
-        "//type:cast",
-        "//type:tuple",
-    ],
-)
-
-cc_target(
-    name = "chainop",
-    intf_deps = [
-        ":expression",
-        "//frontend:operators",
-    ],
-    impl_deps = [
-        ":overload_set",
-        "//core:fn_args",
-        "//misc:context",
-        "//ir:compiled_fn",
-        "//ir:phi",
-        "//type:array",
-        "//type:enum",
-        "//type:flags",
-        "//type:pointer",
-        "//type:struct",
-        "//type:tuple",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_target(
-    name = "comma_list",
-    intf_deps = [":expression"],
-    impl_deps = [
-        "//misc:context",
-        "//ir:cmd",
-        "//type:tuple",
-    ],
-)
-
-cc_target(
-    name = "declaration",
-    intf_deps = [
-        ":expression",
-        "//ir:register",
-    ],
-    impl_deps = [
-        ":function_literal",
-        "//backend:eval",
-        "//error:inference_failure_reason",
-        "//ir:compiled_fn",
-        "//misc:module",
-        "//type:cast",
-        "//type:typed_value",
-    ],
-)
+icarus_ast_node(name = "access", deps = [":expression"])
+icarus_ast_node(name = "array_literal", deps = [":expression", ":comma_list"])
+icarus_ast_node(name = "array_type", deps = [":expression"])
+icarus_ast_node(name = "binop", deps = [":expression", "//frontend:operators"])
+icarus_ast_node(name = "block_literal", deps = [":expression", ":declaration"])
+icarus_ast_node(name = "block_node", deps = [":expression", ":statements"])
+icarus_ast_node(name = "builtin_fn", deps = [":expression", "//ir:builtin"])
+icarus_ast_node(name = "call", deps = [":expression"])
+icarus_ast_node(name = "cast", deps = [":expression"])
+icarus_ast_node(name = "chainop",
+                deps = [":expression", "//frontend:operators"])
+icarus_ast_node(name = "comma_list", deps = [":expression"])
+icarus_ast_node(name = "declaration", deps = [":expression"])
+icarus_ast_node(name = "enum_literal", deps = [":expression"])
+icarus_ast_node(name = "expression",
+                deps = [":hashtag", ":node", "//type:util"])
+icarus_ast_node(name = "function_literal", deps = [
+    ":declaration",
+    ":expression",
+    ":statements",
+    "//core:fn_params",
+])
+icarus_ast_node(name = "identifier", deps = [":expression"])
+icarus_ast_node(name = "import", deps = [":expression", "//misc:module"])
+icarus_ast_node(name = "index", deps = [":expression"])
+icarus_ast_node(name = "interface", deps = [":expression"])
+icarus_ast_node(name = "node", deps = [
+    "//ast_visitor:visitors",
+    "//frontend:text_span",
+    "//ir:results",
+])
+icarus_ast_node(name = "match_declaration", deps = [":declaration"])
+icarus_ast_node(name = "repeated_unop",
+                deps = [":comma_list", "//frontend:operators"])
+icarus_ast_node(name = "scope_literal", deps = [":declaration", ":expression"])
+icarus_ast_node(name = "scope_node",
+                deps = [":block_node", ":declaration", ":expression"])
+icarus_ast_node(name = "statements", deps = [":node"])
+icarus_ast_node(name = "struct_literal", deps = [":declaration", ":expression"])
+icarus_ast_node(name = "struct_type", deps = [":expression"])
+icarus_ast_node(name = "switch", deps = [":expression"])
+icarus_ast_node(name = "terminal", deps = [":expression", "//ir:results"])
+icarus_ast_node(name = "unop", deps = [":expression", "//frontend:operators"])
 
 cc_target(
     name = "dispatch_table",
@@ -333,144 +150,9 @@ cc_test(
     ],
 )
 
-cc_target(
-    name = "enum_literal",
-    intf_deps = [
-        ":declaration",
-        ":expression",
-        "//core:scope",
-    ],
-    impl_deps = [
-        ":identifier",
-        "//misc:context",
-        "//ir:cmd",
-    ],
-)
-
-
-cc_lib(
-    name = "expression",
-    hdrs = ["expression.h"],
-    deps = [
-        ":hashtag",
-        ":node",
-        "//ir:addr",
-        "//ir:register",
-        "//type:typed_value",
-        "//type:util",
-    ],
-)
-
-cc_target(
-    name = "function_literal",
-    intf_deps = [
-        ":declaration",
-        ":expression",
-        ":identifier",
-        ":statements",
-        "//core:fn_params",
-        "//core:scope",
-    ],
-    impl_deps = [
-        ":declaration",
-        ":match_declaration",
-        ":repeated_unop",
-        ":terminal",
-        "//backend:eval",
-        "//misc:context",
-        "//error:log",
-        "//ir:compiled_fn",
-        "//misc:module",
-        "//type:function",
-        "//type:tuple",
-        "//type:type",
-    ],
-)
-
 cc_lib(
     name = "hashtag",
     hdrs = ["hashtag.h"],
-)
-
-cc_target(
-    name = "identifier",
-    intf_deps = [":expression"],
-    impl_deps = [
-        ":declaration",
-        ":function_literal",
-        ":match_declaration",
-        "//backend:eval",
-        "//misc:context",
-        "//error:log",
-        "//ir:components",
-        "//misc:module",
-        "//core:scope",
-        "//type:pointer",
-        "//type:type",
-    ],
-)
-
-cc_target(
-    name = "import",
-    intf_deps = [
-        ":expression",
-        "//misc:module",
-    ],
-    impl_deps = [
-        ":overload_set",
-        "//backend:eval",
-        "//base:guarded",
-        "//misc:context",
-        "//type:primitive",
-    ],
-)
-
-cc_target(
-    name = "index",
-    intf_deps = [":expression"],
-    impl_deps = [
-        "//backend:eval",
-        "//ir:components",
-        "//ir:str",
-        "//core:arch",
-        "//type:cast",
-    ]
-)
-
-cc_target(
-    name = "interface",
-    intf_deps = [
-        ":declaration",
-        ":expression",
-        "//core:scope",
-    ],
-    impl_deps = [
-        "//error:log",
-        "//misc:context",
-        "//type:type",
-    ],
-)
-
-cc_target(
-    name = "match_declaration",
-    intf_deps = [":declaration"],
-    impl_deps = [
-        "//backend:eval",
-        "//type:interface",
-        "//type:primitive",
-    ],
-)
-
-cc_lib(
-    name = "node",
-    hdrs = ["node.h"],
-    deps = [
-        "//ast_visitor:visitors",
-        "//base:graph",
-        "//base:util",
-        "//frontend:text_span",
-        "//ir:results",
-    ],
 )
 
 cc_target(
@@ -485,151 +167,5 @@ cc_target(
         "//misc:context",
         "//core:scope",
         "@com_google_absl//absl/container:flat_hash_set",
-    ],
-)
-
-cc_target(
-    name = "repeated_unop",
-    intf_deps = [
-        ":comma_list",
-        "//frontend:operators",
-    ],
-    impl_deps = [
-        ":block_literal",
-        ":call",
-        ":function_literal",
-        ":overload_set",
-        "//backend:eval",
-        "//core:fn_args",
-        "//ir:compiled_fn",
-        "//misc:context",
-        "//core:scope",
-    ],
-)
-
-cc_target(
-    name = "scope_literal",
-    intf_deps = [
-        ":declaration",
-        ":expression",
-    ],
-    impl_deps = [
-        "//misc:context",
-        "//error:log",
-        "//core:scope",
-        "//type:function",
-        "//type:pointer",
-    ],
-)
-
-cc_target(
-    name = "scope_node",
-    intf_deps = [
-        ":block_node",
-        ":expression",
-        ":statements",
-        "//core:fn_args",
-        "//core:scope",
-    ],
-    impl_deps = [
-        ":access",
-        ":block_literal",
-        ":block_node",
-        ":function_literal",
-        ":identifier",
-        ":scope_literal",
-        "//backend:eval",
-        "//base:util",
-        "//core:fn_args",
-        "//ir:components",
-        "//ir:compiled_fn",
-        "//misc:context",
-        "//core:scope",
-        "//type:function",
-        "//type:pointer",
-        "//type:type",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_target(
-    name = "statements",
-    intf_deps = [":node"],
-    impl_deps = [
-        "//misc:context",
-    ],
-)
-
-cc_target(
-    name = "struct_literal",
-    intf_deps = [
-        ":comma_list",
-        ":declaration",
-        ":expression",
-        "//core:scope",
-    ],
-    impl_deps = [
-        ":declaration",
-        "//backend:exec",
-        "//base:untyped_buffer",
-        "//ir:components",
-        "//ir:compiled_fn",
-        "//type:function",
-        "//type:generic_struct",
-        "//type:pointer",
-        "//type:struct",
-        "//type:tuple",
-    ],
-)
-
-cc_target(
-    name = "struct_type",
-    intf_deps = [":expression"],
-    impl_deps = [
-        "//misc:context",
-        "//type:type",
-    ],
-)
-
-cc_target(
-    name = "switch",
-    intf_deps = [":expression"],
-    impl_deps = [
-        "//base:util",
-        "//ir:components",
-        "//ir:compiled_fn",
-        "//ir:phi",
-        "//type:cast",
-        "//type:pointer",
-        "//type:type",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_lib(
-    name = "terminal",
-    hdrs = ["terminal.h"],
-    deps = [
-        ":expression",
-        "//ir:block",
-        "//misc:context",
-        "//misc:module"
-    ],
-)
-
-cc_target(
-    name = "unop",
-    intf_deps = [
-        ":expression",
-        "//frontend:operators",
-    ],
-    impl_deps = [
-        ":overload_set",
-        ":terminal",
-        "//backend:eval",
-        "//core:fn_args",
-        "//misc:context",
-        "//ir:components",
-        "//ir:compiled_fn",
     ],
 )

@@ -10,7 +10,9 @@ struct MatchDeclaration : public Declaration {
   MatchDeclaration &operator=(MatchDeclaration &&) noexcept = default;
   ~MatchDeclaration() override {}
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override {
+    return type_expr->to_string(n) + "`" + id_;
+  }
 };
 }  // namespace ast
 

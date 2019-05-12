@@ -4,10 +4,6 @@
 #include "ast/expression.h"
 #include "core/fn_args.h"
 #include "ir/builtin.h"
-#include "misc/context.h"
-#include "misc/module.h"
-
-struct Context;
 
 namespace ast {
 
@@ -19,12 +15,6 @@ struct BuiltinFn : public Expression {
 #include "ast_visitor/visitors.xmacro.h"
 
   std::string to_string(size_t) const override { return stringify(b_); }
-
-  ast_visitor::VerifyResult VerifyCall(
-      core::FnArgs<std::unique_ptr<Expression>> const &args,
-      core::FnArgs<std::pair<Expression const *,
-                             ast_visitor::VerifyResult>> const &arg_results,
-      Context *ctx) const;
 
   ir::Builtin b_;
 };

@@ -1,7 +1,6 @@
 #ifndef ICARUS_AST_STRUCT_LITERAL_H
 #define ICARUS_AST_STRUCT_LITERAL_H
 
-#include "ast/comma_list.h"
 #include "ast/declaration.h"
 #include "ast/expression.h"
 #include "core/scope.h"
@@ -20,7 +19,17 @@ struct StructLiteral : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override {
+    std::stringstream ss;
+    ss << "struct (";
+    for (auto &a : args_) { ss << a.to_string(n) << ", "; }
+    ss << ") {\n";
+    for (const auto &f : fields_) {
+      ss << std::string((n + 1) * 2, ' ') << f.to_string(n) << "\n";
+    }
+    ss << std::string(2 * n, ' ') << "}";
+    return ss.str();
+  }
 
   std::unique_ptr<core::DeclScope> type_scope;
   std::vector<Declaration> fields_, args_;

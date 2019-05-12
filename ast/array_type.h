@@ -9,7 +9,12 @@ struct ArrayType : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override {
+    std::stringstream ss;
+    ss << "[" << length_->to_string(n) << "; " << data_type_->to_string(n)
+       << "]";
+    return ss.str();
+  }
 
   std::unique_ptr<Expression> length_, data_type_;
 };

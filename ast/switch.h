@@ -11,7 +11,17 @@ struct Switch : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override {
+    std::stringstream ss;
+    ss << "switch ";
+    if (expr_) { ss << "(" << expr_->to_string(n) << ") {\n"; }
+    for (const auto& [body, cond] : cases_) {
+      ss << std::string((n + 1) * 2, ' ') << body->to_string(n + 1) << " when "
+         << cond->to_string(n + 1) << "\n";
+    }
+    ss << std::string(2 * n, ' ') << "}";
+    return ss.str();
+  }
 
   std::unique_ptr<Expression> expr_;
   std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>

@@ -14,7 +14,9 @@ struct Import : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override {
+    return "import " + operand_->to_string(n);
+  }
 
   // TODO optimization: if the operand_ is a string literal, schedule it
   // immediately.

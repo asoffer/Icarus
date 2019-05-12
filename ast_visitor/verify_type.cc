@@ -349,6 +349,123 @@ static ast::OverloadSet FindOverloads(
   return os;
 }
 
+static VerifyResult VerifyCall(
+    ast::BuiltinFn const *b,
+    core::FnArgs<std::unique_ptr<ast::Expression>> const &args,
+    core::FnArgs<std::pair<ast::Expression const *, VerifyResult>> const
+        &arg_results,
+    Context *ctx) {
+  switch (b->b_) {
+    case ir::Builtin::Foreign: {
+      bool err = false;
+      if (!arg_results.named().empty()) {
+        ctx->error_log()->BuiltinError(b->span,
+                                       "Built-in function `foreign` cannot be "
+                                       "called with named arguments.");
+        err = true;
+      }
+
+      size_t size = arg_results.size();
+      if (size != 2u) {
+        ctx->error_log()->BuiltinError(b->span,
+                                       "Built-in function `foreign` takes "
+                                       "exactly two arguments (You provided " +
+                                           std::to_string(size) + ").");
+        err = true;
+      }
+
+      if (!err) {
+        if (arg_results.at(0).second.type_ != type::ByteView) {
+          ctx->error_log()->BuiltinError(
+              b->span,
+              "First argument to `foreign` must be a byte-view (You provided "
+              "a(n) " +
+                  arg_results.at(0).second.type_->to_string() + ").");
+        }
+        if (!arg_results.at(0).second.const_) {
+          ctx->error_log()->BuiltinError(
+              b->span, "First argument to `foreign` must be a constant.");
+        }
+        if (arg_results.at(1).second.type_ != type::Type_) {
+          ctx->error_log()->BuiltinError(
+              b->span,
+              "Second argument to `foreign` must be a type (You provided "
+              "a(n) " +
+                  arg_results.at(0).second.type_->to_string() + ").");
+        }
+        if (!arg_results.at(1).second.const_) {
+          ctx->error_log()->BuiltinError(
+              b->span, "Second argument to `foreign` must be a constant.");
+        }
+      }
+      return ast_visitor::VerifyResult::Constant(
+          backend::EvaluateAs<type::Type const *>(args.at(1).get(), ctx));
+    } break;
+    case ir::Builtin::Opaque:
+      if (!arg_results.empty()) {
+        ctx->error_log()->BuiltinError(
+            b->span, "Built-in function `opaque` takes no arguments.");
+      }
+      return ast_visitor::VerifyResult::Constant(
+          ir::BuiltinType(ir::Builtin::Opaque)->as<type::Function>().output[0]);
+
+    case ir::Builtin::Bytes: {
+      size_t size = arg_results.size();
+      if (!arg_results.named().empty()) {
+        ctx->error_log()->BuiltinError(b->span,
+                                       "Built-in function `bytes` cannot be "
+                                       "called with named arguments.");
+      } else if (size != 1u) {
+        ctx->error_log()->BuiltinError(b->span,
+                                       "Built-in function `bytes` takes "
+                                       "exactly one argument (You provided " +
+                                           std::to_string(size) + ").");
+      } else if (arg_results.at(0).second.type_ != type::Type_) {
+        ctx->error_log()->BuiltinError(
+            b->span,
+            "Built-in function `bytes` must take a single argument of type "
+            "`type` (You provided a(n) " +
+                arg_results.at(0).second.type_->to_string() + ").");
+      }
+      return ast_visitor::VerifyResult::Constant(
+          ir::BuiltinType(ir::Builtin::Bytes)->as<type::Function>().output[0]);
+    }
+    case ir::Builtin::Alignment: {
+      size_t size = arg_results.size();
+      if (!arg_results.named().empty()) {
+        ctx->error_log()->BuiltinError(b->span,
+                                       "Built-in function `alignment` cannot "
+                                       "be called with named arguments.");
+      }
+      if (size != 1u) {
+        ctx->error_log()->BuiltinError(b->span,
+                                       "Built-in function `alignment` takes "
+                                       "exactly one argument (You provided " +
+                                           std::to_string(size) + ").");
+
+      } else if (arg_results.at(0).second.type_ != type::Type_) {
+        ctx->error_log()->BuiltinError(
+            b->span,
+            "Built-in function `alignment` must take a single argument of "
+            "type `type` (you provided a(n) " +
+                arg_results.at(0).second.type_->to_string() + ")");
+      }
+      return ast_visitor::VerifyResult::Constant(
+          ir::BuiltinType(ir::Builtin::Alignment)
+              ->as<type::Function>()
+              .output[0]);
+    }
+#ifdef DBG
+    case ir::Builtin::DebugIr:
+      // This is for debugging the compiler only, so there's no need to write
+      // decent errors here.
+      ASSERT(arg_results, matcher::IsEmpty());
+      return ast_visitor::VerifyResult::Constant(type::Void());
+#endif  // DBG
+  }
+  UNREACHABLE();
+}
+
 VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) const {
   std::vector<std::pair<ast::Expression const *, VerifyResult>> pos_results;
   absl::flat_hash_map<std::string,
@@ -396,7 +513,7 @@ VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) const {
   if (auto *b = node->fn_->if_as<ast::BuiltinFn>()) {
     // TODO: Should we allow these to be overloaded?
     ASSIGN_OR(return VerifyResult::Error(), auto result,
-                     b->VerifyCall(node->args_, arg_results, ctx));
+                     VerifyCall(b, node->args_, arg_results, ctx));
     return ctx->set_result(node, VerifyResult(result.type_, result.const_));
   }
 

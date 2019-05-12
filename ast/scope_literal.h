@@ -11,7 +11,15 @@ struct ScopeLiteral : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override {
+    std::stringstream ss;
+    ss << "scope " << (stateful_ ? "!" : "") << "{\n";
+    for (const auto &decl : decls_) {
+      ss << std::string(n * 2, ' ') << decl.to_string(n) << "\n";
+    }
+    ss << "}";
+    return ss.str();
+  }
 
   std::vector<Declaration> decls_;
   std::unique_ptr<core::ScopeLitScope> body_scope_;

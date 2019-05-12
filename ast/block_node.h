@@ -4,7 +4,6 @@
 #include <memory>
 #include "ast/expression.h"
 #include "ast/statements.h"
-#include "misc/context.h"
 #include "core/scope.h"
 
 namespace ast {
@@ -16,7 +15,12 @@ struct BlockNode : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override {
+    std::stringstream ss;
+    ss << name_->to_string(n) << " {\n"
+       << stmts_.to_string(n + 1) << std::string(2 * n, ' ') << "} ";
+    return ss.str();
+  }
 
   std::unique_ptr<Expression> name_;
   Statements stmts_;

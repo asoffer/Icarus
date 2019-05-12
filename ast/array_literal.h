@@ -11,7 +11,21 @@ struct ArrayLiteral : public Expression {
 
 #include "ast_visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override;
+  std::string to_string(size_t n) const override {
+    std::stringstream ss;
+    ss << "[";
+    if (!cl_.exprs_.empty()) {
+      auto iter = cl_.exprs_.begin();
+      ss << (*iter)->to_string(n);
+      ++iter;
+      while (iter != cl_.exprs_.end()) {
+        ss << ", " << (*iter)->to_string(n);
+        ++iter;
+      }
+    }
+    ss << "]";
+    return ss.str();
+  }
 
   CommaList cl_;
 };
