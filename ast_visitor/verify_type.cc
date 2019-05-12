@@ -1019,6 +1019,171 @@ VerifyResult VerifyType::operator()(ast::EnumLiteral const *node,
   return ctx->set_result(node, VerifyResult::Constant(type::Type_));
 }
 
+// TODO there's not that much shared between the inferred and uninferred cases,
+// so probably break them out.
+static ast_visitor::VerifyResult VerifyBody(VerifyType const *visitor,
+                                            ast::FunctionLiteral const *node,
+                                            Context *ctx) {
+  node->statements_.VerifyType(visitor, ctx);
+  // TODO propogate cyclic dependencies.
+
+  ast_visitor::ExtractJumps extract_visitor;
+  node->statements_.ExtractJumps(&extract_visitor);
+
+  // TODO we can have yields and returns, or yields and jumps, but not jumps and
+  // returns. Check this.
+  absl::flat_hash_set<type::Type const *> types;
+  for (auto *expr :
+       extract_visitor.exprs(ast_visitor::ExtractJumps::Kind::Return)) {
+    types.insert(ctx->type_of(expr));
+  }
+
+  if (node->return_type_inferred_) {
+    std::vector<type::Type const *> input_type_vec;
+    input_type_vec.reserve(node->inputs_.size());
+    for (auto &input : node->inputs_) {
+      input_type_vec.push_back(
+          ASSERT_NOT_NULL(ctx->type_of(input.value.get())));
+    }
+
+    std::vector<type::Type const *> output_type_vec(
+        std::make_move_iterator(types.begin()),
+        std::make_move_iterator(types.end()));
+
+    if (types.size() > 1) { NOT_YET("log an error"); }
+    auto f = type::Func(std::move(input_type_vec), std::move(output_type_vec));
+    return ctx->set_result(node, ast_visitor::VerifyResult::Constant(f));
+
+  } else {
+    auto *node_type  = ctx->type_of(node);
+    auto const &outs = ASSERT_NOT_NULL(node_type)->as<type::Function>().output;
+    switch (outs.size()) {
+      case 0: {
+        bool err = false;
+        for (auto *expr :
+             extract_visitor.exprs(ast_visitor::ExtractJumps::Kind::Return)) {
+          base::Log() << expr->to_string(0);
+          if (!expr->as<ast::CommaList>().exprs_.empty()) {
+            ctx->error_log()->NoReturnTypes(expr);
+            err = true;
+          }
+        }
+        return err ? ast_visitor::VerifyResult::Error()
+                   : ast_visitor::VerifyResult::Constant(node_type);
+      } break;
+      case 1: {
+        bool err = false;
+        for (auto *expr :
+             extract_visitor.exprs(ast_visitor::ExtractJumps::Kind::Return)) {
+          auto *t = ASSERT_NOT_NULL(ctx->type_of(expr));
+          if (t == outs[0]) { continue; }
+          ctx->error_log()->ReturnTypeMismatch(outs[0], t, expr->span);
+          err = true;
+        }
+        return err ? ast_visitor::VerifyResult::Error()
+                   : ast_visitor::VerifyResult::Constant(node_type);
+      } break;
+      default: {
+        for (auto *expr :
+             extract_visitor.exprs(ast_visitor::ExtractJumps::Kind::Return)) {
+          auto *expr_type = ctx->type_of(expr);
+          if (expr_type->is<type::Tuple>()) {
+            auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
+            if (tup_entries.size() != outs.size()) {
+              ctx->error_log()->ReturningWrongNumber(expr->span, expr_type,
+                                                     outs.size());
+              return ast_visitor::VerifyResult::Error();
+            } else {
+              bool err = false;
+              for (size_t i = 0; i < tup_entries.size(); ++i) {
+                if (tup_entries.at(i) != outs.at(i)) {
+                  // TODO if this is a commalist we can point to it more
+                  // carefully but if we're just passing on multiple return
+                  // values it's harder.
+                  //
+                  // TODO point the span to the correct entry which may be hard
+                  // if it's splatted.
+                  ctx->error_log()->IndexedReturnTypeMismatch(
+                      outs.at(i), tup_entries.at(i), expr->span, i);
+                  err = true;
+                }
+              }
+              if (err) { return ast_visitor::VerifyResult::Error(); }
+            }
+          } else {
+            ctx->error_log()->ReturningWrongNumber(expr->span, expr_type,
+                                                   outs.size());
+            return ast_visitor::VerifyResult::Error();
+          }
+        }
+        return ast_visitor::VerifyResult::Constant(node_type);
+      } break;
+    }
+  }
+}
+
+VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
+                                       Context *ctx) const {
+  std::vector<type::Type const *> input_type_vec;
+  input_type_vec.reserve(node->inputs_.size());
+  for (auto &d : node->inputs_) {
+    ASSIGN_OR(return _, auto result, d.value->VerifyType(this, ctx));
+    input_type_vec.push_back(result.type_);
+  }
+
+  std::vector<type::Type const *> output_type_vec;
+  output_type_vec.reserve(node->outputs_.size());
+  bool error = false;
+  for (auto &output : node->outputs_) {
+    auto result = output->VerifyType(this, ctx);
+    output_type_vec.push_back(result.type_);
+    if (result.type_ != nullptr && !result.const_) {
+      // TODO this feels wrong because output could be a decl. And that decl
+      // being a const decl isn't what I care about.
+      NOT_YET("log an error");
+      error = true;
+    }
+  }
+
+  if (error ||
+      std::any_of(input_type_vec.begin(), input_type_vec.end(),
+                  [](type::Type const *t) { return t == nullptr; }) ||
+      std::any_of(output_type_vec.begin(), output_type_vec.end(),
+                  [](type::Type const *t) { return t == nullptr; })) {
+    return ast_visitor::VerifyResult::Error();
+  }
+
+  // TODO need a better way to say if there was an error recorded in a
+  // particular section of compilation. Right now we just have the grad total
+  // count.
+  if (ctx->num_errors() > 0) { return ast_visitor::VerifyResult::Error(); }
+
+  if (!node->return_type_inferred_) {
+    for (size_t i = 0; i < output_type_vec.size(); ++i) {
+      if (auto *decl = node->outputs_.at(i)->if_as<ast::Declaration>()) {
+        output_type_vec.at(i) = ctx->type_of(decl);
+      } else {
+        ASSERT(output_type_vec.at(i) == type::Type_);
+        output_type_vec.at(i) =
+            backend::EvaluateAs<type::Type const *>(node->outputs_.at(i).get(), ctx);
+      }
+    }
+
+    ctx->mod_->deferred_work_.emplace(
+        [constants{ctx->constants_}, node, this, mod{ctx->mod_}]() mutable {
+          Context ctx(mod);
+          ctx.constants_ = constants;
+          VerifyBody(this, node, &ctx);
+        });
+
+    return ctx->set_result(
+        node, ast_visitor::VerifyResult::Constant(type::Func(
+                  std::move(input_type_vec), std::move(output_type_vec))));
+  } else {
+    return VerifyBody(this, node, ctx);
+  }
+}
+
 VerifyResult VerifyType::operator()(ast::FunctionLiteral const *node,
                                     Context *ctx) const {
   for (auto const &p : node->inputs_) {
@@ -1027,7 +1192,7 @@ VerifyResult VerifyType::operator()(ast::FunctionLiteral const *node,
     }
   }
 
-  return node->VerifyTypeConcrete(this, ctx);
+  return ConcreteFnLit(node, ctx);
 }
 
 VerifyResult VerifyType::operator()(ast::Identifier const *node,

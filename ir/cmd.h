@@ -639,5 +639,6 @@ TypedRegister<type::Interface const *> CreateInterface(
     core::Scope const *scope);
 ir::TypedRegister<type::Interface const *> FinalizeInterface(Reg r);
 
+Reg ArgumentCache(ast::StructLiteral const *sl);
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

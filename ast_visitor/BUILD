@@ -4,7 +4,7 @@ sources()
 
 cc_lib(
     name = "visitors",
-    textual_hdrs = ["visitors.xmacro.h"],
+    textual_hdrs = glob(["*.xmacro.h"]),
     deps = [
         ":assign_scope",
         ":dependent_decls",

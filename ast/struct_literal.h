@@ -22,8 +22,6 @@ struct StructLiteral : public Expression {
 
   std::string to_string(size_t n) const override;
 
-  void CompleteBody(Context *ctx) const;
-
   std::unique_ptr<core::DeclScope> type_scope;
   std::vector<Declaration> fields_, args_;
   Module *mod_ = nullptr;

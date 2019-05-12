@@ -28,13 +28,6 @@ struct FunctionLiteral : public Expression {
 
   std::string to_string(size_t n) const override;
 
-  ast_visitor::VerifyResult VerifyTypeConcrete(ast_visitor::VerifyType const *,
-                                               Context *) const;
-  ast_visitor::VerifyResult VerifyBody(ast_visitor::VerifyType const *,
-                                       Context *) const;
-
-  void CompleteBody(ast_visitor::EmitIr const *visitor, Context *ctx) const;
-
   std::unique_ptr<core::FnScope> fn_scope_;
 
   // Note this field is computed, but it is independent of any type or

@@ -331,7 +331,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
       // TODO errors?
       ast_visitor::VerifyType visitor;
       auto *fn_type =
-          ASSERT_NOT_NULL(fn_lit->VerifyTypeConcrete(&visitor, ctx).type_);
+          ASSERT_NOT_NULL(visitor.ConcreteFnLit(fn_lit, ctx).type_);
       return DispatchTable::Row{std::move(params),
                                 &fn_type->as<type::Function>(),
                                 backend::EvaluateAs<ir::AnyFunc>(fn_lit, ctx)};

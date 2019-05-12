@@ -36,15 +36,14 @@ struct Expression;
 struct Declaration;
 
 struct Node : public base::Cast<Node> {
-  virtual std::string to_string(size_t n) const = 0;
-
-#define ICARUS_AST_VISITOR(ret_type, name, args, body) virtual ret_type name args = 0;
-#include "ast_visitor/visitors.xmacro.h"
-#undef ICARUS_AST_VISITOR
-
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}
 
+#define ICARUS_AST_VISITOR(signature, body) virtual signature = 0;
+#include "ast_visitor/visitors.xmacro.h"
+#undef ICARUS_AST_VISITOR
+
+  virtual std::string to_string(size_t n) const = 0;
   std::string to_string() const { return to_string(0); }
 
   inline friend std::ostream &operator<<(std::ostream &os, const Node &node) {
@@ -57,7 +56,6 @@ struct Node : public base::Cast<Node> {
 
 }  // namespace ast
 
-#define ICARUS_AST_VISITOR(ret_type, name, args, body)                         \
-  ret_type name args override body
+#define ICARUS_AST_VISITOR(signature, body) signature override body
 
 #endif  // ICARUS_AST_NODE_H

@@ -50,6 +50,8 @@ struct VerifyType {
   VerifyResult operator()(ast::name const *node, Context *ctx) const;
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
+
+  VerifyResult ConcreteFnLit(ast::FunctionLiteral const*node, Context *ctx) const;
 };
 
 }  // namespace ast_visitor

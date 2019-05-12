@@ -87,6 +87,126 @@ TypedRegister<type::Type const *> FinalizeEnum(ast::EnumLiteral::Kind kind,
 namespace ast_visitor {
 using ::matcher::InheritsFrom;
 
+static void CompleteBody(EmitIr const *visitor,
+                         ast::FunctionLiteral const *node, Context *ctx) {
+  // TODO have validate return a bool distinguishing if there are errors and
+  // whether or not we can proceed.
+
+  auto *t = ctx->type_of(node);
+
+  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+
+  CURRENT_FUNC(ir_func) {
+    ir::BasicBlock::Current = ir_func->entry();
+    // Leave space for allocas that will come later (added to the entry
+    // block).
+    auto start_block        = ir::CompiledFn::Current->AddBlock();
+    ir::BasicBlock::Current = start_block;
+
+    // TODO arguments should be renumbered to not waste space on const values
+    for (int32_t i = 0; i < static_cast<int32_t>(node->inputs_.size()); ++i) {
+      ctx->set_addr(node->inputs_.at(i).value.get(), ir::Reg::Arg(i));
+    }
+
+    node->fn_scope_->MakeAllStackAllocations(ctx);
+
+    for (size_t i = 0; i < node->outputs_.size(); ++i) {
+      auto *out_decl = node->outputs_[i]->if_as<ast::Declaration>();
+      if (!out_decl) { continue; }
+      auto *out_decl_type = ASSERT_NOT_NULL(ctx->type_of(out_decl));
+      auto alloc = out_decl_type->is_big() ? ir::GetRet(i, out_decl_type)
+                                           : ir::Alloca(out_decl_type);
+
+      ctx->set_addr(out_decl, alloc);
+      if (out_decl->IsDefaultInitialized()) {
+        out_decl_type->EmitInit(alloc, ctx);
+      } else {
+        out_decl_type->EmitCopyAssign(out_decl_type,
+                                      out_decl->init_val->EmitIr(visitor, ctx),
+                                      alloc, ctx);
+      }
+    }
+
+    node->statements_.EmitIr(visitor, ctx);
+
+    node->fn_scope_->MakeAllDestructions(ctx);
+
+    if (t->as<type::Function>().output.empty()) {
+      // TODO even this is wrong. Figure out the right jumping strategy
+      // between here and where you call SetReturn
+      ir::ReturnJump();
+    }
+
+    ir::BasicBlock::Current = ir_func->entry();
+    ir::UncondJump(start_block);
+    ir_func->work_item = nullptr;
+  }
+}
+
+static void CompleteBody(EmitIr const *visitor, ast::StructLiteral const *node,
+                         Context *ctx) {
+  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+  for (size_t i = 0; i < node->args_.size(); ++i) {
+    ctx->set_addr(&node->args_[i], ir::Reg::Arg(i));
+  }
+
+  CURRENT_FUNC(ir_func) {
+    ir::BasicBlock::Current = ir_func->entry();
+    auto cache_slot_addr    = ir::ArgumentCache(node);
+    auto cache_slot         = ir::Load<type::Type const *>(cache_slot_addr);
+
+    auto land_block         = ir::CompiledFn::Current->AddBlock();
+    ir::BasicBlock::Current = ir::EarlyExitOn<false>(
+        land_block,
+        ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
+    auto ctx_reg    = ir::CreateContext(ctx->mod_);
+    auto struct_reg = ir::CreateStruct(node->scope_, node);
+
+    // TODO why isn't implicit TypedRegister -> RegisterOr cast working on
+    // either of these? On the first it's clear because we don't even return a
+    // typedRegister, but this is a note to remind you to make that work. On the
+    // second... I don't know.
+    ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(struct_reg),
+              cache_slot_addr);
+    for (auto &arg : node->args_) {  // TODO const-ref
+      ir::AddBoundConstant(ctx_reg, &arg, ctx->addr(&arg));
+    }
+
+    for (auto &field : node->fields_) { // TODO const-ref
+      ir::VerifyType(&field, ctx_reg);
+
+      // TODO exit early if verifytype fails.
+
+      auto type_reg = ir::EvaluateAsType(field.type_expr.get(), ctx_reg);
+
+      ir::CreateStructField(struct_reg, type_reg);
+      ir::SetStructFieldName(struct_reg, field.id_);
+
+      for (auto const &hashtag : field.hashtags_) {
+        ir::AddHashtagToField(struct_reg, hashtag);
+      }
+    }
+
+    for (auto hashtag : node->hashtags_) {
+      ir::AddHashtagToStruct(struct_reg, hashtag);
+    }
+
+    ir::RegisterOr<type::Type const *> result = ir::FinalizeStruct(struct_reg);
+    ir::DestroyContext(ctx_reg);
+
+    // Exit path from creating a new struct.
+    ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(result));
+    ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(result),
+              cache_slot_addr);
+    ir::ReturnJump();
+
+    // Exit path from finding the cache
+    ir::BasicBlock::Current = land_block;
+    ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(cache_slot));
+    ir::ReturnJump();
+  }
+}
+
 ir::Results EmitIr::Val(ast::Access const *node, Context *ctx) const {
   if (ctx->type_of(node->operand.get()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
@@ -831,7 +951,7 @@ ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) const {
         [constants{ctx->constants_}, node, this, mod{ctx->mod_}]() mutable {
           Context ctx(mod);
           ctx.constants_ = constants;
-          node->CompleteBody(this, &ctx);
+          CompleteBody(this, node, &ctx);
         });
 
     auto *fn_type = &ctx->type_of(node)->as<type::Function>();
@@ -1193,7 +1313,7 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) const {
         [constants{ctx->constants_}, node, this, mod{ctx->mod_}]() mutable {
           Context ctx(mod);
           ctx.constants_ = constants;
-          node->CompleteBody(&ctx);
+          CompleteBody(this, node, &ctx);
         });
 
     auto const &arg_types = ctx->type_of(node)->as<type::GenericStruct>().deps_;
