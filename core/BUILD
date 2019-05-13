@@ -80,8 +80,6 @@ cc_target(
         "//ast:identifier",
         "//ast:match_declaration",
         "//ir:cmd",
-        "//misc:context",
-        "//misc:module",
         "//type:function",
         "//type:pointer",
     ],

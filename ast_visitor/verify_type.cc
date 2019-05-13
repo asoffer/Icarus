@@ -1080,7 +1080,7 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
   ASSERT(node_type != nullptr) << node->to_string(0);
   std::vector<type::Typed<ast::Declaration const *>> decls_to_check;
   {
-    auto good_decls_to_check = node->scope_->AllDeclsWithId(node->id_, ctx);
+    auto good_decls_to_check = node->scope_->AllDeclsWithId(node->id_);
     size_t num_total         = good_decls_to_check.size();
     auto iter                = node->scope_->child_decls_.find(node->id_);
 
@@ -1088,8 +1088,9 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
     if (has_children) { num_total += iter->second.size(); }
 
     decls_to_check.reserve(num_total);
-    decls_to_check.insert(decls_to_check.end(), good_decls_to_check.begin(),
-                          good_decls_to_check.end());
+    for (auto *decl : good_decls_to_check) {
+      decls_to_check.emplace_back(decl, ctx->type_of(decl));
+    }
 
     if (has_children) {
       for (auto *decl : iter->second) {
@@ -1333,13 +1334,13 @@ VerifyResult VerifyType::operator()(ast::Identifier const *node,
   // type verification, but I think we rely on type information to figure it out
   // for now so you'll have to undo that first.
   if (node->decl_ == nullptr) {
-    auto potential_decls = node->scope_->AllDeclsWithId(node->token, ctx);
+    auto potential_decls = node->scope_->AllDeclsWithId(node->token);
     switch (potential_decls.size()) {
       case 1: {
         // TODO could it be that evn though there is only one declaration,
         // there's a bound constant of the same name? If so, we need to deal
         // with node case.
-        node->decl_ = potential_decls[0].get();
+        node->decl_ = potential_decls[0];
         if (node->decl_ == nullptr) { return VerifyResult::Error(); }
       } break;
       case 0:

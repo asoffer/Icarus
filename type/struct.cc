@@ -17,14 +17,16 @@ namespace type {
 static std::optional<ir::AnyFunc> SpecialFunction(Struct const *s, char const *symbol,
                                                 Context *ctx) {
   auto *ptr_to_s = Ptr(s);
-  for (auto &decl : s->scope_->AllDeclsWithId(symbol, ctx)) {
+  for (auto const *decl : s->scope_->AllDeclsWithId(symbol)) {
     // Note: there cannot be more than one declaration with the correct type
     // because our shadowing checks would have caught it.
-    auto *fn_type = decl.type()->if_as<Function>();
+    auto *t = ctx->type_of(decl);
+    if (t == nullptr) { continue; }
+    auto *fn_type = t->if_as<Function>();
     if (fn_type == nullptr) { continue; }
     if (fn_type->input.front() != ptr_to_s) { continue; }
     ast_visitor::EmitIr visitor;
-    return decl.get()->EmitIr(&visitor, ctx).get<ir::AnyFunc>(0).val_;
+    return decl->EmitIr(&visitor, ctx).get<ir::AnyFunc>(0).val_;
   }
   return std::nullopt;
 }

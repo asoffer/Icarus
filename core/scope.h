@@ -29,8 +29,8 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this, std::forward<Args>(args)...);
   }
 
-  std::vector<type::Typed<ast::Declaration const *>> AllDeclsWithId(
-      std::string const &id, Context *ctx) const;
+  std::vector<ast::Declaration const *> AllDeclsWithId(
+      std::string const &id) const;
 
   Module const *module() const;
 
@@ -76,15 +76,11 @@ struct ModuleScope : public DeclScope {
 struct ExecScope : public Scope {
   ExecScope(Scope *parent);
   ~ExecScope() override {}
-
-  void MakeAllDestructions(Context *ctx);
 };
 
 struct FnScope : public ExecScope {
   FnScope(Scope *parent) : ExecScope(parent) {}
   ~FnScope() override {}
-
-  void MakeAllStackAllocations(Context *ctx);
 
   ast::FunctionLiteral *fn_lit_ = nullptr;
   std::vector<ExecScope *> innards_{1, this};

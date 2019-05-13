@@ -10,11 +10,12 @@ using ::matcher::InheritsFrom;
 
 // TODO only hold functions?
 OverloadSet::OverloadSet(core::Scope *scope, std::string const &id, Context *ctx) {
-  auto decls = scope->AllDeclsWithId(id, ctx);
+  auto decls = scope->AllDeclsWithId(id);
   reserve(decls.size());
   for (auto const &decl : decls) {
-    // TODO const??!
-    emplace(decl.get(), ast_visitor::VerifyResult{decl.type(), true});
+    if (auto const *result = ctx->prior_verification_attempt(decl)) {
+      emplace(decl, *result);
+    }
   }
 }
 

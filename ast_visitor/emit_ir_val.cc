@@ -6,6 +6,7 @@
 #include "ir/components.h"
 #include "ir/phi.h"
 #include "ir/register.h"
+#include "misc/context.h"
 #include "type/generic_struct.h"
 
 namespace ir {
@@ -87,6 +88,49 @@ TypedRegister<type::Type const *> FinalizeEnum(ast::EnumLiteral::Kind kind,
 namespace ast_visitor {
 using ::matcher::InheritsFrom;
 
+static void MakeAllStackAllocations(core::FnScope const *fn_scope,
+                                    Context *ctx) {
+  for (auto *scope : fn_scope->innards_) {
+    for (const auto & [ key, val ] : scope->decls_) {
+      for (auto *decl : val) {
+        if (decl->const_ || decl->is_fn_param_ ||
+            decl->is<ast::MatchDeclaration>()) {
+          continue;
+        }
+
+        // TODO it's wrong to use a default BoundConstants, but it's even more
+        // wrong to store the address on the declaration, so you can fix those
+        // together.
+        ctx->set_addr(decl, ir::Alloca(ctx->type_of(decl)));
+      }
+    }
+  }
+}
+
+static void MakeAllDestructions(core::ExecScope const *exec_scope,
+                                Context *ctx) {
+  // TODO store these in the appropriate order so we don't have to compute this?
+  // Will this be faster?
+  std::vector<ast::Declaration *> ordered_decls;
+  for (auto & [ name, decls ] : exec_scope->decls_) {
+    ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
+  }
+
+  // TODO eek, don't use line number to determine destruction order!
+  std::sort(ordered_decls.begin(), ordered_decls.end(),
+            [](ast::Declaration *lhs, ast::Declaration *rhs) {
+              return (lhs->span.start.line_num > rhs->span.start.line_num) ||
+                     (lhs->span.start.line_num == rhs->span.start.line_num &&
+                      lhs->span.start.offset > rhs->span.start.offset);
+            });
+
+  for (auto *decl : ordered_decls) {
+    auto *t = ASSERT_NOT_NULL(ctx->type_of(decl));
+    if (!t->needs_destroy()) { continue; }
+    t->EmitDestroy(ctx->addr(decl), ctx);
+  }
+}
+
 static void CompleteBody(EmitIr const *visitor,
                          ast::FunctionLiteral const *node, Context *ctx) {
   // TODO have validate return a bool distinguishing if there are errors and
@@ -108,7 +152,7 @@ static void CompleteBody(EmitIr const *visitor,
       ctx->set_addr(node->inputs_.at(i).value.get(), ir::Reg::Arg(i));
     }
 
-    node->fn_scope_->MakeAllStackAllocations(ctx);
+    MakeAllStackAllocations(node->fn_scope_.get(), ctx);
 
     for (size_t i = 0; i < node->outputs_.size(); ++i) {
       auto *out_decl = node->outputs_[i]->if_as<ast::Declaration>();
@@ -129,7 +173,7 @@ static void CompleteBody(EmitIr const *visitor,
 
     node->statements_.EmitIr(visitor, ctx);
 
-    node->fn_scope_->MakeAllDestructions(ctx);
+    MakeAllDestructions(node->fn_scope_.get(), ctx);
 
     if (t->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
@@ -511,7 +555,7 @@ ir::Results EmitIr::Val(ast::BlockLiteral const *node, Context *ctx) const {
 
 ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) const {
   node->stmts_.EmitIr(this, ctx);
-  node->block_scope_->MakeAllDestructions(ctx);
+   MakeAllDestructions(node->block_scope_.get(), ctx);
   return ir::Results{};
 }
 
@@ -1077,7 +1121,7 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
       // scope's destructors jump you to the correct next block for destruction.
       auto *scope = node->scope_;
       while (auto *exec = scope->if_as<core::ExecScope>()) {
-        exec->MakeAllDestructions(ctx);
+        MakeAllDestructions(exec, ctx);
         scope = exec->parent;
       }
 
@@ -1087,7 +1131,7 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
     }
     case frontend::Operator::Yield: {
       // TODO store this as an exec_scope.
-      node->scope_->as<core::ExecScope>().MakeAllDestructions(ctx);
+      MakeAllDestructions(&node->scope_->as<core::ExecScope>(), ctx);
       // TODO pretty sure this is all wrong.
 
       // Can't return these because we need to pass them up at least through the
