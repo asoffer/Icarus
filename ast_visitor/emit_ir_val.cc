@@ -912,7 +912,12 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
         UNREACHABLE();
       }
     } else {
-      auto *t   = ASSERT_NOT_NULL(ctx->type_of(node));
+      auto *t   = ctx->type_of(node);
+      if (!t) {
+        base::Log() << node->to_string(0);
+        UNREACHABLE();
+      }
+
       auto slot = ctx->constants_->second.constants_.reserve_slot(node, t);
       if (auto *result = std::get_if<ir::Results>(&slot)) {
         return std::move(*result);

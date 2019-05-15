@@ -22,7 +22,7 @@ Module const *Scope::module() const {
 }
 
 std::vector<ast::Declaration const *> Scope::AllDeclsWithId(
-    std::string const &id) const {
+    std::string_view id) const {
   std::vector<ast::Declaration const *> matching_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {

@@ -2,7 +2,10 @@ package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib", "cc_target", "sources")
 sources()
 
-cc_lib(name = "impl", deps = [":scope-impl"])
+cc_lib(name = "impl", deps = [
+    ":scope-impl",
+    ":pending_module-impl",
+])
 
 cc_lib(name = "alignment", hdrs = ["alignment.h"])
 
@@ -64,6 +67,18 @@ cc_test(
         ":fn_params",
         "//base:untyped_buffer-impl",
         "//test",
+    ],
+)
+
+cc_target(
+    name = "pending_module",
+    intf_deps = ["//base:expected"],
+    impl_deps = [
+        "//base:debug",
+        "//base:graph",
+        "//base:macros",
+        "//misc:module", # TODO remove this.
+        "@com_google_absl//absl/container:node_hash_set",
     ],
 )
 

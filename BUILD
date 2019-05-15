@@ -93,8 +93,8 @@ cc_binary(
         "//ir:components",
         "//ir:phi",
         "//ir:str",
-        "//misc:import_graph",
         "//opt:combine_blocks",
         "//type:cast",
+        "@com_google_absl//absl/container:node_hash_set",
     ],
 )

@@ -8,7 +8,6 @@
 #include "base/util.h"
 #include "type/typed_value.h"
 
-struct Context;
 struct Module;
 
 namespace ast {
@@ -30,7 +29,7 @@ struct Scope : public base::Cast<Scope> {
   }
 
   std::vector<ast::Declaration const *> AllDeclsWithId(
-      std::string const &id) const;
+      std::string_view id) const;
 
   Module const *module() const;
 

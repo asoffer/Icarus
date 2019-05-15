@@ -2,7 +2,6 @@
 #define ICARUS_MODULE_H
 
 #include <filesystem>
-#include <future>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -42,8 +41,6 @@ struct FunctionLiteral;
 struct StructLiteral;
 }  // namespace ast
 
-struct PendingModule;
-
 struct Module {
   Module();
   ~Module();
@@ -51,14 +48,10 @@ struct Module {
   // We take pointers to the module, so it cannot be moved.
   Module(Module &&) = delete;
 
-  static PendingModule Schedule(
-      error::Log *log, std::filesystem::path const &src,
-      std::filesystem::path const &requestor = std::filesystem::path{""});
-
   ir::CompiledFn *AddFunc(type::Function const *fn_type,
                     core::FnParams<type::Typed<ast::Expression const *>> params);
-  type::Type const *GetType(std::string const &name) const;
-  ast::Declaration *GetDecl(std::string const &name) const;
+  type::Type const *GetType(std::string_view name) const;
+  ast::Declaration *GetDecl(std::string_view name) const;
 
   std::queue<std::function<void()>> deferred_work_;
   void CompleteAllDeferredWork();
@@ -133,23 +126,6 @@ struct Module {
   std::filesystem::path const *path_ = nullptr;
 };
 
-void AwaitAllModulesTransitively();
+Module *CompileModule(Module *mod, std::filesystem::path const *path);
 
-struct PendingModule {
- public:
-  PendingModule() = default;
-  explicit PendingModule(Module *mod)
-      : data_(reinterpret_cast<uintptr_t>(mod)) {}
-  explicit PendingModule(std::shared_future<Module *> *mod)
-      : data_(reinterpret_cast<uintptr_t>(mod) | 0x01) {}
-
-  // Returns the compiled module, possibly blocking if `get` is called before
-  // the module has finished compiling.
-  Module *get();
-
-  bool valid() const { return data_ != 0; }
-
- private:
-  uintptr_t data_ = 0;
-};
 #endif  // ICARUS_MODULE_H

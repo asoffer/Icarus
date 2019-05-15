@@ -86,7 +86,7 @@ icarus_ast_node(name = "function_literal", deps = [
     "//core:fn_params",
 ])
 icarus_ast_node(name = "identifier", deps = [":expression"])
-icarus_ast_node(name = "import", deps = [":expression", "//misc:module"])
+icarus_ast_node(name = "import", deps = [":expression", "//core:pending_module"])
 icarus_ast_node(name = "index", deps = [":expression"])
 icarus_ast_node(name = "interface", deps = [":expression"])
 icarus_ast_node(name = "node", deps = [

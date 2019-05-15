@@ -1387,11 +1387,13 @@ VerifyResult VerifyType::operator()(ast::Import const *node,
 
   if (err) { return VerifyResult::Error(); }
   // TODO storing node might not be safe.
-  node->module_ = Module::Schedule(
-      ctx->error_log(),
-      std::filesystem::path{
-          backend::EvaluateAs<std::string_view>(node->operand_.get(), ctx)},
-      *ctx->mod_->path_);
+  auto src = backend::EvaluateAs<std::string_view>(node->operand_.get(), ctx);
+  ASSIGN_OR(ctx->error_log()->MissingModule(src, *ctx->mod_->path_);
+            return VerifyResult::Error(),  //
+                   node->module_,
+                   core::ImportModule(std::filesystem::path{src},
+                                      *ctx->mod_->path_, CompileModule));
+
   if (!node->module_.valid()) { return VerifyResult::Error(); }
   return ctx->set_result(node, VerifyResult::Constant(type::Module));
 }

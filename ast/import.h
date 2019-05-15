@@ -5,7 +5,7 @@
 #include <optional>
 
 #include "ast/expression.h"
-#include "misc/module.h"
+#include "core/pending_module.h"
 
 namespace ast {
 struct Import : public Expression {
@@ -25,7 +25,7 @@ struct Import : public Expression {
   //   lib ::= import "library." + version + ".ic"
   //   return lib.some_function()
   // }
-  mutable PendingModule module_;
+  mutable core::PendingModule module_;
   std::unique_ptr<Expression> operand_;
 };
 }  // namespace ast

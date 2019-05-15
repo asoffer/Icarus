@@ -9,6 +9,7 @@ cc_lib(
         "//backend:exec",
         "//base:untyped_buffer",
         "//base:util",
+        "//core:pending_module",
         "//ir:compiled_fn",
         "//misc:context",
         "//misc:module",

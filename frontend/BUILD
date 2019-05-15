@@ -69,6 +69,7 @@ cc_lib(
         ":token",
         "//ast",
         "//base:guarded",
+        "//misc:module",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

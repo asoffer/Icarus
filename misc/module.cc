@@ -1,8 +1,5 @@
 #include "misc/module.h"
 
-#include <list>
-
-#include "absl/container/flat_hash_map.h"
 #include "ast/declaration.h"
 #include "ast/expression.h"
 #include "ast/function_literal.h"
@@ -11,7 +8,6 @@
 #include "backend/eval.h"
 #include "base/guarded.h"
 #include "frontend/source.h"
-#include "misc/import_graph.h"
 #include "ir/compiled_fn.h"
 #include "type/function.h"
 
@@ -28,14 +24,6 @@ std::string WriteObjectFile(std::string const &name, Module *mod);
 namespace frontend {
 std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
 }  // namespace frontend
-
-static std::mutex mtx;
-static ImportGraph import_graph;
-static std::list<std::shared_future<Module *>> pending_module_futures;
-static absl::flat_hash_map<
-    std::filesystem::path const *,
-    std::pair<std::shared_future<Module *> *, std::unique_ptr<Module>>>
-    modules;
 
 std::atomic<bool> found_errors = false;
 ir::CompiledFn *main_fn = nullptr;
@@ -72,12 +60,12 @@ ir::CompiledFn *Module::AddFunc(
   return result;
 }
 
-type::Type const *Module::GetType(std::string const &name) const {
+type::Type const *Module::GetType(std::string_view name) const {
   ASSIGN_OR(return nullptr, auto &decl, GetDecl(name));
   return dep_data_.front().second.verify_results_.at(&decl).type_;
 }
 
-ast::Declaration *Module::GetDecl(std::string const &name) const {
+ast::Declaration *Module::GetDecl(std::string_view name) const {
   for (auto const &stmt : statements_.content_) {
     ASSIGN_OR(continue, auto &decl, stmt->if_as<ast::Declaration>());
     if (decl.id_ != name) { continue; }
@@ -104,10 +92,11 @@ void Module::CompleteAllDeferredWork() {
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
 // inside this function.
-static Module *CompileModule(Module *mod) {
+Module *CompileModule(Module *mod, std::filesystem::path const *path) {
+  mod->path_ = ASSERT_NOT_NULL(path);
   // TODO log an error if this fails.
   ASSIGN_OR(return nullptr, frontend::FileSrc src,
-                   frontend::FileSrc::Make(*ASSERT_NOT_NULL(mod->path_)));
+                   frontend::FileSrc::Make(*mod->path_));
 
   auto file_stmts = frontend::Parse(&src, mod);
   if (mod->error_log_.size() > 0) {
@@ -187,59 +176,4 @@ static Module *CompileModule(Module *mod) {
 #endif  // ICARUS_USE_LLVM
 
   return mod;
-}
-
-PendingModule Module::Schedule(error::Log *log,
-                               std::filesystem::path const &src,
-                               std::filesystem::path const &requestor) {
-  std::lock_guard lock(mtx);
-
-  auto[src_ptr, newly_inserted] = import_graph.node(src);
-  if (src_ptr == nullptr) {
-    log->MissingModule(src, requestor);
-    return PendingModule(static_cast<Module *>(nullptr));
-  }
-
-  // Need to add dependencies even if the node was already scheduled (hence the
-  // "already scheduled" check is done after this).
-  if (requestor != std::filesystem::path{""}) {
-    bool success = import_graph.AddDependency(
-        src_ptr, ASSERT_NOT_NULL(import_graph.node(requestor).first));
-    ASSERT(success == true);
-  }
-
-  if (!newly_inserted) {
-    return PendingModule{ASSERT_NOT_NULL(modules[src_ptr].first)};
-  }
-
-  auto & [ fut, mod ] = modules[src_ptr];
-  ASSERT(fut == nullptr);
-  mod = std::make_unique<Module>();
-  mod->path_ = src_ptr;
-  fut       = &pending_module_futures.emplace_back(
-      std::async(std::launch::async, CompileModule, mod.get()));
-  return PendingModule{fut};
-}
-
-Module *PendingModule::get() {
-  if ((data_ & 1) == 0) { return reinterpret_cast<Module *>(data_); }
-  Module *result =
-      reinterpret_cast<std::shared_future<Module *> *>(data_ - 1)->get();
-  *this = PendingModule{result};
-  return result;
-}
-
-void AwaitAllModulesTransitively() {
-  decltype(pending_module_futures)::iterator iter, end_iter;
-  {
-    std::lock_guard lock(mtx);
-    iter     = pending_module_futures.begin();
-    end_iter = pending_module_futures.end();
-  }
-
-  while (iter != end_iter) {
-    iter->wait();
-    std::lock_guard lock(mtx);
-    ++iter;
-  }
 }

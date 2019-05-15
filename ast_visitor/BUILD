@@ -100,6 +100,7 @@ cc_lib(
         ":emit_ir",
         "//ast",
         "//backend:eval",
+        "//core:pending_module",
         "//ir:cmd",
         "//ir:components",
         "//ir:phi",

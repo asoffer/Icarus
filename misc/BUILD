@@ -10,7 +10,6 @@ cc_lib(
         ":constant_binding-impl",
         ":context-impl",
         ":module-impl",
-        ":import_graph-impl",
     ],
 )
 
@@ -42,14 +41,6 @@ cc_target(
 )
 
 cc_target(
-    name = "import_graph",
-    intf_deps = [
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
-)
-
-cc_target(
     name = "module",
     intf_deps = [
         ":constant_binding",
@@ -64,7 +55,6 @@ cc_target(
         "@com_google_absl//absl/container:node_hash_map",
     ],
     impl_deps = [
-        ":import_graph",
         "//ast:declaration",
         "//ast:expression",
         "//ast:function_literal",

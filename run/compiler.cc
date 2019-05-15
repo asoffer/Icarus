@@ -3,8 +3,10 @@
 #include <vector>
 
 #include "backend/exec.h"
+#include "base/expected.h"
 #include "base/untyped_buffer.h"
 #include "base/util.h"
+#include "core/pending_module.h"
 #include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "misc/module.h"
@@ -38,7 +40,10 @@ int RunCompiler() {
 
   error::Log log;
   for (const auto &src : files) {
-    Module::Schedule(&log, std::filesystem::path{src});
+    if (!core::ImportModule(std::filesystem::path{src},
+                            std::filesystem::path{""}, CompileModule)) {
+      log.MissingModule(src, "");
+    }
   }
 
   if (log.size() > 0) {
@@ -46,7 +51,7 @@ int RunCompiler() {
     return 0;
   }
 
-  AwaitAllModulesTransitively();
+  core::AwaitAllModulesTransitively();
 
 #ifndef ICARUS_USE_LLVM
 
