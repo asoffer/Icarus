@@ -2,10 +2,7 @@
 
 #include "ast/declaration.h"
 #include "ast/identifier.h"
-#include "ast/match_declaration.h"
-#include "ir/cmd.h"
-#include "type/function.h"
-#include "type/pointer.h"
+#include "misc/module.h"
 
 namespace core {
 

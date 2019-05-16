@@ -6,7 +6,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "base/util.h"
-#include "type/typed_value.h"
 
 struct Module;
 

@@ -55,7 +55,6 @@ struct Module {
 
   std::queue<std::function<void()>> deferred_work_;
   void CompleteAllDeferredWork();
-  void CompleteAll();
 
   error::Log error_log_;
 
@@ -84,7 +83,6 @@ struct Module {
       generic_struct_cache_;
 
   struct DependentData {
-    // TODO I'm not sure this needs to be dependent? Or stored at all?
     absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;
 
     // TODO probably make these funcs constant.
@@ -109,7 +107,8 @@ struct Module {
   // efficient? More cache misses, but you're already paying heavily for the
   // equality call, so maybe it's just a simpler structure.
   //
-  // Using list because we need to not invalidate pointers to elements on insertion.
+  // Using list because we need to not invalidate pointers to elements on
+  // insertion.
   std::list<std::pair<ConstantBinding, DependentData>> dep_data_;
 
   std::pair<ConstantBinding, DependentData> *insert_constants(

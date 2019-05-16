@@ -86,16 +86,12 @@ cc_target(
     name = "scope",
     intf_deps = [
         "//base:util",
-        "//type:typed_value",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
         "//ast:declaration",
         "//ast:identifier",
-        "//ast:match_declaration",
-        "//ir:cmd",
-        "//type:function",
-        "//type:pointer",
+        "//misc:module",
     ],
 )
