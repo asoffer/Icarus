@@ -21,13 +21,6 @@ cc_target(
         "//ast:declaration",
         "//ast:identifier",
         "//base:interval",
-        "//misc:context",
         "//frontend:source",
-        "//type:enum",
-        "//type:opaque",
-        "//type:struct",
-        "//type:tuple",
-        "//type:type",
-        "//type:variant",
     ],
 )

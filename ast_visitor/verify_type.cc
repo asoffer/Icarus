@@ -7,9 +7,10 @@
 #include "frontend/operators.h"
 #include "misc/context.h"
 #include "type/cast.h"
+#include "type/generic_struct.h"
 #include "type/type.h"
 #include "type/typed_value.h"
-#include "type/generic_struct.h"
+#include "type/util.h"
 
 namespace ast_visitor {
 using ::matcher::InheritsFrom;
@@ -48,13 +49,13 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
     if (auto *e = evaled_type->if_as<type::Enum>()) {
       if (!e->Get(node->member_name).has_value()) {
         ctx->error_log()->MissingMember(node->span, node->member_name,
-                                        evaled_type);
+                                        evaled_type->to_string());
       }
       return ctx->set_result(node, VerifyResult::Constant(evaled_type));
     } else if (auto *f = evaled_type->if_as<type::Flags>()) {
       if (!f->Get(node->member_name).has_value()) {
         ctx->error_log()->MissingMember(node->span, node->member_name,
-                                        evaled_type);
+                                        evaled_type->to_string());
       }
       return ctx->set_result(node, VerifyResult::Constant(evaled_type));
     } else {
@@ -67,7 +68,8 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
   } else if (auto *s = base_type->if_as<type::Struct>()) {
     auto const *member = s->field(node->member_name);
     if (member == nullptr) {
-      ctx->error_log()->MissingMember(node->span, node->member_name, s);
+      ctx->error_log()->MissingMember(node->span, node->member_name,
+                                      s->to_string());
       return VerifyResult::Error();
     }
 
@@ -76,7 +78,8 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
                      [](ast::Hashtag h) {
                        return h.kind_ == ast::Hashtag::Builtin::Export;
                      })) {
-      ctx->error_log()->NonExportedMember(node->span, node->member_name, s);
+      ctx->error_log()->NonExportedMember(node->span, node->member_name,
+                                          s->to_string());
     }
 
     return ctx->set_result(node,
@@ -98,7 +101,8 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
     // TODO is node right?
     return ctx->set_result(node, VerifyResult::Constant(t));
   } else {
-    ctx->error_log()->MissingMember(node->span, node->member_name, base_type);
+    ctx->error_log()->MissingMember(node->span, node->member_name,
+                                    base_type->to_string());
     return VerifyResult::Error();
   }
 }
@@ -222,7 +226,8 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
         return ctx->set_result(node, VerifyResult((return_type), is_const));   \
       } else {                                                                 \
         ctx->error_log()->MismatchedBinopArithmeticType(                       \
-            lhs_result.type_, rhs_result.type_, node->span);                   \
+            lhs_result.type_->to_string(), rhs_result.type_->to_string(),      \
+            node->span);                                                       \
         return VerifyResult::Error();                                          \
       }                                                                        \
     } else {                                                                   \
@@ -256,7 +261,8 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
                                  VerifyResult(lhs_result.type_, is_const));
         } else {
           ctx->error_log()->MismatchedBinopArithmeticType(
-              lhs_result.type_, rhs_result.type_, node->span);
+              lhs_result.type_->to_string(), rhs_result.type_->to_string(),
+              node->span);
           return VerifyResult::Error();
         }
       } else {
@@ -280,7 +286,8 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
           return ctx->set_result(node, VerifyResult(type::Void(), is_const));
         } else {
           ctx->error_log()->MismatchedBinopArithmeticType(
-              lhs_result.type_, rhs_result.type_, node->span);
+              lhs_result.type_->to_string(), rhs_result.type_->to_string(),
+              node->span);
           return VerifyResult::Error();
         }
       } else {
@@ -569,7 +576,8 @@ VerifyResult VerifyType::operator()(ast::Cast const *node, Context *ctx) const {
         ctx);
   } else {
     if (!type::CanCast(expr_result.type_, t)) {
-      ctx->error_log()->InvalidCast(expr_result.type_, t, node->span);
+      ctx->error_log()->InvalidCast(expr_result.type_->to_string(),
+                                    t->to_string(), node->span);
       NOT_YET("log an error", expr_result.type_, t);
     }
     return VerifyResult(t, expr_result.const_);
@@ -702,7 +710,8 @@ not_blocks:
                 case type::Cmp::Equality: continue;
                 case type::Cmp::None:
                   ctx->error_log()->ComparingIncomparables(
-                      lhs_result.type_, rhs_result.type_,
+                      lhs_result.type_->to_string(),
+                      rhs_result.type_->to_string(),
                       TextSpan(node->exprs[i]->span, node->exprs[i + 1]->span));
                   return VerifyResult::Error();
               }
@@ -716,7 +725,8 @@ not_blocks:
                 case type::Cmp::Equality:
                 case type::Cmp::None:
                   ctx->error_log()->ComparingIncomparables(
-                      lhs_result.type_, rhs_result.type_,
+                      lhs_result.type_->to_string(),
+                      rhs_result.type_->to_string(),
                       TextSpan(node->exprs[i]->span, node->exprs[i + 1]->span));
                   return VerifyResult::Error();
               }
@@ -946,7 +956,8 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
                 .type_);
 
         if (!node->is_fn_param_ && !node_type->IsDefaultInitializable()) {
-          ctx->error_log()->TypeMustBeInitialized(node->span, node_type);
+          ctx->error_log()->TypeMustBeInitialized(node->span,
+                                                  node_type->to_string());
         }
 
       } else if (type_expr_type == type::Intf) {
@@ -961,7 +972,8 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
                   .type_;
         }
       } else {
-        ctx->error_log()->NotAType(node->type_expr->span, type_expr_type);
+        ctx->error_log()->NotAType(node->type_expr->span,
+                                   type_expr_type->to_string());
         return ctx->set_result(node, VerifyResult::Error());
       }
     } break;
@@ -1024,7 +1036,8 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
         node_type =
             ctx->set_result(node, VerifyResult::Constant(type::Generic)).type_;
       } else {
-        ctx->error_log()->NotAType(node->type_expr->span, type_expr_type);
+        ctx->error_log()->NotAType(node->type_expr->span,
+                                   type_expr_type->to_string());
         error = true;
       }
 
@@ -1049,7 +1062,8 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
         node_type =
             ctx->set_result(node, VerifyResult::Constant(type::Generic)).type_;
       } else {
-        ctx->error_log()->NotAType(node->type_expr->span, type_expr_type);
+        ctx->error_log()->NotAType(node->type_expr->span,
+                                   type_expr_type->to_string());
         return ctx->set_result(node, VerifyResult::Error());
       }
 
@@ -1195,7 +1209,8 @@ static ast_visitor::VerifyResult VerifyBody(VerifyType const *visitor,
              extract_visitor.exprs(ast_visitor::ExtractJumps::Kind::Return)) {
           auto *t = ASSERT_NOT_NULL(ctx->type_of(expr));
           if (t == outs[0]) { continue; }
-          ctx->error_log()->ReturnTypeMismatch(outs[0], t, expr->span);
+          ctx->error_log()->ReturnTypeMismatch(outs[0]->to_string(),
+                                               t->to_string(), expr->span);
           err = true;
         }
         return err ? ast_visitor::VerifyResult::Error()
@@ -1208,8 +1223,12 @@ static ast_visitor::VerifyResult VerifyBody(VerifyType const *visitor,
           if (expr_type->is<type::Tuple>()) {
             auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
-              ctx->error_log()->ReturningWrongNumber(expr->span, expr_type,
-                                                     outs.size());
+              ctx->error_log()->ReturningWrongNumber(
+                  expr->span,
+                  (expr_type->is<type::Tuple>()
+                       ? expr_type->as<type::Tuple>().size()
+                       : 1),
+                  outs.size());
               return ast_visitor::VerifyResult::Error();
             } else {
               bool err = false;
@@ -1222,15 +1241,20 @@ static ast_visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                   // TODO point the span to the correct entry which may be hard
                   // if it's splatted.
                   ctx->error_log()->IndexedReturnTypeMismatch(
-                      outs.at(i), tup_entries.at(i), expr->span, i);
+                      outs.at(i)->to_string(), tup_entries.at(i)->to_string(),
+                      expr->span, i);
                   err = true;
                 }
               }
               if (err) { return ast_visitor::VerifyResult::Error(); }
             }
           } else {
-            ctx->error_log()->ReturningWrongNumber(expr->span, expr_type,
-                                                   outs.size());
+            ctx->error_log()->ReturningWrongNumber(
+                expr->span,
+                (expr_type->is<type::Tuple>()
+                     ? expr_type->as<type::Tuple>().size()
+                     : 1),
+                outs.size());
             return ast_visitor::VerifyResult::Error();
           }
         }
@@ -1406,8 +1430,9 @@ VerifyResult VerifyType::operator()(ast::Index const *node,
 
   auto *index_type = rhs_result.type_->if_as<type::Primitive>();
   if (!index_type || !index_type->is_integral()) {
-    ctx->error_log()->InvalidIndexType(node->span, lhs_result.type_,
-                                       lhs_result.type_);
+    ctx->error_log()->InvalidIndexType(node->span,
+                                       lhs_result.type_->to_string(),
+                                       lhs_result.type_->to_string());
   }
 
   if (lhs_result.type_ == type::ByteView) {
@@ -1439,7 +1464,8 @@ VerifyResult VerifyType::operator()(ast::Index const *node,
     }();
 
     if (index < 0 || index >= static_cast<int64_t>(tup->size())) {
-      ctx->error_log()->IndexingTupleOutOfBounds(node->span, tup, index);
+      ctx->error_log()->IndexingTupleOutOfBounds(node->span, tup->to_string(),
+                                                 tup->size(), index);
       return VerifyResult::Error();
     }
 
@@ -1447,7 +1473,7 @@ VerifyResult VerifyType::operator()(ast::Index const *node,
         node, VerifyResult(tup->entries_.at(index), lhs_result.const_));
 
   } else {
-    ctx->error_log()->InvalidIndexing(node->span, lhs_result.type_);
+    ctx->error_log()->InvalidIndexing(node->span, lhs_result.type_->to_string());
     return VerifyResult::Error();
   }
 }
@@ -1505,7 +1531,7 @@ VerifyResult VerifyType::operator()(ast::RepeatedUnop const *node,
                 {}),
             ctx);
         if (dispatch_result.type_ && dispatch_result.type_ != type::Void()) {
-          ctx->error_log()->PrintMustReturnVoid(dispatch_result.type_,
+          ctx->error_log()->PrintMustReturnVoid(dispatch_result.type_->to_string(),
                                                 node->span);
           return VerifyResult::Error();
         }
@@ -1738,8 +1764,8 @@ VerifyResult VerifyType::operator()(ast::Switch const *node,
       // TODO dispatch table
     } else {
       if (cond_result.type_ != type::Bool) {
-        ctx->error_log()->SwitchConditionNeedsBool(cond_result.type_,
-                                                   node->span);
+        ctx->error_log()->SwitchConditionNeedsBool(
+            cond_result.type_->to_string(), node->span);
       }
     }
     // TODO if there's an error, an unorderded_set is not helpful for giving
@@ -1810,7 +1836,7 @@ VerifyResult VerifyType::operator()(ast::Unop const *node, Context *ctx) const {
       }
     case frontend::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
-        ctx->error_log()->WhichNonVariant(operand_type, node->span);
+        ctx->error_log()->WhichNonVariant(operand_type->to_string(), node->span);
       }
       return ctx->set_result(node, VerifyResult(type::Type_, result.const_));
     case frontend::Operator::At:
@@ -1819,7 +1845,8 @@ VerifyResult VerifyType::operator()(ast::Unop const *node, Context *ctx) const {
             node, VerifyResult(operand_type->as<type::Pointer>().pointee,
                                result.const_));
       } else {
-        ctx->error_log()->DereferencingNonPointer(operand_type, node->span);
+        ctx->error_log()->DereferencingNonPointer(operand_type->to_string(),
+                                                  node->span);
         return VerifyResult::Error();
       }
     case frontend::Operator::And:
@@ -1880,14 +1907,14 @@ VerifyResult VerifyType::operator()(ast::Unop const *node, Context *ctx) const {
     case frontend::Operator::Needs:
       if (operand_type != type::Bool) {
         ctx->error_log()->PreconditionNeedsBool(node->operand->span,
-                                                operand_type);
+                                                operand_type->to_string());
       }
       if (!result.const_) { NOT_YET(); }
       return ctx->set_result(node, VerifyResult::Constant(type::Void()));
     case frontend::Operator::Ensure:
       if (operand_type != type::Bool) {
         ctx->error_log()->PostconditionNeedsBool(node->operand->span,
-                                                 operand_type);
+                                                 operand_type->to_string());
       }
       if (!result.const_) { NOT_YET(); }
       return ctx->set_result(node, VerifyResult::Constant(type::Void()));

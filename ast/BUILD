@@ -77,8 +77,7 @@ icarus_ast_node(name = "chainop",
 icarus_ast_node(name = "comma_list", deps = [":expression"])
 icarus_ast_node(name = "declaration", deps = [":expression"])
 icarus_ast_node(name = "enum_literal", deps = [":expression"])
-icarus_ast_node(name = "expression",
-                deps = [":hashtag", ":node", "//type:util"])
+icarus_ast_node(name = "expression", deps = [":hashtag", ":node"])
 icarus_ast_node(name = "function_literal", deps = [
     ":declaration",
     ":expression",
@@ -123,12 +122,12 @@ cc_target(
         ":function_literal",
         "//ast:match_declaration",
         "//backend:eval",
-        "//misc:context",
         "//ir:block",
         "//ir:cmd",
         "//ir:components",
         "//ir:compiled_fn",
         "//ir:phi",
+        "//misc:context",
         "//misc:module",
         "//core:scope",
         "//type:cast",

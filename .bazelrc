@@ -5,3 +5,4 @@ build --strip=never
 build --color=yes
 test  --color=yes
 test  --test_arg="--use-colour yes"
+build:icarus --copt=-DICARUS_AST_VISITOR_EMIT_IR

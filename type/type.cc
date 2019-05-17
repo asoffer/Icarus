@@ -32,7 +32,7 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
   // to/from the same type, but we really care if you can assign to a type
   // rather than copy from another, I think.
   if (!from->IsMovable()) {
-    ctx->error_log()->NotMovable(span, from);
+    ctx->error_log()->NotMovable(span, from->to_string());
     return false;
   }
 

@@ -465,7 +465,8 @@ ast_visitor::VerifyResult VerifyDispatch(
   if (!expanded_fnargs.empty()) {
     // TODO log an error
     // ctx->error_log()->MissingDispatchContingency(node->span,
-    // expanded_fnargs);
+    // expanded_fnargs.Transform([](type::Type const *arg) { return
+    // arg->to_string(); }));
     return ast_visitor::VerifyResult::Error();
   }
 

@@ -20,6 +20,7 @@ cc_target(
         "//ir:results",
         "//ir:str",
         "//type:primitive",
+        "//type:util",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

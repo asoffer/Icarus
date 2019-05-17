@@ -11,13 +11,6 @@
 #include "error/inference_failure_reason.h"
 #include "frontend/text_span.h"
 
-struct Context;
-
-namespace type {
-struct Type;
-struct Tuple;
-}  // namespace type
-
 namespace ast {
 struct Declaration;
 struct Expression;
@@ -32,9 +25,11 @@ struct Log {
 #include "error/errors.xmacro.h"
 #undef MAKE_LOG_ERROR
 
+  // TODO most of these probably should just be replaced by a constexpr we can
+  // pass into libfmt.
   void UndeclaredIdentifier(ast::Identifier const *id);
-  void PreconditionNeedsBool(TextSpan const &span, type::Type const *t);
-  void PostconditionNeedsBool(TextSpan const &span, type::Type const *t);
+  void PreconditionNeedsBool(TextSpan const &span, std::string_view type);
+  void PostconditionNeedsBool(TextSpan const &span, std::string_view type);
   void DeclOutOfOrder(ast::Declaration const *decl, ast::Identifier const *id);
   void RunawayMultilineComment();
   void DoubleDeclAssignment(TextSpan const &decl_span,
@@ -44,40 +39,39 @@ struct Log {
   void UnknownParseError(std::vector<TextSpan> const &span);
   void PositionalArgumentFollowingNamed(std::vector<TextSpan> const &pos_spans,
                                         TextSpan const &named_span);
-  void NotAType(TextSpan const &span, type::Type const *t);
+  void NotAType(TextSpan const &span, std::string_view type);
   void ShadowingDeclaration(TextSpan const &span1, TextSpan const &span2);
 
   // TODO include a source location/span/trace or whatever you decide to
   // include.
   void UserDefinedError(std::string const &err);
-  void DereferencingNonPointer(type::Type const *type, TextSpan const &span);
-  void WhichNonVariant(type::Type const *type, TextSpan const &span);
-  void ReturnTypeMismatch(type::Type const *expected_type,
-                          type::Type const *actual_type, TextSpan const &span);
-  void IndexedReturnTypeMismatch(type::Type const *expected_type,
-                                 type::Type const *actual_type,
+  void DereferencingNonPointer(std::string_view type, TextSpan const &span);
+  void WhichNonVariant(std::string_view type, TextSpan const &span);
+  void ReturnTypeMismatch(std::string_view expected_type,
+                          std::string_view actual_type, TextSpan const &span);
+  void IndexedReturnTypeMismatch(std::string_view expected_type,
+                                 std::string_view actual_type,
                                  TextSpan const &span, size_t index);
-  void ReturningWrongNumber(TextSpan const &span, type::Type const *t,
-                            size_t num_rets);
+  void ReturningWrongNumber(TextSpan const &span, size_t actual,
+                            size_t expected);
   void NoReturnTypes(ast::Expression const *ret_expr);
   void DeclarationUsedInUnop(std::string const &unop,
                              TextSpan const &decl_span);
   void MissingMember(TextSpan const &span, std::string const &member_name,
-                     type::Type const *t);
+                     std::string_view type);
   void NonExportedMember(TextSpan const &span, std::string const &member_name,
-                         type::Type const *t);
-  void InvalidByteViewIndex(TextSpan const &span, type::Type const *index_type);
+                         std::string_view type);
   // TODO is this the same as `ArrayIndexType`?
-  void IndexingTupleOutOfBounds(TextSpan const &span, type::Tuple const *tup,
-                                size_t index);
+  void IndexingTupleOutOfBounds(TextSpan const &span, std::string_view tup,
+                                size_t tup_size, size_t index);
 
-  void InvalidIndexing(TextSpan const &span, type::Type const *t);
-  void InvalidIndexType(TextSpan const &span, type::Type const *t,
-                        type::Type const *index_type);
+  void InvalidIndexing(TextSpan const &span, std::string_view type);
+  void InvalidIndexType(TextSpan const &span, std::string_view type,
+                        std::string_view index_type);
 
-  void TypeMustBeInitialized(TextSpan const &span, type::Type const *t);
+  void TypeMustBeInitialized(TextSpan const &span, std::string_view type);
 
-  void ComparingIncomparables(type::Type const *lhs, type::Type const *rhs,
+  void ComparingIncomparables(std::string_view lhs, std::string_view rhs,
                               TextSpan const &span);
   void CyclicDependency(std::vector<ast::Identifier const *> cyc_deps);
 
@@ -91,27 +85,26 @@ struct Log {
                                        std::string> const &failure_reasons);
   void UninferrableType(InferenceFailureReason reason, TextSpan const &span);
 
-  void NotCopyable(TextSpan const &span, type::Type const *from);
-  void NotMovable(TextSpan const &span, type::Type const *from);
+  void NotCopyable(TextSpan const &span, std::string_view from);
+  void NotMovable(TextSpan const &span, std::string_view from);
 
   void BuiltinError(TextSpan const&span, std::string_view text);
 
   void MissingDispatchContingency(
       TextSpan const &span,
-      std::vector<core::FnArgs<type::Type const *>> const &missing_dispatch);
+      std::vector<core::FnArgs<std::string>> const &missing_dispatch);
 
   void MissingModule(std::filesystem::path const &src,
                      std::filesystem::path const &requestor);
 
   void StatementsFollowingJump(TextSpan const &span);
 
-  void MismatchedBinopArithmeticType(type::Type const *lhs,
-                                     type::Type const *rhs,
+  void MismatchedBinopArithmeticType(std::string_view lhs, std::string_view rhs,
                                      TextSpan const &span);
-  void InvalidCast(type::Type const *lhs, type::Type const *rhs,
+  void InvalidCast(std::string_view lhs, std::string_view rhs,
                    TextSpan const &span);
-  void PrintMustReturnVoid(type::Type const *t, TextSpan const &span);
-  void SwitchConditionNeedsBool(type::Type const *t, TextSpan const &span);
+  void PrintMustReturnVoid(std::string_view type, TextSpan const &span);
+  void SwitchConditionNeedsBool(std::string_view type, TextSpan const &span);
 
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() +

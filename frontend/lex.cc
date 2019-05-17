@@ -13,6 +13,7 @@
 #include "ir/results.h"
 #include "ir/str.h"
 #include "type/primitive.h"
+#include "type/util.h"
 
 namespace frontend {
 

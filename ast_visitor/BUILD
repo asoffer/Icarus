@@ -56,6 +56,8 @@ cc_lib(
         "//ast:ast-fwd",
         "//ir:addr",
         "//ir:register",
+        "//type",
+        "//type:typed_value",
     ],
 )
 
@@ -131,5 +133,6 @@ cc_target(
         "//misc:context",
         "//type",
         "//type:cast",
+        "//type:util",
     ],
 )

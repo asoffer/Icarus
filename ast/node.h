@@ -39,7 +39,8 @@ struct Node : public base::Cast<Node> {
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}
 
-#define ICARUS_AST_VISITOR(signature, body) virtual signature = 0;
+#define ICARUS_AST_VISITOR(signature, body)                                    \
+  virtual signature { UNREACHABLE(); }
 #include "ast_visitor/visitors.xmacro.h"
 #undef ICARUS_AST_VISITOR
 

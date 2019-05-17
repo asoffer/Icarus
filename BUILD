@@ -11,6 +11,18 @@ cc_binary(
         "//run:compiler",
     ],
 )
+cc_binary(
+    name = "icfmt",
+    srcs = ["fmt.cc"],
+    deps = [
+        "//ast",
+        "//frontend:parse",
+        "//frontend:source",
+        "//init:cli-impl",
+        "//init:signal-impl",
+        "//misc:module-impl",
+    ],
+)
 
 cc_library(
     name = "impl",

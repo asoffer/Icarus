@@ -3,7 +3,6 @@
 
 #include "ast/hashtag.h"
 #include "ast/node.h"
-#include "type/util.h" // TODO: stop exporting this.
 
 namespace ast {
 

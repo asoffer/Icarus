@@ -7,16 +7,8 @@
 #include "ast/identifier.h"
 #include "base/interval.h"
 #include "frontend/source.h"
-#include "misc/context.h"
-#include "type/enum.h"
-#include "type/opaque.h"
-#include "type/struct.h"
-#include "type/tuple.h"
-#include "type/type.h"
-#include "type/variant.h"
 
-using LineNum          = size_t;
-using FileToLineNumMap = absl::flat_hash_map<std::string, std::vector<LineNum>>;
+using FileToLineNumMap = absl::flat_hash_map<std::string, std::vector</* line num= */size_t>>;
 static FileToLineNumMap global_non_decl;
 
 std::vector<std::string> const &LoadLines(frontend::Src *src) {
@@ -136,11 +128,11 @@ void Log::UndeclaredIdentifier(ast::Identifier const *id) {
   undeclared_ids_[id->token].push_back(id);
 }
 
-void Log::PostconditionNeedsBool(TextSpan const &span, type::Type const *t) {
+void Log::PostconditionNeedsBool(TextSpan const &span, std::string_view type) {
   std::stringstream ss;
   ss << "Function postcondition must be of type bool, but you provided an "
         "expression of type "
-     << t << ".\n\n";
+     << type << ".\n\n";
   WriteSource(
       ss, span.source,
       {base::Interval<size_t>{span.start.line_num, span.finish.line_num + 1}},
@@ -149,11 +141,11 @@ void Log::PostconditionNeedsBool(TextSpan const &span, type::Type const *t) {
   errors_.push_back(ss.str());
 }
 
-void Log::PreconditionNeedsBool(TextSpan const &span, type::Type const *t) {
+void Log::PreconditionNeedsBool(TextSpan const &span, std::string_view type) {
   std::stringstream ss;
   ss << "Function precondition must be of type bool, but you provided an "
         "expression of type "
-     << t << ".\n\n";
+     << type << ".\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -227,9 +219,9 @@ void Log::DeclarationUsedInUnop(std::string const &unop,
 }
 
 void Log::MissingMember(TextSpan const &span, std::string const &member_name,
-                        type::Type const *t) {
+                        std::string_view type) {
   std::stringstream ss;
-  ss << "Expressions of type `" << t->to_string() << "` have no member named `"
+  ss << "Expressions of type `" << type << "` have no member named `"
      << member_name << "`.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
@@ -241,10 +233,10 @@ void Log::MissingMember(TextSpan const &span, std::string const &member_name,
 
 void Log::NonExportedMember(TextSpan const &span,
                             std::string const &member_name,
-                            type::Type const *t) {
+                            std::string_view type) {
   std::stringstream ss;
-  ss << "Expressions of type `" << t->to_string()
-     << "` do not export the member `" << member_name << "`.\n\n";
+  ss << "Expressions of type `" << type << "` do not export the member `"
+     << member_name << "`.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -253,18 +245,12 @@ void Log::NonExportedMember(TextSpan const &span,
   errors_.push_back(ss.str());
 }
 
-void Log::ReturnTypeMismatch(type::Type const *expected_type,
-                             type::Type const *actual_type,
+void Log::ReturnTypeMismatch(std::string_view expected_type,
+                             std::string_view actual_type,
                              TextSpan const &span) {
   std::stringstream ss;
-  if (actual_type->is<type::Tuple>()) {
-    ss << "Attempting to return multiple values";
-  } else {
-    ss << "Returning an expression of type `" << actual_type->to_string()
-       << '`';
-  }
-  ss << " from a function which returns `" << expected_type->to_string()
-     << "`.\n\n";
+  ss << "Returning an expression of type `" << actual_type << '`'
+     << " from a function which returns `" << expected_type << "`.\n\n";
   // TODO also show where the return type is specified?
   WriteSource(
       ss, ASSERT_NOT_NULL(span.source), {span.lines()},
@@ -287,12 +273,11 @@ void Log::NoReturnTypes(ast::Expression const *ret_expr) {
   errors_.push_back(ss.str());
 }
 
-void Log::ReturningWrongNumber(TextSpan const &span, type::Type const *t,
-                               size_t num_rets) {
+void Log::ReturningWrongNumber(TextSpan const &span, size_t actual,
+                               size_t expected) {
   std::stringstream ss;
-  ss << "Attempting to return "
-     << (t->is<type::Tuple>() ? t->as<type::Tuple>().size() : 1)
-     << " values from a function which has " << num_rets
+  ss << "Attempting to return " << actual
+     << " values from a function which has " << expected
      << " return values.\n\n";
   // TODO also show where the return type is specified?
   WriteSource(
@@ -302,14 +287,13 @@ void Log::ReturningWrongNumber(TextSpan const &span, type::Type const *t,
   errors_.push_back(ss.str());
 }
 
-void Log::IndexedReturnTypeMismatch(type::Type const *expected_type,
-                                    type::Type const *actual_type,
+void Log::IndexedReturnTypeMismatch(std::string_view expected_type,
+                                    std::string_view actual_type,
                                     TextSpan const &span, size_t index) {
   std::stringstream ss;
   ss << "Returning an expression in slot #" << index
-     << " (zero-indexed) of type `"
-     << actual_type->as<type::Tuple>().entries_.at(index)->to_string()
-     << "` but function expects a value of type `" << expected_type->to_string()
+     << " (zero-indexed) of type `" << actual_type
+     << "` but function expects a value of type `" << expected_type
      << "` in that slot.\n\n";
   // TODO also show where the return type is specified?
   WriteSource(
@@ -319,10 +303,10 @@ void Log::IndexedReturnTypeMismatch(type::Type const *expected_type,
   errors_.push_back(ss.str());
 }
 
-void Log::DereferencingNonPointer(type::Type const *type,
+void Log::DereferencingNonPointer(std::string_view type,
                                   TextSpan const &span) {
   std::stringstream ss;
-  ss << "Attempting to dereference an object of type `" << type->to_string()
+  ss << "Attempting to dereference an object of type `" << type
      << "` which is not a pointer.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
@@ -331,9 +315,9 @@ void Log::DereferencingNonPointer(type::Type const *type,
   errors_.push_back(ss.str());
 }
 
-void Log::WhichNonVariant(type::Type const *type, TextSpan const &span) {
+void Log::WhichNonVariant(std::string_view type, TextSpan const &span) {
   std::stringstream ss;
-  ss << "Attempting to call `which` an object of type `" << type->to_string()
+  ss << "Attempting to call `which` an object of type `" << type
      << "` which is not a variant.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
@@ -362,11 +346,11 @@ void Log::NotBinary(TextSpan const &span, std::string const &token) {
   errors_.push_back(ss.str());
 }
 
-void Log::NotAType(TextSpan const &span, type::Type const *t) {
+void Log::NotAType(TextSpan const &span, std::string_view type) {
   std::stringstream ss;
   ss << "Expression was expected to be a type or interface, but instead it was "
         "a(n) "
-     << t->to_string() << ".\n\n";
+     << type << ".\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -527,24 +511,10 @@ void Log::DeclOutOfOrder(ast::Declaration const *decl,
   out_of_order_decls_[decl].push_back(id);
 }
 
-void Log::InvalidByteViewIndex(TextSpan const &span,
-                               type::Type const *index_type) {
-  std::stringstream ss;
-  ss << "byte_view indexed by an invalid type. Expected an int or uint, but "
-        "encountered a "
-     << index_type->to_string() << ".";
-
-  WriteSource(
-      ss, span.source, {span.lines()},
-      {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
-}
-
-void Log::InvalidIndexing(TextSpan const &span, type::Type const *t) {
+void Log::InvalidIndexing(TextSpan const &span, std::string_view type) {
   std::stringstream ss;
   ss << "Cannot index into a non-array, non-buffer type. Indexed type is a `"
-     << t->to_string() << "`.\n\n";
+     << type << "`.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -552,13 +522,13 @@ void Log::InvalidIndexing(TextSpan const &span, type::Type const *t) {
   errors_.push_back(ss.str());
 }
 
-void Log::InvalidIndexType(TextSpan const &span, type::Type const *t,
-                           type::Type const *index_type) {
+void Log::InvalidIndexType(TextSpan const &span, std::string_view type,
+                           std::string_view index_type) {
   std::stringstream ss;
-  ss << "Attempting to index a value of type `" << t->to_string()
+  ss << "Attempting to index a value of type `" << type
      << "` with a non-integral index. Indices must be integers, but you "
         "provided an index of type `"
-     << index_type->to_string() << "`.\n\n";
+     << index_type << "`.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -566,23 +536,9 @@ void Log::InvalidIndexType(TextSpan const &span, type::Type const *t,
   errors_.push_back(ss.str());
 }
 
-void Log::TypeMustBeInitialized(TextSpan const &span, type::Type const *t) {
+void Log::TypeMustBeInitialized(TextSpan const &span, std::string_view type) {
   std::stringstream ss;
-  if (t->is<type::Enum>()) {
-    ss << "Enums have no default initial value and must be explicitly "
-          "initialized.\n\n";
-  } else if (t->is<type::Opaque>()) {
-    ss << "Opaque types cannot be initialized.\n\n";
-  } else if (t->is<type::Variant>()) {
-    ss << "Variants have no default initial value and must be explicitly "
-          "initialized.\n\n";
-  } else if (t->is<type::Struct>()) {
-    ss << "Struct " << t
-       << " has no default initial value and must be explicitly "
-          "initialized.\n\n";
-  } else {
-    UNREACHABLE();
-  }
+  ss << "There is no default value for the type `" << type << "`.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -590,10 +546,10 @@ void Log::TypeMustBeInitialized(TextSpan const &span, type::Type const *t) {
   errors_.push_back(ss.str());
 }
 
-void Log::ComparingIncomparables(type::Type const *lhs, type::Type const *rhs,
+void Log::ComparingIncomparables(std::string_view lhs, std::string_view rhs,
                                  TextSpan const &span) {
   std::stringstream ss;
-  ss << "Values of type `" << lhs->to_string() << "` and `" << rhs->to_string()
+  ss << "Values of type `" << lhs << "` and `" << rhs
      << "` are being compared but no such comparison is allowed:\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
@@ -648,7 +604,7 @@ void Log::NoCallMatch(TextSpan const &span,
 
 void Log::MissingDispatchContingency(
     TextSpan const &span,
-    std::vector<core::FnArgs<type::Type const *>> const &missing_dispatch) {
+    std::vector<core::FnArgs<std::string>> const &missing_dispatch) {
   std::stringstream ss;
   ss << "Failed to find a valid function to call for all required "
         "dispatches.\n\n";
@@ -657,19 +613,15 @@ void Log::MissingDispatchContingency(
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
 
   for (auto const &fnargs : missing_dispatch) {
-    ss << "\n * No function taking arguments ("
-       << fnargs.Transform([](type::Type const *t) { return t->to_string(); })
-              .to_string()
-       << ")\n";
+    ss << "\n * No function taking arguments (" << fnargs.to_string() << ")\n";
   }
   ss << "\n";
   errors_.push_back(ss.str());
 }
 
-void Log::NotCopyable(TextSpan const &span, type::Type const *from) {
+void Log::NotCopyable(TextSpan const &span, std::string_view from) {
   std::stringstream ss;
-  ss << "Attempting to copy an uncopyable type " << from->to_string()
-     << ".\n\n";
+  ss << "Attempting to copy an uncopyable type " << from << ".\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -678,9 +630,9 @@ void Log::NotCopyable(TextSpan const &span, type::Type const *from) {
   errors_.push_back(ss.str());
 }
 
-void Log::NotMovable(TextSpan const &span, type::Type const *from) {
+void Log::NotMovable(TextSpan const &span, std::string_view from) {
   std::stringstream ss;
-  ss << "Attempting to move an immovable type " << from->to_string() << ".\n\n";
+  ss << "Attempting to move an immovable type " << from << ".\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -689,11 +641,11 @@ void Log::NotMovable(TextSpan const &span, type::Type const *from) {
   errors_.push_back(ss.str());
 }
 
-void Log::IndexingTupleOutOfBounds(TextSpan const &span, type::Tuple const *tup,
-                                   size_t index) {
+void Log::IndexingTupleOutOfBounds(TextSpan const &span, std::string_view tup,
+                                   size_t tup_size, size_t index) {
   std::stringstream ss;
-  ss << "Tuple is indexed out of bounds. Tuple of type `" << tup->to_string()
-     << "` has size " << tup->size()
+  ss << "Tuple is indexed out of bounds. Tuple of type `" << tup
+     << "` has size " << tup_size
      << " but you are attempting to access position " << index << ".\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
@@ -743,11 +695,12 @@ void Log::UninferrableType(InferenceFailureReason reason,
   errors_.push_back(ss.str());
 }
 
-void Log::MismatchedBinopArithmeticType(type::Type const *lhs, type::Type const *rhs,
-                                   TextSpan const &span) {
+void Log::MismatchedBinopArithmeticType(std::string_view lhs,
+                                        std::string_view rhs,
+                                        TextSpan const &span) {
   std::stringstream ss;
-  ss << "Mismatched types `" << lhs->to_string() << "` and `"
-     << rhs->to_string() << "` in binary operator.\n\n";
+  ss << "Mismatched types `" << lhs << "` and `" << rhs
+     << "` in binary operator.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -756,11 +709,10 @@ void Log::MismatchedBinopArithmeticType(type::Type const *lhs, type::Type const 
   errors_.push_back(ss.str());
 }
 
-void Log::InvalidCast(type::Type const *from, type::Type const *to,
+void Log::InvalidCast(std::string_view from, std::string_view to,
                                    TextSpan const &span) {
   std::stringstream ss;
-  ss << "No viable cast from `" << from->to_string() << "` to `"
-     << to->to_string() << "`.\n\n";
+  ss << "No viable cast from `" << from << "` to `" << to << "`.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -769,10 +721,10 @@ void Log::InvalidCast(type::Type const *from, type::Type const *to,
   errors_.push_back(ss.str());
 }
 
-void Log::PrintMustReturnVoid(type::Type const *t, TextSpan const &span) {
+void Log::PrintMustReturnVoid(std::string_view type, TextSpan const &span) {
   std::stringstream ss;
   ss << "`print` must return void, but evaluates to an object of type "
-     << t->to_string() << ".\n\n";
+     << type << ".\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
@@ -781,11 +733,11 @@ void Log::PrintMustReturnVoid(type::Type const *t, TextSpan const &span) {
   errors_.push_back(ss.str());
 }
 
-void Log::SwitchConditionNeedsBool(type::Type const *t, TextSpan const &span) {
+void Log::SwitchConditionNeedsBool(std::string_view type, TextSpan const &span) {
   std::stringstream ss;
   ss << "Expressionless switch conditions must evaluate to a `bool`, but you "
         "provided a `"
-     << t->to_string() << "`.\n\n";
+     << type << "`.\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
