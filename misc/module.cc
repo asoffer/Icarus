@@ -111,13 +111,13 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
   }
 
   {
-    ast_visitor::AssignScope visitor;
+    visitor::AssignScope visitor;
     file_stmts->assign_scope(&visitor, &mod->scope_);
   }
 
   Context ctx(mod);
   {
-    ast_visitor::VerifyType visitor;
+    visitor::VerifyType visitor;
     file_stmts->VerifyType(&visitor, &ctx);
   }
   mod->CompleteAllDeferredWork();
@@ -130,7 +130,7 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
   }
 
   {
-    ast_visitor::EmitIr visitor;
+    visitor::EmitIr visitor;
     file_stmts->EmitIr(&visitor, &ctx);
   }
   mod->CompleteAllDeferredWork();

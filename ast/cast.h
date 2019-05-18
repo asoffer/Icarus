@@ -12,7 +12,7 @@ namespace ast {
 struct Cast : public Expression {
   ~Cast() override {}
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override{
     return "(" + expr_->to_string(n) + ") as (" + type_->to_string(n) + ")";

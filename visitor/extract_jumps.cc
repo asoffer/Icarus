@@ -1,8 +1,8 @@
-#include "ast_visitor/extract_jumps.h"
+#include "visitor/extract_jumps.h"
 
 #include "ast/ast.h"
 
-namespace ast_visitor {
+namespace visitor {
 
 std::vector<ast::Expression const *> const &ExtractJumps::exprs(
     ExtractJumps::Kind k) const {
@@ -143,5 +143,5 @@ void ExtractJumps::operator()(ast::Unop const *node) {
   node->operand->ExtractJumps(this);
 }
 
-}  // namespace ast_visitor
+}  // namespace visitor
 

@@ -3,16 +3,14 @@
 
 #include <iosfwd>
 #include <type_traits>
-#include "type/type.h"
 
 namespace type {
+struct Type;
+
 template <typename V, typename T = Type>
 struct Typed {
   Typed() = default;
-  // TODO: This does a weird thing where it upcasts and then downcasts. Probably
-  // free but worth making sure or fixing it.
-  Typed(V value, type::Type const* t)
-      : value_(std::move(value)), type_(t ? t->if_as<T>() : nullptr) {}
+  Typed(V value, T const* t) : value_(std::move(value)), type_(t) {}
 
   V& get() & { return value_; }
   V const& get() const & { return value_; }

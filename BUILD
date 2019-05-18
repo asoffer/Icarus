@@ -11,18 +11,19 @@ cc_binary(
         "//run:compiler",
     ],
 )
-cc_binary(
-    name = "icfmt",
-    srcs = ["fmt.cc"],
-    deps = [
-        "//ast",
-        "//frontend:parse",
-        "//frontend:source",
-        "//init:cli-impl",
-        "//init:signal-impl",
-        "//misc:module-impl",
-    ],
-)
+
+#cc_binary(
+#    name = "icfmt",
+#    srcs = ["fmt.cc"],
+#    deps = [
+#        "//ast",
+#        "//frontend:parse",
+#        "//frontend:source",
+#        "//init:cli-impl",
+#        "//init:signal-impl",
+#        "//misc:module-impl",
+#    ],
+#)
 
 cc_library(
     name = "impl",
@@ -42,7 +43,9 @@ cc_library(
         "//property:property_set-impl",
         "//property:property-impl",
         "//type:impl",
-        "//ast_visitor:visitors-impl",
+        "//visitor:visitors-impl",
+        "//visitor:type_visitors-impl",
+        "//visitor:special_function-impl",
     ],
     alwayslink = True,
 )
@@ -54,7 +57,7 @@ genrule(
     srcs = [
         ":sources",
         "//ast:sources",
-        "//ast_visitor:sources",
+        "//visitor:sources",
         "//backend:sources",
         "//base:sources",
         "//core:sources",
@@ -71,7 +74,7 @@ genrule(
     outs = ["unity.cc"],
     cmd = ("cat $(locations :sources)" +
            " $(locations //ast:sources)" +
-           " $(locations //ast_visitor:sources)" +
+           " $(locations //visitor:sources)" +
            " $(locations //backend:sources)" +
            " $(locations //base:sources)" +
            " $(locations //core:sources)" +
@@ -107,6 +110,7 @@ cc_binary(
         "//ir:str",
         "//opt:combine_blocks",
         "//type:cast",
+        "//visitor:special_function",
         "@com_google_absl//absl/container:node_hash_set",
     ],
 )

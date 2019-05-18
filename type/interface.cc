@@ -35,18 +35,6 @@ ir::Results Interface::PrepareArgument(Type const *t, ir::Results const &val,
   UNREACHABLE();
 }
 
-void Interface::EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                               ir::RegisterOr<ir::Addr> to,
-                               Context *ctx) const {
-  UNREACHABLE();
-}
-
-void Interface::EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                               ir::RegisterOr<ir::Addr> to,
-                               Context *ctx) const {
-  UNREACHABLE();
-}
-
 void Interface::EmitRepr(ir::Results const &id_val, Context *ctx) const {
   UNREACHABLE();
 }

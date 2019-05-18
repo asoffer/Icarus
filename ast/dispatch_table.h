@@ -51,9 +51,9 @@ struct DispatchTable {
   std::vector<type::Type const*> return_types_;
 };
 
-ast_visitor::VerifyResult VerifyDispatch(
+visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, OverloadSet const &os,
-    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
     Context *ctx);
 

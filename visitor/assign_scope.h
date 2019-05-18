@@ -1,10 +1,10 @@
-#ifndef ICARUS_AST_VISITOR_ASSIGN_SCOPE_H
-#define ICARUS_AST_VISITOR_ASSIGN_SCOPE_H
+#ifndef ICARUS_VISITOR_ASSIGN_SCOPE_H
+#define ICARUS_VISITOR_ASSIGN_SCOPE_H
 
 #include "core/scope.h"
 #include "ast/ast_fwd.h"
 
-namespace ast_visitor {
+namespace visitor {
 
 struct AssignScope {
 #define ICARUS_AST_NODE_X(name)                                                \
@@ -13,6 +13,6 @@ struct AssignScope {
 #undef ICARUS_AST_NODE_X
 };
 
-}  // namespace ast_visitor
+}  // namespace visitor
 
-#endif  // ICARUS_AST_VISITOR_ASSIGN_SCOPE_H
+#endif  // ICARUS_VISITOR_ASSIGN_SCOPE_H

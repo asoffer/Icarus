@@ -91,7 +91,7 @@ struct Module {
     // TODO future optimization: the bool determining if it's const is not
     // dependent and can therefore be stored more efficiently (though querying
     // for both simultaneously would be more expensive I guess.
-    absl::flat_hash_map<ast::ExprPtr, ast_visitor::VerifyResult> verify_results_;
+    absl::flat_hash_map<ast::ExprPtr, visitor::VerifyResult> verify_results_;
 
     absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
     ConstantBinding constants_;

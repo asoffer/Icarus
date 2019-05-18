@@ -26,7 +26,7 @@ static ir::CompiledFn ExprFn(type::Typed<ast::Expression const *> typed_expr,
         ir::CompiledFn::Current->AddBlock();
 
     ASSERT(ctx != nullptr);
-    ast_visitor::EmitIr visitor;
+    visitor::EmitIr visitor;
     auto vals = typed_expr.get()->EmitIr(&visitor, ctx);
     // TODO wrap this up into SetRet(vector)
     std::vector<type::Type const *> extracted_types;

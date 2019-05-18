@@ -12,7 +12,7 @@ namespace ast {
 struct Index : public Expression {
   ~Index() override {}
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override{
     return lhs_->to_string(n) + "[" + rhs_->to_string(n) + "]";

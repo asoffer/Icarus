@@ -7,8 +7,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ir/flags_val.h"
-#include "type.h"
-#include "typed_value.h"
+#include "type/type.h"
+#include "type/typed_value.h"
 
 namespace type {
 struct Flags : public type::Type {
@@ -18,6 +18,8 @@ struct Flags : public type::Type {
 
   Flags(
       absl::flat_hash_map<std::string, std::optional<int32_t>> const& members);
+
+#include "visitor/type_visitors.xmacro.h"
 
   std::optional<ir::FlagsVal> Get(const std::string& str) const;
   Typed<ir::FlagsVal, Flags> EmitLiteral(std::string const& member_name) const;

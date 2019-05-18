@@ -1,5 +1,5 @@
-#ifndef ICARUS_AST_VISITOR_DEPENDENT_DECLS_H
-#define ICARUS_AST_VISITOR_DEPENDENT_DECLS_H
+#ifndef ICARUS_VISITOR_DEPENDENT_DECLS_H
+#define ICARUS_VISITOR_DEPENDENT_DECLS_H
 
 #include <array>
 #include <vector>
@@ -7,7 +7,7 @@
 #include "ast/ast_fwd.h"
 #include "base/graph.h"
 
-namespace ast_visitor {
+namespace visitor {
 struct DeclDepGraph {
   base::Graph<ast::Declaration const *> graph_;
 
@@ -44,6 +44,6 @@ struct DependentDecls  {
   DeclDepGraph decl_graph_;
 };
 
-}  // namespace ast_visitor
+}  // namespace visitor
 
-#endif  // ICARUS_AST_VISITOR_DEPENDENT_DECLS_H
+#endif  // ICARUS_VISITOR_DEPENDENT_DECLS_H

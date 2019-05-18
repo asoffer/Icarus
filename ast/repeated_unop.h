@@ -10,7 +10,7 @@ struct RepeatedUnop : public Node {
   RepeatedUnop(TextSpan const &span) : Node(span) { args_.span = span; }
   ~RepeatedUnop() override {}
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override {
     switch (op_) {

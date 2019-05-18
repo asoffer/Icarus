@@ -5,53 +5,6 @@ struct Module;
 struct Context;
 
 namespace type {
-void Primitive::EmitInit(ir::Reg id_reg, Context *) const {
-  switch (type_) {
-    case PrimType::Type_: ir::Store(type::Void(), id_reg); break;
-    case PrimType::NullPtr: UNREACHABLE();
-    case PrimType::EmptyArray: UNREACHABLE();
-    case PrimType::Bool: ir::Store(false, id_reg); break;
-    case PrimType::Int8: ir::Store(static_cast<int8_t>(0), id_reg); break;
-    case PrimType::Int16: ir::Store(static_cast<int16_t>(0), id_reg); break;
-    case PrimType::Int32: ir::Store(static_cast<int32_t>(0), id_reg); break;
-    case PrimType::Int64: ir::Store(static_cast<int64_t>(0), id_reg); break;
-    case PrimType::Nat8: ir::Store(static_cast<uint8_t>(0), id_reg); break;
-    case PrimType::Nat16: ir::Store(static_cast<uint16_t>(0), id_reg); break;
-    case PrimType::Nat32: ir::Store(static_cast<uint32_t>(0), id_reg); break;
-    case PrimType::Nat64: ir::Store(static_cast<uint64_t>(0), id_reg); break;
-    case PrimType::Float32: ir::Store(0.0f, id_reg); break;
-    case PrimType::Float64: ir::Store(0.0, id_reg); break;
-    default: UNREACHABLE();
-  }
-}
-
-void Primitive::EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                               ir::RegisterOr<ir::Addr> to, Context *) const {
-  ASSERT(this == from_type);
-  switch (this->type_) {
-    case PrimType::Type_: ir::Store(from.get<type::Type const *>(0), to); break;
-    case PrimType::NullPtr: UNREACHABLE();
-    case PrimType::EmptyArray: UNREACHABLE();
-    case PrimType::Bool: ir::Store(from.get<bool>(0), to); break;
-    case PrimType::Int8: ir::Store(from.get<int8_t>(0), to); break;
-    case PrimType::Int16: ir::Store(from.get<int16_t>(0), to); break;
-    case PrimType::Int32: ir::Store(from.get<int32_t>(0), to); break;
-    case PrimType::Int64: ir::Store(from.get<int64_t>(0), to); break;
-    case PrimType::Nat8: ir::Store(from.get<uint8_t>(0), to); break;
-    case PrimType::Nat16: ir::Store(from.get<uint16_t>(0), to); break;
-    case PrimType::Nat32: ir::Store(from.get<uint32_t>(0), to); break;
-    case PrimType::Nat64: ir::Store(from.get<uint64_t>(0), to); break;
-    case PrimType::Float32: ir::Store(from.get<float>(0), to); break;
-    case PrimType::Float64: ir::Store(from.get<double>(0), to); break;
-    default: UNREACHABLE();
-  }
-}
-
-void Primitive::EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                               ir::RegisterOr<ir::Addr> to,
-                               Context *ctx) const {
-  EmitCopyAssign(from_type, from, to, ctx);
-}
 
 void Primitive::defining_modules(
     absl::flat_hash_set<::Module const *> *modules) const {}

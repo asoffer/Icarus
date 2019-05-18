@@ -11,6 +11,8 @@ struct Enum : public type::Type {
 
   Enum(::Module const* mod) : mod_(mod) {}
 
+#include "visitor/type_visitors.xmacro.h"
+
   bool IsDefaultInitializable() const override { return false; }
 
   std::optional<ir::EnumVal> Get(const std::string& str) const;

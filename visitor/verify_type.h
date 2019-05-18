@@ -1,5 +1,5 @@
-#ifndef ICARUS_AST_VISITOR_VERIFY_TYPE_H
-#define ICARUS_AST_VISITOR_VERIFY_TYPE_H
+#ifndef ICARUS_VISITOR_VERIFY_TYPE_H
+#define ICARUS_VISITOR_VERIFY_TYPE_H
 
 #include <iostream>
 
@@ -12,7 +12,7 @@ namespace type {
 struct Type;
 }  // namespace type
 
-namespace ast_visitor {
+namespace visitor {
 struct VerifyResult {
   type::Type const *type_;
   bool const_;
@@ -54,6 +54,6 @@ struct VerifyType {
   VerifyResult ConcreteFnLit(ast::FunctionLiteral const*node, Context *ctx) const;
 };
 
-}  // namespace ast_visitor
+}  // namespace visitor
 
-#endif  // ICARUS_AST_VISITOR_VERIFY_TYPE_H
+#endif  // ICARUS_VISITOR_VERIFY_TYPE_H

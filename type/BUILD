@@ -2,6 +2,11 @@ package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib", "cc_target", "sources")
 sources()
 
+cc_lib(
+    name = "type-fwd",
+    hdrs = ["type_fwd.h"],
+)
+
 cc_target(
     name = "array",
     intf_deps = [
@@ -269,7 +274,6 @@ cc_target(
 cc_lib(
     name = "typed_value",
     hdrs = ["typed_value.h"],
-    deps = [":type"],
 )
 
 cc_target(
@@ -284,6 +288,7 @@ cc_target(
         "//ir:results",
         "//core:arch",
         "@com_google_absl//absl/container:flat_hash_set",
+        "//visitor:type_visitors",
     ],
     impl_deps = [
         ":generic_struct",

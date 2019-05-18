@@ -10,15 +10,14 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "ast_visitor/assign_scope.h"
-#include "ast_visitor/dependent_decls.h"
-#include "ast_visitor/emit_ir.h"
-#include "ast_visitor/extract_jumps.h"
-#include "ast_visitor/verify_type.h"
+#include "visitor/assign_scope.h"
+#include "visitor/dependent_decls.h"
+#include "visitor/emit_ir.h"
+#include "visitor/extract_jumps.h"
+#include "visitor/verify_type.h"
 #include "base/util.h"
 #include "frontend/text_span.h"
 #include "ir/results.h"
-#include "type/typed_value.h"
 
 struct JumpExprs;
 struct Context;
@@ -41,7 +40,7 @@ struct Node : public base::Cast<Node> {
 
 #define ICARUS_AST_VISITOR(signature, body)                                    \
   virtual signature { UNREACHABLE(); }
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 #undef ICARUS_AST_VISITOR
 
   virtual std::string to_string(size_t n) const = 0;

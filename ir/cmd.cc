@@ -424,7 +424,8 @@ void SetRet(size_t n, type::Typed<Results> const &r, Context *ctx) {
       if constexpr (std::is_same_v<T, type::Struct const *>) {
         auto *t = ir::CompiledFn::Current->type_->output[n];
         // TODO guaranteed move-elision
-        t->EmitMoveAssign(t, r.get(), GetRet(n, t), ctx);
+        visitor::EmitIr visitor;
+        t->EmitMoveAssign(&visitor, t, r.get(), GetRet(n, t), ctx);
       } else {
         SetRet(n, r->get<T>(0));
       }
@@ -662,10 +663,10 @@ Results CallInline(
         case Op::NotFlags: {
           auto iter = reg_relocs.find(cmd.typed_reg_.get());
           if (iter == reg_relocs.end()) { goto next_block; }
-          reg_relocs.emplace(
-              cmd.result,
-              Not(type::Typed<RegisterOr<FlagsVal>, type::Flags>{
-                  iter->second.get<FlagsVal>(0), cmd.typed_reg_.type()}));
+          reg_relocs.emplace(cmd.result,
+                             Not(type::Typed<RegisterOr<FlagsVal>, type::Flags>{
+                                 iter->second.get<FlagsVal>(0),
+                                 &cmd.typed_reg_.type()->as<type::Flags>()}));
         } break;
           CASE(NegInt8, Neg, int8_t, reg_);
           CASE(NegInt16, Neg, int16_t, reg_);

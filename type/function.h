@@ -20,12 +20,9 @@ struct GenericFunction : public Callable {
   void WriteTo(std::string *result) const override {
     result->append("generic");
   }
-  void EmitCopyAssign(const Type *from_type, ir::Results const &from,
-                      ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
-  void EmitMoveAssign(const Type *from_type, ir::Results const &from,
-                      ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
-  void EmitInit(ir::Reg reg, Context *ctx) const override;
-  void EmitDestroy(ir::Reg reg, Context *ctx) const override;
+
+#include "visitor/type_visitors.xmacro.h"
+
   ir::Results PrepareArgument(const Type *t, const ir::Results &val,
                           Context *ctx) const override;
   void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
@@ -47,6 +44,8 @@ struct Function : public Callable {
     for (auto *t : input) { ASSERT(t != nullptr); }
     for (auto *t : output) { ASSERT(t != nullptr); }
   }
+
+#include "visitor/type_visitors.xmacro.h"
 
   core::FnParams<type::Typed<ast::Expression const *>> AnonymousFnParams()
       const;

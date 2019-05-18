@@ -27,7 +27,7 @@ static void ReplEval(ast::Expression *expr) {
     Context ctx(static_cast<Module *>(nullptr));
 
     // TODO support multiple values computed simultaneously?
-    ast_visitor::EmitIr visitor;
+    visitor::EmitIr visitor;
     auto expr_val = expr->EmitIr(&visitor, &ctx);
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
@@ -62,16 +62,16 @@ repl_start:;
       if (stmt->is<ast::Declaration>()) {
         auto *decl = &stmt->as<ast::Declaration>();
         {
-          ast_visitor::AssignScope visitor;
+          visitor::AssignScope visitor;
           decl->assign_scope(&visitor, &ctx.mod_->scope_);
         }
         {
-          ast_visitor::VerifyType visitor;
+          visitor::VerifyType visitor;
           decl->VerifyType(&visitor, &ctx);
         }
 
         {
-          ast_visitor::EmitIr visitor;
+          visitor::EmitIr visitor;
           decl->EmitIr(&visitor, &ctx);
         }
         if (ctx.num_errors() != 0) {
@@ -81,7 +81,7 @@ repl_start:;
 
       } else if (stmt->is<ast::Expression>()) {
         auto *expr = &stmt->as<ast::Expression>();
-        ast_visitor::AssignScope visitor;
+        visitor::AssignScope visitor;
         expr->assign_scope(&visitor, &ctx.mod_->scope_);
         backend::ReplEval(expr);
         fprintf(stderr, "\n");

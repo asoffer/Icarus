@@ -17,99 +17,9 @@
 // may not be a good design.
 
 namespace type {
-void Tuple::EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                           ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  copy_assign_func_.init([this, ctx]() {
-    Pointer const *p = Ptr(this);
-    auto *fn         = ctx->mod_->AddFunc(
-        Func({p, p}, {}),
-        core::FnParams(
-            core::Param{"", Typed<ast::Expression const *>{nullptr, p}},
-            core::Param{"", Typed<ast::Expression const *>{nullptr, p}}));
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto val                = ir::Reg::Arg(0);
-      auto var                = ir::Reg::Arg(1);
-
-      std::vector<size_t> perm = base::make_random_permutation(entries_.size());
-      for (size_t index : perm) {
-        size_t i    = perm.at(index);
-        auto *entry = entries_.at(i);
-        entry->EmitCopyAssign(
-            entry,
-            ir::Results{ir::PtrFix(ir::Field(val, this, i).get(), entry)},
-            ir::Field(var, this, i).get(), ctx);
-      }
-
-      ir::ReturnJump();
-    }
-    return fn;
-  });
-
-  ir::Copy(this, from.get<ir::Reg>(0), to);
-}
-
 bool Tuple::needs_destroy() const {
   return std::any_of(entries_.begin(), entries_.end(),
                      [](Type const *t) { return t->needs_destroy(); });
-}
-
-void Tuple::EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                           ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  move_assign_func_.init([this, ctx]() {
-    Pointer const *p = Ptr(this);
-    auto *fn         = ctx->mod_->AddFunc(
-        Func({p, p}, {}),
-        core::FnParams(
-            core::Param{"", Typed<ast::Expression const *>{nullptr, p}},
-            core::Param{"", Typed<ast::Expression const *>{nullptr, p}}));
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto val                = ir::Reg::Arg(0);
-      auto var                = ir::Reg::Arg(1);
-
-      std::vector<size_t> perm = base::make_random_permutation(entries_.size());
-      for (size_t index : perm) {
-        size_t i    = perm.at(index);
-        auto *entry = entries_.at(i);
-        entry->EmitMoveAssign(
-            entry,
-            ir::Results{ir::PtrFix(ir::Field(val, this, i).get(), entry)},
-            ir::Field(var, this, i).get(), ctx);
-      }
-
-      ir::ReturnJump();
-    }
-    return fn;
-  });
-
-  ir::Move(this, from.get<ir::Reg>(0), to);
-}
-
-void Tuple::EmitInit(ir::Reg reg, Context *ctx) const {
-  init_func_.init([this, ctx]() {
-    auto *fn = ctx->mod_->AddFunc(
-        Func({Ptr(this)}, {}),
-        core::FnParams(core::Param{
-            "", Typed<ast::Expression const *>{nullptr, Ptr(this)}}));
-
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto var                = ir::Reg::Arg(0);
-
-      std::vector<size_t> perm = base::make_random_permutation(entries_.size());
-      for (size_t index : perm) {
-        size_t i    = perm.at(index);
-        auto *entry = entries_.at(i);
-        entries_.at(i)->EmitInit(ir::Field(var, this, i).get(), ctx);
-      }
-
-      ir::ReturnJump();
-    }
-    return fn;
-  });
-
-  ir::Init(this, reg);
 }
 
 void Tuple::EmitRepr(ir::Results const &id_val, Context *ctx) const {
@@ -161,30 +71,6 @@ void Tuple::defining_modules(
   for (auto *entry : entries_) { entry->defining_modules(modules); }
 }
 
-void Tuple::EmitDestroy(ir::Reg reg, Context *ctx) const {
-  destroy_func_.init([this, ctx]() {
-    auto *fn = ctx->mod_->AddFunc(
-        Func({Ptr(this)}, {}),
-        core::FnParams(core::Param{
-            "", Typed<ast::Expression const *>{nullptr, Ptr(this)}}));
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto var                = ir::Reg::Arg(0);
-
-      std::vector<size_t> perm = base::make_random_permutation(entries_.size());
-      for (size_t index : perm) {
-        size_t i = perm.at(index);
-        entries_.at(i)->EmitDestroy(ir::Field(var, this, i).get(), ctx);
-      }
-
-      ir::ReturnJump();
-    }
-    return fn;
-  });
-
-  ir::Destroy(this, reg);
-}
-
 void Tuple::WriteTo(std::string *result) const {
   if (entries_.empty()) {
     result->append("()");
@@ -215,7 +101,8 @@ ir::Results Tuple::PrepareArgument(Type const *from, ir::Results const &val,
                                    Context *ctx) const {
   ASSERT(from == this);
   auto arg = ir::Alloca(from);
-  from->EmitMoveAssign(from, val, arg, ctx);
+  visitor::EmitIr visitor;
+  from->EmitMoveAssign(&visitor, from, val, arg, ctx);
   return ir::Results{arg};
 }
 

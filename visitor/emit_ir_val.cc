@@ -1,4 +1,4 @@
-#include "ast_visitor/emit_ir.h"
+#include "visitor/emit_ir.h"
 
 #include "ast/ast.h"
 #include "backend/eval.h"
@@ -8,6 +8,8 @@
 #include "ir/register.h"
 #include "misc/context.h"
 #include "type/generic_struct.h"
+#include "type/type.h"
+#include "type/typed_value.h"
 
 namespace ir {
 // TODO: The functions here that modify struct fields typically do so by
@@ -85,7 +87,7 @@ TypedRegister<type::Type const *> FinalizeEnum(ast::EnumLiteral::Kind kind,
 
 }  // namespace ir
 
-namespace ast_visitor {
+namespace visitor {
 using ::matcher::InheritsFrom;
 
 static void MakeAllStackAllocations(core::FnScope const *fn_scope,
@@ -107,7 +109,8 @@ static void MakeAllStackAllocations(core::FnScope const *fn_scope,
   }
 }
 
-static void MakeAllDestructions(core::ExecScope const *exec_scope,
+static void MakeAllDestructions(EmitIr const *visitor,
+                                core::ExecScope const *exec_scope,
                                 Context *ctx) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
@@ -127,7 +130,7 @@ static void MakeAllDestructions(core::ExecScope const *exec_scope,
   for (auto *decl : ordered_decls) {
     auto *t = ASSERT_NOT_NULL(ctx->type_of(decl));
     if (!t->needs_destroy()) { continue; }
-    t->EmitDestroy(ctx->addr(decl), ctx);
+    t->EmitDestroy(visitor, ctx->addr(decl), ctx);
   }
 }
 
@@ -163,9 +166,9 @@ static void CompleteBody(EmitIr const *visitor,
 
       ctx->set_addr(out_decl, alloc);
       if (out_decl->IsDefaultInitialized()) {
-        out_decl_type->EmitInit(alloc, ctx);
+        out_decl_type->EmitDefaultInit(visitor, alloc, ctx);
       } else {
-        out_decl_type->EmitCopyAssign(out_decl_type,
+        out_decl_type->EmitCopyAssign(visitor, out_decl_type,
                                       out_decl->init_val->EmitIr(visitor, ctx),
                                       alloc, ctx);
       }
@@ -173,7 +176,7 @@ static void CompleteBody(EmitIr const *visitor,
 
     node->statements_.EmitIr(visitor, ctx);
 
-    MakeAllDestructions(node->fn_scope_.get(), ctx);
+    MakeAllDestructions(visitor, node->fn_scope_.get(), ctx);
 
     if (t->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
@@ -403,7 +406,7 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
       if (lhs_lvals.size() != 1) { NOT_YET(); }
 
       auto rhs_vals = node->rhs->EmitIr(this, ctx);
-      lhs_type->EmitMoveAssign(rhs_type, rhs_vals, lhs_lvals[0], ctx);
+      lhs_type->EmitMoveAssign(this, rhs_type, rhs_vals, lhs_lvals[0], ctx);
 
       return ir::Results{};
     } break;
@@ -555,7 +558,7 @@ ir::Results EmitIr::Val(ast::BlockLiteral const *node, Context *ctx) const {
 
 ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) const {
   node->stmts_.EmitIr(this, ctx);
-   MakeAllDestructions(node->block_scope_.get(), ctx);
+   MakeAllDestructions(this, node->block_scope_.get(), ctx);
   return ir::Results{};
 }
 
@@ -957,7 +960,7 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
     if (node->IsCustomInitialized()) {
       node->init_val->EmitMoveInit(this, type::Typed(addr, type::Ptr(t)), ctx);
     } else {
-      if (!node->is_fn_param_) { t->EmitInit(addr, ctx); }
+      if (!node->is_fn_param_) { t->EmitDefaultInit(this, addr, ctx); }
     }
     return ir::Results{addr};
   }
@@ -1126,7 +1129,7 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
       // scope's destructors jump you to the correct next block for destruction.
       auto *scope = node->scope_;
       while (auto *exec = scope->if_as<core::ExecScope>()) {
-        MakeAllDestructions(exec, ctx);
+        MakeAllDestructions(this, exec, ctx);
         scope = exec->parent;
       }
 
@@ -1136,7 +1139,7 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
     }
     case frontend::Operator::Yield: {
       // TODO store this as an exec_scope.
-      MakeAllDestructions(&node->scope_->as<core::ExecScope>(), ctx);
+      MakeAllDestructions(this, &node->scope_->as<core::ExecScope>(), ctx);
       // TODO pretty sure this is all wrong.
 
       // Can't return these because we need to pass them up at least through the
@@ -1312,7 +1315,7 @@ ir::Results EmitIr::Val(ast::Statements const *node, Context *ctx) const {
     stmt->EmitIr(this, ctx);
     for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
       auto &reg = to_destroy.at(i);
-      reg.type()->EmitDestroy(reg.get(), ctx);
+      reg.type()->EmitDestroy(this, reg.get(), ctx);
     }
     to_destroy.clear();
   }
@@ -1560,4 +1563,4 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) const {
   }
 }
 
-}  // namespace ast_visitor
+}  // namespace visitor

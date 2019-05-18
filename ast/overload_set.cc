@@ -33,7 +33,7 @@ void OverloadSet::add_adl(std::string const &id, type::Type const *t) {
       if (&d == overload.expr) { return; }
     }
     // TODO const
-    emplace(&d, ast_visitor::VerifyResult{&t, true});
+    emplace(&d, visitor::VerifyResult{&t, true});
   }
 }
 

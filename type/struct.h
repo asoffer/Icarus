@@ -34,7 +34,7 @@ struct Struct : public Type {
   ~Struct() override {}
   BASIC_METHODS;
 
-  void EmitDestroy(ir::Reg reg, Context *ctx) const override;
+#include "visitor/type_visitors.xmacro.h"
 
   void set_last_name(std::string_view s);
   void add_hashtag(ast::Hashtag hashtag);

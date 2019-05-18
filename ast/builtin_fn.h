@@ -12,7 +12,7 @@ struct BuiltinFn : public Expression {
   BuiltinFn(const TextSpan &span, ir::Builtin b) : Expression(span), b_(b) {}
   ~BuiltinFn() override {}
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string to_string(size_t) const override { return stringify(b_); }
 

@@ -28,10 +28,10 @@ std::unique_ptr<T> MakeNode(std::string s, ::Context *ctx, core::Scope *scope) {
   auto *cast_ptr                  = stmt->if_as<T>();
   if (cast_ptr) {
     {
-      ast_visitor::AssignScope visitor;
+      visitor::AssignScope visitor;
       cast_ptr->assign_scope(&visitor, scope);
     }
-    ast_visitor::VerifyType visitor;
+    visitor::VerifyType visitor;
     if (Verify && !cast_ptr->VerifyType(&visitor, ctx)) { return nullptr; }
     stmt.release();
     return std::unique_ptr<T>{cast_ptr};

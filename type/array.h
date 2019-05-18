@@ -12,11 +12,11 @@ struct Array : public Type {
   TYPE_FNS(Array);
   Array(size_t l, Type const *t) : len(l), data_type(t) {}
 
-  void EmitDestroy(ir::Reg reg, Context *ctx) const override;
-
   static ir::Results Compare(Array const *lhs_type, ir::Results const &lhs_ir,
                              Array const *rhs_type, ir::Results const &rhs_ir,
                              bool equality, Context *ctx);
+
+#include "visitor/type_visitors.xmacro.h"
 
   bool IsCopyable() const override;
   bool IsMovable() const override;

@@ -9,7 +9,7 @@ namespace ast {
 struct Interface : public Expression {
   ~Interface() override {}
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override {
     if (decls_.empty()) { return "interface {}"; }

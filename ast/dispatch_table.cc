@@ -63,12 +63,12 @@ static void AddType(IndexT &&index, type::Type const *t,
 }
 
 static std::vector<core::FnArgs<type::Type const *>> ExpandAllFnArgs(
-    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args) {
   std::vector<core::FnArgs<type::Type const *>> all_expanded_options(1);
   args.ApplyWithIndex(
       [&](auto &&index,
-          std::pair<Expression const *, ast_visitor::VerifyResult> const &p) {
+          std::pair<Expression const *, visitor::VerifyResult> const &p) {
         if (p.first->needs_expansion()) {
           for (auto *t : p.second.type_->as<type::Tuple>().entries_) {
             AddType(index, t, &all_expanded_options);
@@ -111,7 +111,7 @@ static bool Covers(
 static base::expected<core::FnParams<type::Typed<Expression const *>>>
 MatchArgsToParams(
     core::FnParams<type::Typed<Expression const *>> const &params,
-    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args) {
   if (args.pos().size() > params.size()) {
     return base::unexpected(absl::StrCat(
@@ -187,7 +187,7 @@ MatchArgsToParams(
 
 static base::expected<DispatchTable::Row> OverloadParams(
     Overload const &overload,
-    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
     Context *ctx) {
   // These are the parameters for the actual overload that will be potentially
@@ -225,7 +225,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
         size_t param_index = fn_lit->decl_to_param_.at(decl);
         auto const &param  = fn_lit->inputs_.at(param_index);
 
-        ast_visitor::VerifyType visitor;
+        visitor::VerifyType visitor;
         auto result = decl->VerifyType(&visitor, ctx);
         if (!result.ok()) { NOT_YET(); }
 
@@ -329,7 +329,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
           ctx->constants_, ctx->insert_constants(ctx->current_constants_));
       base::defer d([&]() { ctx->constants_ = old_constants; });
       // TODO errors?
-      ast_visitor::VerifyType visitor;
+      visitor::VerifyType visitor;
       auto *fn_type =
           ASSERT_NOT_NULL(visitor.ConcreteFnLit(fn_lit, ctx).type_);
       return DispatchTable::Row{std::move(params),
@@ -417,9 +417,9 @@ static std::vector<type::Type const *> ReturnTypes(
 
 // TODO It is unsafe to access `expr` because it may have some low bits set.
 // Change it to uintptr_t.
-ast_visitor::VerifyResult VerifyDispatch(
+visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, OverloadSet const &os,
-    core::FnArgs<std::pair<Expression const *, ast_visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
     Context *ctx) {
   DispatchTable table;
@@ -446,7 +446,7 @@ ast_visitor::VerifyResult VerifyDispatch(
 
   size_t num_outputs = NumOutputs(table.bindings_);
   if (num_outputs == std::numeric_limits<size_t>::max()) {
-    return ctx->set_result(expr, ast_visitor::VerifyResult::Error());
+    return ctx->set_result(expr, visitor::VerifyResult::Error());
   }
   table.return_types_ = ReturnTypes(num_outputs, table.bindings_);
   auto *tup           = type::Tup(table.return_types_);
@@ -467,7 +467,7 @@ ast_visitor::VerifyResult VerifyDispatch(
     // ctx->error_log()->MissingDispatchContingency(node->span,
     // expanded_fnargs.Transform([](type::Type const *arg) { return
     // arg->to_string(); }));
-    return ast_visitor::VerifyResult::Error();
+    return visitor::VerifyResult::Error();
   }
 
   ctx->set_dispatch_table(expr, std::move(table));
@@ -475,7 +475,7 @@ ast_visitor::VerifyResult VerifyDispatch(
   // TODO this assumes we only have one return value or that we're returning a
   // tuple. So, e.g., you don't get the benefit of A -> (A, A) and B -> (A, B)
   // combining into (A | B) -> (A, A | B).
-  return ctx->set_result(expr, ast_visitor::VerifyResult(tup, is_const));
+  return ctx->set_result(expr, visitor::VerifyResult(tup, is_const));
 }
 
 static ir::RegisterOr<bool> EmitVariantMatch(ir::Reg needle,
@@ -575,7 +575,7 @@ static void EmitOneCall(
     auto const &param = row.params.at(i);
     auto *arg         = args.at_or_null(std::string{param.name});
     if (!arg && (param.flags & core::HAS_DEFAULT)) {
-      ast_visitor::EmitIr visitor;
+      visitor::EmitIr visitor;
       arg_results.append(param.value.get()->EmitIr(&visitor, ctx));
     } else {
       auto const &[expr, results] = *arg;

@@ -17,7 +17,7 @@ struct StructLiteral : public Expression {
 
   StructLiteral &operator=(StructLiteral &&) noexcept = default;
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override {
     std::stringstream ss;

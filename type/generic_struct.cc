@@ -2,28 +2,6 @@
 
 namespace type {
 
-void GenericStruct::EmitCopyAssign(Type const *from_type,
-                                   ir::Results const &from,
-                                   ir::RegisterOr<ir::Addr> to,
-                                   Context *ctx) const {
-  NOT_YET();
-}
-
-void GenericStruct::EmitMoveAssign(Type const *from_type,
-                                   ir::Results const &from,
-                                   ir::RegisterOr<ir::Addr> to,
-                                   Context *ctx) const {
-  NOT_YET();
-}
-
-void GenericStruct::EmitInit(ir::Reg id_reg, Context *ctx) const {
-  NOT_YET();
-}
-
-void GenericStruct::EmitDestroy(ir::Reg reg, Context *ctx) const {
-  UNREACHABLE();
-}
-
 GenericStruct *GenStruct(core::Scope const* scope, std::vector<Type const *> ts) {
   return new GenericStruct(scope, std::move(ts));
 }

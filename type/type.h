@@ -11,6 +11,7 @@
 #include "ir/block.h"
 #include "ir/register.h"
 #include "ir/results.h"
+#include "visitor/emit_ir.h"
 
 struct Context;
 struct TextSpan;
@@ -43,15 +44,8 @@ struct AnyFunc;
 #define ENDING = 0
 #define BASIC_METHODS_WITHOUT_LLVM                                             \
   virtual void WriteTo(std::string *buf) const ENDING;                         \
-  virtual core::Bytes bytes(core::Arch const &arch) const ENDING;          \
-  virtual core::Alignment alignment(core::Arch const &arch) const ENDING;  \
-  virtual void EmitCopyAssign(Type const *from_type, ir::Results const &from,  \
-                              ir::RegisterOr<ir::Addr> to, Context *ctx)       \
-      const ENDING;                                                            \
-  virtual void EmitMoveAssign(Type const *from_type, ir::Results const &from,  \
-                              ir::RegisterOr<ir::Addr> to, Context *ctx)       \
-      const ENDING;                                                            \
-  virtual void EmitInit(ir::Reg reg, Context *ctx) const ENDING;          \
+  virtual core::Bytes bytes(core::Arch const &arch) const ENDING;              \
+  virtual core::Alignment alignment(core::Arch const &arch) const ENDING;      \
   virtual ir::Results PrepareArgument(Type const *t, const ir::Results &val,   \
                                       Context *ctx) const ENDING;              \
   virtual void EmitRepr(ir::Results const &id_val, Context *ctx) const ENDING; \
@@ -69,15 +63,7 @@ struct AnyFunc;
 #endif
 
 namespace type {
-enum SpecialFunctionCategory { Copy, Move };
 
-template <SpecialFunctionCategory Cat>
-constexpr char const *Name() {
-  if constexpr (Cat == Move) { return "move"; }
-  if constexpr (Cat == Copy) { return "copy"; }
-}
-
-struct Block;
 struct Function;
 struct Struct;
 struct GenericStruct;
@@ -93,7 +79,10 @@ struct Type : public base::Cast<Type> {
   virtual ~Type() {}
   BASIC_METHODS;
 
-  virtual void EmitDestroy(ir::Reg reg, Context *ctx) const {};
+#define ICARUS_TYPE_VISITOR(signature, body)                                   \
+  virtual signature { UNREACHABLE(); }
+#include "visitor/type_visitors.xmacro.h"
+#undef ICARUS_TYPE_VISITOR
 
   // TODO rename so it doesn't have "Test" in the name.
   virtual bool TestEquality(void const *lhs, void const *rhs) const {
@@ -251,5 +240,7 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
 
 #undef ENDING
 #define ENDING
+
+#define ICARUS_TYPE_VISITOR(signature, body) signature override body
 
 #endif  // ICARUS_TYPE_TYPE_H

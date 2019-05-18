@@ -11,20 +11,9 @@ struct Interface : public Type {
   Interface(core::Scope const *scope, ::Module const *mod)
       : scope_(scope), mod_(mod) {}
 
+#include "visitor/type_visitors.xmacro.h"
+
   void WriteTo(std::string *result) const override;
-
-  void EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                      ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
-  void EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                      ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
-
-  void EmitInit(ir::Reg reg, Context *ctx) const override {
-    UNREACHABLE();
-  }
-
-  void EmitDestroy(ir::Reg reg, Context *ctx) const override {
-    UNREACHABLE();
-  }
 
   ir::Results PrepareArgument(Type const *t, ir::Results const &val,
                               Context *ctx) const override;

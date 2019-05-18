@@ -6,6 +6,7 @@
 #include "ast/expression.h"
 #include "ir/block.h"
 #include "ir/results.h"
+#include "type/primitive.h"
 
 namespace ast {
 struct Terminal : public Expression {
@@ -14,7 +15,7 @@ struct Terminal : public Expression {
       : Expression(span), results_(std::move(results)), type_(t) {}
   ~Terminal() override {}
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string to_string(size_t) const override {
     if (type_ == type::Bool) {

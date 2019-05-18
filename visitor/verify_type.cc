@@ -1,4 +1,4 @@
-#include "ast_visitor/verify_type.h"
+#include "visitor/verify_type.h"
 
 #include "ast/ast.h"
 #include "ast/overload_set.h"
@@ -12,7 +12,7 @@
 #include "type/typed_value.h"
 #include "type/util.h"
 
-namespace ast_visitor {
+namespace visitor {
 using ::matcher::InheritsFrom;
 
 static type::Type const *DereferenceAll(type::Type const *t) {
@@ -405,7 +405,7 @@ static VerifyResult VerifyCall(
               b->span, "Second argument to `foreign` must be a constant.");
         }
       }
-      return ast_visitor::VerifyResult::Constant(
+      return visitor::VerifyResult::Constant(
           backend::EvaluateAs<type::Type const *>(args.at(1).get(), ctx));
     } break;
     case ir::Builtin::Opaque:
@@ -413,7 +413,7 @@ static VerifyResult VerifyCall(
         ctx->error_log()->BuiltinError(
             b->span, "Built-in function `opaque` takes no arguments.");
       }
-      return ast_visitor::VerifyResult::Constant(
+      return visitor::VerifyResult::Constant(
           ir::BuiltinType(ir::Builtin::Opaque)->as<type::Function>().output[0]);
 
     case ir::Builtin::Bytes: {
@@ -434,7 +434,7 @@ static VerifyResult VerifyCall(
             "`type` (You provided a(n) " +
                 arg_results.at(0).second.type_->to_string() + ").");
       }
-      return ast_visitor::VerifyResult::Constant(
+      return visitor::VerifyResult::Constant(
           ir::BuiltinType(ir::Builtin::Bytes)->as<type::Function>().output[0]);
     }
     case ir::Builtin::Alignment: {
@@ -457,7 +457,7 @@ static VerifyResult VerifyCall(
             "type `type` (you provided a(n) " +
                 arg_results.at(0).second.type_->to_string() + ")");
       }
-      return ast_visitor::VerifyResult::Constant(
+      return visitor::VerifyResult::Constant(
           ir::BuiltinType(ir::Builtin::Alignment)
               ->as<type::Function>()
               .output[0]);
@@ -467,7 +467,7 @@ static VerifyResult VerifyCall(
       // This is for debugging the compiler only, so there's no need to write
       // decent errors here.
       ASSERT(arg_results, matcher::IsEmpty());
-      return ast_visitor::VerifyResult::Constant(type::Void());
+      return visitor::VerifyResult::Constant(type::Void());
 #endif  // DBG
   }
   UNREACHABLE();
@@ -756,7 +756,7 @@ VerifyResult VerifyType::operator()(ast::CommaList const *node,
                          VerifyResult(type::Tup(std::move(ts)), is_const));
 }
 
-static ast_visitor::VerifyResult VerifySpecialFunctions(
+static visitor::VerifyResult VerifySpecialFunctions(
     ast::Declaration const *decl, type::Type const *decl_type, Context *ctx) {
   bool error = false;
   if (decl->id_ == "copy") {
@@ -1153,20 +1153,20 @@ VerifyResult VerifyType::operator()(ast::EnumLiteral const *node,
 
 // TODO there's not that much shared between the inferred and uninferred cases,
 // so probably break them out.
-static ast_visitor::VerifyResult VerifyBody(VerifyType const *visitor,
+static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                                             ast::FunctionLiteral const *node,
                                             Context *ctx) {
   node->statements_.VerifyType(visitor, ctx);
   // TODO propogate cyclic dependencies.
 
-  ast_visitor::ExtractJumps extract_visitor;
+  visitor::ExtractJumps extract_visitor;
   node->statements_.ExtractJumps(&extract_visitor);
 
   // TODO we can have yields and returns, or yields and jumps, but not jumps and
   // returns. Check this.
   absl::flat_hash_set<type::Type const *> types;
   for (auto *expr :
-       extract_visitor.exprs(ast_visitor::ExtractJumps::Kind::Return)) {
+       extract_visitor.exprs(visitor::ExtractJumps::Kind::Return)) {
     types.insert(ctx->type_of(expr));
   }
 
@@ -1184,7 +1184,7 @@ static ast_visitor::VerifyResult VerifyBody(VerifyType const *visitor,
 
     if (types.size() > 1) { NOT_YET("log an error"); }
     auto f = type::Func(std::move(input_type_vec), std::move(output_type_vec));
-    return ctx->set_result(node, ast_visitor::VerifyResult::Constant(f));
+    return ctx->set_result(node, visitor::VerifyResult::Constant(f));
 
   } else {
     auto *node_type  = ctx->type_of(node);
@@ -1193,32 +1193,32 @@ static ast_visitor::VerifyResult VerifyBody(VerifyType const *visitor,
       case 0: {
         bool err = false;
         for (auto *expr :
-             extract_visitor.exprs(ast_visitor::ExtractJumps::Kind::Return)) {
+             extract_visitor.exprs(visitor::ExtractJumps::Kind::Return)) {
           base::Log() << expr->to_string(0);
           if (!expr->as<ast::CommaList>().exprs_.empty()) {
             ctx->error_log()->NoReturnTypes(expr);
             err = true;
           }
         }
-        return err ? ast_visitor::VerifyResult::Error()
-                   : ast_visitor::VerifyResult::Constant(node_type);
+        return err ? visitor::VerifyResult::Error()
+                   : visitor::VerifyResult::Constant(node_type);
       } break;
       case 1: {
         bool err = false;
         for (auto *expr :
-             extract_visitor.exprs(ast_visitor::ExtractJumps::Kind::Return)) {
+             extract_visitor.exprs(visitor::ExtractJumps::Kind::Return)) {
           auto *t = ASSERT_NOT_NULL(ctx->type_of(expr));
           if (t == outs[0]) { continue; }
           ctx->error_log()->ReturnTypeMismatch(outs[0]->to_string(),
                                                t->to_string(), expr->span);
           err = true;
         }
-        return err ? ast_visitor::VerifyResult::Error()
-                   : ast_visitor::VerifyResult::Constant(node_type);
+        return err ? visitor::VerifyResult::Error()
+                   : visitor::VerifyResult::Constant(node_type);
       } break;
       default: {
         for (auto *expr :
-             extract_visitor.exprs(ast_visitor::ExtractJumps::Kind::Return)) {
+             extract_visitor.exprs(visitor::ExtractJumps::Kind::Return)) {
           auto *expr_type = ctx->type_of(expr);
           if (expr_type->is<type::Tuple>()) {
             auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
@@ -1229,7 +1229,7 @@ static ast_visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                        ? expr_type->as<type::Tuple>().size()
                        : 1),
                   outs.size());
-              return ast_visitor::VerifyResult::Error();
+              return visitor::VerifyResult::Error();
             } else {
               bool err = false;
               for (size_t i = 0; i < tup_entries.size(); ++i) {
@@ -1246,7 +1246,7 @@ static ast_visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                   err = true;
                 }
               }
-              if (err) { return ast_visitor::VerifyResult::Error(); }
+              if (err) { return visitor::VerifyResult::Error(); }
             }
           } else {
             ctx->error_log()->ReturningWrongNumber(
@@ -1255,10 +1255,10 @@ static ast_visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                      ? expr_type->as<type::Tuple>().size()
                      : 1),
                 outs.size());
-            return ast_visitor::VerifyResult::Error();
+            return visitor::VerifyResult::Error();
           }
         }
-        return ast_visitor::VerifyResult::Constant(node_type);
+        return visitor::VerifyResult::Constant(node_type);
       } break;
     }
   }
@@ -1292,13 +1292,13 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
                   [](type::Type const *t) { return t == nullptr; }) ||
       std::any_of(output_type_vec.begin(), output_type_vec.end(),
                   [](type::Type const *t) { return t == nullptr; })) {
-    return ast_visitor::VerifyResult::Error();
+    return visitor::VerifyResult::Error();
   }
 
   // TODO need a better way to say if there was an error recorded in a
   // particular section of compilation. Right now we just have the grad total
   // count.
-  if (ctx->num_errors() > 0) { return ast_visitor::VerifyResult::Error(); }
+  if (ctx->num_errors() > 0) { return visitor::VerifyResult::Error(); }
 
   if (!node->return_type_inferred_) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
@@ -1319,7 +1319,7 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
         });
 
     return ctx->set_result(
-        node, ast_visitor::VerifyResult::Constant(type::Func(
+        node, visitor::VerifyResult::Constant(type::Func(
                   std::move(input_type_vec), std::move(output_type_vec))));
   } else {
     return VerifyBody(this, node, ctx);
@@ -1922,4 +1922,4 @@ VerifyResult VerifyType::operator()(ast::Unop const *node, Context *ctx) const {
   }
 }
 
-}  // namespace ast_visitor
+}  // namespace visitor

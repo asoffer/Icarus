@@ -15,7 +15,7 @@ struct GenericStruct : public Callable {
   GenericStruct(core::Scope const *scope, std::vector<Type const *> ts)
       : scope_(scope), mod_(scope->module()), deps_(std::move(ts)) {}
 
-  void EmitDestroy(ir::Reg reg, Context *ctx) const override;
+#include "visitor/type_visitors.xmacro.h"
 
   bool IsCopyable() const override;
   bool IsMovable() const override;

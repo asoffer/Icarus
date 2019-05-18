@@ -18,10 +18,10 @@ namespace ast {
 struct Expression;
 
 struct Overload {
-  Overload(Expression const *expr, ast_visitor::VerifyResult result)
+  Overload(Expression const *expr, visitor::VerifyResult result)
       : expr(expr), result(std::move(result)) {}
   Expression const *expr;
-  ast_visitor::VerifyResult result;
+  visitor::VerifyResult result;
 };
 
 struct OverloadSet : public base::bag<Overload> {

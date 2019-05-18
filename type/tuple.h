@@ -10,16 +10,13 @@ struct Tuple : public Type {
   Tuple() = delete;
   ~Tuple() {}
   Tuple(std::vector<Type const *> entries) : entries_(std::move(entries)) {}
+
+#include "visitor/type_visitors.xmacro.h"
+
   void WriteTo(std::string *result) const override;
 
-  void EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                      ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
-  void EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                      ir::RegisterOr<ir::Addr> to, Context *ctx) const override;
-   void EmitInit(ir::Reg reg, Context *ctx) const override;
-   void EmitDestroy(ir::Reg reg, Context *ctx) const override;
-   ir::Results PrepareArgument(Type const *t, ir::Results const &val,
-                                      Context *ctx) const override;
+  ir::Results PrepareArgument(Type const *t, ir::Results const &val,
+                              Context *ctx) const override;
 
   void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
 

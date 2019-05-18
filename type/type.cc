@@ -84,25 +84,28 @@ bool VerifyAssignment(TextSpan const &span, type::Type const *to,
 
 void EmitCopyInit(Type const *from_type, ir::Results const &from_val,
                   Typed<ir::Reg> to_var, Context *ctx) {
+  visitor::EmitIr visitor;
   auto *to_type = to_var.type()->as<Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.
   if (!to_type->is<Primitive>() && !to_type->is<Function>() &&
       !to_type->is<Variant>()) {
-    to_type->EmitInit(to_var.get(), ctx);
+    to_type->EmitDefaultInit(&visitor, to_var.get(), ctx);
   }
-  to_type->EmitCopyAssign(from_type, from_val, to_var.get(), ctx);
+
+  to_type->EmitCopyAssign(&visitor, from_type, from_val, to_var.get(), ctx);
 }
 
 void EmitMoveInit(Type const *from_type, ir::Results const &from_val,
                   Typed<ir::Reg> to_var, Context *ctx) {
+  visitor::EmitIr visitor;
   auto *to_type = to_var.type()->as<Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.
   if (!to_type->is<Primitive>() && !to_type->is<Function>() &&
       !to_type->is<Enum>() && !to_type->is<Flags>() &&
       !to_type->is<Variant>()) {
-    to_type->EmitInit(to_var.get(), ctx);
+    to_type->EmitDefaultInit(&visitor, to_var.get(), ctx);
   }
-  to_type->EmitMoveAssign(from_type, from_val, to_var.get(), ctx);
+  to_type->EmitMoveAssign(&visitor, from_type, from_val, to_var.get(), ctx);
 }
 
 }  // namespace type

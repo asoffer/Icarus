@@ -11,7 +11,7 @@ struct Access : public Expression {
     return operand->to_string(n) + "." + member_name;
   }
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string member_name;
   std::unique_ptr<Expression> operand;

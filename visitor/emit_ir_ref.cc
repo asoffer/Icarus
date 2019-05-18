@@ -1,4 +1,4 @@
-#include "ast_visitor/emit_ir.h"
+#include "visitor/emit_ir.h"
 
 #include "ast/ast.h"
 
@@ -7,8 +7,10 @@
 #include "ir/cmd.h"
 #include "ir/register.h"
 #include "ir/str.h"
+#include "type/type.h"
+#include "type/typed_value.h"
 
-namespace ast_visitor {
+namespace visitor {
 using ::matcher::InheritsFrom;
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
@@ -88,4 +90,4 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Unop const *node,
   return {node->operand->EmitIr(this, ctx).get<ir::Reg>(0)};
 }
 
-}  // namespace ast_visitor
+}  // namespace visitor

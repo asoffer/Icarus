@@ -13,14 +13,14 @@ struct Variant : public Type {
       : variants_(std::move(variants)) {}
   size_t size() const { return variants_.size(); }
 
+#include "visitor/type_visitors.xmacro.h"
+
   Type const *finalize() {
     auto *result = Var(std::move(variants_));
     ASSERT(this != result);
     delete this;
     return result;
   }
-
-  void EmitDestroy(ir::Reg reg, Context *ctx) const override;
 
   bool needs_destroy() const override;
 
@@ -33,7 +33,6 @@ struct Variant : public Type {
   bool IsMovable() const;
   std::vector<Type const *> variants_;
 
- private:
   mutable std::mutex mtx_;
   mutable ir::CompiledFn *repr_func_ = nullptr, *destroy_func_ = nullptr;
 };

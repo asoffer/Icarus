@@ -22,35 +22,9 @@ BufferPointer const *BufPtr(Type const *t) {
       .first->second;
 }
 
-void Pointer::EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                         ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  if (this == from_type) {
-    ir::Store(from.get<ir::Addr>(0), to);
-  } else if (from_type == NullPtr) {
-    ir::Store(ir::Addr::Null(), to);
-  } else {
-    UNREACHABLE();
-  }
-}
-
-void Pointer::EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                         ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  if (this == from_type) {
-    ir::Store(from.get<ir::Addr>(0), to);
-  } else if (from_type == NullPtr) {
-    ir::Store(ir::Addr::Null(), to);
-  } else {
-    UNREACHABLE(this);
-  }
-}
-
 void Pointer::defining_modules(
     absl::flat_hash_set<::Module const *> *modules) const {
   pointee->defining_modules(modules);
-}
-
-void Pointer::EmitInit(ir::Reg id_reg, Context *ctx) const {
-  ir::Store(ir::Addr::Null(), id_reg);
 }
 
 void Pointer::EmitRepr(ir::Results const &val, Context *ctx) const {

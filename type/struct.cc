@@ -25,58 +25,10 @@ static std::optional<ir::AnyFunc> SpecialFunction(Struct const *s, char const *s
     auto *fn_type = t->if_as<Function>();
     if (fn_type == nullptr) { continue; }
     if (fn_type->input.front() != ptr_to_s) { continue; }
-    ast_visitor::EmitIr visitor;
+    visitor::EmitIr visitor;
     return decl->EmitIr(&visitor, ctx).get<ir::AnyFunc>(0).val_;
   }
   return std::nullopt;
-}
-
-template <SpecialFunctionCategory Cat>
-static ir::AnyFunc CreateAssign(Struct const *s, Context *ctx) {
-  if (auto fn = SpecialFunction(s, Name<Cat>(), ctx)) { return *fn; }
-  Pointer const *pt = Ptr(s);
-  ir::AnyFunc fn    = s->mod_->AddFunc(
-      Func({pt, pt}, {}),
-      core::FnParams(
-          core::Param{"", Typed<ast::Expression const *>{nullptr, pt}},
-          core::Param{"", Typed<ast::Expression const *>{nullptr, pt}}));
-  CURRENT_FUNC(fn.func()) {
-    ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-    auto val                = ir::Reg::Arg(0);
-    auto var                = ir::Reg::Arg(1);
-
-    for (size_t i = 0; i < s->fields_.size(); ++i) {
-      auto *field_type = s->fields_.at(i).type;
-      auto from =
-          ir::Results{ir::PtrFix(ir::Field(val, s, i).get(), field_type)};
-      auto to = ir::Field(var, s, i).get();
-
-      if constexpr (Cat == Copy) {
-        field_type->EmitCopyAssign(field_type, from, to, ctx);
-      } else if constexpr (Cat == Move) {
-        field_type->EmitMoveAssign(field_type, from, to, ctx);
-      } else {
-        UNREACHABLE();
-      }
-    }
-
-    ir::ReturnJump();
-  }
-  return fn;
-}
-
-void Struct::EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  copy_assign_func_.init(
-      [this, ctx]() { return CreateAssign<Copy>(this, ctx); });
-  ir::Copy(this, from.get<ir::Reg>(0), to);
-}
-
-void Struct::EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                            ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  move_assign_func_.init(
-      [this, ctx]() { return CreateAssign<Move>(this, ctx); });
-  ir::Move(this, from.get<ir::Reg>(0), to);
 }
 
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
@@ -88,10 +40,6 @@ core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
   return offset;
 }
 
-void Struct::EmitInit(ir::Reg id_reg, Context *ctx) const {
-  ir::Init(this, id_reg);
-}
-
 size_t Struct::index(std::string const &name) const {
   return field_indices_.at(name);
 }
@@ -100,31 +48,6 @@ Struct::Field const *Struct::field(std::string const &name) const {
   auto iter = field_indices_.find(name);
   if (iter == field_indices_.end()) { return nullptr; }
   return &fields_[iter->second];
-}
-
-void Struct::EmitDestroy(ir::Reg reg, Context *ctx) const {
-  destroy_func_.init([this, ctx]() {
-    if (auto fn = SpecialFunction(this, "~", ctx)) { return *fn; }
-
-    Pointer const *pt = Ptr(this);
-    ir::AnyFunc fn    = mod_->AddFunc(
-        Func({pt}, {}), core::FnParams(core::Param{
-                            "", Typed<ast::Expression const *>{nullptr, pt}}));
-
-    CURRENT_FUNC(fn.func()) {
-      ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto var                = ir::Reg::Arg(0);
-
-      for (int i = static_cast<int>(fields_.size()) - 1; i >= 0; --i) {
-        fields_.at(i).type->EmitDestroy(ir::Field(var, this, i).get(), ctx);
-      }
-
-      ir::ReturnJump();
-    }
-    return fn;
-  });
-
-  ir::Destroy(this, reg);
 }
 
 void Struct::defining_modules(
@@ -202,12 +125,13 @@ ir::Results Struct::PrepareArgument(Type const *from, ir::Results const &val,
                                     Context *ctx) const {
   // TODO consider who is responsible for destruction here.
   auto arg = ir::Alloca(this);
+  visitor::EmitIr visitor;
   if (from->is<Variant>()) {
-    EmitMoveAssign(this,
+    EmitMoveAssign(&visitor, this,
                    ir::Results{ir::VariantValue(this, val.get<ir::Reg>(0))},
                    arg, ctx);
   } else if (this == from) {
-    EmitMoveAssign(from, val, arg, ctx);
+    EmitMoveAssign(&visitor, from, val, arg, ctx);
   } else {
     UNREACHABLE(from);
   }

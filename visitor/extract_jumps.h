@@ -1,12 +1,12 @@
-#ifndef ICARUS_AST_VISITOR_EXTRACT_JUMPS_H
-#define ICARUS_AST_VISITOR_EXTRACT_JUMPS_H
+#ifndef ICARUS_VISITOR_EXTRACT_JUMPS_H
+#define ICARUS_VISITOR_EXTRACT_JUMPS_H
 
 #include <array>
 #include <vector>
 
 #include "ast/ast_fwd.h"
 
-namespace ast_visitor {
+namespace visitor {
 
 struct ExtractJumps {
 #define ICARUS_AST_NODE_X(name) void operator()(ast::name const *node);
@@ -20,6 +20,6 @@ struct ExtractJumps {
   std::array<std::vector<ast::Expression const *>, 3> data_;
 };
 
-}  // namespace ast_visitor
+}  // namespace visitor
 
-#endif  // ICARUS_AST_VISITOR_EXTRACT_JUMPS_H
+#endif  // ICARUS_VISITOR_EXTRACT_JUMPS_H

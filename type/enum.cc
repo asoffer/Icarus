@@ -11,10 +11,6 @@ struct Context;
 
 namespace type {
 
-void Enum::EmitInit(ir::Reg id_reg, Context *) const {
-  UNREACHABLE("Enums must be initialized");
-}
-
 std::optional<ir::EnumVal> Enum::Get(const std::string &str) const {
   if (auto iter = vals_.find(str); iter != vals_.end()) { return iter->second; }
   return std::nullopt;
@@ -26,18 +22,6 @@ bool Enum::ReinterpretAs(Type const *t) const { return t == this; }
 Typed<ir::EnumVal, Enum> Enum::EmitLiteral(
     std::string const &member_name) const {
   return Typed<ir::EnumVal, Enum>(vals_.at(member_name), this);
-}
-
-void Enum::EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                          ir::RegisterOr<ir::Addr> to, Context *) const {
-  ASSERT(this == from_type);
-  ir::Store(from.get<ir::EnumVal>(0), to);
-}
-
-void Enum::EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                          ir::RegisterOr<ir::Addr> to, Context *) const {
-  ASSERT(this == from_type);
-  ir::Store(from.get<ir::EnumVal>(0), to);
 }
 
 void Enum::defining_modules(

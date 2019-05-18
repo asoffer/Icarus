@@ -1,8 +1,8 @@
-#include "ast_visitor/assign_scope.h"
+#include "visitor/assign_scope.h"
 
 #include "ast/ast.h"
 
-namespace ast_visitor {
+namespace visitor {
 
 void AssignScope::operator()(ast::Access *node, core::Scope *scope) {
   node->scope_ = scope;
@@ -206,4 +206,4 @@ void AssignScope::operator()(ast::Unop *node, core::Scope *scope) {
   node->operand->assign_scope(this, scope);
 }
 
-}  // namespace ast_visitor
+}  // namespace visitor

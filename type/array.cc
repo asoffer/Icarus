@@ -14,43 +14,6 @@
 #include "type/function.h"
 #include "type/pointer.h"
 
-template <typename LoopPhiFn, typename LoopBodyFn, typename TypeTup,
-          typename... Ts>
-static void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
-                       TypeTup &&types,
-                       std::tuple<ir::RegisterOr<Ts>...> entry_vals) {
-  auto entry_block = ir::BasicBlock::Current;
-
-  auto loop_phi   = ir::CompiledFn::Current->AddBlock();
-  auto loop_body  = ir::CompiledFn::Current->AddBlock();
-  auto exit_block = ir::CompiledFn::Current->AddBlock();
-
-  ir::UncondJump(loop_phi);
-  ir::BasicBlock::Current = loop_phi;
-
-  auto phi_indices = base::tuple::transform(ir::Phi, types);
-  auto phi_vals    = base::tuple::transform(
-      [](auto &&val) { return ir::CompiledFn::Current->Command(val).result; },
-      phi_indices);
-
-  auto exit_cond = std::forward<LoopPhiFn>(loop_phi_fn)(phi_vals);
-  ir::CondJump(exit_cond, exit_block, loop_body);
-
-  ir::BasicBlock::Current = loop_body;
-  auto new_phis           = std::forward<LoopBodyFn>(loop_body_fn)(phi_vals);
-  ir::UncondJump(loop_phi);
-
-  base::tuple::for_each(
-      [&](auto &&phi_index, auto &&entry_val, auto &&new_phi) {
-        using T = std::decay_t<decltype(entry_val.val_)>;
-        ir::MakePhi<T>(phi_index,
-                       {{entry_block, entry_val}, {loop_body, new_phi}});
-      },
-      std::move(phi_indices), std::move(entry_vals), std::move(new_phis));
-
-  ir::BasicBlock::Current = exit_block;
-}
-
 namespace type {
 
 static base::guarded<absl::flat_hash_map<
@@ -152,127 +115,6 @@ void Array::defining_modules(
   data_type->defining_modules(modules);
 }
 
-template <SpecialFunctionCategory Cat>
-static ir::CompiledFn *CreateAssign(Array const *a, Context *ctx) {
-  Pointer const *ptr_type = Ptr(a);
-  auto *data_ptr_type     = Ptr(a->data_type);
-  auto *fn                = ctx->mod_->AddFunc(
-      Func({ptr_type, ptr_type}, {}),
-      core::FnParams(
-          core::Param{"", Typed<ast::Expression const *>{nullptr, ptr_type}},
-          core::Param{"", Typed<ast::Expression const *>{nullptr, ptr_type}}));
-  CURRENT_FUNC(fn) {
-    ir::BasicBlock::Current = fn->entry();
-    auto val                = ir::Reg::Arg(0);
-    auto var                = ir::Reg::Arg(1);
-
-    auto from_ptr     = ir::Index(ptr_type, val, 0);
-    auto from_end_ptr = ir::PtrIncr(from_ptr, a->len, data_ptr_type);
-    auto to_ptr       = ir::Index(ptr_type, var, 0);
-
-    using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
-    CreateLoop(
-        [&](tup const &phis) {
-          return ir::Eq(std::get<0>(phis), from_end_ptr);
-        },
-        [&](tup const &phis) {
-          ASSERT(std::get<0>(phis).is_reg_ == true);
-          ASSERT(std::get<1>(phis).is_reg_ == true);
-
-          auto from_val =
-              ir::Results{PtrFix(std::get<0>(phis).reg_, a->data_type)};
-
-          if constexpr (Cat == Copy) {
-            a->data_type->EmitCopyAssign(a->data_type, from_val,
-                                         std::get<1>(phis).reg_, ctx);
-          } else if constexpr (Cat == Move) {
-            a->data_type->EmitMoveAssign(a->data_type, from_val,
-                                         std::get<1>(phis).reg_, ctx);
-          } else {
-            UNREACHABLE();
-          }
-
-          return std::tuple{
-              ir::PtrIncr(std::get<0>(phis).reg_, 1, data_ptr_type),
-              ir::PtrIncr(std::get<1>(phis).reg_, 1, data_ptr_type)};
-        },
-        std::tuple{data_ptr_type, data_ptr_type}, tup{from_ptr, to_ptr});
-    ir::ReturnJump();
-  }
-  return fn;
-}
-
-void Array::EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                           ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  copy_assign_func_.init(
-      [this, ctx]() { return CreateAssign<Copy>(this, ctx); });
-  ir::Copy(this, from.get<ir::Reg>(0), to);
-}
-
-void Array::EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                           ir::RegisterOr<ir::Addr> to, Context *ctx) const {
-  move_assign_func_.init(
-      [this, ctx]() { return CreateAssign<Move>(this, ctx); });
-  ir::Move(this, from.get<ir::Reg>(0), to);
-}
-
-template <typename F>
-static void OnEachElement(Array const *t, ir::CompiledFn *fn, F &&fn_to_apply) {
-  CURRENT_FUNC(fn) {
-    ir::BasicBlock::Current = fn->entry();
-    auto *data_ptr_type     = Ptr(t->data_type);
-
-    auto ptr = ir::Index(Ptr(t), ir::Reg::Arg(0), 0);
-    auto end_ptr =
-        ir::PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
-
-    using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
-    CreateLoop(
-        [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
-        [&](tup const &phis) {
-          ASSERT(std::get<0>(phis).is_reg_ == true);
-          fn_to_apply(std::get<0>(phis).reg_);
-          return tup{ir::PtrIncr(std::get<0>(phis).reg_, 1, data_ptr_type)};
-        },
-        std::tuple{data_ptr_type}, tup{ptr});
-
-    ir::ReturnJump();
-  }
-}
-
-void Array::EmitInit(ir::Reg id_reg, Context *ctx) const {
-  init_func_.init([this, ctx]() {
-    // TODO special function?
-    auto *fn = ctx->mod_->AddFunc(
-        Func({Ptr(this)}, {}),
-        core::FnParams(core::Param{
-            "", Typed<ast::Expression const *>{nullptr, Ptr(this)}}));
-    OnEachElement(this, fn,
-                  [this, ctx](ir::Reg r) { data_type->EmitInit(r, ctx); });
-    return fn;
-  });
-
-  ir::Init(this, id_reg);
-}
-
-void Array::EmitDestroy(ir::Reg reg, Context *ctx) const {
-  if (!data_type->needs_destroy()) { return; }
-  destroy_func_.init([this, ctx]() {
-    // TODO special function?
-    auto *fn = ctx->mod_->AddFunc(
-        Func({Ptr(this)}, {}),
-        core::FnParams(core::Param{
-            "", Typed<ast::Expression const *>{nullptr, Ptr(this)}}));
-
-    OnEachElement(this, fn, [this, ctx](ir::Reg r) {
-      data_type->EmitDestroy(r, ctx);
-    });
-    return fn;
-  });
-
-  ir::Destroy(this, reg);
-}
-
 void Array::EmitRepr(ir::Results const &val, Context *ctx) const {
   repr_func_.init([this, ctx]() {
     // TODO special function?
@@ -294,7 +136,7 @@ void Array::EmitRepr(ir::Results const &val, Context *ctx) const {
       data_type->EmitRepr(ir::Results{ir::PtrFix(ptr, data_type)}, ctx);
 
       using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<int32_t>>;
-      CreateLoop(
+      ir::CreateLoop(
           [&](tup const &phis) { return ir::Eq(std::get<1>(phis), 0); },
           [&](tup const &phis) {
             ASSERT(std::get<0>(phis).is_reg_ == true);
@@ -343,12 +185,13 @@ ir::Results Array::PrepareArgument(Type const *from, ir::Results const &val,
                                    Context *ctx) const {
   // TODO consider who is responsible for destruction here.
   auto arg = ir::Alloca(this);
+  visitor::EmitIr visitor;
   if (from->is<Variant>()) {
-    EmitMoveAssign(this,
+    EmitMoveAssign(&visitor, this,
                    ir::Results{ir::VariantValue(this, val.get<ir::Reg>(0))},
                    arg, ctx);
   } else if (this == from) {
-    EmitMoveAssign(from, val, arg, ctx);
+    EmitMoveAssign(&visitor, from, val, arg, ctx);
   } else {
     UNREACHABLE(from);
   }

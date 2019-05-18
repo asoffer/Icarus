@@ -598,11 +598,12 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         size_t i                = 0;
         for (auto const &field : s->parent_->fields_) {
           auto ir_field = ir::Field(var, s, i);
+          visitor::EmitIr visitor;
           if (field.init_val) {
-            ast_visitor::EmitIr visitor;
             field.init_val->EmitCopyInit(&visitor, ir_field, &ctx);
           } else {
-            s->fields_.at(i).type->EmitInit(ir_field.get(), &ctx);
+            s->fields_.at(i).type->EmitDefaultInit(&visitor, ir_field.get(),
+                                                   &ctx);
           }
           ++i;
         }
@@ -1120,7 +1121,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::DestroyContext: delete resolve<Context *>(cmd.reg_); break;
     case ir::Op::VerifyType: {
-      ast_visitor::VerifyType visitor;
+      visitor::VerifyType visitor;
       cmd.ast_.node_->VerifyType(&visitor, resolve<Context *>(cmd.ast_.ctx_));
     } break;
     case ir::Op::EvaluateAsType: {

@@ -12,7 +12,7 @@ struct Import : public Expression {
   Import(std::unique_ptr<Expression> expr) : operand_(std::move(expr)) {}
   ~Import() override {}
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override {
     return "import " + operand_->to_string(n);

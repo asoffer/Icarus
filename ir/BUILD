@@ -113,6 +113,7 @@ cc_target(
     name = "components",
     intf_deps = [
         ":compiled_fn",
+        ":phi",
         ":register",
     ],
     impl_deps = [],

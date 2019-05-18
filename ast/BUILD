@@ -89,7 +89,7 @@ icarus_ast_node(name = "import", deps = [":expression", "//core:pending_module"]
 icarus_ast_node(name = "index", deps = [":expression"])
 icarus_ast_node(name = "interface", deps = [":expression"])
 icarus_ast_node(name = "node", deps = [
-    "//ast_visitor:visitors",
+    "//visitor:visitors",
     "//frontend:text_span",
     "//ir:results",
 ])
@@ -103,7 +103,8 @@ icarus_ast_node(name = "statements", deps = [":node"])
 icarus_ast_node(name = "struct_literal", deps = [":declaration", ":expression"])
 icarus_ast_node(name = "struct_type", deps = [":expression"])
 icarus_ast_node(name = "switch", deps = [":expression"])
-icarus_ast_node(name = "terminal", deps = [":expression", "//ir:results"])
+icarus_ast_node(name = "terminal",
+                deps = [":expression", "//ir:results", "//type:primitive"])
 icarus_ast_node(name = "unop", deps = [":expression", "//frontend:operators"])
 
 cc_target(
@@ -146,6 +147,8 @@ cc_test(
         "//:impl",
         "//test:util",
         "//test",
+        "//type:pointer",
+        "//type:variant",
     ],
 )
 

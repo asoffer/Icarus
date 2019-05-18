@@ -9,7 +9,7 @@ namespace ast {
 struct Switch : public Expression {
   ~Switch() override {}
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override {
     std::stringstream ss;
@@ -33,7 +33,7 @@ struct Switch : public Expression {
 struct SwitchWhen : public Node {
   ~SwitchWhen() override {}
 
-#include "ast_visitor/visitors.xmacro.h"
+#include "visitor/visitors.xmacro.h"
 
   std::string to_string(size_t n) const override {
     return body->to_string(n) + " when " + cond->to_string(n);

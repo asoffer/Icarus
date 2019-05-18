@@ -10,10 +10,6 @@ struct Context;
 
 namespace type {
 
-void Flags::EmitInit(ir::Reg id_reg, Context *) const {
-  ir::Store(ir::FlagsVal{0}, id_reg);
-}
-
 Flags::Flags(
     absl::flat_hash_map<std::string, std::optional<int32_t>> const &members) {
   absl::flat_hash_set<int32_t> taken;
@@ -54,18 +50,6 @@ std::optional<ir::FlagsVal> Flags::Get(const std::string &str) const {
 Typed<ir::FlagsVal, Flags> Flags::EmitLiteral(
     std::string const &member_name) const {
   return Typed<ir::FlagsVal, Flags>(vals_.at(member_name), this);
-}
-
-void Flags::EmitCopyAssign(Type const *from_type, ir::Results const &from,
-                           ir::RegisterOr<ir::Addr> to, Context *) const {
-  ASSERT(this == from_type);
-  ir::Store(from.get<ir::FlagsVal>(0), to);
-}
-
-void Flags::EmitMoveAssign(Type const *from_type, ir::Results const &from,
-                           ir::RegisterOr<ir::Addr> to, Context *) const {
-  ASSERT(this == from_type);
-  ir::Store(from.get<ir::FlagsVal>(0), to);
 }
 
 void Flags::defining_modules(

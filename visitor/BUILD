@@ -2,9 +2,14 @@ package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib", "cc_target", "sources")
 sources()
 
+# TODO rename ast_visitors
 cc_lib(
     name = "visitors",
-    textual_hdrs = glob(["*.xmacro.h"]),
+    textual_hdrs = [
+        "assign_scope.xmacro.h",
+        "emit_ir.xmacro.h",
+        "visitors.xmacro.h",
+    ],
     deps = [
         ":assign_scope",
         ":dependent_decls",
@@ -14,6 +19,7 @@ cc_lib(
     ],
 )
 
+# TODO rename ast_visitors-impl
 cc_lib(
     name = "visitors-impl",
     textual_hdrs = ["visitors.xmacro.h"],
@@ -26,6 +32,24 @@ cc_lib(
         ":emit_ir_val",
         ":extract_jumps-impl",
         ":verify_type-impl",
+    ],
+)
+
+cc_lib(
+    name = "type_visitors",
+    textual_hdrs = ["type_visitors.xmacro.h"],
+    deps = [
+        ":emit_ir",
+    ],
+)
+
+cc_lib(
+    name = "type_visitors-impl",
+    textual_hdrs = ["type_visitors.xmacro.h"],
+    deps = [
+        ":emit_init",
+        ":emit_assign",
+        ":emit_destroy",
     ],
 )
 
@@ -50,13 +74,60 @@ cc_target(
 )
 
 cc_lib(
+    name = "emit_assign",
+    srcs = ["emit_assign.cc"],
+    deps = [
+        ":special_function",
+        "//ast",
+        "//base:permutation",
+        "//ir:cmd",
+        "//ir:compiled_fn",
+        "//ir:components",
+        "//misc:context",
+        "//type",
+        "//type:typed_value",
+    ],
+)
+
+cc_lib(
+    name = "emit_destroy",
+    srcs = ["emit_destroy.cc"],
+    deps = [
+        ":special_function",
+        "//ast",
+        "//base:permutation",
+        "//ir:cmd",
+        "//ir:compiled_fn",
+        "//ir:components",
+        "//misc:context",
+        "//type",
+        "//type:typed_value",
+    ],
+)
+
+cc_lib(
+    name = "emit_init",
+    srcs = ["emit_init.cc"],
+    deps = [
+        "//ast",
+        "//base:permutation",
+        "//ir:cmd",
+        "//ir:compiled_fn",
+        "//ir:components",
+        "//misc:context",
+        "//type",
+        "//type:typed_value",
+    ],
+)
+
+cc_lib(
     name = "emit_ir",
     hdrs = ["emit_ir.h"],
     deps = [
         "//ast:ast-fwd",
         "//ir:addr",
         "//ir:register",
-        "//type",
+        "//type:type-fwd",
         "//type:typed_value",
     ],
 )
@@ -68,6 +139,8 @@ cc_lib(
         ":emit_ir",
         "//ast",
         "//ir:cmd",
+        "//type",
+        "//type:typed_value",
     ],
 )
 
@@ -78,6 +151,8 @@ cc_lib(
         ":emit_ir",
         "//ast",
         "//ir:cmd",
+        "//type",
+        "//type:typed_value",
     ],
 )
 
@@ -92,6 +167,8 @@ cc_lib(
         "//ir:cmd",
         "//ir:register",
         "//ir:str",
+        "//type",
+        "//type:typed_value",
     ],
 )
 
@@ -107,6 +184,8 @@ cc_lib(
         "//ir:components",
         "//ir:phi",
         "//ir:results",
+        "//type",
+        "//type:typed_value",
     ],
 )
 
@@ -131,8 +210,22 @@ cc_target(
         "//ast:overload_set",
         "//backend:eval",
         "//misc:context",
+        "//ir:cmd-impl",
         "//type",
         "//type:cast",
         "//type:util",
+    ],
+)
+
+cc_target(
+    name = "special_function",
+    intf_deps = [],
+    impl_deps = [
+        ":emit_ir",
+        "//ast:declaration",
+        "//ir:any_func",
+        "//misc:context",
+        "//type:pointer",
+        "//type:struct",
     ],
 )
