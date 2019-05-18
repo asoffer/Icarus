@@ -33,6 +33,30 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
   NOT_YET();
 }
 
+static ir::Results PrepArg(visitor::EmitIr const *visitor, type::Type const *to,
+                           type::Type const *from, ir::Results const &val,
+                           Context *ctx) {
+  if (to == from) { return val; }
+  if (auto *to_variant = to->if_as<type::Variant>()) {
+    if (auto *from_variant = from->if_as<type::Variant>()) {
+      return val;
+    } else {
+      auto alloc = ir::TmpAlloca(to, ctx);
+      // TODO move initialization, not move assignment.
+      to->EmitMoveAssign(visitor, from, val, alloc, ctx);
+      // TODO who destruction of the moved-from buffer? what if it was
+      // previously a temp-alloc and already planned to be destroyed?
+      return ir::Results{alloc};
+    }
+  } else {
+    if (auto *from_variant = from->if_as<type::Variant>()) {
+      return ir::Results{ir::VariantValue(to, val.get<ir::Reg>(0))};
+    } else {
+      UNREACHABLE();
+    }
+  }
+}
+
 template <typename IndexT>
 static void AddType(IndexT &&index, type::Type const *t,
                     std::vector<core::FnArgs<type::Type const *>> *args) {
@@ -561,26 +585,27 @@ static void EmitOneCall(
                              inline_results, ctx);
   }
 
+  visitor::EmitIr visitor;
   ir::Results arg_results;
   size_t i = 0;
   ASSERT(row.params.size() >= args.pos().size());
   for (auto const &[expr, results] : args.pos()) {
     // TODO Don't re-lookup the type of this expression. You should know it
     // already.
-    arg_results.append(row.params.at(i++).value.type()->PrepareArgument(
-        ASSERT_NOT_NULL(ctx->type_of(expr)), results, ctx));
+    arg_results.append(PrepArg(&visitor, row.params.at(i++).value.type(),
+                               ASSERT_NOT_NULL(ctx->type_of(expr)), results,
+                               ctx));
   }
 
   for (; i < row.params.size(); ++i) {
     auto const &param = row.params.at(i);
     auto *arg         = args.at_or_null(std::string{param.name});
     if (!arg && (param.flags & core::HAS_DEFAULT)) {
-      visitor::EmitIr visitor;
       arg_results.append(param.value.get()->EmitIr(&visitor, ctx));
     } else {
       auto const &[expr, results] = *arg;
-      arg_results.append(param.value.type()->PrepareArgument(ctx->type_of(expr),
-                                                             results, ctx));
+      arg_results.append(PrepArg(&visitor, param.value.type(),
+                                 ctx->type_of(expr), results, ctx));
     }
   }
 

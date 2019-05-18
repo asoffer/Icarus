@@ -15,6 +15,64 @@
 namespace visitor {
 using ::matcher::InheritsFrom;
 
+static bool VerifyAssignment(TextSpan const &span, type::Type const *to,
+                             type::Type const *from, Context *ctx) {
+  if (to == from && to->is<type::GenericStruct>()) { return true; }
+
+  // TODO this feels like the semantics are iffy. It works fine if we assign
+  // to/from the same type, but we really care if you can assign to a type
+  // rather than copy from another, I think.
+  if (!from->IsMovable()) {
+    ctx->error_log()->NotMovable(span, from->to_string());
+    return false;
+  }
+
+  if (to == from) { return true; }
+  auto *to_tup   = to->if_as<type::Tuple>();
+  auto *from_tup = from->if_as<type::Tuple>();
+  if (to_tup && from_tup) {
+    if (to_tup->size() != from_tup->size()) {
+      ctx->error_log()->MismatchedAssignmentSize(span, to_tup->size(),
+                                               from_tup->size());
+      return false;
+    }
+
+    bool result = true;
+    for (size_t i = 0; i < to_tup->size(); ++i) {
+      result &= VerifyAssignment(span, to_tup->entries_.at(i),
+                                 from_tup->entries_.at(i), ctx);
+    }
+    return result;
+  }
+
+  if (auto *to_var = to->if_as<type::Variant>()) {
+    if (auto *from_var = from->if_as<type::Variant>()) {
+      for (auto fvar : from_var->variants_) {
+        if (!to_var->contains(fvar)) {
+          NOT_YET("log an error", from, to);
+          return false;
+        }
+      }
+      return true;
+    } else {
+      if (!to_var->contains(from)) {
+        NOT_YET("log an error", from, to);
+        return false;
+      }
+
+      return true;
+    }
+  }
+
+  if (auto *to_ptr = to->if_as<type::Pointer>()) {
+    if (from == type::NullPtr) { return true; }
+    NOT_YET("log an error", from, to);
+    return false;
+  }
+
+  NOT_YET("log an error: no cast from ", from, " to ", to);
+}
+
 static type::Type const *DereferenceAll(type::Type const *t) {
   while (auto *p = t->if_as<type::Pointer>()) { t = p->pointee; }
   return t;
@@ -183,8 +241,8 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
   switch (node->op) {
     case Operator::Assign: {
       // TODO if lhs is reserved?
-      if (!type::VerifyAssignment(node->span, lhs_result.type_,
-                                  rhs_result.type_, ctx)) {
+      if (!VerifyAssignment(node->span, lhs_result.type_, rhs_result.type_,
+                            ctx)) {
         return VerifyResult::Error();
       }
       return VerifyResult::NonConstant(type::Void());
@@ -989,8 +1047,8 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
       }
 
       // TODO initialization, not assignment.
-      if (!type::VerifyAssignment(node->span, init_val_result.type_,
-                                  init_val_result.type_, ctx)) {
+      if (!VerifyAssignment(node->span, init_val_result.type_,
+                            init_val_result.type_, ctx)) {
         return ctx->set_result(node, VerifyResult::Error());
       }
 
@@ -1029,8 +1087,7 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
         // TODO initialization, not assignment. Error messages will be
         // wrong.
         if (node_type != nullptr && init_val_type != nullptr) {
-          error |= !type::VerifyAssignment(node->span, node_type, init_val_type,
-                                           ctx);
+          error |= !VerifyAssignment(node->span, node_type, init_val_type, ctx);
         }
       } else if (type_expr_type == type::Intf) {
         node_type =

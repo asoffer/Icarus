@@ -1,18 +1,10 @@
 #include "type/function.h"
 
 #include "base/guarded.h"
-#include "ir/cmd.h"
 #include "type/typed_value.h"
 
 namespace type {
 Type const *Generic = new GenericFunction;
-
-ir::Results GenericFunction::PrepareArgument(const Type *t,
-                                             const ir::Results &val,
-                                             Context *ctx) const {
-  NOT_YET();
-}
-void GenericFunction::EmitRepr(ir::Results const &id_val, Context *ctx) const {}
 
 void GenericFunction::defining_modules(
     absl::flat_hash_set<::Module const *> *modules) const {
@@ -48,8 +40,6 @@ Function const *Func(std::vector<Type const *> in,
               .first->second;
 }
 
-void Function::EmitRepr(ir::Results const &, Context *ctx) const { UNREACHABLE(); }
-
 void Function::WriteTo(std::string *result) const {
   if (input.empty()) {
     result->append("()");
@@ -79,15 +69,6 @@ void Function::WriteTo(std::string *result) const {
       output.at(i)->WriteTo(result);
     }
     result->append(")");
-  }
-}
-
-ir::Results Function::PrepareArgument(Type const *from, ir::Results const &val,
-                                      Context *ctx) const {
-  if (this == from) {
-    return val;
-  } else {
-    NOT_YET(this, from);
   }
 }
 

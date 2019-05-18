@@ -11,10 +11,6 @@ void GenericStruct::defining_modules(
   modules->insert(defining_module());
 }
 
-void GenericStruct::EmitRepr(ir::Results const &val, Context *ctx) const {
-  UNREACHABLE();
-}
-
 void GenericStruct::WriteTo(std::string *result) const {
   result->append("[");
   if (!deps_.empty()) {
@@ -29,12 +25,6 @@ void GenericStruct::WriteTo(std::string *result) const {
 
 bool GenericStruct::IsCopyable() const { UNREACHABLE(); }
 bool GenericStruct::IsMovable() const { UNREACHABLE(); }
-
-ir::Results GenericStruct::PrepareArgument(Type const *from,
-                                           ir::Results const &val,
-                                           Context *ctx) const {
-  NOT_YET(this, from);
-}
 
 core::Bytes GenericStruct::bytes(core::Arch const &a) const {
   return core::Host().ptr_bytes;

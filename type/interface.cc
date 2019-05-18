@@ -4,9 +4,6 @@
 #include <utility>
 
 #include "base/guarded.h"
-#include "ir/arguments.h"
-#include "ir/components.h"
-#include "ir/compiled_fn.h"
 #include "core/arch.h"
 #include "misc/context.h"
 #include "misc/module.h"
@@ -28,15 +25,6 @@ bool Interface::matches(Type const *t) const {
 void Interface::WriteTo(std::string *result) const {
   result->append("intf.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
-}
-
-ir::Results Interface::PrepareArgument(Type const *t, ir::Results const &val,
-                                       Context *ctx) const {
-  UNREACHABLE();
-}
-
-void Interface::EmitRepr(ir::Results const &id_val, Context *ctx) const {
-  UNREACHABLE();
 }
 
 core::Bytes Interface::bytes(core::Arch const &a) const {

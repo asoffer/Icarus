@@ -3,7 +3,6 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/flat_hash_map.h"
 #include "base/guarded.h"
-#include "ir/cmd.h"
 #include "type/function.h"
 
 namespace type {
@@ -27,10 +26,6 @@ void Pointer::defining_modules(
   pointee->defining_modules(modules);
 }
 
-void Pointer::EmitRepr(ir::Results const &val, Context *ctx) const {
-  ir::Print(val.get<ir::Addr>(0));
-}
-
 void static WriteStr(char const *ptr_str, Pointer const *ptr,
                   std::string *result) {
   bool needs_paren = ptr->pointee->is<Function>();
@@ -42,12 +37,6 @@ void static WriteStr(char const *ptr_str, Pointer const *ptr,
 
 void BufferPointer::WriteTo(std::string *r) const { WriteStr("[*]", this, r); }
 void Pointer::WriteTo(std::string *r) const { WriteStr("*", this, r); }
-
-ir::Results Pointer::PrepareArgument(Type const *from, ir::Results const &val,
-                                     Context *ctx) const {
-  ASSERT(from == this);
-  return val;
-}
 
 core::Bytes Pointer::bytes(core::Arch const &a) const {
   return a.ptr_bytes;

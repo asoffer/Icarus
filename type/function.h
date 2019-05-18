@@ -23,9 +23,6 @@ struct GenericFunction : public Callable {
 
 #include "visitor/type_visitors.xmacro.h"
 
-  ir::Results PrepareArgument(const Type *t, const ir::Results &val,
-                          Context *ctx) const override;
-  void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
   void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const override;
 

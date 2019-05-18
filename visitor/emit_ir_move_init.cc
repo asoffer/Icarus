@@ -7,9 +7,21 @@
 
 namespace visitor {
 
+void EmitIr::MoveInit(type::Type const *from_type, ir::Results const &from_val,
+                      type::Typed<ir::Reg> to_var, Context *ctx) const {
+  auto *to_type = to_var.type()->as<type::Pointer>().pointee;
+  // TODO Optimize once you understand the semantics better.
+  if (!to_type->is<type::Primitive>() && !to_type->is<type::Function>() &&
+      !to_type->is<type::Variant>()) {
+    to_type->EmitDefaultInit(this, to_var.get(), ctx);
+  }
+
+  to_type->EmitMoveAssign(this, from_type, from_val, to_var.get(), ctx);
+}
+
 void EmitIr::MoveInit(ast::Expression const *node, type::Typed<ir::Reg> reg,
                       Context *ctx) const {
-  type::EmitMoveInit(ctx->type_of(node), node->EmitIr(this, ctx), reg, ctx);
+  MoveInit(ctx->type_of(node), node->EmitIr(this, ctx), reg, ctx);
 }
 
 void EmitIr::MoveInit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg,
@@ -34,8 +46,8 @@ void EmitIr::MoveInit(ast::CommaList const *node, type::Typed<ir::Reg> reg,
     if (expr->needs_expansion()) {
       auto results = expr->EmitIr(this, ctx);
       for (size_t i = 0; i < results.size(); ++i) {
-        type::EmitMoveInit(t.entries_[index], results.GetResult(i),
-                           ir::Field(reg.get(), &t, index), ctx);
+        MoveInit(t.entries_[index], results.GetResult(i),
+                 ir::Field(reg.get(), &t, index), ctx);
         ++index;
       }
     } else {
@@ -55,7 +67,7 @@ void EmitIr::MoveInit(ast::Unop const *node, type::Typed<ir::Reg> reg,
       node->operand->EmitCopyInit(this, reg, ctx);
       break;
     default:
-      type::EmitMoveInit(ctx->type_of(node), node->EmitIr(this, ctx), reg, ctx);
+      MoveInit(ctx->type_of(node), node->EmitIr(this, ctx), reg, ctx);
       break;
   }
 }

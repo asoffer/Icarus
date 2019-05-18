@@ -15,11 +15,6 @@ struct Interface : public Type {
 
   void WriteTo(std::string *result) const override;
 
-  ir::Results PrepareArgument(Type const *t, ir::Results const &val,
-                              Context *ctx) const override;
-
-  void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
-
   bool matches(Type const *t) const;
 
   bool ReinterpretAs(Type const *t) const override;

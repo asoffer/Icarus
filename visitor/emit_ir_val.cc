@@ -2,6 +2,7 @@
 
 #include "ast/ast.h"
 #include "backend/eval.h"
+#include "base/guarded.h"
 #include "ir/cmd.h"
 #include "ir/components.h"
 #include "ir/phi.h"
@@ -93,7 +94,7 @@ using ::matcher::InheritsFrom;
 static void MakeAllStackAllocations(core::FnScope const *fn_scope,
                                     Context *ctx) {
   for (auto *scope : fn_scope->innards_) {
-    for (const auto & [ key, val ] : scope->decls_) {
+    for (const auto &[key, val] : scope->decls_) {
       for (auto *decl : val) {
         if (decl->const_ || decl->is_fn_param_ ||
             decl->is<ast::MatchDeclaration>()) {
@@ -115,7 +116,7 @@ static void MakeAllDestructions(EmitIr const *visitor,
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
   std::vector<ast::Declaration *> ordered_decls;
-  for (auto & [ name, decls ] : exec_scope->decls_) {
+  for (auto &[name, decls] : exec_scope->decls_) {
     ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
   }
 
@@ -219,7 +220,7 @@ static void CompleteBody(EmitIr const *visitor, ast::StructLiteral const *node,
       ir::AddBoundConstant(ctx_reg, &arg, ctx->addr(&arg));
     }
 
-    for (auto &field : node->fields_) { // TODO const-ref
+    for (auto &field : node->fields_) {  // TODO const-ref
       ir::VerifyType(&field, ctx_reg);
 
       // TODO exit early if verifytype fails.
@@ -295,12 +296,11 @@ ir::Results EmitIr::Val(ast::ArrayLiteral const *node, Context *ctx) const {
   if (!node->cl_.exprs_.empty()) {
     auto *data_type = this_type->as<type::Array>().data_type;
     for (size_t i = 0; i < node->cl_.exprs_.size(); ++i) {
-      type::EmitMoveInit(
-          data_type, node->cl_.exprs_[i]->EmitIr(this, ctx),
-          type::Typed<ir::Reg>(
-              ir::Index(type::Ptr(this_type), alloc, static_cast<int32_t>(i)),
-              type::Ptr(data_type)),
-          ctx);
+      MoveInit(data_type, node->cl_.exprs_[i]->EmitIr(this, ctx),
+               type::Typed<ir::Reg>(ir::Index(type::Ptr(this_type), alloc,
+                                              static_cast<int32_t>(i)),
+                                    type::Ptr(data_type)),
+               ctx);
     }
   }
   return ir::Results{alloc};
@@ -558,7 +558,7 @@ ir::Results EmitIr::Val(ast::BlockLiteral const *node, Context *ctx) const {
 
 ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) const {
   node->stmts_.EmitIr(this, ctx);
-   MakeAllDestructions(this, node->block_scope_.get(), ctx);
+  MakeAllDestructions(this, node->block_scope_.get(), ctx);
   return ir::Results{};
 }
 
@@ -653,6 +653,94 @@ ir::Results EmitIr::Val(ast::Cast const *node, Context *ctx) const {
   return ir::Cast(ctx->type_of(node->expr_.get()), this_type, results);
 }
 
+static base::guarded<absl::flat_hash_map<
+    type::Array const *,
+    absl::flat_hash_map<type::Array const *, ir::CompiledFn *>>>
+    eq_funcs;
+static base::guarded<absl::flat_hash_map<
+    type::Array const *,
+    absl::flat_hash_map<type::Array const *, ir::CompiledFn *>>>
+    ne_funcs;
+// TODO this should early exit if the types aren't equal.
+ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
+                         type::Array const *rhs_type, ir::Results const &rhs_ir,
+                         bool equality, Context *ctx) {
+  auto &funcs = equality ? eq_funcs : ne_funcs;
+  auto handle = funcs.lock();
+
+  auto [iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
+  if (success) {
+    auto *fn = ctx->mod_->AddFunc(
+        type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool}),
+        core::FnParams(core::Param{"",
+                                   type::Typed<ast::Expression const *>{
+                                       nullptr, type::Ptr(lhs_type)}},
+                       core::Param{"", type::Typed<ast::Expression const *>{
+                                           nullptr, type::Ptr(rhs_type)}}));
+
+    CURRENT_FUNC(fn) {
+      ir::BasicBlock::Current = fn->entry();
+
+      auto equal_len_block = ir::CompiledFn::Current->AddBlock();
+      auto true_block      = ir::CompiledFn::Current->AddBlock();
+      auto false_block     = ir::CompiledFn::Current->AddBlock();
+      auto phi_block       = ir::CompiledFn::Current->AddBlock();
+      auto body_block      = ir::CompiledFn::Current->AddBlock();
+      auto incr_block      = ir::CompiledFn::Current->AddBlock();
+
+      ir::CondJump(ir::Eq(lhs_type->len, rhs_type->len), equal_len_block,
+                   false_block);
+
+      ir::BasicBlock::Current = true_block;
+      ir::SetRet(0, true);
+      ir::ReturnJump();
+
+      ir::BasicBlock::Current = false_block;
+      ir::SetRet(0, false);
+      ir::ReturnJump();
+
+      ir::BasicBlock::Current = equal_len_block;
+      auto lhs_start          = ir::Index(Ptr(lhs_type), ir::Reg::Arg(0), 0);
+      auto rhs_start          = ir::Index(Ptr(rhs_type), ir::Reg::Arg(1), 0);
+      auto lhs_end =
+          ir::PtrIncr(lhs_start, lhs_type->len, Ptr(rhs_type->data_type));
+      ir::UncondJump(phi_block);
+
+      ir::BasicBlock::Current = phi_block;
+      auto lhs_phi_index      = ir::Phi(Ptr(lhs_type->data_type));
+      auto rhs_phi_index      = ir::Phi(Ptr(rhs_type->data_type));
+      auto lhs_phi_reg = ir::CompiledFn::Current->Command(lhs_phi_index).result;
+      auto rhs_phi_reg = ir::CompiledFn::Current->Command(rhs_phi_index).result;
+
+      ir::CondJump(ir::Eq(ir::RegisterOr<ir::Addr>(lhs_phi_reg), lhs_end),
+                   true_block, body_block);
+
+      ir::BasicBlock::Current = body_block;
+      // TODO what if data type is an array?
+      ir::CondJump(ir::Eq(ir::Load<ir::Addr>(lhs_phi_reg, lhs_type->data_type),
+                          ir::Load<ir::Addr>(rhs_phi_reg, rhs_type->data_type)),
+                   incr_block, false_block);
+
+      ir::BasicBlock::Current = incr_block;
+      auto lhs_incr = ir::PtrIncr(lhs_phi_reg, 1, Ptr(lhs_type->data_type));
+      auto rhs_incr = ir::PtrIncr(rhs_phi_reg, 1, Ptr(rhs_type->data_type));
+      ir::UncondJump(phi_block);
+
+      ir::MakePhi<ir::Addr>(lhs_phi_index, {{equal_len_block, lhs_start},
+                                            {incr_block, lhs_incr}});
+      ir::MakePhi<ir::Addr>(rhs_phi_index, {{equal_len_block, rhs_start},
+                                            {incr_block, rhs_incr}});
+    }
+  }
+
+  ir::Arguments call_args{iter->second->type_, ir::Results{lhs_ir, rhs_ir}};
+  ir::OutParams outs;
+  auto result = outs.AppendReg(type::Bool);
+
+  ir::Call(ir::AnyFunc{iter->second}, std::move(call_args), std::move(outs));
+  return ir::Results{result};
+}
+
 static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
                                             size_t index,
                                             ir::Results const &lhs_ir,
@@ -665,9 +753,9 @@ static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
   if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
     using ::matcher::Eq;
     ASSERT(op, Eq(frontend::Operator::Eq) || Eq(frontend::Operator::Ne));
-    return type::Array::Compare(&lhs_type->as<type::Array>(), lhs_ir,
-                                &rhs_type->as<type::Array>(), rhs_ir,
-                                op == frontend::Operator::Eq, ctx)
+    return ArrayCompare(&lhs_type->as<type::Array>(), lhs_ir,
+                        &rhs_type->as<type::Array>(), rhs_ir,
+                        op == frontend::Operator::Eq, ctx)
         .get<bool>(0);
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
     auto results =
@@ -880,13 +968,13 @@ ir::Results EmitIr::Val(ast::CommaList const *node, Context *ctx) const {
     if (expr->needs_expansion()) {
       auto results = expr->EmitIr(this, ctx);
       for (size_t i = 0; i < results.size(); ++i) {
-        type::EmitCopyInit(tuple_type->entries_[index], results.GetResult(i),
-                           ir::Field(tuple_alloc, tuple_type, index), ctx);
+        CopyInit(tuple_type->entries_[index], results.GetResult(i),
+                 ir::Field(tuple_alloc, tuple_type, index), ctx);
         ++index;
       }
     } else {
-      type::EmitCopyInit(tuple_type->entries_[index], expr->EmitIr(this, ctx),
-                         ir::Field(tuple_alloc, tuple_type, index), ctx);
+      CopyInit(tuple_type->entries_[index], expr->EmitIr(this, ctx),
+               ir::Field(tuple_alloc, tuple_type, index), ctx);
       ++index;
     }
   }
@@ -915,7 +1003,7 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
         UNREACHABLE();
       }
     } else {
-      auto *t   = ctx->type_of(node);
+      auto *t = ctx->type_of(node);
       if (!t) {
         base::Log() << node->to_string(0);
         UNREACHABLE();
@@ -1172,7 +1260,7 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
               ctx);
         } else {
           auto *t = ctx->type_of(node->args_.exprs_.at(index).get());
-          t->EmitRepr(val, ctx);
+          t->EmitPrint(this, val, ctx);
         }
         ++index;
       }
@@ -1480,14 +1568,14 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) const {
   switch (node->op) {
     case frontend::Operator::Copy: {
       auto reg = ir::TmpAlloca(operand_type, ctx);
-      type::EmitCopyInit(operand_type, node->operand->EmitIr(this, ctx),
-                         type::Typed<ir::Reg>(reg, operand_type), ctx);
+      CopyInit(operand_type, node->operand->EmitIr(this, ctx),
+               type::Typed<ir::Reg>(reg, operand_type), ctx);
       return ir::Results{reg};
     } break;
     case frontend::Operator::Move: {
       auto reg = ir::TmpAlloca(operand_type, ctx);
-      type::EmitMoveInit(operand_type, node->operand->EmitIr(this, ctx),
-                         type::Typed<ir::Reg>(reg, operand_type), ctx);
+      MoveInit(operand_type, node->operand->EmitIr(this, ctx),
+               type::Typed<ir::Reg>(reg, operand_type), ctx);
       return ir::Results{reg};
     } break;
     case frontend::Operator::BufPtr:

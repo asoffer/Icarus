@@ -34,7 +34,9 @@ static void ReplEval(ast::Expression *expr) {
       return;
     }
     auto *expr_type = ctx.type_of(expr);
-    if (expr_type != type::Void()) { expr_type->EmitRepr(expr_val, &ctx); }
+    if (expr_type != type::Void()) {
+      expr_type->EmitPrint(&visitor, expr_val, &ctx);
+    }
     ir::ReturnJump();
   }
 

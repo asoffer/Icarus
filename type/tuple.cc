@@ -6,8 +6,6 @@
 #include "base/guarded.h"
 #include "base/permutation.h"
 #include "core/arch.h"
-#include "ir/arguments.h"
-#include "ir/components.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
@@ -17,28 +15,11 @@
 // may not be a good design.
 
 namespace type {
+Type const *Void() { return Tup({}); }
+
 bool Tuple::needs_destroy() const {
   return std::any_of(entries_.begin(), entries_.end(),
                      [](Type const *t) { return t->needs_destroy(); });
-}
-
-void Tuple::EmitRepr(ir::Results const &id_val, Context *ctx) const {
-  auto reg = id_val.get<ir::Reg>(0);
-  ir::Print(std::string_view{"("});
-  for (int i = 0; i < static_cast<int>(entries_.size()) - 1; ++i) {
-    entries_[i]->EmitRepr(
-        ir::Results{ir::PtrFix(ir::Field(reg, this, i).get(), entries_[i])},
-        ctx);
-    ir::Print(std::string_view{", "});
-  }
-
-  if (!entries_.empty()) {
-    entries_.back()->EmitRepr(
-        ir::Results{ir::PtrFix(ir::Field(reg, this, entries_.size() - 1).get(),
-                               entries_.back())},
-        ctx);
-  }
-  ir::Print(std::string_view{")"});
 }
 
 static base::guarded<std::map<std::vector<Type const *>, Tuple const>> tups_;
@@ -95,15 +76,6 @@ bool Tuple::IsCopyable() const {
 bool Tuple::IsMovable() const {
   return std::all_of(entries_.begin(), entries_.end(),
                      [](Type const *t) { return t->IsMovable(); });
-}
-
-ir::Results Tuple::PrepareArgument(Type const *from, ir::Results const &val,
-                                   Context *ctx) const {
-  ASSERT(from == this);
-  auto arg = ir::Alloca(from);
-  visitor::EmitIr visitor;
-  from->EmitMoveAssign(&visitor, from, val, arg, ctx);
-  return ir::Results{arg};
 }
 
 core::Bytes Tuple::bytes(core::Arch const &a) const {

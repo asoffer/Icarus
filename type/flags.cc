@@ -1,10 +1,5 @@
 #include "type/flags.h"
 
-#include "ir/addr.h"
-#include "ir/cmd.h"
-#include "ir/flags_val.h"
-#include "ir/register.h"
-
 struct Module;
 struct Context;
 
@@ -57,19 +52,9 @@ void Flags::defining_modules(
   modules->insert(mod_);
 }
 
-void Flags::EmitRepr(ir::Results const &val, Context *) const {
-  ir::Print(val.get<ir::FlagsVal>(0), this);
-}
-
 void Flags::WriteTo(std::string *result) const {
   result->append("flags.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
-}
-
-ir::Results Flags::PrepareArgument(Type const *from, ir::Results const &val,
-                                   Context *ctx) const {
-  ASSERT(from == this);
-  return val;
 }
 
 // TODO make this the smallest size that fits.

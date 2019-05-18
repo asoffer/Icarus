@@ -4,9 +4,6 @@
 
 #include "absl/algorithm/container.h"
 #include "base/guarded.h"
-#include "ir/arguments.h"
-#include "ir/components.h"
-#include "ir/compiled_fn.h"
 #include "misc/context.h"
 
 namespace type {
@@ -59,48 +56,6 @@ bool Variant::needs_destroy() const {
                      [](Type const *t) { return t->needs_destroy(); });
 }
 
-void Variant::EmitRepr(ir::Results const &id_val, Context *ctx) const {
-  // TODO design and build a jump table?
-  // TODO repr_func_
-  // TODO remove these casts in favor of something easier to track properties on
-
-  std::unique_lock lock(mtx_);
-  if (!repr_func_) {
-    repr_func_ = ctx->mod_->AddFunc(
-        Func({this}, {}),
-        core::FnParams(core::Param{
-            "", type::Typed<ast::Expression const *>{nullptr, this}}));
-
-    CURRENT_FUNC(repr_func_) {
-      ir::BasicBlock::Current = repr_func_->entry();
-      auto landing            = ir::CompiledFn::Current->AddBlock();
-      auto type =
-          ir::Load<type::Type const *>(ir::VariantType(ir::Reg::Arg(0)));
-
-      for (const Type *v : variants_) {
-        auto old_block   = ir::BasicBlock::Current;
-        auto found_block = ir::CompiledFn::Current->AddBlock();
-
-        ir::BasicBlock::Current = found_block;
-        v->EmitRepr(
-            ir::Results{ir::PtrFix(ir::VariantValue(v, ir::Reg::Arg(0)), v)},
-            ctx);
-        ir::UncondJump(landing);
-
-        ir::BasicBlock::Current = old_block;
-        ir::BasicBlock::Current = ir::EarlyExitOn<true>(
-            found_block, ir::Eq(ir::RegisterOr<type::Type const *>(type), v));
-      }
-
-      ir::UncondJump(landing);
-      ir::BasicBlock::Current = landing;
-      ir::ReturnJump();
-    }
-  }
-
-  ir::Call(ir::AnyFunc{repr_func_}, ir::Arguments{repr_func_->type_, id_val});
-}
-
 void Variant::defining_modules(
     absl::flat_hash_set<::Module const *> *modules) const {
   for (auto *v : variants_) { v->defining_modules(modules); }
@@ -127,75 +82,6 @@ bool Variant::IsCopyable() const {
 bool Variant::IsMovable() const {
   return std::all_of(variants_.begin(), variants_.end(),
                      [](Type const *t) { return t->IsMovable(); });
-}
-
-ir::Results Variant::PrepareArgument(Type const *from, ir::Results const &val,
-                                     Context *ctx) const {
-  if (this == from) { return val; }
-  auto alloc_reg = ir::Alloca(this);
-
-  visitor::EmitIr visitor;
-  if (!from->is<Variant>()) {
-    Type_->EmitMoveAssign(&visitor, Type_, ir::Results{from},
-                          ir::VariantType(alloc_reg), ctx);
-    // TODO this isn't exactly right because 'from' might not be the appropriate
-    // type here.
-    // TODO this is actually the wrong type to plug in to VariantValue. It needs
-    // to be the precise type stored.
-    from->EmitMoveAssign(&visitor, from, val, ir::VariantValue(from, alloc_reg),
-                         ctx);
-  } else {
-    auto *from_v = &from->as<Variant>();
-    auto runtime_type =
-        ir::Load<Type const *>(ir::VariantType(val.get<ir::Reg>(0)));
-
-    // Because variants_ is sorted, we can find the intersection quickly:
-    std::vector<Type const *> intersection;
-    auto f_iter = from_v->variants_.begin();
-    auto t_iter = this->variants_.begin();
-    while (f_iter != from_v->variants_.end() &&
-           t_iter != this->variants_.end()) {
-      if (*f_iter < *t_iter) {
-        ++f_iter;
-      } else if (*f_iter > *t_iter) {
-        ++t_iter;
-      } else {
-        intersection.push_back(*f_iter);
-        ++f_iter;
-        ++t_iter;
-      }
-    }
-    ASSERT(intersection.size() != 0u);
-
-    auto landing = ir::CompiledFn::Current->AddBlock();
-
-    std::vector<ir::BlockIndex> blocks;
-    blocks.reserve(intersection.size());
-    for (auto *t : intersection) {
-      blocks.push_back(ir::CompiledFn::Current->AddBlock());
-    }
-
-    auto current = ir::BasicBlock::Current;
-    for (size_t i = 0; i < intersection.size(); ++i) {
-      ir::BasicBlock::Current = blocks[i];
-      this->EmitMoveAssign(
-          &visitor, intersection[i],
-          ir::Results{
-              ir::PtrFix(ir::VariantValue(intersection[i], val.get<ir::Reg>(0)),
-                         intersection[i])},
-          alloc_reg, ctx);
-      ir::UncondJump(landing);
-    }
-
-    ir::BasicBlock::Current = current;
-    for (size_t i = 0; i < intersection.size() - 1; ++i) {
-      ir::BasicBlock::Current = ir::EarlyExitOn<true>(
-          blocks[i], ir::Eq(runtime_type, intersection[i]));
-    }
-    ir::UncondJump(blocks.back());
-    ir::BasicBlock::Current = landing;
-  }
-  return ir::Results{alloc_reg};
 }
 
 core::Bytes Variant::bytes(core::Arch const &a) const {

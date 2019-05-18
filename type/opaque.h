@@ -14,10 +14,6 @@ struct Opaque : public Type {
 
   void WriteTo(std::string *result) const override;
 
-  ir::Results PrepareArgument(const Type *t, const ir::Results &val,
-                              Context *ctx) const override;
-  void EmitRepr(ir::Results const &id_val, Context *ctx) const override;
-
   bool ReinterpretAs(Type const *t) const override;
 
   core::Bytes bytes(core::Arch const &arch) const override;

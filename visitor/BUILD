@@ -50,6 +50,7 @@ cc_lib(
         ":emit_init",
         ":emit_assign",
         ":emit_destroy",
+        ":emit_print",
     ],
 )
 
@@ -179,6 +180,7 @@ cc_lib(
         ":emit_ir",
         "//ast",
         "//backend:eval",
+        "//base:guarded",
         "//core:pending_module",
         "//ir:cmd",
         "//ir:components",
@@ -188,6 +190,22 @@ cc_lib(
         "//type:typed_value",
     ],
 )
+
+cc_lib(
+    name = "emit_print",
+    srcs = ["emit_print.cc"],
+    deps = [
+        "//ast",
+        "//ir:arguments",
+        "//ir:cmd",
+        "//ir:compiled_fn",
+        "//ir:components",
+        "//misc:context",
+        "//type",
+        "//type:typed_value",
+    ],
+)
+
 
 cc_target(
     name = "extract_jumps",

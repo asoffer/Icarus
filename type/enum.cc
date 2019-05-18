@@ -2,9 +2,6 @@
 
 
 #include "absl/container/flat_hash_set.h"
-#include "ir/addr.h"
-#include "ir/cmd.h"
-#include "ir/register.h"
 
 struct Module;
 struct Context;
@@ -29,20 +26,9 @@ void Enum::defining_modules(
   modules->insert(mod_);
 }
 
-// TODO print something friendlier
-void Enum::EmitRepr(ir::Results const &val, Context *) const {
-  ir::Print(val.get<ir::EnumVal>(0), this);
-}
-
 void Enum::WriteTo(std::string *result) const {
   result->append("enum.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
-}
-
-ir::Results Enum::PrepareArgument(Type const *from, ir::Results const &val,
-                                  Context *ctx) const {
-  ASSERT(from == this);
-  return val;
 }
 
 // TODO make this the smallest size that fits.

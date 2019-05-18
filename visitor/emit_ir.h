@@ -128,6 +128,30 @@ struct EmitIr {
   void Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) const;
   void Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) const;
   void Destroy(type::Array const *t, ir::Reg reg, Context *ctx) const;
+
+  void Print(type::Type const *, ir::Results const &, Context *) const {
+    UNREACHABLE();
+  }
+
+  void Print(type::Array const *t, ir::Results const &val,
+             Context *ctx) const;
+  void Print(type::Enum const *t, ir::Results const &val,
+             Context *ctx) const;
+  void Print(type::Flags const *t, ir::Results const &val,
+             Context *ctx) const;
+  void Print(type::Pointer const *t, ir::Results const &val,
+             Context *ctx) const;
+  void Print(type::Primitive const *t, ir::Results const &val,
+             Context *ctx) const;
+  void Print(type::Tuple const *t, ir::Results const &val,
+             Context *ctx) const;
+  void Print(type::Variant const *t, ir::Results const &val,
+             Context *ctx) const;
+
+  void CopyInit(type::Type const *from_type, ir::Results const &from_val,
+                type::Typed<ir::Reg> to_var, Context *ctx) const;
+  void MoveInit(type::Type const *from_type, ir::Results const &from_val,
+                type::Typed<ir::Reg> to_var, Context *ctx) const;
 };
 
 }  // namespace visitor

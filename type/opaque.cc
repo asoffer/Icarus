@@ -5,15 +5,6 @@
 namespace type {
 void Opaque::WriteTo(std::string *result) const { result->append("<opaque>"); }
 
-ir::Results Opaque::PrepareArgument(const Type *t, const ir::Results &val,
-                                    Context *ctx) const {
-  UNREACHABLE();
-}
-
-void Opaque::EmitRepr(ir::Results const &id_val, Context *ctx) const {
-  UNREACHABLE();
-}
-
 void Opaque::defining_modules(
     absl::flat_hash_set<::Module const *> *modules) const {
   modules->insert(mod_);

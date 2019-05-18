@@ -19,11 +19,6 @@ cc_target(
         "//base:guarded",
         "//base:tuple",
         "//core:fn_params",
-        "//ir:any_func",
-        "//ir:arguments",
-        "//ir:components",
-        "//ir:compiled_fn",
-        "//ir:phi",
         "//core:arch",
         "//misc:context",
         "//misc:module",
@@ -111,11 +106,7 @@ cc_target(
         ":typed_value",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    impl_deps = [
-        "//ir:addr",
-        "//ir:cmd",
-        "//ir:register",
-    ],
+    impl_deps = [],
 )
 
 cc_target(
@@ -126,11 +117,7 @@ cc_target(
         "//ir:flags_val",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    impl_deps = [
-        "//ir:addr",
-        "//ir:cmd",
-        "//ir:register",
-    ],
+    impl_deps = [],
 )
 
 cc_target(
@@ -139,10 +126,7 @@ cc_target(
         ":callable",
         "//core:fn_params",
     ],
-    impl_deps = [
-        "//base:guarded",
-        "//ir:cmd",
-    ],
+    impl_deps = ["//base:guarded"],
 )
 
 cc_target(
@@ -190,9 +174,6 @@ cc_target(
         ":function",
         ":pointer",
         "//base:guarded",
-        "//ir:arguments",
-        "//ir:components",
-        "//ir:compiled_fn",
         "//core:arch",
         "//misc:context",
         "//misc:module",
@@ -213,7 +194,6 @@ cc_target(
     impl_deps = [
         ":function",
         "//base:guarded",
-        "//ir:cmd",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
@@ -223,7 +203,10 @@ cc_target(
     name = "primitive",
     textual_hdrs = ["primitive.xmacro.h"],
     intf_deps = [":type"],
-    impl_deps = ["//ir:cmd"],
+    impl_deps = [
+        ":array",
+        ":pointer",
+    ],
 )
 
 cc_target(
@@ -242,9 +225,6 @@ cc_target(
         "//ast:declaration",
         "//ast:struct_literal",
         "//base:guarded",
-        "//ir:arguments",
-        "//ir:components",
-        "//ir:compiled_fn",
         "//core:arch",
         "//misc:context",
         "//misc:module",
@@ -263,8 +243,6 @@ cc_target(
         ":pointer",
         "//base:guarded",
         "//base:permutation",
-        "//ir:arguments",
-        "//ir:components",
         "//core:arch",
         "//misc:context",
         "//misc:module",
@@ -291,17 +269,10 @@ cc_target(
         "//visitor:type_visitors",
     ],
     impl_deps = [
-        ":generic_struct",
-        "//ast:declaration",
-        "//ast:struct_literal",
-        "//base:guarded",
-        "//ir:arguments",
-        "//ir:components",
-        "//ir:compiled_fn",
-        "//ir:phi",
-        "//core:arch",
-        "//misc:context",
-        "//misc:module",
+        ":array",
+        ":struct",
+        ":tuple",
+        ":variant",
     ],
 )
 
@@ -320,9 +291,6 @@ cc_target(
     impl_deps = [
         "//base:guarded",
         "//misc:context",
-        "//ir:arguments",
-        "//ir:components",
-        "//ir:compiled_fn",
         "@com_google_absl//absl/algorithm:container",
     ],
 )

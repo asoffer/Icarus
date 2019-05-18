@@ -46,9 +46,6 @@ struct AnyFunc;
   virtual void WriteTo(std::string *buf) const ENDING;                         \
   virtual core::Bytes bytes(core::Arch const &arch) const ENDING;              \
   virtual core::Alignment alignment(core::Arch const &arch) const ENDING;      \
-  virtual ir::Results PrepareArgument(Type const *t, const ir::Results &val,   \
-                                      Context *ctx) const ENDING;              \
-  virtual void EmitRepr(ir::Results const &id_val, Context *ctx) const ENDING; \
   virtual void defining_modules(                                               \
       absl::flat_hash_set<::Module const *> *modules) const ENDING;            \
   virtual bool ReinterpretAs(Type const *t) const ENDING;                      \
@@ -232,9 +229,6 @@ inline bool IsFloatingPoint(Type const *t) {
 }
 
 inline bool IsNumeric(Type const *t) { return IsIntegral(t) || IsFloatingPoint(t); }
-
-bool VerifyAssignment(TextSpan const &span, type::Type const *to,
-                      type::Type const *from, Context *ctx);
 
 }  // namespace type
 

@@ -1,41 +1,19 @@
-#include "ir/cmd.h"
 #include "type/primitive.h"
+
+#include "type/array.h"
+#include "type/pointer.h"
 
 struct Module;
 struct Context;
 
 namespace type {
+#define PRIMITIVE_MACRO(EnumName, name)                                        \
+  Type const *EnumName = new Primitive(PrimType::EnumName);
+#include "type/primitive.xmacro.h"
+#undef PRIMITIVE_MACRO
 
 void Primitive::defining_modules(
     absl::flat_hash_set<::Module const *> *modules) const {}
-
-void Primitive::EmitRepr(ir::Results const &val, Context *) const {
-  switch (type_) {
-    case PrimType::Bool: ir::Print(val.get<bool>(0)); break;
-    case PrimType::Int8: ir::Print(val.get<int8_t>(0)); break;
-    case PrimType::Int16: ir::Print(val.get<int16_t>(0)); break;
-    case PrimType::Int32: ir::Print(val.get<int32_t>(0)); break;
-    case PrimType::Int64: ir::Print(val.get<int64_t>(0)); break;
-    case PrimType::Nat8: ir::Print(val.get<uint8_t>(0)); break;
-    case PrimType::Nat16: ir::Print(val.get<uint16_t>(0)); break;
-    case PrimType::Nat32: ir::Print(val.get<uint32_t>(0)); break;
-    case PrimType::Nat64: ir::Print(val.get<uint64_t>(0)); break;
-    case PrimType::Float32: ir::Print(val.get<float>(0)); break;
-    case PrimType::Float64: ir::Print(val.get<double>(0)); break;
-    case PrimType::Type_: ir::Print(val.get<Type const *>(0)); break;
-    case PrimType::Ctx:
-    case PrimType::Scope:
-    case PrimType::StatefulScope:
-    case PrimType::NullPtr:
-    case PrimType::EmptyArray:
-    case PrimType::Module:
-    case PrimType::Block:
-    case PrimType::OptBlock:
-    case PrimType::RepBlock: UNREACHABLE();
-    case PrimType::Intf: ir::Print(val.get<Interface const *>(0)); break;
-    case PrimType::ByteView: ir::Print(val.get<std::string_view>(0)); break;
-  }
-}
 
 void Primitive::WriteTo(std::string *result) const {
   switch (type_) {
@@ -46,17 +24,6 @@ void Primitive::WriteTo(std::string *result) const {
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
     default: UNREACHABLE();
-  }
-}
-
-ir::Results Primitive::PrepareArgument(Type const *from, ir::Results const &val,
-                                       Context *ctx) const {
-  if (from->is<Variant>()) {
-    return ir::Results{
-        ir::Load(ir::VariantValue(this, val.get<ir::Reg>(0)), this)};
-  } else {
-    ASSERT(this->to_string() == from->to_string());
-    return val;
   }
 }
 

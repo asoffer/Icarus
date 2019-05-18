@@ -5,9 +5,6 @@
 #include "ast/struct_literal.h"
 #include "base/guarded.h"
 #include "misc/context.h"
-#include "ir/arguments.h"
-#include "ir/components.h"
-#include "ir/compiled_fn.h"
 #include "misc/module.h"
 #include "type/function.h"
 #include "type/pointer.h"
@@ -107,8 +104,6 @@ bool Struct::needs_destroy() const {
                         [](Field const &f) { return f.type->needs_destroy(); });
 }
 
-void Struct::EmitRepr(ir::Results const &val, Context *ctx) const { UNREACHABLE(); }
-
 void Struct::WriteTo(std::string *result) const {
   result->append("struct.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
@@ -119,23 +114,6 @@ bool Struct::contains_hashtag(ast::Hashtag needle) const {
     if (tag.kind_ == needle.kind_) { return true; }
   }
   return false;
-}
-
-ir::Results Struct::PrepareArgument(Type const *from, ir::Results const &val,
-                                    Context *ctx) const {
-  // TODO consider who is responsible for destruction here.
-  auto arg = ir::Alloca(this);
-  visitor::EmitIr visitor;
-  if (from->is<Variant>()) {
-    EmitMoveAssign(&visitor, this,
-                   ir::Results{ir::VariantValue(this, val.get<ir::Reg>(0))},
-                   arg, ctx);
-  } else if (this == from) {
-    EmitMoveAssign(&visitor, from, val, arg, ctx);
-  } else {
-    UNREACHABLE(from);
-  }
-  return ir::Results{arg};
 }
 
 core::Bytes Struct::bytes(core::Arch const &a) const {
