@@ -1,7 +1,7 @@
 #include "misc/context.h"
+#include "ast/declaration.h"
 #include "ast/dispatch_table.h"
 #include "ast/expression.h"
-#include "ast/declaration.h"
 #include "misc/module.h"
 
 type::Type const *Context::type_of(ast::Expression const *expr) const {

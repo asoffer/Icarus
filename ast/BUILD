@@ -31,18 +31,15 @@ cc_lib(
         ":chainop",
         ":comma_list",
         ":declaration",
-        ":dispatch_table",
         ":enum_literal",
         ":expression",
         ":function_literal",
-        ":hashtag",
         ":identifier",
         ":import",
         ":index",
         ":interface",
         ":match_declaration",
         ":node",
-        ":overload_set",
         ":repeated_unop",
         ":scope_literal",
         ":scope_node",
@@ -52,14 +49,6 @@ cc_lib(
         ":switch",
         ":terminal",
         ":unop",
-    ],
-)
-
-cc_lib(
-    name = "impl",
-    deps = [
-        ":dispatch_table-impl",
-        ":overload_set-impl",
     ],
 )
 

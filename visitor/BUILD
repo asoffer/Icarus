@@ -12,6 +12,7 @@ cc_lib(
     ],
     deps = [
         ":assign_scope",
+        ":format",
         ":dependent_decls",
         ":extract_jumps",
         ":emit_ir",
@@ -31,6 +32,7 @@ cc_lib(
         ":emit_ir_ref",
         ":emit_ir_val",
         ":extract_jumps-impl",
+        ":format-impl",
         ":verify_type-impl",
     ],
 )
@@ -214,6 +216,19 @@ cc_target(
         "//ast:node_xmacro",
     ],
     impl_deps = ["//ast"],
+)
+
+
+cc_target(
+    name = "format",
+    intf_deps = [
+        "//ast:ast-fwd",
+        "//ast:node_xmacro",
+    ],
+    impl_deps = [
+        "//ast",
+        "//base:log",
+    ],
 )
 
 cc_target(

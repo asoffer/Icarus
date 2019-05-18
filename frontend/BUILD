@@ -71,12 +71,9 @@ cc_lib(
         ":tagged_node",
         ":token",
         "//ast",
-        "//ast:impl",
         "//base:guarded",
         "//error:log-impl",
         "//misc:module",
-        "//visitor:type_visitors-impl",
-        "//visitor:visitors-impl",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

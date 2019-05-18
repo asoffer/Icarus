@@ -10,14 +10,15 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "base/util.h"
+#include "frontend/text_span.h"
+#include "ir/results.h"
 #include "visitor/assign_scope.h"
 #include "visitor/dependent_decls.h"
 #include "visitor/emit_ir.h"
 #include "visitor/extract_jumps.h"
+#include "visitor/format.h"
 #include "visitor/verify_type.h"
-#include "base/util.h"
-#include "frontend/text_span.h"
-#include "ir/results.h"
 
 struct JumpExprs;
 struct Context;

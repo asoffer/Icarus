@@ -4,7 +4,6 @@
 
 #include "absl/algorithm/container.h"
 #include "base/guarded.h"
-#include "misc/context.h"
 
 namespace type {
 

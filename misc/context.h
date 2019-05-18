@@ -32,7 +32,6 @@ struct Context {
   visitor::VerifyResult const *prior_verification_attempt(ast::ExprPtr expr);
   visitor::VerifyResult set_result(ast::ExprPtr expr,
                                        visitor::VerifyResult r);
-
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
   void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);
 

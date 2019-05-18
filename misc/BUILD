@@ -36,15 +36,16 @@ cc_target(
     impl_deps = [
         "//ast:expression",
         "//ast:declaration",
-        "//ast:dispatch_table",
-    ],
+    ] + select({
+            "//:config_emit_ir": ["//ast:dispatch_table"],
+            "//conditions:default": [],
+        }),
 )
 
 cc_target(
     name = "module",
     intf_deps = [
         ":constant_binding",
-        "//ast:dispatch_table",
         "//ast:expression",
         "//ast:statements",
         "//core:fn_params",
@@ -53,7 +54,10 @@ cc_target(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_map",
-    ],
+    ] + select({
+            "//:config_emit_ir": ["//ast:dispatch_table"],
+            "//conditions:default": [],
+        }),
     impl_deps = [
         "//ast:declaration",
         "//ast:expression",

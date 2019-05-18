@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include "base/debug.h"
+
 namespace type {
 struct Type;
 }  // namespace type
@@ -16,12 +18,16 @@ enum class Builtin : char {
 #undef IR_BUILTIN_MACRO
 };
 
-type::Type const* BuiltinType(Builtin);
-std::string stringify(Builtin);
-
-AnyFunc DebugIrFn();
-AnyFunc BytesFn();
-AnyFunc AlignmentFn();
+inline std::string stringify(Builtin b) {
+  switch (b) {
+#define IR_BUILTIN_MACRO(enumerator, str, ...)                                 \
+  case Builtin::enumerator:                                                    \
+    return str;
+#include "ir/builtin.xmacro.h"
+#undef IR_BUILTIN_MACRO
+  }
+  UNREACHABLE();
+}
 
 }  // namespace ir
 

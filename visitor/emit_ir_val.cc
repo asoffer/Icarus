@@ -13,6 +13,15 @@
 #include "type/typed_value.h"
 
 namespace ir {
+
+// TODO moved these here because we can't have them in ir:builtin or else
+// they'll be in the formatter target. figure out what's going on here.
+type::Type const* BuiltinType(Builtin);
+
+AnyFunc DebugIrFn();
+AnyFunc BytesFn();
+AnyFunc AlignmentFn();
+
 // TODO: The functions here that modify struct fields typically do so by
 // modifying the last field, since we always build them in order. This saves us
 // from having to pass extra information and thereby bloating all commands. At

@@ -4,29 +4,11 @@
 #include "ast/declaration.h"
 #include "ast/struct_literal.h"
 #include "base/guarded.h"
-#include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
 #include "type/pointer.h"
 
 namespace type {
-
-static std::optional<ir::AnyFunc> SpecialFunction(Struct const *s, char const *symbol,
-                                                Context *ctx) {
-  auto *ptr_to_s = Ptr(s);
-  for (auto const *decl : s->scope_->AllDeclsWithId(symbol)) {
-    // Note: there cannot be more than one declaration with the correct type
-    // because our shadowing checks would have caught it.
-    auto *t = ctx->type_of(decl);
-    if (t == nullptr) { continue; }
-    auto *fn_type = t->if_as<Function>();
-    if (fn_type == nullptr) { continue; }
-    if (fn_type->input.front() != ptr_to_s) { continue; }
-    visitor::EmitIr visitor;
-    return decl->EmitIr(&visitor, ctx).get<ir::AnyFunc>(0).val_;
-  }
-  return std::nullopt;
-}
 
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
   auto offset = core::Bytes{0};
@@ -97,10 +79,24 @@ bool Struct::IsMovable() const {
 }
 
 bool Struct::needs_destroy() const {
+  /*
+  // TODO this depends on whether or not a destructor has been defined, so it
+  // requires IR and therefore shouldn't be on the type explicitly. Move it to a
+  // visitor.
+  //
   // TODO is this okay? Does it work for generics? Does it need to?
   Context ctx(mod_);
-  return SpecialFunction(this, "~", &ctx) ||
-         absl::c_any_of(fields_,
+  for (auto const *decl : scope_->AllDeclsWithId("~")) {
+    // Note: there cannot be more than one declaration with the correct type
+    // because our shadowing checks would have caught it.
+    auto *t = ctx.type_of(decl);
+    if (t == nullptr) { continue; }
+    auto *fn_type = t->if_as<Function>();
+    if (fn_type == nullptr) { continue; }
+    if (fn_type->input.front() != Ptr(this)) { continue; }
+  }
+  */
+  return absl::c_any_of(fields_,
                         [](Field const &f) { return f.type->needs_destroy(); });
 }
 

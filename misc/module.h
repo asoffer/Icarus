@@ -12,7 +12,10 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
+// TODO this ifdef needs to disappear it's not long-term sustainable
+#ifdef ICARUS_VISITOR_EMIT_IR
 #include "ast/dispatch_table.h"
+#endif // ICARUS_VISITOR_EMIT_IR 
 #include "ast/expression.h"
 #include "ast/statements.h"
 #include "core/fn_params.h"
@@ -93,7 +96,10 @@ struct Module {
     // for both simultaneously would be more expensive I guess.
     absl::flat_hash_map<ast::ExprPtr, visitor::VerifyResult> verify_results_;
 
+// TODO this ifdef needs to disappear it's not long-term sustainable
+#ifdef ICARUS_VISITOR_EMIT_IR
     absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
+#endif
     ConstantBinding constants_;
   };
   // TODO It's possible to have layers of constant bindings in a tree-like

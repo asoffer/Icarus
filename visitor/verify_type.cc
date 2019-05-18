@@ -12,6 +12,18 @@
 #include "type/typed_value.h"
 #include "type/util.h"
 
+namespace ir {
+
+// TODO moved these here because we can't have them in ir:builtin or else
+// they'll be in the formatter target. figure out what's going on here.
+type::Type const* BuiltinType(Builtin);
+
+AnyFunc DebugIrFn();
+AnyFunc BytesFn();
+AnyFunc AlignmentFn();
+
+}  // namespace ir
+
 namespace visitor {
 using ::matcher::InheritsFrom;
 

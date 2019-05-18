@@ -44,7 +44,7 @@ Module::Module()
 Module::~Module() = default;
 
 // TODO this ifdef needs to disappear it's not long-term sustainable
-#ifdef ICARUS_AST_VISITOR_EMIT_IR
+#ifdef ICARUS_VISITOR_EMIT_IR
 ir::CompiledFn *Module::AddFunc(
     type::Function const *fn_type,
     core::FnParams<type::Typed<ast::Expression const *>> params) {
@@ -93,7 +93,7 @@ void Module::CompleteAllDeferredWork() {
 }
 
 // TODO this ifdef needs to disappear it's not long-term sustainable
-#ifdef ICARUS_AST_VISITOR_EMIT_IR
+#ifdef ICARUS_VISITOR_EMIT_IR
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
 // inside this function.
@@ -182,4 +182,4 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
 
   return mod;
 }
-#endif  // ICARUS_AST_VISITOR_EMIT_IR
+#endif  // ICARUS_VISITOR_EMIT_IR

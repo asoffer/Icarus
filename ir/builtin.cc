@@ -18,17 +18,6 @@ type::Type const* BuiltinType(Builtin b) {
   UNREACHABLE();
 }
 
-std::string stringify(Builtin b) {
-  switch (b) {
-#define IR_BUILTIN_MACRO(enumerator, str, ...)                                 \
-  case Builtin::enumerator:                                                    \
-    return str;
-#include "ir/builtin.xmacro.h"
-#undef IR_BUILTIN_MACRO
-  }
-  UNREACHABLE();
-}
-
 AnyFunc DebugIrFn() {
   static CompiledFn *debug_ir_func_ = []() {
     auto fn = new CompiledFn(nullptr, type::Func({}, {}), {});

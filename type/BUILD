@@ -20,7 +20,6 @@ cc_target(
         "//base:tuple",
         "//core:fn_params",
         "//core:arch",
-        "//misc:context",
         "//misc:module",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -175,7 +174,6 @@ cc_target(
         ":pointer",
         "//base:guarded",
         "//core:arch",
-        "//misc:context",
         "//misc:module",
     ],
 )
@@ -226,7 +224,6 @@ cc_target(
         "//ast:struct_literal",
         "//base:guarded",
         "//core:arch",
-        "//misc:context",
         "//misc:module",
     ],
 )
@@ -244,7 +241,6 @@ cc_target(
         "//base:guarded",
         "//base:permutation",
         "//core:arch",
-        "//misc:context",
         "//misc:module",
     ],
 )
@@ -290,7 +286,6 @@ cc_target(
     intf_deps = [":type"],
     impl_deps = [
         "//base:guarded",
-        "//misc:context",
         "@com_google_absl//absl/algorithm:container",
     ],
 )

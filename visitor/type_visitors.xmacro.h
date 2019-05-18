@@ -1,3 +1,4 @@
+#ifdef ICARUS_VISITOR_EMIT_IR
 ICARUS_TYPE_VISITOR(void EmitDestroy(visitor::EmitIr const *visitor,
                                      ir::Reg reg, Context *ctx) const,
                     { visitor->Destroy(this, reg, ctx); });
@@ -21,3 +22,4 @@ ICARUS_TYPE_VISITOR(void EmitDefaultInit(visitor::EmitIr const *visitor,
 ICARUS_TYPE_VISITOR(void EmitPrint(visitor::EmitIr const *visitor,
                                    ir::Results const &val, Context *ctx) const,
                     { visitor->Print(this, val, ctx); });
+#endif

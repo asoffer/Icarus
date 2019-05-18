@@ -1,5 +1,10 @@
 package(default_visibility = ["//visibility:public"])
 
+config_setting(
+    name = "config_emit_ir",
+    values = {"define": "cfg=emit_ir"},
+)
+
 cc_binary(
     name = "icarus",
     srcs = ["main.cc"],
@@ -12,23 +17,29 @@ cc_binary(
     ],
 )
 
-#cc_binary(
-#    name = "icfmt",
-#    srcs = ["fmt.cc"],
-#    deps = [
-#        "//ast",
-#        "//frontend:parse",
-#        "//frontend:source",
-#        "//init:cli-impl",
-#        "//init:signal-impl",
-#        "//misc:module-impl",
-#    ],
-#)
+cc_binary(
+    name = "icfmt",
+    srcs = ["fmt.cc"],
+    deps = [
+        "//ast",
+        "//core:impl",
+        "//frontend:parse",
+        "//frontend:source",
+        "//init:cli-impl",
+        "//init:signal-impl",
+        "//ir:results-impl",
+        "//ir:str-impl",
+        "//misc:module-impl",
+        "//type:impl",
+        "//visitor:format-impl",
+    ],
+)
 
 cc_library(
     name = "impl",
     deps = [
-        "//ast:impl",
+        "//ast:dispatch_table-impl",
+        "//ast:overload_set-impl",
         "//base:untyped_buffer-impl",
         "//backend:eval-impl",
         "//backend:exec-impl",
