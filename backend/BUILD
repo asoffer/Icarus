@@ -1,12 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "cc_lib_target", "sources")
 sources()
 
-# cc_target(
-#     name = "emit",
-# )
-
-cc_target(
+cc_lib_target(
     name = "eval",
     intf_deps = [
         ":exec",
@@ -22,9 +18,10 @@ cc_target(
         "//type:generic_struct",
         "//type:util",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "exec",
     intf_deps = [
         "//base:untyped_buffer",
@@ -49,6 +46,5 @@ cc_target(
         "//type:incomplete_flags",
         "//type:util",
     ],
+    test_deps = None,
 )
-
-#write_obj.cc

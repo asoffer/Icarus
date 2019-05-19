@@ -1,8 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "cc_lib_target", "sources")
 sources()
 
-cc_target(
+cc_lib_target(
     name = "lex",
     intf_deps = [
         ":lexeme",
@@ -19,110 +19,77 @@ cc_target(
         "//ir:builtin",
         "//ir:results",
         "//ir:str",
-        "//type:primitive-impl",
-        "//type:type-impl",
+        "//type:primitive",
+        "//type:type",
         "//type:util",
-        "//ir:str-impl",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
+    test_deps = None,
 )
 
-cc_lib(
-    name = "lexeme",
-    hdrs = ["lexeme.h"],
-    deps = [
-        ":operators",
-        ":syntax",
-        ":tag",
-    ],
-)
+cc_lib_target(name = "lexeme",
+              intf_deps = [":operators", ":syntax", ":tag"],
+              impl_deps = None,
+              test_deps = None)
 
-cc_target(
-    name = "numbers",
-    intf_deps = ["//base:expected"],
-)
+cc_lib_target(name = "numbers",
+              intf_deps = ["//base:expected"],
+              impl_deps = [],
+              test_deps = None)
 
-cc_lib(
-    name = "operators",
-    hdrs = ["operators.h"],
-    textual_hdrs = ["operators.xmacro.h"],
-    deps = [
-        ":tag",
-        "//base:debug",
-    ],
-)
+cc_lib_target(name = "operators",
+              textual_hdrs = ["operators.xmacro.h"],
+              intf_deps = [":tag", "//base:debug"],
+              impl_deps = None,
+              test_deps = None)
 
-cc_lib(
+cc_lib_target(
     name = "syntax",
-    hdrs = ["syntax.h"],
     textual_hdrs = ["syntax.xmacro.h"],
-    deps = [
-        ":tag",
-        "//base:debug",
-    ],
-)
+    intf_deps = [":tag", "//base:debug"],
+    impl_deps = None,
+    test_deps = None)
 
-cc_lib(
+cc_lib_target(
     name = "parse",
-    srcs = ["parse.cc"],
-    deps = [
-        ":lex-impl",
+    intf_deps = None,
+    impl_deps = [
+        ":lex",
         ":source",
         ":tagged_node",
         ":token",
-        "//ast",
+        "//ast:ast",
         "//base:guarded",
         "//error:log-impl",
         "//misc:module",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
+    test_deps = None,
 )
 
-cc_target(
-    name = "source",
-    intf_deps = ["//base:expected"],
-)
+cc_lib_target(name = "source",
+              intf_deps = ["//base:expected"],
+              impl_deps = [],
+              test_deps = [],
+              test_data = [
+                  "testdata/empty_file.txt",
+                  "testdata/one_line_file.txt",
+                  "testdata/multi_line_file.txt",
+              ])
 
-cc_test(
-    name = "source_test",
-    srcs = ["source_test.cc"],
-    deps = [
-        "//test",
-        ":source-impl",
-    ],
-    data= [
-        "testdata/empty_file.txt",
-        "testdata/one_line_file.txt",
-        "testdata/multi_line_file.txt",
-    ],
-)
+cc_lib_target(name = "tag", impl_deps = None, test_deps = None)
 
-cc_lib(
-    name = "tag",
-    hdrs = ["tag.h"],
-)
+cc_lib_target(name = "tagged_node",
+              intf_deps = [":tag", ":lexeme"],
+              impl_deps = None,
+              test_deps = None)
 
-cc_lib(
-    name = "tagged_node",
-    hdrs = ["tagged_node.h"],
-    srcs = ["tagged_node.h"],
-    deps = [":tag", ":lexeme"],
-)
+cc_lib_target(name = "text_span",
+              intf_deps = ["//base:debug", "//base:interval"],
+              impl_deps = None,
+              test_deps = None)
 
-cc_lib(
-    name = "text_span",
-    hdrs = ["text_span.h"],
-    deps = [
-        "//base:debug",
-        "//base:interval",
-    ],
-)
-
-cc_lib(
-    name = "token",
-    hdrs = ["token.h"],
-    deps = [
-        ":operators",
-        "//ast:node",
-    ]
-)
+cc_lib_target(name = "token",
+              intf_deps = [":operators", "//ast:node"],
+              impl_deps = None,
+              test_deps = None)

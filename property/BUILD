@@ -1,17 +1,19 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "cc_lib_target", "sources")
 sources()
 
-cc_target(
+cc_lib_target(
     name = "property",
     intf_deps = [
         "//base:owned_ptr",
         "//base:util",
         "//ir:cmd",
     ],
+    impl_deps = [],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "property_map",
     intf_deps = [
         ":property",
@@ -30,9 +32,10 @@ cc_target(
         "//type:function",
         "//type:generic_struct",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "property_set",
     intf_deps = [
         "//base:bag",
@@ -40,4 +43,5 @@ cc_target(
         "//base:util",
     ],
     impl_deps = [":property"],
+    test_deps = None,
 )

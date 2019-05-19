@@ -1,13 +1,13 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "cc_lib_target", "sources")
 sources()
 
-cc_lib(
+cc_lib_target(
     name = "inference_failure_reason",
-    hdrs = ["inference_failure_reason.h"],
-)
+    impl_deps = None,
+    test_deps = None)
 
-cc_target(
+cc_lib_target(
     name = "log",
     textual_hdrs = ["errors.xmacro.h"],
     intf_deps = [
@@ -23,4 +23,4 @@ cc_target(
         "//base:interval",
         "//frontend:source",
     ],
-)
+    test_deps = None)

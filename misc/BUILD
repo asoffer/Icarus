@@ -1,19 +1,18 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
 sources()
 
 # Directory of things I haven't totally figured out how to organize yet.
 
-cc_lib(
+cc_group_target(
     name = "impl",
     deps = [
         ":constant_binding-impl",
         ":context-impl",
         ":module-impl",
-    ],
-)
+    ])
 
-cc_target(
+cc_lib_target(
     name = "constant_binding",
     intf_deps = [
         "//base:untyped_buffer",
@@ -22,11 +21,12 @@ cc_target(
     impl_deps = [
         "//ir:results",
         "//core:arch",
-        "//type",
+        "//type:type",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "context",
     intf_deps = [
         ":module",
@@ -36,16 +36,16 @@ cc_target(
     impl_deps = [
         "//ast:expression",
         "//ast:declaration",
-    ] + select({
-            "//:config_emit_ir": ["//ast:dispatch_table"],
-            "//conditions:default": [],
-        }),
+        "//ast:dispatch_table", #TODO not for formatting
+    ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "module",
     intf_deps = [
         ":constant_binding",
+        "//ast:dispatch_table", #TODO not for formatting
         "//ast:expression",
         "//ast:statements",
         "//core:fn_params",
@@ -54,28 +54,25 @@ cc_target(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_map",
-    ] + select({
-            "//:config_emit_ir": ["//ast:dispatch_table"],
-            "//conditions:default": [],
-        }),
+    ],
     impl_deps = [
         "//ast:declaration",
         "//ast:expression",
         "//ast:function_literal",
         "//ast:struct_literal",
-        # "//backend:emit",
         "//backend:eval",
         "//base:guarded",
         "//frontend:source-impl",
         "//ir:compiled_fn",
         "//type:function",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "compile",
-    srcs = ["compile.cc"],
-    deps = [
+    intf_deps = None,
+    impl_deps = [
         ":context",
         ":module",
         "//ast:declaration",
@@ -83,4 +80,5 @@ cc_lib(
         "//frontend:source",
         "//ir:compiled_fn",
     ],
+    test_deps = None,
 )

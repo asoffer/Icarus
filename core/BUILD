@@ -1,76 +1,47 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
 sources()
 
-cc_lib(name = "impl", deps = [
-    ":scope-impl",
-    ":pending_module-impl",
-])
+cc_group_target(name = "impl",
+                deps = [":scope-impl", ":pending_module-impl"])
 
-cc_lib(name = "alignment", hdrs = ["alignment.h"])
+cc_lib_target(name = "alignment", impl_deps = None, test_deps = None)
+cc_lib_target(name = "bytes", impl_deps = None, test_deps = None)
 
-cc_lib(
+cc_lib_target(
     name = "arch",
-    hdrs = ["arch.h"],
-    deps = [
+    intf_deps = [
         ":alignment",
         ":bytes",
         "//ir:addr",
         "//ir:any_func",
     ],
+    impl_deps = None,
+    test_deps = [],
 )
 
-cc_test(
-    name = "arch_test",
-    srcs = ["arch_test.cc"],
-    deps = [
-        ":arch",
-        "//test"
-    ],
-)
-
-cc_lib(name = "bytes", hdrs = ["bytes.h"])
-
-cc_lib(
+cc_lib_target(
     name = "fn_args",
-    hdrs = ["fn_args.h"],
-    deps = [
+    intf_deps = [
         "//base:stringify",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
+    impl_deps = None,
+    test_deps = ["//base:untyped_buffer"],
 )
 
-cc_test(
-    name = "fn_args_test",
-    srcs = ["fn_args_test.cc"],
-    deps = [
-        ":fn_args",
-        "//base:untyped_buffer-impl",
-        "//test",
-    ],
-)
-
-cc_lib(
+cc_lib_target(
     name = "fn_params",
-    hdrs = ["fn_params.h"],
-    deps = [
+    intf_deps = [
         ":fn_args",
         "//base:debug",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
+    impl_deps = None,
+    test_deps = ["//base:untyped_buffer"],
 )
 
-cc_test(
-    name = "fn_params_test",
-    srcs = ["fn_params_test.cc"],
-    deps = [
-        ":fn_params",
-        "//base:untyped_buffer-impl",
-        "//test",
-    ],
-)
-
-cc_target(
+cc_lib_target(
     name = "pending_module",
     intf_deps = ["//base:expected"],
     impl_deps = [
@@ -82,7 +53,7 @@ cc_target(
     ],
 )
 
-cc_target(
+cc_lib_target(
     name = "scope",
     intf_deps = [
         "//base:util",

@@ -1,186 +1,227 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
 sources()
 
 # TODO rename ast_visitors
-cc_lib(
-    name = "visitors",
+# TODO awful hack
+cc_library(
+    name = "visitors-compile",
     textual_hdrs = [
         "assign_scope.xmacro.h",
         "emit_ir.xmacro.h",
         "visitors.xmacro.h",
     ],
+    defines = ["ICARUS_VISITOR_EMIT_IR"],
+    alwayslink = True,
     deps = [
-        ":assign_scope",
-        ":format",
-        ":dependent_decls",
-        ":extract_jumps",
-        ":emit_ir",
-        ":verify_type",
+        ":assign_scope-compile",
+        ":format-compile",
+        ":dependent_decls-compile",
+        ":extract_jumps-compile",
+        ":emit_ir-compile",
+        ":verify_type-compile",
+    ])
+cc_library(
+    name = "visitors-format",
+    textual_hdrs = [
+        "assign_scope.xmacro.h",
+        "emit_ir.xmacro.h",
+        "visitors.xmacro.h",
     ],
-)
+    alwayslink = True,
+    deps = [
+        ":assign_scope-format",
+        ":format-format",
+        ":dependent_decls-format",
+        ":extract_jumps-format",
+        ":emit_ir-format",
+        ":verify_type-format",
+    ])
+
 
 # TODO rename ast_visitors-impl
-cc_lib(
-    name = "visitors-impl",
+# TODO awful hack
+cc_library(
+    name = "visitors-impl-compile",
     textual_hdrs = ["visitors.xmacro.h"],
     deps = [
-        ":assign_scope-impl",
-        ":dependent_decls-impl",
-        ":emit_ir_copy_init",
-        ":emit_ir_move_init",
-        ":emit_ir_ref",
-        ":emit_ir_val",
-        ":extract_jumps-impl",
-        ":format-impl",
-        ":verify_type-impl",
+        ":assign_scope-impl-compile",
+        ":dependent_decls-impl-compile",
+        ":emit_ir_copy_init-impl-compile",
+        ":emit_ir_move_init-impl-compile",
+        ":emit_ir_ref-impl-compile",
+        ":emit_ir_val-impl-compile",
+        ":extract_jumps-impl-compile",
+        ":format-impl-compile",
+        ":verify_type-impl-compile",
     ],
-)
+    defines = ["ICARUS_VISITOR_EMIT_IR"],
+    alwayslink = True)
+cc_library(
+    name = "visitors-impl-format",
+    textual_hdrs = ["visitors.xmacro.h"],
+    deps = [
+        ":assign_scope-impl-format",
+        ":dependent_decls-impl-format",
+        ":emit_ir_copy_init-impl-format",
+        ":emit_ir_move_init-impl-format",
+        ":emit_ir_ref-impl-format",
+        ":emit_ir_val-impl-format",
+        ":extract_jumps-impl-format",
+        ":format-impl-format",
+        ":verify_type-impl-format",
+    ],
+    alwayslink = True)
 
-cc_lib(
+# TODO hack mirroring -impl, -test
+cc_group_target(
     name = "type_visitors",
     textual_hdrs = ["type_visitors.xmacro.h"],
-    deps = [
-        ":emit_ir",
-    ],
-)
-
-cc_lib(
+    deps = [":emit_ir"])
+cc_group_target(
     name = "type_visitors-impl",
     textual_hdrs = ["type_visitors.xmacro.h"],
     deps = [
-        ":emit_init",
-        ":emit_assign",
-        ":emit_destroy",
-        ":emit_print",
-    ],
-)
+        ":emit_init-impl",
+        ":emit_assign-impl",
+        ":emit_destroy-impl",
+        ":emit_print-impl",
+    ])
 
-cc_target(
+cc_lib_target(
     name = "assign_scope",
     intf_deps = [
-        "//ast:ast-fwd",
+        "//ast:ast_fwd",
         "//ast:node_xmacro",
         "//core:scope",
     ],
-    impl_deps = ["//ast"],
+    impl_deps = ["//ast:ast"],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "dependent_decls",
     intf_deps = [
-        "//ast:ast-fwd",
+        "//ast:ast_fwd",
         "//ast:node_xmacro",
         "//base:graph",
     ],
-    impl_deps = ["//ast"],
+    impl_deps = ["//ast:ast"],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "emit_assign",
-    srcs = ["emit_assign.cc"],
-    deps = [
+    intf_deps = None,
+    impl_deps = [
         ":special_function",
-        "//ast",
+        "//ast:ast",
         "//base:permutation",
         "//ir:cmd",
         "//ir:compiled_fn",
         "//ir:components",
         "//misc:context",
-        "//type",
+        "//type:type",
         "//type:typed_value",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "emit_destroy",
-    srcs = ["emit_destroy.cc"],
-    deps = [
+    intf_deps = None,
+    impl_deps = [
         ":special_function",
-        "//ast",
+        "//ast:ast",
         "//base:permutation",
         "//ir:cmd",
         "//ir:compiled_fn",
         "//ir:components",
         "//misc:context",
-        "//type",
+        "//type:type",
         "//type:typed_value",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "emit_init",
-    srcs = ["emit_init.cc"],
-    deps = [
-        "//ast",
+    intf_deps = None,
+    impl_deps = [
+        "//ast:ast",
         "//base:permutation",
         "//ir:cmd",
         "//ir:compiled_fn",
         "//ir:components",
         "//misc:context",
-        "//type",
+        "//type:type",
         "//type:typed_value",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "emit_ir",
-    hdrs = ["emit_ir.h"],
-    deps = [
-        "//ast:ast-fwd",
+    intf_deps = [
+        "//ast:ast_fwd",
         "//ir:addr",
         "//ir:register",
-        "//type:type-fwd",
+        "//type:type_fwd",
         "//type:typed_value",
     ],
+    impl_deps = [],
+    test_deps = [],
 )
 
-cc_lib(
+cc_lib_target(
     name = "emit_ir_copy_init",
-    srcs = ["emit_ir_copy_init.cc"],
-    deps = [
+    intf_deps = None,
+    impl_deps = [
         ":emit_ir",
-        "//ast",
+        "//ast:ast",
         "//ir:cmd",
-        "//type",
+        "//type:type",
         "//type:typed_value",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "emit_ir_move_init",
-    srcs = ["emit_ir_move_init.cc"],
-    deps = [
+    intf_deps = None,
+    impl_deps = [
         ":emit_ir",
-        "//ast",
+        "//ast:ast",
         "//ir:cmd",
-        "//type",
+        "//type:type",
         "//type:typed_value",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "emit_ir_ref",
-    srcs = ["emit_ir_ref.cc"],
-    deps = [
+    intf_deps = None,
+    impl_deps = [
         ":emit_ir",
-        "//ast",
+        "//ast:ast",
         "//backend:eval",
         "//ir:addr",
         "//ir:cmd",
         "//ir:register",
         "//ir:str",
-        "//type",
+        "//type:type",
         "//type:typed_value",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "emit_ir_val",
-    srcs = ["emit_ir_val.cc"],
-    deps = [
+    intf_deps = None,
+    impl_deps = [
         ":emit_ir",
-        "//ast",
+        "//ast:ast",
         "//backend:eval",
         "//base:guarded",
         "//core:pending_module",
@@ -188,69 +229,66 @@ cc_lib(
         "//ir:components",
         "//ir:phi",
         "//ir:results",
-        "//type",
+        "//type:type",
         "//type:typed_value",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "emit_print",
-    srcs = ["emit_print.cc"],
-    deps = [
-        "//ast",
+    intf_deps = None,
+    impl_deps = [
+        "//ast:ast",
         "//ir:arguments",
         "//ir:cmd",
         "//ir:compiled_fn",
         "//ir:components",
         "//misc:context",
-        "//type",
+        "//type:type",
         "//type:typed_value",
     ],
+    test_deps = None,
 )
 
 
-cc_target(
+cc_lib_target(
     name = "extract_jumps",
-    intf_deps = [
-        "//ast:ast-fwd",
-        "//ast:node_xmacro",
-    ],
-    impl_deps = ["//ast"],
+    intf_deps = ["//ast:ast_fwd", "//ast:node_xmacro"],
+    impl_deps = ["//ast:ast"],
+    test_deps = None,
 )
 
 
-cc_target(
+cc_lib_target(
     name = "format",
-    intf_deps = [
-        "//ast:ast-fwd",
-        "//ast:node_xmacro",
-    ],
-    impl_deps = [
-        "//ast",
-        "//base:log",
-    ],
+    intf_deps = ["//ast:ast_fwd", "//ast:node_xmacro"],
+    impl_deps = ["//ast:ast", "//base:log"],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "verify_type",
     intf_deps = [
-        "//ast:ast-fwd",
+        "//ast:ast_fwd",
         "//ast:node_xmacro",
     ],
     impl_deps = [
         ":extract_jumps",
-        "//ast",
+        "//ast:ast",
         "//ast:overload_set",
         "//backend:eval",
         "//misc:context",
+        "//misc:compile-impl",
         "//ir:cmd-impl",
-        "//type",
+        "//type:type",
         "//type:cast",
         "//type:util",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "special_function",
     intf_deps = [],
     impl_deps = [
@@ -261,4 +299,5 @@ cc_target(
         "//type:pointer",
         "//type:struct",
     ],
+    test_deps = None,
 )

@@ -1,11 +1,11 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "sources")
+load("//:defs.bzl", "cc_lib_target", "sources")
 sources()
 
-cc_lib(
+cc_lib_target(
     name = "compiler",
-    srcs = ["compiler.cc"],
-    deps = [
+    intf_deps = None,
+    impl_deps = [
         "//backend:exec",
         "//base:untyped_buffer",
         "//base:util",
@@ -15,12 +15,13 @@ cc_lib(
         "//misc:module",
         "//opt:combine_blocks",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "repl",
-    srcs = ["repl.cc"],
-    deps = [
+    intf_deps = None,
+    impl_deps = [
         "//ast:declaration",
         "//ast:expression",
         "//backend:exec",

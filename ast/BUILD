@@ -1,24 +1,23 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "cc_lib_target", "sources")
 load(":defs.bzl", "icarus_ast_node")
 
 sources()
 
-cc_lib(
-    name = "node_xmacro",
-    textual_hdrs = ["node.xmacro.h"],
+# TODO this is a hack
+cc_library(name = "node_xmacro-compile", textual_hdrs = ["node.xmacro.h"])
+cc_library(name = "node_xmacro-format", textual_hdrs = ["node.xmacro.h"])
+
+cc_lib_target(
+    name = "ast_fwd",
+    intf_deps = [":node_xmacro"],
+    impl_deps = None,
+    test_deps = None,
 )
 
-cc_lib(
-    name = "ast-fwd",
-    hdrs = ["ast_fwd.h"],
-    deps = [":node_xmacro"],
-)
-
-cc_lib(
+cc_lib_target(
     name = "ast",
-    hdrs = ["ast.h"],
-    deps = [
+    intf_deps = [
         ":access",
         ":array_literal",
         ":array_type",
@@ -50,6 +49,8 @@ cc_lib(
         ":terminal",
         ":unop",
     ],
+    impl_deps = None,
+    test_deps = None,
 )
 
 icarus_ast_node(name = "access", deps = [":expression"])
@@ -96,7 +97,7 @@ icarus_ast_node(name = "terminal",
                 deps = [":expression", "//ir:results", "//type:primitive"])
 icarus_ast_node(name = "unop", deps = [":expression", "//frontend:operators"])
 
-cc_target(
+cc_lib_target(
     name = "dispatch_table",
     intf_deps = [
         ":overload_set",
@@ -127,26 +128,17 @@ cc_target(
         "//type:tuple",
         "//type:variant",
     ],
-)
-
-cc_test(
-    name = "dispatch_table_test",
-    srcs = ["dispatch_table_test.cc"],
-    deps = [
+    test_deps = [
         "//:impl",
         "//test:util",
-        "//test",
         "//type:pointer",
         "//type:variant",
     ],
 )
 
-cc_lib(
-    name = "hashtag",
-    hdrs = ["hashtag.h"],
-)
+cc_lib_target(name = "hashtag")
 
-cc_target(
+cc_lib_target(
     name = "overload_set",
     intf_deps = [
         "//base:bag",
@@ -159,4 +151,5 @@ cc_target(
         "//core:scope",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
+    test_deps = None,
 )

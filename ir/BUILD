@@ -1,8 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "sources", "cc_group_target", "cc_lib_target")
 sources()
 
-cc_lib(
+cc_group_target(
     name = "impl",
     deps = [
         ":addr-impl",
@@ -21,22 +21,21 @@ cc_lib(
     ],
 )
 
-cc_target(
+cc_lib_target(
     name = "addr",
     intf_deps = ["//base:untyped_buffer"],
     impl_deps = ["//base:debug"],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "any_func",
-    hdrs = ["any_func.h"],
-    deps = [
-        ":foreign",
-        "//base:debug",
-    ],
+    intf_deps = [":foreign", "//base:debug"],
+    impl_deps = None,
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "arguments",
     intf_deps = [
         ":register",
@@ -50,18 +49,16 @@ cc_target(
     impl_deps = [
         "//core:arch",
     ],
-)
-
-cc_test(
-    name = "arguments_test",
-    srcs = ["arguments_test.cc"],
-    deps = [
-        "//:impl",
-        "//test",
+    test_deps = [
+        ":addr-impl",
+        ":results-impl",
+        "//core:scope-impl",
+        "//misc:module-impl",
+        "//type:impl",
     ],
 )
 
-cc_target(
+cc_lib_target(
     name = "basic_block",
     intf_deps = [
         ":arguments",
@@ -69,14 +66,17 @@ cc_target(
         ":out_params",
         "//base:untyped_buffer",
     ],
+    impl_deps = [],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "block",
-    hdrs = ["block.h"],
+    impl_deps = None,
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "builtin",
     textual_hdrs = ["builtin.xmacro.h"],
     impl_deps = [
@@ -84,9 +84,10 @@ cc_target(
         ":compiled_fn",
         "//base:debug",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "cmd",
     textual_hdrs = ["op.xmacro.h"],
     intf_deps = [
@@ -107,9 +108,10 @@ cc_target(
         "//type:typed_value",
         "//type:generic_struct",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "components",
     intf_deps = [
         ":compiled_fn",
@@ -117,24 +119,27 @@ cc_target(
         ":register",
     ],
     impl_deps = [],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "flags_val",
     intf_deps = ["//base:strong_types"],
     impl_deps = ["//type:flags"],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "foreign",
     impl_deps = [
         "//base:guarded",
         "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "compiled_fn",
     intf_deps = [
         "//ast:function_literal",
@@ -154,16 +159,17 @@ cc_target(
         "//type:function",
         "//type:pointer",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "out_params",
-    intf_deps = [
-        ":register",
-    ],
+    intf_deps = [":register"],
+    impl_deps = [],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "phi",
     intf_deps = [
         ":compiled_fn",
@@ -176,40 +182,31 @@ cc_target(
         "//type:pointer",
         "//type:struct",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "register",
-    hdrs = ["register.h"],
-    deps = ["//base:strong_types"],
+    intf_deps = ["//base:strong_types"],
 )
 
-cc_target(
+cc_lib_target(
     name = "results",
     intf_deps = [
         ":register",
         "//core:bytes",
         "//base:untyped_buffer",
     ],
-    impl_deps = [
-        "//base:untyped_buffer-impl",
-    ],
+    impl_deps = ["//base:untyped_buffer-impl"],
+    test_deps = [],
 )
 
-cc_test(
-    name = "results_test",
-    srcs = ["results_test.cc"],
-    deps = [
-        ":results-impl",
-        "//test",
-    ],
-)
-
-cc_target(
+cc_lib_target(
     name = "str",
     intf_deps = [":addr"],
     impl_deps = [
         "//base:guarded",
         "@com_google_absl//absl/container:node_hash_map",
     ],
+    test_deps = None,
 )

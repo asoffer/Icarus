@@ -1,140 +1,65 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "cc_lib_target", "sources")
 sources()
 
-cc_lib(
-    name = "bag",
-    hdrs = ["bag.h"],
-)
+cc_lib_target(name = "bag", impl_deps = None, test_deps = None)
+cc_lib_target(name = "debug",
+              intf_deps = [":matchers", ":log"],
+              impl_deps = None,
+              test_deps = None)
 
-cc_lib(
-    name = "debug",
-    hdrs = ["debug.h"],
-    deps = [
-        ":matchers",
-        ":log",
-    ]
-)
+cc_lib_target(name = "expected",
+              intf_deps = [":stringify"],
+              impl_deps = None,
+              test_deps = None)
 
-cc_lib(
-    name = "expected",
-    hdrs = ["expected.h"],
-    deps = [":stringify"],
-)
-
-cc_lib(
+cc_lib_target(
     name = "graph",
-    hdrs = ["graph.h"],
-    deps = [
+    intf_deps = [
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
-)
+    impl_deps = None,
+    test_deps = None,)
 
-cc_lib(
-    name = "guarded",
-    hdrs = ["guarded.h"],
-)
-
-cc_lib(
-    name = "hash",
-    hdrs = ["hash.h"],
-)
-
-cc_lib(
-    name = "interval",
-    hdrs = ["interval.h"],
-)
-
-cc_lib(
-    name = "lazy",
-    hdrs = ["lazy.h"],
-)
-
-cc_lib(
-    name = "log",
-    hdrs = ["log.h"],
-    deps = [":stringify"],
-)
-
-cc_lib(
-    name = "macros",
-    hdrs = ["macros.h"],
-)
-
-cc_lib(
-    name = "matchers",
-    hdrs = ["matchers.h"],
-    deps = [":tuple"],
-)
-
-cc_lib(
-    name = "permutation",
-    hdrs = ["permutation.h"],
-)
-
-cc_lib(
-    name = "owned_ptr",
-    hdrs = ["owned_ptr.h"],
-)
-
-cc_lib(
-    name = "stringify",
-    hdrs = ["stringify.h"],
-    deps = [":tuple"],
-)
-
-cc_test(
-    name = "stringify_test",
-    srcs = ["stringify_test.cc"],
-    deps = [
-        ":stringify",
-        "//test",
-    ],
-)
-
-cc_lib(
-    name = "strong_types",
-    hdrs = ["strong_types.h"],
-    deps = [":debug"],
-)
-
-cc_lib(
-    name = "tuple",
-    hdrs = ["tuple.h"],
-)
-
-cc_test(
-    name = "tuple_test",
-    srcs = ["tuple_test.cc"],
-    deps = [
-        ":tuple",
-        "//test",
-    ],
-)
-
-cc_target(
+cc_lib_target(name = "guarded", impl_deps = None, test_deps = None)
+cc_lib_target(name = "hash", impl_deps = None, test_deps = None)
+cc_lib_target(name = "interval", impl_deps = None, test_deps = None)
+cc_lib_target(name = "lazy", impl_deps = None, test_deps = None)
+cc_lib_target(name = "log",
+              intf_deps = [":stringify"],
+              impl_deps = None,
+              test_deps = None)
+cc_lib_target(name = "macros", impl_deps = None, test_deps = None)
+cc_lib_target(name = "matchers",
+              intf_deps = [":tuple"],
+              impl_deps = None,
+              test_deps = None)
+cc_lib_target(name = "permutation", impl_deps = None, test_deps = None)
+cc_lib_target(name = "owned_ptr", impl_deps = None, test_deps = None)
+cc_lib_target(name = "stringify",
+              intf_deps = [":tuple"],
+              impl_deps = None,
+              test_deps = [])
+cc_lib_target(name = "strong_types",
+              intf_deps = [":debug"],
+              impl_deps = None,
+              test_deps = None)
+cc_lib_target(name = "tuple",
+              intf_deps = [],
+              impl_deps = None,
+              test_deps = [])
+cc_lib_target(
     name = "untyped_buffer",
     intf_deps = [
         ":debug",
         "@com_google_absl//absl/strings",
     ],
-)
+    impl_deps = [],
+    test_deps = [])
 
-cc_test(
-    name = "untyped_buffer_test",
-    srcs = ["untyped_buffer_test.cc"],
-    deps = [
-        ":untyped_buffer-impl",
-        "//test",
-    ],
-)
-
-cc_lib(
+cc_lib_target(
     name = "util",
-    hdrs = ["util.h"],
-    deps = [
-        ":debug",
-        ":macros",
-    ],
-)
+    intf_deps = [":debug", ":macros"],
+    impl_deps = None,
+    test_deps = None)

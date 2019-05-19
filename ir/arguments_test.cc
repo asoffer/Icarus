@@ -1,5 +1,6 @@
 #include "ir/arguments.h"
 
+#include "ir/addr.h"
 #include "test/catch.h"
 #include "test/ordered_elements_are.h"
 #include "type/array.h"

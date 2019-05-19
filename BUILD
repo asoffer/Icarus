@@ -1,20 +1,16 @@
 package(default_visibility = ["//visibility:public"])
-
-config_setting(
-    name = "config_emit_ir",
-    values = {"define": "cfg=emit_ir"},
-)
+load("//:defs.bzl", "cc_group_target", "cc_lib_target")
 
 cc_binary(
     name = "icarus",
     srcs = ["main.cc"],
     deps = [
-        ":impl",
-        "//init:cli-impl",
-        "//init:signal-impl",
-        "//misc:compile",
-        "//run:repl",
-        "//run:compiler",
+        ":impl-compile",
+        "//init:cli-impl-compile",
+        "//init:signal-impl-compile",
+        "//misc:compile-impl-compile",
+        "//run:repl-impl-compile",
+        "//run:compiler-impl-compile",
     ],
 )
 
@@ -22,21 +18,21 @@ cc_binary(
     name = "icfmt",
     srcs = ["fmt.cc"],
     deps = [
-        "//ast",
-        "//core:impl",
-        "//frontend:parse",
-        "//frontend:source",
-        "//init:cli-impl",
-        "//init:signal-impl",
-        "//ir:results-impl",
-        "//ir:str-impl",
-        "//misc:module-impl",
-        "//type:impl",
-        "//visitor:format-impl",
+        "//ast:ast-format",
+        "//core:impl-format",
+        "//frontend:parse-impl-format",
+        "//frontend:source-format",
+        "//init:cli-impl-format",
+        "//init:signal-impl-format",
+        "//ir:results-impl-format",
+        "//ir:str-impl-format",
+        "//misc:module-impl-format",
+        "//type:impl-format",
+        "//visitor:format-impl-format",
     ],
 )
 
-cc_library(
+cc_group_target(
     name = "impl",
     deps = [
         "//ast:dispatch_table-impl",
@@ -46,7 +42,7 @@ cc_library(
         "//backend:exec-impl",
         "//core:impl",
         "//frontend:lex-impl",
-        "//frontend:parse",
+        "//frontend:parse-impl",
         "//error:log-impl",
         "//ir:impl",
         "//misc:impl",
@@ -58,9 +54,7 @@ cc_library(
         "//visitor:visitors-impl",
         "//visitor:type_visitors-impl",
         "//visitor:special_function-impl",
-    ],
-    alwayslink = True,
-)
+    ])
 
 filegroup(name = "sources", srcs = ["main.cc"])
 

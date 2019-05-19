@@ -1,13 +1,10 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_target", "sources")
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
 sources()
 
-cc_lib(
-    name = "type-fwd",
-    hdrs = ["type_fwd.h"],
-)
+cc_lib_target(name = "type_fwd", impl_deps = None, test_deps = None)
 
-cc_target(
+cc_lib_target(
     name = "array",
     intf_deps = [
         "//base:lazy",
@@ -24,23 +21,18 @@ cc_target(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
+    test_deps = None,
 )
 
-cc_lib(
-    name = "callable",
-    hdrs = ["callable.h"],
-    deps = [":type"],
-)
-
-cc_lib(
+cc_lib_target(name = "callable",
+              intf_deps = [":type"],
+              impl_deps = None,
+              test_deps = None)
+cc_group_target(
     name = "all_types",
-    deps = [
-        ":concrete_types",
-        ":generic_struct",
-    ],
-)
+    deps = [":concrete_types", ":generic_struct"])
 
-cc_lib(
+cc_group_target(
     name = "concrete_types",
     deps = [
         ":array",
@@ -56,10 +48,9 @@ cc_lib(
         ":tuple",
         ":type",
         ":variant",
-    ],
-)
+    ])
 
-cc_lib(
+cc_group_target(
     name = "impl",
     deps = [
         ":array-impl",
@@ -78,27 +69,19 @@ cc_lib(
         ":tuple-impl",
         ":type-impl",
         ":variant-impl",
-    ],
-)
-cc_target(
+    ])
+
+cc_lib_target(
     name = "cast",
     impl_deps = [
         ":all_types",
         ":interface",
         "@com_google_absl//absl/algorithm:container",
     ],
+    test_deps = [], #["//:impl"],
 )
 
-cc_test(
-    name = "cast_test",
-    srcs = ["cast_test.cc"],
-    deps = [
-        "//:impl",
-        "//test",
-    ],
-)
-
-cc_target(
+cc_lib_target(
     name = "enum",
     intf_deps = [
         ":type",
@@ -106,9 +89,10 @@ cc_target(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "flags",
     intf_deps = [
         ":type",
@@ -117,18 +101,20 @@ cc_target(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "function",
     intf_deps = [
         ":callable",
         "//core:fn_params",
     ],
     impl_deps = ["//base:guarded"],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "generic_struct",
     intf_deps = [
         ":callable",
@@ -136,9 +122,11 @@ cc_target(
         "//misc:module",
         "//core:scope",
     ],
+    impl_deps = [],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "incomplete_enum",
     intf_deps = [
         "//ir:register",
@@ -148,9 +136,10 @@ cc_target(
         "//misc:module",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "incomplete_flags",
     intf_deps = [
         "//ir:register",
@@ -160,10 +149,10 @@ cc_target(
         "//ir:flags_val",
         "//misc:module",
     ],
-
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "interface",
     intf_deps = [
         ":type",
@@ -176,15 +165,17 @@ cc_target(
         "//core:arch",
         "//misc:module",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "opaque",
     intf_deps = [":type"],
     impl_deps = ["//base:debug"],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "pointer",
     intf_deps = [":type"],
     impl_deps = [
@@ -193,9 +184,10 @@ cc_target(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "primitive",
     textual_hdrs = ["primitive.xmacro.h"],
     intf_deps = [":type"],
@@ -203,9 +195,10 @@ cc_target(
         ":array",
         ":pointer",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "struct",
     intf_deps = [
         ":type",
@@ -224,9 +217,10 @@ cc_target(
         "//core:arch",
         "//misc:module",
     ],
+    test_deps = None,
 )
 
-cc_target(
+cc_lib_target(
     name = "tuple",
     intf_deps = [
         ":type",
@@ -241,14 +235,12 @@ cc_target(
         "//core:arch",
         "//misc:module",
     ],
+    test_deps = None,
 )
 
-cc_lib(
-    name = "typed_value",
-    hdrs = ["typed_value.h"],
-)
+cc_lib_target(name = "typed_value", impl_deps = None, test_deps = None)
 
-cc_target(
+cc_lib_target(
     name = "type",
     textual_hdrs = ["primitive.xmacro.h"],
     intf_deps = [
@@ -259,8 +251,8 @@ cc_target(
         "//ir:register",
         "//ir:results",
         "//core:arch",
-        "@com_google_absl//absl/container:flat_hash_set",
         "//visitor:type_visitors",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
         ":array",
@@ -268,22 +260,21 @@ cc_target(
         ":tuple",
         ":variant",
     ],
+    test_deps = None,
 )
 
-cc_lib(
+cc_lib_target(
     name = "util",
-    hdrs = ["util.h"],
-    deps = [
-        ":concrete_types",
-        ":interface",
-    ],
-)
+    intf_deps = [":concrete_types", ":interface"],
+    impl_deps = None,
+    test_deps = None)
 
-cc_target(
+cc_lib_target(
     name = "variant",
     intf_deps = [":type"],
     impl_deps = [
         "//base:guarded",
         "@com_google_absl//absl/algorithm:container",
     ],
+    test_deps = None,
 )
