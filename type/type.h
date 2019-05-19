@@ -16,13 +16,6 @@
 struct Context;
 struct TextSpan;
 
-#ifdef ICARUS_USE_LLVM
-namespace llvm {
-class Type;
-class LLVMContext;
-}  // namespace llvm
-#endif  // ICARUS_USE_LLVM
-
 struct Module;
 
 namespace ast {
@@ -42,7 +35,7 @@ struct AnyFunc;
   BASIC_METHODS
 
 #define ENDING = 0
-#define BASIC_METHODS_WITHOUT_LLVM                                             \
+#define BASIC_METHODS                                                          \
   virtual void WriteTo(std::string *buf) const ENDING;                         \
   virtual core::Bytes bytes(core::Arch const &arch) const ENDING;              \
   virtual core::Alignment alignment(core::Arch const &arch) const ENDING;      \
@@ -50,14 +43,6 @@ struct AnyFunc;
       absl::flat_hash_set<::Module const *> *modules) const ENDING;            \
   virtual bool ReinterpretAs(Type const *t) const ENDING;                      \
   virtual Cmp Comparator() const ENDING
-
-#ifdef ICARUS_USE_LLVM
-#define BASIC_METHODS                                                          \
-  BASIC_METHODS_WITHOUT_LLVM;                                                  \
-  virtual llvm::Type *llvm(llvm::LLVMContext &) const ENDING
-#else
-#define BASIC_METHODS BASIC_METHODS_WITHOUT_LLVM
-#endif
 
 namespace type {
 

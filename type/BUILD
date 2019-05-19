@@ -178,8 +178,6 @@ cc_target(
     ],
 )
 
-#TODO llvm.cc
-
 cc_target(
     name = "opaque",
     intf_deps = [":type"],

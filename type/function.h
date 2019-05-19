@@ -7,12 +7,6 @@
 #include "type/callable.h"
 #include "type/typed_value.h"
 
-#ifdef ICARUS_USE_LLVM
-namespace llvm {
-class FunctionType;
-}  // namespace llvm
-#endif  // ICARUS_USE_LLVM
-
 namespace type {
 struct GenericFunction : public Callable {
   GenericFunction() {}
@@ -46,10 +40,6 @@ struct Function : public Callable {
 
   core::FnParams<type::Typed<ast::Expression const *>> AnonymousFnParams()
       const;
-
-#ifdef ICARUS_USE_LLVM
-  llvm::FunctionType *llvm_fn(llvm::LLVMContext &ctx) const;
-#endif  // ICARUS_USE_LLVM
 
   std::vector<const Type *> input, output;
 };

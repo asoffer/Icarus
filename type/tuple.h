@@ -34,10 +34,6 @@ struct Tuple : public Type {
   Type const *finalize();
   bool needs_destroy() const override;
 
-#ifdef ICARUS_USE_LLVM
-  virtual llvm::Type *llvm(llvm::LLVMContext &) const { UNREACHABLE(); }
-#endif  // ICARUS_USE_LLVM
-
   std::vector<Type const *> entries_;
 
   base::lazy<ir::CompiledFn *> destroy_func_;

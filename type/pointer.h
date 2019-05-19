@@ -3,12 +3,6 @@
 
 #include "type.h"
 
-#ifdef ICARUS_USE_LLVM
-namespace llvm {
-class PointerType;
-}  // namespace llvm
-#endif  // ICARUS_USE_LLVM
-
 namespace type {
 struct Pointer : public Type {
   TYPE_FNS(Pointer);
@@ -17,10 +11,6 @@ struct Pointer : public Type {
 #include "visitor/type_visitors.xmacro.h"
 
   Type const *pointee;
-
-#ifdef ICARUS_USE_LLVM
-  llvm::PointerType *llvm_ptr(llvm::LLVMContext &) const;
-#endif  // ICARUS_USE_LLVM
 };
 
 // Like Pointer but allows indexing and pointer arithmetic.

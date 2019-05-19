@@ -12,6 +12,7 @@ cc_binary(
         ":impl",
         "//init:cli-impl",
         "//init:signal-impl",
+        "//misc:compile",
         "//run:repl",
         "//run:compiler",
     ],

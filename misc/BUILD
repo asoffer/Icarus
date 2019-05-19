@@ -71,3 +71,16 @@ cc_target(
         "//type:function",
     ],
 )
+
+cc_lib(
+    name = "compile",
+    srcs = ["compile.cc"],
+    deps = [
+        ":context",
+        ":module",
+        "//ast:declaration",
+        "//backend:eval",
+        "//frontend:source",
+        "//ir:compiled_fn",
+    ],
+)

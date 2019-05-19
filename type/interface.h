@@ -29,10 +29,6 @@ struct Interface : public Type {
   void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const override;
 
-#ifdef ICARUS_USE_LLVM
-  llvm::Type *llvm(llvm::LLVMContext &) const override { UNREACHABLE(); }
-#endif  // ICARUS_USE_LLVM
-
   core::Scope const *scope_ = nullptr;
   ::Module const *mod_  = nullptr;
 };

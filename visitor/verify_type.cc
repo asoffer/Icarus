@@ -12,6 +12,8 @@
 #include "type/typed_value.h"
 #include "type/util.h"
 
+Module *CompileModule(Module *mod, std::filesystem::path const *path);
+
 namespace ir {
 
 // TODO moved these here because we can't have them in ir:builtin or else

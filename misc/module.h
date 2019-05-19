@@ -23,13 +23,6 @@
 #include "error/log.h"
 #include "misc/constant_binding.h"
 
-#ifdef ICARUS_USE_LLVM
-namespace llvm {
-class Module;
-class LLVMContext;
-}  // namespace llvm
-#endif  // ICARUS_USE_LLVM
-
 namespace type {
 struct Type;
 struct Function;
@@ -40,7 +33,6 @@ struct CompiledFn;
 }  // namespace ir
 
 namespace ast {
-struct FunctionLiteral;
 struct StructLiteral;
 }  // namespace ast
 
@@ -66,11 +58,6 @@ struct Module {
   // TODO long-term this is not a good way to store these. We should probably
   // extract the declarations determine which are public, etc.
   ast::Statements statements_;
-
-#ifdef ICARUS_USE_LLVM
-  std::unique_ptr<llvm::LLVMContext> llvm_ctx_;
-  std::unique_ptr<llvm::Module> llvm_;
-#endif  // ICARUS_USE_LLVM
 
   std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
 

@@ -10,12 +10,6 @@
 #include "ir/basic_block.h"
 #include "property/property_map.h"
 
-#ifdef ICARUS_USE_LLVM
-namespace llvm {
-class Function;
-}  // namespace llvm
-#endif  // ICARUS_USE_LLVM
-
 namespace type {
 struct Function;
 }  // namespace type
@@ -84,9 +78,6 @@ struct CompiledFn {
   int32_t num_regs_ = 0;
   std::vector<BasicBlock> blocks_;
   std::function<void()> *work_item = nullptr;
-#ifdef ICARUS_USE_LLVM
-  llvm::Function *llvm_fn_ = nullptr;
-#endif  // ICARUS_USE_LLVM
 
   Module *mod_;
 
