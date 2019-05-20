@@ -1,6 +1,5 @@
 #include "type/tuple.h"
 
-#include <mutex>
 #include <utility>
 
 #include "base/guarded.h"
@@ -15,11 +14,6 @@
 
 namespace type {
 Type const *Void() { return Tup({}); }
-
-bool Tuple::needs_destroy() const {
-  return std::any_of(entries_.begin(), entries_.end(),
-                     [](Type const *t) { return t->needs_destroy(); });
-}
 
 static base::guarded<std::map<std::vector<Type const *>, Tuple const>> tups_;
 Type const *Tup(std::vector<Type const *> entries) {

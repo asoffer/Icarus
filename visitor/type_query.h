@@ -23,6 +23,12 @@ struct TypeQuery {
   static bool IsMovable(type::Struct const *t);
   static bool IsMovable(type::Tuple const *t);
   static bool IsMovable(type::Variant const *t);
+
+  static bool HasDestructor(type::Type const*) { return false; }
+  static bool HasDestructor(type::Array const *t);
+  static bool HasDestructor(type::Struct const *t);
+  static bool HasDestructor(type::Tuple const *t);
+  static bool HasDestructor(type::Variant const *t);
 };
 }  // namespace visitor
 

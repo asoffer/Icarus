@@ -30,4 +30,6 @@ ICARUS_TYPE_VISITOR(bool IsCopyable() const,
                     { return visitor::TypeQuery::IsCopyable(this); });
 ICARUS_TYPE_VISITOR(bool IsMovable() const,
                     { return visitor::TypeQuery::IsMovable(this); });
+ICARUS_TYPE_VISITOR(bool HasDestructor() const,
+                    { return visitor::TypeQuery::HasDestructor(this); });
 #endif

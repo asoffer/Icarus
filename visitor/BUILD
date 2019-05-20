@@ -298,6 +298,8 @@ cc_lib_target(
     cfgs = ["compile"],
     intf_deps = ["//type:type_fwd"],
     impl_deps = [
+        "//ast:declaration",
+        "//misc:context",
         "//type:all_types",
         "@com_google_absl//absl/algorithm:container",
     ],

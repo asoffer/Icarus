@@ -27,7 +27,6 @@ struct Tuple : public Type {
   core::Alignment alignment(core::Arch const &arch) const override;
 
   Type const *finalize();
-  bool needs_destroy() const override;
 
   std::vector<Type const *> entries_;
 

@@ -49,8 +49,6 @@ struct Struct : public Type {
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string const &name) const;
 
-  bool needs_destroy() const override;
-
   ::Module const *defining_module() const { return mod_; }
 
   core::Bytes offset(size_t n, core::Arch const &arch) const;

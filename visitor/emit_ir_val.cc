@@ -136,7 +136,7 @@ static void MakeAllDestructions(EmitIr const *visitor,
 
   for (auto *decl : ordered_decls) {
     auto *t = ASSERT_NOT_NULL(ctx->type_of(decl));
-    if (!t->needs_destroy()) { continue; }
+    if (!t->HasDestructor()) { continue; }
     t->EmitDestroy(visitor, ctx->addr(decl), ctx);
   }
 }

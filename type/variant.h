@@ -22,8 +22,6 @@ struct Variant : public Type {
     return result;
   }
 
-  bool needs_destroy() const override;
-
   // TODO can do better with a pair of iterators and checking if one is a subset
   // of the other.
   bool contains(type::Type const *t) const;
