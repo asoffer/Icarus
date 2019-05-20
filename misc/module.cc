@@ -4,10 +4,11 @@
 #include "ast/expression.h"
 #include "ast/function_literal.h"
 #include "ast/struct_literal.h"
-#include "backend/eval.h"
 #include "base/guarded.h"
 #include "frontend/source.h"
+#ifdef ICARUS_VISITOR_EMIT_IR
 #include "ir/compiled_fn.h"
+#endif  // ICARUS_VISITOR_EMIT_IR
 #include "type/function.h"
 
 // Can't declare this in header because unique_ptr's destructor needs to know
@@ -27,12 +28,12 @@ ir::CompiledFn *Module::AddFunc(
 
   return result;
 }
-#endif
 
 type::Type const *Module::GetType(std::string_view name) const {
   ASSIGN_OR(return nullptr, auto &decl, GetDecl(name));
   return dep_data_.front().second.verify_results_.at(&decl).type_;
 }
+#endif
 
 ast::Declaration *Module::GetDecl(std::string_view name) const {
   for (auto const &stmt : statements_.content_) {

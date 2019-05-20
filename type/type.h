@@ -11,7 +11,10 @@
 #include "ir/block.h"
 #include "ir/register.h"
 #include "ir/results.h"
+
+#ifdef ICARUS_VISITOR_EMIT_IR
 #include "visitor/emit_ir.h"
+#endif  // ICARUS_VISITOR_EMIT_IR
 
 struct Context;
 struct TextSpan;

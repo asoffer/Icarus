@@ -63,6 +63,6 @@ cc_lib_target(
     impl_deps = [
         "//ast:declaration",
         "//ast:identifier",
-        "//misc:module",
+        "//misc:module", # TODO get rid of hard dependency here?
     ],
 )

@@ -1,14 +1,16 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "sources", "cc_group_target", "cc_lib_target")
+load("//:defs.bzl", "sources", "cc_lib", "cc_group_target", "cc_lib_target")
 sources()
 
 cc_group_target(
     name = "impl",
+    cfgs = ["compile"],
     deps = [
         ":addr-impl",
         ":arguments-impl",
         ":basic_block-impl",
         ":builtin-impl",
+        ":builtin_ir-impl",
         ":cmd-impl",
         ":compiled_fn-impl",
         ":components-impl",
@@ -37,6 +39,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "arguments",
+    cfgs = ["compile"],
     intf_deps = [
         ":register",
         ":results",
@@ -55,11 +58,13 @@ cc_lib_target(
         "//core:scope-impl",
         "//misc:module-impl",
         "//type:impl",
+        "//:impl",
     ],
 )
 
 cc_lib_target(
     name = "basic_block",
+    cfgs = ["compile"],
     intf_deps = [
         ":arguments",
         ":cmd",
@@ -79,16 +84,27 @@ cc_lib_target(
 cc_lib_target(
     name = "builtin",
     textual_hdrs = ["builtin.xmacro.h"],
+    intf_deps = ["//base:debug"],
     impl_deps = [
-        ":any_func",
-        ":compiled_fn",
-        "//base:debug",
+        "//type:type",
+        "//type:function",
     ],
+    test_deps = None,
+)
+   
+# TODO now that ':builtin'; doesn't need any IR, move it up to ast and rename
+# this to ':builtin'
+cc_lib_target(
+    name = "builtin_ir",
+    cfgs = ["compile"],
+    intf_deps = [],
+    impl_deps = [":any_func", ":compiled_fn"],
     test_deps = None,
 )
 
 cc_lib_target(
     name = "cmd",
+    cfgs = ["compile"],
     textual_hdrs = ["op.xmacro.h"],
     intf_deps = [
         ":block",
@@ -113,6 +129,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "components",
+    cfgs = ["compile"],
     intf_deps = [
         ":compiled_fn",
         ":phi",
@@ -141,6 +158,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "compiled_fn",
+    cfgs = ["compile"],
     intf_deps = [
         "//ast:function_literal",
         "//base:bag",
@@ -164,6 +182,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "out_params",
+    cfgs = ["compile"],
     intf_deps = [":register"],
     impl_deps = [],
     test_deps = None,
@@ -171,6 +190,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "phi",
+    cfgs = ["compile"],
     intf_deps = [
         ":compiled_fn",
         "@com_google_absl//absl/container:flat_hash_map",

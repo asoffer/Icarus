@@ -10,7 +10,6 @@ struct Type;
 }  // namespace type
 
 namespace ir {
-struct AnyFunc;
 
 enum class Builtin : char {
 #define IR_BUILTIN_MACRO(enumerator, ...) enumerator,
@@ -18,16 +17,8 @@ enum class Builtin : char {
 #undef IR_BUILTIN_MACRO
 };
 
-inline std::string stringify(Builtin b) {
-  switch (b) {
-#define IR_BUILTIN_MACRO(enumerator, str, ...)                                 \
-  case Builtin::enumerator:                                                    \
-    return str;
-#include "ir/builtin.xmacro.h"
-#undef IR_BUILTIN_MACRO
-  }
-  UNREACHABLE();
-}
+
+std::string stringify(Builtin b);
 
 }  // namespace ir
 

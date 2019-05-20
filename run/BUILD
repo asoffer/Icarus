@@ -4,6 +4,7 @@ sources()
 
 cc_lib_target(
     name = "compiler",
+    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         "//backend:exec",
@@ -20,6 +21,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "repl",
+    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         "//ast:declaration",

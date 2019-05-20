@@ -10,6 +10,7 @@
 #include "type/typed_value.h"
 
 struct Context;
+struct Module;
 
 namespace ir {
 struct Results;

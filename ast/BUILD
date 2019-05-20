@@ -58,7 +58,8 @@ icarus_ast_node(name = "array_literal", deps = [":expression", ":comma_list"])
 icarus_ast_node(name = "array_type", deps = [":expression"])
 icarus_ast_node(name = "binop", deps = [":expression", "//frontend:operators"])
 icarus_ast_node(name = "block_literal", deps = [":expression", ":declaration"])
-icarus_ast_node(name = "block_node", deps = [":expression", ":statements"])
+icarus_ast_node(name = "block_node",
+                deps = [":expression", ":statements", "//core:scope"])
 icarus_ast_node(name = "builtin_fn", deps = [":expression", "//ir:builtin"])
 icarus_ast_node(name = "call", deps = [":expression"])
 icarus_ast_node(name = "cast", deps = [":expression"])
@@ -72,6 +73,7 @@ icarus_ast_node(name = "function_literal", deps = [
     ":declaration",
     ":expression",
     ":statements",
+    "//base:graph",
     "//core:fn_params",
 ])
 icarus_ast_node(name = "identifier", deps = [":expression"])
@@ -79,6 +81,7 @@ icarus_ast_node(name = "import", deps = [":expression", "//core:pending_module"]
 icarus_ast_node(name = "index", deps = [":expression"])
 icarus_ast_node(name = "interface", deps = [":expression"])
 icarus_ast_node(name = "node", deps = [
+    "//base:util",
     "//visitor:visitors",
     "//frontend:text_span",
     "//ir:results",
@@ -99,6 +102,7 @@ icarus_ast_node(name = "unop", deps = [":expression", "//frontend:operators"])
 
 cc_lib_target(
     name = "dispatch_table",
+    cfgs = ["compile"],
     intf_deps = [
         ":overload_set",
         "//core:fn_args",
@@ -140,6 +144,7 @@ cc_lib_target(name = "hashtag")
 
 cc_lib_target(
     name = "overload_set",
+    cfgs = ["compile"],
     intf_deps = [
         "//base:bag",
         "//type:typed_value",

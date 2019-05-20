@@ -54,7 +54,6 @@ cc_group_target(
     name = "impl",
     deps = [
         ":array-impl",
-        ":cast-impl",
         ":enum-impl",
         ":flags-impl",
         ":function-impl",
@@ -73,12 +72,16 @@ cc_group_target(
 
 cc_lib_target(
     name = "cast",
+    # TODO this should be runnable without all the ir, but for now it's
+    # necessary. because scope drags in module. reduce the test deps when you're
+    # done fixing this.
+    cfgs = ["compile"],
     impl_deps = [
         ":all_types",
         ":interface",
         "@com_google_absl//absl/algorithm:container",
     ],
-    test_deps = [], #["//:impl"],
+    test_deps = ["//:impl"],
 )
 
 cc_lib_target(
@@ -109,6 +112,7 @@ cc_lib_target(
     intf_deps = [
         ":callable",
         "//core:fn_params",
+        ":typed_value",
     ],
     impl_deps = ["//base:guarded"],
     test_deps = None,

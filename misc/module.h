@@ -15,13 +15,14 @@
 // TODO this ifdef needs to disappear it's not long-term sustainable
 #ifdef ICARUS_VISITOR_EMIT_IR
 #include "ast/dispatch_table.h"
-#endif // ICARUS_VISITOR_EMIT_IR 
+#endif // ICARUS_VISITOR_EMIT_IR
 #include "ast/expression.h"
 #include "ast/statements.h"
 #include "core/fn_params.h"
 #include "core/scope.h"
 #include "error/log.h"
 #include "misc/constant_binding.h"
+#include "type/typed_value.h"
 
 namespace type {
 struct Type;
@@ -45,7 +46,10 @@ struct Module {
 
   ir::CompiledFn *AddFunc(type::Function const *fn_type,
                     core::FnParams<type::Typed<ast::Expression const *>> params);
+  // TODO this ifdef needs to disappear it's not long-term sustainable
+#ifdef ICARUS_VISITOR_EMIT_IR
   type::Type const *GetType(std::string_view name) const;
+#endif  // ICARUS_VISITOR_EMIT_IR
   ast::Declaration *GetDecl(std::string_view name) const;
 
   std::queue<std::function<void()>> deferred_work_;
@@ -59,13 +63,16 @@ struct Module {
   // extract the declarations determine which are public, etc.
   ast::Statements statements_;
 
+  // TODO this ifdef needs to disappear it's not long-term sustainable
+#ifdef ICARUS_VISITOR_EMIT_IR
   std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
+#endif  // ICARUS_VISITOR_EMIT_IR
 
   // TODO support more than just a single type argument to generic structs.
   struct GenericStructCache {
     std::map<std::vector<type::Type const *>, type::Type const *> fwd_;
     absl::flat_hash_map<type::Type const *,
-                       std::vector<type::Type const *> const *>
+                        std::vector<type::Type const *> const *>
         back_;
   };
 
@@ -78,15 +85,15 @@ struct Module {
     // TODO probably make these funcs constant.
     absl::node_hash_map<ast::Expression const *, ir::CompiledFn *> ir_funcs_;
 
+    // TODO this ifdef needs to disappear it's not long-term sustainable
+#ifdef ICARUS_VISITOR_EMIT_IR
     // TODO future optimization: the bool determining if it's const is not
     // dependent and can therefore be stored more efficiently (though querying
     // for both simultaneously would be more expensive I guess.
     absl::flat_hash_map<ast::ExprPtr, visitor::VerifyResult> verify_results_;
 
-// TODO this ifdef needs to disappear it's not long-term sustainable
-#ifdef ICARUS_VISITOR_EMIT_IR
     absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
-#endif
+#endif  // ICARUS_VISITOR_EMIT_IR
     ConstantBinding constants_;
   };
   // TODO It's possible to have layers of constant bindings in a tree-like

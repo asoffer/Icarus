@@ -2,10 +2,10 @@
 #define ICARUS_AST_FUNCTION_LITERAL_H
 
 #include <vector>
-
 #include "ast/declaration.h"
 #include "ast/expression.h"
 #include "ast/statements.h"
+#include "base/graph.h"
 #include "core/fn_params.h"
 #include "core/scope.h"
 

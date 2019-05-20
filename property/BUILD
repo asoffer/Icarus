@@ -4,6 +4,7 @@ sources()
 
 cc_lib_target(
     name = "property",
+    cfgs = ["compile"],
     intf_deps = [
         "//base:owned_ptr",
         "//base:util",
@@ -15,6 +16,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "property_map",
+    cfgs = ["compile"],
     intf_deps = [
         ":property",
         ":property_set",
@@ -37,6 +39,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "property_set",
+    cfgs = ["compile"],
     intf_deps = [
         "//base:bag",
         "//base:owned_ptr",

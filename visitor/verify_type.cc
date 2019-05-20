@@ -20,10 +20,6 @@ namespace ir {
 // they'll be in the formatter target. figure out what's going on here.
 type::Type const* BuiltinType(Builtin);
 
-AnyFunc DebugIrFn();
-AnyFunc BytesFn();
-AnyFunc AlignmentFn();
-
 }  // namespace ir
 
 namespace visitor {

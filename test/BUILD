@@ -24,6 +24,7 @@ cc_lib_target(name = "ordered_elements_are",
 
 cc_lib_target(
     name = "util",
+    cfgs = ["compile"],
     intf_deps = [
         "//misc:context",
         "//misc:module",

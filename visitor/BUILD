@@ -3,82 +3,54 @@ load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
 sources()
 
 # TODO rename ast_visitors
-# TODO awful hack
-cc_library(
-    name = "visitors-compile",
-    textual_hdrs = [
-        "assign_scope.xmacro.h",
-        "emit_ir.xmacro.h",
-        "visitors.xmacro.h",
-    ],
-    defines = ["ICARUS_VISITOR_EMIT_IR"],
-    alwayslink = True,
-    deps = [
-        ":assign_scope-compile",
-        ":format-compile",
-        ":dependent_decls-compile",
-        ":extract_jumps-compile",
-        ":emit_ir-compile",
-        ":verify_type-compile",
-    ])
-cc_library(
-    name = "visitors-format",
-    textual_hdrs = [
-        "assign_scope.xmacro.h",
-        "emit_ir.xmacro.h",
-        "visitors.xmacro.h",
-    ],
-    alwayslink = True,
-    deps = [
-        ":assign_scope-format",
-        ":format-format",
-        ":dependent_decls-format",
-        ":extract_jumps-format",
-        ":emit_ir-format",
-        ":verify_type-format",
-    ])
-
+# TODO hack mirroring -impl, -test
+cc_group_target(
+    name = "visitors",
+    textual_hdrs = ["visitors.xmacro.h"],
+    deps = {
+        "compile": [
+            ":assign_scope",
+            ":dependent_decls",
+            ":extract_jumps",
+            ":emit_ir",
+            ":verify_type",
+        ],
+        "format": [
+            ":format",
+        ],
+    }
+)
 
 # TODO rename ast_visitors-impl
-# TODO awful hack
-cc_library(
-    name = "visitors-impl-compile",
+# TODO hack mirroring -impl, -test
+cc_group_target(
+    name = "visitors-impl",
     textual_hdrs = ["visitors.xmacro.h"],
-    deps = [
-        ":assign_scope-impl-compile",
-        ":dependent_decls-impl-compile",
-        ":emit_ir_copy_init-impl-compile",
-        ":emit_ir_move_init-impl-compile",
-        ":emit_ir_ref-impl-compile",
-        ":emit_ir_val-impl-compile",
-        ":extract_jumps-impl-compile",
-        ":format-impl-compile",
-        ":verify_type-impl-compile",
-    ],
-    defines = ["ICARUS_VISITOR_EMIT_IR"],
-    alwayslink = True)
-cc_library(
-    name = "visitors-impl-format",
-    textual_hdrs = ["visitors.xmacro.h"],
-    deps = [
-        ":assign_scope-impl-format",
-        ":dependent_decls-impl-format",
-        ":emit_ir_copy_init-impl-format",
-        ":emit_ir_move_init-impl-format",
-        ":emit_ir_ref-impl-format",
-        ":emit_ir_val-impl-format",
-        ":extract_jumps-impl-format",
-        ":format-impl-format",
-        ":verify_type-impl-format",
-    ],
-    alwayslink = True)
+    deps = {
+        "compile": [
+            ":assign_scope-impl",
+            ":dependent_decls-impl",
+            ":emit_ir_copy_init-impl",
+            ":emit_ir_move_init-impl",
+            ":emit_ir_ref-impl",
+            ":emit_ir_val-impl",
+            ":extract_jumps-impl",
+            ":verify_type-impl",
+        ],
+        "format": [
+            ":format-impl",
+        ]
+    }
+)
 
 # TODO hack mirroring -impl, -test
 cc_group_target(
     name = "type_visitors",
     textual_hdrs = ["type_visitors.xmacro.h"],
-    deps = [":emit_ir"])
+    deps = {"compile": [":emit_ir"]},
+)
 cc_group_target(
+    cfgs = ["compile"],
     name = "type_visitors-impl",
     textual_hdrs = ["type_visitors.xmacro.h"],
     deps = [
@@ -90,6 +62,7 @@ cc_group_target(
 
 cc_lib_target(
     name = "assign_scope",
+    cfgs = ["compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//ast:node_xmacro",
@@ -101,6 +74,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "dependent_decls",
+    cfgs = ["compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//ast:node_xmacro",
@@ -112,6 +86,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_assign",
+    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         ":special_function",
@@ -129,6 +104,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_destroy",
+    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         ":special_function",
@@ -146,6 +122,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_init",
+    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         "//ast:ast",
@@ -162,6 +139,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_ir",
+    cfgs = ["compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//ir:addr",
@@ -169,12 +147,13 @@ cc_lib_target(
         "//type:type_fwd",
         "//type:typed_value",
     ],
-    impl_deps = [],
-    test_deps = [],
+    impl_deps = None,
+    test_deps = None,
 )
 
 cc_lib_target(
     name = "emit_ir_copy_init",
+    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         ":emit_ir",
@@ -188,6 +167,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_ir_move_init",
+    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         ":emit_ir",
@@ -201,6 +181,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_ir_ref",
+    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         ":emit_ir",
@@ -218,6 +199,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_ir_val",
+    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         ":emit_ir",
@@ -225,6 +207,7 @@ cc_lib_target(
         "//backend:eval",
         "//base:guarded",
         "//core:pending_module",
+        "//ir:builtin_ir",
         "//ir:cmd",
         "//ir:components",
         "//ir:phi",
@@ -237,6 +220,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_print",
+    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         "//ast:ast",
@@ -254,6 +238,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "extract_jumps",
+    cfgs = ["compile"],
     intf_deps = ["//ast:ast_fwd", "//ast:node_xmacro"],
     impl_deps = ["//ast:ast"],
     test_deps = None,
@@ -269,6 +254,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "verify_type",
+    cfgs = ["compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//ast:node_xmacro",
@@ -290,6 +276,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "special_function",
+    cfgs = ["compile"],
     intf_deps = [],
     impl_deps = [
         ":emit_ir",

@@ -3,6 +3,7 @@
 #include "ast/ast.h"
 #include "backend/eval.h"
 #include "base/guarded.h"
+#include "ir/builtin_ir.h"
 #include "ir/cmd.h"
 #include "ir/components.h"
 #include "ir/phi.h"
@@ -17,10 +18,6 @@ namespace ir {
 // TODO moved these here because we can't have them in ir:builtin or else
 // they'll be in the formatter target. figure out what's going on here.
 type::Type const* BuiltinType(Builtin);
-
-AnyFunc DebugIrFn();
-AnyFunc BytesFn();
-AnyFunc AlignmentFn();
 
 // TODO: The functions here that modify struct fields typically do so by
 // modifying the last field, since we always build them in order. This saves us

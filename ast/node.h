@@ -13,12 +13,18 @@
 #include "base/util.h"
 #include "frontend/text_span.h"
 #include "ir/results.h"
+
+#ifdef ICARUS_VISITOR_EMIT_IR
 #include "visitor/assign_scope.h"
 #include "visitor/dependent_decls.h"
 #include "visitor/emit_ir.h"
 #include "visitor/extract_jumps.h"
-#include "visitor/format.h"
 #include "visitor/verify_type.h"
+#endif  // ICARUS_VISITOR_EMIT_IR
+
+#ifdef ICARUS_VISITOR_FORMAT
+#include "visitor/format.h"
+#endif  // ICARUS_VISITOR_FORMAT
 
 struct JumpExprs;
 struct Context;

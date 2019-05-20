@@ -4,6 +4,7 @@ sources()
 
 cc_lib_target(
     name = "eval",
+    cfgs = ["compile"],
     intf_deps = [
         ":exec",
         "//base:debug",
@@ -17,12 +18,14 @@ cc_lib_target(
         "//ir:compiled_fn",
         "//type:generic_struct",
         "//type:util",
+        "//visitor:emit_ir",
     ],
     test_deps = None,
 )
 
 cc_lib_target(
     name = "exec",
+    cfgs = ["compile"],
     intf_deps = [
         "//base:untyped_buffer",
         "//ir:basic_block",

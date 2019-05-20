@@ -8,6 +8,7 @@
 #include "misc/context.h"
 #include "type/generic_struct.h"
 #include "type/util.h"
+#include "visitor/emit_ir.h"
 
 namespace backend {
 static ir::CompiledFn ExprFn(type::Typed<ast::Expression const *> typed_expr,

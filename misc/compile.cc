@@ -5,6 +5,9 @@
 #include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "misc/module.h"
+#include "visitor/assign_scope.h"
+#include "visitor/emit_ir.h"
+#include "visitor/verify_type.h"
 
 namespace frontend {
 std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);

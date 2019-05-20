@@ -1,6 +1,6 @@
 _VISITOR_DEFINES = {
     "compile": ["ICARUS_VISITOR_EMIT_IR"],
-    "format": [],
+    "format": ["ICARUS_VISITOR_FORMAT"],
 }
 
 def configured_dep(dep, cfg):
@@ -9,10 +9,26 @@ def configured_dep(dep, cfg):
   else:
       return dep + "-" + cfg
 
+def make_deps(deps, cfg):
+    if str(type(deps)) == "list":
+        return [configured_dep(dep, cfg) for dep in deps]
+    elif str(type(deps)) == "dict":
+        if cfg in deps:
+            return [configured_dep(dep, cfg) for dep in deps[cfg]]
+        else:
+            return []
+    else:
+        fail()
+
+
 def cc_lib_target(name, intf_deps = [], impl_deps = None,
                   test_deps = None, test_data = [], 
-                  extra_hdrs = [], extra_srcs = [], **kwargs):
+                  extra_hdrs = [], extra_srcs = [],
+                  cfgs = None, **kwargs):
     for cfg, defs in _VISITOR_DEFINES.items():
+        if cfgs != None and cfg not in cfgs:
+            continue
+
         intf_name = configured_dep(name, cfg)
         impl_name = configured_dep(name + "-impl", cfg)
         test_name = configured_dep(name + "-test", cfg)
@@ -46,13 +62,28 @@ def cc_lib_target(name, intf_deps = [], impl_deps = None,
                 data = test_data,
                 **kwargs)
 
-def cc_group_target(name, deps, **kwargs):
+def cc_group_target(name, deps, cfgs = None, hdrs = [], srcs = [], **kwargs):
     for cfg, defs in _VISITOR_DEFINES.items():
+        if cfgs != None and cfg not in cfgs:
+            continue
+
+        native.cc_library(
+            name = configured_dep(name, cfg),
+            hdrs = hdrs,
+            srcs = srcs,
+            deps = make_deps(deps, cfg),
+            defines = defs,
+            alwayslink = True,
+            **kwargs)
+
+def cc_lib(name, deps = [], cfgs = None, **kwargs):
+    for cfg, defs in _VISITOR_DEFINES.items():
+        if cfgs != None and cfg not in cfgs:
+            continue
+
         native.cc_library(
             name = configured_dep(name, cfg),
             deps = [configured_dep(dep, cfg) for dep in deps],
-            defines = defs,
-            alwayslink = True,
             **kwargs)
 
 def sources():
