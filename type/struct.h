@@ -32,7 +32,12 @@ struct Struct : public Type {
          ast::StructLiteral const *parent)
       : scope_(scope), mod_(const_cast<::Module *>(mod)), parent_(parent) {}
   ~Struct() override {}
-  BASIC_METHODS;
+  void WriteTo(std::string *buf) const override;
+  core::Bytes bytes(core::Arch const &arch) const override;
+  core::Alignment alignment(core::Arch const &arch) const override;
+  void defining_modules(
+      absl::flat_hash_set<::Module const *> *modules) const override;
+  bool ReinterpretAs(Type const *t) const override;
 
 #include "visitor/type_visitors.xmacro.h"
 
@@ -40,10 +45,6 @@ struct Struct : public Type {
   void add_hashtag(ast::Hashtag hashtag);
   void add_hashtag_to_last_field(ast::Hashtag hashtag);
   void add_field(type::Type const *t);
-
-  bool IsCopyable() const override;
-  bool IsMovable() const override;
-  bool IsDefaultInitializable() const override;
 
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string const &name) const;

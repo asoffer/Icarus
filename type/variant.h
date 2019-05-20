@@ -28,9 +28,6 @@ struct Variant : public Type {
   // of the other.
   bool contains(type::Type const *t) const;
 
-  bool IsDefaultInitializable() const override { return false; }
-  bool IsCopyable() const;
-  bool IsMovable() const;
   std::vector<Type const *> variants_;
 
   mutable std::mutex mtx_;

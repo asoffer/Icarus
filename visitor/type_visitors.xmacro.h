@@ -22,4 +22,12 @@ ICARUS_TYPE_VISITOR(void EmitDefaultInit(visitor::EmitIr const *visitor,
 ICARUS_TYPE_VISITOR(void EmitPrint(visitor::EmitIr const *visitor,
                                    ir::Results const &val, Context *ctx) const,
                     { visitor->Print(this, val, ctx); });
+
+ICARUS_TYPE_VISITOR(bool IsDefaultInitializable() const, {
+  return visitor::TypeQuery::IsDefaultInitializable(this);
+});
+ICARUS_TYPE_VISITOR(bool IsCopyable() const,
+                    { return visitor::TypeQuery::IsCopyable(this); });
+ICARUS_TYPE_VISITOR(bool IsMovable() const,
+                    { return visitor::TypeQuery::IsMovable(this); });
 #endif

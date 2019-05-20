@@ -15,8 +15,6 @@ struct Tuple : public Type {
 
   void WriteTo(std::string *result) const override;
 
-  virtual Cmp Comparator() const { UNREACHABLE(); }
-
   virtual void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const;
 
@@ -27,9 +25,6 @@ struct Tuple : public Type {
 
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
-
-  bool IsCopyable() const override;
-  bool IsMovable() const override;
 
   Type const *finalize();
   bool needs_destroy() const override;

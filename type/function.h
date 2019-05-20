@@ -24,8 +24,6 @@ struct GenericFunction : public Callable {
 
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
-
-  Cmp Comparator() const override;
 };
 
 struct Function : public Callable {

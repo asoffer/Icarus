@@ -73,16 +73,6 @@ void Variant::WriteTo(std::string *result) const {
   }
 }
 
-bool Variant::IsCopyable() const {
-  return std::all_of(variants_.begin(), variants_.end(),
-                     [](Type const *t) { return t->IsCopyable(); });
-}
-
-bool Variant::IsMovable() const {
-  return std::all_of(variants_.begin(), variants_.end(),
-                     [](Type const *t) { return t->IsMovable(); });
-}
-
 core::Bytes Variant::bytes(core::Arch const &a) const {
   auto num_bytes = core::Bytes{0};
   auto align = core::Alignment{1};
@@ -97,15 +87,6 @@ core::Alignment Variant::alignment(core::Arch const &a) const {
   auto align = Type_->alignment(a);
   for (auto const *t : variants_) { align = std::max(align, t->alignment(a)); }
   return align;
-}
-
-Cmp Variant::Comparator() const {
-  using cmp_t = std::underlying_type_t<Cmp>;
-  auto cmp    = static_cast<cmp_t>(Cmp::Equality);
-  for (Type const *t : variants_) {
-    cmp = std::min(cmp, static_cast<cmp_t>(t->Comparator()));
-  }
-  return static_cast<Cmp>(cmp);
 }
 
 bool Variant::ReinterpretAs(Type const *t) const {

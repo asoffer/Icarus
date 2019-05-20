@@ -47,7 +47,10 @@ cc_group_target(
 cc_group_target(
     name = "type_visitors",
     textual_hdrs = ["type_visitors.xmacro.h"],
-    deps = {"compile": [":emit_ir"]},
+    deps = {"compile": [
+        ":emit_ir",
+        ":type_query",
+    ]},
 )
 cc_group_target(
     cfgs = ["compile"],
@@ -58,6 +61,7 @@ cc_group_target(
         ":emit_assign-impl",
         ":emit_destroy-impl",
         ":emit_print-impl",
+        ":type_query-impl",
     ])
 
 cc_lib_target(
@@ -285,6 +289,17 @@ cc_lib_target(
         "//misc:context",
         "//type:pointer",
         "//type:struct",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "type_query",
+    cfgs = ["compile"],
+    intf_deps = ["//type:type_fwd"],
+    impl_deps = [
+        "//type:all_types",
+        "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = None,
 )

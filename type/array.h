@@ -18,8 +18,6 @@ struct Array : public Type {
 
 #include "visitor/type_visitors.xmacro.h"
 
-  bool IsCopyable() const override;
-  bool IsMovable() const override;
   virtual bool needs_destroy() const { return data_type->needs_destroy(); }
 
   size_t len;

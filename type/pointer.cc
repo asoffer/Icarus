@@ -46,8 +46,6 @@ core::Alignment Pointer::alignment(core::Arch const &a) const {
   return a.ptr_alignment;
 }
 
-Cmp Pointer::Comparator() const { return Cmp::Equality; }
-
 bool Pointer::ReinterpretAs(Type const *t) const {
   auto *to_ptr = t->if_as<Pointer>();
   if (!to_ptr) { return false; }

@@ -17,9 +17,6 @@ struct GenericStruct : public Callable {
 
 #include "visitor/type_visitors.xmacro.h"
 
-  bool IsCopyable() const override;
-  bool IsMovable() const override;
-
   ::Module const *defining_module() const { return mod_; }
 
   core::Scope const *scope_ = nullptr;

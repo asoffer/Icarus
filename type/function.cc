@@ -19,8 +19,6 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
   return core::Host().ptr_alignment;
 }
 
-Cmp GenericFunction::Comparator() const { return Cmp::None; }
-
 bool GenericFunction::ReinterpretAs(Type const *t) const { return t == this; }
 
 void Function::defining_modules(
@@ -79,8 +77,6 @@ core::Bytes Function::bytes(core::Arch const &a) const {
 core::Alignment Function::alignment(core::Arch const &a) const {
   return a.fn_ptr_alignment;
 }
-
-Cmp Function::Comparator() const { return Cmp::None; }
 
 core::FnParams<type::Typed<ast::Expression const *>> Function::AnonymousFnParams()
     const {

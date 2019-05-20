@@ -13,8 +13,6 @@ struct Enum : public type::Type {
 
 #include "visitor/type_visitors.xmacro.h"
 
-  bool IsDefaultInitializable() const override { return false; }
-
   std::optional<ir::EnumVal> Get(const std::string& str) const;
   Typed<ir::EnumVal, Enum> EmitLiteral(std::string const& member_name) const ;
 

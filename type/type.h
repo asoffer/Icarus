@@ -14,6 +14,7 @@
 
 #ifdef ICARUS_VISITOR_EMIT_IR
 #include "visitor/emit_ir.h"
+#include "visitor/type_query.h"
 #endif  // ICARUS_VISITOR_EMIT_IR
 
 struct Context;
@@ -28,24 +29,18 @@ struct FunctionLiteral;
 
 namespace ir {
 struct FlagsVal;
-struct Val;
 struct AnyFunc;
 }  // namespace ir
 
 #define TYPE_FNS(name)                                                         \
   name() = delete;                                                             \
-  virtual ~name() {}                                                           \
-  BASIC_METHODS
-
-#define ENDING = 0
-#define BASIC_METHODS                                                          \
-  virtual void WriteTo(std::string *buf) const ENDING;                         \
-  virtual core::Bytes bytes(core::Arch const &arch) const ENDING;              \
-  virtual core::Alignment alignment(core::Arch const &arch) const ENDING;      \
-  virtual void defining_modules(                                               \
-      absl::flat_hash_set<::Module const *> *modules) const ENDING;            \
-  virtual bool ReinterpretAs(Type const *t) const ENDING;                      \
-  virtual Cmp Comparator() const ENDING
+  ~name() {}                                                                   \
+  void WriteTo(std::string *buf) const override;                               \
+  core::Bytes bytes(core::Arch const &arch) const override;                    \
+  core::Alignment alignment(core::Arch const &arch) const override;            \
+  void defining_modules(absl::flat_hash_set<::Module const *> *modules)        \
+      const override;                                                          \
+  bool ReinterpretAs(Type const *t) const override
 
 namespace type {
 
@@ -55,14 +50,16 @@ struct GenericStruct;
 struct Pointer;
 struct Interface;
 
-// Note: the order of these is meaningful and relied upon!
-enum class Cmp : uint8_t { None, Equality, Order };
-
 struct Type : public base::Cast<Type> {
  public:
   Type() {}
   virtual ~Type() {}
-  BASIC_METHODS;
+  virtual void WriteTo(std::string *buf) const                    = 0;
+  virtual core::Bytes bytes(core::Arch const &arch) const         = 0;
+  virtual core::Alignment alignment(core::Arch const &arch) const = 0;
+  virtual void defining_modules(
+      absl::flat_hash_set<::Module const *> *modules) const = 0;
+  virtual bool ReinterpretAs(Type const *t) const           = 0;
 
 #define ICARUS_TYPE_VISITOR(signature, body)                                   \
   virtual signature { UNREACHABLE(); }
@@ -85,9 +82,6 @@ struct Type : public base::Cast<Type> {
   // considered small too. Similarly with simple variants and tuples.
   bool is_big() const;
   virtual bool needs_destroy() const { return false; }
-  virtual bool IsDefaultInitializable() const { return true; }
-  virtual bool IsCopyable() const { return true; }
-  virtual bool IsMovable() const { return true; }
 };
 
 struct Enum;
@@ -219,9 +213,6 @@ inline bool IsFloatingPoint(Type const *t) {
 inline bool IsNumeric(Type const *t) { return IsIntegral(t) || IsFloatingPoint(t); }
 
 }  // namespace type
-
-#undef ENDING
-#define ENDING
 
 #define ICARUS_TYPE_VISITOR(signature, body) signature override body
 

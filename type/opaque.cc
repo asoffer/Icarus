@@ -18,8 +18,6 @@ core::Alignment Opaque::alignment(core::Arch const &a) const {
   NOT_YET("figure out what to do here");
 }
 
-Cmp Opaque::Comparator() const { UNREACHABLE(); }
-
 // TODO this is interesting. You could maybe be allowed to reinterpret any type
 // as opaque, but we'd quickly run into problems. For example, there would be no
 // checking that it's actually the correct opaque type. I.e., I could

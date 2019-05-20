@@ -37,9 +37,6 @@ void Array::WriteTo(std::string *result) const {
   result->append("]");
 }
 
-bool Array::IsCopyable() const { return data_type->IsCopyable(); }
-bool Array::IsMovable() const { return data_type->IsMovable(); }
-
 core::Bytes Array::bytes(core::Arch const &a) const {
   return core::FwdAlign(data_type->bytes(a), data_type->alignment(a)) * len;
 }
@@ -54,9 +51,5 @@ bool Array::ReinterpretAs(Type const *t) const {
   }
   return false;
 }
-
-// TODO arrays are tricky because they may contain structs and so just using the
-// result of this function is... maybe not what you intended.
-Cmp Array::Comparator() const { return data_type->Comparator(); }
 
 }  // namespace type

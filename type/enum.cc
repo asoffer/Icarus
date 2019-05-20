@@ -41,6 +41,4 @@ core::Alignment Enum::alignment(core::Arch const &a) const {
   return core::Alignment{8};
 }
 
-Cmp Enum::Comparator() const { return Cmp::Equality; }
-
 }  // namespace type

@@ -67,6 +67,4 @@ core::Alignment Flags::alignment(core::Arch const &a) const {
   return core::Alignment{8};
 }
 
-Cmp Flags::Comparator() const { return Cmp::Order; }
-
 }  // namespace type

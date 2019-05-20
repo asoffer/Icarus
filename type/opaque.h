@@ -22,9 +22,6 @@ struct Opaque : public Type {
   void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const override;
 
-  bool IsDefaultInitializable() const override { return false; }
-
-  Cmp Comparator() const override;
   ::Module const *mod_;
 };
 

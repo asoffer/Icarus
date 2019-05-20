@@ -67,16 +67,6 @@ void Tuple::WriteTo(std::string *result) const {
   result->append(")");
 }
 
-bool Tuple::IsCopyable() const {
-  return std::all_of(entries_.begin(), entries_.end(),
-                     [](Type const *t) { return t->IsCopyable(); });
-}
-
-bool Tuple::IsMovable() const {
-  return std::all_of(entries_.begin(), entries_.end(),
-                     [](Type const *t) { return t->IsMovable(); });
-}
-
 core::Bytes Tuple::bytes(core::Arch const &a) const {
   auto num_bytes = core::Bytes{0};
   for (auto const *t : entries_) {

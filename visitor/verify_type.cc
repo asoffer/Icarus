@@ -23,7 +23,44 @@ type::Type const* BuiltinType(Builtin);
 }  // namespace ir
 
 namespace visitor {
+namespace {
 using ::matcher::InheritsFrom;
+
+// NOTE: the order of these enumerators is meaningful and relied upon! They are
+// ordered from strongest relation to weakest.
+enum class Cmp { Order, Equality, None };
+
+Cmp Comparator(type::Type const *t);
+
+template <typename TypeContainer>
+Cmp MinCmp(TypeContainer const &c) {
+  using cmp_t = std::underlying_type_t<Cmp>;
+  return static_cast<Cmp>(absl::c_accumulate(
+      c, static_cast<cmp_t>(Cmp::Equality), [](cmp_t val, type::Type const *t) {
+        return std::min(val, static_cast<cmp_t>(Comparator(t)));
+      }));
+}
+
+Cmp Comparator(type::Type const *t) {
+  using cmp_t = std::underlying_type_t<Cmp>;
+  if (auto *v = t->if_as<type::Variant>()) { return MinCmp(v->variants_); }
+  if (auto *tup = t->if_as<type::Tuple>()) { return MinCmp(tup->entries_); }
+  if (auto *a = t->if_as<type::Array>()) {
+    return static_cast<Cmp>(
+        std::min(static_cast<cmp_t>(Comparator(a->data_type)),
+                 static_cast<cmp_t>(Cmp::Equality)));
+  } else if (auto *p = t->if_as<type::Primitive>()) {
+    return type::IsNumeric(p) ? Cmp::Order : Cmp::Equality;
+  } else if (t->is<type::Flags>() || t->is<type::BufferPointer>()) {
+    return Cmp::Order;
+  } else if (t->is<type::Enum>() || t->is<type::Pointer>()) {
+    return Cmp::Equality;
+  } else {
+    return Cmp::None;
+  }
+}
+
+}  // namespace
 
 static bool VerifyAssignment(TextSpan const &span, type::Type const *to,
                              type::Type const *from, Context *ctx) {
@@ -768,15 +805,15 @@ not_blocks:
           NOT_YET("Log an error", lhs_result.type_, rhs_result.type_, node);
 
         } else {
-          auto cmp = lhs_result.type_->Comparator();
+          auto cmp = Comparator(lhs_result.type_);
 
           switch (node->ops[i]) {
             case frontend::Operator::Eq:
             case frontend::Operator::Ne: {
               switch (cmp) {
-                case type::Cmp::Order:
-                case type::Cmp::Equality: continue;
-                case type::Cmp::None:
+                case Cmp::Order:
+                case Cmp::Equality: continue;
+                case Cmp::None:
                   ctx->error_log()->ComparingIncomparables(
                       lhs_result.type_->to_string(),
                       rhs_result.type_->to_string(),
@@ -789,9 +826,9 @@ not_blocks:
             case frontend::Operator::Ge:
             case frontend::Operator::Gt: {
               switch (cmp) {
-                case type::Cmp::Order: continue;
-                case type::Cmp::Equality:
-                case type::Cmp::None:
+                case Cmp::Order: continue;
+                case Cmp::Equality:
+                case Cmp::None:
                   ctx->error_log()->ComparingIncomparables(
                       lhs_result.type_->to_string(),
                       rhs_result.type_->to_string(),

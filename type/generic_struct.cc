@@ -23,9 +23,6 @@ void GenericStruct::WriteTo(std::string *result) const {
   result->append("; struct]");
 }
 
-bool GenericStruct::IsCopyable() const { UNREACHABLE(); }
-bool GenericStruct::IsMovable() const { UNREACHABLE(); }
-
 core::Bytes GenericStruct::bytes(core::Arch const &a) const {
   return core::Host().ptr_bytes;
 }
@@ -33,8 +30,6 @@ core::Bytes GenericStruct::bytes(core::Arch const &a) const {
 core::Alignment GenericStruct::alignment(core::Arch const &a) const {
   return core::Host().ptr_alignment;
 }
-
-Cmp GenericStruct::Comparator() const { return Cmp::None; }
 
 bool GenericStruct::ReinterpretAs(Type const *t) const { return t == this; }
 

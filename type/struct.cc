@@ -50,34 +50,6 @@ void Struct::add_hashtag_to_last_field(ast::Hashtag hashtag) {
 
 void Struct::add_field(Type const *t) { fields_.emplace_back(t); }
 
-bool Struct::IsDefaultInitializable() const {
-  return std::all_of(fields_.begin(), fields_.end(),
-                     [](Field const &field) {
-                       return field.type->IsDefaultInitializable();
-                     }) &&
-         std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
-           return tag.kind_ == ast::Hashtag::Builtin::NoDefault;
-         });
-}
-
-bool Struct::IsCopyable() const {
-  return std::all_of(
-             fields_.begin(), fields_.end(),
-             [](Field const &field) { return field.type->IsCopyable(); }) &&
-         std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
-           return tag.kind_ == ast::Hashtag::Builtin::Uncopyable;
-         });
-}
-
-bool Struct::IsMovable() const {
-  return std::all_of(
-             fields_.begin(), fields_.end(),
-             [](Field const &field) { return field.type->IsMovable(); }) &&
-         std::none_of(hashtags_.begin(), hashtags_.end(), [](ast::Hashtag tag) {
-           return tag.kind_ == ast::Hashtag::Builtin::Immovable;
-         });
-}
-
 bool Struct::needs_destroy() const {
   /*
   // TODO this depends on whether or not a destructor has been defined, so it
@@ -131,8 +103,6 @@ core::Alignment Struct::alignment(core::Arch const &a) const {
   }
   return align;
 }
-
-Cmp Struct::Comparator() const { return Cmp::None; }
 
 bool Struct::ReinterpretAs(Type const *t) const { return t == this; }
 }  // namespace type
