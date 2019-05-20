@@ -815,14 +815,17 @@ static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
           auto val1 = lhs_ir.get<ir::BlockSequence>(0);
           auto val2 = rhs_ir.get<ir::BlockSequence>(0);
           if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
+        } else if (lhs_type == type::Bool) {
+          return ir::XorBool(lhs_ir.get<bool>(0), rhs_ir.get<bool>(0));
         }
-        return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                                uint16_t, uint32_t, uint64_t, float, double,
-                                type::Type const *, ir::EnumVal, ir::FlagsVal,
-                                ir::Addr>(lhs_type, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
-          return ir::Ne(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
-        });
+        return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t,
+                                uint8_t, uint16_t, uint32_t, uint64_t, float,
+                                double, type::Type const *, ir::EnumVal,
+                                ir::FlagsVal, ir::Addr>(
+            lhs_type, [&](auto type_holder) {
+              using T = typename decltype(type_holder)::type;
+              return ir::Ne(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+            });
       case frontend::Operator::Ge:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,

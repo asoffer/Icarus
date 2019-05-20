@@ -47,10 +47,37 @@ IncomingMap(ir::CompiledFn* fn) {
   return incoming;
 }
 
+static void DeleteDeadBlocks(ir::CompiledFn* fn) {
+  absl::flat_hash_set<ir::BlockIndex> alive;
+  std::queue<ir::BlockIndex> processing;
+  processing.push(ir::BlockIndex{0});
+  while (!processing.empty()) {
+    ir::BlockIndex current = processing.front();
+    processing.pop();
+    if (!alive.insert(current).second) { continue; }
+    auto const& cmd = fn->block(current).cmds_.back();
+    switch (cmd.op_code_) {
+      case ir::Op::UncondJump: {
+        processing.push(cmd.block_index_);
+      } break;
+      case ir::Op::CondJump: {
+        processing.push(cmd.cond_jump_.blocks_[0]);
+        processing.push(cmd.cond_jump_.blocks_[1]);
+      } break;
+      case ir::Op::ReturnJump: break;
+      default: base::Log() << *fn; UNREACHABLE();
+    }
+  }
 
+  for (size_t i = 0; i < fn->blocks_.size(); ++i) {
+    if (alive.contains(ir::BlockIndex(i))) { continue; }
+    fn->blocks_.at(i).cmds_.clear();
+  }
+}
 
 void CombineBlocks(ir::CompiledFn* fn) {
   for (auto& block : fn->blocks_) { RemoveEverythingAfterFirstJump(&block); }
+  DeleteDeadBlocks(fn);
   auto incoming = IncomingMap(fn);
 
   {
@@ -82,7 +109,7 @@ void CombineBlocks(ir::CompiledFn* fn) {
       final_block.emplace(landing_block_index, jumping_block_index);
       auto& jumping_block = fn->block(jumping_block_index);
       auto& landing_block = fn->block(landing_block_index);
-      // TODO figure out why blocks might be empty and fix that.
+      // Blocks may be empty if we've already found that they were unreachable.
       if (jumping_block.cmds_.empty()) { continue; }
       jumping_block.Append(std::move(landing_block));
     }
