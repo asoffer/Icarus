@@ -37,7 +37,6 @@ struct Struct : public Type {
   core::Alignment alignment(core::Arch const &arch) const override;
   void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const override;
-  bool ReinterpretAs(Type const *t) const override;
 
 #include "visitor/type_visitors.xmacro.h"
 

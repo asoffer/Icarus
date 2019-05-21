@@ -17,8 +17,6 @@ struct Interface : public Type {
 
   bool matches(Type const *t) const;
 
-  bool ReinterpretAs(Type const *t) const override;
-
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 

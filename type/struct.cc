@@ -82,5 +82,4 @@ core::Alignment Struct::alignment(core::Arch const &a) const {
   return align;
 }
 
-bool Struct::ReinterpretAs(Type const *t) const { return t == this; }
 }  // namespace type

@@ -21,7 +21,7 @@ namespace type {
 
 // TODO much of this should be moved to virtual methods.
 bool CanCast(Type const *from, Type const *to) {
-  if (from->ReinterpretAs(to)) { return true; }
+  if (from->ReinterpretableAs(to)) { return true; }
 
   if (IsIntegral(from) && IsNumeric(to)) { return true; }
   if (IsFloatingPoint(from) && IsFloatingPoint(to)) { return true; }

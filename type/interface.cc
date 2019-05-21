@@ -34,6 +34,4 @@ core::Alignment Interface::alignment(core::Arch const &a) const {
   return core::Host().ptr_alignment;
 }
 
-bool Interface::ReinterpretAs(Type const *t) const { return t == this; }
-
 }  // namespace type

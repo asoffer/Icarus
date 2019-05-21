@@ -31,6 +31,4 @@ core::Alignment GenericStruct::alignment(core::Arch const &a) const {
   return core::Host().ptr_alignment;
 }
 
-bool GenericStruct::ReinterpretAs(Type const *t) const { return t == this; }
-
 }  // namespace type

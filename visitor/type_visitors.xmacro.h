@@ -32,4 +32,9 @@ ICARUS_TYPE_VISITOR(bool IsMovable() const,
                     { return visitor::TypeQuery::IsMovable(this); });
 ICARUS_TYPE_VISITOR(bool HasDestructor() const,
                     { return visitor::TypeQuery::HasDestructor(this); });
+
+ICARUS_TYPE_VISITOR(bool ReinterpretableAs(type::Type const *other) const, {
+  return visitor::TypeQuery::ReinterpretableAs(this, other);
+});
+
 #endif

@@ -20,7 +20,6 @@ struct BufferPointer : public Pointer {
 #include "visitor/type_visitors.xmacro.h"
 
   void WriteTo(std::string *result) const override;
-  bool ReinterpretAs(Type const *t) const override;
   BufferPointer(Type const *t) : Pointer(t) {}
 };
 

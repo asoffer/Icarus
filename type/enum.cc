@@ -13,9 +13,6 @@ std::optional<ir::EnumVal> Enum::Get(const std::string &str) const {
   return std::nullopt;
 }
 
-// TODO is integral and same size?
-bool Enum::ReinterpretAs(Type const *t) const { return t == this; }
-
 Typed<ir::EnumVal, Enum> Enum::EmitLiteral(
     std::string const &member_name) const {
   return Typed<ir::EnumVal, Enum>(vals_.at(member_name), this);

@@ -39,8 +39,7 @@ struct AnyFunc;
   core::Bytes bytes(core::Arch const &arch) const override;                    \
   core::Alignment alignment(core::Arch const &arch) const override;            \
   void defining_modules(absl::flat_hash_set<::Module const *> *modules)        \
-      const override;                                                          \
-  bool ReinterpretAs(Type const *t) const override
+      const override
 
 namespace type {
 
@@ -59,7 +58,6 @@ struct Type : public base::Cast<Type> {
   virtual core::Alignment alignment(core::Arch const &arch) const = 0;
   virtual void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const = 0;
-  virtual bool ReinterpretAs(Type const *t) const           = 0;
 
 #define ICARUS_TYPE_VISITOR(signature, body)                                   \
   virtual signature { UNREACHABLE(); }

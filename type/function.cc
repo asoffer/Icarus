@@ -19,8 +19,6 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
   return core::Host().ptr_alignment;
 }
 
-bool GenericFunction::ReinterpretAs(Type const *t) const { return t == this; }
-
 void Function::defining_modules(
     absl::flat_hash_set<::Module const *> *modules) const {
   NOT_YET();
@@ -86,7 +84,5 @@ core::FnParams<type::Typed<ast::Expression const *>> Function::AnonymousFnParams
   }
   return result;
 }
-
-bool Function::ReinterpretAs(Type const *t) const { return t == this; }
 
 }  // namespace type

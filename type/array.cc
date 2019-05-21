@@ -45,11 +45,4 @@ core::Alignment Array::alignment(core::Arch const &a) const {
   return data_type->alignment(a);
 }
 
-bool Array::ReinterpretAs(Type const *t) const {
-  if (auto *a = t->if_as<Array>()) {
-    return len == a->len && data_type->ReinterpretAs(a->data_type);
-  }
-  return false;
-}
-
 }  // namespace type
