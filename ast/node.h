@@ -14,6 +14,10 @@
 #include "frontend/text_span.h"
 #include "ir/results.h"
 
+#ifdef ICARUS_MATCHER
+#include "visitor/match.h"
+#endif  // ICARUS_MATCHER
+
 #ifdef ICARUS_VISITOR_EMIT_IR
 #include "visitor/assign_scope.h"
 #include "visitor/dependent_decls.h"
@@ -42,7 +46,7 @@ struct Expression;
 struct Declaration;
 
 struct Node : public base::Cast<Node> {
-  Node(const TextSpan &span = TextSpan()) : span(span) {}
+  Node(TextSpan span = TextSpan()) : span(std::move(span)) {}
   virtual ~Node() {}
 
 #define ICARUS_AST_VISITOR(signature, body)                                    \

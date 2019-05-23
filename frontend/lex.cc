@@ -14,6 +14,10 @@
 #include "ir/str.h"
 #include "type/primitive.h"
 #include "type/util.h"
+#ifdef ICARUS_MATCHER
+#include "match/binding_id.h"
+#include "match/binding_node.h"
+#endif  // ICARUS_MATCHER
 
 namespace frontend {
 
@@ -289,52 +293,67 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
 
 static const std::array<
     std::pair<std::string_view, std::variant<Operator, Syntax>>, 44>
-    Ops = {{{"@", {Operator::At}},
-            {",", {Operator::Comma}},
-            {"[*]", {Operator::BufPtr}},
-            {"$", {Operator::Eval}},
-            {"+=", {Operator::AddEq}},
-            {"+", {Operator::Add}},
-            {"--", {Syntax::Hole}},
-            {"-=", {Operator::SubEq}},
-            {"->", {Operator::Arrow}},
-            {"-", {Operator::Sub}},
-            {"*=", {Operator::MulEq}},
-            {"*", {Operator::Mul}},
-            {"%=", {Operator::ModEq}},
-            {"%", {Operator::Mod}},
-            {"&=", {Operator::AndEq}},
-            {"&", {Operator::And}},
-            {"|=", {Operator::OrEq}},
-            {"|", {Operator::Or}},
-            {"^=", {Operator::XorEq}},
-            {"^", {Operator::Xor}},
-            {">=", {Operator::Ge}},
-            {">", {Operator::Gt}},
-            {"::=", {Operator::DoubleColonEq}},
-            {"::", {Operator::DoubleColon}},
-            {":=", {Operator::ColonEq}},
-            {":?", {Operator::TypeOf}},
-            {":", {Operator::Colon}},
-            {"<<", {Operator::Expand}},
-            {"<=", {Operator::Le}},
-            {"<", {Operator::Lt}},
-            {"!=", {Operator::Ne}},
-            {"!", {Operator::Not}},
-            {"==", {Operator::Eq}},
-            {"=>", {Operator::Rocket}},
-            {"=", {Operator::Assign}},
-            {"'", {Operator::Call}},
-            {"(", {Syntax::LeftParen}},
-            {")", {Syntax::RightParen}},
-            {"[", {Syntax::LeftBracket}},
-            {"]", {Syntax::RightBracket}},
-            {"{", {Syntax::LeftBrace}},
-            {"}", {Syntax::RightBrace}},
-            {";", {Syntax::Semicolon}},
-            {".", {Syntax::Dot}}}};
+    Ops = {{
+        {"@", {Operator::At}},
+        {",", {Operator::Comma}},
+        {"[*]", {Operator::BufPtr}},
+        {"$", {Operator::Eval}},
+        {"+=", {Operator::AddEq}},
+        {"+", {Operator::Add}},
+        {"--", {Syntax::Hole}},
+        {"-=", {Operator::SubEq}},
+        {"->", {Operator::Arrow}},
+        {"-", {Operator::Sub}},
+        {"*=", {Operator::MulEq}},
+        {"*", {Operator::Mul}},
+        {"%=", {Operator::ModEq}},
+        {"%", {Operator::Mod}},
+        {"&=", {Operator::AndEq}},
+        {"&", {Operator::And}},
+        {"|=", {Operator::OrEq}},
+        {"|", {Operator::Or}},
+        {"^=", {Operator::XorEq}},
+        {"^", {Operator::Xor}},
+        {">=", {Operator::Ge}},
+        {">", {Operator::Gt}},
+        {"::=", {Operator::DoubleColonEq}},
+        {"::", {Operator::DoubleColon}},
+        {":=", {Operator::ColonEq}},
+        {":?", {Operator::TypeOf}},
+        {":", {Operator::Colon}},
+        {"<<", {Operator::Expand}},
+        {"<=", {Operator::Le}},
+        {"<", {Operator::Lt}},
+        {"!=", {Operator::Ne}},
+        {"!", {Operator::Not}},
+        {"==", {Operator::Eq}},
+        {"=>", {Operator::Rocket}},
+        {"=", {Operator::Assign}},
+        {"'", {Operator::Call}},
+        {"(", {Syntax::LeftParen}},
+        {")", {Syntax::RightParen}},
+        {"[", {Syntax::LeftBracket}},
+        {"]", {Syntax::RightBracket}},
+        {"{", {Syntax::LeftBrace}},
+        {"}", {Syntax::RightBrace}},
+        {";", {Syntax::Semicolon}},
+        {".", {Syntax::Dot}},
+    }};
 
 Lexeme NextOperator(SrcCursor *cursor, Src*src) {
+#ifdef ICARUS_MATCHER
+  // TODO "@% is a terrible choice for the operator here, but we can deal with
+  // that later.
+  if (BeginsWith(match::kMatchPrefix, cursor->view())) {
+    cursor->remove_prefix(2);
+    auto word_cursor       = NextSimpleWord(cursor);
+    std::string_view token = word_cursor.view();
+    auto span = ToSpan(word_cursor, src);
+    return Lexeme(
+        std::make_unique<match::BindingNode>(match::BindingId{token}, span));
+  }
+#endif
+
   for (auto [prefix, x] : Ops) {
     if (BeginsWith(prefix, cursor->view())) {
       auto span = ToSpan(cursor->remove_prefix(prefix.size()), src);

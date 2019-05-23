@@ -15,6 +15,19 @@ cc_binary(
 )
 
 cc_binary(
+    name = "icmatch",
+    srcs = ["match.cc"],
+    deps = [
+        ":impl-match",
+        "//init:cli-impl-match",
+        "//init:signal-impl-match",
+        "//match:binding_id-impl-match",
+    ],
+)
+
+
+
+cc_binary(
     name = "icfmt",
     srcs = ["fmt.cc"],
     deps = [
@@ -36,7 +49,7 @@ cc_binary(
 
 cc_group_target(
     name = "impl",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     deps = [
         "//ast:dispatch_table-impl",
         "//ast:overload_set-impl",

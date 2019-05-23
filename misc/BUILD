@@ -6,7 +6,7 @@ sources()
 
 cc_group_target(
     name = "impl",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     deps = [
         ":constant_binding-impl",
         ":context-impl",
@@ -32,7 +32,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "context",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         ":module",
         "//base:debug",
@@ -45,69 +45,53 @@ cc_lib_target(
     ],
 )
 
+COMMON_MODULE_INTF_TARGETS = [
+    ":constant_binding",
+    "//ast:expression",
+    "//ast:statements",
+    "//core:fn_params",
+    "//core:scope",
+    "//error:log",
+    "//type:typed_value",
+    "@com_google_absl//absl/container:flat_hash_map",
+    "@com_google_absl//absl/container:flat_hash_set",
+    "@com_google_absl//absl/container:node_hash_map",
+]
+
 cc_group_target(
     name = "module",
     hdrs = ["module.h"],
     deps = {
-        "compile": [
-            ":constant_binding",
-            "//ast:dispatch_table",
-            "//ast:expression",
-            "//ast:statements",
-            "//core:fn_params",
-            "//core:scope",
-            "//error:log",
-            "//type:typed_value",
-            "@com_google_absl//absl/container:flat_hash_map",
-            "@com_google_absl//absl/container:flat_hash_set",
-            "@com_google_absl//absl/container:node_hash_map",
-        ],
-        "format": [
-            ":constant_binding",
-            "//ast:expression",
-            "//ast:statements",
-            "//core:fn_params",
-            "//core:scope",
-            "//error:log",
-            "//type:typed_value",
-            "@com_google_absl//absl/container:flat_hash_map",
-            "@com_google_absl//absl/container:flat_hash_set",
-            "@com_google_absl//absl/container:node_hash_map",
-        ],
+        "compile": COMMON_MODULE_INTF_TARGETS + ["//ast:dispatch_table"],
+        "format": COMMON_MODULE_INTF_TARGETS,
+        "match": COMMON_MODULE_INTF_TARGETS + ["//ast:dispatch_table"],
     },
 )
+
+COMMON_MODULE_IMPL_TARGETS = [
+    ":module",
+    "//ast:declaration",
+    "//ast:expression",
+    "//ast:function_literal",
+    "//ast:struct_literal",
+    "//base:guarded",
+    "//frontend:source-impl",
+    "//type:function",
+]
 
 cc_group_target(
     name = "module-impl",
     srcs = ["module.cc"],
     deps = {
-        "compile": [
-            ":module",
-            "//ast:declaration",
-            "//ast:expression",
-            "//ast:function_literal",
-            "//ast:struct_literal",
-            "//base:guarded",
-            "//frontend:source-impl",
-            "//ir:compiled_fn",
-            "//type:function",
-        ],
-        "format": [
-            ":module",
-            "//ast:declaration",
-            "//ast:expression",
-            "//ast:function_literal",
-            "//ast:struct_literal",
-            "//base:guarded",
-            "//frontend:source-impl",
-            "//type:function",
-        ],
+        "compile": COMMON_MODULE_IMPL_TARGETS + ["//ir:compiled_fn"],
+        "format": COMMON_MODULE_IMPL_TARGETS,
+        "match": COMMON_MODULE_IMPL_TARGETS + ["//ir:compiled_fn"],
     },
 )
 
 cc_lib_target(
     name = "compile",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":context",

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "ast/ast_fwd.h"
+#include "base/debug.h"
 #include "ir/addr.h"
 #include "ir/register.h"
 #include "type/type_fwd.h"
@@ -20,6 +21,7 @@ namespace visitor {
 
 struct EmitIr {
   // AST-related IR-emission functions
+  ir::Results Val(ast::Node const *node, Context *ctx) const;
 #define ICARUS_AST_NODE_X(name)                                                \
   ir::Results Val(ast::name const *node, Context *ctx) const;
 #include "ast/node.xmacro.h"

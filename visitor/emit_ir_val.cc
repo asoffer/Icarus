@@ -261,6 +261,10 @@ static void CompleteBody(EmitIr const *visitor, ast::StructLiteral const *node,
   }
 }
 
+ir::Results EmitIr::Val(ast::Node const *node, Context *ctx) const {
+  UNREACHABLE();
+}
+
 ir::Results EmitIr::Val(ast::Access const *node, Context *ctx) const {
   if (ctx->type_of(node->operand.get()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just

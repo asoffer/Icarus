@@ -1,6 +1,7 @@
 _VISITOR_DEFINES = {
     "compile": ["ICARUS_VISITOR_EMIT_IR"],
     "format": ["ICARUS_VISITOR_FORMAT"],
+    "match": ["ICARUS_VISITOR_EMIT_IR", "ICARUS_MATCHER"],
 }
 
 def configured_dep(dep, cfg):

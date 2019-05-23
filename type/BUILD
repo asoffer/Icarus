@@ -75,7 +75,7 @@ cc_lib_target(
     # TODO this should be runnable without all the ir, but for now it's
     # necessary. because scope drags in module. reduce the test deps when you're
     # done fixing this.
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     impl_deps = [
         ":all_types",
         ":interface",

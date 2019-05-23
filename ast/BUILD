@@ -7,6 +7,7 @@ sources()
 # TODO this is a hack
 cc_library(name = "node_xmacro-compile", textual_hdrs = ["node.xmacro.h"])
 cc_library(name = "node_xmacro-format", textual_hdrs = ["node.xmacro.h"])
+cc_library(name = "node_xmacro-match", textual_hdrs = ["node.xmacro.h"])
 
 cc_lib_target(
     name = "ast_fwd",
@@ -102,7 +103,7 @@ icarus_ast_node(name = "unop", deps = [":expression", "//frontend:operators"])
 
 cc_lib_target(
     name = "dispatch_table",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         ":overload_set",
         "//core:fn_args",
@@ -144,7 +145,7 @@ cc_lib_target(name = "hashtag")
 
 cc_lib_target(
     name = "overload_set",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         "//base:bag",
         "//type:typed_value",

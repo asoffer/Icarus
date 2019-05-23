@@ -6,12 +6,12 @@ sources()
 
 cc_group_target(
     name = "impl",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     deps = [":combine_blocks-impl"])
 
 cc_lib_target(
     name = "combine_blocks",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [],
     impl_deps = [
         "//base:log",

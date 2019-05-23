@@ -4,7 +4,7 @@ sources()
 
 cc_group_target(
     name = "impl",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     deps = [
         ":addr-impl",
         ":arguments-impl",
@@ -39,7 +39,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "arguments",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         ":register",
         ":results",
@@ -64,7 +64,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "basic_block",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         ":arguments",
         ":cmd",
@@ -96,7 +96,7 @@ cc_lib_target(
 # this to ':builtin'
 cc_lib_target(
     name = "builtin_ir",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [],
     impl_deps = [":any_func", ":compiled_fn"],
     test_deps = None,
@@ -104,7 +104,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "cmd",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     textual_hdrs = ["op.xmacro.h"],
     intf_deps = [
         ":block",
@@ -129,7 +129,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "components",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         ":compiled_fn",
         ":phi",
@@ -158,7 +158,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "compiled_fn",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:function_literal",
         "//base:bag",
@@ -182,7 +182,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "out_params",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [":register"],
     impl_deps = [],
     test_deps = None,
@@ -190,7 +190,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "phi",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         ":compiled_fn",
         "@com_google_absl//absl/container:flat_hash_map",

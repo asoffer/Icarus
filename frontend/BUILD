@@ -1,30 +1,45 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "sources")
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
 sources()
 
-cc_lib_target(
+cc_group_target(
     name = "lex",
-    intf_deps = [
+    hdrs = ["lex.h"],
+    deps = [
         ":lexeme",
         ":source",
         ":text_span",
         "//error:log",
     ],
-    impl_deps = [
-        ":numbers-impl",
-        "//ast:builtin_fn",
-        "//ast:identifier",
-        "//ast:terminal",
-        "//ir:block",
-        "//ir:builtin",
-        "//ir:results",
-        "//ir:str",
-        "//type:primitive",
-        "//type:type",
-        "//type:util",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    test_deps = None,
+)
+
+COMMON_LEX_IMPL_TARGETS = [
+    ":lex",
+    ":numbers-impl",
+    "//ast:builtin_fn",
+    "//ast:identifier",
+    "//ast:terminal",
+    "//ir:block",
+    "//ir:builtin",
+    "//ir:results",
+    "//ir:str",
+    "//type:primitive",
+    "//type:type",
+    "//type:util",
+    "@com_google_absl//absl/container:flat_hash_map",
+]
+
+cc_group_target(
+    name = "lex-impl",
+    srcs = ["lex.cc"],
+    deps = {
+        "compile": COMMON_LEX_IMPL_TARGETS,
+        "format": COMMON_LEX_IMPL_TARGETS,
+        "match": COMMON_LEX_IMPL_TARGETS + [
+            "//match:binding_id",
+            "//match:binding_node",
+        ],
+    },
 )
 
 cc_lib_target(name = "lexeme",

@@ -18,6 +18,15 @@ cc_group_target(
         "format": [
             ":format",
         ],
+        "match": [
+            ":assign_scope",
+            ":dependent_decls",
+            ":extract_jumps",
+            ":emit_ir",
+            ":match",
+            ":verify_type",
+        ],
+
     }
 )
 
@@ -39,7 +48,18 @@ cc_group_target(
         ],
         "format": [
             ":format-impl",
-        ]
+        ],
+        "match": [
+            ":assign_scope-impl",
+            ":dependent_decls-impl",
+            ":emit_ir_copy_init-impl",
+            ":emit_ir_move_init-impl",
+            ":emit_ir_ref-impl",
+            ":emit_ir_val-impl",
+            ":extract_jumps-impl",
+            ":match-impl",
+            ":verify_type-impl",
+        ],
     }
 )
 
@@ -47,13 +67,19 @@ cc_group_target(
 cc_group_target(
     name = "type_visitors",
     textual_hdrs = ["type_visitors.xmacro.h"],
-    deps = {"compile": [
-        ":emit_ir",
-        ":type_query",
-    ]},
+    deps = {
+        "compile": [
+            ":emit_ir",
+            ":type_query",
+        ],
+        "match": [
+            ":emit_ir",
+            ":type_query",
+        ]
+    },
 )
 cc_group_target(
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     name = "type_visitors-impl",
     textual_hdrs = ["type_visitors.xmacro.h"],
     deps = [
@@ -66,7 +92,7 @@ cc_group_target(
 
 cc_lib_target(
     name = "assign_scope",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//ast:node_xmacro",
@@ -78,7 +104,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "dependent_decls",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//ast:node_xmacro",
@@ -90,7 +116,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_assign",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":special_function",
@@ -108,7 +134,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_destroy",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":special_function",
@@ -126,7 +152,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_init",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         "//ast:ast",
@@ -143,7 +169,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_ir",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//ir:addr",
@@ -157,7 +183,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_ir_copy_init",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":emit_ir",
@@ -171,7 +197,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_ir_move_init",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":emit_ir",
@@ -185,7 +211,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_ir_ref",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":emit_ir",
@@ -203,7 +229,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_ir_val",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":emit_ir",
@@ -224,7 +250,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "emit_print",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         "//ast:ast",
@@ -242,7 +268,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "extract_jumps",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = ["//ast:ast_fwd", "//ast:node_xmacro"],
     impl_deps = ["//ast:ast"],
     test_deps = None,
@@ -257,8 +283,21 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "match",
+    intf_deps = [
+        "//ast:ast_fwd",
+        "//ast:node_xmacro",
+    ],
+    impl_deps = [
+        "//match:binding_node",
+        "//ast:ast",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "verify_type",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//ast:node_xmacro",
@@ -280,7 +319,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "special_function",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = [],
     impl_deps = [
         ":emit_ir",
@@ -295,7 +334,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "type_query",
-    cfgs = ["compile"],
+    cfgs = ["match", "compile"],
     intf_deps = ["//type:type_fwd"],
     impl_deps = [
         "//type:all_types",

@@ -46,6 +46,9 @@ constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
 }
 
 struct VerifyType {
+  VerifyResult operator()(ast::Node const *node, Context *ctx) const {
+    UNREACHABLE();
+  }
 #define ICARUS_AST_NODE_X(name)\
   VerifyResult operator()(ast::name const *node, Context *ctx) const;
 #include "ast/node.xmacro.h"

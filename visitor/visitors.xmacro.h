@@ -1,3 +1,11 @@
+#ifdef ICARUS_MATCHER
+ICARUS_AST_VISITOR(void match_expr(visitor::Match *visitor,
+                                   ast::Expression const *pattern,
+                                   bool allow_submatch) const,
+                   { return visitor->MatchExpr(this, pattern, allow_submatch);
+                   });
+#endif // ICARUS_MATCHER 
+
 #ifdef ICARUS_VISITOR_EMIT_IR
 #define ICARUS_AST_VISITOR_ASSIGN_SCOPE
 ICARUS_AST_VISITOR(ir::Results EmitIr(visitor::EmitIr const *visitor,
@@ -20,7 +28,7 @@ ICARUS_AST_VISITOR(visitor::VerifyResult VerifyType(
                    { return (*visitor)(this, ctx); });
 ICARUS_AST_VISITOR(void ExtractJumps(visitor::ExtractJumps *visitor) const,
                    { (*visitor)(this); });
-#endif
+#endif  // ICARUS_VISITOR_EMIT_IR
 
 #ifdef ICARUS_AST_VISITOR_ASSIGN_SCOPE
 ICARUS_AST_VISITOR(void assign_scope(visitor::AssignScope *visitor,
@@ -29,9 +37,9 @@ ICARUS_AST_VISITOR(void assign_scope(visitor::AssignScope *visitor,
 ICARUS_AST_VISITOR(void DependentDecls(visitor::DependentDecls *visitor,
                                        ast::Declaration const *d) const,
                    { (*visitor)(this, d); });
-#endif
+#endif  // ICARUS_AST_VISITOR_ASSIGN_SCOPE
 
 #ifdef ICARUS_VISITOR_FORMAT
 ICARUS_AST_VISITOR(void format(visitor::Format const *visitor) const,
                    { (*visitor)(this); });
-#endif
+#endif  // ICARUS_VISITOR_FORMAT
