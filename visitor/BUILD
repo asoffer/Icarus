@@ -289,9 +289,17 @@ cc_lib_target(
         "//ast:node_xmacro",
     ],
     impl_deps = [
+        ":match_state",
         "//match:binding_node",
         "//ast:ast",
     ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "match_state",
+    intf_deps = ["//ast:ast_fwd"],
+    impl_deps = None,
     test_deps = None,
 )
 

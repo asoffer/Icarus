@@ -1,9 +1,7 @@
 #ifdef ICARUS_MATCHER
 ICARUS_AST_VISITOR(void match_expr(visitor::Match *visitor,
-                                   ast::Expression const *pattern,
-                                   bool allow_submatch) const,
-                   { return visitor->MatchExpr(this, pattern, allow_submatch);
-                   });
+                                   visitor::MatchState *state) const,
+                   { visitor->MatchExpr(this, state); });
 #endif // ICARUS_MATCHER 
 
 #ifdef ICARUS_VISITOR_EMIT_IR

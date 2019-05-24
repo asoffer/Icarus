@@ -28,7 +28,7 @@ int MatchParse(std::filesystem::path const &expr_file,
   if (!stmts) { return 2; }
 
   visitor::Match visitor;
-  stmts->match_expr(&visitor, expr, true);
+  visitor.MatchAll(stmts.get(), expr);
 
   return 0;
 }
