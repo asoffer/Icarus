@@ -284,6 +284,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "match",
+    cfgs = ["match"],
     intf_deps = [
         "//ast:ast_fwd",
         "//ast:node_xmacro",

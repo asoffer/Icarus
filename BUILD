@@ -47,10 +47,7 @@ cc_binary(
     ],
 )
 
-cc_group_target(
-    name = "impl",
-    cfgs = ["match", "compile"],
-    deps = [
+COMMON_IMPL_DEPS = [
         "//ast:dispatch_table-impl",
         "//ast:overload_set-impl",
         "//base:untyped_buffer-impl",
@@ -71,7 +68,15 @@ cc_group_target(
         "//visitor:visitors-impl",
         "//visitor:type_visitors-impl",
         "//visitor:special_function-impl",
-    ])
+    ]
+cc_group_target(
+    name = "impl",
+    cfgs = ["match", "compile"],
+    deps = {
+        "compile": COMMON_IMPL_DEPS,
+        "match": COMMON_IMPL_DEPS + ["//match:binding_id-impl"],
+    }
+)
 
 filegroup(name = "sources", srcs = ["main.cc"])
 
