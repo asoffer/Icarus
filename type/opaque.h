@@ -14,8 +14,6 @@ struct Opaque : public Type {
 
   void WriteTo(std::string *result) const override;
 
-  bool ReinterpretAs(Type const *t) const override;
-
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 

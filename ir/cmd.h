@@ -470,6 +470,18 @@ auto HandleBinop(Lhs lhs, Rhs rhs) {
       if (!lhs.is_reg_ && !rhs.is_reg_) {
         return F<typename Lhs::type>{}(lhs.val_, rhs.val_);
       }
+
+      if constexpr (std::is_same_v<Tag, Cmd::EqTag> &&
+                    std::is_same_v<typename Lhs::type, bool>) {
+        // Replace:
+        // * `x == true` with `x`
+        // * `x == false` with `!x`
+        // * `true == x` with `x`
+        // * `false == x` with `!x`
+        if (lhs.is_reg_) { return rhs.val_ ? lhs : Not(lhs); }
+        return lhs.val_ ? rhs : Not(rhs);
+      }
+
       auto &cmd = MakeCmd(type::Get<result_type>(),
                           Cmd::OpCode<Tag, typename Lhs::type>());
       cmd.template set<Tag, typename Lhs::type>(lhs, rhs);

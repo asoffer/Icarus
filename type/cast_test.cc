@@ -168,7 +168,7 @@ TEST_CASE("Pointers") {
 
 TEST_CASE("Arrays") {
   SECTION("Empty arrays") {
-    CHECK(CanCast(EmptyArray, Arr(5, Int64)));
+    CHECK_FALSE(CanCast(EmptyArray, Arr(5, Int64)));
     CHECK(CanCast(EmptyArray, Arr(0, Bool)));
     CHECK_FALSE(CanCast(EmptyArray, Ptr(Bool)));
   }

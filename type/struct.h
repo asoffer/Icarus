@@ -37,7 +37,6 @@ struct Struct : public Type {
   core::Alignment alignment(core::Arch const &arch) const override;
   void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const override;
-  bool ReinterpretAs(Type const *t) const override;
 
 #include "visitor/type_visitors.xmacro.h"
 
@@ -48,8 +47,6 @@ struct Struct : public Type {
 
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string const &name) const;
-
-  bool needs_destroy() const override;
 
   ::Module const *defining_module() const { return mod_; }
 

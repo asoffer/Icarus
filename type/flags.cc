@@ -35,8 +35,6 @@ Flags::Flags(
   }
 }
 
-bool Flags::ReinterpretAs(Type const *t) const { return t == this; }
-
 std::optional<ir::FlagsVal> Flags::Get(const std::string &str) const {
   if (auto iter = vals_.find(str); iter != vals_.end()) { return iter->second; }
   return std::nullopt;

@@ -50,28 +50,6 @@ void Struct::add_hashtag_to_last_field(ast::Hashtag hashtag) {
 
 void Struct::add_field(Type const *t) { fields_.emplace_back(t); }
 
-bool Struct::needs_destroy() const {
-  /*
-  // TODO this depends on whether or not a destructor has been defined, so it
-  // requires IR and therefore shouldn't be on the type explicitly. Move it to a
-  // visitor.
-  //
-  // TODO is this okay? Does it work for generics? Does it need to?
-  Context ctx(mod_);
-  for (auto const *decl : scope_->AllDeclsWithId("~")) {
-    // Note: there cannot be more than one declaration with the correct type
-    // because our shadowing checks would have caught it.
-    auto *t = ctx.type_of(decl);
-    if (t == nullptr) { continue; }
-    auto *fn_type = t->if_as<Function>();
-    if (fn_type == nullptr) { continue; }
-    if (fn_type->input.front() != Ptr(this)) { continue; }
-  }
-  */
-  return absl::c_any_of(fields_,
-                        [](Field const &f) { return f.type->needs_destroy(); });
-}
-
 void Struct::WriteTo(std::string *result) const {
   result->append("struct.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));
@@ -104,5 +82,4 @@ core::Alignment Struct::alignment(core::Arch const &a) const {
   return align;
 }
 
-bool Struct::ReinterpretAs(Type const *t) const { return t == this; }
 }  // namespace type

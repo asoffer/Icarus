@@ -101,11 +101,6 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
   }
 }
 
-bool Primitive::ReinterpretAs(Type const *t) const {
-  return t == this || (type_ == PrimType::NullPtr && t->is<Pointer>()) ||
-         (type_ == PrimType::EmptyArray && t->is<Array>());
-}
-
 bool Primitive::TestEquality(void const *lhs, void const *rhs) const {
   switch (type_) {
     case PrimType::Int64:

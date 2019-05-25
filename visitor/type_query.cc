@@ -1,9 +1,14 @@
 #include "visitor/type_query.h"
 
 #include "absl/algorithm/container.h"
+#include "ast/declaration.h"
+#include "misc/context.h"
 #include "type/array.h"
 #include "type/enum.h"
+#include "type/function.h"
 #include "type/opaque.h"
+#include "type/pointer.h"
+#include "type/primitive.h"
 #include "type/struct.h"
 #include "type/tuple.h"
 #include "type/variant.h"
@@ -70,6 +75,103 @@ bool TypeQuery::IsMovable(type::Tuple const *t) {
 bool TypeQuery::IsMovable(type::Variant const *t) {
   return absl::c_all_of(t->variants_,
                         [](type::Type const *t) { return t->IsMovable(); });
+}
+
+bool TypeQuery::HasDestructor(type::Array const *t) {
+  return t->data_type->HasDestructor();
+}
+
+bool TypeQuery::HasDestructor(type::Struct const *t) {
+  // TODO is this okay? Does it work for generics? Does it need to?
+  Context ctx(t->mod_);
+  for (auto const *decl : t->scope_->AllDeclsWithId("~")) {
+    // Note: there cannot be more than one declaration with the correct type
+    // because our shadowing checks would have caught it.
+    auto *t = ctx.type_of(decl);
+    if (t == nullptr) { continue; }
+    auto *fn_type = t->if_as<type::Function>();
+    if (fn_type == nullptr) { continue; }
+    if (fn_type->input.front() != type::Ptr(t)) { continue; }
+  }
+
+  return absl::c_any_of(t->fields_, [](type::Struct::Field const &field) {
+    return field.type->HasDestructor();
+  });
+  // TODO Consider adding a #{no-destroy} hashtag?
+}
+
+bool TypeQuery::HasDestructor(type::Tuple const *t) {
+  return absl::c_any_of(t->entries_,
+                        [](type::Type const *t) { return t->HasDestructor(); });
+}
+
+bool TypeQuery::HasDestructor(type::Variant const *t) {
+  return absl::c_any_of(t->variants_,
+                        [](type::Type const *t) { return t->HasDestructor(); });
+}
+
+bool TypeQuery::ReinterpretableAs(type::Variant const *from,
+                                  type::Type const *to) {
+  auto *v = to->if_as<type::Variant>();
+  if (!v) { return false; }
+  // Every type in this variant needs to be reinterprettable as a type in v
+  // exactly once. The problem is this isn't quite enough because the to-type
+  // could have another member that's much larger. This violates the
+  // size-doesnt-change invariant.
+  for (auto *from_v : from->variants_) {
+    if (absl::c_count_if(v->variants_, [from_v](type::Type const *to) {
+          return from_v->ReinterpretableAs(to);
+        }) == 1) {
+      continue;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool TypeQuery::ReinterpretableAs(type::Pointer const *from,
+                                  type::Type const *to) {
+  auto *to_ptr = to->if_as<type::Pointer>();
+  if (!to_ptr) { return false; }
+  if (to_ptr->is<type::BufferPointer>()) { return false; }
+  return from->pointee->ReinterpretableAs(to_ptr->pointee);
+}
+
+bool TypeQuery::ReinterpretableAs(type::BufferPointer const *from,
+                                  type::Type const *to) {
+  if (auto *to_ptr = to->if_as<type::Pointer>()) {
+    return from->pointee->ReinterpretableAs(to_ptr->pointee);
+  } else {
+    return false;
+  }
+}
+bool TypeQuery::ReinterpretableAs(type::Primitive const *from,
+                                  type::Type const *to) {
+  return to == from || (from == type::NullPtr && to->is<type::Pointer>()) ||
+         (from == type::EmptyArray && to->is<type::Array>() &&
+          to->as<type::Array>().len == 0);
+}
+
+bool TypeQuery::ReinterpretableAs(type::Tuple const *from,
+                                  type::Type const *to) {
+  auto *tup = to->if_as<type::Tuple>();
+  if (!tup || tup->size() != from->size()) { return false; }
+  for (size_t i = 0; i < from->size(); ++i) {
+    if (!from->entries_.at(i)->ReinterpretableAs(tup->entries_.at(i))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool TypeQuery::ReinterpretableAs(type::Array const *from,
+                                  type::Type const *to) {
+  if (auto *a = to->if_as<type::Array>()) {
+    return from->len == a->len &&
+           from->data_type->ReinterpretableAs(a->data_type);
+  }
+  return false;
 }
 
 }  // namespace visitor

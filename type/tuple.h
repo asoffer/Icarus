@@ -18,8 +18,6 @@ struct Tuple : public Type {
   virtual void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const;
 
-  bool ReinterpretAs(Type const *t) const override;
-
   core::Bytes offset(size_t n, core::Arch const &arch) const;
   size_t size() const { return entries_.size(); }
 
@@ -27,7 +25,6 @@ struct Tuple : public Type {
   core::Alignment alignment(core::Arch const &arch) const override;
 
   Type const *finalize();
-  bool needs_destroy() const override;
 
   std::vector<Type const *> entries_;
 
