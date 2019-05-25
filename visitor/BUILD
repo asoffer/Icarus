@@ -11,16 +11,19 @@ cc_group_target(
         "compile": [
             ":assign_scope",
             ":dependent_decls",
+            ":dump_ast",
             ":extract_jumps",
             ":emit_ir",
             ":verify_type",
         ],
         "format": [
+            ":dump_ast",
             ":format",
         ],
         "match": [
             ":assign_scope",
             ":dependent_decls",
+            ":dump_ast",
             ":extract_jumps",
             ":emit_ir",
             ":match",
@@ -39,6 +42,7 @@ cc_group_target(
         "compile": [
             ":assign_scope-impl",
             ":dependent_decls-impl",
+            ":dump_ast-impl",
             ":emit_ir_copy_init-impl",
             ":emit_ir_move_init-impl",
             ":emit_ir_ref-impl",
@@ -47,11 +51,13 @@ cc_group_target(
             ":verify_type-impl",
         ],
         "format": [
+            ":dump_ast-impl",
             ":format-impl",
         ],
         "match": [
             ":assign_scope-impl",
             ":dependent_decls-impl",
+            ":dump_ast-impl",
             ":emit_ir_copy_init-impl",
             ":emit_ir_move_init-impl",
             ":emit_ir_ref-impl",
@@ -99,6 +105,21 @@ cc_lib_target(
         "//core:scope",
     ],
     impl_deps = ["//ast:ast"],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "dump_ast",
+    intf_deps = [
+        "//ast:ast_fwd",
+        "//ast:node_xmacro",
+    ],
+    impl_deps = [
+        "//base:stringify",
+        "//ast:ast",
+        "//ir:results",
+        "@com_google_absl//absl/strings",
+    ],
     test_deps = None,
 )
 

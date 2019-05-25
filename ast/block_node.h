@@ -15,13 +15,6 @@ struct BlockNode : public Expression {
 
 #include "visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override {
-    std::stringstream ss;
-    ss << name_->to_string(n) << " {\n"
-       << stmts_.to_string(n + 1) << std::string(2 * n, ' ') << "} ";
-    return ss.str();
-  }
-
   std::unique_ptr<Expression> name_;
   Statements stmts_;
   std::unique_ptr<core::ExecScope> block_scope_;

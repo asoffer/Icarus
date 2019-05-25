@@ -15,16 +15,6 @@ struct Statements : public Node {
 
 #include "visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override {
-    if (content_.empty()) { return ""; }
-
-    std::stringstream ss;
-    for (const auto &stmt : content_) {
-      ss << std::string(n * 2, ' ') << stmt->to_string(n) << "\n";
-    }
-    return ss.str();
-  }
-
   size_t size() const { return content_.size(); }
   void append(std::unique_ptr<Node> &&node) {
     if (auto *stmts = node->if_as<Statements>()) {

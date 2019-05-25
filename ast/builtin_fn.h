@@ -2,7 +2,6 @@
 #define ICARUS_AST_BUILTIN_FN_H
 
 #include "ast/expression.h"
-#include "core/fn_args.h"
 #include "ir/builtin.h"
 
 namespace ast {
@@ -13,8 +12,6 @@ struct BuiltinFn : public Expression {
   ~BuiltinFn() override {}
 
 #include "visitor/visitors.xmacro.h"
-
-  std::string to_string(size_t) const override { return stringify(b_); }
 
   ir::Builtin b_;
 };

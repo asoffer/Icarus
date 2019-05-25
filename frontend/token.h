@@ -29,8 +29,6 @@ struct Token : public ast::Node {
 
   ~Token() override {}
 
-  std::string to_string(size_t) const override { return "[" + token + "]\n"; }
-
   std::string token;
   Operator op;
 };

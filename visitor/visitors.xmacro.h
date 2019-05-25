@@ -1,3 +1,6 @@
+ICARUS_AST_VISITOR(void DumpAst(visitor::DumpAst *visitor) const,
+                   { (*visitor)(this); });
+
 #ifdef ICARUS_MATCHER
 ICARUS_AST_VISITOR(void match_expr(visitor::Match *visitor,
                                    visitor::MatchState *state) const,
