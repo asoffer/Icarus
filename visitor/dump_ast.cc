@@ -90,34 +90,35 @@ void DumpFnArgs(DumpAst *d,
 }  // namespace
 
 void DumpAst::operator()(ast::Access const *node) {
-  if (node->operand->is<ast::Identifier>() || node->operand->is<ast::Index>()) {
-    node->operand->DumpAst(this);
+  if (node->operand()->is<ast::Identifier>() ||
+      node->operand()->is<ast::Index>()) {
+    node->operand()->DumpAst(this);
   } else {
     absl::StrAppend(out_, "(");
-    node->operand->DumpAst(this);
+    node->operand()->DumpAst(this);
     absl::StrAppend(out_, ")");
   }
-  absl::StrAppend(out_, ".", node->member_name);
+  absl::StrAppend(out_, ".", node->member_name());
 }
 
 void DumpAst::operator()(ast::ArrayLiteral const *node) {
-  absl::StrAppend(out_, "[", absl::StrJoin(node->cl_.exprs_, ",", Joiner{this}),
+  absl::StrAppend(out_, "[", absl::StrJoin(node->elems(), ", ", Joiner{this}),
                   "]");
 }
 
 void DumpAst::operator()(ast::ArrayType const *node) {
   absl::StrAppend(out_, "[");
-  node->length_->DumpAst(this);
+  node->length()->DumpAst(this);
   absl::StrAppend(out_, "; ");
-  node->data_type_->DumpAst(this);
+  node->data_type()->DumpAst(this);
   absl::StrAppend(out_, "]");
 }
 
 void DumpAst::operator()(ast::Binop const *node) {
   absl::StrAppend(out_, "(");
-  node->lhs->DumpAst(this);
-  absl::StrAppend(out_, OpStr(node->op));
-  node->rhs->DumpAst(this);
+  node->lhs()->DumpAst(this);
+  absl::StrAppend(out_, OpStr(node->op()));
+  node->rhs()->DumpAst(this);
   absl::StrAppend(out_, ")");
 }
 

@@ -19,10 +19,6 @@ cc_lib_target(
 cc_lib_target(
     name = "ast",
     intf_deps = [
-        ":access",
-        ":array_literal",
-        ":array_type",
-        ":binop",
         ":block_literal",
         ":block_node",
         ":builtin_fn",
@@ -49,15 +45,12 @@ cc_lib_target(
         ":switch",
         ":terminal",
         ":unop",
+        "@com_google_absl//absl/types:span",
     ],
     impl_deps = None,
     test_deps = None,
 )
 
-icarus_ast_node(name = "access", deps = [":expression"])
-icarus_ast_node(name = "array_literal", deps = [":expression", ":comma_list"])
-icarus_ast_node(name = "array_type", deps = [":expression"])
-icarus_ast_node(name = "binop", deps = [":expression", "//frontend:operators"])
 icarus_ast_node(name = "block_literal", deps = [":expression", ":declaration"])
 icarus_ast_node(name = "block_node",
                 deps = [":expression", ":statements", "//core:scope"])

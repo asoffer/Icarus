@@ -15,8 +15,8 @@ using ::matcher::InheritsFrom;
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
                                                   Context *ctx) const {
-  auto reg = node->operand->EmitLVal(this, ctx)[0];
-  auto *t  = ctx->type_of(node->operand.get());
+  auto reg = node->operand()->EmitLVal(this, ctx)[0];
+  auto *t  = ctx->type_of(node->operand());
 
   while (auto *tp = t->if_as<type::Pointer>()) {
     t   = tp->pointee;
@@ -25,7 +25,8 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
 
   ASSERT(t, InheritsFrom<type::Struct>());
   auto *struct_type = &t->as<type::Struct>();
-  return {ir::Field(reg, struct_type, struct_type->index(node->member_name)).get()};
+  return {ir::Field(reg, struct_type, struct_type->index(node->member_name()))
+              .get()};
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::CommaList const *node,

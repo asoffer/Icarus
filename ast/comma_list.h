@@ -15,6 +15,9 @@ struct CommaList : public Expression {
 
 #include "visitor/visitors.xmacro.h"
 
+  std::vector<std::unique_ptr<Expression>> &&extract() && {
+    return std::move(exprs_);
+  }
   bool needs_expansion() const override { return !parenthesized_; }
 
   std::vector<std::unique_ptr<Expression>> exprs_;

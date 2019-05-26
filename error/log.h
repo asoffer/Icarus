@@ -57,9 +57,9 @@ struct Log {
   void NoReturnTypes(ast::Expression const *ret_expr);
   void DeclarationUsedInUnop(std::string const &unop,
                              TextSpan const &decl_span);
-  void MissingMember(TextSpan const &span, std::string const &member_name,
+  void MissingMember(TextSpan const &span, std::string_view member_name,
                      std::string_view type);
-  void NonExportedMember(TextSpan const &span, std::string const &member_name,
+  void NonExportedMember(TextSpan const &span, std::string_view member_name,
                          std::string_view type);
   // TODO is this the same as `ArrayIndexType`?
   void IndexingTupleOutOfBounds(TextSpan const &span, std::string_view tup,

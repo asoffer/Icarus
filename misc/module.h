@@ -21,6 +21,7 @@
 #include "core/fn_params.h"
 #include "core/scope.h"
 #include "error/log.h"
+#include "ir/register.h"
 #include "misc/constant_binding.h"
 #include "type/typed_value.h"
 

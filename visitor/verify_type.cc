@@ -135,7 +135,7 @@ std::ostream &operator<<(std::ostream &os, VerifyResult r) {
 VerifyResult VerifyType::operator()(ast::Access const *node,
                                     Context *ctx) const {
   ASSIGN_OR(return VerifyResult::Error(), auto operand_result,
-                   node->operand->VerifyType(this, ctx));
+                   node->operand()->VerifyType(this, ctx));
 
   auto base_type = DereferenceAll(operand_result.type_);
   if (base_type == type::Type_) {
@@ -147,20 +147,20 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
     //    f ::= (T: type) => T.key
     // We need to know that T is const
     auto *evaled_type =
-        backend::EvaluateAs<type::Type const *>(node->operand.get(), ctx);
+        backend::EvaluateAs<type::Type const *>(node->operand(), ctx);
 
     // For enums and flags, regardless of whether we can get the value, it's
     // clear that node is supposed to be a member so we should emit an error but
     // carry on assuming that node is an element of that enum type.
     if (auto *e = evaled_type->if_as<type::Enum>()) {
-      if (!e->Get(node->member_name).has_value()) {
-        ctx->error_log()->MissingMember(node->span, node->member_name,
+      if (!e->Get(node->member_name()).has_value()) {
+        ctx->error_log()->MissingMember(node->span, node->member_name(),
                                         evaled_type->to_string());
       }
       return ctx->set_result(node, VerifyResult::Constant(evaled_type));
     } else if (auto *f = evaled_type->if_as<type::Flags>()) {
-      if (!f->Get(node->member_name).has_value()) {
-        ctx->error_log()->MissingMember(node->span, node->member_name,
+      if (!f->Get(node->member_name()).has_value()) {
+        ctx->error_log()->MissingMember(node->span, node->member_name(),
                                         evaled_type->to_string());
       }
       return ctx->set_result(node, VerifyResult::Constant(evaled_type));
@@ -172,9 +172,9 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
     }
 
   } else if (auto *s = base_type->if_as<type::Struct>()) {
-    auto const *member = s->field(node->member_name);
+    auto const *member = s->field(node->member_name());
     if (member == nullptr) {
-      ctx->error_log()->MissingMember(node->span, node->member_name,
+      ctx->error_log()->MissingMember(node->span, node->member_name(),
                                       s->to_string());
       return VerifyResult::Error();
     }
@@ -184,7 +184,7 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
                      [](ast::Hashtag h) {
                        return h.kind_ == ast::Hashtag::Builtin::Export;
                      })) {
-      ctx->error_log()->NonExportedMember(node->span, node->member_name,
+      ctx->error_log()->NonExportedMember(node->span, node->member_name(),
                                           s->to_string());
     }
 
@@ -197,8 +197,8 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
       return VerifyResult::Error();
     }
 
-    auto *t = backend::EvaluateAs<Module const *>(node->operand.get(), ctx)
-                  ->GetType(node->member_name);
+    auto *t = backend::EvaluateAs<Module const *>(node->operand(), ctx)
+                  ->GetType(node->member_name());
     if (t == nullptr) {
       ctx->error_log()->NoExportedSymbol(node->span);
       return VerifyResult::Error();
@@ -207,17 +207,18 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
     // TODO is node right?
     return ctx->set_result(node, VerifyResult::Constant(t));
   } else {
-    ctx->error_log()->MissingMember(node->span, node->member_name,
+    ctx->error_log()->MissingMember(node->span, node->member_name(),
                                     base_type->to_string());
     return VerifyResult::Error();
   }
 }
 
 static std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(
-    VerifyType const *visitor, ast::CommaList const *node, Context *ctx) {
+    VerifyType const *visitor,
+    absl::Span<std::unique_ptr<ast::Expression> const> exprs, Context *ctx) {
   std::vector<VerifyResult> results;
-  results.reserve(node->exprs_.size());
-  for (auto &expr : node->exprs_) {
+  results.reserve(exprs.size());
+  for (auto &expr : exprs) {
     auto r = expr->VerifyType(visitor, ctx);
     if (expr->needs_expansion()) {
       auto &entries = r.type_->as<type::Tuple>().entries_;
@@ -235,12 +236,12 @@ static std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(
 
 VerifyResult VerifyType::operator()(ast::ArrayLiteral const *node,
                                     Context *ctx) const {
-  if (node->cl_.exprs_.empty()) {
+  if (node->empty()) {
     return ctx->set_result(node, VerifyResult::Constant(type::EmptyArray));
   }
 
   ASSIGN_OR(return VerifyResult::Error(), auto expr_results,
-                   VerifyWithoutSetting(this, &node->cl_, ctx));
+                   VerifyWithoutSetting(this, node->elems(), ctx));
   VerifyResult result;
   auto *t      = expr_results.front().type_;
   result.type_ = type::Arr(expr_results.size(), t);
@@ -256,14 +257,14 @@ VerifyResult VerifyType::operator()(ast::ArrayLiteral const *node,
 
 VerifyResult VerifyType::operator()(ast::ArrayType const *node,
                                     Context *ctx) const {
-  auto length_result = node->length_->VerifyType(this, ctx);
+  auto length_result = node->length()->VerifyType(this, ctx);
   if (length_result.type_ != type::Int64) {
     ctx->error_log()->ArrayIndexType(node->span);
   }
 
-  auto data_type_result = node->data_type_->VerifyType(this, ctx);
+  auto data_type_result = node->data_type()->VerifyType(this, ctx);
   if (data_type_result.type_ != type::Type_) {
-    ctx->error_log()->ArrayDataTypeNotAType(node->data_type_->span);
+    ctx->error_log()->ArrayDataTypeNotAType(node->data_type()->span);
   }
 
   return ctx->set_result(
@@ -281,12 +282,12 @@ static bool IsTypeOrTupleOfTypes(type::Type const *t) {
 
 VerifyResult VerifyType::operator()(ast::Binop const *node,
                                     Context *ctx) const {
-  auto lhs_result = node->lhs->VerifyType(this, ctx);
-  auto rhs_result = node->rhs->VerifyType(this, ctx);
+  auto lhs_result = node->lhs()->VerifyType(this, ctx);
+  auto rhs_result = node->rhs()->VerifyType(this, ctx);
   if (!lhs_result.ok() || !rhs_result.ok()) { return VerifyResult::Error(); }
 
   using frontend::Operator;
-  switch (node->op) {
+  switch (node->op()) {
     case Operator::Assign: {
       // TODO if lhs is reserved?
       if (!VerifyAssignment(node->span, lhs_result.type_, rhs_result.type_,
@@ -343,8 +344,8 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
       return ast::VerifyDispatch(                                              \
           node, os,                                                            \
           core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(      \
-              {std::pair{node->lhs.get(), lhs_result},                         \
-               std::pair{node->rhs.get(), rhs_result}},                        \
+              {std::pair{node->lhs(), lhs_result},                             \
+               std::pair{node->rhs(), rhs_result}},                            \
               {}),                                                             \
           ctx);                                                                \
     }                                                                          \
@@ -378,8 +379,8 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
         return ast::VerifyDispatch(
             node, os,
             core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                {std::pair{node->lhs.get(), lhs_result},
-                 std::pair{node->rhs.get(), rhs_result}},
+                {std::pair{node->lhs(), lhs_result},
+                 std::pair{node->rhs(), rhs_result}},
                 {}),
             ctx);
       }
@@ -403,8 +404,8 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
         return ast::VerifyDispatch(
             node, os,
             core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                {std::pair{node->lhs.get(), lhs_result},
-                 std::pair{node->rhs.get(), rhs_result}},
+                {std::pair{node->lhs(), lhs_result},
+                 std::pair{node->rhs(), rhs_result}},
                 {}),
             ctx);
       }
@@ -429,7 +430,7 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
     }
     default: UNREACHABLE();
   }
-  UNREACHABLE(static_cast<int>(node->op));
+  UNREACHABLE(static_cast<int>(node->op()));
 }
 
 VerifyResult VerifyType::operator()(ast::BlockLiteral const *node,
@@ -850,7 +851,7 @@ not_blocks:
 VerifyResult VerifyType::operator()(ast::CommaList const *node,
                                     Context *ctx) const {
   ASSIGN_OR(return VerifyResult::Error(), auto results,
-                   VerifyWithoutSetting(this, node, ctx));
+                   VerifyWithoutSetting(this, node->exprs_, ctx));
   std::vector<type::Type const *> ts;
   ts.reserve(results.size());
   bool is_const = true;

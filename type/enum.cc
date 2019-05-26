@@ -8,13 +8,14 @@ struct Context;
 
 namespace type {
 
-std::optional<ir::EnumVal> Enum::Get(const std::string &str) const {
-  if (auto iter = vals_.find(str); iter != vals_.end()) { return iter->second; }
+std::optional<ir::EnumVal> Enum::Get(std::string_view name) const {
+  if (auto iter = vals_.find(name); iter != vals_.end()) {
+    return iter->second;
+  }
   return std::nullopt;
 }
 
-Typed<ir::EnumVal, Enum> Enum::EmitLiteral(
-    std::string const &member_name) const {
+Typed<ir::EnumVal, Enum> Enum::EmitLiteral(std::string_view member_name) const {
   return Typed<ir::EnumVal, Enum>(vals_.at(member_name), this);
 }
 

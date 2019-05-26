@@ -1,9 +1,11 @@
 #ifndef ICARUS_TYPE_ENUM_H
 #define ICARUS_TYPE_ENUM_H
 
+#include <string_view>
+
 #include "absl/container/flat_hash_map.h"
-#include "type.h"
-#include "typed_value.h"
+#include "type/type.h"
+#include "type/typed_value.h"
 
 namespace type {
 struct Enum : public type::Type {
@@ -13,8 +15,8 @@ struct Enum : public type::Type {
 
 #include "visitor/type_visitors.xmacro.h"
 
-  std::optional<ir::EnumVal> Get(const std::string& str) const;
-  Typed<ir::EnumVal, Enum> EmitLiteral(std::string const& member_name) const ;
+  std::optional<ir::EnumVal> Get(std::string_view name) const;
+  Typed<ir::EnumVal, Enum> EmitLiteral(std::string_view member_name) const;
 
   // TODO privatize
   absl::flat_hash_map<int32_t, std::string> members_;

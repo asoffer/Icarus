@@ -218,7 +218,7 @@ void Log::DeclarationUsedInUnop(std::string const &unop,
   errors_.push_back(ss.str());
 }
 
-void Log::MissingMember(TextSpan const &span, std::string const &member_name,
+void Log::MissingMember(TextSpan const &span, std::string_view member_name,
                         std::string_view type) {
   std::stringstream ss;
   ss << "Expressions of type `" << type << "` have no member named `"
@@ -231,8 +231,7 @@ void Log::MissingMember(TextSpan const &span, std::string const &member_name,
   errors_.push_back(ss.str());
 }
 
-void Log::NonExportedMember(TextSpan const &span,
-                            std::string const &member_name,
+void Log::NonExportedMember(TextSpan const &span, std::string_view member_name,
                             std::string_view type) {
   std::stringstream ss;
   ss << "Expressions of type `" << type << "` do not export the member `"

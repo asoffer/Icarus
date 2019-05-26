@@ -30,11 +30,11 @@ void EmitIr::MoveInit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg,
   auto *data_type_ptr           = type::Ptr(array_type.data_type);
   auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
   for (size_t i = 0; i + 1 < array_type.len; ++i) {
-    node->cl_.exprs_.at(i)->EmitMoveInit(
+    node->elem(i)->EmitMoveInit(
         this, type::Typed<ir::Reg>(elem, data_type_ptr), ctx);
     elem = ir::PtrIncr(elem, 1, data_type_ptr);
   }
-  node->cl_.exprs_.back()->EmitMoveInit(
+  node->elems().back()->EmitMoveInit(
       this, type::Typed<ir::Reg>(elem, data_type_ptr), ctx);
 }
 

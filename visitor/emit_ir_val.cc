@@ -17,7 +17,7 @@ namespace ir {
 
 // TODO moved these here because we can't have them in ir:builtin or else
 // they'll be in the formatter target. figure out what's going on here.
-type::Type const* BuiltinType(Builtin);
+type::Type const *BuiltinType(Builtin);
 
 // TODO: The functions here that modify struct fields typically do so by
 // modifying the last field, since we always build them in order. This saves us
@@ -266,24 +266,24 @@ ir::Results EmitIr::Val(ast::Node const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::Access const *node, Context *ctx) const {
-  if (ctx->type_of(node->operand.get()) == type::Module) {
+  if (ctx->type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
-    return backend::EvaluateAs<Module const *>(node->operand.get(), ctx)
-        ->GetDecl(node->member_name)
+    return backend::EvaluateAs<Module const *>(node->operand(), ctx)
+        ->GetDecl(node->member_name())
         ->EmitIr(this, ctx);
   }
 
   auto *this_type = ctx->type_of(node);
   if (this_type->is<type::Enum>()) {
-    auto lit = this_type->as<type::Enum>().EmitLiteral(node->member_name);
+    auto lit = this_type->as<type::Enum>().EmitLiteral(node->member_name());
     return ir::Results{lit};
   } else if (this_type->is<type::Flags>()) {
-    auto lit = this_type->as<type::Flags>().EmitLiteral(node->member_name);
+    auto lit = this_type->as<type::Flags>().EmitLiteral(node->member_name());
     return ir::Results{lit};
   } else {
-    auto reg = node->operand->EmitLVal(this, ctx)[0];
-    auto *t  = ctx->type_of(node->operand.get());
+    auto reg = node->operand()->EmitLVal(this, ctx)[0];
+    auto *t  = ctx->type_of(node->operand());
 
     if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
     while (t->is<type::Pointer>()) {
@@ -294,7 +294,7 @@ ir::Results EmitIr::Val(ast::Access const *node, Context *ctx) const {
     ASSERT(t, InheritsFrom<type::Struct>());
     auto *struct_type = &t->as<type::Struct>();
     auto field =
-        ir::Field(reg, struct_type, struct_type->index(node->member_name));
+        ir::Field(reg, struct_type, struct_type->index(node->member_name()));
     return ir::Results{ir::PtrFix(field.get(), this_type)};
   }
 }
@@ -303,10 +303,10 @@ ir::Results EmitIr::Val(ast::ArrayLiteral const *node, Context *ctx) const {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = ctx->type_of(node);
   auto alloc      = ir::TmpAlloca(this_type, ctx);
-  if (!node->cl_.exprs_.empty()) {
+  if (!node->empty()) {
     auto *data_type = this_type->as<type::Array>().data_type;
-    for (size_t i = 0; i < node->cl_.exprs_.size(); ++i) {
-      MoveInit(data_type, node->cl_.exprs_[i]->EmitIr(this, ctx),
+    for (size_t i = 0; i < node->size(); ++i) {
+      MoveInit(data_type, node->elem(i)->EmitIr(this, ctx),
                type::Typed<ir::Reg>(ir::Index(type::Ptr(this_type), alloc,
                                               static_cast<int32_t>(i)),
                                     type::Ptr(data_type)),
@@ -318,28 +318,28 @@ ir::Results EmitIr::Val(ast::ArrayLiteral const *node, Context *ctx) const {
 
 ir::Results EmitIr::Val(ast::ArrayType const *node, Context *ctx) const {
   return ir::Results{ir::Array(
-      node->length_->EmitIr(this, ctx).get<int64_t>(0),
-      node->data_type_->EmitIr(this, ctx).get<type::Type const *>(0))};
+      node->length()->EmitIr(this, ctx).get<int64_t>(0),
+      node->data_type()->EmitIr(this, ctx).get<type::Type const *>(0))};
 }
 
 ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
-  auto *lhs_type = ctx->type_of(node->lhs.get());
-  auto *rhs_type = ctx->type_of(node->rhs.get());
+  auto *lhs_type = ctx->type_of(node->lhs());
+  auto *rhs_type = ctx->type_of(node->rhs());
 
   if (auto *dispatch_table = ctx->dispatch_table(node)) {
     // TODO struct is not exactly right. we really mean user-defined
     return dispatch_table->EmitCall(
         core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-            {std::pair(node->lhs.get(), node->lhs->EmitIr(this, ctx)),
-             std::pair(node->rhs.get(), node->rhs->EmitIr(this, ctx))},
+            {std::pair(node->lhs(), node->lhs()->EmitIr(this, ctx)),
+             std::pair(node->rhs(), node->rhs()->EmitIr(this, ctx))},
             {}),
         ctx);
   }
 
-  switch (node->op) {
+  switch (node->op()) {
     case frontend::Operator::Add: {
-      auto lhs_ir = node->lhs->EmitIr(this, ctx);
-      auto rhs_ir = node->rhs->EmitIr(this, ctx);
+      auto lhs_ir = node->lhs()->EmitIr(this, ctx);
+      auto rhs_ir = node->rhs()->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto type_holder) {
@@ -348,8 +348,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
           });
     } break;
     case frontend::Operator::Sub: {
-      auto lhs_ir = node->lhs->EmitIr(this, ctx);
-      auto rhs_ir = node->rhs->EmitIr(this, ctx);
+      auto lhs_ir = node->lhs()->EmitIr(this, ctx);
+      auto rhs_ir = node->rhs()->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto type_holder) {
@@ -358,8 +358,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
           });
     } break;
     case frontend::Operator::Mul: {
-      auto lhs_ir = node->lhs->EmitIr(this, ctx);
-      auto rhs_ir = node->rhs->EmitIr(this, ctx);
+      auto lhs_ir = node->lhs()->EmitIr(this, ctx);
+      auto rhs_ir = node->rhs()->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto type_holder) {
@@ -368,8 +368,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
           });
     } break;
     case frontend::Operator::Div: {
-      auto lhs_ir = node->lhs->EmitIr(this, ctx);
-      auto rhs_ir = node->rhs->EmitIr(this, ctx);
+      auto lhs_ir = node->lhs()->EmitIr(this, ctx);
+      auto rhs_ir = node->rhs()->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto type_holder) {
@@ -378,8 +378,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
           });
     } break;
     case frontend::Operator::Mod: {
-      auto lhs_ir = node->lhs->EmitIr(this, ctx);
-      auto rhs_ir = node->rhs->EmitIr(this, ctx);
+      auto lhs_ir = node->lhs()->EmitIr(this, ctx);
+      auto rhs_ir = node->rhs()->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t>(
           rhs_type, [&](auto type_holder) {
@@ -390,21 +390,21 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
     case frontend::Operator::Arrow: {
       // TODO ugly hack.
       std::vector<ir::RegisterOr<type::Type const *>> lhs_vals, rhs_vals;
-      if (auto *l = node->lhs->if_as<ast::CommaList>()) {
+      if (auto *l = node->lhs()->if_as<ast::CommaList>()) {
         for (auto &e : l->exprs_) {
           lhs_vals.push_back(e->EmitIr(this, ctx).get<type::Type const *>(0));
         }
       } else {
         lhs_vals.push_back(
-            node->lhs->EmitIr(this, ctx).get<type::Type const *>(0));
+            node->lhs()->EmitIr(this, ctx).get<type::Type const *>(0));
       }
-      if (auto *r = node->rhs->if_as<ast::CommaList>()) {
+      if (auto *r = node->rhs()->if_as<ast::CommaList>()) {
         for (auto &e : r->exprs_) {
           rhs_vals.push_back(e->EmitIr(this, ctx).get<type::Type const *>(0));
         }
       } else {
         rhs_vals.push_back(
-            node->rhs->EmitIr(this, ctx).get<type::Type const *>(0));
+            node->rhs()->EmitIr(this, ctx).get<type::Type const *>(0));
       }
 
       auto reg_or_type = ir::Arrow(ir::Tup(lhs_vals), ir::Tup(rhs_vals));
@@ -412,10 +412,10 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
     } break;
     case frontend::Operator::Assign: {
       // TODO support splatting.
-      auto lhs_lvals = node->lhs->EmitLVal(this, ctx);
+      auto lhs_lvals = node->lhs()->EmitLVal(this, ctx);
       if (lhs_lvals.size() != 1) { NOT_YET(); }
 
-      auto rhs_vals = node->rhs->EmitIr(this, ctx);
+      auto rhs_vals = node->rhs()->EmitIr(this, ctx);
       lhs_type->EmitMoveAssign(this, rhs_type, rhs_vals, lhs_lvals[0], ctx);
 
       return ir::Results{};
@@ -423,23 +423,23 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
     case frontend::Operator::OrEq: {
       auto *this_type = ctx->type_of(node);
       if (this_type->is<type::Flags>()) {
-        auto lhs_lval = node->lhs->EmitLVal(this, ctx)[0];
+        auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
         ir::Store(
             ir::OrFlags(&this_type->as<type::Flags>(),
                         ir::Load<ir::FlagsVal>(lhs_lval, this_type),
-                        node->rhs->EmitIr(this, ctx).get<ir::FlagsVal>(0)),
+                        node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0)),
             lhs_lval);
         return ir::Results{};
       }
       auto land_block = ir::CompiledFn::Current->AddBlock();
       auto more_block = ir::CompiledFn::Current->AddBlock();
 
-      auto lhs_val       = node->lhs->EmitIr(this, ctx).get<bool>(0);
+      auto lhs_val       = node->lhs()->EmitIr(this, ctx).get<bool>(0);
       auto lhs_end_block = ir::BasicBlock::Current;
       ir::CondJump(lhs_val, land_block, more_block);
 
       ir::BasicBlock::Current = more_block;
-      auto rhs_val            = node->rhs->EmitIr(this, ctx).get<bool>(0);
+      auto rhs_val            = node->rhs()->EmitIr(this, ctx).get<bool>(0);
       auto rhs_end_block      = ir::BasicBlock::Current;
       ir::UncondJump(land_block);
 
@@ -452,11 +452,11 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
     case frontend::Operator::AndEq: {
       auto *this_type = ctx->type_of(node);
       if (this_type->is<type::Flags>()) {
-        auto lhs_lval = node->lhs->EmitLVal(this, ctx)[0];
+        auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
         ir::Store(
             ir::AndFlags(&this_type->as<type::Flags>(),
                          ir::Load<ir::FlagsVal>(lhs_lval, this_type),
-                         node->rhs->EmitIr(this, ctx).get<ir::FlagsVal>(0)),
+                         node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0)),
             lhs_lval);
         return ir::Results{};
       }
@@ -464,12 +464,12 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
       auto land_block = ir::CompiledFn::Current->AddBlock();
       auto more_block = ir::CompiledFn::Current->AddBlock();
 
-      auto lhs_val       = node->lhs->EmitIr(this, ctx).get<bool>(0);
+      auto lhs_val       = node->lhs()->EmitIr(this, ctx).get<bool>(0);
       auto lhs_end_block = ir::BasicBlock::Current;
       ir::CondJump(lhs_val, more_block, land_block);
 
       ir::BasicBlock::Current = more_block;
-      auto rhs_val            = node->rhs->EmitIr(this, ctx).get<bool>(0);
+      auto rhs_val            = node->rhs()->EmitIr(this, ctx).get<bool>(0);
       auto rhs_end_block      = ir::BasicBlock::Current;
       ir::UncondJump(land_block);
 
@@ -480,8 +480,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
           {{lhs_end_block, rhs_val}, {rhs_end_block, false}})};
     } break;
     case frontend::Operator::AddEq: {
-      auto lhs_lval = node->lhs->EmitLVal(this, ctx)[0];
-      auto rhs_ir   = node->rhs->EmitIr(this, ctx);
+      auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
+      auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto type_holder) {
@@ -492,8 +492,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
       return ir::Results{};
     } break;
     case frontend::Operator::SubEq: {
-      auto lhs_lval = node->lhs->EmitLVal(this, ctx)[0];
-      auto rhs_ir   = node->rhs->EmitIr(this, ctx);
+      auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
+      auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto type_holder) {
@@ -504,8 +504,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
       return ir::Results{};
     } break;
     case frontend::Operator::DivEq: {
-      auto lhs_lval = node->lhs->EmitLVal(this, ctx)[0];
-      auto rhs_ir   = node->rhs->EmitIr(this, ctx);
+      auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
+      auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto type_holder) {
@@ -516,8 +516,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
       return ir::Results{};
     } break;
     case frontend::Operator::ModEq: {
-      auto lhs_lval = node->lhs->EmitLVal(this, ctx)[0];
-      auto rhs_ir   = node->rhs->EmitIr(this, ctx);
+      auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
+      auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t>(rhs_type, [&](auto type_holder) {
         using T = typename decltype(type_holder)::type;
@@ -526,8 +526,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
       return ir::Results{};
     } break;
     case frontend::Operator::MulEq: {
-      auto lhs_lval = node->lhs->EmitLVal(this, ctx)[0];
-      auto rhs_ir   = node->rhs->EmitIr(this, ctx);
+      auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
+      auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto type_holder) {
@@ -539,13 +539,13 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
     } break;
     case frontend::Operator::XorEq: {
       if (lhs_type == type::Bool) {
-        auto lhs_lval = node->lhs->EmitLVal(this, ctx)[0];
-        auto rhs_ir   = node->rhs->EmitIr(this, ctx).get<bool>(0);
+        auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
+        auto rhs_ir   = node->rhs()->EmitIr(this, ctx).get<bool>(0);
         ir::Store(ir::XorBool(ir::Load<bool>(lhs_lval), rhs_ir), lhs_lval);
       } else if (lhs_type->is<type::Flags>()) {
         auto *flags_type = &lhs_type->as<type::Flags>();
-        auto lhs_lval    = node->lhs->EmitLVal(this, ctx)[0];
-        auto rhs_ir      = node->rhs->EmitIr(this, ctx).get<ir::FlagsVal>(0);
+        auto lhs_lval    = node->lhs()->EmitLVal(this, ctx)[0];
+        auto rhs_ir      = node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0);
         ir::Store(
             ir::XorFlags(flags_type,
                          ir::Load<ir::FlagsVal>(lhs_lval, flags_type), rhs_ir),

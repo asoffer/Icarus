@@ -29,11 +29,11 @@ void EmitIr::CopyInit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg,
   auto *data_type_ptr           = type::Ptr(array_type.data_type);
   auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
   for (size_t i = 0; i + 1 < array_type.len; ++i) {
-    node->cl_.exprs_.at(i)->EmitCopyInit(
+    node->elem(i)->EmitCopyInit(
         this, type::Typed<ir::Reg>(elem, data_type_ptr), ctx);
     elem = ir::PtrIncr(elem, 1, data_type_ptr);
   }
-  node->cl_.exprs_.back()->EmitCopyInit(
+  node->elems().back()->EmitCopyInit(
       this, type::Typed<ir::Reg>(elem, data_type_ptr), ctx);
 }
 

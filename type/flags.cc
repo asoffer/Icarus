@@ -35,13 +35,13 @@ Flags::Flags(
   }
 }
 
-std::optional<ir::FlagsVal> Flags::Get(const std::string &str) const {
-  if (auto iter = vals_.find(str); iter != vals_.end()) { return iter->second; }
+std::optional<ir::FlagsVal> Flags::Get(std::string_view name) const {
+  if (auto iter = vals_.find(name); iter != vals_.end()) { return iter->second; }
   return std::nullopt;
 }
 
 Typed<ir::FlagsVal, Flags> Flags::EmitLiteral(
-    std::string const &member_name) const {
+    std::string_view member_name) const {
   return Typed<ir::FlagsVal, Flags>(vals_.at(member_name), this);
 }
 

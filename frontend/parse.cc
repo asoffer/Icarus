@@ -3,32 +3,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "ast/access.h"
-#include "ast/array_literal.h"
-#include "ast/array_type.h"
-#include "ast/binop.h"
-#include "ast/block_literal.h"
-#include "ast/call.h"
-#include "ast/cast.h"
-#include "ast/chainop.h"
-#include "ast/comma_list.h"
-#include "ast/declaration.h"
-#include "ast/enum_literal.h"
-#include "ast/function_literal.h"
-#include "ast/identifier.h"
-#include "ast/import.h"
-#include "ast/index.h"
-#include "ast/interface.h"
-#include "ast/match_declaration.h"
-#include "ast/repeated_unop.h"
-#include "ast/scope_literal.h"
-#include "ast/scope_node.h"
-#include "ast/statements.h"
-#include "ast/struct_literal.h"
-#include "ast/struct_type.h"
-#include "ast/switch.h"
-#include "ast/terminal.h"
-#include "ast/unop.h"
+#include "ast/ast.h"
 #include "base/debug.h"
 #include "base/guarded.h"
 #include "error/log.h"
@@ -192,12 +167,6 @@ std::unique_ptr<ast::Node> BuildRightUnop(
   }
 }
 
-// Input guarantees
-// [expr] [l_paren] [expr] [r_paren]
-//
-// Internal checks:
-// LHS is not a declaration
-// RHS is not a declaration
 std::unique_ptr<ast::Node> BuildCall(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
@@ -210,14 +179,15 @@ std::unique_ptr<ast::Node> BuildCall(
     std::vector<TextSpan> positional_error_spans;
 
     for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
-      if (expr->is<ast::Binop>() &&
-          expr->as<ast::Binop>().op == frontend::Operator::Assign) {
+      if (auto *b = expr->if_as<ast::Binop>();
+          b && b->op() == frontend::Operator::Assign) {
         if (positional_error_spans.empty()) {
-          last_named_span_before_error = expr->as<ast::Binop>().lhs->span;
+          last_named_span_before_error = b->lhs()->span;
         }
         call->args_.named_emplace(
-            std::move(expr->as<ast::Binop>().lhs->as<ast::Identifier>().token),
-            std::move(expr->as<ast::Binop>().rhs));
+            std::move(
+                expr->as<ast::Binop>().lhs()->as<ast::Identifier>().token),
+            std::move(expr->as<ast::Binop>().rhs()));
       } else {
         if (last_named_span_before_error.has_value()) {
           positional_error_spans.push_back(expr->span);
@@ -231,12 +201,11 @@ std::unique_ptr<ast::Node> BuildCall(
           positional_error_spans, *last_named_span_before_error);
     }
   } else {
-    if (nodes[2]->is<ast::Binop>() &&
-        nodes[2]->as<ast::Binop>().op == frontend::Operator::Assign) {
-      call->args_.named_emplace(
-          std::move(
-              nodes[2]->as<ast::Binop>().lhs->as<ast::Identifier>().token),
-          std::move(nodes[2]->as<ast::Binop>().rhs));
+    if (ast::Binop *b = nodes[2]->if_as<ast::Binop>();
+        b && b->op() == frontend::Operator::Assign) {
+      auto [lhs, rhs] = std::move(*b).extract();
+      call->args_.named_emplace(std::move(lhs->as<ast::Identifier>().token),
+                                std::move(rhs));
     } else {
       call->args_.pos_emplace(move_as<ast::Expression>(nodes[2]));
     }
@@ -372,37 +341,23 @@ std::unique_ptr<ast::Node> BuildCommaList(
   return comma_list;
 }
 
-// Input guarantees
-// [expr] [dot] [expr]
-//
-// Internal checks:
-// LHS is not a declaration
-// RHS is an identifier
 std::unique_ptr<ast::Node> BuildAccess(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto access     = std::make_unique<ast::Access>();
-  access->span    = TextSpan(nodes[0]->span, nodes[2]->span);
-  access->operand = move_as<ast::Expression>(nodes[0]);
 
-  if (access->operand->is<ast::Declaration>()) {
-    error_log->DeclarationInAccess(access->operand->span);
-  }
-
-  if (!nodes[2]->is<ast::Identifier>()) {
+  auto &&operand = move_as<ast::Expression>(nodes[0]);
+  if (operand->is<ast::Declaration>()) {
+    error_log->DeclarationInAccess(operand->span);
+  } else if (!nodes[2]->is<ast::Identifier>()) {
     error_log->RHSNonIdInAccess(nodes[2]->span);
-  } else {
-    access->member_name = std::move(nodes[2]->as<ast::Identifier>().token);
   }
-  return access;
+
+  auto span = TextSpan(nodes[0]->span, nodes[2]->span);
+  return std::make_unique<ast::Access>(
+      span, std::move(operand),
+      std::move(nodes[2]->as<ast::Identifier>().token));
 }
 
-// Input guarantees
-// [expr] [l_bracket] [expr] [r_bracket]
-//
-// Internal checks:
-// LHS is not a declaration
-// RHS is not a declaration
 std::unique_ptr<ast::Node> BuildIndexOperator(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
@@ -426,7 +381,8 @@ std::unique_ptr<ast::Node> BuildEmptyArray(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   return std::make_unique<ast::ArrayLiteral>(
-      TextSpan(nodes.front()->span, nodes.back()->span));
+      TextSpan(nodes.front()->span, nodes.back()->span),
+      std::vector<std::unique_ptr<ast::Expression>>{});
 }
 
 std::unique_ptr<ast::Node> BuildEmptyCommaList(
@@ -440,16 +396,13 @@ std::unique_ptr<ast::Node> BuildEmptyCommaList(
 std::unique_ptr<ast::Node> BuildArrayLiteral(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto array_lit = std::make_unique<ast::ArrayLiteral>(nodes[0]->span);
-
-  if (nodes[1]->is<ast::CommaList>() &&
-      !nodes[1]->as<ast::CommaList>().parenthesized_) {
-    array_lit->cl_.exprs_ = std::move(nodes[1]->as<ast::CommaList>().exprs_);
+  if (auto *cl = nodes[1]->if_as<ast::CommaList>(); cl && !cl->parenthesized_) {
+    return std::make_unique<ast::ArrayLiteral>(nodes[0]->span,
+                                               std::move(*cl).extract());
   } else {
-    array_lit->cl_.exprs_.push_back(move_as<ast::Expression>(nodes[1]));
+    return std::make_unique<ast::ArrayLiteral>(
+        nodes[0]->span, move_as<ast::Expression>(nodes[1]));
   }
-
-  return array_lit;
 }
 
 std::unique_ptr<ast::Node> BuildGenericStructType(
@@ -477,22 +430,17 @@ std::unique_ptr<ast::Node> BuildArrayType(
     auto prev          = move_as<ast::Expression>(nodes[3]);
 
     while (i >= 0) {
-      auto array_type        = std::make_unique<ast::ArrayType>();
-      array_type->span       = length_chain->exprs_[i]->span;
-      array_type->length_    = std::move(length_chain->exprs_[i]);
-      array_type->data_type_ = std::move(prev);
-      prev                   = std::move(array_type);
+      prev = std::make_unique<ast::ArrayType>(
+          length_chain->exprs_[i]->span, std::move(length_chain->exprs_[i]),
+          std::move(prev));
       i -= 1;
     }
     return prev;
 
   } else {
-    auto array_type        = std::make_unique<ast::ArrayType>();
-    array_type->span       = nodes[0]->span;
-    array_type->length_    = move_as<ast::Expression>(nodes[1]);
-    array_type->data_type_ = move_as<ast::Expression>(nodes[3]);
-
-    return array_type;
+    return std::make_unique<ast::ArrayType>(nodes[0]->span,
+                                            move_as<ast::Expression>(nodes[1]),
+                                            move_as<ast::Expression>(nodes[3]));
   }
 }
 
@@ -610,10 +558,10 @@ std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
     error::Log *error_log) {
   auto span   = TextSpan(nodes[0]->span, nodes.back()->span);
   auto *binop = &nodes[0]->as<ast::Binop>();
+  auto [lhs, rhs] = std::move(*binop).extract();
   return BuildFunctionLiteral(
-      std::move(span), ExtractInputs(std::move(binop->lhs)),
-      std::move(binop->rhs), std::move(nodes[1]->as<ast::Statements>()), mod,
-      error_log);
+      std::move(span), ExtractInputs(std::move(lhs)), std::move(rhs),
+      std::move(nodes[1]->as<ast::Statements>()), mod, error_log);
 }
 
 std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
@@ -848,13 +796,9 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
       return decl;
 
     } else {
-      auto binop  = std::make_unique<ast::Binop>();
-      binop->span = TextSpan(nodes[0]->span, nodes[2]->span);
-
-      binop->lhs = move_as<ast::Expression>(nodes[0]);
-      binop->rhs = move_as<ast::Expression>(nodes[2]);
-      binop->op  = frontend::Operator::Assign;
-      return binop;
+      return std::make_unique<ast::Binop>(move_as<ast::Expression>(nodes[0]),
+                                          frontend::Operator::Assign,
+                                          move_as<ast::Expression>(nodes[2]));
     }
   } else if (tk == "as") {
     auto cast   = std::make_unique<ast::Cast>();
@@ -877,12 +821,6 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     return BuildCall(std::move(nodes), mod, error_log);
   }
 
-  auto binop  = std::make_unique<ast::Binop>();
-  binop->span = TextSpan(nodes[0]->span, nodes[2]->span);
-
-  binop->lhs = move_as<ast::Expression>(nodes[0]);
-  binop->rhs = move_as<ast::Expression>(nodes[2]);
-
   static absl::flat_hash_map<std::string_view, frontend::Operator> const
       symbols = {
           {"->", frontend::Operator::Arrow}, {"|=", frontend::Operator::OrEq},
@@ -892,11 +830,9 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
           {"%=", frontend::Operator::ModEq}, {"+", frontend::Operator::Add},
           {"-", frontend::Operator::Sub},    {"*", frontend::Operator::Mul},
           {"/", frontend::Operator::Div},    {"%", frontend::Operator::Mod}};
-  if (auto iter = symbols.find(tk); iter != symbols.end()) {
-    binop->op = iter->second;
-  }
-
-  return binop;
+  return std::make_unique<ast::Binop>(move_as<ast::Expression>(nodes[0]),
+                                      symbols.at(tk),
+                                      move_as<ast::Expression>(nodes[2]));
 }
 
 std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(

@@ -15,9 +15,6 @@ struct BindingNode : public ast::Expression {
   explicit BindingNode(BindingId id, TextSpan span)
       : ast::Expression(std::move(span)), id_(id) {}
   ~BindingNode() override {}
-  std::string to_string(size_t) const override {
-    return absl::StrCat(kMatchPrefix, id_.view());
-  }
 
 #include "visitor/visitors.xmacro.h"
 

@@ -6,24 +6,24 @@ namespace visitor {
 
 void AssignScope::operator()(ast::Access *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->operand->assign_scope(this, scope);
+  node->operand()->assign_scope(this, scope);
 }
 
-void AssignScope::operator()(ast::ArrayLiteral *node,
-                             core::Scope *scope) {
-  node->cl_.assign_scope(this, scope);
+void AssignScope::operator()(ast::ArrayLiteral *node, core::Scope *scope) {
+  node->scope_ = scope;
+  for (auto &expr : node->elems()) { expr->assign_scope(this, scope); }
 }
 
 void AssignScope::operator()(ast::ArrayType *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->length_->assign_scope(this, scope);
-  node->data_type_->assign_scope(this, scope);
+  node->length()->assign_scope(this, scope);
+  node->data_type()->assign_scope(this, scope);
 }
 
 void AssignScope::operator()(ast::Binop *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->lhs->assign_scope(this, scope);
-  node->rhs->assign_scope(this, scope);
+  node->lhs()->assign_scope(this, scope);
+  node->rhs()->assign_scope(this, scope);
 }
 
 void AssignScope::operator()(ast::BlockLiteral *node,

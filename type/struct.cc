@@ -19,11 +19,11 @@ core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
   return offset;
 }
 
-size_t Struct::index(std::string const &name) const {
+size_t Struct::index(std::string_view name) const {
   return field_indices_.at(name);
 }
 
-Struct::Field const *Struct::field(std::string const &name) const {
+Struct::Field const *Struct::field(std::string_view name) const {
   auto iter = field_indices_.find(name);
   if (iter == field_indices_.end()) { return nullptr; }
   return &fields_[iter->second];

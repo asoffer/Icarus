@@ -46,14 +46,14 @@ struct Struct : public Type {
   void add_field(type::Type const *t);
 
   // Return the type of a field, or a nullptr if it doesn't exist
-  Field const *field(std::string const &name) const;
+  Field const *field(std::string_view name) const;
 
   ::Module const *defining_module() const { return mod_; }
 
   core::Bytes offset(size_t n, core::Arch const &arch) const;
 
   std::vector<Field> const &fields() const { return fields_; }
-  size_t index(std::string const &name) const;
+  size_t index(std::string_view name) const;
 
   bool contains_hashtag(ast::Hashtag needle) const;
 

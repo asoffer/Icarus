@@ -10,21 +10,21 @@ std::vector<ast::Expression const *> const &ExtractJumps::exprs(
 }
 
 void ExtractJumps::operator()(ast::Access const *node) {
-  node->operand->ExtractJumps(this);
+  node->operand()->ExtractJumps(this);
 }
 
 void ExtractJumps::operator()(ast::ArrayLiteral const *node) {
-  node->cl_.ExtractJumps(this);
+  for (auto &expr : node->elems()) { expr->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::ArrayType const *node) {
-  node->length_->ExtractJumps(this);
-  node->data_type_->ExtractJumps(this);
+  node->length()->ExtractJumps(this);
+  node->data_type()->ExtractJumps(this);
 }
 
 void ExtractJumps::operator()(ast::Binop const *node) {
-  node->lhs->ExtractJumps(this);
-  node->rhs->ExtractJumps(this);
+  node->lhs()->ExtractJumps(this);
+  node->rhs()->ExtractJumps(this);
 }
 
 void ExtractJumps::operator()(ast::BlockLiteral const *node) {

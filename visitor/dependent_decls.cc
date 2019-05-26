@@ -6,24 +6,24 @@ namespace visitor {
 
 void DependentDecls::operator()(ast::Access const *node,
                                 ast::Declaration const *d) {
-  node->operand->DependentDecls(this, d);
+  node->operand()->DependentDecls(this, d);
 }
 
 void DependentDecls::operator()(ast::ArrayLiteral const *node,
                                 ast::Declaration const *d) {
-  for (auto const &expr : node->cl_.exprs_) { expr->DependentDecls(this, d); }
+  for (auto const &expr : node->elems()) { expr->DependentDecls(this, d); }
 }
 
 void DependentDecls::operator()(ast::ArrayType const *node,
                                 ast::Declaration const *d) {
-  node->length_->DependentDecls(this, d);
-  node->data_type_->DependentDecls(this, d);
+  node->length()->DependentDecls(this, d);
+  node->data_type()->DependentDecls(this, d);
 }
 
 void DependentDecls::operator()(ast::Binop const *node,
                                 ast::Declaration const *d) {
-  node->lhs->DependentDecls(this, d);
-  node->rhs->DependentDecls(this, d);
+  node->lhs()->DependentDecls(this, d);
+  node->rhs()->DependentDecls(this, d);
 }
 
 void DependentDecls::operator()(ast::BlockLiteral const *node,

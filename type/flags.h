@@ -4,6 +4,7 @@
 #include <optional>
 #include <random>
 #include <string>
+#include <string_view>
 
 #include "absl/container/flat_hash_map.h"
 #include "ir/flags_val.h"
@@ -21,8 +22,8 @@ struct Flags : public type::Type {
 
 #include "visitor/type_visitors.xmacro.h"
 
-  std::optional<ir::FlagsVal> Get(const std::string& str) const;
-  Typed<ir::FlagsVal, Flags> EmitLiteral(std::string const& member_name) const;
+  std::optional<ir::FlagsVal> Get(std::string_view name) const;
+  Typed<ir::FlagsVal, Flags> EmitLiteral(std::string_view member_name) const;
 
   // TODO privatize
   absl::flat_hash_map<size_t, std::string> members_;
