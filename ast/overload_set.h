@@ -4,6 +4,7 @@
 #include <string>
 
 #include "ast/node.h"
+#include "ast/node_span.h"
 #include "base/bag.h"
 #include "type/function.h"
 #include "type/typed_value.h"
@@ -27,6 +28,7 @@ struct Overload {
 struct OverloadSet : public base::bag<Overload> {
   OverloadSet() = default;
   OverloadSet(core::Scope *scope, std::string const &id, Context *ctx);
+  OverloadSet(NodeSpan<Declaration const> decls, Context *ctx);
 
   void add_adl(std::string const &id, type::Type const *t);
 };

@@ -3,9 +3,14 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
+#include <vector>
 
 #include "absl/types/span.h"
+#include "ast/declaration.h"
 #include "ast/expression.h"
+#include "ast/node_span.h"
+#include "core/scope.h"
 #include "frontend/operators.h"
 
 namespace ast {
@@ -57,7 +62,8 @@ struct ArrayLiteral : public Expression {
   size_t size() const { return exprs_.size(); }
   Expression const *elem(size_t i) const { return exprs_[i].get(); }
   // TODO hide the unique_ptr here.
-  absl::Span<std::unique_ptr<Expression> const> elems() const { return exprs_; }
+  NodeSpan<Expression const> elems() const { return exprs_; }
+  NodeSpan<Expression> elems() { return exprs_; }
 
 #include "visitor/visitors.xmacro.h"
 
@@ -80,21 +86,23 @@ struct ArrayLiteral : public Expression {
 //                         elements, each of which is an array that can hold two
 //                         8-bit integers.
 //  * `[3, 2; int8]`    -- A shorthand syntax for `[3; [2; int8]]`
-//
-//  TODO: Currently when we build an array type, even when we syntactically see
-//  `[3, 2; int8]` we build the tree as if it were `[3; [2; int8]]`. This is
-//  hostile to formatters that want to traverse the tree and keep syntax similar
-//  to what the original author wrote.
 struct ArrayType : public Expression {
   ArrayType(TextSpan span, std::unique_ptr<Expression> length,
             std::unique_ptr<Expression> data_type)
+      : Expression(std::move(span)), data_type_(std::move(data_type)) {
+    lengths_.push_back(std::move(length));
+  }
+  ArrayType(TextSpan span, std::vector<std::unique_ptr<Expression>> lengths,
+            std::unique_ptr<Expression> data_type)
       : Expression(std::move(span)),
-        length_(std::move(length)),
+        lengths_(std::move(lengths)),
         data_type_(std::move(data_type)) {}
   ~ArrayType() override {}
 
-  Expression const *length() const { return length_.get(); }
-  Expression *length() { return length_.get(); }
+  NodeSpan<Expression const> lengths() const { return lengths_; }
+  NodeSpan<Expression> lengths() { return lengths_; }
+  Expression *length(size_t i) { return lengths_[i].get(); }
+  Expression const *length(size_t i) const { return lengths_[i].get(); }
 
   Expression const *data_type() const { return data_type_.get(); }
   Expression *data_type() { return data_type_.get(); }
@@ -102,7 +110,8 @@ struct ArrayType : public Expression {
 #include "visitor/visitors.xmacro.h"
 
  private:
-  std::unique_ptr<Expression> length_, data_type_;
+  std::vector<std::unique_ptr<Expression>> lengths_;
+  std::unique_ptr<Expression> data_type_;
 };
 
 // Binop:
@@ -138,22 +147,71 @@ struct Binop : public Expression {
 
 #include "visitor/visitors.xmacro.h"
 
+ private:
   frontend::Operator op_;
   std::unique_ptr<Expression> lhs_, rhs_;
 };
 
+template <typename S>
+struct ScopeExpr : public Expression {
+  ScopeExpr(TextSpan &&span) : Expression(std::move(span)) {}
+  ~ScopeExpr() override {}
+
+  void set_body_with_parent(core::Scope *p) {
+    body_scope_ = p->template add_child<S>();
+  }
+  core::Scope *body_scope() { return body_scope_.get(); }
+  core::Scope const *body_scope() const { return body_scope_.get(); }
+
+ private:
+  std::unique_ptr<S> body_scope_ = nullptr;
+};
+
+// BlockLiteral:
+//
+// Represents the specification for a block in a scope. The `before`
+// declarations constitute the objects assigned to the identifier `before`.
+// These constitute the overload set for functions to be called before entering
+// the corresponding block. Analogously, The declarations in `after` constitute
+// the overload set for functions to be called after exiting the block.
+//
+// Example:
+// block {
+//   before ::= () -> () {}
+//   after  ::= () -> () { jump exit() }
+// }
+struct BlockLiteral : public ScopeExpr<core::DeclScope> {
+  BlockLiteral(TextSpan span, std::vector<std::unique_ptr<Declaration>> before,
+               std::vector<std::unique_ptr<Declaration>> after, bool required)
+      : ScopeExpr<core::DeclScope>(std::move(span)),
+        before_(std::move(before)),
+        after_(std::move(after)),
+        required_(required) {}
+  ~BlockLiteral() override {}
+
+  NodeSpan<Declaration const> before() const { return before_; }
+  NodeSpan<Declaration> before() { return before_; }
+  NodeSpan<Declaration const> after() const { return after_; }
+  NodeSpan<Declaration> after() { return after_; }
+
+  bool is_required() const { return required_; }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::vector<std::unique_ptr<Declaration>> before_, after_;
+  bool required_;
+};
+
 }  // namespace ast
 
-#include "ast/block_literal.h"
 #include "ast/block_node.h"
 #include "ast/builtin_fn.h"
 #include "ast/call.h"
 #include "ast/cast.h"
 #include "ast/chainop.h"
 #include "ast/comma_list.h"
-#include "ast/declaration.h"
 #include "ast/enum_literal.h"
-#include "ast/expression.h"
 #include "ast/function_literal.h"
 #include "ast/hashtag.h"
 #include "ast/identifier.h"

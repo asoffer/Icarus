@@ -11,12 +11,12 @@ void AssignScope::operator()(ast::Access *node, core::Scope *scope) {
 
 void AssignScope::operator()(ast::ArrayLiteral *node, core::Scope *scope) {
   node->scope_ = scope;
-  for (auto &expr : node->elems()) { expr->assign_scope(this, scope); }
+  for (auto *expr : node->elems()) { expr->assign_scope(this, scope); }
 }
 
 void AssignScope::operator()(ast::ArrayType *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->length()->assign_scope(this, scope);
+  for (auto const &len : node->lengths()) { len->assign_scope(this, scope); }
   node->data_type()->assign_scope(this, scope);
 }
 
@@ -26,12 +26,11 @@ void AssignScope::operator()(ast::Binop *node, core::Scope *scope) {
   node->rhs()->assign_scope(this, scope);
 }
 
-void AssignScope::operator()(ast::BlockLiteral *node,
-                             core::Scope *scope) {
-  node->scope_      = scope;
-  node->body_scope_ = scope->add_child<core::DeclScope>();
-  for (auto &b : node->before_) { b.assign_scope(this, node->body_scope_.get()); }
-  for (auto &a : node->after_) { a.assign_scope(this, node->body_scope_.get()); }
+void AssignScope::operator()(ast::BlockLiteral *node, core::Scope *scope) {
+  node->scope_ = scope;
+  node->set_body_with_parent(scope);
+  for (auto *b : node->before()) { b->assign_scope(this, node->body_scope()); }
+  for (auto *a : node->after()) { a->assign_scope(this, node->body_scope()); }
 }
 
 void AssignScope::operator()(ast::BlockNode *node, core::Scope *scope) {

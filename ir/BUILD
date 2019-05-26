@@ -118,8 +118,7 @@ cc_lib_target(
     impl_deps = [
         ":compiled_fn",
         ":phi",
-        "//ast:block_literal",
-        "//ast:struct_literal",
+        "//ast:ast",
         "//core:arch",
         "//type:typed_value",
         "//type:generic_struct",

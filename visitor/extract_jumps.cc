@@ -14,11 +14,11 @@ void ExtractJumps::operator()(ast::Access const *node) {
 }
 
 void ExtractJumps::operator()(ast::ArrayLiteral const *node) {
-  for (auto &expr : node->elems()) { expr->ExtractJumps(this); }
+  for (auto *expr : node->elems()) { expr->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::ArrayType const *node) {
-  node->length()->ExtractJumps(this);
+  for (auto const &len : node->lengths()) { len->ExtractJumps(this); }
   node->data_type()->ExtractJumps(this);
 }
 
@@ -28,8 +28,8 @@ void ExtractJumps::operator()(ast::Binop const *node) {
 }
 
 void ExtractJumps::operator()(ast::BlockLiteral const *node) {
-  for (auto &b : node->before_) { b.ExtractJumps(this); }
-  for (auto &a : node->after_) { a.ExtractJumps(this); }
+  for (auto *b : node->before()) { b->ExtractJumps(this); }
+  for (auto *a : node->after()) { a->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::BlockNode const *node) {

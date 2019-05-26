@@ -9,17 +9,13 @@
 #include <memory>
 #include <thread>
 
-#include "ast/block_literal.h"
-#include "ast/expression.h"
-#include "ast/function_literal.h"
-#include "ast/scope_node.h"
-#include "ast/struct_literal.h"
+#include "ast/ast.h"
 #include "backend/eval.h"
 #include "base/util.h"
+#include "core/arch.h"
 #include "error/log.h"
 #include "ir/arguments.h"
 #include "ir/compiled_fn.h"
-#include "core/arch.h"
 #include "misc/module.h"
 #include "type/incomplete_enum.h"
 #include "type/incomplete_flags.h"
@@ -32,6 +28,10 @@
 
 // TODO compile-time failure. dump the stack trace and abort for Null address
 // kinds
+
+namespace ast {
+struct Expression;
+}  // namespace ast
 
 namespace backend {
 base::untyped_buffer ReadOnlyData(0);

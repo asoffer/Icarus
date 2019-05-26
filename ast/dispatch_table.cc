@@ -4,11 +4,7 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/strings/str_cat.h"
-#include "ast/block_literal.h"
-#include "ast/builtin_fn.h"
-#include "ast/call.h"
-#include "ast/function_literal.h"
-#include "ast/match_declaration.h"
+#include "ast/ast.h"
 #include "backend/eval.h"
 #include "base/expected.h"
 #include "core/scope.h"

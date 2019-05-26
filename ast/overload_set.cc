@@ -2,21 +2,30 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "ast/declaration.h"
-#include "misc/context.h"
+#include "ast/node_span.h"
 #include "core/scope.h"
+#include "misc/context.h"
 
 namespace ast {
 using ::matcher::InheritsFrom;
 
-// TODO only hold functions?
-OverloadSet::OverloadSet(core::Scope *scope, std::string const &id, Context *ctx) {
-  auto decls = scope->AllDeclsWithId(id);
-  reserve(decls.size());
-  for (auto const &decl : decls) {
+template <typename DeclSpan>
+static void EmplaceDecls(OverloadSet *os, DeclSpan &&decls, Context *ctx) {
+  os->reserve(decls.size());
+  for (auto const *decl : decls) {
     if (auto const *result = ctx->prior_verification_attempt(decl)) {
-      emplace(decl, *result);
+      os->emplace(decl, *result);
     }
   }
+}
+
+OverloadSet::OverloadSet(NodeSpan<Declaration const> decls, Context *ctx) {
+  EmplaceDecls(this, decls, ctx);
+}
+
+// TODO only hold functions?
+OverloadSet::OverloadSet(core::Scope *scope, std::string const &id, Context *ctx) {
+  EmplaceDecls(this, scope->AllDeclsWithId(id), ctx);
 }
 
 void OverloadSet::add_adl(std::string const &id, type::Type const *t) {

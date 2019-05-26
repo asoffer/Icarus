@@ -423,20 +423,11 @@ std::unique_ptr<ast::Node> BuildGenericStructType(
 std::unique_ptr<ast::Node> BuildArrayType(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  if (nodes[1]->is<ast::CommaList>() &&
-      !nodes[1]->as<ast::CommaList>().parenthesized_) {
-    auto *length_chain = &nodes[1]->as<ast::CommaList>();
-    int i              = static_cast<int>(length_chain->exprs_.size() - 1);
-    auto prev          = move_as<ast::Expression>(nodes[3]);
-
-    while (i >= 0) {
-      prev = std::make_unique<ast::ArrayType>(
-          length_chain->exprs_[i]->span, std::move(length_chain->exprs_[i]),
-          std::move(prev));
-      i -= 1;
-    }
-    return prev;
-
+  if (auto *cl = nodes[1]->if_as<ast::CommaList>(); cl && !cl->parenthesized_) {
+    auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+    return std::make_unique<ast::ArrayType>(std::move(span),
+                                            std::move(*cl).extract(),
+                                            move_as<ast::Expression>(nodes[3]));
   } else {
     return std::make_unique<ast::ArrayType>(nodes[0]->span,
                                             move_as<ast::Expression>(nodes[1]),
@@ -887,16 +878,16 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<ast::Statements> stmts,
                                       bool required, Module *mod,
                                       error::Log *error_log) {
-  auto block_expr  = std::make_unique<ast::BlockLiteral>(required);
-  block_expr->span = stmts->span;  // TODO it's really bigger than this because
-                                   // it involves the keyword too.
+  auto span = stmts->span;  // TODO it's really bigger than this because it
+                            // involves the keyword too.
 
+  std::vector<std::unique_ptr<ast::Declaration>> before, after;
   for (auto &stmt : stmts->content_) {
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
       if (decl->id_ == "before") {
-        block_expr->before_.push_back(std::move(*decl));
+        before.push_back(move_as<ast::Declaration>(stmt));
       } else if (decl->id_ == "after") {
-        block_expr->after_.push_back(std::move(*decl));
+        after.push_back(move_as<ast::Declaration>(stmt));
       } else {
         NOT_YET(visitor::DumpAst::ToString(stmt.get()));
       }
@@ -904,8 +895,8 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<ast::Statements> stmts,
       NOT_YET();
     }
   }
-
-  return block_expr;
+  return std::make_unique<ast::BlockLiteral>(span, std::move(before),
+                                             std::move(after), required);
 }
 
 std::unique_ptr<ast::StructLiteral> BuildStructLiteral(ast::Statements &&stmts,

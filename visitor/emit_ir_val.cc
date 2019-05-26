@@ -317,9 +317,14 @@ ir::Results EmitIr::Val(ast::ArrayLiteral const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::ArrayType const *node, Context *ctx) const {
-  return ir::Results{ir::Array(
-      node->length()->EmitIr(this, ctx).get<int64_t>(0),
-      node->data_type()->EmitIr(this, ctx).get<type::Type const *>(0))};
+  auto result = node->data_type()->EmitIr(this, ctx).get<type::Type const *>(0);
+  // Size must be at least 1 by construction, so `.size() - 1` will not
+  // overflow.
+  for (int i = node->lengths().size() - 1; i >= 0; --i) {
+    result =
+        ir::Array(node->length(i)->EmitIr(this, ctx).get<int64_t>(0), result);
+  }
+  return ir::Results{result};
 }
 
 ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {

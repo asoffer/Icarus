@@ -11,12 +11,12 @@ void DependentDecls::operator()(ast::Access const *node,
 
 void DependentDecls::operator()(ast::ArrayLiteral const *node,
                                 ast::Declaration const *d) {
-  for (auto const &expr : node->elems()) { expr->DependentDecls(this, d); }
+  for (auto const *expr : node->elems()) { expr->DependentDecls(this, d); }
 }
 
 void DependentDecls::operator()(ast::ArrayType const *node,
                                 ast::Declaration const *d) {
-  node->length()->DependentDecls(this, d);
+  for (auto const &len : node->lengths()) { len->DependentDecls(this, d); }
   node->data_type()->DependentDecls(this, d);
 }
 
@@ -28,8 +28,8 @@ void DependentDecls::operator()(ast::Binop const *node,
 
 void DependentDecls::operator()(ast::BlockLiteral const *node,
                                 ast::Declaration const *d) {
-  for (auto const &b : node->before_) { b.DependentDecls(this, d); }
-  for (auto const &a : node->after_) { a.DependentDecls(this, d); }
+  for (auto const *b : node->before()) { b->DependentDecls(this, d); }
+  for (auto const *a : node->after()) { a->DependentDecls(this, d); }
 }
 
 void DependentDecls::operator()(ast::BlockNode const *node,

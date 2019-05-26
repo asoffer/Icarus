@@ -19,7 +19,6 @@ cc_lib_target(
 cc_lib_target(
     name = "ast",
     intf_deps = [
-        ":block_literal",
         ":block_node",
         ":builtin_fn",
         ":call",
@@ -36,6 +35,7 @@ cc_lib_target(
         ":interface",
         ":match_declaration",
         ":node",
+        ":node_span",
         ":repeated_unop",
         ":scope_literal",
         ":scope_node",
@@ -45,13 +45,11 @@ cc_lib_target(
         ":switch",
         ":terminal",
         ":unop",
-        "@com_google_absl//absl/types:span",
     ],
     impl_deps = None,
     test_deps = None,
 )
 
-icarus_ast_node(name = "block_literal", deps = [":expression", ":declaration"])
 icarus_ast_node(name = "block_node",
                 deps = [":expression", ":statements", "//core:scope"])
 icarus_ast_node(name = "builtin_fn", deps = [":expression", "//ir:builtin"])
@@ -94,6 +92,8 @@ icarus_ast_node(name = "terminal",
                 deps = [":expression", "//ir:results", "//type:primitive"])
 icarus_ast_node(name = "unop", deps = [":expression", "//frontend:operators"])
 
+cc_lib_target(name = "node_span", intf_deps = [], impl_deps = None, test_deps = None)
+
 cc_lib_target(
     name = "dispatch_table",
     cfgs = ["match", "compile"],
@@ -105,9 +105,9 @@ cc_lib_target(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
+        ":ast",
         ":call",
         ":builtin_fn",
-        ":block_literal",
         ":function_literal",
         "//ast:match_declaration",
         "//backend:eval",
@@ -140,6 +140,7 @@ cc_lib_target(
     name = "overload_set",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":node_span",
         "//base:bag",
         "//type:typed_value",
         "//type:function",

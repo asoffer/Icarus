@@ -4,8 +4,7 @@
 #include <iostream>
 #include <vector>
 
-#include "ast/block_literal.h"
-#include "ast/struct_literal.h"
+#include "ast/ast.h"
 #include "base/bag.h"
 #include "core/arch.h"
 #include "ir/compiled_fn.h"

@@ -33,11 +33,7 @@ cc_lib_target(
     ],
     impl_deps = [
         ":eval",
-        "//ast:block_literal",
-        "//ast:expression",
-        "//ast:function_literal",
-        "//ast:scope_node",
-        "//ast:struct_literal",
+        "//ast:ast",
         "//base:util",
         "//error:log",
         "//ir:arguments",

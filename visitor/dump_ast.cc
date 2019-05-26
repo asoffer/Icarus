@@ -64,7 +64,7 @@ struct Joiner {
   constexpr Joiner(DumpAst *d) : d_(d) {}
 
   template <typename Node>
-  void operator()(std::string *out, Node const &node) {
+  void operator()(std::string *out, Node &&node) {
     std::string *old_out = std::exchange(d_->out_, out);
     node->DumpAst(d_);
     d_->out_ = old_out;
@@ -107,9 +107,8 @@ void DumpAst::operator()(ast::ArrayLiteral const *node) {
 }
 
 void DumpAst::operator()(ast::ArrayType const *node) {
-  absl::StrAppend(out_, "[");
-  node->length()->DumpAst(this);
-  absl::StrAppend(out_, "; ");
+  absl::StrAppend(out_, "[", absl::StrJoin(node->lengths(), ", ", Joiner{this}),
+                  "; ");
   node->data_type()->DumpAst(this);
   absl::StrAppend(out_, "]");
 }
@@ -123,16 +122,16 @@ void DumpAst::operator()(ast::Binop const *node) {
 }
 
 void DumpAst::operator()(ast::BlockLiteral const *node) {
-  absl::StrAppend(out_, "block", (node->required_ ? "" : "?"), " {\n");
+  absl::StrAppend(out_, "block", (node->is_required() ? "" : "?"), " {\n");
 
   ++indentation_;
-  for (auto const &b : node->before_) {
+  for (auto const *b : node->before()) {
     absl::StrAppend(out_, indent());
-    b.DumpAst(this);
+    b->DumpAst(this);
   }
-  for (auto const &a : node->after_) {
+  for (auto const *a : node->after()) {
     absl::StrAppend(out_, indent());
-    a.DumpAst(this);
+    a->DumpAst(this);
   }
   --indentation_;
   absl::StrAppend(out_, indent(), "}\n");

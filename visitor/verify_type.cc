@@ -214,11 +214,11 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
 }
 
 static std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(
-    VerifyType const *visitor,
-    absl::Span<std::unique_ptr<ast::Expression> const> exprs, Context *ctx) {
+    VerifyType const *visitor, ast::NodeSpan<ast::Expression const> exprs,
+    Context *ctx) {
   std::vector<VerifyResult> results;
   results.reserve(exprs.size());
-  for (auto &expr : exprs) {
+  for (auto const &expr : exprs) {
     auto r = expr->VerifyType(visitor, ctx);
     if (expr->needs_expansion()) {
       auto &entries = r.type_->as<type::Tuple>().entries_;
@@ -227,8 +227,7 @@ static std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(
       results.push_back(r);
     }
   }
-  if (std::any_of(results.begin(), results.end(),
-                  [](VerifyResult const &r) { return !r.ok(); })) {
+  if (absl::c_any_of(results, [](VerifyResult const &r) { return !r.ok(); })) {
     return std::nullopt;
   }
   return results;
@@ -257,9 +256,16 @@ VerifyResult VerifyType::operator()(ast::ArrayLiteral const *node,
 
 VerifyResult VerifyType::operator()(ast::ArrayType const *node,
                                     Context *ctx) const {
-  auto length_result = node->length()->VerifyType(this, ctx);
-  if (length_result.type_ != type::Int64) {
-    ctx->error_log()->ArrayIndexType(node->span);
+  std::vector<VerifyResult> length_results;
+  length_results.reserve(node->lengths().size());
+  bool is_const = true;
+  for (auto const &len : node->lengths()) {
+    auto result = len->VerifyType(this, ctx);
+    is_const &= result.const_;
+    length_results.push_back(result);
+    if (result.type_ != type::Int64) {
+      ctx->error_log()->ArrayIndexType(node->span);
+    }
   }
 
   auto data_type_result = node->data_type()->VerifyType(this, ctx);
@@ -268,8 +274,7 @@ VerifyResult VerifyType::operator()(ast::ArrayType const *node,
   }
 
   return ctx->set_result(
-      node, VerifyResult(type::Type_,
-                         data_type_result.const_ && length_result.const_));
+      node, VerifyResult(type::Type_, data_type_result.const_ && is_const));
 }
 
 static bool IsTypeOrTupleOfTypes(type::Type const *t) {
@@ -435,12 +440,12 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
 
 VerifyResult VerifyType::operator()(ast::BlockLiteral const *node,
                                     Context *ctx) const {
-  for (auto &b : node->before_) { b.VerifyType(this, ctx); }
-  for (auto &a : node->after_) { a.VerifyType(this, ctx); }
+  for (auto *b : node->before()) { b->VerifyType(this, ctx); }
+  for (auto *a : node->after()) { a->VerifyType(this, ctx); }
 
   return ctx->set_result(
-      node,
-      VerifyResult::Constant(node->required_ ? type::Block : type::OptBlock));
+      node, VerifyResult::Constant(node->is_required() ? type::Block
+                                                       : type::OptBlock));
 }
 
 VerifyResult VerifyType::operator()(ast::BlockNode const *node,
@@ -851,7 +856,9 @@ not_blocks:
 VerifyResult VerifyType::operator()(ast::CommaList const *node,
                                     Context *ctx) const {
   ASSIGN_OR(return VerifyResult::Error(), auto results,
-                   VerifyWithoutSetting(this, node->exprs_, ctx));
+                   VerifyWithoutSetting(
+                       this, ast::NodeSpan<ast::Expression const>(node->exprs_),
+                       ctx));
   std::vector<type::Type const *> ts;
   ts.reserve(results.size());
   bool is_const = true;
@@ -1660,15 +1667,12 @@ VerifyResult VerifyType::operator()(ast::RepeatedUnop const *node,
             return std::pair{arg.get(), arg->VerifyType(this, ctx)};
           });
 
-      ast::VerifyDispatch(
-          ast::ExprPtr{&call, 0x01},
-          ast::OverloadSet(block.get()->body_scope_.get(), "before", ctx), args,
-          ctx);
-
-      ast::VerifyDispatch(
-          ast::ExprPtr{block.get(), 0x02},
-          ast::OverloadSet(block.get()->body_scope_.get(), "after", ctx), args,
-          ctx);
+      ast::VerifyDispatch(ast::ExprPtr{&call, 0x01},
+                          ast::OverloadSet(block.get()->before(), ctx), args,
+                          ctx);
+      ast::VerifyDispatch(ast::ExprPtr{block.get(), 0x02},
+                          ast::OverloadSet(block.get()->after(), ctx), args,
+                          ctx);
     }
   }
 
