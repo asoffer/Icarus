@@ -962,7 +962,7 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<ast::Statements> stmts,
       } else if (decl->id_ == "after") {
         block_expr->after_.push_back(std::move(*decl));
       } else {
-        NOT_YET(stmt->to_string(0));
+        NOT_YET(visitor::DumpAst::ToString(stmt.get()));
       }
     } else {
       NOT_YET();
@@ -1409,7 +1409,7 @@ void Debug(ParseState *ps) {
   fputs("", stderr);
 
   for (const auto &node_ptr : ps->node_stack_) {
-    fputs(node_ptr->to_string(0).c_str(), stderr);
+    fputs(visitor::DumpAst::ToString(node_ptr.get()).c_str(), stderr);
   }
   fgetc(stdin);
 }

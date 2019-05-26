@@ -18,21 +18,6 @@ struct Declaration : public Expression {
 
 #include "visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override {
-    std::stringstream ss;
-    ss << id_;
-    if (type_expr) {
-      ss << (const_ ? " :: " : ": ") << type_expr->to_string(n);
-      if (init_val) { ss << " = " << init_val->to_string(n); }
-    } else {
-      if (init_val) {
-        ss << (const_ ? " ::= " : " := ") << init_val->to_string(n);
-      }
-    }
-
-    return ss.str();
-  }
-
   std::string id_;
   std::unique_ptr<Expression> type_expr, init_val;
 

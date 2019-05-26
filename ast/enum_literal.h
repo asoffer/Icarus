@@ -22,20 +22,6 @@ struct EnumLiteral : public Expression {
 
 #include "visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override {
-    std::stringstream ss;
-    switch (kind_) {
-      case Kind::Enum: ss << "enum"; break;
-      case Kind::Flags: ss << "flags"; break;
-    }
-    ss << " {\n";
-    for (auto &elem : elems_) {
-      ss << std::string((n + 1) * 2, ' ') << elem->to_string(n + 1) << "\n";
-    }
-    ss << std::string(n * 2, ' ') << "}";
-    return ss.str();
-  }
-
   std::unique_ptr<core::DeclScope> enum_scope_;
   std::vector<std::unique_ptr<Expression>> elems_;
   Kind kind_;

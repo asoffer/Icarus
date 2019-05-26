@@ -11,6 +11,7 @@
 #include "type/type.h"
 #include "type/typed_value.h"
 #include "type/util.h"
+#include "visitor/dump_ast.h"
 
 Module *CompileModule(Module *mod, std::filesystem::path const *path);
 
@@ -1188,14 +1189,14 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
           backend::EvaluateAs<Module const *>(node->init_val.get(), ctx));
       return ctx->set_result(node, VerifyResult::Constant(type::Module));
     } else if (node_type->is<type::Tuple>()) {
-      NOT_YET(node_type, node->to_string(0));
+      NOT_YET(node_type, DumpAst::ToString(node));
     } else {
-      NOT_YET(node_type, node->to_string(0));
+      NOT_YET(node_type, DumpAst::ToString(node));
     }
   }
 
   // TODO simplify now that you don't have error decls.
-  ASSERT(node_type != nullptr) << node->to_string(0);
+  ASSERT(node_type != nullptr) << DumpAst::ToString(node);
   std::vector<type::Typed<ast::Declaration const *>> decls_to_check;
   {
     auto good_decls_to_check = node->scope_->AllDeclsWithId(node->id_);
@@ -1298,7 +1299,7 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
         bool err = false;
         for (auto *expr :
              extract_visitor.exprs(visitor::ExtractJumps::Kind::Return)) {
-          base::Log() << expr->to_string(0);
+          base::Log() << DumpAst::ToString(expr);
           if (!expr->as<ast::CommaList>().exprs_.empty()) {
             ctx->error_log()->NoReturnTypes(expr);
             err = true;
@@ -1857,7 +1858,7 @@ VerifyResult VerifyType::operator()(ast::Switch const *node,
     auto body_result = body->VerifyType(this, ctx);
     err |= !cond_result || !body_result;
     if (err) {
-      base::Log() << body->to_string(0);
+      base::Log() << DumpAst::ToString(body.get());
       NOT_YET();
       continue;
     }

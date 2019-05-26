@@ -11,17 +11,6 @@ struct Interface : public Expression {
 
 #include "visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override {
-    if (decls_.empty()) { return "interface {}"; }
-    std::stringstream ss;
-    ss << "interface {\n";
-    for (const auto &decl : decls_) {
-      ss << std::string(n * 2, ' ') << decl.to_string(n) << "\n";
-    }
-    ss << "}";
-    return ss.str();
-  }
-
   std::vector<Declaration> decls_;
   std::unique_ptr<core::DeclScope> body_scope_;
 };

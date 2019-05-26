@@ -1018,7 +1018,7 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
     } else {
       auto *t = ctx->type_of(node);
       if (!t) {
-        base::Log() << node->to_string(0);
+        base::Log() << DumpAst::ToString(node);
         UNREACHABLE();
       }
 
@@ -1046,7 +1046,7 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
         UNREACHABLE();
       }
     }
-    UNREACHABLE(node->to_string(0));
+    UNREACHABLE(DumpAst::ToString(node));
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation
@@ -1123,7 +1123,7 @@ ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::Identifier const *node, Context *ctx) const {
-  ASSERT(node->decl_ != nullptr) << node->to_string(0);
+  ASSERT(node->decl_ != nullptr) << DumpAst::ToString(node);
   if (node->decl_->const_) { return node->decl_->EmitIr(this, ctx); }
   if (node->decl_->is_fn_param_) {
     auto *t     = ctx->type_of(node);
@@ -1329,7 +1329,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
         NOT_YET();
       }
     } else {
-      NOT_YET(block_node.name_->to_string(0));
+      NOT_YET(DumpAst::ToString(block_node.name_.get()));
     }
   }
 

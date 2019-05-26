@@ -7,9 +7,6 @@
 namespace ast {
 struct Access : public Expression {
   ~Access() override {}
-  std::string to_string(size_t n) const override {
-    return operand->to_string(n) + "." + member_name;
-  }
 
 #include "visitor/visitors.xmacro.h"
 

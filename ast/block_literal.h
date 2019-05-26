@@ -11,19 +11,6 @@ struct BlockLiteral : public Expression {
 
 #include "visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override {
-    std::stringstream ss;
-    ss << "block" << (required_ ? "" : "?") << " {\n";
-    for (auto const &b : before_) {
-      ss << std::string(2 * (n + 1), ' ') << b.to_string(n + 1) << "\n";
-    }
-    for (auto const &a : after_) {
-      ss << std::string(2 * (n + 1), ' ') << a.to_string(n + 1) << "\n";
-    }
-    ss << std::string(2 * n, ' ') << "}";
-    return ss.str();
-  }
-
   std::vector<Declaration> before_, after_;
   std::unique_ptr<core::Scope> body_scope_;
   bool required_;

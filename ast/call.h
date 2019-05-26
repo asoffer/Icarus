@@ -15,25 +15,9 @@ struct Call : public Expression {
 
 #include "visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override {
-    std::stringstream ss;
-    ss << fn_->to_string(n) << "(";
-    bool seen_one = false;
-    args_.ApplyWithIndex([&](auto &&index,
-                             std::unique_ptr<Expression> const &expr) {
-      ss << (seen_one ? ", " : "");
-      if constexpr (!std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
-        ss << index << " = ";
-      }
-      ss << expr->to_string(n);
-      seen_one = true;
-    });
-    ss << ")";
-    return ss.str();
-  }
-
   std::unique_ptr<Expression> fn_;  // Rename to `callable_` or something
   core::FnArgs<std::unique_ptr<Expression>> args_;
+  // TODO keep info about the syntax was it f(a) or a'f?
 };
 }  // namespace ast
 

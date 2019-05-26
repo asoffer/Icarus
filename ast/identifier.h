@@ -14,8 +14,6 @@ struct Identifier : public Expression {
 
 #include "visitor/visitors.xmacro.h"
 
-  std::string to_string(size_t n) const override { return token; }
-
   std::string token;
   // TODO determine if mutability here is safe. It's thread-hostile, but maybe
   // you can make the rules clear enough. Or maybe store it elsewhere, but that

@@ -1,8 +1,9 @@
 #include "visitor/match.h"
 
-#include "visitor/match_state.h"
 #include "ast/ast.h"
 #include "match/binding_node.h"
+#include "visitor/dump_ast.h"
+#include "visitor/match_state.h"
 
 namespace visitor {
 Match::Match() : states_(std::make_unique<std::queue<MatchState>>()) {}
@@ -19,7 +20,7 @@ void Match::MatchAll(ast::Node const *node, ast::Expression const *pattern) {
 
 void Match::MatchExpr(ast::Node const *node, MatchState *state) {
   if (state->current_pattern_->is<match::BindingNode>()) {
-    base::Log() << node->to_string(0);
+    base::Log() << DumpAst::ToString(node);
   }
 }
 
