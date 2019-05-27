@@ -194,20 +194,19 @@ std::unique_ptr<ast::Node> BuildCall(
   call->span = TextSpan(nodes.front()->span, nodes.back()->span);
   call->fn_  = move_as<ast::Expression>(nodes[0]);
 
-  if (nodes[2]->is<ast::CommaList>()) {
+  if (auto *cl = nodes[2]->if_as<ast::CommaList>()) {
     std::optional<TextSpan> last_named_span_before_error = std::nullopt;
     std::vector<TextSpan> positional_error_spans;
 
-    for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
+    for (auto &expr : cl->exprs_) {
       if (auto *b = expr->if_as<ast::Binop>();
           b && b->op() == frontend::Operator::Assign) {
         if (positional_error_spans.empty()) {
           last_named_span_before_error = b->lhs()->span;
         }
-        call->args_.named_emplace(
-            std::move(
-                expr->as<ast::Binop>().lhs()->as<ast::Identifier>().token),
-            std::move(expr->as<ast::Binop>().rhs()));
+        auto [lhs, rhs] = std::move(*b).extract();
+        call->args_.named_emplace(std::move(lhs->as<ast::Identifier>().token),
+                                  std::move(rhs));
       } else {
         if (last_named_span_before_error.has_value()) {
           positional_error_spans.push_back(expr->span);
@@ -480,19 +479,18 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
   if (args->is<ast::Declaration>()) {
     inputs.push_back(move_as<ast::Declaration>(args));
 
-  } else if (args->is<ast::CommaList>()) {
-    auto *decls = &args->as<ast::CommaList>();
+  } else if (auto *decls = args->if_as<ast::CommaList>()) {
     inputs.reserve(decls->exprs_.size());
 
     for (auto &expr : decls->exprs_) {
       if (expr->is<ast::Declaration>()) {
         inputs.push_back(move_as<ast::Declaration>(expr));
       } else {
-        NOT_YET("log an error: ", args);
+        NOT_YET("log an error: ", visitor::DumpAst::ToString(args.get()));
       }
     }
   } else {
-    NOT_YET("log an error: ", args);
+    NOT_YET("log an error: ", visitor::DumpAst::ToString(args.get()));
   }
   return inputs;
 }
@@ -857,21 +855,19 @@ std::unique_ptr<ast::Node> BuildInterfaceLiteral(
   return interface_lit;
 }
 
+template <bool Stateful>
 std::unique_ptr<ast::Node> BuildScopeLiteral(std::unique_ptr<Statements> stmts,
-                                             TextSpan span, bool stateful,
-                                             Module *mod,
-                                             error::Log *error_log) {
-  auto scope_lit  = std::make_unique<ast::ScopeLiteral>(stateful);
-  scope_lit->span = std::move(span);  // TODO it's really bigger than this
-                                      // because it involves the keyword too.
+                                             TextSpan span) {
+  std::vector<std::unique_ptr<ast::Declaration>> decls;
   for (auto &stmt : stmts->content_) {
     if (stmt->is<ast::Declaration>()) {
-      scope_lit->decls_.push_back(std::move(stmt->as<ast::Declaration>()));
+      decls.push_back(move_as<ast::Declaration>(stmt));
     } else {
       NOT_YET(stmt);
     }
   }
-  return scope_lit;
+  return std::make_unique<ast::ScopeLiteral>(std::move(span), std::move(decls),
+                                             Stateful);
 }
 
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
@@ -976,13 +972,11 @@ std::unique_ptr<ast::Node> BuildKWBlock(
 
     } else if (tk == "scope") {
       TextSpan span(nodes.front()->span, nodes.back()->span);
-      return BuildScopeLiteral(move_as<Statements>(nodes[1]), span, false, mod,
-                               error_log);
+      return BuildScopeLiteral<false>(move_as<Statements>(nodes[1]), span);
 
     } else if (tk == "scope!") {
       TextSpan span(nodes.front()->span, nodes.back()->span);
-      return BuildScopeLiteral(move_as<Statements>(nodes[1]), span, true, mod,
-                               error_log);
+      return BuildScopeLiteral<true>(move_as<Statements>(nodes[1]), span);
 
     } else if (tk == "interface") {
       return BuildInterfaceLiteral(move_as<Statements>(nodes[1]), mod,

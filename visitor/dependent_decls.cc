@@ -109,7 +109,7 @@ void DependentDecls::operator()(ast::RepeatedUnop const *node,
 
 void DependentDecls::operator()(ast::ScopeLiteral const *node,
                                 ast::Declaration const *d) {
-  for (auto &decl : node->decls_) { decl.DependentDecls(this, d); }
+  for (auto const *decl : node->decls()) { decl->DependentDecls(this, d); }
 }
 
 void DependentDecls::operator()(ast::ScopeNode const *node,

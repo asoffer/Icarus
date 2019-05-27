@@ -1351,17 +1351,17 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
       name_to_block;
   auto *scope_lit =
       backend::EvaluateAs<ast::ScopeLiteral *>(node->name_.get(), ctx);
-  for (auto &decl : scope_lit->decls_) {
-    if (decl.id_ == "init") {
+  for (auto const *decl : scope_lit->decls()) {
+    if (decl->id_ == "init") {
       continue;
-    } else if (decl.id_ == "done") {
+    } else if (decl->id_ == "done") {
       continue;
     } else {
       auto bs = backend::EvaluateAs<ir::BlockSequence>(
-          type::Typed<ast::Expression const *>{&decl, type::Block}, ctx);
+          type::Typed<ast::Expression const *>{decl, type::Block}, ctx);
       ASSERT(bs.size() == 1u);
       name_to_block.emplace(std::piecewise_construct,
-                            std::forward_as_tuple(decl.id_),
+                            std::forward_as_tuple(decl->id_),
                             std::forward_as_tuple(bs.at(0), nullptr));
     }
   }
@@ -1378,7 +1378,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
 
   // TODO this lambda thing is an awful hack.
   ASSERT_NOT_NULL([&] {
-    auto *mod       = scope_lit->decls_.at(0).mod_;
+    auto *mod       = scope_lit->decl(0)->mod_;
     bool swap_bc    = ctx->mod_ != mod;
     Module *old_mod = std::exchange(ctx->mod_, mod);
     if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
@@ -1405,7 +1405,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
     ASSERT_NOT_NULL(node)->EmitIr(this, ctx);
 
     ASSERT_NOT_NULL([&] {
-      auto *mod       = scope_lit->decls_.at(0).mod_;
+      auto *mod       = scope_lit->decl(0)->mod_;
       bool swap_bc    = ctx->mod_ != mod;
       Module *old_mod = std::exchange(ctx->mod_, mod);
       if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
@@ -1423,7 +1423,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
 
   // TODO this lambda thing is an awful hack.
   return ASSERT_NOT_NULL([&] {
-           auto *mod       = scope_lit->decls_.at(0).mod_;
+           auto *mod       = scope_lit->decl(0)->mod_;
            bool swap_bc    = ctx->mod_ != mod;
            Module *old_mod = std::exchange(ctx->mod_, mod);
            if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }

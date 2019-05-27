@@ -107,7 +107,7 @@ void ExtractJumps::operator()(ast::RepeatedUnop const *node) {
 }
 
 void ExtractJumps::operator()(ast::ScopeLiteral const *node) {
-  for (auto &decl : node->decls_) { decl.ExtractJumps(this); }
+  for (auto const *decl : node->decls()) { decl->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::ScopeNode const *node) {

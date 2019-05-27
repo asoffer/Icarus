@@ -124,7 +124,7 @@ static bool VerifyAssignment(TextSpan const &span, type::Type const *to,
     return false;
   }
 
-  NOT_YET("log an error: no cast from ", from, " to ", to);
+  NOT_YET("log an error: no cast from ", from->to_string(), " to ", to->to_string());
 }
 
 static type::Type const *DereferenceAll(type::Type const *t) {
@@ -1324,7 +1324,6 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
         bool err = false;
         for (auto *rep_node :
              extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
-          base::Log() << DumpAst::ToString(rep_node);
           if (!rep_node->exprs().empty()) {
             ctx->error_log()->NoReturnTypes(rep_node);
             err = true;
@@ -1722,18 +1721,18 @@ static type::Pointer const *StatePtrTypeOrLogError(
 
 VerifyResult VerifyType::operator()(ast::ScopeLiteral const *node,
                                     Context *ctx) const {
-  if (node->stateful_) {
+  if (node->is_stateful()) {
     absl::flat_hash_map<type::Pointer const *,
                         std::vector<ast::Declaration const *>>
         state_types;
     bool error = false;
-    for (auto &decl : node->decls_) {
+    for (auto const *decl : node->decls()) {
       // TODO handle errors.
-      auto result = decl.VerifyType(this, ctx);
-      if (decl.id_ == "done") {
+      auto result = decl->VerifyType(this, ctx);
+      if (decl->id_ == "done") {
         ASSIGN_OR(continue, auto &state_type,
                   StatePtrTypeOrLogError(node, result.type_));
-        state_types[&state_type].push_back(&decl);
+        state_types[&state_type].push_back(decl);
       } else if (result.type_ == type::Block ||
                  result.type_ == type::OptBlock ||
                  result.type_ == type::RepBlock) {
@@ -1760,8 +1759,8 @@ VerifyResult VerifyType::operator()(ast::ScopeLiteral const *node,
     }
   } else {
     bool error = false;
-    for (auto &decl : node->decls_) {
-      auto result = decl.VerifyType(this, ctx);
+    for (auto const *decl : node->decls()) {
+      auto result = decl->VerifyType(this, ctx);
       if (!result.const_) {
         error = true;
         NOT_YET("log an error");
@@ -1798,7 +1797,7 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
             arg.get(), arg->VerifyType(this, ctx)};
       });
 
-  auto *mod       = scope_lit->decls_.at(0).mod_;
+  auto *mod       = scope_lit->decl(0)->mod_;
   bool swap_bc    = ctx->mod_ != mod;
   Module *old_mod = std::exchange(ctx->mod_, mod);
   if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
@@ -1807,13 +1806,13 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
     if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
   });
 
-  for (auto &decl : scope_lit->decls_) {
-    if (decl.id_ == "init") {
-      init_os.emplace(&decl,
-                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
-    } else if (decl.id_ == "done") {
-      done_os.emplace(&decl,
-                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(&decl)));
+  for (auto const *decl : scope_lit->decls()) {
+    if (decl->id_ == "init") {
+      init_os.emplace(decl,
+                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(decl)));
+    } else if (decl->id_ == "done") {
+      done_os.emplace(decl,
+                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(decl)));
     }
   }
 
@@ -1835,10 +1834,49 @@ VerifyResult VerifyType::operator()(ast::StructLiteral const *node,
   }
 
   if (node->args_.empty()) {
+    bool is_const = true;
+    bool err = false;
+    for (auto const& field : node->fields_) {
+      if (!field.type_expr) { continue; }
+      auto result = field.type_expr->VerifyType(this, ctx);
+      if (!result) {
+        err = true;
+        continue;
+      }
+      is_const &= result.const_;
+      if (field.init_val) {
+        if (result.const_) {
+          auto init_val_result = field.init_val->VerifyType(this, ctx);
+          if (!init_val_result.const_) {
+            ctx->error_log()->NonConstantStructFieldDefaultValue(
+                field.init_val->span);
+            err = true;
+          }
+
+          if (init_val_result.type_ != result.type_) {
+            NOT_YET("type mismatch");
+          }
+
+
+        } else {
+          NOT_YET(
+              "can't have an initial value set if the type is also present and "
+              "non-constant");
+        }
+      }
+    }
+    if (err) { return ctx->set_result(node, VerifyResult::Error()); }
+    return ctx->set_result(node, VerifyResult::Constant(type::Type_));
+    // TODO, we need to verify the body of this struct at some point, but it may
+    // be dependent on things we can't evaluate yet. For example,
+    //
+    // wrapper ::= (T: type) => struct { val: T }
+    //
+    // I'm yet unsure exactly how we should handle this.
+    /*
     bool ok = absl::c_all_of(node->fields_, [this, ctx](
                                                 ast::Declaration const &field) {
       // TODO you should verify each field no matter what.
-      base::Log() << DumpAst::ToString(&field);
       field.VerifyType(this, ctx);
       if (!field.init_val ||
           ASSERT_NOT_NULL(ctx->prior_verification_attempt(field.init_val.get()))
@@ -1856,6 +1894,7 @@ VerifyResult VerifyType::operator()(ast::StructLiteral const *node,
     } else {
       return VerifyResult::Error();
     }
+    */
   } else {
     return ctx->set_result(node, VerifyResult::Constant(type::GenStruct(
                                      node->scope_, std::move(ts))));

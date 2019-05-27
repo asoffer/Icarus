@@ -34,7 +34,6 @@ cc_lib_target(
         ":match_declaration",
         ":node",
         ":node_span",
-        ":scope_literal",
         ":struct_literal",
         ":struct_type",
         ":switch",
@@ -72,7 +71,6 @@ icarus_ast_node(name = "node", deps = [
     "//ir:results",
 ])
 icarus_ast_node(name = "match_declaration", deps = [":declaration"])
-icarus_ast_node(name = "scope_literal", deps = [":declaration", ":expression"])
 icarus_ast_node(name = "struct_literal", deps = [":declaration", ":expression"])
 icarus_ast_node(name = "struct_type", deps = [":expression"])
 icarus_ast_node(name = "switch", deps = [":expression"])

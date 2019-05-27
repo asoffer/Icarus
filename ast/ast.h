@@ -24,8 +24,9 @@ struct ScopeExpr : public Expression {
   ScopeExpr(ScopeExpr &&) noexcept = default;
   ScopeExpr &operator=(ScopeExpr &&) noexcept = default;
 
-  void set_body_with_parent(core::Scope *p) {
-    body_scope_ = p->template add_child<S>();
+  template <typename... Args>
+  void set_body_with_parent(core::Scope *p, Args &&... args) {
+    body_scope_ = p->template add_child<S>(std::forward<Args>(args)...);
   }
   S *body_scope() { return body_scope_.get(); }
   S const *body_scope() const { return body_scope_.get(); }
@@ -324,10 +325,50 @@ struct RepeatedUnop : public Node {
   std::vector<std::unique_ptr<Expression>> exprs_;
 };
 
-}  // namespace ast
+// ScopeLiteral:
+// Represents the definition of a user-defined scope, including how blocks jump
+// to one another.
+//
+// Example:
+//  ```
+//  if ::= scope {
+//    init ::= (b: bool) -> () {
+//      switch (b) {
+//        jump then()           when true
+//        jump (else | exit)()  when false
+//      }
+//    }
+//    then ::= block {
+//      before ::= () -> () {}
+//      after ::= () -> () { jump exit() }
+//    }
+//    else ::= block? {
+//      before ::= () -> () {}
+//      after ::= () -> () { jump exit() }
+//    }
+//    done ::= () -> () {}
+//  }
+//  ```
+struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
+  ScopeLiteral(TextSpan span, std::vector<std::unique_ptr<Declaration>> decls,
+               bool stateful)
+      : ScopeExpr<core::ScopeLitScope>(std::move(span)),
+        decls_(std::move(decls)),
+        stateful_(stateful) {}
+  ~ScopeLiteral() override {}
 
-#include "ast/scope_literal.h"
-namespace ast {
+  bool is_stateful() const { return stateful_; }
+  Declaration const *decl(size_t i) const { return decls_[i].get(); }
+  NodeSpan<Declaration const> decls() const { return decls_; }
+  NodeSpan<Declaration> decls() { return decls_; }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::vector<std::unique_ptr<Declaration>> decls_;
+  bool stateful_ = false;
+};
+
 
 struct ScopeNode : public Expression {
   ~ScopeNode() override {}

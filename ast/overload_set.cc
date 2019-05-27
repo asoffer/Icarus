@@ -13,9 +13,14 @@ template <typename DeclSpan>
 static void EmplaceDecls(OverloadSet *os, DeclSpan &&decls, Context *ctx) {
   os->reserve(decls.size());
   for (auto const *decl : decls) {
-    if (auto const *result = ctx->prior_verification_attempt(decl)) {
-      os->emplace(decl, *result);
+    auto const *result_ptr = ctx->prior_verification_attempt(decl);
+    if (result_ptr == nullptr) {
+      // TODO i'm skeptical this is the right context.
+      visitor::VerifyType vis;
+      decl->VerifyType(&vis, ctx);
     }
+    result_ptr = ctx->prior_verification_attempt(decl);
+    if (result_ptr) { os->emplace(decl, *result_ptr); }
   }
 }
 

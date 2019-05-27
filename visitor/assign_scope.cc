@@ -157,12 +157,11 @@ void AssignScope::operator()(ast::RepeatedUnop *node, core::Scope *scope) {
   SetAllScopes(this, node->exprs(), scope);
 }
 
-void AssignScope::operator()(ast::ScopeLiteral *node,
-                             core::Scope *scope) {
-  node->scope_      = scope;
-  node->body_scope_ = scope->add_child<core::ScopeLitScope>(node);
-  for (auto &decl : node->decls_) {
-    decl.assign_scope(this, node->body_scope_.get());
+void AssignScope::operator()(ast::ScopeLiteral *node, core::Scope *scope) {
+  node->scope_ = scope;
+  node->set_body_with_parent(scope, node);
+  for (auto *decl : node->decls()) {
+    decl->assign_scope(this, node->body_scope());
   }
 }
 
