@@ -345,6 +345,7 @@ std::unique_ptr<ast::Node> BuildAccess(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
 
+  auto span = TextSpan(nodes[0]->span, nodes[2]->span);
   auto &&operand = move_as<ast::Expression>(nodes[0]);
   if (operand->is<ast::Declaration>()) {
     error_log->DeclarationInAccess(operand->span);
@@ -352,7 +353,6 @@ std::unique_ptr<ast::Node> BuildAccess(
     error_log->RHSNonIdInAccess(nodes[2]->span);
   }
 
-  auto span = TextSpan(nodes[0]->span, nodes[2]->span);
   return std::make_unique<ast::Access>(
       span, std::move(operand),
       std::move(nodes[2]->as<ast::Identifier>().token));

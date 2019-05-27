@@ -1,5 +1,6 @@
 #include "visitor/verify_type.h"
 
+#include "absl/algorithm/container.h"
 #include "ast/ast.h"
 #include "ast/overload_set.h"
 #include "backend/eval.h"
@@ -180,10 +181,9 @@ VerifyResult VerifyType::operator()(ast::Access const *node,
     }
 
     if (ctx->mod_ != s->defining_module() &&
-        std::none_of(member->hashtags_.begin(), member->hashtags_.end(),
-                     [](ast::Hashtag h) {
-                       return h.kind_ == ast::Hashtag::Builtin::Export;
-                     })) {
+        absl::c_none_of(member->hashtags_, [](ast::Hashtag h) {
+          return h.kind_ == ast::Hashtag::Builtin::Export;
+        })) {
       ctx->error_log()->NonExportedMember(node->span, node->member_name(),
                                           s->to_string());
     }
@@ -281,8 +281,8 @@ static bool IsTypeOrTupleOfTypes(type::Type const *t) {
   if (t == type::Type_) { return true; }
   if (!t->is<type::Tuple>()) { return false; }
   auto &entries = t->as<type::Tuple>().entries_;
-  return std::all_of(entries.begin(), entries.end(),
-                     [](type::Type const *ty) { return ty == type::Type_; });
+  return absl::c_all_of(entries,
+                        [](type::Type const *ty) { return ty == type::Type_; });
 }
 
 VerifyResult VerifyType::operator()(ast::Binop const *node,
@@ -703,8 +703,7 @@ VerifyResult VerifyType::operator()(ast::ChainOp const *node,
   for (auto &expr : node->exprs) {
     results.push_back(expr->VerifyType(this, ctx));
   }
-  if (std::any_of(results.begin(), results.end(),
-                  [](VerifyResult const &v) { return !v.ok(); })) {
+  if (absl::c_any_of(results, [](VerifyResult const &v) { return !v.ok(); })) {
     return VerifyResult::Error();
   }
 
@@ -1058,7 +1057,7 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
         //     _val: T = x
         //   }
         //
-        NOT_YET("log an error", node);
+        NOT_YET("log an error", DumpAst::ToString(node));
         return ctx->set_result(node, VerifyResult::Error());
       }
       auto *type_expr_type = type_expr_result.type_;
@@ -1401,10 +1400,10 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
   }
 
   if (error ||
-      std::any_of(input_type_vec.begin(), input_type_vec.end(),
-                  [](type::Type const *t) { return t == nullptr; }) ||
-      std::any_of(output_type_vec.begin(), output_type_vec.end(),
-                  [](type::Type const *t) { return t == nullptr; })) {
+      absl::c_any_of(input_type_vec,
+                     [](type::Type const *t) { return t == nullptr; }) ||
+      absl::c_any_of(output_type_vec,
+                     [](type::Type const *t) { return t == nullptr; })) {
     return visitor::VerifyResult::Error();
   }
 
@@ -1814,15 +1813,21 @@ VerifyResult VerifyType::operator()(ast::StructLiteral const *node,
   std::vector<type::Type const *> ts;
   ts.reserve(node->args_.size());
   for (auto &a : node->args_) { ts.push_back(a.VerifyType(this, ctx).type_); }
-  if (std::any_of(ts.begin(), ts.end(),
-                  [](type::Type const *t) { return t == nullptr; })) {
+  if (absl::c_any_of(ts, [](type::Type const *t) { return t == nullptr; })) {
     return VerifyResult::Error();
   }
 
   if (node->args_.empty()) {
     bool ok = absl::c_all_of(node->fields_, [this, ctx](
                                                 ast::Declaration const &field) {
-      if (field.VerifyType(this, ctx).const_) { return true; }
+      // TODO you should verify each field no matter what.
+      base::Log() << DumpAst::ToString(&field);
+      field.VerifyType(this, ctx);
+      if (!field.init_val ||
+          ASSERT_NOT_NULL(ctx->prior_verification_attempt(field.init_val.get()))
+              ->const_) {
+        return true;
+      }
       ctx->error_log()->NonConstantStructFieldDefaultValue(
           field.init_val->span);
       return false;
@@ -1893,8 +1898,8 @@ VerifyResult VerifyType::operator()(ast::Switch const *node,
     return ctx->set_result(node, VerifyResult(type::Void(), is_const));
   }
   auto some_type = *types.begin();
-  if (std::all_of(types.begin(), types.end(),
-                  [&](type::Type const *t) { return t == some_type; })) {
+  if (absl::c_all_of(types,
+                     [&](type::Type const *t) { return t == some_type; })) {
     // TODO node might be a constant.
     return ctx->set_result(node, VerifyResult(some_type, is_const));
   } else {

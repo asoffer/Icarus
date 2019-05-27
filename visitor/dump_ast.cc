@@ -1,5 +1,6 @@
 #include "visitor/dump_ast.h"
 
+#include "frontend/token.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
@@ -399,4 +400,7 @@ void DumpAst::operator()(ast::Unop const *node) {
   node->operand->DumpAst(this);
 }
 
+void DumpAst::operator()(frontend::Token const *node) {
+  absl::StrAppend(out_, node->token);
+}
 }  // namespace visitor

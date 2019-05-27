@@ -5,6 +5,10 @@
 
 #include "ast/ast_fwd.h"
 
+namespace frontend {
+struct Token;
+}  // namespace frontend
+
 namespace visitor {
 
 struct DumpAst {
@@ -15,6 +19,8 @@ struct DumpAst {
 #define ICARUS_AST_NODE_X(name) void operator()(ast::name const *node);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
+
+  void operator()(frontend::Token const *node);
 
   std::string indent() const { return std::string(2 * indentation_, ' '); }
 

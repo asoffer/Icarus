@@ -117,6 +117,7 @@ cc_lib_target(
     impl_deps = [
         "//base:stringify",
         "//ast:ast",
+        "//frontend:token",
         "//ir:results",
         "@com_google_absl//absl/strings",
     ],
@@ -343,6 +344,7 @@ cc_lib_target(
         "//type:type",
         "//type:cast",
         "//type:util",
+        "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = None,
 )
