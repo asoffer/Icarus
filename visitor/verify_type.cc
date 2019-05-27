@@ -1277,11 +1277,13 @@ VerifyResult VerifyType::operator()(ast::EnumLiteral const *node,
 static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                                         ast::FunctionLiteral const *node,
                                         Context *ctx) {
-  node->statements_.VerifyType(visitor, ctx);
+  for (auto const &stmt : node->statements_) { stmt->VerifyType(visitor, ctx); }
   // TODO propogate cyclic dependencies.
 
   visitor::ExtractJumps extract_visitor;
-  node->statements_.ExtractJumps(&extract_visitor);
+  for (auto const &stmt : node->statements_){
+    stmt->ExtractJumps(&extract_visitor);
+  }
 
   // TODO we can have yields and returns, or yields and jumps, but not jumps and
   // returns. Check this.
@@ -1821,12 +1823,6 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
 
   for (auto &block_node : node->blocks_) { block_node.VerifyType(this, ctx); }
   return ast::VerifyDispatch(node, done_os, /* TODO */ {}, ctx);
-}
-
-VerifyResult VerifyType::operator()(ast::Statements const *node,
-                                    Context *ctx) const {
-  for (auto &stmt : node->content_) { stmt->VerifyType(this, ctx); }
-  return VerifyResult::NonConstant(type::Void());
 }
 
 VerifyResult VerifyType::operator()(ast::StructLiteral const *node,

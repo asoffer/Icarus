@@ -119,11 +119,6 @@ void DependentDecls::operator()(ast::ScopeNode const *node,
   for (auto &block : node->blocks_) { block.DependentDecls(this, d); }
 }
 
-void DependentDecls::operator()(ast::Statements const *node,
-                                ast::Declaration const *d) {
-  for (auto const &stmt : node->content_) { stmt->DependentDecls(this, d); }
-}
-
 void DependentDecls::operator()(ast::StructLiteral const *node,
                                 ast::Declaration const *d) {
   for (auto &a : node->args_) { a.DependentDecls(this, d); }

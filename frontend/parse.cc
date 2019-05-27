@@ -22,6 +22,29 @@ bool parser = false;
 
 namespace frontend {
 namespace {
+struct Statements : public ast::Node {
+  Statements() {}
+  ~Statements() override {}
+  Statements(Statements &&) noexcept = default;
+  Statements &operator=(Statements &&) noexcept = default;
+
+#include "visitor/visitors.xmacro.h"
+
+  size_t size() const { return content_.size(); }
+  void append(std::unique_ptr<ast::Node> &&node) {
+    if (auto *stmts = node->if_as<Statements>()) {
+      content_.insert(content_.end(),
+                      std::make_move_iterator(stmts->content_.begin()),
+                      std::make_move_iterator(stmts->content_.end()));
+    } else {
+      content_.push_back(std::move(node));
+    }
+  }
+  std::vector<std::unique_ptr<ast::Node>> extract() && {
+    return std::move(content_);
+  }
+  std::vector<std::unique_ptr<ast::Node>> content_;
+};
 
 template <typename To, typename From>
 std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
@@ -67,7 +90,7 @@ std::unique_ptr<ast::Node> AddHashtag(
   return expr;
 }
 
-std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<ast::Statements> stmts,
+std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<Statements> stmts,
                                          Module *mod, error::Log *error_log) {
   auto switch_expr  = std::make_unique<ast::Switch>();
   switch_expr->span = stmts->span;  // TODO it's really bigger than this because
@@ -89,7 +112,7 @@ std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<ast::Statements> stmts,
 std::unique_ptr<ast::Node> OneBracedStatement(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto stmts  = std::make_unique<ast::Statements>();
+  auto stmts  = std::make_unique<Statements>();
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
   stmts->append(std::move(nodes[1]));
   ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
@@ -99,7 +122,7 @@ std::unique_ptr<ast::Node> OneBracedStatement(
 std::unique_ptr<ast::Node> EmptyBraces(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto stmts  = std::make_unique<ast::Statements>();
+  auto stmts  = std::make_unique<Statements>();
   stmts->span = TextSpan(nodes[0]->span, nodes[1]->span);
   return stmts;
 }
@@ -113,7 +136,7 @@ std::unique_ptr<ast::Node> BuildJump(std::unique_ptr<ast::Node> node) {
     if (tk == "jump") { return Operator::Jump; }
     UNREACHABLE();
   }();
-  auto stmts = std::make_unique<ast::Statements>();
+  auto stmts = std::make_unique<Statements>();
   stmts->append(std::make_unique<ast::RepeatedUnop>(
       node->span, op, std::vector<std::unique_ptr<ast::Expression>>{}));
   stmts->span = node->span;
@@ -123,10 +146,10 @@ std::unique_ptr<ast::Node> BuildJump(std::unique_ptr<ast::Node> node) {
 std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto stmts  = move_as<ast::Statements>(nodes[1]);
+  auto stmts  = move_as<Statements>(nodes[1]);
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  if (nodes[2]->is<ast::Statements>()) {
-    for (auto &stmt : nodes[2]->as<ast::Statements>().content_) {
+  if (nodes[2]->is<Statements>()) {
+    for (auto &stmt : nodes[2]->as<Statements>().content_) {
       stmts->append(std::move(stmt));
       ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
     }
@@ -476,8 +499,8 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
 
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
     TextSpan span, std::vector<std::unique_ptr<ast::Declaration>> inputs,
-    std::unique_ptr<ast::Expression> output, ast::Statements &&stmts,
-    Module *mod, error::Log *error_log) {
+    std::unique_ptr<ast::Expression> output, Statements &&stmts, Module *mod,
+    error::Log *error_log) {
   auto fn     = std::make_unique<ast::FunctionLiteral>();
   fn->module_ = ASSERT_NOT_NULL(mod);
   for (auto &input : inputs) {
@@ -500,7 +523,7 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
   }
 
   fn->span        = std::move(span);
-  fn->statements_ = std::move(stmts);
+  fn->statements_ = std::move(stmts).extract();
 
   if (output == nullptr) {
     fn->return_type_inferred_ = true;
@@ -531,7 +554,7 @@ std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
   auto [lhs, rhs] = std::move(*binop).extract();
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(std::move(lhs)), std::move(rhs),
-      std::move(nodes[1]->as<ast::Statements>()), mod, error_log);
+      std::move(nodes[1]->as<Statements>()), mod, error_log);
 }
 
 std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
@@ -540,7 +563,7 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
   auto span = TextSpan(nodes[0]->span, nodes.back()->span);
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(move_as<ast::Expression>(nodes[0])),
-      nullptr, std::move(nodes[2]->as<ast::Statements>()), mod, error_log);
+      nullptr, std::move(nodes[2]->as<Statements>()), mod, error_log);
 }
 
 // TODO this loses syntactic information that a formatter cares about.
@@ -558,7 +581,7 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
     ret_vals.push_back(std::move(body));
   }
 
-  ast::Statements stmts;
+  Statements stmts;
   stmts.append(std::make_unique<ast::RepeatedUnop>(
       std::move(span), frontend::Operator::Return, std::move(ret_vals)));
   return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
@@ -578,7 +601,7 @@ std::unique_ptr<ast::Node> BuildOneElementCommaList(
 std::unique_ptr<ast::Node> BuildOneStatement(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto stmts  = std::make_unique<ast::Statements>();
+  auto stmts  = std::make_unique<Statements>();
   stmts->span = nodes[0]->span;
   stmts->append(std::move(nodes[0]));
   ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
@@ -588,7 +611,7 @@ std::unique_ptr<ast::Node> BuildOneStatement(
 std::unique_ptr<ast::Node> BuildMoreStatements(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  std::unique_ptr<ast::Statements> stmts = move_as<ast::Statements>(nodes[0]);
+  std::unique_ptr<Statements> stmts = move_as<Statements>(nodes[0]);
   stmts->append(std::move(nodes[1]));
   ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
   return stmts;
@@ -597,7 +620,7 @@ std::unique_ptr<ast::Node> BuildMoreStatements(
 std::unique_ptr<ast::Node> OneBracedJump(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto stmts  = std::make_unique<ast::Statements>();
+  auto stmts  = std::make_unique<Statements>();
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
   stmts->append(BuildJump(std::move(nodes[1])));
   ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
@@ -628,7 +651,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
   auto span = TextSpan(nodes.front()->span, nodes.back()->span);
   return std::make_unique<ast::BlockNode>(
       std::move(span), std::move(nodes[0]->as<ast::Identifier>().token),
-      std::move(nodes[1]->as<ast::Statements>()).extract());
+      std::move(nodes[1]->as<Statements>()).extract());
 }
 
 std::unique_ptr<ast::Node> ExtendScopeNode(
@@ -806,7 +829,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     std::vector<std::unique_ptr<ast::Node>> nodes, bool is_enum, Module *mod,
     error::Log *error_log) {
   std::vector<std::unique_ptr<ast::Expression>> elems;
-  if (auto *stmts = nodes[1]->if_as<ast::Statements>()) {
+  if (auto *stmts = nodes[1]->if_as<Statements>()) {
     // TODO if you want these values to depend on compile-time parameters,
     // you'll need to actually build the AST nodes.
     for (auto &stmt : stmts->content_) {
@@ -820,8 +843,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
 }
 
 std::unique_ptr<ast::Node> BuildInterfaceLiteral(
-    std::unique_ptr<ast::Statements> stmts, Module *mod,
-    error::Log *error_log) {
+    std::unique_ptr<Statements> stmts, Module *mod, error::Log *error_log) {
   auto interface_lit  = std::make_unique<ast::Interface>();
   interface_lit->span = stmts->span;  // TODO it's really bigger than this
                                       // because it involves the keyword too.
@@ -835,9 +857,10 @@ std::unique_ptr<ast::Node> BuildInterfaceLiteral(
   return interface_lit;
 }
 
-std::unique_ptr<ast::Node> BuildScopeLiteral(
-    std::unique_ptr<ast::Statements> stmts, TextSpan span, bool stateful,
-    Module *mod, error::Log *error_log) {
+std::unique_ptr<ast::Node> BuildScopeLiteral(std::unique_ptr<Statements> stmts,
+                                             TextSpan span, bool stateful,
+                                             Module *mod,
+                                             error::Log *error_log) {
   auto scope_lit  = std::make_unique<ast::ScopeLiteral>(stateful);
   scope_lit->span = std::move(span);  // TODO it's really bigger than this
                                       // because it involves the keyword too.
@@ -851,7 +874,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
   return scope_lit;
 }
 
-std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<ast::Statements> stmts,
+std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
                                       bool required, Module *mod,
                                       error::Log *error_log) {
   auto span = stmts->span;  // TODO it's really bigger than this because it
@@ -875,7 +898,7 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<ast::Statements> stmts,
                                              std::move(after), required);
 }
 
-std::unique_ptr<ast::StructLiteral> BuildStructLiteral(ast::Statements &&stmts,
+std::unique_ptr<ast::StructLiteral> BuildStructLiteral(Statements &&stmts,
                                                        TextSpan span,
                                                        Module *mod,
                                                        error::Log *error_log) {
@@ -903,12 +926,12 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
   ASSERT(nodes[0], InheritsFrom<frontend::Token>());
   auto const &tk = nodes[0]->as<frontend::Token>().token;
   if (tk == "switch") {
-    auto sw   = BuildSwitch(move_as<ast::Statements>(nodes[4]), mod, error_log);
+    auto sw   = BuildSwitch(move_as<Statements>(nodes[4]), mod, error_log);
     sw->expr_ = move_as<ast::Expression>(nodes[2]);
     return sw;
   } else if (tk == "struct") {
     auto result = BuildStructLiteral(
-        std::move(nodes[4]->as<ast::Statements>()),
+        std::move(nodes[4]->as<Statements>()),
         TextSpan(nodes.front()->span, nodes.back()->span), mod, error_log);
     if (nodes[2]->is<ast::CommaList>()) {
       for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
@@ -931,7 +954,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
 std::unique_ptr<ast::Node> BuildConcreteStruct(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  return BuildStructLiteral(std::move(nodes[1]->as<ast::Statements>()),
+  return BuildStructLiteral(std::move(nodes[1]->as<Statements>()),
                             TextSpan(nodes.front()->span, nodes.back()->span),
                             mod, error_log);
 }
@@ -949,27 +972,25 @@ std::unique_ptr<ast::Node> BuildKWBlock(
       return BuildConcreteStruct(std::move(nodes), mod, error_log);
 
     } else if (tk == "switch") {
-      return BuildSwitch(move_as<ast::Statements>(nodes[1]), mod, error_log);
+      return BuildSwitch(move_as<Statements>(nodes[1]), mod, error_log);
 
     } else if (tk == "scope") {
       TextSpan span(nodes.front()->span, nodes.back()->span);
-      return BuildScopeLiteral(move_as<ast::Statements>(nodes[1]), span, false,
-                               mod, error_log);
+      return BuildScopeLiteral(move_as<Statements>(nodes[1]), span, false, mod,
+                               error_log);
 
     } else if (tk == "scope!") {
       TextSpan span(nodes.front()->span, nodes.back()->span);
-      return BuildScopeLiteral(move_as<ast::Statements>(nodes[1]), span, true,
-                               mod, error_log);
+      return BuildScopeLiteral(move_as<Statements>(nodes[1]), span, true, mod,
+                               error_log);
 
     } else if (tk == "interface") {
-      return BuildInterfaceLiteral(move_as<ast::Statements>(nodes[1]), mod,
+      return BuildInterfaceLiteral(move_as<Statements>(nodes[1]), mod,
                                    error_log);
     } else if (tk == "block") {
-      return BuildBlock(move_as<ast::Statements>(nodes[1]), true, mod,
-                        error_log);
+      return BuildBlock(move_as<Statements>(nodes[1]), true, mod, error_log);
     } else if (tk == "block?") {
-      return BuildBlock(move_as<ast::Statements>(nodes[1]), false, mod,
-                        error_log);
+      return BuildBlock(move_as<Statements>(nodes[1]), false, mod, error_log);
     } else {
       UNREACHABLE(tk);
     }
@@ -1366,7 +1387,7 @@ void CleanUpReduction(ParseState *state) {
 }
 }  // namespace
 
-std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod) {
+std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod) {
   auto state = ParseState(src, mod);
   Shift(&state);
 
@@ -1399,7 +1420,7 @@ std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod) {
     mod->error_log_.UnknownParseError(lines);
   }
 
-  return move_as<ast::Statements>(state.node_stack_.back());
+  return std::move(move_as<Statements>(state.node_stack_.back())->content_);
 }
 
 }  // namespace frontend

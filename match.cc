@@ -8,7 +8,7 @@
 #include "visitor/match.h"
 
 namespace frontend {
-std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
+std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod);
 }  // namespace frontend
 
 namespace match {
@@ -18,17 +18,17 @@ int MatchParse(std::filesystem::path const &expr_file,
   ASSIGN_OR(return 1, frontend::FileSrc expr_src,
                    frontend::FileSrc::Make(file));
   auto expr_stmts = frontend::Parse(&expr_src, &expr_mod);
-  if (!expr_stmts || expr_stmts->content_.size() != 1) { return 2; }
-  auto *expr = expr_stmts->content_[0]->if_as<ast::Expression>();
+  if (expr_stmts.size() != 1) { return 2; }
+  auto *expr = expr_stmts[0]->if_as<ast::Expression>();
   if (!expr) { return 2; }
 
   Module mod;
   ASSIGN_OR(return 1, frontend::FileSrc src, frontend::FileSrc::Make(file));
   auto stmts = frontend::Parse(&src, &mod);
-  if (!stmts) { return 2; }
 
   visitor::Match visitor;
-  visitor.MatchAll(stmts.get(), expr);
+  // TODO How do you want to match multiple lines?
+  visitor.MatchAll(stmts[0].get(), expr);
 
   return 0;
 }

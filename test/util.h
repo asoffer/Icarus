@@ -4,14 +4,13 @@
 #include <string>
 #include <memory>
 
-#include "ast/statements.h"
 #include "core/scope.h"
 #include "frontend/source.h"
 #include "misc/context.h"
 #include "misc/module.h"
 
 namespace frontend {
-std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
+std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod);
 }  // namespace frontend
 
 namespace test {
@@ -21,11 +20,9 @@ template <typename T, bool Verify>
 std::unique_ptr<T> MakeNode(std::string s, ::Context *ctx, core::Scope *scope) {
   if (scope == nullptr) { scope = &ctx->mod_->scope_; }
   frontend::StringSrc src(std::move(s));
-  std::unique_ptr<ast::Statements> stmts = frontend::Parse(&src, ctx->mod_);
-  if (!stmts) { return nullptr; }
-  if (stmts->content_.size() != 1u) { return nullptr; }
-  std::unique_ptr<ast::Node> stmt = std::move(stmts->content_[0]);
-  auto *cast_ptr                  = stmt->if_as<T>();
+  auto stmts = frontend::Parse(&src, ctx->mod_);
+  if (stmts.size() != 1u) { return nullptr; }
+  auto *cast_ptr = stmts[0]->if_as<T>();
   if (cast_ptr) {
     {
       visitor::AssignScope visitor;
@@ -33,7 +30,7 @@ std::unique_ptr<T> MakeNode(std::string s, ::Context *ctx, core::Scope *scope) {
     }
     visitor::VerifyType visitor;
     if (Verify && !cast_ptr->VerifyType(&visitor, ctx)) { return nullptr; }
-    stmt.release();
+    stmts[0].release();
     return std::unique_ptr<T>{cast_ptr};
 
   } else {

@@ -35,7 +35,6 @@ cc_lib_target(
         ":node",
         ":node_span",
         ":scope_literal",
-        ":statements",
         ":struct_literal",
         ":struct_type",
         ":switch",
@@ -59,7 +58,6 @@ icarus_ast_node(name = "expression", deps = [":hashtag", ":node"])
 icarus_ast_node(name = "function_literal", deps = [
     ":declaration",
     ":expression",
-    ":statements",
     "//base:graph",
     "//core:fn_params",
 ])
@@ -75,7 +73,6 @@ icarus_ast_node(name = "node", deps = [
 ])
 icarus_ast_node(name = "match_declaration", deps = [":declaration"])
 icarus_ast_node(name = "scope_literal", deps = [":declaration", ":expression"])
-icarus_ast_node(name = "statements", deps = [":node"])
 icarus_ast_node(name = "struct_literal", deps = [":declaration", ":expression"])
 icarus_ast_node(name = "struct_type", deps = [":expression"])
 icarus_ast_node(name = "switch", deps = [":expression"])

@@ -10,11 +10,11 @@
 #include "visitor/verify_type.h"
 
 namespace frontend {
-std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
+std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod);
 }  // namespace frontend
 
 std::atomic<bool> found_errors = false;
-ir::CompiledFn *main_fn = nullptr;
+ir::CompiledFn *main_fn        = nullptr;
 
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
@@ -25,7 +25,7 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
   ASSIGN_OR(return nullptr, frontend::FileSrc src,
                    frontend::FileSrc::Make(*mod->path_));
 
-  auto file_stmts = frontend::Parse(&src, mod);
+  mod->statements_ = frontend::Parse(&src, mod);
   if (mod->error_log_.size() > 0) {
     mod->error_log_.Dump();
     found_errors = true;
@@ -34,13 +34,18 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
 
   {
     visitor::AssignScope visitor;
-    file_stmts->assign_scope(&visitor, &mod->scope_);
+    for (auto &stmt : mod->statements_) {
+      stmt->assign_scope(&visitor, &mod->scope_);
+    }
   }
 
   Context ctx(mod);
+
   {
     visitor::VerifyType visitor;
-    file_stmts->VerifyType(&visitor, &ctx);
+    for (auto const &stmt : mod->statements_) {
+      stmt->VerifyType(&visitor, &ctx);
+    }
   }
   mod->CompleteAllDeferredWork();
 
@@ -53,7 +58,9 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
 
   {
     visitor::EmitIr visitor;
-    file_stmts->EmitIr(&visitor, &ctx);
+    for (auto const &stmt : mod->statements_) {
+      stmt->EmitIr(&visitor, &ctx);
+    }
   }
   mod->CompleteAllDeferredWork();
 
@@ -64,12 +71,10 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
     return mod;
   }
 
-  ctx.mod_->statements_ = std::move(*file_stmts);
+  for (auto &fn : mod->fns_) { fn->ComputeInvariants(); }
+  for (auto &fn : mod->fns_) { fn->CheckInvariants(); }
 
-  for (auto &fn : ctx.mod_->fns_) { fn->ComputeInvariants(); }
-  for (auto &fn : ctx.mod_->fns_) { fn->CheckInvariants(); }
-
-  for (auto const &stmt : ctx.mod_->statements_.content_) {
+  for (auto const &stmt : mod->statements_) {
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
       if (decl->id_ != "main") { continue; }
       auto f = backend::EvaluateAs<ir::AnyFunc>(decl->init_val.get(), &ctx);

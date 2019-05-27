@@ -10,7 +10,6 @@
 #include "ast/declaration.h"
 #include "ast/expression.h"
 #include "ast/node_span.h"
-#include "ast/statements.h"
 #include "core/builtin.h"
 #include "core/fn_args.h"
 #include "core/scope.h"
@@ -343,7 +342,6 @@ struct ScopeNode : public Expression {
 
 }  // namespace ast
 
-#include "ast/statements.h"
 #include "ast/struct_literal.h"
 #include "ast/struct_type.h"
 #include "ast/switch.h"

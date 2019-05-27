@@ -96,7 +96,8 @@ void AssignScope::operator()(ast::FunctionLiteral *node,
     in.value->assign_scope(this, node->fn_scope_.get());
   }
   for (auto &out : node->outputs_) { out->assign_scope(this, node->fn_scope_.get()); }
-  node->statements_.assign_scope(this, node->fn_scope_.get());
+  SetAllScopes(this, ast::NodeSpan<ast::Node>{node->statements_},
+               node->fn_scope_.get());
 
   DependentDecls visitor;
   for (auto const &in : node->inputs_) {
@@ -170,11 +171,6 @@ void AssignScope::operator()(ast::ScopeNode *node, core::Scope *scope) {
   node->name_->assign_scope(this, scope);
   node->args_.Apply([this, scope](auto &expr) { expr->assign_scope(this, scope); });
   for (auto &block : node->blocks_) { block.assign_scope(this, scope); }
-}
-
-void AssignScope::operator()(ast::Statements *node, core::Scope *scope) {
-  node->scope_ = scope;
-  for (auto &stmt : node->content_) { stmt->assign_scope(this, scope); }
 }
 
 void AssignScope::operator()(ast::StructLiteral *node,

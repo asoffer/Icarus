@@ -17,7 +17,6 @@
 #include "ast/dispatch_table.h"
 #endif // ICARUS_VISITOR_EMIT_IR
 #include "ast/expression.h"
-#include "ast/statements.h"
 #include "core/fn_params.h"
 #include "core/scope.h"
 #include "error/log.h"
@@ -62,7 +61,7 @@ struct Module {
 
   // TODO long-term this is not a good way to store these. We should probably
   // extract the declarations determine which are public, etc.
-  ast::Statements statements_;
+  std::vector<std::unique_ptr<ast::Node>> statements_;
 
   // TODO this ifdef needs to disappear it's not long-term sustainable
 #ifdef ICARUS_VISITOR_EMIT_IR

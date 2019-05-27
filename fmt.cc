@@ -8,7 +8,7 @@
 #include "visitor/format.h"
 
 namespace frontend {
-std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
+std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod);
 }  // namespace frontend
 
 namespace format {
@@ -17,9 +17,8 @@ int FormatFile(std::filesystem::path const &file) {
   ASSIGN_OR(return 1, frontend::FileSrc src,
                    frontend::FileSrc::Make(file));
   auto stmts = frontend::Parse(&src, &mod);
-  if (!stmts) { return 2; }
   visitor::Format visitor;
-  stmts->format(&visitor);
+  for (auto const &stmt : stmts) { stmt->format(&visitor); }
   return 0;
 }
 }  // namespace format

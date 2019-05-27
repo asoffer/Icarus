@@ -48,7 +48,6 @@ cc_lib_target(
 COMMON_MODULE_INTF_TARGETS = [
     ":constant_binding",
     "//ast:expression",
-    "//ast:statements",
     "//core:fn_params",
     "//core:scope",
     "//error:log",

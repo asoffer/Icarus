@@ -114,10 +114,6 @@ void ExtractJumps::operator()(ast::ScopeNode const *node) {
   for (auto &block : node->blocks_) { block.ExtractJumps(this); }
 }
 
-void ExtractJumps::operator()(ast::Statements const *node) {
-  for (auto &stmt : node->content_) { stmt->ExtractJumps(this); }
-}
-
 void ExtractJumps::operator()(ast::StructLiteral const *node) {
   for (auto &a : node->args_) { a.ExtractJumps(this); }
   for (auto &f : node->fields_) { f.ExtractJumps(this); }

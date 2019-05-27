@@ -14,7 +14,7 @@
 #include "type/function.h"
 
 namespace frontend {
-std::unique_ptr<ast::Statements> Parse(Src *src, ::Module *mod);
+std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod);
 }  // namespace frontend
 
 namespace backend {
@@ -60,7 +60,7 @@ repl_start:;
       goto repl_start;
     }
 
-    for (auto &stmt : stmts->content_) {
+    for (auto &stmt : stmts) {
       if (stmt->is<ast::Declaration>()) {
         auto *decl = &stmt->as<ast::Declaration>();
         {

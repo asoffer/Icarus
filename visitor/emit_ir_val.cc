@@ -211,7 +211,25 @@ static void CompleteBody(EmitIr const *visitor,
       }
     }
 
-    node->statements_.EmitIr(visitor, ctx);
+    {
+      std::vector<type::Typed<ir::Reg>> to_destroy;
+      auto *old_tmp_ptr =
+          std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
+      bool old_more_stmts_allowed =
+          std::exchange(ctx->more_stmts_allowed_, true);
+      base::defer d([&] {
+        ctx->temporaries_to_destroy_ = old_tmp_ptr;
+        ctx->more_stmts_allowed_     = old_more_stmts_allowed;
+      });
+      for (auto &stmt : node->statements_) {
+        stmt->EmitIr(visitor, ctx);
+        for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
+          auto &reg = to_destroy.at(i);
+          reg.type()->EmitDestroy(visitor, reg.get(), ctx);
+        }
+        to_destroy.clear();
+      }
+    }
 
     MakeAllDestructions(visitor, node->fn_scope_.get(), ctx);
 
@@ -1416,35 +1434,6 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
            return ctx->dispatch_table(node);
          }())
       ->EmitInlineCall({}, {}, ctx);
-}
-
-ir::Results EmitIr::Val(ast::Statements const *node, Context *ctx) const {
-  std::vector<type::Typed<ir::Reg>> to_destroy;
-  auto *old_tmp_ptr = std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
-  bool old_more_stmts_allowed = std::exchange(ctx->more_stmts_allowed_, true);
-  base::defer d([&] {
-    ctx->temporaries_to_destroy_ = old_tmp_ptr;
-    ctx->more_stmts_allowed_     = old_more_stmts_allowed;
-  });
-
-  for (auto &stmt : node->content_) {
-    if (!ctx->more_stmts_allowed_) {
-      // TODO I remember thinking about why this can't be done during type
-      // verification, but I don't remember the entire reasoning. Figure that
-      // out.
-      ctx->error_log()->StatementsFollowingJump(stmt->span);
-
-      // Allow it again so we can repeated bugs in the same block.
-      ctx->more_stmts_allowed_ = true;
-    }
-    stmt->EmitIr(this, ctx);
-    for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
-      auto &reg = to_destroy.at(i);
-      reg.type()->EmitDestroy(this, reg.get(), ctx);
-    }
-    to_destroy.clear();
-  }
-  return ir::Results{};
 }
 
 static ir::TypedRegister<type::Type const *> GenerateStruct(

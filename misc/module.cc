@@ -36,7 +36,7 @@ type::Type const *Module::GetType(std::string_view name) const {
 #endif
 
 ast::Declaration *Module::GetDecl(std::string_view name) const {
-  for (auto const &stmt : statements_.content_) {
+  for (auto const &stmt : statements_) {
     ASSIGN_OR(continue, auto &decl, stmt->if_as<ast::Declaration>());
     if (decl.id_ != name) { continue; }
     auto &hashtags = decl.hashtags_;

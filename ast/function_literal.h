@@ -4,7 +4,6 @@
 #include <vector>
 #include "ast/declaration.h"
 #include "ast/expression.h"
-#include "ast/statements.h"
 #include "base/graph.h"
 #include "core/fn_params.h"
 #include "core/scope.h"
@@ -42,7 +41,7 @@ struct FunctionLiteral : public Expression {
   // string_view of the name out in core::FnParams::Param.
   core::FnParams<std::unique_ptr<Declaration>> inputs_;
   std::vector<std::unique_ptr<Expression>> outputs_;
-  Statements statements_;
+  std::vector<std::unique_ptr<Node>> statements_;
 
   bool return_type_inferred_ = false;
   Module *module_            = nullptr;

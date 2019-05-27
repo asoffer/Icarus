@@ -82,15 +82,6 @@ void Match::MatchExpr(ast::ScopeLiteral const *node, MatchState *state) {}
 
 void Match::MatchExpr(ast::ScopeNode const *node, MatchState *state) {}
 
-void Match::MatchExpr(ast::Statements const *node, MatchState *state) {
-  if (state->root_ == nullptr) {
-    for (auto const &stmt : node->content_) { stmt->match_expr(this, state); }
-  }
-  // TODO determine if this is right: Should a single statement that happens
-  // to be an expression match an expression? For now, no, but I'm really not
-  // sure.
-}
-
 void Match::MatchExpr(ast::StructLiteral const *node, MatchState *state) {}
 
 void Match::MatchExpr(ast::StructType const *node, MatchState *state) {}

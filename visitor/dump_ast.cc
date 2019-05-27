@@ -243,9 +243,14 @@ void DumpAst::operator()(ast::FunctionLiteral const *node) {
     absl::StrAppend(out_, "(",
                     absl::StrJoin(node->outputs_, ", ", Joiner{this}), ")");
   }
-  absl::StrAppend(out_, "{\n");
-  node->statements_.DumpAst(this);
-  absl::StrAppend(out_, indent(), "}");
+  absl::StrAppend(out_, "{");
+  ++indentation_;
+  for (auto const &stmt : node->statements_) {
+    absl::StrAppend(out_, "\n", indent());
+    stmt->DumpAst(this);
+  }
+  --indentation_;
+  absl::StrAppend(out_, "\n", indent(), "}");
 }
 
 void DumpAst::operator()(ast::Identifier const *node) {
@@ -310,14 +315,6 @@ void DumpAst::operator()(ast::ScopeNode const *node) {
     absl::StrAppend(out_, ")");
   }
   for (auto const &block : node->blocks_) { block.DumpAst(this); }
-}
-
-void DumpAst::operator()(ast::Statements const *node) {
-  for (auto const &stmt : node->content_) {
-    absl::StrAppend(out_, "\n", indent());
-    stmt->DumpAst(this);
-  }
-  if (!node->content_.empty()) { absl::StrAppend(out_, "\n"); }
 }
 
 void DumpAst::operator()(ast::StructLiteral const *node) {
