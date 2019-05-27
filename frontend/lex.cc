@@ -1,15 +1,13 @@
 #include <cmath>
 
 #include "absl/container/flat_hash_map.h"
-#include "ast/builtin_fn.h"
-#include "ast/identifier.h"
-#include "ast/terminal.h"
+#include "ast/ast.h"
+#include "core/builtin.h"
 #include "frontend/lex.h"
 #include "frontend/numbers.h"
 #include "frontend/operators.h"
 #include "frontend/syntax.h"
 #include "ir/block.h"
-#include "ir/builtin.h"
 #include "ir/results.h"
 #include "ir/str.h"
 #include "type/primitive.h"
@@ -111,10 +109,11 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
     return Lexeme(
         std::make_unique<ast::Terminal>(span, std::move(results), type));
   }
-  static absl::flat_hash_map<std::string_view, ir::Builtin> const BuiltinFns{
-#define IR_BUILTIN_MACRO(enumerator, str, t) {str, ir::Builtin::enumerator},
-#include "ir/builtin.xmacro.h"
-#undef IR_BUILTIN_MACRO
+  static absl::flat_hash_map<std::string_view, core::Builtin> const BuiltinFns{
+#define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
+  {str, core::Builtin::enumerator},
+#include "core/builtin.xmacro.h"
+#undef ICARUS_CORE_BUILTIN_X
   };
   if (auto iter = BuiltinFns.find(token); iter != BuiltinFns.end()) {
     return Lexeme(std::make_unique<ast::BuiltinFn>(span, iter->second));

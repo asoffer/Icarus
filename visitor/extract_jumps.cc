@@ -4,7 +4,7 @@
 
 namespace visitor {
 
-std::vector<ast::Expression const *> const &ExtractJumps::exprs(
+std::vector<ast::RepeatedUnop const *> const &ExtractJumps::jumps(
     ExtractJumps::Kind k) const {
   return data_[static_cast<std::underlying_type_t<Kind>>(k)];
 }
@@ -14,7 +14,7 @@ void ExtractJumps::operator()(ast::Access const *node) {
 }
 
 void ExtractJumps::operator()(ast::ArrayLiteral const *node) {
-  for (auto *expr : node->elems()) { expr->ExtractJumps(this); }
+  for (auto const *expr : node->elems()) { expr->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::ArrayType const *node) {
@@ -28,12 +28,12 @@ void ExtractJumps::operator()(ast::Binop const *node) {
 }
 
 void ExtractJumps::operator()(ast::BlockLiteral const *node) {
-  for (auto *b : node->before()) { b->ExtractJumps(this); }
-  for (auto *a : node->after()) { a->ExtractJumps(this); }
+  for (auto const *b : node->before()) { b->ExtractJumps(this); }
+  for (auto const *a : node->after()) { a->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::BlockNode const *node) {
-  node->stmts_.ExtractJumps(this);
+  for (auto const *stmt : node->stmts()) { stmt->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::BuiltinFn const *node) {}
@@ -88,19 +88,19 @@ void ExtractJumps::operator()(ast::Interface const *node) {
 }
 
 void ExtractJumps::operator()(ast::RepeatedUnop const *node) {
-  node->args_.ExtractJumps(this);
-  switch (node->op_) {
+  for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
+  switch (node->op()) {
     case frontend::Operator::Jump:
       data_[static_cast<std::underlying_type_t<Kind>>(Kind::Jump)].push_back(
-          &node->args_);
+          node);
       break;
     case frontend::Operator::Return:
       data_[static_cast<std::underlying_type_t<Kind>>(Kind::Return)].push_back(
-          &node->args_);
+          node);
       break;
     case frontend::Operator::Yield:
       data_[static_cast<std::underlying_type_t<Kind>>(Kind::Yield)].push_back(
-          &node->args_);
+          node);
       break;
     default: break;
   }

@@ -17,7 +17,7 @@
 using ::matcher::InheritsFrom;
 
 namespace debug {
-bool parser     = false;
+bool parser = false;
 }  // namespace debug
 
 namespace frontend {
@@ -31,8 +31,8 @@ std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
 
 void ValidateStatementSyntax(ast::Node *node, Module *mod,
                              error::Log *error_log) {
-  if (node->is<ast::CommaList>()) {
-    error_log->CommaListStatement(node->as<ast::CommaList>().span);
+  if (auto *cl = node->if_as<ast::CommaList>()) {
+    error_log->CommaListStatement(cl->span);
   }
 }
 
@@ -106,19 +106,16 @@ std::unique_ptr<ast::Node> EmptyBraces(
 
 std::unique_ptr<ast::Node> BuildJump(std::unique_ptr<ast::Node> node) {
   using ::frontend::Operator;
-  auto &tk   = node->as<frontend::Token>().token;
-  auto jmp   = std::make_unique<ast::RepeatedUnop>(node->span);
-  if (tk == "return") {
-    jmp->op_ = Operator::Return;
-  } else if (tk == "yield") {
-    jmp->op_ = Operator::Yield;
-  } else if (tk == "jump") {
-    jmp->op_ = Operator::Jump;
-  } else {
+  auto &tk              = node->as<frontend::Token>().token;
+  frontend::Operator op = [&] {
+    if (tk == "return") { return Operator::Return; }
+    if (tk == "yield") { return Operator::Yield; }
+    if (tk == "jump") { return Operator::Jump; }
     UNREACHABLE();
-  }
+  }();
   auto stmts = std::make_unique<ast::Statements>();
-  stmts->append(std::move(jmp));
+  stmts->append(std::make_unique<ast::RepeatedUnop>(
+      node->span, op, std::vector<std::unique_ptr<ast::Expression>>{}));
   stmts->span = node->span;
   return stmts;
 }
@@ -234,41 +231,24 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
         std::make_unique<ast::Import>(move_as<ast::Expression>(nodes[1]));
     import_node->span = TextSpan(nodes[0]->span, import_node->operand_->span);
     return import_node;
-  } else if (tk == "return" || tk == "yield" || tk == "jump") {
-    auto unop = std::make_unique<ast::RepeatedUnop>(
-        TextSpan(nodes.front()->span, nodes.back()->span));
-    if (tk == "return") {
-      unop->op_ = Operator::Return;
-    } else if (tk == "yield") {
-      unop->op_ = Operator::Yield;
-    } else if (tk == "jump") {
-      unop->op_ = Operator::Jump;
-    } else {
+  } else if (tk == "return" || tk == "yield" || tk == "jump" || tk == "print") {
+    auto op = [&] {
+      if (tk == "return") { return Operator::Return; }
+      if (tk == "yield") { return Operator::Yield; }
+      if (tk == "jump") { return Operator::Jump; }
+      if (tk == "print") { return Operator::Print; }
       UNREACHABLE();
-    }
-    if (nodes[1]->is<ast::CommaList>() &&
-        !nodes[1]->as<ast::CommaList>().parenthesized_) {
-      unop->args_ = std::move(nodes[1]->as<ast::CommaList>());
+    }();
+    auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+    std::vector<std::unique_ptr<ast::Expression>> exprs;
+    if (auto *cl = nodes[1]->if_as<ast::CommaList>();
+        cl && !cl->parenthesized_) {
+      exprs = std::move(*cl).extract();
     } else {
-      unop->args_.exprs_.push_back(move_as<ast::Expression>(nodes[1]));
-      unop->args_.span = TextSpan(unop->args_.exprs_.front()->span,
-                                  unop->args_.exprs_.back()->span);
+      exprs.push_back(move_as<ast::Expression>(nodes[1]));
     }
-    return unop;
-  } else if (tk == "print") {
-    // TODO Copy of above.
-    std::unique_ptr<ast::RepeatedUnop> unop;
-    if (nodes[1]->is<ast::CommaList>() &&
-        !nodes[1]->as<ast::CommaList>().parenthesized_) {
-      unop = std::make_unique<ast::RepeatedUnop>(
-          TextSpan(nodes.front()->span, nodes.back()->span));
-      unop->args_ = std::move(nodes[1]->as<ast::CommaList>());
-    } else {
-      unop = std::make_unique<ast::RepeatedUnop>(nodes[1]->span);
-      unop->args_.exprs_.push_back(move_as<ast::Expression>(nodes[1]));
-    }
-    unop->op_ = Operator::Print;
-    return unop;
+    return std::make_unique<ast::RepeatedUnop>(std::move(span), op,
+                                               std::move(exprs));
   } else if (tk == "'") {
     std::swap(nodes[0], nodes[1]);
     nodes.push_back(std::make_unique<ast::CommaList>());
@@ -344,8 +324,7 @@ std::unique_ptr<ast::Node> BuildCommaList(
 std::unique_ptr<ast::Node> BuildAccess(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-
-  auto span = TextSpan(nodes[0]->span, nodes[2]->span);
+  auto span      = TextSpan(nodes[0]->span, nodes[2]->span);
   auto &&operand = move_as<ast::Expression>(nodes[0]);
   if (operand->is<ast::Declaration>()) {
     error_log->DeclarationInAccess(operand->span);
@@ -439,8 +418,8 @@ template <bool IsConst>
 std::unique_ptr<ast::Node> BuildDeclaration(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto op    = nodes[1]->as<frontend::Token>().op;
-  auto decl  = std::make_unique<ast::Declaration>(IsConst);
+  auto op   = nodes[1]->as<frontend::Token>().op;
+  auto decl = std::make_unique<ast::Declaration>(IsConst);
   ASSERT(nodes[0]->span.source != nullptr);
   decl->span = TextSpan(nodes[0]->span, nodes[2]->span);
   if (nodes[0]->is<ast::Identifier>()) {
@@ -547,8 +526,8 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
 std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto span   = TextSpan(nodes[0]->span, nodes.back()->span);
-  auto *binop = &nodes[0]->as<ast::Binop>();
+  auto span       = TextSpan(nodes[0]->span, nodes.back()->span);
+  auto *binop     = &nodes[0]->as<ast::Binop>();
   auto [lhs, rhs] = std::move(*binop).extract();
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(std::move(lhs)), std::move(rhs),
@@ -564,6 +543,7 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
       nullptr, std::move(nodes[2]->as<ast::Statements>()), mod, error_log);
 }
 
+// TODO this loses syntactic information that a formatter cares about.
 std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
     std::unique_ptr<ast::Expression> args,
     std::unique_ptr<ast::Expression> body, Module *mod, error::Log *error_log) {
@@ -571,20 +551,16 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
   auto inputs = ExtractInputs(std::move(args));
 
   std::unique_ptr<ast::RepeatedUnop> ret;
-  if (body->is<ast::CommaList>()) {
-    ret = std::make_unique<ast::RepeatedUnop>(
-        TextSpan(body->as<ast::CommaList>().exprs_.front()->span,
-                 body->as<ast::CommaList>().exprs_.back()->span));
-    ret->op_   = frontend::Operator::Return;
-    ret->args_ = std::move(body->as<ast::CommaList>());
+  std::vector<std::unique_ptr<ast::Expression>> ret_vals;
+  if (auto *cl = body->if_as<ast::CommaList>()) {
+    ret_vals = std::move(*cl).extract();
   } else {
-    ret      = std::make_unique<ast::RepeatedUnop>(body->span);
-    ret->op_ = frontend::Operator::Return;
-    ret->args_.exprs_.push_back(std::move(body));
+    ret_vals.push_back(std::move(body));
   }
 
   ast::Statements stmts;
-  stmts.append(std::move(ret));
+  stmts.append(std::make_unique<ast::RepeatedUnop>(
+      std::move(span), frontend::Operator::Return, std::move(ret_vals)));
   return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
                               std::move(stmts), mod, error_log);
 }
@@ -649,11 +625,10 @@ std::unique_ptr<ast::Node> BuildScopeNode(
 std::unique_ptr<ast::Node> BuildBlockNode(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto bn    = std::make_unique<ast::BlockNode>();
-  bn->span   = TextSpan(nodes[0]->span, nodes[1]->span);
-  bn->name_  = move_as<ast::Expression>(nodes[0]);
-  bn->stmts_ = std::move(nodes[1]->as<ast::Statements>());
-  return bn;
+  auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+  return std::make_unique<ast::BlockNode>(
+      std::move(span), std::move(nodes[0]->as<ast::Identifier>().token),
+      std::move(nodes[1]->as<ast::Statements>()).extract());
 }
 
 std::unique_ptr<ast::Node> ExtendScopeNode(
@@ -673,12 +648,13 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
                               ? scope_node->sugared_
                               : &nodes[0]->as<ast::ScopeNode>();
 
-  auto &bn = extension_point->blocks_.emplace_back();
-  // TODO span
-  bn.name_ = move_as<ast::Expression>(nodes[1]);
-  // TODO hook this up to a yield when it exists
   scope_node->sugared_ = &nodes[2]->as<ast::ScopeNode>();
-  bn.stmts_.append(std::move(nodes[2]));
+  std::vector<std::unique_ptr<ast::Node>> block_stmt_nodes;
+  block_stmt_nodes.push_back(std::move(nodes[2]));
+  // TODO span
+  extension_point->blocks_.emplace_back(
+      TextSpan{}, std::move(nodes[1]->as<ast::Identifier>().token),
+      std::move(block_stmt_nodes));
   return std::move(nodes[0]);
 }
 
@@ -1200,8 +1176,7 @@ auto Rules = std::array{
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
   ParseState(Src *src, Module *mod)
-      : mod_(mod), lex_state_{src, &mod->error_log_} {
-  }
+      : mod_(mod), lex_state_{src, &mod->error_log_} {}
 
   template <size_t N>
   inline Tag get_type() const {

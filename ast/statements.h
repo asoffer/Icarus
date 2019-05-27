@@ -25,7 +25,9 @@ struct Statements : public Node {
       content_.push_back(std::move(node));
     }
   }
-
+  std::vector<std::unique_ptr<Node>> extract() && {
+    return std::move(content_);
+  }
   std::vector<std::unique_ptr<Node>> content_;
 };
 

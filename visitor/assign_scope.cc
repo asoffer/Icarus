@@ -4,6 +4,12 @@
 
 namespace visitor {
 
+template <typename T>
+void SetAllScopes(AssignScope *visitor, ast::NodeSpan<T> span,
+                  core::Scope *scope) {
+  for (auto *n : span) { n->assign_scope(visitor, scope); }
+}
+
 void AssignScope::operator()(ast::Access *node, core::Scope *scope) {
   node->scope_ = scope;
   node->operand()->assign_scope(this, scope);
@@ -29,15 +35,14 @@ void AssignScope::operator()(ast::Binop *node, core::Scope *scope) {
 void AssignScope::operator()(ast::BlockLiteral *node, core::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
-  for (auto *b : node->before()) { b->assign_scope(this, node->body_scope()); }
-  for (auto *a : node->after()) { a->assign_scope(this, node->body_scope()); }
+  SetAllScopes(this, node->before(), node->body_scope());
+  SetAllScopes(this, node->after(), node->body_scope());
 }
 
 void AssignScope::operator()(ast::BlockNode *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->name_->assign_scope(this, scope);
-  node->block_scope_ = scope->add_child<core::ExecScope>();
-  node->stmts_.assign_scope(this, node->block_scope_.get());
+  node->set_body_with_parent(scope);
+  SetAllScopes(this, node->stmts(), node->body_scope());
 }
 
 void AssignScope::operator()(ast::BuiltinFn *node, core::Scope *scope) {
@@ -146,10 +151,9 @@ void AssignScope::operator()(ast::Interface *node, core::Scope *scope) {
   for (auto &d : node->decls_) { d.assign_scope(this, node->body_scope_.get()); }
 }
 
-void AssignScope::operator()(ast::RepeatedUnop *node,
-                             core::Scope *scope) {
+void AssignScope::operator()(ast::RepeatedUnop *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->args_.assign_scope(this, scope);
+  SetAllScopes(this, node->exprs(), scope);
 }
 
 void AssignScope::operator()(ast::ScopeLiteral *node,

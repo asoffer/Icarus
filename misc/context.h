@@ -57,10 +57,10 @@ struct Context {
   // TODO this looks useful in bindings too. maybe give it a better name and
   // use it more frequently?
   struct YieldResult {
-    YieldResult(ast::Expression *expr, ir::Results val)
+    YieldResult(ast::Expression const *expr, ir::Results val)
         : expr_(expr), val_(std::move(val)) {}
 
-    ast::Expression *expr_;
+    ast::Expression const *expr_;
     ir::Results val_;
   };
   std::vector<std::vector<YieldResult>> yields_stack_;

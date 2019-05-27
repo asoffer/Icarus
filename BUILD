@@ -25,8 +25,6 @@ cc_binary(
     ],
 )
 
-
-
 cc_binary(
     name = "icfmt",
     srcs = ["fmt.cc"],
@@ -39,7 +37,6 @@ cc_binary(
         "//init:cli-impl-format",
         "//init:signal-impl-format",
         "//ir:results-impl-format",
-        "//ir:builtin-impl-format",
         "//ir:str-impl-format",
         "//misc:module-impl-format",
         "//type:impl-format",

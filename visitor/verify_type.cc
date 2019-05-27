@@ -17,16 +17,21 @@
 Module *CompileModule(Module *mod, std::filesystem::path const *path);
 
 namespace ir {
-
-// TODO moved these here because we can't have them in ir:builtin or else
-// they'll be in the formatter target. figure out what's going on here.
-type::Type const* BuiltinType(Builtin);
-
+// TODO Duplicated in emit_ir_val.h
+static type::Type const *BuiltinType(core::Builtin b) {
+  switch (b) {
+#define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
+  case core::Builtin::enumerator:                                              \
+    return t;
+#include "core/builtin.xmacro.h"
+#undef ICARUS_CORE_BUILTIN_X
+  }
+  UNREACHABLE();
+}
 }  // namespace ir
 
 namespace visitor {
 namespace {
-using ::matcher::InheritsFrom;
 
 // NOTE: the order of these enumerators is meaningful and relied upon! They are
 // ordered from strongest relation to weakest.
@@ -82,7 +87,7 @@ static bool VerifyAssignment(TextSpan const &span, type::Type const *to,
   if (to_tup && from_tup) {
     if (to_tup->size() != from_tup->size()) {
       ctx->error_log()->MismatchedAssignmentSize(span, to_tup->size(),
-                                               from_tup->size());
+                                                 from_tup->size());
       return false;
     }
 
@@ -450,14 +455,14 @@ VerifyResult VerifyType::operator()(ast::BlockLiteral const *node,
 
 VerifyResult VerifyType::operator()(ast::BlockNode const *node,
                                     Context *ctx) const {
-  node->stmts_.VerifyType(this, ctx);
+  for (auto *stmt : node->stmts()) { stmt->VerifyType(this, ctx); }
   return ctx->set_result(node, VerifyResult::Constant(type::Block));
 }
 
 VerifyResult VerifyType::operator()(ast::BuiltinFn const *node,
                                     Context *ctx) const {
-  return ctx->set_result(node,
-                         VerifyResult::Constant(ir::BuiltinType(node->b_)));
+  return ctx->set_result(
+      node, VerifyResult::Constant(ir::BuiltinType(node->value())));
 }
 
 static ast::OverloadSet FindOverloads(
@@ -474,8 +479,8 @@ static VerifyResult VerifyCall(
     core::FnArgs<std::pair<ast::Expression const *, VerifyResult>> const
         &arg_results,
     Context *ctx) {
-  switch (b->b_) {
-    case ir::Builtin::Foreign: {
+  switch (b->value()) {
+    case core::Builtin::Foreign: {
       bool err = false;
       if (!arg_results.named().empty()) {
         ctx->error_log()->BuiltinError(b->span,
@@ -520,15 +525,17 @@ static VerifyResult VerifyCall(
       return visitor::VerifyResult::Constant(
           backend::EvaluateAs<type::Type const *>(args.at(1).get(), ctx));
     } break;
-    case ir::Builtin::Opaque:
+    case core::Builtin::Opaque:
       if (!arg_results.empty()) {
         ctx->error_log()->BuiltinError(
             b->span, "Built-in function `opaque` takes no arguments.");
       }
       return visitor::VerifyResult::Constant(
-          ir::BuiltinType(ir::Builtin::Opaque)->as<type::Function>().output[0]);
+          ir::BuiltinType(core::Builtin::Opaque)
+              ->as<type::Function>()
+              .output[0]);
 
-    case ir::Builtin::Bytes: {
+    case core::Builtin::Bytes: {
       size_t size = arg_results.size();
       if (!arg_results.named().empty()) {
         ctx->error_log()->BuiltinError(b->span,
@@ -547,9 +554,11 @@ static VerifyResult VerifyCall(
                 arg_results.at(0).second.type_->to_string() + ").");
       }
       return visitor::VerifyResult::Constant(
-          ir::BuiltinType(ir::Builtin::Bytes)->as<type::Function>().output[0]);
+          ir::BuiltinType(core::Builtin::Bytes)
+              ->as<type::Function>()
+              .output[0]);
     }
-    case ir::Builtin::Alignment: {
+    case core::Builtin::Alignment: {
       size_t size = arg_results.size();
       if (!arg_results.named().empty()) {
         ctx->error_log()->BuiltinError(b->span,
@@ -570,12 +579,12 @@ static VerifyResult VerifyCall(
                 arg_results.at(0).second.type_->to_string() + ")");
       }
       return visitor::VerifyResult::Constant(
-          ir::BuiltinType(ir::Builtin::Alignment)
+          ir::BuiltinType(core::Builtin::Alignment)
               ->as<type::Function>()
               .output[0]);
     }
 #ifdef DBG
-    case ir::Builtin::DebugIr:
+    case core::Builtin::DebugIr:
       // This is for debugging the compiler only, so there's no need to write
       // decent errors here.
       ASSERT(arg_results, matcher::IsEmpty());
@@ -1266,8 +1275,8 @@ VerifyResult VerifyType::operator()(ast::EnumLiteral const *node,
 // TODO there's not that much shared between the inferred and uninferred cases,
 // so probably break them out.
 static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
-                                            ast::FunctionLiteral const *node,
-                                            Context *ctx) {
+                                        ast::FunctionLiteral const *node,
+                                        Context *ctx) {
   node->statements_.VerifyType(visitor, ctx);
   // TODO propogate cyclic dependencies.
 
@@ -1277,9 +1286,16 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
   // TODO we can have yields and returns, or yields and jumps, but not jumps and
   // returns. Check this.
   absl::flat_hash_set<type::Type const *> types;
-  for (auto *expr :
-       extract_visitor.exprs(visitor::ExtractJumps::Kind::Return)) {
-    types.insert(ctx->type_of(expr));
+  absl::flat_hash_map<ast::RepeatedUnop const *, type::Type const*> saved_ret_types;
+  for (auto *rep_node :
+       extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
+    std::vector<type::Type const *> ret_types;
+    for (auto const *expr : rep_node->exprs()) {
+      ret_types.push_back(ctx->type_of(expr));
+    }
+    auto *t = Tup(std::move(ret_types));
+    types.emplace(t);
+    saved_ret_types.emplace(rep_node, t);
   }
 
   if (node->return_type_inferred_) {
@@ -1304,11 +1320,11 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
     switch (outs.size()) {
       case 0: {
         bool err = false;
-        for (auto *expr :
-             extract_visitor.exprs(visitor::ExtractJumps::Kind::Return)) {
-          base::Log() << DumpAst::ToString(expr);
-          if (!expr->as<ast::CommaList>().exprs_.empty()) {
-            ctx->error_log()->NoReturnTypes(expr);
+        for (auto *rep_node :
+             extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
+          base::Log() << DumpAst::ToString(rep_node);
+          if (!rep_node->exprs().empty()) {
+            ctx->error_log()->NoReturnTypes(rep_node);
             err = true;
           }
         }
@@ -1317,26 +1333,26 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
       } break;
       case 1: {
         bool err = false;
-        for (auto *expr :
-             extract_visitor.exprs(visitor::ExtractJumps::Kind::Return)) {
-          auto *t = ASSERT_NOT_NULL(ctx->type_of(expr));
+        for (auto *rep_node :
+             extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
+          auto *t = ASSERT_NOT_NULL(saved_ret_types.at(rep_node));
           if (t == outs[0]) { continue; }
           ctx->error_log()->ReturnTypeMismatch(outs[0]->to_string(),
-                                               t->to_string(), expr->span);
+                                               t->to_string(), rep_node->span);
           err = true;
         }
         return err ? visitor::VerifyResult::Error()
                    : visitor::VerifyResult::Constant(node_type);
       } break;
       default: {
-        for (auto *expr :
-             extract_visitor.exprs(visitor::ExtractJumps::Kind::Return)) {
-          auto *expr_type = ctx->type_of(expr);
+        for (auto *rep_node:
+             extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
+          auto *expr_type = ASSERT_NOT_NULL(saved_ret_types.at(rep_node));
           if (expr_type->is<type::Tuple>()) {
             auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
             if (tup_entries.size() != outs.size()) {
               ctx->error_log()->ReturningWrongNumber(
-                  expr->span,
+                  rep_node->span,
                   (expr_type->is<type::Tuple>()
                        ? expr_type->as<type::Tuple>().size()
                        : 1),
@@ -1354,7 +1370,7 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                   // if it's splatted.
                   ctx->error_log()->IndexedReturnTypeMismatch(
                       outs.at(i)->to_string(), tup_entries.at(i)->to_string(),
-                      expr->span, i);
+                      rep_node->span, i);
                   err = true;
                 }
               }
@@ -1362,7 +1378,7 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
             }
           } else {
             ctx->error_log()->ReturningWrongNumber(
-                expr->span,
+                rep_node->span,
                 (expr_type->is<type::Tuple>()
                      ? expr_type->as<type::Tuple>().size()
                      : 1),
@@ -1418,8 +1434,8 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
         output_type_vec.at(i) = ctx->type_of(decl);
       } else {
         ASSERT(output_type_vec.at(i) == type::Type_);
-        output_type_vec.at(i) =
-            backend::EvaluateAs<type::Type const *>(node->outputs_.at(i).get(), ctx);
+        output_type_vec.at(i) = backend::EvaluateAs<type::Type const *>(
+            node->outputs_.at(i).get(), ctx);
       }
     }
 
@@ -1585,7 +1601,8 @@ VerifyResult VerifyType::operator()(ast::Index const *node,
         node, VerifyResult(tup->entries_.at(index), lhs_result.const_));
 
   } else {
-    ctx->error_log()->InvalidIndexing(node->span, lhs_result.type_->to_string());
+    ctx->error_log()->InvalidIndexing(node->span,
+                                      lhs_result.type_->to_string());
     return VerifyResult::Error();
   }
 }
@@ -1609,51 +1626,58 @@ VerifyResult VerifyType::operator()(ast::MatchDeclaration const *node,
 
 VerifyResult VerifyType::operator()(ast::RepeatedUnop const *node,
                                     Context *ctx) const {
-  ASSIGN_OR(return _, auto result, node->args_.VerifyType(this, ctx));
+  std::vector<type::Type const *> expr_types;
+  expr_types.reserve(node->exprs().size());
+  bool is_const = true;
+  bool err = false;
+  for (auto *expr : node->exprs()) {
+    auto result = expr->VerifyType(this, ctx);
+    if (result == VerifyResult::Error()) {
+      err = true;
+    } else {
+      auto *tup = result.type_->if_as<type::Tuple>();
+      expr_types.push_back(result.type_);
+      is_const &= result.const_;
+    }
+  }
+  if (err) { return VerifyResult::Error(); }
 
-  std::vector<type::Type const *> arg_types =
-      result.type_->is<type::Tuple>()
-          ? result.type_->as<type::Tuple>().entries_
-          : std::vector<type::Type const *>{result.type_};
-
-  if (node->op_ == frontend::Operator::Print) {
+  if (node->op() == frontend::Operator::Print) {
     // TODO what's the actual size given expansion of tuples and stuff?
-    for (size_t i = 0; i < node->args_.exprs_.size(); ++i) {
-      auto &arg      = node->args_.exprs_[i];
-      auto *arg_type = arg_types[i];
-      if (arg_type->is<type::Primitive>() || arg_type->is<type::Pointer>() ||
-          arg_type == type::ByteView || arg_type->is<type::Enum>() ||
-          arg_type->is<type::Flags>() || arg_type->is<type::Array>()) {
+    for (size_t i = 0; i < node->exprs().size(); ++i) {
+      auto *expr      = node->expr(i);
+      auto *expr_type = expr_types[i];
+      if (expr_type->is<type::Primitive>() || expr_type->is<type::Pointer>() ||
+          expr_type == type::ByteView || expr_type->is<type::Enum>() ||
+          expr_type->is<type::Flags>() || expr_type->is<type::Array>()) {
         continue;
       } else {
         ast::OverloadSet os(node->scope_, "print", ctx);
-        os.add_adl("print", arg_type);
+        os.add_adl("print", expr_type);
 
         // TODO I need finer-grained const-ness here: Currently all members are
         // const or all are non-const.
         //
-        // TODO using arg.get() for the dispatch table is super janky. node is
+        // TODO using expr.get() for the dispatch table is super janky. node is
         // used so we don't collide with the table for the actual expression as
         // `print f(x)` needs a table both for the printing and for the call to
         // `f`. Test node thoroughly.
         auto dispatch_result = ast::VerifyDispatch(
-            ast::ExprPtr{arg.get(), 0x01}, os,
+            ast::ExprPtr{expr, 0x01}, os,
             core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                {std::pair(arg.get(), VerifyResult(arg_type, result.const_))},
-                {}),
+                {std::pair(expr, VerifyResult(expr_type, is_const))}, {}),
             ctx);
         if (dispatch_result.type_ && dispatch_result.type_ != type::Void()) {
-          ctx->error_log()->PrintMustReturnVoid(dispatch_result.type_->to_string(),
-                                                node->span);
+          ctx->error_log()->PrintMustReturnVoid(
+              dispatch_result.type_->to_string(), node->span);
           return VerifyResult::Error();
         }
       }
     }
-  } else if (node->op_ == frontend::Operator::Jump) {
-    ASSERT(node->args_.exprs_[0].get(), InheritsFrom<ast::Call>());
+  } else if (node->op() == frontend::Operator::Jump) {
     // Note: We're not verifying the type of the call but instead the callable
     // and its args.
-    auto &call = node->args_.exprs_[0]->as<ast::Call>();
+    auto &call = node->expr(0)->as<ast::Call>();
     call.fn_->VerifyType(this, ctx);
 
     auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
@@ -1675,7 +1699,7 @@ VerifyResult VerifyType::operator()(ast::RepeatedUnop const *node,
     }
   }
 
-  return VerifyResult(type::Void(), result.const_);
+  return VerifyResult(type::Void(), is_const);
 }
 
 static type::Pointer const *StatePtrTypeOrLogError(
@@ -1795,10 +1819,7 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
                    ast::VerifyDispatch(ast::ExprPtr{node, 0x02}, init_os,
                                        arg_results, ctx));
 
-  for (auto &block_node : node->blocks_) {
-    block_node.stmts_.VerifyType(this, ctx);
-  }
-
+  for (auto &block_node : node->blocks_) { block_node.VerifyType(this, ctx); }
   return ast::VerifyDispatch(node, done_os, /* TODO */ {}, ctx);
 }
 
@@ -1951,7 +1972,8 @@ VerifyResult VerifyType::operator()(ast::Unop const *node, Context *ctx) const {
       }
     case frontend::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
-        ctx->error_log()->WhichNonVariant(operand_type->to_string(), node->span);
+        ctx->error_log()->WhichNonVariant(operand_type->to_string(),
+                                          node->span);
       }
       return ctx->set_result(node, VerifyResult(type::Type_, result.const_));
     case frontend::Operator::At:

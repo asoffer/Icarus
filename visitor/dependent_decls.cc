@@ -34,8 +34,7 @@ void DependentDecls::operator()(ast::BlockLiteral const *node,
 
 void DependentDecls::operator()(ast::BlockNode const *node,
                                 ast::Declaration const *d) {
-  node->name_->DependentDecls(this, d);
-  node->stmts_.DependentDecls(this, d);
+  for (auto const *stmt : node->stmts()) { stmt->DependentDecls(this, d); }
 }
 
 void DependentDecls::operator()(ast::BuiltinFn const *node,
@@ -105,7 +104,7 @@ void DependentDecls::operator()(ast::Interface const *node,
 
 void DependentDecls::operator()(ast::RepeatedUnop const *node,
                                 ast::Declaration const *d) {
-  node->args_.DependentDecls(this, d);
+  for (auto *expr : node->exprs()) { expr->DependentDecls(this, d); }
 }
 
 void DependentDecls::operator()(ast::ScopeLiteral const *node,

@@ -16,7 +16,7 @@ struct Declaration;
 struct Expression;
 struct Identifier;
 struct Node;
-struct Unop;
+struct RepeatedUnop;
 }  // namespace ast
 
 namespace error {
@@ -54,7 +54,7 @@ struct Log {
                                  TextSpan const &span, size_t index);
   void ReturningWrongNumber(TextSpan const &span, size_t actual,
                             size_t expected);
-  void NoReturnTypes(ast::Expression const *ret_expr);
+  void NoReturnTypes(ast::RepeatedUnop const *ret_expr);
   void DeclarationUsedInUnop(std::string const &unop,
                              TextSpan const &decl_span);
   void MissingMember(TextSpan const &span, std::string_view member_name,

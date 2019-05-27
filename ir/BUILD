@@ -9,7 +9,6 @@ cc_group_target(
         ":addr-impl",
         ":arguments-impl",
         ":basic_block-impl",
-        ":builtin-impl",
         ":builtin_ir-impl",
         ":cmd-impl",
         ":compiled_fn-impl",
@@ -78,17 +77,6 @@ cc_lib_target(
 cc_lib_target(
     name = "block",
     impl_deps = None,
-    test_deps = None,
-)
-
-cc_lib_target(
-    name = "builtin",
-    textual_hdrs = ["builtin.xmacro.h"],
-    intf_deps = ["//base:debug"],
-    impl_deps = [
-        "//type:type",
-        "//type:function",
-    ],
     test_deps = None,
 )
    

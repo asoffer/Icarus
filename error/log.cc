@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <iostream>
 
-#include "ast/declaration.h"
+#include "ast/ast.h"
 #include "ast/identifier.h"
 #include "base/interval.h"
 #include "frontend/source.h"
@@ -258,7 +258,7 @@ void Log::ReturnTypeMismatch(std::string_view expected_type,
   errors_.push_back(ss.str());
 }
 
-void Log::NoReturnTypes(ast::Expression const *ret_expr) {
+void Log::NoReturnTypes(ast::RepeatedUnop const *ret_expr) {
   std::stringstream ss;
   // TODO allow "return foo(...)" when foo: ??? -> ().
 

@@ -18,8 +18,7 @@ cc_lib_target(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
-        "//ast:declaration",
-        "//ast:identifier",
+        "//ast:ast",
         "//base:interval",
         "//frontend:source",
     ],

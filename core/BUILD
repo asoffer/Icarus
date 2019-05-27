@@ -21,6 +21,14 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "builtin",
+    textual_hdrs = ["builtin.xmacro.h"],
+    intf_deps = ["//base:debug"],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "fn_args",
     intf_deps = [
         "//base:stringify",

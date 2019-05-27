@@ -16,10 +16,10 @@ struct ExtractJumps {
 #undef ICARUS_AST_NODE_X
 
   enum class Kind { Return, Yield, Jump };
-  std::vector<ast::Expression const *> const &exprs(Kind k) const;
+  std::vector<ast::RepeatedUnop const *> const &jumps(Kind k) const;
 
  private:
-  std::array<std::vector<ast::Expression const *>, 3> data_;
+  std::array<std::vector<ast::RepeatedUnop const *>, 3> data_;
 };
 
 }  // namespace visitor

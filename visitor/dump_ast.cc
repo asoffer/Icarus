@@ -139,16 +139,26 @@ void DumpAst::operator()(ast::BlockLiteral const *node) {
 }
 
 void DumpAst::operator()(ast::BlockNode const *node) {
-  node->name_->DumpAst(this);
-  absl::StrAppend(out_, " {\n");
+  absl::StrAppend(out_, node->name(), " {\n");
   ++indentation_;
-  node->stmts_.DumpAst(this);
+  for (auto *stmt : node->stmts()) {
+    absl::StrAppend(out_, "\n", indent());
+    stmt->DumpAst(this);
+  }
   --indentation_;
   absl::StrAppend(out_, indent(), "}\n");
 }
 
 void DumpAst::operator()(ast::BuiltinFn const *node) {
-  absl::StrAppend(out_, stringify(node->b_));
+  switch (node->value()) {
+#define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
+  case core::Builtin::enumerator:                                              \
+    absl::StrAppend(out_, str);                                                \
+    return;
+#include "core/builtin.xmacro.h"
+#undef ICARUS_CORE_BUILTIN_X
+  }
+  UNREACHABLE();
 }
 
 void DumpAst::operator()(ast::Call const *node) {
@@ -274,8 +284,8 @@ void DumpAst::operator()(ast::MatchDeclaration const *node) {
 }
 
 void DumpAst::operator()(ast::RepeatedUnop const *node) {
-  absl::StrAppend(out_, OpStr(node->op_));
-  node->args_.DumpAst(this);
+  absl::StrAppend(out_, OpStr(node->op()));
+  for (auto *expr : node->exprs()) { expr->DumpAst(this); }
 }
 
 void DumpAst::operator()(ast::ScopeLiteral const *node) {

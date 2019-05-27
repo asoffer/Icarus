@@ -19,8 +19,6 @@ cc_lib_target(
 cc_lib_target(
     name = "ast",
     intf_deps = [
-        ":block_node",
-        ":builtin_fn",
         ":call",
         ":cast",
         ":chainop",
@@ -36,23 +34,20 @@ cc_lib_target(
         ":match_declaration",
         ":node",
         ":node_span",
-        ":repeated_unop",
         ":scope_literal",
-        ":scope_node",
         ":statements",
         ":struct_literal",
         ":struct_type",
         ":switch",
         ":terminal",
         ":unop",
+        "//core:builtin",
+        "//core:scope",
     ],
     impl_deps = None,
     test_deps = None,
 )
 
-icarus_ast_node(name = "block_node",
-                deps = [":expression", ":statements", "//core:scope"])
-icarus_ast_node(name = "builtin_fn", deps = [":expression", "//ir:builtin"])
 icarus_ast_node(name = "call", deps = [":expression"])
 icarus_ast_node(name = "cast", deps = [":expression"])
 icarus_ast_node(name = "chainop",
@@ -79,11 +74,7 @@ icarus_ast_node(name = "node", deps = [
     "//ir:results",
 ])
 icarus_ast_node(name = "match_declaration", deps = [":declaration"])
-icarus_ast_node(name = "repeated_unop",
-                deps = [":comma_list", "//frontend:operators"])
 icarus_ast_node(name = "scope_literal", deps = [":declaration", ":expression"])
-icarus_ast_node(name = "scope_node",
-                deps = [":block_node", ":declaration", ":expression"])
 icarus_ast_node(name = "statements", deps = [":node"])
 icarus_ast_node(name = "struct_literal", deps = [":declaration", ":expression"])
 icarus_ast_node(name = "struct_type", deps = [":expression"])
@@ -107,7 +98,6 @@ cc_lib_target(
     impl_deps = [
         ":ast",
         ":call",
-        ":builtin_fn",
         ":function_literal",
         "//ast:match_declaration",
         "//backend:eval",

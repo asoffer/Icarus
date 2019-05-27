@@ -16,11 +16,9 @@ cc_group_target(
 COMMON_LEX_IMPL_TARGETS = [
     ":lex",
     ":numbers-impl",
-    "//ast:builtin_fn",
-    "//ast:identifier",
-    "//ast:terminal",
+    "//ast:ast",
+    "//core:builtin",
     "//ir:block",
-    "//ir:builtin",
     "//ir:results",
     "//ir:str",
     "//type:primitive",

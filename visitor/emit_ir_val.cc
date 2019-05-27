@@ -14,10 +14,21 @@
 #include "type/typed_value.h"
 
 namespace ir {
+// TODO duplicated in verify_type
+static type::Type const *BuiltinType(core::Builtin b) {
+  switch (b) {
+#define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
+  case core::Builtin::enumerator:                                              \
+    return t;
+#include "core/builtin.xmacro.h"
+#undef ICARUS_CORE_BUILTIN_X
+  }
+  UNREACHABLE();
+}
 
 // TODO moved these here because we can't have them in ir:builtin or else
 // they'll be in the formatter target. figure out what's going on here.
-type::Type const *BuiltinType(Builtin);
+type::Type const *BuiltinType(core::Builtin);
 
 // TODO: The functions here that modify struct fields typically do so by
 // modifying the last field, since we always build them in order. This saves us
@@ -138,6 +149,25 @@ static void MakeAllDestructions(EmitIr const *visitor,
     auto *t = ASSERT_NOT_NULL(ctx->type_of(decl));
     if (!t->HasDestructor()) { continue; }
     t->EmitDestroy(visitor, ctx->addr(decl), ctx);
+  }
+}
+
+static void EmitIrForStatements(EmitIr const *visitor,
+                                ast::NodeSpan<ast::Node const> span, Context *ctx) {
+  std::vector<type::Typed<ir::Reg>> to_destroy;
+  auto *old_tmp_ptr = std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
+  bool old_more_stmts_allowed = std::exchange(ctx->more_stmts_allowed_, true);
+  base::defer d([&] {
+    ctx->temporaries_to_destroy_ = old_tmp_ptr;
+    ctx->more_stmts_allowed_     = old_more_stmts_allowed;
+  });
+
+  for (auto *stmt : span) {
+    stmt->EmitIr(visitor, ctx);
+    for (auto iter = to_destroy.rbegin(); iter != to_destroy.rend(); ++iter) {
+      iter->type()->EmitDestroy(visitor, iter->get(), ctx);
+    }
+    to_destroy.clear();
   }
 }
 
@@ -572,19 +602,19 @@ ir::Results EmitIr::Val(ast::BlockLiteral const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) const {
-  node->stmts_.EmitIr(this, ctx);
-  MakeAllDestructions(this, node->block_scope_.get(), ctx);
+  EmitIrForStatements(this, node->stmts(), ctx);
+  MakeAllDestructions(this, node->body_scope(), ctx);
   return ir::Results{};
 }
 
 ir::Results EmitIr::Val(ast::BuiltinFn const *node, Context *ctx) const {
-  return ir::Results{node->b_};
+  return ir::Results{node->value()};
 }
 
 ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) const {
   if (auto *b = node->fn_->if_as<ast::BuiltinFn>()) {
-    switch (b->b_) {
-      case ir::Builtin::Foreign: {
+    switch (b->value()) {
+      case core::Builtin::Foreign: {
         auto name =
             backend::EvaluateAs<std::string_view>(node->args_.at(0).get(), ctx);
         auto *foreign_type = backend::EvaluateAs<type::Type const *>(
@@ -592,12 +622,12 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) const {
         return ir::Results{ir::LoadSymbol(name, foreign_type).get()};
       } break;
 
-      case ir::Builtin::Opaque:
+      case core::Builtin::Opaque:
         return ir::Results{static_cast<ir::Reg>(ir::NewOpaqueType(ctx->mod_))};
 
-      case ir::Builtin::Bytes: {
+      case core::Builtin::Bytes: {
         auto const &fn_type =
-            ir::BuiltinType(ir::Builtin::Bytes)->as<type::Function>();
+            ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
         ir::Arguments call_args{&fn_type, node->args_.at(0)->EmitIr(this, ctx)};
 
         ir::OutParams outs;
@@ -607,9 +637,9 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) const {
         return ir::Results{reg};
       } break;
 
-      case ir::Builtin::Alignment: {
+      case core::Builtin::Alignment: {
         auto const &fn_type =
-            ir::BuiltinType(ir::Builtin::Alignment)->as<type::Function>();
+            ir::BuiltinType(core::Builtin::Alignment)->as<type::Function>();
         ir::Arguments call_args{&fn_type, node->args_.at(0)->EmitIr(this, ctx)};
 
         ir::OutParams outs;
@@ -620,7 +650,7 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) const {
       } break;
 
 #ifdef DBG
-      case ir::Builtin::DebugIr: ir::DebugIr(); return ir::Results{};
+      case core::Builtin::DebugIr: ir::DebugIr(); return ir::Results{};
 #endif  // DBG
     }
     UNREACHABLE();
@@ -1179,10 +1209,9 @@ ir::Results EmitIr::Val(ast::MatchDeclaration const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
-  if (node->op_ == frontend::Operator::Jump) {
-    ASSERT(node->args_.exprs_.size() == 1u);
-    ASSERT(node->args_.exprs_[0].get(), InheritsFrom<ast::Call>());
-    auto &call        = node->args_.exprs_[0]->as<ast::Call>();
+  if (node->op() == frontend::Operator::Jump) {
+    ASSERT(node->exprs().size() == 1u);
+    auto &call        = node->expr(0)->as<ast::Call>();
     auto *called_expr = call.fn_.get();
 
     // TODO stop calculating this so many times.
@@ -1203,21 +1232,21 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
   }
 
   std::vector<ir::Results> arg_vals;
-  if (node->args_.needs_expansion()) {
-    for (auto &expr : node->args_.exprs_) {
-      auto vals = expr->EmitIr(this, ctx);
-      for (size_t i = 0; i < vals.size(); ++i) {
-        arg_vals.push_back(vals.GetResult(i));
-      }
-    }
-  } else {
-    auto vals = node->args_.EmitIr(this, ctx);
-    for (size_t i = 0; i < vals.size(); ++i) {
-      arg_vals.push_back(vals.GetResult(i));
-    }
+  // TODO expansion
+  // if (node->args_.needs_expansion()) {
+  //   for (auto &expr : node->args_.exprs_) {
+  //     auto vals = expr->EmitIr(this, ctx);
+  //     for (size_t i = 0; i < vals.size(); ++i) {
+  //       arg_vals.push_back(vals.GetResult(i));
+  //     }
+  //   }
+  // } else {
+  for (auto *expr : node->exprs()) {
+    arg_vals.push_back(expr->EmitIr(this, ctx));
   }
+  //}
 
-  switch (node->op_) {
+  switch (node->op()) {
     case frontend::Operator::Return: {
       size_t offset = 0;
       auto *fn_scope =
@@ -1259,8 +1288,7 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
       // things or at least make them not compile if the `after` function takes
       // a compile-time constant argument.
       for (size_t i = 0; i < arg_vals.size(); ++i) {
-        ctx->yields_stack_.back().emplace_back(node->args_.exprs_[i].get(),
-                                               arg_vals[i]);
+        ctx->yields_stack_.back().emplace_back(node->expr(i), arg_vals[i]);
       }
       ctx->more_stmts_allowed_ = false;
       return ir::Results{};
@@ -1269,22 +1297,20 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
       size_t index = 0;
       // TODO this is wrong if you use the <<(...) spread operator.
       for (auto &val : arg_vals) {
-        if (auto const *dispatch_table = ctx->dispatch_table(
-                ast::ExprPtr{node->args_.exprs_[index].get(), 0x01})) {
+        if (auto const *dispatch_table =
+                ctx->dispatch_table(ast::ExprPtr{node->expr(index), 0x01})) {
           dispatch_table->EmitCall(
               core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-                  {std::pair(node->args_.exprs_[index].get(), std::move(val))},
-                  {}),
+                  {std::pair(node->expr(index), std::move(val))}, {}),
               ctx);
         } else {
-          auto *t = ctx->type_of(node->args_.exprs_.at(index).get());
-          t->EmitPrint(this, val, ctx);
+          ctx->type_of(node->expr(index))->EmitPrint(this, val, ctx);
         }
         ++index;
       }
       return ir::Results{};
     } break;
-    default: UNREACHABLE("Operator is ", static_cast<int>(node->op_));
+    default: UNREACHABLE("Operator is ", static_cast<int>(node->op()));
   }
 }
 
@@ -1323,19 +1349,9 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   }
 
   for (auto &block_node : node->blocks_) {
-    if (auto *block_id = block_node.name_->if_as<ast::Identifier>()) {
-      if (auto iter = name_to_block.find(block_id->token);
-          iter != name_to_block.end()) {
-        std::get<1>(iter->second) = &block_node;
-        block_map.emplace(std::get<0>(iter->second),
-                          ir::CompiledFn::Current->AddBlock());
-      } else {
-        base::Log() << block_id->token;
-        NOT_YET();
-      }
-    } else {
-      NOT_YET(DumpAst::ToString(block_node.name_.get()));
-    }
+    auto &block        = name_to_block.at(block_node.name());
+    std::get<1>(block) = &block_node;
+    block_map.emplace(std::get<0>(block), ir::CompiledFn::Current->AddBlock());
   }
 
   ir::UncondJump(init_block);
@@ -1413,6 +1429,9 @@ ir::Results EmitIr::Val(ast::Statements const *node, Context *ctx) const {
 
   for (auto &stmt : node->content_) {
     if (!ctx->more_stmts_allowed_) {
+      // TODO I remember thinking about why this can't be done during type
+      // verification, but I don't remember the entire reasoning. Figure that
+      // out.
       ctx->error_log()->StatementsFollowingJump(stmt->span);
 
       // Allow it again so we can repeated bugs in the same block.
