@@ -111,7 +111,7 @@ void ExtractJumps::operator()(ast::ScopeLiteral const *node) {
 }
 
 void ExtractJumps::operator()(ast::ScopeNode const *node) {
-  for (auto &block : node->blocks_) { block.ExtractJumps(this); }
+  for (auto &block : node->blocks()) { block.ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::StructLiteral const *node) {

@@ -1349,8 +1349,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   absl::flat_hash_map<std::string_view,
                       std::tuple<ir::Block, ast::BlockNode const *>>
       name_to_block;
-  auto *scope_lit =
-      backend::EvaluateAs<ast::ScopeLiteral *>(node->name_.get(), ctx);
+  auto *scope_lit = backend::EvaluateAs<ast::ScopeLiteral *>(node->name(), ctx);
   for (auto const *decl : scope_lit->decls()) {
     if (decl->id_ == "init") {
       continue;
@@ -1366,7 +1365,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
     }
   }
 
-  for (auto &block_node : node->blocks_) {
+  for (auto &block_node : node->blocks()) {
     auto &block        = name_to_block.at(block_node.name());
     std::get<1>(block) = &block_node;
     block_map.emplace(std::get<0>(block), ir::CompiledFn::Current->AddBlock());
@@ -1389,7 +1388,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
     return ctx->dispatch_table(ast::ExprPtr{node, 0x02});
   }())
       ->EmitInlineCall(
-          node->args_.Transform(
+          node->args().Transform(
               [this, ctx](std::unique_ptr<ast::Expression> const &expr) {
                 return std::pair<ast::Expression const *, ir::Results>(
                     expr.get(), expr->EmitIr(this, ctx));
@@ -1398,11 +1397,11 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
 
   for (auto [block_name, block_and_node] : name_to_block) {
     if (block_name == "init" || block_name == "done") { continue; }
-    auto &[block, node] = block_and_node;
-    auto iter           = block_map.find(block);
+    auto &[block, n] = block_and_node;
+    auto iter        = block_map.find(block);
     if (iter == block_map.end()) { continue; }
     ir::BasicBlock::Current = iter->second;
-    ASSERT_NOT_NULL(node)->EmitIr(this, ctx);
+    ASSERT_NOT_NULL(n)->EmitIr(this, ctx);
 
     ASSERT_NOT_NULL([&] {
       auto *mod       = scope_lit->decl(0)->mod_;

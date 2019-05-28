@@ -633,14 +633,12 @@ std::unique_ptr<ast::Node> BuildJump(
 std::unique_ptr<ast::Node> BuildScopeNode(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto scope_node   = std::make_unique<ast::ScopeNode>();
-  auto call         = move_as<ast::Call>(nodes[0]);
-  scope_node->name_ = std::move(call->fn_);
-  scope_node->args_ = std::move(call->args_);
-
-  scope_node->span = TextSpan(scope_node->name_->span, nodes[1]->span);
-  scope_node->blocks_.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
-  return scope_node;
+  auto span           = TextSpan(nodes.front()->span, nodes.back()->span);
+  auto [callee, args] = std::move(*move_as<ast::Call>(nodes[0])).extract();
+  std::vector<ast::BlockNode> blocks;
+  blocks.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
+  return std::make_unique<ast::ScopeNode>(std::move(span), std::move(callee),
+                                          std::move(args), std::move(blocks));
 }
 
 std::unique_ptr<ast::Node> BuildBlockNode(
@@ -656,8 +654,8 @@ std::unique_ptr<ast::Node> ExtendScopeNode(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto &scope_node = nodes[0]->as<ast::ScopeNode>();
-  (scope_node.sugared_ ? scope_node.sugared_ : &scope_node)
-      ->blocks_.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
+  (scope_node.last_scope_node() ? scope_node.last_scope_node() : &scope_node)
+      ->emplace_block(std::move(nodes[1]->as<ast::BlockNode>()));
   return std::move(nodes[0]);
 }
 
@@ -665,15 +663,15 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto *scope_node      = &nodes[0]->as<ast::ScopeNode>();
-  auto *extension_point = (scope_node->sugared_ != nullptr)
-                              ? scope_node->sugared_
-                              : &nodes[0]->as<ast::ScopeNode>();
+  auto &extension_point = (scope_node->last_scope_node() != nullptr)
+                              ? *scope_node->last_scope_node()
+                              : nodes[0]->as<ast::ScopeNode>();
 
-  scope_node->sugared_ = &nodes[2]->as<ast::ScopeNode>();
+  scope_node->set_last_scope_node(&nodes[2]->as<ast::ScopeNode>());
   std::vector<std::unique_ptr<ast::Node>> block_stmt_nodes;
   block_stmt_nodes.push_back(std::move(nodes[2]));
   // TODO span
-  extension_point->blocks_.emplace_back(
+  extension_point.emplace_block(
       TextSpan{}, std::move(nodes[1]->as<ast::Identifier>().token),
       std::move(block_stmt_nodes));
   return std::move(nodes[0]);

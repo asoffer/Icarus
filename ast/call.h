@@ -13,6 +13,14 @@ struct Call : public Expression {
 
   ~Call() override {}
 
+  std::pair<std::unique_ptr<Expression>,
+            core::FnArgs<std::unique_ptr<Expression>>>
+  extract() && {
+    return std::pair<std::unique_ptr<Expression>,
+                     core::FnArgs<std::unique_ptr<Expression>>>(
+        std::move(fn_), std::move(args_));
+  }
+
 #include "visitor/visitors.xmacro.h"
 
   std::unique_ptr<Expression> fn_;  // Rename to `callable_` or something

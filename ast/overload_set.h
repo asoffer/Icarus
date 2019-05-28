@@ -27,7 +27,7 @@ struct Overload {
 
 struct OverloadSet : public base::bag<Overload> {
   OverloadSet() = default;
-  OverloadSet(core::Scope *scope, std::string const &id, Context *ctx);
+  OverloadSet(core::Scope const *scope, std::string const &id, Context *ctx);
   OverloadSet(NodeSpan<Declaration const> decls, Context *ctx);
 
   void add_adl(std::string const &id, type::Type const *t);

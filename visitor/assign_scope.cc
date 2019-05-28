@@ -167,9 +167,9 @@ void AssignScope::operator()(ast::ScopeLiteral *node, core::Scope *scope) {
 
 void AssignScope::operator()(ast::ScopeNode *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->name_->assign_scope(this, scope);
-  node->args_.Apply([this, scope](auto &expr) { expr->assign_scope(this, scope); });
-  for (auto &block : node->blocks_) { block.assign_scope(this, scope); }
+  node->name()->assign_scope(this, scope);
+  node->args().Apply([this, scope](auto &expr) { expr->assign_scope(this, scope); });
+  for (auto &block : node->blocks()) { block.assign_scope(this, scope); }
 }
 
 void AssignScope::operator()(ast::StructLiteral *node,

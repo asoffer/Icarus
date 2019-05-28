@@ -9,6 +9,7 @@
 #include "absl/types/span.h"
 #include "ast/declaration.h"
 #include "ast/expression.h"
+#include "ast/node.h"
 #include "ast/node_span.h"
 #include "core/builtin.h"
 #include "core/fn_args.h"
@@ -286,7 +287,6 @@ struct BuiltinFn : public Expression {
 #include "ast/index.h"
 #include "ast/interface.h"
 #include "ast/match_declaration.h"
-#include "ast/node.h"
 
 namespace ast {
 
@@ -358,7 +358,14 @@ struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
   ~ScopeLiteral() override {}
 
   bool is_stateful() const { return stateful_; }
-  Declaration const *decl(size_t i) const { return decls_[i].get(); }
+  // TODO are you allowed to have two blocks declared with the same name inside
+  // a scope?
+  Declaration const *decl(std::string_view name) {
+    for (auto *d : decls()) {
+      if (d->id_ == name) { return d; }
+    }
+    return nullptr;
+  }
   NodeSpan<Declaration const> decls() const { return decls_; }
   NodeSpan<Declaration> decls() { return decls_; }
 
@@ -369,16 +376,79 @@ struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
   bool stateful_ = false;
 };
 
-
+// ScopeNode:
+// Represents an instantiation of a user-defined scope (all scopes are
+// user-defined). This is in contrast with a the `ScopeLiteral` struct which
+// represents the definition of such a scope.
+//
+// Example:
+//  ```
+//  if (condition) then {
+//    doA()
+//  } else {
+//    doB()
+//  }
+//  ```
 struct ScopeNode : public Expression {
+  explicit ScopeNode(TextSpan span, std::unique_ptr<Expression> name,
+                     core::FnArgs<std::unique_ptr<Expression>> args,
+                     std::vector<BlockNode> blocks)
+      : Expression(std::move(span)),
+        name_(std::move(name)),
+        args_(std::move(args)),
+        blocks_(std::move(blocks)) {}
   ~ScopeNode() override {}
 
 #include "visitor/visitors.xmacro.h"
 
+  Expression *name() { return name_.get(); }
+  Expression const *name() const { return name_.get(); }
+
+  core::FnArgs<std::unique_ptr<Expression>> const &args() const {
+    return args_;
+  }
+
+
+  absl::Span<BlockNode const> blocks() const { return blocks_; }
+  absl::Span<BlockNode> blocks() { return absl::MakeSpan(blocks_); }
+
+  template <typename... Args>
+  void emplace_block(Args &&... args) {
+    blocks_.emplace_back(std::forward<Args>(args)...);
+  }
+
+  ScopeNode *last_scope_node() { return last_scope_node_; }
+  void set_last_scope_node(ScopeNode *s) { last_scope_node_ = s; }
+
+ private:
   std::unique_ptr<Expression> name_;
   core::FnArgs<std::unique_ptr<Expression>> args_;
   std::vector<BlockNode> blocks_;
-  ScopeNode *sugared_ = nullptr;
+
+  // The grammar rules in Icarus are such that block nodes require parentheses
+  // with one exception: If a block node contains exactly one scope node, it can
+  // be used without parentheses. This enables else-if chains, as in the
+  // example:
+  //  ```
+  //  if (condition) then {
+  //    do_A()
+  //  } else if (other_condition) then {
+  //    do_B()
+  //  } else {
+  //    do_C()
+  //  }
+  //  ```
+  //
+  //  While building the syntax tree, each time we see a new block, we need node
+  //  it should be attached to. The ambiguity is that, the block containing
+  //  `do_C()` could be attached as an else-block on the first or the second
+  //  conditional. (Even though this would result in having two else-blocks, we
+  //  do not know at this stage whether or not it is allowed. It may be for some
+  //  scopes that blocks can be repeated). The relevant grammar rule for
+  //  resolving the ambiguity is that we always attach it to the inner-most
+  //  node. The pointer `last_scope_node_` points to this inner-most node (or is
+  //  null if there are no inner nodes).
+  ScopeNode *last_scope_node_ = nullptr;
 };
 
 }  // namespace ast
