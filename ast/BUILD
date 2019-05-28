@@ -29,9 +29,6 @@ cc_lib_target(
         ":function_literal",
         ":identifier",
         ":import",
-        ":index",
-        ":interface",
-        ":match_declaration",
         ":node",
         ":node_span",
         ":struct_literal",
@@ -62,15 +59,12 @@ icarus_ast_node(name = "function_literal", deps = [
 ])
 icarus_ast_node(name = "identifier", deps = [":expression"])
 icarus_ast_node(name = "import", deps = [":expression", "//core:pending_module"])
-icarus_ast_node(name = "index", deps = [":expression"])
-icarus_ast_node(name = "interface", deps = [":expression"])
 icarus_ast_node(name = "node", deps = [
     "//base:util",
     "//visitor:visitors",
     "//frontend:text_span",
     "//ir:results",
 ])
-icarus_ast_node(name = "match_declaration", deps = [":declaration"])
 icarus_ast_node(name = "struct_literal", deps = [":declaration", ":expression"])
 icarus_ast_node(name = "struct_type", deps = [":expression"])
 icarus_ast_node(name = "switch", deps = [":expression"])
@@ -94,7 +88,6 @@ cc_lib_target(
         ":ast",
         ":call",
         ":function_literal",
-        "//ast:match_declaration",
         "//backend:eval",
         "//ir:block",
         "//ir:cmd",

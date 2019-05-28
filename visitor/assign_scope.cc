@@ -142,14 +142,14 @@ void AssignScope::operator()(ast::Import *node, core::Scope *scope) {
 
 void AssignScope::operator()(ast::Index *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->lhs_->assign_scope(this, scope);
-  node->rhs_->assign_scope(this, scope);
+  node->lhs()->assign_scope(this, scope);
+  node->rhs()->assign_scope(this, scope);
 }
 
 void AssignScope::operator()(ast::Interface *node, core::Scope *scope) {
-  node->scope_      = scope;
-  node->body_scope_ = scope->add_child<core::DeclScope>();
-  for (auto &d : node->decls_) { d.assign_scope(this, node->body_scope_.get()); }
+  node->scope_ = scope;
+  node->set_body_with_parent(scope);
+  for (auto *d : node->decls()) { d->assign_scope(this, node->body_scope()); }
 }
 
 void AssignScope::operator()(ast::RepeatedUnop *node, core::Scope *scope) {

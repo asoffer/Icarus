@@ -79,12 +79,12 @@ void ExtractJumps::operator()(ast::Import const *node) {
 }
 
 void ExtractJumps::operator()(ast::Index const *node) {
-  node->lhs_->ExtractJumps(this);
-  node->rhs_->ExtractJumps(this);
+  node->lhs()->ExtractJumps(this);
+  node->rhs()->ExtractJumps(this);
 }
 
 void ExtractJumps::operator()(ast::Interface const *node) {
-  for (auto &d : node->decls_) { d.ExtractJumps(this); }
+  for (auto const *d : node->decls()) { d->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::RepeatedUnop const *node) {

@@ -49,38 +49,38 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Identifier const *node,
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,
                                                   Context *ctx) const {
-  auto *lhs_type = ctx->type_of(node->lhs_.get());
-  auto *rhs_type = ctx->type_of(node->rhs_.get());
+  auto *lhs_type = ctx->type_of(node->lhs());
+  auto *rhs_type = ctx->type_of(node->rhs());
 
   if (lhs_type->is<type::Array>()) {
-    auto index = ir::Cast(rhs_type, type::Int64, node->rhs_->EmitIr(this, ctx))
+    auto index = ir::Cast(rhs_type, type::Int64, node->rhs()->EmitIr(this, ctx))
                      .get<int64_t>(0);
 
-    auto lval = node->lhs_->EmitLVal(this, ctx)[0];
+    auto lval = node->lhs()->EmitLVal(this, ctx)[0];
     if (!lval.is_reg_) { NOT_YET(this, ctx->type_of(node)); }
     return {
-        ir::Index(type::Ptr(ctx->type_of(node->lhs_.get())), lval.reg_, index)};
+        ir::Index(type::Ptr(ctx->type_of(node->lhs())), lval.reg_, index)};
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
-    auto index = ir::Cast(rhs_type, type::Int64, node->rhs_->EmitIr(this, ctx))
+    auto index = ir::Cast(rhs_type, type::Int64, node->rhs()->EmitIr(this, ctx))
                      .get<int64_t>(0);
 
-    return {ir::PtrIncr(node->lhs_->EmitIr(this, ctx).get<ir::Reg>(0), index,
+    return {ir::PtrIncr(node->lhs()->EmitIr(this, ctx).get<ir::Reg>(0), index,
                         type::Ptr(buf_ptr_type->pointee))};
   } else if (lhs_type == type::ByteView) {
     // TODO interim until you remove string_view and replace it with Addr
     // entirely.
-    auto index = ir::Cast(rhs_type, type::Int64, node->rhs_->EmitIr(this, ctx))
+    auto index = ir::Cast(rhs_type, type::Int64, node->rhs()->EmitIr(this, ctx))
                      .get<int64_t>(0);
     return {ir::PtrIncr(
         ir::GetString(
-            node->lhs_->EmitIr(this, ctx).get<std::string_view>(0).val_),
+            node->lhs()->EmitIr(this, ctx).get<std::string_view>(0).val_),
         index, type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
-    auto index = ir::Cast(rhs_type, type::Int64,
-                          backend::Evaluate(node->rhs_.get(), ctx))
-                     .get<int64_t>(0)
-                     .val_;
-    return {ir::Field(node->lhs_->EmitLVal(this, ctx)[0], tup, index).get()};
+    auto index =
+        ir::Cast(rhs_type, type::Int64, backend::Evaluate(node->rhs(), ctx))
+            .get<int64_t>(0)
+            .val_;
+    return {ir::Field(node->lhs()->EmitLVal(this, ctx)[0], tup, index).get()};
   }
   UNREACHABLE(*this);
 }

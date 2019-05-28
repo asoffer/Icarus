@@ -113,10 +113,7 @@ static void MakeAllStackAllocations(core::FnScope const *fn_scope,
   for (auto *scope : fn_scope->innards_) {
     for (const auto &[key, val] : scope->decls_) {
       for (auto *decl : val) {
-        if (decl->const_ || decl->is_fn_param_ ||
-            decl->is<ast::MatchDeclaration>()) {
-          continue;
-        }
+        if (decl->const_ || decl->is_fn_param_) { continue; }
 
         // TODO it's wrong to use a default BoundConstants, but it's even more
         // wrong to store the address on the declaration, so you can fix those
@@ -1189,10 +1186,6 @@ ir::Results EmitIr::Val(ast::Identifier const *node, Context *ctx) const {
 
     return ir::Results{
         node->decl_->is_output_ && !t->is_big() ? ir::Load(reg, t) : reg};
-  } else if (node->decl_->is<ast::MatchDeclaration>()) {
-    // TODO is there a better way to do look up? look up in parent too?
-    UNREACHABLE(node->decl_);
-
   } else {
     auto *t   = ASSERT_NOT_NULL(ctx->type_of(node));
     auto lval = node->EmitLVal(this, ctx)[0];
@@ -1217,13 +1210,6 @@ ir::Results EmitIr::Val(ast::Interface const *node, Context *ctx) const {
   //   foo: T
   // }
   return ir::Results{ir::FinalizeInterface(ir::CreateInterface(node->scope_))};
-}
-
-ir::Results EmitIr::Val(ast::MatchDeclaration const *node, Context *ctx) const {
-  auto results = ctx->constants_->first.get_constant(node);
-  if (!results.empty()) { return results; }
-  return ir::Results{
-      backend::EvaluateAs<type::Interface const *>(node->type_expr.get(), ctx)};
 }
 
 ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {

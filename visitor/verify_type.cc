@@ -1549,8 +1549,8 @@ VerifyResult VerifyType::operator()(ast::Import const *node,
 
 VerifyResult VerifyType::operator()(ast::Index const *node,
                                     Context *ctx) const {
-  auto lhs_result = node->lhs_->VerifyType(this, ctx);
-  auto rhs_result = node->rhs_->VerifyType(this, ctx);
+  auto lhs_result = node->lhs()->VerifyType(this, ctx);
+  auto rhs_result = node->rhs()->VerifyType(this, ctx);
   if (!lhs_result.ok() || !rhs_result.ok()) { return VerifyResult::Error(); }
 
   auto *index_type = rhs_result.type_->if_as<type::Primitive>();
@@ -1576,7 +1576,7 @@ VerifyResult VerifyType::operator()(ast::Index const *node,
     }
 
     int64_t index = [&]() -> int64_t {
-      auto results = backend::Evaluate(node->rhs_.get(), ctx);
+      auto results = backend::Evaluate(node->rhs(), ctx);
       if (index_type == type::Int8) { return results.get<int8_t>(0).val_; }
       if (index_type == type::Int16) { return results.get<int16_t>(0).val_; }
       if (index_type == type::Int32) { return results.get<int32_t>(0).val_; }
@@ -1606,19 +1606,11 @@ VerifyResult VerifyType::operator()(ast::Index const *node,
 
 VerifyResult VerifyType::operator()(ast::Interface const *node,
                                     Context *ctx) const {
-  for (auto &decl : node->decls_) {
-    decl.VerifyType(this, ctx);
-    if (decl.init_val != nullptr) { NOT_YET(); }
+  for (auto const *decl : node->decls()) {
+    decl->VerifyType(this, ctx);
+    if (decl->init_val != nullptr) { NOT_YET(); }
   }
   return ctx->set_result(node, VerifyResult::Constant(type::Intf));
-}
-
-VerifyResult VerifyType::operator()(ast::MatchDeclaration const *node,
-                                    Context *ctx) const {
-  ASSIGN_OR(return VerifyResult::Error(), [[maybe_unused]] auto result,
-                   node->type_expr->VerifyType(this, ctx));
-  // TODO is node always constant? does that make sense?
-  return ctx->set_result(node, VerifyResult::Constant(type::Type_));
 }
 
 VerifyResult VerifyType::operator()(ast::RepeatedUnop const *node,

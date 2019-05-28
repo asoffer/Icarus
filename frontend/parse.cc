@@ -362,17 +362,17 @@ std::unique_ptr<ast::Node> BuildAccess(
 std::unique_ptr<ast::Node> BuildIndexOperator(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto index  = std::make_unique<ast::Index>();
-  index->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  index->lhs_ = move_as<ast::Expression>(nodes[0]);
-  index->rhs_ = move_as<ast::Expression>(nodes[2]);
+  auto span  = TextSpan(nodes[0]->span, nodes[2]->span);
+  auto index = std::make_unique<ast::Index>(std::move(span),
+                                            move_as<ast::Expression>(nodes[0]),
+                                            move_as<ast::Expression>(nodes[2]));
 
-  if (index->lhs_->is<ast::Declaration>()) {
-    error_log->IndexingDeclaration(index->lhs_->span);
+  if (index->lhs()->is<ast::Declaration>()) {
+    error_log->IndexingDeclaration(index->lhs()->span);
   }
 
-  if (index->rhs_->is<ast::Declaration>()) {
-    error_log->DeclarationInIndex(index->rhs_->span);
+  if (index->rhs()->is<ast::Declaration>()) {
+    error_log->DeclarationInIndex(index->rhs()->span);
   }
 
   return index;
@@ -456,20 +456,6 @@ std::unique_ptr<ast::Node> BuildDeclaration(
     decl->init_val = move_as<ast::Expression>(nodes[2]);
   }
 
-  return decl;
-}
-
-std::unique_ptr<ast::Node> BuildMatchDeclaration(
-    std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
-  auto decl  = std::make_unique<ast::MatchDeclaration>();
-  decl->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  if (nodes[2]->is<ast::Identifier>()) {
-    decl->id_ = std::move(nodes[2]->as<ast::Identifier>().token);
-  }
-  decl->mod_      = mod;
-  decl->const_    = true;
-  decl->type_expr = move_as<ast::Expression>(nodes[0]);
   return decl;
 }
 
@@ -756,7 +742,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     return BuildAccess(std::move(nodes), mod, error_log);
 
   } else if (tk == "`") {
-    return BuildMatchDeclaration(std::move(nodes), mod, error_log);
+    NOT_YET();
 
   } else if (tk == ":" || tk == ":=") {
     return BuildDeclaration<false>(std::move(nodes), mod, error_log);
@@ -840,17 +826,15 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
 
 std::unique_ptr<ast::Node> BuildInterfaceLiteral(
     std::unique_ptr<Statements> stmts, Module *mod, error::Log *error_log) {
-  auto interface_lit  = std::make_unique<ast::Interface>();
-  interface_lit->span = stmts->span;  // TODO it's really bigger than this
-                                      // because it involves the keyword too.
+  std::vector<std::unique_ptr<ast::Declaration>> decls;
   for (auto &stmt : stmts->content_) {
     if (stmt->is<ast::Declaration>()) {
-      interface_lit->decls_.push_back(std::move(stmt->as<ast::Declaration>()));
+      decls.push_back(move_as<ast::Declaration>(stmt));
     } else {
       NOT_YET(stmt);
     }
   }
-  return interface_lit;
+  return std::make_unique<ast::Interface>(stmts->span, std::move(decls));
 }
 
 template <bool Stateful>

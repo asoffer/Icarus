@@ -263,29 +263,24 @@ void DumpAst::operator()(ast::Import const *node) {
 }
 
 void DumpAst::operator()(ast::Index const *node) {
-  node->lhs_->DumpAst(this);
+  node->lhs()->DumpAst(this);
   absl::StrAppend(out_, "[");
-  node->rhs_->DumpAst(this);
+  node->rhs()->DumpAst(this);
   absl::StrAppend(out_, "]");
 }
 
 void DumpAst::operator()(ast::Interface const *node) {
   absl::StrAppend(out_, "interface {");
-  if (!node->decls_.empty()) {
+  if (!node->decls().empty()) {
     ++indentation_;
-    for (auto const &decl : node->decls_) {
+    for (auto const *decl : node->decls()) {
       absl::StrAppend(out_, indent());
-      decl.DumpAst(this);
+      decl->DumpAst(this);
       absl::StrAppend(out_, "\n");
     }
     --indentation_;
   }
   absl::StrAppend(out_, "}");
-}
-
-void DumpAst::operator()(ast::MatchDeclaration const *node) {
-  node->type_expr->DumpAst(this);
-  absl::StrAppend(out_, "`", node->id_);
 }
 
 void DumpAst::operator()(ast::RepeatedUnop const *node) {

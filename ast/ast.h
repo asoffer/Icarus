@@ -284,11 +284,63 @@ struct BuiltinFn : public Expression {
 #include "ast/hashtag.h"
 #include "ast/identifier.h"
 #include "ast/import.h"
-#include "ast/index.h"
-#include "ast/interface.h"
-#include "ast/match_declaration.h"
 
 namespace ast {
+// Index:
+// Represents indexing into an array, buffer-pointer, or a call to the ([])
+// operator if/when that may be overloaded.
+//
+// Example:
+//  * `buf_ptr[3]`
+//  * `my_array[4]`
+struct Index : public Expression {
+  explicit Index(TextSpan span, std::unique_ptr<Expression> lhs,
+                 std::unique_ptr<Expression> rhs)
+      : Expression(std::move(span)),
+        lhs_(std::move(lhs)),
+        rhs_(std::move(rhs)) {}
+  ~Index() override {}
+
+  Expression const* lhs() const { return lhs_.get(); }
+  Expression* lhs() { return lhs_.get(); }
+  Expression const* rhs() const { return rhs_.get(); }
+  Expression* rhs() { return rhs_.get(); }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::unique_ptr<Expression> lhs_, rhs_;
+};
+
+// Interface:
+// Represents a literal defining an interface that a type may adhere to. Types
+// which satisfy all the constraints specified in an interface may be passed
+// into any function accepting an object of that interface.
+//
+// Example:
+//  ```
+//  comparable ::= interface {
+//    (<)  :: (self, self) -> bool
+//    (==) :: (self, self) -> bool
+//  }
+//  ```
+//
+// TODO this is a work in progress. The semantics of the declarations in this
+// node have not been decided upon yet.
+struct Interface : public ScopeExpr<core::DeclScope> {
+  explicit Interface(TextSpan span,
+                     std::vector<std::unique_ptr<Declaration>> decls)
+      : ScopeExpr<core::DeclScope>(std::move(span)), decls_(std::move(decls)) {}
+  ~Interface() override {}
+
+  NodeSpan<Declaration const> decls() const { return decls_; }
+  NodeSpan<Declaration> decls() { return decls_; }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::vector<std::unique_ptr<Declaration>> decls_;
+};
 
 // RepeatedUnop:
 // Represents a statement where arbitrarily many expressions can be passed, and
@@ -452,6 +504,7 @@ struct ScopeNode : public Expression {
 };
 
 }  // namespace ast
+
 
 #include "ast/struct_literal.h"
 #include "ast/struct_type.h"
