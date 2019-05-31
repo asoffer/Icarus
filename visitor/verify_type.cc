@@ -1781,7 +1781,7 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
   }
 
   auto *scope_lit =
-      backend::EvaluateAs<ast::ScopeLiteral *>(node->name_.get(), ctx);
+      backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx)->lit_;
   ast::OverloadSet init_os, done_os;
 
   auto arg_results = node->args_.Transform(
@@ -1790,7 +1790,8 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
             arg.get(), arg->VerifyType(this, ctx)};
       });
 
-  auto *mod       = scope_lit->decl(0)->mod_;
+  // TODO remove const cast
+  auto *mod       = const_cast<Module*>(scope_lit->scope_->module());
   bool swap_bc    = ctx->mod_ != mod;
   Module *old_mod = std::exchange(ctx->mod_, mod);
   if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }

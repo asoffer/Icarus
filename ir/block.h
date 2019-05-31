@@ -81,6 +81,20 @@ struct BlockSequence {
   std::vector<Block> *seq_ = nullptr;
 };
 
+struct BlockDef {
+  explicit BlockDef() = default;
+  void append(Block b) { bseq_.append(b); }
+
+  // TODO remove:
+  operator BlockSequence () { return bseq_; }
+  inline friend std::ostream &operator<<(std::ostream &os, BlockDef b) {
+    return os << "blockdef{}";
+  }
+
+ private:
+  BlockSequence bseq_;
+};
+
 constexpr bool operator!=(Block lhs, Block rhs) { return !(lhs == rhs); }
 inline bool operator!=(BlockSequence lhs, BlockSequence rhs) {
   return !(lhs == rhs);

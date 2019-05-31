@@ -62,9 +62,9 @@ cc_group_target(
     name = "module",
     hdrs = ["module.h"],
     deps = {
-        "compile": COMMON_MODULE_INTF_TARGETS + ["//ast:dispatch_table"],
+        "compile": COMMON_MODULE_INTF_TARGETS + ["//ast:dispatch_table", "//ir:scope_def"],
         "format": COMMON_MODULE_INTF_TARGETS,
-        "match": COMMON_MODULE_INTF_TARGETS + ["//ast:dispatch_table"],
+        "match": COMMON_MODULE_INTF_TARGETS + ["//ast:dispatch_table", "//ir:scope_def"],
     },
 )
 

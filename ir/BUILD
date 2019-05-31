@@ -209,6 +209,13 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "scope_def",
+    intf_deps = [":any_func"],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "str",
     intf_deps = [":addr"],
     impl_deps = [

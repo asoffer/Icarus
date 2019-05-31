@@ -1136,6 +1136,25 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::ReturnJump: return ir::BlockIndex{-1};
     case ir::Op::JumpPlaceholder: UNREACHABLE(call_stack.top().fn_);
     case ir::Op::BlockSeqJump: NOT_YET(); break;
+    case ir::Op::CreateScopeDef:
+      // TODO consider the implications of leaking this. I'm not convinced there
+      // exist scenarios where we're leaking and could clean it up. I.e., every
+      // time we create one it's because we expect it to live forever. I suppose
+      // we could ref-count the results of functions and delete these if they're
+      // unused?
+      save(new ir::ScopeDef(cmd.create_scope_def_.sl_));
+      break;
+    case ir::Op::AddScopeDefInit:
+      resolve<ir::ScopeDef *>(cmd.add_scope_def_init_.reg_)
+          ->AddInit(resolve(cmd.add_scope_def_init_.f_));
+      break;
+    case ir::Op::AddScopeDefDone:
+      resolve<ir::ScopeDef *>(cmd.add_scope_def_done_.reg_)
+          ->AddDone(resolve(cmd.add_scope_def_done_.f_));
+      break;
+    case ir::Op::AddBlockDef:
+      // TODO implement me
+      break;
   }
 
   return ir::BlockIndex{-2};

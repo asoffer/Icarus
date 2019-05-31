@@ -287,3 +287,7 @@ OP_MACRO(EvaluateAsType,       EvaluateAsType,      type::Type const*,       ast
 OP_MACRO(CreateContext,        CreateContext,       Context *,               mod_)
 OP_MACRO(AddBoundConstant,     AddBoundConstant,    void,                    add_bc_)
 OP_MACRO(DestroyContext,       DestroyContext,      void,                    reg_)
+OP_MACRO(CreateScopeDef,       CreateScopeDef,      void,                    create_scope_def_)
+OP_MACRO(AddScopeDefInit,      AddScopeDefInit,     void,                    add_scope_def_init_)
+OP_MACRO(AddScopeDefDone,      AddScopeDefDone,     void,                    add_scope_def_done_)
+OP_MACRO(AddBlockDef,          AddBlockDef,         void,                    add_block_def_)

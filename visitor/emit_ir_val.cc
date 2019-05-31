@@ -611,9 +611,9 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::BlockLiteral const *node, Context *ctx) const {
-  ir::BlockSequence seq;
-  seq.append(ir::Block(node));
-  return ir::Results{seq};
+  ir::BlockDef block_def;
+  block_def.append(ir::Block(node)); // TODO remove this
+  return ir::Results{block_def};
 }
 
 ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) const {
@@ -1319,7 +1319,17 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) const {
-  return ir::Results{node};
+  auto reg = ir::CreateScopeDef(node);
+  for (auto *decl : node->decls()) {
+    if (decl->id_ == "init") {
+      ir::AddScopeDefInit(reg, decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
+    } else if (decl->id_ == "done") {
+      ir::AddScopeDefDone(reg, decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
+    } else {
+      ir::AddBlockDef(reg, decl->EmitIr(this, ctx).get<ir::BlockDef>(0));
+    }
+  }
+  return ir::Results{reg};
 }
 
 ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
@@ -1336,7 +1346,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
                       std::tuple<ir::Block, ast::BlockNode const *>>
       name_to_block;
   auto *scope_lit =
-      backend::EvaluateAs<ast::ScopeLiteral *>(node->name_.get(), ctx);
+      backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx)->lit_;
   for (auto const *decl : scope_lit->decls()) {
     if (decl->id_ == "init") {
       continue;
@@ -1364,7 +1374,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
 
   // TODO this lambda thing is an awful hack.
   ASSERT_NOT_NULL([&] {
-    auto *mod       = scope_lit->decl(0)->mod_;
+    auto *mod       = const_cast<Module *>(scope_lit->scope_->module());
     bool swap_bc    = ctx->mod_ != mod;
     Module *old_mod = std::exchange(ctx->mod_, mod);
     if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
@@ -1391,7 +1401,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
     ASSERT_NOT_NULL(node)->EmitIr(this, ctx);
 
     ASSERT_NOT_NULL([&] {
-      auto *mod       = scope_lit->decl(0)->mod_;
+      auto *mod       = const_cast<Module *>(scope_lit->scope_->module());
       bool swap_bc    = ctx->mod_ != mod;
       Module *old_mod = std::exchange(ctx->mod_, mod);
       if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
@@ -1409,7 +1419,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
 
   // TODO this lambda thing is an awful hack.
   return ASSERT_NOT_NULL([&] {
-           auto *mod       = scope_lit->decl(0)->mod_;
+           auto *mod       = const_cast<Module *>(scope_lit->scope_->module());
            bool swap_bc    = ctx->mod_ != mod;
            Module *old_mod = std::exchange(ctx->mod_, mod);
            if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }

@@ -15,6 +15,7 @@
 // TODO this ifdef needs to disappear it's not long-term sustainable
 #ifdef ICARUS_VISITOR_EMIT_IR
 #include "ast/dispatch_table.h"
+#include "ir/scope_def.h"
 #endif // ICARUS_VISITOR_EMIT_IR
 #include "ast/expression.h"
 #include "core/fn_params.h"
@@ -94,10 +95,12 @@ struct Module {
     absl::flat_hash_map<ast::ExprPtr, visitor::VerifyResult> verify_results_;
 
     absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
+
 #endif  // ICARUS_VISITOR_EMIT_IR
     ConstantBinding constants_;
 
     absl::flat_hash_map<ast::Import const *, core::PendingModule> imported_module_;
+
   };
   // TODO It's possible to have layers of constant bindings in a tree-like
   // structure. For example,

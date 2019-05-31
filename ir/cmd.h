@@ -152,6 +152,39 @@ struct Cmd {
     }
   };
 
+  struct CreateScopeDef {
+    ast::ScopeLiteral const *sl_;
+    inline friend std::ostream &operator<<(std::ostream &os, CreateScopeDef c) {
+      return os << c.sl_;
+    }
+  };
+
+  struct AddScopeDefInit {
+    Reg reg_;
+    RegisterOr<AnyFunc> f_;
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           AddScopeDefInit a) {
+      return os << a.reg_ << " " << a.f_;
+    }
+  };
+
+  struct AddScopeDefDone {
+    Reg reg_;
+    RegisterOr<AnyFunc> f_;
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           AddScopeDefDone a) {
+      return os << a.reg_ << " " << a.f_;
+    }
+  };
+
+  struct AddBlockDef {
+    Reg reg_;
+    RegisterOr<BlockDef> b_;
+    inline friend std::ostream &operator<<(std::ostream &os, AddBlockDef a) {
+      return os << a.reg_ << " " << a.b_;
+    }
+  };
+
   struct CreateStruct {
     core::Scope const *scope_;
     ast::StructLiteral const *parent_;
@@ -262,6 +295,10 @@ struct Cmd {
     ast::StructLiteral const *sl_;
     LoadSymbol load_sym_;
     BlockSequence block_seq_;
+    CreateScopeDef create_scope_def_;
+    AddScopeDefInit add_scope_def_init_;
+    AddScopeDefDone add_scope_def_done_;
+    AddBlockDef add_block_def_;
 
     CreateStruct create_struct_;
     CreateStructField create_struct_field_;
@@ -652,5 +689,10 @@ TypedRegister<type::Interface const *> CreateInterface(
 ir::TypedRegister<type::Interface const *> FinalizeInterface(Reg r);
 
 Reg ArgumentCache(ast::StructLiteral const *sl);
+
+Reg CreateScopeDef(ast::ScopeLiteral const *sl);
+Reg AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f);
+Reg AddScopeDefDone(Reg reg, RegisterOr<AnyFunc> f);
+Reg AddBlockDef(Reg reg, RegisterOr<BlockDef> b);
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

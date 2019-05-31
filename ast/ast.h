@@ -429,7 +429,6 @@ struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
   ~ScopeLiteral() override {}
 
   bool is_stateful() const { return stateful_; }
-  Declaration const *decl(size_t i) const { return decls_[i].get(); }
   NodeSpan<Declaration const> decls() const { return decls_; }
   NodeSpan<Declaration> decls() { return decls_; }
 

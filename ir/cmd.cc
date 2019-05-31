@@ -15,6 +15,30 @@
 namespace ir {
 thread_local BlockIndex BasicBlock::Current;
 
+Reg CreateScopeDef(ast::ScopeLiteral const *sl) {
+  auto &cmd             = MakeCmd(type::Scope, Op::CreateScopeDef);
+  cmd.create_scope_def_ = {sl};
+  return cmd.result;
+}
+
+Reg AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f) {
+  auto &cmd = MakeCmd(nullptr, Op::AddScopeDefInit) ;
+  cmd.add_scope_def_init_ = {reg, f};
+  return cmd.result;
+}
+
+Reg AddScopeDefDone(Reg reg, RegisterOr<AnyFunc> f) {
+  auto &cmd = MakeCmd(nullptr, Op::AddScopeDefDone) ;
+  cmd.add_scope_def_done_ = {reg, f};
+  return cmd.result;
+}
+
+Reg AddBlockDef(Reg reg, RegisterOr<BlockDef> b) {
+  auto &cmd          = MakeCmd(nullptr, Op::AddBlockDef);
+  cmd.add_block_def_ = {reg, b};
+  return cmd.result;
+}
+
 void Move(type::Type const *t, Reg from, RegisterOr<Addr> to) {
   auto &cmd     = MakeCmd(nullptr, Op::Move);
   cmd.special2_ = {t, from, to};
