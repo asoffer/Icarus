@@ -29,8 +29,7 @@ OverloadSet::OverloadSet(NodeSpan<Declaration const> decls, Context *ctx) {
 }
 
 // TODO only hold functions?
-OverloadSet::OverloadSet(core::Scope const *scope, std::string const &id,
-                         Context *ctx) {
+OverloadSet::OverloadSet(core::Scope *scope, std::string const &id, Context *ctx) {
   EmplaceDecls(this, scope->AllDeclsWithId(id), ctx);
 }
 

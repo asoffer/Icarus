@@ -301,15 +301,15 @@ void DumpAst::operator()(ast::ScopeLiteral const *node) {
 }
 
 void DumpAst::operator()(ast::ScopeNode const *node) {
-  node->name()->DumpAst(this);
+  node->name_->DumpAst(this);
   absl::StrAppend(out_, " ");
 
-  if (!node->args().empty()) {
+  if (!node->args_.empty()) {
     absl::StrAppend(out_, "(");
-    DumpFnArgs(this, node->args());
+    DumpFnArgs(this, node->args_);
     absl::StrAppend(out_, ")");
   }
-  for (auto const &block : node->blocks()) { block.DumpAst(this); }
+  for (auto const &block : node->blocks_) { block.DumpAst(this); }
 }
 
 void DumpAst::operator()(ast::StructLiteral const *node) {
