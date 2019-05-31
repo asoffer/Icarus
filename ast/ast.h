@@ -283,9 +283,28 @@ struct BuiltinFn : public Expression {
 #include "ast/function_literal.h"
 #include "ast/hashtag.h"
 #include "ast/identifier.h"
-#include "ast/import.h"
 
 namespace ast {
+// Import:
+// Represents a request from one module to use parts of a different module.
+//
+// Examples:
+//  * `import "a_module.ic"`
+//  * `import function_returning_a_string()`
+struct Import : public Expression {
+  explicit Import(TextSpan span, std::unique_ptr<Expression> expr)
+      : Expression(std::move(span)), operand_(std::move(expr)) {}
+  ~Import() override {}
+
+  Expression const *operand() const { return operand_.get(); }
+  Expression *operand() { return operand_.get(); }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::unique_ptr<Expression> operand_;
+};
+
 // Index:
 // Represents indexing into an array, buffer-pointer, or a call to the ([])
 // operator if/when that may be overloaded.

@@ -259,7 +259,7 @@ void DumpAst::operator()(ast::Identifier const *node) {
 
 void DumpAst::operator()(ast::Import const *node) {
   absl::StrAppend(out_, "import ");
-  node->operand_->DumpAst(this);
+  node->operand()->DumpAst(this);
 }
 
 void DumpAst::operator()(ast::Index const *node) {

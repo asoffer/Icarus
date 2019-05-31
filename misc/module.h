@@ -19,6 +19,7 @@
 #include "ast/expression.h"
 #include "core/fn_params.h"
 #include "core/scope.h"
+#include "core/pending_module.h"
 #include "error/log.h"
 #include "ir/register.h"
 #include "misc/constant_binding.h"
@@ -95,6 +96,8 @@ struct Module {
     absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
 #endif  // ICARUS_VISITOR_EMIT_IR
     ConstantBinding constants_;
+
+    absl::flat_hash_map<ast::Import const *, core::PendingModule> imported_module_;
   };
   // TODO It's possible to have layers of constant bindings in a tree-like
   // structure. For example,

@@ -28,7 +28,6 @@ cc_lib_target(
         ":expression",
         ":function_literal",
         ":identifier",
-        ":import",
         ":node",
         ":node_span",
         ":struct_literal",
@@ -58,7 +57,6 @@ icarus_ast_node(name = "function_literal", deps = [
     "//core:fn_params",
 ])
 icarus_ast_node(name = "identifier", deps = [":expression"])
-icarus_ast_node(name = "import", deps = [":expression", "//core:pending_module"])
 icarus_ast_node(name = "node", deps = [
     "//base:util",
     "//visitor:visitors",

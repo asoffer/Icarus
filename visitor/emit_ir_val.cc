@@ -1195,7 +1195,7 @@ ir::Results EmitIr::Val(ast::Identifier const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::Import const *node, Context *ctx) const {
-  return ir::Results{node->module_.get()};
+  return ir::Results{ASSERT_NOT_NULL(ctx->pending_module(node))->get()};
 }
 
 ir::Results EmitIr::Val(ast::Index const *node, Context *ctx) const {

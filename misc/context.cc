@@ -46,6 +46,20 @@ void Context::set_addr(ast::Declaration const *decl, ir::Reg r) {
   constants_->second.addr_[decl] = r;
 }
 
+core::PendingModule *Context::pending_module(
+    ast::Import const *import_node) const {
+  if (auto iter = constants_->second.imported_module_.find(import_node);
+      iter != constants_->second.imported_module_.end()) {
+    return &iter->second;
+  }
+  return nullptr;
+}
+
+void Context::set_pending_module(ast::Import const *import_node,
+                                 core::PendingModule mod) {
+  constants_->second.imported_module_.emplace(import_node, std::move(mod));
+}
+
 ir::Reg Context::addr(ast::Declaration const *decl) const {
   return constants_->second.addr_.at(decl);
 }

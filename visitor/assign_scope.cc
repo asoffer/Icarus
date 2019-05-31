@@ -137,7 +137,7 @@ void AssignScope::operator()(ast::Identifier *node, core::Scope *scope) {
 
 void AssignScope::operator()(ast::Import *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->operand_->assign_scope(this, scope);
+  node->operand()->assign_scope(this, scope);
 }
 
 void AssignScope::operator()(ast::Index *node, core::Scope *scope) {

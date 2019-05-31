@@ -49,6 +49,7 @@ COMMON_MODULE_INTF_TARGETS = [
     ":constant_binding",
     "//ast:expression",
     "//core:fn_params",
+    "//core:pending_module",
     "//core:scope",
     "//error:log",
     "//type:typed_value",

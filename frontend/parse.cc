@@ -236,12 +236,6 @@ std::unique_ptr<ast::Node> BuildCall(
   return call;
 }
 
-// Input guarantees:
-// [unop] [expression]
-//
-// Internal checks:
-// Operand cannot be a declaration.
-// Operand cannot be an assignment of any kind.
 std::unique_ptr<ast::Node> BuildLeftUnop(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
@@ -249,10 +243,9 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 
   using frontend::Operator;
   if (tk == "import") {
-    auto import_node =
-        std::make_unique<ast::Import>(move_as<ast::Expression>(nodes[1]));
-    import_node->span = TextSpan(nodes[0]->span, import_node->operand_->span);
-    return import_node;
+    auto span = TextSpan(nodes[0]->span, nodes[1]->span);
+    return std::make_unique<ast::Import>(std::move(span),
+                                         move_as<ast::Expression>(nodes[1]));
   } else if (tk == "return" || tk == "yield" || tk == "jump" || tk == "print") {
     auto op = [&] {
       if (tk == "return") { return Operator::Return; }

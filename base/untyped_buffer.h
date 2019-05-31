@@ -1,8 +1,8 @@
 #ifndef ICARUS_BASE_UNTYPED_BUFFER_H
 #define ICARUS_BASE_UNTYPED_BUFFER_H
 
-#include <string>
 #include <cstring>
+#include <string>
 #include <utility>
 
 #include "base/debug.h"
@@ -20,28 +20,27 @@ struct untyped_buffer {
     return result;
   }
 
-  untyped_buffer(untyped_buffer &&that)
+  untyped_buffer(untyped_buffer &&that) noexcept
       : size_(that.size_), capacity_(that.capacity_), data_(that.data_) {
     that.size_     = 0;
     that.capacity_ = 0;
     that.data_     = nullptr;
   }
-  untyped_buffer(untyped_buffer const &that)
+  untyped_buffer(untyped_buffer const &that) noexcept
       : size_(that.size_),
         capacity_(that.size_),
         data_(static_cast<char *>(malloc(size_))) {
     std::memcpy(data_, that.data_, size_);
   }
 
-  untyped_buffer &operator=(untyped_buffer &&that) {
+  untyped_buffer &operator=(untyped_buffer &&that) noexcept {
     size_     = std::exchange(that.size_, 0);
     capacity_ = std::exchange(that.capacity_, 0);
     data_     = std::exchange(that.data_, nullptr);
     return *this;
   }
 
-
-  untyped_buffer &operator=(untyped_buffer const&that) {
+  untyped_buffer &operator=(untyped_buffer const &that) noexcept {
     size_     = that.size_;
     capacity_ = that.size_;
     data_     = static_cast<char *>(malloc(capacity_));

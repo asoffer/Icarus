@@ -75,7 +75,7 @@ void ExtractJumps::operator()(ast::FunctionLiteral const *node) {
 void ExtractJumps::operator()(ast::Identifier const *node) {}
 
 void ExtractJumps::operator()(ast::Import const *node) {
-  node->operand_->ExtractJumps(this);
+  node->operand()->ExtractJumps(this);
 }
 
 void ExtractJumps::operator()(ast::Index const *node) {

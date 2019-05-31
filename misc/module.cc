@@ -22,11 +22,10 @@ Module::~Module() = default;
 ir::CompiledFn *Module::AddFunc(
     type::Function const *fn_type,
     core::FnParams<type::Typed<ast::Expression const *>> params) {
-  auto *result = fns_.emplace_back(std::make_unique<ir::CompiledFn>(
-                                       this, fn_type, std::move(params)))
-                     .get();
-
-  return result;
+  return fns_
+      .emplace_back(
+          std::make_unique<ir::CompiledFn>(this, fn_type, std::move(params)))
+      .get();
 }
 
 type::Type const *Module::GetType(std::string_view name) const {

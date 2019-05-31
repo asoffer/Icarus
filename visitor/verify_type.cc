@@ -1521,29 +1521,30 @@ VerifyResult VerifyType::operator()(ast::Identifier const *node,
 
 VerifyResult VerifyType::operator()(ast::Import const *node,
                                     Context *ctx) const {
-  ASSIGN_OR(return _, auto result, node->operand_->VerifyType(this, ctx));
+  ASSIGN_OR(return _, auto result, node->operand()->VerifyType(this, ctx));
   bool err = false;
   if (result.type_ != type::ByteView) {
     // TODO allow (import) overload
-    ctx->error_log()->InvalidImport(node->operand_->span);
+    ctx->error_log()->InvalidImport(node->operand()->span);
     err = true;
   }
 
   if (!result.const_) {
-    ctx->error_log()->NonConstantImport(node->operand_->span);
+    ctx->error_log()->NonConstantImport(node->operand()->span);
     err = true;
   }
 
   if (err) { return VerifyResult::Error(); }
   // TODO storing node might not be safe.
-  auto src = backend::EvaluateAs<std::string_view>(node->operand_.get(), ctx);
+  auto src = backend::EvaluateAs<std::string_view>(node->operand(), ctx);
   ASSIGN_OR(ctx->error_log()->MissingModule(src, *ctx->mod_->path_);
             return VerifyResult::Error(),  //
-                   node->module_,
+                   auto pending_mod,
                    core::ImportModule(std::filesystem::path{src},
                                       *ctx->mod_->path_, CompileModule));
 
-  if (!node->module_.valid()) { return VerifyResult::Error(); }
+  if (!pending_mod.valid()) { return VerifyResult::Error(); }
+  ctx->set_pending_module(node, pending_mod);
   return ctx->set_result(node, VerifyResult::Constant(type::Module));
 }
 

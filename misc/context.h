@@ -41,6 +41,9 @@ struct Context {
   std::pair<ConstantBinding, Module::DependentData> *insert_constants(
       ConstantBinding const &constant_binding);
 
+  core::PendingModule *pending_module(ast::Import const *import_node) const;
+  void set_pending_module(ast::Import const *import_node,
+                          core::PendingModule mod);
 
   Module *mod_ = nullptr;
 

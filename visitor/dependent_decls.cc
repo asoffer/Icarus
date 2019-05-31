@@ -88,7 +88,7 @@ void DependentDecls::operator()(ast::Identifier const *node,
 
 void DependentDecls::operator()(ast::Import const *node,
                                 ast::Declaration const *d) {
-  node->operand_->DependentDecls(this, d);
+  node->operand()->DependentDecls(this, d);
 }
 
 void DependentDecls::operator()(ast::Index const *node,
