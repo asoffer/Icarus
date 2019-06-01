@@ -4,7 +4,7 @@
 
 namespace visitor {
 
-std::vector<ast::RepeatedUnop const *> const &ExtractJumps::jumps(
+std::vector<ast::Node const *> const &ExtractJumps::jumps(
     ExtractJumps::Kind k) const {
   return data_[static_cast<std::underlying_type_t<Kind>>(k)];
 }
@@ -87,13 +87,20 @@ void ExtractJumps::operator()(ast::Interface const *node) {
   for (auto const *d : node->decls()) { d->ExtractJumps(this); }
 }
 
+void ExtractJumps::operator()(ast::Jump const *node) {
+  // TODO Can you return or yield or jump from inside a jump block?!
+  for (auto const &opt : node->options_) {
+    opt.block->ExtractJumps(this);
+    opt.args.Apply([this](std::unique_ptr<ast::Expression> const &expr) {
+      expr->ExtractJumps(this);
+    });
+  }
+  data_[static_cast<std::underlying_type_t<Kind>>(Kind::Jump)].push_back(node);
+}
+
 void ExtractJumps::operator()(ast::RepeatedUnop const *node) {
   for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
   switch (node->op()) {
-    case frontend::Operator::Jump:
-      data_[static_cast<std::underlying_type_t<Kind>>(Kind::Jump)].push_back(
-          node);
-      break;
     case frontend::Operator::Return:
       data_[static_cast<std::underlying_type_t<Kind>>(Kind::Return)].push_back(
           node);

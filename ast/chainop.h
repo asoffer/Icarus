@@ -13,6 +13,10 @@ struct ChainOp : public Expression {
 
 #include "visitor/visitors.xmacro.h"
 
+  std::vector<std::unique_ptr<Expression>> &&extract() && {
+    return std::move(exprs);
+  }
+
   std::vector<frontend::Operator> ops;
   std::vector<std::unique_ptr<Expression>> exprs;
 };

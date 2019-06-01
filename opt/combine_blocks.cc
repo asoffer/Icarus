@@ -3,6 +3,12 @@
 #include "base/log.h"
 #include "ir/compiled_fn.h"
 
+#ifdef DBG
+namespace debug {
+bool optimize_ir = true;
+}  // namespace debug
+#endif  // DBG
+
 namespace opt {
 
 void RemoveEverythingAfterFirstJump(ir::BasicBlock* block) {
@@ -76,6 +82,9 @@ static void DeleteDeadBlocks(ir::CompiledFn* fn) {
 }
 
 void CombineBlocks(ir::CompiledFn* fn) {
+#ifdef DBG
+  if (!debug::optimize_ir) return;
+#endif  // DBG
   for (auto& block : fn->blocks_) { RemoveEverythingAfterFirstJump(&block); }
   DeleteDeadBlocks(fn);
   auto incoming = IncomingMap(fn);
@@ -89,13 +98,13 @@ void CombineBlocks(ir::CompiledFn* fn) {
       // jumping_block_index -- the index of the block that jumps to
       //                        `landing_block_index`.
       //
-      // If `jumping_block_index` is already present in the table, that means we
-      // have already moved the jumping block (i.e., it was some other block's
-      // landing block) and therefore is of no use. Instead we should treat the
-      // block that jumped to it as our jumping block. But that block may have
-      // been moved too! Thus, we repeatedly traverse until we find a block a
-      // jumping block that has not yet been merged with the one block that
-      // jumped to it.
+      // If `jumping_block_index` is already present in the table, that means
+      // we have already moved the jumping block (i.e., it was some other
+      // block's landing block) and therefore is of no use. Instead we should
+      // treat the block that jumped to it as our jumping block. But that
+      // block may have been moved too! Thus, we repeatedly traverse until we
+      // find a block a jumping block that has not yet been merged with the
+      // one block that jumped to it.
       decltype(final_block)::const_iterator iter;
       while ((iter = final_block.find(jumping_block_index)) !=
              final_block.end()) {
@@ -109,7 +118,8 @@ void CombineBlocks(ir::CompiledFn* fn) {
       final_block.emplace(landing_block_index, jumping_block_index);
       auto& jumping_block = fn->block(jumping_block_index);
       auto& landing_block = fn->block(landing_block_index);
-      // Blocks may be empty if we've already found that they were unreachable.
+      // Blocks may be empty if we've already found that they were
+      // unreachable.
       if (jumping_block.cmds_.empty()) { continue; }
       jumping_block.Append(std::move(landing_block));
     }
@@ -133,7 +143,7 @@ void CombineBlocks(ir::CompiledFn* fn) {
   if (auto& block = fn->block(head); block.cmds_.empty()) { --head.value; }
   fn->blocks_.resize(head.value + 1);
 
-  for (auto &block : fn->blocks_) {
+  for (auto& block : fn->blocks_) {
     if (block.cmds_.empty()) { continue; }
     ASSERT(block.cmds_.empty() == false);
     auto& cmd = block.cmds_.back();

@@ -1142,7 +1142,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       // time we create one it's because we expect it to live forever. I suppose
       // we could ref-count the results of functions and delete these if they're
       // unused?
-      save(new ir::ScopeDef(cmd.create_scope_def_.sl_));
+      save(new ir::ScopeDef(cmd.mod_));
       break;
     case ir::Op::AddScopeDefInit:
       resolve<ir::ScopeDef *>(cmd.add_scope_def_init_.reg_)
@@ -1153,7 +1153,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           ->AddDone(resolve(cmd.add_scope_def_done_.f_));
       break;
     case ir::Op::AddBlockDef:
-      // TODO implement me
+      resolve<ir::ScopeDef *>(cmd.add_block_def_.reg_)
+          ->AddBlockDef(cmd.add_block_def_.name_,
+                        resolve(cmd.add_block_def_.b_));
       break;
   }
 

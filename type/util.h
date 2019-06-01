@@ -63,7 +63,7 @@ constexpr type::Type const *Get() {
     return type::Module;
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
     return type::Generic;
-  } else if constexpr (std::is_same_v<T, ast::ScopeLiteral *>) {
+  } else if constexpr (std::is_same_v<T, ir::ScopeDef *>) {
     return type::Scope;
   } else if constexpr (std::is_pointer_v<T>) {
     return Ptr(Get<std::decay_t<decltype(*std::declval<T>())>>());

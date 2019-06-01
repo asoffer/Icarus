@@ -133,9 +133,9 @@ std::unique_ptr<ast::Node> BuildJump(std::unique_ptr<ast::Node> node) {
   frontend::Operator op = [&] {
     if (tk == "return") { return Operator::Return; }
     if (tk == "yield") { return Operator::Yield; }
-    if (tk == "jump") { return Operator::Jump; }
     UNREACHABLE();
   }();
+
   auto stmts = std::make_unique<Statements>();
   stmts->append(std::make_unique<ast::RepeatedUnop>(
       node->span, op, std::vector<std::unique_ptr<ast::Expression>>{}));
@@ -246,11 +246,27 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     auto span = TextSpan(nodes[0]->span, nodes[1]->span);
     return std::make_unique<ast::Import>(std::move(span),
                                          move_as<ast::Expression>(nodes[1]));
-  } else if (tk == "return" || tk == "yield" || tk == "jump" || tk == "print") {
+  } else if (tk == "jump") {
+    auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+    std::vector<std::unique_ptr<ast::Expression>> exprs;
+    std::vector<std::unique_ptr<ast::Call>> call_exprs;
+    if (auto *c = nodes[1]->if_as<ast::ChainOp>(); c && !c->parenthesized_) {
+      exprs = std::move(*c).extract();
+      for (auto &expr : exprs) {
+        if (expr->is<ast::Call>()) {
+          call_exprs.push_back(move_as<ast::Call>(expr));
+        } else {
+          UNREACHABLE();
+        }
+      }
+    } else {
+      call_exprs.push_back(move_as<ast::Call>(nodes[1]));
+    }
+    return std::make_unique<ast::Jump>(std::move(span), std::move(call_exprs));
+  } else if (tk == "return" || tk == "yield" || tk == "print") {
     auto op = [&] {
       if (tk == "return") { return Operator::Return; }
       if (tk == "yield") { return Operator::Yield; }
-      if (tk == "jump") { return Operator::Jump; }
       if (tk == "print") { return Operator::Print; }
       UNREACHABLE();
     }();
@@ -1299,8 +1315,7 @@ void Debug(ParseState *ps) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
   for (auto x : ps->tag_stack_) { fprintf(stderr, "%lu, ", x); }
-  fprintf(stderr, " -> %lu", ps->Next().tag_);
-  fputs("", stderr);
+  fprintf(stderr, " -> %lu\n", ps->Next().tag_);
 
   for (const auto &node_ptr : ps->node_stack_) {
     fputs(visitor::DumpAst::ToString(node_ptr.get()).c_str(), stderr);

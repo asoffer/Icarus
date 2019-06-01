@@ -1212,29 +1212,19 @@ ir::Results EmitIr::Val(ast::Interface const *node, Context *ctx) const {
   return ir::Results{ir::FinalizeInterface(ir::CreateInterface(node->scope_))};
 }
 
+ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) const {
+  // TODO pick the best place to jump.
+  auto *called_expr =
+      node->options_.at(0).block.get();  // TODO remove this line.
+
+  // TODO stop calculating this so many times.
+  auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
+      type::Typed<ast::Expression const *>(called_expr, type::Block), ctx);
+  ir::JumpPlaceholder(block_seq);
+  return ir::Results{};
+}
+
 ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
-  if (node->op() == frontend::Operator::Jump) {
-    ASSERT(node->exprs().size() == 1u);
-    auto &call        = node->expr(0)->as<ast::Call>();
-    auto *called_expr = call.fn_.get();
-
-    // TODO stop calculating this so many times.
-    auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
-        type::Typed<ast::Expression const *>(call.fn_.get(), type::Block), ctx);
-    auto block = block_seq.at(0);
-    if (block == ir::Block::Start()) {
-      // Do nothing. You'll just end up jumping to this location and the body
-      // will be emit elsewhere.
-    } else if (block == ir::Block::Exit()) {
-    } else {
-      ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{&call, 0x01}))
-          ->EmitInlineCall({}, {}, ctx);
-    }
-    ir::JumpPlaceholder(backend::EvaluateAs<ir::BlockSequence>(
-        type::Typed<ast::Expression const *>(called_expr, type::Block), ctx));
-    return ir::Results{};
-  }
-
   std::vector<ir::Results> arg_vals;
   // TODO expansion
   // if (node->args_.needs_expansion()) {
@@ -1319,14 +1309,23 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) const {
-  auto reg = ir::CreateScopeDef(node);
+  auto reg = ir::CreateScopeDef(node->scope_->module());
   for (auto *decl : node->decls()) {
     if (decl->id_ == "init") {
       ir::AddScopeDefInit(reg, decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
     } else if (decl->id_ == "done") {
       ir::AddScopeDefDone(reg, decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
     } else {
-      ir::AddBlockDef(reg, decl->EmitIr(this, ctx).get<ir::BlockDef>(0));
+      // TODO reverse containment. you need to compute this as
+      // get<ir::BlockSequence> and then assert that it's only one and extract
+      // it? What if someone types
+      //
+      //  `my_block ::= my_block2 | my_block3`
+      //
+      // We really just want it as a sequence. no matter what and we want to
+      // make sure `exit` and `start` are not in it.
+      ir::AddBlockDef(reg, decl->id_,
+                      decl->EmitIr(this, ctx).get<ir::BlockDef>(0));
     }
   }
   return ir::Results{reg};
@@ -1345,21 +1344,12 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   absl::flat_hash_map<std::string_view,
                       std::tuple<ir::Block, ast::BlockNode const *>>
       name_to_block;
-  auto *scope_lit =
-      backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx)->lit_;
-  for (auto const *decl : scope_lit->decls()) {
-    if (decl->id_ == "init") {
-      continue;
-    } else if (decl->id_ == "done") {
-      continue;
-    } else {
-      auto bs = backend::EvaluateAs<ir::BlockSequence>(
-          type::Typed<ast::Expression const *>{decl, type::Block}, ctx);
-      ASSERT(bs.size() == 1u);
-      name_to_block.emplace(std::piecewise_construct,
-                            std::forward_as_tuple(decl->id_),
-                            std::forward_as_tuple(bs.at(0), nullptr));
-    }
+  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
+  for (auto [name, block] : scope_def->blocks_) {
+    ir::BlockSequence bs = block;
+    ASSERT(bs.size() == 1u);
+    name_to_block.emplace(std::piecewise_construct, std::forward_as_tuple(name),
+                          std::forward_as_tuple(bs.at(0), nullptr));
   }
 
   for (auto &block_node : node->blocks_) {
@@ -1369,21 +1359,10 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   }
 
   ir::UncondJump(init_block);
-
   ir::BasicBlock::Current = init_block;
 
   // TODO this lambda thing is an awful hack.
-  ASSERT_NOT_NULL([&] {
-    auto *mod       = const_cast<Module *>(scope_lit->scope_->module());
-    bool swap_bc    = ctx->mod_ != mod;
-    Module *old_mod = std::exchange(ctx->mod_, mod);
-    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-    base::defer d([&] {
-      ctx->mod_ = old_mod;
-      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-    });
-    return ctx->dispatch_table(ast::ExprPtr{node, 0x02});
-  }())
+  ctx->dispatch_table(ast::ExprPtr{node, 0x02})
       ->EmitInlineCall(
           node->args_.Transform(
               [this, ctx](std::unique_ptr<ast::Expression> const &expr) {
@@ -1398,28 +1377,23 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
     auto iter           = block_map.find(block);
     if (iter == block_map.end()) { continue; }
     ir::BasicBlock::Current = iter->second;
+    ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block.get(), 0x01}))
+        ->EmitInlineCall({}, block_map, ctx);
+
     ASSERT_NOT_NULL(node)->EmitIr(this, ctx);
 
-    ASSERT_NOT_NULL([&] {
-      auto *mod       = const_cast<Module *>(scope_lit->scope_->module());
-      bool swap_bc    = ctx->mod_ != mod;
-      Module *old_mod = std::exchange(ctx->mod_, mod);
-      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-      base::defer d([&] {
-        ctx->mod_ = old_mod;
-        if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-      });
-      return ctx->dispatch_table(ast::ExprPtr{block.get(), 0x02});
-    }())
+    ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block.get(), 0x02}))
         ->EmitInlineCall({}, block_map, ctx);
   }
 
-  ir::UncondJump(land_block);
   ir::BasicBlock::Current = land_block;
 
-  // TODO this lambda thing is an awful hack.
+  // TODO currently the block you end up on here is where EmitInlineCall thinks
+  // you should end up, but that's not necessarily well-defined for things that
+  // end up jumping to more than one possible location.
+
   return ASSERT_NOT_NULL([&] {
-           auto *mod       = const_cast<Module *>(scope_lit->scope_->module());
+           auto *mod       = const_cast<Module *>(scope_def->module());
            bool swap_bc    = ctx->mod_ != mod;
            Module *old_mod = std::exchange(ctx->mod_, mod);
            if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }

@@ -23,13 +23,13 @@ struct TextSpan;
 struct Module;
 
 namespace ast {
-struct ScopeLiteral;
 struct FunctionLiteral;
 }  // namespace ast
 
 namespace ir {
-struct FlagsVal;
 struct AnyFunc;
+struct FlagsVal;
+struct ScopeDef;
 }  // namespace ir
 
 #define TYPE_FNS(name)                                                         \
@@ -132,7 +132,7 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Flags>();
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     return t->is<::type::Pointer>();
-  } else if constexpr (std::is_same_v<T, ast::ScopeLiteral *>) {
+  } else if constexpr (std::is_same_v<T, ir::ScopeDef *>) {
     return t == ::type::Scope;
   } else if constexpr (std::is_same_v<T, ::type::Interface const *>) {
     return t == ::type::Intf;
@@ -191,7 +191,7 @@ auto Apply(Type const *t, Fn &&fn, Args &&... args) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, std::string_view,
-                    ::Module *, type::Struct const *, ast::ScopeLiteral *,
+                    ::Module *, type::Struct const *, ir::ScopeDef *,
                     ir::AnyFunc, ir::BlockSequence, type::Interface const *,
                     ast::FunctionLiteral *>(t, std::forward<Fn>(fn),
                                             std::forward<Args>(args)...);

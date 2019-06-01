@@ -15,27 +15,27 @@
 namespace ir {
 thread_local BlockIndex BasicBlock::Current;
 
-Reg CreateScopeDef(ast::ScopeLiteral const *sl) {
-  auto &cmd             = MakeCmd(type::Scope, Op::CreateScopeDef);
-  cmd.create_scope_def_ = {sl};
+Reg CreateScopeDef(::Module const *mod) {
+  auto &cmd = MakeCmd(type::Scope, Op::CreateScopeDef);
+  cmd.mod_  = const_cast<::Module *>(mod);
   return cmd.result;
 }
 
 Reg AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f) {
-  auto &cmd = MakeCmd(nullptr, Op::AddScopeDefInit) ;
+  auto &cmd               = MakeCmd(nullptr, Op::AddScopeDefInit);
   cmd.add_scope_def_init_ = {reg, f};
   return cmd.result;
 }
 
 Reg AddScopeDefDone(Reg reg, RegisterOr<AnyFunc> f) {
-  auto &cmd = MakeCmd(nullptr, Op::AddScopeDefDone) ;
+  auto &cmd               = MakeCmd(nullptr, Op::AddScopeDefDone);
   cmd.add_scope_def_done_ = {reg, f};
   return cmd.result;
 }
 
-Reg AddBlockDef(Reg reg, RegisterOr<BlockDef> b) {
+Reg AddBlockDef(Reg reg, std::string_view name, RegisterOr<BlockDef> b) {
   auto &cmd          = MakeCmd(nullptr, Op::AddBlockDef);
-  cmd.add_block_def_ = {reg, b};
+  cmd.add_block_def_ = {reg, name, b};
   return cmd.result;
 }
 
@@ -587,9 +587,10 @@ static void InlinePhiNode(
   MakePhi(cmd_index, std::move(phi_map));
 }
 
-Results CallInline(
+std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map) {
+  bool is_jump = false;
   std::vector<Results> return_vals;
   return_vals.resize(f->type_->output.size());
 
@@ -948,7 +949,9 @@ Results CallInline(
                    block_relocs.at(cmd.cond_jump_.blocks_[false]));
         } break;
         case Op::UncondJump: {
-          UncondJump(block_relocs.at(cmd.block_index_));
+          auto block_index = block_relocs.at(cmd.block_index_);
+          UncondJump(block_index);
+          ir::BasicBlock::Current = block_index;
         } break;
         case Op::ReturnJump: {
           // TODO jump to landing block
@@ -961,7 +964,9 @@ Results CallInline(
           for (auto block : *cmd.block_seq_.seq_) {
             auto iter = block_map.find(block);
             if (iter != block_map.end()) {
+              is_jump = true;
               UncondJump(iter->second);
+              ir::BasicBlock::Current = iter->second;
               goto found_valid_jump;
             }
           }
@@ -1082,7 +1087,7 @@ Results CallInline(
 
   Results results;
   for (auto const &r : return_vals) { results.append(r); }
-  return results;
+  return std::pair{results, is_jump};
 }
 
 void CondJump(RegisterOr<bool> cond, BlockIndex true_block,

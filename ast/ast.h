@@ -361,6 +361,61 @@ struct Interface : public ScopeExpr<core::DeclScope> {
   std::vector<std::unique_ptr<Declaration>> decls_;
 };
 
+// Jump:
+// Represents a statement describing where a block should jump after completion.
+//
+// Example (in context of a scope):
+//  ```
+//  while ::= scope {
+//    init ::= (b: bool) -> () {
+//      switch (b) {
+//        jump do()   when true              // <-- `jump do()`
+//        jump exit() when false             // <-- `jump exit()`
+//      }
+//    }
+//    do ::= block {
+//      before ::= () -> () {}
+//      after ::= () -> () { jump start() }  // <-- `jump start()`
+//    }
+//    done ::= () -> () {}
+//  }
+//  ```
+struct Jump : public Node {
+ public:
+  explicit Jump(TextSpan span, std::vector<std::unique_ptr<Call>> calls)
+      : Node(std::move(span)) {
+    for (auto &call : calls) {
+      options_.emplace_back(std::move(call->fn_), std::move(call->args_));
+    }
+  }
+
+#include "visitor/visitors.xmacro.h"
+
+  // TODO private:
+
+  // A jump option is a collection of blocks that may be jumped to and the
+  // arguments to pass to such a block. When evaluating jump options, the option
+  // is chose if the collection of blocks refers to a block that is present on
+  // the scope node. In that case, the arguments are evaluated and passed to it.
+  // Otherwise, the option is dicarded and the next option in the `options_`
+  // container is chosen.
+  struct JumpOption {
+    explicit JumpOption(std::unique_ptr<Expression> b,
+                        core::FnArgs<std::unique_ptr<Expression>> a)
+        : block(std::move(b)), args(std::move(a)) {}
+    JumpOption(JumpOption const &)     = default;
+    JumpOption(JumpOption &&) noexcept = default;
+    JumpOption &operator=(JumpOption const &) = default;
+    JumpOption &operator=(JumpOption &&) noexcept = default;
+
+    std::unique_ptr<Expression> block;
+    core::FnArgs<std::unique_ptr<Expression>> args;
+  };
+  // A jump will evaluate at compile-time to the first option for which the
+  // scope node has all possible blocks.
+  std::vector<JumpOption> options_;
+};
+
 // RepeatedUnop:
 // Represents a statement where arbitrarily many expressions can be passed, and
 // are all treated as arguments to the same unary operator (for a very loose

@@ -5,6 +5,7 @@
 namespace debug {
 extern bool parser;
 extern bool validation;
+extern bool optimize_ir;
 }  // namespace debug
 
 
@@ -20,6 +21,9 @@ void cli::Usage() {
 #ifdef DBG
   Flag("debug-parser") << "Step through the parser step-by-step for debugging."
                        << [](bool b = false) { debug::parser = b; };
+
+  Flag("opt-ir") << "Opmitize intermediate representation"
+                 << [](bool b = true) { debug::optimize_ir = b; };
 
   Flag("debug-validation", "v") << "Step through validator for debugging." <<
       [](bool b = false) { debug::validation = b; };

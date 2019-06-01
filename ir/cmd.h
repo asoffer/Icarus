@@ -27,7 +27,6 @@ struct Variant;
 
 namespace ast {
 struct StructLiteral;
-struct ScopeLiteral;
 struct ScopeNode;
 struct Function;
 }  // namespace ast
@@ -152,13 +151,6 @@ struct Cmd {
     }
   };
 
-  struct CreateScopeDef {
-    ast::ScopeLiteral const *sl_;
-    inline friend std::ostream &operator<<(std::ostream &os, CreateScopeDef c) {
-      return os << c.sl_;
-    }
-  };
-
   struct AddScopeDefInit {
     Reg reg_;
     RegisterOr<AnyFunc> f_;
@@ -179,9 +171,10 @@ struct Cmd {
 
   struct AddBlockDef {
     Reg reg_;
+    std::string_view name_;
     RegisterOr<BlockDef> b_;
     inline friend std::ostream &operator<<(std::ostream &os, AddBlockDef a) {
-      return os << a.reg_ << " " << a.b_;
+      return os << a.reg_ << " " << a.name_ << " " << a.b_;
     }
   };
 
@@ -295,7 +288,6 @@ struct Cmd {
     ast::StructLiteral const *sl_;
     LoadSymbol load_sym_;
     BlockSequence block_seq_;
-    CreateScopeDef create_scope_def_;
     AddScopeDefInit add_scope_def_init_;
     AddScopeDefDone add_scope_def_done_;
     AddBlockDef add_block_def_;
@@ -393,7 +385,7 @@ struct Cmd {
     SetRet<FlagsVal> set_ret_flags_;
     SetRet<Addr> set_ret_addr_;
     SetRet<std::string_view> set_ret_byte_view_;
-    SetRet<ast::ScopeLiteral *> set_ret_scope_;
+    SetRet<ScopeDef *> set_ret_scope_;
     SetRet<ast::FunctionLiteral *> set_ret_generic_;
     SetRet<Module *> set_ret_module_;
     SetRet<BlockSequence> set_ret_block_;
@@ -636,7 +628,7 @@ void Store(T r, Args &&... args) {
 
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments);
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs);
-Results CallInline(
+std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map);
 
@@ -690,9 +682,9 @@ ir::TypedRegister<type::Interface const *> FinalizeInterface(Reg r);
 
 Reg ArgumentCache(ast::StructLiteral const *sl);
 
-Reg CreateScopeDef(ast::ScopeLiteral const *sl);
+Reg CreateScopeDef(::Module const *mod);
 Reg AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f);
-Reg AddScopeDefDone(Reg reg, RegisterOr<AnyFunc> f);
-Reg AddBlockDef(Reg reg, RegisterOr<BlockDef> b);
+Reg AddScopeDefDone(Reg reg,  RegisterOr<AnyFunc> f);
+Reg AddBlockDef(Reg reg, std::string_view name, RegisterOr<BlockDef> b);
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

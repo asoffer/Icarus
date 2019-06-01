@@ -283,6 +283,17 @@ void DumpAst::operator()(ast::Interface const *node) {
   absl::StrAppend(out_, "}");
 }
 
+void DumpAst::operator()(ast::Jump const *node) {
+  absl::StrAppend(out_, "jump ");
+  for (auto const &opt : node->options_) {
+    absl::StrAppend(out_, "(");
+    opt.block->DumpAst(this);
+    absl::StrAppend(out_, ")(");
+    DumpFnArgs(this, opt.args);
+    absl::StrAppend(out_, ")");
+  }
+}
+
 void DumpAst::operator()(ast::RepeatedUnop const *node) {
   absl::StrAppend(out_, OpStr(node->op()));
   for (auto *expr : node->exprs()) { expr->DumpAst(this); }

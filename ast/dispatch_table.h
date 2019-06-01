@@ -52,7 +52,13 @@ struct DispatchTable {
 };
 
 visitor::VerifyResult VerifyDispatch(
-    ExprPtr expr, OverloadSet const &os,
+    ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+        &args,
+    Context *ctx);
+
+visitor::VerifyResult VerifyDispatch(
+    ExprPtr expr, OverloadSet const &overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
     Context *ctx);

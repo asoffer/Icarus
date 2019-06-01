@@ -152,6 +152,15 @@ void AssignScope::operator()(ast::Interface *node, core::Scope *scope) {
   for (auto *d : node->decls()) { d->assign_scope(this, node->body_scope()); }
 }
 
+void AssignScope::operator()(ast::Jump *node, core::Scope *scope) {
+  node->scope_ = scope;
+  for (auto &opt : node->options_) {
+    opt.block->assign_scope(this, scope);
+    opt.args.Apply(
+        [this, scope](auto &expr) { expr->assign_scope(this, scope); });
+  }
+}
+
 void AssignScope::operator()(ast::RepeatedUnop *node, core::Scope *scope) {
   node->scope_ = scope;
   SetAllScopes(this, node->exprs(), scope);

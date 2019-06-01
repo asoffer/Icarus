@@ -206,6 +206,36 @@ MatchArgsToParams(
 }
 
 static base::expected<DispatchTable::Row> OverloadParams(
+    ir::AnyFunc overload,
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+        &args,
+    Context *ctx) {
+  // These are the parameters for the actual overload that will be potentially
+  // selected. In particular, if we have two overloads:
+  //
+  //   f :: (A | B) -> X = ...
+  //   f :: (C | D) -> Y = ...
+  //
+  // And we call it with an object of type (A | C), then these parameters will
+  // be (A | B) and (C | D) on the two loop iterations. This is to distinct from
+  // how it actually gets called which would be with the arguments A and C
+  // respectively.
+
+  if (overload.is_fn()) {
+    return DispatchTable::Row{overload.func()->params_, overload.func()->type_,
+                              overload};
+  } else {
+    if (auto *fn_type = overload.foreign().type()->if_as<type::Function>()) {
+      // TODO foreign functions should be allowed named and default
+      // parameters.
+      return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type, overload};
+    } else {
+      UNREACHABLE();
+    }
+  }
+}
+
+static base::expected<DispatchTable::Row> OverloadParams(
     Overload const &overload,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
@@ -218,7 +248,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
   //
   // And we call it with an object of type (A | C), then these parameters will
   // be (A | B) and (C | D) on the two loop iterations. This is to distinct from
-  // how it actually gets called which would be with the parameters A and C
+  // how it actually gets called which would be with the arguments A and C
   // respectively.
 
   auto result =
@@ -356,39 +386,8 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                 &fn_type->as<type::Function>(),
                                 backend::EvaluateAs<ir::AnyFunc>(fn_lit, ctx)};
     } else {
-      if (result.type_ == type::Block || result.type_ == type::OptBlock ||
-          result.type_ == type::RepBlock) {
-        ir::Block b = backend::EvaluateAs<ir::Block>(overload.expr, ctx);
-        // TODO each of these is wrong (e.g., not taking parameters?
-        if (b == ir::Block::Start()) {
-          return DispatchTable::Row{core::FnParams<type::Typed<Expression const *>>{},
-                                    type::Func({}, {}), nullptr};
-
-        } else if (b == ir::Block::Exit()) {
-          return DispatchTable::Row{core::FnParams<type::Typed<Expression const *>>{},
-                                    type::Func({}, {}),
-                                    reinterpret_cast<Expression const *>(0x1)};
-
-        } else {
-          return DispatchTable::Row{core::FnParams<type::Typed<Expression const *>>{},
-                                    type::Func({}, {}),
-                                    const_cast<ast::BlockLiteral *>(b.get())};
-        }
-      }
-
-      ir::AnyFunc fn = backend::EvaluateAs<ir::AnyFunc>(overload.expr, ctx);
-
-      if (fn.is_fn()) {
-        return DispatchTable::Row{fn.func()->params_, fn.func()->type_, fn};
-      } else {
-        if (auto *fn_type = fn.foreign().type()->if_as<type::Function>()) {
-          // TODO foreign functions should be allowed named and default
-          // parameters.
-          return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type, fn};
-        } else {
-          UNREACHABLE();
-        }
-      }
+      return OverloadParams(
+          backend::EvaluateAs<ir::AnyFunc>(overload.expr, ctx), args, ctx);
     }
   } else {
     if (result.type_ == type::Generic) {
@@ -435,17 +434,72 @@ static std::vector<type::Type const *> ReturnTypes(
   return result;
 }
 
-// TODO It is unsafe to access `expr` because it may have some low bits set.
-// Change it to uintptr_t.
 visitor::VerifyResult VerifyDispatch(
-    ExprPtr expr, OverloadSet const &os,
+    ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+        &args,
+    Context *ctx) {
+  DispatchTable table;
+  absl::flat_hash_map<Expression const *, std::string> failure_reasons;
+  for (ir::AnyFunc overload : overload_set) {
+    auto expected_row = OverloadParams(overload, args, ctx);
+    if (!expected_row.has_value()) {
+      NOT_YET();
+      continue;
+    }
+    auto match = MatchArgsToParams(expected_row->params, args);
+    if (!match.has_value()) {
+      NOT_YET();
+      continue;
+    }
+
+    expected_row->params = *std::move(match);
+    table.bindings_.push_back(*std::move(expected_row));
+  }
+
+  size_t num_outputs = NumOutputs(table.bindings_);
+  if (num_outputs == std::numeric_limits<size_t>::max()) {
+    return ctx->set_result(expr, visitor::VerifyResult::Error());
+  }
+  table.return_types_ = ReturnTypes(num_outputs, table.bindings_);
+  auto *tup           = type::Tup(table.return_types_);
+
+  auto expanded_fnargs = ExpandAllFnArgs(args);
+  expanded_fnargs.erase(
+      std::remove_if(expanded_fnargs.begin(), expanded_fnargs.end(),
+                     [&](core::FnArgs<type::Type const *> const &fnargs) {
+                       return absl::c_any_of(
+                           table.bindings_,
+                           [&fnargs](DispatchTable::Row const &row) {
+                             return Covers(row.params, fnargs);
+                           });
+                     }),
+      expanded_fnargs.end());
+  if (!expanded_fnargs.empty()) {
+    // TODO log an error
+    // ctx->error_log()->MissingDispatchContingency(node->span,
+    // expanded_fnargs.Transform([](type::Type const *arg) { return
+    // arg->to_string(); }));
+    return visitor::VerifyResult::Error();
+  }
+
+  ctx->set_dispatch_table(expr, std::move(table));
+
+  // TODO this assumes we only have one return value or that we're returning a
+  // tuple. So, e.g., you don't get the benefit of A -> (A, A) and B -> (A, B)
+  // combining into (A | B) -> (A, A | B).
+  return ctx->set_result(expr, visitor::VerifyResult::Constant(tup));
+}
+
+visitor::VerifyResult VerifyDispatch(
+    ExprPtr expr, OverloadSet const &overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
     Context *ctx) {
   DispatchTable table;
   bool is_const = true;
   absl::flat_hash_map<Expression const *, std::string> failure_reasons;
-  for (Overload const &overload : os) {
+  for (Overload const &overload : overload_set) {
     is_const &= overload.result.const_;
     auto expected_row = OverloadParams(overload, args, ctx);
     if (!expected_row.has_value()) {
@@ -553,7 +607,7 @@ static ir::BlockIndex EmitDispatchTest(
 // about solving it robustly. Return ir::Results for both the in and out-of-line
 // cases.
 template <bool Inline>
-static void EmitOneCall(
+static bool EmitOneCall(
     DispatchTable::Row const &row,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     std::vector<type::Type const *> const &return_types,
@@ -614,8 +668,10 @@ static void EmitOneCall(
       if (func->work_item != nullptr) { (*func->work_item)(); }
       ASSERT(func->work_item == nullptr);
 
-      *inline_results =
+      bool is_jump;
+      std::tie(*inline_results, is_jump) =
           ir::CallInline(func, ir::Arguments{row.type, arg_results}, block_map);
+      return is_jump;
     } else {
       NOT_YET();
     }
@@ -662,6 +718,7 @@ static void EmitOneCall(
 
     ir::Call(fn, ir::Arguments{row.type, std::move(arg_results)},
              std::move(out_params));
+    return false;
   }
 }
 
@@ -705,17 +762,18 @@ static ir::Results EmitFnCall(
     auto const &row   = table->bindings_.at(i);
     auto next_binding = EmitDispatchTest(row.params, args, ctx);
 
-    EmitOneCall<Inline>(row, args, table->return_types_, &outputs, block_map,
-                        &inline_results, ctx);
+    bool is_jump =
+        EmitOneCall<Inline>(row, args, table->return_types_, &outputs,
+                            block_map, &inline_results, ctx);
 
-    ir::UncondJump(landing_block);
+    if (!is_jump) {ir::UncondJump(landing_block);}
     ir::BasicBlock::Current = next_binding;
   }
 
-  EmitOneCall<Inline>(table->bindings_.back(), args, table->return_types_,
-                      &outputs, block_map, &inline_results, ctx);
-
-  ir::UncondJump(landing_block);
+  bool is_jump =
+      EmitOneCall<Inline>(table->bindings_.back(), args, table->return_types_,
+                          &outputs, block_map, &inline_results, ctx);
+  if (!is_jump) { ir::UncondJump(landing_block); }
   ir::BasicBlock::Current = landing_block;
 
   if constexpr (Inline) {

@@ -1,21 +1,29 @@
 #ifndef ICARUS_IR_SCOPE_DEF_H
 #define ICARUS_IR_SCOPE_DEF_H
 
-#include "ir/any_func.h"
+#include <string_view>
 
-namespace ast {
-struct ScopeLiteral;
-}  // namespace ast
+#include "core/scope.h"
+#include "ir/any_func.h"
+#include "ir/block.h"
+
+struct Module;
 
 namespace ir {
 struct ScopeDef {
-  explicit ScopeDef(ast::ScopeLiteral const *lit) : lit_(lit) {}
+  explicit ScopeDef(Module const *mod): mod_(mod) {}
 
-  void AddInit(AnyFunc f) { inits_.insert(f); }
-  void AddDone(AnyFunc f) { dones_.insert(f); }
+  void AddInit(AnyFunc f) { inits_.push_back(f); }
+  void AddDone(AnyFunc f) { dones_.push_back(f); }
+  void AddBlockDef(std::string_view name, BlockDef block_def) {
+    blocks_.emplace(name, block_def);
+  }
 
-  ast::ScopeLiteral const *lit_ = nullptr;
-  base::bag<AnyFunc> inits_, dones_;
+  Module const *module() const { return mod_; }
+
+  Module const *mod_ = nullptr;
+  std::vector<AnyFunc> inits_, dones_;
+  absl::flat_hash_map<std::string_view, BlockDef> blocks_;
 };
 }  // namespace ir
 

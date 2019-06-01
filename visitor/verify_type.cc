@@ -476,9 +476,7 @@ static ast::OverloadSet FindOverloads(
 static VerifyResult VerifyCall(
     ast::BuiltinFn const *b,
     core::FnArgs<std::unique_ptr<ast::Expression>> const &args,
-    core::FnArgs<std::pair<ast::Expression const *, VerifyResult>> const
-        &arg_results,
-    Context *ctx) {
+    core::FnArgs<VerifyResult> const &arg_results, Context *ctx) {
   switch (b->value()) {
     case core::Builtin::Foreign: {
       bool err = false;
@@ -499,25 +497,25 @@ static VerifyResult VerifyCall(
       }
 
       if (!err) {
-        if (arg_results.at(0).second.type_ != type::ByteView) {
+        if (arg_results.at(0).type_ != type::ByteView) {
           ctx->error_log()->BuiltinError(
               b->span,
               "First argument to `foreign` must be a byte-view (You provided "
               "a(n) " +
-                  arg_results.at(0).second.type_->to_string() + ").");
+                  arg_results.at(0).type_->to_string() + ").");
         }
-        if (!arg_results.at(0).second.const_) {
+        if (!arg_results.at(0).const_) {
           ctx->error_log()->BuiltinError(
               b->span, "First argument to `foreign` must be a constant.");
         }
-        if (arg_results.at(1).second.type_ != type::Type_) {
+        if (arg_results.at(1).type_ != type::Type_) {
           ctx->error_log()->BuiltinError(
               b->span,
               "Second argument to `foreign` must be a type (You provided "
               "a(n) " +
-                  arg_results.at(0).second.type_->to_string() + ").");
+                  arg_results.at(0).type_->to_string() + ").");
         }
-        if (!arg_results.at(1).second.const_) {
+        if (!arg_results.at(1).const_) {
           ctx->error_log()->BuiltinError(
               b->span, "Second argument to `foreign` must be a constant.");
         }
@@ -546,12 +544,12 @@ static VerifyResult VerifyCall(
                                        "Built-in function `bytes` takes "
                                        "exactly one argument (You provided " +
                                            std::to_string(size) + ").");
-      } else if (arg_results.at(0).second.type_ != type::Type_) {
+      } else if (arg_results.at(0).type_ != type::Type_) {
         ctx->error_log()->BuiltinError(
             b->span,
             "Built-in function `bytes` must take a single argument of type "
             "`type` (You provided a(n) " +
-                arg_results.at(0).second.type_->to_string() + ").");
+                arg_results.at(0).type_->to_string() + ").");
       }
       return visitor::VerifyResult::Constant(
           ir::BuiltinType(core::Builtin::Bytes)
@@ -571,12 +569,12 @@ static VerifyResult VerifyCall(
                                        "exactly one argument (You provided " +
                                            std::to_string(size) + ").");
 
-      } else if (arg_results.at(0).second.type_ != type::Type_) {
+      } else if (arg_results.at(0).type_ != type::Type_) {
         ctx->error_log()->BuiltinError(
             b->span,
             "Built-in function `alignment` must take a single argument of "
             "type `type` (you provided a(n) " +
-                arg_results.at(0).second.type_->to_string() + ")");
+                arg_results.at(0).type_->to_string() + ")");
       }
       return visitor::VerifyResult::Constant(
           ir::BuiltinType(core::Builtin::Alignment)
@@ -594,47 +592,22 @@ static VerifyResult VerifyCall(
   UNREACHABLE();
 }
 
-VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) const {
-  std::vector<std::pair<ast::Expression const *, VerifyResult>> pos_results;
-  absl::flat_hash_map<std::string,
-                      std::pair<ast::Expression const *, VerifyResult>>
-      named_results;
-
+static std::pair<core::FnArgs<VerifyResult>, bool> VerifyFnArgs(
+    VerifyType const *visitor,
+    core::FnArgs<std::unique_ptr<ast::Expression>> const &args, Context *ctx) {
   bool err = false;
+  auto arg_results =
+      args.Transform([&](std::unique_ptr<ast::Expression> const &expr) {
+        auto expr_result = expr->VerifyType(visitor, ctx);
+        err |= !expr_result.ok();
+        return expr_result;
+      });
 
-  // TODO node could be TransformWithIndex
-  node->args_.ApplyWithIndex([&](auto &&index,
-                                 std::unique_ptr<ast::Expression> const &expr) {
-    if constexpr (std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
-      auto expr_result = expr->VerifyType(this, ctx);
-      if (!expr->parenthesized_ && expr->is<ast::Unop>() &&
-          expr->as<ast::Unop>().op == frontend::Operator::Expand &&
-          expr_result.type_->is<type::Tuple>()) {
-        auto const &entries = expr_result.type_->as<type::Tuple>().entries_;
-        for (type::Type const *entry : entries) {
-          pos_results.emplace_back(
-              std::piecewise_construct, std::forward_as_tuple(expr.get()),
-              std::forward_as_tuple(entry, expr_result.const_));
-          err |= !pos_results.back().second.ok();
-        }
-      } else {
-        pos_results.emplace_back(expr.get(), expr_result);
-        err |= !pos_results.back().second.ok();
-      }
-    } else {
-      auto iter =
-          named_results
-              .emplace(std::piecewise_construct, std::forward_as_tuple(index),
-                       std::forward_as_tuple(expr.get(),
-                                             expr->VerifyType(this, ctx)))
-              .first;
-      err |= !iter->second.second.ok();
-    }
-  });
+  return std::pair{std::move(arg_results), err};
+}
 
-  core::FnArgs<std::pair<ast::Expression const *, VerifyResult>> arg_results(
-      std::move(pos_results), std::move(named_results));
-
+VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) const {
+  auto [arg_results, err] = VerifyFnArgs(this, node->args_, ctx);
   // TODO handle cyclic dependencies in call arguments.
   if (err) { return VerifyResult::Error(); }
 
@@ -653,10 +626,7 @@ VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) const {
     if (auto *id = node->fn_->if_as<ast::Identifier>()) {
       return FindOverloads(
           node->scope_, id->token,
-          arg_results.Transform(
-              [](std::pair<ast::Expression const *, VerifyResult> const &p) {
-                return p.second.type_;
-              }),
+          arg_results.Transform([](VerifyResult const &p) { return p.type_; }),
           ctx);
     } else {
       auto results = node->fn_->VerifyType(this, ctx);
@@ -667,7 +637,17 @@ VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) const {
     }
   }();
 
-  return ast::VerifyDispatch(node, overload_set, arg_results, ctx);
+  core::FnArgs<std::pair<ast::Expression const *, VerifyResult>> arg_expr_result;
+  for (size_t i = 0; i < arg_results.pos().size(); ++i) {
+    arg_expr_result.pos_emplace(node->args_.at(i).get(), arg_results.at(i));
+  }
+  for (auto const &[name, res] : arg_results.named()) {
+    arg_expr_result.named_emplace(
+        std::piecewise_construct, std::forward_as_tuple(name),
+        std::forward_as_tuple(node->args_.at(name).get(), res));
+  }
+
+  return ast::VerifyDispatch(node, overload_set, arg_expr_result, ctx);
 }
 
 VerifyResult VerifyType::operator()(ast::Cast const *node, Context *ctx) const {
@@ -1289,15 +1269,19 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
   // returns. Check this.
   absl::flat_hash_set<type::Type const *> types;
   absl::flat_hash_map<ast::RepeatedUnop const *, type::Type const*> saved_ret_types;
-  for (auto *rep_node :
+  for (auto const *n :
        extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
-    std::vector<type::Type const *> ret_types;
-    for (auto const *expr : rep_node->exprs()) {
-      ret_types.push_back(ctx->type_of(expr));
+    if (auto const *rep_node = n->if_as<ast::RepeatedUnop>()) {
+      std::vector<type::Type const *> ret_types;
+      for (auto const *expr : rep_node->exprs()) {
+        ret_types.push_back(ctx->type_of(expr));
+      }
+      auto *t = Tup(std::move(ret_types));
+      types.emplace(t);
+      saved_ret_types.emplace(rep_node, t);
+    } else {
+      UNREACHABLE();  // TODO
     }
-    auto *t = Tup(std::move(ret_types));
-    types.emplace(t);
-    saved_ret_types.emplace(rep_node, t);
   }
 
   if (node->return_type_inferred_) {
@@ -1322,11 +1306,15 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
     switch (outs.size()) {
       case 0: {
         bool err = false;
-        for (auto *rep_node :
+        for (auto *n :
              extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
-          if (!rep_node->exprs().empty()) {
-            ctx->error_log()->NoReturnTypes(rep_node);
-            err = true;
+          if (auto *rep_node = n->if_as<ast::RepeatedUnop>()) {
+            if (!rep_node->exprs().empty()) {
+              ctx->error_log()->NoReturnTypes(rep_node);
+              err = true;
+            }
+          } else {
+            UNREACHABLE(); // TODO
           }
         }
         return err ? visitor::VerifyResult::Error()
@@ -1334,24 +1322,55 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
       } break;
       case 1: {
         bool err = false;
-        for (auto *rep_node :
+        for (auto *n :
              extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
-          auto *t = ASSERT_NOT_NULL(saved_ret_types.at(rep_node));
-          if (t == outs[0]) { continue; }
-          ctx->error_log()->ReturnTypeMismatch(outs[0]->to_string(),
-                                               t->to_string(), rep_node->span);
-          err = true;
+          if (auto *rep_node = n->if_as<ast::RepeatedUnop>()) {
+            auto *t = ASSERT_NOT_NULL(saved_ret_types.at(rep_node));
+            if (t == outs[0]) { continue; }
+            ctx->error_log()->ReturnTypeMismatch(
+                outs[0]->to_string(), t->to_string(), rep_node->span);
+            err = true;
+          } else {
+            UNREACHABLE(); // TODO
+          }
         }
         return err ? visitor::VerifyResult::Error()
                    : visitor::VerifyResult::Constant(node_type);
       } break;
       default: {
-        for (auto *rep_node:
+        for (auto *n:
              extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
-          auto *expr_type = ASSERT_NOT_NULL(saved_ret_types.at(rep_node));
-          if (expr_type->is<type::Tuple>()) {
-            auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
-            if (tup_entries.size() != outs.size()) {
+          if (auto *rep_node = n->if_as<ast::RepeatedUnop>()) {
+            auto *expr_type = ASSERT_NOT_NULL(saved_ret_types.at(rep_node));
+            if (expr_type->is<type::Tuple>()) {
+              auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
+              if (tup_entries.size() != outs.size()) {
+                ctx->error_log()->ReturningWrongNumber(
+                    rep_node->span,
+                    (expr_type->is<type::Tuple>()
+                         ? expr_type->as<type::Tuple>().size()
+                         : 1),
+                    outs.size());
+                return visitor::VerifyResult::Error();
+              } else {
+                bool err = false;
+                for (size_t i = 0; i < tup_entries.size(); ++i) {
+                  if (tup_entries.at(i) != outs.at(i)) {
+                    // TODO if this is a commalist we can point to it more
+                    // carefully but if we're just passing on multiple return
+                    // values it's harder.
+                    //
+                    // TODO point the span to the correct entry which may be
+                    // hard if it's splatted.
+                    ctx->error_log()->IndexedReturnTypeMismatch(
+                        outs.at(i)->to_string(), tup_entries.at(i)->to_string(),
+                        rep_node->span, i);
+                    err = true;
+                  }
+                }
+                if (err) { return visitor::VerifyResult::Error(); }
+              }
+            } else {
               ctx->error_log()->ReturningWrongNumber(
                   rep_node->span,
                   (expr_type->is<type::Tuple>()
@@ -1359,32 +1378,9 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                        : 1),
                   outs.size());
               return visitor::VerifyResult::Error();
-            } else {
-              bool err = false;
-              for (size_t i = 0; i < tup_entries.size(); ++i) {
-                if (tup_entries.at(i) != outs.at(i)) {
-                  // TODO if this is a commalist we can point to it more
-                  // carefully but if we're just passing on multiple return
-                  // values it's harder.
-                  //
-                  // TODO point the span to the correct entry which may be hard
-                  // if it's splatted.
-                  ctx->error_log()->IndexedReturnTypeMismatch(
-                      outs.at(i)->to_string(), tup_entries.at(i)->to_string(),
-                      rep_node->span, i);
-                  err = true;
-                }
-              }
-              if (err) { return visitor::VerifyResult::Error(); }
             }
           } else {
-            ctx->error_log()->ReturningWrongNumber(
-                rep_node->span,
-                (expr_type->is<type::Tuple>()
-                     ? expr_type->as<type::Tuple>().size()
-                     : 1),
-                outs.size());
-            return visitor::VerifyResult::Error();
+            UNREACHABLE();  // TODO
           }
         }
         return visitor::VerifyResult::Constant(node_type);
@@ -1618,12 +1614,54 @@ VerifyResult VerifyType::operator()(ast::Interface const *node,
   return ctx->set_result(node, VerifyResult::Constant(type::Intf));
 }
 
+VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) const {
+  std::vector<VerifyResult> block_results;
+  std::vector<core::FnArgs<VerifyResult>> arg_results;
+  block_results.reserve(node->options_.size());
+  arg_results.reserve(node->options_.size());
+  bool err = false;
+  for (auto const &opt : node->options_) {
+    auto result = opt.block->VerifyType(this, ctx);
+    if (!result.ok()) { err = true; }
+    block_results.push_back(std::move(result));
+    auto [arg_result, arg_err] = VerifyFnArgs(this, opt.args, ctx);
+    err |= arg_err;
+    arg_results.push_back(std::move(arg_result));
+  }
+  if (err) { NOT_YET(); }
+  for (auto const &opt : node->options_) {
+    auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
+        type::Typed<ast::Expression const *>(opt.block.get(), type::Block),
+        ctx);
+    for (auto block : *block_seq.seq_) {
+      if (block == ir::Block::Start()) {
+      } else if (block == ir::Block::Exit()) {
+      } else {
+        // TODO you're re-verifying each unnecessarily.
+        auto args = opt.args.Transform(
+            [ctx, this](std::unique_ptr<ast::Expression> const &arg)
+                -> std::pair<ast::Expression const *, VerifyResult> {
+              return std::pair{arg.get(), arg->VerifyType(this, ctx)};
+            });
+        auto *lit = block.get();
+        ast::VerifyDispatch(ast::ExprPtr{lit, 0x01},
+                            ast::OverloadSet(lit->before(), ctx), args, ctx);
+        // TODO args for after? Actually why are you even verifying dispatch for
+        // it here?
+        ast::VerifyDispatch(ast::ExprPtr{lit, 0x02},
+                            ast::OverloadSet(lit->after(), ctx), {}, ctx);
+      }
+    }
+  }
+  return VerifyResult::Constant(type::Void());
+}
+
 VerifyResult VerifyType::operator()(ast::RepeatedUnop const *node,
                                     Context *ctx) const {
   std::vector<type::Type const *> expr_types;
   expr_types.reserve(node->exprs().size());
   bool is_const = true;
-  bool err = false;
+  bool err      = false;
   for (auto *expr : node->exprs()) {
     auto result = expr->VerifyType(this, ctx);
     if (result == VerifyResult::Error()) {
@@ -1668,31 +1706,7 @@ VerifyResult VerifyType::operator()(ast::RepeatedUnop const *node,
         }
       }
     }
-  } else if (node->op() == frontend::Operator::Jump) {
-    // Note: We're not verifying the type of the call but instead the callable
-    // and its args.
-    auto &call = node->expr(0)->as<ast::Call>();
-    call.fn_->VerifyType(this, ctx);
-
-    auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
-        type::Typed<ast::Expression const *>(call.fn_.get(), type::Block), ctx);
-    auto block = block_seq.at(0);
-    if (block != ir::Block::Start() && block != ir::Block::Exit()) {
-      auto args = call.args_.Transform(
-          [ctx, this](std::unique_ptr<ast::Expression> const &arg)
-              -> std::pair<ast::Expression const *, VerifyResult> {
-            return std::pair{arg.get(), arg->VerifyType(this, ctx)};
-          });
-
-      ast::VerifyDispatch(ast::ExprPtr{&call, 0x01},
-                          ast::OverloadSet(block.get()->before(), ctx), args,
-                          ctx);
-      ast::VerifyDispatch(ast::ExprPtr{block.get(), 0x02},
-                          ast::OverloadSet(block.get()->after(), ctx), args,
-                          ctx);
-    }
   }
-
   return VerifyResult(type::Void(), is_const);
 }
 
@@ -1780,9 +1794,7 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
     return VerifyResult::Error();
   }
 
-  auto *scope_lit =
-      backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx)->lit_;
-  ast::OverloadSet init_os, done_os;
+  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
 
   auto arg_results = node->args_.Transform(
       [ctx, this](std::unique_ptr<ast::Expression> const &arg) {
@@ -1790,32 +1802,12 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
             arg.get(), arg->VerifyType(this, ctx)};
       });
 
-  // TODO remove const cast
-  auto *mod       = const_cast<Module*>(scope_lit->scope_->module());
-  bool swap_bc    = ctx->mod_ != mod;
-  Module *old_mod = std::exchange(ctx->mod_, mod);
-  if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-  base::defer d([&] {
-    ctx->mod_ = old_mod;
-    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-  });
-
-  for (auto const *decl : scope_lit->decls()) {
-    if (decl->id_ == "init") {
-      init_os.emplace(decl,
-                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(decl)));
-    } else if (decl->id_ == "done") {
-      done_os.emplace(decl,
-                      *ASSERT_NOT_NULL(ctx->prior_verification_attempt(decl)));
-    }
-  }
-
   ASSIGN_OR(return _, std::ignore,
-                   ast::VerifyDispatch(ast::ExprPtr{node, 0x02}, init_os,
-                                       arg_results, ctx));
+                   ast::VerifyDispatch(ast::ExprPtr{node, 0x02},
+                                       scope_def->inits_, arg_results, ctx));
 
   for (auto &block_node : node->blocks_) { block_node.VerifyType(this, ctx); }
-  return ast::VerifyDispatch(node, done_os, /* TODO */ {}, ctx);
+  return ast::VerifyDispatch(node, scope_def->dones_, /* TODO */ {}, ctx);
 }
 
 VerifyResult VerifyType::operator()(ast::StructLiteral const *node,
