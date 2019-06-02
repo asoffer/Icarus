@@ -41,7 +41,8 @@ struct DispatchTable {
 
   ir::Results EmitInlineCall(
       core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
-      absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
+      absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const
+          &block_map,
       Context *ctx) const;
   ir::Results EmitCall(
       core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,

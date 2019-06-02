@@ -100,8 +100,8 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
           {"false", std::pair(ir::Results{false}, type::Bool)},
           {"null", std::pair(ir::Results{ir::Addr::Null()}, type::NullPtr)},
           {"byte_view", std::pair(ir::Results{type::ByteView}, type::Type_)},
-          {"exit", std::pair(ir::Results{ir::Block::Exit()}, type::Block)},
-          {"start", std::pair(ir::Results{ir::Block::Start()}, type::Block)},
+          {"exit", std::pair(ir::Results{ir::BlockDef::Exit()}, type::Block)},
+          {"start", std::pair(ir::Results{ir::BlockDef::Start()}, type::Block)},
       };
 
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {

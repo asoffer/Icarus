@@ -15,8 +15,8 @@ struct ScopeDef {
 
   void AddInit(AnyFunc f) { inits_.push_back(f); }
   void AddDone(AnyFunc f) { dones_.push_back(f); }
-  void AddBlockDef(std::string_view name, BlockDef block_def) {
-    blocks_.emplace(name, block_def);
+  void AddBlockDef(std::string_view name, BlockDef &&block) {
+    blocks_.emplace(name, std::move(block));
   }
 
   Module const *module() const { return mod_; }

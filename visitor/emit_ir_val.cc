@@ -611,9 +611,16 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::BlockLiteral const *node, Context *ctx) const {
-  ir::BlockDef block_def;
-  block_def.append(ir::Block(node)); // TODO remove this
-  return ir::Results{block_def};
+  ir::CreateBlockDef(node);
+  for (auto const &decl : node->before()) {
+    ir::AddBlockDefBefore(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
+  }
+
+  for (auto const &decl : node->after()) {
+    ir::AddBlockDefAfter(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
+  }
+
+  return ir::Results{};
 }
 
 ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) const {
@@ -851,8 +858,8 @@ static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
       case frontend::Operator::Eq:
         if (lhs_type == type::Block || lhs_type == type::OptBlock ||
             lhs_type == type::RepBlock) {
-          auto val1 = lhs_ir.get<ir::BlockSequence>(0);
-          auto val2 = rhs_ir.get<ir::BlockSequence>(0);
+          auto val1 = lhs_ir.get<ir::BlockDef *>(0);
+          auto val2 = rhs_ir.get<ir::BlockDef *>(0);
           if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
         }
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
@@ -866,8 +873,8 @@ static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
       case frontend::Operator::Ne:
         if (lhs_type == type::Block || lhs_type == type::OptBlock ||
             lhs_type == type::RepBlock) {
-          auto val1 = lhs_ir.get<ir::BlockSequence>(0);
-          auto val2 = rhs_ir.get<ir::BlockSequence>(0);
+          auto val1 = lhs_ir.get<ir::BlockDef *>(0);
+          auto val2 = rhs_ir.get<ir::BlockDef *>(0);
           if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
         } else if (lhs_type == type::Bool) {
           return ir::XorBool(lhs_ir.get<bool>(0), rhs_ir.get<bool>(0));
@@ -951,13 +958,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) const {
     return ir::Results{reg_or_type};
   } else if (node->ops[0] == frontend::Operator::Or &&
              (t == type::Block || t == type::OptBlock)) {
-    ir::BlockSequence seq;
-    for (auto &expr : node->exprs) {
-      auto reg_or_seq = expr->EmitIr(this, ctx).get<ir::BlockSequence>(0);
-      ASSERT(reg_or_seq.is_reg_ == false);
-      seq |= reg_or_seq.val_;
-    }
-    return ir::Results{seq};
+    NOT_YET();
   } else if (node->ops[0] == frontend::Operator::And ||
              node->ops[0] == frontend::Operator::Or) {
     auto land_block = ir::CompiledFn::Current->AddBlock();
@@ -1016,6 +1017,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) const {
       return ir::Results{ir::MakePhi<bool>(ir::Phi(type::Bool), phi_args)};
     }
   }
+  UNREACHABLE();
 }
 
 ir::Results EmitIr::Val(ast::CommaList const *node, Context *ctx) const {
@@ -1218,9 +1220,8 @@ ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) const {
       node->options_.at(0).block.get();  // TODO remove this line.
 
   // TODO stop calculating this so many times.
-  auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
-      type::Typed<ast::Expression const *>(called_expr, type::Block), ctx);
-  ir::JumpPlaceholder(block_seq);
+  ir::JumpPlaceholder(backend::EvaluateAs<ir::BlockDef const *>(
+      type::Typed<ast::Expression const *>(called_expr, type::Block), ctx));
   return ir::Results{};
 }
 
@@ -1309,7 +1310,9 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) const {
-  auto reg = ir::CreateScopeDef(node->scope_->module());
+  ir::ScopeDef *&scope_def= ctx->constants_->second.scope_defs_[node];
+  if (!scope_def) {}
+  auto reg = ir::CreateScopeDef(&scope_def, node->scope_->module());
   for (auto *decl : node->decls()) {
     if (decl->id_ == "init") {
       ir::AddScopeDefInit(reg, decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
@@ -1317,17 +1320,20 @@ ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) const {
       ir::AddScopeDefDone(reg, decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
     } else {
       // TODO reverse containment. you need to compute this as
-      // get<ir::BlockSequence> and then assert that it's only one and extract
+      // get<ir::BlockDef> and then assert that it's only one and extract
       // it? What if someone types
       //
       //  `my_block ::= my_block2 | my_block3`
       //
       // We really just want it as a sequence. no matter what and we want to
       // make sure `exit` and `start` are not in it.
-      ir::AddBlockDef(reg, decl->id_,
-                      decl->EmitIr(this, ctx).get<ir::BlockDef>(0));
+      ASSERT(decl->init_val != nullptr);
+      // TODO what if there's a conversion like from A to A|B?
+      decl->init_val->EmitIr(this, ctx);
+      ir::FinishBlockDef(decl->id_);
     }
   }
+  ir::FinishScopeDef();
   return ir::Results{reg};
 }
 
@@ -1338,18 +1344,17 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   auto init_block = ir::CompiledFn::Current->AddBlock();
   auto land_block = ir::CompiledFn::Current->AddBlock();
 
-  absl::flat_hash_map<ir::Block, ir::BlockIndex> block_map{
-      {ir::Block::Start(), init_block}, {ir::Block::Exit(), land_block}};
+  absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> block_map{
+      {ir::BlockDef::Start(), init_block}, {ir::BlockDef::Exit(), land_block}};
 
   absl::flat_hash_map<std::string_view,
-                      std::tuple<ir::Block, ast::BlockNode const *>>
+                      std::tuple<ir::BlockDef const *, ast::BlockNode const *>>
       name_to_block;
+
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
-  for (auto [name, block] : scope_def->blocks_) {
-    ir::BlockSequence bs = block;
-    ASSERT(bs.size() == 1u);
+  for (auto const &[name, block] : scope_def->blocks_) {
     name_to_block.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                          std::forward_as_tuple(bs.at(0), nullptr));
+                          std::forward_as_tuple(&block, nullptr));
   }
 
   for (auto &block_node : node->blocks_) {
@@ -1362,7 +1367,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   ir::BasicBlock::Current = init_block;
 
   // TODO this lambda thing is an awful hack.
-  ctx->dispatch_table(ast::ExprPtr{node, 0x02})
+  ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{node, 0x02}))
       ->EmitInlineCall(
           node->args_.Transform(
               [this, ctx](std::unique_ptr<ast::Expression> const &expr) {
@@ -1377,12 +1382,12 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
     auto iter           = block_map.find(block);
     if (iter == block_map.end()) { continue; }
     ir::BasicBlock::Current = iter->second;
-    ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block.get(), 0x01}))
+    ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{node, 0x01}))
         ->EmitInlineCall({}, block_map, ctx);
 
     ASSERT_NOT_NULL(node)->EmitIr(this, ctx);
 
-    ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block.get(), 0x02}))
+    ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{node, 0x02}))
         ->EmitInlineCall({}, block_map, ctx);
   }
 
@@ -1541,12 +1546,6 @@ ir::Results EmitIr::Val(ast::SwitchWhen const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::Terminal const *node, Context *ctx) const {
-  if (node->type_ == type::Block) {
-    ir::BlockSequence seq;
-    seq.append(node->results_.get<ir::Block>(0).val_);
-    return ir::Results{seq};
-  }
-
   return node->results_;
 }
 

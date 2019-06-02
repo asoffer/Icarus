@@ -70,6 +70,10 @@ visitor::VerifyResult Context::set_result(ast::ExprPtr expr,
   return r;
 }
 
+ir::ScopeDef *Context::scope_def(ast::ScopeLiteral const *scope_lit) const {
+  return constants_->second.scope_defs_.at(scope_lit);
+}
+
 void Context::set_dispatch_table(ast::ExprPtr expr,
                                  ast::DispatchTable &&table) {
   constants_->second.dispatch_tables_.emplace(expr, std::move(table));

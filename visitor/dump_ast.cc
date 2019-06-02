@@ -129,10 +129,12 @@ void DumpAst::operator()(ast::BlockLiteral const *node) {
   for (auto const *b : node->before()) {
     absl::StrAppend(out_, indent());
     b->DumpAst(this);
+    absl::StrAppend(out_, "\n");
   }
   for (auto const *a : node->after()) {
     absl::StrAppend(out_, indent());
     a->DumpAst(this);
+    absl::StrAppend(out_, "\n");
   }
   --indentation_;
   absl::StrAppend(out_, indent(), "}\n");
@@ -396,8 +398,8 @@ void DumpAst::operator()(ast::Terminal const *node) {
     absl::StrAppend(
         out_, node->results_.get<type::Type const *>(0).val_->to_string());
   } else if (node->type_ == type::Block) {
-    absl::StrAppend(out_,
-                    base::stringify(node->results_.get<ir::Block>(0).val_));
+    absl::StrAppend(
+        out_, base::stringify(node->results_.get<ir::BlockDef *>(0).val_));
   } else {
     absl::StrAppend(out_, "<<terminal: ", node->type_->to_string(), ">>");
   }

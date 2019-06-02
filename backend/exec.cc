@@ -1135,15 +1135,26 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::UncondJump: return cmd.block_index_;
     case ir::Op::ReturnJump: return ir::BlockIndex{-1};
     case ir::Op::JumpPlaceholder: UNREACHABLE(call_stack.top().fn_);
-    case ir::Op::BlockSeqJump: NOT_YET(); break;
-    case ir::Op::CreateScopeDef:
+    case ir::Op::CreateScopeDef: {
       // TODO consider the implications of leaking this. I'm not convinced there
       // exist scenarios where we're leaking and could clean it up. I.e., every
       // time we create one it's because we expect it to live forever. I suppose
       // we could ref-count the results of functions and delete these if they're
       // unused?
-      save(new ir::ScopeDef(cmd.mod_));
-      break;
+      auto *scope_def = new ir::ScopeDef(cmd.mod_);
+      call_stack.top().scope_defs_.push(scope_def);
+      save(scope_def);
+    } break;
+    case ir::Op::FinishScopeDef: {
+      ASSERT(call_stack.top().scope_defs_.size() != 0u);
+      ASSERT(call_stack.top().block_defs_.size() == 0u);
+      base::Log() << "Finished " << call_stack.top().scope_defs_.top()->blocks_;
+
+      std::stringstream ss;
+      ss << *call_stack.top().fn_;
+      base::Log() << ss.str();
+      call_stack.top().scope_defs_.pop();
+    } break;
     case ir::Op::AddScopeDefInit:
       resolve<ir::ScopeDef *>(cmd.add_scope_def_init_.reg_)
           ->AddInit(resolve(cmd.add_scope_def_init_.f_));
@@ -1152,10 +1163,22 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       resolve<ir::ScopeDef *>(cmd.add_scope_def_done_.reg_)
           ->AddDone(resolve(cmd.add_scope_def_done_.f_));
       break;
-    case ir::Op::AddBlockDef:
-      resolve<ir::ScopeDef *>(cmd.add_block_def_.reg_)
-          ->AddBlockDef(cmd.add_block_def_.name_,
-                        resolve(cmd.add_block_def_.b_));
+    case ir::Op::CreateBlockDef:
+      call_stack.top().block_defs_.emplace(
+          resolve<ast::BlockLiteral const *>(cmd.block_lit_));
+      break;
+    case ir::Op::FinishBlockDef:
+      ASSERT(call_stack.top().block_defs_.size() != 0u);
+      call_stack.top().scope_defs_.top()->AddBlockDef(
+          resolve(cmd.byte_view_arg_),
+          std::move(call_stack.top().block_defs_.top()));
+      call_stack.top().block_defs_.pop();
+      break;
+    case ir::Op::AddBlockDefBefore:
+      call_stack.top().block_defs_.top().AddBefore(resolve(cmd.any_fn_));
+      break;
+    case ir::Op::AddBlockDefAfter:
+      call_stack.top().block_defs_.top().AddAfter(resolve(cmd.any_fn_));
       break;
   }
 

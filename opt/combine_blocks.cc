@@ -19,8 +19,7 @@ void RemoveEverythingAfterFirstJump(ir::BasicBlock* block) {
       case ir::Op::JumpPlaceholder: UNREACHABLE();
       case ir::Op::UncondJump:
       case ir::Op::CondJump:
-      case ir::Op::ReturnJump:
-      case ir::Op::BlockSeqJump: cmds.erase(++iter, cmds.end()); return;
+      case ir::Op::ReturnJump: cmds.erase(++iter, cmds.end()); return;
       default: continue;
     }
   }

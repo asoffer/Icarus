@@ -95,6 +95,7 @@ struct Module {
     absl::flat_hash_map<ast::ExprPtr, visitor::VerifyResult> verify_results_;
 
     absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
+    absl::flat_hash_map<ast::ScopeLiteral const*, ir::ScopeDef *> scope_defs_;
 
 #endif  // ICARUS_VISITOR_EMIT_IR
     ConstantBinding constants_;

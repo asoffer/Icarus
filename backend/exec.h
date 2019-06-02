@@ -1,5 +1,7 @@
 #ifndef ICARUS_BACKEND_EXEC_H
 #define ICARUS_BACKEND_EXEC_H
+
+#include <memory>
 #include <cstddef>
 #include <stack>
 
@@ -24,6 +26,9 @@ struct ExecContext {
     ir::CompiledFn *fn_ = nullptr;
     ir::BlockIndex current_;
     ir::BlockIndex prev_;
+
+    std::stack<ir::ScopeDef *> scope_defs_;
+    std::stack<ir::BlockDef> block_defs_;
 
     base::untyped_buffer regs_;
   };

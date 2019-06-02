@@ -45,6 +45,10 @@ struct Context {
   void set_pending_module(ast::Import const *import_node,
                           core::PendingModule mod);
 
+  ir::ScopeDef * scope_def(ast::ScopeLiteral const *scope_lit) const;
+  void set_scope_def(ast::ScopeLiteral const *scope_lit,
+                     ir::ScopeDef *scope_def);
+
   Module *mod_ = nullptr;
 
   std::pair<ConstantBinding, Module::DependentData> *constants_;

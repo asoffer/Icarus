@@ -21,22 +21,37 @@ Reg CreateScopeDef(::Module const *mod) {
   return cmd.result;
 }
 
-Reg AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f) {
+Reg CreateBlockDef(ast::BlockLiteral const *parent) {
+  auto &cmd      = MakeCmd(type::Block, Op::CreateBlockDef);
+  cmd.block_lit_ = parent;
+  return cmd.result;
+}
+
+void FinishScopeDef() { MakeCmd(type::Block, Op::FinishScopeDef); }
+
+void FinishBlockDef(std::string_view name) {
+  auto &cmd          = MakeCmd(nullptr, Op::FinishBlockDef);
+  cmd.byte_view_arg_ = name;
+}
+
+void AddBlockDefBefore(RegisterOr<AnyFunc> f) {
+  auto &cmd   = MakeCmd(nullptr, Op::AddBlockDefBefore);
+  cmd.any_fn_ = f;
+}
+
+void AddBlockDefAfter(RegisterOr<AnyFunc> f) {
+  auto &cmd   = MakeCmd(nullptr, Op::AddBlockDefAfter);
+  cmd.any_fn_ = f;
+}
+
+void AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f) {
   auto &cmd               = MakeCmd(nullptr, Op::AddScopeDefInit);
   cmd.add_scope_def_init_ = {reg, f};
-  return cmd.result;
 }
 
-Reg AddScopeDefDone(Reg reg, RegisterOr<AnyFunc> f) {
+void AddScopeDefDone(Reg reg, RegisterOr<AnyFunc> f) {
   auto &cmd               = MakeCmd(nullptr, Op::AddScopeDefDone);
   cmd.add_scope_def_done_ = {reg, f};
-  return cmd.result;
-}
-
-Reg AddBlockDef(Reg reg, std::string_view name, RegisterOr<BlockDef> b) {
-  auto &cmd          = MakeCmd(nullptr, Op::AddBlockDef);
-  cmd.add_block_def_ = {reg, name, b};
-  return cmd.result;
 }
 
 void Move(type::Type const *t, Reg from, RegisterOr<Addr> to) {
@@ -119,9 +134,9 @@ RegisterOr<int64_t> Align(RegisterOr<type::Type const *> r) {
   return cmd.result;
 }
 
-void JumpPlaceholder(BlockSequence block_seq) {
+void JumpPlaceholder(BlockDef const *block_def) {
   auto &cmd                         = MakeCmd(nullptr, Op::JumpPlaceholder);
-  cmd.block_seq_                    = block_seq;
+  cmd.block_def_                    = block_def;
   CompiledFn::Current->must_inline_ = true;
 }
 
@@ -589,7 +604,8 @@ static void InlinePhiNode(
 
 std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
-    absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map) {
+    absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const
+        &block_map) {
   bool is_jump = false;
   std::vector<Results> return_vals;
   return_vals.resize(f->type_->output.size());
@@ -956,19 +972,14 @@ std::pair<Results, bool> CallInline(
         case Op::ReturnJump: {
           // TODO jump to landing block
         } break;
-        case Op::BlockSeqJump: {
-          NOT_YET();
-          // TODO deprecate
-        } break;
         case Op::JumpPlaceholder: {
-          for (auto block : *cmd.block_seq_.seq_) {
-            auto iter = block_map.find(block);
-            if (iter != block_map.end()) {
-              is_jump = true;
-              UncondJump(iter->second);
-              ir::BasicBlock::Current = iter->second;
-              goto found_valid_jump;
-            }
+          // TODO multiple blocks
+          auto iter = block_map.find(cmd.block_def_);
+          if (iter != block_map.end()) {
+            is_jump = true;
+            UncondJump(iter->second);
+            ir::BasicBlock::Current = iter->second;
+            goto found_valid_jump;
           }
           UNREACHABLE();
         found_valid_jump:;
@@ -1112,13 +1123,6 @@ TypedRegister<type::Type const *> NewOpaqueType(::Module *mod) {
   return cmd.result;
 }
 
-void BlockSeqJump(RegisterOr<BlockSequence> bseq,
-                  absl::flat_hash_map<ast::BlockLiteral const *,
-                                      BlockIndex> const *jump_table) {
-  auto &cmd           = MakeCmd(nullptr, Op::BlockSeqJump);
-  cmd.block_seq_jump_ = Cmd::BlockSeqJump{bseq, jump_table};
-}
-
 template <typename T>
 static std::ostream &operator<<(std::ostream &os,
                                 std::array<RegisterOr<T>, 2> r) {
@@ -1179,10 +1183,6 @@ static std::ostream &operator<<(std::ostream &os, Cmd::PrintEnum const &p) {
 
 static std::ostream &operator<<(std::ostream &os, Cmd::PrintFlags const &p) {
   return os << p.arg_;
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::BlockSeqJump const &b) {
-  return os << b.bseq_;
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::PtrIncr const &p) {

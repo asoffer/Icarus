@@ -65,8 +65,8 @@ ir::Results MakePhi(type::Type const *t, CmdIndex phi_index,
     } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
       ASSERT(val_map.size() != 0u);
       return Results{MakePhi<T>(phi_index, ConvertMap<T>(val_map))};
-    } else if constexpr (std::is_same_v<T, BlockSequence>) {
-      auto phi_args  = MakePhiArgs<BlockSequence>(val_map);
+    } else if constexpr (std::is_same_v<T, BlockDef>) {
+      auto phi_args  = MakePhiArgs<BlockDef>(val_map);
       cmd.op_code_   = Op::PhiBlock;
       cmd.phi_block_ = phi_args.get();
       ir::CompiledFn::Current->block(BasicBlock::Current)

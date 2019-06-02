@@ -445,6 +445,7 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
 
 VerifyResult VerifyType::operator()(ast::BlockLiteral const *node,
                                     Context *ctx) const {
+  base::Log() << node << "\n" << DumpAst::ToString(node);
   for (auto *b : node->before()) { b->VerifyType(this, ctx); }
   for (auto *a : node->after()) { a->VerifyType(this, ctx); }
 
@@ -455,6 +456,7 @@ VerifyResult VerifyType::operator()(ast::BlockLiteral const *node,
 
 VerifyResult VerifyType::operator()(ast::BlockNode const *node,
                                     Context *ctx) const {
+
   for (auto *stmt : node->stmts()) { stmt->VerifyType(this, ctx); }
   return ctx->set_result(node, VerifyResult::Constant(type::Block));
 }
@@ -1630,28 +1632,36 @@ VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) const {
   }
   if (err) { NOT_YET(); }
   for (auto const &opt : node->options_) {
-    auto block_seq = backend::EvaluateAs<ir::BlockSequence>(
+    base::Log() << node->scope_->Containing<core::ScopeLitScope>()->scope_lit_;
+    base::Log() << DumpAst::ToString(
+        node->scope_->Containing<core::ScopeLitScope>()->scope_lit_);
+    // TODO cache these. :/
+    auto x = backend::EvaluateAs<ir::ScopeDef *>(
+        node->scope_->Containing<core::ScopeLitScope>()->scope_lit_, ctx);
+    /*
+    base::Log() << opt.block.get() << "\n" << DumpAst::ToString(opt.block.get());
+    auto block_def = backend::EvaluateAs<ir::BlockDef *>(
         type::Typed<ast::Expression const *>(opt.block.get(), type::Block),
         ctx);
-    for (auto block : *block_seq.seq_) {
-      if (block == ir::Block::Start()) {
-      } else if (block == ir::Block::Exit()) {
-      } else {
-        // TODO you're re-verifying each unnecessarily.
-        auto args = opt.args.Transform(
-            [ctx, this](std::unique_ptr<ast::Expression> const &arg)
-                -> std::pair<ast::Expression const *, VerifyResult> {
-              return std::pair{arg.get(), arg->VerifyType(this, ctx)};
-            });
-        auto *lit = block.get();
-        ast::VerifyDispatch(ast::ExprPtr{lit, 0x01},
-                            ast::OverloadSet(lit->before(), ctx), args, ctx);
-        // TODO args for after? Actually why are you even verifying dispatch for
-        // it here?
-        ast::VerifyDispatch(ast::ExprPtr{lit, 0x02},
-                            ast::OverloadSet(lit->after(), ctx), {}, ctx);
-      }
+    if (block_def == ir::BlockDef::Start()) {
+    } else if (block_def == ir::BlockDef::Exit()) {
+    } else {
+      // TODO you're re-verifying each unnecessarily.
+      auto args = opt.args.Transform(
+          [ctx, this](std::unique_ptr<ast::Expression> const &arg)
+              -> std::pair<ast::Expression const *, VerifyResult> {
+            return std::pair{arg.get(), arg->VerifyType(this, ctx)};
+          });
+      base::Log() << *block_def;
+      auto *lit = block_def->parent_;
+      base::Log() << lit << "\n" << DumpAst::ToString(lit);
+      ast::VerifyDispatch(ast::ExprPtr{lit, 0x01}, block_def->before_, args,
+                          ctx);
+      // TODO args for after? Actually why are you even verifying dispatch for
+      // it here?
+      ast::VerifyDispatch(ast::ExprPtr{lit, 0x02}, block_def->after_, {}, ctx);
     }
+    */
   }
   return VerifyResult::Constant(type::Void());
 }
@@ -1778,23 +1788,39 @@ VerifyResult VerifyType::operator()(ast::ScopeLiteral const *node,
   return ctx->set_result(node, VerifyResult::Constant(type::Scope));
 }
 
+void VerifyBlockNode(VerifyType const *visitor, ast::BlockNode const *node,
+                     ir::ScopeDef *scope_def, Context *ctx) {
+  visitor::ExtractJumps extract_visitor;
+  for (auto const &stmt : node->stmts()){
+    stmt->ExtractJumps(&extract_visitor);
+  }
+
+  node->VerifyType(visitor, ctx);
+
+  auto yields = extract_visitor.jumps(visitor::ExtractJumps::Kind::Yield);
+  if (yields.empty()) {
+      base::Log() << scope_def->blocks_.at(node->name());
+      base::Log() << "no yields";
+  } else {
+    for (auto *yield : yields) {
+      // TODO actually fill a fnargs
+      std::vector<type::Type const *> yield_types;
+      for (auto yield_expr : yields[0]->as<ast::RepeatedUnop>().exprs()) {
+        yield_types.push_back(ctx->type_of(yield_expr));
+      }
+
+      // TODO if i knew what scope i came from, i'd be able to find the correct
+      // blockdef which would tell me the exit handlers that are relevant which
+      // i could pass to VerifyDispatch.
+      base::Log() << scope_def->blocks_.at(node->name());
+      base::Log() << type::Tup(std::move(yield_types))->to_string();
+    }
+  }
+}
+
 VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
                                     Context *ctx) const {
   ASSIGN_OR(return _, auto name_result, node->name_->VerifyType(this, ctx));
-
-  auto arg_types = node->args_.Transform(
-      [ctx, this, node](auto &arg) { return arg->VerifyType(this, ctx); });
-  // TODO type check
-
-  for (auto &block : node->blocks_) { block.VerifyType(this, ctx); }
-
-  // TODO check the scope type makes sense.
-  if (!name_result.const_) {
-    ctx->error_log()->NonConstantScopeName(node->name_->span);
-    return VerifyResult::Error();
-  }
-
-  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
 
   auto arg_results = node->args_.Transform(
       [ctx, this](std::unique_ptr<ast::Expression> const &arg) {
@@ -1802,11 +1828,32 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
             arg.get(), arg->VerifyType(this, ctx)};
       });
 
+  // TODO type check
+
+  // TODO check the scope type makes sense.
+  if (!name_result.const_) {
+    ctx->error_log()->NonConstantScopeName(node->name_->span);
+    return VerifyResult::Error();
+  }
+
+  bool err = false;
+  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
+  for (auto &block : node->blocks_) {
+    VerifyBlockNode(this, &block, scope_def, ctx);
+    auto const &block_def = scope_def->blocks_.at(block.name());
+    err |= !ast::VerifyDispatch(ast::ExprPtr{&block, 0x02}, block_def.after_,
+                                arg_results, ctx)
+                .ok();
+    err |= !ast::VerifyDispatch(ast::ExprPtr{&block, 0x01}, block_def.before_,
+                                {}, ctx)
+                .ok();
+  }
+  if (err) { return VerifyResult::Error(); }
+
   ASSIGN_OR(return _, std::ignore,
                    ast::VerifyDispatch(ast::ExprPtr{node, 0x02},
                                        scope_def->inits_, arg_results, ctx));
 
-  for (auto &block_node : node->blocks_) { block_node.VerifyType(this, ctx); }
   return ast::VerifyDispatch(node, scope_def->dones_, /* TODO */ {}, ctx);
 }
 

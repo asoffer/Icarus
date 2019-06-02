@@ -613,7 +613,7 @@ static bool EmitOneCall(
     std::vector<type::Type const *> const &return_types,
     std::vector<std::variant<
         ir::Reg, absl::flat_hash_map<ir::BlockIndex, ir::Results> *>> *outputs,
-    absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
+    absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map,
     ir::Results *inline_results, Context *ctx) {
   // TODO look for matches
   ir::RegisterOr<ir::AnyFunc> fn = std::visit(
@@ -726,7 +726,7 @@ template <bool Inline>
 static ir::Results EmitFnCall(
     DispatchTable const *table,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
-    absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
+    absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map,
     Context *ctx) {
   // If an output to the function fits in a register we will create a phi node
   // for it on the landing block. Otherwise, we'll temporarily allocate stack
@@ -810,7 +810,7 @@ static ir::Results EmitFnCall(
 
 ir::Results DispatchTable::EmitInlineCall(
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
-    absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map,
+    absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map,
     Context *ctx) const {
   return EmitFnCall<true>(this, args, block_map, ctx);
 }

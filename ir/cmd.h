@@ -169,15 +169,6 @@ struct Cmd {
     }
   };
 
-  struct AddBlockDef {
-    Reg reg_;
-    std::string_view name_;
-    RegisterOr<BlockDef> b_;
-    inline friend std::ostream &operator<<(std::ostream &os, AddBlockDef a) {
-      return os << a.reg_ << " " << a.name_ << " " << a.b_;
-    }
-  };
-
   struct CreateStruct {
     core::Scope const *scope_;
     ast::StructLiteral const *parent_;
@@ -225,12 +216,6 @@ struct Cmd {
   struct CondJump {
     Reg cond_;
     BlockIndex blocks_[2];
-  };
-
-  struct BlockSeqJump {
-    RegisterOr<BlockSequence> bseq_;
-    absl::flat_hash_map<ast::BlockLiteral const *, ir::BlockIndex> const
-        *jump_table_;
   };
 
   struct LoadSymbol {
@@ -287,10 +272,10 @@ struct Cmd {
     type::Type const *type_;
     ast::StructLiteral const *sl_;
     LoadSymbol load_sym_;
-    BlockSequence block_seq_;
+    BlockDef const *block_def_;
+    ast::BlockLiteral const *block_lit_;
     AddScopeDefInit add_scope_def_init_;
     AddScopeDefDone add_scope_def_done_;
-    AddBlockDef add_block_def_;
 
     CreateStruct create_struct_;
     CreateStructField create_struct_field_;
@@ -300,7 +285,6 @@ struct Cmd {
     SetEnumerator set_enumerator_;
     CondJump cond_jump_;
     BlockIndex block_index_;
-    BlockSeqJump block_seq_jump_;
     Call call_;
     PtrIncr ptr_incr_;
     Cmd::Array array_;
@@ -388,7 +372,7 @@ struct Cmd {
     SetRet<ScopeDef *> set_ret_scope_;
     SetRet<ast::FunctionLiteral *> set_ret_generic_;
     SetRet<Module *> set_ret_module_;
-    SetRet<BlockSequence> set_ret_block_;
+    SetRet<BlockDef *> set_ret_block_;
     SetRet<type::Interface const *> set_ret_intf_;
 
     PhiArgs<bool> *phi_bool_;
@@ -403,7 +387,7 @@ struct Cmd {
     PhiArgs<float> *phi_float32_;
     PhiArgs<double> *phi_float64_;
     PhiArgs<type::Type const *> *phi_type_;
-    PhiArgs<BlockSequence> *phi_block_;
+    PhiArgs<BlockDef *> *phi_block_;
     PhiArgs<ir::Addr> *phi_addr_;
     PhiArgs<ir::EnumVal> *phi_enum_;
     PhiArgs<ir::FlagsVal> *phi_flags_;
@@ -412,6 +396,7 @@ struct Cmd {
     PrintEnum print_enum_;
     PrintFlags print_flags_;
 
+    RegisterOr<AnyFunc> any_fn_;
     type::Typed<Reg> typed_reg_;
 #define OP_MACRO(...)
 #include "ir/op.xmacro.h"
@@ -630,7 +615,7 @@ void Call(RegisterOr<AnyFunc> const &f, Arguments arguments);
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs);
 std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
-    absl::flat_hash_map<ir::Block, ir::BlockIndex> const &block_map);
+    absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map);
 
 Reg CreateTuple();
 void AppendToTuple(Reg tup, RegisterOr<type::Type const *> entry);
@@ -644,10 +629,6 @@ void UncondJump(BlockIndex block);
 void ReturnJump();
 
 TypedRegister<type::Type const *> NewOpaqueType(::Module *mod);
-
-void BlockSeqJump(RegisterOr<BlockSequence> r,
-                  absl::flat_hash_map<ast::BlockLiteral const *,
-                                      ir::BlockIndex> const *jump_table);
 
 Results Cast(type::Type const *from, type::Type const *to, Results const &val);
 
@@ -674,7 +655,7 @@ Reg CreateContext(Module *mod);
 void AddBoundConstant(Reg ctx, ast::Declaration const *decl,
                       RegisterOr<type::Type const *> type);
 void DestroyContext(Reg r);
-void JumpPlaceholder(ir::BlockSequence block_seq);
+void JumpPlaceholder(BlockDef const *block_def);
 
 TypedRegister<type::Interface const *> CreateInterface(
     core::Scope const *scope);
@@ -683,8 +664,13 @@ ir::TypedRegister<type::Interface const *> FinalizeInterface(Reg r);
 Reg ArgumentCache(ast::StructLiteral const *sl);
 
 Reg CreateScopeDef(::Module const *mod);
-Reg AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f);
-Reg AddScopeDefDone(Reg reg,  RegisterOr<AnyFunc> f);
-Reg AddBlockDef(Reg reg, std::string_view name, RegisterOr<BlockDef> b);
+void AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f);
+void AddScopeDefDone(Reg reg,  RegisterOr<AnyFunc> f);
+void FinishScopeDef();
+
+Reg CreateBlockDef(ast::BlockLiteral const *parent);
+void AddBlockDefBefore(RegisterOr<AnyFunc> f);
+void AddBlockDefAfter(RegisterOr<AnyFunc> f);
+void FinishBlockDef(std::string_view name);
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H
