@@ -369,12 +369,6 @@ void DumpAst::operator()(ast::Switch const *node) {
   absl::StrAppend(out_, indent(), "}");
 }
 
-void DumpAst::operator()(ast::SwitchWhen const *node) {
-  node->body->DumpAst(this);
-  absl::StrAppend(out_, " when ");
-  node->cond->DumpAst(this);
-}
-
 void DumpAst::operator()(ast::Terminal const *node) {
   if (node->type_ == type::Bool) {
     absl::StrAppend(out_, node->results_.get<bool>(0).val_ ? "true" : "false");

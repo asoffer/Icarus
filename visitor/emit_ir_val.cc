@@ -1312,7 +1312,7 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
 ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) const {
   ir::ScopeDef *&scope_def= ctx->constants_->second.scope_defs_[node];
   if (!scope_def) {}
-  auto reg = ir::CreateScopeDef(&scope_def, node->scope_->module());
+  auto reg = ir::CreateScopeDef(node->scope_->module());
   for (auto *decl : node->decls()) {
     if (decl->id_ == "init") {
       ir::AddScopeDefInit(reg, decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
@@ -1539,10 +1539,6 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) const {
   } else {
     return ir::MakePhi(t, ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args);
   }
-}
-
-ir::Results EmitIr::Val(ast::SwitchWhen const *node, Context *ctx) const {
-  UNREACHABLE();
 }
 
 ir::Results EmitIr::Val(ast::Terminal const *node, Context *ctx) const {

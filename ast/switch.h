@@ -16,17 +16,6 @@ struct Switch : public Expression {
       cases_;
 };
 
-// Temporary node which never appears in the AST but is useful during parsing to
-// distinguish 'when' from other binary operators.
-struct SwitchWhen : public Node {
-  ~SwitchWhen() override {}
-
-#include "visitor/visitors.xmacro.h"
-
-  std::unique_ptr<Node> body;
-  std::unique_ptr<Expression> cond;
-};
-
 }  // namespace ast
 
 #endif  // ICARUS_AST_SWITCH_H

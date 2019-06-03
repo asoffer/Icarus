@@ -138,8 +138,6 @@ void ExtractJumps::operator()(ast::Switch const *node) {
   }
 }
 
-void ExtractJumps::operator()(ast::SwitchWhen const *node) { UNREACHABLE(); }
-
 void ExtractJumps::operator()(ast::Terminal const *node) {}
 
 void ExtractJumps::operator()(ast::Unop const *node) {

@@ -90,7 +90,6 @@ void Match::MatchExpr(ast::StructType const *node, MatchState *state) {}
 
 void Match::MatchExpr(ast::Switch const *node, MatchState *state) {}
 
-void Match::MatchExpr(ast::SwitchWhen const *node, MatchState *state) {}
 void Match::MatchExpr(ast::Terminal const *node, MatchState *state) {}
 
 void Match::MatchExpr(ast::Unop const *node, MatchState *state) {}

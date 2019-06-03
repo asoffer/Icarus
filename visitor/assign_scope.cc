@@ -202,8 +202,6 @@ void AssignScope::operator()(ast::Switch *node, core::Scope *scope) {
   }
 }
 
-void AssignScope::operator()(ast::SwitchWhen *node, core::Scope *scope) { UNREACHABLE(); }
-
 void AssignScope::operator()(ast::Terminal *node, core::Scope *scope) {
   node->scope_ = scope;
 }

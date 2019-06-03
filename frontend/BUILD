@@ -18,7 +18,7 @@ COMMON_LEX_IMPL_TARGETS = [
     ":numbers-impl",
     "//ast:ast",
     "//core:builtin",
-    "//ir:block",
+    "//ir:block-impl",
     "//ir:results",
     "//ir:str",
     "//type:primitive",

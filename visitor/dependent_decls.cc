@@ -148,11 +148,6 @@ void DependentDecls::operator()(ast::Switch const *node,
   }
 }
 
-void DependentDecls::operator()(ast::SwitchWhen const *node,
-                                ast::Declaration const *d) {
-  UNREACHABLE();
-}
-
 void DependentDecls::operator()(ast::Terminal const *node,
                                 ast::Declaration const *d) {}
 

@@ -46,6 +46,17 @@ struct Statements : public ast::Node {
   std::vector<std::unique_ptr<ast::Node>> content_;
 };
 
+// Temporary node which never appears in the AST but is useful during parsing to
+// distinguish 'when' from other binary operators.
+struct SwitchWhen : public ast::Node {
+  ~SwitchWhen() override {}
+
+#include "visitor/visitors.xmacro.h"
+
+  std::unique_ptr<ast::Node> body;
+  std::unique_ptr<ast::Expression> cond;
+};
+
 template <typename To, typename From>
 std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
   ASSERT(val, InheritsFrom<To>());
@@ -98,7 +109,7 @@ std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<Statements> stmts,
 
   switch_expr->cases_.reserve(stmts->content_.size());
   for (auto &stmt : stmts->content_) {
-    if (auto *switch_when = stmt->if_as<ast::SwitchWhen>()) {
+    if (auto *switch_when = stmt->if_as<SwitchWhen>()) {
       switch_expr->cases_.emplace_back(std::move(switch_when->body),
                                        std::move(switch_when->cond));
     } else {
@@ -790,7 +801,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     cast->type_ = move_as<ast::Expression>(nodes[2]);
     return cast;
   } else if (tk == "when") {
-    auto when  = std::make_unique<ast::SwitchWhen>();
+    auto when  = std::make_unique<SwitchWhen>();
     when->span = TextSpan(nodes[0]->span, nodes[2]->span);
     when->body = move_as<ast::Node>(nodes[0]);
     when->cond = move_as<ast::Expression>(nodes[2]);
